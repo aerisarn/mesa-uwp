@@ -123,7 +123,7 @@ bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
 
         /* Need to put the sample ID in the top 16-bits */
         case nir_intrinsic_load_barycentric_at_sample:
-                return bi_mkvec_v2i16(b, bi_half(bi_dontcare(), false),
+                return bi_mkvec_v2i16(b, bi_half(bi_dontcare(b), false),
                                 bi_half(bi_src_index(&intr->src[0]), false));
 
         /* Interpret as 8:8 signed fixed point positions in pixels along X and
@@ -164,7 +164,7 @@ bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
 
         case nir_intrinsic_load_barycentric_pixel:
         default:
-                return bi_dontcare();
+                return b->shader->arch >= 9 ? bi_register(61) : bi_dontcare(b);
         }
 }
 
@@ -621,7 +621,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_index alpha =
                         (T == nir_type_float16) ? bi_half(bi_word(rgba, 1), true) :
                         (T == nir_type_float32) ? bi_word(rgba, 3) :
-                        bi_dontcare();
+                        bi_dontcare(b);
 
                 /* Don't read out-of-bounds */
                 if (nir_src_num_components(instr->src[0]) < 4)

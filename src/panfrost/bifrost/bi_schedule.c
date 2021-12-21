@@ -360,7 +360,7 @@ bi_lower_atom_c1(bi_context *ctx, struct bi_clause_state *clause, struct
         pinstr->op = BI_OPCODE_ATOM_CX;
         pinstr->src[2] = pinstr->src[1];
         pinstr->src[1] = pinstr->src[0];
-        pinstr->src[3] = bi_dontcare();
+        pinstr->src[3] = bi_dontcare(&b);
         pinstr->src[0] = bi_null();
 
         return atom_c;
