@@ -701,7 +701,8 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
        * disable it for external clients that want write
        * access.
        */
-      if ((usage & PIPE_HANDLE_USAGE_SHADER_WRITE && !tex->is_depth && tex->surface.meta_offset) ||
+      if (sscreen->debug_flags & DBG(NO_EXPORTED_DCC) ||
+          (usage & PIPE_HANDLE_USAGE_SHADER_WRITE && !tex->is_depth && tex->surface.meta_offset) ||
           /* Displayable DCC requires an explicit flush. */
           (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
            si_displayable_dcc_needs_explicit_flush(tex))) {

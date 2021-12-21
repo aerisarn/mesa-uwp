@@ -105,6 +105,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"notiling", DBG(NO_TILING), "Disable tiling"},
    {"nodisplaytiling", DBG(NO_DISPLAY_TILING), "Disable display tiling"},
    {"nodisplaydcc", DBG(NO_DISPLAY_DCC), "Disable display DCC"},
+   {"noexporteddcc", DBG(NO_EXPORTED_DCC), "Disable DCC for all exported buffers (via DMABUF, etc.)"},
    {"nodcc", DBG(NO_DCC), "Disable DCC."},
    {"nodccclear", DBG(NO_DCC_CLEAR), "Disable DCC fast clear."},
    {"nodccstore", DBG(NO_DCC_STORE), "Disable DCC stores"},
