@@ -50,18 +50,6 @@ Idx clobbered{UINT32_MAX, 1};
 Idx const_or_undef{UINT32_MAX, 2};
 Idx written_by_multiple_instrs{UINT32_MAX, 3};
 
-bool
-is_instr_after(Idx second, Idx first)
-{
-   if (first == not_written_in_block && second != not_written_in_block)
-      return true;
-
-   if (!first.found() || !second.found())
-      return false;
-
-   return second.block > first.block || (second.block == first.block && second.instr > first.instr);
-}
-
 struct pr_opt_ctx {
    Program* program;
    Block* current_block;
@@ -215,16 +203,19 @@ try_apply_branch_vcc(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
    Idx op0_instr_idx = last_writer_idx(ctx, instr->operands[0]);
    Idx last_vcc_wr_idx = last_writer_idx(ctx, vcc, ctx.program->lane_mask);
-   Idx last_exec_wr_idx = last_writer_idx(ctx, exec, ctx.program->lane_mask);
 
    /* We need to make sure:
+    * - the instructions that wrote the operand register and VCC are both found
     * - the operand register used by the branch, and VCC were both written in the current block
-    * - VCC was NOT written after the operand register
-    * - EXEC is sane and was NOT written after the operand register
+    * - EXEC hasn't been clobbered since the last VCC write
+    * - VCC hasn't been clobbered since the operand register was written
+    *   (ie. the last VCC writer precedes the op0 writer)
     */
    if (!op0_instr_idx.found() || !last_vcc_wr_idx.found() ||
-       !is_instr_after(last_vcc_wr_idx, last_exec_wr_idx) ||
-       !is_instr_after(op0_instr_idx, last_vcc_wr_idx))
+       op0_instr_idx.block != ctx.current_block->index ||
+       last_vcc_wr_idx.block != ctx.current_block->index ||
+       is_clobbered_since(ctx, exec, ctx.program->lane_mask, last_vcc_wr_idx) ||
+       is_clobbered_since(ctx, vcc, ctx.program->lane_mask, op0_instr_idx))
       return;
 
    Instruction* op0_instr = ctx.get(op0_instr_idx);
