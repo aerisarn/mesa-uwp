@@ -31,6 +31,9 @@ spec@arb_shader_atomic_counter_ops@execution@atomic-counter-array-out-of-bounds-
 spec@arb_shader_atomic_counters@fragment-discard
 spec@arb_shader_atomic_counters@function-argument
 
+spec@arb_shader_image_load_store@execution@image-array-out-of-bounds-access-load
+spec@arb_shader_image_load_store@execution@image-array-out-of-bounds-access-store
+
 spec@arb_shader_storage_buffer_object@execution@memory-layouts-struct-deref
 spec@arb_shader_storage_buffer_object@execution@ssbo-atomicadd-int
 spec@arb_shader_storage_buffer_object@execution@ssbo-atomicexchange-int

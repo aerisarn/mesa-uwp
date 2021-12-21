@@ -9,7 +9,7 @@ traces:
   - path: glmark2/jellyfish.trace
     expectations:
       - device: gl-virgl
-        checksum: 1873b70a28539825879b530477cf6d27
+        checksum: 48a2ad1162bf92301cedbe53edf52a6b
   - path: glxgears/glxgears-2.trace
     expectations:
       - device: gl-virgl
@@ -17,11 +17,11 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: gl-virgl
-        checksum: a38d4c123d13c5ccd3a86f0663fe1aab
+        checksum: 6e498eb959f7da847eb6d2cbbfaea5d5
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-virgl
-        checksum: b580ae01560380461a103975cab77393
+        checksum: 33770ade1aed893528c597f63af892f2
   - path: gputest/triangle.trace
     expectations:
       - device: gl-virgl
@@ -33,7 +33,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-virgl
-        checksum: 5e5bd83446d2554bf25761576d9b1af6
+        checksum: 5e8f945ba7316a70a5195c1c23d35809
   - path: glmark2/buffer:update-fraction=0.5:update-dispersion=0.9:columns=200:update-method=map:interleave=false.trace
     expectations:
       - device: gl-virgl
@@ -77,7 +77,7 @@ traces:
   - path: glmark2/effect2d:kernel=0,1,0;1,-4,1;0,1,0;.trace
     expectations:
       - device: gl-virgl
-        checksum: 25d3b5d18a64a86fc812872987f4f5e7
+        checksum: 35584880539813436d87bfcbe22cf59b
   - path: glmark2/effect2d:kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;.trace
     expectations:
       - device: gl-virgl
@@ -174,11 +174,11 @@ traces:
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-virgl
-        checksum: 9bedb84d81528e1b4087522de9f70383
+        checksum: 0c7aab484c251b0f90745ced620bed82
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-virgl
-        checksum: 7e818a6070005056700e5ef8590a3f8e
+        checksum: 2915192067704d738cdc4c2eaa88a2b1
 # Times out
 # - path: gputest/tessmark.trace
 #   expectations:
@@ -246,7 +246,7 @@ traces:
   - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
     expectations:
       - device: gl-virgl
-        checksum: 5e4e0cedd57bedf3eb7f127489a46b12
+        checksum: b93f2d23cc42072eff674829094cbe74
   - path: xonotic/xonotic-keybench-high.trace
     expectations:
       - device: gl-virgl

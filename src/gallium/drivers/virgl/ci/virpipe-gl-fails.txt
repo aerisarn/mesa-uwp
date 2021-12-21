@@ -41,7 +41,6 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
 
 
 KHR-GL43.compute_shader.fp64-case1,Fail
-KHR-GL43.compute_shader.fp64-case3,Fail
 KHR-GL43.compute_shader.resource-subroutine,Fail
 KHR-GL43.cull_distance.functional,Fail
 KHR-GL43.gpu_shader_fp64.fp64.named_uniform_blocks,Fail
@@ -75,7 +74,14 @@ KHR-GL43.shader_storage_buffer_object.advanced-usage-sync,Fail
 KHR-GL43.shader_storage_buffer_object.basic-atomic-case1,Fail
 KHR-GL43.shader_storage_buffer_object.basic-atomic-case2,Fail
 KHR-GL43.shader_subroutine.ssbo_atomic_image_load_store,Fail
+
+# virglrenderer translates TGSI IMAGE declaration "WR" ("image is not readonly")
+# into the writeonly qualifier, which works for gles (where each image is either
+# RO or WO) but not for desktop GL.
+KHR-GL43.shading_language_420pack.binding_image_array,Fail
+
 KHR-GL43.shading_language_420pack.binding_images,Fail
+KHR-GL43.shading_language_420pack.length_of_vector_and_matrix,Fail
 KHR-GL43.texture_view.view_sampling,Fail
 KHR-GL43.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs,Fail
 KHR-GL43.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs,Fail
@@ -110,8 +116,10 @@ glx@glx_ext_import_context@make current- multi process,Fail
 glx@glx_ext_import_context@make current- single process,Fail
 glx@glx_ext_import_context@query context info,Fail
 
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/6362
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Fail
+
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
@@ -123,9 +131,12 @@ spec@!opengl 1.0@gl-1.0-dlist-bitmap,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Fail
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
-spec@!opengl 1.0@rasterpos,Fail
+
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10641
+spec@!opengl 1.0@rasterpos,Crash
 spec@!opengl 1.0@rasterpos@glsl_vs_gs_linked,Fail
 spec@!opengl 1.0@rasterpos@glsl_vs_tes_linked,Fail
+
 spec@!opengl 1.1@depthstencil-default_fb-copypixels,Fail
 spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-copypixels samples=4,Fail
@@ -355,8 +366,7 @@ spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT16- border 
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT24- border color only,Fail
 spec@arb_depth_texture@texwrap formats bordercolor@GL_DEPTH_COMPONENT32- border color only,Fail
 spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
-spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Fail
-spec@arb_enhanced_layouts@execution@component-layout@vs-to-fs-array-interleave-single-location,Fail
+
 spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled@GL_RGB565- swizzled- border color only,Fail
@@ -371,13 +381,6 @@ spec@arb_get_texture_sub_image@arb_get_texture_sub_image-get,Fail
 spec@arb_get_texture_sub_image@arb_get_texture_sub_image-getcompressed,Crash
 
 spec@arb_gpu_shader5@execution@precise@fs-fract-of-nan,Fail
-
-# "./src/gallium/auxiliary/tgsi/tgsi_ureg.h:893: ureg_src ureg_swizzle(ureg_src, int, int, int, int): Assertion `reg.File != TGSI_FILE_NULL' failed."
-spec@arb_gpu_shader5@execution@samplemaskin-out-of-bounds,Crash
-
-# segfault
-spec@arb_gpu_shader5@execution@sampler_array_indexing@array-of-sampler-2d-array-out-of-bounds-access,Crash
-spec@arb_gpu_shader5@execution@sampler_array_indexing@array-of-sampler-2d-out-of-bounds-access,Crash
 
 spec@arb_gpu_shader_fp64@execution@conversion@frag-conversion-explicit-dmat2-mat2,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@frag-conversion-explicit-dmat2x3-mat2x3,Fail
@@ -418,155 +421,24 @@ spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-double-fl
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec2-vec2,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec3-vec3,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec4-vec4,Fail
-spec@arb_gpu_shader_fp64@execution@fs-double-uniform-array-direct-indirect-non-uniform-control-flow,Fail
-spec@arb_gpu_shader_fp64@execution@fs-function-inout-array,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-dvec3@2@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-float-and-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat3x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat4x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat4x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dmat4x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-double-float-double@2-float@3-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-double@3-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-double@3@2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-double@4-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec2@3-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec2@4-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec3@2@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec3@2@2-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec3@3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-dvec3@4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-double@3@2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-float-float-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-float-float-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float-float-float-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@1-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@1-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@1-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@1-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@1-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@2-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@3-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@4-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@5-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@5-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@5-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@5-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@5-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@6-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@6-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@6-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@6-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-float@6-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2-double-s3-float-s4-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2-float-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2-s3@2-float-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2-s3@2-vec3-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2-vec2-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2-vec3-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2@2-float-double,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2@2-float-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2@2-vec2-double,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2@2-vec2-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2@2-vec3-double,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@2@2-vec3-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@3-double-float-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@3-dvec2-float-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-s2@3-dvec3-float-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-double@3@2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec2-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dmat2x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dmat2x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dmat2x4-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dmat3x2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dmat3x3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-double@3@2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dvec2-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1-vec3-dvec3-location-0,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s1@2-s2@2-s3@2-double-location-0,Crash
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s2@2@2-float-double,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s2@2@2-vec2-double,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-s2@2@2-vec3-double,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-vec2-and-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@inout@vs-out-fs-in-vec3-and-double@3@2,Fail
-spec@arb_gpu_shader_fp64@execution@vs-double-uniform-array-direct-indirect-non-uniform-control-flow,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@fs-array-copy,Fail
+
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-dmat4,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-dmat4-row-major,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-double-array-const-index,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@fs-double-uniform-array-direct-indirect,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-doubles,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-doubles-float-mixed,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@fs-dvec4-uniform-array-direct-indirect,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-nested-struct,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@fs-ubo-direct-1,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@gs-dmat4,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@gs-dmat4-row-major,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@gs-double-array-const-index,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@gs-double-uniform-array-direct-indirect,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@gs-doubles-float-mixed,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@gs-nested-struct,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@vs-array-copy,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@vs-dmat4,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@vs-dmat4-row-major,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@vs-double-array-const-index,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@vs-double-uniform-array-direct-indirect,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@vs-doubles,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@vs-doubles-float-mixed,Fail
-spec@arb_gpu_shader_fp64@uniform_buffers@vs-dvec4-uniform-array-direct-indirect,Fail
 spec@arb_gpu_shader_fp64@uniform_buffers@vs-nested-struct,Fail
 spec@arb_occlusion_query@occlusion_query_conform,Fail
 spec@arb_occlusion_query@occlusion_query_conform@GetObjivAval_multi1,Fail
@@ -576,18 +448,11 @@ spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
 
-# "exit status: signal: 13"
-spec@arb_shader_atomic_counter_ops@execution@atomic-counter-array-out-of-bounds-access,Crash
-
 spec@arb_shader_atomic_counters@fragment-discard,Fail
 
 spec@arb_sample_shading@builtin-gl-sample-position 2,Fail
 spec@arb_shader_image_load_store@early-z,Fail
 spec@arb_shader_image_load_store@early-z@occlusion query test/early-z pass,Fail
-
-# segfault
-spec@arb_shader_image_load_store@execution@image-array-out-of-bounds-access-load,Crash
-spec@arb_shader_image_load_store@execution@image-array-out-of-bounds-access-store,Crash
 
 spec@arb_shader_image_load_store@layer,Fail
 spec@arb_shader_image_load_store@layer@image2DMS/layered binding test,Fail
@@ -677,13 +542,11 @@ spec@arb_tessellation_shader@execution@dvec2-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@dvec3-vs-tcs-tes,Fail
 spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 
-# "../src/mesa/state_tracker/st_glsl_to_tgsi.cpp:3355: virtual void glsl_to_tgsi_visitor::visit(ir_assignment*): Assertion `!ir->lhs->type->is_scalar() && !ir->lhs->type->is_vector()' failed."
+# "	intrinsic copy_deref (ssa_2, ssa_3) (dst_access=0, src_access=0)
+#  error: glsl_get_bare_type(dst->type) == glsl_get_bare_type(src->type) (../src/compiler/nir/nir_validate.c:643)"
+# since ntt copy-deref optimization, probably.
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-dvec4-index-rd,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-dvec4-index-wr,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-dvec4-index-rd,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-dvec4-index-wr-before-tcs,Fail
 spec@arb_texture_buffer_object@formats (fs- arb),Crash
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE16I_EXT,Fail
 spec@arb_texture_buffer_object@formats (fs- arb)@GL_LUMINANCE16UI_EXT,Fail
@@ -996,23 +859,26 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- border color only,Fail
+
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-07,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow1d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-07,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-clamp-z,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
-spec@glsl-1.20@execution@matrix-out-of-bounds-access@fs-mat4-out-of-bounds-6,Crash
 
-# segfaults
-spec@glsl-1.30@execution@clipping@vs-clip-distance-out-of-bounds-access-read,Crash
-spec@glsl-1.30@execution@clipping@vs-clip-distance-out-of-bounds-access-write,Crash
-
-# "exit status: signal: 13"
+# "ERROR - Piglit error: NIR validation failed after nir_lower_locals_to_regs"
+# "ERROR - Piglit error: error: (src->reg.reg->num_array_elems == 0 || src->reg.base_offset < src->reg.reg->num_array_elems) && "definitely out-of-bounds array access" (../src/compiler/nir/nir_validate.c:174)"
+spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-read,Crash
 spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-write,Crash
+
+spec@glsl-1.30@execution@vs-isnan-and-more-comparison,Fail
 
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
+
+spec@glsl-1.50@execution@variable-indexing@gs-input-array-float-index-rd,Fail
+
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2-mat2,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2x3-mat2x3,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2x4-mat2x4,Fail
@@ -1052,128 +918,7 @@ spec@glsl-4.00@execution@conversion@vert-conversion-explicit-double-float,Fail
 spec@glsl-4.00@execution@conversion@vert-conversion-explicit-dvec2-vec2,Fail
 spec@glsl-4.00@execution@conversion@vert-conversion-explicit-dvec3-vec3,Fail
 spec@glsl-4.00@execution@conversion@vert-conversion-explicit-dvec4-vec4,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-dvec3@2@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-float-and-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat3x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat4x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat4x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dmat4x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-double-float-double@2-float@3-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-double@3-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-double@3@2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-double@4-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec2@3-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec2@4-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec3@2@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec3@2@2-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec3@3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-dvec3@4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-double@3@2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-float-float-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-float-float-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float-float-float-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@1-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@1-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@1-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@1-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@1-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@2-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@3-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@4-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@5-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@5-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@5-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@5-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@5-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@6-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@6-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@6-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@6-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-float@6-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2-double-s3-float-s4-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2-float-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2-s3@2-float-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2-s3@2-vec3-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2-vec2-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2-vec3-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2@2-float-double,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2@2-float-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2@2-vec2-double,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2@2-vec2-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2@2-vec3-double,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@2@2-vec3-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@3-double-float-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@3-dvec2-float-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-s2@3-dvec3-float-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-double@3@2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec2-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dmat2x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dmat2x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dmat2x4-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dmat3x2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dmat3x3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-double@3@2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dvec2-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1-vec3-dvec3-location-0,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s1@2-s2@2-s3@2-double-location-0,Crash
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s2@2@2-float-double,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s2@2@2-vec2-double,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-s2@2@2-vec3-double,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-vec2-and-double@3@2,Fail
-spec@glsl-4.00@execution@inout@vs-out-fs-in-vec3-and-double@3@2,Fail
+
 spec@khr_texture_compression_astc@array-gl,Fail
 spec@khr_texture_compression_astc@array-gl@12x12 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gl@5x5 Block Dim,Fail
@@ -1208,6 +953,13 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb@sRGB decode,Fail
+
+spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Fail
+spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x223344ff,Fail
+spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Fail
+spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Fail
+spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Fail
+
 spec@nv_copy_image@nv_copy_image-formats,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_COMPRESSED_RED_RGTC1/Destination: GL_COMPRESSED_RED_RGTC1,Fail
 spec@nv_copy_image@nv_copy_image-formats@Source: GL_COMPRESSED_RGBA_BPTC_UNORM/Destination: GL_COMPRESSED_RGBA_BPTC_UNORM,Fail
