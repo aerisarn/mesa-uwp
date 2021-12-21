@@ -27,7 +27,7 @@
 
 #include "main/glheader.h"
 #include "st_context.h"
-#include "st_cb_fbo.h"
+#include "st_manager.h"
 #include "st_cb_viewport.h"
 
 #include "pipe/p_state.h"

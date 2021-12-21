@@ -51,6 +51,7 @@
 #include "st_cb_flush.h"
 #include "st_manager.h"
 #include "st_sampler_view.h"
+#include "st_util.h"
 
 #include "state_tracker/st_gl_api.h"
 

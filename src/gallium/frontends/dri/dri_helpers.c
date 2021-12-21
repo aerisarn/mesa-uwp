@@ -300,7 +300,7 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
       return NULL;
    }
 
-   tex = st_get_renderbuffer_resource(rb);
+   tex = rb->texture;
    if (!tex) {
       *error = __DRI_IMAGE_ERROR_BAD_PARAMETER;
       return NULL;

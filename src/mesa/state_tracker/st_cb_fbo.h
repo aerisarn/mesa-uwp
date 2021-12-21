@@ -36,30 +36,7 @@
 #include "pipe/p_compiler.h"
 #include "pipe/p_format.h"
 
-struct dd_function_table;
 struct pipe_context;
-
-static inline struct pipe_resource *
-st_get_renderbuffer_resource(struct gl_renderbuffer *rb)
-{
-   return rb->texture;
-}
-
-/**
- * Cast wrapper to convert a struct gl_framebuffer to an gl_framebuffer.
- * Return NULL if the struct gl_framebuffer is a user-created framebuffer.
- * We'll only return non-null for window system framebuffers.
- * Note that this function may fail.
- */
-static inline struct gl_framebuffer *
-st_ws_framebuffer(struct gl_framebuffer *fb)
-{
-   /* FBO cannot be casted.  See st_new_framebuffer */
-   if (fb && _mesa_is_winsys_fbo(fb) &&
-       fb != _mesa_get_incomplete_framebuffer())
-      return fb;
-   return NULL;
-}
 
 extern void
 st_update_renderbuffer_surface(struct st_context *st,
