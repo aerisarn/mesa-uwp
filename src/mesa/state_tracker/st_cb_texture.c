@@ -386,21 +386,6 @@ st_pbo_get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
    return dst_format;
 }
 
-/**
- * Called via ctx->Driver.TextureRemovedFromShared()
- * When texture is removed from ctx->Shared->TexObjects we lose
- * the ability to clean up views on context destruction, which may
- * lead to dangling pointers to destroyed contexts.
- * Release the views to prevent this.
- */
-void
-st_TextureReleaseAllSamplerViews(struct gl_context *ctx,
-                                 struct gl_texture_object *texObj)
-{
-   struct st_context *st = st_context(ctx);
-   st_texture_release_all_sampler_views(st, texObj);
-}
-
 void
 st_FreeTextureImageBuffer(struct gl_context *ctx,
                           struct gl_texture_image *texImage)

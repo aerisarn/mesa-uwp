@@ -49,6 +49,7 @@
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
+#include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_cb_flush.h"
 #include "state_tracker/st_texture.h"
@@ -1485,7 +1486,7 @@ delete_textures(struct gl_context *ctx, GLsizei n, const GLuint *textures)
              */
             _mesa_HashRemove(ctx->Shared->TexObjects, delObj->Name);
 
-            st_TextureReleaseAllSamplerViews(ctx, delObj);
+            st_texture_release_all_sampler_views(st_context(ctx), delObj);
 
             /* Unreference the texobj.  If refcount hits zero, the texture
              * will be deleted.

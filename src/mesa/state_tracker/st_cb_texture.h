@@ -55,8 +55,6 @@ st_finalize_texture(struct gl_context *ctx,
 		    struct gl_texture_object *tObj,
 		    GLuint cubeMapFace);
 
-void st_TextureReleaseAllSamplerViews(struct gl_context *ctx,
-                                      struct gl_texture_object *texObj);
 void st_FreeTextureImageBuffer(struct gl_context *ctx,
                                struct gl_texture_image *texImage);
 void st_MapTextureImage(struct gl_context *ctx,
