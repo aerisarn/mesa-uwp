@@ -45,11 +45,14 @@
 #include "program/prog_instruction.h"
 #include "texturebindless.h"
 #include "util/u_memory.h"
+#include "util/u_inlines.h"
 #include "api_exec_decl.h"
 
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_cb_flush.h"
+#include "state_tracker/st_texture.h"
+#include "state_tracker/st_sampler_view.h"
 
 /**********************************************************************/
 /** \name Internal functions */
@@ -259,38 +262,12 @@ _mesa_get_texobj_by_target_and_texunit(struct gl_context *ctx, GLenum target,
 
 
 /**
- * Allocate and initialize a new texture object.  But don't put it into the
- * texture object hash table.
- *
- * \param shared the shared GL state structure to contain the texture object
- * \param name integer name for the texture object
- * \param target either GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D,
- * GL_TEXTURE_CUBE_MAP or GL_TEXTURE_RECTANGLE_NV.  zero is ok for the sake
- * of GenTextures()
- *
- * \return pointer to new texture object.
- */
-struct gl_texture_object *
-_mesa_new_texture_object(struct gl_context *ctx, GLuint name, GLenum target)
-{
-   struct gl_texture_object *obj;
-
-   obj = MALLOC_STRUCT(gl_texture_object);
-   if (!obj)
-      return NULL;
-
-   _mesa_initialize_texture_object(ctx, obj, name, target);
-   return obj;
-}
-
-
-/**
  * Initialize a new texture object to default values.
  * \param obj  the texture object
  * \param name  the texture name
  * \param target  the texture target
  */
-void
+static bool
 _mesa_initialize_texture_object( struct gl_context *ctx,
                                  struct gl_texture_object *obj,
                                  GLuint name, GLenum target )
@@ -385,8 +362,50 @@ _mesa_initialize_texture_object( struct gl_context *ctx,
 
    /* GL_ARB_bindless_texture */
    _mesa_init_texture_handles(obj);
+
+   obj->level_override = -1;
+   obj->layer_override = -1;
+   simple_mtx_init(&obj->validate_mutex, mtx_plain);
+   obj->needs_validation = true;
+   /* Pre-allocate a sampler views container to save a branch in the
+    * fast path.
+    */
+   obj->sampler_views = calloc(1, sizeof(struct st_sampler_views)
+                               + sizeof(struct st_sampler_view));
+   if (!obj->sampler_views) {
+      return false;
+   }
+   obj->sampler_views->max = 1;
+   return true;
 }
 
+/**
+ * Allocate and initialize a new texture object.  But don't put it into the
+ * texture object hash table.
+ *
+ * \param shared the shared GL state structure to contain the texture object
+ * \param name integer name for the texture object
+ * \param target either GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D,
+ * GL_TEXTURE_CUBE_MAP or GL_TEXTURE_RECTANGLE_NV.  zero is ok for the sake
+ * of GenTextures()
+ *
+ * \return pointer to new texture object.
+ */
+struct gl_texture_object *
+_mesa_new_texture_object(struct gl_context *ctx, GLuint name, GLenum target)
+{
+   struct gl_texture_object *obj;
+
+   obj = MALLOC_STRUCT(gl_texture_object);
+   if (!obj)
+      return NULL;
+
+   if (!_mesa_initialize_texture_object(ctx, obj, name, target)) {
+      free(obj);
+      return NULL;
+   }
+   return obj;
+}
 
 /**
  * Some texture initialization can't be finished until we know which
@@ -456,11 +475,15 @@ _mesa_delete_texture_object(struct gl_context *ctx,
     */
    texObj->Target = 0x99;
 
+   pipe_resource_reference(&texObj->pt, NULL);
+   st_delete_texture_sampler_views(ctx->st, texObj);
+   simple_mtx_destroy(&texObj->validate_mutex);
+
    /* free the texture images */
    for (face = 0; face < 6; face++) {
       for (i = 0; i < MAX_TEXTURE_LEVELS; i++) {
          if (texObj->Image[face][i]) {
-            st_DeleteTextureImage(ctx, texObj->Image[face][i]);
+            _mesa_delete_texture_image(ctx, texObj->Image[face][i]);
          }
       }
    }
@@ -567,7 +590,7 @@ _mesa_reference_texobj_(struct gl_texture_object **ptr,
           */
          GET_CURRENT_CONTEXT(ctx);
          if (ctx)
-            st_DeleteTextureObject(ctx, oldTex);
+            _mesa_delete_texture_object(ctx, oldTex);
          else
             _mesa_problem(NULL, "Unable to delete texture, no context");
       }
@@ -987,7 +1010,7 @@ _mesa_get_fallback_texture(struct gl_context *ctx, gl_texture_index tex)
       }
 
       /* create texture object */
-      texObj = st_NewTextureObject(ctx, 0, target);
+      texObj = _mesa_new_texture_object(ctx, 0, target);
       if (!texObj)
          return NULL;
 
@@ -1187,7 +1210,7 @@ create_textures(struct gl_context *ctx, GLenum target,
    /* Allocate new, empty texture objects */
    for (i = 0; i < n; i++) {
       struct gl_texture_object *texObj;
-      texObj = st_NewTextureObject(ctx, textures[i], target);
+      texObj = _mesa_new_texture_object(ctx, textures[i], target);
       if (!texObj) {
          _mesa_HashUnlockMutex(ctx->Shared->TexObjects);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
@@ -1675,7 +1698,7 @@ _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
          }
 
          /* if this is a new texture id, allocate a texture object now */
-         newTexObj = st_NewTextureObject(ctx, texName, target);
+         newTexObj = _mesa_new_texture_object(ctx, texName, target);
          if (!newTexObj) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
             return NULL;

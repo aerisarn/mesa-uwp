@@ -67,11 +67,6 @@ _mesa_get_texobj_by_target_and_texunit(struct gl_context *ctx, GLenum target,
 extern struct gl_texture_object *
 _mesa_new_texture_object( struct gl_context *ctx, GLuint name, GLenum target );
 
-extern void
-_mesa_initialize_texture_object( struct gl_context *ctx,
-                                 struct gl_texture_object *obj,
-                                 GLuint name, GLenum target );
-
 extern int
 _mesa_tex_target_to_index(const struct gl_context *ctx, GLenum target);
 

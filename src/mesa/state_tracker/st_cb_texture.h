@@ -55,12 +55,6 @@ st_finalize_texture(struct gl_context *ctx,
 		    struct gl_texture_object *tObj,
 		    GLuint cubeMapFace);
 
-struct gl_texture_image *st_NewTextureImage(struct gl_context *ctx);
-void st_DeleteTextureImage(struct gl_context *ctx, struct gl_texture_image *img);
-struct gl_texture_object *st_NewTextureObject(struct gl_context *ctx,
-                                              GLuint name, GLenum target);
-void st_DeleteTextureObject(struct gl_context *ctx,
-                            struct gl_texture_object *texObj);
 void st_TextureReleaseAllSamplerViews(struct gl_context *ctx,
                                       struct gl_texture_object *texObj);
 void st_FreeTextureImageBuffer(struct gl_context *ctx,

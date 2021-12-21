@@ -386,66 +386,6 @@ st_pbo_get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
    return dst_format;
 }
 
-struct gl_texture_image *
-st_NewTextureImage(struct gl_context * ctx)
-{
-   DBG("%s\n", __func__);
-   (void) ctx;
-   return (struct gl_texture_image *) CALLOC_STRUCT(gl_texture_image);
-}
-
-
-void
-st_DeleteTextureImage(struct gl_context * ctx, struct gl_texture_image *img)
-{
-   /* nothing special (yet) for st_texture_image */
-   _mesa_delete_texture_image(ctx, img);
-}
-
-
-struct gl_texture_object *
-st_NewTextureObject(struct gl_context * ctx, GLuint name, GLenum target)
-{
-   struct gl_texture_object *obj = CALLOC_STRUCT(gl_texture_object);
-   if (!obj)
-      return NULL;
-
-   obj->level_override = -1;
-   obj->layer_override = -1;
-
-   /* Pre-allocate a sampler views container to save a branch in the
-    * fast path.
-    */
-   obj->sampler_views = calloc(1, sizeof(struct st_sampler_views)
-                               + sizeof(struct st_sampler_view));
-   if (!obj->sampler_views) {
-      free(obj);
-      return NULL;
-   }
-   obj->sampler_views->max = 1;
-
-   DBG("%s\n", __func__);
-   _mesa_initialize_texture_object(ctx, obj, name, target);
-
-   simple_mtx_init(&obj->validate_mutex, mtx_plain);
-   obj->needs_validation = true;
-
-   return obj;
-}
-
-
-void
-st_DeleteTextureObject(struct gl_context *ctx,
-                       struct gl_texture_object *texObj)
-{
-   struct st_context *st = st_context(ctx);
-
-   pipe_resource_reference(&texObj->pt, NULL);
-   st_delete_texture_sampler_views(st, texObj);
-   simple_mtx_destroy(&texObj->validate_mutex);
-   _mesa_delete_texture_object(ctx, texObj);
-}
-
 /**
  * Called via ctx->Driver.TextureRemovedFromShared()
  * When texture is removed from ctx->Shared->TexObjects we lose

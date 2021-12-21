@@ -40,13 +40,13 @@
 #include "shaderapi.h"
 #include "shaderobj.h"
 #include "syncobj.h"
+#include "texobj.h"
 #include "texturebindless.h"
 
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "util/u_memory.h"
 
-#include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_cb_program.h"
 
 static void
@@ -120,7 +120,7 @@ _mesa_alloc_shared_state(struct gl_context *ctx)
          GL_TEXTURE_1D
       };
       STATIC_ASSERT(ARRAY_SIZE(targets) == NUM_TEXTURE_TARGETS);
-      shared->DefaultTex[i] = st_NewTextureObject(ctx, 0, targets[i]);
+      shared->DefaultTex[i] = _mesa_new_texture_object(ctx, 0, targets[i]);
       /* Need to explicitly set/overwrite the TargetIndex field here since
        * the call to _mesa_tex_target_to_index() in NewTextureObject() may
        * fail if the texture target is not supported.
@@ -180,7 +180,7 @@ delete_texture_cb(void *data, void *userData)
 {
    struct gl_texture_object *texObj = (struct gl_texture_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;
-   st_DeleteTextureObject(ctx, texObj);
+   _mesa_delete_texture_object(ctx, texObj);
 }
 
 
@@ -351,7 +351,7 @@ free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared)
    /* Free the dummy/fallback texture objects */
    for (i = 0; i < NUM_TEXTURE_TARGETS; i++) {
       if (shared->FallbackTex[i])
-         st_DeleteTextureObject(ctx, shared->FallbackTex[i]);
+         _mesa_delete_texture_object(ctx, shared->FallbackTex[i]);
    }
 
    /*
@@ -437,7 +437,7 @@ free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared)
    /* the default textures */
    for (i = 0; i < NUM_TEXTURE_TARGETS; i++) {
       if (shared->DefaultTex[i])
-         st_DeleteTextureObject(ctx, shared->DefaultTex[i]);
+         _mesa_delete_texture_object(ctx, shared->DefaultTex[i]);
    }
 
    /* all other textures */

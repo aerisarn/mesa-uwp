@@ -41,6 +41,7 @@
 #include "pack.h"
 #include "pbo.h"
 #include "teximage.h"
+#include "texobj.h"
 #include "varray.h"
 #include "glthread_marshal.h"
 
@@ -835,7 +836,7 @@ void
 _mesa_delete_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas)
 {
    if (atlas->texObj) {
-      st_DeleteTextureObject(ctx, atlas->texObj);
+      _mesa_delete_texture_object(ctx, atlas->texObj);
    }
    free(atlas->glyphs);
    free(atlas);
@@ -979,7 +980,7 @@ build_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas,
    }
 
    /* Create atlas texture (texture ID is irrelevant) */
-   atlas->texObj = st_NewTextureObject(ctx, 999, GL_TEXTURE_RECTANGLE);
+   atlas->texObj = _mesa_new_texture_object(ctx, 999, GL_TEXTURE_RECTANGLE);
    if (!atlas->texObj) {
       goto out_of_memory;
    }
@@ -1058,7 +1059,7 @@ out_of_memory:
    _mesa_error(ctx, GL_OUT_OF_MEMORY, "Display list bitmap atlas");
 fail:
    if (atlas->texObj) {
-      st_DeleteTextureObject(ctx, atlas->texObj);
+      _mesa_delete_texture_object(ctx, atlas->texObj);
    }
    free(atlas->glyphs);
    atlas->glyphs = NULL;
