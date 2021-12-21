@@ -342,8 +342,6 @@ files_libmesa = files(
   'state_tracker/st_cb_feedback.h',
   'state_tracker/st_cb_flush.c',
   'state_tracker/st_cb_flush.h',
-  'state_tracker/st_cb_perfquery.c',
-  'state_tracker/st_cb_perfquery.h',
   'state_tracker/st_cb_program.c',
   'state_tracker/st_cb_program.h',
   'state_tracker/st_cb_rasterpos.c',

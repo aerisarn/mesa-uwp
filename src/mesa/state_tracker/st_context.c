@@ -46,7 +46,6 @@
 #include "st_cb_drawtex.h"
 #include "st_cb_eglimage.h"
 #include "st_cb_feedback.h"
-#include "st_cb_perfquery.h"
 #include "st_cb_program.h"
 #include "st_cb_flush.h"
 #include "st_atom.h"
@@ -459,6 +458,19 @@ st_have_perfmon(struct st_context *st)
       return false;
 
    return screen->get_driver_query_group_info(screen, 0, NULL) != 0;
+}
+
+static bool
+st_have_perfquery(struct st_context *ctx)
+{
+   struct pipe_context *pipe = ctx->pipe;
+
+   return pipe->init_intel_perf_query_info && pipe->get_intel_perf_query_info &&
+          pipe->get_intel_perf_query_counter_info &&
+          pipe->new_intel_perf_query_obj && pipe->begin_intel_perf_query &&
+          pipe->end_intel_perf_query && pipe->delete_intel_perf_query &&
+          pipe->wait_intel_perf_query && pipe->is_intel_perf_query_ready &&
+          pipe->get_intel_perf_query_data;
 }
 
 static struct st_context *

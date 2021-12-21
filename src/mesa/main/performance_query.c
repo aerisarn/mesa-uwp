@@ -39,7 +39,6 @@
 
 #include "pipe/p_context.h"
 
-#include "state_tracker/st_cb_perfquery.h"
 #include "state_tracker/st_cb_flush.h"
 
 void
