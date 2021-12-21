@@ -442,12 +442,6 @@ finish_texture_init(struct gl_context *ctx, GLenum target,
          obj->Sampler.Attrib.state.min_img_filter = filter_to_gallium(filter);
          obj->Sampler.Attrib.state.min_mip_filter = mipfilter_to_gallium(filter);
          obj->Sampler.Attrib.state.mag_img_filter = filter_to_gallium(filter);
-         /* XXX we probably don't need to make all these calls */
-         st_TexParameter(ctx, obj, GL_TEXTURE_WRAP_S);
-         st_TexParameter(ctx, obj, GL_TEXTURE_WRAP_T);
-         st_TexParameter(ctx, obj, GL_TEXTURE_WRAP_R);
-         st_TexParameter(ctx, obj, GL_TEXTURE_MIN_FILTER);
-         st_TexParameter(ctx, obj, GL_TEXTURE_MAG_FILTER);
          break;
 
       default:
