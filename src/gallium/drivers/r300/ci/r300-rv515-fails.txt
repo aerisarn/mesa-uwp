@@ -80,14 +80,6 @@ dEQP-GLES2.functional.shaders.return.return_in_dynamic_loop_dynamic_vertex,Fail
 
 dEQP-GLES2.functional.shaders.random.texture.fragment.141,Fail
 
-# VS: Only the first channel of a POW result is right it looks like.
-dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_vec2_vertex,Fail
-dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_vec3_vertex,Fail
-dEQP-GLES2.functional.shaders.operator.exponential.pow.highp_vec4_vertex,Fail
-dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_vec2_vertex,Fail
-dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_vec3_vertex,Fail
-dEQP-GLES2.functional.shaders.operator.exponential.pow.mediump_vec4_vertex,Fail
-
 dEQP-GLES2.functional.shaders.struct.local.dynamic_loop_nested_struct_array_fragment,Fail
 
 dEQP-GLES2.functional.texture.format.a8_cube_npot,Fail
