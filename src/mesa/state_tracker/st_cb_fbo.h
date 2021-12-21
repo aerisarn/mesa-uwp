@@ -61,10 +61,6 @@ st_ws_framebuffer(struct gl_framebuffer *fb)
    return NULL;
 }
 
-
-extern struct gl_renderbuffer *
-st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw);
-
 extern void
 st_update_renderbuffer_surface(struct st_context *st,
                                struct gl_renderbuffer *strb);
