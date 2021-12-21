@@ -532,8 +532,6 @@ new_renderbuffer(struct gl_context *ctx, GLuint name)
    if (rb) {
       assert(name != 0);
       _mesa_init_renderbuffer(rb, name);
-      rb->Delete = _mesa_delete_renderbuffer;
-      rb->AllocStorage = st_renderbuffer_alloc_storage;
       return rb;
    }
    return NULL;

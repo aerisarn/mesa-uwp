@@ -73,12 +73,6 @@ extern void
 st_regen_renderbuffer_surface(struct st_context *st,
                               struct gl_renderbuffer *strb);
 
-GLboolean
-st_renderbuffer_alloc_storage(struct gl_context * ctx,
-                              struct gl_renderbuffer *rb,
-                              GLenum internalFormat,
-                              GLuint width, GLuint height);
-
 void st_MapRenderbuffer(struct gl_context *ctx,
                         struct gl_renderbuffer *rb,
                         GLuint x, GLuint y, GLuint w, GLuint h,

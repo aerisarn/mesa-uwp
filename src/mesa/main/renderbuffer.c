@@ -28,10 +28,250 @@
 #include "context.h"
 #include "fbobject.h"
 #include "formats.h"
+#include "glformats.h"
 #include "mtypes.h"
 #include "renderbuffer.h"
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
+
+#include "state_tracker/st_format.h"
+#include "state_tracker/st_cb_fbo.h"
+#include "state_tracker/st_context.h"
+
+/**
+ * Delete a gl_framebuffer.
+ * This is the default function for renderbuffer->Delete().
+ * Drivers which subclass gl_renderbuffer should probably implement their
+ * own delete function.  But the driver might also call this function to
+ * free the object in the end.
+ */
+static void
+delete_renderbuffer(struct gl_context *ctx, struct gl_renderbuffer *rb)
+{
+   if (ctx) {
+      pipe_surface_release(ctx->pipe, &rb->surface_srgb);
+      pipe_surface_release(ctx->pipe, &rb->surface_linear);
+   } else {
+      pipe_surface_release_no_context(&rb->surface_srgb);
+      pipe_surface_release_no_context(&rb->surface_linear);
+   }
+   rb->surface = NULL;
+   pipe_resource_reference(&rb->texture, NULL);
+   free(rb->data);
+   free(rb->Label);
+   free(rb);
+}
+
+static GLboolean
+renderbuffer_alloc_sw_storage(struct gl_context *ctx,
+                              struct gl_renderbuffer *rb,
+                              GLenum internalFormat,
+                              GLuint width, GLuint height)
+{
+   struct st_context *st = st_context(ctx);
+   enum pipe_format format;
+   size_t size;
+
+   free(rb->data);
+   rb->data = NULL;
+
+   if (internalFormat == GL_RGBA16_SNORM) {
+      /* Special case for software accum buffers.  Otherwise, if the
+       * call to st_choose_renderbuffer_format() fails (because the
+       * driver doesn't support signed 16-bit/channel colors) we'd
+       * just return without allocating the software accum buffer.
+       */
+      format = PIPE_FORMAT_R16G16B16A16_SNORM;
+   }
+   else {
+      format = st_choose_renderbuffer_format(st, internalFormat, 0, 0);
+
+      /* Not setting gl_renderbuffer::Format here will cause
+       * FRAMEBUFFER_UNSUPPORTED and ValidateFramebuffer will not be called.
+       */
+      if (format == PIPE_FORMAT_NONE) {
+         return GL_TRUE;
+      }
+   }
+
+   rb->Format = st_pipe_format_to_mesa_format(format);
+
+   size = _mesa_format_image_size(rb->Format, width, height, 1);
+   rb->data = malloc(size);
+   return rb->data != NULL;
+}
+
+
+/**
+ * gl_renderbuffer::AllocStorage()
+ * This is called to allocate the original drawing surface, and
+ * during window resize.
+ */
+static GLboolean
+renderbuffer_alloc_storage(struct gl_context * ctx,
+                           struct gl_renderbuffer *rb,
+                           GLenum internalFormat,
+                           GLuint width, GLuint height)
+{
+   struct st_context *st = st_context(ctx);
+   struct pipe_screen *screen = ctx->screen;
+   enum pipe_format format = PIPE_FORMAT_NONE;
+   struct pipe_resource templ;
+
+   /* init renderbuffer fields */
+   rb->Width  = width;
+   rb->Height = height;
+   rb->_BaseFormat = _mesa_base_fbo_format(ctx, internalFormat);
+   rb->defined = GL_FALSE;  /* undefined contents now */
+
+   if (rb->software) {
+      return renderbuffer_alloc_sw_storage(ctx, rb, internalFormat,
+                                           width, height);
+   }
+
+   /* Free the old surface and texture
+    */
+   pipe_surface_reference(&rb->surface_srgb, NULL);
+   pipe_surface_reference(&rb->surface_linear, NULL);
+   rb->surface = NULL;
+   pipe_resource_reference(&rb->texture, NULL);
+
+   /* If an sRGB framebuffer is unsupported, sRGB formats behave like linear
+    * formats.
+    */
+   if (!ctx->Extensions.EXT_sRGB) {
+      internalFormat = _mesa_get_linear_internalformat(internalFormat);
+   }
+
+   /* Handle multisample renderbuffers first.
+    *
+    * From ARB_framebuffer_object:
+    *   If <samples> is zero, then RENDERBUFFER_SAMPLES is set to zero.
+    *   Otherwise <samples> represents a request for a desired minimum
+    *   number of samples. Since different implementations may support
+    *   different sample counts for multisampled rendering, the actual
+    *   number of samples allocated for the renderbuffer image is
+    *   implementation dependent.  However, the resulting value for
+    *   RENDERBUFFER_SAMPLES is guaranteed to be greater than or equal
+    *   to <samples> and no more than the next larger sample count supported
+    *   by the implementation.
+    *
+    * Find the supported number of samples >= rb->NumSamples
+    */
+   if (rb->NumSamples > 0) {
+      unsigned start, start_storage;
+
+      if (ctx->Const.MaxSamples > 1 &&  rb->NumSamples == 1) {
+         /* don't try num_samples = 1 with drivers that support real msaa */
+         start = 2;
+         start_storage = 2;
+      } else {
+         start = rb->NumSamples;
+         start_storage = rb->NumStorageSamples;
+      }
+
+      if (ctx->Extensions.AMD_framebuffer_multisample_advanced) {
+         if (rb->_BaseFormat == GL_DEPTH_COMPONENT ||
+             rb->_BaseFormat == GL_DEPTH_STENCIL ||
+             rb->_BaseFormat == GL_STENCIL_INDEX) {
+            /* Find a supported depth-stencil format. */
+            for (unsigned samples = start;
+                 samples <= ctx->Const.MaxDepthStencilFramebufferSamples;
+                 samples++) {
+               format = st_choose_renderbuffer_format(st, internalFormat,
+                                                      samples, samples);
+
+               if (format != PIPE_FORMAT_NONE) {
+                  rb->NumSamples = samples;
+                  rb->NumStorageSamples = samples;
+                  break;
+               }
+            }
+         } else {
+            /* Find a supported color format, samples >= storage_samples. */
+            for (unsigned storage_samples = start_storage;
+                 storage_samples <= ctx->Const.MaxColorFramebufferStorageSamples;
+                 storage_samples++) {
+               for (unsigned samples = MAX2(start, storage_samples);
+                    samples <= ctx->Const.MaxColorFramebufferSamples;
+                    samples++) {
+                  format = st_choose_renderbuffer_format(st, internalFormat,
+                                                         samples,
+                                                         storage_samples);
+
+                  if (format != PIPE_FORMAT_NONE) {
+                     rb->NumSamples = samples;
+                     rb->NumStorageSamples = storage_samples;
+                     goto found;
+                  }
+               }
+            }
+            found:;
+         }
+      } else {
+         for (unsigned samples = start; samples <= ctx->Const.MaxSamples;
+              samples++) {
+            format = st_choose_renderbuffer_format(st, internalFormat,
+                                                   samples, samples);
+
+            if (format != PIPE_FORMAT_NONE) {
+               rb->NumSamples = samples;
+               rb->NumStorageSamples = samples;
+               break;
+            }
+         }
+      }
+   } else {
+      format = st_choose_renderbuffer_format(st, internalFormat, 0, 0);
+   }
+
+   /* Not setting gl_renderbuffer::Format here will cause
+    * FRAMEBUFFER_UNSUPPORTED and ValidateFramebuffer will not be called.
+    */
+   if (format == PIPE_FORMAT_NONE) {
+      return GL_TRUE;
+   }
+
+   rb->Format = st_pipe_format_to_mesa_format(format);
+
+   if (width == 0 || height == 0) {
+      /* if size is zero, nothing to allocate */
+      return GL_TRUE;
+   }
+
+   /* Setup new texture template.
+    */
+   memset(&templ, 0, sizeof(templ));
+   templ.target = st->internal_target;
+   templ.format = format;
+   templ.width0 = width;
+   templ.height0 = height;
+   templ.depth0 = 1;
+   templ.array_size = 1;
+   templ.nr_samples = rb->NumSamples;
+   templ.nr_storage_samples = rb->NumStorageSamples;
+
+   if (util_format_is_depth_or_stencil(format)) {
+      templ.bind = PIPE_BIND_DEPTH_STENCIL;
+   }
+   else if (rb->Name != 0) {
+      /* this is a user-created renderbuffer */
+      templ.bind = PIPE_BIND_RENDER_TARGET;
+   }
+   else {
+      /* this is a window-system buffer */
+      templ.bind = (PIPE_BIND_DISPLAY_TARGET |
+                    PIPE_BIND_RENDER_TARGET);
+   }
+
+   rb->texture = screen->resource_create(screen, &templ);
+
+   if (!rb->texture)
+      return FALSE;
+
+   st_update_renderbuffer_surface(st, rb);
+   return rb->surface != NULL;
+}
 
 /**
  * Initialize the fields of a gl_renderbuffer to default values.
@@ -44,7 +284,7 @@ _mesa_init_renderbuffer(struct gl_renderbuffer *rb, GLuint name)
    rb->ClassID = 0;
    rb->Name = name;
    rb->RefCount = 1;
-   rb->Delete = _mesa_delete_renderbuffer;
+   rb->Delete = delete_renderbuffer;
 
    /* The rest of these should be set later by the caller of this function or
     * the AllocStorage method:
@@ -72,30 +312,8 @@ _mesa_init_renderbuffer(struct gl_renderbuffer *rb, GLuint name)
    }
 
    rb->Format = MESA_FORMAT_NONE;
-}
 
-/**
- * Delete a gl_framebuffer.
- * This is the default function for renderbuffer->Delete().
- * Drivers which subclass gl_renderbuffer should probably implement their
- * own delete function.  But the driver might also call this function to
- * free the object in the end.
- */
-void
-_mesa_delete_renderbuffer(struct gl_context *ctx, struct gl_renderbuffer *rb)
-{
-   if (ctx) {
-      pipe_surface_release(ctx->pipe, &rb->surface_srgb);
-      pipe_surface_release(ctx->pipe, &rb->surface_linear);
-   } else {
-      pipe_surface_release_no_context(&rb->surface_srgb);
-      pipe_surface_release_no_context(&rb->surface_linear);
-   }
-   rb->surface = NULL;
-   pipe_resource_reference(&rb->texture, NULL);
-   free(rb->data);
-   free(rb->Label);
-   FREE(rb);
+   rb->AllocStorage = renderbuffer_alloc_storage;
 }
 
 static void
