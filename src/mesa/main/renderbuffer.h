@@ -65,7 +65,19 @@ _mesa_reference_renderbuffer(struct gl_renderbuffer **ptr,
    if (*ptr != rb)
       _mesa_reference_renderbuffer_(ptr, rb);
 }
-      
+
+void
+_mesa_map_renderbuffer(struct gl_context *ctx,
+                       struct gl_renderbuffer *rb,
+                       GLuint x, GLuint y, GLuint w, GLuint h,
+                       GLbitfield mode,
+                       GLubyte **mapOut, GLint *rowStrideOut,
+                       bool flip_y);
+
+void
+_mesa_unmap_renderbuffer(struct gl_context *ctx,
+                         struct gl_renderbuffer *rb);
+
 #ifdef __cplusplus
 }
 #endif

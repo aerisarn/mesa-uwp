@@ -73,12 +73,4 @@ extern void
 st_regen_renderbuffer_surface(struct st_context *st,
                               struct gl_renderbuffer *strb);
 
-void st_MapRenderbuffer(struct gl_context *ctx,
-                        struct gl_renderbuffer *rb,
-                        GLuint x, GLuint y, GLuint w, GLuint h,
-                        GLbitfield mode,
-                        GLubyte **mapOut, GLint *rowStrideOut,
-                        bool flip_y);
-void st_UnmapRenderbuffer(struct gl_context *ctx,
-                          struct gl_renderbuffer *rb);
 #endif /* ST_CB_FBO_H */

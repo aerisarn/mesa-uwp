@@ -26,6 +26,7 @@
 #include "glheader.h"
 
 #include "context.h"
+#include "bufferobj.h"
 #include "fbobject.h"
 #include "formats.h"
 #include "glformats.h"
@@ -424,4 +425,86 @@ _mesa_reference_renderbuffer_(struct gl_renderbuffer **ptr,
    }
 
    *ptr = rb;
+}
+
+void
+_mesa_map_renderbuffer(struct gl_context *ctx,
+                       struct gl_renderbuffer *rb,
+                       GLuint x, GLuint y, GLuint w, GLuint h,
+                       GLbitfield mode,
+                       GLubyte **mapOut, GLint *rowStrideOut,
+                       bool flip_y)
+{
+   struct pipe_context *pipe = ctx->pipe;
+   const GLboolean invert = flip_y;
+   GLuint y2;
+   GLubyte *map;
+
+   if (rb->software) {
+      /* software-allocated renderbuffer (probably an accum buffer) */
+      if (rb->data) {
+         GLint bpp = _mesa_get_format_bytes(rb->Format);
+         GLint stride = _mesa_format_row_stride(rb->Format,
+                                                rb->Width);
+         *mapOut = (GLubyte *) rb->data + y * stride + x * bpp;
+         *rowStrideOut = stride;
+      }
+      else {
+         *mapOut = NULL;
+         *rowStrideOut = 0;
+      }
+      return;
+   }
+
+   /* Check for unexpected flags */
+   assert((mode & ~(GL_MAP_READ_BIT |
+                    GL_MAP_WRITE_BIT |
+                    GL_MAP_INVALIDATE_RANGE_BIT)) == 0);
+
+   const enum pipe_map_flags transfer_flags =
+      _mesa_access_flags_to_transfer_flags(mode, false);
+
+   /* Note: y=0=bottom of buffer while y2=0=top of buffer.
+    * 'invert' will be true for window-system buffers and false for
+    * user-allocated renderbuffers and textures.
+    */
+   if (invert)
+      y2 = rb->Height - y - h;
+   else
+      y2 = y;
+
+    map = pipe_texture_map(pipe,
+                            rb->texture,
+                            rb->surface->u.tex.level,
+                            rb->surface->u.tex.first_layer,
+                            transfer_flags, x, y2, w, h, &rb->transfer);
+   if (map) {
+      if (invert) {
+         *rowStrideOut = -(int) rb->transfer->stride;
+         map += (h - 1) * rb->transfer->stride;
+      }
+      else {
+         *rowStrideOut = rb->transfer->stride;
+      }
+      *mapOut = map;
+   }
+   else {
+      *mapOut = NULL;
+      *rowStrideOut = 0;
+   }
+}
+
+void
+_mesa_unmap_renderbuffer(struct gl_context *ctx,
+                         struct gl_renderbuffer *rb)
+{
+   struct pipe_context *pipe = ctx->pipe;
+
+   if (rb->software) {
+      /* software-allocated renderbuffer (probably an accum buffer) */
+      return;
+   }
+
+   pipe_texture_unmap(pipe, rb->transfer);
+   rb->transfer = NULL;
 }
