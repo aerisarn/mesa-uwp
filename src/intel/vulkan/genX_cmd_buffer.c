@@ -3759,12 +3759,14 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
        * descriptors or push constants is dirty.
        */
       dirty |= cmd_buffer->state.push_constants_dirty;
-      dirty &= ANV_STAGE_MASK & VK_SHADER_STAGE_ALL_GRAPHICS;
-      cmd_buffer_flush_push_constants(cmd_buffer, dirty);
+      cmd_buffer_flush_push_constants(cmd_buffer,
+                                      dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
    }
 
-   if (dirty)
-      cmd_buffer_emit_descriptor_pointers(cmd_buffer, dirty);
+   if (dirty & VK_SHADER_STAGE_ALL_GRAPHICS) {
+      cmd_buffer_emit_descriptor_pointers(cmd_buffer,
+                                          dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
+   }
 
    cmd_buffer_emit_clip(cmd_buffer);
 
