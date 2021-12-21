@@ -56,6 +56,7 @@
 #include "state_tracker/st_cb_fbo.h"
 #include "state_tracker/st_cb_eglimage.h"
 #include "state_tracker/st_context.h"
+#include "state_tracker/st_format.h"
 
 /**
  * Notes:
@@ -1145,6 +1146,149 @@ test_attachment_completeness(const struct gl_context *ctx, GLenum format,
    }
 }
 
+/** Debug helper */
+static void
+fbo_invalid(const char *reason)
+{
+   if (MESA_DEBUG_FLAGS & DEBUG_INCOMPLETE_FBO) {
+      _mesa_debug(NULL, "Invalid FBO: %s\n", reason);
+   }
+}
+
+
+/**
+ * Validate a renderbuffer attachment for a particular set of bindings.
+ */
+static GLboolean
+do_validate_attachment(struct gl_context *ctx,
+                       struct pipe_screen *screen,
+                       const struct gl_renderbuffer_attachment *att,
+                       unsigned bindings)
+{
+   const struct gl_texture_object *stObj = att->Texture;
+   enum pipe_format format;
+   mesa_format texFormat;
+   GLboolean valid;
+
+   /* Sanity check: we must be binding the surface as a (color) render target
+    * or depth/stencil target.
+    */
+   assert(bindings == PIPE_BIND_RENDER_TARGET ||
+          bindings == PIPE_BIND_DEPTH_STENCIL);
+
+   /* Only validate texture attachments for now, since
+    * st_renderbuffer_alloc_storage makes sure that
+    * the format is supported.
+    */
+   if (att->Type != GL_TEXTURE)
+      return GL_TRUE;
+
+   if (!stObj || !stObj->pt)
+      return GL_FALSE;
+
+   format = stObj->pt->format;
+   texFormat = att->Renderbuffer->TexImage->TexFormat;
+
+   /* If the encoding is sRGB and sRGB rendering cannot be enabled,
+    * check for linear format support instead.
+    * Later when we create a surface, we change the format to a linear one. */
+   if (!ctx->Extensions.EXT_sRGB && _mesa_is_format_srgb(texFormat)) {
+      const mesa_format linearFormat = _mesa_get_srgb_format_linear(texFormat);
+      format = st_mesa_format_to_pipe_format(st_context(ctx), linearFormat);
+   }
+
+   valid = screen->is_format_supported(screen, format,
+                                       PIPE_TEXTURE_2D,
+                                       stObj->pt->nr_samples,
+                                       stObj->pt->nr_storage_samples,
+                                       bindings);
+   if (!valid) {
+      fbo_invalid("Invalid format");
+   }
+
+   return valid;
+}
+
+
+/**
+ * Check that the framebuffer configuration is valid in terms of what
+ * the driver can support.
+ *
+ * For Gallium we only supports combined Z+stencil, not separate buffers.
+ */
+static void
+do_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
+{
+   struct pipe_screen *screen = ctx->screen;
+   const struct gl_renderbuffer_attachment *depth =
+         &fb->Attachment[BUFFER_DEPTH];
+   const struct gl_renderbuffer_attachment *stencil =
+         &fb->Attachment[BUFFER_STENCIL];
+   GLuint i;
+   enum pipe_format first_format = PIPE_FORMAT_NONE;
+   boolean mixed_formats =
+         screen->get_param(screen, PIPE_CAP_MIXED_COLORBUFFER_FORMATS) != 0;
+
+   if (depth->Type && stencil->Type && depth->Type != stencil->Type) {
+      fbo_invalid("Different Depth/Stencil buffer formats");
+      fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+      return;
+   }
+   if (depth->Type == GL_RENDERBUFFER_EXT &&
+       stencil->Type == GL_RENDERBUFFER_EXT &&
+       depth->Renderbuffer != stencil->Renderbuffer) {
+      fbo_invalid("Separate Depth/Stencil buffers");
+      fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+      return;
+   }
+   if (depth->Type == GL_TEXTURE &&
+       stencil->Type == GL_TEXTURE &&
+       depth->Texture != stencil->Texture) {
+      fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+      fbo_invalid("Different Depth/Stencil textures");
+      return;
+   }
+
+   if (!do_validate_attachment(ctx, screen, depth, PIPE_BIND_DEPTH_STENCIL)) {
+      fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+      fbo_invalid("Invalid depth attachment");
+      return;
+   }
+   if (!do_validate_attachment(ctx, screen, stencil, PIPE_BIND_DEPTH_STENCIL)) {
+      fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+      fbo_invalid("Invalid stencil attachment");
+      return;
+   }
+   for (i = 0; i < ctx->Const.MaxColorAttachments; i++) {
+      struct gl_renderbuffer_attachment *att =
+            &fb->Attachment[BUFFER_COLOR0 + i];
+      enum pipe_format format;
+
+      if (!do_validate_attachment(ctx, screen, att, PIPE_BIND_RENDER_TARGET)) {
+         fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+         fbo_invalid("Invalid color attachment");
+         return;
+      }
+
+      if (!mixed_formats) {
+         /* Disallow mixed formats. */
+         if (att->Type != GL_NONE) {
+            format = att->Renderbuffer->surface->format;
+         } else {
+            continue;
+         }
+
+         if (first_format == PIPE_FORMAT_NONE) {
+            first_format = format;
+         } else if (format != first_format) {
+            fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+            fbo_invalid("Mixed color formats");
+            return;
+         }
+      }
+   }
+}
+
 
 /**
  * Test if the given framebuffer object is complete and update its
@@ -1588,7 +1732,7 @@ _mesa_test_framebuffer_completeness(struct gl_context *ctx,
     * Drivers will most likely set the status to GL_FRAMEBUFFER_UNSUPPORTED
     * if anything.
     */
-   st_validate_framebuffer(ctx, fb);
+   do_validate_framebuffer(ctx, fb);
    if (fb->_Status != GL_FRAMEBUFFER_COMPLETE_EXT) {
       fbo_incomplete(ctx, "driver marked FBO as incomplete", -1);
       return;
@@ -5220,6 +5364,25 @@ get_fb_attachment(struct gl_context *ctx, struct gl_framebuffer *fb,
 }
 
 static void
+do_discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
+                       struct gl_renderbuffer_attachment *att)
+{
+   struct pipe_resource *prsc;
+
+   if (!att->Renderbuffer || !att->Complete)
+      return;
+
+   prsc = att->Renderbuffer->surface->texture;
+
+   /* using invalidate_resource will only work for simple 2D resources */
+   if (prsc->depth0 != 1 || prsc->array_size != 1 || prsc->last_level != 0)
+      return;
+
+   if (ctx->pipe->invalidate_resource)
+      ctx->pipe->invalidate_resource(ctx->pipe, prsc);
+}
+
+static void
 discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
                     GLsizei numAttachments, const GLenum *attachments)
 {
@@ -5254,7 +5417,7 @@ discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
             continue;
       }
 
-      st_discard_framebuffer(ctx, fb, att);
+      do_discard_framebuffer(ctx, fb, att);
    }
 }
 

@@ -78,9 +78,6 @@ st_renderbuffer_alloc_storage(struct gl_context * ctx,
                               struct gl_renderbuffer *rb,
                               GLenum internalFormat,
                               GLuint width, GLuint height);
-void st_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb);
-void st_discard_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
-                            struct gl_renderbuffer_attachment *att);
 void st_DrawBufferAllocate(struct gl_context *ctx);
 void st_ReadBuffer(struct gl_context *ctx, GLenum buffer);
 
