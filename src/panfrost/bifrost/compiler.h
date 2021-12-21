@@ -790,6 +790,31 @@ bi_fau(enum bir_fau value, bool hi)
         };
 }
 
+/*
+ * Builder for Valhall LUT entries. Generally, constants are modeled with
+ * BI_INDEX_IMMEDIATE in the intermediate representation. This helper is only
+ * necessary for passes running after lowering constants, as well as when
+ * lowering constants.
+ *
+ */
+static inline bi_index
+va_lut(unsigned index)
+{
+        return bi_fau((enum bir_fau) (BIR_FAU_IMMEDIATE | (index >> 1)),
+                      index & 1);
+}
+
+/*
+ * va_lut_zero is like bi_zero but only works on Valhall. It is intended for
+ * use by late passes that run after constants are lowered, specifically
+ * register allocation. bi_zero() is preferred where possible.
+ */
+static inline bi_index
+va_zero_lut()
+{
+        return va_lut(0);
+}
+
 static inline unsigned
 bi_max_temp(bi_context *ctx)
 {
