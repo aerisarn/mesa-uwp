@@ -9085,7 +9085,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
 
       assign_curb_setup();
 
-      if (devinfo->ver >= 9)
+      if (devinfo->ver == 9)
          gfx9_ps_header_only_workaround(wm_prog_data);
 
       assign_urb_setup();
