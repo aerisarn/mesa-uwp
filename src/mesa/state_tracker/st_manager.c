@@ -73,6 +73,21 @@ struct st_manager_private
    simple_mtx_t st_mutex;
 };
 
+/**
+ * Cast wrapper to convert a struct gl_framebuffer to an gl_framebuffer.
+ * Return NULL if the struct gl_framebuffer is a user-created framebuffer.
+ * We'll only return non-null for window system framebuffers.
+ * Note that this function may fail.
+ */
+static inline struct gl_framebuffer *
+st_ws_framebuffer(struct gl_framebuffer *fb)
+{
+   /* FBO cannot be casted.  See st_new_framebuffer */
+   if (fb && _mesa_is_winsys_fbo(fb) &&
+       fb != _mesa_get_incomplete_framebuffer())
+      return fb;
+   return NULL;
+}
 
 /**
  * Map an attachment to a buffer index.
@@ -1453,4 +1468,26 @@ struct st_api *
 st_gl_api_create(void)
 {
    return (struct st_api *) &st_gl_api;
+}
+
+void
+st_manager_invalidate_drawables(struct gl_context *ctx)
+{
+   struct gl_framebuffer *stdraw;
+   struct gl_framebuffer *stread;
+
+   /*
+    * Normally we'd want the frontend manager to mark the drawables
+    * invalid only when needed. This will force the frontend manager
+    * to revalidate the drawable, rather than just update the context with
+    * the latest cached drawable info.
+    */
+
+   stdraw = st_ws_framebuffer(ctx->DrawBuffer);
+   stread = st_ws_framebuffer(ctx->ReadBuffer);
+
+   if (stdraw)
+      stdraw->iface_stamp = p_atomic_read(&stdraw->iface->stamp) - 1;
+   if (stread && stread != stdraw)
+      stread->iface_stamp = p_atomic_read(&stread->iface->stamp) - 1;
 }

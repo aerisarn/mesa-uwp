@@ -40,22 +40,6 @@ struct st_framebuffer_interface;
 struct gl_renderbuffer;
 struct pipe_surface;
 
-/**
- * Cast wrapper to convert a struct gl_framebuffer to an gl_framebuffer.
- * Return NULL if the struct gl_framebuffer is a user-created framebuffer.
- * We'll only return non-null for window system framebuffers.
- * Note that this function may fail.
- */
-static inline struct gl_framebuffer *
-st_ws_framebuffer(struct gl_framebuffer *fb)
-{
-   /* FBO cannot be casted.  See st_new_framebuffer */
-   if (fb && _mesa_is_winsys_fbo(fb) &&
-       fb != _mesa_get_incomplete_framebuffer())
-      return fb;
-   return NULL;
-}
-
 void
 st_manager_flush_frontbuffer(struct st_context *st);
 
@@ -76,4 +60,5 @@ void
 st_set_ws_renderbuffer_surface(struct gl_renderbuffer *rb,
                                struct pipe_surface *surf);
 
+void st_manager_invalidate_drawables(struct gl_context *ctx);
 #endif /* ST_MANAGER_H */
