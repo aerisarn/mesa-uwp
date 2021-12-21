@@ -479,12 +479,18 @@ bi_count_read_index(bi_instr *I, bi_index index)
  * for the target, so the spill/fill code becomes architecture-independent.
  */
 
+static bi_index
+bi_tls_ptr(bool hi)
+{
+        return bi_fau(BIR_FAU_TLS_PTR, hi);
+}
+
 static bi_instr *
 bi_load_tl(bi_builder *b, unsigned bits, bi_index src, unsigned offset)
 {
         if (b->shader->arch >= 9) {
-                return bi_load_to(b, bits, src, va_zero_lut(), va_zero_lut(),
-                                  BI_SEG_TL, offset);
+                return bi_load_to(b, bits, src, bi_tls_ptr(false),
+                                  bi_tls_ptr(true), BI_SEG_TL, offset);
         } else {
                 return bi_load_to(b, bits, src, bi_imm_u32(offset), bi_zero(),
                                   BI_SEG_TL, 0);
@@ -495,7 +501,7 @@ static void
 bi_store_tl(bi_builder *b, unsigned bits, bi_index src, unsigned offset)
 {
         if (b->shader->arch >= 9) {
-                bi_store(b, bits, src, va_zero_lut(), va_zero_lut(), BI_SEG_TL, offset);
+                bi_store(b, bits, src, bi_tls_ptr(false), bi_tls_ptr(true), BI_SEG_TL, offset);
         } else {
                 bi_store(b, bits, src, bi_imm_u32(offset), bi_zero(), BI_SEG_TL, 0);
         }
