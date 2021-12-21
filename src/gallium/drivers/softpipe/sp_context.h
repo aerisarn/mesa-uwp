@@ -165,7 +165,6 @@ struct softpipe_context {
       struct quad_stage *shade;
       struct quad_stage *depth_test;
       struct quad_stage *blend;
-      struct quad_stage *pstipple;
       struct quad_stage *first; /**< points to one of the above stages */
    } quad;
 

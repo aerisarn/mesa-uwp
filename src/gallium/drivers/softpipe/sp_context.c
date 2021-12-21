@@ -84,9 +84,6 @@ softpipe_destroy( struct pipe_context *pipe )
    if (softpipe->quad.blend)
       softpipe->quad.blend->destroy( softpipe->quad.blend );
 
-   if (softpipe->quad.pstipple)
-      softpipe->quad.pstipple->destroy( softpipe->quad.pstipple );
-
    if (softpipe->pipe.stream_uploader)
       u_upload_destroy(softpipe->pipe.stream_uploader);
 
@@ -278,7 +275,6 @@ softpipe_create_context(struct pipe_screen *screen,
    softpipe->quad.shade = sp_quad_shade_stage(softpipe);
    softpipe->quad.depth_test = sp_quad_depth_test_stage(softpipe);
    softpipe->quad.blend = sp_quad_blend_stage(softpipe);
-   softpipe->quad.pstipple = sp_quad_polygon_stipple_stage(softpipe);
 
    softpipe->pipe.stream_uploader = u_upload_create_default(&softpipe->pipe);
    if (!softpipe->pipe.stream_uploader)
