@@ -474,6 +474,33 @@ bi_count_read_index(bi_instr *I, bi_index index)
         return max;
 }
 
+/*
+ * Wrappers to emit loads/stores to thread-local storage in an appropriate way
+ * for the target, so the spill/fill code becomes architecture-independent.
+ */
+
+static bi_instr *
+bi_load_tl(bi_builder *b, unsigned bits, bi_index src, unsigned offset)
+{
+        if (b->shader->arch >= 9) {
+                return bi_load_to(b, bits, src, va_zero_lut(), va_zero_lut(),
+                                  BI_SEG_TL, offset);
+        } else {
+                return bi_load_to(b, bits, src, bi_imm_u32(offset), bi_zero(),
+                                  BI_SEG_TL, 0);
+        }
+}
+
+static void
+bi_store_tl(bi_builder *b, unsigned bits, bi_index src, unsigned offset)
+{
+        if (b->shader->arch >= 9) {
+                bi_store(b, bits, src, va_zero_lut(), va_zero_lut(), BI_SEG_TL, offset);
+        } else {
+                bi_store(b, bits, src, bi_imm_u32(offset), bi_zero(), BI_SEG_TL, 0);
+        }
+}
+
 /* Once we've chosen a spill node, spill it and returns bytes spilled */
 
 static unsigned
@@ -497,8 +524,7 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
                         unsigned bits = count * 32;
 
                         b.cursor = bi_after_instr(I);
-                        bi_index loc = bi_imm_u32(offset + 4 * extra);
-                        bi_store(&b, bits, tmp, loc, bi_zero(), BI_SEG_TL, 0);
+                        bi_store_tl(&b, bits, tmp, offset + 4 * extra);
 
                         ctx->spills++;
                         channels = MAX2(channels, extra + count);
@@ -511,9 +537,7 @@ bi_spill_register(bi_context *ctx, bi_index index, uint32_t offset)
                         unsigned bits = bi_count_read_index(I, index) * 32;
                         bi_rewrite_index_src_single(I, index, tmp);
 
-                        bi_instr *ld = bi_load_to(&b, bits, tmp,
-                                        bi_imm_u32(offset), bi_zero(), BI_SEG_TL,
-                                        0);
+                        bi_instr *ld = bi_load_tl(&b, bits, tmp, offset);
                         ld->no_spill = true;
                         ctx->fills++;
                 }
