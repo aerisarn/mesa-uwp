@@ -117,15 +117,7 @@ GLboolean st_SetTextureStorageForMemoryObject(struct gl_context *ctx,
                                               GLsizei levels, GLsizei width,
                                               GLsizei height, GLsizei depth,
                                               GLuint64 offset);
-GLuint64 st_NewTextureHandle(struct gl_context *ctx, struct gl_texture_object *texObj,
-                             struct gl_sampler_object *sampObj);
-void st_DeleteTextureHandle(struct gl_context *ctx, GLuint64 handle);
-void st_MakeTextureHandleResident(struct gl_context *ctx, GLuint64 handle,
-                                  bool resident);
-GLuint64 st_NewImageHandle(struct gl_context *ctx, struct gl_image_unit *imgObj);
-void st_DeleteImageHandle(struct gl_context *ctx, GLuint64 handle);
-void st_MakeImageHandleResident(struct gl_context *ctx, GLuint64 handle,
-                                GLenum access, bool resident);
+
 GLboolean st_GetSparseTextureVirtualPageSize(struct gl_context *ctx,
                                              GLenum target, mesa_format format,
                                              unsigned index, int *x, int *y, int *z);
