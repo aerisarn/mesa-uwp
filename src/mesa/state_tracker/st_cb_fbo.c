@@ -563,36 +563,6 @@ st_DrawBufferAllocate(struct gl_context *ctx)
    }
 }
 
-
-/**
- * Called via glReadBuffer.  As with st_DrawBufferAllocate, we use this
- * function to check if we need to allocate a renderbuffer on demand.
- */
-void
-st_ReadBuffer(struct gl_context *ctx, GLenum buffer)
-{
-   struct st_context *st = st_context(ctx);
-   struct gl_framebuffer *fb = ctx->ReadBuffer;
-
-   (void) buffer;
-
-   /* Check if we need to allocate a front color buffer.
-    * Front buffers are often allocated on demand (other color buffers are
-    * always allocated in advance).
-    */
-   if ((fb->_ColorReadBufferIndex == BUFFER_FRONT_LEFT ||
-        fb->_ColorReadBufferIndex == BUFFER_FRONT_RIGHT) &&
-       fb->Attachment[fb->_ColorReadBufferIndex].Type == GL_NONE) {
-      assert(_mesa_is_winsys_fbo(fb));
-      /* add the buffer */
-      st_manager_add_color_renderbuffer(st, fb, fb->_ColorReadBufferIndex);
-      _mesa_update_state(ctx);
-      st_validate_state(st, ST_PIPELINE_UPDATE_FRAMEBUFFER);
-   }
-}
-
-
-
 /**
  * Called via ctx->Driver.MapRenderbuffer.
  */
