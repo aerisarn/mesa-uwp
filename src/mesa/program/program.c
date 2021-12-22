@@ -217,29 +217,6 @@ _mesa_init_gl_program(struct gl_program *prog, gl_shader_stage stage,
    return prog;
 }
 
-
-/**
- * Allocate and initialize a new fragment/vertex program object but
- * don't put it into the program hash table.  Called via
- * ctx->Driver.NewProgram.  May be overridden (ie. replaced) by a
- * device driver function to implement OO deriviation with additional
- * types not understood by this function.
- *
- * \param ctx  context
- * \param id   program id/number
- * \param stage  shader stage
- * \return  pointer to new program object
- */
-struct gl_program *
-_mesa_new_program(struct gl_context *ctx, gl_shader_stage stage, GLuint id,
-                  bool is_arb_asm)
-{
-   struct gl_program *prog = rzalloc(NULL, struct gl_program);
-
-   return _mesa_init_gl_program(prog, stage, id, is_arb_asm);
-}
-
-
 /**
  * Delete a program and remove it from the hash table, ignoring the
  * reference count.
