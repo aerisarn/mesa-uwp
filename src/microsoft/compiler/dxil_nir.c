@@ -934,7 +934,6 @@ dxil_nir_opt_alu_deref_srcs(nir_shader *nir)
          continue;
       assert(func->impl);
 
-      bool progress = false;
       nir_builder b;
       nir_builder_init(&b, func->impl);
 
