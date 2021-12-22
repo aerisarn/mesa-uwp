@@ -200,17 +200,6 @@ struct dd_function_table {
                                   uint32_t enabled_attribs);
 
    /**
-    * \name Vertex/pixel buffer object functions
-    */
-   /*@{*/
-   void (*InvalidateBufferSubData)( struct gl_context *ctx,
-                                    struct gl_buffer_object *obj,
-                                    GLintptr offset,
-                                    GLsizeiptr length );
-
-   /*@}*/
-
-   /**
     * \name GREMEDY debug/marker functions
     */
    /*@{*/
