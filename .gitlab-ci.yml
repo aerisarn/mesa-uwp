@@ -1039,8 +1039,8 @@ debian-clang:
       -Wno-error=unused-private-field
     DRI_LOADERS: >
       -D glvnd=true
-    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus,i915,asahi"
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost
     CC: clang
     CXX: clang++
 
