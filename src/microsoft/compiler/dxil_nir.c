@@ -333,24 +333,43 @@ lower_store_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
    unsigned num_components = val->num_components;
    unsigned num_bits = num_components * bit_size;
 
-   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS];
+   nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS] = { 0 };
    unsigned comp_idx = 0;
 
+   unsigned write_mask = nir_intrinsic_write_mask(intr);
    for (unsigned i = 0; i < num_components; i++)
-      comps[i] = nir_channel(b, val, i);
+      if (write_mask & (1 << i))
+         comps[i] = nir_channel(b, val, i);
 
    /* We split stores in 16byte chunks because that's the optimal granularity
     * of bufferStore(). Minimum alignment is 4byte, which saves from us from
     * extra complexity to store >= 32 bit components.
     */
-   for (unsigned i = 0; i < num_bits; i += 4 * 32) {
+   unsigned bit_offset = 0;
+   while (true) {
+      /* Skip over holes in the write mask */
+      while (comp_idx < num_components && comps[comp_idx] == NULL) {
+         comp_idx++;
+         bit_offset += bit_size;
+      }
+      if (comp_idx >= num_components)
+         break;
+
       /* For each 16byte chunk (or smaller) we generate a 32bit ssbo vec
-       * store.
+       * store. If a component is skipped by the write mask, do a smaller
+       * sub-store
        */
-      unsigned substore_num_bits = MIN2(num_bits - i, 4 * 32);
-      nir_ssa_def *local_offset = nir_iadd(b, offset, nir_imm_int(b, i / 8));
+      unsigned num_src_comps_stored = 0, substore_num_bits = 0;
+      while(num_src_comps_stored + comp_idx < num_components &&
+            substore_num_bits + bit_offset < num_bits &&
+            substore_num_bits < 4 * 32 &&
+            comps[comp_idx + num_src_comps_stored]) {
+         ++num_src_comps_stored;
+         substore_num_bits += bit_size;
+      }
+      nir_ssa_def *local_offset = nir_iadd(b, offset, nir_imm_int(b, bit_offset / 8));
       nir_ssa_def *vec32 = load_comps_to_vec32(b, bit_size, &comps[comp_idx],
-                                               substore_num_bits / bit_size);
+                                               num_src_comps_stored);
       nir_intrinsic_instr *store;
 
       if (substore_num_bits < 32) {
@@ -387,7 +406,11 @@ lower_store_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
       /* The number of components to store depends on the number of bits. */
       store->num_components = DIV_ROUND_UP(substore_num_bits, 32);
       nir_builder_instr_insert(b, &store->instr);
-      comp_idx += substore_num_bits / bit_size;
+      comp_idx += num_src_comps_stored;
+      bit_offset += substore_num_bits;
+
+      if (nir_intrinsic_has_write_mask(store))
+         nir_intrinsic_set_write_mask(store, (1 << store->num_components) - 1);
    }
 
    nir_instr_remove(&intr->instr);
