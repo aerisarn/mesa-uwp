@@ -408,6 +408,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_SPARSE_3D_TEXTURE_SIZE:
    case PIPE_CAP_MAX_SPARSE_ARRAY_TEXTURE_LAYERS:
    case PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS:
+   case PIPE_CAP_QUERY_SPARSE_TEXTURE_RESIDENCY:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
