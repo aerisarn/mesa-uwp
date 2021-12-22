@@ -1013,7 +1013,7 @@ static inline void bi_validate(UNUSED bi_context *ctx, UNUSED const char *after_
 #endif
 
 uint32_t bi_fold_constant(bi_instr *I, bool *unsupported);
-void bi_opt_constant_fold(bi_context *ctx);
+bool bi_opt_constant_fold(bi_context *ctx);
 
 /* Liveness */
 
