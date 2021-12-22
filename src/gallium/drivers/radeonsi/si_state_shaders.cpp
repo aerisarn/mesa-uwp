@@ -2217,6 +2217,10 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
        sctx->framebuffer.spi_shader_col_format);
    key->ps.part.epilog.spi_shader_col_format &= blend->cb_target_enabled_4bit;
 
+   key->ps.part.epilog.dual_src_blend_swizzle = sctx->chip_class >= GFX11 &&
+                                                blend->dual_src_blend &&
+                                                (sel->info.colors_written_4bit & 0xff) == 0xff;
+
    /* The output for dual source blending should have
     * the same format as the first output.
     */

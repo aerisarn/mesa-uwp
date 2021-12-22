@@ -599,6 +599,10 @@ void ac_build_triangle_strip_indices_to_triangle(struct ac_llvm_context *ctx, LL
                                                  LLVMValueRef index[3]);
 LLVMValueRef ac_build_is_inf_or_nan(struct ac_llvm_context *ctx, LLVMValueRef a);
 
+void ac_build_dual_src_blend_swizzle(struct ac_llvm_context *ctx,
+                                     struct ac_export_args *mrt0,
+                                     struct ac_export_args *mrt1);
+
 #ifdef __cplusplus
 }
 #endif

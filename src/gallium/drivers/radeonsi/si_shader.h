@@ -578,6 +578,7 @@ struct si_ps_epilog_bits {
    unsigned alpha_to_one : 1;
    unsigned alpha_to_coverage_via_mrtz : 1;  /* gfx11+ */
    unsigned clamp_color : 1;
+   unsigned dual_src_blend_swizzle : 1;      /* gfx11+ */
 };
 
 union si_shader_part_key {

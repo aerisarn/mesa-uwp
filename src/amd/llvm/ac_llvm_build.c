@@ -4085,6 +4085,56 @@ void ac_build_wg_scan(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
    ac_build_wg_scan_bottom(ctx, ws);
 }
 
+static void _ac_build_dual_src_blend_swizzle(struct ac_llvm_context *ctx,
+                                             LLVMValueRef *arg0, LLVMValueRef *arg1)
+{
+   LLVMValueRef tid;
+   LLVMValueRef src0, src1;
+   LLVMValueRef tmp0;
+   LLVMValueRef params[2];
+   LLVMValueRef is_even;
+
+   src0 = LLVMBuildBitCast(ctx->builder, *arg0, ctx->i32, "");
+   src1 = LLVMBuildBitCast(ctx->builder, *arg1, ctx->i32, "");
+
+   /* swap odd,even lanes of arg_0*/
+   params[0] = src0;
+   params[1] = LLVMConstInt(ctx->i32, 0xde54c1, 0);
+   src0 = ac_build_intrinsic(ctx, "llvm.amdgcn.mov.dpp8.i32",
+                             ctx->i32, params, 2, AC_FUNC_ATTR_CONVERGENT);
+
+   /* swap even lanes between arg_0 and arg_1 */
+   tid = ac_get_thread_id(ctx);
+   is_even = LLVMBuildICmp(ctx->builder, LLVMIntEQ,
+                           LLVMBuildAnd(ctx->builder, tid, ctx->i32_1, ""),
+                           ctx->i32_0, "");
+   tmp0 = src0;
+   src0 = LLVMBuildSelect(ctx->builder, is_even, src1, src0, "");
+   src1 = LLVMBuildSelect(ctx->builder, is_even, tmp0, src1, "");
+
+   /* swap odd,even lanes again for arg_0*/
+   params[0] = src0;
+   params[1] = LLVMConstInt(ctx->i32, 0xde54c1, 0);
+   src0 = ac_build_intrinsic(ctx, "llvm.amdgcn.mov.dpp8.i32",
+                             ctx->i32, params, 2, AC_FUNC_ATTR_CONVERGENT);
+
+   *arg0 = src0;
+   *arg1 = src1;
+}
+
+void ac_build_dual_src_blend_swizzle(struct ac_llvm_context *ctx,
+                                     struct ac_export_args *mrt0,
+                                     struct ac_export_args *mrt1)
+{
+   assert(ctx->chip_class >= GFX11);
+   assert(mrt0->enabled_channels == mrt1->enabled_channels);
+
+   for (int i = 0; i < 4; i++) {
+      if (mrt0->enabled_channels & (1 << i) && mrt1->enabled_channels & (1 << i))
+         _ac_build_dual_src_blend_swizzle(ctx, &mrt0->out[i], &mrt1->out[i]);
+   }
+}
+
 LLVMValueRef ac_build_quad_swizzle(struct ac_llvm_context *ctx, LLVMValueRef src, unsigned lane0,
                                    unsigned lane1, unsigned lane2, unsigned lane3)
 {
