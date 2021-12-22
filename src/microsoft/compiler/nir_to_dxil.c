@@ -950,6 +950,9 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
    add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, &layout);
    if (res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
       ctx->mod.raw_and_structured_buffers = true;
+   if (ctx->mod.shader_kind != DXIL_PIXEL_SHADER &&
+       ctx->mod.shader_kind != DXIL_COMPUTE_SHADER)
+      ctx->mod.feats.uavs_at_every_stage = true;
 
    if (!ctx->opts->vulkan_environment) {
       for (unsigned i = 0; i < count; ++i) {
@@ -1233,6 +1236,8 @@ get_module_flags(struct ntd_context *ctx)
       flags |= (1 << 13);
    if (ctx->mod.feats.use_64uavs)
       flags |= (1 << 15);
+   if (ctx->mod.feats.uavs_at_every_stage)
+      flags |= (1 << 16);
    if (ctx->mod.feats.cs_4x_raw_sb)
       flags |= (1 << 17);
    if (ctx->mod.feats.wave_ops)
