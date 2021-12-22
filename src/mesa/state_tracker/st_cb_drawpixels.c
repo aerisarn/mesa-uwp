@@ -43,7 +43,6 @@
 #include "main/pbo.h"
 #include "main/readpix.h"
 #include "main/state.h"
-#include "main/texformat.h"
 #include "main/teximage.h"
 #include "main/texstore.h"
 #include "main/glformats.h"

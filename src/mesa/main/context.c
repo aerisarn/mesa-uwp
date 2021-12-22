@@ -1061,8 +1061,7 @@ _mesa_initialize_context(struct gl_context *ctx,
 
    /* Mesa core handles all the formats that mesa core knows about.
     * Drivers will want to override this list with just the formats
-    * they can handle, and confirm that appropriate fallbacks exist in
-    * _mesa_choose_tex_format().
+    * they can handle.
     */
    memset(&ctx->TextureFormatSupported, GL_TRUE,
           sizeof(ctx->TextureFormatSupported));

@@ -224,8 +224,6 @@ files_libmesa = files(
   'main/texcompress_s3tc.h',
   'main/texenv.c',
   'main/texenvprogram.h',
-  'main/texformat.c',
-  'main/texformat.h',
   'main/texgen.c',
   'main/texgetimage.c',
   'main/texgetimage.h',
