@@ -2455,10 +2455,12 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
 
-   nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
    enum dxil_resource_class class = DXIL_RESOURCE_CLASS_UAV;
-   if (var && var->data.access & ACCESS_NON_WRITEABLE)
-      class = DXIL_RESOURCE_CLASS_SRV;
+   if (ctx->opts->vulkan_environment) {
+      nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
+      if (var && var->data.access & ACCESS_NON_WRITEABLE)
+         class = DXIL_RESOURCE_CLASS_SRV;
+   }
 
    const struct dxil_value *handle = get_ubo_ssbo_handle(ctx, &intr->src[0], class, 0);
    const struct dxil_value *offset =
@@ -4368,13 +4370,15 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    }
 
    /* Handle read-only SSBOs as SRVs */
-   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
-      if ((var->data.access & ACCESS_NON_WRITEABLE) != 0) {
-         unsigned count = 1;
-         if (glsl_type_is_array(var->type))
-            count = glsl_get_length(var->type);
-         if (!emit_srv(ctx, var, count))
-            return false;
+   if (ctx->opts->vulkan_environment) {
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
+         if ((var->data.access & ACCESS_NON_WRITEABLE) != 0) {
+            unsigned count = 1;
+            if (glsl_type_is_array(var->type))
+               count = glsl_get_length(var->type);
+            if (!emit_srv(ctx, var, count))
+               return false;
+         }
       }
    }
 
@@ -4415,7 +4419,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
          return false;
       if (!emit_global_consts(ctx))
          return false;
-   } else {
+   } else if (ctx->opts->vulkan_environment) {
       /* Handle read/write SSBOs as UAVs */
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
          if ((var->data.access & ACCESS_NON_WRITEABLE) == 0) {
@@ -4428,6 +4432,14 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
                return false;
             
          }
+      }
+   } else {
+      for (unsigned i = 0; i < ctx->shader->info.num_ssbos; ++i) {
+         char name[64];
+         snprintf(name, sizeof(name), "__ssbo%d", i);
+         if (!emit_uav(ctx, i, 0, 1, DXIL_COMP_TYPE_INVALID,
+                       DXIL_RESOURCE_KIND_RAW_BUFFER, name))
+            return false;
       }
    }
 
