@@ -1512,6 +1512,31 @@ static void si_emit_db_render_state(struct si_context *sctx)
                           S_028000_STENCIL_CLEAR_ENABLE(sctx->db_stencil_clear);
    }
 
+   if (sctx->chip_class >= GFX11) {
+      unsigned max_allowed_tiles_in_wave = 0;
+
+      if (sctx->screen->info.has_dedicated_vram) {
+         if (sctx->framebuffer.nr_samples == 8)
+            max_allowed_tiles_in_wave = 7;
+         else if (sctx->framebuffer.nr_samples == 4)
+            max_allowed_tiles_in_wave = 14;
+      } else {
+         if (sctx->framebuffer.nr_samples == 8)
+            max_allowed_tiles_in_wave = 8;
+      }
+
+      /* TODO: We may want to disable this workaround for future chips. */
+      if (sctx->framebuffer.nr_samples >= 4) {
+         if (max_allowed_tiles_in_wave)
+            max_allowed_tiles_in_wave--;
+         else
+            max_allowed_tiles_in_wave = 15;
+      }
+
+      db_render_control |= S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) |
+                           S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
+   }
+
    /* DB_COUNT_CONTROL (occlusion queries) */
    if (sctx->num_occlusion_queries > 0 && !sctx->occlusion_queries_disabled) {
       bool perfect = sctx->num_perfect_occlusion_queries > 0;
