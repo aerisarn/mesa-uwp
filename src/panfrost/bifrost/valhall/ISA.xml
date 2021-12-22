@@ -1578,8 +1578,11 @@
     <mod name="left" start="128" size="1" implied="true"/>
     <desc>
       Right shifts its first source by a specified amount and bitwise ANDs it with the
-      second source, optionally inverting the second source or the result.
+      second source, optionally inverting the second source or the result. If
+      `signed` is set, the hardware performs an arithmetic right shift; otherwise,
+      it performs an unsigned right shift.
     </desc>
+    <mod name="signed" start="34" size="1"/>
     <not_result/>
     <src widen="true">A</src>
     <src lanes="true" size="8">shift</src>
@@ -1610,8 +1613,11 @@
     <mod name="left" start="128" size="1" implied="true"/>
     <desc>
       Right shifts its first source by a specified amount and bitwise ORs it with the
-      second source, optionally inverting the second source or the result.
-    </desc>
+      second source, optionally inverting the second source or the result. If
+      `signed` is set, the hardware performs an arithmetic right shift; otherwise,
+      it performs an unsigned right shift.
+   </desc>
+    <mod name="signed" start="34" size="1"/>
     <not_result/>
     <src widen="true">A</src>
     <src lanes="true" size="8">shift</src>
@@ -1642,8 +1648,11 @@
     <mod name="left" start="128" size="1" implied="true"/>
     <desc>
       Right shifts its first source by a specified amount and bitwise XORs it with the
-      second source, optionally inverting the second source or the result.
+      second source, optionally inverting the second source or the result. If
+      `signed` is set, the hardware performs an arithmetic right shift; otherwise,
+      it performs an unsigned right shift.
     </desc>
+    <mod name="signed" start="34" size="1"/>
     <not_result/>
     <src widen="true">A</src>
     <src lanes="true" size="8">shift</src>
