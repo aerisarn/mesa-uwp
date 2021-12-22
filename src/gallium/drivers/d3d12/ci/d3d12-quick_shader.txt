@@ -72,10 +72,6 @@ spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec2-vec2-v
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec3-vec3-vec3: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec4-vec4-vec4: skip
 spec/amd_texture_texture4/execution/texture4: skip
-spec/arb_arrays_of_arrays/execution/atomic_counters/fs-indirect-index: skip
-spec/arb_arrays_of_arrays/execution/atomic_counters/fs-simple-inc-dec-read: skip
-spec/arb_arrays_of_arrays/execution/atomic_counters/vs-indirect-index: skip
-spec/arb_arrays_of_arrays/execution/atomic_counters/vs-simple-inc-dec-read: skip
 spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-const-uniform-index: skip
 spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-mixed-const-non-const-uniform-index: skip
 spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-mixed-const-non-const-uniform-index2: skip
@@ -105,8 +101,6 @@ spec/arb_arrays_of_arrays/execution/ubo/fs-const: fail
 spec/arb_arrays_of_arrays/execution/ubo/fs-const-explicit-binding: fail
 spec/arb_arrays_of_arrays/execution/ubo/fs-mixed-const-nonconst: skip
 spec/arb_arrays_of_arrays/execution/ubo/fs-nonconst: skip
-spec/arb_arrays_of_arrays/linker/vs-to-fs-atomic-counter: skip
-spec/arb_arrays_of_arrays/linker/vs-to-fs-atomic-counter-mismatch: skip
 spec/arb_bindless_texture/execution/images/basic-arithmetic-uvec2-imagestore: skip
 spec/arb_bindless_texture/execution/images/basic-imageatomicexchange: skip
 spec/arb_bindless_texture/execution/images/basic-imagestore: skip
@@ -3657,11 +3651,8 @@ spec/arb_separate_shader_objects/linker/pervertex-pointsize-vs-out-tcs: skip
 spec/arb_separate_shader_objects/linker/pervertex-position-tcs-out-tes: skip
 spec/arb_separate_shader_objects/linker/pervertex-position-tes-out-gs: skip
 spec/arb_separate_shader_objects/linker/pervertex-position-vs-out-tcs: skip
-spec/arb_shader_atomic_counter_ops/execution/add: skip
-spec/arb_shader_atomic_counter_ops/execution/all_touch_test: skip
-spec/arb_shader_atomic_counters/execution/fs-layout: skip
-spec/arb_shader_atomic_counters/execution/sparse-binding: skip
-spec/arb_shader_atomic_counters/execution/vs-simple-inc-dec-read: skip
+spec/arb_shader_atomic_counter_ops/execution/add: warn
+spec/arb_shader_atomic_counter_ops/execution/all_touch_test: warn
 spec/arb_shader_atomic_counters/linker/different-bindings-atomic-counter: skip
 spec/arb_shader_ballot/execution/fs-ballot: skip
 spec/arb_shader_ballot/execution/fs-ballot-if-else: skip
@@ -4008,42 +3999,8 @@ spec/arb_shader_precision/vs-sqrt-float: skip
 spec/arb_shader_precision/vs-sqrt-vec2: skip
 spec/arb_shader_precision/vs-sqrt-vec3: skip
 spec/arb_shader_precision/vs-sqrt-vec4: skip
-spec/arb_shader_storage_buffer_object/execution/basic: skip
-spec/arb_shader_storage_buffer_object/execution/implicitly-sized-array-length-1: skip
-spec/arb_shader_storage_buffer_object/execution/implicitly-sized-array-length-2: skip
-spec/arb_shader_storage_buffer_object/execution/implicitly-sized-array-length-3: skip
-spec/arb_shader_storage_buffer_object/execution/implicitly-sized-array-length-4: skip
 spec/arb_shader_storage_buffer_object/execution/indirect: skip
-spec/arb_shader_storage_buffer_object/execution/memory-layouts-struct-deref: skip
-spec/arb_shader_storage_buffer_object/execution/ssbo-atomicadd-int: skip
 spec/arb_shader_storage_buffer_object/execution/ssbo-atomiccompswap-int: skip
-spec/arb_shader_storage_buffer_object/execution/ssbo-atomicexchange-int: skip
-spec/arb_shader_storage_buffer_object/execution/ssbo-atomicmax-int: skip
-spec/arb_shader_storage_buffer_object/execution/ssbo-atomicmax-uint: skip
-spec/arb_shader_storage_buffer_object/execution/ssbo-atomicmin-int: skip
-spec/arb_shader_storage_buffer_object/execution/ssbo-atomicmin-uint: skip
-spec/arb_shader_storage_buffer_object/linker/buffer-variable-indirect-indexing: skip
-spec/arb_shader_storage_buffer_object/linker/copy-large-array: skip
-spec/arb_shader_storage_buffer_object/linker/copy-large-struct: skip
-spec/arb_shader_storage_buffer_object/linker/implicit_size_array_member: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-array-size-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-binding-qualifier-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-member-array-size-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-member-count-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-member-name-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-member-order-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-member-qualifier-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-member-type-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-memory-qualifier-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/instance-matching-shader-storage-blocks-packaging-qualifier-mismatch: skip
-spec/arb_shader_storage_buffer_object/linker/non_integral_size_array_member: skip
-spec/arb_shader_storage_buffer_object/linker/shader-storage-block-different-def: skip
-spec/arb_shader_storage_buffer_object/linker/shader-storage-block-different-def-2: skip
-spec/arb_shader_storage_buffer_object/linker/shader-storage-block-different-def-3: skip
-spec/arb_shader_storage_buffer_object/linker/shader-storage-block-different-size: skip
-spec/arb_shader_storage_buffer_object/linker/sized_arrays_of_arrays_member: skip
-spec/arb_shader_storage_buffer_object/linker/unsized_array_member: skip
-spec/arb_shader_storage_buffer_object/linker/unsized_arrays_of_arrays_member: skip
 spec/arb_shader_texture_lod/execution/glsl-fs-shadow2dgradarb-07: fail
 spec/arb_shader_texture_lod/execution/glsl-fs-shadow2dgradarb-cumulative: fail
 spec/arb_shading_language_420pack/linker/different-bindings-image2d: skip
@@ -13086,12 +13043,12 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7161
+       pass:     7204
        fail:       58
       crash:       27
-       skip:    12977
+       skip:    12932
     timeout:        0
-       warn:       23
+       warn:       25
  incomplete:        0
  dmesg-warn:        0
  dmesg-fail:        0

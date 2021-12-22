@@ -1865,25 +1865,13 @@ spec/arb_point_sprite/arb_point_sprite-mipmap: fail
 spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-sample-shading: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprograminterfaceiv/gl_max_name_length on gl_atomic_counter_buffer: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'dummy' on gl_atomic_counter_buffer: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2' on gl_program_input: fail
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2[1][0]' on gl_program_input: fail
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/compute on gl_compute_subroutine_uniform: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/fs_buffer_block on gl_shader_storage_block: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/fs_counter on gl_atomic_counter_buffer: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/fs_uni_block on gl_uniform_block: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/gs_buf_var on gl_buffer_variable: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/gs_buffer_block on gl_shader_storage_block: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/tcs_patch on gl_program_output: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/tess_control on gl_tess_control_subroutine_uniform: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/vs_buffer_block on gl_shader_storage_block: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/vs_uni_block on gl_uniform_block: skip
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourcename/gl_atomic_counter_buffer: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-location/test_subroutine_stages_compute: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-location/test_subroutine_stages_tcs_tes: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_atomic_counter_buffer: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_buffer_variable: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_compute_subroutine: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_compute_subroutine_uniform: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(cs): skip
@@ -1896,7 +1884,6 @@ spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_p
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs,tes): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs,tes,gs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tes): skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_shader_storage_block: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_control_subroutine: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_control_subroutine_uniform: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_evaluation_subroutine: skip
@@ -1982,19 +1969,18 @@ spec/arb_separate_shader_objects/validateprogrampipeline/only tes from tes/tcs p
 spec/arb_separate_shader_objects/validateprogrampipeline/tcs splitting a vs/gs pipeline: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/tes splitting a vs/gs program: skip
 spec/arb_separate_shader_objects/validateprogrampipeline/tes/tcs without vs: skip
-spec/arb_shader_atomic_counters/active-counters: skip
-spec/arb_shader_atomic_counters/array-indexing: skip
-spec/arb_shader_atomic_counters/buffer-binding: skip
-spec/arb_shader_atomic_counters/default-partition: skip
-spec/arb_shader_atomic_counters/fragment-discard: skip
-spec/arb_shader_atomic_counters/function-argument: skip
-spec/arb_shader_atomic_counters/max-counters: skip
-spec/arb_shader_atomic_counters/minmax: skip
-spec/arb_shader_atomic_counters/multiple-defs: skip
-spec/arb_shader_atomic_counters/respecify-buffer: skip
-spec/arb_shader_atomic_counters/semantics: skip
-spec/arb_shader_atomic_counters/unique-id: skip
-spec/arb_shader_atomic_counters/unused-result: skip
+spec/arb_shader_atomic_counters/array-indexing: fail
+spec/arb_shader_atomic_counters/max-counters/combined test above maximum number of atomic counter buffers: skip
+spec/arb_shader_atomic_counters/semantics/fragment shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/semantics/geometry shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/semantics/tessellation control shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/semantics/tessellation evaluation shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/semantics/vertex shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/unused-result/fragment shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/unused-result/geometry shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/unused-result/tessellation control shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/unused-result/tessellation evaluation shader atomic built-in semantics: skip
+spec/arb_shader_atomic_counters/unused-result/vertex shader atomic built-in semantics: fail
 spec/arb_shader_draw_parameters/baseinstance: skip
 spec/arb_shader_draw_parameters/baseinstance-indirect: skip
 spec/arb_shader_draw_parameters/basevertex: skip
@@ -2032,21 +2018,7 @@ spec/arb_shader_image_load_store/shader-mem-barrier: skip
 spec/arb_shader_image_load_store/state: skip
 spec/arb_shader_image_load_store/unused: skip
 spec/arb_shader_image_size/builtin: skip
-spec/arb_shader_storage_buffer_object/array-ssbo-binding: skip
-spec/arb_shader_storage_buffer_object/deletebuffers: skip
-spec/arb_shader_storage_buffer_object/getintegeri_v: skip
-spec/arb_shader_storage_buffer_object/issue1258: skip
-spec/arb_shader_storage_buffer_object/layout-std140-write-shader: skip
-spec/arb_shader_storage_buffer_object/layout-std430-write-shader: skip
-spec/arb_shader_storage_buffer_object/max-ssbo-size/fs: skip
-spec/arb_shader_storage_buffer_object/max-ssbo-size/fsexceed: skip
-spec/arb_shader_storage_buffer_object/max-ssbo-size/vs: skip
-spec/arb_shader_storage_buffer_object/max-ssbo-size/vsexceed: skip
-spec/arb_shader_storage_buffer_object/maxblocks: skip
 spec/arb_shader_storage_buffer_object/minmax: skip
-spec/arb_shader_storage_buffer_object/program-interface-query: skip
-spec/arb_shader_storage_buffer_object/rendering: skip
-spec/arb_shader_storage_buffer_object/ssbo-binding: skip
 spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-2: skip
@@ -2156,6 +2128,7 @@ spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-32: sk
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
+spec/arb_shading_language_420pack/active sampler conflict: fail
 spec/arb_shading_language_420pack/binding layout: fail
 spec/arb_sparse_buffer/basic: skip
 spec/arb_sparse_buffer/buffer-data: skip
@@ -4738,10 +4711,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    14257
-       fail:      473
+       pass:    14313
+       fail:      481
       crash:       68
-       skip:     4176
+       skip:     4141
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4750,4 +4723,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    18994
+      total:    19023
