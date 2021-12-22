@@ -1461,8 +1461,61 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
 }
 
 static void
+d3d12_decrement_uav_bind_count(struct d3d12_context *ctx,
+                               enum pipe_shader_type shader,
+                               struct d3d12_resource *res) {
+   assert(res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_UAV] > 0);
+   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_UAV]--;
+}
+
+static void
+d3d12_increment_uav_bind_count(struct d3d12_context *ctx,
+                               enum pipe_shader_type shader,
+                               struct d3d12_resource *res) {
+   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_UAV]++;
+}
+
+static void
+d3d12_set_shader_buffers(struct pipe_context *pctx,
+                         enum pipe_shader_type shader,
+                         unsigned start_slot, unsigned count,
+                         const struct pipe_shader_buffer *buffers,
+                         unsigned writable_bitmask)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   for (unsigned i = 0; i < count; ++i) {
+      struct pipe_shader_buffer *slot = &ctx->ssbo_views[shader][i + start_slot];
+      if (slot->buffer) {
+         d3d12_decrement_uav_bind_count(ctx, shader, d3d12_resource(slot->buffer));
+         pipe_resource_reference(&slot->buffer, NULL);
+      }
+
+      if (buffers && buffers[i].buffer) {
+         pipe_resource_reference(&slot->buffer, buffers[i].buffer);
+         slot->buffer_offset = buffers[i].buffer_offset;
+         slot->buffer_size = buffers[i].buffer_size;
+         d3d12_increment_uav_bind_count(ctx, shader, d3d12_resource(buffers[i].buffer));
+      } else
+         memset(slot, 0, sizeof(*slot));
+   }
+
+   if (buffers) {
+      ctx->num_ssbo_views[shader] = MAX2(ctx->num_ssbo_views[shader], count + start_slot);
+   } else {
+      ctx->num_ssbo_views[shader] = 0;
+      for (int i = start_slot + count - 1; i >= (int)start_slot; --i) {
+         if (ctx->ssbo_views[shader][i].buffer) {
+            ctx->num_ssbo_views[shader] = i;
+            break;
+         }
+      }
+   }
+   ctx->shader_dirty[shader] |= D3D12_SHADER_DIRTY_UAVS;
+}
+
+static void
 d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resource *res) {
-   // For each shader type, if the resource is currently bound as CBV or SRV
+   // For each shader type, if the resource is currently bound as CBV, SRV, or UAV
    // set the context shader_dirty bit.
    for (uint i = 0; i < PIPE_SHADER_TYPES; ++i) {
       if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_CBV] > 0) {
@@ -1471,6 +1524,10 @@ d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resour
 
       if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_SRV] > 0) {
          ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_SAMPLER_VIEWS;
+      }
+
+      if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_UAV] > 0) {
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_UAVS;
       }
    }
 }
@@ -1965,6 +2022,8 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.create_stream_output_target = d3d12_create_stream_output_target;
    ctx->base.stream_output_target_destroy = d3d12_stream_output_target_destroy;
    ctx->base.set_stream_output_targets = d3d12_set_stream_output_targets;
+
+   ctx->base.set_shader_buffers = d3d12_set_shader_buffers;
 
    ctx->base.get_timestamp = d3d12_get_timestamp;
 
