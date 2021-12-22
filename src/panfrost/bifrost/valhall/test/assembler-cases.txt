@@ -133,7 +133,7 @@ c0 01 00 00 00 c4 10 51    IADD_IMM.i32.reconverge r4, 0x0, #0x1
 42 43 84 85 04 c1 50 01    CSEL.u32.lt r1, `r2, `r3, u4, u5
 42 43 84 85 04 c1 58 01    CSEL.s32.lt r1, `r2, `r3, u4, u5
 3d 00 00 12 b4 82 56 08    LD_VAR_SPECIAL.v2.f32.sample.clobber.slot0.wait0 @r2:r3, r61, index:0x0
-3d 00 00 33 14 82 5d 08    LD_VAR_IMM_F16.v4.f16.center.retrieve.slot0.wait0 @r2:r3, r61, r0, index:0x0
-3d 00 00 33 84 80 5d 08    LD_VAR_IMM_F16.v4.f16.sample.store.slot0.wait0 @r0:r1, r61, r0, index:0x0
-3d 00 08 33 44 80 5d 08    LD_VAR_IMM_F16.v4.f16.centroid.store.slot0.wait0 @r0:r1, r61, r0, index:0x8
+3d 00 00 33 14 82 5d 08    LD_VAR_IMM_F16.v4.half.smooth.center.retrieve.slot0.wait0 @r2:r3, r61, index:0x0
+3d 00 00 33 84 80 5d 08    LD_VAR_IMM_F16.v4.half.smooth.sample.store.slot0.wait0 @r0:r1, r61, index:0x0
+3d 00 08 33 44 80 5d 08    LD_VAR_IMM_F16.v4.half.smooth.centroid.store.slot0.wait0 @r0:r1, r61, index:0x8
 7c 7d 11 33 04 80 66 00    LD_ATTR_IMM.v4.f16.slot0 @r0:r1, `r60, `r61, index:0x1, table:0x1

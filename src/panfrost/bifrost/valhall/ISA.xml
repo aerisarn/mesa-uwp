@@ -727,7 +727,8 @@
     <sr write="true"/>
     <vecsize/>
     <sr_count/>
-    <regfmt/>
+    <mod name="half" start="24" size="1"/>
+    <mod name="smooth" start="25" size="1"/>
     <sample/>
     <update/>
     <slot/>
