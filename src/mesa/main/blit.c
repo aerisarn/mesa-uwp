@@ -47,6 +47,7 @@
 #include "state_tracker/st_cb_bitmap.h"
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_manager.h"
+#include "state_tracker/st_context.h"
 #include "state_tracker/st_scissor.h"
 #include "state_tracker/st_texture.h"
 #include "state_tracker/st_util.h"
@@ -403,7 +404,7 @@ do_blit_framebuffer(struct gl_context *ctx,
       (dstX1 != clip.dstX1) ||
       (dstY1 != clip.dstY1);
 
-   if (st_fb_orientation(drawFB) == Y_0_TOP) {
+   if (_mesa_fb_orientation(drawFB) == Y_0_TOP) {
       /* invert Y for dest */
       dstY0 = drawFB->Height - dstY0;
       dstY1 = drawFB->Height - dstY1;
@@ -423,7 +424,7 @@ do_blit_framebuffer(struct gl_context *ctx,
 #endif
    }
 
-   if (st_fb_orientation(readFB) == Y_0_TOP) {
+   if (_mesa_fb_orientation(readFB) == Y_0_TOP) {
       /* invert Y for src */
       srcY0 = readFB->Height - srcY0;
       srcY1 = readFB->Height - srcY1;

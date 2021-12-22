@@ -331,7 +331,7 @@ clear_with_quad(struct gl_context *ctx, unsigned clear_buffers)
 
    /* viewport state: viewport matching window dims */
    cso_set_viewport_dims(st->cso_context, fb_width, fb_height,
-                         st_fb_orientation(fb) == Y_0_TOP);
+                         _mesa_fb_orientation(fb) == Y_0_TOP);
 
    set_fragment_shader(st);
    cso_set_tessctrl_shader_handle(cso, NULL);

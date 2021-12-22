@@ -35,6 +35,7 @@
 #include "main/image.h"
 #include "main/bufferobj.h"
 #include "main/dlist.h"
+#include "main/framebuffer.h"
 #include "main/macros.h"
 #include "main/pbo.h"
 #include "program/program.h"

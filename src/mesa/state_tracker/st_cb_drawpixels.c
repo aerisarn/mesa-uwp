@@ -905,7 +905,7 @@ draw_textured_quad(struct gl_context *ctx, GLint x, GLint y, GLfloat z,
     * Recall that these coords are transformed by the current
     * vertex shader and viewport transformation.
     */
-   if (st_fb_orientation(ctx->DrawBuffer) == Y_0_BOTTOM) {
+   if (_mesa_fb_orientation(ctx->DrawBuffer) == Y_0_BOTTOM) {
       y = fb_height - (int) (y + height * ctx->Pixel.ZoomY);
       invertTex = !invertTex;
    }
@@ -973,7 +973,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
 
    rb = ctx->DrawBuffer->Attachment[BUFFER_STENCIL].Renderbuffer;
 
-   if (st_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
+   if (_mesa_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
       y = ctx->DrawBuffer->Height - y - height;
    }
 
@@ -1029,7 +1029,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
          {
             GLint spanY;
 
-            if (st_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
+            if (_mesa_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
                spanY = height - row - 1;
             }
             else {
@@ -1454,7 +1454,7 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    else
       usage = PIPE_MAP_WRITE;
 
-   if (st_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
+   if (_mesa_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
       dsty = rbDraw->Height - dsty - height;
    }
 
@@ -1478,7 +1478,7 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
 
       y = i;
 
-      if (st_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
+      if (_mesa_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
          y = height - y - 1;
       }
 
@@ -1591,12 +1591,12 @@ blit_copy_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       }
 
       /* Flip src/dst position depending on the orientation of buffers. */
-      if (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
+      if (_mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
          readY = rbRead->Height - readY;
          readH = -readH;
       }
 
-      if (st_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
+      if (_mesa_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
          /* We can't flip the destination for pipe->blit, so we only adjust
           * its position and flip the source.
           */
@@ -1817,7 +1817,7 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    }
 
    /* Invert src region if needed */
-   if (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
+   if (_mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
       srcy = ctx->ReadBuffer->Height - srcy - height;
       invertTex = !invertTex;
    }

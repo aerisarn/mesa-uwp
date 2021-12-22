@@ -118,7 +118,7 @@ st_update_framebuffer_state( struct st_context *st )
    st_flush_bitmap_cache(st);
    st_invalidate_readpix_cache(st);
 
-   st->state.fb_orientation = st_fb_orientation(fb);
+   st->state.fb_orientation = _mesa_fb_orientation(fb);
 
    /**
     * Quantize the derived default number of samples:

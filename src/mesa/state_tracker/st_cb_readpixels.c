@@ -484,7 +484,7 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
 
    if (st->pbo.download_enabled && pack->BufferObj) {
       if (try_pbo_readpixels(st, rb,
-                             st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP,
+                             _mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP,
                              x, y, width, height,
                              format, src_format, dst_format,
                              pack, pixels))
@@ -499,7 +499,7 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
     * synchronization overhead.
     */
    dst = try_cached_readpixels(st, rb,
-                               st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP,
+                               _mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP,
                                width, height, format, src_format, dst_format);
    if (dst) {
       dst_x = x;
@@ -514,7 +514,7 @@ st_ReadPixels(struct gl_context *ctx, GLint x, GLint y,
       }
 
       dst = blit_to_staging(st, rb,
-                            st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP,
+                            _mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP,
                             x, y, width, height, format,
                             src_format, dst_format);
       if (!dst)

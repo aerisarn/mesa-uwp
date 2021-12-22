@@ -32,6 +32,7 @@
 #include "main/fbobject.h"
 #include "main/formats.h"
 #include "main/format_utils.h"
+#include "main/framebuffer.h"
 #include "main/glformats.h"
 #include "main/image.h"
 #include "main/formatquery.h"
@@ -2565,7 +2566,7 @@ fallback_copy_texsubimage(struct gl_context *ctx,
    if (ST_DEBUG & DEBUG_FALLBACK)
       debug_printf("%s: fallback processing\n", __func__);
 
-   if (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
+   if (_mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
       srcY = rb->Height - srcY - height;
    }
 
@@ -2605,7 +2606,7 @@ fallback_copy_texsubimage(struct gl_context *ctx,
       uint *data;
 
       /* determine bottom-to-top vs. top-to-bottom order for src buffer */
-      if (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
+      if (_mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
          srcY = height - 1;
          yStep = -1;
       }
@@ -2649,7 +2650,7 @@ fallback_copy_texsubimage(struct gl_context *ctx,
          struct gl_texture_image *texImage = stImage;
          struct gl_pixelstore_attrib unpack = ctx->DefaultPacking;
 
-         if (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
+         if (_mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP) {
             unpack.Invert = GL_TRUE;
          }
 
@@ -2744,7 +2745,7 @@ st_CopyTexSubImage(struct gl_context *ctx, GLuint dims,
    struct pipe_screen *screen = st->screen;
    struct pipe_blit_info blit;
    enum pipe_format dst_format;
-   GLboolean do_flip = (st_fb_orientation(ctx->ReadBuffer) == Y_0_TOP);
+   GLboolean do_flip = (_mesa_fb_orientation(ctx->ReadBuffer) == Y_0_TOP);
    unsigned bind;
    GLint srcY0, srcY1;
 
