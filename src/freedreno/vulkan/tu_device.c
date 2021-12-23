@@ -1939,6 +1939,23 @@ vk_icdGetInstanceProcAddr(VkInstance instance, const char *pName)
    return tu_GetInstanceProcAddr(instance, pName);
 }
 
+/* With version 4+ of the loader interface the ICD should expose
+ * vk_icdGetPhysicalDeviceProcAddr()
+ */
+PUBLIC
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
+                                const char* pName);
+
+PFN_vkVoidFunction
+vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
+                                const char* pName)
+{
+   TU_FROM_HANDLE(tu_instance, instance, _instance);
+
+   return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_AllocateMemory(VkDevice _device,
                   const VkMemoryAllocateInfo *pAllocateInfo,
@@ -2534,8 +2551,11 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
     *        - The ICD must implement vkCreate{PLATFORM}SurfaceKHR(),
     *          vkDestroySurfaceKHR(), and other API which uses VKSurfaceKHR,
     *          because the loader no longer does so.
+    *
+    *    - Loader interface v4 differs from v3 in:
+    *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
     */
-   *pSupportedVersion = MIN2(*pSupportedVersion, 3u);
+   *pSupportedVersion = MIN2(*pSupportedVersion, 4u);
    return VK_SUCCESS;
 }
 
