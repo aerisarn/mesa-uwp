@@ -36,6 +36,12 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2)
         unsigned dependency_wait = next_1 ? next_1->dependencies : 0;
         dependency_wait |= next_2 ? next_2->dependencies : 0;
 
+        /* Signal barriers (slot #7) immediately. This is not optimal but good
+         * enough. Doing better requires extending the IR and scheduler.
+         */
+        if (clause->message_type == BIFROST_MESSAGE_BARRIER)
+                dependency_wait |= BITFIELD_BIT(7);
+
         bool staging_barrier = next_1 ? next_1->staging_barrier : false;
         staging_barrier |= next_2 ? next_2->staging_barrier : 0;
 

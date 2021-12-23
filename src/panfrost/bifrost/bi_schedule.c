@@ -1860,9 +1860,6 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st, uint
         clause->next_clause_prefetch = !last || (last->op != BI_OPCODE_JUMP);
         clause->block = block;
 
-        /* TODO: scoreboard assignment post-sched */
-        clause->dependencies |= (1 << 0);
-
         /* We emit in reverse and emitted to the back of the tuples array, so
          * move it up front for easy indexing */
         memmove(clause->tuples,
