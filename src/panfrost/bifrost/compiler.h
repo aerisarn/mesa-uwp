@@ -647,6 +647,22 @@ typedef struct bi_block {
         uint8_t pass_flags;
 } bi_block;
 
+static inline bi_block *
+bi_start_block(struct list_head *blocks)
+{
+        bi_block *first = list_first_entry(blocks, bi_block, link);
+        assert(first->predecessors->entries == 0);
+        return first;
+}
+
+static inline bi_block *
+bi_exit_block(struct list_head *blocks)
+{
+        bi_block *last = list_last_entry(blocks, bi_block, link);
+        assert(!last->successors[0] && !last->successors[1]);
+        return last;
+}
+
 /* Subset of pan_shader_info needed per-variant, in order to support IDVS */
 struct bi_shader_info {
         struct panfrost_ubo_push *push;
