@@ -5257,6 +5257,9 @@ typedef struct {
    /** nir_load_uniform max base offset */
    uint32_t uniform_max;
 
+   /** nir_load_ubo_vec4 max base offset */
+   uint32_t ubo_vec4_max;
+
    /** nir_var_mem_shared max base offset */
    uint32_t shared_max;
 

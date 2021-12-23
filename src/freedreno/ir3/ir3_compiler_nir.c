@@ -873,6 +873,11 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 {
    struct ir3_block *b = ctx->block;
 
+   /* This is only generated for us by nir_lower_ubo_vec4, which leaves base =
+    * 0.
+    */
+   assert(nir_intrinsic_base(intr) == 0);
+
    unsigned ncomp = intr->num_components;
    struct ir3_instruction *offset = ir3_get_src(ctx, &intr->src[1])[0];
    struct ir3_instruction *idx = ir3_get_src(ctx, &intr->src[0])[0];

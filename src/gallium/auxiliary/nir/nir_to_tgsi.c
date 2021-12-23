@@ -1338,6 +1338,7 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
       /* !PIPE_CAP_LOAD_CONSTBUF: Just emit it as a vec4 reference to the const
        * file.
        */
+      src.Index = nir_intrinsic_base(instr);
 
       if (nir_src_is_const(instr->src[1])) {
          src.Index += ntt_src_as_uint(c, instr->src[1]);

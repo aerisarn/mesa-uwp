@@ -934,8 +934,8 @@ def load(name, src_comp, indices=[], flags=[]):
 load("uniform", [1], [BASE, RANGE, DEST_TYPE], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { buffer_index, offset }.
 load("ubo", [-1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET, RANGE_BASE, RANGE], flags=[CAN_ELIMINATE, CAN_REORDER])
-# src[] = { buffer_index, offset in vec4 units }
-load("ubo_vec4", [-1, 1], [ACCESS, COMPONENT], flags=[CAN_ELIMINATE, CAN_REORDER])
+# src[] = { buffer_index, offset in vec4 units }.  base is also in vec4 units.
+load("ubo_vec4", [-1, 1], [ACCESS, BASE, COMPONENT], flags=[CAN_ELIMINATE, CAN_REORDER])
 # src[] = { offset }.
 load("input", [1], [BASE, COMPONENT, DEST_TYPE, IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { vertex_id, offset }.
