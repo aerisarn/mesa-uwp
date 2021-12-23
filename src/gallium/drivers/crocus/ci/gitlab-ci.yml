@@ -8,6 +8,7 @@
     - anholt-g41
   variables:
     GPU_VERSION: crocus-g41
+    FLAKES_CHANNEL: "#intel-ci"
 
 # Manual test rules for using anholt's shared hsw.
 .anholt-hsw-test:

@@ -8,6 +8,7 @@
     - anholt-g33
   variables:
     GPU_VERSION: i915-g33
+    FLAKES_CHANNEL: "#intel-ci"
 
 i915-g33-deqp:
   extends:
