@@ -2685,6 +2685,6 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     *    - Loader interface v4 differs from v3 in:
     *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
     */
-   *pSupportedVersion = MIN2(*pSupportedVersion, 3u);
+   *pSupportedVersion = MIN2(*pSupportedVersion, 4u);
    return VK_SUCCESS;
 }
