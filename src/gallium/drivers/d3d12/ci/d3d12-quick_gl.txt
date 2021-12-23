@@ -300,7 +300,6 @@ spec/!opengl 2.0/vertex-program-two-side/tcs-out, tes and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/tes-out and fs: skip
 spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 3.0/bound-resource-limits: fail
-spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/required-sized-texture-formats: fail
 spec/!opengl 3.1/default-vao: fail
 spec/!opengl 3.1/genned-names: fail
@@ -437,19 +436,7 @@ spec/arb_clear_texture/arb_clear_texture-texview: skip
 spec/arb_clip_control/arb_clip_control-clip-control: skip
 spec/arb_clip_control/arb_clip_control-depth-precision: skip
 spec/arb_clip_control/arb_clip_control-viewport: skip
-spec/arb_compute_shader/api_errors: skip
-spec/arb_compute_shader/built-in constants: skip
-spec/arb_compute_shader/compiler/work_group_size_too_large: skip
 spec/arb_compute_shader/compute-and-render-bug-109630: skip
-spec/arb_compute_shader/display-list: skip
-spec/arb_compute_shader/indirect-compute: skip
-spec/arb_compute_shader/local-id-explosion: skip
-spec/arb_compute_shader/minmax: skip
-spec/arb_compute_shader/render-and-compute: skip
-spec/arb_compute_shader/zero-dispatch-size: skip
-spec/arb_compute_variable_group_size/errors: skip
-spec/arb_compute_variable_group_size/local-size: skip
-spec/arb_compute_variable_group_size/minmax: skip
 spec/arb_copy_image/arb_copy_image-api_errors: skip
 spec/arb_copy_image/arb_copy_image-format-swizzle: skip
 spec/arb_copy_image/arb_copy_image-formats: skip
@@ -550,7 +537,6 @@ spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s8_s=z24_s8
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s=z24_s8: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f_s8: skip
-spec/arb_direct_state_access/create-programpipelines/default compute shader program == 0: skip
 spec/arb_direct_state_access/create-programpipelines/default tcs == 0: skip
 spec/arb_direct_state_access/create-programpipelines/default tes == 0: skip
 spec/arb_direct_state_access/create-transformfeedbacks: skip
@@ -1862,19 +1848,13 @@ spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
 spec/arb_post_depth_coverage/arb_post_depth_coverage-sample-shading: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2' on gl_program_input: fail
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2[1][0]' on gl_program_input: fail
-spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/compute on gl_compute_subroutine_uniform: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/tcs_patch on gl_program_output: skip
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceiv/tess_control on gl_tess_control_subroutine_uniform: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-location/test_subroutine_stages_compute: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-location/test_subroutine_stages_tcs_tes: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_compute_subroutine: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_compute_subroutine_uniform: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(cs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(tcs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(tcs,tes): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(tes): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_input(vs,tcs,tes): skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(cs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs,tes): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_program_output(tcs,tes,gs): skip
@@ -1883,9 +1863,7 @@ spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_t
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_control_subroutine_uniform: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_evaluation_subroutine: skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_tess_evaluation_subroutine_uniform: skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform(cs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform(tes,tcs): skip
-spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform_block(cs): skip
 spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_uniform_block(tcs,tes): skip
 spec/arb_query_buffer_object/coherency: skip
 spec/arb_query_buffer_object/qbo: skip
@@ -4330,10 +4308,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    15927
+       pass:    15979
        fail:     1200
       crash:       68
-       skip:     3041
+       skip:     3019
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4342,4 +4320,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20256
+      total:    20286

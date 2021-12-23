@@ -124,47 +124,7 @@ spec/arb_bindless_texture/linker/global_bindless_sampler_and_bindless_image: ski
 spec/arb_bindless_texture/linker/global_bindless_sampler_and_bound_image: skip
 spec/arb_bindless_texture/linker/global_bindless_sampler_and_bound_sampler: skip
 spec/arb_bindless_texture/linker/global_bound_sampler_and_bound_image: skip
-spec/arb_compute_shader/execution/atomic-counter: skip
-spec/arb_compute_shader/execution/basic-global-id: skip
-spec/arb_compute_shader/execution/basic-group-id: skip
-spec/arb_compute_shader/execution/basic-group-id-x: skip
-spec/arb_compute_shader/execution/basic-group-id-y: skip
-spec/arb_compute_shader/execution/basic-group-id-z: skip
-spec/arb_compute_shader/execution/basic-local-id-atomic: skip
-spec/arb_compute_shader/execution/basic-local-index: skip
-spec/arb_compute_shader/execution/basic-ssbo: skip
-spec/arb_compute_shader/execution/basic-texelfetch: skip
-spec/arb_compute_shader/execution/basic-uniform-access: skip
-spec/arb_compute_shader/execution/basic-uniform-access-atomic: skip
-spec/arb_compute_shader/execution/border-color: skip
 spec/arb_compute_shader/execution/min-dvec4-double-large-group-size: skip
-spec/arb_compute_shader/execution/multiple-texture-reading: skip
-spec/arb_compute_shader/execution/multiple-workgroups: skip
-spec/arb_compute_shader/execution/separate-global-id: skip
-spec/arb_compute_shader/execution/separate-global-id-2: skip
-spec/arb_compute_shader/execution/shared-atomicadd-int: skip
-spec/arb_compute_shader/execution/shared-atomiccompswap-int: skip
-spec/arb_compute_shader/execution/shared-atomicexchange-int: skip
-spec/arb_compute_shader/execution/shared-atomicmax-int: skip
-spec/arb_compute_shader/execution/shared-atomicmax-uint: skip
-spec/arb_compute_shader/execution/shared-atomicmin-int: skip
-spec/arb_compute_shader/execution/shared-atomicmin-uint: skip
-spec/arb_compute_shader/execution/shared-atomics: skip
-spec/arb_compute_shader/execution/simple-barrier: skip
-spec/arb_compute_shader/execution/simple-barrier-atomics: skip
-spec/arb_compute_shader/linker/bug-93840: skip
-spec/arb_compute_shader/linker/matched_local_work_sizes: skip
-spec/arb_compute_shader/linker/mismatched_local_work_sizes: skip
-spec/arb_compute_shader/linker/mix_compute_and_non_compute: skip
-spec/arb_compute_shader/linker/no_local_work_size: skip
-spec/arb_compute_shader/linker/one_local_work_size: skip
-spec/arb_compute_variable_group_size/execution/basic-local-size: skip
-spec/arb_compute_variable_group_size/execution/fixed-local-size: skip
-spec/arb_compute_variable_group_size/execution/global-invocation-id: skip
-spec/arb_compute_variable_group_size/execution/separate-global-id: skip
-spec/arb_compute_variable_group_size/execution/separate-global-id-2: skip
-spec/arb_compute_variable_group_size/linker/mixed_fixed_variable_local_work_size: skip
-spec/arb_compute_variable_group_size/linker/no_local_size_specified: skip
 spec/arb_cull_distance/basic-cull-1: skip
 spec/arb_cull_distance/basic-cull-2: skip
 spec/arb_cull_distance/basic-cull-3: skip
@@ -7741,7 +7701,6 @@ spec/glsl-1.50/execution/geometry/max-input-components: crash
 spec/glsl-1.50/execution/geometry/primitive-id-out: fail
 spec/glsl-1.50/execution/geometry/vs-gs-max-in-out-components: crash
 spec/glsl-1.50/execution/gs-also-uses-smooth-flat-noperspective: fail
-spec/glsl-1.50/execution/out-of-ssa-dfs-pre-order: skip
 spec/glsl-1.50/execution/primitive-id-no-gs: fail
 spec/glsl-1.50/execution/primitive-id-no-gs-instanced: fail
 spec/glsl-1.50/execution/primitive-id-no-gs-line: fail
@@ -13027,10 +12986,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7218
+       pass:     7259
        fail:       58
       crash:       23
-       skip:    12920
+       skip:    12879
     timeout:        0
        warn:       25
  incomplete:        0
