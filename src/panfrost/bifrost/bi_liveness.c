@@ -119,7 +119,7 @@ bi_compute_liveness(bi_context *ctx)
         /* Initialize the work list with the exit block */
         struct set_entry *cur;
 
-        cur = _mesa_set_add(work_list, pan_exit_block(&ctx->blocks));
+        cur = _mesa_set_add(work_list, bi_exit_block(&ctx->blocks));
 
         /* Iterate the work list */
 
