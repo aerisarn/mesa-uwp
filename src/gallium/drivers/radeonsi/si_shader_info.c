@@ -22,7 +22,6 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "ac_nir_to_llvm.h"
 #include "si_shader.h"
 #include "util/mesa-sha1.h"
 
@@ -57,6 +56,152 @@ static struct si_shader_profile profiles[] =
       SI_PROFILE_WAVE64,
    },
 };
+
+static unsigned get_inst_tessfactor_writemask(nir_intrinsic_instr *intrin)
+{
+   if (intrin->intrinsic != nir_intrinsic_store_output)
+      return 0;
+
+   unsigned writemask = nir_intrinsic_write_mask(intrin) << nir_intrinsic_component(intrin);
+   unsigned location = nir_intrinsic_io_semantics(intrin).location;
+
+   if (location == VARYING_SLOT_TESS_LEVEL_OUTER)
+      return writemask << 4;
+   else if (location == VARYING_SLOT_TESS_LEVEL_INNER)
+      return writemask;
+
+   return 0;
+}
+
+static void scan_tess_ctrl(nir_cf_node *cf_node, unsigned *upper_block_tf_writemask,
+                           unsigned *cond_block_tf_writemask,
+                           bool *tessfactors_are_def_in_all_invocs, bool is_nested_cf)
+{
+   switch (cf_node->type) {
+   case nir_cf_node_block: {
+      nir_block *block = nir_cf_node_as_block(cf_node);
+      nir_foreach_instr (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (intrin->intrinsic == nir_intrinsic_control_barrier) {
+
+            /* If we find a barrier in nested control flow put this in the
+             * too hard basket. In GLSL this is not possible but it is in
+             * SPIR-V.
+             */
+            if (is_nested_cf) {
+               *tessfactors_are_def_in_all_invocs = false;
+               return;
+            }
+
+            /* The following case must be prevented:
+             *    gl_TessLevelInner = ...;
+             *    barrier();
+             *    if (gl_InvocationID == 1)
+             *       gl_TessLevelInner = ...;
+             *
+             * If you consider disjoint code segments separated by barriers, each
+             * such segment that writes tess factor channels should write the same
+             * channels in all codepaths within that segment.
+             */
+            if (*upper_block_tf_writemask || *cond_block_tf_writemask) {
+               /* Accumulate the result: */
+               *tessfactors_are_def_in_all_invocs &=
+                  !(*cond_block_tf_writemask & ~(*upper_block_tf_writemask));
+
+               /* Analyze the next code segment from scratch. */
+               *upper_block_tf_writemask = 0;
+               *cond_block_tf_writemask = 0;
+            }
+         } else
+            *upper_block_tf_writemask |= get_inst_tessfactor_writemask(intrin);
+      }
+
+      break;
+   }
+   case nir_cf_node_if: {
+      unsigned then_tessfactor_writemask = 0;
+      unsigned else_tessfactor_writemask = 0;
+
+      nir_if *if_stmt = nir_cf_node_as_if(cf_node);
+      foreach_list_typed(nir_cf_node, nested_node, node, &if_stmt->then_list)
+      {
+         scan_tess_ctrl(nested_node, &then_tessfactor_writemask, cond_block_tf_writemask,
+                        tessfactors_are_def_in_all_invocs, true);
+      }
+
+      foreach_list_typed(nir_cf_node, nested_node, node, &if_stmt->else_list)
+      {
+         scan_tess_ctrl(nested_node, &else_tessfactor_writemask, cond_block_tf_writemask,
+                        tessfactors_are_def_in_all_invocs, true);
+      }
+
+      if (then_tessfactor_writemask || else_tessfactor_writemask) {
+         /* If both statements write the same tess factor channels,
+          * we can say that the upper block writes them too.
+          */
+         *upper_block_tf_writemask |= then_tessfactor_writemask & else_tessfactor_writemask;
+         *cond_block_tf_writemask |= then_tessfactor_writemask | else_tessfactor_writemask;
+      }
+
+      break;
+   }
+   case nir_cf_node_loop: {
+      nir_loop *loop = nir_cf_node_as_loop(cf_node);
+      foreach_list_typed(nir_cf_node, nested_node, node, &loop->body)
+      {
+         scan_tess_ctrl(nested_node, cond_block_tf_writemask, cond_block_tf_writemask,
+                        tessfactors_are_def_in_all_invocs, true);
+      }
+
+      break;
+   }
+   default:
+      unreachable("unknown cf node type");
+   }
+}
+
+static bool are_tessfactors_def_in_all_invocs(const struct nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_TESS_CTRL);
+
+   /* The pass works as follows:
+    * If all codepaths write tess factors, we can say that all
+    * invocations define tess factors.
+    *
+    * Each tess factor channel is tracked separately.
+    */
+   unsigned main_block_tf_writemask = 0; /* if main block writes tess factors */
+   unsigned cond_block_tf_writemask = 0; /* if cond block writes tess factors */
+
+   /* Initial value = true. Here the pass will accumulate results from
+    * multiple segments surrounded by barriers. If tess factors aren't
+    * written at all, it's a shader bug and we don't care if this will be
+    * true.
+    */
+   bool tessfactors_are_def_in_all_invocs = true;
+
+   nir_foreach_function (function, nir) {
+      if (function->impl) {
+         foreach_list_typed(nir_cf_node, node, node, &function->impl->body)
+         {
+            scan_tess_ctrl(node, &main_block_tf_writemask, &cond_block_tf_writemask,
+                           &tessfactors_are_def_in_all_invocs, false);
+         }
+      }
+   }
+
+   /* Accumulate the result for the last code segment separated by a
+    * barrier.
+    */
+   if (main_block_tf_writemask || cond_block_tf_writemask) {
+      tessfactors_are_def_in_all_invocs &= !(cond_block_tf_writemask & ~main_block_tf_writemask);
+   }
+
+   return tessfactors_are_def_in_all_invocs;
+}
 
 static const nir_src *get_texture_src(nir_tex_instr *instr, nir_tex_src_type type)
 {
@@ -464,7 +609,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->constbuf0_num_slots = nir->num_uniforms;
 
    if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
-      info->tessfactors_are_def_in_all_invocs = ac_are_tessfactors_def_in_all_invocs(nir);
+      info->tessfactors_are_def_in_all_invocs = are_tessfactors_def_in_all_invocs(nir);
    }
 
    info->uses_frontface = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
