@@ -21,13 +21,13 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "d3d12_nir_lower_texcmp.h"
+#include "nir.h"
 #include "nir_builder.h"
 #include "nir_builtin_builder.h"
 
 static bool
-lower_sample_tex_compare_filter(const nir_instr *instr,
-                                UNUSED const void *_options)
+nir_lower_tex_shadow_filter(const nir_instr *instr,
+                            UNUSED const void *_options)
 {
    if (instr->type != nir_instr_type_tex)
       return false;
@@ -69,12 +69,11 @@ strip_shadow_with_array(const struct glsl_type *type)
 typedef struct {
    unsigned n_states;
    enum compare_func *compare_func;
-   dxil_texture_swizzle_state *tex_swizzles;
+   nir_lower_tex_shadow_swizzle *tex_swizzles;
 } sampler_state;
 
 static nir_ssa_def *
-lower_sample_tex_compare_impl(nir_builder *b, nir_instr *instr,
-                              void *options)
+nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
 
 {
    nir_tex_instr *tex = nir_instr_as_tex(instr);
@@ -135,17 +134,17 @@ lower_sample_tex_compare_impl(nir_builder *b, nir_instr *instr,
 }
 
 bool
-d3d12_lower_sample_tex_compare(nir_shader *s,
-                               unsigned n_states,
-                               enum compare_func *compare_func,
-                               dxil_texture_swizzle_state *tex_swizzles)
+nir_lower_tex_shadow(nir_shader *s,
+                     unsigned n_states,
+                     enum compare_func *compare_func,
+                     nir_lower_tex_shadow_swizzle *tex_swizzles)
 {
    sampler_state state = {n_states, compare_func, tex_swizzles};
 
    bool result =
          nir_shader_lower_instructions(s,
-                                       lower_sample_tex_compare_filter,
-                                       lower_sample_tex_compare_impl,
+                                       nir_lower_tex_shadow_filter,
+                                       nir_lower_tex_shadow_impl,
                                        &state);
    return result;
 }

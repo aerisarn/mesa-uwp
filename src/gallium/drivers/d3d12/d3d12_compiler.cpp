@@ -1045,9 +1045,13 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
    if (key.fs.manual_depth_range)
       NIR_PASS_V(new_nir_variant, d3d12_lower_depth_range);
 
-   if (sel->compare_with_lod_bias_grad)
-      NIR_PASS_V(new_nir_variant, d3d12_lower_sample_tex_compare, key.n_texture_states,
-                 key.sampler_compare_funcs, key.swizzle_state);
+   if (sel->compare_with_lod_bias_grad) {
+      STATIC_ASSERT(sizeof(dxil_texture_swizzle_state) ==
+                    sizeof(nir_lower_tex_shadow_swizzle));
+
+      NIR_PASS_V(new_nir_variant, nir_lower_tex_shadow, key.n_texture_states,
+                 key.sampler_compare_funcs, (nir_lower_tex_shadow_swizzle *)key.swizzle_state);
+   }
 
    if (key.fs.cast_to_uint)
       NIR_PASS_V(new_nir_variant, d3d12_lower_uint_cast, false);

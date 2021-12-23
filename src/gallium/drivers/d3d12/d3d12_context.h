@@ -27,7 +27,6 @@
 #include "d3d12_batch.h"
 #include "d3d12_descriptor_pool.h"
 #include "d3d12_pipeline_state.h"
-#include "d3d12_nir_lower_texcmp.h"
 
 #include "dxil_nir_lower_int_samplers.h"
 
