@@ -85,15 +85,17 @@ nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
    tex->is_shadow = false;
 
    int comp_index = nir_tex_instr_src_index(tex, nir_tex_src_comparator);
+   unsigned sampler_binding = tex->texture_index;
 
    nir_deref_instr *sampler_deref = NULL;
    nir_variable *sampler = NULL;
 
    int sampler_index = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
-   assert(sampler_index >= 0);
-
-   sampler_deref = nir_instr_as_deref(tex->src[sampler_index].src.ssa->parent_instr);
-   sampler = nir_deref_instr_get_variable(sampler_deref);
+   if (sampler_index >= 0) {
+      sampler_deref = nir_instr_as_deref(tex->src[sampler_index].src.ssa->parent_instr);
+      sampler = nir_deref_instr_get_variable(sampler_deref);
+      sampler_binding = sampler ? sampler->data.binding : 0;
+   }
 
    /* NIR expects a vec4 result from the above texture instructions */
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
@@ -107,8 +109,8 @@ nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
 
    nir_ssa_def * result =
          nir_compare_func(b,
-                          sampler->data.binding < state->n_states ?
-                             state->compare_func[sampler->data.binding] : COMPARE_FUNC_ALWAYS,
+                          sampler_binding < state->n_states ?
+                             state->compare_func[sampler_binding] : COMPARE_FUNC_ALWAYS,
                           cmp, tex_r);
 
    result = nir_b2f32(b, result);
@@ -116,16 +118,18 @@ nir_lower_tex_shadow_impl(nir_builder *b, nir_instr *instr, void *options)
    nir_ssa_def *zero = nir_imm_float(b, 0.0);
 
    nir_ssa_def *lookup[6] = {result, NULL, NULL, NULL, zero, one};
-   nir_ssa_def *r[4] = {lookup[state->tex_swizzles[sampler->data.binding].swizzle_r],
-                        lookup[state->tex_swizzles[sampler->data.binding].swizzle_g],
-                        lookup[state->tex_swizzles[sampler->data.binding].swizzle_b],
-                        lookup[state->tex_swizzles[sampler->data.binding].swizzle_a]
+   nir_ssa_def *r[4] = {lookup[state->tex_swizzles[sampler_binding].swizzle_r],
+                        lookup[state->tex_swizzles[sampler_binding].swizzle_g],
+                        lookup[state->tex_swizzles[sampler_binding].swizzle_b],
+                        lookup[state->tex_swizzles[sampler_binding].swizzle_a]
                        };
 
    result = nir_vec(b, r, num_components);
 
-   sampler->type = strip_shadow_with_array(sampler->type);
-   sampler_deref->type = sampler->type;
+   if (sampler_index >= 0) {
+      sampler->type = strip_shadow_with_array(sampler->type);
+      sampler_deref->type = sampler->type;
+   }
 
    tex->is_shadow = false;
    nir_tex_instr_remove_src(tex, comp_index);
