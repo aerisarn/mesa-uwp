@@ -1033,7 +1033,6 @@ debian-clang:
       -Wno-error=implicit-const-int-float-conversion
       -Wno-error=missing-braces
       -Wno-error=overloaded-virtual
-      -Wno-error=sometimes-uninitialized
       -Wno-error=tautological-constant-out-of-range-compare
       -Wno-error=unused-const-variable
       -Wno-error=unused-private-field
