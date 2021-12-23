@@ -212,6 +212,26 @@ etna_get_fs(struct etna_context *ctx, struct etna_shader_key key)
 {
    const struct etna_shader_variant *old = ctx->shader.fs;
 
+   /* update the key if we need to run nir_lower_sample_tex_compare(..). */
+   if (ctx->screen->specs.halti < 2 &&
+       (ctx->dirty & (ETNA_DIRTY_SAMPLERS | ETNA_DIRTY_SAMPLER_VIEWS))) {
+
+      for (unsigned int i = 0; i < ctx->num_fragment_sampler_views; i++) {
+         if (ctx->sampler[i]->compare_mode == PIPE_TEX_COMPARE_NONE)
+            continue;
+
+         key.has_sample_tex_compare = 1;
+         key.num_texture_states = ctx->num_fragment_sampler_views;
+
+         key.tex_swizzle[i].swizzle_r = ctx->sampler_view[i]->swizzle_r;
+         key.tex_swizzle[i].swizzle_g = ctx->sampler_view[i]->swizzle_g;
+         key.tex_swizzle[i].swizzle_b = ctx->sampler_view[i]->swizzle_b;
+         key.tex_swizzle[i].swizzle_a = ctx->sampler_view[i]->swizzle_a;
+
+         key.tex_compare_func[i] = ctx->sampler[i]->compare_func;
+      }
+   }
+
    ctx->shader.fs = etna_shader_variant(ctx->shader.bind_fs, key, &ctx->debug);
 
    if (!ctx->shader.fs)
