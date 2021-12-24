@@ -921,6 +921,20 @@ gpu_shader5_and_sparse(const _mesa_glsl_parse_state *state)
    return gpu_shader5(state) && state->ARB_sparse_texture2_enable;
 }
 
+static bool
+texture_multisample_and_sparse(const _mesa_glsl_parse_state *state)
+{
+   return texture_multisample(state) &&
+      state->ARB_sparse_texture2_enable;
+}
+
+static bool
+texture_multisample_array_and_sparse(const _mesa_glsl_parse_state *state)
+{
+   return texture_multisample_array(state) &&
+      state->ARB_sparse_texture2_enable;
+}
+
 /** @} */
 
 /******************************************************************************/
@@ -1168,7 +1182,8 @@ private:
                                       const glsl_type *return_type,
                                       const glsl_type *sampler_type,
                                       const glsl_type *coord_type,
-                                      const glsl_type *offset_type = NULL);
+                                      const glsl_type *offset_type = NULL,
+                                      bool sparse = false);
 
    B0(EmitVertex)
    B0(EndPrimitive)
@@ -4115,6 +4130,50 @@ builtin_builder::create_builtins()
                 _texture(ir_txb, v130_derivatives_only_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DArray_type, glsl_type::vec3_type, TEX_OFFSET|TEX_SPARSE),
                 NULL);
 
+   add_function("sparseTexelFetchARB",
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2D_type,  glsl_type::ivec2_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2D_type, glsl_type::ivec2_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2D_type, glsl_type::ivec2_type, NULL, true),
+
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler3D_type,  glsl_type::ivec3_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler3D_type, glsl_type::ivec3_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler3D_type, glsl_type::ivec3_type, NULL, true),
+
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DRect_type,  glsl_type::ivec2_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DRect_type, glsl_type::ivec2_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DRect_type, glsl_type::ivec2_type, NULL, true),
+
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DArray_type,  glsl_type::ivec3_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DArray_type, glsl_type::ivec3_type, NULL, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DArray_type, glsl_type::ivec3_type, NULL, true),
+
+                _texelFetch(texture_multisample_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DMS_type,  glsl_type::ivec2_type, NULL, true),
+                _texelFetch(texture_multisample_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DMS_type, glsl_type::ivec2_type, NULL, true),
+                _texelFetch(texture_multisample_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DMS_type, glsl_type::ivec2_type, NULL, true),
+
+                _texelFetch(texture_multisample_array_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DMSArray_type,  glsl_type::ivec3_type, NULL, true),
+                _texelFetch(texture_multisample_array_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DMSArray_type, glsl_type::ivec3_type, NULL, true),
+                _texelFetch(texture_multisample_array_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DMSArray_type, glsl_type::ivec3_type, NULL, true),
+                NULL);
+
+   add_function("sparseTexelFetchOffsetARB",
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2D_type,  glsl_type::ivec2_type, glsl_type::ivec2_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2D_type, glsl_type::ivec2_type, glsl_type::ivec2_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2D_type, glsl_type::ivec2_type, glsl_type::ivec2_type, true),
+
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler3D_type,  glsl_type::ivec3_type, glsl_type::ivec3_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler3D_type, glsl_type::ivec3_type, glsl_type::ivec3_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler3D_type, glsl_type::ivec3_type, glsl_type::ivec3_type, true),
+
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DRect_type,  glsl_type::ivec2_type, glsl_type::ivec2_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DRect_type, glsl_type::ivec2_type, glsl_type::ivec2_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DRect_type, glsl_type::ivec2_type, glsl_type::ivec2_type, true),
+
+                _texelFetch(v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DArray_type,  glsl_type::ivec3_type, glsl_type::ivec2_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DArray_type, glsl_type::ivec3_type, glsl_type::ivec2_type, true),
+                _texelFetch(v130_desktop_and_sparse, glsl_type::uvec4_type, glsl_type::usampler2DArray_type, glsl_type::ivec3_type, glsl_type::ivec2_type, true),
+                NULL);
+
    add_function("sparseTextureLodOffsetARB",
                 _texture(ir_txl, v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2D_type,  glsl_type::vec2_type, TEX_OFFSET|TEX_SPARSE),
                 _texture(ir_txl, v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2D_type, glsl_type::vec2_type, TEX_OFFSET|TEX_SPARSE),
@@ -6994,14 +7053,17 @@ builtin_builder::_texelFetch(builtin_available_predicate avail,
                              const glsl_type *return_type,
                              const glsl_type *sampler_type,
                              const glsl_type *coord_type,
-                             const glsl_type *offset_type)
+                             const glsl_type *offset_type,
+                             bool sparse)
 {
    ir_variable *s = in_var(sampler_type, "sampler");
    ir_variable *P = in_var(coord_type, "P");
+   /* Sparse texture return residency info. */
+   const glsl_type *type = sparse ? glsl_type::int_type : return_type;
    /* The sampler and coordinate always exist; add optional parameters later. */
-   MAKE_SIG(return_type, avail, 2, s, P);
+   MAKE_SIG(type, avail, 2, s, P);
 
-   ir_texture *tex = new(mem_ctx) ir_texture(ir_txf);
+   ir_texture *tex = new(mem_ctx) ir_texture(ir_txf, sparse);
    tex->coordinate = var_ref(P);
    tex->set_sampler(var_ref(s), return_type);
 
@@ -7025,7 +7087,16 @@ builtin_builder::_texelFetch(builtin_available_predicate avail,
       tex->offset = var_ref(offset);
    }
 
-   body.emit(ret(tex));
+   if (sparse) {
+      ir_variable *texel = out_var(return_type, "texel");
+      sig->parameters.push_tail(texel);
+
+      ir_variable *r = body.make_temp(tex->type, "result");
+      body.emit(assign(r, tex));
+      body.emit(assign(texel, record_ref(r, "texel")));
+      body.emit(ret(record_ref(r, "code")));
+   } else
+      body.emit(ret(tex));
 
    return sig;
 }
