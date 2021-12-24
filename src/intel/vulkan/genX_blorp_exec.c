@@ -281,8 +281,10 @@ blorp_exec_on_render(struct blorp_batch *batch,
        !(batch->flags & BLORP_BATCH_NO_EMIT_DEPTH_STENCIL))
       genX(cmd_buffer_emit_gfx12_depth_wa)(cmd_buffer, &params->depth.surf);
 
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
    genX(flush_pipeline_select_3d)(cmd_buffer);
+
+   /* Apply any outstanding flushes in case pipeline select haven't. */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    genX(cmd_buffer_emit_gfx7_depth_flush)(cmd_buffer);
 
@@ -340,8 +342,11 @@ blorp_exec_on_compute(struct blorp_batch *batch,
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
    assert(cmd_buffer->pool->queue_family->queueFlags & VK_QUEUE_COMPUTE_BIT);
 
-   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
    genX(flush_pipeline_select_gpgpu)(cmd_buffer);
+
+   /* Apply any outstanding flushes in case pipeline select haven't. */
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
+
    blorp_exec(batch, params);
 
    cmd_buffer->state.push_constants_dirty |= VK_SHADER_STAGE_COMPUTE_BIT;
