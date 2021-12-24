@@ -5443,34 +5443,21 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     *   stalling PIPE_CONTROL command followed by another PIPE_CONTROL
     *   command to invalidate read only caches prior to programming
     *   MI_PIPELINE_SELECT command to change the Pipeline Select Mode.
+    *
+    * Note the cmd_buffer_apply_pipe_flushes will split this into two
+    * PIPE_CONTROLs.
     */
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-      pc.RenderTargetCacheFlushEnable  = true;
-      pc.DepthCacheFlushEnable         = true;
-#if GFX_VER >= 12
-      pc.HDCPipelineFlushEnable        = true;
-#else
-      pc.DCFlushEnable                 = true;
-#endif
-      pc.PostSyncOperation             = NoWrite;
-      pc.CommandStreamerStallEnable    = true;
-#if GFX_VER >= 12
-      /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must be
-       * set with any PIPE_CONTROL with Depth Flush Enable bit set.
-       */
-      pc.DepthStallEnable = true;
-#endif
-      anv_debug_dump_pc(pc);
-   }
-
-   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
-      pc.TextureCacheInvalidationEnable   = true;
-      pc.ConstantCacheInvalidationEnable  = true;
-      pc.StateCacheInvalidationEnable     = true;
-      pc.InstructionCacheInvalidateEnable = true;
-      pc.PostSyncOperation                = NoWrite;
-      anv_debug_dump_pc(pc);
-   }
+   anv_add_pending_pipe_bits(cmd_buffer,
+                             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT |
+                             ANV_PIPE_DEPTH_CACHE_FLUSH_BIT |
+                             ANV_PIPE_HDC_PIPELINE_FLUSH_BIT |
+                             ANV_PIPE_CS_STALL_BIT |
+                             ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT |
+                             ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT |
+                             ANV_PIPE_STATE_CACHE_INVALIDATE_BIT |
+                             ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT,
+                             "flush and invalidate for PIPELINE_SELECT");
+   genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
 #if GFX_VER >= 9
