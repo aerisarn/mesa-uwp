@@ -1162,7 +1162,8 @@ private:
                                    int flags = 0);
    ir_function_signature *_textureCubeArrayShadow(ir_texture_opcode opcode,
                                                   builtin_available_predicate avail,
-                                                  const glsl_type *x);
+                                                  const glsl_type *x,
+                                                  bool sparse = false);
    ir_function_signature *_texelFetch(builtin_available_predicate avail,
                                       const glsl_type *return_type,
                                       const glsl_type *sampler_type,
@@ -4019,6 +4020,8 @@ builtin_builder::create_builtins()
                 _texture(ir_tex, texture_cube_map_array_and_sparse, glsl_type::uvec4_type, glsl_type::usamplerCubeArray_type, glsl_type::vec4_type, TEX_SPARSE),
 
                 _texture(ir_tex, v130_desktop_and_sparse, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type, TEX_SPARSE),
+
+                _textureCubeArrayShadow(ir_tex, texture_cube_map_array_and_sparse, glsl_type::samplerCubeArrayShadow_type, true),
 
                 _texture(ir_tex, v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DRect_type,  glsl_type::vec2_type, TEX_SPARSE),
                 _texture(ir_tex, v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DRect_type, glsl_type::vec2_type, TEX_SPARSE),
@@ -6940,24 +6943,22 @@ builtin_builder::_texture(ir_texture_opcode opcode,
 ir_function_signature *
 builtin_builder::_textureCubeArrayShadow(ir_texture_opcode opcode,
                                          builtin_available_predicate avail,
-                                         const glsl_type *sampler_type)
+                                         const glsl_type *sampler_type,
+                                         bool sparse)
 {
    ir_variable *s = in_var(sampler_type, "sampler");
    ir_variable *P = in_var(glsl_type::vec4_type, "P");
    ir_variable *compare = in_var(glsl_type::float_type, "compare");
-   MAKE_SIG(glsl_type::float_type, avail, 3, s, P, compare);
+   const glsl_type *return_type = glsl_type::float_type;
+   /* Sparse texture return residency info. */
+   const glsl_type *type = sparse ? glsl_type::int_type : return_type;
+   MAKE_SIG(type, avail, 3, s, P, compare);
 
-   ir_texture *tex = new(mem_ctx) ir_texture(opcode);
-   tex->set_sampler(var_ref(s), glsl_type::float_type);
+   ir_texture *tex = new(mem_ctx) ir_texture(opcode, sparse);
+   tex->set_sampler(var_ref(s), return_type);
 
    tex->coordinate = var_ref(P);
    tex->shadow_comparator = var_ref(compare);
-
-   if (opcode == ir_txb) {
-      ir_variable *bias = in_var(glsl_type::float_type, "bias");
-      sig->parameters.push_tail(bias);
-      tex->lod_info.bias = var_ref(bias);
-   }
 
    if (opcode == ir_txl) {
       ir_variable *lod = in_var(glsl_type::float_type, "lod");
@@ -6965,7 +6966,25 @@ builtin_builder::_textureCubeArrayShadow(ir_texture_opcode opcode,
       tex->lod_info.lod = var_ref(lod);
    }
 
-   body.emit(ret(tex));
+   ir_variable *texel = NULL;
+   if (sparse) {
+      texel = out_var(return_type, "texel");
+      sig->parameters.push_tail(texel);
+   }
+
+   if (opcode == ir_txb) {
+      ir_variable *bias = in_var(glsl_type::float_type, "bias");
+      sig->parameters.push_tail(bias);
+      tex->lod_info.bias = var_ref(bias);
+   }
+
+   if (sparse) {
+      ir_variable *r = body.make_temp(tex->type, "result");
+      body.emit(assign(r, tex));
+      body.emit(assign(texel, record_ref(r, "texel")));
+      body.emit(ret(record_ref(r, "code")));
+   } else
+      body.emit(ret(tex));
 
    return sig;
 }
