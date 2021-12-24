@@ -34,17 +34,26 @@ typedef struct
    const nir_opt_offsets_options *options;
 } opt_offsets_state;
 
-static nir_ssa_def *
-try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *state, unsigned *out_const, uint32_t max)
+static nir_ssa_scalar
+try_extract_const_addition(nir_builder *b, nir_ssa_scalar val, opt_offsets_state *state, unsigned *out_const, uint32_t max)
 {
-   if (instr->type != nir_instr_type_alu)
-      return NULL;
+   val = nir_ssa_scalar_chase_movs(val);
 
-   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   if (!nir_ssa_scalar_is_alu(val))
+      return val;
+
+   nir_alu_instr *alu = nir_instr_as_alu(val.def->parent_instr);
    if (alu->op != nir_op_iadd ||
-       !nir_alu_src_is_trivial_ssa(alu, 0) ||
-       !nir_alu_src_is_trivial_ssa(alu, 1))
-      return NULL;
+       !alu->src[0].src.is_ssa ||
+       !alu->src[1].src.is_ssa ||
+       alu->src[0].negate || alu->src[0].abs ||
+       alu->src[1].negate || alu->src[1].abs)
+      return val;
+
+   nir_ssa_scalar src[2] = {
+      {alu->src[0].src.ssa, alu->src[0].swizzle[val.comp]},
+      {alu->src[1].src.ssa, alu->src[1].swizzle[val.comp]},
+   };
 
    /* Make sure that we aren't taking out an addition that could trigger
     * unsigned wrapping in a way that would change the semantics of the load.
@@ -58,39 +67,38 @@ try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *
       }
 
       /* Check if there can really be an unsigned wrap. */
-      nir_ssa_scalar src0 = {alu->src[0].src.ssa, 0};
-      nir_ssa_scalar src1 = {alu->src[1].src.ssa, 0};
-      uint32_t ub0 = nir_unsigned_upper_bound(b->shader, state->range_ht, src0, NULL);
-      uint32_t ub1 = nir_unsigned_upper_bound(b->shader, state->range_ht, src1, NULL);
+      uint32_t ub0 = nir_unsigned_upper_bound(b->shader, state->range_ht, src[0], NULL);
+      uint32_t ub1 = nir_unsigned_upper_bound(b->shader, state->range_ht, src[1], NULL);
 
       if ((UINT32_MAX - ub0) < ub1)
-         return NULL;
+         return val;
 
       /* We proved that unsigned wrap won't be possible, so we can set the flag too. */
       alu->no_unsigned_wrap = true;
    }
 
    for (unsigned i = 0; i < 2; ++i) {
-      if (nir_src_is_const(alu->src[i].src)) {
-         uint32_t offset = nir_src_as_uint(alu->src[i].src);
+      src[i] = nir_ssa_scalar_chase_movs(src[i]);
+      if (nir_ssa_scalar_is_const(src[i])) {
+         uint32_t offset = nir_ssa_scalar_as_uint(src[i]);
          if (offset + *out_const <= max) {
             *out_const += offset;
-            nir_ssa_def *replace_src =
-                try_extract_const_addition(b, alu->src[1 - i].src.ssa->parent_instr, state, out_const, max);
-            return replace_src ? replace_src : alu->src[1 - i].src.ssa;
+            return try_extract_const_addition(b, src[1 - i], state, out_const, max);
          }
       }
    }
 
-   nir_ssa_def *replace_src0 = try_extract_const_addition(b, alu->src[0].src.ssa->parent_instr, state, out_const, max);
-   nir_ssa_def *replace_src1 = try_extract_const_addition(b, alu->src[1].src.ssa->parent_instr, state, out_const, max);
-   if (!replace_src0 && !replace_src1)
-      return NULL;
+   uint32_t orig_offset = *out_const;
+   src[0] = try_extract_const_addition(b, src[0], state, out_const, max);
+   src[1] = try_extract_const_addition(b, src[1], state, out_const, max);
+   if (*out_const == orig_offset)
+      return val;
 
    b->cursor = nir_before_instr(&alu->instr);
-   replace_src0 = replace_src0 ? replace_src0 : nir_ssa_for_alu_src(b, alu, 0);
-   replace_src1 = replace_src1 ? replace_src1 : nir_ssa_for_alu_src(b, alu, 1);
-   return nir_iadd(b, replace_src0, replace_src1);
+   nir_ssa_def *r =
+          nir_iadd(b, nir_channel(b, src[0].def, src[0].comp),
+                   nir_channel(b, src[1].def, src[1].comp));
+   return (nir_ssa_scalar){r, 0};
 }
 
 static bool
@@ -113,8 +121,15 @@ try_fold_load_store(nir_builder *b,
       return false;
 
    if (!nir_src_is_const(*off_src)) {
-      replace_src = try_extract_const_addition(b, off_src->ssa->parent_instr, state, &off_const, max);
-   } else if (nir_src_as_uint(*off_src) && nir_src_as_uint(*off_src) < max) {
+      uint32_t add_offset = 0;
+      nir_ssa_scalar val = {.def = off_src->ssa, .comp = 0};
+      val = try_extract_const_addition(b, val, state, &add_offset, max);
+      if (add_offset == 0)
+         return false;
+      off_const += add_offset;
+      b->cursor = nir_before_instr(&intrin->instr);
+      replace_src = nir_channel(b, val.def, val.comp);
+   } else if (nir_src_as_uint(*off_src) && off_const + nir_src_as_uint(*off_src) <= max) {
       off_const += nir_src_as_uint(*off_src);
       b->cursor = nir_before_instr(&intrin->instr);
       replace_src = nir_imm_zero(b, off_src->ssa->num_components, off_src->ssa->bit_size);
