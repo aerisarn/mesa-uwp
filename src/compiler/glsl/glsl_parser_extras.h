@@ -737,6 +737,8 @@ struct _mesa_glsl_parse_state {
    bool ARB_shading_language_include_warn;
    bool ARB_shading_language_packing_enable;
    bool ARB_shading_language_packing_warn;
+   bool ARB_sparse_texture2_enable;
+   bool ARB_sparse_texture2_warn;
    bool ARB_tessellation_shader_enable;
    bool ARB_tessellation_shader_warn;
    bool ARB_texture_cube_map_array_enable;
