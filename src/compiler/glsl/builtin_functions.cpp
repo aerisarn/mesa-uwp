@@ -935,6 +935,13 @@ texture_multisample_array_and_sparse(const _mesa_glsl_parse_state *state)
       state->ARB_sparse_texture2_enable;
 }
 
+static bool
+shader_image_load_store_and_sparse(const _mesa_glsl_parse_state *state)
+{
+   return shader_image_load_store(state) &&
+      state->ARB_sparse_texture2_enable;
+}
+
 /** @} */
 
 /******************************************************************************/
@@ -1337,6 +1344,7 @@ enum image_function_flags {
    IMAGE_FUNCTION_AVAIL_ATOMIC_ADD = (1 << 9),
    IMAGE_FUNCTION_EXT_ONLY = (1 << 10),
    IMAGE_FUNCTION_SUPPORTS_SIGNED_DATA_TYPE = (1 << 11),
+   IMAGE_FUNCTION_SPARSE = (1 << 12),
 };
 
 } /* anonymous namespace */
@@ -5156,6 +5164,18 @@ builtin_builder::add_image_function(const char *name,
          continue;
       if ((types[i]->sampler_dimensionality != GLSL_SAMPLER_DIM_MS) && (flags & IMAGE_FUNCTION_MS_ONLY))
          continue;
+      if (flags & IMAGE_FUNCTION_SPARSE) {
+         switch (types[i]->sampler_dimensionality) {
+         case GLSL_SAMPLER_DIM_2D:
+         case GLSL_SAMPLER_DIM_3D:
+         case GLSL_SAMPLER_DIM_CUBE:
+         case GLSL_SAMPLER_DIM_RECT:
+         case GLSL_SAMPLER_DIM_MS:
+            break;
+         default:
+            continue;
+         }
+      }
       f->add_signature(_image(prototype, types[i], intrinsic_name,
                               num_arguments, flags, intrinsic_id));
    }
@@ -5268,6 +5288,17 @@ builtin_builder::add_image_functions(bool glsl)
                       &builtin_builder::_image_prototype, 1,
                       (atom_flags | IMAGE_FUNCTION_EXT_ONLY),
                       ir_intrinsic_image_atomic_dec_wrap);
+
+   /* ARB_sparse_texture2 */
+   add_image_function(glsl ? "sparseImageLoadARB" : "__intrinsic_image_sparse_load",
+                      "__intrinsic_image_sparse_load",
+                      &builtin_builder::_image_prototype, 0,
+                      (flags | IMAGE_FUNCTION_HAS_VECTOR_DATA_TYPE |
+                       IMAGE_FUNCTION_SUPPORTS_FLOAT_DATA_TYPE |
+                       IMAGE_FUNCTION_SUPPORTS_SIGNED_DATA_TYPE |
+                       IMAGE_FUNCTION_READ_ONLY |
+                       IMAGE_FUNCTION_SPARSE),
+                      ir_intrinsic_image_sparse_load);
 }
 
 ir_variable *
@@ -7869,6 +7900,9 @@ get_image_available_predicate(const glsl_type *type, unsigned flags)
    else if (flags & IMAGE_FUNCTION_EXT_ONLY)
       return shader_image_load_store_ext;
 
+   else if (flags & IMAGE_FUNCTION_SPARSE)
+      return shader_image_load_store_and_sparse;
+
    else
       return shader_image_load_store;
 }
@@ -7882,8 +7916,23 @@ builtin_builder::_image_prototype(const glsl_type *image_type,
       image_type->sampled_type,
       (flags & IMAGE_FUNCTION_HAS_VECTOR_DATA_TYPE ? 4 : 1),
       1);
-   const glsl_type *ret_type = (flags & IMAGE_FUNCTION_RETURNS_VOID ?
-                                glsl_type::void_type : data_type);
+
+   const glsl_type *ret_type;
+   if (flags & IMAGE_FUNCTION_RETURNS_VOID)
+      ret_type = glsl_type::void_type;
+   else if (flags & IMAGE_FUNCTION_SPARSE) {
+      if (flags & IMAGE_FUNCTION_EMIT_STUB)
+         ret_type = glsl_type::int_type;
+      else {
+         /* code holds residency info */
+         glsl_struct_field fields[2] = {
+            glsl_struct_field(glsl_type::int_type, "code"),
+            glsl_struct_field(data_type, "texel"),
+         };
+         ret_type = glsl_type::get_struct_instance(fields, 2, "struct");
+      }
+   } else
+      ret_type = data_type;
 
    /* Addressing arguments that are always present. */
    ir_variable *image = in_var(image_type, "image");
@@ -8003,6 +8052,25 @@ builtin_builder::_image(image_prototype_ctr prototype,
 
       if (flags & IMAGE_FUNCTION_RETURNS_VOID) {
          body.emit(call(f, NULL, sig->parameters));
+      } else if (flags & IMAGE_FUNCTION_SPARSE) {
+         ir_function_signature *intr_sig =
+            f->exact_matching_signature(NULL, &sig->parameters);
+         assert(intr_sig);
+
+         ir_variable *ret_val = body.make_temp(intr_sig->return_type, "_ret_val");
+         ir_dereference_record *texel_field = record_ref(ret_val, "texel");
+         ir_variable *texel = out_var(texel_field->type, "texel");
+
+         /* Add texel param to builtin function after call intrinsic function
+          * because they have different prototype:
+          *   struct {int code; gvec4 texel;} __intrinsic_image_sparse_load(in)
+          *   int sparseImageLoad(in, out texel)
+          */
+         body.emit(call(f, ret_val, sig->parameters));
+         sig->parameters.push_tail(texel);
+
+         body.emit(assign(texel, texel_field));
+         body.emit(ret(record_ref(ret_val, "code")));
       } else {
          ir_variable *ret_val =
             body.make_temp(sig->return_type, "_ret_val");
