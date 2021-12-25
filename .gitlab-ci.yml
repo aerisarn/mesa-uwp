@@ -1020,7 +1020,6 @@ debian-clang:
   variables:
     UNWIND: "enabled"
     C_ARGS: >
-      -Wno-error=absolute-value
       -Wno-error=constant-conversion
       -Wno-error=enum-conversion
       -Wno-error=implicit-const-int-float-conversion
