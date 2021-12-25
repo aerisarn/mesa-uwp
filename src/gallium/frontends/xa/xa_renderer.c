@@ -35,7 +35,7 @@
 #include "util/u_draw_quad.h"
 
 #define floatsEqual(x, y) (fabsf(x - y) <= 0.00001f * MIN2(fabsf(x), fabsf(y)))
-#define floatIsZero(x) (floatsEqual((x) + 1, 1))
+#define floatIsZero(x) (floatsEqual((x) + 1.0f, 1.0f))
 
 #define NUM_COMPONENTS 4
 
@@ -49,7 +49,7 @@ static inline boolean
 is_affine(const float *matrix)
 {
     return floatIsZero(matrix[2]) && floatIsZero(matrix[5])
-	&& floatsEqual(matrix[8], 1);
+	&& floatsEqual(matrix[8], 1.0f);
 }
 
 static inline void
