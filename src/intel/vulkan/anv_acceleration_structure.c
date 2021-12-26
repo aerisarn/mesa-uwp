@@ -34,10 +34,6 @@ anv_GetAccelerationStructureBuildSizesKHR(
    assert(pSizeInfo->sType ==
           VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR);
 
-   uint64_t max_prim_count = 0;
-   for (uint32_t i = 0; i < pBuildInfo->geometryCount; i++)
-      max_prim_count += pMaxPrimitiveCounts[i];
-
    pSizeInfo->accelerationStructureSize = 0; /* TODO */
 
    uint64_t cpu_build_scratch_size = 0; /* TODO */
