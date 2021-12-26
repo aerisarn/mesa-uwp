@@ -1199,7 +1199,6 @@ anv_descriptor_set_create(struct anv_device *device,
           sizeof(struct anv_descriptor) * set->descriptor_count);
 
    /* Go through and fill out immutable samplers if we have any */
-   struct anv_descriptor *desc = set->descriptors;
    for (uint32_t b = 0; b < layout->binding_count; b++) {
       if (layout->binding[b].immutable_samplers) {
          for (uint32_t i = 0; i < layout->binding[b].array_size; i++) {
@@ -1218,7 +1217,6 @@ anv_descriptor_set_create(struct anv_device *device,
                                                 b, i);
          }
       }
-      desc += layout->binding[b].array_size;
    }
 
    /* Allocate surface state for the buffer views. */
