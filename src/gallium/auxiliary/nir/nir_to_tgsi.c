@@ -2573,6 +2573,21 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
       NIR_PASS(progress, s, nir_opt_undef);
       NIR_PASS(progress, s, nir_opt_loop_unroll);
 
+      /* Try to fold addressing math into ubo_vec4's base to avoid load_consts
+       * and ALU ops for it.
+       */
+      static const nir_opt_offsets_options offset_options = {
+         .ubo_vec4_max = ~0,
+
+         /* No const offset in TGSI for shared accesses. */
+         .shared_max = 0,
+
+         /* unused intrinsics */
+         .uniform_max = 0,
+         .buffer_max = 0,
+      };
+      NIR_PASS(progress, s, nir_opt_offsets, &offset_options);
+
    } while (progress);
 }
 
