@@ -201,12 +201,6 @@ softpipe_find_fs_variant(struct softpipe_context *softpipe,
                          struct sp_fragment_shader *fs,
                          const struct sp_fragment_shader_variant_key *key);
 
-
-struct sp_fragment_shader_variant *
-softpipe_find_fs_variant(struct softpipe_context *softpipe,
-                         struct sp_fragment_shader *fs,
-                         const struct sp_fragment_shader_variant_key *key);
-
 void
 softpipe_prepare_vertex_sampling(struct softpipe_context *ctx,
                                  unsigned num,
