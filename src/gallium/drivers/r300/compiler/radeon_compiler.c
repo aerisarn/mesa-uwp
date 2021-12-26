@@ -400,10 +400,6 @@ void rc_run_compiler_passes(struct radeon_compiler *c, struct radeon_compiler_pa
 /* Executes a list of compiler passes given in the parameter 'list'. */
 void rc_run_compiler(struct radeon_compiler *c, struct radeon_compiler_pass *list)
 {
-	struct rc_program_stats s;
-
-	rc_get_stats(c, &s);
-
 	if (c->Debug & RC_DBG_LOG) {
 		fprintf(stderr, "%s: before compilation\n", shader_name[c->type]);
 		rc_print_program(&c->Program);
