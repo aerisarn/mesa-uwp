@@ -527,6 +527,9 @@
         *gallium_core_file_list
       when: on_success
     - changes:
+        *softpipe_file_list
+      when: on_success
+    - changes:
         *lavapipe_file_list
       when: on_success
     - changes:
