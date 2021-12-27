@@ -1260,8 +1260,8 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
       usage |= PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE;
 
    desc->fourcc = PipeFormatToVaFourcc(surf->buffer->buffer_format);
-   desc->width  = surf->buffer->width;
-   desc->height = surf->buffer->height;
+   desc->width  = surf->templat.width;
+   desc->height = surf->templat.height;
 
    for (p = 0; p < VL_MAX_SURFACES; p++) {
       struct winsys_handle whandle;
