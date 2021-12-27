@@ -122,6 +122,7 @@ struct radv_nir_compiler_options {
    bool enable_mrt_output_nan_fixup;
    bool wgp_mode;
    bool remap_spi_ps_input;
+   bool disable_aniso_single_level;
    enum radeon_family family;
    enum chip_class chip_class;
    const struct radeon_info *info;

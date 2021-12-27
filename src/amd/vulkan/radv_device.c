@@ -916,6 +916,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_REPORT_APU_AS_DGPU(false)
       DRI_CONF_RADV_REQUIRE_ETC2(false)
       DRI_CONF_RADV_DISABLE_HTILE_LAYERS(false)
+      DRI_CONF_RADV_DISABLE_ANISO_SINGLE_LEVEL(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
@@ -964,6 +965,9 @@ radv_init_dri_options(struct radv_instance *instance)
 
    instance->disable_htile_layers =
       driQueryOptionb(&instance->dri_options, "radv_disable_htile_layers");
+
+   instance->disable_aniso_single_level =
+      driQueryOptionb(&instance->dri_options, "radv_disable_aniso_single_level");
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -6096,10 +6100,15 @@ radv_init_sampler(struct radv_device *device, struct radv_sampler *sampler,
    sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR(border_color_ptr) |
                         S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(border_color)));
 
-   if (device->physical_device->rad_info.chip_class < GFX10) {
+   if (device->physical_device->rad_info.chip_class >= GFX10) {
+      sampler->state[2] |=
+         S_008F38_ANISO_OVERRIDE_GFX10(device->instance->disable_aniso_single_level);
+   } else {
       sampler->state[2] |=
          S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= GFX8) |
-         S_008F38_FILTER_PREC_FIX(1);
+         S_008F38_FILTER_PREC_FIX(1) |
+         S_008F38_ANISO_OVERRIDE_GFX8(device->instance->disable_aniso_single_level &&
+                                      device->physical_device->rad_info.chip_class >= GFX8);
    }
 }
 

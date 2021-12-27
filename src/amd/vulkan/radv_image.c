@@ -1183,6 +1183,18 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
    if (!(image->planes[0].surface.flags & RADEON_SURF_Z_OR_SBUFFER) &&
        image->planes[0].surface.meta_offset) {
       state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
+   } else {
+      if (device->instance->disable_aniso_single_level) {
+         /* The last dword is unused by hw. The shader uses it to clear
+          * bits in the first dword of sampler state.
+          */
+         if (device->physical_device->rad_info.chip_class <= GFX7 && image->info.samples <= 1) {
+            if (first_level == last_level)
+               state[7] = C_008F30_MAX_ANISO_RATIO;
+            else
+               state[7] = 0xffffffff;
+         }
+      }
    }
 
    /* Initialize the sampler view for FMASK. */
