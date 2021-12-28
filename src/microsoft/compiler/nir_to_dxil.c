@@ -2427,7 +2427,8 @@ emit_gep_for_index(struct ntd_context *ctx, const nir_variable *var,
 }
 
 static const struct dxil_value *
-get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_class class, unsigned base_binding)
+get_resource_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_class class,
+                    enum dxil_resource_kind kind)
 {
    /* This source might be one of:
     * 1. Constant resource index - just look it up in precomputed handle arrays
@@ -2440,18 +2441,25 @@ get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
    const struct dxil_value **handle_entry = NULL;
    if (const_block_index) {
       assert(ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN);
-      switch (class) {
-      case DXIL_RESOURCE_CLASS_CBV:
+      switch (kind) {
+      case DXIL_RESOURCE_KIND_CBUFFER:
          handle_entry = &ctx->cbv_handles[const_block_index->u32];
          break;
-      case DXIL_RESOURCE_CLASS_UAV:
-         handle_entry = &ctx->ssbo_handles[const_block_index->u32];
+      case DXIL_RESOURCE_KIND_RAW_BUFFER:
+         if (class == DXIL_RESOURCE_CLASS_UAV)
+            handle_entry = &ctx->ssbo_handles[const_block_index->u32];
+         else
+            handle_entry = &ctx->srv_handles[const_block_index->u32];
          break;
-      case DXIL_RESOURCE_CLASS_SRV:
-         handle_entry = &ctx->srv_handles[const_block_index->u32];
+      case DXIL_RESOURCE_KIND_SAMPLER:
+         handle_entry = &ctx->sampler_handles[const_block_index->u32];
          break;
       default:
-         unreachable("Unexpected resource class");
+         if (class == DXIL_RESOURCE_CLASS_UAV)
+            handle_entry = &ctx->image_handles[const_block_index->u32];
+         else
+            handle_entry = &ctx->srv_handles[const_block_index->u32];
+         break;
       }
    }
 
@@ -2463,8 +2471,18 @@ get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
       return value;
    }
 
+   unsigned space = 0;
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_GL &&
+       class == DXIL_RESOURCE_CLASS_UAV &&
+       kind != DXIL_RESOURCE_KIND_RAW_BUFFER) {
+      space = 1;
+   }
+
+   /* TODO: Figure out how to find this */
+   unsigned base_binding = 0;
+
    const struct dxil_value *handle = emit_createhandle_call(ctx, class, 
-      get_resource_id(ctx, class, 0, base_binding), value, !const_block_index);
+      get_resource_id(ctx, class, space, base_binding), value, !const_block_index);
    if (handle_entry)
       *handle_entry = handle;
 
@@ -2483,7 +2501,7 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
          class = DXIL_RESOURCE_CLASS_SRV;
    }
 
-   const struct dxil_value *handle = get_ubo_ssbo_handle(ctx, &intr->src[0], class, 0);
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], class, DXIL_RESOURCE_KIND_RAW_BUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
    if (!int32_undef || !handle || !offset)
@@ -2514,7 +2532,7 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_store_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[1], DXIL_RESOURCE_CLASS_UAV, 0);
+   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[1], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_RAW_BUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[2], 0, nir_type_uint);
    if (!handle || !offset)
@@ -2557,7 +2575,7 @@ emit_store_ssbo_masked(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       get_src(ctx, &intr->src[0], 0, nir_type_uint);
    const struct dxil_value *mask =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
-   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[2], DXIL_RESOURCE_CLASS_UAV, 0);
+   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[2], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_RAW_BUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[3], 0, nir_type_uint);
    if (!value || !mask || !handle || !offset)
@@ -2665,7 +2683,7 @@ emit_store_scratch(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_load_ubo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, 0);
+   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, DXIL_RESOURCE_KIND_CBUFFER);
    if (!handle)
       return false;
 
@@ -2701,7 +2719,7 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    assert(nir_dest_num_components(intr->dest) <= 4);
    assert(nir_dest_bit_size(intr->dest) == 32);
 
-   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, 0);
+   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, DXIL_RESOURCE_KIND_CBUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
 
@@ -2984,20 +3002,15 @@ emit_end_primitive(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle;
-   bool is_array = false;
-   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
-      assert(intr->intrinsic == nir_intrinsic_image_deref_store);
-      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
-      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
-   } else {
-      assert(intr->intrinsic == nir_intrinsic_image_store);
-      int binding = nir_src_as_int(intr->src[0]);
-      is_array = nir_intrinsic_image_array(intr);
-      handle = ctx->image_handles[binding];
-   }
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
+
+   bool is_array = false;
+   if (intr->intrinsic == nir_intrinsic_image_deref_store)
+      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
+   else
+      is_array = nir_intrinsic_image_array(intr);
 
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
    if (!int32_undef)
@@ -3049,20 +3062,15 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle;
-   bool is_array = false;
-   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
-      assert(intr->intrinsic == nir_intrinsic_image_deref_load);
-      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
-      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
-   } else {
-      assert(intr->intrinsic == nir_intrinsic_image_load);
-      int binding = nir_src_as_int(intr->src[0]);
-      is_array = nir_intrinsic_image_array(intr);
-      handle = ctx->image_handles[binding];
-   }
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
+
+   bool is_array = false;
+   if (intr->intrinsic == nir_intrinsic_image_deref_load)
+      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
+   else
+      is_array = nir_intrinsic_image_array(intr);
 
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
    if (!int32_undef)
@@ -3140,16 +3148,7 @@ emit_texture_size(struct ntd_context *ctx, struct texop_parameters *params)
 static bool
 emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *handle;
-   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
-      assert(intr->intrinsic == nir_intrinsic_image_deref_size);
-      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
-   }
-   else {
-      assert(intr->intrinsic == nir_intrinsic_image_size);
-      int binding = nir_src_as_int(intr->src[0]);
-      handle = ctx->image_handles[binding];
-   }
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
    if (!handle)
       return false;
 
@@ -3176,16 +3175,16 @@ emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_get_ssbo_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value* handle = NULL;
+   enum dxil_resource_class class = DXIL_RESOURCE_CLASS_UAV;
    if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
-      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
-   } else {
-      int binding = nir_src_as_int(intr->src[0]);
-      handle = ctx->ssbo_handles[binding];
+      nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
+      if (var && var->data.access & ACCESS_NON_WRITEABLE)
+         class = DXIL_RESOURCE_CLASS_SRV;
    }
-   
+
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], class, DXIL_RESOURCE_KIND_RAW_BUFFER);
    if (!handle)
-     return false;
+      return false;
 
    struct texop_parameters params = {
       .tex = handle,
@@ -3207,7 +3206,7 @@ static bool
 emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
                    enum dxil_atomic_op op, nir_alu_type type)
 {
-   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, 0);
+   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_RAW_BUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
    const struct dxil_value *value =
@@ -3237,7 +3236,7 @@ emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
 static bool
 emit_ssbo_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, 0);
+   const struct dxil_value* handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_RAW_BUFFER);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
    const struct dxil_value *cmpval =
