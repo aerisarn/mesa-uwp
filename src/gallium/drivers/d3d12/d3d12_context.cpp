@@ -1522,6 +1522,58 @@ d3d12_set_shader_buffers(struct pipe_context *pctx,
 }
 
 static void
+d3d12_decrement_image_bind_count(struct d3d12_context *ctx,
+                               enum pipe_shader_type shader,
+                               struct d3d12_resource *res) {
+   assert(res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_IMAGE] > 0);
+   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_IMAGE]--;
+}
+
+static void
+d3d12_increment_image_bind_count(struct d3d12_context *ctx,
+                               enum pipe_shader_type shader,
+                               struct d3d12_resource *res) {
+   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_IMAGE]++;
+}
+
+static void
+d3d12_set_shader_images(struct pipe_context *pctx,
+                        enum pipe_shader_type shader,
+                        unsigned start_slot, unsigned count,
+                        unsigned unbind_num_trailing_slots,
+                        const struct pipe_image_view *images)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   for (unsigned i = 0; i < count + unbind_num_trailing_slots; ++i) {
+      struct pipe_image_view *slot = &ctx->image_views[shader][i + start_slot];
+      if (slot->resource) {
+         d3d12_decrement_image_bind_count(ctx, shader, d3d12_resource(slot->resource));
+         pipe_resource_reference(&slot->resource, NULL);
+      }
+
+      if (i < count && images && images[i].resource) {
+         pipe_resource_reference(&slot->resource, images[i].resource);
+         *slot = images[i];
+         d3d12_increment_image_bind_count(ctx, shader, d3d12_resource(images[i].resource));
+      } else
+         memset(slot, 0, sizeof(*slot));
+   }
+
+   if (images) {
+      ctx->num_image_views[shader] = MAX2(ctx->num_image_views[shader], count + start_slot);
+   } else {
+      ctx->num_image_views[shader] = 0;
+      for (int i = start_slot + count - 1; i >= (int)start_slot; --i) {
+         if (ctx->image_views[shader][i].resource) {
+            ctx->num_image_views[shader] = i;
+            break;
+         }
+      }
+   }
+   ctx->shader_dirty[shader] |= D3D12_SHADER_DIRTY_IMAGE;
+}
+
+static void
 d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resource *res) {
    // For each shader type, if the resource is currently bound as CBV, SRV, or UAV
    // set the context shader_dirty bit.
@@ -1536,6 +1588,10 @@ d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resour
 
       if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_SSBO] > 0) {
          ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_SSBO;
+      }
+
+      if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_IMAGE] > 0) {
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_IMAGE;
       }
    }
 }
@@ -2032,6 +2088,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_stream_output_targets = d3d12_set_stream_output_targets;
 
    ctx->base.set_shader_buffers = d3d12_set_shader_buffers;
+   ctx->base.set_shader_images = d3d12_set_shader_images;
 
    ctx->base.get_timestamp = d3d12_get_timestamp;
 

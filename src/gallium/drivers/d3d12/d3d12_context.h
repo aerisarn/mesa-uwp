@@ -70,6 +70,7 @@ enum d3d12_shader_dirty_flags
    D3D12_SHADER_DIRTY_SAMPLER_VIEWS = (1 << 1),
    D3D12_SHADER_DIRTY_SAMPLERS      = (1 << 2),
    D3D12_SHADER_DIRTY_SSBO          = (1 << 3),
+   D3D12_SHADER_DIRTY_IMAGE         = (1 << 4),
 };
 
 #define D3D12_DIRTY_PSO (D3D12_DIRTY_BLEND | D3D12_DIRTY_RASTERIZER | D3D12_DIRTY_ZSA | \
@@ -79,7 +80,8 @@ enum d3d12_shader_dirty_flags
                          D3D12_DIRTY_STRIP_CUT_VALUE)
 
 #define D3D12_SHADER_DIRTY_ALL (D3D12_SHADER_DIRTY_CONSTBUF | D3D12_SHADER_DIRTY_SAMPLER_VIEWS | \
-                                D3D12_SHADER_DIRTY_SAMPLERS | D3D12_SHADER_DIRTY_SSBO)
+                                D3D12_SHADER_DIRTY_SAMPLERS | D3D12_SHADER_DIRTY_SSBO | \
+                                D3D12_SHADER_DIRTY_IMAGE)
 
 enum d3d12_binding_type {
    D3D12_BINDING_CONSTANT_BUFFER,
@@ -87,6 +89,7 @@ enum d3d12_binding_type {
    D3D12_BINDING_SAMPLER,
    D3D12_BINDING_STATE_VARS,
    D3D12_BINDING_SSBO,
+   D3D12_BINDING_IMAGE,
    D3D12_NUM_BINDING_TYPES
 };
 
@@ -185,6 +188,8 @@ struct d3d12_context {
    unsigned has_int_samplers;
    struct pipe_shader_buffer ssbo_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
    unsigned num_ssbo_views[PIPE_SHADER_TYPES];
+   struct pipe_image_view image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+   unsigned num_image_views[PIPE_SHADER_TYPES];
    struct d3d12_sampler_state *samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    unsigned num_samplers[PIPE_SHADER_TYPES];
    D3D12_INDEX_BUFFER_VIEW ibv;
