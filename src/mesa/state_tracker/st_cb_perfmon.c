@@ -151,7 +151,7 @@ reset_perf_monitor(struct st_perf_monitor_object *stm,
 struct gl_perf_monitor_object *
 st_NewPerfMonitor(struct gl_context *ctx)
 {
-   struct st_perf_monitor_object *stq = ST_CALLOC_STRUCT(st_perf_monitor_object);
+   struct st_perf_monitor_object *stq = CALLOC_STRUCT(st_perf_monitor_object);
    if (stq)
       return &stq->base;
    return NULL;
