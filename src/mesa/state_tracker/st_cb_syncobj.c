@@ -63,7 +63,7 @@ void st_delete_sync_object(struct gl_context *ctx,
    screen->fence_reference(screen, &so->fence, NULL);
    simple_mtx_destroy(&so->mutex);
    free(so->b.Label);
-   free(so);
+   FREE(so);
 }
 
 void st_fence_sync(struct gl_context *ctx, struct gl_sync_object *obj,

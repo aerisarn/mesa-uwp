@@ -76,7 +76,7 @@ delete_sampler_object(struct gl_context *ctx,
 {
    _mesa_delete_sampler_handles(ctx, sampObj);
    free(sampObj->Label);
-   free(sampObj);
+   FREE(sampObj);
 }
 
 /**

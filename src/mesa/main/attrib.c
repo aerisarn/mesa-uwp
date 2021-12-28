@@ -1490,7 +1490,7 @@ void
 _mesa_free_attrib_data(struct gl_context *ctx)
 {
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->AttribStack); i++)
-      free(ctx->AttribStack[i]);
+      FREE(ctx->AttribStack[i]);
 }
 
 

@@ -457,7 +457,7 @@ _mesa_delete_texture_handles(struct gl_context *ctx,
                                         *texHandleObj);
       }
       delete_texture_handle(ctx, (*texHandleObj)->handle);
-      free(*texHandleObj);
+      FREE(*texHandleObj);
    }
    util_dynarray_fini(&texObj->SamplerHandles);
 
@@ -465,7 +465,7 @@ _mesa_delete_texture_handles(struct gl_context *ctx,
    util_dynarray_foreach(&texObj->ImageHandles,
                          struct gl_image_handle_object *, imgHandleObj) {
       delete_image_handle(ctx, (*imgHandleObj)->handle);
-      free(*imgHandleObj);
+      FREE(*imgHandleObj);
    }
    util_dynarray_fini(&texObj->ImageHandles);
 }
@@ -493,7 +493,7 @@ _mesa_delete_sampler_handles(struct gl_context *ctx,
                                      *texHandleObj);
 
       delete_texture_handle(ctx, (*texHandleObj)->handle);
-      free(*texHandleObj);
+      FREE(*texHandleObj);
    }
    util_dynarray_fini(&sampObj->Handles);
 }

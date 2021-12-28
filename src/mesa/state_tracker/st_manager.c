@@ -502,7 +502,7 @@ st_framebuffer_create(struct st_context *st,
    /* add the color buffer */
    idx = stfb->Base._ColorDrawBufferIndexes[0];
    if (!st_framebuffer_add_renderbuffer(stfb, idx, prefer_srgb)) {
-      free(stfb);
+      FREE(stfb);
       return NULL;
    }
 
@@ -862,7 +862,7 @@ st_manager_destroy(struct st_manager *smapi)
    if (smPriv && smPriv->stfbi_ht) {
       _mesa_hash_table_destroy(smPriv->stfbi_ht, NULL);
       simple_mtx_destroy(&smPriv->st_mutex);
-      free(smPriv);
+      FREE(smPriv);
       smapi->st_manager_private = NULL;
    }
 }

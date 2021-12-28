@@ -466,7 +466,7 @@ free_shared_state(struct gl_context *ctx, struct gl_shared_state *shared)
    simple_mtx_destroy(&shared->Mutex);
    simple_mtx_destroy(&shared->TexMutex);
 
-   free(shared);
+   FREE(shared);
 }
 
 

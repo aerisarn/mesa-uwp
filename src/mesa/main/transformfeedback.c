@@ -216,7 +216,7 @@ _mesa_delete_transform_feedback_object(struct gl_context *ctx,
    }
 
    free(obj->Label);
-   free(obj);
+   FREE(obj);
 }
 
 /**

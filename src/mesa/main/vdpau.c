@@ -92,7 +92,7 @@ unregister_surface(struct set_entry *entry)
    }
 
    _mesa_set_remove(ctx->vdpSurfaces, entry);
-   free(surf);
+   FREE(surf);
 }
 
 void GLAPIENTRY

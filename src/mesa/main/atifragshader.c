@@ -73,7 +73,7 @@ _mesa_delete_ati_fragment_shader(struct gl_context *ctx, struct ati_fragment_sha
       free(s->SetupInst[i]);
    }
    _mesa_reference_program(ctx, &s->Program, NULL);
-   free(s);
+   FREE(s);
 }
 
 

@@ -264,7 +264,7 @@ delete_variant(struct st_context *st, struct st_variant *v, GLenum target)
       }
    }
 
-   free(v);
+   FREE(v);
 }
 
 static void
@@ -911,7 +911,7 @@ st_create_common_variant(struct st_context *st,
    }
    default:
       assert(!"unhandled shader type");
-      free(v);
+      FREE(v);
       return NULL;
    }
 
