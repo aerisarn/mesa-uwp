@@ -312,7 +312,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       dxil_sort_ps_outputs(nir);
    }
 
-   struct nir_to_dxil_options opts = {.vulkan_environment = true};
+   struct nir_to_dxil_options opts = {.environment = DXIL_ENVIRONMENT_VULKAN};
 
    struct blob dxil_blob;
    if (!nir_to_dxil(nir, &opts, &dxil_blob)) {

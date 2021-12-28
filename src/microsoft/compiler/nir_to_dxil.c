@@ -877,7 +877,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
    if (res_type == DXIL_RES_SRV_RAW)
       ctx->mod.raw_and_structured_buffers = true;
 
-   if (!ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
       for (unsigned i = 0; i < count; ++i) {
          const struct dxil_value *handle =
             emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SRV,
@@ -885,7 +885,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
          if (!handle)
             return false;
 
-         int idx = var->data.binding + i;
+         int idx = binding + i;
          ctx->srv_handles[idx] = handle;
       }
    }
@@ -955,7 +955,7 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
        ctx->mod.shader_kind != DXIL_COMPUTE_SHADER)
       ctx->mod.feats.uavs_at_every_stage = true;
 
-   if (!ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
       for (unsigned i = 0; i < count; ++i) {
          const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_UAV,
                                                                               id, binding + i, false);
@@ -1124,7 +1124,7 @@ emit_cbv(struct ntd_context *ctx, unsigned binding, unsigned space,
    util_dynarray_append(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *, cbv_meta);
    add_resource(ctx, DXIL_RES_CBV, &layout);
 
-   if (!ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
       for (unsigned i = 0; i < count; ++i) {
          const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_CBV,
                                                                               idx, binding + i, false);
@@ -1164,7 +1164,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
    util_dynarray_append(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *, sampler_meta);
    add_resource(ctx, DXIL_RES_SAMPLER, &layout);
 
-   if (!ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
       for (unsigned i = 0; i < count; ++i) {
          const struct dxil_value *handle =
             emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
@@ -1385,7 +1385,7 @@ emit_metadata(struct ntd_context *ctx)
    }
 
    const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader,
-                                                         ctx->opts->vulkan_environment);
+                                                         ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN);
 
    const struct dxil_mdnode *dx_entry_point = emit_entrypoint(ctx, main_func,
        "main", signatures, resources_node, shader_properties);
@@ -2424,7 +2424,7 @@ get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
    nir_const_value *const_block_index = nir_src_as_const_value(*src);
    const struct dxil_value **handle_entry = NULL;
    if (const_block_index) {
-      assert(!ctx->opts->vulkan_environment);
+      assert(ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN);
       switch (class) {
       case DXIL_RESOURCE_CLASS_CBV:
          handle_entry = &ctx->cbv_handles[const_block_index->u32];
@@ -2444,7 +2444,7 @@ get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
       return *handle_entry;
 
    const struct dxil_value *value = get_src_ssa(ctx, src->ssa, 0);
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       return value;
    }
 
@@ -2462,7 +2462,7 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
 
    enum dxil_resource_class class = DXIL_RESOURCE_CLASS_UAV;
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
       if (var && var->data.access & ACCESS_NON_WRITEABLE)
          class = DXIL_RESOURCE_CLASS_SRV;
@@ -2971,7 +2971,7 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *handle;
    bool is_array = false;
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       assert(intr->intrinsic == nir_intrinsic_image_deref_store);
       handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
       is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
@@ -3036,7 +3036,7 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *handle;
    bool is_array = false;
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       assert(intr->intrinsic == nir_intrinsic_image_deref_load);
       handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
       is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
@@ -3126,7 +3126,7 @@ static bool
 emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *handle;
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       assert(intr->intrinsic == nir_intrinsic_image_deref_size);
       handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
    }
@@ -3162,7 +3162,7 @@ static bool
 emit_get_ssbo_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value* handle = NULL;
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
    } else {
       int binding = nir_src_as_int(intr->src[0]);
@@ -3567,7 +3567,7 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    /* In the non-Vulkan environment, there's nothing to emit. Any references to
     * derefs will emit the necessary logic to handle scratch/shared GEP addressing
     */
-   if (!ctx->opts->vulkan_environment)
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN)
       return true;
 
    /* In the Vulkan environment, we don't have cached handles for textures or
@@ -3901,7 +3901,7 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 {
    struct texop_parameters params;
    memset(&params, 0, sizeof(struct texop_parameters));
-   if (!ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
       params.tex = ctx->srv_handles[instr->texture_index];
       params.sampler = ctx->sampler_handles[instr->sampler_index];
    }
@@ -3986,12 +3986,12 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          break;
 
       case nir_tex_src_texture_deref:
-         assert(ctx->opts->vulkan_environment);
+         assert(ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN);
          params.tex = get_src_ssa(ctx, instr->src[i].src.ssa, 0);
          break;
 
       case nir_tex_src_sampler_deref:
-         assert(ctx->opts->vulkan_environment);
+         assert(ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN);
          params.sampler = get_src_ssa(ctx, instr->src[i].src.ssa, 0);
          break;
 
@@ -4296,7 +4296,7 @@ prepare_phi_values(struct ntd_context *ctx)
 static bool
 emit_cbvs(struct ntd_context *ctx)
 {
-   if (ctx->shader->info.stage == MESA_SHADER_KERNEL || ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_GL) {
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ubo) {
          if (!emit_ubo_var(ctx, var))
             return false;
@@ -4405,7 +4405,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    }
 
    /* Handle read-only SSBOs as SRVs */
-   if (ctx->opts->vulkan_environment) {
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
          if ((var->data.access & ACCESS_NON_WRITEABLE) != 0) {
             unsigned count = 1;
@@ -4454,7 +4454,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
          return false;
       if (!emit_global_consts(ctx))
          return false;
-   } else if (ctx->opts->vulkan_environment) {
+   } else if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       /* Handle read/write SSBOs as UAVs */
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
          if ((var->data.access & ACCESS_NON_WRITEABLE) == 0) {

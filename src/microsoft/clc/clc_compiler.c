@@ -1166,6 +1166,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       .ubo_binding_offset = 0,
       .disable_math_refactoring = true,
       .num_kernel_globals = num_global_inputs,
+      .environment = DXIL_ENVIRONMENT_CL,
    };
 
    for (unsigned i = 0; i < out_dxil->kernel->num_args; i++) {
