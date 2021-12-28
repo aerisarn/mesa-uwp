@@ -976,8 +976,19 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
 static bool
 emit_uav_var(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
-   unsigned binding = var->data.binding;
-   unsigned space = var->data.descriptor_set;
+   unsigned binding, space;
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_GL) {
+      /* For GL, the image intrinsics are already lowered, using driver_location
+       * as the 0-based image index. Use space 1 so that we can keep using these
+       * NIR constants without having to remap them, and so they don't overlap
+       * SSBOs, which are also 0-based UAV bindings.
+       */
+      binding = var->data.driver_location;
+      space = 1;
+   } else {
+      binding = var->data.binding;
+      space = var->data.descriptor_set;
+   }
    enum dxil_component_type comp_type = dxil_get_comp_type(var->type);
    enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
    const char *name = var->name;
