@@ -117,6 +117,12 @@ private:
 
    /* map of ir_function_signature -> nir_function_overload */
    struct hash_table *overload_table;
+
+   /* set of nir_variable hold sparse result */
+   struct set *sparse_variable_set;
+
+   void adjust_sparse_variable(nir_deref_instr *var_deref, const glsl_type *type,
+                               nir_ssa_def *dest);
 };
 
 /*
@@ -270,6 +276,7 @@ nir_visitor::nir_visitor(const struct gl_constants *consts, nir_shader *shader)
    this->is_global = true;
    this->var_table = _mesa_pointer_hash_table_create(NULL);
    this->overload_table = _mesa_pointer_hash_table_create(NULL);
+   this->sparse_variable_set = _mesa_pointer_set_create(NULL);
    this->result = NULL;
    this->impl = NULL;
    this->deref = NULL;
@@ -281,6 +288,7 @@ nir_visitor::~nir_visitor()
 {
    _mesa_hash_table_destroy(this->var_table, NULL);
    _mesa_hash_table_destroy(this->overload_table, NULL);
+   _mesa_set_destroy(this->sparse_variable_set, NULL);
 }
 
 nir_deref_instr *
@@ -431,6 +439,29 @@ nir_visitor::constant_copy(ir_constant *ir, void *mem_ctx)
    }
 
    return ret;
+}
+
+void
+nir_visitor::adjust_sparse_variable(nir_deref_instr *var_deref, const glsl_type *type,
+                                    nir_ssa_def *dest)
+{
+   const glsl_type *texel_type = type->field_type("texel");
+   assert(texel_type);
+
+   assert(var_deref->deref_type == nir_deref_type_var);
+   nir_variable *var = var_deref->var;
+
+   /* Adjust nir_variable type to align with sparse nir instructions.
+    * Because the nir_variable is created with struct type from ir_variable,
+    * but sparse nir instructions output with vector dest.
+    */
+   var->type = glsl_type::get_instance(texel_type->get_base_type()->base_type,
+                                       dest->num_components, 1);
+
+   var_deref->type = var->type;
+
+   /* Record the adjusted variable. */
+   _mesa_set_add(this->sparse_variable_set, var);
 }
 
 static unsigned
@@ -1606,8 +1637,14 @@ nir_visitor::visit(ir_call *ir)
          unreachable("not reached");
       }
 
-      if (ir->return_deref)
-         nir_store_deref(&b, evaluate_deref(ir->return_deref), ret, ~0);
+      if (ir->return_deref) {
+         nir_deref_instr *ret_deref = evaluate_deref(ir->return_deref);
+
+         if (op == nir_intrinsic_image_deref_sparse_load)
+            adjust_sparse_variable(ret_deref, ir->return_deref->type, ret);
+
+         nir_store_deref(&b, ret_deref, ret, ~0);
+      }
 
       return;
    }
@@ -1659,12 +1696,13 @@ void
 nir_visitor::visit(ir_assignment *ir)
 {
    unsigned num_components = ir->lhs->type->vector_elements;
+   unsigned write_mask = ir->write_mask;
 
    b.exact = ir->lhs->variable_referenced()->data.invariant ||
              ir->lhs->variable_referenced()->data.precise;
 
    if ((ir->rhs->as_dereference() || ir->rhs->as_constant()) &&
-       (ir->write_mask == (1 << num_components) - 1 || ir->write_mask == 0)) {
+       (write_mask == BITFIELD_MASK(num_components) || write_mask == 0)) {
       nir_deref_instr *lhs = evaluate_deref(ir->lhs);
       nir_deref_instr *rhs = evaluate_deref(ir->rhs);
       enum gl_access_qualifier lhs_qualifiers = deref_get_qualifier(lhs);
@@ -1681,13 +1719,25 @@ nir_visitor::visit(ir_assignment *ir)
       return;
    }
 
-   assert(ir->rhs->type->is_scalar() || ir->rhs->type->is_vector());
+   ir_texture *tex = ir->rhs->as_texture();
+   bool is_sparse = tex && tex->is_sparse;
+
+   if (!is_sparse)
+      assert(ir->rhs->type->is_scalar() || ir->rhs->type->is_vector());
 
    ir->lhs->accept(this);
    nir_deref_instr *lhs_deref = this->deref;
    nir_ssa_def *src = evaluate_rvalue(ir->rhs);
 
-   if (ir->write_mask != (1 << num_components) - 1 && ir->write_mask != 0) {
+   if (is_sparse) {
+      adjust_sparse_variable(lhs_deref, tex->type, src);
+
+      /* correct component and mask because they are 0 for struct */
+      num_components = src->num_components;
+      write_mask = BITFIELD_MASK(num_components);
+   }
+
+   if (write_mask != BITFIELD_MASK(num_components) && write_mask != 0) {
       /* GLSL IR will give us the input to the write-masked assignment in a
        * single packed vector.  So, for example, if the writemask is xzw, then
        * we have to swizzle x -> x, y -> z, and z -> w and get the y component
@@ -1696,7 +1746,7 @@ nir_visitor::visit(ir_assignment *ir)
       unsigned swiz[4];
       unsigned component = 0;
       for (unsigned i = 0; i < 4; i++) {
-         swiz[i] = ir->write_mask & (1 << i) ? component++ : 0;
+         swiz[i] = write_mask & (1 << i) ? component++ : 0;
       }
       src = nir_swizzle(&b, src, swiz, num_components);
    }
@@ -1704,11 +1754,11 @@ nir_visitor::visit(ir_assignment *ir)
    enum gl_access_qualifier qualifiers = deref_get_qualifier(lhs_deref);
    if (ir->condition) {
       nir_push_if(&b, evaluate_rvalue(ir->condition));
-      nir_store_deref_with_access(&b, lhs_deref, src, ir->write_mask,
+      nir_store_deref_with_access(&b, lhs_deref, src, write_mask,
                                   qualifiers);
       nir_pop_if(&b, NULL);
    } else {
-      nir_store_deref_with_access(&b, lhs_deref, src, ir->write_mask,
+      nir_store_deref_with_access(&b, lhs_deref, src, write_mask,
                                   qualifiers);
    }
 }
@@ -2599,7 +2649,33 @@ nir_visitor::visit(ir_dereference_record *ir)
    int field_index = ir->field_idx;
    assert(field_index >= 0);
 
-   this->deref = nir_build_deref_struct(&b, this->deref, field_index);
+   /* sparse texture variable is a struct for ir_variable, but it has been
+    * converted to a vector for nir_variable.
+    */
+   if (this->deref->deref_type == nir_deref_type_var &&
+       _mesa_set_search(this->sparse_variable_set, this->deref->var)) {
+      nir_ssa_def *load = nir_load_deref(&b, this->deref);
+      assert(load->num_components >= 2);
+
+      nir_ssa_def *ssa;
+      const glsl_type *type = ir->record->type;
+      if (field_index == type->field_index("code")) {
+         /* last channel holds residency code */
+         ssa = nir_channel(&b, load, load->num_components - 1);
+      } else {
+         assert(field_index == type->field_index("texel"));
+
+         unsigned mask = BITFIELD_MASK(load->num_components - 1);
+         ssa = nir_channels(&b, load, mask);
+      }
+
+      /* still need to create a deref for return */
+      nir_variable *tmp =
+         nir_local_variable_create(this->impl, ir->type, "deref_tmp");
+      this->deref = nir_build_deref_var(&b, tmp);
+      nir_store_deref(&b, this->deref, ssa, ~0);
+   } else
+      this->deref = nir_build_deref_struct(&b, this->deref, field_index);
 }
 
 void
