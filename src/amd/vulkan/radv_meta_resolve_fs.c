@@ -1106,9 +1106,9 @@ radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer)
 
       emit_resolve(cmd_buffer, src_iview, dest_iview, &(VkOffset2D){0, 0}, &(VkOffset2D){0, 0},
                    &(VkExtent2D){fb->width, fb->height});
-   }
 
-   radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
+      radv_cmd_buffer_restore_subpass(cmd_buffer, subpass);
+   }
 
    radv_meta_restore(&saved_state, cmd_buffer);
 }
