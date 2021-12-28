@@ -1283,8 +1283,10 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
          dst_ptr += dst_binding_layout->size / 4;
 
          if (src_binding_layout->type != VK_DESCRIPTOR_TYPE_SAMPLER &&
-             src_binding_layout->type != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
-            /* Sampler descriptors don't have a buffer list. */
+             dst_binding_layout->type != VK_DESCRIPTOR_TYPE_SAMPLER &&
+             src_binding_layout->type != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR &&
+             dst_binding_layout->type != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
+            /* Sampler/acceleration structure descriptors don't have a buffer list. */
             dst_buffer_list[j] = src_buffer_list[j];
          }
       }
