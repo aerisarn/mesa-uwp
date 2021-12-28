@@ -2411,7 +2411,12 @@ nir_visitor::visit(ir_texture *ir)
    instr->is_shadow = ir->sampler->type->sampler_shadow;
    if (instr->is_shadow)
       instr->is_new_style_shadow = (ir->type->vector_elements == 1);
-   instr->dest_type = nir_get_nir_type_for_glsl_type(ir->type);
+
+   const glsl_type *dest_type
+      = ir->is_sparse ? ir->type->field_type("texel") : ir->type;
+   assert(dest_type != glsl_type::error_type);
+   instr->dest_type = nir_get_nir_type_for_glsl_type(dest_type);
+   instr->is_sparse = ir->is_sparse;
 
    nir_deref_instr *sampler_deref = evaluate_deref(ir->sampler);
 
@@ -2523,7 +2528,7 @@ nir_visitor::visit(ir_texture *ir)
 
    assert(src_number == num_srcs);
 
-   unsigned bit_size = glsl_get_bit_size(ir->type);
+   unsigned bit_size = glsl_get_bit_size(dest_type);
    add_instr(&instr->instr, nir_tex_instr_dest_size(instr), bit_size);
 }
 
