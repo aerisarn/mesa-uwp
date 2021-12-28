@@ -410,7 +410,8 @@ struct ntd_context {
    const struct dxil_value *srv_handles[MAX_SRVS];
 
    struct util_dynarray uav_metadata_nodes;
-   const struct dxil_value *uav_handles[MAX_UAVS];
+   const struct dxil_value *ssbo_handles[MAX_UAVS];
+   const struct dxil_value *image_handles[MAX_UAVS];
 
    struct util_dynarray cbv_metadata_nodes;
    const struct dxil_value *cbv_handles[MAX_CBVS];
@@ -962,7 +963,10 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
          if (!handle)
             return false;
 
-         ctx->uav_handles[binding + i] = handle;
+         if (res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
+            ctx->ssbo_handles[binding + i] = handle;
+         else
+            ctx->image_handles[binding + i] = handle;
       }
    }
 
@@ -2430,7 +2434,7 @@ get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
          handle_entry = &ctx->cbv_handles[const_block_index->u32];
          break;
       case DXIL_RESOURCE_CLASS_UAV:
-         handle_entry = &ctx->uav_handles[const_block_index->u32];
+         handle_entry = &ctx->ssbo_handles[const_block_index->u32];
          break;
       case DXIL_RESOURCE_CLASS_SRV:
          handle_entry = &ctx->srv_handles[const_block_index->u32];
@@ -2979,7 +2983,7 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       assert(intr->intrinsic == nir_intrinsic_image_store);
       int binding = nir_src_as_int(intr->src[0]);
       is_array = nir_intrinsic_image_array(intr);
-      handle = ctx->uav_handles[binding];
+      handle = ctx->image_handles[binding];
    }
    if (!handle)
       return false;
@@ -3044,7 +3048,7 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       assert(intr->intrinsic == nir_intrinsic_image_load);
       int binding = nir_src_as_int(intr->src[0]);
       is_array = nir_intrinsic_image_array(intr);
-      handle = ctx->uav_handles[binding];
+      handle = ctx->image_handles[binding];
    }
    if (!handle)
       return false;
@@ -3133,7 +3137,7 @@ emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    else {
       assert(intr->intrinsic == nir_intrinsic_image_size);
       int binding = nir_src_as_int(intr->src[0]);
-      handle = ctx->uav_handles[binding];
+      handle = ctx->image_handles[binding];
    }
    if (!handle)
       return false;
@@ -3166,7 +3170,7 @@ emit_get_ssbo_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
    } else {
       int binding = nir_src_as_int(intr->src[0]);
-      handle = ctx->uav_handles[binding];
+      handle = ctx->ssbo_handles[binding];
    }
    
    if (!handle)
