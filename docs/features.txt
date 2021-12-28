@@ -313,7 +313,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_shading_language_include                       DONE
   GL_ARB_sparse_buffer                                  DONE (radeonsi/gfx9+, zink)
   GL_ARB_sparse_texture                                 DONE (radeonsi/gfx9+)
-  GL_ARB_sparse_texture2                                not started
+  GL_ARB_sparse_texture2                                DONE (radeonsi/gfx9+)
   GL_ARB_sparse_texture_clamp                           not started
   GL_ARB_texture_filter_minmax                          DONE (nvc0/gm200+, zink)
   GL_EXT_color_buffer_half_float                        DONE (freedreno, i965, iris, llvmpipe, nv50, nvc0, radeonsi, zink)
