@@ -936,6 +936,7 @@ ir_texture *
 ir_reader::read_texture(s_expression *expr)
 {
    s_symbol *tag = NULL;
+   s_expression *s_sparse = NULL;
    s_expression *s_type = NULL;
    s_expression *s_sampler = NULL;
    s_expression *s_coord = NULL;
@@ -949,23 +950,23 @@ ir_reader::read_texture(s_expression *expr)
    ir_texture_opcode op = ir_tex; /* silence warning */
 
    s_pattern tex_pattern[] =
-      { "tex", s_type, s_sampler, s_coord, s_offset, s_proj, s_shadow };
+      { "tex", s_type, s_sampler, s_coord, s_sparse, s_offset, s_proj, s_shadow };
    s_pattern lod_pattern[] =
       { "lod", s_type, s_sampler, s_coord };
    s_pattern txf_pattern[] =
-      { "txf", s_type, s_sampler, s_coord, s_offset, s_lod };
+      { "txf", s_type, s_sampler, s_coord, s_sparse, s_offset, s_lod };
    s_pattern txf_ms_pattern[] =
-      { "txf_ms", s_type, s_sampler, s_coord, s_sample_index };
+      { "txf_ms", s_type, s_sampler, s_coord, s_sparse, s_sample_index };
    s_pattern txs_pattern[] =
       { "txs", s_type, s_sampler, s_lod };
    s_pattern tg4_pattern[] =
-      { "tg4", s_type, s_sampler, s_coord, s_offset, s_component };
+      { "tg4", s_type, s_sampler, s_coord, s_sparse, s_offset, s_component };
    s_pattern query_levels_pattern[] =
       { "query_levels", s_type, s_sampler };
    s_pattern texture_samples_pattern[] =
       { "samples", s_type, s_sampler };
    s_pattern other_pattern[] =
-      { tag, s_type, s_sampler, s_coord, s_offset, s_proj, s_shadow, s_lod };
+      { tag, s_type, s_sampler, s_coord, s_sparse, s_offset, s_proj, s_shadow, s_lod };
 
    if (MATCH(expr, lod_pattern)) {
       op = ir_lod;
@@ -992,7 +993,17 @@ ir_reader::read_texture(s_expression *expr)
       return NULL;
    }
 
-   ir_texture *tex = new(mem_ctx) ir_texture(op);
+   bool is_sparse = false;
+   if (s_sparse) {
+      s_int *sparse = SX_AS_INT(s_sparse);
+      if (sparse == NULL) {
+         ir_read_error(NULL, "when reading sparse");
+         return NULL;
+      }
+      is_sparse = sparse->value();
+   }
+
+   ir_texture *tex = new(mem_ctx) ir_texture(op, is_sparse);
 
    // Read return type
    const glsl_type *type = read_type(s_type);
@@ -1008,6 +1019,15 @@ ir_reader::read_texture(s_expression *expr)
       ir_read_error(NULL, "when reading sampler in (%s ...)",
 		    tex->opcode_string());
       return NULL;
+   }
+
+   if (is_sparse) {
+      const glsl_type *texel = type->field_type("texel");
+      if (texel == glsl_type::error_type) {
+         ir_read_error(NULL, "invalid type for sparse texture");
+         return NULL;
+      }
+      type = texel;
    }
    tex->set_sampler(sampler, type);
 

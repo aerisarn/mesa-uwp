@@ -1878,30 +1878,30 @@ enum ir_texture_opcode {
  * selected from \c ir_texture_opcodes.  In the printed IR, these will
  * appear as:
  *
- *                                    Texel offset (0 or an expression)
- *                                    | Projection divisor
- *                                    | |  Shadow comparator
- *                                    | |  |
- *                                    v v  v
- * (tex <type> <sampler> <coordinate> 0 1 ( ))
- * (txb <type> <sampler> <coordinate> 0 1 ( ) <bias>)
- * (txl <type> <sampler> <coordinate> 0 1 ( ) <lod>)
- * (txd <type> <sampler> <coordinate> 0 1 ( ) (dPdx dPdy))
- * (txf <type> <sampler> <coordinate> 0       <lod>)
+ *                                             Texel offset (0 or an expression)
+ *                                             | Projection divisor
+ *                                             | |  Shadow comparator
+ *                                             | |  |
+ *                                             v v  v
+ * (tex <type> <sampler> <coordinate> <sparse> 0 1 ( ))
+ * (txb <type> <sampler> <coordinate> <sparse> 0 1 ( ) <bias>)
+ * (txl <type> <sampler> <coordinate> <sparse> 0 1 ( ) <lod>)
+ * (txd <type> <sampler> <coordinate> <sparse> 0 1 ( ) (dPdx dPdy))
+ * (txf <type> <sampler> <coordinate> <sparse> 0	      <lod>)
  * (txf_ms
- *      <type> <sampler> <coordinate>         <sample_index>)
+ *      <type> <sampler> <coordinate> <sparse>         <sample_index>)
  * (txs <type> <sampler> <lod>)
  * (lod <type> <sampler> <coordinate>)
- * (tg4 <type> <sampler> <coordinate> <offset> <component>)
+ * (tg4 <type> <sampler> <coordinate> <sparse> <offset> <component>)
  * (query_levels <type> <sampler>)
  * (samples_identical <sampler> <coordinate>)
  */
 class ir_texture : public ir_rvalue {
 public:
-   ir_texture(enum ir_texture_opcode op)
+   ir_texture(enum ir_texture_opcode op, bool sparse = false)
       : ir_rvalue(ir_type_texture),
         op(op), sampler(NULL), coordinate(NULL), projector(NULL),
-        shadow_comparator(NULL), offset(NULL)
+        shadow_comparator(NULL), offset(NULL), is_sparse(sparse)
    {
       memset(&lod_info, 0, sizeof(lod_info));
    }
@@ -1972,6 +1972,9 @@ public:
 	 ir_rvalue *dPdy;	/**< Partial derivative of coordinate wrt Y */
       } grad;
    } lod_info;
+
+   /* Whether a sparse texture */
+   bool is_sparse;
 };
 
 

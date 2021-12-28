@@ -210,7 +210,7 @@ ir_dereference_record::clone(void *mem_ctx, struct hash_table *ht) const
 ir_texture *
 ir_texture::clone(void *mem_ctx, struct hash_table *ht) const
 {
-   ir_texture *new_tex = new(mem_ctx) ir_texture(this->op);
+   ir_texture *new_tex = new(mem_ctx) ir_texture(this->op, this->is_sparse);
    new_tex->type = this->type;
 
    new_tex->sampler = this->sampler->clone(mem_ctx, ht);

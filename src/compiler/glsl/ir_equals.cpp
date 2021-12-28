@@ -137,6 +137,9 @@ ir_texture::equals(const ir_instruction *ir, enum ir_node_type ignore) const
    if (op != other->op)
       return false;
 
+   if (is_sparse != other->is_sparse)
+      return false;
+
    if (!possibly_null_equals(coordinate, other->coordinate, ignore))
       return false;
 

@@ -321,6 +321,9 @@ void ir_print_visitor::visit(ir_texture *ir)
 
       fprintf(f, " ");
 
+      if (ir->op != ir_lod && ir->op != ir_samples_identical)
+         fprintf(f, "%d ", ir->is_sparse);
+
       if (ir->offset != NULL) {
 	 ir->offset->accept(this);
       } else {
