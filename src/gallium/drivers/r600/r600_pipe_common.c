@@ -782,7 +782,9 @@ static void r600_disk_cache_create(struct r600_common_screen *rscreen)
 	uint64_t shader_debug_flags =
 		rscreen->debug_flags &
 		(DBG_FS_CORRECT_DERIVS_AFTER_KILL |
-		 DBG_UNSAFE_MATH);
+		 DBG_UNSAFE_MATH |
+		 DBG_NIR |
+		 DBG_NIR_PREFERRED);
 
 	rscreen->disk_shader_cache =
 		disk_cache_create(r600_get_family_name(rscreen),
