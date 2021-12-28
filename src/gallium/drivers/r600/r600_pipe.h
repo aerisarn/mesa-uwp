@@ -261,7 +261,6 @@ struct r600_gs_rings_state {
 #define DBG_NO_CP_DMA		(1 << 30)
 /* shader backend */
 #define DBG_NO_SB		(1 << 21)
-#define DBG_SB_CS		(1 << 22)
 #define DBG_SB_DRY_RUN	(1 << 23)
 #define DBG_SB_STAT		(1 << 24)
 #define DBG_SB_DUMP		(1 << 25)
