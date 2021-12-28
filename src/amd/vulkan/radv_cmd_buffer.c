@@ -4689,7 +4689,6 @@ radv_bind_descriptor_set(struct radv_cmd_buffer *cmd_buffer, VkPipelineBindPoint
    radv_set_descriptor_set(cmd_buffer, bind_point, set, idx);
 
    assert(set);
-   assert(!(set->header.layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
 
    if (!cmd_buffer->device->use_global_bo_list) {
       for (unsigned j = 0; j < set->header.buffer_count; ++j)
@@ -4727,7 +4726,7 @@ radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pi
          radv_bind_descriptor_set(cmd_buffer, pipelineBindPoint, set, set_idx);
       }
 
-      for (unsigned j = 0; j < set->header.layout->dynamic_offset_count; ++j, ++dyn_idx) {
+      for (unsigned j = 0; j < layout->set[set_idx].dynamic_offset_count; ++j, ++dyn_idx) {
          unsigned idx = j + layout->set[i + firstSet].dynamic_offset_start;
          uint32_t *dst = descriptors_state->dynamic_buffers + idx * 4;
          assert(dyn_idx < dynamicOffsetCount);
@@ -4753,7 +4752,7 @@ radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pi
             }
          }
 
-         cmd_buffer->push_constant_stages |= set->header.layout->dynamic_shader_stages;
+         cmd_buffer->push_constant_stages |= layout->set[set_idx].dynamic_offset_stages;
       }
    }
 }
