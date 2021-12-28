@@ -867,6 +867,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
       res_type = DXIL_RES_SRV_TYPED;
    }
    const struct dxil_type *res_type_as_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, false /* readwrite */);
+   res_type_as_type = dxil_module_get_array_type(&ctx->mod, res_type_as_type, count);
    const struct dxil_mdnode *srv_meta = emit_srv_metadata(&ctx->mod, res_type_as_type, var->name,
                                                           &layout, comp_type, res_kind);
 
@@ -939,6 +940,7 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
    resource_array_layout layout = { id, binding, count, space };
 
    const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, true /* readwrite */);
+   res_type = dxil_module_get_array_type(&ctx->mod, res_type, count);
    const struct dxil_mdnode *uav_meta = emit_uav_metadata(&ctx->mod, res_type, name,
                                                           &layout, comp_type, res_kind);
 
