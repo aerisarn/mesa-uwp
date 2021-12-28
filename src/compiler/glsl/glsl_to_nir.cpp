@@ -1054,6 +1054,9 @@ nir_visitor::visit(ir_call *ir)
       case ir_intrinsic_image_samples:
          op = nir_intrinsic_image_deref_samples;
          break;
+      case ir_intrinsic_image_sparse_load:
+         op = nir_intrinsic_image_deref_sparse_load;
+         break;
       case ir_intrinsic_ssbo_store:
       case ir_intrinsic_ssbo_load:
       case ir_intrinsic_ssbo_atomic_add:
@@ -1296,7 +1299,8 @@ nir_visitor::visit(ir_call *ir)
       case nir_intrinsic_image_deref_samples:
       case nir_intrinsic_image_deref_size:
       case nir_intrinsic_image_deref_atomic_inc_wrap:
-      case nir_intrinsic_image_deref_atomic_dec_wrap: {
+      case nir_intrinsic_image_deref_atomic_dec_wrap:
+      case nir_intrinsic_image_deref_sparse_load: {
          /* Set the image variable dereference. */
          exec_node *param = ir->actual_parameters.get_head();
          ir_dereference *image = (ir_dereference *)param;
@@ -1313,15 +1317,24 @@ nir_visitor::visit(ir_call *ir)
 
          /* Set the intrinsic destination. */
          if (ir->return_deref) {
-            unsigned num_components = ir->return_deref->type->vector_elements;
+            unsigned num_components;
+            if (op == nir_intrinsic_image_deref_sparse_load) {
+               const glsl_type *dest_type =
+                  ir->return_deref->type->field_type("texel");
+               /* One extra component to hold residency code. */
+               num_components = dest_type->vector_elements + 1;
+            } else
+               num_components = ir->return_deref->type->vector_elements;
+
             nir_ssa_dest_init(&instr->instr, &instr->dest,
                               num_components, 32, NULL);
          }
 
          if (op == nir_intrinsic_image_deref_size) {
             instr->num_components = instr->dest.ssa.num_components;
-         } else if (op == nir_intrinsic_image_deref_load) {
-            instr->num_components = 4;
+         } else if (op == nir_intrinsic_image_deref_load ||
+                    op == nir_intrinsic_image_deref_sparse_load) {
+            instr->num_components = instr->dest.ssa.num_components;
             nir_intrinsic_set_dest_type(instr,
                nir_get_nir_type_for_glsl_base_type(type->sampled_type));
          } else if (op == nir_intrinsic_image_deref_store) {
@@ -1374,7 +1387,8 @@ nir_visitor::visit(ir_call *ir)
             instr->src[3] =
                nir_src_for_ssa(evaluate_rvalue((ir_dereference *)param));
             param = param->get_next();
-         } else if (op == nir_intrinsic_image_deref_load) {
+         } else if (op == nir_intrinsic_image_deref_load ||
+                    op == nir_intrinsic_image_deref_sparse_load) {
             instr->src[3] = nir_src_for_ssa(nir_imm_int(&b, 0)); /* LOD */
          }
 
