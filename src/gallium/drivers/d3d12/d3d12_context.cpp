@@ -1469,18 +1469,18 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
 }
 
 static void
-d3d12_decrement_uav_bind_count(struct d3d12_context *ctx,
+d3d12_decrement_ssbo_bind_count(struct d3d12_context *ctx,
                                enum pipe_shader_type shader,
                                struct d3d12_resource *res) {
-   assert(res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_UAV] > 0);
-   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_UAV]--;
+   assert(res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_SSBO] > 0);
+   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_SSBO]--;
 }
 
 static void
-d3d12_increment_uav_bind_count(struct d3d12_context *ctx,
+d3d12_increment_ssbo_bind_count(struct d3d12_context *ctx,
                                enum pipe_shader_type shader,
                                struct d3d12_resource *res) {
-   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_UAV]++;
+   res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_SSBO]++;
 }
 
 static void
@@ -1494,7 +1494,7 @@ d3d12_set_shader_buffers(struct pipe_context *pctx,
    for (unsigned i = 0; i < count; ++i) {
       struct pipe_shader_buffer *slot = &ctx->ssbo_views[shader][i + start_slot];
       if (slot->buffer) {
-         d3d12_decrement_uav_bind_count(ctx, shader, d3d12_resource(slot->buffer));
+         d3d12_decrement_ssbo_bind_count(ctx, shader, d3d12_resource(slot->buffer));
          pipe_resource_reference(&slot->buffer, NULL);
       }
 
@@ -1502,7 +1502,7 @@ d3d12_set_shader_buffers(struct pipe_context *pctx,
          pipe_resource_reference(&slot->buffer, buffers[i].buffer);
          slot->buffer_offset = buffers[i].buffer_offset;
          slot->buffer_size = buffers[i].buffer_size;
-         d3d12_increment_uav_bind_count(ctx, shader, d3d12_resource(buffers[i].buffer));
+         d3d12_increment_ssbo_bind_count(ctx, shader, d3d12_resource(buffers[i].buffer));
       } else
          memset(slot, 0, sizeof(*slot));
    }
@@ -1518,7 +1518,7 @@ d3d12_set_shader_buffers(struct pipe_context *pctx,
          }
       }
    }
-   ctx->shader_dirty[shader] |= D3D12_SHADER_DIRTY_UAVS;
+   ctx->shader_dirty[shader] |= D3D12_SHADER_DIRTY_SSBO;
 }
 
 static void
@@ -1534,8 +1534,8 @@ d3d12_invalidate_context_bindings(struct d3d12_context *ctx, struct d3d12_resour
          ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_SAMPLER_VIEWS;
       }
 
-      if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_UAV] > 0) {
-         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_UAVS;
+      if (res->bind_counts[i][D3D12_RESOURCE_BINDING_TYPE_SSBO] > 0) {
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_SSBO;
       }
    }
 }

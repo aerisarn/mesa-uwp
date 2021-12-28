@@ -139,7 +139,7 @@ fill_srv_descriptors(struct d3d12_context *ctx,
 }
 
 static D3D12_GPU_DESCRIPTOR_HANDLE
-fill_uav_descriptors(struct d3d12_context *ctx,
+fill_ssbo_descriptors(struct d3d12_context *ctx,
                      const struct d3d12_shader *shader,
                      int stage)
 {
@@ -341,9 +341,9 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
          num_params++;
       }
       if (shader->nir->info.num_ssbos > 0) {
-         if (dirty & D3D12_SHADER_DIRTY_UAVS) {
+         if (dirty & D3D12_SHADER_DIRTY_SSBO) {
             assert(num_root_desciptors < MAX_DESCRIPTOR_TABLES);
-            root_desc_tables[num_root_desciptors] = fill_uav_descriptors(ctx, shader, i);
+            root_desc_tables[num_root_desciptors] = fill_ssbo_descriptors(ctx, shader, i);
             root_desc_indices[num_root_desciptors++] = num_params;
          }
          num_params++;

@@ -144,11 +144,11 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
          num_params++;
       }
 
-      if (key->stages[i].num_uavs > 0) {
+      if (key->stages[i].num_ssbos > 0) {
          init_range_root_param(&root_params[num_params],
                                &desc_ranges[num_params],
                                D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
-                               key->stages[i].num_uavs,
+                               key->stages[i].num_ssbos,
                                visibility,
                                0);
          num_params++;
@@ -201,7 +201,7 @@ fill_key(struct d3d12_context *ctx, struct d3d12_root_signature_key *key)
          key->stages[i].begin_srv_binding = shader->begin_srv_binding;
          key->stages[i].state_vars_size = shader->state_vars_size;
          key->stages[i].has_default_ubo0 = shader->has_default_ubo0;
-         key->stages[i].num_uavs = shader->nir->info.num_ssbos;
+         key->stages[i].num_ssbos = shader->nir->info.num_ssbos;
 
          if (ctx->gfx_stages[i]->so_info.num_outputs > 0)
             key->has_stream_output = true;

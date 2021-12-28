@@ -69,7 +69,7 @@ enum d3d12_shader_dirty_flags
    D3D12_SHADER_DIRTY_CONSTBUF      = (1 << 0),
    D3D12_SHADER_DIRTY_SAMPLER_VIEWS = (1 << 1),
    D3D12_SHADER_DIRTY_SAMPLERS      = (1 << 2),
-   D3D12_SHADER_DIRTY_UAVS          = (1 << 3),
+   D3D12_SHADER_DIRTY_SSBO          = (1 << 3),
 };
 
 #define D3D12_DIRTY_PSO (D3D12_DIRTY_BLEND | D3D12_DIRTY_RASTERIZER | D3D12_DIRTY_ZSA | \
@@ -79,7 +79,7 @@ enum d3d12_shader_dirty_flags
                          D3D12_DIRTY_STRIP_CUT_VALUE)
 
 #define D3D12_SHADER_DIRTY_ALL (D3D12_SHADER_DIRTY_CONSTBUF | D3D12_SHADER_DIRTY_SAMPLER_VIEWS | \
-                                D3D12_SHADER_DIRTY_SAMPLERS | D3D12_SHADER_DIRTY_UAVS)
+                                D3D12_SHADER_DIRTY_SAMPLERS | D3D12_SHADER_DIRTY_SSBO)
 
 enum d3d12_binding_type {
    D3D12_BINDING_CONSTANT_BUFFER,
