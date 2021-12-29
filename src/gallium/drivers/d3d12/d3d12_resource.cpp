@@ -221,6 +221,18 @@ init_texture(struct d3d12_screen *screen,
        */
    }
 
+   if (screen->support_shader_images && templ->nr_samples <= 1) {
+      /* Ideally, we'd key off of PIPE_BIND_SHADER_IMAGE for this, but it doesn't
+       * seem to be set properly. So, all UAV-capable resources need the UAV flag.
+       */
+      D3D12_FEATURE_DATA_FORMAT_SUPPORT support = { desc.Format };
+      if (SUCCEEDED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support))) &&
+         (support.Support2 & (D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD | D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE)) ==
+         (D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD | D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE)) {
+         desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+      }
+   }
+
    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
    if (templ->bind & (PIPE_BIND_SCANOUT |
                       PIPE_BIND_SHARED | PIPE_BIND_LINEAR))
