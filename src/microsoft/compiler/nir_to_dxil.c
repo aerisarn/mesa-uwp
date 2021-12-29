@@ -1242,6 +1242,9 @@ get_module_flags(struct ntd_context *ctx)
    uint64_t flags = 0;
    if (ctx->mod.feats.doubles)
       flags |= (1 << 2);
+   if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT &&
+       ctx->shader->info.fs.early_fragment_tests)
+      flags |= (1 << 3);
    if (ctx->mod.raw_and_structured_buffers)
       flags |= (1 << 4);
    if (ctx->mod.feats.min_precision)
