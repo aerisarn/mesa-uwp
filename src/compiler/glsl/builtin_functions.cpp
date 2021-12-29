@@ -885,6 +885,12 @@ is_not_nir(const _mesa_glsl_parse_state *state)
 }
 
 static bool
+sparse_enabled(const _mesa_glsl_parse_state *state)
+{
+   return state->ARB_sparse_texture2_enable;
+}
+
+static bool
 v130_desktop_and_sparse(const _mesa_glsl_parse_state *state)
 {
    return v130_desktop(state) && state->ARB_sparse_texture2_enable;
@@ -1166,6 +1172,9 @@ private:
    B1(not);
    BA2(textureSize);
    BA1(textureSamples);
+
+   B0(is_sparse_texels_resident);
+   B0(is_sparse_texels_resident_intrinsic);
 
 /** Flags to _texture() */
 #define TEX_PROJECT 1
@@ -1682,6 +1691,9 @@ builtin_builder::create_intrinsics()
 
    add_function("__intrinsic_helper_invocation",
                 _helper_invocation_intrinsic(), NULL);
+
+   add_function("__intrinsic_is_sparse_texels_resident",
+                _is_sparse_texels_resident_intrinsic(), NULL);
 }
 
 /**
@@ -4363,6 +4375,8 @@ builtin_builder::create_builtins()
                 _texture(ir_tg4, gpu_shader5_and_sparse, glsl_type::vec4_type, glsl_type::sampler2DRectShadow_type,  glsl_type::vec2_type, TEX_OFFSET_ARRAY|TEX_SPARSE),
                 NULL);
 
+   add_function("sparseTexelsResidentARB", _is_sparse_texels_resident(), NULL);
+
    F(dFdx)
    F(dFdy)
    F(fwidth)
@@ -6909,6 +6923,30 @@ builtin_builder::_textureSamples(builtin_available_predicate avail,
    tex->set_sampler(new(mem_ctx) ir_dereference_variable(s), glsl_type::int_type);
    body.emit(ret(tex));
 
+   return sig;
+}
+
+ir_function_signature *
+builtin_builder::_is_sparse_texels_resident(void)
+{
+   ir_variable *code = in_var(glsl_type::int_type, "code");
+   MAKE_SIG(glsl_type::bool_type, sparse_enabled, 1, code);
+
+   ir_variable *retval = body.make_temp(glsl_type::bool_type, "retval");
+   ir_function *f =
+      shader->symbols->get_function("__intrinsic_is_sparse_texels_resident");
+
+   body.emit(call(f, retval, sig->parameters));
+   body.emit(ret(retval));
+   return sig;
+}
+
+ir_function_signature *
+builtin_builder::_is_sparse_texels_resident_intrinsic(void)
+{
+   ir_variable *code = in_var(glsl_type::int_type, "code");
+   MAKE_INTRINSIC(glsl_type::bool_type, ir_intrinsic_is_sparse_texels_resident,
+                  sparse_enabled, 1, code);
    return sig;
 }
 

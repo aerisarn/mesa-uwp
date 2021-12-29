@@ -1174,6 +1174,8 @@ enum ir_intrinsic_id {
    ir_intrinsic_shared_atomic_max = MAKE_INTRINSIC_FOR_TYPE(atomic_max, shared),
    ir_intrinsic_shared_atomic_exchange = MAKE_INTRINSIC_FOR_TYPE(atomic_exchange, shared),
    ir_intrinsic_shared_atomic_comp_swap = MAKE_INTRINSIC_FOR_TYPE(atomic_comp_swap, shared),
+
+   ir_intrinsic_is_sparse_texels_resident,
 };
 
 /*@{*/
