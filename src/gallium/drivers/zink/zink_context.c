@@ -4227,7 +4227,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       util_idalloc_alloc(&ctx->di.bindless[i].tex_slots);
       util_idalloc_init(&ctx->di.bindless[i].img_slots, ZINK_MAX_BINDLESS_HANDLES);
       util_idalloc_alloc(&ctx->di.bindless[i].img_slots);
-      ctx->di.bindless[i].buffer_infos = malloc(sizeof(VkImageView) * ZINK_MAX_BINDLESS_HANDLES);
+      ctx->di.bindless[i].buffer_infos = malloc(sizeof(VkBufferView) * ZINK_MAX_BINDLESS_HANDLES);
       ctx->di.bindless[i].img_infos = malloc(sizeof(VkDescriptorImageInfo) * ZINK_MAX_BINDLESS_HANDLES);
       util_dynarray_init(&ctx->di.bindless[i].updates, NULL);
       util_dynarray_init(&ctx->di.bindless[i].resident, NULL);
