@@ -393,12 +393,6 @@ Intel driver environment variables
    assembly.
 
 
-Radeon driver environment variables (radeon, r200, and r300g)
--------------------------------------------------------------
-
-:envvar:`RADEON_NO_TCL`
-   if set, disable hardware-accelerated Transform/Clip/Lighting.
-
 DRI environment variables
 -------------------------
 
@@ -1026,6 +1020,8 @@ r300 driver environment variables
       Disable AA compression and fast AA clear
    ``use_tgsi``
       Request TGSI shaders from the state tracker
+   ``notcl``
+      Disable hardware accelerated Transform/Clip/Lighting
 
 Other Gallium drivers have their own environment variables. These may
 change frequently so the source code should be consulted for details.

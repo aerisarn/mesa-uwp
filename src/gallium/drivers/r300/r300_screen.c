@@ -851,6 +851,8 @@ struct pipe_screen* r300_screen_create(struct radeon_winsys *rws,
         r300screen->caps.zmask_ram = 0;
     if (SCREEN_DBG_ON(r300screen, DBG_NO_HIZ))
         r300screen->caps.hiz_ram = 0;
+    if (SCREEN_DBG_ON(r300screen, DBG_NO_TCL))
+        r300screen->caps.has_tcl = FALSE;
 
     r300screen->rws = rws;
     r300screen->screen.destroy = r300_destroy_screen;
