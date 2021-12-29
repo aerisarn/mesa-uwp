@@ -98,7 +98,7 @@ struct const_decl {
 };
 
 struct hw_atomic_decl {
-   struct {
+   struct hw_atomic_decl_range {
       unsigned first;
       unsigned last;
       unsigned array_id;
@@ -1831,6 +1831,14 @@ output_sort(const void *in_a, const void *in_b)
    return a->first - b->first;
 }
 
+static int
+atomic_decl_range_sort(const void *in_a, const void *in_b)
+{
+   const struct hw_atomic_decl_range *a = in_a, *b = in_b;
+
+   return a->first - b->first;
+}
+
 static void emit_decls( struct ureg_program *ureg )
 {
    unsigned i,j;
@@ -2013,6 +2021,11 @@ static void emit_decls( struct ureg_program *ureg )
 
       if (decl->nr_hw_atomic_ranges) {
          uint j;
+
+         /* GLSL-to-TGSI generated HW atomic counters in order, and r600 depends
+          * on it.
+          */
+         qsort(decl->hw_atomic_range, decl->nr_hw_atomic_ranges, sizeof(struct hw_atomic_decl_range), atomic_decl_range_sort);
 
          for (j = 0; j < decl->nr_hw_atomic_ranges; j++) {
             emit_decl_atomic_2d(ureg,
