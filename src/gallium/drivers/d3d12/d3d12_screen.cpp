@@ -891,6 +891,66 @@ d3d12_init_null_srvs(struct d3d12_screen *screen)
 }
 
 static void
+d3d12_init_null_uavs(struct d3d12_screen *screen)
+{
+   for (unsigned i = 0; i < RESOURCE_DIMENSION_COUNT; ++i) {
+      D3D12_UNORDERED_ACCESS_VIEW_DESC uav = {};
+
+      uav.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+      switch (i) {
+      case RESOURCE_DIMENSION_BUFFER:
+      case RESOURCE_DIMENSION_UNKNOWN:
+         uav.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+         uav.Buffer.FirstElement = 0;
+         uav.Buffer.NumElements = 0;
+         uav.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+         uav.Buffer.StructureByteStride = 0;
+         uav.Buffer.CounterOffsetInBytes = 0;
+         break;
+      case RESOURCE_DIMENSION_TEXTURE1D:
+         uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1D;
+         uav.Texture1D.MipSlice = 0;
+         break;
+      case RESOURCE_DIMENSION_TEXTURE1DARRAY:
+         uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+         uav.Texture1DArray.MipSlice = 0;
+         uav.Texture1DArray.ArraySize = 1;
+         uav.Texture1DArray.FirstArraySlice = 0;
+         break;
+      case RESOURCE_DIMENSION_TEXTURE2D:
+         uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+         uav.Texture2D.MipSlice = 0;
+         uav.Texture2D.PlaneSlice = 0;
+         break;
+      case RESOURCE_DIMENSION_TEXTURE2DARRAY:
+      case RESOURCE_DIMENSION_TEXTURECUBE:
+      case RESOURCE_DIMENSION_TEXTURECUBEARRAY:
+         uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+         uav.Texture2DArray.MipSlice = 0;
+         uav.Texture2DArray.ArraySize = 1;
+         uav.Texture2DArray.FirstArraySlice = 0;
+         uav.Texture2DArray.PlaneSlice = 0;
+         break;
+      case RESOURCE_DIMENSION_TEXTURE2DMS:
+      case RESOURCE_DIMENSION_TEXTURE2DMSARRAY:
+         break;
+      case RESOURCE_DIMENSION_TEXTURE3D:
+         uav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+         uav.Texture3D.MipSlice = 0;
+         uav.Texture3D.FirstWSlice = 0;
+         uav.Texture3D.WSize = 1;
+         break;
+      }
+
+      if (uav.ViewDimension != D3D12_UAV_DIMENSION_UNKNOWN)
+      {
+         d3d12_descriptor_pool_alloc_handle(screen->view_pool, &screen->null_uavs[i]);
+         screen->dev->CreateUnorderedAccessView(NULL, NULL, &uav, screen->null_uavs[i].cpu_handle);
+      }
+   }
+}
+
+static void
 d3d12_init_null_rtv(struct d3d12_screen *screen)
 {
    D3D12_RENDER_TARGET_VIEW_DESC rtv = {};
@@ -1058,6 +1118,7 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
                                                  1024);
 
    d3d12_init_null_srvs(screen);
+   d3d12_init_null_uavs(screen);
    d3d12_init_null_rtv(screen);
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);

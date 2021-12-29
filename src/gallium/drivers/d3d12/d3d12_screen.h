@@ -73,6 +73,7 @@ struct d3d12_screen {
    struct d3d12_descriptor_pool *view_pool;
 
    struct d3d12_descriptor_handle null_srvs[RESOURCE_DIMENSION_COUNT];
+   struct d3d12_descriptor_handle null_uavs[RESOURCE_DIMENSION_COUNT];
    struct d3d12_descriptor_handle null_rtv;
 
    /* capabilities */
