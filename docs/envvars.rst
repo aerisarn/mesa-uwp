@@ -972,5 +972,60 @@ r600 driver environment variables
    ``trans``
       Log generic translation messages
 
+r300 driver environment variables
+---------------------------------
+
+:envvar:`RADEON_DEBUG`
+   a comma-separated list of named flags, which do various things:
+
+   ``info``
+      Print hardware info (printed by default on debug builds
+   ``fp``
+      Log fragment program compilation
+   ``vp``
+      Log vertex program compilation
+   ``draw``
+      Log draw calls
+   ``swtcl``
+      Log SWTCL-specific info
+   ``rsblock``
+      Log rasterizer registers
+   ``psc``
+      Log vertex stream registers
+   ``tex``
+      Log basic info about textures
+   ``texalloc``
+      Log texture mipmap tree info
+   ``rs``
+      Log rasterizer
+   ``fb``
+      Log framebuffer
+   ``cbzb``
+      Log fast color clear info
+   ``hyperz``
+      Log HyperZ info
+   ``scissor``
+      Log scissor info
+   ``msaa``
+      Log MSAA resources
+   ``anisohq``
+      Use high quality anisotropic filtering
+   ``notiling``
+      Disable tiling
+   ``noimmd``
+      Disable immediate mode
+   ``noopt``
+      Disable shader optimizations
+   ``nocbzb``
+      Disable fast color clear
+   ``nozmask``
+      Disable zbuffer compression
+   ``nohiz``
+      Disable hierarchical zbuffer
+   ``nocmask``
+      Disable AA compression and fast AA clear
+   ``use_tgsi``
+      Request TGSI shaders from the state tracker
+
 Other Gallium drivers have their own environment variables. These may
 change frequently so the source code should be consulted for details.
