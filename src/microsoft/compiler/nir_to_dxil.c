@@ -3123,6 +3123,101 @@ emit_image_load(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    return true;
 }
 
+static bool
+emit_image_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
+                  enum dxil_atomic_op op, nir_alu_type type)
+{
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   if (!handle)
+      return false;
+
+   bool is_array = false;
+   nir_deref_instr *src_as_deref = nir_src_as_deref(intr->src[0]);
+   if (src_as_deref)
+      is_array = glsl_sampler_type_is_array(src_as_deref->type);
+   else
+      is_array = nir_intrinsic_image_array(intr);
+
+   const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
+   if (!int32_undef)
+      return false;
+
+   const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
+   enum glsl_sampler_dim image_dim = src_as_deref ?
+      glsl_get_sampler_dim(src_as_deref->type) :
+      nir_intrinsic_image_dim(intr);
+   unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
+   if (is_array)
+      ++num_coords;
+
+   assert(num_coords <= nir_src_num_components(intr->src[1]));
+   for (unsigned i = 0; i < num_coords; ++i) {
+      coord[i] = get_src(ctx, &intr->src[1], i, nir_type_uint);
+      if (!coord[i])
+         return false;
+   }
+
+   const struct dxil_value *value = get_src(ctx, &intr->src[3], 0, type);
+   if (!value)
+      return false;
+
+   const struct dxil_value *retval =
+      emit_atomic_binop(ctx, handle, op, coord, value);
+
+   if (!retval)
+      return false;
+
+   store_dest(ctx, &intr->dest, 0, retval, type);
+   return true;
+}
+
+static bool
+emit_image_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_value *handle = get_resource_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, DXIL_RESOURCE_KIND_TEXTURE2D);
+   if (!handle)
+      return false;
+
+   bool is_array = false;
+   if (intr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
+      is_array = glsl_sampler_type_is_array(nir_src_as_deref(intr->src[0])->type);
+   else
+      is_array = nir_intrinsic_image_array(intr);
+
+   const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
+   if (!int32_undef)
+      return false;
+
+   const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_atomic_comp_swap ?
+      nir_intrinsic_image_dim(intr) :
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type);
+   unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
+   if (is_array)
+      ++num_coords;
+
+   assert(num_coords <= nir_src_num_components(intr->src[1]));
+   for (unsigned i = 0; i < num_coords; ++i) {
+      coord[i] = get_src(ctx, &intr->src[1], i, nir_type_uint);
+      if (!coord[i])
+         return false;
+   }
+
+   const struct dxil_value *cmpval = get_src(ctx, &intr->src[3], 0, nir_type_uint);
+   const struct dxil_value *newval = get_src(ctx, &intr->src[4], 0, nir_type_uint);
+   if (!cmpval || !newval)
+      return false;
+
+   const struct dxil_value *retval =
+      emit_atomic_cmpxchg(ctx, handle, coord, cmpval, newval);
+
+   if (!retval)
+      return false;
+
+   store_dest(ctx, &intr->dest, 0, retval, nir_type_uint);
+   return true;
+}
+
 struct texop_parameters {
    const struct dxil_value *tex;
    const struct dxil_value *sampler;
@@ -3509,6 +3604,36 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_shared_atomic(ctx, intr, DXIL_RMWOP_XCHG, nir_type_int);
    case nir_intrinsic_shared_atomic_comp_swap_dxil:
       return emit_shared_atomic_comp_swap(ctx, intr);
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_atomic_add:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_ADD, nir_type_int);
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_atomic_imin:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMIN, nir_type_int);
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_atomic_umin:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_UMIN, nir_type_uint);
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_atomic_imax:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMAX, nir_type_int);
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_atomic_umax:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_IMAX, nir_type_uint);
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_atomic_and:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_AND, nir_type_uint);
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_atomic_or:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_OR, nir_type_uint);
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_atomic_xor:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_XOR, nir_type_uint);
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_atomic_exchange:
+      return emit_image_atomic(ctx, intr, DXIL_ATOMIC_EXCHANGE, nir_type_uint);
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_atomic_comp_swap:
+      return emit_image_atomic_comp_swap(ctx, intr);
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_deref_store:
       return emit_image_store(ctx, intr);
