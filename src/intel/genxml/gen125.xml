@@ -863,7 +863,7 @@
     <field name="Clear Value Address Enable" start="330" end="330" type="bool"/>
     <field name="Caching Expanded Formats" start="331" end="331" type="uint"/>
     <field name="Auxiliary Surface Base Address" start="332" end="383" type="address"/>
-    <field name="Render Compression Format" start="384" end="388" type="uint"/>
+    <field name="Compression Format" start="384" end="388" type="uint"/>
     <field name="Clear Value Address" start="390" end="431" type="address"/>
   </struct>
 
