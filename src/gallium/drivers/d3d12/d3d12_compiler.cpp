@@ -191,15 +191,23 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    // Non-ubo variables
    shader->begin_srv_binding = (UINT_MAX);
    nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
-      auto type = glsl_without_array(var->type);
-      if (glsl_type_is_texture(type)) {
+      auto type_no_array = glsl_without_array(var->type);
+      if (glsl_type_is_texture(type_no_array)) {
          unsigned count = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
          for (unsigned i = 0; i < count; ++i) {
-            shader->srv_bindings[var->data.binding + i].binding = var->data.binding;
-            shader->srv_bindings[var->data.binding + i].dimension = resource_dimension(glsl_get_sampler_dim(type));
+            shader->srv_bindings[var->data.binding + i].dimension = resource_dimension(glsl_get_sampler_dim(type_no_array));
          }
          shader->begin_srv_binding = MIN2(var->data.binding, shader->begin_srv_binding);
          shader->end_srv_binding = MAX2(var->data.binding + count, shader->end_srv_binding);
+      }
+   }
+
+   nir_foreach_image_variable(var, nir) {
+      auto type_no_array = glsl_without_array(var->type);
+      unsigned count = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
+      for (unsigned i = 0; i < count; ++i) {
+         shader->uav_bindings[var->data.driver_location + i].format = var->data.image.format;
+         shader->uav_bindings[var->data.driver_location + i].dimension = resource_dimension(glsl_get_sampler_dim(type_no_array));
       }
    }
 
