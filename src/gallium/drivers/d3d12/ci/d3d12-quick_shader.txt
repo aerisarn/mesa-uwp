@@ -71,10 +71,6 @@ spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-uvec4-uvec4
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec2-vec2-vec2: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec3-vec3-vec3: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/tcs-min3-vec4-vec4-vec4: skip
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-const-uniform-index: skip
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-mixed-const-non-const-uniform-index: skip
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-mixed-const-non-const-uniform-index2: skip
-spec/arb_arrays_of_arrays/execution/image_store/basic-imagestore-non-const-uniform-index: skip
 spec/arb_arrays_of_arrays/execution/sampler/fs-const-index: fail
 spec/arb_arrays_of_arrays/execution/sampler/fs-const-index-three-dimensions: fail
 spec/arb_arrays_of_arrays/execution/sampler/fs-initializer-const-index: fail
@@ -3673,13 +3669,8 @@ spec/arb_shader_group_vote/vs-any-const: skip
 spec/arb_shader_group_vote/vs-any-uniform: skip
 spec/arb_shader_group_vote/vs-eq-const: skip
 spec/arb_shader_group_vote/vs-eq-uniform: skip
-spec/arb_shader_image_load_store/execution/basic-imagestore-from-uniform: skip
-spec/arb_shader_image_load_store/execution/disable_early_z: skip
 spec/arb_shader_image_load_store/execution/gl45-imageatomicexchange-float: skip
-spec/arb_shader_image_load_store/execution/image_checkerboard: skip
 spec/arb_shader_image_load_store/execution/imagestore-array: skip
-spec/arb_shader_image_load_store/execution/load-from-cleared-image: skip
-spec/arb_shader_image_load_store/execution/write-to-rendered-image: skip
 spec/arb_shader_precision/fs-degrees-float: skip
 spec/arb_shader_precision/fs-degrees-vec2: skip
 spec/arb_shader_precision/fs-degrees-vec3: skip
@@ -4002,7 +3993,6 @@ spec/arb_shader_storage_buffer_object/execution/indirect: skip
 spec/arb_shader_storage_buffer_object/execution/ssbo-atomiccompswap-int: skip
 spec/arb_shader_texture_lod/execution/glsl-fs-shadow2dgradarb-07: fail
 spec/arb_shader_texture_lod/execution/glsl-fs-shadow2dgradarb-cumulative: fail
-spec/arb_shading_language_420pack/linker/different-bindings-image2d: skip
 spec/arb_shading_language_420pack/linker/different-bindings-shader-storage-blocks: skip
 spec/arb_shading_language_420pack/linker/different-bindings-shader-storage-blocks-instanced: skip
 spec/arb_shading_language_packing/execution/built-in-functions/fs-packhalf2x16: warn
@@ -13037,10 +13027,10 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:     7208
+       pass:     7218
        fail:       58
       crash:       23
-       skip:    12930
+       skip:    12920
     timeout:        0
        warn:       25
  incomplete:        0

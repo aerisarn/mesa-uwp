@@ -1954,7 +1954,6 @@ spec/arb_sample_shading/samplemask 6 all: skip
 spec/arb_sample_shading/samplemask 8: skip
 spec/arb_sample_shading/samplemask 8 all: skip
 spec/arb_seamless_cube_map/arb_seamless_cubemap: fail
-spec/arb_separate_shader_objects/atomic counter: skip
 spec/arb_separate_shader_objects/mix-and-match-tcs-tes: skip
 spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
 spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
@@ -1993,26 +1992,43 @@ spec/arb_shader_draw_parameters/drawid-single-draw-primitive-restart: skip
 spec/arb_shader_draw_parameters/drawid-vertexid: skip
 spec/arb_shader_draw_parameters/vertexid-zerobased: skip
 spec/arb_shader_draw_parameters/vertexid-zerobased-indirect: skip
-spec/arb_shader_image_load_store/atomicity: skip
-spec/arb_shader_image_load_store/bitcast: skip
-spec/arb_shader_image_load_store/coherency: skip
-spec/arb_shader_image_load_store/dead-fragments: skip
-spec/arb_shader_image_load_store/early-z: skip
-spec/arb_shader_image_load_store/host-mem-barrier: skip
-spec/arb_shader_image_load_store/indexing: skip
-spec/arb_shader_image_load_store/invalid: skip
-spec/arb_shader_image_load_store/layer: skip
-spec/arb_shader_image_load_store/level: skip
-spec/arb_shader_image_load_store/max-images: skip
-spec/arb_shader_image_load_store/max-size: skip
-spec/arb_shader_image_load_store/minmax: skip
-spec/arb_shader_image_load_store/qualifiers: skip
-spec/arb_shader_image_load_store/restrict: skip
-spec/arb_shader_image_load_store/semantics: skip
-spec/arb_shader_image_load_store/shader-mem-barrier: skip
-spec/arb_shader_image_load_store/state: skip
-spec/arb_shader_image_load_store/unused: skip
-spec/arb_shader_image_size/builtin: skip
+spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/full barrier test/16x16: skip
+spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/full barrier test/4x4: skip
+spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/full barrier test/64x64: skip
+spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/one bit barrier test/16x16: skip
+spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/one bit barrier test/4x4: skip
+spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/one bit barrier test/64x64: skip
+spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/full barrier test/16x16: skip
+spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/full barrier test/4x4: skip
+spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/full barrier test/64x64: skip
+spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/one bit barrier test/16x16: skip
+spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/one bit barrier test/4x4: skip
+spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/one bit barrier test/64x64: skip
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image1d/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image1darray/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgb10_a2: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgb10_a2ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba16: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba16_snorm: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba16f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba16i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba16ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba32i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba32ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba8: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba8_snorm: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba8i: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgba8ui: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2darray/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2drect/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image3d/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagebuffer/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagecube/rgba32f: fail
+spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagecubearray/rgba32f: fail
+spec/arb_shader_image_load_store/max-size/imagecube max size test/16384x16384x6x1: skip
+spec/arb_shader_image_load_store/max-size/imagecubearray max size test/16384x16384x6x1: skip
+spec/arb_shader_image_load_store/semantics/imageatomicmax/vertex shader/r32ui/image1d test: fail
 spec/arb_shader_storage_buffer_object/minmax: skip
 spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
@@ -4314,10 +4330,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    14720
-       fail:     1177
+       pass:    15927
+       fail:     1200
       crash:       68
-       skip:     3048
+       skip:     3041
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4326,4 +4342,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    19033
+      total:    20256
