@@ -44,6 +44,8 @@
 #include "main/state.h"
 #include "main/varray.h"
 
+#include "util/u_memory.h"
+
 #include "st_context.h"
 #include "st_atom.h"
 #include "st_draw.h"
@@ -106,7 +108,7 @@ rastpos_destroy(struct draw_stage *stage)
 {
    struct rastpos_stage *rstage = (struct rastpos_stage*)stage;
    _mesa_reference_vao(rstage->ctx, &rstage->VAO, NULL);
-   free(stage);
+   FREE(stage);
 }
 
 
@@ -187,7 +189,7 @@ rastpos_point(struct draw_stage *stage, struct prim_header *prim)
 static struct rastpos_stage *
 new_draw_rastpos_stage(struct gl_context *ctx, struct draw_context *draw)
 {
-   struct rastpos_stage *rs = ST_CALLOC_STRUCT(rastpos_stage);
+   struct rastpos_stage *rs = CALLOC_STRUCT(rastpos_stage);
 
    rs->stage.draw = draw;
    rs->stage.next = NULL;

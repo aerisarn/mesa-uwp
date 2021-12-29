@@ -438,7 +438,7 @@ st_destroy_context_priv(struct st_context *st, bool destroy_pipe)
    if (st->pipe && destroy_pipe)
       st->pipe->destroy(st->pipe);
 
-   free(st);
+   FREE(st);
 }
 
 
@@ -502,7 +502,7 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
 {
    struct pipe_screen *screen = pipe->screen;
    uint i;
-   struct st_context *st = ST_CALLOC_STRUCT( st_context);
+   struct st_context *st = CALLOC_STRUCT( st_context);
 
    util_cpu_detect();
 

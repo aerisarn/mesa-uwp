@@ -27,6 +27,7 @@
 
 #include "main/externalobjects.h"
 
+#include "util/u_memory.h"
 #include "st_context.h"
 #include "st_cb_memoryobjects.h"
 #include "st_util.h"
@@ -42,7 +43,7 @@
 struct gl_memory_object *
 st_memoryobj_alloc(struct gl_context *ctx, GLuint name)
 {
-   struct st_memory_object *st_obj = ST_CALLOC_STRUCT(st_memory_object);
+   struct st_memory_object *st_obj = CALLOC_STRUCT(st_memory_object);
    if (!st_obj)
       return NULL;
 

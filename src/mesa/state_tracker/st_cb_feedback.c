@@ -42,6 +42,8 @@
 #include "main/feedback.h"
 #include "main/varray.h"
 
+#include "util/u_memory.h"
+
 #include "vbo/vbo.h"
 
 #include "st_context.h"
@@ -176,7 +178,7 @@ feedback_reset_stipple_counter( struct draw_stage *stage )
 static void
 feedback_destroy( struct draw_stage *stage )
 {
-   free(stage);
+   FREE(stage);
 }
 
 /**
@@ -185,7 +187,7 @@ feedback_destroy( struct draw_stage *stage )
 static struct draw_stage *
 draw_glfeedback_stage(struct gl_context *ctx, struct draw_context *draw)
 {
-   struct feedback_stage *fs = ST_CALLOC_STRUCT(feedback_stage);
+   struct feedback_stage *fs = CALLOC_STRUCT(feedback_stage);
 
    fs->stage.draw = draw;
    fs->stage.next = NULL;
@@ -248,7 +250,7 @@ select_reset_stipple_counter( struct draw_stage *stage )
 static void
 select_destroy( struct draw_stage *stage )
 {
-   free(stage);
+   FREE(stage);
 }
 
 
@@ -258,7 +260,7 @@ select_destroy( struct draw_stage *stage )
 static struct draw_stage *
 draw_glselect_stage(struct gl_context *ctx, struct draw_context *draw)
 {
-   struct feedback_stage *fs = ST_CALLOC_STRUCT(feedback_stage);
+   struct feedback_stage *fs = CALLOC_STRUCT(feedback_stage);
 
    fs->stage.draw = draw;
    fs->stage.next = NULL;

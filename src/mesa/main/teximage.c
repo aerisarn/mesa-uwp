@@ -58,6 +58,8 @@
 #include "pbo.h"
 #include "api_exec_decl.h"
 
+#include "util/u_memory.h"
+
 #include "state_tracker/st_cb_texture.h"
 #include "state_tracker/st_context.h"
 #include "state_tracker/st_format.h"
@@ -219,7 +221,7 @@ _mesa_delete_texture_image(struct gl_context *ctx,
     * image storage.
     */
    st_FreeTextureImageBuffer( ctx, texImage );
-   free(texImage);
+   FREE(texImage);
 }
 
 

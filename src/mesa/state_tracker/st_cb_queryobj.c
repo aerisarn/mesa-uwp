@@ -41,6 +41,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
 #include "util/u_inlines.h"
+#include "util/u_memory.h"
 #include "st_context.h"
 #include "st_cb_queryobj.h"
 #include "st_cb_bitmap.h"
@@ -50,7 +51,7 @@
 struct gl_query_object *
 st_NewQueryObject(struct gl_context *ctx, GLuint id)
 {
-   struct st_query_object *stq = ST_CALLOC_STRUCT(st_query_object);
+   struct st_query_object *stq = CALLOC_STRUCT(st_query_object);
    if (stq) {
       stq->base.Id = id;
       stq->base.Ready = GL_TRUE;
@@ -85,7 +86,7 @@ st_DeleteQuery(struct gl_context *ctx, struct gl_query_object *q)
 
    free_queries(pipe, stq);
    free(stq->base.Label);
-   free(stq);
+   FREE(stq);
 }
 
 static int

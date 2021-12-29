@@ -472,7 +472,7 @@ _mesa_delete_texture_object(struct gl_context *ctx,
    free(texObj->Label);
 
    /* free this object */
-   free(texObj);
+   FREE(texObj);
 }
 
 

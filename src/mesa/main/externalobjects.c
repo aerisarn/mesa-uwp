@@ -45,7 +45,7 @@ void
 _mesa_delete_memory_object(struct gl_context *ctx,
                            struct gl_memory_object *memObj)
 {
-   free(memObj);
+   FREE(memObj);
 }
 
 
@@ -569,7 +569,7 @@ _mesa_delete_semaphore_object(struct gl_context *ctx,
                               struct gl_semaphore_object *semObj)
 {
    if (semObj != &DummySemaphoreObject)
-      free(semObj);
+      FREE(semObj);
 }
 
 /**

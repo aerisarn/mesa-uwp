@@ -27,6 +27,8 @@
 
 #include "main/externalobjects.h"
 
+#include "util/u_memory.h"
+
 #include "st_context.h"
 #include "st_texture.h"
 #include "st_util.h"
@@ -40,7 +42,7 @@
 struct gl_semaphore_object *
 st_semaphoreobj_alloc(struct gl_context *ctx, GLuint name)
 {
-   struct st_semaphore_object *st_obj = ST_CALLOC_STRUCT(st_semaphore_object);
+   struct st_semaphore_object *st_obj = CALLOC_STRUCT(st_semaphore_object);
    if (!st_obj)
       return NULL;
 

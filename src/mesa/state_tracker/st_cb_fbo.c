@@ -59,7 +59,7 @@
 #include "util/format/u_format.h"
 #include "util/u_inlines.h"
 #include "util/u_surface.h"
-
+#include "util/u_memory.h"
 
 static GLboolean
 st_renderbuffer_alloc_sw_storage(struct gl_context * ctx,
@@ -303,7 +303,7 @@ st_renderbuffer_delete(struct gl_context *ctx, struct gl_renderbuffer *rb)
 struct gl_renderbuffer *
 st_new_renderbuffer(struct gl_context *ctx, GLuint name)
 {
-   struct st_renderbuffer *strb = ST_CALLOC_STRUCT(st_renderbuffer);
+   struct st_renderbuffer *strb = CALLOC_STRUCT(st_renderbuffer);
    if (strb) {
       assert(name != 0);
       _mesa_init_renderbuffer(&strb->Base, name);
@@ -324,7 +324,7 @@ st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw)
 {
    struct st_renderbuffer *strb;
 
-   strb = ST_CALLOC_STRUCT(st_renderbuffer);
+   strb = CALLOC_STRUCT(st_renderbuffer);
    if (!strb) {
       _mesa_error(NULL, GL_OUT_OF_MEMORY, "creating renderbuffer");
       return NULL;
@@ -433,7 +433,7 @@ st_new_renderbuffer_fb(enum pipe_format format, unsigned samples, boolean sw)
       _mesa_problem(NULL,
                     "Unexpected format %s in st_new_renderbuffer_fb",
                     util_format_name(format));
-      free(strb);
+      FREE(strb);
       return NULL;
    }
 

@@ -85,7 +85,7 @@ void
 _mesa_delete_renderbuffer(struct gl_context *ctx, struct gl_renderbuffer *rb)
 {
    free(rb->Label);
-   free(rb);
+   FREE(rb);
 }
 
 static void

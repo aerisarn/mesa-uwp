@@ -76,6 +76,7 @@
 #include "util/u_sampler.h"
 #include "util/u_math.h"
 #include "util/u_box.h"
+#include "util/u_memory.h"
 #include "util/u_simple_shaders.h"
 #include "cso_cache/cso_context.h"
 #include "tgsi/tgsi_ureg.h"
@@ -391,7 +392,7 @@ st_NewTextureImage(struct gl_context * ctx)
 {
    DBG("%s\n", __func__);
    (void) ctx;
-   return (struct gl_texture_image *) ST_CALLOC_STRUCT(st_texture_image);
+   return (struct gl_texture_image *) CALLOC_STRUCT(st_texture_image);
 }
 
 
@@ -406,7 +407,7 @@ st_DeleteTextureImage(struct gl_context * ctx, struct gl_texture_image *img)
 struct gl_texture_object *
 st_NewTextureObject(struct gl_context * ctx, GLuint name, GLenum target)
 {
-   struct st_texture_object *obj = ST_CALLOC_STRUCT(st_texture_object);
+   struct st_texture_object *obj = CALLOC_STRUCT(st_texture_object);
    if (!obj)
       return NULL;
 
@@ -485,7 +486,7 @@ st_FreeTextureImageBuffer(struct gl_context *ctx,
    if (stImage->compressed_data &&
        pipe_reference(&stImage->compressed_data->reference, NULL)) {
       free(stImage->compressed_data->ptr);
-      free(stImage->compressed_data);
+      FREE(stImage->compressed_data);
       stImage->compressed_data = NULL;
    }
 
@@ -536,7 +537,7 @@ compressed_tex_fallback_allocate(struct st_context *st,
    if (stImage->compressed_data &&
        pipe_reference(&stImage->compressed_data->reference, NULL)) {
       free(stImage->compressed_data->ptr);
-      free(stImage->compressed_data);
+      FREE(stImage->compressed_data);
    }
 
    unsigned data_size = _mesa_format_image_size(texImage->TexFormat,
@@ -544,7 +545,7 @@ compressed_tex_fallback_allocate(struct st_context *st,
                                                 texImage->Height2,
                                                 texImage->Depth2);
 
-   stImage->compressed_data = ST_CALLOC_STRUCT(st_compressed_data);
+   stImage->compressed_data = CALLOC_STRUCT(st_compressed_data);
    stImage->compressed_data->ptr =
       malloc(data_size * _mesa_num_tex_faces(texImage->TexObject->Target));
    pipe_reference_init(&stImage->compressed_data->reference, 1);

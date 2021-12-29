@@ -135,10 +135,6 @@ st_point_size_per_vertex(struct gl_context *ctx)
    return false;
 }
 
-/** clear-alloc a struct-sized object, with casting */
-#define ST_CALLOC_STRUCT(T)   (struct T *) calloc(1, sizeof(struct T))
-
-
 #ifdef __cplusplus
 }
 #endif
