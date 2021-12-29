@@ -136,6 +136,7 @@ d3d12_reset_batch(struct d3d12_context *ctx, struct d3d12_batch *batch, uint64_t
       return false;
    }
    batch->has_errors = false;
+   batch->pending_memory_barrier = false;
    return true;
 }
 

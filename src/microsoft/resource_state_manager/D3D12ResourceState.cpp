@@ -274,6 +274,18 @@ void ResourceStateManager::ProcessTransitioningResource(ID3D12Resource* pTransit
             continue;
       }
 
+      // This is a transition into a state that is both write and non-write.
+      // This is invalid according to D3D12. We're venturing into undefined behavior
+      // land, but let's just pick the write state.
+      if (IsD3D12WriteState(after) &&
+         (after & ~RESOURCE_STATE_ALL_WRITE_BITS) != 0)
+      {
+         after &= RESOURCE_STATE_ALL_WRITE_BITS;
+
+         // For now, this is the only way I've seen where this can happen.
+         assert(after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+      }
+
       ProcessTransitioningSubresourceExplicit(
          CurrentState,
          i,

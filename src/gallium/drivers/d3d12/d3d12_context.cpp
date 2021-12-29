@@ -2022,6 +2022,54 @@ d3d12_replace_buffer_storage(struct pipe_context *pctx,
    d3d12_bo_unreference(old_bo);
 }
 
+static void
+d3d12_memory_barrier(struct pipe_context *pctx, unsigned flags)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   if (flags & PIPE_BARRIER_VERTEX_BUFFER)
+      ctx->state_dirty |= D3D12_DIRTY_VERTEX_BUFFERS;
+   if (flags & PIPE_BARRIER_INDEX_BUFFER)
+      ctx->state_dirty |= D3D12_DIRTY_INDEX_BUFFER;
+   if (flags & PIPE_BARRIER_FRAMEBUFFER)
+      ctx->state_dirty |= D3D12_DIRTY_FRAMEBUFFER;
+   if (flags & PIPE_BARRIER_STREAMOUT_BUFFER)
+      ctx->state_dirty |= D3D12_DIRTY_STREAM_OUTPUT;
+
+   /* TODO:
+    * PIPE_BARRIER_INDIRECT_BUFFER
+    */
+
+   for (unsigned i = 0; i < D3D12_GFX_SHADER_STAGES; ++i) {
+      if (flags & PIPE_BARRIER_CONSTANT_BUFFER)
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_CONSTBUF;
+      if (flags & PIPE_BARRIER_TEXTURE)
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_SAMPLER_VIEWS;
+      if (flags & PIPE_BARRIER_SHADER_BUFFER)
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_SSBO;
+      if (flags & PIPE_BARRIER_IMAGE)
+         ctx->shader_dirty[i] |= D3D12_SHADER_DIRTY_IMAGE;
+   }
+   
+   /* Indicate that UAVs shouldn't override transitions. Ignore barriers that are only
+    * for UAVs or other fixed-function state that doesn't need a draw to resolve.
+    */
+   const unsigned ignored_barrier_flags =
+      PIPE_BARRIER_IMAGE |
+      PIPE_BARRIER_SHADER_BUFFER |
+      PIPE_BARRIER_UPDATE |
+      PIPE_BARRIER_MAPPED_BUFFER |
+      PIPE_BARRIER_QUERY_BUFFER;
+   d3d12_current_batch(ctx)->pending_memory_barrier = (flags & ~ignored_barrier_flags) != 0;
+
+   if (flags & (PIPE_BARRIER_IMAGE | PIPE_BARRIER_SHADER_BUFFER)) {
+      D3D12_RESOURCE_BARRIER uavBarrier;
+      uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+      uavBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+      uavBarrier.UAV.pResource = nullptr;
+      ctx->cmdlist->ResourceBarrier(1, &uavBarrier);
+   }
+}
+
 struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -2098,6 +2146,8 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.draw_vbo = d3d12_draw_vbo;
    ctx->base.flush = d3d12_flush;
    ctx->base.flush_resource = d3d12_flush_resource;
+
+   ctx->base.memory_barrier = d3d12_memory_barrier;
 
    ctx->gfx_pipeline_state.sample_mask = ~0;
 
