@@ -192,8 +192,6 @@ spec@egl_khr_surfaceless_context@viewport,Fail
 # Regression from i965
 spec@ext_draw_buffers2@fbo-drawbuffers2-blend,Fail
 
-spec@ext_draw_instanced@ext_draw_instanced-drawarrays,Fail
-
 # "Failed blit src(0,0;1,1) - dst(0,0;2147483647,2147483647)
 #  Failed blit src(0,0;40,40) - dst(0,0;134217727,134217727)
 #  Failed blit src(0,0;40,40) - dst(0,0;2147483647,2147483647)
