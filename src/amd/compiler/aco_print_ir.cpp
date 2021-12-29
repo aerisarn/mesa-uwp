@@ -658,37 +658,38 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
    }
    fprintf(output, "%s", instr_info.name[(int)instr->opcode]);
    if (instr->operands.size()) {
-      bool* const abs = (bool*)alloca(instr->operands.size() * sizeof(bool));
-      bool* const neg = (bool*)alloca(instr->operands.size() * sizeof(bool));
-      bool* const opsel = (bool*)alloca(instr->operands.size() * sizeof(bool));
-      for (unsigned i = 0; i < instr->operands.size(); ++i) {
+      const unsigned num_operands = instr->operands.size();
+      bool* const abs = (bool*)alloca(num_operands * sizeof(bool));
+      bool* const neg = (bool*)alloca(num_operands * sizeof(bool));
+      bool* const opsel = (bool*)alloca(num_operands * sizeof(bool));
+      for (unsigned i = 0; i < num_operands; ++i) {
          abs[i] = false;
          neg[i] = false;
          opsel[i] = false;
       }
       if (instr->isVOP3()) {
          const VOP3_instruction& vop3 = instr->vop3();
-         for (unsigned i = 0; i < 3; ++i) {
+         for (unsigned i = 0; i < MIN2(num_operands, 3); ++i) {
             abs[i] = vop3.abs[i];
             neg[i] = vop3.neg[i];
             opsel[i] = vop3.opsel & (1 << i);
          }
       } else if (instr->isDPP16()) {
          const DPP16_instruction& dpp = instr->dpp16();
-         for (unsigned i = 0; i < 2; ++i) {
+         for (unsigned i = 0; i < MIN2(num_operands, 2); ++i) {
             abs[i] = dpp.abs[i];
             neg[i] = dpp.neg[i];
             opsel[i] = false;
          }
       } else if (instr->isSDWA()) {
          const SDWA_instruction& sdwa = instr->sdwa();
-         for (unsigned i = 0; i < 2; ++i) {
+         for (unsigned i = 0; i < MIN2(num_operands, 2); ++i) {
             abs[i] = sdwa.abs[i];
             neg[i] = sdwa.neg[i];
             opsel[i] = false;
          }
       }
-      for (unsigned i = 0; i < instr->operands.size(); ++i) {
+      for (unsigned i = 0; i < num_operands; ++i) {
          if (i)
             fprintf(output, ", ");
          else
