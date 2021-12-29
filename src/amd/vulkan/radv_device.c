@@ -4976,29 +4976,25 @@ radv_BindBufferMemory2(VkDevice _device, uint32_t bindInfoCount,
       RADV_FROM_HANDLE(radv_device_memory, mem, pBindInfos[i].memory);
       RADV_FROM_HANDLE(radv_buffer, buffer, pBindInfos[i].buffer);
 
-      if (mem) {
-         if (mem->alloc_size) {
-            VkBufferMemoryRequirementsInfo2 info = {
-               .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
-               .buffer = pBindInfos[i].buffer,
-            };
-            VkMemoryRequirements2 reqs = {
-               .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
-            };
+      if (mem->alloc_size) {
+         VkBufferMemoryRequirementsInfo2 info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+            .buffer = pBindInfos[i].buffer,
+         };
+         VkMemoryRequirements2 reqs = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+         };
 
-            radv_GetBufferMemoryRequirements2(_device, &info, &reqs);
+         radv_GetBufferMemoryRequirements2(_device, &info, &reqs);
 
-            if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
-               return vk_errorf(device, VK_ERROR_UNKNOWN,
-                                "Device memory object too small for the buffer.\n");
-            }
+         if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
+            return vk_errorf(device, VK_ERROR_UNKNOWN,
+                             "Device memory object too small for the buffer.\n");
          }
-
-         buffer->bo = mem->bo;
-         buffer->offset = pBindInfos[i].memoryOffset;
-      } else {
-         buffer->bo = NULL;
       }
+
+      buffer->bo = mem->bo;
+      buffer->offset = pBindInfos[i].memoryOffset;
    }
    return VK_SUCCESS;
 }
@@ -5013,30 +5009,25 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
       RADV_FROM_HANDLE(radv_device_memory, mem, pBindInfos[i].memory);
       RADV_FROM_HANDLE(radv_image, image, pBindInfos[i].image);
 
-      if (mem) {
-         if (mem->alloc_size) {
-            VkImageMemoryRequirementsInfo2 info = {
-               .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-               .image = pBindInfos[i].image,
-            };
-            VkMemoryRequirements2 reqs = {
-               .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
-            };
+      if (mem->alloc_size) {
+         VkImageMemoryRequirementsInfo2 info = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+            .image = pBindInfos[i].image,
+         };
+         VkMemoryRequirements2 reqs = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2,
+         };
 
-            radv_GetImageMemoryRequirements2(_device, &info, &reqs);
+         radv_GetImageMemoryRequirements2(_device, &info, &reqs);
 
-            if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
-               return vk_errorf(device, VK_ERROR_UNKNOWN,
-                                "Device memory object too small for the image.\n");
-            }
+         if (pBindInfos[i].memoryOffset + reqs.memoryRequirements.size > mem->alloc_size) {
+            return vk_errorf(device, VK_ERROR_UNKNOWN,
+                             "Device memory object too small for the image.\n");
          }
-
-         image->bo = mem->bo;
-         image->offset = pBindInfos[i].memoryOffset;
-      } else {
-         image->bo = NULL;
-         image->offset = 0;
       }
+
+      image->bo = mem->bo;
+      image->offset = pBindInfos[i].memoryOffset;
    }
    return VK_SUCCESS;
 }
