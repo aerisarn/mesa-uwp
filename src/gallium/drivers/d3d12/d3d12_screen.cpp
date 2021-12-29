@@ -754,6 +754,49 @@ can_attribute_at_vertex(struct d3d12_screen *screen)
    }
 }
 
+static bool
+can_shader_image_load_all_formats(struct d3d12_screen *screen)
+{
+   if (!screen->opts.TypedUAVLoadAdditionalFormats)
+      return false;
+
+   /* All of these are required by ARB_shader_image_load_store */
+   static const DXGI_FORMAT additional_formats[] = {
+      DXGI_FORMAT_R16G16B16A16_UNORM,
+      DXGI_FORMAT_R16G16B16A16_SNORM,
+      DXGI_FORMAT_R32G32_FLOAT,
+      DXGI_FORMAT_R32G32_UINT,
+      DXGI_FORMAT_R32G32_SINT,
+      DXGI_FORMAT_R10G10B10A2_UNORM,
+      DXGI_FORMAT_R10G10B10A2_UINT,
+      DXGI_FORMAT_R11G11B10_FLOAT,
+      DXGI_FORMAT_R8G8B8A8_SNORM,
+      DXGI_FORMAT_R16G16_FLOAT,
+      DXGI_FORMAT_R16G16_UNORM,
+      DXGI_FORMAT_R16G16_UINT,
+      DXGI_FORMAT_R16G16_SNORM,
+      DXGI_FORMAT_R16G16_SINT,
+      DXGI_FORMAT_R8G8_UNORM,
+      DXGI_FORMAT_R8G8_UINT,
+      DXGI_FORMAT_R8G8_SNORM,
+      DXGI_FORMAT_R8G8_SINT,
+      DXGI_FORMAT_R16_UNORM,
+      DXGI_FORMAT_R16_SNORM,
+      DXGI_FORMAT_R8_SNORM,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(additional_formats); ++i) {
+      D3D12_FEATURE_DATA_FORMAT_SUPPORT support = { additional_formats[i] };
+      if (FAILED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support))) ||
+         (support.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) == D3D12_FORMAT_SUPPORT1_NONE ||
+         (support.Support2 & (D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD | D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE)) !=
+            (D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD | D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE))
+         return false;
+   }
+
+   return true;
+}
+
 static void
 d3d12_init_null_srvs(struct d3d12_screen *screen)
 {
@@ -1010,6 +1053,7 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    d3d12_init_null_rtv(screen);
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);
+   screen->support_shader_images = can_shader_image_load_all_formats(screen);
    return true;
 
 failed:

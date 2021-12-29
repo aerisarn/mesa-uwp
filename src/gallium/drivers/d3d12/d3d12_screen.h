@@ -88,6 +88,7 @@ struct d3d12_screen {
    uint64_t memory_size_megabytes;
    double timestamp_multiplier;
    bool have_load_at_vertex;
+   bool support_shader_images;
 };
 
 static inline struct d3d12_screen *
