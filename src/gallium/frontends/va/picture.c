@@ -813,6 +813,8 @@ vlVaEndPicture(VADriverContextP ctx, VAContextID context_id)
             context->first_single_submitted = false;
          surf->force_flushed = true;
       }
+      if (!context->desc.h264enc.not_referenced)
+         context->desc.h264enc.frame_num++;
    } else if (context->decoder->entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE &&
               u_reduce_video_profile(context->templat.profile) == PIPE_VIDEO_FORMAT_HEVC)
       context->desc.h265enc.frame_num++;
