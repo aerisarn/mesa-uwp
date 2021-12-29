@@ -213,6 +213,125 @@ fill_sampler_descriptors(struct d3d12_context *ctx,
    return table_start.gpu_handle;
 }
 
+static D3D12_UAV_DIMENSION
+image_view_dimension(enum pipe_texture_target target)
+{
+   switch (target) {
+   case PIPE_BUFFER: return D3D12_UAV_DIMENSION_BUFFER;
+   case PIPE_TEXTURE_1D: return D3D12_UAV_DIMENSION_TEXTURE1D;
+   case PIPE_TEXTURE_1D_ARRAY: return D3D12_UAV_DIMENSION_TEXTURE1DARRAY;
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_2D:
+      return D3D12_UAV_DIMENSION_TEXTURE2D;
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      return D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+   case PIPE_TEXTURE_3D: return D3D12_UAV_DIMENSION_TEXTURE3D;
+   default:
+      unreachable("unexpected target");
+   }
+}
+
+static D3D12_GPU_DESCRIPTOR_HANDLE
+fill_image_descriptors(struct d3d12_context *ctx,
+                       const struct d3d12_shader *shader,
+                       int stage)
+{
+   struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
+   struct d3d12_batch *batch = d3d12_current_batch(ctx);
+   struct d3d12_descriptor_handle table_start;
+
+   d2d12_descriptor_heap_get_next_handle(batch->view_heap, &table_start);
+
+   for (unsigned i = 0; i < shader->nir->info.num_images; i++)
+   {
+      struct pipe_image_view *view = &ctx->image_views[stage][i];
+
+      if (view->resource) {
+         D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc;
+         struct d3d12_resource *res = d3d12_resource(view->resource);
+         uint64_t offset = 0;
+         ID3D12Resource *d3d12_res = d3d12_resource_underlying(res, &offset);
+
+         uav_desc.Format = d3d12_get_format(res->base.b.format);
+         uav_desc.ViewDimension = image_view_dimension(res->base.b.target);
+
+         unsigned array_size = view->u.tex.last_layer - view->u.tex.first_layer + 1;
+         switch (uav_desc.ViewDimension) {
+         case D3D12_UAV_DIMENSION_TEXTURE1D:
+            if (view->u.tex.first_layer > 0)
+               debug_printf("D3D12: can't create 1D UAV from layer %d\n",
+                            view->u.tex.first_layer);
+            uav_desc.Texture1D.MipSlice = view->u.tex.level;
+            break;
+         case D3D12_UAV_DIMENSION_TEXTURE1DARRAY:
+            uav_desc.Texture1DArray.FirstArraySlice = view->u.tex.first_layer;
+            uav_desc.Texture1DArray.ArraySize = array_size;
+            uav_desc.Texture1DArray.MipSlice = view->u.tex.level;
+            break;
+         case D3D12_UAV_DIMENSION_TEXTURE2D:
+            if (view->u.tex.first_layer > 0)
+               debug_printf("D3D12: can't create 2D UAV from layer %d\n",
+                            view->u.tex.first_layer);
+            uav_desc.Texture2D.MipSlice = view->u.tex.level;
+            uav_desc.Texture2D.PlaneSlice = 0;
+            break;
+         case D3D12_UAV_DIMENSION_TEXTURE2DARRAY:
+            uav_desc.Texture2DArray.FirstArraySlice = view->u.tex.first_layer;
+            uav_desc.Texture2DArray.ArraySize = array_size;
+            uav_desc.Texture2DArray.MipSlice = view->u.tex.level;
+            uav_desc.Texture2DArray.PlaneSlice = 0;
+            break;
+         case D3D12_UAV_DIMENSION_TEXTURE3D:
+            uav_desc.Texture3D.MipSlice = view->u.tex.level;
+            uav_desc.Texture3D.FirstWSlice = view->u.tex.first_layer;
+            uav_desc.Texture3D.WSize = array_size;
+            break;
+         case D3D12_UAV_DIMENSION_BUFFER: {
+            uav_desc.Format = d3d12_get_format(shader->uav_bindings[i].format);
+            uint format_size = util_format_get_blocksize(shader->uav_bindings[i].format);
+            offset += view->u.buf.offset;
+            uav_desc.Buffer.CounterOffsetInBytes = 0;
+            uav_desc.Buffer.FirstElement = offset / format_size;
+            uav_desc.Buffer.NumElements = view->u.buf.size / format_size;
+            uav_desc.Buffer.StructureByteStride = 0;
+            uav_desc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+            break;
+         }
+         default:
+            unreachable("Unexpected image view dimension");
+         }
+         
+         if (res->base.b.target == PIPE_BUFFER) {
+            d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_BIND_INVALIDATE_NONE);
+         } else {
+            unsigned transition_first_layer = view->u.tex.first_layer;
+            unsigned transition_array_size = array_size;
+            if (res->base.b.target == PIPE_TEXTURE_3D) {
+               transition_first_layer = 0;
+               transition_array_size = 0;
+            }
+            d3d12_transition_subresources_state(ctx, res,
+                                                view->u.tex.level, 1,
+                                                transition_first_layer, transition_array_size,
+                                                0, 1,
+                                                D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+                                                D3D12_BIND_INVALIDATE_NONE);
+         }
+         d3d12_batch_reference_resource(batch, res, true);
+
+         struct d3d12_descriptor_handle handle;
+         d3d12_descriptor_heap_alloc_handle(batch->view_heap, &handle);
+         d3d12_screen(ctx->base.screen)->dev->CreateUnorderedAccessView(d3d12_res, nullptr, &uav_desc, handle.cpu_handle);
+      } else {
+         d3d12_descriptor_heap_append_handles(batch->view_heap, &screen->null_uavs[shader->uav_bindings[i].dimension].cpu_handle, 1);
+      }
+   }
+
+   return table_start.gpu_handle;
+}
+
 static unsigned
 fill_state_vars(struct d3d12_context *ctx,
                 const struct pipe_draw_info *dinfo,
@@ -269,6 +388,7 @@ check_descriptors_left(struct d3d12_context *ctx)
       needed_descs += shader->current->num_cb_bindings;
       needed_descs += shader->current->end_srv_binding - shader->current->begin_srv_binding;
       needed_descs += shader->current->nir->info.num_ssbos;
+      needed_descs += shader->current->nir->info.num_images;
    }
 
    if (d3d12_descriptor_heap_get_remaining_handles(batch->view_heap) < needed_descs)
@@ -344,6 +464,14 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
          if (dirty & D3D12_SHADER_DIRTY_SSBO) {
             assert(num_root_desciptors < MAX_DESCRIPTOR_TABLES);
             root_desc_tables[num_root_desciptors] = fill_ssbo_descriptors(ctx, shader, i);
+            root_desc_indices[num_root_desciptors++] = num_params;
+         }
+         num_params++;
+      }
+      if (shader->nir->info.num_images > 0) {
+         if (dirty & D3D12_SHADER_DIRTY_IMAGE) {
+            assert(num_root_desciptors < MAX_DESCRIPTOR_TABLES);
+            root_desc_tables[num_root_desciptors] = fill_image_descriptors(ctx, shader, i);
             root_desc_indices[num_root_desciptors++] = num_params;
          }
          num_params++;
