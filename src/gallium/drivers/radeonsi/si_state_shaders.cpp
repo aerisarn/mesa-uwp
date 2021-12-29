@@ -181,6 +181,8 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
     */
    if (sel->screen->use_ngg_culling)
       shader_variant_flags |= 1 << 4;
+   if (sel->screen->record_llvm_ir)
+      shader_variant_flags |= 1 << 5;
 
    /* bit gap */
 
