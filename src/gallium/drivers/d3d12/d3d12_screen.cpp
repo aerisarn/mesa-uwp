@@ -547,6 +547,11 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
          !(fmt_info.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE))
          return false;
 
+      if (bind & PIPE_BIND_SHADER_IMAGE &&
+         (fmt_info.Support2 & (D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD | D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE)) !=
+            (D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD | D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE))
+         return false;
+
       D3D12_FEATURE_DATA_FORMAT_SUPPORT fmt_info_sv;
       if (util_format_is_depth_or_stencil(format)) {
          fmt_info_sv.Format = d3d12_get_resource_srv_format(format, target);
@@ -574,6 +579,9 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
             return false;
 
          if (!util_is_power_of_two_nonzero(sample_count))
+            return false;
+
+         if (bind & PIPE_BIND_SHADER_IMAGE)
             return false;
 
          D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS ms_info = {};
