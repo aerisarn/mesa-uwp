@@ -1203,6 +1203,9 @@ nir_visitor::visit(ir_call *ir)
       case ir_intrinsic_helper_invocation:
          op = nir_intrinsic_is_helper_invocation;
          break;
+      case ir_intrinsic_is_sparse_texels_resident:
+         op = nir_intrinsic_is_sparse_texels_resident;
+         break;
       default:
          unreachable("not reached");
       }
@@ -1630,6 +1633,15 @@ nir_visitor::visit(ir_call *ir)
       }
       case nir_intrinsic_is_helper_invocation: {
          nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 1, NULL);
+         nir_builder_instr_insert(&b, &instr->instr);
+         break;
+      }
+      case nir_intrinsic_is_sparse_texels_resident: {
+         nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 1, NULL);
+
+         ir_rvalue *value = (ir_rvalue *) ir->actual_parameters.get_head();
+         instr->src[0] = nir_src_for_ssa(evaluate_rvalue(value));
+
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       }
