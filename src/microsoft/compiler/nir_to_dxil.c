@@ -2252,17 +2252,14 @@ load_ubo(struct ntd_context *ctx, const struct dxil_value *handle,
 }
 
 static bool
-emit_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+emit_barrier_impl(struct ntd_context *ctx, nir_variable_mode modes, nir_scope execution_scope, nir_scope mem_scope)
 {
    const struct dxil_value *opcode, *mode;
    const struct dxil_func *func;
    uint32_t flags = 0;
 
-   if (nir_intrinsic_execution_scope(intr) == NIR_SCOPE_WORKGROUP)
+   if (execution_scope == NIR_SCOPE_WORKGROUP)
       flags |= DXIL_BARRIER_MODE_SYNC_THREAD_GROUP;
-
-   nir_variable_mode modes = nir_intrinsic_memory_modes(intr);
-   nir_scope mem_scope = nir_intrinsic_memory_scope(intr);
 
    /* Currently vtn uses uniform to indicate image memory, which DXIL considers global */
    if (modes & nir_var_uniform)
@@ -2294,6 +2291,33 @@ emit_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    return dxil_emit_call_void(&ctx->mod, func,
                               args, ARRAY_SIZE(args));
+}
+
+static bool
+emit_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   return emit_barrier_impl(ctx,
+      nir_intrinsic_memory_modes(intr),
+      nir_intrinsic_execution_scope(intr),
+      nir_intrinsic_memory_scope(intr));
+}
+
+static bool
+emit_memory_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   return emit_barrier_impl(ctx,
+      nir_var_mem_global,
+      NIR_SCOPE_NONE,
+      NIR_SCOPE_DEVICE);
+}
+
+static bool
+emit_control_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   return emit_barrier_impl(ctx,
+      nir_var_mem_shared,
+      NIR_SCOPE_WORKGROUP,
+      NIR_SCOPE_NONE);
 }
 
 static bool
@@ -3567,6 +3591,10 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_end_primitive(ctx, intr);
    case nir_intrinsic_scoped_barrier:
       return emit_barrier(ctx, intr);
+   case nir_intrinsic_memory_barrier:
+      return emit_memory_barrier(ctx, intr);
+   case nir_intrinsic_control_barrier:
+      return emit_control_barrier(ctx, intr);
    case nir_intrinsic_ssbo_atomic_add:
       return emit_ssbo_atomic(ctx, intr, DXIL_ATOMIC_ADD, nir_type_int);
    case nir_intrinsic_ssbo_atomic_imin:
