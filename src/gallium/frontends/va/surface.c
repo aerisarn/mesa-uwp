@@ -1289,7 +1289,7 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
       }
 
       desc->objects[p].fd   = (int)whandle.handle;
-      desc->objects[p].size = 0;
+      desc->objects[p].size = surf->templat.width * surf->templat.height;
       desc->objects[p].drm_format_modifier = whandle.modifier;
 
       if (flags & VA_EXPORT_SURFACE_COMPOSED_LAYERS) {
