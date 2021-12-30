@@ -823,8 +823,9 @@ enum tu_cmd_dirty_bits
    TU_CMD_DIRTY_LRZ = BIT(8),
    TU_CMD_DIRTY_VS_PARAMS = BIT(9),
    TU_CMD_DIRTY_RASTERIZER_DISCARD = BIT(10),
+   TU_CMD_DIRTY_VIEWPORTS = BIT(11),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = BIT(11)
+   TU_CMD_DIRTY_DRAW_STATE = BIT(12)
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -1105,6 +1106,7 @@ struct tu_cmd_state
    bool predication_active;
    bool disable_gmem;
    enum a5xx_line_mode line_mode;
+   bool z_negative_one_to_one;
 
    uint32_t drawcall_count;
 
@@ -1377,6 +1379,8 @@ struct tu_pipeline
    bool raster_order_attachment_access;
    bool subpass_feedback_loop_ds;
 
+   bool z_negative_one_to_one;
+
    /* Base drawcall cost for sysmem vs gmem autotuner */
    uint8_t drawcall_base_cost;
 
@@ -1386,7 +1390,8 @@ struct tu_pipeline
 };
 
 void
-tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport, uint32_t num_viewport);
+tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport, uint32_t num_viewport,
+                  bool z_negative_one_to_one);
 
 void
 tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scs, uint32_t scissor_count);

@@ -2330,6 +2330,12 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       }
    }
 
+   if ((pipeline->dynamic_state_mask & BIT(VK_DYNAMIC_STATE_VIEWPORT)) &&
+       (pipeline->z_negative_one_to_one != cmd->state.z_negative_one_to_one)) {
+      cmd->state.z_negative_one_to_one = pipeline->z_negative_one_to_one;
+      cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
+   }
+
    /* the vertex_buffers draw state always contains all the currently
     * bound vertex buffers. update its size to only emit the vbs which
     * are actually used by the pipeline
@@ -2383,13 +2389,15 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
                   const VkViewport *pViewports)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs cs;
 
    memcpy(&cmd->state.viewport[firstViewport], pViewports, viewportCount * sizeof(*pViewports));
    cmd->state.max_viewport = MAX2(cmd->state.max_viewport, firstViewport + viewportCount);
 
-   cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.max_viewport);
-   tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.max_viewport);
+   /* With VK_EXT_depth_clip_control we have to take into account
+    * negativeOneToOne property of the pipeline, so the viewport calculations
+    * are deferred until it is known.
+    */
+   cmd->state.dirty |= TU_CMD_DIRTY_VIEWPORTS;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3931,6 +3939,12 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu6_emit_consts_geom(cmd, pipeline, descriptors_state);
       cmd->state.shader_const[1] =
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
+   }
+
+   if (cmd->state.dirty & TU_CMD_DIRTY_VIEWPORTS) {
+      struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.max_viewport);
+      tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.max_viewport,
+                        pipeline->z_negative_one_to_one);
    }
 
    /* for the first draw in a renderpass, re-emit all the draw states
