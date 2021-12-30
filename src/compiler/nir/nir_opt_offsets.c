@@ -46,7 +46,12 @@ try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *
        !nir_alu_src_is_trivial_ssa(alu, 1))
       return NULL;
 
-   if (!alu->no_unsigned_wrap) {
+   /* Make sure that we aren't taking out an addition that could trigger
+    * unsigned wrapping in a way that would change the semantics of the load.
+    * Ignored for ints-as-floats (lower_bitops is a proxy for that), where
+    * unsigned wrapping doesn't make sense.
+    */
+   if (!alu->no_unsigned_wrap && !b->shader->options->lower_bitops) {
       if (!state->range_ht) {
          /* Cache for nir_unsigned_upper_bound */
          state->range_ht = _mesa_pointer_hash_table_create(NULL);
