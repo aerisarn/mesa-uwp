@@ -560,4 +560,8 @@
   DRI_CONF_OPT_B(radv_require_etc2, def,                                       \
                  "Implement emulated ETC2 on HW that does not support it")
 
+#define DRI_CONF_RADV_DISABLE_HTILE_LAYERS(def) \
+   DRI_CONF_OPT_B(radv_disable_htile_layers, def, \
+                  "Disable HTILE for layered depth/stencil formats")
+
 #endif
