@@ -1043,6 +1043,7 @@ trace_screen_get_dmabuf_modifier_planes(struct pipe_screen *_screen, uint64_t mo
 static int
 trace_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
                                                   enum pipe_texture_target target,
+                                                  bool multi_sample,
                                                   enum pipe_format format,
                                                   unsigned offset, unsigned size,
                                                   int *x, int *y, int *z)
@@ -1061,8 +1062,8 @@ trace_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
    trace_dump_arg(ptr, y);
    trace_dump_arg(ptr, z);
 
-   int ret = screen->get_sparse_texture_virtual_page_size(screen, target, format, offset,
-                                                          size, x, y, z);
+   int ret = screen->get_sparse_texture_virtual_page_size(screen, target, multi_sample,
+                                                          format, offset, size, x, y, z);
 
    trace_dump_ret(int, ret);
 

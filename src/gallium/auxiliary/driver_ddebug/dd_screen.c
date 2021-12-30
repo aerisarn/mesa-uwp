@@ -355,6 +355,7 @@ dd_screen_check_resource_capability(struct pipe_screen *_screen,
 static int
 dd_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
                                                enum pipe_texture_target target,
+                                               bool multi_sample,
                                                enum pipe_format format,
                                                unsigned offset, unsigned size,
                                                int *x, int *y, int *z)
@@ -362,7 +363,7 @@ dd_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
    struct pipe_screen *screen = dd_screen(_screen)->screen;
 
    return screen->get_sparse_texture_virtual_page_size(
-      _screen, target, format, offset, size, x, y, z);
+      _screen, target, multi_sample, format, offset, size, x, y, z);
 }
 
 /********************************************************************

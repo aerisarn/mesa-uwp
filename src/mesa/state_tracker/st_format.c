@@ -1520,17 +1520,19 @@ st_QueryInternalFormat(struct gl_context *ctx, GLenum target,
       if (pformat != PIPE_FORMAT_NONE) {
          struct pipe_screen *screen = st->screen;
          enum pipe_texture_target ptarget = gl_target_to_pipe(target);
+         bool multi_sample = _mesa_is_multisample_target(target);
 
          if (pname == GL_NUM_VIRTUAL_PAGE_SIZES_ARB)
             params[0] = screen->get_sparse_texture_virtual_page_size(
-               screen, ptarget, pformat, 0, 0, NULL, NULL, NULL);
+               screen, ptarget, multi_sample, pformat, 0, 0, NULL, NULL, NULL);
          else {
             int *args[3] = {0};
             args[pname - GL_VIRTUAL_PAGE_SIZE_X_ARB] = params;
 
             /* 16 comes from the caller _mesa_GetInternalformativ() */
             screen->get_sparse_texture_virtual_page_size(
-               screen, ptarget, pformat, 0, 16, args[0], args[1], args[2]);
+               screen, ptarget, multi_sample, pformat, 0, 16,
+               args[0], args[1], args[2]);
          }
       }
       break;

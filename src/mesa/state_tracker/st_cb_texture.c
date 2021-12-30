@@ -34,6 +34,7 @@
 #include "main/format_utils.h"
 #include "main/glformats.h"
 #include "main/image.h"
+#include "main/formatquery.h"
 
 #include "main/macros.h"
 #include "main/mipmap.h"
@@ -3726,10 +3727,11 @@ st_GetSparseTextureVirtualPageSize(struct gl_context *ctx,
    struct pipe_screen *screen = st->screen;
    enum pipe_texture_target ptarget = gl_target_to_pipe(target);
    enum pipe_format pformat = st_mesa_format_to_pipe_format(st, format);
+   bool multi_sample = _mesa_is_multisample_target(target);
 
    /* Get an XYZ page size combination specified by index. */
    return !!screen->get_sparse_texture_virtual_page_size(
-      screen, ptarget, pformat, index, 1, x, y, z);
+      screen, ptarget, multi_sample, pformat, index, 1, x, y, z);
 }
 
 void
