@@ -681,6 +681,9 @@ set_tex_parameteri(struct gl_context *ctx,
           *   is TRUE and <target> is not one of TEXTURE_2D, TEXTURE_2D_ARRAY,
           *   TEXTURE_CUBE_MAP, TEXTURE_CUBE_MAP_ARRAY, TEXTURE_3D, or
           *   TEXTURE_RECTANGLE.
+          *
+          * ARB_sparse_texture2 also allow TEXTURE_2D_MULTISAMPLE and
+          * TEXTURE_2D_MULTISAMPLE_ARRAY.
           */
          if (params[0] &&
              texObj->Target != GL_TEXTURE_2D &&
@@ -688,7 +691,10 @@ set_tex_parameteri(struct gl_context *ctx,
              texObj->Target != GL_TEXTURE_CUBE_MAP &&
              texObj->Target != GL_TEXTURE_CUBE_MAP_ARRAY &&
              texObj->Target != GL_TEXTURE_3D &&
-             texObj->Target != GL_TEXTURE_RECTANGLE) {
+             texObj->Target != GL_TEXTURE_RECTANGLE &&
+             (!_mesa_has_ARB_sparse_texture2(ctx) ||
+              (texObj->Target != GL_TEXTURE_2D_MULTISAMPLE &&
+               texObj->Target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY))) {
             _mesa_error(ctx, GL_INVALID_VALUE,
                         "glTex%sParameter(target=%d)", suffix, texObj->Target);
             return GL_FALSE;

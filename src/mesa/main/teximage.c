@@ -6867,6 +6867,11 @@ texture_image_multisample(struct gl_context *ctx, GLuint dims,
          return;
       }
 
+      if (texObj->IsSparse &&
+          _mesa_sparse_texture_error_check(ctx, dims, texObj, texFormat, target, 0,
+                                           width, height, depth, func))
+         return; /* error was recorded */
+
       st_FreeTextureImageBuffer(ctx, texImage);
 
       _mesa_init_teximage_fields_ms(ctx, texImage, width, height, depth, 0,
