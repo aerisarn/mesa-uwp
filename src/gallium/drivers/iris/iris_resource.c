@@ -1589,7 +1589,8 @@ iris_resource_get_param(struct pipe_screen *pscreen,
    iris_resource_disable_aux_on_first_query(resource, handle_usage);
    iris_resource_disable_suballoc_on_first_query(pscreen, ctx, res);
 
-   struct iris_bo *bo = wants_aux ? res->aux.bo : res->bo;
+   struct iris_bo *bo = wants_cc ? res->aux.clear_color_bo :
+                        wants_aux ? res->aux.bo : res->bo;
 
    assert(iris_bo_is_real(bo));
 
