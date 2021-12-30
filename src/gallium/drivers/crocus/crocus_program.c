@@ -1200,6 +1200,9 @@ crocus_compile_vs(struct crocus_context *ice,
       nir_shader_gather_info(nir, impl);
    }
 
+   if (key->clamp_pointsize)
+      nir_lower_point_size(nir, 1.0, 255.0);
+
    prog_data->use_alt_mode = nir->info.is_arb_asm;
 
    crocus_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
@@ -1583,6 +1586,9 @@ crocus_compile_tes(struct crocus_context *ice,
       nir_shader_gather_info(nir, impl);
    }
 
+   if (key->clamp_pointsize)
+      nir_lower_point_size(nir, 1.0, 255.0);
+
    crocus_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                          &num_system_values, &num_cbufs);
    crocus_lower_swizzles(nir, &key->base.tex);
@@ -1719,6 +1725,9 @@ crocus_compile_gs(struct crocus_context *ice,
       nir_lower_vars_to_ssa(nir);
       nir_shader_gather_info(nir, impl);
    }
+
+   if (key->clamp_pointsize)
+      nir_lower_point_size(nir, 1.0, 255.0);
 
    crocus_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                          &num_system_values, &num_cbufs);
@@ -2700,9 +2709,6 @@ crocus_create_uncompiled_shader(struct pipe_context *ctx,
 
    NIR_PASS_V(nir, brw_nir_lower_storage_image, devinfo);
    NIR_PASS_V(nir, crocus_lower_storage_image_derefs);
-
-   if (nir->info.stage != MESA_SHADER_FRAGMENT && nir->info.stage != MESA_SHADER_COMPUTE)
-      NIR_PASS_V(nir, nir_lower_point_size, 1.0, 255.0);
 
    nir_sweep(nir);
 

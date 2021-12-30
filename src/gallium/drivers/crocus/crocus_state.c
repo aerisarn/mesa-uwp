@@ -4689,6 +4689,10 @@ crocus_populate_vs_key(const struct crocus_context *ice,
        last_stage == MESA_SHADER_VERTEX)
       key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
 
+   if (last_stage == MESA_SHADER_VERTEX &&
+       info->outputs_written & (VARYING_BIT_PSIZ))
+      key->clamp_pointsize = 1;
+
 #if GFX_VER <= 5
    key->copy_edgeflag = (cso_rast->cso.fill_back != PIPE_POLYGON_MODE_FILL ||
                          cso_rast->cso.fill_front != PIPE_POLYGON_MODE_FILL);
@@ -4732,6 +4736,10 @@ crocus_populate_tes_key(const struct crocus_context *ice,
        (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
        last_stage == MESA_SHADER_TESS_EVAL)
       key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
+
+   if (last_stage == MESA_SHADER_TESS_EVAL &&
+       info->outputs_written & (VARYING_BIT_PSIZ))
+      key->clamp_pointsize = 1;
 }
 
 /**
@@ -4749,6 +4757,10 @@ crocus_populate_gs_key(const struct crocus_context *ice,
        (info->outputs_written & (VARYING_BIT_POS | VARYING_BIT_CLIP_VERTEX)) &&
        last_stage == MESA_SHADER_GEOMETRY)
       key->nr_userclip_plane_consts = cso_rast->num_clip_plane_consts;
+
+   if (last_stage == MESA_SHADER_GEOMETRY &&
+       info->outputs_written & (VARYING_BIT_PSIZ))
+      key->clamp_pointsize = 1;
 }
 
 /**
