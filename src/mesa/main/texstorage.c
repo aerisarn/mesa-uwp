@@ -387,7 +387,9 @@ sparse_texture_error_check(struct gl_context *ctx, GLuint dims,
       }
    }
 
-   if (width % px || height % py || depth % pz) {
+   /* ARB_sparse_texture2 allow non-page-aligned base texture size. */
+   if (!_mesa_has_ARB_sparse_texture2(ctx) &&
+       (width % px || height % py || depth % pz)) {
       _mesa_error(ctx, GL_INVALID_VALUE, "glTex%sStorage%uD(sparse page size)",
                   suffix, dims);
       return GL_TRUE;
