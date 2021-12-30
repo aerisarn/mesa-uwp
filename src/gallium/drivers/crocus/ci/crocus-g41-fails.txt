@@ -270,19 +270,3 @@ spec@khr_texture_compression_astc@miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp,Fail
-
-# Regression from i965
-# "primitive-restart: failure drawing with glDrawElements(GL_TRIANGLE_STRIP, GL_UNSIGNED_SHORT), DISABLE_VBO
-#  primitive-restart: failure drawing with glDrawElements(GL_TRIANGLE_STRIP, GL_UNSIGNED_INT), DISABLE_VBO
-#  primitive-restart: failure drawing with glDrawElements(GL_LINE_STRIP, GL_UNSIGNED_SHORT), DISABLE_VBO
-#  primitive-restart: failure drawing with glDrawElements(GL_LINE_STRIP, GL_UNSIGNED_INT), DISABLE_VBO"
-spec@nv_primitive_restart@primitive-restart-disable_vbo,Fail
-
-# Regression from i965
-spec@nv_primitive_restart@primitive-restart-draw-mode-line_loop,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-polygon,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-quads,Fail
-spec@nv_primitive_restart@primitive-restart-draw-mode-triangle_fan,Fail
-spec@nv_primitive_restart@primitive-restart-vbo_combined_vertex_and_index,Fail
-spec@nv_primitive_restart@primitive-restart-vbo_vertex_only,Fail

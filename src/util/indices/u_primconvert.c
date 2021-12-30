@@ -148,7 +148,7 @@ primconvert_init_draw(struct primconvert_context *pc,
          src = pipe_buffer_map(pc->pipe, info->index.resource,
                                PIPE_MAP_READ, &src_transfer);
       }
-      src = (const uint8_t *)src;
+      const void *restart_src = (const uint8_t *)src + draw->start * info->index_size;
 
       /* if the resulting primitive type is not supported by the driver for primitive restart,
        * or if the original primitive type was not supported by the driver,
@@ -160,7 +160,7 @@ primconvert_init_draw(struct primconvert_context *pc,
          /* step 1: rewrite draw to not use primitive primitive restart;
           *         this pre-filters degenerate primitives
           */
-         direct_draws = util_prim_restart_convert_to_direct(src, info, draw, &num_direct_draws,
+         direct_draws = util_prim_restart_convert_to_direct(restart_src, info, draw, &num_direct_draws,
                                                             &new_info->min_index, &new_info->max_index, &total_index_count);
          new_info->primitive_restart = false;
          /* step 2: get a translator function which does nothing but handle any index size conversions
