@@ -328,6 +328,7 @@ struct brw_vs_prog_key {
     * the VUE, even if they aren't written by the vertex shader.
     */
    uint8_t point_coord_replace;
+   unsigned clamp_pointsize:1;
 };
 
 /** The program key for Tessellation Control Shaders. */
@@ -367,6 +368,7 @@ struct brw_tes_prog_key
     * clip distances.
     */
    unsigned nr_userclip_plane_consts:4;
+   unsigned clamp_pointsize:1;
 };
 
 /** The program key for Geometry Shaders. */
@@ -382,6 +384,7 @@ struct brw_gs_prog_key
     * clip distances.
     */
    unsigned nr_userclip_plane_consts:4;
+   unsigned clamp_pointsize:1;
 };
 
 struct brw_task_prog_key
