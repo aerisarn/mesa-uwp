@@ -254,6 +254,15 @@ crocus_resource_configure_main(const struct crocus_screen *screen,
    if (!isl_surf_init_s(&screen->isl_dev, &res->surf, &init_info))
       return false;
 
+   /*
+    * Don't create staging surfaces that will use > half the aperture
+    * since staging implies you are sending to another resource,
+    * which there is no way to fit both into aperture.
+    */
+   if (templ->usage == PIPE_USAGE_STAGING)
+      if (res->surf.size_B > screen->aperture_threshold / 2)
+         return false;
+
    res->internal_format = templ->format;
 
    return true;

@@ -39,9 +39,6 @@ spec@!opengl 1.1@linestipple@Factor 3x,Fail
 spec@!opengl 1.1@linestipple@Line loop,Fail
 spec@!opengl 1.1@linestipple@Line strip,Fail
 
-# max-texture-size: ../src/gallium/drivers/crocus/crocus_resource.c:693: crocus_resource_create_with_modifiers: Assertion `isl_surf_created_successfully' failed.
-spec@!opengl 1.1@max-texture-size,Crash
-
 spec@!opengl 3.0@clearbuffer-bug,Fail
 
 # "../src/mesa/state_tracker/st_cb_texture.c:1164:st_get_blit_mask: Assertion `0' failed."

@@ -202,6 +202,7 @@ struct crocus_screen {
    } driconf;
 
    uint64_t aperture_bytes;
+   uint64_t aperture_threshold;
 
    struct intel_device_info devinfo;
    struct isl_device isl_dev;
