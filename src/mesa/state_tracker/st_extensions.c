@@ -1195,6 +1195,11 @@ void st_init_extensions(struct pipe_screen *screen,
       consts->NativeIntegers = GL_TRUE;
       consts->MaxClipPlanes = 8;
 
+      uint32_t drv_clip_planes = screen->get_param(screen, PIPE_CAP_CLIP_PLANES);
+      /* only override for > 1 - 0 if none, 1 is MAX, >2 overrides MAX */
+      if (drv_clip_planes > 1)
+         consts->MaxClipPlanes = drv_clip_planes;
+
       if (screen->get_param(screen, PIPE_CAP_VERTEXID_NOBASE)) {
          consts->VertexID_is_zero_based = GL_TRUE;
       }
