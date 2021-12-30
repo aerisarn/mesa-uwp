@@ -61,6 +61,8 @@ typedef void *drmDevicePtr;
 #include "git_sha1.h"
 #include "sid.h"
 #include "vk_format.h"
+#include "vk_sync.h"
+#include "vk_sync_dummy.h"
 #include "vulkan/vk_icd.h"
 
 #ifdef LLVM_AVAILABLE
@@ -2959,6 +2961,15 @@ radv_device_finish_vrs_image(struct radv_device *device)
                      &device->meta_state.alloc);
 }
 
+static VkResult
+radv_create_sync_for_memory(struct vk_device *device,
+                           VkDeviceMemory memory,
+                           bool signal_memory,
+                           struct vk_sync **sync_out)
+{
+   return vk_sync_create(device, &vk_sync_dummy_type, 0, 1, sync_out);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
@@ -3074,6 +3085,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->physical_device = physical_device;
 
    device->ws = physical_device->ws;
+   device->vk.create_sync_for_memory = radv_create_sync_for_memory;
    vk_device_set_drm_fd(&device->vk, device->ws->get_fd(device->ws));
 
    keep_shader_info = device->vk.enabled_extensions.AMD_shader_info;
