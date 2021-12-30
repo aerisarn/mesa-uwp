@@ -41,7 +41,6 @@ struct ntt_compile {
    struct ureg_program *ureg;
 
    bool needs_texcoord_semantic;
-   bool any_reg_as_address;
    bool native_integers;
    bool has_txf_lz;
 
@@ -632,9 +631,6 @@ ntt_get_load_const_src(struct ntt_compile *c, nir_load_const_instr *instr)
 static struct ureg_src
 ntt_reladdr(struct ntt_compile *c, struct ureg_src addr, int addr_index)
 {
-   if (c->any_reg_as_address)
-      return ureg_scalar(addr, 0);
-
    for (int i = 0; i <= addr_index; i++) {
       if (!c->addr_declared[i]) {
          c->addr_reg[i] = ureg_writemask(ureg_DECL_address(c->ureg),
@@ -3143,8 +3139,6 @@ nir_to_tgsi(struct nir_shader *s,
 
    c->needs_texcoord_semantic =
       screen->get_param(screen, PIPE_CAP_TGSI_TEXCOORD);
-   c->any_reg_as_address =
-      screen->get_param(screen, PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS);
    c->has_txf_lz =
       screen->get_param(screen, PIPE_CAP_TGSI_TEX_TXF_LZ);
 

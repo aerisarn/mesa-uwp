@@ -381,7 +381,6 @@ public:
    bool use_shared_memory;
    bool has_tex_txf_lz;
    bool precise;
-   bool need_uarl;
    bool tg4_component_in_swizzle;
 
    variable_storage *find_variable_storage(ir_variable *var);
@@ -1093,9 +1092,6 @@ glsl_to_tgsi_visitor::emit_arl(ir_instruction *ir,
    enum tgsi_opcode op = TGSI_OPCODE_ARL;
 
    if (src0.type == GLSL_TYPE_INT || src0.type == GLSL_TYPE_UINT) {
-      if (!this->need_uarl && src0.is_legal_tgsi_address_operand())
-         return;
-
       op = TGSI_OPCODE_UARL;
    }
 
@@ -4966,7 +4962,6 @@ glsl_to_tgsi_visitor::glsl_to_tgsi_visitor()
    ctx = NULL;
    prog = NULL;
    precise = 0;
-   need_uarl = false;
    tg4_component_in_swizzle = false;
    shader_program = NULL;
    shader = NULL;
@@ -6024,7 +6019,6 @@ struct st_translate {
    const ubyte *outputMapping;
 
    enum pipe_shader_type procType;  /**< PIPE_SHADER_VERTEX/FRAGMENT */
-   bool need_uarl;
    bool tg4_component_in_swizzle;
 };
 
@@ -6145,10 +6139,7 @@ static struct ureg_src
 translate_addr(struct st_translate *t, const st_src_reg *reladdr,
                unsigned addr_index)
 {
-   if (t->need_uarl || !reladdr->is_legal_tgsi_address_operand())
-      return ureg_src(t->address[addr_index]);
-
-   return translate_src(t, reladdr);
+   return ureg_src(t->address[addr_index]);
 }
 
 /**
@@ -6852,7 +6843,6 @@ st_translate_program(
    }
 
    t->procType = procType;
-   t->need_uarl = !screen->get_param(screen, PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS);
    t->tg4_component_in_swizzle = screen->get_param(screen, PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE);
    t->inputMapping = inputMapping;
    t->outputMapping = outputMapping;
@@ -7266,7 +7256,6 @@ get_mesa_program_tgsi(struct gl_context *ctx,
                                            PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED);
    v->has_tex_txf_lz = pscreen->get_param(pscreen,
                                           PIPE_CAP_TGSI_TEX_TXF_LZ);
-   v->need_uarl = !pscreen->get_param(pscreen, PIPE_CAP_TGSI_ANY_REG_AS_ADDRESS);
 
    v->tg4_component_in_swizzle = pscreen->get_param(pscreen, PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE);
    v->variables = _mesa_hash_table_create(v->mem_ctx, _mesa_hash_pointer,
