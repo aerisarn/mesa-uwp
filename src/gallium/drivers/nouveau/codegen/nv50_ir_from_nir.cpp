@@ -3172,6 +3172,7 @@ Converter::run()
       NIR_PASS(progress, nir, nir_copy_prop);
       NIR_PASS(progress, nir, nir_opt_dce);
       NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_lower_64bit_phis);
    } while (progress);
 
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
