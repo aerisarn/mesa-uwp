@@ -1264,6 +1264,8 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 
 	/* cf can contains only alu or only vtx or only tex */
 	if (bc->cf_last == NULL || bc->force_add_cf) {
+               if (bc->cf_last && bc->cf_last->curr_bs_head)
+                  bc->cf_last->curr_bs_head->last = 1;
 		r = r600_bytecode_add_cf(bc);
 		if (r) {
 			free(nalu);
