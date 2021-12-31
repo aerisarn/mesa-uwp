@@ -1743,7 +1743,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          Temp msb = bld.tmp(v1);
          Temp carry =
             bld.vsub32(Definition(msb), Operand::c32(31u), Operand(msb_rev), true).def(1).getTemp();
-         bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(dst), msb, Operand::c32(-1), carry);
+         bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), msb, msb_rev, carry);
       } else if (src.regClass() == v2) {
          aco_opcode op =
             instr->op == nir_op_ufind_msb ? aco_opcode::v_ffbh_u32 : aco_opcode::v_ffbh_i32;
@@ -1761,7 +1761,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          Temp msb = bld.tmp(v1);
          Temp carry =
             bld.vsub32(Definition(msb), Operand::c32(63u), Operand(msb_rev), true).def(1).getTemp();
-         bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(dst), msb, Operand::c32(-1), carry);
+         bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), msb, msb_rev, carry);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
