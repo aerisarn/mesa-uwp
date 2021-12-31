@@ -31,6 +31,8 @@
 
 #include "queryobj.h"
 #include "mtypes.h"
+#include "pipe/p_context.h"
+#include "pipe/p_screen.h"
 #include "util/u_memory.h"
 
 #include "state_tracker/st_cb_queryobj.h"
@@ -914,10 +916,16 @@ _mesa_GetQueryBufferObjectui64v(GLuint id, GLuint buffer, GLenum pname,
 void
 _mesa_init_queryobj(struct gl_context *ctx)
 {
+   struct pipe_screen *screen = ctx->pipe->screen;
+
    ctx->Query.QueryObjects = _mesa_NewHashTable();
    ctx->Query.CurrentOcclusionObject = NULL;
 
-   ctx->Const.QueryCounterBits.SamplesPassed = 64;
+   if (screen->get_param(screen, PIPE_CAP_OCCLUSION_QUERY))
+      ctx->Const.QueryCounterBits.SamplesPassed = 64;
+   else
+      ctx->Const.QueryCounterBits.SamplesPassed = 0;
+
    ctx->Const.QueryCounterBits.TimeElapsed = 64;
    ctx->Const.QueryCounterBits.Timestamp = 64;
    ctx->Const.QueryCounterBits.PrimitivesGenerated = 64;

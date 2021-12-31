@@ -933,12 +933,12 @@ st_create_context(gl_api api, struct pipe_context *pipe,
       return NULL;
    memset(ctx, 0, sizeof(*ctx));
 
+   ctx->pipe = pipe;
    if (!_mesa_initialize_context(ctx, api, visual, shareCtx, &funcs)) {
       align_free(ctx);
       return NULL;
    }
 
-   ctx->pipe = pipe;
    st_debug_init();
 
    if (pipe->screen->get_disk_shader_cache)

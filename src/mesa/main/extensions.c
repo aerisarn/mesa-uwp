@@ -277,6 +277,7 @@ _mesa_init_extensions(struct gl_extensions *extensions)
    extensions->ARB_internalformat_query = GL_TRUE;
    extensions->ARB_internalformat_query2 = GL_TRUE;
    extensions->ARB_map_buffer_range = GL_TRUE;
+   extensions->ARB_occlusion_query = GL_TRUE;
    extensions->ARB_sync = GL_TRUE;
    extensions->ARB_texture_env_crossbar = GL_TRUE;
    extensions->ARB_vertex_program = GL_TRUE;
