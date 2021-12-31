@@ -1501,8 +1501,6 @@ get_index_registers(const struct tgsi_exec_machine *mach,
                     union tgsi_exec_channel *index,
                     union tgsi_exec_channel *index2D)
 {
-   uint swizzle;
-
    /* We start with a direct index into a register file.
     *
     *    file[1],
@@ -1526,35 +1524,17 @@ get_index_registers(const struct tgsi_exec_machine *mach,
     *       .x = Indirect.SwizzleX
     */
    if (reg->Register.Indirect) {
-      union tgsi_exec_channel index2;
-      union tgsi_exec_channel indir_index;
       const uint execmask = mach->ExecMask;
-      uint i;
 
-      /* which address register (always zero now) */
-      index2.i[0] =
-      index2.i[1] =
-      index2.i[2] =
-      index2.i[3] = reg->Indirect.Index;
-      /* get current value of address register[swizzle] */
-      swizzle = reg->Indirect.Swizzle;
-      fetch_src_file_channel(mach,
-                             reg->Indirect.File,
-                             swizzle,
-                             &index2,
-                             &ZeroVec,
-                             &indir_index);
-
-      /* add value of address register to the offset */
-      index->i[0] += indir_index.i[0];
-      index->i[1] += indir_index.i[1];
-      index->i[2] += indir_index.i[2];
-      index->i[3] += indir_index.i[3];
+      assert(reg->Indirect.File == TGSI_FILE_ADDRESS);
+      const union tgsi_exec_channel *addr = &mach->Addrs[reg->Indirect.Index].xyzw[reg->Indirect.Swizzle];
+      for (int i = 0; i < TGSI_QUAD_SIZE; i++)
+         index->i[i] += addr->u[i];
 
       /* for disabled execution channels, zero-out the index to
        * avoid using a potential garbage value.
        */
-      for (i = 0; i < TGSI_QUAD_SIZE; i++) {
+      for (int i = 0; i < TGSI_QUAD_SIZE; i++) {
          if ((execmask & (1 << i)) == 0)
             index->i[i] = 0;
       }
@@ -1586,33 +1566,17 @@ get_index_registers(const struct tgsi_exec_machine *mach,
        *       .y = DimIndirect.SwizzleX
        */
       if (reg->Dimension.Indirect) {
-         union tgsi_exec_channel index2;
-         union tgsi_exec_channel indir_index;
          const uint execmask = mach->ExecMask;
-         uint i;
 
-         index2.i[0] =
-         index2.i[1] =
-         index2.i[2] =
-         index2.i[3] = reg->DimIndirect.Index;
-
-         swizzle = reg->DimIndirect.Swizzle;
-         fetch_src_file_channel(mach,
-                                reg->DimIndirect.File,
-                                swizzle,
-                                &index2,
-                                &ZeroVec,
-                                &indir_index);
-
-         index2D->i[0] += indir_index.i[0];
-         index2D->i[1] += indir_index.i[1];
-         index2D->i[2] += indir_index.i[2];
-         index2D->i[3] += indir_index.i[3];
+         assert(reg->DimIndirect.File == TGSI_FILE_ADDRESS);
+         const union tgsi_exec_channel *addr = &mach->Addrs[reg->DimIndirect.Index].xyzw[reg->DimIndirect.Swizzle];
+         for (int i = 0; i < TGSI_QUAD_SIZE; i++)
+            index2D->i[i] += addr->u[i];
 
          /* for disabled execution channels, zero-out the index to
           * avoid using a potential garbage value.
           */
-         for (i = 0; i < TGSI_QUAD_SIZE; i++) {
+         for (int i = 0; i < TGSI_QUAD_SIZE; i++) {
             if ((execmask & (1 << i)) == 0) {
                index2D->i[i] = 0;
             }
