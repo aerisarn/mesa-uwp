@@ -937,7 +937,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
     */
    device->has_bindless_samplers = device->info.ver >= 8;
 
-   device->has_implicit_ccs = device->info.has_aux_map;
+   device->has_implicit_ccs = device->info.has_aux_map ||
+                              device->info.verx10 >= 125;
 
    /* Check if we can read the GPU timestamp register from the CPU */
    uint64_t u64_ignore;
@@ -3614,7 +3615,7 @@ VkResult anv_AllocateMemory(
    }
 
    /* By default, we want all VkDeviceMemory objects to support CCS */
-   if (device->physical->has_implicit_ccs)
+   if (device->physical->has_implicit_ccs && device->info.has_aux_map)
       alloc_flags |= ANV_BO_ALLOC_IMPLICIT_CCS;
 
    if (vk_flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR)
