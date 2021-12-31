@@ -62,6 +62,8 @@ enum d3d12_dirty_flags
    D3D12_DIRTY_ROOT_SIGNATURE   = (1 << 14),
    D3D12_DIRTY_STREAM_OUTPUT    = (1 << 15),
    D3D12_DIRTY_STRIP_CUT_VALUE  = (1 << 16),
+   D3D12_DIRTY_COMPUTE_SHADER   = (1 << 17),
+   D3D12_DIRTY_COMPUTE_ROOT_SIGNATURE = (1 << 18),
 };
 
 enum d3d12_shader_dirty_flags
@@ -73,11 +75,16 @@ enum d3d12_shader_dirty_flags
    D3D12_SHADER_DIRTY_IMAGE         = (1 << 4),
 };
 
-#define D3D12_DIRTY_PSO (D3D12_DIRTY_BLEND | D3D12_DIRTY_RASTERIZER | D3D12_DIRTY_ZSA | \
-                         D3D12_DIRTY_FRAMEBUFFER | D3D12_DIRTY_SAMPLE_MASK | \
-                         D3D12_DIRTY_VERTEX_ELEMENTS | D3D12_DIRTY_PRIM_MODE | \
-                         D3D12_DIRTY_SHADER | D3D12_DIRTY_ROOT_SIGNATURE | \
-                         D3D12_DIRTY_STRIP_CUT_VALUE)
+#define D3D12_DIRTY_GFX_PSO (D3D12_DIRTY_BLEND | D3D12_DIRTY_RASTERIZER | D3D12_DIRTY_ZSA | \
+                             D3D12_DIRTY_FRAMEBUFFER | D3D12_DIRTY_SAMPLE_MASK | \
+                             D3D12_DIRTY_VERTEX_ELEMENTS | D3D12_DIRTY_PRIM_MODE | \
+                             D3D12_DIRTY_SHADER | D3D12_DIRTY_ROOT_SIGNATURE | \
+                             D3D12_DIRTY_STRIP_CUT_VALUE)
+#define D3D12_DIRTY_COMPUTE_PSO (D3D12_DIRTY_COMPUTE_SHADER | D3D12_DIRTY_COMPUTE_ROOT_SIGNATURE)
+
+#define D3D12_DIRTY_COMPUTE_MASK (D3D12_DIRTY_COMPUTE_SHADER | D3D12_DIRTY_COMPUTE_ROOT_SIGNATURE)
+#define D3D12_DIRTY_GFX_MASK ~D3D12_DIRTY_COMPUTE_MASK
+
 
 #define D3D12_SHADER_DIRTY_ALL (D3D12_SHADER_DIRTY_CONSTBUF | D3D12_SHADER_DIRTY_SAMPLER_VIEWS | \
                                 D3D12_SHADER_DIRTY_SAMPLERS | D3D12_SHADER_DIRTY_SSBO | \
@@ -319,6 +326,10 @@ d3d12_draw_vbo(struct pipe_context *pctx,
                const struct pipe_draw_indirect_info *indirect,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws);
+
+void
+d3d12_launch_grid(struct pipe_context *pctx,
+                  const struct pipe_grid_info *info);
 
 void
 d3d12_blit(struct pipe_context *pctx,
