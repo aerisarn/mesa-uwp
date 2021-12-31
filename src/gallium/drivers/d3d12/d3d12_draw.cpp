@@ -761,9 +761,9 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       }
    }
 
-   if (!ctx->current_pso || ctx->state_dirty & D3D12_DIRTY_PSO) {
-      ctx->current_pso = d3d12_get_gfx_pipeline_state(ctx);
-      assert(ctx->current_pso);
+   if (!ctx->current_gfx_pso || ctx->state_dirty & D3D12_DIRTY_PSO) {
+      ctx->current_gfx_pso = d3d12_get_gfx_pipeline_state(ctx);
+      assert(ctx->current_gfx_pso);
    }
 
    ctx->cmdlist_dirty |= ctx->state_dirty;
@@ -778,9 +778,9 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    }
 
    if (ctx->cmdlist_dirty & D3D12_DIRTY_PSO) {
-      assert(ctx->current_pso);
-      d3d12_batch_reference_object(batch, ctx->current_pso);
-      ctx->cmdlist->SetPipelineState(ctx->current_pso);
+      assert(ctx->current_gfx_pso);
+      d3d12_batch_reference_object(batch, ctx->current_gfx_pso);
+      ctx->cmdlist->SetPipelineState(ctx->current_gfx_pso);
    }
 
    D3D12_GPU_DESCRIPTOR_HANDLE root_desc_tables[MAX_DESCRIPTOR_TABLES];

@@ -197,6 +197,10 @@ d3d12_create_shader(struct d3d12_context *ctx,
                     enum pipe_shader_type stage,
                     const struct pipe_shader_state *shader);
 
+struct d3d12_shader_selector *
+d3d12_create_compute_shader(struct d3d12_context *ctx,
+                            const struct pipe_compute_state *shader);
+
 void
 d3d12_shader_free(struct d3d12_shader_selector *shader);
 

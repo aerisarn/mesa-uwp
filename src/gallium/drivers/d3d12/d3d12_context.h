@@ -162,6 +162,7 @@ struct d3d12_context {
    struct u_suballocator query_allocator;
    struct u_suballocator so_allocator;
    struct hash_table *pso_cache;
+   struct hash_table *compute_pso_cache;
    struct hash_table *root_signature_cache;
    struct hash_table *gs_variant_cache;
 
@@ -213,12 +214,15 @@ struct d3d12_context {
    unsigned fake_so_buffer_factor;
 
    struct d3d12_shader_selector *gfx_stages[D3D12_GFX_SHADER_STAGES];
+   struct d3d12_shader_selector *compute_state;
 
    struct d3d12_gfx_pipeline_state gfx_pipeline_state;
-   unsigned shader_dirty[D3D12_GFX_SHADER_STAGES];
+   struct d3d12_compute_pipeline_state compute_pipeline_state;
+   unsigned shader_dirty[PIPE_SHADER_TYPES];
    unsigned state_dirty;
    unsigned cmdlist_dirty;
-   ID3D12PipelineState *current_pso;
+   ID3D12PipelineState *current_gfx_pso;
+   ID3D12PipelineState *current_compute_pso;
    bool reverse_depth_range;
 
    ID3D12Fence *cmdqueue_fence;

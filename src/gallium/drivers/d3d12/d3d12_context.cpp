@@ -77,6 +77,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
    slab_destroy_child(&ctx->transfer_pool_unsync);
    d3d12_gs_variant_cache_destroy(ctx);
    d3d12_gfx_pipeline_state_cache_destroy(ctx);
+   d3d12_compute_pipeline_state_cache_destroy(ctx);
    d3d12_root_signature_cache_destroy(ctx);
 
    u_suballocator_destroy(&ctx->query_allocator);
@@ -1128,6 +1129,39 @@ d3d12_delete_gs_state(struct pipe_context *pctx, void *gs)
                  (struct d3d12_shader_selector *) gs);
 }
 
+static void *
+d3d12_create_compute_state(struct pipe_context *pctx,
+                           const struct pipe_compute_state *shader)
+{
+   return d3d12_create_compute_shader(d3d12_context(pctx), shader);
+}
+
+static void
+d3d12_bind_compute_state(struct pipe_context *pctx, void *css)
+{
+   d3d12_context(pctx)->compute_state = (struct d3d12_shader_selector *)css;
+}
+
+static void
+d3d12_delete_compute_state(struct pipe_context *pctx, void *cs)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   struct d3d12_shader_selector *shader = (struct d3d12_shader_selector *)cs;
+   d3d12_compute_pipeline_state_cache_invalidate_shader(ctx, shader);
+
+   /* Make sure the pipeline state no longer reference the deleted shader */
+   struct d3d12_shader *iter = shader->first;
+   while (iter) {
+      if (ctx->compute_pipeline_state.stage == iter) {
+         ctx->compute_pipeline_state.stage = NULL;
+         break;
+      }
+      iter = iter->next_variant;
+   }
+
+   d3d12_shader_free(shader);
+}
+
 static bool
 d3d12_init_polygon_stipple(struct pipe_context *pctx)
 {
@@ -2163,6 +2197,10 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.bind_gs_state = d3d12_bind_gs_state;
    ctx->base.delete_gs_state = d3d12_delete_gs_state;
 
+   ctx->base.create_compute_state = d3d12_create_compute_state;
+   ctx->base.bind_compute_state = d3d12_bind_compute_state;
+   ctx->base.delete_compute_state = d3d12_delete_compute_state;
+
    ctx->base.set_polygon_stipple = d3d12_set_polygon_stipple;
    ctx->base.set_vertex_buffers = d3d12_set_vertex_buffers;
    ctx->base.set_viewport_states = d3d12_set_viewport_states;
@@ -2224,6 +2262,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    }
 
    d3d12_gfx_pipeline_state_cache_init(ctx);
+   d3d12_compute_pipeline_state_cache_init(ctx);
    d3d12_root_signature_cache_init(ctx);
    d3d12_gs_variant_cache_init(ctx);
 

@@ -33,8 +33,13 @@
 
 #include <dxguids/dxguids.h>
 
-struct d3d12_pso_entry {
+struct d3d12_gfx_pso_entry {
    struct d3d12_gfx_pipeline_state key;
+   ID3D12PipelineState *pso;
+};
+
+struct d3d12_compute_pso_entry {
+   struct d3d12_compute_pipeline_state key;
    ID3D12PipelineState *pso;
 };
 
@@ -295,7 +300,7 @@ d3d12_get_gfx_pipeline_state(struct d3d12_context *ctx)
    struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ctx->pso_cache, hash,
                                                                  &ctx->gfx_pipeline_state);
    if (!entry) {
-      struct d3d12_pso_entry *data = (struct d3d12_pso_entry *)MALLOC(sizeof(struct d3d12_pso_entry));
+      struct d3d12_gfx_pso_entry *data = (struct d3d12_gfx_pso_entry *)MALLOC(sizeof(struct d3d12_gfx_pso_entry));
       if (!data)
          return NULL;
 
@@ -310,7 +315,7 @@ d3d12_get_gfx_pipeline_state(struct d3d12_context *ctx)
       assert(entry);
    }
 
-   return ((struct d3d12_pso_entry *)(entry->data))->pso;
+   return ((struct d3d12_gfx_pso_entry *)(entry->data))->pso;
 }
 
 void
@@ -320,28 +325,28 @@ d3d12_gfx_pipeline_state_cache_init(struct d3d12_context *ctx)
 }
 
 static void
-delete_entry(struct hash_entry *entry)
+delete_gfx_entry(struct hash_entry *entry)
 {
-   struct d3d12_pso_entry *data = (struct d3d12_pso_entry *)entry->data;
+   struct d3d12_gfx_pso_entry *data = (struct d3d12_gfx_pso_entry *)entry->data;
    data->pso->Release();
    FREE(data);
 }
 
 static void
-remove_entry(struct d3d12_context *ctx, struct hash_entry *entry)
+remove_gfx_entry(struct d3d12_context *ctx, struct hash_entry *entry)
 {
-   struct d3d12_pso_entry *data = (struct d3d12_pso_entry *)entry->data;
+   struct d3d12_gfx_pso_entry *data = (struct d3d12_gfx_pso_entry *)entry->data;
 
-   if (ctx->current_pso == data->pso)
-      ctx->current_pso = NULL;
+   if (ctx->current_gfx_pso == data->pso)
+      ctx->current_gfx_pso = NULL;
    _mesa_hash_table_remove(ctx->pso_cache, entry);
-   delete_entry(entry);
+   delete_gfx_entry(entry);
 }
 
 void
 d3d12_gfx_pipeline_state_cache_destroy(struct d3d12_context *ctx)
 {
-   _mesa_hash_table_destroy(ctx->pso_cache, delete_entry);
+   _mesa_hash_table_destroy(ctx->pso_cache, delete_gfx_entry);
 }
 
 void
@@ -350,7 +355,7 @@ d3d12_gfx_pipeline_state_cache_invalidate(struct d3d12_context *ctx, const void 
    hash_table_foreach(ctx->pso_cache, entry) {
       const struct d3d12_gfx_pipeline_state *key = (struct d3d12_gfx_pipeline_state *)entry->key;
       if (key->blend == state || key->zsa == state || key->rast == state)
-         remove_entry(ctx, entry);
+         remove_gfx_entry(ctx, entry);
    }
 }
 
@@ -365,7 +370,123 @@ d3d12_gfx_pipeline_state_cache_invalidate_shader(struct d3d12_context *ctx,
       hash_table_foreach(ctx->pso_cache, entry) {
          const struct d3d12_gfx_pipeline_state *key = (struct d3d12_gfx_pipeline_state *)entry->key;
          if (key->stages[stage] == shader)
-            remove_entry(ctx, entry);
+            remove_gfx_entry(ctx, entry);
+      }
+      shader = shader->next_variant;
+   }
+}
+
+static ID3D12PipelineState *
+create_compute_pipeline_state(struct d3d12_context *ctx)
+{
+   struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
+   struct d3d12_compute_pipeline_state *state = &ctx->compute_pipeline_state;
+
+   D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = { 0 };
+   pso_desc.pRootSignature = state->root_signature;
+
+   if (state->stage) {
+      auto shader = state->stage;
+      pso_desc.CS.BytecodeLength = shader->bytecode_length;
+      pso_desc.CS.pShaderBytecode = shader->bytecode;
+   }
+
+   pso_desc.NodeMask = 0;
+
+   pso_desc.CachedPSO.pCachedBlob = NULL;
+   pso_desc.CachedPSO.CachedBlobSizeInBytes = 0;
+
+   pso_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+   ID3D12PipelineState *ret;
+   if (FAILED(screen->dev->CreateComputePipelineState(&pso_desc,
+                                                      IID_PPV_ARGS(&ret)))) {
+      debug_printf("D3D12: CreateComputePipelineState failed!\n");
+      return NULL;
+   }
+
+   return ret;
+}
+
+static uint32_t
+hash_compute_pipeline_state(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct d3d12_compute_pipeline_state));
+}
+
+static bool
+equals_compute_pipeline_state(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct d3d12_compute_pipeline_state)) == 0;
+}
+
+ID3D12PipelineState *
+d3d12_get_compute_pipeline_state(struct d3d12_context *ctx)
+{
+   uint32_t hash = hash_compute_pipeline_state(&ctx->compute_pipeline_state);
+   struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ctx->compute_pso_cache, hash,
+                                                                 &ctx->compute_pipeline_state);
+   if (!entry) {
+      struct d3d12_compute_pso_entry *data = (struct d3d12_compute_pso_entry *)MALLOC(sizeof(struct d3d12_compute_pso_entry));
+      if (!data)
+         return NULL;
+
+      data->key = ctx->compute_pipeline_state;
+      data->pso = create_compute_pipeline_state(ctx);
+      if (!data->pso) {
+         FREE(data);
+         return NULL;
+      }
+
+      entry = _mesa_hash_table_insert_pre_hashed(ctx->compute_pso_cache, hash, &data->key, data);
+      assert(entry);
+   }
+
+   return ((struct d3d12_compute_pso_entry *)(entry->data))->pso;
+}
+
+void
+d3d12_compute_pipeline_state_cache_init(struct d3d12_context *ctx)
+{
+   ctx->compute_pso_cache = _mesa_hash_table_create(NULL, NULL, equals_compute_pipeline_state);
+}
+
+static void
+delete_compute_entry(struct hash_entry *entry)
+{
+   struct d3d12_compute_pso_entry *data = (struct d3d12_compute_pso_entry *)entry->data;
+   data->pso->Release();
+   FREE(data);
+}
+
+static void
+remove_compute_entry(struct d3d12_context *ctx, struct hash_entry *entry)
+{
+   struct d3d12_compute_pso_entry *data = (struct d3d12_compute_pso_entry *)entry->data;
+
+   if (ctx->current_compute_pso == data->pso)
+      ctx->current_compute_pso = NULL;
+   _mesa_hash_table_remove(ctx->compute_pso_cache, entry);
+   delete_compute_entry(entry);
+}
+
+void
+d3d12_compute_pipeline_state_cache_destroy(struct d3d12_context *ctx)
+{
+   _mesa_hash_table_destroy(ctx->compute_pso_cache, delete_compute_entry);
+}
+
+void
+d3d12_compute_pipeline_state_cache_invalidate_shader(struct d3d12_context *ctx,
+                                                     struct d3d12_shader_selector *selector)
+{
+   struct d3d12_shader *shader = selector->first;
+
+   while (shader) {
+      hash_table_foreach(ctx->compute_pso_cache, entry) {
+         const struct d3d12_compute_pipeline_state *key = (struct d3d12_compute_pipeline_state *)entry->key;
+         if (key->stage == shader)
+            remove_compute_entry(ctx, entry);
       }
       shader = shader->next_variant;
    }

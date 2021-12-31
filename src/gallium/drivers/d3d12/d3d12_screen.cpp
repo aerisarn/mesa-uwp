@@ -366,7 +366,8 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
       if (shader == PIPE_SHADER_VERTEX ||
           shader == PIPE_SHADER_FRAGMENT ||
-          shader == PIPE_SHADER_GEOMETRY)
+          shader == PIPE_SHADER_GEOMETRY ||
+          shader == PIPE_SHADER_COMPUTE)
          return INT_MAX;
       return 0;
 
