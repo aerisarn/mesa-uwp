@@ -684,19 +684,6 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (!isl_format_supports_rendering(&device->info,
-                                         plane_format.isl_format)) {
-         /* Disable CCS because it is not useful (we can't render to the image
-          * with CCS enabled).  While it may be technically possible to enable
-          * CCS for this case, we currently don't have things hooked up to get
-          * it working.
-          */
-         anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
-                       "This image format doesn't support rendering. "
-                       "Not allocating an CCS buffer.");
-         return VK_SUCCESS;
-      }
-
       if (INTEL_DEBUG(DEBUG_NO_RBC))
          return VK_SUCCESS;
 
