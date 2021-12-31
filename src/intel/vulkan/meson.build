@@ -139,10 +139,6 @@ if with_platform_wayland
   anv_deps += dep_wayland_client
 endif
 
-if system_has_kms_drm and not with_platform_android
-  libanv_files += files('anv_wsi_display.c')
-endif
-
 if with_xlib_lease
   anv_deps += [dep_xlib_xrandr]
 endif
