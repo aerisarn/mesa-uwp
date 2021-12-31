@@ -4238,7 +4238,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_compile_variant(nir, inputs, binary, sysval_to_id, info, BI_IDVS_NONE);
         }
 
-        info->ubo_mask &= BITSET_MASK(nir->info.num_ubos);
+        info->ubo_mask &= (1 << nir->info.num_ubos) - 1;
 
         _mesa_hash_table_u64_destroy(sysval_to_id);
 }
