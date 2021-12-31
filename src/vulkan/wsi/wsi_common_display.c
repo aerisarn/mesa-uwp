@@ -46,6 +46,7 @@
 #include "util/os_time.h"
 
 #include "vk_device.h"
+#include "vk_fence.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "vk_sync.h"
@@ -2765,12 +2766,32 @@ wsi_register_device_event(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-wsi_RegisterDeviceEventEXT(VkDevice device,
-                           const VkDeviceEventInfoEXT *pDeviceEventInfo,
-                           const VkAllocationCallbacks *pAllocator,
-                           VkFence *pFence)
+wsi_RegisterDeviceEventEXT(VkDevice _device, const VkDeviceEventInfoEXT *device_event_info,
+                            const VkAllocationCallbacks *allocator, VkFence *_fence)
 {
-   unreachable("Not enough common infrastructure to implement this yet");
+   VK_FROM_HANDLE(vk_device, device, _device);
+   struct vk_fence *fence;
+   VkResult ret;
+
+   const VkFenceCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .flags = 0,
+   };
+   ret = vk_fence_create(device, &info, allocator, &fence);
+   if (ret != VK_SUCCESS)
+      return ret;
+
+   ret = wsi_register_device_event(_device,
+                                   device->physical->wsi_device,
+                                   device_event_info,
+                                   allocator,
+                                   &fence->temporary,
+                                   -1);
+   if (ret == VK_SUCCESS)
+      *_fence = vk_fence_to_handle(fence);
+   else
+      vk_fence_destroy(device, fence, allocator);
+   return ret;
 }
 
 VkResult
@@ -2823,13 +2844,31 @@ wsi_register_display_event(VkDevice _device,
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-wsi_RegisterDisplayEventEXT(VkDevice device,
-                            VkDisplayKHR display,
-                            const VkDisplayEventInfoEXT *pDisplayEventInfo,
-                            const VkAllocationCallbacks *pAllocator,
-                            VkFence *pFence)
+wsi_RegisterDisplayEventEXT(VkDevice _device, VkDisplayKHR display,
+                             const VkDisplayEventInfoEXT *display_event_info,
+                             const VkAllocationCallbacks *allocator, VkFence *_fence)
 {
-   unreachable("Not enough common infrastructure to implement this yet");
+   VK_FROM_HANDLE(vk_device, device, _device);
+   struct vk_fence *fence;
+   VkResult ret;
+
+   const VkFenceCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+      .flags = 0,
+   };
+   ret = vk_fence_create(device, &info, allocator, &fence);
+   if (ret != VK_SUCCESS)
+      return ret;
+
+   ret = wsi_register_display_event(
+      _device, device->physical->wsi_device,
+      display, display_event_info, allocator, &fence->temporary, -1);
+
+   if (ret == VK_SUCCESS)
+      *_fence = vk_fence_to_handle(fence);
+   else
+      vk_fence_destroy(device, fence, allocator);
+   return ret;
 }
 
 void
