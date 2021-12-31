@@ -695,7 +695,6 @@ d3d12_bind_sampler_states(struct pipe_context *pctx,
                           void **samplers)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
-   bool shader_state_dirty = false;
 
 #define STATIC_ASSERT_PIPE_EQUAL_COMP_FUNC(X) \
    static_assert((enum compare_func)PIPE_FUNC_##X == COMPARE_FUNC_##X, #X " needs switch case");
@@ -715,11 +714,6 @@ d3d12_bind_sampler_states(struct pipe_context *pctx,
       ctx->samplers[shader][start_slot + i] = sampler;
       dxil_wrap_sampler_state &wrap = ctx->tex_wrap_states[shader][start_slot + i];
       if (sampler) {
-         shader_state_dirty |= wrap.wrap[0] != sampler->wrap_s ||
-                               wrap.wrap[1] != sampler->wrap_t ||
-                               wrap.wrap[2] != sampler->wrap_r;
-         shader_state_dirty |= !!memcmp(wrap.border_color, sampler->border_color, 4 * sizeof(float));
-
          wrap.wrap[0] = sampler->wrap_s;
          wrap.wrap[1] = sampler->wrap_t;
          wrap.wrap[2] = sampler->wrap_r;
@@ -735,8 +729,6 @@ d3d12_bind_sampler_states(struct pipe_context *pctx,
 
    ctx->num_samplers[shader] = start_slot + num_samplers;
    ctx->shader_dirty[shader] |= D3D12_SHADER_DIRTY_SAMPLERS;
-   if (shader_state_dirty)
-      ctx->state_dirty |= D3D12_DIRTY_SHADER;
 }
 
 static void
@@ -1592,7 +1584,7 @@ d3d12_set_shader_images(struct pipe_context *pctx,
          pipe_resource_reference(&slot->resource, NULL);
       }
 
-      enum pipe_format emulation_format = PIPE_FORMAT_NONE;
+      ctx->image_view_emulation_formats[shader][i] = PIPE_FORMAT_NONE;
       if (i < count && images && images[i].resource) {
          pipe_resource_reference(&slot->resource, images[i].resource);
          *slot = images[i];
@@ -1603,16 +1595,11 @@ d3d12_set_shader_images(struct pipe_context *pctx,
              d3d12_get_typeless_format(images[i].format) !=
              d3d12_get_typeless_format(images[i].resource->format)) {
             /* Can't use D3D casting, have to use shader lowering instead */
-            emulation_format =
+            ctx->image_view_emulation_formats[shader][i] =
                get_shader_image_emulation_format(images[i].resource->format);
          }
       } else
          memset(slot, 0, sizeof(*slot));
-
-      if (ctx->image_view_emulation_formats[shader][i] != emulation_format) {
-         ctx->image_view_emulation_formats[shader][i] = emulation_format;
-         ctx->state_dirty |= D3D12_DIRTY_SHADER;
-      }
    }
 
    if (images) {
