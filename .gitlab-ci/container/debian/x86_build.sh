@@ -11,7 +11,6 @@ STABLE_EPHEMERAL=" \
       automake \
       autotools-dev \
       bzip2 \
-      cmake \
       libtool \
       python3-pip \
       "
@@ -22,7 +21,9 @@ apt-get update
 
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
+      check \
       clang \
+      cmake \
       libasan6 \
       libarchive-dev \
       libclang-cpp11-dev \

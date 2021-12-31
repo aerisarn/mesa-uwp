@@ -3,7 +3,7 @@ variables:
    DEBIAN_BASE_TAG: "2022-01-02-deqp-runner"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2021-12-31-refactor"
+   DEBIAN_BUILD_TAG: "2021-12-31-keep-cmake"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
