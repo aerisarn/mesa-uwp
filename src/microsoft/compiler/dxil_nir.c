@@ -1377,6 +1377,43 @@ dxil_nir_lower_system_values_to_zero(nir_shader* shader,
       &state);
 }
 
+static void
+lower_load_local_group_size(nir_builder *b, nir_intrinsic_instr *intr)
+{
+   b->cursor = nir_after_instr(&intr->instr);
+
+   nir_const_value v[3] = {
+      nir_const_value_for_int(b->shader->info.workgroup_size[0], 32),
+      nir_const_value_for_int(b->shader->info.workgroup_size[1], 32),
+      nir_const_value_for_int(b->shader->info.workgroup_size[2], 32)
+   };
+   nir_ssa_def *size = nir_build_imm(b, 3, 32, v);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, size);
+   nir_instr_remove(&intr->instr);
+}
+
+static bool
+lower_system_values_impl(nir_builder *b, nir_instr *instr, void *_state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_workgroup_size:
+      lower_load_local_group_size(b, intr);
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+dxil_nir_lower_system_values(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, lower_system_values_impl,
+      nir_metadata_block_index | nir_metadata_dominance | nir_metadata_loop_analysis, NULL);
+}
+
 static const struct glsl_type *
 get_bare_samplers_for_type(const struct glsl_type *type, bool is_shadow)
 {
