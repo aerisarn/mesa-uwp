@@ -114,6 +114,10 @@ struct d3d12_shader_key {
       unsigned remap_front_facing : 1;
    } fs;
 
+   struct {
+      unsigned workgroup_size[3];
+   } cs;
+
    int n_texture_states;
    dxil_wrap_sampler_state tex_wrap_states[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    dxil_texture_swizzle_state swizzle_state[PIPE_MAX_SHADER_SAMPLER_VIEWS];
@@ -185,6 +189,7 @@ struct d3d12_shader_selector {
 
    unsigned samples_int_textures:1;
    unsigned compare_with_lod_bias_grad:1;
+   unsigned workgroup_size_variable:1;
 
    bool is_gs_variant;
    struct d3d12_gs_variant_key gs_key;
@@ -207,6 +212,10 @@ d3d12_shader_free(struct d3d12_shader_selector *shader);
 void
 d3d12_select_shader_variants(struct d3d12_context *ctx,
                              const struct pipe_draw_info *dinfo);
+
+void
+d3d12_select_compute_shader_variants(struct d3d12_context *ctx,
+                                     const struct pipe_grid_info *info);
 
 void
 d3d12_gs_variant_cache_init(struct d3d12_context *ctx);

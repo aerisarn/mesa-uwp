@@ -252,6 +252,7 @@ struct d3d12_selection_context {
    bool manual_depth_range;
    unsigned missing_dual_src_outputs;
    unsigned frag_result_color_lowering;
+   const unsigned *variable_workgroup_size;
 };
 
 static unsigned
@@ -619,6 +620,10 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
           expect->fs.cast_to_uint != have->fs.cast_to_uint ||
           expect->fs.cast_to_int != have->fs.cast_to_int)
          return false;
+   } else if (expect->stage == PIPE_SHADER_COMPUTE) {
+      if (memcmp(expect->cs.workgroup_size, have->cs.workgroup_size,
+                 sizeof(have->cs.workgroup_size)))
+         return false;
    }
 
    if (expect->tex_saturate_s != have->tex_saturate_s ||
@@ -811,6 +816,10 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
       key->fs.remap_front_facing = 1;
    }
 
+   if (stage == PIPE_SHADER_COMPUTE && sel_ctx->variable_workgroup_size) {
+      memcpy(key->cs.workgroup_size, sel_ctx->variable_workgroup_size, sizeof(key->cs.workgroup_size));
+   }
+
    key->n_images = sel_ctx->ctx->num_image_views[stage];
    for (int i = 0; i < key->n_images; ++i) {
       key->image_format_conversion[i].emulated_format = sel_ctx->ctx->image_view_emulation_formats[stage][i];
@@ -902,6 +911,12 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
 
    if (key.n_images)
       NIR_PASS_V(new_nir_variant, d3d12_lower_image_casts, key.image_format_conversion);
+
+   if (sel->workgroup_size_variable) {
+      new_nir_variant->info.workgroup_size[0] = key.cs.workgroup_size[0];
+      new_nir_variant->info.workgroup_size[1] = key.cs.workgroup_size[1];
+      new_nir_variant->info.workgroup_size[2] = key.cs.workgroup_size[2];
+   }
 
    {
       struct nir_lower_tex_options tex_options = { };
@@ -1057,6 +1072,7 @@ d3d12_create_shader_impl(struct d3d12_context *ctx,
    unsigned tex_scan_result = scan_texture_use(nir);
    sel->samples_int_textures = (tex_scan_result & TEX_SAMPLE_INTEGER_TEXTURE) != 0;
    sel->compare_with_lod_bias_grad = (tex_scan_result & TEX_CMP_WITH_LOD_BIAS_GRAD) != 0;
+   sel->workgroup_size_variable = nir->info.workgroup_size_variable;
    
    /* Integer cube maps are not supported in DirectX because sampling is not supported
     * on integer textures and TextureLoad is not supported for cube maps, so we have to
@@ -1198,6 +1214,26 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
 
       select_shader_variant(&sel_ctx, sel, prev, next);
    }
+}
+
+static const unsigned *
+workgroup_size_variable(struct d3d12_context *ctx,
+                        const struct pipe_grid_info *info)
+{
+   if (ctx->compute_state->workgroup_size_variable)
+      return info->block;
+   return nullptr;
+}
+
+void
+d3d12_select_compute_shader_variants(struct d3d12_context *ctx, const struct pipe_grid_info *info)
+{
+   struct d3d12_selection_context sel_ctx = {};
+
+   sel_ctx.ctx = ctx;
+   sel_ctx.variable_workgroup_size = workgroup_size_variable(ctx, info);
+
+   select_shader_variant(&sel_ctx, ctx->compute_state, nullptr, nullptr);
 }
 
 void
