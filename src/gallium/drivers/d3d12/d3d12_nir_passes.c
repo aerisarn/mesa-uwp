@@ -220,6 +220,43 @@ d3d12_lower_depth_range(nir_shader *nir)
    }
 }
 
+struct compute_state_vars {
+   nir_variable *num_workgroups;
+};
+
+static bool
+lower_compute_state_vars(nir_builder *b, nir_instr *instr, void *_state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   b->cursor = nir_after_instr(instr);
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   struct compute_state_vars *vars = _state;
+   nir_ssa_def *result = NULL;
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_num_workgroups:
+      result = get_state_var(b, D3D12_STATE_VAR_NUM_WORKGROUPS, "d3d12_NumWorkgroups",
+         glsl_vec_type(3), &vars->num_workgroups);
+      break;
+   default:
+      return false;
+   }
+
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
+   nir_instr_remove(instr);
+   return true;
+}
+
+bool
+d3d12_lower_compute_state_vars(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_COMPUTE);
+   struct compute_state_vars vars = { 0 };
+   return nir_shader_instructions_pass(nir, lower_compute_state_vars,
+      nir_metadata_block_index | nir_metadata_dominance, &vars);
+}
+
 static bool
 is_color_output(nir_variable *var)
 {

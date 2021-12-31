@@ -1183,6 +1183,8 @@ d3d12_create_compute_shader(struct d3d12_context *ctx,
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   NIR_PASS_V(nir, d3d12_lower_compute_state_vars);
+
    return d3d12_create_shader_impl(ctx, sel, nir, nullptr, nullptr);
 }
 

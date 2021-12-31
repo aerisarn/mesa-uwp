@@ -55,6 +55,9 @@ d3d12_lower_depth_range(nir_shader *nir);
 bool
 d3d12_lower_load_first_vertex(nir_shader *nir);
 
+bool
+d3d12_lower_compute_state_vars(nir_shader *nir);
+
 void
 d3d12_lower_uint_cast(nir_shader *nir, bool is_signed);
 

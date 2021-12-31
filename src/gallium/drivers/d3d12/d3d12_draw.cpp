@@ -378,6 +378,32 @@ fill_graphics_state_vars(struct d3d12_context *ctx,
    return size;
 }
 
+static unsigned
+fill_compute_state_vars(struct d3d12_context *ctx,
+                        const struct pipe_grid_info *info,
+                        struct d3d12_shader *shader,
+                        uint32_t *values)
+{
+   unsigned size = 0;
+
+   for (unsigned j = 0; j < shader->num_state_vars; ++j) {
+      uint32_t *ptr = values + size;
+
+      switch (shader->state_vars[j].var) {
+      case D3D12_STATE_VAR_NUM_WORKGROUPS:
+         ptr[0] = info->grid[0];
+         ptr[1] = info->grid[1];
+         ptr[2] = info->grid[2];
+         size += 4;
+         break;
+      default:
+         unreachable("unknown state variable");
+      }
+   }
+
+   return size;
+}
+
 static bool
 check_descriptors_left(struct d3d12_context *ctx, bool compute)
 {
@@ -489,7 +515,7 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
       update_shader_stage_root_parameters(ctx, shader_sel, num_params, num_root_descriptors, root_desc_tables, root_desc_indices);
       /* TODO Don't always update state vars */
       if (shader_sel->current->num_state_vars > 0) {
-         uint32_t constants[D3D12_MAX_STATE_VARS * 4];
+         uint32_t constants[D3D12_MAX_GRAPHICS_STATE_VARS * 4];
          unsigned size = fill_graphics_state_vars(ctx, dinfo, draw, shader_sel->current, constants);
          ctx->cmdlist->SetGraphicsRoot32BitConstants(num_params, size, constants, 0);
          num_params++;
@@ -510,6 +536,13 @@ update_compute_root_parameters(struct d3d12_context *ctx,
    struct d3d12_shader_selector *shader_sel = ctx->compute_state;
    if (shader_sel) {
       update_shader_stage_root_parameters(ctx, shader_sel, num_params, num_root_descriptors, root_desc_tables, root_desc_indices);
+      /* TODO Don't always update state vars */
+      if (shader_sel->current->num_state_vars > 0) {
+         uint32_t constants[D3D12_MAX_COMPUTE_STATE_VARS * 4];
+         unsigned size = fill_compute_state_vars(ctx, info, shader_sel->current, constants);
+         ctx->cmdlist->SetComputeRoot32BitConstants(num_params, size, constants, 0);
+         num_params++;
+      }
    }
    return num_root_descriptors;
 }
