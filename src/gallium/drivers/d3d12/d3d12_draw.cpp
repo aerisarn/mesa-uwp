@@ -752,7 +752,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    }
 
    if (!ctx->gfx_pipeline_state.root_signature || ctx->state_dirty & D3D12_DIRTY_SHADER) {
-      ID3D12RootSignature *root_signature = d3d12_get_root_signature(ctx);
+      ID3D12RootSignature *root_signature = d3d12_get_root_signature(ctx, false);
       if (ctx->gfx_pipeline_state.root_signature != root_signature) {
          ctx->gfx_pipeline_state.root_signature = root_signature;
          ctx->state_dirty |= D3D12_DIRTY_ROOT_SIGNATURE;

@@ -27,6 +27,7 @@
 #include "d3d12_context.h"
 
 struct d3d12_root_signature_key {
+   bool compute;
    bool has_stream_output;
    struct {
       unsigned num_cb_bindings;
@@ -46,6 +47,6 @@ void
 d3d12_root_signature_cache_destroy(struct d3d12_context *ctx);
 
 ID3D12RootSignature *
-d3d12_get_root_signature(struct d3d12_context *ctx);
+d3d12_get_root_signature(struct d3d12_context *ctx, bool compute);
 
 #endif
