@@ -68,6 +68,10 @@ struct d3d12_varying_info {
    uint64_t mask;
 };
 
+struct d3d12_image_format_conversion_info {
+   enum pipe_format view_format, emulated_format;
+};
+
 struct d3d12_shader_key {
    enum pipe_shader_type stage;
 
@@ -114,6 +118,9 @@ struct d3d12_shader_key {
    dxil_wrap_sampler_state tex_wrap_states[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    dxil_texture_swizzle_state swizzle_state[PIPE_MAX_SHADER_SAMPLER_VIEWS];
    enum compare_func sampler_compare_funcs[PIPE_MAX_SHADER_SAMPLER_VIEWS];
+
+   int n_images;
+   struct d3d12_image_format_conversion_info image_format_conversion[PIPE_MAX_SHADER_IMAGES];
 };
 
 struct d3d12_shader {

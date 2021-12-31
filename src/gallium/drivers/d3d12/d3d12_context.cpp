@@ -1536,6 +1536,47 @@ d3d12_increment_image_bind_count(struct d3d12_context *ctx,
    res->bind_counts[shader][D3D12_RESOURCE_BINDING_TYPE_IMAGE]++;
 }
 
+static bool
+is_valid_uav_cast(enum pipe_format resource_format, enum pipe_format view_format)
+{
+   if (view_format != PIPE_FORMAT_R32_UINT &&
+       view_format != PIPE_FORMAT_R32_SINT &&
+       view_format != PIPE_FORMAT_R32_FLOAT)
+      return false;
+   switch (d3d12_get_typeless_format(resource_format)) {
+   case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+   case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+   case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+   case DXGI_FORMAT_R16G16_TYPELESS:
+   case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static enum pipe_format
+get_shader_image_emulation_format(enum pipe_format resource_format)
+{
+#define CASE(f) case DXGI_FORMAT_##f##_TYPELESS: return PIPE_FORMAT_##f##_UINT
+   switch (d3d12_get_typeless_format(resource_format)) {
+      CASE(R8);
+      CASE(R8G8);
+      CASE(R8G8B8A8);
+      CASE(R16);
+      CASE(R16G16);
+      CASE(R16G16B16A16);
+      CASE(R32);
+      CASE(R32G32);
+      CASE(R32G32B32A32);
+      CASE(R10G10B10A2);
+   case DXGI_FORMAT_R11G11B10_FLOAT:
+      return PIPE_FORMAT_R11G11B10_FLOAT;
+   default:
+      unreachable("Unexpected shader image resource format");
+   }
+}
+
 static void
 d3d12_set_shader_images(struct pipe_context *pctx,
                         enum pipe_shader_type shader,
@@ -1551,12 +1592,27 @@ d3d12_set_shader_images(struct pipe_context *pctx,
          pipe_resource_reference(&slot->resource, NULL);
       }
 
+      enum pipe_format emulation_format = PIPE_FORMAT_NONE;
       if (i < count && images && images[i].resource) {
          pipe_resource_reference(&slot->resource, images[i].resource);
          *slot = images[i];
          d3d12_increment_image_bind_count(ctx, shader, d3d12_resource(images[i].resource));
+
+         if (images[i].resource->target != PIPE_BUFFER &&
+             !is_valid_uav_cast(images[i].resource->format, images[i].format) &&
+             d3d12_get_typeless_format(images[i].format) !=
+             d3d12_get_typeless_format(images[i].resource->format)) {
+            /* Can't use D3D casting, have to use shader lowering instead */
+            emulation_format =
+               get_shader_image_emulation_format(images[i].resource->format);
+         }
       } else
          memset(slot, 0, sizeof(*slot));
+
+      if (ctx->image_view_emulation_formats[shader][i] != emulation_format) {
+         ctx->image_view_emulation_formats[shader][i] = emulation_format;
+         ctx->state_dirty |= D3D12_DIRTY_SHADER;
+      }
    }
 
    if (images) {

@@ -189,6 +189,7 @@ struct d3d12_context {
    struct pipe_shader_buffer ssbo_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
    unsigned num_ssbo_views[PIPE_SHADER_TYPES];
    struct pipe_image_view image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+   enum pipe_format image_view_emulation_formats[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
    unsigned num_image_views[PIPE_SHADER_TYPES];
    struct d3d12_sampler_state *samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    unsigned num_samplers[PIPE_SHADER_TYPES];

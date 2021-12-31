@@ -633,6 +633,9 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
    if (expect->n_texture_states != have->n_texture_states)
       return false;
 
+   if (expect->n_images != have->n_images)
+      return false;
+
    if (memcmp(expect->tex_wrap_states, have->tex_wrap_states,
               expect->n_texture_states * sizeof(dxil_wrap_sampler_state)))
       return false;
@@ -643,6 +646,10 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
 
    if (memcmp(expect->sampler_compare_funcs, have->sampler_compare_funcs,
               expect->n_texture_states * sizeof(enum compare_func)))
+      return false;
+
+   if (memcmp(expect->image_format_conversion, have->image_format_conversion,
+      expect->n_images * sizeof(struct d3d12_image_format_conversion_info)))
       return false;
 
    if (expect->invert_depth != have->invert_depth)
@@ -804,6 +811,13 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
        sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->gs_key.has_front_face) {
       key->fs.remap_front_facing = 1;
    }
+
+   key->n_images = sel_ctx->ctx->num_image_views[stage];
+   for (int i = 0; i < key->n_images; ++i) {
+      key->image_format_conversion[i].emulated_format = sel_ctx->ctx->image_view_emulation_formats[stage][i];
+      if (key->image_format_conversion[i].emulated_format != PIPE_FORMAT_NONE)
+         key->image_format_conversion[i].view_format = sel_ctx->ctx->image_views[stage][i].format;
+   }
 }
 
 static void
@@ -886,6 +900,9 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
       NIR_PASS_V(new_nir_variant, d3d12_lower_uint_cast, false);
    if (key.fs.cast_to_int)
       NIR_PASS_V(new_nir_variant, d3d12_lower_uint_cast, true);
+
+   if (key.n_images)
+      NIR_PASS_V(new_nir_variant, d3d12_lower_image_casts, key.image_format_conversion);
 
    {
       struct nir_lower_tex_options tex_options = { };

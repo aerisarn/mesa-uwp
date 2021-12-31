@@ -254,7 +254,10 @@ fill_image_descriptors(struct d3d12_context *ctx,
          uint64_t offset = 0;
          ID3D12Resource *d3d12_res = d3d12_resource_underlying(res, &offset);
 
-         uav_desc.Format = d3d12_get_format(res->base.b.format);
+         enum pipe_format view_format = ctx->image_view_emulation_formats[stage][i];
+         if (view_format == PIPE_FORMAT_NONE)
+            view_format = view->format;
+         uav_desc.Format = d3d12_get_format(view_format);
          uav_desc.ViewDimension = image_view_dimension(res->base.b.target);
 
          unsigned array_size = view->u.tex.last_layer - view->u.tex.first_layer + 1;
