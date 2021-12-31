@@ -2469,7 +2469,8 @@ get_resource_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
       return *handle_entry;
 
    const struct dxil_value *value = get_src_ssa(ctx, src->ssa, 0);
-   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
+   if (nir_src_as_deref(*src) ||
+       ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN) {
       return value;
    }
 
@@ -3580,10 +3581,10 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    assert(instr->deref_type == nir_deref_type_var ||
           instr->deref_type == nir_deref_type_array);
 
-   /* In the non-Vulkan environment, there's nothing to emit. Any references to
+   /* In the CL environment, there's nothing to emit. Any references to
     * derefs will emit the necessary logic to handle scratch/shared GEP addressing
     */
-   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN)
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_CL)
       return true;
 
    /* In the Vulkan environment, we don't have cached handles for textures or
@@ -3600,9 +3601,11 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
 
    const struct glsl_type *type = instr->type;
    const struct dxil_value *binding;
+   unsigned binding_val = ctx->opts->environment == DXIL_ENVIRONMENT_GL ?
+      var->data.driver_location : var->data.binding;
 
    if (instr->deref_type == nir_deref_type_var) {
-      binding = dxil_module_get_int32_const(&ctx->mod, var->data.binding);
+      binding = dxil_module_get_int32_const(&ctx->mod, binding_val);
    } else {
       const struct dxil_value *base = get_src(ctx, &instr->parent, 0, nir_type_uint32);
       const struct dxil_value *offset = get_src(ctx, &instr->arr.index, 0, nir_type_uint32);
@@ -3636,8 +3639,10 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    else
       res_class = DXIL_RESOURCE_CLASS_SRV;
    
+   unsigned descriptor_set = ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN ?
+      var->data.descriptor_set : (glsl_type_is_image(type) ? 1 : 0);
    const struct dxil_value *handle = emit_createhandle_call(ctx, res_class,
-      get_resource_id(ctx, res_class, var->data.descriptor_set, var->data.binding), binding, false);
+      get_resource_id(ctx, res_class, descriptor_set, binding_val), binding, false);
    if (!handle)
       return false;
 

@@ -55,7 +55,8 @@ enum dxil_environment {
     *   All other resource variables have driver_location set instead, assigned from 0 -> N
     *   UBOs may or may not have interface variables, and are declared from ubo_binding_offset -> num_ubos; no dynamic indexing yet
     *   SSBOs may or may not have interface variables, and are declared from from 0 -> num_ssbos; no dynamic indexing yet
-    *   No images, immediate constant buffer, or scratch
+    *   Images are *not* lowered, so that dynamic indexing can deterministically get a base binding via the deref chain
+    *   No immediate constant buffer, or scratch
     */
    DXIL_ENVIRONMENT_GL,
    /* In the CL environment:
