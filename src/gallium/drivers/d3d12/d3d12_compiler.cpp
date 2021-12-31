@@ -243,7 +243,6 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
 
 struct d3d12_selection_context {
    struct d3d12_context *ctx;
-   const struct pipe_draw_info *dinfo;
    bool needs_point_sprite_lowering;
    bool needs_vertex_reordering;
    unsigned provoking_vertex;
@@ -405,7 +404,7 @@ cull_mode_lowered(struct d3d12_context *ctx, unsigned fill_mode)
 }
 
 static unsigned
-get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate)
+get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate, const struct pipe_draw_info *dinfo)
 {
    struct d3d12_shader_selector *vs = sel_ctx->ctx->gfx_stages[PIPE_SHADER_VERTEX];
    struct d3d12_shader_selector *gs = sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
@@ -422,7 +421,7 @@ get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate)
       mode = (enum pipe_prim_type)last_vertex_stage->current->nir->info.gs.output_primitive;
       break;
    case PIPE_SHADER_VERTEX:
-      mode = sel_ctx->dinfo ? (enum pipe_prim_type)sel_ctx->dinfo->mode : PIPE_PRIM_TRIANGLES;
+      mode = (enum pipe_prim_type)dinfo->mode;
       break;
    default:
       unreachable("Tesselation shaders are not supported");
@@ -454,13 +453,13 @@ has_flat_varyings(struct d3d12_context *ctx)
 }
 
 static bool
-needs_vertex_reordering(struct d3d12_selection_context *sel_ctx)
+needs_vertex_reordering(struct d3d12_selection_context *sel_ctx, const struct pipe_draw_info *dinfo)
 {
    struct d3d12_context *ctx = sel_ctx->ctx;
    bool flat = has_flat_varyings(ctx);
    bool xfb = ctx->gfx_pipeline_state.num_so_targets > 0;
 
-   if (fill_mode_lowered(ctx, sel_ctx->dinfo) != PIPE_POLYGON_MODE_FILL)
+   if (fill_mode_lowered(ctx, dinfo) != PIPE_POLYGON_MODE_FILL)
       return false;
 
    /* TODO add support for line primitives */
@@ -1148,12 +1147,11 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
    struct d3d12_selection_context sel_ctx;
 
    sel_ctx.ctx = ctx;
-   sel_ctx.dinfo = dinfo;
    sel_ctx.needs_point_sprite_lowering = needs_point_sprite_lowering(ctx, dinfo);
    sel_ctx.fill_mode_lowered = fill_mode_lowered(ctx, dinfo);
    sel_ctx.cull_mode_lowered = cull_mode_lowered(ctx, sel_ctx.fill_mode_lowered);
-   sel_ctx.provoking_vertex = get_provoking_vertex(&sel_ctx, &sel_ctx.alternate_tri);
-   sel_ctx.needs_vertex_reordering = needs_vertex_reordering(&sel_ctx);
+   sel_ctx.provoking_vertex = get_provoking_vertex(&sel_ctx, &sel_ctx.alternate_tri, dinfo);
+   sel_ctx.needs_vertex_reordering = needs_vertex_reordering(&sel_ctx, dinfo);
    sel_ctx.missing_dual_src_outputs = missing_dual_src_outputs(ctx);
    sel_ctx.frag_result_color_lowering = frag_result_color_lowering(ctx);
    sel_ctx.manual_depth_range = manual_depth_range(ctx);
