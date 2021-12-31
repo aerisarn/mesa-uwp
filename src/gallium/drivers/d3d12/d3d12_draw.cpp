@@ -458,13 +458,6 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
          }
          num_params++;
       }
-      /* TODO Don't always update state vars */
-      if (shader->num_state_vars > 0) {
-         uint32_t constants[D3D12_MAX_STATE_VARS * 4];
-         unsigned size = fill_state_vars(ctx, dinfo, draw, shader, constants);
-         ctx->cmdlist->SetGraphicsRoot32BitConstants(num_params, size, constants, 0);
-         num_params++;
-      }
       if (shader->nir->info.num_ssbos > 0) {
          if (dirty & D3D12_SHADER_DIRTY_SSBO) {
             assert(num_root_desciptors < MAX_DESCRIPTOR_TABLES);
@@ -479,6 +472,13 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
             root_desc_tables[num_root_desciptors] = fill_image_descriptors(ctx, shader, i);
             root_desc_indices[num_root_desciptors++] = num_params;
          }
+         num_params++;
+      }
+      /* TODO Don't always update state vars */
+      if (shader->num_state_vars > 0) {
+         uint32_t constants[D3D12_MAX_STATE_VARS * 4];
+         unsigned size = fill_state_vars(ctx, dinfo, draw, shader, constants);
+         ctx->cmdlist->SetGraphicsRoot32BitConstants(num_params, size, constants, 0);
          num_params++;
       }
    }

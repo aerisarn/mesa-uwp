@@ -135,13 +135,6 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
                                0);
       }
 
-      if (key->stages[i].state_vars_size > 0) {
-         init_constant_root_param(&root_params[num_params++],
-                                  key->stages[i].num_cb_bindings + (key->stages[i].has_default_ubo0 ? 0 : 1),
-                                  key->stages[i].state_vars_size,
-                                  visibility);
-      }
-
       if (key->stages[i].num_ssbos > 0) {
          init_range_root_param(&root_params[num_params++],
                                &desc_ranges[num_ranges++],
@@ -160,6 +153,13 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
                                visibility,
                                0,
                                1);
+      }
+
+      if (key->stages[i].state_vars_size > 0) {
+         init_constant_root_param(&root_params[num_params++],
+            key->stages[i].num_cb_bindings + (key->stages[i].has_default_ubo0 ? 0 : 1),
+            key->stages[i].state_vars_size,
+            visibility);
       }
       assert(num_params < PIPE_SHADER_TYPES * D3D12_NUM_BINDING_TYPES);
       assert(num_ranges < PIPE_SHADER_TYPES * D3D12_NUM_BINDING_TYPES);
