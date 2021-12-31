@@ -3609,6 +3609,12 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
       if (!base || !offset)
          return false;
 
+      if (glsl_type_is_array(instr->type)) {
+         offset = dxil_emit_binop(&ctx->mod, DXIL_BINOP_MUL, offset,
+            dxil_module_get_int32_const(&ctx->mod, glsl_get_aoa_size(instr->type)), 0);
+         if (!offset)
+            return false;
+      }
       binding = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD, base, offset, 0);
    }
 
