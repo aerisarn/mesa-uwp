@@ -1691,9 +1691,7 @@ anv_device_alloc_bo(struct anv_device *device,
       uint32_t nregions = 0;
 
       if (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM) {
-         /* For vram allocation, still use system memory as a fallback. */
          regions[nregions++] = device->physical->vram.region;
-         regions[nregions++] = device->physical->sys.region;
       } else {
          regions[nregions++] = device->physical->sys.region;
       }
