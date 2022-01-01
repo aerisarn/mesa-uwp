@@ -34,6 +34,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_deref.h"
+#include "nir_xfb_info.h"
 
 #include "util/u_math.h"
 
@@ -2814,3 +2815,196 @@ nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes)
    return progress;
 }
 
+static bool
+nir_lower_color_inputs(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr_safe (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+         if (intrin->intrinsic != nir_intrinsic_load_deref)
+            continue;
+
+         nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+         if (!nir_deref_mode_is(deref, nir_var_shader_in))
+            continue;
+
+         b.cursor = nir_before_instr(instr);
+         nir_variable *var = nir_deref_instr_get_variable(deref);
+         nir_ssa_def *def;
+
+         if (var->data.location == VARYING_SLOT_COL0) {
+            def = nir_load_color0(&b);
+            nir->info.fs.color0_interp = var->data.interpolation;
+            nir->info.fs.color0_sample = var->data.sample;
+            nir->info.fs.color0_centroid = var->data.centroid;
+         } else if (var->data.location == VARYING_SLOT_COL1) {
+            def = nir_load_color1(&b);
+            nir->info.fs.color1_interp = var->data.interpolation;
+            nir->info.fs.color1_sample = var->data.sample;
+            nir->info.fs.color1_centroid = var->data.centroid;
+         } else {
+            continue;
+         }
+
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, def);
+         nir_instr_remove(instr);
+         progress = true;
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_dominance |
+                                  nir_metadata_block_index);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
+   return progress;
+}
+
+static bool
+nir_add_xfb_info(nir_shader *nir, nir_xfb_info *info)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++)
+      nir->info.xfb_stride[i] = info->buffers[i].stride;
+
+   nir_foreach_block (block, impl) {
+      nir_foreach_instr_safe (instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+         if (!nir_intrinsic_has_io_xfb(intr))
+            continue;
+
+         /* No indirect indexing allowed. The index is implied to be 0. */
+         ASSERTED nir_src offset = *nir_get_io_offset_src(intr);
+         assert(nir_src_is_const(offset) && nir_src_as_uint(offset) == 0);
+
+         /* Calling this pass for the second time shouldn't do anything. */
+         if (nir_intrinsic_io_xfb(intr).out[0].num_components ||
+             nir_intrinsic_io_xfb(intr).out[1].num_components ||
+             nir_intrinsic_io_xfb2(intr).out[0].num_components ||
+             nir_intrinsic_io_xfb2(intr).out[1].num_components)
+            continue;
+
+         nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+         unsigned writemask = nir_intrinsic_write_mask(intr) <<
+                            nir_intrinsic_component(intr);
+
+         nir_io_xfb xfb[2];
+         memset(xfb, 0, sizeof(xfb));
+
+         for (unsigned i = 0; i < info->output_count; i++) {
+            if (info->outputs[i].location == sem.location) {
+               nir_xfb_output_info *out = &info->outputs[i];
+               unsigned xfb_mask = writemask & out->component_mask;
+
+               /*fprintf(stdout, "output%u: buffer=%u, offset=%u, location=%u, "
+                           "component_offset=%u, component_mask=0x%x, xfb_mask=0x%x, slots=%u\n",
+                       i, out->buffer,
+                       out->offset,
+                       out->location,
+                       out->component_offset,
+                       out->component_mask,
+                       xfb_mask, sem.num_slots);*/
+
+               while (xfb_mask) {
+                  int start, count;
+                  u_bit_scan_consecutive_range(&xfb_mask, &start, &count);
+
+                  xfb[start / 2].out[start % 2].num_components = count;
+                  xfb[start / 2].out[start % 2].buffer = out->buffer;
+                  /* out->offset is relative to the first stored xfb component */
+                  /* start is relative to component 0 */
+                  xfb[start / 2].out[start % 2].offset =
+                     out->offset / 4 - out->component_offset + start;
+
+                  progress = true;
+               }
+            }
+         }
+
+         nir_intrinsic_set_io_xfb(intr, xfb[0]);
+         nir_intrinsic_set_io_xfb2(intr, xfb[1]);
+      }
+   }
+
+   nir_metadata_preserve(impl, nir_metadata_all);
+   return progress;
+}
+
+static int
+type_size_vec4(const struct glsl_type *type, bool bindless)
+{
+   return glsl_count_attribute_slots(type, false);
+}
+
+void
+nir_lower_io_passes(nir_shader *nir, nir_xfb_info *xfb)
+{
+   if (!nir->options->lower_io_variables)
+      return;
+
+   /* Ignore transform feedback for stages that can't have it. */
+   if (nir->info.stage != MESA_SHADER_VERTEX &&
+       nir->info.stage != MESA_SHADER_TESS_EVAL &&
+       nir->info.stage != MESA_SHADER_GEOMETRY)
+      xfb = NULL;
+
+   bool has_indirect_inputs =
+      (nir->options->support_indirect_inputs >> nir->info.stage) & 0x1;
+
+   /* Transform feedback requires that indirect outputs are lowered. */
+   bool has_indirect_outputs =
+      (nir->options->support_indirect_outputs >> nir->info.stage) & 0x1 && !xfb;
+
+   if (!has_indirect_inputs || !has_indirect_outputs) {
+      NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+                 nir_shader_get_entrypoint(nir), !has_indirect_outputs,
+                 !has_indirect_inputs);
+
+      /* We need to lower all the copy_deref's introduced by lower_io_to-
+       * _temporaries before calling nir_lower_io.
+       */
+      NIR_PASS_V(nir, nir_split_var_copies);
+      NIR_PASS_V(nir, nir_lower_var_copies);
+      NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   }
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+       nir->options->lower_fs_color_inputs)
+      NIR_PASS_V(nir, nir_lower_color_inputs);
+
+   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out | nir_var_shader_in,
+              type_size_vec4, nir_lower_io_lower_64bit_to_32);
+
+   /* nir_io_add_const_offset_to_base needs actual constants. */
+   NIR_PASS_V(nir, nir_opt_constant_folding);
+   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
+                                                    nir_var_shader_out);
+
+   /* Lower and remove dead derefs and variables to clean up the IR. */
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_opt_dce);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp |
+              nir_var_shader_in | nir_var_shader_out, NULL);
+
+   if (xfb)
+      NIR_PASS_V(nir, nir_add_xfb_info, xfb);
+
+   nir->info.io_lowered = true;
+}

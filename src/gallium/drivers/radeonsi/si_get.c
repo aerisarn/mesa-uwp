@@ -1085,6 +1085,21 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
          nir_pack_varying_interp_loc_center |
          nir_pack_varying_interp_loc_sample |
          nir_pack_varying_interp_loc_centroid,
+      .lower_io_variables = true,
+      .lower_fs_color_inputs = true,
+      /* HW supports indirect indexing for: | Enabled in driver
+       * -------------------------------------------------------
+       * TCS inputs                         | Yes
+       * TES inputs                         | Yes
+       * GS inputs                          | No
+       * -------------------------------------------------------
+       * VS outputs before TCS              | No
+       * TCS outputs                        | Yes
+       * VS/TES outputs before GS           | No
+       */
+      .support_indirect_inputs = BITFIELD_BIT(MESA_SHADER_TESS_CTRL) |
+                                 BITFIELD_BIT(MESA_SHADER_TESS_EVAL),
+      .support_indirect_outputs = BITFIELD_BIT(MESA_SHADER_TESS_CTRL),
    };
    sscreen->nir_options = nir_options;
 }
