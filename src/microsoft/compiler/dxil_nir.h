@@ -68,6 +68,8 @@ uint64_t
 dxil_reassign_driver_locations(nir_shader* s, nir_variable_mode modes,
    uint64_t other_stage_mask);
 
+void dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func);
+
 #ifdef __cplusplus
 }
 #endif

@@ -463,6 +463,8 @@ struct ntd_context {
    nir_variable *ps_front_face;
    nir_variable *system_value[SYSTEM_VALUE_MAX];
 
+   nir_function *tess_ctrl_patch_constant_func;
+
    struct dxil_func_def *main_func_def;
 };
 
@@ -5317,6 +5319,9 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_lower_flrp, 16 | 32 | 64, true);
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, (nir_lower_io_options)0);
    NIR_PASS_V(s, dxil_nir_lower_system_values);
+
+   if (ctx->mod.shader_kind == DXIL_HULL_SHADER)
+      NIR_PASS_V(s, dxil_nir_split_tess_ctrl, &ctx->tess_ctrl_patch_constant_func);
 
    optimize_nir(s, opts);
 
