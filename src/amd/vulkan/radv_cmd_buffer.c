@@ -3424,6 +3424,142 @@ static const uint32_t data_format_dst_sel[] = {
    [V_008F0C_BUF_DATA_FORMAT_32_32_32_32] = DST_SEL_XYZW,
 };
 
+void
+radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
+                              const struct radv_graphics_pipeline *pipeline, void *vb_ptr)
+{
+   struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
+   enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   unsigned desc_index = 0;
+   uint32_t mask = pipeline->vb_desc_usage_mask;
+   uint64_t va;
+   const struct radv_vs_input_state *vs_state =
+      vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
+   assert(!vs_state || pipeline->use_per_attribute_vb_descs);
+
+   while (mask) {
+      unsigned i = u_bit_scan(&mask);
+      uint32_t *desc = &((uint32_t *)vb_ptr)[desc_index++ * 4];
+      uint32_t offset, rsrc_word3;
+      unsigned binding =
+         vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
+                  : (pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
+      struct radv_buffer *buffer = cmd_buffer->vertex_binding_buffers[binding];
+      unsigned num_records;
+      unsigned stride;
+
+      if (vs_state) {
+         unsigned format = vs_state->formats[i];
+         unsigned dfmt = format & 0xf;
+         unsigned nfmt = (format >> 4) & 0x7;
+
+         rsrc_word3 = vs_state->post_shuffle & (1u << i) ? DST_SEL_ZYXW : data_format_dst_sel[dfmt];
+
+         if (chip >= GFX10)
+            rsrc_word3 |= S_008F0C_FORMAT(ac_get_tbuffer_format(chip, dfmt, nfmt));
+         else
+            rsrc_word3 |= S_008F0C_NUM_FORMAT(nfmt) | S_008F0C_DATA_FORMAT(dfmt);
+      } else {
+         if (chip >= GFX10)
+            rsrc_word3 = DST_SEL_XYZW | S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT);
+         else
+            rsrc_word3 = DST_SEL_XYZW | S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+                         S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+      }
+
+      if (!buffer) {
+         if (vs_state) {
+            /* Stride needs to be non-zero on GFX9, or else bounds checking is disabled. We need
+             * to include the format/word3 so that the alpha channel is 1 for formats without an
+             * alpha channel.
+             */
+            desc[0] = 0;
+            desc[1] = S_008F04_STRIDE(16);
+            desc[2] = 0;
+            desc[3] = rsrc_word3;
+         } else {
+            memset(desc, 0, 4 * 4);
+         }
+         continue;
+      }
+
+      va = radv_buffer_get_va(buffer->bo);
+
+      offset = cmd_buffer->vertex_bindings[binding].offset;
+      va += offset + buffer->offset;
+      if (vs_state)
+         va += vs_state->offsets[i];
+
+      if (cmd_buffer->vertex_bindings[binding].size) {
+         num_records = cmd_buffer->vertex_bindings[binding].size;
+      } else {
+         num_records = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
+      }
+
+      if (pipeline->uses_dynamic_stride) {
+         stride = cmd_buffer->vertex_bindings[binding].stride;
+      } else {
+         stride = pipeline->binding_stride[binding];
+      }
+
+      if (pipeline->use_per_attribute_vb_descs) {
+         uint32_t attrib_end =
+            vs_state ? vs_state->offsets[i] + vs_state->format_sizes[i] : pipeline->attrib_ends[i];
+
+         if (num_records < attrib_end) {
+            num_records = 0; /* not enough space for one vertex */
+         } else if (stride == 0) {
+            num_records = 1; /* only one vertex */
+         } else {
+            num_records = (num_records - attrib_end) / stride + 1;
+            /* If attrib_offset>stride, then the compiler will increase the vertex index by
+             * attrib_offset/stride and decrease the offset by attrib_offset%stride. This is
+             * only allowed with static strides.
+             */
+            num_records += pipeline->attrib_index_offset[i];
+         }
+
+         /* GFX10 uses OOB_SELECT_RAW if stride==0, so convert num_records from elements into
+          * into bytes in that case. GFX8 always uses bytes.
+          */
+         if (num_records && (chip == GFX8 || (chip != GFX9 && !stride))) {
+            num_records = (num_records - 1) * stride + attrib_end;
+         } else if (!num_records) {
+            /* On GFX9, it seems bounds checking is disabled if both
+             * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
+             * GFX10.3 but it doesn't hurt.
+             */
+            if (vs_state) {
+               desc[0] = 0;
+               desc[1] = S_008F04_STRIDE(16);
+               desc[2] = 0;
+               desc[3] = rsrc_word3;
+            } else {
+               memset(desc, 0, 16);
+            }
+            continue;
+         }
+      } else {
+         if (chip != GFX8 && stride)
+            num_records = DIV_ROUND_UP(num_records, stride);
+      }
+
+      if (chip >= GFX10) {
+         /* OOB_SELECT chooses the out-of-bounds check:
+          * - 1: index >= NUM_RECORDS (Structured)
+          * - 3: offset >= NUM_RECORDS (Raw)
+          */
+         int oob_select = stride ? V_008F0C_OOB_SELECT_STRUCTURED : V_008F0C_OOB_SELECT_RAW;
+         rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(chip < GFX11);
+      }
+
+      desc[0] = va;
+      desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
+      desc[2] = num_records;
+      desc[3] = rsrc_word3;
+   }
+}
+
 static void
 radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
@@ -3433,144 +3569,16 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
       assert(!cmd_buffer->state.mesh_shading);
 
       struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-      struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
-      enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
       unsigned vb_offset;
       void *vb_ptr;
-      unsigned desc_index = 0;
-      uint32_t mask = pipeline->vb_desc_usage_mask;
       uint64_t va;
-      const struct radv_vs_input_state *vs_state =
-         vs_shader->info.vs.dynamic_inputs ? &cmd_buffer->state.dynamic_vs_input : NULL;
 
       /* allocate some descriptor state for vertex buffers */
-      if (!radv_cmd_buffer_upload_alloc(cmd_buffer, pipeline->vb_desc_alloc_size, &vb_offset, &vb_ptr))
+      if (!radv_cmd_buffer_upload_alloc(cmd_buffer, pipeline->vb_desc_alloc_size, &vb_offset,
+                                        &vb_ptr))
          return;
 
-      assert(!vs_state || pipeline->use_per_attribute_vb_descs);
-
-      while (mask) {
-         unsigned i = u_bit_scan(&mask);
-         uint32_t *desc = &((uint32_t *)vb_ptr)[desc_index++ * 4];
-         uint32_t offset, rsrc_word3;
-         unsigned binding =
-            vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
-                     : (pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
-         struct radv_buffer *buffer = cmd_buffer->vertex_binding_buffers[binding];
-         unsigned num_records;
-         unsigned stride;
-
-         if (vs_state) {
-            unsigned format = vs_state->formats[i];
-            unsigned dfmt = format & 0xf;
-            unsigned nfmt = (format >> 4) & 0x7;
-
-            rsrc_word3 =
-               vs_state->post_shuffle & (1u << i) ? DST_SEL_ZYXW : data_format_dst_sel[dfmt];
-
-            if (chip >= GFX10)
-               rsrc_word3 |= S_008F0C_FORMAT(ac_get_tbuffer_format(chip, dfmt, nfmt));
-            else
-               rsrc_word3 |= S_008F0C_NUM_FORMAT(nfmt) | S_008F0C_DATA_FORMAT(dfmt);
-         } else {
-            if (chip >= GFX10)
-               rsrc_word3 = DST_SEL_XYZW | S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_UINT);
-            else
-               rsrc_word3 = DST_SEL_XYZW | S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
-                            S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-         }
-
-         if (!buffer) {
-            if (vs_state) {
-               /* Stride needs to be non-zero on GFX9, or else bounds checking is disabled. We need
-                * to include the format/word3 so that the alpha channel is 1 for formats without an
-                * alpha channel.
-                */
-               desc[0] = 0;
-               desc[1] = S_008F04_STRIDE(16);
-               desc[2] = 0;
-               desc[3] = rsrc_word3;
-            } else {
-               memset(desc, 0, 4 * 4);
-            }
-            continue;
-         }
-
-         va = radv_buffer_get_va(buffer->bo);
-
-         offset = cmd_buffer->vertex_bindings[binding].offset;
-         va += offset + buffer->offset;
-         if (vs_state)
-            va += vs_state->offsets[i];
-
-         if (cmd_buffer->vertex_bindings[binding].size) {
-            num_records = cmd_buffer->vertex_bindings[binding].size;
-         } else {
-            num_records = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
-         }
-
-         if (pipeline->uses_dynamic_stride) {
-            stride = cmd_buffer->vertex_bindings[binding].stride;
-         } else {
-            stride = pipeline->binding_stride[binding];
-         }
-
-         if (pipeline->use_per_attribute_vb_descs) {
-            uint32_t attrib_end = vs_state ? vs_state->offsets[i] + vs_state->format_sizes[i]
-                                           : pipeline->attrib_ends[i];
-
-            if (num_records < attrib_end) {
-               num_records = 0; /* not enough space for one vertex */
-            } else if (stride == 0) {
-               num_records = 1; /* only one vertex */
-            } else {
-               num_records = (num_records - attrib_end) / stride + 1;
-               /* If attrib_offset>stride, then the compiler will increase the vertex index by
-                * attrib_offset/stride and decrease the offset by attrib_offset%stride. This is
-                * only allowed with static strides.
-                */
-               num_records += pipeline->attrib_index_offset[i];
-            }
-
-            /* GFX10 uses OOB_SELECT_RAW if stride==0, so convert num_records from elements into
-             * into bytes in that case. GFX8 always uses bytes.
-             */
-            if (num_records && (chip == GFX8 || (chip != GFX9 && !stride))) {
-               num_records = (num_records - 1) * stride + attrib_end;
-            } else if (!num_records) {
-               /* On GFX9, it seems bounds checking is disabled if both
-                * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
-                * GFX10.3 but it doesn't hurt.
-                */
-               if (vs_state) {
-                  desc[0] = 0;
-                  desc[1] = S_008F04_STRIDE(16);
-                  desc[2] = 0;
-                  desc[3] = rsrc_word3;
-               } else {
-                  memset(desc, 0, 16);
-               }
-               continue;
-            }
-         } else {
-            if (chip != GFX8 && stride)
-               num_records = DIV_ROUND_UP(num_records, stride);
-         }
-
-         if (chip >= GFX10) {
-            /* OOB_SELECT chooses the out-of-bounds check:
-             * - 1: index >= NUM_RECORDS (Structured)
-             * - 3: offset >= NUM_RECORDS (Raw)
-             */
-            int oob_select = stride ? V_008F0C_OOB_SELECT_STRUCTURED : V_008F0C_OOB_SELECT_RAW;
-            rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(chip < GFX11);
-         }
-
-         desc[0] = va;
-         desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
-         desc[2] = num_records;
-         desc[3] = rsrc_word3;
-      }
+      radv_write_vertex_descriptors(cmd_buffer, pipeline, vb_ptr);
 
       va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
       va += vb_offset;
