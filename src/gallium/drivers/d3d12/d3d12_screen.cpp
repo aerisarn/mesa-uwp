@@ -278,6 +278,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
    case PIPE_CAP_VERTEX_ELEMENT_SRC_OFFSET_4BYTE_ALIGNED_ONLY:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
+   case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
       return 1;
 
    case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
@@ -317,6 +318,10 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:
       return D3D12_SO_BUFFER_SLOT_COUNT;
+
+   case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
+      /* This is asking about varyings, not total registers, so remove the 2 tess factor registers. */
+      return D3D12_HS_OUTPUT_PATCH_CONSTANT_REGISTER_COUNT - 2;
 
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
@@ -378,10 +383,6 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
    case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
    case PIPE_SHADER_CAP_MAX_CONTROL_FLOW_DEPTH:
-      if (shader == PIPE_SHADER_VERTEX ||
-          shader == PIPE_SHADER_FRAGMENT ||
-          shader == PIPE_SHADER_GEOMETRY ||
-          shader == PIPE_SHADER_COMPUTE)
          return INT_MAX;
       return 0;
 
