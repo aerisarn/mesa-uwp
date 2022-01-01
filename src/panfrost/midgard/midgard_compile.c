@@ -1867,46 +1867,13 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_store_combined_output_pan:
                 assert(nir_src_is_const(instr->src[1]) && "no indirect outputs");
 
-                offset = nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[1]);
-
                 reg = nir_src_index(ctx, &instr->src[0]);
 
                 if (ctx->stage == MESA_SHADER_FRAGMENT) {
                         bool combined = instr->intrinsic ==
                                 nir_intrinsic_store_combined_output_pan;
 
-                        const nir_variable *var;
-                        var = nir_find_variable_with_driver_location(ctx->nir, nir_var_shader_out,
-                                         nir_intrinsic_base(instr));
-                        assert(var);
-
-                        /* Dual-source blend writeout is done by leaving the
-                         * value in r2 for the blend shader to use. */
-                        if (var->data.index) {
-                                if (instr->src[0].is_ssa) {
-                                        emit_explicit_constant(ctx, reg, reg);
-
-                                        unsigned out = make_compiler_temp(ctx);
-
-                                        midgard_instruction ins = v_mov(reg, out);
-                                        emit_mir_instruction(ctx, ins);
-
-                                        ctx->blend_src1 = out;
-                                } else {
-                                        ctx->blend_src1 = reg;
-                                }
-
-                                break;
-                        }
-
                         enum midgard_rt_id rt;
-                        if (var->data.location >= FRAG_RESULT_DATA0)
-                                rt = MIDGARD_COLOR_RT0 + var->data.location -
-                                     FRAG_RESULT_DATA0;
-                        else if (combined)
-                                rt = MIDGARD_ZS_RT;
-                        else
-                                unreachable("bad rt");
 
                         unsigned reg_z = ~0, reg_s = ~0;
                         if (combined) {
@@ -1915,6 +1882,40 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                         reg_z = nir_src_index(ctx, &instr->src[2]);
                                 if (writeout & PAN_WRITEOUT_S)
                                         reg_s = nir_src_index(ctx, &instr->src[3]);
+
+                                if (writeout & PAN_WRITEOUT_C)
+                                        rt = MIDGARD_COLOR_RT0;
+                                else
+                                        rt = MIDGARD_ZS_RT;
+                        } else {
+                                const nir_variable *var =
+                                        nir_find_variable_with_driver_location(ctx->nir, nir_var_shader_out,
+                                                 nir_intrinsic_base(instr));
+
+                                assert(var != NULL);
+                                assert(var->data.location >= FRAG_RESULT_DATA0);
+
+                                rt = MIDGARD_COLOR_RT0 + var->data.location -
+                                     FRAG_RESULT_DATA0;
+
+                                /* Dual-source blend writeout is done by leaving the
+                                 * value in r2 for the blend shader to use. */
+                                if (var->data.index) {
+                                        if (instr->src[0].is_ssa) {
+                                                emit_explicit_constant(ctx, reg, reg);
+
+                                                unsigned out = make_compiler_temp(ctx);
+
+                                                midgard_instruction ins = v_mov(reg, out);
+                                                emit_mir_instruction(ctx, ins);
+
+                                                ctx->blend_src1 = out;
+                                        } else {
+                                                ctx->blend_src1 = reg;
+                                        }
+
+                                        break;
+                                }
                         }
 
                         emit_fragment_store(ctx, reg, reg_z, reg_s, rt, 0);
@@ -1930,6 +1931,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                          * emit that explicitly. */
 
                         emit_explicit_constant(ctx, reg, reg);
+
+                        offset = nir_intrinsic_base(instr) + nir_src_as_uint(instr->src[1]);
 
                         unsigned dst_component = nir_intrinsic_component(instr);
                         unsigned nr_comp = nir_src_num_components(instr->src[0]);
