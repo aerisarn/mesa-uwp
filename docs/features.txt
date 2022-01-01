@@ -101,7 +101,7 @@ GL 3.3, GLSL 3.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
 
   GL_ARB_blend_func_extended                            DONE (freedreno/a3xx, freedreno/a6xx, panfrost, lima)
   GL_ARB_explicit_attrib_location                       DONE (all drivers that support GLSL)
-  GL_ARB_occlusion_query2                               DONE (v3d, vc4, panfrost, lima)
+  GL_ARB_occlusion_query2                               DONE (v3d, panfrost, lima)
   GL_ARB_sampler_objects                                DONE (all drivers)
   GL_ARB_shader_bit_encoding                            DONE (v3d, panfrost)
   GL_ARB_texture_rgb10_a2ui                             DONE (panfrost)
