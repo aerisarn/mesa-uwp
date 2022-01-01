@@ -440,10 +440,6 @@ i915_get_param(struct pipe_screen *screen, enum pipe_cap cap)
    case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
       return 16;
 
-   /* Features we can lie about (boolean caps). */
-   case PIPE_CAP_OCCLUSION_QUERY:
-      return is->debug.lie ? 1 : 0;
-
    /* Texturing. */
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return 1 << (I915_MAX_TEXTURE_2D_LEVELS - 1);
