@@ -43,6 +43,7 @@
 #include "st_shader_cache.h"
 
 #include "compiler/nir/nir.h"
+#include "nir_xfb_info.h"
 #include "compiler/glsl_types.h"
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/glsl/gl_nir.h"
@@ -943,6 +944,41 @@ st_nir_lower_uniforms(struct st_context *st, nir_shader *nir)
                  !st->ctx->Const.NativeIntegers);
 }
 
+static nir_xfb_info *
+st_get_nir_xfb_info(struct gl_program *prog)
+{
+   struct gl_transform_feedback_info *info = prog->sh.LinkedTransformFeedback;
+   if (!info || !info->NumOutputs)
+      return NULL;
+
+   nir_xfb_info *xfb =
+      (nir_xfb_info *)calloc(1, nir_xfb_info_size(info->NumOutputs));
+   if (!xfb)
+      return NULL;
+
+   xfb->output_count = info->NumOutputs;
+
+   for (unsigned i = 0; i < MAX_FEEDBACK_BUFFERS; i++) {
+      xfb->buffers[i].stride = info->Buffers[i].Stride;
+      xfb->buffers[i].varying_count = info->Buffers[i].NumVaryings;
+      xfb->buffer_to_stream[i] = info->Buffers[i].Stream;
+   }
+
+   for (unsigned i = 0; i < info->NumOutputs; i++) {
+      xfb->outputs[i].buffer = info->Outputs[i].OutputBuffer;
+      xfb->outputs[i].offset = info->Outputs[i].DstOffset * 4;
+      xfb->outputs[i].location = info->Outputs[i].OutputRegister;
+      xfb->outputs[i].component_offset = info->Outputs[i].ComponentOffset;
+      xfb->outputs[i].component_mask =
+         BITFIELD_RANGE(info->Outputs[i].ComponentOffset,
+                        info->Outputs[i].NumComponents);
+      xfb->buffers_written |= BITFIELD_BIT(info->Outputs[i].OutputBuffer);
+      xfb->streams_written |= BITFIELD_BIT(info->Outputs[i].StreamId);
+   }
+
+   return xfb;
+}
+
 /* Last third of preparing nir from glsl, which happens after shader
  * variant lowering.
  */
@@ -967,6 +1003,15 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
 
    st_nir_assign_varying_locations(st, nir);
    st_nir_assign_uniform_locations(st->ctx, prog, nir);
+
+   /* Lower load_deref/store_deref of inputs and outputs.
+    * This depends on st_nir_assign_varying_locations.
+    */
+   if (nir->options->lower_io_variables) {
+      nir_xfb_info *xfb = shader_program ? st_get_nir_xfb_info(prog) : NULL;
+      nir_lower_io_passes(nir, xfb);
+      free(xfb);
+   }
 
    /* Set num_uniforms in number of attribute slots (vec4s) */
    nir->num_uniforms = DIV_ROUND_UP(prog->Parameters->NumParameterValues, 4);
