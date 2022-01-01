@@ -1134,6 +1134,48 @@ d3d12_delete_gs_state(struct pipe_context *pctx, void *gs)
 }
 
 static void *
+d3d12_create_tcs_state(struct pipe_context *pctx,
+   const struct pipe_shader_state *shader)
+{
+   return d3d12_create_shader(d3d12_context(pctx), PIPE_SHADER_TESS_CTRL, shader);
+}
+
+static void
+d3d12_bind_tcs_state(struct pipe_context *pctx, void *tcss)
+{
+   bind_stage(d3d12_context(pctx), PIPE_SHADER_TESS_CTRL,
+      (struct d3d12_shader_selector *)tcss);
+}
+
+static void
+d3d12_delete_tcs_state(struct pipe_context *pctx, void *tcs)
+{
+   delete_shader(d3d12_context(pctx), PIPE_SHADER_TESS_CTRL,
+      (struct d3d12_shader_selector *)tcs);
+}
+
+static void *
+d3d12_create_tes_state(struct pipe_context *pctx,
+   const struct pipe_shader_state *shader)
+{
+   return d3d12_create_shader(d3d12_context(pctx), PIPE_SHADER_TESS_EVAL, shader);
+}
+
+static void
+d3d12_bind_tes_state(struct pipe_context *pctx, void *tess)
+{
+   bind_stage(d3d12_context(pctx), PIPE_SHADER_TESS_EVAL,
+      (struct d3d12_shader_selector *)tess);
+}
+
+static void
+d3d12_delete_tes_state(struct pipe_context *pctx, void *tes)
+{
+   delete_shader(d3d12_context(pctx), PIPE_SHADER_TESS_EVAL,
+      (struct d3d12_shader_selector *)tes);
+}
+
+static void *
 d3d12_create_compute_state(struct pipe_context *pctx,
                            const struct pipe_compute_state *shader)
 {
@@ -2271,6 +2313,14 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.create_gs_state = d3d12_create_gs_state;
    ctx->base.bind_gs_state = d3d12_bind_gs_state;
    ctx->base.delete_gs_state = d3d12_delete_gs_state;
+
+   ctx->base.create_tcs_state = d3d12_create_tcs_state;
+   ctx->base.bind_tcs_state = d3d12_bind_tcs_state;
+   ctx->base.delete_tcs_state = d3d12_delete_tcs_state;
+
+   ctx->base.create_tes_state = d3d12_create_tes_state;
+   ctx->base.bind_tes_state = d3d12_bind_tes_state;
+   ctx->base.delete_tes_state = d3d12_delete_tes_state;
 
    ctx->base.create_compute_state = d3d12_create_compute_state;
    ctx->base.bind_compute_state = d3d12_bind_compute_state;

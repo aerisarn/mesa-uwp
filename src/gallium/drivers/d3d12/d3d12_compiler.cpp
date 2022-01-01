@@ -993,8 +993,6 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
 static d3d12_shader_selector *
 get_prev_shader(struct d3d12_context *ctx, pipe_shader_type current)
 {
-   /* No TESS_CTRL or TESS_EVAL yet */
-
    switch (current) {
    case PIPE_SHADER_VERTEX:
       return NULL;
@@ -1003,6 +1001,14 @@ get_prev_shader(struct d3d12_context *ctx, pipe_shader_type current)
          return ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
       FALLTHROUGH;
    case PIPE_SHADER_GEOMETRY:
+      if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
+         return ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
+      FALLTHROUGH;
+   case PIPE_SHADER_TESS_EVAL:
+      if (ctx->gfx_stages[PIPE_SHADER_TESS_CTRL])
+         return ctx->gfx_stages[PIPE_SHADER_TESS_CTRL];
+      FALLTHROUGH;
+   case PIPE_SHADER_TESS_CTRL:
       return ctx->gfx_stages[PIPE_SHADER_VERTEX];
    default:
       unreachable("shader type not supported");
@@ -1012,10 +1018,16 @@ get_prev_shader(struct d3d12_context *ctx, pipe_shader_type current)
 static d3d12_shader_selector *
 get_next_shader(struct d3d12_context *ctx, pipe_shader_type current)
 {
-   /* No TESS_CTRL or TESS_EVAL yet */
-
    switch (current) {
    case PIPE_SHADER_VERTEX:
+      if (ctx->gfx_stages[PIPE_SHADER_TESS_CTRL])
+         return ctx->gfx_stages[PIPE_SHADER_TESS_CTRL];
+      FALLTHROUGH;
+   case PIPE_SHADER_TESS_CTRL:
+      if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
+         return ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
+      FALLTHROUGH;
+   case PIPE_SHADER_TESS_EVAL:
       if (ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
          return ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
       FALLTHROUGH;
@@ -1218,7 +1230,13 @@ d3d12_create_compute_shader(struct d3d12_context *ctx,
 void
 d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_info *dinfo)
 {
-   static unsigned order[] = {PIPE_SHADER_VERTEX, PIPE_SHADER_GEOMETRY, PIPE_SHADER_FRAGMENT};
+   static unsigned order[] = {
+      PIPE_SHADER_VERTEX,
+      PIPE_SHADER_TESS_CTRL,
+      PIPE_SHADER_TESS_EVAL,
+      PIPE_SHADER_GEOMETRY,
+      PIPE_SHADER_FRAGMENT
+   };
    struct d3d12_selection_context sel_ctx;
 
    sel_ctx.ctx = ctx;

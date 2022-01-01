@@ -708,6 +708,8 @@ d3d12_last_vertex_stage(struct d3d12_context *ctx)
 {
    struct d3d12_shader_selector *sel = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
    if (!sel || sel->is_gs_variant)
+      sel = ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
+   if (!sel)
       sel = ctx->gfx_stages[PIPE_SHADER_VERTEX];
    return sel;
 }

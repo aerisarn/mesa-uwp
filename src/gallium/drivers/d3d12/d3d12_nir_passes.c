@@ -95,6 +95,7 @@ d3d12_lower_yflip(nir_shader *nir)
    nir_variable *flip = NULL;
 
    if (nir->info.stage != MESA_SHADER_VERTEX &&
+       nir->info.stage != MESA_SHADER_TESS_EVAL &&
        nir->info.stage != MESA_SHADER_GEOMETRY)
       return;
 
@@ -390,6 +391,7 @@ void
 d3d12_nir_invert_depth(nir_shader *shader)
 {
    if (shader->info.stage != MESA_SHADER_VERTEX &&
+       shader->info.stage != MESA_SHADER_TESS_EVAL &&
        shader->info.stage != MESA_SHADER_GEOMETRY)
       return;
 

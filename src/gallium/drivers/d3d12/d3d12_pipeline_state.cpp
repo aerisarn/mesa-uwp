@@ -213,6 +213,20 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
       last_vertex_stage_nir = shader->nir;
    }
 
+   if (state->stages[PIPE_SHADER_TESS_CTRL]) {
+      auto shader = state->stages[PIPE_SHADER_TESS_CTRL];
+      pso_desc.HS.BytecodeLength = shader->bytecode_length;
+      pso_desc.HS.pShaderBytecode = shader->bytecode;
+      last_vertex_stage_nir = shader->nir;
+   }
+
+   if (state->stages[PIPE_SHADER_TESS_EVAL]) {
+      auto shader = state->stages[PIPE_SHADER_TESS_EVAL];
+      pso_desc.DS.BytecodeLength = shader->bytecode_length;
+      pso_desc.DS.pShaderBytecode = shader->bytecode;
+      last_vertex_stage_nir = shader->nir;
+   }
+
    if (state->stages[PIPE_SHADER_GEOMETRY]) {
       auto shader = state->stages[PIPE_SHADER_GEOMETRY];
       pso_desc.GS.BytecodeLength = shader->bytecode_length;
