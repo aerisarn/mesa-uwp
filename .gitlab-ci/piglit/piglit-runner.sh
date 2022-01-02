@@ -14,6 +14,9 @@ export LD_LIBRARY_PATH=`pwd`/install/lib/
 export EGL_PLATFORM=surfaceless
 export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.${VK_CPU:-`uname -m`}.json
 
+RESULTS=`pwd`/${PIGLIT_RESULTS_DIR:-results}
+mkdir -p $RESULTS
+
 if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     # deqp is to use virpipe, and virgl_test_server llvmpipe
     export GALLIUM_DRIVER="$GALLIUM_DRIVER"
@@ -29,9 +32,6 @@ if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
 
     sleep 1
 fi
-
-RESULTS=`pwd`/${PIGLIT_RESULTS_DIR:-results}
-mkdir -p $RESULTS
 
 if [ -n "$PIGLIT_FRACTION" -o -n "$CI_NODE_INDEX" ]; then
    FRACTION=`expr ${PIGLIT_FRACTION:-1} \* ${CI_NODE_TOTAL:-1}`
