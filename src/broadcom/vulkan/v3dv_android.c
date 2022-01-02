@@ -423,39 +423,3 @@ v3dv_GetSwapchainGrallocUsage2ANDROID(
    return VK_SUCCESS;
 }
 #endif
-
-VkResult
-v3dv_QueueSignalReleaseImageANDROID(VkQueue queue,
-                                    uint32_t waitSemaphoreCount,
-                                    const VkSemaphore *pWaitSemaphores,
-                                    VkImage image,
-                                    int *pNativeFenceFd)
-{
-   VkResult result;
-
-   if (waitSemaphoreCount == 0)
-      goto done;
-
-   result = v3dv_QueueSubmit(
-      queue, 1,
-      &(VkSubmitInfo) {
-         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-         .waitSemaphoreCount = 1,
-         .pWaitSemaphores = pWaitSemaphores,
-         .pWaitDstStageMask =
-            &(VkPipelineStageFlags) { VK_PIPELINE_STAGE_ALL_COMMANDS_BIT },
-      },
-      (VkFence) VK_NULL_HANDLE);
-   if (result != VK_SUCCESS)
-      return result;
-
-done:
-   if (pNativeFenceFd) {
-      /* We can rely implicit on sync because above we submitted all
-       * semaphores to the queue.
-       */
-      *pNativeFenceFd = -1;
-   }
-
-   return VK_SUCCESS;
-}
