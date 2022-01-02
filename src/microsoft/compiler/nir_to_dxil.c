@@ -288,6 +288,7 @@ enum dxil_intr {
    DXIL_INTR_MAKE_DOUBLE = 101,
    DXIL_INTR_SPLIT_DOUBLE = 102,
 
+   DXIL_INTR_STORE_PATCH_CONSTANT = 106,
    DXIL_INTR_OUTPUT_CONTROL_POINT_ID = 107,
    DXIL_INTR_PRIMITIVE_ID = 108,
 
@@ -2996,23 +2997,44 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
 {
    assert(intr->intrinsic == nir_intrinsic_store_output ||
           ctx->mod.shader_kind == DXIL_HULL_SHADER);
+   bool is_patch_constant = intr->intrinsic == nir_intrinsic_store_output &&
+      ctx->mod.shader_kind == DXIL_HULL_SHADER;
    nir_alu_type out_type = nir_intrinsic_src_type(intr);
    enum overload_type overload = get_overload(out_type, intr->src[0].ssa->bit_size);
-   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.storeOutput", overload);
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, is_patch_constant ?
+      "dx.op.storePatchConstant" : "dx.op.storeOutput",
+      overload);
 
    if (!func)
       return false;
 
-   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_STORE_OUTPUT);
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, is_patch_constant ?
+      DXIL_INTR_STORE_PATCH_CONSTANT : DXIL_INTR_STORE_OUTPUT);
    const struct dxil_value *output_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
    unsigned row_index = intr->intrinsic == nir_intrinsic_store_output ? 1 : 2;
-   const struct dxil_value *row = get_src(ctx, &intr->src[row_index], 0, nir_type_int);
+
+   /* NIR has these as 1 row, N cols, but DXIL wants them as N rows, 1 col. We muck with these in the signature
+    * generation, so muck with them here too.
+    */
+   nir_io_semantics semantics = nir_intrinsic_io_semantics(intr);
+   bool is_tess_level = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+                        semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER;
+
+   const struct dxil_value *row = NULL;
+   const struct dxil_value *col = NULL;
+   if (is_tess_level)
+      col = dxil_module_get_int8_const(&ctx->mod, 0);
+   else
+      row = get_src(ctx, &intr->src[row_index], 0, nir_type_int);
 
    bool success = true;
    uint32_t writemask = nir_intrinsic_write_mask(intr);
    for (unsigned i = 0; i < intr->num_components && success; ++i) {
       if (writemask & (1 << i)) {
-         const struct dxil_value *col = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+         if (is_tess_level)
+            row = dxil_module_get_int32_const(&ctx->mod, i + nir_intrinsic_component(intr));
+         else
+            col = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
          const struct dxil_value *value = get_src(ctx, &intr->src[0], i, out_type);
          if (!col || !value)
             return false;
