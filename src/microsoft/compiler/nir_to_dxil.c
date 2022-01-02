@@ -1482,8 +1482,9 @@ emit_metadata(struct ntd_context *ctx)
    const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader,
                                                          ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN);
 
+   nir_function_impl *entry_func_impl = nir_shader_get_entrypoint(ctx->shader);
    const struct dxil_mdnode *dx_entry_point = emit_entrypoint(ctx, main_func,
-       "main", signatures, resources_node, shader_properties);
+       entry_func_impl->function->name, signatures, resources_node, shader_properties);
    if (!dx_entry_point)
       return false;
 
@@ -5000,7 +5001,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
 
    const struct dxil_type *void_type = dxil_module_get_void_type(&ctx->mod);
    const struct dxil_type *main_func_type = dxil_module_add_function_type(&ctx->mod, void_type, NULL, 0);
-   struct dxil_func_def *main_func = dxil_add_function_def(&ctx->mod, "main", main_func_type, entry->num_blocks);
+   struct dxil_func_def *main_func = dxil_add_function_def(&ctx->mod, entry->function->name, main_func_type, entry->num_blocks);
    if (!main_func)
       return false;
 
