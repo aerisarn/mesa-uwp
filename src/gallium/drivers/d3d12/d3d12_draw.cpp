@@ -586,7 +586,7 @@ validate_stream_output_targets(struct d3d12_context *ctx)
 }
 
 static D3D_PRIMITIVE_TOPOLOGY
-topology(enum pipe_prim_type prim_type)
+topology(enum pipe_prim_type prim_type, uint8_t patch_vertices)
 {
    switch (prim_type) {
    case PIPE_PRIM_POINTS:
@@ -616,10 +616,8 @@ topology(enum pipe_prim_type prim_type)
    case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
       return D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ;
 
-/*
    case PIPE_PRIM_PATCHES:
-      return D3D_PRIMITIVE_TOPOLOGY_PATCHLIST;
-*/
+      return (D3D_PRIMITIVE_TOPOLOGY)(D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + patch_vertices - 1);
 
    case PIPE_PRIM_QUADS:
    case PIPE_PRIM_QUAD_STRIP:
@@ -696,6 +694,7 @@ prim_supported(enum pipe_prim_type prim_type)
    case PIPE_PRIM_LINE_STRIP_ADJACENCY:
    case PIPE_PRIM_TRIANGLES_ADJACENCY:
    case PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case PIPE_PRIM_PATCHES:
       return true;
 
    default:
@@ -1045,7 +1044,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       ctx->cmdlist->OMSetStencilRef(ctx->stencil_ref.ref_value[0]);
 
    if (ctx->cmdlist_dirty & D3D12_DIRTY_PRIM_MODE)
-      ctx->cmdlist->IASetPrimitiveTopology(topology((enum pipe_prim_type)dinfo->mode));
+      ctx->cmdlist->IASetPrimitiveTopology(topology((enum pipe_prim_type)dinfo->mode, ctx->patch_vertices));
 
    for (unsigned i = 0; i < ctx->num_vbs; ++i) {
       if (ctx->vbs[i].buffer.resource) {

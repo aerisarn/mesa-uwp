@@ -196,7 +196,8 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
 {
    struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
    struct d3d12_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
-   enum pipe_prim_type reduced_prim = u_reduced_prim(state->prim_type);
+   enum pipe_prim_type reduced_prim = state->prim_type == PIPE_PRIM_PATCHES ?
+      PIPE_PRIM_PATCHES : u_reduced_prim(state->prim_type);
    D3D12_SO_DECLARATION_ENTRY entries[PIPE_MAX_SO_OUTPUTS] = {};
    UINT strides[PIPE_MAX_SO_OUTPUTS] = { 0 };
    UINT num_entries = 0, num_strides = 0;

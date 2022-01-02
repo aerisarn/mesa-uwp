@@ -221,6 +221,7 @@ struct d3d12_context {
    struct pipe_stream_output_target *fake_so_targets[PIPE_MAX_SO_BUFFERS];
    D3D12_STREAM_OUTPUT_BUFFER_VIEW fake_so_buffer_views[PIPE_MAX_SO_BUFFERS];
    unsigned fake_so_buffer_factor;
+   uint8_t patch_vertices;
 
    struct d3d12_shader_selector *gfx_stages[D3D12_GFX_SHADER_STAGES];
    struct d3d12_shader_selector *compute_state;

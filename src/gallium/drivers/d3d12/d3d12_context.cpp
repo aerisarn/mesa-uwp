@@ -2264,6 +2264,14 @@ d3d12_get_sample_position(struct pipe_context *pctx, unsigned sample_count, unsi
       positions[i] = (float)(samples[i] + 8) / 16.0f;
 }
 
+static void
+d3d12_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   ctx->patch_vertices = patch_vertices;
+   ctx->cmdlist_dirty |= D3D12_DIRTY_PRIM_MODE;
+}
+
 struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -2321,6 +2329,8 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.create_tes_state = d3d12_create_tes_state;
    ctx->base.bind_tes_state = d3d12_bind_tes_state;
    ctx->base.delete_tes_state = d3d12_delete_tes_state;
+
+   ctx->base.set_patch_vertices = d3d12_set_patch_vertices;
 
    ctx->base.create_compute_state = d3d12_create_compute_state;
    ctx->base.bind_compute_state = d3d12_bind_compute_state;
