@@ -1792,10 +1792,13 @@ dxil_reassign_driver_locations(nir_shader* s, nir_variable_mode modes,
    nir_sort_variables_with_modes(s, variable_location_cmp, modes);
 
    uint64_t result = 0;
-   unsigned driver_loc = 0;
+   unsigned driver_loc = 0, driver_patch_loc = 0;
    nir_foreach_variable_with_modes(var, s, modes) {
-      result |= 1ull << var->data.location;
-      var->data.driver_location = driver_loc++;
+      if (var->data.location < 64)
+         result |= 1ull << var->data.location;
+      /* Overlap patches with non-patch */
+      var->data.driver_location = var->data.patch ?
+         driver_patch_loc++ : driver_loc++;
    }
    return result;
 }
