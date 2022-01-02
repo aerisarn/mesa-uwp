@@ -3156,6 +3156,19 @@ bi_count_tuple_stats(bi_clause *clause, bi_tuple *tuple, struct bi_stats *stats)
 
 }
 
+static const char *
+bi_shader_stage_name(bi_context *ctx)
+{
+        if (ctx->idvs == BI_IDVS_VARYING)
+                return "MESA_SHADER_VARYING";
+        else if (ctx->idvs == BI_IDVS_POSITION)
+                return "MESA_SHADER_POSITION";
+        else if (ctx->inputs->is_blend)
+                return "MESA_SHADER_BLEND";
+        else
+                return gl_shader_stage_name(ctx->stage);
+}
+
 static void
 bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
 {
@@ -3203,8 +3216,7 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
                         "%u quadwords, %u threads, %u loops, "
                         "%u:%u spills:fills\n",
                         ctx->nir->info.label ?: "",
-                        ctx->inputs->is_blend ? "PAN_SHADER_BLEND" :
-                        gl_shader_stage_name(ctx->stage),
+                        bi_shader_stage_name(ctx),
                         stats.nr_ins, stats.nr_tuples, stats.nr_clauses,
                         cycles_bound, cycles_arith, cycles_texture,
                         cycles_varying, cycles_ldst,
