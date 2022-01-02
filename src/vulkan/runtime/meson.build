@@ -79,6 +79,10 @@ if dep_libdrm.found()
   vulkan_runtime_deps += dep_libdrm
 endif
 
+if with_platform_android
+  vulkan_runtime_files += files('vk_android.c')
+endif
+
 vk_common_entrypoints = custom_target(
   'vk_common_entrypoints',
   input : [vk_entrypoints_gen, vk_api_xml],
