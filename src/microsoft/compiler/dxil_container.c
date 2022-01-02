@@ -204,7 +204,6 @@ dxil_container_add_state_validation(struct dxil_container *c,
    uint32_t string_table_size = (m->sem_string_table->length + 3) & ~3u;
    size  += sizeof(uint32_t) + string_table_size;
 
-   // Semantic index table size, currently always 0
    size  += sizeof(uint32_t) + m->sem_index_table.size * sizeof(uint32_t);
 
    if (m->num_sig_inputs || m->num_sig_outputs) {
@@ -222,7 +221,6 @@ dxil_container_add_state_validation(struct dxil_container *c,
 
    // TODO: Add viewID records size
 
-   // TODO: Add sig input output dependency table size
    uint32_t dependency_table_size = 0;
    if (state->state.sig_input_vectors > 0) {
       for (unsigned i = 0; i < 4; ++i) {
@@ -259,7 +257,6 @@ dxil_container_add_state_validation(struct dxil_container *c,
        !blob_write_bytes(&c->parts, &fill, string_table_size - m->sem_string_table->length))
       return false;
 
-   // TODO: write the correct semantic index table. Currently it is empty
    if (!blob_write_bytes(&c->parts, &m->sem_index_table.size, sizeof(uint32_t)))
       return false;
 
