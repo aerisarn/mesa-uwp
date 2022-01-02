@@ -90,15 +90,19 @@ lcra_add_node_interference(struct lcra_state *l, unsigned i, unsigned cmask_i, u
         uint8_t constraint_fw = 0;
         uint8_t constraint_bw = 0;
 
+        /* The constraint bits are reversed from lcra.c so that register
+         * allocation can be done in parallel for every possible solution,
+         * with lower-order bits representing smaller registers. */
+
         for (unsigned D = 0; D < 4; ++D) {
                 if (cmask_i & (cmask_j << D)) {
-                        constraint_bw |= (1 << (3 + D));
-                        constraint_fw |= (1 << (3 - D));
+                        constraint_fw |= (1 << (3 + D));
+                        constraint_bw |= (1 << (3 - D));
                 }
 
                 if (cmask_i & (cmask_j >> D)) {
-                        constraint_fw |= (1 << (3 + D));
-                        constraint_bw |= (1 << (3 - D));
+                        constraint_bw |= (1 << (3 + D));
+                        constraint_fw |= (1 << (3 - D));
                 }
         }
 
@@ -115,7 +119,7 @@ lcra_test_linear(struct lcra_state *l, unsigned *solutions, unsigned i)
         for (unsigned j = 0; j < l->node_count; ++j) {
                 if (solutions[j] == ~0) continue;
 
-                signed lhs = solutions[j] - constant;
+                signed lhs = constant - solutions[j];
 
                 if (lhs < -3 || lhs > 3)
                         continue;
