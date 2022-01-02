@@ -290,6 +290,7 @@ enum dxil_intr {
 
    DXIL_INTR_LOAD_OUTPUT_CONTROL_POINT = 103,
    DXIL_INTR_LOAD_PATCH_CONSTANT = 104,
+   DXIL_INTR_DOMAIN_LOCATION = 105,
    DXIL_INTR_STORE_PATCH_CONSTANT = 106,
    DXIL_INTR_OUTPUT_CONTROL_POINT_ID = 107,
    DXIL_INTR_PRIMITIVE_ID = 108,
@@ -2638,6 +2639,43 @@ emit_load_sample_mask_in(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    return true;
 }
 
+static bool
+emit_load_tess_coord(struct ntd_context *ctx,
+                     nir_intrinsic_instr *intr)
+{
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.domainLocation", DXIL_F32);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode =
+      dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_DOMAIN_LOCATION);
+   if (!opcode)
+      return false;
+
+   unsigned num_coords = ctx->shader->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES ? 3 : 2;
+   for (unsigned i = 0; i < num_coords; ++i) {
+      unsigned component_idx = i;
+
+      const struct dxil_value *component = dxil_module_get_int32_const(&ctx->mod, component_idx);
+      if (!component)
+         return false;
+
+      const struct dxil_value *args[] = { opcode, component };
+
+      const struct dxil_value *value =
+         dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+      store_dest_value(ctx, &intr->dest, i, value);
+   }
+
+   for (unsigned i = num_coords; i < intr->dest.ssa.num_components; ++i) {
+      const struct dxil_value *value = dxil_module_get_float_const(&ctx->mod, 0.0f);
+      store_dest_value(ctx, &intr->dest, i, value);
+   }
+
+   return true;
+}
+
 static const struct dxil_value *
 get_int32_undef(struct dxil_module *m)
 {
@@ -3987,6 +4025,8 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       }
    case nir_intrinsic_load_sample_mask_in:
       return emit_load_sample_mask_in(ctx, intr);
+   case nir_intrinsic_load_tess_coord:
+      return emit_load_tess_coord(ctx, intr);
    case nir_intrinsic_load_shared_dxil:
       return emit_load_shared(ctx, intr);
    case nir_intrinsic_load_scratch_dxil:
