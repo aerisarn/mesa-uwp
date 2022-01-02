@@ -368,11 +368,15 @@ uint32_t
 append_semantic_index_to_table(struct dxil_psv_sem_index_table *table, uint32_t index,
                                uint32_t num_rows)
 {
-   if (num_rows == 1) {
-      for (unsigned i = 0; i < table->size; ++i) {
-         if (table->data[i] == index)
-            return i;
-      }
+   for (unsigned i = 0; i < table->size; ++i) {
+      unsigned j = 0;
+      for (; j < num_rows && i + j < table->size; ++j)
+         if (table->data[i + j] != index + j)
+            break;
+      if (j == num_rows)
+         return i;
+      else if (j > 0)
+         i += j - 1;
    }
    uint32_t retval = table->size;
    assert(table->size + num_rows <= 80);
