@@ -604,7 +604,8 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
 
       /* This is fishy, logic suggests that the LHS should be 0xf, but from the
        * validation it needs to be 0xff */
-      elm->never_writes_mask = 0xff & ~elm->mask;
+      for (unsigned i = 0; i < mod->outputs[num_outputs].num_elements; ++i)
+         elm[i].never_writes_mask = 0xff & ~elm[i].mask;
 
       ++num_outputs;
 
