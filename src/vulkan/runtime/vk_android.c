@@ -24,6 +24,9 @@
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "vk_log.h"
+#include "vk_queue.h"
+
+#include "util/libsync.h"
 
 #include <unistd.h>
 
@@ -103,4 +106,57 @@ vk_common_AcquireImageANDROID(VkDevice _device,
       close(fence_fd);
 
    return result;
+}
+
+
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_common_QueueSignalReleaseImageANDROID(VkQueue _queue,
+                                         uint32_t waitSemaphoreCount,
+                                         const VkSemaphore *pWaitSemaphores,
+                                         VkImage image,
+                                         int *pNativeFenceFd)
+{
+   VK_FROM_HANDLE(vk_queue, queue, _queue);
+   struct vk_device *device = queue->base.device;
+   VkResult result = VK_SUCCESS;
+
+   if (waitSemaphoreCount == 0) {
+      if (pNativeFenceFd)
+         *pNativeFenceFd = -1;
+      return VK_SUCCESS;
+   }
+
+   int fd = -1;
+
+   for (uint32_t i = 0; i < waitSemaphoreCount; ++i) {
+      const VkSemaphoreGetFdInfoKHR get_fd = {
+         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+         .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+         .semaphore = pWaitSemaphores[i],
+      };
+      int tmp_fd;
+      result = device->dispatch_table.GetSemaphoreFdKHR(vk_device_to_handle(device),
+                                                        &get_fd, &tmp_fd);
+      if (result != VK_SUCCESS) {
+         if (fd >= 0)
+            close(fd);
+         return result;
+      }
+
+      if (fd < 0) {
+         fd = tmp_fd;
+      } else if (tmp_fd >= 0) {
+         sync_accumulate("vulkan", &fd, tmp_fd);
+         close(tmp_fd);
+      }
+   }
+
+   if (pNativeFenceFd) {
+      *pNativeFenceFd = fd;
+   } else if (fd >= 0) {
+      close(fd);
+      /* We still need to do the exports, to reset the semaphores, but
+       * otherwise we don't wait on them. */
+   }
+   return VK_SUCCESS;
 }
