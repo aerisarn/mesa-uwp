@@ -5038,6 +5038,10 @@ get_dxil_shader_kind(struct nir_shader *s)
    switch (s->info.stage) {
    case MESA_SHADER_VERTEX:
       return DXIL_VERTEX_SHADER;
+   case MESA_SHADER_TESS_CTRL:
+      return DXIL_HULL_SHADER;
+   case MESA_SHADER_TESS_EVAL:
+      return DXIL_DOMAIN_SHADER;
    case MESA_SHADER_GEOMETRY:
       return DXIL_GEOMETRY_SHADER;
    case MESA_SHADER_FRAGMENT:
