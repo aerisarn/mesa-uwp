@@ -481,9 +481,7 @@ Failed to validate DXIL
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_Interpolation_Floating_Fragment_In.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_Interpolation_Floating_Fragment_Out.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_EntryPointWrapping_IOLocations.spvasm:main|Fragment: Fail
-DXIL: signature element TEXCOORD specifies invalid interpolation mode for integer component type.
-signature element TEXCOORD specifies invalid interpolation mode for integer component type.
-Semantic 'UNDEFINED' is invalid as ps Output
+DXIL: Semantic 'UNDEFINED' is invalid as ps Output
 Pixel Shader allows output semantics to be SV_Target, SV_Depth, SV_DepthGreaterEqual, SV_DepthLessEqual, SV_Coverage or SV_StencilRef, UNDEFINED found
 Not all elements of output UNDEFINED were written
 

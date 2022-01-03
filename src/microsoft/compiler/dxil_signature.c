@@ -57,6 +57,9 @@ is_depth_output(enum dxil_semantic_kind kind)
 static uint8_t
 get_interpolation(nir_variable *var)
 {
+   if (glsl_type_is_integer(glsl_without_array_or_matrix(var->type)))
+      return DXIL_INTERP_CONSTANT;
+
    if (var->data.sample) {
       if (var->data.location == VARYING_SLOT_POS)
          return DXIL_INTERP_LINEAR_NOPERSPECTIVE_SAMPLE;
