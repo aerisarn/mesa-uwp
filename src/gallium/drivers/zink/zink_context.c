@@ -3897,7 +3897,7 @@ zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsi
    if (zink_resource_has_unflushed_usage(res))
       zink_flush_queue(ctx);
 
-   bool ret = zink_bo_commit(screen, res, box->x, box->width, commit);
+   bool ret = zink_bo_commit(screen, res, level, box, commit);
    if (!ret)
       check_device_lost(ctx);
 
