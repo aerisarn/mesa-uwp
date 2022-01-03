@@ -129,6 +129,8 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
          size = 4;
       else if (size16 & BITFIELD_BIT(i))
          size = 2;
+      else
+         assert(size8 & BITFIELD_BIT(i));
       for (unsigned j = 1; j < desc->nr_channels; j++) {
          if (screen->info.have_EXT_vertex_input_dynamic_state) {
             memcpy(&ves->hw_state.dynattribs[num_elements], &ves->hw_state.dynattribs[i], sizeof(VkVertexInputAttributeDescription2EXT));
