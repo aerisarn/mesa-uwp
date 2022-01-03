@@ -1723,10 +1723,16 @@ static int
 variable_location_cmp(const nir_variable* a, const nir_variable* b)
 {
    // Sort by driver_location, location, then index
+   unsigned a_location = a->data.location;
+   if (a_location >= VARYING_SLOT_PATCH0)
+      a_location -= VARYING_SLOT_PATCH0;
+   unsigned b_location = b->data.location;
+   if (b_location >= VARYING_SLOT_PATCH0)
+      b_location -= VARYING_SLOT_PATCH0;
    return a->data.driver_location != b->data.driver_location ?
             a->data.driver_location - b->data.driver_location : 
-            a->data.location !=  b->data.location ?
-               a->data.location - b->data.location :
+            a_location !=  b_location ?
+               a_location - b_location :
                a->data.index - b->data.index;
 }
 
