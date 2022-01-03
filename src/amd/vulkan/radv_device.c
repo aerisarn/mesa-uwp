@@ -3267,11 +3267,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
    device->mem_cache = radv_pipeline_cache_from_handle(pc);
 
-   if (u_cnd_monotonic_init(&device->timeline_cond)) {
-      result = VK_ERROR_INITIALIZATION_FAILED;
-      goto fail_mem_cache;
-   }
-
    device->force_aniso = MIN2(16, radv_get_int_debug_option("RADV_TEX_ANISO", -1));
    if (device->force_aniso >= 0) {
       fprintf(stderr, "radv: Forcing anisotropy filter to %ix\n",
@@ -3281,8 +3276,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    *pDevice = radv_device_to_handle(device);
    return VK_SUCCESS;
 
-fail_mem_cache:
-   radv_DestroyPipelineCache(radv_device_to_handle(device), pc, NULL);
 fail_meta:
    radv_device_finish_meta(device);
 fail:
@@ -3352,8 +3345,6 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    radv_finish_trace(device);
 
    radv_destroy_shader_arenas(device);
-
-   u_cnd_monotonic_destroy(&device->timeline_cond);
 
    radv_thread_trace_finish(device);
 
@@ -4312,7 +4303,6 @@ struct radv_deferred_queue_submission {
 
    struct list_head queue_pending_list;
    uint32_t submission_wait_count;
-   struct radv_timeline_waiter *wait_nodes;
 
    struct list_head processing_list;
 };

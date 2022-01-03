@@ -826,10 +826,6 @@ struct radv_device {
 
    struct radv_device_border_color_data border_color_data;
 
-   /* Condition variable for legacy timelines, to notify waiters when a
-    * new point gets submitted. */
-   struct u_cnd_monotonic timeline_cond;
-
    /* Thread trace. */
    struct ac_thread_trace_data thread_trace;
 
