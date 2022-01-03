@@ -274,9 +274,12 @@ enum dxil_intr {
    DXIL_INTR_EMIT_STREAM = 97,
    DXIL_INTR_CUT_STREAM = 98,
 
+   DXIL_INTR_GS_INSTANCE_ID = 100,
+
    DXIL_INTR_MAKE_DOUBLE = 101,
    DXIL_INTR_SPLIT_DOUBLE = 102,
 
+   DXIL_INTR_OUTPUT_CONTROL_POINT_ID = 107,
    DXIL_INTR_PRIMITIVE_ID = 108,
 
    DXIL_INTR_LEGACY_F32TOF16 = 130,
@@ -3760,6 +3763,17 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_sample_id:
       return emit_load_unary_external_function(ctx, intr, "dx.op.sampleIndex",
                                                DXIL_INTR_SAMPLE_INDEX);
+   case nir_intrinsic_load_invocation_id:
+      switch (ctx->mod.shader_kind) {
+      case DXIL_HULL_SHADER:
+         return emit_load_unary_external_function(ctx, intr, "dx.op.outputControlPointID",
+                                                  DXIL_INTR_OUTPUT_CONTROL_POINT_ID);
+      case DXIL_GEOMETRY_SHADER:
+         return emit_load_unary_external_function(ctx, intr, "dx.op.gsInstanceID",
+                                                  DXIL_INTR_GS_INSTANCE_ID);
+      default:
+         unreachable("Unexpected shader kind for invocation ID");
+      }
    case nir_intrinsic_load_sample_mask_in:
       return emit_load_sample_mask_in(ctx, intr);
    case nir_intrinsic_load_shared_dxil:
