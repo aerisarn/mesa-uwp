@@ -162,6 +162,16 @@ struct dxil_shader_info {
    unsigned has_per_sample_input:1;
 };
 
+struct dxil_func_def {
+   struct list_head head;
+   const struct dxil_func *func;
+
+   struct list_head instr_list;
+   int *basic_block_ids; /* maps from "user" ids to LLVM ids */
+   size_t num_basic_block_ids;
+   unsigned curr_block;
+};
+
 struct dxil_module {
    void *ralloc_ctx;
    enum dxil_shader_kind shader_kind;
@@ -195,8 +205,8 @@ struct dxil_module {
    struct list_head type_list;
    struct list_head gvar_list;
    struct list_head func_list;
+   struct list_head func_def_list;
    struct list_head attr_set_list;
-   struct list_head instr_list;
    struct list_head const_list;
    struct list_head mdnode_list;
    struct list_head md_named_node_list;
@@ -207,9 +217,7 @@ struct dxil_module {
 
    struct rb_tree *functions;
 
-   int *basic_block_ids; /* maps from "user" ids to LLVM ids */
-   size_t num_basic_block_ids;
-   unsigned curr_block;
+   struct dxil_func_def *cur_emitting_func;
 };
 
 struct dxil_instr;
@@ -233,9 +241,9 @@ dxil_add_global_ptr_var(struct dxil_module *m, const char *name,
                         enum dxil_address_space as, int align,
                         const struct dxil_value *value);
 
-const struct dxil_func *
+struct dxil_func_def *
 dxil_add_function_def(struct dxil_module *m, const char *name,
-                      const struct dxil_type *type);
+                      const struct dxil_type *type, unsigned num_blocks);
 
 const struct dxil_func *
 dxil_add_function_decl(struct dxil_module *m, const char *name,

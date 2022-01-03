@@ -1432,11 +1432,10 @@ emit_metadata(struct ntd_context *ctx)
        !emit_dx_shader_model(&ctx->mod))
       return false;
 
-   const struct dxil_type *void_type = dxil_module_get_void_type(&ctx->mod);
-   const struct dxil_type *main_func_type = dxil_module_add_function_type(&ctx->mod, void_type, NULL, 0);
-   const struct dxil_func *main_func = dxil_add_function_def(&ctx->mod, "main", main_func_type);
-   if (!main_func)
+   const struct dxil_func_def *main_func_def = ctx->mod.cur_emitting_func;
+   if (!main_func_def)
       return false;
+   const struct dxil_func *main_func = main_func_def->func;
 
    const struct dxil_mdnode *resources_node = emit_resources(ctx);
 
@@ -4612,8 +4611,8 @@ static bool emit_instr(struct ntd_context *ctx, struct nir_instr* instr)
 static bool
 emit_block(struct ntd_context *ctx, struct nir_block *block)
 {
-   assert(block->index < ctx->mod.num_basic_block_ids);
-   ctx->mod.basic_block_ids[block->index] = ctx->mod.curr_block;
+   assert(block->index < ctx->mod.cur_emitting_func->num_basic_block_ids);
+   ctx->mod.cur_emitting_func->basic_block_ids[block->index] = ctx->mod.cur_emitting_func->curr_block;
 
    nir_foreach_instr(instr, block) {
       TRACE_CONVERSION(instr);
@@ -4999,15 +4998,11 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    nir_function_impl *entry = nir_shader_get_entrypoint(ctx->shader);
    nir_metadata_require(entry, nir_metadata_block_index);
 
-   assert(entry->num_blocks > 0);
-   ctx->mod.basic_block_ids = rzalloc_array(ctx->ralloc_ctx, int,
-                                            entry->num_blocks);
-   if (!ctx->mod.basic_block_ids)
+   const struct dxil_type *void_type = dxil_module_get_void_type(&ctx->mod);
+   const struct dxil_type *main_func_type = dxil_module_add_function_type(&ctx->mod, void_type, NULL, 0);
+   struct dxil_func_def *main_func = dxil_add_function_def(&ctx->mod, "main", main_func_type, entry->num_blocks);
+   if (!main_func)
       return false;
-
-   for (int i = 0; i < entry->num_blocks; ++i)
-      ctx->mod.basic_block_ids[i] = -1;
-   ctx->mod.num_basic_block_ids = entry->num_blocks;
 
    ctx->defs = rzalloc_array(ctx->ralloc_ctx, struct dxil_def,
                              entry->ssa_alloc);
