@@ -462,6 +462,8 @@ struct ntd_context {
 
    nir_variable *ps_front_face;
    nir_variable *system_value[SYSTEM_VALUE_MAX];
+
+   struct dxil_func_def *main_func_def;
 };
 
 static const char*
@@ -1432,7 +1434,7 @@ emit_metadata(struct ntd_context *ctx)
        !emit_dx_shader_model(&ctx->mod))
       return false;
 
-   const struct dxil_func_def *main_func_def = ctx->mod.cur_emitting_func;
+   const struct dxil_func_def *main_func_def = ctx->main_func_def;
    if (!main_func_def)
       return false;
    const struct dxil_func *main_func = main_func_def->func;
@@ -4873,6 +4875,59 @@ shader_has_shared_ops(struct nir_shader *s)
 }
 
 static bool
+emit_function(struct ntd_context *ctx, nir_function *func)
+{
+   assert(func->num_params == 0);
+   nir_function_impl *impl = func->impl;
+   if (!impl)
+      return true;
+
+   nir_metadata_require(impl, nir_metadata_block_index);
+
+   const struct dxil_type *void_type = dxil_module_get_void_type(&ctx->mod);
+   const struct dxil_type *func_type = dxil_module_add_function_type(&ctx->mod, void_type, NULL, 0);
+   struct dxil_func_def *func_def = dxil_add_function_def(&ctx->mod, func->name, func_type, impl->num_blocks);
+   if (!func_def)
+      return false;
+
+   if (func->is_entrypoint)
+      ctx->main_func_def = func_def;
+
+   ctx->defs = rzalloc_array(ctx->ralloc_ctx, struct dxil_def, impl->ssa_alloc);
+   if (!ctx->defs)
+      return false;
+   ctx->num_defs = impl->ssa_alloc;
+
+   ctx->phis = _mesa_pointer_hash_table_create(ctx->ralloc_ctx);
+   if (!ctx->phis)
+      return false;
+
+   prepare_phi_values(ctx);
+
+   if (!emit_scratch(ctx))
+      return false;
+
+   if (!emit_static_indexing_handles(ctx))
+      return false;
+
+   if (!emit_cf_list(ctx, &impl->body))
+      return false;
+
+   hash_table_foreach(ctx->phis, entry) {
+      fixup_phi(ctx, (nir_phi_instr *)entry->key,
+         (struct phi_block *)entry->data);
+   }
+
+   if (!dxil_emit_ret_void(&ctx->mod))
+      return false;
+
+   ralloc_free(ctx->defs);
+   ctx->defs = NULL;
+   _mesa_hash_table_destroy(ctx->phis, NULL);
+   return true;
+}
+
+static bool
 emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
 {
    /* The validator forces us to emit resources in a specific order:
@@ -4996,43 +5051,10 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       }
    }
 
-   nir_function_impl *entry = nir_shader_get_entrypoint(ctx->shader);
-   nir_metadata_require(entry, nir_metadata_block_index);
-
-   const struct dxil_type *void_type = dxil_module_get_void_type(&ctx->mod);
-   const struct dxil_type *main_func_type = dxil_module_add_function_type(&ctx->mod, void_type, NULL, 0);
-   struct dxil_func_def *main_func = dxil_add_function_def(&ctx->mod, entry->function->name, main_func_type, entry->num_blocks);
-   if (!main_func)
-      return false;
-
-   ctx->defs = rzalloc_array(ctx->ralloc_ctx, struct dxil_def,
-                             entry->ssa_alloc);
-   if (!ctx->defs)
-      return false;
-   ctx->num_defs = entry->ssa_alloc;
-
-   ctx->phis = _mesa_pointer_hash_table_create(ctx->ralloc_ctx);
-   if (!ctx->phis)
-      return false;
-
-   prepare_phi_values(ctx);
-
-   if (!emit_scratch(ctx))
-      return false;
-
-   if (!emit_static_indexing_handles(ctx))
-      return false;
-
-   if (!emit_cf_list(ctx, &entry->body))
-      return false;
-
-   hash_table_foreach(ctx->phis, entry) {
-      fixup_phi(ctx, (nir_phi_instr *)entry->key,
-                (struct phi_block *)entry->data);
+   nir_foreach_function(func, ctx->shader) {
+      if (!emit_function(ctx, func))
+         return false;
    }
-
-   if (!dxil_emit_ret_void(&ctx->mod))
-      return false;
 
    if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
       nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_out) {
