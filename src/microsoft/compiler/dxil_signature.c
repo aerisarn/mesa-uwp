@@ -293,8 +293,9 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
       break;
 
    default: {
-         info->index = var->data.location -
-            (vulkan ? VARYING_SLOT_VAR0 : VARYING_SLOT_POS);
+         info->index =  vulkan ?
+            var->data.location - VARYING_SLOT_VAR0 :
+            var->data.driver_location;
          strcpy(info->name, "TEXCOORD");
          info->kind = DXIL_SEM_ARBITRARY;
       }

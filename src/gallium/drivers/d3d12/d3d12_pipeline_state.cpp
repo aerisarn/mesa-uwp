@@ -44,11 +44,11 @@ struct d3d12_compute_pso_entry {
 };
 
 static const char *
-get_semantic_name(int slot, unsigned *index)
+get_semantic_name(int location, int driver_location, unsigned *index)
 {
    *index = 0; /* Default index */
 
-   switch (slot) {
+   switch (location) {
 
    case VARYING_SLOT_POS:
       return "SV_Position";
@@ -66,7 +66,7 @@ get_semantic_name(int slot, unsigned *index)
       return "SV_PrimitiveID";
 
    default: {
-         *index = slot - VARYING_SLOT_POS;
+         *index = driver_location;
          return "TEXCOORD";
       }
    }
@@ -74,6 +74,7 @@ get_semantic_name(int slot, unsigned *index)
 
 static void
 fill_so_declaration(const struct pipe_stream_output_info *info,
+                    nir_shader *last_vertex_stage,
                     D3D12_SO_DECLARATION_ENTRY *entries, UINT *num_entries,
                     UINT *strides, UINT *num_strides)
 {
@@ -105,7 +106,10 @@ fill_so_declaration(const struct pipe_stream_output_info *info,
       next_offset[buffer] = output->dst_offset + output->num_components;
 
       entries[*num_entries].Stream = output->stream;
-      entries[*num_entries].SemanticName = get_semantic_name(output->register_index, &index);
+      nir_variable *var = nir_find_variable_with_location(last_vertex_stage,
+         nir_var_shader_out, output->register_index);
+      entries[*num_entries].SemanticName = get_semantic_name(var->data.location,
+         var->data.driver_location, &index);
       entries[*num_entries].SemanticIndex = index;
       entries[*num_entries].StartComponent = output->start_component;
       entries[*num_entries].ComponentCount = output->num_components;
@@ -200,22 +204,23 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso_desc = { 0 };
    pso_desc.pRootSignature = state->root_signature;
 
-   bool last_vertex_stage_writes_pos = false;
+   nir_shader *last_vertex_stage_nir = NULL;
 
    if (state->stages[PIPE_SHADER_VERTEX]) {
       auto shader = state->stages[PIPE_SHADER_VERTEX];
       pso_desc.VS.BytecodeLength = shader->bytecode_length;
       pso_desc.VS.pShaderBytecode = shader->bytecode;
-      last_vertex_stage_writes_pos = (shader->nir->info.outputs_written & VARYING_BIT_POS) != 0;
+      last_vertex_stage_nir = shader->nir;
    }
 
    if (state->stages[PIPE_SHADER_GEOMETRY]) {
       auto shader = state->stages[PIPE_SHADER_GEOMETRY];
       pso_desc.GS.BytecodeLength = shader->bytecode_length;
       pso_desc.GS.pShaderBytecode = shader->bytecode;
-      last_vertex_stage_writes_pos = (shader->nir->info.outputs_written & VARYING_BIT_POS) != 0;
+      last_vertex_stage_nir = shader->nir;
    }
 
+   bool last_vertex_stage_writes_pos = (last_vertex_stage_nir->info.outputs_written & VARYING_BIT_POS) != 0;
    if (last_vertex_stage_writes_pos && state->stages[PIPE_SHADER_FRAGMENT] &&
        !state->rast->base.rasterizer_discard) {
       auto shader = state->stages[PIPE_SHADER_FRAGMENT];
@@ -224,8 +229,7 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
    }
 
    if (state->num_so_targets)
-      fill_so_declaration(&state->so_info, entries, &num_entries,
-                          strides, &num_strides);
+      fill_so_declaration(&state->so_info, last_vertex_stage_nir, entries, &num_entries, strides, &num_strides);
    pso_desc.StreamOutput.NumEntries = num_entries;
    pso_desc.StreamOutput.pSODeclaration = entries;
    pso_desc.StreamOutput.RasterizedStream = state->rast->base.rasterizer_discard ? D3D12_SO_NO_RASTERIZED_STREAM : 0;
