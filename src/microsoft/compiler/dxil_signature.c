@@ -57,6 +57,9 @@ is_depth_output(enum dxil_semantic_kind kind)
 static uint8_t
 get_interpolation(nir_variable *var)
 {
+   if (var->data.patch)
+      return DXIL_INTERP_UNDEFINED;
+
    if (glsl_type_is_integer(glsl_without_array_or_matrix(var->type)))
       return DXIL_INTERP_CONSTANT;
 
@@ -134,6 +137,13 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
               info->kind == DXIL_SEM_SAMPLE_INDEX) {
       // This turns into a 'N/A' mask in the disassembly
       info->start_row = -1;
+   } else if (info->kind == DXIL_SEM_TESS_FACTOR ||
+              info->kind == DXIL_SEM_INSIDE_TESS_FACTOR) {
+      assert(var->data.compact);
+      info->start_row = next_row;
+      info->rows = glsl_get_aoa_size(type);
+      info->cols = 1;
+      next_row += info->rows;
    } else if (var->data.compact) {
       if (var->data.location_frac) {
          info->start_row = next_row - 1;
@@ -152,6 +162,7 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
          snprintf(info->name, 64, "SV_CullDistance");
       }
       info->cols = num_floats;
+      info->start_col = (uint8_t)var->data.location_frac;
    } else {
       info->start_row = next_row;
       if (glsl_type_is_array(type) &&
@@ -164,8 +175,8 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
          assert(info->rows);
       }
       next_row += info->rows;
+      info->start_col = (uint8_t)var->data.location_frac;
    }
-   info->start_col = (uint8_t)var->data.location_frac;
    if (!info->cols) {
       if (glsl_type_is_array(type))
          type = glsl_get_array_element(type);
@@ -295,6 +306,18 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
       info->kind = DXIL_SEM_CLIP_DISTANCE;
       break;
 
+   case VARYING_SLOT_TESS_LEVEL_INNER:
+      assert(glsl_get_components(var->type) <= 2);
+      snprintf(info->name, 64, "%s", "SV_InsideTessFactor");
+      info->kind = DXIL_SEM_INSIDE_TESS_FACTOR;
+      break;
+
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
+      assert(glsl_get_components(var->type) <= 4);
+      snprintf(info->name, 64, "%s", "SV_TessFactor");
+      info->kind = DXIL_SEM_TESS_FACTOR;
+      break;
+
    default: {
          info->index =  vulkan ?
             var->data.location - VARYING_SLOT_VAR0 :
@@ -319,7 +342,7 @@ get_semantic_in_name(nir_variable *var, struct semantic_info *info, gl_shader_st
 
 
 static enum dxil_prog_sig_semantic
-prog_semantic_from_kind(enum dxil_semantic_kind kind)
+prog_semantic_from_kind(enum dxil_semantic_kind kind, unsigned num_vals, unsigned start_val)
 {
    switch (kind) {
    case DXIL_SEM_ARBITRARY: return DXIL_PROG_SEM_UNDEFINED;
@@ -343,6 +366,23 @@ prog_semantic_from_kind(enum dxil_semantic_kind kind)
    case DXIL_SEM_DEPTH_LE: return DXIL_PROG_SEM_DEPTH_LE;
    case DXIL_SEM_DEPTH_GE: return DXIL_PROG_SEM_DEPTH_GE;
    case DXIL_SEM_STENCIL_REF: return DXIL_PROG_SEM_STENCIL_REF;
+   case DXIL_SEM_TESS_FACTOR:
+      switch (num_vals) {
+      case 4: return DXIL_PROG_SEM_FINAL_QUAD_EDGE_TESSFACTOR;
+      case 3: return DXIL_PROG_SEM_FINAL_TRI_EDGE_TESSFACTOR;
+      case 2: return start_val == 0 ?
+         DXIL_PROG_SEM_FINAL_LINE_DENSITY_TESSFACTOR :
+         DXIL_PROG_SEM_FINAL_LINE_DETAIL_TESSFACTOR;
+      default:
+         unreachable("Invalid row count for tess factor");
+      }
+   case DXIL_SEM_INSIDE_TESS_FACTOR:
+      switch (num_vals) {
+      case 2: return DXIL_PROG_SEM_FINAL_QUAD_INSIDE_EDGE_TESSFACTOR;
+      case 1: return DXIL_PROG_SEM_FINAL_TRI_INSIDE_EDGE_TESSFACTOR;
+      default:
+         unreachable("Invalid row count for inner tess factor");
+      }
    default:
        return DXIL_PROG_SEM_UNDEFINED;
    }
@@ -418,7 +458,7 @@ fill_signature_element(struct dxil_signature_element *elm,
    // elm->stream = 0;
    // elm->semantic_name_offset = 0;  // Offset needs to be filled out when writing
    elm->semantic_index = semantic->index + row;
-   elm->system_value = (uint32_t) prog_semantic_from_kind(semantic->kind);
+   elm->system_value = (uint32_t) prog_semantic_from_kind(semantic->kind, semantic->rows, row);
    elm->comp_type = (uint32_t) semantic->comp_type;
    elm->reg = semantic->start_row + row;
 
@@ -621,6 +661,94 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
    return retval;
 }
 
+static const char *
+patch_sysvalue_name(nir_variable *var)
+{
+   switch (var->data.location) {
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
+      switch (glsl_get_aoa_size(var->type)) {
+      case 4:
+         return "QUADEDGE";
+      case 3:
+         return "TRIEDGE";
+      case 2:
+         return var->data.location_frac == 0 ?
+            "LINEDET" : "LINEDEN";
+      default:
+         unreachable("Unexpected outer tess factor array size");
+      }
+      break;
+   case VARYING_SLOT_TESS_LEVEL_INNER:
+      switch (glsl_get_aoa_size(var->type)) {
+      case 2:
+         return "QUADINT";
+      case 1:
+         return "TRIINT";
+      default:
+         unreachable("Unexpected inner tess factory array size");
+      }
+      break;
+   default:
+      return "NO";
+   }
+}
+
+static const struct dxil_mdnode *
+get_patch_const_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
+{
+   if (s->info.stage != MESA_SHADER_TESS_CTRL &&
+       s->info.stage != MESA_SHADER_TESS_EVAL)
+      return NULL;
+
+   const struct dxil_mdnode *patch_consts[VARYING_SLOT_MAX];
+   nir_variable_mode mode = s->info.stage == MESA_SHADER_TESS_CTRL ?
+      nir_var_shader_out : nir_var_shader_in;
+   unsigned num_consts = 0;
+   unsigned next_row = 0;
+   nir_foreach_variable_with_modes(var, s, mode) {
+      struct semantic_info semantic = {0};
+      if (!var->data.patch)
+         continue;
+
+      const struct glsl_type *type = var->type;
+      get_semantic_name(var, &semantic, type, vulkan);
+
+      mod->patch_consts[num_consts].sysvalue = patch_sysvalue_name(var);
+      next_row = get_additional_semantic_info(s, var, &semantic, next_row);
+
+      mod->patch_consts[num_consts].name = ralloc_strdup(mod->ralloc_ctx,
+                                                         semantic.name);
+      mod->patch_consts[num_consts].num_elements = semantic.rows;
+      struct dxil_signature_element *elm = mod->patch_consts[num_consts].elements;
+
+      struct dxil_psv_signature_element *psv_elm = &mod->psv_patch_consts[num_consts];
+
+      if (!fill_io_signature(mod, num_consts, &semantic,
+                             &patch_consts[num_consts], elm, psv_elm))
+         return NULL;
+
+      /* This is fishy, logic suggests that the LHS should be 0xf, but from the
+       * validation it needs to be 0xff */
+      if (mode == nir_var_shader_out)
+         for (unsigned i = 0; i < mod->patch_consts[num_consts].num_elements; ++i)
+            elm[i].never_writes_mask = 0xff & ~elm[i].mask;
+
+      ++num_consts;
+
+      mod->num_psv_patch_consts = MAX2(mod->num_psv_patch_consts,
+                                       semantic.start_row + semantic.rows);
+
+      assert(num_consts < ARRAY_SIZE(patch_consts));
+   }
+
+   if (!num_consts)
+      return NULL;
+
+   const struct dxil_mdnode *retval = dxil_get_metadata_node(mod, patch_consts, num_consts);
+   mod->num_sig_patch_consts = num_consts;
+   return retval;
+}
+
 const struct dxil_mdnode *
 get_signatures(struct dxil_module *mod, nir_shader *s, bool vulkan)
 {
@@ -630,13 +758,14 @@ get_signatures(struct dxil_module *mod, nir_shader *s, bool vulkan)
 
    const struct dxil_mdnode *input_signature = get_input_signature(mod, s, vulkan);
    const struct dxil_mdnode *output_signature = get_output_signature(mod, s, vulkan);
+   const struct dxil_mdnode *patch_const_signature = get_patch_const_signature(mod, s, vulkan);
 
    const struct dxil_mdnode *SV_nodes[3] = {
       input_signature,
       output_signature,
-      NULL
+      patch_const_signature
    };
-   if (output_signature || input_signature)
+   if (output_signature || input_signature || patch_const_signature)
       return dxil_get_metadata_node(mod, SV_nodes, ARRAY_SIZE(SV_nodes));
    else
       return NULL;
