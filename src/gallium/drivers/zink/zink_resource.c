@@ -782,6 +782,10 @@ resource_create(struct pipe_screen *pscreen,
    struct pipe_resource templ2 = *templ;
    if (templ2.flags & PIPE_RESOURCE_FLAG_SPARSE)
       templ2.bind |= PIPE_BIND_SHADER_IMAGE;
+   if (screen->faked_e5sparse && templ->format == PIPE_FORMAT_R9G9B9E5_FLOAT) {
+      templ2.flags &= ~PIPE_RESOURCE_FLAG_SPARSE;
+      res->base.b.flags &= ~PIPE_RESOURCE_FLAG_SPARSE;
+   }
    unsigned scanout_flags = templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
    if (whandle && whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE)
       scanout_flags = 0;
