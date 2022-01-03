@@ -1037,12 +1037,14 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
    pipe_debug_message(debug, SHADER_INFO,
                       "Shader Stats: SGPRS: %d VGPRS: %d Code Size: %d "
                       "LDS: %d Scratch: %d Max Waves: %d Spilled SGPRs: %d "
-                      "Spilled VGPRs: %d PrivMem VGPRs: %d DivergentLoop: %d, InlineUniforms: %d, (%s, W%u)",
+                      "Spilled VGPRs: %d PrivMem VGPRs: %d DivergentLoop: %d, InlineUniforms: %d, "
+                      "ParamExports: %u, (%s, W%u)",
                       conf->num_sgprs, conf->num_vgprs, si_get_shader_binary_size(screen, shader),
                       conf->lds_size, conf->scratch_bytes_per_wave, shader->info.max_simd_waves,
                       conf->spilled_sgprs, conf->spilled_vgprs, shader->info.private_mem_vgprs,
                       shader->selector->info.has_divergent_loop,
                       shader->selector->info.base.num_inlinable_uniforms,
+                      shader->info.nr_param_exports,
                       stages[shader->selector->info.stage], shader->wave_size);
 }
 
