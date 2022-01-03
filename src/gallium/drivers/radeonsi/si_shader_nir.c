@@ -127,6 +127,14 @@ void si_nir_late_opts(nir_shader *nir)
       more_late_algebraic = false;
       NIR_PASS(more_late_algebraic, nir, nir_opt_algebraic_late);
       NIR_PASS_V(nir, nir_opt_constant_folding);
+
+      /* We should run this after constant folding for stages that support indirect
+       * inputs/outputs.
+       */
+      if (nir->options->support_indirect_inputs & BITFIELD_BIT(nir->info.stage) ||
+          nir->options->support_indirect_outputs & BITFIELD_BIT(nir->info.stage))
+         NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in | nir_var_shader_out);
+
       NIR_PASS_V(nir, nir_copy_prop);
       NIR_PASS_V(nir, nir_opt_dce);
       NIR_PASS_V(nir, nir_opt_cse);
