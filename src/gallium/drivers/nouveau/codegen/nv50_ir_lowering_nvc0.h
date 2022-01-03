@@ -141,7 +141,8 @@ protected:
    bool handleTXLQ(TexInstruction *);
    bool handleSUQ(TexInstruction *);
    bool handleATOM(Instruction *);
-   bool handleCasExch(Instruction *, bool needCctl);
+   bool handleATOMCctl(Instruction *);
+   bool handleCasExch(Instruction *);
    void handleSurfaceOpGM107(TexInstruction *);
    void handleSurfaceOpNVE4(TexInstruction *);
    void handleSurfaceOpNVC0(TexInstruction *);

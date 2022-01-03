@@ -1705,7 +1705,23 @@ NVC0LoweringPass::handleATOM(Instruction *atom)
 }
 
 bool
-NVC0LoweringPass::handleCasExch(Instruction *cas, bool needCctl)
+NVC0LoweringPass::handleATOMCctl(Instruction *atom) {
+   // Flush L1 cache manually since atomics go directly to L2. This ensures
+   // that any later CA reads retrieve the updated data.
+   bld.setPosition(atom, true);
+
+   Instruction *cctl = bld.mkOp1(OP_CCTL, TYPE_NONE, NULL, atom->getSrc(0));
+   cctl->setIndirect(0, 0, atom->getIndirect(0, 0));
+   cctl->fixed = 1;
+   cctl->subOp = NV50_IR_SUBOP_CCTL_IV;
+   if (atom->isPredicated())
+      cctl->setPredicate(atom->cc, atom->getPredicate());
+
+   return true;
+}
+
+bool
+NVC0LoweringPass::handleCasExch(Instruction *cas)
 {
    if (targ->getChipset() < NVISA_GM107_CHIPSET) {
       if (cas->src(0).getFile() == FILE_MEMORY_SHARED) {
@@ -1717,16 +1733,6 @@ NVC0LoweringPass::handleCasExch(Instruction *cas, bool needCctl)
    if (cas->subOp != NV50_IR_SUBOP_ATOM_CAS &&
        cas->subOp != NV50_IR_SUBOP_ATOM_EXCH)
       return false;
-   bld.setPosition(cas, true);
-
-   if (needCctl) {
-      Instruction *cctl = bld.mkOp1(OP_CCTL, TYPE_NONE, NULL, cas->getSrc(0));
-      cctl->setIndirect(0, 0, cas->getIndirect(0, 0));
-      cctl->fixed = 1;
-      cctl->subOp = NV50_IR_SUBOP_CCTL_IV;
-      if (cas->isPredicated())
-         cctl->setPredicate(cas->cc, cas->getPredicate());
-   }
 
    if (cas->subOp == NV50_IR_SUBOP_ATOM_CAS &&
        targ->getChipset() < NVISA_GV100_CHIPSET) {
@@ -2376,7 +2382,9 @@ NVC0LoweringPass::handleSurfaceOpNVE4(TexInstruction *su)
                 red->getDef(0), mov->getDef(0));
 
       delete_Instruction(bld.getProgram(), su);
-      handleCasExch(red, true);
+
+      handleATOMCctl(red);
+      handleCasExch(red);
    }
 
    if (su->op == OP_SUSTB || su->op == OP_SUSTP)
@@ -2583,7 +2591,7 @@ NVC0LoweringPass::handleSurfaceOpNVC0(TexInstruction *su)
 
       bld.mkOp2(OP_UNION, TYPE_U32, def, red->getDef(0), mov->getDef(0));
 
-      handleCasExch(red, false);
+      handleCasExch(red);
    }
 }
 
@@ -3345,7 +3353,9 @@ NVC0LoweringPass::visit(Instruction *i)
    {
       const bool cctl = i->src(0).getFile() == FILE_MEMORY_BUFFER;
       handleATOM(i);
-      handleCasExch(i, cctl);
+      if (cctl)
+         handleATOMCctl(i);
+      handleCasExch(i);
    }
       break;
    case OP_SULDB:
