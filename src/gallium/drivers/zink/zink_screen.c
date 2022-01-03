@@ -661,8 +661,21 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->info.feats.features.shaderCullDistance;
 
    case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
-      
       return screen->info.feats.features.sparseBinding ? ZINK_SPARSE_BUFFER_PAGE_SIZE : 0;
+
+   /* Sparse texture */
+   case PIPE_CAP_MAX_SPARSE_TEXTURE_SIZE:
+      return screen->info.feats.features.sparseResidencyImage2D ?
+         zink_get_param(pscreen, PIPE_CAP_MAX_TEXTURE_2D_SIZE) : 0;
+   case PIPE_CAP_MAX_SPARSE_3D_TEXTURE_SIZE:
+      return screen->info.feats.features.sparseResidencyImage3D ?
+         (1 << (zink_get_param(pscreen, PIPE_CAP_MAX_TEXTURE_3D_LEVELS) - 1)) : 0;
+   case PIPE_CAP_MAX_SPARSE_ARRAY_TEXTURE_LAYERS:
+      return screen->info.feats.features.sparseResidencyImage2D ?
+         zink_get_param(pscreen, PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS) : 0;
+   case PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS:
+      return screen->info.feats.features.sparseResidencyImage2D ? 1 : 0;
+
 
    case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
       return screen->info.props.limits.viewportSubPixelBits;
