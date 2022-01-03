@@ -288,6 +288,7 @@ enum dxil_intr {
    DXIL_INTR_MAKE_DOUBLE = 101,
    DXIL_INTR_SPLIT_DOUBLE = 102,
 
+   DXIL_INTR_LOAD_PATCH_CONSTANT = 104,
    DXIL_INTR_STORE_PATCH_CONSTANT = 106,
    DXIL_INTR_OUTPUT_CONTROL_POINT_ID = 107,
    DXIL_INTR_PRIMITIVE_ID = 108,
@@ -3036,7 +3037,7 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
          else
             col = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
          const struct dxil_value *value = get_src(ctx, &intr->src[0], i, out_type);
-         if (!col || !value)
+         if (!col || !row || !value)
             return false;
 
          const struct dxil_value *args[] = {
@@ -3061,44 +3062,85 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
       attr_at_vertex = var && var->data.interpolation == INTERP_MODE_FLAT;
    }
 
-   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod,
-      attr_at_vertex ? DXIL_INTR_ATTRIBUTE_AT_VERTEX : DXIL_INTR_LOAD_INPUT);
-   const struct dxil_value *input_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
-   int row_index = intr->intrinsic == nir_intrinsic_load_per_vertex_input ? 1 : 0;
-   const struct dxil_value *row = get_src(ctx, &intr->src[row_index], 0, nir_type_int);
-   const struct dxil_value *vertex_id;
-   if (intr->intrinsic == nir_intrinsic_load_per_vertex_input) {
-      vertex_id = get_src(ctx, &intr->src[0], 0, nir_type_int);
-   } else if (attr_at_vertex) {
-      vertex_id = dxil_module_get_int8_const(&ctx->mod, ctx->opts->provoking_vertex);
-   } else {
-      const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
-      if (!int32_type)
-         return false;
+   bool is_patch_constant = ctx->mod.shader_kind == DXIL_DOMAIN_SHADER &&
+      intr->intrinsic == nir_intrinsic_load_input;
 
-      vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
+   unsigned opcode_val;
+   const char *func_name;
+   if (attr_at_vertex) {
+      opcode_val = DXIL_INTR_ATTRIBUTE_AT_VERTEX;
+      func_name = "dx.op.attributeAtVertex";
+   } else if (is_patch_constant) {
+      opcode_val = DXIL_INTR_LOAD_PATCH_CONSTANT;
+      func_name = "dx.op.loadPatchConstant";
+   } else {
+      opcode_val = DXIL_INTR_LOAD_INPUT;
+      func_name = "dx.op.loadInput";
    }
 
-   if (!opcode || !input_id || !row || !vertex_id)
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, opcode_val);
+   if (!opcode)
       return false;
+
+   const struct dxil_value *input_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
+   if (!input_id)
+      return false;
+
+   int row_index = intr->intrinsic == nir_intrinsic_load_per_vertex_input ? 1 : 0;
+   const struct dxil_value *vertex_id = NULL;
+   if (!is_patch_constant) {
+      if (intr->intrinsic == nir_intrinsic_load_per_vertex_input) {
+         vertex_id = get_src(ctx, &intr->src[0], 0, nir_type_int);
+      } else if (attr_at_vertex) {
+         vertex_id = dxil_module_get_int8_const(&ctx->mod, ctx->opts->provoking_vertex);
+      } else {
+         const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
+         if (!int32_type)
+            return false;
+
+         vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
+      }
+      if (!vertex_id)
+         return false;
+   }
+
+   /* NIR has these as 1 row, N cols, but DXIL wants them as N rows, 1 col. We muck with these in the signature
+    * generation, so muck with them here too.
+    */
+   nir_io_semantics semantics = nir_intrinsic_io_semantics(intr);
+   bool is_tess_level = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+                        semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER;
+
+   const struct dxil_value *row;
+   const struct dxil_value *comp;
+   if (is_tess_level)
+      comp = dxil_module_get_int8_const(&ctx->mod, 0);
+   else
+      row = get_src(ctx, &intr->src[row_index], 0, nir_type_int);
 
    nir_alu_type out_type = nir_intrinsic_dest_type(intr);
    enum overload_type overload = get_overload(out_type, intr->dest.ssa.bit_size);
 
-   const struct dxil_func *func = dxil_get_function(&ctx->mod,
-      attr_at_vertex ? "dx.op.attributeAtVertex" : "dx.op.loadInput", overload);
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, func_name, overload);
 
    if (!func)
       return false;
 
    for (unsigned i = 0; i < intr->num_components; ++i) {
-      const struct dxil_value *comp = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+      if (is_tess_level)
+         row = dxil_module_get_int32_const(&ctx->mod, i + nir_intrinsic_component(intr));
+      else
+         comp = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+
+      if (!row || !comp)
+         return false;
 
       const struct dxil_value *args[] = {
          opcode, input_id, row, comp, vertex_id
       };
 
-      const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+      unsigned num_args = ARRAY_SIZE(args) - (is_patch_constant ? 1 : 0);
+      const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, num_args);
       if (!retval)
          return false;
       store_dest(ctx, &intr->dest, i, retval, out_type);
