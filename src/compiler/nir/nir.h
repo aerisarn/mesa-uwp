@@ -1767,7 +1767,17 @@ typedef struct nir_io_semantics {
    unsigned per_view:1;
    unsigned high_16bits:1; /* whether accessing low or high half of the slot */
    unsigned invariant:1; /* The variable has the invariant flag set */
-   unsigned _pad:5;
+   /* CLIP_DISTn, LAYER, VIEWPORT, and TESS_LEVEL_* have up to 3 uses:
+    * - an output consumed by the next stage
+    * - a system value output affecting fixed-func hardware, e.g. the clipper
+    * - a transform feedback output written to memory
+    * The following fields disable the first two. Transform feedback is disabled
+    * by transform feedback info.
+    */
+   unsigned no_varying:1; /* whether this output isn't consumed by the next stage */
+   unsigned no_sysval_output:1; /* whether this system value output has no
+                                   effect due to current pipeline states */
+   unsigned _pad:3;
 } nir_io_semantics;
 
 /* Transform feedback info for 2 outputs. nir_intrinsic_store_output contains
@@ -4430,6 +4440,12 @@ void nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 void nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer);
 bool nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer);
 void nir_link_varying_precision(nir_shader *producer, nir_shader *consumer);
+
+bool nir_slot_is_sysval_output(gl_varying_slot slot);
+bool nir_slot_is_varying(gl_varying_slot slot);
+bool nir_slot_is_sysval_output_and_varying(gl_varying_slot slot);
+void nir_remove_varying(nir_intrinsic_instr *intr);
+void nir_remove_sysval_output(nir_intrinsic_instr *intr);
 
 bool nir_lower_amul(nir_shader *shader,
                     int (*type_size)(const struct glsl_type *, bool));

@@ -1061,6 +1061,12 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          if (io.high_16bits)
             fprintf(fp, " high_16bits");
 
+         if (io.no_varying)
+            fprintf(fp, " no_varying");
+
+         if (io.no_sysval_output)
+            fprintf(fp, " no_sysval_output");
+
          if (state->shader &&
                state->shader->info.stage == MESA_SHADER_GEOMETRY &&
                (instr->intrinsic == nir_intrinsic_store_output ||

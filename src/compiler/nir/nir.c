@@ -3410,3 +3410,99 @@ nir_instr_xfb_write_mask(nir_intrinsic_instr *instr)
 
    return mask;
 }
+
+/**
+ * Whether an output slot is consumed by fixed-function logic.
+ */
+bool
+nir_slot_is_sysval_output(gl_varying_slot slot)
+{
+   return slot == VARYING_SLOT_POS ||
+          slot == VARYING_SLOT_PSIZ ||
+          slot == VARYING_SLOT_EDGE ||
+          slot == VARYING_SLOT_CLIP_VERTEX ||
+          slot == VARYING_SLOT_CLIP_DIST0 ||
+          slot == VARYING_SLOT_CLIP_DIST1 ||
+          slot == VARYING_SLOT_CULL_DIST0 ||
+          slot == VARYING_SLOT_CULL_DIST1 ||
+          slot == VARYING_SLOT_LAYER ||
+          slot == VARYING_SLOT_VIEWPORT ||
+          slot == VARYING_SLOT_TESS_LEVEL_OUTER ||
+          slot == VARYING_SLOT_TESS_LEVEL_INNER ||
+          slot == VARYING_SLOT_BOUNDING_BOX0 ||
+          slot == VARYING_SLOT_BOUNDING_BOX1 ||
+          slot == VARYING_SLOT_VIEW_INDEX ||
+          slot == VARYING_SLOT_VIEWPORT_MASK ||
+          slot == VARYING_SLOT_PRIMITIVE_SHADING_RATE ||
+          slot == VARYING_SLOT_PRIMITIVE_COUNT ||
+          slot == VARYING_SLOT_PRIMITIVE_INDICES ||
+          slot == VARYING_SLOT_TASK_COUNT;
+}
+
+/**
+ * Whether an input/output slot is consumed by the next shader stage,
+ * or written by the previous shader stage.
+ */
+bool
+nir_slot_is_varying(gl_varying_slot slot)
+{
+   return slot >= VARYING_SLOT_VAR0 ||
+          slot == VARYING_SLOT_COL0 ||
+          slot == VARYING_SLOT_COL1 ||
+          slot == VARYING_SLOT_BFC0 ||
+          slot == VARYING_SLOT_BFC1 ||
+          slot == VARYING_SLOT_FOGC ||
+          (slot >= VARYING_SLOT_TEX0 && slot <= VARYING_SLOT_TEX7) ||
+          slot == VARYING_SLOT_CLIP_DIST0 ||
+          slot == VARYING_SLOT_CLIP_DIST1 ||
+          slot == VARYING_SLOT_CULL_DIST0 ||
+          slot == VARYING_SLOT_CULL_DIST1 ||
+          slot == VARYING_SLOT_PRIMITIVE_ID ||
+          slot == VARYING_SLOT_LAYER ||
+          slot == VARYING_SLOT_VIEWPORT ||
+          slot == VARYING_SLOT_TESS_LEVEL_OUTER ||
+          slot == VARYING_SLOT_TESS_LEVEL_INNER;
+}
+
+bool
+nir_slot_is_sysval_output_and_varying(gl_varying_slot slot)
+{
+   return nir_slot_is_sysval_output(slot) &&
+          nir_slot_is_varying(slot);
+}
+
+/**
+ * This marks the output store instruction as not feeding the next shader
+ * stage. If the instruction has no other use, it's removed.
+ */
+void nir_remove_varying(nir_intrinsic_instr *intr)
+{
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+   if ((!sem.no_sysval_output && nir_slot_is_sysval_output(sem.location)) ||
+       nir_instr_xfb_write_mask(intr)) {
+      /* Demote the store instruction. */
+      sem.no_varying = true;
+      nir_intrinsic_set_io_semantics(intr, sem);
+   } else {
+      nir_instr_remove(&intr->instr);
+   }
+}
+
+/**
+ * This marks the output store instruction as not feeding fixed-function
+ * logic. If the instruction has no other use, it's removed.
+ */
+void nir_remove_sysval_output(nir_intrinsic_instr *intr)
+{
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+
+   if ((!sem.no_varying && nir_slot_is_varying(sem.location)) ||
+       nir_instr_xfb_write_mask(intr)) {
+      /* Demote the store instruction. */
+      sem.no_sysval_output = true;
+      nir_intrinsic_set_io_semantics(intr, sem);
+   } else {
+      nir_instr_remove(&intr->instr);
+   }
+}

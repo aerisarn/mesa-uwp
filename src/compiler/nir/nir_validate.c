@@ -840,6 +840,18 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
          used_mask |= xfb_mask;
       }
    }
+
+   if (nir_intrinsic_has_io_semantics(instr) &&
+       !nir_intrinsic_infos[instr->intrinsic].has_dest) {
+      nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+
+      /* An output that has no effect shouldn't be present in the IR. */
+      validate_assert(state,
+                      (nir_slot_is_sysval_output(sem.location) &&
+                       !sem.no_sysval_output) ||
+                      (nir_slot_is_varying(sem.location) && !sem.no_varying) ||
+                      nir_instr_xfb_write_mask(instr));
+   }
 }
 
 static void
