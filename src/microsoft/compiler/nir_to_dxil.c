@@ -5402,6 +5402,13 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    if (ctx->mod.shader_kind == DXIL_HULL_SHADER)
       NIR_PASS_V(s, dxil_nir_split_tess_ctrl, &ctx->tess_ctrl_patch_constant_func);
 
+   if (ctx->mod.shader_kind == DXIL_HULL_SHADER ||
+       ctx->mod.shader_kind == DXIL_DOMAIN_SHADER) {
+      /* Make sure any derefs are gone after lower_io before updating tess level vars */
+      NIR_PASS_V(s, nir_opt_dce);
+      NIR_PASS_V(s, dxil_nir_fixup_tess_level_for_domain);
+   }
+
    optimize_nir(s, opts);
 
    NIR_PASS_V(s, nir_remove_dead_variables,

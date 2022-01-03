@@ -270,3 +270,83 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
    state.end_cursor = nir_after_block_before_jump(nir_impl_last_block(patch_const_func_impl));
    end_tcs_loop(&b, &state);
 }
+
+struct remove_tess_level_accesses_data {
+   unsigned location;
+   unsigned size;
+};
+
+static bool
+remove_tess_level_accesses(nir_builder *b, nir_instr *instr, void *_data)
+{
+   struct remove_tess_level_accesses_data *data = _data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_output &&
+       intr->intrinsic != nir_intrinsic_load_input)
+      return false;
+
+   nir_io_semantics io = nir_intrinsic_io_semantics(intr);
+   if (io.location != data->location)
+      return false;
+
+   if (nir_intrinsic_component(intr) < data->size)
+      return false;
+
+   if (intr->intrinsic == nir_intrinsic_store_output) {
+      assert(intr->src[0].is_ssa && intr->src[0].ssa->num_components == 1);
+      nir_instr_remove(instr);
+   } else {
+      b->cursor = nir_after_instr(instr);
+      assert(intr->dest.is_ssa && intr->dest.ssa.num_components == 1);
+      nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_ssa_undef(b, 1, intr->dest.ssa.bit_size));
+   }
+   return true;
+}
+
+/* Update the types of the tess level variables and remove writes to removed components.
+ * GL always has a 4-component outer tess level and 2-component inner, while D3D requires
+ * the number of components to vary based on the primitive mode.
+ * The 4 and 2 is for quads, while triangles are 3 and 1, and lines are 2 and 0.
+ */
+bool
+dxil_nir_fixup_tess_level_for_domain(nir_shader *nir)
+{
+   bool progress = false;
+   if (nir->info.tess._primitive_mode != TESS_PRIMITIVE_QUADS) {
+      nir_foreach_variable_with_modes_safe(var, nir, nir_var_shader_out | nir_var_shader_in) {
+         unsigned new_array_size = 4;
+         unsigned old_array_size = glsl_array_size(var->type);
+         if (var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER) {
+            new_array_size = nir->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES ? 3 : 2;
+            assert(var->data.compact && (old_array_size == 4 || old_array_size == new_array_size));
+         } else if (var->data.location == VARYING_SLOT_TESS_LEVEL_INNER) {
+            new_array_size = nir->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES ? 1 : 0;
+            assert(var->data.compact && (old_array_size == 2 || old_array_size == new_array_size));
+         } else
+            continue;
+
+         if (new_array_size == old_array_size)
+            continue;
+
+         progress = true;
+         if (new_array_size)
+            var->type = glsl_array_type(glsl_float_type(), new_array_size, 0);
+         else {
+            exec_node_remove(&var->node);
+            ralloc_free(var);
+         }
+
+         struct remove_tess_level_accesses_data pass_data = {
+            .location = var->data.location,
+            .size = new_array_size
+         };
+
+         nir_shader_instructions_pass(nir, remove_tess_level_accesses,
+            nir_metadata_block_index | nir_metadata_dominance, &pass_data);
+      }
+   }
+   return progress;
+}
