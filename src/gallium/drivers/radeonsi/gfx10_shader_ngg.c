@@ -218,7 +218,7 @@ static void build_streamout_vertex(struct si_shader_context *ctx, LLVMValueRef *
                                    LLVMValueRef offset_vtx, LLVMValueRef vertexptr)
 {
    struct si_shader_info *info = &ctx->shader->selector->info;
-   struct pipe_stream_output_info *so = &ctx->shader->selector->so;
+   struct pipe_stream_output_info *so = &ctx->so;
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef offset[4] = {};
    LLVMValueRef tmp;
@@ -274,7 +274,7 @@ struct ngg_streamout {
 static void build_streamout(struct si_shader_context *ctx, struct ngg_streamout *nggso)
 {
    struct si_shader_info *info = &ctx->shader->selector->info;
-   struct pipe_stream_output_info *so = &ctx->shader->selector->so;
+   struct pipe_stream_output_info *so = &ctx->so;
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    LLVMValueRef tid = gfx10_get_thread_id_in_tg(ctx);
@@ -1418,7 +1418,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
 
    LLVMValueRef vertex_ptr = NULL;
 
-   if (sel->so.num_outputs || gfx10_ngg_writes_user_edgeflags(ctx->shader))
+   if (ctx->so.num_outputs || gfx10_ngg_writes_user_edgeflags(ctx->shader))
       vertex_ptr = ngg_nogs_vertex_ptr(ctx, gfx10_get_thread_id_in_tg(ctx));
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
@@ -1430,7 +1430,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
          /* TODO: we may store more outputs than streamout needs,
           * but streamout performance isn't that important.
           */
-         if (sel->so.num_outputs) {
+         if (ctx->so.num_outputs) {
             tmp = ac_build_gep0(&ctx->ac, vertex_ptr, LLVMConstInt(ctx->ac.i32, 4 * i + j, false));
             tmp2 = LLVMBuildLoad(builder, addrs[4 * i + j], "");
             tmp2 = ac_to_integer(&ctx->ac, tmp2);
@@ -1452,7 +1452,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
    }
 
    bool unterminated_es_if_block =
-      !sel->so.num_outputs && !gfx10_ngg_writes_user_edgeflags(ctx->shader) &&
+      !ctx->so.num_outputs && !gfx10_ngg_writes_user_edgeflags(ctx->shader) &&
       !ctx->screen->use_ngg_streamout && /* no query buffer */
       (ctx->stage != MESA_SHADER_VERTEX || !ctx->shader->key.ge.mono.u.vs_export_prim_id);
 
@@ -1478,7 +1478,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
    /* Streamout */
    LLVMValueRef emitted_prims = NULL;
 
-   if (sel->so.num_outputs) {
+   if (ctx->so.num_outputs) {
       assert(!unterminated_es_if_block);
 
       struct ngg_streamout nggso = {};
@@ -1498,7 +1498,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
       assert(!unterminated_es_if_block);
 
       /* Streamout already inserted the barrier, so don't insert it again. */
-      if (!sel->so.num_outputs)
+      if (!ctx->so.num_outputs)
          ac_build_s_barrier(&ctx->ac);
 
       ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
@@ -1522,7 +1522,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
       assert(!unterminated_es_if_block);
 
       /* Streamout and edge flags use LDS. Make it idle, so that we can reuse it. */
-      if (sel->so.num_outputs || gfx10_ngg_writes_user_edgeflags(ctx->shader))
+      if (ctx->so.num_outputs || gfx10_ngg_writes_user_edgeflags(ctx->shader))
          ac_build_s_barrier(&ctx->ac);
 
       ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
@@ -1550,7 +1550,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
       tmp = LLVMBuildICmp(builder, LLVMIntEQ, get_wave_id_in_tg(ctx), ctx->ac.i32_0, "");
       ac_build_ifcc(&ctx->ac, tmp, 5030);
       tmp = LLVMBuildICmp(builder, LLVMIntULE, ac_get_thread_id(&ctx->ac),
-                          sel->so.num_outputs ? ctx->ac.i32_1 : ctx->ac.i32_0, "");
+                          ctx->so.num_outputs ? ctx->ac.i32_1 : ctx->ac.i32_0, "");
       ac_build_ifcc(&ctx->ac, tmp, 5031);
       {
          LLVMValueRef args[] = {
@@ -1561,7 +1561,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
             ctx->ac.i32_0,                        /* cachepolicy */
          };
 
-         if (sel->so.num_outputs) {
+         if (ctx->so.num_outputs) {
             args[0] = ac_build_writelane(&ctx->ac, args[0], emitted_prims, ctx->ac.i32_1);
             args[2] = ac_build_writelane(&ctx->ac, args[2], LLVMConstInt(ctx->ac.i32, 24, false),
                                          ctx->ac.i32_1);
@@ -1896,7 +1896,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
    LLVMValueRef num_emit_threads = ngg_get_prim_cnt(ctx);
 
    /* Streamout */
-   if (sel->so.num_outputs) {
+   if (ctx->so.num_outputs) {
       struct ngg_streamout nggso = {};
 
       nggso.num_vertices = LLVMConstInt(ctx->ac.i32, verts_per_prim, false);
@@ -1927,17 +1927,17 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
       tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);
       tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
       ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (STREAMOUT_QUERY_ENABLED) */
-      unsigned num_query_comps = sel->so.num_outputs ? 8 : 4;
+      unsigned num_query_comps = ctx->so.num_outputs ? 8 : 4;
       tmp = LLVMBuildICmp(builder, LLVMIntULT, tid,
                           LLVMConstInt(ctx->ac.i32, num_query_comps, false), "");
       ac_build_ifcc(&ctx->ac, tmp, 5110);
       {
          LLVMValueRef offset;
          tmp = tid;
-         if (sel->so.num_outputs)
+         if (ctx->so.num_outputs)
             tmp = LLVMBuildAnd(builder, tmp, LLVMConstInt(ctx->ac.i32, 3, false), "");
          offset = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->ac.i32, 32, false), "");
-         if (sel->so.num_outputs) {
+         if (ctx->so.num_outputs) {
             tmp = LLVMBuildLShr(builder, tid, LLVMConstInt(ctx->ac.i32, 2, false), "");
             tmp = LLVMBuildNUWMul(builder, tmp, LLVMConstInt(ctx->ac.i32, 8, false), "");
             offset = LLVMBuildAdd(builder, offset, tmp, "");
@@ -1967,7 +1967,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
       LLVMValueRef prim_enable = LLVMBuildAnd(builder, live, is_emit, "");
 
       /* Wait for streamout to finish before we kill primitives. */
-      if (sel->so.num_outputs)
+      if (ctx->so.num_outputs)
          ac_build_s_barrier(&ctx->ac);
 
       ac_build_ifcc(&ctx->ac, prim_enable, 0);

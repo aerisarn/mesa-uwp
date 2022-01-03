@@ -41,6 +41,7 @@ struct si_shader_context {
    struct si_shader *shader;
    struct si_shader_selector *next_shader_sel;
    struct si_screen *screen;
+   struct pipe_stream_output_info so;
 
    gl_shader_stage stage;
 
@@ -226,8 +227,9 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
                            struct nir_shader *nir, bool free_nir, bool ngg_cull_shader);
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-                            struct si_shader *shader, struct util_debug_callback *debug,
-                            struct nir_shader *nir, bool free_nir);
+                            struct si_shader *shader, const struct pipe_stream_output_info *so,
+                            struct util_debug_callback *debug, struct nir_shader *nir,
+                            bool free_nir);
 
 /* si_shader_llvm_gs.c */
 LLVMValueRef si_is_es_thread(struct si_shader_context *ctx);

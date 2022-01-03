@@ -409,7 +409,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->vs_state_bits);
 
       if (ctx->shader->is_gs_copy_shader) {
-         declare_streamout_params(ctx, &shader->selector->so);
+         declare_streamout_params(ctx, &ctx->so);
          /* VGPRs */
          declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
          break;
@@ -425,7 +425,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       } else if (shader->key.ge.as_ls) {
          /* no extra parameters */
       } else {
-         declare_streamout_params(ctx, &shader->selector->so);
+         declare_streamout_params(ctx, &ctx->so);
       }
 
       /* VGPRs */
@@ -626,7 +626,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.es2gs_offset);
       } else {
-         declare_streamout_params(ctx, &shader->selector->so);
+         declare_streamout_params(ctx, &ctx->so);
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
       }
 
@@ -1501,12 +1501,14 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    bool free_nir;
    struct nir_shader *nir = si_get_nir_shader(sel, &shader->key, &free_nir);
 
+   struct pipe_stream_output_info so = sel->so;
+
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */
    if (si_can_dump_shader(sscreen, sel->info.stage) &&
        !(sscreen->debug_flags & DBG(NO_NIR))) {
       nir_print_shader(nir, stderr);
-      si_dump_streamout(&sel->so);
+      si_dump_streamout(&so);
    }
 
    /* Initialize vs_output_ps_input_cntl to default. */
@@ -1523,7 +1525,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
     * with PS and NGG VS), but monolithic shaders should be compiled
     * by LLVM due to more complicated compilation.
     */
-   if (!si_llvm_compile_shader(sscreen, compiler, shader, debug, nir, free_nir))
+   if (!si_llvm_compile_shader(sscreen, compiler, shader, &so, debug, nir, free_nir))
       return false;
 
    /* The GS copy shader is compiled next. */

@@ -933,7 +933,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       /* This is really only needed when streamout and / or vertex
        * compaction is enabled.
        */
-      if (!ctx->gs_ngg_scratch && (sel->so.num_outputs || shader->key.ge.opt.ngg_culling)) {
+      if (!ctx->gs_ngg_scratch && (ctx->so.num_outputs || shader->key.ge.opt.ngg_culling)) {
          LLVMTypeRef asi32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
          ctx->gs_ngg_scratch =
             LLVMAddGlobalInAddressSpace(ctx->ac.module, asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
@@ -1087,13 +1087,15 @@ static void si_optimize_vs_outputs(struct si_shader_context *ctx)
 }
 
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-                            struct si_shader *shader, struct util_debug_callback *debug,
-                            struct nir_shader *nir, bool free_nir)
+                            struct si_shader *shader, const struct pipe_stream_output_info *so,
+                            struct util_debug_callback *debug, struct nir_shader *nir,
+                            bool free_nir)
 {
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_context ctx;
 
    si_llvm_context_init(&ctx, sscreen, compiler, shader->wave_size);
+   ctx.so = *so;
 
    LLVMValueRef ngg_cull_main_fn = NULL;
    if (sel->info.stage <= MESA_SHADER_TESS_EVAL && shader->key.ge.opt.ngg_culling) {

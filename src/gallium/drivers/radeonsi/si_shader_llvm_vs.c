@@ -315,8 +315,7 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
 void si_llvm_emit_streamout(struct si_shader_context *ctx, struct si_shader_output_values *outputs,
                             unsigned noutput, unsigned stream)
 {
-   struct si_shader_selector *sel = ctx->shader->selector;
-   struct pipe_stream_output_info *so = &sel->so;
+   struct pipe_stream_output_info *so = &ctx->so;
    LLVMBuilderRef builder = ctx->ac.builder;
    int i;
 
@@ -775,7 +774,7 @@ void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)
       }
    }
 
-   if (!ctx->screen->use_ngg_streamout && ctx->shader->selector->so.num_outputs)
+   if (!ctx->screen->use_ngg_streamout && ctx->so.num_outputs)
       si_llvm_emit_streamout(ctx, outputs, i, 0);
 
    /* Export PrimitiveID. */

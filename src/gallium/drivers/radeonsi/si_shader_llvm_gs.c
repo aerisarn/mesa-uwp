@@ -446,9 +446,11 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    si_llvm_context_init(&ctx, sscreen, compiler, shader->wave_size);
    ctx.shader = shader;
    ctx.stage = MESA_SHADER_VERTEX;
+   ctx.so = gs_selector->so;
 
    builder = ctx.ac.builder;
 
+   /* Build the main function. */
    si_llvm_create_main_func(&ctx, false);
 
    LLVMValueRef buf_ptr = ac_get_arg(&ctx.ac, ctx.internal_bindings);
@@ -461,7 +463,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    /* Fetch the vertex stream ID.*/
    LLVMValueRef stream_id;
 
-   if (!sscreen->use_ngg_streamout && gs_selector->so.num_outputs)
+   if (!sscreen->use_ngg_streamout && ctx.so.num_outputs)
       stream_id = si_unpack_param(&ctx, ctx.args.streamout_config, 24, 2);
    else
       stream_id = ctx.ac.i32_0;
@@ -485,7 +487,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
       if (!gsinfo->num_stream_output_components[stream])
          continue;
 
-      if (stream > 0 && !gs_selector->so.num_outputs)
+      if (stream > 0 && !ctx.so.num_outputs)
          continue;
 
       bb = LLVMInsertBasicBlockInContext(ctx.ac.context, end_bb, "out");
@@ -513,7 +515,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
       }
 
       /* Streamout and exports. */
-      if (!sscreen->use_ngg_streamout && gs_selector->so.num_outputs) {
+      if (!sscreen->use_ngg_streamout && ctx.so.num_outputs) {
          si_llvm_emit_streamout(&ctx, outputs, gsinfo->num_outputs, stream);
       }
 
