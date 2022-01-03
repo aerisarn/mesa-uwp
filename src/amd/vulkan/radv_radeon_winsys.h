@@ -283,26 +283,6 @@ struct radeon_winsys {
    int (*surface_init)(struct radeon_winsys *ws, const struct ac_surf_info *surf_info,
                        struct radeon_surf *surf);
 
-   int (*create_syncobj)(struct radeon_winsys *ws, bool create_signaled, uint32_t *handle);
-   void (*destroy_syncobj)(struct radeon_winsys *ws, uint32_t handle);
-
-   void (*reset_syncobj)(struct radeon_winsys *ws, uint32_t handle);
-   void (*signal_syncobj)(struct radeon_winsys *ws, uint32_t handle, uint64_t point);
-   VkResult (*query_syncobj)(struct radeon_winsys *ws, uint32_t handle, uint64_t *point);
-   bool (*wait_syncobj)(struct radeon_winsys *ws, const uint32_t *handles, uint32_t handle_count,
-                        bool wait_all, uint64_t timeout);
-   VkResult (*wait_timeline_syncobj)(struct radeon_winsys *ws, const uint32_t *handles,
-                                     const uint64_t *points, uint32_t handle_count, bool wait_all,
-                                     bool available, uint64_t timeout);
-
-   int (*export_syncobj)(struct radeon_winsys *ws, uint32_t syncobj, int *fd);
-   int (*import_syncobj)(struct radeon_winsys *ws, int fd, uint32_t *syncobj);
-
-   int (*export_syncobj_to_sync_file)(struct radeon_winsys *ws, uint32_t syncobj, int *fd);
-
-   /* Note that this, unlike the normal import, uses an existing syncobj. */
-   int (*import_syncobj_from_sync_file)(struct radeon_winsys *ws, uint32_t syncobj, int fd);
-
    int (*get_fd)(struct radeon_winsys *ws);
 
    const struct vk_sync_type *const *(*get_sync_types)(struct radeon_winsys *ws);
