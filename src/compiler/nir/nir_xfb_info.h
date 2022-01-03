@@ -77,4 +77,9 @@ nir_xfb_info *
 nir_gather_xfb_info_with_varyings(const nir_shader *shader,
                                   void *mem_ctx,
                                   nir_xfb_varyings_info **varyings_info);
+
+nir_xfb_info *
+nir_gather_xfb_info_from_intrinsics(nir_shader *nir,
+                                    int slot_to_register[NUM_TOTAL_VARYING_SLOTS]);
+
 #endif /* NIR_XFB_INFO_H */
