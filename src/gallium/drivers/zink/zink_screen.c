@@ -1858,6 +1858,98 @@ zink_get_dmabuf_modifier_planes(struct pipe_screen *pscreen, uint64_t modifier, 
    return 0;
 }
 
+static int
+zink_get_sparse_texture_virtual_page_size(struct pipe_screen *pscreen,
+                                          enum pipe_texture_target target,
+                                          bool multi_sample,
+                                          enum pipe_format pformat,
+                                          unsigned offset, unsigned size,
+                                          int *x, int *y, int *z)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   /* Only support one type of page size. */
+   if (offset != 0)
+      return 0;
+
+   /* reject multisample if 2x isn't supported; assume none are */
+   if (multi_sample && !screen->info.feats.features.sparseResidency2Samples)
+      return 0;
+
+   VkFormat format = zink_get_format(screen, pformat);
+   bool is_zs = util_format_is_depth_or_stencil(pformat);
+   VkImageType type;
+   switch (target) {
+   case PIPE_TEXTURE_1D:
+      type = screen->need_2D_zs && is_zs ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
+      break;
+
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      type = VK_IMAGE_TYPE_2D;
+      break;
+
+   case PIPE_TEXTURE_3D:
+      type = VK_IMAGE_TYPE_3D;
+      break;
+
+   default:
+      return 0;
+   }
+   VkImageUsageFlags flags = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+   flags |= is_zs ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+   VkSparseImageFormatProperties props[4]; //planar?
+   unsigned prop_count = ARRAY_SIZE(props);
+   VKSCR(GetPhysicalDeviceSparseImageFormatProperties)(screen->pdev, format, type,
+                                                       multi_sample ? VK_SAMPLE_COUNT_1_BIT : VK_SAMPLE_COUNT_2_BIT,
+                                                       flags,
+                                                       VK_IMAGE_TILING_OPTIMAL,
+                                                       &prop_count, props);
+   if (!prop_count) {
+      if (pformat == PIPE_FORMAT_R9G9B9E5_FLOAT) {
+         screen->faked_e5sparse = true;
+         static const int page_size_2d[][3] = {
+            { 256, 256, 1 }, /* 8bpp   */
+            { 256, 128, 1 }, /* 16bpp  */
+            { 128, 128, 1 }, /* 32bpp  */
+            { 128, 64,  1 }, /* 64bpp  */
+            { 64,  64,  1 }, /* 128bpp */
+         };
+         static const int page_size_3d[][3] = {
+            { 64,  32,  32 }, /* 8bpp   */
+            { 32,  32,  32 }, /* 16bpp  */
+            { 32,  32,  16 }, /* 32bpp  */
+            { 32,  16,  16 }, /* 64bpp  */
+            { 16,  16,  16 }, /* 128bpp */
+         };
+         const int (*page_sizes)[3] = target == PIPE_TEXTURE_3D ? page_size_3d : page_size_2d;
+         int blk_size = util_format_get_blocksize(pformat);
+
+         if (size) {
+            unsigned index = util_logbase2(blk_size);
+            if (x) *x = page_sizes[index][0];
+            if (y) *y = page_sizes[index][1];
+            if (z) *z = page_sizes[index][2];
+         }
+         return 1;
+      }
+      return 0;
+   }
+
+   if (size) {
+      if (x)
+         *x = props[0].imageGranularity.width;
+      if (y)
+         *y = props[0].imageGranularity.height;
+      if (z)
+         *z = props[0].imageGranularity.depth;
+   }
+
+   return 1;
+}
+
 static VkDevice
 zink_create_logical_device(struct zink_screen *screen)
 {
@@ -2053,6 +2145,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
    screen->base.destroy = zink_destroy_screen;
    screen->base.finalize_nir = zink_shader_finalize;
+   screen->base.get_sparse_texture_virtual_page_size = zink_get_sparse_texture_virtual_page_size;
 
    if (screen->info.have_EXT_sample_locations) {
       VkMultisamplePropertiesEXT prop;

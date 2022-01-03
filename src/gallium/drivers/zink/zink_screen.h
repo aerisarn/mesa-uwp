@@ -130,6 +130,7 @@ struct zink_screen {
    bool have_D24_UNORM_S8_UINT;
    bool have_triangle_fans;
    bool need_2D_zs;
+   bool faked_e5sparse; //drivers may not expose R9G9B9E5 but cts requires it
 
    uint32_t gfx_queue;
    uint32_t max_queues;
