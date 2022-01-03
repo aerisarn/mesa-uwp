@@ -668,15 +668,23 @@ multisync_free(struct v3dv_device *device,
 static struct drm_v3d_sem *
 set_in_syncs(struct v3dv_device *device,
              struct v3dv_job *job,
+             enum v3dv_queue_type queue,
              uint32_t *count,
              struct v3dv_submit_info_semaphores *sems_info)
 {
-   /* If we are serializing a job in a cmd buffer, we are already making it
-    * wait until the last job submitted to each queue completes before
-    * running, so in that case we can skip waiting for any additional
-    * semaphores.
+   uint32_t n_sems = 0;
+
+   /* If this is the first job submitted to a given GPU queue in this cmd buf
+    * batch, it has to wait on wait semaphores (if any) before running.
     */
-   *count = job->serialize ? 3 : sems_info->wait_sem_count;
+   if (device->last_job_syncs.first[queue])
+      n_sems = sems_info->wait_sem_count;
+
+   /* If we don't need to wait on wait semaphores but the serialize flag is
+    * set, this job waits for completion of all GPU jobs submitted in any
+    * queue V3DV_QUEUE_(CL/TFU/CSD) before running.
+    */
+   *count = n_sems == 0 && job->serialize ? 3 : n_sems;
 
    if (!*count)
       return NULL;
@@ -688,7 +696,7 @@ set_in_syncs(struct v3dv_device *device,
    if (!syncs)
       return NULL;
 
-   if (!job->serialize) {
+   if (n_sems) {
       for (int i = 0; i < *count; i++) {
          struct v3dv_semaphore *sem =
             v3dv_semaphore_from_handle(sems_info->wait_sems[i]);
@@ -768,7 +776,8 @@ set_multisync(struct drm_v3d_multi_sync *ms,
 {
    uint32_t out_sync_count = 0, in_sync_count = 0;
 
-   in_syncs = set_in_syncs(device, job, &in_sync_count, sems_info);
+   in_syncs = set_in_syncs(device, job, queue_sync,
+                           &in_sync_count, sems_info);
    if (!in_syncs && in_sync_count)
       goto fail;
 
@@ -786,6 +795,8 @@ set_multisync(struct drm_v3d_multi_sync *ms,
    ms->out_syncs = (uintptr_t)(void *)out_syncs;
    ms->in_sync_count = in_sync_count;
    ms->in_syncs = (uintptr_t)(void *)in_syncs;
+
+   device->last_job_syncs.first[queue_sync] = false;
 
    return;
 
@@ -1045,6 +1056,30 @@ queue_submit_job(struct v3dv_queue *queue,
 {
    assert(job);
 
+   /* CPU jobs typically execute explicit waits before they are processed. For
+    * example, a query reset CPU job will explicitly wait for the queries
+    * being unused before proceeding, etc. However, if we have any wait
+    * semaphores, we need to honour that too for the first CPU job we process
+    * in the command buffer batch. We do that by waiting for idle to ensure
+    * that any previous work has been completed, at which point any wait
+    * semaphores must be signalled, and we never need to do this again for the
+    * same batch.
+    */
+   if (!v3dv_job_type_is_gpu(job) && sems_info->wait_sem_count) {
+      v3dv_QueueWaitIdle(v3dv_queue_to_handle(&job->device->queue));
+#ifdef DEBUG
+      /* Loop through wait sems and check they are all signalled */
+      for (int i = 0; i < sems_info->wait_sem_count; i++) {
+         int render_fd = queue->device->pdevice->render_fd;
+         struct v3dv_semaphore *sem =
+            v3dv_semaphore_from_handle(sems_info->wait_sems[i]);
+	 int ret = drmSyncobjWait(render_fd, &sem->sync, 1, 0, 0, NULL);
+	 assert(ret == 0);
+      }
+#endif
+      sems_info->wait_sem_count = 0;
+   }
+
    switch (job->type) {
    case V3DV_JOB_TYPE_GPU_CL:
       return handle_cl_job(queue, job, sems_info);
@@ -1211,6 +1246,12 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
       .signal_sem_count = pSubmit->signalSemaphoreCount,
       .signal_sems = (VkSemaphore *) pSubmit->pSignalSemaphores,
    };
+
+   /* In the beginning of a cmd buffer batch, we set all last_job_syncs as
+    * first. It helps to determine wait semaphores conditions.
+    */
+   for (unsigned i = 0; i < V3DV_QUEUE_COUNT; i++)
+      queue->device->last_job_syncs.first[i] = true;
 
    /* Even if we don't have any actual work to submit we still need to wait
     * on the wait semaphores and signal the signal semaphores and fence, so

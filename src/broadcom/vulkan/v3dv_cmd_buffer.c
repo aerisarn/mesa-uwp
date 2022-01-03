@@ -687,8 +687,8 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
    }
 }
 
-static bool
-job_type_is_gpu(struct v3dv_job *job)
+bool
+v3dv_job_type_is_gpu(struct v3dv_job *job)
 {
    switch (job->type) {
    case V3DV_JOB_TYPE_GPU_CL:
@@ -713,7 +713,7 @@ cmd_buffer_serialize_job_if_needed(struct v3dv_cmd_buffer *cmd_buffer,
    /* Serialization only affects GPU jobs, CPU jobs are always automatically
     * serialized.
     */
-   if (!job_type_is_gpu(job))
+   if (!v3dv_job_type_is_gpu(job))
       return;
 
    job->serialize = true;

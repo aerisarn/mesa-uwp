@@ -1148,6 +1148,8 @@ void v3dv_job_start_frame(struct v3dv_job *job,
                           uint8_t max_internal_bpp,
                           bool msaa);
 
+bool v3dv_job_type_is_gpu(struct v3dv_job *job);
+
 struct v3dv_job *
 v3dv_job_clone_in_cmd_buffer(struct v3dv_job *job,
                              struct v3dv_cmd_buffer *cmd_buffer);
