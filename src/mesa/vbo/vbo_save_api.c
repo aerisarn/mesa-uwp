@@ -117,6 +117,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/u_memory.h"
 #include "util/hash_table.h"
 #include "util/indices/u_indices.h"
+#include "util/u_prim.h"
 
 #include "gallium/include/pipe/p_state.h"
 
@@ -599,10 +600,8 @@ compile_vertex_list(struct gl_context *ctx)
    /* converting primitive types may result in many more indices */
    bool all_prims_supported = (ctx->Const.DriverSupportedPrimMask & BITFIELD_MASK(PIPE_PRIM_MAX)) == BITFIELD_MASK(PIPE_PRIM_MAX);
    int max_index_count = total_vert_count * (all_prims_supported ? 2 : 3);
-
-   int size = max_index_count * sizeof(uint32_t);
-   uint32_t* indices = (uint32_t*) malloc(size);
-   void *tmp_indices = all_prims_supported ? NULL : malloc(size);
+   uint32_t* indices = (uint32_t*) malloc(max_index_count * sizeof(uint32_t));
+   void *tmp_indices = all_prims_supported ? NULL : malloc(max_index_count * sizeof(uint32_t));
    struct _mesa_prim *merged_prims = NULL;
 
    int idx = 0;
@@ -630,6 +629,13 @@ compile_vertex_list(struct gl_context *ctx)
       int vertex_count = original_prims[i].count;
       if (!vertex_count) {
          continue;
+      }
+
+      /* Increase indices storage if the original estimation was too small. */
+      if (idx + 3 * vertex_count > max_index_count) {
+         max_index_count = max_index_count + 3 * vertex_count;
+         indices = (uint32_t*) realloc(indices, max_index_count * sizeof(uint32_t));
+         tmp_indices = all_prims_supported ? NULL : realloc(tmp_indices, max_index_count * sizeof(uint32_t));
       }
 
       /* Line strips may get converted to lines */
@@ -719,6 +725,16 @@ compile_vertex_list(struct gl_context *ctx)
                                         temp_vertices_buffer, &max_index);
          }
       }
+
+      /* Duplicate the last vertex for incomplete primitives */
+      unsigned min_vert = u_prim_vertex_count(mode)->min;
+      for (unsigned j = vertex_count; j < min_vert; j++) {
+         indices[idx++] = add_vertex(save, vertex_to_index,
+                                     converted_prim ? CAST_INDEX(tmp_indices, index_size, vertex_count - 1) :
+                                                      original_prims[i].start + vertex_count - 1,
+                                     temp_vertices_buffer, &max_index);
+      }
+
 #undef CAST_INDEX
       if (merge_prims) {
          /* Update vertex count. */
