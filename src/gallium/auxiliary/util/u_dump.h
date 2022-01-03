@@ -136,6 +136,10 @@ util_dump_clip_state(FILE *stream,
                      const struct pipe_clip_state *state);
 
 void
+util_dump_stream_output_info(FILE *stream,
+                             const struct pipe_stream_output_info *state);
+
+void
 util_dump_shader_state(FILE *stream,
                        const struct pipe_shader_state *state);
 
