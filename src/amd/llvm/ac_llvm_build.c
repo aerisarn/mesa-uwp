@@ -1156,15 +1156,14 @@ void ac_build_buffer_store_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc
    ac_build_buffer_store_common(ctx, rsrc, data, vindex, voffset, NULL, cache_policy, true, true);
 }
 
-/* TBUFFER_STORE_FORMAT_{X,XY,XYZ,XYZW} <- the suffix is selected by num_channels=1..4.
- * The type of vdata must be one of i32 (num_channels=1), v2i32 (num_channels=2),
- * or v4i32 (num_channels=3,4).
- */
+/* buffer_store_dword(,x2,x3,x4) <- the suffix is selected by the type of vdata. */
 void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
-                                 unsigned num_channels, LLVMValueRef vindex, LLVMValueRef voffset,
-                                 LLVMValueRef soffset, unsigned inst_offset, unsigned cache_policy)
+                                 LLVMValueRef vindex, LLVMValueRef voffset, LLVMValueRef soffset,
+                                 unsigned inst_offset, unsigned cache_policy)
 {
-   /* Split 3 channel stores. */
+   unsigned num_channels = ac_get_llvm_num_components(vdata);
+
+   /* Split 3 channel stores if unsupported. */
    if (num_channels == 3 && !ac_has_vec3_support(ctx->chip_class, false)) {
       LLVMValueRef v[3], v01;
 
@@ -1173,8 +1172,8 @@ void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
       }
       v01 = ac_build_gather_values(ctx, v, 2);
 
-      ac_build_buffer_store_dword(ctx, rsrc, v01, 2, vindex, voffset, soffset, inst_offset, cache_policy);
-      ac_build_buffer_store_dword(ctx, rsrc, v[2], 1, vindex, voffset, soffset, inst_offset + 8,
+      ac_build_buffer_store_dword(ctx, rsrc, v01, vindex, voffset, soffset, inst_offset, cache_policy);
+      ac_build_buffer_store_dword(ctx, rsrc, v[2], vindex, voffset, soffset, inst_offset + 8,
                                   cache_policy);
       return;
    }

@@ -1806,7 +1806,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
 
       u_bit_scan_consecutive_range(&writemask, &start, &count);
 
-      if (count == 3 && (elem_size_bytes != 4 || !ac_has_vec3_support(ctx->ac.chip_class, false))) {
+      if (count == 3 && elem_size_bytes != 4) {
          writemask |= 1 << (start + 2);
          count = 2;
       }
@@ -1846,8 +1846,6 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
       } else if (num_bytes == 2) {
          ac_build_tbuffer_store_short(&ctx->ac, rsrc, data, offset, ctx->ac.i32_0, cache_policy);
       } else {
-         int num_channels = num_bytes / 4;
-
          switch (num_bytes) {
          case 16: /* v4f32 */
             data_type = ctx->ac.v4f32;
@@ -1866,7 +1864,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
          }
          data = LLVMBuildBitCast(ctx->ac.builder, data, data_type, "");
 
-         ac_build_buffer_store_dword(&ctx->ac, rsrc, data, num_channels, NULL, offset,
+         ac_build_buffer_store_dword(&ctx->ac, rsrc, data, NULL, offset,
                                      ctx->ac.i32_0, 0, cache_policy);
       }
    }
@@ -4198,7 +4196,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef descriptor = get_src(ctx, instr->src[1]);
       LLVMValueRef addr_voffset = get_src(ctx, instr->src[2]);
       LLVMValueRef addr_soffset = get_src(ctx, instr->src[3]);
-      unsigned num_components = instr->src[0].ssa->num_components;
       unsigned const_offset = nir_intrinsic_base(instr);
       bool swizzled = nir_intrinsic_is_swizzled(instr);
       bool slc = nir_intrinsic_slc_amd(instr);
@@ -4209,7 +4206,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (slc)
          cache_policy |= ac_slc;
 
-      ac_build_buffer_store_dword(&ctx->ac, descriptor, store_data, num_components,
+      ac_build_buffer_store_dword(&ctx->ac, descriptor, store_data,
                                   NULL, addr_voffset, addr_soffset, const_offset,
                                   cache_policy);
       break;

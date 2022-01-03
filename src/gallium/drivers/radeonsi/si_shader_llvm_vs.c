@@ -298,19 +298,12 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
       break;
    case 2: /* as v2i32 */
    case 3: /* as v3i32 */
-      if (ac_has_vec3_support(ctx->screen->info.chip_class, false)) {
-         vdata = ac_build_gather_values(&ctx->ac, out, num_comps);
-         break;
-      }
-      /* as v4i32 (aligned to 4) */
-      out[3] = LLVMGetUndef(ctx->ac.i32);
-      FALLTHROUGH;
    case 4: /* as v4i32 */
-      vdata = ac_build_gather_values(&ctx->ac, out, util_next_power_of_two(num_comps));
+      vdata = ac_build_gather_values(&ctx->ac, out, num_comps);
       break;
    }
 
-   ac_build_buffer_store_dword(&ctx->ac, so_buffers[buf_idx], vdata, num_comps, NULL,
+   ac_build_buffer_store_dword(&ctx->ac, so_buffers[buf_idx], vdata, NULL,
                                so_write_offsets[buf_idx], ctx->ac.i32_0, stream_out->dst_offset * 4,
                                ac_glc | ac_slc);
 }

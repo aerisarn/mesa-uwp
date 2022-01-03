@@ -254,8 +254,8 @@ LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx,
                                                    LLVMValueRef base_ptr, LLVMValueRef index);
 
 void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
-                                 unsigned num_channels, LLVMValueRef vindex, LLVMValueRef voffset,
-                                 LLVMValueRef soffset, unsigned inst_offset, unsigned cache_policy);
+                                 LLVMValueRef vindex, LLVMValueRef voffset, LLVMValueRef soffset,
+                                 unsigned inst_offset, unsigned cache_policy);
 
 void ac_build_buffer_store_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef data,
                                   LLVMValueRef vindex, LLVMValueRef voffset, unsigned cache_policy);
