@@ -259,9 +259,6 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
          return 0;
    }
 
-   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-      usage |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
-
    if (bind & PIPE_BIND_STREAM_OUTPUT)
       usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
@@ -339,6 +336,9 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    ici->flags = modifiers_count || dmabuf || bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL) ? 0 : VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
    ici->usage = 0;
    ici->queueFamilyIndexCount = 0;
+
+   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+      ici->flags |= VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
 
    bool need_2D_zs = false;
    switch (templ->target) {
@@ -733,8 +733,9 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          if (VKSCR(BindBufferMemory)(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
             goto fail3;
    } else {
-      if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
-         goto fail3;
+      if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
+         if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+            goto fail3;
    }
    return obj;
 
@@ -779,6 +780,8 @@ resource_create(struct pipe_screen *pscreen,
 
    bool optimal_tiling = false;
    struct pipe_resource templ2 = *templ;
+   if (templ2.flags & PIPE_RESOURCE_FLAG_SPARSE)
+      templ2.bind |= PIPE_BIND_SHADER_IMAGE;
    unsigned scanout_flags = templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
    if (whandle && whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE)
       scanout_flags = 0;
@@ -792,6 +795,8 @@ resource_create(struct pipe_screen *pscreen,
    }
 
    res->internal_format = templ->format;
+   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+      res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
    if (templ->target == PIPE_BUFFER) {
       util_range_init(&res->valid_buffer_range);
       if (!screen->resizable_bar && templ->width0 >= 8196) {
@@ -805,6 +810,11 @@ resource_create(struct pipe_screen *pscreen,
          res->base.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
       }
    } else {
+      if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE) {
+         uint32_t count = 1;
+         VKSCR(GetImageSparseMemoryRequirements)(screen->dev, res->obj->image, &count, &res->sparse);
+         res->base.b.nr_sparse_levels = res->sparse.imageMipTailFirstLod;
+      }
       res->format = zink_get_format(screen, templ->format);
       res->need_2D_zs = screen->need_2D_zs && util_format_is_depth_or_stencil(templ->format) &&
                         (templ->target == PIPE_TEXTURE_1D || templ->target == PIPE_TEXTURE_1D_ARRAY);

@@ -107,6 +107,7 @@ struct zink_resource {
          uint32_t ssbo_bind_mask[PIPE_SHADER_TYPES];
       };
       struct {
+         VkSparseImageMemoryRequirements sparse;
          VkFormat format;
          VkImageLayout layout;
          VkImageAspectFlags aspect;
