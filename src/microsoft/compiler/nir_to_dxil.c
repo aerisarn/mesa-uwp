@@ -1361,6 +1361,17 @@ emit_hs_state(struct ntd_context *ctx)
 }
 
 static const struct dxil_mdnode *
+emit_ds_state(struct ntd_context *ctx)
+{
+   const struct dxil_mdnode *ds_state_nodes[2];
+
+   ds_state_nodes[0] = dxil_get_metadata_int32(&ctx->mod, get_tessellator_domain(ctx->shader->info.tess._primitive_mode));
+   ds_state_nodes[1] = dxil_get_metadata_int32(&ctx->mod, ctx->shader->info.tess.tcs_vertices_out);
+
+   return dxil_get_metadata_node(&ctx->mod, ds_state_nodes, ARRAY_SIZE(ds_state_nodes));
+}
+
+static const struct dxil_mdnode *
 emit_threads(struct ntd_context *ctx)
 {
    const nir_shader *s = ctx->shader;
@@ -1538,6 +1549,9 @@ emit_metadata(struct ntd_context *ctx)
       }
 
       if (!emit_tag(ctx, DXIL_SHADER_TAG_HS_STATE, emit_hs_state(ctx)))
+         return false;
+   } else if (ctx->mod.shader_kind == DXIL_DOMAIN_SHADER) {
+      if (!emit_tag(ctx, DXIL_SHADER_TAG_DS_STATE, emit_ds_state(ctx)))
          return false;
    } else if (ctx->mod.shader_kind == DXIL_COMPUTE_SHADER) {
       if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx)))
@@ -5389,6 +5403,12 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
       state->state.psv0.hs.output_control_point_count = ctx->shader->info.tess.tcs_vertices_out;
       state->state.psv0.hs.tessellator_domain = get_tessellator_domain(ctx->shader->info.tess._primitive_mode);
       state->state.psv0.hs.tessellator_output_primitive = get_tessellator_output_primitive(&ctx->shader->info);
+      state->state.sig_patch_const_or_prim_vectors = ctx->mod.num_psv_patch_consts;
+      break;
+   case DXIL_DOMAIN_SHADER:
+      state->state.psv0.ds.input_control_point_count = ctx->shader->info.tess.tcs_vertices_out;
+      state->state.psv0.ds.tessellator_domain = get_tessellator_domain(ctx->shader->info.tess._primitive_mode);
+      state->state.psv0.ds.output_position_present = ctx->mod.info.has_out_position;
       state->state.sig_patch_const_or_prim_vectors = ctx->mod.num_psv_patch_consts;
       break;
    default:

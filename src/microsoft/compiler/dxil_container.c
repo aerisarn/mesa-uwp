@@ -240,6 +240,12 @@ dxil_container_add_state_validation(struct dxil_container *c,
             state->state.sig_patch_const_or_prim_vectors);
       }
    }
+   if (state->state.shader_stage == DXIL_DOMAIN_SHADER &&
+       state->state.sig_patch_const_or_prim_vectors &&
+       state->state.sig_output_vectors[0]) {
+      dependency_table_size += sizeof(uint32_t) * compute_input_output_table_dwords(
+         state->state.sig_patch_const_or_prim_vectors, state->state.sig_output_vectors[0]);
+   }
    size += dependency_table_size;
    // TODO: Domain shader table goes here
 

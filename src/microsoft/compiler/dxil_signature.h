@@ -93,6 +93,12 @@ struct dxil_psv_runtime_info_0 {
       } hs;
 
       struct {
+         uint32_t input_control_point_count;
+         char output_position_present;
+         uint32_t tessellator_domain;
+      } ds;
+
+      struct {
          uint32_t input_primitive;
          uint32_t output_toplology;
          uint32_t output_stream_mask;
