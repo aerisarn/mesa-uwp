@@ -2426,6 +2426,20 @@ dxil_get_metadata_int64(struct dxil_module *m, int64_t value)
    return dxil_get_metadata_value(m, type, const_value);
 }
 
+const struct dxil_mdnode *
+dxil_get_metadata_float32(struct dxil_module *m, float value)
+{
+   const struct dxil_type *type = get_float32_type(m);
+   if (!type)
+      return NULL;
+
+   const struct dxil_value *const_value = dxil_module_get_float_const(m, value);
+   if (!const_value)
+      return NULL;
+
+   return dxil_get_metadata_value(m, type, const_value);
+}
+
 bool
 dxil_add_metadata_named_node(struct dxil_module *m, const char *name,
                              const struct dxil_mdnode *subnodes[],

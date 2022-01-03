@@ -464,8 +464,10 @@ struct ntd_context {
    nir_variable *system_value[SYSTEM_VALUE_MAX];
 
    nir_function *tess_ctrl_patch_constant_func;
+   unsigned tess_input_control_point_count;
 
    struct dxil_func_def *main_func_def;
+   struct dxil_func_def *tess_ctrl_patch_constant_func_def;
 };
 
 static const char*
@@ -1297,6 +1299,63 @@ emit_gs_state(struct ntd_context *ctx)
    return dxil_get_metadata_node(&ctx->mod, gs_state_nodes, ARRAY_SIZE(gs_state_nodes));
 }
 
+static enum dxil_tessellator_domain
+get_tessellator_domain(enum tess_primitive_mode primitive_mode)
+{
+   switch (primitive_mode) {
+   case TESS_PRIMITIVE_QUADS: return DXIL_TESSELLATOR_DOMAIN_QUAD;
+   case TESS_PRIMITIVE_TRIANGLES: return DXIL_TESSELLATOR_DOMAIN_TRI;
+   case TESS_PRIMITIVE_ISOLINES: return DXIL_TESSELLATOR_DOMAIN_ISOLINE;
+   default:
+      unreachable("Invalid tessellator primitive mode");
+   }
+}
+
+static enum dxil_tessellator_partitioning
+get_tessellator_partitioning(enum gl_tess_spacing spacing)
+{
+   switch (spacing) {
+   default:
+   case TESS_SPACING_EQUAL:
+      return DXIL_TESSELLATOR_PARTITIONING_INTEGER;
+   case TESS_SPACING_FRACTIONAL_EVEN:
+      return DXIL_TESSELLATOR_PARTITIONING_FRACTIONAL_EVEN;
+   case TESS_SPACING_FRACTIONAL_ODD:
+      return DXIL_TESSELLATOR_PARTITIONING_FRACTIONAL_ODD;
+   }
+}
+
+static enum dxil_tessellator_output_primitive
+get_tessellator_output_primitive(const struct shader_info *info)
+{
+   if (info->tess.point_mode)
+      return DXIL_TESSELLATOR_OUTPUT_PRIMITIVE_POINT;
+   if (info->tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
+      return DXIL_TESSELLATOR_OUTPUT_PRIMITIVE_LINE;
+   /* Note: GL tessellation domain is inverted from D3D, which means triangle
+    * winding needs to be inverted.
+    */
+   if (info->tess.ccw)
+      return DXIL_TESSELLATOR_OUTPUT_PRIMITIVE_TRIANGLE_CW;
+   return DXIL_TESSELLATOR_OUTPUT_PRIMITIVE_TRIANGLE_CCW;
+}
+
+static const struct dxil_mdnode *
+emit_hs_state(struct ntd_context *ctx)
+{
+   const struct dxil_mdnode *hs_state_nodes[7];
+
+   hs_state_nodes[0] = dxil_get_metadata_func(&ctx->mod, ctx->tess_ctrl_patch_constant_func_def->func);
+   hs_state_nodes[1] = dxil_get_metadata_int32(&ctx->mod, ctx->tess_input_control_point_count);
+   hs_state_nodes[2] = dxil_get_metadata_int32(&ctx->mod, ctx->shader->info.tess.tcs_vertices_out);
+   hs_state_nodes[3] = dxil_get_metadata_int32(&ctx->mod, get_tessellator_domain(ctx->shader->info.tess._primitive_mode));
+   hs_state_nodes[4] = dxil_get_metadata_int32(&ctx->mod, get_tessellator_partitioning(ctx->shader->info.tess.spacing));
+   hs_state_nodes[5] = dxil_get_metadata_int32(&ctx->mod, get_tessellator_output_primitive(&ctx->shader->info));
+   hs_state_nodes[6] = dxil_get_metadata_float32(&ctx->mod, 64.0f);
+
+   return dxil_get_metadata_node(&ctx->mod, hs_state_nodes, ARRAY_SIZE(hs_state_nodes));
+}
+
 static const struct dxil_mdnode *
 emit_threads(struct ntd_context *ctx)
 {
@@ -1464,6 +1523,17 @@ emit_metadata(struct ntd_context *ctx)
 
    if (ctx->mod.shader_kind == DXIL_GEOMETRY_SHADER) {
       if (!emit_tag(ctx, DXIL_SHADER_TAG_GS_STATE, emit_gs_state(ctx)))
+         return false;
+   } else if (ctx->mod.shader_kind == DXIL_HULL_SHADER) {
+      ctx->tess_input_control_point_count = 32;
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in) {
+         if (nir_is_arrayed_io(var, MESA_SHADER_TESS_CTRL)) {
+            ctx->tess_input_control_point_count = glsl_array_size(var->type);
+            break;
+         }
+      }
+
+      if (!emit_tag(ctx, DXIL_SHADER_TAG_HS_STATE, emit_hs_state(ctx)))
          return false;
    } else if (ctx->mod.shader_kind == DXIL_COMPUTE_SHADER) {
       if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx)))
@@ -4898,6 +4968,8 @@ emit_function(struct ntd_context *ctx, nir_function *func)
 
    if (func->is_entrypoint)
       ctx->main_func_def = func_def;
+   else if (func == ctx->tess_ctrl_patch_constant_func)
+      ctx->tess_ctrl_patch_constant_func_def = func_def;
 
    ctx->defs = rzalloc_array(ctx->ralloc_ctx, struct dxil_def, impl->ssa_alloc);
    if (!ctx->defs)
@@ -5195,6 +5267,12 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
       state->state.psv0.gs.output_toplology = dxil_get_primitive_topology(ctx->shader->info.gs.output_primitive);
       state->state.psv0.gs.output_stream_mask = MAX2(ctx->shader->info.gs.active_stream_mask, 1);
       state->state.psv0.gs.output_position_present = ctx->mod.info.has_out_position;
+      break;
+   case DXIL_HULL_SHADER:
+      state->state.psv0.hs.input_control_point_count = ctx->tess_input_control_point_count;
+      state->state.psv0.hs.output_control_point_count = ctx->shader->info.tess.tcs_vertices_out;
+      state->state.psv0.hs.tessellator_domain = get_tessellator_domain(ctx->shader->info.tess._primitive_mode);
+      state->state.psv0.hs.tessellator_output_primitive = get_tessellator_output_primitive(&ctx->shader->info);
       break;
    default:
       assert(0 && "Shader type not (yet) supported");

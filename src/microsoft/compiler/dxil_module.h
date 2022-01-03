@@ -381,6 +381,9 @@ const struct dxil_mdnode *
 dxil_get_metadata_int64(struct dxil_module *m, int64_t value);
 
 const struct dxil_mdnode *
+dxil_get_metadata_float32(struct dxil_module *m, float value);
+
+const struct dxil_mdnode *
 dxil_get_metadata_node(struct dxil_module *m,
                        const struct dxil_mdnode *subnodes[],
                        size_t num_subnodes);
