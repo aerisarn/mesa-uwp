@@ -5462,12 +5462,13 @@ struct sysvalue_name {
    gl_system_value value;
    int slot;
    char *name;
+   gl_shader_stage only_in_shader;
 } possible_sysvalues[] = {
-   {SYSTEM_VALUE_VERTEX_ID_ZERO_BASE, -1, "SV_VertexID"},
-   {SYSTEM_VALUE_INSTANCE_ID, -1, "SV_InstanceID"},
-   {SYSTEM_VALUE_FRONT_FACE, VARYING_SLOT_FACE, "SV_IsFrontFace"},
-   {SYSTEM_VALUE_PRIMITIVE_ID, VARYING_SLOT_PRIMITIVE_ID, "SV_PrimitiveID"},
-   {SYSTEM_VALUE_SAMPLE_ID, -1, "SV_SampleIndex"},
+   {SYSTEM_VALUE_VERTEX_ID_ZERO_BASE, -1, "SV_VertexID", MESA_SHADER_NONE},
+   {SYSTEM_VALUE_INSTANCE_ID, -1, "SV_InstanceID", MESA_SHADER_NONE},
+   {SYSTEM_VALUE_FRONT_FACE, VARYING_SLOT_FACE, "SV_IsFrontFace", MESA_SHADER_NONE},
+   {SYSTEM_VALUE_PRIMITIVE_ID, VARYING_SLOT_PRIMITIVE_ID, "SV_PrimitiveID", MESA_SHADER_GEOMETRY},
+   {SYSTEM_VALUE_SAMPLE_ID, -1, "SV_SampleIndex", MESA_SHADER_NONE},
 };
 
 static bool
@@ -5481,6 +5482,9 @@ allocate_sysvalues(struct ntd_context *ctx)
 
    for (unsigned i = 0; i < ARRAY_SIZE(possible_sysvalues); ++i) {
       struct sysvalue_name *info = &possible_sysvalues[i];
+      if (info->only_in_shader != MESA_SHADER_NONE &&
+          info->only_in_shader != ctx->shader->info.stage)
+         continue;
       if (BITSET_TEST(ctx->shader->info.system_values_read, info->value)) {
          if (!append_input_or_sysvalue(ctx, info->slot,
                                        info->value, info->name,
