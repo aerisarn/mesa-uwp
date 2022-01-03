@@ -130,7 +130,7 @@ allocate_function_from_predefined(struct dxil_module *mod,
                                 predefined_funcs[i].attr);
       }
    }
-   return false;
+   unreachable("Invalid function name");
 }
 
 const struct dxil_func *
