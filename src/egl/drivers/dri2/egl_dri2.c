@@ -1783,6 +1783,13 @@ dri2_make_current(_EGLDisplay *disp, _EGLSurface *dsurf,
    if (!_eglBindContext(ctx, dsurf, rsurf, &old_ctx, &old_dsurf, &old_rsurf))
       return EGL_FALSE;
 
+   if (old_ctx == ctx && old_dsurf == dsurf && old_rsurf == rsurf) {
+      _eglPutSurface(old_dsurf);
+      _eglPutSurface(old_rsurf);
+      _eglPutContext(old_ctx);
+      return EGL_TRUE;
+   }
+
    if (old_ctx) {
       __DRIcontext *old_cctx = dri2_egl_context(old_ctx)->dri_context;
       old_disp = old_ctx->Resource.Display;
