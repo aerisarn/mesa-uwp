@@ -459,3 +459,31 @@ nir_gather_xfb_info_from_intrinsics(nir_shader *nir,
    util_dynarray_fini(&array);
    return info;
 }
+
+void
+nir_print_xfb_info(nir_xfb_info *info, FILE *fp)
+{
+   fprintf(fp, "buffers_written: 0x%x\n", info->buffers_written);
+   fprintf(fp, "streams_written: 0x%x\n", info->streams_written);
+
+   for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++) {
+      if (BITFIELD_BIT(i) & info->buffers_written) {
+         fprintf(fp, "buffer%u: stride=%u varying_count=%u stream=%u\n", i,
+                 info->buffers[i].stride,
+                 info->buffers[i].varying_count,
+                 info->buffer_to_stream[i]);
+      }
+   }
+
+   fprintf(fp, "output_count: %u\n", info->output_count);
+
+   for (unsigned i = 0; i < info->output_count; i++) {
+      fprintf(fp, "output%u: buffer=%u, offset=%u, location=%u, "
+                  "component_offset=%u, component_mask=0x%x\n",
+              i, info->outputs[i].buffer,
+              info->outputs[i].offset,
+              info->outputs[i].location,
+              info->outputs[i].component_offset,
+              info->outputs[i].component_mask);
+   }
+}
