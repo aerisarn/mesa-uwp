@@ -2922,6 +2922,8 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
+   assert(intr->intrinsic == nir_intrinsic_store_output ||
+          ctx->mod.shader_kind == DXIL_HULL_SHADER);
    nir_alu_type out_type = nir_intrinsic_src_type(intr);
    enum overload_type overload = get_overload(out_type, intr->src[0].ssa->bit_size);
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.storeOutput", overload);
@@ -2931,7 +2933,8 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
 
    const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_STORE_OUTPUT);
    const struct dxil_value *output_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
-   const struct dxil_value *row = get_src(ctx, &intr->src[1], 0, nir_type_int);
+   unsigned row_index = intr->intrinsic == nir_intrinsic_store_output ? 1 : 2;
+   const struct dxil_value *row = get_src(ctx, &intr->src[row_index], 0, nir_type_int);
 
    bool success = true;
    uint32_t writemask = nir_intrinsic_write_mask(intr);
@@ -3948,6 +3951,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_per_vertex_input:
       return emit_load_input_via_intrinsic(ctx, intr);
    case nir_intrinsic_store_output:
+   case nir_intrinsic_store_per_vertex_output:
       return emit_store_output_via_intrinsic(ctx, intr);
 
    case nir_intrinsic_load_barycentric_at_offset:
