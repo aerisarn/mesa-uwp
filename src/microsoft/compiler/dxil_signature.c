@@ -113,7 +113,7 @@ in_sysvalue_name(nir_variable *var)
  */
 static unsigned
 get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_info *info,
-                             unsigned next_row, bool is_gs_shader)
+                             unsigned next_row)
 {
    const struct glsl_type *type = var->type;
 
@@ -122,12 +122,14 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
 
    bool is_depth = is_depth_output(info->kind);
    info->sig_comp_type = dxil_get_comp_type(var->type);
+   bool is_gs_input = s->info.stage == MESA_SHADER_GEOMETRY &&
+      (var->data.mode & (nir_var_shader_in | nir_var_system_value));
 
    info->rows = 1;
    if (info->kind == DXIL_SEM_TARGET) {
       info->start_row = info->index;
    } else if (is_depth ||
-              (info->kind == DXIL_SEM_PRIMITIVE_ID && is_gs_shader) ||
+              (info->kind == DXIL_SEM_PRIMITIVE_ID && is_gs_input) ||
               info->kind == DXIL_SEM_COVERAGE ||
               info->kind == DXIL_SEM_SAMPLE_INDEX) {
       // This turns into a 'N/A' mask in the disassembly
@@ -152,8 +154,9 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
       info->cols = num_floats;
    } else {
       info->start_row = next_row;
-      if (glsl_type_is_array(type) && is_gs_shader)
-         type = glsl_without_array(type);
+      if (glsl_type_is_array(type) &&
+         nir_is_arrayed_io(var, s->info.stage))
+         type = glsl_get_array_element(type);
 
       if (glsl_type_is_array(type)) {
          info->rows = glsl_get_aoa_size(type);
@@ -172,10 +175,10 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
    return next_row;
 }
 
-typedef void (*semantic_info_proc)(nir_variable *var, struct semantic_info *info, bool vulkan);
+typedef void (*semantic_info_proc)(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool vulkan);
 
 static void
-get_semantic_vs_in_name(nir_variable *var, struct semantic_info *info, bool vulkan)
+get_semantic_vs_in_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool vulkan)
 {
    strcpy(info->name, "TEXCOORD");
    if (vulkan) {
@@ -189,7 +192,7 @@ get_semantic_vs_in_name(nir_variable *var, struct semantic_info *info, bool vulk
 }
 
 static void
-get_semantic_sv_name(nir_variable *var, struct semantic_info *info, bool _vulkan)
+get_semantic_sv_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool _vulkan)
 {
    switch (var->data.location) {
    case SYSTEM_VALUE_VERTEX_ID_ZERO_BASE:
@@ -303,19 +306,12 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
 }
 
 static void
-get_semantic_in_name(nir_variable *var, struct semantic_info *info, bool vulkan)
+get_semantic_in_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool vulkan)
 {
-   get_semantic_name(var, info, var->type, vulkan);
-   info->sysvalue_name = in_sysvalue_name(var);
-}
-
-static void
-get_semantic_gs_in_name(nir_variable *var, struct semantic_info *info, bool vulkan)
-{
-   /* geometry shader input varyings come as arrays, but we want to use
-    * the element type */
-   const struct glsl_type *type =
-         glsl_type_is_array(var->type) ? glsl_without_array(var->type) : var->type;
+   const struct glsl_type *type = var->type;
+   if (nir_is_arrayed_io(var, stage) &&
+       glsl_type_is_array(type))
+      type = glsl_get_array_element(type);
 
    get_semantic_name(var, info, type, vulkan);
    info->sysvalue_name = in_sysvalue_name(var);
@@ -491,14 +487,16 @@ static unsigned
 get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **inputs,
                           unsigned num_inputs,
                           nir_shader *s, nir_variable_mode modes,
-                          semantic_info_proc get_semantics, unsigned *row_iter,
-                          bool is_gs_shader, bool vulkan)
+                          semantic_info_proc get_semantics, unsigned *row_iter, bool vulkan)
 {
    nir_foreach_variable_with_modes(var, s, modes) {
+      if (var->data.patch)
+         continue;
+
       struct semantic_info semantic = {0};
-      get_semantics(var, &semantic, vulkan);
+      get_semantics(var, &semantic, s->info.stage, vulkan);
       mod->inputs[num_inputs].sysvalue = semantic.sysvalue_name;
-      *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter, is_gs_shader);
+      *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter);
 
       mod->inputs[num_inputs].name = ralloc_strdup(mod->ralloc_ctx,
                                                    semantic.name);
@@ -527,22 +525,17 @@ get_input_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
 
    const struct dxil_mdnode *inputs[VARYING_SLOT_MAX];
    unsigned next_row = 0;
-   bool is_gs_shader = s->info.stage == MESA_SHADER_GEOMETRY;
 
    mod->num_sig_inputs = get_input_signature_group(mod, inputs, 0,
                                                    s, nir_var_shader_in,
                                                    s->info.stage == MESA_SHADER_VERTEX ?
-                                                      get_semantic_vs_in_name :
-                                                      (s->info.stage == MESA_SHADER_GEOMETRY ?
-                                                         get_semantic_gs_in_name : get_semantic_in_name),
-                                                   &next_row, is_gs_shader,
-                                                   vulkan);
+                                                      get_semantic_vs_in_name : get_semantic_in_name,
+                                                   &next_row, vulkan);
 
    mod->num_sig_inputs = get_input_signature_group(mod, inputs, mod->num_sig_inputs,
                                                    s, nir_var_system_value,
                                                    get_semantic_sv_name,
-                                                   &next_row, is_gs_shader,
-                                                   vulkan);
+                                                   &next_row, vulkan);
 
    if (!mod->num_sig_inputs && !mod->num_sig_inputs)
       return NULL;
@@ -578,15 +571,20 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
    unsigned next_row = 0;
    nir_foreach_variable_with_modes(var, s, nir_var_shader_out) {
       struct semantic_info semantic = {0};
+      if (var->data.patch)
+         continue;
 
       if (s->info.stage == MESA_SHADER_FRAGMENT) {
          get_semantic_ps_outname(var, &semantic);
          mod->outputs[num_outputs].sysvalue = "TARGET";
       } else {
-         get_semantic_name(var, &semantic, var->type, vulkan);
+         const struct glsl_type *type = var->type;
+         if (nir_is_arrayed_io(var, s->info.stage))
+            type = glsl_get_array_element(type);
+         get_semantic_name(var, &semantic, type, vulkan);
          mod->outputs[num_outputs].sysvalue = out_sysvalue_name(var);
       }
-      next_row = get_additional_semantic_info(s, var, &semantic, next_row, false);
+      next_row = get_additional_semantic_info(s, var, &semantic, next_row);
 
       mod->info.has_out_position |= semantic.kind== DXIL_SEM_POSITION;
       mod->info.has_out_depth |= semantic.kind == DXIL_SEM_DEPTH;
