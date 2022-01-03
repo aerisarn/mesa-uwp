@@ -380,6 +380,14 @@ fill_graphics_state_vars(struct d3d12_context *ctx,
          ptr[1] = fui(ctx->viewport_states[0].translate[2] - ctx->viewport_states[0].scale[2]);
          size += 4;
          break;
+      case D3D12_STATE_VAR_DEFAULT_INNER_TESS_LEVEL:
+         memcpy(ptr, ctx->default_inner_tess_factor, sizeof(ctx->default_inner_tess_factor));
+         size += 4;
+         break;
+      case D3D12_STATE_VAR_DEFAULT_OUTER_TESS_LEVEL:
+         memcpy(ptr, ctx->default_outer_tess_factor, sizeof(ctx->default_outer_tess_factor));
+         size += 4;
+         break;
       default:
          unreachable("unknown state variable");
       }
@@ -706,7 +714,7 @@ static inline struct d3d12_shader_selector *
 d3d12_last_vertex_stage(struct d3d12_context *ctx)
 {
    struct d3d12_shader_selector *sel = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
-   if (!sel || sel->is_gs_variant)
+   if (!sel || sel->is_variant)
       sel = ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
    if (!sel)
       sel = ctx->gfx_stages[PIPE_SHADER_VERTEX];

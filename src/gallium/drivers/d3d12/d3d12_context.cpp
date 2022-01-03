@@ -2272,6 +2272,16 @@ d3d12_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
    ctx->cmdlist_dirty |= D3D12_DIRTY_PRIM_MODE;
 }
 
+static void
+d3d12_set_tess_state(struct pipe_context *pctx,
+                     const float default_outer_level[4],
+                     const float default_inner_level[2])
+{
+   struct d3d12_context *ctx = d3d12_context(pctx);
+   memcpy(ctx->default_outer_tess_factor, default_outer_level, sizeof(ctx->default_outer_tess_factor));
+   memcpy(ctx->default_inner_tess_factor, default_inner_level, sizeof(ctx->default_inner_tess_factor));
+}
+
 struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -2331,6 +2341,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.delete_tes_state = d3d12_delete_tes_state;
 
    ctx->base.set_patch_vertices = d3d12_set_patch_vertices;
+   ctx->base.set_tess_state = d3d12_set_tess_state;
 
    ctx->base.create_compute_state = d3d12_create_compute_state;
    ctx->base.bind_compute_state = d3d12_bind_compute_state;
@@ -2404,6 +2415,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    d3d12_root_signature_cache_init(ctx);
    d3d12_cmd_signature_cache_init(ctx);
    d3d12_gs_variant_cache_init(ctx);
+   d3d12_tcs_variant_cache_init(ctx);
    d3d12_compute_transform_cache_init(ctx);
 
    util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);

@@ -354,7 +354,7 @@ fill_mode_lowered(struct d3d12_context *ctx, const struct pipe_draw_info *dinfo)
    struct d3d12_shader_selector *vs = ctx->gfx_stages[PIPE_SHADER_VERTEX];
 
    if ((ctx->gfx_stages[PIPE_SHADER_GEOMETRY] != NULL &&
-        !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->is_gs_variant) ||
+        !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->is_variant) ||
        ctx->gfx_pipeline_state.rast == NULL ||
        (dinfo->mode != PIPE_PRIM_TRIANGLES &&
         dinfo->mode != PIPE_PRIM_TRIANGLE_STRIP))
@@ -394,7 +394,7 @@ needs_point_sprite_lowering(struct d3d12_context *ctx, const struct pipe_draw_in
    struct d3d12_shader_selector *vs = ctx->gfx_stages[PIPE_SHADER_VERTEX];
    struct d3d12_shader_selector *gs = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
 
-   if (gs != NULL && !gs->is_gs_variant) {
+   if (gs != NULL && !gs->is_variant) {
       /* There is an user GS; Check if it outputs points with PSIZE */
       return (gs->initial->info.gs.output_primitive == GL_POINTS &&
               (gs->initial->info.outputs_written & VARYING_BIT_PSIZ ||
@@ -417,7 +417,7 @@ static unsigned
 cull_mode_lowered(struct d3d12_context *ctx, unsigned fill_mode)
 {
    if ((ctx->gfx_stages[PIPE_SHADER_GEOMETRY] != NULL &&
-        !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->is_gs_variant) ||
+        !ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->is_variant) ||
        ctx->gfx_pipeline_state.rast == NULL ||
        ctx->gfx_pipeline_state.rast->base.cull_face == PIPE_FACE_NONE)
       return PIPE_FACE_NONE;
@@ -435,7 +435,7 @@ get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate, c
 
    struct d3d12_shader_selector *vs = sel_ctx->ctx->gfx_stages[PIPE_SHADER_VERTEX];
    struct d3d12_shader_selector *gs = sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
-   struct d3d12_shader_selector *last_vertex_stage = gs && !gs->is_gs_variant ? gs : vs;
+   struct d3d12_shader_selector *last_vertex_stage = gs && !gs->is_variant ? gs : vs;
 
    /* Make sure GL prims match Gallium prims */
    STATIC_ASSERT(GL_POINTS == PIPE_PRIM_POINTS);
@@ -457,7 +457,7 @@ get_provoking_vertex(struct d3d12_selection_context *sel_ctx, bool *alternate, c
    bool flatshade_first = sel_ctx->ctx->gfx_pipeline_state.rast &&
                           sel_ctx->ctx->gfx_pipeline_state.rast->base.flatshade_first;
    *alternate = (mode == GL_TRIANGLE_STRIP || mode == GL_TRIANGLE_STRIP_ADJACENCY) &&
-                (!gs || gs->is_gs_variant ||
+                (!gs || gs->is_variant ||
                  gs->initial->info.gs.vertices_out > u_prim_vertex_count(mode)->min);
    return flatshade_first ? 0 : u_prim_vertex_count(mode)->min - 1;
 }
@@ -580,7 +580,7 @@ validate_geometry_shader_variant(struct d3d12_selection_context *sel_ctx)
    d3d12_shader_selector *gs = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
 
    /* Nothing to do if there is a user geometry shader bound */
-   if (gs != NULL && !gs->is_gs_variant)
+   if (gs != NULL && !gs->is_variant)
       return;
 
    /* Fill the geometry shader variant key */
@@ -617,6 +617,37 @@ validate_geometry_shader_variant(struct d3d12_selection_context *sel_ctx)
    /* Find/create the proper variant and bind it */
    gs = variant_needed ? d3d12_get_gs_variant(ctx, &key) : NULL;
    ctx->gfx_stages[PIPE_SHADER_GEOMETRY] = gs;
+}
+
+static void
+validate_tess_ctrl_shader_variant(struct d3d12_selection_context *sel_ctx)
+{
+   struct d3d12_context *ctx = sel_ctx->ctx;
+   d3d12_shader_selector *vs = ctx->gfx_stages[PIPE_SHADER_VERTEX];
+   d3d12_shader_selector *tcs = ctx->gfx_stages[PIPE_SHADER_TESS_CTRL];
+   d3d12_shader_selector *tes = ctx->gfx_stages[PIPE_SHADER_TESS_EVAL];
+   struct d3d12_tcs_variant_key key = {0};
+
+   /* Nothing to do if there is a user tess ctrl shader bound */
+   if (tcs != NULL && !tcs->is_variant)
+      return;
+
+   bool variant_needed = tes != nullptr;
+
+   /* Fill the variant key */
+   if (variant_needed) {
+      fill_varyings(&key.varyings, vs->initial, nir_var_shader_out,
+                    vs->initial->info.outputs_written, false);
+      key.vertices_out = ctx->patch_vertices;
+   }
+
+   /* Check if the currently bound tessellation control shader variant is correct */
+   if (tcs && memcmp(&tcs->tcs_key, &key, sizeof(key)) == 0)
+      return;
+
+   /* Find/create the proper variant and bind it */
+   tcs = variant_needed ? d3d12_get_tcs_variant(ctx, &key) : NULL;
+   ctx->gfx_stages[PIPE_SHADER_TESS_CTRL] = tcs;
 }
 
 static bool
@@ -779,7 +810,7 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
    /* We require as outputs what the next stage reads,
     * except certain system values */
    if (next) {
-      if (!next->is_gs_variant) {
+      if (!next->is_variant) {
          if (stage == PIPE_SHADER_VERTEX)
             system_generated_in_values |= VARYING_BIT_POS;
          uint64_t mask = next->current->nir->info.inputs_read & ~system_generated_in_values;
@@ -819,11 +850,11 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
          key->gs.stream_output_factor = 6;
       } else if (sel_ctx->fill_mode_lowered == PIPE_POLYGON_MODE_LINE) {
          key->gs.stream_output_factor = 2;
-      } else if (sel_ctx->needs_vertex_reordering && !sel->is_gs_variant) {
+      } else if (sel_ctx->needs_vertex_reordering && !sel->is_variant) {
          key->gs.triangle_strip = 1;
       }
 
-      if (sel->is_gs_variant && next && next->initial->info.inputs_read & VARYING_BIT_PRIMITIVE_ID)
+      if (sel->is_variant && next && next->initial->info.inputs_read & VARYING_BIT_PRIMITIVE_ID)
          key->gs.primitive_id = 1;
    } else if (stage == PIPE_SHADER_FRAGMENT) {
       key->fs.missing_dual_src_outputs = sel_ctx->missing_dual_src_outputs;
@@ -901,7 +932,7 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
 
    if (stage == PIPE_SHADER_FRAGMENT &&
        sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY] &&
-       sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->is_gs_variant &&
+       sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->is_variant &&
        sel_ctx->ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->gs_key.has_front_face) {
       key->fs.remap_front_facing = 1;
    }
@@ -1338,6 +1369,7 @@ d3d12_select_shader_variants(struct d3d12_context *ctx, const struct pipe_draw_i
    sel_ctx.manual_depth_range = manual_depth_range(ctx);
 
    validate_geometry_shader_variant(&sel_ctx);
+   validate_tess_ctrl_shader_variant(&sel_ctx);
 
    for (unsigned i = 0; i < ARRAY_SIZE(order); ++i) {
       auto sel = ctx->gfx_stages[order[i]];

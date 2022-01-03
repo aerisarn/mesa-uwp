@@ -45,6 +45,8 @@ enum d3d12_state_var {
    D3D12_STATE_VAR_PT_SPRITE,
    D3D12_STATE_VAR_DRAW_PARAMS,
    D3D12_STATE_VAR_DEPTH_TRANSFORM,
+   D3D12_STATE_VAR_DEFAULT_INNER_TESS_LEVEL,
+   D3D12_STATE_VAR_DEFAULT_OUTER_TESS_LEVEL,
    D3D12_MAX_GRAPHICS_STATE_VARS,
 
    D3D12_STATE_VAR_NUM_WORKGROUPS = 0,
@@ -203,6 +205,12 @@ struct d3d12_gs_variant_key
    struct d3d12_varying_info varyings;
 };
 
+struct d3d12_tcs_variant_key
+{
+   unsigned vertices_out;
+   struct d3d12_varying_info varyings;
+};
+
 struct d3d12_shader_selector {
    enum pipe_shader_type stage;
    nir_shader *initial;
@@ -215,8 +223,11 @@ struct d3d12_shader_selector {
    unsigned compare_with_lod_bias_grad:1;
    unsigned workgroup_size_variable:1;
 
-   bool is_gs_variant;
-   struct d3d12_gs_variant_key gs_key;
+   bool is_variant;
+   union {
+      struct d3d12_gs_variant_key gs_key;
+      struct d3d12_tcs_variant_key tcs_key;
+   };
 };
 
 struct d3d12_context;
@@ -249,6 +260,15 @@ d3d12_gs_variant_cache_destroy(struct d3d12_context *ctx);
 
 struct d3d12_shader_selector *
 d3d12_get_gs_variant(struct d3d12_context *ctx, struct d3d12_gs_variant_key *key);
+
+void
+d3d12_tcs_variant_cache_init(struct d3d12_context *ctx);
+
+void
+d3d12_tcs_variant_cache_destroy(struct d3d12_context *ctx);
+
+struct d3d12_shader_selector *
+d3d12_get_tcs_variant(struct d3d12_context *ctx, struct d3d12_tcs_variant_key *key);
 
 #ifdef __cplusplus
 }

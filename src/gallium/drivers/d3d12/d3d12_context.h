@@ -173,6 +173,7 @@ struct d3d12_context {
    struct hash_table *root_signature_cache;
    struct hash_table *cmd_signature_cache;
    struct hash_table *gs_variant_cache;
+   struct hash_table *tcs_variant_cache;
    struct hash_table *compute_transform_cache;
 
    struct d3d12_batch batches[4];
@@ -222,6 +223,8 @@ struct d3d12_context {
    D3D12_STREAM_OUTPUT_BUFFER_VIEW fake_so_buffer_views[PIPE_MAX_SO_BUFFERS];
    unsigned fake_so_buffer_factor;
    uint8_t patch_vertices;
+   float default_outer_tess_factor[4];
+   float default_inner_tess_factor[2];
 
    struct d3d12_shader_selector *gfx_stages[D3D12_GFX_SHADER_STAGES];
    struct d3d12_shader_selector *compute_state;

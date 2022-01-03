@@ -42,6 +42,13 @@ d3d12_get_state_var(nir_builder *b,
                     const struct glsl_type *var_type,
                     nir_variable **out_var);
 
+nir_ssa_def *
+d3d12_get_state_var(nir_builder *b,
+                    enum d3d12_state_var var_enum,
+                    const char *var_name,
+                    const struct glsl_type *var_type,
+                    nir_variable **out_var);
+
 bool
 d3d12_lower_point_sprite(nir_shader *shader,
                          bool sprite_origin_lower_left,

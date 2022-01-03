@@ -466,7 +466,7 @@ create_geometry_shader_variant(struct d3d12_context *ctx, struct d3d12_gs_varian
       gs = d3d12_emit_lines(ctx, key);
 
    if (gs) {
-      gs->is_gs_variant = true;
+      gs->is_variant = true;
       gs->gs_key = *key;
    }
 

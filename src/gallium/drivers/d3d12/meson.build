@@ -45,6 +45,7 @@ files_libd3d12 = files(
   'd3d12_root_signature.cpp',
   'd3d12_screen.cpp',
   'd3d12_surface.cpp',
+  'd3d12_tcs_variant.cpp',
 )
 
 if host_machine.system() == 'windows'
