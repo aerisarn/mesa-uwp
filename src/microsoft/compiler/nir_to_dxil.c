@@ -5247,7 +5247,7 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
    state->state.shader_stage = (uint8_t)ctx->mod.shader_kind;
    state->state.sig_input_elements = (uint8_t)ctx->mod.num_sig_inputs;
    state->state.sig_output_elements = (uint8_t)ctx->mod.num_sig_outputs;
-   //state->state.sig_patch_const_or_prim_elements = 0;
+   state->state.sig_patch_const_or_prim_elements = (uint8_t)ctx->mod.num_sig_patch_consts;
 
    switch (ctx->mod.shader_kind) {
    case DXIL_VERTEX_SHADER:
@@ -5273,6 +5273,7 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
       state->state.psv0.hs.output_control_point_count = ctx->shader->info.tess.tcs_vertices_out;
       state->state.psv0.hs.tessellator_domain = get_tessellator_domain(ctx->shader->info.tess._primitive_mode);
       state->state.psv0.hs.tessellator_output_primitive = get_tessellator_output_primitive(&ctx->shader->info);
+      state->state.sig_patch_const_or_prim_vectors = ctx->mod.num_psv_patch_consts;
       break;
    default:
       assert(0 && "Shader type not (yet) supported");
@@ -5452,6 +5453,17 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
                                         ctx->mod.num_sig_outputs,
                                         ctx->mod.outputs)) {
       debug_printf("D3D12: failed to write output signature\n");
+      retval = false;
+      goto out;
+   }
+
+   if ((ctx->mod.shader_kind == DXIL_HULL_SHADER ||
+        ctx->mod.shader_kind == DXIL_DOMAIN_SHADER) &&
+       !dxil_container_add_io_signature(&container,
+                                        DXIL_PSG1,
+                                        ctx->mod.num_sig_patch_consts,
+                                        ctx->mod.patch_consts)) {
+      debug_printf("D3D12: failed to write patch constant signature\n");
       retval = false;
       goto out;
    }

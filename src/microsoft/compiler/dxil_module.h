@@ -182,16 +182,25 @@ struct dxil_module {
 
    struct dxil_buffer buf;
 
+   /* The number of entries in the arrays below */
    unsigned num_sig_inputs;
    unsigned num_sig_outputs;
+   unsigned num_sig_patch_consts;
+
+   /* The number of "vectors" of elements. This is used to determine the sizes
+    * of the dependency tables.
+    */
    unsigned num_psv_inputs;
    unsigned num_psv_outputs;
+   unsigned num_psv_patch_consts;
 
    struct dxil_signature_record inputs[DXIL_SHADER_MAX_IO_ROWS];
    struct dxil_signature_record outputs[DXIL_SHADER_MAX_IO_ROWS];
+   struct dxil_signature_record patch_consts[DXIL_SHADER_MAX_IO_ROWS];
 
    struct dxil_psv_signature_element psv_inputs[DXIL_SHADER_MAX_IO_ROWS];
    struct dxil_psv_signature_element psv_outputs[DXIL_SHADER_MAX_IO_ROWS];
+   struct dxil_psv_signature_element psv_patch_consts[DXIL_SHADER_MAX_IO_ROWS];
 
    struct _mesa_string_buffer *sem_string_table;
    struct dxil_psv_sem_index_table sem_index_table;

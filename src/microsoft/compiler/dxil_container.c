@@ -186,6 +186,12 @@ cleanup:
    return retval;
 }
 
+static uint32_t
+compute_input_output_table_dwords(unsigned input_vectors, unsigned output_vectors)
+{
+   return ((output_vectors + 7) >> 3) * input_vectors * 4;
+}
+
 bool
 dxil_container_add_state_validation(struct dxil_container *c,
                                     const struct dxil_module *m,
@@ -206,13 +212,13 @@ dxil_container_add_state_validation(struct dxil_container *c,
 
    size  += sizeof(uint32_t) + m->sem_index_table.size * sizeof(uint32_t);
 
-   if (m->num_sig_inputs || m->num_sig_outputs) {
+   if (m->num_sig_inputs || m->num_sig_outputs || m->num_sig_patch_consts) {
       size  += sizeof(uint32_t);
    }
 
    size += dxil_pvs_sig_size * m->num_sig_inputs;
    size += dxil_pvs_sig_size * m->num_sig_outputs;
-   // size += dxil_pvs_sig_size * m->num_sig_patch_const...;
+   size += dxil_pvs_sig_size * m->num_sig_patch_consts;
 
    state->state.sig_input_vectors = (uint8_t)m->num_psv_inputs;
 
@@ -225,8 +231,13 @@ dxil_container_add_state_validation(struct dxil_container *c,
    if (state->state.sig_input_vectors > 0) {
       for (unsigned i = 0; i < 4; ++i) {
          if (state->state.sig_output_vectors[i] > 0)
-            dependency_table_size += sizeof(uint32_t) * ((state->state.sig_output_vectors[i] + 7) >> 3) *
-                    state->state.sig_input_vectors * 4;
+            dependency_table_size += sizeof(uint32_t) *
+            compute_input_output_table_dwords(state->state.sig_input_vectors,
+               state->state.sig_output_vectors[i]);
+      }
+      if (state->state.shader_stage == DXIL_HULL_SHADER && state->state.sig_patch_const_or_prim_vectors) {
+         dependency_table_size += sizeof(uint32_t) * compute_input_output_table_dwords(state->state.sig_input_vectors,
+            state->state.sig_patch_const_or_prim_vectors);
       }
    }
    size += dependency_table_size;
@@ -266,7 +277,7 @@ dxil_container_add_state_validation(struct dxil_container *c,
          return false;
    }
 
-   if (m->num_sig_inputs || m->num_sig_outputs) {
+   if (m->num_sig_inputs || m->num_sig_outputs || m->num_sig_patch_consts) {
       if (!blob_write_bytes(&c->parts, &dxil_pvs_sig_size, sizeof(dxil_pvs_sig_size)))
          return false;
 
@@ -275,9 +286,10 @@ dxil_container_add_state_validation(struct dxil_container *c,
 
       if (!blob_write_bytes(&c->parts, &m->psv_outputs, dxil_pvs_sig_size * m->num_sig_outputs))
          return false;
-   }
 
-   // TODO: Write PatchConst...
+      if (!blob_write_bytes(&c->parts, &m->psv_patch_consts, dxil_pvs_sig_size * m->num_sig_patch_consts))
+         return false;
+   }
 
    // TODO: Handle case when ViewID is used
 
