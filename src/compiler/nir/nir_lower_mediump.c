@@ -62,8 +62,10 @@ get_io_intrinsic(nir_instr *instr, nir_variable_mode modes,
  * monotonically increasing.
  */
 bool
-nir_recompute_io_bases(nir_function_impl *impl, nir_variable_mode modes)
+nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes)
 {
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
    BITSET_DECLARE(inputs, NUM_TOTAL_VARYING_SLOTS);
    BITSET_DECLARE(outputs, NUM_TOTAL_VARYING_SLOTS);
    BITSET_ZERO(inputs);
@@ -231,7 +233,7 @@ nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
    }
 
    if (changed && use_16bit_slots)
-      nir_recompute_io_bases(impl, modes);
+      nir_recompute_io_bases(nir, modes);
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |
@@ -342,7 +344,7 @@ nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes)
    }
 
    if (changed)
-      nir_recompute_io_bases(impl, modes);
+      nir_recompute_io_bases(nir, modes);
 
    if (changed) {
       nir_metadata_preserve(impl, nir_metadata_dominance |

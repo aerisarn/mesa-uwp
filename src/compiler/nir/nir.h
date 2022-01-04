@@ -5162,7 +5162,7 @@ bool nir_lower_doubles(nir_shader *shader, const nir_shader *softfp64,
                        nir_lower_doubles_options options);
 bool nir_lower_pack(nir_shader *shader);
 
-bool nir_recompute_io_bases(nir_function_impl *impl, nir_variable_mode modes);
+bool nir_recompute_io_bases(nir_shader *nir, nir_variable_mode modes);
 bool nir_lower_mediump_io(nir_shader *nir, nir_variable_mode modes,
                           uint64_t varying_mask, bool use_16bit_slots);
 bool nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
