@@ -814,7 +814,7 @@ static void si_dump_gfx_descriptors(struct si_context *sctx,
    if (!state->cso || !state->current)
       return;
 
-   si_dump_descriptors(sctx, state->cso->info.stage, &state->cso->info, log);
+   si_dump_descriptors(sctx, state->cso->stage, &state->cso->info, log);
 }
 
 static void si_dump_compute_descriptors(struct si_context *sctx, struct u_log_context *log)
@@ -897,7 +897,7 @@ static void si_print_annotated_shader(struct si_shader *shader, struct ac_wave_i
       return;
 
    struct si_screen *screen = shader->selector->screen;
-   gl_shader_stage stage = shader->selector->info.stage;
+   gl_shader_stage stage = shader->selector->stage;
    uint64_t start_addr = shader->bo->gpu_address;
    uint64_t end_addr = start_addr + shader->bo->b.b.width0;
    unsigned i;

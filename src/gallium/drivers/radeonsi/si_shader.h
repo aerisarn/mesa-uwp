@@ -351,7 +351,6 @@ union si_input_info {
 struct si_shader_info {
    shader_info base;
 
-   gl_shader_stage stage;
    uint32_t options; /* bitmask of SI_PROFILE_* */
 
    ubyte num_inputs;
@@ -468,6 +467,7 @@ struct si_shader_selector {
    struct si_screen *screen;
    struct util_queue_fence ready;
    struct si_compiler_ctx_state compiler_ctx_state;
+   gl_shader_stage stage;
 
    simple_mtx_t mutex;
    struct si_shader *first_variant; /* immutable after the first variant */
@@ -978,7 +978,7 @@ bool gfx10_is_ngg_passthrough(struct si_shader *shader);
 static inline struct si_shader **si_get_main_shader_part(struct si_shader_selector *sel,
                                                          const union si_shader_key *key)
 {
-   if (sel->info.stage <= MESA_SHADER_GEOMETRY) {
+   if (sel->stage <= MESA_SHADER_GEOMETRY) {
       if (key->ge.as_ls)
          return &sel->main_shader_part_ls;
       if (key->ge.as_es && key->ge.as_ngg)
@@ -1003,7 +1003,7 @@ static inline bool si_shader_uses_bindless_images(struct si_shader_selector *sel
 
 static inline bool gfx10_edgeflags_have_effect(struct si_shader *shader)
 {
-   if (shader->selector->info.stage == MESA_SHADER_VERTEX &&
+   if (shader->selector->stage == MESA_SHADER_VERTEX &&
        !shader->selector->info.base.vs.blit_sgprs_amd &&
        !(shader->key.ge.opt.ngg_culling & SI_NGG_CULL_LINES))
       return true;

@@ -46,18 +46,18 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f);
 bool si_is_multi_part_shader(struct si_shader *shader)
 {
    if (shader->selector->screen->info.chip_class <= GFX8 ||
-       shader->selector->info.stage > MESA_SHADER_GEOMETRY)
+       shader->selector->stage > MESA_SHADER_GEOMETRY)
       return false;
 
    return shader->key.ge.as_ls || shader->key.ge.as_es ||
-          shader->selector->info.stage == MESA_SHADER_TESS_CTRL ||
-          shader->selector->info.stage == MESA_SHADER_GEOMETRY;
+          shader->selector->stage == MESA_SHADER_TESS_CTRL ||
+          shader->selector->stage == MESA_SHADER_GEOMETRY;
 }
 
 /** Whether the shader runs on a merged HW stage (LSHS or ESGS) */
 bool si_is_merged_shader(struct si_shader *shader)
 {
-   if (shader->selector->info.stage > MESA_SHADER_GEOMETRY)
+   if (shader->selector->stage > MESA_SHADER_GEOMETRY)
       return false;
 
    return shader->key.ge.as_ngg || si_is_multi_part_shader(shader);
@@ -211,7 +211,7 @@ static void declare_streamout_params(struct si_shader_context *ctx,
 
 unsigned si_get_max_workgroup_size(const struct si_shader *shader)
 {
-   switch (shader->selector->info.stage) {
+   switch (shader->selector->stage) {
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_EVAL:
       return shader->key.ge.as_ngg ? 128 : 0;
@@ -805,15 +805,15 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
    unsigned num_lds_symbols = 0;
 
    if (sel && screen->info.chip_class >= GFX9 && !shader->is_gs_copy_shader &&
-       (sel->info.stage == MESA_SHADER_GEOMETRY ||
-        (sel->info.stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg))) {
+       (sel->stage == MESA_SHADER_GEOMETRY ||
+        (sel->stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg))) {
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "esgs_ring";
       sym->size = shader->gs_info.esgs_ring_size * 4;
       sym->align = 64 * 1024;
    }
 
-   if (sel->info.stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg) {
+   if (sel->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg) {
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "ngg_emit";
       sym->size = shader->ngg.ngg_emit_size * 4;
@@ -826,7 +826,7 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
                                           {
                                              .halt_at_entry = screen->options.halt_shaders,
                                           },
-                                       .shader_type = sel->info.stage,
+                                       .shader_type = sel->stage,
                                        .wave_size = shader->wave_size,
                                        .num_parts = num_parts,
                                        .elf_ptrs = part_elfs,
@@ -983,7 +983,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
    max_simd_waves = sscreen->info.max_wave64_per_simd;
 
    /* Compute LDS usage for PS. */
-   switch (shader->selector->info.stage) {
+   switch (shader->selector->stage) {
    case MESA_SHADER_FRAGMENT:
       /* The minimum usage per wave is (num_inputs * 48). The maximum
        * usage is (num_inputs * 48 * 16).
@@ -1033,7 +1033,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
    static const char *stages[] = {"VS", "TCS", "TES", "GS", "PS", "CS"};
 
    if (screen->options.debug_disassembly)
-      si_shader_dump_disassembly(screen, &shader->binary, shader->selector->info.stage,
+      si_shader_dump_disassembly(screen, &shader->binary, shader->selector->stage,
                                  shader->wave_size, debug, "main", NULL);
 
    util_debug_message(debug, SHADER_INFO,
@@ -1047,7 +1047,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
                       shader->selector->info.has_divergent_loop,
                       shader->selector->info.base.num_inlinable_uniforms,
                       shader->info.nr_param_exports,
-                      stages[shader->selector->info.stage], shader->wave_size);
+                      stages[shader->selector->stage], shader->wave_size);
 }
 
 static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *shader, FILE *file,
@@ -1055,8 +1055,8 @@ static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *sh
 {
    const struct ac_shader_config *conf = &shader->config;
 
-   if (!check_debug_option || si_can_dump_shader(sscreen, shader->selector->info.stage)) {
-      if (shader->selector->info.stage == MESA_SHADER_FRAGMENT) {
+   if (!check_debug_option || si_can_dump_shader(sscreen, shader->selector->stage)) {
+      if (shader->selector->stage == MESA_SHADER_FRAGMENT) {
          fprintf(file,
                  "*** SHADER CONFIG ***\n"
                  "SPI_PS_INPUT_ADDR = 0x%04x\n"
@@ -1084,7 +1084,7 @@ static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *sh
 
 const char *si_get_shader_name(const struct si_shader *shader)
 {
-   switch (shader->selector->info.stage) {
+   switch (shader->selector->stage) {
    case MESA_SHADER_VERTEX:
       if (shader->key.ge.as_es)
          return "Vertex Shader as ES";
@@ -1120,7 +1120,7 @@ const char *si_get_shader_name(const struct si_shader *shader)
 void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
                     struct util_debug_callback *debug, FILE *file, bool check_debug_option)
 {
-   gl_shader_stage stage = shader->selector->info.stage;
+   gl_shader_stage stage = shader->selector->stage;
 
    if (!check_debug_option || si_can_dump_shader(sscreen, stage))
       si_dump_shader_key(shader, file);
@@ -1185,7 +1185,7 @@ static void si_dump_shader_key_vs(const union si_shader_key *key,
 static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
 {
    const union si_shader_key *key = &shader->key;
-   gl_shader_stage stage = shader->selector->info.stage;
+   gl_shader_stage stage = shader->selector->stage;
 
    fprintf(f, "SHADER KEY\n");
    fprintf(f, "  source_sha1 = {");
@@ -1223,7 +1223,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
          break;
 
       if (shader->selector->screen->info.chip_class >= GFX9 &&
-          key->ge.part.gs.es->info.stage == MESA_SHADER_VERTEX) {
+          key->ge.part.gs.es->stage == MESA_SHADER_VERTEX) {
          si_dump_shader_key_vs(key, &key->ge.part.gs.vs_prolog, "part.gs.vs_prolog", f);
       }
       fprintf(f, "  mono.u.gs_tri_strip_adj_fix = %u\n", key->ge.mono.u.gs_tri_strip_adj_fix);
@@ -1315,7 +1315,7 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
                         const union si_shader_key *key, bool ngg_cull_shader,
                         bool is_gs)
 {
-   assert(sel->info.stage == MESA_SHADER_VERTEX);
+   assert(sel->stage == MESA_SHADER_VERTEX);
 
    /* VGPR initialization fixup for Vega10 and Raven is always done in the
     * VS prolog. */
@@ -1348,14 +1348,14 @@ void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num_input_
    key->vs_prolog.as_es = shader_out->key.ge.as_es;
    key->vs_prolog.as_ngg = shader_out->key.ge.as_ngg;
 
-   if (shader_out->selector->info.stage != MESA_SHADER_GEOMETRY &&
+   if (shader_out->selector->stage != MESA_SHADER_GEOMETRY &&
        !ngg_cull_shader && shader_out->key.ge.opt.ngg_culling)
       key->vs_prolog.load_vgprs_after_culling = 1;
 
-   if (shader_out->selector->info.stage == MESA_SHADER_TESS_CTRL) {
+   if (shader_out->selector->stage == MESA_SHADER_TESS_CTRL) {
       key->vs_prolog.as_ls = 1;
       key->vs_prolog.num_merged_next_stage_vgprs = 2;
-   } else if (shader_out->selector->info.stage == MESA_SHADER_GEOMETRY) {
+   } else if (shader_out->selector->stage == MESA_SHADER_GEOMETRY) {
       key->vs_prolog.as_es = 1;
       key->vs_prolog.num_merged_next_stage_vgprs = 5;
    } else if (shader_out->key.ge.as_ngg) {
@@ -1468,7 +1468,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
    } else if (sel->nir_binary) {
       struct pipe_screen *screen = &sel->screen->b;
       const void *options = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR,
-                                                         pipe_shader_type_from_mesa(sel->info.stage));
+                                                         pipe_shader_type_from_mesa(sel->stage));
 
       struct blob_reader blob_reader;
       blob_reader_init(&blob_reader, sel->nir_binary, sel->nir_size);
@@ -1481,7 +1481,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
    bool progress = false;
 
    /* Kill outputs according to the shader key. */
-   if (sel->info.stage <= MESA_SHADER_GEOMETRY)
+   if (sel->stage <= MESA_SHADER_GEOMETRY)
       NIR_PASS(progress, nir, si_nir_kill_outputs, key);
 
    bool inline_uniforms = false;
@@ -1594,7 +1594,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */
-   if (si_can_dump_shader(sscreen, sel->info.stage) &&
+   if (si_can_dump_shader(sscreen, sel->stage) &&
        !(sscreen->debug_flags & DBG(NO_NIR))) {
       nir_print_shader(nir, stderr);
       si_dump_streamout(&so);
@@ -1618,7 +1618,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       return false;
 
    /* The GS copy shader is compiled next. */
-   if (sel->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
+   if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
       shader->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, &so, debug);
       if (!shader->gs_copy_shader) {
          fprintf(stderr, "radeonsi: can't create GS copy shader\n");
@@ -1627,13 +1627,13 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    }
 
    /* Compute vs_output_ps_input_cntl. */
-   if ((sel->info.stage == MESA_SHADER_VERTEX ||
-        sel->info.stage == MESA_SHADER_TESS_EVAL ||
-        sel->info.stage == MESA_SHADER_GEOMETRY) &&
+   if ((sel->stage == MESA_SHADER_VERTEX ||
+        sel->stage == MESA_SHADER_TESS_EVAL ||
+        sel->stage == MESA_SHADER_GEOMETRY) &&
        !shader->key.ge.as_ls && !shader->key.ge.as_es) {
       ubyte *vs_output_param_offset = shader->info.vs_output_param_offset;
 
-      if (sel->info.stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg)
+      if (sel->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg)
          vs_output_param_offset = shader->gs_copy_shader->info.vs_output_param_offset;
 
       /* VS and TES should also set primitive ID output if it's used. */
@@ -1664,7 +1664,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    }
 
    /* Validate SGPR and VGPR usage for compute to detect compiler bugs. */
-   if (sel->info.stage == MESA_SHADER_COMPUTE) {
+   if (sel->stage == MESA_SHADER_COMPUTE) {
       unsigned max_vgprs =
          sscreen->info.num_physical_wave64_vgprs_per_simd * (shader->wave_size == 32 ? 2 : 1);
       unsigned max_sgprs = sscreen->info.num_physical_sgprs_per_simd;
@@ -1697,7 +1697,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
       shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
    /* Calculate the number of fragment input VGPRs. */
-   if (sel->info.stage == MESA_SHADER_FRAGMENT) {
+   if (sel->stage == MESA_SHADER_FRAGMENT) {
       shader->info.num_input_vgprs = ac_get_fs_input_vgpr_cnt(
          &shader->config, &shader->info.face_vgpr_index, &shader->info.ancillary_vgpr_index,
          &shader->info.sample_coverage_vgpr_index);
@@ -1810,7 +1810,7 @@ static bool si_get_vs_prolog(struct si_screen *sscreen, struct ac_llvm_compiler 
    struct si_shader_selector *vs = main_part->selector;
 
    if (!si_vs_needs_prolog(vs, key, &shader->key, false,
-                           shader->selector->info.stage == MESA_SHADER_GEOMETRY))
+                           shader->selector->stage == MESA_SHADER_GEOMETRY))
       return true;
 
    /* Get the prolog. */
@@ -1875,7 +1875,7 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen, struct ac_llvm_
       else
          es_main_part = shader->key.ge.part.gs.es->main_shader_part_es;
 
-      if (shader->key.ge.part.gs.es->info.stage == MESA_SHADER_VERTEX &&
+      if (shader->key.ge.part.gs.es->stage == MESA_SHADER_VERTEX &&
           !si_get_vs_prolog(sscreen, compiler, shader, debug, es_main_part,
                             &shader->key.ge.part.gs.vs_prolog))
          return false;
@@ -2153,7 +2153,7 @@ void si_fix_resource_usage(struct si_screen *sscreen, struct si_shader *shader)
 
    shader->config.num_sgprs = MAX2(shader->config.num_sgprs, min_sgprs);
 
-   if (shader->selector->info.stage == MESA_SHADER_COMPUTE &&
+   if (shader->selector->stage == MESA_SHADER_COMPUTE &&
        si_get_max_workgroup_size(shader) > shader->wave_size) {
       si_multiwave_lds_size_workaround(sscreen, &shader->config.lds_size);
    }
@@ -2206,7 +2206,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       shader->info = mainp->info;
 
       /* Select prologs and/or epilogs. */
-      switch (sel->info.stage) {
+      switch (sel->stage) {
       case MESA_SHADER_VERTEX:
          if (!si_shader_select_vs_parts(sscreen, compiler, shader, debug))
             return false;
@@ -2293,40 +2293,40 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       si_calculate_max_simd_waves(shader);
    }
 
-   if (sel->info.stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg) {
+   if (sel->stage <= MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg) {
       assert(!shader->key.ge.as_es && !shader->key.ge.as_ls);
       if (!gfx10_ngg_calculate_subgroup_info(shader)) {
          fprintf(stderr, "Failed to compute subgroup info\n");
          return false;
       }
-   } else if (sscreen->info.chip_class >= GFX9 && sel->info.stage == MESA_SHADER_GEOMETRY) {
+   } else if (sscreen->info.chip_class >= GFX9 && sel->stage == MESA_SHADER_GEOMETRY) {
       gfx9_get_gs_info(shader->previous_stage_sel, sel, &shader->gs_info);
    }
 
    shader->uses_vs_state_provoking_vertex =
       sscreen->use_ngg &&
       /* Used to convert triangle strips from GS to triangles. */
-      ((sel->info.stage == MESA_SHADER_GEOMETRY &&
+      ((sel->stage == MESA_SHADER_GEOMETRY &&
         util_rast_prim_is_triangles(sel->info.base.gs.output_primitive)) ||
-       (sel->info.stage == MESA_SHADER_VERTEX &&
+       (sel->stage == MESA_SHADER_VERTEX &&
         /* Used to export PrimitiveID from the correct vertex. */
         shader->key.ge.mono.u.vs_export_prim_id));
 
    shader->uses_vs_state_outprim = sscreen->use_ngg &&
                                    /* Only used by streamout in vertex shaders. */
-                                   sel->info.stage == MESA_SHADER_VERTEX &&
+                                   sel->stage == MESA_SHADER_VERTEX &&
                                    sel->info.enabled_streamout_buffer_mask;
 
-   if (sel->info.stage == MESA_SHADER_VERTEX) {
+   if (sel->stage == MESA_SHADER_VERTEX) {
       shader->uses_base_instance = sel->info.uses_base_instance ||
                                    shader->key.ge.part.vs.prolog.instance_divisor_is_one ||
                                    shader->key.ge.part.vs.prolog.instance_divisor_is_fetched;
-   } else if (sel->info.stage == MESA_SHADER_TESS_CTRL) {
+   } else if (sel->stage == MESA_SHADER_TESS_CTRL) {
       shader->uses_base_instance = shader->previous_stage_sel &&
                                    (shader->previous_stage_sel->info.uses_base_instance ||
                                     shader->key.ge.part.tcs.ls_prolog.instance_divisor_is_one ||
                                     shader->key.ge.part.tcs.ls_prolog.instance_divisor_is_fetched);
-   } else if (sel->info.stage == MESA_SHADER_GEOMETRY) {
+   } else if (sel->stage == MESA_SHADER_GEOMETRY) {
       shader->uses_base_instance = shader->previous_stage_sel &&
                                    (shader->previous_stage_sel->info.uses_base_instance ||
                                     shader->key.ge.part.gs.vs_prolog.instance_divisor_is_one ||

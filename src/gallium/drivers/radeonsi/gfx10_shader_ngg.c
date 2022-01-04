@@ -120,7 +120,7 @@ bool gfx10_ngg_export_prim_early(struct si_shader *shader)
 
    assert(shader->key.ge.as_ngg && !shader->key.ge.as_es);
 
-   return sel->info.stage != MESA_SHADER_GEOMETRY &&
+   return sel->stage != MESA_SHADER_GEOMETRY &&
           !gfx10_ngg_writes_user_edgeflags(shader);
 }
 
@@ -616,15 +616,15 @@ static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
     * to the ES thread of the provoking vertex. All ES threads
     * load and export PrimitiveID for their thread.
     */
-   if (shader->selector->info.stage == MESA_SHADER_VERTEX && shader->key.ge.mono.u.vs_export_prim_id)
+   if (shader->selector->stage == MESA_SHADER_VERTEX && shader->key.ge.mono.u.vs_export_prim_id)
       lds_vertex_size = MAX2(lds_vertex_size, 1);
 
    if (shader->key.ge.opt.ngg_culling) {
-      if (shader->selector->info.stage == MESA_SHADER_VERTEX) {
+      if (shader->selector->stage == MESA_SHADER_VERTEX) {
          STATIC_ASSERT(lds_instance_id + 1 == 7);
          lds_vertex_size = MAX2(lds_vertex_size, 7);
       } else {
-         assert(shader->selector->info.stage == MESA_SHADER_TESS_EVAL);
+         assert(shader->selector->stage == MESA_SHADER_TESS_EVAL);
 
          if (shader->selector->info.uses_primid || shader->key.ge.mono.u.vs_export_prim_id) {
             STATIC_ASSERT(lds_tes_patch_id + 2 == 9); /* +1 for LDS padding */
@@ -926,8 +926,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
 
    assert(shader->key.ge.opt.ngg_culling);
    assert(shader->key.ge.as_ngg);
-   assert(sel->info.stage == MESA_SHADER_VERTEX ||
-          (sel->info.stage == MESA_SHADER_TESS_EVAL && !shader->key.ge.as_es));
+   assert(sel->stage == MESA_SHADER_VERTEX ||
+          (sel->stage == MESA_SHADER_TESS_EVAL && !shader->key.ge.as_es));
 
    LLVMValueRef es_vtxptr = ngg_nogs_vertex_ptr(ctx, gfx10_get_thread_id_in_tg(ctx));
    LLVMValueRef packed_data = ctx->ac.i32_0;
@@ -2169,7 +2169,7 @@ unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader)
 {
    const struct si_shader_selector *sel = shader->selector;
 
-   if (sel->info.stage == MESA_SHADER_GEOMETRY && sel->info.enabled_streamout_buffer_mask)
+   if (sel->stage == MESA_SHADER_GEOMETRY && sel->info.enabled_streamout_buffer_mask)
       return 44;
 
    return 8;
@@ -2186,7 +2186,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    const struct si_shader_selector *gs_sel = shader->selector;
    const struct si_shader_selector *es_sel =
       shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
-   const gl_shader_stage gs_stage = gs_sel->info.stage;
+   const gl_shader_stage gs_stage = gs_sel->stage;
    const unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
    const unsigned input_prim = si_get_input_prim(gs_sel, &shader->key);
    const bool use_adjacency =
@@ -2231,7 +2231,7 @@ retry_select_mode:
       gsprim_lds_size = (gs_sel->info.gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
 
       if (gsprim_lds_size > target_lds_size && !force_multi_cycling) {
-         if (gs_sel->tess_turns_off_ngg || es_sel->info.stage != MESA_SHADER_TESS_EVAL) {
+         if (gs_sel->tess_turns_off_ngg || es_sel->stage != MESA_SHADER_TESS_EVAL) {
             force_multi_cycling = true;
             goto retry_select_mode;
          }

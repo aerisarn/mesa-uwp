@@ -1738,13 +1738,6 @@ static inline struct si_shader_ctx_state *si_get_vs(struct si_context *sctx)
                            sctx->shader.gs.cso ? GS_ON : GS_OFF);
 }
 
-static inline struct si_shader_info *si_get_vs_info(struct si_context *sctx)
-{
-   struct si_shader_ctx_state *vs = si_get_vs(sctx);
-
-   return vs->cso ? &vs->cso->info : NULL;
-}
-
 static inline bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage)
 {
    return sscreen->debug_flags & (1 << stage);

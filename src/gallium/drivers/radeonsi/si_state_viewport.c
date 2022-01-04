@@ -590,14 +590,15 @@ static void si_emit_viewport_states(struct si_context *ctx)
  */
 void si_update_vs_viewport_state(struct si_context *ctx)
 {
-   struct si_shader_info *info = si_get_vs_info(ctx);
+   struct si_shader_ctx_state *vs = si_get_vs(ctx);
+   struct si_shader_info *info = vs->cso ? &vs->cso->info : NULL;
    bool vs_window_space;
 
    if (!info)
       return;
 
    /* When the VS disables clipping and viewport transformation. */
-   vs_window_space = info->stage == MESA_SHADER_VERTEX && info->base.vs.window_space_position;
+   vs_window_space = vs->cso->stage == MESA_SHADER_VERTEX && info->base.vs.window_space_position;
 
    if (ctx->vs_disables_clipping_viewport != vs_window_space) {
       ctx->vs_disables_clipping_viewport = vs_window_space;

@@ -231,7 +231,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
    struct si_shader_selector *sel = &program->sel;
 
    pipe_reference_init(&sel->base.reference, 1);
-   sel->info.stage = MESA_SHADER_COMPUTE;
+   sel->stage = MESA_SHADER_COMPUTE;
    sel->screen = sscreen;
    sel->const_and_shader_buf_descriptors_index =
       si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_COMPUTE);

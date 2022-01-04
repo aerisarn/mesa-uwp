@@ -219,8 +219,8 @@ static const nir_src *get_texture_src(nir_tex_instr *instr, nir_tex_src_type typ
    return NULL;
 }
 
-static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr,
-                          bool is_input)
+static void scan_io_usage(const nir_shader *nir, struct si_shader_info *info,
+                          nir_intrinsic_instr *intr, bool is_input)
 {
    unsigned interp = INTERP_MODE_FLAT; /* load_input uses flat shading */
 
@@ -272,10 +272,10 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
 
    unsigned semantic = 0;
    /* VS doesn't have semantics. */
-   if (info->stage != MESA_SHADER_VERTEX || !is_input)
+   if (nir->info.stage != MESA_SHADER_VERTEX || !is_input)
       semantic = nir_intrinsic_io_semantics(intr).location;
 
-   if (info->stage == MESA_SHADER_FRAGMENT && !is_input) {
+   if (nir->info.stage == MESA_SHADER_FRAGMENT && !is_input) {
       /* Never use FRAG_RESULT_COLOR directly. */
       if (semantic == FRAG_RESULT_COLOR)
          semantic = FRAG_RESULT_DATA0;
@@ -357,7 +357,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
             info->output_usagemask[loc] |= mask;
             info->num_outputs = MAX2(info->num_outputs, loc + 1);
 
-            if (info->stage == MESA_SHADER_FRAGMENT &&
+            if (nir->info.stage == MESA_SHADER_FRAGMENT &&
                 semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
                unsigned index = semantic - FRAG_RESULT_DATA0;
 
@@ -559,13 +559,13 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_load_per_vertex_input:
       case nir_intrinsic_load_input_vertex:
       case nir_intrinsic_load_interpolated_input:
-         scan_io_usage(info, intr, true);
+         scan_io_usage(nir, info, intr, true);
          break;
       case nir_intrinsic_load_output:
       case nir_intrinsic_load_per_vertex_output:
       case nir_intrinsic_store_output:
       case nir_intrinsic_store_per_vertex_output:
-         scan_io_usage(info, intr, false);
+         scan_io_usage(nir, info, intr, false);
          break;
       case nir_intrinsic_load_deref:
       case nir_intrinsic_store_deref:
@@ -587,7 +587,6 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
 {
    memset(info, 0, sizeof(*info));
    info->base = nir->info;
-   info->stage = nir->info.stage;
 
    /* Get options from shader profiles. */
    for (unsigned i = 0; i < ARRAY_SIZE(profiles); i++) {
@@ -677,7 +676,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
          scan_instruction(nir, info, instr);
    }
 
-   if (info->stage == MESA_SHADER_VERTEX || info->stage == MESA_SHADER_TESS_EVAL) {
+   if (nir->info.stage == MESA_SHADER_VERTEX || nir->info.stage == MESA_SHADER_TESS_EVAL) {
       /* Add the PrimitiveID output, but don't increment num_outputs.
        * The driver inserts PrimitiveID only when it's used by the pixel shader,
        * and si_emit_spi_map uses this unconditionally when such a pixel shader is used.
@@ -733,11 +732,11 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
 
    info->has_divergent_loop = nir_has_divergent_loop((nir_shader*)nir);
 
-   if (info->stage == MESA_SHADER_VERTEX ||
-       info->stage == MESA_SHADER_TESS_CTRL ||
-       info->stage == MESA_SHADER_TESS_EVAL ||
-       info->stage == MESA_SHADER_GEOMETRY) {
-      if (info->stage == MESA_SHADER_TESS_CTRL) {
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_TESS_CTRL ||
+       nir->info.stage == MESA_SHADER_TESS_EVAL ||
+       nir->info.stage == MESA_SHADER_GEOMETRY) {
+      if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
          /* Always reserve space for these. */
          info->patch_outputs_written |=
             (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
@@ -767,7 +766,7 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
       info->num_vs_inputs =
-         info->stage == MESA_SHADER_VERTEX && !info->base.vs.blit_sgprs_amd ? info->num_inputs : 0;
+         nir->info.stage == MESA_SHADER_VERTEX && !info->base.vs.blit_sgprs_amd ? info->num_inputs : 0;
       unsigned num_vbos_in_sgprs = si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
       info->num_vbos_in_user_sgprs = MIN2(info->num_vs_inputs, num_vbos_in_sgprs);
 
