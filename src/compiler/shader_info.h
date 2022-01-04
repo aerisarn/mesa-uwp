@@ -468,7 +468,7 @@ typedef struct shader_info {
 
          /** The number of vertices in the TCS output patch. */
          uint8_t tcs_vertices_out;
-         enum gl_tess_spacing spacing:2;
+         unsigned spacing:2; /*gl_tess_spacing*/
 
          /** Is the vertex order counterclockwise? */
          bool ccw:1;
