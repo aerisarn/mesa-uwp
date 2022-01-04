@@ -153,8 +153,6 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool 
       NIR_PASS(progress, shader, nir_split_array_vars, nir_var_function_temp);
       NIR_PASS(progress, shader, nir_shrink_vec_array_vars, nir_var_function_temp);
 
-      NIR_PASS_V(shader, nir_lower_vars_to_ssa);
-
       if (allow_copies) {
          /* Only run this pass in the first call to
           * radv_optimize_nir.  Later calls assume that we've
@@ -166,6 +164,7 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool 
 
       NIR_PASS(progress, shader, nir_opt_copy_prop_vars);
       NIR_PASS(progress, shader, nir_opt_dead_write_vars);
+      NIR_PASS_V(shader, nir_lower_vars_to_ssa);
 
       NIR_PASS_V(shader, nir_lower_alu_to_scalar, NULL, NULL);
       NIR_PASS_V(shader, nir_lower_phis_to_scalar, true);
