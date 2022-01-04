@@ -43,4 +43,5 @@ NIR_DEBUG="novalidate" LIBGL_ALWAYS_SOFTWARE="true" GALLIUM_DRIVER="$CROSVM_GALL
   -p "$CROSVM_KERNEL_ARGS" \
   /lava-files/bzImage >> $DEQP_TEMP_DIR/stderr > /dev/null
 
-exit `cat $DEQP_TEMP_DIR/exit_code`
+RET=$(cat $DEQP_TEMP_DIR/exit_code)
+exit ${RET:-1}
