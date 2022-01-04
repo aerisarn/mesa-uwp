@@ -1162,6 +1162,7 @@ static void* r300_create_rs_state(struct pipe_context* pipe,
 
     rs->rs.sprite_coord_enable = state->point_quad_rasterization *
                                  state->sprite_coord_enable;
+    r300_context(pipe)->is_point = false;
 
     /* Override some states for Draw. */
     rs->rs_draw.sprite_coord_enable = 0; /* We can do this in HW. */
