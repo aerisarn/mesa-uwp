@@ -2635,9 +2635,9 @@ radv_get_queue_global_priority(const VkDeviceQueueGlobalPriorityCreateInfoEXT *p
    }
 }
 
-static int
-radv_queue_init(struct radv_device *device, struct radv_queue *queue,
-                int idx, const VkDeviceQueueCreateInfo *create_info,
+int
+radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
+                const VkDeviceQueueCreateInfo *create_info,
                 const VkDeviceQueueGlobalPriorityCreateInfoEXT *global_priority)
 {
    queue->device = device;
@@ -3105,6 +3105,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
             goto fail;
       }
    }
+   device->private_sdma_queue = VK_NULL_HANDLE;
 
    device->pbb_allowed = device->physical_device->rad_info.chip_class >= GFX9 &&
                          !(device->instance->debug_flags & RADV_DEBUG_NOBINNING);
@@ -3330,6 +3331,10 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
          radv_queue_finish(&device->queues[i][q]);
       if (device->queue_count[i])
          vk_free(&device->vk.alloc, device->queues[i]);
+   }
+   if (device->private_sdma_queue != VK_NULL_HANDLE) {
+      radv_queue_finish(device->private_sdma_queue);
+      vk_free(&device->vk.alloc, device->private_sdma_queue);
    }
 
    for (unsigned i = 0; i < RADV_NUM_HW_CTX; i++) {
