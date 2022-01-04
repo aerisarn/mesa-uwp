@@ -721,6 +721,15 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
                                PIPE_SHADER_CAP_PREFERRED_IR);
    ctx->Const.UseNIRGLSLLinker = preferred_ir == PIPE_SHADER_IR_NIR;
 
+   /* NIR drivers that support tess shaders and compact arrays need to use
+    * GLSLTessLevelsAsInputs / PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS. The NIR
+    * linker doesn't support linking these as compat arrays of sysvals.
+    */
+   assert(ctx->Const.GLSLTessLevelsAsInputs ||
+      !ctx->Const.UseNIRGLSLLinker ||
+      !screen->get_param(screen, PIPE_CAP_NIR_COMPACT_ARRAYS) ||
+      !ctx->Extensions.ARB_tessellation_shader);
+
    if (ctx->Const.GLSLVersion < 400) {
       for (i = 0; i < MESA_SHADER_STAGES; i++)
          ctx->Const.ShaderCompilerOptions[i].EmitNoIndirectSampler = true;
