@@ -459,6 +459,8 @@ get_query_result(struct pipe_context *pctx,
       uint64_t *xfb_results = NULL;
       uint64_t *results;
       bool is_timestamp = query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
+      if (!qbo->num_results)
+         continue;
       results = pipe_buffer_map_range(pctx, qbo->buffer, 0,
                                       (is_timestamp ? 1 : qbo->num_results) * result_size, flags, &xfer);
       if (!results) {
