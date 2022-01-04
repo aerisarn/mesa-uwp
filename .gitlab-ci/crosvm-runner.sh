@@ -3,11 +3,11 @@
 set -ex
 
 # This script can be called concurrently, pass arguments and env in a per-instance tmp dir
-export DEQP_TEMP_DIR=`mktemp -d /tmp.XXXXXXXXXX`
+export DEQP_TEMP_DIR=$(mktemp -d /tmp.XXXXXXXXXX)
 
 # The dEQP binary needs to run from the directory it's in
-if [ -z "${1##*"deqp"*}" ]; then
-  PWD=`dirname $1`
+if [ -n "${1##*.sh}" ] && [ -z "${1##*"deqp"*}" ]; then
+  PWD=$(dirname $1)
 fi
 
 export -p > $DEQP_TEMP_DIR/crosvm-env.sh
