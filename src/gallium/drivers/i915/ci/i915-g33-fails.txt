@@ -432,10 +432,6 @@ spec@arb_texture_rectangle@glsl-fs-shadow2drectproj,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:texture() 2drectshadow,Fail
 spec@arb_texture_rectangle@tex-miplevel-selection gl2:textureproj 2drectshadow,Fail
 
-# Too many texture phases and regs, because nir_to_tgsi emits MOV TEMP[n],
-# IN[x].xyxw setting up the TXP coords.
-spec@arb_texture_rectangle@texrect-many,Fail
-
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/4985
 spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect bordercolor@GL_RGBA8- border color only,Fail

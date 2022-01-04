@@ -23,6 +23,7 @@
 
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_deref.h"
+#include "compiler/nir/nir_worklist.h"
 #include "nir/nir_to_tgsi.h"
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
@@ -30,6 +31,7 @@
 #include "tgsi/tgsi_from_mesa.h"
 #include "tgsi/tgsi_info.h"
 #include "tgsi/tgsi_ureg.h"
+#include "tgsi/tgsi_util.h"
 #include "util/debug.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
@@ -54,6 +56,12 @@ struct ntt_insn {
 struct ntt_block {
    /* Array of struct ntt_insn */
    struct util_dynarray insns;
+   int start_ip;
+   int end_ip;
+};
+
+struct ntt_reg_interval {
+   uint32_t start, end;
 };
 
 struct ntt_compile {
@@ -77,7 +85,7 @@ struct ntt_compile {
    struct ureg_dst *reg_temp;
    struct ureg_src *ssa_temp;
 
-   nir_instr_liveness *liveness;
+   struct ntt_reg_interval *liveness;
 
    /* Map from nir_block to ntt_block */
    struct hash_table *blocks;
@@ -87,6 +95,9 @@ struct ntt_compile {
 
    /* Whether we're currently emitting instructiosn for a precise NIR instruction. */
    bool precise;
+
+   unsigned num_temps;
+   unsigned first_non_array_temp;
 
    /* Mappings from driver_location to TGSI input/output number.
     *
@@ -100,6 +111,12 @@ struct ntt_compile {
 
    struct ureg_src images[PIPE_MAX_SHADER_IMAGES];
 };
+
+static struct ureg_dst
+ntt_temp(struct ntt_compile *c)
+{
+   return ureg_dst_register(TGSI_FILE_TEMPORARY, c->num_temps++);
+}
 
 static struct ntt_block *
 ntt_block_from_nir(struct ntt_compile *c, struct nir_block *block)
@@ -228,6 +245,280 @@ ntt_64bit_1f(struct ntt_compile *c)
    return ureg_imm4u(c->ureg,
                      0x00000000, 0x3ff00000,
                      0x00000000, 0x3ff00000);
+}
+
+/* Per-channel masks of def/use within the block, and the per-channel
+ * livein/liveout for the block as a whole.
+ */
+struct ntt_live_reg_block_state {
+   uint8_t *def, *use, *livein, *liveout, *defin, *defout;
+};
+
+struct ntt_live_reg_state {
+   unsigned bitset_words;
+
+   struct ntt_reg_interval *regs;
+
+   /* Used in propagate_across_edge() */
+   BITSET_WORD *tmp_live;
+
+   struct ntt_live_reg_block_state *blocks;
+
+   nir_block_worklist worklist;
+};
+
+static void
+ntt_live_reg_mark_use(struct ntt_compile *c, struct ntt_live_reg_block_state *bs,
+                      int ip, unsigned index, unsigned used_mask)
+{
+   bs->use[index] |= used_mask & ~bs->def[index];
+
+   c->liveness[index].start = MIN2(c->liveness[index].start, ip);
+   c->liveness[index].end = MAX2(c->liveness[index].end, ip);
+
+}
+static void
+ntt_live_reg_setup_def_use(struct ntt_compile *c, nir_function_impl *impl, struct ntt_live_reg_state *state)
+{
+   for (int i = 0; i < impl->num_blocks; i++) {
+      state->blocks[i].def = rzalloc_array(state->blocks, uint8_t, c->num_temps);
+      state->blocks[i].defin = rzalloc_array(state->blocks, uint8_t, c->num_temps);
+      state->blocks[i].defout = rzalloc_array(state->blocks, uint8_t, c->num_temps);
+      state->blocks[i].use = rzalloc_array(state->blocks, uint8_t, c->num_temps);
+      state->blocks[i].livein = rzalloc_array(state->blocks, uint8_t, c->num_temps);
+      state->blocks[i].liveout = rzalloc_array(state->blocks, uint8_t, c->num_temps);
+   }
+
+   int ip = 0;
+   nir_foreach_block(block, impl) {
+      struct ntt_live_reg_block_state *bs = &state->blocks[block->index];
+      struct ntt_block *ntt_block = ntt_block_from_nir(c, block);
+
+      ntt_block->start_ip = ip;
+
+      util_dynarray_foreach(&ntt_block->insns, struct ntt_insn, insn) {
+         const struct tgsi_opcode_info *opcode_info =
+            tgsi_get_opcode_info(insn->opcode);
+
+         /* Set up use[] for the srcs.
+          *
+          * Uses are the channels of the reg read in the block that don't have a
+          * preceding def to screen them off.  Note that we don't do per-element
+          * tracking of array regs, so they're never screened off.
+          */
+         for (int i = 0; i < opcode_info->num_src; i++) {
+            if (insn->src[i].File != TGSI_FILE_TEMPORARY)
+               continue;
+            int index = insn->src[i].Index;
+
+            uint32_t used_mask = tgsi_util_get_src_usage_mask(insn->opcode, i,
+                                                              insn->dst->WriteMask,
+                                                              insn->src[i].SwizzleX,
+                                                              insn->src[i].SwizzleY,
+                                                              insn->src[i].SwizzleZ,
+                                                              insn->src[i].SwizzleW,
+                                                              insn->tex_target,
+                                                              insn->tex_target);
+
+            assert(!insn->src[i].Indirect || index < c->first_non_array_temp);
+            ntt_live_reg_mark_use(c, bs, ip, index, used_mask);
+         }
+
+         if (insn->is_tex && insn->tex_offset.File == TGSI_FILE_TEMPORARY)
+            ntt_live_reg_mark_use(c, bs, ip, insn->tex_offset.Index, 0xf);
+
+         /* Set up def[] for the srcs.
+          *
+          * Defs are the unconditionally-written (not R/M/W) channels of the reg in
+          * the block that don't have a preceding use.
+          */
+         for (int i = 0; i < opcode_info->num_dst; i++) {
+            if (insn->dst[i].File != TGSI_FILE_TEMPORARY)
+               continue;
+            int index = insn->dst[i].Index;
+            uint32_t writemask = insn->dst[i].WriteMask;
+
+            bs->def[index] |= writemask & ~bs->use[index];
+            bs->defout[index] |= writemask;
+
+            assert(!insn->dst[i].Indirect || index < c->first_non_array_temp);
+            c->liveness[index].start = MIN2(c->liveness[index].start, ip);
+            c->liveness[index].end = MAX2(c->liveness[index].end, ip);
+         }
+         ip++;
+      }
+
+      ntt_block->end_ip = ip;
+   }
+}
+
+static void
+ntt_live_regs(struct ntt_compile *c, nir_function_impl *impl)
+{
+   c->liveness = rzalloc_array(c, struct ntt_reg_interval, c->num_temps);
+
+   struct ntt_live_reg_state state = {
+       .blocks = rzalloc_array(impl, struct ntt_live_reg_block_state, impl->num_blocks),
+   };
+
+   /* The intervals start out with start > end (indicating unused) */
+   for (int i = 0; i < c->num_temps; i++)
+      c->liveness[i].start = ~0;
+
+   ntt_live_reg_setup_def_use(c, impl, &state);
+
+   /* Make a forward-order worklist of all the blocks. */
+   nir_block_worklist_init(&state.worklist, impl->num_blocks, NULL);
+   nir_foreach_block(block, impl) {
+      nir_block_worklist_push_tail(&state.worklist, block);
+   }
+
+   /* Propagate defin/defout down the CFG to calculate the live variables
+    * potentially defined along any possible control flow path.  We'll use this
+    * to keep things like conditional defs of the reg (or array regs where we
+    * don't track defs!) from making the reg's live range extend back to the
+    * start of the program.
+    */
+   while (!nir_block_worklist_is_empty(&state.worklist)) {
+      nir_block *block = nir_block_worklist_pop_head(&state.worklist);
+      for (int j = 0; j < ARRAY_SIZE(block->successors); j++) {
+         nir_block *succ = block->successors[j];
+         if (!succ || succ->index == impl->num_blocks)
+            continue;
+
+         for (int i = 0; i < c->num_temps; i++) {
+            uint8_t new_def = state.blocks[block->index].defout[i] & ~state.blocks[succ->index].defin[i];
+
+            if (new_def) {
+               state.blocks[succ->index].defin[i] |= new_def;
+               state.blocks[succ->index].defout[i] |= new_def;
+               nir_block_worklist_push_tail(&state.worklist, succ);
+            }
+         }
+      }
+   }
+
+   /* Make a reverse-order worklist of all the blocks. */
+   nir_foreach_block(block, impl) {
+      nir_block_worklist_push_head(&state.worklist, block);
+   }
+
+   /* We're now ready to work through the worklist and update the liveness sets
+    * of each of the blocks.  As long as we keep the worklist up-to-date as we
+    * go, everything will get covered.
+    */
+   while (!nir_block_worklist_is_empty(&state.worklist)) {
+      /* We pop them off in the reverse order we pushed them on.  This way
+       * the first walk of the instructions is backwards so we only walk
+       * once in the case of no control flow.
+       */
+      nir_block *block = nir_block_worklist_pop_head(&state.worklist);
+      struct ntt_block *ntt_block = ntt_block_from_nir(c, block);
+      struct ntt_live_reg_block_state *bs = &state.blocks[block->index];
+
+      for (int i = 0; i < c->num_temps; i++) {
+         /* Collect livein from our successors to include in our liveout. */
+         for (int j = 0; j < ARRAY_SIZE(block->successors); j++) {
+            nir_block *succ = block->successors[j];
+            if (!succ || succ->index == impl->num_blocks)
+               continue;
+            struct ntt_live_reg_block_state *sbs = &state.blocks[succ->index];
+
+            uint8_t new_liveout = sbs->livein[i] & ~bs->liveout[i];
+            if (new_liveout) {
+               if (state.blocks[block->index].defout[i])
+                  c->liveness[i].end = MAX2(c->liveness[i].end, ntt_block->end_ip);
+               bs->liveout[i] |= sbs->livein[i];
+            }
+         }
+
+         /* Propagate use requests from either our block's uses or our
+          * non-screened-off liveout up to our predecessors.
+          */
+         uint8_t new_livein = ((bs->use[i] | (bs->liveout[i] & ~bs->def[i])) &
+                               ~bs->livein[i]);
+         if (new_livein) {
+            bs->livein[i] |= new_livein;
+            set_foreach(block->predecessors, entry) {
+               nir_block *pred = (void *)entry->key;
+               nir_block_worklist_push_tail(&state.worklist, pred);
+            }
+
+            if (new_livein & state.blocks[block->index].defin[i])
+               c->liveness[i].start = MIN2(c->liveness[i].start, ntt_block->start_ip);
+         }
+      }
+   }
+
+   ralloc_free(state.blocks);
+   nir_block_worklist_fini(&state.worklist);
+}
+
+static void
+ntt_ra_check(struct ntt_compile *c, unsigned *ra_map, BITSET_WORD *released, int ip, unsigned index)
+{
+   if (index < c->first_non_array_temp)
+      return;
+
+   if (c->liveness[index].start == ip && ra_map[index] == ~0)
+      ra_map[index] = ureg_DECL_temporary(c->ureg).Index;
+
+   if (c->liveness[index].end == ip && !BITSET_TEST(released, index)) {
+      ureg_release_temporary(c->ureg, ureg_dst_register(TGSI_FILE_TEMPORARY, ra_map[index]));
+      BITSET_SET(released, index);
+   }
+}
+
+static void
+ntt_allocate_regs(struct ntt_compile *c, nir_function_impl *impl)
+{
+   ntt_live_regs(c, impl);
+
+   unsigned *ra_map = ralloc_array(c, unsigned, c->num_temps);
+   unsigned *released = rzalloc_array(c, BITSET_WORD, BITSET_WORDS(c->num_temps));
+
+   /* No RA on NIR array regs */
+   for (int i = 0; i < c->first_non_array_temp; i++)
+      ra_map[i] = i;
+
+   for (int i = c->first_non_array_temp; i < c->num_temps; i++)
+      ra_map[i] = ~0;
+
+   int ip = 0;
+   nir_foreach_block(block, impl) {
+      struct ntt_block *ntt_block = ntt_block_from_nir(c, block);
+
+      for (int i = 0; i < c->num_temps; i++)
+         ntt_ra_check(c, ra_map, released, ip, i);
+
+      util_dynarray_foreach(&ntt_block->insns, struct ntt_insn, insn) {
+         const struct tgsi_opcode_info *opcode_info =
+            tgsi_get_opcode_info(insn->opcode);
+
+         for (int i = 0; i < opcode_info->num_src; i++) {
+            if (insn->src[i].File == TGSI_FILE_TEMPORARY) {
+               ntt_ra_check(c, ra_map, released, ip, insn->src[i].Index);
+               insn->src[i].Index = ra_map[insn->src[i].Index];
+            }
+         }
+
+         if (insn->is_tex && insn->tex_offset.File == TGSI_FILE_TEMPORARY) {
+            ntt_ra_check(c, ra_map, released, ip, insn->tex_offset.Index);
+            insn->tex_offset.Index = ra_map[insn->tex_offset.Index];
+         }
+
+         for (int i = 0; i < opcode_info->num_dst; i++) {
+            if (insn->dst[i].File == TGSI_FILE_TEMPORARY) {
+               ntt_ra_check(c, ra_map, released, ip, insn->dst[i].Index);
+               insn->dst[i].Index = ra_map[insn->dst[i].Index];
+            }
+         }
+         ip++;
+      }
+
+      for (int i = 0; i < c->num_temps; i++)
+         ntt_ra_check(c, ra_map, released, ip, i);
+   }
 }
 
 static const struct glsl_type *
@@ -495,7 +786,7 @@ ntt_setup_inputs(struct ntt_compile *c)
                                                 array_id, array_len);
 
       if (semantic_name == TGSI_SEMANTIC_FACE) {
-         struct ureg_dst temp = ureg_DECL_temporary(c->ureg);
+         struct ureg_dst temp = ntt_temp(c);
          if (c->native_integers) {
             /* NIR is ~0 front and 0 back, while TGSI is +1 front */
             ntt_SGE(c, temp, decl, ureg_imm1f(c->ureg, 0));
@@ -697,9 +988,24 @@ ntt_setup_uniforms(struct ntt_compile *c)
 static void
 ntt_setup_registers(struct ntt_compile *c, struct exec_list *list)
 {
+   assert(c->num_temps == 0);
+   /* Permanently allocate all the array regs at the start. */
    foreach_list_typed(nir_register, nir_reg, node, list) {
-      struct ureg_dst decl;
+      if (nir_reg->num_array_elems != 0) {
+         struct ureg_dst decl = ureg_DECL_array_temporary(c->ureg, nir_reg->num_array_elems, true);
+         c->reg_temp[nir_reg->index] = decl;
+         assert(c->num_temps == decl.Index);
+         c->num_temps += nir_reg->num_array_elems;
+      }
+   }
+   c->first_non_array_temp = c->num_temps;
+
+   /* After that, allocate non-array regs in our virtual space that we'll
+    * register-allocate before ureg emit.
+    */
+   foreach_list_typed(nir_register, nir_reg, node, list) {
       if (nir_reg->num_array_elems == 0) {
+         struct ureg_dst decl;
          uint32_t write_mask = BITFIELD_MASK(nir_reg->num_components);
          if (!ntt_try_store_in_tgsi_output(c, &decl, &nir_reg->uses, &nir_reg->if_uses)) {
             if (nir_reg->bit_size == 64) {
@@ -711,13 +1017,10 @@ ntt_setup_registers(struct ntt_compile *c, struct exec_list *list)
                write_mask = ntt_64bit_write_mask(write_mask);
             }
 
-            decl = ureg_writemask(ureg_DECL_temporary(c->ureg), write_mask);
+            decl = ureg_writemask(ntt_temp(c), write_mask);
          }
-      } else {
-         decl = ureg_DECL_array_temporary(c->ureg, nir_reg->num_array_elems,
-                                          true);
+         c->reg_temp[nir_reg->index] = decl;
       }
-      c->reg_temp[nir_reg->index] = decl;
    }
 }
 
@@ -854,7 +1157,7 @@ ntt_get_ssa_def_decl(struct ntt_compile *c, nir_ssa_def *ssa)
 
    struct ureg_dst dst;
    if (!ntt_try_store_in_tgsi_output(c, &dst, &ssa->uses, &ssa->if_uses))
-      dst = ureg_DECL_temporary(c->ureg);
+      dst = ntt_temp(c);
 
    c->ssa_temp[ssa->index] = ntt_swizzle_for_write_mask(ureg_src(dst), writemask);
 
@@ -1095,7 +1398,7 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
    struct ureg_dst real_dst = ureg_dst_undef();
    if (tgsi_64bit_compare || tgsi_64bit_downconvert) {
       real_dst = dst;
-      dst = ureg_DECL_temporary(c->ureg);
+      dst = ntt_temp(c);
    }
 
    bool table_op64 = src_64;
@@ -1306,7 +1609,7 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
       case nir_op_frexp_sig:
       case nir_op_frexp_exp: {
          assert(src_64);
-         struct ureg_dst temp = ureg_DECL_temporary(c->ureg);
+         struct ureg_dst temp = ntt_temp(c);
 
          for (int chan = 0; chan < 2; chan++) {
             int wm = 1 << chan;
@@ -1332,8 +1635,6 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
                                              ureg_src_undef());
             insn->dst[1] = dsts[1];
          }
-
-         ureg_release_temporary(c->ureg, temp);
          break;
       }
 
@@ -1373,7 +1674,6 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
                                                   swizzle[2],
                                                   swizzle[3]));
       }
-      ureg_release_temporary(c->ureg, dst);
    }
 
    c->precise = false;
@@ -1465,7 +1765,7 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
        * their array indirection, but load_ubo doesn't.  We fake it by
        * subtracting it off here.
        */
-      addr_temp = ureg_DECL_temporary(c->ureg);
+      addr_temp = ntt_temp(c);
       ntt_UADD(c, addr_temp, ntt_get_src(c, instr->src[0]), ureg_imm1i(c->ureg, -c->first_ubo));
       src = ureg_src_dimension_indirect(src,
                                          ntt_reladdr(c, ureg_src(addr_temp), 1),
@@ -1506,8 +1806,6 @@ ntt_emit_load_ubo(struct ntt_compile *c, nir_intrinsic_instr *instr)
       insn->mem_qualifier = 0;
       insn->mem_format = 0; /* unused */
    }
-
-   ureg_release_temporary(c->ureg, addr_temp);
 }
 
 static unsigned
@@ -1558,7 +1856,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
       if (nir_src_is_const(instr->src[0])) {
          memory.Index += nir_src_as_uint(instr->src[0]) / 4;
       } else {
-         addr_temp = ureg_DECL_temporary(c->ureg);
+         addr_temp = ntt_temp(c);
          ntt_USHR(c, addr_temp, ntt_get_src(c, instr->src[0]), ureg_imm1i(c->ureg, 2));
          memory = ureg_src_indirect(memory, ntt_reladdr(c, ureg_src(addr_temp), 2));
       }
@@ -1689,8 +1987,6 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    insn->mem_qualifier = qualifier;
    insn->mem_format = 0; /* unused */
    insn->is_mem = true;
-
-   ureg_release_temporary(c->ureg, addr_temp);
 }
 
 static void
@@ -1722,7 +2018,7 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
       struct ureg_src coord = ntt_get_src(c, instr->src[1]);
 
       if (dim == GLSL_SAMPLER_DIM_MS) {
-         temp = ureg_DECL_temporary(c->ureg);
+         temp = ntt_temp(c);
          ntt_MOV(c, temp, coord);
          ntt_MOV(c, ureg_writemask(temp, 1 << (is_array ? 3 : 2)),
                   ureg_scalar(ntt_get_src(c, instr->src[2]), TGSI_SWIZZLE_X));
@@ -1789,9 +2085,6 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
    insn->mem_qualifier = ntt_get_access_qualifier(instr);
    insn->mem_format = nir_intrinsic_format(instr);
    insn->is_mem = true;
-
-   if (!ureg_dst_is_undef(temp))
-      ureg_release_temporary(c->ureg, temp);
 }
 
 static void
@@ -2052,10 +2345,9 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       struct ureg_src cond = ureg_scalar(ntt_get_src(c, instr->src[0]), 0);
 
       if (c->native_integers) {
-         struct ureg_dst temp = ureg_writemask(ureg_DECL_temporary(c->ureg), 1);
+         struct ureg_dst temp = ureg_writemask(ntt_temp(c), 1);
          ntt_AND(c, temp, cond, ureg_imm1f(c->ureg, 1.0));
          ntt_KILL_IF(c, ureg_scalar(ureg_negate(ureg_src(temp)), 0));
-         ureg_release_temporary(c->ureg, temp);
       } else {
          /* For !native_integers, the bool got lowered to 1.0 or 0.0. */
          ntt_KILL_IF(c, ureg_negate(cond));
@@ -2352,7 +2644,7 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
 
    struct ureg_dst tex_dst;
    if (instr->op == nir_texop_query_levels)
-      tex_dst = ureg_writemask(ureg_DECL_temporary(c->ureg), TGSI_WRITEMASK_W);
+      tex_dst = ureg_writemask(ntt_temp(c), TGSI_WRITEMASK_W);
    else
       tex_dst = dst;
 
@@ -2365,10 +2657,8 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    insn->tex_offset = tex_offset;
    insn->is_tex = true;
 
-   if (instr->op == nir_texop_query_levels) {
+   if (instr->op == nir_texop_query_levels)
       ntt_MOV(c, dst, ureg_scalar(ureg_src(tex_dst), 3));
-      ureg_release_temporary(c->ureg, tex_dst);
-   }
 }
 
 static void
@@ -2468,35 +2758,6 @@ ntt_emit_loop(struct ntt_compile *c, nir_loop *loop)
 }
 
 static void
-ntt_free_ssa_temp_by_index(struct ntt_compile *c, int index)
-{
-   /* We do store CONST/IMM/INPUT/etc. in ssa_temp[] */
-   if (c->ssa_temp[index].File != TGSI_FILE_TEMPORARY)
-      return;
-
-   ureg_release_temporary(c->ureg, ureg_dst(c->ssa_temp[index]));
-   memset(&c->ssa_temp[index], 0, sizeof(c->ssa_temp[index]));
-}
-
-/* Releases any temporaries for SSA defs with a live interval ending at this
- * instruction.
- */
-static bool
-ntt_src_live_interval_end_cb(nir_src *src, void *state)
-{
-   struct ntt_compile *c = state;
-
-   if (src->is_ssa) {
-      nir_ssa_def *def = src->ssa;
-
-      if (c->liveness->defs[def->index].end == src->parent_instr->index)
-         ntt_free_ssa_temp_by_index(c, def->index);
-   }
-
-   return true;
-}
-
-static void
 ntt_emit_block(struct ntt_compile *c, nir_block *block)
 {
    struct ntt_block *ntt_block = ntt_block_from_nir(c, block);
@@ -2512,8 +2773,6 @@ ntt_emit_block(struct ntt_compile *c, nir_block *block)
          fprintf(stderr, "\n");
          unreachable("emitted ureg insn");
       }
-
-      nir_foreach_src(instr, ntt_src_live_interval_end_cb, c);
    }
 
    /* Set up the if condition for ntt_emit_if(), which we have to do before
@@ -2526,14 +2785,6 @@ ntt_emit_block(struct ntt_compile *c, nir_block *block)
    nir_if *nif = nir_block_get_following_if(block);
    if (nif)
       c->if_cond = ureg_scalar(ntt_get_src(c, nif->condition), TGSI_SWIZZLE_X);
-
-   /* Free up any SSA temps that are unused at the end of the block. */
-   unsigned index;
-   BITSET_FOREACH_SET(index, block->live_out, BITSET_WORDS(c->impl->ssa_alloc)) {
-      unsigned def_end_ip = c->liveness->defs[index].end;
-      if (def_end_ip == block->end_ip)
-         ntt_free_ssa_temp_by_index(c, index);
-   }
 }
 
 static void
@@ -2674,7 +2925,6 @@ static void
 ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
 {
    c->impl = impl;
-   c->liveness = nir_live_ssa_defs_per_instr(impl);
 
    c->ssa_temp = rzalloc_array(c, struct ureg_src, impl->ssa_alloc);
    c->reg_temp = rzalloc_array(c, struct ureg_dst, impl->reg_alloc);
@@ -2687,15 +2937,17 @@ ntt_emit_impl(struct ntt_compile *c, nir_function_impl *impl)
       _mesa_hash_table_insert(c->blocks, block, ntt_block);
    }
 
+   ntt_setup_registers(c, &impl->registers);
+
    c->cur_block = ntt_block_from_nir(c, nir_start_block(impl));
    ntt_setup_inputs(c);
    ntt_setup_outputs(c);
    ntt_setup_uniforms(c);
 
-   ntt_setup_registers(c, &impl->registers);
-
    /* Emit the ntt insns */
    ntt_emit_cf_list(c, &impl->body);
+
+   ntt_allocate_regs(c, impl);
 
    /* Turn the ntt insns into actual TGSI tokens */
    ntt_emit_cf_list_ureg(c, &impl->body);
