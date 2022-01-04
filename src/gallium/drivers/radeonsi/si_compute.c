@@ -125,7 +125,7 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
       si_init_compiler(sscreen, compiler);
 
    assert(program->ir_type == PIPE_SHADER_IR_NIR);
-   si_nir_scan_shader(sel->nir, &sel->info);
+   si_nir_scan_shader(sscreen, sel->nir, &sel->info);
 
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);

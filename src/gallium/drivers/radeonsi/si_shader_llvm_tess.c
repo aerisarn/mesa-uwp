@@ -74,7 +74,7 @@ static unsigned get_tcs_out_vertex_dw_stride_constant(struct si_shader_context *
    if (ctx->shader->key.ge.mono.u.ff_tcs_inputs_to_copy)
       return util_last_bit64(ctx->shader->key.ge.mono.u.ff_tcs_inputs_to_copy) * 4;
 
-   return util_last_bit64(ctx->shader->selector->outputs_written) * 4;
+   return util_last_bit64(ctx->shader->selector->info.outputs_written) * 4;
 }
 
 static LLVMValueRef get_tcs_out_vertex_dw_stride(struct si_shader_context *ctx)
@@ -92,7 +92,7 @@ static LLVMValueRef get_tcs_out_patch_stride(struct si_shader_context *ctx)
    const struct si_shader_info *info = &ctx->shader->selector->info;
    unsigned tcs_out_vertices = info->base.tess.tcs_vertices_out;
    unsigned vertex_dw_stride = get_tcs_out_vertex_dw_stride_constant(ctx);
-   unsigned num_patch_outputs = util_last_bit64(ctx->shader->selector->patch_outputs_written);
+   unsigned num_patch_outputs = util_last_bit64(ctx->shader->selector->info.patch_outputs_written);
    unsigned patch_dw_stride = tcs_out_vertices * vertex_dw_stride + num_patch_outputs * 4;
    return LLVMConstInt(ctx->ac.i32, patch_dw_stride, 0);
 }
@@ -155,12 +155,12 @@ static LLVMValueRef get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
 
    switch (ctx->stage) {
    case MESA_SHADER_VERTEX:
-      stride = ctx->shader->selector->lshs_vertex_stride / 4;
+      stride = ctx->shader->selector->info.lshs_vertex_stride / 4;
       return LLVMConstInt(ctx->ac.i32, stride, 0);
 
    case MESA_SHADER_TESS_CTRL:
       if (ctx->screen->info.chip_class >= GFX9 && ctx->shader->is_monolithic) {
-         stride = ctx->shader->key.ge.part.tcs.ls->lshs_vertex_stride / 4;
+         stride = ctx->shader->key.ge.part.tcs.ls->info.lshs_vertex_stride / 4;
          return LLVMConstInt(ctx->ac.i32, stride, 0);
       }
       return si_unpack_param(ctx, ctx->vs_state_bits, 24, 8);
@@ -980,7 +980,7 @@ void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi)
          LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
 
          if (!shader->key.ge.opt.same_patch_vertices ||
-             !(ctx->next_shader_sel->tcs_vgpr_only_inputs & (1ull << semantic)))
+             !(ctx->next_shader_sel->info.tcs_vgpr_only_inputs & (1ull << semantic)))
             lshs_lds_store(ctx, chan, dw_addr, value);
 
          if (shader->key.ge.opt.same_patch_vertices) {

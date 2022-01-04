@@ -111,7 +111,7 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
    unsigned bit_size = info->input[input_index].fp16_lo_hi_valid & 0x1 ? 16 : 32;
    LLVMTypeRef int_type = bit_size == 16 ? ctx->ac.i16 : ctx->ac.i32;
    LLVMTypeRef float_type = bit_size == 16 ? ctx->ac.f16 : ctx->ac.f32;
-   unsigned num_vbos_in_user_sgprs = ctx->shader->selector->num_vbos_in_user_sgprs;
+   unsigned num_vbos_in_user_sgprs = ctx->shader->selector->info.num_vbos_in_user_sgprs;
    union si_vs_fix_fetch fix_fetch;
    LLVMValueRef vb_desc;
    LLVMValueRef vertex_index;
@@ -391,7 +391,7 @@ void si_llvm_clipvertex_to_clipdist(struct si_shader_context *ctx,
    LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
    LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
    LLVMValueRef const_resource = ac_build_load_to_sgpr(&ctx->ac, ptr, constbuf_index);
-   unsigned clipdist_mask = ctx->shader->selector->clipdist_mask &
+   unsigned clipdist_mask = ctx->shader->selector->info.clipdist_mask &
                             ~ctx->shader->key.ge.opt.kill_clip_distances;
 
    for (reg_index = 0; reg_index < 2; reg_index++) {
@@ -569,9 +569,9 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
    LLVMValueRef psize_value = NULL, edgeflag_value = NULL, layer_value = NULL,
                 viewport_index_value = NULL;
    unsigned pos_idx, index;
-   unsigned clipdist_mask = (shader->selector->clipdist_mask &
+   unsigned clipdist_mask = (shader->selector->info.clipdist_mask &
                              ~shader->key.ge.opt.kill_clip_distances) |
-                            shader->selector->culldist_mask;
+                            shader->selector->info.culldist_mask;
    int i;
 
    si_vertex_color_clamping(ctx, outputs, noutput);

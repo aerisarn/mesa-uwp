@@ -614,7 +614,7 @@ static unsigned si_get_num_vs_user_sgprs(struct si_shader *shader,
 {
    struct si_shader_selector *vs =
       shader->previous_stage_sel ? shader->previous_stage_sel : shader->selector;
-   unsigned num_vbos_in_user_sgprs = vs->num_vbos_in_user_sgprs;
+   unsigned num_vbos_in_user_sgprs = vs->info.num_vbos_in_user_sgprs;
 
    /* 1 SGPR is reserved for the vertex buffer pointer. */
    assert(num_always_on_user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST - 1);
@@ -744,7 +744,7 @@ static void si_emit_shader_es(struct si_context *sctx)
    radeon_begin(&sctx->gfx_cs);
    radeon_opt_set_context_reg(sctx, R_028AAC_VGT_ESGS_RING_ITEMSIZE,
                               SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
-                              shader->selector->esgs_itemsize / 4);
+                              shader->selector->info.esgs_itemsize / 4);
 
    if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL)
       radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
@@ -815,7 +815,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    /* We can't allow using the whole LDS, because GS waves compete with
     * other shader stages for LDS space. */
    const unsigned max_lds_size = 8 * 1024;
-   const unsigned esgs_itemsize = es->esgs_itemsize / 4;
+   const unsigned esgs_itemsize = es->info.esgs_itemsize / 4;
    unsigned esgs_lds_size;
 
    /* All these are per subgroup: */
@@ -842,7 +842,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    /* If the primitive has adjacency, halve the number of vertices
     * that will be reused in multiple primitives.
     */
-   min_es_verts = gs->gs_input_verts_per_prim / (uses_adjacency ? 2 : 1);
+   min_es_verts = gs->info.gs_input_verts_per_prim / (uses_adjacency ? 2 : 1);
 
    gs_prims = MIN2(ideal_gs_prims, max_gs_prims);
    worst_case_es_verts = MIN2(min_es_verts * gs_prims, max_es_verts);
@@ -877,7 +877,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    /* Vertices for adjacency primitives are not always reused, so restore
     * it for ES_VERTS_PER_SUBGRP.
     */
-   min_es_verts = gs->gs_input_verts_per_prim;
+   min_es_verts = gs->info.gs_input_verts_per_prim;
 
    /* For normal primitives, the VGT only checks if they are past the ES
     * verts per subgroup after allocating a full GS primitive and if they
@@ -1105,7 +1105,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
          S_028A44_GS_INST_PRIMS_IN_SUBGRP(shader->gs_info.gs_inst_prims_in_subgroup);
       shader->ctx_reg.gs.vgt_gs_max_prims_per_subgroup =
          S_028A94_MAX_PRIMS_PER_SUBGROUP(shader->gs_info.max_prims_per_subgroup);
-      shader->ctx_reg.gs.vgt_esgs_ring_itemsize = shader->key.ge.part.gs.es->esgs_itemsize / 4;
+      shader->ctx_reg.gs.vgt_esgs_ring_itemsize = shader->key.ge.part.gs.es->info.esgs_itemsize / 4;
 
       if (es_stage == MESA_SHADER_TESS_EVAL)
          si_set_tesseval_regs(sscreen, shader->key.ge.part.gs.es, shader);
@@ -1286,8 +1286,8 @@ static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
                                    const struct si_shader *shader, bool ngg)
 {
    /* Clip distances can be killed, but cull distances can't. */
-   unsigned clipcull_mask = (sel->clipdist_mask & ~shader->key.ge.opt.kill_clip_distances) |
-                            sel->culldist_mask;
+   unsigned clipcull_mask = (sel->info.clipdist_mask & ~shader->key.ge.opt.kill_clip_distances) |
+                            sel->info.culldist_mask;
    bool writes_psize = sel->info.writes_psize && !shader->key.ge.opt.kill_pointsize;
    bool misc_vec_ena = writes_psize || (sel->info.writes_edgeflag && !ngg) ||
                        sel->screen->options.vrs2x2 ||
@@ -1427,7 +1427,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                                         gs_sel->info.writes_primid);
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
-      shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = es_sel->esgs_itemsize / 4;
+      shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = es_sel->info.esgs_itemsize / 4;
       shader->ctx_reg.ngg.vgt_gs_max_vert_out = gs_sel->info.base.gs.vertices_out;
    } else {
       shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = 1;
@@ -2071,16 +2071,16 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
                     (!ps_colormask && !ps_modifies_zs && !ps->info.base.writes_memory);
    }
 
-   sctx->ps_inputs_read_or_disabled = ps_disabled ? 0 : ps->inputs_read;
+   sctx->ps_inputs_read_or_disabled = ps_disabled ? 0 : ps->info.inputs_read;
 }
 
 static void si_get_vs_key_outputs(struct si_context *sctx, struct si_shader_selector *vs,
                                   union si_shader_key *key)
 {
-   key->ge.opt.kill_clip_distances = vs->clipdist_mask & ~sctx->queued.named.rasterizer->clip_plane_enable;
+   key->ge.opt.kill_clip_distances = vs->info.clipdist_mask & ~sctx->queued.named.rasterizer->clip_plane_enable;
 
    /* Find out which VS outputs aren't used by the PS. */
-   uint64_t outputs_written = vs->outputs_written_before_ps;
+   uint64_t outputs_written = vs->info.outputs_written_before_ps;
    uint64_t linked = outputs_written & sctx->ps_inputs_read_or_disabled;
 
    key->ge.opt.kill_outputs = ~linked & outputs_written;
@@ -2185,7 +2185,7 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
 
    /* Disable unwritten outputs (if WRITE_ALL_CBUFS isn't enabled). */
    if (!key->ps.part.epilog.last_cbuf) {
-      key->ps.part.epilog.spi_shader_col_format &= sel->colors_written_4bit;
+      key->ps.part.epilog.spi_shader_col_format &= sel->info.colors_written_4bit;
       key->ps.part.epilog.color_is_int8 &= sel->info.colors_written;
       key->ps.part.epilog.color_is_int10 &= sel->info.colors_written;
    }
@@ -2196,7 +2196,7 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
     *
     * Dual source blending never has color buffer 1 enabled, so ignore it.
     */
-   if (sel->colors_written_4bit &
+   if (sel->info.colors_written_4bit &
        (blend->dual_src_blend ? 0xffffff0f : 0xffffffff) &
        ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
       key->ps.opt.prefer_mono = 1;
@@ -2944,7 +2944,7 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
                 semantic != VARYING_SLOT_CLIP_VERTEX &&
                 semantic != VARYING_SLOT_EDGE) {
                id = si_shader_io_get_unique_index(semantic, true);
-               sel->outputs_written_before_ps &= ~(1ull << id);
+               sel->info.outputs_written_before_ps &= ~(1ull << id);
             }
          }
       }
@@ -3024,7 +3024,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    struct si_screen *sscreen = (struct si_screen *)ctx->screen;
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *sel = CALLOC_STRUCT(si_shader_selector);
-   int i;
 
    if (!sel)
       return NULL;
@@ -3040,7 +3039,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sel->nir = (nir_shader*)state->ir.nir;
    }
 
-   si_nir_scan_shader(sel->nir, &sel->info);
+   si_nir_scan_shader(sscreen, sel->nir, &sel->info);
 
    const enum pipe_shader_type type = pipe_shader_type_from_mesa(sel->info.stage);
    sel->pipe_shader_type = type;
@@ -3053,60 +3052,12 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
 
-   sel->num_vs_inputs =
-      sel->info.stage == MESA_SHADER_VERTEX && !sel->info.base.vs.blit_sgprs_amd
-         ? sel->info.num_inputs
-         : 0;
-   unsigned num_vbos_in_sgprs = si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
-   sel->num_vbos_in_user_sgprs = MIN2(sel->num_vs_inputs, num_vbos_in_sgprs);
-
-   /* The prolog is a no-op if there are no inputs. */
-   sel->vs_needs_prolog = sel->info.stage == MESA_SHADER_VERTEX && sel->info.num_inputs &&
-                          !sel->info.base.vs.blit_sgprs_amd;
-
-   if (sel->info.stage == MESA_SHADER_VERTEX ||
-       sel->info.stage == MESA_SHADER_TESS_CTRL ||
-       sel->info.stage == MESA_SHADER_TESS_EVAL ||
-       sel->info.stage == MESA_SHADER_GEOMETRY) {
-      if (sel->info.stage == MESA_SHADER_TESS_CTRL) {
-         /* Always reserve space for these. */
-         sel->patch_outputs_written |=
-            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
-            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
-      }
-      for (i = 0; i < sel->info.num_outputs; i++) {
-         unsigned semantic = sel->info.output_semantic[i];
-
-         if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
-             semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
-             (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
-            sel->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
-         } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
-                    semantic != VARYING_SLOT_EDGE) {
-            sel->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
-
-            /* Ignore outputs that are not passed from VS to PS. */
-            if (semantic != VARYING_SLOT_POS &&
-                semantic != VARYING_SLOT_PSIZ &&
-                semantic != VARYING_SLOT_CLIP_VERTEX) {
-               sel->outputs_written_before_ps |= 1ull
-                                                 << si_shader_io_get_unique_index(semantic, true);
-            }
-         }
-      }
-   }
-
    switch (sel->info.stage) {
    case MESA_SHADER_GEOMETRY:
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
       sel->rast_prim = (enum pipe_prim_type)sel->info.base.gs.output_primitive;
       if (util_rast_prim_is_triangles(sel->rast_prim))
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
-
-      sel->gsvs_vertex_size = sel->info.num_outputs * 16;
-      sel->max_gsvs_emit_size = sel->gsvs_vertex_size * sel->info.base.gs.vertices_out;
-      sel->gs_input_verts_per_prim =
-         u_vertices_per_prim((enum pipe_prim_type)sel->info.base.gs.input_primitive);
 
       /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation so
        * we can't split workgroups. Disable ngg if any of the following conditions is true:
@@ -3120,30 +3071,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       break;
 
    case MESA_SHADER_VERTEX:
-   case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
-      sel->esgs_itemsize = util_last_bit64(sel->outputs_written) * 16;
-      sel->lshs_vertex_stride = sel->esgs_itemsize;
-
-      /* Add 1 dword to reduce LDS bank conflicts, so that each vertex
-       * will start on a different bank. (except for the maximum 32*16).
-       */
-      if (sel->lshs_vertex_stride < 32 * 16)
-         sel->lshs_vertex_stride += 4;
-
-      /* For the ESGS ring in LDS, add 1 dword to reduce LDS bank
-       * conflicts, i.e. each vertex will start at a different bank.
-       */
-      if (sctx->chip_class >= GFX9)
-         sel->esgs_itemsize += 4;
-
-      assert(((sel->esgs_itemsize / 4) & C_028AAC_ITEMSIZE) == 0);
-
-      sel->tcs_vgpr_only_inputs = ~sel->info.base.tess.tcs_cross_invocation_inputs_read &
-                                  ~sel->info.base.inputs_read_indirectly &
-                                  sel->info.base.inputs_read;
-
-      /* Only for TES: */
       if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
          if (sel->info.base.tess.point_mode)
             sel->rast_prim = PIPE_PRIM_POINTS;
@@ -3153,28 +3081,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
             sel->rast_prim = PIPE_PRIM_TRIANGLES;
       } else {
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
-      }
-      break;
-
-   case MESA_SHADER_FRAGMENT:
-      for (i = 0; i < sel->info.num_inputs; i++) {
-         unsigned semantic = sel->info.input[i].semantic;
-
-         if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
-             semantic != VARYING_SLOT_PNTC) {
-            sel->inputs_read |= 1ull << si_shader_io_get_unique_index(semantic, true);
-         }
-      }
-
-      for (i = 0; i < 8; i++)
-         if (sel->info.colors_written & (1 << i))
-            sel->colors_written_4bit |= 0xf << (4 * i);
-
-      for (i = 0; i < sel->info.num_inputs; i++) {
-         if (sel->info.input[i].semantic == VARYING_SLOT_COL0)
-            sel->color_attr_index[0] = i;
-         else if (sel->info.input[i].semantic == VARYING_SLOT_COL1)
-            sel->color_attr_index[1] = i;
       }
       break;
    default:;
@@ -3206,63 +3112,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          if (sel->rast_prim != PIPE_PRIM_POINTS)
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
       }
-   }
-
-   sel->clipdist_mask = sel->info.writes_clipvertex ? SI_USER_CLIP_PLANE_MASK :
-                           u_bit_consecutive(0, sel->info.base.clip_distance_array_size);
-   sel->culldist_mask = u_bit_consecutive(0, sel->info.base.cull_distance_array_size) <<
-                        sel->info.base.clip_distance_array_size;
-
-   /* DB_SHADER_CONTROL */
-   sel->db_shader_control = S_02880C_Z_EXPORT_ENABLE(sel->info.writes_z) |
-                            S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(sel->info.writes_stencil) |
-                            S_02880C_MASK_EXPORT_ENABLE(sel->info.writes_samplemask) |
-                            S_02880C_KILL_ENABLE(sel->info.base.fs.uses_discard);
-
-   if (sel->info.stage == MESA_SHADER_FRAGMENT) {
-      switch (sel->info.base.fs.depth_layout) {
-      case FRAG_DEPTH_LAYOUT_GREATER:
-         sel->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_GREATER_THAN_Z);
-         break;
-      case FRAG_DEPTH_LAYOUT_LESS:
-         sel->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_LESS_THAN_Z);
-         break;
-      default:;
-      }
-
-      /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
-       *
-       *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
-       * --|-----------|------------|------------|--------------------|-------------------|-------------
-       * 1a|   false   |   false    |   true     | EarlyZ_Then_ReZ    |         0         |     0
-       * 1b|   false   |   false    |   false    | EarlyZ_Then_LateZ  |         0         |     0
-       * 2 |   false   |   true     |   n/a      |       LateZ        |         1         |     0
-       * 3 |   true    |   false    |   n/a      | EarlyZ_Then_LateZ  |         0         |     0
-       * 4 |   true    |   true     |   n/a      | EarlyZ_Then_LateZ  |         0         |     1
-       *
-       * In cases 3 and 4, HW will force Z_ORDER to EarlyZ regardless of what's set in the register.
-       * In case 2, NOOP_CULL is a don't care field. In case 2, 3 and 4, ReZ doesn't make sense.
-       *
-       * Don't use ReZ without profiling !!!
-       *
-       * ReZ decreases performance by 15% in DiRT: Showdown on Ultra settings, which has pretty complex
-       * shaders.
-       */
-      if (sel->info.base.fs.early_fragment_tests) {
-         /* Cases 3, 4. */
-         sel->db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
-                                   S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
-                                   S_02880C_EXEC_ON_NOOP(sel->info.base.writes_memory);
-      } else if (sel->info.base.writes_memory) {
-         /* Case 2. */
-         sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
-      } else {
-         /* Case 1. */
-         sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
-      }
-
-      if (sel->info.base.fs.post_depth_coverage)
-         sel->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
    }
 
    (void)simple_mtx_init(&sel->mutex, mtx_plain);
@@ -3315,8 +3164,8 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
        (!old_hw_vs ||
         (old_hw_vs->info.stage == MESA_SHADER_VERTEX && old_hw_vs->info.base.vs.window_space_position) !=
         (next_hw_vs->info.stage == MESA_SHADER_VERTEX && next_hw_vs->info.base.vs.window_space_position) ||
-        old_hw_vs->clipdist_mask != next_hw_vs->clipdist_mask ||
-        old_hw_vs->culldist_mask != next_hw_vs->culldist_mask || !old_hw_vs_variant ||
+        old_hw_vs->info.clipdist_mask != next_hw_vs->info.clipdist_mask ||
+        old_hw_vs->info.culldist_mask != next_hw_vs->info.culldist_mask || !old_hw_vs_variant ||
         !next_hw_vs_variant ||
         old_hw_vs_variant->pa_cl_vs_out_cntl != next_hw_vs_variant->pa_cl_vs_out_cntl))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
@@ -3383,7 +3232,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    sctx->shader.vs.current = sel ? sel->first_variant : NULL;
    sctx->num_vs_blit_sgprs = sel ? sel->info.base.vs.blit_sgprs_amd : 0;
    sctx->vs_uses_draw_id = sel ? sel->info.uses_drawid : false;
-   sctx->fixed_func_tcs_shader.key.ge.mono.u.ff_tcs_inputs_to_copy = sel ? sel->outputs_written : 0;
+   sctx->fixed_func_tcs_shader.key.ge.mono.u.ff_tcs_inputs_to_copy = sel ? sel->info.outputs_written : 0;
 
    if (si_update_ngg(sctx))
       si_shader_change_notify(sctx);
@@ -3556,7 +3405,7 @@ void si_update_ps_kill_enable(struct si_context *sctx)
    if (!sctx->shader.ps.cso)
       return;
 
-   unsigned db_shader_control = sctx->shader.ps.cso->db_shader_control |
+   unsigned db_shader_control = sctx->shader.ps.cso->info.db_shader_control |
                                 S_02880C_KILL_ENABLE(sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS);
 
    if (sctx->ps_db_shader_control != db_shader_control) {
@@ -3801,12 +3650,12 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
    unsigned max_size = ((unsigned)(63.999 * 1024 * 1024) & ~255) * num_se;
 
    /* Calculate the minimum size. */
-   unsigned min_esgs_ring_size = align(es->esgs_itemsize * gs_vertex_reuse * wave_size, alignment);
+   unsigned min_esgs_ring_size = align(es->info.esgs_itemsize * gs_vertex_reuse * wave_size, alignment);
 
    /* These are recommended sizes, not minimum sizes. */
    unsigned esgs_ring_size =
-      max_gs_waves * 2 * wave_size * es->esgs_itemsize * gs->gs_input_verts_per_prim;
-   unsigned gsvs_ring_size = max_gs_waves * 2 * wave_size * gs->max_gsvs_emit_size;
+      max_gs_waves * 2 * wave_size * es->info.esgs_itemsize * gs->info.gs_input_verts_per_prim;
+   unsigned gsvs_ring_size = max_gs_waves * 2 * wave_size * gs->info.max_gsvs_emit_size;
 
    min_esgs_ring_size = align(min_esgs_ring_size, alignment);
    esgs_ring_size = align(esgs_ring_size, alignment);

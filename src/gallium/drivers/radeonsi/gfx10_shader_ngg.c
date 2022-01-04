@@ -934,7 +934,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
    LLVMValueRef position[4] = {};
    unsigned pos_index = 0;
    unsigned clip_plane_enable = SI_NGG_CULL_GET_CLIP_PLANE_ENABLE(shader->key.ge.opt.ngg_culling);
-   unsigned clipdist_enable = (sel->clipdist_mask & clip_plane_enable) | sel->culldist_mask;
+   unsigned clipdist_enable = (sel->info.clipdist_mask & clip_plane_enable) | sel->info.culldist_mask;
    bool has_clipdist_mask = false;
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
@@ -999,7 +999,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       }
    }
 
-   if (clip_plane_enable && !sel->clipdist_mask) {
+   if (clip_plane_enable && !sel->info.clipdist_mask) {
       /* When clip planes are enabled and there are no clip distance outputs,
        * we should use user clip planes and cull against the position.
        */
@@ -1337,7 +1337,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
       ret = si_insert_input_ptr(ctx, ret, ctx->args.start_instance, 8 + SI_SGPR_START_INSTANCE);
       ret = si_insert_input_ptr(ctx, ret, ctx->args.vertex_buffers, 8 + GFX9_GS_NUM_USER_SGPR);
 
-      for (unsigned i = 0; i < shader->selector->num_vbos_in_user_sgprs; i++) {
+      for (unsigned i = 0; i < shader->selector->info.num_vbos_in_user_sgprs; i++) {
          ret = si_insert_input_v4i32(ctx, ret, ctx->vb_descriptors[i],
                                      8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST + i * 4);
       }
@@ -1349,8 +1349,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
 
    unsigned vgpr;
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      if (shader->selector->num_vbos_in_user_sgprs) {
-         vgpr = 8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->num_vbos_in_user_sgprs * 4;
+      if (shader->selector->info.num_vbos_in_user_sgprs) {
+         vgpr = 8 + SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->info.num_vbos_in_user_sgprs * 4;
       } else {
          vgpr = 8 + GFX9_GS_NUM_USER_SGPR + 1;
       }
@@ -1770,7 +1770,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
          LLVMBuildStore(builder, out_val, ngg_gs_get_emit_output_ptr(ctx, vertexptr, out_idx));
       }
    }
-   assert(out_idx * 4 == sel->gsvs_vertex_size);
+   assert(out_idx * 4 == info->gsvs_vertex_size);
 
    /* Determine and store whether this vertex completed a primitive. */
    const LLVMValueRef curverts = LLVMBuildLoad(builder, ctx->gs_curprim_verts[stream], "");
@@ -2227,8 +2227,8 @@ retry_select_mode:
          max_out_verts_per_gsprim = gs_sel->info.base.gs.vertices_out;
       }
 
-      esvert_lds_size = es_sel->esgs_itemsize / 4;
-      gsprim_lds_size = (gs_sel->gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
+      esvert_lds_size = es_sel->info.esgs_itemsize / 4;
+      gsprim_lds_size = (gs_sel->info.gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
 
       if (gsprim_lds_size > target_lds_size && !force_multi_cycling) {
          if (gs_sel->tess_turns_off_ngg || es_sel->info.stage != MESA_SHADER_TESS_EVAL) {

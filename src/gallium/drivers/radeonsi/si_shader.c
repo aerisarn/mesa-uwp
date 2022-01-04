@@ -281,7 +281,7 @@ static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
 {
    ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_CONST_DESC_PTR, &ctx->args.vertex_buffers);
 
-   unsigned num_vbos_in_user_sgprs = ctx->shader->selector->num_vbos_in_user_sgprs;
+   unsigned num_vbos_in_user_sgprs = ctx->shader->selector->info.num_vbos_in_user_sgprs;
    if (num_vbos_in_user_sgprs) {
       unsigned user_sgprs = ctx->args.num_sgprs_used;
 
@@ -496,14 +496,14 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
          /* VS outputs passed via VGPRs to TCS. */
          if (shader->key.ge.opt.same_patch_vertices) {
-            unsigned num_outputs = util_last_bit64(shader->selector->outputs_written);
+            unsigned num_outputs = util_last_bit64(shader->selector->info.outputs_written);
             for (i = 0; i < num_outputs * 4; i++)
                ac_add_return(&ctx->args, AC_ARG_VGPR);
          }
       } else {
          /* TCS inputs are passed via VGPRs from VS. */
          if (shader->key.ge.opt.same_patch_vertices) {
-            unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->outputs_written);
+            unsigned num_inputs = util_last_bit64(shader->previous_stage_sel->info.outputs_written);
             for (i = 0; i < num_inputs * 4; i++)
                ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, NULL);
          }
@@ -592,10 +592,10 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
              */
             num_user_sgprs = GFX9_GS_NUM_USER_SGPR + 1;
 
-            if (shader->selector->num_vbos_in_user_sgprs) {
+            if (shader->selector->info.num_vbos_in_user_sgprs) {
                assert(num_user_sgprs <= SI_SGPR_VS_VB_DESCRIPTOR_FIRST);
                num_user_sgprs =
-                  SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->num_vbos_in_user_sgprs * 4;
+                  SI_SGPR_VS_VB_DESCRIPTOR_FIRST + shader->selector->info.num_vbos_in_user_sgprs * 4;
             }
          } else {
             num_user_sgprs = GFX9_GS_NUM_USER_SGPR;
@@ -1319,7 +1319,7 @@ bool si_vs_needs_prolog(const struct si_shader_selector *sel,
 
    /* VGPR initialization fixup for Vega10 and Raven is always done in the
     * VS prolog. */
-   return sel->vs_needs_prolog || prolog_key->ls_vgpr_fix ||
+   return sel->info.vs_needs_prolog || prolog_key->ls_vgpr_fix ||
           /* The 2nd VS prolog loads input VGPRs from LDS */
           (key->ge.opt.ngg_culling && !ngg_cull_shader && !is_gs);
 }
@@ -1575,7 +1575,7 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
 void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
 {
    struct si_shader_info info;
-   si_nir_scan_shader(nir, &info);
+   si_nir_scan_shader(shader->selector->screen, nir, &info);
 
    shader->info.uses_vmem_load_other |= info.uses_vmem_load_other;
    shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
@@ -1915,7 +1915,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
       shader->info.uses_vmem_load_other = true;
 
    if (info->colors_read) {
-      ubyte *color = shader->selector->color_attr_index;
+      ubyte *color = shader->selector->info.color_attr_index;
 
       if (shader->key.ps.part.prolog.color_two_side) {
          /* BCOLORs are stored after the last input. */

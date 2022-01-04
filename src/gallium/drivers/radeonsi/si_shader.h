@@ -156,6 +156,7 @@ struct si_context;
 
 #define SI_MAX_ATTRIBS    16
 #define SI_MAX_VS_OUTPUTS 40
+#define SI_USER_CLIP_PLANE_MASK  0x3F
 
 #define SI_NGG_PRIM_EDGE_FLAG_BITS ((1 << 9) | (1 << 19) | (1 << 29))
 
@@ -362,18 +363,43 @@ struct si_shader_info {
    ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_type[PIPE_MAX_SHADER_OUTPUTS]; /* enum nir_alu_type */
 
-   ubyte color_interpolate[2];
-   ubyte color_interpolate_loc[2];
-
-   int constbuf0_num_slots;
+   ubyte num_vs_inputs;
+   ubyte num_vbos_in_user_sgprs;
    ubyte num_stream_output_components[4];
    uint16_t enabled_streamout_buffer_mask;
 
-   uint num_memory_stores;
+   uint64_t inputs_read; /* "get_unique_index" bits */
+   uint64_t tcs_vgpr_only_inputs; /* TCS inputs that are only in VGPRs, not LDS. */
 
+   uint64_t outputs_written_before_ps; /* "get_unique_index" bits */
+   uint64_t outputs_written;           /* "get_unique_index" bits */
+   uint32_t patch_outputs_written;     /* "get_unique_index_patch" bits */
+
+   ubyte clipdist_mask;
+   ubyte culldist_mask;
+
+   uint16_t lshs_vertex_stride;
+   uint16_t esgs_itemsize; /* vertex stride */
+   uint16_t gsvs_vertex_size;
+   ubyte gs_input_verts_per_prim;
+   unsigned max_gsvs_emit_size;
+
+   /* PS parameters */
+   unsigned db_shader_control;
+   /* Set 0xf or 0x0 (4 bits) per each written output.
+    * ANDed with spi_shader_col_format.
+    */
+   unsigned colors_written_4bit;
+
+   int constbuf0_num_slots;
+   uint num_memory_stores;
+   ubyte color_attr_index[2];
+   ubyte color_interpolate[2];
+   ubyte color_interpolate_loc[2];
    ubyte colors_read; /**< which color components are read by the FS */
    ubyte colors_written;
    uint16_t output_color_types; /**< Each bit pair is enum si_color_output_type */
+   bool vs_needs_prolog;
    bool color0_writes_all_cbufs; /**< gl_FragColor */
    bool reads_samplemask;   /**< does fragment shader read sample mask? */
    bool reads_tess_factors; /**< If TES reads TESSINNER or TESSOUTER */
@@ -465,43 +491,16 @@ struct si_shader_selector {
    enum pipe_shader_type pipe_shader_type;
    ubyte const_and_shader_buf_descriptors_index;
    ubyte sampler_and_images_descriptors_index;
-   bool vs_needs_prolog;
    ubyte cs_shaderbufs_sgpr_index;
    ubyte cs_num_shaderbufs_in_user_sgprs;
    ubyte cs_images_sgpr_index;
    ubyte cs_images_num_sgprs;
    ubyte cs_num_images_in_user_sgprs;
-   ubyte num_vs_inputs;
-   ubyte num_vbos_in_user_sgprs;
    unsigned ngg_cull_vert_threshold; /* UINT32_MAX = disabled */
-   ubyte clipdist_mask;
-   ubyte culldist_mask;
    enum pipe_prim_type rast_prim;
 
-   /* ES parameters. */
-   uint16_t esgs_itemsize; /* vertex stride */
-   uint16_t lshs_vertex_stride;
-
    /* GS parameters. */
-   uint16_t gsvs_vertex_size;
-   ubyte gs_input_verts_per_prim;
-   unsigned max_gsvs_emit_size;
    bool tess_turns_off_ngg;
-
-   /* PS parameters. */
-   ubyte color_attr_index[2];
-   unsigned db_shader_control;
-   /* Set 0xf or 0x0 (4 bits) per each written output.
-    * ANDed with spi_shader_col_format.
-    */
-   unsigned colors_written_4bit;
-
-   uint64_t outputs_written_before_ps; /* "get_unique_index" bits */
-   uint64_t outputs_written;           /* "get_unique_index" bits */
-   uint32_t patch_outputs_written;     /* "get_unique_index_patch" bits */
-
-   uint64_t inputs_read; /* "get_unique_index" bits */
-   uint64_t tcs_vgpr_only_inputs; /* TCS inputs that are only in VGPRs, not LDS. */
 
    /* bitmasks of used descriptor slots */
    uint64_t active_const_and_shader_buffers;
@@ -952,7 +951,8 @@ const char *si_get_shader_name(const struct si_shader *shader);
 void si_shader_binary_clean(struct si_shader_binary *binary);
 
 /* si_shader_info.c */
-void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *info);
+void si_nir_scan_shader(struct si_screen *sscreen,  const struct nir_shader *nir,
+                        struct si_shader_info *info);
 
 /* si_shader_llvm_gs.c */
 struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,

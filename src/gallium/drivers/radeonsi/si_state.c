@@ -834,9 +834,9 @@ static void si_emit_clip_regs(struct si_context *sctx)
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    bool window_space = info->stage == MESA_SHADER_VERTEX ?
                           info->base.vs.window_space_position : 0;
-   unsigned clipdist_mask = vs_sel->clipdist_mask;
+   unsigned clipdist_mask = vs_sel->info.clipdist_mask;
    unsigned ucp_mask = clipdist_mask ? 0 : rs->clip_plane_enable & SI_USER_CLIP_PLANE_MASK;
-   unsigned culldist_mask = vs_sel->culldist_mask;
+   unsigned culldist_mask = vs_sel->info.culldist_mask;
 
    /* Clip distances on points have no effect, so need to be implemented
     * as cull distances. This applies for the clipvertex case as well.

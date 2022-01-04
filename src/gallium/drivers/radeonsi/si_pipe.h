@@ -122,7 +122,6 @@ extern "C" {
 
 #define SI_MAX_BORDER_COLORS              4096
 #define SI_MAX_VIEWPORTS                  16
-#define SI_USER_CLIP_PLANE_MASK           0x3F
 #define SI_MAP_BUFFER_ALIGNMENT           64
 /* We only support the minimum allowed value (512), so that we can pack a 3D block size
  * in 1 SGPR. */
@@ -1882,8 +1881,8 @@ static inline unsigned si_get_total_colormask(struct si_context *sctx)
       sctx->framebuffer.colorbuf_enabled_4bit & sctx->queued.named.blend->cb_target_mask;
 
    if (!ps->info.color0_writes_all_cbufs)
-      colormask &= ps->colors_written_4bit;
-   else if (!ps->colors_written_4bit)
+      colormask &= ps->info.colors_written_4bit;
+   else if (!ps->info.colors_written_4bit)
       colormask = 0; /* color0 writes all cbufs, but it's not written */
 
    return colormask;

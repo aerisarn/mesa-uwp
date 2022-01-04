@@ -140,7 +140,7 @@ void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi)
    int i;
 
    if (ctx->screen->info.chip_class >= GFX9 && info->num_outputs) {
-      unsigned itemsize_dw = es->selector->esgs_itemsize / 4;
+      unsigned itemsize_dw = es->selector->info.esgs_itemsize / 4;
       LLVMValueRef vertex_idx = ac_get_thread_id(&ctx->ac);
       LLVMValueRef wave_idx = si_unpack_param(ctx, ctx->args.merged_wave_info, 24, 4);
       vertex_idx =

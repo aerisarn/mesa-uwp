@@ -559,13 +559,13 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
 
    /* This calculates how shader inputs and outputs among VS, TCS, and TES
     * are laid out in LDS. */
-   unsigned num_tcs_inputs = util_last_bit64(ls->outputs_written);
+   unsigned num_tcs_inputs = util_last_bit64(ls->info.outputs_written);
    unsigned num_tcs_output_cp, num_tcs_outputs, num_tcs_patch_outputs;
 
    if (sctx->shader.tcs.cso) {
-      num_tcs_outputs = util_last_bit64(tcs->outputs_written);
+      num_tcs_outputs = util_last_bit64(tcs->info.outputs_written);
       num_tcs_output_cp = tcs->info.base.tess.tcs_vertices_out;
-      num_tcs_patch_outputs = util_last_bit64(tcs->patch_outputs_written);
+      num_tcs_patch_outputs = util_last_bit64(tcs->info.patch_outputs_written);
    } else {
       /* No TCS. Route varyings from LS to TES. */
       num_tcs_outputs = num_tcs_inputs;
@@ -573,13 +573,13 @@ static void si_emit_derived_tess_state(struct si_context *sctx, unsigned *num_pa
       num_tcs_patch_outputs = 2; /* TESSINNER + TESSOUTER */
    }
 
-   unsigned input_vertex_size = ls->lshs_vertex_stride;
+   unsigned input_vertex_size = ls->info.lshs_vertex_stride;
    unsigned output_vertex_size = num_tcs_outputs * 16;
    unsigned input_patch_size;
 
    /* Allocate LDS for TCS inputs only if it's used. */
    if (!ls_current->key.ge.opt.same_patch_vertices ||
-       tcs->info.base.inputs_read & ~tcs->tcs_vgpr_only_inputs)
+       tcs->info.base.inputs_read & ~tcs->info.tcs_vgpr_only_inputs)
       input_patch_size = num_tcs_input_cp * input_vertex_size;
    else
       input_patch_size = 0;
@@ -2112,8 +2112,8 @@ static void si_draw(struct pipe_context *ctx,
    struct si_shader_selector *vs = sctx->shader.vs.cso;
    struct si_vertex_state *vstate = (struct si_vertex_state *)state;
    if (unlikely(!vs ||
-                (!IS_DRAW_VERTEX_STATE && sctx->num_vertex_elements < vs->num_vs_inputs) ||
-                (IS_DRAW_VERTEX_STATE && vstate->velems.count < vs->num_vs_inputs) ||
+                (!IS_DRAW_VERTEX_STATE && sctx->num_vertex_elements < vs->info.num_vs_inputs) ||
+                (IS_DRAW_VERTEX_STATE && vstate->velems.count < vs->info.num_vs_inputs) ||
                 !sctx->shader.ps.cso || (HAS_TESS != (prim == PIPE_PRIM_PATCHES)))) {
       assert(0);
       return;

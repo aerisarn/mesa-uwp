@@ -22,8 +22,10 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "si_shader.h"
+#include "si_pipe.h"
 #include "util/mesa-sha1.h"
+#include "util/u_prim.h"
+#include "sid.h"
 
 
 struct si_shader_profile {
@@ -580,7 +582,8 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
    }
 }
 
-void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *info)
+void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
+                        struct si_shader_info *info)
 {
    memset(info, 0, sizeof(*info));
    info->base = nir->info;
@@ -729,4 +732,155 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       info->output_readmask[i] &= info->output_usagemask[i];
 
    info->has_divergent_loop = nir_has_divergent_loop((nir_shader*)nir);
+
+   if (info->stage == MESA_SHADER_VERTEX ||
+       info->stage == MESA_SHADER_TESS_CTRL ||
+       info->stage == MESA_SHADER_TESS_EVAL ||
+       info->stage == MESA_SHADER_GEOMETRY) {
+      if (info->stage == MESA_SHADER_TESS_CTRL) {
+         /* Always reserve space for these. */
+         info->patch_outputs_written |=
+            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
+            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
+      }
+      for (unsigned i = 0; i < info->num_outputs; i++) {
+         unsigned semantic = info->output_semantic[i];
+
+         if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
+             semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
+             (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
+            info->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
+         } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
+                    semantic != VARYING_SLOT_EDGE) {
+            info->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
+
+            /* Ignore outputs that are not passed from VS to PS. */
+            if (semantic != VARYING_SLOT_POS &&
+                semantic != VARYING_SLOT_PSIZ &&
+                semantic != VARYING_SLOT_CLIP_VERTEX) {
+               info->outputs_written_before_ps |= 1ull
+                                                  << si_shader_io_get_unique_index(semantic, true);
+            }
+         }
+      }
+   }
+
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      info->num_vs_inputs =
+         info->stage == MESA_SHADER_VERTEX && !info->base.vs.blit_sgprs_amd ? info->num_inputs : 0;
+      unsigned num_vbos_in_sgprs = si_num_vbos_in_user_sgprs_inline(sscreen->info.chip_class);
+      info->num_vbos_in_user_sgprs = MIN2(info->num_vs_inputs, num_vbos_in_sgprs);
+
+      /* The prolog is a no-op if there are no inputs. */
+      info->vs_needs_prolog = info->num_inputs && !info->base.vs.blit_sgprs_amd;
+   }
+
+   if (nir->info.stage == MESA_SHADER_VERTEX ||
+       nir->info.stage == MESA_SHADER_TESS_CTRL ||
+       nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      info->esgs_itemsize = util_last_bit64(info->outputs_written) * 16;
+      info->lshs_vertex_stride = info->esgs_itemsize;
+
+      /* Add 1 dword to reduce LDS bank conflicts, so that each vertex
+       * will start on a different bank. (except for the maximum 32*16).
+       */
+      if (info->lshs_vertex_stride < 32 * 16)
+         info->lshs_vertex_stride += 4;
+
+      /* For the ESGS ring in LDS, add 1 dword to reduce LDS bank
+       * conflicts, i.e. each vertex will start at a different bank.
+       */
+      if (sscreen->info.chip_class >= GFX9)
+         info->esgs_itemsize += 4;
+
+      assert(((info->esgs_itemsize / 4) & C_028AAC_ITEMSIZE) == 0);
+
+      info->tcs_vgpr_only_inputs = ~info->base.tess.tcs_cross_invocation_inputs_read &
+                                   ~info->base.inputs_read_indirectly &
+                                   info->base.inputs_read;
+   }
+
+   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      info->gsvs_vertex_size = info->num_outputs * 16;
+      info->max_gsvs_emit_size = info->gsvs_vertex_size * info->base.gs.vertices_out;
+      info->gs_input_verts_per_prim =
+         u_vertices_per_prim((enum pipe_prim_type)info->base.gs.input_primitive);
+   }
+
+   info->clipdist_mask = info->writes_clipvertex ? SI_USER_CLIP_PLANE_MASK :
+                         u_bit_consecutive(0, info->base.clip_distance_array_size);
+   info->culldist_mask = u_bit_consecutive(0, info->base.cull_distance_array_size) <<
+                         info->base.clip_distance_array_size;
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      for (unsigned i = 0; i < info->num_inputs; i++) {
+         unsigned semantic = info->input[i].semantic;
+
+         if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
+             semantic != VARYING_SLOT_PNTC) {
+            info->inputs_read |= 1ull << si_shader_io_get_unique_index(semantic, true);
+         }
+      }
+
+      for (unsigned i = 0; i < 8; i++)
+         if (info->colors_written & (1 << i))
+            info->colors_written_4bit |= 0xf << (4 * i);
+
+      for (unsigned i = 0; i < info->num_inputs; i++) {
+         if (info->input[i].semantic == VARYING_SLOT_COL0)
+            info->color_attr_index[0] = i;
+         else if (info->input[i].semantic == VARYING_SLOT_COL1)
+            info->color_attr_index[1] = i;
+      }
+
+      /* DB_SHADER_CONTROL */
+      info->db_shader_control = S_02880C_Z_EXPORT_ENABLE(info->writes_z) |
+                                S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(info->writes_stencil) |
+                                S_02880C_MASK_EXPORT_ENABLE(info->writes_samplemask) |
+                                S_02880C_KILL_ENABLE(info->base.fs.uses_discard);
+
+      switch (info->base.fs.depth_layout) {
+      case FRAG_DEPTH_LAYOUT_GREATER:
+         info->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_GREATER_THAN_Z);
+         break;
+      case FRAG_DEPTH_LAYOUT_LESS:
+         info->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_LESS_THAN_Z);
+         break;
+      default:;
+      }
+
+      /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
+       *
+       *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
+       * --|-----------|------------|------------|--------------------|-------------------|-------------
+       * 1a|   false   |   false    |   true     | EarlyZ_Then_ReZ    |         0         |     0
+       * 1b|   false   |   false    |   false    | EarlyZ_Then_LateZ  |         0         |     0
+       * 2 |   false   |   true     |   n/a      |       LateZ        |         1         |     0
+       * 3 |   true    |   false    |   n/a      | EarlyZ_Then_LateZ  |         0         |     0
+       * 4 |   true    |   true     |   n/a      | EarlyZ_Then_LateZ  |         0         |     1
+       *
+       * In cases 3 and 4, HW will force Z_ORDER to EarlyZ regardless of what's set in the register.
+       * In case 2, NOOP_CULL is a don't care field. In case 2, 3 and 4, ReZ doesn't make sense.
+       *
+       * Don't use ReZ without profiling !!!
+       *
+       * ReZ decreases performance by 15% in DiRT: Showdown on Ultra settings, which has pretty complex
+       * shaders.
+       */
+      if (info->base.fs.early_fragment_tests) {
+         /* Cases 3, 4. */
+         info->db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
+                                    S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
+                                    S_02880C_EXEC_ON_NOOP(info->base.writes_memory);
+      } else if (info->base.writes_memory) {
+         /* Case 2. */
+         info->db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
+      } else {
+         /* Case 1. */
+         info->db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
+      }
+
+      if (info->base.fs.post_depth_coverage)
+         info->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
+   }
 }
