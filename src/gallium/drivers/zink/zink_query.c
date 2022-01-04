@@ -849,7 +849,13 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
       }
       if (query->needs_update)
          update_qbo(ctx, query);
-      if (query->last_start && query->curr_query > NUM_QUERIES / 2)
+      /* do an implicit copy+reset if:
+       * - query is being read from and >50% of pool is used
+       * - >90% of pool is used
+       *
+       * this avoids overflow
+       */
+      if ((query->last_start && query->curr_query > NUM_QUERIES / 2) || (query->curr_query > NUM_QUERIES * 0.9))
          reset_pool(ctx, batch, query);
    }
 }
