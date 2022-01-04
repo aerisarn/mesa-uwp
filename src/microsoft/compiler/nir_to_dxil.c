@@ -3063,8 +3063,10 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
       attr_at_vertex = var && var->data.interpolation == INTERP_MODE_FLAT;
    }
 
-   bool is_patch_constant = ctx->mod.shader_kind == DXIL_DOMAIN_SHADER &&
-      intr->intrinsic == nir_intrinsic_load_input;
+   bool is_patch_constant = (ctx->mod.shader_kind == DXIL_DOMAIN_SHADER &&
+                             intr->intrinsic == nir_intrinsic_load_input) ||
+                            (ctx->mod.shader_kind == DXIL_HULL_SHADER &&
+                             intr->intrinsic == nir_intrinsic_load_output);
    bool is_output_control_point = intr->intrinsic == nir_intrinsic_load_per_vertex_output;
 
    unsigned opcode_val;
@@ -4093,6 +4095,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_get_ssbo_size(ctx, intr);
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_per_vertex_input:
+   case nir_intrinsic_load_output:
    case nir_intrinsic_load_per_vertex_output:
       return emit_load_input_via_intrinsic(ctx, intr);
    case nir_intrinsic_store_output:
