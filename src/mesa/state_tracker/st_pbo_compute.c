@@ -35,6 +35,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_format_convert.h"
 #include "compiler/glsl/gl_nir.h"
+#include "compiler/glsl/gl_nir_linker.h"
 #include "util/u_sampler.h"
 
 #define BGR_FORMAT(NAME) \
@@ -649,7 +650,7 @@ create_conversion_shader(struct st_context *st, enum pipe_texture_target target,
    nir_pop_if(&b, NULL);
 
    nir_validate_shader(b.shader, NULL);
-   st_nir_opts(b.shader);
+   gl_nir_opts(b.shader);
    return st_nir_finish_builtin_shader(st, b.shader);
 }
 

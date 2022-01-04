@@ -41,6 +41,7 @@
 #include "program/programopt.h"
 
 #include "compiler/glsl/gl_nir.h"
+#include "compiler/glsl/gl_nir_linker.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_serialize.h"
 #include "draw/draw_context.h"
@@ -386,7 +387,7 @@ st_prog_to_nir_postprocess(struct st_context *st, nir_shader *nir,
 
    /* Optimise NIR */
    NIR_PASS_V(nir, nir_opt_constant_folding);
-   st_nir_opts(nir);
+   gl_nir_opts(nir);
    st_finalize_nir_before_variants(nir);
 
    if (st->allow_st_finalize_nir_twice) {
