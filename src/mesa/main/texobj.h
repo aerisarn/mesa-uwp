@@ -205,10 +205,6 @@ _mesa_unlock_context_textures( struct gl_context *ctx );
 extern void
 _mesa_lock_context_textures( struct gl_context *ctx );
 
-extern void
-_mesa_delete_nameless_texture(struct gl_context *ctx,
-                              struct gl_texture_object *texObj);
-
 extern struct gl_texture_object *
 _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
                                GLuint texName, bool no_error, bool is_ext_dsa,
