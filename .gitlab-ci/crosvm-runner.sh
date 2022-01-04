@@ -12,7 +12,7 @@ fi
 
 export -p > $DEQP_TEMP_DIR/crosvm-env.sh
 
-CROSVM_KERNEL_ARGS="console=null root=my_root rw rootfstype=virtiofs init=$CI_PROJECT_DIR/install/crosvm-init.sh ip=192.168.30.2::192.168.30.1:255.255.255.0:crosvm:eth0 -- $DEQP_TEMP_DIR"
+CROSVM_KERNEL_ARGS="quiet console=null root=my_root rw rootfstype=virtiofs init=$CI_PROJECT_DIR/install/crosvm-init.sh ip=192.168.30.2::192.168.30.1:255.255.255.0:crosvm:eth0 -- $DEQP_TEMP_DIR"
 
 echo $@ > $DEQP_TEMP_DIR/crosvm-script.sh
 
@@ -30,10 +30,10 @@ tail -f $DEQP_TEMP_DIR/stdout > /dev/stdout &
 OUT_TAIL_PID=$!
 
 trap "exit \$exit_code" INT TERM
-trap "exit_code=\$?; kill $ERR_TAIL_PID $OUT_TAIL_PID" EXIT
+trap "exit_code=\$?; kill $ERR_TAIL_PID $OUT_TAIL_PID; rm -rf $DEQP_TEMP_DIR" EXIT
 
 # We aren't testing LLVMPipe here, so we don't need to validate NIR on the host
-NIR_DEBUG="novalidate" LIBGL_ALWAYS_SOFTWARE="true" GALLIUM_DRIVER="$CROSVM_GALLIUM_DRIVER" stdbuf -oL crosvm run \
+NIR_DEBUG="novalidate" LIBGL_ALWAYS_SOFTWARE="true" GALLIUM_DRIVER="$CROSVM_GALLIUM_DRIVER" crosvm run \
   --gpu "$CROSVM_GPU_ARGS" \
   -m 4096 \
   -c 2 \
@@ -41,7 +41,11 @@ NIR_DEBUG="novalidate" LIBGL_ALWAYS_SOFTWARE="true" GALLIUM_DRIVER="$CROSVM_GALL
   --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
   --host_ip=192.168.30.1 --netmask=255.255.255.0 --mac "AA:BB:CC:00:00:12" \
   -p "$CROSVM_KERNEL_ARGS" \
-  /lava-files/bzImage >> $DEQP_TEMP_DIR/stderr > /dev/null
+  /lava-files/bzImage > $DEQP_TEMP_DIR/crosvm 2>&1
 
-RET=$(cat $DEQP_TEMP_DIR/exit_code)
+RET=$(cat $DEQP_TEMP_DIR/exit_code || true)
+
+# Got no exit code from the script, show crosvm output to help with debugging
+[ -n "$RET" ] || cat $DEQP_TEMP_DIR/crosvm || true
+
 exit ${RET:-1}
