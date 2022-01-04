@@ -374,6 +374,7 @@ static bool is_bindless_handle_indirect(nir_instr *src)
    return false;
 }
 
+/* TODO: convert to nir_shader_instructions_pass */
 static void scan_instruction(const struct nir_shader *nir, struct si_shader_info *info,
                              nir_instr *instr)
 {
@@ -570,8 +571,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
 
 void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *info)
 {
-   nir_function *func;
-
    memset(info, 0, sizeof(*info));
    info->base = nir->info;
    info->stage = nir->info.stage;
@@ -658,8 +657,8 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       info->writes_position = nir->info.outputs_written & VARYING_BIT_POS;
    }
 
-   func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
-   nir_foreach_block (block, func->impl) {
+   nir_function_impl *impl = nir_shader_get_entrypoint((nir_shader*)nir);
+   nir_foreach_block (block, impl) {
       nir_foreach_instr (instr, block)
          scan_instruction(nir, info, instr);
    }
