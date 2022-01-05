@@ -266,6 +266,7 @@ v3d_get_tile_buffer_size(bool is_msaa,
         }
 
         v3d_choose_tile_size(max_cbuf_idx + 1, *max_bpp, is_msaa,
+                             false /* double-buffer */,
                              tile_width, tile_height);
 }
 

@@ -310,7 +310,9 @@ subpass_get_granularity(struct v3dv_device *device,
    }
 
    uint32_t width, height;
-   v3d_choose_tile_size(color_attachment_count, max_bpp, msaa, &width, &height);
+   bool double_buffer = (V3D_DEBUG & V3D_DEBUG_DOUBLE_BUFFER) && !msaa;
+   v3d_choose_tile_size(color_attachment_count, max_bpp, msaa,
+                        double_buffer, &width, &height);
    *granularity = (VkExtent2D) {
       .width = width,
       .height = height

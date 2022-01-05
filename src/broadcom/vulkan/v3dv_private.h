@@ -745,6 +745,7 @@ struct v3dv_frame_tiling {
    uint32_t render_target_count;
    uint32_t internal_bpp;
    bool     msaa;
+   bool     double_buffer;
    uint32_t tile_width;
    uint32_t tile_height;
    uint32_t draw_tiles_x;
@@ -764,6 +765,21 @@ bool v3dv_subpass_area_is_tile_aligned(struct v3dv_device *device,
                                        struct v3dv_framebuffer *fb,
                                        struct v3dv_render_pass *pass,
                                        uint32_t subpass_idx);
+
+/* Checks if we need to emit 2 initial tile clears for double buffer mode.
+ * This happens when we render at least 2 tiles, because in this mode each
+ * tile uses a different half of the tile buffer memory so we can have 2 tiles
+ * in flight (one being stored to memory and the next being rendered). In this
+ * scenario, if we emit a single initial tile clear we would only clear the
+ * first half of the tile buffer.
+ */
+static inline bool
+v3dv_do_double_initial_tile_clear(const struct v3dv_frame_tiling *tiling)
+{
+   return tiling->double_buffer &&
+          (tiling->draw_tiles_x > 1 || tiling->draw_tiles_y > 1 ||
+           tiling->layers > 1);
+}
 
 struct v3dv_cmd_pool {
    struct vk_object_base base;
