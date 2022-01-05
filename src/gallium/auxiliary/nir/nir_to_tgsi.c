@@ -2226,11 +2226,13 @@ ntt_emit_store_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
 static void
 ntt_emit_load_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
 {
-   /* ntt_try_store_in_tgsi_output() optimization is not valid if load_output
-    * is present.
+   nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
+
+   /* ntt_try_store_in_tgsi_output() optimization is not valid if normal
+    * load_output is present.
     */
    assert(c->s->info.stage != MESA_SHADER_VERTEX &&
-          c->s->info.stage != MESA_SHADER_FRAGMENT);
+          (c->s->info.stage != MESA_SHADER_FRAGMENT || semantics.fb_fetch_output));
 
    uint32_t frac;
    struct ureg_dst out = ntt_output_decl(c, instr, &frac);
@@ -2242,7 +2244,10 @@ ntt_emit_load_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
       out = ntt_ureg_dst_indirect(c, out, instr->src[0]);
    }
 
-   ntt_MOV(c, ntt_get_dest(c, &instr->dest), ureg_src(out));
+   if (semantics.fb_fetch_output)
+      ntt_FBFETCH(c, ntt_get_dest(c, &instr->dest), ureg_src(out));
+   else
+      ntt_MOV(c, ntt_get_dest(c, &instr->dest), ureg_src(out));
 }
 
 static void
