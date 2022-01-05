@@ -242,3 +242,15 @@ directory.  You can hack on mesa and iterate testing the build with:
 .. code-block:: console
 
     sudo docker run --rm -v `pwd`:/mesa $IMAGE ninja -C /mesa/_build
+
+
+Conformance Tests
+-----------------
+
+Some conformance tests require a special treatment to be maintained on Gitlab CI.
+This section lists their documentation pages.
+
+.. toctree::
+  :maxdepth: 1
+
+  skqp
