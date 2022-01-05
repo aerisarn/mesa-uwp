@@ -126,6 +126,7 @@ struct gl_extensions
    GLboolean ARB_sparse_buffer;
    GLboolean ARB_sparse_texture;
    GLboolean ARB_sparse_texture2;
+   GLboolean ARB_sparse_texture_clamp;
    GLboolean ARB_stencil_texturing;
    GLboolean ARB_spirv_extensions;
    GLboolean ARB_sync;
