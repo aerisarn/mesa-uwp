@@ -84,6 +84,13 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
             else
                     break;
 
+        /* For some reason MUX.v2i16 allows swaps but not replication */
+        case BI_OPCODE_MUX_V2I16:
+                if (ins->src[src].swizzle == BI_SWIZZLE_H10)
+                        return;
+                else
+                        break;
+
         /* We don't want to deal with reswizzling logic in modifier prop. Move
          * the swizzle outside, it's easier for clamp propagation. */
         case BI_OPCODE_FCLAMP_V2F16:
