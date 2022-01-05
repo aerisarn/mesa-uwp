@@ -85,13 +85,6 @@ dEQP-GLES2.functional.shaders.loops.for_constant_iterations.mixed_break_continue
 dEQP-GLES2.functional.shaders.loops.for_dynamic_iterations.mixed_break_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.loops.for_uniform_iterations.mixed_break_continue_vertex,Fail
 
-dEQP-GLES2.functional.shaders.operator.geometric.reflect.highp_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.geometric.reflect.highp_vec3_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.geometric.reflect.highp_vec4_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.geometric.reflect.mediump_vec2_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.geometric.reflect.mediump_vec3_fragment,Fail
-dEQP-GLES2.functional.shaders.operator.geometric.reflect.mediump_vec4_fragment,Fail
-
 dEQP-GLES2.functional.shaders.return.return_in_dynamic_loop_dynamic_vertex,Fail
 
 dEQP-GLES2.functional.shaders.random.texture.fragment.141,Fail
