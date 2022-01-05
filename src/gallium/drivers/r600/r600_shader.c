@@ -8465,8 +8465,18 @@ static int tgsi_tex(struct r600_shader_ctx *ctx)
 	}
 
 	if (inst->Instruction.Opcode == TGSI_OPCODE_TG4) {
-		int8_t texture_component_select = ctx->literals[4 * inst->Src[1].Register.Index + inst->Src[1].Register.SwizzleX];
-		tex.inst_mod = texture_component_select;
+		if (inst->Src[1].Register.File != TGSI_FILE_IMMEDIATE) {
+			/* TGSI doesn't have a spot to put the component for
+			 * shadowcubes, so it drops it on the floor.  Just
+			 * assume the user wanted component 0 (it's a shadow,
+			 * anything else would be absurd).
+			 */
+			assert(inst->Texture.Texture == TGSI_TEXTURE_SHADOWCUBE_ARRAY);
+			tex.inst_mod = 0;
+		} else {
+			int8_t texture_component_select = ctx->literals[4 * inst->Src[1].Register.Index + inst->Src[1].Register.SwizzleX];
+			tex.inst_mod = texture_component_select;
+		}
 
 		if (ctx->bc->chip_class == CAYMAN) {
 			tex.dst_sel_x = (inst->Dst[0].Register.WriteMask & 1) ? 0 : 7;
