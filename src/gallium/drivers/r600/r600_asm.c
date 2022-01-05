@@ -1462,6 +1462,12 @@ int r600_bytecode_add_tex(struct r600_bytecode *bc, const struct r600_bytecode_t
 				break;
 			}
 		}
+		/* vtx instrs get inserted after tex, so make sure we aren't moving the tex
+		 * before (say) the instr fetching the texcoord.
+		 */
+		if (!list_is_empty(&bc->cf_last->vtx))
+			bc->force_add_cf = 1;
+
 		/* slight hack to make gradients always go into same cf */
 		if (ntex->op == FETCH_OP_SET_GRADIENTS_H)
 			bc->force_add_cf = 1;
