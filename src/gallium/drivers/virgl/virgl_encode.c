@@ -1533,13 +1533,13 @@ void virgl_encode_copy_transfer(struct virgl_context *ctx,
    uint32_t command;
    struct virgl_screen *vs = virgl_screen(ctx->base.screen);
    // set always synchronized to 1, second bit is used for direction
-   uint32_t direction_and_synchronized = 1;
+   uint32_t direction_and_synchronized = VIRGL_COPY_TRANSFER3D_FLAGS_SYNCHRONIZED;
 
    if (vs->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_COPY_TRANSFER_BOTH_DIRECTIONS) {
       if (trans->direction == VIRGL_TRANSFER_TO_HOST) {
          // do nothing, as 0 means transfer to host
       } else if (trans->direction == VIRGL_TRANSFER_FROM_HOST) {
-         direction_and_synchronized |= 1 << 1;
+         direction_and_synchronized |= VIRGL_COPY_TRANSFER3D_FLAGS_READ_FROM_HOST;
       } else {
          // something wrong happened here
          assert(0);
