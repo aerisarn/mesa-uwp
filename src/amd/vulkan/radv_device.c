@@ -1819,8 +1819,8 @@ radv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .lineWidthGranularity = (1.0 / 8.0),
       .strictLines = false, /* FINISHME */
       .standardSampleLocations = true,
-      .optimalBufferCopyOffsetAlignment = 128,
-      .optimalBufferCopyRowPitchAlignment = 128,
+      .optimalBufferCopyOffsetAlignment = 1,
+      .optimalBufferCopyRowPitchAlignment = 1,
       .nonCoherentAtomSize = 64,
    };
 
