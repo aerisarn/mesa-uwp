@@ -70,12 +70,15 @@ d3d12_get_compiler_options(struct pipe_screen *screen,
 
 struct d3d12_varying_info {
    struct {
-      const struct glsl_type *type;
-      unsigned interpolation:3;   // INTERP_MODE_COUNT = 5
-      unsigned driver_location:6; // VARYING_SLOT_MAX = 64
-      unsigned patch:1;
-      unsigned compact:1;
-   } vars[VARYING_SLOT_MAX];
+      const struct glsl_type *types[4];
+      uint8_t location_frac_mask:2;
+      uint8_t patch:1;
+      struct {
+         unsigned interpolation:3;   // INTERP_MODE_COUNT = 5
+         unsigned driver_location:6; // VARYING_SLOT_MAX = 64
+         unsigned compact:1;
+      } vars[4];
+   } slots[VARYING_SLOT_MAX];
    uint64_t mask;
 };
 

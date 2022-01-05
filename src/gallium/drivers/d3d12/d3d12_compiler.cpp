@@ -512,24 +512,34 @@ needs_vertex_reordering(struct d3d12_selection_context *sel_ctx, const struct pi
 
 static nir_variable *
 create_varying_from_info(nir_shader *nir, struct d3d12_varying_info *info,
-                         unsigned slot, nir_variable_mode mode, bool patch)
+                         unsigned slot, unsigned slot_frac, nir_variable_mode mode, bool patch)
 {
    nir_variable *var;
    char tmp[100];
 
    snprintf(tmp, ARRAY_SIZE(tmp),
             mode == nir_var_shader_in ? "in_%d" : "out_%d",
-            info->vars[slot].driver_location);
-   var = nir_variable_create(nir, mode, info->vars[slot].type, tmp);
+            info->slots[slot].vars[slot_frac].driver_location);
+   var = nir_variable_create(nir, mode, info->slots[slot].types[slot_frac], tmp);
    var->data.location = slot;
-   var->data.driver_location = info->vars[slot].driver_location;
-   var->data.interpolation = info->vars[slot].interpolation;
-   var->data.patch = info->vars[slot].patch;
-   var->data.compact = info->vars[slot].compact;
+   var->data.location_frac = slot_frac;
+   var->data.driver_location = info->slots[slot].vars[slot_frac].driver_location;
+   var->data.interpolation = info->slots[slot].vars[slot_frac].interpolation;
+   var->data.patch = info->slots[slot].patch;
+   var->data.compact = info->slots[slot].vars[slot_frac].compact;
    if (patch)
       var->data.location += VARYING_SLOT_PATCH0;
 
    return var;
+}
+
+void
+create_varyings_from_info(nir_shader *nir, struct d3d12_varying_info *info,
+                          unsigned slot, nir_variable_mode mode, bool patch)
+{
+   unsigned mask = info->slots[slot].location_frac_mask;
+   while (mask)
+      create_varying_from_info(nir, info, slot, u_bit_scan(&mask), mode, patch);
 }
 
 static void
@@ -547,12 +557,14 @@ fill_varyings(struct d3d12_varying_info *info, nir_shader *s,
 
       if (!(mask & slot_bit))
          continue;
-      info->vars[slot].driver_location = var->data.driver_location;
-      info->vars[slot].type = var->type;
-      info->vars[slot].interpolation = var->data.interpolation;
-      info->vars[slot].patch = var->data.patch;
-      info->vars[slot].compact = var->data.compact;
+      info->slots[slot].types[var->data.location_frac] = var->type;
+      info->slots[slot].patch = var->data.patch;
+      auto& var_slot = info->slots[slot].vars[var->data.location_frac];
+      var_slot.driver_location = var->data.driver_location;
+      var_slot.interpolation = var->data.interpolation;
+      var_slot.compact = var->data.compact;
       info->mask |= slot_bit;
+      info->slots[slot].location_frac_mask |= (1 << var->data.location_frac);
    }
 }
 
@@ -1066,14 +1078,14 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
       uint64_t mask = key.required_varying_inputs.mask & ~new_nir_variant->info.inputs_read;
       while (mask) {
          int slot = u_bit_scan64(&mask);
-         create_varying_from_info(new_nir_variant, &key.required_varying_inputs, slot, nir_var_shader_in, false);
+         create_varyings_from_info(new_nir_variant, &key.required_varying_inputs, slot, nir_var_shader_in, false);
       }
 
       if (sel->stage == PIPE_SHADER_TESS_EVAL) {
          uint32_t patch_mask = (uint32_t)key.ds.required_patch_inputs.mask & ~new_nir_variant->info.patch_inputs_read;
          while (patch_mask) {
             int slot = u_bit_scan(&patch_mask);
-            create_varying_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_in, true);
+            create_varyings_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_in, true);
          }
       }
       dxil_reassign_driver_locations(new_nir_variant, nir_var_shader_in,
@@ -1085,14 +1097,14 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
       uint64_t mask = key.required_varying_outputs.mask & ~new_nir_variant->info.outputs_written;
       while (mask) {
          int slot = u_bit_scan64(&mask);
-         create_varying_from_info(new_nir_variant, &key.required_varying_outputs, slot, nir_var_shader_out, false);
+         create_varyings_from_info(new_nir_variant, &key.required_varying_outputs, slot, nir_var_shader_out, false);
       }
 
       if (sel->stage == PIPE_SHADER_TESS_CTRL) {
          uint32_t patch_mask = (uint32_t)key.hs.required_patch_outputs.mask & ~new_nir_variant->info.patch_outputs_written;
          while (patch_mask) {
             int slot = u_bit_scan(&patch_mask);
-            create_varying_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_out, true);
+            create_varyings_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_out, true);
          }
       }
       dxil_reassign_driver_locations(new_nir_variant, nir_var_shader_out,

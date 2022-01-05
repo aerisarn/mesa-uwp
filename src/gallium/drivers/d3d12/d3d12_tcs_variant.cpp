@@ -69,28 +69,30 @@ create_tess_ctrl_shader_variant(struct d3d12_context *ctx, struct d3d12_tcs_vari
 
    while(varying_mask) {
       int var_idx = u_bit_scan64(&varying_mask);
-      auto var = &key->varyings.vars[var_idx];
-      const struct glsl_type *type = var->type;
-      const struct glsl_type *in_type = var->type;
-      const struct glsl_type *out_type = var->type;
-      in_type = glsl_array_type(type, key->vertices_out, 0);
-      out_type = glsl_array_type(type, key->vertices_out, 0);
+      auto slot = &key->varyings.slots[var_idx];
+      unsigned frac_mask = slot->location_frac_mask;
+      while (frac_mask) {
+         int frac = u_bit_scan(&frac_mask);
+         auto var = &slot->vars[frac];
+         const struct glsl_type *type = glsl_array_type(slot->types[frac], key->vertices_out, 0);
 
-      char buf[1024];
-      snprintf(buf, sizeof(buf), "in_%d", var->driver_location);
-      nir_variable *in = nir_variable_create(nir, nir_var_shader_in, in_type, buf);
-      snprintf(buf, sizeof(buf), "out_%d", var->driver_location);
-      nir_variable *out = nir_variable_create(nir, nir_var_shader_out, out_type, buf);
-      out->data.location = in->data.location = var_idx;
-      out->data.driver_location = in->data.driver_location = var->driver_location;
+         char buf[1024];
+         snprintf(buf, sizeof(buf), "in_%d", var->driver_location);
+         nir_variable *in = nir_variable_create(nir, nir_var_shader_in, type, buf);
+         snprintf(buf, sizeof(buf), "out_%d", var->driver_location);
+         nir_variable *out = nir_variable_create(nir, nir_var_shader_out, type, buf);
+         out->data.location = in->data.location = var_idx;
+         out->data.location_frac = in->data.location_frac = frac;
+         out->data.driver_location = in->data.driver_location = var->driver_location;
 
-      for (unsigned i = 0; i < key->vertices_out; i++) {
-         nir_if *start_block = nir_push_if(&b, nir_ieq(&b, invocation_id, nir_imm_int(&b, i)));
-         nir_deref_instr *in_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, in), invocation_id);
-         nir_ssa_def *load = nir_load_deref(&b, in_array_var);
-         nir_deref_instr *out_array_var = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, out), i);
-         nir_store_deref(&b, out_array_var, load, 0xff);
-         nir_pop_if(&b, start_block);
+         for (unsigned i = 0; i < key->vertices_out; i++) {
+            nir_if *start_block = nir_push_if(&b, nir_ieq(&b, invocation_id, nir_imm_int(&b, i)));
+            nir_deref_instr *in_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, in), invocation_id);
+            nir_ssa_def *load = nir_load_deref(&b, in_array_var);
+            nir_deref_instr *out_array_var = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, out), i);
+            nir_store_deref(&b, out_array_var, load, 0xff);
+            nir_pop_if(&b, start_block);
+         }
       }
    }
    nir_variable *gl_TessLevelInner = nir_variable_create(nir, nir_var_shader_out, glsl_array_type(glsl_float_type(), 2, 0), "gl_TessLevelInner");
