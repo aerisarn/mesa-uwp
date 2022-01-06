@@ -80,10 +80,6 @@ struct r600_shader {
 	boolean			fs_write_all;
 	boolean			two_side;
 	boolean			needs_scratch_space;
-	/* Number of color outputs in the TGSI shader,
-	 * sometimes it could be higher than nr_cbufs (bug?).
-	 * Also with writes_all property on eg+ it will be set to max CB number */
-	unsigned		nr_ps_max_color_exports;
 	/* Real number of ps color exports compiled in the bytecode */
 	unsigned		nr_ps_color_exports;
 	unsigned                ps_color_export_mask;

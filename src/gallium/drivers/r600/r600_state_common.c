@@ -915,15 +915,6 @@ int r600_shader_select(struct pipe_context *ctx,
 			return r;
 		}
 
-		/* We don't know the value of nr_ps_max_color_exports until we built
-		 * at least one variant, so we may need to recompute the key after
-		 * building first variant. */
-		if (sel->type == PIPE_SHADER_FRAGMENT &&
-				sel->num_shaders == 0) {
-			sel->nr_ps_max_color_exports = shader->shader.nr_ps_max_color_exports;
-			r600_shader_selector_key(ctx, sel, &key);
-		}
-
 		memcpy(&shader->key, &key, sizeof(key));
 		sel->num_shaders++;
 	}
