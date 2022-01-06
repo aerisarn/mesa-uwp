@@ -327,6 +327,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          si_get_param(pscreen, PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS) : 0;
    case PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS:
    case PIPE_CAP_QUERY_SPARSE_TEXTURE_RESIDENCY:
+   case PIPE_CAP_CLAMP_SPARSE_TEXTURE_LOD:
       return enable_sparse;
 
    /* Viewports and render targets. */
