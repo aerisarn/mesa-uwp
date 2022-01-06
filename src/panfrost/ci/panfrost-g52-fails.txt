@@ -396,7 +396,6 @@ spec@arb_uniform_buffer_object@rendering-dsa-offset,Fail
 spec@arb_uniform_buffer_object@rendering,Fail
 spec@arb_uniform_buffer_object@rendering-offset,Fail
 spec@arb_vertex_program@clip-plane-transformation arb,Fail
-spec@egl 1.4@egl-copy-buffers,Crash
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance,Fail
@@ -407,8 +406,6 @@ spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
 spec@ext_base_instance@arb_base_instance-drawarrays_gles3,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
-spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 2,Fail
-spec@ext_framebuffer_multisample@alpha-to-coverage-dual-src-blend 4,Fail
 spec@ext_framebuffer_multisample@alpha-to-one-dual-src-blend 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-one-dual-src-blend 4,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 2,Fail
@@ -417,10 +414,6 @@ spec@ext_framebuffer_multisample@fast-clear,Fail
 spec@ext_framebuffer_multisample@formats 2,Fail
 spec@ext_framebuffer_multisample@formats 4,Fail
 spec@ext_framebuffer_multisample@formats all_samples,Fail
-spec@ext_framebuffer_multisample@interpolation 2 centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 2 centroid-edges,Fail
-spec@ext_framebuffer_multisample@interpolation 4 centroid-disabled,Fail
-spec@ext_framebuffer_multisample@interpolation 4 centroid-edges,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 2 depth,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 depth,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 2,Fail
@@ -641,6 +634,7 @@ spec@ext_transform_feedback@order elements lines,Fail
 spec@ext_transform_feedback@order elements points,Fail
 spec@ext_transform_feedback@order elements triangles,Fail
 spec@ext_transform_feedback@overflow-edge-cases,Fail
+spec@ext_transform_feedback@pipeline-basic-primgen,Fail
 spec@ext_transform_feedback@position-readback-bufferbase-discard,Fail
 spec@ext_transform_feedback@position-readback-bufferbase,Fail
 spec@ext_transform_feedback@position-readback-bufferoffset-discard,Fail
@@ -818,7 +812,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gl hdr,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl hdr@HDR Profile,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
-spec@nv_conditional_render@blitframebuffer,Crash
 spec@nv_copy_image@nv_copy_image-formats,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2,Fail
 spec@nv_copy_image@nv_copy_image-formats --samples=2@Source: GL_ALPHA8/Destination: GL_ALPHA8,Fail
@@ -1266,6 +1259,7 @@ spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl 3.0@gl-3.0-vertexattribipointer,Fail
 spec@!opengl 3.0@required-texture-attachment-formats,Fail
+spec@!opengl 3.0@viewport-clamp,Crash
 spec@!opengl 3.1@primitive-restart-xfb flush,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail
 spec@!opengl 3.1@primitive-restart-xfb written,Fail
