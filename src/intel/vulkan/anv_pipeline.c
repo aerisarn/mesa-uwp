@@ -1190,6 +1190,24 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
    if (deleted_output)
       nir_fixup_deref_modes(stage->nir);
 
+   /* Initially the valid outputs value is based off the renderpass color
+    * attachments (see populate_wm_prog_key()), now that we've potentially
+    * deleted variables that map to unused attachments, we need to update the
+    * valid outputs for the backend compiler based on what output variables
+    * are actually used. */
+   stage->key.wm.color_outputs_valid = 0;
+   nir_foreach_shader_out_variable_safe(var, stage->nir) {
+      if (var->data.location < FRAG_RESULT_DATA0)
+         continue;
+
+      const unsigned rt = var->data.location - FRAG_RESULT_DATA0;
+      const unsigned array_len =
+         glsl_type_is_array(var->type) ? glsl_get_length(var->type) : 1;
+      assert(rt + array_len <= MAX_RTS);
+
+      stage->key.wm.color_outputs_valid |= BITFIELD_RANGE(rt, array_len);
+   }
+
    /* We stored the number of subpass color attachments in nr_color_regions
     * when calculating the key for caching.  Now that we've computed the bind
     * map, we can reduce this to the actual max before we go into the back-end
