@@ -32,7 +32,7 @@ struct lower_state {
    nir_variable *uniform; /* (1/w, 1/h, pt_sz, max_sz) */
    nir_variable *pos_out;
    nir_variable *psiz_out;
-   nir_variable *point_coord_out[9];
+   nir_variable *point_coord_out[10];
    unsigned num_point_coords;
    nir_variable *varying_out[VARYING_SLOT_MAX];
 
@@ -189,8 +189,11 @@ lower_emit_vertex(nir_intrinsic_instr *instr, nir_builder *b, struct lower_state
 
          /* point coord */
          nir_ssa_def *point_coord = get_point_coord(b, state, i);
-         for (unsigned j = 0; j < state->num_point_coords; ++j)
-            nir_store_var(b, state->point_coord_out[j], point_coord, 0xf);
+         for (unsigned j = 0; j < state->num_point_coords; ++j) {
+            unsigned num_channels = glsl_get_components(state->point_coord_out[j]->type);
+            unsigned mask = (1 << num_channels) - 1;
+            nir_store_var(b, state->point_coord_out[j], nir_channels(b, point_coord, mask), mask);
+         }
 
          /* EmitVertex */
          nir_emit_vertex(b, .stream_id = stream_id);
@@ -259,10 +262,10 @@ d3d12_lower_point_sprite(nir_shader *shader,
 
    /* Create new outputs for point tex coordinates */
    unsigned count = 0;
-   for (unsigned int sem = 0; sem < 9; sem++) {
+   for (unsigned int sem = 0; sem < ARRAY_SIZE(state.point_coord_out); sem++) {
       if (point_coord_enable & BITFIELD64_BIT(sem)) {
          char tmp[100];
-         unsigned location = VARYING_SLOT_VAR0 + sem;
+         unsigned location = VARYING_SLOT_TEX0 + sem;
 
          snprintf(tmp, ARRAY_SIZE(tmp), "gl_TexCoord%dMESA", count);
 
@@ -274,10 +277,19 @@ d3d12_lower_point_sprite(nir_shader *shader,
          state.point_coord_out[count++] = var;
       }
    }
+   if (next_inputs_read & VARYING_BIT_PNTC) {
+      nir_variable *pntcoord_var = nir_variable_create(shader,
+                                                       nir_var_shader_out,
+                                                       glsl_vec_type(2),
+                                                       "gl_PointCoordMESA");
+      pntcoord_var->data.location = VARYING_SLOT_PNTC;
+      state.point_coord_out[count++] = pntcoord_var;
+   }
+
    state.num_point_coords = count;
-   if (point_coord_enable) {
+   if (count) {
       dxil_reassign_driver_locations(shader, nir_var_shader_out,
-                                      next_inputs_read);
+                                     next_inputs_read);
    }
 
    nir_foreach_function(function, shader) {
