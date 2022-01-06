@@ -220,26 +220,6 @@ struct etna_bo *etna_bo_ref(struct etna_bo *bo)
 	return bo;
 }
 
-/* get buffer info */
-static int get_buffer_info(struct etna_bo *bo)
-{
-	int ret;
-	struct drm_etnaviv_gem_info req = {
-		.handle = bo->handle,
-	};
-
-	ret = drmCommandWriteRead(bo->dev->fd, DRM_ETNAVIV_GEM_INFO,
-			&req, sizeof(req));
-	if (ret) {
-		return ret;
-	}
-
-	/* really all we need for now is mmap offset */
-	bo->offset = req.offset;
-
-	return 0;
-}
-
 /* import a buffer object from DRI2 name */
 struct etna_bo *etna_bo_from_name(struct etna_device *dev,
 		uint32_t name)
@@ -407,12 +387,18 @@ uint32_t etna_bo_gpu_va(struct etna_bo *bo)
 void *etna_bo_map(struct etna_bo *bo)
 {
 	if (!bo->map) {
-		if (!bo->offset) {
-			get_buffer_info(bo);
-		}
+		int ret;
+		struct drm_etnaviv_gem_info req = {
+			.handle = bo->handle,
+		};
+
+		ret = drmCommandWriteRead(bo->dev->fd, DRM_ETNAVIV_GEM_INFO,
+					&req, sizeof(req));
+		if (ret)
+			return NULL;
 
 		bo->map = os_mmap(0, bo->size, PROT_READ | PROT_WRITE,
-				  MAP_SHARED, bo->dev->fd, bo->offset);
+				  MAP_SHARED, bo->dev->fd, req.offset);
 		if (bo->map == MAP_FAILED) {
 			ERROR_MSG("mmap failed: %s", strerror(errno));
 			bo->map = NULL;

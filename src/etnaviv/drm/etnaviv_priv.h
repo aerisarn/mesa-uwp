@@ -109,7 +109,6 @@ struct etna_bo {
 	uint32_t        handle;
 	uint32_t        flags;
 	uint32_t        name;           /* flink global handle (DRI2 name) */
-	uint64_t        offset;         /* offset to mmap() */
 	uint32_t        va;             /* GPU virtual address */
 	int		refcnt;
 
