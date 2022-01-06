@@ -2473,6 +2473,8 @@ nir_visitor::visit(ir_texture *ir)
    /* offsets are constants we store inside nir_tex_intrs.offsets */
    if (ir->offset != NULL && !ir->offset->type->is_array())
       num_srcs++;
+   if (ir->clamp != NULL)
+      num_srcs++;
 
    /* Add one for the texture deref */
    num_srcs += 2;
@@ -2554,6 +2556,13 @@ nir_visitor::visit(ir_texture *ir)
          instr->src[src_number].src_type = nir_tex_src_offset;
          src_number++;
       }
+   }
+
+   if (ir->clamp) {
+      instr->src[src_number].src =
+         nir_src_for_ssa(evaluate_rvalue(ir->clamp));
+      instr->src[src_number].src_type = nir_tex_src_min_lod;
+      src_number++;
    }
 
    switch (ir->op) {
