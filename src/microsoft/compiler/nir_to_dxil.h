@@ -88,6 +88,7 @@ struct nir_to_dxil_options {
    bool last_ubo_is_not_arrayed;
    unsigned provoking_vertex;
    unsigned num_kernel_globals;
+   unsigned input_clip_size;
    enum dxil_environment environment;
 };
 

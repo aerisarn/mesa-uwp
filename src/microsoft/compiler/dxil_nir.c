@@ -1195,15 +1195,23 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
    /* The deref chain to the clip/cull variables should be simple, just the
     * var and an array with a constant index, otherwise more lowering/optimization
     * might be needed before this pass, e.g. copy prop, lower_io_to_temporaries,
-    * split_var_copies, and/or lower_var_copies
+    * split_var_copies, and/or lower_var_copies. In the case of arrayed I/O like
+    * inputs to the tessellation or geometry stages, there might be a second level
+    * of array index.
     */
    assert(deref->deref_type == nir_deref_type_var ||
           deref->deref_type == nir_deref_type_array);
 
    b->cursor = nir_before_instr(instr);
+   unsigned arrayed_io_length = 0;
+   const struct glsl_type *old_type = var->type;
+   if (nir_is_arrayed_io(var, b->shader->info.stage)) {
+      arrayed_io_length = glsl_array_size(old_type);
+      old_type = glsl_get_array_element(old_type);
+   }
    if (!new_var) {
       /* Update lengths for new and old vars */
-      int old_length = glsl_array_size(var->type);
+      int old_length = glsl_array_size(old_type);
       int new_length = (old_length + var->data.location_frac) - 4;
       old_length -= new_length;
 
@@ -1213,9 +1221,13 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
 
       new_var = nir_variable_clone(var, params->shader);
       nir_shader_add_variable(params->shader, new_var);
-      assert(glsl_get_base_type(glsl_get_array_element(var->type)) == GLSL_TYPE_FLOAT);
+      assert(glsl_get_base_type(glsl_get_array_element(old_type)) == GLSL_TYPE_FLOAT);
       var->type = glsl_array_type(glsl_float_type(), old_length, 0);
       new_var->type = glsl_array_type(glsl_float_type(), new_length, 0);
+      if (arrayed_io_length) {
+         var->type = glsl_array_type(var->type, arrayed_io_length, 0);
+         new_var->type = glsl_array_type(new_var->type, arrayed_io_length, 0);
+      }
       new_var->data.location++;
       new_var->data.location_frac = 0;
       params->new_var = new_var;
@@ -1226,6 +1238,14 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
       deref->type = var->type;
       return false;
    }
+
+   if (glsl_type_is_array(deref->type)) {
+      assert(arrayed_io_length > 0);
+      deref->type = glsl_get_array_element(var->type);
+      return false;
+   }
+
+   assert(glsl_get_base_type(deref->type) == GLSL_TYPE_FLOAT);
 
    nir_const_value *index = nir_src_as_const_value(deref->arr.index);
    assert(index);
@@ -1240,7 +1260,13 @@ dxil_nir_split_clip_cull_distance_instr(nir_builder *b,
       return false;
 
    nir_deref_instr *new_var_deref = nir_build_deref_var(b, new_var);
-   nir_deref_instr *new_array_deref = nir_build_deref_array(b, new_var_deref, nir_imm_int(b, total_index % 4));
+   nir_deref_instr *new_intermediate_deref = new_var_deref;
+   if (arrayed_io_length) {
+      nir_deref_instr *parent = nir_src_as_deref(deref->parent);
+      assert(parent->deref_type == nir_deref_type_array);
+      new_intermediate_deref = nir_build_deref_array(b, new_intermediate_deref, parent->arr.index.ssa);
+   }
+   nir_deref_instr *new_array_deref = nir_build_deref_array(b, new_intermediate_deref, nir_imm_int(b, total_index % 4));
    nir_ssa_def_rewrite_uses(&deref->dest.ssa, &new_array_deref->dest.ssa);
    return true;
 }

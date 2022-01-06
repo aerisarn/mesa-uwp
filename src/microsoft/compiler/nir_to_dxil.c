@@ -1571,8 +1571,11 @@ emit_metadata(struct ntd_context *ctx)
          return false;
    }
 
+   unsigned input_clip_size = ctx->mod.shader_kind == DXIL_PIXEL_SHADER ?
+      ctx->shader->info.clip_distance_array_size : ctx->opts->input_clip_size;
    const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader,
-                                                         ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN);
+                                                         ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN,
+                                                         input_clip_size);
 
    nir_function_impl *entry_func_impl = nir_shader_get_entrypoint(ctx->shader);
    const struct dxil_mdnode *dx_entry_point = emit_entrypoint(ctx, main_func,

@@ -116,15 +116,17 @@ in_sysvalue_name(nir_variable *var)
  */
 static unsigned
 get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_info *info,
-                             unsigned next_row)
+                             unsigned next_row, unsigned clip_size)
 {
    const struct glsl_type *type = var->type;
+   if (nir_is_arrayed_io(var, s->info.stage))
+      type = glsl_get_array_element(type);
 
    info->comp_type =
-      dxil_get_prog_sig_comp_type(var->type);
+      dxil_get_prog_sig_comp_type(type);
 
    bool is_depth = is_depth_output(info->kind);
-   info->sig_comp_type = dxil_get_comp_type(var->type);
+   info->sig_comp_type = dxil_get_comp_type(type);
    bool is_gs_input = s->info.stage == MESA_SHADER_GEOMETRY &&
       (var->data.mode & (nir_var_shader_in | nir_var_system_value));
 
@@ -157,7 +159,7 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
       unsigned start_offset = (var->data.location - VARYING_SLOT_CLIP_DIST0) * 4 +
          var->data.location_frac;
 
-      if (start_offset >= s->info.clip_distance_array_size) {
+      if (start_offset >= clip_size) {
          info->kind = DXIL_SEM_CULL_DISTANCE;
          snprintf(info->name, 64, "SV_CullDistance");
       }
@@ -165,10 +167,6 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
       info->start_col = (uint8_t)var->data.location_frac;
    } else {
       info->start_row = next_row;
-      if (glsl_type_is_array(type) &&
-         nir_is_arrayed_io(var, s->info.stage))
-         type = glsl_get_array_element(type);
-
       if (glsl_type_is_array(type)) {
          info->rows = glsl_get_aoa_size(type);
          type = glsl_get_array_element(type);
@@ -527,7 +525,8 @@ static unsigned
 get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **inputs,
                           unsigned num_inputs,
                           nir_shader *s, nir_variable_mode modes,
-                          semantic_info_proc get_semantics, unsigned *row_iter, bool vulkan)
+                          semantic_info_proc get_semantics, unsigned *row_iter, bool vulkan,
+                          unsigned input_clip_size)
 {
    nir_foreach_variable_with_modes(var, s, modes) {
       if (var->data.patch)
@@ -536,7 +535,7 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
       struct semantic_info semantic = {0};
       get_semantics(var, &semantic, s->info.stage, vulkan);
       mod->inputs[num_inputs].sysvalue = semantic.sysvalue_name;
-      *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter);
+      *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter, input_clip_size);
 
       mod->inputs[num_inputs].name = ralloc_strdup(mod->ralloc_ctx,
                                                    semantic.name);
@@ -558,7 +557,7 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
 }
 
 static const struct dxil_mdnode *
-get_input_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
+get_input_signature(struct dxil_module *mod, nir_shader *s, bool vulkan, unsigned input_clip_size)
 {
    if (s->info.stage == MESA_SHADER_KERNEL)
       return NULL;
@@ -570,12 +569,12 @@ get_input_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
                                                    s, nir_var_shader_in,
                                                    s->info.stage == MESA_SHADER_VERTEX ?
                                                       get_semantic_vs_in_name : get_semantic_in_name,
-                                                   &next_row, vulkan);
+                                                   &next_row, vulkan, input_clip_size);
 
    mod->num_sig_inputs = get_input_signature_group(mod, inputs, mod->num_sig_inputs,
                                                    s, nir_var_system_value,
                                                    get_semantic_sv_name,
-                                                   &next_row, vulkan);
+                                                   &next_row, vulkan, input_clip_size);
 
    if (!mod->num_sig_inputs && !mod->num_sig_inputs)
       return NULL;
@@ -624,7 +623,7 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
          get_semantic_name(var, &semantic, type, vulkan);
          mod->outputs[num_outputs].sysvalue = out_sysvalue_name(var);
       }
-      next_row = get_additional_semantic_info(s, var, &semantic, next_row);
+      next_row = get_additional_semantic_info(s, var, &semantic, next_row, s->info.clip_distance_array_size);
 
       mod->info.has_out_position |= semantic.kind== DXIL_SEM_POSITION;
       mod->info.has_out_depth |= semantic.kind == DXIL_SEM_DEPTH;
@@ -714,7 +713,7 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
       get_semantic_name(var, &semantic, type, vulkan);
 
       mod->patch_consts[num_consts].sysvalue = patch_sysvalue_name(var);
-      next_row = get_additional_semantic_info(s, var, &semantic, next_row);
+      next_row = get_additional_semantic_info(s, var, &semantic, next_row, 0);
 
       mod->patch_consts[num_consts].name = ralloc_strdup(mod->ralloc_ctx,
                                                          semantic.name);
@@ -750,13 +749,13 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
 }
 
 const struct dxil_mdnode *
-get_signatures(struct dxil_module *mod, nir_shader *s, bool vulkan)
+get_signatures(struct dxil_module *mod, nir_shader *s, bool vulkan, unsigned input_clip_size)
 {
    /* DXC does the same: Add an empty string before everything else */
    mod->sem_string_table = _mesa_string_buffer_create(mod->ralloc_ctx, 1024);
    copy_semantic_name_to_string(mod->sem_string_table, "");
 
-   const struct dxil_mdnode *input_signature = get_input_signature(mod, s, vulkan);
+   const struct dxil_mdnode *input_signature = get_input_signature(mod, s, vulkan, input_clip_size);
    const struct dxil_mdnode *output_signature = get_output_signature(mod, s, vulkan);
    const struct dxil_mdnode *patch_const_signature = get_patch_const_signature(mod, s, vulkan);
 
