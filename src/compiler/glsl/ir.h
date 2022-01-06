@@ -1884,18 +1884,19 @@ enum ir_texture_opcode {
  *                                             Texel offset (0 or an expression)
  *                                             | Projection divisor
  *                                             | |  Shadow comparator
- *                                             | |  |
- *                                             v v  v
- * (tex <type> <sampler> <coordinate> <sparse> 0 1 ( ))
- * (txb <type> <sampler> <coordinate> <sparse> 0 1 ( ) <bias>)
- * (txl <type> <sampler> <coordinate> <sparse> 0 1 ( ) <lod>)
- * (txd <type> <sampler> <coordinate> <sparse> 0 1 ( ) (dPdx dPdy))
- * (txf <type> <sampler> <coordinate> <sparse> 0	      <lod>)
+ *                                             | |  |   Lod clamp
+ *                                             | |  |   |
+ *                                             v v  v   v
+ * (tex <type> <sampler> <coordinate> <sparse> 0 1 ( ) ( ))
+ * (txb <type> <sampler> <coordinate> <sparse> 0 1 ( ) ( ) <bias>)
+ * (txl <type> <sampler> <coordinate> <sparse> 0 1 ( )     <lod>)
+ * (txd <type> <sampler> <coordinate> <sparse> 0 1 ( ) ( ) (dPdx dPdy))
+ * (txf <type> <sampler> <coordinate> <sparse> 0	         <lod>)
  * (txf_ms
- *      <type> <sampler> <coordinate> <sparse>         <sample_index>)
+ *      <type> <sampler> <coordinate> <sparse>             <sample_index>)
  * (txs <type> <sampler> <lod>)
  * (lod <type> <sampler> <coordinate>)
- * (tg4 <type> <sampler> <coordinate> <sparse> <offset> <component>)
+ * (tg4 <type> <sampler> <coordinate> <sparse>             <offset> <component>)
  * (query_levels <type> <sampler>)
  * (samples_identical <sampler> <coordinate>)
  */
@@ -1904,7 +1905,8 @@ public:
    ir_texture(enum ir_texture_opcode op, bool sparse = false)
       : ir_rvalue(ir_type_texture),
         op(op), sampler(NULL), coordinate(NULL), projector(NULL),
-        shadow_comparator(NULL), offset(NULL), is_sparse(sparse)
+        shadow_comparator(NULL), offset(NULL), clamp(NULL),
+        is_sparse(sparse)
    {
       memset(&lod_info, 0, sizeof(lod_info));
    }
@@ -1964,6 +1966,9 @@ public:
 
    /** Texel offset. */
    ir_rvalue *offset;
+
+   /** Lod clamp. */
+   ir_rvalue *clamp;
 
    union {
       ir_rvalue *lod;		/**< Floating point LOD */

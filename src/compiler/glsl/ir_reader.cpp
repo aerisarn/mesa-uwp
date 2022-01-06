@@ -943,6 +943,7 @@ ir_reader::read_texture(s_expression *expr)
    s_expression *s_offset = NULL;
    s_expression *s_proj = NULL;
    s_list *s_shadow = NULL;
+   s_list *s_clamp = NULL;
    s_expression *s_lod = NULL;
    s_expression *s_sample_index = NULL;
    s_expression *s_component = NULL;
@@ -950,7 +951,11 @@ ir_reader::read_texture(s_expression *expr)
    ir_texture_opcode op = ir_tex; /* silence warning */
 
    s_pattern tex_pattern[] =
-      { "tex", s_type, s_sampler, s_coord, s_sparse, s_offset, s_proj, s_shadow };
+      { "tex", s_type, s_sampler, s_coord, s_sparse, s_offset, s_proj, s_shadow, s_clamp };
+   s_pattern txb_pattern[] =
+      { "txb", s_type, s_sampler, s_coord, s_sparse, s_offset, s_proj, s_shadow, s_clamp, s_lod };
+   s_pattern txd_pattern[] =
+      { "txd", s_type, s_sampler, s_coord, s_sparse, s_offset, s_proj, s_shadow, s_clamp, s_lod };
    s_pattern lod_pattern[] =
       { "lod", s_type, s_sampler, s_coord };
    s_pattern txf_pattern[] =
@@ -972,6 +977,10 @@ ir_reader::read_texture(s_expression *expr)
       op = ir_lod;
    } else if (MATCH(expr, tex_pattern)) {
       op = ir_tex;
+   } else if (MATCH(expr, txb_pattern)) {
+      op = ir_txb;
+   } else if (MATCH(expr, txd_pattern)) {
+      op = ir_txd;
    } else if (MATCH(expr, txf_pattern)) {
       op = ir_txf;
    } else if (MATCH(expr, txf_ms_pattern)) {
@@ -1077,6 +1086,19 @@ ir_reader::read_texture(s_expression *expr)
 			  tex->opcode_string());
 	    return NULL;
 	 }
+      }
+   }
+
+   if (op == ir_tex || op == ir_txb || op == ir_txd) {
+      if (s_clamp->subexpressions.is_empty()) {
+         tex->clamp = NULL;
+      } else {
+         tex->clamp = read_rvalue(s_clamp);
+         if (tex->clamp == NULL) {
+            ir_read_error(NULL, "when reading clamp in (%s ..)",
+                          tex->opcode_string());
+            return NULL;
+         }
       }
    }
 

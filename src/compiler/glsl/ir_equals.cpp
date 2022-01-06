@@ -152,6 +152,9 @@ ir_texture::equals(const ir_instruction *ir, enum ir_node_type ignore) const
    if (!possibly_null_equals(offset, other->offset, ignore))
       return false;
 
+   if (!possibly_null_equals(clamp, other->clamp, ignore))
+      return false;
+
    if (!sampler->equals(other->sampler, ignore))
       return false;
 

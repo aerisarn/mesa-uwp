@@ -218,9 +218,10 @@ ir_texture::clone(void *mem_ctx, struct hash_table *ht) const
       new_tex->coordinate = this->coordinate->clone(mem_ctx, ht);
    if (this->projector)
       new_tex->projector = this->projector->clone(mem_ctx, ht);
-   if (this->shadow_comparator) {
+   if (this->shadow_comparator)
       new_tex->shadow_comparator = this->shadow_comparator->clone(mem_ctx, ht);
-   }
+   if (this->clamp)
+      new_tex->clamp = this->clamp->clone(mem_ctx, ht);
 
    if (this->offset != NULL)
       new_tex->offset = this->offset->clone(mem_ctx, ht);
