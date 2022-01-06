@@ -123,6 +123,10 @@ _nir_build_${name}(nir_builder *build${intrinsic_decl_list(opcode)})
    % for i in range(opcode.num_srcs):
    intrin->src[${i}] = nir_src_for_ssa(src${i});
    % endfor
+   % if WRITE_MASK in opcode.indices and 0 in opcode.src_components:
+   if (!indices.write_mask)
+      indices.write_mask = BITFIELD_MASK(intrin->num_components);
+   % endif
    % for index in opcode.indices:
    nir_intrinsic_set_${index.name}(intrin, indices.${index.name});
    % endfor
@@ -154,7 +158,7 @@ _nir_build_${name}(build${intrinsic_macro_list(opcode)}, (struct _nir_${name}_in
 #endif /* _NIR_BUILDER_OPCODES_ */"""
 
 from nir_opcodes import opcodes
-from nir_intrinsics import INTR_OPCODES
+from nir_intrinsics import INTR_OPCODES, WRITE_MASK
 from mako.template import Template
 
-print(Template(template).render(opcodes=opcodes, INTR_OPCODES=INTR_OPCODES))
+print(Template(template).render(opcodes=opcodes, INTR_OPCODES=INTR_OPCODES, WRITE_MASK=WRITE_MASK))
