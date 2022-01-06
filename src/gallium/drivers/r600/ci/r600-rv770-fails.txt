@@ -1,16 +1,6 @@
 KHR-GL33.clip_distance.functional,Fail
 KHR-GL33.cull_distance.functional,Fail
 KHR-GL33.nearest_edge.offset_right,Fail
-KHR-GL33.shaders.indexing.tmp_array.vertexid,Fail
-
-KHR-GL33.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_loop_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_loop_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_loop_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_static_write_dynamic_loop_read,Fail
-KHR-GL33.shaders.indexing.varying_array.vec3_static_write_dynamic_read,Fail
 
 KHR-GL33.texture_repeat_mode.rgba32ui_11x131_0_clamp_to_edge,Fail
 KHR-GL33.texture_repeat_mode.rgba32ui_11x131_0_mirrored_repeat,Fail
@@ -37,17 +27,6 @@ KHR-GL33.texture_swizzle.functional,Fail
 
 KHR-GLES3.core.nearest_edge.offset_right,Fail
 
-KHR-GLES3.shaders.indexing.tmp_array.vertexid,Fail
-
-KHR-GLES3.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_loop_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_loop_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_loop_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_static_write_dynamic_loop_read,Fail
-KHR-GLES3.shaders.indexing.varying_array.vec3_static_write_dynamic_read,Fail
-
 KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_0_clamp_to_edge,Fail
 KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_0_mirrored_repeat,Fail
 KHR-GLES3.texture_repeat_mode.rgba32ui_11x131_0_repeat,Fail
@@ -73,14 +52,6 @@ dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_corner,Fail
 
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_loop_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_loop_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_loop_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_static_write_dynamic_loop_read,Fail
-dEQP-GLES2.functional.shaders.indexing.varying_array.vec3_static_write_dynamic_read,Fail
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_component_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_dynamic_subscript_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_dynamic_subscript_read_vertex,Fail
@@ -148,22 +119,11 @@ dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.vec2_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.vec3_highp,Fail
 dEQP-GLES3.functional.shaders.derivate.fwidth.nicest.fbo_msaa4.vec4_highp,Fail
 
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_loop_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_dynamic_loop_write_dynamic_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_loop_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_dynamic_write_dynamic_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_loop_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_static_loop_write_dynamic_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_static_write_dynamic_loop_read,Fail
-dEQP-GLES3.functional.shaders.indexing.varying_array.vec3_static_write_dynamic_read,Fail
 dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_component_read_fragment,Fail
 dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_dynamic_subscript_read_fragment,Fail
 dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_dynamic_subscript_read_vertex,Fail
 dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_static_loop_subscript_read_fragment,Fail
 dEQP-GLES3.functional.shaders.indexing.vector_subscript.vec3_dynamic_subscript_write_static_subscript_read_fragment,Fail
-
-dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_1,Crash
-dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_2,Crash
 
 dEQP-GLES3.functional.shaders.texture_functions.texture.samplercubeshadow_bias_fragment,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texture.samplercubeshadow_fragment,Fail
@@ -1001,11 +961,9 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SR
 
 spec@ext_transform_feedback@immediate-reuse-index-buffer,Fail
 
-spec@glsl-1.10@execution@temp-array-indexing@glsl-vs-vec4-indexing-temp-src,Fail
-spec@glsl-1.10@execution@variable-indexing@vs-varying-array-mat2-col-row-wr,Fail
-spec@glsl-1.10@execution@variable-indexing@vs-varying-array-mat2-col-wr,Fail
-spec@glsl-1.10@execution@variable-indexing@vs-varying-mat2-col-row-wr,Fail
-spec@glsl-1.10@execution@variable-indexing@vs-varying-mat2-col-wr,Fail
+spec@glsl-1.10@execution@function-calls@glsl-function-chain16-in-array-indirect,Fail
+spec@glsl-1.10@execution@function-calls@glsl-function-chain16-in-array-indirect2,Fail
+
 spec@glsl-1.10@execution@varying-packing@simple float arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple int arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple uint arrays_of_arrays,Fail
@@ -1016,9 +974,6 @@ spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-min,Fail
 
 spec@glsl-1.20@execution@matrix-out-of-bounds-access@fs-mat4-out-of-bounds-6,Crash
-
-spec@glsl-1.20@execution@variable-indexing@vs-varying-mat2-col-row-wr,Fail
-spec@glsl-1.20@execution@variable-indexing@vs-varying-mat2-col-wr,Fail
 
 spec@glsl-1.20@execution@vs-nan-builtin-max,Fail
 spec@glsl-1.20@execution@vs-nan-builtin-min,Fail
@@ -1049,7 +1004,7 @@ spec@glsl-1.50@execution@texelfetchoffset@gs-texelfetch-usampler2d,Fail
 spec@glsl-1.50@execution@texelfetchoffset@gs-texelfetch-usampler2darray,Fail
 spec@glsl-1.50@execution@texelfetchoffset@gs-texelfetch-usampler3d,Fail
 spec@glsl-1.50@execution@texelfetchoffset@gs-usampler2drect,Fail
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec2-index-rd,Fail
+
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec4-index-rd,Crash
 

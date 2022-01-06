@@ -258,6 +258,12 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 	use_sb &= !shader->shader.uses_images;
 	use_sb &= !shader->shader.uses_helper_invocation;
 
+	/* sb has bugs in array reg allocation
+	 * (dEQP-GLES2.functional.shaders.struct.local.struct_array_dynamic_index_fragment
+	 * with NTT)
+	 */
+	use_sb &= !(shader->shader.indirect_files & (1 << TGSI_FILE_TEMPORARY));
+
 	/* Check if the bytecode has already been built. */
 	if (!shader->shader.bc.bytecode) {
 		r = r600_bytecode_build(&shader->shader.bc);

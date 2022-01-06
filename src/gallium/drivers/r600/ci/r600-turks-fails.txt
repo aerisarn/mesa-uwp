@@ -181,9 +181,6 @@ dEQP-GLES3.functional.draw.random.117,Fail
 # "Attribute 0: position Storage in user_ptr stride 0 input datatype int2_10_10_10 input component count 4 normalized used as vec4 instance divisor 0 drawArraysInstanced() first 7 instance count 1 5 triangles "
 dEQP-GLES3.functional.draw.random.124,Fail
 
-dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_1,Crash
-dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_2,Crash
-
 dEQP-GLES3.functional.shaders.texture_functions.texture.samplercubeshadow_bias_fragment,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texturegrad.isamplercube_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texturegrad.samplercube_fixed_fragment,Fail
@@ -1541,6 +1538,9 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SR
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT- swizzled- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- swizzled- border color only,Fail
 
+spec@glsl-1.10@execution@function-calls@glsl-function-chain16-in-array-indirect,Fail
+spec@glsl-1.10@execution@function-calls@glsl-function-chain16-in-array-indirect2,Fail
+
 spec@glsl-1.10@execution@varying-packing@simple float arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple float separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple int arrays_of_arrays,Fail
@@ -1569,7 +1569,6 @@ spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darrayshado
 spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency ffs,Fail
 spec@glsl-1.50@execution@geometry@tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency other,Fail
 
-spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec2-index-rd,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-input-array-vec3-index-rd,Fail
 
 # "void glsl_to_tgsi_visitor::visit_expression(ir_expression*, st_src_reg*): Assertion `ir->operands[2]->type->vector_elements == 1' failed."
