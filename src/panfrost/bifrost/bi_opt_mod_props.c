@@ -228,6 +228,83 @@ bi_optimizer_clamp(bi_instr *I, bi_instr *use)
         return true;
 }
 
+static enum bi_opcode
+bi_sized_mux_op(unsigned size)
+{
+        switch (size) {
+        case  8: return BI_OPCODE_MUX_V4I8;
+        case 16: return BI_OPCODE_MUX_V2I16;
+        case 32: return BI_OPCODE_MUX_I32;
+        default: unreachable("invalid size");
+        }
+}
+
+static bool
+bi_is_fixed_mux(bi_instr *I, unsigned size, bi_index v1)
+{
+        return I->op == bi_sized_mux_op(size) &&
+               bi_is_value_equiv(I->src[0], bi_zero()) &&
+               bi_is_value_equiv(I->src[1], v1);
+}
+
+static bool
+bi_takes_int_result_type(enum bi_opcode op)
+{
+        switch (op) {
+        case BI_OPCODE_ICMP_I32:
+        case BI_OPCODE_ICMP_S32:
+        case BI_OPCODE_ICMP_U32:
+        case BI_OPCODE_ICMP_V2I16:
+        case BI_OPCODE_ICMP_V2S16:
+        case BI_OPCODE_ICMP_V2U16:
+        case BI_OPCODE_ICMP_V4I8:
+        case BI_OPCODE_ICMP_V4S8:
+        case BI_OPCODE_ICMP_V4U8:
+        case BI_OPCODE_FCMP_F32:
+        case BI_OPCODE_FCMP_V2F16:
+                return true;
+        default:
+                return false;
+        }
+}
+
+static bool
+bi_takes_float_result_type(enum bi_opcode op)
+{
+        return (op == BI_OPCODE_FCMP_F32) ||
+               (op == BI_OPCODE_FCMP_V2F16);
+}
+
+/* CMP+MUX -> CMP with result type */
+static bool
+bi_optimizer_result_type(bi_instr *I, bi_instr *mux)
+{
+        if (bi_opcode_props[I->op].size != bi_opcode_props[mux->op].size)
+                return false;
+
+        if (bi_is_fixed_mux(mux, 32, bi_imm_f32(1.0)) ||
+            bi_is_fixed_mux(mux, 16, bi_imm_f16(1.0))) {
+
+                if (!bi_takes_float_result_type(I->op))
+                        return false;
+
+                I->result_type = BI_RESULT_TYPE_F1;
+        } else if (bi_is_fixed_mux(mux, 32, bi_imm_u32(1)) ||
+                   bi_is_fixed_mux(mux, 16, bi_imm_u16(1)) ||
+                   bi_is_fixed_mux(mux,  8, bi_imm_u8(1))) {
+
+                if (!bi_takes_int_result_type(I->op))
+                        return false;
+
+                I->result_type = BI_RESULT_TYPE_I1;
+        } else {
+                return false;
+        }
+
+        I->dest[0] = mux->dest[0];
+        return true;
+}
+
 static bool
 bi_is_var_tex(bi_instr *var, bi_instr *tex)
 {
@@ -289,7 +366,8 @@ bi_opt_mod_prop_backward(bi_context *ctx)
 
                 /* Destination has a single use, try to propagate */
                 bool propagated =
-                        bi_optimizer_clamp(I, use);
+                        bi_optimizer_clamp(I, use) ||
+                        bi_optimizer_result_type(I, use);
 
                 if (!propagated && I->op == BI_OPCODE_LD_VAR_IMM && use->op == BI_OPCODE_SPLIT_I32) {
                         /* Need to see through the split in a
