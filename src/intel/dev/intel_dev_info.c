@@ -76,7 +76,12 @@ main(int argc, char *argv[])
 
       fprintf(stdout, "   name: %s\n", devinfo.name);
       fprintf(stdout, "   gen: %u\n", devinfo.ver);
-      fprintf(stdout, "   PCI id: 0x%x\n", devinfo.chipset_id);
+      fprintf(stdout, "   PCI device id: 0x%x\n", devinfo.pci_device_id);
+      fprintf(stdout, "   PCI domain: 0x%x\n", devinfo.pci_domain);
+      fprintf(stdout, "   PCI bus: 0x%x\n", devinfo.pci_bus);
+      fprintf(stdout, "   PCI dev: 0x%x\n", devinfo.pci_dev);
+      fprintf(stdout, "   PCI function: 0x%x\n", devinfo.pci_func);
+      fprintf(stdout, "   PCI revision id: 0x%x\n", devinfo.pci_revision_id);
       fprintf(stdout, "   revision: %u\n", devinfo.revision);
 
       const char *subslice_name = devinfo.ver >= 12 ? "dualsubslice" : "subslice";
