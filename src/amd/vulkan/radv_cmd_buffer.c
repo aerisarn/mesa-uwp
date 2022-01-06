@@ -7812,6 +7812,10 @@ radv_CmdBeginRenderingKHR(VkCommandBuffer commandBuffer, const VkRenderingInfoKH
    unsigned h = pRenderingInfo->renderArea.offset.y + pRenderingInfo->renderArea.extent.height;
    for (unsigned i = 0; i < att_count; ++i) {
       RADV_FROM_HANDLE(radv_image_view, iview, iviews[i]);
+
+      if (vrs_info && vrs_info->imageView == iviews[i])
+         continue;
+
       w = MIN2(w, iview->extent.width);
       h = MIN2(h, iview->extent.height);
    }
