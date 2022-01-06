@@ -186,6 +186,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    opts.no_ubo0 = !shader->has_default_ubo0;
    opts.last_ubo_is_not_arrayed = shader->num_state_vars > 0;
    opts.provoking_vertex = key->fs.provoking_vertex;
+   opts.input_clip_size = key->input_clip_size;
    opts.environment = DXIL_ENVIRONMENT_GL;
 
    struct blob tmp;
@@ -725,6 +726,9 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
          return false;
    }
 
+   if (expect->input_clip_size != have->input_clip_size)
+      return false;
+
    if (expect->tex_saturate_s != have->tex_saturate_s ||
        expect->tex_saturate_r != have->tex_saturate_r ||
        expect->tex_saturate_t != have->tex_saturate_t)
@@ -818,6 +822,13 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
           !sel_ctx->needs_vertex_reordering &&
           d3d12_screen(sel_ctx->ctx->base.screen)->have_load_at_vertex)
          key->fs.provoking_vertex = sel_ctx->provoking_vertex;
+
+      /* Get the input clip distance size. The info's clip_distance_array_size corresponds
+       * to the output, and in cases of TES or GS you could have differently-sized inputs
+       * and outputs. For FS, there is no output, so it's repurposed to mean input.
+       */
+      if (stage != PIPE_SHADER_FRAGMENT)
+         key->input_clip_size = prev->current->nir->info.clip_distance_array_size;
    }
 
    /* We require as outputs what the next stage reads,
