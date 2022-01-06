@@ -1184,6 +1184,7 @@ private:
 #define TEX_OFFSET_NONCONST 8
 #define TEX_OFFSET_ARRAY 16
 #define TEX_SPARSE 32
+#define TEX_CLAMP 64
 
    ir_function_signature *_texture(ir_texture_opcode opcode,
                                    builtin_available_predicate avail,
@@ -7029,6 +7030,12 @@ builtin_builder::_texture(ir_texture_opcode opcode,
                                   "offsets", ir_var_const_in);
       sig->parameters.push_tail(offsets);
       tex->offset = var_ref(offsets);
+   }
+
+   if (flags & TEX_CLAMP) {
+      ir_variable *clamp = in_var(glsl_type::float_type, "lodClamp");
+      sig->parameters.push_tail(clamp);
+      tex->clamp = var_ref(clamp);
    }
 
    ir_variable *texel = NULL;
