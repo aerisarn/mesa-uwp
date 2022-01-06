@@ -356,6 +356,37 @@ d3d12_lower_load_draw_params(struct nir_shader *nir)
       nir_metadata_block_index | nir_metadata_dominance, &draw_params);
 }
 
+static bool
+lower_load_patch_vertices_in(nir_builder *b, nir_instr *instr, void *_state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_patch_vertices_in)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_ssa_def *load = b->shader->info.stage == MESA_SHADER_TESS_CTRL ?
+      d3d12_get_state_var(b, D3D12_STATE_VAR_PATCH_VERTICES_IN, "d3d12_FirstVertex", glsl_uint_type(), _state) :
+      nir_imm_int(b, b->shader->info.tess.tcs_vertices_out);
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
+   nir_instr_remove(instr);
+   return true;
+}
+
+bool
+d3d12_lower_load_patch_vertices_in(struct nir_shader *nir)
+{
+   nir_variable *var = NULL;
+
+   if (nir->info.stage != MESA_SHADER_TESS_CTRL &&
+       nir->info.stage != MESA_SHADER_TESS_EVAL)
+      return false;
+
+   return nir_shader_instructions_pass(nir, lower_load_patch_vertices_in,
+      nir_metadata_block_index | nir_metadata_dominance, &var);
+}
+
 static void
 invert_depth(nir_builder *b, struct nir_instr *instr)
 {

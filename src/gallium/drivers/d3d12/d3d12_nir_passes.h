@@ -72,6 +72,9 @@ bool
 d3d12_lower_load_draw_params(nir_shader *nir);
 
 bool
+d3d12_lower_load_patch_vertices_in(nir_shader *nir);
+
+bool
 d3d12_lower_compute_state_vars(nir_shader *nir);
 
 void

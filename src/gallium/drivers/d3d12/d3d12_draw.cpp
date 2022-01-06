@@ -388,6 +388,10 @@ fill_graphics_state_vars(struct d3d12_context *ctx,
          memcpy(ptr, ctx->default_outer_tess_factor, sizeof(ctx->default_outer_tess_factor));
          size += 4;
          break;
+      case D3D12_STATE_VAR_PATCH_VERTICES_IN:
+         ptr[0] = ctx->patch_vertices;
+         size += 4;
+         break;
       default:
          unreachable("unknown state variable");
       }
