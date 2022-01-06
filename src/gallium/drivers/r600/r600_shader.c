@@ -264,6 +264,9 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 	 */
 	use_sb &= !(shader->shader.indirect_files & (1 << TGSI_FILE_TEMPORARY));
 
+	/* sb has scheduling assertion fails with interpolate_at. */
+	use_sb &= !shader->shader.uses_interpolate_at_sample;
+
 	/* Check if the bytecode has already been built. */
 	if (!shader->shader.bc.bytecode) {
 		r = r600_bytecode_build(&shader->shader.bc);
@@ -3467,6 +3470,7 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 	shader->uses_doubles = ctx.info.uses_doubles;
 	shader->uses_atomics = ctx.info.file_mask[TGSI_FILE_HW_ATOMIC];
 	shader->num_loops = ctx.info.opcode_count[TGSI_OPCODE_BGNLOOP];
+	shader->uses_interpolate_at_sample = ctx.info.opcode_count[TGSI_OPCODE_INTERP_SAMPLE] != 0;
 
 	shader->nsys_inputs = 0;
 
