@@ -109,9 +109,8 @@ static void
 crocus_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
 {
    struct crocus_screen *screen = (struct crocus_screen *)pscreen;
-   const struct isl_device *isldev = &screen->isl_dev;
 
-   intel_uuid_compute_device_id((uint8_t *)uuid, isldev, PIPE_UUID_SIZE);
+   intel_uuid_compute_device_id((uint8_t *)uuid, &screen->devinfo, PIPE_UUID_SIZE);
 }
 
 static void

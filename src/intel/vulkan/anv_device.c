@@ -576,7 +576,7 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
 
    intel_uuid_compute_driver_id(device->driver_uuid, &device->info, VK_UUID_SIZE);
-   intel_uuid_compute_device_id(device->device_uuid, &device->isl_dev, VK_UUID_SIZE);
+   intel_uuid_compute_device_id(device->device_uuid, &device->info, VK_UUID_SIZE);
 
    return VK_SUCCESS;
 }
