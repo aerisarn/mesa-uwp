@@ -3654,13 +3654,6 @@ VkResult anv_AllocateMemory(
        (host_ptr_info && host_ptr_info->handleType)) {
       /* Anything imported or exported is EXTERNAL */
       alloc_flags |= ANV_BO_ALLOC_EXTERNAL;
-
-      /* We can't have implicit CCS on external memory with an AUX-table.
-       * Doing so would require us to sync the aux tables across processes
-       * which is impractical.
-       */
-      if (device->info.has_aux_map)
-         alloc_flags &= ~ANV_BO_ALLOC_IMPLICIT_CCS;
    }
 
    /* Check if we need to support Android HW buffer export. If so,

@@ -1214,16 +1214,18 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
     * image has a DRM format modifier because we store image data in
     * a driver-private bo which is inaccessible to the external queue.
     */
-   const bool mod_acquire =
+   const bool private_binding_acquire =
       src_queue_external &&
-      image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+      (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT ||
+       image->vk.external_handle_types != 0);
 
-   const bool mod_release =
+   const bool private_binding_release =
       dst_queue_external &&
-      image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+      (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT ||
+       image->vk.external_handle_types != 0);
 
    if (initial_layout == final_layout &&
-       !mod_acquire && !mod_release) {
+       !private_binding_acquire && !private_binding_release) {
       /* No work is needed. */
        return;
    }
@@ -1267,7 +1269,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
        */
       must_init_fast_clear_state = true;
       must_init_aux_surface = true;
-   } else if (mod_acquire) {
+   } else if (private_binding_acquire) {
       /* The fast clear state lives in a driver-private bo, and therefore the
        * external/foreign queue is unaware of it.
        *
@@ -1426,9 +1428,9 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    /* We must override the anv_layout_to_* functions because they are unaware of
     * acquire/release direction.
     */
-   if (mod_acquire) {
+   if (private_binding_acquire) {
       initial_aux_usage = isl_mod_info->aux_usage;
-   } else if (mod_release) {
+   } else if (private_binding_release) {
       final_aux_usage = isl_mod_info->aux_usage;
    }
 
