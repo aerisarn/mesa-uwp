@@ -328,8 +328,7 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
                                         nir_iadd(&b, nir_channel(&b, intrin->src[0].ssa, 0),
                                                  nir_channel(&b, intrin->src[0].ssa, 1)));
 
-               def = nir_build_load_global(&b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE,
-                                           .align_offset = 0);
+               def = nir_build_load_global(&b, 1, 64, addr, .access = ACCESS_NON_WRITEABLE);
             } else {
                def = nir_vector_insert_imm(&b, intrin->src[0].ssa, nir_imm_int(&b, 0), 2);
             }
