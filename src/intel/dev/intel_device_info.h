@@ -93,8 +93,22 @@ struct intel_device_info
    int ver;
    int verx10;
    int display_ver;
+
+   /**
+    * This revision is from ioctl (I915_PARAM_REVISION) unlike
+    * pci_revision_id from drm device. Its value is not always
+    * same as the pci_revision_id.
+    */
    int revision;
    int gt;
+
+   /* PCI info */
+   uint16_t pci_domain;
+   uint8_t pci_bus;
+   uint8_t pci_dev;
+   uint8_t pci_func;
+   uint16_t pci_device_id;
+   uint8_t pci_revision_id;
 
    enum intel_platform platform;
 

@@ -27,6 +27,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <xf86drm.h>
+
 #include "intel_device_info.h"
 #include "intel/common/intel_gem.h"
 #include "util/bitscan.h"
@@ -1658,7 +1661,6 @@ bool
 intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
    int devid = 0;
-
    const char *devid_override = getenv("INTEL_DEVID_OVERRIDE");
    if (devid_override && strlen(devid_override) > 0) {
       if (geteuid() == getuid()) {
@@ -1685,11 +1687,32 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
          return false;
       devinfo->no_hw = true;
    } else {
-      /* query the device id */
-      if (!getparam(fd, I915_PARAM_CHIPSET_ID, &devid))
+      /* Get PCI info.
+       *
+       * Some callers may already have a valid drm device which holds
+       * values of PCI fields queried here prior to calling this function.
+       * But making this query optional leads to a more cumbersome
+       * implementation. These callers still need to initialize the fields
+       * somewhere out of this function and rely on an ioctl to get PCI
+       * device id for the next step when skipping this drm query.
+       */
+      drmDevicePtr drmdev = NULL;
+      if (drmGetDevice2(fd, DRM_DEVICE_GET_PCI_REVISION, &drmdev)) {
+         mesa_loge("Failed to query drm device.");
          return false;
-      if (!intel_get_device_info_from_pci_id(devid, devinfo))
+      }
+      if (!intel_get_device_info_from_pci_id
+            (drmdev->deviceinfo.pci->device_id, devinfo)) {
+         drmFreeDevice(&drmdev);
          return false;
+      }
+      devinfo->pci_domain = drmdev->businfo.pci->domain;
+      devinfo->pci_bus = drmdev->businfo.pci->bus;
+      devinfo->pci_dev = drmdev->businfo.pci->dev;
+      devinfo->pci_func = drmdev->businfo.pci->func;
+      devinfo->pci_device_id = drmdev->deviceinfo.pci->device_id;
+      devinfo->pci_revision_id = drmdev->deviceinfo.pci->revision_id;
+      drmFreeDevice(&drmdev);
       devinfo->no_hw = env_var_as_boolean("INTEL_NO_HW", false);
    }
 
