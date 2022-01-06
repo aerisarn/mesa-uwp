@@ -2178,6 +2178,10 @@ anv_queue_submit_locked(struct anv_queue *queue,
       const uint32_t end = submit->command_buffer_count;
       while (start < end) {
          uint32_t i = start + 1;
+
+         /* Save the first query pool or NULL */
+         perf_query_pool = cmd_buffers[start]->perf_query_pool;
+
          for (; i < end; i++) {
             /* Can we chain the last buffer into the next one? */
             if (!anv_cmd_buffer_is_chainable(cmd_buffers[i]))
