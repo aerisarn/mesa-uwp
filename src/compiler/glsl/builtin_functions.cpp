@@ -1195,7 +1195,7 @@ private:
    ir_function_signature *_textureCubeArrayShadow(ir_texture_opcode opcode,
                                                   builtin_available_predicate avail,
                                                   const glsl_type *x,
-                                                  bool sparse = false);
+                                                  int flags = 0);
    ir_function_signature *_texelFetch(builtin_available_predicate avail,
                                       const glsl_type *return_type,
                                       const glsl_type *sampler_type,
@@ -4058,7 +4058,7 @@ builtin_builder::create_builtins()
 
                 _texture(ir_tex, v130_desktop_and_sparse, glsl_type::float_type, glsl_type::sampler2DArrayShadow_type, glsl_type::vec4_type, TEX_SPARSE),
 
-                _textureCubeArrayShadow(ir_tex, texture_cube_map_array_and_sparse, glsl_type::samplerCubeArrayShadow_type, true),
+                _textureCubeArrayShadow(ir_tex, texture_cube_map_array_and_sparse, glsl_type::samplerCubeArrayShadow_type, TEX_SPARSE),
 
                 _texture(ir_tex, v130_desktop_and_sparse, glsl_type::vec4_type,  glsl_type::sampler2DRect_type,  glsl_type::vec2_type, TEX_SPARSE),
                 _texture(ir_tex, v130_desktop_and_sparse, glsl_type::ivec4_type, glsl_type::isampler2DRect_type, glsl_type::vec2_type, TEX_SPARSE),
@@ -7080,12 +7080,14 @@ ir_function_signature *
 builtin_builder::_textureCubeArrayShadow(ir_texture_opcode opcode,
                                          builtin_available_predicate avail,
                                          const glsl_type *sampler_type,
-                                         bool sparse)
+                                         int flags)
 {
    ir_variable *s = in_var(sampler_type, "sampler");
    ir_variable *P = in_var(glsl_type::vec4_type, "P");
    ir_variable *compare = in_var(glsl_type::float_type, "compare");
    const glsl_type *return_type = glsl_type::float_type;
+   bool sparse = flags & TEX_SPARSE;
+   bool clamp = flags & TEX_CLAMP;
    /* Sparse texture return residency info. */
    const glsl_type *type = sparse ? glsl_type::int_type : return_type;
    MAKE_SIG(type, avail, 3, s, P, compare);
@@ -7100,6 +7102,12 @@ builtin_builder::_textureCubeArrayShadow(ir_texture_opcode opcode,
       ir_variable *lod = in_var(glsl_type::float_type, "lod");
       sig->parameters.push_tail(lod);
       tex->lod_info.lod = var_ref(lod);
+   }
+
+   if (clamp) {
+      ir_variable *lod_clamp = in_var(glsl_type::float_type, "lodClamp");
+      sig->parameters.push_tail(lod_clamp);
+      tex->clamp = var_ref(lod_clamp);
    }
 
    ir_variable *texel = NULL;
