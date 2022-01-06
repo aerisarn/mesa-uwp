@@ -127,6 +127,13 @@ _nir_build_${name}(nir_builder *build${intrinsic_decl_list(opcode)})
    if (!indices.write_mask)
       indices.write_mask = BITFIELD_MASK(intrin->num_components);
    % endif
+   % if ALIGN_MUL in opcode.indices and 0 in opcode.src_components:
+   if (!indices.align_mul)
+      indices.align_mul = src${opcode.src_components.index(0)}->bit_size / 8u;
+   % elif ALIGN_MUL in opcode.indices and opcode.dest_components == 0:
+   if (!indices.align_mul)
+      indices.align_mul = intrin->dest.ssa.bit_size / 8u;
+   % endif
    % for index in opcode.indices:
    nir_intrinsic_set_${index.name}(intrin, indices.${index.name});
    % endfor
@@ -158,7 +165,7 @@ _nir_build_${name}(build${intrinsic_macro_list(opcode)}, (struct _nir_${name}_in
 #endif /* _NIR_BUILDER_OPCODES_ */"""
 
 from nir_opcodes import opcodes
-from nir_intrinsics import INTR_OPCODES, WRITE_MASK
+from nir_intrinsics import INTR_OPCODES, WRITE_MASK, ALIGN_MUL
 from mako.template import Template
 
-print(Template(template).render(opcodes=opcodes, INTR_OPCODES=INTR_OPCODES, WRITE_MASK=WRITE_MASK))
+print(Template(template).render(opcodes=opcodes, INTR_OPCODES=INTR_OPCODES, WRITE_MASK=WRITE_MASK, ALIGN_MUL=ALIGN_MUL))
