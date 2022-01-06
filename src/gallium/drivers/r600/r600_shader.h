@@ -114,6 +114,8 @@ struct r600_shader {
 	unsigned                tes_as_es;
 	unsigned                tcs_prim_mode;
 	unsigned                ps_prim_id_input;
+	unsigned                num_loops;
+
 	struct r600_shader_array * arrays;
 
 	boolean			uses_doubles;

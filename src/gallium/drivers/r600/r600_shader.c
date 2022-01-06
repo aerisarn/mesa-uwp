@@ -372,6 +372,15 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		r = -EINVAL;
 		goto error;
 	}
+
+	pipe_debug_message(&rctx->b.debug, SHADER_INFO, "%s shader: %d dw, %d gprs, %d loops, %d cf, %d stack",
+		           _mesa_shader_stage_to_abbrev(tgsi_processor_to_shader_stage(processor)),
+	                   shader->shader.bc.ndw,
+	                   shader->shader.bc.ngpr,
+			   shader->shader.num_loops,
+			   shader->shader.bc.ncf,
+			   shader->shader.bc.nstack);
+
 	return 0;
 
 error:
@@ -3451,6 +3460,8 @@ static int r600_shader_from_tgsi(struct r600_context *rctx,
 	shader->uses_helper_invocation = false;
 	shader->uses_doubles = ctx.info.uses_doubles;
 	shader->uses_atomics = ctx.info.file_mask[TGSI_FILE_HW_ATOMIC];
+	shader->num_loops = ctx.info.opcode_count[TGSI_OPCODE_BGNLOOP];
+
 	shader->nsys_inputs = 0;
 
 	shader->uses_images = ctx.info.file_count[TGSI_FILE_IMAGE] > 0 ||
