@@ -388,6 +388,7 @@ void *etna_bo_map(struct etna_bo *bo)
 {
 	if (!bo->map) {
 		int ret;
+		void *map;
 		struct drm_etnaviv_gem_info req = {
 			.handle = bo->handle,
 		};
@@ -397,12 +398,15 @@ void *etna_bo_map(struct etna_bo *bo)
 		if (ret)
 			return NULL;
 
-		bo->map = os_mmap(0, bo->size, PROT_READ | PROT_WRITE,
+		map = os_mmap(0, bo->size, PROT_READ | PROT_WRITE,
 				  MAP_SHARED, bo->dev->fd, req.offset);
-		if (bo->map == MAP_FAILED) {
+		if (map == MAP_FAILED) {
 			ERROR_MSG("mmap failed: %s", strerror(errno));
-			bo->map = NULL;
+			return NULL;
 		}
+
+		if (p_atomic_cmpxchg(&bo->map, NULL, map))
+			munmap(map, bo->size);
 	}
 
 	return bo->map;
