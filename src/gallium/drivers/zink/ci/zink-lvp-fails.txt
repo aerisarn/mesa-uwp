@@ -897,8 +897,6 @@ spec@oes_texture_view@rendering-formats@clear GL_RGBA8_SNORM as GL_RGBA8UI,Fail
 spec@!opengl 1.0@rasterpos,Fail
 spec@!opengl 1.0@rasterpos@glsl_vs_gs_linked,Fail
 spec@!opengl 1.0@rasterpos@glsl_vs_tes_linked,Fail
-spec@arb_direct_state_access@gettextureimage-formats,Crash
-spec@ext_texture_integer@fbo-integer,Fail
 
 #these need format conversions that gallium doesn't implement yet
 spec@arb_texture_buffer_object@formats (fs- arb),Crash

@@ -41,8 +41,6 @@ spec@!opengl 1.1@linestipple@Line strip,Fail
 
 spec@!opengl 3.0@clearbuffer-bug,Fail
 
-# "../src/mesa/state_tracker/st_cb_texture.c:1164:st_get_blit_mask: Assertion `0' failed."
-spec@arb_direct_state_access@gettextureimage-formats,Crash
 spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
 
 spec@amd_performance_monitor@measure,Crash
@@ -158,8 +156,6 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Fail
 #  Expected: (1, 1, 1, 0)
 #  Actual: (1, 1, 1, 1)"
 spec@ext_packed_float@query-rgba-signed-components,Fail
-
-spec@ext_texture_integer@fbo-integer,Fail
 
 spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 spec@ext_transform_feedback@builtin-varyings gl_pointsize,Fail

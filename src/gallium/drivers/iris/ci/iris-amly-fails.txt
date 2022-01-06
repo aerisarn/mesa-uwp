@@ -112,9 +112,6 @@ spec@!opengl 2.0@vs-point_size-zero,Fail
 # 	 Found (0.792157, 0.792157, 0.466667, 0.443137)
 spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
 
-# ../src/mesa/state_tracker/st_cb_texture.c:917:st_get_blit_mask: Assertion `0' failed.
-spec@arb_direct_state_access@gettextureimage-formats,Crash
-
 # Invalid index for 'vs_input2[1][0]': expected INVALID_INDEX but got 1
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
@@ -241,9 +238,6 @@ spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_
 # eglChooseConfig() failed
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
-
-# texture-integer: error 0x502 at tests/fbo/fbo-integer.c:300
-spec@ext_texture_integer@fbo-integer,Fail
 
 spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 

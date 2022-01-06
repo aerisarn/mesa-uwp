@@ -1372,7 +1372,6 @@ spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT24- swizzled,Fai
 spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT32,Fail
 spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT32- NPOT,Fail
 spec@arb_depth_texture@texwrap formats offset@GL_DEPTH_COMPONENT32- swizzled,Fail
-spec@arb_direct_state_access@gettextureimage-formats,Crash
 spec@arb_enhanced_layouts@compiler@block-member-locations@arrayed-block-member-location.frag,Fail
 spec@arb_enhanced_layouts@compiler@block-member-locations@arrayed-block-member-location.vert,Fail
 spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
@@ -2062,7 +2061,6 @@ spec@ext_texture_compression_s3tc@texwrap formats bordercolor-swizzled@GL_COMPRE
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGBA_S3TC_DXT3_EXT- swizzled- border color only,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGBA_S3TC_DXT5_EXT- swizzled- border color only,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGB_S3TC_DXT1_EXT- swizzled- border color only,Fail
-spec@ext_texture_integer@fbo-integer,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGB16I- swizzled- border color only,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled@GL_RGB16UI- swizzled- border color only,Fail

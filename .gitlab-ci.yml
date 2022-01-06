@@ -414,7 +414,7 @@ debian/android_build:
 debian/x86_test-base:
   extends: debian/x86_build-base
   variables:
-    MESA_IMAGE_TAG: &debian-x86_test-base "2021-12-02-piglit"
+    MESA_IMAGE_TAG: &debian-x86_test-base "2022-01-06-piglit"
 
 .use-debian/x86_test-base:
   extends:
@@ -438,7 +438,7 @@ debian/x86_test-gl:
 debian/x86_test-vk:
   extends: .use-debian/x86_test-base
   variables:
-    MESA_IMAGE_TAG: &debian-x86_test-vk "2022-01-07-shrink"
+    MESA_IMAGE_TAG: &debian-x86_test-vk "2022-01-08-piglit"
 
 # Debian 11 based ARM build image
 debian/arm_build:
@@ -487,7 +487,7 @@ fedora/x86_build:
   variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: *kernel-rootfs-url
-    MESA_ROOTFS_TAG: &kernel-rootfs "2022-01-07-shrink"
+    MESA_ROOTFS_TAG: &kernel-rootfs "2022-01-08-piglit"
     DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_ARTIFACTS_TAG}--${MESA_TEMPLATES_COMMIT}"
   script:
     - .gitlab-ci/container/lava_build.sh

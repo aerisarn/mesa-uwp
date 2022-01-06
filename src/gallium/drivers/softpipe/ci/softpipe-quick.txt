@@ -2624,7 +2624,6 @@ spec/ext_texture_compression_latc/texwrap formats bordercolor/gl_compressed_sign
 spec/ext_texture_compression_latc/texwrap formats/gl_compressed_signed_luminance_alpha_latc2_ext: fail
 spec/ext_texture_compression_latc/texwrap formats/gl_compressed_signed_luminance_alpha_latc2_ext, npot: fail
 spec/ext_texture_compression_latc/texwrap formats/gl_compressed_signed_luminance_alpha_latc2_ext, swizzled: fail
-spec/ext_texture_integer/fbo-integer: fail
 spec/ext_texture_integer/multisample-formats 16 gl_ext_texture_integer: skip
 spec/ext_texture_integer/multisample-formats 2 gl_ext_texture_integer: skip
 spec/ext_texture_integer/multisample-formats 32 gl_ext_texture_integer: skip
