@@ -145,6 +145,10 @@ idep_vulkan_runtime_headers = declare_dependency(
   include_directories : include_directories('.')
 )
 
+idep_vulkan_common_entrypoints_h = declare_dependency(
+  sources : [vk_common_entrypoints[0]]
+)
+
 # This is likely a bug in the Meson VS backend, as MSVC with ninja works fine.
 # See this discussion here:
 # https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10506 
