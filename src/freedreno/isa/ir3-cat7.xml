@@ -80,6 +80,37 @@ SOFTWARE.
 	</encode>
 </bitset>
 
+<enum name="#sleep-duration">
+	<value val="0" display=".s">
+		<doc>
+			Short sleep
+		</doc>
+	</value>
+	<value val="1" display=".l">
+		<doc>
+			Long sleep, around 20x longer than short
+		</doc>
+	</value>
+</enum>
+
+<bitset name="sleep" extends="#instruction-cat7">
+	<doc>
+		Short/Long Sleep
+		TODO: how is it different from a bunch of nops?
+	</doc>
+	<display>
+		{SY}{JP}{NAME}{DURATION}
+	</display>
+	<pattern low="45" high="50">xxxxxx</pattern>
+	<field   pos="51"          name="DURATION" type="#sleep-duration"/>
+	<pattern low="52" high="54">xxx</pattern>
+	<pattern low="55" high="58">0010</pattern>
+	<encode>
+		<!-- TODO: read duration -->
+		<map name="DURATION">1</map>
+	</encode>
+</bitset>
+
 <bitset name="icinv" extends="#instruction-cat7">
 	<doc>
 		Seem to be Instruction Cache Invalidate, supported by the fact

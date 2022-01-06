@@ -361,6 +361,7 @@ typedef enum {
    /* category 7: */
    OPC_BAR             = _OPC(7, 0),
    OPC_FENCE           = _OPC(7, 1),
+   OPC_SLEEP           = _OPC(7, 2),
    OPC_ICINV           = _OPC(7, 3),
    OPC_DCCLN           = _OPC(7, 4),
    OPC_DCINV           = _OPC(7, 5),
