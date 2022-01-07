@@ -267,7 +267,7 @@ repack_invocations_in_workgroup(nir_builder *b, nir_ssa_def *input_bool,
    nir_ssa_def *dont_care = nir_ssa_undef(b, 1, num_lds_dwords * 32);
    nir_if *if_first_lane = nir_push_if(b, nir_build_elect(b, 1));
 
-   nir_build_store_shared(b, nir_u2u8(b, surviving_invocations_in_current_wave), wave_id, .base = lds_addr_base, .align_mul = 1u);
+   nir_build_store_shared(b, nir_u2u8(b, surviving_invocations_in_current_wave), wave_id, .base = lds_addr_base);
 
    nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
                          .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
@@ -384,7 +384,7 @@ emit_ngg_nogs_prim_export(nir_builder *b, lower_ngg_nogs_state *st, nir_ssa_def 
          nir_ssa_def *provoking_vtx_idx = ngg_input_primitive_vertex_index(b, st->provoking_vtx_idx);
          nir_ssa_def *addr = pervertex_lds_addr(b, provoking_vtx_idx, 4u);
 
-         nir_build_store_shared(b,  prim_id, addr, .align_mul = 4u);
+         nir_build_store_shared(b, prim_id, addr);
       }
 
       nir_build_export_primitive_amd(b, arg);
@@ -407,7 +407,7 @@ emit_store_ngg_nogs_es_primitive_id(nir_builder *b)
       nir_ssa_def *addr =  pervertex_lds_addr(b, thread_id_in_threadgroup, 4u);
 
       /* Load primitive ID from LDS */
-      prim_id = nir_build_load_shared(b, 1, 32, addr, .align_mul = 4u);
+      prim_id = nir_build_load_shared(b, 1, 32, addr);
    } else if (b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
       /* Just use tess eval primitive ID, which is the same as the patch ID. */
       prim_id = nir_build_load_primitive_id(b);
@@ -715,16 +715,16 @@ compact_vertices_after_culling(nir_builder *b,
       nir_ssa_def *exporter_addr = pervertex_lds_addr(b, es_exporter_tid, pervertex_lds_bytes);
 
       /* Store the exporter thread's index to the LDS space of the current thread so GS threads can load it */
-      nir_build_store_shared(b, nir_u2u8(b, es_exporter_tid), es_vertex_lds_addr, .base = lds_es_exporter_tid, .align_mul = 1u);
+      nir_build_store_shared(b, nir_u2u8(b, es_exporter_tid), es_vertex_lds_addr, .base = lds_es_exporter_tid);
 
       /* Store the current thread's position output to the exporter thread's LDS space */
       nir_ssa_def *pos = nir_load_var(b, position_value_var);
-      nir_build_store_shared(b, pos, exporter_addr, .base = lds_es_pos_x, .align_mul = 4u);
+      nir_build_store_shared(b, pos, exporter_addr, .base = lds_es_pos_x);
 
       /* Store the current thread's repackable arguments to the exporter thread's LDS space */
       for (unsigned i = 0; i < max_exported_args; ++i) {
          nir_ssa_def *arg_val = nir_load_var(b, repacked_arg_vars[i]);
-         nir_intrinsic_instr *store = nir_build_store_shared(b, arg_val, exporter_addr, .base = lds_es_arg_0 + 4u * i, .align_mul = 4u);
+         nir_intrinsic_instr *store = nir_build_store_shared(b, arg_val, exporter_addr, .base = lds_es_arg_0 + 4u * i);
 
          nogs_state->compact_arg_stores[i] = &store->instr;
       }
@@ -742,12 +742,12 @@ compact_vertices_after_culling(nir_builder *b,
    nir_if *if_packed_es_thread = nir_push_if(b, es_survived);
    {
       /* Read position from the current ES thread's LDS space (written by the exported vertex's ES thread) */
-      nir_ssa_def *exported_pos = nir_build_load_shared(b, 4, 32, es_vertex_lds_addr, .base = lds_es_pos_x, .align_mul = 4u);
+      nir_ssa_def *exported_pos = nir_build_load_shared(b, 4, 32, es_vertex_lds_addr, .base = lds_es_pos_x);
       nir_store_var(b, position_value_var, exported_pos, 0xfu);
 
       /* Read the repacked arguments */
       for (unsigned i = 0; i < max_exported_args; ++i) {
-         nir_ssa_def *arg_val = nir_build_load_shared(b, 1, 32, es_vertex_lds_addr, .base = lds_es_arg_0 + 4u * i, .align_mul = 4u);
+         nir_ssa_def *arg_val = nir_build_load_shared(b, 1, 32, es_vertex_lds_addr, .base = lds_es_arg_0 + 4u * i);
          nir_store_var(b, repacked_arg_vars[i], arg_val, 0x1u);
       }
    }
@@ -766,7 +766,7 @@ compact_vertices_after_culling(nir_builder *b,
       /* Load the index of the ES threads that will export the current GS thread's vertices */
       for (unsigned v = 0; v < 3; ++v) {
          nir_ssa_def *vtx_addr = nir_load_var(b, gs_vtxaddr_vars[v]);
-         nir_ssa_def *exporter_vtx_idx = nir_build_load_shared(b, 1, 8, vtx_addr, .base = lds_es_exporter_tid, .align_mul = 1u);
+         nir_ssa_def *exporter_vtx_idx = nir_build_load_shared(b, 1, 8, vtx_addr, .base = lds_es_exporter_tid);
          exporter_vtx_indices[v] = nir_u2u32(b, exporter_vtx_idx);
       }
 
@@ -1139,10 +1139,10 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
          /* Store position components that are relevant to culling in LDS */
          nir_ssa_def *pre_cull_pos = nir_load_var(b, position_value_var);
          nir_ssa_def *pre_cull_w = nir_channel(b, pre_cull_pos, 3);
-         nir_build_store_shared(b, pre_cull_w, es_vertex_lds_addr, .align_mul = 4, .base = lds_es_pos_w);
+         nir_build_store_shared(b, pre_cull_w, es_vertex_lds_addr, .base = lds_es_pos_w);
          nir_ssa_def *pre_cull_x_div_w = nir_fdiv(b, nir_channel(b, pre_cull_pos, 0), pre_cull_w);
          nir_ssa_def *pre_cull_y_div_w = nir_fdiv(b, nir_channel(b, pre_cull_pos, 1), pre_cull_w);
-         nir_build_store_shared(b, nir_vec2(b, pre_cull_x_div_w, pre_cull_y_div_w), es_vertex_lds_addr, .align_mul = 4, .base = lds_es_pos_x);
+         nir_build_store_shared(b, nir_vec2(b, pre_cull_x_div_w, pre_cull_y_div_w), es_vertex_lds_addr, .base = lds_es_pos_x);
 
          /* Clear out the ES accepted flag in LDS */
          nir_build_store_shared(b, nir_imm_zero(b, 1, 8), es_vertex_lds_addr, .align_mul = 4, .base = lds_es_vertex_accepted);
@@ -1169,13 +1169,13 @@ add_deferred_attribute_culling(nir_builder *b, nir_cf_list *original_extracted_c
          /* Load W positions of vertices first because the culling code will use these first */
          for (unsigned vtx = 0; vtx < 3; ++vtx) {
             vtx_addr[vtx] = pervertex_lds_addr(b, vtx_idx[vtx], pervertex_lds_bytes);
-            pos[vtx][3] = nir_build_load_shared(b, 1, 32, vtx_addr[vtx], .align_mul = 4u, .base = lds_es_pos_w);
+            pos[vtx][3] = nir_build_load_shared(b, 1, 32, vtx_addr[vtx], .base = lds_es_pos_w);
             nir_store_var(b, gs_vtxaddr_vars[vtx], vtx_addr[vtx], 0x1u);
          }
 
          /* Load the X/W, Y/W positions of vertices */
          for (unsigned vtx = 0; vtx < 3; ++vtx) {
-            nir_ssa_def *xy = nir_build_load_shared(b, 2, 32, vtx_addr[vtx], .align_mul = 4u, .base = lds_es_pos_x);
+            nir_ssa_def *xy = nir_build_load_shared(b, 2, 32, vtx_addr[vtx], .base = lds_es_pos_x);
             pos[vtx][0] = nir_channel(b, xy, 0);
             pos[vtx][1] = nir_channel(b, xy, 1);
          }
@@ -1480,7 +1480,7 @@ ngg_gs_clear_primflags(nir_builder *b, nir_ssa_def *num_vertices, unsigned strea
       nir_push_else(b, if_break);
       {
          nir_ssa_def *emit_vtx_addr = ngg_gs_emit_vertex_addr(b, current_clear_primflag_idx, s);
-         nir_build_store_shared(b, zero_u8, emit_vtx_addr, .base = s->lds_offs_primflags + stream, .align_mul = 1);
+         nir_build_store_shared(b, zero_u8, emit_vtx_addr, .base = s->lds_offs_primflags + stream);
          nir_store_var(b, s->current_clear_primflag_idx_var, nir_iadd_imm_nuw(b, current_clear_primflag_idx, 1), 0x1u);
       }
       nir_pop_if(b, if_break);
@@ -1604,7 +1604,7 @@ lower_ngg_gs_emit_vertex_with_counter(nir_builder *b, nir_intrinsic_instr *intri
          if (info->bit_size != 32)
             out_val = nir_u2u(b, out_val, info->bit_size);
 
-         nir_build_store_shared(b, out_val, gs_emit_vtx_addr, .base = packed_location * 16 + comp * 4, .align_mul = 4);
+         nir_build_store_shared(b, out_val, gs_emit_vtx_addr, .base = packed_location * 16 + comp * 4);
 
          /* Clear the variable that holds the output */
          nir_store_var(b, s->output_vars[slot][comp], nir_ssa_undef(b, 1, 32), 0x1u);
@@ -1740,7 +1740,7 @@ ngg_gs_export_vertices(nir_builder *b, nir_ssa_def *max_num_out_vtx, nir_ssa_def
        * The current thread will export a vertex that was live in another invocation.
        * Load the index of the vertex that the current thread will have to export.
        */
-      nir_ssa_def *exported_vtx_idx = nir_build_load_shared(b, 1, 8, out_vtx_lds_addr, .base = s->lds_offs_primflags + 1, .align_mul = 1u);
+      nir_ssa_def *exported_vtx_idx = nir_build_load_shared(b, 1, 8, out_vtx_lds_addr, .base = s->lds_offs_primflags + 1);
       exported_out_vtx_lds_addr = ngg_gs_out_vertex_addr(b, nir_u2u32(b, exported_vtx_idx), s);
    }
 
@@ -1779,7 +1779,7 @@ ngg_gs_setup_vertex_compaction(nir_builder *b, nir_ssa_def *vertex_live, nir_ssa
 
       nir_ssa_def *exporter_lds_addr = ngg_gs_out_vertex_addr(b, exporter_tid_in_tg, s);
       nir_ssa_def *tid_in_tg_u8 = nir_u2u8(b, tid_in_tg);
-      nir_build_store_shared(b, tid_in_tg_u8, exporter_lds_addr, .base = s->lds_offs_primflags + 1, .align_mul = 1u);
+      nir_build_store_shared(b, tid_in_tg_u8, exporter_lds_addr, .base = s->lds_offs_primflags + 1);
    }
    nir_pop_if(b, if_vertex_live);
 }
@@ -1968,8 +1968,7 @@ lower_ms_store_output(nir_builder *b,
       assert(base == 0);
 
       nir_ssa_def *addr = nir_imm_int(b, 0);
-      nir_build_store_shared(b, nir_u2u32(b, store_val), addr, .base = s->numprims_lds_addr,
-                             .align_mul = 4u);
+      nir_build_store_shared(b, nir_u2u32(b, store_val), addr, .base = s->numprims_lds_addr);
    } else if (io_sem.location == VARYING_SLOT_PRIMITIVE_INDICES) {
       /* Contrary to the name, these are not primitive indices, but
        * vertex indices for each vertex of the output primitives.
@@ -1978,8 +1977,7 @@ lower_ms_store_output(nir_builder *b,
 
       nir_ssa_def *offset_src = nir_get_io_offset_src(intrin)->ssa;
       nir_build_store_shared(b, nir_u2u8(b, store_val), offset_src,
-                             .base = s->prim_vtx_indices_addr + base,
-                             .align_mul = 1u);
+                             .base = s->prim_vtx_indices_addr + base);
    } else {
       unreachable("Invalid mesh shader output");
    }
@@ -2004,11 +2002,11 @@ lower_ms_load_output(nir_builder *b,
       assert(base == 0);
 
       nir_ssa_def *addr = nir_imm_int(b, 0);
-      return nir_build_load_shared(b, 1, 32, addr, .base = s->numprims_lds_addr, .align_mul = 4u);
+      return nir_build_load_shared(b, 1, 32, addr, .base = s->numprims_lds_addr);
    } else if (io_sem.location == VARYING_SLOT_PRIMITIVE_INDICES) {
       nir_ssa_def *offset_src = nir_get_io_offset_src(intrin)->ssa;
       nir_ssa_def *index = nir_build_load_shared(b, 1, 8, offset_src,
-                                                 .base = s->prim_vtx_indices_addr + base, .align_mul = 1u);
+                                                 .base = s->prim_vtx_indices_addr + base);
       return nir_u2u(b, index, intrin->dest.ssa.bit_size);
    }
 
@@ -2346,7 +2344,7 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
    nir_ssa_def *dont_care = nir_ssa_undef(b, 1, 32);
    nir_if *if_elected = nir_push_if(b, nir_build_elect(b, 1));
    {
-      loaded_num_prm = nir_build_load_shared(b, 1, 32, zero, .base = s->numprims_lds_addr, .align_mul = 4u);
+      loaded_num_prm = nir_build_load_shared(b, 1, 32, zero, .base = s->numprims_lds_addr);
    }
    nir_pop_if(b, if_elected);
    loaded_num_prm = nir_if_phi(b, loaded_num_prm, dont_care);
@@ -2395,7 +2393,7 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
 
       /* Primitive connectivity data: describes which vertices the primitive uses. */
       nir_ssa_def *prim_idx_addr = nir_imul_imm(b, invocation_index, s->vertices_per_prim);
-      nir_ssa_def *indices_loaded = nir_build_load_shared(b, s->vertices_per_prim, 8, prim_idx_addr, .base = s->prim_vtx_indices_addr, .align_mul = 1u);
+      nir_ssa_def *indices_loaded = nir_build_load_shared(b, s->vertices_per_prim, 8, prim_idx_addr, .base = s->prim_vtx_indices_addr);
       nir_ssa_def *indices[3];
       indices[0] = nir_u2u32(b, nir_channel(b, indices_loaded, 0));
       indices[1] = s->vertices_per_prim > 1 ? nir_u2u32(b, nir_channel(b, indices_loaded, 1)) : NULL;
