@@ -75,8 +75,7 @@ class Extension:
     platform_guard = None
 
     def __init__(self, name, alias="", required=False, nonstandard=False,
-                 properties=False, features=False, conditions=None, guard=False,
-                 core_since=None):
+                 properties=False, features=False, conditions=None, guard=False):
         self.name = name
         self.alias = alias
         self.is_required = required
@@ -85,7 +84,6 @@ class Extension:
         self.has_features = features
         self.enable_conds = conditions
         self.guard = guard
-        self.core_since = core_since
 
         if alias == "" and (properties == True or features == True):
             raise RuntimeError("alias must be available when properties and/or features are used")
