@@ -375,7 +375,13 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (!st->ctx->SoftFP64 && ((nir->info.bit_sizes_int | nir->info.bit_sizes_float) & 64) &&
        (options->lower_doubles_options & nir_lower_fp64_full_software) != 0) {
-      st->ctx->SoftFP64 = glsl_float64_funcs_to_nir(st->ctx, options);
+
+      /* It's not possible to use float64 on GLSL ES, so don't bother trying to
+       * build the support code.  The support code depends on higher versions of
+       * desktop GLSL, so it will fail to compile (below) anyway.
+       */
+      if (_mesa_is_desktop_gl(st->ctx) && st->ctx->Const.GLSLVersion >= 400)
+         st->ctx->SoftFP64 = glsl_float64_funcs_to_nir(st->ctx, options);
    }
 
    /* ES has strict SSO validation rules for shader IO matching so we can't
