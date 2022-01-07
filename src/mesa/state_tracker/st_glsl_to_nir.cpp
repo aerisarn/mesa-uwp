@@ -796,10 +796,11 @@ st_link_nir(struct gl_context *ctx,
       static const gl_nir_linker_options opts = {
          true /*fill_parameters */
       };
-      if (!gl_nir_link_spirv(ctx, shader_program, &opts))
+      if (!gl_nir_link_spirv(&ctx->Const, shader_program, &opts))
          return GL_FALSE;
    } else {
-      if (!gl_nir_link_glsl(ctx, shader_program))
+      if (!gl_nir_link_glsl(&ctx->Const, &ctx->Extensions,
+                            shader_program))
          return GL_FALSE;
    }
 
@@ -809,7 +810,7 @@ st_link_nir(struct gl_context *ctx,
       _mesa_update_shader_textures_used(shader_program, prog);
    }
 
-   nir_build_program_resource_list(ctx, shader_program,
+   nir_build_program_resource_list(&ctx->Const, shader_program,
                                    shader_program->data->spirv);
 
    for (unsigned i = 0; i < num_shaders; i++) {

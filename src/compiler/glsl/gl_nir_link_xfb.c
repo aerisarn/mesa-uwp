@@ -33,7 +33,7 @@
  */
 
 void
-gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
+gl_nir_link_assign_xfb_resources(const struct gl_constants *consts,
                                  struct gl_shader_program *prog)
 {
    /*
@@ -178,7 +178,7 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
     * tracking the number of buffers doesn't overflow.
     */
    unsigned buffers = 0;
-   assert(ctx->Const.MaxTransformFeedbackBuffers <= sizeof(buffers) * 8);
+   assert(consts->MaxTransformFeedbackBuffers <= sizeof(buffers) * 8);
 
    for (unsigned buf = 0; buf < MAX_FEEDBACK_BUFFERS; buf++) {
       if (xfb_info->buffers[buf].stride > 0) {

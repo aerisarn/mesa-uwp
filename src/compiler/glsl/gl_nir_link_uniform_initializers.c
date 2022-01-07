@@ -255,7 +255,7 @@ set_uniform_initializer(struct set_uniform_initializer_closure *data,
 }
 
 void
-gl_nir_set_uniform_initializers(struct gl_context *ctx,
+gl_nir_set_uniform_initializers(const struct gl_constants *consts,
                                 struct gl_shader_program *prog)
 {
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -273,7 +273,7 @@ gl_nir_set_uniform_initializers(struct gl_context *ctx,
                .prog = sh->Program,
                .var = var,
                .location = var->data.location,
-               .boolean_true = ctx->Const.UniformBooleanTrue
+               .boolean_true = consts->UniformBooleanTrue
             };
             set_uniform_initializer(&data,
                                     var->type,
