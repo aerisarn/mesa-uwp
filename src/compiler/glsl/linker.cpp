@@ -1760,7 +1760,7 @@ private:
 };
 
 static bool
-validate_xfb_buffer_stride(struct gl_context *ctx, unsigned idx,
+validate_xfb_buffer_stride(const struct gl_constants *consts, unsigned idx,
                            struct gl_shader_program *prog)
 {
    /* We will validate doubles at a later stage */
@@ -1773,7 +1773,7 @@ validate_xfb_buffer_stride(struct gl_context *ctx, unsigned idx,
    }
 
    if (prog->TransformFeedback.BufferStride[idx] / 4 >
-       ctx->Const.MaxTransformFeedbackInterleavedComponents) {
+       consts->MaxTransformFeedbackInterleavedComponents) {
       linker_error(prog, "The MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS "
                    "limit has been exceeded.");
       return false;
@@ -1787,7 +1787,7 @@ validate_xfb_buffer_stride(struct gl_context *ctx, unsigned idx,
  * for later use.
  */
 static void
-link_xfb_stride_layout_qualifiers(struct gl_context *ctx,
+link_xfb_stride_layout_qualifiers(const struct gl_constants *consts,
                                   struct gl_shader_program *prog,
                                   struct gl_shader **shader_list,
                                   unsigned num_shaders)
@@ -1804,7 +1804,7 @@ link_xfb_stride_layout_qualifiers(struct gl_context *ctx,
             if (prog->TransformFeedback.BufferStride[j] == 0) {
                prog->TransformFeedback.BufferStride[j] =
                   shader->TransformFeedbackBufferStride[j];
-               if (!validate_xfb_buffer_stride(ctx, j, prog))
+               if (!validate_xfb_buffer_stride(consts, j, prog))
                   return;
             } else if (prog->TransformFeedback.BufferStride[j] !=
                        shader->TransformFeedbackBufferStride[j]){
@@ -2535,7 +2535,7 @@ link_intrastage_shaders(void *mem_ctx,
    link_cs_input_layout_qualifiers(prog, gl_prog, shader_list, num_shaders);
 
    if (linked->Stage != MESA_SHADER_FRAGMENT)
-      link_xfb_stride_layout_qualifiers(ctx, prog, shader_list, num_shaders);
+      link_xfb_stride_layout_qualifiers(&ctx->Const, prog, shader_list, num_shaders);
 
    link_bindless_layout_qualifiers(prog, shader_list, num_shaders);
 
