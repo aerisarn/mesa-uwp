@@ -32,7 +32,6 @@
  */
 
 
-#include "main/glheader.h"
 #include "program/prog_parameter.h"
 #include "util/bitset.h"
 
