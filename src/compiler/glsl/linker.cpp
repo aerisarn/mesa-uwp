@@ -2867,7 +2867,7 @@ find_available_slots(unsigned used_mask, unsigned needed_count)
 static bool
 assign_attribute_or_color_locations(void *mem_ctx,
                                     gl_shader_program *prog,
-                                    struct gl_constants *constants,
+                                    const struct gl_constants *constants,
                                     unsigned target_index,
                                     bool do_assignment)
 {
@@ -4501,28 +4501,31 @@ disable_varying_optimizations_for_sso(struct gl_shader_program *prog)
 }
 
 static void
-link_and_validate_uniforms(struct gl_context *ctx,
+link_and_validate_uniforms(const struct gl_constants *consts,
+                           const struct gl_extensions *exts,
                            struct gl_shader_program *prog)
 {
-   assert(!ctx->Const.UseNIRGLSLLinker);
+   assert(!consts->UseNIRGLSLLinker);
 
    update_array_sizes(prog);
-   link_assign_uniform_locations(prog, &ctx->Const);
+   link_assign_uniform_locations(prog, consts);
 
    if (prog->data->LinkStatus == LINKING_FAILURE)
       return;
 
    link_util_calculate_subroutine_compat(prog);
-   link_util_check_uniform_resources(&ctx->Const, prog);
+   link_util_check_uniform_resources(consts, prog);
    link_util_check_subroutine_resources(prog);
-   check_image_resources(&ctx->Const, &ctx->Extensions, prog);
-   link_assign_atomic_counter_resources(&ctx->Const, prog);
-   link_check_atomic_counter_resources(&ctx->Const, prog);
+   check_image_resources(consts, exts, prog);
+   link_assign_atomic_counter_resources(consts, prog);
+   link_check_atomic_counter_resources(consts, prog);
 }
 
 static bool
 link_varyings_and_uniforms(unsigned first, unsigned last,
-                           struct gl_context *ctx,
+                           const struct gl_constants *consts,
+                           const struct gl_extensions *exts,
+                           gl_api api,
                            struct gl_shader_program *prog, void *mem_ctx)
 {
    /* Mark all generic shader inputs and outputs as unpaired. */
@@ -4542,12 +4545,12 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
       prev = i;
    }
 
-   if (!assign_attribute_or_color_locations(mem_ctx, prog, &ctx->Const,
+   if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
                                             MESA_SHADER_VERTEX, true)) {
       return false;
    }
 
-   if (!assign_attribute_or_color_locations(mem_ctx, prog, &ctx->Const,
+   if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
                                             MESA_SHADER_FRAGMENT, true)) {
       return false;
    }
@@ -4561,12 +4564,12 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
       break;
    }
 
-   if (!link_varyings(prog, first, last, &ctx->Const, &ctx->Extensions,
-		      ctx->API, mem_ctx))
+   if (!link_varyings(prog, first, last, consts, exts,
+                      api, mem_ctx))
       return false;
 
-   if (!ctx->Const.UseNIRGLSLLinker)
-      link_and_validate_uniforms(ctx, prog);
+   if (!consts->UseNIRGLSLLinker)
+     link_and_validate_uniforms(consts, exts, prog);
 
    if (!prog->data->LinkStatus)
       return false;
@@ -4576,15 +4579,15 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
          continue;
 
       const struct gl_shader_compiler_options *options =
-         &ctx->Const.ShaderCompilerOptions[i];
+         &consts->ShaderCompilerOptions[i];
 
       if (options->LowerBufferInterfaceBlocks)
          lower_ubo_reference(prog->_LinkedShaders[i],
                              options->ClampBlockIndicesToArrayBounds,
-                             ctx->Const.UseSTD430AsDefaultPacking);
+                             consts->UseSTD430AsDefaultPacking);
 
       if (i == MESA_SHADER_COMPUTE)
-         lower_shared_reference(&ctx->Const, prog, prog->_LinkedShaders[i]);
+         lower_shared_reference(consts, prog, prog->_LinkedShaders[i]);
 
       lower_vector_derefs(prog->_LinkedShaders[i]);
       do_vec_index_to_swizzle(prog->_LinkedShaders[i]->ir);
@@ -4976,7 +4979,8 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
    store_fragdepth_layout(prog);
 
-   if(!link_varyings_and_uniforms(first, last, ctx, prog, mem_ctx))
+   if(!link_varyings_and_uniforms(first, last, &ctx->Const,
+                                  &ctx->Extensions, ctx->API, prog, mem_ctx))
       goto done;
 
    /* Linking varyings can cause some extra, useless swizzles to be generated
