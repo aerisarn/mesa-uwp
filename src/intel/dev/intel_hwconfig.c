@@ -278,6 +278,12 @@ intel_apply_hwconfig_table(struct intel_device_info *devinfo,
 {
    intel_process_hwconfig_table(devinfo, hwconfig, hwconfig_len,
                                 apply_hwconfig_item);
+
+   /* After applying hwconfig values, some items need to be recalculated. */
+   if (devinfo->apply_hwconfig) {
+      devinfo->max_cs_threads =
+         devinfo->max_eus_per_subslice * devinfo->num_thread_per_eu;
+   }
 }
 
 static void
