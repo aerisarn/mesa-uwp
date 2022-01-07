@@ -172,6 +172,7 @@ struct r600_pipe_shader {
 	struct r600_resource	*bo;
 	unsigned		sprite_coord_enable;
 	unsigned		flatshade;
+	unsigned		msaa;
 	unsigned		pa_cl_vs_out_cntl;
 	unsigned		nr_ps_color_outputs;
 	unsigned                ps_color_export_mask;

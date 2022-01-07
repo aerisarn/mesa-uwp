@@ -1909,9 +1909,11 @@ static bool r600_update_derived_state(struct r600_context *rctx)
 		rctx->rasterizer->sprite_coord_enable != rctx->ps_shader->current->sprite_coord_enable ||
 		rctx->rasterizer->flatshade != rctx->ps_shader->current->flatshade)) {
 
-		if (unlikely(!ps_dirty && rctx->ps_shader && rctx->rasterizer &&
+		bool msaa = rctx->framebuffer.nr_samples > 1 && rctx->ps_iter_samples > 0;
+		if (unlikely(rctx->ps_shader &&
 				((rctx->rasterizer->sprite_coord_enable != rctx->ps_shader->current->sprite_coord_enable) ||
-						(rctx->rasterizer->flatshade != rctx->ps_shader->current->flatshade)))) {
+				 (rctx->rasterizer->flatshade != rctx->ps_shader->current->flatshade) ||
+				 (msaa != rctx->ps_shader->current->msaa)))) {
 
 			if (rctx->b.chip_class >= EVERGREEN)
 				evergreen_update_ps_state(ctx, rctx->ps_shader->current);
