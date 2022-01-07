@@ -1012,12 +1012,11 @@ build_leaf_shader(struct radv_device *dev)
       for (unsigned i = 0; i < 4; ++i) {
          nir_build_store_global(&b, nir_vec(&b, node_data + i * 4, 4),
                                 nir_iadd(&b, triangle_node_dst_addr, nir_imm_int64(&b, i * 16)),
-                                .write_mask = 15, .align_mul = 16, .align_offset = 0);
+                                .align_mul = 16, .align_offset = 0);
       }
 
       nir_ssa_def *node_id = nir_ushr(&b, node_offset, nir_imm_int(&b, 3));
-      nir_build_store_global(&b, node_id, scratch_addr, .write_mask = 1, .align_mul = 4,
-                             .align_offset = 0);
+      nir_build_store_global(&b, node_id, scratch_addr, .align_mul = 4, .align_offset = 0);
    }
    nir_push_else(&b, NULL);
    nir_push_if(&b, nir_ieq(&b, geom_type, nir_imm_int(&b, VK_GEOMETRY_TYPE_AABBS_KHR)));
@@ -1030,8 +1029,7 @@ build_leaf_shader(struct radv_device *dev)
       nir_ssa_def *aabb_node_dst_addr = nir_iadd(&b, node_dst_addr, nir_u2u64(&b, node_offset));
       nir_ssa_def *node_id =
          nir_iadd(&b, nir_ushr(&b, node_offset, nir_imm_int(&b, 3)), nir_imm_int(&b, 7));
-      nir_build_store_global(&b, node_id, scratch_addr, .write_mask = 1, .align_mul = 4,
-                             .align_offset = 0);
+      nir_build_store_global(&b, node_id, scratch_addr, .align_mul = 4, .align_offset = 0);
 
       aabb_addr = nir_iadd(&b, aabb_addr, nir_u2u64(&b, nir_imul(&b, aabb_stride, global_id)));
 
@@ -1053,10 +1051,10 @@ build_leaf_shader(struct radv_device *dev)
 
       nir_build_store_global(&b, nir_vec(&b, values + 0, 4),
                              nir_iadd(&b, aabb_node_dst_addr, nir_imm_int64(&b, 0)),
-                             .write_mask = 15, .align_mul = 16, .align_offset = 0);
+                             .align_mul = 16, .align_offset = 0);
       nir_build_store_global(&b, nir_vec(&b, values + 4, 4),
                              nir_iadd(&b, aabb_node_dst_addr, nir_imm_int64(&b, 16)),
-                             .write_mask = 15, .align_mul = 16, .align_offset = 0);
+                             .align_mul = 16, .align_offset = 0);
    }
    nir_push_else(&b, NULL);
    { /* Instances */
@@ -1096,8 +1094,7 @@ build_leaf_shader(struct radv_device *dev)
       node_dst_addr = nir_iadd(&b, node_dst_addr, nir_u2u64(&b, node_offset));
       nir_ssa_def *node_id =
          nir_iadd(&b, nir_ushr(&b, node_offset, nir_imm_int(&b, 3)), nir_imm_int(&b, 6));
-      nir_build_store_global(&b, node_id, scratch_addr, .write_mask = 1, .align_mul = 4,
-                             .align_offset = 0);
+      nir_build_store_global(&b, node_id, scratch_addr, .align_mul = 4, .align_offset = 0);
 
       nir_variable *bounds[2] = {
          nir_variable_create(b.shader, nir_var_shader_temp, vec3_type, "min_bound"),
@@ -1144,7 +1141,7 @@ build_leaf_shader(struct radv_device *dev)
 
          nir_build_store_global(&b, nir_vec(&b, vals, 3),
                                 nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 92 + 12 * i)),
-                                .write_mask = 0x7, .align_mul = 4, .align_offset = 0);
+                                .align_mul = 4, .align_offset = 0);
       }
 
       nir_ssa_def *m_in[3][3], *m_out[3][3], *m_vec[3][4];
@@ -1161,7 +1158,7 @@ build_leaf_shader(struct radv_device *dev)
       for (unsigned i = 0; i < 3; ++i) {
          nir_build_store_global(&b, nir_vec(&b, m_vec[i], 4),
                                 nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 16 + 16 * i)),
-                                .write_mask = 0xf, .align_mul = 4, .align_offset = 0);
+                                .align_mul = 4, .align_offset = 0);
       }
 
       nir_ssa_def *out0[4] = {
@@ -1169,17 +1166,17 @@ build_leaf_shader(struct radv_device *dev)
          nir_channel(&b, nir_unpack_64_2x32(&b, header_addr), 1), nir_channel(&b, inst3, 0),
          nir_channel(&b, inst3, 1)};
       nir_build_store_global(&b, nir_vec(&b, out0, 4),
-                             nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 0)), .write_mask = 0xf,
-                             .align_mul = 4, .align_offset = 0);
+                             nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 0)), .align_mul = 4,
+                             .align_offset = 0);
       nir_build_store_global(&b, global_id, nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 88)),
-                             .write_mask = 0x1, .align_mul = 4, .align_offset = 0);
+                             .align_mul = 4, .align_offset = 0);
       nir_pop_if(&b, NULL);
       nir_build_store_global(&b, nir_load_var(&b, bounds[0]),
-                             nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 64)), .write_mask = 0x7,
-                             .align_mul = 4, .align_offset = 0);
+                             nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 64)), .align_mul = 4,
+                             .align_offset = 0);
       nir_build_store_global(&b, nir_load_var(&b, bounds[1]),
-                             nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 76)), .write_mask = 0x7,
-                             .align_mul = 4, .align_offset = 0);
+                             nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 76)), .align_mul = 4,
+                             .align_offset = 0);
    }
    nir_pop_if(&b, NULL);
    nir_pop_if(&b, NULL);
@@ -1307,7 +1304,7 @@ build_internal_shader(struct radv_device *dev)
       .align_mul = 4, .align_offset = 0);
 
    nir_build_store_global(&b, src_nodes, nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 0)),
-                          .write_mask = 0xf, .align_mul = 4, .align_offset = 0);
+                          .align_mul = 4, .align_offset = 0);
 
    nir_ssa_def *total_bounds[2] = {
       nir_channels(&b, nir_imm_vec4(&b, NAN, NAN, NAN, NAN), 7),
@@ -1327,10 +1324,10 @@ build_internal_shader(struct radv_device *dev)
       nir_pop_if(&b, NULL);
       nir_build_store_global(&b, nir_load_var(&b, bounds[0]),
                              nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 16 + 24 * i)),
-                             .write_mask = 0x7, .align_mul = 4, .align_offset = 0);
+                             .align_mul = 4, .align_offset = 0);
       nir_build_store_global(&b, nir_load_var(&b, bounds[1]),
                              nir_iadd(&b, node_dst_addr, nir_imm_int64(&b, 28 + 24 * i)),
-                             .write_mask = 0x7, .align_mul = 4, .align_offset = 0);
+                             .align_mul = 4, .align_offset = 0);
       total_bounds[0] = nir_fmin(&b, total_bounds[0], nir_load_var(&b, bounds[0]));
       total_bounds[1] = nir_fmax(&b, total_bounds[1], nir_load_var(&b, bounds[1]));
    }
@@ -1340,16 +1337,14 @@ build_internal_shader(struct radv_device *dev)
    nir_ssa_def *dst_scratch_addr = nir_iadd(
       &b, scratch_addr,
       nir_u2u64(&b, nir_iadd(&b, dst_scratch_offset, nir_ishl(&b, global_id, nir_imm_int(&b, 2)))));
-   nir_build_store_global(&b, node_id, dst_scratch_addr, .write_mask = 1, .align_mul = 4,
-                          .align_offset = 0);
+   nir_build_store_global(&b, node_id, dst_scratch_addr, .align_mul = 4, .align_offset = 0);
 
    nir_push_if(&b, fill_header);
-   nir_build_store_global(&b, node_id, node_addr, .write_mask = 1, .align_mul = 4,
-                          .align_offset = 0);
+   nir_build_store_global(&b, node_id, node_addr, .align_mul = 4, .align_offset = 0);
    nir_build_store_global(&b, total_bounds[0], nir_iadd(&b, node_addr, nir_imm_int64(&b, 8)),
-                          .write_mask = 7, .align_mul = 4, .align_offset = 0);
+                          .align_mul = 4, .align_offset = 0);
    nir_build_store_global(&b, total_bounds[1], nir_iadd(&b, node_addr, nir_imm_int64(&b, 20)),
-                          .write_mask = 7, .align_mul = 4, .align_offset = 0);
+                          .align_mul = 4, .align_offset = 0);
    nir_pop_if(&b, NULL);
    return b.shader;
 }
@@ -1452,19 +1447,19 @@ build_copy_shader(struct radv_device *dev)
             nir_iadd(&b, dst_base_addr,
                      nir_imm_int64(&b, offsetof(struct radv_accel_struct_serialization_header,
                                                 serialization_size))),
-            .write_mask = 0x1, .align_mul = 8, .align_offset = 0);
+            .align_mul = 8, .align_offset = 0);
          nir_build_store_global(
             &b, compacted_size,
             nir_iadd(&b, dst_base_addr,
                      nir_imm_int64(&b, offsetof(struct radv_accel_struct_serialization_header,
                                                 compacted_size))),
-            .write_mask = 0x1, .align_mul = 8, .align_offset = 0);
+            .align_mul = 8, .align_offset = 0);
          nir_build_store_global(
             &b, nir_u2u64(&b, instance_count),
             nir_iadd(&b, dst_base_addr,
                      nir_imm_int64(&b, offsetof(struct radv_accel_struct_serialization_header,
                                                 instance_count))),
-            .write_mask = 0x1, .align_mul = 8, .align_offset = 0);
+            .align_mul = 8, .align_offset = 0);
       }
       nir_pop_if(&b, NULL);
    }
@@ -1567,8 +1562,8 @@ build_copy_shader(struct radv_device *dev)
                            nir_imm_int(&b, sizeof(struct radv_accel_struct_serialization_header)));
                instance_addr = nir_iadd(&b, dst_base_addr, nir_u2u64(&b, instance_addr));
 
-               nir_build_store_global(&b, nir_channels(&b, value, 3), instance_addr,
-                                      .write_mask = 3, .align_mul = 8, .align_offset = 0);
+               nir_build_store_global(&b, nir_channels(&b, value, 3), instance_addr, .align_mul = 8,
+                                      .align_offset = 0);
             }
             nir_push_else(&b, NULL);
             {
@@ -1597,8 +1592,8 @@ build_copy_shader(struct radv_device *dev)
 
          nir_store_var(&b, offset_var, nir_iadd(&b, offset, increment), 1);
 
-         nir_build_store_global(&b, nir_load_var(&b, value_var), dst_addr, .write_mask = 0xf,
-                                .align_mul = 16, .align_offset = 0);
+         nir_build_store_global(&b, nir_load_var(&b, value_var), dst_addr, .align_mul = 16,
+                                .align_offset = 0);
       }
       nir_push_else(&b, NULL);
       {

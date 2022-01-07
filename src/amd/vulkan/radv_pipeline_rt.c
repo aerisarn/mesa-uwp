@@ -422,8 +422,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                                       nir_imm_int(&b_shader, size)),
                              1);
                nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret),
-                                 nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16,
-                                 .write_mask = 1);
+                                 nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
                nir_store_var(&b_shader, vars->stack_ptr,
                              nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
@@ -449,8 +448,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                                       nir_imm_int(&b_shader, size)),
                              1);
                nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret),
-                                 nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16,
-                                 .write_mask = 1);
+                                 nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
                nir_store_var(&b_shader, vars->stack_ptr,
                              nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
@@ -1291,7 +1289,7 @@ insert_traversal_triangle_case(struct radv_device *device,
          nir_store_scratch(
             b, ij,
             nir_iadd(b, nir_load_var(b, vars->stack_ptr), nir_imm_int(b, RADV_HIT_ATTRIB_OFFSET)),
-            .align_mul = 16, .write_mask = 3);
+            .align_mul = 16);
 
          nir_store_var(b, vars->ahit_status, nir_imm_int(b, 0), 1);
 
@@ -1845,8 +1843,8 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
       nir_store_var(b, trav_vars.instance_addr, nir_imm_int64(b, 0), 1);
 
       nir_store_var(b, trav_vars.stack, nir_iadd(b, stack_base, stack_entry_stride_def), 1);
-      nir_store_shared(b, bvh_root, stack_base, .base = 0, .write_mask = 0x1,
-                       .align_mul = stack_entry_size, .align_offset = 0);
+      nir_store_shared(b, bvh_root, stack_base, .base = 0, .align_mul = stack_entry_size,
+                       .align_offset = 0);
 
       nir_store_var(b, trav_vars.top_stack, nir_imm_int(b, 0), 1);
 
@@ -1931,7 +1929,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
                              1);
                nir_store_shared(b,
                                 nir_iand(b, nir_channel(b, instance_data, 0), nir_imm_int(b, 63)),
-                                nir_load_var(b, trav_vars.stack), .base = 0, .write_mask = 0x1,
+                                nir_load_var(b, trav_vars.stack), .base = 0,
                                 .align_mul = stack_entry_size, .align_offset = 0);
                nir_store_var(b, trav_vars.stack,
                              nir_iadd(b, nir_load_var(b, trav_vars.stack), stack_entry_stride_def),
@@ -1971,8 +1969,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
                nir_push_if(b, nir_ine(b, new_node, nir_imm_int(b, 0xffffffff)));
                {
                   nir_store_shared(b, new_node, nir_load_var(b, trav_vars.stack), .base = 0,
-                                   .write_mask = 0x1, .align_mul = stack_entry_size,
-                                   .align_offset = 0);
+                                   .align_mul = stack_entry_size, .align_offset = 0);
                   nir_store_var(
                      b, trav_vars.stack,
                      nir_iadd(b, nir_load_var(b, trav_vars.stack), stack_entry_stride_def), 1);
