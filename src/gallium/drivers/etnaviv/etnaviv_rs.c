@@ -805,8 +805,8 @@ etna_try_rs_blit(struct pipe_context *pctx,
 
 manual:
    if (src->layout == ETNA_LAYOUT_TILED && dst->layout == ETNA_LAYOUT_TILED) {
-      if ((src->status & ETNA_PENDING_WRITE) ||
-          (dst->status & ETNA_PENDING_WRITE))
+      if ((etna_resource_status(ctx, src) & ETNA_PENDING_WRITE) ||
+          (etna_resource_status(ctx, dst) & ETNA_PENDING_WRITE))
          pctx->flush(pctx, NULL, 0);
       return etna_manual_blit(dst, dst_lev, dst_offset, src, src_lev, src_offset, blit_info);
    }

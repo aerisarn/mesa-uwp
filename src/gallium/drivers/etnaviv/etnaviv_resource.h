@@ -169,6 +169,12 @@ resource_written(struct etna_context *ctx, struct pipe_resource *prsc)
    etna_resource_used(ctx, prsc, ETNA_PENDING_WRITE);
 }
 
+static inline enum etna_resource_status
+etna_resource_status(struct etna_context *ctx, struct etna_resource *res)
+{
+	return res->status;
+}
+
 /* Allocate Tile Status for an etna resource.
  * Tile status is a cache of the clear status per tile. This means a smaller
  * surface has to be cleared which is faster.
