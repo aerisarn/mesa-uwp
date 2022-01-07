@@ -40,7 +40,7 @@ link_invalidate_variable_locations(exec_list *ir);
 
 extern void
 link_assign_uniform_locations(struct gl_shader_program *prog,
-                              struct gl_context *ctx);
+                              const struct gl_constants *consts);
 
 extern void
 link_set_uniform_initializers(struct gl_shader_program *prog,

@@ -4505,13 +4505,13 @@ link_and_validate_uniforms(struct gl_context *ctx,
    assert(!ctx->Const.UseNIRGLSLLinker);
 
    update_array_sizes(prog);
-   link_assign_uniform_locations(prog, ctx);
+   link_assign_uniform_locations(prog, &ctx->Const);
 
    if (prog->data->LinkStatus == LINKING_FAILURE)
       return;
 
    link_util_calculate_subroutine_compat(prog);
-   link_util_check_uniform_resources(ctx, prog);
+   link_util_check_uniform_resources(&ctx->Const, prog);
    link_util_check_subroutine_resources(prog);
    check_image_resources(ctx, prog);
    link_assign_atomic_counter_resources(ctx, prog);

@@ -684,7 +684,7 @@ gl_nir_link_glsl(struct gl_context *ctx, struct gl_shader_program *prog)
       return false;
 
    link_util_calculate_subroutine_compat(prog);
-   link_util_check_uniform_resources(ctx, prog);
+   link_util_check_uniform_resources(&ctx->Const, prog);
    link_util_check_subroutine_resources(prog);
    check_image_resources(ctx, prog);
    gl_nir_link_assign_atomic_counter_resources(ctx, prog);
