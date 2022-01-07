@@ -3813,8 +3813,7 @@ create_shader_variable(struct gl_shader_program *shProg,
 }
 
 static bool
-add_shader_variable(const struct gl_context *ctx,
-                    struct gl_shader_program *shProg,
+add_shader_variable(struct gl_shader_program *shProg,
                     struct set *resource_set,
                     unsigned stage_mask,
                     GLenum programInterface, ir_variable *var,
@@ -3879,7 +3878,7 @@ add_shader_variable(const struct gl_context *ctx,
       for (unsigned i = 0; i < type->length; i++) {
          const struct glsl_struct_field *field = &type->fields.structure[i];
          char *field_name = ralloc_asprintf(shProg, "%s.%s", name, field->name);
-         if (!add_shader_variable(ctx, shProg, resource_set,
+         if (!add_shader_variable(shProg, resource_set,
                                   stage_mask, programInterface,
                                   var, field_name, field->type,
                                   use_implicit_location, field_location,
@@ -3915,7 +3914,7 @@ add_shader_variable(const struct gl_context *ctx,
                            array_type->count_attribute_slots(false);
          for (unsigned i = 0; i < type->length; i++) {
             char *elem = ralloc_asprintf(shProg, "%s[%d]", name, i);
-            if (!add_shader_variable(ctx, shProg, resource_set,
+            if (!add_shader_variable(shProg, resource_set,
                                      stage_mask, programInterface,
                                      var, elem, array_type,
                                      use_implicit_location, elem_location,
@@ -3963,8 +3962,7 @@ inout_has_same_location(const ir_variable *var, unsigned stage)
 }
 
 static bool
-add_interface_variables(const struct gl_context *ctx,
-                        struct gl_shader_program *shProg,
+add_interface_variables(struct gl_shader_program *shProg,
                         struct set *resource_set,
                         unsigned stage, GLenum programInterface)
 {
@@ -4015,7 +4013,7 @@ add_interface_variables(const struct gl_context *ctx,
          (stage == MESA_SHADER_VERTEX && var->data.mode == ir_var_shader_in) ||
          (stage == MESA_SHADER_FRAGMENT && var->data.mode == ir_var_shader_out);
 
-      if (!add_shader_variable(ctx, shProg, resource_set,
+      if (!add_shader_variable(shProg, resource_set,
                                1 << stage, programInterface,
                                var, var->name, var->type, vs_input_or_fs_output,
                                var->data.location - loc_bias,
@@ -4026,8 +4024,7 @@ add_interface_variables(const struct gl_context *ctx,
 }
 
 static bool
-add_packed_varyings(const struct gl_context *ctx,
-                    struct gl_shader_program *shProg,
+add_packed_varyings(struct gl_shader_program *shProg,
                     struct set *resource_set,
                     int stage, GLenum type)
 {
@@ -4054,7 +4051,7 @@ add_packed_varyings(const struct gl_context *ctx,
          if (type == iface) {
             const int stage_mask =
                build_stageref(shProg, var->name, var->data.mode);
-            if (!add_shader_variable(ctx, shProg, resource_set,
+            if (!add_shader_variable(shProg, resource_set,
                                      stage_mask,
                                      iface, var, var->name, var->type, false,
                                      var->data.location - VARYING_SLOT_VAR0,
@@ -4067,8 +4064,7 @@ add_packed_varyings(const struct gl_context *ctx,
 }
 
 static bool
-add_fragdata_arrays(const struct gl_context *ctx,
-                    struct gl_shader_program *shProg,
+add_fragdata_arrays(struct gl_shader_program *shProg,
                     struct set *resource_set)
 {
    struct gl_linked_shader *sh = shProg->_LinkedShaders[MESA_SHADER_FRAGMENT];
@@ -4081,7 +4077,7 @@ add_fragdata_arrays(const struct gl_context *ctx,
       if (var) {
          assert(var->data.mode == ir_var_shader_out);
 
-         if (!add_shader_variable(ctx, shProg, resource_set,
+         if (!add_shader_variable(shProg, resource_set,
                                   1 << MESA_SHADER_FRAGMENT,
                                   GL_PROGRAM_OUTPUT, var, var->name, var->type,
                                   true, var->data.location - FRAG_RESULT_DATA0,
@@ -4130,11 +4126,11 @@ build_program_resource_list(struct gl_context *ctx,
 
    /* Program interface needs to expose varyings in case of SSO. */
    if (shProg->SeparateShader) {
-      if (!add_packed_varyings(ctx, shProg, resource_set,
+      if (!add_packed_varyings(shProg, resource_set,
                                input_stage, GL_PROGRAM_INPUT))
          return;
 
-      if (!add_packed_varyings(ctx, shProg, resource_set,
+      if (!add_packed_varyings(shProg, resource_set,
                                output_stage, GL_PROGRAM_OUTPUT))
          return;
    }
@@ -4144,15 +4140,15 @@ build_program_resource_list(struct gl_context *ctx,
       return;
    }
 
-   if (!add_fragdata_arrays(ctx, shProg, resource_set))
+   if (!add_fragdata_arrays(shProg, resource_set))
       return;
 
    /* Add inputs and outputs to the resource list. */
-   if (!add_interface_variables(ctx, shProg, resource_set,
+   if (!add_interface_variables(shProg, resource_set,
                                 input_stage, GL_PROGRAM_INPUT))
       return;
 
-   if (!add_interface_variables(ctx, shProg, resource_set,
+   if (!add_interface_variables(shProg, resource_set,
                                 output_stage, GL_PROGRAM_OUTPUT))
       return;
 
