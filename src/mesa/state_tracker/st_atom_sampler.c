@@ -33,7 +33,6 @@
  
 
 #include "main/macros.h"
-#include "main/mtypes.h"
 #include "main/glformats.h"
 #include "main/samplerobj.h"
 #include "main/teximage.h"

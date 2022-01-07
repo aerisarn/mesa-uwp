@@ -43,7 +43,6 @@
 #include "main/shaderobj.h"
 #include "main/uniforms.h"
 #include "main/shaderapi.h"
-#include "main/shaderimage.h"
 #include "program/prog_instruction.h"
 
 #include "pipe/p_context.h"

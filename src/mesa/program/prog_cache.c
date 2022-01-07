@@ -27,7 +27,7 @@
 
 
 #include "main/glheader.h"
-#include "main/mtypes.h"
+#include "main/shader_types.h"
 
 #include "main/shaderobj.h"
 #include "program/prog_cache.h"

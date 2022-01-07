@@ -34,7 +34,6 @@
 #ifndef ST_PROGRAM_H
 #define ST_PROGRAM_H
 
-#include "main/mtypes.h"
 #include "main/atifragshader.h"
 #include "program/program.h"
 #include "pipe/p_state.h"
