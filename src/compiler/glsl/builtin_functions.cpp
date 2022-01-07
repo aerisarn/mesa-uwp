@@ -75,7 +75,8 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include "main/mtypes.h"
+#include "main/consts_exts.h"
+#include "main/shader_types.h"
 #include "main/shaderobj.h"
 #include "ir_builder.h"
 #include "glsl_parser_extras.h"
