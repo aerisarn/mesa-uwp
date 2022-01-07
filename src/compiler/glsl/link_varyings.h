@@ -288,9 +288,12 @@ private:
    unsigned stream_id;
 };
 
+
 bool
 link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
-              struct gl_context *ctx, void *mem_ctx);
+              const struct gl_constants *consts,
+              const struct gl_extensions *exts,
+              gl_api api, void *mem_ctx);
 
 void
 validate_first_and_last_interface_explicit_locations(struct gl_context *ctx,

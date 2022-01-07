@@ -4559,7 +4559,8 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
       break;
    }
 
-   if (!link_varyings(prog, first, last, ctx, mem_ctx))
+   if (!link_varyings(prog, first, last, &ctx->Const, &ctx->Extensions,
+		      ctx->API, mem_ctx))
       return false;
 
    if (!ctx->Const.UseNIRGLSLLinker)

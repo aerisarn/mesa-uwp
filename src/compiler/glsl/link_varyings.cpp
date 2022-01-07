@@ -3200,7 +3200,9 @@ check_against_input_limit(const struct gl_constants *consts,
 
 bool
 link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
-              struct gl_context *ctx, void *mem_ctx)
+              const struct gl_constants *consts,
+              const struct gl_extensions *exts,
+              gl_api api, void *mem_ctx)
 {
    bool has_xfb_qualifiers = false;
    unsigned num_tfeedback_decls = 0;
@@ -3248,8 +3250,7 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
 
       tfeedback_decls = rzalloc_array(mem_ctx, tfeedback_decl,
                                       num_tfeedback_decls);
-      if (!parse_tfeedback_decls(&ctx->Const,
-                                 &ctx->Extensions,
+      if (!parse_tfeedback_decls(consts, exts,
                                  prog, mem_ctx, num_tfeedback_decls,
                                  varying_names, tfeedback_decls))
          return false;
@@ -3265,8 +3266,7 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
        (num_tfeedback_decls != 0 || prog->SeparateShader)) {
       const uint64_t reserved_out_slots =
          reserved_varying_slot(prog->_LinkedShaders[last], ir_var_shader_out);
-      if (!assign_varying_locations(&ctx->Const,
-                                    &ctx->Extensions, mem_ctx, prog,
+      if (!assign_varying_locations(consts, exts, mem_ctx, prog,
                                     prog->_LinkedShaders[last], NULL,
                                     num_tfeedback_decls, tfeedback_decls,
                                     reserved_out_slots))
@@ -3286,8 +3286,8 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
       if (first == last) {
          gl_linked_shader *const sh = prog->_LinkedShaders[last];
 
-         do_dead_builtin_varyings(&ctx->Const, ctx->API, NULL, sh, 0, NULL);
-         do_dead_builtin_varyings(&ctx->Const, ctx->API, sh, NULL, num_tfeedback_decls,
+         do_dead_builtin_varyings(consts, api, NULL, sh, 0, NULL);
+         do_dead_builtin_varyings(consts, api, sh, NULL, num_tfeedback_decls,
                                   tfeedback_decls);
 
          if (prog->SeparateShader) {
@@ -3297,8 +3297,8 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
             /* Assign input locations for SSO, output locations are already
              * assigned.
              */
-            if (!assign_varying_locations(&ctx->Const,
-                                          &ctx->Extensions, mem_ctx, prog,
+            if (!assign_varying_locations(consts, exts,
+                                          mem_ctx, prog,
                                           NULL /* producer */,
                                           sh /* consumer */,
                                           0 /* num_tfeedback_decls */,
@@ -3325,11 +3325,11 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
             const uint64_t reserved_in_slots =
                reserved_varying_slot(sh_next, ir_var_shader_in);
 
-            do_dead_builtin_varyings(&ctx->Const, ctx->API, sh_i, sh_next,
+            do_dead_builtin_varyings(consts, api, sh_i, sh_next,
                       next == MESA_SHADER_FRAGMENT ? num_tfeedback_decls : 0,
                       tfeedback_decls);
 
-            if (!assign_varying_locations(&ctx->Const, &ctx->Extensions,
+            if (!assign_varying_locations(consts, exts,
                                           mem_ctx, prog, sh_i, sh_next,
                       next == MESA_SHADER_FRAGMENT ? num_tfeedback_decls : 0,
                       tfeedback_decls,
@@ -3339,13 +3339,13 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
             /* This must be done after all dead varyings are eliminated. */
             if (sh_i != NULL) {
                unsigned slots_used = util_bitcount64(reserved_out_slots);
-               if (!check_against_output_limit(&ctx->Const, ctx->API, prog, sh_i, slots_used)) {
+               if (!check_against_output_limit(consts, api, prog, sh_i, slots_used)) {
                   return false;
                }
             }
 
             unsigned slots_used = util_bitcount64(reserved_in_slots);
-            if (!check_against_input_limit(&ctx->Const, ctx->API, prog, sh_next, slots_used))
+            if (!check_against_input_limit(consts, api, prog, sh_next, slots_used))
                return false;
 
             next = i;
@@ -3353,7 +3353,7 @@ link_varyings(struct gl_shader_program *prog, unsigned first, unsigned last,
       }
    }
 
-   if (!store_tfeedback_info(&ctx->Const, prog,
+   if (!store_tfeedback_info(consts, prog,
                              num_tfeedback_decls, tfeedback_decls,
                              has_xfb_qualifiers, mem_ctx))
       return false;
