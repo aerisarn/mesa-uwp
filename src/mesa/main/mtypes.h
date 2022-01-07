@@ -2198,88 +2198,6 @@ struct gl_ati_fragment_shader_state
 };
 
 /**
- *  Shader subroutine function definition
- */
-struct gl_subroutine_function
-{
-   struct gl_resource_name name;
-   int index;
-   int num_compat_types;
-   const struct glsl_type **types;
-};
-
-struct gl_uniform_buffer_variable
-{
-   char *Name;
-
-   /**
-    * Name of the uniform as seen by glGetUniformIndices.
-    *
-    * glGetUniformIndices requires that the block instance index \b not be
-    * present in the name of queried uniforms.
-    *
-    * \note
-    * \c gl_uniform_buffer_variable::IndexName and
-    * \c gl_uniform_buffer_variable::Name may point to identical storage.
-    */
-   char *IndexName;
-
-   const struct glsl_type *Type;
-   unsigned int Offset;
-   GLboolean RowMajor;
-};
-
-
-struct gl_uniform_block
-{
-   /** Declared name of the uniform block */
-   struct gl_resource_name name;
-
-   /** Array of supplemental information about UBO ir_variables. */
-   struct gl_uniform_buffer_variable *Uniforms;
-   GLuint NumUniforms;
-
-   /**
-    * Index (GL_UNIFORM_BLOCK_BINDING) into ctx->UniformBufferBindings[] to use
-    * with glBindBufferBase to bind a buffer object to this uniform block.
-    */
-   GLuint Binding;
-
-   /**
-    * Minimum size (in bytes) of a buffer object to back this uniform buffer
-    * (GL_UNIFORM_BLOCK_DATA_SIZE).
-    */
-   GLuint UniformBufferSize;
-
-   /** Stages that reference this block */
-   uint8_t stageref;
-
-   /**
-    * Linearized array index for uniform block instance arrays
-    *
-    * Given a uniform block instance array declared with size
-    * blk[s_0][s_1]..[s_m], the block referenced by blk[i_0][i_1]..[i_m] will
-    * have the linearized array index
-    *
-    *           m-1       m
-    *     i_m + ∑   i_j * ∏     s_k
-    *           j=0       k=j+1
-    *
-    * For a uniform block instance that is not an array, this is always 0.
-    */
-   uint8_t linearized_array_index;
-
-   /**
-    * Layout specified in the shader
-    *
-    * This isn't accessible through the API, but it is used while
-    * cross-validating uniform blocks.
-    */
-   enum glsl_interface_packing _Packing;
-   GLboolean _RowMajor;
-};
-
-/**
  * Data container for shader queries. This holds only the minimal
  * amount of required information for resource queries to work.
  */
@@ -2376,16 +2294,6 @@ struct gl_shader_variable
     * Precision qualifier.
     */
    unsigned precision:2;
-};
-
-/**
- * Active resource in a gl_shader_program
- */
-struct gl_program_resource
-{
-   GLenum16 Type; /** Program interface type. */
-   const void *Data; /** Pointer to resource associated data structure. */
-   uint8_t StageReferences; /** Bitmask of shader stage references. */
 };
 
 #define GLSL_DUMP      0x1  /**< Dump shaders to stdout */
