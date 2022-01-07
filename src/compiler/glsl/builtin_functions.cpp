@@ -312,49 +312,49 @@ static bool
 gpu_shader4_integer(const _mesa_glsl_parse_state *state)
 {
    return state->EXT_gpu_shader4_enable &&
-          state->ctx->Extensions.EXT_texture_integer;
+          state->exts->EXT_texture_integer;
 }
 
 static bool
 gpu_shader4_array(const _mesa_glsl_parse_state *state)
 {
    return state->EXT_gpu_shader4_enable &&
-          state->ctx->Extensions.EXT_texture_array;
+          state->exts->EXT_texture_array;
 }
 
 static bool
 gpu_shader4_array_integer(const _mesa_glsl_parse_state *state)
 {
    return gpu_shader4_array(state) &&
-          state->ctx->Extensions.EXT_texture_integer;
+          state->exts->EXT_texture_integer;
 }
 
 static bool
 gpu_shader4_rect(const _mesa_glsl_parse_state *state)
 {
    return state->EXT_gpu_shader4_enable &&
-          state->ctx->Extensions.NV_texture_rectangle;
+          state->exts->NV_texture_rectangle;
 }
 
 static bool
 gpu_shader4_rect_integer(const _mesa_glsl_parse_state *state)
 {
    return gpu_shader4_rect(state) &&
-          state->ctx->Extensions.EXT_texture_integer;
+          state->exts->EXT_texture_integer;
 }
 
 static bool
 gpu_shader4_tbo(const _mesa_glsl_parse_state *state)
 {
    return state->EXT_gpu_shader4_enable &&
-          state->ctx->Extensions.EXT_texture_buffer_object;
+          state->exts->EXT_texture_buffer_object;
 }
 
 static bool
 gpu_shader4_tbo_integer(const _mesa_glsl_parse_state *state)
 {
    return gpu_shader4_tbo(state) &&
-          state->ctx->Extensions.EXT_texture_integer;
+          state->exts->EXT_texture_integer;
 }
 
 static bool
@@ -368,21 +368,21 @@ static bool
 gpu_shader4_integer_derivs_only(const _mesa_glsl_parse_state *state)
 {
    return gpu_shader4_derivs_only(state) &&
-          state->ctx->Extensions.EXT_texture_integer;
+          state->exts->EXT_texture_integer;
 }
 
 static bool
 gpu_shader4_array_derivs_only(const _mesa_glsl_parse_state *state)
 {
    return gpu_shader4_derivs_only(state) &&
-          state->ctx->Extensions.EXT_texture_array;
+          state->exts->EXT_texture_array;
 }
 
 static bool
 gpu_shader4_array_integer_derivs_only(const _mesa_glsl_parse_state *state)
 {
    return gpu_shader4_array_derivs_only(state) &&
-          state->ctx->Extensions.EXT_texture_integer;
+          state->exts->EXT_texture_integer;
 }
 
 static bool
@@ -465,7 +465,7 @@ texture_array_lod(const _mesa_glsl_parse_state *state)
    return lod_exists_in_stage(state) &&
           (state->EXT_texture_array_enable ||
            (state->EXT_gpu_shader4_enable &&
-            state->ctx->Extensions.EXT_texture_array));
+            state->exts->EXT_texture_array));
 }
 
 static bool
@@ -473,7 +473,7 @@ texture_array(const _mesa_glsl_parse_state *state)
 {
    return state->EXT_texture_array_enable ||
           (state->EXT_gpu_shader4_enable &&
-           state->ctx->Extensions.EXT_texture_array);
+           state->exts->EXT_texture_array);
 }
 
 static bool
@@ -593,7 +593,7 @@ derivatives(const _mesa_glsl_parse_state *state)
    return derivatives_only(state) &&
           (state->is_version(110, 300) ||
            state->OES_standard_derivatives_enable ||
-           state->ctx->Const.AllowGLSLRelaxedES);
+           state->consts->AllowGLSLRelaxedES);
 }
 
 static bool
@@ -875,7 +875,7 @@ shader_integer_functions2_int64(const _mesa_glsl_parse_state *state)
 static bool
 is_nir(const _mesa_glsl_parse_state *state)
 {
-   return state->ctx->Const.ShaderCompilerOptions[state->stage].NirOptions;
+   return state->consts->ShaderCompilerOptions[state->stage].NirOptions;
 }
 
 static bool

@@ -631,7 +631,7 @@ generate_call(exec_list *instructions, ir_function_signature *sig,
     * instructions; just generate an ir_constant.
     */
    if (state->is_version(120, 100) ||
-       state->ctx->Const.AllowGLSLBuiltinConstantExpression) {
+       state->consts->AllowGLSLBuiltinConstantExpression) {
       ir_constant *value = sig->constant_expression_value(ctx,
                                                           actual_parameters,
                                                           NULL);

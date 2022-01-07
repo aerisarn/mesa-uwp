@@ -373,7 +373,10 @@ struct _mesa_glsl_parse_state {
    void process_version_directive(YYLTYPE *locp, int version,
                                   const char *ident);
 
-   struct gl_context *const ctx;
+   struct gl_context *const ctx; /* only to be used for debug callback. */
+   const struct gl_extensions *exts;
+   const struct gl_constants *consts;
+   gl_api api;
    void *scanner;
    exec_list translation_unit;
    glsl_symbol_table *symbols;

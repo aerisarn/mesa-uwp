@@ -2917,11 +2917,11 @@ static bool
 validate_stream_qualifier(YYLTYPE *loc, struct _mesa_glsl_parse_state *state,
                           unsigned stream)
 {
-   if (stream >= state->ctx->Const.MaxVertexStreams) {
+   if (stream >= state->consts->MaxVertexStreams) {
       _mesa_glsl_error(loc, state,
                        "invalid stream specified %d is larger than "
                        "MAX_VERTEX_STREAMS - 1 (%d).",
-                       stream, state->ctx->Const.MaxVertexStreams - 1);
+                       stream, state->consts->MaxVertexStreams - 1);
       return false;
    }
 
@@ -2948,7 +2948,7 @@ apply_explicit_binding(struct _mesa_glsl_parse_state *state,
       return;
    }
 
-   const struct gl_context *const ctx = state->ctx;
+   const struct gl_constants *consts = state->consts;
    unsigned elements = type->is_array() ? type->arrays_of_arrays_size() : 1;
    unsigned max_index = qual_binding + elements - 1;
    const glsl_type *base_type = type->without_array();
@@ -2965,11 +2965,11 @@ apply_explicit_binding(struct _mesa_glsl_parse_state *state,
        * The implementation-dependent maximum is GL_MAX_UNIFORM_BUFFER_BINDINGS.
        */
       if (qual->flags.q.uniform &&
-         max_index >= ctx->Const.MaxUniformBufferBindings) {
+         max_index >= consts->MaxUniformBufferBindings) {
          _mesa_glsl_error(loc, state, "layout(binding = %u) for %d UBOs exceeds "
                           "the maximum number of UBO binding points (%d)",
                           qual_binding, elements,
-                          ctx->Const.MaxUniformBufferBindings);
+                          consts->MaxUniformBufferBindings);
          return;
       }
 
@@ -2983,11 +2983,11 @@ apply_explicit_binding(struct _mesa_glsl_parse_state *state,
        *  be within this range."
        */
       if (qual->flags.q.buffer &&
-         max_index >= ctx->Const.MaxShaderStorageBufferBindings) {
+         max_index >= consts->MaxShaderStorageBufferBindings) {
          _mesa_glsl_error(loc, state, "layout(binding = %u) for %d SSBOs exceeds "
                           "the maximum number of SSBO binding points (%d)",
                           qual_binding, elements,
-                          ctx->Const.MaxShaderStorageBufferBindings);
+                          consts->MaxShaderStorageBufferBindings);
          return;
       }
    } else if (base_type->is_sampler()) {
@@ -2998,7 +2998,7 @@ apply_explicit_binding(struct _mesa_glsl_parse_state *state,
        *  with an array of size N, all elements of the array from binding
        *  through binding + N - 1 must be within this range."
        */
-      unsigned limit = ctx->Const.MaxCombinedTextureImageUnits;
+      unsigned limit = consts->MaxCombinedTextureImageUnits;
 
       if (max_index >= limit) {
          _mesa_glsl_error(loc, state, "layout(binding = %d) for %d samplers "
@@ -3008,23 +3008,23 @@ apply_explicit_binding(struct _mesa_glsl_parse_state *state,
          return;
       }
    } else if (base_type->contains_atomic()) {
-      assert(ctx->Const.MaxAtomicBufferBindings <= MAX_COMBINED_ATOMIC_BUFFERS);
-      if (qual_binding >= ctx->Const.MaxAtomicBufferBindings) {
+      assert(consts->MaxAtomicBufferBindings <= MAX_COMBINED_ATOMIC_BUFFERS);
+      if (qual_binding >= consts->MaxAtomicBufferBindings) {
          _mesa_glsl_error(loc, state, "layout(binding = %d) exceeds the "
                           "maximum number of atomic counter buffer bindings "
                           "(%u)", qual_binding,
-                          ctx->Const.MaxAtomicBufferBindings);
+                          consts->MaxAtomicBufferBindings);
 
          return;
       }
    } else if ((state->is_version(420, 310) ||
                state->ARB_shading_language_420pack_enable) &&
               base_type->is_image()) {
-      assert(ctx->Const.MaxImageUnits <= MAX_IMAGE_UNITS);
-      if (max_index >= ctx->Const.MaxImageUnits) {
+      assert(consts->MaxImageUnits <= MAX_IMAGE_UNITS);
+      if (max_index >= consts->MaxImageUnits) {
          _mesa_glsl_error(loc, state, "Image binding %d exceeds the "
                           "maximum number of image units (%d)", max_index,
-                          ctx->Const.MaxImageUnits);
+                          consts->MaxImageUnits);
          return;
       }
 
@@ -3268,13 +3268,13 @@ apply_explicit_location(const struct ast_type_qualifier *qual,
       if (!state->check_explicit_uniform_location_allowed(loc, var))
          return;
 
-      const struct gl_context *const ctx = state->ctx;
+      const struct gl_constants *consts = state->consts;
       unsigned max_loc = qual_location + var->type->uniform_locations() - 1;
 
-      if (max_loc >= ctx->Const.MaxUserAssignableUniformLocations) {
+      if (max_loc >= consts->MaxUserAssignableUniformLocations) {
          _mesa_glsl_error(loc, state, "location(s) consumed by uniform %s "
                           ">= MAX_UNIFORM_LOCATIONS (%u)", var->name,
-                          ctx->Const.MaxUserAssignableUniformLocations);
+                          consts->MaxUserAssignableUniformLocations);
          return;
       }
 
@@ -8808,20 +8808,20 @@ ast_cs_input_layout::hir(exec_list *instructions,
       }
       ralloc_free(local_size_str);
 
-      if (qual_local_size[i] > state->ctx->Const.MaxComputeWorkGroupSize[i]) {
+      if (qual_local_size[i] > state->consts->MaxComputeWorkGroupSize[i]) {
          _mesa_glsl_error(&loc, state,
                           "local_size_%c exceeds MAX_COMPUTE_WORK_GROUP_SIZE"
                           " (%d)", 'x' + i,
-                          state->ctx->Const.MaxComputeWorkGroupSize[i]);
+                          state->consts->MaxComputeWorkGroupSize[i]);
          break;
       }
       total_invocations *= qual_local_size[i];
       if (total_invocations >
-          state->ctx->Const.MaxComputeWorkGroupInvocations) {
+          state->consts->MaxComputeWorkGroupInvocations) {
          _mesa_glsl_error(&loc, state,
                           "product of local_sizes exceeds "
                           "MAX_COMPUTE_WORK_GROUP_INVOCATIONS (%d)",
-                          state->ctx->Const.MaxComputeWorkGroupInvocations);
+                          state->consts->MaxComputeWorkGroupInvocations);
          break;
       }
    }

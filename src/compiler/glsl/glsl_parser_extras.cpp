@@ -61,7 +61,8 @@ static const unsigned known_desktop_gl_versions[] =
 _mesa_glsl_parse_state::_mesa_glsl_parse_state(struct gl_context *_ctx,
 					       gl_shader_stage stage,
                                                void *mem_ctx)
-   : ctx(_ctx), cs_input_local_size_specified(false), cs_input_local_size(),
+   : ctx(_ctx), exts(&_ctx->Extensions), consts(&_ctx->Const),
+     api(_ctx->API), cs_input_local_size_specified(false), cs_input_local_size(),
      switch_state(), warnings_enabled(true)
 {
    assert(stage < MESA_SHADER_STAGES);
@@ -417,10 +418,10 @@ _mesa_glsl_parse_state::set_valid_gl_and_glsl_versions(YYLTYPE *locp)
        * Later calls to _mesa_glsl_initialize_types will misbehave if
        * the version is invalid.
        */
-      switch (this->ctx->API) {
+      switch (this->api) {
       case API_OPENGL_COMPAT:
       case API_OPENGL_CORE:
-	 this->language_version = this->ctx->Const.GLSLVersion;
+	 this->language_version = this->consts->GLSLVersion;
 	 break;
 
       case API_OPENGLES:
@@ -458,8 +459,8 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
          } else if (strcmp(ident, "compatibility") == 0) {
             compat_token_present = true;
 
-            if (this->ctx->API != API_OPENGL_COMPAT &&
-                !this->ctx->Const.AllowGLSLCompatShaders) {
+            if (this->api != API_OPENGL_COMPAT &&
+                !this->consts->AllowGLSLCompatShaders) {
                _mesa_glsl_error(locp, this,
                                 "the compatibility profile is not supported");
             }
@@ -495,8 +496,8 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
       this->language_version = version;
 
    this->compat_shader = compat_token_present ||
-                         this->ctx->Const.ForceCompatShaders ||
-                         (this->ctx->API == API_OPENGL_COMPAT &&
+                         this->consts->ForceCompatShaders ||
+                         (this->api == API_OPENGL_COMPAT &&
                           this->language_version == 140) ||
                          (!this->es_shader && this->language_version < 140);
 
@@ -598,7 +599,7 @@ struct _mesa_glsl_extension {
     * Predicate that checks whether the relevant extension is available for
     * this context.
     */
-   bool (*available_pred)(const struct gl_context *,
+   bool (*available_pred)(const struct gl_extensions *,
                           gl_api api, uint8_t version);
 
    /**
@@ -628,9 +629,9 @@ struct _mesa_glsl_extension {
 /** Checks if the context supports a user-facing extension */
 #define EXT(name_str, driver_cap, ...) \
 static UNUSED bool \
-has_##name_str(const struct gl_context *ctx, gl_api api, uint8_t version) \
+has_##name_str(const struct gl_extensions *exts, gl_api api, uint8_t version) \
 { \
-   return ctx->Extensions.driver_cap && (version >= \
+   return exts->driver_cap && (version >= \
           _mesa_extension_table[MESA_EXTENSION_##name_str].version[api]); \
 }
 #include "main/extensions_table.h"
@@ -793,7 +794,7 @@ static const _mesa_glsl_extension _mesa_glsl_supported_extensions[] = {
 bool _mesa_glsl_extension::compatible_with_state(
       const _mesa_glsl_parse_state *state, gl_api api, uint8_t gl_version) const
 {
-   return this->available_pred(state->ctx, api, gl_version);
+   return this->available_pred(state->exts, api, gl_version);
 }
 
 /**
@@ -830,8 +831,8 @@ _mesa_glsl_process_extension(const char *name, YYLTYPE *name_locp,
 			     const char *behavior_string, YYLTYPE *behavior_locp,
 			     _mesa_glsl_parse_state *state)
 {
-   uint8_t gl_version = state->ctx->Extensions.Version;
-   gl_api api = state->ctx->API;
+   uint8_t gl_version = state->exts->Version;
+   gl_api api = state->api;
    ext_behavior behavior;
    if (strcmp(behavior_string, "warn") == 0) {
       behavior = extension_warn;
@@ -879,7 +880,7 @@ _mesa_glsl_process_extension(const char *name, YYLTYPE *name_locp,
       const _mesa_glsl_extension *extension = find_extension(name);
       if (extension &&
           (extension->compatible_with_state(state, api, gl_version) ||
-           (state->ctx->Const.AllowGLSLCompatShaders &&
+           (state->consts->AllowGLSLCompatShaders &&
             extension->compatible_with_state(state, API_OPENGL_COMPAT, gl_version)))) {
          extension->set_flags(state, behavior);
          if (extension->available_pred == has_ANDROID_extension_pack_es31a) {
@@ -2051,8 +2052,8 @@ add_builtin_defines(struct _mesa_glsl_parse_state *state,
                     unsigned version,
                     bool es)
 {
-   unsigned gl_version = state->ctx->Extensions.Version;
-   gl_api api = state->ctx->API;
+   unsigned gl_version = state->exts->Version;
+   gl_api api = state->api;
 
    if (gl_version != 0xff) {
       unsigned i;
@@ -2094,27 +2095,27 @@ do_late_parsing_checks(struct _mesa_glsl_parse_state *state)
 }
 
 static void
-opt_shader_and_create_symbol_table(struct gl_context *ctx,
+opt_shader_and_create_symbol_table(const struct gl_constants *consts,
                                    struct glsl_symbol_table *source_symbols,
                                    struct gl_shader *shader)
 {
    assert(shader->CompileStatus != COMPILE_FAILURE &&
           !shader->ir->is_empty());
 
-   struct gl_shader_compiler_options *options =
-      &ctx->Const.ShaderCompilerOptions[shader->Stage];
+   const struct gl_shader_compiler_options *options =
+      &consts->ShaderCompilerOptions[shader->Stage];
 
    /* Do some optimization at compile time to reduce shader IR size
     * and reduce later work if the same shader is linked multiple times
     */
-   if (ctx->Const.GLSLOptimizeConservatively) {
+   if (consts->GLSLOptimizeConservatively) {
       /* Run it just once. */
       do_common_optimization(shader->ir, false, false, options,
-                             ctx->Const.NativeIntegers);
+                             consts->NativeIntegers);
    } else {
       /* Repeat it until it stops making changes. */
       while (do_common_optimization(shader->ir, false, false, options,
-                                    ctx->Const.NativeIntegers))
+                                    consts->NativeIntegers))
          ;
    }
 
@@ -2308,7 +2309,7 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
       lower_builtins(shader->ir);
       assign_subroutine_indexes(state);
       lower_subroutine(shader->ir, state);
-      opt_shader_and_create_symbol_table(ctx, state->symbols, shader);
+      opt_shader_and_create_symbol_table(&ctx->Const, state->symbols, shader);
    }
 
    if (!force_recompile) {
