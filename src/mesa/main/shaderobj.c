@@ -205,8 +205,7 @@ _mesa_lookup_shader_err(struct gl_context *ctx, GLuint name, const char *caller)
 /**********************************************************************/
 
 void
-_mesa_reference_shader_program_data(struct gl_context *ctx,
-                                    struct gl_shader_program_data **ptr,
+_mesa_reference_shader_program_data(struct gl_shader_program_data **ptr,
                                     struct gl_shader_program_data *data)
 {
    if (*ptr == data)
@@ -218,7 +217,6 @@ _mesa_reference_shader_program_data(struct gl_context *ctx,
       assert(oldData->RefCount > 0);
 
       if (p_atomic_dec_zero(&oldData->RefCount)) {
-         assert(ctx);
          assert(oldData->NumUniformStorage == 0 ||
                 oldData->UniformStorage);
 
@@ -357,7 +355,7 @@ _mesa_clear_shader_program_data(struct gl_context *ctx,
    if (shProg->data)
       _mesa_program_resource_hash_destroy(shProg);
 
-   _mesa_reference_shader_program_data(ctx, &shProg->data, NULL);
+   _mesa_reference_shader_program_data(&shProg->data, NULL);
 }
 
 

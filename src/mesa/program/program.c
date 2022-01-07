@@ -301,7 +301,7 @@ _mesa_reference_program_(struct gl_context *ctx,
 
       if (p_atomic_dec_zero(&oldProg->RefCount)) {
          assert(ctx);
-         _mesa_reference_shader_program_data(ctx, &oldProg->sh.data, NULL);
+         _mesa_reference_shader_program_data(&oldProg->sh.data, NULL);
          st_delete_program(ctx, oldProg);
       }
 
