@@ -33,6 +33,7 @@
 
 #include "main/config.h" /* for MAX_FEEDBACK_BUFFERS */
 #include "main/glheader.h"
+#include "util/mesa-sha1.h"
 
 /**
  * Shader information needed by both gl_shader and gl_linked shader.
