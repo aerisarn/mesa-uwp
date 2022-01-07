@@ -200,7 +200,7 @@ process_xfb_layout_qualifiers(void *mem_ctx, const gl_linked_shader *sh,
  * matching input to another stage.
  */
 static void
-cross_validate_types_and_qualifiers(struct gl_context *ctx,
+cross_validate_types_and_qualifiers(const struct gl_constants *consts,
                                     struct gl_shader_program *prog,
                                     const ir_variable *input,
                                     const ir_variable *output,
@@ -375,7 +375,7 @@ cross_validate_types_and_qualifiers(struct gl_context *ctx,
    }
    if (input_interpolation != output_interpolation &&
        prog->data->Version < 440) {
-      if (!ctx->Const.AllowGLSLCrossStageInterpolationMismatch) {
+      if (!consts->AllowGLSLCrossStageInterpolationMismatch) {
          linker_error(prog,
                       "%s shader output `%s' specifies %s "
                       "interpolation qualifier, "
@@ -406,7 +406,7 @@ cross_validate_types_and_qualifiers(struct gl_context *ctx,
  * Validate front and back color outputs against single color input
  */
 static void
-cross_validate_front_and_back_color(struct gl_context *ctx,
+cross_validate_front_and_back_color(const struct gl_constants *consts,
                                     struct gl_shader_program *prog,
                                     const ir_variable *input,
                                     const ir_variable *front_color,
@@ -415,11 +415,11 @@ cross_validate_front_and_back_color(struct gl_context *ctx,
                                     gl_shader_stage producer_stage)
 {
    if (front_color != NULL && front_color->data.assigned)
-      cross_validate_types_and_qualifiers(ctx, prog, input, front_color,
+      cross_validate_types_and_qualifiers(consts, prog, input, front_color,
                                           consumer_stage, producer_stage);
 
    if (back_color != NULL && back_color->data.assigned)
-      cross_validate_types_and_qualifiers(ctx, prog, input, back_color,
+      cross_validate_types_and_qualifiers(consts, prog, input, back_color,
                                           consumer_stage, producer_stage);
 }
 
@@ -620,7 +620,7 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
 }
 
 static bool
-validate_explicit_variable_location(struct gl_context *ctx,
+validate_explicit_variable_location(const struct gl_constants *consts,
                                     struct explicit_location_info explicit_locations[][4],
                                     ir_variable *var,
                                     gl_shader_program *prog,
@@ -639,12 +639,12 @@ validate_explicit_variable_location(struct gl_context *ctx,
    if (var->data.mode == ir_var_shader_out) {
       assert(sh->Stage != MESA_SHADER_FRAGMENT);
       slot_max =
-         ctx->Const.Program[sh->Stage].MaxOutputComponents / 4;
+         consts->Program[sh->Stage].MaxOutputComponents / 4;
    } else {
       assert(var->data.mode == ir_var_shader_in);
       assert(sh->Stage != MESA_SHADER_VERTEX);
       slot_max =
-         ctx->Const.Program[sh->Stage].MaxInputComponents / 4;
+         consts->Program[sh->Stage].MaxInputComponents / 4;
    }
 
    if (slot_limit > slot_max) {
@@ -694,7 +694,7 @@ validate_explicit_variable_location(struct gl_context *ctx,
  * shaders.
  */
 void
-validate_first_and_last_interface_explicit_locations(struct gl_context *ctx,
+validate_first_and_last_interface_explicit_locations(const struct gl_constants *consts,
                                                      struct gl_shader_program *prog,
                                                      gl_shader_stage first_stage,
                                                      gl_shader_stage last_stage)
@@ -734,7 +734,7 @@ validate_first_and_last_interface_explicit_locations(struct gl_context *ctx,
             continue;
 
          if (!validate_explicit_variable_location(
-               ctx, explicit_locations, var, prog, sh)) {
+               consts, explicit_locations, var, prog, sh)) {
             return;
          }
       }
@@ -783,7 +783,7 @@ static_input_output_matching(struct gl_shader_program *prog)
  * Validate that outputs from one stage match inputs of another
  */
 void
-cross_validate_outputs_to_inputs(struct gl_context *ctx,
+cross_validate_outputs_to_inputs(const struct gl_constants *consts,
                                  struct gl_shader_program *prog,
                                  gl_linked_shader *producer,
                                  gl_linked_shader *consumer)
@@ -807,7 +807,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
          /* User-defined varyings with explicit locations are handled
           * differently because they do not need to have matching names.
           */
-         if (!validate_explicit_variable_location(ctx,
+         if (!validate_explicit_variable_location(consts,
                                                   output_explicit_locations,
                                                   var, prog, producer)) {
             return;
@@ -837,7 +837,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
          const ir_variable *const back_color =
             parameters.get_variable("gl_BackColor");
 
-         cross_validate_front_and_back_color(ctx, prog, input,
+         cross_validate_front_and_back_color(consts, prog, input,
                                              front_color, back_color,
                                              consumer->Stage, producer->Stage);
       } else if (strcmp(input->name, "gl_SecondaryColor") == 0 && input->data.used) {
@@ -847,7 +847,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
          const ir_variable *const back_color =
             parameters.get_variable("gl_BackSecondaryColor");
 
-         cross_validate_front_and_back_color(ctx, prog, input,
+         cross_validate_front_and_back_color(consts, prog, input,
                                              front_color, back_color,
                                              consumer->Stage, producer->Stage);
       } else {
@@ -866,7 +866,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                compute_variable_location_slot(input, consumer->Stage);
             unsigned slot_limit = idx + num_elements;
 
-            if (!validate_explicit_variable_location(ctx,
+            if (!validate_explicit_variable_location(consts,
                                                      input_explicit_locations,
                                                      input, prog, consumer)) {
                return;
@@ -915,7 +915,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
              */
             if (!(input->get_interface_type() &&
                   output->get_interface_type()))
-               cross_validate_types_and_qualifiers(ctx, prog, input, output,
+               cross_validate_types_and_qualifiers(consts, prog, input, output,
                                                    consumer->Stage,
                                                    producer->Stage);
          } else {
@@ -2411,7 +2411,7 @@ varying_matches::not_xfb_comparator(const void *x_generic, const void *y_generic
 
 /**
  * Is the given variable a varying variable to be counted against the
- * limit in ctx->Const.MaxVarying?
+ * limit in consts->MaxVarying?
  * This includes variables such as texcoords, colors and generic
  * varyings, but excludes variables such as gl_FrontFacing and gl_FragCoord.
  */

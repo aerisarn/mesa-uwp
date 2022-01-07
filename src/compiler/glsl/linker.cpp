@@ -941,7 +941,8 @@ validate_intrastage_arrays(struct gl_shader_program *prog,
  * Perform validation of global variables used across multiple shaders
  */
 static void
-cross_validate_globals(struct gl_context *ctx, struct gl_shader_program *prog,
+cross_validate_globals(const struct gl_constants *consts,
+                       struct gl_shader_program *prog,
                        struct exec_list *ir, glsl_symbol_table *variables,
                        bool uniforms_only)
 {
@@ -1167,7 +1168,7 @@ cross_validate_globals(struct gl_context *ctx, struct gl_shader_program *prog,
          /* Check the precision qualifier matches for uniform variables on
           * GLSL ES.
           */
-         if (!ctx->Const.AllowGLSLRelaxedES &&
+         if (!consts->AllowGLSLRelaxedES &&
              prog->IsES && !var->get_interface_type() &&
              existing->data.precision != var->data.precision) {
             if ((existing->data.used && var->data.used) || prog->data->Version >= 300) {
@@ -1221,7 +1222,7 @@ cross_validate_globals(struct gl_context *ctx, struct gl_shader_program *prog,
  * Perform validation of uniforms used across multiple shader stages
  */
 static void
-cross_validate_uniforms(struct gl_context *ctx,
+cross_validate_uniforms(const struct gl_constants *consts,
                         struct gl_shader_program *prog)
 {
    glsl_symbol_table variables;
@@ -1229,7 +1230,7 @@ cross_validate_uniforms(struct gl_context *ctx,
       if (prog->_LinkedShaders[i] == NULL)
          continue;
 
-      cross_validate_globals(ctx, prog, prog->_LinkedShaders[i]->ir,
+      cross_validate_globals(consts, prog, prog->_LinkedShaders[i]->ir,
                              &variables, true);
    }
 }
@@ -2433,7 +2434,7 @@ link_intrastage_shaders(void *mem_ctx,
    for (unsigned i = 0; i < num_shaders; i++) {
       if (shader_list[i] == NULL)
          continue;
-      cross_validate_globals(ctx, prog, shader_list[i]->ir, &variables,
+      cross_validate_globals(&ctx->Const, prog, shader_list[i]->ir, &variables,
                              false);
    }
 
@@ -3592,12 +3593,12 @@ reserve_subroutine_explicit_locations(struct gl_shader_program *prog,
  * inactive array elements that may get trimmed away.
  */
 static void
-check_explicit_uniform_locations(struct gl_context *ctx,
+check_explicit_uniform_locations(const struct gl_extensions *exts,
                                  struct gl_shader_program *prog)
 {
    prog->NumExplicitUniformLocations = 0;
 
-   if (!ctx->Extensions.ARB_explicit_uniform_location)
+   if (!exts->ARB_explicit_uniform_location)
       return;
 
    /* This map is used to detect if overlapping explicit locations
@@ -4093,7 +4094,7 @@ add_fragdata_arrays(struct gl_shader_program *shProg,
  * resource data.
  */
 void
-build_program_resource_list(struct gl_context *ctx,
+build_program_resource_list(const struct gl_constants *consts,
                             struct gl_shader_program *shProg,
                             bool add_packed_varyings_only)
 {
@@ -4167,7 +4168,7 @@ build_program_resource_list(struct gl_context *ctx,
       }
 
       /* Add transform feedback buffers. */
-      for (unsigned i = 0; i < ctx->Const.MaxTransformFeedbackBuffers; i++) {
+      for (unsigned i = 0; i < consts->MaxTransformFeedbackBuffers; i++) {
          if ((linked_xfb->ActiveBuffers >> i) & 1) {
             linked_xfb->Buffers[i].Binding = i;
             if (!link_util_add_program_resource(shProg, resource_set,
@@ -4300,7 +4301,7 @@ build_program_resource_list(struct gl_context *ctx,
  * that includes loop induction variable).
  */
 static bool
-validate_sampler_array_indexing(struct gl_context *ctx,
+validate_sampler_array_indexing(const struct gl_constants *consts,
                                 struct gl_shader_program *prog)
 {
    dynamic_sampler_array_indexing_visitor v;
@@ -4309,7 +4310,7 @@ validate_sampler_array_indexing(struct gl_context *ctx,
          continue;
 
       bool no_dynamic_indexing =
-         ctx->Const.ShaderCompilerOptions[i].EmitNoIndirectSampler;
+         consts->ShaderCompilerOptions[i].EmitNoIndirectSampler;
 
       /* Search for array derefs in shader. */
       v.run(prog->_LinkedShaders[i]->ir);
@@ -4662,7 +4663,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       min_version = MIN2(min_version, prog->Shaders[i]->Version);
       max_version = MAX2(max_version, prog->Shaders[i]->Version);
 
-      if (!ctx->Const.AllowGLSLRelaxedES &&
+      if (!consts->AllowGLSLRelaxedES &&
           prog->Shaders[i]->IsES != prog->Shaders[0]->IsES) {
          linker_error(prog, "all shaders must use same shading "
                       "language version\n");
@@ -4681,7 +4682,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    /* In desktop GLSL, different shader versions may be linked together.  In
     * GLSL ES, all shader versions must be the same.
     */
-   if (!ctx->Const.AllowGLSLRelaxedES && prog->Shaders[0]->IsES &&
+   if (!consts->AllowGLSLRelaxedES && prog->Shaders[0]->IsES &&
        min_version != max_version) {
       linker_error(prog, "all shaders must use same shading "
                    "language version\n");
@@ -4808,7 +4809,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
     * performed, then locations are assigned for uniforms, attributes, and
     * varyings.
     */
-   cross_validate_uniforms(ctx, prog);
+   cross_validate_uniforms(consts, prog);
    if (!prog->data->LinkStatus)
       goto done;
 
@@ -4826,7 +4827,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       last = i;
    }
 
-   check_explicit_uniform_locations(ctx, prog);
+   check_explicit_uniform_locations(&ctx->Extensions, prog);
    link_assign_subroutine_types(prog);
    verify_subroutine_associated_funcs(prog);
 
@@ -4848,7 +4849,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       if (!prog->data->LinkStatus)
          goto done;
 
-      cross_validate_outputs_to_inputs(ctx, prog,
+      cross_validate_outputs_to_inputs(consts, prog,
                                        prog->_LinkedShaders[prev],
                                        prog->_LinkedShaders[i]);
       if (!prog->data->LinkStatus)
@@ -4862,7 +4863,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
     * stage and outputs of the last stage included in the program, since there
     * is no cross validation for these.
     */
-   validate_first_and_last_interface_explicit_locations(ctx, prog,
+   validate_first_and_last_interface_explicit_locations(consts, prog,
                                                         (gl_shader_stage) first,
                                                         (gl_shader_stage) last);
 
@@ -4941,7 +4942,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
        * vertex shader inputs here.
        */
       if (prog->IsES && i == MESA_SHADER_VERTEX) {
-         if (!assign_attribute_or_color_locations(mem_ctx, prog, &ctx->Const,
+         if (!assign_attribute_or_color_locations(mem_ctx, prog, consts,
                                                   MESA_SHADER_VERTEX, false)) {
             goto done;
          }
@@ -4966,7 +4967,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
     */
    if ((!prog->IsES && prog->data->Version < 130) ||
        (prog->IsES && prog->data->Version < 300)) {
-      if (!validate_sampler_array_indexing(ctx, prog))
+      if (!validate_sampler_array_indexing(consts, prog))
          goto done;
    }
 
@@ -4975,7 +4976,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
    store_fragdepth_layout(prog);
 
-   if(!link_varyings_and_uniforms(first, last, &ctx->Const,
+   if(!link_varyings_and_uniforms(first, last, consts,
                                   &ctx->Extensions, ctx->API, prog, mem_ctx))
       goto done;
 

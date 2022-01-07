@@ -170,7 +170,7 @@ st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       validate_ir_tree(ir);
    }
 
-   build_program_resource_list(ctx, prog, use_nir);
+   build_program_resource_list(&ctx->Const, prog, use_nir);
 
    if (use_nir)
       ret = st_link_nir(ctx, prog);
