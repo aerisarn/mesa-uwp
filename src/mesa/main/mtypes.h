@@ -42,6 +42,7 @@
 #include "main/glthread.h"
 #include "main/consts_exts.h"
 #include "main/shader_types.h"
+#include "main/glconfig.h"
 #include "main/menums.h"
 #include "main/config.h"
 #include "glapi/glapi.h"
@@ -131,36 +132,6 @@ struct shader_includes;
 
 /* Mask of bits for depth+stencil buffers */
 #define BUFFER_BITS_DEPTH_STENCIL (BUFFER_BIT_DEPTH | BUFFER_BIT_STENCIL)
-
-/**
- * Framebuffer configuration (aka visual / pixelformat)
- * Note: some of these fields should be boolean, but it appears that
- * code in drivers/dri/common/util.c requires int-sized fields.
- */
-struct gl_config
-{
-   GLboolean floatMode;
-   GLuint doubleBufferMode;
-   GLuint stereoMode;
-
-   GLint redBits, greenBits, blueBits, alphaBits;	/* bits per comp */
-   GLuint redMask, greenMask, blueMask, alphaMask;
-   GLint redShift, greenShift, blueShift, alphaShift;
-   GLint rgbBits;		/* total bits for rgb */
-
-   GLint accumRedBits, accumGreenBits, accumBlueBits, accumAlphaBits;
-   GLint depthBits;
-   GLint stencilBits;
-
-   /* ARB_multisample / SGIS_multisample */
-   GLuint samples;
-
-   /* OML_swap_method */
-   GLint swapMethod;
-
-   /* EXT_framebuffer_sRGB */
-   GLint sRGBCapable;
-};
 
 
 #define FRONT_MATERIAL_BITS   (MAT_BIT_FRONT_EMISSION | \
