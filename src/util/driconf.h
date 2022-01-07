@@ -578,6 +578,10 @@
    DRI_CONF_OPT_B(radv_disable_sinking_load_input_fs, def, \
                   "Disable sinking load inputs for fragment shaders")
 
+#define DRI_CONF_RADV_DGC(def) \
+   DRI_CONF_OPT_B(radv_dgc, def, \
+                  "Expose an experimental implementation of VK_NV_device_generated_commands")
+
 /**
  * \brief ANV specific configuration options
  */
