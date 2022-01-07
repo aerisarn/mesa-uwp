@@ -1769,4 +1769,3 @@ spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb,Fail
 spec@nv_copy_image@nv_copy_image-simple --tex-to-tex,Fail
-spec@nv_primitive_restart@primitive-restart-vbo_combined_vertex_and_index,Fail
