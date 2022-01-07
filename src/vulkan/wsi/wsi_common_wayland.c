@@ -1237,7 +1237,7 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
-                               pCreateInfo, pAllocator);
+                               pCreateInfo, pAllocator, false);
    if (result != VK_SUCCESS) {
       vk_free(pAllocator, chain);
       return result;

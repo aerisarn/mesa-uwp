@@ -220,7 +220,8 @@ wsi_swapchain_init(const struct wsi_device *wsi,
                    struct wsi_swapchain *chain,
                    VkDevice device,
                    const VkSwapchainCreateInfoKHR *pCreateInfo,
-                   const VkAllocationCallbacks *pAllocator)
+                   const VkAllocationCallbacks *pAllocator,
+                   bool use_prime_blit)
 {
    VkResult result;
 
@@ -231,7 +232,7 @@ wsi_swapchain_init(const struct wsi_device *wsi,
    chain->wsi = wsi;
    chain->device = device;
    chain->alloc = *pAllocator;
-   chain->use_prime_blit = false;
+   chain->use_prime_blit = use_prime_blit;
 
    chain->cmd_pools =
       vk_zalloc(pAllocator, sizeof(VkCommandPool) * wsi->queue_family_count, 8,

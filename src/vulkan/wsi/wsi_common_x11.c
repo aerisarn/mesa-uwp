@@ -1762,8 +1762,13 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+   bool use_prime_blit = false;
+   if (!wsi_device->sw)
+      if (!wsi_x11_check_dri3_compatible(wsi_device, conn))
+         use_prime_blit = true;
+
    result = wsi_swapchain_init(wsi_device, &chain->base, device,
-                               pCreateInfo, pAllocator);
+                               pCreateInfo, pAllocator, use_prime_blit);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
@@ -1798,10 +1803,6 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
     * reallocated.
     */
    chain->copy_is_suboptimal = false;
-
-   if (!wsi_device->sw)
-      if (!wsi_x11_check_dri3_compatible(wsi_device, conn))
-         chain->base.use_prime_blit = true;
 
    chain->event_id = xcb_generate_id(chain->conn);
    xcb_present_select_input(chain->conn, chain->event_id, chain->window,

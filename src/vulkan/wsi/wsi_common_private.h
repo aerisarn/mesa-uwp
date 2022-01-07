@@ -80,7 +80,8 @@ wsi_swapchain_init(const struct wsi_device *wsi,
                    struct wsi_swapchain *chain,
                    VkDevice device,
                    const VkSwapchainCreateInfoKHR *pCreateInfo,
-                   const VkAllocationCallbacks *pAllocator);
+                   const VkAllocationCallbacks *pAllocator,
+                   bool use_prime_blit);
 
 enum VkPresentModeKHR
 wsi_swapchain_get_present_mode(struct wsi_device *wsi,
