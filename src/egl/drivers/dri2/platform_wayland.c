@@ -1096,6 +1096,12 @@ back_bo_to_dri_buffer(struct dri2_egl_surface *dri2_surf, __DRIbuffer *buffer)
    buffer->flags = 0;
 }
 
+/* Value chosen empirically as a compromise between avoiding frequent
+ * reallocations and extended time of increased memory consumption due to
+ * unused buffers being kept.
+ */
+#define BUFFER_TRIM_AGE_HYSTERESIS 20
+
 static int
 update_buffers(struct dri2_egl_surface *dri2_surf)
 {
@@ -1125,10 +1131,13 @@ update_buffers(struct dri2_egl_surface *dri2_surf)
 
    /* If we have an extra unlocked buffer at this point, we had to do triple
     * buffering for a while, but now can go back to just double buffering.
-    * That means we can free any unlocked buffer now. */
+    * That means we can free any unlocked buffer now. To avoid toggling between
+    * going back to double buffering and needing to allocate another buffer too
+    * fast we let the unneeded buffer sit around for a short while. */
    for (int i = 0; i < ARRAY_SIZE(dri2_surf->color_buffers); i++) {
       if (!dri2_surf->color_buffers[i].locked &&
-          dri2_surf->color_buffers[i].wl_buffer) {
+          dri2_surf->color_buffers[i].wl_buffer &&
+          dri2_surf->color_buffers[i].age > BUFFER_TRIM_AGE_HYSTERESIS) {
          wl_buffer_destroy(dri2_surf->color_buffers[i].wl_buffer);
          dri2_dpy->image->destroyImage(dri2_surf->color_buffers[i].dri_image);
          if (dri2_dpy->is_different_gpu)
@@ -2321,10 +2330,13 @@ swrast_update_buffers(struct dri2_egl_surface *dri2_surf)
 
    /* If we have an extra unlocked buffer at this point, we had to do triple
     * buffering for a while, but now can go back to just double buffering.
-    * That means we can free any unlocked buffer now. */
+    * That means we can free any unlocked buffer now. To avoid toggling between
+    * going back to double buffering and needing to allocate another buffer too
+    * fast we let the unneeded buffer sit around for a short while. */
    for (int i = 0; i < ARRAY_SIZE(dri2_surf->color_buffers); i++) {
       if (!dri2_surf->color_buffers[i].locked &&
-          dri2_surf->color_buffers[i].wl_buffer) {
+          dri2_surf->color_buffers[i].wl_buffer &&
+          dri2_surf->color_buffers[i].age > BUFFER_TRIM_AGE_HYSTERESIS) {
          wl_buffer_destroy(dri2_surf->color_buffers[i].wl_buffer);
          munmap(dri2_surf->color_buffers[i].data,
                 dri2_surf->color_buffers[i].data_size);
