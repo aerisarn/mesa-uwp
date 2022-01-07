@@ -236,6 +236,9 @@ zink_verify_instance_extensions(struct zink_screen *screen)
 {
 %for ext in extensions:
 %if registry.in_registry(ext.name):
+%if ext.platform_guard:
+#ifdef ${ext.platform_guard}
+%endif
    if (screen->instance_info.have_${ext.name_with_vendor()}) {
 %for cmd in registry.get_registry_entry(ext.name).instance_commands:
       if (!screen->vk.${cmd.lstrip("vk")}) {
@@ -257,6 +260,9 @@ zink_verify_instance_extensions(struct zink_screen *screen)
 %endfor
    }
 %endif
+%if ext.platform_guard:
+#endif
+%endif
 %endfor
 }
 
@@ -273,12 +279,18 @@ zink_verify_instance_extensions(struct zink_screen *screen)
 %else:
    <% generated_funcs.add(cmd) %>
 %endif
+%if ext.platform_guard:
+#ifdef ${ext.platform_guard}
+%endif
 void
 zink_stub_${cmd.lstrip("vk")}()
 {
    mesa_loge("ZINK: ${cmd} is not loaded properly!");
    abort();
 }
+%if ext.platform_guard:
+#endif
+%endif
 %endfor
 %endif
 %endfor
@@ -334,6 +346,9 @@ if __name__ == "__main__":
 
         if entry.promoted_in:
             ext.core_since = Version((*entry.promoted_in, 0))
+
+        if entry.platform_guard:
+            ext.platform_guard = entry.platform_guard 
 
     if error_count > 0:
         print("zink_instance.py: Found {} error(s) in total. Quitting.".format(error_count))

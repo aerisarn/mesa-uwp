@@ -71,6 +71,9 @@ class Extension:
     has_features   = False
     guard          = False
 
+    # these are specific to zink_instance.py:
+    platform_guard = None
+
     def __init__(self, name, alias="", required=False, nonstandard=False,
                  properties=False, features=False, conditions=None, guard=False,
                  core_since=None):
@@ -153,6 +156,8 @@ class ExtensionRegistryEntry:
     constants         = None
     features_struct   = None
     properties_struct = None
+    # some instance extensions are locked behind certain platforms
+    platform_guard    = ""
 
 class ExtensionRegistry:
     # key = extension name, value = registry entry
@@ -163,6 +168,7 @@ class ExtensionRegistry:
 
         commands_type = dict()
         aliases = dict()
+        platform_guards = dict()
 
         for cmd in vkxml.findall("commands/command"):
             name = cmd.find("./proto/name")
@@ -174,6 +180,11 @@ class ExtensionRegistry:
 
         for (cmd, alias) in aliases.items():
             commands_type[cmd] = commands_type[alias]
+
+        for platform in vkxml.findall("platforms/platform"):
+            name = platform.get("name")
+            guard = platform.get("protect")
+            platform_guards[name] = guard
 
         for ext in vkxml.findall("extensions/extension"):
             # Reserved extensions are marked with `supported="disabled"`
@@ -217,6 +228,9 @@ class ExtensionRegistry:
                 elif (self.is_properties_struct(ty_name) and
                       entry.properties_struct is None):
                     entry.properties_struct = ty_name
+
+            if ext.get("platform") is not None:
+                entry.platform_guard = platform_guards[ext.get("platform")]
 
             self.registry[name] = entry
 
