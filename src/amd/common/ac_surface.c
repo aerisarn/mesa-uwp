@@ -2882,14 +2882,14 @@ uint64_t ac_surface_get_plane_offset(enum chip_class chip_class,
 
 uint64_t ac_surface_get_plane_stride(enum chip_class chip_class,
                                     const struct radeon_surf *surf,
-                                    unsigned plane)
+                                    unsigned plane, unsigned level)
 {
    switch (plane) {
    case 0:
       if (chip_class >= GFX9) {
-         return surf->u.gfx9.surf_pitch * surf->bpe;
+         return (surf->is_linear ? surf->u.gfx9.pitch[level] : surf->u.gfx9.surf_pitch) * surf->bpe;
       } else {
-         return surf->u.legacy.level[0].nblk_x * surf->bpe;
+         return surf->u.legacy.level[level].nblk_x * surf->bpe;
       }
    case 1:
       return 1 + (surf->display_dcc_offset ?

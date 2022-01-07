@@ -2363,7 +2363,7 @@ radv_GetImageSubresourceLayout(VkDevice _device, VkImage _image,
       pLayout->offset = ac_surface_get_plane_offset(device->physical_device->rad_info.chip_class,
                                                     surface, mem_plane_id, 0);
       pLayout->rowPitch = ac_surface_get_plane_stride(device->physical_device->rad_info.chip_class,
-                                                      surface, mem_plane_id);
+                                                      surface, mem_plane_id, level);
       pLayout->arrayPitch = 0;
       pLayout->depthPitch = 0;
       pLayout->size = ac_surface_get_plane_size(surface, mem_plane_id);
