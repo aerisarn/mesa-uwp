@@ -37,7 +37,7 @@
 #include "compiler/glsl_types.h"
 #include "glsl_parser_extras.h"
 #include "util/macros.h"
-#include "main/mtypes.h"
+#include "main/consts_exts.h"
 
 /**
  * Declarations of type flyweights (glsl_type::_foo_type) and

@@ -41,10 +41,11 @@
 #include "linker.h"
 #include "glsl_parser_extras.h"
 #include "glsl_symbol_table.h"
-#include "main/mtypes.h"
+#include "main/consts_exts.h"
 #include "main/uniforms.h"
 #include "program/prog_statevars.h"
 #include "program/prog_instruction.h"
+#include "util/compiler.h"
 #include "builtin_functions.h"
 
 using namespace ir_builder;
