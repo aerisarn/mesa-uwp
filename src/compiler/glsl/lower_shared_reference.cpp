@@ -36,8 +36,9 @@
 #include "linker.h"
 #include "main/macros.h"
 #include "util/list.h"
+#include "main/consts_exts.h"
+#include "main/shader_types.h"
 #include "glsl_parser_extras.h"
-#include "main/mtypes.h"
 
 using namespace ir_builder;
 

@@ -28,7 +28,8 @@
 #include "util/hash_table.h"
 #include "program.h"
 #include "main/errors.h"
-#include "main/mtypes.h"
+#include "main/shader_types.h"
+#include "main/consts_exts.h"
 
 namespace {
 

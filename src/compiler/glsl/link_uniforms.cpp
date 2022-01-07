@@ -29,7 +29,8 @@
 #include "string_to_uint_map.h"
 #include "ir_array_refcount.h"
 
-#include "main/mtypes.h"
+#include "main/shader_types.h"
+#include "main/consts_exts.h"
 #include "util/strndup.h"
 
 /**

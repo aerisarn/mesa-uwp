@@ -21,7 +21,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include <gtest/gtest.h>
-#include "main/mtypes.h"
 #include "main/macros.h"
 #include "util/ralloc.h"
 #include "uniform_initializer_utils.h"

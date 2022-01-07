@@ -27,8 +27,9 @@
 #include "gl_nir_linker.h"
 #include "compiler/glsl/ir_uniform.h" /* for gl_uniform_storage */
 #include "linker_util.h"
-#include "main/context.h"
-#include "main/mtypes.h"
+#include "util/u_dynarray.h"
+#include "main/consts_exts.h"
+#include "main/shader_types.h"
 
 /**
  * This file do the common link for GLSL uniforms, using NIR, instead of IR as

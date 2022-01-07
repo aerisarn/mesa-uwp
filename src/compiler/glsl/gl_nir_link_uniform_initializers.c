@@ -25,7 +25,7 @@
 #include "gl_nir_linker.h"
 #include "compiler/glsl/ir_uniform.h" /* for gl_uniform_storage */
 #include "main/context.h"
-#include "main/mtypes.h"
+#include "main/shader_types.h"
 
 struct set_opaque_binding_closure {
    struct gl_shader_program *shader_prog;

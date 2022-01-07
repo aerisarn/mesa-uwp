@@ -30,7 +30,8 @@
 
 
 #include "main/errors.h"
-#include "main/mtypes.h"
+#include "main/consts_exts.h"
+#include "main/shader_types.h"
 #include "glsl_symbol_table.h"
 #include "glsl_parser_extras.h"
 #include "ir_optimization.h"

@@ -21,12 +21,13 @@
  * IN THE SOFTWARE.
  *
  */
-#include "main/mtypes.h"
 #include "glsl_types.h"
 #include "linker_util.h"
 #include "util/bitscan.h"
 #include "util/set.h"
 #include "ir_uniform.h" /* for gl_uniform_storage */
+#include "main/shader_types.h"
+#include "main/consts_exts.h"
 
 /* Utility methods shared between the GLSL IR and the NIR */
 

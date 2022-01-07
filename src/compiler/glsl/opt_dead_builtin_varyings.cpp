@@ -52,7 +52,8 @@
 #include "ir_print_visitor.h"
 #include "compiler/glsl_types.h"
 #include "link_varyings.h"
-#include "main/mtypes.h"
+#include "main/consts_exts.h"
+#include "main/shader_types.h"
 #include "util/u_string.h"
 
 namespace {

@@ -25,7 +25,7 @@
 #include "gl_nir_linker.h"
 #include "ir_uniform.h" /* for gl_uniform_storage */
 #include "linker_util.h"
-#include "main/mtypes.h"
+#include "main/shader_types.h"
 
 /**
  * This file contains code to do a nir-based linking for uniform blocks. This

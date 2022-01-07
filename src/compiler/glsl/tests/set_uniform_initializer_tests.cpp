@@ -22,7 +22,7 @@
  */
 #include <gtest/gtest.h>
 #include "util/compiler.h"
-#include "main/mtypes.h"
+#include "main/shader_types.h"
 #include "main/macros.h"
 #include "util/ralloc.h"
 #include "string_to_uint_map.h"
