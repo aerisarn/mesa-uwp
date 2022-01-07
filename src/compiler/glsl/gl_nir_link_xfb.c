@@ -26,8 +26,9 @@
 #include "nir_xfb_info.h"
 #include "gl_nir_linker.h"
 #include "linker_util.h"
-#include "main/context.h"
 #include "util/u_math.h"
+#include "main/shader_types.h"
+#include "main/consts_exts.h"
 
 /**
  * This file does the linking of GLSL transform feedback using NIR.
