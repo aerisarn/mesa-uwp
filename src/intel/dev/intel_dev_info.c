@@ -114,6 +114,7 @@ main(int argc, char *argv[])
 
       fprintf(stdout, "   LLC: %u\n", devinfo.has_llc);
       fprintf(stdout, "   threads per EU: %u\n", devinfo.num_thread_per_eu);
+      fprintf(stdout, "   URB size: %u\n", devinfo.urb.size);
       fprintf(stdout, "   L3 banks: %u\n", devinfo.l3_banks);
       fprintf(stdout, "   max VS  threads: %u\n", devinfo.max_vs_threads);
       fprintf(stdout, "   max TCS threads: %u\n", devinfo.max_tcs_threads);
