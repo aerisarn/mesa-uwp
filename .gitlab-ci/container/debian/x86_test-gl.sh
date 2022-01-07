@@ -84,6 +84,7 @@ apt-get install -y --no-remove \
 . .gitlab-ci/container/build-rust.sh
 . .gitlab-ci/container/build-crosvm.sh
 rm -rf /root/.cargo
+rm -rf /root/.rustup
 
 ############### Build kernel
 

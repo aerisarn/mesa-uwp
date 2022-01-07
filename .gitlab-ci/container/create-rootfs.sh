@@ -150,6 +150,8 @@ rm -rf usr/sbin/update-usbids
 rm -rf var/lib/usbutils/usb.ids
 rm -rf usr/share/misc/usb.ids
 
+rm -rf /root/.pip
+
 #######################################################################
 # Crush into a minimal production image to be deployed via some type of image
 # updating system.

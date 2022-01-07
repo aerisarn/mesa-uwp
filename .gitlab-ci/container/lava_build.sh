@@ -174,6 +174,7 @@ EXTRA_MESON_ARGS+=" -D prefix=/libdrm"
 
 ############### Delete rust, since the tests won't be compiling anything.
 rm -rf /root/.cargo
+rm -rf /root/.rustup
 
 ############### Create rootfs
 set +e
