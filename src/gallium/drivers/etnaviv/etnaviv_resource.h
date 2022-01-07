@@ -32,7 +32,7 @@
 #include "pipe/p_state.h"
 #include "util/format/u_format.h"
 #include "util/list.h"
-#include "util/set.h"
+#include "util/hash_table.h"
 #include "util/u_helpers.h"
 #include "util/u_range.h"
 
@@ -95,11 +95,6 @@ struct etna_resource {
    struct pipe_resource *render;
    /* frontend flushes resource via an explicit call to flush_resource */
    bool explicit_flush;
-
-   enum etna_resource_status status;
-
-   mtx_t lock; /* Lock to protect pending_ctx */
-   struct set *pending_ctx;
 };
 
 /* returns TRUE if a is newer than b */
@@ -169,11 +164,8 @@ resource_written(struct etna_context *ctx, struct pipe_resource *prsc)
    etna_resource_used(ctx, prsc, ETNA_PENDING_WRITE);
 }
 
-static inline enum etna_resource_status
-etna_resource_status(struct etna_context *ctx, struct etna_resource *res)
-{
-	return res->status;
-}
+enum etna_resource_status
+etna_resource_status(struct etna_context *ctx, struct etna_resource *res);
 
 /* Allocate Tile Status for an etna resource.
  * Tile status is a cache of the clear status per tile. This means a smaller
