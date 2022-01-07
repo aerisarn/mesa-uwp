@@ -54,7 +54,7 @@ link_cross_validate_uniform_block(void *mem_ctx,
 
 extern void
 link_uniform_blocks(void *mem_ctx,
-                    struct gl_context *ctx,
+                    const struct gl_constants *consts,
                     struct gl_shader_program *prog,
                     struct gl_linked_shader *shader,
                     struct gl_uniform_block **ubo_blocks,

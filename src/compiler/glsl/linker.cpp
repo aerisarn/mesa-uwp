@@ -2589,7 +2589,7 @@ link_intrastage_shaders(void *mem_ctx,
    len_v.run(linked->ir);
 
    /* Link up uniform blocks defined within this stage. */
-   link_uniform_blocks(mem_ctx, ctx, prog, linked, &ubo_blocks,
+   link_uniform_blocks(mem_ctx, &ctx->Const, prog, linked, &ubo_blocks,
                        &num_ubo_blocks, &ssbo_blocks, &num_ssbo_blocks);
 
    const unsigned max_uniform_blocks =
