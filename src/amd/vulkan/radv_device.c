@@ -2328,7 +2328,7 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          properties->maxTaskWorkGroupSize[0] = 1024;
          properties->maxTaskWorkGroupSize[1] = 1024;
          properties->maxTaskWorkGroupSize[2] = 1024;
-         properties->maxTaskOutputCount = 1024;
+         properties->maxTaskOutputCount = 65535;
 
          /* Mesh shader limitations:
           * Same as NGG, because MS are compiled to NGG.
