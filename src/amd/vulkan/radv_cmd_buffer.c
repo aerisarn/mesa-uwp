@@ -2559,7 +2559,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
           */
          radv_load_ds_clear_metadata(cmd_buffer, iview);
       }
-   } else if (subpass->vrs_attachment && cmd_buffer->device->vrs.image) {
+   } else if (subpass->vrs_attachment && radv_cmd_buffer_get_vrs_image(cmd_buffer)) {
       /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have to
        * bind our internal depth buffer that contains the VRS data as part of HTILE.
        */
@@ -5799,6 +5799,10 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
       radv_handle_subpass_image_transition(cmd_buffer, subpass->attachments[i], true);
    }
 
+   radv_describe_barrier_end(cmd_buffer);
+
+   radv_cmd_buffer_clear_subpass(cmd_buffer);
+
    if (subpass->vrs_attachment) {
       int idx = subpass->vrs_attachment->attachment;
       struct radv_image_view *vrs_iview = cmd_buffer->state.attachments[idx].iview;
@@ -5848,10 +5852,6 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
          }
       }
    }
-
-   radv_describe_barrier_end(cmd_buffer);
-
-   radv_cmd_buffer_clear_subpass(cmd_buffer);
 
    assert(cmd_buffer->cs->cdw <= cdw_max);
 }
