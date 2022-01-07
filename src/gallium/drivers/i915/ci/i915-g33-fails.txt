@@ -479,9 +479,6 @@ spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
 
-# "Mesa: User error: GL_INVALID_OPERATION in unsupported function called (unsupported extension or deprecated function?)"
-spec@ext_draw_instanced@ext_draw_instanced-drawarrays,Fail
-
 spec@ext_external_objects@vk-buf-exchange,Fail
 spec@ext_external_objects@vk-depth-display,Fail
 spec@ext_external_objects@vk-image-display,Fail
