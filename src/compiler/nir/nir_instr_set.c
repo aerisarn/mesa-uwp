@@ -272,6 +272,7 @@ hash_tex(uint32_t hash, const nir_tex_instr *instr)
    hash = HASH(hash, instr->is_array);
    hash = HASH(hash, instr->is_shadow);
    hash = HASH(hash, instr->is_new_style_shadow);
+   hash = HASH(hash, instr->is_sparse);
    unsigned component = instr->component;
    hash = HASH(hash, component);
    for (unsigned i = 0; i < 4; ++i)
