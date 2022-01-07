@@ -357,7 +357,7 @@ sparse_backing_alloc(struct zink_screen *screen, struct zink_bo *bo,
       size = MAX2(size, ZINK_SPARSE_BUFFER_PAGE_SIZE);
 
       buf = zink_bo_create(screen, size, ZINK_SPARSE_BUFFER_PAGE_SIZE,
-                           ZINK_HEAP_DEVICE_LOCAL, ZINK_ALLOC_NO_SUBALLOC, NULL);
+                           ZINK_HEAP_DEVICE_LOCAL, 0, NULL);
       if (!buf) {
          FREE(best_backing->chunks);
          FREE(best_backing);
@@ -708,8 +708,8 @@ buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, stru
    VkSparseMemoryBind mem_bind;
    mem_bind.resourceOffset = offset;
    mem_bind.size = MIN2(res->base.b.width0 - offset, size);
-   mem_bind.memory = commit ? bo->mem : VK_NULL_HANDLE;
-   mem_bind.memoryOffset = 0;
+   mem_bind.memory = commit ? (bo->mem ? bo->mem : bo->u.slab.real->mem) : VK_NULL_HANDLE;
+   mem_bind.memoryOffset = commit ? (bo->mem ? 0 : bo->offset) : 0;
    mem_bind.flags = 0;
    sparse_bind.pBinds = &mem_bind;
 
@@ -841,8 +841,8 @@ texture_commit_single(struct zink_screen *screen, struct zink_resource *res, str
    ibind.subresource = *subresource;
    ibind.offset = *offset;
    ibind.extent = *extents;
-   ibind.memory = commit ? bo->mem : VK_NULL_HANDLE;
-   ibind.memoryOffset = 0;
+   ibind.memory = commit ? (bo->mem ? bo->mem : bo->u.slab.real->mem) : VK_NULL_HANDLE;
+   ibind.memoryOffset = commit ? (bo->mem ? 0 : bo->offset) : 0;
    ibind.flags = 0;
    sparse_ibind.image = res->obj->image;
    sparse_ibind.bindCount = 1;
