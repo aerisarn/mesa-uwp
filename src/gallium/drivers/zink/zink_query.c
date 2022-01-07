@@ -650,6 +650,8 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
 
    if (!is_timestamp)
       q->curr_qbo->num_results++;
+   else
+      q->curr_qbo->num_results = 1;
    q->needs_update = false;
 }
 
