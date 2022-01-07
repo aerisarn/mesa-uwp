@@ -584,7 +584,6 @@ if __name__ == "__main__":
             if not (entry.properties_struct and ext.physical_device_struct("Properties") == entry.properties_struct):
                 error_count += 1
                 print("The extension {} does not provide a properties struct.".format(ext.name))
-                print(entry.properties_struct, ext.physical_device_struct("Properties"))
 
         if entry.promoted_in:
             ext.core_since = Version((*entry.promoted_in, 0))
