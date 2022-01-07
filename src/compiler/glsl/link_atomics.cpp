@@ -27,7 +27,8 @@
 #include "linker.h"
 #include "main/errors.h"
 #include "main/macros.h"
-#include "main/mtypes.h"
+#include "main/consts_exts.h"
+#include "main/shader_types.h"
 
 namespace {
    /*

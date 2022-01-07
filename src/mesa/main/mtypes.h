@@ -2353,26 +2353,6 @@ struct gl_uniform_block
 };
 
 /**
- * Structure that represents a reference to an atomic buffer from some
- * shader program.
- */
-struct gl_active_atomic_buffer
-{
-   /** Uniform indices of the atomic counters declared within it. */
-   GLuint *Uniforms;
-   GLuint NumUniforms;
-
-   /** Binding point index associated with it. */
-   GLuint Binding;
-
-   /** Minimum reasonable size it is expected to have. */
-   GLuint MinimumSize;
-
-   /** Shader stages making use of it. */
-   GLboolean StageReferences[MESA_SHADER_STAGES];
-};
-
-/**
  * Data container for shader queries. This holds only the minimal
  * amount of required information for resource queries to work.
  */
