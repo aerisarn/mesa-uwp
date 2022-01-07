@@ -1981,45 +1981,6 @@ struct gl_perf_query_state
 
 
 /**
- * A bindless sampler object.
- */
-struct gl_bindless_sampler
-{
-   /** Texture unit (set by glUniform1()). */
-   GLubyte unit;
-
-   /** Whether this bindless sampler is bound to a unit. */
-   GLboolean bound;
-
-   /** Texture Target (TEXTURE_1D/2D/3D/etc_INDEX). */
-   gl_texture_index target;
-
-   /** Pointer to the base of the data. */
-   GLvoid *data;
-};
-
-
-/**
- * A bindless image object.
- */
-struct gl_bindless_image
-{
-   /** Image unit (set by glUniform1()). */
-   GLubyte unit;
-
-   /** Whether this bindless image is bound to a unit. */
-   GLboolean bound;
-
-   /** Access qualifier (GL_READ_WRITE, GL_READ_ONLY, GL_WRITE_ONLY, or
-    * GL_NONE to indicate both read-only and write-only)
-    */
-   GLenum16 access;
-
-   /** Pointer to the base of the data. */
-   GLvoid *data;
-};
-
-/**
  * State common to vertex and fragment programs.
  */
 struct gl_program_state
