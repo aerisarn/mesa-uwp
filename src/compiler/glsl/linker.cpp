@@ -2771,7 +2771,7 @@ update_array_sizes(struct gl_shader_program *prog)
  * tessellation control per-vertex outputs.
  */
 static void
-resize_tes_inputs(struct gl_context *ctx,
+resize_tes_inputs(const struct gl_constants *consts,
                   struct gl_shader_program *prog)
 {
    if (prog->_LinkedShaders[MESA_SHADER_TESS_EVAL] == NULL)
@@ -2786,7 +2786,7 @@ resize_tes_inputs(struct gl_context *ctx,
     */
    const int num_vertices = tcs
       ? tcs->Program->info.tess.tcs_vertices_out
-      : ctx->Const.MaxPatchVertices;
+      : consts->MaxPatchVertices;
 
    array_resize_visitor input_resize_visitor(num_vertices, prog,
                                              MESA_SHADER_TESS_EVAL);
@@ -4591,19 +4591,19 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
 }
 
 static void
-linker_optimisation_loop(struct gl_context *ctx, exec_list *ir,
+linker_optimisation_loop(const struct gl_constants *consts, exec_list *ir,
                          unsigned stage)
 {
-      if (ctx->Const.GLSLOptimizeConservatively) {
+      if (consts->GLSLOptimizeConservatively) {
          /* Run it just once. */
          do_common_optimization(ir, true, false,
-                                &ctx->Const.ShaderCompilerOptions[stage],
-                                ctx->Const.NativeIntegers);
+                                &consts->ShaderCompilerOptions[stage],
+                                consts->NativeIntegers);
       } else {
          /* Repeat it until it stops making changes. */
          while (do_common_optimization(ir, true, false,
-                                       &ctx->Const.ShaderCompilerOptions[stage],
-                                       ctx->Const.NativeIntegers))
+                                       &consts->ShaderCompilerOptions[stage],
+                                       consts->NativeIntegers))
             ;
       }
 }
@@ -4831,7 +4831,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    if (!prog->data->LinkStatus)
       goto done;
 
-   resize_tes_inputs(ctx, prog);
+   resize_tes_inputs(consts, prog);
 
    /* Validate the inputs of each stage with the output of the preceding
     * stage.
@@ -4916,11 +4916,11 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       if (!prog->data->LinkStatus)
          goto done;
 
-      if (ctx->Const.ShaderCompilerOptions[i].LowerCombinedClipCullDistance) {
+      if (consts->ShaderCompilerOptions[i].LowerCombinedClipCullDistance) {
          lower_clip_cull_distance(prog, prog->_LinkedShaders[i]);
       }
 
-      if (ctx->Const.LowerTessLevel) {
+      if (consts->LowerTessLevel) {
          lower_tess_level(prog->_LinkedShaders[i]);
       }
 
@@ -4948,13 +4948,13 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
       /* Call opts before lowering const arrays to uniforms so we can const
        * propagate any elements accessed directly.
        */
-      linker_optimisation_loop(ctx, prog->_LinkedShaders[i]->ir, i);
+      linker_optimisation_loop(consts, prog->_LinkedShaders[i]->ir, i);
 
       /* Call opts after lowering const arrays to copy propagate things. */
-      if (ctx->Const.GLSLLowerConstArrays &&
+      if (consts->GLSLLowerConstArrays &&
           lower_const_arrays_to_uniforms(prog->_LinkedShaders[i]->ir, i,
-                                         ctx->Const.Program[i].MaxUniformComponents))
-         linker_optimisation_loop(ctx, prog->_LinkedShaders[i]->ir, i);
+                                         consts->Program[i].MaxUniformComponents))
+         linker_optimisation_loop(consts, prog->_LinkedShaders[i]->ir, i);
 
    }
 
