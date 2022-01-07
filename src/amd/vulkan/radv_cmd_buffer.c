@@ -1920,6 +1920,7 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
    const struct radv_image *image = iview->image;
    uint32_t db_z_info = ds->db_z_info;
    uint32_t db_stencil_info = ds->db_stencil_info;
+   uint32_t db_htile_surface = ds->db_htile_surface;
 
    if (!radv_layout_is_htile_compressed(
           cmd_buffer->device, image, layout, in_render_loop,
@@ -1929,8 +1930,12 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer, struct radv_ds_buffer_
       db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
    }
 
+   if (!cmd_buffer->state.subpass->vrs_attachment) {
+      db_htile_surface &= C_028ABC_VRS_HTILE_ENCODING;
+   }
+
    radeon_set_context_reg(cmd_buffer->cs, R_028008_DB_DEPTH_VIEW, ds->db_depth_view);
-   radeon_set_context_reg(cmd_buffer->cs, R_028ABC_DB_HTILE_SURFACE, ds->db_htile_surface);
+   radeon_set_context_reg(cmd_buffer->cs, R_028ABC_DB_HTILE_SURFACE, db_htile_surface);
 
    if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
       radeon_set_context_reg(cmd_buffer->cs, R_028014_DB_HTILE_DATA_BASE, ds->db_htile_data_base);
