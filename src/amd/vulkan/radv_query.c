@@ -67,7 +67,7 @@ radv_store_availability(nir_builder *b, nir_ssa_def *flags, nir_ssa_def *dst_buf
 
    nir_push_else(b, NULL);
 
-   nir_store_ssbo(b, value32, dst_buf, offset, .align_mul = 4);
+   nir_store_ssbo(b, value32, dst_buf, offset);
 
    nir_pop_if(b, NULL);
 
@@ -273,7 +273,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
    avail_offset = nir_iadd(&b, avail_offset, nir_imul(&b, global_id, nir_imm_int(&b, 4)));
 
-   nir_ssa_def *available32 = nir_load_ssbo(&b, 1, 32, src_buf, avail_offset, .align_mul = 4);
+   nir_ssa_def *available32 = nir_load_ssbo(&b, 1, 32, src_buf, avail_offset);
 
    nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *elem_size = nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
@@ -291,24 +291,23 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
       nir_ssa_def *start_offset =
          nir_iadd(&b, input_base, nir_imm_int(&b, pipeline_statistics_indices[i] * 8));
-      nir_ssa_def *start = nir_load_ssbo(&b, 1, 64, src_buf, start_offset, .align_mul = 8);
+      nir_ssa_def *start = nir_load_ssbo(&b, 1, 64, src_buf, start_offset);
 
       nir_ssa_def *end_offset =
          nir_iadd(&b, input_base,
                   nir_imm_int(&b, pipeline_statistics_indices[i] * 8 + pipelinestat_block_size));
-      nir_ssa_def *end = nir_load_ssbo(&b, 1, 64, src_buf, end_offset, .align_mul = 8);
+      nir_ssa_def *end = nir_load_ssbo(&b, 1, 64, src_buf, end_offset);
 
       nir_ssa_def *result = nir_isub(&b, end, start);
 
       /* Store result */
       nir_push_if(&b, result_is_64bit);
 
-      nir_store_ssbo(&b, result, dst_buf, nir_load_var(&b, output_offset), .align_mul = 8);
+      nir_store_ssbo(&b, result, dst_buf, nir_load_var(&b, output_offset));
 
       nir_push_else(&b, NULL);
 
-      nir_store_ssbo(&b, nir_u2u32(&b, result), dst_buf, nir_load_var(&b, output_offset),
-                     .align_mul = 4);
+      nir_store_ssbo(&b, nir_u2u32(&b, result), dst_buf, nir_load_var(&b, output_offset));
 
       nir_pop_if(&b, NULL);
 
@@ -335,11 +334,11 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
    nir_ssa_def *output_elem = nir_iadd(&b, output_base, nir_imul(&b, elem_size, current_counter));
    nir_push_if(&b, result_is_64bit);
 
-   nir_store_ssbo(&b, nir_imm_int64(&b, 0), dst_buf, output_elem, .align_mul = 8);
+   nir_store_ssbo(&b, nir_imm_int64(&b, 0), dst_buf, output_elem);
 
    nir_push_else(&b, NULL);
 
-   nir_store_ssbo(&b, nir_imm_int(&b, 0), dst_buf, output_elem, .align_mul = 4);
+   nir_store_ssbo(&b, nir_imm_int(&b, 0), dst_buf, output_elem);
 
    nir_pop_if(&b, NULL);
 
@@ -460,12 +459,11 @@ build_tfb_query_shader(struct radv_device *device)
    /* Store result. */
    nir_push_if(&b, result_is_64bit);
 
-   nir_store_ssbo(&b, nir_load_var(&b, result), dst_buf, output_base, .align_mul = 8);
+   nir_store_ssbo(&b, nir_load_var(&b, result), dst_buf, output_base);
 
    nir_push_else(&b, NULL);
 
-   nir_store_ssbo(&b, nir_u2u32(&b, nir_load_var(&b, result)), dst_buf, output_base,
-                  .align_mul = 4);
+   nir_store_ssbo(&b, nir_u2u32(&b, nir_load_var(&b, result)), dst_buf, output_base);
 
    nir_pop_if(&b, NULL);
    nir_pop_if(&b, NULL);
@@ -566,12 +564,11 @@ build_timestamp_query_shader(struct radv_device *device)
    /* Store result. */
    nir_push_if(&b, result_is_64bit);
 
-   nir_store_ssbo(&b, nir_load_var(&b, result), dst_buf, output_base, .align_mul = 8);
+   nir_store_ssbo(&b, nir_load_var(&b, result), dst_buf, output_base);
 
    nir_push_else(&b, NULL);
 
-   nir_store_ssbo(&b, nir_u2u32(&b, nir_load_var(&b, result)), dst_buf, output_base,
-                  .align_mul = 4);
+   nir_store_ssbo(&b, nir_u2u32(&b, nir_load_var(&b, result)), dst_buf, output_base);
 
    nir_pop_if(&b, NULL);
 

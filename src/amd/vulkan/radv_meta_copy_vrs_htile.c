@@ -118,7 +118,7 @@ build_copy_vrs_htile_shader(struct radv_device *device, struct radeon_surf *surf
    nir_push_if(&b, nir_ieq(&b, read_htile_value, nir_imm_int(&b, 1)));
    {
       /* Load the existing HTILE 32-bit value for this 8x8 pixels area. */
-      nir_ssa_def *input_value = nir_load_ssbo(&b, 1, 32, htile_buf, htile_addr, .align_mul = 4);
+      nir_ssa_def *input_value = nir_load_ssbo(&b, 1, 32, htile_buf, htile_addr);
 
       /* Clear the 4-bit VRS rates. */
       nir_store_var(&b, htile_value, nir_iand(&b, input_value, nir_imm_int(&b, 0xfffff33f)), 0x1);
@@ -133,8 +133,7 @@ build_copy_vrs_htile_shader(struct radv_device *device, struct radeon_surf *surf
    nir_ssa_def *output_value = nir_ior(&b, nir_load_var(&b, htile_value), vrs_rates);
 
    /* Store the updated HTILE 32-bit which contains the VRS rates. */
-   nir_store_ssbo(&b, output_value, htile_buf, htile_addr, .access = ACCESS_NON_READABLE,
-                  .align_mul = 4);
+   nir_store_ssbo(&b, output_value, htile_buf, htile_addr, .access = ACCESS_NON_READABLE);
 
    return b.shader;
 }
