@@ -1022,17 +1022,18 @@ zink_get_query_result_resource(struct pipe_context *pctx,
        */
 
       VkQueryResultFlags flag = is_time_query(query) ? 0 : VK_QUERY_RESULT_PARTIAL_BIT;
+      unsigned src_offset = result_size * get_num_results(query->type);
       if (zink_batch_usage_check_completion(ctx, query->batch_id)) {
-         uint64_t u64[2] = {0};
-         if (VKCTX(GetQueryPoolResults)(screen->dev, query->query_pool, query_id, 1, 2 * result_size, u64,
+         uint64_t u64[4] = {0};
+         if (VKCTX(GetQueryPoolResults)(screen->dev, query->query_pool, query_id, 1, sizeof(u64), u64,
                                    0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag) == VK_SUCCESS) {
-            pipe_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + result_size);
+            pipe_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + src_offset);
             return;
          }
       }
-      struct pipe_resource *staging = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, result_size * 2);
+      struct pipe_resource *staging = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, src_offset + result_size);
       copy_results_to_buffer(ctx, query, zink_resource(staging), 0, 1, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag);
-      zink_copy_buffer(ctx, res, zink_resource(staging), offset, result_size, result_size);
+      zink_copy_buffer(ctx, res, zink_resource(staging), offset, result_size * get_num_results(query->type), result_size);
       pipe_resource_reference(&staging, NULL);
       return;
    }
