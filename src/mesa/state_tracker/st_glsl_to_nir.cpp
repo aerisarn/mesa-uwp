@@ -762,7 +762,7 @@ st_link_nir(struct gl_context *ctx,
             _mesa_log("\n\n");
          }
 
-         prog->nir = glsl_to_nir(st->ctx, shader_program, shader->Stage, options);
+         prog->nir = glsl_to_nir(&st->ctx->Const, shader_program, shader->Stage, options);
       }
 
       memcpy(prog->nir->info.source_sha1, shader->linked_source_sha1,

@@ -55,7 +55,7 @@ namespace {
 class nir_visitor : public ir_visitor
 {
 public:
-   nir_visitor(gl_context *ctx, nir_shader *shader);
+   nir_visitor(const struct gl_constants *consts, nir_shader *shader);
    ~nir_visitor();
 
    virtual void visit(ir_variable *);
@@ -190,7 +190,7 @@ has_unsupported_function_param(exec_list *ir)
 }
 
 nir_shader *
-glsl_to_nir(struct gl_context *ctx,
+glsl_to_nir(const struct gl_constants *consts,
             const struct gl_shader_program *shader_prog,
             gl_shader_stage stage,
             const nir_shader_compiler_options *options)
@@ -198,7 +198,7 @@ glsl_to_nir(struct gl_context *ctx,
    struct gl_linked_shader *sh = shader_prog->_LinkedShaders[stage];
 
    const struct gl_shader_compiler_options *gl_options =
-      &ctx->Const.ShaderCompilerOptions[stage];
+      &consts->ShaderCompilerOptions[stage];
 
    /* glsl_to_nir can only handle converting certain function paramaters
     * to NIR. If we find something we can't handle then we get the GLSL IR
@@ -208,13 +208,13 @@ glsl_to_nir(struct gl_context *ctx,
     */
    while (has_unsupported_function_param(sh->ir)) {
       do_common_optimization(sh->ir, true, true, gl_options,
-                             ctx->Const.NativeIntegers);
+                             consts->NativeIntegers);
    }
 
    nir_shader *shader = nir_shader_create(NULL, stage, options,
                                           &sh->Program->info);
 
-   nir_visitor v1(ctx, shader);
+   nir_visitor v1(consts, shader);
    nir_function_visitor v2(&v1);
    v2.run(sh->ir);
    visit_exec_list(sh->ir, &v1);
@@ -263,9 +263,9 @@ glsl_to_nir(struct gl_context *ctx,
    return shader;
 }
 
-nir_visitor::nir_visitor(gl_context *ctx, nir_shader *shader)
+nir_visitor::nir_visitor(const struct gl_constants *consts, nir_shader *shader)
 {
-   this->supports_std430 = ctx->Const.UseSTD430AsDefaultPacking;
+   this->supports_std430 = consts->UseSTD430AsDefaultPacking;
    this->shader = shader;
    this->is_global = true;
    this->var_table = _mesa_pointer_hash_table_create(NULL);
@@ -2634,7 +2634,7 @@ glsl_float64_funcs_to_nir(struct gl_context *ctx,
 
    nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_VERTEX, options, NULL);
 
-   nir_visitor v1(ctx, nir);
+   nir_visitor v1(&ctx->Const, nir);
    nir_function_visitor v2(&v1);
    v2.run(sh->ir);
    visit_exec_list(sh->ir, &v1);
