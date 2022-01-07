@@ -621,7 +621,7 @@ gl_nir_link_spirv(struct gl_context *ctx, struct gl_shader_program *prog,
    if (!gl_nir_link_uniforms(ctx, prog, options->fill_parameters))
       return false;
 
-   gl_nir_link_assign_atomic_counter_resources(ctx, prog);
+   gl_nir_link_assign_atomic_counter_resources(&ctx->Const, prog);
    gl_nir_link_assign_xfb_resources(ctx, prog);
 
    return true;
@@ -687,8 +687,8 @@ gl_nir_link_glsl(struct gl_context *ctx, struct gl_shader_program *prog)
    link_util_check_uniform_resources(&ctx->Const, prog);
    link_util_check_subroutine_resources(prog);
    check_image_resources(ctx, prog);
-   gl_nir_link_assign_atomic_counter_resources(ctx, prog);
-   gl_nir_link_check_atomic_counter_resources(ctx, prog);
+   gl_nir_link_assign_atomic_counter_resources(&ctx->Const, prog);
+   gl_nir_link_check_atomic_counter_resources(&ctx->Const, prog);
 
    if (prog->data->LinkStatus == LINKING_FAILURE)
       return false;

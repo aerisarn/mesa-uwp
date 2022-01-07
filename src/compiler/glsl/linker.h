@@ -83,11 +83,11 @@ validate_interstage_uniform_blocks(struct gl_shader_program *prog,
                                    gl_linked_shader **stages);
 
 extern void
-link_assign_atomic_counter_resources(struct gl_context *ctx,
+link_assign_atomic_counter_resources(const struct gl_constants *consts,
                                      struct gl_shader_program *prog);
 
 extern void
-link_check_atomic_counter_resources(struct gl_context *ctx,
+link_check_atomic_counter_resources(const struct gl_constants *consts,
                                     struct gl_shader_program *prog);
 
 

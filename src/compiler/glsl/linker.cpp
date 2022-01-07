@@ -4514,8 +4514,8 @@ link_and_validate_uniforms(struct gl_context *ctx,
    link_util_check_uniform_resources(&ctx->Const, prog);
    link_util_check_subroutine_resources(prog);
    check_image_resources(ctx, prog);
-   link_assign_atomic_counter_resources(ctx, prog);
-   link_check_atomic_counter_resources(ctx, prog);
+   link_assign_atomic_counter_resources(&ctx->Const, prog);
+   link_check_atomic_counter_resources(&ctx->Const, prog);
 }
 
 static bool
