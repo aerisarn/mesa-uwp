@@ -94,6 +94,7 @@ v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
         }
 #endif
 
+        assert(!job->msaa || !job->double_buffer);
 #if V3D_VERSION >= 40
         cl_emit(&job->bcl, TILE_BINNING_MODE_CFG, config) {
                 config.width_in_pixels = job->draw_width;
@@ -102,6 +103,7 @@ v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
                         MAX2(job->nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
+                config.double_buffer_in_non_ms_mode = job->double_buffer;
 
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
         }
@@ -128,6 +130,7 @@ v3dX(start_binning)(struct v3d_context *v3d, struct v3d_job *job)
                         MAX2(job->nr_cbufs, 1);
 
                 config.multisample_mode_4x = job->msaa;
+                config.double_buffer_in_non_ms_mode = job->double_buffer;
 
                 config.maximum_bpp_of_all_render_targets = job->internal_bpp;
         }
