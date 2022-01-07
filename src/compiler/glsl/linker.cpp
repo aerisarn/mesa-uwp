@@ -621,10 +621,10 @@ link_invalidate_variable_locations(exec_list *ir)
 static void
 analyze_clip_cull_usage(struct gl_shader_program *prog,
                         struct gl_linked_shader *shader,
-                        struct gl_context *ctx,
+                        const struct gl_constants *consts,
                         struct shader_info *info)
 {
-   if (ctx->Const.DoDCEBeforeClipCullAnalysis) {
+   if (consts->DoDCEBeforeClipCullAnalysis) {
       /* Remove dead functions to avoid raising an error (eg: dead function
        * writes to gl_ClipVertex, and main() writes to gl_ClipDistance).
        */
@@ -700,13 +700,13 @@ analyze_clip_cull_usage(struct gl_shader_program *prog,
        * gl_MaxCombinedClipAndCullDistances.
        */
       if ((uint32_t)(info->clip_distance_array_size + info->cull_distance_array_size) >
-          ctx->Const.MaxClipPlanes) {
+          consts->MaxClipPlanes) {
           linker_error(prog, "%s shader: the combined size of "
                        "'gl_ClipDistance' and 'gl_CullDistance' size cannot "
                        "be larger than "
                        "gl_MaxCombinedClipAndCullDistances (%u)",
                        _mesa_shader_stage_to_string(shader->Stage),
-                       ctx->Const.MaxClipPlanes);
+                       consts->MaxClipPlanes);
       }
    }
 }
@@ -723,7 +723,7 @@ analyze_clip_cull_usage(struct gl_shader_program *prog,
 static void
 validate_vertex_shader_executable(struct gl_shader_program *prog,
                                   struct gl_linked_shader *shader,
-                                  struct gl_context *ctx)
+                                  const struct gl_constants *consts)
 {
    if (shader == NULL)
       return;
@@ -770,18 +770,18 @@ validate_vertex_shader_executable(struct gl_shader_program *prog,
       }
    }
 
-   analyze_clip_cull_usage(prog, shader, ctx, &shader->Program->info);
+   analyze_clip_cull_usage(prog, shader, consts, &shader->Program->info);
 }
 
 static void
 validate_tess_eval_shader_executable(struct gl_shader_program *prog,
                                      struct gl_linked_shader *shader,
-                                     struct gl_context *ctx)
+                                     const struct gl_constants *consts)
 {
    if (shader == NULL)
       return;
 
-   analyze_clip_cull_usage(prog, shader, ctx, &shader->Program->info);
+   analyze_clip_cull_usage(prog, shader, consts, &shader->Program->info);
 }
 
 
@@ -819,7 +819,7 @@ validate_fragment_shader_executable(struct gl_shader_program *prog,
 static void
 validate_geometry_shader_executable(struct gl_shader_program *prog,
                                     struct gl_linked_shader *shader,
-                                    struct gl_context *ctx)
+                                    const struct gl_constants *consts)
 {
    if (shader == NULL)
       return;
@@ -828,7 +828,7 @@ validate_geometry_shader_executable(struct gl_shader_program *prog,
       vertices_per_prim(shader->Program->info.gs.input_primitive);
    prog->Geom.VerticesIn = num_vertices;
 
-   analyze_clip_cull_usage(prog, shader, ctx, &shader->Program->info);
+   analyze_clip_cull_usage(prog, shader, consts, &shader->Program->info);
 }
 
 /**
@@ -836,20 +836,20 @@ validate_geometry_shader_executable(struct gl_shader_program *prog,
  * validations.
  */
 static void
-validate_geometry_shader_emissions(struct gl_context *ctx,
+validate_geometry_shader_emissions(const struct gl_constants *consts,
                                    struct gl_shader_program *prog)
 {
    struct gl_linked_shader *sh = prog->_LinkedShaders[MESA_SHADER_GEOMETRY];
 
    if (sh != NULL) {
-      find_emit_vertex_visitor emit_vertex(ctx->Const.MaxVertexStreams - 1);
+      find_emit_vertex_visitor emit_vertex(consts->MaxVertexStreams - 1);
       emit_vertex.run(sh->ir);
       if (emit_vertex.error()) {
          linker_error(prog, "Invalid call %s(%d). Accepted values for the "
                       "stream parameter are in the range [0, %d].\n",
                       emit_vertex.error_func(),
                       emit_vertex.error_stream(),
-                      ctx->Const.MaxVertexStreams - 1);
+                      consts->MaxVertexStreams - 1);
       }
       prog->Geom.ActiveStreamMask = emit_vertex.active_stream_mask();
       prog->Geom.UsesEndPrimitive = emit_vertex.uses_end_primitive();
@@ -4611,6 +4611,7 @@ linker_optimisation_loop(struct gl_context *ctx, exec_list *ir,
 void
 link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 {
+   const struct gl_constants *consts = &ctx->Const;
    prog->data->LinkStatus = LINKING_SUCCESS; /* All error paths will set this to false */
    prog->data->Validated = false;
 
@@ -4775,16 +4776,16 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 
          switch (stage) {
          case MESA_SHADER_VERTEX:
-            validate_vertex_shader_executable(prog, sh, ctx);
+            validate_vertex_shader_executable(prog, sh, consts);
             break;
          case MESA_SHADER_TESS_CTRL:
             /* nothing to be done */
             break;
          case MESA_SHADER_TESS_EVAL:
-            validate_tess_eval_shader_executable(prog, sh, ctx);
+            validate_tess_eval_shader_executable(prog, sh, consts);
             break;
          case MESA_SHADER_GEOMETRY:
-            validate_geometry_shader_executable(prog, sh, ctx);
+            validate_geometry_shader_executable(prog, sh, consts);
             break;
          case MESA_SHADER_FRAGMENT:
             validate_fragment_shader_executable(prog, sh);
@@ -4968,7 +4969,7 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    }
 
    /* Check and validate stream emissions in geometry shaders */
-   validate_geometry_shader_emissions(ctx, prog);
+   validate_geometry_shader_emissions(consts, prog);
 
    store_fragdepth_layout(prog);
 
