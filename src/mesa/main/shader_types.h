@@ -36,6 +36,7 @@
 #include "util/mesa-sha1.h"
 #include "compiler/shader_info.h"
 #include "compiler/glsl/list.h"
+#include "compiler/glsl/ir_uniform.h"
 
 /**
  * Shader information needed by both gl_shader and gl_linked shader.
@@ -707,6 +708,78 @@ struct gl_active_atomic_buffer
 
    /** Shader stages making use of it. */
    GLboolean StageReferences[MESA_SHADER_STAGES];
+};
+
+struct gl_transform_feedback_varying_info
+{
+   struct gl_resource_name name;
+   GLenum16 Type;
+   GLint BufferIndex;
+   GLint Size;
+   GLint Offset;
+};
+
+
+/**
+ * Per-output info vertex shaders for transform feedback.
+ */
+struct gl_transform_feedback_output
+{
+   uint32_t OutputRegister;
+   uint32_t OutputBuffer;
+   uint32_t NumComponents;
+   uint32_t StreamId;
+
+   /** offset (in DWORDs) of this output within the interleaved structure */
+   uint32_t DstOffset;
+
+   /**
+    * Offset into the output register of the data to output.  For example,
+    * if NumComponents is 2 and ComponentOffset is 1, then the data to
+    * offset is in the y and z components of the output register.
+    */
+   uint32_t ComponentOffset;
+};
+
+
+struct gl_transform_feedback_buffer
+{
+   uint32_t Binding;
+
+   uint32_t NumVaryings;
+
+   /**
+    * Total number of components stored in each buffer.  This may be used by
+    * hardware back-ends to determine the correct stride when interleaving
+    * multiple transform feedback outputs in the same buffer.
+    */
+   uint32_t Stride;
+
+   /**
+    * Which transform feedback stream this buffer binding is associated with.
+    */
+   uint32_t Stream;
+};
+
+
+/** Post-link transform feedback info. */
+struct gl_transform_feedback_info
+{
+   unsigned NumOutputs;
+
+   /* Bitmask of active buffer indices. */
+   unsigned ActiveBuffers;
+
+   struct gl_transform_feedback_output *Outputs;
+
+   /** Transform feedback varyings used for the linking of this shader program.
+    *
+    * Use for glGetTransformFeedbackVarying().
+    */
+   struct gl_transform_feedback_varying_info *Varyings;
+   GLint NumVarying;
+
+   struct gl_transform_feedback_buffer Buffers[MAX_FEEDBACK_BUFFERS];
 };
 
 #endif
