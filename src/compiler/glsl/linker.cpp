@@ -4581,7 +4581,7 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
                              ctx->Const.UseSTD430AsDefaultPacking);
 
       if (i == MESA_SHADER_COMPUTE)
-         lower_shared_reference(ctx, prog, prog->_LinkedShaders[i]);
+         lower_shared_reference(&ctx->Const, prog, prog->_LinkedShaders[i]);
 
       lower_vector_derefs(prog->_LinkedShaders[i]);
       do_vec_index_to_swizzle(prog->_LinkedShaders[i]->ir);

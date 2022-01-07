@@ -142,7 +142,7 @@ ir_variable * lower_xfb_varying(void *mem_ctx,
                                 const char *old_var_name);
 void lower_output_reads(unsigned stage, exec_list *instructions);
 bool lower_packing_builtins(exec_list *instructions, int op_mask);
-void lower_shared_reference(struct gl_context *ctx,
+void lower_shared_reference(const struct gl_constants *consts,
                             struct gl_shader_program *prog,
                             struct gl_linked_shader *shader);
 void lower_ubo_reference(struct gl_linked_shader *shader,
