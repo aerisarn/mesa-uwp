@@ -651,6 +651,8 @@ RADV driver environment variables
       dump shader statistics
    ``spirv``
       dump SPIR-V
+   ``splitfma``
+      split application-provided fused multiply-add in geometry stages
    ``startup``
       display info at startup
    ``syncshaders``

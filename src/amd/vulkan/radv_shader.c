@@ -49,10 +49,12 @@
 #include "ac_llvm_util.h"
 #endif
 
-void
-radv_get_nir_options(struct radv_physical_device *device)
+static void
+get_nir_options_for_stage(struct radv_physical_device *device, gl_shader_stage stage)
 {
-   device->nir_options = (nir_shader_compiler_options){
+   bool split_fma = (stage <= MESA_SHADER_GEOMETRY || stage == MESA_SHADER_MESH) &&
+                    device->instance->debug_flags & RADV_DEBUG_SPLIT_FMA;
+   device->nir_options[stage] = (nir_shader_compiler_options){
       .vertex_id_zero_based = true,
       .lower_scmp = true,
       .lower_flrp16 = true,
@@ -77,9 +79,9 @@ radv_get_nir_options(struct radv_physical_device *device)
       .lower_unpack_unorm_2x16 = true,
       .lower_unpack_unorm_4x8 = true,
       .lower_unpack_half_2x16 = true,
-      .lower_ffma16 = device->rad_info.chip_class < GFX9,
-      .lower_ffma32 = device->rad_info.chip_class < GFX10_3,
-      .lower_ffma64 = false,
+      .lower_ffma16 = split_fma || device->rad_info.chip_class < GFX9,
+      .lower_ffma32 = split_fma || device->rad_info.chip_class < GFX10_3,
+      .lower_ffma64 = split_fma,
       .lower_fpow = true,
       .lower_mul_2x32_64 = true,
       .lower_rotate = true,
@@ -101,6 +103,13 @@ radv_get_nir_options(struct radv_physical_device *device)
       .lower_doubles_options = nir_lower_drcp | nir_lower_dsqrt | nir_lower_drsq | nir_lower_ddiv,
       .divergence_analysis_options = nir_divergence_view_index_uniform,
    };
+}
+
+void
+radv_get_nir_options(struct radv_physical_device *device)
+{
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < MESA_VULKAN_SHADER_STAGES; stage++)
+      get_nir_options_for_stage(device, stage);
 }
 
 static bool
@@ -464,7 +473,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
        * and just use the NIR shader.  We don't want to alter meta and RT
        * shaders IR directly, so clone it first. */
       nir = nir_shader_clone(NULL, module->nir);
-      nir->options = &device->physical_device->nir_options;
+      nir->options = &device->physical_device->nir_options[stage];
       nir_validate_shader(nir, "in internal shader");
 
       assert(exec_list_length(&nir->functions) == 1);
@@ -558,7 +567,8 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
             },
       };
       nir = spirv_to_nir(spirv, module->size / 4, spec_entries, num_spec_entries, stage,
-                         entrypoint_name, &spirv_options, &device->physical_device->nir_options);
+                         entrypoint_name, &spirv_options,
+                         &device->physical_device->nir_options[stage]);
       assert(nir->info.stage == stage);
       nir_validate_shader(nir, "after spirv_to_nir");
 
