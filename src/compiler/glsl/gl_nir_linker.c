@@ -631,13 +631,15 @@ gl_nir_link_spirv(struct gl_context *ctx, struct gl_shader_program *prog,
  * Validate shader image resources.
  */
 static void
-check_image_resources(struct gl_context *ctx, struct gl_shader_program *prog)
+check_image_resources(const struct gl_constants *consts,
+                      const struct gl_extensions *exts,
+                      struct gl_shader_program *prog)
 {
    unsigned total_image_units = 0;
    unsigned fragment_outputs = 0;
    unsigned total_shader_storage_blocks = 0;
 
-   if (!ctx->Extensions.ARB_shader_image_load_store)
+   if (!exts->ARB_shader_image_load_store)
       return;
 
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -649,7 +651,7 @@ check_image_resources(struct gl_context *ctx, struct gl_shader_program *prog)
       total_shader_storage_blocks += sh->Program->info.num_ssbos;
    }
 
-   if (total_image_units > ctx->Const.MaxCombinedImageUniforms)
+   if (total_image_units > consts->MaxCombinedImageUniforms)
       linker_error(prog, "Too many combined image uniforms\n");
 
    struct gl_linked_shader *frag_sh =
@@ -660,7 +662,7 @@ check_image_resources(struct gl_context *ctx, struct gl_shader_program *prog)
    }
 
    if (total_image_units + fragment_outputs + total_shader_storage_blocks >
-       ctx->Const.MaxCombinedShaderOutputResources)
+       consts->MaxCombinedShaderOutputResources)
       linker_error(prog, "Too many combined image uniforms, shader storage "
                          " buffers and fragment outputs\n");
 }
@@ -686,7 +688,7 @@ gl_nir_link_glsl(struct gl_context *ctx, struct gl_shader_program *prog)
    link_util_calculate_subroutine_compat(prog);
    link_util_check_uniform_resources(&ctx->Const, prog);
    link_util_check_subroutine_resources(prog);
-   check_image_resources(ctx, prog);
+   check_image_resources(&ctx->Const, &ctx->Extensions, prog);
    gl_nir_link_assign_atomic_counter_resources(&ctx->Const, prog);
    gl_nir_link_check_atomic_counter_resources(&ctx->Const, prog);
 
