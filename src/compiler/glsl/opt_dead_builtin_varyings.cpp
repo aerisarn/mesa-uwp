@@ -532,7 +532,8 @@ lower_fragdata_array(struct gl_linked_shader *shader)
 
 
 void
-do_dead_builtin_varyings(struct gl_context *ctx,
+do_dead_builtin_varyings(const struct gl_constants *consts,
+                         gl_api api,
                          gl_linked_shader *producer,
                          gl_linked_shader *consumer,
                          unsigned num_tfeedback_decls,
@@ -540,15 +541,15 @@ do_dead_builtin_varyings(struct gl_context *ctx,
 {
    /* Lower the gl_FragData array to separate variables. */
    if (consumer && consumer->Stage == MESA_SHADER_FRAGMENT &&
-       !ctx->Const.ShaderCompilerOptions[MESA_SHADER_FRAGMENT].NirOptions) {
+       !consts->ShaderCompilerOptions[MESA_SHADER_FRAGMENT].NirOptions) {
       lower_fragdata_array(consumer);
    }
 
    /* Lowering of built-in varyings has no effect with the core context and
     * GLES2, because they are not available there.
     */
-   if (ctx->API == API_OPENGL_CORE ||
-       ctx->API == API_OPENGLES2) {
+   if (api == API_OPENGL_CORE ||
+       api == API_OPENGLES2) {
       return;
    }
 
