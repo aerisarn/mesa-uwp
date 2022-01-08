@@ -631,11 +631,12 @@ static void
 twoface_emulation(struct d3d12_context *ctx,
                   struct d3d12_rasterizer_state *rast,
                   const struct pipe_draw_info *dinfo,
+                  const struct pipe_draw_indirect_info *indirect,
                   const struct pipe_draw_start_count_bias *draw)
 {
    /* draw backfaces */
    ctx->base.bind_rasterizer_state(&ctx->base, rast->twoface_back);
-   d3d12_draw_vbo(&ctx->base, dinfo, 0, NULL, draw, 1);
+   d3d12_draw_vbo(&ctx->base, dinfo, 0, indirect, draw, 1);
 
    /* restore real state */
    ctx->base.bind_rasterizer_state(&ctx->base, rast);
@@ -760,7 +761,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    struct d3d12_rasterizer_state *rast = ctx->gfx_pipeline_state.rast;
    if (rast->twoface_back) {
       enum pipe_prim_type saved_mode = ctx->initial_api_prim;
-      twoface_emulation(ctx, rast, dinfo, &draws[0]);
+      twoface_emulation(ctx, rast, dinfo, indirect, &draws[0]);
       ctx->initial_api_prim = saved_mode;
    }
 
