@@ -74,6 +74,7 @@ mali_sampling_mode(const struct pan_image_view *view)
         return MALI_MSAA_SINGLE;
 }
 
+#if PAN_ARCH >= 5
 static inline enum mali_sample_pattern
 pan_sample_pattern(unsigned samples)
 {
@@ -85,6 +86,7 @@ pan_sample_pattern(unsigned samples)
         default: unreachable("Unsupported sample count");
         }
 }
+#endif
 
 int
 GENX(pan_select_crc_rt)(const struct pan_fb_info *fb, unsigned tile_size)
