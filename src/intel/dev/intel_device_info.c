@@ -1045,7 +1045,8 @@ static const struct intel_device_info intel_device_info_sg1 = {
    /* (Sub)slice info comes from the kernel topology info */    \
    XEHP_FEATURES(0, 1, 0),                                      \
    .num_subslices = dual_subslices(1),                          \
-   .has_lsc = true
+   .has_lsc = true,                                             \
+   .apply_hwconfig = true
 
 UNUSED static const struct intel_device_info intel_device_info_dg2_g10 = {
    DG2_FEATURES,
