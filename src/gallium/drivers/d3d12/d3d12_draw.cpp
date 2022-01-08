@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "d3d12_cmd_signature.h"
 #include "d3d12_compiler.h"
 #include "d3d12_context.h"
 #include "d3d12_format.h"
@@ -722,6 +723,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
         dinfo->restart_index != 0xffffffff)) {
 
       if (!dinfo->primitive_restart &&
+          !indirect &&
           !u_trim_pipe_prim((enum pipe_prim_type)dinfo->mode, (unsigned *)&draws[0].count))
          return;
 
@@ -729,6 +731,21 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->gfx_pipeline_state.rast->base);
       util_primconvert_draw_vbo(ctx->primconvert, dinfo, drawid_offset, indirect, draws, num_draws);
       return;
+   }
+
+   struct d3d12_cmd_signature_key cmd_sig_key;
+   memset(&cmd_sig_key, 0, sizeof(cmd_sig_key));
+
+   if (indirect) {
+      cmd_sig_key.compute = false;
+      cmd_sig_key.indexed = dinfo->index_size > 0;
+      if (indirect->draw_count > 1 ||
+          indirect->indirect_draw_count)
+         cmd_sig_key.multi_draw_stride = indirect->stride;
+      else if (cmd_sig_key.indexed)
+         cmd_sig_key.multi_draw_stride = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
+      else
+         cmd_sig_key.multi_draw_stride = sizeof(D3D12_DRAW_ARGUMENTS);
    }
 
    for (int i = 0; i < ctx->fb.nr_cbufs; ++i) {
@@ -989,18 +1006,49 @@ d3d12_draw_vbo(struct pipe_context *pctx,
          D3D12_RESOURCE_STATE_DEPTH_WRITE);
    }
 
+   ID3D12Resource *indirect_arg_buf = nullptr;
+   ID3D12Resource *indirect_count_buf = nullptr;
+   uint64_t indirect_arg_offset = 0, indirect_count_offset = 0;
+   if (indirect) {
+      if (indirect->buffer) {
+         struct d3d12_resource *indirect_buf = d3d12_resource(indirect->buffer);
+         uint64_t buf_offset = 0;
+         indirect_arg_buf = d3d12_resource_underlying(indirect_buf, &buf_offset);
+         indirect_arg_offset = indirect->offset + buf_offset;
+         d3d12_transition_resource_state(ctx, indirect_buf,
+            D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_BIND_INVALIDATE_NONE);
+         d3d12_batch_reference_resource(batch, indirect_buf, false);
+      }
+      if (indirect->indirect_draw_count) {
+         struct d3d12_resource *count_buf = d3d12_resource(indirect->indirect_draw_count);
+         uint64_t count_offset = 0;
+         indirect_count_buf = d3d12_resource_underlying(count_buf, &count_offset);
+         indirect_count_offset = indirect->indirect_draw_count_offset + count_offset;
+         d3d12_transition_resource_state(ctx, count_buf,
+            D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_BIND_INVALIDATE_NONE);
+         d3d12_batch_reference_resource(batch, count_buf, false);
+      }
+      assert(!indirect->count_from_stream_output);
+   }
+
    d3d12_apply_resource_states(ctx);
 
    for (unsigned i = 0; i < num_root_descriptors; ++i)
       ctx->cmdlist->SetGraphicsRootDescriptorTable(root_desc_indices[i], root_desc_tables[i]);
 
-   if (dinfo->index_size > 0)
-      ctx->cmdlist->DrawIndexedInstanced(draws[0].count, dinfo->instance_count,
-                                         draws[0].start, draws[0].index_bias,
-                                         dinfo->start_instance);
-   else
-      ctx->cmdlist->DrawInstanced(draws[0].count, dinfo->instance_count,
-                                  draws[0].start, dinfo->start_instance);
+   if (indirect) {
+      ID3D12CommandSignature *cmd_sig = d3d12_get_gfx_cmd_signature(ctx, &cmd_sig_key);
+      ctx->cmdlist->ExecuteIndirect(cmd_sig, indirect->draw_count, indirect_arg_buf,
+         indirect_arg_offset, indirect_count_buf, indirect_count_offset);
+   } else {
+      if (dinfo->index_size > 0)
+         ctx->cmdlist->DrawIndexedInstanced(draws[0].count, dinfo->instance_count,
+                                            draws[0].start, draws[0].index_bias,
+                                            dinfo->start_instance);
+      else
+         ctx->cmdlist->DrawInstanced(draws[0].count, dinfo->instance_count,
+                                     draws[0].start, dinfo->start_instance);
+   }
 
    ctx->state_dirty &= D3D12_DIRTY_COMPUTE_MASK;
    batch->pending_memory_barrier = false;
