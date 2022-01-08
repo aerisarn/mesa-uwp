@@ -371,6 +371,11 @@ struct intel_device_info
     * no_hw is true when the pci_device_id has been overridden
     */
    bool no_hw;
+
+   /**
+    * apply_hwconfig is true when the platform should apply hwconfig values
+    */
+   bool apply_hwconfig;
    /** @} */
 };
 
