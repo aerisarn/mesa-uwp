@@ -389,7 +389,7 @@ vtn_cf_node_find_##_type(struct vtn_cf_node *node)          \
    return (struct vtn_##_type *)node;                       \
 }
 
-VTN_DECL_CF_NODE_FIND(if)
+UNUSED VTN_DECL_CF_NODE_FIND(if)
 VTN_DECL_CF_NODE_FIND(loop)
 VTN_DECL_CF_NODE_FIND(case)
 VTN_DECL_CF_NODE_FIND(switch)
