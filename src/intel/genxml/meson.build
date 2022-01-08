@@ -40,11 +40,42 @@ genX_xml_h = custom_target(
   capture : true,
 )
 
+genX_bits_included_symbols = [
+  # instructions
+  'MI_BATCH_BUFFER_START::Batch Buffer Start Address',
+  'MI_REPORT_PERF_COUNT::Memory Address',
+  'MI_STORE_DATA_IMM::Address',
+  'MI_STORE_DATA_IMM::Immediate Data',
+  'MI_STORE_REGISTER_MEM::Memory Address',
+  '3DSTATE_DEPTH_BUFFER::Surface Base Address',
+  '3DSTATE_DEPTH_BUFFER::Surface Pitch',
+  '3DSTATE_STENCIL_BUFFER::Surface Base Address',
+  '3DSTATE_STENCIL_BUFFER::Surface Pitch',
+  '3DSTATE_HIER_DEPTH_BUFFER::Surface Base Address',
+  '3DSTATE_HIER_DEPTH_BUFFER::Surface Pitch',
+  '3DSTATE_CLEAR_PARAMS',
+  '3DSTATE_SO_BUFFER::Surface Base Address',
+  '3DSTATE_SO_BUFFER::Stream Offset',
+  # structures
+  'RENDER_SURFACE_STATE::Surface Base Address',
+  'RENDER_SURFACE_STATE::Surface Pitch',
+  'RENDER_SURFACE_STATE::Auxiliary Surface Base Address',
+  'RENDER_SURFACE_STATE::Auxiliary Surface Pitch',
+  'RENDER_SURFACE_STATE::Clear Value Address',
+  'RENDER_SURFACE_STATE::Red Clear Color',
+  'RENDER_SURFACE_STATE::Green Clear Color',
+  'RENDER_SURFACE_STATE::Blue Clear Color',
+  'RENDER_SURFACE_STATE::Alpha Clear Color',
+  'CLEAR_COLOR',
+  'VERTEX_BUFFER_STATE::Buffer Starting Address',
+]
+
 genX_bits_h = custom_target(
   'genX_bits.h',
   input : ['gen_bits_header.py', gen_xml_files],
   output : 'genX_bits.h',
-  command : [prog_python, '@INPUT@', '-o', '@OUTPUT@'],
+  command : [prog_python, '@INPUT@', '-o', '@OUTPUT@',
+             '--include-symbols', ','.join(genX_bits_included_symbols)],
 )
 
 gen_xml_pack = []

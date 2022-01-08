@@ -104,20 +104,23 @@ ${item.token_name}_${prop}(const struct intel_device_info *devinfo)
 extern "C" {
 #endif
 % for _, container in sorted(containers.items(), key=itemgetter(0)):
+%  if container.allowed:
 
 /* ${container.name} */
 
 ${emit_per_gen_prop_func(container, 'length', True)}
 
-% for _, field in sorted(container.fields.items(), key=itemgetter(0)):
+%   for _, field in sorted(container.fields.items(), key=itemgetter(0)):
+%    if field.allowed:
 
 /* ${container.name}::${field.name} */
 
 ${emit_per_gen_prop_func(field, 'bits', False)}
 
 ${emit_per_gen_prop_func(field, 'start', False)}
-
-% endfor
+%    endif
+%   endfor
+%  endif
 % endfor
 
 #ifdef __cplusplus
@@ -159,6 +162,7 @@ class Container(object):
         self.token_name = safe_name(name)
         self.length_by_gen = {}
         self.fields = {}
+        self.allowed = False
 
     def add_gen(self, gen, xml_attrs):
         assert isinstance(gen, Gen)
@@ -202,6 +206,7 @@ class Field(object):
         self.token_name = safe_name('_'.join([container.name, self.name]))
         self.bits_by_gen = {}
         self.start_by_gen = {}
+        self.allowed = False
 
     def add_gen(self, gen, xml_attrs):
         assert isinstance(gen, Gen)
@@ -299,6 +304,9 @@ def parse_args():
                    help='If unset, then CPP_GUARD is derived from OUTPUT.')
     p.add_argument('--engines', nargs='?', type=str, default='render',
                    help="Comma-separated list of engines whose instructions should be parsed (default: %(default)s)")
+    p.add_argument('--include-symbols', type=str, action='store',
+                   help='List of instruction/structures to generate',
+                   required=True)
     p.add_argument('xml_sources', metavar='XML_SOURCE', nargs='+')
 
     pargs = p.parse_args()
@@ -329,6 +337,16 @@ def main():
         p = XmlParser(containers)
         p.engines = set(engines)
         p.parse(source)
+
+    included_symbols_list = pargs.include_symbols.split(',')
+    for _name_field in included_symbols_list:
+        name_field = _name_field.split('::')
+        container = containers[name_field[0]]
+        container.allowed = True
+        if len(name_field) > 1:
+            field = container.get_field(name_field[1])
+            assert field
+            field.allowed = True
 
     with open(pargs.output, 'w') as f:
         f.write(TEMPLATE.render(containers=containers, guard=pargs.cpp_guard))
