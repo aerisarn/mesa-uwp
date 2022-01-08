@@ -304,6 +304,10 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          return D3D12_UAV_SLOT_COUNT;
       return 0;
 
+   case PIPE_CAP_START_INSTANCE:
+   case PIPE_CAP_DRAW_PARAMETERS:
+      return 1;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
