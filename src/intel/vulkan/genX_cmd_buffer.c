@@ -673,6 +673,7 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
+#if GFX_VER == 7
 static inline bool
 vk_image_layout_stencil_write_optimal(VkImageLayout layout)
 {
@@ -680,6 +681,7 @@ vk_image_layout_stencil_write_optimal(VkImageLayout layout)
           layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
           layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR;
 }
+#endif
 
 /* Transitions a HiZ-enabled depth buffer from one layout to another. Unless
  * the initial layout is undefined, the HiZ buffer and depth buffer will
