@@ -171,6 +171,7 @@ struct d3d12_context {
    struct hash_table *pso_cache;
    struct hash_table *compute_pso_cache;
    struct hash_table *root_signature_cache;
+   struct hash_table *cmd_signature_cache;
    struct hash_table *gs_variant_cache;
 
    struct d3d12_batch batches[4];
