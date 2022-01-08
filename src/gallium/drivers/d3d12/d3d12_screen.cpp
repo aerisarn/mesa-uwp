@@ -306,6 +306,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_START_INSTANCE:
    case PIPE_CAP_DRAW_PARAMETERS:
+   case PIPE_CAP_DRAW_INDIRECT:
+   case PIPE_CAP_MULTI_DRAW_INDIRECT:
+   case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return 1;
 
    default:

@@ -379,8 +379,6 @@ spec/apple_object_purgeable/object_purgeable-api-vbo: skip
 spec/apple_vertex_array_object/isvertexarray: skip
 spec/apple_vertex_array_object/vao-01: skip
 spec/apple_vertex_array_object/vao-02: skip
-spec/arb_base_instance/arb_base_instance-baseinstance-doesnt-affect-gl-instance-id: skip
-spec/arb_base_instance/arb_base_instance-drawarrays: skip
 spec/arb_bindless_texture/border-color: skip
 spec/arb_bindless_texture/conversions: skip
 spec/arb_bindless_texture/errors: skip
@@ -545,21 +543,6 @@ spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_direct_state_access/gettransformfeedback: skip
 spec/arb_direct_state_access/transformfeedback-bufferbase: skip
 spec/arb_direct_state_access/transformfeedback-bufferrange: skip
-spec/arb_draw_indirect/arb_draw_indirect-api-errors: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-base-instance: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-compat: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-instances: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-prim-restart: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-shared-binding: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-elements: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-elements-base-instance: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-elements-compat: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-elements-prim-restart: skip
-spec/arb_draw_indirect/arb_draw_indirect-draw-elements-prim-restart-ugly: skip
-spec/arb_draw_indirect/arb_draw_indirect-transform-feedback: skip
-spec/arb_draw_indirect/gl_vertexid used with gldrawarraysindirect: skip
-spec/arb_draw_indirect/gl_vertexid used with gldrawelementsindirect: skip
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: skip
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs_max: skip
 spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs: skip
@@ -1827,13 +1810,10 @@ spec/arb_gpu_shader_fp64/varying-packing/simple dvec3 separate: skip
 spec/arb_gpu_shader_fp64/varying-packing/simple dvec4 array: skip
 spec/arb_gpu_shader_fp64/varying-packing/simple dvec4 arrays_of_arrays: skip
 spec/arb_gpu_shader_fp64/varying-packing/simple dvec4 separate: skip
-spec/arb_indirect_parameters/conditional-render: skip
-spec/arb_indirect_parameters/tf-count-arrays: skip
-spec/arb_indirect_parameters/tf-count-elements: skip
+spec/arb_indirect_parameters/tf-count-arrays: fail
+spec/arb_indirect_parameters/tf-count-elements: fail
 spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
-spec/arb_multi_draw_indirect/arb_draw_elements_base_vertex-multidrawelements -indirect: skip
-spec/arb_multi_draw_indirect/gl-3.0-multidrawarrays-vertexid -indirect: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-clip: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-extra_prims: skip
@@ -1953,29 +1933,6 @@ spec/arb_shader_atomic_counters/unused-result/geometry shader atomic built-in se
 spec/arb_shader_atomic_counters/unused-result/tessellation control shader atomic built-in semantics: skip
 spec/arb_shader_atomic_counters/unused-result/tessellation evaluation shader atomic built-in semantics: skip
 spec/arb_shader_atomic_counters/unused-result/vertex shader atomic built-in semantics: fail
-spec/arb_shader_draw_parameters/baseinstance: skip
-spec/arb_shader_draw_parameters/baseinstance-indirect: skip
-spec/arb_shader_draw_parameters/basevertex: skip
-spec/arb_shader_draw_parameters/basevertex-baseinstance: skip
-spec/arb_shader_draw_parameters/basevertex-baseinstance-indirect: skip
-spec/arb_shader_draw_parameters/basevertex-indirect: skip
-spec/arb_shader_draw_parameters/drawid: skip
-spec/arb_shader_draw_parameters/drawid-indirect: skip
-spec/arb_shader_draw_parameters/drawid-indirect-baseinstance: skip
-spec/arb_shader_draw_parameters/drawid-indirect-basevertex: skip
-spec/arb_shader_draw_parameters/drawid-indirect-vertexid: skip
-spec/arb_shader_draw_parameters/drawid-single-draw: skip
-spec/arb_shader_draw_parameters/drawid-single-draw-display-list: skip
-spec/arb_shader_draw_parameters/drawid-single-draw-primitive-restart: skip
-spec/arb_shader_draw_parameters/drawid-vertexid: skip
-spec/arb_shader_draw_parameters/vertexid-zerobased: skip
-spec/arb_shader_draw_parameters/vertexid-zerobased-indirect: skip
-spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/full barrier test/16x16: skip
-spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/full barrier test/4x4: skip
-spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/full barrier test/64x64: skip
-spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/one bit barrier test/16x16: skip
-spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/one bit barrier test/4x4: skip
-spec/arb_shader_image_load_store/host-mem-barrier/indirect/raw/one bit barrier test/64x64: skip
 spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/full barrier test/16x16: skip
 spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/full barrier test/4x4: skip
 spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/full barrier test/64x64: skip
@@ -4307,10 +4264,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    15823
-       fail:     1200
+       pass:    15870
+       fail:     1202
       crash:       68
-       skip:     3018
+       skip:     2973
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4319,4 +4276,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20129
+      total:    20133
