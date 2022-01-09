@@ -521,6 +521,11 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
         uint64_t blend_desc = inputs->blend.bifrost_blend_desc;
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
 
+        if (b->shader->arch >= 9 && !inputs->is_blend) {
+                bi_instr *I = bi_nop(b);
+                I->flow = 0x9; /* .wait */
+        }
+
         if (inputs->is_blend && inputs->blend.nr_samples > 1) {
                 /* Conversion descriptor comes from the compile inputs, pixel
                  * indices derived at run time based on sample ID */
@@ -528,6 +533,8 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
                                 bi_imm_u32(blend_desc >> 32),
                                 regfmt, BI_VECSIZE_V4);
         } else if (b->shader->inputs->is_blend) {
+                uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
+
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
                 bi_blend_to(b, bi_register(0), rgba,
@@ -569,6 +576,11 @@ bi_skip_atest(bi_context *ctx, bool emit_zs)
 static void
 bi_emit_atest(bi_builder *b, bi_index alpha)
 {
+        if (b->shader->arch >= 9) {
+                bi_instr *I = bi_nop(b);
+                I->flow = 0x8; /* .wait0126 */
+        }
+
         bi_index coverage = bi_register(60);
         bi_instr *atest = bi_atest_to(b, coverage, coverage, alpha);
         b->shader->emitted_atest = true;
@@ -1168,6 +1180,11 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                 b->shader->inputs->bifrost.static_rt_conv ?
                 bi_imm_u32(b->shader->inputs->bifrost.rt_conv[rt]) :
                 bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt | (size << 4)), 1, 0);
+
+        if (!b->shader->inputs->is_blend && b->shader->arch >= 9) {
+                bi_instr *I = bi_nop(b);
+                I->flow = 0x9; /* .wait */
+        }
 
         bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_pixel_indices(b, rt),
                         bi_register(60), desc, regfmt,
