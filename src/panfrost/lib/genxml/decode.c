@@ -1347,7 +1347,7 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
 
                 int job_no = job_descriptor_number++;
 
-                DUMP_UNPACKED(JOB_HEADER, h, "Job Header:\n");
+                DUMP_UNPACKED(JOB_HEADER, h, "Job Header (%" PRIx64 "):\n", jc_gpu_va);
                 pandecode_log("\n");
 
                 switch (h.type) {
