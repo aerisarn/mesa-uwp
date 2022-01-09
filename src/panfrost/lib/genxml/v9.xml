@@ -813,7 +813,7 @@
     <field name="R63" size="1" start="0:15" type="bool"/>
   </struct>
 
-  <struct name="Shader Program" align="32">
+  <struct name="Shader Program" size="8" align="32">
     <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Shader"/>
     <field name="Stage" size="4" start="0:4" type="Shader stage"/>
     <field name="Primary shader" size="1" start="0:8" type="bool"/>
