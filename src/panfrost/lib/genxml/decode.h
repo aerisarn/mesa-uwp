@@ -27,6 +27,7 @@
 #define __PAN_DECODE_H__
 
 #include "genxml/gen_macros.h"
+#include "util/rb_tree.h"
 
 #include "wrap.h"
 
@@ -35,6 +36,7 @@ extern FILE *pandecode_dump_stream;
 void pandecode_dump_file_open(void);
 
 struct pandecode_mapped_memory {
+        struct rb_node node;
         size_t length;
         void *addr;
         uint64_t gpu_va;
