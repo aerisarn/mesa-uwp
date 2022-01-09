@@ -551,7 +551,7 @@
     <field name="PC" size="28" start="1:4" type="uint" modifier="shr(4)"/>
   </struct>
 
-  <struct name="Internal Conversion" size="1">
+  <struct name="Internal Conversion" size="1" align="4">
     <field name="Memory Format" size="22" start="0" type="Pixel Format"/>
     <field name="Raw" size="1" start="22" type="bool"/>
     <field name="Register Format" size="3" start="24" type="Register File Format"/>
@@ -565,7 +565,7 @@
     <field name="Conversion" size="32" start="1:0" type="Internal Conversion"/>
   </struct>
 
-  <struct name="Internal Blend">
+  <struct name="Internal Blend" align="8">
     <field name="Mode" size="2" start="0:0" type="Blend Mode"/>
     <field name="Shader" size="64" start="0:0" type="Blend Shader"/>
     <field name="Fixed-Function" size="64" start="0:0" type="Blend Fixed-Function"/>
@@ -877,7 +877,7 @@
     <value name="Early ZS always" value="3"/>
   </enum>
 
-  <struct name="Framebuffer Parameters">
+  <struct name="Framebuffer Parameters" align="64">
     <field name="Pre Frame 0" size="3" start="0:0" type="Pre Post Frame Shader Mode"/>
     <field name="Pre Frame 1" size="3" start="0:3" type="Pre Post Frame Shader Mode"/>
     <field name="Post Frame" size="3" start="0:6" type="Pre Post Frame Shader Mode"/>
@@ -1020,7 +1020,7 @@
     <field name="Clear" size="128" start="12:0" type="RT Clear"/>
   </struct>
 
-  <struct name="Tiler Heap" align="64">
+  <struct name="Tiler Heap" align="32">
     <field name="Unknown" size="32" start="0:0" type="hex" default="0x329"/>
     <field name="Size" size="32" start="1:0" type="uint" modifier="align(4096)"/>
     <field name="Base" size="64" start="2:0" type="address"/>
@@ -1078,7 +1078,7 @@
     <section name="Padding" offset="64" type="Framebuffer Padding"/>
   </aggregate>
 
-  <struct name="Job Header" align="64">
+  <struct name="Job Header" align="128">
     <field name="Exception Status" size="32" start="0:0" type="uint"/>
     <field name="First Incomplete Task" size="32" start="1:0" type="uint"/>
     <field name="Fault Pointer" size="64" start="2:0" type="address"/>
@@ -1106,7 +1106,7 @@
     <field name="Tile Enable Map Row Stride" size="8" start="6:0" type="uint"/>
   </struct>
 
-  <aggregate name="Fragment Job" align="64">
+  <aggregate name="Fragment Job" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Fragment Job Payload"/>
   </aggregate>
@@ -1139,17 +1139,17 @@
     <field name="L2 Invalidate" size="1" start="1:1" type="bool"/>
   </struct>
 
-  <aggregate name="Write Value Job" align="64">
+  <aggregate name="Write Value Job" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Write Value Job Payload"/>
   </aggregate>
 
-  <aggregate name="Cache Flush Job" align="64">
+  <aggregate name="Cache Flush Job" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Cache Flush Job Payload"/>
   </aggregate>
 
-  <struct name="Shader" size="16">
+  <struct name="Shader" size="16" align="64">
     <field name="FAU count" start="1:0" size="32" type="uint"/>
     <field name="Resources" start="8:0" size="64" type="address"/>
     <field name="Shader" start="10:0" size="64" type="address"/>
@@ -1178,7 +1178,7 @@
   </struct>
 
   <!-- Compute job also covers vertex and geometry operations -->
-  <aggregate name="Compute Job" align="64">
+  <aggregate name="Compute Job" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Compute Payload"/>
   </aggregate>
@@ -1271,7 +1271,7 @@
     <field name="Address" size="64" start="0:0" type="address"/>
   </struct>
 
-  <aggregate name="IDVS Helper Job" size="384" align="64">
+  <aggregate name="IDVS Helper Job" size="384" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Primitive" offset="32" type="Primitive"/>
     <section name="Counts" offset="48" type="IDVS Counts"/>
