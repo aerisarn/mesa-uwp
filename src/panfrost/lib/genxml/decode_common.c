@@ -246,6 +246,23 @@ pandecode_close(void)
         pandecode_dump_file_close();
 }
 
+void
+pandecode_dump_mappings(void)
+{
+        pandecode_dump_file_open();
+
+        rb_tree_foreach(struct pandecode_mapped_memory, it, &mmap_tree, node) {
+                if (!it->addr || !it->length)
+                        continue;
+
+                fprintf(pandecode_dump_stream, "Buffer: %s gpu %" PRIx64 "\n\n",
+                        it->name, it->gpu_va);
+
+                pan_hexdump(pandecode_dump_stream, it->addr, it->length, false);
+                fprintf(pandecode_dump_stream, "\n");
+        }
+}
+
 void pandecode_abort_on_fault_v4(mali_ptr jc_gpu_va);
 void pandecode_abort_on_fault_v5(mali_ptr jc_gpu_va);
 void pandecode_abort_on_fault_v6(mali_ptr jc_gpu_va);
