@@ -850,6 +850,12 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (dev->debug & PAN_DBG_NO_AFBC)
                 dev->has_afbc = false;
 
+        /* It's early days for Valhall support... disable AFBC for now to keep
+         * hardware bring-up simple
+         */
+        if (dev->arch >= 9)
+                dev->has_afbc = false;
+
         /* Bail early on unsupported hardware */
         if (dev->model == NULL) {
                 debug_printf("panfrost: Unsupported model %X", dev->gpu_id);
