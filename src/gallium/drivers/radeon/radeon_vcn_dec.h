@@ -546,6 +546,8 @@ typedef struct rvcn_dec_message_avc_s {
       radeon_mvcElement_t mvcElements[1];
    } mvc;
 
+   unsigned short non_existing_frame_flags;
+   unsigned int used_for_reference_flags;
 } rvcn_dec_message_avc_t;
 
 typedef struct rvcn_dec_message_vc1_s {
@@ -1107,6 +1109,8 @@ struct radeon_decoder {
    unsigned bs_size;
    unsigned cur_buffer;
    void *render_pic_list[32];
+   unsigned h264_valid_ref_num[17];
+   unsigned h264_valid_poc_num[34];
    bool show_frame;
    unsigned ref_idx;
    bool tmz_ctx;
