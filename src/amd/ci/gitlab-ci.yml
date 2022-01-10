@@ -14,6 +14,7 @@
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
+############### LAVA
 # Run three jobs in parallel each running 1/30th of the test suite
 radv_stoney_vkcts:amd64:
   extends:
@@ -36,6 +37,7 @@ radv_stoney_vkcts:amd64:
     DRIVER_NAME: radv
     RUNNER_TAG: mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
+############### Fossilize
 .radv-fossils:
   extends:
     - .fossilize-test
