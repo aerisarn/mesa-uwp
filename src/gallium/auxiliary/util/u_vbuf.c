@@ -501,9 +501,10 @@ u_vbuf_translate_buffers(struct u_vbuf *mgr, struct translate_key *key,
              * themselves, meaning that if stride < element_size, the mapped size will
              * be too small and conversion will overrun the map buffer
              *
-             * instead, add the size of the largest possible attribute to ensure the map is large enough
+             * instead, add the size of the largest possible attribute to the final attribute's offset
+             * in order to ensure the map is large enough
              */
-            unsigned last_offset = offset + size - vb->stride;
+            unsigned last_offset = size - vb->stride;
             size = MAX2(size, last_offset + sizeof(double)*4);
          }
 
