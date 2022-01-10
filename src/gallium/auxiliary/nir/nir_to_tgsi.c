@@ -44,8 +44,8 @@ struct ntt_compile {
    bool native_integers;
    bool has_txf_lz;
 
-   bool addr_declared[2];
-   struct ureg_dst addr_reg[2];
+   bool addr_declared[3];
+   struct ureg_dst addr_reg[3];
 
    /* if condition set up at the end of a block, for ntt_emit_if(). */
    struct ureg_src if_cond;
@@ -631,6 +631,8 @@ ntt_get_load_const_src(struct ntt_compile *c, nir_load_const_instr *instr)
 static struct ureg_src
 ntt_reladdr(struct ntt_compile *c, struct ureg_src addr, int addr_index)
 {
+   assert(addr_index < ARRAY_SIZE(c->addr_reg));
+
    for (int i = 0; i <= addr_index; i++) {
       if (!c->addr_declared[i]) {
          c->addr_reg[i] = ureg_writemask(ureg_DECL_address(c->ureg),
