@@ -419,9 +419,10 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
       return 0; /* not implemented */
 
    case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-      if (screen->opts.ResourceBindingTier == D3D12_RESOURCE_BINDING_TIER_1)
-         return 128;
-      return PIPE_MAX_SHADER_SAMPLER_VIEWS;
+      /* Note: This is wrong, but this is the max value that
+       * TC can support to avoid overflowing an array.
+       */
+      return PIPE_MAX_SAMPLERS;
 
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
