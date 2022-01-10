@@ -245,6 +245,7 @@ files_libnir = files(
   'nir_opt_ray_queries.c',
   'nir_opt_rematerialize_compares.c',
   'nir_opt_remove_phis.c',
+  'nir_opt_shrink_stores.c',
   'nir_opt_shrink_vectors.c',
   'nir_opt_sink.c',
   'nir_opt_trivial_continues.c',
