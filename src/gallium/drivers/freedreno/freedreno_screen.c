@@ -509,9 +509,16 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0xFFFFFFFF;
    case PIPE_CAP_ACCELERATED:
       return 1;
-   case PIPE_CAP_VIDEO_MEMORY:
-      DBG("FINISHME: The value returned is incorrect\n");
-      return 10;
+
+   case PIPE_CAP_VIDEO_MEMORY: {
+      uint64_t system_memory;
+
+      if (!os_get_total_physical_memory(&system_memory))
+         return 0;
+
+      return (int)(system_memory >> 20);
+   }
+
    case PIPE_CAP_UMA:
       return 1;
    case PIPE_CAP_MEMOBJ:
