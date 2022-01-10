@@ -28,6 +28,7 @@
 
 #include "tgsi/tgsi_transform.h"
 #include "tgsi/tgsi_info.h"
+#include "tgsi/tgsi_scan.h"
 #include "virgl_context.h"
 #include "virgl_screen.h"
 
@@ -54,14 +55,15 @@ enum virgl_input_temps {
 
 struct virgl_transform_context {
    struct tgsi_transform_context base;
+   struct tgsi_shader_info info;
+
    bool cull_enabled;
    bool has_precise;
-   bool has_textures;
    bool fake_fp64;
 
    unsigned next_temp;
 
-   unsigned tex_temp;
+   unsigned src_temp;
 
    unsigned writemask_fixup_outs[5];
    unsigned writemask_fixup_temps;
@@ -128,10 +130,6 @@ virgl_tgsi_transform_declaration(struct tgsi_transform_context *ctx,
    case TGSI_FILE_TEMPORARY:
       vtctx->next_temp = MAX2(vtctx->next_temp, decl->Range.Last + 1);
       break;
-   case TGSI_FILE_SAMPLER:
-   case TGSI_FILE_SAMPLER_VIEW:
-      vtctx->has_textures = true;
-      break;
    default:
       break;
    }
@@ -189,9 +187,10 @@ virgl_tgsi_transform_prolog(struct tgsi_transform_context * ctx)
 {
    struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
 
-   if (vtctx->has_textures) {
-      vtctx->tex_temp = vtctx->next_temp++;
-      tgsi_transform_temp_decl(ctx, vtctx->tex_temp);
+   if (vtctx->info.uses_doubles || vtctx->info.file_count[TGSI_FILE_SAMPLER_VIEW]) {
+      vtctx->src_temp = vtctx->next_temp;
+      vtctx->next_temp += 4;
+      tgsi_transform_temps_decl(ctx, vtctx->src_temp, vtctx->src_temp + 3);
    }
 
    if (vtctx->num_writemask_fixups) {
@@ -280,14 +279,13 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
     */
    if (tgsi_get_opcode_info(inst->Instruction.Opcode)->is_tex &&
        inst->Src[0].Register.File == TGSI_FILE_IMMEDIATE) {
-      assert(vtctx->has_textures);
       tgsi_transform_op1_inst(ctx, TGSI_OPCODE_MOV,
-                              TGSI_FILE_TEMPORARY, vtctx->tex_temp,
+                              TGSI_FILE_TEMPORARY, vtctx->src_temp,
                               TGSI_WRITEMASK_XYZW,
                               inst->Src[0].Register.File,
                               inst->Src[0].Register.Index);
       inst->Src[0].Register.File = TGSI_FILE_TEMPORARY;
-      inst->Src[0].Register.Index = vtctx->tex_temp;
+      inst->Src[0].Register.Index = vtctx->src_temp;
    }
 
    for (unsigned i = 0; i < inst->Instruction.NumDstRegs; i++) {
@@ -316,6 +314,32 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
 
       for (int j = 0; j < ARRAY_SIZE(vtctx->input_temp); j++)
          virgl_tgsi_rewrite_src_for_input_temp(&vtctx->input_temp[j], &inst->Src[i]);
+
+      /* virglrenderer double inputs twice, so move them to temps and drop the
+       * swizzle from the double op.
+       */
+      if (tgsi_opcode_infer_src_type(inst->Instruction.Opcode, i) == TGSI_TYPE_DOUBLE) {
+         struct tgsi_full_instruction temp_inst = tgsi_default_full_instruction();
+         temp_inst.Instruction.Opcode = TGSI_OPCODE_MOV;
+         temp_inst.Instruction.NumDstRegs = 1;
+         temp_inst.Dst[0].Register.File = TGSI_FILE_TEMPORARY,
+         temp_inst.Dst[0].Register.Index = vtctx->src_temp + i;
+         temp_inst.Dst[0].Register.WriteMask = TGSI_WRITEMASK_XYZ;
+         temp_inst.Instruction.NumSrcRegs = 1;
+         tgsi_transform_src_reg_xyzw(&temp_inst.Src[0], inst->Src[i].Register.File, inst->Src[i].Register.Index);
+         temp_inst.Src[0].Register.SwizzleX = inst->Src[i].Register.SwizzleX;
+         temp_inst.Src[0].Register.SwizzleY = inst->Src[i].Register.SwizzleY;
+         temp_inst.Src[0].Register.SwizzleZ = inst->Src[i].Register.SwizzleZ;
+         temp_inst.Src[0].Register.SwizzleW = inst->Src[i].Register.SwizzleW;
+         ctx->emit_instruction(ctx, &temp_inst);
+
+         inst->Src[i].Register.File = TGSI_FILE_TEMPORARY;
+         inst->Src[i].Register.Index = vtctx->src_temp + i;
+         inst->Src[i].Register.SwizzleX = TGSI_SWIZZLE_X;
+         inst->Src[i].Register.SwizzleY = TGSI_SWIZZLE_Y;
+         inst->Src[i].Register.SwizzleZ = TGSI_SWIZZLE_Z;
+         inst->Src[i].Register.SwizzleW = TGSI_SWIZZLE_W;
+      }
    }
    ctx->emit_instruction(ctx, inst);
 
@@ -355,6 +379,8 @@ struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const stru
 
    for (int i = 0; i < ARRAY_SIZE(transform.input_temp); i++)
       transform.input_temp[i].index = ~0;
+
+   tgsi_scan_shader(tokens_in, &transform.info);
 
    tgsi_transform_shader(tokens_in, new_tokens, newLen, &transform.base);
 
