@@ -340,6 +340,7 @@ fill_image_descriptors(struct d3d12_context *ctx,
 static unsigned
 fill_graphics_state_vars(struct d3d12_context *ctx,
                          const struct pipe_draw_info *dinfo,
+                         unsigned drawid,
                          const struct pipe_draw_start_count_bias *draw,
                          struct d3d12_shader *shader,
                          uint32_t *values)
@@ -361,8 +362,11 @@ fill_graphics_state_vars(struct d3d12_context *ctx,
          ptr[3] = fui(D3D12_MAX_POINT_SIZE);
          size += 4;
          break;
-      case D3D12_STATE_VAR_FIRST_VERTEX:
+      case D3D12_STATE_VAR_DRAW_PARAMS:
          ptr[0] = dinfo->index_size ? draw->index_bias : draw->start;
+         ptr[1] = dinfo->start_instance;
+         ptr[2] = drawid;
+         ptr[3] = dinfo->index_size ? -1 : 0;
          size += 4;
          break;
       case D3D12_STATE_VAR_DEPTH_TRANSFORM:
@@ -500,6 +504,7 @@ update_shader_stage_root_parameters(struct d3d12_context *ctx,
 static unsigned
 update_graphics_root_parameters(struct d3d12_context *ctx,
                                 const struct pipe_draw_info *dinfo,
+                                unsigned drawid,
                                 const struct pipe_draw_start_count_bias *draw,
                                 D3D12_GPU_DESCRIPTOR_HANDLE root_desc_tables[MAX_DESCRIPTOR_TABLES],
                                 int root_desc_indices[MAX_DESCRIPTOR_TABLES])
@@ -516,7 +521,7 @@ update_graphics_root_parameters(struct d3d12_context *ctx,
       /* TODO Don't always update state vars */
       if (shader_sel->current->num_state_vars > 0) {
          uint32_t constants[D3D12_MAX_GRAPHICS_STATE_VARS * 4];
-         unsigned size = fill_graphics_state_vars(ctx, dinfo, draw, shader_sel->current, constants);
+         unsigned size = fill_graphics_state_vars(ctx, dinfo, drawid, draw, shader_sel->current, constants);
          ctx->cmdlist->SetGraphicsRoot32BitConstants(num_params, size, constants, 0);
          num_params++;
       }
@@ -847,7 +852,8 @@ d3d12_draw_vbo(struct pipe_context *pctx,
 
    D3D12_GPU_DESCRIPTOR_HANDLE root_desc_tables[MAX_DESCRIPTOR_TABLES];
    int root_desc_indices[MAX_DESCRIPTOR_TABLES];
-   unsigned num_root_descriptors = update_graphics_root_parameters(ctx, dinfo, &draws[0], root_desc_tables, root_desc_indices);
+   unsigned num_root_descriptors = update_graphics_root_parameters(ctx, dinfo, drawid_offset, &draws[0],
+      root_desc_tables, root_desc_indices);
 
    bool need_zero_one_depth_range = d3d12_need_zero_one_depth_range(ctx);
    if (need_zero_one_depth_range != ctx->need_zero_one_depth_range) {

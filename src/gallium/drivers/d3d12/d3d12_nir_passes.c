@@ -318,51 +318,41 @@ d3d12_lower_uint_cast(nir_shader *nir, bool is_signed)
 }
 
 static bool
-lower_load_first_vertex(nir_builder *b, nir_instr *instr, nir_variable **first_vertex)
+lower_load_draw_params(nir_builder *b, nir_instr *instr, void *draw_params)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
-   if (intr->intrinsic != nir_intrinsic_load_first_vertex)
+   if (intr->intrinsic != nir_intrinsic_load_first_vertex &&
+       intr->intrinsic != nir_intrinsic_load_base_instance &&
+       intr->intrinsic != nir_intrinsic_load_draw_id &&
+       intr->intrinsic != nir_intrinsic_load_is_indexed_draw)
       return false;
 
    b->cursor = nir_before_instr(&intr->instr);
 
-   nir_ssa_def *load = d3d12_get_state_var(b, D3D12_STATE_VAR_FIRST_VERTEX, "d3d12_FirstVertex",
-                                           glsl_uint_type(), first_vertex);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
+   nir_ssa_def *load = d3d12_get_state_var(b, D3D12_STATE_VAR_DRAW_PARAMS, "d3d12_DrawParams",
+                                           glsl_uvec4_type(), draw_params);
+   unsigned channel = intr->intrinsic == nir_intrinsic_load_first_vertex ? 0 :
+      intr->intrinsic == nir_intrinsic_load_base_instance ? 1 :
+      intr->intrinsic == nir_intrinsic_load_draw_id ? 2 : 3;
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_channel(b, load, channel));
    nir_instr_remove(instr);
 
    return true;
 }
 
 bool
-d3d12_lower_load_first_vertex(struct nir_shader *nir)
+d3d12_lower_load_draw_params(struct nir_shader *nir)
 {
-   nir_variable *first_vertex = NULL;
-   bool progress = false;
-
+   nir_variable *draw_params = NULL;
    if (nir->info.stage != MESA_SHADER_VERTEX)
       return false;
 
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
-
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               progress |= lower_load_first_vertex(&b, instr, &first_vertex);
-            }
-         }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index |
-                                               nir_metadata_dominance);
-      }
-   }
-   return progress;
+   return nir_shader_instructions_pass(nir, lower_load_draw_params,
+      nir_metadata_block_index | nir_metadata_dominance, &draw_params);
 }
 
 static void
