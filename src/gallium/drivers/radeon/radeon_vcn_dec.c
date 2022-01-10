@@ -460,6 +460,14 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radeon_decoder *dec,
       }
    }
 
+   if (dec->dpb_type == DPB_DYNAMIC_TIER_2) {
+      dec->ref_codec.bts = (pic->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10) ?
+         CODEC_10_BITS : CODEC_8_BITS;
+      dec->ref_codec.index = result.curr_idx;
+      dec->ref_codec.ref_size = 15;
+      memset(dec->ref_codec.ref_list, 0x7f, sizeof(dec->ref_codec.ref_list));
+      memcpy(dec->ref_codec.ref_list, result.ref_pic_list, sizeof(result.ref_pic_list));
+   }
    return result;
 }
 
@@ -2563,7 +2571,9 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    }
 
    if (sctx->family >= CHIP_SIENNA_CICHLID &&
-       (stream_type == RDECODE_CODEC_VP9 || stream_type == RDECODE_CODEC_AV1 ||
+         (stream_type == RDECODE_CODEC_VP9 ||
+          stream_type == RDECODE_CODEC_AV1 ||
+        ((stream_type == RDECODE_CODEC_H265) && templ->expect_chunked_decode) ||
         ((stream_type == RDECODE_CODEC_H264_PERF) && templ->expect_chunked_decode)))
       dec->dpb_type = DPB_DYNAMIC_TIER_2;
    else if (sctx->family <= CHIP_NAVI14 && stream_type == RDECODE_CODEC_VP9)
