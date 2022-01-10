@@ -5,6 +5,12 @@
   variables:
     VK_DRIVER: radeon
     DRIVER_NAME: radv
+    # The SPIRV -> NIR code generator generates so many harmless
+    # warnings on the shaders in VK-CTS that jobs fail due to the log
+    # size getting too big. Since it doesn't seem feasible right now
+    # to fix these shaders in the CTS, instead, ignore warnings from
+    # the code generator.
+    MESA_SPIRV_LOG_LEVEL: error
     ACO_DEBUG: validateir,validatera
     MESA_VK_IGNORE_CONFORMANCE_WARNING: 1
 
