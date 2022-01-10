@@ -25,6 +25,7 @@
 #include "d3d12_cmd_signature.h"
 #include "d3d12_context.h"
 #include "d3d12_compiler.h"
+#include "d3d12_compute_transforms.h"
 #include "d3d12_debug.h"
 #include "d3d12_fence.h"
 #include "d3d12_format.h"
@@ -81,6 +82,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
    d3d12_compute_pipeline_state_cache_destroy(ctx);
    d3d12_root_signature_cache_destroy(ctx);
    d3d12_cmd_signature_cache_destroy(ctx);
+   d3d12_compute_transform_cache_destroy(ctx);
 
    u_suballocator_destroy(&ctx->query_allocator);
 
@@ -2265,6 +2267,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    d3d12_root_signature_cache_init(ctx);
    d3d12_cmd_signature_cache_init(ctx);
    d3d12_gs_variant_cache_init(ctx);
+   d3d12_compute_transform_cache_init(ctx);
 
    util_dl_library *d3d12_mod = util_dl_open(UTIL_DL_PREFIX "d3d12" UTIL_DL_EXT);
    if (!d3d12_mod) {

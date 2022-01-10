@@ -25,6 +25,7 @@ files_libd3d12 = files(
   'd3d12_bufmgr.cpp',
   'd3d12_cmd_signature.cpp',
   'd3d12_compiler.cpp',
+  'd3d12_compute_transforms.cpp',
   'd3d12_context.cpp',
   'd3d12_descriptor_pool.cpp',
   'd3d12_draw.cpp',

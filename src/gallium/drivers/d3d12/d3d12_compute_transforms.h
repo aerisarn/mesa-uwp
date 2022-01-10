@@ -21,34 +21,35 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef D3D12_CMD_SIGNATURE_H
-#define D3D12_CMD_SIGNATURE_H
+#ifndef D3D12_COMPUTE_TRANSFORMS_H
+#define D3D12_COMPUTE_TRANSFORMS_H
 
 #include "d3d12_context.h"
+#include "d3d12_compiler.h"
 
-struct d3d12_cmd_signature_key {
-   uint8_t compute:1;
-   uint8_t indexed:1;
-   uint8_t draw_params:1;
-   /* 5 bits padding */
-   uint8_t draw_params_root_const_param;
-   uint8_t draw_params_root_const_offset;
-   /* 8 bits padding */
-
-   unsigned multi_draw_stride;
-
-   /* Will be zero if no constant/resource updates in the arg buffer */
-   ID3D12RootSignature *root_sig;
+enum class d3d12_compute_transform_type
+{
+   base_vertex,
+   max,
 };
 
-void
-d3d12_cmd_signature_cache_init(struct d3d12_context *ctx);
+struct d3d12_compute_transform_key
+{
+   d3d12_compute_transform_type type;
+
+   struct {
+      unsigned indexed:1;
+      unsigned dynamic_count:1;
+   } base_vertex;
+};
+
+d3d12_shader_selector *
+d3d12_get_compute_transform(struct d3d12_context *ctx, const d3d12_compute_transform_key *key);
 
 void
-d3d12_cmd_signature_cache_destroy(struct d3d12_context *ctx);
+d3d12_compute_transform_cache_init(struct d3d12_context *ctx);
 
-ID3D12CommandSignature *
-d3d12_get_gfx_cmd_signature(struct d3d12_context *ctx,
-                            const struct d3d12_cmd_signature_key *key);
+void
+d3d12_compute_transform_cache_destroy(struct d3d12_context *ctx);
 
 #endif

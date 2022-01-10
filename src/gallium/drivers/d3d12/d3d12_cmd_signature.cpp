@@ -27,6 +27,8 @@
 
 #include "util/u_memory.h"
 
+#include <dxguids/dxguids.h>
+
 struct d3d12_cmd_signature {
    struct d3d12_cmd_signature_key key;
    ID3D12CommandSignature *sig;
@@ -36,16 +38,25 @@ static ID3D12CommandSignature *
 create_cmd_signature(struct d3d12_context *ctx, const struct d3d12_cmd_signature_key *key)
 {
    D3D12_COMMAND_SIGNATURE_DESC cmd_sig_desc = {};
-   D3D12_INDIRECT_ARGUMENT_DESC indirect_arg = {};
-   indirect_arg.Type = key->compute ? D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH :
+   D3D12_INDIRECT_ARGUMENT_DESC indirect_args[2] = {};
+
+   unsigned num_args = 0;
+   if (key->draw_params) {
+      indirect_args[num_args].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+      indirect_args[num_args].Constant.RootParameterIndex = key->draw_params_root_const_param;
+      indirect_args[num_args].Constant.DestOffsetIn32BitValues = key->draw_params_root_const_offset;
+      indirect_args[num_args++].Constant.Num32BitValuesToSet = 4;
+   }
+
+   indirect_args[num_args++].Type = key->compute ? D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH :
       key->indexed ? D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED :
       D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
    cmd_sig_desc.ByteStride = key->multi_draw_stride;
-   cmd_sig_desc.NumArgumentDescs = 1;
-   cmd_sig_desc.pArgumentDescs = &indirect_arg;
+   cmd_sig_desc.NumArgumentDescs = num_args;
+   cmd_sig_desc.pArgumentDescs = indirect_args;
 
    ID3D12CommandSignature *ret = nullptr;
-   d3d12_screen(ctx->base.screen)->dev->CreateCommandSignature(&cmd_sig_desc, nullptr,
+   d3d12_screen(ctx->base.screen)->dev->CreateCommandSignature(&cmd_sig_desc, key->root_sig,
       IID_PPV_ARGS(&ret));
    return ret;
 }

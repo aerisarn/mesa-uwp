@@ -173,6 +173,7 @@ struct d3d12_context {
    struct hash_table *root_signature_cache;
    struct hash_table *cmd_signature_cache;
    struct hash_table *gs_variant_cache;
+   struct hash_table *compute_transform_cache;
 
    struct d3d12_batch batches[4];
    unsigned current_batch_idx;
@@ -248,6 +249,8 @@ struct d3d12_context {
 
    struct d3d12_resource *current_predication;
    bool predication_condition;
+
+   uint32_t transform_state_vars[4];
 
 #ifdef __cplusplus
    ResourceStateManager *resource_state_manager;
