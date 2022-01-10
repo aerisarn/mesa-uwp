@@ -192,8 +192,9 @@ radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
       NIR_PASS(progress, shader, nir_opt_algebraic);
 
       NIR_PASS(progress, shader, nir_opt_undef);
-      NIR_PASS(progress, shader, nir_opt_shrink_vectors,
+      NIR_PASS(progress, shader, nir_opt_shrink_stores,
                !device->instance->disable_shrink_image_store);
+      NIR_PASS(progress, shader, nir_opt_shrink_vectors);
       if (shader->options->max_unroll_iterations) {
          NIR_PASS(progress, shader, nir_opt_loop_unroll);
       }
