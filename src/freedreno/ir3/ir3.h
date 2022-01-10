@@ -2502,6 +2502,21 @@ regmask_or(regmask_t *dst, regmask_t *a, regmask_t *b)
       dst->mask[i] = a->mask[i] | b->mask[i];
 }
 
+static inline void
+regmask_or_shared(regmask_t *dst, regmask_t *a, regmask_t *b)
+{
+   regmaskstate_t shared_mask;
+   BITSET_ZERO(shared_mask);
+
+   if (b->mergedregs) {
+      BITSET_SET_RANGE(shared_mask, 2 * 4 * 48, 2 * 4 * 56 - 1);
+   } else {
+      BITSET_SET_RANGE(shared_mask, 4 * 48, 4 * 56 - 1);
+   }
+
+   for (unsigned i = 0; i < ARRAY_SIZE(dst->mask); i++)
+      dst->mask[i] = a->mask[i] | (b->mask[i] & shared_mask[i]);
+}
 
 static inline void
 regmask_set(regmask_t *regmask, struct ir3_register *reg)

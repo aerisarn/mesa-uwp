@@ -111,6 +111,17 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
       regmask_or(&state->needs_sy, &state->needs_sy, &pstate->needs_sy);
    }
 
+   /* We need to take phsyical-only edges into account when tracking shared
+    * registers.
+    */
+   for (unsigned i = 0; i < block->physical_predecessors_count; i++) {
+      struct ir3_block *predecessor = block->physical_predecessors[i];
+      struct ir3_legalize_block_data *pbd = predecessor->data;
+      struct ir3_legalize_state *pstate = &pbd->state;
+
+      regmask_or_shared(&state->needs_ss, &state->needs_ss, &pstate->needs_ss);
+   }
+
    unsigned input_count = 0;
 
    foreach_instr (n, &block->instr_list) {
