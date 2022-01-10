@@ -187,6 +187,8 @@ d3d12_start_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
 
    if (!ctx->queries_disabled)
       d3d12_resume_queries(ctx);
+   if (ctx->current_predication)
+      d3d12_enable_predication(ctx);
 }
 
 void
