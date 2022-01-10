@@ -31,10 +31,11 @@
 typedef struct
 {
    struct hash_table *range_ht;
+   const nir_opt_offsets_options *options;
 } opt_offsets_state;
 
 static nir_ssa_def *
-try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *state, unsigned *out_const)
+try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *state, unsigned *out_const, uint32_t max)
 {
    if (instr->type != nir_instr_type_alu)
       return NULL;
@@ -66,15 +67,18 @@ try_extract_const_addition(nir_builder *b, nir_instr *instr, opt_offsets_state *
 
    for (unsigned i = 0; i < 2; ++i) {
       if (nir_src_is_const(alu->src[i].src)) {
-         *out_const += nir_src_as_uint(alu->src[i].src);
-         nir_ssa_def *replace_src =
-            try_extract_const_addition(b, alu->src[1 - i].src.ssa->parent_instr, state, out_const);
-         return replace_src ? replace_src : alu->src[1 - i].src.ssa;
+         uint32_t offset = nir_src_as_uint(alu->src[i].src);
+         if (offset + *out_const <= max) {
+            *out_const += offset;
+            nir_ssa_def *replace_src =
+                try_extract_const_addition(b, alu->src[1 - i].src.ssa->parent_instr, state, out_const, max);
+            return replace_src ? replace_src : alu->src[1 - i].src.ssa;
+         }
       }
    }
 
-   nir_ssa_def *replace_src0 = try_extract_const_addition(b, alu->src[0].src.ssa->parent_instr, state, out_const);
-   nir_ssa_def *replace_src1 = try_extract_const_addition(b, alu->src[1].src.ssa->parent_instr, state, out_const);
+   nir_ssa_def *replace_src0 = try_extract_const_addition(b, alu->src[0].src.ssa->parent_instr, state, out_const, max);
+   nir_ssa_def *replace_src1 = try_extract_const_addition(b, alu->src[1].src.ssa->parent_instr, state, out_const, max);
    if (!replace_src0 && !replace_src1)
       return NULL;
 
@@ -88,7 +92,8 @@ static bool
 try_fold_load_store(nir_builder *b,
                     nir_intrinsic_instr *intrin,
                     opt_offsets_state *state,
-                    unsigned offset_src_idx)
+                    unsigned offset_src_idx,
+                    uint32_t max)
 {
    /* Assume that BASE is the constant offset of a load/store.
     * Try to constant-fold additions to the offset source
@@ -103,7 +108,7 @@ try_fold_load_store(nir_builder *b,
       return false;
 
    if (!nir_src_is_const(*off_src)) {
-      replace_src = try_extract_const_addition(b, off_src->ssa->parent_instr, state, &off_const);
+      replace_src = try_extract_const_addition(b, off_src->ssa->parent_instr, state, &off_const, max);
    } else if (nir_src_as_uint(*off_src)) {
       off_const += nir_src_as_uint(*off_src);
       b->cursor = nir_before_instr(&intrin->instr);
@@ -128,21 +133,18 @@ process_instr(nir_builder *b, nir_instr *instr, void *s)
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
    switch (intrin->intrinsic) {
-      /* Note that while it's tempting to include nir_intrinsic_load_uniform
-       * here, freedreno doesn't want that because it can have to move the base
-       * back to a register plus a small constant offset, and it's not clever
-       * enough to minimize the code that that emits.
-       */
+   case nir_intrinsic_load_uniform:
+      return try_fold_load_store(b, intrin, state, 0, state->options->uniform_max);
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_shared_ir3:
-      return try_fold_load_store(b, intrin, state, 0);
+      return try_fold_load_store(b, intrin, state, 0, state->options->shared_max);
    case nir_intrinsic_store_shared:
    case nir_intrinsic_store_shared_ir3:
-      return try_fold_load_store(b, intrin, state, 1);
+      return try_fold_load_store(b, intrin, state, 1, state->options->shared_max);
    case nir_intrinsic_load_buffer_amd:
-      return try_fold_load_store(b, intrin, state, 1);
+      return try_fold_load_store(b, intrin, state, 1, state->options->buffer_max);
    case nir_intrinsic_store_buffer_amd:
-      return try_fold_load_store(b, intrin, state, 2);
+      return try_fold_load_store(b, intrin, state, 2, state->options->buffer_max);
    default:
       return false;
    }
@@ -151,10 +153,11 @@ process_instr(nir_builder *b, nir_instr *instr, void *s)
 }
 
 bool
-nir_opt_offsets(nir_shader *shader)
+nir_opt_offsets(nir_shader *shader, const nir_opt_offsets_options *options)
 {
    opt_offsets_state state;
    state.range_ht = NULL;
+   state.options = options;
 
    bool p = nir_shader_instructions_pass(shader, process_instr,
                                          nir_metadata_block_index |

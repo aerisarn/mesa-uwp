@@ -211,8 +211,14 @@ radv_optimize_nir_algebraic(nir_shader *nir, bool opt_offsets)
       NIR_PASS(more_algebraic, nir, nir_opt_algebraic);
    }
 
-   if (opt_offsets)
-      NIR_PASS_V(nir, nir_opt_offsets);
+   if (opt_offsets) {
+      static const nir_opt_offsets_options offset_options = {
+         .uniform_max = 0,
+         .buffer_max = ~0,
+         .shared_max = ~0,
+      };
+      NIR_PASS_V(nir, nir_opt_offsets, &offset_options);
+   }
 
    /* Do late algebraic optimization to turn add(a,
     * neg(b)) back into subs, then the mandatory cleanup

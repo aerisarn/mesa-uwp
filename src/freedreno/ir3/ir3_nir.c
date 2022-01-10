@@ -117,7 +117,17 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
       progress |= OPT(s, nir_lower_alu);
       progress |= OPT(s, nir_lower_pack);
       progress |= OPT(s, nir_opt_constant_folding);
-      progress |= OPT(s, nir_opt_offsets);
+
+      static const nir_opt_offsets_options offset_options = {
+         /* How large an offset we can encode in the instr's immediate field.
+          */
+         .uniform_max = (1 << 9) - 1,
+
+         .shared_max = ~0,
+
+         .buffer_max = ~0,
+      };
+      progress |= OPT(s, nir_opt_offsets, &offset_options);
 
       nir_load_store_vectorize_options vectorize_opts = {
          .modes = nir_var_mem_ubo,
