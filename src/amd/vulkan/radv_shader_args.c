@@ -155,7 +155,7 @@ allocate_inline_push_consts(const struct radv_shader_info *info,
    uint8_t remaining_sgprs = user_sgpr_info->remaining_sgprs;
 
    /* Only supported if shaders use push constants. */
-   if (info->min_push_constant_used == UINT8_MAX)
+   if (info->min_push_constant_used == UINT16_MAX)
       return;
 
    /* Only supported if shaders don't have indirect push constants. */

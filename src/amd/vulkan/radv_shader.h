@@ -231,8 +231,8 @@ struct gfx10_ngg_info {
 struct radv_shader_info {
    bool loads_push_constants;
    bool loads_dynamic_offsets;
-   uint8_t min_push_constant_used;
-   uint8_t max_push_constant_used;
+   uint16_t min_push_constant_used;
+   uint16_t max_push_constant_used;
    bool has_only_32bit_push_constants;
    bool has_indirect_push_constants;
    uint32_t desc_set_used_mask;

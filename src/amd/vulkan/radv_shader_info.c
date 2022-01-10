@@ -619,7 +619,7 @@ void
 radv_nir_shader_info_init(struct radv_shader_info *info)
 {
    /* Assume that shaders only have 32-bit push constants by default. */
-   info->min_push_constant_used = UINT8_MAX;
+   info->min_push_constant_used = UINT16_MAX;
    info->has_only_32bit_push_constants = true;
 }
 
