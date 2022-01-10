@@ -25,6 +25,7 @@
 #include "d3d12_compiler.h"
 #include "d3d12_debug.h"
 #include "d3d12_format.h"
+#include "d3d12_query.h"
 #include "d3d12_resource.h"
 #include "d3d12_screen.h"
 
@@ -956,8 +957,7 @@ d3d12_blit(struct pipe_context *pctx,
                  util_format_short_name(info->dst.resource->format));
 
    if (!info->render_condition_enable && ctx->current_predication) {
-      ctx->cmdlist->SetPredication(
-               d3d12_resource_resource(ctx->current_predication), 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+      d3d12_enable_predication(ctx);
       if (D3D12_DEBUG_BLIT & d3d12_debug)
          debug_printf("D3D12 BLIT: Re-enable predication\n");
    }

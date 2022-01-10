@@ -503,13 +503,20 @@ d3d12_render_condition(struct pipe_context *pctx,
    d3d12_apply_resource_states(ctx);
 
    ctx->current_predication = query->predicate;
+   ctx->predication_condition = condition;
+   d3d12_enable_predication(ctx);
+}
+
+void
+d3d12_enable_predication(struct d3d12_context *ctx)
+{
    /* documentation of ID3D12GraphicsCommandList::SetPredication method:
-    * "resource manipulation commands are _not_ actually performed
-    *  if the resulting predicate data of the predicate is equal to
-    *  the operation specified."
-    */
-   ctx->cmdlist->SetPredication(d3d12_resource_resource(query->predicate), 0,
-                                condition ? D3D12_PREDICATION_OP_NOT_EQUAL_ZERO :
+      * "resource manipulation commands are _not_ actually performed
+      *  if the resulting predicate data of the predicate is equal to
+      *  the operation specified."
+      */
+   ctx->cmdlist->SetPredication(d3d12_resource_resource(ctx->current_predication), 0,
+                                ctx->predication_condition ? D3D12_PREDICATION_OP_NOT_EQUAL_ZERO :
                                 D3D12_PREDICATION_OP_EQUAL_ZERO);
 }
 

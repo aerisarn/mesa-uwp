@@ -246,6 +246,7 @@ struct d3d12_context {
    struct d3d12_validation_tools *validation_tools;
 
    struct d3d12_resource *current_predication;
+   bool predication_condition;
 
 #ifdef __cplusplus
    ResourceStateManager *resource_state_manager;

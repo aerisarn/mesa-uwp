@@ -1908,9 +1908,7 @@ d3d12_clear_render_target(struct pipe_context *pctx,
    d3d12_batch_reference_surface_texture(d3d12_current_batch(ctx), surf);
 
    if (!render_condition_enabled && ctx->current_predication) {
-      ctx->cmdlist->SetPredication(
-         d3d12_resource_resource(ctx->current_predication), 0,
-         D3D12_PREDICATION_OP_EQUAL_ZERO);
+      d3d12_enable_predication(ctx);
    }
 }
 
@@ -1951,9 +1949,7 @@ d3d12_clear_depth_stencil(struct pipe_context *pctx,
    d3d12_batch_reference_surface_texture(d3d12_current_batch(ctx), surf);
 
    if (!render_condition_enabled && ctx->current_predication) {
-      ctx->cmdlist->SetPredication(
-         d3d12_resource_resource(ctx->current_predication), 0,
-         D3D12_PREDICATION_OP_EQUAL_ZERO);
+      d3d12_enable_predication(ctx);
    }
 }
 
