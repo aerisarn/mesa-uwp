@@ -123,7 +123,7 @@ ensure_device_info(int fd)
    if (device == 0) {
       fail_if(!intel_get_device_info_from_fd(fd, &devinfo),
               "failed to identify chipset.\n");
-      device = devinfo.chipset_id;
+      device = devinfo.pci_device_id;
    } else if (devinfo.ver == 0) {
       fail_if(!intel_get_device_info_from_pci_id(device, &devinfo),
               "failed to identify chipset.\n");

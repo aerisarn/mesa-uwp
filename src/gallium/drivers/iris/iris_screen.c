@@ -782,7 +782,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    if (!intel_get_device_info_from_fd(fd, &screen->devinfo))
       return NULL;
-   screen->pci_id = screen->devinfo.chipset_id;
+   screen->pci_id = screen->devinfo.pci_device_id;
 
    p_atomic_set(&screen->refcount, 1);
 

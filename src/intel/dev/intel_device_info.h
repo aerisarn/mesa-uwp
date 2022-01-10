@@ -361,17 +361,12 @@ struct intel_device_info
    int simulator_id;
 
    /**
-    * holds the pci device id
-    */
-   uint32_t chipset_id;
-
-   /**
     * holds the name of the device
     */
    char name[INTEL_DEVICE_MAX_NAME_SIZE];
 
    /**
-    * no_hw is true when the chipset_id pci device id has been overridden
+    * no_hw is true when the pci_device_id has been overridden
     */
    bool no_hw;
    /** @} */

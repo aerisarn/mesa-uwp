@@ -562,8 +562,8 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
     */
    _mesa_sha1_init(&sha1_ctx);
    _mesa_sha1_update(&sha1_ctx, build_id_data(note), build_id_len);
-   _mesa_sha1_update(&sha1_ctx, &device->info.chipset_id,
-                     sizeof(device->info.chipset_id));
+   _mesa_sha1_update(&sha1_ctx, &device->info.pci_device_id,
+                     sizeof(device->info.pci_device_id));
    _mesa_sha1_update(&sha1_ctx, &device->always_use_bindless,
                      sizeof(device->always_use_bindless));
    _mesa_sha1_update(&sha1_ctx, &device->has_a64_buffer_access,
@@ -587,7 +587,7 @@ anv_physical_device_init_disk_cache(struct anv_physical_device *device)
 #ifdef ENABLE_SHADER_CACHE
    char renderer[10];
    ASSERTED int len = snprintf(renderer, sizeof(renderer), "anv_%04x",
-                               device->info.chipset_id);
+                               device->info.pci_device_id);
    assert(len == sizeof(renderer) - 2);
 
    char timestamp[41];
@@ -1949,7 +1949,7 @@ void anv_GetPhysicalDeviceProperties(
       .apiVersion = ANV_API_VERSION,
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0x8086,
-      .deviceID = pdevice->info.chipset_id,
+      .deviceID = pdevice->info.pci_device_id,
       .deviceType = pdevice->info.has_local_mem ?
                     VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU :
                     VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,

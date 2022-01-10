@@ -1363,7 +1363,6 @@ intel_get_device_info_from_pci_id(int pci_id,
 
    update_cs_workgroup_threads(devinfo);
 
-   devinfo->chipset_id = pci_id;
    return true;
 }
 
@@ -1537,7 +1536,7 @@ fixup_chv_device_info(struct intel_device_info *devinfo)
    /* Braswell is even more annoying.  Its marketing name isn't determinable
     * from the PCI ID and is also dependent on fusing.
     */
-   if (devinfo->chipset_id != 0x22B1)
+   if (devinfo->pci_device_id != 0x22B1)
       return;
 
    char *bsw_model;
