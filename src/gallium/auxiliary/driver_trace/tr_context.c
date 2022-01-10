@@ -2328,6 +2328,8 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(create_stream_output_target);
    TR_CTX_INIT(stream_output_target_destroy);
    TR_CTX_INIT(set_stream_output_targets);
+   /* this is lavapipe-only and can't be traced */
+   tr_ctx->base.stream_output_target_offset = pipe->stream_output_target_offset;
    TR_CTX_INIT(resource_copy_region);
    TR_CTX_INIT(blit);
    TR_CTX_INIT(flush_resource);
