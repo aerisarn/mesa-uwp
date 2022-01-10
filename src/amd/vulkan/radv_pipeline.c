@@ -2555,8 +2555,6 @@ radv_link_shaders(struct radv_pipeline *pipeline,
          if (nir_lower_io_to_scalar_early(ordered_shaders[i], mask)) {
             /* Optimize the new vector code and then remove dead vars */
             nir_copy_prop(ordered_shaders[i]);
-            nir_opt_shrink_stores(ordered_shaders[i],
-                                  !pipeline->device->instance->disable_shrink_image_store);
             nir_opt_shrink_vectors(ordered_shaders[i]);
 
             if (ordered_shaders[i]->info.stage != last) {
@@ -3803,7 +3801,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       if (nir[i]) {
          radv_start_feedback(stage_feedbacks[i]);
-         radv_optimize_nir(device, nir[i], optimize_conservatively, false);
+         radv_optimize_nir(nir[i], optimize_conservatively, false);
 
          /* Gather info again, information such as outputs_read can be out-of-date. */
          nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
@@ -3889,14 +3887,13 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
          if (nir_opt_load_store_vectorize(nir[i], &vectorize_opts)) {
             NIR_PASS_V(nir[i], nir_copy_prop);
+            nir_opt_shrink_stores(nir[i], !device->instance->disable_shrink_image_store);
             lower_to_scalar = true;
 
             /* Gather info again, to update whether 8/16-bit are used. */
             nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
          }
 
-         lower_to_scalar |=
-            nir_opt_shrink_stores(nir[i], !device->instance->disable_shrink_image_store);
          nir_opt_shrink_vectors(nir[i]);
 
          if (lower_to_scalar)

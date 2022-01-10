@@ -145,8 +145,7 @@ radv_can_dump_shader_stats(struct radv_device *device, struct vk_shader_module *
 }
 
 void
-radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
-                  bool optimize_conservatively, bool allow_copies)
+radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool allow_copies)
 {
    bool progress;
 
@@ -192,8 +191,6 @@ radv_optimize_nir(const struct radv_device *device, struct nir_shader *shader,
       NIR_PASS(progress, shader, nir_opt_algebraic);
 
       NIR_PASS(progress, shader, nir_opt_undef);
-      NIR_PASS(progress, shader, nir_opt_shrink_stores,
-               !device->instance->disable_shrink_image_store);
       NIR_PASS(progress, shader, nir_opt_shrink_vectors);
       if (shader->options->max_unroll_iterations) {
          NIR_PASS(progress, shader, nir_opt_loop_unroll);
@@ -824,9 +821,10 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
                             });
 
    nir_lower_load_const_to_scalar(nir);
+   nir_opt_shrink_stores(nir, !device->instance->disable_shrink_image_store);
 
    if (!key->optimisations_disabled)
-      radv_optimize_nir(device, nir, false, true);
+      radv_optimize_nir(nir, false, true);
 
    /* call radv_nir_lower_ycbcr_textures() late as there might still be
     * tex with undef texture/sampler before first optimization */
@@ -899,7 +897,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    if (ac_nir_lower_indirect_derefs(nir, device->physical_device->rad_info.chip_class) &&
        !key->optimisations_disabled && nir->info.stage != MESA_SHADER_COMPUTE) {
       /* Optimize the lowered code before the linking optimizations. */
-      radv_optimize_nir(device, nir, false, false);
+      radv_optimize_nir(nir, false, false);
    }
 
    return nir;
