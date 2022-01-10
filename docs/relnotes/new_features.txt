@@ -3,4 +3,4 @@ radv EXT_image_view_min_lod
 VK_KHR_synchronization2 on RADV.
 OpenSWR has been moved to the Amber branch
 radeonsi ARB_sparse_texture
-d3d12 support for shader store buffers, images, and compute
+d3d12 support for shader store buffers, images, compute, indirect draw, and draw params
