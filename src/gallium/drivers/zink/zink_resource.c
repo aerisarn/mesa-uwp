@@ -63,6 +63,8 @@
 #include "MoltenVK/vk_mvk_moltenvk.h"
 #endif
 
+#define ZINK_EXTERNAL_MEMORY_HANDLE 999
+
 static bool
 equals_ivci(const void *a, const void *b)
 {
@@ -226,7 +228,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
          usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
       if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
          usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-      if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && (bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
+      if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
          usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
       if ((feats & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) && (bind & PIPE_BIND_SHADER_IMAGE)) {
@@ -462,6 +464,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       if (whandle->type == WINSYS_HANDLE_TYPE_FD) {
          external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
          export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+      } else if (whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE) {
+         external = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       } else
          unreachable("unknown handle type");
    }
@@ -497,7 +501,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       unsigned ici_modifier_count = winsys_modifier ? 1 : modifiers_count;
       bool success = false;
       VkImageCreateInfo ici;
-      uint64_t mod = create_ici(screen, &ici, templ, !!external, templ->bind, ici_modifier_count, ici_modifiers, &success);
+      uint64_t mod = create_ici(screen, &ici, templ, external == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+                                templ->bind, ici_modifier_count, ici_modifiers, &success);
       VkExternalMemoryImageCreateInfo emici;
       VkImageDrmFormatModifierExplicitCreateInfoEXT idfmeci;
       VkImageDrmFormatModifierListCreateInfoEXT idfmlci;
@@ -775,7 +780,9 @@ resource_create(struct pipe_screen *pscreen,
    bool optimal_tiling = false;
    struct pipe_resource templ2 = *templ;
    unsigned scanout_flags = templ->bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
-   if (!(templ->bind & PIPE_BIND_LINEAR))
+   if (whandle && whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE)
+      scanout_flags = 0;
+   else if (!(templ->bind & PIPE_BIND_LINEAR))
       templ2.bind &= ~scanout_flags;
    res->obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling, NULL, 0);
    if (!res->obj) {
@@ -1034,6 +1041,46 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
 #else
    return NULL;
 #endif
+}
+
+struct zink_memory_object {
+   struct pipe_memory_object b;
+   struct winsys_handle whandle;
+};
+
+static struct pipe_memory_object *
+zink_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handle *whandle, bool dedicated)
+{
+   struct zink_memory_object *memobj = CALLOC_STRUCT(zink_memory_object);
+   if (!memobj)
+      return NULL;
+   memcpy(&memobj->whandle, whandle, sizeof(struct winsys_handle));
+   memobj->whandle.type = ZINK_EXTERNAL_MEMORY_HANDLE;
+#ifdef ZINK_USE_DMABUF
+   memobj->whandle.handle = os_dupfd_cloexec(whandle->handle);
+#endif
+   return (struct pipe_memory_object *)memobj;
+}
+
+static void
+zink_memobj_destroy(struct pipe_screen *pscreen, struct pipe_memory_object *pmemobj)
+{
+   struct zink_memory_object *memobj = (struct zink_memory_object *)pmemobj;
+#ifdef ZINK_USE_DMABUF
+   close(memobj->whandle.handle);
+#endif
+   FREE(pmemobj);
+}
+
+static struct pipe_resource *
+zink_resource_from_memobj(struct pipe_screen *pscreen,
+                          const struct pipe_resource *templ,
+                          struct pipe_memory_object *pmemobj,
+                          uint64_t offset)
+{
+   struct zink_memory_object *memobj = (struct zink_memory_object *)pmemobj;
+
+   return resource_create(pscreen, templ, &memobj->whandle, 0, NULL, 0);
 }
 
 static bool
@@ -1763,6 +1810,11 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
    if (screen->info.have_KHR_external_memory_fd) {
       pscreen->resource_get_handle = zink_resource_get_handle;
       pscreen->resource_from_handle = zink_resource_from_handle;
+   }
+   if (screen->instance_info.have_KHR_external_memory_capabilities) {
+      pscreen->memobj_create_from_handle = zink_memobj_create_from_handle;
+      pscreen->memobj_destroy = zink_memobj_destroy;
+      pscreen->resource_from_memobj = zink_resource_from_memobj;
    }
    pscreen->resource_get_param = zink_resource_get_param;
    return true;

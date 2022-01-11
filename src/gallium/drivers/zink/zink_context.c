@@ -3344,10 +3344,11 @@ zink_flush_resource(struct pipe_context *pctx,
                     struct pipe_resource *pres)
 {
    struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *res = zink_resource(pres);
    /* TODO: this is not futureproof and should be updated once proper
     * WSI support is added
     */
-   if (pres->bind & (PIPE_BIND_SHARED | PIPE_BIND_SCANOUT))
+   if (res->scanout_obj && (pres->bind & (PIPE_BIND_SHARED | PIPE_BIND_SCANOUT)))
       pipe_resource_reference(&ctx->batch.state->flush_res, pres);
 }
 
