@@ -327,7 +327,10 @@ add_gpus([
     ))
 
 add_gpus([
-        GPUId(chip_id=0xffff06030500, name="Adreno 7c Gen 3"),
+        GPUId(chip_id=0x00be06030500, name="Adreno 8c Gen 3"),
+        GPUId(chip_id=0x007506030500, name="Adreno 7c+ Gen 3"),
+        # fallback wildcard entry should be last:
+        GPUId(chip_id=0xffff06030500, name="Adreno 7c+ Gen 3"),
     ], A6xxGPUInfo(
         a6xx_gen4,
         num_sp_cores = 2,
