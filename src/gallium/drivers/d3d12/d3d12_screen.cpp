@@ -309,6 +309,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
+   case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
       return 1;
 
    default:
@@ -539,6 +540,20 @@ d3d12_is_format_supported(struct pipe_screen *pscreen,
         util_format_is_luminance_alpha(format) ||
         util_format_is_yuv(format)))
       return false;
+
+   if (format == PIPE_FORMAT_NONE) {
+      /* For UAV-only rendering, aka ARB_framebuffer_no_attachments */
+      switch (sample_count) {
+      case 0:
+      case 1:
+      case 4:
+      case 8:
+      case 16:
+         return true;
+      default:
+         return false;
+      }
+   }
 
    DXGI_FORMAT dxgi_format = d3d12_get_format(format);
    if (dxgi_format == DXGI_FORMAT_UNKNOWN)

@@ -556,10 +556,20 @@ spec/arb_explicit_attrib_location/overlapping-locations-input-attribs api: crash
 spec/arb_explicit_attrib_location/overlapping-locations-input-attribs shader: crash
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-minmax: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params: skip
-spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-atomic/per-sample: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/basic: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/discard: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/fb resize: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/glscissor: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/glviewport: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms10: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms12: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms14: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms16: fail
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms2: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms4: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms6: skip
+spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-query/ms8: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-roundup-samples: skip
 spec/arb_framebuffer_srgb/arb_framebuffer_srgb-srgb_conformance: fail
 spec/arb_geometry_shader4/arb_geometry_shader4-ignore-adjacent-vertices  gl_line_strip_adjacency: skip
@@ -4264,10 +4274,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    15870
-       fail:     1202
+       pass:    15882
+       fail:     1208
       crash:       68
-       skip:     2973
+       skip:     2977
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4276,4 +4286,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20133
+      total:    20155
