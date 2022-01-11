@@ -80,8 +80,8 @@ struct iris_batch {
    /** Total size of all chained batches (in bytes). */
    unsigned total_chained_batch_size;
 
-   /** Last Surface State Base Address set in this hardware context. */
-   uint64_t last_surface_base_address;
+   /** Last binder address set in this hardware context. */
+   uint64_t last_binder_address;
 
    uint32_t ctx_id;
    uint32_t exec_flags;

@@ -521,7 +521,7 @@ iris_batch_reset(struct iris_batch *batch)
    batch->total_chained_batch_size = 0;
    batch->contains_draw = false;
    batch->contains_fence_signal = false;
-   batch->decoder.surface_base = batch->last_surface_base_address;
+   batch->decoder.surface_base = batch->last_binder_address;
 
    create_batch(batch);
    assert(batch->bo->index == 0);
