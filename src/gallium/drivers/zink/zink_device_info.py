@@ -287,6 +287,7 @@ struct zink_device_info {
 %endfor
 
    VkPhysicalDeviceMemoryProperties mem_props;
+   VkPhysicalDeviceIDProperties deviceid_props;
 
 %for ext in extensions:
 <%helpers:guard ext="${ext}">
@@ -434,6 +435,12 @@ zink_get_physical_device_info(struct zink_screen *screen)
 </%helpers:guard>
 %endif
 %endfor
+
+      if (screen->vk_version < VK_MAKE_VERSION(1,2,0) && screen->instance_info.have_KHR_external_memory_capabilities) {
+         info->deviceid_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+         info->deviceid_props.pNext = props.pNext;
+         props.pNext = &info->deviceid_props;
+      }
 
       // note: setting up local VkPhysicalDeviceProperties2.
       screen->vk.GetPhysicalDeviceProperties2(screen->pdev, &props);
