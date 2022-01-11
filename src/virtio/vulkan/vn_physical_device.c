@@ -2196,8 +2196,25 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    if (result != VK_SUCCESS || !external_info)
       return vn_result(physical_dev->instance, result);
 
+   if (external_info->handleType ==
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID) {
+      VkAndroidHardwareBufferUsageANDROID *ahb_usage =
+         vk_find_struct(pImageFormatProperties->pNext,
+                        ANDROID_HARDWARE_BUFFER_USAGE_ANDROID);
+      if (ahb_usage) {
+         ahb_usage->androidHardwareBufferUsage = vn_android_get_ahb_usage(
+            pImageFormatInfo->usage, pImageFormatInfo->flags);
+      }
+
+      /* AHBs with mipmap usage will ignore this property */
+      pImageFormatProperties->imageFormatProperties.maxMipLevels = 1;
+   }
+
    VkExternalImageFormatProperties *img_props = vk_find_struct(
       pImageFormatProperties->pNext, EXTERNAL_IMAGE_FORMAT_PROPERTIES);
+   if (!img_props)
+      return VK_SUCCESS;
+
    VkExternalMemoryProperties *mem_props =
       &img_props->externalMemoryProperties;
 
@@ -2217,17 +2234,6 @@ vn_GetPhysicalDeviceImageFormatProperties2(
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
       mem_props->compatibleHandleTypes =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
-
-      VkAndroidHardwareBufferUsageANDROID *ahb_usage =
-         vk_find_struct(pImageFormatProperties->pNext,
-                        ANDROID_HARDWARE_BUFFER_USAGE_ANDROID);
-      if (ahb_usage) {
-         ahb_usage->androidHardwareBufferUsage = vn_android_get_ahb_usage(
-            pImageFormatInfo->usage, pImageFormatInfo->flags);
-      }
-
-      /* AHBs with mipmap usage will ignore this property */
-      pImageFormatProperties->imageFormatProperties.maxMipLevels = 1;
    } else {
       mem_props->compatibleHandleTypes = supported_handle_types;
       mem_props->exportFromImportedHandleTypes =
@@ -2236,7 +2242,7 @@ vn_GetPhysicalDeviceImageFormatProperties2(
             : 0;
    }
 
-   return vn_result(physical_dev->instance, result);
+   return VK_SUCCESS;
 }
 
 void
