@@ -113,6 +113,28 @@ zink_get_name(struct pipe_screen *pscreen)
    return buf;
 }
 
+static void
+zink_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   if (screen->vk_version >= VK_MAKE_VERSION(1,2,0)) {
+      memcpy(uuid, screen->info.props11.driverUUID, VK_UUID_SIZE);
+   } else {
+      memcpy(uuid, screen->info.deviceid_props.driverUUID, VK_UUID_SIZE);
+   }
+}
+
+static void
+zink_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   if (screen->vk_version >= VK_MAKE_VERSION(1,2,0)) {
+      memcpy(uuid, screen->info.props11.deviceUUID, VK_UUID_SIZE);
+   } else {
+      memcpy(uuid, screen->info.deviceid_props.deviceUUID, VK_UUID_SIZE);
+   }
+}
+
 static uint32_t
 hash_framebuffer_state(const void *key)
 {
@@ -2002,6 +2024,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    util_live_shader_cache_init(&screen->shaders, zink_create_gfx_shader_state, zink_delete_shader_state);
 
    screen->base.get_name = zink_get_name;
+   if (screen->instance_info.have_KHR_external_memory_capabilities) {
+      screen->base.get_device_uuid = zink_get_device_uuid;
+      screen->base.get_driver_uuid = zink_get_driver_uuid;
+   }
    screen->base.get_vendor = zink_get_vendor;
    screen->base.get_device_vendor = zink_get_device_vendor;
    screen->base.get_compute_param = zink_get_compute_param;
