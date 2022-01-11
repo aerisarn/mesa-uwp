@@ -2500,10 +2500,6 @@ iris_create_sampler_view(struct pipe_context *ctx,
 
    isv->res = (struct iris_resource *) tex;
 
-   alloc_surface_states(&isv->surface_state, isv->res->aux.sampler_usages);
-
-   isv->surface_state.bo_address = isv->res->bo->address;
-
    isl_surf_usage_flags_t usage = ISL_SURF_USAGE_TEXTURE_BIT;
 
    if (isv->base.target == PIPE_TEXTURE_CUBE ||
@@ -2525,6 +2521,20 @@ iris_create_sampler_view(struct pipe_context *ctx,
       },
       .usage = usage,
    };
+
+   unsigned aux_usages = 0;
+
+   if ((isv->res->aux.usage == ISL_AUX_USAGE_CCS_D ||
+        isv->res->aux.usage == ISL_AUX_USAGE_CCS_E ||
+        isv->res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E) &&
+       !isl_format_supports_ccs_e(devinfo, isv->view.format)) {
+      aux_usages = 1 << ISL_AUX_USAGE_NONE;
+   } else {
+      aux_usages = isv->res->aux.sampler_usages;
+   }
+
+   alloc_surface_states(&isv->surface_state, aux_usages);
+   isv->surface_state.bo_address = isv->res->bo->address;
 
    /* Fill out SURFACE_STATE for this view. */
    if (tmpl->target != PIPE_BUFFER) {
@@ -2682,12 +2692,21 @@ iris_create_surface(struct pipe_context *ctx,
                           ISL_SURF_USAGE_STENCIL_BIT))
       return psurf;
 
+   unsigned aux_usages = 0;
 
-   alloc_surface_states(&surf->surface_state, res->aux.possible_usages);
+   if ((res->aux.usage == ISL_AUX_USAGE_CCS_E ||
+        res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E) &&
+       !isl_format_supports_ccs_e(devinfo, view->format)) {
+      aux_usages = 1 << ISL_AUX_USAGE_NONE;
+   } else {
+      aux_usages = res->aux.possible_usages;
+   }
+
+   alloc_surface_states(&surf->surface_state, aux_usages);
    surf->surface_state.bo_address = res->bo->address;
 
 #if GFX_VER == 8
-   alloc_surface_states(&surf->surface_state_read, res->aux.possible_usages);
+   alloc_surface_states(&surf->surface_state_read, aux_usages);
    surf->surface_state_read.bo_address = res->bo->address;
 #endif
 
