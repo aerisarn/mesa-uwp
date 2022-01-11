@@ -312,10 +312,23 @@ print_hwconfig_item(struct intel_device_info *devinfo,
    printf("\n");
 }
 
-void
+static void
 intel_print_hwconfig_table(const struct hwconfig *hwconfig,
                            int32_t hwconfig_len)
 {
    intel_process_hwconfig_table(NULL, hwconfig, hwconfig_len,
                                 print_hwconfig_item);
+}
+
+void
+intel_get_and_print_hwconfig_table(int fd)
+{
+   struct hwconfig *hwconfig;
+   int32_t hwconfig_len = 0;
+   hwconfig = intel_i915_query_alloc(fd, DRM_I915_QUERY_HWCONFIG_BLOB,
+                                     &hwconfig_len);
+   if (hwconfig) {
+      intel_print_hwconfig_table(hwconfig, hwconfig_len);
+      free(hwconfig);
+   }
 }
