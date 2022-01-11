@@ -4117,7 +4117,6 @@ spec/glsl-1.10/execution/varying-packing/simple vec4 array: crash
 spec/glsl-1.10/execution/varying-packing/simple vec4 arrays_of_arrays: crash
 spec/glsl-1.10/execution/varying-packing/simple vec4 separate: crash
 spec/glsl-1.30/execution/fs-texelfetch-2d: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: fail
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip ffs: fail
@@ -4308,10 +4307,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    15979
+       pass:    15823
        fail:     1200
       crash:       68
-       skip:     3019
+       skip:     3018
     timeout:        0
        warn:       10
  incomplete:        0
@@ -4320,4 +4319,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    20286
+      total:    20129
