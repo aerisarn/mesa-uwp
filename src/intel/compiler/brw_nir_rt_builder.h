@@ -24,6 +24,14 @@
 #ifndef BRW_NIR_RT_BUILDER_H
 #define BRW_NIR_RT_BUILDER_H
 
+/* This file provides helpers to access memory based data structures that the
+ * RT hardware reads/writes and their locations.
+ *
+ * See also "Memory Based Data Structures for Ray Tracing" (BSpec 47547) and
+ * "Ray Tracing Address Computation for Memory Resident Structures" (BSpec
+ * 47550).
+ */
+
 #include "brw_rt.h"
 #include "nir_builder.h"
 
