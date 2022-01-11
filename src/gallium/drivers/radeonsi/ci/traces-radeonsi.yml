@@ -214,6 +214,18 @@ traces:
     expectations:
       - device: gl-radeonsi-stoney
         checksum: 2e2e58e0b32329d6cf90ab0ec71108fd
+  - path: paraview/pv-manyspheres.trace
+    expectations:
+      - device: gl-radeonsi-stoney
+        checksum: 7e405460c58557573bd9cc54035bb62a
+  - path: paraview/pv-waveletcontour.trace
+    expectations:
+      - device: gl-radeonsi-stoney
+        checksum: 961fb30a1a3756678662d1a9a45b1400
+  - path: paraview/pv-waveletvolume.trace
+    expectations:
+      - device: gl-radeonsi-stoney
+        checksum: f1093f472683a16dec0d5da4b599356f
   - path: humus/VolumetricFogging2.trace
     expectations:
       - device: gl-radeonsi-stoney
