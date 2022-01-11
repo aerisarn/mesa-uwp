@@ -1356,7 +1356,9 @@ d3d12_set_framebuffer_state(struct pipe_context *pctx,
    struct d3d12_context *ctx = d3d12_context(pctx);
    int samples = -1;
 
+   bool prev_cbufs_or_zsbuf = ctx->fb.nr_cbufs || ctx->fb.zsbuf;
    util_copy_framebuffer_state(&d3d12_context(pctx)->fb, state);
+   bool new_cbufs_or_zsbuf = ctx->fb.nr_cbufs || ctx->fb.zsbuf;
 
    ctx->gfx_pipeline_state.num_cbufs = state->nr_cbufs;
    ctx->gfx_pipeline_state.has_float_rtv = false;
@@ -1383,6 +1385,8 @@ d3d12_set_framebuffer_state(struct pipe_context *pctx,
    ctx->gfx_pipeline_state.samples = MAX2(samples, 1);
 
    ctx->state_dirty |= D3D12_DIRTY_FRAMEBUFFER;
+   if (!prev_cbufs_or_zsbuf || !new_cbufs_or_zsbuf)
+      ctx->state_dirty |= D3D12_DIRTY_VIEWPORT;
 }
 
 static void

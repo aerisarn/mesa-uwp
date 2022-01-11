@@ -1004,16 +1004,21 @@ d3d12_draw_vbo(struct pipe_context *pctx,
    }
 
    if (ctx->cmdlist_dirty & D3D12_DIRTY_VIEWPORT) {
-      if (ctx->need_zero_one_depth_range) {
-         D3D12_VIEWPORT viewports[PIPE_MAX_VIEWPORTS];
-         for (unsigned i = 0; i < ctx->num_viewports; ++i) {
-            viewports[i] = ctx->viewports[i];
+      D3D12_VIEWPORT viewports[PIPE_MAX_VIEWPORTS];
+      for (unsigned i = 0; i < ctx->num_viewports; ++i) {
+         viewports[i] = ctx->viewports[i];
+         if (ctx->need_zero_one_depth_range) {
             viewports[i].MinDepth = 0.0f;
             viewports[i].MaxDepth = 1.0f;
          }
-         ctx->cmdlist->RSSetViewports(ctx->num_viewports, viewports);
-      } else
-         ctx->cmdlist->RSSetViewports(ctx->num_viewports, ctx->viewports);
+         if (ctx->fb.nr_cbufs == 0 && !ctx->fb.zsbuf) {
+            viewports[i].TopLeftX = MAX2(0.0f, viewports[i].TopLeftX);
+            viewports[i].TopLeftY = MAX2(0.0f, viewports[i].TopLeftY);
+            viewports[i].Width = MIN2(ctx->fb.width, viewports[i].Width);
+            viewports[i].Height = MIN2(ctx->fb.height, viewports[i].Height);
+         }
+      }
+      ctx->cmdlist->RSSetViewports(ctx->num_viewports, viewports);
    }
 
    if (ctx->cmdlist_dirty & D3D12_DIRTY_SCISSOR) {
