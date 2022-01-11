@@ -359,6 +359,11 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FBFETCH:
       return 1;
 
+   case PIPE_CAP_MEMOBJ:
+      return screen->instance_info.have_KHR_external_memory_capabilities && screen->info.have_KHR_external_memory_fd;
+   case PIPE_CAP_FENCE_SIGNAL:
+      return screen->info.have_KHR_external_semaphore_fd;
+
    case PIPE_CAP_QUERY_MEMORY_INFO:
    case PIPE_CAP_NPOT_TEXTURES:
    case PIPE_CAP_TGSI_TEXCOORD:
