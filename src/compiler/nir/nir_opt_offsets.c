@@ -114,7 +114,7 @@ try_fold_load_store(nir_builder *b,
 
    if (!nir_src_is_const(*off_src)) {
       replace_src = try_extract_const_addition(b, off_src->ssa->parent_instr, state, &off_const, max);
-   } else if (nir_src_as_uint(*off_src)) {
+   } else if (nir_src_as_uint(*off_src) && nir_src_as_uint(*off_src) < max) {
       off_const += nir_src_as_uint(*off_src);
       b->cursor = nir_before_instr(&intrin->instr);
       replace_src = nir_imm_zero(b, off_src->ssa->num_components, off_src->ssa->bit_size);
