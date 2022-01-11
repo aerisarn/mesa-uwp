@@ -162,6 +162,10 @@ traces:
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: a55dd3d87a86b3b47121ff67861028c3
+  - path: jvgs/jvgs-d27fb67.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: b8c21bf76e667735d1640b215f456531
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-vmware-llvmpipe
