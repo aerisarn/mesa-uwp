@@ -4115,7 +4115,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.clear_render_target = zink_clear_render_target;
    ctx->base.clear_depth_stencil = zink_clear_depth_stencil;
 
+   ctx->base.create_fence_fd = zink_create_fence_fd;
    ctx->base.fence_server_sync = zink_fence_server_sync;
+   ctx->base.fence_server_signal = zink_fence_server_signal;
    ctx->base.flush = zink_flush;
    ctx->base.memory_barrier = zink_memory_barrier;
    ctx->base.texture_barrier = zink_texture_barrier;
