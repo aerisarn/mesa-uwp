@@ -65,6 +65,7 @@ EXTENSIONS = [
     Extension("VK_KHR_maintenance3"),
     Extension("VK_KHR_external_memory"),
     Extension("VK_KHR_external_memory_fd"),
+    Extension("VK_KHR_external_semaphore_fd"),
     Extension("VK_EXT_external_memory_dma_buf"),
     Extension("VK_EXT_queue_family_foreign"),
     Extension("VK_EXT_provoking_vertex",
