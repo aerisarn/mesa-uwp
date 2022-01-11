@@ -261,7 +261,12 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
       pso_desc.RTVFormats[i] = d3d12_rtv_format(ctx, i);
    pso_desc.DSVFormat = state->dsv_format;
 
-   pso_desc.SampleDesc.Count = state->samples;
+   if (state->num_cbufs || state->dsv_format != DXGI_FORMAT_UNKNOWN) {
+      pso_desc.SampleDesc.Count = state->samples;
+   } else {
+      pso_desc.SampleDesc.Count = 1;
+      pso_desc.RasterizerState.ForcedSampleCount = state->samples;
+   }
    pso_desc.SampleDesc.Quality = 0;
 
    pso_desc.NodeMask = 0;
