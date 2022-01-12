@@ -575,7 +575,7 @@ debian/arm_test:
     MESA_IMAGE_TAG: "2021-11-19-piglit-uprev"
     MESA_UPSTREAM_IMAGE: "$CI_REGISTRY/$FDO_UPSTREAM_REPO/$MESA_IMAGE_PATH:${MESA_IMAGE_TAG}"
 
-windows_build_vs2019:
+.windows_build_vs2019:
   inherit:
     default: false
   extends:
@@ -1043,7 +1043,7 @@ debian-clang:
     CC: clang
     CXX: clang++
 
-windows-vs2019:
+.windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019

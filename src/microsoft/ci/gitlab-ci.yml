@@ -1,4 +1,4 @@
-test-spirv2dxil-windows:
+.test-spirv2dxil-windows:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
