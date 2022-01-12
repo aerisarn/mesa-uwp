@@ -234,6 +234,7 @@ iris_init_batch(struct iris_context *ice,
                                   decode_get_bo, decode_get_state_size, batch);
       batch->decoder.dynamic_base = IRIS_MEMZONE_DYNAMIC_START;
       batch->decoder.instruction_base = IRIS_MEMZONE_SHADER_START;
+      batch->decoder.surface_base = IRIS_MEMZONE_BINDER_START;
       batch->decoder.max_vbo_decoded_lines = 32;
       if (batch->name == IRIS_BATCH_BLITTER)
          batch->decoder.engine = I915_ENGINE_CLASS_COPY;
@@ -513,6 +514,7 @@ iris_batch_reset(struct iris_batch *batch)
 {
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    u_trace_fini(&batch->trace);
 
@@ -521,7 +523,8 @@ iris_batch_reset(struct iris_batch *batch)
    batch->total_chained_batch_size = 0;
    batch->contains_draw = false;
    batch->contains_fence_signal = false;
-   batch->decoder.surface_base = batch->last_binder_address;
+   if (devinfo->ver < 11)
+      batch->decoder.surface_base = batch->last_binder_address;
 
    create_batch(batch);
    assert(batch->bo->index == 0);

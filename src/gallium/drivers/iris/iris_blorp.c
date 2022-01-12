@@ -166,13 +166,15 @@ blorp_alloc_binding_table(struct blorp_batch *blorp_batch,
       iris_binder_reserve(ice, num_entries * sizeof(uint32_t));
    uint32_t *bt_map = binder->map + bt_offset;
 
+   uint32_t surf_base_offset = GFX_VER < 11 ? binder->bo->address : 0;
+
    *out_bt_offset = bt_offset;
 
    for (unsigned i = 0; i < num_entries; i++) {
       surface_maps[i] = stream_state(batch, ice->state.surface_uploader,
                                      state_size, state_alignment,
                                      &surface_offsets[i], NULL);
-      bt_map[i] = surface_offsets[i] - (uint32_t) binder->bo->address;
+      bt_map[i] = surface_offsets[i] - surf_base_offset;
    }
 
    iris_use_pinned_bo(batch, binder->bo, false, IRIS_DOMAIN_NONE);

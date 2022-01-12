@@ -718,6 +718,7 @@ init_state_base_address(struct iris_batch *batch)
       sba.InstructionBaseAddressModifyEnable    = true;
       sba.GeneralStateBufferSizeModifyEnable    = true;
       sba.DynamicStateBufferSizeModifyEnable    = true;
+      sba.SurfaceStateBaseAddressModifyEnable   = true;
 #if GFX_VER >= 9
       sba.BindlessSurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_BINDLESS_START);
       sba.BindlessSurfaceStateSize = (IRIS_BINDLESS_SIZE >> 12) - 1;
@@ -732,6 +733,7 @@ init_state_base_address(struct iris_batch *batch)
 
       sba.InstructionBaseAddress  = ro_bo(NULL, IRIS_MEMZONE_SHADER_START);
       sba.DynamicStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_DYNAMIC_START);
+      sba.SurfaceStateBaseAddress = ro_bo(NULL, IRIS_MEMZONE_BINDER_START);
 
       sba.GeneralStateBufferSize   = 0xfffff;
       sba.IndirectObjectBufferSize = 0xfffff;
@@ -5049,9 +5051,9 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
 }
 
 #define push_bt_entry(addr) \
-   assert(addr >= binder_addr); \
+   assert(addr >= surf_base_offset); \
    assert(s < shader->bt.size_bytes / sizeof(uint32_t)); \
-   if (!pin_only) bt_map[s++] = (addr) - binder_addr;
+   if (!pin_only) bt_map[s++] = (addr) - surf_base_offset;
 
 #define bt_assert(section) \
    if (!pin_only && shader->bt.used_mask[section] != 0) \
@@ -5078,7 +5080,7 @@ iris_populate_binding_table(struct iris_context *ice,
    struct iris_binding_table *bt = &shader->bt;
    UNUSED struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
-   uint32_t binder_addr = binder->bo->address;
+   uint32_t surf_base_offset = GFX_VER < 11 ? binder->bo->address : 0;
 
    uint32_t *bt_map = binder->map + binder->bt_offset[stage];
    int s = 0;
@@ -5458,7 +5460,8 @@ iris_update_binder_address(struct iris_batch *batch,
 
    iris_batch_sync_region_start(batch);
 
-   flush_before_state_base_change(batch);
+#if GFX_VER >= 11
+   /* Use 3DSTATE_BINDING_TABLE_POOL_ALLOC on Icelake and later */
 
 #if GFX_VERx10 == 120
    /* Wa_1607854226:
@@ -5469,6 +5472,30 @@ iris_update_binder_address(struct iris_batch *batch,
    if (batch->name == IRIS_BATCH_COMPUTE)
       emit_pipeline_select(batch, _3D);
 #endif
+
+   iris_emit_pipe_control_flush(batch, "Stall for binder realloc",
+                                PIPE_CONTROL_CS_STALL);
+
+   iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POOL_ALLOC), btpa) {
+      btpa.BindingTablePoolBaseAddress = ro_bo(binder->bo, 0);
+      btpa.BindingTablePoolBufferSize = binder->size / 4096;
+#if GFX_VERx10 < 125
+      btpa.BindingTablePoolEnable = true;
+#endif
+      btpa.MOCS = mocs;
+   }
+
+#if GFX_VERx10 == 120
+   /* Wa_1607854226:
+    *
+    *  Put the pipeline back into compute mode.
+    */
+   if (batch->name == IRIS_BATCH_COMPUTE)
+      emit_pipeline_select(batch, GPGPU);
+#endif
+#else
+   /* Use STATE_BASE_ADDRESS on older platforms */
+   flush_before_state_base_change(batch);
 
    iris_emit_cmd(batch, GENX(STATE_BASE_ADDRESS), sba) {
       sba.SurfaceStateBaseAddressModifyEnable = true;
@@ -5486,30 +5513,8 @@ iris_update_binder_address(struct iris_batch *batch,
 #if GFX_VER >= 9
       sba.BindlessSurfaceStateMOCS    = mocs;
 #endif
-#if GFX_VER >= 11
-      sba.BindlessSamplerStateMOCS    = mocs;
-#endif
    }
-
-#if GFX_VERx10 == 120
-   /* Wa_1607854226:
-    *
-    *  Put the pipeline back into compute mode.
-    */
-   if (batch->name == IRIS_BATCH_COMPUTE)
-      emit_pipeline_select(batch, GPGPU);
 #endif
-
-   if (GFX_VERx10 >= 125) {
-      iris_emit_cmd(batch, GENX(3DSTATE_BINDING_TABLE_POOL_ALLOC), btpa) {
-         btpa.BindingTablePoolBaseAddress = ro_bo(binder->bo, 0);
-         btpa.BindingTablePoolBufferSize = IRIS_BINDER_SIZE / 4096;
-#if GFX_VERx10 < 125
-         btpa.BindingTablePoolEnable = true;
-#endif
-         btpa.MOCS = mocs;
-      }
-   }
 
    flush_after_state_base_change(batch);
    iris_batch_sync_region_end(batch);

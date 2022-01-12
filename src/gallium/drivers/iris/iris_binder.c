@@ -63,6 +63,7 @@ static void
 binder_realloc(struct iris_context *ice)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_binder *binder = &ice->state.binder;
 
@@ -76,15 +77,21 @@ binder_realloc(struct iris_context *ice)
    /* Avoid using offset 0 - tools consider it NULL. */
    binder->insert_point = binder->alignment;
 
-   /* Allocating a new binder requires changing Surface State Base Address,
-    * which also invalidates all our previous binding tables - each entry
-    * in those tables is an offset from the old base.
-    *
-    * We do this here so that iris_binder_reserve_3d correctly gets a new
-    * larger total_size when making the updated reservation.
-    */
-   ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
-   ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
+   if (devinfo->ver < 11) {
+      /* Allocating a new binder requires changing Surface State Base Address,
+       * which also invalidates all our previous binding tables - each entry
+       * in those tables is an offset from the old base.
+       *
+       * We do this here so that iris_binder_reserve_3d correctly gets a new
+       * larger total_size when making the updated reservation.
+       *
+       * On Icelake and later, we just update the binding table pool address
+       * rather than moving surface state base address, so we no longer need
+       * to do any of this.
+       */
+      ice->state.dirty |= IRIS_DIRTY_RENDER_BUFFER;
+      ice->state.stage_dirty |= IRIS_ALL_STAGE_DIRTY_BINDINGS;
+   }
 }
 
 static uint32_t
