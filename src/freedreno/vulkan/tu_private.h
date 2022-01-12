@@ -102,6 +102,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_fence.h"
 #include "vk_semaphore.h"
 #include "vk_drm_syncobj.h"
+#include "vk_sync_timeline.h"
 
 #define MAX_VBS 32
 #define MAX_VERTEX_ATTRIBS 32
@@ -232,6 +233,7 @@ struct tu_physical_device
    struct tu_memory_heap heap;
 
    struct vk_sync_type syncobj_type;
+   struct vk_sync_timeline_type timeline_type;
    const struct vk_sync_type *sync_types[3];
 };
 
@@ -311,6 +313,29 @@ struct tu_pipeline_key
 struct tu_syncobj;
 #endif
 struct tu_u_trace_syncobj;
+
+/* Define tu_timeline_sync type based on drm syncobj for a point type
+ * for vk_sync_timeline, and the logic to handle is mostly copied from
+ * anv_bo_sync since it seems it can be used by similar way to anv.
+ */
+enum tu_timeline_sync_state {
+   /** Indicates that this is a new (or newly reset fence) */
+   TU_TIMELINE_SYNC_STATE_RESET,
+
+   /** Indicates that this fence has been submitted to the GPU but is still
+    * (as far as we know) in use by the GPU.
+    */
+   TU_TIMELINE_SYNC_STATE_SUBMITTED,
+
+   TU_TIMELINE_SYNC_STATE_SIGNALED,
+};
+
+struct tu_timeline_sync {
+   struct vk_sync base;
+
+   enum tu_timeline_sync_state state;
+   uint32_t syncobj;
+};
 
 struct tu_queue
 {

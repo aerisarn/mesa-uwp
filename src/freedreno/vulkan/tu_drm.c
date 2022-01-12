@@ -331,6 +331,221 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    tu_gem_close(dev, bo->gem_handle);
 }
 
+extern const struct vk_sync_type tu_timeline_sync_type;
+
+static inline bool
+vk_sync_is_tu_timeline_sync(const struct vk_sync *sync)
+{
+   return sync->type == &tu_timeline_sync_type;
+}
+
+static struct tu_timeline_sync *
+to_tu_timeline_sync(struct vk_sync *sync)
+{
+   assert(sync->type == &tu_timeline_sync_type);
+   return container_of(sync, struct tu_timeline_sync, base);
+}
+
+static uint32_t
+tu_syncobj_from_vk_sync(struct vk_sync *sync)
+{
+   uint32_t syncobj = -1;
+   if (vk_sync_is_tu_timeline_sync(sync)) {
+      syncobj = to_tu_timeline_sync(sync)->syncobj;
+   } else if (vk_sync_type_is_drm_syncobj(sync->type)) {
+      syncobj = vk_sync_as_drm_syncobj(sync)->syncobj;
+   }
+
+   assert(syncobj != -1);
+
+   return syncobj;
+}
+
+static VkResult
+tu_timeline_sync_init(struct vk_device *vk_device,
+                      struct vk_sync *vk_sync,
+                      uint64_t initial_value)
+{
+   struct tu_device *device = container_of(vk_device, struct tu_device, vk);
+   struct tu_timeline_sync *sync = to_tu_timeline_sync(vk_sync);
+   uint32_t flags = 0;
+
+   assert(device->fd >= 0);
+
+   int err = drmSyncobjCreate(device->fd, flags, &sync->syncobj);
+
+   if (err < 0) {
+        return vk_error(device, VK_ERROR_DEVICE_LOST);
+   }
+
+   sync->state = initial_value ? TU_TIMELINE_SYNC_STATE_SIGNALED :
+                                    TU_TIMELINE_SYNC_STATE_RESET;
+
+   return VK_SUCCESS;
+}
+
+static void
+tu_timeline_sync_finish(struct vk_device *vk_device,
+                   struct vk_sync *vk_sync)
+{
+   struct tu_device *dev = container_of(vk_device, struct tu_device, vk);
+   struct tu_timeline_sync *sync = to_tu_timeline_sync(vk_sync);
+
+   assert(dev->fd >= 0);
+   ASSERTED int err = drmSyncobjDestroy(dev->fd, sync->syncobj);
+   assert(err == 0);
+}
+
+static VkResult
+tu_timeline_sync_reset(struct vk_device *vk_device,
+                  struct vk_sync *vk_sync)
+{
+   struct tu_device *dev = container_of(vk_device, struct tu_device, vk);
+   struct tu_timeline_sync *sync = to_tu_timeline_sync(vk_sync);
+
+   int err = drmSyncobjReset(dev->fd, &sync->syncobj, 1);
+   if (err) {
+      return vk_errorf(dev, VK_ERROR_UNKNOWN,
+                       "DRM_IOCTL_SYNCOBJ_RESET failed: %m");
+   } else {
+       sync->state = TU_TIMELINE_SYNC_STATE_RESET;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+drm_syncobj_wait(struct tu_device *device,
+                 uint32_t *handles, uint32_t count_handles,
+                 int64_t timeout_nsec, bool wait_all)
+{
+   uint32_t syncobj_wait_flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;
+   if (wait_all) syncobj_wait_flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL;
+
+   int err = drmSyncobjWait(device->fd, handles,
+                            count_handles, timeout_nsec,
+                            syncobj_wait_flags,
+                            NULL /* first_signaled */);
+   if (err && errno == ETIME) {
+      return VK_TIMEOUT;
+   } else if (err) {
+      return vk_errorf(device, VK_ERROR_UNKNOWN,
+                       "DRM_IOCTL_SYNCOBJ_WAIT failed: %m");
+   }
+
+   return VK_SUCCESS;
+}
+
+/* Based on anv_bo_sync_wait */
+static VkResult
+tu_timeline_sync_wait(struct vk_device *vk_device,
+                 uint32_t wait_count,
+                 const struct vk_sync_wait *waits,
+                 enum vk_sync_wait_flags wait_flags,
+                 uint64_t abs_timeout_ns)
+{
+   struct tu_device *dev = container_of(vk_device, struct tu_device, vk);
+   bool wait_all = !(wait_flags & VK_SYNC_WAIT_ANY);
+
+   uint32_t handles[wait_count];
+   uint32_t submit_count;
+   VkResult ret = VK_SUCCESS;
+   uint32_t pending = wait_count;
+   struct tu_timeline_sync *submitted_syncs[wait_count];
+
+   while (pending) {
+      pending = 0;
+      submit_count = 0;
+
+      for (unsigned i = 0; i < wait_count; ++i) {
+         struct tu_timeline_sync *sync = to_tu_timeline_sync(waits[i].sync);
+
+         if (sync->state == TU_TIMELINE_SYNC_STATE_RESET) {
+            assert(!(wait_flags & VK_SYNC_WAIT_PENDING));
+            pending++;
+         } else if (sync->state == TU_TIMELINE_SYNC_STATE_SIGNALED) {
+            if (wait_flags & VK_SYNC_WAIT_ANY)
+               return VK_SUCCESS;
+         } else if (sync->state == TU_TIMELINE_SYNC_STATE_SUBMITTED) {
+            if (!(wait_flags & VK_SYNC_WAIT_PENDING)) {
+               handles[submit_count] = sync->syncobj;
+               submitted_syncs[submit_count++] = sync;
+            }
+         }
+      }
+
+      if (submit_count > 0) {
+         do {
+            ret = drm_syncobj_wait(dev, handles, submit_count, abs_timeout_ns, wait_all);
+         } while (ret == VK_TIMEOUT && os_time_get_nano() < abs_timeout_ns);
+
+         if (ret == VK_SUCCESS) {
+            for (unsigned i = 0; i < submit_count; ++i) {
+               struct tu_timeline_sync *sync = submitted_syncs[i];
+               sync->state = TU_TIMELINE_SYNC_STATE_SIGNALED;
+            }
+         } else {
+            /* return error covering timeout */
+            return ret;
+         }
+      } else if (pending > 0) {
+         /* If we've hit this then someone decided to vkWaitForFences before
+          * they've actually submitted any of them to a queue.  This is a
+          * fairly pessimal case, so it's ok to lock here and use a standard
+          * pthreads condition variable.
+          */
+         pthread_mutex_lock(&dev->submit_mutex);
+
+         /* It's possible that some of the fences have changed state since the
+          * last time we checked.  Now that we have the lock, check for
+          * pending fences again and don't wait if it's changed.
+          */
+         uint32_t now_pending = 0;
+         for (uint32_t i = 0; i < wait_count; i++) {
+            struct tu_timeline_sync *sync = to_tu_timeline_sync(waits[i].sync);
+            if (sync->state == TU_TIMELINE_SYNC_STATE_RESET)
+               now_pending++;
+         }
+         assert(now_pending <= pending);
+
+         if (now_pending == pending) {
+            struct timespec abstime = {
+               .tv_sec = abs_timeout_ns / NSEC_PER_SEC,
+               .tv_nsec = abs_timeout_ns % NSEC_PER_SEC,
+            };
+
+            ASSERTED int ret;
+            ret = pthread_cond_timedwait(&dev->timeline_cond,
+                                         &dev->submit_mutex, &abstime);
+            assert(ret != EINVAL);
+            if (os_time_get_nano() >= abs_timeout_ns) {
+               pthread_mutex_unlock(&dev->submit_mutex);
+               return VK_TIMEOUT;
+            }
+         }
+
+         pthread_mutex_unlock(&dev->submit_mutex);
+      }
+   }
+
+   return ret;
+}
+
+const struct vk_sync_type tu_timeline_sync_type = {
+   .size = sizeof(struct tu_timeline_sync),
+   .features = VK_SYNC_FEATURE_BINARY |
+               VK_SYNC_FEATURE_GPU_WAIT |
+               VK_SYNC_FEATURE_GPU_MULTI_WAIT |
+               VK_SYNC_FEATURE_CPU_WAIT |
+               VK_SYNC_FEATURE_CPU_RESET |
+               VK_SYNC_FEATURE_WAIT_ANY |
+               VK_SYNC_FEATURE_WAIT_PENDING,
+   .init = tu_timeline_sync_init,
+   .finish = tu_timeline_sync_finish,
+   .reset = tu_timeline_sync_reset,
+   .wait_many = tu_timeline_sync_wait,
+};
+
 static VkResult
 tu_drm_device_init(struct tu_physical_device *device,
                    struct tu_instance *instance,
@@ -427,9 +642,11 @@ tu_drm_device_init(struct tu_physical_device *device,
    }
 
    device->syncobj_type = vk_drm_syncobj_get_type(fd);
+   device->timeline_type = vk_sync_timeline_get_type(&tu_timeline_sync_type);
 
    device->sync_types[0] = &device->syncobj_type;
-   device->sync_types[1] = NULL;
+   device->sync_types[1] = &device->timeline_type.sync;
+   device->sync_types[2] = NULL;
 
    device->heap.size = tu_get_system_heap_size();
    device->heap.used = 0u;
@@ -745,6 +962,37 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       }
    }
 
+   for (uint32_t i = 0; i < submit->vk_submit->wait_count; i++) {
+      if (!vk_sync_is_tu_timeline_sync(submit->vk_submit->waits[i].sync))
+         continue;
+
+      struct tu_timeline_sync *sync =
+         container_of(submit->vk_submit->waits[i].sync, struct tu_timeline_sync, base);
+
+      assert(sync->state != TU_TIMELINE_SYNC_STATE_RESET);
+
+      /* Set SIGNALED to the state of the wait timeline sync since this means the syncobj
+       * is done and ready again so this can be garbage-collectioned later.
+       */
+      sync->state = TU_TIMELINE_SYNC_STATE_SIGNALED;
+   }
+
+   for (uint32_t i = 0; i < submit->vk_submit->signal_count; i++) {
+      if (!vk_sync_is_tu_timeline_sync(submit->vk_submit->signals[i].sync))
+         continue;
+
+      struct tu_timeline_sync *sync =
+         container_of(submit->vk_submit->signals[i].sync, struct tu_timeline_sync, base);
+
+      assert(sync->state == TU_TIMELINE_SYNC_STATE_RESET);
+      /* Set SUBMITTED to the state of the signal timeline sync so we could wait for
+       * this timeline sync until completed if necessary.
+       */
+      sync->state = TU_TIMELINE_SYNC_STATE_SUBMITTED;
+   }
+
+   pthread_cond_broadcast(&queue->device->timeline_cond);
+
    return VK_SUCCESS;
 }
 
@@ -756,6 +1004,7 @@ get_abs_timeout(struct drm_msm_timespec *tv, uint64_t ns)
    tv->tv_sec = t.tv_sec + ns / 1000000000;
    tv->tv_nsec = t.tv_nsec + ns % 1000000000;
 }
+
 VkResult
 tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj)
 {
@@ -804,27 +1053,19 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    for (uint32_t i = 0; i < submit->wait_count; i++) {
       struct vk_sync *sync = submit->waits[i].sync;
 
-      if (vk_sync_type_is_drm_syncobj(sync->type)) {
-         struct vk_drm_syncobj *syncobj = vk_sync_as_drm_syncobj(sync);
-
-         in_syncobjs[nr_in_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
-            .handle = syncobj->syncobj,
-            .flags = 0,
-         };
-      }
+      in_syncobjs[nr_in_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
+         .handle = tu_syncobj_from_vk_sync(sync),
+         .flags = 0,
+      };
    }
 
    for (uint32_t i = 0; i < submit->signal_count; i++) {
       struct vk_sync *sync = submit->signals[i].sync;
 
-      if (vk_sync_type_is_drm_syncobj(sync->type)) {
-         struct vk_drm_syncobj *syncobj = vk_sync_as_drm_syncobj(sync);
-
-         out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
-            .handle = syncobj->syncobj,
-            .flags = 0,
-         };
-      }
+      out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
+         .handle = tu_syncobj_from_vk_sync(sync),
+         .flags = 0,
+      };
    }
 
    ret = tu_queue_submit_locked(queue, submit_req);
