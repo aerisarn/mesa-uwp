@@ -635,25 +635,18 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
 }
 
 int
-tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_syncobj *fence2)
+tu_signal_syncs(struct tu_device *device,
+                struct vk_sync *sync1, struct vk_sync *sync2)
 {
-   tu_finishme("tu_signal_fences");
+   tu_finishme("tu_signal_syncs");
    return 0;
 }
 
 int
-tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync)
+tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync)
 {
    tu_finishme("tu_syncobj_to_fd");
    return -1;
-}
-
-VkResult
-tu_device_submit_deferred_locked(struct tu_device *dev)
-{
-   tu_finishme("tu_device_submit_deferred_locked");
-
-   return VK_SUCCESS;
 }
 
 VkResult

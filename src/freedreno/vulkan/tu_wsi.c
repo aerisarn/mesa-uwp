@@ -71,8 +71,8 @@ tu_AcquireNextImage2KHR(VkDevice _device,
                         uint32_t *pImageIndex)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_syncobj, fence, pAcquireInfo->fence);
-   TU_FROM_HANDLE(tu_syncobj, semaphore, pAcquireInfo->semaphore);
+   VK_FROM_HANDLE(vk_fence, fence, pAcquireInfo->fence);
+   VK_FROM_HANDLE(vk_semaphore, semaphore, pAcquireInfo->semaphore);
 
    struct tu_physical_device *pdevice = device->physical_device;
 
@@ -80,7 +80,9 @@ tu_AcquireNextImage2KHR(VkDevice _device,
       &pdevice->wsi_device, _device, pAcquireInfo, pImageIndex);
 
    /* signal fence/semaphore - image is available immediately */
-   tu_signal_fences(device, fence, semaphore);
+   tu_signal_syncs(device,
+                   fence ? vk_fence_get_active_sync(fence) : NULL,
+                   semaphore ? vk_semaphore_get_active_sync(semaphore) : NULL);
 
    return result;
 }

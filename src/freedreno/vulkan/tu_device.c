@@ -159,7 +159,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_buffer_device_address = true,
       .KHR_shader_integer_dot_product = true,
 #ifndef TU_USE_KGSL
-      .KHR_timeline_semaphore = true,
+      .KHR_timeline_semaphore = false,
 #endif
 #ifdef VK_USE_PLATFORM_DISPLAY_KHR
       /* This extension is supported by common code across drivers, but it is
@@ -562,7 +562,7 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->shaderSubgroupExtendedTypes         = true;
    features->separateDepthStencilLayouts         = true;
    features->hostQueryReset                      = true;
-   features->timelineSemaphore                   = true;
+   features->timelineSemaphore                   = false;
    features->bufferDeviceAddress                 = true;
    features->bufferDeviceAddressCaptureReplay    = false;
    features->bufferDeviceAddressMultiDevice      = false;
@@ -757,7 +757,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
          VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
             (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
-         features->timelineSemaphore = true;
+         features->timelineSemaphore = false;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
@@ -1328,8 +1328,9 @@ tu_queue_init(struct tu_device *device,
       return result;
 
    queue->device = device;
-
-   list_inithead(&queue->queued_submits);
+#ifndef TU_USE_KGSL
+   queue->vk.driver_submit = tu_queue_submit;
+#endif
 
    int ret = tu_drm_submitqueue_new(device, 0, &queue->msm_queue_id);
    if (ret)
@@ -1572,6 +1573,10 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    mtx_init(&device->bo_mutex, mtx_plain);
    pthread_mutex_init(&device->submit_mutex, NULL);
+
+#ifndef TU_USE_KGSL
+   vk_device_set_drm_fd(&device->vk, device->fd);
+#endif
 
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create =
@@ -1871,6 +1876,8 @@ tu_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
    return VK_SUCCESS;
 }
 
+/* Only used for kgsl since drm started using common implementation */
+#ifdef TU_USE_KGSL
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_QueueWaitIdle(VkQueue _queue)
 {
@@ -1881,20 +1888,6 @@ tu_QueueWaitIdle(VkQueue _queue)
 
    if (queue->fence < 0)
       return VK_SUCCESS;
-
-   pthread_mutex_lock(&queue->device->submit_mutex);
-
-   do {
-      tu_device_submit_deferred_locked(queue->device);
-
-      if (list_is_empty(&queue->queued_submits))
-         break;
-
-      pthread_cond_wait(&queue->device->timeline_cond,
-            &queue->device->submit_mutex);
-   } while (!list_is_empty(&queue->queued_submits));
-
-   pthread_mutex_unlock(&queue->device->submit_mutex);
 
    struct pollfd fds = { .fd = queue->fence, .events = POLLIN };
    int ret;
@@ -1909,6 +1902,7 @@ tu_QueueWaitIdle(VkQueue _queue)
    queue->fence = -1;
    return VK_SUCCESS;
 }
+#endif
 
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_EnumerateInstanceExtensionProperties(const char *pLayerName,

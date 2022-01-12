@@ -97,6 +97,11 @@ typedef uint32_t xcb_window_t;
 #include "vk_image.h"
 #include "vk_command_buffer.h"
 #include "vk_queue.h"
+#include "vk_object.h"
+#include "vk_sync.h"
+#include "vk_fence.h"
+#include "vk_semaphore.h"
+#include "vk_drm_syncobj.h"
 
 #define MAX_VBS 32
 #define MAX_VERTEX_ATTRIBS 32
@@ -225,6 +230,9 @@ struct tu_physical_device
    struct disk_cache *disk_cache;
 
    struct tu_memory_heap heap;
+
+   struct vk_sync_type syncobj_type;
+   const struct vk_sync_type *sync_types[3];
 };
 
 enum tu_debug_flags
@@ -298,7 +306,10 @@ struct tu_pipeline_key
 
 #define TU_MAX_QUEUE_FAMILIES 1
 
+/* Keep tu_syncobj until porting to common code for kgsl too */
+#ifdef TU_USE_KGSL
 struct tu_syncobj;
+#endif
 struct tu_u_trace_syncobj;
 
 struct tu_queue
@@ -309,9 +320,6 @@ struct tu_queue
 
    uint32_t msm_queue_id;
    int fence;
-
-   /* Queue containing deferred submits */
-   struct list_head queued_submits;
 };
 
 struct tu_bo
@@ -1707,11 +1715,13 @@ void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
 int
-tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_syncobj *fence2);
+tu_signal_syncs(struct tu_device *device, struct vk_sync *sync1, struct vk_sync *sync2);
 
 int
-tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync);
+tu_syncobj_to_fd(struct tu_device *device, struct vk_sync *sync);
 
+VkResult
+tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit);
 
 void
 tu_copy_timestamp_buffer(struct u_trace_context *utctx, void *cmdstream,
