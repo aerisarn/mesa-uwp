@@ -865,6 +865,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         case 0x860: /* T860 */
         case 0x6221: /* G72 */
         case 0x7093: /* G31 */
+        case 0x7211: /* G76 */
         case 0x7212: /* G52 */
         case 0x7402: /* G52r1 */
                 break;

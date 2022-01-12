@@ -207,6 +207,7 @@ panfrost_model_name(unsigned gpu_id)
         case 0x880: return "Mali-T880 (Panfrost)";
         case 0x6221: return "Mali-G72 (Panfrost)";
         case 0x7093: return "Mali-G31 (Panfrost)";
+        case 0x7211: return "Mali-G76 (Panfrost)";
         case 0x7212: return "Mali-G52 (Panfrost)";
         case 0x7402: return "Mali-G52 r1 (Panfrost)";
         default:

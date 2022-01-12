@@ -67,6 +67,8 @@ get_perf_config(unsigned int gpu_id)
       return &panfrost_perf_config_thex;
    case 0x7093:
       return &panfrost_perf_config_tdvx;
+   case 0x7211:
+      return &panfrost_perf_config_tnox;
    case 0x7212:
    case 0x7402:
       return &panfrost_perf_config_tgox;

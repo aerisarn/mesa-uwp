@@ -111,6 +111,7 @@ panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
                         | (gpu_revision >= 0x30 ? HAS_ANISOTROPIC : 0);
 
         case 0x7093: /* G31 */
+        case 0x7211: /* G76 */
         case 0x7212: /* G52 */
         case 0x7402: /* G52r1 */
                 return BIFROST_QUIRKS | HAS_ANISOTROPIC;
