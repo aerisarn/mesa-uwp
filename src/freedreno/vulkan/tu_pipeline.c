@@ -1805,7 +1805,6 @@ tu6_emit_vertex_input(struct tu_pipeline *pipeline,
                       const struct ir3_shader_variant *vs,
                       const VkPipelineVertexInputStateCreateInfo *info)
 {
-   uint32_t vfd_decode_idx = 0;
    uint32_t binding_instanced = 0; /* bitmask of instanced bindings */
    uint32_t step_rate[MAX_VBS];
 
@@ -1834,46 +1833,60 @@ tu6_emit_vertex_input(struct tu_pipeline *pipeline,
       }
    }
 
-   /* TODO: emit all VFD_DECODE/VFD_DEST_CNTL in same (two) pkt4 */
+   int32_t input_for_attr[MAX_VERTEX_ATTRIBS];
+   uint32_t used_attrs_count = 0;
 
-   for (uint32_t i = 0; i < info->vertexAttributeDescriptionCount; i++) {
-      const VkVertexInputAttributeDescription *attr =
-         &info->pVertexAttributeDescriptions[i];
-      uint32_t input_idx;
-
-      for (input_idx = 0; input_idx < vs->inputs_count; input_idx++) {
-         if ((vs->inputs[input_idx].slot - VERT_ATTRIB_GENERIC0) == attr->location)
+   for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
+      input_for_attr[attr_idx] = -1;
+      for (uint32_t input_idx = 0; input_idx < vs->inputs_count; input_idx++) {
+         if ((vs->inputs[input_idx].slot - VERT_ATTRIB_GENERIC0) ==
+             info->pVertexAttributeDescriptions[attr_idx].location) {
+            input_for_attr[attr_idx] = input_idx;
+            used_attrs_count++;
             break;
+         }
       }
+   }
 
-      /* attribute not used, skip it */
-      if (input_idx == vs->inputs_count)
+   if (used_attrs_count)
+      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DECODE_INSTR(0), used_attrs_count * 2);
+
+   for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
+      const VkVertexInputAttributeDescription *attr =
+         &info->pVertexAttributeDescriptions[attr_idx];
+
+      if (input_for_attr[attr_idx] == -1)
          continue;
 
       const struct tu_native_format format = tu6_format_vtx(attr->format);
-      tu_cs_emit_regs(cs,
-                      A6XX_VFD_DECODE_INSTR(vfd_decode_idx,
-                        .idx = attr->binding,
-                        .offset = attr->offset,
-                        .instanced = binding_instanced & (1 << attr->binding),
-                        .format = format.fmt,
-                        .swap = format.swap,
-                        .unk30 = 1,
-                        ._float = !vk_format_is_int(attr->format)),
-                      A6XX_VFD_DECODE_STEP_RATE(vfd_decode_idx, step_rate[attr->binding]));
+      tu_cs_emit(cs, A6XX_VFD_DECODE_INSTR(0,
+                       .idx = attr->binding,
+                       .offset = attr->offset,
+                       .instanced = binding_instanced & (1 << attr->binding),
+                       .format = format.fmt,
+                       .swap = format.swap,
+                       .unk30 = 1,
+                       ._float = !vk_format_is_int(attr->format)).value);
+      tu_cs_emit(cs, A6XX_VFD_DECODE_STEP_RATE(0, step_rate[attr->binding]).value);
+   }
 
-      tu_cs_emit_regs(cs,
-                      A6XX_VFD_DEST_CNTL_INSTR(vfd_decode_idx,
-                        .writemask = vs->inputs[input_idx].compmask,
-                        .regid = vs->inputs[input_idx].regid));
+   if (used_attrs_count)
+      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_DEST_CNTL_INSTR(0), used_attrs_count);
 
-      vfd_decode_idx++;
+   for (uint32_t attr_idx = 0; attr_idx < info->vertexAttributeDescriptionCount; attr_idx++) {
+      int32_t input_idx = input_for_attr[attr_idx];
+      if (input_idx == -1)
+         continue;
+
+      tu_cs_emit(cs, A6XX_VFD_DEST_CNTL_INSTR(0,
+                       .writemask = vs->inputs[input_idx].compmask,
+                       .regid = vs->inputs[input_idx].regid).value);
    }
 
    tu_cs_emit_regs(cs,
                    A6XX_VFD_CONTROL_0(
-                     .fetch_cnt = vfd_decode_idx, /* decode_cnt for binning pass ? */
-                     .decode_cnt = vfd_decode_idx));
+                     .fetch_cnt = used_attrs_count, /* decode_cnt for binning pass ? */
+                     .decode_cnt = used_attrs_count));
 }
 
 void
