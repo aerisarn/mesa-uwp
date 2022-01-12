@@ -5814,15 +5814,17 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
          int ds_idx = subpass->depth_stencil_attachment->attachment;
          struct radv_image_view *ds_iview = cmd_buffer->state.attachments[ds_idx].iview;
          struct radv_image *ds_image = ds_iview->image;
+         uint32_t level = ds_iview->base_mip;
 
          VkExtent2D extent = {
-            .width = ds_image->info.width,
-            .height = ds_image->info.height,
+            .width = radv_minify(ds_image->info.width, level),
+            .height = radv_minify(ds_image->info.height, level),
          };
 
          /* HTILE buffer */
-         uint64_t htile_offset = ds_image->offset + ds_image->planes[0].surface.meta_offset;
-         uint64_t htile_size = ds_image->planes[0].surface.meta_slice_size;
+         uint64_t htile_offset = ds_image->offset + ds_image->planes[0].surface.meta_offset +
+                                 ds_image->planes[0].surface.u.gfx9.meta_levels[level].offset;
+         uint64_t htile_size = ds_image->planes[0].surface.u.gfx9.meta_levels[level].size;
          struct radv_buffer htile_buffer;
 
          radv_buffer_init(&htile_buffer, cmd_buffer->device, ds_image->bo, htile_size, htile_offset);
