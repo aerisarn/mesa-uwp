@@ -1532,7 +1532,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
          features->pipelineFragmentShadingRate = true;
          features->primitiveFragmentShadingRate = true;
-         features->attachmentFragmentShadingRate = true;
+         features->attachmentFragmentShadingRate = !(pdevice->instance->debug_flags & RADV_DEBUG_NO_HIZ);
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: {
