@@ -254,3 +254,15 @@ This section lists their documentation pages.
   :maxdepth: 1
 
   skqp
+
+
+Updating Gitlab CI Linux Kernel
+-------------------------------
+
+Gitlab CI usually runs a bleeding-edge kernel. The following documentation has
+instructions on how to uprev Linux Kernel in the Gitlab Ci ecosystem.
+
+.. toctree::
+  :maxdepth: 1
+
+  kernel
