@@ -432,7 +432,7 @@ debian/x86_test-gl:
   extends: .use-debian/x86_test-base
   variables:
     FDO_DISTRIBUTION_EXEC: 'env KERNEL_URL=${KERNEL_URL} FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
-    KERNEL_URL: &kernel-rootfs-url "https://gitlab.freedesktop.org/gfx-ci/linux/-/archive/v5.15-for-mesa-ci-540a4af22d71/linux-v5.15-for-mesa-ci-540a4af22d71.tar.bz2"
+    KERNEL_URL: &kernel-rootfs-url "https://gitlab.freedesktop.org/gfx-ci/linux/-/archive/v5.16-for-mesa-ci-bd8b344492bfd/linux-v5.16-for-mesa-ci-bd8b344492bfd.tar.bz2"
     MESA_IMAGE_TAG: &debian-x86_test-gl ${DEBIAN_X86_TEST_GL_TAG}
 
 # Debian 11 based x86 test image for VK
