@@ -196,9 +196,7 @@ fi
 
 ARTIFACTS_BASE_URL="https://${CI_PROJECT_ROOT_NAMESPACE}.${CI_PAGES_DOMAIN}/-/${CI_PROJECT_NAME}/-/jobs/${CI_JOB_ID}/artifacts"
 
-if [ ${PIGLIT_JUNIT_RESULTS:-0} -eq 1 ]; then
-    ./piglit summary aggregate "$RESULTS" -o junit.xml
-fi
+./piglit summary aggregate "$RESULTS" -o junit.xml
 
 PIGLIT_RESULTS="${PIGLIT_RESULTS:-replay}"
 RESULTSFILE="$RESULTS/$PIGLIT_RESULTS.txt"

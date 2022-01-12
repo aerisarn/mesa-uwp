@@ -150,14 +150,12 @@ iris-amly-piglit:
     PIGLIT_NO_WINDOW: 0
     PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_PROFILES: gpu
-    PIGLIT_JUNIT_RESULTS: 1
 
 .iris-traces:
   extends:
     - .lava-traces-base
   variables:
     EGL_PLATFORM: surfaceless
-    PIGLIT_JUNIT_RESULTS: 1
     PIGLIT_REPLAY_DEVICE_NAME: "gl-${GPU_VERSION}"
     PIGLIT_RESULTS: "${GPU_VERSION}-${PIGLIT_PROFILES}"
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-iris.yml"

@@ -51,7 +51,6 @@ panfrost-t760-traces:armhf:
     MESA_GL_VERSION_OVERRIDE: "3.3"
     MESA_GLSL_VERSION_OVERRIDE: 330
     EGL_PLATFORM: surfaceless
-    PIGLIT_JUNIT_RESULTS: 1
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-panfrost.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: "--keep-image"
   tags:
@@ -90,7 +89,6 @@ panfrost-t860-traces:arm64:
     MESA_GL_VERSION_OVERRIDE: "3.3"
     MESA_GLSL_VERSION_OVERRIDE: 330
     EGL_PLATFORM: surfaceless
-    PIGLIT_JUNIT_RESULTS: 1
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-panfrost.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image
 
