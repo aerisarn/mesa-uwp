@@ -24,13 +24,6 @@ i915-g33-piglit:
   variables:
     PIGLIT_PROFILES: gpu
     PIGLIT_PLATFORM: gbm
-  artifacts:
-    paths:
-      - results/
-    reports:
-      junit: results/junit.xml
-  script:
-    - install/piglit/piglit-runner.sh
 
 i915-g33-traces:
   extends:

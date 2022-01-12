@@ -1,0 +1,4 @@
+# threading bugs
+glx@glx-multithread-clearbuffer
+glx@glx-multithread-shader-compile
+glx@glx-multithread-texture

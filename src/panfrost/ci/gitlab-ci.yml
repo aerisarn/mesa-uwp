@@ -135,7 +135,6 @@ panfrost-g52-piglit-gl:arm64:
     - .lava-meson-g12b-a311d-khadas-vim3
     - .test-manual-mr
   variables:
-    HWCI_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     HWCI_START_XORG: 1
     PIGLIT_PROFILES: quick_gl
 
