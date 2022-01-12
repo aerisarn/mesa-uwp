@@ -1070,6 +1070,25 @@ reset_masks(struct intel_device_info *devinfo)
 }
 
 static void
+update_slice_subslice_counts(struct intel_device_info *devinfo)
+{
+   devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
+   devinfo->subslice_total = 0;
+   for (int s = 0; s < devinfo->max_slices; s++) {
+      if (!intel_device_info_slice_available(devinfo, s))
+         continue;
+
+      for (int b = 0; b < devinfo->subslice_slice_stride; b++) {
+         devinfo->num_subslices[s] +=
+            __builtin_popcount(devinfo->subslice_masks[s * devinfo->subslice_slice_stride + b]);
+      }
+      devinfo->subslice_total += devinfo->num_subslices[s];
+   }
+   assert(devinfo->num_slices > 0);
+   assert(devinfo->subslice_total > 0);
+}
+
+static void
 update_from_topology(struct intel_device_info *devinfo,
                      const struct drm_i915_query_topology_info *topology)
 {
@@ -1086,7 +1105,6 @@ update_from_topology(struct intel_device_info *devinfo,
 
    assert(sizeof(devinfo->slice_masks) >= DIV_ROUND_UP(topology->max_slices, 8));
    memcpy(&devinfo->slice_masks, topology->data, DIV_ROUND_UP(topology->max_slices, 8));
-   devinfo->num_slices = __builtin_popcount(devinfo->slice_masks);
    devinfo->max_slices = topology->max_slices;
    devinfo->max_subslices_per_slice = topology->max_subslices;
    devinfo->max_eus_per_subslice = topology->max_eus_per_subslice;
@@ -1097,18 +1115,13 @@ update_from_topology(struct intel_device_info *devinfo,
    memcpy(devinfo->subslice_masks, &topology->data[topology->subslice_offset],
           subslice_mask_len);
 
-   uint32_t n_subslices = 0;
-   for (int s = 0; s < topology->max_slices; s++) {
-      if ((devinfo->slice_masks & (1 << s)) == 0)
-         continue;
+   uint32_t eu_mask_len =
+      topology->eu_stride * topology->max_subslices * topology->max_slices;
+   assert(sizeof(devinfo->eu_masks) >= eu_mask_len);
+   memcpy(devinfo->eu_masks, &topology->data[topology->eu_offset], eu_mask_len);
 
-      for (int b = 0; b < devinfo->subslice_slice_stride; b++) {
-         devinfo->num_subslices[s] +=
-            __builtin_popcount(devinfo->subslice_masks[s * devinfo->subslice_slice_stride + b]);
-      }
-      n_subslices += devinfo->num_subslices[s];
-   }
-   assert(n_subslices > 0);
+   /* Now that all the masks are in place, update the counts. */
+   update_slice_subslice_counts(devinfo);
 
    if (devinfo->ver >= 11) {
       /* The kernel only reports one slice on all existing ICL+
@@ -1159,24 +1172,15 @@ update_from_topology(struct intel_device_info *devinfo,
    }
 
    if (devinfo->ver == 12 && devinfo->num_slices == 1) {
-      if (n_subslices >= 6) {
-         assert(n_subslices == 6);
+      if (devinfo->subslice_total >= 6) {
+         assert(devinfo->subslice_total == 6);
          devinfo->l3_banks = 8;
-      } else if (n_subslices > 2) {
+      } else if (devinfo->subslice_total > 2) {
          devinfo->l3_banks = 6;
       } else {
          devinfo->l3_banks = 4;
       }
    }
-
-   uint32_t eu_mask_len =
-      topology->eu_stride * topology->max_subslices * topology->max_slices;
-   assert(sizeof(devinfo->eu_masks) >= eu_mask_len);
-   memcpy(devinfo->eu_masks, &topology->data[topology->eu_offset], eu_mask_len);
-
-   uint32_t n_eus = 0;
-   for (int b = 0; b < eu_mask_len; b++)
-      n_eus += __builtin_popcount(devinfo->eu_masks[b]);
 }
 
 /* Generate detailed mask from the I915_PARAM_SLICE_MASK,
@@ -1792,10 +1796,6 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    intel_get_aperture_size(fd, &devinfo->aperture_bytes);
    get_context_param(fd, 0, I915_CONTEXT_PARAM_GTT_SIZE, &devinfo->gtt_size);
    devinfo->has_tiling_uapi = has_get_tiling(fd);
-
-   devinfo->subslice_total = 0;
-   for (uint32_t i = 0; i < devinfo->max_slices; i++)
-      devinfo->subslice_total += __builtin_popcount(devinfo->subslice_masks[i]);
 
    /* Gfx7 and older do not support EU/Subslice info */
    assert(devinfo->subslice_total >= 1 || devinfo->ver <= 7);
