@@ -1886,12 +1886,21 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
             radv_get_compiler_string(pdevice));
 
    if (radv_is_conformant(pdevice)) {
-      p->conformanceVersion = (VkConformanceVersion){
-         .major = 1,
-         .minor = 2,
-         .subminor = 7,
-         .patch = 1,
-      };
+      if (pdevice->rad_info.chip_class >= GFX10_3) {
+         p->conformanceVersion = (VkConformanceVersion){
+            .major = 1,
+            .minor = 3,
+            .subminor = 0,
+            .patch = 0,
+         };
+      } else {
+         p->conformanceVersion = (VkConformanceVersion){
+            .major = 1,
+            .minor = 2,
+            .subminor = 7,
+            .patch = 1,
+         };
+      }
    } else {
       p->conformanceVersion = (VkConformanceVersion){
          .major = 0,
