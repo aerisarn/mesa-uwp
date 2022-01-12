@@ -186,8 +186,6 @@ if [ "$RUN_CMD_WRAPPER" ]; then
     RUN_CMD="set +e; $RUN_CMD_WRAPPER "$(/usr/bin/printf "%q" "$RUN_CMD")"; set -e"
 fi
 
-FAILURE_MESSAGE=$(printf "%s" "Unexpected change in results:")
-
 if [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
     ci-fairy minio login $MINIO_ARGS --token-file "${CI_JOB_JWT_FILE}"
 fi
@@ -202,7 +200,6 @@ ARTIFACTS_BASE_URL="https://${CI_PROJECT_ROOT_NAMESPACE}.${CI_PAGES_DOMAIN}/-/${
 
 if [ ${PIGLIT_JUNIT_RESULTS:-0} -eq 1 ]; then
     ./piglit summary aggregate "$RESULTS" -o junit.xml
-    FAILURE_MESSAGE=$(printf "${FAILURE_MESSAGE}\n%s" "Check the JUnit report for failures at: ${ARTIFACTS_BASE_URL}/results/junit.xml")
 fi
 
 PIGLIT_RESULTS="${PIGLIT_RESULTS:-replay}"
@@ -252,8 +249,6 @@ find "$RESULTS"/summary -type f -name "*.html" -print0 \
 find "$RESULTS"/summary -type f -name "*.html" -print0 \
         | xargs -0 sed -i 's%<img src="file://%<img src="https://'"${PIGLIT_REPLAY_REFERENCE_IMAGES_BASE}"'/%g'
 
-FAILURE_MESSAGE=$(printf "${FAILURE_MESSAGE}\n%s" "Check the HTML summary for problems at: ${ARTIFACTS_BASE_URL}/results/summary/problems.html")
-
-quiet print_red printf "%s\n" "$FAILURE_MESSAGE"
 quiet diff --color=always -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE
+quiet print_red echo "Review the image changes and get the new checksums at: ${ARTIFACTS_BASE_URL}/results/summary/problems.html"
 exit 1
