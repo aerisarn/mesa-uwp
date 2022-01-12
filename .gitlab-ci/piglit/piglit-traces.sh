@@ -186,9 +186,7 @@ if [ "$RUN_CMD_WRAPPER" ]; then
     RUN_CMD="set +e; $RUN_CMD_WRAPPER "$(/usr/bin/printf "%q" "$RUN_CMD")"; set -e"
 fi
 
-if [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
-    ci-fairy minio login $MINIO_ARGS --token-file "${CI_JOB_JWT_FILE}"
-fi
+ci-fairy minio login $MINIO_ARGS --token-file "${CI_JOB_JWT_FILE}"
 
 eval $RUN_CMD
 
@@ -211,16 +209,14 @@ mkdir -p .gitlab-ci/piglit
     | sed '/^summary:/Q' \
     > $RESULTSFILE
 
-if [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
+__PREFIX="trace/$PIGLIT_REPLAY_DEVICE_NAME"
+__MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
+__MINIO_TRACES_PREFIX="traces"
 
-    __PREFIX="trace/$PIGLIT_REPLAY_DEVICE_NAME"
-    __MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
-    __MINIO_TRACES_PREFIX="traces"
-
-    if [ "x$PIGLIT_REPLAY_SUBCOMMAND" != "xprofile" ]; then
-        quiet replay_minio_upload_images
-    fi
+if [ "x$PIGLIT_REPLAY_SUBCOMMAND" != "xprofile" ]; then
+    quiet replay_minio_upload_images
 fi
+
 
 if [ ! -s $RESULTSFILE ]; then
     exit 0
