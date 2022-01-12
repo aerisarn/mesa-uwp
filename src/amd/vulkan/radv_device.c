@@ -1654,6 +1654,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->taskShader = false; /* TODO */
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES: {
+         VkPhysicalDeviceTextureCompressionASTCHDRFeatures *features =
+            (VkPhysicalDeviceTextureCompressionASTCHDRFeatures *)ext;
+         features->textureCompressionASTC_HDR = false;
+         break;
+      }
       default:
          break;
       }
