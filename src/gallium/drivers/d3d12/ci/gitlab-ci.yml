@@ -24,7 +24,7 @@
       - summary/
       - result.txt
 
-.test-d3d12-quick_gl:
+test-d3d12-quick_gl:
   extends:
     - .d3d12-test-piglit
   variables:
@@ -32,7 +32,7 @@
     PIGLIT_RESULTS: "d3d12-quick_gl"
     PIGLIT_TESTS: -x nv_copy_depth_to_color -x glsl-1.30.execution.tex-miplevel-selection -x arb_timer_query.timestamp-get
 
-.test-d3d12-quick_shader:
+test-d3d12-quick_shader:
   extends:
     - .d3d12-test-piglit
   variables:
