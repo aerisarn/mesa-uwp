@@ -1294,7 +1294,7 @@ debian-mingw32-x86_64:
     PIGLIT_JUNIT_RESULTS: 1
     CI_JOB_JWT_FILE: /minio_jwt  # JWT file on piglit jobs should be available on / partition
   script:
-    - install/piglit/run.sh
+    - install/piglit/piglit-traces.sh
 
 .deqp-test:
   script:
