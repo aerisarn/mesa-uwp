@@ -157,7 +157,6 @@ iris-amly-piglit:
     - .lava-traces-base
   variables:
     EGL_PLATFORM: surfaceless
-    PIGLIT_PROFILES: replay
     PIGLIT_JUNIT_RESULTS: 1
     PIGLIT_REPLAY_DEVICE_NAME: "gl-${GPU_VERSION}"
     PIGLIT_RESULTS: "${GPU_VERSION}-${PIGLIT_PROFILES}"

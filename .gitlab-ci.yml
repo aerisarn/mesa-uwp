@@ -1288,7 +1288,6 @@ debian-mingw32-x86_64:
       - results/*.txt
   variables:
     CI_JOB_JWT_FILE: /minio_jwt  # JWT file on piglit jobs should be available on / partition
-    PIGLIT_PROFILES: replay
     PIGLIT_REPLAY_UPLOAD_TO_MINIO: 1
     PIGLIT_REPLAY_EXTRA_ARGS:  --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_host=minio-packet.freedesktop.org --minio_bucket=mesa-tracie-public --role-session-name=${CI_PROJECT_PATH}:${CI_JOB_ID} --jwt-file=${CI_JOB_JWT_FILE}
     PIGLIT_JUNIT_RESULTS: 1

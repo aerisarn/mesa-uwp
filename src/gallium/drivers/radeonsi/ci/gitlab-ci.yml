@@ -29,7 +29,6 @@ radeonsi-stoney-traces:amd64:
     - .radeonsi-stoney-test:amd64
   variables:
     EGL_PLATFORM: surfaceless
-    PIGLIT_PROFILES: replay
     PIGLIT_JUNIT_RESULTS: 1
     PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-radeonsi.yml"
     PIGLIT_REPLAY_EXTRA_ARGS: --keep-image

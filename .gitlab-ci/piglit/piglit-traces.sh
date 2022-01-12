@@ -40,19 +40,17 @@ if [ "$VK_DRIVER" ]; then
     # Set the Vulkan driver to use.
     export VK_ICD_FILENAMES="$INSTALL/share/vulkan/icd.d/${VK_DRIVER}_icd.x86_64.json"
 
-    if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
-        # Set environment for Wine.
-        export WINEDEBUG="-all"
-        export WINEPREFIX="/dxvk-wine64"
-        export WINEESYNC=1
+    # Set environment for Wine.
+    export WINEDEBUG="-all"
+    export WINEPREFIX="/dxvk-wine64"
+    export WINEESYNC=1
 
-        # Set environment for DXVK.
-        export DXVK_LOG_LEVEL="none"
-        export DXVK_STATE_CACHE=0
+    # Set environment for DXVK.
+    export DXVK_LOG_LEVEL="none"
+    export DXVK_STATE_CACHE=0
 
-        # Set environment for gfxreconstruct executables.
-        export PATH="/gfxreconstruct/build/bin:$PATH"
-    fi
+    # Set environment for gfxreconstruct executables.
+    export PATH="/gfxreconstruct/build/bin:$PATH"
 
     SANITY_MESA_VERSION_CMD="vulkaninfo"
 
@@ -77,14 +75,12 @@ else
 
     ### GL/ES ###
 
-    if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
-        # Set environment for apitrace executable.
-        export PATH="/apitrace/build:$PATH"
+    # Set environment for apitrace executable.
+    export PATH="/apitrace/build:$PATH"
 
-        # Our rootfs may not have "less", which apitrace uses during
-        # apitrace dump
-        export PAGER=cat
-    fi
+    # Our rootfs may not have "less", which apitrace uses during
+    # apitrace dump
+    export PAGER=cat
 
     SANITY_MESA_VERSION_CMD="wflinfo"
 
@@ -132,13 +128,6 @@ fi
 # If the job is parallel at the  gitlab job level, will take the corresponding
 # fraction of the caselist.
 if [ -n "$CI_NODE_INDEX" ]; then
-
-    if [ "$PIGLIT_PROFILES" != "${PIGLIT_PROFILES% *}" ]; then
-        FAILURE_MESSAGE=$(printf "%s" "Can't parallelize piglit with multiple profiles")
-        quiet print_red printf "%s\n" "$FAILURE_MESSAGE"
-        exit 1
-    fi
-
     USE_CASELIST=1
 fi
 
@@ -175,7 +164,7 @@ cd /piglit
 
 if [ -n "$USE_CASELIST" ]; then
     PIGLIT_TESTS=$(printf "%s" "$PIGLIT_TESTS")
-    PIGLIT_GENTESTS="./piglit print-cmd $PIGLIT_TESTS $PIGLIT_PROFILES --format \"{name}\" > /tmp/case-list.txt"
+    PIGLIT_GENTESTS="./piglit print-cmd $PIGLIT_TESTS replay --format \"{name}\" > /tmp/case-list.txt"
     RUN_GENTESTS="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $PIGLIT_GENTESTS"
 
     eval $RUN_GENTESTS
@@ -189,7 +178,7 @@ PIGLIT_OPTIONS=$(printf "%s" "$PIGLIT_OPTIONS")
 
 PIGLIT_TESTS=$(printf "%s" "$PIGLIT_TESTS")
 
-PIGLIT_CMD="./piglit run --timeout 300 -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_TESTS $PIGLIT_PROFILES "$(/usr/bin/printf "%q" "$RESULTS")
+PIGLIT_CMD="./piglit run --timeout 300 -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_TESTS replay "$(/usr/bin/printf "%q" "$RESULTS")
 
 RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD && $HANG_DETECTION_CMD $PIGLIT_CMD"
 
@@ -199,8 +188,7 @@ fi
 
 FAILURE_MESSAGE=$(printf "%s" "Unexpected change in results:")
 
-if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
-       && [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
+if [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
     ci-fairy minio login $MINIO_ARGS --token-file "${CI_JOB_JWT_FILE}"
 fi
 
@@ -217,7 +205,7 @@ if [ ${PIGLIT_JUNIT_RESULTS:-0} -eq 1 ]; then
     FAILURE_MESSAGE=$(printf "${FAILURE_MESSAGE}\n%s" "Check the JUnit report for failures at: ${ARTIFACTS_BASE_URL}/results/junit.xml")
 fi
 
-PIGLIT_RESULTS="${PIGLIT_RESULTS:-$PIGLIT_PROFILES}"
+PIGLIT_RESULTS="${PIGLIT_RESULTS:-replay}"
 RESULTSFILE="$RESULTS/$PIGLIT_RESULTS.txt"
 mkdir -p .gitlab-ci/piglit
 ./piglit summary console "$RESULTS"/results.json.bz2 \
@@ -226,8 +214,7 @@ mkdir -p .gitlab-ci/piglit
     | sed '/^summary:/Q' \
     > $RESULTSFILE
 
-if [ "x$PIGLIT_PROFILES" = "xreplay" ] \
-       && [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
+if [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
 
     __PREFIX="trace/$PIGLIT_REPLAY_DEVICE_NAME"
     __MINIO_PATH="$PIGLIT_REPLAY_ARTIFACTS_BASE_URL"
@@ -260,12 +247,10 @@ fi
 ./piglit summary html --exclude-details=pass \
 "$RESULTS"/summary "$RESULTS"/results.json.bz2
 
-if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
 find "$RESULTS"/summary -type f -name "*.html" -print0 \
         | xargs -0 sed -i 's%<img src="file://'"${RESULTS}"'.*-\([0-9a-f]*\)\.png%<img src="https://'"${JOB_ARTIFACTS_BASE}"'/traces/\1.png%g'
 find "$RESULTS"/summary -type f -name "*.html" -print0 \
         | xargs -0 sed -i 's%<img src="file://%<img src="https://'"${PIGLIT_REPLAY_REFERENCE_IMAGES_BASE}"'/%g'
-fi
 
 FAILURE_MESSAGE=$(printf "${FAILURE_MESSAGE}\n%s" "Check the HTML summary for problems at: ${ARTIFACTS_BASE_URL}/results/summary/problems.html")
 
