@@ -222,22 +222,7 @@ if [ ${PIGLIT_REPLAY_UPLOAD_TO_MINIO:-0} -eq 1 ]; then
     fi
 fi
 
-if [ -n "$USE_CASELIST" ]; then
-    # Just filter the expected results based on the tests that were actually
-    # executed, and switch to the version with no summary
-    cat ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.orig" | sed '/^summary:/Q' | rev \
-        | cut -f2- -d: | rev | sed "s/$/:/g" > /tmp/executed.txt
-
-    grep -F -f /tmp/executed.txt "$INSTALL/$PIGLIT_RESULTS.txt" \
-       > ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" || true
-elif [ -f "$INSTALL/$PIGLIT_RESULTS.txt" ]; then
-    cp "$INSTALL/$PIGLIT_RESULTS.txt" \
-       ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
-else
-    touch ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline"
-fi
-
-if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE; then
+if [ ! -s $RESULTSFILE ]; then
     exit 0
 fi
 
@@ -249,6 +234,7 @@ find "$RESULTS"/summary -type f -name "*.html" -print0 \
 find "$RESULTS"/summary -type f -name "*.html" -print0 \
         | xargs -0 sed -i 's%<img src="file://%<img src="https://'"${PIGLIT_REPLAY_REFERENCE_IMAGES_BASE}"'/%g'
 
-quiet diff --color=always -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE
+quiet print_red echo "Failures in traces:"
+cat $RESULTSFILE
 quiet print_red echo "Review the image changes and get the new checksums at: ${ARTIFACTS_BASE_URL}/results/summary/problems.html"
 exit 1
