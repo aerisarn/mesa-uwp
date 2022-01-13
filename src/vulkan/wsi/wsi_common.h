@@ -258,6 +258,9 @@ wsi_common_get_images(VkSwapchainKHR _swapchain,
                       uint32_t *pSwapchainImageCount,
                       VkImage *pSwapchainImages);
 
+VkImage
+wsi_common_get_image(VkSwapchainKHR _swapchain, uint32_t index);
+
 VkResult
 wsi_common_acquire_next_image2(const struct wsi_device *wsi,
                                VkDevice device,
