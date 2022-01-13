@@ -598,6 +598,7 @@ struct v3dv_image_view {
 
    const struct v3dv_format *format;
    bool swap_rb;
+   bool channel_reverse;
    uint32_t internal_bpp;
    uint32_t internal_type;
    uint32_t offset;

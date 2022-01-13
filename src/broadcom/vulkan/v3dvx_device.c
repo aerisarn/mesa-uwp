@@ -58,10 +58,30 @@ static union pipe_color_union encode_border_color(
 
    const struct v3dv_format *format = v3dX(get_format)(bc_info->format);
 
+   /* We use the swizzle in our format table to determine swizzle configuration
+    * for sampling as well as to decide if we need to use the Swap R/B and
+    * Reverse Channels bits for Tile Load/Store operations. The order of the
+    * R/B swap and Reverse operations matters and gives different swizzles.
+    * Our format table assumes that Reverse happens first and R/B Swap second.
+    * This seems to match semantics for texture sampling and Tile load/store,
+    * however, it seems that the semantics are reversed for custom border
+    * colors so we need to fix up the swizzle manually for this case.
+    */
+   uint8_t swizzle[4];
+   if (v3dv_format_swizzle_needs_reverse(format->swizzle) &&
+       v3dv_format_swizzle_needs_rb_swap(format->swizzle)) {
+      swizzle[0] = PIPE_SWIZZLE_W;
+      swizzle[1] = PIPE_SWIZZLE_X;
+      swizzle[2] = PIPE_SWIZZLE_Y;
+      swizzle[3] = PIPE_SWIZZLE_Z;
+   } else {
+      memcpy(swizzle, format->swizzle, sizeof (swizzle));
+   }
+
    union pipe_color_union border;
    for (int i = 0; i < 4; i++) {
       if (format->swizzle[i] <= 3)
-         border.ui[i] = bc_info->customBorderColor.uint32[format->swizzle[i]];
+         border.ui[i] = bc_info->customBorderColor.uint32[swizzle[i]];
       else
          border.ui[i] = 0;
    }

@@ -307,7 +307,15 @@ format_needs_rb_swap(struct v3dv_device *device,
                      VkFormat format)
 {
    const uint8_t *swizzle = v3dv_get_format_swizzle(device, format);
-   return swizzle[0] == PIPE_SWIZZLE_Z;
+   return v3dv_format_swizzle_needs_rb_swap(swizzle);
+}
+
+static inline bool
+format_needs_reverse(struct v3dv_device *device,
+                     VkFormat format)
+{
+   const uint8_t *swizzle = v3dv_get_format_swizzle(device, format);
+   return v3dv_format_swizzle_needs_reverse(swizzle);
 }
 
 static void
@@ -373,6 +381,7 @@ emit_image_load(struct v3dv_device *device,
           * so we need to make sure we respect the format swizzle.
           */
          needs_rb_swap = format_needs_rb_swap(device, framebuffer->vk_format);
+         needs_chan_reverse = format_needs_reverse(device, framebuffer->vk_format);
       }
 
       load.r_b_swap = needs_rb_swap;
@@ -430,6 +439,7 @@ emit_image_store(struct v3dv_device *device,
       } else if (!is_copy_from_buffer && !is_copy_to_buffer &&
                  (aspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
          needs_rb_swap = format_needs_rb_swap(device, framebuffer->vk_format);
+         needs_chan_reverse = format_needs_reverse(device, framebuffer->vk_format);
       }
 
       store.r_b_swap = needs_rb_swap;

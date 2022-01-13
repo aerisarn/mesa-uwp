@@ -116,6 +116,7 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
 
       load.input_image_format = iview->format->rt_type;
       load.r_b_swap = iview->swap_rb;
+      load.channel_reverse = iview->channel_reverse;
       load.memory_format = slice->tiling;
 
       if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
@@ -303,6 +304,7 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
 
       store.output_image_format = iview->format->rt_type;
       store.r_b_swap = iview->swap_rb;
+      store.channel_reverse = iview->channel_reverse;
       store.memory_format = slice->tiling;
 
       if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
