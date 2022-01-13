@@ -141,19 +141,8 @@ v3dv_CreateSwapchainKHR(
 struct v3dv_image *
 v3dv_wsi_get_image_from_swapchain(VkSwapchainKHR swapchain, uint32_t index)
 {
-   uint32_t n_images = index + 1;
-   VkImage *images = malloc(sizeof(*images) * n_images);
-   VkResult result = wsi_common_get_images(swapchain, &n_images, images);
-
-   if (result != VK_SUCCESS && result != VK_INCOMPLETE) {
-      free(images);
-      return NULL;
-   }
-
-   V3DV_FROM_HANDLE(v3dv_image, image, images[index]);
-   free(images);
-
-   return image;
+   VkImage image = wsi_common_get_image(swapchain, index);
+   return v3dv_image_from_handle(image);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
