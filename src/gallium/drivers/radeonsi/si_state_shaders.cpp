@@ -509,8 +509,8 @@ bool si_shader_mem_ordered(struct si_shader *shader)
    const struct si_shader_info *prev_info =
       shader->previous_stage_sel ? &shader->previous_stage_sel->info : NULL;
 
-   bool sampler_or_bvh = info->uses_vmem_return_type_sampler_or_bvh;
-   bool other = info->uses_vmem_return_type_other ||
+   bool sampler_or_bvh = info->uses_vmem_sampler_or_bvh;
+   bool other = info->uses_vmem_load_other ||
                 info->uses_indirect_descriptor ||
                 shader->config.scratch_bytes_per_wave ||
                 (info->stage == MESA_SHADER_FRAGMENT &&
@@ -518,8 +518,8 @@ bool si_shader_mem_ordered(struct si_shader *shader)
                   shader->key.ps.part.prolog.poly_stipple));
 
    if (prev_info) {
-      sampler_or_bvh |= prev_info->uses_vmem_return_type_sampler_or_bvh;
-      other |= prev_info->uses_vmem_return_type_other ||
+      sampler_or_bvh |= prev_info->uses_vmem_sampler_or_bvh;
+      other |= prev_info->uses_vmem_load_other ||
                prev_info->uses_indirect_descriptor;
    }
 

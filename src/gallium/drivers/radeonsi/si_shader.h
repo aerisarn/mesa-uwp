@@ -413,8 +413,8 @@ struct si_shader_info {
    bool uses_indirect_descriptor;
    bool has_divergent_loop;
 
-   bool uses_vmem_return_type_sampler_or_bvh;
-   bool uses_vmem_return_type_other; /* all other VMEM loads and atomics with return */
+   bool uses_vmem_sampler_or_bvh;
+   bool uses_vmem_load_other; /* all other VMEM loads and atomics with return */
 
    /** Whether all codepaths write tess factors in all invocations. */
    bool tessfactors_are_def_in_all_invocs;

@@ -384,10 +384,10 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_texop_txd:
       case nir_texop_lod:
       case nir_texop_tg4:
-         info->uses_vmem_return_type_sampler_or_bvh = true;
+         info->uses_vmem_sampler_or_bvh = true;
          break;
       default:
-         info->uses_vmem_return_type_other = true;
+         info->uses_vmem_load_other = true;
          break;
       }
 
@@ -414,16 +414,16 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          switch (intr->intrinsic) {
          case nir_intrinsic_load_ubo:
             if (!nir_src_is_const(intr->src[1]))
-               info->uses_vmem_return_type_other = true;
+               info->uses_vmem_load_other = true;
             break;
          case nir_intrinsic_load_constant:
-            info->uses_vmem_return_type_other = true;
+            info->uses_vmem_load_other = true;
             break;
 
          case nir_intrinsic_load_barycentric_at_sample: /* This loads sample positions. */
          case nir_intrinsic_load_tess_level_outer: /* TES input read from memory */
          case nir_intrinsic_load_tess_level_inner: /* TES input read from memory */
-            info->uses_vmem_return_type_other = true;
+            info->uses_vmem_load_other = true;
             break;
 
          case nir_intrinsic_load_input:
@@ -431,7 +431,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          case nir_intrinsic_load_per_vertex_input:
             if (nir->info.stage == MESA_SHADER_VERTEX ||
                 nir->info.stage == MESA_SHADER_TESS_EVAL)
-               info->uses_vmem_return_type_other = true;
+               info->uses_vmem_load_other = true;
             break;
 
          default:
@@ -442,7 +442,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
                  intr->intrinsic == nir_intrinsic_load_global ||
                  intr->intrinsic == nir_intrinsic_store_global) ||
                 strstr(intr_name, "scratch"))
-               info->uses_vmem_return_type_other = true;
+               info->uses_vmem_load_other = true;
             break;
          }
       }
