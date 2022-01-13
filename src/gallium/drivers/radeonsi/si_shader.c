@@ -1488,6 +1488,15 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
    return nir;
 }
 
+void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir)
+{
+   struct si_shader_info info;
+   si_nir_scan_shader(nir, &info);
+
+   shader->info.uses_vmem_load_other |= info.uses_vmem_load_other;
+   shader->info.uses_vmem_sampler_or_bvh |= info.uses_vmem_sampler_or_bvh;
+}
+
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct pipe_debug_callback *debug)
 {
@@ -1507,6 +1516,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    for (unsigned i = 0; i < ARRAY_SIZE(shader->info.vs_output_ps_input_cntl); i++)
       shader->info.vs_output_ps_input_cntl[i] = SI_PS_INPUT_CNTL_UNUSED;
    shader->info.vs_output_ps_input_cntl[VARYING_SLOT_COL0] = SI_PS_INPUT_CNTL_UNUSED_COLOR0;
+
+   si_update_shader_binary_info(shader, nir);
 
    shader->info.uses_instanceid = sel->info.uses_instanceid;
    shader->info.private_mem_vgprs = DIV_ROUND_UP(nir->scratch_size, 4);
@@ -1812,6 +1823,9 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
    key->ps_prolog.ancillary_vgpr_index = shader->info.ancillary_vgpr_index;
    key->ps_prolog.sample_coverage_vgpr_index = shader->info.sample_coverage_vgpr_index;
 
+   if (shader->key.ps.part.prolog.poly_stipple)
+      shader->info.uses_vmem_load_other = true;
+
    if (info->colors_read) {
       ubyte *color = shader->selector->color_attr_index;
 
@@ -2101,16 +2115,7 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
       shader->is_binary_shared = true;
       shader->binary = mainp->binary;
       shader->config = mainp->config;
-      shader->info.num_input_sgprs = mainp->info.num_input_sgprs;
-      shader->info.num_input_vgprs = mainp->info.num_input_vgprs;
-      shader->info.face_vgpr_index = mainp->info.face_vgpr_index;
-      shader->info.ancillary_vgpr_index = mainp->info.ancillary_vgpr_index;
-      shader->info.sample_coverage_vgpr_index = mainp->info.sample_coverage_vgpr_index;
-      memcpy(shader->info.vs_output_ps_input_cntl, mainp->info.vs_output_ps_input_cntl,
-             sizeof(mainp->info.vs_output_ps_input_cntl));
-      shader->info.uses_instanceid = mainp->info.uses_instanceid;
-      shader->info.nr_pos_exports = mainp->info.nr_pos_exports;
-      shader->info.nr_param_exports = mainp->info.nr_param_exports;
+      shader->info = mainp->info;
 
       /* Select prologs and/or epilogs. */
       switch (sel->info.stage) {
@@ -2188,6 +2193,8 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
             MAX2(shader->config.scratch_bytes_per_wave,
                  shader->previous_stage->config.scratch_bytes_per_wave);
          shader->info.uses_instanceid |= shader->previous_stage->info.uses_instanceid;
+         shader->info.uses_vmem_load_other |= shader->previous_stage->info.uses_vmem_load_other;
+         shader->info.uses_vmem_sampler_or_bvh |= shader->previous_stage->info.uses_vmem_sampler_or_bvh;
       }
       if (shader->epilog) {
          shader->config.num_sgprs =

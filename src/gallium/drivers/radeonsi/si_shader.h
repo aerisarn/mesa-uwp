@@ -744,6 +744,8 @@ struct si_shader_binary_info {
    uint32_t vs_output_ps_input_cntl[NUM_TOTAL_VARYING_SLOTS];
    ubyte num_input_sgprs;
    ubyte num_input_vgprs;
+   bool uses_vmem_load_other; /* all other VMEM loads and atomics with return */
+   bool uses_vmem_sampler_or_bvh;
    signed char face_vgpr_index;
    signed char ancillary_vgpr_index;
    signed char sample_coverage_vgpr_index;
@@ -931,6 +933,7 @@ struct si_shader_part {
 };
 
 /* si_shader.c */
+void si_update_shader_binary_info(struct si_shader *shader, nir_shader *nir);
 bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                        struct si_shader *shader, struct pipe_debug_callback *debug);
 bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,

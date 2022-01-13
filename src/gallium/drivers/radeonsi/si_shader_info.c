@@ -567,6 +567,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
 {
    nir_function *func;
 
+   memset(info, 0, sizeof(*info));
    info->base = nir->info;
    info->stage = nir->info.stage;
 
