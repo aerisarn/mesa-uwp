@@ -17,11 +17,11 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: gl-virgl
-        checksum: d5682aaa762a4849f0cae1692623bdcb
+        checksum: a38d4c123d13c5ccd3a86f0663fe1aab
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-virgl
-        checksum: 1bcded27a6ba04fe0f76ff997b98dbc3
+        checksum: b580ae01560380461a103975cab77393
   - path: gputest/triangle.trace
     expectations:
       - device: gl-virgl
@@ -121,7 +121,7 @@ traces:
   - path: glmark2/refract.trace
     expectations:
       - device: gl-virgl
-        checksum: b1332df324d0fc1db22b362231d3ed01
+        checksum: cdadfee0518b964433d80c01329ec191
   - path: glmark2/shading:shading=blinn-phong-inf.trace
     expectations:
       - device: gl-virgl
@@ -178,7 +178,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-virgl
-        checksum: a1af286874f7060171cb3ca2e765c448
+        checksum: 7e818a6070005056700e5ef8590a3f8e
 # Times out
 # - path: gputest/tessmark.trace
 #   expectations:

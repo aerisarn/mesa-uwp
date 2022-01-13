@@ -129,7 +129,7 @@ traces:
   - path: bgfx/39-assao.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: bc6f44e63010db07e7ba588b216e38b1
+        checksum: 5d9c6dd6399db34ac81951cd7152ec1c
   - path: bgfx/40-svt.rdc
     expectations:
       - device: gl-vmware-llvmpipe
@@ -153,7 +153,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 4262587e893cf98c61a8467a15677181
+        checksum: b580ae01560380461a103975cab77393
   - path: gputest/triangle.trace
     expectations:
       - device: gl-vmware-llvmpipe

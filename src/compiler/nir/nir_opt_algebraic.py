@@ -488,8 +488,6 @@ optimizations.extend([
 
    # (a + #b) * #c => (a * #c) + (#b * #c)
    (('imul', ('iadd(is_used_once)', a, '#b'), '#c'), ('iadd', ('imul', a, c), ('imul', b, c))),
-   (('~fmul', ('fadd(is_used_once)', a, '#b'), '#c'), ('fadd', ('fmul', a, c), ('fmul', b, c)),
-    '!options->avoid_ternary_with_two_constants'),
 
    # ((a + #b) + c) * #d => ((a + c) * #d) + (#b * #d)
    (('imul', ('iadd(is_used_once)', ('iadd(is_used_once)', a, '#b'), c), '#d'),
