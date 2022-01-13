@@ -511,16 +511,13 @@ bool si_shader_mem_ordered(struct si_shader *shader)
 
    bool sampler_or_bvh = info->uses_vmem_sampler_or_bvh;
    bool other = info->uses_vmem_load_other ||
-                info->uses_indirect_descriptor ||
                 shader->config.scratch_bytes_per_wave ||
                 (info->stage == MESA_SHADER_FRAGMENT &&
-                 (info->base.fs.uses_fbfetch_output ||
-                  shader->key.ps.part.prolog.poly_stipple));
+                 shader->key.ps.part.prolog.poly_stipple);
 
    if (prev_info) {
       sampler_or_bvh |= prev_info->uses_vmem_sampler_or_bvh;
-      other |= prev_info->uses_vmem_load_other ||
-               prev_info->uses_indirect_descriptor;
+      other |= prev_info->uses_vmem_load_other;
    }
 
    /* Return true if both types of VMEM that return something are used. */

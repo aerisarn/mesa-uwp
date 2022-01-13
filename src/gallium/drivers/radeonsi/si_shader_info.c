@@ -687,6 +687,8 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
                                    BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN) ||
                                    BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_HELPER_INVOCATION));
 
+      info->uses_vmem_load_other |= info->base.fs.uses_fbfetch_output;
+
       /* Add both front and back color inputs. */
       unsigned num_inputs_with_colors = info->num_inputs;
       for (unsigned back = 0; back < 2; back++) {
@@ -708,6 +710,8 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
          }
       }
    }
+
+   info->uses_vmem_load_other |= info->uses_indirect_descriptor;
 
    /* Trim output read masks based on write masks. */
    for (unsigned i = 0; i < info->num_outputs; i++)
