@@ -2394,6 +2394,7 @@ emit_image_deref_store(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 static void
 emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
+   bool sparse = intr->intrinsic == nir_intrinsic_image_deref_sparse_load;
    SpvId img_var = get_src(ctx, &intr->src[0]);
    nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
    nir_variable *var = deref->deref_type == nir_deref_type_var ? deref->var : get_var_from_image(ctx, img_var);
@@ -2403,9 +2404,10 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
    SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
    SpvId sample = glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS ? get_src(ctx, &intr->src[2]) : 0;
+   SpvId dest_type = spirv_builder_type_vector(&ctx->builder, base_type, nir_dest_num_components(intr->dest));
    SpvId result = spirv_builder_emit_image_read(&ctx->builder,
-                                 spirv_builder_type_vector(&ctx->builder, base_type, nir_dest_num_components(intr->dest)),
-                                 img, coord, 0, sample, 0);
+                                 dest_type,
+                                 img, coord, 0, sample, 0, sparse);
    store_dest(ctx, &intr->dest, result, nir_type_float);
 }
 
@@ -2703,6 +2705,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_image_deref_store(ctx, intr);
       break;
 
+   case nir_intrinsic_image_deref_sparse_load:
    case nir_intrinsic_image_deref_load:
       emit_image_deref_load(ctx, intr);
       break;
@@ -3101,17 +3104,17 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
             spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageGatherExtended);
          result = spirv_builder_emit_image_gather(&ctx->builder, dest_type,
                                                  load, coord, emit_uint_const(ctx, 32, tex->component),
-                                                 lod, sample, const_offset, offset, dref);
+                                                 lod, sample, const_offset, offset, dref, tex->is_sparse);
       } else
          result = spirv_builder_emit_image_fetch(&ctx->builder, actual_dest_type,
-                                                 image, coord, lod, sample, const_offset, offset);
+                                                 image, coord, lod, sample, const_offset, offset, tex->is_sparse);
    } else {
       result = spirv_builder_emit_image_sample(&ctx->builder,
                                                actual_dest_type, load,
                                                coord,
                                                proj != 0,
                                                lod, bias, dref, dx, dy,
-                                               const_offset, offset);
+                                               const_offset, offset, tex->is_sparse);
    }
 
    spirv_builder_emit_decoration(&ctx->builder, result,
