@@ -2671,6 +2671,7 @@ anv_CreateImageView(VkDevice _device,
                                          general_aux_usage, NULL,
                                          ANV_IMAGE_VIEW_STATE_STORAGE_LOWERED,
                                          &iview->planes[vplane].lowered_storage_surface_state,
+                                         device->info.ver >= 9 ? NULL :
                                          &iview->planes[vplane].lowered_storage_image_param);
          } else {
             /* In this case, we support the format but, because there's no
