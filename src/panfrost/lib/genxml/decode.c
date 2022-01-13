@@ -607,6 +607,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
         return stats;
 }
 
+#if PAN_ARCH <= 7
 static void
 pandecode_texture_payload(mali_ptr payload,
                           enum mali_texture_dimension dim,
@@ -664,6 +665,7 @@ pandecode_texture_payload(mali_ptr payload,
         pandecode_indent--;
         pandecode_log("},\n");
 }
+#endif
 
 #if PAN_ARCH <= 5
 static void
@@ -695,12 +697,20 @@ pandecode_bifrost_texture(
         pan_unpack(cl, TEXTURE, temp);
         DUMP_UNPACKED(TEXTURE, temp, "Texture:\n")
 
+        pandecode_indent++;
+
+#if PAN_ARCH >= 9
+        /* TODO: count */
+        for (unsigned i = 0; i < 4; ++i)
+                DUMP_ADDR(SURFACE_WITH_STRIDE, temp.surfaces + i * pan_size(SURFACE_WITH_STRIDE), "Surface %u:\n", i);
+#else
         struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(temp.surfaces);
         unsigned nr_samples = temp.dimension == MALI_TEXTURE_DIMENSION_3D ?
                               1 : temp.sample_count;
-        pandecode_indent++;
+
         pandecode_texture_payload(temp.surfaces, temp.dimension, temp.texel_ordering,
                                   true, temp.levels, nr_samples, temp.array_size, tmem);
+#endif
         pandecode_indent--;
 }
 #endif
