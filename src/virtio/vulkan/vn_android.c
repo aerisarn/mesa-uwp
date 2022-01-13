@@ -516,6 +516,8 @@ vn_android_image_from_anb(struct vn_device *dev,
       goto fail;
 
    img->wsi.is_wsi = true;
+   img->wsi.tiling_override = builder.create.tiling;
+   img->wsi.drm_format_modifier = builder.modifier.drmFormatModifier;
    /* Android WSI image owns the memory */
    img->wsi.memory = vn_device_memory_from_handle(memory);
    img->wsi.memory_owned = true;

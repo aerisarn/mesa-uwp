@@ -44,10 +44,14 @@ struct vn_image {
    struct {
       /* True if this is a swapchain image and VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
        * is a valid layout.  A swapchain image can be created internally
-       * (wsi_image_create_info) or externally (VkNativeBufferANDROID).
+       * (wsi_image_create_info) or externally (VkNativeBufferANDROID and
+       * VkImageSwapchainCreateInfoKHR).
        */
       bool is_wsi;
       bool is_prime_blit_src;
+      VkImageTiling tiling_override;
+      /* valid when tiling is VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT */
+      uint64_t drm_format_modifier;
 
       struct vn_device_memory *memory;
 
