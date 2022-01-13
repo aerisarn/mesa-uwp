@@ -1141,7 +1141,7 @@ d3d12_create_shader(struct d3d12_context *ctx,
                          0 : VARYING_BIT_PRIMITIVE_ID;
 
    uint64_t out_mask = nir->info.stage == MESA_SHADER_FRAGMENT ?
-                          (1ull << FRAG_RESULT_STENCIL) :
+                          (1ull << FRAG_RESULT_STENCIL) | (1ull << FRAG_RESULT_SAMPLE_MASK) :
                           VARYING_BIT_PRIMITIVE_ID;
 
    d3d12_fix_io_uint_type(nir, in_mask, out_mask);
