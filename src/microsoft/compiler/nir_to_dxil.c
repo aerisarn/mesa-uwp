@@ -242,6 +242,10 @@ enum dxil_intr {
    DXIL_INTR_TEXTURE_SIZE = 72,
    DXIL_INTR_TEXTURE_GATHER = 73,
 
+   DXIL_INTR_TEXTURE2DMS_GET_SAMPLE_POSITION = 75,
+   DXIL_INTR_RENDER_TARGET_GET_SAMPLE_POSITION = 76,
+   DXIL_INTR_RENDER_TARGET_GET_SAMPLE_COUNT = 77,
+
    DXIL_INTR_ATOMIC_BINOP = 78,
    DXIL_INTR_ATOMIC_CMPXCHG = 79,
    DXIL_INTR_BARRIER = 80,
@@ -3592,6 +3596,38 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
+emit_load_sample_pos_from_id(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.renderTargetGetSamplePosition", DXIL_NONE);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_RENDER_TARGET_GET_SAMPLE_POSITION);
+   if (!opcode)
+      return false;
+
+   const struct dxil_value *args[] = {
+      opcode,
+      get_src(ctx, &intr->src[0], 0, nir_type_uint32),
+   };
+   if (!args[1])
+      return false;
+
+   const struct dxil_value *v = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   if (!v)
+      return false;
+
+   for (unsigned i = 0; i < 2; ++i) {
+      /* GL coords go from 0 -> 1, D3D from -0.5 -> 0.5 */
+      const struct dxil_value *coord = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
+         dxil_emit_extractval(&ctx->mod, v, i),
+         dxil_module_get_float_const(&ctx->mod, 0.5f), 0);
+      store_dest(ctx, &intr->dest, i, coord, nir_type_float32);
+   }
+   return true;
+}
+
+static bool
 emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -3744,6 +3780,9 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_vulkan_resource_index(ctx, intr);
    case nir_intrinsic_load_vulkan_descriptor:
       return emit_load_vulkan_descriptor(ctx, intr);
+
+   case nir_intrinsic_load_sample_pos_from_id:
+      return emit_load_sample_pos_from_id(ctx, intr);
 
    case nir_intrinsic_load_num_workgroups:
    case nir_intrinsic_load_workgroup_size:

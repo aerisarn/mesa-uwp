@@ -74,6 +74,8 @@ static struct  predefined_func_descr predefined_funcs[] = {
 {"dx.op.legacyF32ToF16", "i", "if", DXIL_ATTR_KIND_READ_ONLY},
 {"dx.op.makeDouble", "g", "iii", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.splitDouble", "G", "ig", DXIL_ATTR_KIND_READ_NONE},
+{"dx.op.texture2DMSGetSamplePosition", "S", "i@i", DXIL_ATTR_KIND_READ_ONLY},
+{"dx.op.renderTargetGetSamplePosition", "S", "ii", DXIL_ATTR_KIND_READ_ONLY},
 };
 
 struct func_descr {
@@ -175,6 +177,7 @@ get_type_from_string(struct dxil_module *mod, const char *param_descr,
    case DXIL_FUNC_PARAM_FROM_OVERLOAD:  return dxil_get_overload_type(mod, overload);
    case DXIL_FUNC_PARAM_RESRET: return dxil_module_get_resret_type(mod, overload);
    case DXIL_FUNC_PARAM_DIM: return dxil_module_get_dimret_type(mod);
+   case DXIL_FUNC_PARAM_SAMPLE_POS: return dxil_module_get_samplepos_type(mod);
    case DXIL_FUNC_PARAM_CBUF_RET: return dxil_module_get_cbuf_ret_type(mod, overload);
    case DXIL_FUNC_PARAM_SPLIT_DOUBLE: return dxil_module_get_split_double_ret_type(mod);
    case DXIL_FUNC_PARAM_POINTER: {

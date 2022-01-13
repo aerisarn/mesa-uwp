@@ -879,6 +879,17 @@ dxil_module_get_dimret_type(struct dxil_module *m)
 }
 
 const struct dxil_type *
+dxil_module_get_samplepos_type(struct dxil_module *m)
+{
+   const struct dxil_type *float_type = dxil_module_get_float_type(m, 32);
+
+   const struct dxil_type *samplepos[] =
+      { float_type, float_type };
+
+   return dxil_module_get_struct_type(m, "dx.types.SamplePos", samplepos, 2);
+}
+
+const struct dxil_type *
 dxil_module_add_function_type(struct dxil_module *m,
                               const struct dxil_type *ret_type,
                               const struct dxil_type **arg_types,
