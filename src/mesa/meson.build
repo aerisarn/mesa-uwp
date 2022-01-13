@@ -449,9 +449,6 @@ if with_asm_arch == 'x86'
     'x86/read_rgba_span_x86.S',
   )
   inc_libmesa_asm = include_directories('x86')
-elif with_asm_arch == 'x86_64'
-  files_libmesa += files('x86-64/x86-64.h', 'x86-64/xform4.S')
-  inc_libmesa_asm = include_directories('x86-64')
 endif
 
 format_fallback_c = custom_target(
