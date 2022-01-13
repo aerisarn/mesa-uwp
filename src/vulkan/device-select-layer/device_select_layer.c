@@ -234,7 +234,7 @@ static void print_gpu(const struct instance_info *info, unsigned index, VkPhysic
    }
    fprintf(stderr, "  GPU %d: %x:%x \"%s\" %s", index, properties.properties.vendorID,
            properties.properties.deviceID, properties.properties.deviceName, type);
-   if (info->has_pci_bus)
+   if (info->has_vulkan11 && info->has_pci_bus)
       fprintf(stderr, " %04x:%02x:%02x.%x", ext_pci_properties.pciDomain,
               ext_pci_properties.pciBus, ext_pci_properties.pciDevice,
               ext_pci_properties.pciFunction);
@@ -430,7 +430,7 @@ static uint32_t get_default_device(const struct instance_info *info,
    if (dri_prime && !strcmp(dri_prime, "1"))
       dri_prime_is_one = true;
 
-   if (dri_prime && !dri_prime_is_one && !info->has_pci_bus) {
+   if (dri_prime && !dri_prime_is_one && !info->has_vulkan11 && !info->has_pci_bus) {
       fprintf(stderr, "device-select: cannot correctly use DRI_PRIME tag\n");
    }
 
@@ -444,7 +444,7 @@ static uint32_t get_default_device(const struct instance_info *info,
 
    if (selection)
       default_idx = device_select_find_explicit_default(pci_infos, physical_device_count, selection);
-   if (default_idx == -1 && info->has_pci_bus && dri_prime && !dri_prime_is_one)
+   if (default_idx == -1 && info->has_vulkan11 && info->has_pci_bus && dri_prime && !dri_prime_is_one)
       default_idx = device_select_find_dri_prime_tag_default(pci_infos, physical_device_count, dri_prime);
    if (default_idx == -1 && info->has_wayland)
       default_idx = device_select_find_wayland_pci_default(pci_infos, physical_device_count);
