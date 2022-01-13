@@ -107,6 +107,10 @@ void zink_stub_${cmd.lstrip("vk")}(void);
 %endif
 %endfor
 
+struct pipe_screen;
+struct pipe_resource;
+bool zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int *w, int *h);
+
 #endif
 """
 

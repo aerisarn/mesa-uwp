@@ -252,6 +252,7 @@ struct zink_context {
    struct set render_pass_state_cache;
    struct hash_table *render_pass_cache;
    bool new_swapchain;
+   VkExtent2D swapchain_size;
    bool fb_changed;
    bool rp_changed;
 
@@ -260,6 +261,7 @@ struct zink_context {
    uint16_t clears_enabled;
    uint16_t rp_clears_enabled;
    uint16_t fbfetch_outputs;
+   struct zink_resource *needs_present;
 
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
    bool vertex_buffers_dirty;

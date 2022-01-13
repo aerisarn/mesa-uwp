@@ -28,6 +28,7 @@ files_libzink = files(
   'zink_clear.c',
   'zink_compiler.c',
   'zink_context.c',
+  'zink_kopper.c',
   'zink_descriptors.c',
   'zink_descriptors_lazy.c',
   'zink_draw.cpp',

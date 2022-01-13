@@ -112,8 +112,8 @@ populate_attachment_info(VkFramebufferAttachmentImageInfo *att, struct zink_surf
    att->sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO;
    att->pNext = NULL;
    memcpy(&att->flags, &info->flags, offsetof(struct zink_surface_info, format));
-   att->viewFormatCount = 1;
-   att->pViewFormats = &info->format;
+   att->viewFormatCount = 1 + !!info->format[1];
+   att->pViewFormats = info->format;
 }
 
 static struct zink_framebuffer *

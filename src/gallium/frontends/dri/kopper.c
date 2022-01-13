@@ -346,11 +346,9 @@ kopper_update_drawable_info(struct dri_drawable *drawable)
                                 drawable->textures[ST_ATTACHMENT_BACK_LEFT] :
                                 drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
 
-#if 0
    if (is_window && ptex && kscreen->base.fd == -1)
       zink_kopper_update(screen, ptex, &dPriv->w, &dPriv->h);
    else
-#endif
       get_drawable_info(dPriv, &x, &y, &dPriv->w, &dPriv->h);
 }
 

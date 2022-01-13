@@ -97,7 +97,7 @@ wgl_screen_create_by_name(HDC hDC, const char* driver, struct sw_winsys *winsys)
 #endif
 #ifdef GALLIUM_ZINK
    if (strcmp(driver, "zink") == 0) {
-      screen = zink_create_screen(winsys);
+      screen = zink_create_screen(winsys, NULL);
       if (screen)
          use_zink = TRUE;
    }

@@ -40,6 +40,9 @@
 #include "util/u_vertex_state_cache.h"
 #include "pipebuffer/pb_cache.h"
 #include "pipebuffer/pb_slab.h"
+#include "frontend/sw_winsys.h"
+#include "kopper_interface.h"
+
 #include <vulkan/vulkan.h>
 
 extern uint32_t zink_debug;
@@ -87,9 +90,14 @@ struct zink_screen {
 
    unsigned buffer_rebind_counter;
 
+   struct hash_table dts;
+   simple_mtx_t dt_lock;
+
    bool device_lost;
-   struct sw_winsys *winsys;
    int drm_fd;
+   struct sw_winsys winsys;
+   struct sw_winsys *sw_winsys; // wrapped
+   __DRIkopperLoaderExtension *loader;
 
    struct hash_table framebuffer_cache;
    simple_mtx_t framebuffer_mtx;
@@ -145,9 +153,6 @@ struct zink_screen {
 
    uint32_t cur_custom_border_color_samplers;
 
-   bool needs_mesa_wsi;
-   bool needs_mesa_flush_wsi;
-
    struct vk_dispatch_table vk;
 
    bool (*descriptor_program_init)(struct zink_context *ctx, struct zink_program *pg);
@@ -183,7 +188,6 @@ struct zink_screen {
       bool depth_clip_control_missing;
    } driver_workarounds;
 };
-
 
 /* update last_finished to account for batch_id wrapping */
 static inline void

@@ -23,6 +23,7 @@
 
 #include "zink_screen.h"
 
+#include "zink_kopper.h"
 #include "zink_compiler.h"
 #include "zink_context.h"
 #include "zink_device_info.h"
@@ -49,6 +50,8 @@
 #include "util/xmlconfig.h"
 
 #include "util/u_cpu_detect.h"
+
+#include "driver_trace/tr_context.h"
 
 #include "frontend/sw_winsys.h"
 
@@ -1204,6 +1207,10 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 {
    struct zink_screen *screen = zink_screen(pscreen);
 
+   hash_table_foreach(&screen->dts, entry)
+      zink_kopper_deinit_displaytarget(screen, entry->data);
+   simple_mtx_destroy(&screen->dt_lock);
+
    if (VK_NULL_HANDLE != screen->debugUtilsCallbackHandle) {
       VKSCR(DestroyDebugUtilsMessengerEXT)(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
@@ -1341,36 +1348,43 @@ init_queue(struct zink_screen *screen)
 
 static void
 zink_flush_frontbuffer(struct pipe_screen *pscreen,
-                       struct pipe_context *pcontext,
+                       struct pipe_context *pctx,
                        struct pipe_resource *pres,
                        unsigned level, unsigned layer,
                        void *winsys_drawable_handle,
                        struct pipe_box *sub_box)
 {
    struct zink_screen *screen = zink_screen(pscreen);
-   struct sw_winsys *winsys = screen->winsys;
    struct zink_resource *res = zink_resource(pres);
+   struct zink_context *ctx = zink_context(pctx);
 
-   if (!winsys)
-     return;
-   void *map = winsys->displaytarget_map(winsys, res->dt, 0);
+   /* if the surface has never been acquired, there's nothing to present,
+    * so this is a no-op */
+   if (!res->obj->acquired && res->obj->last_dt_idx == UINT32_MAX)
+      return;
 
-   if (map) {
-      struct pipe_transfer *transfer = NULL;
-      void *res_map = pipe_texture_map(pcontext, pres, level, layer, PIPE_MAP_READ, 0, 0,
-                                        u_minify(pres->width0, level),
-                                        u_minify(pres->height0, level),
-                                        &transfer);
-      if (res_map) {
-         util_copy_rect((ubyte*)map, pres->format, res->dt_stride, 0, 0,
-                        transfer->box.width, transfer->box.height,
-                        (const ubyte*)res_map, transfer->stride, 0, 0);
-         pipe_texture_unmap(pcontext, transfer);
+   /* need to get the actual zink_context, not the threaded context */
+   if (screen->threaded)
+      pctx = threaded_context_unwrap_sync(pctx);
+   pctx = trace_get_possibly_threaded_context(pctx);
+   ctx = zink_context(pctx);
+   if (ctx->batch.swapchain) {
+      pctx->flush(pctx, NULL, 0);
+      if (ctx->last_fence && screen->threaded) {
+         struct zink_batch_state *bs = zink_batch_state(ctx->last_fence);
+         util_queue_fence_wait(&bs->flush_completed);
       }
-      winsys->displaytarget_unmap(winsys, res->dt);
    }
 
-   winsys->displaytarget_display(winsys, res->dt, winsys_drawable_handle, sub_box);
+   if (res->obj->acquired)
+      zink_kopper_present_queue(screen, res);
+   else {
+      assert(res->obj->last_dt_idx != UINT32_MAX);
+      if (!zink_kopper_last_present_eq(res->obj->dt, res->obj->last_dt_idx)) {
+         zink_kopper_acquire_readback(ctx, res);
+         zink_kopper_present_readback(ctx, res);
+      }
+   }
 }
 
 bool
@@ -1617,23 +1631,6 @@ zink_internal_setup_moltenvk(struct zink_screen *screen)
 #endif // MVK_VERSION
 
    return true;
-}
-
-static void
-check_device_needs_mesa_wsi(struct zink_screen *screen)
-{
-   if (
-       /* Raspberry Pi 4 V3DV driver */
-       (screen->info.props.vendorID == 0x14E4 &&
-        screen->info.props.deviceID == 42) ||
-       /* RADV */
-       screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV_KHR
-      ) {
-      screen->needs_mesa_wsi = true;
-   } else if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR ||
-              screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_VENUS)
-      screen->needs_mesa_flush_wsi = true;
-
 }
 
 static void
@@ -2150,11 +2147,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (screen->threaded)
       util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
 
-   /* Some Vulkan implementations have special requirements for WSI
-    * allocations.
-    */
-   check_device_needs_mesa_wsi(screen);
-
    zink_internal_setup_moltenvk(screen);
 
    screen->dev = zink_create_logical_device(screen);
@@ -2293,6 +2285,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
    }
 
+   simple_mtx_init(&screen->dt_lock, mtx_plain);
+
    zink_screen_init_descriptor_funcs(screen, false);
    util_idalloc_mt_init_tc(&screen->buffer_ids);
 
@@ -2312,12 +2306,12 @@ fail:
 }
 
 struct pipe_screen *
-zink_create_screen(struct sw_winsys *winsys)
+zink_create_screen(struct sw_winsys *winsys, const struct pipe_screen_config *config)
 {
-   struct zink_screen *ret = zink_internal_create_screen(NULL);
+   struct zink_screen *ret = zink_internal_create_screen(config);
    if (ret) {
-      ret->winsys = winsys;
       ret->drm_fd = -1;
+      ret->sw_winsys = winsys;
    }
 
    return &ret->base;

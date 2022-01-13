@@ -103,11 +103,12 @@ struct zink_batch_state {
    struct util_dynarray wait_semaphore_stages; //external wait semaphores
 
    VkQueue queue; //duplicated from batch for threading
-   VkSemaphore sem;
+   VkSemaphore present;
+   struct zink_resource *swapchain;
+   struct util_dynarray acquires;
+   struct util_dynarray dead_swapchains;
 
    struct util_queue_fence flush_completed;
-
-   struct pipe_resource *flush_res;
 
    struct set *programs;
 
@@ -134,13 +135,13 @@ struct zink_batch_state {
    bool is_device_lost;
    bool have_timelines;
    bool has_barriers;
-   bool scanout_flush;
 };
 
 struct zink_batch {
    struct zink_batch_state *state;
 
    struct zink_batch_usage *last_batch_usage;
+   struct zink_resource *swapchain;
 
    unsigned work_count;
 

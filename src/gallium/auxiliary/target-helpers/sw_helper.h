@@ -63,7 +63,7 @@ sw_screen_create_named(struct sw_winsys *winsys, const struct pipe_screen_config
 
 #if defined(GALLIUM_ZINK)
    if (screen == NULL && strcmp(driver, "zink") == 0)
-      screen = zink_create_screen(winsys);
+      screen = zink_create_screen(winsys, config);
 #endif
 
 #if defined(GALLIUM_D3D12)
@@ -114,7 +114,7 @@ struct pipe_screen *
 sw_screen_create_zink(struct sw_winsys *winsys, const struct pipe_screen_config *config, bool whatever)
 {
 #if defined(GALLIUM_ZINK)
-   return zink_create_screen(winsys);
+   return zink_create_screen(winsys, config);
 #else
    return NULL;
 #endif

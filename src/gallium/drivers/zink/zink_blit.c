@@ -1,4 +1,5 @@
 #include "zink_context.h"
+#include "zink_kopper.h"
 #include "zink_helpers.h"
 #include "zink_query.h"
 #include "zink_resource.h"
@@ -21,7 +22,7 @@ apply_dst_clears(struct zink_context *ctx, const struct pipe_blit_info *info, bo
 }
 
 static bool
-blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
+blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info, bool *needs_present_readback)
 {
    if (util_format_get_mask(info->dst.format) != info->mask ||
        util_format_get_mask(info->src.format) != info->mask ||
@@ -52,6 +53,9 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
 
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
+
+   if (src->obj->dt)
+      *needs_present_readback = zink_kopper_acquire_readback(ctx, src);
 
    struct zink_batch *batch = &ctx->batch;
    zink_batch_no_rp(ctx);
@@ -113,7 +117,7 @@ get_resource_features(struct zink_screen *screen, struct zink_resource *res)
 }
 
 static bool
-blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
+blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *needs_present_readback)
 {
    if (util_format_get_mask(info->dst.format) != info->mask ||
        util_format_get_mask(info->src.format) != info->mask ||
@@ -158,6 +162,9 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
 
    apply_dst_clears(ctx, info, false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
+
+   if (src->obj->dt)
+      *needs_present_readback = zink_kopper_acquire_readback(ctx, src);
 
    struct zink_batch *batch = &ctx->batch;
    zink_batch_no_rp(ctx);
@@ -266,6 +273,9 @@ zink_blit(struct pipe_context *pctx,
 
    struct zink_resource *src = zink_resource(info->src.resource);
    struct zink_resource *dst = zink_resource(info->dst.resource);
+   bool needs_present_readback = false;
+   if (dst->obj->dt)
+      zink_kopper_acquire(ctx, dst, UINT64_MAX);
 
    if (src_desc == dst_desc ||
        src_desc->nr_channels != 4 || src_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN ||
@@ -275,10 +285,10 @@ zink_blit(struct pipe_context *pctx,
        */
       if (info->src.resource->nr_samples > 1 &&
           info->dst.resource->nr_samples <= 1) {
-         if (blit_resolve(ctx, info))
+         if (blit_resolve(ctx, info, &needs_present_readback))
             goto end;
       } else {
-         if (blit_native(ctx, info))
+         if (blit_native(ctx, info, &needs_present_readback))
             goto end;
       }
    }
@@ -303,6 +313,8 @@ zink_blit(struct pipe_context *pctx,
       goto end;
    }
 
+   if (src->obj->dt)
+      needs_present_readback = zink_kopper_acquire_readback(ctx, src);
    /* this is discard_only because we're about to start a renderpass that will
     * flush all pending clears anyway
     */
@@ -315,6 +327,8 @@ zink_blit(struct pipe_context *pctx,
 
    util_blitter_blit(ctx->blitter, info);
 end:
+   if (needs_present_readback)
+      zink_kopper_present_readback(ctx, src);
 }
 
 /* similar to radeonsi */
