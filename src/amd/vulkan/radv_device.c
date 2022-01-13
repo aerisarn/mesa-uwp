@@ -6475,3 +6475,14 @@ radv_GetPhysicalDeviceFragmentShadingRatesKHR(
 
    return vk_outarray_status(&out);
 }
+
+/* VK_EXT_tooling_info */
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_GetPhysicalDeviceToolPropertiesEXT(
+   VkPhysicalDevice physicalDevice,
+   uint32_t *pToolCount,
+   VkPhysicalDeviceToolPropertiesEXT *pToolProperties)
+{
+   *pToolCount = 0;
+   return VK_SUCCESS;
+}
