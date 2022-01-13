@@ -46,6 +46,10 @@ Requirements
 
       yum install llvm-devel
 
+   If you want development snapshot builds of LLVM for Fedora, you can
+   use the Copr repository at `fedora-llvm-team/llvm-snapshots <https://copr.fedorainfracloud.org/coprs/g/fedora-llvm-team/llvm-snapshots/>`__,
+   which is maintained by Red Hat's LLVM team.
+
    For Windows you will need to build LLVM from source with MSVC or
    MINGW (either natively or through cross compilers) and CMake, and set
    the ``LLVM`` environment variable to the directory you installed it
