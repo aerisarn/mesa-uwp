@@ -11,7 +11,6 @@
 #include "vn_wsi.h"
 
 #include "vk_enum_to_str.h"
-
 #include "wsi_common_entrypoints.h"
 
 #include "vn_device.h"
@@ -150,8 +149,8 @@ vn_CreateSwapchainKHR(VkDevice device,
 {
    struct vn_device *dev = vn_device_from_handle(device);
 
-   VkResult result = wsi_CreateSwapchainKHR(device, pCreateInfo,
-                                            pAllocator, pSwapchain);
+   VkResult result =
+      wsi_CreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
    if (VN_DEBUG(WSI) && result == VK_SUCCESS) {
       vn_log(dev->instance,
              "swapchain %p: created with surface %p, min count %d, size "

@@ -954,7 +954,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_separate_stencil_usage = true,
       .EXT_shader_viewport_index_layer = true,
 
-      /* EXT */
+   /* EXT */
 #ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
 #endif

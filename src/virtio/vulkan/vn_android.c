@@ -1005,8 +1005,9 @@ vn_android_device_import_ahb(struct vn_device *dev,
       }
 
       /* XXX Workaround before we use cross-domain backend in minigbm. The
-       * blob_mem allocated from virgl backend can have a queried guest mappable
-       * size smaller than the size returned from image memory requirement.
+       * blob_mem allocated from virgl backend can have a queried guest
+       * mappable size smaller than the size returned from image memory
+       * requirement.
        */
       force_unmappable = true;
    }
