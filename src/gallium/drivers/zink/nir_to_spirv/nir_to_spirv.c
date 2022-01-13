@@ -67,6 +67,7 @@ struct ntv_context {
    size_t num_entry_ifaces;
 
    SpvId *defs;
+   SpvId *resident_defs;
    size_t num_defs;
 
    SpvId *regs;
@@ -2391,6 +2392,24 @@ emit_image_deref_store(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_image_write(&ctx->builder, img, coord, texel, 0, sample, 0);
 }
 
+static SpvId
+extract_sparse_load(struct ntv_context *ctx, SpvId result, SpvId dest_type, nir_ssa_def *dest_ssa)
+{
+   /* Result Type must be an OpTypeStruct with two members.
+    * The first member’s type must be an integer type scalar.
+    * It holds a Residency Code that can be passed to OpImageSparseTexelsResident
+    * - OpImageSparseRead spec
+    */
+   uint32_t idx = 0;
+   SpvId resident = spirv_builder_emit_composite_extract(&ctx->builder, spirv_builder_type_uint(&ctx->builder, 32), result, &idx, 1);
+   idx = 1;
+   result = spirv_builder_emit_composite_extract(&ctx->builder, dest_type, result, &idx, 1);
+   assert(resident != 0);
+   assert(dest_ssa->index < ctx->num_defs);
+   ctx->resident_defs[dest_ssa->index] = resident;
+   return result;
+}
+
 static void
 emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -2408,6 +2427,8 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId result = spirv_builder_emit_image_read(&ctx->builder,
                                  dest_type,
                                  img, coord, 0, sample, 0, sparse);
+   if (sparse)
+      result = extract_sparse_load(ctx, result, dest_type, &intr->dest.ssa);
    store_dest(ctx, &intr->dest, result, nir_type_float);
 }
 
@@ -2498,6 +2519,28 @@ emit_shader_clock(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvScope scope = get_scope(nir_intrinsic_memory_scope(intr));
    SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
    SpvId result = spirv_builder_emit_unop_const(&ctx->builder, SpvOpReadClockKHR, type, scope);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
+}
+
+static void
+emit_is_sparse_texels_resident(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySparseResidency);
+
+   SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+
+   /* this will always be stored with the ssa index of the parent instr */
+   assert(intr->src[0].is_ssa);
+   nir_ssa_def *ssa = intr->src[0].ssa;
+   assert(ssa->parent_instr->type == nir_instr_type_alu);
+   nir_alu_instr *alu = nir_instr_as_alu(ssa->parent_instr);
+   assert(alu->src[0].src.is_ssa);
+   unsigned index = alu->src[0].src.ssa->index;
+   assert(index < ctx->num_defs);
+   assert(ctx->resident_defs[index] != 0);
+   SpvId resident = ctx->resident_defs[index];
+
+   SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageSparseTexelsResident, type, resident);
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
 
@@ -2800,6 +2843,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_vote(ctx, intr);
       break;
 
+   case nir_intrinsic_is_sparse_texels_resident:
+      emit_is_sparse_texels_resident(ctx, intr);
+      break;
+
    default:
       fprintf(stderr, "emit_intrinsic: not implemented (%s)\n",
               nir_intrinsic_infos[intr->intrinsic].name);
@@ -2999,6 +3046,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
    SpvId load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
 
+   if (tex->is_sparse)
+      tex->dest.ssa.num_components--;
    SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
 
    if (!tex_instr_is_lod_allowed(tex))
@@ -3121,6 +3170,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 
+   if (tex->is_sparse)
+      result = extract_sparse_load(ctx, result, actual_dest_type, &tex->dest.ssa);
    if (dref && nir_dest_num_components(tex->dest) > 1 && tex->op != nir_texop_tg4) {
       SpvId components[4] = { result, result, result, result };
       result = spirv_builder_emit_composite_construct(&ctx->builder,
@@ -3135,6 +3186,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
 
    store_dest(ctx, &tex->dest, result, tex->dest_type);
+   if (tex->is_sparse)
+      tex->dest.ssa.num_components++;
 }
 
 static void
@@ -3847,6 +3900,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    ctx.defs = ralloc_array_size(ctx.mem_ctx,
                                 sizeof(SpvId), entry->ssa_alloc);
    if (!ctx.defs)
+      goto fail;
+   ctx.resident_defs = ralloc_array_size(ctx.mem_ctx,
+                                         sizeof(SpvId), entry->ssa_alloc);
+   if (!ctx.resident_defs)
       goto fail;
    ctx.num_defs = entry->ssa_alloc;
 

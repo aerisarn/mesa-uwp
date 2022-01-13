@@ -1755,6 +1755,34 @@ scan_nir(nir_shader *shader)
    }
 }
 
+static bool
+lower_sparse_instr(nir_builder *b, nir_instr *in, void *data)
+{
+   if (in->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
+   if (instr->intrinsic != nir_intrinsic_is_sparse_texels_resident)
+      return false;
+
+   /* vulkan vec can only be a vec4, but this is (maybe) vec5,
+    * so just rewrite as the first component since ntv is going to use a different
+    * method for storing the residency value anyway
+    */
+   b->cursor = nir_before_instr(&instr->instr);
+   nir_instr *parent = instr->src[0].ssa->parent_instr;
+   assert(parent->type == nir_instr_type_alu);
+   nir_alu_instr *alu = nir_instr_as_alu(parent);
+   nir_ssa_def_rewrite_uses_after(instr->src[0].ssa, nir_channel(b, alu->src[0].src.ssa, 0), parent);
+   nir_instr_remove(parent);
+   return true;
+}
+
+static bool
+lower_sparse(nir_shader *shader)
+{
+   return nir_shader_instructions_pass(shader, lower_sparse_instr, nir_metadata_dominance, NULL);
+}
+
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                    const struct pipe_stream_output_info *so_info)
@@ -1790,6 +1818,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    NIR_PASS_V(nir, lower_work_dim);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, lower_baseinstance);
+   NIR_PASS_V(nir, lower_sparse);
 
    if (screen->need_2D_zs)
       NIR_PASS_V(nir, lower_1d_shadow);
