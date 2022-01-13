@@ -515,9 +515,10 @@ vn_android_image_from_anb(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto fail;
 
-   img->is_wsi = true;
+   img->wsi.is_wsi = true;
    /* Android WSI image owns the memory */
-   img->private_memory = memory;
+   img->wsi.memory = vn_device_memory_from_handle(memory);
+   img->wsi.memory_owned = true;
    *out_img = img;
 
    return VK_SUCCESS;

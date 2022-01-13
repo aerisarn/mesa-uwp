@@ -132,8 +132,8 @@ vn_wsi_create_image(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   img->is_wsi = true;
-   img->is_prime_blit_src = wsi_info->prime_blit_src;
+   img->wsi.is_wsi = true;
+   img->wsi.is_prime_blit_src = wsi_info->prime_blit_src;
 
    *out_img = img;
    return VK_SUCCESS;

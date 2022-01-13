@@ -295,8 +295,10 @@ vn_DestroyImage(VkDevice device,
    if (!img)
       return;
 
-   if (img->private_memory != VK_NULL_HANDLE)
-      vn_FreeMemory(device, img->private_memory, pAllocator);
+   if (img->wsi.memory && img->wsi.memory_owned) {
+      VkDeviceMemory mem_handle = vn_device_memory_to_handle(img->wsi.memory);
+      vn_FreeMemory(device, mem_handle, pAllocator);
+   }
 
    vn_async_vkDestroyImage(dev->instance, device, image, NULL);
 
@@ -396,6 +398,13 @@ vn_GetImageSparseMemoryRequirements2(
                                                pSparseMemoryRequirements);
 }
 
+static void
+vn_image_bind_wsi_memory(struct vn_image *img, struct vn_device_memory *mem)
+{
+   assert(img->wsi.is_wsi && !img->wsi.memory);
+   img->wsi.memory = mem;
+}
+
 VkResult
 vn_BindImageMemory(VkDevice device,
                    VkImage image,
@@ -403,7 +412,11 @@ vn_BindImageMemory(VkDevice device,
                    VkDeviceSize memoryOffset)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   struct vn_image *img = vn_image_from_handle(image);
    struct vn_device_memory *mem = vn_device_memory_from_handle(memory);
+
+   if (img->wsi.is_wsi)
+      vn_image_bind_wsi_memory(img, mem);
 
    if (mem->base_memory) {
       memory = vn_device_memory_to_handle(mem->base_memory);
@@ -427,8 +440,13 @@ vn_BindImageMemory2(VkDevice device,
    VkBindImageMemoryInfo *local_infos = NULL;
    for (uint32_t i = 0; i < bindInfoCount; i++) {
       const VkBindImageMemoryInfo *info = &pBindInfos[i];
+      struct vn_image *img = vn_image_from_handle(info->image);
       struct vn_device_memory *mem =
          vn_device_memory_from_handle(info->memory);
+
+      if (img->wsi.is_wsi)
+         vn_image_bind_wsi_memory(img, mem);
+
       /* TODO handle VkBindImageMemorySwapchainInfoKHR */
       if (!mem || !mem->base_memory)
          continue;
