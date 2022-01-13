@@ -675,7 +675,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          zink_get_param(pscreen, PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS) : 0;
    case PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS:
       return screen->info.feats.features.sparseResidencyImage2D ? 1 : 0;
-
+   case PIPE_CAP_QUERY_SPARSE_TEXTURE_RESIDENCY:
+      return screen->info.feats.features.sparseResidency2Samples ? 1 : 0;
 
    case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
       return screen->info.props.limits.viewportSubPixelBits;
