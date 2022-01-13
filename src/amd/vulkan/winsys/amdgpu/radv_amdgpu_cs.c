@@ -1248,10 +1248,24 @@ radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum ring_type ring_type
    }
 
    for (unsigned i = 0; i < sem_info->signal.syncobj_count; ++i) {
-      ret = amdgpu_cs_syncobj_transfer(ctx->ws->dev, sem_info->signal.syncobj[i], 0, queue_syncobj,
-                                       0, 0);
-      if (ret < 0)
-         return VK_ERROR_DEVICE_LOST;
+      uint32_t dst_handle = sem_info->signal.syncobj[i];
+      uint32_t src_handle = queue_syncobj;
+
+      if (ctx->ws->info.has_timeline_syncobj) {
+         ret = amdgpu_cs_syncobj_transfer(ctx->ws->dev, dst_handle, 0, src_handle, 0, 0);
+         if (ret < 0)
+            return VK_ERROR_DEVICE_LOST;
+      } else {
+         int fd;
+         ret = amdgpu_cs_syncobj_export_sync_file(ctx->ws->dev, src_handle, &fd);
+         if (ret < 0)
+            return VK_ERROR_DEVICE_LOST;
+
+         ret = amdgpu_cs_syncobj_import_sync_file(ctx->ws->dev, dst_handle, fd);
+         close(fd);
+         if (ret < 0)
+            return VK_ERROR_DEVICE_LOST;
+      }
    }
    for (unsigned i = 0; i < sem_info->signal.timeline_syncobj_count; ++i) {
       ret = amdgpu_cs_syncobj_transfer(ctx->ws->dev,
