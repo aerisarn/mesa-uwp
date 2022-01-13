@@ -554,6 +554,9 @@ struct v3d_resource_slice {
    uint32_t padded_height_of_output_image_in_uif_blocks;
 };
 
+bool v3dv_format_swizzle_needs_rb_swap(const uint8_t *swizzle);
+bool v3dv_format_swizzle_needs_reverse(const uint8_t *swizzle);
+
 struct v3dv_image {
    struct vk_image vk;
 
