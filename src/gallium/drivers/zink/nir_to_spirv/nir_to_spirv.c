@@ -1614,6 +1614,19 @@ needs_derivative_control(nir_alu_instr *alu)
    }
 }
 
+static SpvId
+unswizzle_src(struct ntv_context *ctx, nir_ssa_def *ssa, SpvId src, unsigned num_components)
+{
+   /* value may have already been cast to ivec, so cast back */
+   SpvId cast_type = get_uvec_type(ctx, ssa->bit_size, num_components);
+   src = emit_bitcast(ctx, cast_type, src);
+
+   /* extract from swizzled vec */
+   SpvId type = spirv_builder_type_uint(&ctx->builder, ssa->bit_size);
+   uint32_t idx = 0;
+   return spirv_builder_emit_composite_extract(&ctx->builder, type, src, &idx, 1);
+}
+
 static void
 emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 {
@@ -1629,6 +1642,34 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
 
    if (needs_derivative_control(alu))
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityDerivativeControl);
+
+   /* modify params here */
+   switch (alu->op) {
+   /* Offset must be an integer type scalar.
+    * Offset is the lowest-order bit of the bit field.
+    * It is consumed as an unsigned value.
+    *
+    * Count must be an integer type scalar.
+    *
+    * if these ops have more than one component in the dest, then their offset and count
+    * are swizzled like ssa_1.xxx, but only a single scalar can be provided
+    */
+   case nir_op_ubitfield_extract:
+   case nir_op_ibitfield_extract:
+      if (num_components > 1) {
+         src[1] = unswizzle_src(ctx, alu->src[1].src.ssa, src[1], num_components);
+         src[2] = unswizzle_src(ctx, alu->src[2].src.ssa, src[2], num_components);
+      }
+      break;
+   case nir_op_bitfield_insert:
+      if (num_components > 1) {
+         src[2] = unswizzle_src(ctx, alu->src[2].src.ssa, src[2], num_components);
+         src[3] = unswizzle_src(ctx, alu->src[3].src.ssa, src[3], num_components);
+      }
+      break;
+   default:
+      break;
+   }
 
    SpvId result = 0;
    switch (alu->op) {
