@@ -1712,7 +1712,7 @@ lower_1d_shadow(nir_shader *shader)
 }
 
 static void
-scan_nir(nir_shader *shader, struct zink_shader *zs)
+scan_nir(struct zink_screen *screen, nir_shader *shader, struct zink_shader *zs)
 {
    nir_foreach_function(function, shader) {
       if (!function->impl)
@@ -1758,6 +1758,21 @@ scan_nir(nir_shader *shader, struct zink_shader *zs)
             if (intr->intrinsic == nir_intrinsic_is_sparse_texels_resident ||
                 intr->intrinsic == nir_intrinsic_image_deref_sparse_load)
                zs->sinfo.have_sparse = true;
+
+            static bool warned = false;
+            if (!screen->info.have_EXT_shader_atomic_float && !screen->is_cpu && !warned) {
+               switch (intr->intrinsic) {
+               case nir_intrinsic_image_deref_atomic_add:
+               case nir_intrinsic_image_deref_atomic_exchange: {
+                  nir_variable *var = nir_intrinsic_get_var(intr, 0);
+                  if (util_format_is_float(var->data.image.format))
+                     fprintf(stderr, "zink: Vulkan driver missing VK_EXT_shader_atomic_float but attempting to do atomic ops!\n");
+                  break;
+               }
+               default:
+                  break;
+               }
+            }
          }
       }
    }
@@ -1872,7 +1887,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (has_bindless_io)
       NIR_PASS_V(nir, lower_bindless_io);
 
-   scan_nir(nir, ret);
+   scan_nir(screen, nir, ret);
 
    foreach_list_typed_reverse_safe(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
