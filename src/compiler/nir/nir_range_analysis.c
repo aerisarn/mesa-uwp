@@ -1465,7 +1465,6 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_b32csel:
       case nir_op_ubfe:
       case nir_op_bfm:
-      case nir_op_f2u32:
       case nir_op_fmul:
       case nir_op_extract_u8:
       case nir_op_extract_i8:
@@ -1476,6 +1475,7 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
       case nir_op_u2u8:
       case nir_op_u2u16:
       case nir_op_u2u32:
+      case nir_op_f2u32:
          if (nir_ssa_scalar_chase_alu_src(scalar, 0).def->bit_size > 32) {
             /* If src is >32 bits, return max */
             return max;
