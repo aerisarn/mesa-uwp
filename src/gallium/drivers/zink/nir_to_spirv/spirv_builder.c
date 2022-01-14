@@ -764,6 +764,7 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId dy,
                                 SpvId const_offset,
                                 SpvId offset,
+                                SpvId min_lod,
                                 bool sparse)
 {
    SpvId result = spirv_builder_new_id(b);
@@ -794,7 +795,7 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
    }
 
    SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
-   SpvId extra_operands[5];
+   SpvId extra_operands[6];
    int num_extra_operands = 1;
    if (bias) {
       extra_operands[num_extra_operands++] = bias;
@@ -815,6 +816,10 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
    } else if (offset) {
       extra_operands[num_extra_operands++] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
+   }
+   if (min_lod) {
+      extra_operands[num_extra_operands++] = min_lod;
+      operand_mask |= SpvImageOperandsMinLodMask;
    }
 
    /* finalize num_extra_operands / extra_operands */

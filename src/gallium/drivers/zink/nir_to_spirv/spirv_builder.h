@@ -284,6 +284,7 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId dy,
                                 SpvId const_offset,
                                 SpvId offset,
+                                SpvId min_lod,
                                 bool sparse);
 
 SpvId

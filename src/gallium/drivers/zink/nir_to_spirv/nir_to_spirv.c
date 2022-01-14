@@ -2913,7 +2913,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
-         const_offset = 0, offset = 0, sample = 0, tex_offset = 0, bindless = 0;
+         const_offset = 0, offset = 0, sample = 0, tex_offset = 0, bindless = 0, min_lod = 0;
    unsigned coord_components = 0;
    nir_variable *bindless_var = NULL;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
@@ -2962,6 +2962,12 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          assert(tex->op == nir_texop_txb);
          bias = get_src_float(ctx, &tex->src[i].src);
          assert(bias != 0);
+         break;
+
+      case nir_tex_src_min_lod:
+         assert(nir_src_num_components(tex->src[i].src) == 1);
+         min_lod = get_src_float(ctx, &tex->src[i].src);
+         assert(min_lod != 0);
          break;
 
       case nir_tex_src_lod:
@@ -3143,6 +3149,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    SpvId result;
    if (offset)
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageGatherExtended);
+   if (min_lod)
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityMinLod);
    if (tex->op == nir_texop_txf ||
        tex->op == nir_texop_txf_ms ||
        tex->op == nir_texop_tg4) {
@@ -3164,7 +3172,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                coord,
                                                proj != 0,
                                                lod, bias, dref, dx, dy,
-                                               const_offset, offset, tex->is_sparse);
+                                               const_offset, offset, min_lod, tex->is_sparse);
    }
 
    spirv_builder_emit_decoration(&ctx->builder, result,
