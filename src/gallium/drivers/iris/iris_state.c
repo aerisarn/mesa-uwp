@@ -4788,8 +4788,7 @@ use_null_fb_surface(struct iris_batch *batch, struct iris_context *ice)
 }
 
 static uint32_t
-surf_state_offset_for_aux(struct iris_resource *res,
-                          unsigned aux_modes,
+surf_state_offset_for_aux(unsigned aux_modes,
                           enum isl_aux_usage aux_usage)
 {
    assert(aux_modes & (1 << aux_usage));
@@ -4811,7 +4810,7 @@ surf_state_update_clear_value(struct iris_batch *batch,
    uint32_t offset_into_bo = real_offset - state_bo->address;
    uint32_t clear_offset = offset_into_bo +
       isl_dev->ss.clear_value_offset +
-      surf_state_offset_for_aux(res, aux_modes, aux_usage);
+      surf_state_offset_for_aux(aux_modes, aux_usage);
    uint32_t *color = res->aux.clear_color.u32;
 
    assert(isl_dev->ss.clear_value_size == 16);
@@ -4942,7 +4941,7 @@ use_surface(struct iris_context *ice,
                : surf->surface_state.ref.offset;
 
    return offset +
-          surf_state_offset_for_aux(res, res->aux.possible_usages, aux_usage);
+          surf_state_offset_for_aux(res->aux.possible_usages, aux_usage);
 }
 
 static uint32_t
@@ -4978,8 +4977,7 @@ use_sampler_view(struct iris_context *ice,
                       IRIS_DOMAIN_NONE);
 
    return isv->surface_state.ref.offset +
-          surf_state_offset_for_aux(isv->res, isv->res->aux.sampler_usages,
-                                    aux_usage);
+          surf_state_offset_for_aux(isv->res->aux.sampler_usages, aux_usage);
 }
 
 static uint32_t
@@ -5023,7 +5021,7 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
       iris_image_view_aux_usage(ice, &iv->base, info);
 
    return iv->surface_state.ref.offset +
-      surf_state_offset_for_aux(res, res->aux.possible_usages, aux_usage);
+      surf_state_offset_for_aux(res->aux.possible_usages, aux_usage);
 }
 
 #define push_bt_entry(addr) \
