@@ -375,6 +375,19 @@ fill_mode_lowered(struct d3d12_context *ctx, const struct pipe_draw_info *dinfo)
 }
 
 static bool
+has_stream_out_for_streams(struct d3d12_context *ctx)
+{
+   unsigned mask = ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->initial->info.gs.active_stream_mask & ~1;
+   for (unsigned i = 0; i < ctx->gfx_pipeline_state.so_info.num_outputs; ++i) {
+      unsigned stream = ctx->gfx_pipeline_state.so_info.output[i].stream;
+      if (((1 << stream) & mask) &&
+         ctx->so_buffer_views[stream].SizeInBytes)
+         return true;
+   }
+   return false;
+}
+
+static bool
 needs_point_sprite_lowering(struct d3d12_context *ctx, const struct pipe_draw_info *dinfo)
 {
    struct d3d12_shader_selector *vs = ctx->gfx_stages[PIPE_SHADER_VERTEX];
@@ -384,7 +397,9 @@ needs_point_sprite_lowering(struct d3d12_context *ctx, const struct pipe_draw_in
       /* There is an user GS; Check if it outputs points with PSIZE */
       return (gs->initial->info.gs.output_primitive == GL_POINTS &&
               (gs->initial->info.outputs_written & VARYING_BIT_PSIZ ||
-                 ctx->gfx_pipeline_state.rast->base.point_size > 1.0));
+                 ctx->gfx_pipeline_state.rast->base.point_size > 1.0) &&
+              (gs->initial->info.gs.active_stream_mask == 1 ||
+                 !has_stream_out_for_streams(ctx)));
    } else {
       /* No user GS; check if we are drawing wide points */
       return ((dinfo->mode == PIPE_PRIM_POINTS ||

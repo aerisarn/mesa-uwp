@@ -162,42 +162,43 @@ lower_emit_vertex(nir_intrinsic_instr *instr, nir_builder *b, struct lower_state
    get_scaled_point_size(b, state, &point_width, &point_height);
 
    nir_instr_remove(&instr->instr);
-
-   for (unsigned i = 0; i < 4; i++) {
-      /* All outputs need to be emitted for each vertex */
-      for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
-         if (state->varying[slot] != NULL) {
-            nir_store_var(b, state->varying_out[slot], state->varying[slot],
-                          state->varying_write_mask[slot]);
+   if (stream_id == 0) {
+      for (unsigned i = 0; i < 4; i++) {
+         /* All outputs need to be emitted for each vertex */
+         for (unsigned slot = 0; slot < VARYING_SLOT_MAX; ++slot) {
+            if (state->varying[slot] != NULL) {
+               nir_store_var(b, state->varying_out[slot], state->varying[slot],
+                             state->varying_write_mask[slot]);
+            }
          }
+
+         /* pos = scaled_point_size * point_dir + point_pos */
+         nir_ssa_def *point_dir = get_point_dir(b, state, i);
+         nir_ssa_def *pos = nir_vec4(b,
+                                     nir_ffma(b,
+                                              point_width,
+                                              nir_channel(b, point_dir, 0),
+                                              nir_channel(b, state->point_pos, 0)),
+                                     nir_ffma(b,
+                                              point_height,
+                                              nir_channel(b, point_dir, 1),
+                                              nir_channel(b, state->point_pos, 1)),
+                                     nir_channel(b, state->point_pos, 2),
+                                     nir_channel(b, state->point_pos, 3));
+         nir_store_var(b, state->pos_out, pos, 0xf);
+
+         /* point coord */
+         nir_ssa_def *point_coord = get_point_coord(b, state, i);
+         for (unsigned j = 0; j < state->num_point_coords; ++j)
+            nir_store_var(b, state->point_coord_out[j], point_coord, 0xf);
+
+         /* EmitVertex */
+         nir_emit_vertex(b, .stream_id = stream_id);
       }
 
-      /* pos = scaled_point_size * point_dir + point_pos */
-      nir_ssa_def *point_dir = get_point_dir(b, state, i);
-      nir_ssa_def *pos = nir_vec4(b,
-                                  nir_ffma(b,
-                                           point_width,
-                                           nir_channel(b, point_dir, 0),
-                                           nir_channel(b, state->point_pos, 0)),
-                                  nir_ffma(b,
-                                           point_height,
-                                           nir_channel(b, point_dir, 1),
-                                           nir_channel(b, state->point_pos, 1)),
-                                  nir_channel(b, state->point_pos, 2),
-                                  nir_channel(b, state->point_pos, 3));
-      nir_store_var(b, state->pos_out, pos, 0xf);
-
-      /* point coord */
-      nir_ssa_def *point_coord = get_point_coord(b, state, i);
-      for (unsigned j = 0; j < state->num_point_coords; ++j)
-         nir_store_var(b, state->point_coord_out[j], point_coord, 0xf);
-
-      /* EmitVertex */
-      nir_emit_vertex(b, .stream_id = stream_id);
+      /* EndPrimitive */
+      nir_end_primitive(b, .stream_id = stream_id);
    }
-
-   /* EndPrimitive */
-   nir_end_primitive(b, .stream_id = stream_id);
 
    /* Reset everything */
    state->point_pos = NULL;
@@ -298,7 +299,9 @@ d3d12_lower_point_sprite(nir_shader *shader,
    }
 
    shader->info.gs.output_primitive = GL_TRIANGLE_STRIP;
-   shader->info.gs.vertices_out *= 4;
+   shader->info.gs.vertices_out = shader->info.gs.vertices_out * 4 /
+      util_bitcount(shader->info.gs.active_stream_mask);
+   shader->info.gs.active_stream_mask = 1;
 
    return progress;
 }
