@@ -383,7 +383,8 @@ needs_point_sprite_lowering(struct d3d12_context *ctx, const struct pipe_draw_in
    if (gs != NULL && !gs->is_gs_variant) {
       /* There is an user GS; Check if it outputs points with PSIZE */
       return (gs->initial->info.gs.output_primitive == GL_POINTS &&
-              gs->initial->info.outputs_written & VARYING_BIT_PSIZ);
+              (gs->initial->info.outputs_written & VARYING_BIT_PSIZ ||
+                 ctx->gfx_pipeline_state.rast->base.point_size > 1.0));
    } else {
       /* No user GS; check if we are drawing wide points */
       return ((dinfo->mode == PIPE_PRIM_POINTS ||
