@@ -2084,7 +2084,6 @@ spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-32: sk
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
-spec/arb_shading_language_420pack/active sampler conflict: fail
 spec/arb_shading_language_420pack/binding layout: fail
 spec/arb_sparse_buffer/basic: skip
 spec/arb_sparse_buffer/buffer-data: skip
@@ -4274,8 +4273,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    15882
-       fail:     1208
+       pass:    15883
+       fail:     1207
       crash:       68
        skip:     2977
     timeout:        0

@@ -1123,6 +1123,8 @@ parseStaticConfig(struct OptConfData *data)
          const char *appattr[] = {
             "name", a->name,
             "executable", a->executable,
+            "executable_regexp", a->executable_regexp,
+            "sha1", a->sha1,
             "application_name_match", a->application_name_match,
             "application_versions", a->application_versions,
             NULL
