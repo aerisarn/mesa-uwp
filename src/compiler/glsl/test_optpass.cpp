@@ -102,7 +102,7 @@ do_optimization(struct exec_list *ir, const char *optimization,
    } else if (strcmp(optimization, "do_tree_grafting") == 0) {
       return do_tree_grafting(ir);
    } else if (strcmp(optimization, "do_vec_index_to_cond_assign") == 0) {
-      return do_vec_index_to_cond_assign(ir);
+      return do_vec_index_to_cond_assign(ir, true);
    } else if (strcmp(optimization, "do_vec_index_to_swizzle") == 0) {
       return do_vec_index_to_swizzle(ir);
    } else if (strcmp(optimization, "lower_discard") == 0) {
