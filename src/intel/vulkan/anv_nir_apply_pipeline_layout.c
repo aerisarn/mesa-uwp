@@ -94,7 +94,7 @@ add_binding(struct apply_pipeline_layout_state *state,
     * this binding.  This lets us be lazy and call this function constantly
     * without worrying about unnecessarily enabling the buffer.
     */
-   if (anv_descriptor_size(bind_layout))
+   if (bind_layout->descriptor_stride)
       state->set[set].desc_buffer_used = true;
 }
 
@@ -216,12 +216,7 @@ descriptor_address_format(nir_intrinsic_instr *intrin,
 {
    assert(intrin->intrinsic == nir_intrinsic_vulkan_resource_index);
 
-   uint32_t set = nir_intrinsic_desc_set(intrin);
-   uint32_t binding = nir_intrinsic_binding(intrin);
-   const struct anv_descriptor_set_binding_layout *bind_layout =
-      &state->layout->set[set].layout->binding[binding];
-
-   return addr_format_for_desc_type(bind_layout->type, state);
+   return addr_format_for_desc_type(nir_intrinsic_desc_type(intrin), state);
 }
 
 static nir_intrinsic_instr *
@@ -341,7 +336,7 @@ build_res_index(nir_builder *b, uint32_t set, uint32_t binding,
             bind_layout->dynamic_offset_index;
       }
 
-      const uint32_t packed = (set_idx << 16) | dynamic_offset_index;
+      const uint32_t packed = (bind_layout->descriptor_stride << 16 ) | (set_idx << 8) | dynamic_offset_index;
 
       return nir_vec4(b, nir_imm_int(b, packed),
                          nir_imm_int(b, bind_layout->descriptor_offset),
@@ -374,6 +369,7 @@ struct res_index_defs {
    nir_ssa_def *dyn_offset_base;
    nir_ssa_def *desc_offset_base;
    nir_ssa_def *array_index;
+   nir_ssa_def *desc_stride;
 };
 
 static struct res_index_defs
@@ -382,8 +378,9 @@ unpack_res_index(nir_builder *b, nir_ssa_def *index)
    struct res_index_defs defs;
 
    nir_ssa_def *packed = nir_channel(b, index, 0);
-   defs.set_idx = nir_extract_u16(b, packed, nir_imm_int(b, 1));
-   defs.dyn_offset_base = nir_extract_u16(b, packed, nir_imm_int(b, 0));
+   defs.desc_stride = nir_extract_u8(b, packed, nir_imm_int(b, 2));
+   defs.set_idx = nir_extract_u8(b, packed, nir_imm_int(b, 1));
+   defs.dyn_offset_base = nir_extract_u8(b, packed, nir_imm_int(b, 0));
 
    defs.desc_offset_base = nir_channel(b, index, 1);
    defs.array_index = nir_umin(b, nir_channel(b, index, 2),
@@ -449,15 +446,9 @@ build_desc_addr(nir_builder *b,
           * the array index is ignored as they are only allowed to be a single
           * descriptor (not an array) and there is no concept of a "stride".
           *
-          * We use the bind_layout, if available, because it provides a more
-          * accurate descriptor size.
           */
-         const unsigned stride = bind_layout ?
-            anv_descriptor_size(bind_layout) :
-            anv_descriptor_type_size(state->pdevice, desc_type);
-
          desc_offset =
-            nir_iadd(b, desc_offset, nir_imul_imm(b, res.array_index, stride));
+            nir_iadd(b, desc_offset, nir_imul(b, res.array_index, res.desc_stride));
       }
 
       switch (state->desc_addr_format) {

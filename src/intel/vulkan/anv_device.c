@@ -310,6 +310,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .INTEL_shader_integer_functions2       = device->info.ver >= 8,
       .EXT_multi_draw                        = true,
       .NV_compute_shader_derivatives         = true,
+      .VALVE_mutable_descriptor_type         = true,
    };
 }
 
@@ -1565,6 +1566,13 @@ void anv_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceMaintenance4FeaturesKHR *features =
             (VkPhysicalDeviceMaintenance4FeaturesKHR *)ext;
          features->maintenance4 = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
+         VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *features =
+            (VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *)ext;
+         features->mutableDescriptorType = true;
          break;
       }
 
