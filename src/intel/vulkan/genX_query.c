@@ -1380,6 +1380,7 @@ void genX(CmdCopyQueryPoolResults)(
     */
    if (cmd_buffer->state.pending_pipe_bits & ANV_PIPE_RENDER_TARGET_BUFFER_WRITES) {
       anv_add_pending_pipe_bits(cmd_buffer,
+                                ANV_PIPE_TILE_CACHE_FLUSH_BIT |
                                 ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT,
                                 "CopyQueryPoolResults");
    }
