@@ -242,6 +242,7 @@ enum dxil_intr {
 
    DXIL_INTR_TEXTURE_SIZE = 72,
    DXIL_INTR_TEXTURE_GATHER = 73,
+   DXIL_INTR_TEXTURE_GATHER_CMP = 74,
 
    DXIL_INTR_TEXTURE2DMS_GET_SAMPLE_POSITION = 75,
    DXIL_INTR_RENDER_TARGET_GET_SAMPLE_POSITION = 76,
@@ -4235,12 +4236,14 @@ emit_texture_lod(struct ntd_context *ctx, struct texop_parameters *params, bool 
 static const struct dxil_value *
 emit_texture_gather(struct ntd_context *ctx, struct texop_parameters *params, unsigned component)
 {
-   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.textureGather", params->overload);
+   const struct dxil_func *func = dxil_get_function(&ctx->mod,
+      params->cmp ? "dx.op.textureGatherCmp" : "dx.op.textureGather", params->overload);
    if (!func)
       return false;
 
    const struct dxil_value *args[] = {
-      dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_TEXTURE_GATHER),
+      dxil_module_get_int32_const(&ctx->mod, params->cmp ? 
+         DXIL_INTR_TEXTURE_GATHER_CMP : DXIL_INTR_TEXTURE_GATHER),
       params->tex,
       params->sampler,
       params->coord[0],
@@ -4249,10 +4252,11 @@ emit_texture_gather(struct ntd_context *ctx, struct texop_parameters *params, un
       params->coord[3],
       params->offset[0],
       params->offset[1],
-      dxil_module_get_int32_const(&ctx->mod, component)
+      dxil_module_get_int32_const(&ctx->mod, component),
+      params->cmp
    };
 
-   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args) - (params->cmp ? 0 : 1));
 }
 
 static bool
