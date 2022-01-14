@@ -2329,15 +2329,9 @@ nir_visitor::visit(ir_expression *ir)
    case ir_binop_dot:
       result = nir_fdot(&b, srcs[0], srcs[1]);
       break;
-   case ir_binop_vector_extract: {
-      result = nir_channel(&b, srcs[0], 0);
-      for (unsigned i = 1; i < ir->operands[0]->type->vector_elements; i++) {
-         nir_ssa_def *swizzled = nir_channel(&b, srcs[0], i);
-         result = nir_bcsel(&b, nir_ieq_imm(&b, srcs[1], i),
-                            swizzled, result);
-      }
+   case ir_binop_vector_extract:
+      result = nir_vector_extract(&b, srcs[0], srcs[1]);
       break;
-   }
 
    case ir_binop_atan2:
       result = nir_atan2(&b, srcs[0], srcs[1]);
