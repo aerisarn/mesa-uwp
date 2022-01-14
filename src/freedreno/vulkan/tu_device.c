@@ -186,6 +186,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_host_query_reset = true,
       .EXT_index_type_uint8 = true,
       .EXT_memory_budget = true,
+      .EXT_primitive_topology_list_restart = true,
       .EXT_private_data = true,
       .EXT_robustness2 = true,
       .EXT_scalar_block_layout = true,
@@ -797,6 +798,13 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderIntegerDotProduct = true;
          break;
       };
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
+         VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *features =
+            (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *)ext;
+         features->primitiveTopologyListRestart = true;
+         features->primitiveTopologyPatchListRestart = false;
+         break;
+      }
 
       default:
          break;
