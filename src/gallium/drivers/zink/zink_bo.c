@@ -845,6 +845,32 @@ texture_commit_single(struct zink_screen *screen, struct zink_resource *res, VkS
    return zink_screen_handle_vkresult(screen, ret);
 }
 
+static bool
+texture_commit_miptail(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t offset, bool commit)
+{
+   VkBindSparseInfo sparse = {0};
+   sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
+   sparse.imageOpaqueBindCount = 1;
+
+   VkSparseImageOpaqueMemoryBindInfo sparse_bind;
+   sparse_bind.image = res->obj->image;
+   sparse_bind.bindCount = 1;
+   sparse.pImageOpaqueBinds = &sparse_bind;
+
+   VkSparseMemoryBind mem_bind;
+   mem_bind.resourceOffset = offset;
+   mem_bind.size = MIN2(ZINK_SPARSE_BUFFER_PAGE_SIZE, res->sparse.imageMipTailSize - offset);
+   mem_bind.memory = commit ? (bo->mem ? bo->mem : bo->u.slab.real->mem) : VK_NULL_HANDLE;
+   mem_bind.memoryOffset = commit ? (bo->mem ? 0 : bo->offset) : 0;
+   mem_bind.flags = 0;
+   sparse_bind.pBinds = &mem_bind;
+
+   VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
+
+   VkResult ret = VKSCR(QueueBindSparse)(queue, 1, &sparse, VK_NULL_HANDLE);
+   return zink_screen_handle_vkresult(screen, ret);
+}
+
 bool
 zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned level, struct pipe_box *box, bool commit)
 {
@@ -884,6 +910,13 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
    struct zink_sparse_backing *backing[10];
    unsigned i = 0;
    bool commits_pending = false;
+   uint32_t va_page_offset = 0;
+   for (unsigned l = 0; l < level; l++) {
+      unsigned mipwidth = DIV_ROUND_UP(MAX2(res->base.b.width0 >> l, 1), gwidth);
+      unsigned mipheight = DIV_ROUND_UP(MAX2(res->base.b.height0 >> l, 1), gheight);
+      unsigned mipdepth = DIV_ROUND_UP(MAX2(res->base.b.depth0 >> l, 1), gdepth);
+      va_page_offset += mipwidth * mipheight * mipdepth;
+   }
    for (unsigned d = 0; d < ndepth; d++) {
       for (unsigned h = 0; h < nheight; h++) {
          for (unsigned w = 0; w < nwidth; w++) {
@@ -902,8 +935,9 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
             ibind[i].extent.width = (w == nwidth - 1) ? lastBlockExtent.width : gwidth;
             ibind[i].extent.height = (h == nheight - 1) ? lastBlockExtent.height : gheight;
             ibind[i].extent.depth = (d == ndepth - 1 && res->base.b.target != PIPE_TEXTURE_CUBE) ? lastBlockExtent.depth : gdepth;
-            uint32_t va_page = (d + (box->z / gdepth)) * ((res->base.b.width0 / gwidth) * (res->base.b.height0 / gheight)) +
-                              (h + (box->y / gheight)) * (res->base.b.width0 / gwidth) +
+            uint32_t va_page = va_page_offset +
+                              (d + (box->z / gdepth)) * ((MAX2(res->base.b.width0 >> level, 1) / gwidth) * (MAX2(res->base.b.height0 >> level, 1) / gheight)) +
+                              (h + (box->y / gheight)) * (MAX2(res->base.b.width0 >> level, 1) / gwidth) +
                               (w + (box->x / gwidth));
 
             uint32_t end_va_page = va_page + 1;
@@ -931,8 +965,16 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
                         ok = false;
                         goto out;
                      }
-                     ibind[i].memory = backing[i]->bo->mem ? backing[i]->bo->mem : backing[i]->bo->u.slab.real->mem;
-                     ibind[i].memoryOffset = backing[i]->bo->mem ? 0 : backing[i]->bo->offset;
+                     if (level >= res->sparse.imageMipTailFirstLod) {
+                        uint32_t offset = res->sparse.imageMipTailOffset + d * res->sparse.imageMipTailStride;
+                        ok = texture_commit_miptail(screen, res, backing[i]->bo, offset, commit);
+                        if (!ok)
+                           goto out;
+                     } else {
+                        ibind[i].memory = backing[i]->bo->mem ? backing[i]->bo->mem : backing[i]->bo->u.slab.real->mem;
+                        ibind[i].memoryOffset = backing[i]->bo->mem ? 0 : backing[i]->bo->offset;
+                        commits_pending = true;
+                     }
 
                      while (backing_size[i]) {
                         comm[span_va_page].backing = backing[i];
@@ -941,7 +983,6 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
                         backing_start[i]++;
                         backing_size[i]--;
                      }
-                     commits_pending = true;
                      i++;
                   }
                }
@@ -971,7 +1012,14 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
                      va_page++;
                      backing_size[i]++;
                   }
-                  commits_pending = true;
+                  if (level >= res->sparse.imageMipTailFirstLod) {
+                     uint32_t offset = res->sparse.imageMipTailOffset + d * res->sparse.imageMipTailStride;
+                     ok = texture_commit_miptail(screen, res, NULL, offset, commit);
+                     if (!ok)
+                        goto out;
+                  } else {
+                     commits_pending = true;
+                  }
                   i++;
                }
             }
