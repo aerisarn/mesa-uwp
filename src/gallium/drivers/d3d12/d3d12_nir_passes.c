@@ -878,3 +878,63 @@ d3d12_lower_sample_pos(nir_shader *s)
 {
    return nir_shader_lower_instructions(s, is_sample_pos, lower_sample_pos, NULL);
 }
+
+static bool
+is_multisampling_instr(const nir_instr *instr, const void *_data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic == nir_intrinsic_store_output) {
+      nir_io_semantics semantics = nir_intrinsic_io_semantics(intr);
+      return semantics.location == FRAG_RESULT_SAMPLE_MASK;
+   } else if (intr->intrinsic == nir_intrinsic_store_deref) {
+      nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+      return var->data.location == FRAG_RESULT_SAMPLE_MASK;
+   } else if (intr->intrinsic == nir_intrinsic_load_sample_id ||
+              intr->intrinsic == nir_intrinsic_load_sample_mask_in)
+      return true;
+   return false;
+}
+
+static nir_ssa_def *
+lower_multisampling_instr(nir_builder *b, nir_instr *instr, void *_data)
+{
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_store_output:
+   case nir_intrinsic_store_deref:
+      return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+   case nir_intrinsic_load_sample_id:
+      return nir_imm_int(b, 0);
+   case nir_intrinsic_load_sample_mask_in:
+      return nir_imm_int(b, 1);
+   default:
+      unreachable("Invalid intrinsic");
+   }
+}
+
+bool
+d3d12_disable_multisampling(nir_shader *s)
+{
+   if (s->info.stage != MESA_SHADER_FRAGMENT)
+      return false;
+   bool progress = nir_shader_lower_instructions(s, is_multisampling_instr, lower_multisampling_instr, NULL);
+
+   nir_foreach_variable_with_modes_safe(var, s, nir_var_shader_out) {
+      if (var->data.location == FRAG_RESULT_SAMPLE_MASK) {
+         exec_node_remove(&var->node);
+         progress = true;
+      }
+   }
+   nir_foreach_variable_with_modes_safe(var, s, nir_var_shader_in | nir_var_system_value) {
+      if (var->data.location == SYSTEM_VALUE_SAMPLE_MASK_IN ||
+          var->data.location == SYSTEM_VALUE_SAMPLE_ID) {
+         exec_node_remove(&var->node);
+         progress = true;
+      }
+      var->data.sample = false;
+   }
+   BITSET_CLEAR(s->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+   return progress;
+}

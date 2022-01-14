@@ -118,6 +118,7 @@ struct d3d12_shader_key {
       unsigned manual_depth_range : 1;
       unsigned polygon_stipple : 1;
       unsigned remap_front_facing : 1;
+      unsigned multisample_disabled : 1;
    } fs;
 
    struct {

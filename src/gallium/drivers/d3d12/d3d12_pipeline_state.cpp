@@ -263,7 +263,14 @@ create_gfx_pipeline_state(struct d3d12_context *ctx)
 
    if (state->num_cbufs || state->dsv_format != DXGI_FORMAT_UNKNOWN) {
       pso_desc.SampleDesc.Count = state->samples;
-   } else {
+      if (!state->zsa->desc.DepthEnable &&
+          !state->zsa->desc.StencilEnable &&
+          !state->rast->desc.MultisampleEnable &&
+          state->samples > 1) {
+         pso_desc.RasterizerState.ForcedSampleCount = 1;
+         pso_desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+      }
+   } else if (state->samples > 1) {
       pso_desc.SampleDesc.Count = 1;
       pso_desc.RasterizerState.ForcedSampleCount = state->samples;
    }

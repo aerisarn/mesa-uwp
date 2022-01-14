@@ -176,6 +176,9 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
 
+   if (key->fs.multisample_disabled)
+      NIR_PASS_V(nir, d3d12_disable_multisampling);
+
    struct nir_to_dxil_options opts = {};
    opts.interpolate_at_vertex = screen->have_load_at_vertex;
    opts.lower_int16 = !screen->opts4.Native16BitShaderOpsSupported;
@@ -619,7 +622,10 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
           expect->fs.manual_depth_range != have->fs.manual_depth_range ||
           expect->fs.polygon_stipple != have->fs.polygon_stipple ||
           expect->fs.cast_to_uint != have->fs.cast_to_uint ||
-          expect->fs.cast_to_int != have->fs.cast_to_int)
+          expect->fs.cast_to_int != have->fs.cast_to_int ||
+          expect->fs.remap_front_facing != have->fs.remap_front_facing ||
+          expect->fs.missing_dual_src_outputs != have->fs.missing_dual_src_outputs ||
+          expect->fs.multisample_disabled != have->fs.multisample_disabled)
          return false;
    } else if (expect->stage == PIPE_SHADER_COMPUTE) {
       if (memcmp(expect->cs.workgroup_size, have->cs.workgroup_size,
@@ -760,6 +766,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
       key->fs.frag_result_color_lowering = sel_ctx->frag_result_color_lowering;
       key->fs.manual_depth_range = sel_ctx->manual_depth_range;
       key->fs.polygon_stipple = sel_ctx->ctx->pstipple.enabled;
+      key->fs.multisample_disabled = sel_ctx->ctx->gfx_pipeline_state.rast &&
+         !sel_ctx->ctx->gfx_pipeline_state.rast->desc.MultisampleEnable;
       if (sel_ctx->ctx->gfx_pipeline_state.blend &&
           sel_ctx->ctx->gfx_pipeline_state.blend->desc.RenderTarget[0].LogicOpEnable &&
           !sel_ctx->ctx->gfx_pipeline_state.has_float_rtv) {
