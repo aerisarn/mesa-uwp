@@ -51,7 +51,7 @@ struct nir_shader;
 struct set;
 
 struct tgsi_token;
-struct zink_so_info {
+struct zink_shader_info {
    struct pipe_stream_output_info so_info;
    unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
    bool have_xfb;
@@ -72,7 +72,7 @@ struct zink_shader {
    struct nir_shader *nir;
    enum pipe_prim_type reduced_prim; // PIPE_PRIM_MAX for vs
 
-   struct zink_so_info streamout;
+   struct zink_shader_info sinfo;
 
    struct {
       int index;

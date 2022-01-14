@@ -591,7 +591,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       const struct pipe_stream_output *output = &so_info->output[i];
       unsigned slot = reverse_map[output->register_index];
       /* always set stride to be used during draw */
-      zs->streamout.so_info.stride[output->output_buffer] = so_info->stride[output->output_buffer];
+      zs->sinfo.so_info.stride[output->output_buffer] = so_info->stride[output->output_buffer];
       if (zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          while (!var)
@@ -662,11 +662,11 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
             }
          }
       }
-      zs->streamout.so_info.output[zs->streamout.so_info.num_outputs] = *output;
+      zs->sinfo.so_info.output[zs->sinfo.so_info.num_outputs] = *output;
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
-      zs->streamout.so_info_slots[zs->streamout.so_info.num_outputs++] = reverse_map[output->register_index];
+      zs->sinfo.so_info_slots[zs->sinfo.so_info.num_outputs++] = reverse_map[output->register_index];
    }
-   zs->streamout.have_xfb = !!zs->streamout.so_info.num_outputs;
+   zs->sinfo.have_xfb = !!zs->sinfo.so_info.num_outputs;
 }
 
 struct decompose_state {
@@ -1086,7 +1086,7 @@ VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
-   void *streamout = NULL;
+   void *sinfo = NULL;
    nir_shader *nir = nir_shader_clone(NULL, base_nir);
    bool need_optimize = false;
    bool inlined_uniforms = false;
@@ -1128,8 +1128,8 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       case MESA_SHADER_TESS_EVAL:
       case MESA_SHADER_GEOMETRY:
          if (zink_vs_key_base(key)->last_vertex_stage) {
-            if (zs->streamout.have_xfb)
-               streamout = &zs->streamout;
+            if (zs->sinfo.have_xfb)
+               sinfo = &zs->sinfo;
 
             if (!zink_vs_key_base(key)->clip_halfz) {
                NIR_PASS_V(nir, nir_lower_clip_halfz);
@@ -1189,7 +1189,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
 
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
-   struct spirv_shader *spirv = nir_to_spirv(nir, streamout, screen->spirv_version);
+   struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
    if (!spirv)
       goto done;
 

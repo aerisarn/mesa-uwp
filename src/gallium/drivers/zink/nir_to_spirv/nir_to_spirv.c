@@ -50,7 +50,7 @@ struct ntv_context {
    SpvId GLSL_std_450;
 
    gl_shader_stage stage;
-   const struct zink_so_info *so_info;
+   const struct zink_shader_info *sinfo;
 
    SpvId ubos[PIPE_MAX_CONSTANT_BUFFERS][5]; //8, 16, 32, unused, 64
    nir_variable *ubo_vars[PIPE_MAX_CONSTANT_BUFFERS];
@@ -1292,7 +1292,7 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
 /* for streamout create new outputs, as streamout can be done on individual components,
    from complete outputs, so we just can't use the created packed outputs */
 static void
-emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info,
+emit_so_info(struct ntv_context *ctx, const struct zink_shader_info *so_info,
              unsigned first_so)
 {
    unsigned output = 0;
@@ -1341,7 +1341,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info,
 
 static void
 emit_so_outputs(struct ntv_context *ctx,
-                const struct zink_so_info *so_info)
+                const struct zink_shader_info *so_info)
 {
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
       uint32_t components[NIR_MAX_VEC_COMPONENTS];
@@ -2635,8 +2635,8 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       /* geometry shader emits copied xfb outputs just prior to EmitVertex(),
        * since that's the end of the shader
        */
-      if (ctx->so_info)
-         emit_so_outputs(ctx, ctx->so_info);
+      if (ctx->sinfo)
+         emit_so_outputs(ctx, ctx->sinfo);
       spirv_builder_emit_vertex(&ctx->builder, nir_intrinsic_stream_id(intr));
       break;
 
@@ -3609,7 +3609,7 @@ get_spacing(enum gl_tess_spacing spacing)
 }
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t spirv_version)
+nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_t spirv_version)
 {
    struct spirv_shader *ret = NULL;
 
@@ -3700,7 +3700,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    }
 
    ctx.stage = s->info.stage;
-   ctx.so_info = so_info;
+   ctx.sinfo = sinfo;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
    ctx.explicit_lod = true;
    spirv_builder_emit_source(&ctx.builder, SpvSourceLanguageUnknown, 0);
@@ -3781,8 +3781,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    }
 
 
-   if (so_info)
-      emit_so_info(&ctx, so_info, max_output + 1);
+   if (sinfo)
+      emit_so_info(&ctx, sinfo, max_output + 1);
 
    /* we have to reverse iterate to match what's done in zink_compiler.c */
    foreach_list_typed_reverse(nir_variable, var, node, &s->variables)
@@ -3941,8 +3941,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
    emit_cf_list(&ctx, &entry->body);
 
    /* vertex/tess shader emits copied xfb outputs at the end of the shader */
-   if (so_info && (ctx.stage == MESA_SHADER_VERTEX || ctx.stage == MESA_SHADER_TESS_EVAL))
-      emit_so_outputs(&ctx, so_info);
+   if (sinfo && (ctx.stage == MESA_SHADER_VERTEX || ctx.stage == MESA_SHADER_TESS_EVAL))
+      emit_so_outputs(&ctx, sinfo);
 
    spirv_builder_return(&ctx.builder); // doesn't belong here, but whatevz
    spirv_builder_function_end(&ctx.builder);

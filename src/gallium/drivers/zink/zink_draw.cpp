@@ -804,7 +804,7 @@ zink_draw(struct pipe_context *pctx,
          counter_buffers[i] = VK_NULL_HANDLE;
          if (t) {
             struct zink_resource *res = zink_resource(t->counter_buffer);
-            t->stride = ctx->last_vertex_stage->streamout.so_info.stride[i] * sizeof(uint32_t);
+            t->stride = ctx->last_vertex_stage->sinfo.so_info.stride[i] * sizeof(uint32_t);
             zink_batch_reference_resource_rw(batch, res, true);
             if (t->counter_buffer_valid) {
                counter_buffers[i] = res->obj->buffer;
