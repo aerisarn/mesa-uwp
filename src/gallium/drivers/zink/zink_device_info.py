@@ -77,6 +77,7 @@ EXTENSIONS = [
     Extension("VK_KHR_get_memory_requirements2"),
     Extension("VK_EXT_post_depth_coverage"),
     Extension("VK_EXT_shader_subgroup_ballot"),
+    Extension("VK_EXT_shader_atomic_float", alias="atomic_float", features=True),
     Extension("VK_KHR_8bit_storage",
               alias="storage_8bit",
               features=True,
