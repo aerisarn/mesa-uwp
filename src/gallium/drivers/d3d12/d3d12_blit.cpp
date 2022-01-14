@@ -227,7 +227,7 @@ direct_copy_supported(struct d3d12_screen *screen,
         D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED &&
         (info->src.resource->bind & PIPE_BIND_DEPTH_STENCIL ||
          info->dst.resource->bind & PIPE_BIND_DEPTH_STENCIL)) ||
-        info->src.resource->nr_samples > 1) {
+        info->src.resource->nr_samples != info->dst.resource->nr_samples) {
 
       if (info->dst.box.x != 0 ||
           info->dst.box.y != 0 ||
@@ -336,8 +336,7 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
                 D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED ||
                 (!util_format_is_depth_or_stencil(dst->base.b.format) &&
                  !util_format_is_depth_or_stencil(src->base.b.format) &&
-                  dst->base.b.nr_samples <= 1 &&
-                  src->base.b.nr_samples <= 1));
+                  dst->base.b.nr_samples == src->base.b.nr_samples));
 
          ctx->cmdlist->CopyTextureRegion(&dst_loc, dstx, dsty, dstz,
                                          &src_loc, NULL);
@@ -355,8 +354,7 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
                  D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED ||
                  (!util_format_is_depth_or_stencil(dst->base.b.format) &&
                   !util_format_is_depth_or_stencil(src->base.b.format))) &&
-                dst->base.b.nr_samples <= 1 &&
-                src->base.b.nr_samples <= 1);
+                dst->base.b.nr_samples == src->base.b.nr_samples);
 
          ctx->cmdlist->CopyTextureRegion(&dst_loc, dstx, dsty, dstz,
                                          &src_loc, &src_box);
