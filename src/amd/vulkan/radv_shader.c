@@ -736,6 +736,11 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
+   if (nir->info.ray_queries > 0) {
+      NIR_PASS_V(nir, nir_opt_ray_queries);
+      NIR_PASS_V(nir, radv_nir_lower_ray_queries, device);
+   }
+
    if (nir->info.stage == MESA_SHADER_GEOMETRY) {
       unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
 
