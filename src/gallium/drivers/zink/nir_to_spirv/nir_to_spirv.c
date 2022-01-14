@@ -3902,6 +3902,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    if (!ctx.defs)
       goto fail;
    if (sinfo->have_sparse) {
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySparseResidency);
       /* this could be huge, so only alloc if needed since it's extremely unlikely to
        * ever be used by anything except cts
        */
