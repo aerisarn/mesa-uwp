@@ -312,6 +312,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
       return 1;
 
+   case PIPE_CAP_MAX_VERTEX_STREAMS:
+      return D3D12_SO_BUFFER_SLOT_COUNT;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
