@@ -2478,15 +2478,18 @@ late_optimizations = [
    # optimization loop can prevent other optimizations.
    (('fneg', ('fneg', a)), a),
 
+   # re-combine inexact mul+add to ffma. Do this before fsub so that a * b - c
+   # gets combined to fma(a, b, -c).
+   (('~fadd@16', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma16'),
+   (('~fadd@32', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma32'),
+   (('~fadd@64', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma64'),
+
    # Subtractions get lowered during optimization, so we need to recombine them
    (('fadd', a, ('fneg', 'b')), ('fsub', 'a', 'b'), 'options->has_fsub'),
    (('fneg', a), ('fmul', a, -1.0), 'options->lower_fneg'),
    (('iadd', a, ('ineg', 'b')), ('isub', 'a', 'b'), 'options->has_isub || options->lower_ineg'),
    (('ineg', a), ('isub', 0, a), 'options->lower_ineg'),
    (('iabs', a), ('imax', a, ('ineg', a)), 'options->lower_iabs'),
-   (('~fadd@16', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma16'),
-   (('~fadd@32', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma32'),
-   (('~fadd@64', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma64'),
 
    (('iadd', ('iadd(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, b, c), 'options->has_iadd3'),
    (('iadd', ('isub(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), 'c(is_not_const)'), ('iadd3', a, ('ineg', b), c), 'options->has_iadd3'),
