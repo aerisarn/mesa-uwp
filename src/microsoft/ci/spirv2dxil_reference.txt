@@ -420,30 +420,9 @@ Test:SpvModuleScopeVarParserTest_SampleMask_In_U32_AccessChain.spvasm:main|Fragm
 Test:SpvModuleScopeVarParserTest_SampleMask_In_U32_CopyObject.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_SampleMask_In_U32_Direct.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_SampleMask_In_WithStride.spvasm:main|Fragment: Pass
-Test:SpvModuleScopeVarParserTest_SampleMask_Out_I32_AccessChain.spvasm:main|Fragment: Fail
-DXIL: SV_Coverage must be uint
-
-Validation failed.
-
-Failed to validate DXIL
-
-
-Test:SpvModuleScopeVarParserTest_SampleMask_Out_I32_CopyObject.spvasm:main|Fragment: Fail
-DXIL: SV_Coverage must be uint
-
-Validation failed.
-
-Failed to validate DXIL
-
-
-Test:SpvModuleScopeVarParserTest_SampleMask_Out_I32_Direct.spvasm:main|Fragment: Fail
-DXIL: SV_Coverage must be uint
-
-Validation failed.
-
-Failed to validate DXIL
-
-
+Test:SpvModuleScopeVarParserTest_SampleMask_Out_I32_AccessChain.spvasm:main|Fragment: Pass
+Test:SpvModuleScopeVarParserTest_SampleMask_Out_I32_CopyObject.spvasm:main|Fragment: Pass
+Test:SpvModuleScopeVarParserTest_SampleMask_Out_I32_Direct.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_SampleMask_Out_U32_AccessChain.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_SampleMask_Out_U32_CopyObject.spvasm:main|Fragment: Pass
 Test:SpvModuleScopeVarParserTest_SampleMask_Out_U32_Direct.spvasm:main|Fragment: Pass
