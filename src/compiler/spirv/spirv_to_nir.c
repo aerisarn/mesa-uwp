@@ -5709,7 +5709,8 @@ ray_query_load_intrinsic_create(struct vtn_builder *b, SpvOp opcode,
                        nir_rq_load(&b->nb,
                                    glsl_get_vector_elements(value.glsl_type),
                                    glsl_get_bit_size(value.glsl_type),
-                                   src0, src1));
+                                   src0, src1,
+                                   .base = value.nir_value));
    }
 }
 
