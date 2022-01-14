@@ -2338,6 +2338,7 @@ alloc_surface_states(struct iris_surface_state *surf_state,
    /* In case we're re-allocating them... */
    free(surf_state->cpu);
 
+   surf_state->aux_usages = aux_usages;
    surf_state->num_states = util_bitcount(aux_usages);
    surf_state->cpu = calloc(surf_state->num_states, surf_size);
    surf_state->ref.offset = 0;
@@ -4800,17 +4801,16 @@ surf_state_offset_for_aux(unsigned aux_modes,
 static void
 surf_state_update_clear_value(struct iris_batch *batch,
                               struct iris_resource *res,
-                              struct iris_state_ref *state,
-                              unsigned aux_modes,
+                              struct iris_surface_state *surf_state,
                               enum isl_aux_usage aux_usage)
 {
    struct isl_device *isl_dev = &batch->screen->isl_dev;
-   struct iris_bo *state_bo = iris_resource_bo(state->res);
-   uint64_t real_offset = state->offset + IRIS_MEMZONE_BINDER_START;
+   struct iris_bo *state_bo = iris_resource_bo(surf_state->ref.res);
+   uint64_t real_offset = surf_state->ref.offset + IRIS_MEMZONE_BINDER_START;
    uint32_t offset_into_bo = real_offset - state_bo->address;
    uint32_t clear_offset = offset_into_bo +
       isl_dev->ss.clear_value_offset +
-      surf_state_offset_for_aux(aux_modes, aux_usage);
+      surf_state_offset_for_aux(surf_state->aux_usages, aux_usage);
    uint32_t *color = res->aux.clear_color.u32;
 
    assert(isl_dev->ss.clear_value_size == 16);
@@ -4844,11 +4844,10 @@ update_clear_value(struct iris_context *ice,
                    struct iris_batch *batch,
                    struct iris_resource *res,
                    struct iris_surface_state *surf_state,
-                   unsigned all_aux_modes,
                    struct isl_view *view)
 {
    UNUSED struct isl_device *isl_dev = &batch->screen->isl_dev;
-   UNUSED unsigned aux_modes = all_aux_modes;
+   UNUSED unsigned aux_modes = surf_state->aux_usages;
 
    /* We only need to update the clear color in the surface state for gfx8 and
     * gfx9. Newer gens can read it directly from the clear color state buffer.
@@ -4860,12 +4859,11 @@ update_clear_value(struct iris_context *ice,
    while (aux_modes) {
       enum isl_aux_usage aux_usage = u_bit_scan(&aux_modes);
 
-      surf_state_update_clear_value(batch, res, &surf_state->ref,
-                                    all_aux_modes, aux_usage);
+      surf_state_update_clear_value(batch, res, surf_state, aux_usage);
    }
 #elif GFX_VER == 8
    /* TODO: Could update rather than re-filling */
-   alloc_surface_states(surf_state, all_aux_modes);
+   alloc_surface_states(surf_state, surf_state->aux_usages);
 
    void *map = surf_state->cpu;
 
@@ -4911,11 +4909,10 @@ use_surface(struct iris_context *ice,
 
    if (memcmp(&res->aux.clear_color, &surf->clear_color,
               sizeof(surf->clear_color)) != 0) {
-      update_clear_value(ice, batch, res, &surf->surface_state,
-                         res->aux.possible_usages, &surf->view);
+      update_clear_value(ice, batch, res, &surf->surface_state, &surf->view);
       if (GFX_VER == 8) {
          update_clear_value(ice, batch, res, &surf->surface_state_read,
-                            res->aux.possible_usages, &surf->read_view);
+                            &surf->read_view);
       }
       surf->clear_color = res->aux.clear_color;
    }
@@ -4941,7 +4938,10 @@ use_surface(struct iris_context *ice,
                : surf->surface_state.ref.offset;
 
    return offset +
-          surf_state_offset_for_aux(res->aux.possible_usages, aux_usage);
+          surf_state_offset_for_aux((GFX_VER == 8 && is_read_surface)
+                                       ? surf->surface_state_read.aux_usages
+                                       : surf->surface_state.aux_usages,
+                                    aux_usage);
 }
 
 static uint32_t
@@ -4958,7 +4958,7 @@ use_sampler_view(struct iris_context *ice,
    if (memcmp(&isv->res->aux.clear_color, &isv->clear_color,
               sizeof(isv->clear_color)) != 0) {
       update_clear_value(ice, batch, isv->res, &isv->surface_state,
-                         isv->res->aux.sampler_usages, &isv->view);
+                         &isv->view);
       isv->clear_color = isv->res->aux.clear_color;
    }
 
@@ -4977,7 +4977,7 @@ use_sampler_view(struct iris_context *ice,
                       IRIS_DOMAIN_NONE);
 
    return isv->surface_state.ref.offset +
-          surf_state_offset_for_aux(isv->res->aux.sampler_usages, aux_usage);
+          surf_state_offset_for_aux(isv->surface_state.aux_usages, aux_usage);
 }
 
 static uint32_t
@@ -5021,7 +5021,7 @@ use_image(struct iris_batch *batch, struct iris_context *ice,
       iris_image_view_aux_usage(ice, &iv->base, info);
 
    return iv->surface_state.ref.offset +
-      surf_state_offset_for_aux(res->aux.possible_usages, aux_usage);
+      surf_state_offset_for_aux(iv->surface_state.aux_usages, aux_usage);
 }
 
 #define push_bt_entry(addr) \

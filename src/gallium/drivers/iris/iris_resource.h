@@ -207,6 +207,12 @@ struct iris_surface_state {
    uint32_t *cpu;
 
    /**
+    * A bitfield of ISL_AUX_USAGE_* modes that are present in the surface
+    * states.
+    */
+   unsigned aux_usages;
+
+   /**
     * How many states are there?  (Each aux mode has its own state.)
     */
    unsigned num_states;
