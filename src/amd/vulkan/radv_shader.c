@@ -594,6 +594,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
                .multiview = true,
                .physical_storage_buffer_address = true,
                .post_depth_coverage = true,
+               .ray_query = true,
                .ray_tracing = true,
                .runtime_descriptor_array = true,
                .shader_clock = true,

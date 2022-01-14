@@ -434,6 +434,8 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_pipeline_library =
          (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
       .KHR_push_descriptor = true,
+      .KHR_ray_query =
+         (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
       .KHR_ray_tracing_pipeline =
          (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
       .KHR_relaxed_block_layout = true,
@@ -1637,6 +1639,12 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *)ext;
          features->primitiveTopologyListRestart = true;
          features->primitiveTopologyPatchListRestart = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
+         VkPhysicalDeviceRayQueryFeaturesKHR *features =
+            (VkPhysicalDeviceRayQueryFeaturesKHR *)ext;
+         features->rayQuery = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
