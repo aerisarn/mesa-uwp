@@ -109,6 +109,7 @@ nir_options = {
    .lower_unpack_snorm_4x8 = true,
    .lower_unpack_unorm_2x16 = true,
    .lower_unpack_unorm_4x8 = true,
+   .lower_interpolate_at = true,
    .has_fsub = true,
    .has_isub = true,
    .use_scoped_barrier = true,
@@ -256,6 +257,10 @@ enum dxil_intr {
    DXIL_INTR_DDY_COARSE = 84,
    DXIL_INTR_DDX_FINE = 85,
    DXIL_INTR_DDY_FINE = 86,
+
+   DXIL_INTR_EVAL_SNAPPED = 87,
+   DXIL_INTR_EVAL_SAMPLE_INDEX = 88,
+   DXIL_INTR_EVAL_CENTROID = 89,
 
    DXIL_INTR_SAMPLE_INDEX = 90,
 
@@ -2913,6 +2918,70 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
 }
 
 static bool
+emit_load_interpolated_input(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   nir_intrinsic_instr *barycentric = nir_src_as_intrinsic(intr->src[0]);
+
+   const struct dxil_value *args[6] = { 0 };
+
+   unsigned opcode_val;
+   const char *func_name;
+   unsigned num_args;
+   switch (barycentric->intrinsic) {
+   case nir_intrinsic_load_barycentric_at_offset:
+      opcode_val = DXIL_INTR_EVAL_SNAPPED;
+      func_name = "dx.op.evalSnapped";
+      num_args = 6;
+      for (unsigned i = 0; i < 2; ++i) {
+         const struct dxil_value *float_offset = get_src(ctx, &barycentric->src[0], i, nir_type_float);
+         /* GLSL uses [-0.5f, 0.5f), DXIL uses (-8, 7) */
+         const struct dxil_value *offset_16 = dxil_emit_binop(&ctx->mod,
+            DXIL_BINOP_MUL, float_offset, dxil_module_get_float_const(&ctx->mod, 16.0f), 0);
+         args[i + 4] = dxil_emit_cast(&ctx->mod, DXIL_CAST_FPTOSI,
+            dxil_module_get_int_type(&ctx->mod, 32), offset_16);
+      }
+      break;
+   case nir_intrinsic_load_barycentric_pixel:
+      opcode_val = DXIL_INTR_EVAL_SNAPPED;
+      func_name = "dx.op.evalSnapped";
+      num_args = 6;
+      args[4] = args[5] = dxil_module_get_int32_const(&ctx->mod, 0);
+      break;
+   case nir_intrinsic_load_barycentric_at_sample:
+      opcode_val = DXIL_INTR_EVAL_SAMPLE_INDEX;
+      func_name = "dx.op.evalSampleIndex";
+      num_args = 5;
+      args[4] = get_src(ctx, &barycentric->src[0], 0, nir_type_int);
+      break;
+   case nir_intrinsic_load_barycentric_centroid:
+      opcode_val = DXIL_INTR_EVAL_CENTROID;
+      func_name = "dx.op.evalCentroid";
+      num_args = 4;
+      break;
+   default:
+      unreachable("Unsupported interpolation barycentric intrinsic");
+   }
+   args[0] = dxil_module_get_int32_const(&ctx->mod, opcode_val);
+   args[1] = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
+   args[2] = get_src(ctx, &intr->src[1], 0, nir_type_int);
+
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, func_name, DXIL_F32);
+
+   if (!func)
+      return false;
+
+   for (unsigned i = 0; i < intr->num_components; ++i) {
+      args[3] = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+
+      const struct dxil_value *retval = dxil_emit_call(&ctx->mod, func, args, num_args);
+      if (!retval)
+         return false;
+      store_dest(ctx, &intr->dest, i, retval, nir_type_float);
+   }
+   return true;
+}
+
+static bool
 emit_load_ptr(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    struct nir_variable *var =
@@ -3775,6 +3844,16 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_load_input_via_intrinsic(ctx, intr);
    case nir_intrinsic_store_output:
       return emit_store_output_via_intrinsic(ctx, intr);
+
+   case nir_intrinsic_load_barycentric_at_offset:
+   case nir_intrinsic_load_barycentric_at_sample:
+   case nir_intrinsic_load_barycentric_centroid:
+   case nir_intrinsic_load_barycentric_pixel:
+      /* Emit nothing, we only support these as inputs to load_interpolated_input */
+      return true;
+   case nir_intrinsic_load_interpolated_input:
+      return emit_load_interpolated_input(ctx, intr);
+      break;
 
    case nir_intrinsic_vulkan_resource_index:
       return emit_vulkan_resource_index(ctx, intr);
