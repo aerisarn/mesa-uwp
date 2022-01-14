@@ -165,7 +165,6 @@ fast_clear_color(struct iris_context *ice,
                  struct iris_resource *res,
                  unsigned level,
                  const struct pipe_box *box,
-                 enum isl_format format,
                  union isl_color_value color)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
@@ -335,7 +334,7 @@ clear_color(struct iris_context *ice,
                                               render_condition_enabled,
                                               format, color);
    if (can_fast_clear) {
-      fast_clear_color(ice, res, level, box, format, color);
+      fast_clear_color(ice, res, level, box, color);
       return;
    }
 
