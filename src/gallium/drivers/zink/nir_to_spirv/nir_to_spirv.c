@@ -3901,10 +3901,15 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
                                 sizeof(SpvId), entry->ssa_alloc);
    if (!ctx.defs)
       goto fail;
-   ctx.resident_defs = ralloc_array_size(ctx.mem_ctx,
-                                         sizeof(SpvId), entry->ssa_alloc);
-   if (!ctx.resident_defs)
-      goto fail;
+   if (sinfo->have_sparse) {
+      /* this could be huge, so only alloc if needed since it's extremely unlikely to
+       * ever be used by anything except cts
+       */
+      ctx.resident_defs = ralloc_array_size(ctx.mem_ctx,
+                                            sizeof(SpvId), entry->ssa_alloc);
+      if (!ctx.resident_defs)
+         goto fail;
+   }
    ctx.num_defs = entry->ssa_alloc;
 
    nir_index_local_regs(entry);

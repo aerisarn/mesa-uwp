@@ -56,6 +56,7 @@ struct zink_shader_info {
    unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
    bool last_vertex;
    bool have_xfb;
+   bool have_sparse;
 };
 
 

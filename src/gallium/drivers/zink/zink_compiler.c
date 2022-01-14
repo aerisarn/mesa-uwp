@@ -1712,13 +1712,17 @@ lower_1d_shadow(nir_shader *shader)
 }
 
 static void
-scan_nir(nir_shader *shader)
+scan_nir(nir_shader *shader, struct zink_shader *zs)
 {
    nir_foreach_function(function, shader) {
       if (!function->impl)
          continue;
       nir_foreach_block_safe(block, function->impl) {
          nir_foreach_instr_safe(instr, block) {
+            if (instr->type == nir_instr_type_tex) {
+               nir_tex_instr *tex = nir_instr_as_tex(instr);
+               zs->sinfo.have_sparse |= tex->is_sparse;
+            }
             if (instr->type != nir_instr_type_intrinsic)
                continue;
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
@@ -1751,6 +1755,9 @@ scan_nir(nir_shader *shader)
 
                 shader->info.images_used |= mask;
             }
+            if (intr->intrinsic == nir_intrinsic_is_sparse_texels_resident ||
+                intr->intrinsic == nir_intrinsic_image_deref_sparse_load)
+               zs->sinfo.have_sparse = true;
          }
       }
    }
@@ -1865,7 +1872,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (has_bindless_io)
       NIR_PASS_V(nir, lower_bindless_io);
 
-   scan_nir(nir);
+   scan_nir(nir, ret);
 
    foreach_list_typed_reverse_safe(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
