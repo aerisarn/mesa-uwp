@@ -54,6 +54,7 @@ struct tgsi_token;
 struct zink_shader_info {
    struct pipe_stream_output_info so_info;
    unsigned so_info_slots[PIPE_MAX_SO_OUTPUTS];
+   bool last_vertex;
    bool have_xfb;
 };
 

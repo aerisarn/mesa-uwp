@@ -3781,7 +3781,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    }
 
 
-   if (sinfo)
+   if (sinfo->last_vertex)
       emit_so_info(&ctx, sinfo, max_output + 1);
 
    /* we have to reverse iterate to match what's done in zink_compiler.c */
@@ -3941,7 +3941,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
    emit_cf_list(&ctx, &entry->body);
 
    /* vertex/tess shader emits copied xfb outputs at the end of the shader */
-   if (sinfo && (ctx.stage == MESA_SHADER_VERTEX || ctx.stage == MESA_SHADER_TESS_EVAL))
+   if (sinfo->last_vertex && (ctx.stage == MESA_SHADER_VERTEX || ctx.stage == MESA_SHADER_TESS_EVAL))
       emit_so_outputs(&ctx, sinfo);
 
    spirv_builder_return(&ctx.builder); // doesn't belong here, but whatevz

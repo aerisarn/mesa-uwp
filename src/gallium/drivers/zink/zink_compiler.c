@@ -1086,7 +1086,7 @@ VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
-   void *sinfo = NULL;
+   struct zink_shader_info *sinfo = &zs->sinfo;
    nir_shader *nir = nir_shader_clone(NULL, base_nir);
    bool need_optimize = false;
    bool inlined_uniforms = false;
@@ -1129,7 +1129,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       case MESA_SHADER_GEOMETRY:
          if (zink_vs_key_base(key)->last_vertex_stage) {
             if (zs->sinfo.have_xfb)
-               sinfo = &zs->sinfo;
+               sinfo->last_vertex = true;
 
             if (!zink_vs_key_base(key)->clip_halfz) {
                NIR_PASS_V(nir, nir_lower_clip_halfz);
