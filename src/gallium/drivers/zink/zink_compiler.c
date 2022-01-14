@@ -1723,6 +1723,7 @@ scan_nir(nir_shader *shader)
                continue;
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
             if (intr->intrinsic == nir_intrinsic_image_deref_load ||
+                intr->intrinsic == nir_intrinsic_image_deref_sparse_load ||
                 intr->intrinsic == nir_intrinsic_image_deref_store ||
                 intr->intrinsic == nir_intrinsic_image_deref_atomic_add ||
                 intr->intrinsic == nir_intrinsic_image_deref_atomic_imin ||
