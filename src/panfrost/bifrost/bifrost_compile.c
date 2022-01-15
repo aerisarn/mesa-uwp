@@ -2167,6 +2167,8 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_i2f32:
+                assert(src_sz == 32 || src_sz == 16 || src_sz == 8);
+
                 if (src_sz == 32)
                         bi_s32_to_f32_to(b, dst, s0, BI_ROUND_RTZ);
                 else if (src_sz == 16)
@@ -2176,17 +2178,26 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_i2i32:
-                if (src_sz == 16)
+                assert(src_sz == 32 || src_sz == 16 || src_sz == 8);
+
+                if (src_sz == 32)
+                        bi_mov_i32_to(b, dst, s0);
+                else if (src_sz == 16)
                         bi_s16_to_s32_to(b, dst, s0);
-                else
+                else if (src_sz == 8)
                         bi_s8_to_s32_to(b, dst, s0);
                 break;
 
         case nir_op_u2u32:
-                if (src_sz == 16)
+                assert(src_sz == 32 || src_sz == 16 || src_sz == 8);
+
+                if (src_sz == 32)
+                        bi_mov_i32_to(b, dst, s0);
+                else if (src_sz == 16)
                         bi_u16_to_u32_to(b, dst, s0);
-                else
+                else if (src_sz == 8)
                         bi_u8_to_u32_to(b, dst, s0);
+
                 break;
 
         case nir_op_i2i16:
