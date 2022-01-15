@@ -141,6 +141,9 @@ struct ac_shader_args {
    struct ac_arg workgroup_ids[3];
    struct ac_arg tg_size;
 
+   /* Mesh and task shaders */
+   struct ac_arg task_ring_entry; /* Pointer into the draw and payload rings. */
+
    /* Vulkan only */
    struct ac_arg push_constants;
    struct ac_arg inline_push_consts[AC_MAX_INLINE_PUSH_CONSTS];
