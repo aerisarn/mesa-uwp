@@ -435,11 +435,6 @@ ir_array_splitting_visitor::visit_leave(ir_assignment *ir)
    handle_rvalue(&ir->rhs);
    ir->rhs->accept(this);
 
-   if (ir->condition) {
-      handle_rvalue(&ir->condition);
-      ir->condition->accept(this);
-   }
-
    return visit_continue;
 }
 
