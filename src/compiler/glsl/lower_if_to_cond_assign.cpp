@@ -201,14 +201,18 @@ move_block_to_cond_assign(void *mem_ctx,
                                                 cond_expr->clone(mem_ctx, NULL),
                                                 assign->rhs);
                } else {
-                  assign->condition = cond_expr->clone(mem_ctx, NULL);
+                  assign->rhs =
+                     new(mem_ctx) ir_expression(ir_triop_csel,
+                                                cond_expr->clone(mem_ctx, NULL),
+                                                assign->rhs,
+                                                assign->lhs->as_dereference());
                }
             } else {
-               assign->condition =
-                  new(mem_ctx) ir_expression(ir_binop_logic_and,
-                                             glsl_type::bool_type,
+               assign->rhs =
+                  new(mem_ctx) ir_expression(ir_triop_csel,
                                              cond_expr->clone(mem_ctx, NULL),
-                                             assign->condition);
+                                             assign->rhs,
+                                             assign->lhs->as_dereference());
             }
          }
       }
