@@ -125,7 +125,7 @@ static void
 pandecode_validate_buffer(mali_ptr addr, size_t sz)
 {
         if (!addr) {
-                pandecode_msg("XXX: null pointer deref");
+                pandecode_msg("XXX: null pointer deref\n");
                 return;
         }
 
@@ -1424,7 +1424,7 @@ GENX(pandecode_abort_on_fault)(mali_ptr jc_gpu_va)
 
                 /* Ensure the job is marked COMPLETE */
                 if (h.exception_status != 0x1) {
-                        fprintf(stderr, "Incomplete job or timeout");
+                        fprintf(stderr, "Incomplete job or timeout\n");
                         abort();
                 }
         } while ((jc_gpu_va = next_job));
