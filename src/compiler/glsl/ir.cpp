@@ -153,7 +153,7 @@ ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
                              unsigned write_mask)
    : ir_instruction(ir_type_assignment)
 {
-   this->condition = NULL;
+   this->unused_condition = NULL;
    this->rhs = rhs;
    this->lhs = lhs;
    this->write_mask = write_mask;
@@ -165,7 +165,7 @@ ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
 ir_assignment::ir_assignment(ir_rvalue *lhs, ir_rvalue *rhs)
    : ir_instruction(ir_type_assignment)
 {
-   this->condition = NULL;
+   this->unused_condition = NULL;
    this->rhs = rhs;
 
    /* If the RHS is a vector type, assume that all components of the vector

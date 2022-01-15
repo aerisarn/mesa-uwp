@@ -486,7 +486,7 @@ ir_constant_propagation_visitor::add_constant(ir_assignment *ir)
 {
    acp_entry *entry;
 
-   if (ir->condition)
+   if (ir->get_condition())
       return;
 
    if (!ir->write_mask)

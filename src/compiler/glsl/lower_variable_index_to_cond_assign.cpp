@@ -385,11 +385,11 @@ public:
        * condition!  This is acomplished by wrapping the new conditional
        * assignments in an if-statement that uses the original condition.
        */
-      if (orig_assign != NULL && orig_assign->condition != NULL) {
+      if (orig_assign != NULL && orig_assign->get_condition() != NULL) {
          /* No need to clone the condition because the IR that it hangs on is
           * going to be removed from the instruction sequence.
           */
-         ir_if *if_stmt = new(mem_ctx) ir_if(orig_assign->condition);
+         ir_if *if_stmt = new(mem_ctx) ir_if(orig_assign->get_condition());
          ir_factory then_body(&if_stmt->then_instructions, body.mem_ctx);
 
          sg.generate(0, length, then_body);

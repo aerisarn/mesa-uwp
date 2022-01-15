@@ -1070,9 +1070,9 @@ bool ir_function_signature::constant_expression_evaluate_expression_list(void *m
          /* (assign [condition] (write-mask) (ref) (value)) */
       case ir_type_assignment: {
          ir_assignment *asg = inst->as_assignment();
-         if (asg->condition) {
+         if (asg->get_condition()) {
             ir_constant *cond =
-               asg->condition->constant_expression_value(mem_ctx,
+               asg->get_condition()->constant_expression_value(mem_ctx,
                                                          variable_context);
             if (!cond)
                return false;

@@ -416,7 +416,7 @@ ir_array_splitting_visitor::visit_leave(ir_assignment *ir)
             new(mem_ctx) ir_dereference_array(ir->rhs->clone(mem_ctx, NULL),
                                               new(mem_ctx) ir_constant(i));
 
-         assert(ir->condition == NULL);
+         assert(ir->get_condition() == NULL);
 
          ir_assignment *assign_i = new(mem_ctx) ir_assignment(lhs_i, rhs_i);
 

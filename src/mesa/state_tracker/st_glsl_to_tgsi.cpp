@@ -3387,8 +3387,8 @@ glsl_to_tgsi_visitor::visit(ir_assignment *ir)
    assert(l.file != PROGRAM_UNDEFINED);
    assert(r.file != PROGRAM_UNDEFINED);
 
-   if (ir->condition) {
-      const bool switch_order = this->process_move_condition(ir->condition);
+   if (ir->get_condition()) {
+      const bool switch_order = this->process_move_condition(ir->get_condition());
       st_src_reg condition = this->result;
 
       emit_block_mov(ir, ir->lhs->type, &l, &r, &condition, switch_order);

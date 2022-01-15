@@ -654,7 +654,7 @@ ir_copy_propagation_elements_visitor::kill(kill_entry *k)
 void
 ir_copy_propagation_elements_visitor::add_copy(ir_assignment *ir)
 {
-   if (ir->condition)
+   if (ir->get_condition())
       return;
 
    {
