@@ -150,26 +150,6 @@ ir_assignment::whole_variable_written()
 }
 
 ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
-			     ir_rvalue *condition, unsigned write_mask)
-   : ir_instruction(ir_type_assignment)
-{
-   this->condition = condition;
-   this->rhs = rhs;
-   this->lhs = lhs;
-   this->write_mask = write_mask;
-
-   if (lhs->type->is_scalar() || lhs->type->is_vector()) {
-      int lhs_components = 0;
-      for (int i = 0; i < 4; i++) {
-	 if (write_mask & (1 << i))
-	    lhs_components++;
-      }
-
-      assert(lhs_components == this->rhs->type->vector_elements);
-   }
-}
-
-ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
                              unsigned write_mask)
    : ir_instruction(ir_type_assignment)
 {

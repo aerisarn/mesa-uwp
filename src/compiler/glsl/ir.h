@@ -1472,9 +1472,6 @@ public:
     * Since a write mask is supplied, the LHS must already be a bare
     * \c ir_dereference.  The cannot be any swizzles in the LHS.
     */
-   ir_assignment(ir_dereference *lhs, ir_rvalue *rhs, ir_rvalue *condition,
-		 unsigned write_mask);
-
    ir_assignment(ir_dereference *lhs, ir_rvalue *rhs, unsigned write_mask);
 
    virtual ir_assignment *clone(void *mem_ctx, struct hash_table *ht) const;
