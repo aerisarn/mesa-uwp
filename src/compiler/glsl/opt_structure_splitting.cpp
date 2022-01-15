@@ -293,8 +293,6 @@ ir_structure_splitting_visitor::visit_leave(ir_assignment *ir)
       split_deref(&ir->lhs);
    }
 
-   handle_rvalue(&ir->condition);
-
    return visit_continue;
 }
 
