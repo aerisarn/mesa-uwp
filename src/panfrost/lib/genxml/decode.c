@@ -859,9 +859,7 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 uniform_count = state.properties.uniform_count;
 #endif
 
-#if PAN_ARCH >= 6
-                DUMP_UNPACKED(PRELOAD, state.preload, "Preload:\n");
-#elif PAN_ARCH == 4
+#if PAN_ARCH == 4
                 mali_ptr shader = state.blend_shader & ~0xF;
                 if (state.multisample_misc.blend_shader && shader)
                         pandecode_blend_shader_disassemble(shader, job_no, job_type, gpu_id);
