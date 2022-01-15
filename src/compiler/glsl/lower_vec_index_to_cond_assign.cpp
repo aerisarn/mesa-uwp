@@ -232,9 +232,6 @@ ir_vec_index_to_cond_assign_visitor::visit_leave(ir_assignment *ir)
 {
    ir->rhs = convert_vector_extract_to_cond_assign(ir->rhs);
 
-   if (ir->condition)
-      ir->condition = convert_vector_extract_to_cond_assign(ir->condition);
-
    return visit_continue;
 }
 
