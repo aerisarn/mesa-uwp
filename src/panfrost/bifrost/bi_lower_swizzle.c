@@ -108,7 +108,21 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
             return;
         }
 
-        /* If the instruction is scalar we can ignore the other component */
+        /* First, try to apply a given swizzle to a constant to clear the
+         * runtime swizzle. This is less heavy-handed than ignoring the
+         * swizzle for scalar destinations, since it maintains
+         * replication of the destination.
+         */
+        if (ins->src[src].type == BI_INDEX_CONSTANT) {
+                ins->src[src].value = bi_apply_swizzle(ins->src[src].value,
+                                                       ins->src[src].swizzle);
+                ins->src[src].swizzle = BI_SWIZZLE_H01;
+                return;
+        }
+
+        /* Even if the source does not replicate, if the consuming instruction
+         * produces a 16-bit scalar, we can ignore the other component.
+         */
         if (ins->dest[0].swizzle == BI_SWIZZLE_H00 &&
                         ins->src[src].swizzle == BI_SWIZZLE_H00)
         {
