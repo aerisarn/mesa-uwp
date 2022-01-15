@@ -1273,6 +1273,15 @@ system_value("ring_tess_factors_offset_amd", 1)
 # Descriptor where ES outputs are stored for GS to read on GFX6-8
 system_value("ring_esgs_amd", 4)
 system_value("ring_es2gs_offset_amd", 1)
+# Address of the task shader draw ring (used for VARYING_SLOT_TASK_COUNT)
+system_value("ring_task_draw_amd", 4)
+# Address of the task shader payload ring (used for all other outputs)
+system_value("ring_task_payload_amd", 4)
+# Pointer into the draw and payload rings
+system_value("task_ring_entry_amd", 1)
+# Pointer into the draw and payload rings
+system_value("task_ib_addr", 2)
+system_value("task_ib_stride", 1)
 
 # Number of patches processed by each TCS workgroup
 system_value("tcs_num_patches_amd", 1)
