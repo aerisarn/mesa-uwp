@@ -355,6 +355,28 @@ bi_is_word_equiv(bi_index left, bi_index right)
         return bi_is_equiv(left, right) && left.offset == right.offset;
 }
 
+/* An even stronger equivalence that checks if indices correspond to the
+ * right value when evaluated
+ */
+static inline bool
+bi_is_value_equiv(bi_index left, bi_index right)
+{
+        if (left.type == BI_INDEX_CONSTANT && right.type == BI_INDEX_CONSTANT) {
+                return (bi_apply_swizzle(left.value, left.swizzle) ==
+                        bi_apply_swizzle(right.value, right.swizzle)) &&
+                       (left.abs == right.abs) &&
+                       (left.neg == right.neg);
+        } else {
+                return (left.value == right.value) &&
+                       (left.abs == right.abs) &&
+                       (left.neg == right.neg) &&
+                       (left.swizzle == right.swizzle) &&
+                       (left.offset == right.offset) &&
+                       (left.reg == right.reg) &&
+                       (left.type == right.type);
+        }
+}
+
 #define BI_MAX_DESTS 2
 #define BI_MAX_SRCS 5
 
