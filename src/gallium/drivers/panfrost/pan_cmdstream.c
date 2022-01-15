@@ -2739,6 +2739,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
         }
 
         enum pipe_prim_type prim = u_reduced_prim(info->mode);
+        bool polygon = (prim == PIPE_PRIM_TRIANGLES);
         void *prim_size = pan_section_ptr(job, TILER_JOB, PRIMITIVE_SIZE);
 
 #if PAN_ARCH >= 6
@@ -2754,8 +2755,17 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 cfg.four_components_per_vertex = true;
                 cfg.draw_descriptor_is_64b = true;
                 cfg.front_face_ccw = rast->front_ccw;
-                cfg.cull_front_face = rast->cull_face & PIPE_FACE_FRONT;
-                cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
+
+                /*
+                 * From the Gallium documentation,
+                 * pipe_rasterizer_state::cull_face "indicates which faces of
+                 * polygons to cull". Points and lines are not considered
+                 * polygons and should be drawn even if all faces are culled.
+                 * The hardware does not take primitive type into account when
+                 * culling, so we need to do that check ourselves.
+                 */
+                cfg.cull_front_face = polygon && (rast->cull_face & PIPE_FACE_FRONT);
+                cfg.cull_back_face = polygon && (rast->cull_face & PIPE_FACE_BACK);
                 cfg.position = pos;
                 cfg.state = batch->rsd[PIPE_SHADER_FRAGMENT];
                 cfg.attributes = batch->attribs[PIPE_SHADER_FRAGMENT];
