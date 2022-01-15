@@ -1757,8 +1757,9 @@ nir_visitor::visit(ir_assignment *ir)
    }
 
    enum gl_access_qualifier qualifiers = deref_get_qualifier(lhs_deref);
-      nir_store_deref_with_access(&b, lhs_deref, src, write_mask,
-                                  qualifiers);
+
+   nir_store_deref_with_access(&b, lhs_deref, src, write_mask,
+                               qualifiers);
 }
 
 /*
