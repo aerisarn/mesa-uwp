@@ -585,7 +585,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 #if PAN_ARCH >= 9
         disassemble_valhall(pandecode_dump_stream, (const uint64_t *) code, sz, true);
 #elif PAN_ARCH >= 6 && PAN_ARCH <= 7
-        disassemble_bifrost(pandecode_dump_stream, code, sz, true);
+        disassemble_bifrost(pandecode_dump_stream, code, sz, false);
 #else
 	stats = disassemble_midgard(pandecode_dump_stream,
                                     code, sz, gpu_id, true);
