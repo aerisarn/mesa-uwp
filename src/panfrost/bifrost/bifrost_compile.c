@@ -1324,12 +1324,9 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_emit_ld_tile(b, instr);
                 break;
 
-        case nir_intrinsic_discard_if: {
-                bi_index src = bi_src_index(&instr->src[0]);
-                assert(nir_src_bit_size(instr->src[0]) == 1);
-                bi_discard_b32(b, bi_half(src, false));
+        case nir_intrinsic_discard_if:
+                bi_discard_b32(b, bi_src_index(&instr->src[0]));
                 break;
-        }
 
         case nir_intrinsic_discard:
                 bi_discard_f32(b, bi_zero(), bi_zero(), BI_CMPF_EQ);
@@ -1474,10 +1471,6 @@ bi_alu_src_index(nir_alu_src src, unsigned comps)
         assert(!(src.negate || src.abs));
 
         unsigned bitsize = nir_src_bit_size(src.src);
-
-        /* TODO: Do we need to do something more clever with 1-bit bools? */
-        if (bitsize == 1)
-                bitsize = 16;
 
         /* the bi_index carries the 32-bit (word) offset separate from the
          * subword swizzle, first handle the offset */
@@ -1753,63 +1746,58 @@ bi_clper_xor(bi_builder *b, bi_index s0, bi_index s1)
         return bi_clper_v6_i32(b, s0, lane);
 }
 
-static bi_instr *
-bi_emit_alu_bool(bi_builder *b, unsigned sz, nir_op op,
-      bi_index dst, bi_index s0, bi_index s1, bi_index s2)
+static enum bi_cmpf
+bi_translate_cmpf(nir_op op)
 {
-        /* Handle 1-bit bools as 0/~0 by default and let the optimizer deal
-         * with the bit patterns later. 0/~0 has the nice property of being
-         * independent of replicated vectorization. */
-        if (sz == 1) sz = 16;
-        bi_index f = bi_zero();
-        bi_index t = bi_imm_u16(0xFFFF);
-
         switch (op) {
-        case nir_op_feq:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_EQ, BI_RESULT_TYPE_M1);
-        case nir_op_flt:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_M1);
-        case nir_op_fge:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_M1);
-        case nir_op_fneu:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_NE, BI_RESULT_TYPE_M1);
+        case nir_op_ieq8:
+        case nir_op_ieq16:
+        case nir_op_ieq32:
+        case nir_op_feq16:
+        case nir_op_feq32:
+                return BI_CMPF_EQ;
 
-        case nir_op_ieq:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_EQ, BI_RESULT_TYPE_M1);
-        case nir_op_ine:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_NE, BI_RESULT_TYPE_M1);
-        case nir_op_ilt:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_M1);
-        case nir_op_ige:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_M1);
-        case nir_op_ult:
-                return bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_M1);
-        case nir_op_uge:
-                return bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_M1);
+        case nir_op_ine8:
+        case nir_op_ine16:
+        case nir_op_ine32:
+        case nir_op_fneu16:
+        case nir_op_fneu32:
+                return BI_CMPF_NE;
 
-        case nir_op_iand:
-                return bi_lshift_and_to(b, sz, dst, s0, s1, bi_imm_u8(0));
-        case nir_op_ior:
-                return bi_lshift_or_to(b, sz, dst, s0, s1, bi_imm_u8(0));
-        case nir_op_ixor:
-                return bi_lshift_xor_to(b, sz, dst, s0, s1, bi_imm_u8(0));
-        case nir_op_inot:
-                return bi_lshift_or_to(b, sz, dst, bi_zero(), bi_not(s0), bi_imm_u8(0));
+        case nir_op_ilt8:
+        case nir_op_ilt16:
+        case nir_op_ilt32:
+        case nir_op_flt16:
+        case nir_op_flt32:
+        case nir_op_ult8:
+        case nir_op_ult16:
+        case nir_op_ult32:
+                return BI_CMPF_LT;
 
-        case nir_op_f2b1:
-                return bi_csel_to(b, nir_type_int, sz, dst, s0, f, f, t, BI_CMPF_EQ);
-        case nir_op_i2b1:
-                return bi_csel_to(b, nir_type_int, sz, dst, s0, f, f, t, BI_CMPF_EQ);
-        case nir_op_b2b1:
-                return bi_csel_to(b, nir_type_int, sz, dst, s0, f, f, t, BI_CMPF_EQ);
-
-        case nir_op_bcsel:
-                return bi_csel_to(b, nir_type_int, sz, dst, s0, f, s1, s2, BI_CMPF_NE);
+        case nir_op_ige8:
+        case nir_op_ige16:
+        case nir_op_ige32:
+        case nir_op_fge16:
+        case nir_op_fge32:
+        case nir_op_uge8:
+        case nir_op_uge16:
+        case nir_op_uge32:
+                return BI_CMPF_GE;
 
         default:
-                fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[op].name);
-                unreachable("Unhandled boolean ALU instruction");
+                unreachable("invalid comparison");
         }
+}
+
+static bool
+bi_nir_is_replicated(nir_alu_src *src)
+{
+        for (unsigned i = 1; i < nir_src_num_components(src->src); ++i) {
+                if (src->swizzle[0] == src->swizzle[i])
+                        return false;
+        }
+
+        return true;
 }
 
 static void
@@ -1820,12 +1808,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         unsigned sz = nir_dest_bit_size(instr->dest.dest);
         unsigned comps = nir_dest_num_components(instr->dest.dest);
         unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
-        unsigned src1_sz = srcs > 1 ? nir_src_bit_size(instr->src[1].src) : 0;
-        bool is_bool = (sz == 1);
-
-        /* TODO: Anything else? */
-        if (sz == 1)
-                sz = 16;
 
         /* Indicate scalarness */
         if (sz == 16 && comps == 1)
@@ -1972,6 +1954,37 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 return;
         }
 
+        case nir_op_b32csel:
+        {
+                if (sz != 16)
+                        break;
+
+                /* We allow vectorizing b32csel(cond, A, B) which can be
+                 * translated as MUX.v2i16, even though cond is a 32-bit vector.
+                 *
+                 * If the source condition vector is replicated, we can use
+                 * MUX.v2i16 directly, letting each component use the
+                 * corresponding half of the 32-bit source. NIR uses 0/~0
+                 * booleans so that's guaranteed to work (that is, 32-bit NIR
+                 * booleans are 16-bit replicated).
+                 *
+                 * If we're not replicated, we use the same trick but must
+                 * insert a MKVEC.v2i16 first to convert down to 16-bit.
+                 */
+                bi_index idx = bi_src_index(&instr->src[0].src);
+                bi_index s0 = bi_word(idx, instr->src[0].swizzle[0]);
+                bi_index s1 = bi_alu_src_index(instr->src[1], comps);
+                bi_index s2 = bi_alu_src_index(instr->src[2], comps);
+
+                if (!bi_nir_is_replicated(&instr->src[0])) {
+                        s0 = bi_mkvec_v2i16(b, bi_half(s0, false),
+                                            bi_half(bi_word(idx, instr->src[0].swizzle[1]), false));
+                }
+
+                bi_mux_v2i16_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
+                return;
+        }
+
         default:
                 break;
         }
@@ -1979,11 +1992,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         bi_index s0 = srcs > 0 ? bi_alu_src_index(instr->src[0], comps) : bi_null();
         bi_index s1 = srcs > 1 ? bi_alu_src_index(instr->src[1], comps) : bi_null();
         bi_index s2 = srcs > 2 ? bi_alu_src_index(instr->src[2], comps) : bi_null();
-
-        if (is_bool) {
-                bi_emit_alu_bool(b, src_sz, instr->op, dst, s0, s1, s2);
-                return;
-        }
 
         switch (instr->op) {
         case nir_op_ffma:
@@ -2065,12 +2073,16 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
                 break;
 
-        case nir_op_bcsel:
-                if (src1_sz == 8)
-                        bi_mux_v4i8_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
-                else
-                        bi_csel_to(b, nir_type_int, src1_sz,
-                                        dst, s0, bi_zero(), s1, s2, BI_CMPF_NE);
+        case nir_op_b8csel:
+                bi_mux_v4i8_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
+                break;
+
+        case nir_op_b16csel:
+                bi_mux_v2i16_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
+                break;
+
+        case nir_op_b32csel:
+                bi_mux_i32_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
                 break;
 
         case nir_op_ishl:
@@ -2246,23 +2258,62 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         bi_mov_i32_to(b, dst, s0);
                 break;
 
-        case nir_op_b2f16:
-        case nir_op_b2f32:
-                bi_csel_to(b, nir_type_int, sz, dst, s0, bi_zero(),
-                                (sz == 16) ? bi_imm_f16(1.0) : bi_imm_f32(1.0),
-                                (sz == 16) ? bi_imm_f16(0.0) : bi_imm_f32(0.0),
-                                BI_CMPF_NE);
-                break;
-
-        case nir_op_b2b32:
-                bi_csel_to(b, nir_type_int, sz, dst, s0, bi_zero(),
-                                bi_imm_u32(~0), bi_zero(), BI_CMPF_NE);
-                break;
-
         case nir_op_b2i8:
         case nir_op_b2i16:
         case nir_op_b2i32:
                 bi_lshift_and_to(b, sz, dst, s0, bi_imm_uintN(1, sz), bi_imm_u8(0));
+                break;
+
+        case nir_op_f2b16:
+                bi_mux_v2i16_to(b, dst, bi_imm_u16(0), bi_imm_u16(~0), s0, BI_MUX_FP_ZERO);
+                break;
+        case nir_op_f2b32:
+                bi_mux_i32_to(b, dst, bi_imm_u32(0), bi_imm_u32(~0), s0, BI_MUX_FP_ZERO);
+                break;
+
+        case nir_op_i2b8:
+                bi_mux_v4i8_to(b, dst, bi_imm_u8(0), bi_imm_u8(~0), s0, BI_MUX_INT_ZERO);
+                break;
+        case nir_op_i2b16:
+                bi_mux_v2i16_to(b, dst, bi_imm_u16(0), bi_imm_u16(~0), s0, BI_MUX_INT_ZERO);
+                break;
+        case nir_op_i2b32:
+                bi_mux_i32_to(b, dst, bi_imm_u32(0), bi_imm_u32(~0), s0, BI_MUX_INT_ZERO);
+                break;
+
+        case nir_op_ieq8:
+        case nir_op_ine8:
+        case nir_op_ilt8:
+        case nir_op_ige8:
+        case nir_op_ieq16:
+        case nir_op_ine16:
+        case nir_op_ilt16:
+        case nir_op_ige16:
+        case nir_op_ieq32:
+        case nir_op_ine32:
+        case nir_op_ilt32:
+        case nir_op_ige32:
+                bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, bi_translate_cmpf(instr->op), BI_RESULT_TYPE_M1);
+                break;
+
+        case nir_op_ult8:
+        case nir_op_uge8:
+        case nir_op_ult16:
+        case nir_op_uge16:
+        case nir_op_ult32:
+        case nir_op_uge32:
+                bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, bi_translate_cmpf(instr->op), BI_RESULT_TYPE_M1);
+                break;
+
+        case nir_op_feq32:
+        case nir_op_feq16:
+        case nir_op_flt32:
+        case nir_op_flt16:
+        case nir_op_fge32:
+        case nir_op_fge16:
+        case nir_op_fneu32:
+        case nir_op_fneu16:
+                bi_fcmp_to(b, sz, dst, s0, s1, bi_translate_cmpf(instr->op), BI_RESULT_TYPE_M1);
                 break;
 
         case nir_op_fround_even:
@@ -3507,11 +3558,22 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
         NIR_PASS(progress, nir, nir_opt_vectorize, bi_vectorize_filter, NULL);
-        NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
-        NIR_PASS(progress, nir, nir_opt_dce);
+        NIR_PASS(progress, nir, nir_lower_bool_to_bitsize);
 
         /* Prepass to simplify instruction selection */
-        NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
+        late_algebraic = false;
+        NIR_PASS(late_algebraic, nir, bifrost_nir_lower_algebraic_late);
+
+        while (late_algebraic) {
+                late_algebraic = false;
+                NIR_PASS(late_algebraic, nir, nir_opt_algebraic_late);
+                NIR_PASS(progress, nir, nir_opt_constant_folding);
+                NIR_PASS(progress, nir, nir_copy_prop);
+                NIR_PASS(progress, nir, nir_opt_dce);
+                NIR_PASS(progress, nir, nir_opt_cse);
+        }
+
+        NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
         NIR_PASS(progress, nir, nir_opt_dce);
 
         if (nir->info.stage == MESA_SHADER_FRAGMENT) {
