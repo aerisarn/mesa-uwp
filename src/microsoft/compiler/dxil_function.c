@@ -80,6 +80,7 @@ static struct  predefined_func_descr predefined_funcs[] = {
 {"dx.op.evalSnapped", "O", "iiicii", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.evalCentroid", "O", "iiic", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.evalSampleIndex", "O", "iiici", DXIL_ATTR_KIND_READ_NONE},
+{"dx.op.coverage", "i", "i", DXIL_ATTR_KIND_READ_NONE},
 };
 
 struct func_descr {

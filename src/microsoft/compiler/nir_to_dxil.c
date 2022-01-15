@@ -264,6 +264,7 @@ enum dxil_intr {
    DXIL_INTR_EVAL_CENTROID = 89,
 
    DXIL_INTR_SAMPLE_INDEX = 90,
+   DXIL_INTR_COVERAGE = 91,
 
    DXIL_INTR_THREAD_ID = 93,
    DXIL_INTR_GROUP_ID = 94,
@@ -2463,10 +2464,10 @@ emit_load_local_workgroup_id(struct ntd_context *ctx,
    return true;
 }
 
-static bool
-emit_load_unary_external_function(struct ntd_context *ctx,
-                                  nir_intrinsic_instr *intr, const char *name,
-                                  int32_t dxil_intr)
+static const struct dxil_value *
+call_unary_external_function(struct ntd_context *ctx,
+                             const char *name,
+                             int32_t dxil_intr)
 {
    const struct dxil_func *func =
       dxil_get_function(&ctx->mod, name, DXIL_I32);
@@ -2480,10 +2481,35 @@ emit_load_unary_external_function(struct ntd_context *ctx,
 
    const struct dxil_value *args[] = {opcode};
 
-   const struct dxil_value *value =
-      dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static bool
+emit_load_unary_external_function(struct ntd_context *ctx,
+                                  nir_intrinsic_instr *intr, const char *name,
+                                  int32_t dxil_intr)
+{
+   const struct dxil_value *value = call_unary_external_function(ctx, name, dxil_intr);
    store_dest_value(ctx, &intr->dest, 0, value);
 
+   return true;
+}
+
+static bool
+emit_load_sample_mask_in(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_value *value = call_unary_external_function(ctx,
+      "dx.op.coverage", DXIL_INTR_COVERAGE);
+
+   /* Mask coverage with (1 << sample index). Note, done as an AND to handle extrapolation cases. */
+   if (ctx->mod.info.has_per_sample_input) {
+      value = dxil_emit_binop(&ctx->mod, DXIL_BINOP_AND, value,
+         dxil_emit_binop(&ctx->mod, DXIL_BINOP_SHL,
+            dxil_module_get_int32_const(&ctx->mod, 1),
+            call_unary_external_function(ctx, "dx.op.sampleIndex", DXIL_INTR_SAMPLE_INDEX), 0), 0);
+   }
+
+   store_dest_value(ctx, &intr->dest, 0, value);
    return true;
 }
 
@@ -3734,6 +3760,8 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_sample_id:
       return emit_load_unary_external_function(ctx, intr, "dx.op.sampleIndex",
                                                DXIL_INTR_SAMPLE_INDEX);
+   case nir_intrinsic_load_sample_mask_in:
+      return emit_load_sample_mask_in(ctx, intr);
    case nir_intrinsic_load_shared_dxil:
       return emit_load_shared(ctx, intr);
    case nir_intrinsic_load_scratch_dxil:
@@ -4844,6 +4872,17 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    nir_foreach_image_variable(var, ctx->shader) {
       if (!emit_uav_var(ctx, var, glsl_type_get_image_count(var->type)))
          return false;
+   }
+
+   ctx->mod.info.has_per_sample_input =
+      BITSET_TEST(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+   if (!ctx->mod.info.has_per_sample_input && ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in | nir_var_system_value) {
+         if (var->data.sample) {
+            ctx->mod.info.has_per_sample_input = true;
+            break;
+         }
+      }
    }
 
    nir_function_impl *entry = nir_shader_get_entrypoint(ctx->shader);
