@@ -4386,6 +4386,26 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          params.sampler = get_src_ssa(ctx, instr->src[i].src.ssa, 0);
          break;
 
+      case nir_tex_src_texture_offset:
+         params.tex = emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_SRV,
+            get_resource_id(ctx, DXIL_RESOURCE_CLASS_SRV, 0, instr->texture_index),
+            dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
+               get_src_ssa(ctx, instr->src[i].src.ssa, 0),
+               dxil_module_get_int32_const(&ctx->mod, instr->texture_index), 0),
+            instr->texture_non_uniform);
+         break;
+
+      case nir_tex_src_sampler_offset:
+         if (nir_tex_instr_need_sampler(instr)) {
+            params.sampler = emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
+               get_resource_id(ctx, DXIL_RESOURCE_CLASS_SAMPLER, 0, instr->sampler_index),
+               dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
+                  get_src_ssa(ctx, instr->src[i].src.ssa, 0),
+                  dxil_module_get_int32_const(&ctx->mod, instr->sampler_index), 0),
+               instr->sampler_non_uniform);
+         }
+         break;
+
       case nir_tex_src_projector:
          unreachable("Texture projector should have been lowered");
 
