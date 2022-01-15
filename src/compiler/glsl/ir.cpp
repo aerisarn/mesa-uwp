@@ -23,6 +23,7 @@
 #include <string.h>
 #include "ir.h"
 #include "util/half_float.h"
+#include "util/bitscan.h"
 #include "compiler/glsl_types.h"
 #include "glsl_parser_extras.h"
 
@@ -166,6 +167,19 @@ ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
 
       assert(lhs_components == this->rhs->type->vector_elements);
    }
+}
+
+ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
+                             unsigned write_mask)
+   : ir_instruction(ir_type_assignment)
+{
+   this->condition = NULL;
+   this->rhs = rhs;
+   this->lhs = lhs;
+   this->write_mask = write_mask;
+
+   if (lhs->type->is_scalar() || lhs->type->is_vector())
+      assert(util_bitcount(write_mask) == this->rhs->type->vector_elements);
 }
 
 ir_assignment::ir_assignment(ir_rvalue *lhs, ir_rvalue *rhs,

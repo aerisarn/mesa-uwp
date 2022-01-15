@@ -191,7 +191,7 @@ lower_vector_visitor::handle_rvalue(ir_rvalue **rvalue)
 				  &d);
       ir_dereference *const lhs = new(mem_ctx) ir_dereference_variable(temp);
       ir_assignment *const assign =
-	 new(mem_ctx) ir_assignment(lhs, c, NULL, write_mask);
+	 new(mem_ctx) ir_assignment(lhs, c, write_mask);
 
       this->base_ir->insert_before(assign);
    }
@@ -204,7 +204,7 @@ lower_vector_visitor::handle_rvalue(ir_rvalue **rvalue)
 
       ir_dereference *const lhs = new(mem_ctx) ir_dereference_variable(temp);
       ir_assignment *const assign =
-	 new(mem_ctx) ir_assignment(lhs, expr->operands[i], NULL, (1U << i));
+	 new(mem_ctx) ir_assignment(lhs, expr->operands[i], 1U << i);
 
       this->base_ir->insert_before(assign);
       assigned++;

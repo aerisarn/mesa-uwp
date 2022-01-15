@@ -58,7 +58,6 @@ assign(deref lhs, operand rhs, int writemask)
 
    ir_assignment *assign = new(mem_ctx) ir_assignment(lhs.val,
                                                       rhs.val,
-                                                      NULL,
                                                       writemask);
 
    return assign;
