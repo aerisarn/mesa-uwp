@@ -175,7 +175,6 @@ process_assignment(void *lin_ctx, ir_assignment *ir, exec_list *assignments)
    bool progress = false;
    kill_for_derefs_visitor v(assignments);
 
-   if (ir->get_condition() == NULL) {
       /* If this is an assignment of the form "foo = foo;", remove the whole
        * instruction and be done with it.
        */
@@ -184,13 +183,9 @@ process_assignment(void *lin_ctx, ir_assignment *ir, exec_list *assignments)
          ir->remove();
          return true;
       }
-   }
 
    /* Kill assignment entries for things used to produce this assignment. */
    ir->rhs->accept(&v);
-   if (ir->get_condition()) {
-      ir->get_condition()->accept(&v);
-   }
 
    /* Kill assignment enties used as array indices.
     */
@@ -199,7 +194,6 @@ process_assignment(void *lin_ctx, ir_assignment *ir, exec_list *assignments)
    assert(var);
 
    /* Now, check if we did a whole-variable assignment. */
-   if (!ir->get_condition()) {
       ir_dereference_variable *deref_var = ir->lhs->as_dereference_variable();
 
       /* If it's a vector type, we can do per-channel elimination of
@@ -287,7 +281,6 @@ process_assignment(void *lin_ctx, ir_assignment *ir, exec_list *assignments)
 	    }
 	 }
       }
-   }
 
    /* Add this instruction to the assignment list available to be removed. */
    assignment_entry *entry = new(lin_ctx) assignment_entry(var, ir);

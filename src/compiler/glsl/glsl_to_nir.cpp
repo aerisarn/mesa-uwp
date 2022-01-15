@@ -1718,15 +1718,9 @@ nir_visitor::visit(ir_assignment *ir)
       nir_deref_instr *rhs = evaluate_deref(ir->rhs);
       enum gl_access_qualifier lhs_qualifiers = deref_get_qualifier(lhs);
       enum gl_access_qualifier rhs_qualifiers = deref_get_qualifier(rhs);
-      if (ir->get_condition()) {
-         nir_push_if(&b, evaluate_rvalue(ir->get_condition()));
-         nir_copy_deref_with_access(&b, lhs, rhs, lhs_qualifiers,
-                                    rhs_qualifiers);
-         nir_pop_if(&b, NULL);
-      } else {
-         nir_copy_deref_with_access(&b, lhs, rhs, lhs_qualifiers,
-                                    rhs_qualifiers);
-      }
+
+      nir_copy_deref_with_access(&b, lhs, rhs, lhs_qualifiers,
+                                 rhs_qualifiers);
       return;
    }
 
@@ -1763,15 +1757,8 @@ nir_visitor::visit(ir_assignment *ir)
    }
 
    enum gl_access_qualifier qualifiers = deref_get_qualifier(lhs_deref);
-   if (ir->get_condition()) {
-      nir_push_if(&b, evaluate_rvalue(ir->get_condition()));
       nir_store_deref_with_access(&b, lhs_deref, src, write_mask,
                                   qualifiers);
-      nir_pop_if(&b, NULL);
-   } else {
-      nir_store_deref_with_access(&b, lhs_deref, src, write_mask,
-                                  qualifiers);
-   }
 }
 
 /*

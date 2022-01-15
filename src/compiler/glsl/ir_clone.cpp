@@ -259,8 +259,6 @@ ir_texture::clone(void *mem_ctx, struct hash_table *ht) const
 ir_assignment *
 ir_assignment::clone(void *mem_ctx, struct hash_table *ht) const
 {
-   assert(this->get_condition() == NULL);
-
    return new(mem_ctx) ir_assignment(this->lhs->clone(mem_ctx, ht),
                                      this->rhs->clone(mem_ctx, ht),
                                      this->write_mask);

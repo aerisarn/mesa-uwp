@@ -3387,12 +3387,7 @@ glsl_to_tgsi_visitor::visit(ir_assignment *ir)
    assert(l.file != PROGRAM_UNDEFINED);
    assert(r.file != PROGRAM_UNDEFINED);
 
-   if (ir->get_condition()) {
-      const bool switch_order = this->process_move_condition(ir->get_condition());
-      st_src_reg condition = this->result;
-
-      emit_block_mov(ir, ir->lhs->type, &l, &r, &condition, switch_order);
-   } else if (ir->rhs->as_expression() &&
+   if (ir->rhs->as_expression() &&
               this->instructions.get_tail() &&
               ir->rhs == ((glsl_to_tgsi_instruction *)this->instructions.get_tail())->ir &&
               !((glsl_to_tgsi_instruction *)this->instructions.get_tail())->is_64bit_expanded &&
