@@ -162,11 +162,10 @@ ir_assignment::ir_assignment(ir_dereference *lhs, ir_rvalue *rhs,
       assert(util_bitcount(write_mask) == this->rhs->type->vector_elements);
 }
 
-ir_assignment::ir_assignment(ir_rvalue *lhs, ir_rvalue *rhs,
-			     ir_rvalue *condition)
+ir_assignment::ir_assignment(ir_rvalue *lhs, ir_rvalue *rhs)
    : ir_instruction(ir_type_assignment)
 {
-   this->condition = condition;
+   this->condition = NULL;
    this->rhs = rhs;
 
    /* If the RHS is a vector type, assume that all components of the vector
