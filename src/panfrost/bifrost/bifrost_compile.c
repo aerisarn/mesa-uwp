@@ -1455,9 +1455,7 @@ bi_emit_load_const(bi_builder *b, nir_load_const_instr *instr)
         uint32_t acc = 0;
 
         for (unsigned i = 0; i < instr->def.num_components; ++i) {
-                uint32_t v = nir_const_value_as_uint(instr->value[i], instr->def.bit_size);
-
-                v = bi_extend_constant(v, instr->def.bit_size);
+                unsigned v = nir_const_value_as_uint(instr->value[i], instr->def.bit_size);
                 acc |= (v << (i * instr->def.bit_size));
         }
 
