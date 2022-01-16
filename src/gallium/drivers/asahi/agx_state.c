@@ -1158,7 +1158,10 @@ agx_build_clear_pipeline(struct agx_context *ctx, uint32_t code, uint64_t clear_
       cfg.unk_3 = 0x8d;
       cfg.unk_2 = 0x0d;
       cfg.unk_2b = 4;
-      cfg.frag_unk = 0x880100;
+      cfg.fragment_parameters.unk_1 = 0x880100;
+      cfg.fragment_parameters.early_z_testing = false;
+      cfg.fragment_parameters.unk_2 = false;
+      cfg.fragment_parameters.unk_3 = 0;
       cfg.preshader_mode = 0; // XXX
    }
 
@@ -1242,7 +1245,10 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.unk_2 = 0x0d;
       cfg.unk_2b = 4;
       cfg.unk_4 = 0;
-      cfg.frag_unk = 0x880100;
+      cfg.fragment_parameters.unk_1 = 0x880100;
+      cfg.fragment_parameters.early_z_testing = false;
+      cfg.fragment_parameters.unk_2 = false;
+      cfg.fragment_parameters.unk_3 = 0;
       cfg.preshader_mode = 0; // XXX
    }
 
@@ -1289,7 +1295,10 @@ agx_build_store_pipeline(struct agx_context *ctx, uint32_t code,
       cfg.register_quadwords = 1;
       cfg.unk_2 = 0xd;
       cfg.unk_3 = 0x8d;
-      cfg.frag_unk = 0x880100;
+      cfg.fragment_parameters.unk_1 = 0x880100;
+      cfg.fragment_parameters.early_z_testing = false;
+      cfg.fragment_parameters.unk_2 = false;
+      cfg.fragment_parameters.unk_3 = 0;
       cfg.preshader_mode = 0; // XXX
    }
 
