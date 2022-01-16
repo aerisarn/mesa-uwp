@@ -1127,6 +1127,19 @@ agx_screen_create(struct sw_winsys *winsys)
       return NULL;
    }
 
+   if (agx_screen->dev.debug & AGX_DBG_DEQP) {
+      /* You're on your own. */
+      static bool warned_about_hacks = false;
+
+      if (!warned_about_hacks) {
+         fprintf(stderr, "\n------------------\n"
+                         "Unsupported debug parameter set. Expect breakage.\n"
+                         "Do not report bugs.\n"
+                         "------------------\n\n");
+         warned_about_hacks = true;
+      }
+   }
+
    screen->destroy = agx_destroy_screen;
    screen->get_name = agx_get_name;
    screen->get_vendor = agx_get_vendor;
