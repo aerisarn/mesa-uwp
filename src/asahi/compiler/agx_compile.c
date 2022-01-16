@@ -335,17 +335,6 @@ agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
    if (!kernel_input && !nir_src_is_const(instr->src[0]))
       unreachable("todo: indirect UBO access");
 
-   /* Constant offsets for device_load are 16-bit */
-   bool offset_is_const = nir_src_is_const(*offset);
-   assert(offset_is_const && "todo: indirect UBO access");
-   int32_t const_offset = offset_is_const ? nir_src_as_int(*offset) : 0;
-
-   /* Offsets are shifted by the type size, so divide that out */
-   unsigned bytes = nir_dest_bit_size(instr->dest) / 8;
-   assert((const_offset & (bytes - 1)) == 0);
-   const_offset = const_offset / bytes;
-   int16_t const_as_16 = const_offset;
-
    /* UBO blocks are specified (kernel inputs are always 0) */
    uint32_t block = kernel_input ? 0 : nir_src_as_uint(instr->src[0]);
 
@@ -363,9 +352,7 @@ agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
    assert(instr->num_components <= 4);
 
    agx_device_load_to(b, agx_dest_index(&instr->dest),
-                      base,
-                      (offset_is_const && (const_offset == const_as_16)) ?
-                      agx_immediate(const_as_16) : agx_mov_imm(b, 32, const_offset),
+                      base, agx_src_index(offset),
                       agx_format_for_bits(nir_dest_bit_size(instr->dest)),
                       BITFIELD_MASK(instr->num_components), 0);
 
@@ -1227,6 +1214,33 @@ agx_lower_point_coord(struct nir_builder *b,
    return true;
 }
 
+static bool
+agx_lower_aligned_offsets(struct nir_builder *b,
+                          nir_instr *instr, UNUSED void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_load_ubo)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+
+   unsigned bytes = nir_dest_bit_size(intr->dest) / 8;
+   assert(util_is_power_of_two_or_zero(bytes) && bytes != 0);
+
+   nir_src *offset = &intr->src[1];
+
+   unsigned shift = util_logbase2(bytes);
+
+   nir_ssa_def *old = nir_ssa_for_src(b, *offset, 1);
+   nir_ssa_def *new = nir_ishr_imm(b, old, shift);
+
+   nir_instr_rewrite_src_ssa(instr, offset, new);
+   return true;
+}
+
 static void
 agx_optimize_nir(nir_shader *nir)
 {
@@ -1442,6 +1456,10 @@ agx_compile_shader_nir(nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_mediump_io,
             nir_var_shader_in | nir_var_shader_out, ~0, false);
    }
+   NIR_PASS_V(nir, nir_shader_instructions_pass,
+         agx_lower_aligned_offsets,
+         nir_metadata_block_index | nir_metadata_dominance, NULL);
+
    NIR_PASS_V(nir, nir_lower_ssbo);
 
    /* Varying output is scalar, other I/O is vector */
