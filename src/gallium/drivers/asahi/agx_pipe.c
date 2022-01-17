@@ -312,7 +312,7 @@ agx_transfer_map(struct pipe_context *pctx,
             agx_detile(map, dst,
                u_minify(resource->width0, level), bytes_per_pixel * 8,
                transfer->base.stride / bytes_per_pixel,
-               box->x, box->y, box->x + box->width, box->y + box->height);
+               box->x, box->y, box->x + box->width, box->y + box->height, 6);
          }
       }
 
@@ -365,7 +365,7 @@ agx_transfer_unmap(struct pipe_context *pctx,
             transfer->stride / bytes_per_pixel,
             transfer->box.x, transfer->box.y,
             transfer->box.x + transfer->box.width,
-            transfer->box.y + transfer->box.height);
+            transfer->box.y + transfer->box.height, 6);
       }
    }
 
@@ -660,7 +660,7 @@ agx_flush_frontbuffer(struct pipe_screen *_screen,
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
       agx_detile(rsrc->bo->ptr.cpu, map,
                  rsrc->base.width0, 32, rsrc->dt_stride / 4,
-                 0, 0, rsrc->base.width0, rsrc->base.height0);
+                 0, 0, rsrc->base.width0, rsrc->base.height0, 6);
    } else {
       memcpy(map, rsrc->bo->ptr.cpu, rsrc->dt_stride * rsrc->base.height0);
    }
