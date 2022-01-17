@@ -3017,11 +3017,13 @@ apply_omod_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       return false;
 
    bool can_vop3 = can_use_VOP3(ctx, instr);
-   if (!instr->isSDWA() && !can_vop3)
+   bool is_mad_mix =
+      instr->opcode == aco_opcode::v_fma_mix_f32 || instr->opcode == aco_opcode::v_fma_mixlo_f16;
+   if (!instr->isSDWA() && !is_mad_mix && !can_vop3)
       return false;
 
-   /* omod flushes -0 to +0 and has no effect if denormals are enabled */
-   bool can_use_omod = (can_vop3 || ctx.program->chip_class >= GFX9); /* SDWA omod is GFX9+ */
+   /* omod flushes -0 to +0 and has no effect if denormals are enabled. SDWA omod is GFX9+. */
+   bool can_use_omod = (can_vop3 || ctx.program->chip_class >= GFX9) && !instr->isVOP3P();
    if (instr->definitions[0].bytes() == 4)
       can_use_omod =
          can_use_omod && ctx.fp_mode.denorm32 == 0 && !ctx.fp_mode.preserve_signed_zero_inf_nan32;
@@ -3048,6 +3050,9 @@ apply_omod_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (instr->isSDWA()) {
       if (!apply_omod_clamp_helper(ctx, &instr->sdwa(), def_info))
          return false;
+   } else if (instr->isVOP3P()) {
+      assert(def_info.is_clamp());
+      instr->vop3p().clamp = true;
    } else {
       to_VOP3(ctx, instr);
       if (!apply_omod_clamp_helper(ctx, &instr->vop3(), def_info))
