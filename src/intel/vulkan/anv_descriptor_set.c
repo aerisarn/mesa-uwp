@@ -1702,8 +1702,36 @@ void anv_UpdateDescriptorSets(
                                     copy->srcArrayElement,
                 copy->descriptorCount);
       } else {
-         for (uint32_t j = 0; j < copy->descriptorCount; j++)
-            dst_desc[j] = src_desc[j];
+         struct anv_buffer_view *dst_bview =
+            &dst->buffer_views[dst_layout->buffer_view_index +
+                               copy->dstArrayElement];
+         struct anv_buffer_view *src_bview =
+            &src->buffer_views[src_layout->buffer_view_index +
+                               copy->srcArrayElement];
+         /* If ANV_DESCRIPTOR_BUFFER_VIEW is present in the source descriptor,
+          * it means we're using an anv_buffer_view allocated by the source
+          * descriptor set. In that case we want to careful copy it because
+          * his lifecycle is tied to the source descriptor set, not the
+          * destination descriptor set.
+          */
+         if (src_layout->data & ANV_DESCRIPTOR_BUFFER_VIEW) {
+            assert(dst_layout->data & ANV_DESCRIPTOR_BUFFER_VIEW);
+            for (uint32_t j = 0; j < copy->descriptorCount; j++) {
+               dst_bview[j].format  = src_bview[j].format;
+               dst_bview[j].range   = src_bview[j].range;
+               dst_bview[j].address = src_bview[j].address;
+
+               memcpy(dst_bview[j].surface_state.map,
+                      src_bview[j].surface_state.map,
+                      src_bview[j].surface_state.alloc_size);
+
+               dst_desc[j].type        = src_desc[j].type;
+               dst_desc[j].buffer_view = &dst_bview[j];
+            }
+         } else {
+            for (uint32_t j = 0; j < copy->descriptorCount; j++)
+               dst_desc[j] = src_desc[j];
+         }
 
          unsigned desc_size = anv_descriptor_size(src_layout);
          if (desc_size > 0) {
