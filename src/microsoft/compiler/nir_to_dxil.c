@@ -1015,7 +1015,7 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
        ctx->mod.shader_kind != DXIL_COMPUTE_SHADER)
       ctx->mod.feats.uavs_at_every_stage = true;
 
-   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
+   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN && space <= 1) {
       for (unsigned i = 0; i < count; ++i) {
          const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_UAV,
                                                                               id, binding + i, false);
@@ -2620,13 +2620,28 @@ get_resource_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
 
    unsigned space = 0;
    if (ctx->opts->environment == DXIL_ENVIRONMENT_GL &&
-       class == DXIL_RESOURCE_CLASS_UAV &&
-       kind != DXIL_RESOURCE_KIND_RAW_BUFFER) {
-      space = 1;
+       class == DXIL_RESOURCE_CLASS_UAV) {
+      if (kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
+         space = 2;
+      else
+         space = 1;
    }
 
-   /* TODO: Figure out how to find this */
+   /* The base binding here will almost always be zero. The only cases where we end
+    * up in this type of dynamic indexing are:
+    * 1. GL UBOs
+    * 2. GL SSBOs
+    * 2. CL SSBOs
+    * In all cases except GL UBOs, the resources are a single zero-based array.
+    * In that case, the base is 1, because uniforms use 0 and cannot by dynamically
+    * indexed. All other cases should either fall into static indexing (first early return),
+    * deref-based dynamic handle creation (images, or Vulkan textures/samplers), or
+    * load_vulkan_descriptor handle creation.
+    */
    unsigned base_binding = 0;
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_GL &&
+       class == DXIL_RESOURCE_CLASS_CBV)
+      base_binding = 1;
 
    const struct dxil_value *handle = emit_createhandle_call(ctx, class, 
       get_resource_id(ctx, class, space, base_binding), value, !const_block_index);
@@ -4754,10 +4769,21 @@ emit_cbvs(struct ntd_context *ctx)
             return false;
       }
    } else {
-      for (int i = ctx->opts->ubo_binding_offset; i < ctx->shader->info.num_ubos; ++i) {
-         char name[64];
-         snprintf(name, sizeof(name), "__ubo%d", i);
-         if (!emit_cbv(ctx, i, 0, 16384 /*4096 vec4's*/, 1, name))
+      if (ctx->shader->info.num_ubos) {
+         const unsigned ubo_size = 16384 /*4096 vec4's*/;
+         bool has_ubo0 = !ctx->opts->no_ubo0;
+         bool has_state_vars = ctx->opts->last_ubo_is_not_arrayed;
+         unsigned ubo1_array_size = ctx->shader->info.num_ubos -
+            (has_state_vars ? 2 : 1);
+
+         if (has_ubo0 &&
+             !emit_cbv(ctx, 0, 0, ubo_size, 1, "__ubo_uniforms"))
+            return false;
+         if (ubo1_array_size &&
+             !emit_cbv(ctx, 1, 0, ubo_size, ubo1_array_size, "__ubos"))
+            return false;
+         if (has_state_vars &&
+             !emit_cbv(ctx, ctx->shader->info.num_ubos - 1, 0, ubo_size, 1, "__ubo_state_vars"))
             return false;
       }
    }
@@ -4928,6 +4954,15 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
                        DXIL_RESOURCE_KIND_RAW_BUFFER, name))
             return false;
       }
+      /* To work around a WARP bug, bind these descriptors a second time in descriptor
+       * space 2. Space 0 will be used for static indexing, while space 2 will be used
+       * for dynamic indexing. Space 0 will be individual SSBOs in the DXIL shader, while
+       * space 2 will be a single array.
+       */
+      if (ctx->shader->info.num_ssbos &&
+          !emit_uav(ctx, 0, 2, ctx->shader->info.num_ssbos, DXIL_COMP_TYPE_INVALID,
+                    DXIL_RESOURCE_KIND_RAW_BUFFER, "__ssbo_dynamic"))
+         return false;
    }
 
    nir_foreach_image_variable(var, ctx->shader) {

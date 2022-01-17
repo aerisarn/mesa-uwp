@@ -1163,7 +1163,6 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
    struct nir_to_dxil_options opts = {
       .interpolate_at_vertex = false,
       .lower_int16 = (conf && (conf->lower_bit_size & 16) != 0),
-      .ubo_binding_offset = 0,
       .disable_math_refactoring = true,
       .num_kernel_globals = num_global_inputs,
       .environment = DXIL_ENVIRONMENT_CL,

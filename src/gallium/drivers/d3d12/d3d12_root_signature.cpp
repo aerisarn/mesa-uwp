@@ -72,13 +72,12 @@ init_constant_root_param(D3D12_ROOT_PARAMETER1 *param,
 }
 
 static inline void
-init_range_root_param(D3D12_ROOT_PARAMETER1 *param,
-                      D3D12_DESCRIPTOR_RANGE1 *range,
-                      D3D12_DESCRIPTOR_RANGE_TYPE type,
-                      uint32_t num_descs,
-                      D3D12_SHADER_VISIBILITY visibility,
-                      uint32_t base_shader_register,
-                      uint32_t register_space)
+init_range(D3D12_DESCRIPTOR_RANGE1 *range,
+           D3D12_DESCRIPTOR_RANGE_TYPE type,
+           uint32_t num_descs,
+           uint32_t base_shader_register,
+           uint32_t register_space,
+           uint32_t offset_from_start)
 {
    range->RangeType = type;
    range->NumDescriptors = num_descs;
@@ -89,8 +88,19 @@ init_range_root_param(D3D12_ROOT_PARAMETER1 *param,
       range->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
    else
       range->Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_STATIC_KEEPING_BUFFER_BOUNDS_CHECKS;
-   range->OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+   range->OffsetInDescriptorsFromTableStart = offset_from_start;
+}
 
+static inline void
+init_range_root_param(D3D12_ROOT_PARAMETER1 *param,
+                      D3D12_DESCRIPTOR_RANGE1 *range,
+                      D3D12_DESCRIPTOR_RANGE_TYPE type,
+                      uint32_t num_descs,
+                      D3D12_SHADER_VISIBILITY visibility,
+                      uint32_t base_shader_register,
+                      uint32_t register_space)
+{
+   init_range(range, type, num_descs, base_shader_register, register_space, D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND);
    param->ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
    param->DescriptorTable.NumDescriptorRanges = 1;
    param->DescriptorTable.pDescriptorRanges = range;
@@ -102,7 +112,7 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
 {
    struct d3d12_screen *screen = d3d12_screen(ctx->base.screen);
    D3D12_ROOT_PARAMETER1 root_params[D3D12_GFX_SHADER_STAGES * D3D12_NUM_BINDING_TYPES];
-   D3D12_DESCRIPTOR_RANGE1 desc_ranges[D3D12_GFX_SHADER_STAGES * D3D12_NUM_BINDING_TYPES];
+   D3D12_DESCRIPTOR_RANGE1 desc_ranges[D3D12_GFX_SHADER_STAGES * (D3D12_NUM_BINDING_TYPES + 1)];
    unsigned num_params = 0;
    unsigned num_ranges = 0;
 
@@ -140,13 +150,26 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
       }
 
       if (key->stages[i].num_ssbos > 0) {
-         init_range_root_param(&root_params[num_params++],
+         init_range_root_param(&root_params[num_params],
                                &desc_ranges[num_ranges++],
                                D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
                                key->stages[i].num_ssbos,
                                visibility,
                                0,
                                0);
+
+         /* To work around a WARP bug, bind these descriptors a second time in descriptor
+          * space 2. Space 0 will be used for static indexing, while space 2 will be used
+          * for dynamic indexing. Space 0 will be individual SSBOs in the DXIL shader, while
+          * space 2 will be a single array.
+          */
+         root_params[num_params++].DescriptorTable.NumDescriptorRanges++;
+         init_range(&desc_ranges[num_ranges++],
+                    D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+                    key->stages[i].num_ssbos,
+                    0,
+                    2,
+                    0);
       }
 
       if (key->stages[i].num_images > 0) {
@@ -166,7 +189,7 @@ create_root_signature(struct d3d12_context *ctx, struct d3d12_root_signature_key
             visibility);
       }
       assert(num_params < PIPE_SHADER_TYPES * D3D12_NUM_BINDING_TYPES);
-      assert(num_ranges < PIPE_SHADER_TYPES * D3D12_NUM_BINDING_TYPES);
+      assert(num_ranges < PIPE_SHADER_TYPES * (D3D12_NUM_BINDING_TYPES + 1));
    }
 
    D3D12_VERSIONED_ROOT_SIGNATURE_DESC root_sig_desc;

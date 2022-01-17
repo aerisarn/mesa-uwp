@@ -182,7 +182,8 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    struct nir_to_dxil_options opts = {};
    opts.interpolate_at_vertex = screen->have_load_at_vertex;
    opts.lower_int16 = !screen->opts4.Native16BitShaderOpsSupported;
-   opts.ubo_binding_offset = shader->has_default_ubo0 ? 0 : 1;
+   opts.no_ubo0 = !shader->has_default_ubo0;
+   opts.last_ubo_is_not_arrayed = shader->num_state_vars > 0;
    opts.provoking_vertex = key->fs.provoking_vertex;
    opts.environment = DXIL_ENVIRONMENT_GL;
 
@@ -219,7 +220,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    if(nir->info.num_ubos) {
       // Ignore state_vars ubo as it is bound as root constants
       unsigned num_ubo_bindings = nir->info.num_ubos - (shader->state_vars_used ? 1 : 0);
-      for(unsigned i = opts.ubo_binding_offset; i < num_ubo_bindings; ++i) {
+      for(unsigned i = shader->has_default_ubo0 ? 0 : 1; i < num_ubo_bindings; ++i) {
          shader->cb_bindings[shader->num_cb_bindings++].binding = i;
       }
    }

@@ -84,7 +84,8 @@ struct nir_to_dxil_options {
    bool interpolate_at_vertex;
    bool lower_int16;
    bool disable_math_refactoring;
-   unsigned ubo_binding_offset;
+   bool no_ubo0;
+   bool last_ubo_is_not_arrayed;
    unsigned provoking_vertex;
    unsigned num_kernel_globals;
    enum dxil_environment environment;
