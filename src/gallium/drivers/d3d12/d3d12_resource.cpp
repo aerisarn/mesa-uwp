@@ -1308,8 +1308,8 @@ d3d12_transfer_map(struct pipe_context *pctx,
          range.Begin = aligned_x;
       }
 
-      pipe_resource_usage staging_usage = (usage & (PIPE_MAP_READ | PIPE_MAP_READ_WRITE)) ?
-         PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+      pipe_resource_usage staging_usage = (usage & (PIPE_MAP_DISCARD_RANGE | PIPE_MAP_DISCARD_WHOLE_RESOURCE)) ?
+         PIPE_USAGE_STREAM : PIPE_USAGE_STAGING;
 
       trans->staging_res = pipe_buffer_create(pctx->screen, 0,
                                               staging_usage,
@@ -1319,7 +1319,7 @@ d3d12_transfer_map(struct pipe_context *pctx,
 
       struct d3d12_resource *staging_res = d3d12_resource(trans->staging_res);
 
-      if (usage & PIPE_MAP_READ) {
+      if ((usage & (PIPE_MAP_DISCARD_RANGE | PIPE_MAP_DISCARD_WHOLE_RESOURCE | TC_TRANSFER_MAP_THREADED_UNSYNC)) == 0) {
          bool ret = true;
          if (pres->target == PIPE_BUFFER) {
             uint64_t src_offset = box->x;
