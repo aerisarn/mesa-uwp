@@ -65,7 +65,6 @@
    .lower_unpack_snorm_4x8 = true,                                            \
    .lower_unpack_unorm_2x16 = true,                                           \
    .lower_unpack_unorm_4x8 = true,                                            \
-   .lower_usub_sat64 = true,                                                  \
    .lower_hadd64 = true,                                                      \
    .avoid_ternary_with_two_constants = true,                                  \
    .has_pack_32_4x8 = true,                                                   \
@@ -165,6 +164,7 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       bool is_scalar = compiler->scalar_stage[i];
       if (is_scalar) {
          *nir_options = scalar_nir_options;
+         int64_options |= nir_lower_usub_sat64;
       } else {
          *nir_options = vector_nir_options;
       }

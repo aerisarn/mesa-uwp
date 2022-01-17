@@ -3147,6 +3147,7 @@ typedef enum {
    nir_lower_scan_reduce_bitwise64 = (1 << 17),
    nir_lower_scan_reduce_iadd64 = (1 << 18),
    nir_lower_vote_ieq64 = (1 << 19),
+   nir_lower_usub_sat64 = (1 << 20),
 } nir_lower_int64_options;
 
 typedef enum {
@@ -3387,18 +3388,8 @@ typedef struct nir_shader_compiler_options {
     *
     * If this flag is set, the lowering will be applied to all bit-sizes of
     * these instructions.
-    *
-    * \sa ::lower_usub_sat64
     */
    bool lower_uadd_sat;
-
-   /**
-    * Set if only 64-bit nir_op_usub_sat should be lowered to simple
-    * arithmetic.
-    *
-    * \sa ::lower_add_sat
-    */
-   bool lower_usub_sat64;
 
    /**
     * Set if nir_op_iadd_sat and nir_op_isub_sat should be lowered to simple
