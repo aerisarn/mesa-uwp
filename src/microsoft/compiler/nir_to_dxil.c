@@ -87,7 +87,7 @@ nir_options = {
    .lower_flrp16 = true,
    .lower_flrp32 = true,
    .lower_flrp64 = true,
-   .lower_bitfield_extract_to_shifts = true,
+   .lower_bitfield_extract = true,
    .lower_extract_word = true,
    .lower_extract_byte = true,
    .lower_insert_word = true,
@@ -224,6 +224,8 @@ enum dxil_intr {
 
    DXIL_INTR_FMA = 47,
 
+   DXIL_INTR_IBFE = 51,
+   DXIL_INTR_UBFE = 52,
    DXIL_INTR_BFI = 53,
 
    DXIL_INTR_CREATE_HANDLE = 57,
@@ -1884,14 +1886,14 @@ emit_tertiary_intin(struct ntd_context *ctx, nir_alu_instr *alu,
                     const struct dxil_value *op2)
 {
    const nir_op_info *info = &nir_op_infos[alu->op];
-   assert(info->output_type == info->input_types[0]);
-   assert(info->output_type == info->input_types[1]);
-   assert(info->output_type == info->input_types[2]);
-
    unsigned dst_bits = nir_dest_bit_size(alu->dest.dest);
    assert(nir_src_bit_size(alu->src[0].src) == dst_bits);
    assert(nir_src_bit_size(alu->src[1].src) == dst_bits);
    assert(nir_src_bit_size(alu->src[2].src) == dst_bits);
+
+   assert(get_overload(info->output_type, dst_bits) == get_overload(info->input_types[0], dst_bits));
+   assert(get_overload(info->output_type, dst_bits) == get_overload(info->input_types[1], dst_bits));
+   assert(get_overload(info->output_type, dst_bits) == get_overload(info->input_types[2], dst_bits));
 
    enum overload_type overload = get_overload(info->output_type, dst_bits);
 
@@ -2286,6 +2288,8 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fmin: return emit_binary_intin(ctx, alu, DXIL_INTR_FMIN, src[0], src[1]);
    case nir_op_ffma: return emit_tertiary_intin(ctx, alu, DXIL_INTR_FMA, src[0], src[1], src[2]);
 
+   case nir_op_ibfe: return emit_tertiary_intin(ctx, alu, DXIL_INTR_IBFE, src[2], src[1], src[0]);
+   case nir_op_ubfe: return emit_tertiary_intin(ctx, alu, DXIL_INTR_UBFE, src[2], src[1], src[0]);
    case nir_op_bitfield_insert: return emit_bitfield_insert(ctx, alu, src[0], src[1], src[2], src[3]);
 
    case nir_op_unpack_half_2x16_split_x: return emit_f16tof32(ctx, alu, src[0], false);
