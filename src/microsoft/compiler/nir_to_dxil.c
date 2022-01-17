@@ -1192,6 +1192,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
    resource_array_layout layout = {id, binding, count, var->data.descriptor_set};
    const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *sampler_type = dxil_module_get_struct_type(&ctx->mod, "struct.SamplerState", &int32_type, 1);
+   sampler_type = dxil_module_get_array_type(&ctx->mod, sampler_type, count);
    const struct dxil_mdnode *sampler_meta = emit_sampler_metadata(&ctx->mod, sampler_type, var, &layout);
 
    if (!sampler_meta)
