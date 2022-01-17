@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "util/macros.h"
 #include "tiling.h"
 
 /* Z-order with 64x64 tiles:
@@ -60,9 +61,6 @@
 
 /* mask of bits used for X coordinate in a tile */
 #define SPACE_MASK 0x555 // 0b010101010101
-
-#define MAX2(x, y) (((x) > (y)) ? (x) : (y))
-#define MIN2(x, y) (((x) < (y)) ? (x) : (y))
 
 static uint32_t
 agx_space_bits(unsigned x)
