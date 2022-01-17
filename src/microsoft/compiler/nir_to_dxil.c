@@ -224,6 +224,8 @@ enum dxil_intr {
 
    DXIL_INTR_FMA = 47,
 
+   DXIL_INTR_BFI = 53,
+
    DXIL_INTR_CREATE_HANDLE = 57,
    DXIL_INTR_CBUFFER_LOAD_LEGACY = 59,
 
@@ -535,6 +537,33 @@ emit_tertiary_call(struct ntd_context *ctx, enum overload_type overload,
      op0,
      op1,
      op2
+   };
+
+   return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+static const struct dxil_value *
+emit_quaternary_call(struct ntd_context *ctx, enum overload_type overload,
+                     enum dxil_intr intr,
+                     const struct dxil_value *op0,
+                     const struct dxil_value *op1,
+                     const struct dxil_value *op2,
+                     const struct dxil_value *op3)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.quaternary", overload);
+   if (!func)
+      return NULL;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, intr);
+   if (!opcode)
+      return NULL;
+
+   const struct dxil_value *args[] = {
+     opcode,
+     op0,
+     op1,
+     op2,
+     op3
    };
 
    return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
@@ -1874,6 +1903,27 @@ emit_tertiary_intin(struct ntd_context *ctx, nir_alu_instr *alu,
    return true;
 }
 
+static bool
+emit_bitfield_insert(struct ntd_context *ctx, nir_alu_instr *alu,
+                     const struct dxil_value *base,
+                     const struct dxil_value *insert,
+                     const struct dxil_value *offset,
+                     const struct dxil_value *width)
+{
+   /* DXIL is width, offset, insert, base, NIR is base, insert, offset, width */
+   const struct dxil_value *v = emit_quaternary_call(ctx, DXIL_I32, DXIL_INTR_BFI,
+                                                     width, offset, insert, base);
+   if (!v)
+      return false;
+
+   /* DXIL uses the 5 LSB from width/offset. Special-case width >= 32 == copy insert. */
+   const struct dxil_value *compare_width = dxil_emit_cmp(&ctx->mod, DXIL_ICMP_SGE,
+      width, dxil_module_get_int32_const(&ctx->mod, 32));
+   v = dxil_emit_select(&ctx->mod, compare_width, insert, v);
+   store_alu_dest(ctx, alu, 0, v);
+   return true;
+}
+
 static bool emit_select(struct ntd_context *ctx, nir_alu_instr *alu,
                         const struct dxil_value *sel,
                         const struct dxil_value *val_true,
@@ -2235,6 +2285,8 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fmax: return emit_binary_intin(ctx, alu, DXIL_INTR_FMAX, src[0], src[1]);
    case nir_op_fmin: return emit_binary_intin(ctx, alu, DXIL_INTR_FMIN, src[0], src[1]);
    case nir_op_ffma: return emit_tertiary_intin(ctx, alu, DXIL_INTR_FMA, src[0], src[1], src[2]);
+
+   case nir_op_bitfield_insert: return emit_bitfield_insert(ctx, alu, src[0], src[1], src[2], src[3]);
 
    case nir_op_unpack_half_2x16_split_x: return emit_f16tof32(ctx, alu, src[0], false);
    case nir_op_unpack_half_2x16_split_y: return emit_f16tof32(ctx, alu, src[0], true);

@@ -41,6 +41,7 @@ static struct  predefined_func_descr predefined_funcs[] = {
 {"dx.op.storeOutput", "v", "iiicO", DXIL_ATTR_KIND_NO_UNWIND},
 {"dx.op.loadInput", "O", "iiici", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.tertiary", "O", "iOOO", DXIL_ATTR_KIND_READ_NONE},
+{"dx.op.quaternary", "O", "iOOOO", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.threadId", "i", "ii", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.threadIdInGroup", "i", "ii", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.flattenedThreadIdInGroup", "i", "i", DXIL_ATTR_KIND_READ_NONE},
