@@ -561,6 +561,7 @@ supertile_in_job_scissors(struct v3d_job *job,
    return false;
 }
 
+#if V3D_VERSION >= 40
 static inline bool
 do_double_initial_tile_clear(const struct v3d_job *job)
 {
@@ -575,6 +576,7 @@ do_double_initial_tile_clear(const struct v3d_job *job)
         return job->double_buffer &&
                (job->draw_tiles_x > 1 || job->draw_tiles_y > 1);
 }
+#endif
 
 static void
 emit_render_layer(struct v3d_job *job, uint32_t layer)
