@@ -439,6 +439,12 @@ wl_shm_format_for_vk_format(VkFormat vk_format, bool alpha)
    case VK_FORMAT_B8G8R8A8_UNORM:
    case VK_FORMAT_B8G8R8A8_SRGB:
       return alpha ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888;
+   case VK_FORMAT_R8G8B8_UNORM:
+   case VK_FORMAT_R8G8B8_SRGB:
+      return WL_SHM_FORMAT_XBGR8888;
+   case VK_FORMAT_B8G8R8_UNORM:
+   case VK_FORMAT_B8G8R8_SRGB:
+      return WL_SHM_FORMAT_XRGB8888;
 
    default:
       assert(!"Unsupported Vulkan format");
