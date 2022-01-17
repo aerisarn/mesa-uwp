@@ -88,6 +88,7 @@ nir_options = {
    .lower_flrp32 = true,
    .lower_flrp64 = true,
    .lower_bitfield_extract = true,
+   .lower_find_msb_to_reverse = true,
    .lower_extract_word = true,
    .lower_extract_byte = true,
    .lower_insert_word = true,
@@ -212,8 +213,11 @@ enum dxil_intr {
    DXIL_INTR_ROUND_PI = 28,
    DXIL_INTR_ROUND_Z = 29,
 
+   DXIL_INTR_BFREV = 30,
    DXIL_INTR_COUNTBITS = 31,
+   DXIL_INTR_FIRSTBIT_LO = 32,
    DXIL_INTR_FIRSTBIT_HI = 33,
+   DXIL_INTR_FIRSTBIT_SHI = 34,
 
    DXIL_INTR_FMAX = 35,
    DXIL_INTR_FMIN = 36,
@@ -465,6 +469,8 @@ unary_func_name(enum dxil_intr intr)
    switch (intr) {
    case DXIL_INTR_COUNTBITS:
    case DXIL_INTR_FIRSTBIT_HI:
+   case DXIL_INTR_FIRSTBIT_SHI:
+   case DXIL_INTR_FIRSTBIT_LO:
       return "dx.op.unaryBits";
    case DXIL_INTR_ISFINITE:
    case DXIL_INTR_ISNORMAL:
@@ -1985,46 +1991,6 @@ emit_f2b32(struct ntd_context *ctx, nir_alu_instr *alu, const struct dxil_value 
 }
 
 static bool
-emit_ufind_msb(struct ntd_context *ctx, nir_alu_instr *alu,
-               const struct dxil_value *val)
-{
-   const nir_op_info *info = &nir_op_infos[alu->op];
-   unsigned dst_bits = nir_dest_bit_size(alu->dest.dest);
-   unsigned src_bits = nir_src_bit_size(alu->src[0].src);
-   enum overload_type overload = get_overload(info->output_type, src_bits);
-
-   const struct dxil_value *v = emit_unary_call(ctx, overload,
-                                                DXIL_INTR_FIRSTBIT_HI, val);
-   if (!v)
-      return false;
-
-   const struct dxil_value *size = dxil_module_get_int32_const(&ctx->mod,
-      src_bits - 1);
-   const struct dxil_value *zero = dxil_module_get_int_const(&ctx->mod, 0,
-                                                             src_bits);
-   if (!size || !zero)
-      return false;
-
-   v = dxil_emit_binop(&ctx->mod, DXIL_BINOP_SUB, size, v, 0);
-   const struct dxil_value *cnd = dxil_emit_cmp(&ctx->mod, DXIL_ICMP_NE,
-                                                val, zero);
-   if (!v || !cnd)
-      return false;
-
-   const struct dxil_value *minus_one =
-      dxil_module_get_int_const(&ctx->mod, -1, dst_bits);
-   if (!minus_one)
-      return false;
-
-   v = dxil_emit_select(&ctx->mod, cnd, v, minus_one);
-   if (!v)
-      return false;
-
-   store_alu_dest(ctx, alu, 0, v);
-   return true;
-}
-
-static bool
 emit_f16tof32(struct ntd_context *ctx, nir_alu_instr *alu, const struct dxil_value *val, bool shift)
 {
    if (shift) {
@@ -2277,7 +2243,10 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
       }
    case nir_op_fsat: return emit_unary_intin(ctx, alu, DXIL_INTR_SATURATE, src[0]);
    case nir_op_bit_count: return emit_unary_intin(ctx, alu, DXIL_INTR_COUNTBITS, src[0]);
-   case nir_op_ufind_msb: return emit_ufind_msb(ctx, alu, src[0]);
+   case nir_op_bitfield_reverse: return emit_unary_intin(ctx, alu, DXIL_INTR_BFREV, src[0]);
+   case nir_op_ufind_msb_rev: return emit_unary_intin(ctx, alu, DXIL_INTR_FIRSTBIT_HI, src[0]);
+   case nir_op_ifind_msb_rev: return emit_unary_intin(ctx, alu, DXIL_INTR_FIRSTBIT_SHI, src[0]);
+   case nir_op_find_lsb: return emit_unary_intin(ctx, alu, DXIL_INTR_FIRSTBIT_LO, src[0]);
    case nir_op_imax: return emit_binary_intin(ctx, alu, DXIL_INTR_IMAX, src[0], src[1]);
    case nir_op_imin: return emit_binary_intin(ctx, alu, DXIL_INTR_IMIN, src[0], src[1]);
    case nir_op_umax: return emit_binary_intin(ctx, alu, DXIL_INTR_UMAX, src[0], src[1]);
