@@ -298,14 +298,21 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
          wsi_wl_format_add_modifier(format, modifier);
       if (srgb_format)
          wsi_wl_format_add_modifier(srgb_format, modifier);
-      FALLTHROUGH;
+
+      srgb_format = wsi_wl_display_add_vk_format(display, formats,
+                                                 VK_FORMAT_R8G8B8A8_SRGB,
+                                                 false, true);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_R8G8B8A8_UNORM,
+                                            false, true);
+      break;
    case DRM_FORMAT_ABGR8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_R8G8B8A8_SRGB,
-                                                 true, true);
+                                                 true, false);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R8G8B8A8_UNORM,
-                                            true, true);
+                                            true, false);
       break;
    case DRM_FORMAT_XRGB8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
@@ -319,14 +326,20 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
       if (srgb_format)
          wsi_wl_format_add_modifier(srgb_format, modifier);
 
-      FALLTHROUGH;
+      srgb_format = wsi_wl_display_add_vk_format(display, formats,
+                                                 VK_FORMAT_B8G8R8A8_SRGB,
+                                                 false, true);
+      format = wsi_wl_display_add_vk_format(display, formats,
+                                            VK_FORMAT_B8G8R8A8_UNORM,
+                                            false, true);
+      break;
    case DRM_FORMAT_ARGB8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_B8G8R8A8_SRGB,
-                                                 true, true);
+                                                 true, false);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B8G8R8A8_UNORM,
-                                            true, true);
+                                            true, false);
       break;
    }
 
