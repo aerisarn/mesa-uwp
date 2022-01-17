@@ -772,40 +772,40 @@ iris_resource_configure_aux(struct iris_screen *screen,
       assert(!res->mod_info);
       assert(!has_hiz);
       if (has_ccs) {
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS_CCS;
+         res->aux.usage = ISL_AUX_USAGE_MCS_CCS;
       } else {
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_MCS;
+         res->aux.usage = ISL_AUX_USAGE_MCS;
       }
    } else if (has_hiz) {
       assert(!res->mod_info);
       assert(!has_mcs);
       if (!has_ccs) {
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ;
+         res->aux.usage = ISL_AUX_USAGE_HIZ;
       } else if (res->surf.samples == 1 &&
                  (res->surf.usage & ISL_SURF_USAGE_TEXTURE_BIT)) {
          /* If this resource is single-sampled and will be used as a texture,
           * put the HiZ surface in write-through mode so that we can sample
           * from it.
           */
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ_CCS_WT;
+         res->aux.usage = ISL_AUX_USAGE_HIZ_CCS_WT;
       } else {
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_HIZ_CCS;
+         res->aux.usage = ISL_AUX_USAGE_HIZ_CCS;
       }
    } else if (has_ccs) {
       if (res->mod_info) {
-         res->aux.possible_usages |= 1 << res->mod_info->aux_usage;
+         res->aux.usage = res->mod_info->aux_usage;
       } else if (isl_surf_usage_is_stencil(res->surf.usage)) {
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_STC_CCS;
+         res->aux.usage = ISL_AUX_USAGE_STC_CCS;
       } else if (want_ccs_e_for_format(devinfo, res->surf.format)) {
-         res->aux.possible_usages |= devinfo->ver < 12 ?
-            1 << ISL_AUX_USAGE_CCS_E : 1 << ISL_AUX_USAGE_GFX12_CCS_E;
+         res->aux.usage = devinfo->ver < 12 ?
+            ISL_AUX_USAGE_CCS_E : ISL_AUX_USAGE_GFX12_CCS_E;
       } else {
          assert(isl_format_supports_ccs_d(devinfo, res->surf.format));
-         res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
+         res->aux.usage = ISL_AUX_USAGE_CCS_D;
       }
    }
 
-   res->aux.usage = util_last_bit(res->aux.possible_usages) - 1;
+   res->aux.possible_usages |= 1 << res->aux.usage;
 
    if (!has_hiz || iris_sample_with_depth_aux(devinfo, res))
       res->aux.sampler_usages = res->aux.possible_usages;
