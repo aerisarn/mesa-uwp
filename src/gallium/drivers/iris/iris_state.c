@@ -2529,6 +2529,9 @@ iris_create_sampler_view(struct pipe_context *ctx,
         isv->res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E) &&
        !isl_format_supports_ccs_e(devinfo, isv->view.format)) {
       aux_usages = 1 << ISL_AUX_USAGE_NONE;
+   } else if (isl_aux_usage_has_hiz(isv->res->aux.usage) &&
+              !iris_sample_with_depth_aux(devinfo, isv->res)) {
+      aux_usages = 1 << ISL_AUX_USAGE_NONE;
    } else {
       aux_usages = isv->res->aux.sampler_usages;
    }

@@ -554,7 +554,7 @@ iris_get_aux_clear_color_state_size(struct iris_screen *screen,
     * sampler via render surface state objects.
     */
    if (isl_surf_usage_is_depth(res->surf.usage) &&
-       res->aux.sampler_usages == 1 << ISL_AUX_USAGE_NONE)
+       !iris_sample_with_depth_aux(&screen->devinfo, res))
       return 0;
 
    return screen->isl_dev.ss.clear_color_state_size;
