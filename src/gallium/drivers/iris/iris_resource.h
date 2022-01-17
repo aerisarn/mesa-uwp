@@ -145,18 +145,6 @@ struct iris_resource {
       enum isl_aux_usage usage;
 
       /**
-       * A bitfield of ISL_AUX_* modes that might this resource might use.
-       *
-       * For example, a surface might use both CCS_E and CCS_D at times.
-       */
-      unsigned possible_usages;
-
-      /**
-       * Same as possible_usages, but only with modes supported for sampling.
-       */
-      unsigned sampler_usages;
-
-      /**
        * \brief Maps miptree slices to their current aux state.
        *
        * This two-dimensional array is indexed as [level][layer] and stores an

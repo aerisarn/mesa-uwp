@@ -401,8 +401,6 @@ iris_resource_disable_aux(struct iris_resource *res)
    free(res->aux.state);
 
    res->aux.usage = ISL_AUX_USAGE_NONE;
-   res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
-   res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
    res->aux.surf.size_B = 0;
    res->aux.bo = NULL;
    res->aux.extra_aux.surf.size_B = 0;
@@ -485,9 +483,6 @@ iris_alloc_resource(struct pipe_screen *pscreen,
    res->orig_screen = iris_pscreen_ref(pscreen);
    pipe_reference_init(&res->base.b.reference, 1);
    threaded_resource_init(&res->base.b, false, 0);
-
-   res->aux.possible_usages = 1 << ISL_AUX_USAGE_NONE;
-   res->aux.sampler_usages = 1 << ISL_AUX_USAGE_NONE;
 
    if (templ->target == PIPE_BUFFER)
       util_range_init(&res->valid_buffer_range);
@@ -804,11 +799,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
          res->aux.usage = ISL_AUX_USAGE_CCS_D;
       }
    }
-
-   res->aux.possible_usages |= 1 << res->aux.usage;
-
-   if (!has_hiz || iris_sample_with_depth_aux(devinfo, res))
-      res->aux.sampler_usages = res->aux.possible_usages;
 
    enum isl_aux_state initial_state;
    switch (res->aux.usage) {
@@ -1484,8 +1474,6 @@ iris_reallocate_resource_inplace(struct iris_context *ice,
    old_res->aux.clear_color_bo = new_res->aux.clear_color_bo;
    old_res->aux.clear_color_offset = new_res->aux.clear_color_offset;
    old_res->aux.usage = new_res->aux.usage;
-   old_res->aux.possible_usages = new_res->aux.possible_usages;
-   old_res->aux.sampler_usages = new_res->aux.sampler_usages;
 
    if (new_res->aux.state) {
       assert(old_res->aux.state);

@@ -2533,7 +2533,8 @@ iris_create_sampler_view(struct pipe_context *ctx,
               !iris_sample_with_depth_aux(devinfo, isv->res)) {
       aux_usages = 1 << ISL_AUX_USAGE_NONE;
    } else {
-      aux_usages = isv->res->aux.sampler_usages;
+      aux_usages = 1 << ISL_AUX_USAGE_NONE |
+                   1 << isv->res->aux.usage;
    }
 
    alloc_surface_states(&isv->surface_state, aux_usages);
@@ -2702,7 +2703,8 @@ iris_create_surface(struct pipe_context *ctx,
        !isl_format_supports_ccs_e(devinfo, view->format)) {
       aux_usages = 1 << ISL_AUX_USAGE_NONE;
    } else {
-      aux_usages = res->aux.possible_usages;
+      aux_usages = 1 << ISL_AUX_USAGE_NONE |
+                   1 << res->aux.usage;
    }
 
    alloc_surface_states(&surf->surface_state, aux_usages);
@@ -2736,7 +2738,7 @@ iris_create_surface(struct pipe_context *ctx,
     * and create an uncompressed view with multiple layers, however.
     */
    assert(!isl_format_is_compressed(fmt.fmt));
-   assert(res->aux.possible_usages == 1 << ISL_AUX_USAGE_NONE);
+   assert(res->aux.usage == ISL_AUX_USAGE_NONE);
    assert(res->surf.samples == 1);
    assert(view->levels == 1);
 
@@ -2837,9 +2839,11 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          enum isl_format isl_fmt = iris_image_view_get_format(ice, img);
 
-         /* Render compression with images supported on gfx12+ only. */
-         unsigned aux_usages = GFX_VER >= 12 ? res->aux.possible_usages :
-            1 << ISL_AUX_USAGE_NONE;
+         unsigned aux_usages = 1 << ISL_AUX_USAGE_NONE;
+
+         /* Gfx12+ supports render compression for images */
+         if (GFX_VER >= 12)
+            aux_usages |= 1 << res->aux.usage;
 
          alloc_surface_states(&iv->surface_state, aux_usages);
          iv->surface_state.bo_address = res->bo->address;
