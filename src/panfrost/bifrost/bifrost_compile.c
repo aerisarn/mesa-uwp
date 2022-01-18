@@ -3880,7 +3880,7 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 
         if (nir->info.stage == MESA_SHADER_VERTEX) {
                 NIR_PASS_V(nir, nir_lower_viewport_transform);
-                NIR_PASS_V(nir, nir_lower_point_size, 1.0, 1024.0);
+                NIR_PASS_V(nir, nir_lower_point_size, 1.0, 0.0);
         }
 
         /* Lower large arrays to scratch and small arrays to bcsel (TODO: tune
