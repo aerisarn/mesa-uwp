@@ -195,7 +195,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
       return !SI_BIG_ENDIAN && sscreen->info.has_userptr;
 
-   case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
+   case PIPE_CAP_DEVICE_PROTECTED_SURFACE:
       return sscreen->info.has_tmz_support;
 
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
