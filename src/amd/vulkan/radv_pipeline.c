@@ -2726,6 +2726,9 @@ radv_link_shaders(struct radv_pipeline *pipeline,
    if (stages[MESA_SHADER_MESH].nir) {
       ordered_shaders[shader_count++] = stages[MESA_SHADER_MESH].nir;
    }
+   if (stages[MESA_SHADER_TASK].nir) {
+      ordered_shaders[shader_count++] = stages[MESA_SHADER_TASK].nir;
+   }
    if (stages[MESA_SHADER_COMPUTE].nir) {
       ordered_shaders[shader_count++] = stages[MESA_SHADER_COMPUTE].nir;
    }
