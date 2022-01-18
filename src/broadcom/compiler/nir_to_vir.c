@@ -2785,8 +2785,22 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         bool dynamic_src = !nir_src_is_const(instr->src[1]);
         uint32_t const_offset =
                 dynamic_src ? 0 : nir_src_as_uint(instr->src[1]);
-        if (bit_size < 32 && (dynamic_src || (const_offset % 4) != 0))
-                return false;
+        uint32_t value_skips = 0;
+        if (bit_size < 32) {
+                if (dynamic_src) {
+                        return false;
+                } else if (const_offset % 4 != 0) {
+                        /* If we are loading from an unaligned offset, fix
+                         * alignment and skip over unused elements in result.
+                         */
+                        value_skips = (const_offset % 4) / (bit_size / 8);
+                        const_offset &= ~0xf;
+                }
+        }
+
+        assert((bit_size == 32 && value_skips == 0) ||
+               (bit_size == 16 && value_skips <= 1) ||
+               (bit_size == 8  && value_skips <= 3));
 
         /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
          * shifted up by 1 (0 is gallium's constant buffer 0).
@@ -2835,19 +2849,29 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         }
 
         uint32_t num_components = nir_intrinsic_dest_components(instr);
-        for (uint32_t i = 0; i < num_components; i++) {
+        for (uint32_t i = 0; i < num_components; ) {
                 struct qreg data;
                 emit_ldunifa(c, &data);
 
                 if (bit_size == 32) {
+                        assert(value_skips == 0);
                         ntq_store_dest(c, &instr->dest, i, vir_MOV(c, data));
                         i++;
                 } else {
                         assert(bit_size == 16);
-                        struct qreg tmp = vir_AND(c, vir_MOV(c, data),
-                                                  vir_uniform_ui(c, 0xffff));
-                        ntq_store_dest(c, &instr->dest, i, vir_MOV(c, tmp));
-                        i++;
+                        assert(value_skips <= 1);
+                        struct qreg tmp;
+
+                        if (value_skips == 0) {
+                                tmp = vir_AND(c, vir_MOV(c, data),
+                                              vir_uniform_ui(c, 0xffff));
+                                ntq_store_dest(c, &instr->dest, i, vir_MOV(c, tmp));
+                                i++;
+                        } else {
+                                value_skips--;
+                        }
+
+                        assert(value_skips == 0);
 
                         if (i < num_components) {
                                 tmp = vir_SHR(c, data, vir_uniform_ui(c, 16));
