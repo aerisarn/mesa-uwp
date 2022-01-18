@@ -2327,7 +2327,7 @@ radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader,
       lds_per_wave =
          conf->lds_size * info->lds_encode_granularity + shader->info.ps.num_interp * 48;
       lds_per_wave = align(lds_per_wave, info->lds_alloc_granularity);
-   } else if (stage == MESA_SHADER_COMPUTE) {
+   } else if (stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_TASK) {
       unsigned max_workgroup_size = shader->info.workgroup_size;
       lds_per_wave =
          align(conf->lds_size * info->lds_encode_granularity, info->lds_alloc_granularity);

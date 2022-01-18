@@ -3494,6 +3494,16 @@ radv_declare_pipeline_args(struct radv_device *device, struct radv_pipeline_stag
       stages[i].info.user_sgprs_locs = stages[i].args.user_sgprs_locs;
       stages[i].info.inline_push_constant_mask = stages[i].args.ac.inline_push_const_mask;
    }
+
+   if (stages[MESA_SHADER_TASK].nir) {
+      /* Task/mesh I/O uses the task ring buffers. */
+      stages[MESA_SHADER_TASK].info.cs.uses_task_rings = true;
+      stages[MESA_SHADER_MESH].info.cs.uses_task_rings = true;
+
+      stages[MESA_SHADER_TASK].info.workgroup_size =
+         ac_compute_cs_workgroup_size(
+            stages[MESA_SHADER_TASK].nir->info.workgroup_size, false, UINT32_MAX);
+   }
 }
 
 static void
