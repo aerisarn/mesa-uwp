@@ -656,6 +656,9 @@ create_bvci(struct zink_context *ctx, struct zink_resource *res, enum pipe_forma
    assert(bvci.format);
    bvci.offset = offset;
    bvci.range = !offset && range == res->base.b.width0 ? VK_WHOLE_SIZE : range;
+   uint32_t clamp = util_format_get_blocksize(format) * screen->info.props.limits.maxTexelBufferElements;
+   if (bvci.range == VK_WHOLE_SIZE && res->base.b.width0 > clamp)
+      bvci.range = clamp;
    bvci.flags = 0;
    return bvci;
 }
