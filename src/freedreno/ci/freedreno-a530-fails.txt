@@ -75,6 +75,9 @@ KHR-GLES31.core.layout_binding.sampler2DArray_layout_binding_texture_ComputeShad
 KHR-GLES31.core.layout_binding.sampler2D_layout_binding_texture_ComputeShader,Fail
 KHR-GLES31.core.layout_binding.sampler3D_layout_binding_texture_ComputeShader,Fail
 
+# Several "Byte at index <n> is 0x00 should be 0x<ab>"
+KHR-GLES31.core.shader_storage_buffer_object.basic-stdLayout_UBO_SSBO-case2-cs,Fail
+
 # msm 900000.mdss: [drm:a5xx_irq] *ERROR* gpu fault ring 0 fence 2c54ef status E40801C1 rb 0162/0162 ib1 000000000104B000/0000 ib2 000000000104C000/0000
 KHR-GLES31.core.texture_buffer.texture_buffer_atomic_functions,Fail
 
