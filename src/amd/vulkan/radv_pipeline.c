@@ -3167,6 +3167,8 @@ radv_get_wave_size(struct radv_device *device,  gl_shader_stage stage,
       return info->cs.subgroup_size;
    } else if (stage == MESA_SHADER_FRAGMENT)
       return device->physical_device->ps_wave_size;
+   else if (stage == MESA_SHADER_TASK)
+      return device->physical_device->cs_wave_size;
    else
       return device->physical_device->ge_wave_size;
 }
