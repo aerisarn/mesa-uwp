@@ -1510,6 +1510,8 @@ v3d_attempt_compile(struct v3d_compile *c)
 
         NIR_PASS_V(c->s, nir_lower_wrmasks, should_split_wrmask, c->s);
 
+        NIR_PASS_V(c->s, v3d_nir_lower_load_store_bitsize, c);
+
         NIR_PASS_V(c->s, v3d_nir_lower_subgroup_intrinsics, c);
 
         v3d_optimize_nir(c, c->s);
