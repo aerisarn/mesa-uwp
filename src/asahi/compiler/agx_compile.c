@@ -819,6 +819,27 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord:
          coords = index;
+
+         /* Array textures are indexed by a floating-point in NIR, but by an
+          * integer in AGX. Convert the array index from float-to-int for array
+          * textures. The array index is the last source in NIR.
+          */
+         if (instr->is_array) {
+            unsigned nr = nir_src_num_components(instr->src[i].src);
+            agx_index channels[4] = {};
+
+            for (unsigned i = 0; i < nr; ++i)
+               channels[i] = agx_p_extract(b, index, i);
+
+            channels[nr - 1] = agx_convert(b,
+                  agx_immediate(AGX_CONVERT_F_TO_S32),
+                  channels[nr - 1], AGX_ROUND_RTZ);
+
+            coords = agx_p_combine(b, channels[0], channels[1], channels[2], channels[3]);
+         } else {
+            coords = index;
+         }
+
          break;
 
       case nir_tex_src_lod:
