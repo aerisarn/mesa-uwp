@@ -3109,11 +3109,15 @@ zink_fence_wait(struct pipe_context *pctx)
 void
 zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
 {
-   struct zink_batch_state *bs = ctx->batch.state;
-   assert(bs);
-   if (!batch_id || bs->fence.batch_id == batch_id)
+   struct zink_batch_state *bs;
+   if (!batch_id) {
       /* not submitted yet */
       flush_batch(ctx, true);
+      bs = zink_batch_state(ctx->last_fence);
+      assert(bs);
+      batch_id = bs->fence.batch_id;
+   }
+   assert(batch_id);
    if (ctx->have_timelines) {
       if (!zink_screen_timeline_wait(zink_screen(ctx->base.screen), batch_id, UINT64_MAX))
          check_device_lost(ctx);
@@ -3122,8 +3126,8 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
    simple_mtx_lock(&ctx->batch_mtx);
    struct zink_fence *fence;
 
-   assert(batch_id || ctx->last_fence);
-   if (ctx->last_fence && (!batch_id || batch_id == zink_batch_state(ctx->last_fence)->fence.batch_id))
+   assert(ctx->last_fence);
+   if (batch_id == zink_batch_state(ctx->last_fence)->fence.batch_id)
       fence = ctx->last_fence;
    else {
       for (bs = ctx->batch_states; bs; bs = bs->next) {
