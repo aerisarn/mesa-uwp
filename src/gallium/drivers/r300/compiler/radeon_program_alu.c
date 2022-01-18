@@ -390,7 +390,7 @@ static void transform_LRP(struct radeon_compiler* c,
 {
 	struct rc_dst_register dst = try_to_reuse_dst(c, inst);
 
-	emit3(c, inst->Prev, RC_OPCODE_ADD, NULL,
+	emit3(c, inst->Prev, RC_OPCODE_MAD, NULL,
 		dst,
 		negate(inst->U.I.SrcReg[0]), inst->U.I.SrcReg[2], inst->U.I.SrcReg[2]);
 	emit3(c, inst->Prev, RC_OPCODE_MAD, &inst->U.I,
