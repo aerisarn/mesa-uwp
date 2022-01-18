@@ -1419,16 +1419,16 @@ static SpvId
 emit_atomic(struct ntv_context *ctx, SpvId op, SpvId type, SpvId src0, SpvId src1, SpvId src2)
 {
    if (op == SpvOpAtomicLoad)
-      return spirv_builder_emit_triop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+      return spirv_builder_emit_triop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeDevice),
                                        emit_uint_const(ctx, 32, 0));
    if (op == SpvOpAtomicCompareExchange)
-      return spirv_builder_emit_hexop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+      return spirv_builder_emit_hexop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeDevice),
                                        emit_uint_const(ctx, 32, 0),
                                        emit_uint_const(ctx, 32, 0),
                                        /* these params are intentionally swapped */
                                        src2, src1);
 
-   return spirv_builder_emit_quadop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+   return spirv_builder_emit_quadop(&ctx->builder, op, type, src0, emit_uint_const(ctx, 32, SpvScopeDevice),
                                     emit_uint_const(ctx, 32, 0), src1);
 }
 
@@ -2051,7 +2051,7 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    } else
       result = emit_bitcast(ctx, type, src);
    if (nir_intrinsic_access(intr) & ACCESS_COHERENT)
-      spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeWorkgroup, 0, result);
+      spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeDevice, 0, result);
    else
       spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
