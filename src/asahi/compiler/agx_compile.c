@@ -801,6 +801,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    switch (instr->op) {
    case nir_texop_tex:
    case nir_texop_txl:
+   case nir_texop_txb:
       break;
    default:
       unreachable("Unhandled texture op");
@@ -821,10 +822,10 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          break;
 
       case nir_tex_src_lod:
+      case nir_tex_src_bias:
          lod = index;
          break;
 
-      case nir_tex_src_bias:
       case nir_tex_src_ms_index:
       case nir_tex_src_offset:
       case nir_tex_src_comparator:
@@ -1481,7 +1482,8 @@ agx_compile_shader_nir(nir_shader *nir,
    };
 
    nir_tex_src_type_constraints tex_constraints = {
-      [nir_tex_src_lod] = { true, 16 }
+      [nir_tex_src_lod] = { true, 16 },
+      [nir_tex_src_bias] = { true, 16 },
    };
 
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
