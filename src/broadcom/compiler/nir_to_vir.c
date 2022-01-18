@@ -2762,7 +2762,7 @@ emit_ldunifa(struct v3d_compile *c, struct qreg *result)
         c->current_unifa_offset += 4;
 }
 
-static void
+static bool
 ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         /* Every ldunifa auto-increments the unifa address by 4 bytes, so our
@@ -2771,9 +2771,22 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         static const int32_t max_unifa_skip_dist =
                 MAX_UNIFA_SKIP_DISTANCE - 4;
 
+        /* We can only use unifa if the offset is uniform */
+        if (nir_src_is_divergent(instr->src[1]))
+                return false;
+
+        /* ldunifa is a 32-bit load instruction so we can only use it with
+         * 32-bit aligned addresses. We always produce 32-bit aligned addresses
+         * except for types smaller than 32-bit, so in these cases we can only
+         * use ldunifa if we can verify alignment, which we can only do for
+         * loads with a constant offset.
+         */
+        uint32_t bit_size = nir_dest_bit_size(instr->dest);
         bool dynamic_src = !nir_src_is_const(instr->src[1]);
         uint32_t const_offset =
                 dynamic_src ? 0 : nir_src_as_uint(instr->src[1]);
+        if (bit_size < 32 && (dynamic_src || (const_offset % 4) != 0))
+                return false;
 
         /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
          * shifted up by 1 (0 is gallium's constant buffer 0).
@@ -2821,11 +2834,31 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                         emit_ldunifa(c, NULL);
         }
 
-        for (uint32_t i = 0; i < nir_intrinsic_dest_components(instr); i++) {
+        uint32_t num_components = nir_intrinsic_dest_components(instr);
+        for (uint32_t i = 0; i < num_components; i++) {
                 struct qreg data;
                 emit_ldunifa(c, &data);
-                ntq_store_dest(c, &instr->dest, i, vir_MOV(c, data));
+
+                if (bit_size == 32) {
+                        ntq_store_dest(c, &instr->dest, i, vir_MOV(c, data));
+                        i++;
+                } else {
+                        assert(bit_size == 16);
+                        struct qreg tmp = vir_AND(c, vir_MOV(c, data),
+                                                  vir_uniform_ui(c, 0xffff));
+                        ntq_store_dest(c, &instr->dest, i, vir_MOV(c, tmp));
+                        i++;
+
+                        if (i < num_components) {
+                                tmp = vir_SHR(c, data, vir_uniform_ui(c, 16));
+                                ntq_store_dest(c, &instr->dest, i,
+                                               vir_MOV(c, tmp));
+                                i++;
+                        }
+                }
         }
+
+        return true;
 }
 
 static inline struct qreg
@@ -2872,9 +2905,7 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ubo:
-                if (!nir_src_is_divergent(instr->src[1]))
-                        ntq_emit_load_ubo_unifa(c, instr);
-                else
+                if (!ntq_emit_load_ubo_unifa(c, instr))
                         ntq_emit_tmu_general(c, instr, false);
                 break;
 
