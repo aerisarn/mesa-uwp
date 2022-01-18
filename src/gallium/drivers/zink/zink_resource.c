@@ -289,6 +289,8 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
       for (unsigned i = 0; i < modifiers_count; i++) {
          if (modifiers[i] == DRM_FORMAT_MOD_LINEAR) {
             have_linear = true;
+            if (!screen->info.have_EXT_image_drm_format_modifier)
+               break;
             continue;
          }
          VkFormatFeatureFlags feats = find_modifier_feats(prop, modifiers[i], mod);
@@ -380,7 +382,9 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    ici->mipLevels = templ->last_level + 1;
    ici->arrayLayers = MAX2(templ->array_size, 1);
    ici->samples = templ->nr_samples ? templ->nr_samples : VK_SAMPLE_COUNT_1_BIT;
-   ici->tiling = modifiers_count ? VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT : bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
+   ici->tiling = screen->info.have_EXT_image_drm_format_modifier && modifiers_count ?
+                 VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT :
+                 bind & PIPE_BIND_LINEAR ? VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
    ici->sharingMode = VK_SHARING_MODE_EXCLUSIVE;
    ici->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
@@ -401,6 +405,8 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
        templ->format != PIPE_FORMAT_B4G4R4A4_UNORM &&
        templ->format != PIPE_FORMAT_B4G4R4A4_UINT)
       ici->tiling = VK_IMAGE_TILING_LINEAR;
+   if (ici->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+      modifiers_count = 0;
 
    bool first = true;
    bool tried[2] = {0};
@@ -762,7 +768,7 @@ resource_create(struct pipe_screen *pscreen,
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = CALLOC_STRUCT_CL(zink_resource);
 
-   if (modifiers_count > 0) {
+   if (modifiers_count > 0 && screen->info.have_EXT_image_drm_format_modifier) {
       /* for rebinds */
       res->modifiers_count = modifiers_count;
       res->modifiers = mem_dup(modifiers, modifiers_count * sizeof(uint64_t));
@@ -907,8 +913,10 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
       aspect = res->aspect;
    switch (param) {
    case PIPE_RESOURCE_PARAM_NPLANES:
-      /* not yet implemented */
-      *value = pscreen->get_dmabuf_modifier_planes(pscreen, res->obj->modifier, pres->format);
+      if (screen->info.have_EXT_image_drm_format_modifier)
+         *value = pscreen->get_dmabuf_modifier_planes(pscreen, res->obj->modifier, pres->format);
+      else
+         *value = 1;
       break;
 
    case PIPE_RESOURCE_PARAM_STRIDE: {
