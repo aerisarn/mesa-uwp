@@ -1026,7 +1026,7 @@ dri2_setup_screen(_EGLDisplay *disp)
 
    disp->Extensions.EXT_protected_surface =
       dri2_renderer_query_integer(dri2_dpy,
-                                  __DRI2_RENDERER_HAS_PROTECTED_CONTENT);
+                                  __DRI2_RENDERER_HAS_PROTECTED_SURFACE);
 }
 
 void
