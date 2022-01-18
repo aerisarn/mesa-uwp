@@ -982,8 +982,6 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             res->vbo_bind_mask |= BITFIELD_BIT(start_slot + i);
             update_res_bind_count(ctx, res, false, false);
             ctx_vb->stride = vb->stride;
-            if (need_state_change)
-               ctx->gfx_pipeline_state.vertex_strides[start_slot + i] = vb->stride;
             ctx_vb->buffer_offset = vb->buffer_offset;
             /* always barrier before possible rebind */
             zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
