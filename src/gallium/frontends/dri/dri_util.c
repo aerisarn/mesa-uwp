@@ -1050,6 +1050,16 @@ static const struct {
       .internal_format =        GL_RGBA16F,
    },
    {
+      .image_format    = __DRI_IMAGE_FORMAT_ABGR16161616,
+      .mesa_format     =        MESA_FORMAT_RGBA_UNORM16,
+      .internal_format =        GL_RGBA16,
+   },
+   {
+      .image_format    = __DRI_IMAGE_FORMAT_XBGR16161616,
+      .mesa_format     =        MESA_FORMAT_RGBX_UNORM16,
+      .internal_format =        GL_RGBA16,
+   },
+   {
       .image_format    = __DRI_IMAGE_FORMAT_ARGB2101010,
       .mesa_format     =        MESA_FORMAT_B10G10R10A2_UNORM,
       .internal_format =        GL_RGB10_A2,
