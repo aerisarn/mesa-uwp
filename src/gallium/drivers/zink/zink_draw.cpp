@@ -840,13 +840,19 @@ zink_draw(struct pipe_context *pctx,
       }
    } else {
       if (so_target && screen->info.tf_props.transformFeedbackDraw) {
-         if (needs_drawid)
-            update_drawid(ctx, drawid_offset);
-         zink_batch_reference_resource_rw(batch, zink_resource(so_target->base.buffer), false);
-         zink_batch_reference_resource_rw(batch, zink_resource(so_target->counter_buffer), true);
-         VKCTX(CmdDrawIndirectByteCountEXT)(batch->state->cmdbuf, dinfo->instance_count, dinfo->start_instance,
-                                       zink_resource(so_target->counter_buffer)->obj->buffer, so_target->counter_buffer_offset, 0,
-                                       MIN2(so_target->stride, screen->info.tf_props.maxTransformFeedbackBufferDataStride));
+         /* GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_api attempts a bogus xfb
+          * draw using a streamout target that has no data
+          * to avoid hanging the gpu, reject any such draws
+          */
+         if (so_target->counter_buffer_valid) {
+            if (needs_drawid)
+               update_drawid(ctx, drawid_offset);
+            zink_batch_reference_resource_rw(batch, zink_resource(so_target->base.buffer), false);
+            zink_batch_reference_resource_rw(batch, zink_resource(so_target->counter_buffer), true);
+            VKCTX(CmdDrawIndirectByteCountEXT)(batch->state->cmdbuf, dinfo->instance_count, dinfo->start_instance,
+                                          zink_resource(so_target->counter_buffer)->obj->buffer, so_target->counter_buffer_offset, 0,
+                                          MIN2(so_target->stride, screen->info.tf_props.maxTransformFeedbackBufferDataStride));
+         }
       } else if (dindirect && dindirect->buffer) {
          assert(num_draws == 1);
          if (needs_drawid)
