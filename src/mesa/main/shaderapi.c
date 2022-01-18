@@ -777,13 +777,8 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       *params = _mesa_longest_attribute_name_length(shProg);
       return;
    case GL_ACTIVE_UNIFORMS: {
-      unsigned i;
-      const unsigned num_uniforms =
-         shProg->data->NumUniformStorage - shProg->data->NumHiddenUniforms;
-      for (*params = 0, i = 0; i < num_uniforms; i++) {
-         if (!shProg->data->UniformStorage[i].is_shader_storage)
-            (*params)++;
-      }
+      _mesa_GetProgramInterfaceiv(program, GL_UNIFORM, GL_ACTIVE_RESOURCES,
+                                  params);
       return;
    }
    case GL_ACTIVE_UNIFORM_MAX_LENGTH: {
