@@ -3286,8 +3286,8 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_unpack_half_2x16_split_y: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (src.regClass() == s1)
-         src =
-            bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), src, Operand::c32(16u));
+         src = bld.pseudo(aco_opcode::p_extract, bld.def(s1), bld.def(s1, scc), src,
+                          Operand::c32(1u), Operand::c32(16u), Operand::zero());
       else
          src =
             bld.pseudo(aco_opcode::p_split_vector, bld.def(v2b), bld.def(v2b), src).def(1).getTemp();
