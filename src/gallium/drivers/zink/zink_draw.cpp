@@ -396,6 +396,8 @@ update_barriers(struct zink_context *ctx, bool is_compute)
                   access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
                   pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
                   bind_count -= util_bitcount(res->vbo_bind_mask);
+                  if (res->write_bind_count[is_compute])
+                     pipeline |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
                }
                bind_count -= res->so_bind_count;
             }
