@@ -443,7 +443,7 @@ static const struct dri2_format_mapping dri2_format_table[] = {
       { DRM_FORMAT_XBGR16161616F, __DRI_IMAGE_FORMAT_XBGR16161616F,
         __DRI_IMAGE_COMPONENTS_RGB,       PIPE_FORMAT_R16G16B16X16_FLOAT, 1,
         { { 0, 0, 0, __DRI_IMAGE_FORMAT_XBGR16161616F } } },
-      { __DRI_IMAGE_FOURCC_RGBA16161616, __DRI_IMAGE_FORMAT_ABGR16161616,
+      { DRM_FORMAT_ABGR16161616, __DRI_IMAGE_FORMAT_ABGR16161616,
         __DRI_IMAGE_COMPONENTS_RGBA,      PIPE_FORMAT_R16G16B16A16_UNORM, 1,
         { { 0, 0, 0, __DRI_IMAGE_FORMAT_ABGR16161616 } } },
       { DRM_FORMAT_ARGB2101010,   __DRI_IMAGE_FORMAT_ARGB2101010,
@@ -693,12 +693,11 @@ dri2_query_dma_buf_formats(__DRIscreen *_screen, int max, int *formats,
       const struct dri2_format_mapping *map = &dri2_format_table[i];
 
       /* The sRGB format is not a real FourCC as defined by drm_fourcc.h, so we
-       * must not leak it out to clients.  The RGBA16161616 format isn't
-       * real either, but at some point it could be.  Don't leak it out form
-       * now.
+       * must not leak it out to clients.  The ABGR16161616 format wasn't
+       * real until recently.  Don't leak it out for now.
        */
       if (dri2_format_table[i].dri_fourcc == __DRI_IMAGE_FOURCC_SARGB8888 ||
-          dri2_format_table[i].dri_fourcc == __DRI_IMAGE_FOURCC_RGBA16161616)
+          dri2_format_table[i].dri_fourcc == DRM_FORMAT_ABGR16161616)
          continue;
 
       if (pscreen->is_format_supported(pscreen, map->pipe_format,
