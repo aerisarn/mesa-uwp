@@ -28,7 +28,6 @@ shaders@point-vertex-id gl_vertexid,Fail
 shaders@point-vertex-id gl_vertexid gl_instanceid divisor,Fail
 shaders@point-vertex-id gl_vertexid gl_instanceid,Fail
 spec@arb_base_instance@arb_base_instance-drawarrays,Fail
-spec@arb_blend_func_extended@arb_blend_func_extended-dual-src-blending-issue-1917_gles3,Crash
 spec@arb_color_buffer_float@gl_rgba16f-render,Fail
 spec@arb_color_buffer_float@gl_rgba16f-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba16f-render-sanity,Fail
