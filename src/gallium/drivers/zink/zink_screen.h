@@ -227,6 +227,7 @@ zink_screen_handle_vkresult(struct zink_screen *screen, VkResult ret)
       break;
    case VK_ERROR_DEVICE_LOST:
       screen->device_lost = true;
+      mesa_loge("zink: DEVICE LOST!\n");
       FALLTHROUGH;
    default:
       success = false;
