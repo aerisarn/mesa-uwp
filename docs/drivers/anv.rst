@@ -171,3 +171,52 @@ Each binding type entry gets an associated structure in memory
 (``anv_storage_image_descriptor``, ``anv_sampled_image_descriptor``,
 ``anv_address_range_descriptor``, ``anv_storage_image_descriptor``).
 This is the information read by the shader.
+
+
+.. _`Descriptor Set Memory Layout`:
+
+Descriptor Set Memory Layout
+----------------------------
+
+Here is a representation of how the descriptor set bindings, with each
+elements in each binding is mapped to a the descriptor set memory :
+
+.. graphviz::
+
+  digraph structs {
+    node [shape=record];
+    rankdir=LR;
+
+    struct1 [label="Descriptor Set | \
+                    <b0> binding 0\n STORAGE_IMAGE \n (array_length=3) | \
+                    <b1> binding 1\n COMBINED_IMAGE_SAMPLER \n (array_length=2) | \
+                    <b2> binding 2\n UNIFORM_BUFFER \n (array_length=1) | \
+                    <b3> binding 3\n UNIFORM_TEXEL_BUFFER \n (array_length=1)"];
+    struct2 [label="Descriptor Set Memory | \
+                    <b0e0> anv_storage_image_descriptor|\
+                    <b0e1> anv_storage_image_descriptor|\
+                    <b0e2> anv_storage_image_descriptor|\
+                    <b1e0> anv_sampled_image_descriptor|\
+                    <b1e1> anv_sampled_image_descriptor|\
+                    <b2e0> anv_address_range_descriptor|\
+                    <b3e0> anv_storage_image_descriptor"];
+
+    struct1:b0 -> struct2:b0e0;
+    struct1:b0 -> struct2:b0e1;
+    struct1:b0 -> struct2:b0e2;
+    struct1:b1 -> struct2:b1e0;
+    struct1:b1 -> struct2:b1e1;
+    struct1:b2 -> struct2:b2e0;
+    struct1:b3 -> struct2:b3e0;
+  }
+
+Each Binding in the descriptor set is allocated an array of
+``anv_*_descriptor`` data structure. The type of ``anv_*_descriptor``
+used for a binding is selected based on the ``VkDescriptorType`` of
+the bindings.
+
+The value of ``anv_descriptor_set_binding_layout::descriptor_offset``
+is a byte offset from the descriptor set memory to the associated
+binding. ``anv_descriptor_set_binding_layout::array_size`` is the
+number of ``anv_*_descriptor`` elements in the descriptor set memory
+from that offset for the binding.
