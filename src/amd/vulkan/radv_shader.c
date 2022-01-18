@@ -1299,7 +1299,10 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
    if (!arena)
       goto fail;
 
-   unsigned arena_size = MAX2(RADV_SHADER_ALLOC_MIN_ARENA_SIZE, size);
+   unsigned arena_size =
+      MAX2(RADV_SHADER_ALLOC_MIN_ARENA_SIZE
+              << MIN2(RADV_SHADER_ALLOC_MAX_ARENA_SIZE_SHIFT, device->shader_arena_shift),
+           size);
    VkResult result = device->ws->buffer_create(
       device->ws, arena_size, RADV_SHADER_ALLOC_ALIGNMENT, RADEON_DOMAIN_VRAM,
       RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_32BIT |
@@ -1335,6 +1338,7 @@ radv_alloc_shader_memory(struct radv_device *device, uint32_t size, void *ptr)
       add_hole(device, hole);
    }
 
+   ++device->shader_arena_shift;
    list_addtail(&arena->list, &device->shader_arenas);
 
    mtx_unlock(&device->shader_arena_mutex);
