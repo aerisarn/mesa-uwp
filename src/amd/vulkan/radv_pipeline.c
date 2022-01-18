@@ -4747,6 +4747,7 @@ radv_pipeline_stage_to_user_data_0(struct radv_pipeline *pipeline, gl_shader_sta
       return chip_class == GFX9 ? R_00B330_SPI_SHADER_USER_DATA_ES_0
                                 : R_00B230_SPI_SHADER_USER_DATA_GS_0;
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
       return R_00B900_COMPUTE_USER_DATA_0;
    case MESA_SHADER_TESS_CTRL:
       return chip_class == GFX9 ? R_00B430_SPI_SHADER_USER_DATA_LS_0
