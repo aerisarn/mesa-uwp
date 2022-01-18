@@ -1341,6 +1341,58 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 result = vir_AND(c, src[0], vir_uniform_ui(c, 1));
                 break;
 
+        case nir_op_f2f16:
+                assert(nir_src_bit_size(instr->src[0].src) == 32);
+                result = vir_FMOV(c, src[0]);
+                vir_set_pack(c->defs[result.index], V3D_QPU_PACK_L);
+                break;
+
+        case nir_op_f2f32:
+                assert(nir_src_bit_size(instr->src[0].src) == 16);
+                result = vir_FMOV(c, src[0]);
+                vir_set_unpack(c->defs[result.index], 0, V3D_QPU_UNPACK_L);
+                break;
+
+        case nir_op_i2i16:
+        case nir_op_u2u16:
+                assert(nir_src_bit_size(instr->src[0].src) == 32);
+                /* We don't have integer pack/unpack methods for converting
+                 * between 16-bit and 32-bit, so we implement the conversion
+                 * manually by truncating the src.
+                 */
+                result = vir_AND(c, src[0], vir_uniform_ui(c, 0xffff));
+                break;
+
+        case nir_op_u2u32:
+                assert(nir_src_bit_size(instr->src[0].src) == 16);
+                /* we don't have a native 16-bit MOV so we copy all 32-bit from
+                 * the src but we make sure to clear any garbage bits that may
+                 * be present in the upper half of the src.
+                 */
+                result = vir_AND(c, src[0], vir_uniform_ui(c, 0xffff));
+                break;
+
+        case nir_op_i2i32: {
+                assert(nir_src_bit_size(instr->src[0].src) == 16);
+                struct qreg tmp = vir_MOV(c, vir_AND(c, src[0],
+                                          vir_uniform_ui(c, 0xffff)));
+
+                /* Do we need to sign-extend? */
+                struct qinst *sign_check =
+                        vir_AND_dest(c, vir_nop_reg(),
+                                     src[0], vir_uniform_ui(c, 0x00008000));
+                vir_set_pf(c, sign_check, V3D_QPU_PF_PUSHZ);
+
+                /* If so, fill in leading sign bits */
+                struct qinst *sign_extend =
+                        vir_OR_dest(c, tmp, tmp,
+                                    vir_uniform_ui(c, 0xffff0000));
+                vir_set_cond(sign_extend, V3D_QPU_COND_IFNA);
+
+                result = vir_MOV(c, tmp);
+                break;
+        }
+
         case nir_op_iadd:
                 result = vir_ADD(c, src[0], src[1]);
                 break;
