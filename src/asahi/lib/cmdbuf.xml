@@ -212,6 +212,8 @@
     <field name="sRGB" size="1" start="108" type="bool"/>
     <field name="Unk 2" size="1" start="109" type="bool"/>
     <field name="Stride" size="18" start="110" type="hex" modifier="shr(4)"/>
+    <!-- Note that 3D/arrays cannot be linear. -->
+    <field name="Depth" size="14" start="110" type="uint" modifier="minus(1)" default="1"/>
   </struct>
 
   <enum name="Wrap">

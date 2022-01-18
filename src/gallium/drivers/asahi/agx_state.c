@@ -463,6 +463,10 @@ agx_create_sampler_view(struct pipe_context *pctx,
    unsigned level = state->u.tex.first_level;
    assert(state->u.tex.first_layer == 0);
 
+   /* Must tile array textures */
+   assert((rsrc->modifier != DRM_FORMAT_MOD_LINEAR) ||
+          (state->u.tex.last_layer == state->u.tex.first_layer));
+
    /* Pack the descriptor into GPU memory */
    agx_pack(so->desc->ptr.cpu, TEXTURE, cfg) {
       cfg.dimension = agx_translate_texture_dimension(state->target);
@@ -479,6 +483,11 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.address = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.unk_2 = false;
+
+      if (state->target == PIPE_TEXTURE_3D)
+         cfg.depth = u_minify(texture->depth0, level);
+      else
+         cfg.depth = state->u.tex.last_layer - state->u.tex.first_layer + 1;
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
          (rsrc->slices[level].line_stride - 16) :
@@ -726,9 +735,9 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
       const struct util_format_description *desc =
          util_format_description(surf->format);
       unsigned level = surf->u.tex.level;
+      unsigned layer = surf->u.tex.first_layer;
 
-      assert(surf->u.tex.first_layer == 0);
-      assert(surf->u.tex.last_layer == 0);
+      assert(surf->u.tex.last_layer == layer);
 
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
          cfg.layout = agx_translate_layout(tex->modifier);
@@ -740,7 +749,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.width = state->width;
          cfg.height = state->height;
          cfg.level = surf->u.tex.level;
-         cfg.buffer = tex->bo->ptr.gpu;
+         cfg.buffer = tex->bo->ptr.gpu + layer * tex->array_stride;
 
          if (tex->mipmapped)
             cfg.unk_55 = 0x8;

@@ -191,7 +191,7 @@ agx_resource_create(struct pipe_screen *screen,
 
    /* Arrays and cubemaps have the entire miptree duplicated and page aligned (16K) */
    nresource->array_stride = ALIGN_POT(offset, 0x4000);
-   unsigned size = nresource->array_stride * templ->array_size;
+   unsigned size = nresource->array_stride * templ->array_size * templ->depth0;
 
    pipe_reference_init(&nresource->base.reference, 1);
 
@@ -763,7 +763,7 @@ agx_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
       return is_deqp ? 1 : 0;
  
    case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-      return is_deqp ? 256 : 0;
+      return 256;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
