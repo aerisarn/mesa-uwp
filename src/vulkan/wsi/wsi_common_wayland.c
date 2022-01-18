@@ -294,6 +294,10 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R8G8B8_UNORM,
                                             true, true);
+      if (format)
+         wsi_wl_format_add_modifier(format, modifier);
+      if (srgb_format)
+         wsi_wl_format_add_modifier(srgb_format, modifier);
       FALLTHROUGH;
    case DRM_FORMAT_ABGR8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
@@ -310,6 +314,11 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B8G8R8_UNORM,
                                             true, true);
+      if (format)
+         wsi_wl_format_add_modifier(format, modifier);
+      if (srgb_format)
+         wsi_wl_format_add_modifier(srgb_format, modifier);
+
       FALLTHROUGH;
    case DRM_FORMAT_ARGB8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
