@@ -687,7 +687,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return MIN2(screen->info.props.limits.maxVertexOutputComponents / 4 / 2, 16);
 
    case PIPE_CAP_DMABUF:
-      return screen->info.have_KHR_external_memory_fd && screen->info.have_EXT_external_memory_dma_buf && screen->info.have_EXT_queue_family_foreign;
+      return screen->info.have_KHR_external_memory_fd &&
+             screen->info.have_EXT_external_memory_dma_buf &&
+             screen->info.have_EXT_queue_family_foreign &&
+             screen->info.have_EXT_image_drm_format_modifier;
 
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
       return screen->info.feats.features.depthBounds;
@@ -2010,9 +2013,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.get_sample_pixel_grid = zink_get_sample_pixel_grid;
    screen->base.is_compute_copy_faster = zink_is_compute_copy_faster;
    screen->base.is_format_supported = zink_is_format_supported;
-   screen->base.query_dmabuf_modifiers = zink_query_dmabuf_modifiers;
-   screen->base.is_dmabuf_modifier_supported = zink_is_dmabuf_modifier_supported;
-   screen->base.get_dmabuf_modifier_planes = zink_get_dmabuf_modifier_planes;
+   if (screen->info.have_EXT_image_drm_format_modifier && screen->info.have_EXT_external_memory_dma_buf) {
+      screen->base.query_dmabuf_modifiers = zink_query_dmabuf_modifiers;
+      screen->base.is_dmabuf_modifier_supported = zink_is_dmabuf_modifier_supported;
+      screen->base.get_dmabuf_modifier_planes = zink_get_dmabuf_modifier_planes;
+   }
    screen->base.context_create = zink_context_create;
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
    screen->base.destroy = zink_destroy_screen;
