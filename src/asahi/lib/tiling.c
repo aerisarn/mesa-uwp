@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2021 Alyssa Rosenzweig <alyssa@rosenzweig.io>
+ * Copyright (c) 2019 Collabora, Ltd.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -57,6 +58,26 @@
 /* mask of bits used for X coordinate in a tile */
 #define SPACE_MASK 0x555 // 0b010101010101
 
+typedef struct {
+  uint16_t lo;
+  uint8_t hi;
+} __attribute__((packed)) agx_uint24_t;
+
+typedef struct {
+  uint32_t lo;
+  uint16_t hi;
+} __attribute__((packed)) agx_uint48_t;
+
+typedef struct {
+  uint64_t lo;
+  uint32_t hi;
+} __attribute__((packed)) agx_uint96_t;
+
+typedef struct {
+  uint64_t lo;
+  uint64_t hi;
+} __attribute__((packed)) agx_uint128_t;
+
 static uint32_t
 agx_space_bits(unsigned x)
 {
@@ -72,6 +93,9 @@ agx_space_bits(unsigned x)
 	unsigned y_offs = agx_space_bits(sy & (tile_size - 1)) << 1;\
 	unsigned x_offs_start = agx_space_bits(sx & (tile_size - 1));\
    unsigned space_mask = SPACE_MASK & (pixels_per_tile - 1);\
+\
+   pixel_t *linear = _linear; \
+   pixel_t *tiled = _tiled; \
 \
 	for (unsigned y = sy; y < smaxy; ++y) {\
 		unsigned tile_y = (y >> tile_shift);\
@@ -98,17 +122,33 @@ agx_space_bits(unsigned x)
 	}\
 }
 
+#define TILED_UNALIGNED_TYPES(bpp, store, tile_shift) { \
+   if (bpp == 8) \
+      TILED_UNALIGNED_TYPE(uint8_t, store, tile_shift) \
+   else if (bpp == 16) \
+      TILED_UNALIGNED_TYPE(uint16_t, store, tile_shift) \
+   else if (bpp == 24) \
+      TILED_UNALIGNED_TYPE(agx_uint24_t, store, tile_shift) \
+   else if (bpp == 32) \
+      TILED_UNALIGNED_TYPE(uint32_t, store, tile_shift) \
+   else if (bpp == 48) \
+      TILED_UNALIGNED_TYPE(agx_uint48_t, store, tile_shift) \
+   else if (bpp == 64) \
+      TILED_UNALIGNED_TYPE(uint64_t, store, tile_shift) \
+   else if (bpp == 96) \
+      TILED_UNALIGNED_TYPE(agx_uint96_t, store, tile_shift) \
+   else if (bpp == 128) \
+      TILED_UNALIGNED_TYPE(agx_uint128_t, store, tile_shift) \
+   else \
+      unreachable("Can't tile this bpp\n"); \
+}
+
 void
 agx_detile(void *_tiled, void *_linear,
            unsigned width, unsigned bpp, unsigned linear_pitch,
            unsigned sx, unsigned sy, unsigned smaxx, unsigned smaxy, unsigned tile_shift)
 {
-   /* TODO: parametrize with macro magic */
-   assert(bpp == 32);
-
-   uint32_t *linear = _linear;
-   uint32_t *tiled = _tiled;
-   TILED_UNALIGNED_TYPE(uint32_t, false, tile_shift);
+   TILED_UNALIGNED_TYPES(bpp, false, tile_shift);
 }
 
 void
@@ -117,10 +157,5 @@ agx_tile(void *_tiled, void *_linear,
          unsigned sx, unsigned sy, unsigned smaxx, unsigned smaxy,
          unsigned tile_shift)
 {
-   /* TODO: parametrize with macro magic */
-   assert(bpp == 32);
-
-   uint32_t *linear = _linear;
-   uint32_t *tiled = _tiled;
-   TILED_UNALIGNED_TYPE(uint32_t, true, tile_shift);
+   TILED_UNALIGNED_TYPES(bpp, true, tile_shift);
 }
