@@ -2018,6 +2018,12 @@ radv_pipeline_has_mesh(const struct radv_pipeline *pipeline)
    return !!pipeline->shaders[MESA_SHADER_MESH];
 }
 
+static inline bool
+radv_pipeline_has_task(const struct radv_pipeline *pipeline)
+{
+   return !!pipeline->shaders[MESA_SHADER_TASK];
+}
+
 bool radv_pipeline_has_ngg_passthrough(const struct radv_pipeline *pipeline);
 
 bool radv_pipeline_has_gs_copy_shader(const struct radv_pipeline *pipeline);
