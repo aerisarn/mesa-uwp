@@ -342,6 +342,7 @@ emit_tmu_general_store_writes(struct v3d_compile *c,
                               uint32_t base_const_offset,
                               uint32_t *writemask,
                               uint32_t *const_offset,
+                              uint32_t *type_size,
                               uint32_t *tmu_writes)
 {
         struct qreg tmud = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUD);
@@ -371,7 +372,9 @@ emit_tmu_general_store_writes(struct v3d_compile *c,
                 /* Update the offset for the TMU write based on the
                  * the first component we are writing.
                  */
-                *const_offset = base_const_offset + first_component * 4;
+                *type_size = nir_src_bit_size(instr->src[0]) / 8;
+                *const_offset =
+                        base_const_offset + first_component * (*type_size);
 
                 /* Clear these components from the writemask */
                 uint32_t written_mask =
@@ -588,16 +591,21 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
         for (enum emit_mode mode = MODE_COUNT; mode != MODE_LAST; mode++) {
                 assert(mode == MODE_COUNT || tmu_writes > 0);
 
+                uint32_t type_size = 4;
+
                 if (is_store) {
                         emit_tmu_general_store_writes(c, mode, instr,
                                                       base_const_offset,
                                                       &writemask,
                                                       &const_offset,
+                                                      &type_size,
                                                       &tmu_writes);
                 } else if (!is_load && !atomic_add_replaced) {
-                         emit_tmu_general_atomic_writes(c, mode, instr,
-                                                        tmu_op, has_index,
-                                                        &tmu_writes);
+                        emit_tmu_general_atomic_writes(c, mode, instr,
+                                                       tmu_op, has_index,
+                                                       &tmu_writes);
+                } else if (is_load) {
+                        type_size = nir_dest_bit_size(instr->dest) / 8;
                 }
 
                 /* For atomics we use 32bit except for CMPXCHG, that we need
@@ -627,8 +635,14 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
                                 config |= GENERAL_TMU_LOOKUP_TYPE_VEC2;
                         } else if (is_atomic || num_components == 1) {
-                                config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
+                                if (type_size == 4) {
+                                        config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
+                                } else {
+                                        assert(type_size == 2);
+                                        config |= GENERAL_TMU_LOOKUP_TYPE_16BIT_UI;
+                                }
                         } else {
+                                assert(type_size == 4);
                                 config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 +
                                           num_components - 2;
                         }
