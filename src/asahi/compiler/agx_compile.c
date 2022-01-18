@@ -784,6 +784,17 @@ agx_tex_dim(enum glsl_sampler_dim dim, bool array)
    }
 }
 
+static enum agx_lod_mode
+agx_lod_mode_for_nir(nir_texop op)
+{
+   switch (op) {
+   case nir_texop_tex: return AGX_LOD_MODE_AUTO_LOD;
+   case nir_texop_txb: return AGX_LOD_MODE_AUTO_LOD_BIAS;
+   case nir_texop_txl: return AGX_LOD_MODE_LOD_MIN;
+   default: unreachable("Unhandled texture op");
+   }
+}
+
 static void
 agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
@@ -794,9 +805,6 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    default:
       unreachable("Unhandled texture op");
    }
-
-   enum agx_lod_mode lod_mode = (instr->op == nir_texop_tex) ?
-      AGX_LOD_MODE_AUTO_LOD : AGX_LOD_MODE_LOD_MIN;
 
    agx_index coords = agx_null(),
              texture = agx_immediate(instr->texture_index),
@@ -830,7 +838,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
    agx_texture_sample_to(b, agx_dest_index(&instr->dest),
          coords, lod, texture, sampler, offset,
          agx_tex_dim(instr->sampler_dim, instr->is_array),
-         lod_mode,
+         agx_lod_mode_for_nir(instr->op),
          0xF, /* TODO: wrmask */
          0);
 
