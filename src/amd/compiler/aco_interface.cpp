@@ -63,6 +63,16 @@ static const std::array<aco_compiler_statistic_info, aco::num_statistics> statis
 const unsigned aco_num_statistics = aco::num_statistics;
 const aco_compiler_statistic_info* aco_statistic_infos = statistic_infos.data();
 
+uint64_t
+aco_get_codegen_flags()
+{
+   aco::init();
+   /* Exclude flags which don't affect code generation. */
+   uint64_t exclude = aco::DEBUG_VALIDATE_IR | aco::DEBUG_VALIDATE_RA | aco::DEBUG_PERFWARN |
+                      aco::DEBUG_PERF_INFO | aco::DEBUG_LIVE_INFO;
+   return aco::debug_flags & ~exclude;
+}
+
 static void
 validate(aco::Program* program)
 {

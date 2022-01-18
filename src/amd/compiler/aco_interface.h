@@ -58,6 +58,8 @@ void aco_compile_vs_prolog(const struct aco_compiler_options* options,
                            const struct radv_shader_args* args,
                            struct radv_prolog_binary** binary);
 
+uint64_t aco_get_codegen_flags();
+
 #ifdef __cplusplus
 }
 #endif

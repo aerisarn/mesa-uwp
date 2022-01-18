@@ -30,6 +30,7 @@
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
+#include "aco_interface.h"
 
 struct cache_entry {
    union {
@@ -61,6 +62,16 @@ radv_pipeline_cache_unlock(struct radv_pipeline_cache *cache)
    mtx_unlock(&cache->mutex);
 }
 
+static bool
+radv_is_cache_disabled(struct radv_device *device)
+{
+   /* Pipeline caches can be disabled with RADV_DEBUG=nocache, with MESA_GLSL_CACHE_DISABLE=1 and
+    * when ACO_DEBUG is used. MESA_GLSL_CACHE_DISABLE is done elsewhere.
+    */
+   return (device->instance->debug_flags & RADV_DEBUG_NO_CACHE) ||
+          (device->physical_device->use_llvm ? 0 : aco_get_codegen_flags());
+}
+
 void
 radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *device)
 {
@@ -80,7 +91,7 @@ radv_pipeline_cache_init(struct radv_pipeline_cache *cache, struct radv_device *
    /* We don't consider allocation failure fatal, we just start with a 0-sized
     * cache. Disable caching when we want to keep shader debug info, since
     * we don't get the debug info on cached shaders. */
-   if (cache->hash_table == NULL || (device->instance->debug_flags & RADV_DEBUG_NO_CACHE))
+   if (cache->hash_table == NULL || radv_is_cache_disabled(device))
       cache->table_size = 0;
    else
       memset(cache->hash_table, 0, byte_size);
@@ -285,13 +296,6 @@ radv_pipeline_cache_add_entry(struct radv_pipeline_cache *cache, struct cache_en
     */
    if (cache->kernel_count < cache->table_size / 2)
       radv_pipeline_cache_set_entry(cache, entry);
-}
-
-static bool
-radv_is_cache_disabled(struct radv_device *device)
-{
-   /* Pipeline caches can be disabled with RADV_DEBUG=nocache and with MESA_SHADER_CACHE_DISABLE=1. */
-   return (device->instance->debug_flags & RADV_DEBUG_NO_CACHE);
 }
 
 bool
