@@ -995,6 +995,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    /* recreate createinfo */
    deep_copy_graphics_create_info(pipeline->mem_ctx, &pipeline->graphics_create_info, pCreateInfo);
    pipeline->is_compute_pipeline = false;
+   if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR)
+      pipeline->library = true;
 
    if (pipeline->graphics_create_info.pViewportState) {
       /* if pViewportState is null, it means rasterization is discarded,

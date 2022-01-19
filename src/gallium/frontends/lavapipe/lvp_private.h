@@ -456,6 +456,7 @@ struct lvp_pipeline {
    bool gs_output_lines;
    bool provoking_vertex_last;
    bool negative_one_to_one;
+   bool library;
 };
 
 struct lvp_event {

@@ -115,6 +115,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_maintenance4                      = true,
    .KHR_multiview                         = true,
    .KHR_push_descriptor                   = true,
+   .KHR_pipeline_library                  = true,
    .KHR_relaxed_block_layout              = true,
    .KHR_sampler_mirror_clamp_to_edge      = true,
    .KHR_separate_depth_stencil_layouts    = true,
