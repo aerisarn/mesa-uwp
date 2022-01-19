@@ -215,6 +215,9 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .lower_unpack_snorm_4x8 = true,
    .lower_pack_half_2x16 = true,
    .lower_unpack_half_2x16 = true,
+   .lower_pack_32_2x16 = true,
+   .lower_pack_32_2x16_split = true,
+   .lower_unpack_32_2x16_split = true,
    /* FIXME: see if we can avoid the uadd_carry and usub_borrow lowering and
     * get the tests to pass since it might produce slightly better code.
     */

@@ -1901,7 +1901,14 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                         .callback = mem_vectorize_callback,
                         .robust_modes = 0,
                 };
-                NIR_PASS(progress, s, nir_opt_load_store_vectorize, &vectorize_opts);
+                bool vectorize_progress = false;
+                NIR_PASS(vectorize_progress, s, nir_opt_load_store_vectorize,
+                         &vectorize_opts);
+                if (vectorize_progress) {
+                        NIR_PASS(progress, s, nir_lower_alu_to_scalar, NULL, NULL);
+                        NIR_PASS(progress, s, nir_lower_pack);
+                        progress = true;
+                }
 
                 if (lower_flrp != 0) {
                         bool lower_flrp_progress = false;
