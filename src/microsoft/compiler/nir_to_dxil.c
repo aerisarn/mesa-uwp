@@ -116,6 +116,7 @@ nir_options = {
    .use_scoped_barrier = true,
    .vertex_id_zero_based = true,
    .lower_base_vertex = true,
+   .lower_helper_invocation = true,
    .has_cs_global_id = true,
    .has_txs = true,
 };
