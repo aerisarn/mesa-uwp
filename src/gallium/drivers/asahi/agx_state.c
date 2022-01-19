@@ -1224,8 +1224,17 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
 
    agx_pack(texture.cpu, TEXTURE, cfg) {
       struct agx_resource *rsrc = agx_resource(surf->texture);
+      unsigned level = surf->u.tex.level;
+      unsigned layer = surf->u.tex.first_layer;
       const struct util_format_description *desc =
          util_format_description(surf->format);
+
+      /* To reduce shader variants, we always use a non-mipmapped 2D texture.
+       * For reloads of arrays, cube maps, etc -- we only logically reload a
+       * single 2D image. This does mean we need to be careful about
+       * width/height and address.
+       */
+      cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
 
       cfg.layout = agx_translate_layout(rsrc->modifier);
       cfg.format = agx_pixel_format[surf->format].hw;
@@ -1233,15 +1242,14 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.swizzle_g = agx_channel_from_pipe(desc->swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(desc->swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
-      cfg.width = surf->width;
-      cfg.height = surf->height;
+      cfg.width = u_minify(surf->width, level);
+      cfg.height = u_minify(surf->height, level);
       cfg.levels = 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = rsrc->bo->ptr.gpu;
-      cfg.unk_2 = false;
+      cfg.address = agx_map_texture_gpu(rsrc, level, layer);
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
-         (rsrc->slices[0].line_stride - 16) :
+         (rsrc->slices[level].line_stride - 16) :
          AGX_RT_STRIDE_TILED;
    }
 
