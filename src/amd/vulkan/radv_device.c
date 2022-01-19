@@ -3315,6 +3315,8 @@ fail:
          device->ws->ctx_destroy(device->hw_ctx[i]);
    }
 
+   mtx_destroy(&device->overallocation_mutex);
+
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
    return result;
@@ -3350,6 +3352,8 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       if (device->hw_ctx[i])
          device->ws->ctx_destroy(device->hw_ctx[i]);
    }
+
+   mtx_destroy(&device->overallocation_mutex);
 
    radv_device_finish_meta(device);
 
