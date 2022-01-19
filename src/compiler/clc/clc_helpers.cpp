@@ -1012,22 +1012,20 @@ public:
    void operator()(spv_message_level_t level, const char *src,
                    const spv_position_t &pos, const char *msg)
    {
-      switch(level) {
-      case SPV_MSG_FATAL:
-      case SPV_MSG_INTERNAL_ERROR:
-      case SPV_MSG_ERROR:
-         clc_error(logger, "(file=%s,line=%ld,column=%ld,index=%ld): %s\n",
-                   src, pos.line, pos.column, pos.index, msg);
-         break;
+      if (level == SPV_MSG_INFO || level == SPV_MSG_DEBUG)
+         return;
 
-      case SPV_MSG_WARNING:
-         clc_warning(logger, "(file=%s,line=%ld,column=%ld,index=%ld): %s\n",
-                     src, pos.line, pos.column, pos.index, msg);
-         break;
+      std::ostringstream message;
+      message << "(file=" << src
+              << ",line=" << pos.line
+              << ",column=" << pos.column
+              << ",index=" << pos.index
+              << "): " << msg << "\n";
 
-      default:
-         break;
-      }
+      if (level == SPV_MSG_WARNING)
+         clc_warning(logger, "%s", message.str().c_str());
+      else
+         clc_error(logger, "%s", message.str().c_str());
    }
 
 private:
