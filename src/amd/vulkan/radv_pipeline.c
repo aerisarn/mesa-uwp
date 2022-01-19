@@ -1302,18 +1302,17 @@ static uint32_t
 si_conv_gl_prim_to_gs_out(unsigned gl_prim)
 {
    switch (gl_prim) {
-   case 0: /* GL_POINTS */
+   case SHADER_PRIM_POINTS:
       return V_028A6C_POINTLIST;
-   case 1:      /* GL_LINES */
-   case 3:      /* GL_LINE_STRIP */
-   case 0xA:    /* GL_LINES_ADJACENCY */
-   case 0x8E7A: /* GL_ISOLINES */
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_STRIP:
+   case SHADER_PRIM_LINES_ADJACENCY:
       return V_028A6C_LINESTRIP;
 
-   case 4:   /* GL_TRIANGLES */
-   case 0xc: /* GL_TRIANGLES_ADJACENCY_ARB */
-   case 5:   /* GL_TRIANGLE_STRIP */
-   case 7:   /* GL_QUADS */
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
+   case SHADER_PRIM_TRIANGLE_STRIP:
+   case SHADER_PRIM_QUADS:
       return V_028A6C_TRISTRIP;
    default:
       assert(0);
@@ -2603,8 +2602,8 @@ radv_link_shaders(struct radv_pipeline *pipeline,
             info->stage == pipeline->graphics.last_vgt_api_stage &&
             ((info->stage == MESA_SHADER_VERTEX && pipeline_key->vs.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) ||
              (info->stage == MESA_SHADER_TESS_EVAL && info->tess.point_mode) ||
-             (info->stage == MESA_SHADER_GEOMETRY && info->gs.output_primitive == GL_POINTS) ||
-             (info->stage == MESA_SHADER_MESH && info->mesh.primitive_type == GL_POINTS));
+             (info->stage == MESA_SHADER_GEOMETRY && info->gs.output_primitive == SHADER_PRIM_POINTS) ||
+             (info->stage == MESA_SHADER_MESH && info->mesh.primitive_type == SHADER_PRIM_POINTS));
 
          nir_variable *psiz_var =
                nir_find_variable_with_location(ordered_shaders[i], nir_var_shader_out, VARYING_SLOT_PSIZ);

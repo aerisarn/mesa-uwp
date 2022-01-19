@@ -292,13 +292,13 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
 
    unsigned vertices_per_primitive = 0;
    switch (nir->info.mesh.primitive_type) {
-   case GL_POINTS:
+   case SHADER_PRIM_POINTS:
       vertices_per_primitive = 1;
       break;
-   case GL_LINES:
+   case SHADER_PRIM_LINES:
       vertices_per_primitive = 2;
       break;
-   case GL_TRIANGLES:
+   case SHADER_PRIM_TRIANGLES:
       vertices_per_primitive = 3;
       break;
    default:

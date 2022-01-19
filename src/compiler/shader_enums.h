@@ -1002,6 +1002,28 @@ enum tess_primitive_mode
    TESS_PRIMITIVE_ISOLINES,
 };
 
+/* these also map directly to GL and gallium prim types. */
+enum shader_prim
+{
+   SHADER_PRIM_POINTS,
+   SHADER_PRIM_LINES,
+   SHADER_PRIM_LINE_LOOP,
+   SHADER_PRIM_LINE_STRIP,
+   SHADER_PRIM_TRIANGLES,
+   SHADER_PRIM_TRIANGLE_STRIP,
+   SHADER_PRIM_TRIANGLE_FAN,
+   SHADER_PRIM_QUADS,
+   SHADER_PRIM_QUAD_STRIP,
+   SHADER_PRIM_POLYGON,
+   SHADER_PRIM_LINES_ADJACENCY,
+   SHADER_PRIM_LINE_STRIP_ADJACENCY,
+   SHADER_PRIM_TRIANGLES_ADJACENCY,
+   SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY,
+   SHADER_PRIM_PATCHES,
+   SHADER_PRIM_MAX = SHADER_PRIM_PATCHES,
+   SHADER_PRIM_UNKNOWN = (SHADER_PRIM_MAX * 2),
+};
+
 /**
  * A compare function enum for use in compiler lowering passes.  This is in
  * the same order as GL's compare functions (shifted down by GL_NEVER), and is

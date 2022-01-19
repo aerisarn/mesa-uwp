@@ -317,10 +317,10 @@ typedef struct shader_info {
       } vs;
 
       struct {
-         /** The output primitive type (GL enum value) */
+         /** The output primitive type */
          uint16_t output_primitive;
 
-         /** The input primitive type (GL enum value) */
+         /** The input primitive type */
          uint16_t input_primitive;
 
          /** The maximum number of vertices the geometry shader might write. */

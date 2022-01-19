@@ -2210,19 +2210,19 @@ write_creation_feedback(struct v3dv_pipeline *pipeline,
    }
 }
 
-static uint32_t
+static enum shader_prim
 multiview_gs_input_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
 {
    switch (pipeline->topology) {
    case PIPE_PRIM_POINTS:
-      return GL_POINTS;
+      return SHADER_PRIM_POINTS;
    case PIPE_PRIM_LINES:
    case PIPE_PRIM_LINE_STRIP:
-      return GL_LINES;
+      return SHADER_PRIM_LINES;
    case PIPE_PRIM_TRIANGLES:
    case PIPE_PRIM_TRIANGLE_STRIP:
    case PIPE_PRIM_TRIANGLE_FAN:
-      return GL_TRIANGLES;
+      return SHADER_PRIM_TRIANGLES;
    default:
       /* Since we don't allow GS with multiview, we can only see non-adjacency
        * primitives.
@@ -2231,19 +2231,19 @@ multiview_gs_input_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
    }
 }
 
-static uint32_t
+static enum shader_prim
 multiview_gs_output_primitive_from_pipeline(struct v3dv_pipeline *pipeline)
 {
    switch (pipeline->topology) {
    case PIPE_PRIM_POINTS:
-      return GL_POINTS;
+      return SHADER_PRIM_POINTS;
    case PIPE_PRIM_LINES:
    case PIPE_PRIM_LINE_STRIP:
-      return GL_LINE_STRIP;
+      return SHADER_PRIM_LINE_STRIP;
    case PIPE_PRIM_TRIANGLES:
    case PIPE_PRIM_TRIANGLE_STRIP:
    case PIPE_PRIM_TRIANGLE_FAN:
-      return GL_TRIANGLE_STRIP;
+      return SHADER_PRIM_TRIANGLE_STRIP;
    default:
       /* Since we don't allow GS with multiview, we can only see non-adjacency
        * primitives.

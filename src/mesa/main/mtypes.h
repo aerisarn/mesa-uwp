@@ -2560,12 +2560,12 @@ struct gl_shader_info
        * GL_TRIANGLES_ADJACENCY, or PRIM_UNKNOWN if it's not set in this
        * shader.
        */
-      GLenum16 InputType;
+      enum shader_prim InputType;
        /**
         * GL_POINTS, GL_LINE_STRIP or GL_TRIANGLE_STRIP, or PRIM_UNKNOWN if
         * it's not set in this shader.
         */
-      GLenum16 OutputType;
+      enum shader_prim OutputType;
    } Geom;
 
    /**

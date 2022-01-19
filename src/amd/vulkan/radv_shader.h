@@ -358,7 +358,7 @@ struct radv_shader_info {
    } tcs;
    struct {
       struct radv_vs_output_info outinfo;
-      uint16_t output_prim; /* Output primitive type: GL_POINTS, GL_LINES or GL_TRIANGLES. */
+      enum shader_prim output_prim;
    } ms;
 
    struct radv_streamout_info so;

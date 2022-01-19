@@ -901,13 +901,13 @@ tu6_emit_link_map(struct tu_cs *cs,
 }
 
 static uint16_t
-gl_primitive_to_tess(uint16_t primitive) {
+primitive_to_tess(enum shader_prim primitive) {
    switch (primitive) {
-   case GL_POINTS:
+   case SHADER_PRIM_POINTS:
       return TESS_POINTS;
-   case GL_LINE_STRIP:
+   case SHADER_PRIM_LINE_STRIP:
       return TESS_LINES;
-   case GL_TRIANGLE_STRIP:
+   case SHADER_PRIM_TRIANGLE_STRIP:
       return TESS_CW_TRIS;
    default:
       unreachable("");
@@ -1244,7 +1244,7 @@ tu6_emit_vpc(struct tu_cs *cs,
             tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
          }
          vertices_out = gs->shader->nir->info.gs.vertices_out - 1;
-         output = gl_primitive_to_tess(gs->shader->nir->info.gs.output_primitive);
+         output = primitive_to_tess(gs->shader->nir->info.gs.output_primitive);
          invocations = gs->shader->nir->info.gs.invocations - 1;
          /* Size of per-primitive alloction in ldlw memory in vec4s. */
          vec4_size = gs->shader->nir->info.gs.vertices_in *

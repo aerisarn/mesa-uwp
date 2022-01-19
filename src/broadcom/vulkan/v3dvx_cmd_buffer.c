@@ -1714,14 +1714,14 @@ emit_gs_shader_state_record(struct v3dv_job *job,
 }
 
 static uint8_t
-v3d_gs_output_primitive(uint32_t prim_type)
+v3d_gs_output_primitive(enum shader_prim prim_type)
 {
     switch (prim_type) {
-    case GL_POINTS:
+    case SHADER_PRIM_POINTS:
         return GEOMETRY_SHADER_POINTS;
-    case GL_LINE_STRIP:
+    case SHADER_PRIM_LINE_STRIP:
         return GEOMETRY_SHADER_LINE_STRIP;
-    case GL_TRIANGLE_STRIP:
+    case SHADER_PRIM_TRIANGLE_STRIP:
         return GEOMETRY_SHADER_TRI_STRIP;
     default:
         unreachable("Unsupported primitive type");

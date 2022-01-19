@@ -2670,22 +2670,22 @@ void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 uint64_t radv_get_current_time(void);
 
 static inline uint32_t
-si_conv_gl_prim_to_vertices(unsigned gl_prim)
+si_conv_gl_prim_to_vertices(enum shader_prim gl_prim)
 {
    switch (gl_prim) {
-   case 0: /* GL_POINTS */
+   case SHADER_PRIM_POINTS:
       return 1;
-   case 1: /* GL_LINES */
-   case 3: /* GL_LINE_STRIP */
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_STRIP:
       return 2;
-   case 4: /* GL_TRIANGLES */
-   case 5: /* GL_TRIANGLE_STRIP */
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_STRIP:
       return 3;
-   case 0xA: /* GL_LINES_ADJACENCY */
+   case SHADER_PRIM_LINES_ADJACENCY:
       return 4;
-   case 0xc: /* GL_TRIANGLES_ADJACENCY */
+   case SHADER_PRIM_TRIANGLES_ADJACENCY:
       return 6;
-   case 7: /* GL_QUADS */
+   case SHADER_PRIM_QUADS:
       return V_028A6C_TRISTRIP;
    default:
       assert(0);

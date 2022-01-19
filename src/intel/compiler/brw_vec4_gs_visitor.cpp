@@ -560,21 +560,21 @@ vec4_gs_visitor::gs_end_primitive()
    emit(OR(dst_reg(this->control_data_bits), this->control_data_bits, mask));
 }
 
-static const GLuint gl_prim_to_hw_prim[GL_TRIANGLE_STRIP_ADJACENCY+1] = {
-   [GL_POINTS] =_3DPRIM_POINTLIST,
-   [GL_LINES] = _3DPRIM_LINELIST,
-   [GL_LINE_LOOP] = _3DPRIM_LINELOOP,
-   [GL_LINE_STRIP] = _3DPRIM_LINESTRIP,
-   [GL_TRIANGLES] = _3DPRIM_TRILIST,
-   [GL_TRIANGLE_STRIP] = _3DPRIM_TRISTRIP,
-   [GL_TRIANGLE_FAN] = _3DPRIM_TRIFAN,
-   [GL_QUADS] = _3DPRIM_QUADLIST,
-   [GL_QUAD_STRIP] = _3DPRIM_QUADSTRIP,
-   [GL_POLYGON] = _3DPRIM_POLYGON,
-   [GL_LINES_ADJACENCY] = _3DPRIM_LINELIST_ADJ,
-   [GL_LINE_STRIP_ADJACENCY] = _3DPRIM_LINESTRIP_ADJ,
-   [GL_TRIANGLES_ADJACENCY] = _3DPRIM_TRILIST_ADJ,
-   [GL_TRIANGLE_STRIP_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
+static const GLuint gl_prim_to_hw_prim[SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY+1] = {
+   [SHADER_PRIM_POINTS] =_3DPRIM_POINTLIST,
+   [SHADER_PRIM_LINES] = _3DPRIM_LINELIST,
+   [SHADER_PRIM_LINE_LOOP] = _3DPRIM_LINELOOP,
+   [SHADER_PRIM_LINE_STRIP] = _3DPRIM_LINESTRIP,
+   [SHADER_PRIM_TRIANGLES] = _3DPRIM_TRILIST,
+   [SHADER_PRIM_TRIANGLE_STRIP] = _3DPRIM_TRISTRIP,
+   [SHADER_PRIM_TRIANGLE_FAN] = _3DPRIM_TRIFAN,
+   [SHADER_PRIM_QUADS] = _3DPRIM_QUADLIST,
+   [SHADER_PRIM_QUAD_STRIP] = _3DPRIM_QUADSTRIP,
+   [SHADER_PRIM_POLYGON] = _3DPRIM_POLYGON,
+   [SHADER_PRIM_LINES_ADJACENCY] = _3DPRIM_LINELIST_ADJ,
+   [SHADER_PRIM_LINE_STRIP_ADJACENCY] = _3DPRIM_LINESTRIP_ADJ,
+   [SHADER_PRIM_TRIANGLES_ADJACENCY] = _3DPRIM_TRILIST_ADJ,
+   [SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
 };
 
 } /* namespace brw */
@@ -632,7 +632,7 @@ brw_compile_gs(const struct brw_compiler *compiler,
          nir, &prog_data->static_vertex_count, nullptr, 1u);
 
    if (compiler->devinfo->ver >= 7) {
-      if (nir->info.gs.output_primitive == GL_POINTS) {
+      if (nir->info.gs.output_primitive == SHADER_PRIM_POINTS) {
          /* When the output type is points, the geometry shader may output data
           * to multiple streams, and EndPrimitive() has no effect.  So we
           * configure the hardware to interpret the control data as stream ID.

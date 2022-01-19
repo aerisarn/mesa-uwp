@@ -995,11 +995,11 @@ zink_bind_gs_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    if (!cso && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
       return;
-   bool had_points = ctx->gfx_stages[PIPE_SHADER_GEOMETRY] ? ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->nir->info.gs.output_primitive == GL_POINTS : false;
+   bool had_points = ctx->gfx_stages[PIPE_SHADER_GEOMETRY] ? ctx->gfx_stages[PIPE_SHADER_GEOMETRY]->nir->info.gs.output_primitive == SHADER_PRIM_POINTS : false;
    bind_stage(ctx, PIPE_SHADER_GEOMETRY, cso);
    bind_last_vertex_stage(ctx);
    if (cso) {
-      if (!had_points && ctx->last_vertex_stage->nir->info.gs.output_primitive == GL_POINTS)
+      if (!had_points && ctx->last_vertex_stage->nir->info.gs.output_primitive == SHADER_PRIM_POINTS)
          ctx->gfx_pipeline_state.has_points++;
    } else {
       if (had_points)

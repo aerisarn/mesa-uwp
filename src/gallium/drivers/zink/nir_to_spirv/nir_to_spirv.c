@@ -3431,35 +3431,33 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
 }
 
 static SpvExecutionMode
-get_input_prim_type_mode(uint16_t type)
+get_input_prim_type_mode(enum shader_prim type)
 {
    switch (type) {
-   case GL_POINTS:
+   case SHADER_PRIM_POINTS:
       return SpvExecutionModeInputPoints;
-   case GL_LINES:
-   case GL_LINE_LOOP:
-   case GL_LINE_STRIP:
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_LOOP:
+   case SHADER_PRIM_LINE_STRIP:
       return SpvExecutionModeInputLines;
-   case GL_TRIANGLE_STRIP:
-   case GL_TRIANGLES:
-   case GL_TRIANGLE_FAN:
+   case SHADER_PRIM_TRIANGLE_STRIP:
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_FAN:
       return SpvExecutionModeTriangles;
-   case GL_QUADS:
-   case GL_QUAD_STRIP:
+   case SHADER_PRIM_QUADS:
+   case SHADER_PRIM_QUAD_STRIP:
       return SpvExecutionModeQuads;
       break;
-   case GL_POLYGON:
+   case SHADER_PRIM_POLYGON:
       unreachable("handle polygons in gs");
       break;
-   case GL_LINES_ADJACENCY:
-   case GL_LINE_STRIP_ADJACENCY:
+   case SHADER_PRIM_LINES_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
       return SpvExecutionModeInputLinesAdjacency;
-   case GL_TRIANGLES_ADJACENCY:
-   case GL_TRIANGLE_STRIP_ADJACENCY:
+   case SHADER_PRIM_TRIANGLES_ADJACENCY:
+   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
       return SpvExecutionModeInputTrianglesAdjacency;
       break;
-   case GL_ISOLINES:
-      return SpvExecutionModeIsolines;
    default:
       debug_printf("unknown geometry shader input mode %u\n", type);
       unreachable("error!");
@@ -3469,38 +3467,36 @@ get_input_prim_type_mode(uint16_t type)
    return 0;
 }
 static SpvExecutionMode
-get_output_prim_type_mode(uint16_t type)
+get_output_prim_type_mode(enum shader_prim type)
 {
    switch (type) {
-   case GL_POINTS:
+   case SHADER_PRIM_POINTS:
       return SpvExecutionModeOutputPoints;
-   case GL_LINES:
-   case GL_LINE_LOOP:
-      unreachable("GL_LINES/LINE_LOOP passed as gs output");
+   case SHADER_PRIM_LINES:
+   case SHADER_PRIM_LINE_LOOP:
+      unreachable("SHADER_PRIM_LINES/LINE_LOOP passed as gs output");
       break;
-   case GL_LINE_STRIP:
+   case SHADER_PRIM_LINE_STRIP:
       return SpvExecutionModeOutputLineStrip;
-   case GL_TRIANGLE_STRIP:
+   case SHADER_PRIM_TRIANGLE_STRIP:
       return SpvExecutionModeOutputTriangleStrip;
-   case GL_TRIANGLES:
-   case GL_TRIANGLE_FAN: //FIXME: not sure if right for output
+   case SHADER_PRIM_TRIANGLES:
+   case SHADER_PRIM_TRIANGLE_FAN: //FIXME: not sure if right for output
       return SpvExecutionModeTriangles;
-   case GL_QUADS:
-   case GL_QUAD_STRIP:
+   case SHADER_PRIM_QUADS:
+   case SHADER_PRIM_QUAD_STRIP:
       return SpvExecutionModeQuads;
-   case GL_POLYGON:
+   case SHADER_PRIM_POLYGON:
       unreachable("handle polygons in gs");
       break;
-   case GL_LINES_ADJACENCY:
-   case GL_LINE_STRIP_ADJACENCY:
+   case SHADER_PRIM_LINES_ADJACENCY:
+   case SHADER_PRIM_LINE_STRIP_ADJACENCY:
       unreachable("handle line adjacency in gs");
       break;
-   case GL_TRIANGLES_ADJACENCY:
-   case GL_TRIANGLE_STRIP_ADJACENCY:
+   case SHADER_PRIM_TRIANGLES_ADJACENCY:
+   case SHADER_PRIM_TRIANGLE_STRIP_ADJACENCY:
       unreachable("handle triangle adjacency in gs");
       break;
-   case GL_ISOLINES:
-      return SpvExecutionModeIsolines;
    default:
       debug_printf("unknown geometry shader output mode %u\n", type);
       unreachable("error!");
