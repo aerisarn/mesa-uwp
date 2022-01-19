@@ -2077,13 +2077,6 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_device *device,
                                              struct v3dv_pipeline_layout *pipeline_layout,
                                              uint32_t index);
 
-const struct v3dv_format*
-v3dv_descriptor_map_get_texture_format(struct v3dv_descriptor_state *descriptor_state,
-                                       struct v3dv_descriptor_map *map,
-                                       struct v3dv_pipeline_layout *pipeline_layout,
-                                       uint32_t index,
-                                       VkFormat *out_vk_format);
-
 struct v3dv_bo*
 v3dv_descriptor_map_get_texture_bo(struct v3dv_descriptor_state *descriptor_state,
                                    struct v3dv_descriptor_map *map,
