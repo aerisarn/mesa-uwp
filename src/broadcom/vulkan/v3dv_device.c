@@ -1085,7 +1085,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceVulkan11Features vk11 = {
       .storageBuffer16BitAccess = true,
       .uniformAndStorageBuffer16BitAccess = true,
-      .storagePushConstant16 = false,
+      .storagePushConstant16 = true,
       .storageInputOutput16 = false,
       .multiview = true,
       .multiviewGeometryShader = false,
