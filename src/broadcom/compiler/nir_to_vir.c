@@ -1830,7 +1830,7 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
                        nir_intrinsic_instr *high,
                        void *data)
 {
-        /* Our backend is 32-bit only at present */
+        /* TMU general access only supports 32-bit vectors */
         if (bit_size != 32)
                 return false;
 
@@ -1873,6 +1873,13 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                 NIR_PASS(progress, s, nir_opt_algebraic);
                 NIR_PASS(progress, s, nir_opt_constant_folding);
 
+                /* Note that vectorization may undo the load/store scalarization
+                 * pass we run for non 32-bit TMU general load/store by
+                 * converting, for example, 2 consecutive 16-bit loads into a
+                 * single 32-bit load. This is fine (and desirable) as long as
+                 * the resulting 32-bit load meets 32-bit alignment requirements,
+                 * which mem_vectorize_callback() should be enforcing.
+                 */
                 nir_load_store_vectorize_options vectorize_opts = {
                         .modes = nir_var_mem_ssbo | nir_var_mem_ubo |
                                  nir_var_mem_push_const | nir_var_mem_shared |
