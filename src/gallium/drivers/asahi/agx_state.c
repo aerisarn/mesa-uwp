@@ -480,7 +480,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.height = u_minify(texture->height0, level);
       cfg.levels = state->u.tex.last_level - level + 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = agx_map_texture_gpu(rsrc, 0, state->u.tex.first_layer); // XXX: level?
+      cfg.address = agx_map_texture_gpu(rsrc, level, state->u.tex.first_layer);
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.unk_2 = false;
 
