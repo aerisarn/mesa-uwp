@@ -1118,12 +1118,6 @@ struct radv_streamout_state {
    /* Mask of bound streamout buffers. */
    uint8_t enabled_mask;
 
-   /* External state that comes from the last vertex stage, it must be
-    * set explicitely when binding a new graphics pipeline.
-    */
-   uint16_t stride_in_dw[MAX_SO_BUFFERS];
-   uint32_t enabled_stream_buffers_mask; /* stream0 buffers0-3 in 4 LSB */
-
    /* State of VGT_STRMOUT_BUFFER_(CONFIG|END) */
    uint32_t hw_enabled_mask;
 

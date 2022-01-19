@@ -353,22 +353,6 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
    cmd_buffer->state.dirty |= dest_mask;
 }
 
-static void
-radv_bind_streamout_state(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline)
-{
-   struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-   struct radv_shader_info *info;
-
-   if (!pipeline->streamout_shader || cmd_buffer->device->physical_device->use_ngg_streamout)
-      return;
-
-   info = &pipeline->streamout_shader->info;
-   for (int i = 0; i < MAX_SO_BUFFERS; i++)
-      so->stride_in_dw[i] = info->so.strides[i];
-
-   so->enabled_stream_buffers_mask = info->so.enabled_stream_buffers_mask;
-}
-
 bool
 radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer)
 {
@@ -5089,7 +5073,6 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       }
 
       radv_bind_dynamic_state(cmd_buffer, &pipeline->dynamic_state);
-      radv_bind_streamout_state(cmd_buffer, pipeline);
 
       if (pipeline->graphics.esgs_ring_size > cmd_buffer->esgs_ring_size_needed)
          cmd_buffer->esgs_ring_size_needed = pipeline->graphics.esgs_ring_size;
@@ -8635,6 +8618,8 @@ static void
 radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_shader_info *info = &pipeline->streamout_shader->info;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
    radeon_set_context_reg_seq(cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
@@ -8642,7 +8627,7 @@ radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
                       S_028B94_STREAMOUT_1_EN(so->streamout_enabled) |
                       S_028B94_STREAMOUT_2_EN(so->streamout_enabled) |
                       S_028B94_STREAMOUT_3_EN(so->streamout_enabled));
-   radeon_emit(cs, so->hw_enabled_mask & so->enabled_stream_buffers_mask);
+   radeon_emit(cs, so->hw_enabled_mask & info->so.enabled_stream_buffers_mask);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
@@ -8706,6 +8691,8 @@ radv_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer, uint32_t firstCoun
 {
    struct radv_streamout_binding *sb = cmd_buffer->streamout_bindings;
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   struct radv_shader_info *info = &pipeline->streamout_shader->info;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
    radv_flush_vgt_streamout(cmd_buffer);
@@ -8723,7 +8710,7 @@ radv_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer, uint32_t firstCoun
        */
       radeon_set_context_reg_seq(cs, R_028AD0_VGT_STRMOUT_BUFFER_SIZE_0 + 16 * i, 2);
       radeon_emit(cs, sb[i].size >> 2);     /* BUFFER_SIZE (in DW) */
-      radeon_emit(cs, so->stride_in_dw[i]); /* VTX_STRIDE (in DW) */
+      radeon_emit(cs, info->so.strides[i]); /* VTX_STRIDE (in DW) */
 
       cmd_buffer->state.context_roll_without_scissor_emitted = true;
 
