@@ -735,14 +735,6 @@ get_shader_program_completion_status(struct gl_context *ctx,
 }
 
 /**
- * Return the length of a string, or 0 if the pointer passed in is NULL
- */
-static size_t strlen_or_zero(const char *s)
-{
-   return s ? strlen(s) : 0;
-}
-
-/**
  * glGetProgramiv() - get shader program state.
  * Note that this is for GLSL shader programs, not ARB vertex/fragment
  * programs (see glGetProgramivARB).
@@ -811,37 +803,8 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       return;
    }
    case GL_ACTIVE_UNIFORM_MAX_LENGTH: {
-      unsigned i;
-      GLint max_len = 0;
-      const unsigned num_uniforms =
-         shProg->data->NumUniformStorage - shProg->data->NumHiddenUniforms;
-
-      for (i = 0; i < num_uniforms; i++) {
-         if (shProg->data->UniformStorage[i].is_shader_storage)
-            continue;
-
-         /* From ARB_gl_spirv spec:
-          *
-          *   "If pname is ACTIVE_UNIFORM_MAX_LENGTH, the length of the
-          *    longest active uniform name, including a null terminator, is
-          *    returned. If no active uniforms exist, zero is returned. If no
-          *    name reflection information is available, one is returned."
-          *
-          * We are setting 0 here, as below it will add 1 for the NUL character.
-          */
-         const GLint base_len = shProg->data->UniformStorage[i].name.length;
-
-	 /* Add one for the terminating NUL character for a non-array, and
-	  * 4 for the "[0]" and the NUL for an array.
-	  */
-         const GLint len = base_len + 1 +
-            ((shProg->data->UniformStorage[i].array_elements != 0) ? 3 : 0);
-
-	 if (len > max_len)
-	    max_len = len;
-      }
-
-      *params = max_len;
+      _mesa_get_program_interfaceiv(shProg, GL_UNIFORM, GL_MAX_NAME_LENGTH,
+                                    params);
       return;
    }
    case GL_TRANSFORM_FEEDBACK_VARYINGS:
@@ -860,43 +823,11 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
          *params = shProg->TransformFeedback.NumVarying;
       return;
    case GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH: {
-      unsigned i;
-      GLint max_len = 0;
-      bool in_shader_varyings;
-      int num_varying;
-
       if (!has_xfb)
          break;
 
-      /* Check first if there are transform feedback varyings specified in the
-       * shader (ARB_enhanced_layouts). If there isn't any, use the ones
-       * specified using the API.
-       */
-      in_shader_varyings = shProg->last_vert_prog &&
-         shProg->last_vert_prog->sh.LinkedTransformFeedback->NumVarying > 0;
-
-      num_varying = in_shader_varyings ?
-         shProg->last_vert_prog->sh.LinkedTransformFeedback->NumVarying :
-         shProg->TransformFeedback.NumVarying;
-
-      for (i = 0; i < num_varying; i++) {
-         int len;
-
-         /* Add one for the terminating NUL character. We have to use
-          * strlen_or_zero, as for shaders constructed from SPIR-V binaries,
-          * it is possible that no name reflection information is available.
-          */
-         if (in_shader_varyings) {
-            len = shProg->last_vert_prog->sh.LinkedTransformFeedback->Varyings[i].name.length + 1;
-         } else {
-            len = strlen_or_zero(shProg->TransformFeedback.VaryingNames[i]) + 1;
-         }
-
-         if (len > max_len)
-            max_len = len;
-      }
-
-      *params = max_len;
+      _mesa_get_program_interfaceiv(shProg, GL_TRANSFORM_FEEDBACK_VARYING,
+                                    GL_MAX_NAME_LENGTH, params);
       return;
    }
    case GL_TRANSFORM_FEEDBACK_BUFFER_MODE:
@@ -939,28 +870,11 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       }
       return;
    case GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH: {
-      unsigned i;
-      GLint max_len = 0;
-
       if (!has_ubo)
          break;
 
-      for (i = 0; i < shProg->data->NumUniformBlocks; i++) {
-	 /* Add one for the terminating NUL character. Name can be NULL, in
-          * that case, from ARB_gl_spirv:
-          *   "If pname is ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH, the length of
-          *    the longest active uniform block name, including the null
-          *    terminator, is returned. If no active uniform blocks exist,
-          *    zero is returned. If no name reflection information is
-          *    available, one is returned."
-	  */
-         const GLint len = shProg->data->UniformBlocks[i].name.length + 1;
-
-	 if (len > max_len)
-	    max_len = len;
-      }
-
-      *params = max_len;
+      _mesa_get_program_interfaceiv(shProg, GL_UNIFORM_BLOCK,
+                                    GL_MAX_NAME_LENGTH, params);
       return;
    }
    case GL_ACTIVE_UNIFORM_BLOCKS:
