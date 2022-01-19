@@ -183,9 +183,11 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 330;
+      return 400;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 330;
+      return 400;
+   case PIPE_CAP_ESSL_FEATURE_LEVEL:
+      return 310;
 
    case PIPE_CAP_COMPUTE:
       return 1;
@@ -310,6 +312,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
+   case PIPE_CAP_SAMPLE_SHADING:
       return 1;
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:
