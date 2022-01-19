@@ -1222,6 +1222,7 @@ struct __DRIdri2ExtensionRec {
  */
 #define __DRI_IMAGE_USE_BACKBUFFER      0x0010
 #define __DRI_IMAGE_USE_PROTECTED       0x0020
+#define __DRI_IMAGE_USE_PRIME_BUFFER    0x0040
 
 
 #define __DRI_IMAGE_TRANSFER_READ            0x1
