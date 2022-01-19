@@ -480,7 +480,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.height = u_minify(texture->height0, level);
       cfg.levels = state->u.tex.last_level - level + 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.address = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
+      cfg.address = agx_map_texture_gpu(rsrc, 0, state->u.tex.first_layer); // XXX: level?
       cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.unk_2 = false;
 
@@ -749,7 +749,7 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.width = state->width;
          cfg.height = state->height;
          cfg.level = surf->u.tex.level;
-         cfg.buffer = tex->bo->ptr.gpu + layer * tex->array_stride;
+         cfg.buffer = agx_map_texture_gpu(tex, 0, layer);
 
          if (tex->mipmapped)
             cfg.unk_55 = 0x8;

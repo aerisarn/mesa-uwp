@@ -237,16 +237,6 @@ agx_resource_create(struct pipe_screen *screen,
    return &nresource->base;
 }
 
-static uint8_t *
-agx_rsrc_offset(struct agx_resource *rsrc, unsigned level, unsigned z)
-{
-   struct agx_bo *bo = rsrc->bo;
-   uint8_t *map = ((uint8_t *) bo->ptr.cpu) + rsrc->slices[level].offset;
-   map += z * rsrc->array_stride;
-
-   return map;
-}
-
 static void
 agx_resource_destroy(struct pipe_screen *screen,
                      struct pipe_resource *prsrc)
@@ -312,7 +302,7 @@ agx_transfer_map(struct pipe_context *pctx,
 
       if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
          for (unsigned z = 0; z < box->depth; ++z) {
-            uint8_t *map = agx_rsrc_offset(rsrc, level, box->z + z);
+            uint8_t *map = agx_map_texture_cpu(rsrc, level, box->z + z);
             uint8_t *dst = (uint8_t *) transfer->map +
                            transfer->base.layer_stride * z;
 
@@ -336,7 +326,7 @@ agx_transfer_map(struct pipe_context *pctx,
       if ((usage & PIPE_MAP_WRITE) && (usage & PIPE_MAP_DIRECTLY))
          BITSET_SET(rsrc->data_valid, level);
 
-      return agx_rsrc_offset(rsrc, level, box->z)
+      return (uint8_t *) agx_map_texture_cpu(rsrc, level, box->z)
              + transfer->base.box.y * rsrc->slices[level].line_stride
              + transfer->base.box.x * blocksize;
    }
@@ -362,7 +352,7 @@ agx_transfer_unmap(struct pipe_context *pctx,
       assert(trans->map != NULL);
 
       for (unsigned z = 0; z < transfer->box.depth; ++z) {
-         uint8_t *map = agx_rsrc_offset(rsrc, transfer->level,
+         uint8_t *map = agx_map_texture_cpu(rsrc, transfer->level,
                transfer->box.z + z);
          uint8_t *src = (uint8_t *) trans->map +
                         transfer->layer_stride * z;

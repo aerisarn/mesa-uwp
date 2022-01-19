@@ -263,6 +263,28 @@ agx_resource(struct pipe_resource *pctx)
    return (struct agx_resource *) pctx;
 }
 
+/*
+ * Within a resource containing multiple layers and multiple mip levels,
+ * returns the offset from the start of the backing BO of a given level/slice.
+ */
+static inline uint32_t
+agx_texture_offset(struct agx_resource *rsrc, unsigned level, unsigned z)
+{
+   return rsrc->slices[level].offset + (z * rsrc->array_stride);
+}
+
+static inline void *
+agx_map_texture_cpu(struct agx_resource *rsrc, unsigned level, unsigned z)
+{
+   return ((uint8_t *) rsrc->bo->ptr.cpu) + agx_texture_offset(rsrc, level, z);
+}
+
+static inline uint64_t
+agx_map_texture_gpu(struct agx_resource *rsrc, unsigned level, unsigned z)
+{
+   return rsrc->bo->ptr.gpu + (uint64_t) agx_texture_offset(rsrc, level, z);
+}
+
 struct agx_transfer {
    struct pipe_transfer base;
    void *map;
