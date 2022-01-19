@@ -2574,17 +2574,39 @@ ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
         if (nir_src_is_const(instr->src[0])) {
                 int offset = (nir_intrinsic_base(instr) +
                              nir_src_as_uint(instr->src[0]));
-                assert(offset % 4 == 0);
-                /* We need dwords */
-                offset = offset / 4;
-                for (int i = 0; i < instr->num_components; i++) {
-                        ntq_store_dest(c, &instr->dest, i,
-                                       vir_uniform(c, QUNIFORM_UNIFORM,
-                                                   offset + i));
+
+                /* Even though ldunif is strictly 32-bit we can still use it
+                 * to load scalar 16-bit uniforms so long as their offset is
+                 * 32-bit aligned. In this case, ldunif would still load 32-bit
+                 * into the destination with the 16-bit uniform data in the LSB
+                 * and garbage in the MSB, but that is fine because we don't
+                 * access the MSB of a 16-bit register.
+                 *
+                 * FIXME: if in the future we improve our register allocator to
+                 * pack 2 16-bit variables in the MSB and LSB of the same
+                 * register then this optimization would not be valid as is,
+                 * since the load clobbers the MSB.
+                 */
+                if (offset % 4 == 0) {
+                        /* We need dwords */
+                        offset = offset / 4;
+
+                        /* We scalarize general TMU access for anything that
+                         * is not 32-bit.
+                         */
+                        assert(nir_dest_bit_size(instr->dest) == 32 ||
+                               instr->num_components == 1);
+
+                        for (int i = 0; i < instr->num_components; i++) {
+                                ntq_store_dest(c, &instr->dest, i,
+                                               vir_uniform(c, QUNIFORM_UNIFORM,
+                                                           offset + i));
+                        }
+                        return;
                 }
-        } else {
-               ntq_emit_tmu_general(c, instr, false);
         }
+
+        ntq_emit_tmu_general(c, instr, false);
 }
 
 static void
