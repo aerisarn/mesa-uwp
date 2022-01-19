@@ -117,6 +117,20 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
       load.address = v3dv_cl_address(image->mem->bo, layer_offset);
 
       load.input_image_format = iview->format->rt_type;
+
+      /* If we create an image view with only the stencil format, we
+       * re-interpret the format as RGBA8_UINT, as it is want we want in
+       * general (see CreateImageView).
+       *
+       * However, when we are loading/storing tiles from the ZSTENCIL tile
+       * buffer, we need to use the underlying DS format.
+       */
+      if (buffer == ZSTENCIL &&
+          iview->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI) {
+         assert(image->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_D24S8);
+         load.input_image_format = image->format->rt_type;
+      }
+
       load.r_b_swap = iview->swap_rb;
       load.channel_reverse = iview->channel_reverse;
       load.memory_format = slice->tiling;
@@ -305,6 +319,20 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
       store.clear_buffer_being_stored = clear;
 
       store.output_image_format = iview->format->rt_type;
+
+      /* If we create an image view with only the stencil format, we
+       * re-interpret the format as RGBA8_UINT, as it is want we want in
+       * general (see CreateImageView).
+       *
+       * However, when we are loading/storing tiles from the ZSTENCIL tile
+       * buffer, we need to use the underlying DS format.
+       */
+      if (buffer == ZSTENCIL &&
+          iview->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_RGBA8UI) {
+         assert(image->format->rt_type == V3D_OUTPUT_IMAGE_FORMAT_D24S8);
+         store.output_image_format = image->format->rt_type;
+      }
+
       store.r_b_swap = iview->swap_rb;
       store.channel_reverse = iview->channel_reverse;
       store.memory_format = slice->tiling;
