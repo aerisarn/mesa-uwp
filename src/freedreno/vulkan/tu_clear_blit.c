@@ -828,7 +828,6 @@ r3d_src_common(struct tu_cmd_buffer *cmd,
       A6XX_TEX_SAMP_0_WRAP_R(A6XX_TEX_CLAMP_TO_EDGE) |
       0x60000; /* XXX used by blob, doesn't seem necessary */
    texture.map[A6XX_TEX_CONST_DWORDS + 1] =
-      0x1 | /* XXX used by blob, doesn't seem necessary */
       A6XX_TEX_SAMP_1_UNNORM_COORDS |
       A6XX_TEX_SAMP_1_MIPFILTER_LINEAR_FAR;
    texture.map[A6XX_TEX_CONST_DWORDS + 2] = 0;
