@@ -26,7 +26,6 @@
 
 #include <stdio.h>
 #include "dev/intel_device_info.h"
-#include "main/glheader.h"
 #include "main/config.h"
 #include "util/ralloc.h"
 #include "util/u_math.h"
@@ -1281,8 +1280,8 @@ struct brw_vue_prog_data {
 struct brw_vs_prog_data {
    struct brw_vue_prog_data base;
 
-   GLbitfield64 inputs_read;
-   GLbitfield64 double_inputs_read;
+   uint64_t inputs_read;
+   uint64_t double_inputs_read;
 
    unsigned nr_attribute_slots;
 
