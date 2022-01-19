@@ -474,16 +474,16 @@ hs_emit_write_tess_factors(nir_shader *shader,
    unsigned outer_comps;
    unsigned inner_comps;
 
-   switch (shader->info.tess.primitive_mode) {
-   case GL_ISOLINES:
+   switch (shader->info.tess._primitive_mode) {
+   case TESS_PRIMITIVE_ISOLINES:
       outer_comps = 2;
       inner_comps = 0;
       break;
-   case GL_TRIANGLES:
+   case TESS_PRIMITIVE_TRIANGLES:
       outer_comps = 3;
       inner_comps = 1;
       break;
-   case GL_QUADS:
+   case TESS_PRIMITIVE_QUADS:
       outer_comps = 4;
       inner_comps = 2;
       break;
@@ -541,11 +541,11 @@ hs_emit_write_tess_factors(nir_shader *shader,
    }
 
    /* Store tess factors for the tessellator */
-   if (shader->info.tess.primitive_mode == GL_ISOLINES) {
+   if (shader->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES) {
       /* LINES reversal */
       nir_ssa_def *t = nir_vec2(b, nir_channel(b, tessfactors_outer, 1), nir_channel(b, tessfactors_outer, 0));
       nir_build_store_buffer_amd(b, t, tessfactor_ring, tess_factors_offset, tess_factors_base, .base = tess_factors_const_offset, .write_mask = 0x3);
-   } else if (shader->info.tess.primitive_mode == GL_TRIANGLES) {
+   } else if (shader->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES) {
       nir_ssa_def *t = nir_vec4(b, nir_channel(b, tessfactors_outer, 0), nir_channel(b, tessfactors_outer, 1),
                                 nir_channel(b, tessfactors_outer, 2), nir_channel(b, tessfactors_inner, 0));
       nir_build_store_buffer_amd(b, t, tessfactor_ring, tess_factors_offset, tess_factors_base, .base = tess_factors_const_offset, .write_mask = 0xf);

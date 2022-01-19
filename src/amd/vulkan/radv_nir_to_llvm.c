@@ -1590,7 +1590,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
       if (ctx->shader->info.tess.point_mode)
          num_vertices = 1;
-      else if (ctx->shader->info.tess.primitive_mode == GL_ISOLINES)
+      else if (ctx->shader->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
          num_vertices = 2;
       else
          num_vertices = 3;

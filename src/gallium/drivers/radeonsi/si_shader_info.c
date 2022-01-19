@@ -579,11 +579,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       }
    }
 
-   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      if (info->base.tess.primitive_mode == GL_ISOLINES)
-         info->base.tess.primitive_mode = GL_LINES;
-   }
-
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       /* post_depth_coverage implies early_fragment_tests */
       info->base.fs.early_fragment_tests |= info->base.fs.post_depth_coverage;

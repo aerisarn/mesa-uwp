@@ -1007,8 +1007,22 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       if (!has_tess)
          break;
       if (check_tes_query(ctx, shProg)) {
-         *params = shProg->_LinkedShaders[MESA_SHADER_TESS_EVAL]->
-            Program->info.tess.primitive_mode;
+         const struct gl_linked_shader *tes =
+            shProg->_LinkedShaders[MESA_SHADER_TESS_EVAL];
+         switch (tes->Program->info.tess._primitive_mode) {
+         case TESS_PRIMITIVE_TRIANGLES:
+            *params = GL_TRIANGLES;
+            break;
+         case TESS_PRIMITIVE_QUADS:
+            *params = GL_QUADS;
+            break;
+         case TESS_PRIMITIVE_ISOLINES:
+            *params = GL_ISOLINES;
+            break;
+         case TESS_PRIMITIVE_UNSPECIFIED:
+            *params = 0;
+            break;
+         }
       }
       return;
    case GL_TESS_GEN_SPACING:

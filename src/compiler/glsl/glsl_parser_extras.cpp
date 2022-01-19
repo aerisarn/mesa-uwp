@@ -1829,9 +1829,20 @@ set_shader_inout_layout(struct gl_shader *shader,
       }
       break;
    case MESA_SHADER_TESS_EVAL:
-      shader->info.TessEval.PrimitiveMode = PRIM_UNKNOWN;
-      if (state->in_qualifier->flags.q.prim_type)
-         shader->info.TessEval.PrimitiveMode = state->in_qualifier->prim_type;
+      shader->info.TessEval._PrimitiveMode = TESS_PRIMITIVE_UNSPECIFIED;
+      if (state->in_qualifier->flags.q.prim_type) {
+         switch (state->in_qualifier->prim_type) {
+         case GL_TRIANGLES:
+            shader->info.TessEval._PrimitiveMode = TESS_PRIMITIVE_TRIANGLES;
+            break;
+         case GL_QUADS:
+            shader->info.TessEval._PrimitiveMode = TESS_PRIMITIVE_QUADS;
+            break;
+         case GL_ISOLINES:
+            shader->info.TessEval._PrimitiveMode = TESS_PRIMITIVE_ISOLINES;
+            break;
+         }
+      }
 
       shader->info.TessEval.Spacing = TESS_SPACING_UNSPECIFIED;
       if (state->in_qualifier->flags.q.vertex_spacing)

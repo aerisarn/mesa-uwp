@@ -3963,7 +3963,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       };
 
       /* For triangles, the vector should be (u, v, 1-u-v). */
-      if (ctx->info->tess.primitive_mode == GL_TRIANGLES) {
+      if (ctx->info->tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES) {
          coord[2] = LLVMBuildFSub(ctx->ac.builder, ctx->ac.f32_1,
                                   LLVMBuildFAdd(ctx->ac.builder, coord[0], coord[1], ""), "");
       }

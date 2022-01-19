@@ -345,14 +345,14 @@ struct ir3_shader_key {
 };
 
 static inline unsigned
-ir3_tess_mode(unsigned gl_tess_mode)
+ir3_tess_mode(enum tess_primitive_mode tess_mode)
 {
-   switch (gl_tess_mode) {
-   case GL_ISOLINES:
+   switch (tess_mode) {
+   case TESS_PRIMITIVE_ISOLINES:
       return IR3_TESS_ISOLINES;
-   case GL_TRIANGLES:
+   case TESS_PRIMITIVE_TRIANGLES:
       return IR3_TESS_TRIANGLES;
-   case GL_QUADS:
+   case TESS_PRIMITIVE_QUADS:
       return IR3_TESS_QUADS;
    default:
       unreachable("bad tessmode");

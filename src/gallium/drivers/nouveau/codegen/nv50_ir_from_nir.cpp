@@ -25,6 +25,7 @@
 #include "compiler/nir/nir.h"
 
 #include "util/u_debug.h"
+#include "util/u_prim.h"
 
 #include "codegen/nv50_ir.h"
 #include "codegen/nv50_ir_from_common.h"
@@ -1325,10 +1326,7 @@ Converter::parseNIR()
       break;
    case Program::TYPE_TESSELLATION_CONTROL:
    case Program::TYPE_TESSELLATION_EVAL:
-      if (nir->info.tess.primitive_mode == GL_ISOLINES)
-         info_out->prop.tp.domain = GL_LINES;
-      else
-         info_out->prop.tp.domain = nir->info.tess.primitive_mode;
+      info_out->prop.tp.domain = u_tess_prim_from_shader(nir->info.tess._primitive_mode);
       info_out->prop.tp.outputPatchSize = nir->info.tess.tcs_vertices_out;
       info_out->prop.tp.outputPrim =
          nir->info.tess.point_mode ? PIPE_PRIM_POINTS : PIPE_PRIM_TRIANGLES;

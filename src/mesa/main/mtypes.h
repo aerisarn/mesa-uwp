@@ -2531,11 +2531,7 @@ struct gl_shader_info
     * Tessellation Evaluation shader state from layout qualifiers.
     */
    struct {
-      /**
-       * GL_TRIANGLES, GL_QUADS, GL_ISOLINES or PRIM_UNKNOWN if it's not set
-       * in this shader.
-       */
-      GLenum16 PrimitiveMode;
+      enum tess_primitive_mode _PrimitiveMode;
 
       enum gl_tess_spacing Spacing;
 

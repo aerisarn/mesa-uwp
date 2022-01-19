@@ -30,33 +30,33 @@
 
 static bool
 remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
-                  GLenum primitive_mode)
+                  enum tess_primitive_mode _primitive_mode)
 {
    const int location = nir_intrinsic_base(intr);
    const unsigned component = nir_intrinsic_component(intr);
    bool out_of_bounds;
 
    if (location == VARYING_SLOT_TESS_LEVEL_INNER) {
-      switch (primitive_mode) {
-      case GL_QUADS:
+      switch (_primitive_mode) {
+      case TESS_PRIMITIVE_QUADS:
          /* gl_TessLevelInner[0..1] lives at DWords 3-2 (reversed). */
          nir_intrinsic_set_base(intr, 0);
          nir_intrinsic_set_component(intr, 3 - component);
          out_of_bounds = false;
          break;
-      case GL_TRIANGLES:
+      case TESS_PRIMITIVE_TRIANGLES:
          /* gl_TessLevelInner[0] lives at DWord 4. */
          nir_intrinsic_set_base(intr, 1);
          out_of_bounds = component > 0;
          break;
-      case GL_ISOLINES:
+      case TESS_PRIMITIVE_ISOLINES:
          out_of_bounds = true;
          break;
       default:
          unreachable("Bogus tessellation domain");
       }
    } else if (location == VARYING_SLOT_TESS_LEVEL_OUTER) {
-      if (primitive_mode == GL_ISOLINES) {
+      if (_primitive_mode == TESS_PRIMITIVE_ISOLINES) {
          /* gl_TessLevelOuter[0..1] lives at DWords 6-7 (in order). */
          nir_intrinsic_set_base(intr, 1);
          nir_intrinsic_set_component(intr, 2 + nir_intrinsic_component(intr));
@@ -65,7 +65,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
          /* Triangles use DWords 7-5 (reversed); Quads use 7-4 (reversed) */
          nir_intrinsic_set_base(intr, 1);
          nir_intrinsic_set_component(intr, 3 - nir_intrinsic_component(intr));
-         out_of_bounds = component == 3 && primitive_mode == GL_TRIANGLES;
+         out_of_bounds = component == 3 && _primitive_mode == TESS_PRIMITIVE_TRIANGLES;
       }
    } else {
       return false;
@@ -104,7 +104,7 @@ is_output(nir_intrinsic_instr *intrin)
 static bool
 remap_patch_urb_offsets(nir_block *block, nir_builder *b,
                         const struct brw_vue_map *vue_map,
-                        GLenum tes_primitive_mode)
+                        enum tess_primitive_mode tes_primitive_mode)
 {
    const bool is_passthrough_tcs = b->shader->info.name &&
       strcmp(b->shader->info.name, "passthrough TCS") == 0;
@@ -366,7 +366,7 @@ brw_nir_lower_tes_inputs(nir_shader *nir, const struct brw_vue_map *vue_map)
          nir_builder_init(&b, function->impl);
          nir_foreach_block(block, function->impl) {
             remap_patch_urb_offsets(block, &b, vue_map,
-                                    nir->info.tess.primitive_mode);
+                                    nir->info.tess._primitive_mode);
          }
       }
    }
@@ -475,7 +475,7 @@ brw_nir_lower_vue_outputs(nir_shader *nir)
 
 void
 brw_nir_lower_tcs_outputs(nir_shader *nir, const struct brw_vue_map *vue_map,
-                          GLenum tes_primitive_mode)
+                          enum tess_primitive_mode tes_primitive_mode)
 {
    nir_foreach_shader_out_variable(var, nir) {
       var->data.driver_location = var->data.location;

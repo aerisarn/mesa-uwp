@@ -3529,12 +3529,12 @@ get_depth_layout_mode(enum gl_frag_depth_layout depth_layout)
 }
 
 static SpvExecutionMode
-get_primitive_mode(uint16_t primitive_mode)
+get_primitive_mode(enum tess_primitive_mode primitive_mode)
 {
    switch (primitive_mode) {
-   case GL_TRIANGLES: return SpvExecutionModeTriangles;
-   case GL_QUADS: return SpvExecutionModeQuads;
-   case GL_ISOLINES: return SpvExecutionModeIsolines;
+   case TESS_PRIMITIVE_TRIANGLES: return SpvExecutionModeTriangles;
+   case TESS_PRIMITIVE_QUADS: return SpvExecutionModeQuads;
+   case TESS_PRIMITIVE_ISOLINES: return SpvExecutionModeIsolines;
    default:
       unreachable("unknown tess prim type!");
    }
@@ -3781,7 +3781,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, uint32_t 
       break;
    case MESA_SHADER_TESS_EVAL:
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
-                                   get_primitive_mode(s->info.tess.primitive_mode));
+                                   get_primitive_mode(s->info.tess._primitive_mode));
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    s->info.tess.ccw ? SpvExecutionModeVertexOrderCcw
                                                     : SpvExecutionModeVertexOrderCw);

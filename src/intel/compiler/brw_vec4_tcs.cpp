@@ -380,7 +380,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    brw_nir_apply_key(nir, compiler, &key->base, 8, is_scalar);
    brw_nir_lower_vue_inputs(nir, &input_vue_map);
    brw_nir_lower_tcs_outputs(nir, &vue_prog_data->vue_map,
-                             key->tes_primitive_mode);
+                             key->_tes_primitive_mode);
    if (key->quads_workaround)
       brw_nir_apply_tcs_quads_workaround(nir);
 

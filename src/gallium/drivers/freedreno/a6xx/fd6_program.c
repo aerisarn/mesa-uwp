@@ -765,7 +765,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
       uint32_t output;
       if (ds_info->tess.point_mode)
          output = TESS_POINTS;
-      else if (ds_info->tess.primitive_mode == GL_ISOLINES)
+      else if (ds_info->tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
          output = TESS_LINES;
       else if (ds_info->tess.ccw)
          output = TESS_CCW_TRIS;

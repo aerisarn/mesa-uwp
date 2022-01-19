@@ -336,7 +336,7 @@ struct brw_tcs_prog_key
 {
    struct brw_base_prog_key base;
 
-   GLenum tes_primitive_mode;
+   enum tess_primitive_mode _tes_primitive_mode;
 
    unsigned input_vertices;
 

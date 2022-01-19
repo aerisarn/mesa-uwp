@@ -994,6 +994,14 @@ enum gl_tess_spacing
    TESS_SPACING_FRACTIONAL_EVEN,
 };
 
+enum tess_primitive_mode
+{
+   TESS_PRIMITIVE_UNSPECIFIED,
+   TESS_PRIMITIVE_TRIANGLES,
+   TESS_PRIMITIVE_QUADS,
+   TESS_PRIMITIVE_ISOLINES,
+};
+
 /**
  * A compare function enum for use in compiler lowering passes.  This is in
  * the same order as GL's compare functions (shifted down by GL_NEVER), and is

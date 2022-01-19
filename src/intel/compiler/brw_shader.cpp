@@ -1387,14 +1387,14 @@ brw_compile_tes(const struct brw_compiler *compiler,
    prog_data->partitioning =
       (enum brw_tess_partitioning) (nir->info.tess.spacing - 1);
 
-   switch (nir->info.tess.primitive_mode) {
-   case GL_QUADS:
+   switch (nir->info.tess._primitive_mode) {
+   case TESS_PRIMITIVE_QUADS:
       prog_data->domain = BRW_TESS_DOMAIN_QUAD;
       break;
-   case GL_TRIANGLES:
+   case TESS_PRIMITIVE_TRIANGLES:
       prog_data->domain = BRW_TESS_DOMAIN_TRI;
       break;
-   case GL_ISOLINES:
+   case TESS_PRIMITIVE_ISOLINES:
       prog_data->domain = BRW_TESS_DOMAIN_ISOLINE;
       break;
    default:
@@ -1403,7 +1403,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 
    if (nir->info.tess.point_mode) {
       prog_data->output_topology = BRW_TESS_OUTPUT_TOPOLOGY_POINT;
-   } else if (nir->info.tess.primitive_mode == GL_ISOLINES) {
+   } else if (nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES) {
       prog_data->output_topology = BRW_TESS_OUTPUT_TOPOLOGY_LINE;
    } else {
       /* Hardware winding order is backwards from OpenGL */

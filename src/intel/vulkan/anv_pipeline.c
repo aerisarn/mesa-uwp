@@ -983,10 +983,10 @@ merge_tess_info(struct shader_info *tes_info,
           tcs_info->tess.spacing == tes_info->tess.spacing);
    tes_info->tess.spacing |= tcs_info->tess.spacing;
 
-   assert(tcs_info->tess.primitive_mode == 0 ||
-          tes_info->tess.primitive_mode == 0 ||
-          tcs_info->tess.primitive_mode == tes_info->tess.primitive_mode);
-   tes_info->tess.primitive_mode |= tcs_info->tess.primitive_mode;
+   assert(tcs_info->tess._primitive_mode == 0 ||
+          tes_info->tess._primitive_mode == 0 ||
+          tcs_info->tess._primitive_mode == tes_info->tess._primitive_mode);
+   tes_info->tess._primitive_mode |= tcs_info->tess._primitive_mode;
    tes_info->tess.ccw |= tcs_info->tess.ccw;
    tes_info->tess.point_mode |= tcs_info->tess.point_mode;
 }
@@ -1011,11 +1011,11 @@ anv_pipeline_link_tcs(const struct brw_compiler *compiler,
     * this comes from the SPIR-V, which is part of the hash used for the
     * pipeline cache.  So it should be safe.
     */
-   tcs_stage->key.tcs.tes_primitive_mode =
-      tes_stage->nir->info.tess.primitive_mode;
+   tcs_stage->key.tcs._tes_primitive_mode =
+      tes_stage->nir->info.tess._primitive_mode;
    tcs_stage->key.tcs.quads_workaround =
       compiler->devinfo->ver < 9 &&
-      tes_stage->nir->info.tess.primitive_mode == 7 /* GL_QUADS */ &&
+      tes_stage->nir->info.tess._primitive_mode == TESS_PRIMITIVE_QUADS &&
       tes_stage->nir->info.tess.spacing == TESS_SPACING_EQUAL;
 }
 

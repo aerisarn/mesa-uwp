@@ -5391,7 +5391,7 @@ visit_load_tess_coord(isel_context* ctx, nir_intrinsic_instr* instr)
    Operand tes_v(get_arg(ctx, ctx->args->ac.tes_v));
    Operand tes_w = Operand::zero();
 
-   if (ctx->shader->info.tess.primitive_mode == GL_TRIANGLES) {
+   if (ctx->shader->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES) {
       Temp tmp = bld.vop2(aco_opcode::v_add_f32, bld.def(v1), tes_u, tes_v);
       tmp = bld.vop2(aco_opcode::v_sub_f32, bld.def(v1), Operand::c32(0x3f800000u /* 1.0f */), tmp);
       tes_w = Operand(tmp);

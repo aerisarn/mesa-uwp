@@ -759,7 +759,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->gs.invocations = nir->info.gs.invocations;
       break;
    case MESA_SHADER_TESS_EVAL:
-      info->tes.primitive_mode = nir->info.tess.primitive_mode;
+      info->tes._primitive_mode = nir->info.tess._primitive_mode;
       info->tes.spacing = nir->info.tess.spacing;
       info->tes.ccw = nir->info.tess.ccw;
       info->tes.point_mode = nir->info.tess.point_mode;

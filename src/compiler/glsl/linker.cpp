@@ -1971,7 +1971,7 @@ link_tes_in_layout_qualifiers(struct gl_shader_program *prog,
    int point_mode = -1;
    unsigned vertex_order = 0;
 
-   gl_prog->info.tess.primitive_mode = PRIM_UNKNOWN;
+   gl_prog->info.tess._primitive_mode = TESS_PRIMITIVE_UNSPECIFIED;
    gl_prog->info.tess.spacing = TESS_SPACING_UNSPECIFIED;
 
    /* From the GLSL 4.0 spec (chapter 4.3.8.1):
@@ -1991,16 +1991,16 @@ link_tes_in_layout_qualifiers(struct gl_shader_program *prog,
    for (unsigned i = 0; i < num_shaders; i++) {
       struct gl_shader *shader = shader_list[i];
 
-      if (shader->info.TessEval.PrimitiveMode != PRIM_UNKNOWN) {
-         if (gl_prog->info.tess.primitive_mode != PRIM_UNKNOWN &&
-             gl_prog->info.tess.primitive_mode !=
-             shader->info.TessEval.PrimitiveMode) {
+      if (shader->info.TessEval._PrimitiveMode != TESS_PRIMITIVE_UNSPECIFIED) {
+         if (gl_prog->info.tess._primitive_mode != TESS_PRIMITIVE_UNSPECIFIED &&
+             gl_prog->info.tess._primitive_mode !=
+             shader->info.TessEval._PrimitiveMode) {
             linker_error(prog, "tessellation evaluation shader defined with "
                          "conflicting input primitive modes.\n");
             return;
          }
-         gl_prog->info.tess.primitive_mode =
-            shader->info.TessEval.PrimitiveMode;
+         gl_prog->info.tess._primitive_mode =
+            shader->info.TessEval._PrimitiveMode;
       }
 
       if (shader->info.TessEval.Spacing != 0) {
@@ -2039,7 +2039,7 @@ link_tes_in_layout_qualifiers(struct gl_shader_program *prog,
     * since we already know we're in the right type of shader program
     * for doing it.
     */
-   if (gl_prog->info.tess.primitive_mode == PRIM_UNKNOWN) {
+   if (gl_prog->info.tess._primitive_mode == TESS_PRIMITIVE_UNSPECIFIED) {
       linker_error(prog,
                    "tessellation evaluation shader didn't declare input "
                    "primitive modes.\n");

@@ -1021,7 +1021,7 @@ void radv_lower_ngg(struct radv_device *device, struct nir_shader *nir,
    if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
       if (nir->info.tess.point_mode)
          num_vertices_per_prim = 1;
-      else if (nir->info.tess.primitive_mode == GL_ISOLINES)
+      else if (nir->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
          num_vertices_per_prim = 2;
 
       /* Manually mark the primitive ID used, so the shader can repack it. */
@@ -1566,7 +1566,7 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
 
       bool nggc = info->has_ngg_culling; /* Culling uses GS vertex offsets 0, 1, 2. */
       bool tes_triangles =
-         stage == MESA_SHADER_TESS_EVAL && info->tes.primitive_mode >= 4; /* GL_TRIANGLES */
+         stage == MESA_SHADER_TESS_EVAL && info->tes._primitive_mode != TESS_PRIMITIVE_ISOLINES;
       if (info->uses_invocation_id) {
          gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
       } else if (info->uses_prim_id || (es_stage == MESA_SHADER_VERTEX &&

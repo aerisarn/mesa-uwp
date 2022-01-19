@@ -4265,6 +4265,23 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
    }
 }
 
+static enum tess_primitive_mode
+tess_primitive_mode_from_spv_execution_mode(struct vtn_builder *b,
+                                            SpvExecutionMode mode)
+{
+   switch (mode) {
+   case SpvExecutionModeTriangles:
+      return TESS_PRIMITIVE_TRIANGLES;
+   case SpvExecutionModeQuads:
+      return TESS_PRIMITIVE_QUADS;
+   case SpvExecutionModeIsolines:
+      return TESS_PRIMITIVE_ISOLINES;
+   default:
+      vtn_fail("Invalid tess primitive type: %s (%u)",
+               spirv_executionmode_to_string(mode), mode);
+   }
+}
+
 static unsigned
 gl_primitive_from_spv_execution_mode(struct vtn_builder *b,
                                      SpvExecutionMode mode)
@@ -5016,8 +5033,8 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
    case SpvExecutionModeIsolines:
       if (b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
           b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
-         b->shader->info.tess.primitive_mode =
-            gl_primitive_from_spv_execution_mode(b, mode->exec_mode);
+         b->shader->info.tess._primitive_mode =
+            tess_primitive_mode_from_spv_execution_mode(b, mode->exec_mode);
       } else {
          vtn_assert(b->shader->info.stage == MESA_SHADER_GEOMETRY);
          b->shader->info.gs.vertices_in =

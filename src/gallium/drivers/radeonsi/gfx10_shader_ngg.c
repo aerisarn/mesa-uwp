@@ -105,7 +105,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
 
       if (info->base.tess.point_mode)
          *num_vertices = 1;
-      else if (info->base.tess.primitive_mode == GL_LINES)
+      else if (info->base.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
          *num_vertices = 2;
       else
          *num_vertices = 3;

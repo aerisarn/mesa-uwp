@@ -693,17 +693,17 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
 
    /* Determine the layout of one tess factor element in the buffer. */
    switch (shader->key.ge.part.tcs.epilog.prim_mode) {
-   case GL_LINES:
+   case TESS_PRIMITIVE_ISOLINES:
       stride = 2; /* 2 dwords, 1 vec2 store */
       outer_comps = 2;
       inner_comps = 0;
       break;
-   case GL_TRIANGLES:
+   case TESS_PRIMITIVE_TRIANGLES:
       stride = 4; /* 4 dwords, 1 vec4 store */
       outer_comps = 3;
       inner_comps = 1;
       break;
-   case GL_QUADS:
+   case TESS_PRIMITIVE_QUADS:
       stride = 6; /* 6 dwords, 2 stores (vec4 + vec2) */
       outer_comps = 4;
       inner_comps = 2;
@@ -745,7 +745,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
       }
    }
 
-   if (shader->key.ge.part.tcs.epilog.prim_mode == GL_LINES) {
+   if (shader->key.ge.part.tcs.epilog.prim_mode == TESS_PRIMITIVE_ISOLINES) {
       /* For isolines, the hardware expects tess factors in the
        * reverse order from what NIR specifies.
        */

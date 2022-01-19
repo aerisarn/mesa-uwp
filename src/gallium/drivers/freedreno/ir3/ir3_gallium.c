@@ -193,7 +193,7 @@ create_initial_variants(struct ir3_shader_state *hwcso,
 
    switch (nir->info.stage) {
    case MESA_SHADER_TESS_EVAL:
-      key.tessellation = ir3_tess_mode(nir->info.tess.primitive_mode);
+      key.tessellation = ir3_tess_mode(nir->info.tess._primitive_mode);
       break;
 
    case MESA_SHADER_TESS_CTRL:

@@ -1202,7 +1202,7 @@ tu6_emit_vpc(struct tu_cs *cs,
       uint32_t output;
       if (tess_info->tess.point_mode)
          output = TESS_POINTS;
-      else if (tess_info->tess.primitive_mode == GL_ISOLINES)
+      else if (tess_info->tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
          output = TESS_LINES;
       else if (tess_info->tess.ccw)
          output = TESS_CCW_TRIS;
@@ -2309,15 +2309,15 @@ tu_pipeline_shader_key_init(struct ir3_shader_key *key,
 static uint32_t
 tu6_get_tessmode(struct tu_shader* shader)
 {
-   uint32_t primitive_mode = shader->ir3_shader->nir->info.tess.primitive_mode;
+   enum tess_primitive_mode primitive_mode = shader->ir3_shader->nir->info.tess._primitive_mode;
    switch (primitive_mode) {
-   case GL_ISOLINES:
+   case TESS_PRIMITIVE_ISOLINES:
       return IR3_TESS_ISOLINES;
-   case GL_TRIANGLES:
+   case TESS_PRIMITIVE_TRIANGLES:
       return IR3_TESS_TRIANGLES;
-   case GL_QUADS:
+   case TESS_PRIMITIVE_QUADS:
       return IR3_TESS_QUADS;
-   case GL_NONE:
+   case TESS_PRIMITIVE_UNSPECIFIED:
       return IR3_TESS_NONE;
    default:
       unreachable("bad tessmode");

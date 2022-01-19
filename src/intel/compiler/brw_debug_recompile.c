@@ -125,7 +125,7 @@ debug_tcs_recompile(const struct brw_compiler *c, void *log,
    found |= check("input vertices", input_vertices);
    found |= check("outputs written", outputs_written);
    found |= check("patch outputs written", patch_outputs_written);
-   found |= check("tes primitive mode", tes_primitive_mode);
+   found |= check("tes primitive mode", _tes_primitive_mode);
    found |= check("quads and equal_spacing workaround", quads_workaround);
 
    if (!found) {

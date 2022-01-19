@@ -1624,13 +1624,24 @@ gl_prim_to_pipe(unsigned primitive_type)
 }
 
 static enum pipe_prim_type
+tess_prim_to_pipe(enum tess_primitive_mode prim_mode)
+{
+   switch (prim_mode) {
+   case TESS_PRIMITIVE_ISOLINES:
+      return PIPE_PRIM_LINES;
+   default:
+      return PIPE_PRIM_TRIANGLES;
+   }
+}
+
+static enum pipe_prim_type
 get_shader_base_prim_type(struct nir_shader *nir)
 {
    switch (nir->info.stage) {
    case MESA_SHADER_GEOMETRY:
       return gl_prim_to_pipe(nir->info.gs.output_primitive);
    case MESA_SHADER_TESS_EVAL:
-      return nir->info.tess.point_mode ? PIPE_PRIM_POINTS : gl_prim_to_pipe(nir->info.tess.primitive_mode);
+      return nir->info.tess.point_mode ? PIPE_PRIM_POINTS : tess_prim_to_pipe(nir->info.tess._primitive_mode);
    default:
       break;
    }

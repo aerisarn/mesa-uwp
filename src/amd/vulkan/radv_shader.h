@@ -287,7 +287,7 @@ struct radv_shader_info {
       struct radv_vs_output_info outinfo;
       struct radv_es_output_info es_info;
       bool as_es;
-      unsigned primitive_mode;
+      enum tess_primitive_mode _primitive_mode;
       enum gl_tess_spacing spacing;
       bool ccw;
       bool point_mode;

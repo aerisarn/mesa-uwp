@@ -228,7 +228,7 @@ struct iris_vs_prog_key {
 struct iris_tcs_prog_key {
    struct iris_vue_prog_key vue;
 
-   uint16_t tes_primitive_mode;
+   enum tess_primitive_mode _tes_primitive_mode;
 
    uint8_t input_vertices;
 

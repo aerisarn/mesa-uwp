@@ -175,7 +175,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
          return false;
 
       struct shader_info *ds_info = ir3_get_shader_info(emit.key.ds);
-      emit.key.key.tessellation = ir3_tess_mode(ds_info->tess.primitive_mode);
+      emit.key.key.tessellation = ir3_tess_mode(ds_info->tess._primitive_mode);
       ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
 
       struct shader_info *fs_info = ir3_get_shader_info(emit.key.fs);
