@@ -440,7 +440,6 @@ dEQP-GLES31.functional.debug.negative_coverage.get_error.buffer.blit_framebuffer
 dEQP-GLES31.functional.debug.negative_coverage.get_error.buffer.read_pixels_fbo_format_mismatch,Fail
 dEQP-GLES31.functional.debug.negative_coverage.log.buffer.read_pixels_fbo_format_mismatch,Fail
 dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.line_loop.instanced_attributes,Fail
-dEQP-GLES31.functional.draw_buffers_indexed.overwrite_indexed.common_color_mask_buffer_color_mask,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.0,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.1,Fail
 dEQP-GLES31.functional.draw_buffers_indexed.random.max_implementation_draw_buffers.10,Fail
