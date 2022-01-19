@@ -1295,7 +1295,7 @@ static void
 tu6_blit_image(struct tu_cmd_buffer *cmd,
                struct tu_image *src_image,
                struct tu_image *dst_image,
-               const VkImageBlit *info,
+               const VkImageBlit2KHR *info,
                VkFilter filter)
 {
    const struct blit_ops *ops = &r2d_ops;
@@ -1428,35 +1428,30 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdBlitImage(VkCommandBuffer commandBuffer,
-                VkImage srcImage,
-                VkImageLayout srcImageLayout,
-                VkImage dstImage,
-                VkImageLayout dstImageLayout,
-                uint32_t regionCount,
-                const VkImageBlit *pRegions,
-                VkFilter filter)
+tu_CmdBlitImage2KHR(VkCommandBuffer commandBuffer,
+                    const VkBlitImageInfo2KHR* pBlitImageInfo)
 
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   TU_FROM_HANDLE(tu_image, src_image, srcImage);
-   TU_FROM_HANDLE(tu_image, dst_image, dstImage);
+   TU_FROM_HANDLE(tu_image, src_image, pBlitImageInfo->srcImage);
+   TU_FROM_HANDLE(tu_image, dst_image, pBlitImageInfo->dstImage);
 
-   for (uint32_t i = 0; i < regionCount; ++i) {
+   for (uint32_t i = 0; i < pBlitImageInfo->regionCount; ++i) {
       /* can't blit both depth and stencil at once with D32_S8
        * TODO: more advanced 3D blit path to support it instead?
        */
       if (src_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
           dst_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-         VkImageBlit region = pRegions[i];
-         u_foreach_bit(b, pRegions[i].dstSubresource.aspectMask) {
+         VkImageBlit2KHR region = pBlitImageInfo->pRegions[i];
+         u_foreach_bit(b, region.dstSubresource.aspectMask) {
             region.srcSubresource.aspectMask = BIT(b);
             region.dstSubresource.aspectMask = BIT(b);
-            tu6_blit_image(cmd, src_image, dst_image, &region, filter);
+            tu6_blit_image(cmd, src_image, dst_image, &region, pBlitImageInfo->filter);
          }
          continue;
       }
-      tu6_blit_image(cmd, src_image, dst_image, pRegions + i, filter);
+      tu6_blit_image(cmd, src_image, dst_image, pBlitImageInfo->pRegions + i,
+                     pBlitImageInfo->filter);
    }
 }
 
@@ -1490,7 +1485,7 @@ static void
 tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
                         struct tu_buffer *src_buffer,
                         struct tu_image *dst_image,
-                        const VkBufferImageCopy *info)
+                        const VkBufferImageCopy2KHR *info)
 {
    struct tu_cs *cs = &cmd->cs;
    uint32_t layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount);
@@ -1552,26 +1547,23 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
-                        VkBuffer srcBuffer,
-                        VkImage dstImage,
-                        VkImageLayout dstImageLayout,
-                        uint32_t regionCount,
-                        const VkBufferImageCopy *pRegions)
+tu_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
+                            const VkCopyBufferToImageInfo2KHR *pCopyBufferToImageInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   TU_FROM_HANDLE(tu_image, dst_image, dstImage);
-   TU_FROM_HANDLE(tu_buffer, src_buffer, srcBuffer);
+   TU_FROM_HANDLE(tu_image, dst_image, pCopyBufferToImageInfo->dstImage);
+   TU_FROM_HANDLE(tu_buffer, src_buffer, pCopyBufferToImageInfo->srcBuffer);
 
-   for (unsigned i = 0; i < regionCount; ++i)
-      tu_copy_buffer_to_image(cmd, src_buffer, dst_image, pRegions + i);
+   for (unsigned i = 0; i < pCopyBufferToImageInfo->regionCount; ++i)
+      tu_copy_buffer_to_image(cmd, src_buffer, dst_image,
+                              pCopyBufferToImageInfo->pRegions + i);
 }
 
 static void
 tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
                         struct tu_image *src_image,
                         struct tu_buffer *dst_buffer,
-                        const VkBufferImageCopy *info)
+                        const VkBufferImageCopy2KHR *info)
 {
    struct tu_cs *cs = &cmd->cs;
    uint32_t layers = MAX2(info->imageExtent.depth, info->imageSubresource.layerCount);
@@ -1632,19 +1624,16 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
-                        VkImage srcImage,
-                        VkImageLayout srcImageLayout,
-                        VkBuffer dstBuffer,
-                        uint32_t regionCount,
-                        const VkBufferImageCopy *pRegions)
+tu_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
+                            const VkCopyImageToBufferInfo2KHR* pCopyImageToBufferInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   TU_FROM_HANDLE(tu_image, src_image, srcImage);
-   TU_FROM_HANDLE(tu_buffer, dst_buffer, dstBuffer);
+   TU_FROM_HANDLE(tu_image, src_image, pCopyImageToBufferInfo->srcImage);
+   TU_FROM_HANDLE(tu_buffer, dst_buffer, pCopyImageToBufferInfo->dstBuffer);
 
-   for (unsigned i = 0; i < regionCount; ++i)
-      tu_copy_image_to_buffer(cmd, src_image, dst_buffer, pRegions + i);
+   for (unsigned i = 0; i < pCopyImageToBufferInfo->regionCount; ++i)
+      tu_copy_image_to_buffer(cmd, src_image, dst_buffer,
+                              pCopyImageToBufferInfo->pRegions + i);
 }
 
 /* Tiled formats don't support swapping, which means that we can't support
@@ -1680,7 +1669,7 @@ static void
 tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
                        struct tu_image *src_image,
                        struct tu_image *dst_image,
-                       const VkImageCopy *info)
+                       const VkImageCopy2KHR *info)
 {
    const struct blit_ops *ops = &r2d_ops;
    struct tu_cs *cs = &cmd->cs;
@@ -1860,22 +1849,17 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdCopyImage(VkCommandBuffer commandBuffer,
-                VkImage srcImage,
-                VkImageLayout srcImageLayout,
-                VkImage destImage,
-                VkImageLayout destImageLayout,
-                uint32_t regionCount,
-                const VkImageCopy *pRegions)
+tu_CmdCopyImage2KHR(VkCommandBuffer commandBuffer,
+                    const VkCopyImageInfo2KHR* pCopyImageInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   TU_FROM_HANDLE(tu_image, src_image, srcImage);
-   TU_FROM_HANDLE(tu_image, dst_image, destImage);
+   TU_FROM_HANDLE(tu_image, src_image, pCopyImageInfo->srcImage);
+   TU_FROM_HANDLE(tu_image, dst_image, pCopyImageInfo->dstImage);
 
-   for (uint32_t i = 0; i < regionCount; ++i) {
+   for (uint32_t i = 0; i < pCopyImageInfo->regionCount; ++i) {
       if (src_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-         VkImageCopy info = pRegions[i];
-         u_foreach_bit(b, pRegions[i].dstSubresource.aspectMask) {
+         VkImageCopy2KHR info = pCopyImageInfo->pRegions[i];
+         u_foreach_bit(b, info.dstSubresource.aspectMask) {
             info.srcSubresource.aspectMask = BIT(b);
             info.dstSubresource.aspectMask = BIT(b);
             tu_copy_image_to_image(cmd, src_image, dst_image, &info);
@@ -1883,7 +1867,8 @@ tu_CmdCopyImage(VkCommandBuffer commandBuffer,
          continue;
       }
 
-      tu_copy_image_to_image(cmd, src_image, dst_image, pRegions + i);
+      tu_copy_image_to_image(cmd, src_image, dst_image,
+                             pCopyImageInfo->pRegions + i);
    }
 }
 
@@ -1921,21 +1906,19 @@ copy_buffer(struct tu_cmd_buffer *cmd,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdCopyBuffer(VkCommandBuffer commandBuffer,
-                 VkBuffer srcBuffer,
-                 VkBuffer dstBuffer,
-                 uint32_t regionCount,
-                 const VkBufferCopy *pRegions)
+tu_CmdCopyBuffer2KHR(VkCommandBuffer commandBuffer,
+                     const VkCopyBufferInfo2KHR *pCopyBufferInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   TU_FROM_HANDLE(tu_buffer, src_buffer, srcBuffer);
-   TU_FROM_HANDLE(tu_buffer, dst_buffer, dstBuffer);
+   TU_FROM_HANDLE(tu_buffer, src_buffer, pCopyBufferInfo->srcBuffer);
+   TU_FROM_HANDLE(tu_buffer, dst_buffer, pCopyBufferInfo->dstBuffer);
 
-   for (unsigned i = 0; i < regionCount; ++i) {
+   for (unsigned i = 0; i < pCopyBufferInfo->regionCount; ++i) {
+      const VkBufferCopy2KHR *region = &pCopyBufferInfo->pRegions[i];
       copy_buffer(cmd,
-                  tu_buffer_iova(dst_buffer) + pRegions[i].dstOffset,
-                  tu_buffer_iova(src_buffer) + pRegions[i].srcOffset,
-                  pRegions[i].size, 1);
+                  tu_buffer_iova(dst_buffer) + region->dstOffset,
+                  tu_buffer_iova(src_buffer) + region->srcOffset,
+                  region->size, 1);
    }
 }
 
@@ -1998,17 +1981,12 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdResolveImage(VkCommandBuffer commandBuffer,
-                   VkImage srcImage,
-                   VkImageLayout srcImageLayout,
-                   VkImage dstImage,
-                   VkImageLayout dstImageLayout,
-                   uint32_t regionCount,
-                   const VkImageResolve *pRegions)
+tu_CmdResolveImage2KHR(VkCommandBuffer commandBuffer,
+                       const VkResolveImageInfo2KHR* pResolveImageInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   TU_FROM_HANDLE(tu_image, src_image, srcImage);
-   TU_FROM_HANDLE(tu_image, dst_image, dstImage);
+   TU_FROM_HANDLE(tu_image, src_image, pResolveImageInfo->srcImage);
+   TU_FROM_HANDLE(tu_image, dst_image, pResolveImageInfo->dstImage);
    const struct blit_ops *ops = &r2d_ops;
    struct tu_cs *cs = &cmd->cs;
 
@@ -2016,8 +1994,8 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
               VK_IMAGE_ASPECT_COLOR_BIT, 0, false, dst_image->layout[0].ubwc, 
               VK_SAMPLE_COUNT_1_BIT);
 
-   for (uint32_t i = 0; i < regionCount; ++i) {
-      const VkImageResolve *info = &pRegions[i];
+   for (uint32_t i = 0; i < pResolveImageInfo->regionCount; ++i) {
+      const VkImageResolve2KHR *info = &pResolveImageInfo->pRegions[i];
       uint32_t layers = MAX2(info->extent.depth, info->dstSubresource.layerCount);
 
       assert(info->srcSubresource.layerCount == info->dstSubresource.layerCount);
