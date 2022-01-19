@@ -668,7 +668,9 @@ vk_queue_submit(struct vk_queue *queue,
    sparse_memory_bind_entry_count = 0;
    sparse_memory_image_bind_entry_count = 0;
 
-   typed_memcpy(submit->buffer_binds, info->buffer_binds, info->buffer_bind_count);
+   if (info->buffer_binds)
+      typed_memcpy(submit->buffer_binds, info->buffer_binds, info->buffer_bind_count);
+
    for (uint32_t i = 0; i < info->buffer_bind_count; ++i) {
       VkSparseMemoryBind *binds = sparse_memory_bind_entries +
                                   sparse_memory_bind_entry_count;
@@ -679,8 +681,10 @@ vk_queue_submit(struct vk_queue *queue,
       sparse_memory_bind_entry_count += info->buffer_binds[i].bindCount;
    }
 
-   typed_memcpy(submit->image_opaque_binds, info->image_opaque_binds,
-                info->image_opaque_bind_count);
+   if (info->image_opaque_binds)
+      typed_memcpy(submit->image_opaque_binds, info->image_opaque_binds,
+                   info->image_opaque_bind_count);
+
    for (uint32_t i = 0; i < info->image_opaque_bind_count; ++i) {
       VkSparseMemoryBind *binds = sparse_memory_bind_entries +
                                   sparse_memory_bind_entry_count;
@@ -691,7 +695,9 @@ vk_queue_submit(struct vk_queue *queue,
       sparse_memory_bind_entry_count += info->image_opaque_binds[i].bindCount;
    }
 
-   typed_memcpy(submit->image_binds, info->image_binds, info->image_bind_count);
+   if (info->image_binds)
+      typed_memcpy(submit->image_binds, info->image_binds, info->image_bind_count);
+
    for (uint32_t i = 0; i < info->image_bind_count; ++i) {
       VkSparseImageMemoryBind *binds = sparse_memory_image_bind_entries +
                                        sparse_memory_image_bind_entry_count;
