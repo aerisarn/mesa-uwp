@@ -1341,7 +1341,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
 
-   if (!pipeline || cmd_buffer->state.emitted_pipeline == pipeline)
+   if (cmd_buffer->state.emitted_pipeline == pipeline)
       return;
 
    radv_update_multisample_state(cmd_buffer, pipeline);
@@ -3201,7 +3201,7 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
    if (descriptors_state->push_dirty)
       radv_flush_push_descriptors(cmd_buffer, bind_point);
 
-   flush_indirect_descriptors = pipeline && pipeline->need_indirect_descriptor_sets;
+   flush_indirect_descriptors = pipeline->need_indirect_descriptor_sets;
 
    if (flush_indirect_descriptors)
       radv_flush_indirect_descriptor_sets(cmd_buffer, pipeline, bind_point);
@@ -3209,18 +3209,15 @@ radv_flush_descriptors(struct radv_cmd_buffer *cmd_buffer, VkShaderStageFlags st
    ASSERTED unsigned cdw_max =
       radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, MAX_SETS * MESA_VULKAN_SHADER_STAGES * 4);
 
-   if (pipeline) {
-      if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
-         radv_emit_descriptor_pointers(cmd_buffer, pipeline, descriptors_state,
-                                       MESA_SHADER_COMPUTE);
-      } else {
-         radv_foreach_stage(stage, stages)
-         {
-            if (!cmd_buffer->state.pipeline->shaders[stage])
-               continue;
+   if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+      radv_emit_descriptor_pointers(cmd_buffer, pipeline, descriptors_state, MESA_SHADER_COMPUTE);
+   } else {
+      radv_foreach_stage(stage, stages)
+      {
+         if (!cmd_buffer->state.pipeline->shaders[stage])
+            continue;
 
-            radv_emit_descriptor_pointers(cmd_buffer, pipeline, descriptors_state, stage);
-         }
+         radv_emit_descriptor_pointers(cmd_buffer, pipeline, descriptors_state, stage);
       }
    }
 
@@ -4988,7 +4985,7 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 static void
 radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline)
 {
-   if (!pipeline || pipeline == cmd_buffer->state.emitted_compute_pipeline)
+   if (pipeline == cmd_buffer->state.emitted_compute_pipeline)
       return;
 
    assert(!pipeline->ctx_cs.cdw);
@@ -7274,7 +7271,7 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
               struct radv_pipeline *pipeline, VkPipelineBindPoint bind_point)
 {
    bool has_prefetch = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7;
-   bool pipeline_is_dirty = pipeline && pipeline != cmd_buffer->state.emitted_compute_pipeline;
+   bool pipeline_is_dirty = pipeline != cmd_buffer->state.emitted_compute_pipeline;
    bool cs_regalloc_hang = cmd_buffer->device->physical_device->rad_info.has_cs_regalloc_hang_bug &&
                            info->blocks[0] * info->blocks[1] * info->blocks[2] > 256;
 
