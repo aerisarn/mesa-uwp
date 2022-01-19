@@ -658,7 +658,7 @@ struct tu_descriptor_set
 {
    struct vk_object_base base;
 
-   const struct tu_descriptor_set_layout *layout;
+   struct tu_descriptor_set_layout *layout;
    struct tu_descriptor_pool *pool;
    uint32_t size;
 
