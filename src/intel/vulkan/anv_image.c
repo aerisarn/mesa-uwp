@@ -536,13 +536,14 @@ add_aux_state_tracking_buffer(struct anv_device *device,
    enum anv_image_memory_binding binding =
       ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
 
-   /* Ensure that AUX state is stored outside the buffer memory for any images
-    * externally sharable. This prevents corruptions arising due to disjoint
-    * processes working with the same image.
+   /* If an auxiliary surface is used for an externally-shareable image,
+    * we have to hide this from the memory of the image since other
+    * processes with access to the memory may not be aware of it or of
+    * its current state. So put that auxiliary data into a separate
+    * buffer (ANV_IMAGE_MEMORY_BINDING_PRIVATE).
     */
-   if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID ||
-       image->vk.external_handle_types != 0) {
-       binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
+   if (anv_image_is_externally_shared(image)) {
+      binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
    }
 
    /* We believe that 256B alignment may be sufficient, but we choose 4K due to
@@ -950,13 +951,14 @@ check_memory_bindings(const struct anv_device *device,
       if (anv_surface_is_valid(&plane->aux_surface)) {
          enum anv_image_memory_binding binding = primary_binding;
 
-         /* Ensure that AUX state is stored outside the buffer memory for any
-          * images externally sharable. This prevents corruptions arising due
-          * to disjoint processes working with the same image.
+         /* If an auxiliary surface is used for an externally-shareable image,
+          * we have to hide this from the memory of the image since other
+          * processes with access to the memory may not be aware of it or of
+          * its current state. So put that auxiliary data into a separate
+          * buffer (ANV_IMAGE_MEMORY_BINDING_PRIVATE).
           */
-         if ((image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID &&
-              !isl_drm_modifier_has_aux(image->vk.drm_format_mod)) ||
-             (image->vk.external_handle_types != 0)) {
+         if (anv_image_is_externally_shared(image) &&
+             !isl_drm_modifier_has_aux(image->vk.drm_format_mod)) {
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
          }
 
@@ -974,12 +976,13 @@ check_memory_bindings(const struct anv_device *device,
       if (plane->fast_clear_memory_range.size > 0) {
          enum anv_image_memory_binding binding = primary_binding;
 
-         /* Ensure that clear state is stored outside the buffer memory for any
-          * images externally sharable. This prevents corruptions arising due
-          * to disjoint processes working with the same image.
+         /* If an auxiliary surface is used for an externally-shareable image,
+          * we have to hide this from the memory of the image since other
+          * processes with access to the memory may not be aware of it or of
+          * its current state. So put that auxiliary data into a separate
+          * buffer (ANV_IMAGE_MEMORY_BINDING_PRIVATE).
           */
-         if (image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID ||
-             image->vk.external_handle_types != 0) {
+         if (anv_image_is_externally_shared(image)) {
             binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
          }
 

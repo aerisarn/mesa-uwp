@@ -31,6 +31,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include "drm-uapi/i915_drm.h"
+#include "drm-uapi/drm_fourcc.h"
 
 #ifdef HAVE_VALGRIND
 #include <valgrind.h>
@@ -3839,6 +3840,21 @@ struct anv_image {
       struct anv_image_memory_range fast_clear_memory_range;
    } planes[3];
 };
+
+static inline bool
+anv_image_is_externally_shared(const struct anv_image *image)
+{
+   return image->vk.drm_format_mod != DRM_FORMAT_MOD_INVALID ||
+          image->vk.external_handle_types != 0;
+}
+
+static inline bool
+anv_image_has_private_binding(const struct anv_image *image)
+{
+   const struct anv_image_binding private_binding =
+      image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE];
+   return private_binding.memory_range.size != 0;
+}
 
 /* The ordering of this enum is important */
 enum anv_fast_clear_type {

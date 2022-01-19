@@ -1216,13 +1216,13 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
     */
    const bool private_binding_acquire =
       src_queue_external &&
-      (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT ||
-       image->vk.external_handle_types != 0);
+      anv_image_is_externally_shared(image) &&
+      anv_image_has_private_binding(image);
 
    const bool private_binding_release =
       dst_queue_external &&
-      (image->vk.tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT ||
-       image->vk.external_handle_types != 0);
+      anv_image_is_externally_shared(image) &&
+      anv_image_has_private_binding(image);
 
    if (initial_layout == final_layout &&
        !private_binding_acquire && !private_binding_release) {
