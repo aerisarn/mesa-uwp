@@ -22,6 +22,7 @@
  */
 
 #include "nir.h"
+#include "GL/gl.h"
 #include "gl_nir.h"
 #include "gl_nir_linker.h"
 #include "linker_util.h"

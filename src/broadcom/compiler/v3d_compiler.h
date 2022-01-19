@@ -1125,7 +1125,7 @@ bool vir_init_reg_sets(struct v3d_compiler *compiler);
 
 int v3d_shaderdb_dump(struct v3d_compile *c, char **shaderdb_str);
 
-bool v3d_gl_format_is_return_32(GLenum format);
+bool v3d_gl_format_is_return_32(enum pipe_format format);
 
 uint32_t
 v3d_get_op_for_atomic_add(nir_intrinsic_instr *instr, unsigned src);
