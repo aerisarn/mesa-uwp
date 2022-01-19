@@ -1118,7 +1118,8 @@ update_pixel_pipes(struct intel_device_info *devinfo)
       const unsigned offset = p * ppipe_bits;
       const unsigned subslice_idx = offset /
          devinfo->max_subslices_per_slice * devinfo->subslice_slice_stride;
-      const unsigned ppipe_mask = BITFIELD_RANGE(offset % 8, ppipe_bits);
+      const unsigned ppipe_mask =
+         BITFIELD_RANGE(offset % devinfo->max_subslices_per_slice, ppipe_bits);
 
       if (subslice_idx < ARRAY_SIZE(devinfo->subslice_masks))
          devinfo->ppipe_subslices[p] =
