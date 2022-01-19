@@ -1077,8 +1077,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
 
             ws->buffer_create(
                ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
-               RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
-               RADV_BO_PRIORITY_CS, 0, &bos[j]);
+               RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
+               RADEON_FLAG_GTT_WC, RADV_BO_PRIORITY_CS, 0, &bos[j]);
             ptr = ws->buffer_map(bos[j]);
 
             if (needs_preamble) {
@@ -1120,8 +1120,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
 
          ws->buffer_create(
             ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
-            RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
-            RADV_BO_PRIORITY_CS, 0, &bos[0]);
+            RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
+            RADEON_FLAG_GTT_WC, RADV_BO_PRIORITY_CS, 0, &bos[0]);
          ptr = ws->buffer_map(bos[0]);
 
          if (preamble_cs) {
