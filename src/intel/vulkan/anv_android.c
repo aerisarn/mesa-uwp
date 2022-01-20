@@ -573,7 +573,6 @@ anv_image_init_from_gralloc(struct anv_device *device,
  fail_size:
    anv_image_finish(image);
  fail_init:
- fail_tiling:
    anv_device_release_bo(device, bo);
 
    return result;
