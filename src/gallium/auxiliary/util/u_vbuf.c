@@ -987,6 +987,8 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    uint32_t incompatible_vb_mask = 0;
    /* which buffers have a non-zero stride */
    uint32_t nonzero_stride_vb_mask = 0;
+   /* which buffers are unaligned to 2/4 bytes */
+   uint32_t unaligned_vb_mask[2] = {0};
    const uint32_t mask =
       ~(((1ull << (count + unbind_num_trailing_slots)) - 1) << start_slot);
 
@@ -1052,9 +1054,9 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
 
       if (!mgr->caps.attrib_component_unaligned) {
          if (vb->buffer_offset % 2 != 0 || vb->stride % 2 != 0)
-            mgr->unaligned_vb_mask[0] |= BITFIELD_BIT(dst_index);
+            unaligned_vb_mask[0] |= BITFIELD_BIT(dst_index);
          if (vb->buffer_offset % 4 != 0 || vb->stride % 4 != 0)
-            mgr->unaligned_vb_mask[1] |= BITFIELD_BIT(dst_index);
+            unaligned_vb_mask[1] |= BITFIELD_BIT(dst_index);
       }
 
       if (!mgr->caps.user_vertex_buffers && vb->is_user_buffer) {
@@ -1080,6 +1082,8 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    mgr->incompatible_vb_mask |= incompatible_vb_mask;
    mgr->nonzero_stride_vb_mask |= nonzero_stride_vb_mask;
    mgr->enabled_vb_mask |= enabled_vb_mask;
+   mgr->unaligned_vb_mask[0] |= unaligned_vb_mask[0];
+   mgr->unaligned_vb_mask[1] |= unaligned_vb_mask[1];
 
    /* All changed buffers are marked as dirty, even the NULL ones,
     * which will cause the NULL buffers to be unbound in the driver later. */
