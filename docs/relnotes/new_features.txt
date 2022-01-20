@@ -2,7 +2,7 @@ lavapipe,radv KHR_dynamic_rendering
 radv EXT_image_view_min_lod
 VK_KHR_synchronization2 on RADV.
 OpenSWR has been moved to the Amber branch
-radeonsi ARB_sparse_texture
+radeonsi, zink ARB_sparse_texture
 d3d12 support for shader store buffers, images, compute, indirect draw, draw params, and ARB_framebuffer_no_attachments
-radeonsi ARB_sparse_texture2
+radeonsi, zink ARB_sparse_texture2
 zink EXT_memory_object, EXT_memory_object_fd, EXT_semaphore, EXT_semaphore_fd
