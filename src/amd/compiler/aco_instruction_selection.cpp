@@ -1823,6 +1823,12 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_uadd_sat: {
+      if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
+         Instruction* add_instr =
+            emit_vop3p_instruction(ctx, instr, aco_opcode::v_pk_add_u16, dst);
+         add_instr->vop3p().clamp = 1;
+         break;
+      }
       Temp src0 = get_alu_src(ctx, instr->src[0]);
       Temp src1 = get_alu_src(ctx, instr->src[1]);
       if (dst.regClass() == s1) {
@@ -1901,6 +1907,12 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       break;
    }
    case nir_op_iadd_sat: {
+      if (dst.regClass() == v1 && instr->dest.dest.ssa.bit_size == 16) {
+         Instruction* add_instr =
+            emit_vop3p_instruction(ctx, instr, aco_opcode::v_pk_add_i16, dst);
+         add_instr->vop3p().clamp = 1;
+         break;
+      }
       Temp src0 = get_alu_src(ctx, instr->src[0]);
       Temp src1 = get_alu_src(ctx, instr->src[1]);
       if (dst.regClass() == s1) {
