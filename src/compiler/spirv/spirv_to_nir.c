@@ -4841,6 +4841,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(float64_atomic_min_max, cap);
          break;
 
+      case SpvCapabilityMeshShadingEXT:
+         spv_check_supported(mesh_shading, cap);
+         break;
+
       case SpvCapabilityMeshShadingNV:
          spv_check_supported(mesh_shading_nv, cap);
          break;
