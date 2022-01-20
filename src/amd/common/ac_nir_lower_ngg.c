@@ -2304,6 +2304,9 @@ ms_emit_arrayed_outputs(nir_builder *b,
    nir_ssa_def *zero = nir_imm_int(b, 0);
 
    u_foreach_bit64(slot, arrayed_outputs_mask) {
+      /* Should not occour here, handled separately. */
+      assert(slot != VARYING_SLOT_PRIMITIVE_COUNT && slot != VARYING_SLOT_PRIMITIVE_INDICES);
+
       const nir_io_semantics io_sem = { .location = slot, .num_slots = 1 };
       const unsigned driver_location = s->output_info[slot].driver_location;
       unsigned component_mask = s->output_info[slot].components_mask;
@@ -2570,10 +2573,13 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    unsigned vertices_per_prim =
       num_mesh_vertices_per_primitive(shader->info.mesh.primitive_type);
 
-   uint64_t per_vertex_outputs = shader->info.outputs_written & ~shader->info.per_primitive_outputs
-                                 & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT)
-                                 & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
-   uint64_t per_primitive_outputs = shader->info.per_primitive_outputs & shader->info.outputs_written;
+   uint64_t special_outputs =
+      BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) | BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
+   uint64_t per_vertex_outputs =
+      shader->info.outputs_written & ~shader->info.per_primitive_outputs & ~special_outputs;
+   uint64_t per_primitive_outputs =
+      shader->info.per_primitive_outputs & shader->info.outputs_written & ~special_outputs;
+
    unsigned num_per_vertex_outputs = util_bitcount64(per_vertex_outputs);
    unsigned num_per_primitive_outputs = util_bitcount64(per_primitive_outputs);
    unsigned max_vertices = shader->info.mesh.max_vertices_out;
