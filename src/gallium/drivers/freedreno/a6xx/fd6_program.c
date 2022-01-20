@@ -394,8 +394,10 @@ fd6_emit_tess_bos(struct fd_screen *screen, struct fd_ringbuffer *ring,
 static void
 setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
                struct fd6_program_state *state,
-               const struct ir3_shader_key *key, bool binning_pass) assert_dt
+               const struct ir3_cache_key *cache_key,
+               bool binning_pass) assert_dt
 {
+   const struct ir3_shader_key *key = &cache_key->key;
    uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
    uint32_t clip0_regid, clip1_regid;
    uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
@@ -1233,7 +1235,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
                    struct ir3_shader_variant *vs, struct ir3_shader_variant *hs,
                    struct ir3_shader_variant *ds, struct ir3_shader_variant *gs,
                    struct ir3_shader_variant *fs,
-                   const struct ir3_shader_key *key) in_dt
+                   const struct ir3_cache_key *key) in_dt
 {
    struct fd_context *ctx = fd_context(data);
    struct fd_screen *screen = ctx->screen;
