@@ -6284,6 +6284,11 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       vtn_handle_write_packed_primitive_indices(b, opcode, w, count);
       break;
 
+   case SpvOpSetMeshOutputsEXT:
+      nir_set_vertex_and_primitive_count(
+         &b->nb, vtn_get_nir_ssa(b, w[1]), vtn_get_nir_ssa(b, w[2]));
+      break;
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
