@@ -12,7 +12,7 @@ variables:
 
    DEBIAN_X86_TEST_IMAGE_PATH: "debian/x86_test-gl"
    DEBIAN_X86_TEST_GL_TAG: "2022-06-21-apitrace-linux"
-   DEBIAN_X86_TEST_VK_TAG: "2022-06-22-gfxreconstruct-0.9.10"
+   DEBIAN_X86_TEST_VK_TAG: "2022-06-22-dxvk-1.10.1"
 
    FEDORA_X86_BUILD_TAG: "2022-04-24-spirv-tools-5"
    KERNEL_ROOTFS_TAG: "2022-06-21-apitrace-linux"
