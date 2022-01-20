@@ -141,7 +141,7 @@ svga_create_stream_output(struct svga_context *svga,
    unsigned i;
    enum pipe_error ret;
    unsigned id;
-   ASSERTED unsigned maxDecls;
+   ASSERTED unsigned maxDecls = 0;
 
    assert(info->num_outputs <= PIPE_MAX_SO_OUTPUTS);
 
