@@ -4068,6 +4068,8 @@ opt_vectorize_callback(const nir_instr *instr, const void *_)
    case nir_op_iadd_sat:
    case nir_op_uadd_sat:
    case nir_op_isub:
+   case nir_op_isub_sat:
+   case nir_op_usub_sat:
    case nir_op_imul:
    case nir_op_imin:
    case nir_op_imax:
