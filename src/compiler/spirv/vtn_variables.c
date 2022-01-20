@@ -1143,6 +1143,9 @@ vtn_get_builtin_location(struct vtn_builder *b,
    case SpvBuiltInPrimitiveCountNV:
       *location = VARYING_SLOT_PRIMITIVE_COUNT;
       break;
+   case SpvBuiltInPrimitivePointIndicesEXT:
+   case SpvBuiltInPrimitiveLineIndicesEXT:
+   case SpvBuiltInPrimitiveTriangleIndicesEXT:
    case SpvBuiltInPrimitiveIndicesNV:
       *location = VARYING_SLOT_PRIMITIVE_INDICES;
       break;
@@ -1235,6 +1238,19 @@ apply_var_decoration(struct vtn_builder *b,
       case SpvBuiltInCullDistance:
       case SpvBuiltInCullDistancePerViewNV:
          var_data->compact = true;
+         break;
+      case SpvBuiltInPrimitivePointIndicesEXT:
+      case SpvBuiltInPrimitiveLineIndicesEXT:
+      case SpvBuiltInPrimitiveTriangleIndicesEXT:
+         /* Not defined as per-primitive in the EXT, but they behave
+          * like per-primitive outputs so it's easier to treat them like that.
+          * They may still require special treatment in the backend in order to
+          * control where and how they are stored.
+          *
+          * EXT_mesh_shader: write-only array of vectors indexed by the primitive index
+          * NV_mesh_shader: read/write flat array
+          */
+         var_data->per_primitive = true;
          break;
       default:
          break;
