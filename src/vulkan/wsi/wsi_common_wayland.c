@@ -449,7 +449,7 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
 
    default:
       assert(!"Unsupported Vulkan format");
-      return 0;
+      return DRM_FORMAT_INVALID;
    }
 }
 
