@@ -992,19 +992,19 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    const uint32_t mask =
       ~(((1ull << (count + unbind_num_trailing_slots)) - 1) << start_slot);
 
-   /* Zero out the bits we are going to rewrite completely. */
-   mgr->user_vb_mask &= mask;
-   mgr->incompatible_vb_mask &= mask;
-   mgr->nonzero_stride_vb_mask &= mask;
-   mgr->enabled_vb_mask &= mask;
-   mgr->unaligned_vb_mask[0] &= mask;
-   mgr->unaligned_vb_mask[1] &= mask;
-
    if (!bufs) {
       struct pipe_context *pipe = mgr->pipe;
       /* Unbind. */
       unsigned total_count = count + unbind_num_trailing_slots;
       mgr->dirty_real_vb_mask &= mask;
+
+      /* Zero out the bits we are going to rewrite completely. */
+      mgr->user_vb_mask &= mask;
+      mgr->incompatible_vb_mask &= mask;
+      mgr->nonzero_stride_vb_mask &= mask;
+      mgr->enabled_vb_mask &= mask;
+      mgr->unaligned_vb_mask[0] &= mask;
+      mgr->unaligned_vb_mask[1] &= mask;
 
       for (i = 0; i < total_count; i++) {
          unsigned dst_index = start_slot + i;
@@ -1077,6 +1077,15 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
       pipe_vertex_buffer_unreference(&mgr->vertex_buffer[dst_index]);
       pipe_vertex_buffer_unreference(&mgr->real_vertex_buffer[dst_index]);
    }
+
+
+   /* Zero out the bits we are going to rewrite completely. */
+   mgr->user_vb_mask &= mask;
+   mgr->incompatible_vb_mask &= mask;
+   mgr->nonzero_stride_vb_mask &= mask;
+   mgr->enabled_vb_mask &= mask;
+   mgr->unaligned_vb_mask[0] &= mask;
+   mgr->unaligned_vb_mask[1] &= mask;
 
    mgr->user_vb_mask |= user_vb_mask;
    mgr->incompatible_vb_mask |= incompatible_vb_mask;
