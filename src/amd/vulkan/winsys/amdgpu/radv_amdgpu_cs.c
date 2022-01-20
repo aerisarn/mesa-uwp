@@ -346,7 +346,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    ib_size = MIN2(ib_size, 0xfffff);
 
    enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
-   uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[ring_type];
+   uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
    while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
       radeon_emit(&cs->base, PKT3_NOP_PAD);
 
@@ -410,14 +410,23 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
 
    if (cs->ws->use_ib_bos) {
       enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
-      uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[ring_type];
+      uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
 
-      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != 0)
+      /* Ensure that with the 4 dword reservation we subtract from max_dw we always
+       * have 4 nops at the end for chaining. */
+      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
          radeon_emit(&cs->base, PKT3_NOP_PAD);
+
+      radeon_emit(&cs->base, PKT3_NOP_PAD);
+      radeon_emit(&cs->base, PKT3_NOP_PAD);
+      radeon_emit(&cs->base, PKT3_NOP_PAD);
+      radeon_emit(&cs->base, PKT3_NOP_PAD);
 
       *cs->ib_size_ptr |= cs->base.cdw;
 
       cs->is_chained = false;
+
+      assert(cs->base.cdw <= cs->base.max_dw + 4);
    }
 
    return cs->status;
@@ -860,21 +869,24 @@ radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx, int queue_i
       struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
 
       if (cs->is_chained) {
-         *cs->ib_size_ptr -= 4;
+         assert(cs->base.cdw <= cs->base.max_dw + 4);
          cs->is_chained = false;
+         cs->base.buf[cs->base.cdw - 4] =  PKT3_NOP_PAD;
+         cs->base.buf[cs->base.cdw - 3] =  PKT3_NOP_PAD;
+         cs->base.buf[cs->base.cdw - 2] =  PKT3_NOP_PAD;
+         cs->base.buf[cs->base.cdw - 1] =  PKT3_NOP_PAD;
       }
 
       if (i + 1 < cs_count) {
          struct radv_amdgpu_cs *next = radv_amdgpu_cs(cs_array[i + 1]);
-         assert(cs->base.cdw + 4 <= cs->base.max_dw);
+         assert(cs->base.cdw <= cs->base.max_dw + 4);
 
          cs->is_chained = true;
-         *cs->ib_size_ptr += 4;
 
-         cs->base.buf[cs->base.cdw + 0] = PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0);
-         cs->base.buf[cs->base.cdw + 1] = next->ib.ib_mc_address;
-         cs->base.buf[cs->base.cdw + 2] = next->ib.ib_mc_address >> 32;
-         cs->base.buf[cs->base.cdw + 3] = S_3F2_CHAIN(1) | S_3F2_VALID(1) | next->ib.size;
+         cs->base.buf[cs->base.cdw - 4] = PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0);
+         cs->base.buf[cs->base.cdw - 3] = next->ib.ib_mc_address;
+         cs->base.buf[cs->base.cdw - 2] = next->ib.ib_mc_address >> 32;
+         cs->base.buf[cs->base.cdw - 1] = S_3F2_CHAIN(1) | S_3F2_VALID(1) | next->ib.size;
       }
    }
 
@@ -967,7 +979,10 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx, int queue_
       ibs[i + !!initial_preamble_cs] = cs->ib;
 
       if (cs->is_chained) {
-         *cs->ib_size_ptr -= 4;
+         cs->base.buf[cs->base.cdw - 4] =  PKT3_NOP_PAD;
+         cs->base.buf[cs->base.cdw - 3] =  PKT3_NOP_PAD;
+         cs->base.buf[cs->base.cdw - 2] =  PKT3_NOP_PAD;
+         cs->base.buf[cs->base.cdw - 1] =  PKT3_NOP_PAD;
          cs->is_chained = false;
       }
    }
