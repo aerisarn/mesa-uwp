@@ -456,23 +456,19 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
 static enum wl_shm_format
 wl_shm_format_for_vk_format(VkFormat vk_format, bool alpha)
 {
-   switch (vk_format) {
-   case VK_FORMAT_R8G8B8A8_UNORM:
-   case VK_FORMAT_R8G8B8A8_SRGB:
-      return alpha ? WL_SHM_FORMAT_ABGR8888 : WL_SHM_FORMAT_XBGR8888;
-   case VK_FORMAT_B8G8R8A8_UNORM:
-   case VK_FORMAT_B8G8R8A8_SRGB:
-      return alpha ? WL_SHM_FORMAT_ARGB8888 : WL_SHM_FORMAT_XRGB8888;
-   case VK_FORMAT_R8G8B8_UNORM:
-   case VK_FORMAT_R8G8B8_SRGB:
-      return WL_SHM_FORMAT_XBGR8888;
-   case VK_FORMAT_B8G8R8_UNORM:
-   case VK_FORMAT_B8G8R8_SRGB:
-      return WL_SHM_FORMAT_XRGB8888;
-
-   default:
-      assert(!"Unsupported Vulkan format");
+   uint32_t drm_format = wl_drm_format_for_vk_format(vk_format, alpha);
+   if (drm_format == DRM_FORMAT_INVALID) {
       return 0;
+   }
+
+   /* wl_shm formats are identical to DRM, except ARGB8888 and XRGB8888 */
+   switch (drm_format) {
+   case DRM_FORMAT_ARGB8888:
+      return WL_SHM_FORMAT_ARGB8888;
+   case DRM_FORMAT_XRGB8888:
+      return WL_SHM_FORMAT_XRGB8888;
+   default:
+      return drm_format;
    }
 }
 
