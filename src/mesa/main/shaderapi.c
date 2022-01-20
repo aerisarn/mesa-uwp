@@ -806,8 +806,8 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
       *params = _mesa_longest_attribute_name_length(shProg);
       return;
    case GL_ACTIVE_UNIFORMS: {
-      _mesa_GetProgramInterfaceiv(program, GL_UNIFORM, GL_ACTIVE_RESOURCES,
-                                  params);
+      _mesa_get_program_interfaceiv(shProg, GL_UNIFORM, GL_ACTIVE_RESOURCES,
+                                    params);
       return;
    }
    case GL_ACTIVE_UNIFORM_MAX_LENGTH: {
