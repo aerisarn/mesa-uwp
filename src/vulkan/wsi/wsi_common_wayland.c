@@ -352,7 +352,7 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
 static void
 wsi_wl_display_add_wl_shm_format(struct wsi_wl_display *display,
                                  struct u_vector *formats,
-                                 uint32_t wl_shm_format)
+                                 enum wl_shm_format wl_shm_format)
 {
    switch (wl_shm_format) {
    case WL_SHM_FORMAT_XBGR8888:
@@ -399,6 +399,8 @@ wsi_wl_display_add_wl_shm_format(struct wsi_wl_display *display,
                                    VK_FORMAT_B8G8R8A8_UNORM,
                                    true, false);
       break;
+   default:
+      break; /* Ignore */
    }
 }
 
@@ -451,7 +453,7 @@ wl_drm_format_for_vk_format(VkFormat vk_format, bool alpha)
    }
 }
 
-static uint32_t
+static enum wl_shm_format
 wl_shm_format_for_vk_format(VkFormat vk_format, bool alpha)
 {
    switch (vk_format) {
@@ -953,7 +955,7 @@ struct wsi_wl_swapchain {
    VkExtent2D                                   extent;
    VkFormat                                     vk_format;
    uint32_t                                     drm_format;
-   uint32_t                                     shm_format;
+   enum wl_shm_format                           shm_format;
 
    uint32_t                                     num_drm_modifiers;
    const uint64_t *                             drm_modifiers;
