@@ -924,7 +924,6 @@ debian-android:
   variables:
     UNWIND: "disabled"
     C_ARGS: >
-      -Wno-error=absolute-value
       -Wno-error=asm-operand-widths
       -Wno-error=constant-conversion
       -Wno-error=enum-conversion
@@ -932,12 +931,10 @@ debian-android:
       -Wno-error=initializer-overrides
       -Wno-error=missing-braces
       -Wno-error=sometimes-uninitialized
-      -Wno-error=tautological-constant-out-of-range-compare
       -Wno-error=unused-function
       -Wno-error=unused-label
     CPP_ARGS: >
       -Wno-error=deprecated-declarations
-      -Wno-error=non-virtual-dtor
     DRI_LOADERS: >
       -D glx=disabled
       -D gbm=disabled
