@@ -1256,6 +1256,93 @@ ntq_emit_cond_to_bool(struct v3d_compile *c, enum v3d_qpu_cond cond)
         return result;
 }
 
+static struct qreg
+f2f16_rtz(struct v3d_compile *c, struct qreg f32)
+{
+        /* The GPU doesn't provide a mechanism to modify the f32->f16 rounding
+         * method and seems to be using RTE by default, so we need to implement
+         * RTZ rounding in software :-(
+         *
+         * The implementation identifies the cases where RTZ applies and
+         * returns the correct result and for everything else, it just uses
+         * the default RTE conversion.
+         */
+        static bool _first = true;
+        if (_first && unlikely(V3D_DEBUG & V3D_DEBUG_PERF)) {
+                fprintf(stderr, "Shader uses round-toward-zero f32->f16 "
+                        "conversion which is not supported in hardware.\n");
+                _first = false;
+        }
+
+        struct qinst *inst;
+        struct qreg tmp;
+
+        struct qreg result = vir_get_temp(c);
+
+        struct qreg mantissa32 = vir_AND(c, f32, vir_uniform_ui(c, 0x007fffff));
+
+        /* Compute sign bit of result */
+        struct qreg sign = vir_AND(c, vir_SHR(c, f32, vir_uniform_ui(c, 16)),
+                                   vir_uniform_ui(c, 0x8000));
+
+        /* Check the cases were RTZ rounding is relevant based on exponent */
+        struct qreg exp32 = vir_AND(c, vir_SHR(c, f32, vir_uniform_ui(c, 23)),
+                                    vir_uniform_ui(c, 0xff));
+        struct qreg exp16 = vir_ADD(c, exp32, vir_uniform_ui(c, -127 + 15));
+
+        /* if (exp16 > 30) */
+        inst = vir_MIN_dest(c, vir_nop_reg(), exp16, vir_uniform_ui(c, 30));
+        vir_set_pf(c, inst, V3D_QPU_PF_PUSHC);
+        inst = vir_OR_dest(c, result, sign, vir_uniform_ui(c, 0x7bff));
+        vir_set_cond(inst, V3D_QPU_COND_IFA);
+
+        /* if (exp16 <= 30) */
+        inst = vir_OR_dest(c, result,
+                           vir_OR(c, sign,
+                                  vir_SHL(c, exp16, vir_uniform_ui(c, 10))),
+                           vir_SHR(c, mantissa32, vir_uniform_ui(c, 13)));
+        vir_set_cond(inst, V3D_QPU_COND_IFNA);
+
+        /* if (exp16 <= 0) */
+        inst = vir_MIN_dest(c, vir_nop_reg(), exp16, vir_uniform_ui(c, 0));
+        vir_set_pf(c, inst, V3D_QPU_PF_PUSHC);
+
+        tmp = vir_OR(c, mantissa32, vir_uniform_ui(c, 0x800000));
+        tmp = vir_SHR(c, tmp, vir_SUB(c, vir_uniform_ui(c, 14), exp16));
+        inst = vir_OR_dest(c, result, sign, tmp);
+        vir_set_cond(inst, V3D_QPU_COND_IFNA);
+
+        /* Cases where RTZ mode is not relevant: use default RTE conversion.
+         *
+         * The cases that are not affected by RTZ are:
+         *
+         *  exp16 < - 10 || exp32 == 0 || exp32 == 0xff
+         *
+         * In V3D we can implement this condition as:
+         *
+         * !((exp16 >= -10) && !(exp32 == 0) && !(exp32 == 0xff)))
+         */
+
+        /* exp16 >= -10 */
+        inst = vir_MIN_dest(c, vir_nop_reg(), exp16, vir_uniform_ui(c, -10));
+        vir_set_pf(c, inst, V3D_QPU_PF_PUSHC);
+
+        /* && !(exp32 == 0) */
+        inst = vir_MOV_dest(c, vir_nop_reg(), exp32);
+        vir_set_uf(c, inst, V3D_QPU_UF_ANDNZ);
+
+        /* && !(exp32 == 0xff) */
+        inst = vir_XOR_dest(c, vir_nop_reg(), exp32, vir_uniform_ui(c, 0xff));
+        vir_set_uf(c, inst, V3D_QPU_UF_ANDNZ);
+
+        /* Use regular RTE conversion if condition is False */
+        inst = vir_FMOV_dest(c, result, f32);
+        vir_set_pack(inst, V3D_QPU_PACK_L);
+        vir_set_cond(inst, V3D_QPU_COND_IFNA);
+
+        return vir_MOV(c, result);
+}
+
 static void
 ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 {
@@ -1342,9 +1429,15 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 break;
 
         case nir_op_f2f16:
+        case nir_op_f2f16_rtne:
                 assert(nir_src_bit_size(instr->src[0].src) == 32);
                 result = vir_FMOV(c, src[0]);
                 vir_set_pack(c->defs[result.index], V3D_QPU_PACK_L);
+                break;
+
+        case nir_op_f2f16_rtz:
+                assert(nir_src_bit_size(instr->src[0].src) == 32);
+                result = f2f16_rtz(c, src[0]);
                 break;
 
         case nir_op_f2f32:
