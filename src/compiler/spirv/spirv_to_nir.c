@@ -4388,8 +4388,10 @@ stage_for_execution_model(struct vtn_builder *b, SpvExecutionModel model)
    case SpvExecutionModelCallableKHR:
        return MESA_SHADER_CALLABLE;
    case SpvExecutionModelTaskNV:
+   case SpvExecutionModelTaskEXT:
       return MESA_SHADER_TASK;
    case SpvExecutionModelMeshNV:
+   case SpvExecutionModelMeshEXT:
       return MESA_SHADER_MESH;
    default:
       vtn_fail("Unsupported execution model: %s (%u)",
