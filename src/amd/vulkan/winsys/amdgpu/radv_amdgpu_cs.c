@@ -235,7 +235,8 @@ static struct radeon_cmdbuf *
 radv_amdgpu_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
 {
    struct radv_amdgpu_cs *cs;
-   uint32_t ib_size = 20 * 1024 * 4;
+   uint32_t ib_pad_dw_mask = MAX2(3, radv_amdgpu_winsys(ws)->info.ib_pad_dw_mask[ring_type]);
+   uint32_t ib_size = align(20 * 1024 * 4, ib_pad_dw_mask + 1);
    cs = calloc(1, sizeof(struct radv_amdgpu_cs));
    if (!cs)
       return NULL;
@@ -340,11 +341,6 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
       return;
    }
 
-   uint64_t ib_size = MAX2(min_size * 4 + 16, cs->base.max_dw * 4 * 2);
-
-   /* max that fits in the chain size field. */
-   ib_size = MIN2(ib_size, 0xfffff);
-
    enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
    uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
    while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
@@ -366,6 +362,11 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
    cs->old_ib_buffers[cs->num_old_ib_buffers].bo = cs->ib_buffer;
    cs->old_ib_buffers[cs->num_old_ib_buffers++].cdw = cs->base.cdw;
+
+   uint64_t ib_size = MAX2(min_size * 4 + 16, cs->base.max_dw * 4 * 2);
+
+   /* max that fits in the chain size field. */
+   ib_size = align(MIN2(ib_size, 0xfffff), ib_pad_dw_mask + 1);
 
    VkResult result =
       cs->ws->base.buffer_create(&cs->ws->base, ib_size, 0, radv_amdgpu_cs_domain(&cs->ws->base),
