@@ -1859,7 +1859,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
    struct lvp_render_pass_attachment *attachments;
    struct lvp_render_pass_attachment **attachment_refs;
    /* [lvp_subpass] [attachment_count * lvp_render_pass_attachment] [attachment_count * lvp_render_pass_attachment*] */
-   size_t sizes[] = {attachment_count * sizeof(struct lvp_render_pass_attachment*), attachment_count * sizeof(struct lvp_render_pass_attachment)};
+   size_t sizes[] = {attachment_count * sizeof(struct lvp_render_pass_attachment), attachment_count * sizeof(struct lvp_render_pass_attachment*)};
    void **ptrs[] = {(void**)&attachments, (void**)&attachment_refs};
    struct lvp_subpass *subpass = ptrzalloc(sizeof(struct lvp_subpass), 2, sizes, ptrs);
    if (!subpass) {
