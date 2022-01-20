@@ -15,4 +15,7 @@ variables:
    KERNEL_ROOTFS_TAG: "2022-01-18-kernel"
 
    WINDOWS_X64_BUILD_PATH: "windows/x64_build"
-   WINDOWS_X64_BUILD_TAG: "2021-12-31-refactor"
+   WINDOWS_X64_BUILD_TAG: "2022-20-02-base_split"
+
+   WINDOWS_X64_TEST_PATH: "windows/x64_test"
+   WINDOWS_X64_TEST_TAG: "2022-20-02-base_split"
