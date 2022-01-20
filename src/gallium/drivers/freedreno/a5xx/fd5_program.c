@@ -250,8 +250,11 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
    setup_stages(emit, s);
 
    bool do_streamout = (s[VS].v->shader->stream_output.num_outputs > 0);
-   uint8_t clip_mask = s[VS].v->clip_mask, cull_mask = s[VS].v->cull_mask;
+   uint8_t clip_mask = s[VS].v->clip_mask,
+           cull_mask = s[VS].v->cull_mask;
    uint8_t clip_cull_mask = clip_mask | cull_mask;
+
+   clip_mask &= ctx->rasterizer->clip_plane_enable;
 
    fssz = (s[FS].i->double_threadsize) ? FOUR_QUADS : TWO_QUADS;
 
