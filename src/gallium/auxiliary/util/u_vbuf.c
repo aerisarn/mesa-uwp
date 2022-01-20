@@ -989,7 +989,7 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
    uint32_t nonzero_stride_vb_mask = 0;
    /* which buffers are unaligned to 2/4 bytes */
    uint32_t unaligned_vb_mask[2] = {0};
-   const uint32_t mask =
+   uint32_t mask =
       ~(((1ull << (count + unbind_num_trailing_slots)) - 1) << start_slot);
 
    if (!bufs) {
@@ -1027,6 +1027,21 @@ void u_vbuf_set_vertex_buffers(struct u_vbuf *mgr,
       if (!vb->buffer.resource) {
          pipe_vertex_buffer_unreference(orig_vb);
          pipe_vertex_buffer_unreference(real_vb);
+         continue;
+      }
+
+      bool not_user = !vb->is_user_buffer && vb->is_user_buffer == orig_vb->is_user_buffer;
+      /* struct isn't tightly packed: do not use memcmp */
+      if (not_user && orig_vb->stride == vb->stride &&
+          orig_vb->buffer_offset == vb->buffer_offset && orig_vb->buffer.resource == vb->buffer.resource) {
+         mask |= BITFIELD_BIT(dst_index);
+         if (take_ownership) {
+             pipe_vertex_buffer_unreference(orig_vb);
+             /* the pointer was unset in the line above, so copy it back */
+             orig_vb->buffer.resource = vb->buffer.resource;
+         }
+         if (mask == UINT32_MAX)
+            return;
          continue;
       }
 
