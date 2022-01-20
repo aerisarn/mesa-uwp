@@ -585,6 +585,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
            cull_mask = last_shader->cull_mask;
    uint8_t clip_cull_mask = clip_mask | cull_mask;
 
+   clip_mask &= cache_key->clip_plane_enable;
+
    /* If we have streamout, link against the real FS, rather than the
     * dummy FS used for binning pass state, to ensure the OUTLOC's
     * match.  Depending on whether we end up doing sysmem or gmem,

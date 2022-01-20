@@ -27,6 +27,8 @@
 #ifndef IR3_CACHE_H_
 #define IR3_CACHE_H_
 
+#include "pipe/p_state.h"
+
 #include "ir3/ir3_shader.h"
 
 /*
@@ -39,6 +41,11 @@
 struct ir3_cache_key {
    struct ir3_shader_state *vs, *hs, *ds, *gs, *fs; // 5 pointers
    struct ir3_shader_key key;                       // 7 dwords
+
+   /* Additional state that effects the cached program state, but
+    * not the compiled shader:
+    */
+   unsigned clip_plane_enable : PIPE_MAX_CLIP_PLANES;
 };
 
 /* per-gen backend program state object should subclass this for it's

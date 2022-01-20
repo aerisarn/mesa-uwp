@@ -156,6 +156,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
             .sample_shading = (ctx->min_samples > 1),
             .msaa = (ctx->framebuffer.samples > 1),
          },
+         .clip_plane_enable = ctx->rasterizer->clip_plane_enable,
       },
       .rasterflat = ctx->rasterizer->flatshade,
       .sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
@@ -195,7 +196,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
    ir3_fixup_shader_state(&ctx->base, &emit.key.key);
 
-   if (!(ctx->dirty & FD_DIRTY_PROG)) {
+   if (!(ctx->gen_dirty & BIT(FD6_GROUP_PROG))) {
       emit.prog = fd6_ctx->prog;
    } else {
       fd6_ctx->prog = fd6_emit_get_prog(&emit);
