@@ -932,7 +932,6 @@ debian-android:
       -Wno-error=missing-braces
       -Wno-error=sometimes-uninitialized
       -Wno-error=unused-function
-      -Wno-error=unused-label
     CPP_ARGS: >
       -Wno-error=deprecated-declarations
     DRI_LOADERS: >
