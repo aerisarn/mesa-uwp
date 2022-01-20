@@ -132,7 +132,7 @@ radv_stoney_vkcts:amd64:
     - .deqp-test-valve
   variables:
     DEQP_VER: vk
-    RADV_PERFTEST: nv_ms
+    RADV_PERFTEST: nv_ms,ext_ms
 
 # VKCTS never finishes on gfx7 due to all the GPU resets and hangs.
 # Hence, disable it for now.

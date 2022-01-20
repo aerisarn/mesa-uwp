@@ -58,4 +58,6 @@ dEQP-VK.spirv_assembly.instruction.graphics.16bit_storage.uniform_32struct_to_16
 # These tests create an ACE cmdbuf which waits for GFX, thus can cause
 # a deadlock when executed in parallel without gang submit.
 dEQP-VK.mesh_shader.nv.synchronization.*
+dEQP-VK.mesh_shader.ext.synchronization.*
 dEQP-VK.mesh_shader.nv.misc.many_task*
+dEQP-VK.mesh_shader.ext.misc.many_task*
