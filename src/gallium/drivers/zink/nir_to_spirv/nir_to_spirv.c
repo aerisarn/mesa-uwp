@@ -3068,13 +3068,16 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       lod = emit_float_const(ctx, 32, 0.0);
    if (tex->op == nir_texop_txs) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
-      /* Additionally, if its Dim is 1D, 2D, 3D, or Cube,
+      /* Its Dim operand must be one of 1D, 2D, 3D, or Cube
+       * - OpImageQuerySizeLod specification
+       *
+       * Additionally, if its Dim is 1D, 2D, 3D, or Cube,
        * it must also have either an MS of 1 or a Sampled of 0 or 2.
        * - OpImageQuerySize specification
        *
        * all spirv samplers use these types
        */
-      if (tex->sampler_dim != GLSL_SAMPLER_DIM_MS && !lod)
+      if (!lod && tex_instr_is_lod_allowed(tex))
          lod = emit_uint_const(ctx, 32, 0);
       SpvId result = spirv_builder_emit_image_query_size(&ctx->builder,
                                                          dest_type, image,
