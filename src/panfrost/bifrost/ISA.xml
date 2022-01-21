@@ -8585,4 +8585,76 @@
     <src start="0"/>
   </ins>
 
+  <ins name="+LD_BUFFER.i128" staging="w=4" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+  </ins>
+
+  <ins name="+LD_BUFFER.i16" staging="w=1" pseudo="true">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="lane_dest" size="2" default="h0">
+      <opt>h0</opt>
+      <opt>h1</opt>
+      <opt>w0</opt>
+      <opt>d0</opt>
+    </mod>
+    <mod name="extend" size="2">
+      <opt>none</opt>
+      <opt>sext</opt>
+      <opt>zext</opt>
+    </mod>
+  </ins>
+
+  <ins name="+LD_BUFFER.i24" staging="w=1" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+  </ins>
+
+  <ins name="+LD_BUFFER.i32" staging="w=1" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="lane_dest" size="1" opt="d0"/>
+    <mod name="extend" size="2">
+      <opt>none</opt>
+      <opt>sext</opt>
+      <opt>zext</opt>
+    </mod>
+  </ins>
+
+  <ins name="+LD_BUFFER.i48" staging="w=2" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+  </ins>
+
+  <ins name="+LD_BUFFER.i64" staging="w=2" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+  </ins>
+
+  <ins name="+LD_BUFFER.i8" staging="w=1" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+    <mod name="lane_dest" size="3" default="b0">
+      <opt>b0</opt>
+      <opt>b1</opt>
+      <opt>b2</opt>
+      <opt>b3</opt>
+      <opt>h0</opt>
+      <opt>h1</opt>
+      <opt>w0</opt>
+      <opt>d0</opt>
+    </mod>
+    <mod name="extend" size="2">
+      <opt>none</opt>
+      <opt>sext</opt>
+      <opt>zext</opt>
+    </mod>
+  </ins>
+
+  <ins name="+LD_BUFFER.i96" staging="w=3" pseudo="true" message="load">
+    <src start="0"/>
+    <src start="3"/>
+  </ins>
+
 </bifrost>
