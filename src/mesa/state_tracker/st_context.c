@@ -437,10 +437,9 @@ st_init_driver_flags(struct st_context *st)
       f->NewFragClamp = ST_NEW_RASTERIZER;
    }
 
+   f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
    if (st->lower_ucp)
-      f->NewClipPlaneEnable = ST_NEW_VS_STATE | ST_NEW_GS_STATE;
-   else
-      f->NewClipPlaneEnable = ST_NEW_RASTERIZER;
+      f->NewClipPlaneEnable |= ST_NEW_VS_STATE | ST_NEW_GS_STATE;
 
    if (st->emulate_gl_clamp)
       f->NewSamplersWithClamp = ST_NEW_SAMPLERS |
