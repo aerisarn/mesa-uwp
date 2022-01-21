@@ -927,7 +927,6 @@ debian-android:
       -Wno-error=asm-operand-widths
       -Wno-error=constant-conversion
       -Wno-error=enum-conversion
-      -Wno-error=extern-initializer
       -Wno-error=initializer-overrides
       -Wno-error=missing-braces
       -Wno-error=sometimes-uninitialized
