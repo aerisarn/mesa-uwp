@@ -442,6 +442,19 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
         }
 }
 
+static inline bi_instr *
+bi_load_ubo_to(bi_builder *b, unsigned bitsize, bi_index dest0, bi_index src0,
+                bi_index src1)
+{
+        if (b->shader->arch >= 9) {
+                bi_instr *I = bi_ld_buffer_to(b, bitsize, dest0, src0, src1);
+                I->seg = BI_SEG_UBO;
+                return I;
+        } else {
+                return bi_load_to(b, bitsize, dest0, src0, src1, BI_SEG_UBO, 0);
+        }
+}
+
 static bi_instr *
 bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
                 unsigned nr_components, unsigned offset)
@@ -454,9 +467,8 @@ bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
                                   sysval);
         unsigned idx = (uniform * 16) + offset;
 
-        return bi_load_to(b, nr_components * 32, dest,
-                        bi_imm_u32(idx),
-                        bi_imm_u32(sysval_ubo), BI_SEG_UBO, 0);
+        return bi_load_ubo_to(b, nr_components * 32, dest,
+                              bi_imm_u32(idx), bi_imm_u32(sysval_ubo));
 }
 
 static void
@@ -900,11 +912,10 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
         uint32_t const_offset = offset_is_const ? nir_src_as_uint(*offset) : 0;
         bool kernel_input = (instr->intrinsic == nir_intrinsic_load_kernel_input);
 
-        bi_load_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
+        bi_load_ubo_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
                         bi_dest_index(&instr->dest), offset_is_const ?
                         bi_imm_u32(const_offset) : dyn_offset,
-                        kernel_input ? bi_zero() : bi_src_index(&instr->src[0]),
-                        BI_SEG_UBO, 0);
+                        kernel_input ? bi_zero() : bi_src_index(&instr->src[0]));
 }
 
 static bi_index
