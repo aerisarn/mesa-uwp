@@ -231,6 +231,39 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
       lvp_descriptor_set_layout_ref(set_layout);
    }
 
+#ifndef NDEBUG
+   /* this otherwise crashes later and is annoying to track down */
+   unsigned array[] = {
+      VK_SHADER_STAGE_VERTEX_BIT,
+      VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+      VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+      VK_SHADER_STAGE_GEOMETRY_BIT,
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+   };
+   for (unsigned i = 0; i <= MESA_SHADER_COMPUTE; i++) {
+      uint16_t const_buffer_count = 0;
+      uint16_t shader_buffer_count = 0;
+      uint16_t sampler_count = 0;
+      uint16_t sampler_view_count = 0;
+      uint16_t image_count = 0;
+      for (unsigned j = 0; j < layout->num_sets; j++) {
+         if (layout->set[j].layout->shader_stages & array[i]) {
+            const_buffer_count += layout->set[j].layout->stage[i].const_buffer_count;
+            shader_buffer_count += layout->set[j].layout->stage[i].shader_buffer_count;
+            sampler_count += layout->set[j].layout->stage[i].sampler_count;
+            sampler_view_count += layout->set[j].layout->stage[i].sampler_view_count;
+            image_count += layout->set[j].layout->stage[i].image_count;
+         }
+      }
+      assert(const_buffer_count <= device->physical_device->device_limits.maxPerStageDescriptorUniformBuffers);
+      assert(shader_buffer_count <= device->physical_device->device_limits.maxPerStageDescriptorStorageBuffers);
+      assert(sampler_count <= device->physical_device->device_limits.maxPerStageDescriptorSamplers);
+      assert(sampler_view_count <= device->physical_device->device_limits.maxPerStageDescriptorSampledImages);
+      assert(image_count <= device->physical_device->device_limits.maxPerStageDescriptorStorageImages);
+   }
+#endif
+
    layout->push_constant_size = 0;
    for (unsigned i = 0; i < pCreateInfo->pushConstantRangeCount; ++i) {
       const VkPushConstantRange *range = pCreateInfo->pPushConstantRanges + i;
