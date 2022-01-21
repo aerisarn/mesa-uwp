@@ -134,6 +134,8 @@ struct lvp_physical_device {
    struct pipe_screen *pscreen;
    uint32_t max_images;
 
+   VkPhysicalDeviceLimits device_limits;
+
    struct wsi_device                       wsi_device;
 };
 
