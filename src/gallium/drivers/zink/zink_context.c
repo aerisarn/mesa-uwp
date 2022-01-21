@@ -648,7 +648,10 @@ create_bvci(struct zink_context *ctx, struct zink_resource *res, enum pipe_forma
    memset(&bvci, 0, sizeof(bvci));
    bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
    bvci.pNext = NULL;
-   bvci.buffer = res->obj->buffer;
+   if (screen->format_props[format].bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
+      bvci.buffer = res->obj->storage_buffer ? res->obj->storage_buffer : res->obj->buffer;
+   else
+      bvci.buffer = res->obj->buffer;
    bvci.format = zink_get_format(screen, format);
    assert(bvci.format);
    bvci.offset = offset;
