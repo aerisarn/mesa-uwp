@@ -44,7 +44,7 @@ struct instruction_state {
 };
 
 struct loopinfo {
-	struct updatemask_state * Breaks;
+	struct updatemask_state StoreEndloop;
 	unsigned int BreakCount;
 	unsigned int BreaksReserved;
 };
@@ -88,20 +88,12 @@ static void or_updatemasks(
 	dst->Address = a->Address | b->Address;
 }
 
-static void push_break(struct deadcode_state *s)
-{
-	struct loopinfo * loop = &s->LoopStack[s->LoopStackSize - 1];
-	memory_pool_array_reserve(&s->C->Pool, struct updatemask_state,
-		loop->Breaks, loop->BreakCount, loop->BreaksReserved, 1);
-
-	memcpy(&loop->Breaks[loop->BreakCount++], &s->R, sizeof(s->R));
-}
-
 static void push_loop(struct deadcode_state * s)
 {
 	memory_pool_array_reserve(&s->C->Pool, struct loopinfo, s->LoopStack,
 			s->LoopStackSize, s->LoopStackReserved, 1);
 	memset(&s->LoopStack[s->LoopStackSize++], 0, sizeof(struct loopinfo));
+	memcpy(&s->LoopStack[s->LoopStackSize - 1].StoreEndloop, &s->R, sizeof(s->R));
 }
 
 static void push_branch(struct deadcode_state * s)
@@ -230,7 +222,9 @@ void rc_dataflow_deadcode(struct radeon_compiler * c, void *user)
 
 		switch(opcode->Opcode){
 		/* Mark all sources in the loop body as used before doing
-		 * normal deadcode analysis.  This is probably not optimal.
+		 * normal deadcode analysis. This is probably not optimal.
+		 * Save this pessimistic deadcode state and restore it anytime
+		 * we see a break just to be extra sure.
 		 */
 		case RC_OPCODE_ENDLOOP:
 		{
@@ -268,17 +262,14 @@ void rc_dataflow_deadcode(struct radeon_compiler * c, void *user)
 			break;
 		}
 		case RC_OPCODE_BRK:
-			push_break(&s);
-			break;
-		case RC_OPCODE_BGNLOOP:
 		{
-			unsigned int i;
 			struct loopinfo * loop = &s.LoopStack[s.LoopStackSize-1];
-			for(i = 0; i < loop->BreakCount; i++) {
-				or_updatemasks(&s.R, &s.R, &loop->Breaks[i]);
-			}
+			memcpy(&s.R, &loop->StoreEndloop, sizeof(s.R));
 			break;
 		}
+		case RC_OPCODE_BGNLOOP:
+			s.LoopStackSize--;
+			break;
 		case RC_OPCODE_CONT:
 			break;
 		case RC_OPCODE_ENDIF:
