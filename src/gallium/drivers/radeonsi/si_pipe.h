@@ -1146,7 +1146,6 @@ struct si_context {
    unsigned last_prim;
    unsigned last_multi_vgt_param;
    unsigned last_gs_out_prim;
-   int last_binning_enabled;
    unsigned current_vs_state;
    unsigned last_vs_state;
    enum pipe_prim_type current_rast_prim; /* primitive type after TES, GS */
