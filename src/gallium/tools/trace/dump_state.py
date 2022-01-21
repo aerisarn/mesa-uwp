@@ -780,8 +780,8 @@ class Interpreter(parser.SimpleTraceDumper):
             ('pipe_context', 'transfer_unmap'),
     ))
 
-    def __init__(self, stream, options, formatter):
-        parser.SimpleTraceDumper.__init__(self, stream, options, formatter)
+    def __init__(self, stream, options, formatter, state):
+        parser.SimpleTraceDumper.__init__(self, stream, options, formatter, state)
         self.objects = {}
         self.result = None
         self.globl = Global(self)
@@ -878,7 +878,7 @@ class Main(parser.Main):
 
     def process_arg(self, stream, options):
         formatter = format.Formatter(sys.stderr)
-        parser = Interpreter(stream, options, formatter)
+        parser = Interpreter(stream, options, formatter, model.TraceStateData())
         parser.parse()
 
 

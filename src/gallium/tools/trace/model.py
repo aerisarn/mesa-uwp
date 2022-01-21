@@ -56,6 +56,14 @@ class ModelOptions:
                     self.__dict__[var] = args.__dict__[var]
 
 
+class TraceStateData:
+
+    def __init__(self):
+        self.ptr_list = {}
+        self.ptr_type_list = {}
+        self.ptr_types_list = {}
+
+
 class Node:
     
     def visit(self, visitor):
@@ -81,14 +89,10 @@ class Literal(Node):
 class Blob(Node):
     
     def __init__(self, value):
-        self._rawValue = None
-        self._hexValue = value
+        self.value = binascii.a2b_hex(value)
 
     def getValue(self):
-        if self._rawValue is None:
-            self._rawValue = binascii.a2b_hex(self._hexValue)
-            self._hexValue = None
-        return self._rawValue
+        return self.value
 
     def visit(self, visitor):
         visitor.visit_blob(self)
@@ -123,19 +127,18 @@ class Struct(Node):
 
         
 class Pointer(Node):
-    
-    ptr_list = {}
-    ptr_type_list = {}
-    ptr_types_list = {}
+
     ptr_ignore_list = ["ret", "elem"]
 
-    def __init__(self, address, pname):
+    def __init__(self, state, address, pname):
         self.address = address
+        self.pname = pname
+        self.state = state
 
         # Check if address exists in list and if it is a return value address
-        t1 = address in self.ptr_list
+        t1 = address in state.ptr_list
         if t1:
-            rname = self.ptr_type_list[address]
+            rname = state.ptr_type_list[address]
             t2 = rname in self.ptr_ignore_list and pname not in self.ptr_ignore_list
         else:
             rname = pname
@@ -149,15 +152,18 @@ class Pointer(Node):
 
             # Add / update
             self.adjust_ptr_type_count(pname, 1)
-            tmp = "{}_{}".format(pname, self.ptr_types_list[pname])
-            self.ptr_list[address] = tmp
-            self.ptr_type_list[address] = pname
+            tmp = "{}_{}".format(pname, state.ptr_types_list[pname])
+            state.ptr_list[address] = tmp
+            state.ptr_type_list[address] = pname
 
     def adjust_ptr_type_count(self, pname, delta):
-        if pname not in self.ptr_types_list:
-            self.ptr_types_list[pname] = 0
+        if pname not in self.state.ptr_types_list:
+            self.state.ptr_types_list[pname] = 0
 
-        self.ptr_types_list[pname] += delta
+        self.state.ptr_types_list[pname] += delta
+
+    def named_address(self):
+        return self.state.ptr_list[self.address]
 
     def visit(self, visitor):
         visitor.visit_pointer(self)
@@ -258,13 +264,13 @@ class PrettyPrinter:
     
     def visit_pointer(self, node):
         if self.options.named_ptrs:
-            self.formatter.address(node.ptr_list[node.address])
+            self.formatter.address(node.named_address())
         else:
             self.formatter.address(node.address)
 
     def visit_call(self, node):
         if not self.options.suppress_variants:
-            self.formatter.text('%s ' % node.no)
+            self.formatter.text(f'{node.no} ')
 
         if node.klass is not None:
             self.formatter.function(node.klass + '::' + node.method)
@@ -289,8 +295,9 @@ class PrettyPrinter:
             self.formatter.text(' // time ')
             node.time.visit(self)
 
+        self.formatter.newline()
+
     def visit_trace(self, node):
         for call in node.calls:
             call.visit(self)
-            self.formatter.newline()
 
