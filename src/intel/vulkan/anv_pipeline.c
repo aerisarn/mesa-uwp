@@ -1479,6 +1479,52 @@ anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_pipeline *pipeline
    return false;
 }
 
+static const gl_shader_stage graphics_shader_order[] = {
+   MESA_SHADER_VERTEX,
+   MESA_SHADER_TESS_CTRL,
+   MESA_SHADER_TESS_EVAL,
+   MESA_SHADER_GEOMETRY,
+
+   MESA_SHADER_TASK,
+   MESA_SHADER_MESH,
+
+   MESA_SHADER_FRAGMENT,
+};
+
+static VkResult
+anv_graphics_pipeline_load_nir(struct anv_graphics_pipeline *pipeline,
+                               struct vk_pipeline_cache *cache,
+                               struct anv_pipeline_stage *stages,
+                               void *pipeline_ctx)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
+      gl_shader_stage s = graphics_shader_order[i];
+      if (!stages[s].info)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      assert(stages[s].stage == s);
+      assert(pipeline->shaders[s] == NULL);
+
+      stages[s].bind_map = (struct anv_pipeline_bind_map) {
+         .surface_to_descriptor = stages[s].surface_to_descriptor,
+         .sampler_to_descriptor = stages[s].sampler_to_descriptor
+      };
+
+      stages[s].nir = anv_pipeline_stage_get_nir(&pipeline->base, cache,
+                                                 pipeline_ctx,
+                                                 &stages[s]);
+      if (stages[s].nir == NULL) {
+         return vk_error(pipeline, VK_ERROR_UNKNOWN);
+      }
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   return VK_SUCCESS;
+}
+
 static VkResult
 anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               struct vk_pipeline_cache *cache,
@@ -1529,48 +1575,15 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
    void *pipeline_ctx = ralloc_context(NULL);
 
-   const gl_shader_stage shader_order[] = {
-      MESA_SHADER_VERTEX,
-      MESA_SHADER_TESS_CTRL,
-      MESA_SHADER_TESS_EVAL,
-      MESA_SHADER_GEOMETRY,
-
-      MESA_SHADER_TASK,
-      MESA_SHADER_MESH,
-
-      MESA_SHADER_FRAGMENT,
-   };
-
-   for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
-      gl_shader_stage s = shader_order[i];
-      if (!stages[s].info)
-         continue;
-
-      int64_t stage_start = os_time_get_nano();
-
-      assert(stages[s].stage == s);
-      assert(pipeline->shaders[s] == NULL);
-
-      stages[s].bind_map = (struct anv_pipeline_bind_map) {
-         .surface_to_descriptor = stages[s].surface_to_descriptor,
-         .sampler_to_descriptor = stages[s].sampler_to_descriptor
-      };
-
-      stages[s].nir = anv_pipeline_stage_get_nir(&pipeline->base, cache,
-                                                 pipeline_ctx,
-                                                 &stages[s]);
-      if (stages[s].nir == NULL) {
-         result = vk_error(pipeline, VK_ERROR_UNKNOWN);
-         goto fail;
-      }
-
-      stages[s].feedback.duration += os_time_get_nano() - stage_start;
-   }
+   result = anv_graphics_pipeline_load_nir(pipeline, cache, stages,
+                                           pipeline_ctx);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    /* Walk backwards to link */
    struct anv_pipeline_stage *next_stage = NULL;
-   for (int i = ARRAY_SIZE(shader_order) - 1; i >= 0; i--) {
-      gl_shader_stage s = shader_order[i];
+   for (int i = ARRAY_SIZE(graphics_shader_order) - 1; i >= 0; i--) {
+      gl_shader_stage s = graphics_shader_order[i];
       if (!stages[s].info)
          continue;
 
@@ -1621,8 +1634,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    }
 
    struct anv_pipeline_stage *prev_stage = NULL;
-   for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
-      gl_shader_stage s = shader_order[i];
+   for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
+      gl_shader_stage s = graphics_shader_order[i];
       if (!stages[s].info)
          continue;
 
@@ -1664,8 +1677,9 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
        stages[MESA_SHADER_MESH].info == NULL) {
       struct anv_pipeline_stage *last_psr = NULL;
 
-      for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
-         gl_shader_stage s = shader_order[ARRAY_SIZE(shader_order) - i - 1];
+      for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
+         gl_shader_stage s =
+            graphics_shader_order[ARRAY_SIZE(graphics_shader_order) - i - 1];
 
          if (!stages[s].info ||
              !gl_shader_stage_can_set_fragment_shading_rate(s))
@@ -1680,8 +1694,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    }
 
    prev_stage = NULL;
-   for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
-      gl_shader_stage s = shader_order[i];
+   for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
+      gl_shader_stage s = graphics_shader_order[i];
       if (!stages[s].info)
          continue;
 
