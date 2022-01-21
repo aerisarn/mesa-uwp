@@ -1605,7 +1605,15 @@ iris_resource_get_param(struct pipe_screen *pscreen,
       }
       return true;
    case PIPE_RESOURCE_PARAM_STRIDE:
-      *value = wants_aux ? res->aux.surf.row_pitch_B : res->surf.row_pitch_B;
+      *value = wants_cc ? 1 :
+               wants_aux ? res->aux.surf.row_pitch_B : res->surf.row_pitch_B;
+
+      /* Mesa's implementation of eglCreateImage rejects strides of zero (see
+       * dri2_check_dma_buf_attribs). Ensure we return a non-zero stride as
+       * this value may be queried from GBM and passed into EGL.
+       */
+      assert(*value);
+
       return true;
    case PIPE_RESOURCE_PARAM_OFFSET:
       *value = wants_cc ? res->aux.clear_color_offset :
