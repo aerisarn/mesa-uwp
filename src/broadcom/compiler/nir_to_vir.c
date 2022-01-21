@@ -2648,11 +2648,12 @@ ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
                              nir_src_as_uint(instr->src[0]));
 
                 /* Even though ldunif is strictly 32-bit we can still use it
-                 * to load scalar 16-bit uniforms so long as their offset is
-                 * 32-bit aligned. In this case, ldunif would still load 32-bit
-                 * into the destination with the 16-bit uniform data in the LSB
-                 * and garbage in the MSB, but that is fine because we don't
-                 * access the MSB of a 16-bit register.
+                 * to load scalar 8-bit/16-bit uniforms so long as their offset
+                 * is * 32-bit aligned. In this case, ldunif would still load
+                 * 32-bit into the destination with the 8-bit/16-bit uniform
+                 * data in the LSB and garbage in the MSB, but that is fine
+                 * because we should only be accessing the valid bits of the
+                 * destination.
                  *
                  * FIXME: if in the future we improve our register allocator to
                  * pack 2 16-bit variables in the MSB and LSB of the same
