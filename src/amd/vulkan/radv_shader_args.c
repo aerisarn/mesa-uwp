@@ -127,7 +127,7 @@ count_vs_user_sgprs(const struct radv_shader_info *info)
 static uint8_t
 count_ms_user_sgprs(const struct radv_shader_info *info)
 {
-   uint8_t count = 1; /* vertex offset */
+   uint8_t count = 1 + 3; /* firstTask + num_work_groups[3] */
 
    if (info->vs.needs_draw_id)
       count++;
@@ -412,6 +412,7 @@ static void
 declare_ms_input_sgprs(const struct radv_shader_info *info, struct radv_shader_args *args)
 {
    ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.base_vertex);
+   ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
    if (info->vs.needs_draw_id) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
    }
@@ -546,7 +547,8 @@ set_vs_specific_input_locs(struct radv_shader_args *args, gl_shader_stage stage,
 static void
 set_ms_input_locs(struct radv_shader_args *args, uint8_t *user_sgpr_idx)
 {
-   unsigned vs_num = args->ac.base_vertex.used + args->ac.draw_id.used;
+   unsigned vs_num =
+      args->ac.base_vertex.used + 3 * args->ac.num_work_groups.used + args->ac.draw_id.used;
    set_loc_shader(args, AC_UD_VS_BASE_VERTEX_START_INSTANCE, user_sgpr_idx, vs_num);
 }
 

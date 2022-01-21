@@ -6077,6 +6077,7 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer, bool index
    uint32_t base_reg = cmd_buffer->state.pipeline->graphics.vtx_base_sgpr;
    uint32_t vertex_offset_reg, start_instance_reg = 0, draw_id_reg = 0;
    bool predicating = cmd_buffer->state.predicating;
+   bool mesh = cmd_buffer->state.mesh_shading;
    assert(base_reg);
 
    /* just reset draw state for vertex data */
@@ -6089,7 +6090,7 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer, bool index
    if (cmd_buffer->state.pipeline->graphics.uses_baseinstance)
       start_instance_reg = ((base_reg + (draw_id_enable ? 8 : 4)) - SI_SH_REG_OFFSET) >> 2;
    if (draw_id_enable)
-      draw_id_reg = ((base_reg + 4) - SI_SH_REG_OFFSET) >> 2;
+      draw_id_reg = ((base_reg + mesh * 12 + 4) - SI_SH_REG_OFFSET) >> 2;
 
    if (draw_count == 1 && !count_va && !draw_id_enable) {
       radeon_emit(cs,
@@ -6170,6 +6171,28 @@ radv_emit_userdata_vertex_drawid(struct radv_cmd_buffer *cmd_buffer, uint32_t ve
    if (drawid)
       radeon_emit(cs, drawid);
 
+}
+
+ALWAYS_INLINE static void
+radv_emit_userdata_mesh(struct radv_cmd_buffer *cmd_buffer,
+                        const uint32_t x, const uint32_t y, const uint32_t z,
+                        const uint32_t first_task)
+{
+   struct radv_cmd_state *state = &cmd_buffer->state;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   const bool uses_drawid = state->pipeline->graphics.uses_drawid;
+
+   radeon_set_sh_reg_seq(cs, state->pipeline->graphics.vtx_base_sgpr,
+                         state->pipeline->graphics.vtx_emit_num);
+   radeon_emit(cs, first_task);
+   radeon_emit(cs, x);
+   radeon_emit(cs, y);
+   radeon_emit(cs, z);
+
+   if (uses_drawid) {
+      radeon_emit(cs, 0);
+      state->last_drawid = 0;
+   }
 }
 
 ALWAYS_INLINE static void
@@ -6344,6 +6367,26 @@ radv_emit_direct_draw_packets(struct radv_cmd_buffer *cmd_buffer, const struct r
        state->last_vertex_offset = last_start;
        if (uses_drawid)
            state->last_drawid = drawCount - 1;
+   }
+}
+
+ALWAYS_INLINE static void
+radv_emit_direct_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer,
+                                  uint32_t x, uint32_t y, uint32_t z,
+                                  uint32_t first_task)
+{
+   const uint32_t view_mask = cmd_buffer->state.subpass->view_mask;
+   const uint32_t count = x * y * z;
+
+   radv_emit_userdata_mesh(cmd_buffer, x, y, z, first_task);
+
+   if (!view_mask) {
+      radv_cs_emit_draw_packet(cmd_buffer, count, 0);
+   } else {
+      u_foreach_bit(view, view_mask) {
+         radv_emit_view_index(cmd_buffer, view);
+         radv_cs_emit_draw_packet(cmd_buffer, count, 0);
+      }
    }
 }
 
@@ -7093,8 +7136,7 @@ radv_CmdDrawMeshTasksNV(VkCommandBuffer commandBuffer, uint32_t taskCount, uint3
    if (!radv_before_draw(cmd_buffer, &info, 1))
       return;
 
-   const VkMultiDrawInfoEXT minfo = { firstTask, taskCount };
-   radv_emit_direct_draw_packets(cmd_buffer, &info, 1, &minfo, 0, 0);
+   radv_emit_direct_mesh_draw_packet(cmd_buffer, taskCount, 1, 1, firstTask);
    radv_after_draw(cmd_buffer);
 }
 
