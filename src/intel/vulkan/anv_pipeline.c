@@ -1345,8 +1345,6 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    const struct brw_compiler *compiler = pipeline->base.device->physical->compiler;
    struct anv_pipeline_stage stages[ANV_GRAPHICS_SHADER_STAGE_COUNT] = {};
 
-   uint32_t dynamic_states = pipeline->dynamic_states;
-
    VkResult result;
    for (uint32_t i = 0; i < info->stageCount; i++) {
       const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
@@ -1384,7 +1382,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       case MESA_SHADER_FRAGMENT: {
          const bool raster_enabled =
             !info->pRasterizationState->rasterizerDiscardEnable ||
-            dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
+            pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
          populate_wm_prog_key(pipeline,
                               pipeline->base.device->robust_buffer_access,
                               raster_enabled ? info->pMultisampleState : NULL,
