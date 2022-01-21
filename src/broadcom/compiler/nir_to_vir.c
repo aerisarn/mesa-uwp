@@ -2059,7 +2059,10 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
                        void *data)
 {
         /* TMU general access only supports 32-bit vectors */
-        if (bit_size != 32)
+        if (bit_size > 32)
+                return false;
+
+        if ((bit_size == 8 || bit_size == 16) && num_components > 1)
                 return false;
 
         if (align_mul % 4 != 0 || align_offset % 4 != 0)
