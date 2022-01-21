@@ -635,11 +635,18 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         if (tmu_op == V3D_TMU_OP_WRITE_CMPXCHG_READ_FLUSH) {
                                 config |= GENERAL_TMU_LOOKUP_TYPE_VEC2;
                         } else if (is_atomic || num_components == 1) {
-                                if (type_size == 4) {
+                                switch (type_size) {
+                                case 4:
                                         config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
-                                } else {
-                                        assert(type_size == 2);
+                                        break;
+                                case 2:
                                         config |= GENERAL_TMU_LOOKUP_TYPE_16BIT_UI;
+                                        break;
+                                case 1:
+                                        config |= GENERAL_TMU_LOOKUP_TYPE_8BIT_UI;
+                                        break;
+                                default:
+                                        unreachable("Unsupported bitsize");
                                 }
                         } else {
                                 assert(type_size == 4);
