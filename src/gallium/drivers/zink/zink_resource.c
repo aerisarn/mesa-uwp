@@ -1818,15 +1818,7 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
    if (res->base.b.bind & PIPE_BIND_SHADER_IMAGE)
       return true;
    if (res->obj->is_buffer) {
-      if (res->base.b.bind & PIPE_BIND_SHADER_IMAGE)
-         return true;
-
-      VkBuffer buffer = zink_resource_tmp_buffer(screen, res, 0, PIPE_BIND_SHADER_IMAGE, NULL);
-      if (!buffer)
-         return false;
-      util_dynarray_append(&res->obj->tmp, VkBuffer, res->obj->buffer);
-      res->obj->buffer = buffer;
-      res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
+      unreachable("zink: all buffers should have this bit");
    } else {
       zink_fb_clears_apply_region(ctx, &res->base.b, (struct u_rect){0, res->base.b.width0, 0, res->base.b.height0});
       zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
