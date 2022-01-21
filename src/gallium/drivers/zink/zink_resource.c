@@ -93,15 +93,12 @@ void
 zink_destroy_resource_object(struct zink_screen *screen, struct zink_resource_object *obj)
 {
    if (obj->is_buffer) {
-      util_dynarray_foreach(&obj->tmp, VkBuffer, buffer)
-         VKSCR(DestroyBuffer)(screen->dev, *buffer, NULL);
       VKSCR(DestroyBuffer)(screen->dev, obj->buffer, NULL);
       VKSCR(DestroyBuffer)(screen->dev, obj->storage_buffer, NULL);
    } else {
       VKSCR(DestroyImage)(screen->dev, obj->image, NULL);
    }
 
-   util_dynarray_fini(&obj->tmp);
    zink_descriptor_set_refs_clear(&obj->desc_set_refs, obj);
    zink_bo_unref(screen, obj->bo);
    FREE(obj);
@@ -507,7 +504,6 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    bool scanout = templ->bind & PIPE_BIND_SCANOUT;
 
    pipe_reference_init(&obj->reference, 1);
-   util_dynarray_init(&obj->tmp, NULL);
    util_dynarray_init(&obj->desc_set_refs.refs, NULL);
    if (templ->target == PIPE_BUFFER) {
       VkBufferCreateInfo bci = create_bci(screen, templ, templ->bind);
@@ -1786,28 +1782,6 @@ zink_resource_get_separate_stencil(struct pipe_resource *pres)
 
    return NULL;
 
-}
-
-VkBuffer
-zink_resource_tmp_buffer(struct zink_screen *screen, struct zink_resource *res, unsigned offset_add, unsigned add_binds, unsigned *offset_out)
-{
-   VkBufferCreateInfo bci = create_bci(screen, &res->base.b, res->base.b.bind | add_binds);
-   VkDeviceSize size = bci.size - offset_add;
-   VkDeviceSize offset = offset_add;
-   if (offset_add) {
-      assert(bci.size > offset_add);
-
-      align_offset_size(res->obj->alignment, &offset, &size, bci.size);
-   }
-   bci.size = size;
-
-   VkBuffer buffer;
-   if (VKSCR(CreateBuffer)(screen->dev, &bci, NULL, &buffer) != VK_SUCCESS)
-      return VK_NULL_HANDLE;
-   VKSCR(BindBufferMemory)(screen->dev, buffer, zink_bo_get_mem(res->obj->bo), res->obj->offset + offset);
-   if (offset_out)
-      *offset_out = offset_add - offset;
-   return buffer;
 }
 
 bool

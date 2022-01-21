@@ -64,7 +64,6 @@ struct zink_resource_object {
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
    struct zink_descriptor_refs desc_set_refs;
 
-   struct util_dynarray tmp;
    VkBuffer storage_buffer;
 
    union {
@@ -195,9 +194,6 @@ zink_resource_object_reference(struct zink_screen *screen,
       zink_destroy_resource_object(screen, old_dst);
    if (dst) *dst = src;
 }
-
-VkBuffer
-zink_resource_tmp_buffer(struct zink_screen *screen, struct zink_resource *res, unsigned offset_add, unsigned add_binds, unsigned *offset);
 
 bool
 zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource *res);
