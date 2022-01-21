@@ -5710,8 +5710,11 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                      S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));
 
       si_pm4_set_reg(pm4, R_030968_VGT_INSTANCE_BASE_ID, 0);
-      si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY,
-                     sctx->chip_class >= GFX10 ? 0x20 : 0);
+
+      if (sctx->chip_class < GFX11) {
+         si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY,
+                        sctx->chip_class >= GFX10 ? 0x20 : 0);
+      }
    }
 
    if (sctx->chip_class >= GFX10) {

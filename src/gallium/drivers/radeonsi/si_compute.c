@@ -426,7 +426,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
    /* cs_preamble_state initializes this for the gfx queue, so only do this
     * if we are on a compute queue.
     */
-   if (sctx->chip_class >= GFX9 &&
+   if (sctx->chip_class >= GFX9 && sctx->chip_class < GFX11 &&
        (cs != &sctx->gfx_cs || !sctx->screen->info.has_graphics)) {
       radeon_set_uconfig_reg(R_0301EC_CP_COHER_START_DELAY,
                              sctx->chip_class >= GFX10 ? 0x20 : 0);
