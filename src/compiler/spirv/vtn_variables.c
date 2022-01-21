@@ -1162,6 +1162,9 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_MESH_VIEW_INDICES;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInCullPrimitiveEXT:
+      *location = VARYING_SLOT_CULL_PRIMITIVE;
+      break;
    default:
       vtn_fail("Unsupported builtin: %s (%u)",
                spirv_builtin_to_string(builtin), builtin);
