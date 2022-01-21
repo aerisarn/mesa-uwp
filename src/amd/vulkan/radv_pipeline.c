@@ -2738,10 +2738,12 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
       /* Mesh shader output driver locations are set separately for per-vertex
        * and per-primitive outputs, because they are stored in separate LDS regions.
        */
-      uint64_t per_vertex_mask = ms->info.outputs_written & ~ms->info.per_primitive_outputs
-                                 & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT)
-                                 & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
-      uint64_t per_primitive_mask = ms->info.per_primitive_outputs & ms->info.outputs_written;
+      uint64_t special_mask = BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) |
+                              BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
+      uint64_t per_vertex_mask =
+         ms->info.outputs_written & ~ms->info.per_primitive_outputs & ~special_mask;
+      uint64_t per_primitive_mask =
+         ms->info.per_primitive_outputs & ms->info.outputs_written & ~special_mask;
 
       nir_foreach_shader_out_variable(var, shaders[MESA_SHADER_MESH])
       {
