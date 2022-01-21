@@ -1815,6 +1815,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    char *map;
    bool use_staging_texture = tex->buffer.flags & RADEON_FLAG_ENCRYPTED;
 
+   assert(texture->target != PIPE_BUFFER);
    assert(!(texture->flags & SI_RESOURCE_FLAG_FORCE_LINEAR));
    assert(box->width && box->height && box->depth);
 

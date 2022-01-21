@@ -345,6 +345,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
    struct si_resource *buf = si_resource(resource);
    uint8_t *data;
 
+   assert(resource->target == PIPE_BUFFER);
    assert(box->x + box->width <= resource->width0);
 
    /* From GL_AMD_pinned_memory issues:
