@@ -927,10 +927,9 @@ resource_create(struct pipe_screen *pscreen,
    }
 
    res->internal_format = templ->format;
-   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
-      res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
    if (templ->target == PIPE_BUFFER) {
       util_range_init(&res->valid_buffer_range);
+      res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
       if (!screen->resizable_bar && templ->width0 >= 8196) {
          /* We don't want to evict buffers from VRAM by mapping them for CPU access,
           * because they might never be moved back again. If a buffer is large enough,
@@ -942,6 +941,8 @@ resource_create(struct pipe_screen *pscreen,
          res->base.b.flags |= PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY;
       }
    } else {
+      if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+         res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
       if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE) {
          uint32_t count = 1;
          VKSCR(GetImageSparseMemoryRequirements)(screen->dev, res->obj->image, &count, &res->sparse);
