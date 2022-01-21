@@ -698,12 +698,14 @@ buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, stru
 {
    VkBindSparseInfo sparse = {0};
    sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
-   sparse.bufferBindCount = 1;
+   sparse.bufferBindCount = res->obj->storage_buffer ? 2 : 1;
 
-   VkSparseBufferMemoryBindInfo sparse_bind;
-   sparse_bind.buffer = res->obj->buffer;
-   sparse_bind.bindCount = 1;
-   sparse.pBufferBinds = &sparse_bind;
+   VkSparseBufferMemoryBindInfo sparse_bind[2];
+   sparse_bind[0].buffer = res->obj->buffer;
+   sparse_bind[1].buffer = res->obj->storage_buffer;
+   sparse_bind[0].bindCount = 1;
+   sparse_bind[1].bindCount = 1;
+   sparse.pBufferBinds = sparse_bind;
 
    VkSparseMemoryBind mem_bind;
    mem_bind.resourceOffset = offset;
@@ -711,7 +713,8 @@ buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, stru
    mem_bind.memory = commit ? (bo->mem ? bo->mem : bo->u.slab.real->mem) : VK_NULL_HANDLE;
    mem_bind.memoryOffset = commit ? (bo->mem ? 0 : bo->offset) : 0;
    mem_bind.flags = 0;
-   sparse_bind.pBinds = &mem_bind;
+   sparse_bind[0].pBinds = &mem_bind;
+   sparse_bind[1].pBinds = &mem_bind;
 
    VkQueue queue = screen->threaded ? screen->thread_queue : screen->queue;
 

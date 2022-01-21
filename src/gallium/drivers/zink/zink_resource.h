@@ -65,6 +65,7 @@ struct zink_resource_object {
    struct zink_descriptor_refs desc_set_refs;
 
    struct util_dynarray tmp;
+   VkBuffer storage_buffer;
 
    union {
       VkBuffer buffer;
