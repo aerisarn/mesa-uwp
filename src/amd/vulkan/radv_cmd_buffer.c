@@ -1576,7 +1576,7 @@ radv_emit_primitive_topology(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   assert(!cmd_buffer->state.mesh_shading || d->primitive_topology == V_008958_DI_PT_POINTLIST);
+   assert(!cmd_buffer->state.mesh_shading);
 
    if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
       radeon_set_uconfig_reg_idx(cmd_buffer->device->physical_device, cmd_buffer->cs,
@@ -5097,8 +5097,11 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
 
       bool mesh_shading = radv_pipeline_has_mesh(pipeline);
       if (mesh_shading != cmd_buffer->state.mesh_shading) {
-         /* Re-emit VRS state because the combiner is different (vertex vs primitive). */
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+         /* Re-emit VRS state because the combiner is different (vertex vs primitive).
+          * Re-emit primitive topology because the mesh shading pipeline clobbered it.
+          */
+         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE |
+                                    RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
       }
 
       cmd_buffer->state.mesh_shading = mesh_shading;

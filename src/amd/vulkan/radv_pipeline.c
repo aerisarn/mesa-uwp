@@ -1422,10 +1422,10 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
    /* Disable dynamic states that are useless to mesh shading. */
    if (radv_pipeline_has_mesh(pipeline)) {
       if (has_static_rasterizer_discard)
-         return RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
+         return RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
 
       states &= ~(RADV_DYNAMIC_VERTEX_INPUT | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
-                  RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE);
+                  RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE | RADV_DYNAMIC_PRIMITIVE_TOPOLOGY);
    }
 
    /* If rasterization is disabled we do not care about any of the
@@ -1666,14 +1666,10 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
    }
 
    if (states & RADV_DYNAMIC_PRIMITIVE_TOPOLOGY) {
-      if (radv_pipeline_has_mesh(pipeline)) {
-         dynamic->primitive_topology = V_008958_DI_PT_POINTLIST;
-      } else {
-         dynamic->primitive_topology = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
+      dynamic->primitive_topology = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
 
-         if (extra && extra->use_rectlist) {
-            dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
-         }
+      if (extra && extra->use_rectlist) {
+         dynamic->primitive_topology = V_008958_DI_PT_RECTLIST;
       }
    }
 
@@ -5333,6 +5329,8 @@ radv_pipeline_generate_mesh_shader(struct radeon_cmdbuf *ctx_cs, struct radeon_c
 
    radv_pipeline_generate_hw_ngg(ctx_cs, cs, pipeline, ms);
    radeon_set_context_reg(ctx_cs, R_028B38_VGT_GS_MAX_VERT_OUT, ms->info.workgroup_size);
+   radeon_set_uconfig_reg_idx(pipeline->device->physical_device, ctx_cs,
+                              R_030908_VGT_PRIMITIVE_TYPE, 1, V_008958_DI_PT_POINTLIST);
 }
 
 static uint32_t
