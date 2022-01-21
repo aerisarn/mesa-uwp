@@ -7,6 +7,7 @@ if [ $DEBIAN_ARCH = arm64 ]; then
                    libfontconfig1
                    libgl1
                    libglu1-mesa
+                   libvulkan-dev
     "
 elif [ $DEBIAN_ARCH = amd64 ]; then
     ARCH_PACKAGES="firmware-amd-graphics

@@ -107,3 +107,9 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420
 spec@ext_transform_feedback@api-errors.*
 
 spec@!opengl 2.0@gl-2.0-two-sided-stencil
+
+# appeared with a piglit uprev, probably from reshuffling.
+spec@!opengl 1.1@depthstencil-default_fb-copypixels
+spec@arb_direct_state_access@gettextureimage-formats
+spec@ext_polygon_offset_clamp@ext_polygon_offset_clamp-draw_gles2
+spec@ext_polygon_offset_clamp@ext_polygon_offset_clamp-draw_gles2@negative clamp

@@ -214,8 +214,8 @@ a630_skqp:
     - .a630-test
   variables:
     # Possible skqp backends: gl, gles, unitTest and vk
-    # Note: vk backend is not working yet.
-    SKQP_BACKENDS: gl gles unitTest  # space separated values
+    SKQP_BACKENDS: gl gles vk unitTest  # space separated values
+    VK_DRIVER: freedreno
 
 a630_vk:
   extends:
