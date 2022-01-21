@@ -1331,53 +1331,42 @@ anv_pipeline_init_from_cached_graphics(struct anv_graphics_pipeline *pipeline)
    }
 }
 
-static VkResult
-anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
-                              struct vk_pipeline_cache *cache,
-                              const VkGraphicsPipelineCreateInfo *info,
-                              const VkPipelineRenderingCreateInfo *rendering_info)
+static void
+anv_graphics_pipeline_init_keys(struct anv_graphics_pipeline *pipeline,
+                                const VkGraphicsPipelineCreateInfo *info,
+                                const VkPipelineRenderingCreateInfo *rendering_info,
+                                struct anv_pipeline_stage *stages)
 {
-   VkPipelineCreationFeedback pipeline_feedback = {
-      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
-   };
-   int64_t pipeline_start = os_time_get_nano();
-
-   const struct brw_compiler *compiler = pipeline->base.device->physical->compiler;
-   struct anv_pipeline_stage stages[ANV_GRAPHICS_SHADER_STAGE_COUNT] = {};
-
-   VkResult result;
-   for (uint32_t i = 0; i < info->stageCount; i++) {
-      const VkPipelineShaderStageCreateInfo *sinfo = &info->pStages[i];
-      gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
+   for (uint32_t s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
+      if (!stages[s].info)
+         continue;
 
       int64_t stage_start = os_time_get_nano();
 
-      stages[stage].stage = stage;
-      stages[stage].info = sinfo;
-      vk_pipeline_hash_shader_stage(&info->pStages[i], stages[stage].shader_sha1);
+      vk_pipeline_hash_shader_stage(stages[s].info, stages[s].shader_sha1);
 
       const struct anv_device *device = pipeline->base.device;
-      switch (stage) {
+      switch (stages[s].stage) {
       case MESA_SHADER_VERTEX:
          populate_vs_prog_key(device,
                               pipeline->base.device->robust_buffer_access,
-                              &stages[stage].key.vs);
+                              &stages[s].key.vs);
          break;
       case MESA_SHADER_TESS_CTRL:
          populate_tcs_prog_key(device,
                                pipeline->base.device->robust_buffer_access,
                                info->pTessellationState->patchControlPoints,
-                               &stages[stage].key.tcs);
+                               &stages[s].key.tcs);
          break;
       case MESA_SHADER_TESS_EVAL:
          populate_tes_prog_key(device,
                                pipeline->base.device->robust_buffer_access,
-                               &stages[stage].key.tes);
+                               &stages[s].key.tes);
          break;
       case MESA_SHADER_GEOMETRY:
          populate_gs_prog_key(device,
                               pipeline->base.device->robust_buffer_access,
-                              &stages[stage].key.gs);
+                              &stages[s].key.gs);
          break;
       case MESA_SHADER_FRAGMENT: {
          const bool raster_enabled =
@@ -1389,36 +1378,135 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               vk_find_struct_const(info->pNext,
                                                    PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR),
                               rendering_info,
-                              &stages[stage].key.wm);
+                              &stages[s].key.wm);
          break;
       }
       case MESA_SHADER_TASK:
          populate_task_prog_key(device,
                                 pipeline->base.device->robust_buffer_access,
-                                &stages[stage].key.task);
+                                &stages[s].key.task);
          break;
       case MESA_SHADER_MESH:
          populate_mesh_prog_key(device,
                                 pipeline->base.device->robust_buffer_access,
-                                &stages[stage].key.mesh);
+                                &stages[s].key.mesh);
          break;
       default:
          unreachable("Invalid graphics shader stage");
       }
 
-      stages[stage].feedback.duration += os_time_get_nano() - stage_start;
-      stages[stage].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+      stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
    }
 
    assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT ||
           pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV);
+}
 
+static bool
+anv_graphics_pipeline_load_cached_shaders(struct anv_graphics_pipeline *pipeline,
+                                          struct vk_pipeline_cache *cache,
+                                          struct anv_pipeline_stage *stages,
+                                          VkPipelineCreationFeedbackEXT *pipeline_feedback)
+{
+   unsigned found = 0;
+   unsigned cache_hits = 0;
+   for (unsigned s = 0; s < ANV_GRAPHICS_SHADER_STAGE_COUNT; s++) {
+      if (!stages[s].info)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      bool cache_hit;
+      struct anv_shader_bin *bin =
+         anv_device_search_for_kernel(pipeline->base.device, cache,
+                                      &stages[s].cache_key,
+                                      sizeof(stages[s].cache_key), &cache_hit);
+      if (bin) {
+         found++;
+         pipeline->shaders[s] = bin;
+      }
+
+      if (cache_hit) {
+         cache_hits++;
+         stages[s].feedback.flags |=
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
+      }
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+   }
+
+   if (found == __builtin_popcount(pipeline->active_stages)) {
+      if (cache_hits == found) {
+         pipeline_feedback->flags |=
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
+      }
+      /* We found all our shaders in the cache.  We're done. */
+      for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+         if (!stages[s].info)
+            continue;
+
+         anv_pipeline_add_executables(&pipeline->base, &stages[s],
+                                      pipeline->shaders[s]);
+      }
+      anv_pipeline_init_from_cached_graphics(pipeline);
+      return true;
+   } else if (found > 0) {
+      /* We found some but not all of our shaders. This shouldn't happen most
+       * of the time but it can if we have a partially populated pipeline
+       * cache.
+       */
+      assert(found < __builtin_popcount(pipeline->active_stages));
+
+      vk_perf(VK_LOG_OBJS(cache ? &cache->base :
+                                  &pipeline->base.device->vk.base),
+              "Found a partial pipeline in the cache.  This is "
+              "most likely caused by an incomplete pipeline cache "
+              "import or export");
+
+      /* We're going to have to recompile anyway, so just throw away our
+       * references to the shaders in the cache.  We'll get them out of the
+       * cache again as part of the compilation process.
+       */
+      for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+         stages[s].feedback.flags = 0;
+         if (pipeline->shaders[s]) {
+            anv_shader_bin_unref(pipeline->base.device, pipeline->shaders[s]);
+            pipeline->shaders[s] = NULL;
+         }
+      }
+   }
+
+   return false;
+}
+
+static VkResult
+anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
+                              struct vk_pipeline_cache *cache,
+                              const VkGraphicsPipelineCreateInfo *info,
+                              const VkPipelineRenderingCreateInfo *rendering_info)
+{
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
+   VkResult result;
+
+   VkPipelineCreationFeedbackEXT pipeline_feedback = {
+      .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
+   };
+   int64_t pipeline_start = os_time_get_nano();
+
+   const struct brw_compiler *compiler = pipeline->base.device->physical->compiler;
+   struct anv_pipeline_stage stages[ANV_GRAPHICS_SHADER_STAGE_COUNT] = {};
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      gl_shader_stage stage = vk_to_mesa_shader_stage(info->pStages[i].stage);
+      stages[stage].stage = stage;
+      stages[stage].info = &info->pStages[i];
+   }
+
+   anv_graphics_pipeline_init_keys(pipeline, info, rendering_info, stages);
 
    unsigned char sha1[20];
    anv_pipeline_hash_graphics(pipeline, layout, stages, sha1);
 
-   for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+   for (unsigned s = 0; s < ARRAY_SIZE(stages); s++) {
       if (!stages[s].info)
          continue;
 
@@ -1428,74 +1516,12 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
 
    const bool skip_cache_lookup =
       (pipeline->base.flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR);
-
    if (!skip_cache_lookup) {
-      unsigned found = 0;
-      unsigned cache_hits = 0;
-      for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-         if (!stages[s].info)
-            continue;
-
-         int64_t stage_start = os_time_get_nano();
-
-         bool cache_hit;
-         struct anv_shader_bin *bin =
-            anv_device_search_for_kernel(pipeline->base.device, cache,
-                                         &stages[s].cache_key,
-                                         sizeof(stages[s].cache_key), &cache_hit);
-         if (bin) {
-            found++;
-            pipeline->shaders[s] = bin;
-         }
-
-         if (cache_hit) {
-            cache_hits++;
-            stages[s].feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
-         }
-         stages[s].feedback.duration += os_time_get_nano() - stage_start;
-      }
-
-      if (found == __builtin_popcount(pipeline->active_stages)) {
-         if (cache_hits == found) {
-            pipeline_feedback.flags |=
-               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT;
-         }
-         /* We found all our shaders in the cache.  We're done. */
-         for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-            if (!stages[s].info)
-               continue;
-
-            anv_pipeline_add_executables(&pipeline->base, &stages[s],
-                                         pipeline->shaders[s]);
-         }
-         anv_pipeline_init_from_cached_graphics(pipeline);
+      bool found_all_shaders =
+         anv_graphics_pipeline_load_cached_shaders(pipeline, cache, stages,
+                                                   &pipeline_feedback);
+      if (found_all_shaders)
          goto done;
-      } else if (found > 0) {
-         /* We found some but not all of our shaders.  This shouldn't happen
-          * most of the time but it can if we have a partially populated
-          * pipeline cache.
-          */
-         assert(found < __builtin_popcount(pipeline->active_stages));
-
-         vk_perf(VK_LOG_OBJS(cache ? &cache->base :
-                                     &pipeline->base.device->vk.base),
-                 "Found a partial pipeline in the cache.  This is "
-                 "most likely caused by an incomplete pipeline cache "
-                 "import or export");
-
-         /* We're going to have to recompile anyway, so just throw away our
-          * references to the shaders in the cache.  We'll get them out of the
-          * cache again as part of the compilation process.
-          */
-         for (unsigned s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
-            stages[s].feedback.flags = 0;
-            if (pipeline->shaders[s]) {
-               anv_shader_bin_unref(pipeline->base.device, pipeline->shaders[s]);
-               pipeline->shaders[s] = NULL;
-            }
-         }
-      }
    }
 
    if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT)
