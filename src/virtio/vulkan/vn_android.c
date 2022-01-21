@@ -683,6 +683,12 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
       return vn_error(dev->instance, result);
 
    if (dev->instance->experimental.globalFencing == VK_TRUE) {
+      /* XXX With globalFencing, the external queue fence was not passed in the
+       * above vn_QueueSubmit to hint it to be synchronous. So we need to wait
+       * for the ring here before vn_GetFenceFdKHR which is pure kernel ops.
+       */
+      vn_instance_ring_wait(dev->instance);
+
       const VkFenceGetFdInfoKHR fd_info = {
          .sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR,
          .pNext = NULL,

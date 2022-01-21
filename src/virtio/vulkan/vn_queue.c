@@ -335,15 +335,17 @@ VkResult
 vn_QueueSubmit(VkQueue _queue,
                uint32_t submitCount,
                const VkSubmitInfo *pSubmits,
-               VkFence fence)
+               VkFence _fence)
 {
    VN_TRACE_FUNC();
    struct vn_queue *queue = vn_queue_from_handle(_queue);
    struct vn_device *dev = queue->device;
+   struct vn_fence *fence = vn_fence_from_handle(_fence);
+   const bool is_fence_external = fence && fence->is_external;
 
    struct vn_queue_submission submit;
    VkResult result = vn_queue_submission_prepare_submit(
-      &submit, _queue, submitCount, pSubmits, fence);
+      &submit, _queue, submitCount, pSubmits, _fence);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -355,6 +357,14 @@ vn_QueueSubmit(VkQueue _queue,
          wsi_mem = vn_device_memory_from_handle(info->memory);
          assert(!wsi_mem->base_memory && wsi_mem->base_bo);
       }
+   }
+
+   /* TODO defer roundtrip for external fence until the next sync operation */
+   if (!wsi_mem && !is_fence_external) {
+      vn_async_vkQueueSubmit(dev->instance, submit.queue, submit.batch_count,
+                             submit.submit_batches, submit.fence);
+      vn_queue_submission_cleanup(&submit);
+      return VK_SUCCESS;
    }
 
    result =
