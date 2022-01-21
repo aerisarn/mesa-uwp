@@ -1350,6 +1350,38 @@ f2f16_rtz(struct v3d_compile *c, struct qreg f32)
         return vir_MOV(c, result);
 }
 
+/**
+ * Takes the result value of a signed integer width conversion from a smaller
+ * type to a larger type and if needed, it applies sign extension to it.
+ */
+static struct qreg
+sign_extend(struct v3d_compile *c,
+            struct qreg value,
+            uint32_t src_bit_size,
+            uint32_t dst_bit_size)
+{
+        assert(src_bit_size < dst_bit_size);
+
+        struct qreg tmp = vir_MOV(c, value);
+
+        /* Do we need to sign-extend? */
+        uint32_t sign_mask = 1 << (src_bit_size - 1);
+        struct qinst *sign_check =
+                vir_AND_dest(c, vir_nop_reg(),
+                             tmp, vir_uniform_ui(c, sign_mask));
+        vir_set_pf(c, sign_check, V3D_QPU_PF_PUSHZ);
+
+        /* If so, fill in leading sign bits */
+        uint32_t extend_bits = ~(((1 << src_bit_size) - 1)) &
+                               ((1ull << dst_bit_size) - 1);
+        struct qinst *extend_inst =
+                vir_OR_dest(c, tmp, tmp,
+                            vir_uniform_ui(c, extend_bits));
+        vir_set_cond(extend_inst, V3D_QPU_COND_IFNA);
+
+        return tmp;
+}
+
 static void
 ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
 {
@@ -1453,43 +1485,73 @@ ntq_emit_alu(struct v3d_compile *c, nir_alu_instr *instr)
                 vir_set_unpack(c->defs[result.index], 0, V3D_QPU_UNPACK_L);
                 break;
 
-        case nir_op_i2i16:
-        case nir_op_u2u16:
-                assert(nir_src_bit_size(instr->src[0].src) == 32);
+        case nir_op_i2i16: {
+                uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
+                assert(bit_size == 32 || bit_size == 8);
+                if (bit_size == 32) {
+                        /* We don't have integer pack/unpack methods for
+                         * converting between 16-bit and 32-bit, so we implement
+                         * the conversion manually by truncating the src.
+                         */
+                        result = vir_AND(c, src[0], vir_uniform_ui(c, 0xffff));
+                } else {
+                        struct qreg tmp = vir_AND(c, src[0],
+                                                  vir_uniform_ui(c, 0xff));
+                        result = vir_MOV(c, sign_extend(c, tmp, bit_size, 16));
+                }
+                break;
+        }
+
+        case nir_op_u2u16: {
+                uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
+                assert(bit_size == 32 || bit_size == 8);
+
                 /* We don't have integer pack/unpack methods for converting
                  * between 16-bit and 32-bit, so we implement the conversion
+                 * manually by truncating the src. For the 8-bit case, we
+                 * want to make sure we don't copy garbage from any of the
+                 * 24 MSB bits.
+                 */
+                if (bit_size == 32)
+                        result = vir_AND(c, src[0], vir_uniform_ui(c, 0xffff));
+                else
+                        result = vir_AND(c, src[0], vir_uniform_ui(c, 0xff));
+                break;
+        }
+
+        case nir_op_i2i8:
+        case nir_op_u2u8:
+                assert(nir_src_bit_size(instr->src[0].src) == 32 ||
+                       nir_src_bit_size(instr->src[0].src) == 16);
+                /* We don't have integer pack/unpack methods for converting
+                 * between 8-bit and 32-bit, so we implement the conversion
                  * manually by truncating the src.
                  */
-                result = vir_AND(c, src[0], vir_uniform_ui(c, 0xffff));
+                result = vir_AND(c, src[0], vir_uniform_ui(c, 0xff));
                 break;
 
-        case nir_op_u2u32:
-                assert(nir_src_bit_size(instr->src[0].src) == 16);
-                /* we don't have a native 16-bit MOV so we copy all 32-bit from
-                 * the src but we make sure to clear any garbage bits that may
-                 * be present in the upper half of the src.
+        case nir_op_u2u32: {
+                uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
+                assert(bit_size == 16 || bit_size == 8);
+
+                /* we don't have a native 8-bit/16-bit MOV so we copy all 32-bit
+                 * from the src but we make sure to clear any garbage bits that
+                 * may be present in the invalid src bits.
                  */
-                result = vir_AND(c, src[0], vir_uniform_ui(c, 0xffff));
+                uint32_t mask = (1 << bit_size) - 1;
+                result = vir_AND(c, src[0], vir_uniform_ui(c, mask));
                 break;
+        }
 
         case nir_op_i2i32: {
-                assert(nir_src_bit_size(instr->src[0].src) == 16);
-                struct qreg tmp = vir_MOV(c, vir_AND(c, src[0],
-                                          vir_uniform_ui(c, 0xffff)));
+                uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
+                assert(bit_size == 16 || bit_size == 8);
 
-                /* Do we need to sign-extend? */
-                struct qinst *sign_check =
-                        vir_AND_dest(c, vir_nop_reg(),
-                                     src[0], vir_uniform_ui(c, 0x00008000));
-                vir_set_pf(c, sign_check, V3D_QPU_PF_PUSHZ);
+                uint32_t mask = (1 << bit_size) - 1;
+                struct qreg tmp = vir_AND(c, src[0],
+                                          vir_uniform_ui(c, mask));
 
-                /* If so, fill in leading sign bits */
-                struct qinst *sign_extend =
-                        vir_OR_dest(c, tmp, tmp,
-                                    vir_uniform_ui(c, 0xffff0000));
-                vir_set_cond(sign_extend, V3D_QPU_COND_IFNA);
-
-                result = vir_MOV(c, tmp);
+                result = vir_MOV(c, sign_extend(c, tmp, bit_size, 32));
                 break;
         }
 
