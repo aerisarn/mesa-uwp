@@ -3094,27 +3094,43 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                         ntq_store_dest(c, &instr->dest, i, vir_MOV(c, data));
                         i++;
                 } else {
-                        assert(bit_size == 16);
-                        assert(value_skips <= 1);
-                        struct qreg tmp;
+                        assert((bit_size == 16 && value_skips <= 1) ||
+                               (bit_size ==  8 && value_skips <= 3));
 
-                        if (value_skips == 0) {
-                                tmp = vir_AND(c, vir_MOV(c, data),
-                                              vir_uniform_ui(c, 0xffff));
-                                ntq_store_dest(c, &instr->dest, i, vir_MOV(c, tmp));
-                                i++;
-                        } else {
-                                value_skips--;
+                        /* If we have any values to skip, shift to the first
+                         * valid value in the ldunifa result.
+                         */
+                        if (value_skips > 0) {
+                                data = vir_SHR(c, data,
+                                               vir_uniform_ui(c, bit_size *
+                                                                 value_skips));
                         }
 
-                        assert(value_skips == 0);
+                        /* Check how many valid components we have discounting
+                         * read components to skip.
+                         */
+                        uint32_t valid_count = (32 / bit_size) - value_skips;
+                        assert((bit_size == 16 && valid_count <= 2) ||
+                               (bit_size ==  8 && valid_count <= 4));
+                        assert(valid_count > 0);
 
-                        if (i < num_components) {
-                                tmp = vir_SHR(c, data, vir_uniform_ui(c, 16));
+                        /* Process the valid components */
+                        do {
+                                struct qreg tmp;
+                                uint32_t mask = (1 << bit_size) - 1;
+                                tmp = vir_AND(c, vir_MOV(c, data),
+                                              vir_uniform_ui(c, mask));
                                 ntq_store_dest(c, &instr->dest, i,
                                                vir_MOV(c, tmp));
                                 i++;
-                        }
+                                valid_count--;
+
+                                /* Shift to next component */
+                                if (i < num_components && valid_count > 0) {
+                                        data = vir_SHR(c, data,
+                                                       vir_uniform_ui(c, bit_size));
+                                }
+                        } while (i < num_components && valid_count > 0);
                 }
         }
 
