@@ -3203,6 +3203,8 @@ static void handle_clear_attachments(struct vk_cmd_queue_entry *cmd,
 
          VkClearRect *rect = &cmd->u.clear_attachments.rects[r];
          /* avoid crashing on spec violations */
+         rect->rect.offset.x = MAX2(rect->rect.offset.x, 0);
+         rect->rect.offset.y = MAX2(rect->rect.offset.y, 0);
          rect->rect.extent.width = MIN2(rect->rect.extent.width, state->framebuffer.width - rect->rect.offset.x);
          rect->rect.extent.height = MIN2(rect->rect.extent.height, state->framebuffer.height - rect->rect.offset.y);
          if (subpass->view_mask) {
