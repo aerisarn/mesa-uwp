@@ -2230,8 +2230,7 @@ static struct pipe_resource *si_resource_from_memobj(struct pipe_screen *screen,
    struct pipe_resource *res;
 
    if (templ->target == PIPE_BUFFER)
-      res = si_buffer_from_winsys_buffer(screen, templ, memobj->buf,
-                                         memobj->b.dedicated);
+      res = si_buffer_from_winsys_buffer(screen, templ, memobj->buf, offset);
    else
       res = si_texture_from_winsys_buffer(sscreen, templ, memobj->buf,
                                           memobj->stride,

@@ -657,31 +657,57 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
 struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
                                                    const struct pipe_resource *templ,
                                                    struct pb_buffer *imported_buf,
-                                                   bool dedicated)
+                                                   uint64_t offset)
 {
+   if (offset + templ->width0 > imported_buf->size)
+      return NULL;
+
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct si_resource *res = si_alloc_buffer_struct(screen, templ, false);
 
    if (!res)
-      return 0;
+      return NULL;
 
-   res->buf = imported_buf;
-   res->gpu_address = sscreen->ws->buffer_get_virtual_address(res->buf);
-   res->bo_size = imported_buf->size;
-   res->bo_alignment_log2 = imported_buf->alignment_log2;
-   res->domains = sscreen->ws->buffer_get_initial_domain(res->buf);
+   enum radeon_bo_domain domains = sscreen->ws->buffer_get_initial_domain(res->buf);
 
-   res->memory_usage_kb = MAX2(1, res->bo_size / 1024);
+   /* Get or guess the BO flags. */
+   unsigned flags = RADEON_FLAG_NO_SUBALLOC;
 
    if (sscreen->ws->buffer_get_flags)
-      res->flags = sscreen->ws->buffer_get_flags(res->buf);
+      res->flags |= sscreen->ws->buffer_get_flags(res->buf);
+   else
+      flags |= RADEON_FLAG_GTT_WC; /* unknown flags, guess them */
 
-   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE) {
-      res->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
-      res->flags |= RADEON_FLAG_SPARSE;
+   /* Deduce the usage. */
+   switch (domains) {
+   case RADEON_DOMAIN_VRAM:
+   case RADEON_DOMAIN_VRAM_GTT:
+      res->b.b.usage = PIPE_USAGE_DEFAULT;
+      break;
+
+   default:
+      /* Other values are interpreted as GTT. */
+      domains = RADEON_DOMAIN_GTT;
+
+      if (flags & RADEON_FLAG_GTT_WC)
+         res->b.b.usage = PIPE_USAGE_STREAM;
+      else
+         res->b.b.usage = PIPE_USAGE_STAGING;
    }
 
+   si_init_resource_fields(sscreen, res, imported_buf->size,
+                           1 << imported_buf->alignment_log2);
+
+   res->b.is_shared = true;
    res->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
+   res->buf = imported_buf;
+   res->gpu_address = sscreen->ws->buffer_get_virtual_address(res->buf) + offset;
+   res->domains = domains;
+   res->flags = flags;
+
+   util_range_add((struct pipe_resource *)templ, &res->valid_buffer_range, 0, templ->width0);
+   util_range_add((struct pipe_resource *)templ, &res->b.valid_buffer_range, 0, templ->width0);
+
    return &res->b.b;
 }
 
