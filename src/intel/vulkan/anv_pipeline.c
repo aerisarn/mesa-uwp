@@ -1526,7 +1526,7 @@ anv_graphics_pipeline_load_nir(struct anv_graphics_pipeline *pipeline,
 }
 
 static VkResult
-anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
+anv_graphics_pipeline_compile(struct anv_graphics_pipeline *pipeline,
                               struct vk_pipeline_cache *cache,
                               const VkGraphicsPipelineCreateInfo *info,
                               const VkPipelineRenderingCreateInfo *rendering_info)
@@ -2374,7 +2374,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                            PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
    pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable : !pipeline->depth_clamp_enable;
 
-   result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo,
+   result = anv_graphics_pipeline_compile(pipeline, cache, pCreateInfo,
                                           rendering_info);
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base, device, alloc);
