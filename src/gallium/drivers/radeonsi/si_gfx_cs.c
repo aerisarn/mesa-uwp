@@ -693,7 +693,9 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
          radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
          radeon_emit(EVENT_TYPE(V_028A90_FLUSH_AND_INV_CB_META) | EVENT_INDEX(0));
       }
-      if (flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
+
+      /* Gfx11 can't flush DB_META and should use a TS event instead. */
+      if (ctx->chip_class != GFX11 && flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
          /* Flush HTILE. Will wait for idle later. */
          radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
          radeon_emit(EVENT_TYPE(V_028A90_FLUSH_AND_INV_DB_META) | EVENT_INDEX(0));
@@ -708,7 +710,10 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       } else if (flags & SI_CONTEXT_FLUSH_AND_INV_CB) {
          cb_db_event = V_028A90_FLUSH_AND_INV_CB_DATA_TS;
       } else if (flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
-         cb_db_event = V_028A90_FLUSH_AND_INV_DB_DATA_TS;
+         if (ctx->chip_class == GFX11)
+            cb_db_event = V_028A90_CACHE_FLUSH_AND_INV_TS_EVENT;
+         else
+            cb_db_event = V_028A90_FLUSH_AND_INV_DB_DATA_TS;
       } else {
          assert(0);
       }
