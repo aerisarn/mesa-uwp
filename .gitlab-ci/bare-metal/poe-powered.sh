@@ -20,18 +20,6 @@ if [ -z "$BM_POE_ADDRESS" ]; then
   exit 1
 fi
 
-if [ -z "$BM_POE_USERNAME" ]; then
-  echo "Must set BM_POE_USERNAME in your gitlab-runner config.toml [[runners]] environment"
-  echo "This is the PoE switch username."
-  exit 1
-fi
-
-if [ -z "$BM_POE_PASSWORD" ]; then
-  echo "Must set BM_POE_PASSWORD in your gitlab-runner config.toml [[runners]] environment"
-  echo "This is the PoE switch password."
-  exit 1
-fi
-
 if [ -z "$BM_POE_INTERFACE" ]; then
   echo "Must set BM_POE_INTERFACE in your gitlab-runner config.toml [[runners]] environment"
   echo "This is the PoE switch interface where the device is connected."
