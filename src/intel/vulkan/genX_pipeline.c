@@ -2654,57 +2654,12 @@ emit_mesh_state(struct anv_graphics_pipeline *pipeline)
 }
 #endif
 
-static VkResult
-genX(graphics_pipeline_create)(
-    VkDevice                                    _device,
-    struct vk_pipeline_cache *                  cache,
-    const VkGraphicsPipelineCreateInfo*         pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkPipeline*                                 pPipeline)
+void
+genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
+                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                             const VkPipelineRenderingCreateInfo *rendering_info,
+                             const VkRenderingSelfDependencyInfoMESA *rsd_info)
 {
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_graphics_pipeline *pipeline;
-   VkResult result;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
-
-   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pipeline == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   /* We'll use these as defaults if we don't have pipeline rendering or
-    * self-dependency structs.  Saves us some NULL checks.
-    */
-   VkRenderingSelfDependencyInfoMESA rsd_info_tmp = {
-      .sType = VK_STRUCTURE_TYPE_RENDERING_SELF_DEPENDENCY_INFO_MESA,
-   };
-   VkPipelineRenderingCreateInfo rendering_info_tmp = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-      .pNext = &rsd_info_tmp,
-   };
-
-   const VkPipelineRenderingCreateInfo *rendering_info =
-      vk_get_pipeline_rendering_create_info(pCreateInfo);
-   if (rendering_info == NULL)
-      rendering_info = &rendering_info_tmp;
-
-   const VkRenderingSelfDependencyInfoMESA *rsd_info =
-      vk_find_struct_const(rendering_info->pNext,
-                           RENDERING_SELF_DEPENDENCY_INFO_MESA);
-   if (rsd_info == NULL)
-      rsd_info = &rsd_info_tmp;
-
-   result = anv_graphics_pipeline_init(pipeline, device, cache,
-                                       pCreateInfo, rendering_info,
-                                       pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pipeline);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED)
-         *pPipeline = VK_NULL_HANDLE;
-      return result;
-   }
-
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.
     */
@@ -2780,7 +2735,9 @@ genX(graphics_pipeline_create)(
       emit_3dstate_vf_statistics(pipeline);
 
       emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState);
+
 #if GFX_VERx10 >= 125
+      const struct anv_device *device = pipeline->base.device;
       /* Disable Mesh. */
       if (device->physical->vk.supported_extensions.NV_mesh_shader) {
          anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_MESH_CONTROL), zero);
@@ -2810,10 +2767,6 @@ genX(graphics_pipeline_create)(
 #if GFX_VER >= 8
    emit_3dstate_ps_extra(pipeline, pCreateInfo->pRasterizationState, rsd_info);
 #endif
-
-   *pPipeline = anv_pipeline_to_handle(&pipeline->base);
-
-   return pipeline->base.batch.status;
 }
 
 #if GFX_VERx10 >= 125
@@ -2987,45 +2940,6 @@ compute_pipeline_create(
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
 
    return pipeline->base.batch.status;
-}
-
-VkResult genX(CreateGraphicsPipelines)(
-    VkDevice                                    _device,
-    VkPipelineCache                             pipelineCache,
-    uint32_t                                    count,
-    const VkGraphicsPipelineCreateInfo*         pCreateInfos,
-    const VkAllocationCallbacks*                pAllocator,
-    VkPipeline*                                 pPipelines)
-{
-   VK_FROM_HANDLE(vk_pipeline_cache, pipeline_cache, pipelineCache);
-
-   VkResult result = VK_SUCCESS;
-
-   unsigned i;
-   for (i = 0; i < count; i++) {
-      VkResult res = genX(graphics_pipeline_create)(_device,
-                                                    pipeline_cache,
-                                                    &pCreateInfos[i],
-                                                    pAllocator, &pPipelines[i]);
-
-      if (res == VK_SUCCESS)
-         continue;
-
-      /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED_EX as it
-       * is not obvious what error should be report upon 2 different failures.
-       * */
-      result = res;
-      if (res != VK_PIPELINE_COMPILE_REQUIRED)
-         break;
-
-      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
-         break;
-   }
-
-   for (; i < count; i++)
-      pPipelines[i] = VK_NULL_HANDLE;
-
-   return result;
 }
 
 VkResult genX(CreateComputePipelines)(

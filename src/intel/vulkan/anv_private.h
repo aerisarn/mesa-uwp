@@ -3543,13 +3543,6 @@ anv_pipeline_finish(struct anv_pipeline *pipeline,
                     const VkAllocationCallbacks *pAllocator);
 
 VkResult
-anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_device *device,
-                           struct vk_pipeline_cache *cache,
-                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                           const VkPipelineRenderingCreateInfo *rendering_info,
-                           const VkAllocationCallbacks *alloc);
-
-VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct vk_pipeline_cache *cache,
                         const VkComputePipelineCreateInfo *info);

@@ -2320,7 +2320,7 @@ vk_line_rasterization_mode(const VkPipelineRasterizationLineStateCreateInfoEXT *
    return line_mode;
 }
 
-VkResult
+static VkResult
 anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                            struct anv_device *device,
                            struct vk_pipeline_cache *cache,
@@ -2491,6 +2491,105 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    }
 
    return VK_SUCCESS;
+}
+
+static VkResult
+anv_graphics_pipeline_create(struct anv_device *device,
+                             struct vk_pipeline_cache *cache,
+                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                             const VkAllocationCallbacks *pAllocator,
+                             VkPipeline *pPipeline)
+{
+   struct anv_graphics_pipeline *pipeline;
+   VkResult result;
+
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
+
+   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (pipeline == NULL)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   /* We'll use these as defaults if we don't have pipeline rendering or
+    * self-dependency structs. Saves us some NULL checks.
+    */
+   VkRenderingSelfDependencyInfoMESA rsd_info_tmp = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_SELF_DEPENDENCY_INFO_MESA,
+   };
+   VkPipelineRenderingCreateInfo rendering_info_tmp = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+      .pNext = &rsd_info_tmp,
+   };
+
+   const VkPipelineRenderingCreateInfo *rendering_info =
+      vk_get_pipeline_rendering_create_info(pCreateInfo);
+   if (rendering_info == NULL)
+      rendering_info = &rendering_info_tmp;
+
+   const VkRenderingSelfDependencyInfoMESA *rsd_info =
+      vk_find_struct_const(rendering_info->pNext,
+                           RENDERING_SELF_DEPENDENCY_INFO_MESA);
+   if (rsd_info == NULL)
+      rsd_info = &rsd_info_tmp;
+
+   result = anv_graphics_pipeline_init(pipeline, device, cache,
+                                       pCreateInfo, rendering_info,
+                                       pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      return result;
+   }
+
+   anv_genX(&device->info, graphics_pipeline_emit)(pipeline,
+                                                   pCreateInfo,
+                                                   rendering_info,
+                                                   rsd_info);
+
+   *pPipeline = anv_pipeline_to_handle(&pipeline->base);
+
+   return pipeline->base.batch.status;
+}
+
+VkResult anv_CreateGraphicsPipelines(
+    VkDevice                                    _device,
+    VkPipelineCache                             pipelineCache,
+    uint32_t                                    count,
+    const VkGraphicsPipelineCreateInfo*         pCreateInfos,
+    const VkAllocationCallbacks*                pAllocator,
+    VkPipeline*                                 pPipelines)
+{
+   ANV_FROM_HANDLE(anv_device, device, _device);
+   ANV_FROM_HANDLE(vk_pipeline_cache, pipeline_cache, pipelineCache);
+
+   VkResult result = VK_SUCCESS;
+
+   unsigned i;
+   for (i = 0; i < count; i++) {
+      VkResult res = anv_graphics_pipeline_create(device,
+                                                  pipeline_cache,
+                                                  &pCreateInfos[i],
+                                                  pAllocator, &pPipelines[i]);
+
+      if (res == VK_SUCCESS)
+         continue;
+
+      /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED as it
+       * is not obvious what error should be report upon 2 different failures.
+       * */
+      result = res;
+      if (res != VK_PIPELINE_COMPILE_REQUIRED)
+         break;
+
+      pPipelines[i] = VK_NULL_HANDLE;
+
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+         break;
+   }
+
+   for (; i < count; i++)
+      pPipelines[i] = VK_NULL_HANDLE;
+
+   return result;
 }
 
 static VkResult
