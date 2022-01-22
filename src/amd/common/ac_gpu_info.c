@@ -1715,6 +1715,12 @@ unsigned ac_get_compute_resource_limits(struct radeon_info *info, unsigned waves
    if (info->chip_class >= GFX7) {
       unsigned num_cu_per_se = info->num_good_compute_units / info->num_se;
 
+      /* Gfx9 should set the limit to max instead of 0 to fix high priority compute. */
+      if (info->chip_class == GFX9 && !max_waves_per_sh) {
+         max_waves_per_sh = info->max_good_cu_per_sa * info->num_simd_per_compute_unit *
+                            info->max_wave64_per_simd;
+      }
+
       /* Force even distribution on all SIMDs in CU if the workgroup
        * size is 64. This has shown some good improvements if # of CUs
        * per SE is not a multiple of 4.
