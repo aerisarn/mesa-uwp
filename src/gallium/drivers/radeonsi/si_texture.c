@@ -1014,7 +1014,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       resource->gpu_address = plane0->buffer.gpu_address;
    } else if (!(surface->flags & RADEON_SURF_IMPORTED)) {
       if (base->flags & PIPE_RESOURCE_FLAG_SPARSE)
-         resource->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
+         resource->b.b.flags |= PIPE_RESOURCE_FLAG_UNMAPPABLE;
       if (base->bind & PIPE_BIND_PRIME_BLIT_DST)
          resource->b.b.flags |= SI_RESOURCE_FLAG_UNCACHED;
 

@@ -604,7 +604,7 @@ static struct si_resource* si_get_wait_mem_scratch_bo(struct si_context *ctx, bo
       if (!ctx->wait_mem_scratch_tmz)
          ctx->wait_mem_scratch_tmz =
             si_aligned_buffer_create(&sscreen->b,
-                                     SI_RESOURCE_FLAG_UNMAPPABLE |
+                                     PIPE_RESOURCE_FLAG_UNMAPPABLE |
                                      SI_RESOURCE_FLAG_DRIVER_INTERNAL |
                                      PIPE_RESOURCE_FLAG_ENCRYPTED,
                                      PIPE_USAGE_DEFAULT, 8,
