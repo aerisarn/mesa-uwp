@@ -409,7 +409,8 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
 
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
-      if (buf->flags & RADEON_FLAG_SPARSE || force_discard_range ||
+      if (buf->flags & (RADEON_FLAG_SPARSE | RADEON_FLAG_NO_CPU_ACCESS) ||
+          force_discard_range ||
           si_cs_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
           !sctx->ws->buffer_wait(sctx->ws, buf->buf, 0, RADEON_USAGE_READWRITE)) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
@@ -445,7 +446,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
    /* Use a staging buffer in cached GTT for reads. */
    else if (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) &&
              (buf->domains & RADEON_DOMAIN_VRAM || buf->flags & RADEON_FLAG_GTT_WC)) ||
-            (buf->flags & RADEON_FLAG_SPARSE)) {
+            (buf->flags & (RADEON_FLAG_SPARSE | RADEON_FLAG_NO_CPU_ACCESS))) {
       struct si_resource *staging;
 
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
@@ -704,6 +705,9 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
    res->gpu_address = sscreen->ws->buffer_get_virtual_address(res->buf) + offset;
    res->domains = domains;
    res->flags = flags;
+
+   if (res->flags & RADEON_FLAG_NO_CPU_ACCESS)
+      res->b.b.flags |= PIPE_RESOURCE_FLAG_UNMAPPABLE;
 
    util_range_add((struct pipe_resource *)templ, &res->valid_buffer_range, 0, templ->width0);
    util_range_add((struct pipe_resource *)templ, &res->b.valid_buffer_range, 0, templ->width0);
