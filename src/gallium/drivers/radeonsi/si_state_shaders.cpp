@@ -4000,7 +4000,6 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
 void si_init_tess_factor_ring(struct si_context *sctx)
 {
    assert(!sctx->tess_rings);
-   assert(((sctx->screen->tess_factor_ring_size / 4) & C_030938_SIZE) == 0);
 
    /* The address must be aligned to 2^19, because the shader only
     * receives the high 13 bits. Align it to 2MB to match the GPU page size.
@@ -4022,6 +4021,12 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    uint64_t factor_va =
       si_resource(sctx->tess_rings)->gpu_address + sctx->screen->tess_offchip_ring_size;
 
+   unsigned tf_ring_size_field = sctx->screen->tess_factor_ring_size / 4;
+   if (sctx->chip_class >= GFX11)
+      tf_ring_size_field /= sctx->screen->info.max_se;
+
+   assert((tf_ring_size_field & C_030938_SIZE) == 0);
+
    if (sctx->shadowed_regs) {
       /* These registers will be shadowed, so set them only once. */
       /* TODO: tmz + shadowed_regs support */
@@ -4036,7 +4041,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
       /* Set tessellation registers. */
       radeon_begin(cs);
       radeon_set_uconfig_reg(R_030938_VGT_TF_RING_SIZE,
-                             S_030938_SIZE(sctx->screen->tess_factor_ring_size / 4));
+                             S_030938_SIZE(tf_ring_size_field));
       radeon_set_uconfig_reg(R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
       if (sctx->chip_class >= GFX10) {
          radeon_set_uconfig_reg(R_030984_VGT_TF_MEMORY_BASE_HI,
@@ -4057,7 +4062,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    /* Append these registers to the init config state. */
    if (sctx->chip_class >= GFX7) {
       si_pm4_set_reg(sctx->cs_preamble_state, R_030938_VGT_TF_RING_SIZE,
-                     S_030938_SIZE(sctx->screen->tess_factor_ring_size / 4));
+                     S_030938_SIZE(tf_ring_size_field));
       si_pm4_set_reg(sctx->cs_preamble_state, R_030940_VGT_TF_MEMORY_BASE, factor_va >> 8);
       if (sctx->chip_class >= GFX10)
          si_pm4_set_reg(sctx->cs_preamble_state, R_030984_VGT_TF_MEMORY_BASE_HI,
@@ -4071,7 +4076,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
       struct si_pm4_state *pm4 = CALLOC_STRUCT(si_pm4_state);
 
       si_pm4_set_reg(pm4, R_008988_VGT_TF_RING_SIZE,
-                     S_008988_SIZE(sctx->screen->tess_factor_ring_size / 4));
+                     S_008988_SIZE(tf_ring_size_field));
       si_pm4_set_reg(pm4, R_0089B8_VGT_TF_MEMORY_BASE, factor_va >> 8);
       si_pm4_set_reg(pm4, R_0089B0_VGT_HS_OFFCHIP_PARAM,
                      sctx->screen->vgt_hs_offchip_param);
@@ -4082,7 +4087,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
          uint64_t factor_va_tmz =
             si_resource(sctx->tess_rings_tmz)->gpu_address + sctx->screen->tess_offchip_ring_size;
          si_pm4_set_reg(pm4, R_008988_VGT_TF_RING_SIZE,
-                     S_008988_SIZE(sctx->screen->tess_factor_ring_size / 4));
+                     S_008988_SIZE(tf_ring_size_field));
          si_pm4_set_reg(pm4, R_0089B8_VGT_TF_MEMORY_BASE, factor_va_tmz >> 8);
          si_pm4_set_reg(pm4, R_0089B0_VGT_HS_OFFCHIP_PARAM,
                         sctx->screen->vgt_hs_offchip_param);
