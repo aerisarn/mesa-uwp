@@ -2771,10 +2771,10 @@ genX(graphics_pipeline_emit)(struct anv_graphics_pipeline *pipeline,
 
 #if GFX_VERx10 >= 125
 
-static void
-emit_compute_state(struct anv_compute_pipeline *pipeline,
-                   const struct anv_device *device)
+void
+genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline)
 {
+   struct anv_device *device = pipeline->base.device;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
@@ -2791,10 +2791,10 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
 
 #else /* #if GFX_VERx10 >= 125 */
 
-static void
-emit_compute_state(struct anv_compute_pipeline *pipeline,
-                   const struct anv_device *device)
+void
+genX(compute_pipeline_emit)(struct anv_compute_pipeline *pipeline)
 {
+   struct anv_device *device = pipeline->base.device;
    const struct intel_device_info *devinfo = &device->info;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
 
@@ -2895,90 +2895,6 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
 }
 
 #endif /* #if GFX_VERx10 >= 125 */
-
-static VkResult
-compute_pipeline_create(
-    VkDevice                                    _device,
-    struct vk_pipeline_cache *                  cache,
-    const VkComputePipelineCreateInfo*          pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkPipeline*                                 pPipeline)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_compute_pipeline *pipeline;
-   VkResult result;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO);
-
-   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pipeline == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   result = anv_pipeline_init(&pipeline->base, device,
-                              ANV_PIPELINE_COMPUTE, pCreateInfo->flags,
-                              pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pipeline);
-      return result;
-   }
-
-   anv_batch_set_storage(&pipeline->base.batch, ANV_NULL_ADDRESS,
-                         pipeline->batch_data, sizeof(pipeline->batch_data));
-
-   result = anv_pipeline_compile_cs(pipeline, cache, pCreateInfo);
-   if (result != VK_SUCCESS) {
-      anv_pipeline_finish(&pipeline->base, device, pAllocator);
-      vk_free2(&device->vk.alloc, pAllocator, pipeline);
-      if (result == VK_PIPELINE_COMPILE_REQUIRED)
-         *pPipeline = VK_NULL_HANDLE;
-      return result;
-   }
-
-   emit_compute_state(pipeline, device);
-
-   *pPipeline = anv_pipeline_to_handle(&pipeline->base);
-
-   return pipeline->base.batch.status;
-}
-
-VkResult genX(CreateComputePipelines)(
-    VkDevice                                    _device,
-    VkPipelineCache                             pipelineCache,
-    uint32_t                                    count,
-    const VkComputePipelineCreateInfo*          pCreateInfos,
-    const VkAllocationCallbacks*                pAllocator,
-    VkPipeline*                                 pPipelines)
-{
-   VK_FROM_HANDLE(vk_pipeline_cache, pipeline_cache, pipelineCache);
-
-   VkResult result = VK_SUCCESS;
-
-   unsigned i;
-   for (i = 0; i < count; i++) {
-      VkResult res = compute_pipeline_create(_device, pipeline_cache,
-                                             &pCreateInfos[i],
-                                             pAllocator, &pPipelines[i]);
-
-      if (res == VK_SUCCESS)
-         continue;
-
-      /* Bail out on the first error != VK_PIPELINE_COMPILE_REQUIRED_EX as it
-       * is not obvious what error should be report upon 2 different failures.
-       * */
-      result = res;
-      if (res != VK_PIPELINE_COMPILE_REQUIRED)
-         break;
-
-      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
-         break;
-   }
-
-   for (; i < count; i++)
-      pPipelines[i] = VK_NULL_HANDLE;
-
-   return result;
-}
 
 #if GFX_VERx10 >= 125
 
