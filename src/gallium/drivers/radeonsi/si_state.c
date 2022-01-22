@@ -5563,7 +5563,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
                        0, &sscreen->info, (void*)si_pm4_set_reg);
 
       si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
-                     S_028B50_ACCUM_ISOLINE(40) | S_028B50_ACCUM_TRI(30) | S_028B50_ACCUM_QUAD(24) |
+                     S_028B50_ACCUM_ISOLINE(12) | S_028B50_ACCUM_TRI(30) | S_028B50_ACCUM_QUAD(24) |
                      S_028B50_DONUT_SPLIT_GFX9(24) | S_028B50_TRAP_SPLIT(6));
       si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,
                      S_028C48_MAX_ALLOC_COUNT(sscreen->info.pbb_max_alloc_count - 1) |
