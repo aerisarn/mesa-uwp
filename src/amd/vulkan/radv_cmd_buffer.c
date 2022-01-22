@@ -421,6 +421,8 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->cs)
       cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
+   if (cmd_buffer->ace_internal.cs)
+      cmd_buffer->device->ws->cs_destroy(cmd_buffer->ace_internal.cs);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       struct radv_descriptor_set_header *set = &cmd_buffer->descriptors[i].push_set.set;
@@ -490,6 +492,8 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    vk_command_buffer_reset(&cmd_buffer->vk);
 
    cmd_buffer->device->ws->cs_reset(cmd_buffer->cs);
+   if (cmd_buffer->ace_internal.cs)
+      cmd_buffer->device->ws->cs_reset(cmd_buffer->ace_internal.cs);
 
    list_for_each_entry_safe(struct radv_cmd_buffer_upload, up, &cmd_buffer->upload.list, list)
    {
@@ -684,6 +688,30 @@ radv_cmd_buffer_trace_emit(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_emit(cs, PKT3(PKT3_NOP, 0, 0));
    radeon_emit(cs, AC_ENCODE_TRACE_POINT(cmd_buffer->state.trace_id));
+}
+
+static struct radeon_cmdbuf *
+radv_ace_internal_create(struct radv_cmd_buffer *cmd_buffer)
+{
+   assert(!cmd_buffer->ace_internal.cs);
+   struct radv_device *device = cmd_buffer->device;
+   struct radeon_cmdbuf *ace_cs = device->ws->cs_create(device->ws, AMD_IP_COMPUTE);
+
+   if (!ace_cs) {
+      cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   return ace_cs;
+}
+
+static VkResult
+radv_ace_internal_finalize(struct radv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->ace_internal.cs);
+   struct radv_device *device = cmd_buffer->device;
+   struct radeon_cmdbuf *ace_cs = cmd_buffer->ace_internal.cs;
+
+   return device->ws->cs_finalize(ace_cs);
 }
 
 static void
@@ -5247,6 +5275,13 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
       if (cmd_buffer->gds_needed)
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH;
 
+      /* Finalize the internal compute command stream, if it exists. */
+      if (cmd_buffer->ace_internal.cs) {
+         VkResult result = radv_ace_internal_finalize(cmd_buffer);
+         if (result != VK_SUCCESS)
+            return vk_error(cmd_buffer, result);
+      }
+
       si_emit_cache_flush(cmd_buffer);
    }
 
@@ -5402,6 +5437,12 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
             pipeline->shaders[MESA_SHADER_MESH]->info.ms.needs_ms_scratch_ring;
 
       if (radv_pipeline_has_stage(graphics_pipeline, MESA_SHADER_TASK)) {
+         if (!cmd_buffer->ace_internal.cs) {
+            cmd_buffer->ace_internal.cs = radv_ace_internal_create(cmd_buffer);
+            if (!cmd_buffer->ace_internal.cs)
+               return;
+         }
+
          cmd_buffer->task_rings_needed = true;
       }
       break;

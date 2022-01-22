@@ -1638,6 +1638,14 @@ struct radv_cmd_buffer {
    uint64_t mec_inv_pred_va;  /* For inverted predication when using MEC. */
    bool mec_inv_pred_emitted; /* To ensure we don't have to repeat inverting the VA. */
 
+   struct {
+      /**
+       * Internal command stream that is used when some graphics work
+       * also requires a submission to the compute queue.
+       */
+      struct radeon_cmdbuf *cs;
+   } ace_internal;
+
    /**
     * Whether a query pool has been resetted and we have to flush caches.
     */
