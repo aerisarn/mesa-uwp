@@ -2013,7 +2013,7 @@ tc_invalidate_buffer(struct threaded_context *tc,
    /* Shared, pinned, and sparse buffers can't be reallocated. */
    if (tbuf->is_shared ||
        tbuf->is_user_ptr ||
-       tbuf->b.flags & PIPE_RESOURCE_FLAG_SPARSE)
+       tbuf->b.flags & (PIPE_RESOURCE_FLAG_SPARSE | PIPE_RESOURCE_FLAG_UNMAPPABLE))
       return false;
 
    /* Allocate a new one. */
@@ -2085,7 +2085,7 @@ tc_improve_map_buffer_flags(struct threaded_context *tc,
     * (fully invalidated). That may just be a radeonsi limitation, but
     * the threaded context must obey it with radeonsi.
     */
-   if (tres->b.flags & PIPE_RESOURCE_FLAG_SPARSE) {
+   if (tres->b.flags & (PIPE_RESOURCE_FLAG_SPARSE | PIPE_RESOURCE_FLAG_UNMAPPABLE)) {
       /* We can use DISCARD_RANGE instead of full discard. This is the only
        * fast path for sparse buffers that doesn't need thread synchronization.
        */

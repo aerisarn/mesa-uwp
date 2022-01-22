@@ -530,7 +530,8 @@ enum pipe_flush_flags
 #define PIPE_RESOURCE_FLAG_ENCRYPTED             (1 << 5)
 #define PIPE_RESOURCE_FLAG_DONT_OVER_ALLOCATE    (1 << 6)
 #define PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY     (1 << 7) /* for small visible VRAM */
-#define PIPE_RESOURCE_FLAG_DRV_PRIV    (1 << 8) /* driver/winsys private */
+#define PIPE_RESOURCE_FLAG_UNMAPPABLE            (1 << 8) /* implies staging transfers due to VK interop */
+#define PIPE_RESOURCE_FLAG_DRV_PRIV              (1 << 9) /* driver/winsys private */
 #define PIPE_RESOURCE_FLAG_FRONTEND_PRIV         (1 << 24) /* gallium frontend private */
 
 /**
