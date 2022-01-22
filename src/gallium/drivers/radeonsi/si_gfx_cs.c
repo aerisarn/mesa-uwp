@@ -115,6 +115,16 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (ctx->chip_class >= GFX7)
       si_cp_dma_wait_for_idle(ctx, &ctx->gfx_cs);
 
+   /* If we use s_sendmsg to set tess factors to all 0 or all 1 instead of writing to the tess
+    * factor buffer, we need this at the end of command buffers:
+    */
+   if (ctx->chip_class == GFX11 && ctx->tess_rings) {
+      radeon_begin(cs);
+      radeon_emit(PKT3(PKT3_EVENT_WRITE, 0, 0));
+      radeon_emit(EVENT_TYPE(V_028A90_SQ_NON_EVENT) | EVENT_INDEX(0));
+      radeon_end();
+   }
+
    /* Wait for draw calls to finish if needed. */
    if (wait_flags) {
       ctx->flags |= wait_flags;
