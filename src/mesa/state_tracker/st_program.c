@@ -741,7 +741,8 @@ lower_ucp(struct st_context *st,
          _mesa_add_state_reference(params, clipplane_state[i]);
       }
 
-      if (nir->info.stage == MESA_SHADER_VERTEX) {
+      if (nir->info.stage == MESA_SHADER_VERTEX ||
+          nir->info.stage == MESA_SHADER_TESS_EVAL) {
          NIR_PASS_V(nir, nir_lower_clip_vs, ucp_enables,
                     true, can_compact, clipplane_state);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {

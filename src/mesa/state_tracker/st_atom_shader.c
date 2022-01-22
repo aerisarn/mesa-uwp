@@ -296,7 +296,8 @@ st_update_common_program(struct st_context *st, struct gl_program *prog,
                           VARYING_SLOT_BFC1));
 
       if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx) &&
-          pipe_shader == PIPE_SHADER_GEOMETRY)
+          (pipe_shader == PIPE_SHADER_GEOMETRY ||
+             !st->ctx->GeometryProgram._Current))
          key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
 
       if (st->lower_point_size) {
