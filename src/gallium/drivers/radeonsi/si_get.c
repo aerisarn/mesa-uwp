@@ -234,8 +234,8 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
    case PIPE_CAP_MAX_SHADER_BUFFER_SIZE:
-      /* Align it down to 256 bytes. I've chosen the number randomly. */
-      return ROUND_DOWN_TO(MIN2(sscreen->info.max_alloc_size, INT_MAX), 256);
+      /* Allow max 512 MB to pass CTS with a 32-bit build. */
+      return MIN2(sscreen->info.max_alloc_size, 512 * 1024 * 1024);
    case PIPE_CAP_MAX_TEXTURE_MB:
       return sscreen->info.max_alloc_size / (1024 * 1024);
 
