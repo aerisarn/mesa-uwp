@@ -816,7 +816,8 @@ static bool get_display_flag(const struct ac_surf_config *config, const struct r
    if (surf->modifier != DRM_FORMAT_MOD_INVALID)
       return false;
 
-   if (!config->is_3d && !config->is_cube && !(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+   if (!config->is_1d && !config->is_3d && !config->is_cube &&
+       !(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
        surf->flags & RADEON_SURF_SCANOUT && config->info.samples <= 1 && surf->blk_w <= 2 &&
        surf->blk_h == 1) {
       /* subsampled */
