@@ -1228,7 +1228,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       offchip_granularity = V_03093C_X_8K_DWORDS;
    }
 
-   sscreen->tess_factor_ring_size = 32768 * sscreen->info.max_se;
+   sscreen->tess_factor_ring_size = 48 * 1024 * sscreen->info.max_se;
    sscreen->tess_offchip_ring_size = max_offchip_buffers * sscreen->tess_offchip_block_dw_size * 4;
 
    if (sscreen->info.chip_class >= GFX10_3) {
