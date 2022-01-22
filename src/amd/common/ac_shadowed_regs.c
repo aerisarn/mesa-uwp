@@ -363,8 +363,8 @@ static const struct ac_reg_range Nv10UserConfigShadowRange[] = {
       4,
    },
    {
-      R_030904_VGT_GSVS_RING_SIZE_UMD,
-      R_030908_VGT_PRIMITIVE_TYPE - R_030904_VGT_GSVS_RING_SIZE_UMD + 4,
+      R_030904_VGT_GSVS_RING_SIZE,
+      R_030908_VGT_PRIMITIVE_TYPE - R_030904_VGT_GSVS_RING_SIZE + 4,
    },
    {
       R_030964_GE_MAX_VTX_INDX,
@@ -376,11 +376,11 @@ static const struct ac_reg_range Nv10UserConfigShadowRange[] = {
    },
    {
       R_030934_VGT_NUM_INSTANCES,
-      R_030940_VGT_TF_MEMORY_BASE_UMD - R_030934_VGT_NUM_INSTANCES + 4,
+      R_030940_VGT_TF_MEMORY_BASE - R_030934_VGT_NUM_INSTANCES + 4,
    },
    {
       R_03097C_GE_STEREO_CNTL,
-      R_030984_VGT_TF_MEMORY_BASE_HI_UMD - R_03097C_GE_STEREO_CNTL + 4,
+      R_030984_VGT_TF_MEMORY_BASE_HI - R_03097C_GE_STEREO_CNTL + 4,
    },
    {
       R_03096C_GE_CNTL,
@@ -691,8 +691,8 @@ static const struct ac_reg_range Gfx103UserConfigShadowRange[] = {
       4,
    },
    {
-      R_030904_VGT_GSVS_RING_SIZE_UMD,
-      R_030908_VGT_PRIMITIVE_TYPE - R_030904_VGT_GSVS_RING_SIZE_UMD + 4,
+      R_030904_VGT_GSVS_RING_SIZE,
+      R_030908_VGT_PRIMITIVE_TYPE - R_030904_VGT_GSVS_RING_SIZE + 4,
    },
    {
       R_030964_GE_MAX_VTX_INDX,
@@ -704,11 +704,11 @@ static const struct ac_reg_range Gfx103UserConfigShadowRange[] = {
    },
    {
       R_030934_VGT_NUM_INSTANCES,
-      R_030940_VGT_TF_MEMORY_BASE_UMD - R_030934_VGT_NUM_INSTANCES + 4,
+      R_030940_VGT_TF_MEMORY_BASE - R_030934_VGT_NUM_INSTANCES + 4,
    },
    {
       R_03097C_GE_STEREO_CNTL,
-      R_030984_VGT_TF_MEMORY_BASE_HI_UMD - R_03097C_GE_STEREO_CNTL + 4,
+      R_030984_VGT_TF_MEMORY_BASE_HI - R_03097C_GE_STEREO_CNTL + 4,
    },
    {
       R_03096C_GE_CNTL,
