@@ -3508,12 +3508,6 @@ static inline enum dpp_ctrl dpp_quad_perm(unsigned lane0, unsigned lane1, unsign
    return _dpp_quad_perm | lane0 | (lane1 << 2) | (lane2 << 4) | (lane3 << 6);
 }
 
-static inline enum dpp_ctrl dpp_row_sl(unsigned amount)
-{
-   assert(amount > 0 && amount < 16);
-   return _dpp_row_sl | amount;
-}
-
 static inline enum dpp_ctrl dpp_row_sr(unsigned amount)
 {
    assert(amount > 0 && amount < 16);
