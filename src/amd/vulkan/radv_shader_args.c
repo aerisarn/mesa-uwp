@@ -50,7 +50,8 @@ set_loc_shader(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx, uint8_
 static void
 set_loc_shader_ptr(struct radv_shader_args *args, int idx, uint8_t *sgpr_idx)
 {
-   bool use_32bit_pointers = idx != AC_UD_SCRATCH_RING_OFFSETS;
+   bool use_32bit_pointers = idx != AC_UD_SCRATCH_RING_OFFSETS &&
+                             idx != AC_UD_CS_TASK_RING_OFFSETS;
 
    set_loc_shader(args, idx, sgpr_idx, use_32bit_pointers ? 1 : 2);
 }
@@ -157,18 +158,26 @@ allocate_user_sgprs(enum chip_class chip_class, const struct radv_shader_info *i
    /* 2 user sgprs will always be allocated for scratch/rings */
    user_sgpr_count += 2;
 
+   if (stage == MESA_SHADER_TASK)
+      user_sgpr_count += 2; /* task descriptors */
+
    /* prolog inputs */
    if (info->vs.has_prolog)
       user_sgpr_count += 2;
 
    switch (stage) {
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
       if (info->cs.uses_sbt)
          user_sgpr_count += 1;
       if (info->cs.uses_grid_size)
          user_sgpr_count += args->load_grid_size_from_user_sgpr ? 3 : 2;
       if (info->cs.uses_ray_launch_size)
          user_sgpr_count += 3;
+      if (info->vs.needs_draw_id)
+         user_sgpr_count += 1;
+      if (info->cs.uses_task_rings)
+         user_sgpr_count += 4; /* ring_entry, 2x ib_addr, ib_stride */
       break;
    case MESA_SHADER_FRAGMENT:
       break;
@@ -212,7 +221,8 @@ allocate_user_sgprs(enum chip_class chip_class, const struct radv_shader_info *i
    if (info->so.num_outputs)
       user_sgpr_count++;
 
-   uint32_t available_sgprs = chip_class >= GFX9 && stage != MESA_SHADER_COMPUTE ? 32 : 16;
+   uint32_t available_sgprs =
+      chip_class >= GFX9 && stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_TASK ? 32 : 16;
    uint32_t remaining_sgprs = available_sgprs - user_sgpr_count;
    uint32_t num_desc_set = util_bitcount(info->desc_set_used_mask);
 
@@ -527,6 +537,9 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
    if (args->explicit_scratch_args) {
       ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->ring_offsets);
    }
+   if (stage == MESA_SHADER_TASK) {
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_DESC_PTR, &args->task_ring_offsets);
+   }
 
    /* To ensure prologs match the main VS, VS specific input SGPRs have to be placed before other
     * sgprs.
@@ -534,6 +547,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
 
    switch (stage) {
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
       declare_global_input_sgprs(info, &user_sgpr_info, args);
 
       if (info->cs.uses_sbt) {
@@ -549,6 +563,16 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
 
       if (info->cs.uses_ray_launch_size) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.ray_launch_size);
+      }
+
+      if (info->vs.needs_draw_id) {
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.draw_id);
+      }
+
+      if (info->cs.uses_task_rings) {
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.task_ring_entry);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_INT, &args->task_ib_addr);
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->task_ib_stride);
       }
 
       for (int i = 0; i < 3; i++) {
@@ -750,6 +774,9 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
    uint8_t user_sgpr_idx = 0;
 
    set_loc_shader_ptr(args, AC_UD_SCRATCH_RING_OFFSETS, &user_sgpr_idx);
+   if (stage == MESA_SHADER_TASK) {
+      set_loc_shader_ptr(args, AC_UD_CS_TASK_RING_OFFSETS, &user_sgpr_idx);
+   }
 
    /* For merged shaders the user SGPRs start at 8, with 8 system SGPRs in front (including
     * the rw_buffers at s0/s1. With user SGPR0 = s8, lets restart the count from 0 */
@@ -765,6 +792,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
 
    switch (stage) {
    case MESA_SHADER_COMPUTE:
+   case MESA_SHADER_TASK:
       if (args->ac.sbt_descriptors.used) {
          set_loc_shader_ptr(args, AC_UD_CS_SBT_DESCRIPTORS, &user_sgpr_idx);
       }
@@ -774,6 +802,16 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
       }
       if (args->ac.ray_launch_size.used) {
          set_loc_shader(args, AC_UD_CS_RAY_LAUNCH_SIZE, &user_sgpr_idx, 3);
+      }
+      if (args->ac.draw_id.used) {
+         set_loc_shader(args, AC_UD_CS_TASK_DRAW_ID, &user_sgpr_idx, 1);
+      }
+      if (args->ac.task_ring_entry.used) {
+         set_loc_shader(args, AC_UD_TASK_RING_ENTRY, &user_sgpr_idx, 1);
+      }
+      if (args->task_ib_addr.used) {
+         assert(args->task_ib_stride.used);
+         set_loc_shader(args, AC_UD_CS_TASK_IB, &user_sgpr_idx, 3);
       }
       break;
    case MESA_SHADER_VERTEX:

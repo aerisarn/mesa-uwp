@@ -3707,6 +3707,10 @@ radv_fill_shader_rings(struct radv_queue *queue, uint32_t *map, bool add_sample_
 
    desc += 8;
 
+   /* Reserved for task shader rings. */
+
+   desc += 8;
+
    if (add_sample_positions) {
       /* add sample positions after all rings */
       memcpy(desc, queue->device->sample_locations_1x, 8);
@@ -4004,7 +4008,7 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
        add_sample_positions) {
       uint32_t size = 0;
       if (gsvs_ring_bo || esgs_ring_bo || tess_rings_bo || add_sample_positions) {
-         size = 112; /* 2 dword + 2 padding + 4 dword * 6 */
+         size = 144; /* 2 dword + 2 padding + 4 dword * 8 */
          if (add_sample_positions)
             size += 128; /* 64+32+16+8 = 120 bytes */
       } else if (scratch_bo) {

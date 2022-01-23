@@ -74,7 +74,9 @@
 #define RING_GSVS_GS             4
 #define RING_HS_TESS_FACTOR      5
 #define RING_HS_TESS_OFFCHIP     6
-#define RING_PS_SAMPLE_POSITIONS 7
+#define RING_TS_DRAW             7
+#define RING_TS_PAYLOAD          8
+#define RING_PS_SAMPLE_POSITIONS 9
 
 /* max number of descriptor sets */
 #define MAX_SETS 32
