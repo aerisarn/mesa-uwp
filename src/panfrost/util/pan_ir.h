@@ -256,7 +256,6 @@ struct pan_shader_info {
                         bool reads_frag_coord;
                         bool reads_point_coord;
                         bool reads_face;
-                        bool helper_invocations;
                         bool can_discard;
                         bool writes_depth;
                         bool writes_stencil;
@@ -295,8 +294,13 @@ struct pan_shader_info {
                 } vs;
         };
 
-        bool separable;
+        /* Does the shader contains a barrier? or (for fragment shaders) does it
+         * require helper invocations, which demand the same ordering guarantees
+         * of the hardware? These notions are unified in the hardware, so we
+         * unify them here as well.
+         */
         bool contains_barrier;
+        bool separable;
         bool writes_global;
         uint64_t outputs_written;
 

@@ -255,8 +255,6 @@ pan_shader_prepare_rsd(const struct pan_shader_info *shader_info,
         rsd->properties.uniform_buffer_count = shader_info->ubo_count;
 
         if (shader_info->stage == MESA_SHADER_FRAGMENT) {
-                rsd->properties.shader_contains_barrier |=
-                        shader_info->fs.helper_invocations;
                 rsd->properties.stencil_from_shader =
                         shader_info->fs.writes_stencil;
                 rsd->properties.depth_source =
