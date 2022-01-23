@@ -589,6 +589,139 @@ panfrost_get_surface_pointer(const struct pan_image_layout *layout,
         return base + offset;
 }
 
+#if PAN_ARCH >= 9
+
+#define CLUMP_FMT(pipe, mali) [PIPE_FORMAT_ ## pipe] = MALI_CLUMP_FORMAT_ ## mali
+static enum mali_clump_format special_clump_formats[PIPE_FORMAT_COUNT] = {
+        CLUMP_FMT(X32_S8X24_UINT, X32S8X24),
+        CLUMP_FMT(X24S8_UINT, X24S8),
+        CLUMP_FMT(S8X24_UINT, S8X24),
+        CLUMP_FMT(S8_UINT, S8),
+        CLUMP_FMT(L4A4_UNORM, L4A4),
+        CLUMP_FMT(L8A8_UNORM, L8A8),
+        CLUMP_FMT(L8A8_UINT, L8A8),
+        CLUMP_FMT(L8A8_SINT, L8A8),
+        CLUMP_FMT(A8_UNORM, A8),
+        CLUMP_FMT(A8_UINT, A8),
+        CLUMP_FMT(A8_SINT, A8),
+        CLUMP_FMT(ETC1_RGB8, ETC2_RGB8),
+        CLUMP_FMT(ETC2_RGB8, ETC2_RGB8),
+        CLUMP_FMT(ETC2_SRGB8, ETC2_RGB8),
+        CLUMP_FMT(ETC2_RGB8A1, ETC2_RGB8A1),
+        CLUMP_FMT(ETC2_SRGB8A1, ETC2_RGB8A1),
+        CLUMP_FMT(ETC2_RGBA8, ETC2_RGBA8),
+        CLUMP_FMT(ETC2_SRGBA8, ETC2_RGBA8),
+        CLUMP_FMT(ETC2_R11_UNORM, ETC2_R11_UNORM),
+        CLUMP_FMT(ETC2_R11_SNORM, ETC2_R11_SNORM),
+        CLUMP_FMT(ETC2_RG11_UNORM, ETC2_RG11_UNORM),
+        CLUMP_FMT(ETC2_RG11_SNORM, ETC2_RG11_SNORM),
+        CLUMP_FMT(DXT1_RGB,                BC1_UNORM),
+        CLUMP_FMT(DXT1_RGBA,               BC1_UNORM),
+        CLUMP_FMT(DXT1_SRGB,               BC1_UNORM),
+        CLUMP_FMT(DXT1_SRGBA,              BC1_UNORM),
+        CLUMP_FMT(DXT3_RGBA,               BC2_UNORM),
+        CLUMP_FMT(DXT3_SRGBA,              BC2_UNORM),
+        CLUMP_FMT(DXT5_RGBA,               BC3_UNORM),
+        CLUMP_FMT(DXT5_SRGBA,              BC3_UNORM),
+        CLUMP_FMT(RGTC1_UNORM,             BC4_UNORM),
+        CLUMP_FMT(RGTC1_SNORM,             BC4_SNORM),
+        CLUMP_FMT(RGTC2_UNORM,             BC5_UNORM),
+        CLUMP_FMT(RGTC2_SNORM,             BC5_SNORM),
+        CLUMP_FMT(BPTC_RGB_FLOAT,          BC6H_SF16),
+        CLUMP_FMT(BPTC_RGB_UFLOAT,         BC6H_UF16),
+        CLUMP_FMT(BPTC_RGBA_UNORM,         BC7_UNORM),
+        CLUMP_FMT(BPTC_SRGBA,              BC7_UNORM),
+};
+#undef CLUMP_FMT
+
+static enum mali_clump_format
+panfrost_clump_format(enum pipe_format format)
+{
+        /* First, try a special clump format. Note that the 0 encoding is for a
+         * raw clump format, which will never be in the special table.
+         */
+        if (special_clump_formats[format])
+                return special_clump_formats[format];
+
+        /* Else, it's a raw format. Raw formats must not be compressed. */
+        assert(!util_format_is_compressed(format));
+
+        /* Select the appropriate raw format. */
+        switch (util_format_get_blocksize(format)) {
+        case  1: return MALI_CLUMP_FORMAT_RAW8;
+        case  2: return MALI_CLUMP_FORMAT_RAW16;
+        case  3: return MALI_CLUMP_FORMAT_RAW24;
+        case  4: return MALI_CLUMP_FORMAT_RAW32;
+        case  6: return MALI_CLUMP_FORMAT_RAW48;
+        case  8: return MALI_CLUMP_FORMAT_RAW64;
+        case 12: return MALI_CLUMP_FORMAT_RAW96;
+        case 16: return MALI_CLUMP_FORMAT_RAW128;
+        default: unreachable("Invalid bpp");
+        }
+}
+
+static void
+panfrost_emit_plane(const struct pan_image_layout *layout,
+                    enum pipe_format format,
+                    mali_ptr pointer,
+                    unsigned level,
+                    void *payload)
+{
+        const struct util_format_description *desc =
+                util_format_description(layout->format);
+
+        int32_t row_stride, surface_stride;
+
+        panfrost_get_surface_strides(layout, level, &row_stride, &surface_stride);
+        assert(row_stride >= 0 && surface_stride >= 0 && "negative stride");
+
+        pan_pack(payload, PLANE, cfg) {
+                cfg.pointer = pointer;
+                cfg.row_stride = row_stride;
+                cfg.size = layout->data_size - layout->slices[level].offset;
+
+                cfg.slice_stride = layout->nr_samples ?
+                                   layout->slices[level].surface_stride :
+                                   panfrost_get_layer_stride(layout, level);
+
+                if (desc->layout == UTIL_FORMAT_LAYOUT_ASTC) {
+                        if (desc->block.depth > 1) {
+                                cfg.plane_type = MALI_PLANE_TYPE_ASTC_3D;
+                                cfg.astc._3d.block_width = panfrost_astc_dim_3d(desc->block.width);
+                                cfg.astc._3d.block_height = panfrost_astc_dim_3d(desc->block.height);
+                                cfg.astc._3d.block_depth = panfrost_astc_dim_3d(desc->block.depth);
+                        } else {
+                                cfg.plane_type = MALI_PLANE_TYPE_ASTC_2D;
+                                cfg.astc._2d.block_width = panfrost_astc_dim_2d(desc->block.width);
+                                cfg.astc._2d.block_height = panfrost_astc_dim_2d(desc->block.height);
+                        }
+
+                        bool srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+
+                        /* Mesa does not advertise _HDR formats yet */
+                        cfg.astc.decode_hdr = false;
+
+                        /* sRGB formats decode to RGBA8 sRGB, which is narrow.
+                         *
+                         * Non-sRGB formats decode to RGBA16F which is wide.
+                         * With a future extension, we could decode non-sRGB
+                         * formats narrowly too, but this isn't wired up in Mesa
+                         * yet.
+                         */
+                        cfg.astc.decode_wide = !srgb;
+                } else {
+                        cfg.plane_type = MALI_PLANE_TYPE_GENERIC;
+                        cfg.clump_format = panfrost_clump_format(format);
+                }
+
+                if (layout->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
+                        cfg.clump_ordering = MALI_CLUMP_ORDERING_TILED_U_INTERLEAVED;
+                else
+                        cfg.clump_ordering = MALI_CLUMP_ORDERING_LINEAR;
+        }
+}
+#endif
+
 static void
 panfrost_emit_texture_payload(const struct pan_image_view *iview,
                               enum pipe_format format,
@@ -616,10 +749,13 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
         assert(PAN_ARCH >= 5 || desc->layout != UTIL_FORMAT_LAYOUT_ASTC);
 
         /* Inject the addresses in, interleaving array indices, mip levels,
-         * cube faces, and strides in that order */
+         * cube faces, and strides in that order. On Bifrost and older, each
+         * sample had its own surface descriptor; on Valhall, they are fused
+         * into a single plane descriptor.
+         */
 
         unsigned first_layer = iview->first_layer, last_layer = iview->last_layer;
-        unsigned nr_samples = layout->nr_samples;
+        unsigned nr_samples = PAN_ARCH <= 7 ? layout->nr_samples : 1;
         unsigned first_face = 0, last_face = 0;
 
         if (iview->dim == MALI_TEXTURE_DIMENSION_CUBE) {
@@ -640,11 +776,19 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
                                                      iter.face, iter.sample);
 
                 if (!manual_stride) {
+#if PAN_ARCH <= 5
                         pan_pack(payload, SURFACE, cfg) {
                                 cfg.pointer = pointer;
                         }
                         payload += pan_size(SURFACE);
+#else
+                        unreachable("must use explicit stride on Bifrost");
+#endif
                 } else {
+#if PAN_ARCH >= 9
+                        panfrost_emit_plane(layout, format, pointer, iter.level, payload);
+                        payload += pan_size(PLANE);
+#else
                         pan_pack(payload, SURFACE_WITH_STRIDE, cfg) {
                                 cfg.pointer = pointer;
                                 panfrost_get_surface_strides(layout, iter.level,
@@ -652,6 +796,7 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
                                                              &cfg.surface_stride);
                         }
                         payload += pan_size(SURFACE_WITH_STRIDE);
+#endif
                 }
         }
 }
@@ -687,6 +832,7 @@ panfrost_needs_explicit_stride(const struct pan_image_view *iview)
         return false;
 }
 
+#if PAN_ARCH <= 7
 /* Map modifiers to mali_texture_layout for packing in a texture descriptor */
 
 static enum mali_texture_layout
@@ -701,6 +847,7 @@ panfrost_modifier_to_layout(uint64_t modifier)
         else
                 unreachable("Invalid modifer");
 }
+#endif
 
 void
 GENX(panfrost_new_texture)(const struct panfrost_device *dev,
