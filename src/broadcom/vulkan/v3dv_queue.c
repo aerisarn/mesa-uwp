@@ -918,8 +918,10 @@ handle_cl_job(struct v3dv_queue *queue,
       enum v3d_queue wait_stage = needs_rcl_sync ? V3D_RENDER : V3D_BIN;
       set_multisync(&ms, sems_info, NULL, device, job, out_syncs, in_syncs,
                     V3DV_QUEUE_CL, wait_stage);
-      if (!ms.base.id)
+      if (!ms.base.id) {
+         mtx_unlock(&queue->device->mutex);
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
 
       submit.flags |= DRM_V3D_SUBMIT_EXTENSION;
       submit.extensions = (uintptr_t)(void *)&ms;
@@ -975,8 +977,10 @@ handle_tfu_job(struct v3dv_queue *queue,
       struct drm_v3d_multi_sync ms = { 0 };
       set_multisync(&ms, sems_info, NULL, device, job, out_syncs, in_syncs,
                     V3DV_QUEUE_TFU, V3D_TFU);
-      if (!ms.base.id)
+      if (!ms.base.id) {
+         mtx_unlock(&device->mutex);
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
 
       job->tfu.flags |= DRM_V3D_SUBMIT_EXTENSION;
       job->tfu.extensions = (uintptr_t)(void *)&ms;
@@ -1034,8 +1038,10 @@ handle_csd_job(struct v3dv_queue *queue,
       struct drm_v3d_multi_sync ms = { 0 };
       set_multisync(&ms, sems_info, NULL, device, job, out_syncs, in_syncs,
                     V3DV_QUEUE_CSD, V3D_CSD);
-      if (!ms.base.id)
+      if (!ms.base.id) {
+         mtx_unlock(&queue->device->mutex);
          return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
 
       submit->flags |= DRM_V3D_SUBMIT_EXTENSION;
       submit->extensions = (uintptr_t)(void *)&ms;
