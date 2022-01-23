@@ -125,29 +125,6 @@ fd4_sampler_state_create(struct pipe_context *pctx,
    return so;
 }
 
-static enum a4xx_tex_type
-tex_type(unsigned target)
-{
-   switch (target) {
-   default:
-      assert(0);
-   case PIPE_BUFFER:
-      return A4XX_TEX_BUFFER;
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_1D_ARRAY:
-      return A4XX_TEX_1D;
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_2D:
-   case PIPE_TEXTURE_2D_ARRAY:
-      return A4XX_TEX_2D;
-   case PIPE_TEXTURE_3D:
-      return A4XX_TEX_3D;
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      return A4XX_TEX_CUBE;
-   }
-}
-
 static bool
 use_astc_srgb_workaround(struct pipe_context *pctx, enum pipe_format format)
 {
@@ -178,7 +155,7 @@ fd4_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
    so->base.reference.count = 1;
    so->base.context = pctx;
 
-   so->texconst0 = A4XX_TEX_CONST_0_TYPE(tex_type(cso->target)) |
+   so->texconst0 = A4XX_TEX_CONST_0_TYPE(fd4_tex_type(cso->target)) |
                    A4XX_TEX_CONST_0_FMT(fd4_pipe2tex(format)) |
                    fd4_tex_swiz(format, cso->swizzle_r, cso->swizzle_g,
                                 cso->swizzle_b, cso->swizzle_a);

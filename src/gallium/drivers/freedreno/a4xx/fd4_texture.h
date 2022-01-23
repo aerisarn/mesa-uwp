@@ -65,4 +65,27 @@ unsigned fd4_get_const_idx(struct fd_context *ctx,
 
 void fd4_texture_init(struct pipe_context *pctx);
 
+static inline enum a4xx_tex_type
+fd4_tex_type(unsigned target)
+{
+   switch (target) {
+   default:
+      assert(0);
+   case PIPE_BUFFER:
+      return A4XX_TEX_BUFFER;
+   case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
+      return A4XX_TEX_1D;
+   case PIPE_TEXTURE_RECT:
+   case PIPE_TEXTURE_2D:
+   case PIPE_TEXTURE_2D_ARRAY:
+      return A4XX_TEX_2D;
+   case PIPE_TEXTURE_3D:
+      return A4XX_TEX_3D;
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+      return A4XX_TEX_CUBE;
+   }
+}
+
 #endif /* FD4_TEXTURE_H_ */
