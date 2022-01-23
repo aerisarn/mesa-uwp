@@ -2134,7 +2134,7 @@ has_color_buffer_write_enabled(const struct anv_graphics_pipeline *pipeline,
    if (!shader_bin)
       return false;
 
-   if (!pipeline->dynamic_state.color_writes)
+   if (!pipeline->non_dynamic_state.color_writes)
       return false;
 
    const struct anv_pipeline_bind_map *bind_map = &shader_bin->bind_map;

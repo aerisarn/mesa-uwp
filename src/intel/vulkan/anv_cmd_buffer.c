@@ -619,11 +619,11 @@ void anv_CmdBindPipeline(
                                 &gfx_pipeline->shaders[stage]->bind_map);
       }
 
-      /* Apply the dynamic state from the pipeline */
+      /* Apply the non dynamic state from the pipeline */
       cmd_buffer->state.gfx.dirty |=
          anv_dynamic_state_copy(&cmd_buffer->state.gfx.dynamic,
-                                &gfx_pipeline->dynamic_state,
-                                gfx_pipeline->dynamic_state_mask);
+                                &gfx_pipeline->non_dynamic_state,
+                                gfx_pipeline->non_dynamic_state_mask);
 
       state = &cmd_buffer->state.gfx.base;
       stages = gfx_pipeline->active_stages;

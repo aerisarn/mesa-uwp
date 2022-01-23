@@ -3335,9 +3335,9 @@ struct anv_graphics_pipeline {
     * This might cover more than the dynamic states specified at pipeline
     * creation.
     */
-   anv_cmd_dirty_mask_t                         dynamic_state_mask;
+   anv_cmd_dirty_mask_t                         non_dynamic_state_mask;
 
-   struct anv_dynamic_state                     dynamic_state;
+   struct anv_dynamic_state                     non_dynamic_state;
 
    uint32_t                                     topology;
 

@@ -2082,11 +2082,11 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
 {
    anv_cmd_dirty_mask_t states = ANV_CMD_DIRTY_DYNAMIC_ALL;
 
-   anv_dynamic_state_init(&pipeline->dynamic_state);
+   anv_dynamic_state_init(&pipeline->non_dynamic_state);
 
    states &= ~pipeline->dynamic_states;
 
-   struct anv_dynamic_state *dynamic = &pipeline->dynamic_state;
+   struct anv_dynamic_state *dynamic = &pipeline->non_dynamic_state;
 
    bool raster_discard =
       pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
@@ -2363,7 +2363,7 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
    }
 
 
-   pipeline->dynamic_state_mask = states;
+   pipeline->non_dynamic_state_mask = states;
 }
 
 /**
