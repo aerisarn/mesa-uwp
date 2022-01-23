@@ -38,6 +38,7 @@
 #include "radeon_compiler.h"
 #include "radeon_compiler_util.h"
 
+#include "util/log.h"
 
 static struct rc_instruction *emit1(
 	struct radeon_compiler * c, struct rc_instruction * after,
@@ -1099,6 +1100,10 @@ int radeonStubDeriv(struct radeon_compiler* c,
 
 	inst->U.I.Opcode = RC_OPCODE_MOV;
 	inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_0000;
+
+	mesa_logw_once("r300: WARNING: Shader is trying to use derivatives, "
+					"but the hardware doesn't support it. "
+					"Expect possible misrendering (it's not a bug, do not report it).");
 
 	return 1;
 }
