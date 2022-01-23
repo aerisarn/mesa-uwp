@@ -876,3 +876,32 @@ TEST_F(scoreboard_test, conditional8)
    EXPECT_EQ(mul->opcode, BRW_OPCODE_MUL);
    EXPECT_EQ(mul->sched, tgl_swsb_regdist(2));
 }
+
+TEST_F(scoreboard_test, gfx125_RaR_over_different_pipes)
+{
+   devinfo->verx10 = 125;
+
+   const fs_builder &bld = v->bld;
+
+   fs_reg a = v->vgrf(glsl_type::int_type);
+   fs_reg b = v->vgrf(glsl_type::int_type);
+   fs_reg f = v->vgrf(glsl_type::float_type);
+   fs_reg x = v->vgrf(glsl_type::int_type);
+
+   bld.ADD(f, x, x);
+   bld.ADD(a, x, x);
+   bld.ADD(x, b, b);
+
+   v->calculate_cfg();
+   bblock_t *block0 = v->cfg->blocks[0];
+   ASSERT_EQ(0, block0->start_ip);
+   ASSERT_EQ(2, block0->end_ip);
+
+   lower_scoreboard(v);
+   ASSERT_EQ(0, block0->start_ip);
+   ASSERT_EQ(2, block0->end_ip);
+
+   EXPECT_EQ(instruction(block0, 0)->sched, tgl_swsb_null());
+   EXPECT_EQ(instruction(block0, 1)->sched, tgl_swsb_null());
+   EXPECT_EQ(instruction(block0, 2)->sched, tgl_swsb_regdist(1));
+}
