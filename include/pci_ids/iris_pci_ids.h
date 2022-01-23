@@ -202,6 +202,7 @@ CHIPSET(0x4905, dg1, "DG1", "Intel(R) Graphics")
 CHIPSET(0x4906, dg1, "DG1", "Intel(R) Graphics")
 CHIPSET(0x4907, sg1, "SG1", "Intel(R) Graphics")
 CHIPSET(0x4908, dg1, "DG1", "Intel(R) Graphics")
+CHIPSET(0x4909, dg1, "DG1", "Intel(R) Graphics")
 
 /* Waiting on i915 upstream support */
 #if 0
