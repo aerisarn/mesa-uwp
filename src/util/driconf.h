@@ -360,6 +360,10 @@
    DRI_CONF_OPT_B(adaptive_sync,def, \
                   "Adapt the monitor sync to the application performance (when possible)")
 
+#define DRI_CONF_BLOCK_ON_DEPLETED_BUFFERS(def) \
+   DRI_CONF_OPT_B(block_on_depleted_buffers, def, \
+                  "Block clients using buffer backpressure until new buffer is available to reduce latency")
+
 #define DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(def) \
    DRI_CONF_OPT_B(vk_wsi_force_bgra8_unorm_first, def, \
                   "Force vkGetPhysicalDeviceSurfaceFormatsKHR to return VK_FORMAT_B8G8R8A8_UNORM as the first format")
