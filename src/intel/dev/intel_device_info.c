@@ -1010,6 +1010,12 @@ static const struct intel_device_info intel_device_info_adl_gt1 = {
    .platform = INTEL_PLATFORM_ADL,
 };
 
+static const struct intel_device_info intel_device_info_adl_n = {
+   GFX12_GT_FEATURES(1),
+   .platform = INTEL_PLATFORM_ADL,
+   .display_ver = 13,
+};
+
 static const struct intel_device_info intel_device_info_adl_gt2 = {
    GFX12_GT_FEATURES(2),
    .platform = INTEL_PLATFORM_ADL,
