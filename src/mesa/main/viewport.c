@@ -116,7 +116,7 @@ viewport(struct gl_context *ctx, GLint x, GLint y, GLsizei width,
    for (unsigned i = 0; i < ctx->Const.MaxViewports; i++)
       set_viewport_no_notify(ctx, i, input.X, input.Y, input.Width, input.Height);
 
-   if (st_context(ctx)->invalidate_on_gl_viewport)
+   if (ctx->invalidate_on_gl_viewport)
       st_manager_invalidate_drawables(ctx);
 }
 
@@ -169,7 +169,7 @@ _mesa_set_viewport(struct gl_context *ctx, unsigned idx, GLfloat x, GLfloat y,
    clamp_viewport(ctx, &x, &y, &width, &height);
    set_viewport_no_notify(ctx, idx, x, y, width, height);
 
-   if (st_context(ctx)->invalidate_on_gl_viewport)
+   if (ctx->invalidate_on_gl_viewport)
       st_manager_invalidate_drawables(ctx);
 }
 
@@ -185,7 +185,7 @@ viewport_array(struct gl_context *ctx, GLuint first, GLsizei count,
                              inputs[i].Width, inputs[i].Height);
    }
 
-   if (st_context(ctx)->invalidate_on_gl_viewport)
+   if (ctx->invalidate_on_gl_viewport)
       st_manager_invalidate_drawables(ctx);
 }
 

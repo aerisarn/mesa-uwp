@@ -186,10 +186,6 @@ struct st_context
    boolean emulate_gl_clamp;
    boolean texture_buffer_sampler;
 
-   /* On old libGL's for linux we need to invalidate the drawables
-    * on glViewpport calls, this is set via a option.
-    */
-   boolean invalidate_on_gl_viewport;
    boolean draw_needs_minmax_index;
    boolean has_hw_atomics;
 

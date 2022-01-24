@@ -1118,7 +1118,7 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
 
    st->can_scissor_clear = !!st->screen->get_param(st->screen, PIPE_CAP_CLEAR_SCISSORED);
 
-   st->invalidate_on_gl_viewport =
+   st->ctx->invalidate_on_gl_viewport =
       smapi->get_param(smapi, ST_MANAGER_BROKEN_INVALIDATE);
 
    st->iface.destroy = st_context_destroy;
