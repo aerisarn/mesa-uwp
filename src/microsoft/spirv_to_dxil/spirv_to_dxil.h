@@ -132,6 +132,11 @@ struct dxil_spirv_runtime_conf {
       uint32_t base_shader_register;
    } runtime_data_cbv;
 
+   struct {
+      uint32_t register_space;
+      uint32_t base_shader_register;
+   } push_constant_cbv;
+
    // Set true if vertex and instance ids have already been converted to
    // zero-based. Otherwise, runtime_data will be required to lower them.
    bool zero_based_vertex_instance_id;
