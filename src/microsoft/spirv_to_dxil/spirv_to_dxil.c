@@ -369,6 +369,55 @@ dxil_spirv_nir_lower_yz_flip(nir_shader *shader,
                                        &data);
 }
 
+static bool
+adjust_resource_index_binding(struct nir_builder *builder, nir_instr *instr,
+                              void *cb_data)
+{
+   struct dxil_spirv_runtime_conf *conf =
+      (struct dxil_spirv_runtime_conf *)cb_data;
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   if (intrin->intrinsic != nir_intrinsic_vulkan_resource_index)
+      return false;
+
+   unsigned set = nir_intrinsic_desc_set(intrin);
+   unsigned binding = nir_intrinsic_binding(intrin);
+
+   if (set >= conf->descriptor_set_count)
+      return false;
+
+   binding = conf->descriptor_sets[set].bindings[binding].base_register;
+   nir_intrinsic_set_binding(intrin, binding);
+
+   return true;
+}
+
+static bool
+dxil_spirv_nir_adjust_var_bindings(nir_shader *shader,
+                                   const struct dxil_spirv_runtime_conf *conf)
+{
+   uint32_t modes = nir_var_image | nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo;
+
+   nir_foreach_variable_with_modes(var, shader, modes) {
+      if (var->data.mode == nir_var_uniform) {
+         const struct glsl_type *type = glsl_without_array(var->type);
+
+         if (!glsl_type_is_sampler(type) && !glsl_type_is_texture(type))
+            continue;
+      }
+
+      unsigned s = var->data.descriptor_set, b = var->data.binding;
+      var->data.binding = conf->descriptor_sets[s].bindings[b].base_register;
+   }
+
+   return nir_shader_instructions_pass(shader, adjust_resource_index_binding,
+                                       nir_metadata_all, (void *)conf);
+}
+
 bool
 spirv_to_dxil(const uint32_t *words, size_t word_count,
               struct dxil_spirv_specialization *specializations,
@@ -430,6 +479,9 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       NIR_PASS_V(nir, dxil_nir_lower_system_values_to_zero, system_values,
                  ARRAY_SIZE(system_values));
    }
+
+   if (conf->descriptor_set_count > 0)
+      NIR_PASS_V(nir, dxil_spirv_nir_adjust_var_bindings, conf);
 
    bool requires_runtime_data = false;
    NIR_PASS(requires_runtime_data, nir,
