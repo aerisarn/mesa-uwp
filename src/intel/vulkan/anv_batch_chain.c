@@ -1751,6 +1751,7 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
    chain_command_buffers(cmd_buffers, num_cmd_buffers);
 
    for (uint32_t i = 0; i < num_cmd_buffers; i++) {
+      anv_measure_submit(cmd_buffers[i]);
       result = setup_execbuf_for_cmd_buffer(execbuf, cmd_buffers[i]);
       if (result != VK_SUCCESS)
          return result;
