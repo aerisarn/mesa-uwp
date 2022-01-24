@@ -85,7 +85,6 @@ struct block_info {
    std::vector<WQMState> instr_needs;
    uint8_t block_needs;
    uint8_t ever_again_needs;
-   bool logical_end_wqm;
    /* more... */
 };
 
@@ -129,18 +128,12 @@ mark_block_wqm(wqm_ctx& ctx, unsigned block_idx)
    if (ctx.branch_wqm[block_idx])
       return;
 
-   ctx.branch_wqm[block_idx] = true;
-   ctx.worklist.insert(block_idx);
-
-   Block& block = ctx.program->blocks[block_idx];
-
-   /* TODO: this sets more branch conditions to WQM than it needs to
-    * it should be enough to stop at the "exec mask top level" */
-   if (block.kind & block_kind_top_level)
-      return;
-
-   for (unsigned pred_idx : block.logical_preds)
-      mark_block_wqm(ctx, pred_idx);
+   for (Block& block : ctx.program->blocks) {
+      if (block.index >= block_idx && block.kind & block_kind_top_level)
+         break;
+      ctx.branch_wqm[block.index] = true;
+      ctx.worklist.insert(block.index);
+   }
 }
 
 void
@@ -185,18 +178,11 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
       } else if (preserve_wqm & ctx.ever_again_needs_wqm) {
          /* Preserve WQM if WQM is needed later */
          needs = Preserve_WQM;
+      } else if (needs == Unspecified && info.block_needs & WQM) {
+         needs = pred_by_exec ? WQM : Unspecified;
       }
 
-      /* ensure the condition controlling the control flow for this phi is in WQM */
-      if (needs == WQM && instr->opcode == aco_opcode::p_phi) {
-         for (unsigned pred_idx : block->logical_preds) {
-            mark_block_wqm(ctx, pred_idx);
-            exec_ctx.info[pred_idx].logical_end_wqm = true;
-            ctx.worklist.insert(pred_idx);
-         }
-      }
-
-      if ((instr->opcode == aco_opcode::p_logical_end && info.logical_end_wqm) ||
+      if ((instr->opcode == aco_opcode::p_logical_end && ctx.branch_wqm[block->index]) ||
           instr->opcode == aco_opcode::p_wqm) {
          assert(needs != Exact);
          needs = WQM;
@@ -210,9 +196,8 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
 
    /* for "if (<cond>) <wqm code>" or "while (<cond>) <wqm code>",
     * <cond> should be computed in WQM */
-   if (info.block_needs & WQM && !(block->kind & block_kind_top_level)) {
-      for (unsigned pred_idx : block->logical_preds)
-         mark_block_wqm(ctx, pred_idx);
+   if (info.block_needs & WQM) {
+      mark_block_wqm(ctx, block->index);
    }
 }
 
@@ -421,8 +406,8 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
 
       if (ctx.handle_wqm) {
          ctx.info[0].exec.emplace_back(start_exec, mask_type_global | mask_type_exact);
-         /* if this block only needs WQM, initialize already */
-         if (ctx.info[0].block_needs == WQM)
+         /* if this block needs WQM, initialize already */
+         if (ctx.info[0].block_needs & WQM)
             transition_to_WQM(ctx, bld, 0);
       } else {
          uint8_t mask = mask_type_global;
