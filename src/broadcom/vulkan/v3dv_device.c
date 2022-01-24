@@ -133,6 +133,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_external_semaphore_fd           = true,
       .KHR_get_memory_requirements2        = true,
       .KHR_image_format_list               = true,
+      .KHR_imageless_framebuffer           = true,
       .KHR_relaxed_block_layout            = true,
       .KHR_maintenance1                    = true,
       .KHR_maintenance2                    = true,
@@ -1120,6 +1121,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
          features->customBorderColors = true;
          features->customBorderColorWithoutFormat = false;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
+         VkPhysicalDeviceImagelessFramebufferFeatures *features =
+            (VkPhysicalDeviceImagelessFramebufferFeatures *)ext;
+         features->imagelessFramebuffer = true;
          break;
       }
 
@@ -2503,13 +2511,25 @@ v3dv_CreateFramebuffer(VkDevice _device,
    framebuffer->layers = pCreateInfo->layers;
    framebuffer->has_edge_padding = true;
 
+   const VkFramebufferAttachmentsCreateInfo *imageless =
+      vk_find_struct_const(pCreateInfo->pNext,
+      FRAMEBUFFER_ATTACHMENTS_CREATE_INFO);
+
    framebuffer->attachment_count = pCreateInfo->attachmentCount;
    framebuffer->color_attachment_count = 0;
-   for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-      framebuffer->attachments[i] =
-         v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
-      if (framebuffer->attachments[i]->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)
-         framebuffer->color_attachment_count++;
+   for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
+      if (!imageless) {
+         framebuffer->attachments[i] =
+            v3dv_image_view_from_handle(pCreateInfo->pAttachments[i]);
+         if (framebuffer->attachments[i]->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)
+            framebuffer->color_attachment_count++;
+      } else {
+         assert(i < imageless->attachmentImageInfoCount);
+         if (imageless->pAttachmentImageInfos[i].usage &
+             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+            framebuffer->color_attachment_count++;
+         }
+      }
    }
 
    *pFramebuffer = v3dv_framebuffer_to_handle(framebuffer);

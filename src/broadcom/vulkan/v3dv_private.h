@@ -765,6 +765,11 @@ struct v3dv_framebuffer {
 
    uint32_t attachment_count;
    uint32_t color_attachment_count;
+
+   /* Notice that elements in 'attachments' will be NULL if the framebuffer
+    * was created imageless. The driver is expected to access attachment info
+    * from the command buffer state instead.
+    */
    struct v3dv_image_view *attachments[0];
 };
 
@@ -835,6 +840,11 @@ struct v3dv_cmd_buffer_attachment_state {
 
    /* The hardware clear value */
    union v3dv_clear_value clear_value;
+
+   /* The underlying image view (from the framebuffer or, if imageless
+    * framebuffer is used, from VkRenderPassAttachmentBeginInfo.
+    */
+   struct v3dv_image_view *image_view;
 };
 
 struct v3dv_viewport_state {

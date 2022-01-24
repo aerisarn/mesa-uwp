@@ -257,6 +257,7 @@ v3dX(pack_sampler_state)(struct v3dv_sampler *sampler,
 void
 v3dX(framebuffer_compute_internal_bpp_msaa)(
    const struct v3dv_framebuffer *framebuffer,
+   const struct v3dv_cmd_buffer_attachment_state *attachments,
    const struct v3dv_subpass *subpass,
    uint8_t *max_bpp,
    bool *msaa)
@@ -271,7 +272,7 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
          if (att_idx == VK_ATTACHMENT_UNUSED)
             continue;
 
-         const struct v3dv_image_view *att = framebuffer->attachments[att_idx];
+         const struct v3dv_image_view *att = attachments[att_idx].image_view;
          assert(att);
 
          if (att->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -283,7 +284,7 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
 
       if (!*msaa && subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED) {
          const struct v3dv_image_view *att =
-            framebuffer->attachments[subpass->ds_attachment.attachment];
+            attachments[subpass->ds_attachment.attachment].image_view;
          assert(att);
 
          if (att->vk.image->samples > VK_SAMPLE_COUNT_1_BIT)
@@ -295,7 +296,7 @@ v3dX(framebuffer_compute_internal_bpp_msaa)(
 
    assert(framebuffer->attachment_count <= 4);
    for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
-      const struct v3dv_image_view *att = framebuffer->attachments[i];
+      const struct v3dv_image_view *att = attachments[i].image_view;
       assert(att);
 
       if (att->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT)

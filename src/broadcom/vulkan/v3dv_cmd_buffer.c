@@ -941,8 +941,6 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
    if (!subpass->resolve_attachments)
       return;
 
-   struct v3dv_framebuffer *fb = cmd_buffer->state.framebuffer;
-
    /* At this point we have already ended the current subpass and now we are
     * about to emit vkCmdResolveImage calls to get the resolves we can't handle
     * handle in the subpass RCL.
@@ -977,8 +975,10 @@ cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
       if (dst_attachment_idx == VK_ATTACHMENT_UNUSED)
          continue;
 
-      struct v3dv_image_view *src_iview = fb->attachments[src_attachment_idx];
-      struct v3dv_image_view *dst_iview = fb->attachments[dst_attachment_idx];
+      struct v3dv_image_view *src_iview =
+         cmd_buffer->state.attachments[src_attachment_idx].image_view;
+      struct v3dv_image_view *dst_iview =
+         cmd_buffer->state.attachments[dst_attachment_idx].image_view;
 
       VkImageResolve2KHR region = {
          .sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR,
@@ -1242,12 +1242,39 @@ cmd_buffer_state_set_clear_values(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static void
+cmd_buffer_state_set_attachments(struct v3dv_cmd_buffer *cmd_buffer,
+                                 const VkRenderPassBeginInfo *pRenderPassBegin)
+{
+   V3DV_FROM_HANDLE(v3dv_render_pass, pass, pRenderPassBegin->renderPass);
+   V3DV_FROM_HANDLE(v3dv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
+
+   const VkRenderPassAttachmentBeginInfoKHR *attach_begin =
+      vk_find_struct_const(pRenderPassBegin, RENDER_PASS_ATTACHMENT_BEGIN_INFO_KHR);
+
+   struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
+
+   for (uint32_t i = 0; i < pass->attachment_count; i++) {
+      if (attach_begin && attach_begin->attachmentCount != 0) {
+         state->attachments[i].image_view =
+            v3dv_image_view_from_handle(attach_begin->pAttachments[i]);
+      } else if (framebuffer) {
+         state->attachments[i].image_view = framebuffer->attachments[i];
+      } else {
+         assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+         state->attachments[i].image_view = NULL;
+      }
+   }
+}
+
+static void
 cmd_buffer_init_render_pass_attachment_state(struct v3dv_cmd_buffer *cmd_buffer,
                                              const VkRenderPassBeginInfo *pRenderPassBegin)
 {
    cmd_buffer_state_set_clear_values(cmd_buffer,
                                      pRenderPassBegin->clearValueCount,
                                      pRenderPassBegin->pClearValues);
+
+   cmd_buffer_state_set_attachments(cmd_buffer, pRenderPassBegin);
 }
 
 static void
@@ -1476,7 +1503,7 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
       uint8_t internal_bpp;
       bool msaa;
       v3dv_X(job->device, framebuffer_compute_internal_bpp_msaa)
-         (framebuffer, subpass, &internal_bpp, &msaa);
+         (framebuffer, state->attachments, subpass, &internal_bpp, &msaa);
 
       /* From the Vulkan spec:
        *

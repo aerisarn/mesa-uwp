@@ -200,7 +200,6 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
                                   uint32_t layer)
 {
    const struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
-   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
    const struct v3dv_render_pass *pass = state->pass;
    const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
 
@@ -242,7 +241,8 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
                                          first_subpass,
                                          attachment->desc.loadOp);
       if (needs_load) {
-         struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+         struct v3dv_image_view *iview =
+            state->attachments[attachment_idx].image_view;
          cmd_buffer_render_pass_emit_load(cmd_buffer, cl, iview,
                                           layer, RENDER_TARGET_0 + i);
       }
@@ -274,7 +274,7 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
 
       if (needs_depth_load || needs_stencil_load) {
          struct v3dv_image_view *iview =
-            framebuffer->attachments[ds_attachment_idx];
+            state->attachments[ds_attachment_idx].image_view;
          /* From the Vulkan spec:
           *
           *   "When an image view of a depth/stencil image is used as a
@@ -305,7 +305,7 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
                                   bool is_multisample_resolve)
 {
    const struct v3dv_image_view *iview =
-      cmd_buffer->state.framebuffer->attachments[attachment_idx];
+      cmd_buffer->state.attachments[attachment_idx].image_view;
    const struct v3dv_image *image = (struct v3dv_image *) iview->vk.image;
    const struct v3d_resource_slice *slice =
       &image->slices[iview->vk.base_mip_level];
@@ -803,7 +803,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
 
       if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
          const struct v3dv_image_view *iview =
-            framebuffer->attachments[ds_attachment_idx];
+            state->attachments[ds_attachment_idx].image_view;
          config.internal_depth_type = iview->internal_type;
 
          set_rcl_early_z_config(job,
@@ -875,7 +875,7 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
          continue;
 
       struct v3dv_image_view *iview =
-         state->framebuffer->attachments[attachment_idx];
+         state->attachments[attachment_idx].image_view;
 
       const struct v3dv_image *image = (struct v3dv_image *) iview->vk.image;
       const struct v3d_resource_slice *slice =
@@ -2292,9 +2292,9 @@ v3dX(cmd_buffer_render_pass_setup_render_target)(struct v3dv_cmd_buffer *cmd_buf
    if (attachment_idx == VK_ATTACHMENT_UNUSED)
       return;
 
-   const struct v3dv_framebuffer *framebuffer = state->framebuffer;
-   assert(attachment_idx < framebuffer->attachment_count);
-   struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
+   assert(attachment_idx < state->framebuffer->attachment_count &&
+          attachment_idx < state->attachment_alloc_count);
+   struct v3dv_image_view *iview = state->attachments[attachment_idx].image_view;
    assert(iview->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT);
 
    *rt_bpp = iview->internal_bpp;
