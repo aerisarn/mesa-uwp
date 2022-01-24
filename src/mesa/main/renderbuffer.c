@@ -39,6 +39,27 @@
 #include "state_tracker/st_format.h"
 
 /**
+ * Called by FBO code to choose a PIPE_FORMAT_ for drawing surfaces.
+ */
+static enum pipe_format
+choose_renderbuffer_format(struct gl_context *ctx,
+                           GLenum internalFormat, unsigned sample_count,
+                           unsigned storage_sample_count)
+{
+   unsigned bindings;
+   if (_mesa_is_depth_or_stencil_format(internalFormat))
+      bindings = PIPE_BIND_DEPTH_STENCIL;
+   else
+      bindings = PIPE_BIND_RENDER_TARGET;
+   return st_choose_format(st_context(ctx), internalFormat, GL_NONE, GL_NONE,
+                           PIPE_TEXTURE_2D, sample_count,
+                           storage_sample_count, bindings,
+                           false, false);
+}
+
+
+
+/**
  * Delete a gl_framebuffer.
  * This is the default function for renderbuffer->Delete().
  * Drivers which subclass gl_renderbuffer should probably implement their
@@ -68,7 +89,6 @@ renderbuffer_alloc_sw_storage(struct gl_context *ctx,
                               GLenum internalFormat,
                               GLuint width, GLuint height)
 {
-   struct st_context *st = st_context(ctx);
    enum pipe_format format;
    size_t size;
 
@@ -77,14 +97,14 @@ renderbuffer_alloc_sw_storage(struct gl_context *ctx,
 
    if (internalFormat == GL_RGBA16_SNORM) {
       /* Special case for software accum buffers.  Otherwise, if the
-       * call to st_choose_renderbuffer_format() fails (because the
+       * call to choose_renderbuffer_format() fails (because the
        * driver doesn't support signed 16-bit/channel colors) we'd
        * just return without allocating the software accum buffer.
        */
       format = PIPE_FORMAT_R16G16B16A16_SNORM;
    }
    else {
-      format = st_choose_renderbuffer_format(st, internalFormat, 0, 0);
+      format = choose_renderbuffer_format(ctx, internalFormat, 0, 0);
 
       /* Not setting gl_renderbuffer::Format here will cause
        * FRAMEBUFFER_UNSUPPORTED and ValidateFramebuffer will not be called.
@@ -178,8 +198,8 @@ renderbuffer_alloc_storage(struct gl_context * ctx,
             for (unsigned samples = start;
                  samples <= ctx->Const.MaxDepthStencilFramebufferSamples;
                  samples++) {
-               format = st_choose_renderbuffer_format(st, internalFormat,
-                                                      samples, samples);
+               format = choose_renderbuffer_format(ctx, internalFormat,
+                                                   samples, samples);
 
                if (format != PIPE_FORMAT_NONE) {
                   rb->NumSamples = samples;
@@ -195,9 +215,9 @@ renderbuffer_alloc_storage(struct gl_context * ctx,
                for (unsigned samples = MAX2(start, storage_samples);
                     samples <= ctx->Const.MaxColorFramebufferSamples;
                     samples++) {
-                  format = st_choose_renderbuffer_format(st, internalFormat,
-                                                         samples,
-                                                         storage_samples);
+                  format = choose_renderbuffer_format(ctx, internalFormat,
+                                                      samples,
+                                                      storage_samples);
 
                   if (format != PIPE_FORMAT_NONE) {
                      rb->NumSamples = samples;
@@ -211,8 +231,8 @@ renderbuffer_alloc_storage(struct gl_context * ctx,
       } else {
          for (unsigned samples = start; samples <= ctx->Const.MaxSamples;
               samples++) {
-            format = st_choose_renderbuffer_format(st, internalFormat,
-                                                   samples, samples);
+            format = choose_renderbuffer_format(ctx, internalFormat,
+                                                samples, samples);
 
             if (format != PIPE_FORMAT_NONE) {
                rb->NumSamples = samples;
@@ -222,7 +242,7 @@ renderbuffer_alloc_storage(struct gl_context * ctx,
          }
       }
    } else {
-      format = st_choose_renderbuffer_format(st, internalFormat, 0, 0);
+      format = choose_renderbuffer_format(ctx, internalFormat, 0, 0);
    }
 
    /* Not setting gl_renderbuffer::Format here will cause
@@ -543,7 +563,6 @@ void
 _mesa_update_renderbuffer_surface(struct gl_context *ctx,
                                   struct gl_renderbuffer *rb)
 {
-   struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = ctx->pipe;
    struct pipe_resource *resource = rb->texture;
    const struct gl_texture_object *stTexObj = NULL;

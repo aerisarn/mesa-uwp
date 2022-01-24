@@ -1207,26 +1207,6 @@ success:
 
 
 /**
- * Called by FBO code to choose a PIPE_FORMAT_ for drawing surfaces.
- */
-enum pipe_format
-st_choose_renderbuffer_format(struct st_context *st,
-                              GLenum internalFormat, unsigned sample_count,
-                              unsigned storage_sample_count)
-{
-   unsigned bindings;
-   if (_mesa_is_depth_or_stencil_format(internalFormat))
-      bindings = PIPE_BIND_DEPTH_STENCIL;
-   else
-      bindings = PIPE_BIND_RENDER_TARGET;
-   return st_choose_format(st, internalFormat, GL_NONE, GL_NONE,
-                           PIPE_TEXTURE_2D, sample_count,
-                           storage_sample_count, bindings,
-                           false, false);
-}
-
-
-/**
  * Given an OpenGL user-requested format and type, and swapBytes state,
  * return the format which exactly matches those parameters, so that
  * a memcpy-based transfer can be done.
