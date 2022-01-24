@@ -69,6 +69,7 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radeon_decoder *dec,
                                            struct pipe_h264_picture_desc *pic)
 {
    rvcn_dec_message_avc_t result;
+   struct h264_private *private;
    unsigned i, j, k;
 
    memset(&result, 0, sizeof(result));
@@ -163,6 +164,25 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radeon_decoder *dec,
    if (dec->dpb_type != DPB_DYNAMIC_TIER_2) {
       result.decoded_pic_idx = pic->frame_num;
       goto end;
+   }
+
+   private = pic->private;
+   for (i = 0; i < ARRAY_SIZE(private->past_ref); i++) {
+      for (k = 0; private->past_ref[i] && (k < ARRAY_SIZE(pic->ref)); k++)
+         if (pic->ref[k] && (private->past_ref[i] == pic->ref[k]))
+            break;
+
+      for (j = 0; private->past_ref[i]
+                     && (k == ARRAY_SIZE(pic->ref))
+                     && (j < ARRAY_SIZE(dec->render_pic_list)); j++) {
+         if (dec->render_pic_list[j]
+                  && (dec->render_pic_list[j] == private->past_ref[i])) {
+            dec->render_pic_list[j] = pic->ref[i];
+            vl_video_buffer_set_associated_data(pic->ref[i], &dec->base,
+                   (void *)(uintptr_t)j, &radeon_dec_destroy_associated_data);
+            break;
+         }
+      }
    }
 
    for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++) {
@@ -1453,7 +1473,7 @@ static unsigned rvcn_dec_dynamic_dpb_t2_message(struct radeon_decoder *dec, rvcn
 
    list_for_each_entry_safe(struct rvcn_dec_dynamic_dpb_t2, d, &dec->dpb_ref_list, list) {
       for (i = 0; i < dec->ref_codec.ref_size; ++i) {
-         if ((dec->ref_codec.ref_list[i] != 0x7f) && (d->index == (dec->ref_codec.ref_list[i] & 0x7f))) {
+         if (((dec->ref_codec.ref_list[i] & 0x7f) != 0x7f) && (d->index == (dec->ref_codec.ref_list[i] & 0x7f))) {
             if (!dummy)
                dummy = d;
 
