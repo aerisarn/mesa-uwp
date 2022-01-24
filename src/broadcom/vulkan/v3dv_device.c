@@ -46,6 +46,7 @@
 #include "drm-uapi/v3d_drm.h"
 #include "format/u_format.h"
 #include "vk_util.h"
+#include "git_sha1.h"
 
 #include "util/build_id.h"
 #include "util/debug.h"
@@ -120,6 +121,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_create_renderpass2              = true,
       .KHR_dedicated_allocation            = true,
       .KHR_device_group                    = true,
+      .KHR_driver_properties               = true,
       .KHR_descriptor_update_template      = true,
       .KHR_external_fence                  = true,
       .KHR_external_fence_fd               = true,
@@ -1473,6 +1475,23 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
          props->maxCustomBorderColorSamplers = V3D_MAX_TEXTURE_SAMPLERS;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+         VkPhysicalDeviceDriverPropertiesKHR *props =
+            (VkPhysicalDeviceDriverPropertiesKHR *)ext;
+         props->driverID = VK_DRIVER_ID_MESA_V3DV;
+         memset(props->driverName, 0, VK_MAX_DRIVER_NAME_SIZE_KHR);
+         snprintf(props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR, "V3DV Mesa");
+         memset(props->driverInfo, 0, VK_MAX_DRIVER_INFO_SIZE_KHR);
+         snprintf(props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+                  "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
+         props->conformanceVersion = (VkConformanceVersionKHR) {
+            .major = 1,
+            .minor = 2,
+            .subminor = 7,
+            .patch = 1,
+         };
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
