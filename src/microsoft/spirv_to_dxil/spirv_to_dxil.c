@@ -226,6 +226,11 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_shader_in | nir_var_shader_out |
+              nir_var_system_value | nir_var_mem_shared,
+              NULL);
+
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
 
