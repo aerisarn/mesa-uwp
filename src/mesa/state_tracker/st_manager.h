@@ -47,7 +47,7 @@ void
 st_manager_validate_framebuffers(struct st_context *st);
 
 bool
-st_manager_add_color_renderbuffer(struct st_context *st, struct gl_framebuffer *fb,
+st_manager_add_color_renderbuffer(struct gl_context *ctx, struct gl_framebuffer *fb,
                                   gl_buffer_index idx);
 
 void

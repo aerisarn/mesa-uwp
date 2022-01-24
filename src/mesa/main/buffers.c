@@ -947,7 +947,7 @@ read_buffer(struct gl_context *ctx, struct gl_framebuffer *fb,
           fb->Attachment[fb->_ColorReadBufferIndex].Type == GL_NONE) {
          assert(_mesa_is_winsys_fbo(fb));
          /* add the buffer */
-         st_manager_add_color_renderbuffer(st_context(ctx), fb, fb->_ColorReadBufferIndex);
+         st_manager_add_color_renderbuffer(ctx, fb, fb->_ColorReadBufferIndex);
          _mesa_update_state(ctx);
          st_validate_state(st_context(ctx), ST_PIPELINE_UPDATE_FRAMEBUFFER);
       }

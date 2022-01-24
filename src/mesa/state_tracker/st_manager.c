@@ -1362,7 +1362,7 @@ st_manager_flush_swapbuffers(void)
  * not a user-created FBO.
  */
 bool
-st_manager_add_color_renderbuffer(struct st_context *st,
+st_manager_add_color_renderbuffer(struct gl_context *ctx,
                                   struct gl_framebuffer *fb,
                                   gl_buffer_index idx)
 {
@@ -1401,7 +1401,7 @@ st_manager_add_color_renderbuffer(struct st_context *st,
    if (stfb->iface)
       stfb->iface_stamp = p_atomic_read(&stfb->iface->stamp) - 1;
 
-   st_invalidate_buffers(st);
+   st_invalidate_buffers(st_context(ctx));
 
    return true;
 }

@@ -600,7 +600,7 @@ _mesa_draw_buffer_allocate(struct gl_context *ctx)
       gl_buffer_index idx = fb->_ColorDrawBufferIndexes[i];
 
       if (idx != BUFFER_NONE) {
-         st_manager_add_color_renderbuffer(st_context(ctx), fb, idx);
+         st_manager_add_color_renderbuffer(ctx, fb, idx);
       }
    }
 }
