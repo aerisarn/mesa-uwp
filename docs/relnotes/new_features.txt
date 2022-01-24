@@ -6,3 +6,4 @@ radeonsi, zink ARB_sparse_texture
 d3d12 GLES3.1 (shader storage buffers, images, compute, indirect draw, draw params, ARB_framebuffer_no_attachments, ARB_sample_shading, and GLSL400)
 radeonsi, zink ARB_sparse_texture2
 zink EXT_memory_object, EXT_memory_object_fd, EXT_semaphore, EXT_semaphore_fd
+anv VK_VALVE_mutable_descriptor_type
