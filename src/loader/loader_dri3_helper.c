@@ -1209,11 +1209,11 @@ int
 loader_dri3_query_buffer_age(struct loader_dri3_drawable *draw)
 {
    struct loader_dri3_buffer *back = dri3_find_back_alloc(draw);
-   int ret;
+   int ret = 0;
 
    mtx_lock(&draw->mtx);
-   ret = (!back || back->last_swap == 0) ? 0 :
-      draw->send_sbc - back->last_swap + 1;
+   if (back && back->last_swap != 0)
+      ret = draw->send_sbc - back->last_swap + 1;
    mtx_unlock(&draw->mtx);
 
    return ret;
