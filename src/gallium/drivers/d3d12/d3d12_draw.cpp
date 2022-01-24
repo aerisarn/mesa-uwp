@@ -808,10 +808,10 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
    new_cs_ssbos[1].buffer_size = output_buf_templ.width0;
    ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, 2, new_cs_ssbos, 2);
 
-   pipe_grid_info grid = {
-      .block = {1, 1, 1},
-      .grid = {indirect_in->draw_count, 1, 1}
-   };
+   pipe_grid_info grid = {};
+   grid.block[0] = grid.block[1] = grid.block[2] = 1;
+   grid.grid[0] = indirect_in->draw_count;
+   grid.grid[1] = grid.grid[2] = 1;
    ctx->base.launch_grid(&ctx->base, &grid);
 
    ctx->base.bind_compute_state(&ctx->base, save_cs);
