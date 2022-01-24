@@ -1233,6 +1233,7 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
       struct u_rect src_rect, dst_rect;
 
       surf->templat.interlaced = false;
+      surf->obsolete_buf = surf->buffer;
 
       ret = vlVaHandleSurfaceAllocate(drv, surf, &surf->templat, NULL, 0);
       if (ret != VA_STATUS_SUCCESS) {
@@ -1251,7 +1252,8 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
                                    VL_COMPOSITOR_WEAVE);
 
       interlaced->destroy(interlaced);
-   }
+   } else
+      surf->obsolete_buf = NULL;
 
    surfaces = surf->buffer->get_surfaces(surf->buffer);
 
