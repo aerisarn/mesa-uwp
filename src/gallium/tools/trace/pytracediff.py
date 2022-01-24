@@ -43,8 +43,10 @@ PKK_ANSI_ESC       = '\33['
 PKK_ANSI_NORMAL    = '0m'
 PKK_ANSI_RED       = '31m'
 PKK_ANSI_GREEN     = '32m'
+PKK_ANSI_YELLOW    = '33m'
 PKK_ANSI_PURPLE    = '35m'
 PKK_ANSI_BOLD      = '1m'
+PKK_ANSI_ITALIC    = '3m'
 
 
 ###
@@ -234,9 +236,16 @@ def pkk_parse_trace(filename, options, state):
     return parser.call_stack
 
 
-def pkk_get_line(data, nline, indent, width):
+def pkk_get_line(data, nline):
     if nline < len(data):
-        tmp = indent + data[nline]
+        return data[nline]
+    else:
+        return None
+
+
+def pkk_format_line(line, indent, width):
+    if line is not None:
+        tmp = indent + line
         if len(tmp) > width:
             return tmp[0:(width - 3)] + "..."
         else:
@@ -343,8 +352,7 @@ if __name__ == "__main__":
             ansi2 = ""
         elif tag == "replace":
             sep = ">"
-            ansi1 = PKK_ANSI_ESC + PKK_ANSI_BOLD
-            ansi2 = PKK_ANSI_ESC + PKK_ANSI_BOLD
+            ansi1 = ansi2 = PKK_ANSI_ESC + PKK_ANSI_BOLD
         else:
             pkk_fatal(f"Internal error, unsupported difflib.SequenceMatcher operation '{tag}'.")
 
@@ -394,11 +402,21 @@ if __name__ == "__main__":
                 else:
                     indent = ""
 
+                line1 = pkk_get_line(data1, nline)
+                line2 = pkk_get_line(data2, nline)
+
+                # Highlight differing lines if not plain
+                if not options.plain and line1 != line2:
+                    if tag == "insert" or tag == "delete":
+                        ansi1 = ansi1 + PKK_ANSI_ESC + PKK_ANSI_BOLD
+                    elif tag == "replace":
+                        ansi1 = ansi2 = ansi1 + PKK_ANSI_ESC + PKK_ANSI_YELLOW
+
                 # Output line
                 print(colfmt.format(
-                    ansi1, pkk_get_line(data1, nline, indent, colwidth), ansiend,
+                    ansi1, pkk_format_line(line1, indent, colwidth), ansiend,
                     ansisep, sep, ansiend,
-                    ansi2, pkk_get_line(data2, nline, indent, colwidth), ansiend).
+                    ansi2, pkk_format_line(line2, indent, colwidth), ansiend).
                     rstrip())
 
                 nline += 1
