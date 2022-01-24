@@ -1309,9 +1309,6 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
    }
 
 #if GFX_VER == 12
-   /* We do not yet support modifiers with aux on gen12. */
-   assert(image->vk.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
-
    if (initial_layout_undefined) {
       if (device->physical->has_implicit_ccs && devinfo->has_aux_map) {
          anv_image_init_aux_tt(cmd_buffer, image, aspect,
