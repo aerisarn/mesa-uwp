@@ -3664,7 +3664,7 @@ radv_consider_force_vrs(const struct radv_pipeline *pipeline, bool noop_fs, nir_
 {
    struct radv_device *device = pipeline->device;
 
-   if (device->force_vrs == RADV_FORCE_VRS_NONE)
+   if (device->force_vrs == RADV_FORCE_VRS_1x1)
       return false;
 
    /* Only VS and GS are supported for now. */

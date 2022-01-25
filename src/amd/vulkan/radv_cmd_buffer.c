@@ -6657,7 +6657,7 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       }
    }
 
-   if (cmd_buffer->device->force_vrs != RADV_FORCE_VRS_NONE) {
+   if (cmd_buffer->device->force_vrs != RADV_FORCE_VRS_1x1) {
       struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
       uint64_t dynamic_states =
          cmd_buffer->state.dirty & cmd_buffer->state.emitted_pipeline->graphics.needed_dynamic_state;
