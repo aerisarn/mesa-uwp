@@ -107,9 +107,10 @@ class PKKPrettyPrinter(PrettyPrinter):
     def __init__(self, options):
         self.options = options
 
-    def entry_start(self):
+    def entry_start(self, show_args):
         self.data = []
         self.line = ""
+        self.show_args = show_args
 
     def entry_get(self):
         if self.line != "":
@@ -189,7 +190,7 @@ class PKKPrettyPrinter(PrettyPrinter):
         else:
             self.function(node.method)
 
-        if not self.options.method_only:
+        if not self.options.method_only or self.show_args:
             self.text("(")
             if len(node.args):
                 self.newline()
@@ -333,26 +334,32 @@ if __name__ == "__main__":
 
     printer = PKKPrettyPrinter(options)
 
+    prevtag = ""
     for tag, start1, end1, start2, end2 in opcodes:
         if tag == "equal":
+            show_args = False
             if options.suppress_common:
-                print("[...]")
+                if tag != prevtag:
+                    print("[...]")
                 continue
 
             sep = "|"
             ansi1 = ansi2 = ansiend = ""
+            show_args = False
         elif tag == "insert":
             sep = "+"
             ansi1 = ""
             ansi2 = PKK_ANSI_ESC + PKK_ANSI_GREEN
-
+            show_args = True
         elif tag == "delete":
             sep = "-"
             ansi1 = PKK_ANSI_ESC + PKK_ANSI_RED
             ansi2 = ""
+            show_args = True
         elif tag == "replace":
             sep = ">"
             ansi1 = ansi2 = PKK_ANSI_ESC + PKK_ANSI_BOLD
+            show_args = True
         else:
             pkk_fatal(f"Internal error, unsupported difflib.SequenceMatcher operation '{tag}'.")
 
@@ -363,6 +370,7 @@ if __name__ == "__main__":
             ansisep = PKK_ANSI_ESC + PKK_ANSI_PURPLE
             ansiend = PKK_ANSI_ESC + PKK_ANSI_NORMAL
 
+
         # Print out the block
         ncall1 = start1
         ncall2 = start2
@@ -370,7 +378,7 @@ if __name__ == "__main__":
         while True:
             # Get line data
             if ncall1 < end1:
-                printer.entry_start()
+                printer.entry_start(show_args)
                 stack1[ncall1].visit(printer)
                 data1 = printer.entry_get()
                 ncall1 += 1
@@ -379,7 +387,7 @@ if __name__ == "__main__":
                 last1 = True
 
             if ncall2 < end2:
-                printer.entry_start()
+                printer.entry_start(show_args)
                 stack2[ncall2].visit(printer)
                 data2 = printer.entry_get()
                 ncall2 += 1
@@ -420,3 +428,8 @@ if __name__ == "__main__":
                     rstrip())
 
                 nline += 1
+
+        if tag == "equal" and options.suppress_common:
+            print("[...]")
+
+        prevtag = tag
