@@ -34,10 +34,7 @@
 
 #define MIDGARD_NO_HIER_TILING (1 << 0)
 
-/* Whether this GPU lacks native multiple render target support and accordingly
- * needs SFBDs instead, with complex lowering with ES3 */
-
-#define MIDGARD_SFBD (1 << 1)
+/* bit 1 unused */
 
 /* Whether fp16 is broken in the compiler. Hopefully this quirk will go away
  * over time */
@@ -80,12 +77,12 @@ panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
         switch (gpu_id) {
         case 0x600:
         case 0x620:
-                return MIDGARD_QUIRKS | MIDGARD_SFBD
+                return MIDGARD_QUIRKS
                         | MIDGARD_NO_TYPED_BLEND_LOADS
                         | NO_BLEND_PACKS | NO_TILE_ENABLE_MAP;
 
         case 0x720:
-                return MIDGARD_QUIRKS | MIDGARD_SFBD | MIDGARD_NO_HIER_TILING
+                return MIDGARD_QUIRKS | MIDGARD_NO_HIER_TILING
                         | NO_TILE_ENABLE_MAP;
 
         case 0x820:

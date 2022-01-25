@@ -98,8 +98,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         /* Our GL 3.x implementation is WIP */
         bool is_gl3 = dev->debug & (PAN_DBG_GL3 | PAN_DBG_DEQP);
 
-        /* Don't expose MRT related CAPs on GPUs that don't implement them */
-        bool has_mrt = !(dev->quirks & MIDGARD_SFBD);
+        /* Native MRT is introduced with v5 */
+        bool has_mrt = (dev->arch >= 5);
 
         /* Only kernel drivers >= 1.1 can allocate HEAP BOs */
         bool has_heap = dev->kernel_version->version_major > 1 ||
@@ -551,7 +551,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 return false;
 
         /* Z16 causes dEQP failures on t720 */
-        if (format == PIPE_FORMAT_Z16_UNORM && dev->quirks & MIDGARD_SFBD)
+        if (format == PIPE_FORMAT_Z16_UNORM && dev->arch <= 4)
                 return false;
 
         /* Check we support the format with the given bind */
