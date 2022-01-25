@@ -288,7 +288,7 @@ tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
 {
    int prime_fd;
    int ret = drmPrimeHandleToFD(dev->fd, bo->gem_handle,
-                                DRM_CLOEXEC, &prime_fd);
+                                DRM_CLOEXEC | DRM_RDWR, &prime_fd);
 
    return ret == 0 ? prime_fd : -1;
 }
