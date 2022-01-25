@@ -964,7 +964,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
                                          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
          } else {
-            enabled_buffers &= ~BITFIELD_BIT(i);
+            enabled_buffers &= ~BITFIELD_BIT(start_slot + i);
          }
       }
    } else {
