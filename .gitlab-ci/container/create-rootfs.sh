@@ -71,8 +71,7 @@ apt-get -y install --no-install-recommends \
     waffle-utils \
     wget \
     xinit \
-    xserver-xorg-core \
-    xz-utils
+    xserver-xorg-core
 
 # Needed for ci-fairy, this revision is able to upload files to
 # MinIO and doesn't depend on git
@@ -94,10 +93,6 @@ chmod +x  /init
 #######################################################################
 # Strip the image to a small minimal system without removing the debian
 # toolchain.
-
-# xz compress firmware so it doesn't waste RAM at runtime on ramdisk systems
-find /lib/firmware -type f -print0 | \
-    xargs -0r -P4 -n4 xz -T1 -C crc32
 
 # Copy timezone file and remove tzdata package
 rm -rf /etc/localtime
@@ -169,7 +164,6 @@ UNNEEDED_PACKAGES="apt libapt-pkg6.0 "\
 "init-system-helpers "\
 "bash "\
 "cpio "\
-"xz-utils "\
 "passwd "\
 "libsemanage1 libsemanage-common "\
 "libsepol1 "\
