@@ -4305,6 +4305,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                                    ctx->ac.i1false},
                                   6, AC_FUNC_ATTR_READNONE | AC_FUNC_ATTR_CONVERGENT);
       break;
+   case nir_intrinsic_load_force_vrs_rates_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->force_vrs_rates);
+      break;
    default:
       fprintf(stderr, "Unknown intrinsic: ");
       nir_print_instr(&instr->instr, stderr);
