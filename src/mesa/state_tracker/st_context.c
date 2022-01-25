@@ -475,7 +475,7 @@ st_have_perfquery(struct st_context *ctx)
 
 static struct st_context *
 st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
-                       const struct st_config_options *options, bool no_error)
+                       const struct st_config_options *options)
 {
    struct pipe_screen *screen = pipe->screen;
    uint i;
@@ -550,9 +550,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       st->util_velems.velems[2].vertex_buffer_index = 0;
       st->util_velems.velems[2].src_format = PIPE_FORMAT_R32G32_FLOAT;
    }
-
-   if (no_error)
-      ctx->Const.ContextFlags |= GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR;
 
    ctx->Const.PackedDriverUniformStorage =
       screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS);
@@ -870,7 +867,7 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    ctx->pipe = pipe;
    ctx->screen = pipe->screen;
 
-   if (!_mesa_initialize_context(ctx, api, visual, shareCtx, &funcs)) {
+   if (!_mesa_initialize_context(ctx, api, no_error, visual, shareCtx, &funcs)) {
       align_free(ctx);
       return NULL;
    }
@@ -889,7 +886,7 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    if (pipe->screen->get_param(pipe->screen, PIPE_CAP_INVALIDATE_BUFFER))
       ctx->has_invalidate_buffer = true;
 
-   st = st_create_context_priv(ctx, pipe, options, no_error);
+   st = st_create_context_priv(ctx, pipe, options);
    if (!st) {
       _mesa_free_context_data(ctx, true);
       align_free(ctx);
