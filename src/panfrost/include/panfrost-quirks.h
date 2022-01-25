@@ -39,10 +39,7 @@
 /* Whether this GPU lacks support for any typed loads, requiring packing */
 #define MIDGARD_NO_TYPED_BLEND_LOADS (1 << 7)
 
-/* Lack support for colour pack/unpack opcodes */
-#define NO_BLEND_PACKS (1 << 8)
-
-/* bits 9-10 unused */
+/* bits 8-10 unused */
 
 /* Does this GPU support anisotropic filtering? */
 #define HAS_ANISOTROPIC (1 << 11)
@@ -53,7 +50,7 @@ panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
         switch (gpu_id) {
         case 0x600:
         case 0x620:
-                return MIDGARD_NO_TYPED_BLEND_LOADS | NO_BLEND_PACKS;
+                return MIDGARD_NO_TYPED_BLEND_LOADS;
 
         case 0x720:
         case 0x820:
