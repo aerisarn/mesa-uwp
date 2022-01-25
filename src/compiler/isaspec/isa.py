@@ -265,7 +265,7 @@ class BitSet(object):
             self.encode = BitSetEncode(xml.find('encode'))
 
         self.gen_min = 0
-        self.gen_max = 1 << 32 - 1
+        self.gen_max = (1 << 32) - 1
 
         for gen in xml.findall('gen'):
             if 'min' in gen.attrib:
@@ -351,7 +351,7 @@ class BitSet(object):
         if self.extends is not None:
             parent = self.isa.bitsets[self.extends]
 
-            assert (self.gen_max == (1 << 32 - 1)) or (self.gen_max <= parent.get_gen_max()), "bitset {} should not have max gen higher than the parent's one".format(self.name)
+            assert (self.gen_max == (1 << 32) - 1) or (self.gen_max <= parent.get_gen_max()), "bitset {} should not have max gen higher than the parent's one".format(self.name)
 
             return min(self.gen_max, parent.get_gen_max())
         return self.gen_max
