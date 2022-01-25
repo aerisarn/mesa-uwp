@@ -61,6 +61,7 @@ enum zink_descriptor_type;
 #define ZINK_DEBUG_VALIDATION 0x8
 
 #define NUM_SLAB_ALLOCATORS 3
+#define MIN_SLAB_ORDER 8
 
 enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_AUTO,

@@ -1184,7 +1184,7 @@ zink_bo_init(struct zink_screen *screen)
                  total_mem / 8, screen,
                  (void*)bo_destroy, (void*)bo_can_reclaim);
 
-   unsigned min_slab_order = 8;  /* 256 bytes */
+   unsigned min_slab_order = MIN_SLAB_ORDER;  /* 256 bytes */
    unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
    unsigned num_slab_orders_per_allocator = (max_slab_order - min_slab_order) /
                                             NUM_SLAB_ALLOCATORS;

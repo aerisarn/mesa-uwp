@@ -554,7 +554,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
              screen->timestamp_valid_bits > 0;
 
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
-      return screen->info.props.limits.minMemoryMapAlignment;
+      return 1 << MIN_SLAB_ORDER;
 
    case PIPE_CAP_CUBE_MAP_ARRAY:
       return screen->info.feats.features.imageCubeArray;
