@@ -34,14 +34,7 @@
 
 #define MIDGARD_NO_HIER_TILING (1 << 0)
 
-/* bit 1 unused */
-
-/* Whether fp16 is broken in the compiler. Hopefully this quirk will go away
- * over time */
-
-#define MIDGARD_BROKEN_FP16 (1 << 2)
-
-/* bits 4 and 5 unused */
+/* bit 1-5 unused */
 
 /* Whether this GPU lacks support for any typed stores in blend shader,
  * requiring packing instead */
@@ -65,9 +58,7 @@
 
 /* Quirk collections common to particular uarchs */
 
-#define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16 \
-                | MIDGARD_NO_TYPED_BLEND_STORES \
-                | MIDGARD_MISSING_LOADS)
+#define MIDGARD_QUIRKS (MIDGARD_NO_TYPED_BLEND_STORES | MIDGARD_MISSING_LOADS)
 
 #define BIFROST_QUIRKS NO_BLEND_PACKS
 
