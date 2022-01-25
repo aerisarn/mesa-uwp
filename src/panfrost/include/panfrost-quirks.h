@@ -47,10 +47,6 @@
 /* Does this GPU support anisotropic filtering? */
 #define HAS_ANISOTROPIC (1 << 11)
 
-/* Quirk collections common to particular uarchs */
-
-#define BIFROST_QUIRKS NO_BLEND_PACKS
-
 static inline unsigned
 panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
 {
@@ -70,18 +66,17 @@ panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
                 return 0;
 
         case 0x6000: /* G71 */
-                return BIFROST_QUIRKS;
+                return 0;
 
         case 0x6221: /* G72 */
                 /* Anisotropic filtering is supported from r0p3 onwards */
-                return BIFROST_QUIRKS
-                        | (gpu_revision >= 0x30 ? HAS_ANISOTROPIC : 0);
+                return (gpu_revision >= 0x30 ? HAS_ANISOTROPIC : 0);
 
         case 0x7093: /* G31 */
         case 0x7211: /* G76 */
         case 0x7212: /* G52 */
         case 0x7402: /* G52r1 */
-                return BIFROST_QUIRKS | HAS_ANISOTROPIC;
+                return HAS_ANISOTROPIC;
 
         default:
                 unreachable("Unknown Panfrost GPU ID");
