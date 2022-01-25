@@ -244,7 +244,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->tiler_features = panfrost_query_tiler_features(fd);
         dev->has_afbc = panfrost_query_afbc(fd, dev->arch);
 
-        if (dev->quirks & HAS_SWIZZLES)
+        if (dev->arch <= 6)
                 dev->formats = panfrost_pipe_format_v6;
         else
                 dev->formats = panfrost_pipe_format_v7;

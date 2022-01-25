@@ -44,10 +44,7 @@
 
 #define MIDGARD_BROKEN_FP16 (1 << 2)
 
-/* What it says on the tin */
-#define HAS_SWIZZLES (1 << 4)
-
-/* bit 5 unused */
+/* bits 4 and 5 unused */
 
 /* Whether this GPU lacks support for any typed stores in blend shader,
  * requiring packing instead */
@@ -71,7 +68,7 @@
 
 /* Quirk collections common to particular uarchs */
 
-#define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16 | HAS_SWIZZLES \
+#define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16 \
                 | MIDGARD_NO_TYPED_BLEND_STORES \
                 | MIDGARD_MISSING_LOADS)
 
@@ -103,11 +100,11 @@ panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
                 return MIDGARD_QUIRKS;
 
         case 0x6000: /* G71 */
-                return BIFROST_QUIRKS | HAS_SWIZZLES;
+                return BIFROST_QUIRKS;
 
         case 0x6221: /* G72 */
                 /* Anisotropic filtering is supported from r0p3 onwards */
-                return BIFROST_QUIRKS | HAS_SWIZZLES
+                return BIFROST_QUIRKS
                         | (gpu_revision >= 0x30 ? HAS_ANISOTROPIC : 0);
 
         case 0x7093: /* G31 */
