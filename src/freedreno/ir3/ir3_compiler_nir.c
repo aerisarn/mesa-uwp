@@ -2044,7 +2044,9 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
           * addr reg value can be:
           */
          ctx->so->constlen =
-            MAX2(ctx->so->constlen, const_state->ubo_state.size / 16);
+            MAX2(ctx->so->constlen,
+                 ctx->so->shader->num_reserved_user_consts +
+                 const_state->ubo_state.size / 16);
       }
       break;
 

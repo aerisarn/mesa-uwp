@@ -825,7 +825,8 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
    const_state->num_ubos = nir->info.num_ubos;
 
    debug_assert((const_state->ubo_state.size % 16) == 0);
-   unsigned constoff = const_state->ubo_state.size / 16;
+   unsigned constoff = v->shader->num_reserved_user_consts +
+      const_state->ubo_state.size / 16;
    unsigned ptrsz = ir3_pointer_size(compiler);
 
    if (const_state->num_ubos > 0) {

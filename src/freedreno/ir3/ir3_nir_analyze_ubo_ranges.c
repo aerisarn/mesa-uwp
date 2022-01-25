@@ -408,7 +408,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
       assert(offset <= max_upload);
       offset += range_size;
    }
-   state->size = offset;
+   state->size = offset - v->shader->num_reserved_user_consts * 16;
 }
 
 bool
