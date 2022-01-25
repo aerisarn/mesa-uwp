@@ -1,3 +1,4 @@
+dEQP-VK.api.version_check.version,Fail
 dEQP-VK.api.image_clearing.core.clear_depth_stencil_attachment.multiple_layers.d16_unorm_s8_uint_1x33,Fail
 dEQP-VK.api.image_clearing.core.clear_depth_stencil_attachment.multiple_layers.d16_unorm_s8_uint_separate_layouts_stencil_1x33,Fail
 dEQP-VK.api.image_clearing.core.clear_depth_stencil_attachment.multiple_layers.d32_sfloat_s8_uint_1x33,Fail
