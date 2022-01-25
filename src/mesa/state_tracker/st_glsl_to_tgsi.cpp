@@ -31,7 +31,7 @@
  */
 
 #include "st_glsl_to_tgsi.h"
-#include "st_cb_program.h"
+#include "st_program.h"
 
 #include "compiler/glsl/glsl_parser_extras.h"
 #include "compiler/glsl/ir_optimization.h"

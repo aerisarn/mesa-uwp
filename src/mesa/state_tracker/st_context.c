@@ -47,7 +47,6 @@
 #include "st_cb_drawtex.h"
 #include "st_cb_eglimage.h"
 #include "st_cb_feedback.h"
-#include "st_cb_program.h"
 #include "st_cb_flush.h"
 #include "st_atom.h"
 #include "st_draw.h"
@@ -812,7 +811,7 @@ st_init_driver_functions(struct pipe_screen *screen,
 
    st_init_eglimage_functions(functions, has_egl_image_validate);
 
-   st_init_program_functions(functions);
+   functions->NewProgram = _mesa_new_program;
    st_init_flush_functions(screen, functions);
 
    /* GL_ARB_get_program_binary */

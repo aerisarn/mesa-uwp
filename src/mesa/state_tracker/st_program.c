@@ -577,7 +577,7 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
 /**
  * Translate a vertex program.
  */
-bool
+static bool
 st_translate_vertex_program(struct st_context *st,
                             struct gl_program *prog)
 {
@@ -994,7 +994,7 @@ st_get_common_variant(struct st_context *st,
 /**
  * Translate a Mesa fragment shader into a TGSI shader.
  */
-bool
+static bool
 st_translate_fragment_program(struct st_context *st,
                               struct gl_program *fp)
 {
@@ -1685,7 +1685,7 @@ st_get_fp_variant(struct st_context *st,
  * Translate a program. This is common code for geometry and tessellation
  * shaders.
  */
-bool
+static bool
 st_translate_common_program(struct st_context *st,
                             struct gl_program *prog)
 {
@@ -2051,4 +2051,43 @@ st_finalize_program(struct st_context *st, struct gl_program *prog)
 
    /* Always create the default variant of the program. */
    st_precompile_shader_variant(st, prog);
+}
+
+/**
+ * Called when the program's text/code is changed.  We have to free
+ * all shader variants and corresponding gallium shaders when this happens.
+ */
+GLboolean
+st_program_string_notify( struct gl_context *ctx,
+                          GLenum target,
+                          struct gl_program *prog )
+{
+   struct st_context *st = st_context(ctx);
+
+   /* GLSL-to-NIR should not end up here. */
+   assert(!prog->shader_program);
+
+   st_release_variants(st, prog);
+
+   if (target == GL_FRAGMENT_PROGRAM_ARB ||
+       target == GL_FRAGMENT_SHADER_ATI) {
+      if (target == GL_FRAGMENT_SHADER_ATI) {
+         assert(prog->ati_fs);
+         assert(prog->ati_fs->Program == prog);
+
+         st_init_atifs_prog(ctx, prog);
+      }
+
+      if (!st_translate_fragment_program(st, prog))
+         return false;
+   } else if (target == GL_VERTEX_PROGRAM_ARB) {
+      if (!st_translate_vertex_program(st, prog))
+         return false;
+   } else {
+      if (!st_translate_common_program(st, prog))
+         return false;
+   }
+
+   st_finalize_program(st, prog);
+   return GL_TRUE;
 }

@@ -47,7 +47,7 @@
 #include "program/prog_statevars.h"
 #include "util/bitscan.h"
 
-#include "state_tracker/st_cb_program.h"
+#include "state_tracker/st_program.h"
 
 /** Max of number of lights and texture coord units */
 #define NUM_UNITS MAX2(MAX_TEXTURE_COORD_UNITS, MAX_LIGHTS)

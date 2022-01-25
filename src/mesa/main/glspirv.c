@@ -34,8 +34,6 @@
 #include "util/u_atomic.h"
 #include "api_exec_decl.h"
 
-#include "state_tracker/st_cb_program.h"
-
 void
 _mesa_spirv_module_reference(struct gl_spirv_module **dest,
                              struct gl_spirv_module *src)

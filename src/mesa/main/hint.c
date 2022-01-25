@@ -30,7 +30,6 @@
 #include "hint.h"
 
 #include "mtypes.h"
-#include "state_tracker/st_cb_program.h"
 #include "api_exec_decl.h"
 
 #include "pipe/p_screen.h"

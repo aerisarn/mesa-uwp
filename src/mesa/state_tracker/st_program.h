@@ -301,18 +301,6 @@ st_prepare_vertex_program(struct gl_program *stvp, uint8_t *attrib_to_index);
 extern void
 st_translate_stream_output_info(struct gl_program *prog);
 
-extern bool
-st_translate_vertex_program(struct st_context *st,
-                            struct gl_program *stvp);
-
-extern bool
-st_translate_fragment_program(struct st_context *st,
-                              struct gl_program *stfp);
-
-extern bool
-st_translate_common_program(struct st_context *st,
-                            struct gl_program *stp);
-
 extern void
 st_serialize_nir(struct gl_program *stp);
 
@@ -321,6 +309,10 @@ st_finalize_program(struct st_context *st, struct gl_program *prog);
 
 struct pipe_shader_state *
 st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state);
+
+GLboolean st_program_string_notify(struct gl_context *ctx,
+                                   GLenum target,
+                                   struct gl_program *prog);
 
 #ifdef __cplusplus
 }
