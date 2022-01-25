@@ -346,6 +346,8 @@ struct lvp_descriptor_set_layout {
    /* Descriptor set layouts can be destroyed at almost any time */
    uint32_t ref_cnt;
 
+   uint32_t immutable_sampler_count;
+
    /* Number of bindings in this descriptor set */
    uint16_t binding_count;
 

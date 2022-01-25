@@ -70,6 +70,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    vk_object_base_init(&device->vk, &set_layout->base,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
    set_layout->ref_cnt = 1;
+   set_layout->immutable_sampler_count = immutable_sampler_count;
    /* We just allocate all the samplers at the end of the struct */
    struct lvp_sampler **samplers =
       (struct lvp_sampler **)&set_layout->binding[num_bindings];
