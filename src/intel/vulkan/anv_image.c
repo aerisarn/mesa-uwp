@@ -697,20 +697,6 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (device->info.ver >= 12 &&
-          (image->vk.array_layers > 1 || image->vk.mip_levels)) {
-         /* HSD 14010672564: On TGL, if a block of fragment shader outputs
-          * match the surface's clear color, the HW may convert them to
-          * fast-clears. Anv only does clear color tracking for the first
-          * slice unfortunately. Disable CCS until anv gains more clear color
-          * tracking abilities.
-          */
-         anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
-                       "HW may put fast-clear blocks on more slices than SW "
-                       "currently tracks. Not allocating a CCS buffer.");
-         return VK_SUCCESS;
-      }
-
       if (INTEL_DEBUG(DEBUG_NO_RBC))
          return VK_SUCCESS;
 
