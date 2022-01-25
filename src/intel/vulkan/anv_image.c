@@ -2312,6 +2312,17 @@ anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
    case ISL_AUX_STATE_COMPRESSED_CLEAR:
       if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
          return ANV_FAST_CLEAR_DEFAULT_VALUE;
+      } else if (devinfo->ver >= 12 &&
+                 image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
+         /* On TGL, if a block of fragment shader outputs match the surface's
+          * clear color, the HW may convert them to fast-clears (see HSD
+          * 14010672564). This can lead to rendering corruptions if not
+          * handled properly. We restrict the clear color to zero to avoid
+          * issues that can occur with: 
+          *     - Texture view rendering (including blorp_copy calls)
+          *     - Images with multiple levels or array layers
+          */
+         return ANV_FAST_CLEAR_DEFAULT_VALUE;
       } else if (layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
          /* When we're in a render pass we have the clear color data from the
           * VkRenderPassBeginInfo and we can use arbitrary clear colors.  They
