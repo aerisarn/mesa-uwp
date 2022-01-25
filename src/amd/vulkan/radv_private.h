@@ -1469,6 +1469,10 @@ struct radv_cmd_state {
 
    /* Whether the cmdbuffer owns the current render pass rather than the app. */
    bool own_render_pass;
+
+   /* Per-vertex VRS state. */
+   uint32_t last_vrs_rates;
+   int8_t last_vrs_rates_sgpr_idx;
 };
 
 struct radv_cmd_pool {
