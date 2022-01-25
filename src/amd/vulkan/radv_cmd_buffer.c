@@ -3629,6 +3629,40 @@ radv_flush_ngg_gs_state(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
+radv_flush_force_vrs_state(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   const unsigned stage = pipeline->graphics.last_vgt_api_stage;
+   struct radv_userdata_info *loc;
+   uint32_t vrs_rates = 0;
+   uint32_t base_reg;
+
+   if (!pipeline->graphics.force_vrs_per_vertex)
+      return;
+
+   loc = radv_lookup_user_sgpr(pipeline, stage, AC_UD_FORCE_VRS_RATES);
+   assert(loc->sgpr_idx != -1);
+
+   base_reg = pipeline->user_data_0[stage];
+
+   switch (cmd_buffer->device->force_vrs) {
+   case RADV_FORCE_VRS_2x2:
+      vrs_rates = (1u << 2) | (1u << 4);
+      break;
+   case RADV_FORCE_VRS_2x1:
+      vrs_rates = (1u << 2) | (0u << 4);
+      break;
+   case RADV_FORCE_VRS_1x2:
+      vrs_rates = (0u << 2) | (1u << 4);
+      break;
+   default:
+      break;
+   }
+
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, vrs_rates);
+}
+
+static void
 radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_is_dirty)
 {
    radv_flush_vertex_descriptors(cmd_buffer, pipeline_is_dirty);
@@ -3640,6 +3674,7 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer, bool
    radv_flush_constants(cmd_buffer, stages, cmd_buffer->state.pipeline,
                         VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_flush_ngg_gs_state(cmd_buffer);
+   radv_flush_force_vrs_state(cmd_buffer);
 }
 
 struct radv_draw_info {

@@ -1873,6 +1873,9 @@ struct radv_pipeline {
 
          /* Last pre-PS API stage */
          gl_shader_stage last_vgt_api_stage;
+
+         /* Whether the pipeline forces per-vertex VRS (GFX10.3+). */
+         bool force_vrs_per_vertex;
       } graphics;
       struct {
          struct radv_pipeline_group_handle *rt_group_handles;

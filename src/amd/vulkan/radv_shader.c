@@ -461,36 +461,9 @@ radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *device)
 {
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    bool progress = false;
-   unsigned vrs_rate = 0;
 
    nir_builder b;
    nir_builder_init(&b, impl);
-
-   /* Bits [2:3] = VRS rate X
-    * Bits [4:5] = VRS rate Y
-    *
-    * The range is [-2, 1]. Values:
-    *   1: 2x coarser shading rate in that direction.
-    *   0: normal shading rate
-    *  -1: 2x finer shading rate (sample shading, not directional)
-    *  -2: 4x finer shading rate (sample shading, not directional)
-    *
-    * Sample shading can't go above 8 samples, so both numbers can't be -2
-    * at the same time.
-    */
-   switch (device->force_vrs) {
-   case RADV_FORCE_VRS_2x2:
-      vrs_rate = (1u << 2) | (1u << 4);
-      break;
-   case RADV_FORCE_VRS_2x1:
-      vrs_rate = (1u << 2) | (0u << 4);
-      break;
-   case RADV_FORCE_VRS_1x2:
-      vrs_rate = (0u << 2) | (1u << 4);
-      break;
-   default:
-      unreachable("Invalid RADV_FORCE_VRS value");
-   }
 
    nir_foreach_block_reverse(block, impl) {
       nir_foreach_instr_reverse(instr, block) {
@@ -520,9 +493,11 @@ radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *device)
             var->data.location = VARYING_SLOT_PRIMITIVE_SHADING_RATE;
             var->data.interpolation = INTERP_MODE_NONE;
 
+            nir_ssa_def *vrs_rates = nir_load_force_vrs_rates_amd(&b);
+
             nir_ssa_def *pos_w = nir_channel(&b, intr->src[1].ssa, 3);
             nir_ssa_def *val = nir_bcsel(&b, nir_fneu(&b, pos_w, nir_imm_float(&b, 1.0f)),
-                                             nir_imm_int(&b, vrs_rate), nir_imm_int(&b, 0));
+                                             vrs_rates, nir_imm_int(&b, 0));
 
             nir_deref_instr *deref = nir_build_deref_var(&b, var);
             nir_store_deref(&b, deref, val, 0x1);
