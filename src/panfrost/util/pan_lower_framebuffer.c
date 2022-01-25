@@ -87,49 +87,23 @@ pan_unpacked_type_for_format(const struct util_format_description *desc)
         }
 }
 
-static enum pan_format_class
-pan_format_class_load(const struct util_format_description *desc, unsigned quirks)
-{
-        /* Pure integers can be loaded via EXT_framebuffer_fetch and should be
-         * handled as a raw load with a size conversion (it's cheap). Likewise,
-         * since float framebuffers are internally implemented as raw (i.e.
-         * integer) framebuffers with blend shaders to go back and forth, they
-         * should be s/w as well */
-
-        if (util_format_is_pure_integer(desc->format) || util_format_is_float(desc->format))
-                return PAN_FORMAT_SOFTWARE;
-
-        /* Check if we can do anything better than software architecturally */
-        if (quirks & MIDGARD_NO_TYPED_BLEND_LOADS) {
-                return (quirks & NO_BLEND_PACKS)
-                        ? PAN_FORMAT_SOFTWARE : PAN_FORMAT_PACK;
-        }
-
-        /* Some formats are missing as typed but have unpacks */
-        switch (desc->format) {
-        case PIPE_FORMAT_R11G11B10_FLOAT:
-                return PAN_FORMAT_PACK;
-        default:
-                return PAN_FORMAT_NATIVE;
-        }
-}
-
-static enum pan_format_class
-pan_format_class_store(const struct util_format_description *desc, unsigned quirks)
-{
-        return (quirks & NO_BLEND_PACKS) ? PAN_FORMAT_SOFTWARE :
-                                           PAN_FORMAT_PACK;
-}
-
-/* Convenience method */
-
-static enum pan_format_class
-pan_format_class(const struct util_format_description *desc, unsigned quirks, bool is_store)
+static bool
+pan_is_format_native(const struct util_format_description *desc, unsigned quirks, bool is_store)
 {
         if (is_store)
-                return pan_format_class_store(desc, quirks);
-        else
-                return pan_format_class_load(desc, quirks);
+                return false;
+
+        if (util_format_is_pure_integer(desc->format) || util_format_is_float(desc->format))
+                return false;
+
+        if (quirks & MIDGARD_NO_TYPED_BLEND_LOADS)
+                return false;
+
+        /* Some formats are missing as typed but have unpacks */
+        if (desc->format == PIPE_FORMAT_R11G11B10_FLOAT)
+                return false;
+
+        return true;
 }
 
 /* Software packs/unpacks, by format class. Packs take in the pixel value typed
@@ -619,11 +593,8 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                                 const struct util_format_description *desc =
                                    util_format_description(rt_fmts[rt]);
 
-                                enum pan_format_class fmt_class =
-                                        pan_format_class(desc, quirks, is_store);
-
                                 /* Don't lower */
-                                if (fmt_class == PAN_FORMAT_NATIVE)
+                                if (pan_is_format_native(desc, quirks, is_store))
                                         continue;
 
                                 /* EXT_shader_framebuffer_fetch requires
