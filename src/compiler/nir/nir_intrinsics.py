@@ -1275,6 +1275,9 @@ system_value("rt_arg_scratch_offset_amd", 1)
 # Whether to call the anyhit shader for an intersection in an intersection shader.
 system_value("intersection_opaque_amd", 1, bit_sizes=[1])
 
+# Load forced VRS rates.
+intrinsic("load_force_vrs_rates_amd", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE, CAN_REORDER])
+
 # V3D-specific instrinc for tile buffer color reads.
 #
 # The hardware requires that we read the samples and components of a pixel
