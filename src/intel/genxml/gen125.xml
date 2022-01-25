@@ -1729,8 +1729,8 @@
     <field name="Depth Bounds Test Max Value" start="96" end="127" type="float"/>
   </instruction>
 
-  <instruction name="3DSTATE_DEPTH_BUFFER" bias="2" length="8" engine="render">
-    <field name="DWord Length" start="0" end="7" type="uint" default="6"/>
+  <instruction name="3DSTATE_DEPTH_BUFFER" bias="2" length="10" engine="render">
+    <field name="DWord Length" start="0" end="7" type="uint" default="8"/>
     <field name="3D Command Sub Opcode" start="16" end="23" type="uint" default="5"/>
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
