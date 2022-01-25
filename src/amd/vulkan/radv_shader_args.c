@@ -248,6 +248,9 @@ allocate_user_sgprs(const struct radv_nir_compiler_options *options,
    if (needs_view_index)
       user_sgpr_count++;
 
+   if (info->force_vrs_per_vertex)
+      user_sgpr_count++;
+
    if (info->loads_push_constants)
       user_sgpr_count++;
 
@@ -624,6 +627,10 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
       }
 
+      if (info->force_vrs_per_vertex) {
+         ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
+      }
+
       if (info->vs.as_es) {
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.es2gs_offset);
       } else if (info->vs.as_ls) {
@@ -727,6 +734,10 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
          }
 
+         if (info->force_vrs_per_vertex) {
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
+         }
+
          if (info->is_ngg) {
             declare_ngg_sgprs(info, args, has_api_gs);
          }
@@ -749,6 +760,10 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
 
          if (needs_view_index) {
             ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.view_index);
+         }
+
+         if (info->force_vrs_per_vertex) {
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.force_vrs_rates);
          }
 
          ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ac.gs2vs_offset);
@@ -811,6 +826,8 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
    case MESA_SHADER_VERTEX:
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
+      if (args->ac.force_vrs_rates.used)
+         set_loc_shader(args, AC_UD_FORCE_VRS_RATES, &user_sgpr_idx, 1);
       break;
    case MESA_SHADER_TESS_CTRL:
       if (args->ac.view_index.used)
@@ -823,6 +840,9 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
    case MESA_SHADER_GEOMETRY:
       if (args->ac.view_index.used)
          set_loc_shader(args, AC_UD_VIEW_INDEX, &user_sgpr_idx, 1);
+
+      if (args->ac.force_vrs_rates.used)
+         set_loc_shader(args, AC_UD_FORCE_VRS_RATES, &user_sgpr_idx, 1);
 
       if (args->ngg_gs_state.used) {
          set_loc_shader(args, AC_UD_NGG_GS_STATE, &user_sgpr_idx, 1);

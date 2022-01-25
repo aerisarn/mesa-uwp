@@ -298,6 +298,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_load_sbt_amd:
       info->cs.uses_sbt = true;
       break;
+   case nir_intrinsic_load_force_vrs_rates_amd:
+      info->force_vrs_per_vertex = true;
+      break;
    default:
       break;
    }

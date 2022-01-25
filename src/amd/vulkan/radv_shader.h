@@ -144,7 +144,8 @@ enum radv_ud_index {
    AC_UD_NGG_GS_STATE = 6,
    AC_UD_NGG_CULLING_SETTINGS = 7,
    AC_UD_NGG_VIEWPORT = 8,
-   AC_UD_SHADER_START = 9,
+   AC_UD_FORCE_VRS_RATES = 9,
+   AC_UD_SHADER_START = 10,
    AC_UD_VS_VERTEX_BUFFERS = AC_UD_SHADER_START,
    AC_UD_VS_BASE_VERTEX_START_INSTANCE,
    AC_UD_VS_PROLOG_INPUTS,
@@ -249,6 +250,7 @@ struct radv_shader_info {
    uint32_t num_lds_blocks_when_not_culling;
    uint32_t num_tess_patches;
    unsigned workgroup_size;
+   bool force_vrs_per_vertex;
    struct {
       uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
       uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
