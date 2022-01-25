@@ -936,19 +936,6 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
    if (res_type == DXIL_RES_SRV_RAW)
       ctx->mod.raw_and_structured_buffers = true;
 
-   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
-      for (unsigned i = 0; i < count; ++i) {
-         const struct dxil_value *handle =
-            emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SRV,
-                                               id, binding + i, false);
-         if (!handle)
-            return false;
-
-         int idx = binding + i;
-         ctx->srv_handles[idx] = handle;
-      }
-   }
-
    return true;
 }
 
@@ -1014,20 +1001,6 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned cou
    if (ctx->mod.shader_kind != DXIL_PIXEL_SHADER &&
        ctx->mod.shader_kind != DXIL_COMPUTE_SHADER)
       ctx->mod.feats.uavs_at_every_stage = true;
-
-   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN && space <= 1) {
-      for (unsigned i = 0; i < count; ++i) {
-         const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_UAV,
-                                                                              id, binding + i, false);
-         if (!handle)
-            return false;
-
-         if (res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
-            ctx->ssbo_handles[binding + i] = handle;
-         else
-            ctx->image_handles[binding + i] = handle;
-      }
-   }
 
    return true;
 }
@@ -1198,18 +1171,6 @@ emit_cbv(struct ntd_context *ctx, unsigned binding, unsigned space,
    util_dynarray_append(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *, cbv_meta);
    add_resource(ctx, DXIL_RES_CBV, &layout);
 
-   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
-      for (unsigned i = 0; i < count; ++i) {
-         const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_CBV,
-                                                                              idx, binding + i, false);
-         if (!handle)
-            return false;
-
-         assert(!ctx->cbv_handles[binding + i]);
-         ctx->cbv_handles[binding + i] = handle;
-      }
-   }
-
    return true;
 }
 
@@ -1239,19 +1200,76 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
    util_dynarray_append(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *, sampler_meta);
    add_resource(ctx, DXIL_RES_SAMPLER, &layout);
 
-   if (ctx->opts->environment != DXIL_ENVIRONMENT_VULKAN) {
-      for (unsigned i = 0; i < count; ++i) {
-         const struct dxil_value *handle =
-            emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
-                                               id, binding + i, false);
-         if (!handle)
-            return false;
+   return true;
+}
 
-         unsigned idx = var->data.binding + i;
-         ctx->sampler_handles[idx] = handle;
+static bool
+emit_static_indexing_handles(struct ntd_context *ctx)
+{
+   /* Vulkan always uses dynamic handles, from instructions in the NIR */
+   if (ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN)
+      return true;
+
+   unsigned last_res_class = -1;
+   unsigned id = 0;
+   util_dynarray_foreach(&ctx->resources, struct dxil_resource, res) {
+      if (res->space > 1)
+         continue;
+
+      assert(res->space == 0 ||
+             (res->space == 1 &&
+                res->resource_type != DXIL_RES_UAV_RAW &&
+                ctx->opts->environment == DXIL_ENVIRONMENT_GL));
+      enum dxil_resource_class res_class;
+      const struct dxil_value **handle_array;
+      switch (res->resource_type) {
+      case DXIL_RES_SRV_TYPED:
+      case DXIL_RES_SRV_RAW:
+      case DXIL_RES_SRV_STRUCTURED:
+         res_class = DXIL_RESOURCE_CLASS_SRV;
+         handle_array = ctx->srv_handles;
+         break;
+      case DXIL_RES_CBV:
+         res_class = DXIL_RESOURCE_CLASS_CBV;
+         handle_array = ctx->cbv_handles;
+         break;
+      case DXIL_RES_SAMPLER:
+         res_class = DXIL_RESOURCE_CLASS_SAMPLER;
+         handle_array = ctx->sampler_handles;
+         break;
+      case DXIL_RES_UAV_RAW:
+         res_class = DXIL_RESOURCE_CLASS_UAV;
+         handle_array = ctx->ssbo_handles;
+         break;
+      case DXIL_RES_UAV_TYPED:
+      case DXIL_RES_UAV_STRUCTURED:
+      case DXIL_RES_UAV_STRUCTURED_WITH_COUNTER:
+         res_class = DXIL_RESOURCE_CLASS_UAV;
+         handle_array = ctx->image_handles;
+         break;
+      default:
+         unreachable("Unexpected resource type");
+      }
+
+      if (last_res_class != res_class)
+         id = 0;
+      else
+         id++;
+      last_res_class = res_class;
+
+      /* CL uses dynamic handles for the "globals" UAV array, but uses static
+       * handles for UBOs, textures, and samplers.
+       */
+      if (ctx->opts->environment == DXIL_ENVIRONMENT_CL &&
+          res->resource_type == DXIL_RES_UAV_RAW)
+         continue;
+
+      for (unsigned i = res->lower_bound; i <= res->upper_bound; ++i) {
+         handle_array[i] = emit_createhandle_call_const_index(ctx, res_class, id, i, false);
+         if (!handle_array[i])
+            return false;
       }
    }
-
    return true;
 }
 
@@ -4919,9 +4937,6 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
                                                 NULL);
    }
 
-   if (!emit_scratch(ctx))
-      return false;
-
    /* UAVs */
    if (ctx->shader->info.stage == MESA_SHADER_KERNEL) {
       if (!emit_globals(ctx, opts->num_kernel_globals))
@@ -5005,6 +5020,12 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       return false;
 
    prepare_phi_values(ctx);
+
+   if (!emit_scratch(ctx))
+      return false;
+
+   if (!emit_static_indexing_handles(ctx))
+      return false;
 
    if (!emit_cf_list(ctx, &entry->body))
       return false;
