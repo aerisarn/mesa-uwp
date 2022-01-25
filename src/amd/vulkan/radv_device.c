@@ -2925,6 +2925,45 @@ radv_create_sync_for_memory(struct vk_device *device,
    return vk_sync_create(device, &vk_sync_dummy_type, 0, 1, sync_out);
 }
 
+static enum radv_force_vrs
+radv_parse_vrs_rates(const char *str)
+{
+   if (!strcmp(str, "2x2")) {
+      return RADV_FORCE_VRS_2x2;
+   } else if (!strcmp(str, "2x1")) {
+      return RADV_FORCE_VRS_2x1;
+   } else if (!strcmp(str, "1x2")) {
+      return RADV_FORCE_VRS_1x2;
+   } else if (!strcmp(str, "1x1")) {
+      return RADV_FORCE_VRS_1x1;
+   }
+
+   fprintf(stderr, "radv: Invalid VRS rates specified (valid values are 2x2, 2x1, 1x2 and 1x1)\n");
+   return RADV_FORCE_VRS_1x1;
+}
+
+static enum radv_force_vrs
+radv_parse_force_vrs_config_file(const char *config_file)
+{
+   enum radv_force_vrs force_vrs = RADV_FORCE_VRS_1x1;
+   char buf[4];
+   FILE *f;
+
+   f = fopen(config_file, "r");
+   if (!f) {
+      fprintf(stderr, "radv: Can't open file: '%s'.\n", config_file);
+      return force_vrs;
+   }
+
+   if (fread(buf, sizeof(buf), 1, f) == 1) {
+      buf[3] = '\0';
+      force_vrs = radv_parse_vrs_rates(buf);
+   }
+
+   fclose(f);
+   return force_vrs;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator, VkDevice *pDevice)
@@ -3212,22 +3251,16 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
          goto fail;
    }
 
-   if (getenv("RADV_FORCE_VRS")) {
-      const char *vrs_rates = getenv("RADV_FORCE_VRS");
+   if (device->physical_device->rad_info.chip_class >= GFX10_3) {
+      if (getenv("RADV_FORCE_VRS_CONFIG_FILE")) {
+         const char *file = getenv("RADV_FORCE_VRS_CONFIG_FILE");
 
-      if (device->physical_device->rad_info.chip_class < GFX10_3)
-         fprintf(stderr, "radv: VRS is only supported on RDNA2+\n");
-      else if (!strcmp(vrs_rates, "2x2"))
-         device->force_vrs = RADV_FORCE_VRS_2x2;
-      else if (!strcmp(vrs_rates, "2x1"))
-         device->force_vrs = RADV_FORCE_VRS_2x1;
-      else if (!strcmp(vrs_rates, "1x2"))
-         device->force_vrs = RADV_FORCE_VRS_1x2;
-      else if (!strcmp(vrs_rates, "1x1"))
-         device->force_vrs = RADV_FORCE_VRS_1x1;
-      else
-         fprintf(stderr, "radv: Invalid VRS rates specified "
-                         "(valid values are 2x2, 2x1 and 1x2)\n");
+         device->force_vrs = radv_parse_force_vrs_config_file(file);
+      } else if (getenv("RADV_FORCE_VRS")) {
+         const char *vrs_rates = getenv("RADV_FORCE_VRS");
+
+         device->force_vrs = radv_parse_vrs_rates(vrs_rates);
+      }
    }
 
    device->adjust_frag_coord_z =

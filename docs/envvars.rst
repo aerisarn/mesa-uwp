@@ -691,6 +691,10 @@ RADV driver environment variables
    forced for pipelines that don't explicitely use VRS or flat shading.
    The supported values are 2x2, 1x2, 2x1 and 1x1. Only for testing purposes.
 
+:envvar:`RADV_FORCE_VRS_CONFIG_FILE`
+   similar to `RADV_FORCE_VRS` but allow to configure from a file. If present,
+   this supersedes `RADV_FORCE_VRS`.
+
 :envvar:`RADV_PERFTEST`
    a comma-separated list of named flags, which do various things:
 
