@@ -2187,11 +2187,13 @@ begin_render_pass(struct zink_context *ctx)
          if (ctx->fb_state.cbufs[i]) {
             struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
             struct zink_surface *transient = zink_transient_surface(ctx->fb_state.cbufs[i]);
-            if (transient) {
-               assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
-               assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[cresolve_offset].usage);
-            } else {
-               assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
+            if (surf->base.format == ctx->fb_state.cbufs[i]->format) {
+               if (transient) {
+                  assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
+                  assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[cresolve_offset].usage);
+               } else {
+                  assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
+               }
             }
          }
       }
