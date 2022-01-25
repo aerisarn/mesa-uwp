@@ -105,30 +105,20 @@ pan_format_class_load(const struct util_format_description *desc, unsigned quirk
                         ? PAN_FORMAT_SOFTWARE : PAN_FORMAT_PACK;
         }
 
-        /* Some formats are missing as typed on some GPUs but have unpacks */
-        if (quirks & MIDGARD_MISSING_LOADS) {
-                switch (desc->format) {
-                case PIPE_FORMAT_R11G11B10_FLOAT:
-                        return PAN_FORMAT_PACK;
-                default:
-                        return PAN_FORMAT_NATIVE;
-                }
+        /* Some formats are missing as typed but have unpacks */
+        switch (desc->format) {
+        case PIPE_FORMAT_R11G11B10_FLOAT:
+                return PAN_FORMAT_PACK;
+        default:
+                return PAN_FORMAT_NATIVE;
         }
-
-        /* Otherwise, we can do native */
-        return PAN_FORMAT_NATIVE;
 }
 
 static enum pan_format_class
 pan_format_class_store(const struct util_format_description *desc, unsigned quirks)
 {
-        /* Check if we can do anything better than software architecturally */
-        if (quirks & MIDGARD_NO_TYPED_BLEND_STORES) {
-                return (quirks & NO_BLEND_PACKS)
-                        ? PAN_FORMAT_SOFTWARE : PAN_FORMAT_PACK;
-        }
-
-        return PAN_FORMAT_NATIVE;
+        return (quirks & NO_BLEND_PACKS) ? PAN_FORMAT_SOFTWARE :
+                                           PAN_FORMAT_PACK;
 }
 
 /* Convenience method */

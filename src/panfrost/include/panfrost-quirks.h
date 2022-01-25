@@ -34,11 +34,7 @@
 
 #define MIDGARD_NO_HIER_TILING (1 << 0)
 
-/* bit 1-5 unused */
-
-/* Whether this GPU lacks support for any typed stores in blend shader,
- * requiring packing instead */
-#define MIDGARD_NO_TYPED_BLEND_STORES (1 << 6)
+/* bit 1-6 unused */
 
 /* Whether this GPU lacks support for any typed loads, requiring packing */
 #define MIDGARD_NO_TYPED_BLEND_LOADS (1 << 7)
@@ -46,17 +42,12 @@
 /* Lack support for colour pack/unpack opcodes */
 #define NO_BLEND_PACKS (1 << 8)
 
-/* Has some missing formats for typed loads */
-#define MIDGARD_MISSING_LOADS (1 << 9)
-
-/* bit 10 unused */
+/* bits 9-10 unused */
 
 /* Does this GPU support anisotropic filtering? */
 #define HAS_ANISOTROPIC (1 << 11)
 
 /* Quirk collections common to particular uarchs */
-
-#define MIDGARD_QUIRKS (MIDGARD_NO_TYPED_BLEND_STORES | MIDGARD_MISSING_LOADS)
 
 #define BIFROST_QUIRKS NO_BLEND_PACKS
 
@@ -66,23 +57,17 @@ panfrost_get_quirks(unsigned gpu_id, unsigned gpu_revision)
         switch (gpu_id) {
         case 0x600:
         case 0x620:
-                return MIDGARD_QUIRKS
-                        | MIDGARD_NO_TYPED_BLEND_LOADS
-                        | NO_BLEND_PACKS;
+                return MIDGARD_NO_TYPED_BLEND_LOADS | NO_BLEND_PACKS;
 
         case 0x720:
-                return MIDGARD_QUIRKS | MIDGARD_NO_HIER_TILING;
-
         case 0x820:
         case 0x830:
-                return MIDGARD_QUIRKS | MIDGARD_NO_HIER_TILING;
+                return MIDGARD_NO_HIER_TILING;
 
         case 0x750:
-                return MIDGARD_QUIRKS;
-
         case 0x860:
         case 0x880:
-                return MIDGARD_QUIRKS;
+                return 0;
 
         case 0x6000: /* G71 */
                 return BIFROST_QUIRKS;
