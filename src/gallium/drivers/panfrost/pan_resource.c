@@ -573,8 +573,12 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
         struct pipe_scissor_state *damage_extent = &pres->damage.extent;
         unsigned int i;
 
-        if (!pan_is_bifrost(dev) && !(dev->quirks & NO_TILE_ENABLE_MAP) &&
-            nrects > 1) {
+        /* Partial updates are implemented with a tile enable map only on v5.
+         * Later architectures have a more efficient method of implementing
+         * partial updates (frame shaders), while earlier architectures lack
+         * tile enable maps altogether.
+         */
+        if (dev->arch == 5 && nrects > 1) {
                 if (!pres->damage.tile_map.data) {
                         pres->damage.tile_map.stride =
                                 ALIGN_POT(DIV_ROUND_UP(res->width0, 32 * 8), 64);
