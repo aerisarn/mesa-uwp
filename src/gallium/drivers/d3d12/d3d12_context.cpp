@@ -1513,6 +1513,19 @@ fill_stream_output_buffer_view(D3D12_STREAM_OUTPUT_BUFFER_VIEW *view,
 }
 
 static void
+update_so_fill_buffer_count(struct d3d12_context *ctx,
+                            struct pipe_resource *fill_buffer,
+                            unsigned fill_buffer_offset,
+                            unsigned value)
+{
+   struct pipe_transfer *transfer = NULL;
+   uint64_t *ptr = (uint64_t *)pipe_buffer_map_range(&ctx->base, fill_buffer,
+      fill_buffer_offset, sizeof(uint64_t), PIPE_MAP_WRITE, &transfer);
+   *ptr = value;
+   pipe_buffer_unmap(&ctx->base, transfer);
+}
+
+static void
 d3d12_set_stream_output_targets(struct pipe_context *pctx,
                                 unsigned num_targets,
                                 struct pipe_stream_output_target **targets,
@@ -1530,11 +1543,16 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
 
       if (target) {
          /* Sub-allocate a new fill buffer each time to avoid GPU/CPU synchronization */
-         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
-                              &target->fill_buffer_offset, &target->fill_buffer);
+         if (offsets[i] != ~0u) {
+            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
+                                 &target->fill_buffer_offset, &target->fill_buffer);
+            update_so_fill_buffer_count(ctx, target->fill_buffer, target->fill_buffer_offset, offsets[i]);
+         }
          fill_stream_output_buffer_view(&ctx->so_buffer_views[i], target);
          pipe_so_target_reference(&ctx->so_targets[i], targets[i]);
       } else {
+         ctx->so_buffer_views[i].BufferLocation = 0;
+         ctx->so_buffer_views[i].BufferFilledSizeLocation = 0;
          ctx->so_buffer_views[i].SizeInBytes = 0;
          pipe_so_target_reference(&ctx->so_targets[i], NULL);
       }
@@ -1764,6 +1782,7 @@ d3d12_enable_fake_so_buffers(struct d3d12_context *ctx, unsigned factor)
                                                        target->base.buffer->width0 * factor);
          u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
                               &fake_target->fill_buffer_offset, &fake_target->fill_buffer);
+         update_so_fill_buffer_count(ctx, fake_target->fill_buffer, fake_target->fill_buffer_offset, 0);
          pipe_buffer_read(&ctx->base, target->fill_buffer,
                           target->fill_buffer_offset, sizeof(uint64_t),
                           &fake_target->cached_filled_size);
@@ -2394,7 +2413,7 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.const_uploader = u_upload_create_default(&ctx->base);
    u_suballocator_init(&ctx->so_allocator, &ctx->base, 4096, 0,
                        PIPE_USAGE_DEFAULT,
-                       0, true);
+                       0, false);
 
    struct primconvert_config cfg = {};
    cfg.primtypes_mask = 1 << PIPE_PRIM_POINTS |
