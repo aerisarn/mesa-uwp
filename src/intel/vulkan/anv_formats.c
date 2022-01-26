@@ -1352,7 +1352,8 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
          external_info = (const void *) s;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT:
-         /* anv_get_image_format_properties will handle this */
+      case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR:
+         /* anv_get_image_format_properties will handle these */
          break;
       case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT:
          /* Ignore but don't warn */

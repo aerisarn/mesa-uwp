@@ -3653,7 +3653,11 @@ VkResult anv_AllocateMemory(
       }
 
       default:
-         anv_debug_ignored_stype(ext->sType);
+         if (ext->sType != VK_STRUCTURE_TYPE_WSI_MEMORY_ALLOCATE_INFO_MESA)
+            /* this isn't a real enum value,
+             * so use conditional to avoid compiler warn
+             */
+            anv_debug_ignored_stype(ext->sType);
          break;
       }
    }
