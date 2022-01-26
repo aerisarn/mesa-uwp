@@ -389,12 +389,14 @@ submit_queue(void *data, void *gdata, int thread_index)
    signals[0] = bs->signal_semaphore;
    si.pSignalSemaphores = signals;
    VkTimelineSemaphoreSubmitInfo tsi = {0};
+   uint64_t signal_values[2] = {0};
    if (bs->have_timelines) {
       tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
       si.pNext = &tsi;
-      tsi.signalSemaphoreValueCount = 1;
-      tsi.pSignalSemaphoreValues = &batch_id;
+      tsi.pSignalSemaphoreValues = signal_values;
+      signal_values[si.signalSemaphoreCount] = batch_id;
       signals[si.signalSemaphoreCount++] = screen->sem;
+      tsi.signalSemaphoreValueCount = si.signalSemaphoreCount;
    }
 
    struct wsi_memory_signal_submit_info mem_signal = {
