@@ -486,7 +486,7 @@ tu_get_external_image_format_properties(
    const struct tu_physical_device *physical_device,
    const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
    VkExternalMemoryHandleTypeFlagBits handleType,
-   VkExternalMemoryProperties *external_properties)
+   VkExternalImageFormatProperties *external_properties)
 {
    VkExternalMemoryFeatureFlagBits flags = 0;
    VkExternalMemoryHandleTypeFlags export_flags = 0;
@@ -528,11 +528,14 @@ tu_get_external_image_format_properties(
                        handleType);
    }
 
-   *external_properties = (VkExternalMemoryProperties) {
-      .externalMemoryFeatures = flags,
-      .exportFromImportedHandleTypes = export_flags,
-      .compatibleHandleTypes = compat_flags,
-   };
+   if (external_properties) {
+      external_properties->externalMemoryProperties =
+         (VkExternalMemoryProperties) {
+            .externalMemoryFeatures = flags,
+            .exportFromImportedHandleTypes = export_flags,
+            .compatibleHandleTypes = compat_flags,
+         };
+   }
 
    return VK_SUCCESS;
 }
@@ -599,7 +602,7 @@ tu_GetPhysicalDeviceImageFormatProperties2(
    if (external_info && external_info->handleType != 0) {
       result = tu_get_external_image_format_properties(
          physical_device, base_info, external_info->handleType,
-         &external_props->externalMemoryProperties);
+         external_props);
       if (result != VK_SUCCESS)
          goto fail;
    }
