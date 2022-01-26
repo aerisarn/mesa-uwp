@@ -520,14 +520,14 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, enum pipe_qu
          u32 = result.b;
       else
          u32 = MIN2(limit, result.u64);
-      pipe_buffer_write(pctx, pres, offset, result_size, &u32);
+      tc_buffer_write(pctx, pres, offset, result_size, &u32);
    } else {
       uint64_t u64;
       if (is_bool_query(query))
          u64 = result.b;
       else
          u64 = result.u64;
-      pipe_buffer_write(pctx, pres, offset, result_size, &u64);
+      tc_buffer_write(pctx, pres, offset, result_size, &u64);
    }
 }
 
@@ -1009,7 +1009,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
          uint64_t u64[4] = {0};
          if (VKCTX(GetQueryPoolResults)(screen->dev, query->query_pool, query_id, 1, sizeof(u64), u64,
                                    0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag) == VK_SUCCESS) {
-            pipe_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + src_offset);
+            tc_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + src_offset);
             return;
          }
       }
