@@ -43,6 +43,8 @@ enum class d3d12_compute_transform_type
     * the original filled size with the fake filled size
     */
    fake_so_buffer_vertex_count,
+   /* Append a buffer filled size with (vertex count, 1, 0, 0) */
+   draw_auto,
    max,
 };
 

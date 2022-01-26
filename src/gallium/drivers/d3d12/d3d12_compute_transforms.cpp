@@ -189,6 +189,34 @@ get_fake_so_buffer_vertex_count()
 }
 
 static struct nir_shader *
+get_draw_auto()
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+      dxil_get_nir_compiler_options(), "DrawAuto");
+
+   nir_variable_create(b.shader, nir_var_mem_ssbo, glsl_array_type(glsl_uint_type(), 0, 0), "ssbo");
+   nir_ssa_def *buffer_filled_size = nir_load_ssbo(&b, 1, 32, nir_imm_int(&b, 0), nir_imm_int(&b, 0), (gl_access_qualifier)0, 4, 0);
+
+   nir_variable *state_var = nullptr;
+   nir_ssa_def *state_var_data = d3d12_get_state_var(&b, D3D12_STATE_VAR_TRANSFORM_GENERIC0, "state_var", glsl_uvec4_type(), &state_var);
+   nir_ssa_def *stride = nir_channel(&b, state_var_data, 0);
+   nir_ssa_def *vb_offset = nir_channel(&b, state_var_data, 1);
+
+   nir_ssa_def *vb_bytes = nir_bcsel(&b, nir_ilt(&b, vb_offset, buffer_filled_size),
+      nir_isub(&b, buffer_filled_size, vb_offset), nir_imm_int(&b, 0));
+
+   nir_ssa_def *vertex_count = nir_idiv(&b, vb_bytes, stride);
+   nir_ssa_def *to_write = nir_vec4(&b, vertex_count, nir_imm_int(&b, 1), nir_imm_int(&b, 0), nir_imm_int(&b, 0));
+   nir_store_ssbo(&b, to_write, nir_imm_int(&b, 0), nir_imm_int(&b, 4), 0xf, (gl_access_qualifier)0, 4, 0);
+
+   nir_validate_shader(b.shader, "creation");
+   b.shader->info.num_ssbos = 1;
+   b.shader->info.num_ubos = 0;
+
+   return b.shader;
+}
+
+static struct nir_shader *
 create_compute_transform(const d3d12_compute_transform_key *key)
 {
    switch (key->type) {
@@ -198,6 +226,8 @@ create_compute_transform(const d3d12_compute_transform_key *key)
       return get_fake_so_buffer_copy_back(key);
    case d3d12_compute_transform_type::fake_so_buffer_vertex_count:
       return get_fake_so_buffer_vertex_count();
+   case d3d12_compute_transform_type::draw_auto:
+      return get_draw_auto();
    default:
       unreachable("Invalid transform");
    }
