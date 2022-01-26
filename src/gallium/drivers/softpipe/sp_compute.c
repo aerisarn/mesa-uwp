@@ -37,7 +37,7 @@
 static void
 cs_prepare(const struct sp_compute_shader *cs,
            struct tgsi_exec_machine *machine,
-           int w, int h, int d,
+           int local_x, int local_y, int local_z,
            int g_w, int g_h, int g_d,
            int b_w, int b_h, int b_d,
            struct tgsi_sampler *sampler,
@@ -55,9 +55,9 @@ cs_prepare(const struct sp_compute_shader *cs,
    if (machine->SysSemanticToIndex[TGSI_SEMANTIC_THREAD_ID] != -1) {
       unsigned i = machine->SysSemanticToIndex[TGSI_SEMANTIC_THREAD_ID];
       for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-         machine->SystemValue[i].xyzw[0].i[j] = w;
-         machine->SystemValue[i].xyzw[1].i[j] = h;
-         machine->SystemValue[i].xyzw[2].i[j] = d;
+         machine->SystemValue[i].xyzw[0].i[j] = local_x;
+         machine->SystemValue[i].xyzw[1].i[j] = local_y;
+         machine->SystemValue[i].xyzw[2].i[j] = local_z;
       }
    }
 
@@ -172,7 +172,7 @@ softpipe_launch_grid(struct pipe_context *context,
    int num_threads_in_group;
    struct tgsi_exec_machine **machines;
    int bwidth, bheight, bdepth;
-   int w, h, d, i;
+   int local_x, local_y, local_z, i;
    int g_w, g_h, g_d;
    uint32_t grid_size[3] = {0};
    void *local_mem = NULL;
@@ -196,16 +196,16 @@ softpipe_launch_grid(struct pipe_context *context,
    }
 
    /* initialise machines + GRID_SIZE + THREAD_ID  + BLOCK_SIZE */
-   for (d = 0; d < bdepth; d++) {
-      for (h = 0; h < bheight; h++) {
-         for (w = 0; w < bwidth; w++) {
-            int idx = w + (h * bwidth) + (d * bheight * bwidth);
+   for (local_z = 0; local_z < bdepth; local_z++) {
+      for (local_y = 0; local_y < bheight; local_y++) {
+         for (local_x = 0; local_x < bwidth; local_x++) {
+            int idx = local_x + (local_y * bwidth) + (local_z * bheight * bwidth);
             machines[idx] = tgsi_exec_machine_create(PIPE_SHADER_COMPUTE);
 
             machines[idx]->LocalMem = local_mem;
             machines[idx]->LocalMemSize = cs->shader.req_local_mem;
             cs_prepare(cs, machines[idx],
-                       w, h, d,
+                       local_x, local_y, local_z,
                        grid_size[0], grid_size[1], grid_size[2],
                        bwidth, bheight, bdepth,
                        (struct tgsi_sampler *)softpipe->tgsi.sampler[PIPE_SHADER_COMPUTE],
