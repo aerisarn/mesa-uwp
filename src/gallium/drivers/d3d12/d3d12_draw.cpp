@@ -817,6 +817,54 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
    return true;
 }
 
+static bool
+update_draw_auto(struct d3d12_context *ctx,
+   const struct pipe_draw_indirect_info **indirect_inout,
+   struct pipe_draw_indirect_info *indirect_out)
+{
+   if (*indirect_inout == nullptr ||
+       (*indirect_inout)->count_from_stream_output == nullptr ||
+       ctx->gfx_stages[PIPE_SHADER_VERTEX] == nullptr)
+      return false;
+
+   d3d12_compute_transform_save_restore save;
+   d3d12_save_compute_transform_state(ctx, &save);
+
+   auto indirect_in = *indirect_inout;
+   *indirect_inout = indirect_out;
+
+   d3d12_compute_transform_key key;
+   memset(&key, 0, sizeof(key));
+   key.type = d3d12_compute_transform_type::draw_auto;
+   ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
+
+   auto so_arg = indirect_in->count_from_stream_output;
+   d3d12_stream_output_target *target = (d3d12_stream_output_target *)so_arg;
+
+   ctx->transform_state_vars[0] = ctx->vbs[0].stride;
+   ctx->transform_state_vars[1] = ctx->vbs[0].buffer_offset - so_arg->buffer_offset;
+   
+   pipe_shader_buffer new_cs_ssbo;
+   new_cs_ssbo.buffer = target->fill_buffer;
+   new_cs_ssbo.buffer_offset = target->fill_buffer_offset;
+   new_cs_ssbo.buffer_size = target->fill_buffer->width0 - new_cs_ssbo.buffer_offset;
+   ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, 1, &new_cs_ssbo, 1);
+
+   pipe_grid_info grid = {};
+   grid.block[0] = grid.block[1] = grid.block[2] = 1;
+   grid.grid[0] = grid.grid[1] = grid.grid[2] = 1;
+   ctx->base.launch_grid(&ctx->base, &grid);
+
+   d3d12_restore_compute_transform_state(ctx, &save);
+
+   *indirect_out = *indirect_in;
+   pipe_resource_reference(&indirect_out->buffer, target->fill_buffer);
+   indirect_out->offset = target->fill_buffer_offset + 4;
+   indirect_out->stride = sizeof(D3D12_DRAW_ARGUMENTS);
+   indirect_out->count_from_stream_output = nullptr;
+   return true;
+}
+
 void
 d3d12_draw_vbo(struct pipe_context *pctx,
                const struct pipe_draw_info *dinfo,
@@ -857,7 +905,8 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       return;
    }
 
-   bool indirect_with_sysvals = update_draw_indirect_with_sysvals(ctx, dinfo, drawid_offset, &indirect, &patched_indirect);
+   bool draw_auto = update_draw_auto(ctx, &indirect, &patched_indirect);
+   bool indirect_with_sysvals = !draw_auto && update_draw_indirect_with_sysvals(ctx, dinfo, drawid_offset, &indirect, &patched_indirect);
    struct d3d12_cmd_signature_key cmd_sig_key;
    memset(&cmd_sig_key, 0, sizeof(cmd_sig_key));
 
@@ -1168,8 +1217,9 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       ctx->cmdlist->SetGraphicsRootDescriptorTable(root_desc_indices[i], root_desc_tables[i]);
 
    if (indirect) {
+      unsigned draw_count = draw_auto ? 1 : indirect->draw_count;
       ID3D12CommandSignature *cmd_sig = d3d12_get_cmd_signature(ctx, &cmd_sig_key);
-      ctx->cmdlist->ExecuteIndirect(cmd_sig, indirect->draw_count, indirect_arg_buf,
+      ctx->cmdlist->ExecuteIndirect(cmd_sig, draw_count, indirect_arg_buf,
          indirect_arg_offset, indirect_count_buf, indirect_count_offset);
    } else {
       if (dinfo->index_size > 0)

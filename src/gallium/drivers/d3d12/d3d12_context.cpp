@@ -1544,7 +1544,7 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
       if (target) {
          /* Sub-allocate a new fill buffer each time to avoid GPU/CPU synchronization */
          if (offsets[i] != ~0u) {
-            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t), 16,
+            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t) * 5, 16,
                                  &target->fill_buffer_offset, &target->fill_buffer);
             update_so_fill_buffer_count(ctx, target->fill_buffer, target->fill_buffer_offset, offsets[i]);
          }
