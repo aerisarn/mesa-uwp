@@ -104,6 +104,8 @@
  *    TC_TRANSFER_MAP_NO_INVALIDATE into transfer_map and buffer_subdata to
  *    indicate this. Ignoring the flag will lead to failures.
  *    The threaded context uses its own buffer invalidation mechanism.
+ *    Do NOT use pipe_buffer_write, as this may trigger invalidation;
+ *    use tc_buffer_write instead.
  *
  * 4) PIPE_MAP_ONCE can no longer be used to infer that a buffer will not be mapped
  *    a second time before it is unmapped.
@@ -610,6 +612,16 @@ tc_buffer_disable_cpu_storage(struct pipe_resource *buf)
       free(tres->cpu_storage);
       tres->cpu_storage = NULL;
    }
+}
+
+static inline void
+tc_buffer_write(struct pipe_context *pipe,
+                struct pipe_resource *buf,
+                unsigned offset,
+                unsigned size,
+                const void *data)
+{
+   pipe->buffer_subdata(pipe, buf, PIPE_MAP_WRITE | TC_TRANSFER_MAP_NO_INVALIDATE, offset, size, data);
 }
 
 #ifdef __cplusplus
