@@ -105,6 +105,7 @@ if with_tests and not with_platform_android
     output : _name,
     command : [prog_python, '@INPUT@'],
     capture : true,
+    depend_files: gen_pack_header_deps
   )
 
   genxml_path = join_paths(meson.source_root(),
