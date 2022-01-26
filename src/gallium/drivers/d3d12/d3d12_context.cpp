@@ -1906,9 +1906,9 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
 }
 
 void
-d3d12_apply_resource_states(struct d3d12_context *ctx)
+d3d12_apply_resource_states(struct d3d12_context *ctx, bool is_implicit_dispatch)
 {
-   ctx->resource_state_manager->ApplyAllResourceTransitions(ctx->cmdlist, ctx->fence_value);
+   ctx->resource_state_manager->ApplyAllResourceTransitions(ctx->cmdlist, ctx->fence_value, is_implicit_dispatch);
 }
 
 static void
@@ -1929,7 +1929,7 @@ d3d12_clear_render_target(struct pipe_context *pctx,
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_RENDER_TARGET,
                                    D3D12_BIND_INVALIDATE_FULL);
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 
    enum pipe_format format = psurf->texture->format;
    float clear_color[4];
@@ -1988,7 +1988,7 @@ d3d12_clear_depth_stencil(struct pipe_context *pctx,
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_DEPTH_WRITE,
                                    D3D12_BIND_INVALIDATE_FULL);
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 
    D3D12_RECT rect = { (int)dstx, (int)dsty,
                        (int)dstx + (int)width,
@@ -2057,7 +2057,7 @@ d3d12_flush_resource(struct pipe_context *pctx,
    d3d12_transition_resource_state(ctx, res,
                                    D3D12_RESOURCE_STATE_COMMON,
                                    D3D12_BIND_INVALIDATE_FULL);
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 }
 
 static void

@@ -123,7 +123,7 @@ blit_resolve(struct d3d12_context *ctx, const struct pipe_blit_info *info)
                                    D3D12_RESOURCE_STATE_RESOLVE_DEST,
                                    D3D12_BIND_INVALIDATE_FULL);
 
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 
    d3d12_batch_reference_resource(batch, src, false);
    d3d12_batch_reference_resource(batch, dst, true);
@@ -432,7 +432,7 @@ d3d12_direct_copy(struct d3d12_context *ctx,
                                        D3D12_RESOURCE_STATE_COPY_DEST,
                                        D3D12_BIND_INVALIDATE_FULL);
 
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 
    d3d12_batch_reference_resource(batch, src, false);
    d3d12_batch_reference_resource(batch, dst, true);
@@ -826,7 +826,7 @@ blit_resolve_stencil(struct d3d12_context *ctx,
                                        0, 1, 0, 1, 1, 1,
                                        D3D12_RESOURCE_STATE_COPY_DEST,
                                        D3D12_BIND_INVALIDATE_FULL);
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 
    struct d3d12_batch *batch = d3d12_current_batch(ctx);
    d3d12_batch_reference_resource(batch, d3d12_resource(tmp), false);

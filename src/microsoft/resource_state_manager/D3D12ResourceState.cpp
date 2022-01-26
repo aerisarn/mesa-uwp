@@ -191,8 +191,9 @@ void ResourceStateManager::TransitionSubresource(TransitionableResourceState& Re
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
-void ResourceStateManager::ApplyResourceTransitionsPreamble()
+void ResourceStateManager::ApplyResourceTransitionsPreamble(bool IsImplicitDispatch)
 {
+   m_IsImplicitDispatch = IsImplicitDispatch;
    m_vResourceBarriers.clear();
 }
 
@@ -335,7 +336,15 @@ void ResourceStateManager::ProcessTransitioningSubresourceExplicit(
 
    if ( D3D12_RESOURCE_STATE_COMMON == StateIfPromoted )
    {
-      if (TransitionRequired(CurrentLogicalState.State, /*inout*/ after))
+      if (CurrentLogicalState.State == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
+          after == D3D12_RESOURCE_STATE_UNORDERED_ACCESS &&
+          m_IsImplicitDispatch)
+      {
+         D3D12_RESOURCE_BARRIER UAVBarrier = { D3D12_RESOURCE_BARRIER_TYPE_UAV };
+         UAVBarrier.UAV.pResource = TransitionDesc.Transition.pResource;
+         m_vResourceBarriers.push_back(UAVBarrier);
+      }
+      else if (TransitionRequired(CurrentLogicalState.State, /*inout*/ after))
       {
          // Insert a single concrete barrier (for non-simultaneous access resources).
          TransitionDesc.Transition.StateBefore = D3D12_RESOURCE_STATES(CurrentLogicalState.State);
@@ -388,9 +397,9 @@ void ResourceStateManager::TransitionSubresource(TransitionableResourceState* pR
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
-void ResourceStateManager::ApplyAllResourceTransitions(ID3D12GraphicsCommandList *pCommandList, UINT64 ExecutionId)
+void ResourceStateManager::ApplyAllResourceTransitions(ID3D12GraphicsCommandList *pCommandList, UINT64 ExecutionId, bool IsImplicitDispatch)
 {
-   ApplyResourceTransitionsPreamble();
+   ApplyResourceTransitionsPreamble(IsImplicitDispatch);
 
    ForEachTransitioningResource([=](TransitionableResourceState& ResourceBase)
    {

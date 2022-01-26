@@ -141,6 +141,7 @@ d3d12_get_compute_transform(struct d3d12_context *ctx, const d3d12_compute_trans
          return NULL;
       }
 
+      data->shader->is_variant = true;
       entry = _mesa_hash_table_insert(ctx->compute_transform_cache, &data->key, data);
       assert(entry);
    }

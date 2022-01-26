@@ -1174,7 +1174,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       assert(!indirect->count_from_stream_output);
    }
 
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
 
    for (unsigned i = 0; i < num_root_descriptors; ++i)
       ctx->cmdlist->SetGraphicsRootDescriptorTable(root_desc_indices[i], root_desc_tables[i]);
@@ -1278,7 +1278,7 @@ d3d12_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    int root_desc_indices[MAX_DESCRIPTOR_TABLES];
    unsigned num_root_descriptors = update_compute_root_parameters(ctx, info, root_desc_tables, root_desc_indices);
 
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, ctx->compute_state->is_variant);
 
    for (unsigned i = 0; i < num_root_descriptors; ++i)
       ctx->cmdlist->SetComputeRootDescriptorTable(root_desc_indices[i], root_desc_tables[i]);

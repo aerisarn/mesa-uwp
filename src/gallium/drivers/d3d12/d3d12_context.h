@@ -325,7 +325,7 @@ d3d12_transition_subresources_state(struct d3d12_context *ctx,
                                     d3d12_bind_invalidate_option bind_invalidate);
 
 void
-d3d12_apply_resource_states(struct d3d12_context* ctx);
+d3d12_apply_resource_states(struct d3d12_context* ctx, bool is_implicit_dispatch);
 
 void
 d3d12_draw_vbo(struct pipe_context *pctx,

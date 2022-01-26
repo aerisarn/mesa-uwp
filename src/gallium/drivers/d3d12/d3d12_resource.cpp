@@ -699,7 +699,7 @@ copy_texture_region(struct d3d12_context *ctx,
    d3d12_batch_reference_resource(batch, info.dst, true);
    d3d12_transition_resource_state(ctx, info.src, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_BIND_INVALIDATE_FULL);
    d3d12_transition_resource_state(ctx, info.dst, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_BIND_INVALIDATE_FULL);
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
    ctx->cmdlist->CopyTextureRegion(&info.dst_loc, info.dst_x, info.dst_y, info.dst_z,
                                    &info.src_loc, info.src_box);
 }
@@ -890,7 +890,7 @@ transfer_buf_to_buf(struct d3d12_context *ctx,
    assert(src_d3d12 != dst_d3d12);
    d3d12_transition_resource_state(ctx, src, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_BIND_INVALIDATE_FULL);
    d3d12_transition_resource_state(ctx, dst, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_BIND_INVALIDATE_FULL);
-   d3d12_apply_resource_states(ctx);
+   d3d12_apply_resource_states(ctx, false);
    ctx->cmdlist->CopyBufferRegion(dst_d3d12, dst_offset,
                                   src_d3d12, src_offset,
                                   width);
