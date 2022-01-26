@@ -336,6 +336,19 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
             case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
             case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
                 return 0;
+
+            /* mesa/st requires that this cap is the same across stages, and the FS
+             * can't do ints.
+             */
+            case PIPE_SHADER_CAP_INTEGERS:
+                return 0;
+
+            /* While draw could normally handle this for the VS, the NIR lowering
+             * to regs can't handle our non-native-integers, so we have to lower to
+             * if ladders.
+             */
+            case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
+                return 0;
             default:
                 return draw_get_shader_param(shader, param);
             }
