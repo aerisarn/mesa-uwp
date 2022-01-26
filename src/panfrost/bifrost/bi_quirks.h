@@ -64,8 +64,7 @@ bifrost_lanes_per_warp(unsigned product_id)
         switch (product_id >> 12) {
         case 6: return 4;
         case 7: return 8;
-        case 9: return 16;
-        default: unreachable("Invalid Bifrost/Valhall GPU major");
+        default: return 16;
         }
 }
 
