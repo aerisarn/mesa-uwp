@@ -1437,7 +1437,6 @@ spec/arb_sample_shading/samplemask 32 all: skip
 spec/arb_seamless_cube_map/arb_seamless_cubemap: fail
 spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
 spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
-spec/arb_separate_shader_objects/transform feedback with rendezvous by location: skip
 spec/arb_shader_atomic_counters/array-indexing: fail
 spec/arb_shader_atomic_counters/max-counters/combined test above maximum number of atomic counter buffers: skip
 spec/arb_shader_atomic_counters/semantics/fragment shader atomic built-in semantics: fail
@@ -1446,7 +1445,6 @@ spec/arb_shader_atomic_counters/semantics/vertex shader atomic built-in semantic
 spec/arb_shader_atomic_counters/unused-result/fragment shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/unused-result/geometry shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/unused-result/vertex shader atomic built-in semantics: fail
-spec/arb_shader_image_load_store/host-mem-barrier/transform feedback/waw/one bit barrier test/4x4: skip
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image1d/rgba32f: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image1darray/rgba32f: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rgb10_a2: fail
@@ -2606,7 +2604,6 @@ spec/arb_texture_view/texsubimage-layers: skip
 spec/arb_texture_view/texsubimage-layers pbo: skip
 spec/arb_texture_view/texsubimage-levels: skip
 spec/arb_texture_view/texsubimage-levels pbo: skip
-spec/arb_transform_feedback2/change objects while paused: skip
 spec/arb_transform_feedback2/change objects while paused (gles3): skip
 spec/arb_transform_feedback3/arb_transform_feedback3-begin_end: skip
 spec/arb_transform_feedback3/arb_transform_feedback3-bind_buffer_invalid_index: skip
@@ -2630,7 +2627,7 @@ spec/arb_transform_feedback3/gl_skipcomponents1234: skip
 spec/arb_transform_feedback3/gl_skipcomponents2: skip
 spec/arb_transform_feedback3/gl_skipcomponents3: skip
 spec/arb_transform_feedback3/gl_skipcomponents4: skip
-spec/arb_transform_feedback_instanced/draw-auto instanced: skip
+spec/arb_transform_feedback_instanced/draw-auto instanced: fail
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic: skip
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-errors: skip
 spec/arb_uniform_buffer_object/bufferstorage: skip
@@ -3450,12 +3447,7 @@ spec/ext_texture_integer/texwrap formats/gl_rgba8ui, swizzled: fail
 spec/ext_texture_norm16/render: skip
 spec/ext_texture_snorm/multisample-formats 32 gl_ext_texture_snorm: skip
 spec/ext_texture_srgb/multisample-formats 32 gl_ext_texture_srgb: skip
-spec/ext_transform_feedback2/cannot bind when another object is active: skip
-spec/ext_transform_feedback2/counting with pause: skip
-spec/ext_transform_feedback2/draw-auto: skip
-spec/ext_transform_feedback2/glgentransformfeedbacks names only: skip
-spec/ext_transform_feedback2/istranformfeedback: skip
-spec/ext_transform_feedback2/misc. api queries: skip
+spec/ext_transform_feedback2/draw-auto: fail
 spec/ext_transform_feedback/max-varyings/max-varying-arrays-of-arrays: notrun
 spec/ext_transform_feedback/max-varyings/max-varying-single-dimension-array: crash
 spec/ext_transform_feedback/points-large: fail
@@ -3545,7 +3537,6 @@ spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triang
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip other: fail
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency ffs: fail
 spec/glsl-1.50/execution/geometry/tri-strip-ordering-with-prim-restart gl_triangle_strip_adjacency other: fail
-spec/glsl-1.50/gs-emits-too-few-verts: fail
 spec/glsl-1.50/gs-max-output: fail
 spec/glsl-es-1.00/built-in constants: skip
 spec/glsl-es-1.00/linker/glsl-fface-invariant: skip
@@ -3611,7 +3602,6 @@ spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 1
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 8 1 1: skip
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control 9: skip
 spec/nv_alpha_to_coverage_dither_control/nv_alpha_to_coverage_dither_control-error: skip
-spec/nv_conditional_render/copypixels: fail
 spec/nv_conditional_render/generatemipmap: fail
 spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth32f_stencil8/destination: gl_depth32f_stencil8: skip
 spec/nv_copy_image/nv_copy_image-formats --samples=2/source: gl_depth_component/destination: gl_depth_component: skip
@@ -3718,10 +3708,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17396
+       pass:    17498
        fail:     2029
       crash:       69
-       skip:     1599
+       skip:     1589
     timeout:        0
        warn:       10
  incomplete:        0
@@ -3730,4 +3720,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21113
+      total:    21205
