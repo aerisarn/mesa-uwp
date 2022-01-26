@@ -38,7 +38,6 @@ enum WQMState : uint8_t {
    Unspecified = 0,
    Exact = 1 << 0,
    WQM = 1 << 1, /* with control flow applied */
-   Exact_Branch = 1 << 3,
 };
 
 enum mask_type : uint8_t {
@@ -82,7 +81,6 @@ struct block_info {
       exec; /* Vector of exec masks. Either a temporary or const -1. */
    std::vector<WQMState> instr_needs;
    uint8_t block_needs;
-   uint8_t ever_again_needs;
 };
 
 struct exec_ctx {
@@ -136,7 +134,8 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
       WQMState needs = needs_exact(instr) ? Exact : Unspecified;
       bool propagate_wqm = instr->opcode == aco_opcode::p_wqm;
       bool pred_by_exec = needs_exec_mask(instr.get()) ||
-                          instr->opcode == aco_opcode::p_logical_end;
+                          instr->opcode == aco_opcode::p_logical_end ||
+                          instr->isBranch();
       for (const Definition& definition : instr->definitions) {
          if (!definition.isTemp())
             continue;
@@ -148,10 +147,8 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
          }
       }
 
-      if (instr->isBranch() && ctx.branch_wqm[block->index]) {
-         assert(!(info.block_needs & Exact_Branch));
-         needs = WQM;
-      }
+      if (instr->isBranch())
+         propagate_wqm = ctx.branch_wqm[block->index];
 
       if (propagate_wqm) {
          needs = pred_by_exec ? WQM : Unspecified;
@@ -191,18 +188,6 @@ calculate_wqm_needs(exec_ctx& exec_ctx)
       get_block_needs(ctx, exec_ctx, &block);
    }
 
-   uint8_t ever_again_needs = 0;
-   for (int i = exec_ctx.program->blocks.size() - 1; i >= 0; i--) {
-      exec_ctx.info[i].ever_again_needs = ever_again_needs;
-      Block& block = exec_ctx.program->blocks[i];
-
-      if (block.kind & block_kind_needs_lowering)
-         exec_ctx.info[i].block_needs |= Exact;
-
-      ever_again_needs |= exec_ctx.info[i].block_needs & ~Exact_Branch;
-      if (block.kind & block_kind_uses_discard)
-         ever_again_needs |= Exact;
-   }
    exec_ctx.handle_wqm = true;
 }
 
@@ -456,17 +441,16 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
 
       if (ctx.handle_wqm) {
          if (block->kind & block_kind_top_level && ctx.info[idx].exec.size() == 2) {
-            if ((ctx.info[idx].block_needs | ctx.info[idx].ever_again_needs) == 0 ||
-                (ctx.info[idx].block_needs | ctx.info[idx].ever_again_needs) == Exact) {
+            if (ctx.info[idx].block_needs == 0 || ctx.info[idx].block_needs == Exact) {
                ctx.info[idx].exec.back().second |= mask_type_global;
                transition_to_Exact(ctx, bld, idx);
                ctx.handle_wqm = false;
             }
          }
-         if (ctx.info[idx].block_needs == WQM)
+         if (ctx.info[idx].block_needs == WQM) {
+            assert(ctx.info[idx].exec.back().second & mask_type_wqm);
             transition_to_WQM(ctx, bld, idx);
-         else if (ctx.info[idx].block_needs == Exact)
-            transition_to_Exact(ctx, bld, idx);
+         }
       }
 
       assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
@@ -526,17 +510,16 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
    /* try to satisfy the block's needs */
    if (ctx.handle_wqm) {
       if (block->kind & block_kind_top_level && ctx.info[idx].exec.size() == 2) {
-         if ((ctx.info[idx].block_needs | ctx.info[idx].ever_again_needs) == 0 ||
-             (ctx.info[idx].block_needs | ctx.info[idx].ever_again_needs) == Exact) {
+         if (ctx.info[idx].block_needs == 0 || ctx.info[idx].block_needs == Exact) {
             ctx.info[idx].exec.back().second |= mask_type_global;
             transition_to_Exact(ctx, bld, idx);
             ctx.handle_wqm = false;
          }
       }
-      if (ctx.info[idx].block_needs == WQM)
+      if (ctx.info[idx].block_needs == WQM) {
+         assert(ctx.info[idx].exec.back().second & mask_type_wqm);
          transition_to_WQM(ctx, bld, idx);
-      else if (ctx.info[idx].block_needs == Exact)
-         transition_to_Exact(ctx, bld, idx);
+      }
    }
 
    if (block->kind & block_kind_merge && !ctx.info[idx].exec.back().first.isUndefined()) {
@@ -738,8 +721,8 @@ add_branch_code(exec_ctx& ctx, Block* block)
       }
       assert(ctx.info[idx].exec.size() <= 2);
 
-      if (ctx.info[idx].ever_again_needs == 0 || ctx.info[idx].ever_again_needs == Exact) {
-         /* transition to Exact */
+      if (!(ctx.info[idx].instr_needs.back() & WQM)) {
+         /* transition to Exact if the branch doesn't need WQM */
          aco_ptr<Instruction> branch = std::move(block->instructions.back());
          block->instructions.pop_back();
          ctx.info[idx].exec.back().second |= mask_type_global;
@@ -839,7 +822,6 @@ add_branch_code(exec_ctx& ctx, Block* block)
 
       if (ctx.handle_wqm && ctx.info[idx].exec.size() >= 2 &&
           ctx.info[idx].exec.back().second == mask_type_exact &&
-          !(ctx.info[idx].block_needs & Exact_Branch) &&
           ctx.info[idx].exec[ctx.info[idx].exec.size() - 2].second & mask_type_wqm) {
          /* return to wqm before branching */
          ctx.info[idx].exec.pop_back();
@@ -850,9 +832,6 @@ add_branch_code(exec_ctx& ctx, Block* block)
       assert(block->instructions.back()->opcode == aco_opcode::p_cbranch_z);
       Temp cond = block->instructions.back()->operands[0].getTemp();
       block->instructions.pop_back();
-
-      if (ctx.info[idx].block_needs & Exact_Branch)
-         transition_to_Exact(ctx, bld, idx);
 
       uint8_t mask_type = ctx.info[idx].exec.back().second & (mask_type_wqm | mask_type_exact);
       if (ctx.info[idx].exec.back().first.constantEquals(-1u)) {
