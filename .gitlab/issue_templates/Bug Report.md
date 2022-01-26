@@ -10,6 +10,9 @@ Otherwise, please fill the requested information below.
 And please remove anything that doesn't apply to keep things readable :)
 
 
+The title should effectively distinguish this bug report from others and be specific to issue you encounter. When writing the title of the bug report, include a short description of the issue, the hardware/driver(s) affected and application(s) affected.
+
+
 ### System information
 
 Please post `inxi -GSC -xx` output ([fenced with triple backticks](https://docs.gitlab.com/ee/user/markdown.html#code-spans-and-blocks)) OR fill information below manually
