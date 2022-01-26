@@ -3846,15 +3846,30 @@ exec_store_img(struct tgsi_exec_machine *mach,
                       rgba);
 }
 
+
 static void
-exec_store_buf(struct tgsi_exec_machine *mach,
+exec_store_membuf(struct tgsi_exec_machine *mach,
                const struct tgsi_full_instruction *inst)
 {
    uint32_t unit = fetch_store_img_unit(mach, &inst->Dst[0]);
    uint32_t size;
-   char *ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
 
    int execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
+
+   const char *ptr;
+   switch (inst->Dst[0].Register.File) {
+   case TGSI_FILE_MEMORY:
+      ptr = mach->LocalMem;
+      size = mach->LocalMemSize;
+      break;
+
+   case TGSI_FILE_BUFFER:
+      ptr = mach->Buffer->lookup(mach->Buffer, unit, &size);
+      break;
+
+   default:
+      unreachable("unsupported TGSI_OPCODE_STORE file");
+   }
 
    union tgsi_exec_channel offset;
    IFETCH(&offset, 0, TGSI_CHAN_X);
@@ -3880,46 +3895,13 @@ exec_store_buf(struct tgsi_exec_machine *mach,
 }
 
 static void
-exec_store_mem(struct tgsi_exec_machine *mach,
-               const struct tgsi_full_instruction *inst)
-{
-   union tgsi_exec_channel r[3];
-   union tgsi_exec_channel value[4];
-   uint i, chan;
-   char *ptr = mach->LocalMem;
-   int execmask = mach->ExecMask & mach->NonHelperMask & ~mach->KillMask;
-
-   IFETCH(&r[0], 0, TGSI_CHAN_X);
-
-   for (i = 0; i < 4; i++) {
-      FETCH(&value[i], 1, TGSI_CHAN_X + i);
-   }
-
-   if (r[0].u[0] >= mach->LocalMemSize)
-      return;
-   ptr += r[0].u[0];
-
-   for (i = 0; i < TGSI_QUAD_SIZE; i++) {
-      if (execmask & (1 << i)) {
-         for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
-            if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
-               memcpy(ptr + (chan * 4), &value[chan].u[0], 4);
-            }
-         }
-      }
-   }
-}
-
-static void
 exec_store(struct tgsi_exec_machine *mach,
            const struct tgsi_full_instruction *inst)
 {
    if (inst->Dst[0].Register.File == TGSI_FILE_IMAGE)
       exec_store_img(mach, inst);
-   else if (inst->Dst[0].Register.File == TGSI_FILE_BUFFER)
-      exec_store_buf(mach, inst);
-   else if (inst->Dst[0].Register.File == TGSI_FILE_MEMORY)
-      exec_store_mem(mach, inst);
+   else
+      exec_store_membuf(mach, inst);
 }
 
 static void
