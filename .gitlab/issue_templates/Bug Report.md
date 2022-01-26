@@ -2,7 +2,8 @@
 - Check if a new version of Mesa is available which might have fixed the problem.
 - If you can, check if the latest development version (git main) works better.
 - Check if your bug has already been reported here.
-- For any logs, backtraces, etc - use [code blocks](https://docs.gitlab.com/ee/user/markdown.html#code-spans-and-blocks)
+- For any logs, backtraces, etc - use [code blocks](https://docs.gitlab.com/ee/user/markdown.html#code-spans-and-blocks), GitLab removes line breaks without this.
+   - Do not paste long logs directly into the description. Use https://gitlab.freedesktop.org/-/snippets/new, attachments, or a pastebin with a long expiration instead.
 - As examples of good bug reports you may review one of these - #2598, #2615, #2608
 
 
