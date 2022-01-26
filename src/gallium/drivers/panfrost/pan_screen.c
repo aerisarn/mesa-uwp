@@ -52,7 +52,6 @@
 #include "decode.h"
 
 #include "pan_context.h"
-#include "panfrost-quirks.h"
 
 static const struct debug_named_value panfrost_debug_options[] = {
         {"perf",      PAN_DBG_PERF,     "Enable performance warnings"},
@@ -137,7 +136,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return true;
 
         case PIPE_CAP_ANISOTROPIC_FILTER:
-                return !!(dev->quirks & HAS_ANISOTROPIC);
+                return dev->revision >= dev->model->min_rev_anisotropic;
 
         /* Compile side is done for Bifrost, Midgard TODO. Needs some kernel
          * work to turn on, since CYCLE_COUNT_START needs to be issued. In

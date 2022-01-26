@@ -50,7 +50,6 @@
 #include "pan_util.h"
 #include "pan_tiling.h"
 #include "decode.h"
-#include "panfrost-quirks.h"
 
 static bool
 panfrost_should_checksum(const struct panfrost_device *dev, const struct panfrost_resource *pres);

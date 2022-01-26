@@ -47,7 +47,6 @@
 #include "helpers.h"
 #include "compiler.h"
 #include "midgard_quirks.h"
-#include "panfrost-quirks.h"
 #include "panfrost/util/pan_lower_framebuffer.h"
 
 #include "disassemble.h"

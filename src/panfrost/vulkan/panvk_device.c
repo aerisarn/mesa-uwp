@@ -28,7 +28,6 @@
 
 #include "panvk_private.h"
 
-#include "panfrost-quirks.h"
 #include "pan_bo.h"
 #include "pan_encoder.h"
 #include "pan_util.h"

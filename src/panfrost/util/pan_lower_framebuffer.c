@@ -52,7 +52,6 @@
 #include "compiler/nir/nir_format_convert.h"
 #include "util/format/u_format.h"
 #include "pan_lower_framebuffer.h"
-#include "panfrost-quirks.h"
 
 /* Determines the unpacked type best suiting a given format, so the rest of the
  * pipeline may be adjusted accordingly */

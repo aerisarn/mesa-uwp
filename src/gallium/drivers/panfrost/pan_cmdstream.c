@@ -33,7 +33,6 @@
 #include "pipe/p_state.h"
 #include "gallium/auxiliary/util/u_blend.h"
 
-#include "panfrost-quirks.h"
 #include "genxml/gen_macros.h"
 
 #include "pan_pool.h"
@@ -3738,7 +3737,7 @@ batch_get_polygon_list(struct panfrost_batch *batch)
                 /* Create the BO as invisible if we can. In the non-hierarchical tiler case,
                  * we need to write the polygon list manually because there's not WRITE_VALUE
                  * job in the chain (maybe we should add one...). */
-                bool init_polygon_list = !has_draws && (dev->quirks & MIDGARD_NO_HIER_TILING);
+                bool init_polygon_list = !has_draws && dev->model->quirks.no_hierarchical_tiling;
                 batch->tiler_ctx.midgard.polygon_list =
                         panfrost_batch_create_bo(batch, size,
                                                  init_polygon_list ? 0 : PAN_BO_INVISIBLE,
