@@ -134,10 +134,6 @@ KHR-GLES3.packed_pixels.varied_rectangle.rgba32f,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba32i,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba32ui,Fail
 
-# The next fail was found during kernel v5.16 uprev pipelines. It was happening
-# before the kernel uprev.
-KHR-GLES31.core.shader_storage_buffer_object.basic-stdLayout_UBO_SSBO-case2-cs,Fail
-
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
 glx@glx-swap-pixmap-bad,Fail
