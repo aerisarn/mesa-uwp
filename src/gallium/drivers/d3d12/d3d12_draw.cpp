@@ -757,21 +757,11 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
    if (!any)
       return false;
 
-   if (ctx->current_predication)
-      ctx->cmdlist->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+   d3d12_compute_transform_save_restore save;
+   d3d12_save_compute_transform_state(ctx, &save);
 
    auto indirect_in = *indirect_inout;
    *indirect_inout = indirect_out;
-
-   d3d12_shader_selector *save_cs = ctx->compute_state;
-
-   pipe_constant_buffer save_cs_cbuf0 = {};
-
-   pipe_shader_buffer save_cs_ssbos[2] = {};
-   for (unsigned i = 0; i < 2; ++i) {
-      pipe_resource_reference(&save_cs_ssbos[i].buffer, ctx->ssbo_views[PIPE_SHADER_COMPUTE][i].buffer);
-      save_cs_ssbos[i] = ctx->ssbo_views[PIPE_SHADER_COMPUTE][i];
-   }
 
    d3d12_compute_transform_key key;
    memset(&key, 0, sizeof(key));
@@ -785,9 +775,6 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
    ctx->transform_state_vars[2] = drawid;
 
    if (indirect_in->indirect_draw_count) {
-      pipe_resource_reference(&save_cs_cbuf0.buffer, ctx->cbufs[PIPE_SHADER_COMPUTE][0].buffer);
-      save_cs_cbuf0 = ctx->cbufs[PIPE_SHADER_COMPUTE][0];
-
       pipe_constant_buffer draw_count_cbuf;
       draw_count_cbuf.buffer = indirect_in->indirect_draw_count;
       draw_count_cbuf.buffer_offset = indirect_in->indirect_draw_count_offset;
@@ -821,13 +808,7 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
    grid.grid[1] = grid.grid[2] = 1;
    ctx->base.launch_grid(&ctx->base, &grid);
 
-   ctx->base.bind_compute_state(&ctx->base, save_cs);
-   if (save_cs_cbuf0.buffer)
-      ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 0, true, &save_cs_cbuf0);
-   ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, 2, save_cs_ssbos, 3);
-
-   if (ctx->current_predication)
-      d3d12_enable_predication(ctx);
+   d3d12_restore_compute_transform_state(ctx, &save);
 
    *indirect_out = *indirect_in;
    indirect_out->buffer = new_cs_ssbos[1].buffer;

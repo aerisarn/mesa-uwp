@@ -79,4 +79,17 @@ d3d12_compute_transform_cache_init(struct d3d12_context *ctx);
 void
 d3d12_compute_transform_cache_destroy(struct d3d12_context *ctx);
 
+struct d3d12_compute_transform_save_restore
+{
+   struct d3d12_shader_selector *cs;
+   struct pipe_constant_buffer cbuf0;
+   struct pipe_shader_buffer ssbos[2];
+};
+
+void
+d3d12_save_compute_transform_state(struct d3d12_context *ctx, d3d12_compute_transform_save_restore *save);
+
+void
+d3d12_restore_compute_transform_state(struct d3d12_context *ctx, d3d12_compute_transform_save_restore *save);
+
 #endif
