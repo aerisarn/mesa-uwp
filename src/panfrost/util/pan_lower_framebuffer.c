@@ -88,15 +88,12 @@ pan_unpacked_type_for_format(const struct util_format_description *desc)
 }
 
 static bool
-pan_is_format_native(const struct util_format_description *desc, unsigned quirks, bool is_store)
+pan_is_format_native(const struct util_format_description *desc, bool broken_ld_special, bool is_store)
 {
-        if (is_store)
+        if (is_store || broken_ld_special)
                 return false;
 
         if (util_format_is_pure_integer(desc->format) || util_format_is_float(desc->format))
-                return false;
-
-        if (quirks & MIDGARD_NO_TYPED_BLEND_LOADS)
                 return false;
 
         /* Some formats are missing as typed but have unpacks */
@@ -490,8 +487,7 @@ pan_lower_fb_store(nir_shader *shader,
                 nir_builder *b,
                 nir_intrinsic_instr *intr,
                 const struct util_format_description *desc,
-                bool reorder_comps,
-                unsigned quirks)
+                bool reorder_comps)
 {
         /* For stores, add conversion before */
         nir_ssa_def *unpacked = nir_ssa_for_src(b, intr->src[1], 4);
@@ -517,7 +513,7 @@ pan_lower_fb_load(nir_shader *shader,
                 nir_intrinsic_instr *intr,
                 const struct util_format_description *desc,
                 bool reorder_comps,
-                unsigned base, int sample, unsigned quirks)
+                unsigned base, int sample)
 {
         nir_ssa_def *packed =
                 nir_load_raw_output_pan(b, 4, 32, pan_sample_id(b, sample),
@@ -555,7 +551,7 @@ pan_lower_fb_load(nir_shader *shader,
 
 bool
 pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
-                      uint8_t raw_fmt_mask, bool is_blend, unsigned quirks)
+                      uint8_t raw_fmt_mask, bool is_blend, bool broken_ld_special)
 {
         if (shader->info.stage != MESA_SHADER_FRAGMENT)
                return false;
@@ -594,7 +590,7 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                                    util_format_description(rt_fmts[rt]);
 
                                 /* Don't lower */
-                                if (pan_is_format_native(desc, quirks, is_store))
+                                if (pan_is_format_native(desc, broken_ld_special, is_store))
                                         continue;
 
                                 /* EXT_shader_framebuffer_fetch requires
@@ -609,10 +605,10 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
 
                                 if (is_store) {
                                         b.cursor = nir_before_instr(instr);
-                                        pan_lower_fb_store(shader, &b, intr, desc, reorder_comps, quirks);
+                                        pan_lower_fb_store(shader, &b, intr, desc, reorder_comps);
                                 } else {
                                         b.cursor = nir_after_instr(instr);
-                                        pan_lower_fb_load(shader, &b, intr, desc, reorder_comps, base, sample, quirks);
+                                        pan_lower_fb_load(shader, &b, intr, desc, reorder_comps, base, sample);
                                 }
 
                                 nir_instr_remove(instr);
