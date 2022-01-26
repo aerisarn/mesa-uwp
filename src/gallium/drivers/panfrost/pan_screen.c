@@ -853,21 +853,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         if (dev->debug & PAN_DBG_NO_AFBC)
                 dev->has_afbc = false;
 
-        /* Check if we're loading against a supported GPU model. */
-
-        switch (dev->gpu_id) {
-        case 0x720: /* T720 */
-        case 0x750: /* T760 */
-        case 0x820: /* T820 */
-        case 0x860: /* T860 */
-        case 0x6221: /* G72 */
-        case 0x7093: /* G31 */
-        case 0x7211: /* G76 */
-        case 0x7212: /* G52 */
-        case 0x7402: /* G52r1 */
-                break;
-        default:
-                /* Fail to load against untested models */
+        /* Bail early on unsupported hardware */
+        if (dev->model == NULL) {
                 debug_printf("panfrost: Unsupported model %X", dev->gpu_id);
                 panfrost_destroy_screen(&(screen->base));
                 return NULL;
