@@ -1198,8 +1198,8 @@ zink_memobj_create_from_handle(struct pipe_screen *pscreen, struct winsys_handle
 static void
 zink_memobj_destroy(struct pipe_screen *pscreen, struct pipe_memory_object *pmemobj)
 {
-   struct zink_memory_object *memobj = (struct zink_memory_object *)pmemobj;
 #ifdef ZINK_USE_DMABUF
+   struct zink_memory_object *memobj = (struct zink_memory_object *)pmemobj;
    close(memobj->whandle.handle);
 #endif
    FREE(pmemobj);
