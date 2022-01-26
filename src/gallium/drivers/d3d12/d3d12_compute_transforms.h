@@ -29,6 +29,9 @@
 
 enum class d3d12_compute_transform_type
 {
+   /* Extract vertex shader draw params (base vertex, instance, draw ID) from
+    * a stream of indirect draw (indexed) params
+    */
    base_vertex,
    max,
 };
