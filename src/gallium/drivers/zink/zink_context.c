@@ -4211,8 +4211,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->batch.state)
       goto fail;
 
-   pipe_buffer_write(&ctx->base, ctx->dummy_vertex_buffer, 0, sizeof(data), data);
-   pipe_buffer_write(&ctx->base, ctx->dummy_xfb_buffer, 0, sizeof(data), data);
+   pipe_buffer_write_nooverlap(&ctx->base, ctx->dummy_vertex_buffer, 0, sizeof(data), data);
+   pipe_buffer_write_nooverlap(&ctx->base, ctx->dummy_xfb_buffer, 0, sizeof(data), data);
 
    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
       /* need to update these based on screen config for null descriptors */
