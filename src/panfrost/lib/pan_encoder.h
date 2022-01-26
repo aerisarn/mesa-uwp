@@ -77,8 +77,6 @@ panfrost_get_total_stack_size(
                 unsigned threads_per_core,
                 unsigned core_count);
 
-const char * panfrost_model_name(unsigned gpu_id);
-
 /* Attributes / instancing */
 
 unsigned

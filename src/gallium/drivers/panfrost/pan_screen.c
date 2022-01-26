@@ -74,7 +74,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
-        return panfrost_model_name(pan_device(screen)->gpu_id);
+        return pan_device(screen)->model->name;
 }
 
 static const char *

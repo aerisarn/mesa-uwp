@@ -316,14 +316,14 @@ panvk_physical_device_init(struct panvk_physical_device *device,
    if (device->pdev.arch < 5) {
       result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                          "%s not supported",
-                         panfrost_model_name(device->pdev.gpu_id));
+                         device->pdev.model->name);
       goto fail;
    }
 
    panvk_arch_dispatch(device->pdev.arch, meta_init, device);
 
    memset(device->name, 0, sizeof(device->name));
-   sprintf(device->name, "%s", panfrost_model_name(device->pdev.gpu_id));
+   sprintf(device->name, "%s", device->pdev.model->name);
 
    if (panvk_device_get_cache_uuid(device->pdev.gpu_id, device->cache_uuid)) {
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
