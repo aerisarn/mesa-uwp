@@ -712,16 +712,9 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
                               const uint32_t nr_in_syncobjs,
                               const uint32_t nr_out_syncobjs,
                               uint32_t perf_pass_index,
-                              struct tu_queue_submit **submit)
+                              struct tu_queue_submit *new_submit)
 {
    VkResult result;
-
-   struct tu_queue_submit *new_submit = vk_zalloc(&queue->device->vk.alloc,
-               sizeof(*new_submit), 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-   if (new_submit == NULL) {
-      result = vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
-      goto fail_new_submit;
-   }
 
    bool u_trace_enabled = u_trace_context_actively_tracing(&queue->device->trace_context);
    bool has_trace_points = false;
@@ -745,6 +738,8 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
          has_trace_points = true;
       }
    }
+
+   memset(new_submit, 0, sizeof(struct tu_queue_submit));
 
    new_submit->cmds = vk_zalloc(&queue->device->vk.alloc,
          entry_count * sizeof(*new_submit->cmds), 8,
@@ -814,8 +809,6 @@ tu_queue_submit_create_locked(struct tu_queue *queue,
    new_submit->perf_pass_index = perf_pass_index;
    new_submit->vk_submit = vk_submit;
 
-   *submit = new_submit;
-
    return VK_SUCCESS;
 
 fail_out_syncobjs:
@@ -829,9 +822,15 @@ fail_copy_timestamp_cs:
 fail_cmd_trace_data:
    vk_free(&queue->device->vk.alloc, new_submit->cmds);
 fail_cmds:
-   vk_free(&queue->device->vk.alloc, new_submit);
-fail_new_submit:
    return result;
+}
+
+static void
+tu_queue_submit_finish(struct tu_queue *queue, struct tu_queue_submit *submit)
+{
+   vk_free(&queue->device->vk.alloc, submit->cmds);
+   vk_free(&queue->device->vk.alloc, submit->in_syncobjs);
+   vk_free(&queue->device->vk.alloc, submit->out_syncobjs);
 }
 
 static void
@@ -1031,7 +1030,7 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    struct tu_queue *queue = container_of(vk_queue, struct tu_queue, vk);
    uint32_t perf_pass_index = queue->device->perfcntrs_pass_cs ?
                               submit->perf_pass_index : ~0;
-   struct tu_queue_submit *submit_req = NULL;
+   struct tu_queue_submit submit_req;
 
    pthread_mutex_lock(&queue->device->submit_mutex);
 
@@ -1045,8 +1044,8 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
    }
 
    /* note: assuming there won't be any very large semaphore counts */
-   struct drm_msm_gem_submit_syncobj *in_syncobjs = submit_req->in_syncobjs;
-   struct drm_msm_gem_submit_syncobj *out_syncobjs = submit_req->out_syncobjs;
+   struct drm_msm_gem_submit_syncobj *in_syncobjs = submit_req.in_syncobjs;
+   struct drm_msm_gem_submit_syncobj *out_syncobjs = submit_req.out_syncobjs;
 
    uint32_t nr_in_syncobjs = 0, nr_out_syncobjs = 0;
 
@@ -1068,9 +1067,11 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
       };
    }
 
-   ret = tu_queue_submit_locked(queue, submit_req);
+   ret = tu_queue_submit_locked(queue, &submit_req);
 
    pthread_mutex_unlock(&queue->device->submit_mutex);
+   tu_queue_submit_finish(queue, &submit_req);
+
    if (ret != VK_SUCCESS)
        return ret;
 
