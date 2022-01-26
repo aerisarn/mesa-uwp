@@ -41,11 +41,11 @@ create_cmd_signature(struct d3d12_context *ctx, const struct d3d12_cmd_signature
    D3D12_INDIRECT_ARGUMENT_DESC indirect_args[2] = {};
 
    unsigned num_args = 0;
-   if (key->draw_params) {
+   if (key->draw_or_dispatch_params) {
       indirect_args[num_args].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
-      indirect_args[num_args].Constant.RootParameterIndex = key->draw_params_root_const_param;
-      indirect_args[num_args].Constant.DestOffsetIn32BitValues = key->draw_params_root_const_offset;
-      indirect_args[num_args++].Constant.Num32BitValuesToSet = 4;
+      indirect_args[num_args].Constant.RootParameterIndex = key->params_root_const_param;
+      indirect_args[num_args].Constant.DestOffsetIn32BitValues = key->params_root_const_offset;
+      indirect_args[num_args++].Constant.Num32BitValuesToSet = key->compute ? 3 : 4;
    }
 
    indirect_args[num_args++].Type = key->compute ? D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH :
@@ -62,7 +62,7 @@ create_cmd_signature(struct d3d12_context *ctx, const struct d3d12_cmd_signature
 }
 
 ID3D12CommandSignature *
-d3d12_get_gfx_cmd_signature(struct d3d12_context *ctx,
+d3d12_get_cmd_signature(struct d3d12_context *ctx,
                             const struct d3d12_cmd_signature_key *key)
 {
    struct hash_entry *entry = _mesa_hash_table_search(ctx->cmd_signature_cache, &key);

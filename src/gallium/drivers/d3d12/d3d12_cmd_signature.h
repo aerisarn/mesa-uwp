@@ -29,10 +29,10 @@
 struct d3d12_cmd_signature_key {
    uint8_t compute:1;
    uint8_t indexed:1;
-   uint8_t draw_params:1;
+   uint8_t draw_or_dispatch_params:1;
    /* 5 bits padding */
-   uint8_t draw_params_root_const_param;
-   uint8_t draw_params_root_const_offset;
+   uint8_t params_root_const_param;
+   uint8_t params_root_const_offset;
    /* 8 bits padding */
 
    unsigned multi_draw_stride;
@@ -48,7 +48,7 @@ void
 d3d12_cmd_signature_cache_destroy(struct d3d12_context *ctx);
 
 ID3D12CommandSignature *
-d3d12_get_gfx_cmd_signature(struct d3d12_context *ctx,
-                            const struct d3d12_cmd_signature_key *key);
+d3d12_get_cmd_signature(struct d3d12_context *ctx,
+                        const struct d3d12_cmd_signature_key *key);
 
 #endif
