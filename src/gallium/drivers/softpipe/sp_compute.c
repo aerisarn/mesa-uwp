@@ -55,7 +55,7 @@ cs_prepare(const struct sp_compute_shader *cs,
    if (machine->SysSemanticToIndex[TGSI_SEMANTIC_THREAD_ID] != -1) {
       unsigned i = machine->SysSemanticToIndex[TGSI_SEMANTIC_THREAD_ID];
       for (j = 0; j < TGSI_QUAD_SIZE; j++) {
-         machine->SystemValue[i].xyzw[0].i[j] = local_x;
+         machine->SystemValue[i].xyzw[0].i[j] = local_x + j;
          machine->SystemValue[i].xyzw[1].i[j] = local_y;
          machine->SystemValue[i].xyzw[2].i[j] = local_z;
       }
@@ -180,7 +180,7 @@ softpipe_launch_grid(struct pipe_context *context,
    bwidth = cs->info.properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH];
    bheight = cs->info.properties[TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT];
    bdepth = cs->info.properties[TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH];
-   num_threads_in_group = bwidth * bheight * bdepth;
+   num_threads_in_group = DIV_ROUND_UP(bwidth, TGSI_QUAD_SIZE) * bheight * bdepth;
 
    fill_grid_size(context, info, grid_size);
 
@@ -195,15 +195,15 @@ softpipe_launch_grid(struct pipe_context *context,
    }
 
    /* initialise machines + GRID_SIZE + THREAD_ID  + BLOCK_SIZE */
+   int idx = 0;
    for (local_z = 0; local_z < bdepth; local_z++) {
       for (local_y = 0; local_y < bheight; local_y++) {
-         for (local_x = 0; local_x < bwidth; local_x++) {
-            int idx = local_x + (local_y * bwidth) + (local_z * bheight * bwidth);
+         for (local_x = 0; local_x < bwidth; local_x += TGSI_QUAD_SIZE) {
             machines[idx] = tgsi_exec_machine_create(PIPE_SHADER_COMPUTE);
 
             machines[idx]->LocalMem = local_mem;
             machines[idx]->LocalMemSize = cs->shader.req_local_mem;
-            machines[idx]->NonHelperMask = 0x1;
+            machines[idx]->NonHelperMask = (1 << (MIN2(TGSI_QUAD_SIZE, bwidth - local_x))) - 1;
             cs_prepare(cs, machines[idx],
                        local_x, local_y, local_z,
                        grid_size[0], grid_size[1], grid_size[2],
@@ -214,6 +214,7 @@ softpipe_launch_grid(struct pipe_context *context,
             tgsi_exec_set_constant_buffers(machines[idx], PIPE_MAX_CONSTANT_BUFFERS,
                                            softpipe->mapped_constants[PIPE_SHADER_COMPUTE],
                                            softpipe->const_buffer_size[PIPE_SHADER_COMPUTE]);
+            idx++;
          }
       }
    }
