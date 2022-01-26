@@ -159,6 +159,10 @@ VkResult genX(CreateQueryPool)(
       break;
    }
 #endif
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      /* Query has two values: begin and end. */
+      uint64s_per_slot = 1 + 2;
+      break;
    default:
       assert(!"Invalid query type");
    }
@@ -448,7 +452,8 @@ VkResult genX(GetQueryPoolResults)(
           pool->type == VK_QUERY_TYPE_TIMESTAMP ||
           pool->type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT ||
           pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR ||
-          pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL);
+          pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL ||
+          pool->type == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT);
 
    if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
@@ -490,7 +495,8 @@ VkResult genX(GetQueryPoolResults)(
 
       uint32_t idx = 0;
       switch (pool->type) {
-      case VK_QUERY_TYPE_OCCLUSION: {
+      case VK_QUERY_TYPE_OCCLUSION:
+      case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
          uint64_t *slot = query_slot(pool, firstQuery + i);
          if (write_results) {
             /* From the Vulkan 1.2.132 spec:
@@ -675,6 +681,7 @@ emit_zero_queries(struct anv_cmd_buffer *cmd_buffer,
       }
       break;
 
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       for (uint32_t i = 0; i < num_queries; i++) {
@@ -750,7 +757,8 @@ void genX(CmdResetQueryPool)(
    }
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: {
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
       struct mi_builder b;
       mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
@@ -921,6 +929,11 @@ void genX(CmdBeginQueryIndexedEXT)(
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
       emit_ps_depth_count(cmd_buffer, anv_address_add(query_addr, 8));
+      break;
+
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      mi_store(&b, mi_mem64(anv_address_add(query_addr, 8)),
+                   mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
       break;
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
@@ -1099,6 +1112,20 @@ void genX(CmdEndQueryIndexedEXT)(
    case VK_QUERY_TYPE_OCCLUSION:
       emit_ps_depth_count(cmd_buffer, anv_address_add(query_addr, 16));
       emit_query_pc_availability(cmd_buffer, query_addr, true);
+      break;
+
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      /* Ensure previous commands have completed before capturing the register
+       * value.
+       */
+      anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
+         pc.CommandStreamerStallEnable = true;
+         pc.StallAtPixelScoreboard = true;
+      }
+
+      mi_store(&b, mi_mem64(anv_address_add(query_addr, 16)),
+                   mi_reg64(GENX(CL_INVOCATION_COUNT_num)));
+      emit_query_mi_availability(&b, query_addr, true);
       break;
 
    case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
@@ -1412,6 +1439,7 @@ void genX(CmdCopyQueryPoolResults)(
       uint32_t idx = 0;
       switch (pool->type) {
       case VK_QUERY_TYPE_OCCLUSION:
+      case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
          result = compute_query_result(&b, anv_address_add(query_addr, 8));
          /* Like in the case of vkGetQueryPoolResults, if the query is
           * unavailable and the VK_QUERY_RESULT_PARTIAL_BIT flag is set,
