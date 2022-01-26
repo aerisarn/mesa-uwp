@@ -56,7 +56,6 @@ KHR-GL46.compute_shader.conditional-dispatching,Fail
 KHR-GL46.conditional_render_inverted.functional,Fail
 KHR-GL46.copy_image.functional,Fail
 KHR-GL46.cull_distance.functional,Fail
-KHR-GL46.direct_state_access.queries_functional,Fail
 KHR-GL46.direct_state_access.renderbuffers_storage_multisample,Fail
 KHR-GL46.direct_state_access.vertex_arrays_attribute_format,Fail
 KHR-GL46.geometry_shader.primitive_counter.lines_to_points,Timeout
