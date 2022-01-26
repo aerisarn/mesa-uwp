@@ -142,7 +142,6 @@ struct d3d12_stream_output_target {
    struct pipe_stream_output_target base;
    struct pipe_resource *fill_buffer;
    unsigned fill_buffer_offset;
-   uint32_t cached_filled_size;
 };
 
 struct d3d12_shader_state {

@@ -1544,7 +1544,7 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
       if (target) {
          /* Sub-allocate a new fill buffer each time to avoid GPU/CPU synchronization */
          if (offsets[i] != ~0u) {
-            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t), 4,
+            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t), 16,
                                  &target->fill_buffer_offset, &target->fill_buffer);
             update_so_fill_buffer_count(ctx, target->fill_buffer, target->fill_buffer_offset, offsets[i]);
          }
@@ -1769,7 +1769,6 @@ d3d12_enable_fake_so_buffers(struct d3d12_context *ctx, unsigned factor)
             pipe_resource_reference(&fake_target->base.buffer, prev_target->base.buffer);
             pipe_resource_reference(&fake_target->fill_buffer, prev_target->fill_buffer);
             fake_target->fill_buffer_offset = prev_target->fill_buffer_offset;
-            fake_target->cached_filled_size = prev_target->cached_filled_size;
             break;
          }
       }
@@ -1780,16 +1779,14 @@ d3d12_enable_fake_so_buffers(struct d3d12_context *ctx, unsigned factor)
                                                        PIPE_BIND_STREAM_OUTPUT,
                                                        PIPE_USAGE_STAGING,
                                                        target->base.buffer->width0 * factor);
-         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t), 4,
+         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t) * 5, 256,
                               &fake_target->fill_buffer_offset, &fake_target->fill_buffer);
          update_so_fill_buffer_count(ctx, fake_target->fill_buffer, fake_target->fill_buffer_offset, 0);
-         pipe_buffer_read(&ctx->base, target->fill_buffer,
-                          target->fill_buffer_offset, sizeof(uint32_t),
-                          &fake_target->cached_filled_size);
       }
 
       fake_target->base.buffer_offset = target->base.buffer_offset * factor;
-      fake_target->base.buffer_size = (target->base.buffer_size - fake_target->cached_filled_size) * factor;
+      /* TODO: This will mess with SO statistics/overflow queries, but we're already missing things there */
+      fake_target->base.buffer_size = target->base.buffer_size * factor;
       ctx->fake_so_targets[i] = &fake_target->base;
       fill_stream_output_buffer_view(&ctx->fake_so_buffer_views[i], fake_target);
    }
@@ -1808,40 +1805,84 @@ d3d12_disable_fake_so_buffers(struct d3d12_context *ctx)
 
    d3d12_flush_cmdlist_and_wait(ctx);
 
+   bool cs_state_saved = false;
+   d3d12_compute_transform_save_restore save;
+
    for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_so_targets; ++i) {
       struct d3d12_stream_output_target *target = (struct d3d12_stream_output_target *)ctx->so_targets[i];
       struct d3d12_stream_output_target *fake_target = (struct d3d12_stream_output_target *)ctx->fake_so_targets[i];
-      uint64_t filled_size = 0;
-      struct pipe_transfer *src_transfer, *dst_transfer;
-      uint8_t *src, *dst;
-
+      
       if (fake_target == NULL)
          continue;
 
-      pipe_buffer_read(&ctx->base, fake_target->fill_buffer,
-                       fake_target->fill_buffer_offset, sizeof(uint64_t),
-                       &filled_size);
-
-      src = (uint8_t *)pipe_buffer_map_range(&ctx->base, fake_target->base.buffer,
-                                             fake_target->base.buffer_offset,
-                                             fake_target->base.buffer_size,
-                                             PIPE_MAP_READ, &src_transfer);
-      dst = (uint8_t *)pipe_buffer_map_range(&ctx->base, target->base.buffer,
-                                             target->base.buffer_offset,
-                                             target->base.buffer_size,
-                                             PIPE_MAP_READ, &dst_transfer);
-
-      /* Note: This will break once support for gl_SkipComponents is added */
-      uint32_t stride = ctx->gfx_pipeline_state.so_info.stride[i] * 4;
-      uint64_t src_offset = 0, dst_offset = fake_target->cached_filled_size;
-      while (src_offset < filled_size) {
-         memcpy(dst + dst_offset, src + src_offset, stride);
-         src_offset += stride * ctx->fake_so_buffer_factor;
-         dst_offset += stride;
+      if (!cs_state_saved) {
+         cs_state_saved = true;
+         d3d12_save_compute_transform_state(ctx, &save);
       }
 
-      pipe_buffer_unmap(&ctx->base, src_transfer);
-      pipe_buffer_unmap(&ctx->base, dst_transfer);
+      d3d12_compute_transform_key key;
+      memset(&key, 0, sizeof(key));
+      key.type = d3d12_compute_transform_type::fake_so_buffer_vertex_count;
+      ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
+
+      ctx->transform_state_vars[0] = ctx->gfx_pipeline_state.so_info.stride[i];
+      ctx->transform_state_vars[1] = ctx->fake_so_buffer_factor;
+
+      pipe_shader_buffer new_cs_ssbos[3];
+      new_cs_ssbos[0].buffer = fake_target->fill_buffer;
+      new_cs_ssbos[0].buffer_offset = fake_target->fill_buffer_offset;
+      new_cs_ssbos[0].buffer_size = fake_target->fill_buffer->width0 - fake_target->fill_buffer_offset;
+
+      new_cs_ssbos[1].buffer = target->fill_buffer;
+      new_cs_ssbos[1].buffer_offset = target->fill_buffer_offset;
+      new_cs_ssbos[1].buffer_size = target->fill_buffer->width0 - target->fill_buffer_offset;
+      ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, 2, new_cs_ssbos, 2);
+
+      pipe_grid_info grid = {};
+      grid.block[0] = grid.block[1] = grid.block[2] = 1;
+      grid.grid[0] = grid.grid[1] = grid.grid[2] = 1;
+      ctx->base.launch_grid(&ctx->base, &grid);
+
+      key.type = d3d12_compute_transform_type::fake_so_buffer_copy_back;
+      key.fake_so_buffer_copy_back.stride = ctx->gfx_pipeline_state.so_info.stride[i];
+      for (unsigned j = 0; j < ctx->gfx_pipeline_state.so_info.num_outputs; ++j) {
+         auto& output = ctx->gfx_pipeline_state.so_info.output[j];
+         if (output.output_buffer != i)
+            continue;
+
+         if (key.fake_so_buffer_copy_back.num_ranges > 0) {
+            auto& last_range = key.fake_so_buffer_copy_back.ranges[key.fake_so_buffer_copy_back.num_ranges - 1];
+            if (output.dst_offset * 4 == last_range.offset + last_range.size) {
+               last_range.size += output.num_components * 4;
+               continue;
+            }
+         }
+
+         auto& new_range = key.fake_so_buffer_copy_back.ranges[key.fake_so_buffer_copy_back.num_ranges++];
+         new_range.offset = output.dst_offset * 4;
+         new_range.size = output.num_components * 4;
+      }
+      ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
+
+      ctx->transform_state_vars[0] = ctx->fake_so_buffer_factor;
+
+      new_cs_ssbos[0].buffer = target->base.buffer;
+      new_cs_ssbos[0].buffer_offset = target->base.buffer_offset;
+      new_cs_ssbos[0].buffer_size = target->base.buffer_size;
+      new_cs_ssbos[1].buffer = fake_target->base.buffer;
+      new_cs_ssbos[1].buffer_offset = fake_target->base.buffer_offset;
+      new_cs_ssbos[1].buffer_size = fake_target->base.buffer_size;
+      ctx->base.set_shader_buffers(&ctx->base, PIPE_SHADER_COMPUTE, 0, 2, new_cs_ssbos, 2);
+
+      pipe_constant_buffer cbuf = {};
+      cbuf.buffer = fake_target->fill_buffer;
+      cbuf.buffer_offset = fake_target->fill_buffer_offset;
+      cbuf.buffer_size = fake_target->fill_buffer->width0 - cbuf.buffer_offset;
+      ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 0, true, &cbuf);
+
+      grid.indirect = fake_target->fill_buffer;
+      grid.indirect_offset = fake_target->fill_buffer_offset + 4;
+      ctx->base.launch_grid(&ctx->base, &grid);
 
       pipe_so_target_reference(&ctx->fake_so_targets[i], NULL);
       ctx->fake_so_buffer_views[i].SizeInBytes = 0;
@@ -1855,6 +1896,9 @@ d3d12_disable_fake_so_buffers(struct d3d12_context *ctx)
 
    ctx->fake_so_buffer_factor = 0;
    ctx->cmdlist_dirty |= D3D12_DIRTY_STREAM_OUTPUT;
+
+   if (cs_state_saved)
+      d3d12_restore_compute_transform_state(ctx, &save);
 
    return true;
 }
