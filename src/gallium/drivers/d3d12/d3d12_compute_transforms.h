@@ -33,6 +33,16 @@ enum class d3d12_compute_transform_type
     * a stream of indirect draw (indexed) params
     */
    base_vertex,
+   /* Given an SO buffer's declaration in the key, copy filled items from a fake (multiplied)
+    * buffer into the original SO buffer, after the original filled size (loaded from the indirect
+    * arg buffer double-bound as a UBO), making sure to skip gaps
+    */
+   fake_so_buffer_copy_back,
+   /* Append a fake SO buffer filed size with (vertex count, 1, 1, original filled size)
+    * for an indirect dispatch of the fake_so_buffer_copy_back transform, and also update
+    * the original filled size with the fake filled size
+    */
+   fake_so_buffer_vertex_count,
    max,
 };
 
@@ -40,10 +50,22 @@ struct d3d12_compute_transform_key
 {
    d3d12_compute_transform_type type;
 
-   struct {
-      unsigned indexed:1;
-      unsigned dynamic_count:1;
-   } base_vertex;
+   union
+   {
+      struct {
+         unsigned indexed : 1;
+         unsigned dynamic_count : 1;
+      } base_vertex;
+
+      struct {
+         uint16_t stride;
+         uint16_t num_ranges;
+         struct {
+            uint16_t offset;
+            uint16_t size;
+         } ranges[PIPE_MAX_SO_OUTPUTS];
+      } fake_so_buffer_copy_back;
+   };
 };
 
 d3d12_shader_selector *

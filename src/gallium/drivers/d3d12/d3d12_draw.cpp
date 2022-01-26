@@ -773,9 +773,9 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
       save_cs_ssbos[i] = ctx->ssbo_views[PIPE_SHADER_COMPUTE][i];
    }
 
-   d3d12_compute_transform_key key = {
-      d3d12_compute_transform_type::base_vertex,
-   };
+   d3d12_compute_transform_key key;
+   memset(&key, 0, sizeof(key));
+   key.type = d3d12_compute_transform_type::base_vertex;
    key.base_vertex.indexed = dinfo->index_size > 0;
    key.base_vertex.dynamic_count = indirect_in->indirect_draw_count != nullptr;
    ctx->base.bind_compute_state(&ctx->base, d3d12_get_compute_transform(ctx, &key));
