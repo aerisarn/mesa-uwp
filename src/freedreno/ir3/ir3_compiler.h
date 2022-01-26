@@ -48,9 +48,6 @@ struct ir3_compiler {
 
    struct nir_shader_compiler_options nir_options;
 
-   /* If true, UBO accesses are assumed to be bounds-checked as defined by
-    * VK_EXT_robustness2 and optimizations may have to be more conservative.
-    */
    bool robust_ubo_access;
 
    /*
@@ -187,10 +184,17 @@ struct ir3_compiler {
    bool has_preamble;
 };
 
+struct ir3_compiler_options {
+   /* If true, UBO accesses are assumed to be bounds-checked as defined by
+    * VK_EXT_robustness2 and optimizations may have to be more conservative.
+    */
+   bool robust_ubo_access;
+};
+
 void ir3_compiler_destroy(struct ir3_compiler *compiler);
 struct ir3_compiler *ir3_compiler_create(struct fd_device *dev,
                                          const struct fd_dev_id *dev_id,
-                                         bool robust_ubo_access);
+                                         const struct ir3_compiler_options *options);
 
 void ir3_disk_cache_init(struct ir3_compiler *compiler);
 void ir3_disk_cache_init_shader_key(struct ir3_compiler *compiler,

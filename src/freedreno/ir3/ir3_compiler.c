@@ -70,7 +70,7 @@ ir3_compiler_destroy(struct ir3_compiler *compiler)
    ralloc_free(compiler);
 }
 
-static const nir_shader_compiler_options options = {
+static const nir_shader_compiler_options nir_options = {
    .lower_fpow = true,
    .lower_scmp = true,
    .lower_flrp16 = true,
@@ -126,7 +126,7 @@ static const nir_shader_compiler_options options = {
 };
 
 /* we don't want to lower vertex_id to _zero_based on newer gpus: */
-static const nir_shader_compiler_options options_a6xx = {
+static const nir_shader_compiler_options nir_options_a6xx = {
    .lower_fpow = true,
    .lower_scmp = true,
    .lower_flrp16 = true,
@@ -189,7 +189,7 @@ static const nir_shader_compiler_options options_a6xx = {
 
 struct ir3_compiler *
 ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
-                    bool robust_ubo_access)
+                    const struct ir3_compiler_options *options)
 {
    struct ir3_compiler *compiler = rzalloc(NULL, struct ir3_compiler);
 
@@ -204,7 +204,7 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->dev = dev;
    compiler->dev_id = dev_id;
    compiler->gen = fd_dev_gen(dev_id);
-   compiler->robust_ubo_access = robust_ubo_access;
+   compiler->robust_ubo_access = options->robust_ubo_access;
 
    /* All known GPU's have 32k local memory (aka shared) */
    compiler->local_mem_size = 32 * 1024;
@@ -315,11 +315,11 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
    compiler->has_shared_regfile = compiler->gen >= 5;
 
    if (compiler->gen >= 6) {
-      compiler->nir_options = options_a6xx;
+      compiler->nir_options = nir_options_a6xx;
       compiler->nir_options.has_udot_4x8 = dev_info->a6xx.has_dp2acc;
       compiler->nir_options.has_sudot_4x8 = dev_info->a6xx.has_dp2acc;
    } else {
-      compiler->nir_options = options;
+      compiler->nir_options = nir_options;
    }
 
    ir3_disk_cache_init(compiler);

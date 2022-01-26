@@ -481,7 +481,8 @@ main(int argc, char **argv)
       unsigned gen = test->gpu_id / 100;
       if (!compilers[gen]) {
          dev_ids[gen].gpu_id = test->gpu_id;
-         compilers[gen] = ir3_compiler_create(NULL, &dev_ids[gen], false);
+         compilers[gen] = ir3_compiler_create(NULL, &dev_ids[gen],
+                                              &(struct ir3_compiler_options){});
       }
 
       FILE *fasm =

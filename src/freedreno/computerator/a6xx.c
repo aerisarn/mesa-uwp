@@ -537,7 +537,8 @@ a6xx_init(struct fd_device *dev, const struct fd_dev_id *dev_id)
       .read_perfcntrs = a6xx_read_perfcntrs,
    };
 
-   a6xx_backend->compiler = ir3_compiler_create(dev, dev_id, false);
+   a6xx_backend->compiler = ir3_compiler_create(dev, dev_id,
+                                                &(struct ir3_compiler_options){});
    a6xx_backend->dev = dev;
 
    a6xx_backend->info = fd_dev_info(dev_id);
