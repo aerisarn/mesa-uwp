@@ -1519,8 +1519,8 @@ update_so_fill_buffer_count(struct d3d12_context *ctx,
                             unsigned value)
 {
    struct pipe_transfer *transfer = NULL;
-   uint64_t *ptr = (uint64_t *)pipe_buffer_map_range(&ctx->base, fill_buffer,
-      fill_buffer_offset, sizeof(uint64_t), PIPE_MAP_WRITE, &transfer);
+   uint32_t *ptr = (uint32_t *)pipe_buffer_map_range(&ctx->base, fill_buffer,
+      fill_buffer_offset, sizeof(uint32_t), PIPE_MAP_WRITE, &transfer);
    *ptr = value;
    pipe_buffer_unmap(&ctx->base, transfer);
 }
@@ -1544,7 +1544,7 @@ d3d12_set_stream_output_targets(struct pipe_context *pctx,
       if (target) {
          /* Sub-allocate a new fill buffer each time to avoid GPU/CPU synchronization */
          if (offsets[i] != ~0u) {
-            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
+            u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t), 4,
                                  &target->fill_buffer_offset, &target->fill_buffer);
             update_so_fill_buffer_count(ctx, target->fill_buffer, target->fill_buffer_offset, offsets[i]);
          }
@@ -1780,11 +1780,11 @@ d3d12_enable_fake_so_buffers(struct d3d12_context *ctx, unsigned factor)
                                                        PIPE_BIND_STREAM_OUTPUT,
                                                        PIPE_USAGE_STAGING,
                                                        target->base.buffer->width0 * factor);
-         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint64_t), 4,
+         u_suballocator_alloc(&ctx->so_allocator, sizeof(uint32_t), 4,
                               &fake_target->fill_buffer_offset, &fake_target->fill_buffer);
          update_so_fill_buffer_count(ctx, fake_target->fill_buffer, fake_target->fill_buffer_offset, 0);
          pipe_buffer_read(&ctx->base, target->fill_buffer,
-                          target->fill_buffer_offset, sizeof(uint64_t),
+                          target->fill_buffer_offset, sizeof(uint32_t),
                           &fake_target->cached_filled_size);
       }
 
