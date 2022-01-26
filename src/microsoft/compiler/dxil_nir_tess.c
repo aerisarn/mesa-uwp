@@ -191,7 +191,12 @@ dxil_nir_split_tess_ctrl(nir_shader *nir, nir_function **patch_const_func)
    /* Kill dead references to the invocation ID from the patch const func so we don't
     * insert unnecessarily loops
     */
-   while (nir_opt_dead_cf(nir) | nir_opt_dce(nir));
+   bool progress;
+   do {
+      progress = false;
+      progress |= nir_opt_dead_cf(nir);
+      progress |= nir_opt_dce(nir);
+   } while (progress);
 
    /* Now, the patch constant function needs to be split into blocks and loops.
     * The series of instructions up to the first block containing a load_invocation_id
