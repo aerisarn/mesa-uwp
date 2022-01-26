@@ -95,7 +95,6 @@ cs_run(const struct sp_compute_shader *cs,
             machine->SystemValue[i].xyzw[2].i[j] = g_d;
          }
       }
-      machine->NonHelperMask = (1 << 1) - 1;
    }
 
    tgsi_exec_machine_run(machine, restart ? machine->pc : 0);
@@ -204,6 +203,7 @@ softpipe_launch_grid(struct pipe_context *context,
 
             machines[idx]->LocalMem = local_mem;
             machines[idx]->LocalMemSize = cs->shader.req_local_mem;
+            machines[idx]->NonHelperMask = 0x1;
             cs_prepare(cs, machines[idx],
                        local_x, local_y, local_z,
                        grid_size[0], grid_size[1], grid_size[2],
