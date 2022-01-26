@@ -50,6 +50,8 @@
 
 #include <vulkan/vulkan.h>
 
+#define pipe_buffer_write "use tc_buffer_write to avoid breaking threaded context"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
