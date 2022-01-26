@@ -727,6 +727,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
+   struct zink_context *ctx = zink_context(pctx);
    struct zink_sampler_view *sampler_view = CALLOC_STRUCT_CL(zink_sampler_view);
    bool err;
 
@@ -774,11 +775,11 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       }
       assert(ivci.format);
 
-      sampler_view->image_view = (struct zink_surface*)zink_get_surface(zink_context(pctx), pres, &templ, &ivci);
+      sampler_view->image_view = (struct zink_surface*)zink_get_surface(ctx, pres, &templ, &ivci);
       err = !sampler_view->image_view;
    } else {
-      VkBufferViewCreateInfo bvci = create_bvci(zink_context(pctx), res, state->format, state->u.buf.offset, state->u.buf.size);
-      sampler_view->buffer_view = get_buffer_view(zink_context(pctx), res, &bvci);
+      VkBufferViewCreateInfo bvci = create_bvci(ctx, res, state->format, state->u.buf.offset, state->u.buf.size);
+      sampler_view->buffer_view = get_buffer_view(ctx, res, &bvci);
       err = !sampler_view->buffer_view;
    }
    if (err) {
