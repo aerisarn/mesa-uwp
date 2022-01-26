@@ -253,6 +253,15 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
    boolean is_r400 = r300screen->caps.is_r400;
    boolean is_r500 = r300screen->caps.is_r500;
 
+   switch (param) {
+    case PIPE_SHADER_CAP_PREFERRED_IR:
+        return (r300screen->debug & DBG_USE_TGSI) ? PIPE_SHADER_IR_TGSI : PIPE_SHADER_IR_NIR;
+    case PIPE_SHADER_CAP_SUPPORTED_IRS:
+        return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
+    default:
+        break;
+    }
+
    switch (shader) {
     case PIPE_SHADER_FRAGMENT:
         switch (param)
@@ -315,10 +324,8 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
             return 0;
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
             return 32;
-        case PIPE_SHADER_CAP_PREFERRED_IR:
-            return (r300screen->debug & DBG_USE_TGSI) ? PIPE_SHADER_IR_TGSI : PIPE_SHADER_IR_NIR;
-        case PIPE_SHADER_CAP_SUPPORTED_IRS:
-            return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
+        default:
+            break;
         }
         break;
     case PIPE_SHADER_VERTEX:
@@ -404,10 +411,8 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
             return 0;
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
             return 32;
-        case PIPE_SHADER_CAP_PREFERRED_IR:
-            return (r300screen->debug & DBG_USE_TGSI) ? PIPE_SHADER_IR_TGSI : PIPE_SHADER_IR_NIR;
-        case PIPE_SHADER_CAP_SUPPORTED_IRS:
-            return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
+        default:
+            break;
         }
         break;
     default:
