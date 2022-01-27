@@ -51,12 +51,9 @@ struct wqm_ctx {
    Program* program;
    /* state for WQM propagation */
    std::set<unsigned> worklist;
-   std::vector<uint16_t> defined_in;
-   std::vector<bool> needs_wqm;
    std::vector<bool> branch_wqm; /* true if the branch condition in this block should be in wqm */
    wqm_ctx(Program* program_)
-       : program(program_), defined_in(program->peekAllocationId(), 0xFFFF),
-         needs_wqm(program->peekAllocationId()), branch_wqm(program->blocks.size())
+       : program(program_), branch_wqm(program->blocks.size())
    {
       for (unsigned i = 0; i < program->blocks.size(); i++)
          worklist.insert(i);
@@ -128,42 +125,25 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
 
    std::vector<WQMState> instr_needs(block->instructions.size());
 
+   bool propagate_wqm = ctx.branch_wqm[block->index];
    for (int i = block->instructions.size() - 1; i >= 0; --i) {
       aco_ptr<Instruction>& instr = block->instructions[i];
 
-      WQMState needs = needs_exact(instr) ? Exact : Unspecified;
-      bool propagate_wqm = instr->opcode == aco_opcode::p_wqm;
+      if (instr->opcode == aco_opcode::p_wqm)
+         propagate_wqm = true;
+
       bool pred_by_exec = needs_exec_mask(instr.get()) ||
                           instr->opcode == aco_opcode::p_logical_end ||
                           instr->isBranch();
-      for (const Definition& definition : instr->definitions) {
-         if (!definition.isTemp())
-            continue;
-         const unsigned def = definition.tempId();
-         ctx.defined_in[def] = block->index;
-         if (needs == Unspecified && ctx.needs_wqm[def]) {
-            needs = pred_by_exec ? WQM : Unspecified;
-            propagate_wqm = true;
-         }
-      }
 
-      if (instr->isBranch())
-         propagate_wqm = ctx.branch_wqm[block->index];
+      if (needs_exact(instr))
+         instr_needs[i] = Exact;
+      else if (propagate_wqm && pred_by_exec)
+         instr_needs[i] = WQM;
+      else
+         instr_needs[i] = Unspecified;
 
-      if (propagate_wqm) {
-         needs = pred_by_exec ? WQM : Unspecified;
-         for (const Operand& op : instr->operands) {
-            if (op.isTemp()) {
-               ctx.needs_wqm[op.tempId()] = true;
-            }
-         }
-      }
-      if (needs == Unspecified && info.block_needs & WQM) {
-         needs = pred_by_exec ? WQM : Unspecified;
-      }
-
-      instr_needs[i] = needs;
-      info.block_needs |= needs;
+      info.block_needs |= instr_needs[i];
    }
 
    info.instr_needs = instr_needs;
