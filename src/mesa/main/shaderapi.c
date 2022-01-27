@@ -1203,7 +1203,7 @@ _mesa_compile_shader(struct gl_context *ctx, struct gl_shader *sh)
       if (ctx->_Shader->Flags & GLSL_DUMP) {
          _mesa_log("GLSL source for %s shader %d:\n",
                  _mesa_shader_stage_to_string(sh->Stage), sh->Name);
-         _mesa_log("%s\n", sh->Source);
+         _mesa_log_direct(sh->Source);
       }
 
       ensure_builtin_types(ctx);
