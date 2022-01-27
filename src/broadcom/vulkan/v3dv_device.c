@@ -125,6 +125,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_device_group                    = true,
       .KHR_driver_properties               = true,
       .KHR_descriptor_update_template      = true,
+      .KHR_depth_stencil_resolve           = true,
       .KHR_external_fence                  = true,
       .KHR_external_fence_fd               = true,
       .KHR_external_memory                 = true,
@@ -1517,6 +1518,30 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
          props->maxCustomBorderColorSamplers = V3D_MAX_TEXTURE_SAMPLERS;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+         VkPhysicalDeviceDepthStencilResolveProperties *props =
+            (VkPhysicalDeviceDepthStencilResolveProperties *)ext;
+         props->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+         props->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+         /* FIXME: if we want to support independentResolveNone then we would
+          * need to honor attachment load operations on resolve attachments,
+          * which we currently ignore because the resolve makes them irrelevant,
+          * as it unconditionally writes all pixels in the render area. However,
+          * with independentResolveNone, it is possible to have one aspect of a
+          * D/S resolve attachment stay unresolved, in which case the attachment
+          * load operation is relevant.
+          *
+          * NOTE: implementing attachment load for resolve attachments isn't
+          * immediately trivial because these attachments are not part of the
+          * framebuffer and therefore we can't use the same mechanism we use
+          * for framebuffer attachments. Instead, we should probably have to
+          * emit a meta operation for that right at the start of the render
+          * pass (or subpass).
+          */
+         props->independentResolveNone = false;
+         props->independentResolve = false;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
