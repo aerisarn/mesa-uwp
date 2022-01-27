@@ -123,6 +123,10 @@ void ac_set_reg_cu_en(void *cs, unsigned reg_offset, uint32_t value, uint32_t cl
                       unsigned value_shift, const struct radeon_info *info,
                       void set_sh_reg(void*, unsigned, uint32_t));
 
+void ac_get_scratch_tmpring_size(const struct radeon_info *info, unsigned max_scratch_waves,
+                                 unsigned bytes_per_wave, unsigned *max_seen_bytes_per_wave,
+                                 uint32_t *tmpring_size);
+
 #ifdef __cplusplus
 }
 #endif

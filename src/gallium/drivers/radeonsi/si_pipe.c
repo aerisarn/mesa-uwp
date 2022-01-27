@@ -693,10 +693,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
     * sctx->scratch_waves must be >= the maximum possible size of
     * 1 threadgroup, so that the hw doesn't hang from being unable
     * to start any.
-    *
-    * The recommended value is 4 per CU at most. Higher numbers don't
-    * bring much benefit, but they still occupy chip resources (think
-    * async compute). I've seen ~2% performance difference between 4 and 32.
     */
    sctx->scratch_waves =
       MAX2(32 * sscreen->info.num_good_compute_units, max_threads_per_block / 64);

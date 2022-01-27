@@ -4054,23 +4054,11 @@ static bool si_update_scratch_relocs(struct si_context *sctx)
 
 bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
 {
-   /* SPI_TMPRING_SIZE.WAVESIZE must be constant for each scratch buffer.
-    * There are 2 cases to handle:
-    *
-    * - If the current needed size is less than the maximum seen size,
-    *   use the maximum seen size, so that WAVESIZE remains the same.
-    *
-    * - If the current needed size is greater than the maximum seen size,
-    *   the scratch buffer is reallocated, so we can increase WAVESIZE.
-    *
-    * Shaders that set SCRATCH_EN=0 don't allocate scratch space.
-    * Otherwise, the number of waves that can use scratch is
-    * SPI_TMPRING_SIZE.WAVES.
-    */
-   sctx->max_seen_scratch_bytes_per_wave = MAX2(sctx->max_seen_scratch_bytes_per_wave, bytes);
+   unsigned spi_tmpring_size;
+   ac_get_scratch_tmpring_size(&sctx->screen->info, sctx->scratch_waves, bytes,
+                               &sctx->max_seen_scratch_bytes_per_wave, &spi_tmpring_size);
 
    unsigned scratch_needed_size = sctx->max_seen_scratch_bytes_per_wave * sctx->scratch_waves;
-   unsigned spi_tmpring_size;
 
    if (scratch_needed_size > 0) {
       if (!sctx->scratch_buffer || scratch_needed_size > sctx->scratch_buffer->b.b.width0) {
@@ -4092,12 +4080,6 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
          return false;
    }
 
-   /* The LLVM shader backend should be reporting aligned scratch_sizes. */
-   assert((scratch_needed_size & ~0x3FF) == scratch_needed_size &&
-          "scratch size should already be aligned correctly.");
-
-   spi_tmpring_size = S_0286E8_WAVES(sctx->scratch_waves) |
-                      S_0286E8_WAVESIZE(sctx->max_seen_scratch_bytes_per_wave >> 10);
    if (spi_tmpring_size != sctx->spi_tmpring_size) {
       sctx->spi_tmpring_size = spi_tmpring_size;
       si_mark_atom_dirty(sctx, &sctx->atoms.s.scratch_state);
