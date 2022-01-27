@@ -70,7 +70,7 @@ intel_get_urb_config(const struct intel_device_info *devinfo,
 {
    unsigned urb_size_kB = intel_get_l3_config_urb_size(devinfo, l3_cfg);
 
-   /* RCU_MODE register for Gfx12+ in BSpec says:
+   /* RCU_MODE register for Gfx12LP in BSpec says:
     *
     *    "HW reserves 4KB of URB space per bank for Compute Engine out of the
     *    total storage available in L3. SW must consider that 4KB of storage
@@ -84,8 +84,10 @@ intel_get_urb_config(const struct intel_device_info *devinfo,
     *    only 124KB (per bank). More detailed descripton available in "L3
     *    Cache" section of the B-Spec."
     */
-   if (devinfo->ver >= 12)
+   if (devinfo->verx10 == 120) {
+      assert(devinfo->num_slices == 1);
       urb_size_kB -= 4 * devinfo->l3_banks;
+   }
 
    const unsigned push_constant_kB = devinfo->max_constant_urb_size_kb;
 
