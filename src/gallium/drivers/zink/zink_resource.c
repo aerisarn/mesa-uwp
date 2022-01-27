@@ -172,6 +172,9 @@ create_bci(struct zink_screen *screen, const struct pipe_resource *templ, unsign
    if (bind & PIPE_BIND_SHADER_IMAGE)
       bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
+   if (bind & PIPE_BIND_QUERY_BUFFER)
+      bci.usage |= VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
+
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
       bci.flags |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT;
    return bci;
