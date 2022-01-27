@@ -96,6 +96,11 @@ isl_genX(emit_cpb_control_s)(const struct isl_device *dev, void *batch,
        * Start LOD" to 15 to prevent the hardware from trying to use them.
        */
       cpb.MipTailStartLOD        = 15;
+      /* TODO:
+       *
+       * cpb.CPCBCompressionEnable is this CCS compression? Currently disabled
+       * in isl_surf_supports_ccs() for CPB buffers.
+       */
    } else {
       cpb.SurfaceType  = SURFTYPE_NULL;
       cpb.TiledMode    = TILE64;

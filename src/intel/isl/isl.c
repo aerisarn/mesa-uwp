@@ -2161,6 +2161,12 @@ isl_surf_supports_ccs(const struct isl_device *dev,
    if (surf->tiling == ISL_TILING_LINEAR)
       return false;
 
+   /* TODO: Disable for now, as we're not sure about the meaning of
+    * 3DSTATE_CPSIZE_CONTROL_BUFFER::CPCBCompressionEnable
+    */
+   if (isl_surf_usage_is_cpb(surf->usage))
+      return false;
+
    if (ISL_GFX_VER(dev) >= 12) {
       if (isl_surf_usage_is_stencil(surf->usage)) {
          /* HiZ and MCS aren't allowed with stencil */
