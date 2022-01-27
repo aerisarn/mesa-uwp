@@ -679,15 +679,15 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    }
    memcpy(props->deviceName, device_name, device_name_len + 1);
 
-   vk12_props->driverID = 0;
+   vk12_props->driverID = VK_DRIVER_ID_MESA_VENUS;
    snprintf(vk12_props->driverName, sizeof(vk12_props->driverName), "venus");
    snprintf(vk12_props->driverInfo, sizeof(vk12_props->driverInfo),
             "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
    vk12_props->conformanceVersion = (VkConformanceVersionKHR){
-      .major = 0,
-      .minor = 0,
-      .subminor = 0,
-      .patch = 0,
+      .major = 1,
+      .minor = 2,
+      .subminor = 7,
+      .patch = 1,
    };
 
    vn_physical_device_init_uuids(physical_dev);
