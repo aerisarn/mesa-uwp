@@ -113,11 +113,21 @@ bool setup_cs(const char *input_spec, enum chip_class chip_class,
    create_program(chip_class, compute_cs, wave_size, family);
 
    if (input_spec) {
-      unsigned num_inputs = DIV_ROUND_UP(strlen(input_spec), 3u);
-      aco_ptr<Instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, num_inputs)};
-      for (unsigned i = 0; i < num_inputs; i++) {
-         RegClass cls(input_spec[i * 3] == 'v' ? RegType::vgpr : RegType::sgpr, input_spec[i * 3 + 1] - '0');
-         inputs[i] = bld.tmp(cls);
+      std::vector<RegClass> input_classes;
+      while (input_spec[0]) {
+         RegType type = input_spec[0] == 'v' ? RegType::vgpr : RegType::sgpr;
+         unsigned size = input_spec[1] - '0';
+         bool in_bytes = input_spec[2] == 'b';
+         input_classes.push_back(RegClass::get(type, size * (in_bytes ? 1 : 4)));
+
+         input_spec += 2 + in_bytes;
+         while (input_spec[0] == ' ') input_spec++;
+      }
+
+      aco_ptr<Instruction> startpgm{create_instruction<Pseudo_instruction>(
+         aco_opcode::p_startpgm, Format::PSEUDO, 0, input_classes.size())};
+      for (unsigned i = 0; i < input_classes.size(); i++) {
+         inputs[i] = bld.tmp(input_classes[i]);
          startpgm->definitions[i] = Definition(inputs[i]);
       }
       bld.insert(std::move(startpgm));
