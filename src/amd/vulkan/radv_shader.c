@@ -873,11 +873,18 @@ radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipelin
 
    /* Lower deref operations for compute shared memory. */
    if (nir->info.stage == MESA_SHADER_COMPUTE ||
+       nir->info.stage == MESA_SHADER_TASK ||
        nir->info.stage == MESA_SHADER_MESH) {
+      nir_variable_mode var_modes = nir_var_mem_shared;
+
+      if (nir->info.stage == MESA_SHADER_TASK ||
+          nir->info.stage == MESA_SHADER_MESH)
+         var_modes |= nir_var_mem_task_payload;
+
       if (!nir->info.shared_memory_explicit_layout) {
-         NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared, shared_var_info);
+         NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, var_modes, shared_var_info);
       }
-      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared, nir_address_format_32bit_offset);
+      NIR_PASS_V(nir, nir_lower_explicit_io, var_modes, nir_address_format_32bit_offset);
 
       if (nir->info.zero_initialize_shared_memory && nir->info.shared_size > 0) {
          const unsigned chunk_size = 16; /* max single store size */
