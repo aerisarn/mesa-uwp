@@ -1878,7 +1878,7 @@ d3d12_disable_fake_so_buffers(struct d3d12_context *ctx)
       cbuf.buffer = fake_target->fill_buffer;
       cbuf.buffer_offset = fake_target->fill_buffer_offset;
       cbuf.buffer_size = fake_target->fill_buffer->width0 - cbuf.buffer_offset;
-      ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 0, true, &cbuf);
+      ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 1, true, &cbuf);
 
       grid.indirect = fake_target->fill_buffer;
       grid.indirect_offset = fake_target->fill_buffer_offset + 4;

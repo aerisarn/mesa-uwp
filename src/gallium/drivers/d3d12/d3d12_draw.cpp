@@ -780,7 +780,7 @@ update_draw_indirect_with_sysvals(struct d3d12_context *ctx,
       draw_count_cbuf.buffer_offset = indirect_in->indirect_draw_count_offset;
       draw_count_cbuf.buffer_size = 4;
       draw_count_cbuf.user_buffer = nullptr;
-      ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 0, true, &draw_count_cbuf);
+      ctx->base.set_constant_buffer(&ctx->base, PIPE_SHADER_COMPUTE, 1, true, &draw_count_cbuf);
    }
    
    pipe_shader_buffer new_cs_ssbos[2];
