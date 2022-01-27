@@ -562,6 +562,7 @@ tu_descriptor_set_create(struct tu_device *device,
    }
 
    tu_descriptor_set_layout_ref(layout);
+   list_addtail(&set->pool_link, &pool->desc_sets);
 
    *out_set = set;
    return VK_SUCCESS;
@@ -587,6 +588,8 @@ tu_descriptor_set_destroy(struct tu_device *device,
          }
       }
    }
+
+   list_del(&set->pool_link);
 
    vk_object_free(&device->vk, NULL, set);
 }
@@ -680,6 +683,8 @@ tu_CreateDescriptorPool(VkDevice _device,
    pool->size = bo_size;
    pool->max_entry_count = pCreateInfo->maxSets;
 
+   list_inithead(&pool->desc_sets);
+
    *pDescriptorPool = tu_descriptor_pool_to_handle(pool);
    return VK_SUCCESS;
 
@@ -701,8 +706,9 @@ tu_DestroyDescriptorPool(VkDevice _device,
    if (!pool)
       return;
 
-   for(int i = 0; i < pool->entry_count; ++i) {
-      tu_descriptor_set_layout_unref(device, pool->entries[i].set->layout);
+   list_for_each_entry_safe(struct tu_descriptor_set, set,
+                            &pool->desc_sets, pool_link) {
+      tu_descriptor_set_layout_unref(device, set->layout);
    }
 
    if (!pool->host_memory_base) {
@@ -729,9 +735,11 @@ tu_ResetDescriptorPool(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_pool, pool, descriptorPool);
 
-   for(int i = 0; i < pool->entry_count; ++i) {
-      tu_descriptor_set_layout_unref(device, pool->entries[i].set->layout);
+   list_for_each_entry_safe(struct tu_descriptor_set, set,
+                            &pool->desc_sets, pool_link) {
+      tu_descriptor_set_layout_unref(device, set->layout);
    }
+   list_inithead(&pool->desc_sets);
 
    if (!pool->host_memory_base) {
       for(int i = 0; i < pool->entry_count; ++i) {

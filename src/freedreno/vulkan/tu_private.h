@@ -658,6 +658,9 @@ struct tu_descriptor_set
 {
    struct vk_object_base base;
 
+   /* Link to descriptor pool's desc_sets list . */
+   struct list_head pool_link;
+
    struct tu_descriptor_set_layout *layout;
    struct tu_descriptor_pool *pool;
    uint32_t size;
@@ -687,6 +690,8 @@ struct tu_descriptor_pool
    uint8_t *host_memory_ptr;
    uint8_t *host_memory_end;
    uint8_t *host_bo;
+
+   struct list_head desc_sets;
 
    uint32_t entry_count;
    uint32_t max_entry_count;
