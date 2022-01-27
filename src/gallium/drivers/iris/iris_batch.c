@@ -814,7 +814,7 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
    /* Make sure bo->deps is big enough */
    if (screen->id >= bo->deps_size) {
       int new_size = screen->id + 1;
-      bo->deps= realloc(bo->deps, new_size * sizeof(bo->deps[0]));
+      bo->deps = realloc(bo->deps, new_size * sizeof(bo->deps[0]));
       memset(&bo->deps[bo->deps_size], 0,
              sizeof(bo->deps[0]) * (new_size - bo->deps_size));
 
@@ -828,7 +828,7 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
     * our code may need to care about all the operations done by every batch
     * on every screen.
     */
-   struct iris_bo_screen_deps *deps = &bo->deps[screen->id];
+   struct iris_bo_screen_deps *bo_deps = &bo->deps[screen->id];
    int batch_idx = batch->name;
 
    /* Someday if IRIS_BATCH_COUNT increases to 4, we could do:
@@ -845,33 +845,38 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
       (batch_idx ^ 2) & 2,
    };
 
+   /* Make our batch depend on additional syncobjs depending on what other
+    * batches have been doing to this bo.
+    */
    for (unsigned i = 0; i < ARRAY_SIZE(other_batch_idxs); i++) {
       unsigned other_batch_idx = other_batch_idxs[i];
 
-      /* If it is being written to by others, wait on it. */
-      if (deps->write_syncobjs[other_batch_idx])
-         move_syncobj_to_batch(batch, &deps->write_syncobjs[other_batch_idx],
+      /* If the bo is being written to by others, wait for them. */
+      if (bo_deps->write_syncobjs[other_batch_idx])
+         move_syncobj_to_batch(batch,
+                               &bo_deps->write_syncobjs[other_batch_idx],
                                I915_EXEC_FENCE_WAIT);
 
-      struct iris_syncobj *batch_syncobj =
-         iris_batch_get_signal_syncobj(batch);
+      /* If we're writing to the bo, wait on the reads from other batches. */
+      if (write)
+         move_syncobj_to_batch(batch,
+                               &bo_deps->read_syncobjs[other_batch_idx],
+                               I915_EXEC_FENCE_WAIT);
+   }
 
-      if (write) {
-         /* If we're writing to it, set our batch's syncobj as write_syncobj
-          * so others can wait on us. Also wait every reader we care about
-          * before writing.
-          */
-         iris_syncobj_reference(bufmgr, &deps->write_syncobjs[batch_idx],
-                                 batch_syncobj);
+   struct iris_syncobj *batch_syncobj =
+      iris_batch_get_signal_syncobj(batch);
 
-         move_syncobj_to_batch(batch, &deps->read_syncobjs[other_batch_idx],
-                              I915_EXEC_FENCE_WAIT);
-
-      } else {
-         /* If we're reading, replace the other read from our batch index. */
-         iris_syncobj_reference(bufmgr, &deps->read_syncobjs[batch_idx],
-                                batch_syncobj);
-      }
+   /* Update bo_deps depending on what we're doing with the bo in this batch
+    * by putting the batch's syncobj in the bo_deps lists accordingly. Only
+    * keep track of the last time we wrote to or read the BO.
+    */
+   if (write) {
+      iris_syncobj_reference(bufmgr, &bo_deps->write_syncobjs[batch_idx],
+                             batch_syncobj);
+   } else {
+      iris_syncobj_reference(bufmgr, &bo_deps->read_syncobjs[batch_idx],
+                             batch_syncobj);
    }
 }
 
