@@ -1229,13 +1229,6 @@ emit_static_indexing_handles(struct ntd_context *ctx)
    unsigned last_res_class = -1;
    unsigned id = 0;
    util_dynarray_foreach(&ctx->resources, struct dxil_resource, res) {
-      if (res->space > 1)
-         continue;
-
-      assert(res->space == 0 ||
-             (res->space == 1 &&
-                res->resource_type != DXIL_RES_UAV_RAW &&
-                ctx->opts->environment == DXIL_ENVIRONMENT_GL));
       enum dxil_resource_class res_class;
       const struct dxil_value **handle_array;
       switch (res->resource_type) {
@@ -1272,6 +1265,13 @@ emit_static_indexing_handles(struct ntd_context *ctx)
       else
          id++;
       last_res_class = res_class;
+
+      if (res->space > 1)
+         continue;
+      assert(res->space == 0 ||
+         (res->space == 1 &&
+            res->resource_type != DXIL_RES_UAV_RAW &&
+            ctx->opts->environment == DXIL_ENVIRONMENT_GL));
 
       /* CL uses dynamic handles for the "globals" UAV array, but uses static
        * handles for UBOs, textures, and samplers.
