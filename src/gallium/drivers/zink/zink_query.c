@@ -967,6 +967,7 @@ zink_render_condition(struct pipe_context *pctx,
          /* these need special handling */
          force_cpu_read(ctx, pquery, PIPE_QUERY_TYPE_U32, &res->base.b, 0);
       }
+      zink_resource_buffer_barrier(ctx, res, VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT, VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT);
       query->predicate_dirty = false;
    }
    ctx->render_condition.inverted = condition;
