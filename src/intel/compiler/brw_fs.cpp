@@ -1785,29 +1785,28 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
 
    int urb_next = 0;
 
-   /* Per-Primitive Attributes are laid out by Hardware before the regular
-    * attributes, so order them like this to make easy later to map setup into
-    * real HW registers.
-    */
-   if (nir->info.per_primitive_inputs) {
-      assert(mue_map);
-      for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
-         if (nir->info.per_primitive_inputs & BITFIELD64_BIT(i)) {
-            prog_data->urb_setup[i] = urb_next++;
-         }
-      }
-
-      /* The actual setup attributes later must be aligned to a full GRF. */
-      urb_next = ALIGN(urb_next, 2);
-
-      prog_data->num_per_primitive_inputs = urb_next;
-   }
-
    const uint64_t inputs_read =
       nir->info.inputs_read & ~nir->info.per_primitive_inputs;
 
    /* Figure out where each of the incoming setup attributes lands. */
    if (mue_map) {
+      /* Per-Primitive Attributes are laid out by Hardware before the regular
+       * attributes, so order them like this to make easy later to map setup
+       * into real HW registers.
+       */
+      if (nir->info.per_primitive_inputs) {
+         for (unsigned i = 0; i < VARYING_SLOT_MAX; i++) {
+            if (nir->info.per_primitive_inputs & BITFIELD64_BIT(i)) {
+               prog_data->urb_setup[i] = urb_next++;
+            }
+         }
+
+         /* The actual setup attributes later must be aligned to a full GRF. */
+         urb_next = ALIGN(urb_next, 2);
+
+         prog_data->num_per_primitive_inputs = urb_next;
+      }
+
       uint64_t unique_fs_attrs = inputs_read & BRW_FS_VARYING_INPUT_MASK;
 
       /* Per-Vertex attributes are laid out ordered.  Because we always link
