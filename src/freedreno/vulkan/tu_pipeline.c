@@ -3538,6 +3538,15 @@ tu_GetPipelineExecutableStatisticsKHR(
    }
 
    vk_outarray_append(&out, stat) {
+      WRITE_STR(stat->name, "Code size");
+      WRITE_STR(stat->description,
+                "Total number of dwords in the final generated "
+                "shader executable.");
+      stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      stat->value.u64 = exe->stats.sizedwords;
+   }
+
+   vk_outarray_append(&out, stat) {
       WRITE_STR(stat->name, "NOPs Count");
       WRITE_STR(stat->description,
                 "Number of NOP instructions in the final generated "
