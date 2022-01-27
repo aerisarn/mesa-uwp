@@ -236,6 +236,12 @@ validate_ir(Program* program)
             if (instr->definitions[0].regClass().is_subdword() && !instr->definitions[0].isFixed())
                check((vop3.opsel & (1 << 3)) == 0, "Unexpected opsel for sub-dword definition",
                      instr.get());
+         } else if (instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
+                    instr->opcode == aco_opcode::v_fma_mixhi_f16 ||
+                    instr->opcode == aco_opcode::v_fma_mix_f32) {
+            check(instr->definitions[0].regClass() ==
+                     (instr->opcode == aco_opcode::v_fma_mix_f32 ? v1 : v2b),
+                  "v_fma_mix_f32/v_fma_mix_f16 must have v1/v2b definition", instr.get());
          } else if (instr->isVOP3P()) {
             VOP3P_instruction& vop3p = instr->vop3p();
             for (unsigned i = 0; i < instr->operands.size(); i++) {

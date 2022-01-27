@@ -150,6 +150,11 @@ init_program(Program* program, Stage stage, const struct radv_shader_info* info,
       program->dev.has_fast_fma32 = true;
    program->dev.has_mac_legacy32 = program->chip_class <= GFX7 || program->chip_class >= GFX10;
 
+   program->dev.fused_mad_mix = program->chip_class >= GFX10;
+   if (program->family == CHIP_VEGA12 || program->family == CHIP_VEGA20 ||
+       program->family == CHIP_ARCTURUS || program->family == CHIP_ALDEBARAN)
+      program->dev.fused_mad_mix = true;
+
    program->wgp_mode = wgp_mode;
 
    program->progress = CompilationProgress::after_isel;

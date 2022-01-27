@@ -1405,7 +1405,7 @@ static_assert(sizeof(VOP3_instruction) == sizeof(Instruction) + 8, "Unexpected p
 
 struct VOP3P_instruction : public Instruction {
    bool neg_lo[3];
-   bool neg_hi[3];
+   bool neg_hi[3]; /* abs modifier, for v_mad_mix/v_fma_mix */
    uint8_t opsel_lo : 3;
    uint8_t opsel_hi : 3;
    bool clamp : 1;
@@ -2047,6 +2047,7 @@ struct DeviceInfo {
    unsigned simd_per_cu;
    bool has_fast_fma32 = false;
    bool has_mac_legacy32 = false;
+   bool fused_mad_mix = false;
    bool xnack_enabled = false;
    bool sram_ecc_enabled = false;
 };

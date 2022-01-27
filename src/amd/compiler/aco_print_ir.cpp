@@ -664,11 +664,16 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
       bool* const abs = (bool*)alloca(num_operands * sizeof(bool));
       bool* const neg = (bool*)alloca(num_operands * sizeof(bool));
       bool* const opsel = (bool*)alloca(num_operands * sizeof(bool));
+      bool* const f2f32 = (bool*)alloca(num_operands * sizeof(bool));
       for (unsigned i = 0; i < num_operands; ++i) {
          abs[i] = false;
          neg[i] = false;
          opsel[i] = false;
+         f2f32[i] = false;
       }
+      bool is_mad_mix = instr->opcode == aco_opcode::v_fma_mix_f32 ||
+                        instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
+                        instr->opcode == aco_opcode::v_fma_mixhi_f16;
       if (instr->isVOP3()) {
          const VOP3_instruction& vop3 = instr->vop3();
          for (unsigned i = 0; i < MIN2(num_operands, 3); ++i) {
@@ -690,6 +695,14 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
             neg[i] = sdwa.neg[i];
             opsel[i] = false;
          }
+      } else if (instr->isVOP3P() && is_mad_mix) {
+         const VOP3P_instruction& vop3p = instr->vop3p();
+         for (unsigned i = 0; i < MIN2(num_operands, 3); ++i) {
+            abs[i] = vop3p.neg_hi[i];
+            neg[i] = vop3p.neg_lo[i];
+            f2f32[i] = vop3p.opsel_hi & (1 << i);
+            opsel[i] = f2f32[i] && (vop3p.opsel_lo & (1 << i));
+         }
       }
       for (unsigned i = 0; i < num_operands; ++i) {
          if (i)
@@ -703,13 +716,15 @@ aco_print_instr(const Instruction* instr, FILE* output, unsigned flags)
             fprintf(output, "|");
          if (opsel[i])
             fprintf(output, "hi(");
+         else if (f2f32[i])
+            fprintf(output, "lo(");
          aco_print_operand(&instr->operands[i], output, flags);
-         if (opsel[i])
+         if (f2f32[i] || opsel[i])
             fprintf(output, ")");
          if (abs[i])
             fprintf(output, "|");
 
-         if (instr->isVOP3P()) {
+         if (instr->isVOP3P() && !is_mad_mix) {
             const VOP3P_instruction& vop3 = instr->vop3p();
             if ((vop3.opsel_lo & (1 << i)) || !(vop3.opsel_hi & (1 << i))) {
                fprintf(output, ".%c%c", vop3.opsel_lo & (1 << i) ? 'y' : 'x',
