@@ -697,6 +697,8 @@ struct v3dv_subpass {
    struct v3dv_subpass_attachment *resolve_attachments;
 
    struct v3dv_subpass_attachment ds_attachment;
+   struct v3dv_subpass_attachment ds_resolve_attachment;
+   bool resolve_depth, resolve_stencil;
 
    /* If we need to emit the clear of the depth/stencil attachment using a
     * a draw call instead of using the TLB (GFXH-1461).

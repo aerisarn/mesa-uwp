@@ -501,6 +501,22 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
                            ds_last_subpass,
                            ds_attachment->desc.stencilStoreOp);
 
+      /* If we have a resolve, handle it before storing the tile */
+      if (subpass->resolve_depth || subpass->resolve_stencil) {
+         assert(ds_attachment->use_tlb_resolve);
+         const uint32_t resolve_attachment_idx =
+            subpass->ds_resolve_attachment.attachment;
+         assert(resolve_attachment_idx != VK_ATTACHMENT_UNUSED);
+
+         const uint32_t zs_buffer =
+            v3dv_zs_buffer(subpass->resolve_depth, subpass->resolve_stencil);
+         cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
+                                           resolve_attachment_idx, layer,
+                                           zs_buffer,
+                                           false, false);
+         has_stores = true;
+      }
+
       /* GFXH-1689: The per-buffer store command's clear buffer bit is broken
        * for depth/stencil.
        *
@@ -837,7 +853,8 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
             check_needs_store(state,
                               ds_aspects & VK_IMAGE_ASPECT_DEPTH_BIT,
                               ds_attachment->last_subpass,
-                              ds_attachment->desc.storeOp);
+                              ds_attachment->desc.storeOp) ||
+                              subpass->resolve_depth;
 
          do_early_zs_clear = needs_depth_clear && !needs_depth_store;
          if (do_early_zs_clear &&
@@ -852,7 +869,8 @@ v3dX(cmd_buffer_emit_render_pass_rcl)(struct v3dv_cmd_buffer *cmd_buffer)
                check_needs_store(state,
                                  ds_aspects & VK_IMAGE_ASPECT_STENCIL_BIT,
                                  ds_attachment->last_subpass,
-                                 ds_attachment->desc.stencilStoreOp);
+                                 ds_attachment->desc.stencilStoreOp) ||
+                                 subpass->resolve_stencil;
 
             do_early_zs_clear = !needs_stencil_load && !needs_stencil_store;
          }

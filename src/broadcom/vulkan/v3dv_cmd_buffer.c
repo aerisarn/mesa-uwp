@@ -410,10 +410,13 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
    /* FIXME: Since some attachment formats can't be resolved using the TLB we
     * need to emit separate resolve jobs for them and that would not be
     * compatible with subpass merges. We could fix that by testing if any of
-    * the attachments to resolve doesn't suppotr TLB resolves.
+    * the attachments to resolve doesn't support TLB resolves.
     */
-   if (prev_subpass->resolve_attachments || subpass->resolve_attachments)
+   if (prev_subpass->resolve_attachments || subpass->resolve_attachments ||
+       prev_subpass->resolve_depth || prev_subpass->resolve_stencil ||
+       subpass->resolve_depth || subpass->resolve_stencil) {
       return false;
+   }
 
    return true;
 }
