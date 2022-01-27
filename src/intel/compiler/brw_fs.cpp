@@ -1807,7 +1807,17 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
       nir->info.inputs_read & ~nir->info.per_primitive_inputs;
 
    /* Figure out where each of the incoming setup attributes lands. */
-   if (devinfo->ver >= 6) {
+   if (mue_map) {
+      uint64_t unique_fs_attrs = inputs_read & BRW_FS_VARYING_INPUT_MASK;
+
+      /* Per-Vertex attributes are laid out ordered.  Because we always link
+       * Mesh and Fragment shaders, the which slots are written and read by
+       * each of them will match. */
+      for (unsigned int i = 0; i < VARYING_SLOT_MAX; i++) {
+         if (unique_fs_attrs & BITFIELD64_BIT(i))
+            prog_data->urb_setup[i] = urb_next++;
+      }
+   } else if (devinfo->ver >= 6) {
       uint64_t vue_header_bits =
          VARYING_BIT_PSIZ | VARYING_BIT_LAYER | VARYING_BIT_VIEWPORT;
 
@@ -1856,12 +1866,6 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
           * in an order that matches the output of the previous pipeline stage
           * (geometry or vertex shader).
           */
-
-         /* TODO(mesh): Implement this case for Mesh. Basically have a large
-          * number of outputs in Mesh (hence a lot of inputs in Fragment)
-          * should already trigger this.
-          */
-         assert(mue_map == NULL);
 
          /* Re-compute the VUE map here in the case that the one coming from
           * geometry has more than one position slot (used for Primitive
