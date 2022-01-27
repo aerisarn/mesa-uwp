@@ -52,7 +52,8 @@ get_indirect_draw_base_vertex_transform(const d3d12_compute_transform_key *args)
 
    nir_ssa_def *draw_id = nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
    if (args->base_vertex.dynamic_count) {
-      nir_ssa_def *count = nir_load_ubo(&b, 1, 32, nir_imm_int(&b, 1), nir_imm_int(&b, 0));
+      nir_ssa_def *count = nir_load_ubo(&b, 1, 32, nir_imm_int(&b, 1), nir_imm_int(&b, 0),
+         (gl_access_qualifier)0, 4, 0, 0, 4);
       nir_push_if(&b, nir_ilt(&b, draw_id, count));
    }
 
