@@ -33,11 +33,11 @@ num_subpass_attachments(const VkSubpassDescription2 *desc)
 }
 
 static void
-set_use_tlb_resolve(struct v3dv_device *device,
+set_try_tlb_resolve(struct v3dv_device *device,
                     struct v3dv_render_pass_attachment *att)
 {
    const struct v3dv_format *format = v3dv_X(device, get_format)(att->desc.format);
-   att->use_tlb_resolve = v3dv_X(device, format_supports_tlb_resolve)(format);
+   att->try_tlb_resolve = v3dv_X(device, format_supports_tlb_resolve)(format);
 }
 
 static void
@@ -82,7 +82,7 @@ pass_find_subpass_range_for_attachments(struct v3dv_device *device,
 
          if (subpass->resolve_attachments &&
              subpass->resolve_attachments[j].attachment != VK_ATTACHMENT_UNUSED) {
-            set_use_tlb_resolve(device, att);
+            set_try_tlb_resolve(device, att);
          }
       }
 
@@ -94,7 +94,7 @@ pass_find_subpass_range_for_attachments(struct v3dv_device *device,
             pass->attachments[ds_attachment_idx].last_subpass = i;
 
          if (subpass->ds_resolve_attachment.attachment != VK_ATTACHMENT_UNUSED)
-            set_use_tlb_resolve(device, &pass->attachments[ds_attachment_idx]);
+            set_try_tlb_resolve(device, &pass->attachments[ds_attachment_idx]);
       }
 
       for (uint32_t j = 0; j < subpass->input_count; j++) {
