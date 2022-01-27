@@ -145,6 +145,15 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       local_feats.vulkan_memory_model.pNext = NULL;
    }
 
+   if (physical_dev->renderer_extensions.EXT_4444_formats) {
+      physical_dev->argb_4444_formats_features.sType =
+         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
+      physical_dev->argb_4444_formats_features.pNext =
+         physical_dev->features.pNext;
+      physical_dev->features.pNext =
+         &physical_dev->argb_4444_formats_features;
+   }
+
    if (physical_dev->renderer_extensions.EXT_transform_feedback) {
       physical_dev->transform_feedback_features.sType =
          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
@@ -963,6 +972,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_shader_viewport_index_layer = true,
 
       /* promoted to VK_VERSION_1_3 */
+      .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
    /* EXT */
 #ifndef ANDROID
@@ -1638,6 +1648,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceBufferDeviceAddressFeatures *buffer_device_address;
       VkPhysicalDeviceVulkanMemoryModelFeatures *vulkan_memory_model;
 
+      VkPhysicalDevice4444FormatsFeaturesEXT *argb_4444_formats;
       VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
       VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
    } u;
@@ -1795,6 +1806,10 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             vk12_feats->vulkanMemoryModelDeviceScope;
          u.vulkan_memory_model->vulkanMemoryModelAvailabilityVisibilityChains =
             vk12_feats->vulkanMemoryModelAvailabilityVisibilityChains;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
+         memcpy(u.argb_4444_formats, &physical_dev->argb_4444_formats_features,
+                sizeof(physical_dev->argb_4444_formats_features));
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
          memcpy(u.transform_feedback,
