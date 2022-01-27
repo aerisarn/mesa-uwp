@@ -344,14 +344,14 @@ Temp fsat(Temp src, Builder b)
 
 Temp ext_ushort(Temp src, unsigned idx, Builder b)
 {
-   return b.pseudo(aco_opcode::p_extract, b.def(v1), src, Operand::c32(idx), Operand::c32(16u),
-                   Operand::c32(false));
+   return b.pseudo(aco_opcode::p_extract, b.def(src.regClass()), src, Operand::c32(idx),
+                   Operand::c32(16u), Operand::c32(false));
 }
 
 Temp ext_ubyte(Temp src, unsigned idx, Builder b)
 {
-   return b.pseudo(aco_opcode::p_extract, b.def(v1), src, Operand::c32(idx), Operand::c32(8u),
-                   Operand::c32(false));
+   return b.pseudo(aco_opcode::p_extract, b.def(src.regClass()), src, Operand::c32(idx),
+                   Operand::c32(8u), Operand::c32(false));
 }
 
 VkDevice get_vk_device(enum chip_class chip_class)
