@@ -76,12 +76,14 @@ apt-get install -y --no-remove \
                    ${ARCH_PACKAGES} \
                    automake \
                    bc \
+                   clang \
                    cmake \
                    debootstrap \
                    git \
                    glslang-tools \
                    libdrm-dev \
                    libegl1-mesa-dev \
+                   libxext-dev \
                    libfontconfig-dev \
                    libgbm-dev \
                    libgl-dev \
