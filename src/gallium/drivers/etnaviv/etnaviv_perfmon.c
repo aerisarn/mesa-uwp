@@ -346,12 +346,13 @@ static const struct etna_perfmon_config query_config[] = {
       }
    },
    {
-      .name = "tx-mem-read-in-8b-count",
+      .name = "tx-mem-read-bytes",
       .type = ETNA_QUERY_TX_MEM_READ_IN_8B_COUNT,
       .group_id = ETNA_QUERY_TX_GROUP_ID,
       .source = (const struct etna_perfmon_source[]) {
          { "TX", "MEM_READ_IN_8B_COUNT" }
-      }
+      },
+      .multiply_with_8 = true
    },
    {
       .name = "tx-cache-miss-count",
