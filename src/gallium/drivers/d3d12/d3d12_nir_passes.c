@@ -25,6 +25,7 @@
 #include "d3d12_compiler.h"
 #include "nir_builder.h"
 #include "nir_builtin_builder.h"
+#include "nir_deref.h"
 #include "nir_format_convert.h"
 #include "program/prog_instruction.h"
 #include "dxil_nir.h"
@@ -969,5 +970,129 @@ d3d12_disable_multisampling(nir_shader *s)
       var->data.sample = false;
    }
    BITSET_CLEAR(s->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+   return progress;
+}
+
+struct multistream_subvar_state {
+   nir_variable *var;
+   uint8_t stream;
+   uint8_t num_components;
+};
+struct multistream_var_state {
+   unsigned num_subvars;
+   struct multistream_subvar_state subvars[4];
+};
+struct multistream_state {
+   struct multistream_var_state vars[VARYING_SLOT_MAX];
+};
+
+static bool
+split_multistream_varying_stores(nir_builder *b, nir_instr *instr, void *_state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return false;
+
+   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+   if (!nir_deref_mode_is(deref, nir_var_shader_out))
+      return false;
+
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   assert(var);
+
+   struct multistream_state *state = _state;
+   struct multistream_var_state *var_state = &state->vars[var->data.location];
+   if (var_state->num_subvars <= 1)
+      return false;
+
+   nir_deref_path path;
+   nir_deref_path_init(&path, deref, b->shader);
+   assert(path.path[0]->deref_type == nir_deref_type_var && path.path[0]->var == var);
+   
+   unsigned first_channel = 0;
+   for (unsigned subvar = 0; subvar < var_state->num_subvars; ++subvar) {
+      b->cursor = nir_after_instr(&path.path[0]->instr);
+      nir_deref_instr *new_path = nir_build_deref_var(b, var_state->subvars[subvar].var);
+
+      for (unsigned i = 1; path.path[i]; ++i) {
+         b->cursor = nir_after_instr(&path.path[i]->instr);
+         new_path = nir_build_deref_follower(b, new_path, path.path[i]);
+      }
+
+      b->cursor = nir_before_instr(instr);
+      unsigned mask_num_channels = (1 << var_state->subvars[subvar].num_components) - 1;
+      unsigned orig_write_mask = nir_intrinsic_write_mask(intr);
+      nir_ssa_def *sub_value = nir_channels(b, intr->src[1].ssa, mask_num_channels << first_channel);
+
+      first_channel += var_state->subvars[subvar].num_components;
+
+      unsigned new_write_mask = (orig_write_mask >> first_channel) & mask_num_channels;
+      nir_build_store_deref(b, &new_path->dest.ssa, sub_value, new_write_mask, nir_intrinsic_access(intr));
+   }
+
+   nir_deref_path_finish(&path);
+   nir_instr_free_and_dce(instr);
+   return true;
+}
+
+bool
+d3d12_split_multistream_varyings(nir_shader *s)
+{
+   if (s->info.stage != MESA_SHADER_GEOMETRY)
+      return false;
+
+   struct multistream_state state;
+   memset(&state, 0, sizeof(state));
+
+   bool progress = false;
+   nir_foreach_variable_with_modes_safe(var, s, nir_var_shader_out) {
+      if ((var->data.stream & NIR_STREAM_PACKED) == 0)
+         continue;
+
+      struct multistream_var_state *var_state = &state.vars[var->data.location];
+      struct multistream_subvar_state *subvars = var_state->subvars;
+      for (unsigned i = 0; i < glsl_get_vector_elements(var->type); ++i) {
+         unsigned stream = (var->data.stream >> (2 * (i + var->data.location_frac))) & 0x3;
+         if (var_state->num_subvars == 0 || stream != subvars[var_state->num_subvars - 1].stream) {
+            subvars[var_state->num_subvars].stream = stream;
+            subvars[var_state->num_subvars].num_components = 1;
+            var_state->num_subvars++;
+         } else {
+            subvars[var_state->num_subvars - 1].num_components++;
+         }
+      }
+
+      var->data.stream = subvars[0].stream;
+      if (var_state->num_subvars == 1)
+         continue;
+
+      progress = true;
+
+      subvars[0].var = var;
+      var->type = glsl_vector_type(glsl_get_base_type(var->type), subvars[0].num_components);
+      unsigned location_frac = var->data.location_frac + subvars[0].num_components;
+      for (unsigned subvar = 1; subvar < var_state->num_subvars; ++subvar) {
+         char *name = ralloc_asprintf(s, "unpacked:%s_stream%d", var->name, subvars[subvar].stream);
+         nir_variable *new_var = nir_variable_create(s, nir_var_shader_out,
+            glsl_vector_type(glsl_get_base_type(var->type), subvars[subvar].num_components),
+            name);
+
+         new_var->data = var->data;
+         new_var->data.stream = subvars[subvar].stream;
+         new_var->data.location_frac = location_frac;
+         location_frac += subvars[subvar].num_components;
+         subvars[subvar].var = new_var;
+      }
+   }
+
+   if (progress) {
+      nir_shader_instructions_pass(s, split_multistream_varying_stores,
+         nir_metadata_block_index | nir_metadata_dominance, &state);
+   } else {
+      nir_shader_preserve_all_metadata(s);
+   }
+
    return progress;
 }
