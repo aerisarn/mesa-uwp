@@ -3482,8 +3482,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
     * The various comparison optimizations also currently only work with 32-bit
     * floats. */
 
-   /* neg(mul(a, b)) -> mul(neg(a), b) */
-   if (ctx.info[instr->definitions[0].tempId()].is_neg() &&
+   /* neg(mul(a, b)) -> mul(neg(a), b), abs(mul(a, b)) -> mul(abs(a), abs(b)) */
+   if ((ctx.info[instr->definitions[0].tempId()].label & (label_neg | label_abs)) &&
        ctx.uses[instr->operands[1].tempId()] == 1) {
       Temp val = ctx.info[instr->definitions[0].tempId()].temp;
 
@@ -3502,10 +3502,10 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
           ctx.fp_mode.preserve_signed_zero_inf_nan32)
          return;
 
-      /* convert to mul(neg(a), b) */
+      /* convert to mul(neg(a), b), mul(abs(a), abs(b)) or mul(neg(abs(a)), abs(b)) */
       ctx.uses[mul_instr->definitions[0].tempId()]--;
       Definition def = instr->definitions[0];
-      /* neg(abs(mul(a, b))) -> mul(neg(abs(a)), abs(b)) */
+      bool is_neg = ctx.info[instr->definitions[0].tempId()].is_neg();
       bool is_abs = ctx.info[instr->definitions[0].tempId()].is_abs();
       instr.reset(
          create_instruction<VOP3_instruction>(mul_instr->opcode, asVOP3(Format::VOP2), 2, 1));
@@ -3525,7 +3525,7 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          new_mul.neg[0] = new_mul.neg[1] = false;
          new_mul.abs[0] = new_mul.abs[1] = true;
       }
-      new_mul.neg[0] ^= true;
+      new_mul.neg[0] ^= is_neg;
       new_mul.clamp = false;
 
       ctx.info[instr->definitions[0].tempId()].set_mul(instr.get());
