@@ -1392,6 +1392,7 @@
       Given a pair of 32-bit floats, output a pair of 16-bit floats packed into
       a 32-bit destination.
     </desc>
+    <clamp/>
     <src>A</src>
     <src>B</src>
   </group>
