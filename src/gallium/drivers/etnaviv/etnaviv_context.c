@@ -272,6 +272,10 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (ctx->vertex_elements == NULL || ctx->vertex_elements->num_elements == 0)
       return; /* Nothing to do */
 
+   if (unlikely(ctx->rasterizer->cull_face == PIPE_FACE_FRONT_AND_BACK &&
+                u_decomposed_prim(info->mode) == PIPE_PRIM_TRIANGLES))
+      return;
+
    int prims = u_decomposed_prims_for_vertices(info->mode, draws[0].count);
    if (unlikely(prims <= 0)) {
       DBG("Invalid draw primitive mode=%i or no primitives to be drawn", info->mode);
