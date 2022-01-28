@@ -62,7 +62,7 @@ spec/!opengl 1.0/rasterpos/glsl_vs_gs_sso: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_image1d: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_image_bo: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_ssbo: skip
-spec/!opengl 1.0/rasterpos/glsl_vs_tes_linked: skip
+spec/!opengl 1.0/rasterpos/glsl_vs_tes_linked: fail
 spec/!opengl 1.0/rasterpos/glsl_vs_tes_sso: skip
 spec/!opengl 1.1/clear-accum: fail
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=16: skip
@@ -205,6 +205,7 @@ spec/!opengl 2.0/max-samplers border: fail
 spec/!opengl 3.0/bound-resource-limits: fail
 spec/!opengl 3.0/required-sized-texture-formats: fail
 spec/!opengl 3.1/default-vao: fail
+spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.1/genned-names: fail
 spec/!opengl 3.1/gl-3.1-enable-vertex-array: fail
 spec/!opengl 3.1/gl-3.1-link-empty-prog-core: fail
@@ -1331,70 +1332,16 @@ spec/arb_gpu_shader5/texturegatheroffsets/vs-rgba-3-int-2drect: fail
 spec/arb_gpu_shader5/texturegatheroffsets/vs-rgba-3-uint-2d: fail
 spec/arb_gpu_shader5/texturegatheroffsets/vs-rgba-3-uint-2darray: fail
 spec/arb_gpu_shader5/texturegatheroffsets/vs-rgba-3-uint-2drect: fail
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-double-gettransformfeedbackvarying: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-double_in_bool_uniform: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-getuniformdv: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-alu: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-const: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-packing: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ssbo: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ubo: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-gs-getuniformdv: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-interleaved: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-interleaved-aligned: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-separate: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-uniform-invalid-operation: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-getuniformdv: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-alu: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-const: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-packing: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ssbo: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ubo: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-wrong-type-setter: skip
-spec/arb_gpu_shader_fp64/shader_storage/layout-std140-fp64-mixed-shader: skip
-spec/arb_gpu_shader_fp64/shader_storage/layout-std140-fp64-shader: skip
-spec/arb_gpu_shader_fp64/shader_storage/layout-std430-fp64-mixed-shader: skip
-spec/arb_gpu_shader_fp64/shader_storage/layout-std430-fp64-shader: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2x3 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2x3 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2x3 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2x4 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2x4 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat2x4 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3x2 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3x2 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3x2 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3x4 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3x4 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat3x4 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4x2 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4x2 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4x2 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4x3 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4x3 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dmat4x3 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple double array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple double arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple double separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec2 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec2 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec2 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec3 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec3 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec3 separate: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec4 array: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec4 arrays_of_arrays: skip
-spec/arb_gpu_shader_fp64/varying-packing/simple dvec4 separate: skip
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-alu: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-const: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-packing: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ssbo: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ubo: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-alu: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-const: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-packing: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ssbo: fail
+spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ubo: fail
 spec/arb_indirect_parameters/tf-count-arrays: fail
 spec/arb_indirect_parameters/tf-count-elements: fail
 spec/arb_internalformat_query/minmax: skip
@@ -1416,7 +1363,7 @@ spec/arb_program_interface_query/arb_program_interface_query-getprogramresourcei
 spec/arb_query_buffer_object/coherency: skip
 spec/arb_query_buffer_object/qbo: skip
 spec/arb_sample_locations/test: skip
-spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage-combinations: skip
+spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage-combinations: fail
 spec/arb_sample_shading/builtin-gl-num-samples 32: skip
 spec/arb_sample_shading/builtin-gl-sample-id 32: skip
 spec/arb_sample_shading/builtin-gl-sample-mask 32: skip
@@ -1429,15 +1376,17 @@ spec/arb_sample_shading/samplemask 0 all: skip
 spec/arb_sample_shading/samplemask 32: skip
 spec/arb_sample_shading/samplemask 32 all: skip
 spec/arb_seamless_cube_map/arb_seamless_cubemap: fail
-spec/arb_separate_shader_objects/programuniform coverage/double matrices: skip
-spec/arb_separate_shader_objects/programuniform coverage/double scalar and vectors: skip
 spec/arb_shader_atomic_counters/array-indexing: fail
 spec/arb_shader_atomic_counters/max-counters/combined test above maximum number of atomic counter buffers: skip
 spec/arb_shader_atomic_counters/semantics/fragment shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/semantics/geometry shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/semantics/tessellation control shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/semantics/tessellation evaluation shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/semantics/vertex shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/unused-result/fragment shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/unused-result/geometry shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/unused-result/tessellation control shader atomic built-in semantics: fail
+spec/arb_shader_atomic_counters/unused-result/tessellation evaluation shader atomic built-in semantics: fail
 spec/arb_shader_atomic_counters/unused-result/vertex shader atomic built-in semantics: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image1d/rgba32f: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image1darray/rgba32f: fail
@@ -1464,7 +1413,6 @@ spec/arb_shader_image_load_store/invalid/imageload/address bounds test/imagecube
 spec/arb_shader_image_load_store/max-size/imagecube max size test/16384x16384x6x1: skip
 spec/arb_shader_image_load_store/max-size/imagecubearray max size test/16384x16384x6x1: skip
 spec/arb_shader_image_load_store/semantics/imageatomicmax/vertex shader/r32ui/image1d test: fail
-spec/arb_shader_storage_buffer_object/minmax: skip
 spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-2: skip
@@ -2603,13 +2551,8 @@ spec/arb_transform_feedback_instanced/draw-auto instanced: fail
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-basic: skip
 spec/arb_transform_feedback_overflow_query/arb_transform_feedback_overflow_query-errors: skip
 spec/arb_uniform_buffer_object/bufferstorage: skip
-spec/arb_vertex_attrib_64bit/arb_vertex_attrib_64bit-overlapping-locations api: skip
-spec/arb_vertex_attrib_64bit/arb_vertex_attrib_64bit-overlapping-locations shader: skip
-spec/arb_vertex_attrib_64bit/check-explicit-location: skip
-spec/arb_vertex_attrib_64bit/double_attribs: skip
-spec/arb_vertex_attrib_64bit/get_double_attribs-display-lists: skip
-spec/arb_vertex_attrib_64bit/getactiveattrib: skip
-spec/arb_vertex_attrib_64bit/max-vertex-attrib: skip
+spec/arb_vertex_attrib_64bit/arb_vertex_attrib_64bit-overlapping-locations api: crash
+spec/arb_vertex_attrib_64bit/arb_vertex_attrib_64bit-overlapping-locations shader: crash
 spec/arb_vertex_program/arb_vertex_program-matrix-property-bindings: fail
 spec/arb_vertex_program/vp-address-02: skip
 spec/arb_vertex_program/vp-address-04: skip
@@ -3420,8 +3363,6 @@ spec/ext_texture_norm16/render: skip
 spec/ext_texture_snorm/multisample-formats 32 gl_ext_texture_snorm: skip
 spec/ext_texture_srgb/multisample-formats 32 gl_ext_texture_srgb: skip
 spec/ext_transform_feedback2/draw-auto: fail
-spec/ext_transform_feedback/max-varyings/max-varying-arrays-of-arrays: notrun
-spec/ext_transform_feedback/max-varyings/max-varying-single-dimension-array: crash
 spec/ext_transform_feedback/points-large: fail
 spec/ext_transform_feedback/structs_gles3 basic-struct error: skip
 spec/ext_transform_feedback/structs_gles3 basic-struct get: skip
@@ -3439,69 +3380,6 @@ spec/ext_window_rectangles/errors_gles3: skip
 spec/ext_window_rectangles/render: skip
 spec/ext_window_rectangles/render_gles3: skip
 spec/glsl-1.10/execution/glsl-1.10-built-in-matrix-state: fail
-spec/glsl-1.10/execution/varying-packing/simple float array: crash
-spec/glsl-1.10/execution/varying-packing/simple float arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple float separate: crash
-spec/glsl-1.10/execution/varying-packing/simple int array: crash
-spec/glsl-1.10/execution/varying-packing/simple int arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple int separate: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec2 array: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec2 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec2 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec3 array: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec3 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec3 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec4 array: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec4 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple ivec4 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2x3 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2x3 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2x3 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2x4 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2x4 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat2x4 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3x2 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3x2 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3x2 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3x4 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3x4 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat3x4 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4x2 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4x2 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4x2 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4x3 array: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4x3 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple mat4x3 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple uint array: crash
-spec/glsl-1.10/execution/varying-packing/simple uint arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple uint separate: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec2 array: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec2 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec2 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec3 array: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec3 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec3 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec4 array: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec4 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple uvec4 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple vec2 array: crash
-spec/glsl-1.10/execution/varying-packing/simple vec2 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple vec2 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple vec3 array: crash
-spec/glsl-1.10/execution/varying-packing/simple vec3 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple vec3 separate: crash
-spec/glsl-1.10/execution/varying-packing/simple vec4 array: crash
-spec/glsl-1.10/execution/varying-packing/simple vec4 arrays_of_arrays: crash
-spec/glsl-1.10/execution/varying-packing/simple vec4 separate: crash
 spec/glsl-1.30/execution/fs-texelfetch-2d: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip: fail
 spec/glsl-1.50/execution/geometry/primitive-types gl_triangle_strip_adjacency: fail
@@ -3680,10 +3558,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17572
-       fail:     2029
-      crash:       69
-       skip:     1561
+       pass:    17752
+       fail:     2045
+      crash:        7
+       skip:     1486
     timeout:        0
        warn:       10
  incomplete:        0
@@ -3692,4 +3570,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21251
+      total:    21309

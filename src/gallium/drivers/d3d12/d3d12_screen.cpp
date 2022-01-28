@@ -321,6 +321,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
    case PIPE_CAP_INT64:
    case PIPE_CAP_INT64_DIVMOD:
+   case PIPE_CAP_DOUBLES:
       return 1;
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:
