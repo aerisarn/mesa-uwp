@@ -1048,14 +1048,14 @@ vn_physical_device_init_renderer_extensions(
             continue;
 
          /* check encoder support */
-         const uint32_t spec_version =
-            vn_info_extension_spec_version(props->extensionName);
-         if (!spec_version)
+         const struct vn_info_extension *enc_ext =
+            vn_info_extension_get(props->extensionName);
+         if (!enc_ext)
             continue;
 
          physical_dev->renderer_extensions.extensions[i] = true;
          physical_dev->extension_spec_versions[i] =
-            MIN2(exts[j].specVersion, spec_version);
+            MIN2(exts[j].specVersion, enc_ext->spec_version);
 
          break;
       }
