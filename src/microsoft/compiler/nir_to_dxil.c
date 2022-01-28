@@ -120,6 +120,15 @@ nir_options = {
    .has_cs_global_id = true,
    .has_txs = true,
    .lower_mul_2x32_64 = true,
+   .lower_doubles_options =
+      nir_lower_drcp |
+      nir_lower_dsqrt |
+      nir_lower_drsq |
+      nir_lower_dfract |
+      nir_lower_dtrunc |
+      nir_lower_dfloor |
+      nir_lower_dceil |
+      nir_lower_dround_even,
 };
 
 const nir_shader_compiler_options*
