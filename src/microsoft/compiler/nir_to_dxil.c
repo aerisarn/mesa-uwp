@@ -2317,8 +2317,12 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_imul:
    case nir_op_fmul: return emit_binop(ctx, alu, DXIL_BINOP_MUL, src[0], src[1]);
 
+   case nir_op_fdiv:
+      if (alu->dest.dest.ssa.bit_size == 64)
+         ctx->mod.feats.dx11_1_double_extensions = 1;
+      FALLTHROUGH;
    case nir_op_idiv:
-   case nir_op_fdiv: return emit_binop(ctx, alu, DXIL_BINOP_SDIV, src[0], src[1]);
+      return emit_binop(ctx, alu, DXIL_BINOP_SDIV, src[0], src[1]);
 
    case nir_op_udiv: return emit_binop(ctx, alu, DXIL_BINOP_UDIV, src[0], src[1]);
    case nir_op_irem: return emit_binop(ctx, alu, DXIL_BINOP_SREM, src[0], src[1]);
@@ -2385,7 +2389,10 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_fsqrt: return emit_unary_intin(ctx, alu, DXIL_INTR_SQRT, src[0]);
    case nir_op_fmax: return emit_binary_intin(ctx, alu, DXIL_INTR_FMAX, src[0], src[1]);
    case nir_op_fmin: return emit_binary_intin(ctx, alu, DXIL_INTR_FMIN, src[0], src[1]);
-   case nir_op_ffma: return emit_tertiary_intin(ctx, alu, DXIL_INTR_FMA, src[0], src[1], src[2]);
+   case nir_op_ffma:
+      if (alu->dest.dest.ssa.bit_size == 64)
+         ctx->mod.feats.dx11_1_double_extensions = 1;
+      return emit_tertiary_intin(ctx, alu, DXIL_INTR_FMA, src[0], src[1], src[2]);
 
    case nir_op_ibfe: return emit_tertiary_intin(ctx, alu, DXIL_INTR_IBFE, src[2], src[1], src[0]);
    case nir_op_ubfe: return emit_tertiary_intin(ctx, alu, DXIL_INTR_UBFE, src[2], src[1], src[0]);
