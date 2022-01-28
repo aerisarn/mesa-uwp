@@ -109,6 +109,7 @@ struct etna_perfmon_config
    unsigned type;
    unsigned group_id;
    const struct etna_perfmon_source *source;
+   bool multiply_with_8;
 };
 
 struct etna_perfmon_signal *
