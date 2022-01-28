@@ -1139,6 +1139,8 @@ bi_emit_load_frag_coord(bi_builder *b, nir_intrinsic_instr *instr)
 static void
 bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
 {
+        nir_alu_type T = nir_intrinsic_dest_type(instr);
+        enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
         unsigned rt = b->shader->inputs->blend.rt;
         unsigned size = nir_dest_bit_size(instr->dest);
 
@@ -1159,7 +1161,8 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt | (size << 4)), 1, 0);
 
         bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_pixel_indices(b, rt),
-                        bi_register(60), desc, (instr->num_components - 1));
+                        bi_register(60), desc, regfmt,
+                        (instr->num_components - 1));
 }
 
 static void

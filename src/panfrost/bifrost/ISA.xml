@@ -6377,6 +6377,12 @@
       <opt>v3</opt>
       <opt>v4</opt>
     </mod>
+    <mod name="register_format" size="3" pseudo="true">
+      <opt>f32</opt>
+      <opt>f16</opt>
+      <opt>u32</opt>
+      <opt>s32</opt>
+    </mod>
   </ins>
 
   <ins name="+LD_VAR" staging="w=vecsize" message="varying">
