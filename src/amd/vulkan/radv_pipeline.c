@@ -2586,15 +2586,46 @@ radv_link_shaders(struct radv_pipeline *pipeline,
       }
    }
 
-   bool uses_xfb = pipeline->graphics.last_vgt_api_stage != -1 &&
-                   radv_nir_stage_uses_xfb(shaders[pipeline->graphics.last_vgt_api_stage]);
-   if (!uses_xfb && !optimize_conservatively) {
-      /* Remove PSIZ from shaders when it's not needed.
-       * This is typically produced by translation layers like Zink or D9VK.
-       */
+   if (!optimize_conservatively) {
+      bool uses_xfb = pipeline->graphics.last_vgt_api_stage != -1 &&
+                      radv_nir_stage_uses_xfb(shaders[pipeline->graphics.last_vgt_api_stage]);
+
       for (unsigned i = 0; i < shader_count; ++i) {
          shader_info *info = &ordered_shaders[i]->info;
-         if (!(info->outputs_written & VARYING_BIT_PSIZ))
+
+         /* Remove exports without color attachment or writemask. */
+         if (info->stage == MESA_SHADER_FRAGMENT) {
+            bool fixup_derefs = false;
+            nir_foreach_variable_with_modes(var, ordered_shaders[i], nir_var_shader_out) {
+               int idx = var->data.location;
+               idx -= FRAG_RESULT_DATA0;
+               if (idx < 0)
+                  continue;
+
+               unsigned col_format = (pipeline_key->ps.col_format >> (4 * idx)) & 0xf;
+               switch (col_format) {
+               case V_028714_SPI_SHADER_ZERO:
+                  info->outputs_written &= ~BITFIELD64_BIT(var->data.location);
+                  var->data.location = 0;
+                  var->data.mode = nir_var_shader_temp;
+                  fixup_derefs = true;
+                  break;
+               default:
+                  break;
+               }
+            }
+            if (fixup_derefs) {
+               nir_fixup_deref_modes(ordered_shaders[i]);
+               nir_remove_dead_variables(ordered_shaders[i], nir_var_shader_temp, NULL);
+               nir_opt_dce(ordered_shaders[i]);
+            }
+            continue;
+         }
+
+         /* Remove PSIZ from shaders when it's not needed.
+          * This is typically produced by translation layers like Zink or D9VK.
+          */
+         if (uses_xfb || !(info->outputs_written & VARYING_BIT_PSIZ))
             continue;
 
          bool next_stage_needs_psiz =
