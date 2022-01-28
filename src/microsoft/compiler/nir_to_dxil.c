@@ -3055,6 +3055,20 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    return true;
 }
 
+/* Need to add patch-ness as a matching parameter, since driver_location is *not* unique
+ * between control points and patch variables in HS/DS
+ */
+static nir_variable *
+find_patch_matching_variable_by_driver_location(nir_shader *s, nir_variable_mode mode, unsigned driver_location, bool patch)
+{
+   nir_foreach_variable_with_modes(var, s, mode) {
+      if (var->data.driver_location == driver_location &&
+          var->data.patch == patch)
+         return var;
+   }
+   return NULL;
+}
+
 static bool
 emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -3092,12 +3106,17 @@ emit_store_output_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *in
 
    bool success = true;
    uint32_t writemask = nir_intrinsic_write_mask(intr);
+
+   nir_variable *var = find_patch_matching_variable_by_driver_location(ctx->shader, nir_var_shader_out, nir_intrinsic_base(intr), is_patch_constant);
+   unsigned var_base_component = var->data.location_frac;
+   unsigned base_component = nir_intrinsic_component(intr) - var_base_component;
+
    for (unsigned i = 0; i < intr->num_components && success; ++i) {
       if (writemask & (1 << i)) {
          if (is_tess_level)
-            row = dxil_module_get_int32_const(&ctx->mod, i + nir_intrinsic_component(intr));
+            row = dxil_module_get_int32_const(&ctx->mod, i + base_component);
          else
-            col = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+            col = dxil_module_get_int8_const(&ctx->mod, i + base_component);
          const struct dxil_value *value = get_src(ctx, &intr->src[0], i, out_type);
          if (!col || !row || !value)
             return false;
@@ -3182,8 +3201,8 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
    bool is_tess_level = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ||
                         semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER;
 
-   const struct dxil_value *row;
-   const struct dxil_value *comp;
+   const struct dxil_value *row = NULL;
+   const struct dxil_value *comp = NULL;
    if (is_tess_level)
       comp = dxil_module_get_int8_const(&ctx->mod, 0);
    else
@@ -3197,11 +3216,15 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
    if (!func)
       return false;
 
+   nir_variable *var = find_patch_matching_variable_by_driver_location(ctx->shader, nir_var_shader_in, nir_intrinsic_base(intr), is_patch_constant);
+   unsigned var_base_component = var ? var->data.location_frac : 0;
+   unsigned base_component = nir_intrinsic_component(intr) - var_base_component;
+
    for (unsigned i = 0; i < intr->num_components; ++i) {
       if (is_tess_level)
-         row = dxil_module_get_int32_const(&ctx->mod, i + nir_intrinsic_component(intr));
+         row = dxil_module_get_int32_const(&ctx->mod, i + base_component);
       else
-         comp = dxil_module_get_int8_const(&ctx->mod, i + nir_intrinsic_component(intr));
+         comp = dxil_module_get_int8_const(&ctx->mod, i + base_component);
 
       if (!row || !comp)
          return false;
