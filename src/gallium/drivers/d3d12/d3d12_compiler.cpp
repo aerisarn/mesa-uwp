@@ -104,7 +104,7 @@ d3d12_get_compiler_options(struct pipe_screen *screen,
                            enum pipe_shader_type shader)
 {
    assert(ir == PIPE_SHADER_IR_NIR);
-   return dxil_get_nir_compiler_options();
+   return &d3d12_screen(screen)->nir_options;
 }
 
 static uint32_t

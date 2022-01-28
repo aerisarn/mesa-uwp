@@ -25,7 +25,6 @@
 #include "d3d12_context.h"
 #include "d3d12_debug.h"
 #include "d3d12_screen.h"
-#include "nir_to_dxil.h"
 
 #include "nir.h"
 #include "compiler/nir/nir_builder.h"
@@ -62,7 +61,7 @@ d3d12_make_passthrough_gs(struct d3d12_context *ctx, struct d3d12_gs_variant_key
    struct pipe_shader_state templ;
 
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
-                                                  dxil_get_nir_compiler_options(),
+                                                  &d3d12_screen(ctx->base.screen)->nir_options,
                                                   "passthrough");
 
    nir = b.shader;
@@ -160,7 +159,7 @@ d3d12_begin_emit_primitives_gs(struct emit_primitives_context *emit_ctx,
    emit_ctx->ctx = ctx;
 
    emit_ctx->b = nir_builder_init_simple_shader(MESA_SHADER_GEOMETRY,
-                                                dxil_get_nir_compiler_options(),
+                                                &d3d12_screen(ctx->base.screen)->nir_options,
                                                 "edgeflags");
 
    nir_shader *nir = b->shader;

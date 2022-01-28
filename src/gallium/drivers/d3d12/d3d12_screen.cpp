@@ -42,6 +42,8 @@
 #include "nir.h"
 #include "frontend/sw_winsys.h"
 
+#include "nir_to_dxil.h"
+
 #include <directx/d3d12sdklayers.h>
 
 #include <dxguids/dxguids.h>
@@ -1212,6 +1214,8 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);
    screen->support_shader_images = can_shader_image_load_all_formats(screen);
+
+   screen->nir_options = *dxil_get_nir_compiler_options();
    return true;
 
 failed:

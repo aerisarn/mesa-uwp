@@ -26,7 +26,7 @@
 #include "d3d12_context.h"
 #include "d3d12_compiler.h"
 #include "d3d12_nir_passes.h"
-#include "nir_to_dxil.h"
+#include "d3d12_screen.h"
 
 static uint32_t
 hash_tcs_variant_key(const void *key)
@@ -61,7 +61,7 @@ d3d12_tcs_variant_cache_destroy(struct d3d12_context *ctx)
 static struct d3d12_shader_selector *
 create_tess_ctrl_shader_variant(struct d3d12_context *ctx, struct d3d12_tcs_variant_key *key)
 {
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TESS_CTRL, dxil_get_nir_compiler_options(), "passthrough");
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TESS_CTRL, &d3d12_screen(ctx->base.screen)->nir_options, "passthrough");
    nir_shader *nir = b.shader;
 
    nir_ssa_def *invocation_id = nir_load_invocation_id(&b);

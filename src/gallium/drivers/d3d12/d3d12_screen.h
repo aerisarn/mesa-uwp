@@ -29,6 +29,8 @@
 #include "util/slab.h"
 #include "d3d12_descriptor_pool.h"
 
+#include "nir.h"
+
 #ifndef _WIN32
 #include <wsl/winadapter.h>
 #endif
@@ -83,6 +85,8 @@ struct d3d12_screen {
    D3D12_FEATURE_DATA_D3D12_OPTIONS2 opts2;
    D3D12_FEATURE_DATA_D3D12_OPTIONS3 opts3;
    D3D12_FEATURE_DATA_D3D12_OPTIONS4 opts4;
+
+   nir_shader_compiler_options nir_options;
 
    /* description */
    uint32_t vendor_id;
