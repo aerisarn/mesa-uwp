@@ -6376,7 +6376,7 @@
     </mod>
   </ins>
 
-  <ins name="+LD_TILE" staging="w=vecsize" mask="0xff800" exact="0xcb000" message="tile">
+  <ins name="+LD_TILE" staging="w=format" mask="0xff800" exact="0xcb000" message="tile">
     <src start="0"/>
     <src start="3"/>
     <src start="6" mask="0xf7"/>
