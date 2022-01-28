@@ -72,6 +72,21 @@ get_semantic_name(int location, int driver_location, unsigned *index)
    }
 }
 
+static nir_variable *
+find_so_variable(nir_shader *s, int location, unsigned location_frac, unsigned num_components)
+{
+   nir_foreach_variable_with_modes(var, s, nir_var_shader_out) {
+      if (var->data.location != location || var->data.location_frac > location_frac)
+         continue;
+      unsigned var_num_components = var->data.compact ?
+         glsl_get_length(var->type) : glsl_get_components(var->type);
+      if (var->data.location_frac <= location_frac &&
+          var->data.location_frac + var_num_components >= location_frac + num_components)
+         return var;
+   }
+   return nullptr;
+}
+
 static void
 fill_so_declaration(const struct pipe_stream_output_info *info,
                     nir_shader *last_vertex_stage,
@@ -106,12 +121,13 @@ fill_so_declaration(const struct pipe_stream_output_info *info,
       next_offset[buffer] = output->dst_offset + output->num_components;
 
       entries[*num_entries].Stream = output->stream;
-      nir_variable *var = nir_find_variable_with_location(last_vertex_stage,
-         nir_var_shader_out, output->register_index);
+      nir_variable *var = find_so_variable(last_vertex_stage,
+         output->register_index, output->start_component, output->num_components);
+      assert((var->data.stream & ~NIR_STREAM_PACKED) == output->stream);
       entries[*num_entries].SemanticName = get_semantic_name(var->data.location,
          var->data.driver_location, &index);
       entries[*num_entries].SemanticIndex = index;
-      entries[*num_entries].StartComponent = output->start_component;
+      entries[*num_entries].StartComponent = output->start_component - var->data.location_frac;
       entries[*num_entries].ComponentCount = output->num_components;
       entries[*num_entries].OutputSlot = buffer;
       (*num_entries)++;
