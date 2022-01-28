@@ -1113,6 +1113,12 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
       debug_printf("D3D12: failed to get device options\n");
       goto failed;
    }
+   if (FAILED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1,
+                                               &screen->opts1,
+                                               sizeof(screen->opts1)))) {
+      debug_printf("D3D12: failed to get device options\n");
+      goto failed;
+   }
    if (FAILED(screen->dev->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS2,
                                                &screen->opts2,
                                                sizeof(screen->opts2)))) {
