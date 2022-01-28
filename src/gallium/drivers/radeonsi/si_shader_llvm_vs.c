@@ -601,19 +601,30 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       }
 
       if (writes_vrs) {
-         /* Bits [2:3] = VRS rate X
-          * Bits [4:5] = VRS rate Y
-          *
-          * The range is [-2, 1]. Values:
-          *   1: 2x coarser shading rate in that direction.
-          *   0: normal shading rate
-          *  -1: 2x finer shading rate (sample shading, not directional)
-          *  -2: 4x finer shading rate (sample shading, not directional)
-          *
-          * Sample shading can't go above 8 samples, so both numbers can't be -2
-          * at the same time.
-          */
-         LLVMValueRef rates = LLVMConstInt(ctx->ac.i32, (1 << 2) | (1 << 4), 0);
+         LLVMValueRef rates;
+         if (ctx->screen->info.chip_class >= GFX11) {
+            /* Bits [2:5] = VRS rate
+             *
+             * The range is [0, 15].
+             *
+             * If the hw doesn't support VRS 4x4, it will silently use 2x2 instead.
+             */
+            rates = LLVMConstInt(ctx->ac.i32, (V_0283D0_VRS_SHADING_RATE_4X4 << 2), 0);
+         } else {
+            /* Bits [2:3] = VRS rate X
+             * Bits [4:5] = VRS rate Y
+             *
+             * The range is [-2, 1]. Values:
+             *   1: 2x coarser shading rate in that direction.
+             *   0: normal shading rate
+             *  -1: 2x finer shading rate (sample shading, not directional)
+             *  -2: 4x finer shading rate (sample shading, not directional)
+             *
+             * Sample shading can't go above 8 samples, so both numbers can't be -2
+             * at the same time.
+             */
+            rates = LLVMConstInt(ctx->ac.i32, (1 << 2) | (1 << 4), 0);
+         }
 
          /* If Pos.W != 1 (typical for non-GUI elements), use 2x2 coarse shading. */
          rates = LLVMBuildSelect(ctx->ac.builder,

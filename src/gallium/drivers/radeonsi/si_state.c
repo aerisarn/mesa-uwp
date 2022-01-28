@@ -1592,28 +1592,48 @@ static void si_emit_db_render_state(struct si_context *sctx)
    radeon_opt_set_context_reg(sctx, R_02880C_DB_SHADER_CONTROL, SI_TRACKED_DB_SHADER_CONTROL,
                               db_shader_control);
 
-   if (sctx->chip_class == GFX10_3) {
+   if (sctx->chip_class >= GFX10_3) {
       if (sctx->allow_flat_shading) {
-         radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
-                                    SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
-                                    S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(
-                                    V_028064_VRS_COMB_MODE_OVERRIDE) |
-                                    S_028064_VRS_OVERRIDE_RATE_X(1) |
-                                    S_028064_VRS_OVERRIDE_RATE_Y(1));
+         if (sctx->chip_class == GFX11) {
+            radeon_opt_set_context_reg(sctx, R_0283D0_PA_SC_VRS_OVERRIDE_CNTL,
+                                       SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
+                                       S_0283D0_VRS_OVERRIDE_RATE_COMBINER_MODE(
+                                          V_0283D0_SC_VRS_COMB_MODE_OVERRIDE) |
+                                       /* If the hw doesn't support VRS 4x4, it will silently
+                                        * use 2x2 instead. */
+                                       S_0283D0_VRS_RATE(V_0283D0_VRS_SHADING_RATE_4X4));
+         } else {
+            radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
+                                       SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
+                                       S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(
+                                          V_028064_VRS_COMB_MODE_OVERRIDE) |
+                                       S_028064_VRS_OVERRIDE_RATE_X(1) |
+                                       S_028064_VRS_OVERRIDE_RATE_Y(1));
+         }
       } else {
          /* If the shader is using discard, turn off coarse shading because
           * discard at 2x2 pixel granularity degrades quality too much.
           *
           * MIN allows sample shading but not coarse shading.
           */
-         unsigned mode = sctx->screen->options.vrs2x2 && G_02880C_KILL_ENABLE(db_shader_control) ?
-            V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
+         if (sctx->chip_class == GFX11) {
+            unsigned mode = sctx->screen->options.vrs2x2 && G_02880C_KILL_ENABLE(db_shader_control) ?
+               V_0283D0_SC_VRS_COMB_MODE_MIN : V_0283D0_SC_VRS_COMB_MODE_PASSTHRU;
 
-         radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
-                                    SI_TRACKED_DB_VRS_OVERRIDE_CNTL,
-                                    S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
-                                    S_028064_VRS_OVERRIDE_RATE_X(0) |
-                                    S_028064_VRS_OVERRIDE_RATE_Y(0));
+            radeon_opt_set_context_reg(sctx, R_0283D0_PA_SC_VRS_OVERRIDE_CNTL,
+                                       SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
+                                       S_0283D0_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+                                       S_0283D0_VRS_RATE(V_0283D0_VRS_SHADING_RATE_1X1));
+         } else {
+            unsigned mode = sctx->screen->options.vrs2x2 && G_02880C_KILL_ENABLE(db_shader_control) ?
+               V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
+
+            radeon_opt_set_context_reg(sctx, R_028064_DB_VRS_OVERRIDE_CNTL,
+                                       SI_TRACKED_DB_PA_SC_VRS_OVERRIDE_CNTL,
+                                       S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+                                       S_028064_VRS_OVERRIDE_RATE_X(0) |
+                                       S_028064_VRS_OVERRIDE_RATE_Y(0));
+         }
       }
    }
    radeon_end_update_context_roll(sctx);
