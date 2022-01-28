@@ -90,6 +90,7 @@ struct d3d12_screen {
 
    /* description */
    uint32_t vendor_id;
+   uint64_t driver_version;
    uint64_t memory_size_megabytes;
    double timestamp_multiplier;
    bool have_load_at_vertex;
