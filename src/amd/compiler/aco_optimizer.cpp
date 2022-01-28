@@ -607,6 +607,8 @@ to_VOP3(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
    /* we don't need to update any instr_mod_labels because they either haven't
     * been applied yet or this instruction isn't dead and so they've been ignored */
+
+   instr->pass_flags = tmp->pass_flags;
 }
 
 bool

@@ -289,6 +289,8 @@ convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr)
    if (instr->operands.size() >= 3)
       instr->operands[2].setFixed(vcc);
 
+   instr->pass_flags = tmp->pass_flags;
+
    return tmp;
 }
 
@@ -374,6 +376,8 @@ convert_to_DPP(aco_ptr<Instruction>& instr, bool dpp8)
 
    if (instr->operands.size() >= 3)
       instr->operands[2].setFixed(vcc);
+
+   instr->pass_flags = tmp->pass_flags;
 
    return tmp;
 }
