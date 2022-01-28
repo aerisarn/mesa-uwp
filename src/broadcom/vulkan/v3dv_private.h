@@ -1020,9 +1020,6 @@ struct v3dv_event_wait_cpu_job_info {
    /* List of events to wait on */
    uint32_t event_count;
    struct v3dv_event **events;
-
-   /* Whether any postponed jobs after the wait should wait on semaphores */
-   struct v3dv_submit_info_semaphores *sems_info;
 };
 
 struct v3dv_copy_buffer_to_image_cpu_job_info {
@@ -1150,6 +1147,13 @@ struct v3dv_job {
       uint32_t wg_base[3];
       struct drm_v3d_submit_csd submit;
    } csd;
+};
+
+struct v3dv_wait_thread_info {
+   struct v3dv_job *job;
+
+   /* Semaphores info for any postponed jobs after a wait event */
+   struct v3dv_submit_info_semaphores *sems_info;
 };
 
 void v3dv_job_init(struct v3dv_job *job,

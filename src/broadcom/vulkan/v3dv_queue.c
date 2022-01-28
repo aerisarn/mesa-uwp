@@ -329,19 +329,40 @@ fail:
    return NULL;
 }
 
-static void
-free_semaphores_info(struct v3dv_device *device,
-                     struct v3dv_submit_info_semaphores *sems_info)
+static struct v3dv_wait_thread_info *
+create_wait_thread_info(struct v3dv_job *job,
+                        struct v3dv_submit_info_semaphores *sems_info)
 {
-   assert(sems_info != NULL);
+   struct v3dv_wait_thread_info *info =
+      vk_alloc(&job->device->vk.alloc, sizeof(*info), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!info)
+      return NULL;
 
-   if (sems_info->wait_sem_count > 0)
-      vk_free(&device->vk.alloc, sems_info->wait_sems);
+   info->job = job;
+   info->sems_info = copy_semaphores_info(job->device, sems_info);
+   if (!info->sems_info) {
+      vk_free(&job->device->vk.alloc, info);
+      return NULL;
+   }
 
-   if (sems_info->signal_sem_count > 0)
-      vk_free(&device->vk.alloc, sems_info->signal_sems);
+   return info;
+}
 
-   vk_free(&device->vk.alloc, sems_info);
+static void
+free_wait_thread_info(struct v3dv_device *device,
+                      struct v3dv_wait_thread_info *info)
+{
+   assert(info != NULL);
+
+   if (info->sems_info->wait_sem_count > 0)
+      vk_free(&device->vk.alloc, info->sems_info->wait_sems);
+
+   if (info->sems_info->signal_sem_count > 0)
+      vk_free(&device->vk.alloc, info->sems_info->signal_sems);
+
+   vk_free(&device->vk.alloc, info->sems_info);
+   vk_free(&device->vk.alloc, info);
 }
 
 static bool
@@ -378,11 +399,11 @@ done:
 }
 
 static void *
-event_wait_thread_func(void *_job)
+event_wait_thread_func(void *_info)
 {
-   struct v3dv_job *job = (struct v3dv_job *) _job;
+   struct v3dv_wait_thread_info *info = (struct v3dv_wait_thread_info *) _info;
+   struct v3dv_job *job = info->job;
    assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
-   struct v3dv_event_wait_cpu_job_info *info = &job->cpu.event_wait;
 
    /* Wait for events to be signaled */
    const useconds_t wait_interval_ms = 1;
@@ -414,20 +435,20 @@ event_wait_thread_func(void *_job)
 
 done:
    wait_thread_finish(queue, pthread_self());
-   free_semaphores_info(job->device, info->sems_info);
+   free_wait_thread_info(job->device, info);
    return NULL;
 }
 
 static VkResult
-spawn_event_wait_thread(struct v3dv_job *job, pthread_t *wait_thread)
+spawn_event_wait_thread(struct v3dv_wait_thread_info *info, pthread_t *wait_thread)
 
 {
-   assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
-   assert(job->cmd_buffer);
+   assert(info->job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
+   assert(info->job->cmd_buffer);
    assert(wait_thread != NULL);
 
-   if (pthread_create(wait_thread, NULL, event_wait_thread_func, job))
-      return vk_error(job->device, VK_ERROR_DEVICE_LOST);
+   if (pthread_create(wait_thread, NULL, event_wait_thread_func, info))
+      return vk_error(info->job->device, VK_ERROR_DEVICE_LOST);
 
    return VK_NOT_READY;
 }
@@ -438,7 +459,6 @@ handle_wait_events_cpu_job(struct v3dv_job *job,
                            pthread_t *wait_thread)
 {
    assert(job->type == V3DV_JOB_TYPE_CPU_WAIT_EVENTS);
-   struct v3dv_event_wait_cpu_job_info *info = &job->cpu.event_wait;
 
    /* If all events are signaled then we are done and can continue submitting
     * the rest of the command buffer normally.
@@ -465,11 +485,12 @@ handle_wait_events_cpu_job(struct v3dv_job *job,
     * we keep a copy of the semaphores (info->sems_info) to be used when
     * submitting pending jobs in the wait thread context.
     */
-   info->sems_info = copy_semaphores_info(job->device, sems_info);
-   if (!info->sems_info)
+   struct v3dv_wait_thread_info *info =
+      create_wait_thread_info(job, sems_info);
+   if (!info)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   return spawn_event_wait_thread(job, wait_thread);
+   return spawn_event_wait_thread(info, wait_thread);
 }
 
 static VkResult
