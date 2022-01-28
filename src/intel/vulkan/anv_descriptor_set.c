@@ -1796,11 +1796,11 @@ void
 anv_descriptor_set_write_template(struct anv_device *device,
                                   struct anv_descriptor_set *set,
                                   struct anv_state_stream *alloc_stream,
-                                  const struct anv_descriptor_update_template *template,
+                                  const struct vk_descriptor_update_template *template,
                                   const void *data)
 {
    for (uint32_t i = 0; i < template->entry_count; i++) {
-      const struct anv_descriptor_template_entry *entry =
+      const struct vk_descriptor_template_entry *entry =
          &template->entries[i];
 
       switch (entry->type) {
@@ -1880,63 +1880,6 @@ anv_descriptor_set_write_template(struct anv_device *device,
    }
 }
 
-VkResult anv_CreateDescriptorUpdateTemplate(
-    VkDevice                                    _device,
-    const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkDescriptorUpdateTemplate*                 pDescriptorUpdateTemplate)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_descriptor_update_template *template;
-
-   size_t size = sizeof(*template) +
-      pCreateInfo->descriptorUpdateEntryCount * sizeof(template->entries[0]);
-   template = vk_object_alloc(&device->vk, pAllocator, size,
-                              VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
-   if (template == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   template->bind_point = pCreateInfo->pipelineBindPoint;
-
-   if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET)
-      template->set = pCreateInfo->set;
-
-   template->entry_count = pCreateInfo->descriptorUpdateEntryCount;
-   for (uint32_t i = 0; i < template->entry_count; i++) {
-      const VkDescriptorUpdateTemplateEntry *pEntry =
-         &pCreateInfo->pDescriptorUpdateEntries[i];
-
-      template->entries[i] = (struct anv_descriptor_template_entry) {
-         .type = pEntry->descriptorType,
-         .binding = pEntry->dstBinding,
-         .array_element = pEntry->dstArrayElement,
-         .array_count = pEntry->descriptorCount,
-         .offset = pEntry->offset,
-         .stride = pEntry->stride,
-      };
-   }
-
-   *pDescriptorUpdateTemplate =
-      anv_descriptor_update_template_to_handle(template);
-
-   return VK_SUCCESS;
-}
-
-void anv_DestroyDescriptorUpdateTemplate(
-    VkDevice                                    _device,
-    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
-    const VkAllocationCallbacks*                pAllocator)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_descriptor_update_template, template,
-                   descriptorUpdateTemplate);
-
-   if (!template)
-      return;
-
-   vk_object_free(&device->vk, pAllocator, template);
-}
-
 void anv_UpdateDescriptorSetWithTemplate(
     VkDevice                                    _device,
     VkDescriptorSet                             descriptorSet,
@@ -1945,8 +1888,8 @@ void anv_UpdateDescriptorSetWithTemplate(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_descriptor_set, set, descriptorSet);
-   ANV_FROM_HANDLE(anv_descriptor_update_template, template,
-                   descriptorUpdateTemplate);
+   VK_FROM_HANDLE(vk_descriptor_update_template, template,
+                  descriptorUpdateTemplate);
 
    anv_descriptor_set_write_template(device, set, NULL, template, pData);
 }

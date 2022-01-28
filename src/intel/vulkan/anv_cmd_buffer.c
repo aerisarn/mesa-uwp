@@ -1030,8 +1030,8 @@ void anv_CmdPushDescriptorSetWithTemplateKHR(
     const void*                                 pData)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_descriptor_update_template, template,
-                   descriptorUpdateTemplate);
+   VK_FROM_HANDLE(vk_descriptor_update_template, template,
+                  descriptorUpdateTemplate);
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, _layout);
 
    assert(_set < MAX_PUSH_DESCRIPTORS);
