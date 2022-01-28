@@ -192,7 +192,7 @@ panfrost_get_blend(struct panfrost_batch *batch, unsigned rti, struct panfrost_b
         nir_alu_type col1_type = nir_type_float32;
 
         /* Bifrost has per-output types, respect them */
-        if (pan_is_bifrost(dev)) {
+        if (dev->arch >= 6) {
                 col0_type = ss->info.bifrost.blend[rti].type;
                 col1_type = ss->info.bifrost.blend_src1_type;
         }
@@ -931,7 +931,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                         for (int i = 0; i < dev->core_count; ++i)
                                 passed += result[i];
 
-                        if (!pan_is_bifrost(dev) && !query->msaa)
+                        if (dev->arch <= 5 && !query->msaa)
                                 passed /= 4;
 
                         vresult->u64 = passed;
