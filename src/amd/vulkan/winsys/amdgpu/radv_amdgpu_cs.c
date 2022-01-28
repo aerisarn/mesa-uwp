@@ -282,6 +282,24 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
    return &cs->base;
 }
 
+static bool hw_can_chain(unsigned hw_ip)
+{
+   return hw_ip == AMDGPU_HW_IP_GFX || hw_ip == AMDGPU_HW_IP_COMPUTE;
+}
+
+static uint32_t get_nop_packet(struct radv_amdgpu_cs *cs)
+{
+   switch(cs->hw_ip) {
+   case AMDGPU_HW_IP_GFX:
+   case AMDGPU_HW_IP_COMPUTE:
+      return cs->ws->info.gfx_ib_pad_with_type2 ?  PKT2_NOP_PAD : PKT3_NOP_PAD;
+   case AMDGPU_HW_IP_DMA:
+      return cs->ws->info.chip_class <= GFX6 ? 0xF0000000 : SDMA_NOP_PAD;
+   default:
+      unreachable("Unknown ring type");
+   }
+}
+
 static void
 radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 {
@@ -343,8 +361,9 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
    enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
    uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
+   uint32_t nop_packet = get_nop_packet(cs);
    while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
-      radeon_emit(&cs->base, PKT3_NOP_PAD);
+      radeon_emit(&cs->base, nop_packet);
 
    *cs->ib_size_ptr |= cs->base.cdw + 4;
 
@@ -392,6 +411,8 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 
    cs->ws->base.cs_add_buffer(&cs->base, cs->ib_buffer);
 
+   assert(hw_can_chain(cs->hw_ip)); /* TODO: Implement growing other queues if needed. */
+
    radeon_emit(&cs->base, PKT3(PKT3_INDIRECT_BUFFER_CIK, 2, 0));
    radeon_emit(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va);
    radeon_emit(&cs->base, radv_amdgpu_winsys_bo(cs->ib_buffer)->base.va >> 32);
@@ -412,16 +433,22 @@ radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
    if (cs->ws->use_ib_bos) {
       enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
       uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
+      uint32_t nop_packet = get_nop_packet(cs);
 
-      /* Ensure that with the 4 dword reservation we subtract from max_dw we always
-       * have 4 nops at the end for chaining. */
-      while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
-         radeon_emit(&cs->base, PKT3_NOP_PAD);
+      if (hw_can_chain(cs->hw_ip)) {
+         /* Ensure that with the 4 dword reservation we subtract from max_dw we always
+          * have 4 nops at the end for chaining. */
+         while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
+            radeon_emit(&cs->base, nop_packet);
 
-      radeon_emit(&cs->base, PKT3_NOP_PAD);
-      radeon_emit(&cs->base, PKT3_NOP_PAD);
-      radeon_emit(&cs->base, PKT3_NOP_PAD);
-      radeon_emit(&cs->base, PKT3_NOP_PAD);
+         radeon_emit(&cs->base, nop_packet);
+         radeon_emit(&cs->base, nop_packet);
+         radeon_emit(&cs->base, nop_packet);
+         radeon_emit(&cs->base, nop_packet);
+      } else {
+         while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask))
+            radeon_emit(&cs->base, nop_packet);
+      }
 
       *cs->ib_size_ptr |= cs->base.cdw;
 
@@ -871,6 +898,8 @@ radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx, int queue_i
 
       if (cs->is_chained) {
          assert(cs->base.cdw <= cs->base.max_dw + 4);
+         assert(get_nop_packet(cs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
+
          cs->is_chained = false;
          cs->base.buf[cs->base.cdw - 4] =  PKT3_NOP_PAD;
          cs->base.buf[cs->base.cdw - 3] =  PKT3_NOP_PAD;
@@ -881,6 +910,7 @@ radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx, int queue_i
       if (i + 1 < cs_count) {
          struct radv_amdgpu_cs *next = radv_amdgpu_cs(cs_array[i + 1]);
          assert(cs->base.cdw <= cs->base.max_dw + 4);
+         assert(get_nop_packet(cs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
 
          cs->is_chained = true;
 
@@ -980,6 +1010,8 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx, int queue_
       ibs[i + !!initial_preamble_cs] = cs->ib;
 
       if (cs->is_chained) {
+         assert(get_nop_packet(cs) == PKT3_NOP_PAD); /* Other shouldn't chain. */
+
          cs->base.buf[cs->base.cdw - 4] =  PKT3_NOP_PAD;
          cs->base.buf[cs->base.cdw - 3] =  PKT3_NOP_PAD;
          cs->base.buf[cs->base.cdw - 2] =  PKT3_NOP_PAD;
@@ -1024,14 +1056,11 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
    struct radeon_winsys *ws = (struct radeon_winsys *)cs0->ws;
    struct radv_amdgpu_winsys *aws = cs0->ws;
    struct radv_amdgpu_cs_request request;
-   uint32_t pad_word = PKT3_NOP_PAD;
+   uint32_t pad_word = get_nop_packet(cs0);
    enum ring_type ring_type = hw_ip_to_ring(cs0->hw_ip);
    uint32_t ib_pad_dw_mask = cs0->ws->info.ib_pad_dw_mask[ring_type];
    bool emit_signal_sem = sem_info->cs_emit_signal;
    VkResult result;
-
-   if (radv_amdgpu_winsys(ws)->info.chip_class == GFX6)
-      pad_word = 0x80000000;
 
    assert(cs_count);
 
