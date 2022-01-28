@@ -37,8 +37,13 @@ vk_common_CreateDescriptorUpdateTemplate(VkDevice _device,
    VK_FROM_HANDLE(vk_device, device, _device);
    struct vk_descriptor_update_template *template;
 
-   size_t size = sizeof(*template) +
-      pCreateInfo->descriptorUpdateEntryCount * sizeof(template->entries[0]);
+   uint32_t entry_count = 0;
+   for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++) {
+      if (pCreateInfo->pDescriptorUpdateEntries[i].descriptorCount > 0)
+         entry_count++;
+   }
+
+   size_t size = sizeof(*template) + entry_count * sizeof(template->entries[0]);
    template = vk_object_alloc(device, pAllocator, size,
                               VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
    if (template == NULL)
@@ -50,12 +55,16 @@ vk_common_CreateDescriptorUpdateTemplate(VkDevice _device,
    if (template->type == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET)
       template->set = pCreateInfo->set;
 
-   template->entry_count = pCreateInfo->descriptorUpdateEntryCount;
-   for (uint32_t i = 0; i < template->entry_count; i++) {
+   uint32_t entry_idx = 0;
+   template->entry_count = entry_count;
+   for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++) {
       const VkDescriptorUpdateTemplateEntry *pEntry =
          &pCreateInfo->pDescriptorUpdateEntries[i];
 
-      template->entries[i] = (struct vk_descriptor_template_entry) {
+      if (pEntry->descriptorCount == 0)
+         continue;
+
+      template->entries[entry_idx++] = (struct vk_descriptor_template_entry) {
          .type = pEntry->descriptorType,
          .binding = pEntry->dstBinding,
          .array_element = pEntry->dstArrayElement,
@@ -64,6 +73,7 @@ vk_common_CreateDescriptorUpdateTemplate(VkDevice _device,
          .stride = pEntry->stride,
       };
    }
+   assert(entry_idx == entry_count);
 
    *pDescriptorUpdateTemplate =
       vk_descriptor_update_template_to_handle(template);
