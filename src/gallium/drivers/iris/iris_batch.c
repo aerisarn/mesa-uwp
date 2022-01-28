@@ -181,13 +181,13 @@ iris_init_batch(struct iris_context *ice,
    struct iris_batch *batch = &ice->batches[name];
    struct iris_screen *screen = (void *) ice->ctx.screen;
 
-   /* Note: ctx_id, exec_flags and has_engines_context fields are initialized
-    * at an earlier phase when contexts are created.
+   /* Note: screen, ctx_id, exec_flags and has_engines_context fields are
+    * initialized at an earlier phase when contexts are created.
     *
-    * Ref: iris_init_engines_context(), iris_init_non_engine_contexts()
+    * See iris_init_batches(), which calls either iris_init_engines_context()
+    * or iris_init_non_engine_contexts().
     */
 
-   batch->screen = screen;
    batch->dbg = &ice->dbg;
    batch->reset = &ice->reset;
    batch->state_sizes = ice->state.sizes;
@@ -214,11 +214,12 @@ iris_init_batch(struct iris_context *ice,
    batch->cache.render = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                                  _mesa_key_pointer_equal);
 
+   batch->num_other_batches = 0;
    memset(batch->other_batches, 0, sizeof(batch->other_batches));
 
-   for (int i = 0, j = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (i != name)
-         batch->other_batches[j++] = &ice->batches[i];
+   iris_foreach_batch(ice, other_batch) {
+      if (batch != other_batch)
+         batch->other_batches[batch->num_other_batches++] = other_batch;
    }
 
    if (INTEL_DEBUG(DEBUG_ANY)) {
@@ -250,8 +251,7 @@ iris_init_non_engine_contexts(struct iris_context *ice, int priority)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
 
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      struct iris_batch *batch = &ice->batches[i];
+   iris_foreach_batch(ice, batch) {
       batch->ctx_id = iris_create_hw_context(screen->bufmgr);
       batch->exec_flags = I915_EXEC_RENDER;
       batch->has_engines_context = false;
@@ -315,8 +315,8 @@ iris_init_engines_context(struct iris_context *ice, int priority)
    struct iris_screen *screen = (void *) ice->ctx.screen;
    iris_hw_context_set_priority(screen->bufmgr, engines_ctx, priority);
 
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      struct iris_batch *batch = &ice->batches[i];
+   iris_foreach_batch(ice, batch) {
+      unsigned i = batch - &ice->batches[0];
       batch->ctx_id = engines_ctx;
       batch->exec_flags = i;
       batch->has_engines_context = true;
@@ -328,10 +328,14 @@ iris_init_engines_context(struct iris_context *ice, int priority)
 void
 iris_init_batches(struct iris_context *ice, int priority)
 {
+   /* We have to do this early for iris_foreach_batch() to work */
+   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
+      ice->batches[i].screen = (void *) ice->ctx.screen;
+
    if (!iris_init_engines_context(ice, priority))
       iris_init_non_engine_contexts(ice, priority);
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
-      iris_init_batch(ice, (enum iris_batch_name) i);
+   iris_foreach_batch(ice, batch)
+      iris_init_batch(ice, batch - &ice->batches[0]);
 }
 
 static int
@@ -400,7 +404,7 @@ flush_for_cross_batch_dependencies(struct iris_batch *batch,
     * it had already referenced, we may need to flush other batches in order
     * to correctly synchronize them.
     */
-   for (int b = 0; b < ARRAY_SIZE(batch->other_batches); b++) {
+   for (int b = 0; b < batch->num_other_batches; b++) {
       struct iris_batch *other_batch = batch->other_batches[b];
       int other_index = find_exec_index(other_batch, bo);
 
@@ -598,8 +602,8 @@ iris_destroy_batches(struct iris_context *ice)
                                   ice->batches[0].ctx_id);
    }
 
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
-      iris_batch_free(&ice->batches[i]);
+   iris_foreach_batch(ice, batch)
+      iris_batch_free(batch);
 }
 
 /**
@@ -726,10 +730,10 @@ replace_kernel_ctx(struct iris_batch *batch)
       int new_ctx = iris_create_engines_context(ice, priority);
       if (new_ctx < 0)
          return false;
-      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-         ice->batches[i].ctx_id = new_ctx;
+      iris_foreach_batch(ice, bat) {
+         bat->ctx_id = new_ctx;
          /* Notify the context that state must be re-initialized. */
-         iris_lost_context_state(&ice->batches[i]);
+         iris_lost_context_state(bat);
       }
       iris_destroy_kernel_context(bufmgr, old_ctx);
    } else {
@@ -810,6 +814,7 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
 {
    struct iris_screen *screen = batch->screen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
+   struct iris_context *ice = batch->ice;
 
    /* Make sure bo->deps is big enough */
    if (screen->id >= bo->deps_size) {
@@ -838,7 +843,9 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
     * have come from a different context, and apps don't like it when we don't
     * do inter-context tracking.
     */
-   for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++) {
+   iris_foreach_batch(ice, batch_i) {
+      unsigned i = batch_i->name;
+
       /* If the bo is being written to by others, wait for them. */
       if (bo_deps->write_syncobjs[i])
          move_syncobj_to_batch(batch, &bo_deps->write_syncobjs[i],

@@ -1404,9 +1404,9 @@ iris_flush_resource(struct pipe_context *ctx, struct pipe_resource *resource)
        * sure to get rid of any compression that a consumer wouldn't know how
        * to handle.
        */
-      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-         if (iris_batch_references(&ice->batches[i], res->bo))
-            iris_batch_flush(&ice->batches[i]);
+      iris_foreach_batch(ice, batch) {
+         if (iris_batch_references(batch, res->bo))
+            iris_batch_flush(batch);
       }
 
       iris_resource_disable_aux(res);
@@ -1741,8 +1741,8 @@ resource_is_busy(struct iris_context *ice,
 {
    bool busy = iris_bo_busy(res->bo);
 
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++)
-      busy |= iris_batch_references(&ice->batches[i], res->bo);
+   iris_foreach_batch(ice, batch)
+      busy |= iris_batch_references(batch, res->bo);
 
    return busy;
 }
@@ -2339,9 +2339,9 @@ iris_transfer_map(struct pipe_context *ctx,
       }
 
       if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
-         for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-            if (iris_batch_references(&ice->batches[i], res->bo))
-               iris_batch_flush(&ice->batches[i]);
+         iris_foreach_batch(ice, batch) {
+            if (iris_batch_references(batch, res->bo))
+               iris_batch_flush(batch);
          }
       }
 
@@ -2384,8 +2384,7 @@ iris_transfer_flush_region(struct pipe_context *ctx,
    }
 
    if (history_flush & ~PIPE_CONTROL_CS_STALL) {
-      for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-         struct iris_batch *batch = &ice->batches[i];
+      iris_foreach_batch(ice, batch) {
          if (batch->contains_draw || batch->cache.render->entries) {
             iris_batch_maybe_flush(batch, 24);
             iris_emit_pipe_control_flush(batch,
@@ -2474,9 +2473,9 @@ iris_texture_subdata(struct pipe_context *ctx,
 
    iris_resource_access_raw(ice, res, level, box->z, box->depth, true);
 
-   for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
-      if (iris_batch_references(&ice->batches[i], res->bo))
-         iris_batch_flush(&ice->batches[i]);
+   iris_foreach_batch(ice, batch) {
+      if (iris_batch_references(batch, res->bo))
+         iris_batch_flush(batch);
    }
 
    uint8_t *dst = iris_bo_map(&ice->dbg, res->bo, MAP_WRITE | MAP_RAW);

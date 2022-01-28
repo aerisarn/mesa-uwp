@@ -136,6 +136,7 @@ struct iris_batch {
 
    /** List of other batches which we might need to flush to use a BO */
    struct iris_batch *other_batches[IRIS_BATCH_COUNT - 1];
+   unsigned num_other_batches;
 
    struct {
       /**
@@ -381,5 +382,10 @@ iris_batch_mark_reset_sync(struct iris_batch *batch)
 
 const char *
 iris_batch_name_to_string(enum iris_batch_name name);
+
+#define iris_foreach_batch(ice, batch)                \
+   for (struct iris_batch *batch = &ice->batches[0];  \
+        batch <= &ice->batches[((struct iris_screen *)ice->ctx.screen)->devinfo.ver >= 12 ? IRIS_BATCH_BLITTER : IRIS_BATCH_COMPUTE]; \
+        ++batch)
 
 #endif
