@@ -191,7 +191,7 @@ struct dxil_module {
     * of the dependency tables.
     */
    unsigned num_psv_inputs;
-   unsigned num_psv_outputs;
+   unsigned num_psv_outputs[4];
    unsigned num_psv_patch_consts;
 
    struct dxil_signature_record inputs[DXIL_SHADER_MAX_IO_ROWS];

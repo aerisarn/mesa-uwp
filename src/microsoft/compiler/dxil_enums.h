@@ -339,6 +339,13 @@ enum dxil_tessellator_partitioning {
    DXIL_TESSELLATOR_PARTITIONING_FRACTIONAL_EVEN = 4,
 };
 
+enum dxil_signature_element_extended_properties {
+   DXIL_SIGNATURE_ELEMENT_OUTPUT_STREAM = 0,
+   DXIL_SIGNATURE_ELEMENT_GLOBAL_SYMBOL = 1,
+   DXIL_SIGNATURE_ELEMENT_DYNAMIC_INDEX_COMPONENT_MASK = 2,
+   DXIL_SIGNATURE_ELEMENT_USAGE_COMPONENT_MASK = 3,
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif

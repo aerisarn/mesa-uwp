@@ -43,6 +43,7 @@ struct semantic_info {
    uint8_t start_col;
    uint8_t cols;
    uint8_t interpolation;
+   uint8_t stream;
    const char *sysvalue_name;
 };
 
@@ -130,6 +131,7 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
    bool is_gs_input = s->info.stage == MESA_SHADER_GEOMETRY &&
       (var->data.mode & (nir_var_shader_in | nir_var_system_value));
 
+   info->stream = var->data.stream;
    info->rows = 1;
    if (info->kind == DXIL_SEM_TARGET) {
       info->start_row = info->index;
@@ -442,7 +444,15 @@ fill_SV_param_nodes(struct dxil_module *mod, unsigned record_id,
    SV_params_nodes[7] = dxil_get_metadata_int8(mod, semantic->cols); // Number of columns
    SV_params_nodes[8] = dxil_get_metadata_int32(mod, semantic->start_row); // Element packing start row
    SV_params_nodes[9] = dxil_get_metadata_int8(mod, semantic->start_col); // Element packing start column
-   SV_params_nodes[10] = 0; // optional Metadata
+
+   const struct dxil_mdnode *SV_metadata[2];
+   unsigned num_metadata_nodes = 0;
+   if (semantic->stream != 0) {
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_OUTPUT_STREAM);
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, semantic->stream);
+   }
+
+   SV_params_nodes[10] = num_metadata_nodes ? dxil_get_metadata_node(mod, SV_metadata, num_metadata_nodes) : NULL;
 
    return dxil_get_metadata_node(mod, SV_params_nodes, ARRAY_SIZE(SV_params_nodes));
 }
@@ -453,7 +463,7 @@ fill_signature_element(struct dxil_signature_element *elm,
                        unsigned row)
 {
    memset(elm, 0, sizeof(struct dxil_signature_element));
-   // elm->stream = 0;
+   elm->stream = semantic->stream;
    // elm->semantic_name_offset = 0;  // Offset needs to be filled out when writing
    elm->semantic_index = semantic->index + row;
    elm->system_value = (uint32_t) prog_semantic_from_kind(semantic->kind, semantic->rows, row);
@@ -489,9 +499,7 @@ fill_psv_signature_element(struct dxil_psv_signature_element *psv_elm,
    psv_elm->semantic_kind = (uint8_t)semantic->kind;
    psv_elm->component_type = semantic->comp_type; //`??
    psv_elm->interpolation_mode = semantic->interpolation;
-   /* to be filled later
-     psv_elm->dynamic_mask_and_stream = 0;
-   */
+   psv_elm->dynamic_mask_and_stream = (semantic->stream) << 4;
    if (semantic->kind == DXIL_SEM_ARBITRARY && strlen(semantic->name)) {
       psv_elm->semantic_name_offset =
             copy_semantic_name_to_string(mod->sem_string_table, semantic->name);
@@ -646,8 +654,8 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool vulkan)
 
       ++num_outputs;
 
-      mod->num_psv_outputs = MAX2(mod->num_psv_outputs,
-                                  semantic.start_row + semantic.rows);
+      mod->num_psv_outputs[semantic.stream] = MAX2(mod->num_psv_outputs[semantic.stream],
+                                                   semantic.start_row + semantic.rows);
 
       assert(num_outputs < ARRAY_SIZE(outputs));
    }
