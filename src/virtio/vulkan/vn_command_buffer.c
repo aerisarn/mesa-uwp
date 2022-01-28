@@ -1928,3 +1928,213 @@ vn_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
       &cmd->cs, 0, commandBuffer, instanceCount, firstInstance, counterBuffer,
       counterBufferOffset, counterOffset, vertexStride);
 }
+
+void
+vn_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer,
+                         uint32_t firstBinding,
+                         uint32_t bindingCount,
+                         const VkBuffer *pBuffers,
+                         const VkDeviceSize *pOffsets,
+                         const VkDeviceSize *pSizes,
+                         const VkDeviceSize *pStrides)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdBindVertexBuffers2(commandBuffer, firstBinding,
+                                                bindingCount, pBuffers,
+                                                pOffsets, pSizes, pStrides);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdBindVertexBuffers2(&cmd->cs, 0, commandBuffer, firstBinding,
+                                     bindingCount, pBuffers, pOffsets, pSizes,
+                                     pStrides);
+}
+
+void
+vn_CmdSetCullMode(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetCullMode(commandBuffer, cullMode);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetCullMode(&cmd->cs, 0, commandBuffer, cullMode);
+}
+
+void
+vn_CmdSetDepthBoundsTestEnable(VkCommandBuffer commandBuffer,
+                               VkBool32 depthBoundsTestEnable)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetDepthBoundsTestEnable(commandBuffer,
+                                                      depthBoundsTestEnable);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetDepthBoundsTestEnable(&cmd->cs, 0, commandBuffer,
+                                           depthBoundsTestEnable);
+}
+
+void
+vn_CmdSetDepthCompareOp(VkCommandBuffer commandBuffer,
+                        VkCompareOp depthCompareOp)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetDepthCompareOp(commandBuffer, depthCompareOp);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetDepthCompareOp(&cmd->cs, 0, commandBuffer,
+                                    depthCompareOp);
+}
+
+void
+vn_CmdSetDepthTestEnable(VkCommandBuffer commandBuffer,
+                         VkBool32 depthTestEnable)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size =
+      vn_sizeof_vkCmdSetDepthTestEnable(commandBuffer, depthTestEnable);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetDepthTestEnable(&cmd->cs, 0, commandBuffer,
+                                     depthTestEnable);
+}
+
+void
+vn_CmdSetDepthWriteEnable(VkCommandBuffer commandBuffer,
+                          VkBool32 depthWriteEnable)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size =
+      vn_sizeof_vkCmdSetDepthWriteEnable(commandBuffer, depthWriteEnable);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetDepthWriteEnable(&cmd->cs, 0, commandBuffer,
+                                      depthWriteEnable);
+}
+
+void
+vn_CmdSetFrontFace(VkCommandBuffer commandBuffer, VkFrontFace frontFace)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetFrontFace(commandBuffer, frontFace);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetFrontFace(&cmd->cs, 0, commandBuffer, frontFace);
+}
+
+void
+vn_CmdSetPrimitiveTopology(VkCommandBuffer commandBuffer,
+                           VkPrimitiveTopology primitiveTopology)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size =
+      vn_sizeof_vkCmdSetPrimitiveTopology(commandBuffer, primitiveTopology);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetPrimitiveTopology(&cmd->cs, 0, commandBuffer,
+                                       primitiveTopology);
+}
+
+void
+vn_CmdSetScissorWithCount(VkCommandBuffer commandBuffer,
+                          uint32_t scissorCount,
+                          const VkRect2D *pScissors)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetScissorWithCount(commandBuffer, scissorCount,
+                                                 pScissors);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetScissorWithCount(&cmd->cs, 0, commandBuffer,
+                                      scissorCount, pScissors);
+}
+
+void
+vn_CmdSetStencilOp(VkCommandBuffer commandBuffer,
+                   VkStencilFaceFlags faceMask,
+                   VkStencilOp failOp,
+                   VkStencilOp passOp,
+                   VkStencilOp depthFailOp,
+                   VkCompareOp compareOp)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetStencilOp(commandBuffer, faceMask, failOp,
+                                          passOp, depthFailOp, compareOp);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetStencilOp(&cmd->cs, 0, commandBuffer, faceMask, failOp,
+                               passOp, depthFailOp, compareOp);
+}
+
+void
+vn_CmdSetStencilTestEnable(VkCommandBuffer commandBuffer,
+                           VkBool32 stencilTestEnable)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size =
+      vn_sizeof_vkCmdSetStencilTestEnable(commandBuffer, stencilTestEnable);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetStencilTestEnable(&cmd->cs, 0, commandBuffer,
+                                       stencilTestEnable);
+}
+
+void
+vn_CmdSetViewportWithCount(VkCommandBuffer commandBuffer,
+                           uint32_t viewportCount,
+                           const VkViewport *pViewports)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetViewportWithCount(commandBuffer,
+                                                  viewportCount, pViewports);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetViewportWithCount(&cmd->cs, 0, commandBuffer,
+                                       viewportCount, pViewports);
+}
