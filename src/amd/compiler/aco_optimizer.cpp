@@ -3515,11 +3515,15 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       VOP3_instruction& new_mul = instr->vop3();
       if (mul_instr->isVOP3()) {
          VOP3_instruction& mul = mul_instr->vop3();
-         new_mul.neg[0] = mul.neg[0] && !is_abs;
-         new_mul.neg[1] = mul.neg[1] && !is_abs;
-         new_mul.abs[0] = mul.abs[0] || is_abs;
-         new_mul.abs[1] = mul.abs[1] || is_abs;
+         new_mul.neg[0] = mul.neg[0];
+         new_mul.neg[1] = mul.neg[1];
+         new_mul.abs[0] = mul.abs[0];
+         new_mul.abs[1] = mul.abs[1];
          new_mul.omod = mul.omod;
+      }
+      if (is_abs) {
+         new_mul.neg[0] = new_mul.neg[1] = false;
+         new_mul.abs[0] = new_mul.abs[1] = true;
       }
       new_mul.neg[0] ^= true;
       new_mul.clamp = false;
