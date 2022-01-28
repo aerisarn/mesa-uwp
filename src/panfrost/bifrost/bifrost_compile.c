@@ -4380,6 +4380,11 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
                                 ~0, false);
         } else {
+                if (gpu_id >= 0x9000) {
+                        NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
+                                        BITFIELD64_BIT(VARYING_SLOT_PSIZ), false);
+                }
+
                 struct hash_table_u64 *stores = _mesa_hash_table_u64_create(NULL);
                 NIR_PASS_V(nir, nir_shader_instructions_pass,
                                 bifrost_nir_lower_store_component,
