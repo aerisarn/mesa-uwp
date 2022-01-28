@@ -1235,6 +1235,9 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
       screen->nir_options.lower_int64_options = (nir_lower_int64_options)~0;
    }
 
+   if (!screen->opts.DoublePrecisionFloatShaderOps)
+      screen->nir_options.lower_doubles_options = (nir_lower_doubles_options)~0;
+
    return true;
 
 failed:
