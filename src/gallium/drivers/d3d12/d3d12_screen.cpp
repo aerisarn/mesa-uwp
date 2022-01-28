@@ -319,6 +319,8 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SAMPLE_SHADING:
    case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
+   case PIPE_CAP_INT64:
+   case PIPE_CAP_INT64_DIVMOD:
       return 1;
 
    case PIPE_CAP_MAX_VERTEX_STREAMS:
@@ -1222,6 +1224,17 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    screen->support_shader_images = can_shader_image_load_all_formats(screen);
 
    screen->nir_options = *dxil_get_nir_compiler_options();
+
+   static constexpr uint64_t known_good_warp_version = 10ull << 48 | 22000ull << 16;
+   if ((screen->vendor_id == HW_VENDOR_MICROSOFT &&
+        screen->driver_version < known_good_warp_version) ||
+      !screen->opts1.Int64ShaderOps) {
+      /* Work around old versions of WARP that are completely broken for 64bit shifts */
+      screen->nir_options.lower_pack_64_2x32_split = false;
+      screen->nir_options.lower_unpack_64_2x32_split = false;
+      screen->nir_options.lower_int64_options = (nir_lower_int64_options)~0;
+   }
+
    return true;
 
 failed:
