@@ -336,14 +336,17 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
                                         (blend_shaders[i] & (0xffffffffull << 32)) ==
                                         (fs->bin.gpu & (0xffffffffull << 32)));
 
-                        unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
-                        assert(!(ret_offset & 0x7));
-
                         pan_pack(&packed->opaque[2], INTERNAL_BLEND, cfg) {
                                 cfg.mode = MALI_BLEND_MODE_SHADER;
                                 cfg.shader.pc = (u32) blend_shaders[i];
+
+#if PAN_ARCH <= 7
+                                unsigned ret_offset = fs->info.bifrost.blend[i].return_offset;
+                                assert(!(ret_offset & 0x7));
+
                                 cfg.shader.return_value = ret_offset ?
                                         fs->bin.gpu + ret_offset : 0;
+#endif
                         }
                 } else {
                         pan_pack(&packed->opaque[2], INTERNAL_BLEND, cfg) {

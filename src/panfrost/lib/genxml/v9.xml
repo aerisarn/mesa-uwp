@@ -548,7 +548,6 @@
   </enum>
 
   <struct name="Blend Shader" size="2">
-    <field name="Return Value" size="29" start="0:3" type="uint" modifier="shr(3)"/>
     <field name="PC" size="28" start="1:4" type="uint" modifier="shr(4)"/>
   </struct>
 
