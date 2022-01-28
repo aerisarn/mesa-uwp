@@ -137,3 +137,4 @@ c0 01 00 00 00 c4 10 51    IADD_IMM.i32.reconverge r4, 0x0, #0x1
 3d 00 00 33 84 80 5d 08    LD_VAR_IMM_F16.v4.half.smooth.sample.store.slot0.wait0 @r0:r1, r61, index:0x0
 3d 00 08 33 44 80 5d 08    LD_VAR_IMM_F16.v4.half.smooth.centroid.store.slot0.wait0 @r0:r1, r61, index:0x8
 7c 7d 11 33 04 80 66 00    LD_ATTR_IMM.v4.f16.slot0 @r0:r1, `r60, `r61, index:0x1, table:0x1
+40 3c 03 23 04 84 78 00    LD_TILE.v3.f16.slot0 @r4:r5, `r0, r60, r3
