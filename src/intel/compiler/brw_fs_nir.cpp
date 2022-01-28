@@ -160,7 +160,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
          /* For Task/Mesh, draw_id will be handled later in
           * nir_emit_mesh_task_intrinsic().
           */
-         if (!brw_shader_stage_is_mesh(v->stage))
+         if (!gl_shader_stage_is_mesh(v->stage))
             unreachable("should be lowered by brw_nir_lower_vs_inputs().");
          break;
 
