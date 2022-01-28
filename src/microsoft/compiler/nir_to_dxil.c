@@ -2112,6 +2112,23 @@ emit_b2f32(struct ntd_context *ctx, nir_alu_instr *alu, const struct dxil_value 
 }
 
 static bool
+emit_b2f64(struct ntd_context *ctx, nir_alu_instr *alu, const struct dxil_value *val)
+{
+   assert(val);
+
+   struct dxil_module *m = &ctx->mod;
+
+   const struct dxil_value *c1 = dxil_module_get_double_const(m, 1.0);
+   const struct dxil_value *c0 = dxil_module_get_double_const(m, 0.0);
+
+   if (!c0 || !c1)
+      return false;
+
+   ctx->mod.feats.doubles = 1;
+   return emit_select(ctx, alu, val, c1, c0);
+}
+
+static bool
 emit_f2b32(struct ntd_context *ctx, nir_alu_instr *alu, const struct dxil_value *val)
 {
    assert(val);
@@ -2431,6 +2448,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_f2b32: return emit_f2b32(ctx, alu, src[0]);
    case nir_op_b2f16: return emit_b2f16(ctx, alu, src[0]);
    case nir_op_b2f32: return emit_b2f32(ctx, alu, src[0]);
+   case nir_op_b2f64: return emit_b2f64(ctx, alu, src[0]);
    default:
       NIR_INSTR_UNSUPPORTED(&alu->instr);
       assert("Unimplemented ALU instruction");
