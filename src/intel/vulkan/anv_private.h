@@ -3542,13 +3542,6 @@ anv_pipeline_finish(struct anv_pipeline *pipeline,
                     struct anv_device *device,
                     const VkAllocationCallbacks *pAllocator);
 
-VkResult
-anv_ray_tracing_pipeline_init(struct anv_ray_tracing_pipeline *pipeline,
-                              struct anv_device *device,
-                              struct vk_pipeline_cache *cache,
-                              const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
-                              const VkAllocationCallbacks *alloc);
-
 struct anv_format_plane {
    enum isl_format isl_format:16;
    struct isl_swizzle swizzle;
