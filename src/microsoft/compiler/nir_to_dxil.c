@@ -1669,7 +1669,8 @@ store_dest(struct ntd_context *ctx, nir_dest *dest, unsigned chan,
    case nir_type_float:
       if (nir_dest_bit_size(*dest) == 64)
          ctx->mod.feats.doubles = true;
-      FALLTHROUGH;
+      store_dest_value(ctx, dest, chan, value);
+      break;
    case nir_type_uint:
    case nir_type_int:
       if (nir_dest_bit_size(*dest) == 16)
@@ -1726,8 +1727,7 @@ get_src(struct ntd_context *ctx, nir_src *src, unsigned chan,
 
    case nir_type_float:
       assert(nir_src_bit_size(*src) >= 16);
-      assert(nir_src_bit_size(*src) != 64 || (ctx->mod.feats.doubles &&
-                                              ctx->mod.feats.int64_ops));
+      assert(nir_src_bit_size(*src) != 64 || ctx->mod.feats.doubles);
       if (dxil_value_type_equal_to(value, dxil_module_get_float_type(&ctx->mod, bit_size)))
          return value;
       assert(dxil_value_type_bitsize_equal_to(value, bit_size));
