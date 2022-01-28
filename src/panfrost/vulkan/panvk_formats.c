@@ -466,7 +466,8 @@ panvk_GetPhysicalDeviceSparseImageFormatProperties(VkPhysicalDevice physicalDevi
                                                    uint32_t *pNumProperties,
                                                    VkSparseImageFormatProperties *pProperties)
 {
-   panvk_stub();
+   /* Sparse images are not yet supported. */
+   *pNumProperties = 0;
 }
 
 void
@@ -475,7 +476,8 @@ panvk_GetPhysicalDeviceSparseImageFormatProperties2(VkPhysicalDevice physicalDev
                                                     uint32_t *pPropertyCount,
                                                     VkSparseImageFormatProperties2 *pProperties)
 {
-   panvk_stub();
+   /* Sparse images are not yet supported. */
+   *pPropertyCount = 0;
 }
 
 void
