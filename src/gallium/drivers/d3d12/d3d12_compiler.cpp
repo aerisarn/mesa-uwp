@@ -176,6 +176,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    NIR_PASS_V(nir, dxil_nir_lower_bool_input);
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
    NIR_PASS_V(nir, dxil_nir_lower_atomics_to_dxil);
+   NIR_PASS_V(nir, dxil_nir_lower_double_math);
 
    if (key->fs.multisample_disabled)
       NIR_PASS_V(nir, d3d12_disable_multisampling);
