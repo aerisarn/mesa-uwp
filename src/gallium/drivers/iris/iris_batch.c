@@ -831,36 +831,22 @@ update_bo_syncobjs(struct iris_batch *batch, struct iris_bo *bo, bool write)
    struct iris_bo_screen_deps *bo_deps = &bo->deps[screen->id];
    int batch_idx = batch->name;
 
-   /* Someday if IRIS_BATCH_COUNT increases to 4, we could do:
-    *
-    *   int other_batch_idxs[IRIS_BATCH_COUNT - 1] = {
-    *      (batch_idx + 1) & 3,
-    *      (batch_idx + 2) & 3,
-    *      (batch_idx + 3) & 3,
-    *   };
-    */
-   STATIC_ASSERT(IRIS_BATCH_COUNT == 3);
-   int other_batch_idxs[IRIS_BATCH_COUNT - 1] = {
-      (batch_idx ^ 1) & 1,
-      (batch_idx ^ 2) & 2,
-   };
-
    /* Make our batch depend on additional syncobjs depending on what other
     * batches have been doing to this bo.
+    *
+    * We also look at the dependencies set by our own batch since those could
+    * have come from a different context, and apps don't like it when we don't
+    * do inter-context tracking.
     */
-   for (unsigned i = 0; i < ARRAY_SIZE(other_batch_idxs); i++) {
-      unsigned other_batch_idx = other_batch_idxs[i];
-
+   for (unsigned i = 0; i < IRIS_BATCH_COUNT; i++) {
       /* If the bo is being written to by others, wait for them. */
-      if (bo_deps->write_syncobjs[other_batch_idx])
-         move_syncobj_to_batch(batch,
-                               &bo_deps->write_syncobjs[other_batch_idx],
+      if (bo_deps->write_syncobjs[i])
+         move_syncobj_to_batch(batch, &bo_deps->write_syncobjs[i],
                                I915_EXEC_FENCE_WAIT);
 
       /* If we're writing to the bo, wait on the reads from other batches. */
       if (write)
-         move_syncobj_to_batch(batch,
-                               &bo_deps->read_syncobjs[other_batch_idx],
+         move_syncobj_to_batch(batch, &bo_deps->read_syncobjs[i],
                                I915_EXEC_FENCE_WAIT);
    }
 
