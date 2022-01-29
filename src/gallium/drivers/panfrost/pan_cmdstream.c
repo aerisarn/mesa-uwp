@@ -304,7 +304,8 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
                         cfg.round_to_fb_precision = !dithered;
                         cfg.alpha_to_one = ctx->blend->base.alpha_to_one;
 #if PAN_ARCH >= 6
-                        cfg.constant = pack_blend_constant(format, cons);
+                        if (!blend_shaders[i])
+                                cfg.constant = pack_blend_constant(format, cons);
 #else
                         cfg.blend_shader = (blend_shaders[i] != 0);
 
