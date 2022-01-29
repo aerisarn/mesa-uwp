@@ -689,7 +689,9 @@ vn_cmd_submit(struct vn_command_buffer *cmd)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   vn_instance_wait_roundtrip(instance, cmd->cs.current_buffer_roundtrip);
+   if (unlikely(!instance->renderer->info.supports_blob_id_0))
+      vn_instance_wait_roundtrip(instance, cmd->cs.current_buffer_roundtrip);
+
    VkResult result = vn_instance_ring_submit(instance, &cmd->cs);
    if (result != VK_SUCCESS) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;

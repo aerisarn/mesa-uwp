@@ -491,7 +491,9 @@ vn_instance_ring_cs_upload_locked(struct vn_instance *instance,
 
    vn_cs_encoder_write(upload, cs_size, cs_data, cs_size);
    vn_cs_encoder_commit(upload);
-   vn_instance_wait_roundtrip(instance, upload->current_buffer_roundtrip);
+
+   if (unlikely(!instance->renderer->info.supports_blob_id_0))
+      vn_instance_wait_roundtrip(instance, upload->current_buffer_roundtrip);
 
    return upload;
 }
@@ -582,7 +584,9 @@ vn_instance_get_reply_shmem_locked(struct vn_instance *instance,
        * created
        */
       if (likely(instance->ring.id)) {
-         vn_instance_roundtrip(instance);
+         if (unlikely(!instance->renderer->info.supports_blob_id_0))
+            vn_instance_roundtrip(instance);
+
          vn_instance_ring_submit_locked(instance, &local_enc, NULL, NULL);
       } else {
          vn_renderer_submit_simple(instance->renderer,
