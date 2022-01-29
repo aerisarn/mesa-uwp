@@ -33,6 +33,8 @@
 struct bitset_params;
 
 struct encode_state {
+	unsigned gen;
+
 	struct ir3_compiler *compiler;
 
 	/**
@@ -321,6 +323,7 @@ isa_assemble(struct ir3_shader_variant *v)
 	foreach_block (block, &shader->block_list) {
 		foreach_instr (instr, &block->instr_list) {
 			struct encode_state s = {
+				.gen = shader->compiler->gen * 100,
 				.compiler = shader->compiler,
 				.instr = instr,
 			};
