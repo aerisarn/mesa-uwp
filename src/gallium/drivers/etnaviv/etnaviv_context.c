@@ -342,42 +342,53 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    /*
     * Figure out the buffers/features we need:
     */
-   if (etna_depth_enabled(ctx))
-      resource_written(ctx, pfb->zsbuf->texture);
+   if (ctx->dirty & ETNA_DIRTY_ZSA) {
+      if (etna_depth_enabled(ctx))
+         resource_written(ctx, pfb->zsbuf->texture);
 
-   if (etna_stencil_enabled(ctx))
-      resource_written(ctx, pfb->zsbuf->texture);
-
-   for (i = 0; i < pfb->nr_cbufs; i++) {
-      struct pipe_resource *surf;
-
-      if (!pfb->cbufs[i])
-         continue;
-
-      surf = pfb->cbufs[i]->texture;
-      resource_written(ctx, surf);
+      if (etna_stencil_enabled(ctx))
+         resource_written(ctx, pfb->zsbuf->texture);
    }
 
-   /* Mark constant buffers as being read */
-   u_foreach_bit(i, ctx->constant_buffer[PIPE_SHADER_VERTEX].enabled_mask)
-      resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_VERTEX].cb[i].buffer);
+   if (ctx->dirty & ETNA_DIRTY_FRAMEBUFFER) {
+      for (i = 0; i < pfb->nr_cbufs; i++) {
+         struct pipe_resource *surf;
 
-   u_foreach_bit(i, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].enabled_mask)
-      resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].cb[i].buffer);
+         if (!pfb->cbufs[i])
+            continue;
 
-   /* Mark VBOs as being read */
-   u_foreach_bit(i, ctx->vertex_buffer.enabled_mask) {
-      assert(!ctx->vertex_buffer.vb[i].is_user_buffer);
-      resource_read(ctx, ctx->vertex_buffer.vb[i].buffer.resource);
+         surf = pfb->cbufs[i]->texture;
+         resource_written(ctx, surf);
+      }
    }
 
-   /* Mark index buffer as being read */
-   resource_read(ctx, indexbuf);
+   if (ctx->dirty & ETNA_DIRTY_SHADER) {
+      /* Mark constant buffers as being read */
+      u_foreach_bit(i, ctx->constant_buffer[PIPE_SHADER_VERTEX].enabled_mask)
+         resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_VERTEX].cb[i].buffer);
+
+      u_foreach_bit(i, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].enabled_mask)
+         resource_read(ctx, ctx->constant_buffer[PIPE_SHADER_FRAGMENT].cb[i].buffer);
+   }
+
+   if (ctx->dirty & ETNA_DIRTY_VERTEX_BUFFERS) {
+      /* Mark VBOs as being read */
+      u_foreach_bit(i, ctx->vertex_buffer.enabled_mask) {
+         assert(!ctx->vertex_buffer.vb[i].is_user_buffer);
+         resource_read(ctx, ctx->vertex_buffer.vb[i].buffer.resource);
+      }
+   }
+
+   if (ctx->dirty & ETNA_DIRTY_INDEX_BUFFER) {
+      /* Mark index buffer as being read */
+      resource_read(ctx, indexbuf);
+   }
 
    /* Mark textures as being read */
    for (i = 0; i < PIPE_MAX_SAMPLERS; i++) {
       if (ctx->sampler_view[i]) {
-          resource_read(ctx, ctx->sampler_view[i]->texture);
+         if (ctx->dirty & ETNA_DIRTY_SAMPLER_VIEWS)
+             resource_read(ctx, ctx->sampler_view[i]->texture);
 
          /* if texture was modified since the last update,
           * we need to clear the texture cache and possibly
