@@ -89,6 +89,15 @@ etna_emit_string_marker(struct pipe_context *pctx, const char *string, int len)
 }
 
 static void
+etna_set_frontend_noop(struct pipe_context *pctx, bool enable)
+{
+   struct etna_context *ctx = etna_context(pctx);
+
+   pctx->flush(pctx, NULL, 0);
+   ctx->is_noop = enable;
+}
+
+static void
 etna_context_destroy(struct pipe_context *pctx)
 {
    struct etna_context *ctx = etna_context(pctx);
@@ -542,7 +551,8 @@ etna_flush(struct pipe_context *pctx, struct pipe_fence_handle **fence,
    _mesa_set_clear(ctx->flush_resources, NULL);
 
    etna_cmd_stream_flush(ctx->stream, ctx->in_fence_fd,
-                          (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd : NULL);
+                          (flags & PIPE_FLUSH_FENCE_FD) ? &out_fence_fd : NULL,
+                          ctx->is_noop);
 
    list_for_each_entry(struct etna_acc_query, aq, &ctx->active_acc_queries, node)
       etna_acc_query_resume(aq, ctx);
@@ -671,6 +681,7 @@ etna_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    pctx->create_fence_fd = etna_create_fence_fd;
    pctx->fence_server_sync = etna_fence_server_sync;
    pctx->emit_string_marker = etna_emit_string_marker;
+   pctx->set_frontend_noop = etna_set_frontend_noop;
 
    /* creation of compile states */
    pctx->create_blend_state = etna_blend_state_create;
