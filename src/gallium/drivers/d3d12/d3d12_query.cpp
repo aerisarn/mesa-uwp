@@ -101,7 +101,7 @@ d3d12_query_heap_type(unsigned query_type, unsigned sub_query)
 }
 
 static D3D12_QUERY_TYPE
-d3d12_query_type(unsigned query_type, unsigned sub_query)
+d3d12_query_type(unsigned query_type, unsigned sub_query, unsigned index)
 {
    switch (query_type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -117,7 +117,7 @@ d3d12_query_type(unsigned query_type, unsigned sub_query)
          D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
    case PIPE_QUERY_SO_STATISTICS:
-      return D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0;
+      return (D3D12_QUERY_TYPE)(D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0 + index);
    case PIPE_QUERY_TIMESTAMP:
    case PIPE_QUERY_TIME_ELAPSED:
       return D3D12_QUERY_TYPE_TIMESTAMP;
@@ -143,7 +143,7 @@ d3d12_create_query(struct pipe_context *pctx,
    query->type = (pipe_query_type)query_type;
    for (unsigned i = 0; i < num_sub_queries(query_type); ++i) {
       assert(i < MAX_SUBQUERIES);
-      query->subqueries[i].d3d12qtype = d3d12_query_type(query_type, i);
+      query->subqueries[i].d3d12qtype = d3d12_query_type(query_type, i, index);
       query->subqueries[i].num_queries = 16;
 
       /* With timer queries we want a few more queries, especially since we need two slots
@@ -155,21 +155,20 @@ d3d12_create_query(struct pipe_context *pctx,
          query->subqueries[i].num_queries = 1;
 
       query->subqueries[i].curr_query = 0;
+      desc.Count = query->subqueries[i].num_queries;
+      desc.Type = d3d12_query_heap_type(query_type, i);
 
-      switch (query->subqueries[i].d3d12qtype) {
-      case D3D12_QUERY_TYPE_PIPELINE_STATISTICS:
+      switch (desc.Type) {
+      case D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
          query->subqueries[i].query_size = sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS);
          break;
-      case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0:
+      case D3D12_QUERY_HEAP_TYPE_SO_STATISTICS:
          query->subqueries[i].query_size = sizeof(D3D12_QUERY_DATA_SO_STATISTICS);
          break;
       default:
          query->subqueries[i].query_size = sizeof(uint64_t);
          break;
       }
-
-      desc.Count = query->subqueries[i].num_queries;
-      desc.Type = d3d12_query_heap_type(query_type, i);
       if (FAILED(screen->dev->CreateQueryHeap(&desc,
                                               IID_PPV_ARGS(&query->subqueries[i].query_heap)))) {
          FREE(query);
@@ -258,6 +257,9 @@ accumulate_subresult(struct d3d12_context *ctx, struct d3d12_query *q_parent,
          break;
 
       case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0:
+      case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1:
+      case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM2:
+      case D3D12_QUERY_TYPE_SO_STATISTICS_STREAM3:
          result->so_statistics.num_primitives_written += results_so[i].NumPrimitivesWritten;
          result->so_statistics.primitives_storage_needed += results_so[i].PrimitivesStorageNeeded;
          break;
