@@ -377,7 +377,7 @@ vn_QueueSubmit(VkQueue _queue,
 
    if (wsi_mem) {
       /* XXX this is always false and kills the performance */
-      if (dev->instance->renderer_info.has_implicit_fencing) {
+      if (dev->instance->renderer->info.has_implicit_fencing) {
          vn_renderer_submit(dev->renderer, &(const struct vn_renderer_submit){
                                               .bos = &wsi_mem->base_bo,
                                               .bo_count = 1,

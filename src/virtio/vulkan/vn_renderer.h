@@ -251,13 +251,6 @@ vn_renderer_destroy(struct vn_renderer *renderer,
    renderer->ops.destroy(renderer, alloc);
 }
 
-static inline void
-vn_renderer_get_info(struct vn_renderer *renderer,
-                     struct vn_renderer_info *info)
-{
-   *info = renderer->info;
-}
-
 static inline VkResult
 vn_renderer_submit(struct vn_renderer *renderer,
                    const struct vn_renderer_submit *submit)

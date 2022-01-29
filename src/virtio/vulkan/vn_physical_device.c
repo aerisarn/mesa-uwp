@@ -669,7 +669,7 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    } else {
       /* cap the advertised api version */
       uint32_t version = MIN3(props->apiVersion, VN_MAX_API_VERSION,
-                              instance->renderer_info.vk_xml_version);
+                              instance->renderer->info.vk_xml_version);
       if (VK_VERSION_PATCH(version) > VK_VERSION_PATCH(props->apiVersion)) {
          version = version - VK_VERSION_PATCH(version) +
                    VK_VERSION_PATCH(props->apiVersion);
@@ -745,7 +745,7 @@ vn_physical_device_init_memory_properties(
       instance, vn_physical_device_to_handle(physical_dev),
       &physical_dev->memory_properties);
 
-   if (!instance->renderer_info.has_cache_management) {
+   if (!instance->renderer->info.has_cache_management) {
       VkPhysicalDeviceMemoryProperties *props =
          &physical_dev->memory_properties.memoryProperties;
       const uint32_t host_flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -781,7 +781,7 @@ vn_physical_device_init_external_memory(
     * the extension.
     */
 
-   if (!physical_dev->instance->renderer_info.has_dma_buf_import)
+   if (!physical_dev->instance->renderer->info.has_dma_buf_import)
       return;
 
    /* TODO We assume the renderer uses dma-bufs here.  This should be
@@ -870,7 +870,6 @@ vn_physical_device_get_native_extensions(
    struct vk_device_extension_table *exts)
 {
    const struct vn_instance *instance = physical_dev->instance;
-   const struct vn_renderer_info *renderer_info = &instance->renderer_info;
    const struct vk_device_extension_table *renderer_exts =
       &physical_dev->renderer_extensions;
 
@@ -878,7 +877,7 @@ vn_physical_device_get_native_extensions(
 
    /* see vn_physical_device_init_external_memory */
    const bool can_external_mem = renderer_exts->EXT_external_memory_dma_buf &&
-                                 renderer_info->has_dma_buf_import;
+                                 instance->renderer->info.has_dma_buf_import;
 
 #ifdef ANDROID
    if (can_external_mem && renderer_exts->EXT_image_drm_format_modifier &&
@@ -1102,7 +1101,7 @@ vn_physical_device_init_renderer_version(
    /* device version for internal use is capped */
    physical_dev->renderer_version =
       MIN3(props.apiVersion, instance->renderer_api_version,
-           instance->renderer_info.vk_xml_version);
+           instance->renderer->info.vk_xml_version);
 
    return VK_SUCCESS;
 }
@@ -2027,15 +2026,15 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
          /* this is used by WSI */
-         if (physical_dev->instance->renderer_info.pci.has_bus_info) {
+         if (physical_dev->instance->renderer->info.pci.has_bus_info) {
             u.pci_bus_info->pciDomain =
-               physical_dev->instance->renderer_info.pci.domain;
+               physical_dev->instance->renderer->info.pci.domain;
             u.pci_bus_info->pciBus =
-               physical_dev->instance->renderer_info.pci.bus;
+               physical_dev->instance->renderer->info.pci.bus;
             u.pci_bus_info->pciDevice =
-               physical_dev->instance->renderer_info.pci.device;
+               physical_dev->instance->renderer->info.pci.device;
             u.pci_bus_info->pciFunction =
-               physical_dev->instance->renderer_info.pci.function;
+               physical_dev->instance->renderer->info.pci.function;
          }
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
