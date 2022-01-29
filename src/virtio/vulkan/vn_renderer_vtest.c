@@ -923,11 +923,9 @@ vtest_submit(struct vn_renderer *renderer,
 }
 
 static void
-vtest_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
+vtest_init_renderer_info(struct vtest *vtest)
 {
-   struct vtest *vtest = (struct vtest *)renderer;
-
-   memset(info, 0, sizeof(*info));
+   struct vn_renderer_info *info = &vtest->base.info;
 
    info->pci.vendor_id = VTEST_PCI_VENDOR_ID;
    info->pci.device_id = VTEST_PCI_DEVICE_ID;
@@ -1053,8 +1051,9 @@ vtest_init(struct vtest *vtest)
 
    vtest_vcmd_context_init(vtest, vtest->capset.id);
 
+   vtest_init_renderer_info(vtest);
+
    vtest->base.ops.destroy = vtest_destroy;
-   vtest->base.ops.get_info = vtest_get_info;
    vtest->base.ops.submit = vtest_submit;
    vtest->base.ops.wait = vtest_wait;
 

@@ -1361,11 +1361,9 @@ virtgpu_submit(struct vn_renderer *renderer,
 }
 
 static void
-virtgpu_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
+virtgpu_init_renderer_info(struct virtgpu *gpu)
 {
-   struct virtgpu *gpu = (struct virtgpu *)renderer;
-
-   memset(info, 0, sizeof(*info));
+   struct vn_renderer_info *info = &gpu->base.info;
 
    info->pci.vendor_id = VIRTGPU_PCI_VENDOR_ID;
    info->pci.device_id = VIRTGPU_PCI_DEVICE_ID;
@@ -1634,8 +1632,9 @@ virtgpu_init(struct virtgpu *gpu)
    vn_renderer_shmem_cache_init(&gpu->shmem_cache, &gpu->base,
                                 virtgpu_shmem_destroy_now);
 
+   virtgpu_init_renderer_info(gpu);
+
    gpu->base.ops.destroy = virtgpu_destroy;
-   gpu->base.ops.get_info = virtgpu_get_info;
    gpu->base.ops.submit = virtgpu_submit;
    gpu->base.ops.wait = virtgpu_wait;
 

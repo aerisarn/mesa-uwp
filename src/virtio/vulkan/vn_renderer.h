@@ -123,9 +123,6 @@ struct vn_renderer_ops {
    void (*destroy)(struct vn_renderer *renderer,
                    const VkAllocationCallbacks *alloc);
 
-   void (*get_info)(struct vn_renderer *renderer,
-                    struct vn_renderer_info *info);
-
    VkResult (*submit)(struct vn_renderer *renderer,
                       const struct vn_renderer_submit *submit);
 
@@ -216,6 +213,7 @@ struct vn_renderer_sync_ops {
 };
 
 struct vn_renderer {
+   struct vn_renderer_info info;
    struct vn_renderer_ops ops;
    struct vn_renderer_shmem_ops shmem_ops;
    struct vn_renderer_bo_ops bo_ops;
@@ -257,7 +255,7 @@ static inline void
 vn_renderer_get_info(struct vn_renderer *renderer,
                      struct vn_renderer_info *info)
 {
-   renderer->ops.get_info(renderer, info);
+   *info = renderer->info;
 }
 
 static inline VkResult
