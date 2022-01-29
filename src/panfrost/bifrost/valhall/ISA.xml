@@ -1158,20 +1158,29 @@
       is specified where it makes sense.
     </desc>
 
-    <ins name="S16_TO_S32" opcode2="0x4"/>
-    <ins name="S16_TO_F32" opcode2="0x5"/>
     <ins name="V2S16_TO_V2F16" opcode2="0x7"/>
 
     <ins name="S32_TO_F32" opcode2="0x9"/>
 
-    <ins name="U16_TO_U32" opcode2="0x14"/>
-    <ins name="U16_TO_F32" opcode2="0x15"/>
     <ins name="V2U16_TO_V2F16" opcode2="0x17"/>
 
     <ins name="U32_TO_F32" opcode2="0x19"/>
 
     <roundmode/>
     <src widen="true">Value to convert</src>
+  </group>
+
+  <group name="CONVERT" title="16->32 integer data conversions" dests="1" opcode="0x90" unit="CVT">
+    <desc>
+      Performs the given data conversion.
+    </desc>
+
+    <ins name="S16_TO_S32" opcode2="0x4"/>
+    <ins name="S16_TO_F32" opcode2="0x5"/>
+    <ins name="U16_TO_U32" opcode2="0x14"/>
+    <ins name="U16_TO_F32" opcode2="0x15"/>
+
+    <src swizzle="true" size="16">Value to convert</src>
   </group>
 
   <group name="CONVERT" title="Float-to-int data conversions" dests="1" opcode="0x90" unit="CVT">
