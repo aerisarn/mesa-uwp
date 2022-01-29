@@ -1214,13 +1214,13 @@
 
     <ins name="S8_TO_S32" opcode2="0x0"/>
     <ins name="S8_TO_F32" opcode2="0x1"/>
-    <ins name="S8_TO_S16" opcode2="0x2"/>
-    <ins name="S8_TO_F16" opcode2="0x3"/>
+    <ins name="V2S8_TO_V2S16" opcode2="0x2"/>
+    <ins name="V2S8_TO_V2F16" opcode2="0x3"/>
 
     <ins name="U8_TO_U32" opcode2="0x10"/>
     <ins name="U8_TO_F32" opcode2="0x11"/>
-    <ins name="U8_TO_U16" opcode2="0x12"/>
-    <ins name="U8_TO_F16" opcode2="0x13"/>
+    <ins name="V2U8_TO_V2U16" opcode2="0x12"/>
+    <ins name="V2U8_TO_V2F16" opcode2="0x13"/>
 
     <src lane="28" size="8">Value to convert</src>
   </group>
