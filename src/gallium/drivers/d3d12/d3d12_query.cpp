@@ -22,6 +22,7 @@
  */
 
 #include "d3d12_query.h"
+#include "d3d12_compiler.h"
 #include "d3d12_context.h"
 #include "d3d12_resource.h"
 #include "d3d12_screen.h"
@@ -32,6 +33,8 @@
 #include "util/u_threaded_context.h"
 
 #include <dxguids/dxguids.h>
+
+constexpr unsigned MAX_SUBQUERIES = 3;
 
 struct d3d12_query_impl {
    ID3D12QueryHeap *query_heap;
@@ -50,7 +53,7 @@ struct d3d12_query {
    struct threaded_query base;
    enum pipe_query_type type;
 
-   struct d3d12_query_impl subqueries[2];
+   struct d3d12_query_impl subqueries[MAX_SUBQUERIES];
 
    uint64_t fence_value;
 
@@ -63,7 +66,7 @@ num_sub_queries(unsigned query_type)
 {
    switch (query_type) {
    case PIPE_QUERY_PRIMITIVES_GENERATED:
-      return 2;
+      return 3;
    default:
       return 1;
    }
@@ -139,6 +142,7 @@ d3d12_create_query(struct pipe_context *pctx,
 
    query->type = (pipe_query_type)query_type;
    for (unsigned i = 0; i < num_sub_queries(query_type); ++i) {
+      assert(i < MAX_SUBQUERIES);
       query->subqueries[i].d3d12qtype = d3d12_query_type(query_type, i);
       query->subqueries[i].num_queries = 16;
 
@@ -313,6 +317,10 @@ accumulate_result(struct d3d12_context *ctx, struct d3d12_query *q,
 
       if (!accumulate_subresult(ctx, q, 1, &local_result, write))
          return false;
+      result->u64 += local_result.pipeline_statistics.gs_primitives;
+
+      if (!accumulate_subresult(ctx, q, 2, &local_result, write))
+         return false;
       result->u64 += local_result.pipeline_statistics.ia_primitives;
       return true;
    case PIPE_QUERY_PRIMITIVES_EMITTED:
@@ -332,9 +340,12 @@ subquery_should_be_active(struct d3d12_context *ctx, struct d3d12_query *q, unsi
    switch (q->type) {
    case PIPE_QUERY_PRIMITIVES_GENERATED: {
       bool has_xfb = !!ctx->gfx_pipeline_state.num_so_targets;
+      struct d3d12_shader_selector *gs = ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
+      bool has_gs = gs && !gs->is_variant;
       switch (sub_query) {
       case 0: return has_xfb;
-      case 1: return !has_xfb;
+      case 1: return !has_xfb && has_gs;
+      case 2: return !has_xfb && !has_gs;
       default: unreachable("Invalid subquery for primitives generated");
       }
       break;
