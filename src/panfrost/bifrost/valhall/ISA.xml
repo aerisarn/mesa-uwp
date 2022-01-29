@@ -201,6 +201,29 @@
     <reserved/>
   </enum>
 
+  <enum name="Half-swizzles (8-bit)">
+    <desc>
+      Used to select the 2 bytes to convert for conversions from 8-bit vectors
+      to 16-bit vectors
+    </desc>
+    <value>b00</value>
+    <value>b10</value>
+    <value>b20</value>
+    <value>b30</value>
+    <value>b01</value>
+    <value>b11</value>
+    <value>b21</value>
+    <value>b31</value>
+    <value>b02</value>
+    <value>b12</value>
+    <value>b22</value>
+    <value>b32</value>
+    <value>b03</value>
+    <value>b13</value>
+    <value>b23</value>
+    <value>b33</value>
+  </enum>
+
   <enum name="Swizzles (16-bit)">
     <value>h00</value> <!-- 0,2 -->
     <value>h10</value>
@@ -1207,22 +1230,32 @@
     <src lane="28" size="16" absneg="true">Value to convert</src>
   </ins>
 
-  <group name="CONVERT" title="8-bit data conversions" dests="1" opcode="0x90" unit="CVT">
+  <group name="CONVERT" title="8-bit to 32-bit data conversions" dests="1" opcode="0x90" unit="CVT">
     <desc>
       Performs the given data conversion.
     </desc>
 
     <ins name="S8_TO_S32" opcode2="0x0"/>
     <ins name="S8_TO_F32" opcode2="0x1"/>
-    <ins name="V2S8_TO_V2S16" opcode2="0x2"/>
-    <ins name="V2S8_TO_V2F16" opcode2="0x3"/>
 
     <ins name="U8_TO_U32" opcode2="0x10"/>
     <ins name="U8_TO_F32" opcode2="0x11"/>
+
+    <src lane="28" size="8">Value to convert</src>
+  </group>
+
+  <group name="CONVERT" title="8-bit to 16-bit data conversions" dests="1" opcode="0x90" unit="CVT">
+    <desc>
+      Performs the given data conversion.
+    </desc>
+
+    <ins name="V2S8_TO_V2S16" opcode2="0x2"/>
+    <ins name="V2S8_TO_V2F16" opcode2="0x3"/>
+
     <ins name="V2U8_TO_V2U16" opcode2="0x12"/>
     <ins name="V2U8_TO_V2F16" opcode2="0x13"/>
 
-    <src lane="28" size="8">Value to convert</src>
+    <src halfswizzle="true" size="8">Value to convert</src>
   </group>
 
   <group name="FROUND" title="Floating-point rounding" dests="1" opcode="0x90" unit="CVT">
