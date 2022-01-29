@@ -1456,8 +1456,8 @@
 
   <ins name="MKVEC.v2i16" title="Make 16-bit vector" dests="1" opcode="0xA1" opcode2="0x5" unit="CVT">
     <desc>Calculates $A | (B \ll 16)$. Used to implement `(ushort2)(A, B)`</desc>
-    <src widen="true">A</src>
-    <src widen="true">B</src>
+    <src swizzle="true">A</src>
+    <src swizzle="true">B</src>
   </ins>
 
   <group name="ISUB" title="Integer subtract" dests="1" opcode2="1" unit="CVT">
