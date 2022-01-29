@@ -7043,8 +7043,16 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
       }
 
       if (!suspending && att->resolveMode != VK_RESOLVE_MODE_NONE) {
-         state->attachments[i + info->colorAttachmentCount].image_view =
+         struct anv_attachment_state *resolve_att =
+            &state->attachments[i + info->colorAttachmentCount];
+         resolve_att->image_view =
             anv_image_view_from_handle(att->resolveImageView);
+         resolve_att->aux_usage =
+            anv_layout_to_aux_usage(&cmd_buffer->device->info,
+                                    resolve_att->image_view->image,
+                                    VK_IMAGE_ASPECT_COLOR_BIT,
+                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                    att->resolveImageLayout);
       }
    }
 
@@ -7055,8 +7063,19 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
       uint32_t ds_idx = att_count - 1;
 
       if (!suspending && d_or_s_att->resolveImageView) {
-         state->attachments[ds_idx].image_view =
+         struct anv_attachment_state *resolve_att =
+            &state->attachments[ds_idx];
+         resolve_att->image_view =
             anv_image_view_from_handle(d_or_s_att->resolveImageView);
+         VkImageAspectFlagBits ds_aspect =
+            (d_att ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
+            (s_att ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+         resolve_att->aux_usage =
+            anv_layout_to_aux_usage(&cmd_buffer->device->info,
+                                    resolve_att->image_view->image,
+                                    ds_aspect,
+                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                    d_or_s_att->resolveImageLayout);
          ds_idx -= 1;
       }
 
