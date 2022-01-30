@@ -2690,12 +2690,15 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
    if (!indirect)
       return;
 
-   radeon_emit(cs, PKT3(PKT3_INDEX_BASE, 1, 0));
-   radeon_emit(cs, state->index_va);
-   radeon_emit(cs, state->index_va >> 32);
+   if (state->max_index_count ||
+       !cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug) {
+      radeon_emit(cs, PKT3(PKT3_INDEX_BASE, 1, 0));
+      radeon_emit(cs, state->index_va);
+      radeon_emit(cs, state->index_va >> 32);
 
-   radeon_emit(cs, PKT3(PKT3_INDEX_BUFFER_SIZE, 0, 0));
-   radeon_emit(cs, state->max_index_count);
+      radeon_emit(cs, PKT3(PKT3_INDEX_BUFFER_SIZE, 0, 0));
+      radeon_emit(cs, state->max_index_count);
+   }
 
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_INDEX_BUFFER;
 }
