@@ -7588,6 +7588,8 @@ void genX(CmdBeginRenderingKHR)(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    VkResult result;
 
+   trace_intel_begin_dyn_render_pass(&cmd_buffer->trace, cmd_buffer);
+
    cmd_buffer->state.framebuffer = &cmd_buffer->state.dynamic_render_pass.framebuffer;
    setup_dynamic_framebuffer(cmd_buffer->state.framebuffer, pRenderingInfo);
 
@@ -7618,6 +7620,15 @@ void genX(CmdEndRenderingKHR)(
       return;
 
    cmd_buffer_end_rendering(cmd_buffer);
+
+   trace_intel_end_dyn_render_pass(&cmd_buffer->trace, cmd_buffer,
+                                   cmd_buffer->state.render_area.extent.width,
+                                   cmd_buffer->state.render_area.extent.height,
+                                   cmd_buffer->state.pass->attachment_count,
+                                   cmd_buffer->state.pass->attachment_count > 0 ?
+                                   cmd_buffer->state.pass->attachments[0].samples : 0,
+                                   cmd_buffer->state.dynamic_render_pass.suspending,
+                                   cmd_buffer->state.dynamic_render_pass.resuming);
 
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.pass = NULL;
