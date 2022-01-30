@@ -2962,6 +2962,10 @@ Converter::handleATOM(Value *dst0[4], DataType ty, uint16_t subOp)
          if (ind)
             insn->setIndirect(0, 1, ind);
          insn->subOp = subOp;
+
+         if (tgsi.getSrc(0).getFile() == TGSI_FILE_BUFFER &&
+             code->bufferAtomics[tgsi.getSrc(0).getIndex(0)])
+            insn->cache = nv50_ir::CACHE_CG;
       }
       for (int c = 0; c < 4; ++c)
          if (dst0[c])

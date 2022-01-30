@@ -1708,6 +1708,10 @@ bool
 NVC0LoweringPass::handleATOMCctl(Instruction *atom) {
    // Flush L1 cache manually since atomics go directly to L2. This ensures
    // that any later CA reads retrieve the updated data.
+
+   if (atom->cache != nv50_ir::CACHE_CA)
+      return false;
+
    bld.setPosition(atom, true);
 
    Instruction *cctl = bld.mkOp1(OP_CCTL, TYPE_NONE, NULL, atom->getSrc(0));
