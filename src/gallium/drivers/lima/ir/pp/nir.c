@@ -123,9 +123,6 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
 }
 
 static int nir_to_ppir_opcodes[nir_num_opcodes] = {
-   /* not supported */
-   [0 ... nir_last_opcode] = -1,
-
    [nir_op_mov] = ppir_op_mov,
    [nir_op_fmul] = ppir_op_mul,
    [nir_op_fabs] = ppir_op_abs,
@@ -162,7 +159,7 @@ static bool ppir_emit_alu(ppir_block *block, nir_instr *ni)
    nir_alu_instr *instr = nir_instr_as_alu(ni);
    int op = nir_to_ppir_opcodes[instr->op];
 
-   if (op < 0) {
+   if (op == ppir_op_unsupported) {
       ppir_error("unsupported nir_op: %s\n", nir_op_infos[instr->op].name);
       return false;
    }

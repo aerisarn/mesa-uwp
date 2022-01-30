@@ -32,6 +32,7 @@
 #include "ir/lima_ir.h"
 
 typedef enum {
+   ppir_op_unsupported = 0,
    ppir_op_mov,
    ppir_op_abs,
    ppir_op_neg,
