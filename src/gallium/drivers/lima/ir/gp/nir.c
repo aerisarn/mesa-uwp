@@ -147,9 +147,6 @@ static gpir_node *gpir_node_find(gpir_block *block, nir_src *src,
 }
 
 static int nir_to_gpir_opcodes[nir_num_opcodes] = {
-   /* not supported */
-   [0 ... nir_last_opcode] = -1,
-
    [nir_op_fmul] = gpir_op_mul,
    [nir_op_fadd] = gpir_op_add,
    [nir_op_fneg] = gpir_op_neg,
@@ -188,7 +185,7 @@ static bool gpir_emit_alu(gpir_block *block, nir_instr *ni)
 
    int op = nir_to_gpir_opcodes[instr->op];
 
-   if (op < 0) {
+   if (op == gpir_op_unsupported) {
       gpir_error("unsupported nir_op: %s\n", nir_op_infos[instr->op].name);
       return false;
    }
