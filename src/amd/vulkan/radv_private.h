@@ -865,6 +865,8 @@ struct radv_device {
 
    struct radv_shader_prolog *simple_vs_prologs[MAX_VERTEX_ATTRIBS];
    struct radv_shader_prolog *instance_rate_vs_prologs[816];
+
+   simple_mtx_t trace_mtx;
 };
 
 struct radv_device_memory {
