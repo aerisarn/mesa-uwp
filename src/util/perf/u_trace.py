@@ -180,38 +180,45 @@ ${declaration.decl};
 % endfor
 
 % for trace_name, trace in TRACEPOINTS.items():
+
 /*
  * ${trace_name}
  */
 struct trace_${trace_name} {
 %    for arg in trace.tp_struct:
-         ${arg.type} ${arg.name};
+   ${arg.type} ${arg.name};
 %    endfor
 %    if len(trace.args) == 0:
 #ifdef  __cplusplus
-     /* avoid warnings about empty struct size mis-match in C vs C++..
-      * the size mis-match is harmless because (a) nothing will deref
-      * the empty struct, and (b) the code that cares about allocating
-      * sizeof(struct trace_${trace_name}) (and wants this to be zero
-      * if there is no payload) is C
-      */
-     uint8_t dummy;
+   /* avoid warnings about empty struct size mis-match in C vs C++..
+    * the size mis-match is harmless because (a) nothing will deref
+    * the empty struct, and (b) the code that cares about allocating
+    * sizeof(struct trace_${trace_name}) (and wants this to be zero
+    * if there is no payload) is C
+    */
+   uint8_t dummy;
 #endif
 %    endif
 };
 %    if trace.tp_perfetto is not None:
 #ifdef HAVE_PERFETTO
-void ${trace.tp_perfetto}(${ctx_param}, uint64_t ts_ns, const void *flush_data, const struct trace_${trace_name} *payload);
+void ${trace.tp_perfetto}(
+   ${ctx_param},
+   uint64_t ts_ns,
+   const void *flush_data,
+   const struct trace_${trace_name} *payload);
 #endif
 %    endif
-void __trace_${trace_name}(struct u_trace *ut, void *cs
+void __trace_${trace_name}(
+       struct u_trace *ut, void *cs
 %    for arg in trace.args:
      , ${arg.type} ${arg.var}
 %    endfor
 );
-static inline void trace_${trace_name}(struct u_trace *ut, void *cs
+static inline void trace_${trace_name}(
+     struct u_trace *ut, void *cs
 %    for arg in trace.args:
-     , ${arg.type} ${arg.var}
+   , ${arg.type} ${arg.var}
 %    endfor
 ) {
 %    if trace.tp_perfetto is not None:
@@ -220,9 +227,10 @@ static inline void trace_${trace_name}(struct u_trace *ut, void *cs
    if (!unlikely(ut->enabled || ut_trace_instrument))
 %    endif
       return;
-   __trace_${trace_name}(ut, cs
+   __trace_${trace_name}(
+        ut, cs
 %    for arg in trace.args:
-        , ${arg.var}
+      , ${arg.var}
 %    endfor
    );
 }
@@ -310,16 +318,19 @@ static const struct u_tracepoint __tp_${trace_name} = {
 #endif
  % endif
 };
-void __trace_${trace_name}(struct u_trace *ut, void *cs
+void __trace_${trace_name}(
+     struct u_trace *ut, void *cs
  % for arg in trace.args:
-     , ${arg.type} ${arg.var}
+   , ${arg.type} ${arg.var}
  % endfor
 ) {
    struct trace_${trace_name} *__entry =
       (struct trace_${trace_name} *)u_trace_append(ut, cs, &__tp_${trace_name});
+ % if len(trace.tp_struct) == 0:
    (void)__entry;
+ % endif
  % for arg in trace.tp_struct:
-        __entry->${arg.name} = ${arg.var};
+   __entry->${arg.name} = ${arg.var};
  % endfor
 }
 
