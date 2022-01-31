@@ -1252,25 +1252,17 @@ tu6_emit_vpc(struct tu_cs *cs,
       uint32_t vertices_out, invocations, output, vec4_size;
       uint32_t prev_stage_output_size = ds ? ds->output_size : vs->output_size;
 
-      /* this detects the tu_clear_blit path, which doesn't set ->nir */
-      if (gs->shader->nir) {
-         if (hs) {
-            tu6_emit_link_map(cs, ds, gs, SB6_GS_SHADER);
-         } else {
-            tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
-         }
-         vertices_out = gs->shader->nir->info.gs.vertices_out - 1;
-         output = primitive_to_tess(gs->shader->nir->info.gs.output_primitive);
-         invocations = gs->shader->nir->info.gs.invocations - 1;
-         /* Size of per-primitive alloction in ldlw memory in vec4s. */
-         vec4_size = gs->shader->nir->info.gs.vertices_in *
-                     DIV_ROUND_UP(prev_stage_output_size, 4);
+      if (hs) {
+         tu6_emit_link_map(cs, ds, gs, SB6_GS_SHADER);
       } else {
-         vertices_out = 3;
-         output = TESS_CW_TRIS;
-         invocations = 0;
-         vec4_size = 0;
+         tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
       }
+      vertices_out = gs->shader->nir->info.gs.vertices_out - 1;
+      output = primitive_to_tess(gs->shader->nir->info.gs.output_primitive);
+      invocations = gs->shader->nir->info.gs.invocations - 1;
+      /* Size of per-primitive alloction in ldlw memory in vec4s. */
+      vec4_size = gs->shader->nir->info.gs.vertices_in *
+                  DIV_ROUND_UP(prev_stage_output_size, 4);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
       tu_cs_emit(cs,
