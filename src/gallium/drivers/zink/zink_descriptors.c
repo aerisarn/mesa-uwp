@@ -554,28 +554,6 @@ zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_desc
    return dsls[0] && dsls[1];
 }
 
-void
-zink_descriptor_util_init_null_set(struct zink_context *ctx, VkDescriptorSet desc_set)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkDescriptorBufferInfo push_info;
-   VkWriteDescriptorSet push_wd;
-   push_wd.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-   push_wd.pNext = NULL;
-   push_wd.dstBinding = 0;
-   push_wd.dstArrayElement = 0;
-   push_wd.descriptorCount = 1;
-   push_wd.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-   push_wd.dstSet = desc_set;
-   push_wd.pBufferInfo = &push_info;
-   push_info.buffer = screen->info.rb2_feats.nullDescriptor ?
-                      VK_NULL_HANDLE :
-                      zink_resource(ctx->dummy_vertex_buffer)->obj->buffer;
-   push_info.offset = 0;
-   push_info.range = VK_WHOLE_SIZE;
-   VKSCR(UpdateDescriptorSets)(screen->dev, 1, &push_wd, 0, NULL);
-}
-
 VkImageLayout
 zink_descriptor_util_image_layout_eval(const struct zink_resource *res, bool is_compute)
 {
