@@ -632,6 +632,9 @@ etna_set_debug_callback(struct pipe_context *pctx,
                         const struct util_debug_callback *cb)
 {
    struct etna_context *ctx = etna_context(pctx);
+   struct etna_screen *screen = ctx->screen;
+
+   util_queue_finish(&screen->shader_compiler_queue);
 
    if (cb)
       ctx->debug = *cb;

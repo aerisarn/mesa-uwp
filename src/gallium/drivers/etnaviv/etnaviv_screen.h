@@ -38,6 +38,7 @@
 #include "util/slab.h"
 #include "util/u_dynarray.h"
 #include "util/u_helpers.h"
+#include "util/u_queue.h"
 #include "compiler/nir/nir.h"
 
 struct etna_bo;
@@ -93,6 +94,7 @@ struct etna_screen {
 
    struct etna_compiler *compiler;
    nir_shader_compiler_options options;
+   struct util_queue shader_compiler_queue;
 };
 
 static inline struct etna_screen *
