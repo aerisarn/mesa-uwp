@@ -50,76 +50,51 @@ def define_tracepoints(args):
 
 
     begin_end_tp('batch',
-                 tp_args=[ArgStruct(type='uint8_t', var='name'),],
-                 tp_struct=[Arg(type='uint8_t', name='name', var='name', c_format='%hhu'),],
+                 tp_args=[Arg(type='uint8_t', var='name', c_format='%hhu'),],
                  end_pipelined=False)
 
     begin_end_tp('cmd_buffer',
-                 tp_args=[ArgStruct(type='uint8_t', var='level'),],
-                 tp_struct=[Arg(type='uint8_t', name='level', var='level', c_format='%hhu'),],
+                 tp_args=[Arg(type='uint8_t', var='level', c_format='%hhu'),],
                  end_pipelined=False)
 
     begin_end_tp('render_pass',
-                 tp_args=[ArgStruct(type='uint16_t', var='width'),
-                          ArgStruct(type='uint16_t', var='height'),
-                          ArgStruct(type='uint8_t', var='att_count'),
-                          ArgStruct(type='uint8_t', var='msaa'),
-                          ArgStruct(type='uint32_t', var='subpass_count'),],
-                 tp_struct=[Arg(type='uint16_t', name='width', var='width', c_format='%hu'),
-                            Arg(type='uint16_t', name='height', var='height', c_format='%hu'),
-                            Arg(type='uint8_t', name='att_count', var='att_count', c_format='%hhu'),
-                            Arg(type='uint8_t', name='msaa', var='msaa', c_format='%hhu'),
-                            Arg(type='uint32_t', name='subpass_count', var='subpass_count', c_format='%ou'),])
+                 tp_args=[Arg(type='uint16_t', var='width', c_format='%hu'),
+                          Arg(type='uint16_t', var='height', c_format='%hu'),
+                          Arg(type='uint8_t', var='att_count', c_format='%hhu'),
+                          Arg(type='uint8_t', var='msaa', c_format='%hhu'),
+                          Arg(type='uint32_t', var='subpass_count', c_format='%u'),])
 
     begin_end_tp('blorp',
-                 tp_args=[ArgStruct(type='uint32_t', var='width'),
-                          ArgStruct(type='uint32_t', var='height'),
-                          ArgStruct(type='enum isl_aux_op', var='hiz_op'),
-                          ArgStruct(type='enum isl_aux_op', var='fast_clear_op'),
-                          ArgStruct(type='enum blorp_shader_type', var='shader_type'),
-                          ArgStruct(type='enum blorp_shader_pipeline', var='shader_pipe'),],
-                 tp_struct=[Arg(type='uint32_t', name='width', var='width', c_format='%u'),
-                        Arg(type='uint32_t', name='height', var='height', c_format='%u'),
-                            Arg(type='enum isl_aux_op', name='hiz_op', var='hiz_op', c_format='%s', to_prim_type='isl_aux_op_to_name({})'),
-                            Arg(type='enum isl_aux_op', name='fast_clear_op', var='fast_clear_op', c_format='%s', to_prim_type='isl_aux_op_to_name({})'),
-                            Arg(type='enum blorp_shader_type', name='blorp_type', var='shader_type', c_format='%s', to_prim_type='blorp_shader_type_to_name({})'),
-                            Arg(type='enum blorp_shader_pipeline', name='blorp_pipe', var='shader_pipe', c_format='%s', to_prim_type='blorp_shader_pipeline_to_name({})'),])
+                 tp_args=[Arg(type='uint32_t', name='width', var='width', c_format='%u'),
+                          Arg(type='uint32_t', name='height', var='height', c_format='%u'),
+                          Arg(type='enum isl_aux_op', name='hiz_op', var='hiz_op', c_format='%s', to_prim_type='isl_aux_op_to_name({})'),
+                          Arg(type='enum isl_aux_op', name='fast_clear_op', var='fast_clear_op', c_format='%s', to_prim_type='isl_aux_op_to_name({})'),
+                          Arg(type='enum blorp_shader_type', name='blorp_type', var='shader_type', c_format='%s', to_prim_type='blorp_shader_type_to_name({})'),
+                          Arg(type='enum blorp_shader_pipeline', name='blorp_pipe', var='shader_pipe', c_format='%s', to_prim_type='blorp_shader_pipeline_to_name({})'),])
 
     begin_end_tp('draw',
-                 tp_args=[ArgStruct(type='uint32_t', var='count'),],
-                 tp_struct=[Arg(type='uint32_t', name='count', var='count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='count', c_format='%u')])
     begin_end_tp('draw_multi',
-                 tp_args=[ArgStruct(type='uint32_t', var='count'),],
-                 tp_struct=[Arg(type='uint32_t', name='count', var='count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='count', c_format='%u'),])
     begin_end_tp('draw_indexed',
-                 tp_args=[ArgStruct(type='uint32_t', var='count'),],
-                 tp_struct=[Arg(type='uint32_t', name='count', var='count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='count', c_format='%u'),])
     begin_end_tp('draw_indexed_multi',
-                 tp_args=[ArgStruct(type='uint32_t', var='count'),],
-                 tp_struct=[Arg(type='uint32_t', name='count', var='count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='count', c_format='%u'),])
     begin_end_tp('draw_indirect_byte_count',
-                 tp_args=[ArgStruct(type='uint32_t', var='instance_count'),],
-                 tp_struct=[Arg(type='uint32_t', name='instance_count', var='instance_count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='instance_count', c_format='%u'),])
     begin_end_tp('draw_indirect',
-                 tp_args=[ArgStruct(type='uint32_t', var='draw_count'),],
-                 tp_struct=[Arg(type='uint32_t', name='draw_count', var='draw_count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='draw_count', c_format='%u'),])
     begin_end_tp('draw_indexed_indirect',
-                 tp_args=[ArgStruct(type='uint32_t', var='draw_count'),],
-                 tp_struct=[Arg(type='uint32_t', name='draw_count', var='draw_count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='draw_count', c_format='%u'),])
     begin_end_tp('draw_indirect_count',
-                 tp_args=[ArgStruct(type='uint32_t', var='max_draw_count'),],
-                 tp_struct=[Arg(type='uint32_t', name='max_draw_count', var='max_draw_count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='max_draw_count', c_format='%u'),])
     begin_end_tp('draw_indexed_indirect_count',
-                 tp_args=[ArgStruct(type='uint32_t', var='max_draw_count'),],
-                 tp_struct=[Arg(type='uint32_t', name='max_draw_count', var='max_draw_count', c_format='%u'),])
+                 tp_args=[Arg(type='uint32_t', var='max_draw_count', c_format='%u'),])
 
     begin_end_tp('compute',
-                 tp_args=[ArgStruct(type='uint32_t', var='group_x'),
-                          ArgStruct(type='uint32_t', var='group_y'),
-                          ArgStruct(type='uint32_t', var='group_z'),],
-                 tp_struct=[Arg(type='uint32_t', name='group_x', var='group_x', c_format='%u'),
-                            Arg(type='uint32_t', name='group_y', var='group_y', c_format='%u'),
-                            Arg(type='uint32_t', name='group_z', var='group_z', c_format='%u'),],
+                 tp_args=[Arg(type='uint32_t', var='group_x', c_format='%u'),
+                          Arg(type='uint32_t', var='group_y', c_format='%u'),
+                          Arg(type='uint32_t', var='group_z', c_format='%u'),],
                  tp_print=['group=%ux%ux%u', '__entry->group_x', '__entry->group_y', '__entry->group_z'])
 
     def flag_bits(args):
