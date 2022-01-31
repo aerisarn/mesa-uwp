@@ -8057,6 +8057,13 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       pc.DepthCacheFlushEnable = flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH;
       pc.StateCacheInvalidationEnable =
          flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE;
+#if GFX_VER >= 12
+      /* Invalidates the L3 cache part in which index & vertex data is loaded
+       * when VERTEX_BUFFER_STATE::L3BypassDisable is set.
+       */
+      pc.L3ReadOnlyCacheInvalidationEnable =
+         flags & PIPE_CONTROL_VF_CACHE_INVALIDATE;
+#endif
       pc.VFCacheInvalidationEnable = flags & PIPE_CONTROL_VF_CACHE_INVALIDATE;
       pc.ConstantCacheInvalidationEnable =
          flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE;
