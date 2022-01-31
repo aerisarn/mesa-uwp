@@ -20,6 +20,7 @@
 # IN THE SOFTWARE.
 
 import argparse
+import builtins
 import collections
 import os
 import sys
@@ -414,7 +415,9 @@ def counter_key(counter):
     return counter_key_tuple._make([counter.get(field) for field in counter_key_tuple._fields])
 
 
-def output_counter_struct(set, counter, idx):
+def output_counter_struct(set, counter, idx,
+                          name_to_idx, desc_to_idx,
+                          symbol_name_to_idx, category_to_idx):
     data_type = counter.data_type
     data_type_uc = data_type.upper()
 
@@ -426,10 +429,10 @@ def output_counter_struct(set, counter, idx):
 
     c("[" + str(idx) + "] = {\n")
     c_indent(3)
-    c(".name = \"" + counter.name + "\",\n")
-    c(".desc = \"" + counter.description + " " + desc_units(counter.units) + "\",\n")
-    c(".symbol_name = \"" + counter.symbol_name + "\",\n")
-    c(".category = \"" + counter.mdapi_group + "\",\n")
+    c(".name_idx = " + str(name_to_idx[counter.name]) + ",\n")
+    c(".desc_idx = " + str(desc_to_idx[counter.description + " " + desc_units(counter.units)]) + ",\n")
+    c(".symbol_name_idx = " + str(symbol_name_to_idx[counter.symbol_name]) + ",\n")
+    c(".category_idx = " + str(category_to_idx[counter.mdapi_group]) + ",\n")
     c(".type = INTEL_PERF_COUNTER_TYPE_" + semantic_type_uc + ",\n")
     c(".data_type = INTEL_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ",\n")
     c(".units = INTEL_PERF_COUNTER_UNITS_" + output_units(counter.units) + ",\n")
@@ -474,6 +477,29 @@ def output_counter_report(set, counter, counter_to_idx, current_offset):
         c("}")
 
     return current_offset + sizeof(c_type)
+
+
+def str_to_idx_table(strs):
+    sorted_strs = sorted(strs)
+
+    str_to_idx = collections.OrderedDict()
+    str_to_idx[sorted_strs[0]] = 0
+    previous = sorted_strs[0]
+
+    for i in range(1, len(sorted_strs)):
+        str_to_idx[sorted_strs[i]] = str_to_idx[previous] + len(previous) + 1
+        previous = sorted_strs[i]
+
+    return str_to_idx
+
+
+def output_str_table(name: str, str_to_idx):
+    c("\n")
+    c("static const char " + name + "[] = {\n")
+    c_indent(3)
+    c("\n".join(f"/* {idx} */ \"{val}\\0\"" for val, idx in str_to_idx.items()))
+    c_outdent(3)
+    c("};\n")
 
 
 register_types = {
@@ -728,6 +754,30 @@ def main():
         #include "perf/intel_perf_setup.h"
         """))
 
+    names = builtins.set()
+    descs = builtins.set()
+    symbol_names = builtins.set()
+    categories = builtins.set()
+    for gen in gens:
+        for set in gen.sets:
+            for counter in set.counters:
+                names.add(counter.get('name'))
+                symbol_names.add(counter.get('symbol_name'))
+                descs.add(counter.get('description') + " " + desc_units(counter.get('units')))
+                categories.add(counter.get('mdapi_group'))
+
+    name_to_idx = str_to_idx_table(names)
+    output_str_table("name", name_to_idx)
+
+    desc_to_idx = str_to_idx_table(descs)
+    output_str_table("desc", desc_to_idx)
+
+    symbol_name_to_idx = str_to_idx_table(symbol_names)
+    output_str_table("symbol_name", symbol_name_to_idx)
+
+    category_to_idx = str_to_idx_table(categories)
+    output_str_table("category", category_to_idx)
+
     # Print out all equation functions.
     for gen in gens:
         for set in gen.sets:
@@ -747,7 +797,11 @@ def main():
                 key = counter_key(counter)
                 if key not in counter_to_idx:
                     counter_to_idx[key] = idx
-                    output_counter_struct(set, key, idx)
+                    output_counter_struct(set, key, idx,
+                                          name_to_idx,
+                                          desc_to_idx,
+                                          symbol_name_to_idx,
+                                          category_to_idx)
                     idx += 1
 
     c_outdent(3)
@@ -764,10 +818,10 @@ def main():
         {
            const struct intel_perf_query_counter_data *counter = &counters[counter_idx];
 
-           dest->name = counter->name;
-           dest->desc = counter->desc;
-           dest->symbol_name = counter->symbol_name;
-           dest->category = counter->category;
+           dest->name = &name[counter->name_idx];
+           dest->desc = &desc[counter->desc_idx];
+           dest->symbol_name = &symbol_name[counter->symbol_name_idx];
+           dest->category = &category[counter->category_idx];
            dest->raw_max = raw_max;
 
            dest->offset = offset;
