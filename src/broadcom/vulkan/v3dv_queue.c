@@ -1176,6 +1176,9 @@ queue_submit_noop_job(struct v3dv_queue *queue,
                       struct v3dv_submit_info_semaphores *sems_info,
                       bool do_sem_signal, bool serialize)
 {
+   if (!do_sem_signal && !serialize && !sems_info->wait_sem_count)
+      return VK_SUCCESS;
+
    /* VkQueue host access is externally synchronized so we don't need to lock
     * here for the static variable.
     */
@@ -1382,7 +1385,8 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
     * to do anything special, it should not be a common case anyway.
     */
    if (pSubmit->commandBufferCount == 0) {
-      result = queue_submit_noop_job(queue, &sems_info, true, false);
+      result = queue_submit_noop_job(queue, &sems_info,
+                                     sems_info.signal_sem_count > 0, false);
    } else {
       const uint32_t last_cmd_buffer_idx = pSubmit->commandBufferCount - 1;
       for (uint32_t i = 0; i < pSubmit->commandBufferCount; i++) {
