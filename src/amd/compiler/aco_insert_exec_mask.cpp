@@ -317,13 +317,11 @@ calculate_wqm_needs(exec_ctx& exec_ctx)
          exec_ctx.info[i].block_needs |= Exact;
 
       /* if discard is used somewhere in nested CF, we need to preserve the WQM mask */
-      if ((block.kind & block_kind_discard || block.kind & block_kind_uses_discard_if) &&
-          ever_again_needs & WQM)
+      if (block.kind & block_kind_uses_discard_if && ever_again_needs & WQM)
          exec_ctx.info[i].block_needs |= Preserve_WQM;
 
       ever_again_needs |= exec_ctx.info[i].block_needs & ~Exact_Branch;
-      if (block.kind & block_kind_discard || block.kind & block_kind_uses_discard_if ||
-          block.kind & block_kind_uses_demote)
+      if (block.kind & block_kind_uses_discard_if || block.kind & block_kind_uses_demote)
          ever_again_needs |= Exact;
 
       /* don't propagate WQM preservation further than the next top_level block */
@@ -890,8 +888,7 @@ add_branch_code(exec_ctx& ctx, Block* block)
          Block& loop_block = ctx.program->blocks[i];
          needs |= ctx.info[i].block_needs;
 
-         if (loop_block.kind & block_kind_uses_discard_if || loop_block.kind & block_kind_discard ||
-             loop_block.kind & block_kind_uses_demote)
+         if (loop_block.kind & block_kind_uses_discard_if || loop_block.kind & block_kind_uses_demote)
             has_discard = true;
          if (loop_block.loop_nest_depth != loop_nest_depth)
             continue;
@@ -930,40 +927,6 @@ add_branch_code(exec_ctx& ctx, Block* block)
     * old exec mask before it was zero'd.
     */
    Operand break_cond = Operand(exec, bld.lm);
-
-   if (block->kind & block_kind_discard) {
-
-      assert(block->instructions.back()->isBranch());
-      aco_ptr<Instruction> branch = std::move(block->instructions.back());
-      block->instructions.pop_back();
-
-      /* create a discard_if() instruction with the exec mask as condition */
-      unsigned num = 0;
-      if (ctx.loop.size()) {
-         /* if we're in a loop, only discard from the outer exec masks */
-         num = ctx.loop.back().num_exec_masks;
-      } else {
-         num = ctx.info[idx].exec.size() - 1;
-      }
-
-      Temp cond = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
-                           Definition(exec, bld.lm), Operand::zero(), Operand(exec, bld.lm));
-
-      for (int i = num - 1; i >= 0; i--) {
-         Instruction* andn2 = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc),
-                                       get_exec_op(ctx.info[block->index].exec[i].first), cond);
-         if (i == (int)ctx.info[idx].exec.size() - 1)
-            andn2->definitions[0] = Definition(exec, bld.lm);
-         if (i == 0)
-            bld.pseudo(aco_opcode::p_exit_early_if, bld.scc(andn2->definitions[1].getTemp()));
-         ctx.info[block->index].exec[i].first = Operand(andn2->definitions[0].getTemp());
-      }
-      assert(!ctx.handle_wqm || (ctx.info[block->index].exec[0].second & mask_type_wqm) == 0);
-
-      break_cond = Operand(cond);
-      bld.insert(std::move(branch));
-      /* no return here as it can be followed by a divergent break */
-   }
 
    if (block->kind & block_kind_continue_or_break) {
       assert(ctx.program->blocks[ctx.program->blocks[block->linear_succs[1]].linear_succs[0]].kind &

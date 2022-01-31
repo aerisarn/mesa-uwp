@@ -5708,58 +5708,6 @@ visit_load_constant(isel_context* ctx, nir_intrinsic_instr* instr)
    load_buffer(ctx, instr->num_components, size, dst, rsrc, offset, size, 0);
 }
 
-void
-visit_discard_if(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-      ctx->cf_info.exec_potentially_empty_discard = true;
-
-   ctx->program->needs_exact = true;
-
-   // TODO: optimize uniform conditions
-   Builder bld(ctx->program, ctx->block);
-   Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
-   assert(src.regClass() == bld.lm);
-   src = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
-   bld.pseudo(aco_opcode::p_discard_if, src);
-   ctx->block->kind |= block_kind_uses_discard_if;
-   return;
-}
-
-void
-visit_discard(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
-      ctx->cf_info.exec_potentially_empty_discard = true;
-
-   bool divergent =
-      ctx->cf_info.parent_if.is_divergent || ctx->cf_info.parent_loop.has_divergent_continue;
-
-   if (ctx->block->loop_nest_depth && (nir_instr_is_last(&instr->instr) && !divergent)) {
-      /* we handle discards the same way as jump instructions */
-      append_logical_end(ctx->block);
-
-      /* in loops, discard behaves like break */
-      Block* linear_target = ctx->cf_info.parent_loop.exit;
-      ctx->block->kind |= block_kind_discard;
-
-      /* uniform discard - loop ends here */
-      assert(nir_instr_is_last(&instr->instr));
-      ctx->block->kind |= block_kind_uniform;
-      ctx->cf_info.has_branch = true;
-      bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
-      add_linear_edge(ctx->block->index, linear_target);
-      return;
-   }
-
-   ctx->program->needs_exact = true;
-   bld.pseudo(aco_opcode::p_discard_if, Operand::c32(-1u));
-   ctx->block->kind |= block_kind_uses_discard_if;
-   return;
-}
-
 enum aco_descriptor_type {
    ACO_DESC_IMAGE,
    ACO_DESC_FMASK,
@@ -8129,10 +8077,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_push_constant: visit_load_push_constant(ctx, instr); break;
    case nir_intrinsic_load_constant: visit_load_constant(ctx, instr); break;
    case nir_intrinsic_vulkan_resource_index: visit_load_resource(ctx, instr); break;
-   case nir_intrinsic_terminate:
-   case nir_intrinsic_discard: visit_discard(ctx, instr); break;
-   case nir_intrinsic_terminate_if:
-   case nir_intrinsic_discard_if: visit_discard_if(ctx, instr); break;
    case nir_intrinsic_load_shared: visit_load_shared(ctx, instr); break;
    case nir_intrinsic_store_shared: visit_store_shared(ctx, instr); break;
    case nir_intrinsic_shared_atomic_add:
@@ -8739,6 +8683,27 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
       ctx->block->kind |= block_kind_uses_demote;
+      ctx->program->needs_exact = true;
+      break;
+   }
+   case nir_intrinsic_terminate:
+   case nir_intrinsic_terminate_if:
+   case nir_intrinsic_discard:
+   case nir_intrinsic_discard_if: {
+      Operand cond = Operand::c32(-1u);
+      if (instr->intrinsic == nir_intrinsic_discard_if ||
+          instr->intrinsic == nir_intrinsic_terminate_if) {
+         Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
+         assert(src.regClass() == bld.lm);
+         cond =
+            bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      }
+
+      bld.pseudo(aco_opcode::p_discard_if, cond);
+
+      if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
+         ctx->cf_info.exec_potentially_empty_discard = true;
+      ctx->block->kind |= block_kind_uses_discard_if;
       ctx->program->needs_exact = true;
       break;
    }
