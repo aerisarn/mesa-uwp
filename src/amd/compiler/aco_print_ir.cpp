@@ -750,12 +750,10 @@ print_block_kind(uint16_t kind, FILE* output)
       fprintf(output, "merge, ");
    if (kind & block_kind_invert)
       fprintf(output, "invert, ");
-   if (kind & block_kind_uses_discard_if)
-      fprintf(output, "discard_if, ");
+   if (kind & block_kind_uses_discard)
+      fprintf(output, "discard, ");
    if (kind & block_kind_needs_lowering)
       fprintf(output, "needs_lowering, ");
-   if (kind & block_kind_uses_demote)
-      fprintf(output, "uses_demote, ");
    if (kind & block_kind_export_end)
       fprintf(output, "export_end, ");
 }

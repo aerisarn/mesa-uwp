@@ -320,7 +320,7 @@ calculate_wqm_needs(exec_ctx& exec_ctx)
          exec_ctx.info[i].block_needs |= Exact;
 
       ever_again_needs |= exec_ctx.info[i].block_needs & ~Exact_Branch;
-      if (block.kind & block_kind_uses_discard_if || block.kind & block_kind_uses_demote)
+      if (block.kind & block_kind_uses_discard)
          ever_again_needs |= Exact;
 
       /* don't propagate WQM preservation further than the next top_level block */
@@ -691,8 +691,7 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
    /* if the block doesn't need both, WQM and Exact, we can skip processing the instructions */
    bool process = (ctx.handle_wqm && (ctx.info[block->index].block_needs & state) !=
                                         (ctx.info[block->index].block_needs & (WQM | Exact))) ||
-                  block->kind & block_kind_uses_discard_if ||
-                  block->kind & block_kind_uses_demote || block->kind & block_kind_needs_lowering;
+                  block->kind & block_kind_uses_discard || block->kind & block_kind_needs_lowering;
    if (!process) {
       std::vector<aco_ptr<Instruction>>::iterator it = std::next(block->instructions.begin(), idx);
       instructions.insert(instructions.end(),
@@ -887,7 +886,7 @@ add_branch_code(exec_ctx& ctx, Block* block)
          Block& loop_block = ctx.program->blocks[i];
          needs |= ctx.info[i].block_needs;
 
-         if (loop_block.kind & block_kind_uses_discard_if || loop_block.kind & block_kind_uses_demote)
+         if (loop_block.kind & block_kind_uses_discard)
             has_discard = true;
          if (loop_block.loop_nest_depth != loop_nest_depth)
             continue;

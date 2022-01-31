@@ -8670,7 +8670,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
-      ctx->block->kind |= block_kind_uses_demote;
+      ctx->block->kind |= block_kind_uses_discard;
       ctx->program->needs_exact = true;
       break;
    case nir_intrinsic_demote_if: {
@@ -8682,7 +8682,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
-      ctx->block->kind |= block_kind_uses_demote;
+      ctx->block->kind |= block_kind_uses_discard;
       ctx->program->needs_exact = true;
       break;
    }
@@ -8703,7 +8703,7 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       if (ctx->block->loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
          ctx->cf_info.exec_potentially_empty_discard = true;
-      ctx->block->kind |= block_kind_uses_discard_if;
+      ctx->block->kind |= block_kind_uses_discard;
       ctx->program->needs_exact = true;
       break;
    }
