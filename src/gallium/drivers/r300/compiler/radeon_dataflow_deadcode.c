@@ -204,18 +204,10 @@ static void update_instruction(struct deadcode_state * s, struct rc_instruction 
 	}
 }
 
-static void mark_output_use(void * data, unsigned int index, unsigned int mask)
-{
-	struct deadcode_state * s = data;
-
-	mark_used(s, RC_FILE_OUTPUT, index, mask);
-}
-
 void rc_dataflow_deadcode(struct radeon_compiler * c, void *user)
 {
 	struct deadcode_state s;
 	unsigned int nr_instructions;
-	rc_dataflow_mark_outputs_fn dce = (rc_dataflow_mark_outputs_fn)user;
 	unsigned int ip;
 
 	memset(&s, 0, sizeof(s));
@@ -225,12 +217,16 @@ void rc_dataflow_deadcode(struct radeon_compiler * c, void *user)
 	s.Instructions = memory_pool_malloc(&c->Pool, sizeof(struct instruction_state)*nr_instructions);
 	memset(s.Instructions, 0, sizeof(struct instruction_state)*nr_instructions);
 
-	dce(c, &s, &mark_output_use);
-
 	for(struct rc_instruction * inst = c->Program.Instructions.Prev;
 	    inst != &c->Program.Instructions;
 	    inst = inst->Prev) {
 		const struct rc_opcode_info * opcode = rc_get_opcode_info(inst->U.I.Opcode);
+
+		/* Assume all output regs are live.  Anything else should have been
+		 * eliminated before it got to us.
+		 */
+		if (opcode->HasDstReg)
+			mark_used(&s, RC_FILE_OUTPUT, inst->U.I.DstReg.Index, inst->U.I.DstReg.WriteMask);
 
 		switch(opcode->Opcode){
 		/* Mark all sources in the loop body as used before doing

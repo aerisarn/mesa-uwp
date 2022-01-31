@@ -37,17 +37,6 @@
 #include "r500_fragprog.h"
 
 
-static void dataflow_outputs_mark_use(void * userdata, void * data,
-		void (*callback)(void *, unsigned int, unsigned int))
-{
-	struct r300_fragment_program_compiler * c = userdata;
-	callback(data, c->OutputColor[0], RC_MASK_XYZW);
-	callback(data, c->OutputColor[1], RC_MASK_XYZW);
-	callback(data, c->OutputColor[2], RC_MASK_XYZW);
-	callback(data, c->OutputColor[3], RC_MASK_XYZW);
-	callback(data, c->OutputDepth, RC_MASK_W);
-}
-
 static void rc_rewrite_depth_out(struct radeon_compiler *cc, void *user)
 {
 	struct r300_fragment_program_compiler *c = (struct r300_fragment_program_compiler*)cc;
@@ -128,7 +117,7 @@ void r3xx_compile_fragment_program(struct r300_fragment_program_compiler* c)
 		{"transform IF",		1, is_r500,	rc_local_transform,		rewrite_if},
 		{"native rewrite",		1, is_r500,	rc_local_transform,		native_rewrite_r500},
 		{"native rewrite",		1, !is_r500,	rc_local_transform,		native_rewrite_r300},
-		{"deadcode",			1, opt,		rc_dataflow_deadcode,		dataflow_outputs_mark_use},
+		{"deadcode",			1, opt,		rc_dataflow_deadcode,		NULL},
 		{"emulate loops",		1, !is_r500,	rc_emulate_loops,		NULL},
 		{"register rename",		1, !is_r500 || opt,		rc_rename_regs,			NULL},
 		{"dataflow optimize",		1, opt,		rc_optimize,			NULL},
