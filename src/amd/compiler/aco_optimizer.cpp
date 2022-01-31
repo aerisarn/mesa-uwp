@@ -3571,6 +3571,9 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (info.instr->isVOP3() && (info.instr->vop3().clamp || info.instr->vop3().omod))
             continue;
 
+         if (get_operand_size(instr, i) != info.instr->definitions[0].bytes() * 8)
+            continue;
+
          bool legacy = info.instr->opcode == aco_opcode::v_mul_legacy_f32;
          if (legacy && need_fma && ctx.program->chip_class < GFX10_3)
             continue;
