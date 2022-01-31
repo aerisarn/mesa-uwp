@@ -3020,6 +3020,9 @@ apply_omod_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (!ctx.uses[def_info.instr->definitions[0].tempId()])
       return false;
 
+   if (def_info.instr->definitions[0].bytes() != instr->definitions[0].bytes())
+      return false;
+
    /* MADs/FMAs are created later, so we don't have to update the original add */
    assert(!ctx.info[instr->definitions[0].tempId()].is_mad());
 
