@@ -3442,7 +3442,8 @@ anv_shader_bin_unref(struct anv_device *device, struct anv_shader_bin *shader)
                                                                      \
    (struct GFX_BINDLESS_SHADER_RECORD) {                             \
       .OffsetToLocalArguments = (local_arg_offset) / 8,              \
-      .BindlessShaderDispatchMode = prog_data->simd_size / 16,       \
+      .BindlessShaderDispatchMode =                                  \
+         prog_data->simd_size == 16 ? RT_SIMD16 : RT_SIMD8,          \
       .KernelStartPointer = bin->kernel.offset,                      \
    };                                                                \
 })

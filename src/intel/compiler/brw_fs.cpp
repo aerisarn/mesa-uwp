@@ -10328,7 +10328,7 @@ brw_bsr(const struct intel_device_info *devinfo,
    assert(local_arg_offset % 8 == 0);
 
    return offset |
-          SET_BITS(simd_size > 8, 4, 4) |
+          SET_BITS(simd_size == 8, 4, 4) |
           SET_BITS(local_arg_offset / 8, 2, 0);
 }
 
