@@ -350,6 +350,15 @@ static int r300_get_shader_param(struct pipe_screen *pscreen,
             case PIPE_SHADER_CAP_INTEGERS:
                 return 0;
 
+            /* Even if gallivm NIR can do this, we call nir_to_tgsi manually and
+             * TGSI can't.
+             */
+            case PIPE_SHADER_CAP_INT16:
+            case PIPE_SHADER_CAP_FP16:
+            case PIPE_SHADER_CAP_FP16_DERIVATIVES:
+            case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
+                return 0;
+
             /* While draw could normally handle this for the VS, the NIR lowering
              * to regs can't handle our non-native-integers, so we have to lower to
              * if ladders.
