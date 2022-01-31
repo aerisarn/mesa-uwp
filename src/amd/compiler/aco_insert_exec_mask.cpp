@@ -718,18 +718,27 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
             transition_to_WQM(ctx, bld, block->index);
             ctx.info[block->index].exec.back().second &= ~mask_type_global;
          }
-         int num = ctx.info[block->index].exec.size();
-         assert(num);
 
-         /* discard from current exec */
-         const Operand cond = instr->operands[0];
-         Temp exit_cond = bld.sop2(Builder::s_andn2, Definition(exec, bld.lm), bld.def(s1, scc),
-                                   Operand(exec, bld.lm), cond)
-                             .def(1)
-                             .getTemp();
+         Temp cond, exit_cond;
+         if (instr->operands[0].isConstant()) {
+            assert(instr->operands[0].constantValue() == -1u);
+            /* save condition and set exec to zero */
+            exit_cond = bld.tmp(s1);
+            cond =
+               bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.scc(Definition(exit_cond)),
+                        Definition(exec, bld.lm), Operand::zero(), Operand(exec, bld.lm));
+         } else {
+            cond = instr->operands[0].getTemp();
+            /* discard from current exec */
+            exit_cond = bld.sop2(Builder::s_andn2, Definition(exec, bld.lm), bld.def(s1, scc),
+                                 Operand(exec, bld.lm), cond)
+                           .def(1)
+                           .getTemp();
+         }
 
          /* discard from inner to outer exec mask on stack */
-         for (int i = num - 2; i >= 0; i--) {
+         int num = ctx.info[block->index].exec.size() - 2;
+         for (int i = num; i >= 0; i--) {
             Instruction* andn2 = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc),
                                           ctx.info[block->index].exec[i].first, cond);
             ctx.info[block->index].exec[i].first = Operand(andn2->definitions[0].getTemp());

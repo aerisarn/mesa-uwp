@@ -5754,39 +5754,10 @@ visit_discard(isel_context* ctx, nir_intrinsic_instr* instr)
       return;
    }
 
-   /* it can currently happen that NIR doesn't remove the unreachable code */
-   if (!nir_instr_is_last(&instr->instr)) {
-      ctx->program->needs_exact = true;
-      /* save exec somewhere temporarily so that it doesn't get
-       * overwritten before the discard from outer exec masks */
-      Temp cond = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc),
-                           Operand::c32(0xFFFFFFFF), Operand(exec, bld.lm));
-      bld.pseudo(aco_opcode::p_discard_if, cond);
-      ctx->block->kind |= block_kind_uses_discard_if;
-      return;
-   }
-
-   /* This condition is incorrect for uniformly branched discards in a loop
-    * predicated by a divergent condition, but the above code catches that case
-    * and the discard would end up turning into a discard_if.
-    * For example:
-    * if (divergent) {
-    *    while (...) {
-    *       if (uniform) {
-    *          discard;
-    *       }
-    *    }
-    * }
-    */
-   if (!ctx->cf_info.parent_if.is_divergent) {
-      /* program just ends here */
-      ctx->block->kind |= block_kind_uses_discard_if;
-      bld.pseudo(aco_opcode::p_discard_if, Operand::c32(0xFFFFFFFFu));
-      // TODO: it will potentially be followed by a branch which is dead code to sanitize NIR phis
-   } else {
-      ctx->block->kind |= block_kind_discard;
-      /* branch and linear edge is added by visit_if() */
-   }
+   ctx->program->needs_exact = true;
+   bld.pseudo(aco_opcode::p_discard_if, Operand::c32(-1u));
+   ctx->block->kind |= block_kind_uses_discard_if;
+   return;
 }
 
 enum aco_descriptor_type {
