@@ -402,20 +402,22 @@ create_layout(struct zink_context *ctx, enum zink_descriptor_type type,
               struct zink_descriptor_layout_key **layout_key)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkDescriptorSetLayout dsl = descriptor_layout_create(screen, type, bindings, MAX2(num_bindings, 1));
+   VkDescriptorSetLayout dsl = descriptor_layout_create(screen, type, bindings, num_bindings);
    if (!dsl)
       return NULL;
 
    struct zink_descriptor_layout_key *k = ralloc(ctx, struct zink_descriptor_layout_key);
    k->num_bindings = num_bindings;
-   size_t bindings_size = MAX2(num_bindings, 1) * sizeof(VkDescriptorSetLayoutBinding);
-   k->bindings = ralloc_size(k, bindings_size);
-   if (!k->bindings) {
-      ralloc_free(k);
-      VKSCR(DestroyDescriptorSetLayout)(screen->dev, dsl, NULL);
-      return NULL;
+   if (num_bindings) {
+      size_t bindings_size = num_bindings * sizeof(VkDescriptorSetLayoutBinding);
+      k->bindings = ralloc_size(k, bindings_size);
+      if (!k->bindings) {
+         ralloc_free(k);
+         VKSCR(DestroyDescriptorSetLayout)(screen->dev, dsl, NULL);
+         return NULL;
+      }
+      memcpy(k->bindings, bindings, bindings_size);
    }
-   memcpy(k->bindings, bindings, bindings_size);
 
    struct zink_descriptor_layout *layout = rzalloc(ctx, struct zink_descriptor_layout);
    layout->layout = dsl;
@@ -434,18 +436,6 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
       .bindings = bindings,
    };
 
-   VkDescriptorSetLayoutBinding null_binding;
-   if (!bindings) {
-      null_binding.binding = 0;
-      null_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      null_binding.descriptorCount = 1;
-      null_binding.pImmutableSamplers = NULL;
-      null_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT |
-                                VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                                VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-      key.bindings = &null_binding;
-   }
-
    if (type != ZINK_DESCRIPTOR_TYPES) {
       hash = hash_descriptor_layout(&key);
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->desc_set_layouts[type], hash, &key);
@@ -455,7 +445,7 @@ zink_descriptor_util_layout_get(struct zink_context *ctx, enum zink_descriptor_t
       }
    }
 
-   struct zink_descriptor_layout *layout = create_layout(ctx, type, bindings ? bindings : &null_binding, num_bindings, layout_key);
+   struct zink_descriptor_layout *layout = create_layout(ctx, type, bindings, num_bindings, layout_key);
    if (layout && type != ZINK_DESCRIPTOR_TYPES) {
       _mesa_hash_table_insert_pre_hashed(&ctx->desc_set_layouts[type], hash, *layout_key, layout);
    }
@@ -1433,15 +1423,14 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
          cache_hit = false;
       }
       ctx->dd->changed[is_compute][ZINK_DESCRIPTOR_TYPES] = false;
-      if (!desc_set)
-         desc_set = ctx->dd->dummy_set;
-
-      if (pg->dd->push_usage) // push set
-         dynamic_offset_idx = update_push_ubo_descriptors(ctx, zds, desc_set,
-                                                          is_compute, cache_hit, dynamic_offsets);
-      VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
-                              pg->layout, 0, 1, &desc_set,
-                              dynamic_offset_idx, dynamic_offsets);
+      if (desc_set) {
+         if (pg->dd->push_usage) // push set
+            dynamic_offset_idx = update_push_ubo_descriptors(ctx, zds, desc_set,
+                                                             is_compute, cache_hit, dynamic_offsets);
+         VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
+                                 pg->layout, 0, 1, &desc_set,
+                                 dynamic_offset_idx, dynamic_offsets);
+      }
    }
 
    {
@@ -1467,15 +1456,16 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                   }
                } else
                   zds = NULL;
-               /* reuse dummy set for bind */
-               desc_set = zds ? zds->desc_set : ctx->dd->dummy_set;
-               update_descriptors_internal(ctx, h, zds, pg, cache_hit);
+               if (zds) {
+                  desc_set = zds->desc_set;
+                  update_descriptors_internal(ctx, h, zds, pg, cache_hit);
 
-               VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
-                                            pg->layout, h + 1, 1, &desc_set,
-                                            0, NULL);
-               if (pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES)
-                  zink_descriptor_pool_reference(ctx, &pdd_cached(pg)->pool[h], NULL);
+                  VKCTX(CmdBindDescriptorSets)(batch->state->cmdbuf, bp,
+                                               pg->layout, h + 1, 1, &desc_set,
+                                               0, NULL);
+                  if (pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES)
+                     zink_descriptor_pool_reference(ctx, &pdd_cached(pg)->pool[h], NULL);
+               }
             }
          } else {
             zink_descriptors_update_lazy_masked(ctx, is_compute, BITFIELD_BIT(h), 0);
