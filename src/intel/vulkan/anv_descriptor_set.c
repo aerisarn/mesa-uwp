@@ -139,13 +139,18 @@ anv_descriptor_data_for_mutable_type(const struct anv_physical_device *device,
          desc_data |= anv_descriptor_data_for_type(device, i);
       }
 
-      desc_data |= anv_descriptor_data_for_type(device, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+      desc_data |= anv_descriptor_data_for_type(
+         device, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
 
       return desc_data;
    }
 
-   for (uint32_t i = 0; i < mutable_info->pMutableDescriptorTypeLists[binding].descriptorTypeCount; i++)
-      desc_data |= anv_descriptor_data_for_type(device, mutable_info->pMutableDescriptorTypeLists[binding].pDescriptorTypes[i]);
+   const VkMutableDescriptorTypeListVALVE *type_list =
+      &mutable_info->pMutableDescriptorTypeLists[binding];
+   for (uint32_t i = 0; i < type_list->descriptorTypeCount; i++) {
+      desc_data |=
+         anv_descriptor_data_for_type(device, type_list->pDescriptorTypes[i]);
+   }
 
    return desc_data;
 }
@@ -221,18 +226,23 @@ anv_descriptor_size_for_mutable_type(const struct anv_physical_device *device,
              i == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
             continue;
 
-         enum anv_descriptor_data desc_data = anv_descriptor_data_for_type(device, i);
+         enum anv_descriptor_data desc_data =
+            anv_descriptor_data_for_type(device, i);
          size = MAX2(size, anv_descriptor_data_size(desc_data));
       }
 
-      enum anv_descriptor_data desc_data = anv_descriptor_data_for_type(device, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
+      enum anv_descriptor_data desc_data = anv_descriptor_data_for_type(
+         device, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR);
       size = MAX2(size, anv_descriptor_data_size(desc_data));
 
       return size;
    }
 
-   for (uint32_t i = 0; i < mutable_info->pMutableDescriptorTypeLists[binding].descriptorTypeCount; i++) {
-      enum anv_descriptor_data desc_data = anv_descriptor_data_for_type(device, mutable_info->pMutableDescriptorTypeLists[binding].pDescriptorTypes[i]);
+   const VkMutableDescriptorTypeListVALVE *type_list =
+      &mutable_info->pMutableDescriptorTypeLists[binding];
+   for (uint32_t i = 0; i < type_list->descriptorTypeCount; i++) {
+      enum anv_descriptor_data desc_data =
+         anv_descriptor_data_for_type(device, type_list->pDescriptorTypes[i]);
       size = MAX2(size, anv_descriptor_data_size(desc_data));
    }
 
@@ -316,9 +326,10 @@ void anv_GetDescriptorSetLayoutSupport(
          flags = binding_flags_info->pBindingFlags[b];
       }
 
-      enum anv_descriptor_data desc_data = binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
-                                           anv_descriptor_data_for_mutable_type(pdevice, mutable_info, b) :
-                                           anv_descriptor_data_for_type(pdevice, binding->descriptorType);
+      enum anv_descriptor_data desc_data =
+         binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
+         anv_descriptor_data_for_mutable_type(pdevice, mutable_info, b) :
+         anv_descriptor_data_for_type(pdevice, binding->descriptorType);
 
       if (anv_needs_descriptor_buffer(binding->descriptorType, desc_data))
          needs_descriptor_buffer = true;
@@ -521,10 +532,10 @@ VkResult anv_CreateDescriptorSetLayout(
          }
       }
 
-      set_layout->binding[b].data = binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
-                                    anv_descriptor_data_for_mutable_type(device->physical, mutable_info, b) :
-                                    anv_descriptor_data_for_type(device->physical,
-                                                                 binding->descriptorType);
+      set_layout->binding[b].data =
+         binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
+         anv_descriptor_data_for_mutable_type(device->physical, mutable_info, b) :
+         anv_descriptor_data_for_type(device->physical, binding->descriptorType);
 
       set_layout->binding[b].array_size = binding->descriptorCount;
       set_layout->binding[b].descriptor_index = set_layout->descriptor_count;
@@ -576,9 +587,10 @@ VkResult anv_CreateDescriptorSetLayout(
          break;
       }
 
-      set_layout->binding[b].descriptor_stride = binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
-                                                 anv_descriptor_size_for_mutable_type(device->physical, mutable_info, b) :
-                                                 anv_descriptor_size(&set_layout->binding[b]);
+      set_layout->binding[b].descriptor_stride =
+         binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
+         anv_descriptor_size_for_mutable_type(device->physical, mutable_info, b) :
+         anv_descriptor_size(&set_layout->binding[b]);
 
       if (binding->descriptorType ==
           VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
@@ -591,7 +603,8 @@ VkResult anv_CreateDescriptorSetLayout(
          descriptor_buffer_size += binding->descriptorCount;
       } else {
          set_layout->binding[b].descriptor_offset = descriptor_buffer_size;
-         descriptor_buffer_size += set_layout->binding[b].descriptor_stride * binding->descriptorCount;
+         descriptor_buffer_size +=
+            set_layout->binding[b].descriptor_stride * binding->descriptorCount;
       }
 
       set_layout->shader_stages |= binding->stageFlags;
@@ -866,18 +879,18 @@ VkResult anv_CreateDescriptorPool(
    uint32_t descriptor_bo_size = 0;
 
    for (uint32_t i = 0; i < pCreateInfo->poolSizeCount; i++) {
-      enum anv_descriptor_data desc_data = pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
-                                           anv_descriptor_data_for_mutable_type(device->physical,
-                                                                                mutable_info, i) :
-                                           anv_descriptor_data_for_type(device->physical,
-                                                                        pCreateInfo->pPoolSizes[i].type);
+      enum anv_descriptor_data desc_data =
+         pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
+         anv_descriptor_data_for_mutable_type(device->physical, mutable_info, i) :
+         anv_descriptor_data_for_type(device->physical, pCreateInfo->pPoolSizes[i].type);
 
       if (desc_data & ANV_DESCRIPTOR_BUFFER_VIEW)
          buffer_view_count += pCreateInfo->pPoolSizes[i].descriptorCount;
 
-      unsigned desc_data_size = pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
-                                anv_descriptor_size_for_mutable_type(device->physical, mutable_info, i) :
-                                anv_descriptor_data_size(desc_data);
+      unsigned desc_data_size =
+         pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
+         anv_descriptor_size_for_mutable_type(device->physical, mutable_info, i) :
+         anv_descriptor_data_size(desc_data);
 
       desc_data_size *= pCreateInfo->pPoolSizes[i].descriptorCount;
 
@@ -1701,9 +1714,10 @@ anv_copy_descriptor_set(const struct anv_device *device, const VkCopyDescriptorS
        * know what is in there look at the type of descriptor written
        * (anv_descriptor::type).
        */
-      enum anv_descriptor_data desc_data = src_layout->type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
-                                           anv_descriptor_data_for_type(device->physical, src_desc[j].type) :
-                                           src_layout->data;
+      enum anv_descriptor_data desc_data =
+         src_layout->type == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE ?
+         anv_descriptor_data_for_type(device->physical, src_desc[j].type) :
+         src_layout->data;
       /* If ANV_DESCRIPTOR_BUFFER_VIEW is present in the source descriptor,
        * it means we're using an anv_buffer_view allocated by the source
        * descriptor set. In that case we want to careful copy it because
@@ -1727,7 +1741,8 @@ anv_copy_descriptor_set(const struct anv_device *device, const VkCopyDescriptorS
       }
    }
 
-   unsigned min_stride = MIN2(src_layout->descriptor_stride, dst_layout->descriptor_stride);
+   unsigned min_stride = MIN2(src_layout->descriptor_stride,
+                              dst_layout->descriptor_stride);
    if (min_stride > 0) {
       for (uint32_t j = 0; j < copy->descriptorCount; j++) {
          void *src_element = src->desc_mem.map + src_layout->descriptor_offset +
