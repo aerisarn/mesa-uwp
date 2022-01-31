@@ -153,16 +153,14 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    if (separate_stencil || info->hiz_usage == ISL_AUX_USAGE_HIZ) {
       assert(ISL_DEV_USE_SEPARATE_STENCIL(dev));
       db.SeparateStencilBufferEnable = true;
+      db.HierarchicalDepthBufferEnable = true;
 
       /* From the IronLake PRM, Vol 2 Part 1,
        * 3DSTATE_DEPTH_BUFFER::Tiled Surface,
        *
        *    When Hierarchical Depth Buffer is enabled, this bit must be set.
-       *
-       * HiZ only works on tiled depth buffers.
        */
-      assert(info->depth_surf->tiling != ISL_TILING_LINEAR);
-      db.HierarchicalDepthBufferEnable = true;
+      db.TiledSurface = true;
    }
 #endif
 
