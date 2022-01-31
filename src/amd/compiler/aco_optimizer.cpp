@@ -3509,6 +3509,8 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (mul_instr->opcode == aco_opcode::v_mul_legacy_f32 &&
           ctx.fp_mode.preserve_signed_zero_inf_nan32)
          return;
+      if (mul_instr->definitions[0].bytes() != instr->definitions[0].bytes())
+         return;
 
       /* convert to mul(neg(a), b), mul(abs(a), abs(b)) or mul(neg(abs(a)), abs(b)) */
       ctx.uses[mul_instr->definitions[0].tempId()]--;
