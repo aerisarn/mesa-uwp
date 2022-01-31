@@ -1090,3 +1090,71 @@ BEGIN_TEST(optimize.dpp_prop)
    finish_opt_test();
 END_TEST
 
+BEGIN_TEST(optimize.casts)
+   //>> v1: %a, v2b: %a16 = p_startpgm
+   if (!setup_cs("v1 v2b", GFX10_3))
+      return;
+
+   Temp a = inputs[0];
+   Temp a16 = inputs[1];
+
+   program->blocks[0].fp_mode.denorm16_64 = fp_denorm_flush;
+
+   //! v1: %res0_tmp = v_mul_f32 -1.0, %a
+   //! v2b: %res0 = v_mul_f16 %res0_tmp, %a16
+   //! p_unit_test 0, %res0
+   writeout(0, fmul(u2u16(fneg(a)), a16));
+
+   //! v2b: %res1_tmp = v_mul_f16 -1.0, %a16
+   //! v1: %res1 = v_mul_f32 %res1_tmp, %a
+   //! p_unit_test 1, %res1
+   writeout(1, fmul(bld.as_uniform(fneg(a16)), a));
+
+   //! v1: %res2_tmp = v_mul_f32 -1.0, %a16
+   //! v2b: %res2 = v_mul_f16 %res2_tmp, %a16
+   //! p_unit_test 2, %res2
+   writeout(2, fmul(u2u16(bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(0xbf800000u), bld.as_uniform(a16))), a16));
+
+   //! v1: %res3_tmp = v_mul_f32 %a, %a
+   //! v2b: %res3 = v_med3_f16 0, 1.0, %res3_tmp
+   //! p_unit_test 3, %res3
+   writeout(3, fsat(u2u16(fmul(a, a))));
+
+   //! v2b: %res4_tmp = v_mul_f16 %a16, %a16
+   //! v1: %res4 = v_med3_f32 0, 1.0, %res4_tmp
+   //! p_unit_test 4, %res4
+   writeout(4, fsat(bld.as_uniform(fmul(a16, a16))));
+
+   //! v1: %res5_tmp = v_mul_f32 %a, %a
+   //! v2b: %res5 = v_mul_f16 2.0, %res5_tmp
+   //! p_unit_test 5, %res5
+   writeout(5, fmul(u2u16(fmul(a, a)), bld.copy(bld.def(v2b), Operand::c16(0x4000))));
+
+   //! v2b: %res6_tmp = v_mul_f16 %a16, %a16
+   //! v1: %res6 = v_mul_f32 2.0, %res6_tmp
+   //! p_unit_test 6, %res6
+   writeout(6, fmul(bld.as_uniform(fmul(a16, a16)), bld.copy(bld.def(v1), Operand::c32(0x40000000))));
+
+   //! v1: %res7_tmp = v_mul_f32 %a, %a
+   //! v2b: %res7 = v_add_f16 %res7_tmp, %a16
+   //! p_unit_test 7, %res7
+   writeout(7, fadd(u2u16(fmul(a, a)), a16));
+
+   //! v2b: %res8_tmp = v_mul_f16 %a16, %a16
+   //! v1: %res8 = v_add_f32 %res8_tmp, %a
+   //! p_unit_test 8, %res8
+   writeout(8, fadd(bld.as_uniform(fmul(a16, a16)), a));
+
+   //! v1: %res9_tmp = v_mul_f32 %a, %a
+   //! v2b: %res9 = v_mul_f16 -1.0, %res9_tmp
+   //! p_unit_test 9, %res9
+   writeout(9, fneg(u2u16(fmul(a, a))));
+
+   //! v2b: %res10_tmp = v_mul_f16 %a16, %a16
+   //! v1: %res10 = v_mul_f32 -1.0, %res10_tmp
+   //! p_unit_test 10, %res10
+   writeout(10, bld.vop2_e64(aco_opcode::v_mul_f32, bld.def(v1), Operand::c32(0xbf800000u), bld.as_uniform(fmul(a16, a16))));
+
+   finish_opt_test();
+END_TEST
+
