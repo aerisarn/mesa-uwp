@@ -41,7 +41,6 @@ lower_impl(nir_function_impl *impl,
    nir_variable *in;
 
    nir_builder_init(&b, impl);
-   b.cursor = nir_before_cf_list(&impl->body);
 
    in = nir_variable_create(shader, nir_var_uniform,
                             glsl_float_type(), "gl_PointSizeClampedMESA");
@@ -56,9 +55,24 @@ lower_impl(nir_function_impl *impl,
       out = nir_variable_create(shader, nir_var_shader_out,
                                 glsl_float_type(), "gl_PointSize");
       out->data.location = VARYING_SLOT_PSIZ;
+      b.cursor = nir_before_cf_list(&impl->body);
+      nir_copy_var(&b, out, in);
+   } else {
+      nir_foreach_block_safe(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic) {
+               nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+               if (intr->intrinsic == nir_intrinsic_store_deref) {
+                  nir_variable *var = nir_intrinsic_get_var(intr, 0);
+                  if (var == out) {
+                     b.cursor = nir_after_instr(instr);
+                     nir_copy_var(&b, out, in);
+                  }
+               }
+            }
+         }
+      }
    }
-
-   nir_copy_var(&b, out, in);
 
    nir_metadata_preserve(impl, nir_metadata_block_index |
                                nir_metadata_dominance);
