@@ -3199,7 +3199,10 @@ emit_load_input_via_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr
    if (!opcode)
       return false;
 
-   const struct dxil_value *input_id = dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
+   const struct dxil_value *input_id = dxil_module_get_int32_const(&ctx->mod,
+      is_patch_constant || is_output_control_point ?
+         nir_intrinsic_base(intr) :
+         ctx->mod.input_mappings[nir_intrinsic_base(intr)]);
    if (!input_id)
       return false;
 

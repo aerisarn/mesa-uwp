@@ -197,6 +197,7 @@ struct dxil_module {
    struct dxil_signature_record inputs[DXIL_SHADER_MAX_IO_ROWS];
    struct dxil_signature_record outputs[DXIL_SHADER_MAX_IO_ROWS];
    struct dxil_signature_record patch_consts[DXIL_SHADER_MAX_IO_ROWS];
+   unsigned input_mappings[DXIL_SHADER_MAX_IO_ROWS];
 
    struct dxil_psv_signature_element psv_inputs[DXIL_SHADER_MAX_IO_ROWS];
    struct dxil_psv_signature_element psv_outputs[DXIL_SHADER_MAX_IO_ROWS];

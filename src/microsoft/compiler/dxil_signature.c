@@ -541,6 +541,11 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
       mod->inputs[num_inputs].sysvalue = semantic.sysvalue_name;
       *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter, input_clip_size);
 
+      if (semantic.start_row >= 0) {
+         for (unsigned i = 0; i < semantic.rows; ++i)
+            mod->input_mappings[semantic.start_row + i] = num_inputs;
+      }
+
       mod->inputs[num_inputs].name = ralloc_strdup(mod->ralloc_ctx,
                                                    semantic.name);
       mod->inputs[num_inputs].num_elements = semantic.rows;
