@@ -490,6 +490,36 @@ blorp_fast_clear(struct blorp_batch *batch,
 }
 
 bool
+blorp_clear_supports_blitter(struct blorp_context *blorp,
+                             const struct blorp_surf *surf,
+                             uint8_t color_write_disable,
+                             bool blend_enabled)
+{
+   const struct intel_device_info *devinfo = blorp->isl_dev->info;
+
+   if (devinfo->ver < 12)
+      return false;
+
+   if (surf->surf->samples > 1)
+      return false;
+
+   if (color_write_disable != 0 || blend_enabled)
+      return false;
+
+   if (!blorp_blitter_supports_aux(devinfo, surf->aux_usage))
+      return false;
+
+   const struct isl_format_layout *fmtl =
+      isl_format_get_layout(surf->surf->format);
+
+   /* We can only support linear mode for 96bpp. */
+   if (fmtl->bpb == 96 && surf->surf->tiling != ISL_TILING_LINEAR)
+      return false;
+
+   return true;
+}
+
+bool
 blorp_clear_supports_compute(struct blorp_context *blorp,
                              uint8_t color_write_disable, bool blend_enabled,
                              enum isl_aux_usage aux_usage)
@@ -521,9 +551,13 @@ blorp_clear(struct blorp_batch *batch,
    params.op = BLORP_OP_SLOW_COLOR_CLEAR;
 
    const bool compute = batch->flags & BLORP_BATCH_USE_COMPUTE;
-   if (compute)
+   if (compute) {
       assert(blorp_clear_supports_compute(batch->blorp, color_write_disable,
                                           false, surf->aux_usage));
+   } else if (batch->flags & BLORP_BATCH_USE_BLITTER) {
+      assert(blorp_clear_supports_blitter(batch->blorp, surf,
+                                          color_write_disable, false));
+   }
 
    /* Manually apply the clear destination swizzle.  This way swizzled clears
     * will work for swizzles which we can't normally use for rendering and it

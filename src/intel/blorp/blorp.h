@@ -211,6 +211,11 @@ blorp_clear_supports_compute(struct blorp_context *blorp,
                              enum isl_aux_usage aux_usage);
 
 bool
+blorp_clear_supports_blitter(struct blorp_context *blorp,
+                             const struct blorp_surf *surf,
+                             uint8_t color_write_disable, bool blend_enabled);
+
+bool
 blorp_copy_supports_compute(struct blorp_context *blorp,
                             const struct isl_surf *src_surf,
                             const struct isl_surf *dst_surf,
