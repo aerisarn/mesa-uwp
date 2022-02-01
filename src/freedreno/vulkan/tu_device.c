@@ -577,6 +577,27 @@ tu_get_physical_device_features_1_2(struct tu_physical_device *pdevice,
    features->subgroupBroadcastDynamicId          = true;
 }
 
+static void
+tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
+                                    VkPhysicalDeviceVulkan13Features *features)
+{
+   features->robustImageAccess                   = false;
+   features->inlineUniformBlock                  = false;
+   features->descriptorBindingInlineUniformBlockUpdateAfterBind = false;
+   features->pipelineCreationCacheControl        = false;
+   features->privateData                         = true;
+   features->shaderDemoteToHelperInvocation      = true;
+   features->shaderTerminateInvocation           = true;
+   features->subgroupSizeControl                 = true;
+   features->computeFullSubgroups                = true;
+   features->synchronization2                    = false;
+   features->textureCompressionASTC_HDR          = false;
+   features->shaderZeroInitializeWorkgroupMemory = false;
+   features->dynamicRendering                    = false;
+   features->shaderIntegerDotProduct             = true;
+   features->maintenance4                        = false;
+}
+
 void
 tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                               VkPhysicalDeviceFeatures2 *pFeatures)
@@ -641,11 +662,18 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    };
    tu_get_physical_device_features_1_2(pdevice, &core_1_2);
 
+   VkPhysicalDeviceVulkan13Features core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+   };
+   tu_get_physical_device_features_1_3(pdevice, &core_1_3);
+
    vk_foreach_struct(ext, pFeatures->pNext)
    {
       if (vk_get_physical_device_core_1_1_feature_ext(ext, &core_1_1))
          continue;
       if (vk_get_physical_device_core_1_2_feature_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_feature_ext(ext, &core_1_3))
          continue;
 
       switch (ext->sType) {
@@ -674,12 +702,6 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
          features->vertexAttributeInstanceRateDivisor = true;
          features->vertexAttributeInstanceRateZeroDivisor = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
-         VkPhysicalDevicePrivateDataFeaturesEXT *features =
-            (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
-         features->privateData = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
@@ -745,18 +767,6 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->nullDescriptor = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
-         VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *features =
-            (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT *)ext;
-         features->shaderDemoteToHelperInvocation = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
-         VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR *features =
-            (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR *)ext;
-         features->shaderTerminateInvocation = true;
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
          VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *features =
             (VkPhysicalDeviceTimelineSemaphoreFeaturesKHR *) ext;
@@ -787,19 +797,6 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->stippledSmoothLines = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
-         VkPhysicalDeviceSubgroupSizeControlFeaturesEXT *features =
-            (VkPhysicalDeviceSubgroupSizeControlFeaturesEXT *)ext;
-         features->subgroupSizeControl = true;
-         features->computeFullSubgroups = true;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES_KHR: {
-         VkPhysicalDeviceShaderIntegerDotProductFeaturesKHR *features =
-            (VkPhysicalDeviceShaderIntegerDotProductFeaturesKHR *)ext;
-         features->shaderIntegerDotProduct = true;
-         break;
-      };
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
          VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *features =
             (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *)ext;
@@ -946,6 +943,71 @@ tu_get_physical_device_properties_1_2(struct tu_physical_device *pdevice,
    p->framebufferIntegerColorSampleCounts = sample_counts;
 }
 
+static void
+tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan13Properties *p)
+{
+   /* TODO move threadsize_base and max_waves to fd_dev_info and use them here */
+   p->minSubgroupSize = 64; /* threadsize_base */
+   p->maxSubgroupSize = 128; /* threadsize_base * 2 */
+   p->maxComputeWorkgroupSubgroups = 16; /* max_waves */
+   p->requiredSubgroupSizeStages = VK_SHADER_STAGE_ALL;
+
+   /* VK_EXT_inline_uniform_block is not implemented */
+   p->maxInlineUniformBlockSize = 0;
+   p->maxPerStageDescriptorInlineUniformBlocks = 0;
+   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = 0;
+   p->maxDescriptorSetInlineUniformBlocks = 0;
+   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = 0;
+   p->maxInlineUniformTotalSize = 0;
+
+   p->integerDotProduct8BitUnsignedAccelerated = false;
+   p->integerDotProduct8BitSignedAccelerated = false;
+   p->integerDotProduct8BitMixedSignednessAccelerated = false;
+   p->integerDotProduct4x8BitPackedUnsignedAccelerated =
+      pdevice->info->a6xx.has_dp2acc;
+   /* TODO: we should be able to emulate 4x8BitPackedSigned fast enough */
+   p->integerDotProduct4x8BitPackedSignedAccelerated = false;
+   p->integerDotProduct4x8BitPackedMixedSignednessAccelerated =
+      pdevice->info->a6xx.has_dp2acc;
+   p->integerDotProduct16BitUnsignedAccelerated = false;
+   p->integerDotProduct16BitSignedAccelerated = false;
+   p->integerDotProduct16BitMixedSignednessAccelerated = false;
+   p->integerDotProduct32BitUnsignedAccelerated = false;
+   p->integerDotProduct32BitSignedAccelerated = false;
+   p->integerDotProduct32BitMixedSignednessAccelerated = false;
+   p->integerDotProduct64BitUnsignedAccelerated = false;
+   p->integerDotProduct64BitSignedAccelerated = false;
+   p->integerDotProduct64BitMixedSignednessAccelerated = false;
+   p->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating8BitSignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
+   p->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated =
+      pdevice->info->a6xx.has_dp2acc;
+   /* TODO: we should be able to emulate Saturating4x8BitPackedSigned fast enough */
+   p->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated =
+      pdevice->info->a6xx.has_dp2acc;
+   p->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating16BitSignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
+   p->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = false;
+   p->integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
+   p->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
+
+   /* VK_EXT_texel_buffer_alignment is not implemented */
+   p->storageTexelBufferOffsetAlignmentBytes = 0;
+   p->storageTexelBufferOffsetSingleTexelAlignment = false;
+   p->uniformTexelBufferOffsetAlignmentBytes = 0;
+   p->uniformTexelBufferOffsetSingleTexelAlignment = false;
+
+   /* TODO: find out the limit */
+   p->maxBufferSize = 0;
+}
+
 VKAPI_ATTR void VKAPI_CALL
 tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                 VkPhysicalDeviceProperties2 *pProperties)
@@ -1084,11 +1146,18 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    };
    tu_get_physical_device_properties_1_2(pdevice, &core_1_2);
 
+   VkPhysicalDeviceVulkan13Properties core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
+   };
+   tu_get_physical_device_properties_1_3(pdevice, &core_1_3);
+
    vk_foreach_struct(ext, pProperties->pNext)
    {
       if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
          continue;
       if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
          continue;
 
       switch (ext->sType) {
@@ -1166,58 +1235,6 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceLineRasterizationPropertiesEXT *props =
             (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
          props->lineSubPixelPrecisionBits = 8;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
-         VkPhysicalDeviceSubgroupSizeControlPropertiesEXT *props =
-            (VkPhysicalDeviceSubgroupSizeControlPropertiesEXT *)ext;
-         /* TODO move threadsize_base and max_waves to fd_dev_info and use them here */
-         props->minSubgroupSize = 64; /* threadsize_base */
-         props->maxSubgroupSize = 128; /* threadsize_base * 2 */
-         props->maxComputeWorkgroupSubgroups = 16; /* max_waves */
-         props->requiredSubgroupSizeStages = VK_SHADER_STAGE_ALL;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES_KHR: {
-         VkPhysicalDeviceShaderIntegerDotProductPropertiesKHR *props =
-            (VkPhysicalDeviceShaderIntegerDotProductPropertiesKHR *)ext;
-
-         props->integerDotProduct8BitUnsignedAccelerated = false;
-         props->integerDotProduct8BitSignedAccelerated = false;
-         props->integerDotProduct8BitMixedSignednessAccelerated = false;
-         props->integerDotProduct4x8BitPackedUnsignedAccelerated =
-            pdevice->info->a6xx.has_dp2acc;
-         /* TODO: we should be able to emulate 4x8BitPackedSigned fast enough */
-         props->integerDotProduct4x8BitPackedSignedAccelerated = false;
-         props->integerDotProduct4x8BitPackedMixedSignednessAccelerated =
-            pdevice->info->a6xx.has_dp2acc;
-         props->integerDotProduct16BitUnsignedAccelerated = false;
-         props->integerDotProduct16BitSignedAccelerated = false;
-         props->integerDotProduct16BitMixedSignednessAccelerated = false;
-         props->integerDotProduct32BitUnsignedAccelerated = false;
-         props->integerDotProduct32BitSignedAccelerated = false;
-         props->integerDotProduct32BitMixedSignednessAccelerated = false;
-         props->integerDotProduct64BitUnsignedAccelerated = false;
-         props->integerDotProduct64BitSignedAccelerated = false;
-         props->integerDotProduct64BitMixedSignednessAccelerated = false;
-         props->integerDotProductAccumulatingSaturating8BitUnsignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating8BitSignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating8BitMixedSignednessAccelerated = false;
-         props->integerDotProductAccumulatingSaturating4x8BitPackedUnsignedAccelerated =
-            pdevice->info->a6xx.has_dp2acc;
-         /* TODO: we should be able to emulate Saturating4x8BitPackedSigned fast enough */
-         props->integerDotProductAccumulatingSaturating4x8BitPackedSignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating4x8BitPackedMixedSignednessAccelerated =
-            pdevice->info->a6xx.has_dp2acc;
-         props->integerDotProductAccumulatingSaturating16BitUnsignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating16BitSignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating16BitMixedSignednessAccelerated = false;
-         props->integerDotProductAccumulatingSaturating32BitUnsignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating32BitSignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating32BitMixedSignednessAccelerated = false;
-         props->integerDotProductAccumulatingSaturating64BitUnsignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
-         props->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
          break;
       }
 
