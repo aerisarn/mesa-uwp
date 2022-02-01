@@ -2632,6 +2632,7 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
          if (instr->opcode == aco_opcode::v_interp_p2_f32 ||
              instr->opcode == aco_opcode::v_mac_f32 || instr->opcode == aco_opcode::v_fmac_f32 ||
              instr->opcode == aco_opcode::v_mac_f16 || instr->opcode == aco_opcode::v_fmac_f16 ||
+             instr->opcode == aco_opcode::v_mac_legacy_f32 ||
              instr->opcode == aco_opcode::v_fmac_legacy_f32 ||
              instr->opcode == aco_opcode::v_pk_fmac_f16 ||
              instr->opcode == aco_opcode::v_writelane_b32 ||
