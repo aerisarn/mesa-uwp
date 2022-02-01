@@ -1100,7 +1100,7 @@ dri2_create_image_common(__DRIscreen *_screen,
    if (use & __DRI_IMAGE_USE_PROTECTED)
       tex_usage |= PIPE_BIND_PROTECTED;
    if (use & __DRI_IMAGE_USE_PRIME_BUFFER)
-      tex_usage |= PIPE_BIND_DRI_PRIME;
+      tex_usage |= PIPE_BIND_PRIME_BLIT_DST;
 
    img = CALLOC_STRUCT(__DRIimageRec);
    if (!img)
@@ -1530,7 +1530,7 @@ dri2_from_fds2(__DRIscreen *screen, int width, int height, int fourcc,
    if (flags & __DRI_IMAGE_PROTECTED_CONTENT_FLAG)
       bind |= PIPE_BIND_PROTECTED;
    if (flags & __DRI_IMAGE_PRIME_LINEAR_BUFFER)
-      bind |= PIPE_BIND_DRI_PRIME;
+      bind |= PIPE_BIND_PRIME_BLIT_DST;
 
    return dri2_create_image_from_fd(screen, width, height, fourcc,
                                    DRM_FORMAT_MOD_INVALID, fds, num_fds,

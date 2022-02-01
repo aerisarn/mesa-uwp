@@ -1647,7 +1647,7 @@ static struct pipe_resource *si_texture_from_handle(struct pipe_screen *screen,
 
    buf = sscreen->ws->buffer_from_handle(sscreen->ws, whandle,
                                          sscreen->info.max_alignment,
-                                         templ->bind & PIPE_BIND_DRI_PRIME);
+                                         templ->bind & PIPE_BIND_PRIME_BLIT_DST);
    if (!buf)
       return NULL;
 
