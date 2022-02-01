@@ -1723,7 +1723,6 @@ genX(cmd_buffer_alloc_att_surf_states)(struct anv_cmd_buffer *cmd_buffer,
       else
          continue;
 
-      state->attachments[att].color.state = next_state;
       next_state.offset += ss_stride;
       next_state.map += ss_stride;
    }
