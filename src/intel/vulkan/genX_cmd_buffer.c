@@ -6990,12 +6990,14 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
                                              const VkRenderingInfoKHR *info)
 {
    struct anv_cmd_state *state = &cmd_buffer->state;
-   uint32_t att_count = state->pass->attachment_count;
+   struct anv_render_pass *pass = state->pass;
+   struct anv_subpass *subpass = state->subpass;
    bool suspending = info->flags & VK_RENDERING_SUSPENDING_BIT_KHR;
    bool resuming = info->flags & VK_RENDERING_RESUMING_BIT_KHR;
    VkResult result;
 
-   result = cmd_buffer_alloc_state_attachments(cmd_buffer, att_count);
+   result = cmd_buffer_alloc_state_attachments(cmd_buffer,
+                                               pass->attachment_count);
    if (result != VK_SUCCESS)
       return result;
 
@@ -7056,77 +7058,75 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-   const VkRenderingAttachmentInfoKHR *d_att = info->pDepthAttachment;
-   const VkRenderingAttachmentInfoKHR *s_att = info->pStencilAttachment;
-   const VkRenderingAttachmentInfoKHR *d_or_s_att = d_att ? d_att : s_att;
-   if (d_or_s_att && d_or_s_att->imageView) {
-      uint32_t ds_idx = att_count - 1;
+   if (subpass->depth_stencil_attachment) {
+      const VkRenderingAttachmentInfoKHR *d_att_info = info->pDepthAttachment;
+      const VkRenderingAttachmentInfoKHR *s_att_info = info->pStencilAttachment;
+      const VkRenderingAttachmentInfoKHR *d_or_s_att_info =
+         d_att_info ? d_att_info : s_att_info;
 
-      if (!suspending && d_or_s_att->resolveImageView) {
-         struct anv_attachment_state *resolve_att =
-            &state->attachments[ds_idx];
-         resolve_att->image_view =
-            anv_image_view_from_handle(d_or_s_att->resolveImageView);
+      struct anv_attachment_state *ds_att_state =
+         &state->attachments[subpass->depth_stencil_attachment->attachment];
+      ds_att_state->image_view =
+         anv_image_view_from_handle(d_or_s_att_info->imageView);
+
+      if (subpass->ds_resolve_attachment) {
+         struct anv_attachment_state *ds_res_att_state =
+            &state->attachments[subpass->ds_resolve_attachment->attachment];
+         ds_res_att_state->image_view =
+            anv_image_view_from_handle(d_or_s_att_info->resolveImageView);
          VkImageAspectFlagBits ds_aspect =
-            (d_att ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
-            (s_att ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-         resolve_att->aux_usage =
+            (d_att_info ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
+            (s_att_info ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+         ds_res_att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info,
-                                    resolve_att->image_view->image,
+                                    ds_res_att_state->image_view->image,
                                     ds_aspect,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                    d_or_s_att->resolveImageLayout);
-         ds_idx -= 1;
+                                    d_or_s_att_info->resolveImageLayout);
       }
-
-      struct anv_attachment_state *att_state = &state->attachments[ds_idx];
-
-      att_state->image_view =
-         anv_image_view_from_handle(d_or_s_att->imageView);
 
       VkImageAspectFlags clear_aspects = 0;
-      if (d_att && d_att->imageView) {
-         VkAttachmentLoadOp load_op = get_effective_load_op(d_att->loadOp, resuming);
-         if (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      if (d_att_info && d_att_info->imageView) {
+         VkAttachmentLoadOp load_op =
+            get_effective_load_op(d_att_info->loadOp, resuming);
+         if (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
             clear_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-         }
 
-         att_state->aux_usage =
+         ds_att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info,
-                                    att_state->image_view->image,
+                                    ds_att_state->image_view->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                    d_att->imageLayout);
+                                    d_att_info->imageLayout);
 
-         att_state->current_layout = d_att->imageLayout;
+         ds_att_state->current_layout = d_att_info->imageLayout;
       }
-      if (s_att && s_att->imageView) {
-         VkAttachmentLoadOp load_op = get_effective_load_op(s_att->loadOp, resuming);
-         if (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+      if (s_att_info && s_att_info->imageView) {
+         VkAttachmentLoadOp load_op =
+            get_effective_load_op(s_att_info->loadOp, resuming);
+         if (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
             clear_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-         }
 
-         att_state->current_stencil_layout = s_att->imageLayout;
+         ds_att_state->current_stencil_layout = s_att_info->imageLayout;
       }
 
-      att_state->pending_clear_aspects = clear_aspects;
-      att_state->clear_value = d_or_s_att->clearValue;
+      ds_att_state->pending_clear_aspects = clear_aspects;
+      ds_att_state->clear_value = d_or_s_att_info->clearValue;
 
       if (clear_aspects) {
-         struct anv_image_view *iview = att_state->image_view;
+         struct anv_image_view *iview = ds_att_state->image_view;
 
          const uint32_t num_layers = iview->planes[0].isl.array_len;
-         att_state->pending_clear_views = (1 << num_layers) - 1;
+         ds_att_state->pending_clear_views = (1 << num_layers) - 1;
 
-         att_state->fast_clear =
+         ds_att_state->fast_clear =
             anv_can_hiz_clear_ds_view(cmd_buffer->device, iview,
-                                      att_state->current_layout,
+                                      ds_att_state->current_layout,
                                       clear_aspects,
-                                      att_state->clear_value.depthStencil.depth,
+                                      ds_att_state->clear_value.depthStencil.depth,
                                       info->renderArea);
 
          uint32_t level = iview->planes[0].isl.base_level;
-
          uint32_t base_layer, layer_count;
          if (iview->image->vk.image_type == VK_IMAGE_TYPE_3D) {
             base_layer = 0;
@@ -7136,7 +7136,7 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
             layer_count = info->layerCount;
          }
 
-         clear_depth_stencil_attachment(cmd_buffer, att_state, level,
+         clear_depth_stencil_attachment(cmd_buffer, ds_att_state, level,
                                         base_layer, layer_count);
       }
    }

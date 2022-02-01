@@ -499,7 +499,7 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
 {
    uint32_t att_count;
    uint32_t color_count = 0, ds_count = 0;
-   uint32_t color_resolve_idx, ds_idx;
+   uint32_t ds_idx;
    bool has_color_resolve, has_ds_resolve;
 
    struct anv_render_pass *pass = &dyn_render_pass->pass;
@@ -510,8 +510,6 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
     * trigger depth/stencil resolve, so clear things to make sure we don't
     * leave stale values.
     */
-   memset(pass, 0, sizeof(*pass));
-   memset(subpass, 0, sizeof(*subpass));
 
    dyn_render_pass->suspending = info->flags & VK_RENDERING_SUSPENDING_BIT_KHR;
    dyn_render_pass->resuming = info->flags & VK_RENDERING_RESUMING_BIT_KHR;
@@ -541,60 +539,59 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
       ds_count *= 2;
 
    att_count = color_count + ds_count;
-   color_resolve_idx = info->colorAttachmentCount;
    ds_idx = color_count;
 
-   pass->subpass_count = 1;
-   pass->attachments = dyn_render_pass->rp_attachments;
-   pass->attachment_count = att_count;
+   /* Setup pass & subpass */
+   *pass = (struct anv_render_pass) {
+      .subpass_count = 1,
+      .attachments = dyn_render_pass->rp_attachments,
+      .attachment_count = att_count,
+   };
 
    struct anv_subpass_attachment *subpass_attachments =
       dyn_render_pass->sp_attachments;
-   subpass->attachment_count = att_count;
-   subpass->attachments = subpass_attachments;
-   subpass->color_count = info->colorAttachmentCount;
-   subpass->color_attachments = subpass_attachments;
-   subpass->has_color_resolve = has_color_resolve;
-   subpass->resolve_attachments =
-      subpass_attachments + subpass->color_count;
-   /* The depth field presence is used to trigger resolve/shadow-buffer-copy,
-    * only set them if needed.
-    */
-   if (ds_count > 0) {
-      subpass->depth_stencil_attachment = &subpass_attachments[ds_idx];
-      if (has_ds_resolve)
-         subpass->ds_resolve_attachment = &subpass_attachments[ds_idx + 1];
-   }
-   subpass->view_mask = info->viewMask;
+
+   *subpass = (struct anv_subpass) {
+      .attachment_count = att_count,
+      .attachments = subpass_attachments,
+      .color_count = info->colorAttachmentCount,
+      .color_attachments = subpass_attachments,
+      .has_color_resolve = has_color_resolve,
+      .resolve_attachments = subpass_attachments + info->colorAttachmentCount,
+      .view_mask = info->viewMask,
+   };
 
    for (uint32_t att = 0; att < info->colorAttachmentCount; att++) {
-      if (info->pColorAttachments[att].imageView == VK_NULL_HANDLE) {
-         subpass->color_attachments[att].attachment = VK_ATTACHMENT_UNUSED;
-         continue;
+      if (info->pColorAttachments[att].imageView != VK_NULL_HANDLE) {
+         ANV_FROM_HANDLE(anv_image_view, iview, info->pColorAttachments[att].imageView);
+
+         pass->attachments[att]     = (struct anv_render_pass_attachment) {
+            .format                 = iview->vk.format,
+            .samples                = iview->vk.image->samples,
+            .usage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+         };
+         subpass->color_attachments[att] = (struct anv_subpass_attachment) {
+            .usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .attachment = att,
+         };
+      } else {
+         subpass->color_attachments[att] = (struct anv_subpass_attachment) {
+            .usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .attachment = VK_ATTACHMENT_UNUSED,
+         };
       }
 
-      ANV_FROM_HANDLE(anv_image_view, iview, info->pColorAttachments[att].imageView);
-
-      pass->attachments[att]     = (struct anv_render_pass_attachment) {
-         .format                 = iview->vk.format,
-         .samples                = iview->vk.image->samples,
-      };
-
-      subpass->color_attachments[att] = (struct anv_subpass_attachment) {
-         .usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-         .attachment = att,
-      };
-
       if (has_color_resolve) {
-         if (info->pColorAttachments[att].resolveMode == VK_RESOLVE_MODE_NONE) {
-            subpass->resolve_attachments[att].attachment = VK_ATTACHMENT_UNUSED;
-            continue;
+         if (info->pColorAttachments[att].resolveMode != VK_RESOLVE_MODE_NONE) {
+            subpass->resolve_attachments[att] = (struct anv_subpass_attachment) {
+               .usage      = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+               .attachment = info->colorAttachmentCount + att,
+            };
+         } else {
+            subpass->resolve_attachments[att] = (struct anv_subpass_attachment) {
+               .attachment = VK_ATTACHMENT_UNUSED,
+            };
          }
-
-         subpass->resolve_attachments[att] = (struct anv_subpass_attachment) {
-            .usage      = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .attachment = att + color_resolve_idx,
-         };
       }
    }
 
@@ -611,23 +608,24 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
       pass->attachments[ds_idx]  = (struct anv_render_pass_attachment) {
          .format                 = iview->vk.format,
          .samples                = iview->vk.image->samples,
+         .usage                  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
       };
 
+      subpass->depth_stencil_attachment = &subpass_attachments[ds_idx];
       *subpass->depth_stencil_attachment = (struct anv_subpass_attachment) {
          .usage            = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
          .attachment       = ds_idx,
       };
 
-      if (d_att && d_att->imageView) {
+      if (d_att && d_att->imageView)
          depth_resolve_mode = d_att->resolveMode;
-      }
-      if (s_att && s_att->imageView) {
+      if (s_att && s_att->imageView)
          stencil_resolve_mode = s_att->resolveMode;
-      }
 
       if (has_ds_resolve) {
          uint32_t ds_res_idx = ds_idx + 1;
 
+         subpass->ds_resolve_attachment = &subpass_attachments[ds_res_idx];
          *subpass->ds_resolve_attachment = (struct anv_subpass_attachment) {
             .usage            = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .attachment       = ds_res_idx,
