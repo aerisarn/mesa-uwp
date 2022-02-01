@@ -531,3 +531,23 @@ etna_shader_init(struct pipe_context *pctx)
    pctx->bind_vs_state = etna_bind_vs_state;
    pctx->delete_vs_state = etna_delete_shader_state;
 }
+
+bool
+etna_shader_screen_init(struct pipe_screen *pscreen)
+{
+   struct etna_screen *screen = etna_screen(pscreen);
+
+   screen->compiler = etna_compiler_create(pscreen->get_name(pscreen));
+   if (!screen->compiler)
+      return false;
+
+   return true;
+}
+
+void
+etna_shader_screen_fini(struct pipe_screen *pscreen)
+{
+   struct etna_screen *screen = etna_screen(pscreen);
+
+   etna_compiler_destroy(screen->compiler);
+}

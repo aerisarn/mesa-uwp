@@ -88,8 +88,7 @@ etna_screen_destroy(struct pipe_screen *pscreen)
    if (screen->perfmon)
       etna_perfmon_del(screen->perfmon);
 
-   if (screen->compiler)
-      etna_compiler_destroy(screen->compiler);
+   etna_shader_screen_fini(pscreen);
 
    if (screen->pipe)
       etna_pipe_del(screen->pipe);
@@ -1147,8 +1146,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    pscreen->query_dmabuf_modifiers = etna_screen_query_dmabuf_modifiers;
    pscreen->is_dmabuf_modifier_supported = etna_screen_is_dmabuf_modifier_supported;
 
-   screen->compiler = etna_compiler_create(etna_screen_get_name(pscreen));
-   if (!screen->compiler)
+   if (!etna_shader_screen_init(pscreen))
       goto fail;
 
    etna_fence_screen_init(pscreen);
