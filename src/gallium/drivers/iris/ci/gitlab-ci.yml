@@ -51,11 +51,10 @@
   tags:
     - mesa-ci-x86-64-lava-hp-x360-14-G1-sona
 
-# 5 boards, manual for now due to network issues in the lab that are WIP
+# 5 boards
 .iris-whl-test:
   extends:
     - .iris-test
-    - .test-manual-mr
   variables:
     DEVICE_TYPE: dell-latitude-5400-8665U-sarien
     GPU_VERSION: iris-whl
