@@ -325,23 +325,37 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
    const unsigned primitive_list_size_dw = 1 + vertices_per_primitive * map->max_primitives;
 
    /* TODO(mesh): Multiview. */
-   map->per_primitive_header_size_dw = 0;
+   map->per_primitive_header_size_dw =
+         (nir->info.outputs_written & (BITFIELD64_BIT(VARYING_SLOT_VIEWPORT) |
+                                       BITFIELD64_BIT(VARYING_SLOT_LAYER))) ? 8 : 0;
 
    map->per_primitive_start_dw = ALIGN(primitive_list_size_dw, 8);
 
-   unsigned next_primitive = map->per_primitive_start_dw +
-                             map->per_primitive_header_size_dw;
+   map->per_primitive_data_size_dw = 0;
    u_foreach_bit64(location, outputs_written & nir->info.per_primitive_outputs) {
       assert(map->start_dw[location] == -1);
 
-      assert(location >= VARYING_SLOT_VAR0);
-      map->start_dw[location] = next_primitive;
-      next_primitive += 4;
+      unsigned start;
+      switch (location) {
+      case VARYING_SLOT_LAYER:
+         start = map->per_primitive_start_dw + 1; /* RTAIndex */
+         break;
+      case VARYING_SLOT_VIEWPORT:
+         start = map->per_primitive_start_dw + 2;
+         break;
+      default:
+         assert(location == VARYING_SLOT_PRIMITIVE_ID ||
+                location >= VARYING_SLOT_VAR0);
+         start = map->per_primitive_start_dw +
+                 map->per_primitive_header_size_dw +
+                 map->per_primitive_data_size_dw;
+         map->per_primitive_data_size_dw += 4;
+         break;
+      }
+
+      map->start_dw[location] = start;
    }
 
-   map->per_primitive_data_size_dw = next_primitive -
-                                     map->per_primitive_start_dw -
-                                     map->per_primitive_header_size_dw;
    map->per_primitive_pitch_dw = ALIGN(map->per_primitive_header_size_dw +
                                        map->per_primitive_data_size_dw, 8);
 
