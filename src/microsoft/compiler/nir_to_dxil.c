@@ -5630,10 +5630,10 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    ctx->mod.major_version = 6;
    ctx->mod.minor_version = 1;
 
-   NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, nir_lower_frexp);
    NIR_PASS_V(s, nir_lower_flrp, 16 | 32 | 64, true);
-   NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, (nir_lower_io_options)0);
+   NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, nir_lower_io_lower_64bit_to_32);
+   NIR_PASS_V(s, nir_lower_pack);
    NIR_PASS_V(s, dxil_nir_lower_system_values);
 
    if (ctx->mod.shader_kind == DXIL_HULL_SHADER)
