@@ -362,6 +362,8 @@ struct tu_bo
    int32_t refcnt;
    uint32_t bo_list_idx;
 #endif
+
+   bool implicit_sync : 1;
 };
 
 enum global_shader {
@@ -439,6 +441,8 @@ struct tu_device
    } scratch_bos[48 - MIN_SCRATCH_BO_SIZE_LOG2];
 
    struct tu_bo *global_bo;
+
+   uint32_t implicit_sync_bo_count;
 
    /* the blob seems to always use 8K factor and 128K param sizes, copy them */
 #define TU_TESS_FACTOR_SIZE (8 * 1024)

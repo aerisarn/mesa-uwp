@@ -372,6 +372,9 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    struct tu_bo* exchanging_bo = tu_device_lookup_bo(dev, dev->bo_list[bo->bo_list_idx].handle);
    exchanging_bo->bo_list_idx = bo->bo_list_idx;
 
+   if (bo->implicit_sync)
+      dev->implicit_sync_bo_count--;
+
    mtx_unlock(&dev->bo_mutex);
 
    /* Our BO structs are stored in a sparse array in the physical device,
@@ -953,6 +956,9 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       flags |= MSM_SUBMIT_SYNCOBJ_OUT;
 
    mtx_lock(&queue->device->bo_mutex);
+
+   if (queue->device->implicit_sync_bo_count == 0)
+      flags |= MSM_SUBMIT_NO_IMPLICIT;
 
    /* drm_msm_gem_submit_cmd requires index of bo which could change at any
     * time when bo_mutex is not locked. So we build submit cmds here the real

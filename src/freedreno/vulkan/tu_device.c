@@ -2143,6 +2143,20 @@ tu_AllocateMemory(VkDevice _device,
       return result;
    }
 
+   /* Track in the device whether our BO list contains any implicit-sync BOs, so
+    * we can suppress implicit sync on non-WSI usage.
+    */
+   const struct wsi_memory_allocate_info *wsi_info =
+      vk_find_struct_const(pAllocateInfo->pNext, WSI_MEMORY_ALLOCATE_INFO_MESA);
+   if (wsi_info && wsi_info->implicit_sync) {
+      mtx_lock(&device->bo_mutex);
+      if (!mem->bo->implicit_sync) {
+         mem->bo->implicit_sync = true;
+         device->implicit_sync_bo_count++;
+      }
+      mtx_unlock(&device->bo_mutex);
+   }
+
    *pMem = tu_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
