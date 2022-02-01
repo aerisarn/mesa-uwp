@@ -36,6 +36,7 @@
 #include "glsl_parser_extras.h"
 #include "ir_optimization.h"
 #include "linker.h"
+#include "linker_util.h"
 #include "link_varyings.h"
 #include "main/macros.h"
 #include "util/hash_table.h"
@@ -1030,8 +1031,8 @@ tfeedback_decl::init(const struct gl_constants *consts,
 
    /* Parse a declaration. */
    const char *base_name_end;
-   long subscript = parse_program_resource_name(input, strlen(input),
-                                                &base_name_end);
+   long subscript = link_util_parse_program_resource_name(input, strlen(input),
+                                                          &base_name_end);
    this->var_name = ralloc_strndup(mem_ctx, input, base_name_end - input);
    if (this->var_name == NULL) {
       _mesa_error_no_memory(__func__);

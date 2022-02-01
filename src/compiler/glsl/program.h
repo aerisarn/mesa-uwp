@@ -48,8 +48,4 @@ extern void
 build_program_resource_list(const struct gl_constants *consts,
                             struct gl_shader_program *shProg);
 
-extern long
-parse_program_resource_name(const GLchar *name, const size_t len,
-                            const GLchar **out_base_name_end);
-
 #endif /* GLSL_PROGRAM_H */
