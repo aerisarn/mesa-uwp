@@ -2268,7 +2268,7 @@ tu_BindBufferMemory2(VkDevice device,
 
       if (mem) {
          buffer->bo = &mem->bo;
-         buffer->bo_offset = pBindInfos[i].memoryOffset;
+         buffer->iova = mem->bo.iova + pBindInfos[i].memoryOffset;
       } else {
          buffer->bo = NULL;
       }
@@ -2731,7 +2731,7 @@ tu_GetBufferDeviceAddress(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_buffer, buffer, pInfo->buffer);
 
-   return tu_buffer_iova(buffer);
+   return buffer->iova;
 }
 
 uint64_t tu_GetBufferOpaqueCaptureAddress(

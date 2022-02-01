@@ -1777,7 +1777,7 @@ tu_CmdBindVertexBuffers2EXT(VkCommandBuffer commandBuffer,
          cmd->state.vb[firstBinding + i].size = 0;
       } else {
          struct tu_buffer *buf = tu_buffer_from_handle(pBuffers[i]);
-         cmd->state.vb[firstBinding + i].base = tu_buffer_iova(buf) + pOffsets[i];
+         cmd->state.vb[firstBinding + i].base = buf->iova + pOffsets[i];
          cmd->state.vb[firstBinding + i].size = pSizes ? pSizes[i] : (buf->size - pOffsets[i]);
       }
 
@@ -1843,7 +1843,7 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
 
    assert(buf->size >= offset);
 
-   cmd->state.index_va = buf->bo->iova + buf->bo_offset + offset;
+   cmd->state.index_va = buf->iova + offset;
    cmd->state.max_index_count = (buf->size - offset) >> index_shift;
    cmd->state.index_size = index_size;
 }
@@ -2076,8 +2076,8 @@ tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < bindingCount; i++) {
       TU_FROM_HANDLE(tu_buffer, buf, pBuffers[i]);
-      uint64_t iova = buf->bo->iova + buf->bo_offset + pOffsets[i];
-      uint32_t size = buf->bo->size - buf->bo_offset - pOffsets[i];
+      uint64_t iova = buf->iova + pOffsets[i];
+      uint32_t size = buf->bo->size - (iova - buf->bo->iova);
       uint32_t idx = i + firstBinding;
 
       if (pSizes && pSizes[i] != VK_WHOLE_SIZE)
@@ -2129,7 +2129,7 @@ tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(idx)) |
                      CP_MEM_TO_REG_0_UNK31 |
                      CP_MEM_TO_REG_0_CNT(1));
-      tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + counter_buffer_offset);
+      tu_cs_emit_qw(cs, buf->iova + counter_buffer_offset);
 
       if (offset) {
          tu_cs_emit_pkt7(cs, CP_REG_RMW, 3);
@@ -2195,7 +2195,7 @@ tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
       tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
       tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(REG_A6XX_CP_SCRATCH_REG(0)) |
                      CP_REG_TO_MEM_0_CNT(1));
-      tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + counter_buffer_offset);
+      tu_cs_emit_qw(cs, buf->iova + counter_buffer_offset);
    }
 
    tu_cond_exec_end(cs);
@@ -4266,7 +4266,7 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_NORMAL) |
                   A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(vs_params_offset(cmd)));
    tu_cs_emit(cs, drawCount);
-   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
+   tu_cs_emit_qw(cs, buf->iova + offset);
    tu_cs_emit(cs, stride);
 }
 
@@ -4295,7 +4295,7 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, drawCount);
    tu_cs_emit_qw(cs, cmd->state.index_va);
    tu_cs_emit(cs, cmd->state.max_index_count);
-   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
+   tu_cs_emit_qw(cs, buf->iova + offset);
    tu_cs_emit(cs, stride);
 }
 
@@ -4329,8 +4329,8 @@ tu_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDIRECT_COUNT) |
                   A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(vs_params_offset(cmd)));
    tu_cs_emit(cs, drawCount);
-   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
-   tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
+   tu_cs_emit_qw(cs, buf->iova + offset);
+   tu_cs_emit_qw(cs, count_buf->iova + countBufferOffset);
    tu_cs_emit(cs, stride);
 }
 
@@ -4361,8 +4361,8 @@ tu_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, drawCount);
    tu_cs_emit_qw(cs, cmd->state.index_va);
    tu_cs_emit(cs, cmd->state.max_index_count);
-   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
-   tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
+   tu_cs_emit_qw(cs, buf->iova + offset);
+   tu_cs_emit_qw(cs, count_buf->iova + countBufferOffset);
    tu_cs_emit(cs, stride);
 }
 
@@ -4393,7 +4393,7 @@ tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    tu_cs_emit_pkt7(cs, CP_DRAW_AUTO, 6);
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_XFB));
    tu_cs_emit(cs, instanceCount);
-   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + counterBufferOffset);
+   tu_cs_emit_qw(cs, buf->iova + counterBufferOffset);
    tu_cs_emit(cs, counterOffset);
    tu_cs_emit(cs, vertexStride);
 }
@@ -4474,13 +4474,13 @@ tu_emit_compute_driver_params(struct tu_cmd_buffer *cmd,
                   CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
                   CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(type)) |
                   CP_LOAD_STATE6_0_NUM_UNIT(1));
-      tu_cs_emit_qw(cs, tu_buffer_iova(info->indirect) + info->indirect_offset);
+      tu_cs_emit_qw(cs, info->indirect->iova + info->indirect_offset);
    } else {
       /* Vulkan guarantees only 4 byte alignment for indirect_offset.
        * However, CP_LOAD_STATE.EXT_SRC_ADDR needs 16 byte alignment.
        */
 
-      uint64_t indirect_iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
+      uint64_t indirect_iova = info->indirect->iova + info->indirect_offset;
 
       for (uint32_t i = 0; i < 3; i++) {
          tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 5);
@@ -4580,7 +4580,7 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
    trace_start_compute(&cmd->trace, cs);
 
    if (info->indirect) {
-      uint64_t iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
+      uint64_t iova = info->indirect->iova + info->indirect_offset;
 
       tu_cs_emit_pkt7(cs, CP_EXEC_CS_INDIRECT, 4);
       tu_cs_emit(cs, 0x00000000);
@@ -4953,7 +4953,7 @@ tu_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
       tu_emit_cache_flush(cmd, cs);
 
    TU_FROM_HANDLE(tu_buffer, buf, pConditionalRenderingBegin->buffer);
-   uint64_t iova = tu_buffer_iova(buf) + pConditionalRenderingBegin->offset;
+   uint64_t iova = buf->iova + pConditionalRenderingBegin->offset;
 
    /* qcom doesn't support 32-bit reference values, only 64-bit, but Vulkan
     * mandates 32-bit comparisons. Our workaround is to copy the the reference

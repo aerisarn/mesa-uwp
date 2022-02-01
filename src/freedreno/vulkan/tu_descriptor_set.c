@@ -858,7 +858,7 @@ write_buffer_descriptor(const struct tu_device *device,
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
    assert((buffer_info->offset & 63) == 0); /* minStorageBufferOffsetAlignment */
-   uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
+   uint64_t va = buffer->iova + buffer_info->offset;
    uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
 
    /* newer a6xx allows using 16-bit descriptor for both 16-bit and 32-bit access */
@@ -891,7 +891,7 @@ write_ubo_descriptor(uint32_t *dst, const VkDescriptorBufferInfo *buffer_info)
    uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
    /* The HW range is in vec4 units */
    range = ALIGN_POT(range, 16) / 16;
-   uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
+   uint64_t va = buffer->iova + buffer_info->offset;
 
    dst[0] = A6XX_UBO_0_BASE_LO(va);
    dst[1] = A6XX_UBO_1_BASE_HI(va >> 32) | A6XX_UBO_1_SIZE(range);

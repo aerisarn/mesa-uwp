@@ -662,7 +662,7 @@ tu_buffer_view_init(struct tu_buffer_view *view,
 
    fdl6_buffer_view_init(
       view->descriptor, tu_vk_format_to_pipe_format(pCreateInfo->format),
-      swiz, tu_buffer_iova(buffer) + pCreateInfo->offset, range);
+      swiz, buffer->iova + pCreateInfo->offset, range);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

@@ -748,14 +748,8 @@ struct tu_buffer
    VkBufferCreateFlags flags;
 
    struct tu_bo *bo;
-   VkDeviceSize bo_offset;
+   uint64_t iova;
 };
-
-static inline uint64_t
-tu_buffer_iova(struct tu_buffer *buffer)
-{
-   return buffer->bo->iova + buffer->bo_offset;
-}
 
 const char *
 tu_get_debug_option_name(int id);
