@@ -2224,8 +2224,8 @@ emit_make_double(struct ntd_context *ctx, nir_alu_instr *alu)
 
    const struct dxil_value *args[3] = {
       opcode,
-      get_src(ctx, &alu->src[0].src, 0, nir_type_uint32),
-      get_src(ctx, &alu->src[0].src, 1, nir_type_uint32),
+      get_src(ctx, &alu->src[0].src, alu->src[0].swizzle[0], nir_type_uint32),
+      get_src(ctx, &alu->src[0].src, alu->src[0].swizzle[1], nir_type_uint32),
    };
    if (!args[1] || !args[2])
       return false;
@@ -2250,7 +2250,7 @@ emit_split_double(struct ntd_context *ctx, nir_alu_instr *alu)
 
    const struct dxil_value *args[] = {
       opcode,
-      get_src(ctx, &alu->src[0].src, 0, nir_type_float64)
+      get_src(ctx, &alu->src[0].src, alu->src[0].swizzle[0], nir_type_float64)
    };
    if (!args[1])
       return false;
