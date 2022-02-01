@@ -199,6 +199,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_provoking_vertex = true,
       .EXT_line_rasterization = true,
       .EXT_subgroup_size_control = true,
+      .EXT_image_robustness = true,
 #ifdef ANDROID
       .ANDROID_native_buffer = true,
 #endif
@@ -581,7 +582,7 @@ static void
 tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
                                     VkPhysicalDeviceVulkan13Features *features)
 {
-   features->robustImageAccess                   = false;
+   features->robustImageAccess                   = true;
    features->inlineUniformBlock                  = false;
    features->descriptorBindingInlineUniformBlockUpdateAfterBind = false;
    features->pipelineCreationCacheControl        = false;
