@@ -2287,10 +2287,10 @@ tu_BindImageMemory2(VkDevice device,
 
       if (mem) {
          image->bo = &mem->bo;
-         image->bo_offset = pBindInfos[i].memoryOffset;
+         image->iova = mem->bo.iova + pBindInfos[i].memoryOffset;
       } else {
          image->bo = NULL;
-         image->bo_offset = 0;
+         image->iova = 0;
       }
    }
 

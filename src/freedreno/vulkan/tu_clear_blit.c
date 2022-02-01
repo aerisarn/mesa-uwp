@@ -1224,7 +1224,7 @@ tu6_clear_lrz(struct tu_cmd_buffer *cmd,
               VK_SAMPLE_COUNT_1_BIT);
    ops->clear_value(cs, PIPE_FORMAT_Z16_UNORM, value);
    ops->dst_buffer(cs, PIPE_FORMAT_Z16_UNORM,
-                   image->bo->iova + image->bo_offset + image->lrz_offset,
+                   image->iova + image->lrz_offset,
                    image->lrz_pitch * 2);
    ops->coords(cs, &(VkOffset2D) {}, NULL, &(VkExtent2D) {image->lrz_pitch, image->lrz_height});
    ops->run(cmd, cs);
@@ -1252,7 +1252,7 @@ tu_image_view_copy_blit(struct fdl6_view *iview,
       &image->layout[tu6_plane_index(image->vk_format, aspect_mask)];
 
    fdl6_view_init(iview, &layout, &(struct fdl_view_args) {
-      .iova = image->bo->iova + image->bo_offset,
+      .iova = image->iova,
       .base_array_layer = subres->baseArrayLayer + layer,
       .layer_count = 1,
       .base_miplevel = subres->mipLevel,
