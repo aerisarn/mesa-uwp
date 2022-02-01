@@ -328,7 +328,8 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       compiler->nir_options = nir_options;
    }
 
-   ir3_disk_cache_init(compiler);
+   if (!options->disable_cache)
+      ir3_disk_cache_init(compiler);
 
    return compiler;
 }

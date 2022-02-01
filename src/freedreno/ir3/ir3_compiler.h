@@ -198,6 +198,11 @@ struct ir3_compiler_options {
     * constants for it can be pre-baked when compiling the shader.
     */
    bool push_ubo_with_preamble;
+
+   /* If true, disable the shader cache. The driver is then responsible for
+    * caching.
+    */
+   bool disable_cache;
 };
 
 void ir3_compiler_destroy(struct ir3_compiler *compiler);
