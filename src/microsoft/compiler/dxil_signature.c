@@ -135,12 +135,14 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
    info->rows = 1;
    if (info->kind == DXIL_SEM_TARGET) {
       info->start_row = info->index;
+      info->cols = (uint8_t)glsl_get_components(type);
    } else if (is_depth ||
               (info->kind == DXIL_SEM_PRIMITIVE_ID && is_gs_input) ||
               info->kind == DXIL_SEM_COVERAGE ||
               info->kind == DXIL_SEM_SAMPLE_INDEX) {
       // This turns into a 'N/A' mask in the disassembly
       info->start_row = -1;
+      info->cols = 1;
    } else if (info->kind == DXIL_SEM_TESS_FACTOR ||
               info->kind == DXIL_SEM_INSIDE_TESS_FACTOR) {
       assert(var->data.compact);
@@ -169,18 +171,12 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
       info->start_col = (uint8_t)var->data.location_frac;
    } else {
       info->start_row = next_row;
-      if (glsl_type_is_array(type)) {
-         info->rows = glsl_get_aoa_size(type);
-         type = glsl_get_array_element(type);
-         assert(info->rows);
-      }
-      next_row += info->rows;
-      info->start_col = (uint8_t)var->data.location_frac;
-   }
-   if (!info->cols) {
+      info->rows = glsl_count_vec4_slots(type, false, false);
       if (glsl_type_is_array(type))
          type = glsl_get_array_element(type);
-      info->cols = (uint8_t)glsl_get_components(type);
+      next_row += info->rows;
+      info->start_col = (uint8_t)var->data.location_frac;
+      info->cols = MIN2(glsl_get_component_slots(type), 4);
    }
 
    return next_row;
