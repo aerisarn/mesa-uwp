@@ -159,6 +159,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_separate_depth_stencil_layouts = true,
       .KHR_buffer_device_address = true,
       .KHR_shader_integer_dot_product = true,
+      .KHR_zero_initialize_workgroup_memory = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
@@ -593,7 +594,7 @@ tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
    features->computeFullSubgroups                = true;
    features->synchronization2                    = false;
    features->textureCompressionASTC_HDR          = false;
-   features->shaderZeroInitializeWorkgroupMemory = false;
+   features->shaderZeroInitializeWorkgroupMemory = true;
    features->dynamicRendering                    = false;
    features->shaderIntegerDotProduct             = true;
    features->maintenance4                        = false;
