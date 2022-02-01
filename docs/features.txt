@@ -482,14 +482,14 @@ Vulkan 1.3 -- all DONE: anv, radv
   VK_KHR_zero_initialize_workgroup_memory               DONE (anv, radv)
   VK_EXT_4444_formats                                   DONE (anv, lvp, radv, tu, v3dv)
   VK_EXT_extended_dynamic_state                         DONE (anv, lvp, radv, tu)
-  VK_EXT_extended_dynamic_state2                        DONE (anv, lvp, radv)
+  VK_EXT_extended_dynamic_state2                        DONE (anv, lvp, radv, tu)
   VK_EXT_inline_uniform_block                           DONE (anv, radv)
   VK_EXT_pipeline_creation_cache_control                DONE (anv, radv, v3dv)
   VK_EXT_pipeline_creation_feedback                     DONE (anv, radv, v3dv)
   VK_EXT_private_data                                   DONE (anv, lvp, radv, tu, v3dv)
   VK_EXT_image_robustness                               DONE (anv, radv)
   VK_EXT_shader_demote_to_helper_invocation             DONE (anv, radv, tu)
-  VK_EXT_subgroup_size_control                          DONE (anv, radv)
+  VK_EXT_subgroup_size_control                          DONE (anv, radv, tu)
   VK_EXT_texel_buffer_alignment                         DONE (anv, radv)
 
 Khronos extensions that are not part of any Vulkan version:
