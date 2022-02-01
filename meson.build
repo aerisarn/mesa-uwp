@@ -2167,9 +2167,15 @@ endif
 # as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391
 gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
 
+devenv = environment()
+
 subdir('include')
 subdir('bin')
 subdir('src')
+
+if meson.version().version_compare('>= 0.58')
+  meson.add_devenv(devenv)
+endif
 
 lines = ['',
   'prefix:          ' + get_option('prefix'),
