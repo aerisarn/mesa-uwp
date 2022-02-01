@@ -294,7 +294,10 @@ def to_field_name(name):
     return remove_prefix(to_underscore(name).replace('cmd_', ''), 'p_')
 
 def to_field_decl(decl):
-    decl = decl.replace('const ', '')
+    if 'const*' in decl:
+        decl = decl.replace('const*', '*')
+    else:
+        decl = decl.replace('const ', '')
     [decl, name] = decl.rsplit(' ', 1)
     return decl + ' ' + to_field_name(name)
 
