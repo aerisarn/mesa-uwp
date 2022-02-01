@@ -160,6 +160,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_buffer_device_address = true,
       .KHR_shader_integer_dot_product = true,
       .KHR_zero_initialize_workgroup_memory = true,
+      .KHR_shader_non_semantic_info = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
