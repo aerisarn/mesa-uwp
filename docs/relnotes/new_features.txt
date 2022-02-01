@@ -8,4 +8,4 @@ radeonsi, zink ARB_sparse_texture2
 zink EXT_memory_object, EXT_memory_object_fd, EXT_semaphore, EXT_semaphore_fd
 anv VK_VALVE_mutable_descriptor_type
 Vulkan 1.3 on RADV,Anv.
-radeonsi ARB_sparse_texture_clamp
+radeonsi, zink ARB_sparse_texture_clamp
