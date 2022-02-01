@@ -56,6 +56,7 @@ struct wqm_ctx {
    std::vector<uint16_t> defined_in;
    std::vector<bool> needs_wqm;
    std::vector<bool> branch_wqm; /* true if the branch condition in this block should be in wqm */
+   bool ever_again_needs_wqm = false;
    wqm_ctx(Program* program_)
        : program(program_), defined_in(program->peekAllocationId(), 0xFFFF),
          needs_wqm(program->peekAllocationId()), branch_wqm(program->blocks.size())
@@ -180,7 +181,9 @@ get_block_needs(wqm_ctx& ctx, exec_ctx& exec_ctx, Block* block)
                set_needs_wqm(ctx, op.getTemp());
             }
          }
-      } else if (preserve_wqm && info.block_needs & WQM) {
+         ctx.ever_again_needs_wqm = true;
+      } else if (preserve_wqm & ctx.ever_again_needs_wqm) {
+         /* Preserve WQM if WQM is needed later */
          needs = Preserve_WQM;
       }
 
@@ -315,10 +318,6 @@ calculate_wqm_needs(exec_ctx& exec_ctx)
 
       if (block.kind & block_kind_needs_lowering)
          exec_ctx.info[i].block_needs |= Exact;
-
-      /* if discard is used somewhere in nested CF, we need to preserve the WQM mask */
-      if (block.kind & block_kind_uses_discard_if && ever_again_needs & WQM)
-         exec_ctx.info[i].block_needs |= Preserve_WQM;
 
       ever_again_needs |= exec_ctx.info[i].block_needs & ~Exact_Branch;
       if (block.kind & block_kind_uses_discard_if || block.kind & block_kind_uses_demote)
