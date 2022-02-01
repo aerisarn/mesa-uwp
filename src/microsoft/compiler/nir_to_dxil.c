@@ -119,6 +119,7 @@ nir_options = {
    .lower_helper_invocation = true,
    .has_cs_global_id = true,
    .has_txs = true,
+   .lower_mul_2x32_64 = true,
 };
 
 const nir_shader_compiler_options*
