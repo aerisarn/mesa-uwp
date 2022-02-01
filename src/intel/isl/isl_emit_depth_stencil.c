@@ -129,9 +129,9 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       db.RenderCompressionFormat =
          isl_get_render_compression_format(info->depth_surf->format);
 #elif GFX_VER <= 6
-      db.TiledSurface = info->depth_surf->tiling != ISL_TILING_LINEAR;
-      db.TileWalk = info->depth_surf->tiling == ISL_TILING_Y0 ? TILEWALK_YMAJOR :
-                                                                TILEWALK_XMAJOR;
+      assert(info->depth_surf->tiling == ISL_TILING_Y0);
+      db.TiledSurface = true;
+      db.TileWalk = TILEWALK_YMAJOR;
       db.MIPMapLayoutMode = MIPLAYOUT_BELOW;
 #endif
 
