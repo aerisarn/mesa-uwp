@@ -279,6 +279,7 @@ int main(int argc, char **argv)
       {"in",         required_argument,   0, 'i'},
       {"out",        required_argument,   0, 'o'},
       {"spv",        required_argument,   0, 's'},
+      {"info",       no_argument,         0, 'i'},
       {0, 0, 0, 0}
    };
 
@@ -287,6 +288,7 @@ int main(int argc, char **argv)
    struct util_dynarray input_files;
    struct util_dynarray spirv_objs;
    struct util_dynarray spirv_ptr_objs;
+   bool print_info = false;
 
    void *mem_ctx = ralloc_context(NULL);
 
@@ -296,7 +298,7 @@ int main(int argc, char **argv)
    util_dynarray_init(&spirv_ptr_objs, mem_ctx);
 
    int ch;
-   while ((ch = getopt_long(argc, argv, "he:p:s:o:", long_options, NULL)) != -1)
+   while ((ch = getopt_long(argc, argv, "he:p:s:o:i", long_options, NULL)) != -1)
    {
       switch (ch)
       {
@@ -314,6 +316,9 @@ int main(int argc, char **argv)
          break;
       case 's':
          spv_outfile = optarg;
+         break;
+      case 'i':
+         print_info = true;
          break;
       case OPT_PREFIX:
          prefix = optarg;
@@ -472,6 +477,24 @@ int main(int argc, char **argv)
       fprintf(stderr, "Compile failed: %s\n", error_str);
       ralloc_free(mem_ctx);
       return 1;
+   }
+
+   if (print_info) {
+      fprintf(stdout, "kernel info:\n");
+      fprintf(stdout, "   uses_barrier           : %u\n", kernel.prog_data.uses_barrier);
+      fprintf(stdout, "   uses_num_work_groups   : %u\n", kernel.prog_data.uses_num_work_groups);
+      fprintf(stdout, "   uses_inline_data       : %u\n", kernel.prog_data.uses_inline_data);
+      fprintf(stdout, "   local_size             : %ux%ux%u\n",
+              kernel.prog_data.local_size[0],
+              kernel.prog_data.local_size[1],
+              kernel.prog_data.local_size[2]);
+      fprintf(stdout, "   curb_read_length       : %u\n", kernel.prog_data.base.curb_read_length);
+      fprintf(stdout, "   total_scratch          : %u\n", kernel.prog_data.base.total_scratch);
+      fprintf(stdout, "   total_shared           : %u\n", kernel.prog_data.base.total_shared);
+      fprintf(stdout, "   program_size           : %u\n", kernel.prog_data.base.program_size);
+      fprintf(stdout, "   const_data_size        : %u\n", kernel.prog_data.base.const_data_size);
+      fprintf(stdout, "   uses_atomic_load_store : %u\n", kernel.prog_data.base.uses_atomic_load_store);
+      fprintf(stdout, "   dispatch_grf_start_reg : %u\n", kernel.prog_data.base.dispatch_grf_start_reg);
    }
 
    glsl_type_singleton_decref();
