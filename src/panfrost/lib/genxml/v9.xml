@@ -1173,8 +1173,26 @@
     <field name="Clear" size="128" start="12:0" type="RT Clear"/>
   </struct>
 
+  <enum name="Chunk Size">
+    <value name="256 KiB" value="0"/>
+    <value name="512 KiB" value="1"/>
+    <value name="1 MiB" value="2"/>
+    <value name="2 MiB" value="3"/>
+  </enum>
+
+  <enum name="Chunk Partition">
+    <value name="Dynamic" value="0"/>
+    <value name="Static 25%" value="1"/>
+    <value name="Static 50%" value="2"/>
+    <value name="Static 75%" value="3"/>
+  </enum>
+
+  <!-- Actually a buffer descriptor, split out for backwards compatibility.-->
   <struct name="Tiler Heap" align="32">
-    <field name="Unknown" size="32" start="0:0" type="hex" default="0x329"/>
+    <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Buffer"/>
+    <field name="Buffer type" size="4" start="0:4" type="Buffer Type" default="Tiler heap"/>
+    <field name="Chunk size" size="2" start="0:8" type="Chunk Size" default="2 MiB"/>
+    <field name="Partitioning" size="2" start="0:10" type="Chunk Partition" default="Dynamic"/>
     <field name="Size" size="32" start="1:0" type="uint" modifier="align(4096)"/>
     <field name="Base" size="64" start="2:0" type="address"/>
     <field name="Bottom" size="64" start="4:0" type="address"/>
