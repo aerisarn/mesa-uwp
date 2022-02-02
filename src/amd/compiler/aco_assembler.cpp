@@ -625,6 +625,10 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
          encoding = 0;
          if (instr->opcode == aco_opcode::v_interp_mov_f32) {
             encoding = 0x3 & instr->operands[0].constantValue();
+         } else if (instr->opcode == aco_opcode::v_writelane_b32_e64) {
+            encoding |= instr->operands[0].physReg() << 0;
+            encoding |= instr->operands[1].physReg() << 9;
+            /* Encoding src2 works fine with hardware but breaks some disassemblers. */
          } else {
             for (unsigned i = 0; i < instr->operands.size(); i++)
                encoding |= instr->operands[i].physReg() << (i * 9);
