@@ -16,8 +16,8 @@
   </enum>
 
   <enum name="Depth Source">
-    <!-- TODO: check if min/max supported -->
-    <value name="None" value="0"/>
+    <value name="Minimum" value="0"/>
+    <value name="Maximum" value="1"/>
     <value name="Fixed function" value="2"/>
     <value name="Shader" value="3"/>
   </enum>
