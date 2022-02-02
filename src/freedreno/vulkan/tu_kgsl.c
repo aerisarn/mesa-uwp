@@ -706,6 +706,33 @@ tu_device_get_suspend_count(struct tu_device *dev, uint64_t *suspend_count)
    return 0;
 }
 
+VkResult
+tu_device_check_status(struct vk_device *vk_device)
+{
+   struct tu_device *device = container_of(vk_device, struct tu_device, vk);
+
+   for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
+      for (unsigned q = 0; q < device->queue_count[i]; q++) {
+         /* KGSL's KGSL_PROP_GPU_RESET_STAT takes the u32 msm_queue_id and returns a
+         * KGSL_CTX_STAT_* for the worst reset that happened since the last time it
+         * was queried on that queue.
+         */
+         uint32_t value = device->queues[i][q].msm_queue_id;
+         VkResult status = get_kgsl_prop(device->fd, KGSL_PROP_GPU_RESET_STAT,
+                                       &value, sizeof(value));
+         if (status != VK_SUCCESS)
+            return vk_device_set_lost(&device->vk, "Failed to get GPU reset status");
+
+         if (value != KGSL_CTX_STAT_NO_ERROR &&
+            value != KGSL_CTX_STAT_INNOCENT_CONTEXT_RESET_EXT) {
+            return vk_device_set_lost(&device->vk, "GPU faulted or hung");
+         }
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 #ifdef ANDROID
 VKAPI_ATTR VkResult VKAPI_CALL
 tu_QueueSignalReleaseImageANDROID(VkQueue _queue,

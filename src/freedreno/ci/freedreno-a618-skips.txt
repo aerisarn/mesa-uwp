@@ -25,11 +25,22 @@ dEQP-VK.ubo.random.all_shared_buffer.48
 # Still running after 3 hours, time is spent in batch_draw_tracking().
 KHR-GLES31.core.shader_image_load_store.basic-allFormats-store-fs
 
-# causes a hangcheck timeout on a630:
+# causes a hangcheck timeout on a618:
 # msm ae00000.mdss: [drm:hangcheck_handler] *ERROR* A618: hangcheck detected gpu lockup rb 0!
+#
+# even if they sometimes pass and could be categorized as flakes, we skip them
+# because device loss will end up failing the rest of the caselist.
+dEQP-VK.api.command_buffers.record_many_draws_primary_2
+dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
+spill-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
+spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
+
+# Hangs the GPU, fixed to be a skip in VK-GL-CTS 736eec57dc0c ("Fix checkSupport in compressed texture sampling tests")
+dEQP-VK.image.sample_texture.128_bit_compressed_format_cubemap
+dEQP-VK.image.sample_texture.64_bit_compressed_format_cubemap
 
 # Crashes in RA, but slow enough to get there that CI times out sometimes
 dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*

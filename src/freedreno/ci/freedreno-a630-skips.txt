@@ -18,6 +18,15 @@ dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_equal_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing
 
+# Can cause a hangcheck.
+#
+# even if they sometimes pass and could be categorized as flakes, we skip them
+# because device loss will end up failing the rest of the caselist.
+dEQP-VK.api.command_buffers.record_many_draws_primary_2
+dEQP-VK.api.command_buffers.record_many_draws_secondary_2
+spill-dEQP-VK.graphicsfuzz.cov-function-two-loops-limit-using-arguments-array-element-copies
+spill-dEQP-VK.graphicsfuzz.cov-nested-loop-large-array-index-using-vector-components
+
 # timeout, spending all its time in nir_compare_deref_paths()
 # https://gitlab.freedesktop.org/mesa/mesa/-/issues/5152
 dEQP-VK.ubo.random.all_shared_buffer.48

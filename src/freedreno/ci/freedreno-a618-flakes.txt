@@ -4,10 +4,3 @@
 
 dEQP-VK.pipeline.multisample.alpha_to_coverage_unused_attachment.samples_2.alpha_opaque
 dEQP-VK.pipeline.multisample.alpha_to_coverage_unused_attachment.samples_4.alpha_opaque
-
-# Could trip hangcheck timeout
-dEQP-VK.api.command_buffers.record_many_draws_primary_2
-dEQP-VK.api.command_buffers.record_many_draws_secondary_2
-
-# Sometimes hangchecks
-spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code

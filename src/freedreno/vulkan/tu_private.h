@@ -236,6 +236,9 @@ struct tu_physical_device
    int msm_major_version;
    int msm_minor_version;
 
+   /* Address space and global fault count for this local_fd with DRM backend */
+   uint64_t fault_count;
+
    /* This is the drivers on-disk cache used as a fallback as opposed to
     * the pipeline cache defined by apps.
     */
@@ -537,6 +540,9 @@ tu_device_wait_u_trace(struct tu_device *dev, struct tu_u_trace_syncobj *syncobj
 
 uint64_t
 tu_device_ticks_to_ns(struct tu_device *dev, uint64_t ts);
+
+VkResult
+tu_device_check_status(struct vk_device *vk_device);
 
 enum tu_bo_alloc_flags
 {
