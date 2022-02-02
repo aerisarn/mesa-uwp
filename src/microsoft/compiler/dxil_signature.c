@@ -127,7 +127,8 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
       dxil_get_prog_sig_comp_type(type);
 
    bool is_depth = is_depth_output(info->kind);
-   info->sig_comp_type = dxil_get_comp_type(type);
+   info->sig_comp_type = glsl_type_is_struct(type) ?
+      DXIL_COMP_TYPE_U32 : dxil_get_comp_type(type);
    bool is_gs_input = s->info.stage == MESA_SHADER_GEOMETRY &&
       (var->data.mode & (nir_var_shader_in | nir_var_system_value));
 
