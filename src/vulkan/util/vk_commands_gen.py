@@ -42,9 +42,7 @@ MANUAL_COMMANDS = ['CmdPushDescriptorSetKHR',             # This script doesn't 
                    'CmdCopyImageToBuffer',                # There are wrappers that implement these in terms of the newer variants
                    'CmdCopyImage',
                    'CmdCopyBuffer',
-                   'CmdCopyImage',
                    'CmdCopyBufferToImage',
-                   'CmdCopyImageToBuffer',
                    'CmdBlitImage',
                    'CmdResolveImage',
                    'CmdBeginRendering',
