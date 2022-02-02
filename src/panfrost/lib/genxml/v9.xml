@@ -963,11 +963,7 @@
     <value name="D24" value="2"/>
     <value name="D24X8" value="4"/>
     <value name="D24S8" value="5"/>
-    <value name="X8D24" value="6"/>
-    <value name="S8D24" value="7"/>
-    <value name="D32_X8X24" value="13"/>
     <value name="D32" value="14"/>
-    <value name="D32_S8X24" value="15"/>
   </enum>
 
   <enum name="ZS Preload Format">
@@ -976,11 +972,7 @@
 
   <enum name="S Format">
     <value name="S8" value="1"/>
-    <value name="S8X8" value="2"/>
-    <value name="S8X24" value="3"/>
     <value name="X24S8" value="4"/>
-    <value name="X8S8" value="5"/>
-    <value name="X32_S8X24" value="6"/>
   </enum>
 
   <enum name="Tie-Break Rule">
@@ -1066,36 +1058,32 @@
   </struct>
 
   <struct name="ZS CRC Extension" align="64" size="16">
-    <field name="Word 0" size="32" start="0:0" type="hex"/>
+    <field name="ZS Write Format" size="4" start="0:0" type="ZS Format"/>
+    <field name="ZS Block Format" size="4" start="0:4" type="Block Format"/>
+    <field name="ZS MSAA" size="2" start="0:8" default="Single" type="MSAA"/>
+    <field name="CRC Render Target" size="4" start="0:13" type="uint"/>
+    <field name="S Write Format" size="4" start="0:16" type="S Format"/>
+    <field name="S Block Format" size="4" start="0:20" type="Block Format"/>
+    <field name="S MSAA" size="2" start="0:24" default="Single" type="MSAA"/>
+
+    <field name="AFBC Reverse Issue Order" size="1" start="0:30" type="bool"/>
+    <!-- Note: Must be set if AFBC is enabled and effective_tile_size is not 16x16 -->
+    <field name="ZS Clean Pixel Write Enable" size="1" start="0:31" type="bool"/>
+
     <field name="CRC Row Stride" size="32" start="1:0" type="uint"/>
     <field name="CRC Clear Color" size="64" start="2:0" type="hex"/>
     <field name="CRC Base" size="64" start="4:0" type="address"/>
-    <field name="Word 6" size="64" start="6:0" type="hex"/>
-    <field name="Word 8" size="64" start="8:0" type="hex"/>
-    <field name="Word 10" size="64" start="10:0" type="hex"/>
-    <field name="Word 12" size="64" start="12:0" type="hex"/>
-    <field name="Word 14" size="64" start="14:0" type="hex"/>
 
-    <!-- TODO: everything below this, Arm shuffled this descriptor -->
-    <!--
-    <field name="ZS Write Format" size="4" start="3:0" type="ZS Format"/>
-    <field name="ZS Block Format" size="4" start="3:4" type="Block Format"/>
-    <field name="ZS MSAA" size="2" start="3:8" default="Single" type="MSAA"/>
-    <field name="ZS Clean Pixel Write Enable" size="1" start="3:10" type="bool"/>
-    <field name="CRC Render Target" size="4" start="3:11" type="uint"/>
-    <field name="S Write Format" size="4" start="3:16" type="S Format"/>
-    <field name="S Block Format" size="4" start="3:20" type="Block Format"/>
-    <field name="S MSAA" size="2" start="3:24" default="Single" type="MSAA"/>
-    <field name="ZS Writeback Base" size="64" start="4:0" type="address"/>
-    <field name="ZS Writeback Row Stride" size="32" start="6:0" type="uint"/>
-    <field name="ZS Writeback Surface Stride" size="32" start="7:0" type="uint"/>
-    <field name="S Writeback Base" size="64" start="8:0" type="address"/>
-    <field name="S Writeback Row Stride" size="32" start="10:0" type="uint"/>
-    <field name="S Writeback Surface Stride" size="32" start="11:0" type="uint"/>
-    <field name="ZS AFBC Header" size="64" start="4:0" type="address"/>
-    <field name="ZS AFBC Row Stride" size="13" start="6:0" type="uint"/>
-    <field name="ZS AFBC Body" size="64" start="8:0" type="address"/>
-    -->
+    <field name="ZS Writeback Base" size="64" start="8:0" type="address"/>
+    <!-- Header clumps per row (different than Bifrost's AFBC line stride) -->
+    <field name="ZS Writeback Row Stride" size="32" start="10:0" type="uint"/>
+    <field name="ZS Writeback Surface Stride" size="32" start="11:0" type="uint"/>
+    <field name="ZS AFBC Body Offset" size="32" start="11:0" type="uint"/>
+
+    <field name="S Writeback Base" size="64" start="12:0" type="address"/>
+    <field name="S Writeback Row Stride" size="32" start="14:0" type="uint"/>
+    <field name="S Writeback Surface Stride" size="32" start="15:0" type="uint"/>
+    <field name="S AFBC Body Offset" size="32" start="15:0" type="uint"/>
   </struct>
 
   <enum name="YUV Conv K6">
