@@ -27,13 +27,28 @@ libfreedreno_drm_files = files(
   'freedreno_priv.h',
   'freedreno_ringbuffer.c',
   'freedreno_ringbuffer.h',
-  'msm_bo.c',
-  'msm_device.c',
-  'msm_pipe.c',
-  'msm_priv.h',
-  'msm_ringbuffer.c',
-  'msm_ringbuffer_sp.c',
 )
+libfreedreno_drm_flags = []
+libfreedreno_drm_includes = [
+  inc_freedreno,
+  inc_include,
+  inc_src,
+  inc_mapi,
+  inc_mesa,
+  inc_gallium,
+  inc_gallium_aux,
+]
+
+libfreedreno_drm_msm_files = files(
+  'msm/msm_bo.c',
+  'msm/msm_device.c',
+  'msm/msm_pipe.c',
+  'msm/msm_priv.h',
+  'msm/msm_ringbuffer.c',
+  'msm/msm_ringbuffer_sp.c',
+  'msm/msm_ringbuffer_sp.h',
+)
+libfreedreno_drm_files += libfreedreno_drm_msm_files
 
 libfreedreno_drm = static_library(
   'freedreno_drm',
@@ -41,16 +56,8 @@ libfreedreno_drm = static_library(
     libfreedreno_drm_files,
     freedreno_xml_header_files,
   ],
-  include_directories : [
-    inc_freedreno,
-    inc_include,
-    inc_src,
-    inc_mapi,
-    inc_mesa,
-    inc_gallium,
-    inc_gallium_aux,
-  ],
-  c_args : [no_override_init_args],
+  include_directories : libfreedreno_drm_includes,
+  c_args : [no_override_init_args, libfreedreno_drm_flags],
   gnu_symbol_visibility : 'hidden',
   dependencies : [
     dep_libdrm,
