@@ -59,7 +59,7 @@ extern "C" {
 #endif
 
 struct vk_cmd_queue {
-   VkAllocationCallbacks *alloc;
+   const VkAllocationCallbacks *alloc;
    struct list_head cmds;
 };
 
