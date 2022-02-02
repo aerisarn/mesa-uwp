@@ -5012,7 +5012,7 @@ sort_uniforms_by_binding_and_remove_structs(nir_shader *s)
 }
 
 static void
-prepare_phi_values(struct ntd_context *ctx)
+prepare_phi_values(struct ntd_context *ctx, nir_function_impl *impl)
 {
    /* PHI nodes are difficult to get right when tracking the types:
     * Since the incoming sources are linked to blocks, we can't bitcast
@@ -5021,19 +5021,15 @@ prepare_phi_values(struct ntd_context *ctx)
     * value has a different type then the one expected by the phi node.
     * We choose int as default, because it supports more bit sizes.
     */
-   nir_foreach_function(function, ctx->shader) {
-      if (function->impl) {
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr(instr, block) {
-               if (instr->type == nir_instr_type_phi) {
-                  nir_phi_instr *ir = nir_instr_as_phi(instr);
-                  unsigned bitsize = nir_dest_bit_size(ir->dest);
-                  const struct dxil_value *dummy = dxil_module_get_int_const(&ctx->mod, 0, bitsize);
-                  nir_foreach_phi_src(src, ir) {
-                     for(unsigned int i = 0; i < ir->dest.ssa.num_components; ++i)
-                        store_ssa_def(ctx, src->src.ssa, i, dummy);
-                  }
-               }
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type == nir_instr_type_phi) {
+            nir_phi_instr *ir = nir_instr_as_phi(instr);
+            unsigned bitsize = nir_dest_bit_size(ir->dest);
+            const struct dxil_value *dummy = dxil_module_get_int_const(&ctx->mod, 0, bitsize);
+            nir_foreach_phi_src(src, ir) {
+               for(unsigned int i = 0; i < ir->dest.ssa.num_components; ++i)
+                  store_ssa_def(ctx, src->src.ssa, i, dummy);
             }
          }
       }
@@ -5164,7 +5160,7 @@ emit_function(struct ntd_context *ctx, nir_function *func)
    if (!ctx->phis)
       return false;
 
-   prepare_phi_values(ctx);
+   prepare_phi_values(ctx, impl);
 
    if (!emit_scratch(ctx))
       return false;
