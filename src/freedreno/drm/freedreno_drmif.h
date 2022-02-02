@@ -107,6 +107,9 @@ struct fd_fence {
 /* Hint that the bo will be exported/shared: */
 #define FD_BO_SHARED              BITSET_BIT(5)
 
+/* backend private bo flags: */
+#define _FD_BO_VIRTIO_SHM         BITSET_BIT(6)
+
 /* bo access flags: (keep aligned to MSM_PREP_x) */
 #define FD_BO_PREP_READ   BITSET_BIT(0)
 #define FD_BO_PREP_WRITE  BITSET_BIT(1)

@@ -58,6 +58,7 @@ msm_device_new(int fd, drmVersionPtr version)
 
    dev = &msm_dev->base;
    dev->funcs = &funcs;
+   dev->version = version->version_minor;
 
    /* async submit_queue currently only used for msm_submit_sp: */
    if (version->version_minor >= FD_VERSION_SOFTPIN) {

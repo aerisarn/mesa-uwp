@@ -52,6 +52,21 @@ libfreedreno_drm_msm_files = files(
 )
 libfreedreno_drm_files += libfreedreno_drm_msm_files
 
+libfreedreno_drm_virtio_files = files(
+  'virtio/msm_proto.h',
+  'virtio/virtio_bo.c',
+  'virtio/virtio_device.c',
+  'virtio/virtio_pipe.c',
+  'virtio/virtio_priv.h',
+  'virtio/virtio_ringbuffer.c',
+  'virtio/virtio_ringbuffer.h',
+)
+if with_freedreno_virtio
+  libfreedreno_drm_files += libfreedreno_drm_virtio_files
+  libfreedreno_drm_flags += '-DHAVE_FREEDRENO_VIRTIO'
+  libfreedreno_drm_includes += inc_virtio_gpu
+endif
+
 libfreedreno_drm = static_library(
   'freedreno_drm',
   [

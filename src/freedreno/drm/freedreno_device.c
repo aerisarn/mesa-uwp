@@ -34,11 +34,14 @@
 #include "freedreno_priv.h"
 
 struct fd_device *msm_device_new(int fd, drmVersionPtr version);
+#if HAVE_FREEDRENO_VIRTIO
+struct fd_device *virtio_device_new(int fd, drmVersionPtr version);
+#endif
 
 struct fd_device *
 fd_device_new(int fd)
 {
-   struct fd_device *dev;
+   struct fd_device *dev = NULL;
    drmVersionPtr version;
 
    /* figure out if we are kgsl or msm drm driver: */
@@ -53,20 +56,25 @@ fd_device_new(int fd)
       if (version->version_major != 1) {
          ERROR_MSG("unsupported version: %u.%u.%u", version->version_major,
                    version->version_minor, version->version_patchlevel);
-         dev = NULL;
          goto out;
       }
 
       dev = msm_device_new(fd, version);
-      dev->version = version->version_minor;
+#if HAVE_FREEDRENO_VIRTIO
+   } else if (!strcmp(version->name, "virtio_gpu")) {
+      DEBUG_MSG("virtio_gpu DRM device");
+      dev = virtio_device_new(fd, version);
+#endif
 #if HAVE_FREEDRENO_KGSL
    } else if (!strcmp(version->name, "kgsl")) {
       DEBUG_MSG("kgsl DRM device");
       dev = kgsl_device_new(fd);
 #endif
-   } else {
-      ERROR_MSG("unknown device: %s", version->name);
-      dev = NULL;
+   }
+
+   if (!dev) {
+      INFO_MSG("unsupported device: %s", version->name);
+      goto out;
    }
 
 out:
@@ -114,6 +122,10 @@ fd_device_open(void)
    int fd;
 
    fd = drmOpenWithType("msm", NULL, DRM_NODE_RENDER);
+#if HAVE_FREEDRENO_VIRTIO
+   if (fd < 0)
+      fd = drmOpenWithType("virtio_gpu", NULL, DRM_NODE_RENDER);
+#endif
    if (fd < 0)
       return NULL;
 
