@@ -1,9 +1,10 @@
 <panxml arch="9">
-  <enum name="Instancing">
-    <value name="Per-instance" value="1"/>
-    <value name="POT Divisor" value="2"/>
-    <value name="NPOT Divisor" value="3"/>
-    <value name="Per-vertex" value="17"/>
+  <enum name="Attribute Type">
+    <value name="1D" value="1"/>
+    <value name="1D POT Divisor" value="2"/>
+    <value name="1D NPOT Divisor" value="3"/>
+    <value name="1D Primitive Index Buffer" value="5"/>
+    <value name="Vertex packet" value="6"/>
   </enum>
 
   <enum name="Channel">
@@ -407,23 +408,29 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <enum name="Attribute Frequency">
+    <value name="Vertex" value="0"/>
+    <value name="Instance" value="1"/>
+  </enum>
+
   <struct name="Attribute" size="8" align="32">
     <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Attribute"/>
-    <field name="Instancing" size="6" start="0:4" type="Instancing"/>
-    <!-- <field name="Offset enable" size="1" start="9" type="bool" default="true"/> -->
+    <field name="Attribute type" size="4" start="0:4" type="Attribute Type"/>
+    <field name="Offset enable" size="1" start="8" type="bool"/>
     <field name="Format" size="22" start="0:10" type="Pixel Format"/>
-    <field name="Table" size="4" start="1:0" type="uint"/>
-    <!-- no instancing, modulo: 0x0
-         instancing, divisor : 0x4
-    -->
-    <field name="Unk 2" size="24" start="1:4" type="hex"/>
+    <field name="Table" size="6" start="1:0" type="uint"/>
+    <field name="Frequency" size="2" start="1:6" type="Attribute Frequency"/> <!-- Internally, ID select -->
     <field name="Divisor R" size="5" start="1:24" type="uint"/>
     <field name="Divisor E" size="1" start="1:29" type="bool"/>
     <field name="Offset" size="32" start="2:0" type="int"/>
     <field name="Buffer index" size="32" start="3:0" type="uint"/> 
     <field name="Stride" size="32" start="4:0" type="uint"/>
+
+    <!-- Vertex packet buffer only -->
+    <field name="Packet stride" size="16" start="4:0" type="uint" modifier="shr(6)"/>
+    <field name="Attribute stride" size="16" start="4:16" type="uint"/>
+
     <field name="Divisor D" size="32" start="5:0" type="uint"/>
-    <field name="Unk 6" size="64" start="6:0" type="hex"/>
   </struct>
 
   <struct name="Buffer" size="8" align="32">
