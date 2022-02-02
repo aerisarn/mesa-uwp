@@ -545,7 +545,11 @@ try_setup_point( struct lp_setup_context *setup,
             plane[3].c++; /* bottom-left */
       }
 
-      return lp_setup_bin_triangle(setup, point, &bbox, &bbox, nr_planes, viewport_index);
+      int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
+                        (bbox.y1 - (bbox.y0 & ~3)));
+      boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
+
+      return lp_setup_bin_triangle(setup, point, use_32bits, &bbox, nr_planes, viewport_index);
 
    } else {
       struct lp_rast_rectangle *point;

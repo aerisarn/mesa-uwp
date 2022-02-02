@@ -600,6 +600,9 @@ try_setup_line( struct lp_setup_context *setup,
       return TRUE;
    }
 
+   int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
+                     (bbox.y1 - (bbox.y0 & ~3)));
+   boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
    bboxpos = bbox;
 
    /* Can safely discard negative regions:
@@ -715,7 +718,7 @@ try_setup_line( struct lp_setup_context *setup,
       lp_setup_add_scissor_planes(scissor, &plane[4], s_planes, setup->multisample);
    }
 
-   return lp_setup_bin_triangle(setup, line, &bbox, &bboxpos, nr_planes, viewport_index);
+   return lp_setup_bin_triangle(setup, line, use_32bits, &bboxpos, nr_planes, viewport_index);
 }
 
 

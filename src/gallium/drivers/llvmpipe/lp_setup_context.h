@@ -279,7 +279,7 @@ lp_setup_analyse_triangles(struct lp_setup_context *setup,
 boolean
 lp_setup_bin_triangle(struct lp_setup_context *setup,
                       struct lp_rast_triangle *tri,
-                      const struct u_rect *bboxorig,
+                      boolean use_32bits,
                       const struct u_rect *bbox,
                       int nr_planes,
                       unsigned scissor_index);

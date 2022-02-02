@@ -277,7 +277,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
    struct lp_rast_triangle *tri;
    struct lp_rast_plane *plane;
    const struct u_rect *scissor = NULL;
-   struct u_rect bbox, bboxpos;
+   struct u_rect bbox;
    boolean s_planes[4];
    unsigned tri_bytes;
    int nr_planes = 3;
@@ -330,14 +330,20 @@ do_triangle_ccw(struct lp_setup_context *setup,
       return TRUE;
    }
 
-   bboxpos = bbox;
+   int max_szorig = ((bbox.x1 - (bbox.x0 & ~3)) |
+                     (bbox.y1 - (bbox.y0 & ~3)));
+   boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
+#if defined(_ARCH_PWR8) && UTIL_ARCH_LITTLE_ENDIAN
+   boolean pwr8_limit_check = (bbox.x1 - bbox.x0) <= MAX_FIXED_LENGTH32 &&
+      (bbox.y1 - bbox.y0) <= MAX_FIXED_LENGTH32;
+#endif
 
    /* Can safely discard negative regions, but need to keep hold of
     * information about when the triangle extends past screen
     * boundaries.  See trimmed_box in lp_setup_bin_triangle().
     */
-   bboxpos.x0 = MAX2(bboxpos.x0, 0);
-   bboxpos.y0 = MAX2(bboxpos.y0, 0);
+   bbox.x0 = MAX2(bbox.x0, 0);
+   bbox.y0 = MAX2(bbox.y0, 0);
 
    nr_planes = 3;
    /*
@@ -345,7 +351,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
     * edges if the bounding box of the tri is fully inside that edge.
     */
    scissor = &setup->draw_regions[viewport_index];
-   scissor_planes_needed(s_planes, &bboxpos, scissor);
+   scissor_planes_needed(s_planes, &bbox, scissor);
    nr_planes += s_planes[0] + s_planes[1] + s_planes[2] + s_planes[3];
 
    tri = lp_setup_alloc_triangle(scene,
@@ -570,8 +576,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
     */
    if (setup->fb.width <= MAX_FIXED_LENGTH32 &&
        setup->fb.height <= MAX_FIXED_LENGTH32 &&
-       (bbox.x1 - bbox.x0) <= MAX_FIXED_LENGTH32 &&
-       (bbox.y1 - bbox.y0) <= MAX_FIXED_LENGTH32) {
+       pwr8_limit_check) {
       unsigned int bottom_edge;
       __m128i vertx, verty;
       __m128i shufx, shufy;
@@ -738,7 +743,7 @@ do_triangle_ccw(struct lp_setup_context *setup,
       lp_setup_add_scissor_planes(scissor, &plane[3], s_planes, setup->multisample);
    }
 
-   return lp_setup_bin_triangle(setup, tri, &bbox, &bboxpos, nr_planes, viewport_index);
+   return lp_setup_bin_triangle(setup, tri, use_32bits, &bbox, nr_planes, viewport_index);
 }
 
 /*
@@ -772,7 +777,7 @@ floor_pot(uint32_t n)
 boolean
 lp_setup_bin_triangle(struct lp_setup_context *setup,
                       struct lp_rast_triangle *tri,
-                      const struct u_rect *bboxorig,
+                      boolean use_32bits,
                       const struct u_rect *bbox,
                       int nr_planes,
                       unsigned viewport_index)
@@ -800,9 +805,6 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
     * plane math may overflow or not with the 32bit rasterization
     * functions depends on the original extent of the triangle.
     */
-   int max_szorig = ((bboxorig->x1 - (bboxorig->x0 & ~3)) |
-                     (bboxorig->y1 - (bboxorig->y0 & ~3)));
-   boolean use_32bits = max_szorig <= MAX_FIXED_LENGTH32;
 
    /* Now apply scissor, etc to the bounding box.  Could do this
     * earlier, but it confuses the logic for tri-16 and would force
