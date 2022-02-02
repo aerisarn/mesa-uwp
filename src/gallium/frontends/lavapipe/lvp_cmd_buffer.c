@@ -169,8 +169,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_EndCommandBuffer(
    VkCommandBuffer                             commandBuffer)
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
-   cmd_buffer->status = LVP_CMD_BUFFER_STATUS_EXECUTABLE;
-   return VK_SUCCESS;
+
+   cmd_buffer->status =
+      cmd_buffer->vk.cmd_queue.error == VK_SUCCESS ?
+      LVP_CMD_BUFFER_STATUS_EXECUTABLE :
+      LVP_CMD_BUFFER_STATUS_INVALID;
+
+   return cmd_buffer->vk.cmd_queue.error;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateCommandPool(
