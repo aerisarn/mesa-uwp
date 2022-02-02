@@ -3,7 +3,7 @@
 deqp = "/deqp/external/vulkancts/modules/vulkan/deqp-vk"
 caselists = ["/deqp/mustpass/vk-master.txt"]
 skips = ["install/freedreno-a630-premerge-skips.txt"]
-fraction = 9
+fraction = 13
 renderer_check = "Turnip Adreno .* 630"
 
 # force-gmem testing
@@ -13,7 +13,7 @@ deqp = "/deqp/external/vulkancts/modules/vulkan/deqp-vk"
 caselists = ["/deqp/mustpass/vk-master.txt"]
 skips = ["install/freedreno-a630-premerge-skips.txt"]
 prefix = "gmem-"
-fraction = 15
+fraction = 30
 [deqp.env]
 TU_DEBUG = "gmem,forcebin"
 
@@ -24,7 +24,7 @@ caselists = ["/deqp/mustpass/vk-master.txt"]
 skips = ["install/freedreno-a630-premerge-skips.txt"]
 include = ["dEQP-VK.renderpass.*"]
 prefix = "bypass-"
-fraction = 15
+fraction = 30
 [deqp.env]
 TU_DEBUG = "sysmem"
 
