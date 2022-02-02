@@ -1506,8 +1506,7 @@ dlist_alloc(struct gl_context *ctx, OpCode opcode, GLuint bytes, bool align8)
 
    /* If this node needs to start on an 8-byte boundary, pad the last node. */
    if (sizeof(void *) == 8 && align8 &&
-       ctx->ListState.CurrentPos % 2 == 1 &&
-       ctx->ListState.CurrentPos + 1 + numNodes + contNodes <= BLOCK_SIZE) {
+       ctx->ListState.CurrentPos % 2 == 1) {
       Node *last = ctx->ListState.CurrentBlock + ctx->ListState.CurrentPos -
                    ctx->ListState.LastInstSize;
       last->InstSize++;
