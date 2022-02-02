@@ -702,7 +702,7 @@ pandecode_bifrost_texture(
 #if PAN_ARCH >= 9
         /* TODO: count */
         for (unsigned i = 0; i < 4; ++i)
-                DUMP_ADDR(SURFACE_WITH_STRIDE, temp.surfaces + i * pan_size(SURFACE_WITH_STRIDE), "Surface %u:\n", i);
+                DUMP_ADDR(PLANE, temp.surfaces + i * pan_size(PLANE), "Plane %u:\n", i);
 #else
         struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(temp.surfaces);
         unsigned nr_samples = temp.dimension == MALI_TEXTURE_DIMENSION_3D ?

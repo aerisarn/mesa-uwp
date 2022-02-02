@@ -50,7 +50,7 @@
     <value name="Depth/stencil" value="7"/>
     <value name="Shader" value="8"/>
     <value name="Buffer" value="9"/>
-    <value name="Surface" value="10"/>
+    <value name="Plane" value="10"/>
   </enum>
 
   <enum name="Draw Mode">
@@ -640,13 +640,163 @@
     <field name="Border Color A" size="32" start="7:0" type="uint/float" default="0.0"/>
   </struct>
 
-  <!-- Size unknown. Need to check what happens with mipmapping, cubemapping, 3D... -->
-  <struct name="Surface with Stride" size="32" align="32">
-    <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Surface"/>
-    <field name="Unk 1" size="28" start="0:4" type="hex" default="0x0200021"/> <!-- XXX: maybe counts -->
-    <field name="Surface stride" size="32" start="1:0" type="int"/>
+  <enum name="Plane Type">
+    <value name="Null" value="0"/>
+    <value name="Generic" value="1"/>
+    <value name="ASTC 2D" value="4"/>
+    <value name="ASTC 3D" value="5"/>
+    <value name="AFBC" value="6"/>
+    <value name="Chroma 2p" value="8"/>
+  </enum>
+
+  <enum name="Clump Ordering">
+    <value name="Tiled U-Interleaved" value="1"/>
+    <value name="Linear" value="2"/>
+  </enum>
+
+  <enum name="Clump Format">
+    <value name="RAW8" value="0"/>
+    <value name="RAW16" value="1"/>
+    <value name="RAW32" value="2"/>
+    <value name="RAW64" value="3"/>
+    <value name="RAW128" value="4"/>
+
+    <value name="RAW24" value="8"/>
+    <value name="RAW48" value="9"/>
+    <value name="RAW96" value="10"/>
+
+    <value name="D32X32" value="16"/>
+    <value name="X32D32" value="17"/>
+    <value name="X32S8X24" value="18"/>
+    <value name="X24S8X32" value="19"/>
+    <value name="X24S8" value="20"/>
+    <value name="S8X24" value="21"/>
+    <value name="S8" value="22"/>
+
+    <value name="L4A4" value="24"/>
+    <value name="L8A8" value="25"/>
+    <value name="A8" value="26"/>
+
+    <value name="ETC2 RGB8" value="32"/>
+    <value name="ETC2 R11 UNORM" value="33"/>
+    <value name="ETC2 R11 SNORM" value="34"/>
+    <value name="ETC2 RG11 UNORM" value="35"/>
+    <value name="ETC2 RG11 SNORM" value="36"/>
+    <value name="ETC2 RGBA8" value="37"/>
+    <value name="ETC2 RGB8A1" value="38"/>
+
+    <value name="BC1 UNORM" value="48"/>
+    <value name="BC2 UNORM" value="49"/>
+    <value name="BC3 UNORM" value="50"/>
+    <value name="BC4 UNORM" value="51"/>
+    <value name="BC4 SNORM" value="52"/>
+    <value name="BC5 UNORM" value="53"/>
+    <value name="BC5 SNORM" value="54"/>
+    <value name="BC6H UF16" value="55"/>
+    <value name="BC6H SF16" value="56"/>
+    <value name="BC7 UNORM" value="57"/>
+
+    <value name="Y8 UV8 422" value="64"/>
+    <value name="Y10 UV10 422" value="65"/>
+    <value name="Y16 UV16 422" value="67"/>
+
+    <value name="Y8 UV8 420" value="72"/>
+    <value name="Y10 UV10 420" value="73"/>
+    <value name="Y16 UV16 420" value="75"/>
+    <value name="YUV420 10x6" value="76"/>
+
+    <value name="RAW10" value="120"/>
+    <value name="RAW12" value="121"/>
+
+    <value name="R8G8B8G8" value="124"/>
+    <value name="G8R8G8B8" value="125"/>
+  </enum>
+
+  <enum name="AFBC Superblock Size">
+    <value name="16x16" value="0"/>
+    <value name="32x8" value="1"/>
+    <value name="64x4" value="2"/>
+  </enum>
+
+  <enum name="AFBC Compression Mode">
+    <value name="R8" value="0"/>
+    <value name="R8G8" value="3"/>
+    <value name="R5G6B5" value="4"/>
+    <value name="R4G4B4A4" value="5"/>
+    <value name="R5G5B5A1" value="6"/>
+    <value name="R8G8B8" value="9"/>
+    <value name="R8G8B8A8" value="10"/>
+    <value name="R10G10B10A2" value="11"/>
+    <value name="R11G11B10" value="12"/>
+    <value name="S8" value="14"/>
+    <value name="X24S8" value="15"/>
+
+    <value name="YUV420 6c8" value="32"/>
+    <value name="YUV420 2c8" value="34"/>
+    <value name="YUV420 1c8" value="35"/>
+
+    <value name="YUV422 4c8" value="37"/>
+    <value name="YUV422 2c8" value="38"/>
+    <value name="YUV422 1c8" value="39"/>
+
+    <value name="YUV420 6c10" value="40"/>
+    <value name="YUV420 2c10" value="42"/>
+    <value name="YUV420 1c10" value="43"/>
+
+    <value name="YUV422 4c10" value="45"/>
+    <value name="YUV422 2c10" value="46"/>
+    <value name="YUV422 1c10" value="47"/>
+  </enum>
+
+  <struct name="Plane AFBC Overlay" size="8">
+    <field name="Superblock size" size="3" start="0:8" type="AFBC Superblock Size"/>
+
+    <field name="YTR" size="1" start="0:16" type="bool"/>
+    <field name="Split block" size="1" start="0:17" type="bool"/>
+    <field name="Alpha hint" size="1" start="0:18" type="bool"/>
+    <field name="Tiled header" size="1" start="0:19" type="bool"/>
+    <field name="Prefetch" size="1" start="0:20" type="bool"/>
+    <field name="Compression mode" size="6" start="0:26" type="AFBC Compression Mode"/>
+
+    <field name="Header stride" size="32" start="5:0" type="uint"/>
+  </struct>
+
+  <struct name="Plane ASTC 2D Overlay" size="8">
+    <field name="Block width" size="3" start="26" type="ASTC 2D Dimension"/>
+    <field name="Block height" size="3" start="29" type="ASTC 2D Dimension"/>
+  </struct>
+
+  <struct name="Plane ASTC 3D Overlay" size="8">
+    <field name="Block width" size="2" start="26" type="ASTC 3D Dimension"/>
+    <field name="Block height" size="2" start="28" type="ASTC 3D Dimension"/>
+    <field name="Block depth" size="2" start="30" type="ASTC 3D Dimension"/>
+  </struct>
+
+  <struct name="Plane ASTC Overlay" size="8">
+    <field name="Decode Narrow" size="1" start="24" type="bool"/>
+    <field name="Decode HDR" size="1" start="25" type="bool"/>
+
+    <field name="2D" size="32" start="0" type="Plane ASTC 2D Overlay"/>
+    <field name="3D" size="32" start="0" type="Plane ASTC 3D Overlay"/>
+  </struct>
+
+  <struct name="Plane" size="8" align="32">
+    <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Plane"/>
+    <field name="Plane type" size="4" start="0:4" type="Plane Type"/>
+
+    <field name="AFBC" size="32" start="0:0" type="Plane AFBC Overlay"/>
+    <field name="ASTC" size="32" start="0:0" type="Plane ASTC Overlay"/>
+
+    <!-- Not AFBC -->
+    <field name="Clump ordering" size="4" start="0:8" type="Clump Ordering"/>
+
+    <!-- Generic, Chroma 2p -->
+    <field name="Clump format" size="8" start="24" type="Clump Format"/>
+
+    <field name="Size" size="32" start="1:0" type="uint"/>
     <field name="Pointer" size="64" start="2:0" type="address"/>
-    <field name="Row stride" size="32" start="4:0" type="int"/>
+    <field name="Row stride" size="32" start="4:0" type="uint"/>
+    <field name="Slice stride" size="32" start="6:0" type="int"/>
   </struct>
 
   <struct name="Texture" size="8" align="32">
