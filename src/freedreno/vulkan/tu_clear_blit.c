@@ -559,13 +559,13 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
    struct ir3_shader_variant *so =
       ir3_shader_get_variant(sh, &key, false, false, &created);
 
-   struct tu6_global *global = dev->global_bo.map;
+   struct tu6_global *global = dev->global_bo->map;
 
    assert(*offset + so->info.sizedwords <= ARRAY_SIZE(global->shaders));
    dev->global_shaders[idx] = so;
    memcpy(&global->shaders[*offset], so->bin,
           sizeof(uint32_t) * so->info.sizedwords);
-   dev->global_shader_va[idx] = dev->global_bo.iova +
+   dev->global_shader_va[idx] = dev->global_bo->iova +
       gb_offset(shaders[*offset]);
    *offset += align(so->info.sizedwords, 32);
 }

@@ -1402,8 +1402,8 @@ tu_trace_create_ts_buffer(struct u_trace_context *utctx, uint32_t size)
    struct tu_device *device =
       container_of(utctx, struct tu_device, trace_context);
 
-   struct tu_bo *bo = ralloc(NULL, struct tu_bo);
-   tu_bo_init_new(device, bo, size, false);
+   struct tu_bo *bo;
+   tu_bo_init_new(device, &bo, size, false);
 
    return bo;
 }
@@ -1416,7 +1416,6 @@ tu_trace_destroy_ts_buffer(struct u_trace_context *utctx, void *timestamps)
    struct tu_bo *bo = timestamps;
 
    tu_bo_finish(device, bo);
-   ralloc_free(bo);
 }
 
 static void
@@ -1674,6 +1673,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->fd = physical_device->local_fd;
 
    mtx_init(&device->bo_mutex, mtx_plain);
+   u_rwlock_init(&device->dma_bo_lock);
    pthread_mutex_init(&device->submit_mutex, NULL);
 
 #ifndef TU_USE_KGSL
@@ -1716,6 +1716,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_queues;
    }
 
+   /* Initialize sparse array for refcounting imported BOs */
+   util_sparse_array_init(&device->bo_map, sizeof(struct tu_bo), 512);
+
    /* initial sizes, these will increase if there is overflow */
    device->vsc_draw_strm_pitch = 0x1000 + VSC_PAD;
    device->vsc_prim_strm_pitch = 0x4000 + VSC_PAD;
@@ -1731,13 +1734,13 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_global_bo;
    }
 
-   result = tu_bo_map(device, &device->global_bo);
+   result = tu_bo_map(device, device->global_bo);
    if (result != VK_SUCCESS) {
       vk_startup_errorf(device->instance, result, "BO map");
       goto fail_global_bo_map;
    }
 
-   struct tu6_global *global = device->global_bo.map;
+   struct tu6_global *global = device->global_bo->map;
    tu_init_clear_blit_shaders(device);
    global->predicate = 0;
    tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK],
@@ -1868,11 +1871,11 @@ fail_perfcntrs_pass_alloc:
 fail_pipeline_cache:
    tu_destroy_clear_blit_shaders(device);
 fail_global_bo_map:
-   tu_bo_finish(device, &device->global_bo);
-   vk_free(&device->vk.alloc, device->bo_idx);
+   tu_bo_finish(device, device->global_bo);
    vk_free(&device->vk.alloc, device->bo_list);
 fail_global_bo:
    ir3_compiler_destroy(device->compiler);
+   util_sparse_array_finish(&device->bo_map);
 
 fail_queues:
    for (unsigned i = 0; i < TU_MAX_QUEUE_FAMILIES; i++) {
@@ -1882,6 +1885,7 @@ fail_queues:
          vk_free(&device->vk.alloc, device->queues[i]);
    }
 
+   u_rwlock_destroy(&device->dma_bo_lock);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
    return result;
@@ -1906,7 +1910,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++) {
       if (device->scratch_bos[i].initialized)
-         tu_bo_finish(device, &device->scratch_bos[i].bo);
+         tu_bo_finish(device, device->scratch_bos[i].bo);
    }
 
    tu_destroy_clear_blit_shaders(device);
@@ -1924,9 +1928,11 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    tu_autotune_fini(&device->autotune, device);
 
+   util_sparse_array_finish(&device->bo_map);
+   u_rwlock_destroy(&device->dma_bo_lock);
+
    pthread_cond_destroy(&device->timeline_cond);
    vk_free(&device->vk.alloc, device->bo_list);
-   vk_free(&device->vk.alloc, device->bo_idx);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 }
@@ -1941,7 +1947,7 @@ tu_get_scratch_bo(struct tu_device *dev, uint64_t size, struct tu_bo **bo)
    for (unsigned i = index; i < ARRAY_SIZE(dev->scratch_bos); i++) {
       if (p_atomic_read(&dev->scratch_bos[i].initialized)) {
          /* Fast path: just return the already-allocated BO. */
-         *bo = &dev->scratch_bos[i].bo;
+         *bo = dev->scratch_bos[i].bo;
          return VK_SUCCESS;
       }
    }
@@ -1957,7 +1963,7 @@ tu_get_scratch_bo(struct tu_device *dev, uint64_t size, struct tu_bo **bo)
     */
    if (dev->scratch_bos[index].initialized) {
       mtx_unlock(&dev->scratch_bos[index].construct_mtx);
-      *bo = &dev->scratch_bos[index].bo;
+      *bo = dev->scratch_bos[index].bo;
       return VK_SUCCESS;
    }
 
@@ -1973,7 +1979,7 @@ tu_get_scratch_bo(struct tu_device *dev, uint64_t size, struct tu_bo **bo)
 
    mtx_unlock(&dev->scratch_bos[index].construct_mtx);
 
-   *bo = &dev->scratch_bos[index].bo;
+   *bo = dev->scratch_bos[index].bo;
    return VK_SUCCESS;
 }
 
@@ -2123,10 +2129,10 @@ tu_AllocateMemory(VkDevice _device,
 
 
    if (result == VK_SUCCESS) {
-      mem_heap_used = p_atomic_add_return(&mem_heap->used, mem->bo.size);
+      mem_heap_used = p_atomic_add_return(&mem_heap->used, mem->bo->size);
       if (mem_heap_used > mem_heap->size) {
-         p_atomic_add(&mem_heap->used, -mem->bo.size);
-         tu_bo_finish(device, &mem->bo);
+         p_atomic_add(&mem_heap->used, -mem->bo->size);
+         tu_bo_finish(device, mem->bo);
          result = vk_errorf(device, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                             "Out of heap memory");
       }
@@ -2153,8 +2159,8 @@ tu_FreeMemory(VkDevice _device,
    if (mem == NULL)
       return;
 
-   p_atomic_add(&device->physical_device->heap.used, -mem->bo.size);
-   tu_bo_finish(device, &mem->bo);
+   p_atomic_add(&device->physical_device->heap.used, -mem->bo->size);
+   tu_bo_finish(device, mem->bo);
    vk_object_free(&device->vk, pAllocator, mem);
 }
 
@@ -2175,13 +2181,13 @@ tu_MapMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   if (!mem->bo.map) {
-      result = tu_bo_map(device, &mem->bo);
+   if (!mem->bo->map) {
+      result = tu_bo_map(device, mem->bo);
       if (result != VK_SUCCESS)
          return result;
    }
 
-   *ppData = mem->bo.map + offset;
+   *ppData = mem->bo->map + offset;
    return VK_SUCCESS;
 }
 
@@ -2292,8 +2298,8 @@ tu_BindBufferMemory2(VkDevice device,
       TU_FROM_HANDLE(tu_buffer, buffer, pBindInfos[i].buffer);
 
       if (mem) {
-         buffer->bo = &mem->bo;
-         buffer->iova = mem->bo.iova + pBindInfos[i].memoryOffset;
+         buffer->bo = mem->bo;
+         buffer->iova = mem->bo->iova + pBindInfos[i].memoryOffset;
       } else {
          buffer->bo = NULL;
       }
@@ -2311,8 +2317,8 @@ tu_BindImageMemory2(VkDevice device,
       TU_FROM_HANDLE(tu_device_memory, mem, pBindInfos[i].memory);
 
       if (mem) {
-         image->bo = &mem->bo;
-         image->iova = mem->bo.iova + pBindInfos[i].memoryOffset;
+         image->bo = mem->bo;
+         image->iova = mem->bo->iova + pBindInfos[i].memoryOffset;
       } else {
          image->bo = NULL;
          image->iova = 0;
@@ -2350,7 +2356,7 @@ tu_CreateEvent(VkDevice _device,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   result = tu_bo_map(device, &event->bo);
+   result = tu_bo_map(device, event->bo);
    if (result != VK_SUCCESS)
       goto fail_map;
 
@@ -2359,7 +2365,7 @@ tu_CreateEvent(VkDevice _device,
    return VK_SUCCESS;
 
 fail_map:
-   tu_bo_finish(device, &event->bo);
+   tu_bo_finish(device, event->bo);
 fail_alloc:
    vk_object_free(&device->vk, pAllocator, event);
    return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -2376,7 +2382,7 @@ tu_DestroyEvent(VkDevice _device,
    if (!event)
       return;
 
-   tu_bo_finish(device, &event->bo);
+   tu_bo_finish(device, event->bo);
    vk_object_free(&device->vk, pAllocator, event);
 }
 
@@ -2385,7 +2391,7 @@ tu_GetEventStatus(VkDevice _device, VkEvent _event)
 {
    TU_FROM_HANDLE(tu_event, event, _event);
 
-   if (*(uint64_t*) event->bo.map == 1)
+   if (*(uint64_t*) event->bo->map == 1)
       return VK_EVENT_SET;
    return VK_EVENT_RESET;
 }
@@ -2394,7 +2400,7 @@ VKAPI_ATTR VkResult VKAPI_CALL
 tu_SetEvent(VkDevice _device, VkEvent _event)
 {
    TU_FROM_HANDLE(tu_event, event, _event);
-   *(uint64_t*) event->bo.map = 1;
+   *(uint64_t*) event->bo->map = 1;
 
    return VK_SUCCESS;
 }
@@ -2403,7 +2409,7 @@ VKAPI_ATTR VkResult VKAPI_CALL
 tu_ResetEvent(VkDevice _device, VkEvent _event)
 {
    TU_FROM_HANDLE(tu_event, event, _event);
-   *(uint64_t*) event->bo.map = 0;
+   *(uint64_t*) event->bo->map = 0;
 
    return VK_SUCCESS;
 }
@@ -2524,7 +2530,7 @@ tu_init_sampler(struct tu_device *device,
       border_color = BITSET_FFS(device->custom_border_color);
       BITSET_CLEAR(device->custom_border_color, border_color);
       mtx_unlock(&device->mutex);
-      tu6_pack_border_color(device->global_bo.map + gb_offset(bcolor[border_color]),
+      tu6_pack_border_color(device->global_bo->map + gb_offset(bcolor[border_color]),
                             &custom_border_color->customBorderColor,
                             pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
       border_color += TU_BORDER_COLOR_BUILTIN;
@@ -2690,7 +2696,7 @@ tu_GetMemoryFdKHR(VkDevice _device,
           pGetFdInfo->handleType ==
              VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
 
-   int prime_fd = tu_bo_export_dmabuf(device, &memory->bo);
+   int prime_fd = tu_bo_export_dmabuf(device, memory->bo);
    if (prime_fd < 0)
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 

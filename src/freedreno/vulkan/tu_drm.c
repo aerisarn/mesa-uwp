@@ -196,12 +196,6 @@ tu_bo_init(struct tu_device *dev,
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
    }
 
-   *bo = (struct tu_bo) {
-      .gem_handle = gem_handle,
-      .size = size,
-      .iova = iova,
-   };
-
    mtx_lock(&dev->bo_mutex);
    uint32_t idx = dev->bo_count++;
 
@@ -218,39 +212,32 @@ tu_bo_init(struct tu_device *dev,
       dev->bo_list_size = new_len;
    }
 
-   /* grow the "bo idx" list (maps gem handles to index in the bo list) */
-   if (bo->gem_handle >= dev->bo_idx_size) {
-      uint32_t new_len = bo->gem_handle + 256;
-      uint32_t *new_ptr =
-         vk_realloc(&dev->vk.alloc, dev->bo_idx, new_len * sizeof(*dev->bo_idx),
-                    8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
-      if (!new_ptr)
-         goto fail_bo_idx;
-
-      dev->bo_idx = new_ptr;
-      dev->bo_idx_size = new_len;
-   }
-
-   dev->bo_idx[bo->gem_handle] = idx;
    dev->bo_list[idx] = (struct drm_msm_gem_submit_bo) {
       .flags = MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE |
                COND(dump, MSM_SUBMIT_BO_DUMP),
       .handle = gem_handle,
       .presumed = iova,
    };
+
+   *bo = (struct tu_bo) {
+      .gem_handle = gem_handle,
+      .size = size,
+      .iova = iova,
+      .refcnt = 1,
+      .bo_list_idx = idx,
+   };
+
    mtx_unlock(&dev->bo_mutex);
 
    return VK_SUCCESS;
 
-fail_bo_idx:
-   vk_free(&dev->vk.alloc, dev->bo_list);
 fail_bo_list:
    tu_gem_close(dev, gem_handle);
    return VK_ERROR_OUT_OF_HOST_MEMORY;
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
+tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
                enum tu_bo_alloc_flags flags)
 {
    /* TODO: Choose better flags. As of 2018-11-12, freedreno/drm/msm_bo.c
@@ -269,12 +256,23 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
    if (ret)
       return vk_error(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   return tu_bo_init(dev, bo, req.handle, size, flags & TU_BO_ALLOC_ALLOW_DUMP);
+   struct tu_bo* bo = tu_device_lookup_bo(dev, req.handle);
+   assert(bo && bo->gem_handle == 0);
+
+   VkResult result =
+      tu_bo_init(dev, bo, req.handle, size, flags & TU_BO_ALLOC_ALLOW_DUMP);
+
+   if (result != VK_SUCCESS)
+      memset(bo, 0, sizeof(*bo));
+   else
+      *out_bo = bo;
+
+   return result;
 }
 
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,
-                  struct tu_bo *bo,
+                  struct tu_bo **out_bo,
                   uint64_t size,
                   int prime_fd)
 {
@@ -284,13 +282,42 @@ tu_bo_init_dmabuf(struct tu_device *dev,
    if (real_size < 0 || (uint64_t) real_size < size)
       return vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
+   /* Importing the same dmabuf several times would yield the same
+    * gem_handle. Thus there could be a race when destroying
+    * BO and importing the same dmabuf from different threads.
+    * We must not permit the creation of dmabuf BO and its release
+    * to happen in parallel.
+    */
+   u_rwlock_wrlock(&dev->dma_bo_lock);
+
    uint32_t gem_handle;
    int ret = drmPrimeFDToHandle(dev->fd, prime_fd,
                                 &gem_handle);
-   if (ret)
+   if (ret) {
+      u_rwlock_wrunlock(&dev->dma_bo_lock);
       return vk_error(dev, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+   }
 
-   return tu_bo_init(dev, bo, gem_handle, size, false);
+   struct tu_bo* bo = tu_device_lookup_bo(dev, gem_handle);
+
+   if (bo->refcnt != 0) {
+      p_atomic_inc(&bo->refcnt);
+      u_rwlock_wrunlock(&dev->dma_bo_lock);
+
+      *out_bo = bo;
+      return VK_SUCCESS;
+   }
+
+   VkResult result = tu_bo_init(dev, bo, gem_handle, size, false);
+
+   if (result != VK_SUCCESS)
+      memset(bo, 0, sizeof(*bo));
+   else
+      *out_bo = bo;
+
+   u_rwlock_wrunlock(&dev->dma_bo_lock);
+
+   return result;
 }
 
 int
@@ -328,17 +355,35 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
 {
    assert(bo->gem_handle);
 
+   u_rwlock_rdlock(&dev->dma_bo_lock);
+
+   if (!p_atomic_dec_zero(&bo->refcnt)) {
+      u_rwlock_rdunlock(&dev->dma_bo_lock);
+      return;
+   }
+
    if (bo->map)
       munmap(bo->map, bo->size);
 
    mtx_lock(&dev->bo_mutex);
-   uint32_t idx = dev->bo_idx[bo->gem_handle];
    dev->bo_count--;
-   dev->bo_list[idx] = dev->bo_list[dev->bo_count];
-   dev->bo_idx[dev->bo_list[idx].handle] = idx;
+   dev->bo_list[bo->bo_list_idx] = dev->bo_list[dev->bo_count];
+
+   struct tu_bo* exchanging_bo = tu_device_lookup_bo(dev, dev->bo_list[bo->bo_list_idx].handle);
+   exchanging_bo->bo_list_idx = bo->bo_list_idx;
+
    mtx_unlock(&dev->bo_mutex);
 
-   tu_gem_close(dev, bo->gem_handle);
+   /* Our BO structs are stored in a sparse array in the physical device,
+    * so we don't want to free the BO pointer, instead we want to reset it
+    * to 0, to signal that array entry as being free.
+    */
+   uint32_t gem_handle = bo->gem_handle;
+   memset(bo, 0, sizeof(*bo));
+
+   tu_gem_close(dev, gem_handle);
+
+   u_rwlock_rdunlock(&dev->dma_bo_lock);
 }
 
 extern const struct vk_sync_type tu_timeline_sync_type;
@@ -833,8 +878,7 @@ tu_fill_msm_gem_submit(struct tu_device *dev,
                        struct tu_cs_entry *cs_entry)
 {
    cmd->type = MSM_SUBMIT_CMD_BUF;
-   cmd->submit_idx =
-      dev->bo_idx[cs_entry->bo->gem_handle];
+   cmd->submit_idx = cs_entry->bo->bo_list_idx;
    cmd->submit_offset = cs_entry->offset;
    cmd->size = cs_entry->size;
    cmd->pad = 0;

@@ -77,7 +77,7 @@ tu6_lazy_emit_tessfactor_addr(struct tu_cmd_buffer *cmd)
 
    assert(cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-   tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo.iova));
+   tu_cs_emit_regs(&cmd->cs, A6XX_PC_TESSFACTOR_ADDR(.qword = cmd->device->tess_bo->iova));
    cmd->state.tessfactor_addr_set = true;
 }
 
@@ -896,10 +896,10 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_disable_draw_states(cmd, cs);
 
    tu_cs_emit_regs(cs,
-                   A6XX_SP_TP_BORDER_COLOR_BASE_ADDR(.bo = &dev->global_bo,
+                   A6XX_SP_TP_BORDER_COLOR_BASE_ADDR(.bo = dev->global_bo,
                                                      .bo_offset = gb_offset(bcolor_builtin)));
    tu_cs_emit_regs(cs,
-                   A6XX_SP_PS_TP_BORDER_COLOR_BASE_ADDR(.bo = &dev->global_bo,
+                   A6XX_SP_PS_TP_BORDER_COLOR_BASE_ADDR(.bo = dev->global_bo,
                                                         .bo_offset = gb_offset(bcolor_builtin)));
 
    /* VSC buffers:
@@ -911,7 +911,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
     */
    mtx_lock(&dev->mutex);
 
-   struct tu6_global *global = dev->global_bo.map;
+   struct tu6_global *global = dev->global_bo->map;
 
    uint32_t vsc_draw_overflow = global->vsc_draw_overflow;
    uint32_t vsc_prim_overflow = global->vsc_prim_overflow;
@@ -4831,7 +4831,7 @@ tu_barrier(struct tu_cmd_buffer *cmd,
       tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
       tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
                      CP_WAIT_REG_MEM_0_POLL_MEMORY);
-      tu_cs_emit_qw(cs, event->bo.iova); /* POLL_ADDR_LO/HI */
+      tu_cs_emit_qw(cs, event->bo->iova); /* POLL_ADDR_LO/HI */
       tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(1));
       tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0u));
       tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(20));
@@ -4883,13 +4883,13 @@ write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
 
    if (!(stageMask & ~top_of_pipe_flags)) {
       tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
-      tu_cs_emit_qw(cs, event->bo.iova); /* ADDR_LO/HI */
+      tu_cs_emit_qw(cs, event->bo->iova); /* ADDR_LO/HI */
       tu_cs_emit(cs, value);
    } else {
       /* Use a RB_DONE_TS event to wait for everything to complete. */
       tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 4);
       tu_cs_emit(cs, CP_EVENT_WRITE_0_EVENT(RB_DONE_TS));
-      tu_cs_emit_qw(cs, event->bo.iova);
+      tu_cs_emit_qw(cs, event->bo->iova);
       tu_cs_emit(cs, value);
    }
 }

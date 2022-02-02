@@ -51,6 +51,7 @@
 #include "util/list.h"
 #include "util/log.h"
 #include "util/macros.h"
+#include "util/sparse_array.h"
 #include "util/u_atomic.h"
 #include "util/u_dynarray.h"
 #include "util/xmlconfig.h"
@@ -356,6 +357,11 @@ struct tu_bo
    uint64_t size;
    uint64_t iova;
    void *map;
+
+#ifndef TU_USE_KGSL
+   int32_t refcnt;
+   uint32_t bo_list_idx;
+#endif
 };
 
 enum global_shader {
@@ -400,7 +406,7 @@ struct tu6_global
    struct bcolor_entry bcolor_builtin[TU_BORDER_COLOR_BUILTIN], bcolor[];
 };
 #define gb_offset(member) offsetof(struct tu6_global, member)
-#define global_iova(cmd, member) ((cmd)->device->global_bo.iova + gb_offset(member))
+#define global_iova(cmd, member) ((cmd)->device->global_bo->iova + gb_offset(member))
 
 /* extra space in vsc draw/prim streams */
 #define VSC_PAD 0x40
@@ -427,19 +433,19 @@ struct tu_device
     * should be impossible to go beyond 48 bits.
     */
    struct {
-      struct tu_bo bo;
+      struct tu_bo *bo;
       mtx_t construct_mtx;
       bool initialized;
    } scratch_bos[48 - MIN_SCRATCH_BO_SIZE_LOG2];
 
-   struct tu_bo global_bo;
+   struct tu_bo *global_bo;
 
    /* the blob seems to always use 8K factor and 128K param sizes, copy them */
 #define TU_TESS_FACTOR_SIZE (8 * 1024)
 #define TU_TESS_PARAM_SIZE (128 * 1024)
 #define TU_TESS_BO_SIZE (TU_TESS_FACTOR_SIZE + TU_TESS_PARAM_SIZE)
    /* Lazily allocated, protected by the device mutex. */
-   struct tu_bo tess_bo;
+   struct tu_bo *tess_bo;
 
    struct ir3_shader_variant *global_shaders[GLOBAL_SH_COUNT];
    uint64_t global_shader_va[GLOBAL_SH_COUNT];
@@ -452,9 +458,27 @@ struct tu_device
    /* bo list for submits: */
    struct drm_msm_gem_submit_bo *bo_list;
    /* map bo handles to bo list index: */
-   uint32_t *bo_idx;
-   uint32_t bo_count, bo_list_size, bo_idx_size;
+   uint32_t bo_count, bo_list_size;
    mtx_t bo_mutex;
+   /* protects imported BOs creation/freeing */
+   struct u_rwlock dma_bo_lock;
+
+   /* This array holds all our 'struct tu_bo' allocations. We use this
+    * so we can add a refcount to our BOs and check if a particular BO
+    * was already allocated in this device using its GEM handle. This is
+    * necessary to properly manage BO imports, because the kernel doesn't
+    * refcount the underlying BO memory.
+    *
+    * Specifically, when self-importing (i.e. importing a BO into the same
+    * device that created it), the kernel will give us the same BO handle
+    * for both BOs and we must only free it once when  both references are
+    * freed. Otherwise, if we are not self-importing, we get two different BO
+    * handles, and we want to free each one individually.
+    *
+    * The BOs in this map all have a refcnt with the reference counter and
+    * only self-imported BOs will ever have a refcnt > 1.
+    */
+   struct util_sparse_array bo_map;
 
    /* Command streams to set pass index to a scratch reg */
    struct tu_cs *perfcntrs_pass_cs;
@@ -506,11 +530,11 @@ enum tu_bo_alloc_flags
 };
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
+tu_bo_init_new(struct tu_device *dev, struct tu_bo **bo, uint64_t size,
                enum tu_bo_alloc_flags flags);
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,
-                  struct tu_bo *bo,
+                  struct tu_bo **bo,
                   uint64_t size,
                   int fd);
 int
@@ -519,6 +543,12 @@ void
 tu_bo_finish(struct tu_device *dev, struct tu_bo *bo);
 VkResult
 tu_bo_map(struct tu_device *dev, struct tu_bo *bo);
+
+static inline struct tu_bo *
+tu_device_lookup_bo(struct tu_device *device, uint32_t handle)
+{
+   return (struct tu_bo *) util_sparse_array_get(&device->bo_map, handle);
+}
 
 /* Get a scratch bo for use inside a command buffer. This will always return
  * the same bo given the same size or similar sizes, so only one scratch bo
@@ -650,7 +680,7 @@ struct tu_device_memory
 {
    struct vk_object_base base;
 
-   struct tu_bo bo;
+   struct tu_bo *bo;
 };
 
 struct tu_descriptor_range
@@ -687,7 +717,7 @@ struct tu_descriptor_pool
 {
    struct vk_object_base base;
 
-   struct tu_bo bo;
+   struct tu_bo *bo;
    uint64_t current_offset;
    uint64_t size;
 
@@ -1190,7 +1220,7 @@ tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
 struct tu_event
 {
    struct vk_object_base base;
-   struct tu_bo bo;
+   struct tu_bo *bo;
 };
 
 struct tu_push_constant_range
@@ -1257,7 +1287,7 @@ struct tu_pipeline
    struct tu_cs cs;
 
    /* Separate BO for private memory since it should GPU writable */
-   struct tu_bo pvtmem_bo;
+   struct tu_bo *pvtmem_bo;
 
    struct tu_pipeline_layout *layout;
 
@@ -1729,7 +1759,7 @@ struct tu_query_pool
    uint32_t stride;
    uint64_t size;
    uint32_t pipeline_statistics;
-   struct tu_bo bo;
+   struct tu_bo *bo;
 
    /* For performance query */
    const struct fd_perfcntr_group *perf_group;

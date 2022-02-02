@@ -50,7 +50,7 @@
 static inline uint8_t *
 pool_base(struct tu_descriptor_pool *pool)
 {
-   return pool->host_bo ?: pool->bo.map;
+   return pool->host_bo ?: pool->bo->map;
 }
 
 static uint32_t
@@ -504,7 +504,7 @@ tu_descriptor_set_create(struct tu_device *device,
        * resets via the pool. */
       if (pool->current_offset + layout_size <= pool->size) {
          set->mapped_ptr = (uint32_t*)(pool_base(pool) + pool->current_offset);
-         set->va = pool->host_bo ? 0 : pool->bo.iova + pool->current_offset;
+         set->va = pool->host_bo ? 0 : pool->bo->iova + pool->current_offset;
 
          if (!pool->host_memory_base) {
             pool->entries[pool->entry_count].offset = pool->current_offset;
@@ -529,7 +529,7 @@ tu_descriptor_set_create(struct tu_device *device,
          }
 
          set->mapped_ptr = (uint32_t*)(pool_base(pool) + offset);
-         set->va = pool->host_bo ? 0 : pool->bo.iova + offset;
+         set->va = pool->host_bo ? 0 : pool->bo->iova + offset;
 
          memmove(&pool->entries[index + 1], &pool->entries[index],
             sizeof(pool->entries[0]) * (pool->entry_count - index));
@@ -666,7 +666,7 @@ tu_CreateDescriptorPool(VkDevice _device,
          if (ret)
             goto fail_alloc;
 
-         ret = tu_bo_map(device, &pool->bo);
+         ret = tu_bo_map(device, pool->bo);
          if (ret)
             goto fail_map;
       } else {
@@ -687,7 +687,7 @@ tu_CreateDescriptorPool(VkDevice _device,
    return VK_SUCCESS;
 
 fail_map:
-   tu_bo_finish(device, &pool->bo);
+   tu_bo_finish(device, pool->bo);
 fail_alloc:
    vk_object_free(&device->vk, pAllocator, pool);
    return ret;
@@ -719,7 +719,7 @@ tu_DestroyDescriptorPool(VkDevice _device,
       if (pool->host_bo)
          vk_free2(&device->vk.alloc, pAllocator, pool->host_bo);
       else
-         tu_bo_finish(device, &pool->bo);
+         tu_bo_finish(device, pool->bo);
    }
 
    vk_object_free(&device->vk, pAllocator, pool);

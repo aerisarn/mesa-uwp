@@ -111,13 +111,13 @@ struct PACKED perf_query_slot {
 /* Returns the IOVA of a given uint64_t field in a given slot of a query
  * pool. */
 #define query_iova(type, pool, query, field)                         \
-   pool->bo.iova + pool->stride * (query) + offsetof(type, field)
+   pool->bo->iova + pool->stride * (query) + offsetof(type, field)
 
 #define occlusion_query_iova(pool, query, field)                     \
    query_iova(struct occlusion_query_slot, pool, query, field)
 
 #define pipeline_stat_query_iova(pool, query, field)                 \
-   pool->bo.iova + pool->stride * (query) +                            \
+   pool->bo->iova + pool->stride * (query) +                            \
    offsetof(struct pipeline_stat_query_slot, field)
 
 #define primitive_query_iova(pool, query, field, i)                  \
@@ -125,7 +125,7 @@ struct PACKED perf_query_slot {
    offsetof(struct primitive_slot_value, values[i])
 
 #define perf_query_iova(pool, query, field, i)                          \
-   pool->bo.iova + pool->stride * (query) +                             \
+   pool->bo->iova + pool->stride * (query) +                             \
    sizeof(struct query_slot) +                                   \
    sizeof(struct perfcntr_query_slot) * (i) +                          \
    offsetof(struct perfcntr_query_slot, field)
@@ -134,11 +134,11 @@ struct PACKED perf_query_slot {
    query_iova(struct query_slot, pool, query, available)
 
 #define query_result_iova(pool, query, type, i)                            \
-   pool->bo.iova + pool->stride * (query) +                          \
+   pool->bo->iova + pool->stride * (query) +                          \
    sizeof(struct query_slot) + sizeof(type) * (i)
 
 #define query_result_addr(pool, query, type, i)                            \
-   pool->bo.map + pool->stride * (query) +                             \
+   pool->bo->map + pool->stride * (query) +                             \
    sizeof(struct query_slot) + sizeof(type) * (i)
 
 #define query_is_available(slot) slot->available
@@ -185,7 +185,7 @@ fd_perfcntr_type_to_vk_storage[] = {
  */
 static void* slot_address(struct tu_query_pool *pool, uint32_t query)
 {
-   return (char*)pool->bo.map + query * pool->stride;
+   return (char*)pool->bo->map + query * pool->stride;
 }
 
 static void
@@ -323,15 +323,15 @@ tu_CreateQueryPool(VkDevice _device,
       return result;
    }
 
-   result = tu_bo_map(device, &pool->bo);
+   result = tu_bo_map(device, pool->bo);
    if (result != VK_SUCCESS) {
-      tu_bo_finish(device, &pool->bo);
+      tu_bo_finish(device, pool->bo);
       vk_object_free(&device->vk, pAllocator, pool);
       return result;
    }
 
    /* Initialize all query statuses to unavailable */
-   memset(pool->bo.map, 0, pool->bo.size);
+   memset(pool->bo->map, 0, pool->bo->size);
 
    pool->type = pCreateInfo->queryType;
    pool->stride = slot_size;
@@ -353,7 +353,7 @@ tu_DestroyQueryPool(VkDevice _device,
    if (!pool)
       return;
 
-   tu_bo_finish(device, &pool->bo);
+   tu_bo_finish(device, pool->bo);
    vk_object_free(&device->vk, pAllocator, pool);
 }
 

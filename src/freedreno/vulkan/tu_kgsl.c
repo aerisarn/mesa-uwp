@@ -83,7 +83,7 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
+tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
                enum tu_bo_alloc_flags flags)
 {
    struct kgsl_gpumem_alloc_id req = {
@@ -102,18 +102,23 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size,
                        "GPUMEM_ALLOC_ID failed (%s)", strerror(errno));
    }
 
+   struct tu_bo* bo = tu_device_lookup_bo(dev, req.id);
+   assert(bo && bo->gem_handle == 0);
+
    *bo = (struct tu_bo) {
       .gem_handle = req.id,
       .size = req.mmapsize,
       .iova = req.gpuaddr,
    };
 
+   *out_bo = bo;
+
    return VK_SUCCESS;
 }
 
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,
-                  struct tu_bo *bo,
+                  struct tu_bo **out_bo,
                   uint64_t size,
                   int fd)
 {
@@ -144,11 +149,16 @@ tu_bo_init_dmabuf(struct tu_device *dev,
       return vk_errorf(dev, VK_ERROR_OUT_OF_DEVICE_MEMORY,
                        "Failed to get dma-buf info (%s)\n", strerror(errno));
 
+   struct tu_bo* bo = tu_device_lookup_bo(dev, req.id);
+   assert(bo && bo->gem_handle == 0);
+
    *bo = (struct tu_bo) {
       .gem_handle = req.id,
       .size = info_req.size,
       .iova = info_req.gpuaddr,
    };
+
+   *out_bo = bo;
 
    return VK_SUCCESS;
 }
@@ -189,6 +199,9 @@ tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
    struct kgsl_gpumem_free_id req = {
       .id = bo->gem_handle
    };
+
+   /* Tell sparse array that entry is free */
+   memset(bo, 0, sizeof(*bo));
 
    safe_ioctl(dev->physical_device->local_fd, IOCTL_KGSL_GPUMEM_FREE_ID, &req);
 }

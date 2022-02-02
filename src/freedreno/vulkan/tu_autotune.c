@@ -362,8 +362,7 @@ tu_autotune_init(struct tu_autotune *at, struct tu_device *dev)
                                     renderpass_key_equals);
    u_rwlock_init(&at->ht_lock);
 
-   at->results_bo = malloc(sizeof(struct tu_bo));
-   result = tu_bo_init_new(dev, at->results_bo,
+   result = tu_bo_init_new(dev, &at->results_bo,
                            sizeof(struct tu_autotune_results),
                            TU_BO_ALLOC_NO_FLAGS);
    if (result != VK_SUCCESS) {
@@ -389,7 +388,6 @@ fail_map_bo:
    tu_bo_finish(dev, at->results_bo);
 
 fail_bo:
-   free(at->results_bo);
    u_rwlock_destroy(&at->ht_lock);
    _mesa_hash_table_destroy(at->ht, NULL);
 
@@ -428,7 +426,6 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
    _mesa_hash_table_destroy(at->ht, NULL);
    u_rwlock_destroy(&at->ht_lock);
    tu_bo_finish(dev, at->results_bo);
-   free(at->results_bo);
 }
 
 bool

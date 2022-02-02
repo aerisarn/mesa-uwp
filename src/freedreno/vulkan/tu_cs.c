@@ -64,7 +64,6 @@ tu_cs_finish(struct tu_cs *cs)
 {
    for (uint32_t i = 0; i < cs->bo_count; ++i) {
       tu_bo_finish(cs->device, cs->bos[i]);
-      free(cs->bos[i]);
    }
 
    free(cs->entries);
@@ -107,12 +106,10 @@ tu_cs_add_bo(struct tu_cs *cs, uint32_t size)
       cs->bos = new_bos;
    }
 
-   struct tu_bo *new_bo = malloc(sizeof(struct tu_bo));
-   if (!new_bo)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   struct tu_bo *new_bo;
 
    VkResult result =
-      tu_bo_init_new(cs->device, new_bo, size * sizeof(uint32_t),
+      tu_bo_init_new(cs->device, &new_bo, size * sizeof(uint32_t),
                      TU_BO_ALLOC_GPU_READ_ONLY | TU_BO_ALLOC_ALLOW_DUMP);
    if (result != VK_SUCCESS) {
       free(new_bo);
@@ -122,7 +119,6 @@ tu_cs_add_bo(struct tu_cs *cs, uint32_t size)
    result = tu_bo_map(cs->device, new_bo);
    if (result != VK_SUCCESS) {
       tu_bo_finish(cs->device, new_bo);
-      free(new_bo);
       return result;
    }
 
@@ -408,7 +404,6 @@ tu_cs_reset(struct tu_cs *cs)
 
    for (uint32_t i = 0; i + 1 < cs->bo_count; ++i) {
       tu_bo_finish(cs->device, cs->bos[i]);
-      free(cs->bos[i]);
    }
 
    if (cs->bo_count) {
