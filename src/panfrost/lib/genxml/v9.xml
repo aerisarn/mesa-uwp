@@ -549,12 +549,14 @@
     <field name="Point size array format" size="2" start="0:11" type="Point Size Array Format"/>
     <field name="Primitive Index Enable" size="1" start="0:13" type="bool"/>
     <field name="Primitive Index Writeback" size="1" start="0:14" type="bool"/>
-    <field name="First provoking vertex" size="1" start="0:15" type="bool" default="true"/>
+    <field name="Allow rotating primitives" size="1" start="0:15" type="bool" default="true"/>
     <field name="Low Depth Cull" size="1" start="0:16" type="bool" default="true"/>
     <field name="High Depth Cull" size="1" start="0:17" type="bool" default="true"/>
     <field name="Secondary Shader" size="1" start="0:18" type="bool"/>
     <field name="Primitive restart" size="2" start="0:19" type="Primitive Restart"/>
-    <field name="Job Task Split" size="6" start="0:26" type="uint"/>
+    <field name="Layer index enable" size="1" start="0:20" type="bool"/>
+    <field name="Scissor array enable" size="1" start="0:21" type="bool"/>
+
     <field name="Base vertex offset" size="32" start="1:0" type="uint"/>
     <field name="Primitive Restart Index" size="32" start="2:0" type="uint"/>
     <field name="Index count" size="32" start="3:0" type="uint"/>
