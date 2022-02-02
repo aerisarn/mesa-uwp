@@ -23,6 +23,11 @@
     <value name="Shader" value="3"/>
   </enum>
 
+  <enum name="Depth Clamp Mode">
+    <value name="[0, 1]" value="1"/>
+    <value name="Bounds" value="2"/>
+  </enum>
+
   <enum name="Job Type">
     <value name="Not started" value="0"/>
     <value name="Null" value="1"/>
@@ -1321,8 +1326,8 @@
     <field name="Back value mask" size="8" start="1:24" type="hex"/>
     <field name="Front reference value" size="8" start="2:0" type="hex"/>
     <field name="Back reference value" size="8" start="2:8" type="hex"/>
-    <field name="Unk 1" size="1" start="4:22" type="bool" default="true"/>
-    <field name="Unk 2" size="1" start="4:23" type="bool" default="true"/>
+    <field name="Depth cull enable" size="1" start="4:22" type="bool" default="true"/>
+    <field name="Depth clamp mode" size="2" start="4:23" type="Depth Clamp Mode" default="[0, 1]"/>
     <field name="Depth source" size="2" start="4:25" type="Depth Source" default="Fixed function"/>
     <field name="Depth write enable" size="1" start="4:27" type="bool"/>
     <field name="Depth bias enable" size="1" start="4:28" type="bool"/>
