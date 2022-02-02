@@ -398,23 +398,6 @@
     <value name="3D" value="3"/>
   </enum>
 
-  <enum name="Texture Layout">
-    <value name="Linear" value="0"/>
-    <!-- TODO: confirm others -->
-    <!--- 16x16 block u-interleaved -->
-    <value name="Tiled" value="1"/>
-    <value name="AFBC" value="12"/>
-  </enum>
-
-  <enum name="AFBC Surface Flag">
-    <value name="YTR" value="1"/>
-    <value name="Split Block" value="2"/>
-    <value name="Wide Block" value="4"/>
-    <value name="Tiled Header" value="8"/>
-    <value name="Prefetch" value="16"/>
-    <value name="Check Payload Range" value="32"/>
-  </enum>
-
   <enum name="Wrap Mode">
     <value name="Repeat" value="8"/>
     <value name="Clamp to Edge" value="9"/>
