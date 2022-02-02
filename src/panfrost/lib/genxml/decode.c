@@ -1287,21 +1287,21 @@ pandecode_dcd(const struct MALI_DRAW *p,
 }
 
 static void
-pandecode_idvs_helper_job(const struct pandecode_mapped_memory *mem,
+pandecode_malloc_vertex_job(const struct pandecode_mapped_memory *mem,
                           mali_ptr job, unsigned gpu_id)
 {
-        struct mali_idvs_helper_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        struct mali_malloc_vertex_job_packed *PANDECODE_PTR_VAR(p, mem, job);
 
-        DUMP_SECTION(IDVS_HELPER_JOB, PRIMITIVE, p, "Primitive:\n");
-        DUMP_SECTION(IDVS_HELPER_JOB, COUNTS, p, "Counts:\n");
-        DUMP_SECTION(IDVS_HELPER_JOB, TILER, p, "Tiler:\n");
-        DUMP_SECTION(IDVS_HELPER_JOB, SCISSOR, p, "Scissor:\n");
-        DUMP_SECTION(IDVS_HELPER_JOB, PRIMITIVE_SIZE, p, "Primitive Size:\n");
-        DUMP_SECTION(IDVS_HELPER_JOB, INDICES, p, "Indices:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, PRIMITIVE, p, "Primitive:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, COUNTS, p, "Counts:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, TILER, p, "Tiler:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, SCISSOR, p, "Scissor:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, PRIMITIVE_SIZE, p, "Primitive Size:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, INDICES, p, "Indices:\n");
 
-        pan_section_unpack(p, IDVS_HELPER_JOB, DRAW, dcd);
+        pan_section_unpack(p, MALLOC_VERTEX_JOB, DRAW, dcd);
 
-        pan_section_unpack(p, IDVS_HELPER_JOB, TILER, tiler_ptr);
+        pan_section_unpack(p, MALLOC_VERTEX_JOB, TILER, tiler_ptr);
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
         if (tiler_ptr.address)
@@ -1391,8 +1391,8 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
 			pandecode_compute_job(mem, jc_gpu_va, gpu_id);
 			break;
 
-		case MALI_JOB_TYPE_IDVS_HELPER:
-			pandecode_idvs_helper_job(mem, jc_gpu_va, gpu_id);
+		case MALI_JOB_TYPE_MALLOC_VERTEX:
+			pandecode_malloc_vertex_job(mem, jc_gpu_va, gpu_id);
 			break;
 #endif
 

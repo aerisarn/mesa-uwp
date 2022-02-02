@@ -28,13 +28,10 @@
     <value name="Write value" value="2"/>
     <value name="Cache flush" value="3"/>
     <value name="Compute" value="4"/>
-    <!--- Traditional vertex jobs removed in Valhall, use compute job -->
-    <value name="Geometry" value="6"/>
     <value name="Tiler" value="7"/>
-    <value name="Fused" value="8"/>
     <value name="Fragment" value="9"/>
     <value name="Indexed vertex" value="10"/>
-    <value name="IDVS helper" value="11"/> 
+    <value name="Malloc vertex" value="11"/>
   </enum>
 
   <enum name="Shader stage">
@@ -1442,7 +1439,7 @@
     <field name="Address" size="64" start="0:0" type="address"/>
   </struct>
 
-  <aggregate name="IDVS Helper Job" size="384" align="128">
+  <aggregate name="Malloc Vertex Job" size="384" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Primitive" offset="32" type="Primitive"/>
     <section name="Counts" offset="48" type="IDVS Counts"/>
