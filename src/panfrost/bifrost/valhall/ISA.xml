@@ -657,12 +657,13 @@
 
   <ins name="BRANCHZI" title="Compare to zero and branch indirect" opcode="0x2F" unit="CVT">
     <desc>
-      Jump to an indirectly specified address. Used to jump to blend shaders at
-      the end of a fragment shader.
+      Jump to an indirectly specified (absolute or relative) address. Used to
+      jump to blend shaders at the end of a fragment shader.
     </desc>
     <src>Value to compare against zero</src>
     <src>Branch target</src>
     <mod name="eq" start="36" size="1"/>
+    <mod name="absolute" start="40" size="1"/>
   </ins>
 
   <ins name="BARRIER" title="Execution and memory barrier" opcode="0x45" unit="NONE">
