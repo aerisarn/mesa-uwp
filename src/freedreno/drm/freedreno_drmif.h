@@ -115,6 +115,7 @@ struct fd_fence {
 
 struct fd_device *fd_device_new(int fd);
 struct fd_device *fd_device_new_dup(int fd);
+struct fd_device *fd_device_open(void);
 struct fd_device *fd_device_ref(struct fd_device *dev);
 void fd_device_purge(struct fd_device *dev);
 void fd_device_del(struct fd_device *dev);

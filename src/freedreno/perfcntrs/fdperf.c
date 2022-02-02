@@ -118,13 +118,12 @@ delta(uint32_t a, uint32_t b)
 static void
 find_device(void)
 {
-   int ret, fd;
+   int ret;
 
-   fd = drmOpenWithType("msm", NULL, DRM_NODE_RENDER);
-   if (fd < 0)
+   dev.dev = fd_device_open();
+   if (!dev.dev)
       err(1, "could not open drm device");
 
-   dev.dev = fd_device_new(fd);
    dev.pipe = fd_pipe_new(dev.dev, FD_PIPE_3D);
 
    uint64_t val;

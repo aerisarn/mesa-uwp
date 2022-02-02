@@ -106,6 +106,20 @@ fd_device_new_dup(int fd)
    return dev;
 }
 
+/* Convenience helper to open the drm device and return new fd_device:
+ */
+struct fd_device *
+fd_device_open(void)
+{
+   int fd;
+
+   fd = drmOpenWithType("msm", NULL, DRM_NODE_RENDER);
+   if (fd < 0)
+      return NULL;
+
+   return fd_device_new(fd);
+}
+
 struct fd_device *
 fd_device_ref(struct fd_device *dev)
 {
