@@ -413,6 +413,14 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <enum name="Tile Render Order">
+    <value name="Z Order" value="0"/>
+    <value name="Horizontal" value="1"/>
+    <value name="Vertical" value="2"/>
+    <value name="Reverse horizontal" value="5"/>
+    <value name="Reverse vertical" value="6"/>
+  </enum>
+
   <enum name="Task Axis">
     <value name="X" value="0"/>
     <value name="Y" value="1"/>
@@ -1216,6 +1224,7 @@
     <field name="Bound Min Y" size="12" start="0:16" type="uint"/>
     <field name="Bound Max X" size="12" start="1:0" type="uint"/>
     <field name="Bound Max Y" size="12" start="1:16" type="uint"/>
+    <field name="Tile render order" size="3" start="1:28" type="Tile Render Order" default="Z Order"/>
     <field name="Has Tile Enable Map" size="1" start="1:31" type="bool"/>
     <field name="Framebuffer" size="64" start="2:0" type="address"/>
     <field name="Tile Enable Map" size="64" start="4:0" type="address"/>
