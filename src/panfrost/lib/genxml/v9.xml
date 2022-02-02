@@ -89,37 +89,6 @@
   </enum>
 
   <enum name="Format">
-    <value name="ETC2 RGB8" value="1"/>
-    <value name="ETC2 R11 UNORM" value="2"/>
-    <value name="ETC2 RGBA8" value="3"/>
-    <value name="ETC2 RG11 UNORM" value="4"/>
-    <value name="R4A4 UNORM" value="5"/>
-    <value name="A4R4 UNORM" value="6"/>
-    <value name="BC1 UNORM" value="7"/>
-    <value name="BC2 UNORM" value="8"/>
-    <value name="BC3 UNORM" value="9"/>
-    <value name="BC4 UNORM" value="10"/>
-    <value name="BC4 SNORM" value="11"/>
-    <value name="BC5 UNORM" value="12"/>
-    <value name="BC5 SNORM" value="13"/>
-    <value name="BC6H UF16" value="14"/>
-    <value name="BC6H SF16" value="15"/>
-    <value name="BC7 UNORM" value="16"/>
-    <value name="ETC2 R11 SNORM" value="17"/>
-    <value name="ETC2 RG11 SNORM" value="18"/>
-    <value name="ETC2 RGB8A1" value="19"/>
-    <value name="ASTC 3D LDR" value="20"/>
-    <value name="ASTC 3D HDR" value="21"/>
-    <value name="ASTC 2D LDR" value="22"/>
-    <value name="ASTC 2D HDR" value="23"/>
-    <value name="R8A8 UNORM" value="24"/>
-    <value name="A8R8 UNORM" value="25"/>
-    <value name="A8 UNORM" value="26"/>
-    <!--- 27 reserved -->
-    <value name="RAW10" value="28"/>
-    <value name="RAW12" value="29"/>
-    <value name="R8G8B8G8" value="30"/>
-    <value name="G8R8G8B8" value="31"/>
     <value name="YUV8" value="32"/>
     <value name="YUVA8" value="33"/>
     <value name="YUYV8" value="34"/>
@@ -131,7 +100,7 @@
     <value name="YUV10 A2" value="40"/>
     <value name="A2 YUV10" value="41"/>
     <value name="YUYAAYVYAA" value="42"/>
-    <!--- 43 reserved -->
+    <!--- TODO: revisit YUV -->
     <value name="YUYV10" value="44"/>
     <value name="VYUY10" value="45"/>
     <value name="Y10 UV10 422" value="46"/>
@@ -142,16 +111,7 @@
     <value name="VYUY16" value="51"/>
     <value name="Y10X6 U10X6V10X6 422" value="52"/>
     <value name="Y16 UV16 422" value="53"/>
-    <value name="Y10X6 U10X6V10X6 420" value="54"/>
     <value name="Y16 UV16 420" value="55"/>
-    <value name="Y8 UV8 BL 422" value="56"/>
-    <value name="Y8 UV8 BL 420" value="57"/>
-    <value name="CUSTOM YUV 2" value="58"/>
-    <value name="CUSTOM YUV 3" value="59"/>
-    <value name="CUSTOM YUV 4" value="60"/>
-    <value name="CUSTOM YUV 5" value="61"/>
-    <value name="ASTC 2D NARROW" value="62"/>
-    <value name="ASTC 3D NARROW" value="63"/>
     <value name="RGB565" value="64"/>
     <value name="RGB5 A1 UNORM" value="65"/>
     <value name="A1 BGR5 UNORM" value="66"/>
@@ -167,16 +127,10 @@
     <value name="Z32" value="76"/>
     <value name="Z24X8 UNORM" value="77"/>
     <value name="X8Z24" value="78"/>
-    <value name="X32 S8X24" value="79"/>
-    <value name="X24S8 X32" value="80"/>
     <value name="R32 FIXED" value="81"/>
     <value name="RG32 FIXED" value="82"/>
     <value name="RGB32 FIXED" value="83"/>
     <value name="RGBA32 FIXED" value="84"/>
-    <value name="X24S8" value="85"/>
-    <value name="S8X24" value="86"/>
-    <value name="Z32 X32" value="87"/>
-    <value name="X32 Z32" value="88"/>
     <value name="R11F G11F B10F" value="89"/>
     <value name="B10F G11F R11F" value="90"/>
     <value name="R9F G9F B9F E5F" value="91"/>
