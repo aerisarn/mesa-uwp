@@ -3034,7 +3034,7 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                          * alignment and skip over unused elements in result.
                          */
                         value_skips = (const_offset % 4) / (bit_size / 8);
-                        const_offset &= ~0xf;
+                        const_offset &= ~0x3;
                 }
         }
 
