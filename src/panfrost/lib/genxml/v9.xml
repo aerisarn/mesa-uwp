@@ -53,6 +53,13 @@
     <value name="Plane" value="10"/>
   </enum>
 
+  <enum name="Buffer Type">
+    <value name="Simple" value="1"/>
+    <value name="Tiler heap" value="2"/>
+    <value name="Structure" value="3"/>
+    <value name="Vertex packet" value="4"/>
+  </enum>
+
   <enum name="Draw Mode">
     <value name="None" value="0"/>
     <value name="Points" value="1"/>
@@ -487,9 +494,17 @@
 
   <struct name="Buffer" size="8" align="32">
     <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Buffer"/>
-    <field name="Unk 1" size="28" start="0:4" type="hex"/>
+    <field name="Buffer type" size="4" start="0:4" type="Buffer Type" default="Simple"/>
     <field name="Size" size="32" start="1:0" type="uint"/>
     <field name="Address" size="64" start="2:0" type="address"/>
+
+    <!-- Structured buffer only -->
+    <field name="Stride" size="32" start="4:0" type="uint"/>
+
+    <!-- Vertex packet buffer only -->
+    <field name="Packet stride" size="16" start="4:0" type="uint" modifier="shr(6)"/>
+    <field name="Attribute stride" size="16" start="4:16" type="uint"/>
+
   </struct>
 
   <enum name="Blend Operand A">
