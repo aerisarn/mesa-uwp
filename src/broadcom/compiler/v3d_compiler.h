@@ -720,6 +720,7 @@ struct v3d_compile {
         struct qblock *current_unifa_block;
         int32_t current_unifa_index;
         uint32_t current_unifa_offset;
+        bool current_unifa_is_ubo;
 
         /* State for whether we're executing on each channel currently.  0 if
          * yes, otherwise a block number + 1 that the channel jumped to.
