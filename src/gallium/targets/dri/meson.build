@@ -108,7 +108,9 @@ foreach d : [[with_gallium_kmsro, [
              [with_gallium_r300, 'r300_dri.so'],
              [with_gallium_r600, 'r600_dri.so'],
              [with_gallium_svga, 'vmwgfx_dri.so'],
-             [with_gallium_virgl, 'virtio_gpu_dri.so'],
+             [with_gallium_virgl or
+               (with_gallium_freedreno and with_freedreno_virtio),
+               'virtio_gpu_dri.so'],
              [with_gallium_lima, 'lima_dri.so'],
              [with_gallium_zink, 'zink_dri.so'],
              [with_gallium_d3d12, 'd3d12_dri.so'],
