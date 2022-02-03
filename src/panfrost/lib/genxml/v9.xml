@@ -960,11 +960,19 @@
     <value name="Early ZS always" value="3"/>
   </enum>
 
+  <enum name="Downscale">
+    <value name="None" value="0"/>
+    <value name="2x" value="1"/>
+    <value name="4x" value="2"/>
+  </enum>
+
   <struct name="Framebuffer Parameters" align="64">
     <field name="Pre Frame 0" size="3" start="0:0" type="Pre Post Frame Shader Mode"/>
     <field name="Pre Frame 1" size="3" start="0:3" type="Pre Post Frame Shader Mode"/>
     <field name="Post Frame" size="3" start="0:6" type="Pre Post Frame Shader Mode"/>
-    <field name="Unk 2" size="1" start="2:16" type="bool" default="true"/>
+    <field name="Downscale geometry" size="2" start="0:9" type="Downscale"/>
+    <field name="Internal layer index" size="8" start="0:24" type="uint"/>
+    <field name="Frame argument" size="64" start="2:0" type="hex"/>
     <field name="Sample Locations" size="64" start="4:0" type="address"/>
     <field name="Frame Shader DCDs" size="64" start="6:0" type="address"/>
     <field name="Width" size="16" start="8:0" type="uint" modifier="minus(1)"/>
@@ -977,8 +985,11 @@
     <field name="Sample Pattern" size="3" start="11:3" type="Sample Pattern"/>
     <field name="Tie-Break Rule" size="3" start="11:6" type="Tie-Break Rule"/>
     <field name="Effective Tile Size" size="4" start="11:9" type="uint" modifier="log2"/>
-    <field name="Unknown 11:13" size="3" start="11:13" type="uint" default="4"/>
-    <field name="Unknown 11:16" size="3" start="11:16" type="uint" default="3"/>
+    <field name="First provoking vertex" size="1" start="11:14" type="bool"/>
+    <field name="Point sprite coord origin max Y" size="1" start="11:15" type="bool" default="true"/>
+    <field name="Blend suppress Inf" size="1" start="11:16" type="bool"/>
+    <field name="Blend suppress NaN" size="1" start="11:17" type="bool"/>
+    <field name="Blend suppress denorm" size="1" start="11:18" type="bool"/>
     <field name="Render Target Count" size="4" start="11:19" type="uint" modifier="minus(1)"/>
     <field name="Color Buffer Allocation" size="8" start="11:24" type="uint" modifier="shr(10)"/>
     <field name="S Clear" size="8" start="12:0" type="uint"/>
