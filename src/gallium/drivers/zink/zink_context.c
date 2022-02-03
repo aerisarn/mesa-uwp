@@ -2440,6 +2440,7 @@ flush_batch(struct zink_context *ctx, bool sync)
    if (ctx->clears_enabled)
       /* start rp to do all the clears */
       zink_begin_render_pass(ctx);
+   bool conditional_render_active = ctx->render_condition.active;
    zink_stop_conditional_render(ctx);
    zink_end_render_pass(ctx);
    zink_end_batch(ctx, batch);
@@ -2464,6 +2465,8 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->oom_stall = false;
       ctx->dd->bindless_bound = false;
       ctx->di.bindless_refs_dirty = true;
+      if (conditional_render_active)
+         zink_start_conditional_render(ctx);
    }
 }
 
