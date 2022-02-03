@@ -413,6 +413,12 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <enum name="Task Axis">
+    <value name="X" value="0"/>
+    <value name="Y" value="1"/>
+    <value name="Z" value="2"/>
+  </enum>
+
   <enum name="Attribute Frequency">
     <value name="Vertex" value="0"/>
     <value name="Instance" value="1"/>
@@ -1272,15 +1278,15 @@
     <field name="Workgroup size X" start="0:0" size="10" type="uint" modifier="minus(1)"/>
     <field name="Workgroup size Y" start="0:10" size="10" type="uint" modifier="minus(1)"/>
     <field name="Workgroup size Z" start="0:20" size="10" type="uint" modifier="minus(1)"/>
-    <field name="Unk 0" start="0:30" size="2" type="uint"/>
-    <field name="Unk 1" start="1:0" size="32" type="hex"/> <!-- 0x8001 -->
+    <field name="Allow merging workgroups" start="0:31" size="1" type="bool"/>
+    <field name="Task increment" start="1:0" size="14" type="uint" default="1"/>
+    <field name="Task axis" start="1:14" size="2" type="Task Axis"/>
     <field name="Workgroup count X" start="2:0" size="32" type="uint"/>
     <field name="Workgroup count Y" start="3:0" size="32" type="uint"/>
     <field name="Workgroup count Z" start="4:0" size="32" type="uint"/>
-    <!-- TODO: Missing/unknown from Bifrost v7:
-      Thread group split
-      Job Task Split
-    -->
+    <field name="Offset X" start="5:0" size="32" type="uint"/>
+    <field name="Offset Y" start="6:0" size="32" type="uint"/>
+    <field name="Offset Z" start="7:0" size="32" type="uint"/>
     <field name="Compute" start="8:0" size="512" type="Shader Environment"/>
   </struct>
 
