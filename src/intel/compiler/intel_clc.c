@@ -109,7 +109,7 @@ print_u32_data(FILE *fp, const char *prefix, const char *arr_name,
    fprintf(fp, "\n};\n");
 }
 
-const char *
+static const char *
 reloc_type_str(enum brw_shader_reloc_type type)
 {
    switch (type) {
