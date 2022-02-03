@@ -787,47 +787,17 @@
     <value name="32 Per Thread" value="2"/>
   </enum>
 
-  <struct name="Compute Preload" size="1" no-direct-packing="true">
-    <field name="PC" size="1" start="6" type="bool"/> <!-- TODO: test -->
-    <field name="Local Invocation XY" size="1" start="7" type="bool"/>
-    <field name="Local Invocation Z" size="1" start="8" type="bool"/>
-    <field name="Work group X" size="1" start="9" type="bool"/>
-    <field name="Work group Y" size="1" start="10" type="bool"/>
-    <field name="Work group Z" size="1" start="11" type="bool"/>
-    <field name="Global Invocation X" size="1" start="12" type="bool"/>
-    <field name="Global Invocation Y" size="1" start="13" type="bool"/>
-    <field name="Global Invocation Z" size="1" start="14" type="bool"/>
-  </struct>
-
-  <enum name="Warp Limit">
-    <value name="None" value="0"/>
-    <value name="2" value="1"/>
-    <value name="4" value="2"/>
-    <value name="8" value="3"/>
-  </enum>
-
-  <struct name="Vertex Preload" size="1" no-direct-packing="true">
-    <field name="Warp limit" size="2" start="0" type="Warp Limit"/> <!-- TODO: test -->
-    <field name="PC" size="1" start="6" type="bool"/> <!-- TODO: test -->
-    <field name="Linear ID" size="1" start="11" type="bool"/>
-    <field name="Vertex ID" size="1" start="12" type="bool"/>
-    <field name="Instance ID" size="1" start="13" type="bool"/>
-  </struct>
-
-  <struct name="Fragment Preload" size="1" no-direct-packing="true">
-    <field name="PC" size="1" start="6" type="bool"/> <!-- TODO: test -->
-    <field name="Coverage mask type" size="1" start="7" type="bool"/> <!-- TODO: test -->
-    <field name="Primitive ID" size="1" start="9" type="bool"/> <!-- TODO: test -->
-    <field name="Primitive flags" size="1" start="10" type="bool"/>
-    <field name="Fragment position" size="1" start="11" type="bool"/>
-    <field name="Coverage" size="1" start="12" type="bool"/>
-    <field name="Sample mask/ID" size="1" start="13" type="bool"/>
-  </struct>
-
   <struct name="Preload" size="1">
-    <field name="Compute" size="32" start="0" type="Compute Preload"/>
-    <field name="Vertex" size="32" start="0" type="Vertex Preload"/>
-    <field name="Fragment" size="32" start="0" type="Fragment Preload"/>
+    <field name="R48-R63" size="16" start="0:0" type="hex"/>
+    <field name="R55" size="1" start="0:7" type="bool"/>
+    <field name="R56" size="1" start="0:8" type="bool"/>
+    <field name="R57" size="1" start="0:9" type="bool"/>
+    <field name="R58" size="1" start="0:10" type="bool"/>
+    <field name="R59" size="1" start="0:11" type="bool"/>
+    <field name="R60" size="1" start="0:12" type="bool"/>
+    <field name="R61" size="1" start="0:13" type="bool"/>
+    <field name="R62" size="1" start="0:14" type="bool"/>
+    <field name="R63" size="1" start="0:15" type="bool"/>
   </struct>
 
   <struct name="Shader Program" align="32">
