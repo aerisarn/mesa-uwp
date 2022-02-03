@@ -32,6 +32,8 @@
 #include "msm_kgsl.h"
 #include "vk_util.h"
 
+#include "util/debug.h"
+
 struct tu_syncobj {
    struct vk_object_base base;
    uint32_t timestamp;
@@ -244,7 +246,7 @@ tu_enumerate_devices(struct tu_instance *instance)
       ((info.chip_id >> 16) & 0xff) * 10 +
       ((info.chip_id >>  8) & 0xff);
    device->dev_id.chip_id = info.chip_id;
-   device->gmem_size = info.gmem_sizebytes;
+   device->gmem_size = env_var_as_unsigned("TU_GMEM", info.gmem_sizebytes);
    device->gmem_base = gmem_iova;
 
    device->heap.size = tu_get_system_heap_size();
