@@ -397,7 +397,9 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
    /* Lower again, this time after dead-variables to get more compact variable
     * layouts.
     */
+   nir->global_mem_size = 0;
    nir->scratch_size = 0;
+   nir->info.shared_size = 0;
    NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
               nir_var_shader_temp | nir_var_function_temp |
               nir_var_mem_shared | nir_var_mem_global | nir_var_mem_constant,
