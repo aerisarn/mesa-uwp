@@ -1069,19 +1069,17 @@
   </struct>
 
   <struct name="Render Target AFBC Overlay" size="16">
-    <field name="Header" size="64" start="4:0" type="address"/>
-    <field name="Row Stride" size="13" start="6:0" type="uint"/>
-    <field name="Chunk Size" size="12" start="7:0" type="uint"/>
-    <field name="AFBC Split Block Enable" size="1" start="7:18" type="bool"/>
-    <field name="AFBC Wide Block Enable" size="1" start="7:19" type="bool"/>
+    <field name="YUV Transform" size="1" start="2:0" type="bool"/>
+    <field name="Split block" size="1" start="2:1" type="bool"/>
+    <field name="Wide block" size="1" start="2:2" type="bool"/>
+    <field name="Reverse issue order" size="1" start="2:3" type="bool"/>
+    <field name="Front buffer" size="1" start="2:4" type="bool"/>
+    <field name="Alpha hint" size="1" start="2:5" type="bool"/>
+    <field name="Compression mode" size="6" start="2:10" type="AFBC Compression Mode"/>
 
-    <!-- Flag in v7 to effectively disable AFBC as a race condition workaround
-    when in-place rendering is used with the AFBC block size differing
-    from the effective tile size (XXX: does v6 need a different workaround?) -->
-    <field name="Reverse Issue Order" size="1" start="7:20" type="bool"/>
-    <field name="YUV Transform Enable" size="1" start="7:17" type="bool"/>
     <field name="Body" size="64" start="8:0" type="address"/>
-    <field name="Body Size" size="32" start="10:0" type="uint"/>
+    <field name="Row stride" size="32" start="10:0" type="uint"/>
+    <field name="Body offset" size="32" start="11:0" type="uint"/>
   </struct>
 
   <struct name="RT Clear">
