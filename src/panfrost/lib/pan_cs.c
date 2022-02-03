@@ -128,7 +128,9 @@ translate_zs_format(enum pipe_format in)
         case PIPE_FORMAT_Z24_UNORM_S8_UINT: return MALI_ZS_FORMAT_D24S8;
         case PIPE_FORMAT_Z24X8_UNORM: return MALI_ZS_FORMAT_D24X8;
         case PIPE_FORMAT_Z32_FLOAT: return MALI_ZS_FORMAT_D32;
+#if PAN_ARCH <= 7
         case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT: return MALI_ZS_FORMAT_D32_S8X24;
+#endif
         default: unreachable("Unsupported depth/stencil format.");
         }
 }
@@ -139,14 +141,18 @@ translate_s_format(enum pipe_format in)
 {
         switch (in) {
         case PIPE_FORMAT_S8_UINT: return MALI_S_FORMAT_S8;
-        case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-        case PIPE_FORMAT_S8X24_UINT:
-                return MALI_S_FORMAT_S8X24;
         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
         case PIPE_FORMAT_X24S8_UINT:
                 return MALI_S_FORMAT_X24S8;
+
+#if PAN_ARCH <= 7
+        case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+        case PIPE_FORMAT_S8X24_UINT:
+                return MALI_S_FORMAT_S8X24;
         case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
                 return MALI_S_FORMAT_X32_S8X24;
+#endif
+
         default:
                 unreachable("Unsupported stencil format.");
         }
