@@ -3938,10 +3938,12 @@ fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block)
 {
    const fs_builder ibld(this, block, inst);
 
-   const bool ud = (inst->src[1].type == BRW_REGISTER_TYPE_UD);
+   /* It is correct to use inst->src[1].d in both end of the comparison.
+    * Using .ud in the UINT16_MAX comparison would cause any negative value to
+    * fail the check.
+    */
    if (inst->src[1].file == IMM &&
-       (( ud && inst->src[1].ud <= UINT16_MAX) ||
-        (!ud && inst->src[1].d <= INT16_MAX && inst->src[1].d >= INT16_MIN))) {
+       (inst->src[1].d >= INT16_MIN && inst->src[1].d <= UINT16_MAX)) {
       /* The MUL instruction isn't commutative. On Gen <= 6, only the low
        * 16-bits of src0 are read, and on Gen >= 7 only the low 16-bits of
        * src1 are used.
@@ -3949,6 +3951,7 @@ fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block)
        * If multiplying by an immediate value that fits in 16-bits, do a
        * single MUL instruction with that value in the proper location.
        */
+      const bool ud = (inst->src[1].d >= 0);
       if (devinfo->ver < 7) {
          fs_reg imm(VGRF, alloc.allocate(dispatch_width / 8), inst->dst.type);
          ibld.MOV(imm, inst->src[1]);
