@@ -589,8 +589,6 @@ tu_descriptor_set_destroy(struct tu_device *device,
       }
    }
 
-   list_del(&set->pool_link);
-
    vk_object_free(&device->vk, NULL, set);
 }
 
@@ -814,8 +812,10 @@ tu_FreeDescriptorSets(VkDevice _device,
    for (uint32_t i = 0; i < count; i++) {
       TU_FROM_HANDLE(tu_descriptor_set, set, pDescriptorSets[i]);
 
-      if (set)
+      if (set) {
          tu_descriptor_set_layout_unref(device, set->layout);
+         list_del(&set->pool_link);
+      }
 
       if (set && !pool->host_memory_base)
          tu_descriptor_set_destroy(device, pool, set, true);
