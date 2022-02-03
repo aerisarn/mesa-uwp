@@ -1169,8 +1169,12 @@
     <field name="Hierarchy Mask" size="13" start="2:0" type="uint"/>
     <field name="Sample Pattern" size="3" start="2:13" type="Sample Pattern"/>
     <field name="Update Cost Table" size="1" start="2:16" type="bool"/>
+    <field name="Sample test disable" size="1" start="2:17" type="bool"/>
+    <field name="First provoking vertex" size="1" start="2:18" type="bool"/>
     <field name="FB Width" size="16" start="3:0" type="uint" modifier="minus(1)"/>
     <field name="FB Height" size="16" start="3:16" type="uint" modifier="minus(1)"/>
+    <field name="Layer count" size="8" start="4:0" type="uint" default="1" modifier="minus(1)"/>
+    <field name="Layer offset" size="8" start="4:8" type="uint"/>
     <field name="Heap" size="64" start="6:0" type="address"/>
     <field name="Weights" size="256" start="8:0" type="Tiler Weights"/>
     <field name="State" size="512" start="32:0" type="Tiler State"/>
