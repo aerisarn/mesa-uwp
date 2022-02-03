@@ -380,6 +380,7 @@ struct svga_tes_shader
 struct svga_compute_shader
 {
    struct svga_shader base;
+   unsigned shared_mem_size;
 };
 
 

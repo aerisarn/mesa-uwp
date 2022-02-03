@@ -374,7 +374,6 @@ struct svga_state
       struct pipe_resource *indirect;
    } grid_info;
 
-   unsigned shared_mem_size;
 };
 
 struct svga_prescale {

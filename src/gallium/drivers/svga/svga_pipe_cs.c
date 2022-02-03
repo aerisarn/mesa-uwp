@@ -61,7 +61,7 @@ svga_create_compute_state(struct pipe_context *pipe,
 
    cs->base.id = svga->debug.shader_id++;
 
-   svga->curr.shared_mem_size = templ->req_local_mem;
+   cs->shared_mem_size = templ->req_local_mem;
 
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return cs;

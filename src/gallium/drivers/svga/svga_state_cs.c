@@ -80,7 +80,7 @@ make_cs_key(struct svga_context *svga,
    key->cs.grid_size[0] = svga->curr.grid_info.size[0];
    key->cs.grid_size[1] = svga->curr.grid_info.size[1];
    key->cs.grid_size[2] = svga->curr.grid_info.size[2];
-   key->cs.mem_size = svga->curr.shared_mem_size;
+   key->cs.mem_size = cs->shared_mem_size;
 
    if (svga->curr.grid_info.indirect && cs->base.info.uses_grid_size) {
       struct pipe_transfer *transfer = NULL;
