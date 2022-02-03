@@ -111,14 +111,14 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
 
    if (is_vec) {
       /* replace vecN with smaller version */
-      nir_ssa_def *srcs[NIR_MAX_VEC_COMPONENTS] = { 0 };
+      nir_ssa_scalar srcs[NIR_MAX_VEC_COMPONENTS] = { 0 };
       unsigned index = 0;
       for (int i = 0; i < last_bit; i++) {
          if ((mask >> i) & 0x1)
-            srcs[index++] = nir_ssa_for_alu_src(b, instr, i);
+            srcs[index++] = nir_get_ssa_scalar(instr->src[i].src.ssa, instr->src[i].swizzle[0]);
       }
       assert(index == num_components);
-      nir_ssa_def *new_vec = nir_vec(b, srcs, num_components);
+      nir_ssa_def *new_vec = nir_vec_scalars(b, srcs, num_components);
       nir_ssa_def_rewrite_uses(def, new_vec);
       def = new_vec;
    }

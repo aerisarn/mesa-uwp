@@ -3196,31 +3196,31 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
 
    if (has_dest) {
       /* Merge the two loads' results back into a vector. */
-      nir_ssa_def *channels[4] = {
-         nir_channel(b, &first->dest.ssa, 0),
-         nir_channel(b, &first->dest.ssa, 1),
-         nir_channel(b, &second->dest.ssa, 0),
-         second->num_components > 1 ? nir_channel(b, &second->dest.ssa, 1) : NULL,
+      nir_ssa_scalar channels[4] = {
+         nir_get_ssa_scalar(&first->dest.ssa, 0),
+         nir_get_ssa_scalar(&first->dest.ssa, 1),
+         nir_get_ssa_scalar(&second->dest.ssa, 0),
+         nir_get_ssa_scalar(&second->dest.ssa, second->num_components > 1 ? 1 : 0),
       };
-      nir_ssa_def *new = nir_vec(b, channels, instr->num_components);
+      nir_ssa_def *new = nir_vec_scalars(b, channels, instr->num_components);
       nir_ssa_def_rewrite_uses(&instr->dest.ssa, new);
    } else {
       /* Split the src value across the two stores. */
       b->cursor = nir_before_instr(&instr->instr);
 
       nir_ssa_def *src0 = instr->src[0].ssa;
-      nir_ssa_def *channels[4] = { 0 };
+      nir_ssa_scalar channels[4] = { 0 };
       for (int i = 0; i < instr->num_components; i++)
-         channels[i] = nir_channel(b, src0, i);
+         channels[i] = nir_get_ssa_scalar(src0, i);
 
       nir_intrinsic_set_write_mask(first, nir_intrinsic_write_mask(instr) & 3);
       nir_intrinsic_set_write_mask(second, nir_intrinsic_write_mask(instr) >> 2);
 
       nir_instr_rewrite_src(&first->instr, &first->src[0],
-                            nir_src_for_ssa(nir_vec(b, channels, 2)));
+                            nir_src_for_ssa(nir_vec_scalars(b, channels, 2)));
       nir_instr_rewrite_src(&second->instr, &second->src[0],
-                            nir_src_for_ssa(nir_vec(b, &channels[2],
-                                                    second->num_components)));
+                            nir_src_for_ssa(nir_vec_scalars(b, &channels[2],
+                                                           second->num_components)));
    }
 
    int offset_src = -1;
@@ -3327,7 +3327,7 @@ nir_to_tgsi_lower_64bit_to_vec2(nir_shader *s)
 }
 
 struct ntt_lower_tex_state {
-   nir_ssa_def *channels[8];
+   nir_ssa_scalar channels[8];
    unsigned i;
 };
 
@@ -3345,7 +3345,7 @@ nir_to_tgsi_lower_tex_instr_arg(nir_builder *b,
 
    nir_ssa_def *def = instr->src[tex_src].src.ssa;
    for (int i = 0; i < def->num_components; i++) {
-      s->channels[s->i++] = nir_channel(b, def, i);
+      s->channels[s->i++] = nir_get_ssa_scalar(def, i);
    }
 
    nir_tex_instr_remove_src(instr, tex_src);
@@ -3400,22 +3400,22 @@ nir_to_tgsi_lower_tex_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_to_tgsi_lower_tex_instr_arg(b, tex, nir_tex_src_ms_index, &s);
 
    /* No need to pack undefs in unused channels of the tex instr */
-   while (!s.channels[s.i - 1])
+   while (!s.channels[s.i - 1].def)
       s.i--;
 
    /* Instead of putting undefs in the unused slots of the vecs, just put in
     * another used channel.  Otherwise, we'll get unnecessary moves into
     * registers.
     */
-   assert(s.channels[0] != NULL);
+   assert(s.channels[0].def != NULL);
    for (int i = 1; i < s.i; i++) {
-      if (!s.channels[i])
+      if (!s.channels[i].def)
          s.channels[i] = s.channels[0];
    }
 
-   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(nir_vec(b, s.channels, MIN2(s.i, 4))));
+   nir_tex_instr_add_src(tex, nir_tex_src_backend1, nir_src_for_ssa(nir_vec_scalars(b, s.channels, MIN2(s.i, 4))));
    if (s.i > 4)
-      nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(nir_vec(b, &s.channels[4], s.i - 4)));
+      nir_tex_instr_add_src(tex, nir_tex_src_backend2, nir_src_for_ssa(nir_vec_scalars(b, &s.channels[4], s.i - 4)));
 
    return true;
 }
