@@ -2440,6 +2440,7 @@ flush_batch(struct zink_context *ctx, bool sync)
    if (ctx->clears_enabled)
       /* start rp to do all the clears */
       zink_begin_render_pass(ctx);
+   zink_stop_conditional_render(ctx);
    zink_end_render_pass(ctx);
    zink_end_batch(ctx, batch);
    ctx->deferred_fence = NULL;
