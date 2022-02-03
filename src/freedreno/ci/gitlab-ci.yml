@@ -160,6 +160,8 @@ a618_vk_full:
   timeout: 2h
   parallel: 2
   variables:
+    # ran into OOM with VK-GL-CTS 1.2.8.0 at 6
+    FDO_CI_CONCURRENT: 4
     DEQP_SUITE: freedreno-a618-vk-full
     JOB_TIMEOUT: 120
 
