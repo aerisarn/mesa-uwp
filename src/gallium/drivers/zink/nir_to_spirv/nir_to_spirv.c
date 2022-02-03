@@ -601,11 +601,13 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       HANDLE_EMIT_BUILTIN(TESS_LEVEL_INNER, TessLevelInner);
 
       default:
-         spirv_builder_emit_location(&ctx->builder, var_id,
-                                     var->data.driver_location);
+         /* non-xfb psiz output will have location -1 */
+         if (var->data.location >= 0)
+            spirv_builder_emit_location(&ctx->builder, var_id,
+                                        var->data.driver_location);
       }
       /* tcs can't do xfb */
-      if (ctx->stage != MESA_SHADER_TESS_CTRL) {
+      if (ctx->stage != MESA_SHADER_TESS_CTRL && var->data.location >= 0) {
          unsigned idx = var->data.location << 2 | var->data.location_frac;
          ctx->outputs[idx] = var_id;
          ctx->so_output_gl_types[idx] = var->type;

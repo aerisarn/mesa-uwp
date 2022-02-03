@@ -460,23 +460,26 @@ lower_fbfetch(nir_shader *shader, nir_variable **fbfetch)
 static bool
 check_psiz(struct nir_shader *s)
 {
+   bool have_psiz = false;
    nir_foreach_shader_out_variable(var, s) {
       if (var->data.location == VARYING_SLOT_PSIZ) {
          /* genuine PSIZ outputs will have this set */
-         return !!var->data.explicit_location;
+         have_psiz |= !!var->data.explicit_location;
       }
    }
-   return false;
+   return have_psiz;
 }
 
 static nir_variable *
-find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned location_frac)
+find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned location_frac, bool have_psiz)
 {
    nir_foreach_shader_out_variable(var, nir) {
       if (var->data.location == location &&
           (var->data.location_frac == location_frac ||
-           glsl_get_vector_elements(var->type) >= location_frac + 1))
-         return var;
+           glsl_get_vector_elements(var->type) >= location_frac + 1)) {
+         if (location != VARYING_SLOT_PSIZ || !have_psiz || var->data.explicit_location)
+            return var;
+      }
    }
    return NULL;
 }
@@ -488,6 +491,18 @@ is_inlined(const bool *inlined, const struct pipe_stream_output *output)
       if (!inlined[output->start_component + i])
          return false;
    return true;
+}
+
+static void
+update_psiz_location(nir_shader *nir, nir_variable *psiz)
+{
+   uint32_t last_output = util_last_bit64(nir->info.outputs_written);
+   if (last_output < VARYING_SLOT_VAR0)
+      last_output = VARYING_SLOT_VAR0;
+   else
+      last_output++;
+   /* this should get fixed up by slot remapping */
+   psiz->data.location = last_output;
 }
 
 static void
@@ -505,8 +520,12 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       reverse_map[slot++] = bit;
    }
 
-   nir_foreach_shader_out_variable(var, zs->nir)
+   bool have_fake_psiz = false;
+   nir_foreach_shader_out_variable(var, zs->nir) {
       var->data.explicit_xfb_buffer = 0;
+      if (var->data.location == VARYING_SLOT_PSIZ && !var->data.explicit_location)
+         have_fake_psiz = true;
+   }
 
    bool inlined[VARYING_SLOT_MAX][4] = {0};
    uint32_t packed = 0;
@@ -514,6 +533,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
    uint8_t packed_streams[VARYING_SLOT_MAX] = {0};
    uint8_t packed_buffers[VARYING_SLOT_MAX] = {0};
    uint16_t packed_offsets[VARYING_SLOT_MAX][4] = {0};
+   nir_variable *psiz = NULL;
    for (unsigned i = 0; i < so_info->num_outputs; i++) {
       const struct pipe_stream_output *output = &so_info->output[i];
       unsigned slot = reverse_map[output->register_index];
@@ -522,7 +542,9 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       if (zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          while (!var)
-            var = find_var_with_location_frac(zs->nir, slot--, output->start_component);
+            var = find_var_with_location_frac(zs->nir, slot--, output->start_component, have_psiz);
+         if (var->data.location == VARYING_SLOT_PSIZ)
+            psiz = var;
          slot++;
          if (is_inlined(inlined[slot], output))
             continue;
@@ -556,7 +578,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       if (zs->nir->info.stage != MESA_SHADER_GEOMETRY || util_bitcount(zs->nir->info.gs.active_stream_mask) == 1) {
          nir_variable *var = NULL;
          while (!var)
-            var = find_var_with_location_frac(zs->nir, slot--, output->start_component);
+            var = find_var_with_location_frac(zs->nir, slot--, output->start_component, have_psiz);
          slot++;
          /* if this was flagged as a packed output before, and if all the components are
           * being output with the same stream on the same buffer, this entire variable
@@ -594,6 +616,9 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
       zs->sinfo.so_info_slots[zs->sinfo.so_info.num_outputs++] = reverse_map[output->register_index];
    }
    zs->sinfo.have_xfb = !!zs->sinfo.so_info.num_outputs;
+   /* ensure this doesn't get output in the shader by unsetting location */
+   if (have_fake_psiz && psiz)
+      update_psiz_location(zs->nir, psiz);
 }
 
 struct decompose_state {
@@ -870,6 +895,7 @@ assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
 {
    unsigned slot = var->data.location;
    switch (var->data.location) {
+   case -1:
    case VARYING_SLOT_POS:
    case VARYING_SLOT_PNTC:
    case VARYING_SLOT_PSIZ:
@@ -1910,6 +1936,23 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    ret->nir = nir;
    if (so_info && nir->info.outputs_written && nir->info.has_transform_feedback_varyings)
       update_so_info(ret, so_info, nir->info.outputs_written, have_psiz);
+   else if (have_psiz) {
+      bool have_fake_psiz = false;
+      nir_variable *psiz = NULL;
+      nir_foreach_shader_out_variable(var, nir) {
+         if (var->data.location == VARYING_SLOT_PSIZ) {
+            if (!var->data.explicit_location)
+               have_fake_psiz = true;
+            else
+               psiz = var;
+         }
+      }
+      if (have_fake_psiz && psiz) {
+         psiz->data.mode = nir_var_shader_temp;
+         nir_fixup_deref_modes(nir);
+         NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+      }
+   }
 
    return ret;
 }
