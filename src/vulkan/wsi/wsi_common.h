@@ -60,8 +60,8 @@ struct wsi_image_create_info {
     const void *pNext;
     bool scanout;
 
-    /* if true, the image is a prime blit source */
-    bool prime_blit_src;
+    /* if true, the image is a buffer blit source */
+    bool buffer_blit_src;
 };
 
 struct wsi_memory_allocate_info {
@@ -176,9 +176,9 @@ struct wsi_device {
 
    /*
     * A driver can implement this callback to return a special queue to execute
-    * prime blits.
+    * buffer blits.
     */
-   VkQueue (*get_prime_blit_queue)(VkDevice device);
+   VkQueue (*get_buffer_blit_queue)(VkDevice device);
 
 #define WSI_CB(cb) PFN_vk##cb cb
    WSI_CB(AllocateMemory);
