@@ -787,6 +787,13 @@
     <value name="32 Per Thread" value="2"/>
   </enum>
 
+  <enum name="Flush to zero mode">
+    <value name="Preserve subnormals" value="0"/>
+    <value name="DX11" value="1"/>
+    <value name="Always" value="2"/>
+    <value name="Abrupt" value="3"/>
+  </enum>
+
   <struct name="Preload" size="1">
     <field name="R48-R63" size="16" start="0:0" type="hex"/>
     <field name="R55" size="1" start="0:7" type="bool"/>
@@ -804,10 +811,11 @@
     <field name="Type" size="4" start="0:0" type="Descriptor Type" default="Shader"/>
     <field name="Stage" size="4" start="0:4" type="Shader stage"/>
     <field name="Primary shader" size="1" start="0:8" type="bool"/>
-    <!-- XXX DDK sets/clears these together, so I might have them backward -->
-    <field name="Suppress Inf" size="1" start="0:16" type="bool"/>
-    <field name="Suppress NaN" size="1" start="0:19" type="bool"/>
-    <field name="Shader contains barrier" size="1" start="0:28" type="bool"/>
+    <field name="Suppress NaN" size="1" start="0:16" type="bool"/>
+    <field name="Flush to zero mode" size="2" start="0:17" type="Flush to zero mode"/>
+    <field name="Suppress Inf" size="1" start="0:19" type="bool"/>
+    <field name="Requires helper threads" size="1" start="0:28" type="bool"/> <!-- Fragment only -->
+    <field name="Shader contains JUMP_EX" size="1" start="0:29" type="bool"/>
     <field name="Register allocation" size="2" start="0:30" type="Shader Register Allocation"/>
     <field name="Preload" size="16" start="1:0" type="Preload"/>
     <field name="Binary" size="64" start="2:0" type="address"/>
