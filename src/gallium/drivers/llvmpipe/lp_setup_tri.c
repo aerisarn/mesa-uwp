@@ -1010,7 +1010,7 @@ fail:
 /**
  * Try to draw the triangle, restart the scene on failure.
  */
-static void retry_triangle_ccw( struct lp_setup_context *setup,
+static inline void retry_triangle_ccw( struct lp_setup_context *setup,
                                 struct fixed_position* position,
                                 const float (*v0)[4],
                                 const float (*v1)[4],
