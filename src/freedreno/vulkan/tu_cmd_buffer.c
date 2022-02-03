@@ -570,6 +570,17 @@ tu_cs_emit_draw_state(struct tu_cs *cs, uint32_t id, struct tu_draw_state state)
 }
 
 static bool
+is_hw_binning_possible(const struct tu_framebuffer *fb)
+{
+   /* Similar to older gens, # of tiles per pipe cannot be more than 32.
+    * But there are no hangs with 16 or more tiles per pipe in either
+    * X or Y direction, so that limit does not seem to apply.
+    */
+   uint32_t tiles_per_pipe = fb->pipe0.width * fb->pipe0.height;
+   return tiles_per_pipe <= 32;
+}
+
+static bool
 use_hw_binning(struct tu_cmd_buffer *cmd)
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
@@ -578,8 +589,13 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
     * with non-hw binning GMEM rendering. this is required because some of the
     * XFB commands need to only be executed once
     */
-   if (cmd->state.xfb_used)
+   if (cmd->state.xfb_used) {
+      assert(is_hw_binning_possible(fb));
       return true;
+   }
+
+   if (!is_hw_binning_possible(fb))
+      return false;
 
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_NOBIN))
       return false;
@@ -613,6 +629,10 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd,
       return true;
 
    if (cmd->state.disable_gmem)
+      return true;
+
+   /* XFB is incompatible with non-hw binning GMEM rendering, see use_hw_binning */
+   if (cmd->state.xfb_used && !is_hw_binning_possible(cmd->state.framebuffer))
       return true;
 
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_GMEM))
