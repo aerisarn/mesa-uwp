@@ -215,6 +215,32 @@ nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_ssa_def **srcs)
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
+nir_ssa_def *
+nir_vec_scalars(nir_builder *build, nir_ssa_scalar *comp, unsigned num_components)
+{
+   nir_op op = nir_op_vec(num_components);
+   nir_alu_instr *instr = nir_alu_instr_create(build->shader, op);
+   if (!instr)
+      return NULL;
+
+   for (unsigned i = 0; i < num_components; i++) {
+      instr->src[i].src = nir_src_for_ssa(comp[i].def);
+      instr->src[i].swizzle[0] = comp[i].comp;
+   }
+   instr->exact = build->exact;
+
+   /* Note: not reusing nir_builder_alu_instr_finish_and_insert() because it
+    * can't re-guess the num_components when num_components == 1 (nir_op_mov).
+    */
+   nir_ssa_dest_init(&instr->instr, &instr->dest.dest, num_components,
+                     comp[0].def->bit_size, NULL);
+   instr->dest.write_mask = (1 << num_components) - 1;
+
+   nir_builder_instr_insert(build, &instr->instr);
+
+   return &instr->dest.dest.ssa;
+}
+
 /**
  * Turns a nir_src into a nir_ssa_def * so it can be passed to
  * nir_build_alu()-based builder calls.
