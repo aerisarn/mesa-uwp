@@ -462,7 +462,6 @@ do_triangle_ccw(struct lp_setup_context *setup,
    tri->inputs.frontfacing = frontfacing;
    tri->inputs.disable = FALSE;
    tri->inputs.is_blit = FALSE;
-   tri->inputs.opaque = check_opaque(setup, v0, v1, v2);
    tri->inputs.layer = layer;
    tri->inputs.viewport_index = viewport_index;
    tri->inputs.view_index = setup->view_index;
@@ -743,7 +742,9 @@ do_triangle_ccw(struct lp_setup_context *setup,
       lp_setup_add_scissor_planes(scissor, &plane[3], s_planes, setup->multisample);
    }
 
-   return lp_setup_bin_triangle(setup, tri, use_32bits, &bbox, nr_planes, viewport_index);
+   return lp_setup_bin_triangle(setup, tri, use_32bits,
+                                check_opaque(setup, v0, v1, v2),
+                                &bbox, nr_planes, viewport_index);
 }
 
 /*
@@ -778,6 +779,7 @@ boolean
 lp_setup_bin_triangle(struct lp_setup_context *setup,
                       struct lp_rast_triangle *tri,
                       boolean use_32bits,
+                      boolean opaque,
                       const struct u_rect *bbox,
                       int nr_planes,
                       unsigned viewport_index)
@@ -980,7 +982,7 @@ lp_setup_bin_triangle(struct lp_setup_context *setup,
                /* triangle covers the whole tile- shade whole tile */
                LP_COUNT(nr_fully_covered_64);
                in = TRUE;
-               if (!lp_setup_whole_tile(setup, &tri->inputs, x, y))
+               if (!lp_setup_whole_tile(setup, &tri->inputs, x, y, opaque))
                   goto fail;
             }
 

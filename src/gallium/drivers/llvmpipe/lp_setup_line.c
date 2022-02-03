@@ -663,7 +663,6 @@ try_setup_line( struct lp_setup_context *setup,
    setup_line_coefficients(setup, &info); 
 
    line->inputs.disable = FALSE;
-   line->inputs.opaque = FALSE;
    line->inputs.layer = layer;
    line->inputs.viewport_index = viewport_index;
    line->inputs.view_index = setup->view_index;
@@ -718,7 +717,7 @@ try_setup_line( struct lp_setup_context *setup,
       lp_setup_add_scissor_planes(scissor, &plane[4], s_planes, setup->multisample);
    }
 
-   return lp_setup_bin_triangle(setup, line, use_32bits, &bboxpos, nr_planes, viewport_index);
+   return lp_setup_bin_triangle(setup, line, use_32bits, false, &bboxpos, nr_planes, viewport_index);
 }
 
 
