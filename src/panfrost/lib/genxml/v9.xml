@@ -1209,7 +1209,6 @@
     <!--- All jobs are 64-bit -->
     <field name="Type" size="7" start="4:1" type="Job Type"/>
     <field name="Barrier" size="1" start="4:8" type="bool"/>
-    <field name="Invalidate Cache" size="1" start="4:9" type="bool"/>
     <field name="Suppress Prefetch" size="1" start="4:11" type="bool"/>
     <field name="Relax Dependency 1" size="1" start="4:14" type="bool"/>
     <field name="Relax Dependency 2" size="1" start="4:15" type="bool"/>
