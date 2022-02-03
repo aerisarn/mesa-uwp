@@ -1087,6 +1087,11 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
                      false, zink_fs_key(key)->coord_replace_yinvert);
          }
+         if (zink_fs_key(key)->force_persample_interp) {
+            nir_foreach_shader_in_variable(var, nir)
+               var->data.sample = true;
+            nir->info.fs.uses_sample_qualifier = true;
+         }
          if (nir->info.fs.uses_fbfetch_output) {
             nir_variable *fbfetch = NULL;
             NIR_PASS_V(nir, lower_fbfetch, &fbfetch);
