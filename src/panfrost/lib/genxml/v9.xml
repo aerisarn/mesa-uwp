@@ -1259,16 +1259,13 @@
     <section name="Payload" offset="32" type="Cache Flush Job Payload"/>
   </aggregate>
 
-  <struct name="Shader" size="16" align="64">
-    <field name="FAU count" start="1:0" size="32" type="uint"/>
+  <struct name="Shader Environment" size="16" align="64">
+    <field name="Attribute offset" start="0:0" size="32" type="uint"/>
+    <field name="FAU count" start="1:0" size="8" type="uint"/>
     <field name="Resources" start="8:0" size="64" type="address"/>
     <field name="Shader" start="10:0" size="64" type="address"/>
     <field name="Thread storage" start="12:0" size="64" type="address"/>
     <field name="FAU" start="14:0" size="64" type="address"/>
-    <!-- TODO: Missing/unknown from Bifrost v7 for compute alone
-      UBOs
-      Attribute buffers
-    -->
   </struct>
 
   <struct name="Compute Payload" size="24">
@@ -1284,7 +1281,7 @@
       Thread group split
       Job Task Split
     -->
-    <field name="Compute" start="8:0" size="512" type="Shader"/>
+    <field name="Compute" start="8:0" size="512" type="Shader Environment"/>
   </struct>
 
   <!-- Compute job also covers vertex and geometry operations -->
@@ -1356,9 +1353,9 @@
     <field name="Blend" start="12:4" size="60" type="address" modifier="shr(4)"/>
     <field name="Occlusion" size="64" start="14:0" type="address"/>
 
-    <field name="Fragment" start="16:0" size="512" type="Shader"/>
-    <field name="Position" start="32:0" size="512" type="Shader"/>
-    <field name="Varying" start="48:0" size="512" type="Shader"/>
+    <field name="Fragment" start="16:0" size="512" type="Shader Environment"/>
+    <field name="Position" start="32:0" size="512" type="Shader Environment"/>
+    <field name="Varying" start="48:0" size="512" type="Shader Environment"/>
   </struct>
 
   <struct name="IDVS Counts" size="4">
