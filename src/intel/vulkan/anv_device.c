@@ -391,6 +391,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_vertex_attribute_divisor          = true,
       .EXT_vertex_input_dynamic_state        = true,
       .EXT_ycbcr_image_arrays                = true,
+      .AMD_buffer_marker                     = true,
 #ifdef ANDROID
       .ANDROID_external_memory_android_hardware_buffer = true,
       .ANDROID_native_buffer                 = true,
