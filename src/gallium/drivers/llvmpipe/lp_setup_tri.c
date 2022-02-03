@@ -69,7 +69,6 @@ struct fixed_position {
    int32_t dy01;
    int32_t dx20;
    int32_t dy20;
-   int64_t area;
 };
 
 
@@ -284,9 +283,6 @@ do_triangle_ccw(struct lp_setup_context *setup,
    unsigned viewport_index = 0;
    unsigned layer = 0;
    const float (*pv)[4];
-
-   /* Area should always be positive here */
-   assert(position->area > 0);
 
    if (0)
       lp_setup_print_triangle(setup, v0, v1, v2);
@@ -1035,7 +1031,7 @@ static inline void retry_triangle_ccw( struct lp_setup_context *setup,
  * calculated in fixed point), as there's quite some code duplication
  * to what is done in the jit setup prog.
  */
-static inline void
+static inline int8_t
 calc_fixed_position(struct lp_setup_context *setup,
                     struct fixed_position* position,
                     const float (*v0)[4],
@@ -1097,8 +1093,9 @@ calc_fixed_position(struct lp_setup_context *setup,
    position->dy20 = position->y[2] - position->y[0];
 #endif
 
-   position->area = IMUL64(position->dx01, position->dy20) -
-         IMUL64(position->dx20, position->dy01);
+   uint64_t area = IMUL64(position->dx01, position->dy20) -
+      IMUL64(position->dx20, position->dy01);
+   return area == 0 ? 0 : (area & (1ULL << 63)) ? -1 : 1;
 }
 
 
@@ -1122,8 +1119,6 @@ rotate_fixed_position_01( struct fixed_position* position )
    position->dy01 = -position->dy01;
    position->dx20 = position->x[2] - position->x[0];
    position->dy20 = position->y[2] - position->y[0];
-
-   position->area = -position->area;
 }
 
 
@@ -1149,8 +1144,6 @@ rotate_fixed_position_12( struct fixed_position* position )
    position->dy01 = -position->dy20;
    position->dx20 = -x;
    position->dy20 = -y;
-
-   position->area = -position->area;
 }
 
 
@@ -1169,9 +1162,9 @@ static void triangle_cw(struct lp_setup_context *setup,
       lp_context->pipeline_statistics.c_primitives++;
    }
 
-   calc_fixed_position(setup, &position, v0, v1, v2);
+   int8_t area_sign = calc_fixed_position(setup, &position, v0, v1, v2);
 
-   if (position.area < 0) {
+   if (area_sign < 0) {
       if (setup->flatshade_first) {
          rotate_fixed_position_12(&position);
          retry_triangle_ccw(setup, &position, v0, v2, v1, !setup->ccw_is_frontface);
@@ -1195,9 +1188,9 @@ static void triangle_ccw(struct lp_setup_context *setup,
       lp_context->pipeline_statistics.c_primitives++;
    }
 
-   calc_fixed_position(setup, &position, v0, v1, v2);
+   int8_t area_sign = calc_fixed_position(setup, &position, v0, v1, v2);
 
-   if (position.area > 0)
+   if (area_sign > 0)
       retry_triangle_ccw(setup, &position, v0, v1, v2, setup->ccw_is_frontface);
 }
 
@@ -1216,7 +1209,7 @@ static void triangle_both(struct lp_setup_context *setup,
       lp_context->pipeline_statistics.c_primitives++;
    }
 
-   calc_fixed_position(setup, &position, v0, v1, v2);
+   int8_t area_sign = calc_fixed_position(setup, &position, v0, v1, v2);
 
    if (0) {
       assert(!util_is_inf_or_nan(v0[0][0]));
@@ -1227,9 +1220,9 @@ static void triangle_both(struct lp_setup_context *setup,
       assert(!util_is_inf_or_nan(v2[0][1]));
    }
 
-   if (position.area > 0)
+   if (area_sign > 0)
       retry_triangle_ccw( setup, &position, v0, v1, v2, setup->ccw_is_frontface );
-   else if (position.area < 0) {
+   else if (area_sign < 0) {
       if (setup->flatshade_first) {
          rotate_fixed_position_12( &position );
          retry_triangle_ccw( setup, &position, v0, v2, v1, !setup->ccw_is_frontface );
