@@ -378,6 +378,7 @@ panfrost_astc_dim_3d(unsigned dim)
         default: unreachable("Invalid ASTC dimension");
         }
 }
+#endif
 
 /* Texture addresses are tagged with information about compressed formats.
  * AFBC uses a bit for whether the colorspace transform is enabled (RGB and
@@ -389,6 +390,7 @@ panfrost_compression_tag(const struct util_format_description *desc,
                          enum mali_texture_dimension dim,
                          uint64_t modifier)
 {
+#if PAN_ARCH >= 5 && PAN_ARCH <= 8
         if (drm_is_afbc(modifier)) {
                 unsigned flags = (modifier & AFBC_FORMAT_MOD_YTR) ?
                                  MALI_AFBC_SURFACE_FLAG_YTR : 0;
@@ -423,11 +425,12 @@ panfrost_compression_tag(const struct util_format_description *desc,
                         return (panfrost_astc_dim_2d(desc->block.height) << 3) |
                                 panfrost_astc_dim_2d(desc->block.width);
                 }
-        } else {
-                return 0;
         }
-}
 #endif
+
+        /* Tags are not otherwise used */
+        return 0;
+}
 
 /* Cubemaps have 6 faces as "layers" in between each actual layer. We
  * need to fix this up. TODO: logic wrong in the asserted out cases ...
@@ -606,15 +609,14 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
                 base += iview->buf.offset;
         }
 
-#if PAN_ARCH >= 5
         /* panfrost_compression_tag() wants the dimension of the resource, not the
          * one of the image view (those might differ).
          */
         base |= panfrost_compression_tag(desc, layout->dim, layout->modifier);
-#else
-        assert(!drm_is_afbc(layout->modifier) && "no AFBC on v4");
-        assert(desc->layout != UTIL_FORMAT_LAYOUT_ASTC && "no ASTC on v4");
-#endif
+
+        /* v4 does not support compression */
+        assert(PAN_ARCH >= 5 || !drm_is_afbc(layout->modifier));
+        assert(PAN_ARCH >= 5 || desc->layout != UTIL_FORMAT_LAYOUT_ASTC);
 
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
