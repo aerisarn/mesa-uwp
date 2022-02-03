@@ -3945,7 +3945,10 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
-      srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
+      /* No point in masking with sample mask, here we're handling compute
+       * intrinsics.
+       */
+      srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(0);
 
       fs_reg data = get_nir_src(instr->src[0]);
       data.type = brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_UD);
