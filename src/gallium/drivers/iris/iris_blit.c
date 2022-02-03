@@ -27,6 +27,7 @@
 #include "pipe/p_screen.h"
 #include "util/format/u_format.h"
 #include "util/u_inlines.h"
+#include "util/u_surface.h"
 #include "util/ralloc.h"
 #include "intel/blorp/blorp.h"
 #include "iris_context.h"
@@ -399,6 +400,19 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                      mirror_x, mirror_y);
       if (noop)
          return;
+   }
+
+   /* Do DRI PRIME blits on the hardware blitter on Gfx12+ */
+   if (devinfo->ver >= 12 &&
+       (info->dst.resource->bind & PIPE_BIND_PRIME_BLIT_DST)) {
+      assert(!info->render_condition_enable);
+      assert(util_can_blit_via_copy_region(info, false, false));
+      iris_copy_region(&ice->blorp, &ice->batches[IRIS_BATCH_BLITTER],
+                       info->dst.resource, info->dst.level,
+                       info->dst.box.x, info->dst.box.y, info->dst.box.z,
+                       info->src.resource, info->src.level,
+                       &info->src.box);
+      return;
    }
 
    if (abs(info->dst.box.width) == abs(info->src.box.width) &&
