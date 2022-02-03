@@ -1053,12 +1053,19 @@ static void* r300_create_fs_state(struct pipe_context* pipe,
 
     /* Precompile the fragment shader at creation time to avoid jank at runtime.
      * In most cases we won't have anything in the key at draw time.
-     *
-     * TODO: precompile state for shadow samplers (but this needs a decision for
-     * the default shadow compare and texture swizzle values).
      */
     struct r300_fragment_program_external_state precompile_state;
     memset(&precompile_state, 0, sizeof(precompile_state));
+
+    struct tgsi_shader_info info;
+    tgsi_scan_shader(fs->state.tokens, &info);
+    for (int i = 0; i < PIPE_MAX_SHADER_SAMPLER_VIEWS; i++) {
+        if (info.sampler_targets[i] == TGSI_TEXTURE_SHADOW1D ||
+            info.sampler_targets[i] == TGSI_TEXTURE_SHADOW2D) {
+            precompile_state.unit[i].compare_mode_enabled = true;
+            precompile_state.unit[i].texture_compare_func = PIPE_FUNC_LESS;
+        }
+    }
     r300_pick_fragment_shader(r300, fs, &precompile_state);
 
     return (void *)fs;
