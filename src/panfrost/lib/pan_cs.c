@@ -202,6 +202,7 @@ pan_prepare_zs(const struct pan_fb_info *fb,
         pan_iview_get_surface(zs, 0, 0, 0, &surf);
 
         if (drm_is_afbc(zs->image->layout.modifier)) {
+#if PAN_ARCH <= 8
 #if PAN_ARCH >= 6
                 const struct pan_image_slice_layout *slice = &zs->image->layout.slices[level];
 
@@ -216,6 +217,7 @@ pan_prepare_zs(const struct pan_fb_info *fb,
 
                 ext->zs_afbc_header = surf.afbc.header;
                 ext->zs_afbc_body = surf.afbc.body;
+#endif
         } else {
                 assert(zs->image->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
                        zs->image->layout.modifier == DRM_FORMAT_MOD_LINEAR);
@@ -442,6 +444,7 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
         pan_iview_get_surface(rt, 0, 0, 0, &surf);
 
         if (drm_is_afbc(rt->image->layout.modifier)) {
+#if PAN_ARCH <= 8
                 const struct pan_image_slice_layout *slice = &rt->image->layout.slices[level];
 
 #if PAN_ARCH >= 6
@@ -460,6 +463,7 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
 
                 if (rt->image->layout.modifier & AFBC_FORMAT_MOD_YTR)
                         cfg->afbc.yuv_transform_enable = true;
+#endif
         } else {
                 assert(rt->image->layout.modifier == DRM_FORMAT_MOD_LINEAR ||
                        rt->image->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED);
