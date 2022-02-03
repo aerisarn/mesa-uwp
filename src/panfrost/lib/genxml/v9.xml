@@ -1306,7 +1306,7 @@
 
   <struct name="Resource" size="4" align="16">
     <field name="Address" start="0:0" size="56" type="address"/>
-    <field name="Unk" start="1:24" size="1" type="bool" default="true"/>
+    <field name="Contains descriptors" start="1:24" size="1" type="bool" default="true"/>
     <field name="Size" start="2:0" size="64" type="uint"/> <!-- bytes -->
   </struct>
 
