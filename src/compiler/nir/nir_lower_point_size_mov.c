@@ -38,7 +38,7 @@ lower_impl(nir_function_impl *impl,
 {
    nir_shader *shader = impl->function->shader;
    nir_builder b;
-   nir_variable *in;
+   nir_variable *in, *new_out = NULL;
 
    nir_builder_init(&b, impl);
 
@@ -51,12 +51,19 @@ lower_impl(nir_function_impl *impl,
          pointsize_state_tokens,
          sizeof(in->state_slots[0].tokens));
 
+   /* the existing output can't be removed in order to avoid breaking xfb.
+    * drivers must check var->data.explicit_location to find the original output
+    * and only emit that one for xfb
+    */
+   if (!out || shader->info.has_transform_feedback_varyings) {
+      new_out = nir_variable_create(shader, nir_var_shader_out,
+                                    glsl_float_type(), "gl_PointSizeMESA");
+      new_out->data.location = VARYING_SLOT_PSIZ;
+   }
+
    if (!out) {
-      out = nir_variable_create(shader, nir_var_shader_out,
-                                glsl_float_type(), "gl_PointSize");
-      out->data.location = VARYING_SLOT_PSIZ;
       b.cursor = nir_before_cf_list(&impl->body);
-      nir_copy_var(&b, out, in);
+      nir_copy_var(&b, new_out, in);
    } else {
       nir_foreach_block_safe(block, impl) {
          nir_foreach_instr_safe(instr, block) {
@@ -66,7 +73,7 @@ lower_impl(nir_function_impl *impl,
                   nir_variable *var = nir_intrinsic_get_var(intr, 0);
                   if (var == out) {
                      b.cursor = nir_after_instr(instr);
-                     nir_copy_var(&b, out, in);
+                     nir_copy_var(&b, new_out ? new_out : out, in);
                   }
                }
             }
