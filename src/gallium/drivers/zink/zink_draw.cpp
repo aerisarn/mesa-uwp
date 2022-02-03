@@ -942,6 +942,9 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_batch *batch = &ctx->batch;
 
+   if (ctx->render_condition_active)
+      zink_start_conditional_render(ctx);
+
    update_barriers(ctx, true);
    if (ctx->memory_barrier)
       zink_flush_memory_barrier(ctx, true);
