@@ -4349,6 +4349,12 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         if (nir->info.stage == MESA_SHADER_VERTEX) {
                 NIR_PASS_V(nir, nir_lower_viewport_transform);
                 NIR_PASS_V(nir, nir_lower_point_size, 1.0, 0.0);
+
+                nir_variable *psiz = nir_find_variable_with_location(nir,
+                                                                     nir_var_shader_out,
+                                                                     VARYING_SLOT_PSIZ);
+                if (psiz != NULL)
+                        psiz->data.precision = GLSL_PRECISION_MEDIUM;
         }
 
         /* Lower large arrays to scratch and small arrays to bcsel (TODO: tune
