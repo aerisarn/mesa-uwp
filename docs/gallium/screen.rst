@@ -374,6 +374,9 @@ The integer capabilities:
   and accesses to unbound resources.
 * ``PIPE_CAP_CULL_DISTANCE``: Whether the driver supports the arb_cull_distance
   extension and thus implements proper support for culling planes.
+* ``PIPE_CAP_CULL_DISTANCE_NOCOMBINE``: Whether the driver wants to skip
+  running the `nir_lower_clip_cull_distance_arrays` pass in order to get
+  VARYING_SLOT_CULL_DIST0 slot variables.
 * ``PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES``: Whether primitive restart is
   supported for patch primitives.
 * ``PIPE_CAP_TGSI_VOTE``: Whether the ``VOTE_*`` ops can be used in shaders.
