@@ -561,15 +561,10 @@ get_spill_batch_size(struct v3d_compile *c)
    return 20;
 }
 
-/* Don't emit spills using the TMU until we've dropped thread count first. We,
- * may also disable spilling when certain optimizations that are known to
- * increase register pressure are active so we favor recompiling with
- * optimizations disabled instead of spilling.
- */
 static inline bool
-tmu_spilling_allowed(struct v3d_compile *c, int thread_index)
+tmu_spilling_allowed(struct v3d_compile *c)
 {
-        return thread_index == 0 && c->tmu_spilling_allowed;
+        return c->spills + c->fills < c->max_tmu_spills;
 }
 
 #define CLASS_BIT_PHYS			(1 << 0)
@@ -818,7 +813,7 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
                         if (i > 0 && !is_uniform)
                                 break;
 
-                        if (is_uniform || tmu_spilling_allowed(c, thread_index)) {
+                        if (is_uniform || tmu_spilling_allowed(c)) {
                                 v3d_spill_reg(c, map[node].temp);
 
                                 /* Ask the outer loop to call back in. */

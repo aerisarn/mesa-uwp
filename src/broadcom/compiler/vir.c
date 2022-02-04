@@ -541,7 +541,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                  int program_id, int variant_id,
                  uint32_t max_threads,
                  uint32_t min_threads_for_reg_alloc,
-                 bool tmu_spilling_allowed,
+                 uint32_t max_tmu_spills,
                  bool disable_loop_unrolling,
                  bool disable_constant_ubo_load_sorting,
                  bool disable_tmu_pipelining,
@@ -559,7 +559,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
         c->min_threads_for_reg_alloc = min_threads_for_reg_alloc;
-        c->tmu_spilling_allowed = tmu_spilling_allowed;
+        c->max_tmu_spills = max_tmu_spills;
         c->fallback_scheduler = fallback_scheduler;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
@@ -1624,17 +1624,17 @@ struct v3d_compiler_strategy {
         bool disable_loop_unrolling;
         bool disable_ubo_load_sorting;
         bool disable_tmu_pipelining;
-        bool tmu_spilling_allowed;
+        uint32_t max_tmu_spills;
 } static const strategies[] = {
-  /*0*/ { "default",                        4, 4, false, false, false, false },
-  /*1*/ { "disable loop unrolling",         4, 4, true,  false, false, false },
-  /*2*/ { "disable UBO load sorting",       4, 4, true,  true,  false, false },
-  /*3*/ { "disable TMU pipelining",         4, 4, true,  true,  true,  false },
-  /*4*/ { "lower thread count",             2, 1, false, false, false, true },
-  /*5*/ { "disable loop unrolling (ltc)",   2, 1, true,  false, false, true },
-  /*6*/ { "disable UBO load sorting (ltc)", 2, 1, true,  true,  false, true },
-  /*7*/ { "disable TMU pipelining (ltc)",   2, 1, true,  true,  true,  true },
-  /*8*/ { "fallback scheduler",             2, 1, true,  true,  true,  true  }
+  /*0*/ { "default",                        4, 4, false, false, false,  0 },
+  /*1*/ { "disable loop unrolling",         4, 4, true,  false, false,  0 },
+  /*2*/ { "disable UBO load sorting",       4, 4, true,  true,  false,  0 },
+  /*3*/ { "disable TMU pipelining",         4, 4, true,  true,  true,   0 },
+  /*4*/ { "lower thread count",             2, 1, false, false, false, -1 },
+  /*5*/ { "disable loop unrolling (ltc)",   2, 1, true,  false, false, -1 },
+  /*6*/ { "disable UBO load sorting (ltc)", 2, 1, true,  true,  false, -1 },
+  /*7*/ { "disable TMU pipelining (ltc)",   2, 1, true,  true,  true,  -1 },
+  /*8*/ { "fallback scheduler",             2, 1, true,  true,  true,  -1 }
 };
 
 /**
@@ -1655,8 +1655,8 @@ skip_compile_strategy(struct v3d_compile *c, uint32_t idx)
    assert(idx > 0);
 
    /* Don't skip a strategy that changes spilling behavior */
-   if (strategies[idx].tmu_spilling_allowed !=
-       strategies[idx - 1].tmu_spilling_allowed) {
+   if (strategies[idx].max_tmu_spills !=
+       strategies[idx - 1].max_tmu_spills) {
            return false;
    }
 
@@ -1726,7 +1726,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                                      program_id, variant_id,
                                      strategies[strat].max_threads,
                                      strategies[strat].min_threads,
-                                     strategies[strat].tmu_spilling_allowed,
+                                     strategies[strat].max_tmu_spills,
                                      strategies[strat].disable_loop_unrolling,
                                      strategies[strat].disable_ubo_load_sorting,
                                      strategies[strat].disable_tmu_pipelining,
@@ -1738,11 +1738,16 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 if (c->compilation_result == V3D_COMPILATION_FAILED)
                         break;
 
-                /* If we compiled without spills, choose this. Otherwise keep
-                 * going and track strategy with less spilling.
+                /* If we compiled without spills, choose this.
+                 * Otherwise if this is a 4-thread compile, choose this (these
+                 * have a very low cap on the allowed TMU spills so we assume
+                 * it will be better than a 2-thread compile without spills).
+                 * Otherwise, keep going while tracking the strategy with the
+                 * lowest spill count.
                  */
                 if (c->compilation_result == V3D_COMPILATION_SUCCEEDED) {
-                        if (c->spills == 0) {
+                        if (c->spills == 0 ||
+                            strategies[strat].min_threads == 4) {
                                 best_c = c;
                                 break;
                         } else if (c->spills + c->fills <

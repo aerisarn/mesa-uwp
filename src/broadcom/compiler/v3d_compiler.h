@@ -710,7 +710,7 @@ struct v3d_compile {
          * strategies that can reduce register pressure and hopefully reduce or
          * eliminate TMU spills in the shader.
          */
-        bool tmu_spilling_allowed;
+        uint32_t max_tmu_spills;
 
         /* The UBO index and block used with the last unifa load, as well as the
          * current unifa offset *after* emitting that load. This is used to skip

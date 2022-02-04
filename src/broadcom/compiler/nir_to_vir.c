@@ -4473,7 +4473,7 @@ v3d_nir_to_vir(struct v3d_compile *c)
         while (true) {
                 bool spilled;
                 temp_registers = v3d_register_allocate(c, &spilled);
-                if (spilled)
+                if (spilled && c->spills + c->fills <= c->max_tmu_spills)
                         continue;
 
                 if (temp_registers)
