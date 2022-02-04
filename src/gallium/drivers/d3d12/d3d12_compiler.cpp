@@ -475,7 +475,10 @@ has_flat_varyings(struct d3d12_context *ctx)
 
    nir_foreach_variable_with_modes(input, fs->current->nir,
                                    nir_var_shader_in) {
-      if (input->data.interpolation == INTERP_MODE_FLAT)
+      if (input->data.interpolation == INTERP_MODE_FLAT &&
+          /* Disregard sysvals */
+          (input->data.location >= VARYING_SLOT_VAR0 ||
+             input->data.location <= VARYING_SLOT_TEX7))
          return true;
    }
 
