@@ -3217,10 +3217,11 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         optimise_nir(nir, ctx->quirks, inputs->is_blend);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) &&
-            ((midgard_debug & MIDGARD_DBG_INTERNAL) || !nir->info.internal)) {
+        bool skip_internal = nir->info.internal;
+        skip_internal &= !(midgard_debug & MIDGARD_DBG_INTERNAL);
+
+        if (midgard_debug & MIDGARD_DBG_SHADERS && !skip_internal)
                 nir_print_shader(nir, stdout);
-        }
 
         info->tls_size = nir->scratch_size;
 
@@ -3342,8 +3343,7 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         info->ubo_mask = ctx->ubo_mask & BITSET_MASK(ctx->nir->info.num_ubos);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) &&
-            ((midgard_debug & MIDGARD_DBG_INTERNAL) || !nir->info.internal)) {
+        if (midgard_debug & MIDGARD_DBG_SHADERS && !skip_internal) {
                 disassemble_midgard(stdout, binary->data,
                                     binary->size, inputs->gpu_id,
                                     midgard_debug & MIDGARD_DBG_VERBOSE);
