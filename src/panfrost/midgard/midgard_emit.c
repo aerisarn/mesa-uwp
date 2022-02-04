@@ -138,7 +138,6 @@ vector_to_scalar_alu(midgard_vector_alu v, midgard_instruction *ins)
                 .op = v.op,
                 .src1 = packed_src[0],
                 .src2 = packed_src[1],
-                .unknown = 0,
                 .outmod = v.outmod,
                 .output_full = is_full,
                 .output_component = comp
@@ -813,7 +812,7 @@ emit_branch(midgard_instruction *ins,
                                 .op = op,
                                 .dest_tag = dest_tag,
                                 .offset = quadword_offset,
-                                .unknown = 1
+                                .call_mode = midgard_call_mode_default
                         };
                         assert(branch.offset == quadword_offset);
                         memcpy(util_dynarray_grow_bytes(emission, size, 1), &branch, size);

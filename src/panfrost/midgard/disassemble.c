@@ -941,8 +941,8 @@ print_scalar_field(disassemble_context *ctx, FILE *fp, const char *name,
         bool is_int_out = midgard_is_integer_out_op(alu_field->op);
         bool full = alu_field->output_full;
 
-        if (alu_field->unknown)
-                fprintf(fp, "scalar ALU unknown bit set\n");
+        if (alu_field->reserved)
+                fprintf(fp, "scalar ALU reserved bit set\n");
 
         if (verbose)
                 fprintf(fp, "%s.", name);
@@ -1045,6 +1045,17 @@ print_branch_cond(FILE *fp, int cond)
         }
 }
 
+static const char *
+function_call_mode(enum midgard_call_mode mode)
+{
+        switch (mode) {
+        case midgard_call_mode_default: return "";
+        case midgard_call_mode_call: return ".call";
+        case midgard_call_mode_return: return ".return";
+        default: return ".reserved";
+        }
+}
+
 static bool
 print_compact_branch_writeout_field(disassemble_context *ctx, FILE *fp, uint16_t word)
 {
@@ -1055,10 +1066,7 @@ print_compact_branch_writeout_field(disassemble_context *ctx, FILE *fp, uint16_t
         case midgard_jmp_writeout_op_branch_uncond: {
                 midgard_branch_uncond br_uncond;
                 memcpy((char *) &br_uncond, (char *) &word, sizeof(br_uncond));
-                fprintf(fp, "br.uncond ");
-
-                if (br_uncond.unknown != 1)
-                        fprintf(fp, "unknown:%u, ", br_uncond.unknown);
+                fprintf(fp, "br.uncond%s ", function_call_mode(br_uncond.call_mode));
 
                 if (br_uncond.offset >= 0)
                         fprintf(fp, "+");
@@ -1105,7 +1113,7 @@ print_extended_branch_writeout_field(disassemble_context *ctx, FILE *fp, uint8_t
         midgard_branch_extended br;
         memcpy((char *) &br, (char *) words, sizeof(br));
 
-        fprintf(fp, "brx.");
+        fprintf(fp, "brx%s.", function_call_mode(br.call_mode));
 
         print_branch_op(fp, br.op);
 
@@ -1121,9 +1129,6 @@ print_extended_branch_writeout_field(disassemble_context *ctx, FILE *fp, uint8_t
                 print_branch_cond(fp, br.cond & 0x3);
         else
                 fprintf(fp, "lut%X", br.cond);
-
-        if (br.unknown)
-                fprintf(fp, ".unknown%u", br.unknown);
 
         fprintf(fp, " ");
 
