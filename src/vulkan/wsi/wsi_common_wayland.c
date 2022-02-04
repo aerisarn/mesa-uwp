@@ -52,8 +52,7 @@ struct wsi_wayland;
 
 struct wsi_wl_format {
    VkFormat vk_format;
-   uint32_t has_alpha_format;
-   uint32_t has_opaque_format;
+   uint32_t flags;
    struct u_vector modifiers;
 };
 
@@ -87,6 +86,11 @@ struct wsi_wayland {
    VkPhysicalDevice physical_device;
 };
 
+enum wsi_wl_fmt_flag {
+   WSI_WL_FMT_ALPHA = 1 << 0,
+   WSI_WL_FMT_OPAQUE = 1 << 1,
+};
+
 static struct wsi_wl_format *
 find_format(struct u_vector *formats, VkFormat format)
 {
@@ -102,17 +106,12 @@ find_format(struct u_vector *formats, VkFormat format)
 static struct wsi_wl_format *
 wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
                              struct u_vector *formats,
-                             VkFormat format,
-                             bool has_alpha_format,
-                             bool has_opaque_format)
+                             VkFormat format, uint32_t flags)
 {
    /* Don't add a format that's already in the list */
    struct wsi_wl_format *f = find_format(formats, format);
    if (f) {
-      if (has_alpha_format)
-         f->has_alpha_format = true;
-      if (has_opaque_format)
-         f->has_opaque_format = true;
+      f->flags |= flags;
       return f;
    }
 
@@ -135,8 +134,7 @@ wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
    }
 
    f->vk_format = format;
-   f->has_alpha_format = has_alpha_format;
-   f->has_opaque_format = has_opaque_format;
+   f->flags = flags;
    f->modifiers = modifiers;
 
    return f;
@@ -173,22 +171,22 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
    case DRM_FORMAT_ARGB4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_XRGB4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_ABGR4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_XBGR4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
 #endif
 
@@ -198,82 +196,82 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
    case DRM_FORMAT_RGBA4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R4G4B4A4_UNORM_PACK16,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_RGBX4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R4G4B4A4_UNORM_PACK16,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_BGRA4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_BGRX4444:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_RGB565:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R5G6B5_UNORM_PACK16,
-                                            true, true);
+                                            WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_BGR565:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B5G6R5_UNORM_PACK16,
-                                            true, true);
+                                            WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_ARGB1555:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A1R5G5B5_UNORM_PACK16,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_XRGB1555:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A1R5G5B5_UNORM_PACK16,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_RGBA5551:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R5G5B5A1_UNORM_PACK16,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_RGBX5551:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R5G5B5A1_UNORM_PACK16,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_BGRA5551:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B5G5R5A1_UNORM_PACK16,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_BGRX5551:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B5G5R5A1_UNORM_PACK16,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_ARGB2101010:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_XRGB2101010:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A2R10G10B10_UNORM_PACK32,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_ABGR2101010:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_XBGR2101010:
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
 #endif
 
@@ -290,10 +288,10 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
    case DRM_FORMAT_XBGR8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_R8G8B8_SRGB,
-                                                 true, true);
+                                                 WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R8G8B8_UNORM,
-                                            true, true);
+                                            WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       if (format)
          wsi_wl_format_add_modifier(format, modifier);
       if (srgb_format)
@@ -301,26 +299,26 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
 
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_R8G8B8A8_SRGB,
-                                                 false, true);
+                                                 WSI_WL_FMT_OPAQUE);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R8G8B8A8_UNORM,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_ABGR8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_R8G8B8A8_SRGB,
-                                                 true, false);
+                                                 WSI_WL_FMT_ALPHA);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_R8G8B8A8_UNORM,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    case DRM_FORMAT_XRGB8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_B8G8R8_SRGB,
-                                                 true, true);
+                                                 WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B8G8R8_UNORM,
-                                            true, true);
+                                            WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       if (format)
          wsi_wl_format_add_modifier(format, modifier);
       if (srgb_format)
@@ -328,18 +326,18 @@ wsi_wl_display_add_drm_format_modifier(struct wsi_wl_display *display,
 
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_B8G8R8A8_SRGB,
-                                                 false, true);
+                                                 WSI_WL_FMT_OPAQUE);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B8G8R8A8_UNORM,
-                                            false, true);
+                                            WSI_WL_FMT_OPAQUE);
       break;
    case DRM_FORMAT_ARGB8888:
       srgb_format = wsi_wl_display_add_vk_format(display, formats,
                                                  VK_FORMAT_B8G8R8A8_SRGB,
-                                                 true, false);
+                                                 WSI_WL_FMT_ALPHA);
       format = wsi_wl_display_add_vk_format(display, formats,
                                             VK_FORMAT_B8G8R8A8_UNORM,
-                                            true, false);
+                                            WSI_WL_FMT_ALPHA);
       break;
    }
 
@@ -358,46 +356,46 @@ wsi_wl_display_add_wl_shm_format(struct wsi_wl_display *display,
    case WL_SHM_FORMAT_XBGR8888:
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8_SRGB,
-                                   true, true);
+                                   WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8_UNORM,
-                                   true, true);
+                                   WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8A8_SRGB,
-                                   false, true);
+                                   WSI_WL_FMT_OPAQUE);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8A8_UNORM,
-                                   false, true);
+                                   WSI_WL_FMT_OPAQUE);
       break;
    case WL_SHM_FORMAT_ABGR8888:
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8A8_SRGB,
-                                   true, false);
+                                   WSI_WL_FMT_ALPHA);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_R8G8B8A8_UNORM,
-                                   true, false);
+                                   WSI_WL_FMT_ALPHA);
       break;
    case WL_SHM_FORMAT_XRGB8888:
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_B8G8R8_SRGB,
-                                   true, true);
+                                   WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_B8G8R8_UNORM,
-                                   true, true);
+                                   WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_B8G8R8A8_SRGB,
-                                   false, true);
+                                   WSI_WL_FMT_OPAQUE);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_B8G8R8A8_UNORM,
-                                   false, true);
+                                   WSI_WL_FMT_OPAQUE);
       break;
    case WL_SHM_FORMAT_ARGB8888:
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_B8G8R8A8_SRGB,
-                                   true, false);
+                                   WSI_WL_FMT_ALPHA);
       wsi_wl_display_add_vk_format(display, formats,
                                    VK_FORMAT_B8G8R8A8_UNORM,
-                                   true, false);
+                                   WSI_WL_FMT_ALPHA);
       break;
    default:
       break; /* Ignore */
@@ -815,8 +813,8 @@ wsi_wl_surface_get_formats(VkIcdSurfaceBase *icd_surface,
       /* Skip formats for which we can't support both alpha & opaque
        * formats.
        */
-      if (!disp_fmt->has_opaque_format ||
-          !disp_fmt->has_alpha_format)
+      if (!(disp_fmt->flags & WSI_WL_FMT_ALPHA) ||
+          !(disp_fmt->flags & WSI_WL_FMT_OPAQUE))
          continue;
 
       vk_outarray_append(&out, out_fmt) {
@@ -853,8 +851,8 @@ wsi_wl_surface_get_formats2(VkIcdSurfaceBase *icd_surface,
       /* Skip formats for which we can't support both alpha & opaque
        * formats.
        */
-      if (!disp_fmt->has_opaque_format ||
-          !disp_fmt->has_alpha_format)
+      if (!(disp_fmt->flags & WSI_WL_FMT_ALPHA) ||
+          !(disp_fmt->flags & WSI_WL_FMT_OPAQUE))
          continue;
 
       vk_outarray_append(&out, out_fmt) {
