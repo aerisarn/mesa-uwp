@@ -8098,11 +8098,13 @@ ast_interface_block::hir(exec_list *instructions,
       return NULL;
    }
 
-   unsigned qual_xfb_buffer;
-   if (!process_qualifier_constant(state, &loc, "xfb_buffer",
-                                   layout.xfb_buffer, &qual_xfb_buffer) ||
-       !validate_xfb_buffer_qualifier(&loc, state, qual_xfb_buffer)) {
-      return NULL;
+   unsigned qual_xfb_buffer = 0;
+   if (layout.flags.q.xfb_buffer) {
+      if (!process_qualifier_constant(state, &loc, "xfb_buffer",
+                                      layout.xfb_buffer, &qual_xfb_buffer) ||
+          !validate_xfb_buffer_qualifier(&loc, state, qual_xfb_buffer)) {
+         return NULL;
+      }
    }
 
    unsigned qual_xfb_offset = 0;
