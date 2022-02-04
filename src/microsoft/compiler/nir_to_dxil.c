@@ -1421,6 +1421,8 @@ get_module_flags(struct ntd_context *ctx)
       flags |= (1 << 5);
    if (ctx->mod.feats.dx11_1_double_extensions)
       flags |= (1 << 6);
+   if (ctx->mod.feats.array_layer_from_vs_or_ds)
+      flags |= (1 << 9);
    if (ctx->mod.feats.inner_coverage)
       flags |= (1 << 10);
    if (ctx->mod.feats.typed_uav_load_additional_formats)
@@ -5370,6 +5372,10 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
             ctx->mod.feats.stencil_ref = true;
          }
       }
+   } else if (ctx->shader->info.stage == MESA_SHADER_VERTEX ||
+              ctx->shader->info.stage == MESA_SHADER_TESS_EVAL) {
+      if (ctx->shader->info.outputs_written & VARYING_BIT_VIEWPORT)
+         ctx->mod.feats.array_layer_from_vs_or_ds = true;
    }
 
    if (ctx->mod.feats.native_low_precision)
