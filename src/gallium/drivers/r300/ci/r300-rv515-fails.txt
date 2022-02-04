@@ -48,12 +48,6 @@ dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
 dEQP-GLES2.functional.shaders.functions.control_flow.mixed_return_break_continue_vertex,Fail
 dEQP-GLES2.functional.shaders.functions.control_flow.mixed_return_break_continue_fragment,Fail
 
-# "No free temporary to use for predicate stack counter."
-dEQP-GLES2.functional.shaders.indexing.tmp_array.float_const_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec2_const_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec3_const_write_dynamic_loop_read_vertex,Fail
-dEQP-GLES2.functional.shaders.indexing.tmp_array.vec4_const_write_dynamic_loop_read_vertex,Fail
-
 # "Rewrite of inst 0 failed Can't allocate source for Inst 4 src_type=1 new_index=1 new_mask=1"
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec2_dynamic_subscript_write_component_read_fragment,Fail
 dEQP-GLES2.functional.shaders.indexing.vector_subscript.vec2_dynamic_subscript_write_direct_read_fragment,Fail

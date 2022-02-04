@@ -37,6 +37,7 @@
 struct ntt_compile {
    nir_shader *s;
    nir_function_impl *impl;
+   const struct nir_to_tgsi_options *options;
    struct pipe_screen *screen;
    struct ureg_program *ureg;
 
@@ -1156,15 +1157,26 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
          break;
 
       case nir_op_fcsel:
-         /* NIR is src0 != 0 ? src1 : src2.
-          * TGSI is src0 < 0 ? src1 : src2.
+         /* NIR fcsel is src0 != 0 ? src1 : src2.
+          * TGSI CMP is src0 < 0 ? src1 : src2.
           *
           * However, fcsel so far as I can find only appears on bools-as-floats
           * (1.0 or 0.0), so we can just negate it for the TGSI op.  It's
           * important to not have an abs here, as i915g has to make extra
           * instructions to do the abs.
           */
-         ureg_CMP(c->ureg, dst, ureg_negate(src[0]), src[1], src[2]);
+         if (c->options->lower_cmp) {
+            /* If the HW doesn't support TGSI CMP (r300 VS), then lower it to a
+             * LRP on the boolean 1.0/0.0 value, instead of requiring the
+             * backend to turn the src0 into 1.0/0.0 first.
+             *
+             * We don't use this in general because some hardware (i915 FS) the
+             * LRP gets expanded to MUL/MAD.
+             */
+            ureg_LRP(c->ureg, dst, src[0], src[1], src[2]);
+         } else {
+            ureg_CMP(c->ureg, dst, ureg_negate(src[0]), src[1], src[2]);
+         }
          break;
 
          /* It would be nice if we could get this left as scalar in NIR, since
@@ -2906,7 +2918,8 @@ nir_to_tgsi_lower_tex(nir_shader *s)
 }
 
 static void
-ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
+ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s,
+                    const struct nir_to_tgsi_options *ntt_options)
 {
    const struct nir_shader_compiler_options *options = s->options;
    bool lower_fsqrt =
@@ -3051,6 +3064,14 @@ nir_lower_primid_sysval_to_input(nir_shader *s)
                                         nir_lower_primid_sysval_to_input_lower, &input);
 }
 
+const void *
+nir_to_tgsi(struct nir_shader *s,
+            struct pipe_screen *screen)
+{
+   static const struct nir_to_tgsi_options default_ntt_options = {0};
+   return nir_to_tgsi_options(s, screen, &default_ntt_options);
+}
+
 /**
  * Translates the NIR shader to TGSI.
  *
@@ -3058,9 +3079,9 @@ nir_lower_primid_sysval_to_input(nir_shader *s)
  * We take ownership of the NIR shader passed, returning a reference to the new
  * TGSI tokens instead.  If you need to keep the NIR, then pass us a clone.
  */
-const void *
-nir_to_tgsi(struct nir_shader *s,
-            struct pipe_screen *screen)
+const void *nir_to_tgsi_options(struct nir_shader *s,
+                                struct pipe_screen *screen,
+                                const struct nir_to_tgsi_options *options)
 {
    struct ntt_compile *c;
    const void *tgsi_tokens;
@@ -3070,7 +3091,7 @@ nir_to_tgsi(struct nir_shader *s,
                                                    PIPE_SHADER_CAP_INTEGERS);
    const struct nir_shader_compiler_options *original_options = s->options;
 
-   ntt_fix_nir_options(screen, s);
+   ntt_fix_nir_options(screen, s, options);
 
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);
@@ -3157,6 +3178,7 @@ nir_to_tgsi(struct nir_shader *s,
 
    c = rzalloc(NULL, struct ntt_compile);
    c->screen = screen;
+   c->options = options;
 
    c->needs_texcoord_semantic =
       screen->get_param(screen, PIPE_CAP_TGSI_TEXCOORD);

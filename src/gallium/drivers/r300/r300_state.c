@@ -1943,7 +1943,13 @@ static void* r300_create_vs_state(struct pipe_context* pipe,
     vs->state = *shader;
 
     if (vs->state.type == PIPE_SHADER_IR_NIR) {
-       vs->state.tokens = nir_to_tgsi(shader->ir.nir, pipe->screen);
+       static const struct nir_to_tgsi_options swtcl_options = {0};
+       static const struct nir_to_tgsi_options hwtcl_options = {
+           .lower_cmp = true,
+       };
+       vs->state.tokens = nir_to_tgsi_options(shader->ir.nir, pipe->screen,
+                                              r300->screen->caps.has_tcl ?
+                                              &hwtcl_options : &swtcl_options);
     } else {
        assert(vs->state.type == PIPE_SHADER_IR_TGSI);
        /* we need to keep a local copy of the tokens */
