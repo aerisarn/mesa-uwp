@@ -214,43 +214,6 @@ glsl_type_size(const struct glsl_type *type, bool bindless)
         return glsl_count_attribute_slots(type, false);
 }
 
-/* Lower fdot2 to a vector multiplication followed by channel addition  */
-static bool
-midgard_nir_lower_fdot2_instr(nir_builder *b, nir_instr *instr, void *data)
-{
-        if (instr->type != nir_instr_type_alu)
-                return false;
-
-        nir_alu_instr *alu = nir_instr_as_alu(instr);
-        if (alu->op != nir_op_fdot2)
-                return false;
-
-        b->cursor = nir_before_instr(&alu->instr);
-
-        nir_ssa_def *src0 = nir_ssa_for_alu_src(b, alu, 0);
-        nir_ssa_def *src1 = nir_ssa_for_alu_src(b, alu, 1);
-
-        nir_ssa_def *product = nir_fmul(b, src0, src1);
-
-        nir_ssa_def *sum = nir_fadd(b,
-                                    nir_channel(b, product, 0),
-                                    nir_channel(b, product, 1));
-
-        /* Replace the fdot2 with this sum */
-        nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, sum);
-
-        return true;
-}
-
-static bool
-midgard_nir_lower_fdot2(nir_shader *shader)
-{
-        return nir_shader_instructions_pass(shader,
-                                            midgard_nir_lower_fdot2_instr,
-                                            nir_metadata_block_index | nir_metadata_dominance,
-                                            NULL);
-}
-
 static bool
 midgard_nir_lower_global_load_instr(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -320,7 +283,7 @@ midgard_nir_lower_global_load(nir_shader *shader)
 }
 
 static bool
-mdg_is_64(const nir_instr *instr, const void *_unused)
+mdg_should_scalarize(const nir_instr *instr, const void *_unused)
 {
         const nir_alu_instr *alu = nir_instr_as_alu(instr);
 
@@ -328,6 +291,7 @@ mdg_is_64(const nir_instr *instr, const void *_unused)
                 return true;
 
         switch (alu->op) {
+        case nir_op_fdot2:
         case nir_op_umul_high:
         case nir_op_imul_high:
                 return true;
@@ -384,8 +348,6 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
 
-        /* Must lower fdot2 after tex is lowered */
-        NIR_PASS(progress, nir, midgard_nir_lower_fdot2);
 
         /* T720 is broken. */
 
@@ -399,6 +361,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
         NIR_PASS(progress, nir, pan_lower_sample_pos);
 
         NIR_PASS(progress, nir, midgard_nir_lower_algebraic_early);
+        NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_should_scalarize, NULL);
 
         do {
                 progress = false;
@@ -443,7 +406,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
                          midgard_vectorize_filter, NULL);
         } while (progress);
 
-        NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_is_64, NULL);
+        NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_should_scalarize, NULL);
 
         /* Run after opts so it can hit more */
         if (!is_blend)
