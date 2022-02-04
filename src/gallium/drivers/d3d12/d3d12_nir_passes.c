@@ -1007,7 +1007,7 @@ d3d12_disable_multisampling(nir_shader *s)
          progress = true;
       }
    }
-   nir_foreach_variable_with_modes_safe(var, s, nir_var_shader_in | nir_var_system_value) {
+   nir_foreach_variable_with_modes_safe(var, s, nir_var_system_value) {
       if (var->data.location == SYSTEM_VALUE_SAMPLE_MASK_IN ||
           var->data.location == SYSTEM_VALUE_SAMPLE_ID) {
          exec_node_remove(&var->node);
