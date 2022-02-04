@@ -4499,9 +4499,10 @@ v3d_nir_to_vir(struct v3d_compile *c)
                 if (c->threads <= MAX2(c->min_threads_for_reg_alloc, min_threads)) {
                         if (V3D_DEBUG & V3D_DEBUG_PERF) {
                                 fprintf(stderr,
-                                        "Failed to register allocate %s at "
-                                        "%d threads.\n", vir_get_stage_name(c),
-                                        c->threads);
+                                        "Failed to register allocate %s "
+                                        "prog %d/%d at %d threads.\n",
+                                        vir_get_stage_name(c),
+                                        c->program_id, c->variant_id, c->threads);
                         }
                         c->compilation_result =
                                 V3D_COMPILATION_FAILED_REGISTER_ALLOCATION;
