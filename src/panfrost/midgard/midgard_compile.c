@@ -1199,7 +1199,9 @@ mir_set_intr_mask(nir_instr *instr, midgard_instruction *ins, bool is_read)
 
         if (is_read) {
                 nir_mask = mask_of(nir_intrinsic_dest_components(intr));
-                dsize = nir_dest_bit_size(intr->dest);
+
+                /* Extension is mandatory for 8/16-bit loads */
+                dsize = nir_dest_bit_size(intr->dest) == 64 ? 64 : 32;
         } else {
                 nir_mask = nir_intrinsic_write_mask(intr);
                 dsize = OP_IS_COMMON_STORE(ins->op) ?
