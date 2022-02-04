@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2014 VMware, Inc.  All rights reserved.
+ * Copyright 2014-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -42,18 +42,16 @@ svga_create_gs_state(struct pipe_context *pipe,
                      const struct pipe_shader_state *templ)
 {
    struct svga_context *svga = svga_context(pipe);
-   struct svga_geometry_shader *gs = CALLOC_STRUCT(svga_geometry_shader);
-
-   if (!gs)
-      return NULL;
+   struct svga_geometry_shader *gs;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATEGS);
 
-   gs->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
+   gs = (struct svga_geometry_shader *)
+            svga_create_shader(pipe, templ, PIPE_SHADER_GEOMETRY,
+                               sizeof(struct svga_geometry_shader));
 
-   /* Collect basic info that we'll need later:
-    */
-   tgsi_scan_shader(gs->base.tokens, &gs->base.info);
+   if (!gs)
+      goto done;
 
    /* Original shader IR could have been deleted if it is converted from
     * NIR to TGSI. So need to explicitly set the shader state type to TGSI
@@ -65,16 +63,9 @@ svga_create_gs_state(struct pipe_context *pipe,
 
    gs->draw_shader = draw_create_geometry_shader(svga->swtnl.draw, &tmp);
 
-   gs->base.id = svga->debug.shader_id++;
-
    gs->generic_outputs = svga_get_generic_outputs_mask(&gs->base.info);
 
-   /* check for any stream output declarations */
-   if (templ->stream_output.num_outputs) {
-      gs->base.stream_output = svga_create_stream_output(svga, &gs->base,
-                                                         &templ->stream_output);
-   }
-
+done:
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return gs;
 }

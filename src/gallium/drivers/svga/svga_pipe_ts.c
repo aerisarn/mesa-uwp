@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2018-2020 VMware, Inc.  All rights reserved.
+ * Copyright 2018-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -61,25 +61,19 @@ static void *
 svga_create_tcs_state(struct pipe_context *pipe,
                       const struct pipe_shader_state *templ)
 {
-   struct svga_context *svga = svga_context(pipe);
    struct svga_tcs_shader *tcs;
-
-   tcs = CALLOC_STRUCT(svga_tcs_shader);
-   if (!tcs)
-      return NULL;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATETCS);
 
-   tcs->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
-
-   /* Collect basic info that we'll need later:
-    */
-   tgsi_scan_shader(tcs->base.tokens, &tcs->base.info);
-
-   tcs->base.id = svga->debug.shader_id++;
+   tcs = (struct svga_tcs_shader *)
+            svga_create_shader(pipe, templ, PIPE_SHADER_TESS_CTRL,
+                               sizeof(struct svga_tcs_shader));
+   if (!tcs)
+      goto done;
 
    tcs->generic_outputs = svga_get_generic_outputs_mask(&tcs->base.info);
 
+done:
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return tcs;
 }
@@ -145,25 +139,20 @@ static void *
 svga_create_tes_state(struct pipe_context *pipe,
                       const struct pipe_shader_state *templ)
 {
-   struct svga_context *svga = svga_context(pipe);
    struct svga_tes_shader *tes;
-
-   tes = CALLOC_STRUCT(svga_tes_shader);
-   if (!tes)
-      return NULL;
 
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_CREATETES);
 
-   tes->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
+   tes = (struct svga_tes_shader *)
+            svga_create_shader(pipe, templ, PIPE_SHADER_TESS_EVAL,
+                               sizeof(struct svga_tes_shader));
 
-   /* Collect basic info that we'll need later:
-    */
-   tgsi_scan_shader(tes->base.tokens, &tes->base.info);
-
-   tes->base.id = svga->debug.shader_id++;
+   if (!tes)
+      goto done;
 
    tes->generic_inputs = svga_get_generic_inputs_mask(&tes->base.info);
 
+done:
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return tes;
 }

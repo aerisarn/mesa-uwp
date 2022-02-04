@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2008-2012 VMware, Inc.  All rights reserved.
+ * Copyright 2008-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -32,6 +32,9 @@
 #include "svga_shader.h"
 #include "svga_resource_texture.h"
 #include "VGPU10ShaderTokens.h"
+#include "tgsi/tgsi_parse.h"
+#include "tgsi/tgsi_text.h"
+#include "nir/nir_to_tgsi.h"
 
 
 /**
@@ -900,4 +903,44 @@ svga_rebind_shaders(struct svga_context *svga)
    svga->rebind.flags.tes = 0;
 
    return PIPE_OK;
+}
+
+
+/**
+ * Helper function to create a shader object.
+ */
+struct svga_shader *
+svga_create_shader(struct pipe_context *pipe,
+                   const struct pipe_shader_state *templ,
+                   enum pipe_shader_type stage,
+                   unsigned shader_structlen)
+{
+   struct svga_context *svga = svga_context(pipe);
+   struct svga_shader *shader = CALLOC(1, shader_structlen);
+
+   if (shader == NULL)
+      return NULL;
+
+   shader->id = svga->debug.shader_id++;
+   shader->type = templ->type;
+   shader->stage = stage;
+
+   shader->tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
+
+   if (shader->type == PIPE_SHADER_IR_TGSI) {
+      /* Collect basic info that we'll need later */
+      tgsi_scan_shader(shader->tokens, &shader->info);
+   }
+   else {
+      debug_printf("Unexpected nir shader\n");
+      assert(0);
+   }
+
+   /* check for any stream output declarations */
+   if (templ->stream_output.num_outputs) {
+      shader->stream_output = svga_create_stream_output(svga, shader,
+                                                        &templ->stream_output);
+   }
+
+   return shader;
 }

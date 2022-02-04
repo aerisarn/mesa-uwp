@@ -1,5 +1,5 @@
 /**********************************************************
- * Copyright 2008-2012 VMware, Inc.  All rights reserved.
+ * Copyright 2008-2022 VMware, Inc.  All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -298,6 +298,10 @@ struct svga_cs_variant
 
 struct svga_shader
 {
+   enum pipe_shader_ir type;            /* IR type */
+   enum pipe_shader_type stage;         /* shader stage */
+
+   /* TGSI */
    const struct tgsi_token *tokens;
    struct svga_token_key token_key;     /* token key for the token string */
    struct tgsi_shader_info info;
@@ -421,6 +425,12 @@ svga_search_shader_key(const struct svga_shader *shader,
 struct svga_shader *
 svga_search_shader_token_key(struct svga_shader *shader,
                              const struct svga_token_key *key);
+
+struct svga_shader *
+svga_create_shader(struct pipe_context *pipe,
+                   const struct pipe_shader_state *templ,
+                   enum pipe_shader_type stage,
+                   unsigned len);
 
 enum pipe_error
 svga_define_shader(struct svga_context *svga,
