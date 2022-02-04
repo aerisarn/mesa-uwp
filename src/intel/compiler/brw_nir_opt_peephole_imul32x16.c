@@ -122,6 +122,38 @@ signed_integer_range_analysis(nir_shader *shader, struct hash_table *range_ht,
          return root ^ integer_neg;
       }
 
+      case nir_op_imax: {
+         int src0_lo, src0_hi;
+         int src1_lo, src1_hi;
+
+         signed_integer_range_analysis(shader, range_ht,
+                                       nir_ssa_scalar_chase_alu_src(scalar, 0),
+                                       &src0_lo, &src0_hi);
+         signed_integer_range_analysis(shader, range_ht,
+                                       nir_ssa_scalar_chase_alu_src(scalar, 1),
+                                       &src1_lo, &src1_hi);
+
+         *lo = MAX2(src0_lo, src1_lo);
+         *hi = MAX2(src0_hi, src1_hi);
+         break;
+      }
+
+      case nir_op_imin: {
+         int src0_lo, src0_hi;
+         int src1_lo, src1_hi;
+
+         signed_integer_range_analysis(shader, range_ht,
+                                       nir_ssa_scalar_chase_alu_src(scalar, 0),
+                                       &src0_lo, &src0_hi);
+         signed_integer_range_analysis(shader, range_ht,
+                                       nir_ssa_scalar_chase_alu_src(scalar, 1),
+                                       &src1_lo, &src1_hi);
+
+         *lo = MIN2(src0_lo, src1_lo);
+         *hi = MIN2(src0_hi, src1_hi);
+         break;
+      }
+
       default:
          break;
       }
