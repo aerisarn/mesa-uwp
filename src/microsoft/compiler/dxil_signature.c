@@ -315,6 +315,12 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
       info->kind = DXIL_SEM_TESS_FACTOR;
       break;
 
+   case VARYING_SLOT_VIEWPORT:
+      assert(glsl_get_components(var->type) == 1);
+      snprintf(info->name, 64, "%s", "SV_ViewportArrayIndex");
+      info->kind = DXIL_SEM_VIEWPORT_ARRAY_INDEX;
+      break;
+
    default: {
          info->index =  vulkan ?
             var->data.location - VARYING_SLOT_VAR0 :
