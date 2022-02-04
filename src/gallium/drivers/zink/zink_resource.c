@@ -503,6 +503,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       }
    }
 
+   /* we may export WINSYS_HANDLE_TYPE_FD handle which is dma-buf */
+   if (shared && screen->info.have_EXT_external_memory_dma_buf)
+      export_types |= VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+
    /* TODO: remove linear for wsi */
    bool scanout = templ->bind & PIPE_BIND_SCANOUT;
 
