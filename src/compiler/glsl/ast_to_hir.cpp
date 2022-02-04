@@ -8008,21 +8008,21 @@ ast_interface_block::hir(exec_list *instructions,
       if (this->layout.flags.q.out) {
          allowed_blk_qualifiers.flags.q.out = 1;
          if (state->stage == MESA_SHADER_GEOMETRY ||
-          state->stage == MESA_SHADER_TESS_CTRL ||
-          state->stage == MESA_SHADER_TESS_EVAL ||
-          state->stage == MESA_SHADER_VERTEX ) {
+             state->stage == MESA_SHADER_TESS_CTRL ||
+             state->stage == MESA_SHADER_TESS_EVAL ||
+             state->stage == MESA_SHADER_VERTEX ) {
             allowed_blk_qualifiers.flags.q.explicit_xfb_offset = 1;
             allowed_blk_qualifiers.flags.q.explicit_xfb_buffer = 1;
             allowed_blk_qualifiers.flags.q.xfb_buffer = 1;
             allowed_blk_qualifiers.flags.q.explicit_xfb_stride = 1;
             allowed_blk_qualifiers.flags.q.xfb_stride = 1;
-            if (state->stage == MESA_SHADER_GEOMETRY) {
-               allowed_blk_qualifiers.flags.q.stream = 1;
-               allowed_blk_qualifiers.flags.q.explicit_stream = 1;
-            }
-            if (state->stage == MESA_SHADER_TESS_CTRL) {
-               allowed_blk_qualifiers.flags.q.patch = 1;
-            }
+         }
+         if (state->stage == MESA_SHADER_GEOMETRY) {
+            allowed_blk_qualifiers.flags.q.stream = 1;
+            allowed_blk_qualifiers.flags.q.explicit_stream = 1;
+         }
+         if (state->stage == MESA_SHADER_TESS_CTRL) {
+            allowed_blk_qualifiers.flags.q.patch = 1;
          }
       } else {
          allowed_blk_qualifiers.flags.q.in = 1;
