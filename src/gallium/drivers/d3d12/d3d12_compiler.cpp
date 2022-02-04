@@ -562,7 +562,15 @@ fill_varyings(struct d3d12_varying_info *info, nir_shader *s,
 
       if (!(mask & slot_bit))
          continue;
-      info->slots[slot].types[var->data.location_frac] = var->type;
+
+      const struct glsl_type *type = var->type;
+      if ((s->info.stage == MESA_SHADER_GEOMETRY ||
+           s->info.stage == MESA_SHADER_TESS_CTRL) &&
+          (modes & nir_var_shader_in) &&
+          glsl_type_is_array(type))
+         type = glsl_get_array_element(type);
+      info->slots[slot].types[var->data.location_frac] = type;
+
       info->slots[slot].patch = var->data.patch;
       auto& var_slot = info->slots[slot].vars[var->data.location_frac];
       var_slot.driver_location = var->data.driver_location;
