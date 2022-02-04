@@ -603,11 +603,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       struct wsi_image_create_info image_wsi_info = {
          VK_STRUCTURE_TYPE_WSI_IMAGE_CREATE_INFO_MESA,
          NULL,
-         .scanout = true,
+         .scanout = scanout && ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
       };
 
-      if ((screen->needs_mesa_wsi || screen->needs_mesa_flush_wsi) && scanout &&
-          ici.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      if ((screen->needs_mesa_wsi || screen->needs_mesa_flush_wsi) && scanout) {
          image_wsi_info.pNext = ici.pNext;
          ici.pNext = &image_wsi_info;
       }
