@@ -1092,6 +1092,7 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
    /* Add the needed in and outputs, and re-sort */
    if (prev) {
       uint64_t mask = key.required_varying_inputs.mask & ~new_nir_variant->info.inputs_read;
+      new_nir_variant->info.inputs_read |= mask;
       while (mask) {
          int slot = u_bit_scan64(&mask);
          create_varyings_from_info(new_nir_variant, &key.required_varying_inputs, slot, nir_var_shader_in, false);
@@ -1099,6 +1100,7 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
 
       if (sel->stage == PIPE_SHADER_TESS_EVAL) {
          uint32_t patch_mask = (uint32_t)key.ds.required_patch_inputs.mask & ~new_nir_variant->info.patch_inputs_read;
+         new_nir_variant->info.patch_inputs_read |= patch_mask;
          while (patch_mask) {
             int slot = u_bit_scan(&patch_mask);
             create_varyings_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_in, true);
@@ -1111,6 +1113,7 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
 
    if (next) {
       uint64_t mask = key.required_varying_outputs.mask & ~new_nir_variant->info.outputs_written;
+      new_nir_variant->info.outputs_written |= mask;
       while (mask) {
          int slot = u_bit_scan64(&mask);
          create_varyings_from_info(new_nir_variant, &key.required_varying_outputs, slot, nir_var_shader_out, false);
@@ -1118,6 +1121,7 @@ select_shader_variant(struct d3d12_selection_context *sel_ctx, d3d12_shader_sele
 
       if (sel->stage == PIPE_SHADER_TESS_CTRL) {
          uint32_t patch_mask = (uint32_t)key.hs.required_patch_outputs.mask & ~new_nir_variant->info.patch_outputs_written;
+         new_nir_variant->info.patch_outputs_written |= patch_mask;
          while (patch_mask) {
             int slot = u_bit_scan(&patch_mask);
             create_varyings_from_info(new_nir_variant, &key.ds.required_patch_inputs, slot, nir_var_shader_out, true);
