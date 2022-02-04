@@ -1172,7 +1172,7 @@ dri2_wl_get_buffers_with_format(__DRIdrawable * driDrawable,
    struct dri2_egl_surface *dri2_surf = loaderPrivate;
    int i, j;
 
-   if (update_buffers(dri2_surf) < 0)
+   if (update_buffers_if_needed(dri2_surf) < 0)
       return NULL;
 
    for (i = 0, j = 0; i < 2 * count; i += 2, j++) {
@@ -1251,7 +1251,7 @@ image_get_buffers(__DRIdrawable *driDrawable,
 {
    struct dri2_egl_surface *dri2_surf = loaderPrivate;
 
-   if (update_buffers(dri2_surf) < 0)
+   if (update_buffers_if_needed(dri2_surf) < 0)
       return 0;
 
    buffers->image_mask = __DRI_IMAGE_BUFFER_BACK;
