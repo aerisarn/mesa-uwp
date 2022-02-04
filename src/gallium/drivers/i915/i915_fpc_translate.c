@@ -968,9 +968,11 @@ i915_fini_compile(struct i915_context *i915, struct i915_fp_compile *p)
 
       pipe_debug_message(
          &i915->debug, SHADER_INFO,
-         "%s shader: %d inst, %d tex, %d tex_indirect, %d const",
+         "%s shader: %d inst, %d tex, %d tex_indirect, %d temps, %d const",
          _mesa_shader_stage_to_abbrev(MESA_SHADER_FRAGMENT), (int)program_size,
-         p->nr_tex_insn, p->nr_tex_indirect, ifs->num_constants);
+         p->nr_tex_insn, p->nr_tex_indirect,
+         p->shader->info.file_max[TGSI_FILE_TEMPORARY] + 1,
+         ifs->num_constants);
    }
 
    /* Release the compilation struct:
