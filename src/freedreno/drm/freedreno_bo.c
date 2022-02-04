@@ -461,6 +461,9 @@ fd_bo_map(struct fd_bo *bo)
       uint64_t offset;
       int ret;
 
+      if (bo->alloc_flags & FD_BO_NOMAP)
+         return NULL;
+
       ret = bo->funcs->offset(bo, &offset);
       if (ret) {
          return NULL;

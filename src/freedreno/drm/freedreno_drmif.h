@@ -100,8 +100,10 @@ struct fd_fence {
 /* bo flags: */
 #define FD_BO_GPUREADONLY         BITSET_BIT(1)
 #define FD_BO_SCANOUT             BITSET_BIT(2)
+/* Default caching is WRITECOMBINE: */
 #define FD_BO_CACHED_COHERENT     BITSET_BIT(3)
-/* Default caching is WRITECOMBINE */
+/* Hint that the bo will not be mmap'd: */
+#define FD_BO_NOMAP               BITSET_BIT(4)
 
 /* bo access flags: (keep aligned to MSM_PREP_x) */
 #define FD_BO_PREP_READ   BITSET_BIT(0)
