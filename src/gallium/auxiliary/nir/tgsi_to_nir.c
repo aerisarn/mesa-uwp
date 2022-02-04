@@ -93,6 +93,7 @@ struct ttn_compile {
    bool cap_position_is_sysval;
    bool cap_point_is_sysval;
    bool cap_samplers_as_deref;
+   bool cap_integers;
 };
 
 #define ttn_swizzle(b, src, x, y, z, w) \
@@ -2276,6 +2277,7 @@ ttn_read_pipe_caps(struct ttn_compile *c,
    c->cap_face_is_sysval = screen->get_param(screen, PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL);
    c->cap_position_is_sysval = screen->get_param(screen, PIPE_CAP_FS_POSITION_IS_SYSVAL);
    c->cap_point_is_sysval = screen->get_param(screen, PIPE_CAP_FS_POINT_IS_SYSVAL);
+   c->cap_integers = screen->get_shader_param(screen, c->scan->processor, PIPE_SHADER_CAP_INTEGERS);
 }
 
 /**
@@ -2481,7 +2483,7 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
    }
 
    if (nir->options->lower_uniforms_to_ubo)
-      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, false);
+      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, !c->cap_integers);
 
    if (!c->cap_samplers_as_deref)
       NIR_PASS_V(nir, nir_lower_samplers);
