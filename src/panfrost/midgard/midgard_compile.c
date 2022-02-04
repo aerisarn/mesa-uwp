@@ -2538,8 +2538,7 @@ emit_jump(compiler_context *ctx, nir_jump_instr *instr)
         }
 
         default:
-                DBG("Unknown jump type %d\n", instr->type);
-                break;
+                unreachable("Unhandled jump");
         }
 }
 
