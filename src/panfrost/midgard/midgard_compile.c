@@ -358,9 +358,6 @@ midgard_vectorize_filter(const nir_instr *instr, void *data)
         return true;
 }
 
-
-/* Flushes undefined values to zero */
-
 static void
 optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 {
