@@ -108,6 +108,8 @@ wsi_wl_display_add_vk_format(struct wsi_wl_display *display,
                              struct u_vector *formats,
                              VkFormat format, uint32_t flags)
 {
+   assert(flags & (WSI_WL_FMT_ALPHA | WSI_WL_FMT_OPAQUE));
+
    /* Don't add a format that's already in the list */
    struct wsi_wl_format *f = find_format(formats, format);
    if (f) {
