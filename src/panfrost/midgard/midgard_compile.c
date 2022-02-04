@@ -131,6 +131,8 @@ schedule_barrier(compiler_context *ctx)
 
 M_LOAD(ld_attr_32, nir_type_uint32);
 M_LOAD(ld_vary_32, nir_type_uint32);
+M_LOAD(ld_ubo_u8, nir_type_uint32); /* mandatory extension to 32-bit */
+M_LOAD(ld_ubo_u16, nir_type_uint32);
 M_LOAD(ld_ubo_32, nir_type_uint32);
 M_LOAD(ld_ubo_64, nir_type_uint32);
 M_LOAD(ld_ubo_128, nir_type_uint32);
@@ -1236,7 +1238,11 @@ emit_ubo_read(
         unsigned bitsize = dest_size * nr_comps;
 
         /* Pick the smallest intrinsic to avoid out-of-bounds reads */
-        if (bitsize <= 32)
+        if (bitsize <= 8)
+                ins = m_ld_ubo_u8(dest, 0);
+        else if (bitsize <= 16)
+                ins = m_ld_ubo_u16(dest, 0);
+        else if (bitsize <= 32)
                 ins = m_ld_ubo_32(dest, 0);
         else if (bitsize <= 64)
                 ins = m_ld_ubo_64(dest, 0);
