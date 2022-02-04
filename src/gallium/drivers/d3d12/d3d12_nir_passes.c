@@ -388,30 +388,70 @@ d3d12_lower_load_patch_vertices_in(struct nir_shader *nir)
       nir_metadata_block_index | nir_metadata_dominance, &var);
 }
 
-static void
-invert_depth(nir_builder *b, struct nir_instr *instr)
+struct invert_depth_state
 {
-   if (instr->type != nir_instr_type_intrinsic)
-      return;
+   unsigned viewport_mask;
+   nir_ssa_def *viewport_index;
+   nir_instr *store_pos_instr;
+};
 
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic != nir_intrinsic_store_deref)
-      return;
+static void
+invert_depth_impl(nir_builder *b, struct invert_depth_state *state)
+{
+   assert(state->store_pos_instr);
 
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   if (var->data.mode != nir_var_shader_out ||
-       var->data.location != VARYING_SLOT_POS)
-      return;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(state->store_pos_instr);
+   if (state->viewport_index) {
+      /* Cursor is assigned before calling. Make sure that storing pos comes
+       * after computing the viewport.
+       */
+      nir_instr_move(b->cursor, &intr->instr);
+   }
 
    b->cursor = nir_before_instr(&intr->instr);
 
    nir_ssa_def *pos = nir_ssa_for_src(b, intr->src[1], 4);
+
+   if (state->viewport_index) {
+      nir_push_if(b, nir_i2b1(b, nir_iand_imm(b,
+         nir_ishl(b, nir_imm_int(b, 1), state->viewport_index),
+         state->viewport_mask)));
+   }
    nir_ssa_def *def = nir_vec4(b,
                                nir_channel(b, pos, 0),
                                nir_channel(b, pos, 1),
                                nir_fneg(b, nir_channel(b, pos, 2)),
                                nir_channel(b, pos, 3));
+   if (state->viewport_index) {
+      nir_pop_if(b, NULL);
+      def = nir_if_phi(b, def, pos);
+   }
    nir_instr_rewrite_src(&intr->instr, intr->src + 1, nir_src_for_ssa(def));
+
+   state->viewport_index = NULL;
+   state->store_pos_instr = NULL;
+}
+
+static void
+invert_depth_instr(nir_builder *b, struct nir_instr *instr, struct invert_depth_state *state)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic == nir_intrinsic_store_deref) {
+      nir_variable *var = nir_intrinsic_get_var(intr, 0);
+      if (var->data.mode != nir_var_shader_out)
+         return;
+
+      if (var->data.location == VARYING_SLOT_VIEWPORT)
+         state->viewport_index = intr->src[1].ssa;
+      if (var->data.location == VARYING_SLOT_POS)
+         state->store_pos_instr = instr;
+   } else if (intr->intrinsic == nir_intrinsic_emit_vertex) {
+      b->cursor = nir_before_instr(instr);
+      invert_depth_impl(b, state);
+   }
 }
 
 /* In OpenGL the windows space depth value z_w is evaluated according to "s * z_d + b"
@@ -420,13 +460,14 @@ invert_depth(nir_builder *b, struct nir_instr *instr)
  * to compensate by inverting "z_d' = -z_d" with this lowering pass.
  */
 void
-d3d12_nir_invert_depth(nir_shader *shader)
+d3d12_nir_invert_depth(nir_shader *shader, unsigned viewport_mask)
 {
    if (shader->info.stage != MESA_SHADER_VERTEX &&
        shader->info.stage != MESA_SHADER_TESS_EVAL &&
        shader->info.stage != MESA_SHADER_GEOMETRY)
       return;
 
+   struct invert_depth_state state = { viewport_mask };
    nir_foreach_function(function, shader) {
       if (function->impl) {
          nir_builder b;
@@ -434,8 +475,13 @@ d3d12_nir_invert_depth(nir_shader *shader)
 
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr_safe(instr, block) {
-               invert_depth(&b, instr);
+               invert_depth_instr(&b, instr, &state);
             }
+         }
+
+         if (state.store_pos_instr) {
+            b.cursor = nir_after_block(function->impl->end_block);
+            invert_depth_impl(&b, &state);
          }
 
          nir_metadata_preserve(function->impl, nir_metadata_block_index |
