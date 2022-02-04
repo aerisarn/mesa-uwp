@@ -504,6 +504,7 @@ static inline ppir_node *ppir_node_first_pred(ppir_node *node)
 
 static inline ppir_dest *ppir_node_get_dest(ppir_node *node)
 {
+   assert(node);
    switch (node->type) {
    case ppir_node_type_alu:
       return &ppir_node_to_alu(node)->dest;
@@ -520,6 +521,7 @@ static inline ppir_dest *ppir_node_get_dest(ppir_node *node)
 
 static inline int ppir_node_get_src_num(ppir_node *node)
 {
+   assert(node);
    switch (node->type) {
    case ppir_node_type_alu:
       return ppir_node_to_alu(node)->num_src;

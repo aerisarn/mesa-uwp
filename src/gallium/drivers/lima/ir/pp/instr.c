@@ -193,6 +193,7 @@ bool ppir_instr_insert_node(ppir_instr *instr, ppir_node *node)
                if (src->node == node)
                   break;
             }
+            assert(src);
             assert(src->node == node);
 
             instr->constant[i] = ic;

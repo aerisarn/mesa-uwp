@@ -119,6 +119,7 @@ static void ppir_node_add_src(ppir_compiler *comp, ppir_node *node,
       }
    }
 
+   assert(child);
    ppir_node_target_assign(ps, child);
 }
 
