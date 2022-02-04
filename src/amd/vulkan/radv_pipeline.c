@@ -4773,7 +4773,7 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf 
                              S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
                              S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
                              S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
-                             cull_dist_mask << 8 | clip_dist_mask);
+                             total_mask << 8 | clip_dist_mask);
 
    if (pipeline->device->physical_device->rad_info.chip_class <= GFX8)
       radeon_set_context_reg(ctx_cs, R_028AB4_VGT_REUSE_OFF, outinfo->writes_viewport_index);
@@ -4911,7 +4911,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
                              S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
                              S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
                              S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
-                             cull_dist_mask << 8 | clip_dist_mask);
+                             total_mask << 8 | clip_dist_mask);
 
    radeon_set_context_reg(ctx_cs, R_028A84_VGT_PRIMITIVEID_EN,
                           S_028A84_PRIMITIVEID_EN(es_enable_prim_id) |
