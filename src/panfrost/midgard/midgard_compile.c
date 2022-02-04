@@ -2404,9 +2404,6 @@ static void
 emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                   unsigned midgard_texop)
 {
-        /* TODO */
-        //assert (!instr->sampler);
-
         nir_dest *dest = &instr->dest;
 
         int texture_index = instr->texture_index;
