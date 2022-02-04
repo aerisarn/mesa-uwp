@@ -708,11 +708,29 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
 
       WQMState needs = ctx.handle_wqm ? ctx.info[block->index].instr_needs[idx] : Unspecified;
 
+      if (needs == WQM && state != WQM) {
+         transition_to_WQM(ctx, bld, block->index);
+         state = WQM;
+      } else if (needs == Exact && state != Exact) {
+         transition_to_Exact(ctx, bld, block->index);
+         state = Exact;
+      }
+
       if (instr->opcode == aco_opcode::p_discard_if) {
-         if (ctx.info[block->index].block_needs & Preserve_WQM) {
-            assert(block->kind & block_kind_top_level);
-            transition_to_WQM(ctx, bld, block->index);
-            ctx.info[block->index].exec.back().second &= ~mask_type_global;
+         Operand current_exec = Operand(exec, bld.lm);
+
+         if (block->kind & block_kind_top_level) {
+            if (needs == Preserve_WQM) {
+               /* Preserve the WQM mask */
+               transition_to_WQM(ctx, bld, block->index);
+               ctx.info[block->index].exec.back().second &= ~mask_type_global;
+            } else if (ctx.info[block->index].exec.size() == 2) {
+               assert(state == WQM);
+               /* Transition to Exact without extra instruction */
+               ctx.info[block->index].exec.pop_back();
+               current_exec = get_exec_op(ctx.info[block->index].exec.back().first);
+               ctx.info[block->index].exec[0].first = Operand(bld.lm);
+            }
          }
 
          Temp cond, exit_cond;
@@ -727,7 +745,7 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
             cond = instr->operands[0].getTemp();
             /* discard from current exec */
             exit_cond = bld.sop2(Builder::s_andn2, Definition(exec, bld.lm), bld.def(s1, scc),
-                                 Operand(exec, bld.lm), cond)
+                                 current_exec, cond)
                            .def(1)
                            .getTemp();
          }
@@ -745,15 +763,7 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
          instr->operands[0] = bld.scc(exit_cond);
          assert(!ctx.handle_wqm || (ctx.info[block->index].exec[0].second & mask_type_wqm) == 0);
 
-      } else if (needs == WQM && state != WQM) {
-         transition_to_WQM(ctx, bld, block->index);
-         state = WQM;
-      } else if (needs == Exact && state != Exact) {
-         transition_to_Exact(ctx, bld, block->index);
-         state = Exact;
-      }
-
-      if (instr->opcode == aco_opcode::p_is_helper) {
+      } else if (instr->opcode == aco_opcode::p_is_helper) {
          Definition dst = instr->definitions[0];
          assert(dst.size() == bld.lm.size());
          if (state == Exact) {
