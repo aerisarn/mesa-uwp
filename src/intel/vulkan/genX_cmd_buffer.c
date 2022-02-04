@@ -4371,6 +4371,9 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
+   if (cmd_buffer->state.conditional_render_enabled)
+      genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
+
    if (vs_prog_data->uses_firstvertex ||
        vs_prog_data->uses_baseinstance)
       emit_base_vertex_instance(cmd_buffer, firstVertex, firstInstance);
@@ -4405,6 +4408,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.IndirectParameterEnable  = true;
+      prim.PredicateEnable          = cmd_buffer->state.conditional_render_enabled;
       prim.VertexAccessType         = SEQUENTIAL;
       prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
    }
