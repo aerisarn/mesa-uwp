@@ -117,6 +117,9 @@ d3d12_disable_multisampling(nir_shader *s);
 bool
 d3d12_split_multistream_varyings(nir_shader *s);
 
+void
+d3d12_write_0_to_new_varying(nir_shader *s, nir_variable *var);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1142,3 +1142,61 @@ d3d12_split_multistream_varyings(nir_shader *s)
 
    return progress;
 }
+
+static void
+write_0(nir_builder *b, nir_deref_instr *deref)
+{
+   if (glsl_type_is_array_or_matrix(deref->type)) {
+      for (unsigned i = 0; i < glsl_get_length(deref->type); ++i)
+         write_0(b, nir_build_deref_array_imm(b, deref, i));
+   } else if (glsl_type_is_struct(deref->type)) {
+      for (unsigned i = 0; i < glsl_get_length(deref->type); ++i)
+         write_0(b, nir_build_deref_struct(b, deref, i));
+   } else {
+      nir_ssa_def *scalar = nir_imm_intN_t(b, 0, glsl_get_bit_size(deref->type));
+      nir_ssa_def *scalar_arr[NIR_MAX_VEC_COMPONENTS];
+      unsigned num_comps = glsl_get_components(deref->type);
+      unsigned writemask = (1 << num_comps) - 1;
+      for (unsigned i = 0; i < num_comps; ++i)
+         scalar_arr[i] = scalar;
+      nir_ssa_def *zero_val = nir_vec(b, scalar_arr, num_comps);
+      nir_store_deref(b, deref, zero_val, writemask);
+   }
+}
+
+void
+d3d12_write_0_to_new_varying(nir_shader *s, nir_variable *var)
+{
+   /* Skip per-vertex HS outputs */
+   if (s->info.stage == MESA_SHADER_TESS_CTRL && !var->data.patch)
+      return;
+
+   nir_foreach_function(func, s) {
+      if (!func->impl)
+         continue;
+
+      nir_builder b;
+      nir_builder_init(&b, func->impl);
+
+      nir_foreach_block(block, func->impl) {
+         b.cursor = nir_before_block(block);
+         if (s->info.stage != MESA_SHADER_GEOMETRY) {
+            write_0(&b, nir_build_deref_var(&b, var));
+            break;
+         }
+
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_emit_vertex)
+               continue;
+
+            b.cursor = nir_before_instr(instr);
+            write_0(&b, nir_build_deref_var(&b, var));
+         }
+      }
+
+      nir_metadata_preserve(func->impl, nir_metadata_block_index | nir_metadata_dominance);
+   }
+}

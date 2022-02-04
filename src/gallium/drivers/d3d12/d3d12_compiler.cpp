@@ -535,6 +535,9 @@ create_varying_from_info(nir_shader *nir, struct d3d12_varying_info *info,
    if (patch)
       var->data.location += VARYING_SLOT_PATCH0;
 
+   if (mode == nir_var_shader_out)
+      NIR_PASS_V(nir, d3d12_write_0_to_new_varying, var);
+
    return var;
 }
 
