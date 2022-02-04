@@ -804,7 +804,7 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
       if (stage == PIPE_SHADER_FRAGMENT || stage == PIPE_SHADER_GEOMETRY)
          system_out_values |= VARYING_BIT_POS;
       if (stage == PIPE_SHADER_FRAGMENT)
-         system_out_values |= VARYING_BIT_PSIZ;
+         system_out_values |= VARYING_BIT_PSIZ | VARYING_BIT_VIEWPORT;
       uint64_t mask = prev->current->nir->info.outputs_written & ~system_out_values;
       fill_varyings(&key->required_varying_inputs, prev->current->nir,
                     nir_var_shader_out, mask, false);
@@ -1323,11 +1323,11 @@ d3d12_create_shader(struct d3d12_context *ctx,
    d3d12_shader_selector *next = get_next_shader(ctx, sel->stage);
 
    uint64_t in_mask = nir->info.stage == MESA_SHADER_VERTEX ?
-                         0 : VARYING_BIT_PRIMITIVE_ID;
+                         0 : (VARYING_BIT_PRIMITIVE_ID | VARYING_BIT_VIEWPORT);
 
    uint64_t out_mask = nir->info.stage == MESA_SHADER_FRAGMENT ?
                           (1ull << FRAG_RESULT_STENCIL) | (1ull << FRAG_RESULT_SAMPLE_MASK) :
-                          VARYING_BIT_PRIMITIVE_ID;
+                          (VARYING_BIT_PRIMITIVE_ID | VARYING_BIT_VIEWPORT);
 
    d3d12_fix_io_uint_type(nir, in_mask, out_mask);
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
