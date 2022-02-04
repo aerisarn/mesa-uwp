@@ -185,9 +185,9 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 1;
 
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 400;
+      return 420;
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 400;
+      return 420;
    case PIPE_CAP_ESSL_FEATURE_LEVEL:
       return 310;
 
@@ -210,7 +210,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return PIPE_ENDIAN_NATIVE; /* unsure */
 
    case PIPE_CAP_MAX_VIEWPORTS:
-      return D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT;
+      return D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE;
 
    case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
       return 1;
