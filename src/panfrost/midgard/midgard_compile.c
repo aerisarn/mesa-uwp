@@ -3287,9 +3287,15 @@ midgard_compile_shader_nir(nir_shader *nir,
          * pipeline registers which are harder to track */
         mir_analyze_helper_requirements(ctx);
 
+        if (midgard_debug & MIDGARD_DBG_SHADERS && !skip_internal)
+                mir_print_shader(ctx);
+
         /* Schedule! */
         midgard_schedule_program(ctx);
         mir_ra(ctx);
+
+        if (midgard_debug & MIDGARD_DBG_SHADERS && !skip_internal)
+                mir_print_shader(ctx);
 
         /* Analyze after scheduling since this is order-dependent */
         mir_analyze_helper_terminate(ctx);
