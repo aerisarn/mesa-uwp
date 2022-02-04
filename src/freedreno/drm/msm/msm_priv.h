@@ -96,8 +96,7 @@ struct msm_bo {
 };
 FD_DEFINE_CAST(fd_bo, msm_bo);
 
-int msm_bo_new_handle(struct fd_device *dev, uint32_t size, uint32_t flags,
-                      uint32_t *handle);
+struct fd_bo *msm_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags);
 struct fd_bo *msm_bo_from_handle(struct fd_device *dev, uint32_t size,
                                  uint32_t handle);
 

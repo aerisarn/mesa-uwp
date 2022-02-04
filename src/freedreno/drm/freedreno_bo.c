@@ -57,6 +57,21 @@ lookup_bo(struct hash_table *tbl, uint32_t key)
    return bo;
 }
 
+static void
+bo_init_common(struct fd_bo *bo, struct fd_device *dev)
+{
+   /* Backend should have initialized these: */
+   assert(bo->size);
+   assert(bo->handle);
+
+   bo->dev = dev;
+   bo->iova = bo->funcs->iova(bo);
+   bo->reloc_flags = FD_RELOC_FLAGS_INIT;
+
+   p_atomic_set(&bo->refcnt, 1);
+   list_inithead(&bo->list);
+}
+
 /* allocate a new buffer object, call w/ table_lock held */
 static struct fd_bo *
 bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
@@ -73,16 +88,12 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
       drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
       return NULL;
    }
-   bo->dev = dev;
-   bo->size = size;
-   bo->handle = handle;
-   bo->iova = bo->funcs->iova(bo);
-   bo->reloc_flags = FD_RELOC_FLAGS_INIT;
 
-   p_atomic_set(&bo->refcnt, 1);
-   list_inithead(&bo->list);
+   bo_init_common(bo, dev);
+
    /* add ourself into the handle table: */
    _mesa_hash_table_insert(dev->handle_table, &bo->handle, bo);
+
    return bo;
 }
 
@@ -91,8 +102,6 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
        struct fd_bo_cache *cache)
 {
    struct fd_bo *bo = NULL;
-   uint32_t handle;
-   int ret;
 
    /* demote cached-coherent to WC if not supported: */
    if ((flags & FD_BO_CACHED_COHERENT) && !dev->has_cached_coherent)
@@ -102,12 +111,15 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
    if (bo)
       return bo;
 
-   ret = dev->funcs->bo_new_handle(dev, size, flags, &handle);
-   if (ret)
+   bo = dev->funcs->bo_new(dev, size, flags);
+   if (!bo)
       return NULL;
 
+   bo_init_common(bo, dev);
+
    simple_mtx_lock(&table_lock);
-   bo = bo_from_handle(dev, size, handle);
+   /* add ourself into the handle table: */
+   _mesa_hash_table_insert(dev->handle_table, &bo->handle, bo);
    simple_mtx_unlock(&table_lock);
 
    bo->alloc_flags = flags;

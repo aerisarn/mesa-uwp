@@ -164,9 +164,8 @@ static const struct fd_bo_funcs funcs = {
 };
 
 /* allocate a buffer handle: */
-int
-msm_bo_new_handle(struct fd_device *dev, uint32_t size, uint32_t flags,
-                  uint32_t *handle)
+static int
+new_handle(struct fd_device *dev, uint32_t size, uint32_t flags, uint32_t *handle)
 {
    struct drm_msm_gem_new req = {
       .size = size,
@@ -195,6 +194,20 @@ msm_bo_new_handle(struct fd_device *dev, uint32_t size, uint32_t flags,
 
 /* allocate a new buffer object */
 struct fd_bo *
+msm_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
+{
+   uint32_t handle;
+   int ret;
+
+   ret = new_handle(dev, size, flags, &handle);
+   if (ret)
+      return NULL;
+
+   return msm_bo_from_handle(dev, size, handle);
+}
+
+/* allocate a new buffer object from existing handle (import) */
+struct fd_bo *
 msm_bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
 {
    struct msm_bo *msm_bo;
@@ -205,6 +218,8 @@ msm_bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
       return NULL;
 
    bo = &msm_bo->base;
+   bo->size = size;
+   bo->handle = handle;
    bo->funcs = &funcs;
 
    return bo;

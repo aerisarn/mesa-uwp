@@ -89,10 +89,16 @@ grow(void **ptr, uint16_t nr, uint16_t *max, uint16_t sz)
 
 
 struct fd_device_funcs {
-   int (*bo_new_handle)(struct fd_device *dev, uint32_t size, uint32_t flags,
-                        uint32_t *handle);
+   /* Create a new buffer object:
+    */
+   struct fd_bo *(*bo_new)(struct fd_device *dev, uint32_t size, uint32_t flags);
+
+   /* Create a new buffer object from existing handle (ie. dma-buf or
+    * flink import):
+    */
    struct fd_bo *(*bo_from_handle)(struct fd_device *dev, uint32_t size,
                                    uint32_t handle);
+
    struct fd_pipe *(*pipe_new)(struct fd_device *dev, enum fd_pipe_id id,
                                unsigned prio);
    void (*destroy)(struct fd_device *dev);
