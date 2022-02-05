@@ -517,8 +517,9 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
          }
 
          /* Optimize the destination. */
-         bool is_f32_to_f16 = true;
-         bool is_i32_to_i16 = true; /* same behavior for int and uint */
+         bool is_f32_to_f16 = tex->dest_type & nir_type_float;
+         /* same behavior for int and uint */
+         bool is_i32_to_i16 = tex->dest_type & (nir_type_int | nir_type_uint);
 
          nir_foreach_use(use, &tex->dest.ssa) {
             is_f32_to_f16 &= is_f32_to_f16_conversion(use->parent_instr);
