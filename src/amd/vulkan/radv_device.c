@@ -4392,8 +4392,11 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       }
 
       for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
+         /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
+          * before starting the next cmdbuffer, so we need to do it here. */
+         bool need_wait = !j && submission->wait_count > 0;
          struct radeon_cmdbuf *initial_preamble =
-            !j ? initial_flush_preamble_cs : initial_preamble_cs;
+            need_wait ? initial_flush_preamble_cs : initial_preamble_cs;
          advance = MIN2(max_cs_submission, submission->command_buffer_count - j);
          bool last_submit = j + advance == submission->command_buffer_count;
 
