@@ -107,7 +107,7 @@ create_submission_data(struct tu_device *dev, struct tu_autotune *at,
       list_del(&submission_data->node);
    } else {
       submission_data = calloc(1, sizeof(struct tu_submission_data));
-      tu_cs_init(&submission_data->fence_cs, dev, TU_CS_MODE_GROW, 5);
+      tu_cs_init(&submission_data->fence_cs, dev, TU_CS_MODE_GROW, 5, "autotune fence cs");
    }
    submission_data->fence = fence;
 

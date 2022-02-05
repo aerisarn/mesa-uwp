@@ -739,7 +739,7 @@ tu_CreateDescriptorPool(VkDevice _device,
 
    if (bo_size) {
       if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE)) {
-         ret = tu_bo_init_new(device, &pool->bo, bo_size, TU_BO_ALLOC_ALLOW_DUMP);
+         ret = tu_bo_init_new(device, &pool->bo, bo_size, TU_BO_ALLOC_ALLOW_DUMP, "descriptor pool");
          if (ret)
             goto fail_alloc;
 
