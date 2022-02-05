@@ -282,6 +282,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return BRW_MAX_SOL_BINDINGS / CROCUS_MAX_SOL_BUFFERS;
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
       return BRW_MAX_SOL_BINDINGS;
+   case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
    case PIPE_CAP_GLSL_FEATURE_LEVEL: {
       if (devinfo->verx10 >= 75)
          return 460;
@@ -291,8 +292,6 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
          return 330;
       return 140;
    }
-   case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-      return 140;
    case PIPE_CAP_CLIP_PLANES:
       if (devinfo->verx10 < 45)
          return 6;

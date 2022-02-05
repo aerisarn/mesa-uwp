@@ -31,6 +31,9 @@ fast_color_clear@fcc-write-after-clear,Fail
 
 spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 
+# Compat mode failure
+spec@!opengl 1.0@rasterpos,Fail
+
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@linestipple@Factor 2x,Fail
 spec@!opengl 1.1@linestipple@Factor 3x,Fail
@@ -158,6 +161,10 @@ spec@ext_transform_feedback@tessellation triangle_fan flat_first,Fail
 spec@ext_transform_feedback@builtin-varyings gl_pointsize,Fail
 
 spec@glsl-1.50@execution@geometry@primitive-types gl_line_loop,Fail
+
+# Compat mode failures
+spec@glsl-1.50@execution@primitive-id-no-gs-quads,Fail
+spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail
 
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 
