@@ -511,6 +511,9 @@ class Group(object):
                 if field.modifier[0] == "log2":
                     prefix = "1 << "
 
+            if field.type in self.parser.enums:
+                prefix = f"(enum {enum_name(field.type)}) {prefix}"
+
             decoded = '{}{}({}){}'.format(prefix, convert, ', '.join(args), suffix)
 
             print('   values->{} = {};'.format(fieldref.path, decoded))
