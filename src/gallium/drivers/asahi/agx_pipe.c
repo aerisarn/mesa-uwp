@@ -124,57 +124,28 @@ agx_resource_get_handle(struct pipe_screen *pscreen,
    unreachable("Handles todo");
 }
 
-static inline bool
-agx_is_2d(const struct agx_resource *pres)
+/* Linear textures require specifying their strides explicitly, which only
+ * works for 2D textures. Rectangle textures are a special case of 2D.
+ */
+static bool
+agx_is_2d(enum pipe_texture_target target)
 {
-   switch (pres->base.target) {
-   case PIPE_TEXTURE_2D:
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_CUBE:
-      return true;
-   default:
-      return false;
-   }
+   return (target == PIPE_TEXTURE_2D || target == PIPE_TEXTURE_RECT);
 }
 
-static bool
-agx_must_tile(const struct agx_resource *pres)
+static uint64_t
+agx_select_modifier(const struct agx_resource *pres)
 {
-   switch (pres->base.target) {
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_3D:
-      /* We don't know how to do linear for these */
-      return true;
-   default:
-      break;
-   }
+   /* Buffers are always linear */
+   if (pres->base.target == PIPE_BUFFER)
+      return DRM_FORMAT_MOD_LINEAR;
 
-   return false;
-}
+   /* Optimize streaming textures */
+   if (pres->base.usage == PIPE_USAGE_STREAM && agx_is_2d(pres->base.target))
+      return DRM_FORMAT_MOD_LINEAR;
 
-static bool
-agx_should_tile(const struct agx_resource *pres)
-{
-   const unsigned valid_binding =
-      PIPE_BIND_DEPTH_STENCIL |
-      PIPE_BIND_RENDER_TARGET |
-      PIPE_BIND_BLENDABLE |
-      PIPE_BIND_SAMPLER_VIEW |
-      PIPE_BIND_DISPLAY_TARGET |
-      PIPE_BIND_SCANOUT |
-      PIPE_BIND_SHARED;
-
-   unsigned bpp = util_format_get_blocksizebits(pres->base.format);
-
-   bool can_tile = agx_is_2d(pres)
-      && (bpp == 32)
-      && ((pres->base.bind & ~valid_binding) == 0);
-
-   bool should_tile = (pres->base.usage != PIPE_USAGE_STREAM);
-   bool must_tile = agx_must_tile(pres);
-
-   assert(!(must_tile && !can_tile));
-   return must_tile || (can_tile && should_tile);
+   /* Default to tiled */
+   return DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER;
 }
 
 static struct pipe_resource *
@@ -191,8 +162,7 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->base = *templ;
    nresource->base.screen = screen;
 
-   nresource->modifier = agx_should_tile(nresource) ?
-      DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER : DRM_FORMAT_MOD_LINEAR;
+   nresource->modifier = agx_select_modifier(nresource);
 
    unsigned offset = 0;
 
