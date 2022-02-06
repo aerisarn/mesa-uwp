@@ -753,6 +753,7 @@ static void presub_nop(struct rc_instruction * emitted) {
 }
 
 static void rgb_to_alpha_remap (
+	struct schedule_state * s,
 	struct rc_instruction * inst,
 	struct rc_pair_instruction_arg * arg,
 	rc_register_file old_file,
@@ -772,7 +773,7 @@ static void rgb_to_alpha_remap (
 	/* This conversion is not possible, we must have made a mistake in
 	 * is_rgb_to_alpha_possible. */
 	if (new_src_index < 0) {
-		assert(0);
+        rc_error(s->C, "rgb_to_alpha_remap failed to allocate src.\n");
 		return;
 	}
 
@@ -965,7 +966,7 @@ static int convert_rgb_to_alpha(
 
 	for(i = 0; i < sched_inst->GlobalReaders.ReaderCount; i++) {
 		struct rc_reader reader = sched_inst->GlobalReaders.Readers[i];
-		rgb_to_alpha_remap(reader.Inst, reader.U.P.Arg,
+		rgb_to_alpha_remap(s, reader.Inst, reader.U.P.Arg,
 					RC_FILE_TEMPORARY, old_swz, new_index);
 	}
 	return 1;
