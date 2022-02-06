@@ -163,6 +163,7 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->base.screen = screen;
 
    nresource->modifier = agx_select_modifier(nresource);
+   nresource->mipmapped = (templ->last_level > 0);
 
    unsigned offset = 0;
    unsigned blocksize = util_format_get_blocksize(templ->format);

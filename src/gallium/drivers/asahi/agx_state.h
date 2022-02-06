@@ -234,6 +234,11 @@ struct agx_resource {
    struct pipe_resource	base;
    uint64_t modifier;
 
+   /* Should probably be part of the modifier. Affects the tiling algorithm, or
+    * something like that.
+    */
+   bool mipmapped;
+
    /* Hardware backing */
    struct agx_bo *bo;
 

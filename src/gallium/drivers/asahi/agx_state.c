@@ -477,6 +477,7 @@ agx_create_sampler_view(struct pipe_context *pctx,
       cfg.levels = state->u.tex.last_level - level + 1;
       cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
       cfg.address = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
+      cfg.unk_mipmapped = rsrc->mipmapped;
       cfg.unk_2 = false;
 
       cfg.stride = (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) ?
@@ -741,8 +742,12 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.level = surf->u.tex.level;
          cfg.buffer = tex->bo->ptr.gpu;
 
+         if (tex->mipmapped)
+            cfg.unk_55 = 0x8;
+
          cfg.stride = (tex->modifier == DRM_FORMAT_MOD_LINEAR) ?
             (tex->slices[level].line_stride - 4) :
+            tex->mipmapped ? AGX_RT_STRIDE_TILED_MIPMAPPED :
             AGX_RT_STRIDE_TILED;
       };
    }
