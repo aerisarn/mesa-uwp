@@ -165,14 +165,17 @@ agx_resource_create(struct pipe_screen *screen,
    nresource->modifier = agx_select_modifier(nresource);
 
    unsigned offset = 0;
+   unsigned blocksize = util_format_get_blocksize(templ->format);
 
    for (unsigned l = 0; l <= templ->last_level; ++l) {
       unsigned width = u_minify(templ->width0, l);
       unsigned height = u_minify(templ->height0, l);
 
       if (nresource->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-         width = ALIGN_POT(width, 64);
-         height = ALIGN_POT(height, 64);
+         unsigned tile = agx_select_tile_size(templ->width0, templ->height0, l, blocksize);
+
+         width = ALIGN_POT(width, tile);
+         height = ALIGN_POT(height, tile);
       }
 
       nresource->slices[l].line_stride =
