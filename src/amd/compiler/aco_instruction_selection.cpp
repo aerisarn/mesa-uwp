@@ -611,9 +611,8 @@ bool_to_scalar_condition(isel_context* ctx, Temp val, Temp dst = Temp(0, s1))
    assert(dst.regClass() == s1);
 
    /* if we're currently in WQM mode, ensure that the source is also computed in WQM */
-   Temp tmp = bld.tmp(s1);
-   bld.sop2(Builder::s_and, bld.def(bld.lm), bld.scc(Definition(tmp)), val, Operand(exec, bld.lm));
-   return emit_wqm(bld, tmp, dst);
+   bld.sop2(Builder::s_and, bld.def(bld.lm), bld.scc(Definition(dst)), val, Operand(exec, bld.lm));
+   return dst;
 }
 
 /**
