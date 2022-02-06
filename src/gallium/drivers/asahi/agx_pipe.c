@@ -279,7 +279,7 @@ agx_transfer_map(struct pipe_context *pctx,
 {
    struct agx_context *ctx = agx_context(pctx);
    struct agx_resource *rsrc = agx_resource(resource);
-   unsigned bytes_per_pixel = util_format_get_blocksize(resource->format);
+   unsigned blocksize = util_format_get_blocksize(resource->format);
 
    /* Can't map tiled/compressed directly */
    if ((usage & PIPE_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
@@ -299,7 +299,7 @@ agx_transfer_map(struct pipe_context *pctx,
    *out_transfer = &transfer->base;
 
    if (rsrc->modifier == DRM_FORMAT_MOD_APPLE_64X64_MORTON_ORDER) {
-      transfer->base.stride = box->width * bytes_per_pixel;
+      transfer->base.stride = box->width * blocksize;
       transfer->base.layer_stride = transfer->base.stride * box->height;
       transfer->map = calloc(transfer->base.layer_stride, box->depth);
 
@@ -310,8 +310,8 @@ agx_transfer_map(struct pipe_context *pctx,
                            transfer->base.layer_stride * z;
 
             agx_detile(map, dst,
-               u_minify(resource->width0, level), bytes_per_pixel * 8,
-               transfer->base.stride / bytes_per_pixel,
+               u_minify(resource->width0, level), blocksize * 8,
+               transfer->base.stride / blocksize,
                box->x, box->y, box->x + box->width, box->y + box->height, 6);
          }
       }
@@ -330,7 +330,7 @@ agx_transfer_map(struct pipe_context *pctx,
 
       return agx_rsrc_offset(rsrc, level, box->z)
              + transfer->base.box.y * rsrc->slices[level].line_stride
-             + transfer->base.box.x * bytes_per_pixel;
+             + transfer->base.box.x * blocksize;
    }
 }
 
@@ -343,7 +343,7 @@ agx_transfer_unmap(struct pipe_context *pctx,
    struct agx_transfer *trans = agx_transfer(transfer);
    struct pipe_resource *prsrc = transfer->resource;
    struct agx_resource *rsrc = (struct agx_resource *) prsrc;
-   unsigned bytes_per_pixel = util_format_get_blocksize(prsrc->format);
+   unsigned blocksize = util_format_get_blocksize(prsrc->format);
 
    if (transfer->usage & PIPE_MAP_WRITE)
       BITSET_SET(rsrc->data_valid, transfer->level);
@@ -361,8 +361,8 @@ agx_transfer_unmap(struct pipe_context *pctx,
 
          agx_tile(map, src,
             u_minify(transfer->resource->width0, transfer->level),
-            bytes_per_pixel * 8,
-            transfer->stride / bytes_per_pixel,
+            blocksize * 8,
+            transfer->stride / blocksize,
             transfer->box.x, transfer->box.y,
             transfer->box.x + transfer->box.width,
             transfer->box.y + transfer->box.height, 6);
