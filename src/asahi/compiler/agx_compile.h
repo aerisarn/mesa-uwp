@@ -47,6 +47,11 @@ enum agx_push_type {
    /* RGBA blend constant (FP32) */
    AGX_PUSH_BLEND_CONST = 8,
 
+   /* Array of 16-bit (array_size - 1) for indexed array textures, used to
+    * lower access to indexed array textures
+    */
+   AGX_PUSH_ARRAY_SIZE_MINUS_1 = 9,
+
    /* Keep last */
    AGX_PUSH_NUM_TYPES
 };
