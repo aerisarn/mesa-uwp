@@ -1302,7 +1302,7 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 			r600_bytecode_special_constants(nalu->src[i].value,
 				&nalu->src[i].sel);
 	}
-	if (nalu->dst.sel >= bc->ngpr) {
+	if (nalu->dst.write && nalu->dst.sel >= bc->ngpr) {
 		bc->ngpr = nalu->dst.sel + 1;
 	}
 	list_addtail(&nalu->list, &bc->cf_last->alu);
