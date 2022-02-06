@@ -1218,7 +1218,6 @@ agx_build_reload_pipeline(struct agx_context *ctx, uint32_t code, struct pipe_su
       cfg.wrap_r = AGX_WRAP_CLAMP_TO_EDGE;
       cfg.pixel_coordinates = true;
       cfg.compare_func = AGX_COMPARE_FUNC_ALWAYS;
-      cfg.unk_2 = 0;
       cfg.unk_3 = 0;
    }
 
