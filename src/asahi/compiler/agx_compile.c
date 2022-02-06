@@ -822,7 +822,13 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
          /* Array textures are indexed by a floating-point in NIR, but by an
           * integer in AGX. Convert the array index from float-to-int for array
-          * textures. The array index is the last source in NIR.
+          * textures. The array index is the last source in NIR. The conversion
+          * is according to the rule from 8.9 ("Texture Functions") of the GLSL
+          * ES 3.20 specification:
+          *
+          *     max(0, min(d - 1, floor(layer + 0.5))) =
+          *     max(0, min(d - 1, f32_to_u32(layer + 0.5))) =
+          *     min(d - 1, f32_to_u32(layer + 0.5))
           */
          if (instr->is_array) {
             unsigned nr = nir_src_num_components(instr->src[i].src);
@@ -831,10 +837,21 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
             for (unsigned i = 0; i < nr; ++i)
                channels[i] = agx_p_extract(b, index, i);
 
-            channels[nr - 1] = agx_convert(b,
-                  agx_immediate(AGX_CONVERT_F_TO_S32),
-                  channels[nr - 1], AGX_ROUND_RTZ);
+            agx_index layer = agx_fadd(b, channels[nr - 1],
+                                          agx_immediate_f(0.5f));
 
+            agx_index d1 = agx_indexed_sysval(b->shader,
+                  AGX_PUSH_ARRAY_SIZE_MINUS_1, AGX_SIZE_16,
+                  instr->texture_index, 1);
+
+            layer = agx_convert(b, agx_immediate(AGX_CONVERT_F_TO_U32), layer,
+                                   AGX_ROUND_RTZ);
+            layer = agx_mov(b, AGX_SIZE_16, layer);
+
+            layer = agx_icmpsel(b, layer, d1, layer, d1, AGX_ICOND_ULT);
+            layer = agx_mov(b, AGX_SIZE_32, layer);
+
+            channels[nr - 1] = layer;
             coords = agx_p_combine(b, channels[0], channels[1], channels[2], channels[3]);
          } else {
             coords = index;
