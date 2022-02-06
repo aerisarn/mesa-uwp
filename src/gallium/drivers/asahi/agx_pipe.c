@@ -178,8 +178,11 @@ agx_resource_create(struct pipe_screen *screen,
          height = ALIGN_POT(height, tile);
       }
 
-      nresource->slices[l].line_stride =
-         util_format_get_stride(templ->format, width);
+      /* Align stride to presumed cache line */
+      nresource->slices[l].line_stride = util_format_get_stride(templ->format, width);
+      if (nresource->modifier == DRM_FORMAT_MOD_LINEAR) {
+         nresource->slices[l].line_stride = ALIGN_POT(nresource->slices[l].line_stride, 64);
+      }
 
       nresource->slices[l].offset = offset;
       offset += ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
