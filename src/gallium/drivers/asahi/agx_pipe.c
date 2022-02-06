@@ -318,7 +318,8 @@ agx_transfer_map(struct pipe_context *pctx,
             agx_detile(map, dst,
                u_minify(resource->width0, level), blocksize * 8,
                transfer->base.stride / blocksize,
-               box->x, box->y, box->x + box->width, box->y + box->height, 6);
+               box->x, box->y, box->x + box->width, box->y + box->height,
+               agx_select_tile_shift(resource->width0, resource->height0, level, blocksize));
          }
       }
 
@@ -371,7 +372,10 @@ agx_transfer_unmap(struct pipe_context *pctx,
             transfer->stride / blocksize,
             transfer->box.x, transfer->box.y,
             transfer->box.x + transfer->box.width,
-            transfer->box.y + transfer->box.height, 6);
+            transfer->box.y + transfer->box.height,
+            agx_select_tile_shift(transfer->resource->width0,
+                                  transfer->resource->height0,
+                                  transfer->level, blocksize));
       }
    }
 
