@@ -367,8 +367,8 @@ agx_create_sampler_state(struct pipe_context *pctx,
 static void
 agx_delete_sampler_state(struct pipe_context *ctx, void *state)
 {
-   struct agx_bo *bo = state;
-   agx_bo_unreference(bo);
+   struct agx_sampler_state *so = state;
+   agx_bo_unreference(so->desc);
 }
 
 static void
