@@ -104,6 +104,8 @@ struct fd_fence {
 #define FD_BO_CACHED_COHERENT     BITSET_BIT(3)
 /* Hint that the bo will not be mmap'd: */
 #define FD_BO_NOMAP               BITSET_BIT(4)
+/* Hint that the bo will be exported/shared: */
+#define FD_BO_SHARED              BITSET_BIT(5)
 
 /* bo access flags: (keep aligned to MSM_PREP_x) */
 #define FD_BO_PREP_READ   BITSET_BIT(0)

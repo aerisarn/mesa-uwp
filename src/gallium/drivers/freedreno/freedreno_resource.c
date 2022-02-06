@@ -198,6 +198,7 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
    uint32_t flags =
       COND(rsc->layout.tile_mode, FD_BO_NOMAP) |
       COND(prsc->usage & PIPE_USAGE_STAGING, FD_BO_CACHED_COHERENT) |
+      COND(prsc->bind & PIPE_BIND_SHARED, FD_BO_SHARED) |
       COND(prsc->bind & PIPE_BIND_SCANOUT, FD_BO_SCANOUT);
    /* TODO other flags? */
 
