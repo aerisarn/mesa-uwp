@@ -302,13 +302,14 @@ agx_transfer_map(struct pipe_context *pctx,
       transfer->base.stride = box->width * bytes_per_pixel;
       transfer->base.layer_stride = transfer->base.stride * box->height;
       transfer->map = calloc(transfer->base.layer_stride, box->depth);
-      assert(box->depth == 1);
 
       if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->data_valid, level)) {
          for (unsigned z = 0; z < box->depth; ++z) {
             uint8_t *map = agx_rsrc_offset(rsrc, level, box->z + z);
+            uint8_t *dst = (uint8_t *) transfer->map +
+                           transfer->base.layer_stride * z;
 
-            agx_detile(map, transfer->map,
+            agx_detile(map, dst,
                u_minify(resource->width0, level), bytes_per_pixel * 8,
                transfer->base.stride / bytes_per_pixel,
                box->x, box->y, box->x + box->width, box->y + box->height);
@@ -355,8 +356,10 @@ agx_transfer_unmap(struct pipe_context *pctx,
       for (unsigned z = 0; z < transfer->box.depth; ++z) {
          uint8_t *map = agx_rsrc_offset(rsrc, transfer->level,
                transfer->box.z + z);
+         uint8_t *src = (uint8_t *) trans->map +
+                        transfer->layer_stride * z;
 
-         agx_tile(map, trans->map,
+         agx_tile(map, src,
             u_minify(transfer->resource->width0, transfer->level),
             bytes_per_pixel * 8,
             transfer->stride / bytes_per_pixel,
