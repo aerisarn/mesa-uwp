@@ -188,9 +188,9 @@ agx_resource_create(struct pipe_screen *screen,
       offset += ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
    }
 
-   /* Arrays and cubemaps have the entire miptree duplicated */
-   nresource->array_stride = ALIGN_POT(offset, 64);
-   unsigned size = ALIGN_POT(nresource->array_stride * templ->array_size, 4096);
+   /* Arrays and cubemaps have the entire miptree duplicated and page aligned (16K) */
+   nresource->array_stride = ALIGN_POT(offset, 0x4000);
+   unsigned size = nresource->array_stride * templ->array_size;
 
    pipe_reference_init(&nresource->base.reference, 1);
 
