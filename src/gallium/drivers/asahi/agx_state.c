@@ -722,6 +722,10 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
       struct agx_resource *tex = agx_resource(surf->texture);
       const struct util_format_description *desc =
          util_format_description(surf->format);
+      unsigned level = surf->u.tex.level;
+
+      assert(surf->u.tex.first_layer == 0);
+      assert(surf->u.tex.last_layer == 0);
 
       agx_pack(ctx->render_target[i], RENDER_TARGET, cfg) {
          cfg.layout = agx_translate_layout(tex->modifier);
@@ -732,10 +736,11 @@ agx_set_framebuffer_state(struct pipe_context *pctx,
          cfg.swizzle_a = agx_channel_from_pipe(desc->swizzle[3]);
          cfg.width = state->width;
          cfg.height = state->height;
+         cfg.level = surf->u.tex.level;
          cfg.buffer = tex->bo->ptr.gpu;
 
          cfg.stride = (tex->modifier == DRM_FORMAT_MOD_LINEAR) ?
-            (tex->slices[0].line_stride - 4) :
+            (tex->slices[level].line_stride - 4) :
             AGX_RT_STRIDE_TILED;
       };
    }
