@@ -5228,6 +5228,7 @@ bool nir_force_mediump_io(nir_shader *nir, nir_variable_mode modes,
 bool nir_unpack_16bit_varying_slots(nir_shader *nir, nir_variable_mode modes);
 bool nir_fold_16bit_sampler_conversions(nir_shader *nir,
                                         unsigned tex_src_types, uint32_t sampler_dims);
+bool nir_fold_16bit_image_load_store_conversions(nir_shader *nir);
 
 typedef struct {
    bool legalize_type;         /* whether this src should be legalized */

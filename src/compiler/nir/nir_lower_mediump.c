@@ -646,3 +646,150 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
 
    return changed;
 }
+
+static bool
+const_is_f16(nir_ssa_scalar scalar)
+{
+   double value = nir_ssa_scalar_as_float(scalar);
+   return value == _mesa_half_to_float(_mesa_float_to_half(value));
+}
+
+static bool
+const_is_u16(nir_ssa_scalar scalar)
+{
+   uint64_t value = nir_ssa_scalar_as_uint(scalar);
+   return value == (uint16_t) value;
+}
+
+static bool
+const_is_i16(nir_ssa_scalar scalar)
+{
+   int64_t value = nir_ssa_scalar_as_int(scalar);
+   return value == (int16_t) value;
+}
+
+static bool
+fold_16bit_store_data(nir_builder *b, nir_intrinsic_instr *instr)
+{
+   nir_alu_type src_type = nir_intrinsic_src_type(instr);
+   nir_src *data_src = &instr->src[3];
+
+   b->cursor = nir_before_instr(&instr->instr);
+
+   bool fold_f16 = src_type == nir_type_float32;
+   bool fold_u16 = src_type == nir_type_uint32;
+   bool fold_i16 = src_type == nir_type_int32;
+
+   nir_ssa_scalar comps[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned i = 0; i < instr->num_components; i++) {
+      comps[i] = nir_ssa_scalar_resolved(data_src->ssa, i);
+      if (comps[i].def->parent_instr->type == nir_instr_type_ssa_undef)
+         continue;
+      else if (nir_ssa_scalar_is_const(comps[i])) {
+         fold_f16 &= const_is_f16(comps[i]);
+         fold_u16 &= const_is_u16(comps[i]);
+         fold_i16 &= const_is_i16(comps[i]);
+      } else {
+         fold_f16 &= is_f16_to_f32_conversion(comps[i].def->parent_instr);
+         fold_u16 &= is_u16_to_u32_conversion(comps[i].def->parent_instr);
+         fold_i16 &= is_i16_to_i32_conversion(comps[i].def->parent_instr);
+      }
+   }
+
+   if (!fold_f16 && !fold_u16 && !fold_i16)
+      return false;
+
+   nir_ssa_scalar new_comps[NIR_MAX_VEC_COMPONENTS];
+   for (unsigned i = 0; i < instr->num_components; i++) {
+      if (comps[i].def->parent_instr->type == nir_instr_type_ssa_undef)
+         new_comps[i] = nir_get_ssa_scalar(nir_ssa_undef(b, 1, 16), 0);
+      else if (nir_ssa_scalar_is_const(comps[i])) {
+         nir_ssa_def *constant;
+         if (src_type == nir_type_float32)
+            constant = nir_imm_float16(b, nir_ssa_scalar_as_float(comps[i]));
+         else
+            constant = nir_imm_intN_t(b, nir_ssa_scalar_as_uint(comps[i]), 16);
+         new_comps[i] = nir_get_ssa_scalar(constant, 0);
+      } else {
+         /* conversion instruction */
+         new_comps[i] = nir_ssa_scalar_chase_alu_src(comps[i], 0);
+      }
+   }
+
+   nir_ssa_def *new_vec = nir_vec_scalars(b, new_comps, instr->num_components);
+
+   nir_instr_rewrite_src_ssa(&instr->instr, data_src, new_vec);
+
+   nir_intrinsic_set_src_type(instr, (src_type & ~32) | 16);
+
+   return true;
+}
+
+static bool
+fold_16bit_load_data(nir_builder *b, nir_intrinsic_instr *instr)
+{
+   nir_alu_type dest_type = nir_intrinsic_dest_type(instr);
+
+   if (dest_type == nir_type_float32 &&
+       nir_has_any_rounding_mode_enabled(b->shader->info.float_controls_execution_mode))
+      return false;
+
+   bool is_f32_to_f16 = dest_type == nir_type_float32;
+   bool is_i32_to_i16 = dest_type == nir_type_int32 || dest_type == nir_type_uint32;
+
+   nir_foreach_use(use, &instr->dest.ssa) {
+      is_f32_to_f16 &= is_f32_to_f16_conversion(use->parent_instr);
+      is_i32_to_i16 &= is_i32_to_i16_conversion(use->parent_instr);
+   }
+
+   if (!is_f32_to_f16 && !is_i32_to_i16)
+      return false;
+
+   /* All uses are the same conversions. Replace them with mov. */
+   nir_foreach_use(use, &instr->dest.ssa) {
+      nir_alu_instr *conv = nir_instr_as_alu(use->parent_instr);
+      conv->op = nir_op_mov;
+   }
+
+   instr->dest.ssa.bit_size = 16;
+   nir_intrinsic_set_dest_type(instr, (dest_type & ~32) | 16);
+
+   return true;
+}
+
+static bool
+fold_16bit_image_load_store(nir_builder *b, nir_instr *instr, UNUSED void *unused)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
+
+   bool progress = false;
+
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_image_deref_store:
+   case nir_intrinsic_image_store:
+      progress |= fold_16bit_store_data(b, intrinsic);
+      break;
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_load:
+      progress |= fold_16bit_load_data(b, intrinsic);
+      break;
+   default:
+      break;
+   }
+
+   return progress;
+}
+
+bool
+nir_fold_16bit_image_load_store_conversions(nir_shader *nir)
+{
+   return nir_shader_instructions_pass(nir,
+                                       fold_16bit_image_load_store,
+                                       nir_metadata_block_index | nir_metadata_dominance,
+                                       NULL);
+}
