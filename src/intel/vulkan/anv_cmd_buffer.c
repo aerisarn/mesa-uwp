@@ -270,8 +270,8 @@ static VkResult anv_create_cmd_buffer(
    struct anv_cmd_buffer *cmd_buffer;
    VkResult result;
 
-   cmd_buffer = vk_alloc2(&device->vk.alloc, &pool->vk.alloc, sizeof(*cmd_buffer),
-                          8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = vk_alloc(&pool->vk.alloc, sizeof(*cmd_buffer), 8,
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -365,8 +365,7 @@ anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
    vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->self_mod_locations);
 
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->vk.alloc,
-            cmd_buffer);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
 }
 
 void anv_FreeCommandBuffers(
