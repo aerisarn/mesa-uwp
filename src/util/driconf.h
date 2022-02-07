@@ -250,6 +250,10 @@
    DRI_CONF_OPT_B(allow_invalid_glx_destroy_window, def, \
                   "Allow passing an invalid window into glXDestroyWindow")
 
+#define DRI_CONF_KEEP_NATIVE_WINDOW_GLX_DRAWABLE(def) \
+   DRI_CONF_OPT_B(keep_native_window_glx_drawable, def, \
+                  "Keep GLX drawable created from native window when switch context")
+
 #define DRI_CONF_OVERRIDE_VRAM_SIZE() \
    DRI_CONF_OPT_I(override_vram_size, -1, -1, 2147483647, \
                   "Override the VRAM size advertised to the application in MiB (-1 = default)")

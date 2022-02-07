@@ -357,6 +357,9 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
       return NULL;
 
    if (__glxHashLookup(priv->drawHash, glxDrawable, (void *) &pdraw) == 0) {
+      /* Resurrected, so remove from the alive-query-set if exist. */
+      _mesa_set_remove_key(priv->zombieGLXDrawable, pdraw);
+
       pdraw->refcount ++;
       return pdraw;
    }
@@ -419,6 +422,46 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
    return pdraw;
 }
 
+static int
+discardGLXBadDrawableHandler(Display *display, xError *err, XExtCodes *codes,
+                             int *ret_code)
+{
+   int code = codes->first_error + GLXBadDrawable;
+
+   /* Only discard error which is expected. */
+   if (err->majorCode == codes->major_opcode &&
+       err->minorCode == X_GLXGetDrawableAttributes &&
+       /* newer xserver use GLXBadDrawable, old one use BadDrawable */
+       (err->errorCode == code || err->errorCode == BadDrawable)) {
+      *ret_code = 1;
+      return 1;
+   }
+
+   return 0;
+}
+
+static void
+checkServerGLXDrawableAlive(const struct glx_display *priv)
+{
+   ErrorType old = XESetError(priv->dpy, priv->codes.extension,
+                              discardGLXBadDrawableHandler);
+
+   set_foreach(priv->zombieGLXDrawable, entry) {
+      __GLXDRIdrawable *pdraw = (__GLXDRIdrawable *)entry->key;
+      GLXDrawable drawable = pdraw->drawable;
+      unsigned int dummy;
+
+      /* Fail to query, so the window has been closed. Release the GLXDrawable. */
+      if (!__glXGetDrawableAttribute(priv->dpy, drawable, GLX_WIDTH, &dummy)) {
+         pdraw->destroyDrawable(pdraw);
+         __glxHashDelete(priv->drawHash, drawable);
+         _mesa_set_remove(priv->zombieGLXDrawable, entry);
+      }
+   }
+
+   XESetError(priv->dpy, priv->codes.extension, old);
+}
+
 static void
 releaseDrawable(const struct glx_display *priv, GLXDrawable drawable)
 {
@@ -433,8 +476,13 @@ releaseDrawable(const struct glx_display *priv, GLXDrawable drawable)
           * hold the last refcount until destroy the GLXPbuffer object.
           */
          if (pdraw->refcount == 0) {
-            pdraw->destroyDrawable(pdraw);
-            __glxHashDelete(priv->drawHash, drawable);
+            if (pdraw->psc->keep_native_window_glx_drawable) {
+               checkServerGLXDrawableAlive(priv);
+               _mesa_set_add(priv->zombieGLXDrawable, pdraw);
+            } else {
+               pdraw->destroyDrawable(pdraw);
+               __glxHashDelete(priv->drawHash, drawable);
+            }
          }
       }
    }

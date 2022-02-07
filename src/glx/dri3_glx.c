@@ -1055,6 +1055,13 @@ dri3_create_screen(int screen, struct glx_display * priv)
                                     &invalid_glx_destroy_window) == 0) {
          psc->base.allow_invalid_glx_destroy_window = invalid_glx_destroy_window;
       }
+
+      uint8_t keep_native_window_glx_drawable = false;
+      if (psc->config->configQueryb(psc->driScreen,
+                                    "keep_native_window_glx_drawable",
+                                    &keep_native_window_glx_drawable) == 0) {
+         psc->base.keep_native_window_glx_drawable = keep_native_window_glx_drawable;
+      }
    }
 
    free(driverName);
