@@ -33,21 +33,21 @@ static VkResult lvp_create_cmd_buffer(
 {
    struct lvp_cmd_buffer *cmd_buffer;
 
-   cmd_buffer = vk_alloc(&pool->alloc, sizeof(*cmd_buffer), 8,
+   cmd_buffer = vk_alloc(&pool->vk.alloc, sizeof(*cmd_buffer), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
-      vk_free(&pool->alloc, cmd_buffer);
+      vk_free(&pool->vk.alloc, cmd_buffer);
       return result;
    }
 
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
 
-   cmd_buffer->queue.alloc = &pool->alloc;
+   cmd_buffer->queue.alloc = &pool->vk.alloc;
    list_inithead(&cmd_buffer->queue.cmds);
 
    cmd_buffer->status = LVP_CMD_BUFFER_STATUS_INITIAL;
@@ -126,7 +126,7 @@ lvp_cmd_buffer_destroy(struct lvp_cmd_buffer *cmd_buffer)
    vk_free_queue(&cmd_buffer->queue);
    list_del(&cmd_buffer->pool_link);
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_FreeCommandBuffers(
@@ -194,12 +194,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateCommandPool(
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &pool->base,
-                       VK_OBJECT_TYPE_COMMAND_POOL);
-   if (pAllocator)
-      pool->alloc = *pAllocator;
-   else
-      pool->alloc = device->vk.alloc;
+   VkResult result = vk_command_pool_init(&pool->vk, &device->vk,
+                                          pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, pool);
+      return result;
+   }
 
    list_inithead(&pool->cmd_buffers);
    list_inithead(&pool->free_cmd_buffers);
@@ -230,7 +230,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyCommandPool(
       lvp_cmd_buffer_destroy(cmd_buffer);
    }
 
-   vk_object_base_finish(&pool->base);
+   vk_command_pool_finish(&pool->vk);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
