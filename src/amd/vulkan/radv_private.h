@@ -55,6 +55,8 @@
 #include "util/rwlock.h"
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
+#include "vk_command_buffer.h"
+#include "vk_command_pool.h"
 #include "vk_debug_report.h"
 #include "vk_device.h"
 #include "vk_format.h"
@@ -62,7 +64,6 @@
 #include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
-#include "vk_command_buffer.h"
 #include "vk_queue.h"
 #include "vk_util.h"
 #include "vk_image.h"
@@ -1472,11 +1473,9 @@ struct radv_cmd_state {
 };
 
 struct radv_cmd_pool {
-   struct vk_object_base base;
-   VkAllocationCallbacks alloc;
+   struct vk_command_pool vk;
    struct list_head cmd_buffers;
    struct list_head free_cmd_buffers;
-   uint32_t queue_family_index;
 };
 
 struct radv_cmd_buffer_upload {
@@ -2888,7 +2887,7 @@ VK_DEFINE_HANDLE_CASTS(radv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_acceleration_structure, base,
                                VkAccelerationStructureKHR,
                                VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_cmd_pool, base, VkCommandPool,
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_cmd_pool, vk.base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_buffer, base, VkBuffer, VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_buffer_view, base, VkBufferView,

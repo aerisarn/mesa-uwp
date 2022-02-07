@@ -564,7 +564,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
             .width = radv_minify(dst_image->info.width, region->dstSubresource.mipLevel),
             .height = radv_minify(dst_image->info.height, region->dstSubresource.mipLevel),
             .layers = 1},
-         &cmd_buffer->pool->alloc, &fb_h);
+         &cmd_buffer->pool->vk.alloc, &fb_h);
 
       radv_cmd_buffer_begin_render_pass(cmd_buffer,
                                         &(VkRenderPassBeginInfo){
@@ -602,7 +602,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 
       radv_image_view_finish(&src_iview);
       radv_image_view_finish(&dst_iview);
-      radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h, &cmd_buffer->pool->alloc);
+      radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h, &cmd_buffer->pool->vk.alloc);
    }
 
    radv_meta_restore(&saved_state, cmd_buffer);

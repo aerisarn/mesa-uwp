@@ -274,7 +274,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                              .height = dst_height,
                              .layers = 1,
                           },
-                          &cmd_buffer->pool->alloc, &fb);
+                          &cmd_buffer->pool->vk.alloc, &fb);
    VkPipeline *pipeline = NULL;
    unsigned fs_key = 0;
    switch (src_iview->aspect_mask) {
@@ -438,7 +438,7 @@ fail_pipeline:
    /* TODO: above comment is not valid for at least descriptor sets/pools,
     * as we may not free them till after execution finishes. Check others. */
 
-   radv_DestroyFramebuffer(radv_device_to_handle(device), fb, &cmd_buffer->pool->alloc);
+   radv_DestroyFramebuffer(radv_device_to_handle(device), fb, &cmd_buffer->pool->vk.alloc);
 }
 
 static bool
@@ -490,7 +490,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                          .addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                          .addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
                       },
-                      &cmd_buffer->pool->alloc, &sampler);
+                      &cmd_buffer->pool->vk.alloc, &sampler);
 
    radv_meta_save(
       &saved_state, cmd_buffer,
@@ -620,7 +620,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 
    radv_meta_restore(&saved_state, cmd_buffer);
 
-   radv_DestroySampler(radv_device_to_handle(device), sampler, &cmd_buffer->pool->alloc);
+   radv_DestroySampler(radv_device_to_handle(device), sampler, &cmd_buffer->pool->vk.alloc);
 }
 
 VKAPI_ATTR void VKAPI_CALL

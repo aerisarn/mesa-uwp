@@ -2153,7 +2153,7 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
                                  .width = width,
                                  .height = height,
                                  .layers = layer_count},
-      &cmd_buffer->pool->alloc, &fb);
+      &cmd_buffer->pool->vk.alloc, &fb);
 
    VkAttachmentDescription2 att_desc = {
       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
@@ -2218,7 +2218,7 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
                                       .srcAccessMask = 0,
                                       .dstAccessMask = 0,
                                       .dependencyFlags = 0}}},
-      &cmd_buffer->pool->alloc, &pass);
+      &cmd_buffer->pool->vk.alloc, &pass);
 
    radv_cmd_buffer_begin_render_pass(cmd_buffer,
                                      &(VkRenderPassBeginInfo){
@@ -2265,8 +2265,8 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
 
    radv_image_view_finish(&iview);
    radv_cmd_buffer_end_render_pass(cmd_buffer);
-   radv_DestroyRenderPass(device_h, pass, &cmd_buffer->pool->alloc);
-   radv_DestroyFramebuffer(device_h, fb, &cmd_buffer->pool->alloc);
+   radv_DestroyRenderPass(device_h, pass, &cmd_buffer->pool->vk.alloc);
+   radv_DestroyFramebuffer(device_h, fb, &cmd_buffer->pool->vk.alloc);
 }
 
 /**

@@ -1024,7 +1024,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                                     .width = extent.width + dstOffset.x,
                                     .height = extent.height + dstOffset.y,
                                     .layers = 1},
-         &cmd_buffer->pool->alloc, &fb);
+         &cmd_buffer->pool->vk.alloc, &fb);
 
       radv_cmd_buffer_begin_render_pass(cmd_buffer,
                                         &(VkRenderPassBeginInfo){
@@ -1056,7 +1056,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
       radv_image_view_finish(&src_iview);
       radv_image_view_finish(&dest_iview);
       radv_DestroyFramebuffer(radv_device_to_handle(cmd_buffer->device), fb,
-                              &cmd_buffer->pool->alloc);
+                              &cmd_buffer->pool->vk.alloc);
    }
 
    radv_meta_restore(&saved_state, cmd_buffer);

@@ -179,7 +179,7 @@ blit2d_bind_dst(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf
                                  .width = width,
                                  .height = height,
                                  .layers = 1},
-      &cmd_buffer->pool->alloc, &tmp->fb);
+      &cmd_buffer->pool->vk.alloc, &tmp->fb);
 }
 
 static void
@@ -394,7 +394,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
           * descriptor sets, etc. has been used.  We are free to delete it.
           */
          radv_DestroyFramebuffer(radv_device_to_handle(device), dst_temps.fb,
-                                 &cmd_buffer->pool->alloc);
+                                 &cmd_buffer->pool->vk.alloc);
 
          if (src_type == BLIT2D_SRC_TYPE_BUFFER)
             radv_buffer_view_finish(&src_temps.bview);

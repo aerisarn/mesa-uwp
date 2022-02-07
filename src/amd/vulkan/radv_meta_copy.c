@@ -278,7 +278,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
                      struct radv_image *image, VkImageLayout layout,
                      const VkBufferImageCopy2KHR *region)
 {
-   if (cmd_buffer->pool->queue_family_index == RADV_QUEUE_TRANSFER) {
+   if (cmd_buffer->pool->vk.queue_family_index == RADV_QUEUE_TRANSFER) {
       /* RADV_QUEUE_TRANSFER should only be used for the prime blit */
       assert(!region->imageOffset.x && !region->imageOffset.y && !region->imageOffset.z);
       assert(image->type == VK_IMAGE_TYPE_2D);

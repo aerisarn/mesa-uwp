@@ -582,7 +582,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
                                  .width = width,
                                  .height = height,
                                  .layers = 1},
-      &cmd_buffer->pool->alloc, &fb_h);
+      &cmd_buffer->pool->vk.alloc, &fb_h);
 
    radv_cmd_buffer_begin_render_pass(cmd_buffer,
                                      &(VkRenderPassBeginInfo){
@@ -619,7 +619,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
    radv_cmd_buffer_end_render_pass(cmd_buffer);
 
    radv_image_view_finish(&iview);
-   radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h, &cmd_buffer->pool->alloc);
+   radv_DestroyFramebuffer(radv_device_to_handle(device), fb_h, &cmd_buffer->pool->vk.alloc);
 }
 
 static void

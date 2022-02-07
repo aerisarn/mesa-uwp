@@ -434,7 +434,7 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    vk_object_base_finish(&cmd_buffer->meta_push_descriptors.base);
 
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
 }
 
 static VkResult
@@ -443,14 +443,15 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
 {
    struct radv_cmd_buffer *cmd_buffer;
    unsigned ring;
-   cmd_buffer = vk_zalloc(&pool->alloc, sizeof(*cmd_buffer), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = vk_zalloc(&pool->vk.alloc, sizeof(*cmd_buffer), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result =
       vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
-      vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+      vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
       return result;
    }
 
@@ -458,7 +459,7 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
    cmd_buffer->pool = pool;
 
    list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-   cmd_buffer->queue_family_index = pool->queue_family_index;
+   cmd_buffer->queue_family_index = pool->vk.queue_family_index;
 
    ring = radv_queue_family_to_ring(cmd_buffer->queue_family_index);
 
@@ -4224,7 +4225,7 @@ radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
    }
 
    state->subpass_sample_locs =
-      vk_alloc(&cmd_buffer->pool->alloc,
+      vk_alloc(&cmd_buffer->pool->vk.alloc,
                sample_locs->postSubpassSampleLocationsCount * sizeof(state->subpass_sample_locs[0]),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (state->subpass_sample_locs == NULL) {
@@ -4271,8 +4272,8 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
    }
 
    state->attachments =
-      vk_alloc(&cmd_buffer->pool->alloc, pass->attachment_count * sizeof(state->attachments[0]), 8,
-               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      vk_alloc(&cmd_buffer->pool->vk.alloc, pass->attachment_count * sizeof(state->attachments[0]),
+               8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (state->attachments == NULL) {
       cmd_buffer->record_result = VK_ERROR_OUT_OF_HOST_MEMORY;
       return cmd_buffer->record_result;
@@ -4962,8 +4963,8 @@ radv_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    radv_describe_end_cmd_buffer(cmd_buffer);
 
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.subpass_sample_locs);
 
    VkResult result = cmd_buffer->device->ws->cs_finalize(cmd_buffer->cs);
    if (result != VK_SUCCESS)
@@ -5694,17 +5695,14 @@ radv_CreateCommandPool(VkDevice _device, const VkCommandPoolCreateInfo *pCreateI
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_COMMAND_POOL);
-
-   if (pAllocator)
-      pool->alloc = *pAllocator;
-   else
-      pool->alloc = device->vk.alloc;
+   VkResult result = vk_command_pool_init(&pool->vk, &device->vk, pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, pool);
+      return result;
+   }
 
    list_inithead(&pool->cmd_buffers);
    list_inithead(&pool->free_cmd_buffers);
-
-   pool->queue_family_index = pCreateInfo->queueFamilyIndex;
 
    *pCmdPool = radv_cmd_pool_to_handle(pool);
 
@@ -5731,7 +5729,7 @@ radv_DestroyCommandPool(VkDevice _device, VkCommandPool commandPool,
       radv_destroy_cmd_buffer(cmd_buffer);
    }
 
-   vk_object_base_finish(&pool->base);
+   vk_command_pool_finish(&pool->vk);
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
@@ -7527,8 +7525,8 @@ radv_CmdSetRayTracingPipelineStackSizeKHR(VkCommandBuffer commandBuffer, uint32_
 void
 radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer)
 {
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.subpass_sample_locs);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.subpass_sample_locs);
 
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
