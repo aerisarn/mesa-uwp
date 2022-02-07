@@ -13,7 +13,7 @@ if [ -n "${DEQP_RUNNER_GIT_TAG}${DEQP_RUNNER_GIT_REV}" ]; then
     fi
 else
     # Install from package registry
-    EXTRA_CARGO_ARGS="--version 0.11.0 ${EXTRA_CARGO_ARGS} -- deqp-runner"
+    EXTRA_CARGO_ARGS="--version 0.12.0 ${EXTRA_CARGO_ARGS} -- deqp-runner"
 fi
 
 cargo install --locked  \

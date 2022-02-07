@@ -5,8 +5,6 @@ KHR-GLES2.core.internalformat.texture2d.rgb_float_rgb32f,Fail
 KHR-GLES2.core.internalformat.texture2d.rgb_float_rgb32f_linear,Fail
 KHR-GLES2.core.internalformat.texture2d.rgba_float_rgba32f,Fail
 KHR-GLES2.core.internalformat.texture2d.rgba_float_rgba32f_linear,Fail
-KHR-GLES2.texture_3d.copy_sub_image.negative,Fail
-KHR-GLES2.texture_3d.copy_sub_image.rgba,Fail
 
 # Missing the red triangle
 dEQP-GLES2.functional.clip_control.depth_mode_zero_to_one,Fail
