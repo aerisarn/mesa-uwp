@@ -43,4 +43,4 @@ softpipe-piglit:
   variables:
     PIGLIT_PROFILES: gpu
   script:
-    - LD_LIBRARY_PATH=`pwd`/install/lib xvfb-run install/piglit/piglit-runner.sh
+    - LD_LIBRARY_PATH=`pwd`/install/lib xvfb-run --server-args='-noreset' install/piglit/piglit-runner.sh
