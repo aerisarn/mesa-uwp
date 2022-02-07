@@ -17,6 +17,15 @@ export VK_ICD_FILENAMES=`pwd`/install/share/vulkan/icd.d/"$VK_DRIVER"_icd.${VK_C
 RESULTS=`pwd`/${PIGLIT_RESULTS_DIR:-results}
 mkdir -p $RESULTS
 
+# Ensure Mesa Shader Cache resides on tmpfs.
+GLSL_CACHE_HOME=${XDG_CACHE_HOME:-${HOME}/.cache}
+GLSL_CACHE_DIR=${MESA_GLSL_CACHE_DIR:-${GLSL_CACHE_HOME}/mesa_shader_cache}
+
+findmnt -n tmpfs ${GLSL_CACHE_HOME} || findmnt -n tmpfs ${GLSL_CACHE_DIR} || {
+    mkdir -p ${GLSL_CACHE_DIR}
+    mount -t tmpfs -o nosuid,nodev,size=2G,mode=1755 tmpfs ${GLSL_CACHE_DIR}
+}
+
 if [ "$GALLIUM_DRIVER" = "virpipe" ]; then
     # deqp is to use virpipe, and virgl_test_server llvmpipe
     export GALLIUM_DRIVER="$GALLIUM_DRIVER"
