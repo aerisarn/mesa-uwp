@@ -238,7 +238,7 @@ anv_cmd_pipeline_state_finish(struct anv_cmd_buffer *cmd_buffer,
       if (pipe_state->push_descriptors[i]) {
          anv_descriptor_set_layout_unref(cmd_buffer->device,
              pipe_state->push_descriptors[i]->set.layout);
-         vk_free(&cmd_buffer->pool->vk.alloc, pipe_state->push_descriptors[i]);
+         vk_free(&cmd_buffer->vk.pool->alloc, pipe_state->push_descriptors[i]);
       }
    }
 }
@@ -251,7 +251,7 @@ anv_cmd_state_finish(struct anv_cmd_buffer *cmd_buffer)
    anv_cmd_pipeline_state_finish(cmd_buffer, &state->gfx.base);
    anv_cmd_pipeline_state_finish(cmd_buffer, &state->compute.base);
 
-   vk_free(&cmd_buffer->pool->vk.alloc, state->attachments);
+   vk_free(&cmd_buffer->vk.pool->alloc, state->attachments);
 }
 
 static void
@@ -282,7 +282,10 @@ static VkResult anv_create_cmd_buffer(
    cmd_buffer->batch.status = VK_SUCCESS;
 
    cmd_buffer->device = device;
-   cmd_buffer->pool = pool;
+
+   assert(pool->vk.queue_family_index < device->physical->queue.family_count);
+   cmd_buffer->queue_family =
+      &device->physical->queue.families[pool->vk.queue_family_index];
 
    result = anv_cmd_buffer_init_batch_bo_chain(cmd_buffer);
    if (result != VK_SUCCESS)
@@ -362,10 +365,10 @@ anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
 
    anv_cmd_state_finish(cmd_buffer);
 
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->self_mod_locations);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->self_mod_locations);
 
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
 }
 
 void anv_FreeCommandBuffers(
@@ -1527,7 +1530,7 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       &pipe_state->push_descriptors[_set];
 
    if (*push_set == NULL) {
-      *push_set = vk_zalloc(&cmd_buffer->pool->vk.alloc,
+      *push_set = vk_zalloc(&cmd_buffer->vk.pool->alloc,
                             sizeof(struct anv_push_descriptor_set), 8,
                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (*push_set == NULL) {

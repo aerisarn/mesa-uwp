@@ -3154,7 +3154,7 @@ struct anv_cmd_buffer {
 
    struct anv_device *                          device;
 
-   struct anv_cmd_pool *                        pool;
+   struct anv_queue_family *                    queue_family;
    struct list_head                             pool_link;
 
    struct anv_batch                             batch;

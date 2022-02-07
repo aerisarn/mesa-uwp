@@ -335,7 +335,7 @@ khr_perf_query_ensure_relocs(struct anv_cmd_buffer *cmd_buffer)
    const struct anv_physical_device *pdevice = device->physical;
 
    cmd_buffer->self_mod_locations =
-      vk_alloc(&cmd_buffer->pool->vk.alloc,
+      vk_alloc(&cmd_buffer->vk.pool->alloc,
                pdevice->n_perf_query_commands * sizeof(*cmd_buffer->self_mod_locations), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 

@@ -108,7 +108,7 @@ anv_measure_init(struct anv_cmd_buffer *cmd_buffer)
    const size_t batch_bytes = sizeof(struct anv_measure_batch) +
       config->batch_size * sizeof(struct intel_measure_snapshot);
    struct anv_measure_batch * measure =
-      vk_alloc(&cmd_buffer->pool->vk.alloc,
+      vk_alloc(&cmd_buffer->vk.pool->alloc,
                batch_bytes, 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
@@ -363,7 +363,7 @@ anv_measure_destroy(struct anv_cmd_buffer *cmd_buffer)
    intel_measure_gather(&physical->measure_device, &physical->info);
 
    anv_device_release_bo(device, measure->bo);
-   vk_free(&cmd_buffer->pool->vk.alloc, measure);
+   vk_free(&cmd_buffer->vk.pool->alloc, measure);
    cmd_buffer->measure = NULL;
 }
 
