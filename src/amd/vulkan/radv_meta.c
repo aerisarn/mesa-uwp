@@ -622,10 +622,16 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_etc_decode;
 
+   result = radv_device_init_dgc_prepare_state(device);
+   if (result != VK_SUCCESS)
+      goto fail_dgc;
+
    device->app_shaders_internal = false;
 
    return VK_SUCCESS;
 
+fail_dgc:
+   radv_device_finish_meta_etc_decode_state(device);
 fail_etc_decode:
    radv_device_finish_meta_fmask_copy_state(device);
 fail_fmask_copy:
@@ -663,6 +669,7 @@ fail_clear:
 void
 radv_device_finish_meta(struct radv_device *device)
 {
+   radv_device_finish_dgc_prepare_state(device);
    radv_device_finish_meta_etc_decode_state(device);
    radv_device_finish_accel_struct_build_state(device);
    radv_device_finish_meta_clear_state(device);

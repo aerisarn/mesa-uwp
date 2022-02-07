@@ -107,6 +107,9 @@ void radv_device_finish_accel_struct_build_state(struct radv_device *device);
 VkResult radv_device_init_meta_etc_decode_state(struct radv_device *device, bool on_demand);
 void radv_device_finish_meta_etc_decode_state(struct radv_device *device);
 
+VkResult radv_device_init_dgc_prepare_state(struct radv_device *device);
+void radv_device_finish_dgc_prepare_state(struct radv_device *device);
+
 void radv_meta_save(struct radv_meta_saved_state *saved_state, struct radv_cmd_buffer *cmd_buffer,
                     uint32_t flags);
 
