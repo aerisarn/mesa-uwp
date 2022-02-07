@@ -3630,7 +3630,7 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
 }
 
 static bool
-radv_consider_force_vrs(const struct radv_pipeline *pipeline, nir_shader **nir)
+radv_consider_force_vrs(const struct radv_pipeline *pipeline, bool noop_fs, nir_shader **nir)
 {
    struct radv_device *device = pipeline->device;
 
@@ -3644,6 +3644,10 @@ radv_consider_force_vrs(const struct radv_pipeline *pipeline, nir_shader **nir)
 
    nir_shader *last_vgt_shader = nir[pipeline->graphics.last_vgt_api_stage];
    if (last_vgt_shader->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE))
+      return false;
+
+   /* VRS has no effect if there is no pixel shader. */
+   if (noop_fs)
       return false;
 
    return true;
@@ -3676,6 +3680,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    struct radv_pipeline_shader_stack_size **stack_sizes =
       pipeline->type == RADV_PIPELINE_COMPUTE ? &pipeline->compute.rt_stack_sizes : NULL;
    uint32_t *num_stack_sizes = stack_sizes ? &pipeline->compute.group_count : NULL;
+   bool noop_fs = false;
 
    radv_start_feedback(pipeline_feedback);
 
@@ -3732,6 +3737,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       nir_builder fs_b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "noop_fs");
       fs_m = vk_shader_module_from_nir(fs_b.shader);
       modules[MESA_SHADER_FRAGMENT] = &fs_m;
+      noop_fs = true;
    }
 
    for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
@@ -3750,7 +3756,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    /* Force per-vertex VRS. */
-   if (radv_consider_force_vrs(pipeline, nir)) {
+   if (radv_consider_force_vrs(pipeline, noop_fs, nir)) {
       assert(pipeline->graphics.last_vgt_api_stage == MESA_SHADER_VERTEX ||
              pipeline->graphics.last_vgt_api_stage == MESA_SHADER_GEOMETRY);
       nir_shader *last_vgt_shader = nir[pipeline->graphics.last_vgt_api_stage];
