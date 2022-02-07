@@ -2242,8 +2242,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
       if (!util_queue_fence_wait_timeout(&fence->fence, abs_timeout))
          return VK_TIMEOUT;
 
-      int64_t time_ns = os_time_get_nano();
-      timeout = abs_timeout > time_ns ? abs_timeout - time_ns : 0;
+      if (timeout != OS_TIMEOUT_INFINITE) {
+         int64_t time_ns = os_time_get_nano();
+         timeout = abs_timeout > time_ns ? abs_timeout - time_ns : 0;
+      }
    }
 
    if (!fence->handle ||
