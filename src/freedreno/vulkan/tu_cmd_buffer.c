@@ -1516,7 +1516,7 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    if (pool) {
       list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-      cmd_buffer->queue_family_index = pool->queue_family_index;
+      cmd_buffer->queue_family_index = pool->vk.queue_family_index;
 
    } else {
       /* Init the pool_link so we can safely call list_del when we destroy
@@ -1563,7 +1563,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    }
 
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->alloc,
+   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->vk.alloc,
             cmd_buffer);
 }
 
@@ -3180,20 +3180,20 @@ tu_CreateCommandPool(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_cmd_pool *pool;
 
-   pool = vk_object_alloc(&device->vk, pAllocator, sizeof(*pool),
-                          VK_OBJECT_TYPE_COMMAND_POOL);
+   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   if (pAllocator)
-      pool->alloc = *pAllocator;
-   else
-      pool->alloc = device->vk.alloc;
+   VkResult result = vk_command_pool_init(&pool->vk, &device->vk,
+                                          pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, pool);
+      return result;
+   }
 
    list_inithead(&pool->cmd_buffers);
    list_inithead(&pool->free_cmd_buffers);
-
-   pool->queue_family_index = pCreateInfo->queueFamilyIndex;
 
    *pCmdPool = tu_cmd_pool_to_handle(pool);
 
@@ -3223,7 +3223,8 @@ tu_DestroyCommandPool(VkDevice _device,
       tu_cmd_buffer_destroy(cmd_buffer);
    }
 
-   vk_object_free(&device->vk, pAllocator, pool);
+   vk_command_pool_finish(&pool->vk);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -3308,7 +3309,7 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    cmd->state.render_area = pRenderPassBegin->renderArea;
 
    cmd->state.attachments =
-      vk_alloc(&cmd->pool->alloc, pass->attachment_count *
+      vk_alloc(&cmd->pool->vk.alloc, pass->attachment_count *
                sizeof(cmd->state.attachments[0]), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
@@ -4707,7 +4708,7 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
       cmd_buffer->state.renderpass_cache.pending_flush_bits;
    tu_subpass_barrier(cmd_buffer, &cmd_buffer->state.pass->end_barrier, true);
 
-   vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
 
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
