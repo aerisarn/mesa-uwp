@@ -63,12 +63,11 @@ struct wqm_ctx {
 struct loop_info {
    Block* loop_header;
    uint16_t num_exec_masks;
-   uint8_t needs;
    bool has_divergent_break;
    bool has_divergent_continue;
    bool has_discard; /* has a discard or demote */
-   loop_info(Block* b, uint16_t num, uint8_t needs_, bool breaks, bool cont, bool discard)
-       : loop_header(b), num_exec_masks(num), needs(needs_), has_divergent_break(breaks),
+   loop_info(Block* b, uint16_t num, bool breaks, bool cont, bool discard)
+       : loop_header(b), num_exec_masks(num), has_divergent_break(breaks),
          has_divergent_continue(cont), has_discard(discard)
    {}
 };
@@ -188,7 +187,7 @@ transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
    if (ctx.info[idx].exec.back().second & mask_type_global) {
       Operand exec_mask = ctx.info[idx].exec.back().first;
       if (exec_mask.isUndefined()) {
-         exec_mask = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm), Operand(exec, bld.lm));
+         exec_mask = bld.copy(bld.def(bld.lm), Operand(exec, bld.lm));
          ctx.info[idx].exec.back().first = exec_mask;
       }
 
@@ -202,8 +201,8 @@ transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
    assert(ctx.info[idx].exec.back().second & mask_type_wqm);
    assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
    assert(ctx.info[idx].exec.back().first.isTemp());
-   ctx.info[idx].exec.back().first = bld.pseudo(
-      aco_opcode::p_parallelcopy, Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
+   ctx.info[idx].exec.back().first =
+      bld.copy(Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
 }
 
 void
@@ -220,8 +219,8 @@ transition_to_Exact(exec_ctx& ctx, Builder bld, unsigned idx)
       assert(ctx.info[idx].exec.back().second & mask_type_exact);
       assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
       assert(ctx.info[idx].exec.back().first.isTemp());
-      ctx.info[idx].exec.back().first = bld.pseudo(
-         aco_opcode::p_parallelcopy, Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
+      ctx.info[idx].exec.back().first =
+         bld.copy(Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
       return;
    }
    /* otherwise, we create an exact mask and push to the stack */
@@ -337,9 +336,7 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
          uint8_t mask_type = ctx.info[idx].exec.back().second & (mask_type_wqm | mask_type_exact);
          assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
          ctx.info[idx].exec.emplace_back(
-            bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm),
-                       ctx.info[idx].exec.back().first),
-            mask_type);
+            bld.copy(Definition(exec, bld.lm), ctx.info[idx].exec.back().first), mask_type);
       }
 
       return i;
@@ -410,41 +407,11 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
             ctx.info[idx].exec.emplace_back(bld.insert(std::move(phi)), type);
          }
       }
+
       assert(ctx.info[idx].exec.size() == info.num_exec_masks);
-
-      /* create a parallelcopy to move the live mask to exec */
-      unsigned i = 0;
-      while (block->instructions[i]->opcode != aco_opcode::p_logical_start) {
-         bld.insert(std::move(block->instructions[i]));
-         i++;
-      }
-
-      if (ctx.handle_wqm) {
-         if (block->kind & block_kind_top_level && ctx.info[idx].exec.size() == 2) {
-            if (ctx.info[idx].block_needs == 0 || ctx.info[idx].block_needs == Exact) {
-               ctx.info[idx].exec.back().second |= mask_type_global;
-               transition_to_Exact(ctx, bld, idx);
-               ctx.handle_wqm = false;
-            }
-         }
-         if (ctx.info[idx].block_needs == WQM) {
-            assert(ctx.info[idx].exec.back().second & mask_type_wqm);
-            transition_to_WQM(ctx, bld, idx);
-         }
-      }
-
-      assert(ctx.info[idx].exec.back().first.size() == bld.lm.size());
-      if (get_exec_op(ctx.info[idx].exec.back().first).isTemp()) {
-         /* move current exec mask into exec register */
-         ctx.info[idx].exec.back().first = bld.pseudo(
-            aco_opcode::p_parallelcopy, Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
-      }
-
       ctx.loop.pop_back();
-      return i;
-   }
 
-   if (preds.size() == 1) {
+   } else if (preds.size() == 1) {
       ctx.info[idx].exec = ctx.info[preds[0]].exec;
    } else {
       assert(preds.size() == 2);
@@ -470,9 +437,7 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
             continue;
          }
 
-         bool in_exec = i == num_exec_masks - 1 && !(block->kind & block_kind_merge);
-         Temp phi = bld.pseudo(aco_opcode::p_linear_phi,
-                               in_exec ? Definition(exec, bld.lm) : bld.def(bld.lm),
+         Temp phi = bld.pseudo(aco_opcode::p_linear_phi, bld.def(bld.lm),
                                get_exec_op(ctx.info[preds[0]].exec[i].first),
                                get_exec_op(ctx.info[preds[1]].exec[i].first));
          uint8_t mask_type = ctx.info[preds[0]].exec[i].second & ctx.info[preds[1]].exec[i].second;
@@ -496,16 +461,14 @@ add_coupling_code(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instruction>>
             ctx.handle_wqm = false;
          }
       }
-      if (ctx.info[idx].block_needs == WQM) {
-         assert(ctx.info[idx].exec.back().second & mask_type_wqm);
-         transition_to_WQM(ctx, bld, idx);
-      }
    }
 
-   if (block->kind & block_kind_merge && !ctx.info[idx].exec.back().first.isUndefined()) {
+   /* restore exec mask after divergent control flow */
+   if (block->kind & (block_kind_loop_exit | block_kind_merge) &&
+       !ctx.info[idx].exec.back().first.isUndefined()) {
       Operand restore = ctx.info[idx].exec.back().first;
       assert(restore.size() == bld.lm.size());
-      bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm), restore);
+      bld.copy(Definition(exec, bld.lm), restore);
       if (!restore.isConstant())
          ctx.info[idx].exec.back().first = Operand(bld.lm);
    }
@@ -518,9 +481,9 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
                      unsigned idx)
 {
    WQMState state;
-   if (ctx.info[block->index].exec.back().second & mask_type_wqm)
+   if (ctx.info[block->index].exec.back().second & mask_type_wqm) {
       state = WQM;
-   else {
+   } else {
       assert(!ctx.handle_wqm || ctx.info[block->index].exec.back().second & mask_type_exact);
       state = Exact;
    }
@@ -709,7 +672,6 @@ add_branch_code(exec_ctx& ctx, Block* block)
          transition_to_Exact(ctx, bld, idx);
          bld.insert(std::move(branch));
          ctx.handle_wqm = false;
-
       }
    }
 
@@ -718,12 +680,10 @@ add_branch_code(exec_ctx& ctx, Block* block)
       bool has_divergent_break = false;
       bool has_divergent_continue = false;
       bool has_discard = false;
-      uint8_t needs = 0;
       unsigned loop_nest_depth = ctx.program->blocks[idx + 1].loop_nest_depth;
 
       for (unsigned i = idx + 1; ctx.program->blocks[i].loop_nest_depth >= loop_nest_depth; i++) {
          Block& loop_block = ctx.program->blocks[i];
-         needs |= ctx.info[i].block_needs;
 
          if (loop_block.kind & block_kind_uses_discard)
             has_discard = true;
@@ -738,25 +698,11 @@ add_branch_code(exec_ctx& ctx, Block* block)
             has_divergent_continue = true;
       }
 
-      if (ctx.handle_wqm) {
-         if (needs & WQM) {
-            aco_ptr<Instruction> branch = std::move(block->instructions.back());
-            block->instructions.pop_back();
-            transition_to_WQM(ctx, bld, idx);
-            bld.insert(std::move(branch));
-         } else {
-            aco_ptr<Instruction> branch = std::move(block->instructions.back());
-            block->instructions.pop_back();
-            transition_to_Exact(ctx, bld, idx);
-            bld.insert(std::move(branch));
-         }
-      }
-
       unsigned num_exec_masks = ctx.info[idx].exec.size();
       if (block->kind & block_kind_top_level)
          num_exec_masks = std::min(num_exec_masks, 2u);
 
-      ctx.loop.emplace_back(&ctx.program->blocks[block->linear_succs[0]], num_exec_masks, needs,
+      ctx.loop.emplace_back(&ctx.program->blocks[block->linear_succs[0]], num_exec_masks,
                             has_divergent_break, has_divergent_continue, has_discard);
    }
 
@@ -780,8 +726,8 @@ add_branch_code(exec_ctx& ctx, Block* block)
       }
 
       if (need_parallelcopy)
-         ctx.info[idx].exec.back().first = bld.pseudo(
-            aco_opcode::p_parallelcopy, Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
+         ctx.info[idx].exec.back().first =
+            bld.copy(Definition(exec, bld.lm), ctx.info[idx].exec.back().first);
       bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), Operand(exec, bld.lm),
                  block->linear_succs[1], block->linear_succs[0]);
       return;
@@ -799,14 +745,6 @@ add_branch_code(exec_ctx& ctx, Block* block)
    }
 
    if (block->kind & block_kind_branch) {
-
-      if (ctx.handle_wqm && ctx.info[idx].exec.size() >= 2 &&
-          ctx.info[idx].exec.back().second == mask_type_exact &&
-          ctx.info[idx].exec[ctx.info[idx].exec.size() - 2].second & mask_type_wqm) {
-         /* return to wqm before branching */
-         ctx.info[idx].exec.pop_back();
-      }
-
       // orig = s_and_saveexec_b64
       assert(block->linear_succs.size() == 2);
       assert(block->instructions.back()->opcode == aco_opcode::p_cbranch_z);
@@ -815,7 +753,7 @@ add_branch_code(exec_ctx& ctx, Block* block)
 
       uint8_t mask_type = ctx.info[idx].exec.back().second & (mask_type_wqm | mask_type_exact);
       if (ctx.info[idx].exec.back().first.constantEquals(-1u)) {
-         bld.pseudo(aco_opcode::p_parallelcopy, Definition(exec, bld.lm), cond);
+         bld.copy(Definition(exec, bld.lm), cond);
       } else {
          Temp old_exec = bld.sop1(Builder::s_and_saveexec, bld.def(bld.lm), bld.def(s1, scc),
                                   Definition(exec, bld.lm), cond, Operand(exec, bld.lm));
