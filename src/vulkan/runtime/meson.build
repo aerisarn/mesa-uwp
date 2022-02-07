@@ -27,6 +27,8 @@ vulkan_runtime_files = files(
   'vk_cmd_copy.c',
   'vk_command_buffer.c',
   'vk_command_buffer.h',
+  'vk_command_pool.c',
+  'vk_command_pool.h',
   'vk_debug_report.c',
   'vk_debug_report.h',
   'vk_debug_utils.c',
