@@ -25,6 +25,7 @@
 #define VK_COMMAND_BUFFER_H
 
 #include "vk_object.h"
+#include "util/list.h"
 #include "util/u_dynarray.h"
 
 #ifdef __cplusplus
@@ -40,6 +41,16 @@ struct vk_command_buffer {
 
    /** VkCommandBufferAllocateInfo::level */
    VkCommandBufferLevel level;
+
+   /** Link in vk_command_pool::command_buffers if pool != NULL */
+   struct list_head pool_link;
+
+   /** Destroys the command buffer
+    *
+    * Used by the common command pool implementation.  This function MUST
+    * call vk_command_buffer_finish().
+    */
+   void (*destroy)(struct vk_command_buffer *);
 
    /**
     * VK_EXT_debug_utils
