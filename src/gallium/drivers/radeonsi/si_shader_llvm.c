@@ -519,7 +519,6 @@ static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *
    ctx->abi.clamp_shadow_reference = true;
    ctx->abi.robust_buffer_access = true;
    ctx->abi.convert_undef_to_zero = true;
-   ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero;
    ctx->abi.adjust_frag_coord_z = false;
    ctx->abi.disable_aniso_single_level = true;
 
@@ -535,6 +534,9 @@ static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *
       for (unsigned j = 0; j < 4; j++)
          ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, type, "");
    }
+
+   ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero ||
+                                info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
 
    ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
 

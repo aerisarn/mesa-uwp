@@ -293,6 +293,7 @@ enum
 #define SI_PROFILE_IGNORE_LLVM_DISCARD_BUG   (1 << 2)
 #define SI_PROFILE_VS_NO_BINNING             (1 << 3)
 #define SI_PROFILE_PS_NO_BINNING             (1 << 4)
+#define SI_PROFILE_CLAMP_DIV_BY_ZERO         (1 << 5)
 
 /**
  * For VS shader keys, describe any fixups required for vertex fetch.
