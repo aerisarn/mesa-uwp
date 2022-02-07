@@ -117,18 +117,17 @@ cmd_buffer_create(struct v3dv_device *device,
                   VkCommandBuffer *pCommandBuffer)
 {
    struct v3dv_cmd_buffer *cmd_buffer;
-   cmd_buffer = vk_zalloc2(&device->vk.alloc,
-                           &pool->vk.alloc,
-                           sizeof(*cmd_buffer),
-                           8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cmd_buffer = vk_zalloc(&pool->vk.alloc,
+                          sizeof(*cmd_buffer),
+                          8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result;
    result = vk_command_buffer_init(&cmd_buffer->vk, &pool->vk, level);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, &pool->vk.alloc, cmd_buffer);
+      vk_free(&pool->vk.alloc, cmd_buffer);
       return result;
    }
 
@@ -316,8 +315,7 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
    list_del(&cmd_buffer->pool_link);
    cmd_buffer_free_resources(cmd_buffer);
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->vk.alloc,
-            cmd_buffer);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
 }
 
 static bool
