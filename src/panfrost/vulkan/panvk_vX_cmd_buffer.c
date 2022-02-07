@@ -131,7 +131,7 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
    if (!clear && !batch->scoreboard.first_job) {
       if (util_dynarray_num_elements(&batch->event_ops, struct panvk_event_op) == 0) {
          /* Content-less batch, let's drop it */
-         vk_free(&cmdbuf->pool->alloc, batch);
+         vk_free(&cmdbuf->pool->vk.alloc, batch);
       } else {
          /* Batch has no jobs but is needed for synchronization, let's add a
           * NULL job so the SUBMIT ioctl doesn't choke on it.
@@ -782,7 +782,7 @@ panvk_per_arch(CmdEndRenderPass2)(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
    panvk_per_arch(cmd_close_batch)(cmdbuf);
-   vk_free(&cmdbuf->pool->alloc, cmdbuf->state.clear);
+   vk_free(&cmdbuf->pool->vk.alloc, cmdbuf->state.clear);
    cmdbuf->state.batch = NULL;
    cmdbuf->state.pass = NULL;
    cmdbuf->state.subpass = NULL;
@@ -958,7 +958,7 @@ panvk_reset_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
 
       util_dynarray_fini(&batch->event_ops);
 
-      vk_free(&cmdbuf->pool->alloc, batch);
+      vk_free(&cmdbuf->pool->vk.alloc, batch);
    }
 
    panvk_pool_reset(&cmdbuf->desc_pool);
@@ -988,7 +988,7 @@ panvk_destroy_cmdbuf(struct panvk_cmd_buffer *cmdbuf)
 
       util_dynarray_fini(&batch->event_ops);
 
-      vk_free(&cmdbuf->pool->alloc, batch);
+      vk_free(&cmdbuf->pool->vk.alloc, batch);
    }
 
    panvk_pool_cleanup(&cmdbuf->desc_pool);
@@ -1022,7 +1022,7 @@ panvk_create_cmdbuf(struct panvk_device *device,
 
    if (pool) {
       list_addtail(&cmdbuf->pool_link, &pool->active_cmd_buffers);
-      cmdbuf->queue_family_index = pool->queue_family_index;
+      cmdbuf->queue_family_index = pool->vk.queue_family_index;
    } else {
       /* Init the pool_link so we can safely call list_del when we destroy
        * the command buffer
@@ -1162,7 +1162,9 @@ panvk_per_arch(DestroyCommandPool)(VkDevice _device,
    panvk_bo_pool_cleanup(&pool->desc_bo_pool);
    panvk_bo_pool_cleanup(&pool->varying_bo_pool);
    panvk_bo_pool_cleanup(&pool->tls_bo_pool);
-   vk_object_free(&device->vk, pAllocator, pool);
+
+   vk_command_pool_finish(&pool->vk);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VkResult
