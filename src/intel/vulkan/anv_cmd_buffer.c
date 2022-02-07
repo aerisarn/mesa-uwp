@@ -261,33 +261,34 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
    anv_cmd_state_init(cmd_buffer);
 }
 
-static void anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer);
+static void anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer);
 
 static VkResult anv_create_cmd_buffer(
     struct anv_device *                         device,
-    struct anv_cmd_pool *                       pool,
+    struct vk_command_pool *                    pool,
     VkCommandBufferLevel                        level,
     VkCommandBuffer*                            pCommandBuffer)
 {
    struct anv_cmd_buffer *cmd_buffer;
    VkResult result;
 
-   cmd_buffer = vk_alloc(&pool->vk.alloc, sizeof(*cmd_buffer), 8,
+   cmd_buffer = vk_alloc(&pool->alloc, sizeof(*cmd_buffer), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (cmd_buffer == NULL)
       return vk_error(pool, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = vk_command_buffer_init(&cmd_buffer->vk, &pool->vk, level);
+   result = vk_command_buffer_init(&cmd_buffer->vk, pool, level);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
+   cmd_buffer->vk.destroy = anv_cmd_buffer_destroy;
    cmd_buffer->batch.status = VK_SUCCESS;
 
    cmd_buffer->device = device;
 
-   assert(pool->vk.queue_family_index < device->physical->queue.family_count);
+   assert(pool->queue_family_index < device->physical->queue.family_count);
    cmd_buffer->queue_family =
-      &device->physical->queue.families[pool->vk.queue_family_index];
+      &device->physical->queue.families[pool->queue_family_index];
 
    result = anv_cmd_buffer_init_batch_bo_chain(cmd_buffer);
    if (result != VK_SUCCESS)
@@ -304,8 +305,6 @@ static VkResult anv_create_cmd_buffer(
 
    anv_cmd_state_init(cmd_buffer);
 
-   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
-
    anv_measure_init(cmd_buffer);
 
    u_trace_init(&cmd_buffer->trace, &device->ds.trace_context);
@@ -317,7 +316,7 @@ static VkResult anv_create_cmd_buffer(
  fail_vk:
    vk_command_buffer_finish(&cmd_buffer->vk);
  fail_alloc:
-   vk_free2(&device->vk.alloc, &pool->vk.alloc, cmd_buffer);
+   vk_free2(&device->vk.alloc, &pool->alloc, cmd_buffer);
 
    return result;
 }
@@ -328,7 +327,7 @@ VkResult anv_AllocateCommandBuffers(
     VkCommandBuffer*                            pCommandBuffers)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_cmd_pool, pool, pAllocateInfo->commandPool);
+   VK_FROM_HANDLE(vk_command_pool, pool, pAllocateInfo->commandPool);
 
    VkResult result = VK_SUCCESS;
    uint32_t i;
@@ -342,7 +341,7 @@ VkResult anv_AllocateCommandBuffers(
 
    if (result != VK_SUCCESS) {
       while (i--) {
-         ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
+         VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, pCommandBuffers[i]);
          anv_cmd_buffer_destroy(cmd_buffer);
       }
       for (i = 0; i < pAllocateInfo->commandBufferCount; i++)
@@ -353,13 +352,14 @@ VkResult anv_AllocateCommandBuffers(
 }
 
 static void
-anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
+anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 {
+   struct anv_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct anv_cmd_buffer, vk);
+
    u_trace_fini(&cmd_buffer->trace);
 
    anv_measure_destroy(cmd_buffer);
-
-   list_del(&cmd_buffer->pool_link);
 
    anv_cmd_buffer_fini_batch_bo_chain(cmd_buffer);
 
@@ -373,22 +373,6 @@ anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer)
 
    vk_command_buffer_finish(&cmd_buffer->vk);
    vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
-}
-
-void anv_FreeCommandBuffers(
-    VkDevice                                    device,
-    VkCommandPool                               commandPool,
-    uint32_t                                    commandBufferCount,
-    const VkCommandBuffer*                      pCommandBuffers)
-{
-   for (uint32_t i = 0; i < commandBufferCount; i++) {
-      ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
-
-      if (!cmd_buffer)
-         continue;
-
-      anv_cmd_buffer_destroy(cmd_buffer);
-   }
 }
 
 VkResult
@@ -1370,81 +1354,6 @@ void anv_CmdPushConstants(
    }
 
    cmd_buffer->state.push_constants_dirty |= stageFlags;
-}
-
-VkResult anv_CreateCommandPool(
-    VkDevice                                    _device,
-    const VkCommandPoolCreateInfo*              pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkCommandPool*                              pCmdPool)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_cmd_pool *pool;
-
-   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pool == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   VkResult result = vk_command_pool_init(&pool->vk, &device->vk,
-                                          pCreateInfo, pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pool);
-      return result;
-   }
-
-   assert(pCreateInfo->queueFamilyIndex < device->physical->queue.family_count);
-   pool->queue_family =
-      &device->physical->queue.families[pCreateInfo->queueFamilyIndex];
-
-   list_inithead(&pool->cmd_buffers);
-
-   *pCmdPool = anv_cmd_pool_to_handle(pool);
-
-   return VK_SUCCESS;
-}
-
-void anv_DestroyCommandPool(
-    VkDevice                                    _device,
-    VkCommandPool                               commandPool,
-    const VkAllocationCallbacks*                pAllocator)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_cmd_pool, pool, commandPool);
-
-   if (!pool)
-      return;
-
-   list_for_each_entry_safe(struct anv_cmd_buffer, cmd_buffer,
-                            &pool->cmd_buffers, pool_link) {
-      anv_cmd_buffer_destroy(cmd_buffer);
-   }
-
-   vk_command_pool_finish(&pool->vk);
-   vk_free2(&device->vk.alloc, pAllocator, pool);
-}
-
-VkResult anv_ResetCommandPool(
-    VkDevice                                    device,
-    VkCommandPool                               commandPool,
-    VkCommandPoolResetFlags                     flags)
-{
-   ANV_FROM_HANDLE(anv_cmd_pool, pool, commandPool);
-
-   list_for_each_entry(struct anv_cmd_buffer, cmd_buffer,
-                       &pool->cmd_buffers, pool_link) {
-      anv_cmd_buffer_reset(cmd_buffer);
-   }
-
-   return VK_SUCCESS;
-}
-
-void anv_TrimCommandPool(
-    VkDevice                                    device,
-    VkCommandPool                               commandPool,
-    VkCommandPoolTrimFlags                      flags)
-{
-   /* Nothing for us to do here.  Our pools stay pretty tidy. */
 }
 
 /**

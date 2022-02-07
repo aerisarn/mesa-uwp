@@ -3129,12 +3129,6 @@ struct anv_cmd_state {
    struct anv_bo *                              ray_query_shadow_bo;
 };
 
-struct anv_cmd_pool {
-   struct vk_command_pool                       vk;
-   struct list_head                             cmd_buffers;
-   struct anv_queue_family *                    queue_family;
-};
-
 #define ANV_MIN_CMD_BUFFER_BATCH_SIZE 8192
 #define ANV_MAX_CMD_BUFFER_BATCH_SIZE (16 * 1024 * 1024)
 
@@ -3153,9 +3147,7 @@ struct anv_cmd_buffer {
    struct vk_command_buffer                     vk;
 
    struct anv_device *                          device;
-
    struct anv_queue_family *                    queue_family;
-   struct list_head                             pool_link;
 
    struct anv_batch                             batch;
 
@@ -4726,8 +4718,6 @@ VK_DEFINE_HANDLE_CASTS(anv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_acceleration_structure, base,
                                VkAccelerationStructureKHR,
                                VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_cmd_pool, vk.base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer_view, base, VkBufferView,
