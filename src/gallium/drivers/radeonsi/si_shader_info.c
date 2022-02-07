@@ -55,6 +55,11 @@ static struct si_shader_profile profiles[] =
       {0x29f0f4a0, 0x0672258d, 0x47ccdcfd, 0x31e67dcc, 0xdcb1fda8},
       SI_PROFILE_WAVE64,
    },
+   {
+      /* Viewperf/Creo */
+      {0x1f288a73, 0xba46cce5, 0xbf68e6c6, 0x58543651, 0xca3c8efd},
+      SI_PROFILE_CLAMP_DIV_BY_ZERO,
+   },
 };
 
 static unsigned get_inst_tessfactor_writemask(nir_intrinsic_instr *intrin)
