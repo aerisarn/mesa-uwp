@@ -1181,12 +1181,21 @@ set_last_fence(struct lvp_device *device, struct pipe_fence_handle *handle, uint
 
 static void
 thread_flush(struct lvp_device *device, struct lvp_fence *fence, uint64_t timeline,
+             unsigned num_signal_semaphores, struct lvp_semaphore **semaphores,
              unsigned num_timelines, struct lvp_semaphore_timeline **timelines)
 {
    struct pipe_fence_handle *handle = NULL;
    device->queue.ctx->flush(device->queue.ctx, &handle, 0);
    if (fence)
       device->pscreen->fence_reference(device->pscreen, &fence->handle, handle);
+   for (unsigned i = 0; i < num_signal_semaphores; i++) {
+      struct lvp_semaphore *sema = semaphores[i];
+      if (!sema->is_timeline) {
+         simple_mtx_lock(&sema->lock);
+         device->pscreen->fence_reference(device->pscreen, &sema->handle, handle);
+         simple_mtx_unlock(&sema->lock);
+      }
+   }
    set_last_fence(device, handle, timeline);
    /* this is the array of signaling timeline semaphore links */
    for (unsigned i = 0; i < num_timelines; i++)
@@ -1294,6 +1303,18 @@ static VkResult wait_semaphores(struct lvp_device *device,
          }
          const uint64_t waitval = pWaitInfo->pValues[i];
          LVP_FROM_HANDLE(lvp_semaphore, sema, pWaitInfo->pSemaphores[i]);
+
+         if (!sema->is_timeline) {
+            simple_mtx_lock(&sema->lock);
+            if (sema->handle) {
+               if (device->pscreen->fence_finish(device->pscreen, NULL, sema->handle, wait_interval)) {
+                  tl_array[i].done = true;
+                  num_remaining--;
+               }
+            }
+            simple_mtx_unlock(&sema->lock);
+            continue;
+         }
          if (sema->current >= waitval) {
             tl_array[i].done = true;
             num_remaining--;
@@ -1346,8 +1367,13 @@ void
 queue_thread_noop(void *data, void *gdata, int thread_index)
 {
    struct lvp_device *device = gdata;
-   struct lvp_fence *fence = data;
-   thread_flush(device, fence, fence->timeline, 0, NULL);
+   struct lvp_queue_noop *noop = data;
+
+   struct lvp_fence *fence = noop->fence;
+   struct lvp_semaphore *semaphore = noop->sema;
+
+   thread_flush(device, fence, fence ? fence->timeline : 0, semaphore ? 1 : 0, &semaphore, 0, NULL);
+   free(noop);
 }
 
 static void
@@ -1373,7 +1399,7 @@ queue_thread(void *data, void *gdata, int thread_index)
       lvp_execute_cmds(queue->device, queue, task->cmd_buffers[i]);
    }
 
-   thread_flush(device, task->fence, task->timeline, task->timeline_count, task->timelines);
+   thread_flush(device, task->fence, task->timeline, task->signal_count, task->signals, task->timeline_count, task->timelines);
    free(task);
 }
 
@@ -1528,16 +1554,18 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
       uint64_t timeline = ++queue->timeline;
       struct lvp_queue_work *task = malloc(sizeof(struct lvp_queue_work) +
                                            pSubmits[i].commandBufferCount * sizeof(struct lvp_cmd_buffer *) +
-                                           pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore_timeline*) +
+                                           pSubmits[i].signalSemaphoreCount * (sizeof(struct lvp_semaphore_timeline*) + sizeof(struct lvp_semaphore *)) +
                                            pSubmits[i].waitSemaphoreCount * (sizeof(VkSemaphore) + sizeof(uint64_t)));
       task->cmd_buffer_count = pSubmits[i].commandBufferCount;
       task->timeline_count = pSubmits[i].signalSemaphoreCount;
+      task->signal_count = pSubmits[i].signalSemaphoreCount;
       task->wait_count = pSubmits[i].waitSemaphoreCount;
       task->fence = fence;
       task->timeline = timeline;
       task->cmd_buffers = (struct lvp_cmd_buffer **)(task + 1);
       task->timelines = (struct lvp_semaphore_timeline**)((uint8_t*)task->cmd_buffers + pSubmits[i].commandBufferCount * sizeof(struct lvp_cmd_buffer *));
-      task->waits = (VkSemaphore*)((uint8_t*)task->timelines + pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore_timeline *));
+      task->signals = (struct lvp_semaphore **)((uint8_t*)task->timelines + pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore_timeline *));
+      task->waits = (VkSemaphore*)((uint8_t*)task->signals + pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore *));
       task->wait_vals = (uint64_t*)((uint8_t*)task->waits + pSubmits[i].waitSemaphoreCount * sizeof(VkSemaphore));
 
       unsigned c = 0;
@@ -1548,8 +1576,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
       unsigned s = 0;
       for (unsigned j = 0; j < pSubmits[i].signalSemaphoreCount; j++) {
          LVP_FROM_HANDLE(lvp_semaphore, sema, pSubmits[i].pSignalSemaphores[j]);
+         task->signals[j] = sema;
          if (!sema->is_timeline) {
-            /* non-timeline semaphores never matter to lavapipe */
             task->timeline_count--;
             continue;
          }
@@ -1571,8 +1599,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
       for (unsigned j = 0; j < pSubmits[i].waitSemaphoreCount; j++) {
          LVP_FROM_HANDLE(lvp_semaphore, sema, pSubmits[i].pWaitSemaphores[j]);
          if (!sema->is_timeline) {
-            /* non-timeline semaphores never matter to lavapipe */
-            task->wait_count--;
+            task->waits[w] = pSubmits[i].pWaitSemaphores[j];
+            task->wait_vals[w] = 0;
+            w++;
             continue;
          }
          simple_mtx_lock(&sema->lock);
@@ -1605,9 +1634,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
    if (!submitCount && fence) {
       /* special case where a fence is created to use as a synchronization point */
       fence->timeline = p_atomic_inc_return(&queue->timeline);
-      util_queue_add_job(&queue->queue, fence, &fence->fence, queue_thread_noop, NULL, 0);
+      struct lvp_queue_noop *noop = malloc(sizeof(struct lvp_queue_noop));
+      if (!noop)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+      noop->fence = fence;
+      noop->sema = NULL;
+      util_queue_add_job(&queue->queue, noop, &fence->fence, queue_thread_noop, NULL, 0);
    }
-
    return VK_SUCCESS;
 }
 
@@ -2280,13 +2313,15 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSemaphore(
 
    const VkSemaphoreTypeCreateInfo *info = vk_find_struct_const(pCreateInfo->pNext, SEMAPHORE_TYPE_CREATE_INFO);
    sema->is_timeline = info && info->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE;
+   simple_mtx_init(&sema->lock, mtx_plain);
+   sema->handle = NULL;
    if (sema->is_timeline) {
       sema->is_timeline = true;
       sema->timeline = NULL;
       sema->current = info->initialValue;
       sema->mem = ralloc_context(NULL);
       util_dynarray_init(&sema->links, sema->mem);
-      simple_mtx_init(&sema->lock, mtx_plain);
+
       mtx_init(&sema->submit_lock, mtx_plain);
       cnd_init(&sema->submit);
    }
@@ -2312,6 +2347,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroySemaphore(
       mtx_destroy(&sema->submit_lock);
       cnd_destroy(&sema->submit);
    }
+   if (sema->handle)
+      device->pscreen->fence_reference(device->pscreen, &sema->handle, NULL);
    vk_object_base_finish(&sema->base);
    vk_free2(&device->vk.alloc, pAllocator, sema);
 }

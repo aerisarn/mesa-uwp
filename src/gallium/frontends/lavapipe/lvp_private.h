@@ -181,10 +181,12 @@ struct lvp_queue_work {
    uint32_t cmd_buffer_count;
    uint32_t timeline_count;
    uint32_t wait_count;
+   uint32_t signal_count;
    uint64_t timeline;
    struct lvp_fence *fence;
    struct lvp_cmd_buffer **cmd_buffers;
    struct lvp_semaphore_timeline **timelines;
+   struct lvp_semaphore **signals;
    VkSemaphore *waits;
    uint64_t *wait_vals;
 };
@@ -505,6 +507,12 @@ struct lvp_semaphore {
    struct util_dynarray links;
    struct lvp_semaphore_timeline *timeline;
    struct lvp_semaphore_timeline *latest;
+   struct pipe_fence_handle *handle;
+};
+
+struct lvp_queue_noop {
+   struct lvp_fence *fence;
+   struct lvp_semaphore *sema;
 };
 
 struct lvp_buffer {
