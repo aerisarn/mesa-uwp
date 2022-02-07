@@ -261,6 +261,8 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
    anv_cmd_state_init(cmd_buffer);
 }
 
+static void anv_cmd_buffer_destroy(struct anv_cmd_buffer *cmd_buffer);
+
 static VkResult anv_create_cmd_buffer(
     struct anv_device *                         device,
     struct anv_cmd_pool *                       pool,
@@ -339,8 +341,10 @@ VkResult anv_AllocateCommandBuffers(
    }
 
    if (result != VK_SUCCESS) {
-      anv_FreeCommandBuffers(_device, pAllocateInfo->commandPool,
-                             i, pCommandBuffers);
+      while (i--) {
+         ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
+         anv_cmd_buffer_destroy(cmd_buffer);
+      }
       for (i = 0; i < pAllocateInfo->commandBufferCount; i++)
          pCommandBuffers[i] = VK_NULL_HANDLE;
    }
