@@ -5719,28 +5719,28 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
 
-   if (!enable_vrs) {
-      if (gfx103_pipeline_vrs_coarse_shading(pipeline)) {
-         /* Enable VRS coarse shading 2x2 if the driver determined that
-          * it's safe to enable.
-          */
-         mode = V_028064_VRS_COMB_MODE_OVERRIDE;
-         rate_x = rate_y = 1;
-      } else if (pipeline->device->force_vrs != RADV_FORCE_VRS_NONE) {
-         /* Force enable vertex VRS if requested by the user. */
-         radeon_set_context_reg(
-            ctx_cs, R_028848_PA_CL_VRS_CNTL,
-            S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
-               S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
+   if (!enable_vrs && gfx103_pipeline_vrs_coarse_shading(pipeline)) {
+      /* When per-draw VRS is not enabled at all, try enabling VRS coarse shading 2x2 if the driver
+       * determined that it's safe to enable.
+       */
+      mode = V_028064_VRS_COMB_MODE_OVERRIDE;
+      rate_x = rate_y = 1;
+   } else if (!vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
+              pipeline->device->force_vrs != RADV_FORCE_VRS_NONE) {
+      /* Otherwise, if per-draw VRS is not enabled statically, try forcing per-vertex VRS if
+       * requested by the user. Note that vkd3d-proton always has to declare VRS as dynamic because
+       * in DX12 it's fully dynamic.
+       */
+      radeon_set_context_reg(ctx_cs, R_028848_PA_CL_VRS_CNTL,
+         S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE) |
+         S_028848_VERTEX_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_OVERRIDE));
 
-         /* If the shader is using discard, turn off coarse shading
-         * because discard at 2x2 pixel granularity degrades quality
-         * too much. MIN allows sample shading but not coarse shading.
-         */
-         struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+      /* If the shader is using discard, turn off coarse shading because discard at 2x2 pixel
+       * granularity degrades quality too much. MIN allows sample shading but not coarse shading.
+       */
+      struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 
-         mode = ps->info.ps.can_discard ? V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
-      }
+      mode = ps->info.ps.can_discard ? V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
    }
 
    radeon_set_context_reg(ctx_cs, R_028064_DB_VRS_OVERRIDE_CNTL,

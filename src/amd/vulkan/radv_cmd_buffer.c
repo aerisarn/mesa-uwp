@@ -6612,6 +6612,23 @@ radv_emit_all_graphics_states(struct radv_cmd_buffer *cmd_buffer, const struct r
       }
    }
 
+   if (cmd_buffer->device->force_vrs != RADV_FORCE_VRS_NONE) {
+      struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+      uint64_t dynamic_states =
+         cmd_buffer->state.dirty & cmd_buffer->state.emitted_pipeline->graphics.needed_dynamic_state;
+
+      if ((dynamic_states & RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE) &&
+          d->fragment_shading_rate.size.width == 1 &&
+          d->fragment_shading_rate.size.height == 1 &&
+          d->fragment_shading_rate.combiner_ops[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
+          d->fragment_shading_rate.combiner_ops[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR) {
+         /* When per-vertex VRS is forced and the dynamic fragment shading rate is a no-op, ignore
+          * it. This is needed for vkd3d-proton because it always declares per-draw VRS as dynamic.
+          */
+         cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+      }
+   }
+
    radv_cmd_buffer_flush_dynamic_state(cmd_buffer, pipeline_is_dirty);
 
    radv_emit_draw_registers(cmd_buffer, info);
