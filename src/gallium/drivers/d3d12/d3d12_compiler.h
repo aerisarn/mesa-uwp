@@ -92,6 +92,7 @@ struct d3d12_shader_key {
    uint64_t prev_varying_outputs;
    unsigned last_vertex_processing_stage : 1;
    unsigned invert_depth : 16;
+   unsigned halfz : 1;
    unsigned samples_int_textures : 1;
    unsigned input_clip_size : 4;
    unsigned tex_saturate_s : PIPE_MAX_SAMPLERS;

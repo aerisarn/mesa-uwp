@@ -391,6 +391,7 @@ d3d12_lower_load_patch_vertices_in(struct nir_shader *nir)
 struct invert_depth_state
 {
    unsigned viewport_mask;
+   bool clip_halfz;
    nir_ssa_def *viewport_index;
    nir_instr *store_pos_instr;
 };
@@ -415,10 +416,14 @@ invert_depth_impl(nir_builder *b, struct invert_depth_state *state)
    if (state->viewport_index) {
       nir_push_if(b, nir_test_mask(b, nir_ishl(b, nir_imm_int(b, 1), state->viewport_index), state->viewport_mask));
    }
+   nir_ssa_def *old_depth = nir_channel(b, pos, 2);
+   nir_ssa_def *new_depth = nir_fneg(b, old_depth);
+   if (state->clip_halfz)
+      new_depth = nir_fadd_imm(b, new_depth, 1.0);
    nir_ssa_def *def = nir_vec4(b,
                                nir_channel(b, pos, 0),
                                nir_channel(b, pos, 1),
-                               nir_fneg(b, nir_channel(b, pos, 2)),
+                               new_depth,
                                nir_channel(b, pos, 3));
    if (state->viewport_index) {
       nir_pop_if(b, NULL);
@@ -453,19 +458,20 @@ invert_depth_instr(nir_builder *b, struct nir_instr *instr, struct invert_depth_
 }
 
 /* In OpenGL the windows space depth value z_w is evaluated according to "s * z_d + b"
- * with  "s + (far - near) / 2" (depth clip:minus_one_to_one) [OpenGL 3.3, 2.13.1].
+ * with  "s = (far - near) / 2" (depth clip:minus_one_to_one) [OpenGL 3.3, 2.13.1].
  * When we switch the far and near value to satisfy DirectX requirements we have
  * to compensate by inverting "z_d' = -z_d" with this lowering pass.
+ * When depth clip is set zero_to_one, we compensate with "z_d' = 1.0f - z_d" instead.
  */
 void
-d3d12_nir_invert_depth(nir_shader *shader, unsigned viewport_mask)
+d3d12_nir_invert_depth(nir_shader *shader, unsigned viewport_mask, bool clip_halfz)
 {
    if (shader->info.stage != MESA_SHADER_VERTEX &&
        shader->info.stage != MESA_SHADER_TESS_EVAL &&
        shader->info.stage != MESA_SHADER_GEOMETRY)
       return;
 
-   struct invert_depth_state state = { viewport_mask };
+   struct invert_depth_state state = { viewport_mask, clip_halfz };
    nir_foreach_function(function, shader) {
       if (function->impl) {
          nir_builder b;

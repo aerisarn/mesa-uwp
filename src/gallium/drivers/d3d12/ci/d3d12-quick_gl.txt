@@ -319,9 +319,6 @@ spec/arb_clear_texture/arb_clear_texture-sized-formats: skip
 spec/arb_clear_texture/arb_clear_texture-srgb: skip
 spec/arb_clear_texture/arb_clear_texture-stencil: skip
 spec/arb_clear_texture/arb_clear_texture-texview: skip
-spec/arb_clip_control/arb_clip_control-clip-control: skip
-spec/arb_clip_control/arb_clip_control-depth-precision: skip
-spec/arb_clip_control/arb_clip_control-viewport: skip
 spec/arb_compute_shader/compute-and-render-bug-109630: fail
 spec/arb_copy_image/arb_copy_image-api_errors: skip
 spec/arb_copy_image/arb_copy_image-format-swizzle: skip
@@ -3515,10 +3512,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17870
+       pass:    17873
        fail:     2035
       crash:       12
-       skip:     1448
+       skip:     1445
     timeout:        0
        warn:       10
  incomplete:        0

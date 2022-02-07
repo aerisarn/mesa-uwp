@@ -1313,8 +1313,24 @@ d3d12_set_viewport_states(struct pipe_context *pctx,
       ctx->viewports[start_slot + i].TopLeftX = state[i].translate[0] - state[i].scale[0];
       ctx->viewports[start_slot + i].Width = state[i].scale[0] * 2;
 
-      float near_depth = state[i].translate[2] - state[i].scale[2];
+      float near_depth = state[i].translate[2];
       float far_depth = state[i].translate[2] + state[i].scale[2];
+
+      /* When the rasterizer is configured for "full" depth clipping ([-1, 1])
+       * the viewport that we get is set to cover the positive half of clip space.
+       * E.g. a [0, 1] viewport from the GL API will come to the driver as [0.5, 1].
+       * Since we halve clipping space from [-1, 1] to [0, 1], we need to double the
+       * viewport, treating translate as the center instead of the near plane. When
+       * the rasterizer is configured for "half" depth clipping ([0, 1]), the viewport
+       * covers the entire clip range, so no fixup is needed.
+       * 
+       * Note: If halfz mode changes, both the rasterizer and viewport are dirtied,
+       * and on the next draw we will get the rasterizer state first, and viewport
+       * second, because ST_NEW_RASTERIZER comes before ST_NEW_VIEWPORT.
+       */
+      if (ctx->gfx_pipeline_state.rast && !ctx->gfx_pipeline_state.rast->base.clip_halfz) {
+         near_depth -= state[i].scale[2];
+      }
 
       bool reverse_depth_range = near_depth > far_depth;
       if (reverse_depth_range) {
