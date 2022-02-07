@@ -928,6 +928,8 @@ struct radv_device {
 
    /* Interleaved lock/unlock commandbuffers for perfcounter passes. */
    struct radeon_cmdbuf **perf_counter_lock_cs;
+
+   bool uses_device_generated_commands;
 };
 
 bool radv_device_acquire_performance_counters(struct radv_device *device);

@@ -3247,6 +3247,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool image_2d_view_of_3d = false;
    bool primitives_generated_query = false;
    bool use_perf_counters = false;
+   bool use_dgc = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -3333,6 +3334,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
             use_perf_counters = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV: {
+         const VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV *features = (const void *)ext;
+         if (features->deviceGeneratedCommands)
+            use_dgc = true;
+         break;
+      }
       default:
          break;
       }
@@ -3398,6 +3405,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->image_2d_view_of_3d = image_2d_view_of_3d;
 
    device->primitives_generated_query = primitives_generated_query;
+   device->uses_device_generated_commands = use_dgc;
 
    radv_init_shader_arenas(device);
 
@@ -5477,6 +5485,19 @@ radv_get_buffer_memory_requirements(struct radv_device *device, VkDeviceSize siz
    pMemoryRequirements->memoryRequirements.memoryTypeBits =
       ((1u << device->physical_device->memory_properties.memoryTypeCount) - 1u) &
       ~device->physical_device->memory_types_32bit;
+   
+   /* Allow 32-bit address-space for DGC usage, as this buffer will contain
+    * cmd buffer upload buffers, and those get passed to shaders through 32-bit
+    * pointers.
+    *
+    * We only allow it with this usage set, to "protect" the 32-bit address space
+    * from being overused. The actual requirement is done as part of
+    * vkGetGeneratedCommandsMemoryRequirementsNV. (we have to make sure their
+    * intersection is non-zero at least)
+    */
+   if ((usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT) && device->uses_device_generated_commands)
+      pMemoryRequirements->memoryRequirements.memoryTypeBits |=
+         device->physical_device->memory_types_32bit;
 
    if (flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
       pMemoryRequirements->memoryRequirements.alignment = 4096;
