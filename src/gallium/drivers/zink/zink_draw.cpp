@@ -562,10 +562,10 @@ zink_draw(struct pipe_context *pctx,
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
+   zink_batch_rp(ctx);
+
    if (BATCH_CHANGED)
       zink_update_descriptor_refs(ctx, false);
-
-   zink_batch_rp(ctx);
 
    /* these must be after renderpass start to avoid issues with recursion */
    bool drawid_broken = false;
