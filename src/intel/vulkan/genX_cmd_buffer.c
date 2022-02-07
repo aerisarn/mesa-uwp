@@ -295,12 +295,12 @@ add_surface_reloc(struct anv_cmd_buffer *cmd_buffer,
    if (anv_use_relocations(cmd_buffer->device->physical)) {
       const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
       result = anv_reloc_list_add(&cmd_buffer->surface_relocs,
-                                  &cmd_buffer->pool->alloc,
+                                  &cmd_buffer->pool->vk.alloc,
                                   state.offset + isl_dev->ss.addr_offset,
                                   addr.bo, addr.offset, NULL);
    } else {
       result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                     &cmd_buffer->pool->alloc,
+                                     &cmd_buffer->pool->vk.alloc,
                                      addr.bo);
    }
 
@@ -320,7 +320,7 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
    if (!anv_address_is_null(state.aux_address)) {
       VkResult result =
          anv_reloc_list_add(&cmd_buffer->surface_relocs,
-                            &cmd_buffer->pool->alloc,
+                            &cmd_buffer->pool->vk.alloc,
                             state.state.offset + isl_dev->ss.aux_addr_offset,
                             state.aux_address.bo,
                             state.aux_address.offset,
@@ -332,7 +332,7 @@ add_surface_state_relocs(struct anv_cmd_buffer *cmd_buffer,
    if (!anv_address_is_null(state.clear_address)) {
       VkResult result =
          anv_reloc_list_add(&cmd_buffer->surface_relocs,
-                            &cmd_buffer->pool->alloc,
+                            &cmd_buffer->pool->vk.alloc,
                             state.state.offset +
                             isl_dev->ss.clear_color_state_offset,
                             state.clear_address.bo,
@@ -1544,10 +1544,10 @@ cmd_buffer_alloc_state_attachments(struct anv_cmd_buffer *cmd_buffer,
 {
    struct anv_cmd_state *state = &cmd_buffer->state;
 
-   vk_free(&cmd_buffer->pool->alloc, state->attachments);
+   vk_free(&cmd_buffer->pool->vk.alloc, state->attachments);
 
    if (attachment_count > 0) {
-      state->attachments = vk_zalloc(&cmd_buffer->pool->alloc,
+      state->attachments = vk_zalloc(&cmd_buffer->pool->vk.alloc,
                                      attachment_count *
                                           sizeof(state->attachments[0]),
                                      8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);

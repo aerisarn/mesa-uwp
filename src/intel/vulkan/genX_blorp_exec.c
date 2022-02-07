@@ -86,7 +86,7 @@ blorp_surface_reloc(struct blorp_batch *batch, uint32_t ss_offset,
 
    if (ANV_ALWAYS_SOFTPIN) {
       result = anv_reloc_list_add_bo(&cmd_buffer->surface_relocs,
-                                     &cmd_buffer->pool->alloc,
+                                     &cmd_buffer->pool->vk.alloc,
                                      address.buffer);
       if (unlikely(result != VK_SUCCESS))
          anv_batch_set_error(&cmd_buffer->batch, result);
@@ -95,7 +95,7 @@ blorp_surface_reloc(struct blorp_batch *batch, uint32_t ss_offset,
 
    uint64_t address_u64 = 0;
    result = anv_reloc_list_add(&cmd_buffer->surface_relocs,
-                               &cmd_buffer->pool->alloc,
+                               &cmd_buffer->pool->vk.alloc,
                                ss_offset, address.buffer,
                                address.offset + delta,
                                &address_u64);

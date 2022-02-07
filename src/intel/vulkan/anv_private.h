@@ -67,6 +67,8 @@
 #include "util/vma.h"
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
+#include "vk_command_buffer.h"
+#include "vk_command_pool.h"
 #include "vk_debug_report.h"
 #include "vk_device.h"
 #include "vk_drm_syncobj.h"
@@ -78,7 +80,6 @@
 #include "vk_sync.h"
 #include "vk_sync_timeline.h"
 #include "vk_util.h"
-#include "vk_command_buffer.h"
 #include "vk_queue.h"
 #include "vk_log.h"
 
@@ -3129,11 +3130,8 @@ struct anv_cmd_state {
 };
 
 struct anv_cmd_pool {
-   struct vk_object_base                        base;
-   VkAllocationCallbacks                        alloc;
+   struct vk_command_pool                       vk;
    struct list_head                             cmd_buffers;
-
-   VkCommandPoolCreateFlags                     flags;
    struct anv_queue_family *                    queue_family;
 };
 
@@ -4728,7 +4726,7 @@ VK_DEFINE_HANDLE_CASTS(anv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_acceleration_structure, base,
                                VkAccelerationStructureKHR,
                                VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR)
-VK_DEFINE_NONDISP_HANDLE_CASTS(anv_cmd_pool, base, VkCommandPool,
+VK_DEFINE_NONDISP_HANDLE_CASTS(anv_cmd_pool, vk.base, VkCommandPool,
                                VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(anv_buffer, base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)

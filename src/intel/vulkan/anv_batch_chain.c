@@ -349,7 +349,7 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
 {
    VkResult result;
 
-   struct anv_batch_bo *bbo = vk_alloc(&cmd_buffer->pool->alloc, sizeof(*bbo),
+   struct anv_batch_bo *bbo = vk_alloc(&cmd_buffer->pool->vk.alloc, sizeof(*bbo),
                                         8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (bbo == NULL)
       return vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -359,7 +359,7 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   result = anv_reloc_list_init(&bbo->relocs, &cmd_buffer->pool->alloc);
+   result = anv_reloc_list_init(&bbo->relocs, &cmd_buffer->pool->vk.alloc);
    if (result != VK_SUCCESS)
       goto fail_bo_alloc;
 
@@ -370,7 +370,7 @@ anv_batch_bo_create(struct anv_cmd_buffer *cmd_buffer,
  fail_bo_alloc:
    anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
  fail_alloc:
-   vk_free(&cmd_buffer->pool->alloc, bbo);
+   vk_free(&cmd_buffer->pool->vk.alloc, bbo);
 
    return result;
 }
@@ -382,7 +382,7 @@ anv_batch_bo_clone(struct anv_cmd_buffer *cmd_buffer,
 {
    VkResult result;
 
-   struct anv_batch_bo *bbo = vk_alloc(&cmd_buffer->pool->alloc, sizeof(*bbo),
+   struct anv_batch_bo *bbo = vk_alloc(&cmd_buffer->pool->vk.alloc, sizeof(*bbo),
                                         8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (bbo == NULL)
       return vk_error(cmd_buffer, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -392,7 +392,7 @@ anv_batch_bo_clone(struct anv_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       goto fail_alloc;
 
-   result = anv_reloc_list_init_clone(&bbo->relocs, &cmd_buffer->pool->alloc,
+   result = anv_reloc_list_init_clone(&bbo->relocs, &cmd_buffer->pool->vk.alloc,
                                       &other_bbo->relocs);
    if (result != VK_SUCCESS)
       goto fail_bo_alloc;
@@ -406,7 +406,7 @@ anv_batch_bo_clone(struct anv_cmd_buffer *cmd_buffer,
  fail_bo_alloc:
    anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
  fail_alloc:
-   vk_free(&cmd_buffer->pool->alloc, bbo);
+   vk_free(&cmd_buffer->pool->vk.alloc, bbo);
 
    return result;
 }
@@ -508,9 +508,9 @@ static void
 anv_batch_bo_destroy(struct anv_batch_bo *bbo,
                      struct anv_cmd_buffer *cmd_buffer)
 {
-   anv_reloc_list_finish(&bbo->relocs, &cmd_buffer->pool->alloc);
+   anv_reloc_list_finish(&bbo->relocs, &cmd_buffer->pool->vk.alloc);
    anv_bo_pool_free(&cmd_buffer->device->batch_bo_pool, bbo->bo);
-   vk_free(&cmd_buffer->pool->alloc, bbo);
+   vk_free(&cmd_buffer->pool->vk.alloc, bbo);
 }
 
 static VkResult
@@ -639,7 +639,7 @@ anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
       .start  = last_bbo->bo->map,
       .end    = last_bbo->bo->map + last_bbo->bo->size,
       .relocs = &last_bbo->relocs,
-      .alloc  = &cmd_buffer_from->pool->alloc,
+      .alloc  = &cmd_buffer_from->pool->vk.alloc,
    };
 
    __anv_cmd_pack(GFX8_MI_BATCH_BUFFER_START)(&local_batch, bb_start, &gen_bb_start);
@@ -852,7 +852,7 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
 
    list_addtail(&batch_bo->link, &cmd_buffer->batch_bos);
 
-   cmd_buffer->batch.alloc = &cmd_buffer->pool->alloc;
+   cmd_buffer->batch.alloc = &cmd_buffer->pool->vk.alloc;
    cmd_buffer->batch.user_data = cmd_buffer;
 
    if (cmd_buffer->device->can_chain_batches) {
@@ -877,7 +877,7 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
       goto fail_seen_bbos;
 
    result = anv_reloc_list_init(&cmd_buffer->surface_relocs,
-                                &cmd_buffer->pool->alloc);
+                                &cmd_buffer->pool->vk.alloc);
    if (result != VK_SUCCESS)
       goto fail_bt_blocks;
    cmd_buffer->last_ss_pool_center = 0;
@@ -906,7 +906,7 @@ anv_cmd_buffer_fini_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
       anv_binding_table_pool_free(cmd_buffer->device, *bt_block);
    u_vector_finish(&cmd_buffer->bt_block_states);
 
-   anv_reloc_list_finish(&cmd_buffer->surface_relocs, &cmd_buffer->pool->alloc);
+   anv_reloc_list_finish(&cmd_buffer->surface_relocs, &cmd_buffer->pool->vk.alloc);
 
    u_vector_finish(&cmd_buffer->seen_bbos);
 
@@ -1167,7 +1167,7 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
       assert(!"Invalid execution mode");
    }
 
-   anv_reloc_list_append(&primary->surface_relocs, &primary->pool->alloc,
+   anv_reloc_list_append(&primary->surface_relocs, &primary->pool->vk.alloc,
                          &secondary->surface_relocs, 0);
 }
 
