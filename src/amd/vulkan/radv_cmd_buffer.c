@@ -3426,7 +3426,8 @@ static const uint32_t data_format_dst_sel[] = {
 
 void
 radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
-                              const struct radv_graphics_pipeline *pipeline, void *vb_ptr)
+                              const struct radv_graphics_pipeline *pipeline,
+                              bool full_null_descriptors, void *vb_ptr)
 {
    struct radv_shader *vs_shader = radv_get_shader(&pipeline->base, MESA_SHADER_VERTEX);
    enum amd_gfx_level chip = cmd_buffer->device->physical_device->rad_info.gfx_level;
@@ -3467,8 +3468,20 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
                          S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
       }
 
+      if (pipeline->uses_dynamic_stride) {
+         stride = cmd_buffer->vertex_bindings[binding].stride;
+      } else {
+         stride = pipeline->binding_stride[binding];
+      }
+
       if (!buffer) {
-         if (vs_state) {
+         if (full_null_descriptors) {
+            /* Put all the info in for the DGC generation shader in case the VBO gets overridden. */
+            desc[0] = 0;
+            desc[1] = S_008F04_STRIDE(stride);
+            desc[2] = 0;
+            desc[3] = rsrc_word3;
+         } else if (vs_state) {
             /* Stride needs to be non-zero on GFX9, or else bounds checking is disabled. We need
              * to include the format/word3 so that the alpha channel is 1 for formats without an
              * alpha channel.
@@ -3480,6 +3493,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
          } else {
             memset(desc, 0, 4 * 4);
          }
+
          continue;
       }
 
@@ -3494,12 +3508,6 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
          num_records = cmd_buffer->vertex_bindings[binding].size;
       } else {
          num_records = vk_buffer_range(&buffer->vk, offset, VK_WHOLE_SIZE);
-      }
-
-      if (pipeline->uses_dynamic_stride) {
-         stride = cmd_buffer->vertex_bindings[binding].stride;
-      } else {
-         stride = pipeline->binding_stride[binding];
       }
 
       if (pipeline->use_per_attribute_vb_descs) {
@@ -3529,7 +3537,14 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
              * num_records and stride are zero. This doesn't seem necessary on GFX8, GFX10 and
              * GFX10.3 but it doesn't hurt.
              */
-            if (vs_state) {
+            if (full_null_descriptors) {
+               /* Put all the info in for the DGC generation shader in case the VBO gets overridden.
+                */
+               desc[0] = 0;
+               desc[1] = S_008F04_STRIDE(stride);
+               desc[2] = 0;
+               desc[3] = rsrc_word3;
+            } else if (vs_state) {
                desc[0] = 0;
                desc[1] = S_008F04_STRIDE(16);
                desc[2] = 0;
@@ -3537,6 +3552,7 @@ radv_write_vertex_descriptors(const struct radv_cmd_buffer *cmd_buffer,
             } else {
                memset(desc, 0, 16);
             }
+
             continue;
          }
       } else {
@@ -3578,7 +3594,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
                                         &vb_ptr))
          return;
 
-      radv_write_vertex_descriptors(cmd_buffer, pipeline, vb_ptr);
+      radv_write_vertex_descriptors(cmd_buffer, pipeline, false, vb_ptr);
 
       va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
       va += vb_offset;
