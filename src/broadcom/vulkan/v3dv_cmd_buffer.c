@@ -62,15 +62,17 @@ v3dv_CreateCommandPool(VkDevice _device,
    /* We only support one queue */
    assert(pCreateInfo->queueFamilyIndex == 0);
 
-   pool = vk_object_zalloc(&device->vk, pAllocator, sizeof(*pool),
-                           VK_OBJECT_TYPE_COMMAND_POOL);
+   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
+                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pool == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   if (pAllocator)
-      pool->alloc = *pAllocator;
-   else
-      pool->alloc = device->vk.alloc;
+   VkResult result = vk_command_pool_init(&pool->vk, &device->vk,
+                                          pCreateInfo, pAllocator);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, pAllocator, pool);
+      return result;
+   }
 
    list_inithead(&pool->cmd_buffers);
 
@@ -116,7 +118,7 @@ cmd_buffer_create(struct v3dv_device *device,
 {
    struct v3dv_cmd_buffer *cmd_buffer;
    cmd_buffer = vk_zalloc2(&device->vk.alloc,
-                           &pool->alloc,
+                           &pool->vk.alloc,
                            sizeof(*cmd_buffer),
                            8,
                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -126,7 +128,7 @@ cmd_buffer_create(struct v3dv_device *device,
    VkResult result;
    result = vk_command_buffer_init(&cmd_buffer->vk, &device->vk, level);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, &pool->alloc, cmd_buffer);
+      vk_free2(&device->vk.alloc, &pool->vk.alloc, cmd_buffer);
       return result;
    }
 
@@ -289,7 +291,7 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
       v3dv_job_destroy(cmd_buffer->state.job);
 
    if (cmd_buffer->state.attachments)
-      vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
+      vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
 
    if (cmd_buffer->state.query.end.alloc_count > 0)
       vk_free(&cmd_buffer->device->vk.alloc, cmd_buffer->state.query.end.states);
@@ -314,7 +316,7 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
    list_del(&cmd_buffer->pool_link);
    cmd_buffer_free_resources(cmd_buffer);
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->alloc,
+   vk_free2(&cmd_buffer->device->vk.alloc, &cmd_buffer->pool->vk.alloc,
             cmd_buffer);
 }
 
@@ -916,7 +918,8 @@ v3dv_DestroyCommandPool(VkDevice _device,
       cmd_buffer_destroy(cmd_buffer);
    }
 
-   vk_object_free(&device->vk, pAllocator, pool);
+   vk_command_pool_finish(&pool->vk);
+   vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
 VKAPI_ATTR void VKAPI_CALL
