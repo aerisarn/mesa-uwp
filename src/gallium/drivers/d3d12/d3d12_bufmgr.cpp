@@ -202,7 +202,7 @@ d3d12_bo_unmap(struct d3d12_bo *bo, D3D12_RANGE *range)
       /* Nothing to do */
    } else if (range->Begin >= range->End) {
       offset_range.Begin = offset;
-      offset_range.End = offset + base_bo->res->GetDesc().Width;
+      offset_range.End = offset + d3d12_bo_get_size(bo);
       range = &offset_range;
    } else {
       offset_range.Begin = range->Begin + offset;
