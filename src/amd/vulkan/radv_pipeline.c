@@ -5753,7 +5753,8 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
       mode = V_028064_VRS_COMB_MODE_OVERRIDE;
       rate_x = rate_y = 1;
    } else if (!vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
-              pipeline->device->force_vrs != RADV_FORCE_VRS_NONE) {
+              pipeline->device->force_vrs != RADV_FORCE_VRS_NONE &&
+              get_vs_output_info(pipeline)->writes_primitive_shading_rate) {
       /* Otherwise, if per-draw VRS is not enabled statically, try forcing per-vertex VRS if
        * requested by the user. Note that vkd3d-proton always has to declare VRS as dynamic because
        * in DX12 it's fully dynamic.
