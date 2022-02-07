@@ -50,41 +50,9 @@ v3dv_job_add_bo_unchecked(struct v3dv_job *job, struct v3dv_bo *bo)
    job->bo_handle_mask |= bo->handle_bit;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-v3dv_CreateCommandPool(VkDevice _device,
-                       const VkCommandPoolCreateInfo *pCreateInfo,
-                       const VkAllocationCallbacks *pAllocator,
-                       VkCommandPool *pCmdPool)
-{
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   struct v3dv_cmd_pool *pool;
-
-   /* We only support one queue */
-   assert(pCreateInfo->queueFamilyIndex == 0);
-
-   pool = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pool), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (pool == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   VkResult result = vk_command_pool_init(&pool->vk, &device->vk,
-                                          pCreateInfo, pAllocator);
-   if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pool);
-      return result;
-   }
-
-   list_inithead(&pool->cmd_buffers);
-
-   *pCmdPool = v3dv_cmd_pool_to_handle(pool);
-
-   return VK_SUCCESS;
-}
-
 static void
 cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
-                struct v3dv_device *device,
-                struct v3dv_cmd_pool *pool)
+                struct v3dv_device *device)
 {
    /* Do not reset the base object! If we are calling this from a command
     * buffer reset that would reset the loader's dispatch table for the
@@ -95,14 +63,10 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
    memset(cmd_buffer_driver_start, 0, sizeof(*cmd_buffer) - base_size);
 
    cmd_buffer->device = device;
-   cmd_buffer->pool = pool;
 
    list_inithead(&cmd_buffer->private_objs);
    list_inithead(&cmd_buffer->jobs);
    list_inithead(&cmd_buffer->list_link);
-
-   assert(pool);
-   list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
 
    cmd_buffer->state.subpass_idx = -1;
    cmd_buffer->state.meta.subpass_idx = -1;
@@ -110,14 +74,16 @@ cmd_buffer_init(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_INITIALIZED;
 }
 
+static void cmd_buffer_destroy(struct vk_command_buffer *cmd_buffer);
+
 static VkResult
 cmd_buffer_create(struct v3dv_device *device,
-                  struct v3dv_cmd_pool *pool,
+                  struct vk_command_pool *pool,
                   VkCommandBufferLevel level,
                   VkCommandBuffer *pCommandBuffer)
 {
    struct v3dv_cmd_buffer *cmd_buffer;
-   cmd_buffer = vk_zalloc(&pool->vk.alloc,
+   cmd_buffer = vk_zalloc(&pool->alloc,
                           sizeof(*cmd_buffer),
                           8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -125,13 +91,14 @@ cmd_buffer_create(struct v3dv_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result;
-   result = vk_command_buffer_init(&cmd_buffer->vk, &pool->vk, level);
+   result = vk_command_buffer_init(&cmd_buffer->vk, pool, level);
    if (result != VK_SUCCESS) {
-      vk_free(&pool->vk.alloc, cmd_buffer);
+      vk_free(&pool->alloc, cmd_buffer);
       return result;
    }
 
-   cmd_buffer_init(cmd_buffer, device, pool);
+   cmd_buffer->vk.destroy = cmd_buffer_destroy;
+   cmd_buffer_init(cmd_buffer, device);
 
    *pCommandBuffer = v3dv_cmd_buffer_to_handle(cmd_buffer);
 
@@ -290,7 +257,7 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
       v3dv_job_destroy(cmd_buffer->state.job);
 
    if (cmd_buffer->state.attachments)
-      vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+      vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->state.attachments);
 
    if (cmd_buffer->state.query.end.alloc_count > 0)
       vk_free(&cmd_buffer->device->vk.alloc, cmd_buffer->state.query.end.states);
@@ -310,12 +277,14 @@ cmd_buffer_free_resources(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
-cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
+cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
 {
-   list_del(&cmd_buffer->pool_link);
+   struct v3dv_cmd_buffer *cmd_buffer =
+      container_of(vk_cmd_buffer, struct v3dv_cmd_buffer, vk);
+
    cmd_buffer_free_resources(cmd_buffer);
    vk_command_buffer_finish(&cmd_buffer->vk);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
+   vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer);
 }
 
 static bool
@@ -836,12 +805,6 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
    vk_command_buffer_reset(&cmd_buffer->vk);
    if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_INITIALIZED) {
       struct v3dv_device *device = cmd_buffer->device;
-      struct v3dv_cmd_pool *pool = cmd_buffer->pool;
-
-      /* cmd_buffer_init below will re-add the command buffer to the pool
-       * so remove it here so we don't end up adding it again.
-       */
-      list_del(&cmd_buffer->pool_link);
 
       /* FIXME: For now we always free all resources as if
        * VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT was set.
@@ -849,7 +812,7 @@ cmd_buffer_reset(struct v3dv_cmd_buffer *cmd_buffer,
       if (cmd_buffer->status != V3DV_CMD_BUFFER_STATUS_NEW)
          cmd_buffer_free_resources(cmd_buffer);
 
-      cmd_buffer_init(cmd_buffer, device, pool);
+      cmd_buffer_init(cmd_buffer, device);
    }
 
    assert(cmd_buffer->status == V3DV_CMD_BUFFER_STATUS_INITIALIZED);
@@ -862,7 +825,7 @@ v3dv_AllocateCommandBuffers(VkDevice _device,
                             VkCommandBuffer *pCommandBuffers)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   V3DV_FROM_HANDLE(v3dv_cmd_pool, pool, pAllocateInfo->commandPool);
+   VK_FROM_HANDLE(vk_command_pool, pool, pAllocateInfo->commandPool);
 
    VkResult result = VK_SUCCESS;
    uint32_t i;
@@ -875,61 +838,16 @@ v3dv_AllocateCommandBuffers(VkDevice _device,
    }
 
    if (result != VK_SUCCESS) {
-      v3dv_FreeCommandBuffers(_device, pAllocateInfo->commandPool,
-                              i, pCommandBuffers);
+      while (i--) {
+         VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, pCommandBuffers[i]);
+         cmd_buffer_destroy(cmd_buffer);
+      }
       for (i = 0; i < pAllocateInfo->commandBufferCount; i++)
          pCommandBuffers[i] = VK_NULL_HANDLE;
    }
 
    return result;
 }
-
-VKAPI_ATTR void VKAPI_CALL
-v3dv_FreeCommandBuffers(VkDevice device,
-                        VkCommandPool commandPool,
-                        uint32_t commandBufferCount,
-                        const VkCommandBuffer *pCommandBuffers)
-{
-   for (uint32_t i = 0; i < commandBufferCount; i++) {
-      V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
-
-      if (!cmd_buffer)
-         continue;
-
-      cmd_buffer_destroy(cmd_buffer);
-   }
-}
-
-VKAPI_ATTR void VKAPI_CALL
-v3dv_DestroyCommandPool(VkDevice _device,
-                        VkCommandPool commandPool,
-                        const VkAllocationCallbacks *pAllocator)
-{
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   V3DV_FROM_HANDLE(v3dv_cmd_pool, pool, commandPool);
-
-   if (!pool)
-      return;
-
-   list_for_each_entry_safe(struct v3dv_cmd_buffer, cmd_buffer,
-                            &pool->cmd_buffers, pool_link) {
-      cmd_buffer_destroy(cmd_buffer);
-   }
-
-   vk_command_pool_finish(&pool->vk);
-   vk_free2(&device->vk.alloc, pAllocator, pool);
-}
-
-VKAPI_ATTR void VKAPI_CALL
-v3dv_TrimCommandPool(VkDevice device,
-                     VkCommandPool commandPool,
-                     VkCommandPoolTrimFlags flags)
-{
-   /* We don't need to do anything here, our command pools never hold on to
-    * any resources from command buffers that are freed or reset.
-    */
-}
-
 
 static void
 cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
@@ -1117,24 +1035,6 @@ v3dv_ResetCommandBuffer(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    return cmd_buffer_reset(cmd_buffer, flags);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-v3dv_ResetCommandPool(VkDevice device,
-                      VkCommandPool commandPool,
-                      VkCommandPoolResetFlags flags)
-{
-   V3DV_FROM_HANDLE(v3dv_cmd_pool, pool, commandPool);
-
-   VkCommandBufferResetFlags reset_flags = 0;
-   if (flags & VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT)
-      reset_flags = VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT;
-   list_for_each_entry_safe(struct v3dv_cmd_buffer, cmd_buffer,
-                            &pool->cmd_buffers, pool_link) {
-      cmd_buffer_reset(cmd_buffer, reset_flags);
-   }
-
-   return VK_SUCCESS;
 }
 
 static void

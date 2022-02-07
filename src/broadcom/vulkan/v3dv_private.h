@@ -816,12 +816,6 @@ v3dv_do_double_initial_tile_clear(const struct v3dv_frame_tiling *tiling)
            tiling->layers > 1);
 }
 
-struct v3dv_cmd_pool {
-   struct vk_command_pool vk;
-
-   struct list_head cmd_buffers;
-};
-
 enum v3dv_cmd_buffer_status {
    V3DV_CMD_BUFFER_STATUS_NEW           = 0,
    V3DV_CMD_BUFFER_STATUS_INITIALIZED   = 1,
@@ -1413,9 +1407,6 @@ struct v3dv_cmd_buffer {
    struct vk_command_buffer vk;
 
    struct v3dv_device *device;
-
-   struct v3dv_cmd_pool *pool;
-   struct list_head pool_link;
 
    /* Used at submit time to link command buffers in the submission that have
     * spawned wait threads, so we can then wait on all of them to complete
@@ -2157,8 +2148,6 @@ VK_DEFINE_HANDLE_CASTS(v3dv_physical_device, vk.base, VkPhysicalDevice,
                        VK_OBJECT_TYPE_PHYSICAL_DEVICE)
 VK_DEFINE_HANDLE_CASTS(v3dv_queue, vk.base, VkQueue, VK_OBJECT_TYPE_QUEUE)
 
-VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_cmd_pool, vk.base, VkCommandPool,
-                               VK_OBJECT_TYPE_COMMAND_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer, base, VkBuffer,
                                VK_OBJECT_TYPE_BUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(v3dv_buffer_view, base, VkBufferView,
