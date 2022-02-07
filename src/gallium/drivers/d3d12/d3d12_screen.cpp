@@ -1198,12 +1198,14 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    desc.usage = (pb_usage_flags)(PB_USAGE_CPU_WRITE | PB_USAGE_GPU_READ);
 
    screen->bufmgr = d3d12_bufmgr_create(screen);
-   screen->cache_bufmgr = pb_cache_manager_create(screen->bufmgr, 0xfffff, 2, 0, 64 * 1024 * 1024);
-   screen->slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16, 512,
+   screen->cache_bufmgr = pb_cache_manager_create(screen->bufmgr, 0xfffff, 2, 0, 512 * 1024 * 1024);
+   screen->slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16,
+                                                      D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                       D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                       &desc);
    desc.usage = (pb_usage_flags)(PB_USAGE_CPU_READ_WRITE | PB_USAGE_GPU_WRITE);
-   screen->readback_slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16, 512,
+   screen->readback_slab_bufmgr = pb_slab_range_manager_create(screen->cache_bufmgr, 16,
+                                                               D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                                D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
                                                                &desc);
 

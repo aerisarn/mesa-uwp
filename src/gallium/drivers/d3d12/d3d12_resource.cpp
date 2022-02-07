@@ -155,7 +155,7 @@ init_buffer(struct d3d12_screen *screen,
    if (templ->bind & PIPE_BIND_SAMPLER_VIEW)
       bufmgr = screen->cache_bufmgr;
 
-   buf_desc.alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   buf_desc.alignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
    res->dxgi_format = DXGI_FORMAT_UNKNOWN;
    buf = bufmgr->create_buffer(bufmgr, templ->width0, &buf_desc);
    if (!buf)

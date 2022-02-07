@@ -95,7 +95,7 @@ d3d12_bo_new(ID3D12Device *dev, uint64_t size, const pb_desc *pb_desc)
    D3D12_RESOURCE_DESC res_desc;
    res_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
    res_desc.Format = DXGI_FORMAT_UNKNOWN;
-   res_desc.Alignment = pb_desc->alignment;
+   res_desc.Alignment = 0;
    res_desc.Width = size;
    res_desc.Height = 1;
    res_desc.DepthOrArraySize = 1;
