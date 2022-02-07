@@ -686,53 +686,7 @@ def main():
 
     c(textwrap.dedent("""\
         #include "perf/intel_perf.h"
-
-
-        #define MIN(a, b) ((a < b) ? (a) : (b))
-        #define MAX(a, b) ((a > b) ? (a) : (b))
-
-        static struct intel_perf_query_info *
-        intel_query_alloc(struct intel_perf_config *perf, int ncounters)
-        {
-           struct intel_perf_query_info *query = rzalloc(perf, struct intel_perf_query_info);
-           query->perf = perf;
-           query->kind = INTEL_PERF_QUERY_TYPE_OA;
-           query->n_counters = 0;
-           query->oa_metrics_set_id = 0; /* determined at runtime, via sysfs */
-           query->counters = rzalloc_array(query, struct intel_perf_query_counter, ncounters);
-           return query;
-        }
-
-        static struct intel_perf_query_info *
-        hsw_query_alloc(struct intel_perf_config *perf, int ncounters)
-        {
-           struct intel_perf_query_info *query = intel_query_alloc(perf, ncounters);
-           query->oa_format = I915_OA_FORMAT_A45_B8_C8;
-           /* Accumulation buffer offsets... */
-           query->gpu_time_offset = 0;
-           query->a_offset = query->gpu_time_offset + 1;
-           query->b_offset = query->a_offset + 45;
-           query->c_offset = query->b_offset + 8;
-           query->perfcnt_offset = query->c_offset + 8;
-           query->rpstat_offset = query->perfcnt_offset + 2;
-           return query;
-        }
-
-        static struct intel_perf_query_info *
-        bdw_query_alloc(struct intel_perf_config *perf, int ncounters)
-        {
-           struct intel_perf_query_info *query = intel_query_alloc(perf, ncounters);
-           query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
-           /* Accumulation buffer offsets... */
-           query->gpu_time_offset = 0;
-           query->gpu_clock_offset = query->gpu_time_offset + 1;
-           query->a_offset = query->gpu_clock_offset + 1;
-           query->b_offset = query->a_offset + 36;
-           query->c_offset = query->b_offset + 8;
-           query->perfcnt_offset = query->c_offset + 8;
-           query->rpstat_offset = query->perfcnt_offset + 2;
-           return query;
-        }
+        #include "perf/intel_perf_setup.h"
         """))
 
     # Print out all equation functions.
