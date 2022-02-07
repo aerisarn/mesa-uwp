@@ -350,7 +350,9 @@ d3d12_resource_create(struct pipe_screen *pscreen,
    }
 
    init_valid_range(res);
-   threaded_resource_init(&res->base.b, false, 0);
+   threaded_resource_init(&res->base.b,
+      templ->usage == PIPE_USAGE_DEFAULT &&
+      templ->target == PIPE_BUFFER, 64);
 
    memset(&res->bind_counts, 0, sizeof(d3d12_resource::bind_counts));
 
