@@ -1186,7 +1186,11 @@ enum radv_cmd_flush_bits {
 
    RADV_CMD_FLUSH_AND_INV_FRAMEBUFFER =
       (RADV_CMD_FLAG_FLUSH_AND_INV_CB | RADV_CMD_FLAG_FLUSH_AND_INV_CB_META |
-       RADV_CMD_FLAG_FLUSH_AND_INV_DB | RADV_CMD_FLAG_FLUSH_AND_INV_DB_META)
+       RADV_CMD_FLAG_FLUSH_AND_INV_DB | RADV_CMD_FLAG_FLUSH_AND_INV_DB_META),
+
+   RADV_CMD_FLUSH_ALL_COMPUTE =
+      (RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE |
+       RADV_CMD_FLAG_INV_L2 | RADV_CMD_FLAG_WB_L2 | RADV_CMD_FLAG_CS_PARTIAL_FLUSH),
 };
 
 enum radv_nggc_settings {
@@ -1644,6 +1648,22 @@ struct radv_cmd_buffer {
        * also requires a submission to the compute queue.
        */
       struct radeon_cmdbuf *cs;
+
+      /** Flush bits for the internal cmdbuf. */
+      enum radv_cmd_flush_bits flush_bits;
+
+      /**
+       * For synchronization between the ACE and GFX cmdbuf.
+       * The value of this semaphore is incremented whenever we
+       * encounter a barrier that affects ACE. At sync points,
+       * GFX writes the value to its address, and ACE waits until
+       * it detects that the value has been written.
+       */
+      struct {
+         uint64_t va;                    /* Virtual address of the semaphore. */
+         uint32_t gfx2ace_value;         /* Current value on GFX. */
+         uint32_t emitted_gfx2ace_value; /* Emitted value on GFX. */
+      } sem;
    } ace_internal;
 
    /**
@@ -2782,6 +2802,7 @@ struct radv_sampler {
 
 struct radv_subpass_barrier {
    VkPipelineStageFlags2 src_stage_mask;
+   VkPipelineStageFlags2 dst_stage_mask;
    VkAccessFlags2 src_access_mask;
    VkAccessFlags2 dst_access_mask;
 };
