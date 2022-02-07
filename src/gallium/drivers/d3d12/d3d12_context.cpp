@@ -1356,29 +1356,30 @@ d3d12_set_constant_buffer(struct pipe_context *pctx,
                           const struct pipe_constant_buffer *buf)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
+   struct d3d12_resource *old_buf = d3d12_resource(ctx->cbufs[shader][index].buffer);
+   if (old_buf)
+      d3d12_decrement_constant_buffer_bind_count(ctx, shader, old_buf);
 
    if (buf) {
-      struct pipe_resource *buffer = buf->buffer;
       unsigned offset = buf->buffer_offset;
       if (buf->user_buffer) {
          u_upload_data(pctx->const_uploader, 0, buf->buffer_size,
-                       D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+                       D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT,
                        buf->user_buffer, &offset, &ctx->cbufs[shader][index].buffer);
-
+         d3d12_increment_constant_buffer_bind_count(ctx, shader,
+            d3d12_resource(ctx->cbufs[shader][index].buffer));
       } else {
+         struct pipe_resource *buffer = buf->buffer;
+         if (buffer)
+            d3d12_increment_constant_buffer_bind_count(ctx, shader, d3d12_resource(buffer));
+
          if (take_ownership) {
-            struct d3d12_resource *old_buf = d3d12_resource(ctx->cbufs[shader][index].buffer);
-            if (old_buf)
-               d3d12_decrement_constant_buffer_bind_count(ctx, shader, old_buf);
+            pipe_resource_reference(&ctx->cbufs[shader][index].buffer, buffer);
+         } else {
             pipe_resource_reference(&ctx->cbufs[shader][index].buffer, NULL);
             ctx->cbufs[shader][index].buffer = buffer;
-            if (buffer)
-               d3d12_increment_constant_buffer_bind_count(ctx, shader, d3d12_resource(buffer));
-         } else {
-            pipe_resource_reference(&ctx->cbufs[shader][index].buffer, buffer);
          }
       }
-
 
       ctx->cbufs[shader][index].buffer_offset = offset;
       ctx->cbufs[shader][index].buffer_size = buf->buffer_size;
