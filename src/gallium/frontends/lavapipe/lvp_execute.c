@@ -2988,21 +2988,26 @@ static void handle_copy_query_pool_results(struct vk_cmd_queue_entry *cmd,
    struct vk_cmd_copy_query_pool_results *copycmd = &cmd->u.copy_query_pool_results;
    LVP_FROM_HANDLE(lvp_query_pool, pool, copycmd->query_pool);
    enum pipe_query_flags flags = (copycmd->flags & VK_QUERY_RESULT_WAIT_BIT) ? PIPE_QUERY_WAIT : 0;
-
+   unsigned result_size = copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4;
    for (unsigned i = copycmd->first_query; i < copycmd->first_query + copycmd->query_count; i++) {
       unsigned offset = copycmd->dst_offset + lvp_buffer_from_handle(copycmd->dst_buffer)->offset + (copycmd->stride * (i - copycmd->first_query));
       if (pool->queries[i]) {
-         if (copycmd->flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
+         unsigned num_results = 0;
+         if (copycmd->flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
+            if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
+               num_results = util_bitcount(pool->pipeline_stats);
+            } else
+               num_results = 1;
             state->pctx->get_query_result_resource(state->pctx,
                                                    pool->queries[i],
                                                    flags,
                                                    copycmd->flags & VK_QUERY_RESULT_64_BIT ? PIPE_QUERY_TYPE_U64 : PIPE_QUERY_TYPE_U32,
                                                    -1,
                                                    lvp_buffer_from_handle(copycmd->dst_buffer)->bo,
-                                                   offset + (copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4));
+                                                   offset + num_results * result_size);
+         }
          if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
-            unsigned num_results = 0;
-            unsigned result_size = copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4;
+            num_results = 0;
             u_foreach_bit(bit, pool->pipeline_stats)
                state->pctx->get_query_result_resource(state->pctx,
                                                       pool->queries[i],
