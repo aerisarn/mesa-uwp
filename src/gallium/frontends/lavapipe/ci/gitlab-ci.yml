@@ -9,19 +9,14 @@
     VK_DRIVER: lvp
     DEQP_EXPECTED_RENDERER: llvmpipe
 
-lavapipe-vk:
+lavapipe:
+  tags:
+    - mesa-swrast
+  variables:
+    DEQP_SUITE: lvp
   stage: software-renderer
   extends:
     - .lavapipe-test
-  variables:
-    DEQP_FRACTION: 10
-
-lavapipe-nir-stress:
-  extends:
-    - .lavapipe-test
-  variables:
-    DEQP_FRACTION: 100
-    NIR_DEBUG: "clone,serialize"
 
 lavapipe-vk-asan:
   extends:

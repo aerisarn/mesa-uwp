@@ -8,3 +8,8 @@ dEQP-VK.rasterization.provoking_vertex.transform_feedback.per_pipeline.triangle_
 # VK-GL-CTS 1.3.1.0 uprev:
 dEQP-VK.glsl.crash_test.divbyzero_comp,Crash
 dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_zero_uv_width_fragment,Fail
+dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_zero_uv_width_fragment,Fail
+dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_zero_uv_width_fragment,Fail
+dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_zero_uv_width_fragment,Fail
+
+dEQP-VK.graphicsfuzz.spv-stable-mergesort-flatten-selection-dead-continues,Fail
