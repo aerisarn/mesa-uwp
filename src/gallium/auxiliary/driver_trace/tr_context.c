@@ -1523,18 +1523,31 @@ trace_context_clear_texture(struct pipe_context *_pipe,
                             const void *data)
 {
    struct trace_context *tr_ctx = trace_context(_pipe);
+   const struct util_format_description *desc = util_format_description(res->format);
    struct pipe_context *pipe = tr_ctx->pipe;
-
+   union pipe_color_union color;
+   float depth = 0.0f;
+   uint8_t stencil = 0;
 
    trace_dump_call_begin("pipe_context", "clear_texture");
-
    trace_dump_arg(ptr, pipe);
    trace_dump_arg(ptr, res);
    trace_dump_arg(uint, level);
    trace_dump_arg_begin("box");
    trace_dump_box(box);
    trace_dump_arg_end();
-   trace_dump_arg(ptr, data);
+   if (util_format_has_depth(desc)) {
+      util_format_unpack_z_float(res->format, &depth, data, 1);
+      trace_dump_arg(float, depth);
+   }
+   if (util_format_has_stencil(desc)) {
+      util_format_unpack_s_8uint(res->format, &stencil, data, 1);
+      trace_dump_arg(uint, stencil);
+   }
+   if (!util_format_is_depth_or_stencil(res->format)) {
+      util_format_unpack_rgba(res->format, color.ui, data, 1);
+      trace_dump_arg_array(uint, color.ui, 4);
+   }
 
    pipe->clear_texture(pipe, res, level, box, data);
 
