@@ -320,6 +320,13 @@ d3d12_bufmgr_destroy(struct pb_manager *_mgr)
    FREE(mgr);
 }
 
+static boolean
+d3d12_bufmgr_is_buffer_busy(struct pb_manager *_mgr, struct pb_buffer *_buf)
+{
+   /* We're only asked this on buffers that are known not busy */
+   return false;
+}
+
 struct pb_manager *
 d3d12_bufmgr_create(struct d3d12_screen *screen)
 {
@@ -332,6 +339,7 @@ d3d12_bufmgr_create(struct d3d12_screen *screen)
    mgr->base.destroy = d3d12_bufmgr_destroy;
    mgr->base.create_buffer = d3d12_bufmgr_create_buffer;
    mgr->base.flush = d3d12_bufmgr_flush;
+   mgr->base.is_buffer_busy = d3d12_bufmgr_is_buffer_busy;
 
    mgr->dev = screen->dev;
 
