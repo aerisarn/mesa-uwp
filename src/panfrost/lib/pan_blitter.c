@@ -78,6 +78,7 @@ struct pan_blit_shader_key {
 
 struct pan_blit_shader_data {
         struct pan_blit_shader_key key;
+        struct pan_shader_info info;
         mali_ptr address;
         unsigned blend_ret_offsets[8];
         nir_alu_type blend_types[8];
@@ -186,13 +187,11 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                      const struct pan_image_view *s,
                      void *out)
 {
-        unsigned tex_count = 0;
-        bool zs = (z || s);
+        UNUSED bool zs = (z || s);
         bool ms = false;
 
         for (unsigned i = 0; i < rt_count; i++) {
                 if (rts[i]) {
-                        tex_count++;
                         if (rts[i]->nr_samples > 1)
                                 ms = true;
                 }
@@ -201,27 +200,16 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
         if (z) {
                 if (z->image->layout.nr_samples > 1)
                         ms = true;
-                tex_count++;
         }
 
         if (s) {
                 if (s->image->layout.nr_samples > 1)
                         ms = true;
-                tex_count++;
         }
 
         pan_pack(out, RENDERER_STATE, cfg) {
                 assert(blit_shader->address);
-                cfg.shader.shader = blit_shader->address;
-                cfg.shader.varying_count = 1;
-                cfg.shader.texture_count = tex_count;
-                cfg.shader.sampler_count = 1;
-
-                cfg.properties.stencil_from_shader = s != NULL;
-                cfg.properties.depth_source =
-                        z ?
-                        MALI_DEPTH_SOURCE_SHADER :
-                        MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+                pan_shader_prepare_rsd(&blit_shader->info, blit_shader->address, &cfg);
 
                 cfg.multisample_misc.sample_mask = 0xFFFF;
                 cfg.multisample_misc.multisample_enable = ms;
@@ -240,32 +228,23 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                 cfg.stencil_back = cfg.stencil_front;
 
 #if PAN_ARCH >= 6
-                if (zs) {
-                        cfg.properties.zs_update_operation =
-                                MALI_PIXEL_KILL_FORCE_LATE;
-                        cfg.properties.pixel_kill_operation =
-                                MALI_PIXEL_KILL_FORCE_LATE;
-                } else {
+                /* Skipping ATEST requires forcing Z/S */
+                if (!zs) {
                         cfg.properties.zs_update_operation =
                                 MALI_PIXEL_KILL_STRONG_EARLY;
                         cfg.properties.pixel_kill_operation =
                                 MALI_PIXEL_KILL_FORCE_EARLY;
                 }
 
-                /* We can only allow blit shader fragments to kill if they write all
-                 * colour outputs. This is true for our colour (non-Z/S) blit shaders,
-                 * but obviously not true for Z/S shaders. However, blit shaders
-                 * otherwise lack side effects, so other fragments may kill them.
-                 * However, while shaders writing Z/S can normally be killed, on v6
+                /* However, while shaders writing Z/S can normally be killed, on v6
                  * for frame shaders it can cause GPU timeouts, so only allow colour
                  * blit shaders to be killed. */
-
                 cfg.properties.allow_forward_pixel_to_kill = !zs;
-                cfg.properties.allow_forward_pixel_to_be_killed = (dev->arch >= 7) || !zs;
 
-                cfg.preload.fragment.coverage = true;
-                cfg.preload.fragment.sample_mask_id = ms;
+                if (PAN_ARCH == 6)
+                        cfg.properties.allow_forward_pixel_to_be_killed = !zs;
 #else
+
                 mali_ptr blend_shader = blend_shaders ?
                         panfrost_last_nonnull(blend_shaders, rt_count) : 0;
 
@@ -595,14 +574,19 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                 .is_blit = true,
         };
         struct util_dynarray binary;
-        struct pan_shader_info info;
 
         util_dynarray_init(&binary, NULL);
 
-        GENX(pan_shader_compile)(b.shader, &inputs, &binary, &info);
-
         shader = rzalloc(dev->blitter.shaders.blit,
                          struct pan_blit_shader_data);
+
+        nir_shader_gather_info(b.shader, nir_shader_get_entrypoint(b.shader));
+
+        for (unsigned i = 0; i < active_count; ++i)
+                BITSET_SET(b.shader->info.textures_used, i);
+
+        GENX(pan_shader_compile)(b.shader, &inputs, &binary, &shader->info);
+
         shader->key = *key;
         shader->address =
                 pan_pool_upload_aligned(dev->blitter.shaders.pool,
@@ -612,12 +596,10 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
         util_dynarray_fini(&binary);
         ralloc_free(b.shader);
 
-#if PAN_ARCH <= 5
-        shader->address |= info.midgard.first_tag;
-#else
+#if PAN_ARCH >= 6
         for (unsigned i = 0; i < ARRAY_SIZE(shader->blend_ret_offsets); i++) {
-                shader->blend_ret_offsets[i] = info.bifrost.blend[i].return_offset;
-                shader->blend_types[i] = info.bifrost.blend[i].type;
+                shader->blend_ret_offsets[i] = shader->info.bifrost.blend[i].return_offset;
+                shader->blend_types[i] = shader->info.bifrost.blend[i].type;
         }
 #endif
 
