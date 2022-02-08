@@ -62,7 +62,6 @@ dEQP-VK.draw.dynamic_rendering.multi_draw.mosaic.indexed_random.16_draws.stride_
 dEQP-VK.draw.dynamic_rendering.multi_draw.mosaic.normal.no_draws.stride_extra_4.2_instances_base_3.vert_only.single_view.no_offset,Fail
 dEQP-VK.draw.dynamic_rendering.multi_draw.overlapping.indexed_mixed.one_draw.stride_extra_12.1_instance.with_tess.single_view.no_offset,Fail
 dEQP-VK.dynamic_rendering.dedicated_allocation.formats.d32_sfloat_s8_uint.clear.clear,Fail
-dEQP-VK.query_pool.occlusion_query.get_reset_results_size_64_stride_24_without_availability_dstoffset,Fail
 dEQP-VK.renderpass.dedicated_allocation.formats.a2b10g10r10_uint_pack32.input.load.store.clear_draw_use_input_aspect,Fail
 dEQP-VK.renderpass.dedicated_allocation.formats.d16_unorm.input.clear.store.self_dep_draw_use_input_aspect,Fail
 dEQP-VK.renderpass.dedicated_allocation.formats.r16g16b16a16_snorm.input.dont_care.dont_care.draw,Fail
@@ -74,8 +73,6 @@ dEQP-VK.renderpass2.suballocation.formats.a2r10g10b10_unorm_pack32.input.load.st
 dEQP-VK.renderpass2.suballocation.formats.r32g32_sint.input.dont_care.store.draw,Fail
 dEQP-VK.robustness.buffer_access.fragment.texel_copy.r32g32b32a32_sfloat.oob_storage_read.range_3_texels,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.image_sampler.imageread.storage_image.pass_image_to_function.shader_tesse,Fail
-dEQP-VK.synchronization.op.single_queue.binary_semaphore.write_clear_color_image_read_image_compute.image_64x64x8_r32_sfloat,Fail
-dEQP-VK.synchronization.op.single_queue.binary_semaphore.write_copy_buffer_read_ssbo_geometry.buffer_262144,Fail
 dEQP-VK.synchronization.op.single_queue.timeline_semaphore.write_image_tess_eval_read_image_compute_indirect.image_128x128_r16g16b16a16_uint,Fail
 dEQP-VK.synchronization.timeline_semaphore.device_host.write_copy_image_read_image_compute.image_128x128_r16_uint,Fail
 dEQP-VK.synchronization.timeline_semaphore.one_to_n.write_blit_image_read_image_tess_control.image_128x128_r8g8b8a8_unorm,Fail
