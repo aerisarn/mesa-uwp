@@ -1337,7 +1337,8 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
    /* this is actually a zink_ctx_surface, but we just want the inner surface */
    struct zink_surface *surface = zink_csurface(psurf);
    FREE(psurf);
-   flush_pending_clears(ctx, res);
+   if (is_compute)
+      flush_pending_clears(ctx, res);
    return surface;
 }
 
@@ -1487,7 +1488,8 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 update |= iv != b->image_view->image_view;
              } else  if (a != b)
                 update = true;
-             flush_pending_clears(ctx, res);
+             if (shader_type == PIPE_SHADER_COMPUTE)
+                flush_pending_clears(ctx, res);
              check_for_layout_update(ctx, res, shader_type == PIPE_SHADER_COMPUTE);
              zink_batch_usage_set(&b->image_view->batch_uses, ctx->batch.state);
              if (!a)
