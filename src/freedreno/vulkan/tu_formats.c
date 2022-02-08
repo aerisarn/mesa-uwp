@@ -274,6 +274,16 @@ tu_physical_device_get_format_properties(
       buffer = 0;
    }
 
+   /* From the Vulkan 1.3.205 spec, section 19.3 "43.3. Required Format Support":
+    *
+    *    Mandatory format support: depth/stencil with VkImageType
+    *    VK_IMAGE_TYPE_2D
+    *    [...]
+    *    bufferFeatures must not support any features for these formats
+    */
+   if (vk_format_is_depth_or_stencil(vk_format))
+      buffer = 0;
+
    /* D32_SFLOAT_S8_UINT is tiled as two images, so no linear format
     * blob enables some linear features, but its not useful, so don't bother.
     */
