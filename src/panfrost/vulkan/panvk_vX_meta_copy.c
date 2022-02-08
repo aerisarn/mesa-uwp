@@ -402,8 +402,6 @@ panvk_meta_copy_img2img_shader(struct panfrost_device *pdev,
                                      util_format_name(srcfmt), util_format_name(dstfmt),
                                      texdim, texisarray ? "[]" : "", is_ms ? ",ms" : "");
 
-   b.shader->info.internal = true;
-
    nir_variable *coord_var =
       nir_variable_create(b.shader, nir_var_shader_in,
                           glsl_vector_type(GLSL_TYPE_FLOAT, texdim + texisarray),
@@ -974,7 +972,6 @@ panvk_meta_copy_buf2img_shader(struct panfrost_device *pdev,
                                      util_format_name(key.imgfmt),
                                      key.mask);
 
-   b.shader->info.internal = true;
    b.shader->info.num_ubos = 1;
 
    nir_variable *coord_var =
@@ -1382,7 +1379,6 @@ panvk_meta_copy_img2buf_shader(struct panfrost_device *pdev,
                                      util_format_name(key.imgfmt),
                                      key.mask);
 
-   b.shader->info.internal = true;
    b.shader->info.num_ubos = 1;
 
    nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);
@@ -1784,7 +1780,6 @@ panvk_meta_copy_buf2buf_shader(struct panfrost_device *pdev,
                                      "panvk_meta_copy_buf2buf(blksz=%d)",
                                      blksz);
 
-   b.shader->info.internal = true;
    b.shader->info.num_ubos = 1;
 
    nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);
@@ -1939,7 +1934,6 @@ panvk_meta_fill_buf_shader(struct panfrost_device *pdev,
                                      GENX(pan_shader_get_compiler_options)(),
                                      "panvk_meta_fill_buf()");
 
-   b.shader->info.internal = true;
    b.shader->info.num_ubos = 1;
 
    nir_ssa_def *coord = nir_load_global_invocation_id(&b, 32);

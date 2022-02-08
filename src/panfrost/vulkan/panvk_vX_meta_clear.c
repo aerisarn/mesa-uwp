@@ -43,7 +43,6 @@ panvk_meta_clear_color_attachment_shader(struct panfrost_device *pdev,
                                      "panvk_meta_clear_rt%d_attachment(base_type=%d)",
                                      rt, base_type);
 
-   b.shader->info.internal = true;
    b.shader->info.num_ubos = 1;
 
    const struct glsl_type *out_type = glsl_vector_type(base_type, 4);
@@ -95,7 +94,6 @@ panvk_meta_clear_zs_attachment_shader(struct panfrost_device *pdev,
                                      "panvk_meta_clear_%s%s_attachment()",
                                      clear_z ? "z" : "", clear_s ? "s" : "");
 
-   b.shader->info.internal = true;
    b.shader->info.num_ubos = 1;
 
    unsigned drv_loc = 0;

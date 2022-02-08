@@ -451,8 +451,6 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                 nir_builder_init_simple_shader(MESA_SHADER_FRAGMENT,
                                                GENX(pan_shader_get_compiler_options)(),
                                                "pan_blit(%s)", sig);
-        b.shader->info.internal = true;
-
         nir_variable *coord_var =
                 nir_variable_create(b.shader, nir_var_shader_in,
                                     glsl_vector_type(GLSL_TYPE_FLOAT, coord_comps),
