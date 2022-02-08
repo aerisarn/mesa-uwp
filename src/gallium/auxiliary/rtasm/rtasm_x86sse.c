@@ -1508,6 +1508,15 @@ void sse2_rcpss( struct x86_function *p,
    emit_modrm( p, dst, src );
 }
 
+void sse2_pcmpgtd(struct x86_function *p,
+                  struct x86_reg dst,
+                  struct x86_reg src)
+{
+   DUMP_RR(dst, src);
+   emit_3ub(p, 0x66, X86_TWOB, 0x66);
+   emit_modrm(p, dst, src);
+}
+
 /***********************************************************************
  * x87 instructions
  */
