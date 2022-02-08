@@ -1009,7 +1009,10 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
          break;
 
       case nir_op_fabs:
-         ureg_MOV(c->ureg, dst, ureg_abs(src[0]));
+         if (c->options->lower_fabs)
+            ureg_MAX(c->ureg, dst, src[0], ureg_negate(src[0]));
+         else
+            ureg_MOV(c->ureg, dst, ureg_abs(src[0]));
          break;
 
       case nir_op_fsat:
@@ -3162,8 +3165,15 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
    /* Only lower 32-bit floats.  The only other modifier type officially
     * supported by TGSI is 32-bit integer negates, but even those are broken on
     * virglrenderer, so skip lowering all integer and f64 float mods.
+    *
+    * The options->lower_fabs requests that we not have native source modifiers
+    * for fabs, and instead emit MAX(a,-a) for nir_op_fabs.
     */
-   NIR_PASS_V(s, nir_lower_to_source_mods, nir_lower_float_source_mods);
+   nir_lower_to_source_mods_flags source_mods = nir_lower_fneg_source_mods;
+   if (!options->lower_fabs)
+      source_mods |= nir_lower_fabs_source_mods;
+   NIR_PASS_V(s, nir_lower_to_source_mods, source_mods);
+
    NIR_PASS_V(s, nir_convert_from_ssa, true);
    NIR_PASS_V(s, nir_lower_vec_to_movs, NULL, NULL);
 

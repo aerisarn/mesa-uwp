@@ -31,6 +31,8 @@ struct pipe_screen;
 
 struct nir_to_tgsi_options {
    bool lower_cmp;
+   /* Emit MAX(a,-a) instead of abs src modifier) */
+   bool lower_fabs;
 };
 
 const void *nir_to_tgsi(struct nir_shader *s,
