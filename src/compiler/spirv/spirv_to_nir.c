@@ -2456,6 +2456,9 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
       modes |= nir_var_mem_global;
    if (semantics & SpvMemorySemanticsOutputMemoryMask) {
       modes |= nir_var_shader_out;
+
+      if (b->shader->info.stage == MESA_SHADER_TASK)
+         modes |= nir_var_mem_task_payload;
    }
 
    return modes;

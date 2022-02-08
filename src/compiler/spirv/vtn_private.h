@@ -499,6 +499,7 @@ enum vtn_variable_mode {
    vtn_variable_mode_push_constant,
    vtn_variable_mode_workgroup,
    vtn_variable_mode_cross_workgroup,
+   vtn_variable_mode_task_payload,
    vtn_variable_mode_generic,
    vtn_variable_mode_constant,
    vtn_variable_mode_input,
