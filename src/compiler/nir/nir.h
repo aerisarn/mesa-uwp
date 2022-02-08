@@ -5070,12 +5070,14 @@ bool nir_lower_atomics_to_ssbo(nir_shader *shader);
 
 typedef enum  {
    nir_lower_int_source_mods = 1 << 0,
-   nir_lower_float_source_mods = 1 << 1,
-   nir_lower_64bit_source_mods = 1 << 2,
-   nir_lower_triop_abs = 1 << 3,
-   nir_lower_all_source_mods = (1 << 4) - 1
+   nir_lower_fabs_source_mods = 1 << 1,
+   nir_lower_fneg_source_mods = 1 << 2,
+   nir_lower_64bit_source_mods = 1 << 3,
+   nir_lower_triop_abs = 1 << 4,
+   nir_lower_all_source_mods = (1 << 5) - 1
 } nir_lower_to_source_mods_flags;
 
+#define nir_lower_float_source_mods (nir_lower_fabs_source_mods | nir_lower_fneg_source_mods)
 
 bool nir_lower_to_source_mods(nir_shader *shader, nir_lower_to_source_mods_flags options);
 
