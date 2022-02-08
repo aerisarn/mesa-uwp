@@ -1904,6 +1904,7 @@ struct anv_descriptor {
       };
 
       struct {
+         struct anv_buffer_view *set_buffer_view;
          struct anv_buffer *buffer;
          uint64_t offset;
          uint64_t range;

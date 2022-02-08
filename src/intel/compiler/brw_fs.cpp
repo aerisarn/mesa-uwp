@@ -5969,6 +5969,14 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
                                 false /* transpose */,
                                 LSC_CACHE_STORE_L1STATE_L3MOCS,
                                 false /* has_dest */);
+   case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
+      inst->desc = lsc_msg_desc(devinfo, LSC_OP_ATOMIC_LOAD, inst->exec_size,
+                                surf_type, LSC_ADDR_SIZE_A32,
+                                1 /* num_coordinates */,
+                                LSC_DATA_SIZE_D32, arg.ud /* num_channels */,
+                                false /* transpose */,
+                                LSC_CACHE_LOAD_L1STATE_L3MOCS,
+                                true /* has_dest */);
       break;
    default:
       unreachable("Unknown surface logical instruction");
