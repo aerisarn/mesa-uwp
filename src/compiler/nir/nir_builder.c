@@ -56,6 +56,9 @@ nir_builder_init_simple_shader(gl_shader_stage stage,
    b.impl = nir_function_impl_create(func);
    b.cursor = nir_after_cf_list(&b.impl->body);
 
+   /* Simple shaders are typically internal, e.g. blit shaders */
+   b.shader->info.internal = true;
+
    return b;
 }
 
