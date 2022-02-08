@@ -535,10 +535,11 @@ svga_texture_transfer_map(struct pipe_context *pipe,
       break;
    }
 
-   /* Force direct map for multisample surface */
-   if (texture->nr_samples > 1) {
-      assert(svga_have_gb_objects(svga));
-      assert(sws->have_sm4_1);
+   /* We never want to use DMA transfers on systems with GBObjects because
+    * it causes serialization issues and in SVGAv3 vram is gone which
+    * makes it impossible to support both at the same time.
+    */
+   if (svga_have_gb_objects(svga)) {
       use_direct_map = TRUE;
    }
 
