@@ -558,6 +558,8 @@ get_variable_mode_str(nir_variable_mode mode, bool want_local_global_mode)
       return "shader_call_data";
    case nir_var_ray_hit_attrib:
       return "ray_hit_attrib";
+   case nir_var_mem_task_payload:
+      return "task_payload";
    default:
       return "";
    }
@@ -1664,6 +1666,10 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
               shader->info.workgroup_size[2],
               shader->info.workgroup_size_variable ? " (variable)" : "");
       fprintf(fp, "shared-size: %u\n", shader->info.shared_size);
+   }
+   if (shader->info.stage == MESA_SHADER_MESH ||
+       shader->info.stage == MESA_SHADER_TASK) {
+      fprintf(fp, "task_payload-size: %u\n", shader->info.task_payload_size);
    }
 
    fprintf(fp, "inputs: %u\n", shader->num_inputs);

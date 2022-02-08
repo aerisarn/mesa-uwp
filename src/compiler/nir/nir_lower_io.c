@@ -878,6 +878,7 @@ build_addr_for_var(nir_builder *b, nir_variable *var,
                    nir_address_format addr_format)
 {
    assert(var->data.mode & (nir_var_uniform | nir_var_mem_shared |
+                            nir_var_mem_task_payload |
                             nir_var_shader_temp | nir_var_function_temp |
                             nir_var_mem_push_const | nir_var_mem_constant));
 
@@ -1332,6 +1333,10 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
          assert(addr_format_is_offset(addr_format, mode));
          op = nir_intrinsic_load_shared;
          break;
+      case nir_var_mem_task_payload:
+         assert(addr_format_is_offset(addr_format, mode));
+         op = nir_intrinsic_load_task_payload;
+         break;
       case nir_var_shader_temp:
       case nir_var_function_temp:
          if (addr_format_is_offset(addr_format, mode)) {
@@ -1553,6 +1558,10 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
       case nir_var_mem_shared:
          assert(addr_format_is_offset(addr_format, mode));
          op = nir_intrinsic_store_shared;
+         break;
+      case nir_var_mem_task_payload:
+         assert(addr_format_is_offset(addr_format, mode));
+         op = nir_intrinsic_store_task_payload;
          break;
       case nir_var_shader_temp:
       case nir_var_function_temp:
@@ -2308,6 +2317,9 @@ lower_vars_to_explicit(nir_shader *shader,
    case nir_var_mem_shared:
       offset = shader->info.shared_size;
       break;
+   case nir_var_mem_task_payload:
+      offset = shader->info.task_payload_size;
+      break;
    case nir_var_mem_constant:
       offset = shader->constant_data_size;
       break;
@@ -2351,6 +2363,9 @@ lower_vars_to_explicit(nir_shader *shader,
    case nir_var_mem_shared:
       shader->info.shared_size = offset;
       break;
+   case nir_var_mem_task_payload:
+      shader->info.task_payload_size = offset;
+      break;
    case nir_var_mem_constant:
       shader->constant_data_size = offset;
       break;
@@ -2381,7 +2396,8 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
    ASSERTED nir_variable_mode supported =
       nir_var_mem_shared | nir_var_mem_global | nir_var_mem_constant |
       nir_var_shader_temp | nir_var_function_temp | nir_var_uniform |
-      nir_var_shader_call_data | nir_var_ray_hit_attrib;
+      nir_var_shader_call_data | nir_var_ray_hit_attrib |
+      nir_var_mem_task_payload;
    assert(!(modes & ~supported) && "unsupported");
 
    bool progress = false;
@@ -2402,6 +2418,8 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_shader_call_data, type_info);
    if (modes & nir_var_ray_hit_attrib)
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_ray_hit_attrib, type_info);
+   if (modes & nir_var_mem_task_payload)
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_task_payload, type_info);
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
@@ -2497,6 +2515,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_shared:
+   case nir_intrinsic_load_task_payload:
    case nir_intrinsic_load_uniform:
    case nir_intrinsic_load_kernel_input:
    case nir_intrinsic_load_global:
@@ -2541,6 +2560,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_interpolated_input:
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_shared:
+   case nir_intrinsic_store_task_payload:
    case nir_intrinsic_store_global:
    case nir_intrinsic_store_scratch:
    case nir_intrinsic_ssbo_atomic_add:

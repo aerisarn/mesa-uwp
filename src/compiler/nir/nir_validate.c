@@ -1749,6 +1749,10 @@ nir_validate_shader(nir_shader *shader, const char *when)
        shader->info.stage == MESA_SHADER_INTERSECTION)
       valid_modes |= nir_var_ray_hit_attrib;
 
+   if (shader->info.stage == MESA_SHADER_TASK ||
+       shader->info.stage == MESA_SHADER_MESH)
+      valid_modes |= nir_var_mem_task_payload;
+
    exec_list_validate(&shader->variables);
    nir_foreach_variable_in_shader(var, shader)
      validate_var_decl(var, valid_modes, &state);

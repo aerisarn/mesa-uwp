@@ -216,6 +216,11 @@ typedef struct shader_info {
    unsigned shared_size;
 
    /**
+    * Size of task payload variables accessed by task/mesh shaders.
+    */
+   unsigned task_payload_size;
+
+   /**
     * Number of ray tracing queries in the shader (counts all elements of all
     * variables).
     */
