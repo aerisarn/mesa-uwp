@@ -1485,9 +1485,9 @@ Converter::visit(nir_if *nif)
       insertJoins = insertJoins && bb->getExit()->op == OP_BRA;
    }
 
-   /* only insert joins for the most outer if */
-   if (--curIfDepth)
+   if (curIfDepth > 6) {
       insertJoins = false;
+   }
 
    /* we made sure that all threads would converge at the same block */
    if (insertJoins) {
@@ -1497,6 +1497,8 @@ Converter::visit(nir_if *nif)
       setPosition(conv, false);
       mkFlow(OP_JOIN, NULL, CC_ALWAYS, NULL)->fixed = 1;
    }
+
+   curIfDepth--;
 
    return true;
 }
