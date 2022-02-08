@@ -1129,6 +1129,15 @@ static int r600_bytecode_alloc_kcache_lines(struct r600_bytecode *bc,
 
 	if ((r = r600_bytecode_alloc_inst_kcache_lines(bc, kcache, alu))) {
 		/* can't alloc, need to start new clause */
+
+		/* Make sure the CF ends with an "last" instruction when
+		 * we split an ALU group because of a new CF */
+		if (!list_is_empty(&bc->cf_last->alu))  {
+			struct r600_bytecode_alu *last_submitted =
+				list_last_entry(&bc->cf_last->alu, struct r600_bytecode_alu, list);
+				last_submitted->last = 1;
+		}
+
 		if ((r = r600_bytecode_add_cf(bc))) {
 			return r;
 		}
