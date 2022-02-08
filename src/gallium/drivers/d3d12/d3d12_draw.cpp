@@ -1165,8 +1165,6 @@ d3d12_draw_vbo(struct pipe_context *pctx,
       struct d3d12_resource *so_buffer = d3d12_resource(target->base.buffer);
       struct d3d12_resource *fill_buffer = d3d12_resource(target->fill_buffer);
 
-      d3d12_resource_make_writeable(pctx, target->base.buffer);
-
       if (ctx->cmdlist_dirty & D3D12_DIRTY_STREAM_OUTPUT) {
          d3d12_batch_reference_resource(batch, so_buffer, true);
          d3d12_batch_reference_resource(batch, fill_buffer, true);

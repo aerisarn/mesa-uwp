@@ -1388,43 +1388,6 @@ d3d12_transfer_unmap(struct pipe_context *pctx,
 }
 
 void
-d3d12_resource_make_writeable(struct pipe_context *pctx,
-                              struct pipe_resource *pres)
-{
-   struct d3d12_context *ctx = d3d12_context(pctx);
-   struct d3d12_resource *res = d3d12_resource(pres);
-   struct d3d12_resource *dup_res;
-
-   if (!res->bo || !d3d12_bo_is_suballocated(res->bo))
-      return;
-
-   dup_res = d3d12_resource(pipe_buffer_create(pres->screen,
-                                               pres->bind & PIPE_BIND_STREAM_OUTPUT,
-                                               (pipe_resource_usage) pres->usage,
-                                               pres->width0));
-
-   if (res->valid_buffer_range.end > res->valid_buffer_range.start) {
-      struct pipe_box box;
-
-      box.x = res->valid_buffer_range.start;
-      box.y = 0;
-      box.z = 0;
-      box.width = res->valid_buffer_range.end - res->valid_buffer_range.start;
-      box.height = 1;
-      box.depth = 1;
-
-      d3d12_direct_copy(ctx, dup_res, 0, &box, res, 0, &box, PIPE_MASK_RGBAZS);
-   }
-
-   /* Move new BO to old resource */
-   d3d12_bo_unreference(res->bo);
-   res->bo = dup_res->bo;
-   d3d12_bo_reference(res->bo);
-
-   d3d12_resource_destroy(dup_res->base.b.screen, &dup_res->base.b);
-}
-
-void
 d3d12_context_resource_init(struct pipe_context *pctx)
 {
    pctx->buffer_map = d3d12_transfer_map;
