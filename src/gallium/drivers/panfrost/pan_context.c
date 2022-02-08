@@ -71,7 +71,7 @@ panfrost_clear(
          * color/depth/stencil value, thus avoiding the generation of extra
          * fragment jobs.
          */
-        struct panfrost_batch *batch = panfrost_get_fresh_batch_for_fbo(ctx, "Clear");
+        struct panfrost_batch *batch = panfrost_get_fresh_batch_for_fbo(ctx, "Slow clear");
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
