@@ -817,6 +817,10 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
       component_mapping((pipe_swizzle)sampler_view->swizzle_override_a, D3D12_SHADER_COMPONENT_MAPPING_FROM_MEMORY_COMPONENT_3)
    );
 
+   uint64_t offset = 0;
+   ID3D12Resource *d3d12_res = d3d12_resource_underlying(res, &offset);
+   assert(offset == 0 || res->base.b.target == PIPE_BUFFER);
+
    unsigned array_size = state->u.tex.last_layer - state->u.tex.first_layer + 1;
    switch (desc.ViewDimension) {
    case D3D12_SRV_DIMENSION_TEXTURE1D:
@@ -889,15 +893,15 @@ d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view)
       desc.TextureCubeArray.ResourceMinLODClamp = 0.0f;
       break;
    case D3D12_SRV_DIMENSION_BUFFER:
-      desc.Buffer.FirstElement = 0;
       desc.Buffer.StructureByteStride = 0;
+      desc.Buffer.FirstElement = offset / util_format_get_blocksize(state->format);
       desc.Buffer.NumElements = texture->width0 / util_format_get_blocksize(state->format);
       break;
    default:
       unreachable("Invalid SRV dimension");
    }
 
-   screen->dev->CreateShaderResourceView(d3d12_resource_resource(res), &desc,
+   screen->dev->CreateShaderResourceView(d3d12_res, &desc,
       sampler_view->handle.cpu_handle);
 }
 
