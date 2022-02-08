@@ -955,8 +955,6 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                      void *out, bool always_write)
 {
         pan_pack(out, DRAW, cfg) {
-                cfg.four_components_per_vertex = true;
-                cfg.draw_descriptor_is_64b = true;
                 cfg.thread_storage = tsd;
                 cfg.state = rsd;
 
@@ -999,8 +997,6 @@ pan_blit_emit_dcd(struct pan_pool *pool,
                   void *out)
 {
         pan_pack(out, DRAW, cfg) {
-                cfg.four_components_per_vertex = true;
-                cfg.draw_descriptor_is_64b = true;
                 cfg.thread_storage = tsd;
                 cfg.state = rsd;
 

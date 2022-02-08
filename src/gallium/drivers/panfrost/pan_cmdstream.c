@@ -2754,10 +2754,6 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 
         section = pan_section_ptr(job, TILER_JOB, DRAW);
         pan_pack(section, DRAW, cfg) {
-                cfg.four_components_per_vertex = true;
-                cfg.draw_descriptor_is_64b = true;
-                cfg.front_face_ccw = rast->front_ccw;
-
                 /*
                  * From the Gallium documentation,
                  * pipe_rasterizer_state::cull_face "indicates which faces of
@@ -2768,6 +2764,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                  */
                 cfg.cull_front_face = polygon && (rast->cull_face & PIPE_FACE_FRONT);
                 cfg.cull_back_face = polygon && (rast->cull_face & PIPE_FACE_BACK);
+                cfg.front_face_ccw = rast->front_ccw;
                 cfg.position = pos;
                 cfg.state = batch->rsd[PIPE_SHADER_FRAGMENT];
                 cfg.attributes = batch->attribs[PIPE_SHADER_FRAGMENT];

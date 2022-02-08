@@ -451,8 +451,6 @@ panvk_emit_tiler_dcd(const struct panvk_pipeline *pipeline,
                      void *dcd)
 {
    pan_pack(dcd, DRAW, cfg) {
-      cfg.four_components_per_vertex = true;
-      cfg.draw_descriptor_is_64b = true;
       cfg.front_face_ccw = pipeline->rast.front_ccw;
       cfg.cull_front_face = pipeline->rast.cull_front_face;
       cfg.cull_back_face = pipeline->rast.cull_back_face;
