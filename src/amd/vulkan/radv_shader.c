@@ -1042,6 +1042,15 @@ radv_lower_io_to_mem(struct radv_device *device, struct radv_pipeline_stage *sta
       ac_nir_lower_gs_inputs_to_mem(nir, device->physical_device->rad_info.chip_class,
                                     info->gs.num_linked_inputs);
       return true;
+   } else if (nir->info.stage == MESA_SHADER_TASK) {
+      ac_nir_apply_first_task_to_task_shader(nir);
+      ac_nir_lower_task_outputs_to_mem(nir, RADV_TASK_PAYLOAD_ENTRY_BYTES,
+                                       device->task_num_entries);
+      return true;
+   } else if (nir->info.stage == MESA_SHADER_MESH) {
+      ac_nir_lower_mesh_inputs_to_mem(nir, RADV_TASK_PAYLOAD_ENTRY_BYTES,
+                                      device->task_num_entries);
+      return true;
    }
 
    return false;

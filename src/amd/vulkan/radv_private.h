@@ -777,6 +777,9 @@ struct radv_device {
    uint32_t scratch_waves;
    uint32_t dispatch_initiator;
 
+   /* Number of entries in the task shader ring buffers. */
+   uint32_t task_num_entries;
+
    uint32_t gs_table_depth;
    struct ac_hs_info hs;
 

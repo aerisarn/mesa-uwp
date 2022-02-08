@@ -3331,6 +3331,24 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    ac_get_hs_info(&device->physical_device->rad_info,
                   &device->hs);
 
+   /* Number of task shader ring entries. Needs to be a power of two.
+    * Use a low number on smaller chips so we don't waste space,
+    * but keep it high on bigger chips so it doesn't inhibit parallelism.
+    */
+   switch (device->physical_device->rad_info.family) {
+   case CHIP_VANGOGH:
+   case CHIP_BEIGE_GOBY:
+   case CHIP_YELLOW_CARP:
+      device->task_num_entries = 256;
+      break;
+   case CHIP_SIENNA_CICHLID:
+   case CHIP_NAVY_FLOUNDER:
+   case CHIP_DIMGREY_CAVEFISH:
+   default:
+      device->task_num_entries = 1024;
+      break;
+   }
+
    if (device->instance->debug_flags & RADV_DEBUG_HANG) {
       /* Enable GPU hangs detection and dump logs if a GPU hang is
        * detected.
