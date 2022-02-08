@@ -147,6 +147,14 @@ init_buffer(struct d3d12_screen *screen,
    default:
       unreachable("Invalid pipe usage");
    }
+
+   /* We can't suballocate buffers that might be bound as a sampler view, *only*
+    * because in the case of R32G32B32 formats (12 bytes per pixel), it's not possible
+    * to guarantee the offset will be divisible.
+    */
+   if (templ->bind & PIPE_BIND_SAMPLER_VIEW)
+      bufmgr = screen->cache_bufmgr;
+
    buf_desc.alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
    res->dxgi_format = DXGI_FORMAT_UNKNOWN;
    buf = bufmgr->create_buffer(bufmgr, templ->width0, &buf_desc);
