@@ -1,5 +1,4 @@
 KHR-GL46.compute_shader.conditional-dispatching,Fail
-KHR-GL46.direct_state_access.vertex_arrays_attribute_format,Fail
 KHR-GL46.gpu_shader_fp64.builtin.mod_dvec2,Fail
 KHR-GL46.gpu_shader_fp64.builtin.mod_dvec3,Fail
 KHR-GL46.gpu_shader_fp64.builtin.mod_dvec4,Fail
