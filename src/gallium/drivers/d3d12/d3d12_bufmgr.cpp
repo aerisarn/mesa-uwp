@@ -170,9 +170,7 @@ d3d12_bo_map(struct d3d12_bo *bo, D3D12_RANGE *range)
 
    base_bo = d3d12_bo_get_base(bo, &offset);
 
-   if (!range || offset == 0) {
-      /* Nothing to do */
-   } else if (range->Begin >= range->End) {
+   if (!range || range->Begin >= range->End) {
       offset_range.Begin = offset;
       offset_range.End = offset + d3d12_bo_get_size(bo);
       range = &offset_range;
@@ -197,10 +195,7 @@ d3d12_bo_unmap(struct d3d12_bo *bo, D3D12_RANGE *range)
 
    base_bo = d3d12_bo_get_base(bo, &offset);
 
-   if (!range || bo == base_bo)
-   {
-      /* Nothing to do */
-   } else if (range->Begin >= range->End) {
+   if (!range || range->Begin >= range->End) {
       offset_range.Begin = offset;
       offset_range.End = offset + d3d12_bo_get_size(bo);
       range = &offset_range;
