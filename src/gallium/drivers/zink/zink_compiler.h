@@ -88,6 +88,7 @@ struct zink_shader {
    uint32_t ubos_used; // bitfield of which ubo indices are used
    uint32_t ssbos_used; // bitfield of which ssbo indices are used
    bool bindless;
+   struct spirv_shader *spirv;
 
    simple_mtx_t lock;
    struct set *programs;

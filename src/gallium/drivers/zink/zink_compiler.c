@@ -1162,7 +1162,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
    ralloc_free(nir);
 
    /* TODO: determine if there's any reason to cache spirv output? */
-   ralloc_free(spirv);
+   if (zs->is_generated)
+      zs->spirv = spirv;
+   else
+      ralloc_free(spirv);
    return mod;
 }
 
@@ -1961,6 +1964,7 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
    }
    _mesa_set_destroy(shader->programs, NULL);
    ralloc_free(shader->nir);
+   ralloc_free(shader->spirv);
    FREE(shader);
 }
 
