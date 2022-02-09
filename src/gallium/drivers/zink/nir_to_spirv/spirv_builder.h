@@ -456,7 +456,8 @@ spirv_builder_get_num_words(struct spirv_builder *b);
 
 size_t
 spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
-                        size_t num_words, uint32_t spirv_version);
+                        size_t num_words, uint32_t spirv_version,
+                        uint32_t *tcs_vertices_out_word);
 
 void
 spirv_builder_emit_vertex(struct spirv_builder *b, uint32_t stream);
