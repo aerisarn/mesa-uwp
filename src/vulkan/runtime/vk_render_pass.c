@@ -478,6 +478,11 @@ vk_common_CreateRenderPass2(VkDevice _device,
       subpass->view_mask = desc->viewMask ? desc->viewMask : 1;
       pass->view_mask |= subpass->view_mask;
 
+      assert(desc->colorAttachmentCount <= 32);
+      uint32_t color_self_deps = 0;
+      bool has_depth_self_dep = false;
+      bool has_stencil_self_dep = false;
+
       subpass->input_count = desc->inputAttachmentCount;
       if (desc->inputAttachmentCount > 0) {
          subpass->input_attachments = next_subpass_attachment;
@@ -489,6 +494,25 @@ vk_common_CreateRenderPass2(VkDevice _device,
                                        &desc->pInputAttachments[a],
                                        pCreateInfo->pAttachments,
                                        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+
+            if (desc->pInputAttachments[a].attachment != VK_ATTACHMENT_UNUSED) {
+               for (uint32_t c = 0; c < desc->colorAttachmentCount; c++) {
+                  if (desc->pColorAttachments[c].attachment ==
+                      desc->pInputAttachments[a].attachment)
+                     color_self_deps |= (1u << c);
+               }
+
+               if (desc->pDepthStencilAttachment != NULL &&
+                   desc->pDepthStencilAttachment->attachment ==
+                      desc->pInputAttachments[a].attachment) {
+                  VkImageAspectFlags aspects =
+                     subpass->input_attachments[a].aspects;
+                  if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+                     has_depth_self_dep = true;
+                  if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+                     has_stencil_self_dep = true;
+               }
+            }
          }
       }
 
@@ -605,8 +629,16 @@ vk_common_CreateRenderPass2(VkDevice _device,
          }
       }
 
+      subpass->self_dep_info = (VkRenderingSelfDependencyInfoMESA) {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_SELF_DEPENDENCY_INFO_MESA,
+         .colorSelfDependencies = color_self_deps,
+         .depthSelfDependency = has_depth_self_dep,
+         .stencilSelfDependency = has_stencil_self_dep,
+      };
+
       subpass->pipeline_info = (VkPipelineRenderingCreateInfo) {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+         .pNext = &subpass->self_dep_info,
          .viewMask = desc->viewMask,
          .colorAttachmentCount = desc->colorAttachmentCount,
          .pColorAttachmentFormats = color_formats,
@@ -616,6 +648,7 @@ vk_common_CreateRenderPass2(VkDevice _device,
 
       subpass->inheritance_info = (VkCommandBufferInheritanceRenderingInfo) {
          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO,
+         .pNext = &subpass->self_dep_info,
          /* If we're inheriting, the contents are clearly in secondaries */
          .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
          .viewMask = desc->viewMask,
@@ -1435,6 +1468,7 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
 
    const VkRenderingInfo rendering = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+      .pNext = &subpass->self_dep_info,
       .renderArea = cmd_buffer->render_area,
       .layerCount = pass->is_multiview ? 1 : framebuffer->layers,
       .viewMask = pass->is_multiview ? subpass->view_mask : 0,
