@@ -13,7 +13,14 @@
 
 #include "vn_common.h"
 
+#include "util/sparse_array.h"
+
 #include "vn_wsi.h"
+
+struct vn_format_properties_entry {
+   atomic_bool valid;
+   VkFormatProperties properties;
+};
 
 struct vn_physical_device {
    struct vn_physical_device_base base;
@@ -69,6 +76,9 @@ struct vn_physical_device {
    VkExternalSemaphoreHandleTypeFlags external_timeline_semaphore_handles;
 
    struct wsi_device wsi_device;
+
+   simple_mtx_t format_update_mutex;
+   struct util_sparse_array format_properties;
 };
 VK_DEFINE_HANDLE_CASTS(vn_physical_device,
                        base.base.base,
