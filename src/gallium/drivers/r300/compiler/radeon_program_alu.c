@@ -1055,6 +1055,9 @@ int r300_transform_trig_scale_vertex(struct radeon_compiler *c,
 	    inst->U.I.Opcode != RC_OPCODE_SIN)
 		return 0;
 
+	if (!c->needs_trig_input_transform)
+		return 1;
+
 	/* Repeat x in the range [-PI, PI]:
 	 *
 	 *   repeat(x) = frac(x / 2PI + 0.5) * 2PI - PI

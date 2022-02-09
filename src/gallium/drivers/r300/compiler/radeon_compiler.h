@@ -55,6 +55,7 @@ struct radeon_compiler {
 	unsigned has_presub:1;
 	unsigned has_omod:1;
 	unsigned disable_optimizations:1;
+	unsigned needs_trig_input_transform:1;
 	unsigned max_temp_regs;
 	unsigned max_constants;
 	int max_alu_insts;

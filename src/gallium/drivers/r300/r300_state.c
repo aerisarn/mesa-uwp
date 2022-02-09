@@ -46,6 +46,7 @@
 #include "r300_fs.h"
 #include "r300_texture.h"
 #include "r300_vs.h"
+#include "nir.h"
 #include "nir/nir_to_tgsi.h"
 
 /* r300_state: Functions used to initialize state context by translating
@@ -1953,8 +1954,10 @@ static void* r300_create_vs_state(struct pipe_context* pipe,
        };
        const struct nir_to_tgsi_options *ntt_options;
        if (r300->screen->caps.has_tcl) {
-           if (r300->screen->caps.is_r500)
+           if (r300->screen->caps.is_r500) {
                ntt_options = &hwtcl_r500_options;
+               NIR_PASS_V(shader->ir.nir, r300_transform_vs_trig_input);
+           }
             else
                ntt_options = &hwtcl_r300_options;
        } else {

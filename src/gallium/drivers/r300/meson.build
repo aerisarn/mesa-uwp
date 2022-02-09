@@ -118,9 +118,21 @@ files_r300 = files(
   'compiler/radeon_vert_fc.c',
 )
 
+r300_nir_algebraic_c = custom_target(
+  'r300_nir_algebraic.c',
+  input : 'compiler/r300_nir_algebraic.py',
+  output : 'r300_nir_algebraic.c',
+  command : [
+    prog_python, '@INPUT@',
+    '-p', join_paths(meson.source_root(), 'src/compiler/nir/'),
+    '@OUTPUT@',
+  ],
+  depend_files : nir_algebraic_py,
+)
+
 libr300 = static_library(
   'r300',
-  files_r300,
+  files_r300, r300_nir_algebraic_c,
   include_directories : [
     inc_src, inc_include, inc_gallium, inc_gallium_aux, inc_gallium_drivers,
     inc_mesa,
