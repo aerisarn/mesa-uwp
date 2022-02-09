@@ -34,6 +34,15 @@ transform_trig_input_vs_r500 = [
         (('fcos', 'a'), ('fcos', ('fadd', ('fmul', ('ffract', ('fadd', ('fmul', 'a', 1 / (2 * pi)) , 0.5)), 2 * pi), -pi))),
 ]
 
+# Transform input to range [-PI, PI]:
+#
+# y = frac(x / 2PI)
+#
+transform_trig_input_fs_r500 = [
+        (('fsin', 'a'), ('fsin', ('ffract', ('fmul', 'a', 1 / (2 * pi))))),
+        (('fcos', 'a'), ('fcos', ('ffract', ('fmul', 'a', 1 / (2 * pi))))),
+]
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--import-path', required=True)
@@ -48,6 +57,9 @@ def main():
 
         f.write(nir_algebraic.AlgebraicPass("r300_transform_vs_trig_input",
                                             transform_trig_input_vs_r500).render())
+
+        f.write(nir_algebraic.AlgebraicPass("r300_transform_fs_trig_input",
+                                            transform_trig_input_fs_r500).render())
 
 
 if __name__ == '__main__':

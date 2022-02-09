@@ -1045,6 +1045,8 @@ static void* r300_create_fs_state(struct pipe_context* pipe,
     fs->state = *shader;
 
     if (fs->state.type == PIPE_SHADER_IR_NIR) {
+       if (r300->screen->caps.is_r500)
+           NIR_PASS_V(shader->ir.nir, r300_transform_fs_trig_input);
        fs->state.tokens = nir_to_tgsi(shader->ir.nir, pipe->screen);
     } else {
        assert(fs->state.type == PIPE_SHADER_IR_TGSI);
