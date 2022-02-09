@@ -1816,7 +1816,10 @@ static void
 zink_set_patch_vertices(struct pipe_context *pctx, uint8_t patch_vertices)
 {
    struct zink_context *ctx = zink_context(pctx);
-   ctx->gfx_pipeline_state.patch_vertices = patch_vertices;
+   if (zink_set_tcs_key_patches(ctx, patch_vertices)) {
+      ctx->gfx_pipeline_state.vertices_per_patch = patch_vertices ? patch_vertices - 1 : 0;
+      ctx->gfx_pipeline_state.dirty = true;
+   }
 }
 
 void

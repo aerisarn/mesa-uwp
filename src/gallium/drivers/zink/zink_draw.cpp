@@ -568,9 +568,6 @@ zink_draw(struct pipe_context *pctx,
    zink_batch_rp(ctx);
 
    /* these must be after renderpass start to avoid issues with recursion */
-   uint8_t vertices_per_patch = ctx->gfx_pipeline_state.patch_vertices ? ctx->gfx_pipeline_state.patch_vertices - 1 : 0;
-   if (ctx->gfx_pipeline_state.vertices_per_patch != vertices_per_patch)
-      ctx->gfx_pipeline_state.dirty = true;
    bool drawid_broken = false;
    if (reads_drawid && (!dindirect || !dindirect->buffer))
       drawid_broken = (drawid_offset != 0 ||
@@ -578,7 +575,6 @@ zink_draw(struct pipe_context *pctx,
                       (HAS_MULTIDRAW && num_draws > 1 && !dinfo->increment_draw_id));
    if (drawid_broken != zink_get_last_vertex_key(ctx)->push_drawid)
       zink_set_last_vertex_key(ctx)->push_drawid = drawid_broken;
-   ctx->gfx_pipeline_state.vertices_per_patch = vertices_per_patch;
    if (mode_changed) {
       bool points_changed = false;
       if (mode == PIPE_PRIM_POINTS) {

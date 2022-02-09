@@ -83,7 +83,6 @@ struct zink_gfx_pipeline_state {
    struct zink_blend_state *blend_state;
    struct zink_render_pass *render_pass;
    VkPipeline pipeline;
-   uint8_t patch_vertices;
    unsigned idx : 8;
    enum pipe_prim_type gfx_prim_mode; //pending mode
 };
