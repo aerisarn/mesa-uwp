@@ -1021,6 +1021,29 @@ zink_shader_dump(void *words, size_t size, const char *file)
 }
 
 VkShaderModule
+zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv)
+{
+   VkShaderModule mod;
+   VkShaderModuleCreateInfo smci = {0};
+
+   if (zink_debug & ZINK_DEBUG_SPIRV) {
+      char buf[256];
+      static int i;
+      snprintf(buf, sizeof(buf), "dump%02d.spv", i++);
+      zink_shader_dump(spirv->words, spirv->num_words * sizeof(uint32_t), buf);
+   }
+
+   smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+   smci.codeSize = spirv->num_words * sizeof(uint32_t);
+   smci.pCode = spirv->words;
+
+   VkResult ret = VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &mod);
+   bool success = zink_screen_handle_vkresult(screen, ret);
+   assert(success);
+   return success ? mod : VK_NULL_HANDLE;
+}
+
+VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
@@ -1133,25 +1156,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    struct spirv_shader *spirv = nir_to_spirv(nir, sinfo, screen->spirv_version);
-   if (!spirv)
-      goto done;
+   if (spirv)
+      mod = zink_shader_spirv_compile(screen, zs, spirv);
 
-   if (zink_debug & ZINK_DEBUG_SPIRV) {
-      char buf[256];
-      static int i;
-      snprintf(buf, sizeof(buf), "dump%02d.spv", i++);
-      zink_shader_dump(spirv->words, spirv->num_words * sizeof(uint32_t), buf);
-   }
-
-   VkShaderModuleCreateInfo smci = {0};
-   smci.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-   smci.codeSize = spirv->num_words * sizeof(uint32_t);
-   smci.pCode = spirv->words;
-
-   if (VKSCR(CreateShaderModule)(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
-      mod = VK_NULL_HANDLE;
-
-done:
    ralloc_free(nir);
 
    /* TODO: determine if there's any reason to cache spirv output? */

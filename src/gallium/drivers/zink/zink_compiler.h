@@ -44,6 +44,7 @@ struct zink_screen;
 struct zink_shader_key;
 struct zink_shader_module;
 struct zink_gfx_program;
+struct spirv_shader;
 
 struct nir_shader_compiler_options;
 struct nir_shader;
@@ -104,7 +105,8 @@ void
 zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer);
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *nir, const struct zink_shader_key *key);
-
+VkShaderModule
+zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, struct spirv_shader *spirv);
 struct zink_shader *
 zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                  const struct pipe_stream_output_info *so_info);
