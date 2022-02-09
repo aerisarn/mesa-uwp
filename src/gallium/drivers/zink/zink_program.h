@@ -303,6 +303,13 @@ zink_get_fs_key(struct zink_context *ctx)
    return (const struct zink_fs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_FRAGMENT];
 }
 
+
+static inline const struct zink_tcs_key *
+zink_get_tcs_key(struct zink_context *ctx)
+{
+   return (const struct zink_tcs_key *)&ctx->gfx_pipeline_state.shader_keys.key[PIPE_SHADER_TESS_CTRL];
+}
+
 void
 zink_update_fs_key_samples(struct zink_context *ctx);
 
