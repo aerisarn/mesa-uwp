@@ -148,7 +148,7 @@ llvmpipe_render_condition_mem(struct pipe_context *pipe,
 static void
 llvmpipe_texture_barrier(struct pipe_context *pipe, unsigned flags)
 {
-   llvmpipe_flush(pipe, NULL, __FUNCTION__);
+   llvmpipe_finish(pipe, "barrier");
 }
 
 static void lp_draw_disk_cache_find_shader(void *cookie,
