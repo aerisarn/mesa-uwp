@@ -1598,9 +1598,6 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
    }
 
    nir_foreach_image_variable(var, shader) {
-      const struct glsl_type *glsl_type = glsl_without_array(var->type);
-      enum glsl_sampler_dim dim = glsl_get_sampler_dim(glsl_type);
-
       const uint32_t set = var->data.descriptor_set;
       const uint32_t binding = var->data.binding;
       const struct anv_descriptor_set_binding_layout *bind_layout =
@@ -1618,10 +1615,6 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       for (unsigned i = 0; i < array_size; i++) {
          assert(pipe_binding[i].set == set);
          assert(pipe_binding[i].index == bind_layout->descriptor_index + i);
-
-         if (dim == GLSL_SAMPLER_DIM_SUBPASS ||
-             dim == GLSL_SAMPLER_DIM_SUBPASS_MS)
-            pipe_binding[i].input_attachment_index = var->data.index + i;
 
          pipe_binding[i].lowered_storage_surface =
             image_binding_needs_lowered_surface(var);
