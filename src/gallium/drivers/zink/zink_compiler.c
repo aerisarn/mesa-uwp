@@ -1026,6 +1026,9 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    VkShaderModule mod;
    VkShaderModuleCreateInfo smci = {0};
 
+   if (!spirv)
+      spirv = zs->spirv;
+
    if (zink_debug & ZINK_DEBUG_SPIRV) {
       char buf[256];
       static int i;
@@ -1968,6 +1971,15 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
    FREE(shader);
 }
 
+
+VkShaderModule
+zink_shader_tcs_compile(struct zink_screen *screen, struct zink_shader *zs, unsigned patch_vertices)
+{
+   assert(zs->nir->info.stage == MESA_SHADER_TESS_CTRL);
+   /* shortcut all the nir passes since we just have to change this one word */
+   zs->spirv->words[zs->spirv->tcs_vertices_out_word] = patch_vertices;
+   return zink_shader_spirv_compile(screen, zs, NULL);
+}
 
 /* creating a passthrough tcs shader that's roughly:
 
