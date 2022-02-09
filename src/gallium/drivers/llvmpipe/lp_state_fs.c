@@ -4084,6 +4084,12 @@ llvmpipe_set_shader_images(struct pipe_context *pipe,
       const struct pipe_image_view *image = images ? &images[idx] : NULL;
 
       util_copy_image_view(&llvmpipe->images[shader][i], image);
+
+      if (image && image->resource) {
+         bool read_only = !(image->access & PIPE_IMAGE_ACCESS_WRITE);
+         llvmpipe_flush_resource(pipe, image->resource, 0, read_only, false,
+                                 false, "image");
+      }
    }
 
    llvmpipe->num_images[shader] = start_slot + count;
