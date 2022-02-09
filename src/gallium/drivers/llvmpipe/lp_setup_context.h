@@ -159,6 +159,7 @@ struct lp_setup_context
    struct {
       struct pipe_shader_buffer current;
    } ssbos[LP_MAX_TGSI_SHADER_BUFFERS];
+   uint32_t ssbo_write_mask;
 
    struct {
       struct pipe_image_view current;

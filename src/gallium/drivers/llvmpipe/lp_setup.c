@@ -703,7 +703,8 @@ lp_setup_set_fs_constants(struct lp_setup_context *setup,
 void
 lp_setup_set_fs_ssbos(struct lp_setup_context *setup,
                       unsigned num,
-                      struct pipe_shader_buffer *buffers)
+                      struct pipe_shader_buffer *buffers,
+                      uint32_t ssbo_write_mask)
 {
    unsigned i;
 
@@ -717,6 +718,7 @@ lp_setup_set_fs_ssbos(struct lp_setup_context *setup,
    for (; i < ARRAY_SIZE(setup->ssbos); i++) {
       util_copy_shader_buffer(&setup->ssbos[i].current, NULL);
    }
+   setup->ssbo_write_mask = ssbo_write_mask;
    setup->dirty |= LP_SETUP_NEW_SSBOS;
 }
 
