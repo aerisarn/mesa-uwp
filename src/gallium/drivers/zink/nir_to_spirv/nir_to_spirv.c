@@ -3851,6 +3851,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
 
    if (sinfo->last_vertex)
       emit_so_info(&ctx, sinfo, max_output + 1);
+   uint32_t tcs_vertices_out_word = 0;
 
    /* we have to reverse iterate to match what's done in zink_compiler.c */
    foreach_list_typed_reverse(nir_variable, var, node, &s->variables)
@@ -3896,9 +3897,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeSampleInterlockUnorderedEXT);
       break;
    case MESA_SHADER_TESS_CTRL:
-      spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
-                                           SpvExecutionModeOutputVertices,
-                                           s->info.tess.tcs_vertices_out);
+      tcs_vertices_out_word = spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,
+                                                                   SpvExecutionModeOutputVertices,
+                                                                   s->info.tess.tcs_vertices_out);
       break;
    case MESA_SHADER_TESS_EVAL:
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
