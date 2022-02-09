@@ -4092,6 +4092,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_patch_vertices = zink_set_patch_vertices;
 
    ctx->base.set_sample_mask = zink_set_sample_mask;
+   ctx->gfx_pipeline_state.sample_mask = UINT32_MAX;
 
    ctx->base.clear = zink_clear;
    ctx->base.clear_texture = zink_clear_texture;
