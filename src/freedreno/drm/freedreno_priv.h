@@ -294,6 +294,12 @@ struct fd_bo_funcs {
    uint64_t (*iova)(struct fd_bo *bo);
    void (*set_name)(struct fd_bo *bo, const char *fmt, va_list ap);
    void (*destroy)(struct fd_bo *bo);
+
+   /**
+    * Optional, copy data into bo, falls back to mmap+memcpy.  If not
+    * implemented, it must be possible to mmap all buffers
+    */
+   void (*upload)(struct fd_bo *bo, void *src, unsigned len);
 };
 
 struct fd_bo_fence {

@@ -454,15 +454,12 @@ fd_bo_is_cached(struct fd_bo *bo)
    return !!(bo->alloc_flags & FD_BO_CACHED_COHERENT);
 }
 
-void *
-fd_bo_map(struct fd_bo *bo)
+static void *
+bo_map(struct fd_bo *bo)
 {
    if (!bo->map) {
       uint64_t offset;
       int ret;
-
-      if (bo->alloc_flags & FD_BO_NOMAP)
-         return NULL;
 
       ret = bo->funcs->offset(bo, &offset);
       if (ret) {
@@ -477,6 +474,29 @@ fd_bo_map(struct fd_bo *bo)
       }
    }
    return bo->map;
+}
+
+void *
+fd_bo_map(struct fd_bo *bo)
+{
+   /* don't allow mmap'ing something allocated with FD_BO_NOMAP
+    * for sanity
+    */
+   if (bo->alloc_flags & FD_BO_NOMAP)
+      return NULL;
+
+   return bo_map(bo);
+}
+
+void
+fd_bo_upload(struct fd_bo *bo, void *src, unsigned len)
+{
+   if (bo->funcs->upload) {
+      bo->funcs->upload(bo, src, len);
+      return;
+   }
+
+   memcpy(bo_map(bo), src, len);
 }
 
 /* a bit odd to take the pipe as an arg, but it's a, umm, quirk of kgsl.. */
