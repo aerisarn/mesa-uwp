@@ -168,6 +168,9 @@ struct lp_scene {
    /** list of resources referenced by the scene commands */
    struct resource_ref *resources;
 
+   /** list of writable resources referenced by the scene commands */
+   struct resource_ref *writeable_resources;
+
    /** list of frag shaders referenced by the scene commands */
    struct shader_ref *frag_shaders;
 
@@ -215,9 +218,10 @@ struct cmd_block *lp_scene_new_cmd_block( struct lp_scene *scene,
 
 boolean lp_scene_add_resource_reference(struct lp_scene *scene,
                                         struct pipe_resource *resource,
-                                        boolean initializing_scene);
+                                        boolean initializing_scene,
+                                        boolean writeable);
 
-boolean lp_scene_is_resource_referenced(const struct lp_scene *scene,
+unsigned lp_scene_is_resource_referenced(const struct lp_scene *scene,
                                         const struct pipe_resource *resource );
 
 boolean lp_scene_add_frag_shader_reference(struct lp_scene *scene,

@@ -271,6 +271,21 @@ lp_scene_end_rasterization(struct lp_scene *scene )
          }
       }
 
+      for (ref = scene->writeable_resources; ref; ref = ref->next) {
+         for (i = 0; i < ref->count; i++) {
+            if (LP_DEBUG & DEBUG_SETUP)
+               debug_printf("resource %d: %p %dx%d sz %d\n",
+                            j,
+                            (void *) ref->resource[i],
+                            ref->resource[i]->width0,
+                            ref->resource[i]->height0,
+                            llvmpipe_resource_size(ref->resource[i]));
+            j++;
+            llvmpipe_resource_unmap(ref->resource[i], 0, 0);
+            pipe_resource_reference(&ref->resource[i], NULL);
+         }
+      }
+
       if (LP_DEBUG & DEBUG_SETUP)
          debug_printf("scene %d resources, sz %d\n",
                       j, scene->resource_reference_size);
@@ -311,6 +326,7 @@ lp_scene_end_rasterization(struct lp_scene *scene )
    lp_fence_reference(&scene->fence, NULL);
 
    scene->resources = NULL;
+   scene->writeable_resources = NULL;
    scene->frag_shaders = NULL;
    scene->scene_size = 0;
    scene->resource_reference_size = 0;
@@ -394,14 +410,17 @@ lp_scene_data_size( const struct lp_scene *scene )
 boolean
 lp_scene_add_resource_reference(struct lp_scene *scene,
                                 struct pipe_resource *resource,
-                                boolean initializing_scene)
+                                boolean initializing_scene,
+                                boolean writeable)
 {
-   struct resource_ref *ref, **last = &scene->resources;
+   struct resource_ref *ref;
    int i;
+   struct resource_ref **list = writeable ? &scene->writeable_resources : &scene->resources;
+   struct resource_ref **last = list;
 
    /* Look at existing resource blocks:
     */
-   for (ref = scene->resources; ref; ref = ref->next) {
+   for (ref = *list; ref; ref = ref->next) {
       last = &ref->next;
 
       /* Search for this resource:
@@ -503,7 +522,7 @@ lp_scene_add_frag_shader_reference(struct lp_scene *scene,
 /**
  * Does this scene have a reference to the given resource?
  */
-boolean
+unsigned
 lp_scene_is_resource_referenced(const struct lp_scene *scene,
                                 const struct pipe_resource *resource)
 {
@@ -513,10 +532,16 @@ lp_scene_is_resource_referenced(const struct lp_scene *scene,
    for (ref = scene->resources; ref; ref = ref->next) {
       for (i = 0; i < ref->count; i++)
          if (ref->resource[i] == resource)
-            return TRUE;
+            return LP_REFERENCED_FOR_READ;
    }
 
-   return FALSE;
+   for (ref = scene->writeable_resources; ref; ref = ref->next) {
+      for (i = 0; i < ref->count; i++)
+         if (ref->resource[i] == resource)
+            return LP_REFERENCED_FOR_READ | LP_REFERENCED_FOR_WRITE;
+   }
+
+   return 0;
 }
 
 

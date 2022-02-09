@@ -1179,9 +1179,9 @@ lp_setup_is_resource_referenced( const struct lp_setup_context *setup,
 
    /* check textures referenced by the scene */
    for (i = 0; i < setup->num_active_scenes; i++) {
-      if (lp_scene_is_resource_referenced(setup->scenes[i], texture)) {
-         return LP_REFERENCED_FOR_READ;
-      }
+      unsigned ref = lp_scene_is_resource_referenced(setup->scenes[i], texture);
+      if (ref)
+         return ref;
    }
 
    for (i = 0; i < ARRAY_SIZE(setup->ssbos); i++) {
@@ -1400,7 +1400,7 @@ try_update_scene_state( struct lp_setup_context *setup )
             if (setup->fs.current_tex[i]) {
                if (!lp_scene_add_resource_reference(scene,
                                                     setup->fs.current_tex[i],
-                                                    new_scene)) {
+                                                    new_scene, false)) {
                   assert(!new_scene);
                   return FALSE;
                }
