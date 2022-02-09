@@ -122,9 +122,14 @@ d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
    else if (pb_desc->usage & PB_USAGE_CPU_WRITE)
       heap_type = D3D12_HEAP_TYPE_UPLOAD;
 
+   D3D12_HEAP_FLAGS heap_flags = screen->support_create_not_resident ?
+      D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT : D3D12_HEAP_FLAG_NONE;
+   enum d3d12_residency_status init_residency = screen->support_create_not_resident ?
+      d3d12_evicted : d3d12_resident;
+
    D3D12_HEAP_PROPERTIES heap_pris = dev->GetCustomHeapProperties(0, heap_type);
    HRESULT hres = dev->CreateCommittedResource(&heap_pris,
-                                               D3D12_HEAP_FLAG_NONE,
+                                               heap_flags,
                                                &res_desc,
                                                D3D12_RESOURCE_STATE_COMMON,
                                                NULL,
@@ -133,7 +138,7 @@ d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
    if (FAILED(hres))
       return NULL;
 
-   return d3d12_bo_wrap_res(screen, res, PIPE_FORMAT_NONE, d3d12_resident);
+   return d3d12_bo_wrap_res(screen, res, PIPE_FORMAT_NONE, init_residency);
 }
 
 struct d3d12_bo *

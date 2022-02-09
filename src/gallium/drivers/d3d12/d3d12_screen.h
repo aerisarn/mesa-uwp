@@ -112,6 +112,7 @@ struct d3d12_screen {
    double timestamp_multiplier;
    bool have_load_at_vertex;
    bool support_shader_images;
+   bool support_create_not_resident;
 };
 
 static inline struct d3d12_screen *

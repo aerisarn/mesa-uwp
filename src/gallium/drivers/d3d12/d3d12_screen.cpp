@@ -1233,6 +1233,11 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
 
    screen->have_load_at_vertex = can_attribute_at_vertex(screen);
    screen->support_shader_images = can_shader_image_load_all_formats(screen);
+   ID3D12Device8 *dev8;
+   if (SUCCEEDED(screen->dev->QueryInterface(&dev8))) {
+      dev8->Release();
+      screen->support_create_not_resident = true;
+   }
 
    screen->nir_options = *dxil_get_nir_compiler_options();
 

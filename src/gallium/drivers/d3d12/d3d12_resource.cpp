@@ -249,8 +249,13 @@ init_texture(struct d3d12_screen *screen,
 
    D3D12_HEAP_PROPERTIES heap_pris = screen->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
 
+   D3D12_HEAP_FLAGS heap_flags = screen->support_create_not_resident ?
+      D3D12_HEAP_FLAG_CREATE_NOT_RESIDENT : D3D12_HEAP_FLAG_NONE;
+   enum d3d12_residency_status init_residency = screen->support_create_not_resident ?
+      d3d12_evicted : d3d12_resident;
+
    HRESULT hres = screen->dev->CreateCommittedResource(&heap_pris,
-                                                   D3D12_HEAP_FLAG_NONE,
+                                                   heap_flags,
                                                    &desc,
                                                    D3D12_RESOURCE_STATE_COMMON,
                                                    NULL,
@@ -269,7 +274,7 @@ init_texture(struct d3d12_screen *screen,
                                              &res->dt_stride);
    }
 
-   res->bo = d3d12_bo_wrap_res(screen, d3d12_res, templ->format, d3d12_resident);
+   res->bo = d3d12_bo_wrap_res(screen, d3d12_res, templ->format, init_residency);
 
    return true;
 }
