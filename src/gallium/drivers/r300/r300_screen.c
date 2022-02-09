@@ -571,6 +571,7 @@ static const nir_shader_compiler_options r300_vs_compiler_options = {
    .lower_rotate = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
+   .lower_sincos = true,
 
    /* Note: has HW loops support, but only 256 ALU instructions. */
    .max_unroll_iterations = 32,
@@ -596,6 +597,7 @@ static const nir_shader_compiler_options r300_fs_compiler_options = {
    .lower_rotate = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
+   .lower_sincos = true,
 
     /* No HW loops support, so set it equal to ALU instr max */
    .max_unroll_iterations = 64,
