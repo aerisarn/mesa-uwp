@@ -27,6 +27,7 @@
 #include "anv_private.h"
 #include "anv_measure.h"
 #include "vk_format.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 #include "util/fast_idiv_by_const.h"
 
@@ -7426,7 +7427,13 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
 
    if (subpass->depth_stencil_attachment) {
       const VkRenderingAttachmentInfoKHR *d_att_info = info->pDepthAttachment;
+      if (d_att_info != NULL && d_att_info->imageView == VK_NULL_HANDLE)
+         d_att_info = NULL;
+
       const VkRenderingAttachmentInfoKHR *s_att_info = info->pStencilAttachment;
+      if (s_att_info != NULL && s_att_info->imageView == VK_NULL_HANDLE)
+         s_att_info = NULL;
+
       const VkRenderingAttachmentInfoKHR *d_or_s_att_info =
          d_att_info ? d_att_info : s_att_info;
 
@@ -7438,21 +7445,32 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
       if (subpass->ds_resolve_attachment) {
          struct anv_attachment_state *ds_res_att_state =
             &state->attachments[subpass->ds_resolve_attachment->attachment];
-         ds_res_att_state->image_view =
-            anv_image_view_from_handle(d_or_s_att_info->resolveImageView);
-         VkImageAspectFlagBits ds_aspect =
-            (d_att_info ? VK_IMAGE_ASPECT_DEPTH_BIT : 0) |
-            (s_att_info ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-         ds_res_att_state->aux_usage =
-            anv_layout_to_aux_usage(&cmd_buffer->device->info,
-                                    ds_res_att_state->image_view->image,
-                                    ds_aspect,
-                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-                                    d_or_s_att_info->resolveImageLayout);
+         if (d_att_info && d_att_info->resolveMode != VK_RESOLVE_MODE_NONE) {
+            ds_res_att_state->image_view =
+               anv_image_view_from_handle(d_att_info->resolveImageView);
+         } else {
+            ds_res_att_state->image_view =
+               anv_image_view_from_handle(s_att_info->resolveImageView);
+         }
+
+         if (d_att_info) {
+            ds_res_att_state->aux_usage =
+               anv_layout_to_aux_usage(&cmd_buffer->device->info,
+                                       ds_res_att_state->image_view->image,
+                                       VK_IMAGE_ASPECT_DEPTH_BIT,
+                                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                       d_or_s_att_info->resolveImageLayout);
+            ds_res_att_state->current_layout = d_att_info->resolveImageLayout;
+         }
+
+         if (s_att_info) {
+            ds_res_att_state->current_stencil_layout =
+               s_att_info->resolveImageLayout;
+         }
       }
 
       VkImageAspectFlags clear_aspects = 0;
-      if (d_att_info && d_att_info->imageView) {
+      if (d_att_info) {
          VkAttachmentLoadOp load_op =
             get_effective_load_op(d_att_info->loadOp, resuming);
          if (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
@@ -7467,7 +7485,7 @@ genX(cmd_buffer_setup_attachments_dynrender)(struct anv_cmd_buffer *cmd_buffer,
 
          ds_att_state->current_layout = d_att_info->imageLayout;
       }
-      if (s_att_info && s_att_info->imageView) {
+      if (s_att_info) {
          VkAttachmentLoadOp load_op =
             get_effective_load_op(s_att_info->loadOp, resuming);
          if (load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
