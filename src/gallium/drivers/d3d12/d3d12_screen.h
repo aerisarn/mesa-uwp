@@ -63,6 +63,10 @@ struct d3d12_screen {
    ID3D12Device *dev;
    ID3D12CommandQueue *cmdqueue;
 
+   mtx_t submit_mutex;
+   ID3D12Fence *fence;
+   uint64_t fence_value;
+
    struct slab_parent_pool transfer_pool;
    struct pb_manager *bufmgr;
    struct pb_manager *cache_bufmgr;
@@ -77,6 +81,8 @@ struct d3d12_screen {
    struct d3d12_descriptor_handle null_srvs[RESOURCE_DIMENSION_COUNT];
    struct d3d12_descriptor_handle null_uavs[RESOURCE_DIMENSION_COUNT];
    struct d3d12_descriptor_handle null_rtv;
+
+   volatile uint32_t ctx_count;
 
    /* capabilities */
    D3D_FEATURE_LEVEL max_feature_level;

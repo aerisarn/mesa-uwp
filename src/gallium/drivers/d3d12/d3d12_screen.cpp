@@ -701,6 +701,7 @@ d3d12_destroy_screen(struct pipe_screen *pscreen)
    screen->slab_bufmgr->destroy(screen->slab_bufmgr);
    screen->cache_bufmgr->destroy(screen->cache_bufmgr);
    screen->bufmgr->destroy(screen->bufmgr);
+   mtx_destroy(&screen->submit_mutex);
    mtx_destroy(&screen->descriptor_pool_mutex);
    FREE(screen);
 }
@@ -1061,6 +1062,7 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
 
    screen->winsys = winsys;
    mtx_init(&screen->descriptor_pool_mutex, mtx_plain);
+   mtx_init(&screen->submit_mutex, mtx_plain);
 
    screen->base.get_vendor = d3d12_get_vendor;
    screen->base.get_device_vendor = d3d12_get_device_vendor;
@@ -1182,6 +1184,9 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
                                                  IID_PPV_ARGS(&screen->cmdqueue))))
          goto failed;
    }
+
+   if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->fence))))
+      goto failed;
 
    UINT64 timestamp_freq;
    if (FAILED(screen->cmdqueue->GetTimestampFrequency(&timestamp_freq)))

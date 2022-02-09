@@ -236,8 +236,7 @@ struct d3d12_context {
    ID3D12PipelineState *current_compute_pso;
    uint16_t reverse_depth_range;
 
-   ID3D12Fence *cmdqueue_fence;
-   uint64_t fence_value;
+   uint64_t submit_id;
    ID3D12GraphicsCommandList *cmdlist;
 
    struct list_head active_queries;

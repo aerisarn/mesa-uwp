@@ -189,6 +189,8 @@ d3d12_start_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
       d3d12_resume_queries(ctx);
    if (ctx->current_predication)
       d3d12_enable_predication(ctx);
+
+   batch->submit_id = ++ctx->submit_id;
 }
 
 void
@@ -205,9 +207,13 @@ d3d12_end_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
       return;
    }
 
+   mtx_lock(&screen->submit_mutex);
+
    ID3D12CommandList* cmdlists[] = { ctx->cmdlist };
    screen->cmdqueue->ExecuteCommandLists(1, cmdlists);
-   batch->fence = d3d12_create_fence(screen, ctx);
+   batch->fence = d3d12_create_fence(screen);
+
+   mtx_unlock(&screen->submit_mutex);
 }
 
 enum batch_bo_reference_state
