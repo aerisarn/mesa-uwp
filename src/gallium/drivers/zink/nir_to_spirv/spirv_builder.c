@@ -62,11 +62,12 @@ spirv_buffer_prepare(struct spirv_buffer *b, void *mem_ctx, size_t needed)
    return spirv_buffer_grow(b, mem_ctx, needed);
 }
 
-static inline void
+static inline uint32_t
 spirv_buffer_emit_word(struct spirv_buffer *b, uint32_t word)
 {
    assert(b->num_words < b->room);
-   b->words[b->num_words++] = word;
+   b->words[b->num_words] = word;
+   return b->num_words++;
 }
 
 static int
