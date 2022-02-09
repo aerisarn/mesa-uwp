@@ -4042,6 +4042,12 @@ llvmpipe_set_shader_buffers(struct pipe_context *pipe,
 
       util_copy_shader_buffer(&llvmpipe->ssbos[shader][i], buffer);
 
+      if (buffer && buffer->buffer) {
+         boolean read_only = !(writable_bitmask & (1 << idx));
+         llvmpipe_flush_resource(pipe, buffer->buffer, 0, read_only, false,
+                                 false, "buffer");
+      }
+
       if (shader == PIPE_SHADER_VERTEX ||
           shader == PIPE_SHADER_GEOMETRY ||
           shader == PIPE_SHADER_TESS_CTRL ||

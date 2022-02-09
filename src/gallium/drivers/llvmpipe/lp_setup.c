@@ -1179,16 +1179,11 @@ lp_setup_is_resource_referenced( const struct lp_setup_context *setup,
       return LP_REFERENCED_FOR_READ | LP_REFERENCED_FOR_WRITE;
    }
 
-   /* check textures referenced by the scene */
+   /* check resources referenced by the scene */
    for (i = 0; i < setup->num_active_scenes; i++) {
       unsigned ref = lp_scene_is_resource_referenced(setup->scenes[i], texture);
       if (ref)
          return ref;
-   }
-
-   for (i = 0; i < ARRAY_SIZE(setup->ssbos); i++) {
-      if (setup->ssbos[i].current.buffer == texture)
-         return LP_REFERENCED_FOR_READ | LP_REFERENCED_FOR_WRITE;
    }
 
    for (i = 0; i < ARRAY_SIZE(setup->images); i++) {
@@ -1403,6 +1398,17 @@ try_update_scene_state( struct lp_setup_context *setup )
                if (!lp_scene_add_resource_reference(scene,
                                                     setup->fs.current_tex[i],
                                                     new_scene, false)) {
+                  assert(!new_scene);
+                  return FALSE;
+               }
+            }
+         }
+
+         for (i = 0; i < ARRAY_SIZE(setup->ssbos); i++) {
+            if (setup->ssbos[i].current.buffer) {
+               if (!lp_scene_add_resource_reference(scene,
+                                                    setup->ssbos[i].current.buffer,
+                                                    new_scene, setup->ssbo_write_mask & (1 << i))) {
                   assert(!new_scene);
                   return FALSE;
                }
