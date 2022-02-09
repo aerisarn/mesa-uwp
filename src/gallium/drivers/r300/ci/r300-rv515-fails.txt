@@ -146,8 +146,7 @@ KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_int_depth_compo
 KHR-GLES2.core.internalformat.texture2d.depth_component_unsigned_short_depth_component16,Fail
 KHR-GLES2.core.internalformat.texture2d.rgb_float_rgb32f,Fail
 KHR-GLES2.core.internalformat.texture2d.rgba_float_rgba32f,Fail
-KHR-GLES2.texture_3d.copy_sub_image.negative,Fail
-KHR-GLES2.texture_3d.copy_sub_image.rgba,Fail
+
 KHR-GLES2.texture_3d.filtering.combinations.linear_linear_clamp_clamp_clamp,Fail
 KHR-GLES2.texture_3d.filtering.combinations.linear_linear_clamp_clamp_mirror,Fail
 KHR-GLES2.texture_3d.filtering.combinations.linear_linear_clamp_clamp_repeat,Fail
