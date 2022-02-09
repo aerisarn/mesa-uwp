@@ -891,7 +891,7 @@ radv_trap_handler_finish(struct radv_device *device)
    struct radeon_winsys *ws = device->ws;
 
    if (unlikely(device->trap_handler_shader)) {
-      radv_shader_destroy(device, device->trap_handler_shader);
+      radv_trap_handler_shader_destroy(device, device->trap_handler_shader);
    }
 
    if (unlikely(device->tma_bo)) {

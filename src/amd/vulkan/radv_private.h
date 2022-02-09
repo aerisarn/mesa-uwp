@@ -840,7 +840,7 @@ struct radv_device {
    struct ac_perfcounters perfcounters;
 
    /* Trap handler. */
-   struct radv_shader *trap_handler_shader;
+   struct radv_trap_handler_shader *trap_handler_shader;
    struct radeon_winsys_bo *tma_bo; /* Trap Memory Address */
    uint32_t *tma_ptr;
 

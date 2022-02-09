@@ -2061,13 +2061,18 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader
                          keep_shader_info, keep_statistic_info, binary_out);
 }
 
-struct radv_shader *
+struct radv_trap_handler_shader *
 radv_create_trap_handler_shader(struct radv_device *device)
 {
    struct radv_nir_compiler_options options = {0};
    struct radv_shader *shader = NULL;
    struct radv_shader_binary *binary = NULL;
    struct radv_shader_info info = {0};
+   struct radv_trap_handler_shader *trap;
+
+   trap = malloc(sizeof(struct radv_trap_handler_shader));
+   if (!trap)
+      return NULL;
 
    nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_trap_handler");
 
@@ -2078,10 +2083,34 @@ radv_create_trap_handler_shader(struct radv_device *device)
    shader = shader_compile(device, NULL, &b.shader, 1, MESA_SHADER_COMPUTE, &info, &options, false,
                            true, true, false, &binary);
 
+   trap->alloc = radv_alloc_shader_memory(device, shader->code_size, NULL);
+
+   trap->bo = trap->alloc->arena->bo;
+   char *dest_ptr = trap->alloc->arena->ptr + trap->alloc->offset;
+
+   struct radv_shader_binary_legacy *bin = (struct radv_shader_binary_legacy *)binary;
+   memcpy(dest_ptr, bin->data, bin->code_size);
+
    ralloc_free(b.shader);
+   free(shader);
    free(binary);
 
-   return shader;
+   return trap;
+}
+
+uint64_t radv_trap_handler_shader_get_va(const struct radv_trap_handler_shader *trap)
+{
+   return radv_buffer_get_va(trap->alloc->arena->bo) + trap->alloc->offset;
+}
+
+void
+radv_trap_handler_shader_destroy(struct radv_device *device, struct radv_trap_handler_shader *trap)
+{
+   if (!trap)
+      return;
+
+   radv_free_shader_memory(device, trap->alloc);
+   free(trap);
 }
 
 static struct radv_shader_prolog *

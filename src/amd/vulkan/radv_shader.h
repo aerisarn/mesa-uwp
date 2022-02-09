@@ -483,6 +483,11 @@ struct radv_shader {
    uint32_t *statistics;
 };
 
+struct radv_trap_handler_shader {
+   struct radeon_winsys_bo *bo;
+   union radv_shader_arena_block *alloc;
+};
+
 struct radv_shader_prolog {
    struct radeon_winsys_bo *bo;
    union radv_shader_arena_block *alloc;
@@ -541,7 +546,10 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
                            bool multiview, bool keep_shader_info, bool keep_statistic_info,
                            bool disable_optimizations);
 
-struct radv_shader *radv_create_trap_handler_shader(struct radv_device *device);
+struct radv_trap_handler_shader *radv_create_trap_handler_shader(struct radv_device *device);
+uint64_t radv_trap_handler_shader_get_va(const struct radv_trap_handler_shader *trap);
+void radv_trap_handler_shader_destroy(struct radv_device *device,
+                                      struct radv_trap_handler_shader *trap);
 
 struct radv_shader_prolog *radv_create_vs_prolog(struct radv_device *device,
                                                  const struct radv_vs_prolog_key *key);
