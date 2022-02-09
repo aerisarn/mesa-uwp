@@ -56,12 +56,18 @@ enum resource_dimension
    RESOURCE_DIMENSION_COUNT
 };
 
+struct d3d12_memory_info {
+   uint64_t usage;
+   uint64_t budget;
+};
+
 struct d3d12_screen {
    struct pipe_screen base;
    struct sw_winsys *winsys;
 
    ID3D12Device *dev;
    ID3D12CommandQueue *cmdqueue;
+   void (*get_memory_info)(struct d3d12_screen *screen, struct d3d12_memory_info *output);
 
    mtx_t submit_mutex;
    ID3D12Fence *fence;
@@ -115,7 +121,7 @@ struct d3d12_dxgi_screen {
    struct d3d12_screen base;
 
    struct IDXGIFactory4 *factory;
-   struct IDXGIAdapter1 *adapter;
+   struct IDXGIAdapter3 *adapter;
    wchar_t description[128];
 };
 
