@@ -1378,10 +1378,10 @@ d3d12_set_constant_buffer(struct pipe_context *pctx,
             d3d12_increment_constant_buffer_bind_count(ctx, shader, d3d12_resource(buffer));
 
          if (take_ownership) {
-            pipe_resource_reference(&ctx->cbufs[shader][index].buffer, buffer);
-         } else {
             pipe_resource_reference(&ctx->cbufs[shader][index].buffer, NULL);
             ctx->cbufs[shader][index].buffer = buffer;
+         } else {
+            pipe_resource_reference(&ctx->cbufs[shader][index].buffer, buffer);
          }
       }
 
