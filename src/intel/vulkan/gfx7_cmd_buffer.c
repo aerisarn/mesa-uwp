@@ -48,11 +48,10 @@ clamp_int64(int64_t x, int64_t min, int64_t max)
 void
 gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
-   uint32_t count = cmd_buffer->state.gfx.dynamic.scissor.count;
-   const VkRect2D *scissors = cmd_buffer->state.gfx.dynamic.scissor.scissors;
-   const VkViewport *viewports =
-      cmd_buffer->state.gfx.dynamic.viewport.viewports;
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   uint32_t count = gfx->dynamic.scissor.count;
+   const VkRect2D *scissors = gfx->dynamic.scissor.scissors;
+   const VkViewport *viewports = gfx->dynamic.viewport.viewports;
 
    /* Wa_1409725701:
     *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
@@ -91,21 +90,14 @@ gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 
       /* Do this math using int64_t so overflow gets clamped correctly. */
       if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
-         y_min = clamp_int64((uint64_t) y_min,
-                             cmd_buffer->state.render_area.offset.y, max);
-         x_min = clamp_int64((uint64_t) x_min,
-                             cmd_buffer->state.render_area.offset.x, max);
+         y_min = clamp_int64((uint64_t) y_min, gfx->render_area.offset.y, max);
+         x_min = clamp_int64((uint64_t) x_min, gfx->render_area.offset.x, max);
          y_max = clamp_int64((uint64_t) y_max, 0,
-                             cmd_buffer->state.render_area.offset.y +
-                             cmd_buffer->state.render_area.extent.height - 1);
+                             gfx->render_area.offset.y +
+                             gfx->render_area.extent.height - 1);
          x_max = clamp_int64((uint64_t) x_max, 0,
-                             cmd_buffer->state.render_area.offset.x +
-                             cmd_buffer->state.render_area.extent.width - 1);
-      } else if (fb) {
-         y_min = clamp_int64((uint64_t) y_min, 0, max);
-         x_min = clamp_int64((uint64_t) x_min, 0, max);
-         y_max = clamp_int64((uint64_t) y_max, 0, fb->height - 1);
-         x_max = clamp_int64((uint64_t) x_max, 0, fb->width - 1);
+                             gfx->render_area.offset.x +
+                             gfx->render_area.extent.width - 1);
       }
 
       struct GFX7_SCISSOR_RECT scissor = {
@@ -178,16 +170,9 @@ void genX(CmdBindIndexBuffer)(
 static uint32_t
 get_depth_format(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct anv_render_pass *pass = cmd_buffer->state.pass;
-   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
 
-   if (!subpass->depth_stencil_attachment)
-      return D16_UNORM;
-
-   struct anv_render_pass_attachment *att =
-      &pass->attachments[subpass->depth_stencil_attachment->attachment];
-
-   switch (att->format) {
+   switch (gfx->depth_att.vk_format) {
    case VK_FORMAT_D16_UNORM:
    case VK_FORMAT_D16_UNORM_S8_UINT:
       return D16_UNORM;

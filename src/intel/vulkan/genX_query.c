@@ -1218,9 +1218,9 @@ void genX(CmdEndQueryIndexedEXT)(
     * first index, mark the other query indices as being already available
     * with result 0.
     */
-   if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask) {
+   if (cmd_buffer->state.gfx.view_mask) {
       const uint32_t num_queries =
-         util_bitcount(cmd_buffer->state.subpass->view_mask);
+         util_bitcount(cmd_buffer->state.gfx.view_mask);
       if (num_queries > 1)
          emit_zero_queries(cmd_buffer, &b, pool, query + 1, num_queries - 1);
    }
@@ -1271,9 +1271,9 @@ void genX(CmdWriteTimestamp2KHR)(
     * first index, mark the other query indices as being already available
     * with result 0.
     */
-   if (cmd_buffer->state.subpass && cmd_buffer->state.subpass->view_mask) {
+   if (cmd_buffer->state.gfx.view_mask) {
       const uint32_t num_queries =
-         util_bitcount(cmd_buffer->state.subpass->view_mask);
+         util_bitcount(cmd_buffer->state.gfx.view_mask);
       if (num_queries > 1)
          emit_zero_queries(cmd_buffer, &b, pool, query + 1, num_queries - 1);
    }

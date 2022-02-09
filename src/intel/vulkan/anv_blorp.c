@@ -1210,22 +1210,17 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
                        const VkClearAttachment *attachment,
                        uint32_t rectCount, const VkClearRect *pRects)
 {
-   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
-   const uint32_t color_att = attachment->colorAttachment;
-   assert(color_att < subpass->color_count);
-   const uint32_t att_idx = subpass->color_attachments[color_att].attachment;
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   const uint32_t att_idx = attachment->colorAttachment;
+   assert(att_idx < gfx->color_att_count);
+   const struct anv_attachment *att = &gfx->color_att[att_idx];
 
-   if (att_idx == VK_ATTACHMENT_UNUSED)
+   if (att->vk_format == VK_FORMAT_UNDEFINED)
       return;
-
-   struct anv_render_pass_attachment *pass_att =
-      &cmd_buffer->state.pass->attachments[att_idx];
-   struct anv_attachment_state *att_state =
-      &cmd_buffer->state.attachments[att_idx];
 
    uint32_t binding_table;
    VkResult result =
-      binding_table_for_surface_state(cmd_buffer, att_state->color.state,
+      binding_table_for_surface_state(cmd_buffer, att->surface_state.state,
                                       &binding_table);
    if (result != VK_SUCCESS)
       return;
@@ -1234,13 +1229,14 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
       vk_to_isl_color(attachment->clearValue.color);
 
    /* If multiview is enabled we ignore baseArrayLayer and layerCount */
-   if (subpass->view_mask) {
-      u_foreach_bit(view_idx, subpass->view_mask) {
+   if (gfx->view_mask) {
+      u_foreach_bit(view_idx, gfx->view_mask) {
          for (uint32_t r = 0; r < rectCount; ++r) {
             const VkOffset2D offset = pRects[r].rect.offset;
             const VkExtent2D extent = pRects[r].rect.extent;
             blorp_clear_attachments(batch, binding_table,
-                                    ISL_FORMAT_UNSUPPORTED, pass_att->samples,
+                                    ISL_FORMAT_UNSUPPORTED,
+                                    gfx->samples,
                                     view_idx, 1,
                                     offset.x, offset.y,
                                     offset.x + extent.width,
@@ -1256,7 +1252,8 @@ clear_color_attachment(struct anv_cmd_buffer *cmd_buffer,
       const VkExtent2D extent = pRects[r].rect.extent;
       assert(pRects[r].layerCount != VK_REMAINING_ARRAY_LAYERS);
       blorp_clear_attachments(batch, binding_table,
-                              ISL_FORMAT_UNSUPPORTED, pass_att->samples,
+                              ISL_FORMAT_UNSUPPORTED,
+                              gfx->samples,
                               pRects[r].baseArrayLayer,
                               pRects[r].layerCount,
                               offset.x, offset.y,
@@ -1272,22 +1269,20 @@ clear_depth_stencil_attachment(struct anv_cmd_buffer *cmd_buffer,
                                uint32_t rectCount, const VkClearRect *pRects)
 {
    static const union isl_color_value color_value = { .u32 = { 0, } };
-   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
-   if (!subpass->depth_stencil_attachment)
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   const struct anv_attachment *d_att = &gfx->depth_att;
+   const struct anv_attachment *s_att = &gfx->stencil_att;
+   if (d_att->vk_format == VK_FORMAT_UNDEFINED &&
+       s_att->vk_format == VK_FORMAT_UNDEFINED)
       return;
-
-   const uint32_t att_idx = subpass->depth_stencil_attachment->attachment;
-   assert(att_idx != VK_ATTACHMENT_UNUSED);
-   struct anv_render_pass_attachment *pass_att =
-      &cmd_buffer->state.pass->attachments[att_idx];
 
    bool clear_depth = attachment->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT;
    bool clear_stencil = attachment->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT;
 
    enum isl_format depth_format = ISL_FORMAT_UNSUPPORTED;
-   if (clear_depth) {
+   if (d_att->vk_format != VK_FORMAT_UNDEFINED) {
       depth_format = anv_get_isl_format(&cmd_buffer->device->info,
-                                        pass_att->format,
+                                        d_att->vk_format,
                                         VK_IMAGE_ASPECT_DEPTH_BIT,
                                         VK_IMAGE_TILING_OPTIMAL);
    }
@@ -1295,20 +1290,21 @@ clear_depth_stencil_attachment(struct anv_cmd_buffer *cmd_buffer,
    uint32_t binding_table;
    VkResult result =
       binding_table_for_surface_state(cmd_buffer,
-                                      cmd_buffer->state.null_surface_state,
+                                      gfx->null_surface_state,
                                       &binding_table);
    if (result != VK_SUCCESS)
       return;
 
    /* If multiview is enabled we ignore baseArrayLayer and layerCount */
-   if (subpass->view_mask) {
-      u_foreach_bit(view_idx, subpass->view_mask) {
+   if (gfx->view_mask) {
+      u_foreach_bit(view_idx, gfx->view_mask) {
          for (uint32_t r = 0; r < rectCount; ++r) {
             const VkOffset2D offset = pRects[r].rect.offset;
             const VkExtent2D extent = pRects[r].rect.extent;
             VkClearDepthStencilValue value = attachment->clearValue.depthStencil;
             blorp_clear_attachments(batch, binding_table,
-                                    depth_format, pass_att->samples,
+                                    depth_format,
+                                    gfx->samples,
                                     view_idx, 1,
                                     offset.x, offset.y,
                                     offset.x + extent.width,
@@ -1327,7 +1323,8 @@ clear_depth_stencil_attachment(struct anv_cmd_buffer *cmd_buffer,
       VkClearDepthStencilValue value = attachment->clearValue.depthStencil;
       assert(pRects[r].layerCount != VK_REMAINING_ARRAY_LAYERS);
       blorp_clear_attachments(batch, binding_table,
-                              depth_format, pass_att->samples,
+                              depth_format,
+                              gfx->samples,
                               pRects[r].baseArrayLayer,
                               pRects[r].layerCount,
                               offset.x, offset.y,

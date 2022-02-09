@@ -2798,56 +2798,16 @@ genX(graphics_pipeline_create)(
       .pNext = &rsd_info_tmp,
    };
 
-   const VkPipelineRenderingCreateInfo *rendering_info;
-   const VkRenderingSelfDependencyInfoMESA *rsd_info;
-   VkFormat color_formats_tmp[MAX_RTS];
-   if (pCreateInfo->renderPass != VK_NULL_HANDLE) {
-      ANV_FROM_HANDLE(anv_render_pass, render_pass, pCreateInfo->renderPass);
-      assert(pCreateInfo->subpass < render_pass->subpass_count);
-      const struct anv_subpass *subpass =
-         &render_pass->subpasses[pCreateInfo->subpass];
-
-      rendering_info_tmp.viewMask = subpass->view_mask;
-
-      assert(subpass->color_count <= MAX_RTS);
-      for (uint32_t i = 0; i < subpass->color_count; i++) {
-         uint32_t att_idx = subpass->color_attachments[i].attachment;
-         if (att_idx < render_pass->attachment_count)
-            color_formats_tmp[i] = render_pass->attachments[att_idx].format;
-         else
-            color_formats_tmp[i] = VK_FORMAT_UNDEFINED;
-      }
-      rendering_info_tmp.colorAttachmentCount = subpass->color_count;
-      rendering_info_tmp.pColorAttachmentFormats = color_formats_tmp;
-
-      if (subpass->depth_stencil_attachment) {
-         uint32_t ds_att_idx = subpass->depth_stencil_attachment->attachment;
-         assert(ds_att_idx < render_pass->attachment_count);
-         VkFormat depth_stencil_format =
-            render_pass->attachments[ds_att_idx].format;
-         if (vk_format_has_depth(depth_stencil_format)) {
-            rendering_info_tmp.depthAttachmentFormat = depth_stencil_format;
-            rsd_info_tmp.depthSelfDependency = subpass->has_ds_self_dep;
-         }
-         if (vk_format_has_stencil(depth_stencil_format)) {
-            rendering_info_tmp.stencilAttachmentFormat = depth_stencil_format;
-            rsd_info_tmp.stencilSelfDependency = subpass->has_ds_self_dep;
-         }
-      }
-
+   const VkPipelineRenderingCreateInfo *rendering_info =
+      vk_get_pipeline_rendering_create_info(pCreateInfo);
+   if (rendering_info == NULL)
       rendering_info = &rendering_info_tmp;
-      rsd_info = &rsd_info_tmp;
-   } else {
-      rendering_info = vk_find_struct_const(pCreateInfo->pNext,
-                                            PIPELINE_RENDERING_CREATE_INFO_KHR);
-      if (rendering_info == NULL)
-         rendering_info = &rendering_info_tmp;
 
-      rsd_info = vk_find_struct_const(rendering_info->pNext,
-                                      RENDERING_SELF_DEPENDENCY_INFO_MESA);
-      if (rsd_info == NULL)
-         rsd_info = &rsd_info_tmp;
-   }
+   const VkRenderingSelfDependencyInfoMESA *rsd_info =
+      vk_find_struct_const(rendering_info->pNext,
+                           RENDERING_SELF_DEPENDENCY_INFO_MESA);
+   if (rsd_info == NULL)
+      rsd_info = &rsd_info_tmp;
 
    result = anv_graphics_pipeline_init(pipeline, device, cache,
                                        pCreateInfo, rendering_info,

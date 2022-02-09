@@ -37,10 +37,9 @@
 void
 gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
-   uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
-   const VkViewport *viewports =
-      cmd_buffer->state.gfx.dynamic.viewport.viewports;
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   uint32_t count = gfx->dynamic.viewport.count;
+   const VkViewport *viewports = gfx->dynamic.viewport.viewports;
    struct anv_state sf_clip_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 64, 64);
 
@@ -72,12 +71,16 @@ gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
          .YMaxViewPort = MAX2(vp->y, vp->y + vp->height) - 1,
       };
 
-      if (fb) {
+      if (gfx->render_area.extent.width > 0 &&
+          gfx->render_area.extent.height > 0) {
          /* We can only calculate a "real" guardband clip if we know the
           * framebuffer at the time we emit the packet.  Otherwise, we have
           * fall back to a worst-case guardband of [-1, 1].
           */
-         intel_calculate_guardband_size(fb->width, fb->height,
+         intel_calculate_guardband_size(gfx->render_area.offset.x +
+                                           gfx->render_area.extent.width,
+                                        gfx->render_area.offset.y +
+                                           gfx->render_area.extent.height,
                                         sfv.ViewportMatrixElementm00,
                                         sfv.ViewportMatrixElementm11,
                                         sfv.ViewportMatrixElementm30,
@@ -359,13 +362,10 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->state.hiz_enabled)
       return false;
 
-   /* We can't possibly know if HiZ is enabled without the framebuffer */
-   assert(cmd_buffer->state.framebuffer);
-
-   /* HiZ is enabled so we had better have a depth buffer with HiZ */
-   const struct anv_image_view *ds_iview =
-      anv_cmd_buffer_get_depth_stencil_view(cmd_buffer);
-   assert(ds_iview && ds_iview->image->planes[0].aux_usage == ISL_AUX_USAGE_HIZ);
+   /* We can't possibly know if HiZ is enabled without the depth attachment */
+   ASSERTED const struct anv_image_view *d_iview =
+      cmd_buffer->state.gfx.depth_att.iview;
+   assert(d_iview && d_iview->image->planes[0].aux_usage == ISL_AUX_USAGE_HIZ);
 
    /* 3DSTATE_PS_EXTRA::PixelShaderValid */
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -388,7 +388,7 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer)
     * 3DSTATE_WM_DEPTH_STENCIL::StencilTestEnable
     */
    const bool stc_test_en =
-      (ds_iview->image->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+      cmd_buffer->state.gfx.stencil_att.iview != NULL &&
       pipeline->stencil_test_enable;
 
    /* 3DSTATE_STENCIL_BUFFER::STENCIL_BUFFER_ENABLE &&
@@ -396,7 +396,7 @@ want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer)
     *  3DSTATE_DEPTH_BUFFER::STENCIL_WRITE_ENABLE)
     */
    const bool stc_write_en =
-      (ds_iview->image->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+      cmd_buffer->state.gfx.stencil_att.iview != NULL &&
       (cmd_buffer->state.gfx.dynamic.stencil_write_mask.front ||
        cmd_buffer->state.gfx.dynamic.stencil_write_mask.back) &&
       pipeline->writes_stencil;

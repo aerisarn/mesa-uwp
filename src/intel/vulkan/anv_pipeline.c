@@ -38,6 +38,7 @@
 #include "anv_nir.h"
 #include "nir/nir_xfb_info.h"
 #include "spirv/nir_spirv.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 
 /* Needed for SWIZZLE macros */

@@ -250,8 +250,6 @@ anv_cmd_state_finish(struct anv_cmd_buffer *cmd_buffer)
 
    anv_cmd_pipeline_state_finish(cmd_buffer, &state->gfx.base);
    anv_cmd_pipeline_state_finish(cmd_buffer, &state->compute.base);
-
-   vk_free(&cmd_buffer->vk.pool->alloc, state->attachments);
 }
 
 static void
@@ -1365,64 +1363,6 @@ void anv_CmdPushConstants(
    }
 
    cmd_buffer->state.push_constants_dirty |= stageFlags;
-}
-
-/**
- * Return NULL if the current subpass has no color attachment.
- */
-const struct anv_image_view *
-anv_cmd_buffer_get_first_color_view(const struct anv_cmd_buffer *cmd_buffer)
-{
-   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
-
-   if (subpass->color_count == 0)
-      return NULL;
-
-   const struct anv_image_view *iview =
-      cmd_buffer->state.attachments[subpass->color_attachments[0].attachment].image_view;
-
-   assert(iview->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT);
-
-   return iview;
-}
-
-/**
- * Return NULL if the current subpass has no depthstencil attachment.
- */
-const struct anv_image_view *
-anv_cmd_buffer_get_depth_stencil_view(const struct anv_cmd_buffer *cmd_buffer)
-{
-   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
-
-   if (subpass->depth_stencil_attachment == NULL)
-      return NULL;
-
-   const struct anv_image_view *iview =
-      cmd_buffer->state.attachments[subpass->depth_stencil_attachment->attachment].image_view;
-
-   assert(iview->vk.aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
-                               VK_IMAGE_ASPECT_STENCIL_BIT));
-
-   return iview;
-}
-
-/**
- * Return NULL if the current subpass has no fragment shading rate attachment.
- */
-const struct anv_image_view *
-anv_cmd_buffer_get_fsr_view(const struct anv_cmd_buffer *cmd_buffer)
-{
-   const struct anv_subpass *subpass = cmd_buffer->state.subpass;
-
-   if (subpass->fsr_attachment == NULL)
-      return NULL;
-
-   const struct anv_image_view *iview =
-      cmd_buffer->state.attachments[subpass->fsr_attachment->attachment].image_view;
-
-   assert(iview->image->vk.usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR);
-
-   return iview;
 }
 
 static struct anv_descriptor_set *

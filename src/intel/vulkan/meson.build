@@ -122,7 +122,6 @@ libanv_files = files(
   'anv_nir_lower_multiview.c',
   'anv_nir_lower_ubo_loads.c',
   'anv_nir_lower_ycbcr_textures.c',
-  'anv_pass.c',
   'anv_perf.c',
   'anv_pipeline.c',
   'anv_pipeline_cache.c',
