@@ -285,12 +285,17 @@ missing_dual_src_outputs(struct d3d12_context *ctx)
                   continue;
 
                nir_variable *var = nir_intrinsic_get_var(intr, 0);
-               if (var->data.mode != nir_var_shader_out ||
-                   (var->data.location != FRAG_RESULT_COLOR &&
-                    var->data.location != FRAG_RESULT_DATA0))
+               if (var->data.mode != nir_var_shader_out)
                   continue;
 
-               indices_seen |= 1u << var->data.index;
+               unsigned index = var->data.index;
+               if (var->data.location > FRAG_RESULT_DATA0)
+                  index = var->data.location - FRAG_RESULT_DATA0;
+               else if (var->data.location != FRAG_RESULT_COLOR &&
+                        var->data.location != FRAG_RESULT_DATA0)
+                  continue;
+
+               indices_seen |= 1u << index;
                if ((indices_seen & 3) == 3)
                   return 0;
             }
