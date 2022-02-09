@@ -1188,6 +1188,8 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->fence))))
       goto failed;
 
+   list_inithead(&screen->residency_list);
+
    UINT64 timestamp_freq;
    if (FAILED(screen->cmdqueue->GetTimestampFrequency(&timestamp_freq)))
        timestamp_freq = 10000000;

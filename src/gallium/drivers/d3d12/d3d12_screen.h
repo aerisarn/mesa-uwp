@@ -66,6 +66,7 @@ struct d3d12_screen {
    mtx_t submit_mutex;
    ID3D12Fence *fence;
    uint64_t fence_value;
+   struct list_head residency_list;
 
    struct slab_parent_pool transfer_pool;
    struct pb_manager *bufmgr;

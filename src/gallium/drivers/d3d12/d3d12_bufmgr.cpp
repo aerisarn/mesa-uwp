@@ -39,7 +39,7 @@
 struct d3d12_bufmgr {
    struct pb_manager base;
 
-   ID3D12Device *dev;
+   struct d3d12_screen *screen;
 };
 
 extern const struct pb_vtbl d3d12_buffer_vtbl;
@@ -72,7 +72,7 @@ create_trans_state(ID3D12Resource *res, enum pipe_format format)
 }
 
 struct d3d12_bo *
-d3d12_bo_wrap_res(ID3D12Resource *res, enum pipe_format format)
+d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_format format, enum d3d12_residency_status residency)
 {
    struct d3d12_bo *bo;
 
@@ -84,12 +84,23 @@ d3d12_bo_wrap_res(ID3D12Resource *res, enum pipe_format format)
    bo->res = res;
    bo->trans_state = create_trans_state(res, format);
 
+   bo->residency_status = residency;
+   bo->last_used_timestamp = 0;
+   D3D12_RESOURCE_DESC desc = res->GetDesc();
+   screen->dev->GetCopyableFootprints(&desc, 0, bo->trans_state->NumSubresources(), 0, nullptr, nullptr, nullptr, &bo->estimated_size);
+   if (residency != d3d12_evicted) {
+      mtx_lock(&screen->submit_mutex);
+      list_add(&bo->residency_list_entry, &screen->residency_list);
+      mtx_unlock(&screen->submit_mutex);
+   }
+
    return bo;
 }
 
 struct d3d12_bo *
-d3d12_bo_new(ID3D12Device *dev, uint64_t size, const pb_desc *pb_desc)
+d3d12_bo_new(struct d3d12_screen *screen, uint64_t size, const pb_desc *pb_desc)
 {
+   ID3D12Device *dev = screen->dev;
    ID3D12Resource *res;
 
    D3D12_RESOURCE_DESC res_desc;
@@ -122,7 +133,7 @@ d3d12_bo_new(ID3D12Device *dev, uint64_t size, const pb_desc *pb_desc)
    if (FAILED(hres))
       return NULL;
 
-   return d3d12_bo_wrap_res(res, PIPE_FORMAT_NONE);
+   return d3d12_bo_wrap_res(screen, res, PIPE_FORMAT_NONE, d3d12_resident);
 }
 
 struct d3d12_bo *
@@ -155,6 +166,9 @@ d3d12_bo_unreference(struct d3d12_bo *bo)
       } else {
          delete bo->trans_state;
          bo->res->Release();
+         if (bo->residency_status != d3d12_evicted) {
+            list_del(&bo->residency_list_entry);
+         }
       }
       FREE(bo);
    }
@@ -289,7 +303,7 @@ d3d12_bufmgr_create_buffer(struct pb_manager *pmgr,
    buf->range.Begin = 0;
    buf->range.End = size;
 
-   buf->bo = d3d12_bo_new(mgr->dev, size, pb_desc);
+   buf->bo = d3d12_bo_new(mgr->screen, size, pb_desc);
    if (!buf->bo) {
       FREE(buf);
       return NULL;
@@ -341,7 +355,7 @@ d3d12_bufmgr_create(struct d3d12_screen *screen)
    mgr->base.flush = d3d12_bufmgr_flush;
    mgr->base.is_buffer_busy = d3d12_bufmgr_is_buffer_busy;
 
-   mgr->dev = screen->dev;
+   mgr->screen = screen;
 
    return &mgr->base;
 }
