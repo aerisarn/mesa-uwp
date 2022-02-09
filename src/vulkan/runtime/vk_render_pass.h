@@ -58,6 +58,14 @@ struct vk_subpass_attachment {
     */
    VkImageLayout stencil_layout;
 
+   /** A per-view mask for if this is the last use of this attachment
+    *
+    * If the same render pass attachment is used multiple ways within a
+    * subpass, corresponding last_subpass bits will be set in all of them.
+    * For the non-multiview case, only the first bit is used.
+    */
+   uint32_t last_subpass;
+
    /** Resolve attachment, if any */
    struct vk_subpass_attachment *resolve;
 };
@@ -93,7 +101,12 @@ struct vk_subpass {
    /** VkSubpassDescriptionDepthStencilResolve::pDepthStencilResolveAttachment */
    struct vk_subpass_attachment *depth_stencil_resolve_attachment;
 
-   /** VkSubpassDescription2::viewMask */
+   /** VkSubpassDescription2::viewMask or 1 for non-multiview
+    *
+    * For all view masks in the vk_render_pass data structure, we use a mask
+    * of 1 for non-multiview instead of a mask of 0.  To determine if the
+    * render pass is multiview or not, see vk_render_pass::is_multiview.
+    */
    uint32_t view_mask;
 
    /** VkSubpassDescriptionDepthStencilResolve::depthResolveMode */
@@ -112,6 +125,12 @@ struct vk_render_pass_attachment {
 
    /** VkAttachmentDescription2::samples */
    uint32_t samples;
+
+   /** Views in which this attachment is used, 0 for unused
+    *
+    * For non-multiview, this will be 1 if the attachment is used.
+    */
+   uint32_t view_mask;
 
    /** VkAttachmentDescription2::loadOp */
    VkAttachmentLoadOp load_op;
@@ -176,6 +195,15 @@ struct vk_subpass_dependency {
 
 struct vk_render_pass {
    struct vk_object_base base;
+
+   /** True if this render pass uses multiview
+    *
+    * This is true if all subpasses have viewMask != 0.
+    */
+   bool is_multiview;
+
+   /** Views used by this render pass or 1 for non-multiview */
+   uint32_t view_mask;
 
    /** VkRenderPassCreateInfo2::attachmentCount */
    uint32_t attachment_count;

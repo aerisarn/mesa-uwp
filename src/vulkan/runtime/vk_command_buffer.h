@@ -34,6 +34,32 @@ extern "C" {
 #endif
 
 struct vk_command_pool;
+struct vk_framebuffer;
+struct vk_image_view;
+struct vk_render_pass;
+
+/* Since VkSubpassDescription2::viewMask is a 32-bit integer, there are a
+ * maximum of 32 possible views.
+ */
+#define MESA_VK_MAX_MULTIVIEW_VIEW_COUNT 32
+
+struct vk_attachment_view_state {
+   VkImageLayout layout;
+   VkImageLayout stencil_layout;
+};
+
+struct vk_attachment_state {
+   struct vk_image_view *image_view;
+
+   /** A running tally of which views have been loaded */
+   uint32_t views_loaded;
+
+   /** Per-view state */
+   struct vk_attachment_view_state views[MESA_VK_MAX_MULTIVIEW_VIEW_COUNT];
+
+   /** VkRenderPassBeginInfo::pClearValues[i] */
+   VkClearValue clear_value;
+};
 
 struct vk_command_buffer {
    struct vk_object_base base;
@@ -95,6 +121,15 @@ struct vk_command_buffer {
     */
    struct util_dynarray labels;
    bool region_begin;
+
+   struct vk_render_pass *render_pass;
+   uint32_t subpass_idx;
+   struct vk_framebuffer *framebuffer;
+   VkRect2D render_area;
+
+   /* This uses the same trick as STACK_ARRAY */
+   struct vk_attachment_state *attachments;
+   struct vk_attachment_state _attachments[8];
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_command_buffer, base, VkCommandBuffer,
@@ -104,6 +139,9 @@ VkResult MUST_CHECK
 vk_command_buffer_init(struct vk_command_buffer *command_buffer,
                        struct vk_command_pool *pool,
                        VkCommandBufferLevel level);
+
+void
+vk_command_buffer_reset_render_pass(struct vk_command_buffer *cmd_buffer);
 
 void
 vk_command_buffer_reset(struct vk_command_buffer *command_buffer);
