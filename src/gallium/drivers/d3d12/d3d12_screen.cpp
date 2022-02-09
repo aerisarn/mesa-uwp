@@ -29,6 +29,7 @@
 #include "d3d12_debug.h"
 #include "d3d12_fence.h"
 #include "d3d12_format.h"
+#include "d3d12_residency.h"
 #include "d3d12_resource.h"
 #include "d3d12_nir_passes.h"
 
@@ -797,7 +798,7 @@ enable_gpu_validation()
       debug3->SetEnableGPUBasedValidation(true);
 }
 
-static ID3D12Device *
+static ID3D12Device3 *
 create_device(IUnknown *adapter)
 {
    typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
@@ -835,7 +836,7 @@ create_device(IUnknown *adapter)
       return NULL;
    }
 
-   ID3D12Device *dev;
+   ID3D12Device3 *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
                  IID_PPV_ARGS(&dev))))
       return dev;
@@ -1188,7 +1189,8 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    if (FAILED(screen->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&screen->fence))))
       goto failed;
 
-   list_inithead(&screen->residency_list);
+   if (!d3d12_init_residency(screen))
+      goto failed;
 
    UINT64 timestamp_freq;
    if (FAILED(screen->cmdqueue->GetTimestampFrequency(&timestamp_freq)))

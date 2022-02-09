@@ -53,7 +53,7 @@ struct d3d12_bo {
 
    struct list_head residency_list_entry;
    uint64_t estimated_size;
-   uint64_t last_used_timestamp;
+   int64_t last_used_timestamp;
    uint64_t last_used_fence;
    enum d3d12_residency_status residency_status;
 };

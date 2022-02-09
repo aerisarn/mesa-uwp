@@ -25,6 +25,7 @@
 #include "d3d12_context.h"
 #include "d3d12_fence.h"
 #include "d3d12_query.h"
+#include "d3d12_residency.h"
 #include "d3d12_resource.h"
 #include "d3d12_screen.h"
 #include "d3d12_surface.h"
@@ -208,6 +209,8 @@ d3d12_end_batch(struct d3d12_context *ctx, struct d3d12_batch *batch)
    }
 
    mtx_lock(&screen->submit_mutex);
+
+   d3d12_process_batch_residency(screen, batch);
 
    ID3D12CommandList* cmdlists[] = { ctx->cmdlist };
    screen->cmdqueue->ExecuteCommandLists(1, cmdlists);

@@ -65,14 +65,17 @@ struct d3d12_screen {
    struct pipe_screen base;
    struct sw_winsys *winsys;
 
-   ID3D12Device *dev;
+   ID3D12Device3 *dev;
    ID3D12CommandQueue *cmdqueue;
    void (*get_memory_info)(struct d3d12_screen *screen, struct d3d12_memory_info *output);
 
    mtx_t submit_mutex;
    ID3D12Fence *fence;
    uint64_t fence_value;
+
    struct list_head residency_list;
+   ID3D12Fence *residency_fence;
+   uint64_t residency_fence_value;
 
    struct slab_parent_pool transfer_pool;
    struct pb_manager *bufmgr;
