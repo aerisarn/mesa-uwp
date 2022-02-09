@@ -150,7 +150,7 @@ spirv_builder_emit_entry_point(struct spirv_builder *b,
         spirv_buffer_emit_word(&b->entry_points, interfaces[i]);
 }
 
-void
+uint32_t
 spirv_builder_emit_exec_mode_literal(struct spirv_builder *b, SpvId entry_point,
                                      SpvExecutionMode exec_mode, uint32_t param)
 {
@@ -158,7 +158,7 @@ spirv_builder_emit_exec_mode_literal(struct spirv_builder *b, SpvId entry_point,
    spirv_buffer_emit_word(&b->exec_modes, SpvOpExecutionMode | (4 << 16));
    spirv_buffer_emit_word(&b->exec_modes, entry_point);
    spirv_buffer_emit_word(&b->exec_modes, exec_mode);
-   spirv_buffer_emit_word(&b->exec_modes, param);
+   return spirv_buffer_emit_word(&b->exec_modes, param);
 }
 
 void
