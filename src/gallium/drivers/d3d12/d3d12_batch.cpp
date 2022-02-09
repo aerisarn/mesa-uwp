@@ -257,6 +257,8 @@ d3d12_batch_reference_sampler_view(struct d3d12_batch *batch,
    if (!entry) {
       entry = _mesa_set_add(batch->sampler_views, sv);
       pipe_reference(NULL, &sv->base.reference);
+
+      d3d12_batch_reference_resource(batch, d3d12_resource(sv->base.texture), false);
    }
 }
 
