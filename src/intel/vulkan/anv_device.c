@@ -1858,8 +1858,20 @@ void anv_GetPhysicalDeviceProperties(
       .maxDescriptorSetInputAttachments         = MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS,
       .maxVertexInputAttributes                 = MAX_VBS,
       .maxVertexInputBindings                   = MAX_VBS,
+      /* Broadwell PRMs: Volume 2d: Command Reference: Structures:
+       *
+       * VERTEX_ELEMENT_STATE::Source Element Offset: [0,2047]
+       */
       .maxVertexInputAttributeOffset            = 2047,
-      .maxVertexInputBindingStride              = 2048,
+      /* Broadwell PRMs: Volume 2d: Command Reference: Structures:
+       *
+       * VERTEX_BUFFER_STATE::Buffer Pitch: [0,2048]
+       *
+       * Skylake PRMs: Volume 2d: Command Reference: Structures:
+       *
+       * VERTEX_BUFFER_STATE::Buffer Pitch: [0,4095]
+       */
+      .maxVertexInputBindingStride              = devinfo->ver < 9 ? 2048 : 4095,
       .maxVertexOutputComponents                = 128,
       .maxTessellationGenerationLevel           = 64,
       .maxTessellationPatchSize                 = 32,
