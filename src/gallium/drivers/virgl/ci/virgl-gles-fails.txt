@@ -40,8 +40,7 @@ dEQP-GLES31.functional.shaders.sample_variables.sample_mask_in.bit_count_per_two
 dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.36,Fail
 dEQP-GLES31.functional.ssbo.layout.random.nested_structs_arrays_instance_arrays.22,Fail
 KHR-GL30.glsl_noperspective.functionaltest,Fail
-# https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/2892
-KHR-GL30.shaders30.glsl_constructors.bvec4_from_mat4x2_vs,Crash
+
 KHR-GL30.transform_feedback.api_errors_test,Fail
 KHR-GL30.transform_feedback.draw_xfb_stream_instanced_test,Fail
 KHR-GL31.CommonBugs.CommonBug_ParenthesisInLayoutQualifierIntegerValue,Fail
