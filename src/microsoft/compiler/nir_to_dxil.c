@@ -482,6 +482,7 @@ struct ntd_context {
 
    struct dxil_func_def *main_func_def;
    struct dxil_func_def *tess_ctrl_patch_constant_func_def;
+   unsigned unnamed_ubo_count;
 };
 
 static const char*
@@ -1206,7 +1207,17 @@ emit_ubo_var(struct ntd_context *ctx, nir_variable *var)
    unsigned count = 1;
    if (glsl_type_is_array(var->type))
       count = glsl_get_length(var->type);
-   return emit_cbv(ctx, var->data.binding, var->data.descriptor_set, get_dword_size(var->type), count, var->name);
+
+   char *name = var->name;
+   char temp_name[30];
+   if (name && strlen(name) == 0) {
+      snprintf(temp_name, sizeof(temp_name), "__unnamed_ubo_%d",
+               ctx->unnamed_ubo_count++);
+      name = temp_name;
+   }
+
+   return emit_cbv(ctx, var->data.binding, var->data.descriptor_set,
+                   get_dword_size(var->type), count, name);
 }
 
 static bool
