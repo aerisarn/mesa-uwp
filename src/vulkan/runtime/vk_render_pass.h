@@ -114,6 +114,20 @@ struct vk_subpass {
 
    /** VkSubpassDescriptionDepthStencilResolve::stencilResolveMode */
    VkResolveModeFlagBitsKHR stencil_resolve_mode;
+
+   /** VkPipelineRenderingCreateInfo for this subpass
+    *
+    * Returned by vk_get_pipeline_rendering_create_info() if
+    * VkGraphicsPipelineCreateInfo::renderPass != VK_NULL_HANDLE.
+    */
+   VkPipelineRenderingCreateInfo pipeline_info;
+
+   /** VkCommandBufferInheritanceRenderingInfo for this subpass
+    *
+    * Returned by vk_get_command_buffer_inheritance_rendering_info() if
+    * VkCommandBufferInheritanceInfo::renderPass != VK_NULL_HANDLE.
+    */
+   VkCommandBufferInheritanceRenderingInfo inheritance_info;
 };
 
 struct vk_render_pass_attachment {
@@ -226,6 +240,42 @@ struct vk_render_pass {
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(vk_render_pass, base, VkRenderPass,
                                VK_OBJECT_TYPE_RENDER_PASS);
+
+/** Returns the VkPipelineRenderingCreateInfo for a graphics pipeline
+ *
+ * For render-pass-free drivers, this can be used in the implementaiton of
+ * vkCreateGraphicsPipelines to get the VkPipelineRenderingCreateInfo.  If
+ * VkGraphicsPipelineCreateInfo::renderPass is not VK_NULL_HANDLE, it will
+ * return a representation of the specified subpass as a
+ * VkPipelineRenderingCreateInfo.  If VkGraphicsPipelineCreateInfo::renderPass
+ * is VK_NULL_HANDLE and there is a VkPipelineRenderingCreateInfo in the pNext
+ * chain of VkGraphicsPipelineCreateInfo, it will return that.
+ *
+ * @param[in]  info  One of the pCreateInfos from vkCreateGraphicsPipelines
+ */
+const VkPipelineRenderingCreateInfo *
+vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info);
+
+/**
+ * Returns the VkCommandBufferInheritanceRenderingInfo for secondary command
+ * buffer execution
+ *
+ * For render-pass-free drivers, this can be used in the implementaiton of
+ * vkCmdExecuteCommands to get the VkCommandBufferInheritanceRenderingInfo.
+ * If VkCommandBufferInheritanceInfo::renderPass is not VK_NULL_HANDLE, it
+ * will return a representation of the specified subpass as a
+ * VkCommandBufferInheritanceRenderingInfo.  If
+ * VkCommandBufferInheritanceInfo::renderPass is not VK_NULL_HANDLE and there
+ * is a VkCommandBufferInheritanceRenderingInfo in the pNext chain of
+ * VkCommandBufferBeginInfo, it will return that.
+ *
+ * @param[in]  level       The nesting level of this command buffer
+ * @param[in]  pBeginInfo  The pBeginInfo from vkBeginCommandBuffer
+ */
+const VkCommandBufferInheritanceRenderingInfo *
+vk_get_command_buffer_inheritance_rendering_info(
+   VkCommandBufferLevel level,
+   const VkCommandBufferBeginInfo *pBeginInfo);
 
 #ifdef __cplusplus
 }

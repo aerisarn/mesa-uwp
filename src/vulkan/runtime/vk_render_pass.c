@@ -424,12 +424,17 @@ vk_common_CreateRenderPass2(VkDevice _device,
                            pCreateInfo->dependencyCount);
 
    uint32_t subpass_attachment_count = 0;
+   uint32_t subpass_color_format_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       subpass_attachment_count +=
          num_subpass_attachments2(&pCreateInfo->pSubpasses[i]);
+      subpass_color_format_count +=
+         pCreateInfo->pSubpasses[i].colorAttachmentCount;
    }
    VK_MULTIALLOC_DECL(&ma, struct vk_subpass_attachment, subpass_attachments,
                       subpass_attachment_count);
+   VK_MULTIALLOC_DECL(&ma, VkFormat, subpass_color_formats,
+                      subpass_color_format_count);
 
    if (!vk_object_multizalloc(device, &ma, pAllocator,
                               VK_OBJECT_TYPE_RENDER_PASS))
@@ -448,6 +453,7 @@ vk_common_CreateRenderPass2(VkDevice _device,
    }
 
    struct vk_subpass_attachment *next_subpass_attachment = subpass_attachments;
+   VkFormat *next_subpass_color_format = subpass_color_formats;
    for (uint32_t s = 0; s < pCreateInfo->subpassCount; s++) {
       const VkSubpassDescription2 *desc = &pCreateInfo->pSubpasses[s];
       struct vk_subpass *subpass = &pass->subpasses[s];
@@ -559,9 +565,71 @@ vk_common_CreateRenderPass2(VkDevice _device,
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;
          subpass->stencil_resolve_mode = ds_resolve->stencilResolveMode;
       }
+
+      VkFormat *color_formats = NULL;
+      VkSampleCountFlagBits samples = 0;
+      if (desc->colorAttachmentCount > 0) {
+         color_formats = next_subpass_color_format;
+         for (uint32_t a = 0; a < desc->colorAttachmentCount; a++) {
+            const VkAttachmentReference2 *ref = &desc->pColorAttachments[a];
+            if (ref->attachment >= pCreateInfo->attachmentCount) {
+               color_formats[a] = VK_FORMAT_UNDEFINED;
+            } else {
+               const VkAttachmentDescription2 *att =
+                  &pCreateInfo->pAttachments[ref->attachment];
+
+               color_formats[a] = att->format;
+
+               assert(samples == 0 || samples == att->samples);
+               samples |= att->samples;
+            }
+         }
+         next_subpass_color_format += desc->colorAttachmentCount;
+      }
+
+      VkFormat depth_format = VK_FORMAT_UNDEFINED;
+      VkFormat stencil_format = VK_FORMAT_UNDEFINED;
+      if (desc->pDepthStencilAttachment != NULL) {
+         const VkAttachmentReference2 *ref = desc->pDepthStencilAttachment;
+         if (ref->attachment < pCreateInfo->attachmentCount) {
+            const VkAttachmentDescription2 *att =
+               &pCreateInfo->pAttachments[ref->attachment];
+
+            if (vk_format_has_depth(att->format))
+               depth_format = att->format;
+            if (vk_format_has_stencil(att->format))
+               stencil_format = att->format;
+
+            assert(samples == 0 || samples == att->samples);
+            samples |= att->samples;
+         }
+      }
+
+      subpass->pipeline_info = (VkPipelineRenderingCreateInfo) {
+         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+         .viewMask = desc->viewMask,
+         .colorAttachmentCount = desc->colorAttachmentCount,
+         .pColorAttachmentFormats = color_formats,
+         .depthAttachmentFormat = depth_format,
+         .stencilAttachmentFormat = stencil_format,
+      };
+
+      subpass->inheritance_info = (VkCommandBufferInheritanceRenderingInfo) {
+         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO,
+         /* If we're inheriting, the contents are clearly in secondaries */
+         .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
+         .viewMask = desc->viewMask,
+         .colorAttachmentCount = desc->colorAttachmentCount,
+         .pColorAttachmentFormats = color_formats,
+         .depthAttachmentFormat = depth_format,
+         .stencilAttachmentFormat = stencil_format,
+         .rasterizationSamples = samples,
+      };
    }
    assert(next_subpass_attachment ==
           subpass_attachments + subpass_attachment_count);
+   assert(next_subpass_color_format ==
+          subpass_color_formats + subpass_color_format_count);
 
    /* Walk backwards over the subpasses to compute view masks and
     * last_subpass masks for all attachments.
@@ -635,6 +703,62 @@ vk_common_CreateRenderPass2(VkDevice _device,
    *pRenderPass = vk_render_pass_to_handle(pass);
 
    return VK_SUCCESS;
+}
+
+const VkPipelineRenderingCreateInfo *
+vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info)
+{
+   VK_FROM_HANDLE(vk_render_pass, render_pass, info->renderPass);
+   if (render_pass != NULL) {
+      assert(info->subpass < render_pass->subpass_count);
+      return &render_pass->subpasses[info->subpass].pipeline_info;
+   }
+
+   return vk_find_struct_const(info->pNext, PIPELINE_RENDERING_CREATE_INFO);
+}
+
+const VkCommandBufferInheritanceRenderingInfo *
+vk_get_command_buffer_inheritance_rendering_info(
+   VkCommandBufferLevel level,
+   const VkCommandBufferBeginInfo *pBeginInfo)
+{
+   /* From the Vulkan 1.3.204 spec:
+    *
+    *    "VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT specifies that a
+    *    secondary command buffer is considered to be entirely inside a render
+    *    pass. If this is a primary command buffer, then this bit is ignored."
+    *
+    * Since we're only concerned with the continue case here, we can ignore
+    * any primary command buffers.
+    */
+   if (level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+      return NULL;
+
+   if (!(pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT))
+      return NULL;
+
+   const VkCommandBufferInheritanceInfo *inheritance =
+      pBeginInfo->pInheritanceInfo;
+
+   /* From the Vulkan 1.3.204 spec:
+    *
+    *    "If VkCommandBufferInheritanceInfo::renderPass is not VK_NULL_HANDLE,
+    *    or VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT is not specified
+    *    in VkCommandBufferBeginInfo::flags, parameters of this structure are
+    *    ignored."
+    *
+    * If we have a render pass that wins, even if a
+    * VkCommandBufferInheritanceRenderingInfo struct is included in the pNext
+    * chain.
+    */
+   VK_FROM_HANDLE(vk_render_pass, render_pass, inheritance->renderPass);
+   if (render_pass != NULL) {
+      assert(inheritance->subpass < render_pass->subpass_count);
+      return &render_pass->subpasses[inheritance->subpass].inheritance_info;
+   }
+
+   return vk_find_struct_const(inheritance->pNext,
+                               COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
 }
 
 VKAPI_ATTR void VKAPI_CALL
