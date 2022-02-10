@@ -817,6 +817,8 @@ static int merge_inst_groups(struct r600_bytecode *bc, struct r600_bytecode_alu 
 		      if (is_alu_once_inst(prev[i]))
 			      return 0;
 
+                      if (prev[i]->op == ALU_OP1_INTERP_LOAD_P0)
+                         interp_xz |= 3;
                       if (prev[i]->op == ALU_OP2_INTERP_X)
                          interp_xz |= 1;
                       if (prev[i]->op == ALU_OP2_INTERP_Z)
@@ -827,6 +829,8 @@ static int merge_inst_groups(struct r600_bytecode *bc, struct r600_bytecode_alu 
 				return 0;
 			if (is_alu_once_inst(slots[i]))
 				return 0;
+                        if (slots[i]->op == ALU_OP1_INTERP_LOAD_P0)
+                           interp_xz |= 3;
                         if (slots[i]->op == ALU_OP2_INTERP_X)
                            interp_xz |= 1;
                         if (slots[i]->op == ALU_OP2_INTERP_Z)
