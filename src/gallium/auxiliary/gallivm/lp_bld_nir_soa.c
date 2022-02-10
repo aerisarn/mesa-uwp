@@ -816,6 +816,7 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
                              unsigned nc,
                              unsigned bit_size,
                              unsigned addr_bit_size,
+                             bool offset_is_uniform,
                              LLVMValueRef addr,
                              LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
 {
@@ -826,6 +827,21 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
    LLVMValueRef exec_mask = mask_vec(bld_base);
 
    res_bld = get_int_bld(bld_base, true, bit_size);
+
+   if (offset_is_uniform && invocation_0_must_be_active(bld_base)) {
+      /* If the offset is uniform, then use the address from invocation 0 to
+       * load, and broadcast to all invocations.
+       */
+      LLVMValueRef addr_ptr = LLVMBuildExtractElement(gallivm->builder, addr,
+                                                      lp_build_const_int32(gallivm, 0), "");
+      addr_ptr = global_addr_to_ptr(gallivm, addr_ptr, bit_size);
+
+      for (unsigned c = 0; c < nc; c++) {
+         LLVMValueRef scalar = lp_build_pointer_get(builder, addr_ptr, lp_build_const_int32(gallivm, c));
+         outval[c] = lp_build_broadcast_scalar(res_bld, scalar);
+      }
+      return;
+   }
 
    for (unsigned c = 0; c < nc; c++) {
       LLVMValueRef result = lp_build_alloca(gallivm, res_bld->vec_type, "");

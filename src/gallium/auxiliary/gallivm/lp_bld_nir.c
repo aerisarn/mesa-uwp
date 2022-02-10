@@ -1695,9 +1695,10 @@ static void visit_load_global(struct lp_build_nir_context *bld_base,
                               nir_intrinsic_instr *instr, LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef addr = get_src(bld_base, instr->src[0]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
    bld_base->load_global(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
                          nir_src_bit_size(instr->src[0]),
-                         addr, result);
+                         offset_is_uniform, addr, result);
 }
 
 static void visit_store_global(struct lp_build_nir_context *bld_base,

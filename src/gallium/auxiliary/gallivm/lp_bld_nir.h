@@ -91,6 +91,7 @@ struct lp_build_nir_context
    void (*load_global)(struct lp_build_nir_context *bld_base,
                        unsigned nc, unsigned bit_size,
                        unsigned offset_bit_size,
+                       bool offset_is_global,
                        LLVMValueRef offset, LLVMValueRef result[NIR_MAX_VEC_COMPONENTS]);
 
    void (*store_global)(struct lp_build_nir_context *bld_base,
