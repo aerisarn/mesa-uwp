@@ -2175,7 +2175,9 @@ anv_get_physical_device_properties_1_3(struct anv_physical_device *pdevice,
    p->minSubgroupSize = 8;
    p->maxSubgroupSize = 32;
    p->maxComputeWorkgroupSubgroups = pdevice->info.max_cs_workgroup_threads;
-   p->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT;
+   p->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT |
+                                   VK_SHADER_STAGE_TASK_BIT_NV |
+                                   VK_SHADER_STAGE_MESH_BIT_NV;
 
    p->maxInlineUniformBlockSize = MAX_INLINE_UNIFORM_BLOCK_SIZE;
    p->maxPerStageDescriptorInlineUniformBlocks =
