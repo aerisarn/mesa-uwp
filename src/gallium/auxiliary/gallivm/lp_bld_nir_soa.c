@@ -591,6 +591,7 @@ static void emit_store_tcs_chan(struct lp_build_nir_context *bld_base,
          attrib_index_val = lp_build_add(&bld_base->uint_bld, indir_index, lp_build_const_int_vec(gallivm, bld_base->uint_bld.type, location));
    } else
       attrib_index_val = lp_build_const_int32(gallivm, const_index + location);
+   LLVMValueRef exec_mask = mask_vec(bld_base);
    if (bit_size == 64) {
       LLVMValueRef split_vals[2];
       LLVMValueRef swizzle_index_val2 = lp_build_const_int32(gallivm, swizzle + 1);
@@ -601,14 +602,14 @@ static void emit_store_tcs_chan(struct lp_build_nir_context *bld_base,
                                         indir_index ? true : false,
                                         attrib_index_val,
                                         false, swizzle_index_val,
-                                        split_vals[0], mask_vec(bld_base));
+                                        split_vals[0], exec_mask);
       bld->tcs_iface->emit_store_output(bld->tcs_iface, &bld_base->base, 0,
                                         indir_vertex_index ? true : false,
                                         indir_vertex_index,
                                         indir_index ? true : false,
                                         attrib_index_val,
                                         false, swizzle_index_val2,
-                                        split_vals[1], mask_vec(bld_base));
+                                        split_vals[1], exec_mask);
    } else {
       chan_val = LLVMBuildBitCast(builder, chan_val, bld_base->base.vec_type, "");
       bld->tcs_iface->emit_store_output(bld->tcs_iface, &bld_base->base, 0,
@@ -618,7 +619,7 @@ static void emit_store_tcs_chan(struct lp_build_nir_context *bld_base,
                                         attrib_index_val,
                                         indir_index && is_compact ? true : false,
                                         swizzle_index_val,
-                                        chan_val, mask_vec(bld_base));
+                                        chan_val, exec_mask);
    }
 }
 
@@ -809,12 +810,12 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
    struct lp_build_context *res_bld;
+   LLVMValueRef exec_mask = mask_vec(bld_base);
 
    res_bld = get_int_bld(bld_base, true, bit_size);
 
    for (unsigned c = 0; c < nc; c++) {
       LLVMValueRef result = lp_build_alloca(gallivm, res_bld->vec_type, "");
-      LLVMValueRef exec_mask = mask_vec(bld_base);
       struct lp_build_loop_state loop_state;
       lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
 
@@ -850,13 +851,13 @@ static void emit_store_global(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
+   LLVMValueRef exec_mask = mask_vec(bld_base);
 
    for (unsigned c = 0; c < nc; c++) {
       if (!(writemask & (1u << c)))
          continue;
       LLVMValueRef val = (nc == 1) ? dst : LLVMBuildExtractValue(builder, dst, c, "");
 
-      LLVMValueRef exec_mask = mask_vec(bld_base);
       struct lp_build_loop_state loop_state;
       lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
       LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, val,
@@ -2349,6 +2350,7 @@ emit_load_scratch(struct lp_build_nir_context *bld_base,
    struct lp_build_context *load_bld;
    LLVMValueRef thread_offsets = get_scratch_thread_offsets(gallivm, uint_bld->type, bld->scratch_size);;
    uint32_t shift_val = bit_size_to_shift_size(bit_size);
+   LLVMValueRef exec_mask = mask_vec(bld_base);
 
    load_bld = get_int_bld(bld_base, true, bit_size);
 
@@ -2356,7 +2358,6 @@ emit_load_scratch(struct lp_build_nir_context *bld_base,
    offset = lp_build_shr_imm(uint_bld, offset, shift_val);
    for (unsigned c = 0; c < nc; c++) {
       LLVMValueRef loop_index = lp_build_add(uint_bld, offset, lp_build_const_int_vec(gallivm, uint_bld->type, c));
-      LLVMValueRef exec_mask = mask_vec(bld_base);
 
       LLVMValueRef result = lp_build_alloca(gallivm, load_bld->vec_type, "");
       struct lp_build_loop_state loop_state;
