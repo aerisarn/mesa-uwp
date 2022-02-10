@@ -215,7 +215,13 @@ struct tu_physical_device
    struct wsi_device wsi_device;
 
    int local_fd;
+   bool has_local;
+   int64_t local_major;
+   int64_t local_minor;
    int master_fd;
+   bool has_master;
+   int64_t master_major;
+   int64_t master_minor;
 
    uint32_t gmem_size;
    uint64_t gmem_base;

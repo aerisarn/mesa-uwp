@@ -29,6 +29,13 @@
 #include <sys/mman.h>
 #include <xf86drm.h>
 
+#ifdef MAJOR_IN_MKDEV
+#include <sys/mkdev.h>
+#endif
+#ifdef MAJOR_IN_SYSMACROS
+#include <sys/sysmacros.h>
+#endif
+
 #include "vk_util.h"
 
 #include "drm-uapi/msm_drm.h"
@@ -609,6 +616,7 @@ tu_drm_device_init(struct tu_physical_device *device,
                    struct tu_instance *instance,
                    drmDevicePtr drm_device)
 {
+   const char *primary_path = drm_device->nodes[DRM_NODE_PRIMARY];
    const char *path = drm_device->nodes[DRM_NODE_RENDER];
    VkResult result = VK_SUCCESS;
    drmVersionPtr version;
@@ -665,8 +673,7 @@ tu_drm_device_init(struct tu_physical_device *device,
    device->instance = instance;
 
    if (instance->vk.enabled_extensions.KHR_display) {
-      master_fd =
-         open(drm_device->nodes[DRM_NODE_PRIMARY], O_RDWR | O_CLOEXEC);
+      master_fd = open(primary_path, O_RDWR | O_CLOEXEC);
       if (master_fd >= 0) {
          /* TODO: free master_fd is accel is not working? */
       }
@@ -697,6 +704,28 @@ tu_drm_device_init(struct tu_physical_device *device,
    if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "could not get GMEM size");
+      goto fail;
+   }
+
+   struct stat st;
+
+   if (stat(primary_path, &st) == 0) {
+      device->has_master = true;
+      device->master_major = major(st.st_rdev);
+      device->master_minor = minor(st.st_rdev);
+   } else {
+      device->has_master = false;
+      device->master_major = 0;
+      device->master_minor = 0;
+   }
+
+   if (stat(path, &st) == 0) {
+      device->has_local = true;
+      device->local_major = major(st.st_rdev);
+      device->local_minor = minor(st.st_rdev);
+   } else {
+      result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                         "failed to stat DRM render node %s", path);
       goto fail;
    }
 
