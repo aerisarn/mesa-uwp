@@ -2266,8 +2266,15 @@ void si_ps_key_update_blend_rasterizer(struct si_context *sctx)
    union si_shader_key *key = &sctx->shader.ps.key;
    struct si_state_blend *blend = sctx->queued.named.blend;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
+   struct si_shader_selector *ps = sctx->shader.ps.cso;
+
+   if (!ps)
+      return;
 
    key->ps.part.epilog.alpha_to_one = blend->alpha_to_one && rs->multisample_enable;
+   key->ps.part.epilog.alpha_to_coverage_via_mrtz =
+      sctx->chip_class >= GFX11 && blend->alpha_to_coverage && rs->multisample_enable &&
+      (ps->info.writes_z || ps->info.writes_stencil || ps->info.writes_samplemask);
 }
 
 void si_ps_key_update_rasterizer(struct si_context *sctx)

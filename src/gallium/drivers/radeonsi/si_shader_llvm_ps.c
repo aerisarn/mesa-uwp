@@ -851,7 +851,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
 {
    int i;
    struct si_ps_exports exp = {};
-   LLVMValueRef color[8][4];
+   LLVMValueRef color[8][4] = {};
 
    memset(&ctx->args, 0, sizeof(ctx->args));
 
@@ -899,10 +899,14 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       si_llvm_build_clamp_alpha_test(ctx, color[write_i], write_i);
    }
 
+   LLVMValueRef mrtz_alpha =
+      key->ps_epilog.states.alpha_to_coverage_via_mrtz ? color[0][3] : NULL;
+
    /* Prepare the mrtz export. */
    if (key->ps_epilog.writes_z ||
        key->ps_epilog.writes_stencil ||
-       key->ps_epilog.writes_samplemask) {
+       key->ps_epilog.writes_samplemask ||
+       mrtz_alpha) {
       LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
       unsigned vgpr_index = ctx->args.num_sgprs_used +
                             util_bitcount(key->ps_epilog.colors_written) * 4;
@@ -914,7 +918,8 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       if (key->ps_epilog.writes_samplemask)
          samplemask = LLVMGetParam(ctx->main_fn, vgpr_index++);
 
-      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, false, &exp.args[exp.num++]);
+      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, mrtz_alpha, false,
+                      &exp.args[exp.num++]);
    }
 
    /* Prepare color exports. */

@@ -1282,6 +1282,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  epilog.last_cbuf = %u\n", key->ps.part.epilog.last_cbuf);
       fprintf(f, "  epilog.alpha_func = %u\n", key->ps.part.epilog.alpha_func);
       fprintf(f, "  epilog.alpha_to_one = %u\n", key->ps.part.epilog.alpha_to_one);
+      fprintf(f, "  epilog.alpha_to_coverage_via_mrtz = %u\n", key->ps.part.epilog.alpha_to_coverage_via_mrtz);
       fprintf(f, "  epilog.clamp_color = %u\n", key->ps.part.epilog.clamp_color);
       fprintf(f, "  mono.poly_line_smoothing = %u\n", key->ps.mono.poly_line_smoothing);
       fprintf(f, "  mono.interpolate_at_sample_force_center = %u\n",
