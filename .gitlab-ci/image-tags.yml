@@ -18,4 +18,4 @@ variables:
    WINDOWS_X64_BUILD_TAG: "2022-20-02-base_split"
 
    WINDOWS_X64_TEST_PATH: "windows/x64_test"
-   WINDOWS_X64_TEST_TAG: "2022-20-02-base_split"
+   WINDOWS_X64_TEST_TAG: "2022-04-13-dozen_ci"
