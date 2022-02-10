@@ -202,6 +202,9 @@ get_semantic_vs_in_name(nir_variable *var, struct semantic_info *info, gl_shader
 static void
 get_semantic_sv_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool _vulkan)
 {
+   if (stage != MESA_SHADER_VERTEX)
+      info->interpolation = get_interpolation(var);
+
    switch (var->data.location) {
    case SYSTEM_VALUE_VERTEX_ID_ZERO_BASE:
       info->kind = DXIL_SEM_VERTEX_ID;
@@ -217,7 +220,6 @@ get_semantic_sv_name(nir_variable *var, struct semantic_info *info, gl_shader_st
       break;
    case SYSTEM_VALUE_SAMPLE_ID:
       info->kind = DXIL_SEM_SAMPLE_INDEX;
-      info->interpolation = get_interpolation(var);
       break;
    default:
       unreachable("unsupported system value");
