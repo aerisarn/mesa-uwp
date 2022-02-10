@@ -400,9 +400,8 @@ static bool si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
    return true;
 }
 
-static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *color, unsigned index,
-                                unsigned first_color_export, unsigned color_type,
-                                struct si_ps_exports *exp)
+static void si_llvm_build_clamp_alpha_test(struct si_shader_context *ctx,
+                                           LLVMValueRef *color, unsigned index)
 {
    int i;
 
@@ -418,7 +417,12 @@ static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *col
    /* Alpha test */
    if (index == 0 && ctx->shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS)
       si_alpha_test(ctx, color[3]);
+}
 
+static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *color, unsigned index,
+                                unsigned first_color_export, unsigned color_type,
+                                struct si_ps_exports *exp)
+{
    /* If last_cbuf > 0, FS_COLOR0_WRITES_ALL_CBUFS is true. */
    if (ctx->shader->key.ps.part.epilog.last_cbuf > 0) {
       assert(exp->num == first_color_export);
@@ -904,6 +908,7 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
             color[i] = LLVMGetParam(ctx->main_fn, vgpr++);
       }
 
+      si_llvm_build_clamp_alpha_test(ctx, color, output_index);
       si_export_mrt_color(ctx, color, output_index, first_color_export, color_type, &exp);
    }
 
