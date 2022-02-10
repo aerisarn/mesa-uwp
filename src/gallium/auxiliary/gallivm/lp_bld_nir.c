@@ -1397,8 +1397,9 @@ static void visit_load_ssbo(struct lp_build_nir_context *bld_base,
 {
    LLVMValueRef idx = cast_type(bld_base, get_src(bld_base, instr->src[0]), nir_type_uint, 32);
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
+   bool index_and_offset_are_uniform = nir_src_is_always_uniform(instr->src[0]) && nir_src_is_always_uniform(instr->src[1]);
    bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
-                       idx, offset, result);
+                      index_and_offset_are_uniform, idx, offset, result);
 }
 
 static void visit_store_ssbo(struct lp_build_nir_context *bld_base,
@@ -1634,8 +1635,9 @@ static void visit_shared_load(struct lp_build_nir_context *bld_base,
                                 LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
    bld_base->load_mem(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
-                      NULL, offset, result);
+                      offset_is_uniform, NULL, offset, result);
 }
 
 static void visit_shared_store(struct lp_build_nir_context *bld_base,

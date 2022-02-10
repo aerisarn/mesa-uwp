@@ -1143,6 +1143,7 @@ mem_access_base_pointer(struct lp_build_nir_context *bld_base,
 static void emit_load_mem(struct lp_build_nir_context *bld_base,
                           unsigned nc,
                           unsigned bit_size,
+                          bool index_and_offset_are_uniform,
                           LLVMValueRef index,
                           LLVMValueRef offset,
                           LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
@@ -1157,6 +1158,42 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
    load_bld = get_int_bld(bld_base, true, bit_size);
 
    offset = LLVMBuildAShr(gallivm->builder, offset, lp_build_const_int_vec(gallivm, uint_bld->type, shift_val), "");
+
+   /* If the address is uniform, then use the address from invocation 0 to load,
+    * and broadcast to all invocations.
+    */
+   if (index_and_offset_are_uniform && invocation_0_must_be_active(bld_base)) {
+      LLVMValueRef ssbo_limit;
+      LLVMValueRef mem_ptr = mem_access_base_pointer(bld_base, load_bld, bit_size, index,
+                                                     lp_build_const_int32(gallivm, 0), &ssbo_limit);
+
+      offset = LLVMBuildExtractElement(gallivm->builder, offset, lp_build_const_int32(gallivm, 0), "");
+
+      for (unsigned c = 0; c < nc; c++) {
+         LLVMValueRef chan_offset = LLVMBuildAdd(builder, offset, lp_build_const_int32(gallivm, c), "");
+
+         LLVMValueRef scalar;
+         /* If loading outside the SSBO, we need to skip the load and read 0 instead. */
+         if (ssbo_limit) {
+            LLVMValueRef zero = lp_build_zero_bits(gallivm, bit_size);
+            LLVMValueRef res_store = lp_build_alloca(gallivm, LLVMTypeOf(zero), "");
+            LLVMBuildStore(builder, zero, res_store);
+
+            LLVMValueRef fetch_cond = LLVMBuildICmp(gallivm->builder, LLVMIntUGE, ssbo_limit, chan_offset, "");
+            struct lp_build_if_state ifthen;
+            lp_build_if(&ifthen, gallivm, fetch_cond);
+            LLVMBuildStore(builder, lp_build_pointer_get(builder, mem_ptr, chan_offset), res_store);
+            lp_build_endif(&ifthen);
+
+            scalar = LLVMBuildLoad(builder, res_store, "");
+         } else {
+            scalar = lp_build_pointer_get(builder, mem_ptr, chan_offset);
+         }
+
+         outval[c] = lp_build_broadcast_scalar(load_bld, scalar);
+      }
+      return;
+   }
 
    /* although the index is dynamically uniform that doesn't count if exec mask isn't set, so read the one-by-one */
 
