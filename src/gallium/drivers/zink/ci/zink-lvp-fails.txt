@@ -45,10 +45,6 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
-dEQP-GLES3.functional.multisample.fbo_4_samples.proportionality_sample_coverage,Fail
-dEQP-GLES3.functional.multisample.fbo_4_samples.sample_coverage_invert,Fail
-dEQP-GLES3.functional.multisample.fbo_max_samples.proportionality_sample_coverage,Fail
-dEQP-GLES3.functional.multisample.fbo_max_samples.sample_coverage_invert,Fail
 KHR-GL32.transform_feedback.capture_geometry_separate_test,Fail
 KHR-GL32.transform_feedback.capture_vertex_separate_test,Fail
 KHR-GL32.transform_feedback.query_geometry_separate_test,Fail
@@ -208,8 +204,6 @@ spec@ext_framebuffer_multisample@interpolation 4 centroid-disabled,Fail
 spec@ext_framebuffer_multisample@interpolation 4 centroid-edges,Fail
 spec@ext_framebuffer_multisample@interpolation 4 non-centroid-deriv-disabled,Fail
 spec@ext_framebuffer_multisample@interpolation 4 non-centroid-disabled,Fail
-spec@ext_framebuffer_multisample@sample-coverage 2 non-inverted,Fail
-spec@ext_framebuffer_multisample@sample-coverage 4 non-inverted,Fail
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_INTENSITY12,Fail
