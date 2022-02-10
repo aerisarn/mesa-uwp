@@ -1700,6 +1700,7 @@ scale_bits(struct gallivm_state *gallivm,
 
             result = lp_build_unsigned_norm_to_float(gallivm, src_bits, flt_type, src);
             result = lp_build_clamped_float_to_unsigned_norm(gallivm, flt_type, dst_bits, result);
+            result = LLVMBuildTrunc(gallivm->builder, result, lp_build_int_vec_type(gallivm, src_type), "");
             return result;
          }
 
