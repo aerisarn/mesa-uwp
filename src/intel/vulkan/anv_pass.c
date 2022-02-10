@@ -493,8 +493,10 @@ anv_dynamic_pass_init(struct anv_dynamic_render_pass *dyn_render_pass,
 
    uint32_t att;
    for (att = 0; att < info->colorAttachmentCount; att++) {
-      if (info->pColorAttachmentFormats[att] == VK_FORMAT_UNDEFINED)
+      if (info->pColorAttachmentFormats[att] == VK_FORMAT_UNDEFINED) {
+         subpass->attachments[att].attachment = VK_ATTACHMENT_UNUSED;
          continue;
+      }
       pass->attachments[att].format = info->pColorAttachmentFormats[att];
       pass->attachments[att].samples = info->rasterizationSamples;
       subpass->attachments[att].attachment = att;
