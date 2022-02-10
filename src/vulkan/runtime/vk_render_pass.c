@@ -307,14 +307,23 @@ num_subpass_attachments2(const VkSubpassDescription2 *desc)
                            SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
 
    bool has_depth_stencil_resolve_attachment =
-      ds_resolve && ds_resolve->pDepthStencilResolveAttachment &&
+      ds_resolve != NULL && ds_resolve->pDepthStencilResolveAttachment &&
       ds_resolve->pDepthStencilResolveAttachment->attachment != VK_ATTACHMENT_UNUSED;
+
+   const VkFragmentShadingRateAttachmentInfoKHR *fsr_att_info =
+      vk_find_struct_const(desc->pNext,
+                           FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
+
+   bool has_fragment_shading_rate_attachment =
+      fsr_att_info && fsr_att_info->pFragmentShadingRateAttachment &&
+      fsr_att_info->pFragmentShadingRateAttachment->attachment != VK_ATTACHMENT_UNUSED;
 
    return desc->inputAttachmentCount +
           desc->colorAttachmentCount +
           (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
           has_depth_stencil_attachment +
-          has_depth_stencil_resolve_attachment;
+          has_depth_stencil_resolve_attachment +
+          has_fragment_shading_rate_attachment;
 }
 
 static void
@@ -379,6 +388,7 @@ vk_subpass_attachment_init(struct vk_subpass_attachment *att,
       break;
 
    case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+   case VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR:
       assert(att->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
       break;
 
@@ -588,6 +598,22 @@ vk_common_CreateRenderPass2(VkDevice _device,
 
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;
          subpass->stencil_resolve_mode = ds_resolve->stencilResolveMode;
+      }
+
+      const VkFragmentShadingRateAttachmentInfoKHR *fsr_att_info =
+         vk_find_struct_const(desc->pNext,
+                              FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
+
+      if (fsr_att_info && fsr_att_info->pFragmentShadingRateAttachment &&
+          fsr_att_info->pFragmentShadingRateAttachment->attachment != VK_ATTACHMENT_UNUSED) {
+         subpass->fragment_shading_rate_attachment = next_subpass_attachment++;
+         vk_subpass_attachment_init(subpass->fragment_shading_rate_attachment,
+                                    pass, s,
+                                    fsr_att_info->pFragmentShadingRateAttachment,
+                                    pCreateInfo->pAttachments,
+                                    VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR);
+         subpass->fragment_shading_rate_attachment_texel_size =
+            fsr_att_info->shadingRateAttachmentTexelSize;
       }
 
       VkFormat *color_formats = NULL;
@@ -1466,7 +1492,7 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
     * to determine when we can use LOAD/STORE_OP_DONT_CARE between subpasses.
     */
 
-   const VkRenderingInfo rendering = {
+   VkRenderingInfo rendering = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
       .pNext = &subpass->self_dep_info,
       .renderArea = cmd_buffer->render_area,
@@ -1477,6 +1503,32 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
       .pDepthAttachment = &depth_attachment,
       .pStencilAttachment = &stencil_attachment,
    };
+
+   VkRenderingFragmentShadingRateAttachmentInfoKHR fsr_attachment;
+   if (subpass->fragment_shading_rate_attachment) {
+      const struct vk_subpass_attachment *sp_att =
+         subpass->fragment_shading_rate_attachment;
+
+      assert(sp_att->attachment < pass->attachment_count);
+      struct vk_attachment_state *att_state =
+         &cmd_buffer->attachments[sp_att->attachment];
+
+      /* Fragment shading rate attachments have no loadOp (it's implicitly
+       * LOAD_OP_LOAD) so we need to ensure the load op happens.
+       */
+      load_attachment(cmd_buffer, sp_att->attachment, subpass->view_mask,
+                      sp_att->layout, sp_att->stencil_layout);
+
+      fsr_attachment = (VkRenderingFragmentShadingRateAttachmentInfoKHR) {
+         .sType = VK_STRUCTURE_TYPE_RENDERING_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR,
+         .imageView = vk_image_view_to_handle(att_state->image_view),
+         .imageLayout = sp_att->layout,
+         .shadingRateAttachmentTexelSize =
+            subpass->fragment_shading_rate_attachment_texel_size,
+      };
+      __vk_append_struct(&rendering, &fsr_attachment);
+   }
+
    disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd_buffer),
                            &rendering);
 
@@ -1567,7 +1619,19 @@ vk_common_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
        */
       assert(image_view->image->samples == pass_att->samples);
 
-      assert(util_last_bit(pass_att->view_mask) <= image_view->layer_count);
+      /* From the Vulkan 1.3.204 spec:
+       *
+       *    If multiview is enabled and the shading rate attachment has
+       *    multiple layers, the shading rate attachment texel is selected
+       *    from the layer determined by the ViewIndex built-in. If multiview
+       *    is disabled, and both the shading rate attachment and the
+       *    framebuffer have multiple layers, the shading rate attachment
+       *    texel is selected from the layer determined by the Layer built-in.
+       *    Otherwise, the texel is unconditionally selected from the first
+       *    layer of the attachment.
+       */
+      if (!(image_view->usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR))
+         assert(util_last_bit(pass_att->view_mask) <= image_view->layer_count);
 
       *att_state = (struct vk_attachment_state) {
          .image_view = image_view,

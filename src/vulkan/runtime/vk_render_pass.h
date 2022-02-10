@@ -121,6 +121,9 @@ struct vk_subpass {
    /** VkSubpassDescriptionDepthStencilResolve::pDepthStencilResolveAttachment */
    struct vk_subpass_attachment *depth_stencil_resolve_attachment;
 
+   /** VkFragmentShadingRateAttachmentInfoKHR::pFragmentShadingRateAttachment */
+   struct vk_subpass_attachment *fragment_shading_rate_attachment;
+
    /** VkSubpassDescription2::viewMask or 1 for non-multiview
     *
     * For all view masks in the vk_render_pass data structure, we use a mask
@@ -134,6 +137,9 @@ struct vk_subpass {
 
    /** VkSubpassDescriptionDepthStencilResolve::stencilResolveMode */
    VkResolveModeFlagBitsKHR stencil_resolve_mode;
+
+   /** VkFragmentShadingRateAttachmentInfoKHR::shadingRateAttachmentTexelSize */
+   VkExtent2D fragment_shading_rate_attachment_texel_size;
 
    /** VkRenderingSelfDependencyInfoMESA for this subpass
     *
