@@ -200,6 +200,7 @@ spec/!opengl 2.0/max-samplers: fail
 spec/!opengl 2.0/max-samplers border: fail
 spec/!opengl 3.0/bound-resource-limits: fail
 spec/!opengl 3.0/required-sized-texture-formats: fail
+spec/!opengl 3.0/sampler-cube-shadow: fail
 spec/!opengl 3.1/default-vao: fail
 spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.1/genned-names: fail
@@ -1679,6 +1680,7 @@ spec/arb_texture_cube_map/copyteximage cube samples=4: skip
 spec/arb_texture_cube_map/copyteximage cube samples=6: skip
 spec/arb_texture_cube_map/copyteximage cube samples=8: skip
 spec/arb_texture_cube_map_array/arb_texture_cube_map_array-cubemap: fail
+spec/arb_texture_cube_map_array/arb_texture_cube_map_array-sampler-cube-array-shadow: fail
 spec/arb_texture_float/multisample-formats 32 gl_arb_texture_float: skip
 spec/arb_texture_gather/texturegather/fs-r-none-float-2d: fail
 spec/arb_texture_gather/texturegather/fs-r-none-float-2darray: fail
@@ -3525,8 +3527,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17841
-       fail:     2046
+       pass:    17839
+       fail:     2048
       crash:        7
        skip:     1452
     timeout:        0
