@@ -187,7 +187,16 @@ struct intel_perf_query_result;
  */
 #define ANV_HZ_FC_VAL 1.0f
 
-#define MAX_VBS         28
+/* 3DSTATE_VERTEX_BUFFER supports 33 VBs, we use 2 for base & drawid SGVs */
+#define MAX_VBS         (33 - 2)
+
+/* 3DSTATE_VERTEX_ELEMENTS supports up to 34 VEs, but our backend compiler
+ * only supports the push model of VS inputs, and we only have 128 GRFs,
+ * minus the g0 and g1 payload, which gives us a maximum of 31 VEs.  Plus,
+ * we use two of them for SGVs.
+ */
+#define MAX_VES         (31 - 2)
+
 #define MAX_XFB_BUFFERS  4
 #define MAX_XFB_STREAMS  4
 #define MAX_SETS        32

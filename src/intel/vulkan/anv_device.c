@@ -1858,7 +1858,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxDescriptorSetSampledImages            = 6 * max_textures, /* number of stages * maxPerStageDescriptorSampledImages */
       .maxDescriptorSetStorageImages            = 6 * max_images,   /* number of stages * maxPerStageDescriptorStorageImages */
       .maxDescriptorSetInputAttachments         = MAX_DESCRIPTOR_SET_INPUT_ATTACHMENTS,
-      .maxVertexInputAttributes                 = MAX_VBS,
+      .maxVertexInputAttributes                 = MAX_VES,
       .maxVertexInputBindings                   = MAX_VBS,
       /* Broadwell PRMs: Volume 2d: Command Reference: Structures:
        *
