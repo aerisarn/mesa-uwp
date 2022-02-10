@@ -945,7 +945,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
    }
    const struct dxil_type *res_type_as_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, false /* readwrite */);
 
-   if (count > 1)
+   if (glsl_type_is_array(var->type))
       res_type_as_type = dxil_module_get_array_type(&ctx->mod, res_type_as_type, count);
 
    const struct dxil_mdnode *srv_meta = emit_srv_metadata(&ctx->mod, res_type_as_type, var->name,
@@ -1177,12 +1177,15 @@ static bool
 emit_cbv(struct ntd_context *ctx, unsigned binding, unsigned space,
          unsigned size, unsigned count, char *name)
 {
+   assert(count != 0);
+
    unsigned idx = util_dynarray_num_elements(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *);
 
    const struct dxil_type *float32 = dxil_module_get_float_type(&ctx->mod, 32);
    const struct dxil_type *array_type = dxil_module_get_array_type(&ctx->mod, float32, size);
    const struct dxil_type *buffer_type = dxil_module_get_struct_type(&ctx->mod, name,
                                                                      &array_type, 1);
+   // All ubo[1]s should have been lowered to ubo with static indexing
    const struct dxil_type *final_type = count != 1 ? dxil_module_get_array_type(&ctx->mod, buffer_type, count) : buffer_type;
    resource_array_layout layout = {idx, binding, count, space};
    const struct dxil_mdnode *cbv_meta = emit_cbv_metadata(&ctx->mod, final_type,
@@ -1215,7 +1218,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
    const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *sampler_type = dxil_module_get_struct_type(&ctx->mod, "struct.SamplerState", &int32_type, 1);
 
-   if (count > 1)
+   if (glsl_type_is_array(var->type))
       sampler_type = dxil_module_get_array_type(&ctx->mod, sampler_type, count);
 
    const struct dxil_mdnode *sampler_meta = emit_sampler_metadata(&ctx->mod, sampler_type, var, &layout);
