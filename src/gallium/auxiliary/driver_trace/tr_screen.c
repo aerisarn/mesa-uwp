@@ -1112,7 +1112,7 @@ trace_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
    trace_dump_call_begin("pipe_screen", "get_sparse_texture_virtual_page_size");
 
    trace_dump_arg(ptr, screen);
-   trace_dump_arg(int, target);
+   trace_dump_arg_enum(target, tr_util_pipe_texture_target_name(target));
    trace_dump_arg(format, format);
    trace_dump_arg(uint, offset);
    trace_dump_arg(uint, size);

@@ -34,6 +34,7 @@
 #include "tr_dump.h"
 #include "tr_dump_defines.h"
 #include "tr_dump_state.h"
+#include "tr_util.h"
 
 
 void trace_dump_resource_template(const struct pipe_resource *templat)
@@ -48,7 +49,10 @@ void trace_dump_resource_template(const struct pipe_resource *templat)
 
    trace_dump_struct_begin("pipe_resource");
 
-   trace_dump_member(int, templat, target);
+   trace_dump_member_begin("target");
+   trace_dump_enum(tr_util_pipe_texture_target_name(templat->target));
+   trace_dump_member_end();
+
    trace_dump_member(format, templat, format);
 
    trace_dump_member_begin("width");
@@ -554,6 +558,10 @@ void trace_dump_sampler_view_template(const struct pipe_sampler_view *state,
    trace_dump_member(format, state, format);
    trace_dump_member(ptr, state, texture);
 
+   trace_dump_member_begin("target");
+   trace_dump_enum(tr_util_pipe_texture_target_name(target));
+   trace_dump_member_end();
+
    trace_dump_member_begin("u");
    trace_dump_struct_begin(""); /* anonymous */
    if (target == PIPE_BUFFER) {
@@ -608,6 +616,10 @@ void trace_dump_surface_template(const struct pipe_surface *state,
    trace_dump_member(ptr, state, texture);
    trace_dump_member(uint, state, width);
    trace_dump_member(uint, state, height);
+
+   trace_dump_member_begin("target");
+   trace_dump_enum(tr_util_pipe_texture_target_name(target));
+   trace_dump_member_end();
 
    trace_dump_member_begin("u");
    trace_dump_struct_begin(""); /* anonymous */
