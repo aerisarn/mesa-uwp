@@ -80,11 +80,14 @@ resource_is_busy(struct d3d12_context *ctx,
                  struct d3d12_resource *res,
                  bool want_to_write)
 {
+   if (d3d12_batch_has_references(d3d12_current_batch(ctx), res->bo, want_to_write))
+      return true;
+
    bool busy = false;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); i++)
-      busy |= d3d12_batch_has_references(&ctx->batches[i], res->bo, want_to_write);
-
+   d3d12_foreach_submitted_batch(ctx, batch) {
+      if (!d3d12_reset_batch(ctx, batch, 0))
+         busy |= d3d12_batch_has_references(batch, res->bo, want_to_write);
+   }
    return busy;
 }
 
@@ -97,11 +100,8 @@ d3d12_resource_wait_idle(struct d3d12_context *ctx,
       d3d12_flush_cmdlist_and_wait(ctx);
    } else {
       d3d12_foreach_submitted_batch(ctx, batch) {
-         if (d3d12_batch_has_references(batch, res->bo, want_to_write)) {
+         if (d3d12_batch_has_references(batch, res->bo, want_to_write))
             d3d12_reset_batch(ctx, batch, PIPE_TIMEOUT_INFINITE);
-            if (!resource_is_busy(ctx, res, want_to_write))
-               break;
-         }
       }
    }
 }
@@ -945,8 +945,11 @@ synchronize(struct d3d12_context *ctx,
    }
 
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED) && resource_is_busy(ctx, res, usage & PIPE_MAP_WRITE)) {
-      if (usage & PIPE_MAP_DONTBLOCK)
+      if (usage & PIPE_MAP_DONTBLOCK) {
+         if (d3d12_batch_has_references(d3d12_current_batch(ctx), res->bo, usage & PIPE_MAP_WRITE))
+            d3d12_flush_cmdlist(ctx);
          return false;
+      }
 
       d3d12_resource_wait_idle(ctx, res, usage & PIPE_MAP_WRITE);
    }

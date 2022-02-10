@@ -1670,7 +1670,6 @@ spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 7: sk
 spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 8: skip
 spec/arb_texture_buffer_object/bufferstorage: skip
 spec/arb_texture_buffer_object/negative-unsupported: skip
-spec/arb_texture_buffer_object/subdata-sync: fail
 spec/arb_texture_buffer_range/ranges-2: fail
 spec/arb_texture_buffer_range/ranges-2 compat: fail
 spec/arb_texture_cube_map/copyteximage cube samples=16: skip
@@ -3526,8 +3525,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17840
-       fail:     2047
+       pass:    17841
+       fail:     2046
       crash:        7
        skip:     1452
     timeout:        0
