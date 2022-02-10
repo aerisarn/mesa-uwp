@@ -4647,7 +4647,7 @@ store_vmem_mubuf(isel_context* ctx, Temp src, Temp descriptor, Temp voffset, Tem
                  bool slc = false)
 {
    Builder bld(ctx->program, ctx->block);
-   assert(elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
+   assert(elem_size_bytes == 1 || elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
    assert(write_mask);
    write_mask = util_widen_mask(write_mask, elem_size_bytes);
 
@@ -4670,7 +4670,7 @@ load_vmem_mubuf(isel_context* ctx, Temp dst, Temp descriptor, Temp voffset, Temp
                 unsigned stride = 0u, bool allow_combining = true, bool allow_reorder = true,
                 bool slc = false)
 {
-   assert(elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
+   assert(elem_size_bytes == 1 || elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
    assert((num_components * elem_size_bytes) == dst.bytes());
    assert(!!stride != allow_combining);
 
