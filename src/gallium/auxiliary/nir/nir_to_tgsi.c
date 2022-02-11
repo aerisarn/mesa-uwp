@@ -2016,8 +2016,9 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
       srcs[num_src++] = resource;
       dst = ntt_get_dest(c, &instr->dest);
    }
+   struct ureg_dst opcode_dst = dst;
 
-   if (instr->intrinsic != nir_intrinsic_image_size) {
+   if (instr->intrinsic != nir_intrinsic_image_size && instr->intrinsic != nir_intrinsic_image_samples) {
       struct ureg_src coord = ntt_get_src(c, instr->src[1]);
 
       if (dim == GLSL_SAMPLER_DIM_MS) {
@@ -2045,6 +2046,10 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
       break;
    case nir_intrinsic_image_size:
       op = TGSI_OPCODE_RESQ;
+      break;
+   case nir_intrinsic_image_samples:
+      op = TGSI_OPCODE_RESQ;
+      opcode_dst = ureg_writemask(ntt_temp(c), TGSI_WRITEMASK_W);
       break;
    case nir_intrinsic_image_atomic_add:
       op = TGSI_OPCODE_ATOMUADD;
@@ -2083,11 +2088,14 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
       unreachable("bad op");
    }
 
-   struct ntt_insn *insn = ntt_insn(c, op, dst, srcs[0], srcs[1], srcs[2], srcs[3]);
+   struct ntt_insn *insn = ntt_insn(c, op, opcode_dst, srcs[0], srcs[1], srcs[2], srcs[3]);
    insn->tex_target = target;
    insn->mem_qualifier = ntt_get_access_qualifier(instr);
    insn->mem_format = nir_intrinsic_format(instr);
    insn->is_mem = true;
+
+   if (instr->intrinsic == nir_intrinsic_image_samples)
+      ntt_MOV(c, dst, ureg_scalar(ureg_src(opcode_dst), 3));
 }
 
 static void
@@ -2416,6 +2424,7 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_load:
    case nir_intrinsic_image_store:
    case nir_intrinsic_image_size:
+   case nir_intrinsic_image_samples:
    case nir_intrinsic_image_atomic_add:
    case nir_intrinsic_image_atomic_fadd:
    case nir_intrinsic_image_atomic_imin:
