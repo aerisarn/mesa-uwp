@@ -5886,12 +5886,46 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
 
+   uint32_t dmask = BITFIELD_MASK(data.size());
+   /* remove zero/undef elements from data, components which aren't in dmask
+    * are zeroed anyway
+    */
+   if (instr->src[3].ssa->bit_size == 32) {
+      for (uint32_t i = 0; i < instr->num_components; i++) {
+         nir_ssa_scalar comp = nir_ssa_scalar_resolved(instr->src[3].ssa, i);
+         if (comp.def->parent_instr->type == nir_instr_type_ssa_undef ||
+             (nir_ssa_scalar_is_const(comp) && nir_ssa_scalar_as_uint(comp) == 0))
+            dmask &= ~BITFIELD_BIT(i);
+      }
+
+      /* dmask cannot be 0, at least one vgpr is always read */
+      if (dmask == 0)
+         dmask = 1;
+
+      if (dmask != BITFIELD_MASK(data.size())) {
+         uint32_t dmask_count = util_bitcount(dmask);
+         if (dmask_count == 1) {
+            data = emit_extract_vector(ctx, data, ffs(dmask) - 1, v1);
+         } else {
+            aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
+               aco_opcode::p_create_vector, Format::PSEUDO, dmask_count, 1)};
+            uint32_t index = 0;
+            u_foreach_bit(bit, dmask) {
+               vec->operands[index++] = Operand(emit_extract_vector(ctx, data, bit, v1));
+            }
+            data = bld.tmp(RegType::vgpr, dmask_count);
+            vec->definitions[0] = Definition(data);
+            bld.insert(std::move(vec));
+         }
+      }
+   }
+
    MIMG_instruction* store =
       emit_mimg(bld, opcode, Definition(), resource, Operand(s4), coords, 0, Operand(data));
    store->glc = glc;
    store->dlc = false;
    store->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
-   store->dmask = (1 << data.size()) - 1;
+   store->dmask = dmask;
    store->unrm = true;
    store->da = should_declare_array(ctx, dim, is_array);
    store->disable_wqm = true;
