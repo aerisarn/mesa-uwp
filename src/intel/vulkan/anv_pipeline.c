@@ -463,9 +463,9 @@ static void
 populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
-                     const struct anv_subpass *subpass,
                      const VkPipelineMultisampleStateCreateInfo *ms_info,
                      const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_info,
+                     const VkPipelineRenderingCreateInfo *rendering_info,
                      struct brw_wm_prog_key *key)
 {
    const struct anv_device *device = pipeline->base.device;
@@ -485,13 +485,13 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 
    key->ignore_sample_mask_out = false;
 
-   assert(subpass->color_count <= MAX_RTS);
-   for (uint32_t i = 0; i < subpass->color_count; i++) {
-      if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
+   assert(rendering_info->colorAttachmentCount <= MAX_RTS);
+   for (uint32_t i = 0; i < rendering_info->colorAttachmentCount; i++) {
+      if (rendering_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED)
          key->color_outputs_valid |= (1 << i);
    }
 
-   key->nr_color_regions = subpass->color_count;
+   key->nr_color_regions = rendering_info->colorAttachmentCount;
 
    /* To reduce possible shader recompilations we would need to know if
     * there is a SampleMask output variable to compute if we should emit
@@ -610,8 +610,8 @@ anv_pipeline_hash_graphics(struct anv_graphics_pipeline *pipeline,
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
 
-   _mesa_sha1_update(&ctx, &pipeline->subpass->view_mask,
-                     sizeof(pipeline->subpass->view_mask));
+   _mesa_sha1_update(&ctx, &pipeline->view_mask,
+                     sizeof(pipeline->view_mask));
 
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
@@ -868,7 +868,7 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
     * position slot.
     */
    uint32_t pos_slots = pipeline->use_primitive_replication ?
-      anv_subpass_view_count(pipeline->subpass) : 1;
+      MAX2(1, util_bitcount(pipeline->view_mask)) : 1;
 
    brw_compute_vue_map(compiler->devinfo,
                        &vs_stage->prog_data.vs.base.vue_map,
@@ -1466,7 +1466,8 @@ anv_pipeline_init_from_cached_graphics(struct anv_graphics_pipeline *pipeline)
 static VkResult
 anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                               struct anv_pipeline_cache *cache,
-                              const VkGraphicsPipelineCreateInfo *info)
+                              const VkGraphicsPipelineCreateInfo *info,
+                              const VkPipelineRenderingCreateInfo *rendering_info)
 {
    VkPipelineCreationFeedbackEXT pipeline_feedback = {
       .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
@@ -1539,10 +1540,10 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
             dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
          populate_wm_prog_key(pipeline, subgroup_size_type,
                               pipeline->base.device->robust_buffer_access,
-                              pipeline->subpass,
                               raster_enabled ? info->pMultisampleState : NULL,
                               vk_find_struct_const(info->pNext,
                                                    PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR),
+                              rendering_info,
                               &stages[stage].key.wm);
          break;
       }
@@ -1749,7 +1750,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    }
 
    if (pipeline->base.device->info.ver >= 12 &&
-       pipeline->subpass->view_mask != 0) {
+       pipeline->view_mask != 0) {
       /* For some pipelines HW Primitive Replication can be used instead of
        * instancing to implement Multiview.  This depend on how viewIndex is
        * used in all the active shaders, so this check can't be done per
@@ -2119,10 +2120,10 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
  */
 static void
 copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
-                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                       const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                       const VkPipelineRenderingCreateInfo *rendering_info)
 {
    anv_cmd_dirty_mask_t states = ANV_CMD_DIRTY_DYNAMIC_ALL;
-   struct anv_subpass *subpass = pipeline->subpass;
 
    pipeline->dynamic_state = default_dynamic_state;
 
@@ -2223,8 +2224,8 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
     *    created against does not use any color attachments.
     */
    bool uses_color_att = false;
-   for (unsigned i = 0; i < subpass->color_count; ++i) {
-      if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED) {
+   for (unsigned i = 0; i < rendering_info->colorAttachmentCount; i++) {
+      if (rendering_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
          uses_color_att = true;
          break;
       }
@@ -2250,7 +2251,9 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
     *    disabled or if the subpass of the render pass the pipeline is created
     *    against does not use a depth/stencil attachment.
     */
-   if (!raster_discard && subpass->depth_stencil_attachment) {
+   if (!raster_discard &&
+       (rendering_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+        rendering_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)) {
       assert(pCreateInfo->pDepthStencilState);
 
       if (states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS) {
@@ -2439,6 +2442,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                            struct anv_device *device,
                            struct anv_pipeline_cache *cache,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                           const VkPipelineRenderingCreateInfo *rendering_info,
                            const VkAllocationCallbacks *alloc)
 {
    VkResult result;
@@ -2451,38 +2455,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
    anv_batch_set_storage(&pipeline->base.batch, ANV_NULL_ADDRESS,
                          pipeline->batch_data, sizeof(pipeline->batch_data));
-
-   ANV_FROM_HANDLE(anv_render_pass, render_pass, pCreateInfo->renderPass);
-
-   if (render_pass) {
-      assert(pCreateInfo->subpass < render_pass->subpass_count);
-      pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
-      pipeline->pass = render_pass;
-   } else {
-      const VkPipelineRenderingCreateInfoKHR *rendering_create_info =
-         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
-
-      /* These should be zeroed already. */
-      pipeline->pass = &pipeline->dynamic_render_pass.pass;
-      pipeline->subpass = &pipeline->dynamic_render_pass.subpass;
-
-      if (rendering_create_info) {
-         struct anv_dynamic_pass_create_info info = {
-            .viewMask = rendering_create_info->viewMask,
-            .colorAttachmentCount =
-               rendering_create_info->colorAttachmentCount,
-            .pColorAttachmentFormats =
-               rendering_create_info->pColorAttachmentFormats,
-            .depthAttachmentFormat =
-               rendering_create_info->depthAttachmentFormat,
-            .stencilAttachmentFormat =
-               rendering_create_info->stencilAttachmentFormat,
-         };
-
-         anv_dynamic_pass_init(&pipeline->dynamic_render_pass, &info);
-      }
-   }
-
 
    assert(pCreateInfo->pRasterizationState);
 
@@ -2505,9 +2477,10 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    if (anv_pipeline_is_mesh(pipeline))
       assert(device->physical->vk.supported_extensions.NV_mesh_shader);
 
-   copy_non_dynamic_state(pipeline, pCreateInfo);
+   copy_non_dynamic_state(pipeline, pCreateInfo, rendering_info);
 
    pipeline->depth_clamp_enable = pCreateInfo->pRasterizationState->depthClampEnable;
+   pipeline->view_mask = rendering_info->viewMask;
 
    /* Previously we enabled depth clipping when !depthClampEnable.
     * DepthClipStateCreateInfo now makes depth clipping explicit so if the
@@ -2520,7 +2493,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable :
       !(pipeline->depth_clamp_enable || pipeline->negative_one_to_one);
 
-   result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
+   result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo,
+                                          rendering_info);
    if (result != VK_SUCCESS) {
       anv_pipeline_finish(&pipeline->base, device, alloc);
       return result;
@@ -2581,8 +2555,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
        * the instance divisor by the number of views ensure that we repeat the
        * client's per-instance data once for each view.
        */
-      if (pipeline->subpass->view_mask && !pipeline->use_primitive_replication) {
-         const uint32_t view_count = anv_subpass_view_count(pipeline->subpass);
+      if (pipeline->view_mask && !pipeline->use_primitive_replication) {
+         const uint32_t view_count = util_bitcount(pipeline->view_mask);
          for (uint32_t vb = 0; vb < MAX_VBS; vb++) {
             if (pipeline->vb[vb].instanced)
                pipeline->vb[vb].instance_divisor *= view_count;

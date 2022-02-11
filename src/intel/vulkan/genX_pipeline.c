@@ -33,6 +33,7 @@
 #include "vk_util.h"
 #include "vk_format.h"
 #include "vk_log.h"
+#include "vk_render_pass.h"
 
 static uint32_t
 vertex_element_comp_control(enum isl_format format, unsigned comp)
@@ -759,9 +760,8 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineRasterizationStateCreateInfo *rs_info,
               const VkPipelineMultisampleStateCreateInfo *ms_info,
               const VkPipelineRasterizationLineStateCreateInfoEXT *line_info,
+              const VkPipelineRenderingCreateInfo *rendering_info,
               const uint32_t dynamic_states,
-              const struct anv_render_pass *pass,
-              const struct anv_subpass *subpass,
               enum intel_urb_deref_block_size urb_deref_block_size)
 {
    struct GENX(3DSTATE_SF) sf = {
@@ -895,18 +895,16 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    /* Gfx7 requires that we provide the depth format in 3DSTATE_SF so that it
     * can get the depth offsets correct.
     */
-   if (subpass->depth_stencil_attachment) {
-      VkFormat vk_format =
-         pass->attachments[subpass->depth_stencil_attachment->attachment].format;
-      assert(vk_format_is_depth_or_stencil(vk_format));
-      if (vk_format_aspects(vk_format) & VK_IMAGE_ASPECT_DEPTH_BIT) {
-         enum isl_format isl_format =
-            anv_get_isl_format(&pipeline->base.device->info, vk_format,
-                               VK_IMAGE_ASPECT_DEPTH_BIT,
-                               VK_IMAGE_TILING_OPTIMAL);
-         sf.DepthBufferSurfaceFormat =
-            isl_format_get_depth_format(isl_format, false);
-      }
+   if (rendering_info != NULL &&
+       rendering_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED) {
+      assert(vk_format_has_depth(rendering_info->depthAttachmentFormat));
+      enum isl_format isl_format =
+         anv_get_isl_format(&pipeline->base.device->info,
+                            rendering_info->depthAttachmentFormat,
+                            VK_IMAGE_ASPECT_DEPTH_BIT,
+                            VK_IMAGE_TILING_OPTIMAL);
+      sf.DepthBufferSurfaceFormat =
+         isl_format_get_depth_format(isl_format, false);
    }
 #endif
 
@@ -1206,9 +1204,8 @@ sanitize_ds_state(VkPipelineDepthStencilStateCreateInfo *state,
 static void
 emit_ds_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineDepthStencilStateCreateInfo *pCreateInfo,
-              const uint32_t dynamic_states,
-              const struct anv_render_pass *pass,
-              const struct anv_subpass *subpass)
+              const VkPipelineRenderingCreateInfo *rendering_info,
+              const uint32_t dynamic_states)
 {
 #if GFX_VER == 7
 #  define depth_stencil_dw pipeline->gfx7.depth_stencil_state
@@ -1232,10 +1229,11 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
    }
 
    VkImageAspectFlags ds_aspects = 0;
-   if (subpass->depth_stencil_attachment) {
-      VkFormat depth_stencil_format =
-         pass->attachments[subpass->depth_stencil_attachment->attachment].format;
-      ds_aspects = vk_format_aspects(depth_stencil_format);
+   if (rendering_info != NULL) {
+      if (rendering_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED)
+         ds_aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
+      if (rendering_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)
+         ds_aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
    }
 
    VkPipelineDepthStencilStateCreateInfo info = *pCreateInfo;
@@ -2250,12 +2248,13 @@ has_color_buffer_write_enabled(const struct anv_graphics_pipeline *pipeline,
 }
 
 static void
-emit_3dstate_wm(struct anv_graphics_pipeline *pipeline, struct anv_subpass *subpass,
+emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
                 const VkPipelineInputAssemblyStateCreateInfo *ia,
                 const VkPipelineRasterizationStateCreateInfo *raster,
                 const VkPipelineColorBlendStateCreateInfo *blend,
                 const VkPipelineMultisampleStateCreateInfo *multisample,
                 const VkPipelineRasterizationLineStateCreateInfoEXT *line,
+                const VkRenderingSelfDependencyInfoMESA *rsd,
                 const uint32_t dynamic_states)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
@@ -2322,7 +2321,8 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline, struct anv_subpass *subp
        * may get the depth or stencil value from the current draw rather
        * than the previous one.
        */
-      wm.PixelShaderKillsPixel         = subpass->has_ds_self_dep ||
+      wm.PixelShaderKillsPixel         = rsd->depthSelfDependency ||
+                                         rsd->stencilSelfDependency ||
                                          wm_prog_data->uses_kill;
 
       pipeline->force_fragment_thread_dispatch =
@@ -2495,8 +2495,8 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
 #if GFX_VER >= 8
 static void
 emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
-                      struct anv_subpass *subpass,
-                      const VkPipelineRasterizationStateCreateInfo *rs_info)
+                      const VkPipelineRasterizationStateCreateInfo *rs_info,
+                      const VkRenderingSelfDependencyInfoMESA *rsd_info)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
@@ -2520,7 +2520,8 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
        * around to fetching from the input attachment and we may get the depth
        * or stencil value from the current draw rather than the previous one.
        */
-      ps.PixelShaderKillsPixel         = subpass->has_ds_self_dep ||
+      ps.PixelShaderKillsPixel         = rsd_info->depthSelfDependency ||
+                                         rsd_info->stencilSelfDependency ||
                                          wm_prog_data->uses_kill;
 
 #if GFX_VER >= 9
@@ -2575,7 +2576,7 @@ emit_3dstate_vf_statistics(struct anv_graphics_pipeline *pipeline)
 static void
 compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
                    const VkPipelineMultisampleStateCreateInfo *ms_info,
-                   const struct anv_subpass *subpass)
+                   const VkRenderingSelfDependencyInfoMESA *rsd_info)
 {
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT)) {
       pipeline->kill_pixel = false;
@@ -2599,21 +2600,24 @@ compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
     * of an alpha test.
     */
    pipeline->kill_pixel =
-      subpass->has_ds_self_dep || wm_prog_data->uses_kill ||
+      rsd_info->depthSelfDependency ||
+      rsd_info->stencilSelfDependency ||
+      wm_prog_data->uses_kill ||
       wm_prog_data->uses_omask ||
       (ms_info && ms_info->alphaToCoverageEnable);
 }
 
 #if GFX_VER == 12
 static void
-emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline)
+emit_3dstate_primitive_replication(struct anv_graphics_pipeline *pipeline,
+                                   const VkPipelineRenderingCreateInfo *rendering_info)
 {
    if (!pipeline->use_primitive_replication) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PRIMITIVE_REPLICATION), pr);
       return;
    }
 
-   uint32_t view_mask = pipeline->subpass->view_mask;
+   uint32_t view_mask = rendering_info != NULL ? rendering_info->viewMask : 0;
    int view_count = util_bitcount(view_mask);
    assert(view_count > 1 && view_count <= MAX_VIEWS_FOR_PRIMITIVE_REPLICATION);
 
@@ -2783,17 +2787,77 @@ genX(graphics_pipeline_create)(
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   /* We'll use these as defaults if we don't have pipeline rendering or
+    * self-dependency structs.  Saves us some NULL checks.
+    */
+   VkRenderingSelfDependencyInfoMESA rsd_info_tmp = {
+      .sType = VK_STRUCTURE_TYPE_RENDERING_SELF_DEPENDENCY_INFO_MESA,
+   };
+   VkPipelineRenderingCreateInfo rendering_info_tmp = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+      .pNext = &rsd_info_tmp,
+   };
+
+   const VkPipelineRenderingCreateInfo *rendering_info;
+   const VkRenderingSelfDependencyInfoMESA *rsd_info;
+   VkFormat color_formats_tmp[MAX_RTS];
+   if (pCreateInfo->renderPass != VK_NULL_HANDLE) {
+      ANV_FROM_HANDLE(anv_render_pass, render_pass, pCreateInfo->renderPass);
+      assert(pCreateInfo->subpass < render_pass->subpass_count);
+      const struct anv_subpass *subpass =
+         &render_pass->subpasses[pCreateInfo->subpass];
+
+      rendering_info_tmp.viewMask = subpass->view_mask;
+
+      assert(subpass->color_count <= MAX_RTS);
+      for (uint32_t i = 0; i < subpass->color_count; i++) {
+         uint32_t att_idx = subpass->color_attachments[i].attachment;
+         if (att_idx < render_pass->attachment_count)
+            color_formats_tmp[i] = render_pass->attachments[att_idx].format;
+         else
+            color_formats_tmp[i] = VK_FORMAT_UNDEFINED;
+      }
+      rendering_info_tmp.colorAttachmentCount = subpass->color_count;
+      rendering_info_tmp.pColorAttachmentFormats = color_formats_tmp;
+
+      if (subpass->depth_stencil_attachment) {
+         uint32_t ds_att_idx = subpass->depth_stencil_attachment->attachment;
+         assert(ds_att_idx < render_pass->attachment_count);
+         VkFormat depth_stencil_format =
+            render_pass->attachments[ds_att_idx].format;
+         if (vk_format_has_depth(depth_stencil_format)) {
+            rendering_info_tmp.depthAttachmentFormat = depth_stencil_format;
+            rsd_info_tmp.depthSelfDependency = subpass->has_ds_self_dep;
+         }
+         if (vk_format_has_stencil(depth_stencil_format)) {
+            rendering_info_tmp.stencilAttachmentFormat = depth_stencil_format;
+            rsd_info_tmp.stencilSelfDependency = subpass->has_ds_self_dep;
+         }
+      }
+
+      rendering_info = &rendering_info_tmp;
+      rsd_info = &rsd_info_tmp;
+   } else {
+      rendering_info = vk_find_struct_const(pCreateInfo->pNext,
+                                            PIPELINE_RENDERING_CREATE_INFO_KHR);
+      if (rendering_info == NULL)
+         rendering_info = &rendering_info_tmp;
+
+      rsd_info = vk_find_struct_const(rendering_info->pNext,
+                                      RENDERING_SELF_DEPENDENCY_INFO_MESA);
+      if (rsd_info == NULL)
+         rsd_info = &rsd_info_tmp;
+   }
+
    result = anv_graphics_pipeline_init(pipeline, device, cache,
-                                       pCreateInfo, pAllocator);
+                                       pCreateInfo, rendering_info,
+                                       pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT)
          *pPipeline = VK_NULL_HANDLE;
       return result;
    }
-
-   struct anv_render_pass *pass = pipeline->pass;
-   struct anv_subpass *subpass = pipeline->subpass;
 
    /* Information on which states are considered dynamic. */
    const VkPipelineDynamicStateCreateInfo *dyn_info =
@@ -2835,12 +2899,12 @@ genX(graphics_pipeline_create)(
    assert(pCreateInfo->pRasterizationState);
    emit_rs_state(pipeline, pCreateInfo->pInputAssemblyState,
                            pCreateInfo->pRasterizationState,
-                           ms_info, line_info, dynamic_states, pass, subpass,
-                           urb_deref_block_size);
+                           ms_info, line_info, rendering_info,
+                           dynamic_states, urb_deref_block_size);
    emit_ms_state(pipeline, ms_info, dynamic_states);
-   emit_ds_state(pipeline, ds_info, dynamic_states, pass, subpass);
+   emit_ds_state(pipeline, ds_info, rendering_info, dynamic_states);
    emit_cb_state(pipeline, cb_info, ms_info, dynamic_states);
-   compute_kill_pixel(pipeline, ms_info, subpass);
+   compute_kill_pixel(pipeline, ms_info, rsd_info);
 
    emit_3dstate_clip(pipeline,
                      pCreateInfo->pInputAssemblyState,
@@ -2849,7 +2913,7 @@ genX(graphics_pipeline_create)(
                      dynamic_states);
 
 #if GFX_VER == 12
-   emit_3dstate_primitive_replication(pipeline);
+   emit_3dstate_primitive_replication(pipeline, rendering_info);
 #endif
 
 #if 0
@@ -2906,14 +2970,14 @@ genX(graphics_pipeline_create)(
    }
 
    emit_3dstate_sbe(pipeline);
-   emit_3dstate_wm(pipeline, subpass,
+   emit_3dstate_wm(pipeline,
                    pCreateInfo->pInputAssemblyState,
                    pCreateInfo->pRasterizationState,
-                   cb_info, ms_info, line_info, dynamic_states);
+                   cb_info, ms_info, line_info, rsd_info,
+                   dynamic_states);
    emit_3dstate_ps(pipeline, cb_info, ms_info);
 #if GFX_VER >= 8
-   emit_3dstate_ps_extra(pipeline, subpass,
-                         pCreateInfo->pRasterizationState);
+   emit_3dstate_ps_extra(pipeline, pCreateInfo->pRasterizationState, rsd_info);
 #endif
 
    *pPipeline = anv_pipeline_to_handle(&pipeline->base);
