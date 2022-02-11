@@ -27,17 +27,34 @@
 #include "tu_private.h"
 #include "tu_cs.h"
 
-/* In Vulkan application may fill command buffer from many threads
- * and expect no locking to occur. We do introduce the possibility of
- * locking on renderpass end, however assuming that application
- * doesn't have a huge amount of slightly different renderpasses,
- * there would be minimal to none contention.
+/* How does it work?
  *
- * Other assumptions are:
- * - Application does submit command buffers soon after their creation.
+ * - For each renderpass we calculate the number of samples passed
+ *   by storing the number before and after in GPU memory.
+ * - To store the values each command buffer holds GPU memory which
+ *   expands with more renderpasses being written.
+ * - For each renderpass we create tu_renderpass_result entry which
+ *   points to the results in GPU memory.
+ *   - Later on tu_renderpass_result would be added to the
+ *     tu_renderpass_history entry which aggregate results for a
+ *     given renderpass.
+ * - On submission:
+ *   - Process results which fence was signalled.
+ *   - Free per-submission data which we now don't need.
  *
- * Breaking the above may lead to some decrease in performance or
- * autotuner turning itself off.
+ *   - Create a command stream to write a fence value. This way we would
+ *     know when we could safely read the results.
+ *   - We cannot rely on the command buffer's lifetime when referencing
+ *     its resources since the buffer could be destroyed before we process
+ *     the results.
+ *   - For each command buffer:
+ *     - Reference its GPU memory.
+ *     - Move if ONE_TIME_SUBMIT or copy all tu_renderpass_result to the queue.
+ *
+ * Since the command buffers could be recorded on different threads
+ * we have to maintaining some amount of locking history table,
+ * however we change the table only in a single thread at the submission
+ * time, so in most cases there will be no locking.
  */
 
 #define TU_AUTOTUNE_DEBUG_LOG 0
@@ -46,8 +63,12 @@
  */
 #define TU_AUTOTUNE_LOG_AT_FINISH 0
 
+/* How many last renderpass stats are taken into account. */
 #define MAX_HISTORY_RESULTS 5
+/* For how many submissions we store renderpass stats. */
 #define MAX_HISTORY_LIFETIME 128
+
+#define TU_AUTOTUNE_RP_BO_SIZE 4096
 
 /**
  * Tracks results for a given renderpass key
@@ -67,12 +88,100 @@ struct tu_renderpass_history {
    uint32_t avg_samples;
 };
 
-/* Holds per-submission cs which writes the fence. */
-struct tu_submission_fence_cs {
-   struct list_head node;
-   struct tu_cs cs;
-   uint32_t fence;
+struct tu_autotune_results_buffer
+{
+   int32_t ref_cnt;
+
+   struct tu_device *device;
+
+   /* TODO: It would be better to suballocate the space from
+    * a memory pool which would create less BOs and waste less space.
+    */
+   struct tu_bo **bos;
+   uint32_t num_bos;
+   uint32_t results_written;
 };
+
+static struct tu_autotune_results_buffer*
+tu_autotune_results_buffer_create(struct tu_device *dev)
+{
+   struct tu_autotune_results_buffer* buffer =
+      malloc(sizeof(struct tu_autotune_results_buffer));
+
+   buffer->ref_cnt = 1;
+   buffer->device = dev;
+   buffer->results_written = 0;
+   buffer->num_bos = 0;
+   buffer->bos = NULL;
+
+   return buffer;
+}
+
+void
+tu_autotune_results_buffer_ref(struct tu_autotune_results_buffer *buffer)
+{
+   assert(buffer && buffer->ref_cnt >= 1);
+   p_atomic_inc(&buffer->ref_cnt);
+}
+
+void
+tu_autotune_results_buffer_unref(struct tu_autotune_results_buffer *buffer)
+{
+   assert(buffer && buffer->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&buffer->ref_cnt)) {
+      for (int i = 0; i < buffer->num_bos; i++)
+         tu_bo_finish(buffer->device, buffer->bos[i]);
+
+      ralloc_free(buffer->bos);
+      free(buffer);
+   }
+}
+
+/* Holds per-submission cs which writes the fence. */
+struct tu_submission_data {
+   struct list_head node;
+   uint32_t fence;
+
+   struct tu_cs fence_cs;
+   struct tu_autotune_results_buffer **buffers;
+   uint32_t buffers_count;
+};
+
+static struct tu_submission_data *
+create_submission_data(struct tu_device *dev, struct tu_autotune *at)
+{
+   struct tu_submission_data *submission_data =
+      calloc(1, sizeof(struct tu_submission_data));
+   submission_data->fence = at->fence_counter;
+
+   struct tu_cs* fence_cs = &submission_data->fence_cs;
+   tu_cs_init(fence_cs, dev, TU_CS_MODE_GROW, 5);
+   tu_cs_begin(fence_cs);
+
+   tu_cs_emit_pkt7(fence_cs, CP_EVENT_WRITE, 4);
+   tu_cs_emit(fence_cs, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_TS));
+   tu_cs_emit_qw(fence_cs, dev->global_bo->iova + gb_offset(autotune_fence));
+   tu_cs_emit(fence_cs, at->fence_counter);
+
+   tu_cs_end(fence_cs);
+
+   list_addtail(&submission_data->node, &at->pending_submission_data);
+
+   return submission_data;
+}
+
+static void
+free_submission_data(struct tu_submission_data *data)
+{
+   list_del(&data->node);
+   tu_cs_finish(&data->fence_cs);
+   for (uint32_t i = 0; i < data->buffers_count; i++) {
+      tu_autotune_results_buffer_unref(data->buffers[i]);
+   }
+
+   free(data->buffers);
+   free(data);
+}
 
 #define APPEND_TO_HASH(state, field) \
    XXH64_update(state, &field, sizeof(field));
@@ -125,8 +234,6 @@ static void
 result_destructor(void *r)
 {
    struct tu_renderpass_result *result = r;
-
-   /* Just in case we manage to somehow still be on the pending_results list: */
    list_del(&result->node);
 }
 
@@ -157,8 +264,6 @@ static struct tu_renderpass_result *
 create_history_result(struct tu_autotune *at, uint64_t rp_key)
 {
    struct tu_renderpass_result *result = rzalloc_size(NULL, sizeof(*result));
-
-   result->idx = p_atomic_inc_return(&at->idx_counter);
    result->rp_key = rp_key;
 
    ralloc_set_destructor(result, result_destructor);
@@ -199,10 +304,8 @@ history_add_result(struct tu_renderpass_history *history,
 static void
 process_results(struct tu_autotune *at)
 {
-   uint32_t current_fence = at->results->fence;
-
-   uint32_t min_idx = ~0;
-   uint32_t max_idx = 0;
+   struct tu6_global *global = at->device->global_bo->map;
+   uint32_t current_fence = global->autotune_fence;
 
    list_for_each_entry_safe(struct tu_renderpass_result, result,
                             &at->pending_results, node) {
@@ -210,56 +313,42 @@ process_results(struct tu_autotune *at)
          break;
 
       struct tu_renderpass_history *history = result->history;
-
-      min_idx = MIN2(min_idx, result->idx);
-      max_idx = MAX2(max_idx, result->idx);
-      uint32_t idx = result->idx % ARRAY_SIZE(at->results->result);
-
-      result->samples_passed = at->results->result[idx].samples_end -
-                               at->results->result[idx].samples_start;
+      result->samples_passed =
+         result->samples->samples_end - result->samples->samples_start;
 
       history_add_result(history, result);
    }
 
-   list_for_each_entry_safe(struct tu_submission_fence_cs, submission_cs,
-                            &at->pending_submission_cs, node) {
-      if (submission_cs->fence > current_fence)
+   list_for_each_entry_safe(struct tu_submission_data, submission_data,
+                            &at->pending_submission_data, node) {
+      if (submission_data->fence > current_fence)
          break;
 
-      list_del(&submission_cs->node);
-      tu_cs_finish(&submission_cs->cs);
-      free(submission_cs);
-   }
-
-   if (max_idx - min_idx > TU_AUTOTUNE_MAX_RESULTS) {
-      /* If results start to trample each other it's better to bail out */
-      at->enabled = false;
-      mesa_logw("disabling sysmem vs gmem autotuner because results "
-                "are trampling each other: min_idx=%u, max_idx=%u",
-                min_idx, max_idx);
+      free_submission_data(submission_data);
    }
 }
 
-static struct tu_cs *
-create_fence_cs(struct tu_device *dev, struct tu_autotune *at)
+static void
+queue_pending_results(struct tu_autotune *at, struct tu_cmd_buffer *cmdbuf)
 {
-   struct tu_submission_fence_cs *submission_cs =
-      calloc(1, sizeof(struct tu_submission_fence_cs));
-   submission_cs->fence = at->fence_counter;
+   bool one_time_submit = cmdbuf->usage_flags &
+         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-   tu_cs_init(&submission_cs->cs, dev, TU_CS_MODE_GROW, 5);
-   tu_cs_begin(&submission_cs->cs);
-
-   tu_cs_emit_pkt7(&submission_cs->cs, CP_EVENT_WRITE, 4);
-   tu_cs_emit(&submission_cs->cs, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_TS));
-   tu_cs_emit_qw(&submission_cs->cs, autotune_results_ptr(at, fence));
-   tu_cs_emit(&submission_cs->cs, at->fence_counter);
-
-   tu_cs_end(&submission_cs->cs);
-
-   list_addtail(&submission_cs->node, &at->pending_submission_cs);
-
-   return &submission_cs->cs;
+   if (one_time_submit) {
+      /* We can just steal the list since it won't be resubmitted again */
+      list_splicetail(&cmdbuf->renderpass_autotune_results,
+                        &at->pending_results);
+      list_inithead(&cmdbuf->renderpass_autotune_results);
+   } else {
+      list_for_each_entry_safe(struct tu_renderpass_result, result,
+                              &cmdbuf->renderpass_autotune_results, node) {
+         /* TODO: copying each result isn't nice */
+         struct tu_renderpass_result *copy = ralloc_size(NULL, sizeof(*result));
+         ralloc_set_destructor(result, result_destructor);
+         *copy = *result;
+         list_addtail(&copy->node, &at->pending_results);
+      }
+   }
 }
 
 struct tu_cs *
@@ -274,6 +363,7 @@ tu_autotune_on_submit(struct tu_device *dev,
 
    /* pre-increment so zero isn't valid fence */
    uint32_t new_fence = ++at->fence_counter;
+   uint32_t result_buffers = 0;
 
    /* Create history entries here to minimize work and locking being
     * done on renderpass end.
@@ -305,10 +395,26 @@ tu_autotune_on_submit(struct tu_device *dev,
       }
 
       if (!list_is_empty(&cmdbuf->renderpass_autotune_results)) {
-         list_splicetail(&cmdbuf->renderpass_autotune_results,
-                         &at->pending_results);
-         list_inithead(&cmdbuf->renderpass_autotune_results);
+         result_buffers++;
       }
+   }
+
+   struct tu_submission_data *submission_data =
+      create_submission_data(dev, at);
+   submission_data->buffers_count = result_buffers;
+   submission_data->buffers =
+      malloc(sizeof(struct tu_autotune_results_buffer *) * result_buffers);
+
+   uint32_t buffer_idx = 0;
+   for (uint32_t i = 0; i < cmd_buffer_count; i++) {
+      struct tu_cmd_buffer *cmdbuf = cmd_buffers[i];
+      if (list_is_empty(&cmdbuf->renderpass_autotune_results))
+         continue;
+
+      queue_pending_results(at, cmdbuf);
+
+      submission_data->buffers[buffer_idx++] = cmdbuf->autotune_buffer;
+      tu_autotune_results_buffer_ref(cmdbuf->autotune_buffer);
    }
 
 #if TU_AUTOTUNE_DEBUG_LOG != 0
@@ -336,7 +442,7 @@ tu_autotune_on_submit(struct tu_device *dev,
       ralloc_free(history);
    }
 
-   return create_fence_cs(dev, at);
+   return &submission_data->fence_cs;
 }
 
 static bool
@@ -354,44 +460,17 @@ renderpass_key_hash(const void *_a)
 VkResult
 tu_autotune_init(struct tu_autotune *at, struct tu_device *dev)
 {
-   VkResult result;
-
    at->enabled = true;
+   at->device = dev;
    at->ht = _mesa_hash_table_create(NULL,
                                     renderpass_key_hash,
                                     renderpass_key_equals);
    u_rwlock_init(&at->ht_lock);
 
-   result = tu_bo_init_new(dev, &at->results_bo,
-                           sizeof(struct tu_autotune_results),
-                           TU_BO_ALLOC_NO_FLAGS);
-   if (result != VK_SUCCESS) {
-      vk_startup_errorf(dev->instance, result, "Autotune BO init");
-      goto fail_bo;
-   }
-
-   result = tu_bo_map(dev, at->results_bo);
-
-   if (result != VK_SUCCESS) {
-      vk_startup_errorf(dev->instance, result, "Autotune BO map");
-      goto fail_map_bo;
-   }
-
-   at->results = at->results_bo->map;
-
    list_inithead(&at->pending_results);
-   list_inithead(&at->pending_submission_cs);
+   list_inithead(&at->pending_submission_data);
 
    return VK_SUCCESS;
-
-fail_map_bo:
-   tu_bo_finish(dev, at->results_bo);
-
-fail_bo:
-   u_rwlock_destroy(&at->ht_lock);
-   _mesa_hash_table_destroy(at->ht, NULL);
-
-   return result;
 }
 
 void
@@ -417,15 +496,13 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
       ralloc_free(history);
    }
 
-   list_for_each_entry_safe(struct tu_submission_fence_cs, submission_cs,
-                            &at->pending_submission_cs, node) {
-      tu_cs_finish(&submission_cs->cs);
-      free(submission_cs);
+   list_for_each_entry_safe(struct tu_submission_data, submission_data,
+                            &at->pending_submission_data, node) {
+      free_submission_data(submission_data);
    }
 
    _mesa_hash_table_destroy(at->ht, NULL);
    u_rwlock_destroy(&at->ht_lock);
-   tu_bo_finish(dev, at->results_bo);
 }
 
 bool
@@ -487,16 +564,16 @@ tu_autotune_use_bypass(struct tu_autotune *at,
          return false;
    }
 
-   /* If we would want to support buffers that could be submitted
-    * several times we would have to copy the sample counts of renderpasses
-    * after each submission of such buffer (like with u_trace support).
-    * This is rather messy and since almost all apps use ONE_TIME_SUBMIT
-    * we choose to unconditionally use fallback.
+   /* For VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT buffers
+    * we would have to allocate GPU memory at the submit time and copy
+    * results into it.
+    * Native games ususally don't use it, Zink and DXVK don't use it,
+    * D3D12 doesn't have such concept.
     */
-   bool one_time_submit = cmd_buffer->usage_flags &
-      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+   bool simultaneous_use =
+      cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-   if (!at->enabled || !one_time_submit)
+   if (!at->enabled || simultaneous_use)
       return fallback_use_bypass(pass, framebuffer, cmd_buffer);
 
    /* We use 64bit hash as a key since we don't fear rare hash collision,
@@ -554,4 +631,84 @@ tu_autotune_use_bypass(struct tu_autotune *at,
    }
 
    return fallback_use_bypass(pass, framebuffer, cmd_buffer);
+}
+
+static uint32_t
+get_offset_for_renderpass(struct tu_autotune_results_buffer *buffer)
+{
+   uint32_t results_per_bo =
+      TU_AUTOTUNE_RP_BO_SIZE / sizeof(struct tu_renderpass_samples);
+   return (buffer->results_written % results_per_bo) *
+          sizeof(struct tu_renderpass_samples);
+}
+
+static struct tu_bo *
+get_bo_for_renderpass(struct tu_autotune_results_buffer *buffer)
+{
+   if (get_offset_for_renderpass(buffer) == 0) {
+      buffer->num_bos++;
+      buffer->bos =
+         reralloc(NULL, buffer->bos, struct tu_bo *, buffer->num_bos);
+      struct tu_bo **new_bo = &buffer->bos[buffer->num_bos - 1];
+
+      tu_bo_init_new(buffer->device, new_bo, TU_AUTOTUNE_RP_BO_SIZE,
+                     TU_BO_ALLOC_NO_FLAGS);
+      tu_bo_map(buffer->device, *new_bo);
+   }
+
+   return buffer->bos[buffer->num_bos - 1];
+}
+
+void
+tu_autotune_begin_renderpass(struct tu_cmd_buffer *cmd,
+                             struct tu_cs *cs,
+                             struct tu_renderpass_result *autotune_result)
+{
+   if (!autotune_result)
+      return;
+
+   /* Lazily allocate memory for renderpass results.
+    * Secondary command buffers do not support renderpasses.
+    */
+   assert(cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+   if (!cmd->autotune_buffer) {
+      cmd->autotune_buffer = tu_autotune_results_buffer_create(cmd->device);
+   }
+
+   uint32_t bo_offset = get_offset_for_renderpass(cmd->autotune_buffer);
+   struct tu_bo *bo = get_bo_for_renderpass(cmd->autotune_buffer);
+
+   uint64_t result_iova = bo->iova + bo_offset;
+
+   autotune_result->samples =
+      (struct tu_renderpass_samples *) (bo->map + bo_offset);
+
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
+
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_ADDR(.qword = result_iova));
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(cs, ZPASS_DONE);
+}
+
+void tu_autotune_end_renderpass(struct tu_cmd_buffer *cmd,
+                                struct tu_cs *cs,
+                                struct tu_renderpass_result *autotune_result)
+{
+   if (!autotune_result)
+      return;
+
+   uint32_t bo_offset = get_offset_for_renderpass(cmd->autotune_buffer);
+   struct tu_bo *bo = cmd->autotune_buffer->bos[cmd->autotune_buffer->num_bos - 1];
+   cmd->autotune_buffer->results_written += 1;
+
+   uint64_t result_iova = bo->iova + bo_offset +
+                          offsetof(struct tu_renderpass_samples, samples_end);
+
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
+
+   tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_ADDR(.qword = result_iova));
+
+   tu_cs_emit_pkt7(cs, CP_EVENT_WRITE, 1);
+   tu_cs_emit(cs, ZPASS_DONE);
 }

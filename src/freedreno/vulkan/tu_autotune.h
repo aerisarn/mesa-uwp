@@ -28,15 +28,9 @@
 #include "util/list.h"
 #include "util/rwlock.h"
 
-#define autotune_offset(base, ptr) ((uint8_t *)(ptr) - (uint8_t *)(base))
-#define autotune_results_ptr(at, member)             \
-   (at->results_bo->iova +                           \
-      autotune_offset((at)->results, &(at)->results->member))
-
 struct tu_device;
 struct tu_cmd_buffer;
 
-struct tu_autotune_results;
 struct tu_renderpass_history;
 
 /**
@@ -75,6 +69,8 @@ struct tu_autotune {
     */
    bool enabled;
 
+   struct tu_device *device;
+
    /**
     * Cache to map renderpass key to historical information about
     * rendering to that particular render target.
@@ -83,61 +79,36 @@ struct tu_autotune {
    struct u_rwlock ht_lock;
 
    /**
-    * GPU buffer used to communicate back results to the CPU
-    */
-   struct tu_bo *results_bo;
-   struct tu_autotune_results *results;
-
-   /**
     * List of per-renderpass results that we are waiting for the GPU
     * to finish with before reading back the results.
     */
    struct list_head pending_results;
 
    /**
-    * List of per-submission CS that we are waiting for the GPU
-    * to finish using.
+    * List of per-submission data that we may want to free after we
+    * processed submission results.
+    * This could happend after command buffers which were in the submission
+    * are destroyed.
     */
-   struct list_head pending_submission_cs;
+   struct list_head pending_submission_data;
 
    uint32_t fence_counter;
    uint32_t idx_counter;
 };
 
-#define TU_AUTOTUNE_MAX_RESULTS 256
-
 /**
- * The layout of the memory used to read back per-batch results from the
- * GPU
+ * From the cmdstream, the captured samples-passed values are recorded
+ * at the start and end of the batch.
  *
- * Note this struct is intentionally aligned to 4k.  And hw requires the
- * sample start/stop locations to be 128b aligned.
+ * Note that we do the math on the CPU to avoid a WFI.  But pre-emption
+ * may force us to revisit that.
  */
-struct tu_autotune_results {
-
-   /**
-    * The GPU writes back a "fence" seqno value from the cmdstream after
-    * it finishes the submission, so that the CPU knows when
-    * results are valid.
-    */
-   uint32_t fence;
-
-   uint32_t __pad0;
+struct tu_renderpass_samples {
+   uint64_t samples_start;
+   /* hw requires the sample start/stop locations to be 128b aligned. */
+   uint64_t __pad0;
+   uint64_t samples_end;
    uint64_t __pad1;
-
-   /**
-    * From the cmdstream, the captured samples-passed values are recorded
-    * at the start and end of the batch.
-    *
-    * Note that we do the math on the CPU to avoid a WFI.  But pre-emption
-    * may force us to revisit that.
-    */
-   struct {
-      uint64_t samples_start;
-      uint64_t __pad0;
-      uint64_t samples_end;
-      uint64_t __pad1;
-   } result[TU_AUTOTUNE_MAX_RESULTS];
 };
 
 /**
@@ -146,12 +117,8 @@ struct tu_autotune_results {
  * time, when the GPU has finished writing the results, we fill samples_passed.
  */
 struct tu_renderpass_result {
-
-   /**
-    * The index/slot in tu_autotune_results::result[] to write start/end
-    * counter to
-    */
-   unsigned idx;
+   /* Points into GPU memory */
+   struct tu_renderpass_samples* samples;
 
    /*
     * Below here, only used internally within autotune
@@ -183,5 +150,17 @@ struct tu_cs *tu_autotune_on_submit(struct tu_device *dev,
                                     struct tu_cmd_buffer **cmd_buffers,
                                     uint32_t cmd_buffer_count);
 
+struct tu_autotune_results_buffer;
+
+void tu_autotune_results_buffer_ref(struct tu_autotune_results_buffer *buffer);
+void tu_autotune_results_buffer_unref(struct tu_autotune_results_buffer *buffer);
+
+void tu_autotune_begin_renderpass(struct tu_cmd_buffer *cmd,
+                                  struct tu_cs *cs,
+                                  struct tu_renderpass_result *autotune_result);
+
+void tu_autotune_end_renderpass(struct tu_cmd_buffer *cmd,
+                                struct tu_cs *cs,
+                                struct tu_renderpass_result *autotune_result);
 
 #endif /* TU_AUTOTUNE_H */

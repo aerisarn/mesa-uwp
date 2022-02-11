@@ -411,6 +411,9 @@ struct tu6_global
 
    ALIGN16 uint32_t cs_indirect_xyz[3];
 
+   /* To know when renderpass stats for autotune are valid */
+   volatile uint32_t autotune_fence;
+
    /* note: larger global bo will be used for customBorderColors */
    struct bcolor_entry bcolor_builtin[TU_BORDER_COLOR_BUILTIN], bcolor[];
 };
@@ -1170,6 +1173,7 @@ struct tu_cmd_buffer
    struct u_trace_iterator trace_renderpass_end;
 
    struct list_head renderpass_autotune_results;
+   struct tu_autotune_results_buffer* autotune_buffer;
 
    VkCommandBufferUsageFlags usage_flags;
    enum tu_cmd_buffer_status status;
