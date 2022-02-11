@@ -1508,14 +1508,10 @@ redirect_sampler_derefs(struct nir_builder *b, nir_instr *instr, void *data)
 
       assert(old_sampler);
 
-      /* If it is already bare, we just need to fix the shadow information */
-      if (glsl_type_is_bare_sampler(glsl_without_array(old_sampler->type)))
-         bare_sampler = old_sampler;
-      else {
-         /* Otherwise, clone the typed sampler to a bare sampler */
-         bare_sampler = nir_variable_clone(old_sampler, b->shader);
-         nir_shader_add_variable(b->shader, bare_sampler);
-      }
+      /* Clone the original sampler to a bare sampler of the correct type */
+      bare_sampler = nir_variable_clone(old_sampler, b->shader);
+      nir_shader_add_variable(b->shader, bare_sampler);
+
       bare_sampler->type =
          get_bare_samplers_for_type(old_sampler->type, tex->is_shadow);
       _mesa_hash_table_u64_insert(data, tex->sampler_index, bare_sampler);
@@ -1541,12 +1537,8 @@ redirect_sampler_derefs(struct nir_builder *b, nir_instr *instr, void *data)
                       old_var->data.binding;
    nir_variable *new_var = _mesa_hash_table_u64_search(data, var_key);
    if (!new_var) {
-      if (glsl_type_is_bare_sampler(glsl_without_array(old_var->type)))
-         new_var = old_var;
-      else {
-         new_var = nir_variable_clone(old_var, b->shader);
-         nir_shader_add_variable(b->shader, new_var);
-      }
+      new_var = nir_variable_clone(old_var, b->shader);
+      nir_shader_add_variable(b->shader, new_var);
       new_var->type = 
          get_bare_samplers_for_type(old_var->type, tex->is_shadow);
       _mesa_hash_table_u64_insert(data, var_key, new_var);
@@ -1562,9 +1554,6 @@ redirect_sampler_derefs(struct nir_builder *b, nir_instr *instr, void *data)
 
    nir_deref_path_finish(&path);
    nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[sampler_idx].src, &new_tail->dest.ssa);
-   /* Since is_shadow changes can the type of the original var, we need to
-    * remove the old derefs */
-   nir_deref_instr_remove_if_unused(final_deref);
    return true;
 }
 
