@@ -2355,6 +2355,22 @@ d3d12_set_tess_state(struct pipe_context *pctx,
    memcpy(ctx->default_inner_tess_factor, default_inner_level, sizeof(ctx->default_inner_tess_factor));
 }
 
+static enum pipe_reset_status
+d3d12_get_reset_status(struct pipe_context *pctx)
+{
+   struct d3d12_screen *screen = d3d12_screen(pctx->screen);
+   HRESULT hr = screen->dev->GetDeviceRemovedReason();
+   switch (hr) {
+   case DXGI_ERROR_DEVICE_HUNG:
+   case DXGI_ERROR_INVALID_CALL:
+      return PIPE_GUILTY_CONTEXT_RESET;
+   case DXGI_ERROR_DEVICE_RESET:
+      return PIPE_INNOCENT_CONTEXT_RESET;
+   default:
+      return SUCCEEDED(hr) ? PIPE_NO_RESET : PIPE_UNKNOWN_CONTEXT_RESET;
+   }
+}
+
 struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -2451,6 +2467,8 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.memory_barrier = d3d12_memory_barrier;
 
    ctx->base.get_sample_position = d3d12_get_sample_position;
+
+   ctx->base.get_device_reset_status = d3d12_get_reset_status;
 
    ctx->gfx_pipeline_state.sample_mask = ~0;
 
