@@ -155,10 +155,12 @@ vn_device_memory_pool_suballocate(struct vn_device *dev,
                                   uint32_t mem_type_index)
 {
    const VkDeviceSize pool_size = 16 * 1024 * 1024;
-   /* XXX We don't know the alignment requirement.  We should probably use 64K
-    * because some GPUs have 64K pages.
+   /* XXX We don't know the alignment requirement.  Use 64K because some GPUs
+    * have 64K pages.  It is also required by newer Intel GPUs.  But really we
+    * should require kernel 5.12+, where there is no KVM memslot limit, and
+    * remove this whole thing.
     */
-   const VkDeviceSize pool_align = 4096;
+   const VkDeviceSize pool_align = 64 * 1024;
    struct vn_device_memory_pool *pool = &dev->memory_pools[mem_type_index];
 
    assert(mem->size <= pool_size);
