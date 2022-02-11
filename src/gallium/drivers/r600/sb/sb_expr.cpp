@@ -459,8 +459,13 @@ bool expr_handler::fold_alu_op1(alu_node& n) {
 	case ALU_OP1_RECIP_FF:
 	case ALU_OP1_RECIP_IEEE: dv = 1.0f / cv.f; break;
 //	case ALU_OP1_RECIP_INT:
-	case ALU_OP1_RECIP_UINT: dv.u = (1ull << 32) / cv.u; break;
-//	case ALU_OP1_RNDNE: dv = floor(cv.f + 0.5f); break;
+	case ALU_OP1_RECIP_UINT: {
+		if (!cv.u)
+			return false;
+		dv.u = (1ull << 32) / cv.u;
+		break;
+	}
+	//	case ALU_OP1_RNDNE: dv = floor(cv.f + 0.5f); break;
 	case ALU_OP1_SIN: dv = sin(cv.f * 2.0f * M_PI); break;
 	case ALU_OP1_SQRT_IEEE: dv = sqrtf(cv.f); break;
 	case ALU_OP1_TRUNC: dv = truncf(cv.f); break;
