@@ -238,6 +238,10 @@ llvmpipe_get_query_result_resource(struct pipe_context *pipe,
    else {
       unsigned i;
 
+      /* don't write a value if fence hasn't signalled,
+         and partial isn't set . */
+      if (unsignalled && !(flags & PIPE_QUERY_PARTIAL))
+         return;
       switch (pq->type) {
       case PIPE_QUERY_OCCLUSION_COUNTER:
          for (i = 0; i < num_threads; i++) {
