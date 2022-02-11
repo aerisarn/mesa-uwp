@@ -149,7 +149,16 @@ d3d12_dxcore_screen(struct d3d12_screen *screen)
    return (struct d3d12_dxcore_screen *)screen;
 }
 
+void
+d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys);
+
 bool
-d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknown *adapter);
+d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter);
+
+void
+d3d12_deinit_screen(struct d3d12_screen *screen);
+
+void
+d3d12_destroy_screen(struct d3d12_screen *screen);
 
 #endif

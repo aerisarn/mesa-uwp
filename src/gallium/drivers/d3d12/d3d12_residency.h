@@ -31,3 +31,6 @@ d3d12_process_batch_residency(struct d3d12_screen *screen, struct d3d12_batch *b
 
 bool
 d3d12_init_residency(struct d3d12_screen *screen);
+
+void
+d3d12_deinit_residency(struct d3d12_screen *screen);

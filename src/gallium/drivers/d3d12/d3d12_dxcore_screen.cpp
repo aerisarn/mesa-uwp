@@ -143,6 +143,29 @@ dxcore_get_memory_info(struct d3d12_screen *screen, struct d3d12_memory_info *ou
    output->usage = local_info.currentUsage + nonlocal_info.currentUsage;
 }
 
+static void
+d3d12_deinit_dxcore_screen(struct d3d12_screen *dscreen)
+{
+   d3d12_deinit_screen(dscreen);
+   struct d3d12_dxcore_screen *screen = d3d12_dxcore_screen(dscreen);
+   if (screen->adapter) {
+      screen->adapter->Release();
+      screen->adapter = nullptr;
+   }
+   if (screen->factory) {
+      screen->factory->Release();
+      screen->factory = nullptr;
+   }
+}
+
+static void
+d3d12_destroy_dxcore_screen(struct pipe_screen *pscreen)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   d3d12_deinit_dxcore_screen(screen);
+   d3d12_destroy_screen(screen);
+}
+
 struct pipe_screen *
 d3d12_create_dxcore_screen(struct sw_winsys *winsys, LUID *adapter_luid)
 {
@@ -150,16 +173,19 @@ d3d12_create_dxcore_screen(struct sw_winsys *winsys, LUID *adapter_luid)
    if (!screen)
       return nullptr;
 
+   d3d12_init_screen_base(&screen->base, winsys);
+   screen->base.base.destroy = d3d12_destroy_dxcore_screen;
+
    screen->factory = get_dxcore_factory();
    if (!screen->factory) {
-      FREE(screen);
+      d3d12_destroy_dxcore_screen(&screen->base.base);
       return nullptr;
    }
 
    screen->adapter = choose_dxcore_adapter(screen->factory, adapter_luid);
    if (!screen->adapter) {
       debug_printf("D3D12: no suitable adapter\n");
-      FREE(screen);
+      d3d12_destroy_dxcore_screen(&screen->base.base);
       return nullptr;
    }
 
@@ -174,7 +200,7 @@ d3d12_create_dxcore_screen(struct sw_winsys *winsys, LUID *adapter_luid)
                                            sizeof(screen->description),
                                            screen->description))) {
       debug_printf("D3D12: failed to retrieve adapter description\n");
-      FREE(screen);
+      d3d12_destroy_dxcore_screen(&screen->base.base);
       return nullptr;
    }
 
@@ -183,9 +209,9 @@ d3d12_create_dxcore_screen(struct sw_winsys *winsys, LUID *adapter_luid)
    screen->base.base.get_name = dxcore_get_name;
    screen->base.get_memory_info = dxcore_get_memory_info;
 
-   if (!d3d12_init_screen(&screen->base, winsys, screen->adapter)) {
+   if (!d3d12_init_screen(&screen->base, screen->adapter)) {
       debug_printf("D3D12: failed to initialize DXCore screen\n");
-      FREE(screen);
+      d3d12_destroy_dxcore_screen(&screen->base.base);
       return nullptr;
    }
 

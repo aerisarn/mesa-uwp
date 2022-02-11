@@ -249,3 +249,12 @@ d3d12_init_residency(struct d3d12_screen *screen)
 
    return true;
 }
+
+void
+d3d12_deinit_residency(struct d3d12_screen *screen)
+{
+   if (screen->residency_fence) {
+      screen->residency_fence->Release();
+      screen->residency_fence = nullptr;
+   }
+}

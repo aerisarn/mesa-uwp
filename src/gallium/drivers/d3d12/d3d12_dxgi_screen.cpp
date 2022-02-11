@@ -124,12 +124,38 @@ dxgi_get_memory_info(struct d3d12_screen *screen, struct d3d12_memory_info *outp
    output->usage = local_info.CurrentUsage + nonlocal_info.CurrentUsage;
 }
 
+static void
+d3d12_deinit_dxgi_screen(struct d3d12_screen *dscreen)
+{
+   d3d12_deinit_screen(dscreen);
+   struct d3d12_dxgi_screen *screen = d3d12_dxgi_screen(dscreen);
+   if (screen->adapter) {
+      screen->adapter->Release();
+      screen->adapter = nullptr;
+   }
+   if (screen->factory) {
+      screen->factory->Release();
+      screen->factory = nullptr;
+   }
+}
+
+static void
+d3d12_destroy_dxgi_screen(struct pipe_screen *pscreen)
+{
+   struct d3d12_screen *screen = d3d12_screen(pscreen);
+   d3d12_deinit_dxgi_screen(screen);
+   d3d12_destroy_screen(screen);
+}
+
 struct pipe_screen *
 d3d12_create_dxgi_screen(struct sw_winsys *winsys, LUID *adapter_luid)
 {
    struct d3d12_dxgi_screen *screen = CALLOC_STRUCT(d3d12_dxgi_screen);
    if (!screen)
       return nullptr;
+
+   d3d12_init_screen_base(&screen->base, winsys);
+   screen->base.base.destroy = d3d12_destroy_dxgi_screen;
 
    screen->factory = get_dxgi_factory();
    if (!screen->factory) {
@@ -140,14 +166,14 @@ d3d12_create_dxgi_screen(struct sw_winsys *winsys, LUID *adapter_luid)
    screen->adapter = choose_dxgi_adapter(screen->factory, adapter_luid);
    if (!screen->adapter) {
       debug_printf("D3D12: no suitable adapter\n");
-      FREE(screen);
+      d3d12_destroy_dxgi_screen(&screen->base.base);
       return nullptr;
    }
 
    DXGI_ADAPTER_DESC1 adapter_desc = {};
    if (FAILED(screen->adapter->GetDesc1(&adapter_desc))) {
       debug_printf("D3D12: failed to retrieve adapter description\n");
-      FREE(screen);
+      d3d12_destroy_dxgi_screen(&screen->base.base);
       return nullptr;
    }
 
@@ -165,9 +191,9 @@ d3d12_create_dxgi_screen(struct sw_winsys *winsys, LUID *adapter_luid)
    screen->base.base.get_name = dxgi_get_name;
    screen->base.get_memory_info = dxgi_get_memory_info;
 
-   if (!d3d12_init_screen(&screen->base, winsys, screen->adapter)) {
+   if (!d3d12_init_screen(&screen->base, screen->adapter)) {
       debug_printf("D3D12: failed to initialize DXGI screen\n");
-      FREE(screen);
+      d3d12_destroy_dxgi_screen(&screen->base.base);
       return nullptr;
    }
 
