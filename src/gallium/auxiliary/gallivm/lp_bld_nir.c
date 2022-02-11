@@ -1371,7 +1371,7 @@ static void visit_load_ubo(struct lp_build_nir_context *bld_base,
    LLVMValueRef idx = get_src(bld_base, instr->src[0]);
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
 
-   bool offset_is_uniform = nir_src_is_dynamically_uniform(instr->src[1]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[1]);
    idx = LLVMBuildExtractElement(builder, idx, lp_build_const_int32(gallivm, 0), "");
    bld_base->load_ubo(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
                       offset_is_uniform, idx, offset, result);
@@ -1384,7 +1384,7 @@ static void visit_load_push_constant(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
    LLVMValueRef idx = lp_build_const_int32(gallivm, 0);
-   bool offset_is_uniform = nir_src_is_dynamically_uniform(instr->src[0]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
 
    bld_base->load_ubo(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
                       offset_is_uniform, idx, offset, result);
@@ -1685,7 +1685,7 @@ static void visit_load_kernel_input(struct lp_build_nir_context *bld_base,
 {
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
 
-   bool offset_is_uniform = nir_src_is_dynamically_uniform(instr->src[0]);
+   bool offset_is_uniform = nir_src_is_always_uniform(instr->src[0]);
    bld_base->load_kernel_arg(bld_base, nir_dest_num_components(instr->dest), nir_dest_bit_size(instr->dest),
                              nir_src_bit_size(instr->src[0]),
                              offset_is_uniform, offset, result);
@@ -2026,7 +2026,7 @@ static enum lp_sampler_lod_property lp_build_nir_lod_property(struct lp_build_ni
 {
    enum lp_sampler_lod_property lod_property;
 
-   if (nir_src_is_dynamically_uniform(lod_src))
+   if (nir_src_is_always_uniform(lod_src))
       lod_property = LP_SAMPLER_LOD_SCALAR;
    else if (bld_base->shader->info.stage == MESA_SHADER_FRAGMENT) {
       if (gallivm_perf & GALLIVM_PERF_NO_QUAD_LOD)

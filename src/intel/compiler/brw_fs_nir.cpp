@@ -3688,7 +3688,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          const fs_reg sample_src = retype(get_nir_src(instr->src[0]),
                                           BRW_REGISTER_TYPE_UD);
 
-         if (nir_src_is_dynamically_uniform(instr->src[0])) {
+         if (nir_src_is_always_uniform(instr->src[0])) {
             const fs_reg sample_id = bld.emit_uniformize(sample_src);
             const fs_reg msg_data = vgrf(glsl_type::uint_type);
             bld.exec_all().group(1, 0)

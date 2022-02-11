@@ -1589,17 +1589,19 @@ nir_src_as_const_value(nir_src src)
 }
 
 /**
- * Returns true if the source is known to be dynamically uniform. Otherwise it
- * returns false which means it may or may not be dynamically uniform but it
- * can't be determined.
+ * Returns true if the source is known to be always uniform. Otherwise it
+ * returns false which means it may or may not be uniform but it can't be
+ * determined.
+ *
+ * For a more precise analysis of uniform values, use nir_divergence_analysis.
  */
 bool
-nir_src_is_dynamically_uniform(nir_src src)
+nir_src_is_always_uniform(nir_src src)
 {
    if (!src.is_ssa)
       return false;
 
-   /* Constants are trivially dynamically uniform */
+   /* Constants are trivially uniform */
    if (src.ssa->parent_instr->type == nir_instr_type_load_const)
       return true;
 
@@ -1607,9 +1609,12 @@ nir_src_is_dynamically_uniform(nir_src src)
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(src.ssa->parent_instr);
       /* As are uniform variables */
       if (intr->intrinsic == nir_intrinsic_load_uniform &&
-          nir_src_is_dynamically_uniform(intr->src[0]))
+          nir_src_is_always_uniform(intr->src[0]))
          return true;
-      /* Push constant loads always use uniform offsets. */
+      /* From the Vulkan specification 15.6.1. Push Constant Interface:
+       * "Any member of a push constant block that is declared as an array must
+       * only be accessed with dynamically uniform indices."
+       */
       if (intr->intrinsic == nir_intrinsic_load_push_constant)
          return true;
       if (intr->intrinsic == nir_intrinsic_load_deref &&
@@ -1617,13 +1622,11 @@ nir_src_is_dynamically_uniform(nir_src src)
          return true;
    }
 
-   /* Operating together dynamically uniform expressions produces a
-    * dynamically uniform result
-    */
+   /* Operating together uniform expressions produces a uniform result */
    if (src.ssa->parent_instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(src.ssa->parent_instr);
       for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-         if (!nir_src_is_dynamically_uniform(alu->src[i].src))
+         if (!nir_src_is_always_uniform(alu->src[i].src))
             return false;
       }
 
@@ -1631,7 +1634,7 @@ nir_src_is_dynamically_uniform(nir_src src)
    }
 
    /* XXX: this could have many more tests, such as when a sampler function is
-    * called with dynamically uniform arguments.
+    * called with uniform arguments.
     */
    return false;
 }
