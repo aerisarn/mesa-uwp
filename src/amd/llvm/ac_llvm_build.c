@@ -1107,7 +1107,8 @@ LLVMValueRef ac_build_load_to_sgpr_uint_wraparound(struct ac_llvm_context *ctx,
 
 static unsigned get_load_cache_policy(struct ac_llvm_context *ctx, unsigned cache_policy)
 {
-   return cache_policy | (ctx->chip_class >= GFX10 && cache_policy & ac_glc ? ac_dlc : 0);
+   return cache_policy |
+          (ctx->chip_class >= GFX10 && ctx->chip_class < GFX11 && cache_policy & ac_glc ? ac_dlc : 0);
 }
 
 static void ac_build_buffer_store_common(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
