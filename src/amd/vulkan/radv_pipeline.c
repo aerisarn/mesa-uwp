@@ -3677,6 +3677,12 @@ radv_consider_force_vrs(const struct radv_pipeline *pipeline, bool noop_fs, nir_
    if (noop_fs)
       return false;
 
+   /* Do not enable if the PS uses gl_FragCoord because it breaks postprocessing in some games. */
+   if (nir[MESA_SHADER_FRAGMENT] &&
+       BITSET_TEST(nir[MESA_SHADER_FRAGMENT]->info.system_values_read, SYSTEM_VALUE_FRAG_COORD)) {
+      return false;
+   }
+
    return true;
 }
 
