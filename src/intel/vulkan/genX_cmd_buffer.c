@@ -7577,11 +7577,39 @@ cmd_buffer_begin_rendering(struct anv_cmd_buffer *cmd_buffer,
    if (result != VK_SUCCESS)
       return;
 
+   struct isl_extent3d null_surf_size =
+      isl_extent3d(info->renderArea.offset.x + info->renderArea.extent.width,
+                   info->renderArea.offset.y + info->renderArea.extent.height,
+                   info->layerCount);
+   for (uint32_t i = 0; i < info->colorAttachmentCount; i++) {
+      const VkRenderingAttachmentInfoKHR *att = &info->pColorAttachments[i];
+      if (!att->imageView)
+         continue;
+
+      ANV_FROM_HANDLE(anv_image_view, iview, att->imageView);
+      null_surf_size.w = MAX2(null_surf_size.w, iview->vk.extent.width);
+      null_surf_size.h = MAX2(null_surf_size.h, iview->vk.extent.height);
+   }
+   if (info->pDepthAttachment && info->pDepthAttachment->imageView) {
+      ANV_FROM_HANDLE(anv_image_view, iview,
+                      info->pDepthAttachment->imageView);
+      null_surf_size.w = MAX2(null_surf_size.w, iview->vk.extent.width);
+      null_surf_size.h = MAX2(null_surf_size.h, iview->vk.extent.height);
+   }
+   if (info->pStencilAttachment && info->pStencilAttachment->imageView) {
+      ANV_FROM_HANDLE(anv_image_view, iview,
+                      info->pStencilAttachment->imageView);
+      null_surf_size.w = MAX2(null_surf_size.w, iview->vk.extent.width);
+      null_surf_size.h = MAX2(null_surf_size.h, iview->vk.extent.height);
+   }
+
+   /* 0x0 is allowed with no attachments and rasterizer discard */
+   null_surf_size.w = MAX2(null_surf_size.w, 1);
+   null_surf_size.h = MAX2(null_surf_size.h, 1);
+
    isl_null_fill_state(&cmd_buffer->device->isl_dev,
                        cmd_state->null_surface_state.map,
-                       .size = isl_extent3d(info->renderArea.extent.width,
-                                            info->renderArea.extent.height,
-                                            info->layerCount));
+                       .size = null_surf_size);
 
    for (uint32_t i = 0; i < info->colorAttachmentCount; i++) {
       const VkRenderingAttachmentInfoKHR *att = &info->pColorAttachments[i];
