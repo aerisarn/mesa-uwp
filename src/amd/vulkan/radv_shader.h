@@ -89,7 +89,7 @@ struct radv_pipeline_key {
 
       bool lower_discard_to_demote;
       bool enable_mrt_output_nan_fixup;
-      uint8_t force_vrs;
+      bool force_vrs_enabled;
    } ps;
 
    struct {

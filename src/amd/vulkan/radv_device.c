@@ -3359,19 +3359,21 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
          device->force_vrs = radv_parse_force_vrs_config_file(file);
 
-         if (!radv_device_init_notifier(device)) {
+         if (radv_device_init_notifier(device)) {
+            device->force_vrs_enabled = true;
+         } else {
             fprintf(stderr, "radv: Failed to initialize the notifier for RADV_FORCE_VRS_CONFIG_FILE!\n");
          }
       } else if (getenv("RADV_FORCE_VRS")) {
          const char *vrs_rates = getenv("RADV_FORCE_VRS");
 
          device->force_vrs = radv_parse_vrs_rates(vrs_rates);
+         device->force_vrs_enabled = device->force_vrs != RADV_FORCE_VRS_1x1;
       }
    }
 
    device->adjust_frag_coord_z =
-      (device->vk.enabled_extensions.KHR_fragment_shading_rate ||
-       device->force_vrs != RADV_FORCE_VRS_1x1) &&
+      (device->vk.enabled_extensions.KHR_fragment_shading_rate || device->force_vrs_enabled) &&
       (device->physical_device->rad_info.family == CHIP_SIENNA_CICHLID ||
        device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
        device->physical_device->rad_info.family == CHIP_VANGOGH);

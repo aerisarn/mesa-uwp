@@ -2984,7 +2984,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    if (pipeline->device->instance->enable_mrt_output_nan_fixup)
       key.ps.enable_mrt_output_nan_fixup = true;
 
-   key.ps.force_vrs = pipeline->device->force_vrs;
+
+   key.ps.force_vrs_enabled = pipeline->device->force_vrs_enabled;
 
    if (pipeline->device->instance->debug_flags & RADV_DEBUG_INVARIANT_GEOM)
       key.invariant_geom = true;
@@ -3664,7 +3665,7 @@ radv_consider_force_vrs(const struct radv_pipeline *pipeline, bool noop_fs, nir_
 {
    struct radv_device *device = pipeline->device;
 
-   if (device->force_vrs == RADV_FORCE_VRS_1x1)
+   if (!device->force_vrs_enabled)
       return false;
 
    /* Only VS and GS are supported for now. */

@@ -877,6 +877,9 @@ struct radv_device {
    struct radv_shader_prolog *instance_rate_vs_prologs[816];
 
    simple_mtx_t trace_mtx;
+
+   /* Whether per-vertex VRS is forced. */
+   bool force_vrs_enabled;
 };
 
 struct radv_device_memory {
