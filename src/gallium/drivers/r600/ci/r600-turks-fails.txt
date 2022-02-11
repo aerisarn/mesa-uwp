@@ -600,14 +600,10 @@ dEQP-GLES31.functional.stencil_texturing.format.depth32f_stencil8_2d_array,Fail
 dEQP-GLES31.functional.stencil_texturing.format.stencil_index8_2d,Fail
 dEQP-GLES31.functional.stencil_texturing.format.stencil_index8_2d_array,Fail
 
-dEQP-GLES31.functional.synchronization.in_invocation.image_alias_overwrite,Fail
-dEQP-GLES31.functional.synchronization.in_invocation.image_alias_write,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.ssbo_alias_overwrite,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.ssbo_alias_write,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.ssbo_overwrite,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.ssbo_write_read,Fail
-dEQP-GLES31.functional.synchronization.inter_invocation.image_alias_overwrite,Fail
-dEQP-GLES31.functional.synchronization.inter_invocation.image_alias_write,Fail
 dEQP-GLES31.functional.synchronization.inter_invocation.image_overwrite,Fail
 dEQP-GLES31.functional.synchronization.inter_invocation.ssbo_alias_overwrite,Fail
 dEQP-GLES31.functional.synchronization.inter_invocation.ssbo_alias_write,Fail
@@ -1046,8 +1042,6 @@ spec@arb_shader_image_load_store@invalid@imageLoad/unbound image test,Fail
 spec@arb_shader_image_load_store@max-images,Fail
 spec@arb_shader_image_load_store@max-images@Combined max image uniforms test,Fail
 spec@arb_shader_image_load_store@max-images@Fragment shader max image uniforms test,Fail
-spec@arb_shader_image_load_store@restrict,Fail
-spec@arb_shader_image_load_store@restrict@no qualifier image aliasing test,Fail
 
 spec@arb_shader_storage_buffer_object@array-ssbo-auto-binding,Fail
 spec@arb_shader_storage_buffer_object@compiler@atomicmin-swizzle.vert,Fail
