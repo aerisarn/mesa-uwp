@@ -513,7 +513,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv, tu)
   VK_KHR_pipeline_library                               in progress
   VK_KHR_push_descriptor                                DONE (anv, lvp, radv, tu)
-  VK_KHR_ray_query                                      not started
+  VK_KHR_ray_query                                      in progress
   VK_KHR_ray_tracing_pipeline                           in progress
   VK_KHR_shader_clock                                   DONE (anv, radv)
   VK_KHR_shader_integer_dot_product                     DONE (anv, radv, tu)
