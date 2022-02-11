@@ -74,6 +74,7 @@ d3d12_context_destroy(struct pipe_context *pctx)
    if (ctx->timestamp_query)
       pctx->destroy_query(pctx, ctx->timestamp_query);
 
+   util_unreference_framebuffer_state(&ctx->fb);
    util_blitter_destroy(ctx->blitter);
    d3d12_end_batch(ctx, d3d12_current_batch(ctx));
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
@@ -89,6 +90,9 @@ d3d12_context_destroy(struct pipe_context *pctx)
    d3d12_root_signature_cache_destroy(ctx);
    d3d12_cmd_signature_cache_destroy(ctx);
    d3d12_compute_transform_cache_destroy(ctx);
+   pipe_resource_reference(&ctx->pstipple.texture, nullptr);
+   pipe_sampler_view_reference(&ctx->pstipple.sampler_view, nullptr);
+   FREE(ctx->pstipple.sampler_cso);
 
    u_suballocator_destroy(&ctx->query_allocator);
 
