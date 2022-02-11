@@ -944,6 +944,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_shader_demote_to_helper_invocation = true,
 
       /* EXT */
+      .EXT_calibrated_timestamps = true,
       .EXT_conservative_rasterization = true,
       .EXT_custom_border_color = true,
       .EXT_depth_clip_enable = true,
@@ -2550,4 +2551,17 @@ vn_GetPhysicalDeviceExternalSemaphoreProperties(
       pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
       pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
    }
+}
+
+VkResult
+vn_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
+   VkPhysicalDevice physicalDevice,
+   uint32_t *pTimeDomainCount,
+   VkTimeDomainEXT *pTimeDomains)
+{
+   struct vn_physical_device *physical_dev =
+      vn_physical_device_from_handle(physicalDevice);
+
+   return vn_call_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(
+      physical_dev->instance, physicalDevice, pTimeDomainCount, pTimeDomains);
 }
