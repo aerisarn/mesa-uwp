@@ -1098,11 +1098,13 @@ d3d12_init_null_rtv(struct d3d12_screen *screen)
 }
 
 void
-d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys)
+d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid)
 {
    d3d12_debug = debug_get_option_d3d12_debug();
 
    screen->winsys = winsys;
+   if (adapter_luid)
+      screen->adapter_luid = *adapter_luid;
    mtx_init(&screen->descriptor_pool_mutex, mtx_plain);
    mtx_init(&screen->submit_mutex, mtx_plain);
 

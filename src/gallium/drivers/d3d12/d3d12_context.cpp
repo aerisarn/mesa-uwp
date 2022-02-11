@@ -2379,6 +2379,14 @@ struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
    struct d3d12_screen *screen = d3d12_screen(pscreen);
+   if (FAILED(screen->dev->GetDeviceRemovedReason())) {
+      /* Attempt recovery, but this may fail */
+      screen->deinit(screen);
+      if (!screen->init(screen)) {
+         debug_printf("D3D12: failed to reset screen\n");
+         return nullptr;
+      }
+   }
 
    struct d3d12_context *ctx = CALLOC_STRUCT(d3d12_context);
    if (!ctx)

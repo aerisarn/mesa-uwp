@@ -64,9 +64,12 @@ struct d3d12_memory_info {
 struct d3d12_screen {
    struct pipe_screen base;
    struct sw_winsys *winsys;
+   LUID adapter_luid;
 
    ID3D12Device3 *dev;
    ID3D12CommandQueue *cmdqueue;
+   bool (*init)(struct d3d12_screen *screen);
+   void (*deinit)(struct d3d12_screen *screen);
    void (*get_memory_info)(struct d3d12_screen *screen, struct d3d12_memory_info *output);
 
    mtx_t submit_mutex;
@@ -150,7 +153,7 @@ d3d12_dxcore_screen(struct d3d12_screen *screen)
 }
 
 void
-d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys);
+d3d12_init_screen_base(struct d3d12_screen *screen, struct sw_winsys *winsys, LUID *adapter_luid);
 
 bool
 d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter);
