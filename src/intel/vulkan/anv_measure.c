@@ -426,7 +426,7 @@ _anv_measure_submit(struct anv_cmd_buffer *cmd_buffer)
  *  Hook for the start of a frame.
  */
 void
-anv_measure_acquire(struct anv_device *device)
+_anv_measure_acquire(struct anv_device *device)
 {
    struct intel_measure_config *config = config_from_device(device);
    struct intel_measure_device *measure_device = &device->physical->measure_device;
