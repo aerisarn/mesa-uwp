@@ -1717,6 +1717,17 @@ derivative_mode(enum mali_derivative_mode mode)
         }
 }
 
+static const char *
+partial_exection_mode(enum midgard_partial_execution mode)
+{
+        switch (mode) {
+        case MIDGARD_PARTIAL_EXECUTION_NONE: return "";
+        case MIDGARD_PARTIAL_EXECUTION_SKIP: return ".skip";
+        case MIDGARD_PARTIAL_EXECUTION_KILL: return ".kill";
+        default: return ".reserved";
+        }
+}
+
 static void
 print_texture_word(disassemble_context *ctx, FILE *fp, uint32_t *word,
                    unsigned tabs, unsigned in_reg_base, unsigned out_reg_base)
@@ -1746,12 +1757,7 @@ print_texture_word(disassemble_context *ctx, FILE *fp, uint32_t *word,
         print_texture_format(fp, texture->format);
 
         /* Instruction "modifiers" parallel the ALU instructions. */
-
-        if (texture->cont)
-                fprintf(fp, ".cont");
-
-        if (texture->last)
-                fprintf(fp, ".last");
+        fputs(partial_exection_mode(texture->exec), fp);
 
         if (texture->out_of_order)
                 fprintf(fp, ".ooo%u", texture->out_of_order);

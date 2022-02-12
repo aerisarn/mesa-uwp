@@ -871,6 +871,12 @@ enum mali_derivative_mode {
         TEXTURE_DFDY = 1,
 };
 
+enum midgard_partial_execution {
+        MIDGARD_PARTIAL_EXECUTION_SKIP = 1,
+        MIDGARD_PARTIAL_EXECUTION_KILL = 2,
+        MIDGARD_PARTIAL_EXECUTION_NONE = 3
+};
+
 typedef struct
 __attribute__((__packed__))
 {
@@ -879,14 +885,7 @@ __attribute__((__packed__))
 
         enum mali_texture_op op  : 4;
         unsigned mode : 4;
-
-        /* A little obscure, but last is set for the last texture operation in
-         * a shader. cont appears to just be last's opposite (?). Yeah, I know,
-         * kind of funky.. BiOpen thinks it could do with memory hinting, or
-         * tile locking? */
-
-        unsigned cont  : 1;
-        unsigned last  : 1;
+        enum midgard_partial_execution exec : 2;
 
         unsigned format : 2;
 

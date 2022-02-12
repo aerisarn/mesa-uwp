@@ -1019,10 +1019,10 @@ emit_binary_bundle(compiler_context *ctx,
 
                 ins->texture.type = bundle->tag;
                 ins->texture.next_type = next_tag;
+                ins->texture.exec = MIDGARD_PARTIAL_EXECUTION_NONE; /* default */
 
                 /* Nothing else to pack for barriers */
                 if (ins->op == midgard_tex_op_barrier) {
-                        ins->texture.cont = ins->texture.last = 1;
                         ins->texture.op = ins->op;
                         util_dynarray_append(emission, midgard_texture_word, ins->texture);
                         return;
@@ -1052,10 +1052,10 @@ emit_binary_bundle(compiler_context *ctx,
                 ins->texture.outmod = ins->outmod;
 
                 if (mir_op_computes_derivatives(ctx->stage, ins->op)) {
-                        ins->texture.cont = !ins->helper_terminate;
-                        ins->texture.last = ins->helper_terminate || ins->helper_execute;
-                } else {
-                        ins->texture.cont = ins->texture.last = 1;
+                        if (ins->helper_terminate)
+                                ins->texture.exec = MIDGARD_PARTIAL_EXECUTION_KILL;
+                        else if (!ins->helper_execute)
+                                ins->texture.exec = MIDGARD_PARTIAL_EXECUTION_SKIP;
                 }
 
                 midgard_texture_word texture = texture_word_from_instr(ins);
