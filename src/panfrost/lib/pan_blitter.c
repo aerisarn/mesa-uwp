@@ -989,25 +989,6 @@ pan_preload_emit_dcd(struct pan_pool *pool,
         }
 }
 
-static void
-pan_blit_emit_dcd(struct pan_pool *pool,
-                  mali_ptr src_coords, mali_ptr dst_coords,
-                  mali_ptr textures, mali_ptr samplers,
-                  mali_ptr vpd, mali_ptr tsd, mali_ptr rsd,
-                  void *out)
-{
-        pan_pack(out, DRAW, cfg) {
-                cfg.thread_storage = tsd;
-                cfg.state = rsd;
-
-                cfg.position = dst_coords;
-                pan_blitter_emit_varying(pool, src_coords, &cfg);
-                cfg.viewport = vpd;
-                cfg.textures = textures;
-                cfg.samplers = samplers;
-        }
-}
-
 static void *
 pan_blit_emit_tiler_job(struct pan_pool *pool,
                         struct pan_scoreboard *scoreboard,
@@ -1381,8 +1362,16 @@ GENX(pan_blit)(struct pan_blit_context *ctx,
         struct panfrost_ptr job = { 0 };
         void *dcd = pan_blit_emit_tiler_job(pool, scoreboard, tiler, &job);
 
-        pan_blit_emit_dcd(pool, src_coords, ctx->position, ctx->textures,
-                          ctx->samplers, ctx->vpd, tsd, ctx->rsd, dcd);
+        pan_pack(dcd, DRAW, cfg) {
+                cfg.thread_storage = tsd;
+                cfg.state = ctx->rsd;
+
+                cfg.position = ctx->position;
+                pan_blitter_emit_varying(pool, src_coords, &cfg);
+                cfg.viewport = ctx->vpd;
+                cfg.textures = ctx->textures;
+                cfg.samplers = ctx->samplers;
+        }
 
         return job;
 }
