@@ -7011,6 +7011,7 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
       struct anv_attachment_state *dst_state = &attachments[dst_att];
 
       if ((src_iview->image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+          (dst_iview->image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
           subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
 
          /* MSAA resolves sample from the source attachment.  Transition the
@@ -7077,6 +7078,7 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
       }
 
       if ((src_iview->image->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
+          (dst_iview->image->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
           subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
 
          src_state->current_stencil_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
