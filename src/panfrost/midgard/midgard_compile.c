@@ -323,7 +323,7 @@ midgard_vectorize_filter(const nir_instr *instr, void *data)
 }
 
 static void
-optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
+optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend, bool is_blit)
 {
         bool progress;
         unsigned lower_flrp =
@@ -349,9 +349,11 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
 
 
-        /* T720 is broken. */
-
-        if (quirks & MIDGARD_BROKEN_LOD)
+        /* TEX_GRAD fails to apply sampler descriptor settings on some
+         * implementations, requiring a lowering. However, blit shaders do not
+         * use the affected settings and should skip the workaround.
+         */
+        if ((quirks & MIDGARD_BROKEN_LOD) && !is_blit)
                 NIR_PASS_V(nir, midgard_nir_lod_errata);
 
         /* Midgard image ops coordinates are 16-bit instead of 32-bit */
@@ -3179,7 +3181,7 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         /* Optimisation passes */
 
-        optimise_nir(nir, ctx->quirks, inputs->is_blend);
+        optimise_nir(nir, ctx->quirks, inputs->is_blend, inputs->is_blit);
 
         bool skip_internal = nir->info.internal;
         skip_internal &= !(midgard_debug & MIDGARD_DBG_INTERNAL);

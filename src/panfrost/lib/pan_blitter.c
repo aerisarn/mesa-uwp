@@ -546,7 +546,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                                 tex->src[2].src_type = nir_tex_src_lod;
                                 tex->src[2].src = nir_src_for_ssa(nir_imm_int(&b, 0));
                         } else {
-                                tex->op = nir_texop_tex;
+                                tex->op = nir_texop_txl;
 
                                 tex->src[0].src_type = nir_tex_src_coord;
                                 tex->src[0].src = nir_src_for_ssa(coord);
