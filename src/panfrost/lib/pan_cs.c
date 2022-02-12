@@ -608,12 +608,12 @@ pan_force_clean_write(const struct pan_fb_info *fb, unsigned tile_size)
 
 #endif
 
-static unsigned
-pan_emit_mfbd(const struct panfrost_device *dev,
-              const struct pan_fb_info *fb,
-              const struct pan_tls_info *tls,
-              const struct pan_tiler_context *tiler_ctx,
-              void *out)
+unsigned
+GENX(pan_emit_fbd)(const struct panfrost_device *dev,
+                   const struct pan_fb_info *fb,
+                   const struct pan_tls_info *tls,
+                   const struct pan_tiler_context *tiler_ctx,
+                   void *out)
 {
         unsigned tags = MALI_FBD_TAG_IS_MFBD;
         void *fbd = out;
@@ -732,13 +732,15 @@ pan_emit_sfbd_tiler(const struct panfrost_device *dev,
         pan_section_pack(fbd, FRAMEBUFFER, TILER_WEIGHTS, w);
 }
 
-static void
-pan_emit_sfbd(const struct panfrost_device *dev,
-              const struct pan_fb_info *fb,
-              const struct pan_tls_info *tls,
-              const struct pan_tiler_context *tiler_ctx,
-              void *fbd)
+unsigned
+GENX(pan_emit_fbd)(const struct panfrost_device *dev,
+                   const struct pan_fb_info *fb,
+                   const struct pan_tls_info *tls,
+                   const struct pan_tiler_context *tiler_ctx,
+                   void *fbd)
 {
+        assert(fb->rt_count <= 1);
+
         GENX(pan_emit_tls)(tls,
                            pan_section_ptr(fbd, FRAMEBUFFER,
                                            LOCAL_STORAGE));
@@ -836,24 +838,9 @@ pan_emit_sfbd(const struct panfrost_device *dev,
         }
         pan_emit_sfbd_tiler(dev, fb, tiler_ctx, fbd);
         pan_section_pack(fbd, FRAMEBUFFER, PADDING_2, padding);
-}
-#endif
-
-unsigned
-GENX(pan_emit_fbd)(const struct panfrost_device *dev,
-                   const struct pan_fb_info *fb,
-                   const struct pan_tls_info *tls,
-                   const struct pan_tiler_context *tiler_ctx,
-                   void *out)
-{
-#if PAN_ARCH == 4
-        assert(fb->rt_count <= 1);
-        pan_emit_sfbd(dev, fb, tls, tiler_ctx, out);
         return 0;
-#else
-        return pan_emit_mfbd(dev, fb, tls, tiler_ctx, out);
-#endif
 }
+#endif
 
 #if PAN_ARCH >= 6
 void
