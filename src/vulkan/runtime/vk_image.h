@@ -158,7 +158,7 @@ struct vk_image_view {
     *     plane of the multi-planar format.  In this case, the format will be
     *     the plane-compatible format requested by the client.
     */
-   VkFormat format;
+   VkFormat view_format;
 
    /* Component mapping, aka swizzle
     *

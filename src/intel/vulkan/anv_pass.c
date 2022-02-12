@@ -596,7 +596,7 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
          ANV_FROM_HANDLE(anv_image_view, iview, info->pColorAttachments[att].imageView);
 
          pass->attachments[att]     = (struct anv_render_pass_attachment) {
-            .format                 = iview->vk.format,
+            .format                 = iview->vk.view_format,
             .samples                = iview->vk.image->samples,
             .usage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
          };
@@ -636,7 +636,7 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
       ANV_FROM_HANDLE(anv_image_view, iview, d_or_s_att->imageView);
 
       pass->attachments[ds_idx] = (struct anv_render_pass_attachment) {
-         .format                 = iview->vk.format,
+         .format                 = iview->vk.view_format,
          .samples                = iview->vk.image->samples,
          .usage                  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
       };
@@ -670,7 +670,7 @@ anv_dynamic_pass_init_full(struct anv_dynamic_render_pass *dyn_render_pass,
       ANV_FROM_HANDLE(anv_image_view, iview, fsr_attachment->imageView);
 
       pass->attachments[fsr_idx] = (struct anv_render_pass_attachment) {
-         .format  = iview->vk.format,
+         .format  = iview->vk.view_format,
          .samples = iview->vk.image->samples,
          .usage   = VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
       };

@@ -536,13 +536,13 @@ v3dv_CreateImageView(VkDevice _device,
                                            image_view_swizzle);
    }
 
-   iview->vk.format = format;
+   iview->vk.view_format = format;
    iview->format = v3dv_X(device, get_format)(format);
    assert(iview->format && iview->format->supported);
 
-   if (vk_format_is_depth_or_stencil(iview->vk.format)) {
+   if (vk_format_is_depth_or_stencil(iview->vk.view_format)) {
       iview->internal_type =
-         v3dv_X(device, get_internal_depth_type)(iview->vk.format);
+         v3dv_X(device, get_internal_depth_type)(iview->vk.view_format);
    } else {
       v3dv_X(device, get_internal_type_bpp_for_output_format)
          (iview->format->rt_type, &iview->internal_type, &iview->internal_bpp);
