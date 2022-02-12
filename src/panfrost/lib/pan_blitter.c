@@ -1008,48 +1008,37 @@ pan_blit_emit_dcd(struct pan_pool *pool,
         }
 }
 
-static struct panfrost_ptr
-pan_blit_emit_tiler_job(struct pan_pool *desc_pool,
+static void *
+pan_blit_emit_tiler_job(struct pan_pool *pool,
                         struct pan_scoreboard *scoreboard,
-                        mali_ptr src_coords, mali_ptr dst_coords,
-                        mali_ptr textures, mali_ptr samplers,
-                        mali_ptr vpd, mali_ptr rsd, mali_ptr tsd,
-                        mali_ptr tiler)
+                        mali_ptr tiler,
+                        struct panfrost_ptr *job)
 {
-        struct panfrost_ptr job =
-                pan_pool_alloc_desc(desc_pool, TILER_JOB);
+        *job = pan_pool_alloc_desc(pool, TILER_JOB);
 
-        pan_blit_emit_dcd(desc_pool,
-                          src_coords, dst_coords, textures, samplers,
-                          vpd, tsd, rsd,
-                          pan_section_ptr(job.cpu, TILER_JOB, DRAW));
-
-        pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE, cfg) {
+        pan_section_pack(job->cpu, TILER_JOB, PRIMITIVE, cfg) {
                 cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
                 cfg.index_count = 4;
                 cfg.job_task_split = 6;
         }
 
-        pan_section_pack(job.cpu, TILER_JOB, PRIMITIVE_SIZE, cfg) {
+        pan_section_pack(job->cpu, TILER_JOB, PRIMITIVE_SIZE, cfg) {
                 cfg.constant = 1.0f;
         }
 
-        void *invoc = pan_section_ptr(job.cpu,
-                                      TILER_JOB,
-                                      INVOCATION);
-        panfrost_pack_work_groups_compute(invoc, 1, 4,
-                                          1, 1, 1, 1, true, false);
+        void *invoc = pan_section_ptr(job->cpu, TILER_JOB, INVOCATION);
+        panfrost_pack_work_groups_compute(invoc, 1, 4, 1, 1, 1, 1, true, false);
 
 #if PAN_ARCH >= 6
-        pan_section_pack(job.cpu, TILER_JOB, PADDING, cfg);
-        pan_section_pack(job.cpu, TILER_JOB, TILER, cfg) {
+        pan_section_pack(job->cpu, TILER_JOB, PADDING, cfg);
+        pan_section_pack(job->cpu, TILER_JOB, TILER, cfg) {
                 cfg.address = tiler;
         }
 #endif
 
-        panfrost_add_job(desc_pool, scoreboard, MALI_JOB_TYPE_TILER,
-                         false, false, 0, 0, &job, false);
-        return job;
+        panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_TILER,
+                         false, false, 0, 0, job, false);
+        return pan_section_ptr(job->cpu, TILER_JOB, DRAW);
 }
 
 #if PAN_ARCH >= 6
@@ -1389,10 +1378,13 @@ GENX(pan_blit)(struct pan_blit_context *ctx,
                 pan_pool_upload_aligned(pool, src_rect,
                                         sizeof(src_rect), 64);
 
-        return pan_blit_emit_tiler_job(pool, scoreboard,
-                                       src_coords, ctx->position,
-                                       ctx->textures, ctx->samplers,
-                                       ctx->vpd, ctx->rsd, tsd, tiler);
+        struct panfrost_ptr job = { 0 };
+        void *dcd = pan_blit_emit_tiler_job(pool, scoreboard, tiler, &job);
+
+        pan_blit_emit_dcd(pool, src_coords, ctx->position, ctx->textures,
+                          ctx->samplers, ctx->vpd, tsd, ctx->rsd, dcd);
+
+        return job;
 }
 
 static uint32_t pan_blit_shader_key_hash(const void *key)
