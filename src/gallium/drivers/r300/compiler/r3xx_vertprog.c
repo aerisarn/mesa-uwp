@@ -33,7 +33,6 @@
 #include "radeon_program_alu.h"
 #include "radeon_swizzle.h"
 #include "radeon_emulate_branches.h"
-#include "radeon_emulate_loops.h"
 #include "radeon_remove_constants.h"
 
 #include "util/compiler.h"

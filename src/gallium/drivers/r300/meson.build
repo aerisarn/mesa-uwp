@@ -85,8 +85,6 @@ files_r300 = files(
   'compiler/radeon_dataflow_swizzles.c',
   'compiler/radeon_emulate_branches.c',
   'compiler/radeon_emulate_branches.h',
-  'compiler/radeon_emulate_loops.c',
-  'compiler/radeon_emulate_loops.h',
   'compiler/radeon_inline_literals.c',
   'compiler/radeon_list.c',
   'compiler/radeon_list.h',

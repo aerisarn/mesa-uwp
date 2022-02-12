@@ -26,7 +26,6 @@
 #include "memory_pool.h"
 #include "radeon_code.h"
 #include "radeon_program.h"
-#include "radeon_emulate_loops.h"
 
 #define RC_DBG_LOG        (1 << 0)
 
@@ -71,8 +70,6 @@ struct radeon_compiler {
 	/*@{*/
 	const struct rc_swizzle_caps * SwizzleCaps;
 	/*@}*/
-
-	struct emulate_loop_state loop_state;
 };
 
 void rc_init(struct radeon_compiler * c, const struct rc_regalloc_state *rs);
