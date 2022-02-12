@@ -6187,6 +6187,39 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
          radv_emit_framebuffer_state(primary);
       }
 
+      if (secondary->ace_internal.cs) {
+         if (!primary->ace_internal.cs) {
+            primary->ace_internal.cs = radv_ace_internal_create(primary);
+            if (!primary->ace_internal.cs)
+               return;
+         }
+
+         struct radeon_cmdbuf *ace_primary = primary->ace_internal.cs;
+         struct radeon_cmdbuf *ace_secondary = secondary->ace_internal.cs;
+
+         /* Emit pending flushes on primary prior to executing secondary. */
+         radv_ace_internal_cache_flush(primary);
+
+         /* Wait for primary GFX->ACE semaphore, if necessary. */
+         if (radv_flush_gfx2ace_semaphore(primary))
+            radv_wait_gfx2ace_semaphore(primary);
+
+         /* Execute the secondary compute cmdbuf.
+          * Don't use IB2 packets because they are not supported on compute queues.
+          */
+         primary->device->ws->cs_execute_secondary(ace_primary, ace_secondary, false);
+      }
+
+      /* Update pending ACE internal flush bits from the secondary cmdbuf */
+      primary->ace_internal.flush_bits |= secondary->ace_internal.flush_bits;
+
+      /* Increment primary semaphore if secondary was dirty.
+       * This happens when the secondary cmdbuf has a barrier which
+       * isn't consumed by a draw call.
+       */
+      if (radv_ace_internal_sem_dirty(secondary))
+         primary->ace_internal.sem.gfx2ace_value++;
+
       primary->device->ws->cs_execute_secondary(primary->cs, secondary->cs, allow_ib2);
 
       /* When the secondary command buffer is compute only we don't
