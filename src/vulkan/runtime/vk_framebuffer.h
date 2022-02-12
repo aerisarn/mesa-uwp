@@ -32,6 +32,9 @@ extern "C" {
 struct vk_framebuffer {
    struct vk_object_base base;
 
+   /** VkFramebufferCreateInfo::flags */
+   VkFramebufferCreateFlags flags;
+
    uint32_t width;
    uint32_t height;
    uint32_t layers;

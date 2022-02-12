@@ -52,6 +52,7 @@ vk_common_CreateFramebuffer(VkDevice _device,
    if (framebuffer == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+   framebuffer->flags = pCreateInfo->flags;
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
