@@ -894,7 +894,7 @@ tc_get_query_result(struct pipe_context *_pipe,
 
 struct tc_query_result_resource {
    struct tc_call_base base;
-   bool wait;
+   enum pipe_query_flags flags:8;
    enum pipe_query_value_type result_type:8;
    int8_t index; /* it can be -1 */
    unsigned offset;
@@ -907,7 +907,7 @@ tc_call_get_query_result_resource(struct pipe_context *pipe, void *call, uint64_
 {
    struct tc_query_result_resource *p = to_call(call, tc_query_result_resource);
 
-   pipe->get_query_result_resource(pipe, p->query, p->wait, p->result_type,
+   pipe->get_query_result_resource(pipe, p->query, p->flags, p->result_type,
                                    p->index, p->resource, p->offset);
    tc_drop_resource_reference(p->resource);
    return call_size(tc_query_result_resource);
@@ -915,7 +915,8 @@ tc_call_get_query_result_resource(struct pipe_context *pipe, void *call, uint64_
 
 static void
 tc_get_query_result_resource(struct pipe_context *_pipe,
-                             struct pipe_query *query, bool wait,
+                             struct pipe_query *query,
+                             enum pipe_query_flags flags,
                              enum pipe_query_value_type result_type, int index,
                              struct pipe_resource *resource, unsigned offset)
 {
@@ -927,7 +928,7 @@ tc_get_query_result_resource(struct pipe_context *_pipe,
       tc_add_call(tc, TC_CALL_get_query_result_resource,
                   tc_query_result_resource);
    p->query = query;
-   p->wait = wait;
+   p->flags = flags;
    p->result_type = result_type;
    p->index = index;
    tc_set_resource_reference(&p->resource, resource);

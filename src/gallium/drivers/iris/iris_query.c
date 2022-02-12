@@ -651,7 +651,7 @@ iris_get_query_result(struct pipe_context *ctx,
 static void
 iris_get_query_result_resource(struct pipe_context *ctx,
                                struct pipe_query *query,
-                               bool wait,
+                               enum pipe_query_flags flags,
                                enum pipe_query_value_type result_type,
                                int index,
                                struct pipe_resource *p_res,
@@ -709,7 +709,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
       return;
    }
 
-   bool predicated = !wait && !q->stalled;
+   bool predicated = !(flags & PIPE_QUERY_WAIT) && !q->stalled;
 
    struct mi_builder b;
    mi_builder_init(&b, &batch->screen->devinfo, batch);

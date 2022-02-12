@@ -324,7 +324,7 @@ trace_context_get_query_result(struct pipe_context *_pipe,
 static void
 trace_context_get_query_result_resource(struct pipe_context *_pipe,
                                         struct pipe_query *_query,
-                                        bool wait,
+                                        enum pipe_query_flags flags,
                                         enum pipe_query_value_type result_type,
                                         int index,
                                         struct pipe_resource *resource,
@@ -339,7 +339,7 @@ trace_context_get_query_result_resource(struct pipe_context *_pipe,
 
    trace_dump_arg(ptr, pipe);
    trace_dump_arg(ptr, query);
-   trace_dump_arg(bool, wait);
+   trace_dump_arg(query_flags, flags);
    trace_dump_arg(uint, result_type);
    trace_dump_arg(uint, index);
    trace_dump_arg(ptr, resource);
@@ -350,7 +350,7 @@ trace_context_get_query_result_resource(struct pipe_context *_pipe,
 
    trace_dump_call_end();
 
-   pipe->get_query_result_resource(pipe, query, wait, result_type, index, resource, offset);
+   pipe->get_query_result_resource(pipe, query, flags, result_type, index, resource, offset);
 }
 
 

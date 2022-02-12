@@ -204,7 +204,7 @@ llvmpipe_get_query_result(struct pipe_context *pipe,
 static void
 llvmpipe_get_query_result_resource(struct pipe_context *pipe,
                                    struct pipe_query *q,
-                                   bool wait,
+                                   enum pipe_query_flags flags,
                                    enum pipe_query_value_type result_type,
                                    int index,
                                    struct pipe_resource *resource,
@@ -221,7 +221,7 @@ llvmpipe_get_query_result_resource(struct pipe_context *pipe,
          if (!lp_fence_issued(pq->fence))
             llvmpipe_flush(pipe, NULL, __FUNCTION__);
 
-         if (wait)
+         if (flags & PIPE_QUERY_WAIT)
             lp_fence_wait(pq->fence);
       }
       unsignalled = !lp_fence_signalled(pq->fence);
