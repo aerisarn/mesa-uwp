@@ -269,6 +269,7 @@ vk_image_view_init(struct vk_device *device,
    image_view->create_flags = pCreateInfo->flags;
    image_view->image = image;
    image_view->view_type = pCreateInfo->viewType;
+   image_view->format = pCreateInfo->format;
 
    switch (image_view->view_type) {
    case VK_IMAGE_VIEW_TYPE_1D:

@@ -132,6 +132,9 @@ struct vk_image_view {
    struct vk_image *image;
    VkImageViewType view_type;
 
+   /** VkImageViewCreateInfo::format */
+   VkFormat format;
+
    /** Image view format, relative to the selected aspects
     *
     * For a depth/stencil image:
