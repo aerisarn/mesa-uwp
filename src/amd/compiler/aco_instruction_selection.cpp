@@ -8141,8 +8141,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
          Temp base_arg = get_arg(ctx, ctx->args->ac.base_vertex);
          Temp idx = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), idx_arg);
          Temp workgroup_index = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), idx, base_arg);
-         Temp one = bld.copy(bld.def(s1), Operand::c32(1));
-         Temp workgroup_ids[3] = {workgroup_index, one, one};
+         Temp zero = bld.copy(bld.def(s1), Operand::zero());
+         Temp workgroup_ids[3] = {workgroup_index, zero, zero};
          create_vec_from_array(ctx, workgroup_ids, 3, RegType::sgpr, 4, 0, dst);
       }
       break;
