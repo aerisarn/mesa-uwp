@@ -2397,65 +2397,6 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
        ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY);
 }
 
-static void
-anv_pipeline_validate_create_info(const VkGraphicsPipelineCreateInfo *info)
-{
-#ifdef DEBUG
-   struct anv_render_pass *renderpass = NULL;
-   struct anv_subpass *subpass = NULL;
-
-   /* Assert that all required members of VkGraphicsPipelineCreateInfo are
-    * present.  See the Vulkan 1.0.28 spec, Section 9.2 Graphics Pipelines.
-    */
-   assert(info->sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
-
-   renderpass = anv_render_pass_from_handle(info->renderPass);
-
-   if (renderpass) {
-      assert(info->subpass < renderpass->subpass_count);
-      subpass = &renderpass->subpasses[info->subpass];
-   }
-
-   assert(info->stageCount >= 1);
-   assert(info->pRasterizationState);
-   if (!info->pRasterizationState->rasterizerDiscardEnable) {
-      assert(info->pViewportState);
-      assert(info->pMultisampleState);
-
-      if (subpass && subpass->depth_stencil_attachment)
-         assert(info->pDepthStencilState);
-
-      if (subpass && subpass->color_count > 0) {
-         bool all_color_unused = true;
-         for (int i = 0; i < subpass->color_count; i++) {
-            if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
-               all_color_unused = false;
-         }
-         /* pColorBlendState is ignored if the pipeline has rasterization
-          * disabled or if the subpass of the render pass the pipeline is
-          * created against does not use any color attachments.
-          */
-         assert(info->pColorBlendState || all_color_unused);
-      }
-   }
-
-   for (uint32_t i = 0; i < info->stageCount; ++i) {
-      switch (info->pStages[i].stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:
-         assert(info->pVertexInputState);
-         assert(info->pInputAssemblyState);
-         break;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-         assert(info->pTessellationState);
-         break;
-      default:
-         break;
-      }
-   }
-#endif
-}
-
 /**
  * Calculate the desired L3 partitioning based on the current state of the
  * pipeline.  For now this simply returns the conservative defaults calculated
@@ -2501,8 +2442,6 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
                            const VkAllocationCallbacks *alloc)
 {
    VkResult result;
-
-   anv_pipeline_validate_create_info(pCreateInfo);
 
    result = anv_pipeline_init(&pipeline->base, device,
                               ANV_PIPELINE_GRAPHICS, pCreateInfo->flags,
