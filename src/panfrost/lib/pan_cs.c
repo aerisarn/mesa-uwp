@@ -718,20 +718,6 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
         return tags;
 }
 #else /* PAN_ARCH == 4 */
-static void
-pan_emit_sfbd_tiler(const struct panfrost_device *dev,
-                    const struct pan_fb_info *fb,
-                    const struct pan_tiler_context *ctx,
-                    void *fbd)
-{
-       pan_emit_midgard_tiler(dev, fb, ctx,
-                              pan_section_ptr(fbd, FRAMEBUFFER, TILER));
-
-        /* All weights set to 0, nothing to do here */
-        pan_section_pack(fbd, FRAMEBUFFER, PADDING_1, padding);
-        pan_section_pack(fbd, FRAMEBUFFER, TILER_WEIGHTS, w);
-}
-
 unsigned
 GENX(pan_emit_fbd)(const struct panfrost_device *dev,
                    const struct pan_fb_info *fb,
@@ -836,7 +822,14 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
                 if (fb->rt_count)
                         cfg.msaa = mali_sampling_mode(fb->rts[0].view);
         }
-        pan_emit_sfbd_tiler(dev, fb, tiler_ctx, fbd);
+
+        pan_emit_midgard_tiler(dev, fb, tiler_ctx,
+                               pan_section_ptr(fbd, FRAMEBUFFER, TILER));
+
+        /* All weights set to 0, nothing to do here */
+        pan_section_pack(fbd, FRAMEBUFFER, TILER_WEIGHTS, w);
+
+        pan_section_pack(fbd, FRAMEBUFFER, PADDING_1, padding);
         pan_section_pack(fbd, FRAMEBUFFER, PADDING_2, padding);
         return 0;
 }
