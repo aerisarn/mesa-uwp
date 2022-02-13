@@ -2335,8 +2335,6 @@ static void handle_copy_image_to_buffer2(struct vk_cmd_queue_entry *cmd,
    struct pipe_transfer *src_t, *dst_t;
    ubyte *src_data, *dst_data;
 
-   state->pctx->flush(state->pctx, NULL, 0);
-
    for (i = 0; i < copycmd->regionCount; i++) {
 
       box.x = copycmd->pRegions[i].imageOffset.x;
@@ -2415,8 +2413,6 @@ static void handle_copy_buffer_to_image(struct vk_cmd_queue_entry *cmd,
    struct pipe_box box, sbox;
    struct pipe_transfer *src_t, *dst_t;
    void *src_data, *dst_data;
-
-   state->pctx->flush(state->pctx, NULL, 0);
 
    for (i = 0; i < copycmd->regionCount; i++) {
 
@@ -2498,8 +2494,6 @@ static void handle_copy_image(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_image, src_image, copycmd->srcImage);
    LVP_FROM_HANDLE(lvp_image, dst_image, copycmd->dstImage);
 
-   state->pctx->flush(state->pctx, NULL, 0);
-
    for (i = 0; i < copycmd->regionCount; i++) {
       struct pipe_box src_box;
       src_box.x = copycmd->pRegions[i].srcOffset.x;
@@ -2554,7 +2548,6 @@ static void handle_blit_image(struct vk_cmd_queue_entry *cmd,
 
    memset(&info, 0, sizeof(info));
 
-   state->pctx->flush(state->pctx, NULL, 0);
    info.src.resource = src_image->bo;
    info.dst.resource = dst_image->bo;
    info.src.format = src_image->bo->format;
@@ -3201,7 +3194,6 @@ static void handle_resolve_image(struct vk_cmd_queue_entry *cmd,
 
    memset(&info, 0, sizeof(info));
 
-   state->pctx->flush(state->pctx, NULL, 0);
    info.src.resource = src_image->bo;
    info.dst.resource = dst_image->bo;
    info.src.format = src_image->bo->format;
