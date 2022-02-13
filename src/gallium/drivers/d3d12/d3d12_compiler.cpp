@@ -149,6 +149,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    opts.input_clip_size = key->input_clip_size;
    opts.environment = DXIL_ENVIRONMENT_GL;
    opts.shader_model_max = SHADER_MODEL_6_2;
+   opts.validator_version_max = DXIL_VALIDATOR_1_4;
 
    struct blob tmp;
    if (!nir_to_dxil(nir, &opts, &tmp)) {

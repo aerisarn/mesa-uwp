@@ -27,6 +27,7 @@
 #include <stdbool.h>
 
 #include "nir.h"
+#include "dxil_validator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,6 +98,7 @@ struct nir_to_dxil_options {
    unsigned input_clip_size;
    enum dxil_environment environment;
    uint32_t shader_model_max;
+   uint32_t validator_version_max;
 };
 
 bool

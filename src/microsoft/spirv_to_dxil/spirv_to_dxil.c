@@ -146,6 +146,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
       .shader_model_max = SHADER_MODEL_6_2,
+      .validator_version_max = DXIL_VALIDATOR_1_4,
    };
    struct blob dxil_blob;
    if (!nir_to_dxil(nir, &opts, &dxil_blob)) {

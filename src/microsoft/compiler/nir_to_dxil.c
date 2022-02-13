@@ -1536,10 +1536,15 @@ emit_tag(struct ntd_context *ctx, enum dxil_shader_tag tag,
 static bool
 emit_metadata(struct ntd_context *ctx, const struct dxil_mdnode *signatures)
 {
+   /* DXIL versions are 1.x for shader model 6.x */
+   assert(ctx->mod.major_version == 6);
+   unsigned dxilMajor = 1;
    unsigned dxilMinor = ctx->mod.minor_version;
+   unsigned valMajor = ctx->mod.major_validator;
+   unsigned valMinor = ctx->mod.minor_validator;
    if (!emit_llvm_ident(&ctx->mod) ||
-       !emit_named_version(&ctx->mod, "dx.version", 1, dxilMinor) ||
-       !emit_named_version(&ctx->mod, "dx.valver", 1, 4) ||
+       !emit_named_version(&ctx->mod, "dx.version", dxilMajor, dxilMinor) ||
+       !emit_named_version(&ctx->mod, "dx.valver", valMajor, valMinor) ||
        !emit_dx_shader_model(&ctx->mod))
       return false;
 
@@ -5694,6 +5699,16 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
    return glsl_count_attribute_slots(type, false);
 }
 
+static bool
+dxil_validator_can_validate_shader_model(unsigned sm_minor, unsigned val_minor)
+{
+   /* Currently the validators are versioned such that val 1.x is needed for SM6.x */
+   return sm_minor <= val_minor;
+}
+
+static const unsigned dxil_validator_min_capable_version = DXIL_VALIDATOR_1_4;
+static const unsigned dxil_validator_max_capable_version = DXIL_VALIDATOR_1_4;
+
 bool
 nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
             struct blob *blob)
@@ -5707,6 +5722,22 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
       debug_printf("D3D12: cannot support emitting shader model 6.0 or lower\n");
       return false;
    }
+
+   if (opts->validator_version_max != NO_DXIL_VALIDATION &&
+       opts->validator_version_max < dxil_validator_min_capable_version) {
+      debug_printf("D3D12: Invalid validator version %d.%d, must be 1.4 or greater\n",
+         opts->validator_version_max >> 16,
+         opts->validator_version_max & 0xffff);
+      return false;
+   }
+
+   /* If no validation, write a blob as if it was going to be validated by the newest understood validator.
+    * Same if the validator is newer than we know how to write for.
+    */
+   uint32_t validator_version =
+      opts->validator_version_max == NO_DXIL_VALIDATION ||
+      opts->validator_version_max > dxil_validator_max_capable_version ?
+      dxil_validator_max_capable_version : opts->validator_version_max;
 
    struct ntd_context *ctx = calloc(1, sizeof(*ctx));
    if (!ctx)
@@ -5730,6 +5761,8 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    ctx->mod.shader_kind = get_dxil_shader_kind(s);
    ctx->mod.major_version = 6;
    ctx->mod.minor_version = 1;
+   ctx->mod.major_validator = validator_version >> 16;
+   ctx->mod.minor_validator = validator_version & 0xffff;
 
    if (s->info.stage <= MESA_SHADER_FRAGMENT) {
       uint64_t in_mask =
@@ -5783,6 +5816,13 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    assert(ctx->mod.major_version == 6 && ctx->mod.minor_version >= 1);
    if ((ctx->mod.major_version << 16 | ctx->mod.minor_version) > opts->shader_model_max) {
       debug_printf("D3D12: max shader model exceeded\n");
+      retval = false;
+      goto out;
+   }
+
+   assert(ctx->mod.major_validator == 1);
+   if (!dxil_validator_can_validate_shader_model(ctx->mod.minor_version, ctx->mod.minor_validator)) {
+      debug_printf("D3D12: shader model exceeds max that can be validated\n");
       retval = false;
       goto out;
    }

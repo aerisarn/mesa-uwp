@@ -176,6 +176,7 @@ struct dxil_module {
    void *ralloc_ctx;
    enum dxil_shader_kind shader_kind;
    unsigned major_version, minor_version;
+   unsigned major_validator, minor_validator;
    struct dxil_features feats;
    unsigned raw_and_structured_buffers : 1;
    struct dxil_shader_info info;
