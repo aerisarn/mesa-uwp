@@ -4491,18 +4491,16 @@ static void tgsi_dst(struct r600_shader_ctx *ctx,
 
 				if (tgsi_dst->Register.Indirect) {
 					cf.index_gpr = ctx->bc->ar_reg;
-			}
-			else {
-				cf.array_base += idx;
-				cf.array_size = 0;
-			}
+				} else {
+					cf.array_base += idx;
+					cf.array_size = 0;
+				}
 
-			r = r600_bytecode_add_pending_output(ctx->bc, &cf);
-			if (r)
-				return;
+				r = r600_bytecode_add_pending_output(ctx->bc, &cf);
+				if (r)
+					return;
 
-			r600_bytecode_add_ack(ctx->bc);
-
+				r600_bytecode_add_ack(ctx->bc);
 			}
 			return;
 		}
