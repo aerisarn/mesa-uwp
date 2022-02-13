@@ -2994,6 +2994,9 @@ static void handle_copy_query_pool_results(struct vk_cmd_queue_entry *cmd,
    struct vk_cmd_copy_query_pool_results *copycmd = &cmd->u.copy_query_pool_results;
    LVP_FROM_HANDLE(lvp_query_pool, pool, copycmd->query_pool);
    enum pipe_query_flags flags = (copycmd->flags & VK_QUERY_RESULT_WAIT_BIT) ? PIPE_QUERY_WAIT : 0;
+
+   if (copycmd->flags & VK_QUERY_RESULT_PARTIAL_BIT)
+      flags |= PIPE_QUERY_PARTIAL;
    unsigned result_size = copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4;
    for (unsigned i = copycmd->first_query; i < copycmd->first_query + copycmd->query_count; i++) {
       unsigned offset = copycmd->dst_offset + lvp_buffer_from_handle(copycmd->dst_buffer)->offset + (copycmd->stride * (i - copycmd->first_query));
