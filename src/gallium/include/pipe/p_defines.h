@@ -1289,6 +1289,7 @@ enum pipe_query_value_type
 enum pipe_query_flags
 {
    PIPE_QUERY_WAIT = (1 << 0),
+   PIPE_QUERY_PARTIAL = (1 << 1),
 };
 
 union pipe_color_union
