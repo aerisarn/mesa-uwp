@@ -2257,6 +2257,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
                         struct tu_pipeline *pipeline,
                         struct tu_pipeline_layout *layout,
                         struct tu_pipeline_builder *builder,
+                        struct tu_pipeline_cache *cache,
                         struct ir3_shader_variant *compute)
 {
    uint32_t size = 2048 + tu6_load_state_size(pipeline, layout, compute);
@@ -2292,13 +2293,27 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
       size += tu_xs_get_additional_cs_size_dwords(compute);
    }
 
-   tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, size);
+   /* Allocate the space for the pipeline out of the device's RO suballocator.
+    *
+    * Sub-allocating BOs saves memory and also kernel overhead in refcounting of
+    * BOs at exec time.
+    *
+    * The pipeline cache would seem like a natural place to stick the
+    * suballocator, except that it is not guaranteed to outlive the pipelines
+    * created from it, so you can't store any long-lived state there, and you
+    * can't use its EXTERNALLY_SYNCHRONIZED flag to avoid atomics because
+    * pipeline destroy isn't synchronized by the cache.
+    */
+   pthread_mutex_lock(&dev->pipeline_mutex);
+   VkResult result = tu_suballoc_bo_alloc(&pipeline->bo, &dev->pipeline_suballoc,
+                                          size * 4, 128);
+   pthread_mutex_unlock(&dev->pipeline_mutex);
+   if (result != VK_SUCCESS)
+      return result;
 
-   /* Reserve the space now such that tu_cs_begin_sub_stream never fails. Note
-    * that LOAD_STATE can potentially take up a large amount of space so we
-    * calculate its size explicitly.
-   */
-   return tu_cs_reserve_space(&pipeline->cs, size);
+   tu_cs_init_suballoc(&pipeline->cs, dev, &pipeline->bo);
+
+   return VK_SUCCESS;
 }
 
 static void
@@ -3259,6 +3274,9 @@ tu_pipeline_finish(struct tu_pipeline *pipeline,
                    const VkAllocationCallbacks *alloc)
 {
    tu_cs_finish(&pipeline->cs);
+   pthread_mutex_lock(&dev->pipeline_mutex);
+   tu_suballoc_bo_free(&dev->pipeline_suballoc, &pipeline->bo);
+   pthread_mutex_unlock(&dev->pipeline_mutex);
 
    if (pipeline->pvtmem_bo)
       tu_bo_finish(dev, pipeline->pvtmem_bo);
@@ -3288,7 +3306,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    }
 
    result = tu_pipeline_allocate_cs(builder->device, *pipeline,
-                                    builder->layout, builder, NULL);
+                                    builder->layout, builder, builder->cache, NULL);
    if (result != VK_SUCCESS) {
       vk_object_free(&builder->device->vk, builder->alloc, *pipeline);
       return result;
@@ -3339,11 +3357,6 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_multisample_and_color_blend(builder, *pipeline);
    tu_pipeline_builder_parse_rasterization_order(builder, *pipeline);
    tu6_emit_load_state(*pipeline, builder->layout, false);
-
-   /* we should have reserved enough space upfront such that the CS never
-    * grows
-    */
-   assert((*pipeline)->cs.bo_count == 1);
 
    return VK_SUCCESS;
 }
@@ -3492,12 +3505,13 @@ tu_CreateGraphicsPipelines(VkDevice device,
 
 static VkResult
 tu_compute_pipeline_create(VkDevice device,
-                           VkPipelineCache _cache,
+                           VkPipelineCache pipelineCache,
                            const VkComputePipelineCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipeline *pPipeline)
 {
    TU_FROM_HANDLE(tu_device, dev, device);
+   TU_FROM_HANDLE(tu_pipeline_cache, cache, pipelineCache);
    TU_FROM_HANDLE(tu_pipeline_layout, layout, pCreateInfo->layout);
    const VkPipelineShaderStageCreateInfo *stage_info = &pCreateInfo->stage;
    VkResult result;
@@ -3545,7 +3559,7 @@ tu_compute_pipeline_create(VkDevice device,
    tu_pipeline_set_linkage(&pipeline->program.link[MESA_SHADER_COMPUTE],
                            shader, v);
 
-   result = tu_pipeline_allocate_cs(dev, pipeline, layout, NULL, v);
+   result = tu_pipeline_allocate_cs(dev, pipeline, layout, NULL, cache, v);
    if (result != VK_SUCCESS)
       goto fail;
 

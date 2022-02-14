@@ -48,6 +48,7 @@ libtu_files = files(
   'tu_private.h',
   'tu_query.c',
   'tu_shader.c',
+  'tu_suballoc.c',
   'tu_util.c',
   'tu_util.h',
   'tu_perfetto.h',

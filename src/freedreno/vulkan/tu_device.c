@@ -1728,6 +1728,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->vk.check_status = tu_device_check_status;
 
    mtx_init(&device->bo_mutex, mtx_plain);
+   mtx_init(&device->pipeline_mutex, mtx_plain);
    u_rwlock_init(&device->dma_bo_lock);
    pthread_mutex_init(&device->submit_mutex, NULL);
 
@@ -1785,6 +1786,9 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    uint32_t global_size = sizeof(struct tu6_global);
    if (custom_border_colors)
       global_size += TU_BORDER_COLOR_COUNT * sizeof(struct bcolor_entry);
+
+   tu_bo_suballocator_init(&device->pipeline_suballoc, device,
+                           128 * 1024, TU_BO_ALLOC_GPU_READ_ONLY | TU_BO_ALLOC_ALLOW_DUMP);
 
    result = tu_bo_init_new(device, &device->global_bo, global_size,
                            TU_BO_ALLOC_ALLOW_DUMP);
@@ -1986,6 +1990,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    }
 
    tu_autotune_fini(&device->autotune, device);
+
+   tu_bo_suballocator_finish(&device->pipeline_suballoc);
 
    util_sparse_array_finish(&device->bo_map);
    u_rwlock_destroy(&device->dma_bo_lock);
