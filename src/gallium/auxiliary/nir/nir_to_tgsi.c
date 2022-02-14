@@ -2580,7 +2580,23 @@ ntt_push_tex_arg(struct ntt_compile *c,
    if (tex_src < 0)
       return;
 
-   s->srcs[s->i++] = ntt_get_src(c, instr->src[tex_src].src);
+   nir_src *src = &instr->src[tex_src].src;
+
+   /* virglrenderer workaround that's hard to do in tgsi_translate: Make sure
+    * that TG4's immediate offset arg is float-typed.
+    */
+   if (instr->op == nir_texop_tg4 && tex_src_type == nir_tex_src_backend2 &&
+       nir_src_is_const(*src)) {
+      nir_const_value *consts = nir_src_as_const_value(*src);
+      s->srcs[s->i++] = ureg_imm4f(c->ureg,
+                                   consts[0].f32,
+                                   consts[1].f32,
+                                   consts[2].f32,
+                                   consts[3].f32);
+      return;
+   }
+
+   s->srcs[s->i++] = ntt_get_src(c, *src);
 }
 
 static void
