@@ -2362,6 +2362,7 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
    loaded_num_prm = nir_if_phi(b, loaded_num_prm, dont_care);
    nir_ssa_def *num_prm = nir_read_first_invocation(b, loaded_num_prm);
    nir_ssa_def *num_vtx = nir_imm_int(b, shader->info.mesh.max_vertices_out);
+   num_prm = nir_umin(b, num_prm, nir_imm_int(b, shader->info.mesh.max_primitives_out));
 
    /* If the shader doesn't actually create any primitives, don't allocate any output. */
    num_vtx = nir_bcsel(b, nir_ieq_imm(b, num_prm, 0), nir_imm_int(b, 0), num_vtx);
@@ -2407,9 +2408,11 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
       nir_ssa_def *prim_idx_addr = nir_imul_imm(b, invocation_index, s->vertices_per_prim);
       nir_ssa_def *indices_loaded = nir_load_shared(b, s->vertices_per_prim, 8, prim_idx_addr, .base = s->prim_vtx_indices_addr);
       nir_ssa_def *indices[3];
-      indices[0] = nir_u2u32(b, nir_channel(b, indices_loaded, 0));
-      indices[1] = s->vertices_per_prim > 1 ? nir_u2u32(b, nir_channel(b, indices_loaded, 1)) : NULL;
-      indices[2] = s->vertices_per_prim > 2 ? nir_u2u32(b, nir_channel(b, indices_loaded, 2)) : NULL;
+
+      for (unsigned i = 0; i < s->vertices_per_prim; ++i) {
+         indices[i] = nir_u2u32(b, nir_channel(b, indices_loaded, i));
+         indices[i] = nir_umin(b, indices[i], nir_imm_int(b, shader->info.mesh.max_vertices_out - 1));
+      }
 
       nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, s->vertices_per_prim, indices, NULL, false);
       nir_export_primitive_amd(b, prim_exp_arg);
