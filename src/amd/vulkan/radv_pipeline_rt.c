@@ -1769,7 +1769,10 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    struct rt_variables vars = create_rt_variables(b.shader, pCreateInfo, stack_sizes);
    load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, 0);
-   nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, 0), 0x1);
+   if (radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo))
+      nir_store_var(&b, vars.stack_ptr, nir_load_rt_dynamic_callable_stack_base_amd(&b), 0x1);
+   else
+      nir_store_var(&b, vars.stack_ptr, nir_imm_int(&b, 0), 0x1);
 
    nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, true), 1);
 

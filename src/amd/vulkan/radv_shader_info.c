@@ -210,6 +210,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
    case nir_intrinsic_load_force_vrs_rates_amd:
       info->force_vrs_per_vertex = true;
       break;
+   case nir_intrinsic_load_rt_dynamic_callable_stack_base_amd:
+      info->cs.uses_dynamic_rt_callable_stack = true;
+      break;
    default:
       break;
    }
