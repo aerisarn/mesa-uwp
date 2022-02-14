@@ -2436,8 +2436,11 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    unsigned max_vertices = shader->info.mesh.max_vertices_out;
    unsigned max_primitives = shader->info.mesh.max_primitives_out;
 
+   /* LDS area for total number of output primitives. */
+   unsigned numprims_lds_addr = ALIGN(shader->info.shared_size, 16);
+   unsigned numprims_lds_size = 4;
    /* LDS area for vertex attributes */
-   unsigned vertex_attr_lds_addr = ALIGN(shader->info.shared_size, 16);
+   unsigned vertex_attr_lds_addr = ALIGN(numprims_lds_addr + numprims_lds_size, 16);
    unsigned vertex_attr_lds_size = max_vertices * num_per_vertex_outputs * 16;
    /* LDS area for primitive attributes */
    unsigned prim_attr_lds_addr = ALIGN(vertex_attr_lds_addr + vertex_attr_lds_size, 16);
@@ -2445,11 +2448,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    /* LDS area for the vertex indices (stored as a flat array) */
    unsigned prim_vtx_indices_addr = ALIGN(prim_attr_lds_addr + prim_attr_lds_size, 16);
    unsigned prim_vtx_indices_size = max_primitives * vertices_per_prim;
-   /* LDS area for total number of output primitives. */
-   unsigned numprims_lds_addr = ALIGN(prim_vtx_indices_addr + prim_vtx_indices_size, 16);
-   unsigned numprims_lds_size = 4;
 
-   shader->info.shared_size = numprims_lds_addr + numprims_lds_size;
+   shader->info.shared_size = prim_vtx_indices_addr + prim_vtx_indices_size;
 
    lower_ngg_ms_state state = {
       .wave_size = wave_size,
