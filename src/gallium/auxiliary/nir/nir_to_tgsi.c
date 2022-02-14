@@ -3664,7 +3664,7 @@ nir_lower_primid_sysval_to_input_lower(nir_builder *b, nir_instr *instr, void *d
       var = nir_variable_create(b->shader, nir_var_shader_in, glsl_uint_type(), "gl_PrimitiveID");
       var->data.location = VARYING_SLOT_PRIMITIVE_ID;
       b->shader->info.inputs_read |= VARYING_BIT_PRIMITIVE_ID;
-      var->data.driver_location = b->shader->num_outputs++;
+      var->data.driver_location = b->shader->num_inputs++;
 
       *(nir_variable **)data = var;
    }
