@@ -108,10 +108,9 @@ vn_image_init_memory_requirements(struct vn_image *img,
 }
 
 static VkResult
-vn_image_store_deferred_create_info(
-   const VkImageCreateInfo *create_info,
-   const VkAllocationCallbacks *alloc,
-   struct vn_image_create_deferred_info **out_info)
+vn_image_deferred_info_init(struct vn_image *img,
+                            const VkImageCreateInfo *create_info,
+                            const VkAllocationCallbacks *alloc)
 {
    struct vn_image_create_deferred_info *info = NULL;
    VkBaseOutStructure *dst = NULL;
@@ -127,10 +126,33 @@ vn_image_store_deferred_create_info(
    vk_foreach_struct_const(src, create_info->pNext) {
       void *pnext = NULL;
       switch (src->sType) {
-      case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
+      case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+         /* 12.3. Images
+          *
+          * If viewFormatCount is zero, pViewFormats is ignored and the image
+          * is created as if the VkImageFormatListCreateInfo structure were
+          * not included in the pNext chain of VkImageCreateInfo.
+          */
+         if (!((const VkImageFormatListCreateInfo *)src)->viewFormatCount)
+            break;
+
          memcpy(&info->list, src, sizeof(info->list));
          pnext = &info->list;
-         break;
+
+         /* need a deep copy for view formats array */
+         const size_t size = sizeof(VkFormat) * info->list.viewFormatCount;
+         VkFormat *view_formats = vk_zalloc(
+            alloc, size, VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         if (!view_formats) {
+            vk_free(alloc, info);
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+         }
+
+         memcpy(view_formats,
+                ((const VkImageFormatListCreateInfo *)src)->pViewFormats,
+                size);
+         info->list.pViewFormats = view_formats;
+      } break;
       case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
          memcpy(&info->stencil, src, sizeof(info->stencil));
          pnext = &info->stencil;
@@ -146,9 +168,22 @@ vn_image_store_deferred_create_info(
    }
    dst->pNext = NULL;
 
-   *out_info = info;
+   img->deferred_info = info;
 
    return VK_SUCCESS;
+}
+
+static void
+vn_image_deferred_info_fini(struct vn_image *img,
+                            const VkAllocationCallbacks *alloc)
+{
+   if (!img->deferred_info)
+      return;
+
+   if (img->deferred_info->list.pViewFormats)
+      vk_free(alloc, (void *)img->deferred_info->list.pViewFormats);
+
+   vk_free(alloc, img->deferred_info);
 }
 
 static VkResult
@@ -227,8 +262,7 @@ vn_image_create_deferred(struct vn_device *dev,
 
    vn_object_base_init(&img->base, VK_OBJECT_TYPE_IMAGE, &dev->base);
 
-   result = vn_image_store_deferred_create_info(create_info, alloc,
-                                                &img->deferred_info);
+   result = vn_image_deferred_info_init(img, create_info, alloc);
    if (result != VK_SUCCESS) {
       vn_object_base_fini(&img->base);
       vk_free(alloc, img);
@@ -319,8 +353,7 @@ vn_DestroyImage(VkDevice device,
    if (!img->deferred_info || img->deferred_info->initialized)
       vn_async_vkDestroyImage(dev->instance, device, image, NULL);
 
-   if (img->deferred_info)
-      vk_free(alloc, img->deferred_info);
+   vn_image_deferred_info_fini(img, alloc);
 
    vn_object_base_fini(&img->base);
    vk_free(alloc, img);
