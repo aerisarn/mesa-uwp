@@ -2880,6 +2880,111 @@ static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer)
    pvr_compute_generate_control_stream(csb, &info);
 }
 
+static uint32_t
+pvr_compute_flat_pad_workgroup_size(const struct pvr_device_info *dev_info,
+                                    uint32_t workgroup_size,
+                                    uint32_t coeff_regs_count)
+{
+   uint32_t max_avail_coeff_regs =
+      rogue_get_cdm_max_local_mem_size_regs(dev_info);
+   uint32_t coeff_regs_count_aligned =
+      ALIGN_POT(coeff_regs_count,
+                PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE) >> 2U);
+
+   /* If the work group size is > ROGUE_MAX_INSTANCES_PER_TASK. We now *always*
+    * pad the work group size to the next multiple of
+    * ROGUE_MAX_INSTANCES_PER_TASK.
+    *
+    * If we use more than 1/8th of the max coefficient registers then we round
+    * work group size up to the next multiple of ROGUE_MAX_INSTANCES_PER_TASK
+    */
+   /* TODO: See if this can be optimized. */
+   if (workgroup_size > ROGUE_MAX_INSTANCES_PER_TASK ||
+       coeff_regs_count_aligned > (max_avail_coeff_regs / 8)) {
+      assert(workgroup_size < rogue_get_compute_max_work_group_size(dev_info));
+
+      return ALIGN_POT(workgroup_size, ROGUE_MAX_INSTANCES_PER_TASK);
+   }
+
+   return workgroup_size;
+}
+
+/* TODO: Wire up the base_workgroup variant program when implementing
+ * VK_KHR_device_group. The values will also need patching into the program.
+ */
+static void pvr_compute_update_kernel(
+   struct pvr_cmd_buffer *cmd_buffer,
+   const uint32_t global_workgroup_size[static const PVR_WORKGROUP_DIMENSIONS])
+{
+   const struct pvr_device_info *dev_info =
+      &cmd_buffer->device->pdevice->dev_info;
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   struct pvr_csb *csb = &state->current_sub_cmd->compute.control_stream;
+   const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
+   const struct pvr_pds_info *program_info =
+      &pipeline->state.primary_program_info;
+
+   struct pvr_compute_kernel_info info = {
+      .indirect_buffer_addr.addr = 0ULL,
+      .usc_target = PVRX(CDMCTRL_USC_TARGET_ANY),
+      .pds_temp_size =
+         DIV_ROUND_UP(program_info->temps_required << 2U,
+                      PVRX(CDMCTRL_KERNEL0_PDS_TEMP_SIZE_UNIT_SIZE)),
+
+      .pds_data_size =
+         DIV_ROUND_UP(program_info->data_size_in_dwords << 2U,
+                      PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
+      .pds_data_offset = pipeline->state.primary_program.data_offset,
+      .pds_code_offset = pipeline->state.primary_program.code_offset,
+
+      .sd_type = PVRX(CDMCTRL_SD_TYPE_USC),
+
+      .usc_unified_size =
+         DIV_ROUND_UP(pipeline->state.shader.input_register_count << 2U,
+                      PVRX(CDMCTRL_KERNEL0_USC_UNIFIED_SIZE_UNIT_SIZE)),
+
+      /* clang-format off */
+      .global_size = {
+         global_workgroup_size[0],
+         global_workgroup_size[1],
+         global_workgroup_size[2]
+      },
+      /* clang-format on */
+   };
+
+   uint32_t work_size = pipeline->state.shader.work_size;
+   uint32_t coeff_regs;
+
+   if (work_size > ROGUE_MAX_INSTANCES_PER_TASK) {
+      /* Enforce a single workgroup per cluster through allocation starvation.
+       */
+      coeff_regs = rogue_get_cdm_max_local_mem_size_regs(dev_info);
+   } else {
+      coeff_regs = pipeline->state.shader.coefficient_register_count;
+   }
+
+   info.usc_common_size =
+      DIV_ROUND_UP(coeff_regs << 2U,
+                   PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE));
+
+   /* Use a whole slot per workgroup. */
+   work_size = MAX2(work_size, ROGUE_MAX_INSTANCES_PER_TASK);
+
+   coeff_regs += pipeline->state.shader.const_shared_reg_count;
+
+   work_size =
+      pvr_compute_flat_pad_workgroup_size(dev_info, work_size, coeff_regs);
+
+   info.local_size[0] = work_size;
+   info.local_size[1] = 1U;
+   info.local_size[2] = 1U;
+
+   info.max_instances =
+      pvr_compute_flat_slot_size(dev_info, coeff_regs, false, work_size);
+
+   pvr_compute_generate_control_stream(csb, &info);
+}
+
 void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
                      uint32_t groupCountX,
                      uint32_t groupCountY,
@@ -2953,7 +3058,7 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
 
    pvr_compute_update_shared(cmd_buffer);
 
-   /* FIXME: Create update kernel end emit control stream. */
+   pvr_compute_update_kernel(cmd_buffer, workgroup_size);
 }
 
 void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,

@@ -1036,6 +1036,9 @@ struct pvr_compute_pipeline {
          bool uses_num_workgroups;
 
          uint32_t const_shared_reg_count;
+         uint32_t input_register_count;
+         uint32_t work_size;
+         uint32_t coefficient_register_count;
       } shader;
 
       struct {
@@ -1047,12 +1050,17 @@ struct pvr_compute_pipeline {
       struct pvr_pds_upload primary_program;
       struct pvr_pds_info primary_program_info;
 
-      struct pvr_pds_upload primary_program_base_workgroup_variant;
-      struct pvr_pds_info primary_program_base_workgroup_variant_info;
-      /* Offset within the PDS data section at which the base workgroup id
-       * resides.
-       */
-      uint32_t base_workgroup_ids_dword_offset;
+      struct pvr_pds_base_workgroup_program {
+         struct pvr_pds_upload code_upload;
+
+         uint32_t *data_section;
+         /* Offset within the PDS data section at which the base workgroup id
+          * resides.
+          */
+         uint32_t base_workgroup_data_patching_offset;
+
+         struct pvr_pds_info info;
+      } primary_base_workgroup_variant_program;
    } state;
 };
 

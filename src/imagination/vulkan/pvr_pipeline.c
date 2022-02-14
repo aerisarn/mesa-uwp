@@ -45,6 +45,7 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/ralloc.h"
+#include "util/u_math.h"
 #include "vk_alloc.h"
 #include "vk_log.h"
 #include "vk_object.h"
@@ -777,22 +778,17 @@ static void pvr_pds_uniform_program_destroy(
    vk_free2(&device->vk.alloc, allocator, pds_info->entries);
 }
 
-/* FIXME: See if pvr_device_init_compute_pds_program() and this could be merged.
- */
-static VkResult pvr_pds_compute_program_create_and_upload(
-   struct pvr_device *const device,
-   const VkAllocationCallbacks *const allocator,
+static void pvr_pds_compute_program_setup(
+   const struct pvr_device_info *dev_info,
    const uint32_t local_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
    const uint32_t work_group_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
    uint32_t barrier_coefficient,
    bool add_base_workgroup,
    uint32_t usc_temps,
    pvr_dev_addr_t usc_shader_dev_addr,
-   struct pvr_pds_upload *const pds_upload_out,
-   struct pvr_pds_info *const pds_info_out,
-   uint32_t *const base_workgroup_data_patching_offset_out)
+   struct pvr_pds_compute_shader_program *const program)
 {
-   struct pvr_pds_compute_shader_program program = {
+   *program = (struct pvr_pds_compute_shader_program){
       /* clang-format off */
       .local_input_regs = {
          local_input_regs[0],
@@ -815,27 +811,50 @@ static VkResult pvr_pds_compute_program_create_and_upload(
       .add_base_workgroup = add_base_workgroup,
       .kick_usc = true,
    };
-   struct pvr_device_info *dev_info = &device->pdevice->dev_info;
-   uint32_t staging_buffer_size;
-   uint32_t *staging_buffer;
-   VkResult result;
 
-   STATIC_ASSERT(ARRAY_SIZE(program.local_input_regs) ==
+   STATIC_ASSERT(ARRAY_SIZE(program->local_input_regs) ==
                  PVR_WORKGROUP_DIMENSIONS);
-   STATIC_ASSERT(ARRAY_SIZE(program.work_group_input_regs) ==
+   STATIC_ASSERT(ARRAY_SIZE(program->work_group_input_regs) ==
                  PVR_WORKGROUP_DIMENSIONS);
-   STATIC_ASSERT(ARRAY_SIZE(program.global_input_regs) ==
+   STATIC_ASSERT(ARRAY_SIZE(program->global_input_regs) ==
                  PVR_WORKGROUP_DIMENSIONS);
 
-   assert(!add_base_workgroup || base_workgroup_data_patching_offset_out);
-
-   pvr_pds_setup_doutu(&program.usc_task_control,
+   pvr_pds_setup_doutu(&program->usc_task_control,
                        usc_shader_dev_addr.addr,
                        usc_temps,
                        PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
                        false);
 
-   pvr_pds_compute_shader(&program, NULL, PDS_GENERATE_SIZES, dev_info);
+   pvr_pds_compute_shader(program, NULL, PDS_GENERATE_SIZES, dev_info);
+}
+
+/* FIXME: See if pvr_device_init_compute_pds_program() and this could be merged.
+ */
+static VkResult pvr_pds_compute_program_create_and_upload(
+   struct pvr_device *const device,
+   const VkAllocationCallbacks *const allocator,
+   const uint32_t local_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
+   const uint32_t work_group_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
+   uint32_t barrier_coefficient,
+   uint32_t usc_temps,
+   pvr_dev_addr_t usc_shader_dev_addr,
+   struct pvr_pds_upload *const pds_upload_out,
+   struct pvr_pds_info *const pds_info_out)
+{
+   struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   struct pvr_pds_compute_shader_program program;
+   uint32_t staging_buffer_size;
+   uint32_t *staging_buffer;
+   VkResult result;
+
+   pvr_pds_compute_program_setup(dev_info,
+                                 local_input_regs,
+                                 work_group_input_regs,
+                                 barrier_coefficient,
+                                 false,
+                                 usc_temps,
+                                 usc_shader_dev_addr,
+                                 &program);
 
    /* FIXME: According to pvr_device_init_compute_pds_program() the code size
     * is in bytes. Investigate this.
@@ -863,16 +882,6 @@ static VkResult pvr_pds_compute_program_create_and_upload(
                           &staging_buffer[program.code_size],
                           PDS_GENERATE_DATA_SEGMENT,
                           dev_info);
-
-   /* We'll need to patch the base workgroup in the PDS data section before
-    * dispatch so we give back the offsets at which to patch. We only need to
-    * save the offset for the first workgroup id since the workgroup ids are
-    * stored contiguously in the data segment.
-    */
-   if (add_base_workgroup) {
-      *base_workgroup_data_patching_offset_out =
-         program.base_workgroup_constant_offset_in_dwords[0];
-   }
 
    /* FIXME: Figure out the define for alignment of 16. */
    result = pvr_gpu_upload_pds(device,
@@ -908,6 +917,97 @@ static void pvr_pds_compute_program_destroy(
 {
    /* We don't allocate an entries buffer so we don't need to free it */
    pvr_bo_free(device, pds_program->pvr_bo);
+}
+
+/* This only uploads the code segment. The data segment will need to be patched
+ * with the base workgroup before uploading.
+ */
+static VkResult pvr_pds_compute_base_workgroup_variant_program_init(
+   struct pvr_device *const device,
+   const VkAllocationCallbacks *const allocator,
+   const uint32_t local_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
+   const uint32_t work_group_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
+   uint32_t barrier_coefficient,
+   uint32_t usc_temps,
+   pvr_dev_addr_t usc_shader_dev_addr,
+   struct pvr_pds_base_workgroup_program *program_out)
+{
+   struct pvr_device_info *dev_info = &device->pdevice->dev_info;
+   struct pvr_pds_compute_shader_program program;
+   uint32_t buffer_size;
+   uint32_t *buffer;
+   VkResult result;
+
+   pvr_pds_compute_program_setup(dev_info,
+                                 local_input_regs,
+                                 work_group_input_regs,
+                                 barrier_coefficient,
+                                 true,
+                                 usc_temps,
+                                 usc_shader_dev_addr,
+                                 &program);
+
+   /* FIXME: According to pvr_device_init_compute_pds_program() the code size
+    * is in bytes. Investigate this.
+    */
+   buffer_size = MAX2(program.code_size, program.data_size) * sizeof(*buffer);
+
+   buffer = vk_alloc2(&device->vk.alloc,
+                      allocator,
+                      buffer_size,
+                      8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!buffer)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   pvr_pds_compute_shader(&program,
+                          &buffer[0],
+                          PDS_GENERATE_CODE_SEGMENT,
+                          dev_info);
+
+   /* FIXME: Figure out the define for alignment of 16. */
+   result = pvr_gpu_upload_pds(device,
+                               NULL,
+                               0,
+                               0,
+                               buffer,
+                               program.code_size,
+                               16,
+                               16,
+                               &program_out->code_upload);
+   if (result != VK_SUCCESS) {
+      vk_free2(&device->vk.alloc, allocator, buffer);
+      return result;
+   }
+
+   pvr_pds_compute_shader(&program, buffer, PDS_GENERATE_DATA_SEGMENT, dev_info);
+
+   program_out->data_section = buffer;
+
+   /* We'll need to patch the base workgroup in the PDS data section before
+    * dispatch so we save the offsets at which to patch. We only need to save
+    * the offset for the first workgroup id since the workgroup ids are stored
+    * contiguously in the data segment.
+    */
+   program_out->base_workgroup_data_patching_offset =
+      program.base_workgroup_constant_offset_in_dwords[0];
+
+   program_out->info = (struct pvr_pds_info){
+      .temps_required = program.highest_temp,
+      .code_size_in_dwords = program.code_size,
+      .data_size_in_dwords = program.data_size,
+   };
+
+   return VK_SUCCESS;
+}
+
+static void pvr_pds_compute_base_workgroup_variant_program_finish(
+   struct pvr_device *device,
+   const VkAllocationCallbacks *const allocator,
+   struct pvr_pds_base_workgroup_program *const state)
+{
+   pvr_bo_free(device, state->code_upload.pvr_bo);
+   vk_free2(&device->vk.alloc, allocator, state->data_section);
 }
 
 /******************************************************************************
@@ -962,6 +1062,9 @@ static VkResult pvr_compute_pipeline_compile(
    compute_pipeline->state.shader.uses_barrier = false;
    compute_pipeline->state.shader.uses_num_workgroups = false;
    compute_pipeline->state.shader.const_shared_reg_count = 4;
+   compute_pipeline->state.shader.input_register_count = 8;
+   compute_pipeline->state.shader.work_size = 1 * 1 * 1;
+   compute_pipeline->state.shader.coefficient_register_count = 4;
 
    result = pvr_gpu_upload_usc(device,
                                pvr_usc_compute_shader,
@@ -1011,12 +1114,10 @@ static VkResult pvr_compute_pipeline_compile(
       local_input_regs,
       work_group_input_regs,
       barrier_coefficient,
-      false,
       pvr_pds_compute_program_params.usc_temps,
       compute_pipeline->state.shader.bo->vma->dev_addr,
       &compute_pipeline->state.primary_program,
-      &compute_pipeline->state.primary_program_info,
-      NULL);
+      &compute_pipeline->state.primary_program_info);
    if (result != VK_SUCCESS)
       goto err_free_uniform_program;
 
@@ -1029,27 +1130,27 @@ static VkResult pvr_compute_pipeline_compile(
       work_group_input_regs[2] != PVR_PDS_COMPUTE_INPUT_REG_UNUSED;
 
    if (compute_pipeline->state.flags.base_workgroup) {
-      result = pvr_pds_compute_program_create_and_upload(
+      result = pvr_pds_compute_base_workgroup_variant_program_init(
          device,
          allocator,
          local_input_regs,
          work_group_input_regs,
          barrier_coefficient,
-         true,
          pvr_pds_compute_program_params.usc_temps,
          compute_pipeline->state.shader.bo->vma->dev_addr,
-         &compute_pipeline->state.primary_program_base_workgroup_variant,
-         &compute_pipeline->state.primary_program_base_workgroup_variant_info,
-         &compute_pipeline->state.base_workgroup_ids_dword_offset);
+         &compute_pipeline->state.primary_base_workgroup_variant_program);
       if (result != VK_SUCCESS)
-         goto err_free_compute_program;
+         goto err_destroy_compute_program;
    }
 
    return VK_SUCCESS;
 
-err_free_compute_program:
-   if (compute_pipeline->state.flags.base_workgroup)
-      pvr_bo_free(device, compute_pipeline->state.primary_program.pvr_bo);
+err_destroy_compute_program:
+   pvr_pds_compute_program_destroy(
+      device,
+      allocator,
+      &compute_pipeline->state.primary_program,
+      &compute_pipeline->state.primary_program_info);
 
 err_free_uniform_program:
    pvr_bo_free(device, compute_pipeline->state.uniform.pds_code.pvr_bo);
@@ -1129,11 +1230,10 @@ static void pvr_compute_pipeline_destroy(
    struct pvr_compute_pipeline *const compute_pipeline)
 {
    if (compute_pipeline->state.flags.base_workgroup) {
-      pvr_pds_compute_program_destroy(
+      pvr_pds_compute_base_workgroup_variant_program_finish(
          device,
          allocator,
-         &compute_pipeline->state.primary_program_base_workgroup_variant,
-         &compute_pipeline->state.primary_program_base_workgroup_variant_info);
+         &compute_pipeline->state.primary_base_workgroup_variant_program);
    }
 
    pvr_pds_compute_program_destroy(
