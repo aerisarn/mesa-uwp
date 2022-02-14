@@ -391,6 +391,7 @@ struct vn_android_image_builder {
    VkSubresourceLayout layouts[4];
    VkImageDrmFormatModifierExplicitCreateInfoEXT modifier;
    VkExternalMemoryImageCreateInfo external;
+   VkImageFormatListCreateInfo list;
 };
 
 static VkResult
@@ -403,6 +404,8 @@ vn_android_get_image_builder(struct vn_device *dev,
    VkResult result = VK_SUCCESS;
    struct vn_android_gralloc_buffer_properties buf_props;
    VkDrmFormatModifierPropertiesEXT mod_props;
+   uint32_t vcount = 0;
+   const VkFormat *vformats = NULL;
 
    /* Android image builder is only used by ANB or AHB. For ANB, Android
     * Vulkan loader will never pass the below structs. For AHB, struct
@@ -450,6 +453,37 @@ vn_android_get_image_builder(struct vn_device *dev,
    };
    out_builder->create.pNext = &out_builder->external;
 
+   /* fill VkImageFormatListCreateInfo if needed
+    *
+    * vn_image::deferred_info only stores VkImageFormatListCreateInfo with a
+    * non-zero viewFormatCount, and that stored struct will be respected.
+    */
+   if ((create_info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
+       !vk_find_struct_const(create_info->pNext,
+                             IMAGE_FORMAT_LIST_CREATE_INFO)) {
+      /* 12.3. Images
+       *
+       * If tiling is VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT and flags
+       * contains VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, then the pNext chain
+       * must include a VkImageFormatListCreateInfo structure with non-zero
+       * viewFormatCount.
+       */
+      vformats =
+         vn_android_format_to_view_formats(create_info->format, &vcount);
+      if (!vformats) {
+         /* image builder struct persists through the image creation call */
+         vformats = &out_builder->create.format;
+         vcount = 1;
+      }
+      out_builder->list = (VkImageFormatListCreateInfo){
+         .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO,
+         .pNext = out_builder->create.pNext,
+         .viewFormatCount = vcount,
+         .pViewFormats = vformats,
+      };
+      out_builder->create.pNext = &out_builder->list;
+   }
+
    return VK_SUCCESS;
 }
 
@@ -486,6 +520,7 @@ vn_android_image_from_anb(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto fail;
 
+   assert(!(create_info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT));
    assert(!vk_find_struct_const(create_info->pNext,
                                 IMAGE_FORMAT_LIST_CREATE_INFO));
    assert(!vk_find_struct_const(create_info->pNext,
@@ -991,6 +1026,7 @@ vn_android_image_from_ahb(struct vn_device *dev,
       assert(create_info->imageType == VK_IMAGE_TYPE_2D);
       assert(create_info->usage == VK_IMAGE_USAGE_SAMPLED_BIT);
       assert(create_info->tiling == VK_IMAGE_TILING_OPTIMAL);
+      assert(!(create_info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT));
 
       local_info = *create_info;
       local_info.format =
