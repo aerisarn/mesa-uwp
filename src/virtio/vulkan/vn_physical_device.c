@@ -2129,6 +2129,7 @@ vn_physical_device_fix_image_format_info(
    VkBaseOutStructure *dst = (void *)&local_info->format;
 
    bool is_ahb = false;
+   bool has_format_list = false;
    /* we should generate deep copy functions... */
    vk_foreach_struct_const(src, info->pNext) {
       void *pnext = NULL;
@@ -2143,6 +2144,7 @@ vn_physical_device_fix_image_format_info(
          pnext = &local_info->external;
          break;
       case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
+         has_format_list = true;
          memcpy(&local_info->list, src, sizeof(local_info->list));
          pnext = &local_info->list;
          break;
@@ -2175,6 +2177,35 @@ vn_physical_device_fix_image_format_info(
 
       dst->pNext = (void *)&local_info->modifier;
       dst = dst->pNext;
+
+      if ((info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
+          !local_info->list.viewFormatCount) {
+         /* 12.3. Images
+          *
+          * If tiling is VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT and flags
+          * contains VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT, then the pNext chain
+          * must include a VkImageFormatListCreateInfo structure with non-zero
+          * viewFormatCount.
+          */
+         VkImageFormatListCreateInfo *list = &local_info->list;
+         uint32_t vcount = 0;
+         const VkFormat *vformats =
+            vn_android_format_to_view_formats(info->format, &vcount);
+         if (!vformats) {
+            /* local_info persists through the image format query call */
+            vformats = &local_info->format.format;
+            vcount = 1;
+         }
+
+         list->sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO;
+         list->viewFormatCount = vcount;
+         list->pViewFormats = vformats;
+
+         if (!has_format_list) {
+            dst->pNext = (void *)list;
+            dst = dst->pNext;
+         }
+      }
    }
 
    dst->pNext = NULL;

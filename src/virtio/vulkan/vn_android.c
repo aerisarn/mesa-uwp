@@ -128,6 +128,41 @@ vn_android_ahb_format_from_vk_format(VkFormat format)
    }
 }
 
+const VkFormat *
+vn_android_format_to_view_formats(VkFormat format, uint32_t *out_count)
+{
+   /* For AHB image prop query and creation, venus overrides the tiling to
+    * VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT, which requires to chain
+    * VkImageFormatListCreateInfo struct in the corresponding pNext when the
+    * VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT is set. Those AHB images are assumed
+    * to be mutable no more than sRGB-ness, and the implementations can fail
+    * whenever going beyond.
+    *
+    * This helper provides the view formats that have sRGB variants for the
+    * image format that venus supports.
+    */
+   static const VkFormat view_formats_r8g8b8a8[] = {
+      VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB
+   };
+   static const VkFormat view_formats_r8g8b8[] = { VK_FORMAT_R8G8B8_UNORM,
+                                                   VK_FORMAT_R8G8B8_SRGB };
+
+   switch (format) {
+   case VK_FORMAT_R8G8B8A8_UNORM:
+      *out_count = ARRAY_SIZE(view_formats_r8g8b8a8);
+      return view_formats_r8g8b8a8;
+      break;
+   case VK_FORMAT_R8G8B8_UNORM:
+      *out_count = ARRAY_SIZE(view_formats_r8g8b8);
+      return view_formats_r8g8b8;
+      break;
+   default:
+      /* let the caller handle the fallback case */
+      *out_count = 0;
+      return NULL;
+   }
+}
+
 VkFormat
 vn_android_drm_format_to_vk_format(uint32_t format)
 {
