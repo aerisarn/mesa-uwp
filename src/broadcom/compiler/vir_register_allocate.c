@@ -44,23 +44,22 @@ static bool
 is_end_of_tmu_sequence(const struct v3d_device_info *devinfo,
                        struct qinst *inst, struct qblock *block)
 {
-        if (inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
-            inst->qpu.alu.add.op == V3D_QPU_A_TMUWT) {
-                return true;
-        }
-
-        if (!inst->qpu.sig.ldtmu)
+        /* Only tmuwt and ldtmu can finish TMU sequences */
+        bool is_tmuwt = inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+                        inst->qpu.alu.add.op == V3D_QPU_A_TMUWT;
+        bool is_ldtmu = inst->qpu.sig.ldtmu;
+        if (!is_tmuwt && !is_ldtmu)
                 return false;
 
+        /* Check if this is the last tmuwt or ldtmu in the sequence */
         list_for_each_entry_from(struct qinst, scan_inst, inst->link.next,
                                  &block->instructions, link) {
-                if (scan_inst->qpu.sig.ldtmu)
-                        return false;
+                is_tmuwt = scan_inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+                           scan_inst->qpu.alu.add.op == V3D_QPU_A_TMUWT;
+                is_ldtmu = scan_inst->qpu.sig.ldtmu;
 
-                if (inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
-                    inst->qpu.alu.add.op == V3D_QPU_A_TMUWT) {
-                        return true;
-                }
+                if (is_tmuwt || is_ldtmu)
+                        return false;
 
                 if (qinst_writes_tmu(devinfo, scan_inst))
                         return true;
