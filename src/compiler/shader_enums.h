@@ -1046,6 +1046,11 @@ enum shader_prim
 };
 
 /**
+ * Number of vertices per mesh shader primitive.
+ */
+unsigned num_mesh_vertices_per_primitive(unsigned prim);
+
+/**
  * A compare function enum for use in compiler lowering passes.  This is in
  * the same order as GL's compare functions (shifted down by GL_NEVER), and is
  * exactly the same as gallium's PIPE_FUNC_*.

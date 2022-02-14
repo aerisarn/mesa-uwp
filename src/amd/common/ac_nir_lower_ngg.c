@@ -2412,11 +2412,8 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
    assert(impl);
 
-   unsigned vertices_per_prim = 3;
-   if (shader->info.mesh.primitive_type == SHADER_PRIM_POINTS)
-      vertices_per_prim = 1;
-   else if (shader->info.mesh.primitive_type == SHADER_PRIM_LINES)
-      vertices_per_prim = 2;
+   unsigned vertices_per_prim =
+      num_mesh_vertices_per_primitive(shader->info.mesh.primitive_type);
 
    uint64_t per_vertex_outputs = shader->info.outputs_written & ~shader->info.per_primitive_outputs
                                  & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT)

@@ -300,20 +300,8 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
    for (int i = 0; i < VARYING_SLOT_MAX; i++)
       map->start_dw[i] = -1;
 
-   unsigned vertices_per_primitive = 0;
-   switch (nir->info.mesh.primitive_type) {
-   case SHADER_PRIM_POINTS:
-      vertices_per_primitive = 1;
-      break;
-   case SHADER_PRIM_LINES:
-      vertices_per_primitive = 2;
-      break;
-   case SHADER_PRIM_TRIANGLES:
-      vertices_per_primitive = 3;
-      break;
-   default:
-      unreachable("invalid primitive type");
-   }
+   unsigned vertices_per_primitive =
+      num_mesh_vertices_per_primitive(nir->info.mesh.primitive_type);
 
    map->max_primitives = nir->info.mesh.max_primitives_out;
    map->max_vertices = nir->info.mesh.max_vertices_out;
