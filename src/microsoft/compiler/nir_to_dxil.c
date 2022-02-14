@@ -1471,8 +1471,11 @@ emit_entrypoint(struct ntd_context *ctx,
                 const struct dxil_mdnode *resources,
                 const struct dxil_mdnode *shader_props)
 {
+   char truncated_name[254] = { 0 };
+   strncpy(truncated_name, name, ARRAY_SIZE(truncated_name) - 1);
+
    const struct dxil_mdnode *func_md = dxil_get_metadata_func(&ctx->mod, func);
-   const struct dxil_mdnode *name_md = dxil_get_metadata_string(&ctx->mod, name);
+   const struct dxil_mdnode *name_md = dxil_get_metadata_string(&ctx->mod, truncated_name);
    const struct dxil_mdnode *nodes[] = {
       func_md,
       name_md,
