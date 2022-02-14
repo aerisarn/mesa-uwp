@@ -2496,75 +2496,13 @@ VkResult pvr_cmd_buffer_add_transfer_cmd(struct pvr_cmd_buffer *cmd_buffer,
    return VK_SUCCESS;
 }
 
-void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
-                     uint32_t groupCountX,
-                     uint32_t groupCountY,
-                     uint32_t groupCountZ)
-{
-   assert(!"Unimplemented");
-}
-
-void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
-                             VkBuffer _buffer,
-                             VkDeviceSize offset)
-{
-   assert(!"Unimplemented");
-}
-
-void pvr_CmdDraw(VkCommandBuffer commandBuffer,
-                 uint32_t vertexCount,
-                 uint32_t instanceCount,
-                 uint32_t firstVertex,
-                 uint32_t firstInstance)
-{
-   assert(!"Unimplemented");
-}
-
 static void
-pvr_update_draw_state(struct pvr_cmd_buffer_state *const state,
-                      const struct pvr_cmd_buffer_draw_state *const draw_state)
+pvr_validate_push_descriptors(struct pvr_cmd_buffer *cmd_buffer,
+                              bool *const push_descriptors_dirty_out)
 {
-   /* We don't have a state to tell us that base_instance is being used so it
-    * gets used as a boolean - 0 means we'll use a pds program that skips the
-    * base instance addition. If the base_instance gets used (and the last
-    * draw's base_instance was 0) then we switch to the BASE_INSTANCE attrib
-    * program.
-    *
-    * If base_instance changes then we only need to update the data section.
-    *
-    * The only draw call state that doesn't really matter is the start vertex
-    * as that is handled properly in the VDM state in all cases.
-    */
-   if ((state->draw_state.draw_indexed != draw_state->draw_indexed) ||
-       (state->draw_state.draw_indirect != draw_state->draw_indirect) ||
-       (state->draw_state.base_instance == 0 &&
-        draw_state->base_instance != 0)) {
-      state->dirty.draw_variant = true;
-   } else if (state->draw_state.base_instance != draw_state->base_instance) {
-      state->dirty.draw_base_instance = true;
-   }
-
-   state->draw_state = *draw_state;
-}
-
-static uint32_t pvr_calc_shared_regs_count(
-   const struct pvr_graphics_pipeline *const gfx_pipeline)
-{
-   const struct pvr_pipeline_stage_state *const vertex_state =
-      &gfx_pipeline->vertex_shader_state.stage_state;
-   uint32_t shared_regs = vertex_state->const_shared_reg_count +
-                          vertex_state->const_shared_reg_offset;
-
-   if (gfx_pipeline->fragment_shader_state.bo) {
-      const struct pvr_pipeline_stage_state *const fragment_state =
-         &gfx_pipeline->fragment_shader_state.stage_state;
-      uint32_t fragment_regs = fragment_state->const_shared_reg_count +
-                               fragment_state->const_shared_reg_offset;
-
-      shared_regs = MAX2(shared_regs, fragment_regs);
-   }
-
-   return shared_regs;
+   /* TODO: Implement this function, based on ValidatePushDescriptors. */
+   pvr_finishme("Add support for push descriptors!");
+   *push_descriptors_dirty_out = false;
 }
 
 #define PVR_WRITE(_buffer, _value, _offset, _max)                \
@@ -2694,16 +2632,18 @@ static VkResult pvr_setup_descriptor_mappings(
    struct pvr_cmd_buffer *const cmd_buffer,
    enum pvr_stage_allocation stage,
    const struct pvr_stage_allocation_uniform_state *uniform_state,
+   UNUSED const pvr_dev_addr_t *const num_worgroups_buff_addr,
    uint32_t *const uniform_data_offset_out)
 {
    const struct pvr_pds_info *const pds_info = &uniform_state->pds_info;
-   const struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
    const struct pvr_descriptor_state *desc_state;
    const uint8_t *entries;
    uint32_t *dword_buffer;
    uint64_t *qword_buffer;
    struct pvr_bo *pvr_bo;
    VkResult result;
+
+   pvr_finishme("Handle num_worgroups_buff_addr");
 
    if (!pds_info->data_size_in_dwords)
       return VK_SUCCESS;
@@ -2740,6 +2680,13 @@ static VkResult pvr_setup_descriptor_mappings(
       const struct pvr_const_map_entry *const entry_header =
          (struct pvr_const_map_entry *)entries;
 
+      /* TODO: See if instead of reusing the blend constant buffer type entry,
+       * we can setup a new buffer type specifically for num_workgroups or other
+       * built-in variables. The mappings are setup at pipeline creation when
+       * creating the uniform program.
+       */
+      pvr_finishme("Handle blend constant reuse for compute.");
+
       switch (entry_header->type) {
       case PVR_PDS_CONST_MAP_ENTRY_TYPE_LITERAL32: {
          const struct pvr_const_map_entry_literal32 *const literal =
@@ -2766,7 +2713,7 @@ static VkResult pvr_setup_descriptor_mappings(
          /* TODO: Handle push descriptors. */
 
          assert(desc_set < PVR_MAX_DESCRIPTOR_SETS);
-         descriptor_set = state->gfx_desc_state.descriptor_sets[desc_set];
+         descriptor_set = desc_state->descriptor_sets[desc_set];
 
          /* TODO: Handle dynamic buffers. */
          descriptor = &descriptor_set->descriptors[binding];
@@ -2877,6 +2824,144 @@ static VkResult pvr_setup_descriptor_mappings(
 }
 
 #undef PVR_WRITE
+
+void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
+                     uint32_t groupCountX,
+                     uint32_t groupCountY,
+                     uint32_t groupCountZ)
+{
+   const uint32_t workgroup_size[] = { groupCountX, groupCountY, groupCountZ };
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   const struct pvr_compute_pipeline *compute_pipeline =
+      state->compute_pipeline;
+   const VkShaderStageFlags push_consts_stage_mask =
+      compute_pipeline->base.layout->push_constants_shader_stages;
+   bool push_descriptors_dirty;
+   struct pvr_sub_cmd *sub_cmd;
+   VkResult result;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+   assert(compute_pipeline);
+
+   if (!groupCountX || !groupCountY || !groupCountZ)
+      return;
+
+   pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_COMPUTE);
+
+   sub_cmd = state->current_sub_cmd;
+
+   sub_cmd->compute.uses_atomic_ops |=
+      compute_pipeline->state.shader.uses_atomic_ops;
+   sub_cmd->compute.uses_barrier |= compute_pipeline->state.shader.uses_barrier;
+
+   if (push_consts_stage_mask & VK_SHADER_STAGE_COMPUTE_BIT) {
+      /* TODO: Add a dirty push constants mask in the cmd_buffer state and
+       * check for dirty compute stage.
+       */
+      pvr_finishme("Add support for push constants.");
+   }
+
+   pvr_validate_push_descriptors(cmd_buffer, &push_descriptors_dirty);
+
+   if (compute_pipeline->state.shader.uses_num_workgroups) {
+      struct pvr_bo *num_workgroups_bo;
+
+      result = pvr_cmd_buffer_upload_general(cmd_buffer,
+                                             workgroup_size,
+                                             sizeof(workgroup_size),
+                                             &num_workgroups_bo);
+      if (result != VK_SUCCESS)
+         return;
+
+      result =
+         pvr_setup_descriptor_mappings(cmd_buffer,
+                                       PVR_STAGE_ALLOCATION_COMPUTE,
+                                       &compute_pipeline->state.uniform,
+                                       &num_workgroups_bo->vma->dev_addr,
+                                       &state->pds_compute_uniform_data_offset);
+      if (result != VK_SUCCESS)
+         return;
+   } else if ((compute_pipeline->base.layout
+                  ->per_stage_descriptor_masks[PVR_STAGE_ALLOCATION_COMPUTE] &&
+               state->dirty.compute_desc_dirty) ||
+              state->dirty.compute_pipeline_binding || push_descriptors_dirty) {
+      result =
+         pvr_setup_descriptor_mappings(cmd_buffer,
+                                       PVR_STAGE_ALLOCATION_COMPUTE,
+                                       &compute_pipeline->state.uniform,
+                                       NULL,
+                                       &state->pds_compute_uniform_data_offset);
+      if (result != VK_SUCCESS)
+         return;
+   }
+
+   /* FIXME: Create shared update kernel end emit control stream. */
+   /* FIXME: Create update kernel end emit control stream. */
+}
+
+void pvr_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
+                             VkBuffer _buffer,
+                             VkDeviceSize offset)
+{
+   assert(!"Unimplemented");
+}
+
+void pvr_CmdDraw(VkCommandBuffer commandBuffer,
+                 uint32_t vertexCount,
+                 uint32_t instanceCount,
+                 uint32_t firstVertex,
+                 uint32_t firstInstance)
+{
+   assert(!"Unimplemented");
+}
+
+static void
+pvr_update_draw_state(struct pvr_cmd_buffer_state *const state,
+                      const struct pvr_cmd_buffer_draw_state *const draw_state)
+{
+   /* We don't have a state to tell us that base_instance is being used so it
+    * gets used as a boolean - 0 means we'll use a pds program that skips the
+    * base instance addition. If the base_instance gets used (and the last
+    * draw's base_instance was 0) then we switch to the BASE_INSTANCE attrib
+    * program.
+    *
+    * If base_instance changes then we only need to update the data section.
+    *
+    * The only draw call state that doesn't really matter is the start vertex
+    * as that is handled properly in the VDM state in all cases.
+    */
+   if ((state->draw_state.draw_indexed != draw_state->draw_indexed) ||
+       (state->draw_state.draw_indirect != draw_state->draw_indirect) ||
+       (state->draw_state.base_instance == 0 &&
+        draw_state->base_instance != 0)) {
+      state->dirty.draw_variant = true;
+   } else if (state->draw_state.base_instance != draw_state->base_instance) {
+      state->dirty.draw_base_instance = true;
+   }
+
+   state->draw_state = *draw_state;
+}
+
+static uint32_t pvr_calc_shared_regs_count(
+   const struct pvr_graphics_pipeline *const gfx_pipeline)
+{
+   const struct pvr_pipeline_stage_state *const vertex_state =
+      &gfx_pipeline->vertex_shader_state.stage_state;
+   uint32_t shared_regs = vertex_state->const_shared_reg_count +
+                          vertex_state->const_shared_reg_offset;
+
+   if (gfx_pipeline->fragment_shader_state.bo) {
+      const struct pvr_pipeline_stage_state *const fragment_state =
+         &gfx_pipeline->fragment_shader_state.stage_state;
+      uint32_t fragment_regs = fragment_state->const_shared_reg_count +
+                               fragment_state->const_shared_reg_offset;
+
+      shared_regs = MAX2(shared_regs, fragment_regs);
+   }
+
+   return shared_regs;
+}
 
 static void
 pvr_emit_dirty_pds_state(const struct pvr_cmd_buffer *const cmd_buffer,
@@ -3963,15 +4048,6 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer)
 }
 
 static void
-pvr_validate_push_descriptors(struct pvr_cmd_buffer *cmd_buffer,
-                              bool *const push_descriptors_dirty_out)
-{
-   /* TODO: Implement this function, based on ValidatePushDescriptors. */
-   pvr_finishme("Add support for push descriptors!");
-   *push_descriptors_dirty_out = false;
-}
-
-static void
 pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
                               const uint32_t vs_output_size,
                               const bool raster_enable,
@@ -4284,6 +4360,7 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
          cmd_buffer,
          PVR_STAGE_ALLOCATION_FRAGMENT,
          &state->gfx_pipeline->fragment_shader_state.uniform_state,
+         NULL,
          &state->pds_fragment_uniform_data_offset);
       if (result != VK_SUCCESS) {
          mesa_loge("Could not setup fragment descriptor mappings.");
@@ -4298,6 +4375,7 @@ static VkResult pvr_validate_draw_state(struct pvr_cmd_buffer *cmd_buffer)
          cmd_buffer,
          PVR_STAGE_ALLOCATION_VERTEX_GEOMETRY,
          &state->gfx_pipeline->vertex_shader_state.uniform_state,
+         NULL,
          &pds_vertex_uniform_data_offset);
       if (result != VK_SUCCESS) {
          mesa_loge("Could not setup vertex descriptor mappings.");

@@ -137,11 +137,11 @@ enum pvr_pipeline_stage_bits {
 #define PVR_PIPELINE_STAGE_ALL_GRAPHICS_BITS \
    (PVR_PIPELINE_STAGE_GEOM_BIT | PVR_PIPELINE_STAGE_FRAG_BIT)
 
-#define PVR_PIPELINE_STAGE_ALL_BITS \
-   (PVR_PIPELINE_STAGE_ALL_GRAPHICS_BITS | PVR_PIPELINE_STAGE_TRANSFER_BIT)
+#define PVR_PIPELINE_STAGE_ALL_BITS                                         \
+   (PVR_PIPELINE_STAGE_ALL_GRAPHICS_BITS | PVR_PIPELINE_STAGE_COMPUTE_BIT | \
+    PVR_PIPELINE_STAGE_TRANSFER_BIT)
 
-/* TODO: This number must be changed when we add compute support. */
-#define PVR_NUM_SYNC_PIPELINE_STAGES 3U
+#define PVR_NUM_SYNC_PIPELINE_STAGES 4U
 
 /* Warning: Do not define an invalid stage as 0 since other code relies on 0
  * being the first shader stage. This allows for stages to be split or added
@@ -858,6 +858,7 @@ struct pvr_cmd_buffer_state {
    uint32_t pds_vertex_attrib_offset;
 
    uint32_t pds_fragment_uniform_data_offset;
+   uint32_t pds_compute_uniform_data_offset;
 };
 
 static_assert(
@@ -1025,8 +1026,15 @@ struct pvr_compute_pipeline {
    struct pvr_pipeline base;
 
    struct {
-      /* Pointer to a buffer object that contains the shader binary. */
-      struct pvr_bo *bo;
+      struct {
+         /* Pointer to a buffer object that contains the shader binary. */
+         struct pvr_bo *bo;
+
+         bool uses_atomic_ops;
+         bool uses_barrier;
+         /* E.g. GLSL shader uses gl_NumWorkGroups. */
+         bool uses_num_workgroups;
+      } shader;
 
       struct {
          uint32_t base_workgroup : 1;

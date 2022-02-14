@@ -329,7 +329,7 @@ pvr_convert_stage_mask(VkPipelineStageFlags stage_mask)
 
    if (stage_mask & (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
                      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)) {
-      assert(!"Unimplemented");
+      stages |= PVR_PIPELINE_STAGE_COMPUTE_BIT;
    }
 
    if (stage_mask & (VK_PIPELINE_STAGE_TRANSFER_BIT))
@@ -667,6 +667,8 @@ static VkResult pvr_process_empty_job(
    uint32_t *stage_flags,
    struct pvr_winsys_syncobj *completions[static PVR_JOB_TYPE_MAX])
 {
+   STATIC_ASSERT(PVR_JOB_TYPE_MAX >= PVR_NUM_SYNC_PIPELINE_STAGES);
+
    for (uint32_t i = 0; i < semaphore_count; i++) {
       PVR_FROM_HANDLE(pvr_semaphore, semaphore, semaphores[i]);
 

@@ -957,11 +957,16 @@ static VkResult pvr_compute_pipeline_compile(
 
    /* FIXME: Compile the shader. */
 
+   /* FIXME: Remove this hard coding. */
+   compute_pipeline->state.shader.uses_atomic_ops = false;
+   compute_pipeline->state.shader.uses_barrier = false;
+   compute_pipeline->state.shader.uses_num_workgroups = false;
+
    result = pvr_gpu_upload_usc(device,
                                pvr_usc_compute_shader,
                                sizeof(pvr_usc_compute_shader),
                                cache_line_size,
-                               &compute_pipeline->state.bo);
+                               &compute_pipeline->state.shader.bo);
    if (result != VK_SUCCESS)
       return result;
 
@@ -1007,7 +1012,7 @@ static VkResult pvr_compute_pipeline_compile(
       barrier_coefficient,
       false,
       pvr_pds_compute_program_params.usc_temps,
-      compute_pipeline->state.bo->vma->dev_addr,
+      compute_pipeline->state.shader.bo->vma->dev_addr,
       &compute_pipeline->state.primary_program,
       &compute_pipeline->state.primary_program_info,
       NULL);
@@ -1031,7 +1036,7 @@ static VkResult pvr_compute_pipeline_compile(
          barrier_coefficient,
          true,
          pvr_pds_compute_program_params.usc_temps,
-         compute_pipeline->state.bo->vma->dev_addr,
+         compute_pipeline->state.shader.bo->vma->dev_addr,
          &compute_pipeline->state.primary_program_base_workgroup_variant,
          &compute_pipeline->state.primary_program_base_workgroup_variant_info,
          &compute_pipeline->state.base_workgroup_ids_dword_offset);
@@ -1049,7 +1054,7 @@ err_free_uniform_program:
    pvr_bo_free(device, compute_pipeline->state.uniform.pds_code.pvr_bo);
 
 err_free_shader:
-   pvr_bo_free(device, compute_pipeline->state.bo);
+   pvr_bo_free(device, compute_pipeline->state.shader.bo);
 
    return result;
 }
@@ -1139,7 +1144,7 @@ static void pvr_compute_pipeline_destroy(
                                    allocator,
                                    &compute_pipeline->state.uniform.pds_code,
                                    &compute_pipeline->state.uniform.pds_info);
-   pvr_bo_free(device, compute_pipeline->state.bo);
+   pvr_bo_free(device, compute_pipeline->state.shader.bo);
 
    pvr_pipeline_finish(&compute_pipeline->base);
 
