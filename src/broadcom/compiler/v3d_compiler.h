@@ -172,6 +172,11 @@ struct qinst {
 
         /* If this is a a TLB Z write */
         bool is_tlb_z_write;
+
+        /* Position of this instruction in the program. Filled in during
+         * register allocation.
+         */
+        int32_t ip;
 };
 
 enum quniform_contents {
@@ -587,6 +592,23 @@ struct v3d_interp_input {
    unsigned mode; /* interpolation mode */
 };
 
+/* Data types used during register allocation to map nodes and temps */
+struct node_to_temp_map {
+        uint32_t temp;
+        uint32_t priority;
+};
+
+struct temp_to_node_map {
+        uint32_t node;
+        uint8_t  class_bits;
+};
+
+struct v3d_ra_temp_node_info {
+        struct node_to_temp_map *node;
+        struct temp_to_node_map *temp;
+        uint32_t alloc_count;
+};
+
 struct v3d_compile {
         const struct v3d_device_info *devinfo;
         nir_shader *s;
@@ -774,6 +796,11 @@ struct v3d_compile {
         struct qreg spill_base;
         /* Bit vector of which temps may be spilled */
         BITSET_WORD *spillable;
+
+        /* Used during register allocation */
+        int thread_index;
+        struct v3d_ra_temp_node_info ra_map;
+        struct ra_graph *g;
 
         /**
          * Array of the VARYING_SLOT_* of all FS QFILE_VARY reads.
@@ -1122,7 +1149,7 @@ void v3d40_vir_emit_image_load_store(struct v3d_compile *c,
 void v3d_vir_to_qpu(struct v3d_compile *c, struct qpu_reg *temp_registers);
 uint32_t v3d_qpu_schedule_instructions(struct v3d_compile *c);
 void qpu_validate(struct v3d_compile *c);
-struct qpu_reg *v3d_register_allocate(struct v3d_compile *c, bool *spilled);
+struct qpu_reg *v3d_register_allocate(struct v3d_compile *c);
 bool vir_init_reg_sets(struct v3d_compiler *compiler);
 
 int v3d_shaderdb_dump(struct v3d_compile *c, char **shaderdb_str);

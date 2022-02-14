@@ -4471,13 +4471,11 @@ v3d_nir_to_vir(struct v3d_compile *c)
         int min_threads = (c->devinfo->ver >= 41) ? 2 : 1;
         struct qpu_reg *temp_registers;
         while (true) {
-                bool spilled;
-                temp_registers = v3d_register_allocate(c, &spilled);
-                if (spilled && c->spills + c->fills <= c->max_tmu_spills)
-                        continue;
-
-                if (temp_registers)
+                temp_registers = v3d_register_allocate(c);
+                if (temp_registers) {
+                        assert(c->spills + c->fills <= c->max_tmu_spills);
                         break;
+                }
 
                 if (c->threads == min_threads &&
                     (V3D_DEBUG & V3D_DEBUG_RA)) {

@@ -369,6 +369,8 @@ vir_add_inst(enum v3d_qpu_add_op op, struct qreg dst, struct qreg src0, struct q
         inst->src[1] = src1;
         inst->uniform = ~0;
 
+        inst->ip = -1;
+
         return inst;
 }
 
@@ -384,6 +386,8 @@ vir_mul_inst(enum v3d_qpu_mul_op op, struct qreg dst, struct qreg src0, struct q
         inst->src[0] = src0;
         inst->src[1] = src1;
         inst->uniform = ~0;
+
+        inst->ip = -1;
 
         return inst;
 }
@@ -404,12 +408,16 @@ vir_branch_inst(struct v3d_compile *c, enum v3d_qpu_branch_cond cond)
         inst->dst = vir_nop_reg();
         inst->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT, 0);
 
+        inst->ip = -1;
+
         return inst;
 }
 
 static void
 vir_emit(struct v3d_compile *c, struct qinst *inst)
 {
+        inst->ip = -1;
+
         switch (c->cursor.mode) {
         case vir_cursor_add:
                 list_add(&inst->link, c->cursor.link);
