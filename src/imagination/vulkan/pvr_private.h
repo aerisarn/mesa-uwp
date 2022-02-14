@@ -1034,6 +1034,8 @@ struct pvr_compute_pipeline {
          bool uses_barrier;
          /* E.g. GLSL shader uses gl_NumWorkGroups. */
          bool uses_num_workgroups;
+
+         uint32_t const_shared_reg_count;
       } shader;
 
       struct {

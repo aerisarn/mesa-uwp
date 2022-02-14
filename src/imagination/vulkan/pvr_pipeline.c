@@ -961,6 +961,7 @@ static VkResult pvr_compute_pipeline_compile(
    compute_pipeline->state.shader.uses_atomic_ops = false;
    compute_pipeline->state.shader.uses_barrier = false;
    compute_pipeline->state.shader.uses_num_workgroups = false;
+   compute_pipeline->state.shader.const_shared_reg_count = 4;
 
    result = pvr_gpu_upload_usc(device,
                                pvr_usc_compute_shader,

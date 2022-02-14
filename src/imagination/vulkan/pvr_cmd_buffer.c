@@ -67,7 +67,7 @@ struct pvr_compute_kernel_info {
    uint32_t usc_unified_size;
    uint32_t pds_temp_size;
    uint32_t pds_data_size;
-   bool usc_target_any;
+   enum PVRX(CDMCTRL_USC_TARGET) usc_target;
    bool is_fence;
    uint32_t pds_data_offset;
    uint32_t pds_code_offset;
@@ -1134,10 +1134,11 @@ static void pvr_sub_cmd_compute_job_init(struct pvr_device *device,
 #define PIXEL_ALLOCATION_SIZE_MAX_IN_BLOCKS \
    (1024 / PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE))
 
-static uint32_t pvr_compute_slot_size(const struct pvr_device_info *dev_info,
-                                      uint32_t coeff_regs_count,
-                                      bool use_barrier,
-                                      const uint32_t local_size[static 3U])
+static uint32_t
+pvr_compute_flat_slot_size(const struct pvr_device_info *dev_info,
+                           uint32_t coeff_regs_count,
+                           bool use_barrier,
+                           uint32_t total_workitems)
 {
    uint32_t max_workgroups_per_task = ROGUE_CDM_MAX_PACKED_WORKGROUPS_PER_TASK;
    uint32_t max_avail_coeff_regs =
@@ -1145,7 +1146,6 @@ static uint32_t pvr_compute_slot_size(const struct pvr_device_info *dev_info,
    uint32_t localstore_chunks_count =
       DIV_ROUND_UP(coeff_regs_count << 2,
                    PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE));
-   uint32_t total_workitems = local_size[0U] * local_size[1U] * local_size[2U];
 
    /* Ensure that we cannot have more workgroups in a slot than the available
     * number of coefficients allow us to have.
@@ -1242,12 +1242,7 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
       kernel0.usc_unified_size = info->usc_unified_size;
       kernel0.pds_temp_size = info->pds_temp_size;
       kernel0.pds_data_size = info->pds_data_size;
-
-      if (info->usc_target_any)
-         kernel0.usc_target = PVRX(CDMCTRL_USC_TARGET_ANY);
-      else
-         kernel0.usc_target = PVRX(CDMCTRL_USC_TARGET_ALL);
-
+      kernel0.usc_target = info->usc_target;
       kernel0.fence = info->is_fence;
    }
 
@@ -1330,7 +1325,7 @@ static void pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
       .pds_data_size =
          DIV_ROUND_UP(program->data_size << 2,
                       PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
-      .usc_target_any = true,
+      .usc_target = PVRX(CDMCTRL_USC_TARGET_ANY),
       .is_fence = true,
       .pds_data_offset = program->data_offset,
       .sd_type = PVRX(CDMCTRL_SD_TYPE_PDS),
@@ -1344,8 +1339,7 @@ static void pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
    /* Here we calculate the slot size. This can depend on the use of barriers,
     * local memory, BRN's or other factors.
     */
-   info.max_instances =
-      pvr_compute_slot_size(dev_info, 0U, false, info.local_size);
+   info.max_instances = pvr_compute_flat_slot_size(dev_info, 0U, false, 1U);
 
    pvr_compute_generate_control_stream(csb, &info);
 }
@@ -2825,6 +2819,67 @@ static VkResult pvr_setup_descriptor_mappings(
 
 #undef PVR_WRITE
 
+static void pvr_compute_update_shared(struct pvr_cmd_buffer *cmd_buffer)
+{
+   const struct pvr_device_info *dev_info =
+      &cmd_buffer->device->pdevice->dev_info;
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   struct pvr_csb *csb = &state->current_sub_cmd->compute.control_stream;
+   const struct pvr_compute_pipeline *pipeline = state->compute_pipeline;
+   const uint32_t const_shared_reg_count =
+      pipeline->state.shader.const_shared_reg_count;
+   struct pvr_compute_kernel_info info;
+
+   /* No shared regs, no need to use an allocation kernel. */
+   if (!const_shared_reg_count)
+      return;
+
+   info = (struct pvr_compute_kernel_info){
+      .indirect_buffer_addr.addr = 0ULL,
+      .sd_type = PVRX(CDMCTRL_SD_TYPE_NONE),
+
+      .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
+      .usc_common_shared = true,
+      .usc_common_size =
+         DIV_ROUND_UP(const_shared_reg_count,
+                      PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE)),
+
+      .local_size = { 1, 1, 1 },
+      .global_size = { 1, 1, 1 },
+   };
+
+   /* Sometimes we don't have a secondary program if there were no constants to
+    * write, but we still need to run a PDS program to accomplish the
+    * allocation of the local/common store shared registers so we repurpose the
+    * deallocation PDS program.
+    */
+   if (pipeline->state.uniform.pds_info.code_size_in_dwords) {
+      uint32_t pds_data_size_in_dwords =
+         pipeline->state.uniform.pds_info.data_size_in_dwords;
+
+      info.pds_data_offset = state->pds_compute_uniform_data_offset;
+      info.pds_data_size =
+         DIV_ROUND_UP(pds_data_size_in_dwords << 2U,
+                      PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE));
+
+      /* Check that we have upload the code section. */
+      assert(pipeline->state.uniform.pds_code.code_size);
+      info.pds_code_offset = pipeline->state.uniform.pds_code.code_offset;
+   } else {
+      /* FIXME: There should be a deallocation pds program already uploaded
+       * that we use at this point.
+       */
+      assert(!"Unimplemented");
+   }
+
+   /* We don't need to pad the workgroup size. */
+
+   info.max_instances =
+      pvr_compute_flat_slot_size(dev_info, const_shared_reg_count, false, 1U);
+
+   pvr_compute_generate_control_stream(csb, &info);
+}
+
 void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
                      uint32_t groupCountX,
                      uint32_t groupCountY,
@@ -2896,7 +2951,8 @@ void pvr_CmdDispatch(VkCommandBuffer commandBuffer,
          return;
    }
 
-   /* FIXME: Create shared update kernel end emit control stream. */
+   pvr_compute_update_shared(cmd_buffer);
+
    /* FIXME: Create update kernel end emit control stream. */
 }
 
