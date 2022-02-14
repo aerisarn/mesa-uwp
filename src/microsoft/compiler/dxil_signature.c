@@ -437,33 +437,34 @@ append_semantic_index_to_table(struct dxil_psv_sem_index_table *table, uint32_t 
 
 static const struct dxil_mdnode *
 fill_SV_param_nodes(struct dxil_module *mod, unsigned record_id,
-                    struct semantic_info *semantic) {
+                    const struct dxil_signature_record *rec,
+                    const struct dxil_psv_signature_element *psv) {
 
    const struct dxil_mdnode *SV_params_nodes[11];
    /* For this to always work we should use vectorize_io, but for FS out and VS in
     * this is not implemented globally */
    const struct dxil_mdnode *flattened_semantics[256];
 
-   for (unsigned i = 0; i < semantic->rows; ++i)
-      flattened_semantics[i] = dxil_get_metadata_int32(mod, semantic->index + i);
+   for (unsigned i = 0; i < rec->num_elements; ++i)
+      flattened_semantics[i] = dxil_get_metadata_int32(mod, rec->elements[i].semantic_index);
 
    SV_params_nodes[0] = dxil_get_metadata_int32(mod, (int)record_id); // Unique element ID
-   SV_params_nodes[1] = dxil_get_metadata_string(mod, semantic->name); // Element name
-   SV_params_nodes[2] = dxil_get_metadata_int8(mod, semantic->sig_comp_type); // Element type
-   SV_params_nodes[3] = dxil_get_metadata_int8(mod, (int8_t)semantic->kind); // Effective system value
+   SV_params_nodes[1] = dxil_get_metadata_string(mod, rec->name); // Element name
+   SV_params_nodes[2] = dxil_get_metadata_int8(mod, rec->sig_comp_type); // Element type
+   SV_params_nodes[3] = dxil_get_metadata_int8(mod, (int8_t)psv->semantic_kind); // Effective system value
    SV_params_nodes[4] = dxil_get_metadata_node(mod, flattened_semantics,
-                                               semantic->rows); // Semantic index vector
-   SV_params_nodes[5] = dxil_get_metadata_int8(mod, semantic->interpolation); // Interpolation mode
-   SV_params_nodes[6] = dxil_get_metadata_int32(mod, semantic->rows); // Number of rows
-   SV_params_nodes[7] = dxil_get_metadata_int8(mod, semantic->cols); // Number of columns
-   SV_params_nodes[8] = dxil_get_metadata_int32(mod, semantic->start_row); // Element packing start row
-   SV_params_nodes[9] = dxil_get_metadata_int8(mod, semantic->start_col); // Element packing start column
+                                               rec->num_elements); // Semantic index vector
+   SV_params_nodes[5] = dxil_get_metadata_int8(mod, psv->interpolation_mode); // Interpolation mode
+   SV_params_nodes[6] = dxil_get_metadata_int32(mod, psv->rows); // Number of rows
+   SV_params_nodes[7] = dxil_get_metadata_int8(mod, psv->cols_and_start & 0xf); // Number of columns
+   SV_params_nodes[8] = dxil_get_metadata_int32(mod, rec->elements[0].reg); // Element packing start row
+   SV_params_nodes[9] = dxil_get_metadata_int8(mod, (psv->cols_and_start >> 4) & 0x3); // Element packing start column
 
    const struct dxil_mdnode *SV_metadata[2];
    unsigned num_metadata_nodes = 0;
-   if (semantic->stream != 0) {
+   if (rec->elements[0].stream != 0) {
       SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, DXIL_SIGNATURE_ELEMENT_OUTPUT_STREAM);
-      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, semantic->stream);
+      SV_metadata[num_metadata_nodes++] = dxil_get_metadata_int32(mod, rec->elements[0].stream);
    }
 
    SV_params_nodes[10] = num_metadata_nodes ? dxil_get_metadata_node(mod, SV_metadata, num_metadata_nodes) : NULL;
@@ -533,14 +534,19 @@ static bool
 fill_io_signature(struct dxil_module *mod, int id,
                   struct semantic_info *semantic,
                   const struct dxil_mdnode **io,
-                  struct dxil_signature_element *elm,
+                  struct dxil_signature_record *rec,
                   struct dxil_psv_signature_element *psv_elm)
 {
+   rec->name = ralloc_strdup(mod->ralloc_ctx, semantic->name);
+   rec->num_elements = semantic->rows;
+   rec->sig_comp_type = semantic->sig_comp_type;
 
-   *io = fill_SV_param_nodes(mod, id, semantic);
    for (unsigned i = 0; i < semantic->rows; ++i)
-      fill_signature_element(&elm[i], semantic, i);
-   return fill_psv_signature_element(psv_elm, semantic, mod);
+      fill_signature_element(&rec->elements[i], semantic, i);
+   if (!fill_psv_signature_element(psv_elm, semantic, mod))
+      return false;
+   *io = fill_SV_param_nodes(mod, id, rec, psv_elm);
+   return true;
 }
 
 static unsigned
@@ -560,14 +566,10 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
       *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter, input_clip_size);
 
       mod->input_mappings[var->data.driver_location] = num_inputs;
-      mod->inputs[num_inputs].name = ralloc_strdup(mod->ralloc_ctx,
-                                                   semantic.name);
-      mod->inputs[num_inputs].num_elements = semantic.rows;
-      struct dxil_signature_element *elm = mod->inputs[num_inputs].elements;
       struct dxil_psv_signature_element *psv_elm = &mod->psv_inputs[num_inputs];
 
       if (!fill_io_signature(mod, num_inputs, &semantic,
-                             &inputs[num_inputs], elm, psv_elm))
+                             &inputs[num_inputs], &mod->inputs[num_inputs], psv_elm))
          return 0;
 
       mod->num_psv_inputs = MAX2(mod->num_psv_inputs,
@@ -651,21 +653,16 @@ get_output_signature(struct dxil_module *mod, nir_shader *s)
       mod->info.has_out_position |= semantic.kind== DXIL_SEM_POSITION;
       mod->info.has_out_depth |= semantic.kind == DXIL_SEM_DEPTH;
 
-      mod->outputs[num_outputs].name = ralloc_strdup(mod->ralloc_ctx,
-                                                     semantic.name);
-      mod->outputs[num_outputs].num_elements = semantic.rows;
-      struct dxil_signature_element *elm = mod->outputs[num_outputs].elements;
-
       struct dxil_psv_signature_element *psv_elm = &mod->psv_outputs[num_outputs];
 
       if (!fill_io_signature(mod, num_outputs, &semantic,
-                             &outputs[num_outputs], elm, psv_elm))
+                             &outputs[num_outputs], &mod->outputs[num_outputs], psv_elm))
          return NULL;
 
       /* This is fishy, logic suggests that the LHS should be 0xf, but from the
        * validation it needs to be 0xff */
       for (unsigned i = 0; i < mod->outputs[num_outputs].num_elements; ++i)
-         elm[i].never_writes_mask = 0xff & ~elm[i].mask;
+         mod->outputs[num_outputs].elements[i].never_writes_mask = 0xff & ~mod->outputs[num_outputs].elements[i].mask;
 
       ++num_outputs;
 
@@ -738,22 +735,17 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s)
       mod->patch_consts[num_consts].sysvalue = patch_sysvalue_name(var);
       next_row = get_additional_semantic_info(s, var, &semantic, next_row, 0);
 
-      mod->patch_consts[num_consts].name = ralloc_strdup(mod->ralloc_ctx,
-                                                         semantic.name);
-      mod->patch_consts[num_consts].num_elements = semantic.rows;
-      struct dxil_signature_element *elm = mod->patch_consts[num_consts].elements;
-
       struct dxil_psv_signature_element *psv_elm = &mod->psv_patch_consts[num_consts];
 
       if (!fill_io_signature(mod, num_consts, &semantic,
-                             &patch_consts[num_consts], elm, psv_elm))
+                             &patch_consts[num_consts], &mod->patch_consts[num_consts], psv_elm))
          return NULL;
 
       /* This is fishy, logic suggests that the LHS should be 0xf, but from the
        * validation it needs to be 0xff */
       if (mode == nir_var_shader_out)
          for (unsigned i = 0; i < mod->patch_consts[num_consts].num_elements; ++i)
-            elm[i].never_writes_mask = 0xff & ~elm[i].mask;
+            mod->patch_consts[num_consts].elements[i].never_writes_mask = 0xff & ~mod->patch_consts[num_consts].elements[i].mask;
 
       ++num_consts;
 

@@ -59,6 +59,7 @@ struct dxil_signature_record {
    unsigned num_elements;
    const char *sysvalue;
    char *name;
+   uint8_t sig_comp_type;
 };
 
 struct dxil_psv_sem_index_table {
