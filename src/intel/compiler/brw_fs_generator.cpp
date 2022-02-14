@@ -31,6 +31,7 @@
 #include "brw_fs.h"
 #include "brw_cfg.h"
 #include "util/mesa-sha1.h"
+#include "util/half_float.h"
 
 static enum brw_reg_file
 brw_file_from_reg(fs_reg *reg)
@@ -1782,17 +1783,22 @@ fs_generator::generate_pack_half_2x16_split(fs_inst *,
       ? BRW_REGISTER_TYPE_HF : BRW_REGISTER_TYPE_W;
    struct brw_reg dst_w = spread(retype(dst, t), 2);
 
-   /* Give each 32-bit channel of dst the form below, where "." means
-    * unchanged.
-    *   0x....hhhh
-    */
-   brw_F32TO16(p, dst_w, y);
+   if (y.file == IMM) {
+      const uint32_t hhhh0000 = _mesa_float_to_half(y.f) << 16;
+      brw_MOV(p, dst, brw_imm_ud(hhhh0000));
+   } else {
+      /* Give each 32-bit channel of dst the form below, where "." means
+       * unchanged.
+       *   0x....hhhh
+       */
+      brw_F32TO16(p, dst_w, y);
 
-   /* Now the form:
-    *   0xhhhh0000
-    */
-   brw_set_default_swsb(p, tgl_swsb_regdist(1));
-   brw_SHL(p, dst, dst, brw_imm_ud(16u));
+      /* Now the form:
+       *   0xhhhh0000
+       */
+      brw_set_default_swsb(p, tgl_swsb_regdist(1));
+      brw_SHL(p, dst, dst, brw_imm_ud(16u));
+   }
 
    /* And, finally the form of packHalf2x16's output:
     *   0xhhhhllll
