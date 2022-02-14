@@ -3044,6 +3044,7 @@ iris_surface_destroy(struct pipe_context *ctx, struct pipe_surface *p_surf)
    pipe_resource_reference(&surf->surface_state.ref.res, NULL);
    pipe_resource_reference(&surf->surface_state_read.ref.res, NULL);
    free(surf->surface_state.cpu);
+   free(surf->surface_state_read.cpu);
    free(surf);
 }
 
