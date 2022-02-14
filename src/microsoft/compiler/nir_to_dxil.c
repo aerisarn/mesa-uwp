@@ -1534,7 +1534,7 @@ emit_tag(struct ntd_context *ctx, enum dxil_shader_tag tag,
 }
 
 static bool
-emit_metadata(struct ntd_context *ctx, const struct dxil_mdnode *signatures)
+emit_metadata(struct ntd_context *ctx)
 {
    /* DXIL versions are 1.x for shader model 6.x */
    assert(ctx->mod.major_version == 6);
@@ -1611,7 +1611,7 @@ emit_metadata(struct ntd_context *ctx, const struct dxil_mdnode *signatures)
 
    nir_function_impl *entry_func_impl = nir_shader_get_entrypoint(ctx->shader);
    const struct dxil_mdnode *dx_entry_point = emit_entrypoint(ctx, main_func,
-       entry_func_impl->function->name, signatures, resources_node, shader_properties);
+       entry_func_impl->function->name, get_signatures(&ctx->mod), resources_node, shader_properties);
    if (!dx_entry_point)
       return false;
 
@@ -5427,8 +5427,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
 
    unsigned input_clip_size = ctx->mod.shader_kind == DXIL_PIXEL_SHADER ?
       ctx->shader->info.clip_distance_array_size : ctx->opts->input_clip_size;
-   const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader,
-                                                         input_clip_size);
+   preprocess_signatures(&ctx->mod, ctx->shader, input_clip_size);
 
    nir_foreach_function(func, ctx->shader) {
       if (!emit_function(ctx, func))
@@ -5451,7 +5450,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    if (ctx->mod.feats.native_low_precision)
       ctx->mod.minor_version = MAX2(ctx->mod.minor_version, 2);
 
-   return emit_metadata(ctx, signatures) &&
+   return emit_metadata(ctx) &&
           dxil_emit_module(&ctx->mod);
 }
 

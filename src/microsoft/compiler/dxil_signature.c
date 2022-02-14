@@ -533,7 +533,6 @@ fill_psv_signature_element(struct dxil_psv_signature_element *psv_elm,
 static bool
 fill_io_signature(struct dxil_module *mod, int id,
                   struct semantic_info *semantic,
-                  const struct dxil_mdnode **io,
                   struct dxil_signature_record *rec,
                   struct dxil_psv_signature_element *psv_elm)
 {
@@ -543,14 +542,11 @@ fill_io_signature(struct dxil_module *mod, int id,
 
    for (unsigned i = 0; i < semantic->rows; ++i)
       fill_signature_element(&rec->elements[i], semantic, i);
-   if (!fill_psv_signature_element(psv_elm, semantic, mod))
-      return false;
-   *io = fill_SV_param_nodes(mod, id, rec, psv_elm);
-   return true;
+   return fill_psv_signature_element(psv_elm, semantic, mod);
 }
 
 static unsigned
-get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **inputs,
+get_input_signature_group(struct dxil_module *mod,
                           unsigned num_inputs,
                           nir_shader *s, nir_variable_mode modes,
                           semantic_info_proc get_semantics, unsigned *row_iter,
@@ -569,7 +565,7 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
       struct dxil_psv_signature_element *psv_elm = &mod->psv_inputs[num_inputs];
 
       if (!fill_io_signature(mod, num_inputs, &semantic,
-                             &inputs[num_inputs], &mod->inputs[num_inputs], psv_elm))
+                             &mod->inputs[num_inputs], psv_elm))
          return 0;
 
       mod->num_psv_inputs = MAX2(mod->num_psv_inputs,
@@ -581,33 +577,24 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
    return num_inputs;
 }
 
-static const struct dxil_mdnode *
-get_input_signature(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size)
+static void
+process_input_signature(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size)
 {
    if (s->info.stage == MESA_SHADER_KERNEL)
-      return NULL;
-
-   const struct dxil_mdnode *inputs[VARYING_SLOT_MAX];
+      return;
    unsigned next_row = 0;
 
-   mod->num_sig_inputs = get_input_signature_group(mod, inputs, 0,
+   mod->num_sig_inputs = get_input_signature_group(mod, 0,
                                                    s, nir_var_shader_in,
                                                    s->info.stage == MESA_SHADER_VERTEX ?
                                                       get_semantic_vs_in_name : get_semantic_in_name,
                                                    &next_row, input_clip_size);
 
-   mod->num_sig_inputs = get_input_signature_group(mod, inputs, mod->num_sig_inputs,
+   mod->num_sig_inputs = get_input_signature_group(mod, mod->num_sig_inputs,
                                                    s, nir_var_system_value,
                                                    get_semantic_sv_name,
                                                    &next_row, input_clip_size);
 
-   if (!mod->num_sig_inputs && !mod->num_sig_inputs)
-      return NULL;
-
-   const struct dxil_mdnode *retval = mod->num_sig_inputs ?
-         dxil_get_metadata_node(mod, inputs, mod->num_sig_inputs) : NULL;
-
-   return retval;
 }
 
 static const char *out_sysvalue_name(nir_variable *var)
@@ -627,10 +614,9 @@ static const char *out_sysvalue_name(nir_variable *var)
    }
 }
 
-static const struct dxil_mdnode *
-get_output_signature(struct dxil_module *mod, nir_shader *s)
+static void
+process_output_signature(struct dxil_module *mod, nir_shader *s)
 {
-   const struct dxil_mdnode *outputs[VARYING_SLOT_MAX];
    unsigned num_outputs = 0;
    unsigned next_row = 0;
    nir_foreach_variable_with_modes(var, s, nir_var_shader_out) {
@@ -656,8 +642,8 @@ get_output_signature(struct dxil_module *mod, nir_shader *s)
       struct dxil_psv_signature_element *psv_elm = &mod->psv_outputs[num_outputs];
 
       if (!fill_io_signature(mod, num_outputs, &semantic,
-                             &outputs[num_outputs], &mod->outputs[num_outputs], psv_elm))
-         return NULL;
+                             &mod->outputs[num_outputs], psv_elm))
+         return;
 
       /* This is fishy, logic suggests that the LHS should be 0xf, but from the
        * validation it needs to be 0xff */
@@ -668,16 +654,8 @@ get_output_signature(struct dxil_module *mod, nir_shader *s)
 
       mod->num_psv_outputs[semantic.stream] = MAX2(mod->num_psv_outputs[semantic.stream],
                                                    semantic.start_row + semantic.rows);
-
-      assert(num_outputs < ARRAY_SIZE(outputs));
    }
-
-   if (!num_outputs)
-      return NULL;
-
-   const struct dxil_mdnode *retval = dxil_get_metadata_node(mod, outputs, num_outputs);
    mod->num_sig_outputs = num_outputs;
-   return retval;
 }
 
 static const char *
@@ -712,14 +690,13 @@ patch_sysvalue_name(nir_variable *var)
    }
 }
 
-static const struct dxil_mdnode *
-get_patch_const_signature(struct dxil_module *mod, nir_shader *s)
+static void
+process_patch_const_signature(struct dxil_module *mod, nir_shader *s)
 {
    if (s->info.stage != MESA_SHADER_TESS_CTRL &&
        s->info.stage != MESA_SHADER_TESS_EVAL)
-      return NULL;
+      return;
 
-   const struct dxil_mdnode *patch_consts[VARYING_SLOT_MAX];
    nir_variable_mode mode = s->info.stage == MESA_SHADER_TESS_CTRL ?
       nir_var_shader_out : nir_var_shader_in;
    unsigned num_consts = 0;
@@ -738,8 +715,8 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s)
       struct dxil_psv_signature_element *psv_elm = &mod->psv_patch_consts[num_consts];
 
       if (!fill_io_signature(mod, num_consts, &semantic,
-                             &patch_consts[num_consts], &mod->patch_consts[num_consts], psv_elm))
-         return NULL;
+                             &mod->patch_consts[num_consts], psv_elm))
+         return;
 
       /* This is fishy, logic suggests that the LHS should be 0xf, but from the
        * validation it needs to be 0xff */
@@ -751,28 +728,45 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s)
 
       mod->num_psv_patch_consts = MAX2(mod->num_psv_patch_consts,
                                        semantic.start_row + semantic.rows);
-
-      assert(num_consts < ARRAY_SIZE(patch_consts));
    }
-
-   if (!num_consts)
-      return NULL;
-
-   const struct dxil_mdnode *retval = dxil_get_metadata_node(mod, patch_consts, num_consts);
    mod->num_sig_patch_consts = num_consts;
-   return retval;
 }
 
-const struct dxil_mdnode *
-get_signatures(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size)
+void
+preprocess_signatures(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size)
 {
    /* DXC does the same: Add an empty string before everything else */
    mod->sem_string_table = _mesa_string_buffer_create(mod->ralloc_ctx, 1024);
    copy_semantic_name_to_string(mod->sem_string_table, "");
 
-   const struct dxil_mdnode *input_signature = get_input_signature(mod, s, input_clip_size);
-   const struct dxil_mdnode *output_signature = get_output_signature(mod, s);
-   const struct dxil_mdnode *patch_const_signature = get_patch_const_signature(mod, s);
+   process_input_signature(mod, s, input_clip_size);
+   process_output_signature(mod, s);
+   process_patch_const_signature(mod, s);
+}
+
+static const struct dxil_mdnode *
+get_signature_metadata(struct dxil_module *mod,
+                       const struct dxil_signature_record *recs,
+                       const struct dxil_psv_signature_element *psvs,
+                       unsigned num_elements)
+{
+   if (num_elements == 0)
+      return NULL;
+
+   const struct dxil_mdnode *nodes[VARYING_SLOT_MAX];
+   for (unsigned i = 0; i < num_elements; ++i) {
+      nodes[i] = fill_SV_param_nodes(mod, i, &recs[i], &psvs[i]);
+   }
+
+   return dxil_get_metadata_node(mod, nodes, num_elements);
+}
+
+const struct dxil_mdnode *
+get_signatures(struct dxil_module *mod)
+{
+   const struct dxil_mdnode *input_signature = get_signature_metadata(mod, mod->inputs, mod->psv_inputs, mod->num_sig_inputs);
+   const struct dxil_mdnode *output_signature = get_signature_metadata(mod, mod->outputs, mod->psv_outputs, mod->num_sig_outputs);
+   const struct dxil_mdnode *patch_const_signature = get_signature_metadata(mod, mod->patch_consts, mod->psv_patch_consts, mod->num_sig_patch_consts);
 
    const struct dxil_mdnode *SV_nodes[3] = {
       input_signature,

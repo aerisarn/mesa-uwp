@@ -144,8 +144,11 @@ struct dxil_psv_runtime_info_1 {
 struct dxil_mdnode;
 struct dxil_module;
 
+void
+preprocess_signatures(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size);
+
 const struct dxil_mdnode *
-get_signatures(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size);
+get_signatures(struct dxil_module *mod);
 
 #ifdef __cplusplus
 }
