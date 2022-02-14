@@ -369,6 +369,16 @@ vn_android_get_image_builder(struct vn_device *dev,
    struct vn_android_gralloc_buffer_properties buf_props;
    VkDrmFormatModifierPropertiesEXT mod_props;
 
+   /* Android image builder is only used by ANB or AHB. For ANB, Android
+    * Vulkan loader will never pass the below structs. For AHB, struct
+    * vn_image_create_deferred_info will never carry below either.
+    */
+   assert(!vk_find_struct_const(
+      create_info->pNext,
+      IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT));
+   assert(!vk_find_struct_const(create_info->pNext,
+                                EXTERNAL_MEMORY_IMAGE_CREATE_INFO));
+
    if (!vn_android_get_gralloc_buffer_properties(handle, &buf_props))
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
@@ -377,7 +387,12 @@ vn_android_get_image_builder(struct vn_device *dev,
    if (result != VK_SUCCESS)
       return result;
 
-   memset(out_builder->layouts, 0, sizeof(out_builder->layouts));
+   /* fill VkImageCreateInfo */
+   memset(out_builder, 0, sizeof(*out_builder));
+   out_builder->create = *create_info;
+   out_builder->create.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+
+   /* fill VkImageDrmFormatModifierExplicitCreateInfoEXT */
    for (uint32_t i = 0; i < mod_props.drmFormatModifierPlaneCount; i++) {
       out_builder->layouts[i].offset = buf_props.offset[i];
       out_builder->layouts[i].rowPitch = buf_props.stride[i];
@@ -385,19 +400,20 @@ vn_android_get_image_builder(struct vn_device *dev,
    out_builder->modifier = (VkImageDrmFormatModifierExplicitCreateInfoEXT){
       .sType =
          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
-      .pNext = create_info->pNext,
+      .pNext = out_builder->create.pNext,
       .drmFormatModifier = buf_props.modifier,
       .drmFormatModifierPlaneCount = mod_props.drmFormatModifierPlaneCount,
       .pPlaneLayouts = out_builder->layouts,
    };
+   out_builder->create.pNext = &out_builder->modifier;
+
+   /* fill VkExternalMemoryImageCreateInfo */
    out_builder->external = (VkExternalMemoryImageCreateInfo){
       .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
-      .pNext = &out_builder->modifier,
+      .pNext = out_builder->create.pNext,
       .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
    };
-   out_builder->create = *create_info;
    out_builder->create.pNext = &out_builder->external;
-   out_builder->create.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
 
    return VK_SUCCESS;
 }
@@ -427,6 +443,7 @@ vn_android_image_from_anb(struct vn_device *dev,
    uint32_t mem_type_bits = 0;
    int dma_buf_fd = -1;
    int dup_fd = -1;
+   VkImageCreateInfo local_create_info;
    struct vn_android_image_builder builder;
 
    result = vn_android_get_dma_buf_from_native_handle(anb_info->handle,
@@ -434,8 +451,16 @@ vn_android_image_from_anb(struct vn_device *dev,
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = vn_android_get_image_builder(dev, create_info, anb_info->handle,
-                                         alloc, &builder);
+   assert(!vk_find_struct_const(create_info->pNext,
+                                IMAGE_FORMAT_LIST_CREATE_INFO));
+   assert(!vk_find_struct_const(create_info->pNext,
+                                IMAGE_STENCIL_USAGE_CREATE_INFO));
+
+   /* strip VkNativeBufferANDROID and VkSwapchainImageCreateInfoANDROID */
+   local_create_info = *create_info;
+   local_create_info.pNext = NULL;
+   result = vn_android_get_image_builder(dev, &local_create_info,
+                                         anb_info->handle, alloc, &builder);
    if (result != VK_SUCCESS)
       goto fail;
 
