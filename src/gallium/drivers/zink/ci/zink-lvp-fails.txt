@@ -18,12 +18,7 @@ KHR-GL46.texture_barrier_ARB.disjoint-texels,Fail
 KHR-GL46.texture_barrier_ARB.overlapping-texels,Fail
 KHR-GL46.texture_barrier.disjoint-texels,Fail
 KHR-GL46.texture_barrier.overlapping-texels,Fail
-KHR-GL46.texture_view.view_classes,Fail
 KHR-GL46.texture_view.view_sampling,Fail
-KHR-GL46.transform_feedback.capture_geometry_separate_test,Fail
-KHR-GL46.transform_feedback.capture_vertex_separate_test,Fail
-KHR-GL46.transform_feedback.query_geometry_separate_test,Fail
-KHR-GL46.transform_feedback.query_vertex_separate_test,Fail
 
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail
@@ -43,10 +38,6 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
-KHR-GL32.transform_feedback.capture_geometry_separate_test,Fail
-KHR-GL32.transform_feedback.capture_vertex_separate_test,Fail
-KHR-GL32.transform_feedback.query_geometry_separate_test,Fail
-KHR-GL32.transform_feedback.query_vertex_separate_test,Fail
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 
