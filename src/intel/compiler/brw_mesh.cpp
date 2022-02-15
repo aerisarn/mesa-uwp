@@ -176,6 +176,7 @@ brw_compile_task(const struct brw_compiler *compiler,
       BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
 
    brw_compute_tue_map(nir, &prog_data->map);
+   NIR_PASS_V(nir, brw_nir_lower_tue_outputs, &prog_data->map);
 
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
@@ -193,7 +194,6 @@ brw_compile_task(const struct brw_compiler *compiler,
       nir_shader *shader = nir_shader_clone(mem_ctx, nir);
       brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true /* is_scalar */);
 
-      NIR_PASS_V(shader, brw_nir_lower_tue_outputs, &prog_data->map);
       NIR_PASS_V(shader, brw_nir_lower_load_uniforms);
       NIR_PASS_V(shader, brw_nir_lower_simd, dispatch_width);
 
@@ -552,7 +552,11 @@ brw_compile_mesh(const struct brw_compiler *compiler,
    prog_data->uses_drawid =
       BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
 
+   NIR_PASS_V(nir, brw_nir_lower_tue_inputs, params->tue_map);
+
    brw_compute_mue_map(nir, &prog_data->map);
+   NIR_PASS_V(nir, brw_nir_lower_mue_outputs, &prog_data->map);
+   NIR_PASS_V(nir, brw_nir_adjust_offset_for_arrayed_indices, &prog_data->map);
 
    const unsigned required_dispatch_width =
       brw_required_dispatch_width(&nir->info, key->base.subgroup_size_type);
@@ -569,10 +573,6 @@ brw_compile_mesh(const struct brw_compiler *compiler,
 
       nir_shader *shader = nir_shader_clone(mem_ctx, nir);
       brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true /* is_scalar */);
-
-      NIR_PASS_V(shader, brw_nir_lower_tue_inputs, params->tue_map);
-      NIR_PASS_V(shader, brw_nir_lower_mue_outputs, &prog_data->map);
-      NIR_PASS_V(shader, brw_nir_adjust_offset_for_arrayed_indices, &prog_data->map);
 
       /* Load uniforms can do a better job for constants, so fold before it. */
       NIR_PASS_V(shader, nir_opt_constant_folding);
