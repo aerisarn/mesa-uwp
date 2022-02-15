@@ -1412,8 +1412,6 @@ struct brw_clip_prog_data {
 };
 
 struct brw_tue_map {
-   int32_t start_dw[VARYING_SLOT_MAX];
-
    uint32_t size_dw;
 
    uint32_t per_task_data_start_dw;
