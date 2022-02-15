@@ -3927,7 +3927,7 @@ rebind_image(struct zink_context *ctx, struct zink_resource *res)
        for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
           if (zink_resource(ctx->image_views[i][j].base.resource) == res) {
              zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j, 1);
-             update_descriptor_state_sampler(ctx, i, j, res);
+             update_descriptor_state_image(ctx, i, j, res);
              _mesa_set_add(ctx->need_barriers[i == PIPE_SHADER_COMPUTE], res);
           }
        }
