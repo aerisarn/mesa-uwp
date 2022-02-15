@@ -1421,8 +1421,6 @@ optimizations.extend([
     ('ineg', ('b2i', ('iand', a, b)))),
 
    # Conversions
-   (('i2b16', ('b2i', 'a@16')), a),
-   (('i2b32', ('b2i', 'a@32')), a),
    (('f2i', ('ftrunc', a)), ('f2i', a)),
    (('f2u', ('ftrunc', a)), ('f2u', a)),
    (('i2b', ('ineg', a)), ('i2b', a)),
