@@ -3864,7 +3864,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    nir_builder_instr_insert(&b->nb, &atomic->instr);
 
    if (opcode == SpvOpAtomicFlagTestAndSet) {
-      vtn_push_nir_ssa(b, w[2], nir_i2b1(&b->nb, &atomic->dest.ssa));
+      vtn_push_nir_ssa(b, w[2], nir_i2b(&b->nb, &atomic->dest.ssa));
    }
    if (after_semantics)
       vtn_emit_memory_barrier(b, scope, after_semantics);
@@ -5823,7 +5823,7 @@ vtn_handle_ray_query_intrinsic(struct vtn_builder *b, SpvOp opcode,
    case SpvOpRayQueryGetIntersectionWorldToObjectKHR:
       ray_query_load_intrinsic_create(b, opcode, w,
                                       vtn_ssa_value(b, w[3])->def,
-                                      nir_i2b1(&b->nb, vtn_ssa_value(b, w[4])->def));
+                                      nir_i2b(&b->nb, vtn_ssa_value(b, w[4])->def));
       break;
 
    case SpvOpRayQueryGetRayTMinKHR:

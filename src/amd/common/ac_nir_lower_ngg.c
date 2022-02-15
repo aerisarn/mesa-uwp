@@ -4175,7 +4175,7 @@ emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
          else
             loaded_cull_flag = nir_u2u32(b, nir_load_shared(b, 1, 8, prim_idx_addr, .base = s->layout.lds.cull_flags_addr));
 
-         cull_flag = nir_i2b1(b, loaded_cull_flag);
+         cull_flag = nir_i2b(b, loaded_cull_flag);
       }
 
       nir_ssa_def *indices[3];

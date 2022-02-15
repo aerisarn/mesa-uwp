@@ -1601,7 +1601,7 @@ lower_bool_input_impl(nir_builder *b, nir_instr *instr,
    }
 
    intr->dest.ssa.bit_size = 32;
-   return nir_i2b1(b, &intr->dest.ssa);
+   return nir_i2b(b, &intr->dest.ssa);
 }
 
 bool

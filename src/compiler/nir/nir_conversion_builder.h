@@ -133,7 +133,7 @@ nir_round_int_to_float(nir_builder *b, nir_ssa_def *src,
 
    if (src_type == nir_type_int) {
       nir_ssa_def *sign =
-         nir_i2b1(b, nir_ishr(b, src, nir_imm_int(b, src->bit_size - 1)));
+         nir_i2b(b, nir_ishr(b, src, nir_imm_int(b, src->bit_size - 1)));
       nir_ssa_def *abs = nir_iabs(b, src);
       nir_ssa_def *positive_rounded =
          nir_round_int_to_float(b, abs, nir_type_uint, dest_bit_size, round);
