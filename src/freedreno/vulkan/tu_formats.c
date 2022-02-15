@@ -317,6 +317,8 @@ tu_GetPhysicalDeviceFormatProperties2(
          vk_outarray_append(&out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
             mod_props->drmFormatModifierPlaneCount = 1;
+            mod_props->drmFormatModifierTilingFeatures =
+               pFormatProperties->formatProperties.linearTilingFeatures;
          }
       }
 
@@ -327,6 +329,8 @@ tu_GetPhysicalDeviceFormatProperties2(
          vk_outarray_append(&out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
             mod_props->drmFormatModifierPlaneCount = 1;
+            mod_props->drmFormatModifierTilingFeatures =
+               pFormatProperties->formatProperties.optimalTilingFeatures;
          }
       }
    }
