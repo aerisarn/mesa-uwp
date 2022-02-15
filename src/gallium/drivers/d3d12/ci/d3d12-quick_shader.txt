@@ -263,10 +263,6 @@ spec/arb_gl_spirv/execution/xfb/vs_two_sets_struct: skip
 spec/arb_gl_spirv/linker/uniform/multisampler: skip
 spec/arb_gl_spirv/linker/uniform/multisampler-array: skip
 spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-array-of-structs: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-struct: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-struct2: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatoffset-struct: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatsample-struct: crash
 spec/arb_gpu_shader5/execution/ubo_array_indexing/fs-masked: fail
 spec/arb_gpu_shader5/execution/ubo_array_indexing/fs-nonuniform-control-flow: fail
 spec/arb_gpu_shader5/execution/ubo_array_indexing/vs-nonuniform-control-flow: fail
@@ -517,7 +513,6 @@ spec/arb_gpu_shader_int64/execution/indirect-array-two-accesses: fail
 spec/arb_gpu_shader_int64/execution/inout/vs-out-fs-in-s1/2-s2/2-s3/2-int64_t-location-0: crash
 spec/arb_gpu_shader_int64/execution/inout/vs-out-fs-in-s1/2-s2/2-s3/2-uint64_t-location-0: crash
 spec/arb_separate_shader_objects/execution/layout-location-block-with-struct-member: crash
-spec/arb_separate_shader_objects/execution/layout-location-struct: crash
 spec/arb_separate_shader_objects/execution/layout-location-struct-mixed-with-implicitly-assigned-varying: crash
 spec/arb_separate_shader_objects/linker/pervertex-culldistance-tcs-out-tes: skip
 spec/arb_separate_shader_objects/linker/pervertex-culldistance-tes-out-gs: skip
@@ -589,7 +584,6 @@ spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-output-array-
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-output-array-vec3-index-wr: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-output-array-vec4-index-wr: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-vec4-index-wr: crash
-spec/arb_tessellation_shader/execution/variable-indexing/tcs-tes-array-in-struct: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tes-both-input-array-float-index-rd: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tes-both-input-array-vec2-index-rd: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tes-both-input-array-vec3-index-rd: crash
@@ -3089,9 +3083,9 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:    17153
+       pass:    17159
        fail:       44
-      crash:       94
+      crash:       88
        skip:     2925
     timeout:        0
        warn:       25
