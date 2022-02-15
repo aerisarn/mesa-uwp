@@ -2408,6 +2408,9 @@ ureg_setup_shader_info(struct ureg_program *ureg,
    if (info->layer_viewport_relative)
       ureg_property(ureg, TGSI_PROPERTY_LAYER_VIEWPORT_RELATIVE, 1);
 
+   if (info->separate_shader)
+      ureg_property(ureg, TGSI_PROPERTY_SEPARABLE_PROGRAM, 1);
+
    switch (info->stage) {
    case MESA_SHADER_VERTEX:
       ureg_setup_clipdist_info(ureg, info);
