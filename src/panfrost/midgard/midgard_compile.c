@@ -840,7 +840,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  * we can do a "not equal to 0.0" test. */
 
                 ALU_CASE_CMP(f2b32, fne);
-                ALU_CASE_CMP(i2b32, ine);
 
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);

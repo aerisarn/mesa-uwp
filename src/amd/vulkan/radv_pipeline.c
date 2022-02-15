@@ -3086,7 +3086,6 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       case nir_op_bit_count:
       case nir_op_find_lsb:
       case nir_op_ufind_msb:
-      case nir_op_i2b1:
          return 32;
       case nir_op_ilt:
       case nir_op_ige:

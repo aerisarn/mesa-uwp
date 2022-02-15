@@ -805,7 +805,6 @@ agx_emit_alu_bool(agx_builder *b, nir_op op,
    case nir_op_inot: return agx_xor_to(b, dst, s0, t);
 
    case nir_op_f2b1: return agx_fcmpsel_to(b, dst, s0, f, f, t, AGX_FCOND_EQ);
-   case nir_op_i2b1: return agx_icmpsel_to(b, dst, s0, f, f, t, AGX_ICOND_UEQ);
    case nir_op_b2b1: return agx_icmpsel_to(b, dst, s0, f, f, t, AGX_ICOND_UEQ);
 
    case nir_op_bcsel:

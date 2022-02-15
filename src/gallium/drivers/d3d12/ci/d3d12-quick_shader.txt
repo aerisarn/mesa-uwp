@@ -524,6 +524,7 @@ spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-output-array-
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-output-array-vec3-index-wr: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-output-array-vec4-index-wr: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-vec4-index-wr: crash
+spec/arb_tessellation_shader/execution/variable-indexing/tcs-patch-vec4-swiz-index-wr: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tes-both-input-array-float-index-rd: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tes-both-input-array-vec2-index-rd: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tes-both-input-array-vec3-index-rd: crash
@@ -3011,9 +3012,9 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:    17231
+       pass:    17230
        fail:       20
-      crash:       40
+      crash:       41
        skip:     2925
     timeout:        0
        warn:       25

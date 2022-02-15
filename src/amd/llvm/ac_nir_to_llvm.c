@@ -1112,7 +1112,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_b2i64:
       result = emit_b2i(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
       break;
-   case nir_op_i2b1:
    case nir_op_b2b1: /* after loads */
       result = emit_i2b(&ctx->ac, src[0]);
       break;

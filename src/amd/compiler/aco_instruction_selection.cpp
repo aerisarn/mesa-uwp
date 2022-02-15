@@ -3471,8 +3471,7 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tmp, Operand::zero());
       break;
    }
-   case nir_op_b2b1:
-   case nir_op_i2b1: {
+   case nir_op_b2b1: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       assert(dst.regClass() == bld.lm);
 
