@@ -1539,6 +1539,8 @@ calc_descriptor_state_hash_sampler(struct zink_context *ctx, struct zink_shader 
       if (is_buffer)
          continue;
 
+      hash = XXH32(&ctx->di.textures[shader][idx + k].imageLayout, sizeof(VkImageLayout), hash);
+
       struct zink_sampler_state *sampler_state = ctx->sampler_states[shader][idx + k];
 
       if (sampler_state)
