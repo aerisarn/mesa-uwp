@@ -140,7 +140,7 @@ struct intel_perf_query_result;
  * various reasons. This healthy margin prevents reads from wrapping around
  * 48-bit addresses.
  */
-#define GENERAL_STATE_POOL_MIN_ADDRESS     0x000000010000ULL /* 64 KiB */
+#define GENERAL_STATE_POOL_MIN_ADDRESS     0x000000200000ULL /* 2 MiB */
 #define GENERAL_STATE_POOL_MAX_ADDRESS     0x00003fffffffULL
 #define LOW_HEAP_MIN_ADDRESS               0x000040000000ULL /* 1 GiB */
 #define LOW_HEAP_MAX_ADDRESS               0x00007fffffffULL
