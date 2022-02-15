@@ -407,10 +407,12 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          if (is_compute)
             pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
          else if (!pipeline) {
-            if (res->ubo_bind_count[0])
-               pipeline |= find_pipeline_bits(res->ubo_bind_mask);
-            if (!pipeline)
-               pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
+            if (res->obj->is_buffer) {
+               if (res->ubo_bind_count[0])
+                  pipeline |= find_pipeline_bits(res->ubo_bind_mask);
+               if (!pipeline)
+                  pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
+            }
             if (!pipeline)
                pipeline |= find_pipeline_bits(res->sampler_binds);
             if (!pipeline) //must be a shader image
