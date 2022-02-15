@@ -1083,6 +1083,19 @@ optimizations.extend([
    (('ine', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))), ('ine', a, b)),
    (('b2i', ('ine', 'a@1', 'b@1')), ('b2i', ('ixor', a, b))),
 
+   (('ishl', ('b2i32', ('ine', ('iand', 'a@32', '#b(is_pos_power_of_two)'), 0)), '#c'),
+    ('bcsel', ('ige', ('iand', c, 31), ('find_lsb', b)),
+              ('ishl', ('iand', a, b), ('iadd', ('iand', c, 31), ('ineg', ('find_lsb', b)))),
+              ('ushr', ('iand', a, b), ('iadd', ('ineg', ('iand', c, 31)), ('find_lsb', b)))
+    )
+   ),
+
+   (('b2i32', ('ine', ('iand', 'a@32', '#b(is_pos_power_of_two)'), 0)),
+    ('ushr', ('iand', a, b), ('find_lsb', b)), '!options->lower_bitops'),
+
+   (('ior',  ('b2i', a), ('iand', b, 1)), ('iand', ('ior', ('b2i', a), b), 1)),
+   (('iand', ('b2i', a), ('iand', b, 1)), ('iand', ('b2i', a), b)),
+
    # This pattern occurs coutresy of __flt64_nonnan in the soft-fp64 code.
    # The first part of the iand comes from the !__feq64_nonnan.
    #
