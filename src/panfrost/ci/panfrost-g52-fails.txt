@@ -374,9 +374,7 @@ spec@arb_texture_rg@texwrap formats-float bordercolor-swizzled@GL_RG32F- swizzle
 spec@arb_texture_view@sampling-2d-array-as-cubemap-array,Crash
 spec@arb_texture_view@sampling-2d-array-as-cubemap,Crash
 spec@arb_transform_feedback_instanced@draw-auto instanced,Fail
-spec@arb_uniform_buffer_object@rendering-dsa,Fail
 spec@arb_uniform_buffer_object@rendering-dsa-offset,Fail
-spec@arb_uniform_buffer_object@rendering,Fail
 spec@arb_uniform_buffer_object@rendering-offset,Fail
 spec@arb_vertex_program@clip-plane-transformation arb,Fail
 spec@egl 1.4@eglterminate then unbind context,Fail

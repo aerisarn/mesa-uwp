@@ -924,6 +924,9 @@ panfrost_ptr_map(struct pipe_context *pctx,
         }
 
         if (create_new_bo) {
+                /* Make sure we re-emit any descriptors using this resource */
+                panfrost_dirty_state_all(ctx);
+
                 /* If the BO is used by one of the pending batches or if it's
                  * not ready yet (still accessed by one of the already flushed
                  * batches), we try to allocate a new one to avoid waiting.
