@@ -477,7 +477,7 @@ find_var_with_location_frac(nir_shader *nir, unsigned location, unsigned locatio
    nir_foreach_shader_out_variable(var, nir) {
       if (var->data.location == location &&
           (var->data.location_frac == location_frac ||
-           glsl_get_vector_elements(var->type) >= location_frac + 1)) {
+           (glsl_type_is_array(var->type) ? glsl_array_size(var->type) : glsl_get_vector_elements(var->type)) >= location_frac + 1)) {
          if (location != VARYING_SLOT_PSIZ || !have_psiz || var->data.explicit_location)
             return var;
       }
