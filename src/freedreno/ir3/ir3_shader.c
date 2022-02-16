@@ -252,12 +252,12 @@ assemble_variant(struct ir3_shader_variant *v)
          fprintf(stream,
                  "Native code%s for unnamed %s shader %s with sha1 %s:\n",
                  shader_overridden ? " (overridden)" : "", ir3_shader_stage(v),
-                 v->shader->nir->info.name, sha1buf);
+                 v->name, sha1buf);
          ir3_shader_disasm(v, v->bin, stream);
 
          fclose(stream);
 
-         v->disasm_info.disasm = ralloc_size(v->shader, stream_size + 1);
+         v->disasm_info.disasm = ralloc_size(v, stream_size + 1);
          memcpy(v->disasm_info.disasm, stream_data, stream_size);
          v->disasm_info.disasm[stream_size] = 0;
          free(stream_data);
