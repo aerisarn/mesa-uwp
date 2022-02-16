@@ -3686,6 +3686,81 @@ radv_consider_force_vrs(const struct radv_pipeline *pipeline, bool noop_fs, nir_
    return true;
 }
 
+static nir_ssa_def *
+radv_adjust_vertex_fetch_alpha(nir_builder *b,
+                               enum radv_vs_input_alpha_adjust alpha_adjust,
+                               nir_ssa_def *alpha)
+{
+   if (alpha_adjust == ALPHA_ADJUST_SSCALED)
+      alpha = nir_f2u32(b, alpha);
+
+   /* For the integer-like cases, do a natural sign extension.
+    *
+    * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0 and happen to contain 0, 1, 2, 3 as
+    * the two LSBs of the exponent.
+    */
+   unsigned offset = alpha_adjust == ALPHA_ADJUST_SNORM ? 23u : 0u;
+
+   alpha = nir_ibfe(b, alpha, nir_imm_int(b, offset), nir_imm_int(b, 2u));
+
+   /* Convert back to the right type. */
+   if (alpha_adjust == ALPHA_ADJUST_SNORM) {
+      alpha = nir_i2f32(b, alpha);
+      alpha = nir_fmax(b, alpha, nir_imm_float(b, -1.0f));
+   } else if (alpha_adjust == ALPHA_ADJUST_SSCALED) {
+      alpha = nir_i2f32(b, alpha);
+   }
+
+   return alpha;
+}
+
+static bool
+radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_key)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   if (pipeline_key->vs.dynamic_input_state)
+      return false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (intrin->intrinsic != nir_intrinsic_load_input)
+            continue;
+
+         unsigned location = nir_intrinsic_base(intrin) - VERT_ATTRIB_GENERIC0;
+         enum radv_vs_input_alpha_adjust alpha_adjust = pipeline_key->vs.vertex_alpha_adjust[location];
+
+         if (alpha_adjust == ALPHA_ADJUST_NONE)
+            continue;
+
+         unsigned component = nir_intrinsic_component(intrin);
+         unsigned num_components = intrin->dest.ssa.num_components;
+
+         b.cursor = nir_after_instr(instr);
+
+         if (component + num_components == 4) {
+            unsigned idx = num_components - 1;
+            nir_ssa_def *alpha = radv_adjust_vertex_fetch_alpha(
+               &b, alpha_adjust, nir_channel(&b, &intrin->dest.ssa, idx));
+            nir_ssa_def *new_dest = nir_vector_insert_imm(&b, &intrin->dest.ssa, alpha, idx);
+            nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, new_dest,
+                                           new_dest->parent_instr);
+            progress = true;
+         }
+      }
+   }
+
+   return progress;
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -3818,6 +3893,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       nir_lower_patch_vertices(nir[MESA_SHADER_TESS_EVAL],
                                nir[MESA_SHADER_TESS_CTRL]->info.tess.tcs_vertices_out, NULL);
       gather_tess_info(device, nir, infos, pipeline_key);
+   }
+
+   if (nir[MESA_SHADER_VERTEX]) {
+      NIR_PASS_V(nir[MESA_SHADER_VERTEX], radv_lower_vs_input, pipeline_key);
    }
 
    radv_fill_shader_info(pipeline, pipeline_layout, pStages, pipeline_key, infos, nir);

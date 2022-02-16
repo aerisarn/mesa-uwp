@@ -603,48 +603,6 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set, unsign
    return descriptor;
 }
 
-/* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
- * so we may need to fix it up. */
-static LLVMValueRef
-adjust_vertex_fetch_alpha(struct radv_shader_context *ctx, unsigned adjustment, LLVMValueRef alpha)
-{
-   if (adjustment == ALPHA_ADJUST_NONE)
-      return alpha;
-
-   LLVMValueRef c30 = LLVMConstInt(ctx->ac.i32, 30, 0);
-
-   alpha = LLVMBuildBitCast(ctx->ac.builder, alpha, ctx->ac.f32, "");
-
-   if (adjustment == ALPHA_ADJUST_SSCALED)
-      alpha = LLVMBuildFPToUI(ctx->ac.builder, alpha, ctx->ac.i32, "");
-   else
-      alpha = ac_to_integer(&ctx->ac, alpha);
-
-   /* For the integer-like cases, do a natural sign extension.
-    *
-    * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0
-    * and happen to contain 0, 1, 2, 3 as the two LSBs of the
-    * exponent.
-    */
-   alpha =
-      LLVMBuildShl(ctx->ac.builder, alpha,
-                   adjustment == ALPHA_ADJUST_SNORM ? LLVMConstInt(ctx->ac.i32, 7, 0) : c30, "");
-   alpha = LLVMBuildAShr(ctx->ac.builder, alpha, c30, "");
-
-   /* Convert back to the right type. */
-   if (adjustment == ALPHA_ADJUST_SNORM) {
-      LLVMValueRef clamp;
-      LLVMValueRef neg_one = LLVMConstReal(ctx->ac.f32, -1.0);
-      alpha = LLVMBuildSIToFP(ctx->ac.builder, alpha, ctx->ac.f32, "");
-      clamp = LLVMBuildFCmp(ctx->ac.builder, LLVMRealULT, alpha, neg_one, "");
-      alpha = LLVMBuildSelect(ctx->ac.builder, clamp, neg_one, alpha, "");
-   } else if (adjustment == ALPHA_ADJUST_SSCALED) {
-      alpha = LLVMBuildSIToFP(ctx->ac.builder, alpha, ctx->ac.f32, "");
-   }
-
-   return LLVMBuildBitCast(ctx->ac.builder, alpha, ctx->ac.i32, "");
-}
-
 static LLVMValueRef
 radv_fixup_vertex_input_fetches(struct radv_shader_context *ctx, LLVMValueRef value,
                                 unsigned num_channels, bool is_float)
@@ -723,7 +681,6 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    unsigned attrib_binding = ctx->options->key.vs.vertex_attribute_bindings[attrib_index];
    unsigned attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[attrib_index];
    unsigned attrib_stride = ctx->options->key.vs.vertex_attribute_strides[attrib_index];
-   unsigned alpha_adjust = ctx->options->key.vs.vertex_alpha_adjust[attrib_index];
 
    if (ctx->options->key.vs.vertex_post_shuffle & (1 << attrib_index)) {
       /* Always load, at least, 3 channels for formats that need to be shuffled because X<->Z. */
@@ -802,8 +759,6 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
          out[chan] = LLVMBuildFPTrunc(ctx->ac.builder, out[chan], ctx->ac.f16, "");
       }
    }
-
-   out[3] = adjust_vertex_fetch_alpha(ctx, alpha_adjust, out[3]);
 
    for (unsigned chan = 0; chan < 4; chan++) {
       out[chan] = ac_to_integer(&ctx->ac, out[chan]);
