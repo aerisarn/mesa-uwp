@@ -2393,7 +2393,7 @@ tu_append_executable(struct tu_pipeline *pipeline, struct ir3_shader_variant *va
    ralloc_steal(pipeline->executables_mem_ctx, variant->disasm_info.disasm);
 
    struct tu_pipeline_executable exe = {
-      .stage = variant->shader->type,
+      .stage = variant->type,
       .nir_from_spirv = nir_from_spirv,
       .nir_final = variant->disasm_info.nir,
       .disasm = variant->disasm_info.disasm,

@@ -571,7 +571,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    bool progress = false;
 
    if (so->key.has_gs || so->key.tessellation) {
-      switch (so->shader->type) {
+      switch (so->type) {
       case MESA_SHADER_VERTEX:
          NIR_PASS_V(s, ir3_nir_lower_to_explicit_output, so,
                     so->key.tessellation);

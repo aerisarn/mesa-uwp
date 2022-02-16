@@ -233,7 +233,7 @@ assemble_variant(struct ir3_shader_variant *v)
 {
    v->bin = ir3_shader_assemble(v);
 
-   bool dbg_enabled = shader_debug_enabled(v->shader->type);
+   bool dbg_enabled = shader_debug_enabled(v->type);
    if (dbg_enabled || ir3_shader_override_path || v->disasm_info.write_disasm) {
       unsigned char sha1[21];
       char sha1buf[41];
@@ -272,7 +272,7 @@ assemble_variant(struct ir3_shader_variant *v)
                  "Native code%s for unnamed %s shader %s with sha1 %s:\n",
                  shader_overridden ? " (overridden)" : "", ir3_shader_stage(v),
                  v->name, sha1buf);
-         if (v->shader->type == MESA_SHADER_FRAGMENT)
+         if (v->type == MESA_SHADER_FRAGMENT)
             fprintf(stream, "SIMD0\n");
          ir3_shader_disasm(v, v->bin, stream);
          fclose(stream);

@@ -898,12 +898,12 @@ ir3_max_const(const struct ir3_shader_variant *v)
 {
    const struct ir3_compiler *compiler = v->shader->compiler;
 
-   if ((v->shader->type == MESA_SHADER_COMPUTE) ||
-       (v->shader->type == MESA_SHADER_KERNEL)) {
+   if ((v->type == MESA_SHADER_COMPUTE) ||
+       (v->type == MESA_SHADER_KERNEL)) {
       return compiler->max_const_compute;
    } else if (v->key.safe_constlen) {
       return compiler->max_const_safe;
-   } else if (v->shader->type == MESA_SHADER_FRAGMENT) {
+   } else if (v->type == MESA_SHADER_FRAGMENT) {
       return compiler->max_const_frag;
    } else {
       return compiler->max_const_geom;
