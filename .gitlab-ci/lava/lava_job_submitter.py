@@ -242,10 +242,10 @@ def wait_until_job_is_started(proxy, job_id):
     current_state = "Submitted"
     waiting_states = ["Submitted", "Scheduling", "Scheduled"]
     while current_state in waiting_states:
+        time.sleep(WAIT_FOR_DEVICE_POLLING_TIME_SEC)
         job_state = _call_proxy(proxy.scheduler.job_state, job_id)
         current_state = job_state["job_state"]
 
-        time.sleep(WAIT_FOR_DEVICE_POLLING_TIME_SEC)
     print_log(f"Job {job_id} started.")
 
 def follow_job_execution(proxy, job_id):
@@ -253,6 +253,11 @@ def follow_job_execution(proxy, job_id):
     finished = False
     last_time_logs = datetime.now()
     while not finished:
+        # `proxy.scheduler.jobs.logs` does not block, even when there is no
+        # new log to be fetched. To avoid dosing the LAVA dispatcher
+        # machine, let's add a sleep to save them some stamina.
+        time.sleep(LOG_POLLING_TIME_SEC)
+
         (finished, data) = _call_proxy(proxy.scheduler.jobs.logs, job_id, line_count)
         if logs := yaml.load(str(data), Loader=loader(False)):
             # Reset the timeout
@@ -261,17 +266,11 @@ def follow_job_execution(proxy, job_id):
                 print("{} {}".format(line["dt"], line["msg"]))
 
             line_count += len(logs)
-
         else:
             time_limit = timedelta(seconds=DEVICE_HANGING_TIMEOUT_SEC)
             if datetime.now() - last_time_logs > time_limit:
                 print_log("LAVA job {} doesn't advance (machine got hung?). Retry.".format(job_id))
                 return False
-
-        # `proxy.scheduler.jobs.logs` does not block, even when there is no
-        # new log to be fetched. To avoid dosing the LAVA dispatcher
-        # machine, let's add a sleep to save them some stamina.
-        time.sleep(LOG_POLLING_TIME_SEC)
 
     return True
 
