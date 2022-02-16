@@ -1873,7 +1873,7 @@ genX(BeginCommandBuffer)(
             const struct anv_image_view * const iview =
                anv_cmd_buffer_get_depth_stencil_view(cmd_buffer);
 
-            if (iview) {
+            if (iview && (iview->image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
                VkImageLayout layout =
                   cmd_buffer->state.subpass->depth_stencil_attachment->layout;
 
