@@ -444,7 +444,7 @@ emit_kernel_params(struct fd_context *ctx, const struct ir3_shader_variant *v,
    if (v->constlen > offset) {
       ring_wfi(ctx->batch, ring);
       emit_const_user(ring, v, offset * 4,
-                      align(v->shader->cs.req_input_mem, 4),
+                      align(v->cs.req_input_mem, 4),
                       info->input);
    }
 }

@@ -2572,7 +2572,7 @@ ir3_ra(struct ir3_shader_variant *v)
     * because on some gens the register file is not big enough to hold a
     * double-size wave with all 48 registers in use.
     */
-   if (v->shader->real_wavesize == IR3_DOUBLE_ONLY) {
+   if (v->real_wavesize == IR3_DOUBLE_ONLY) {
       limit_pressure.full =
          MAX2(limit_pressure.full, ctx->compiler->reg_size_vec4 / 2 * 16);
    }

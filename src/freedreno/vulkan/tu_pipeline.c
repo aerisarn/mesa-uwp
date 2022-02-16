@@ -1181,10 +1181,8 @@ tu6_emit_vpc(struct tu_cs *cs,
                   A6XX_VPC_CNTL_0_VIEWIDLOC(linkage.viewid_loc));
 
    if (hs) {
-      shader_info *hs_info = &hs->shader->nir->info;
-
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
-      tu_cs_emit(cs, hs_info->tess.tcs_vertices_out);
+      tu_cs_emit(cs, hs->tess.tcs_vertices_out);
 
       /* Total attribute slots in HS incoming patch. */
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
@@ -1194,10 +1192,10 @@ tu6_emit_vpc(struct tu_cs *cs,
       const uint32_t max_wave_input_size = 64;
 
       /* note: if HS is really just the VS extended, then this
-       * should be by MAX2(patch_control_points, hs_info->tess.tcs_vertices_out)
+       * should be by MAX2(patch_control_points, hs->tess.tcs_vertices_out)
        * however that doesn't match the blob, and fails some dEQP tests.
        */
-      uint32_t prims_per_wave = wavesize / hs_info->tess.tcs_vertices_out;
+      uint32_t prims_per_wave = wavesize / hs->tess.tcs_vertices_out;
       uint32_t max_prims_per_wave =
          max_wave_input_size * wavesize / (vs->output_size * patch_control_points);
       prims_per_wave = MIN2(prims_per_wave, max_prims_per_wave);
@@ -1211,22 +1209,21 @@ tu6_emit_vpc(struct tu_cs *cs,
       /* In SPIR-V generated from GLSL, the tessellation primitive params are
        * are specified in the tess eval shader, but in SPIR-V generated from
        * HLSL, they are specified in the tess control shader. */
-      shader_info *tess_info =
-            ds->shader->nir->info.tess.spacing == TESS_SPACING_UNSPECIFIED ?
-            &hs->shader->nir->info : &ds->shader->nir->info;
+      const struct ir3_shader_variant *tess =
+         ds->tess.spacing == TESS_SPACING_UNSPECIFIED ? hs : ds;
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_CNTL, 1);
       uint32_t output;
-      if (tess_info->tess.point_mode)
+      if (tess->tess.point_mode)
          output = TESS_POINTS;
-      else if (tess_info->tess._primitive_mode == TESS_PRIMITIVE_ISOLINES)
+      else if (tess->tess.primitive_mode == TESS_PRIMITIVE_ISOLINES)
          output = TESS_LINES;
-      else if (tess_info->tess.ccw)
+      else if (tess->tess.ccw)
          output = TESS_CCW_TRIS;
       else
          output = TESS_CW_TRIS;
 
       enum a6xx_tess_spacing spacing;
-      switch (tess_info->tess.spacing) {
+      switch (tess->tess.spacing) {
       case TESS_SPACING_EQUAL:
          spacing = TESS_EQUAL;
          break;
@@ -1257,11 +1254,11 @@ tu6_emit_vpc(struct tu_cs *cs,
       } else {
          tu6_emit_link_map(cs, vs, gs, SB6_GS_SHADER);
       }
-      vertices_out = gs->shader->nir->info.gs.vertices_out - 1;
-      output = primitive_to_tess(gs->shader->nir->info.gs.output_primitive);
-      invocations = gs->shader->nir->info.gs.invocations - 1;
+      vertices_out = gs->gs.vertices_out - 1;
+      output = primitive_to_tess(gs->gs.output_primitive);
+      invocations = gs->gs.invocations - 1;
       /* Size of per-primitive alloction in ldlw memory in vec4s. */
-      vec4_size = gs->shader->nir->info.gs.vertices_in *
+      vec4_size = gs->gs.vertices_in *
                   DIV_ROUND_UP(prev_stage_output_size, 4);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
@@ -1578,9 +1575,9 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    if (pipeline) {
       pipeline->lrz.fs_has_kill = fs->has_kill;
-      pipeline->lrz.early_fragment_tests = fs->shader->nir->info.fs.early_fragment_tests;
+      pipeline->lrz.early_fragment_tests = fs->fs.early_fragment_tests;
 
-      if ((fs->shader && !fs->shader->nir->info.fs.early_fragment_tests) &&
+      if (!fs->fs.early_fragment_tests &&
           (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || no_earlyz || fs->writes_smask)) {
          pipeline->lrz.force_late_z = true;
       }
@@ -1601,7 +1598,7 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
    struct tu_device *dev = cs->device;
 
    uint32_t num_vertices =
-         hs ? cps_per_patch : gs->shader->nir->info.gs.vertices_in;
+         hs ? cps_per_patch : gs->gs.vertices_in;
 
    uint32_t vs_params[4] = {
       vs->output_size * num_vertices * 4,  /* vs primitive stride */
@@ -1641,13 +1638,13 @@ tu6_emit_geom_tess_consts(struct tu_cs *cs,
       tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, hs_base, SB6_HS_SHADER, 0,
                      hs_param_dwords, hs_params);
       if (gs)
-         num_vertices = gs->shader->nir->info.gs.vertices_in;
+         num_vertices = gs->gs.vertices_in;
 
       uint32_t ds_params[8] = {
          ds->output_size * num_vertices * 4,  /* ds primitive stride */
          ds->output_size * 4,                 /* ds vertex stride */
          hs->output_size,                     /* hs vertex stride (dwords) */
-         hs->shader->nir->info.tess.tcs_vertices_out,
+         hs->tess.tcs_vertices_out,
          tess_param_iova,
          tess_param_iova >> 32,
          tess_factor_iova,

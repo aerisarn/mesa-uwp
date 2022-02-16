@@ -102,14 +102,13 @@ dump_shader_info(struct ir3_shader_variant *v,
 static void
 upload_shader_variant(struct ir3_shader_variant *v)
 {
-   struct shader_info *info = &v->shader->nir->info;
    struct ir3_compiler *compiler = v->shader->compiler;
 
    assert(!v->bo);
 
    v->bo =
       fd_bo_new(compiler->dev, v->info.size, FD_BO_NOMAP,
-                "%s:%s", ir3_shader_stage(v), info->name);
+                "%s:%s", ir3_shader_stage(v), v->name);
 
    /* Always include shaders in kernel crash dumps. */
    fd_bo_mark_for_dump(v->bo);

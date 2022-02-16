@@ -155,7 +155,7 @@ ir3_context_init(struct ir3_compiler *compiler, struct ir3_shader_variant *so)
 
    if (shader_debug_enabled(so->type)) {
       mesa_logi("NIR (final form) for %s shader %s:", ir3_shader_stage(so),
-                so->shader->nir->info.name);
+                so->name);
       nir_log_shaderi(ctx->s);
    }
 

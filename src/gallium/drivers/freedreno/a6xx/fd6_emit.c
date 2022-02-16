@@ -586,7 +586,7 @@ compute_ztest_mode(struct fd6_emit *emit, bool lrz_valid) assert_dt
    struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
    const struct ir3_shader_variant *fs = emit->fs;
 
-   if (fs->shader->nir->info.fs.early_fragment_tests)
+   if (fs->fs.early_fragment_tests)
       return A6XX_EARLY_Z;
 
    if (fs->no_earlyz || fs->writes_pos || !zsa->base.depth_enabled ||

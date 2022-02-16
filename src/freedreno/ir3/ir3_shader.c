@@ -271,7 +271,7 @@ assemble_variant(struct ir3_shader_variant *v)
          fprintf(stream,
                  "Native code%s for unnamed %s shader %s with sha1 %s:\n",
                  shader_overridden ? " (overridden)" : "", ir3_shader_stage(v),
-                 v->shader->nir->info.name, sha1buf);
+                 v->name, sha1buf);
          if (v->shader->type == MESA_SHADER_FRAGMENT)
             fprintf(stream, "SIMD0\n");
          ir3_shader_disasm(v, v->bin, stream);
@@ -328,6 +328,7 @@ alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
       return NULL;
 
    v->id = ++shader->variant_count;
+   v->shader_id = shader->id;
    v->shader = shader;
    v->binning_pass = !!nonbinning;
    v->nonbinning = nonbinning;
@@ -335,6 +336,46 @@ alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
    v->type = shader->type;
    v->mergedregs = shader->compiler->gen >= 6;
    v->stream_output = shader->stream_output;
+
+   v->name = ralloc_strdup(v, shader->nir->info.name);
+
+   struct shader_info *info = &shader->nir->info;
+   switch (v->type) {
+   case MESA_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_EVAL:
+      v->tess.primitive_mode = info->tess._primitive_mode;
+      v->tess.tcs_vertices_out = info->tess.tcs_vertices_out;
+      v->tess.spacing = info->tess.spacing;
+      v->tess.ccw = info->tess.ccw;
+      v->tess.point_mode = info->tess.point_mode;
+      break;
+
+   case MESA_SHADER_GEOMETRY:
+      v->gs.output_primitive = info->gs.output_primitive;
+      v->gs.vertices_out = info->gs.vertices_out;
+      v->gs.invocations = info->gs.invocations;
+      v->gs.vertices_in = info->gs.vertices_in;
+      break;
+
+   case MESA_SHADER_FRAGMENT:
+      v->fs.early_fragment_tests = info->fs.early_fragment_tests;
+      v->fs.color_is_dual_source = info->fs.color_is_dual_source;
+      break;
+
+   case MESA_SHADER_COMPUTE:
+      v->cs.req_input_mem = shader->cs.req_input_mem;
+      v->cs.req_local_mem = shader->cs.req_local_mem;
+      break;
+
+   default:
+      break;
+   }
+
+   v->num_ssbos = info->num_ssbos;
+   v->num_ibos = info->num_ssbos + info->num_images;
+   v->num_reserved_user_consts = shader->num_reserved_user_consts;
+   v->api_wavesize = shader->api_wavesize;
+   v->real_wavesize = shader->real_wavesize;
 
    if (!v->binning_pass)
       v->const_state = rzalloc_size(v, sizeof(*v->const_state));
@@ -779,19 +820,19 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
    fprintf(
       out,
       "; %s prog %d/%d: %u instr, %u nops, %u non-nops, %u mov, %u cov, %u dwords\n",
-      type, so->shader->id, so->id, so->info.instrs_count, so->info.nops_count,
+      type, so->shader_id, so->id, so->info.instrs_count, so->info.nops_count,
       so->info.instrs_count - so->info.nops_count, so->info.mov_count,
       so->info.cov_count, so->info.sizedwords);
 
    fprintf(out,
            "; %s prog %d/%d: %u last-baryf, %d half, %d full, %u constlen\n",
-           type, so->shader->id, so->id, so->info.last_baryf,
+           type, so->shader_id, so->id, so->info.last_baryf,
            so->info.max_half_reg + 1, so->info.max_reg + 1, so->constlen);
 
    fprintf(
       out,
       "; %s prog %d/%d: %u cat0, %u cat1, %u cat2, %u cat3, %u cat4, %u cat5, %u cat6, %u cat7, \n",
-      type, so->shader->id, so->id, so->info.instrs_per_cat[0],
+      type, so->shader_id, so->id, so->info.instrs_per_cat[0],
       so->info.instrs_per_cat[1], so->info.instrs_per_cat[2],
       so->info.instrs_per_cat[3], so->info.instrs_per_cat[4],
       so->info.instrs_per_cat[5], so->info.instrs_per_cat[6],
@@ -800,7 +841,7 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
    fprintf(
       out,
       "; %s prog %d/%d: %u sstall, %u (ss), %u systall, %u (sy), %d loops\n",
-      type, so->shader->id, so->id, so->info.sstall, so->info.ss,
+      type, so->shader_id, so->id, so->info.sstall, so->info.ss,
       so->info.systall, so->info.sy, so->loops);
 
    /* print shader type specific info: */

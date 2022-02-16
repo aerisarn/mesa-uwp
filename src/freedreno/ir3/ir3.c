@@ -116,9 +116,9 @@ ir3_should_double_threadsize(struct ir3_shader_variant *v, unsigned regs_count)
    const struct ir3_compiler *compiler = v->shader->compiler;
 
    /* If the user forced a particular wavesize respect that. */
-   if (v->shader->real_wavesize == IR3_SINGLE_ONLY)
+   if (v->real_wavesize == IR3_SINGLE_ONLY)
       return false;
-   if (v->shader->real_wavesize == IR3_DOUBLE_ONLY)
+   if (v->real_wavesize == IR3_DOUBLE_ONLY)
       return true;
 
    /* We can't support more than compiler->branchstack_size diverging threads
@@ -220,9 +220,9 @@ ir3_get_reg_independent_max_waves(struct ir3_shader_variant *v,
        */
       if (v->has_barrier && (max_waves < waves_per_wg)) {
          mesa_loge(
-            "Compute shader (%s:%s) which has workgroup barrier cannot be used "
+            "Compute shader (%s) which has workgroup barrier cannot be used "
             "because it's impossible to have enough concurrent waves.",
-            v->shader->nir->info.name, v->shader->nir->info.label);
+            v->name);
          exit(1);
       }
    }
@@ -381,7 +381,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
    unsigned reg_dependent_max_waves = ir3_get_reg_dependent_max_waves(
       compiler, regs_count, info->double_threadsize);
    info->max_waves = MIN2(reg_independent_max_waves, reg_dependent_max_waves);
-   assert(info->max_waves <= v->shader->compiler->max_waves);
+   assert(info->max_waves <= v->compiler->max_waves);
 }
 
 static struct ir3_register *

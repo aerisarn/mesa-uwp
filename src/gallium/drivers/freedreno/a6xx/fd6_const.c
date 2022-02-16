@@ -131,7 +131,7 @@ fd6_build_tess_consts(struct fd6_emit *emit)
     */
    unsigned num_vertices = emit->hs
                               ? emit->patch_vertices
-                              : emit->gs->shader->nir->info.gs.vertices_in;
+                              : emit->gs->gs.vertices_in;
 
    uint32_t vs_params[4] = {
       emit->vs->output_size * num_vertices * 4, /* vs primitive stride */
@@ -150,13 +150,13 @@ fd6_build_tess_consts(struct fd6_emit *emit)
                              ARRAY_SIZE(hs_params));
 
       if (emit->gs)
-         num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
+         num_vertices = emit->gs->gs.vertices_in;
 
       uint32_t ds_params[4] = {
          emit->ds->output_size * num_vertices * 4, /* ds primitive stride */
          emit->ds->output_size * 4,                /* ds vertex stride */
          emit->hs->output_size, /* hs vertex stride (dwords) */
-         emit->hs->shader->nir->info.tess.tcs_vertices_out};
+         emit->hs->tess.tcs_vertices_out};
 
       emit_stage_tess_consts(constobj, emit->ds, ds_params,
                              ARRAY_SIZE(ds_params));
@@ -176,7 +176,7 @@ fd6_build_tess_consts(struct fd6_emit *emit)
          0,
       };
 
-      num_vertices = emit->gs->shader->nir->info.gs.vertices_in;
+      num_vertices = emit->gs->gs.vertices_in;
       emit_stage_tess_consts(constobj, emit->gs, gs_params,
                              ARRAY_SIZE(gs_params));
    }

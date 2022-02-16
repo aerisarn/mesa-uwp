@@ -848,7 +848,7 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
    const_state->num_ubos = nir->info.num_ubos;
 
    debug_assert((const_state->ubo_state.size % 16) == 0);
-   unsigned constoff = v->shader->num_reserved_user_consts +
+   unsigned constoff = v->num_reserved_user_consts +
       const_state->ubo_state.size / 16 +
       const_state->preamble_size;
    unsigned ptrsz = ir3_pointer_size(compiler);
@@ -866,7 +866,7 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 
    if (v->type == MESA_SHADER_KERNEL) {
       const_state->offsets.kernel_params = constoff;
-      constoff += align(v->shader->cs.req_input_mem, 4) / 4;
+      constoff += align(v->cs.req_input_mem, 4) / 4;
    }
 
    if (const_state->num_driver_params > 0) {
