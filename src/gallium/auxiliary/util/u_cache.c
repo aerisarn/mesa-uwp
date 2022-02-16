@@ -42,16 +42,14 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_cache.h"
-#include "util/simple_list.h"
-
+#include "util/list.h"
 
 struct util_cache_entry
 {
    enum { EMPTY = 0, FILLED, DELETED } state;
    uint32_t hash;
 
-   struct util_cache_entry *next;
-   struct util_cache_entry *prev;
+   struct list_head list;
 
    void *key;
    void *value;
@@ -179,7 +177,7 @@ util_cache_entry_destroy(struct util_cache *cache,
    entry->value = NULL;
 
    if (entry->state == FILLED) {
-      remove_from_list(entry);
+      list_del(&entry->list);
       cache->count--;
 
       if (cache->destroy)
@@ -207,10 +205,10 @@ util_cache_set(struct util_cache *cache,
    hash = cache->hash(key);
    entry = util_cache_entry_get(cache, hash, key);
    if (!entry)
-      entry = cache->lru.prev;
+      entry = list_last_entry(&cache->lru.list, struct util_cache_entry, list);
 
    if (cache->count >= cache->size / CACHE_DEFAULT_ALPHA)
-      util_cache_entry_destroy(cache, cache->lru.prev);
+      util_cache_entry_destroy(cache, list_last_entry(&cache->lru.list, struct util_cache_entry, list));
 
    util_cache_entry_destroy(cache, entry);
 
@@ -222,7 +220,7 @@ util_cache_set(struct util_cache *cache,
    entry->hash = hash;
    entry->value = value;
    entry->state = FILLED;
-   insert_at_head(&cache->lru, entry);
+   list_add(&cache->lru.list, &entry->list);
    cache->count++;
 
    ensure_sanity(cache);
@@ -234,7 +232,7 @@ util_cache_set(struct util_cache *cache,
  * value or NULL if not found.
  */
 void *
-util_cache_get(struct util_cache *cache, 
+util_cache_get(struct util_cache *cache,
                const void *key)
 {
    struct util_cache_entry *entry;
@@ -248,9 +246,10 @@ util_cache_get(struct util_cache *cache,
    if (!entry)
       return NULL;
 
-   if (entry->state == FILLED)
-      move_to_head(&cache->lru, entry);
-   
+   if (entry->state == FILLED) {
+      list_move_to(&cache->lru.list, &entry->list);
+   }
+
    return entry->value;
 }
 
@@ -274,7 +273,7 @@ util_cache_clear(struct util_cache *cache)
    }
 
    assert(cache->count == 0);
-   assert(is_empty_list(&cache->lru));
+   assert(list_is_empty(&cache->lru.list));
    ensure_sanity(cache);
 }
 
@@ -362,16 +361,17 @@ ensure_sanity(const struct util_cache *cache)
    assert(cache->size >= cnt);
 
    if (cache->count == 0) {
-      assert (is_empty_list(&cache->lru));
+      assert (list_is_empty(&cache->lru.list));
    }
    else {
-      struct util_cache_entry *header = cache->lru.next;
+      struct util_cache_entry *header =
+         LIST_ENTRY(struct util_cache_entry, &cache->lru, list);
 
       assert (header);
-      assert (!is_empty_list(&cache->lru));
+      assert (!list_is_empty(&cache->lru.list));
 
       for (i = 0; i < cache->count; i++)
-         header = header->next;
+         header = LIST_ENTRY(struct util_cache_entry, &header, list);
 
       assert(header == &cache->lru);
    }
