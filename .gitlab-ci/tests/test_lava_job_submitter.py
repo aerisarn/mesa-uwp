@@ -25,23 +25,27 @@
 import xmlrpc.client
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime
-from itertools import repeat
-from typing import Tuple
+from itertools import cycle, repeat
+from typing import Iterable, Union, Generator, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 from freezegun import freeze_time
 from lava.lava_job_submitter import (
+    NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
     DEVICE_HANGING_TIMEOUT_SEC,
     follow_job_execution,
     hide_sensitive_data,
     retriable_follow_job,
+    LAVAJob
 )
 
+NUMBER_OF_MAX_ATTEMPTS = NUMBER_OF_RETRIES_TIMEOUT_DETECTION + 1
 
-def jobs_logs_response(finished=False, msg=None) -> Tuple[bool, str]:
-    timed_msg = {"dt": str(datetime.now()), "msg": "New message"}
+
+def jobs_logs_response(finished=False, msg=None, lvl="target") -> Tuple[bool, str]:
+    timed_msg = {"dt": str(datetime.now()), "msg": "New message", "lvl": lvl}
     logs = [timed_msg] if msg is None else msg
 
     return finished, yaml.safe_dump(logs)
@@ -114,17 +118,35 @@ def frozen_time(mock_sleep):
 @pytest.mark.parametrize("exception", [RuntimeError, SystemError, KeyError])
 def test_submit_and_follow_respects_exceptions(mock_sleep, mock_proxy, exception):
     with pytest.raises(exception):
-        follow_job_execution(mock_proxy(side_effect=exception), "")
+        proxy = mock_proxy(side_effect=exception)
+        job = LAVAJob(proxy, '')
+        follow_job_execution(job)
 
 
-def generate_n_logs(n=1, tick_sec=1):
+def level_generator():
+    # Tests all known levels by default
+    yield from cycle(( "results", "feedback", "warning", "error", "debug", "target" ))
+
+def generate_n_logs(n=1, tick_fn: Union[Generator, Iterable[int], int]=1, level_fn=level_generator):
     """Simulate a log partitionated in n components"""
+    level_gen = level_fn()
+
+    if isinstance(tick_fn, Generator):
+        tick_gen = tick_fn
+    elif isinstance(tick_fn, Iterable):
+        tick_gen = cycle(tick_fn)
+    else:
+        tick_gen = cycle((tick_fn,))
+
     with freeze_time(datetime.now()) as time_travel:
+        tick_sec: int = next(tick_gen)
         while True:
             # Simulate a scenario where the target job is waiting for being started
             for _ in range(n - 1):
+                level: str = next(level_gen)
+
                 time_travel.tick(tick_sec)
-                yield jobs_logs_response(finished=False, msg=[])
+                yield jobs_logs_response(finished=False, msg=[], lvl=level)
 
             time_travel.tick(tick_sec)
             yield jobs_logs_response(finished=True)
@@ -136,23 +158,23 @@ XMLRPC_FAULT = xmlrpc.client.Fault(0, "test")
 PROXY_SCENARIOS = {
     "finish case": (generate_n_logs(1), does_not_raise(), True),
     "works at last retry": (
-        generate_n_logs(n=3, tick_sec=DEVICE_HANGING_TIMEOUT_SEC + 1),
+        generate_n_logs(n=NUMBER_OF_MAX_ATTEMPTS, tick_fn=[ DEVICE_HANGING_TIMEOUT_SEC + 1 ] * NUMBER_OF_RETRIES_TIMEOUT_DETECTION + [1]),
         does_not_raise(),
         True,
     ),
     "timed out more times than retry attempts": (
-        generate_n_logs(n=4, tick_sec=DEVICE_HANGING_TIMEOUT_SEC + 1),
-        does_not_raise(),
+        generate_n_logs(n=4, tick_fn=DEVICE_HANGING_TIMEOUT_SEC + 1),
+        pytest.raises(SystemExit),
         False,
     ),
     "long log case, no silence": (
-        generate_n_logs(n=1000, tick_sec=0),
+        generate_n_logs(n=1000, tick_fn=0),
         does_not_raise(),
         True,
     ),
     "very long silence": (
-        generate_n_logs(n=4, tick_sec=100000),
-        does_not_raise(),
+        generate_n_logs(n=NUMBER_OF_MAX_ATTEMPTS + 1, tick_fn=100000),
+        pytest.raises(SystemExit),
         False,
     ),
     # If a protocol error happens, _call_proxy will retry without affecting timeouts
@@ -181,7 +203,8 @@ def test_retriable_follow_job(
     mock_sleep, side_effect, expectation, has_finished, mock_proxy
 ):
     with expectation:
-        result = retriable_follow_job(mock_proxy(side_effect=side_effect), "")
+        proxy = mock_proxy(side_effect=side_effect)
+        result = retriable_follow_job(proxy, "")
         assert has_finished == result
 
 
