@@ -125,7 +125,7 @@ r300_nir_algebraic_c = custom_target(
     '-p', join_paths(meson.source_root(), 'src/compiler/nir/'),
     '@OUTPUT@',
   ],
-  depend_files : nir_algebraic_py,
+  depend_files : nir_algebraic_depends,
 )
 
 libr300 = static_library(
