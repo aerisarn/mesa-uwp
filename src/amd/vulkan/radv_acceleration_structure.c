@@ -1906,6 +1906,9 @@ radv_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
                          cmd_buffer->device->meta_state.accel_struct_build.copy_p_layout,
                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
 
+   cmd_buffer->state.flush_bits |=
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR, NULL);
+
    radv_indirect_dispatch(cmd_buffer, src->bo,
                           src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
    radv_meta_restore(&saved_state, cmd_buffer);
@@ -2051,6 +2054,9 @@ radv_CmdCopyAccelerationStructureToMemoryKHR(
    radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
                          cmd_buffer->device->meta_state.accel_struct_build.copy_p_layout,
                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
+
+   cmd_buffer->state.flush_bits |=
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR, NULL);
 
    radv_indirect_dispatch(cmd_buffer, src->bo,
                           src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));

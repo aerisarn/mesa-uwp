@@ -3998,6 +3998,10 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2KHR dst_
    {
       switch ((VkAccessFlags2KHR)(1 << b)) {
       case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR:
+         /* SMEM loads are used to read compute dispatch size in shaders */
+         if (!cmd_buffer->device->load_grid_size_from_user_sgpr)
+            flush_bits |= RADV_CMD_FLAG_INV_SCACHE;
+         break;
       case VK_ACCESS_2_INDEX_READ_BIT_KHR:
       case VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
          break;
@@ -7263,24 +7267,17 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, struct radv_pipel
       radv_cs_add_buffer(ws, cs, info->indirect);
 
       if (loc->sgpr_idx != -1) {
-         if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3) {
-            unsigned reg = R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4;
+         unsigned reg = R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4;
 
+         if (cmd_buffer->device->load_grid_size_from_user_sgpr) {
+            assert(cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3);
             radeon_emit(cs, PKT3(PKT3_LOAD_SH_REG_INDEX, 3, 0));
             radeon_emit(cs, info->va);
             radeon_emit(cs, info->va >> 32);
             radeon_emit(cs, (reg - SI_SH_REG_OFFSET) >> 2);
             radeon_emit(cs, 3);
          } else {
-            for (unsigned i = 0; i < 3; ++i) {
-               radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-               radeon_emit(cs,
-                           COPY_DATA_SRC_SEL(COPY_DATA_SRC_MEM) | COPY_DATA_DST_SEL(COPY_DATA_REG));
-               radeon_emit(cs, (info->va + 4 * i));
-               radeon_emit(cs, (info->va + 4 * i) >> 32);
-               radeon_emit(cs, ((R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4) >> 2) + i);
-               radeon_emit(cs, 0);
-            }
+            radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, reg, info->va, true);
          }
       }
 
@@ -7335,12 +7332,22 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, struct radv_pipel
       }
 
       if (loc->sgpr_idx != -1) {
-         assert(loc->num_sgprs == 3);
+         if (cmd_buffer->device->load_grid_size_from_user_sgpr) {
+            assert(loc->num_sgprs == 3);
 
-         radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4, 3);
-         radeon_emit(cs, blocks[0]);
-         radeon_emit(cs, blocks[1]);
-         radeon_emit(cs, blocks[2]);
+            radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4, 3);
+            radeon_emit(cs, blocks[0]);
+            radeon_emit(cs, blocks[1]);
+            radeon_emit(cs, blocks[2]);
+         } else {
+            uint32_t offset;
+            if (!radv_cmd_buffer_upload_data(cmd_buffer, 12, blocks, &offset))
+               return;
+
+            uint64_t va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + offset;
+            radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
+                                     R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4, va, true);
+         }
       }
 
       if (offsets[0] || offsets[1] || offsets[2]) {

@@ -3721,7 +3721,14 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ctx->instance_id_replaced ? ctx->instance_id_replaced : ctx->abi->instance_id;
       break;
    case nir_intrinsic_load_num_workgroups:
-      result = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
+      if (ctx->abi->load_grid_size_from_user_sgpr) {
+         result = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
+      } else {
+         LLVMTypeRef ptr_type = ac_array_in_const_addr_space(ctx->ac.v3i32);
+         LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->args->num_work_groups);
+         ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
+         result = ac_build_load_invariant(&ctx->ac, ptr, ctx->ac.i32_0);
+      }
       break;
    case nir_intrinsic_load_local_invocation_index:
       result = visit_load_local_invocation_index(ctx);

@@ -127,6 +127,7 @@ struct radv_nir_compiler_options {
    bool wgp_mode;
    bool remap_spi_ps_input;
    bool disable_aniso_single_level;
+   bool load_grid_size_from_user_sgpr;
    enum radeon_family family;
    enum chip_class chip_class;
    const struct radeon_info *info;

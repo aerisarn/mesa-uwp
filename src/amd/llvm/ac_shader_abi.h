@@ -175,6 +175,9 @@ struct ac_shader_abi {
     * images.
     */
    bool disable_aniso_single_level;
+
+   /* Whether to inline the compute dispatch size in user sgprs. */
+   bool load_grid_size_from_user_sgpr;
 };
 
 #endif /* AC_SHADER_ABI_H */

@@ -211,7 +211,7 @@ allocate_user_sgprs(const struct radv_nir_compiler_options *options,
       if (info->cs.uses_sbt)
          user_sgpr_count += 1;
       if (info->cs.uses_grid_size)
-         user_sgpr_count += 3;
+         user_sgpr_count += options->load_grid_size_from_user_sgpr ? 3 : 2;
       if (info->cs.uses_ray_launch_size)
          user_sgpr_count += 3;
       break;
@@ -594,7 +594,10 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
       }
 
       if (info->cs.uses_grid_size) {
-         ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
+         if (options->load_grid_size_from_user_sgpr)
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 3, AC_ARG_INT, &args->ac.num_work_groups);
+         else
+            ac_add_arg(&args->ac, AC_ARG_SGPR, 2, AC_ARG_CONST_PTR, &args->ac.num_work_groups);
       }
 
       if (info->cs.uses_ray_launch_size) {
@@ -819,7 +822,8 @@ radv_declare_shader_args(const struct radv_nir_compiler_options *options,
          set_loc_shader_ptr(args, AC_UD_CS_SBT_DESCRIPTORS, &user_sgpr_idx);
       }
       if (args->ac.num_work_groups.used) {
-         set_loc_shader(args, AC_UD_CS_GRID_SIZE, &user_sgpr_idx, 3);
+         set_loc_shader(args, AC_UD_CS_GRID_SIZE, &user_sgpr_idx,
+                        options->load_grid_size_from_user_sgpr ? 3 : 2);
       }
       if (args->ac.ray_launch_size.used) {
          set_loc_shader(args, AC_UD_CS_RAY_LAUNCH_SIZE, &user_sgpr_idx, 3);
