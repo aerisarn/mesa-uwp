@@ -190,9 +190,12 @@ env["PIGLIT_PLATFORM"] = "gbm"
 if "DRI_PRIME" in env:
     print("Don't use DRI_PRIME. Instead use --gpu N")
     del env["DRI_PRIME"]
-if "gpu" in args:
-    env["DRI_PRIME"] = available_gpus[args.gpu][1]
-    env["WAFFLE_GBM_DEVICE"] = available_gpus[args.gpu][0]
+
+assert "gpu" in args, "--gpu defaults to 0"
+
+gpu_device = available_gpus[args.gpu][1]
+env["DRI_PRIME"] = gpu_device
+env["WAFFLE_GBM_DEVICE"] = available_gpus[args.gpu][0]
 
 # Use piglit's glinfo to determine the GPU name
 gpu_name = "unknown"
@@ -213,7 +216,7 @@ for line in p.stdout.decode().split("\n"):
         break
 
 output_folder = args.output_folder
-print_green("Tested GPU: '{}' ({})".format(gpu_name_full, gpu_name))
+print_green("Tested GPU: '{}' ({}) {}".format(gpu_name_full, gpu_name, gpu_device))
 print_green("Output folder: '{}'".format(output_folder))
 
 count = 1
