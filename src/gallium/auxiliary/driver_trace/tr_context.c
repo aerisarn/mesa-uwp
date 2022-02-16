@@ -28,7 +28,6 @@
 #include "util/ralloc.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
-#include "util/simple_list.h"
 #include "util/u_framebuffer.h"
 
 #include "pipe/p_format.h"
