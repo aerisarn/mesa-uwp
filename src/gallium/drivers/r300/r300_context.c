@@ -24,7 +24,6 @@
 
 #include "util/u_memory.h"
 #include "util/u_sampler.h"
-#include "util/simple_list.h"
 #include "util/u_upload_mgr.h"
 #include "util/os_time.h"
 #include "vl/vl_decoder.h"
