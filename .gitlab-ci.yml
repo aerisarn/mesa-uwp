@@ -759,8 +759,12 @@ debian-testing:
       -D valgrind=false
     MINIO_ARTIFACT_NAME: mesa-amd64
   script:
+    - .gitlab-ci/lava/lava-pytest.sh
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
+  artifacts:
+    reports:
+      junit: artifacts/ci_scripts_report.xml
 
 debian-testing-asan:
   extends:
