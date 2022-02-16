@@ -594,7 +594,8 @@ compile_shader(struct tu_device *dev, struct nir_shader *nir,
    struct tu6_global *global = dev->global_bo->map;
 
    assert(*offset + so->info.sizedwords <= ARRAY_SIZE(global->shaders));
-   dev->global_shaders[idx] = so;
+   dev->global_shaders[idx] = sh;
+   dev->global_shader_variants[idx] = so;
    memcpy(&global->shaders[*offset], so->bin,
           sizeof(uint32_t) * so->info.sizedwords);
    dev->global_shader_va[idx] = dev->global_bo->iova +
@@ -623,7 +624,7 @@ tu_destroy_clear_blit_shaders(struct tu_device *dev)
 {
    for (unsigned i = 0; i < GLOBAL_SH_COUNT; i++) {
       if (dev->global_shaders[i])
-         ir3_shader_destroy(dev->global_shaders[i]->shader);
+         ir3_shader_destroy(dev->global_shaders[i]);
    }
 }
 
@@ -634,7 +635,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    enum global_shader vs_id =
       blit ? GLOBAL_SH_VS_BLIT : GLOBAL_SH_VS_CLEAR;
 
-   struct ir3_shader_variant *vs = cmd->device->global_shaders[vs_id];
+   struct ir3_shader_variant *vs = cmd->device->global_shader_variants[vs_id];
    uint64_t vs_iova = cmd->device->global_shader_va[vs_id];
 
    enum global_shader fs_id = GLOBAL_SH_FS_BLIT;
@@ -648,7 +649,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit,
    if (!blit)
       fs_id = GLOBAL_SH_FS_CLEAR0 + num_rts;
 
-   struct ir3_shader_variant *fs = cmd->device->global_shaders[fs_id];
+   struct ir3_shader_variant *fs = cmd->device->global_shader_variants[fs_id];
    uint64_t fs_iova = cmd->device->global_shader_va[fs_id];
 
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
