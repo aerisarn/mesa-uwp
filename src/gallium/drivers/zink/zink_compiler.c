@@ -566,7 +566,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
             packed_streams[slot] |= BITFIELD_BIT(output->stream);
             packed_buffers[slot] |= BITFIELD_BIT(output->output_buffer);
             for (unsigned j = 0; j < output->num_components; j++)
-               packed_offsets[output->register_index][j + output->start_component] = output->dst_offset;
+               packed_offsets[output->register_index][j + output->start_component] = output->dst_offset + j;
          }
       }
    }
