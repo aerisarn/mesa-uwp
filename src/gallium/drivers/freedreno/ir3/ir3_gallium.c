@@ -585,10 +585,10 @@ ir3_update_max_tf_vtx(struct fd_context *ctx,
                       const struct ir3_shader_variant *v)
 {
    struct fd_streamout_stateobj *so = &ctx->streamout;
-   struct ir3_stream_output_info *info = &v->shader->stream_output;
+   const struct ir3_stream_output_info *info = &v->stream_output;
    uint32_t maxvtxcnt = 0x7fffffff;
 
-   if (v->shader->stream_output.num_outputs == 0)
+   if (v->stream_output.num_outputs == 0)
       maxvtxcnt = 0;
    if (so->num_targets == 0)
       maxvtxcnt = 0;

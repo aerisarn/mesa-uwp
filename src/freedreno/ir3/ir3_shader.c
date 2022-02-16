@@ -334,6 +334,7 @@ alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
    v->key = *key;
    v->type = shader->type;
    v->mergedregs = shader->compiler->gen >= 6;
+   v->stream_output = shader->stream_output;
 
    if (!v->binning_pass)
       v->const_state = rzalloc_size(v, sizeof(*v->const_state));
@@ -855,7 +856,7 @@ void
 ir3_link_stream_out(struct ir3_shader_linkage *l,
                     const struct ir3_shader_variant *v)
 {
-   const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
+   const struct ir3_stream_output_info *strmout = &v->stream_output;
 
    /*
     * First, any stream-out varyings not already in linkage map (ie. also

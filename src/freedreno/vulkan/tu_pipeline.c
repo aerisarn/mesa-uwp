@@ -779,7 +779,7 @@ tu6_setup_streamout(struct tu_cs *cs,
                     const struct ir3_shader_variant *v,
                     struct ir3_shader_linkage *l)
 {
-   const struct ir3_stream_output_info *info = &v->shader->stream_output;
+   const struct ir3_stream_output_info *info = &v->stream_output;
    /* Note: 64 here comes from the HW layout of the program RAM. The program
     * for stream N is at DWORD 64 * N.
     */
@@ -1016,7 +1016,7 @@ tu6_emit_vpc(struct tu_cs *cs,
    if (fs)
       ir3_link_shaders(&linkage, last_shader, fs, true);
 
-   if (last_shader->shader->stream_output.num_outputs)
+   if (last_shader->stream_output.num_outputs)
       ir3_link_stream_out(&linkage, last_shader);
 
    /* We do this after linking shaders in order to know whether PrimID

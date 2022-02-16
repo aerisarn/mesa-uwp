@@ -189,7 +189,7 @@ setup_stream_out(struct fd_context *ctx, struct fd6_program_state *state,
                  const struct ir3_shader_variant *v,
                  struct ir3_shader_linkage *l)
 {
-   const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
+   const struct ir3_stream_output_info *strmout = &v->stream_output;
 
    /* Note: 64 here comes from the HW layout of the program RAM. The program
     * for stream N is at DWORD 64 * N.
@@ -580,7 +580,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
    struct ir3_shader_linkage l = {0};
    const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
 
-   bool do_streamout = (last_shader->shader->stream_output.num_outputs > 0);
+   bool do_streamout = (last_shader->stream_output.num_outputs > 0);
    uint8_t clip_mask = last_shader->clip_mask,
            cull_mask = last_shader->cull_mask;
    uint8_t clip_cull_mask = clip_mask | cull_mask;
@@ -1248,7 +1248,7 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
     * binning pass VS will have outputs on other than position/psize
     * stripped out:
     */
-   state->bs = vs->shader->stream_output.num_outputs ? vs : bs;
+   state->bs = vs->stream_output.num_outputs ? vs : bs;
    state->vs = vs;
    state->hs = hs;
    state->ds = ds;
@@ -1285,8 +1285,8 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
    setup_stateobj(state->stateobj, ctx, state, key, false);
    state->interp_stateobj = create_interp_stateobj(ctx, state);
 
-   struct ir3_stream_output_info *stream_output =
-      &fd6_last_shader(state)->shader->stream_output;
+   const struct ir3_stream_output_info *stream_output =
+      &fd6_last_shader(state)->stream_output;
    if (stream_output->num_outputs > 0)
       state->stream_output = stream_output;
 

@@ -88,7 +88,7 @@ static void
 emit_stream_out(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v,
                 struct ir3_shader_linkage *l)
 {
-   const struct ir3_stream_output_info *strmout = &v->shader->stream_output;
+   const struct ir3_stream_output_info *strmout = &v->stream_output;
    unsigned ncomp[PIPE_MAX_SO_BUFFERS] = {0};
    unsigned prog[align(l->max_loc, 2) / 2];
 
@@ -249,7 +249,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
    setup_stages(emit, s);
 
-   bool do_streamout = (s[VS].v->shader->stream_output.num_outputs > 0);
+   bool do_streamout = (s[VS].v->stream_output.num_outputs > 0);
    uint8_t clip_mask = s[VS].v->clip_mask,
            cull_mask = s[VS].v->cull_mask;
    uint8_t clip_cull_mask = clip_mask | cull_mask;

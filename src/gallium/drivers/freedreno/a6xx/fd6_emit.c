@@ -856,7 +856,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt
 {
    struct fd_context *ctx = emit->ctx;
    const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
-   struct ir3_stream_output_info *info = prog->stream_output;
+   const struct ir3_stream_output_info *info = prog->stream_output;
    struct fd_streamout_stateobj *so = &ctx->streamout;
 
    emit->streamout_mask = 0;

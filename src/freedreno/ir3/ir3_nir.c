@@ -840,7 +840,7 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 
    ir3_nir_scan_driver_consts(compiler, nir, const_state);
 
-   if ((compiler->gen < 5) && (v->shader->stream_output.num_outputs > 0)) {
+   if ((compiler->gen < 5) && (v->stream_output.num_outputs > 0)) {
       const_state->num_driver_params =
          MAX2(const_state->num_driver_params, IR3_DP_VTXCNT_MAX + 1);
    }
@@ -892,7 +892,7 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
    }
 
    if ((v->type == MESA_SHADER_VERTEX) && (compiler->gen < 5) &&
-       v->shader->stream_output.num_outputs > 0) {
+       v->stream_output.num_outputs > 0) {
       const_state->offsets.tfbo = constoff;
       constoff += align(IR3_MAX_SO_BUFFERS * ptrsz, 4) / 4;
    }

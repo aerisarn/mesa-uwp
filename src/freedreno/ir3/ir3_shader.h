@@ -731,6 +731,9 @@ struct ir3_shader_variant {
    /* Important for compute shader to determine max reg footprint */
    bool has_barrier;
 
+   /* For when we don't have a shader, variant's copy of streamout state */
+   struct ir3_stream_output_info stream_output;
+
    struct ir3_disasm_info disasm_info;
 };
 
