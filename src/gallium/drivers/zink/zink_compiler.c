@@ -529,7 +529,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
    }
 
    bool inlined[VARYING_SLOT_MAX][4] = {0};
-   uint32_t packed = 0;
+   uint64_t packed = 0;
    uint8_t packed_components[VARYING_SLOT_MAX] = {0};
    uint8_t packed_streams[VARYING_SLOT_MAX] = {0};
    uint8_t packed_buffers[VARYING_SLOT_MAX] = {0};
@@ -561,7 +561,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
                inlined[slot][output->start_component + j] = true;
          } else {
             /* otherwise store some metadata for later */
-            packed |= BITFIELD_BIT(slot);
+            packed |= BITFIELD64_BIT(slot);
             packed_components[slot]++;
             packed_streams[slot] |= BITFIELD_BIT(output->stream);
             packed_buffers[slot] |= BITFIELD_BIT(output->output_buffer);
@@ -585,7 +585,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
           * being output with the same stream on the same buffer, this entire variable
           * can be consolidated into a single output to conserve locations
           */
-         if (packed & BITFIELD_BIT(slot) &&
+         if (packed & BITFIELD64_BIT(slot) &&
              glsl_get_components(var->type) == packed_components[slot] &&
              util_bitcount(packed_streams[slot]) == 1 &&
              util_bitcount(packed_buffers[slot]) == 1) {
@@ -607,7 +607,7 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
                var->data.stream = output->stream;
                for (unsigned j = 0; j < packed_components[slot]; j++)
                   inlined[slot][j] = true;
-               packed &= ~BITFIELD_BIT(slot);
+               packed &= ~BITFIELD64_BIT(slot);
                continue;
             }
          }
