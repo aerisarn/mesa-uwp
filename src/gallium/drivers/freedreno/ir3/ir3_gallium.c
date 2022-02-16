@@ -102,7 +102,7 @@ dump_shader_info(struct ir3_shader_variant *v,
 static void
 upload_shader_variant(struct ir3_shader_variant *v)
 {
-   struct ir3_compiler *compiler = v->shader->compiler;
+   struct ir3_compiler *compiler = v->compiler;
 
    assert(!v->bo);
 

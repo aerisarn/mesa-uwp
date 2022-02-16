@@ -408,7 +408,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 {
    struct ir3_const_state *const_state = ir3_const_state(v);
    struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
-   struct ir3_compiler *compiler = v->shader->compiler;
+   struct ir3_compiler *compiler = v->compiler;
 
    /* Limit our uploads to the amount of constant buffer space available in
     * the hardware, minus what the shader compiler may need for various
@@ -464,7 +464,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 bool
 ir3_nir_lower_ubo_loads(nir_shader *nir, struct ir3_shader_variant *v)
 {
-   struct ir3_compiler *compiler = v->shader->compiler;
+   struct ir3_compiler *compiler = v->compiler;
    /* For the binning pass variant, we re-use the corresponding draw-pass
     * variants const_state and ubo state.  To make these clear, in this
     * pass it is const (read-only)
@@ -650,7 +650,7 @@ ir3_nir_lower_load_constant(nir_shader *nir, struct ir3_shader_variant *v)
       const_state);
 
    if (progress) {
-      struct ir3_compiler *compiler = v->shader->compiler;
+      struct ir3_compiler *compiler = v->compiler;
 
       /* Save a copy of the NIR constant data to the variant for
        * inclusion in the final assembly.

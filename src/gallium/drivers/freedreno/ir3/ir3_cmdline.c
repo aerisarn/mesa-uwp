@@ -426,6 +426,7 @@ main(int argc, char **argv)
    struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
    v->type = shader->type;
    v->shader = shader;
+   v->compiler = compiler;
    v->key = key;
    v->const_state = rzalloc_size(v, sizeof(*v->const_state));
 

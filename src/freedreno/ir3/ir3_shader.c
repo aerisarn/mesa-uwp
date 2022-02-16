@@ -129,7 +129,7 @@ fixup_regfootprint(struct ir3_shader_variant *v)
 void *
 ir3_shader_assemble(struct ir3_shader_variant *v)
 {
-   const struct ir3_compiler *compiler = v->shader->compiler;
+   const struct ir3_compiler *compiler = v->compiler;
    struct ir3_info *info = &v->info;
    uint32_t *bin;
 
@@ -140,7 +140,7 @@ ir3_shader_assemble(struct ir3_shader_variant *v)
        * to indirectly upload from.
        */
       info->constant_data_offset =
-         align(info->size, v->shader->compiler->const_upload_unit * 16);
+         align(info->size, v->compiler->const_upload_unit * 16);
       info->size = info->constant_data_offset + v->constant_data_size;
    }
 
@@ -334,6 +334,7 @@ alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
    v->nonbinning = nonbinning;
    v->key = *key;
    v->type = shader->type;
+   v->compiler = shader->compiler;
    v->mergedregs = shader->compiler->gen >= 6;
    v->stream_output = shader->stream_output;
 

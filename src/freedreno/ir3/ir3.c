@@ -113,7 +113,7 @@ collect_reg_info(struct ir3_instruction *instr, struct ir3_register *reg,
 bool
 ir3_should_double_threadsize(struct ir3_shader_variant *v, unsigned regs_count)
 {
-   const struct ir3_compiler *compiler = v->shader->compiler;
+   const struct ir3_compiler *compiler = v->compiler;
 
    /* If the user forced a particular wavesize respect that. */
    if (v->real_wavesize == IR3_SINGLE_ONLY)
@@ -180,7 +180,7 @@ unsigned
 ir3_get_reg_independent_max_waves(struct ir3_shader_variant *v,
                                   bool double_threadsize)
 {
-   const struct ir3_compiler *compiler = v->shader->compiler;
+   const struct ir3_compiler *compiler = v->compiler;
    unsigned max_waves = compiler->max_waves;
 
    /* Compute the limit based on branchstack */
@@ -247,7 +247,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
 {
    struct ir3_info *info = &v->info;
    struct ir3 *shader = v->ir;
-   const struct ir3_compiler *compiler = v->shader->compiler;
+   const struct ir3_compiler *compiler = v->compiler;
 
    memset(info, 0, sizeof(*info));
    info->data = v;

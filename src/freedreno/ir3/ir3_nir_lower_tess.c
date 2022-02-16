@@ -357,7 +357,7 @@ ir3_nir_lower_to_explicit_input(nir_shader *shader,
     * HS uses a different primitive id, which starts at bit 16 in the header
     */
    if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
-       v->shader->compiler->tess_use_shared)
+       v->compiler->tess_use_shared)
       state.local_primitive_id_start = 16;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);

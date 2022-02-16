@@ -530,6 +530,7 @@ struct ir3_shader_variant {
    /* replicated here to avoid passing extra ptrs everywhere: */
    gl_shader_stage type;
    struct ir3_shader *shader;
+   struct ir3_compiler *compiler;
 
    char *name;
 
@@ -896,7 +897,7 @@ ir3_const_state(const struct ir3_shader_variant *v)
 static inline unsigned
 ir3_max_const(const struct ir3_shader_variant *v)
 {
-   const struct ir3_compiler *compiler = v->shader->compiler;
+   const struct ir3_compiler *compiler = v->compiler;
 
    if ((v->type == MESA_SHADER_COMPUTE) ||
        (v->type == MESA_SHADER_KERNEL)) {
@@ -1151,15 +1152,15 @@ static inline uint32_t
 ir3_shader_branchstack_hw(const struct ir3_shader_variant *v)
 {
    /* Dummy shader */
-   if (!v->shader)
+   if (!v->compiler)
       return 0;
 
-   if (v->shader->compiler->gen < 5)
+   if (v->compiler->gen < 5)
       return v->branchstack;
 
    if (v->branchstack > 0) {
       uint32_t branchstack = v->branchstack / 2 + 1;
-      return MIN2(branchstack, v->shader->compiler->branchstack_size / 2);
+      return MIN2(branchstack, v->compiler->branchstack_size / 2);
    } else {
       return 0;
    }

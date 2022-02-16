@@ -608,7 +608,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
       bool view_zero =
          so->key.view_zero && (s->info.inputs_read & VARYING_BIT_VIEWPORT);
 
-      if (so->key.ucp_enables && !so->shader->compiler->has_clip_cull)
+      if (so->key.ucp_enables && !so->compiler->has_clip_cull)
          progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, true);
       if (layer_zero || view_zero)
          progress |= OPT(s, ir3_nir_lower_view_layer_id, layer_zero, view_zero);
@@ -632,7 +632,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
     * nir_opt_large_constants, because loading from a UBO is much, much less
     * expensive.
     */
-   if (so->shader->compiler->has_pvtmem) {
+   if (so->compiler->has_pvtmem) {
       progress |= OPT(s, nir_lower_vars_to_scratch, nir_var_function_temp,
                       16 * 16 /* bytes */, glsl_get_natural_size_align_bytes);
    }
@@ -657,7 +657,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
     * have to lower the preamble after UBO lowering so that UBO lowering can
     * insert instructions in the preamble to push UBOs.
     */
-   if (so->shader->compiler->has_preamble &&
+   if (so->compiler->has_preamble &&
        !(ir3_shader_debug & IR3_DBG_NOPREAMBLE))
       progress |= OPT(s, ir3_nir_opt_preamble, so);
 
@@ -673,20 +673,20 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
    /* UBO offset lowering has to come after we've decided what will
     * be left as load_ubo
     */
-   if (so->shader->compiler->gen >= 6)
+   if (so->compiler->gen >= 6)
       progress |= OPT(s, nir_lower_ubo_vec4);
 
    OPT_V(s, ir3_nir_lower_io_offsets);
 
    if (progress)
-      ir3_optimize_loop(so->shader->compiler, s);
+      ir3_optimize_loop(so->compiler, s);
 
    /* Fixup indirect load_uniform's which end up with a const base offset
     * which is too large to encode.  Do this late(ish) so we actually
     * can differentiate indirect vs non-indirect.
     */
    if (OPT(s, ir3_nir_fixup_load_uniform))
-      ir3_optimize_loop(so->shader->compiler, s);
+      ir3_optimize_loop(so->compiler, s);
 
    /* Do late algebraic optimization to turn add(a, neg(b)) back into
     * subs, then the mandatory cleanup after algebraic.  Note that it may
@@ -834,7 +834,7 @@ void
 ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
                       struct ir3_const_state *const_state)
 {
-   struct ir3_compiler *compiler = v->shader->compiler;
+   struct ir3_compiler *compiler = v->compiler;
 
    memset(&const_state->offsets, ~0, sizeof(const_state->offsets));
 
