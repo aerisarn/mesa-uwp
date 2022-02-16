@@ -31,7 +31,8 @@
 #include "ir3_shader.h"
 
 struct ir3_context *
-ir3_context_init(struct ir3_compiler *compiler, struct ir3_shader_variant *so)
+ir3_context_init(struct ir3_compiler *compiler, struct ir3_shader *shader,
+                 struct ir3_shader_variant *so)
 {
    struct ir3_context *ctx = rzalloc(NULL, struct ir3_context);
 
@@ -76,7 +77,7 @@ ir3_context_init(struct ir3_compiler *compiler, struct ir3_shader_variant *so)
     * creating duplicate variants..
     */
 
-   ctx->s = nir_shader_clone(ctx, so->shader->nir);
+   ctx->s = nir_shader_clone(ctx, shader->nir);
    ir3_nir_lower_variant(so, ctx->s);
 
    /* this needs to be the last pass run, so do this here instead of

@@ -217,6 +217,7 @@ const nir_shader_compiler_options *
 ir3_get_compiler_options(struct ir3_compiler *compiler);
 
 int ir3_compile_shader_nir(struct ir3_compiler *compiler,
+                           struct ir3_shader *shader,
                            struct ir3_shader_variant *so);
 
 /* gpu pointer size in units of 32bit registers/slots */

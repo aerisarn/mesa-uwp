@@ -4592,6 +4592,7 @@ collect_tex_prefetches(struct ir3_context *ctx, struct ir3 *ir)
 
 int
 ir3_compile_shader_nir(struct ir3_compiler *compiler,
+                       struct ir3_shader *shader,
                        struct ir3_shader_variant *so)
 {
    struct ir3_context *ctx;
@@ -4601,7 +4602,7 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 
    assert(!so->ir);
 
-   ctx = ir3_context_init(compiler, so);
+   ctx = ir3_context_init(compiler, shader, so);
    if (!ctx) {
       DBG("INIT failed!");
       ret = -1;

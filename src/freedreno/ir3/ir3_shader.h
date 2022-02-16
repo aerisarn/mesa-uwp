@@ -529,7 +529,6 @@ struct ir3_shader_variant {
 
    /* replicated here to avoid passing extra ptrs everywhere: */
    gl_shader_stage type;
-   struct ir3_shader *shader;
    struct ir3_compiler *compiler;
 
    char *name;

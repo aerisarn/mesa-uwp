@@ -425,7 +425,6 @@ main(int argc, char **argv)
 
    struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
    v->type = shader->type;
-   v->shader = shader;
    v->compiler = compiler;
    v->key = key;
    v->const_state = rzalloc_size(v, sizeof(*v->const_state));
@@ -436,7 +435,7 @@ main(int argc, char **argv)
    ir3_nir_lower_variant(v, nir);
 
    info = "NIR compiler";
-   ret = ir3_compile_shader_nir(compiler, v);
+   ret = ir3_compile_shader_nir(compiler, shader, v);
    if (ret) {
       fprintf(stderr, "compiler failed!\n");
       return ret;

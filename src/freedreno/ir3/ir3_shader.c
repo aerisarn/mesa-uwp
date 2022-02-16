@@ -288,19 +288,19 @@ assemble_variant(struct ir3_shader_variant *v)
 }
 
 static bool
-compile_variant(struct ir3_shader_variant *v)
+compile_variant(struct ir3_shader *shader, struct ir3_shader_variant *v)
 {
-   int ret = ir3_compile_shader_nir(v->shader->compiler, v);
+   int ret = ir3_compile_shader_nir(shader->compiler, shader, v);
    if (ret) {
-      mesa_loge("compile failed! (%s:%s)", v->shader->nir->info.name,
-                v->shader->nir->info.label);
+      mesa_loge("compile failed! (%s:%s)", shader->nir->info.name,
+                shader->nir->info.label);
       return false;
    }
 
    assemble_variant(v);
    if (!v->bin) {
-      mesa_loge("assemble failed! (%s:%s)", v->shader->nir->info.name,
-                v->shader->nir->info.label);
+      mesa_loge("assemble failed! (%s:%s)", shader->nir->info.name,
+                shader->nir->info.label);
       return false;
    }
 
@@ -329,7 +329,6 @@ alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
 
    v->id = ++shader->variant_count;
    v->shader_id = shader->id;
-   v->shader = shader;
    v->binning_pass = !!nonbinning;
    v->nonbinning = nonbinning;
    v->key = *key;
@@ -410,7 +409,7 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
       v->binning->disasm_info.write_disasm = write_disasm;
    }
 
-   if (ir3_disk_cache_retrieve(shader->compiler, v))
+   if (ir3_disk_cache_retrieve(shader, v))
       return v;
 
    if (!shader->nir_finalized) {
@@ -428,13 +427,13 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
       shader->nir_finalized = true;
    }
 
-   if (!compile_variant(v))
+   if (!compile_variant(shader, v))
       goto fail;
 
-   if (needs_binning_variant(v) && !compile_variant(v->binning))
+   if (needs_binning_variant(v) && !compile_variant(shader, v->binning))
       goto fail;
 
-   ir3_disk_cache_store(shader->compiler, v);
+   ir3_disk_cache_store(shader, v);
 
    return v;
 

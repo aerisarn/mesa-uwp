@@ -105,17 +105,17 @@ ir3_disk_cache_init_shader_key(struct ir3_compiler *compiler,
 }
 
 static void
-compute_variant_key(struct ir3_compiler *compiler, struct ir3_shader_variant *v,
+compute_variant_key(struct ir3_shader *shader, struct ir3_shader_variant *v,
                     cache_key cache_key)
 {
    struct blob blob;
    blob_init(&blob);
 
-   blob_write_bytes(&blob, &v->shader->cache_key, sizeof(v->shader->cache_key));
+   blob_write_bytes(&blob, &shader->cache_key, sizeof(shader->cache_key));
    blob_write_bytes(&blob, &v->key, sizeof(v->key));
    blob_write_uint8(&blob, v->binning_pass);
 
-   disk_cache_compute_key(compiler->disk_cache, blob.data, blob.size,
+   disk_cache_compute_key(shader->compiler->disk_cache, blob.data, blob.size,
                           cache_key);
 
    blob_finish(&blob);
@@ -164,15 +164,15 @@ store_variant(struct blob *blob, struct ir3_shader_variant *v)
 }
 
 bool
-ir3_disk_cache_retrieve(struct ir3_compiler *compiler,
+ir3_disk_cache_retrieve(struct ir3_shader *shader,
                         struct ir3_shader_variant *v)
 {
-   if (!compiler->disk_cache)
+   if (!shader->compiler->disk_cache)
       return false;
 
    cache_key cache_key;
 
-   compute_variant_key(compiler, v, cache_key);
+   compute_variant_key(shader, v, cache_key);
 
    if (debug) {
       char sha1[41];
@@ -181,7 +181,7 @@ ir3_disk_cache_retrieve(struct ir3_compiler *compiler,
    }
 
    size_t size;
-   void *buffer = disk_cache_get(compiler->disk_cache, cache_key, &size);
+   void *buffer = disk_cache_get(shader->compiler->disk_cache, cache_key, &size);
 
    if (debug)
       fprintf(stderr, "%s\n", buffer ? "found" : "missing");
@@ -203,15 +203,15 @@ ir3_disk_cache_retrieve(struct ir3_compiler *compiler,
 }
 
 void
-ir3_disk_cache_store(struct ir3_compiler *compiler,
+ir3_disk_cache_store(struct ir3_shader *shader,
                      struct ir3_shader_variant *v)
 {
-   if (!compiler->disk_cache)
+   if (!shader->compiler->disk_cache)
       return;
 
    cache_key cache_key;
 
-   compute_variant_key(compiler, v, cache_key);
+   compute_variant_key(shader, v, cache_key);
 
    if (debug) {
       char sha1[41];
@@ -227,6 +227,6 @@ ir3_disk_cache_store(struct ir3_compiler *compiler,
    if (v->binning)
       store_variant(&blob, v->binning);
 
-   disk_cache_put(compiler->disk_cache, cache_key, blob.data, blob.size, NULL);
+   disk_cache_put(shader->compiler->disk_cache, cache_key, blob.data, blob.size, NULL);
    blob_finish(&blob);
 }
