@@ -344,6 +344,19 @@ for child in root.findall('enum'):
     enums[safe_name(child.attrib['name'])] = build_enum(child)
 
 MODIFIERS = {
+    # Texture instructions share a common encoding
+    "wide_indices": Flag("wide_indices", 8),
+    "array_enable": Flag("array_enable", 10),
+    "texel_offset": Flag("texel_offset", 11),
+    "shadow": Flag("shadow", 12),
+    "lod_mode": Modifier("lod_mode", 13, 3),
+    "write_mask": Modifier("write_mask", 22, 4),
+    "register_type": Modifier("register_type", 26, 2),
+    "dimension": Modifier("dimension", 28, 2),
+    "skip": Flag("skip", 39),
+    "register_width": Modifier("register_width", 46, 1, force_enum = "register_width"),
+    "secondary_register_width": Modifier("secondary_register_width", 47, 1, force_enum = "register_width"),
+
     "inactive_result": Modifier("inactive_result", 22, 4),
     "store_segment": Modifier("store_segment", 24, 2),
     "regfmt": Modifier("register_format", 24, 3),
@@ -359,6 +372,7 @@ MODIFIERS = {
     "cmp": Modifier("condition", 32, 3),
     "clamp": Modifier("clamp", 32, 2),
     "sr_count": Modifier("staging_register_count", 33, 3, implied = True),
+    "sr_write_count": Modifier("staging_register_write_count", 36, 3, implied = True),
 
     "conservative": Flag("conservative", 35),
     "subgroup": Modifier("subgroup_size", 36, 4),

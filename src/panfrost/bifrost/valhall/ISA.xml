@@ -518,6 +518,50 @@
     <value>sr7</value>
   </enum>
 
+  <enum name="Staging register write count" implied="true">
+    <value>write1</value>
+    <value>write2</value>
+    <value>write3</value>
+    <value>write4</value>
+    <value>write5</value>
+    <value>write6</value>
+    <value>write7</value>
+    <value>write8</value>
+  </enum>
+
+  <enum name="Write mask">
+    <reserved/>
+    <value>r</value>
+    <value>g</value>
+    <value>rg</value>
+    <value>b</value>
+    <value>rb</value>
+    <value>gb</value>
+    <value>rgb</value>
+    <value>a</value>
+    <value>ra</value>
+    <value>ga</value>
+    <value>rga</value>
+    <value>ba</value>
+    <value>rba</value>
+    <value>gba</value>
+    <value default="true">rgba</value>
+  </enum>
+
+  <enum name="Register type">
+    <desc>Unsized type, part of a register format.</desc>
+    <reserved/>
+    <value name="Float">f</value>
+    <value name="Unsigned">u</value>
+    <value name="Signed">s</value>
+  </enum>
+
+  <enum name="Register width">
+    <desc>Untyped size, part of a register format.</desc>
+    <value>16</value>
+    <value>32</value>
+  </enum>
+
   <enum name="Vector size">
     <desc>Number of channels loaded/stored for general memory access.</desc>
     <value default="true" desc="Scalar">none</value>
@@ -1972,28 +2016,46 @@
 
   <ins name="TEX_FETCH" title="Texel fetch" opcode="0x125" unit="T">
     <desc>Unfiltered textured instruction.</desc>
-    <sr read="true"/>
-    <sr write="true" count="4"/>
-    <mod name="explicit_offset" start="11" size="1"/>
-    <mod name="dimension" start="28" size="2"/>
-    <mod name="skip" start="39" size="1"/>
-    <sr_count/>
     <slot/>
+    <skip/>
+    <register_type/>
+    <register_width/>
+    <write_mask/>
+    <dimension/>
+    <wide_indices/>
+    <array_enable/>
+    <texel_offset/>
+
+    <!-- Leave secondary_register_width as 0 -->
+    <sr_count/>
+    <sr_write_count/>
+
+    <sr write="true" flags="false"/>
+    <sr read="true" flags="false"/>
     <src>Image to read from</src>
   </ins>
 
-  <ins name="TEX" title="Texture load" opcode="0x128" unit="T">
+  <ins name="TEX_SINGLE" title="Texture load" opcode="0x128" unit="T">
     <desc>Ordinary texturing instruction using a sampler.</desc>
-    <sr read="true"/>
-    <sr write="true" count="4"/>
-    <src>Image to read from</src>
-    <mod name="explicit_offset" start="11" size="1"/>
-    <mod name="shadow" start="12" size="1"/>
-    <mod name="lod_mode" start="13" size="3"/>
-    <mod name="dimension" start="28" size="2"/>
-    <mod name="skip" start="39" size="1"/>
-    <sr_count/>
     <slot/>
+    <skip/>
+    <register_type/>
+    <register_width/>
+    <write_mask/>
+    <dimension/>
+    <wide_indices/>
+    <array_enable/>
+    <texel_offset/>
+    <shadow/>
+    <lod_mode/>
+
+    <!-- Leave secondary_register_width as 0 -->
+    <sr_count/>
+    <sr_write_count/>
+
+    <sr write="true" flags="false"/>
+    <sr read="true" flags="false"/>
+    <src>Image to read from</src>
   </ins>
 
   <ins name="TODO.VAR_TEX" title="Fused varying-texturing" opcode="0x130" unit="VT">
@@ -2005,6 +2067,7 @@
     <mod name="dimension" start="28" size="2"/>
     <mod name="skip" start="39" size="1"/>
     <slot/>
+    <sr_write_count/>
     <src>Image to read from</src>
   </ins>
 
