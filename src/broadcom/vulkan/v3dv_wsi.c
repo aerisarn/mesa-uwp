@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Raspberry Pi
+ * Copyright © 2020 Raspberry Pi Ltd
  * based on intel anv code:
  * Copyright © 2015 Intel Corporation
 
