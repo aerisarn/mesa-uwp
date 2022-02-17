@@ -11286,8 +11286,20 @@ emit_streamout(isel_context* ctx, unsigned stream)
 Pseudo_instruction*
 add_startpgm(struct isel_context* ctx)
 {
-   aco_ptr<Pseudo_instruction> startpgm{
-      create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, ctx->args->ac.arg_count)};
+   unsigned def_count = 0;
+   for (unsigned i = 0; i < ctx->args->ac.arg_count; i++) {
+      if (ctx->args->ac.args[i].skip)
+         continue;
+      unsigned align = MIN2(4, util_next_power_of_two(ctx->args->ac.args[i].size));
+      if (ctx->args->ac.args[i].file == AC_ARG_SGPR && ctx->args->ac.args[i].offset % align)
+         def_count += ctx->args->ac.args[i].size;
+      else
+         def_count++;
+   }
+
+   Pseudo_instruction* startpgm =
+      create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, def_count);
+   ctx->block->instructions.emplace_back(startpgm);
    for (unsigned i = 0, arg = 0; i < ctx->args->ac.arg_count; i++) {
       if (ctx->args->ac.args[i].skip)
          continue;
@@ -11296,14 +11308,22 @@ add_startpgm(struct isel_context* ctx)
       unsigned size = ctx->args->ac.args[i].size;
       unsigned reg = ctx->args->ac.args[i].offset;
       RegClass type = RegClass(file == AC_ARG_SGPR ? RegType::sgpr : RegType::vgpr, size);
-      Temp dst = ctx->program->allocateTmp(type);
-      ctx->arg_temps[i] = dst;
-      startpgm->definitions[arg] = Definition(dst);
-      startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
-      arg++;
+
+      if (file == AC_ARG_SGPR && reg % MIN2(4, util_next_power_of_two(size))) {
+         Temp elems[16];
+         for (unsigned j = 0; j < size; j++) {
+            elems[j] = ctx->program->allocateTmp(s1);
+            startpgm->definitions[arg++] = Definition(elems[j].id(), PhysReg{reg + j}, s1);
+         }
+         ctx->arg_temps[i] = create_vec_from_array(ctx, elems, size, RegType::sgpr, 4);
+      } else {
+         Temp dst = ctx->program->allocateTmp(type);
+         ctx->arg_temps[i] = dst;
+         startpgm->definitions[arg] = Definition(dst);
+         startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
+         arg++;
+      }
    }
-   Pseudo_instruction* instr = startpgm.get();
-   ctx->block->instructions.push_back(std::move(startpgm));
 
    /* Stash these in the program so that they can be accessed later when
     * handling spilling.
@@ -11323,7 +11343,7 @@ add_startpgm(struct isel_context* ctx)
       }
    }
 
-   return instr;
+   return startpgm;
 }
 
 void
