@@ -275,9 +275,10 @@ struct pvr_device_features {
    bool has_simple_parameter_format_version : 1;
    bool has_slc_cache_line_size_bits : 1;
    bool has_slc_mcu_cache_controls : 1;
+   bool has_tf_bicubic_filter : 1;
+   bool has_tile_size_16x16 : 1;
    bool has_tile_size_x : 1;
    bool has_tile_size_y : 1;
-   bool has_tile_size_16x16 : 1;
    bool has_tpu_array_textures : 1;
    bool has_tpu_extended_integer_lookup : 1;
    bool has_tpu_image_state_v2 : 1;
@@ -330,6 +331,7 @@ struct pvr_device_quirks {
    bool has_brn48492 : 1;
    bool has_brn48545 : 1;
    bool has_brn49032 : 1;
+   bool has_brn51025 : 1;
    bool has_brn51210 : 1;
    bool has_brn51764 : 1;
    bool has_brn52354 : 1;

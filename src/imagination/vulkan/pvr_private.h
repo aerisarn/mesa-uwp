@@ -356,6 +356,8 @@ struct pvr_image_view {
 
 struct pvr_sampler {
    struct vk_object_base base;
+
+   uint64_t sampler_word;
 };
 
 struct pvr_descriptor_size_info {
