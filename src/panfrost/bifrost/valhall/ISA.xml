@@ -1344,8 +1344,7 @@
     <src/>
   </ins>
 
-  <ins name="WMASK" title="Warp mask" dests="1" opcode="0x95" unit="SFU">
-    <!-- TODO: confirm unit -->
+  <ins name="WMASK" title="Warp mask" dests="1" opcode="0x95" unit="CVT">
     <desc>
       Returns the mask of lanes ever active within the warp (subgroup), such
       that the source is nonzero. The number of work-items in a subgroup is
@@ -1552,7 +1551,6 @@
   </group>
 
   <group name="HADD" title="Integer half-add" dests="1" opcode2="0x0B" unit="CVT">
-    <!-- TODO: confirm unit -->
     <ins name="HADD.u32" opcode="0xA0"/>
     <ins name="HADD.v2u16" opcode="0xA1"/>
     <ins name="HADD.v4u8" opcode="0xA2"/>
