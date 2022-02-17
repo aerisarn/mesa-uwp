@@ -44,7 +44,6 @@ libtu_files = files(
   'tu_nir_lower_multiview.c',
   'tu_pass.c',
   'tu_pipeline.c',
-  'tu_pipeline_cache.c',
   'tu_private.h',
   'tu_query.c',
   'tu_shader.c',
