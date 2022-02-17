@@ -60,7 +60,6 @@ if [ "$HWCI_FREQ_MAX" = "true" ]; then
   # Disable GPU runtime power management
   GPU_AUTOSUSPEND=`find /sys/devices -name autosuspend_delay_ms | grep gpu | head -1`
   test -z "$GPU_AUTOSUSPEND" || echo -1 > $GPU_AUTOSUSPEND || true
-
   # Lock Intel GPU frequency to 70% of the maximum allowed by hardware
   # and enable throttling detection & reporting.
   # Additionally, set the upper limit for CPU scaling frequency to 65% of the
@@ -97,12 +96,16 @@ if [ -n "$HWCI_START_XORG" ]; then
   export DISPLAY=:0
 fi
 
-sh -c "$HWCI_TEST_SCRIPT" && RESULT=pass || RESULT=fail
+RESULT=fail
+set +e
+sh -c "$HWCI_TEST_SCRIPT"
+set -e
+EXIT_CODE=$?
 
 # Let's make sure the results are always stored in current working directory
 mv -f ${CI_PROJECT_DIR}/results ./ 2>/dev/null || true
 
-[ "${RESULT}" = "fail" ] || rm -rf results/trace/$PIGLIT_REPLAY_DEVICE_NAME
+[ ${EXIT_CODE} -ne 0 ] || rm -rf results/trace/"$PIGLIT_REPLAY_DEVICE_NAME"
 
 # upload artifacts
 if [ -n "$MINIO_RESULTS_UPLOAD" ]; then
@@ -111,4 +114,8 @@ if [ -n "$MINIO_RESULTS_UPLOAD" ]; then
   ci-fairy minio cp results.tar.gz minio://"$MINIO_RESULTS_UPLOAD"/results.tar.gz;
 fi
 
+# We still need to echo the hwci: mesa message, as some scripts rely on it, such
+# as the python ones inside the bare-metal folder
+[ ${EXIT_CODE} -eq 0 ] && RESULT=pass
 echo "hwci: mesa: $RESULT"
+exit $EXIT_CODE
