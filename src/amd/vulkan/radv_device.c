@@ -507,6 +507,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_pipeline_creation_feedback = true,
       .EXT_post_depth_coverage = device->rad_info.gfx_level >= GFX10,
       .EXT_primitive_topology_list_restart = true,
+      .EXT_primitives_generated_query = true,
       .EXT_private_data = true,
       .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
@@ -1752,6 +1753,14 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL *features =
             (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL *)ext;
          features->shaderIntegerFunctions2 = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVES_GENERATED_QUERY_FEATURES_EXT: {
+         VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT *features =
+            (VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT *)ext;
+         features->primitivesGeneratedQuery = true;
+         features->primitivesGeneratedQueryWithRasterizerDiscard = true;
+         features->primitivesGeneratedQueryWithNonZeroStreams = true;
          break;
       }
       default:
