@@ -1023,7 +1023,7 @@ tu_queue_submit_locked(struct tu_queue *queue, struct tu_queue_submit *submit)
       .flags = flags,
       .queueid = queue->msm_queue_id,
       .bos = (uint64_t)(uintptr_t) queue->device->bo_list,
-      .nr_bos = queue->device->bo_count,
+      .nr_bos = submit->entry_count ? queue->device->bo_count : 0,
       .cmds = (uint64_t)(uintptr_t)submit->cmds,
       .nr_cmds = submit->entry_count,
       .in_syncobjs = (uint64_t)(uintptr_t)submit->in_syncobjs,
