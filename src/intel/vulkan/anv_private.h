@@ -2655,6 +2655,15 @@ struct anv_cmd_buffer {
    uint32_t                                     total_batch_size;
 
    /**
+    * A vector of anv_bo pointers for chunks of memory used by the command
+    * buffer that are too large to be allocated through dynamic_state_stream.
+    * This is the case for large enough acceleration structures.
+    *
+    * initialized by anv_cmd_buffer_init_batch_bo_chain()
+    */
+   struct u_vector                              dynamic_bos;
+
+   /**
     *
     */
    struct u_trace                               trace;
@@ -2708,6 +2717,30 @@ anv_cmd_buffer_alloc_surface_state(struct anv_cmd_buffer *cmd_buffer);
 struct anv_state
 anv_cmd_buffer_alloc_dynamic_state(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t size, uint32_t alignment);
+
+/**
+ * A allocation tied to a command buffer.
+ *
+ * Don't use anv_cmd_alloc::address::map to write memory from userspace, use
+ * anv_cmd_alloc::map instead.
+ */
+struct anv_cmd_alloc {
+   struct anv_address  address;
+   void               *map;
+   size_t              size;
+};
+
+#define ANV_EMPTY_ALLOC ((struct anv_cmd_alloc) { .map = NULL, .size = 0 })
+
+static inline bool
+anv_cmd_alloc_is_empty(struct anv_cmd_alloc alloc)
+{
+   return alloc.size == 0;
+}
+
+struct anv_cmd_alloc
+anv_cmd_buffer_alloc_space(struct anv_cmd_buffer *cmd_buffer,
+                           size_t size, uint32_t alignment);
 
 VkResult
 anv_cmd_buffer_new_binding_table_block(struct anv_cmd_buffer *cmd_buffer);

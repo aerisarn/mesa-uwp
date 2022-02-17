@@ -129,6 +129,11 @@ static VkResult anv_create_cmd_buffer(
    anv_state_stream_init(&cmd_buffer->general_state_stream,
                          &device->general_state_pool, 16384);
 
+   int success = u_vector_init_pow2(&cmd_buffer->dynamic_bos, 8,
+                                    sizeof(struct anv_bo *));
+   if (!success)
+      goto fail_batch_bo;
+
    cmd_buffer->self_mod_locations = NULL;
 
    anv_cmd_state_init(cmd_buffer);
@@ -141,6 +146,8 @@ static VkResult anv_create_cmd_buffer(
 
    return VK_SUCCESS;
 
+ fail_batch_bo:
+   anv_cmd_buffer_fini_batch_bo_chain(cmd_buffer);
  fail_vk:
    vk_command_buffer_finish(&cmd_buffer->vk);
  fail_alloc:
@@ -195,6 +202,12 @@ anv_cmd_buffer_destroy(struct vk_command_buffer *vk_cmd_buffer)
    anv_state_stream_finish(&cmd_buffer->dynamic_state_stream);
    anv_state_stream_finish(&cmd_buffer->general_state_stream);
 
+   while (u_vector_length(&cmd_buffer->dynamic_bos) > 0) {
+      struct anv_bo **bo = u_vector_remove(&cmd_buffer->dynamic_bos);
+      anv_device_release_bo(cmd_buffer->device, *bo);
+   }
+   u_vector_finish(&cmd_buffer->dynamic_bos);
+
    anv_cmd_state_finish(cmd_buffer);
 
    vk_free(&cmd_buffer->vk.pool->alloc, cmd_buffer->self_mod_locations);
@@ -224,6 +237,11 @@ anv_cmd_buffer_reset(struct anv_cmd_buffer *cmd_buffer)
    anv_state_stream_finish(&cmd_buffer->general_state_stream);
    anv_state_stream_init(&cmd_buffer->general_state_stream,
                          &cmd_buffer->device->general_state_pool, 16384);
+
+   while (u_vector_length(&cmd_buffer->dynamic_bos) > 0) {
+      struct anv_bo **bo = u_vector_remove(&cmd_buffer->dynamic_bos);
+      anv_device_release_bo(cmd_buffer->device, *bo);
+   }
 
    anv_measure_reset(cmd_buffer);
 
