@@ -1563,43 +1563,53 @@ radv_get_image_format_properties(struct radv_physical_device *physical_device,
       goto unsupported;
    }
 
-   if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+   /* From the Vulkan 1.3.206 spec:
+    *
+    * "VK_IMAGE_CREATE_EXTENDED_USAGE_BIT specifies that the image can be created with usage flags
+    * that are not supported for the format the image is created with but are supported for at least
+    * one format a VkImageView created from the image can have."
+    */
+   VkImageUsageFlags image_usage = info->usage;
+   if (info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
+      image_usage = 0;
+
+   if (image_usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT_KHR)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT_KHR)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT_KHR)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT_KHR)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT_KHR)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT_KHR)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
       if (!(format_feature_flags & (VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT_KHR |
                                     VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT_KHR))) {
          goto unsupported;
