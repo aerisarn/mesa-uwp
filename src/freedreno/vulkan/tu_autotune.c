@@ -474,6 +474,19 @@ tu_autotune_use_bypass(struct tu_autotune *at,
    const struct tu_render_pass *pass = cmd_buffer->state.pass;
    const struct tu_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 
+   for (unsigned i = 0; i < pass->subpass_count; i++) {
+      const struct tu_subpass *subpass = &pass->subpasses[i];
+      /* GMEM works much faster in this case */
+      if (subpass->raster_order_attachment_access)
+         return false;
+
+      /* Would be very slow in sysmem mode because we have to enable
+       * SINGLE_PRIM_MODE(FLUSH_PER_OVERLAP_AND_OVERWRITE)
+       */
+      if (subpass->feedback_loop_color || subpass->feedback_loop_ds)
+         return false;
+   }
+
    /* If we would want to support buffers that could be submitted
     * several times we would have to copy the sample counts of renderpasses
     * after each submission of such buffer (like with u_trace support).
