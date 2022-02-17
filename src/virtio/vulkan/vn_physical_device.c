@@ -172,6 +172,15 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
          &physical_dev->extended_dynamic_state_features;
    }
 
+   if (physical_dev->renderer_extensions.EXT_custom_border_color) {
+      physical_dev->custom_border_color_features.sType =
+         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
+      physical_dev->custom_border_color_features.pNext =
+         physical_dev->features.pNext;
+      physical_dev->features.pNext =
+         &physical_dev->custom_border_color_features;
+   }
+
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev),
       &physical_dev->features);
@@ -483,6 +492,15 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
          physical_dev->properties.pNext;
       physical_dev->properties.pNext =
          &physical_dev->transform_feedback_properties;
+   }
+
+   if (physical_dev->renderer_extensions.EXT_custom_border_color) {
+      physical_dev->custom_border_color_properties.sType =
+         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT;
+      physical_dev->custom_border_color_properties.pNext =
+         physical_dev->properties.pNext;
+      physical_dev->properties.pNext =
+         &physical_dev->custom_border_color_properties;
    }
 
    vn_call_vkGetPhysicalDeviceProperties2(
@@ -974,7 +992,8 @@ vn_physical_device_get_passthrough_extensions(
       /* promoted to VK_VERSION_1_3 */
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
-   /* EXT */
+      /* EXT */
+      .EXT_custom_border_color = true,
 #ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
 #endif
@@ -1651,6 +1670,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDevice4444FormatsFeaturesEXT *argb_4444_formats;
       VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
       VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
+      VkPhysicalDeviceCustomBorderColorFeaturesEXT *custom_border_color;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pFeatures;
@@ -1820,6 +1840,11 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          u.extended_dynamic_state->extendedDynamicState =
             physical_dev->extended_dynamic_state_features.extendedDynamicState;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
+         memcpy(u.custom_border_color,
+                &physical_dev->custom_border_color_features,
+                sizeof(physical_dev->custom_border_color_features));
+         break;
       default:
          break;
       }
@@ -1860,6 +1885,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
       VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
       VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
+      VkPhysicalDeviceCustomBorderColorPropertiesEXT *custom_border_color;
       VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
    } u;
 
@@ -2056,6 +2082,11 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          memcpy(u.transform_feedback,
                 &physical_dev->transform_feedback_properties,
                 sizeof(physical_dev->transform_feedback_properties));
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
+         memcpy(u.custom_border_color,
+                &physical_dev->custom_border_color_properties,
+                sizeof(physical_dev->custom_border_color_properties));
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID:
          u.presentation_properties->sharedImage = VK_FALSE;
