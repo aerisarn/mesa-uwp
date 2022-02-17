@@ -280,7 +280,7 @@
     <value>b3</value>
   </enum>
 
-  <enum name="Lane (32-bit)">
+  <enum name="Combine">
     <desc>
       Used for the lane select of `BRANCHZ`. To use an 8-bit condition, a
       separate `ICMP` is required to cast to 16-bit.
@@ -288,7 +288,8 @@
     <value default="true">none</value>
     <value>h0</value>
     <value>h1</value>
-    <reserved/>
+    <value>and</value>
+    <value>lowbits</value>
   </enum>
 
   <enum name="Lane (16-bit)" implied="true">
@@ -661,8 +662,9 @@
       source to a nonzero constant to implement a jump. May introduce
       divergence, so generally requires `.reconverge` flow control.
     </desc>
-    <src lane="37">Value to compare against zero</src>
+    <src combine="true">Value to compare against zero</src>
     <imm name="offset" start="8" size="27" signed="true"/>
+    <conservative/>
     <mod name="eq" start="36" size="1"/>
   </ins>
 
@@ -683,8 +685,9 @@
       Jump to an indirectly specified (absolute or relative) address. Used to
       jump to blend shaders at the end of a fragment shader.
     </desc>
-    <src>Value to compare against zero</src>
+    <src combine="true">Value to compare against zero</src>
     <src>Branch target</src>
+    <conservative/>
     <mod name="eq" start="36" size="1"/>
     <mod name="absolute" start="40" size="1"/>
   </ins>

@@ -275,6 +275,11 @@ def parse_asm(line):
                 swizzled = True
                 val = enums[f'lane_{src.size}_bit'].bare_values.index(mod)
                 encoded |= (val << src.offset['lane'])
+            elif src.combine and mod in enums['combine'].bare_values:
+                die_if(swizzled, "Multiple swizzles specified")
+                swizzled = True
+                val = enums['combine'].bare_values.index(mod)
+                encoded |= (val << src.offset['combine'])
             elif src.size == 32 and mod in enums['widen'].bare_values:
                 die_if(not src.swizzle, "Instruction doesn't take widens")
                 die_if(swizzled, "Multiple swizzles specified")

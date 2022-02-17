@@ -189,6 +189,8 @@ va_disasm_instr(FILE *fp, uint64_t instr)
             fputs(valhall_half_swizzles_8_bit[(instr >> ${src.offset['widen']}) & 0xF], fp);
 % elif src.widen:
 		    fputs(valhall_swizzles_${src.size}_bit[(instr >> ${src.offset['widen']}) & 0xF], fp);
+% elif src.combine:
+            fputs(valhall_combine[(instr >> ${src.offset['combine']}) & 0x7], fp);
 % endif
 % if src.lane:
             fputs(valhall_lane_${src.size}_bit[(instr >> ${src.lane}) & 0x3], fp);

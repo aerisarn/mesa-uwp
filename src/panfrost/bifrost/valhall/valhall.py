@@ -98,7 +98,8 @@ def Flag(name, start):
 
 # Model a single instruction
 class Source:
-    def __init__(self, index, size, is_float = False, swizzle = False, halfswizzle = False, widen = False, lanes = False, lane = None, absneg = False, notted = False, name = ""):
+    def __init__(self, index, size, is_float = False, swizzle = False,
+            halfswizzle = False, widen = False, lanes = False, combine = False, lane = None, absneg = False, notted = False, name = ""):
         self.is_float = is_float or absneg
         self.size = size
         self.absneg = absneg
@@ -108,6 +109,7 @@ class Source:
         self.widen = widen
         self.lanes = lanes
         self.lane = lane
+        self.combine = combine
         self.name = name
 
         self.offset = {}
@@ -130,6 +132,9 @@ class Source:
             assert(size in [16, 32])
             self.offset['swizzle'] = 24 + ((2 - index) * 2)
             self.bits['swizzle'] = 2
+        if combine:
+            self.offset['combine'] = 37
+            self.bits['combine'] = 3
 
 class Dest:
     def __init__(self, name = ""):
@@ -215,6 +220,7 @@ def build_source(el, i, size):
             halfswizzle = el.get('halfswizzle', False),
             widen = el.get('widen', False),
             lanes = el.get('lanes', False),
+            combine = el.get('combine', False),
             lane = lane,
             notted = el.get('not', False),
             name = el.text or "")
@@ -354,6 +360,7 @@ MODIFIERS = {
     "clamp": Modifier("clamp", 32, 2),
     "sr_count": Modifier("staging_register_count", 33, 3, implied = True),
 
+    "conservative": Flag("conservative", 35),
     "subgroup": Modifier("subgroup_size", 36, 4),
     "update": Modifier("update_mode", 36, 2),
     "sample": Modifier("sample_mode", 38, 2),
