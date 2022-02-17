@@ -789,6 +789,12 @@ struct v3d_compile {
         uint32_t spill_size;
         /* Shader-db stats */
         uint32_t spills, fills, loops;
+
+        /* Whether we are in the process of spilling registers for
+         * register allocation
+         */
+        bool spilling;
+
         /**
          * Register spilling's per-thread base address, shared between each
          * spill/fill's addressing calculations.
@@ -880,9 +886,6 @@ struct v3d_compile {
 
         bool emitted_tlb_load;
         bool lock_scoreboard_on_first_thrsw;
-
-        /* Total number of spilled registers in the program */
-        uint32_t spill_count;
 
         enum v3d_compilation_result compilation_result;
 

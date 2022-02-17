@@ -278,7 +278,7 @@ v3d_setup_spill_base(struct v3d_compile *c)
                  * accumulator because it is used for TMU spill/fill and thus
                  * needs to persist across thread switches.
                  */
-                if (c->spill_count > 0) {
+                if (c->spilling) {
                         int temp_class = CLASS_BITS_PHYS;
                         if (i != c->spill_base.index)
                                 temp_class |= CLASS_BITS_ACC;
@@ -415,8 +415,7 @@ static void
 v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
 {
         int start_num_temps = c->num_temps;
-
-        c->spill_count++;
+        c->spilling = true;
 
         bool is_uniform = vir_is_mov_uniform(c, spill_temp);
 
@@ -615,6 +614,7 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
         }
 
         c->disable_ldunif_opt = had_disable_ldunif_opt;
+        c->spilling = false;
 }
 
 struct v3d_ra_select_callback_data {
