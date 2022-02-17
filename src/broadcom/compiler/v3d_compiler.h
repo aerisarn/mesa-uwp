@@ -797,9 +797,11 @@ struct v3d_compile {
 
         /**
          * Register spilling's per-thread base address, shared between each
-         * spill/fill's addressing calculations.
+         * spill/fill's addressing calculations (also used for scratch
+         * access).
          */
         struct qreg spill_base;
+
         /* Bit vector of which temps may be spilled */
         BITSET_WORD *spillable;
 
