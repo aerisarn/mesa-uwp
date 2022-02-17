@@ -1929,6 +1929,34 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 return;
         }
 
+        /* While we do not have a direct V2U32_TO_V2F16 instruction, lowering to
+         * MKVEC.v2i16 + V2U16_TO_V2F16 is more efficient on Bifrost than
+         * scalarizing due to scheduling (equal cost on Valhall). Additionally
+         * if the source is replicated the MKVEC.v2i16 can be optimized out.
+         */
+        case nir_op_u2f16:
+        case nir_op_i2f16: {
+                if (!(src_sz == 32 && comps == 2))
+                        break;
+
+                nir_alu_src *src = &instr->src[0];
+                bi_index idx = bi_src_index(&src->src);
+                bi_index s0 = bi_word(idx, src->swizzle[0]);
+                bi_index s1 = bi_word(idx, src->swizzle[1]);
+
+                bi_index t = (src->swizzle[0] == src->swizzle[1]) ?
+                        bi_half(s0, false) :
+                        bi_mkvec_v2i16(b, bi_half(s0, false),
+                                          bi_half(s1, false));
+
+                if (instr->op == nir_op_u2f16)
+                        bi_v2u16_to_v2f16_to(b, dst, t, BI_ROUND_NONE);
+                else
+                        bi_v2s16_to_v2f16_to(b, dst, t, BI_ROUND_NONE);
+
+                return;
+        }
+
         case nir_op_i2i8:
         case nir_op_u2u8:
         {
@@ -3306,8 +3334,6 @@ bi_vectorize_filter(const nir_instr *instr, void *data)
         case nir_op_ushr:
         case nir_op_f2i16:
         case nir_op_f2u16:
-        case nir_op_i2f16:
-        case nir_op_u2f16:
                 return false;
         default:
                 return true;
