@@ -5256,12 +5256,13 @@ bool nir_opt_large_constants(nir_shader *shader,
 bool nir_opt_loop_unroll(nir_shader *shader);
 
 typedef enum {
-    nir_move_const_undef = (1 << 0),
-    nir_move_load_ubo    = (1 << 1),
-    nir_move_load_input  = (1 << 2),
-    nir_move_comparisons = (1 << 3),
-    nir_move_copies      = (1 << 4),
-    nir_move_load_ssbo   = (1 << 5),
+    nir_move_const_undef  = (1 << 0),
+    nir_move_load_ubo     = (1 << 1),
+    nir_move_load_input   = (1 << 2),
+    nir_move_comparisons  = (1 << 3),
+    nir_move_copies       = (1 << 4),
+    nir_move_load_ssbo    = (1 << 5),
+    nir_move_load_uniform = (1 << 6),
 } nir_move_options;
 
 bool nir_can_move_instr(nir_instr *instr, nir_move_options options);
