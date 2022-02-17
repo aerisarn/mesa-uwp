@@ -25,6 +25,20 @@
                    offsetof(__typeof__(tbl), ext)) -                         \
     (tbl).extensions)
 
+#define stype_prefix(stype) (VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_##stype)
+#define VN_ADD_TO_PNEXT(physical_dev, ext, elem, s_type, head)               \
+   do {                                                                      \
+      if ((physical_dev)->renderer_extensions.ext) {                         \
+         (physical_dev)->elem.sType = stype_prefix(s_type);                  \
+         (physical_dev)->elem.pNext = (physical_dev)->head.pNext;            \
+         (physical_dev)->head.pNext = &(physical_dev)->elem;                 \
+      }                                                                      \
+   } while (0)
+#define VN_ADD_FEAT_TO_PNEXT(physical_dev, ext, feat_name, s_type)           \
+   VN_ADD_TO_PNEXT(physical_dev, ext, feat_name, s_type, features)
+#define VN_ADD_PROP_TO_PNEXT(physical_dev, ext, prop_name, s_type)           \
+   VN_ADD_TO_PNEXT(physical_dev, ext, prop_name, s_type, properties)
+
 static void
 vn_physical_device_init_features(struct vn_physical_device *physical_dev)
 {
@@ -145,41 +159,17 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       local_feats.vulkan_memory_model.pNext = NULL;
    }
 
-   if (physical_dev->renderer_extensions.EXT_4444_formats) {
-      physical_dev->argb_4444_formats_features.sType =
-         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
-      physical_dev->argb_4444_formats_features.pNext =
-         physical_dev->features.pNext;
-      physical_dev->features.pNext =
-         &physical_dev->argb_4444_formats_features;
-   }
-
-   if (physical_dev->renderer_extensions.EXT_transform_feedback) {
-      physical_dev->transform_feedback_features.sType =
-         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
-      physical_dev->transform_feedback_features.pNext =
-         physical_dev->features.pNext;
-      physical_dev->features.pNext =
-         &physical_dev->transform_feedback_features;
-   }
-
-   if (physical_dev->renderer_extensions.EXT_extended_dynamic_state) {
-      physical_dev->extended_dynamic_state_features.sType =
-         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT;
-      physical_dev->extended_dynamic_state_features.pNext =
-         physical_dev->features.pNext;
-      physical_dev->features.pNext =
-         &physical_dev->extended_dynamic_state_features;
-   }
-
-   if (physical_dev->renderer_extensions.EXT_custom_border_color) {
-      physical_dev->custom_border_color_features.sType =
-         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
-      physical_dev->custom_border_color_features.pNext =
-         physical_dev->features.pNext;
-      physical_dev->features.pNext =
-         &physical_dev->custom_border_color_features;
-   }
+   VN_ADD_FEAT_TO_PNEXT(physical_dev, EXT_4444_formats,
+                        argb_4444_formats_features, 4444_FORMATS_FEATURES_EXT);
+   VN_ADD_FEAT_TO_PNEXT(physical_dev, EXT_transform_feedback,
+                        transform_feedback_features,
+                        TRANSFORM_FEEDBACK_FEATURES_EXT);
+   VN_ADD_FEAT_TO_PNEXT(physical_dev, EXT_extended_dynamic_state,
+                        extended_dynamic_state_features,
+                        EXTENDED_DYNAMIC_STATE_FEATURES_EXT);
+   VN_ADD_FEAT_TO_PNEXT(physical_dev, EXT_custom_border_color,
+                        custom_border_color_features,
+                        CUSTOM_BORDER_COLOR_FEATURES_EXT);
 
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev),
@@ -485,23 +475,12 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       local_props.timeline_semaphore.pNext = NULL;
    }
 
-   if (physical_dev->renderer_extensions.EXT_transform_feedback) {
-      physical_dev->transform_feedback_properties.sType =
-         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
-      physical_dev->transform_feedback_properties.pNext =
-         physical_dev->properties.pNext;
-      physical_dev->properties.pNext =
-         &physical_dev->transform_feedback_properties;
-   }
-
-   if (physical_dev->renderer_extensions.EXT_custom_border_color) {
-      physical_dev->custom_border_color_properties.sType =
-         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT;
-      physical_dev->custom_border_color_properties.pNext =
-         physical_dev->properties.pNext;
-      physical_dev->properties.pNext =
-         &physical_dev->custom_border_color_properties;
-   }
+   VN_ADD_PROP_TO_PNEXT(physical_dev, EXT_transform_feedback,
+                        transform_feedback_properties,
+                        TRANSFORM_FEEDBACK_PROPERTIES_EXT);
+   VN_ADD_PROP_TO_PNEXT(physical_dev, EXT_custom_border_color,
+                        custom_border_color_properties,
+                        CUSTOM_BORDER_COLOR_PROPERTIES_EXT);
 
    vn_call_vkGetPhysicalDeviceProperties2(
       instance, vn_physical_device_to_handle(physical_dev),
