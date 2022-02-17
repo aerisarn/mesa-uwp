@@ -1847,12 +1847,24 @@ VkResult anv_BindImageMemory2(
          const struct anv_bo *bo =
             image->bindings[binding].address.bo;
 
+         if (!bo || bo->has_implicit_ccs)
+            continue;
+
+         if (!device->physical->has_implicit_ccs)
+            continue;
+
          if (!isl_aux_usage_has_ccs(image->planes[p].aux_usage))
             continue;
 
-         if (bo && !bo->has_implicit_ccs &&
-             device->physical->has_implicit_ccs)
+         if (image->planes[p].aux_surface.memory_range.size > 0) {
+            assert(image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
+                   image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT);
+            image->planes[p].aux_usage = ISL_AUX_USAGE_HIZ;
+         } else {
+            assert(image->planes[p].aux_usage == ISL_AUX_USAGE_CCS_E ||
+                   image->planes[p].aux_usage == ISL_AUX_USAGE_STC_CCS);
             image->planes[p].aux_usage = ISL_AUX_USAGE_NONE;
+         }
       }
    }
 
