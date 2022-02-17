@@ -1958,6 +1958,51 @@ ac_nir_lower_ngg_gs(nir_shader *shader,
    nir_metadata_preserve(impl, nir_metadata_none);
 }
 
+static void
+ms_store_prim_indices(nir_builder *b,
+                      nir_ssa_def *val,
+                      nir_ssa_def *offset_src,
+                      unsigned offset_const,
+                      lower_ngg_ms_state *s)
+{
+   assert(val->num_components <= 3);
+
+   if (!offset_src)
+      offset_src = nir_imm_int(b, 0);
+
+   nir_store_shared(b, nir_u2u8(b, val), offset_src, .base = s->prim_vtx_indices_addr + offset_const);
+}
+
+static nir_ssa_def *
+ms_load_prim_indices(nir_builder *b,
+                     nir_ssa_def *offset_src,
+                     unsigned offset_const,
+                     lower_ngg_ms_state *s)
+{
+   if (!offset_src)
+      offset_src = nir_imm_int(b, 0);
+
+   return nir_load_shared(b, 1, 8, offset_src, .base = s->prim_vtx_indices_addr + offset_const);
+}
+
+static void
+ms_store_num_prims(nir_builder *b,
+                   nir_ssa_def *store_val,
+                   lower_ngg_ms_state *s)
+{
+   nir_ssa_def *addr = nir_imm_int(b, 0);
+   nir_store_shared(b, nir_u2u32(b, store_val), addr, .base = s->numprims_lds_addr);
+}
+
+static nir_ssa_def *
+ms_load_num_prims(nir_builder *b,
+                  lower_ngg_ms_state *s)
+{
+   nir_ssa_def *addr = nir_imm_int(b, 0);
+   return nir_load_shared(b, 1, 32, addr, .base = s->numprims_lds_addr);
+}
+
+
 static nir_ssa_def *
 lower_ms_store_output(nir_builder *b,
                       nir_intrinsic_instr *intrin,
@@ -1979,8 +2024,7 @@ lower_ms_store_output(nir_builder *b,
       assert(nir_src_is_const(intrin->src[1]) && nir_src_as_uint(intrin->src[1]) == 0);
       assert(base == 0);
 
-      nir_ssa_def *addr = nir_imm_int(b, 0);
-      nir_store_shared(b, nir_u2u32(b, store_val), addr, .base = s->numprims_lds_addr);
+      ms_store_num_prims(b, store_val, s);
    } else if (io_sem.location == VARYING_SLOT_PRIMITIVE_INDICES) {
       /* Contrary to the name, these are not primitive indices, but
        * vertex indices for each vertex of the output primitives.
@@ -1988,8 +2032,7 @@ lower_ms_store_output(nir_builder *b,
        */
 
       nir_ssa_def *offset_src = nir_get_io_offset_src(intrin)->ssa;
-      nir_store_shared(b, nir_u2u8(b, store_val), offset_src,
-                       .base = s->prim_vtx_indices_addr + base);
+      ms_store_prim_indices(b, store_val, offset_src, base, s);
    } else {
       unreachable("Invalid mesh shader output");
    }
@@ -2013,12 +2056,10 @@ lower_ms_load_output(nir_builder *b,
       assert(nir_src_is_const(intrin->src[1]) && nir_src_as_uint(intrin->src[1]) == 0);
       assert(base == 0);
 
-      nir_ssa_def *addr = nir_imm_int(b, 0);
-      return nir_load_shared(b, 1, 32, addr, .base = s->numprims_lds_addr);
+      return ms_load_num_prims(b, s);
    } else if (io_sem.location == VARYING_SLOT_PRIMITIVE_INDICES) {
       nir_ssa_def *offset_src = nir_get_io_offset_src(intrin)->ssa;
-      nir_ssa_def *index = nir_load_shared(b, 1, 8, offset_src,
-                                                 .base = s->prim_vtx_indices_addr + base);
+      nir_ssa_def *index = ms_load_prim_indices(b, offset_src, base, s);
       return nir_u2u(b, index, intrin->dest.ssa.bit_size);
    }
 
@@ -2355,11 +2396,10 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
     * - No longer need to ensure that these variables are readable by any invocation.
     */
    nir_ssa_def *loaded_num_prm;
-   nir_ssa_def *zero = nir_imm_int(b, 0);
    nir_ssa_def *dont_care = nir_ssa_undef(b, 1, 32);
    nir_if *if_elected = nir_push_if(b, nir_elect(b, 1));
    {
-      loaded_num_prm = nir_load_shared(b, 1, 32, zero, .base = s->numprims_lds_addr);
+      loaded_num_prm = ms_load_num_prims(b, s);
    }
    nir_pop_if(b, if_elected);
    loaded_num_prm = nir_if_phi(b, loaded_num_prm, dont_care);
