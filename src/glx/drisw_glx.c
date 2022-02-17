@@ -561,6 +561,11 @@ drisw_create_context_attribs(struct glx_screen *base,
    ctx_attribs[num_ctx_attribs++] = dca.major_ver;
    ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_MINOR_VERSION;
    ctx_attribs[num_ctx_attribs++] = dca.minor_ver;
+   if (dca.reset != __DRI_CTX_RESET_NO_NOTIFICATION) {
+      ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_RESET_STRATEGY;
+      ctx_attribs[num_ctx_attribs++] = dca.reset;
+   }
+
    if (dca.release != __DRI_CTX_RELEASE_BEHAVIOR_FLUSH) {
        ctx_attribs[num_ctx_attribs++] = __DRI_CTX_ATTRIB_RELEASE_BEHAVIOR;
        ctx_attribs[num_ctx_attribs++] = dca.release;
