@@ -314,9 +314,8 @@ compile_variant(struct ir3_shader *shader, struct ir3_shader_variant *v)
  */
 static struct ir3_shader_variant *
 alloc_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
-              struct ir3_shader_variant *nonbinning)
+              struct ir3_shader_variant *nonbinning, void *mem_ctx)
 {
-   void *mem_ctx = shader;
    /* hang the binning variant off it's non-binning counterpart instead
     * of the shader, to simplify the error cleanup paths
     */
@@ -393,9 +392,9 @@ needs_binning_variant(struct ir3_shader_variant *v)
 
 static struct ir3_shader_variant *
 create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
-               bool write_disasm)
+               bool write_disasm, void *mem_ctx)
 {
-   struct ir3_shader_variant *v = alloc_variant(shader, key, NULL);
+   struct ir3_shader_variant *v = alloc_variant(shader, key, NULL, mem_ctx);
 
    if (!v)
       goto fail;
@@ -403,7 +402,7 @@ create_variant(struct ir3_shader *shader, const struct ir3_shader_key *key,
    v->disasm_info.write_disasm = write_disasm;
 
    if (needs_binning_variant(v)) {
-      v->binning = alloc_variant(shader, key, v);
+      v->binning = alloc_variant(shader, key, v, mem_ctx);
       if (!v->binning)
          goto fail;
       v->binning->disasm_info.write_disasm = write_disasm;
@@ -442,6 +441,14 @@ fail:
    return NULL;
 }
 
+struct ir3_shader_variant *
+ir3_shader_create_variant(struct ir3_shader *shader,
+                          const struct ir3_shader_key *key,
+                          bool keep_ir)
+{
+   return create_variant(shader, key, keep_ir, NULL);
+}
+
 static inline struct ir3_shader_variant *
 shader_variant(struct ir3_shader *shader, const struct ir3_shader_key *key)
 {
@@ -464,7 +471,7 @@ ir3_shader_get_variant(struct ir3_shader *shader,
 
    if (!v) {
       /* compile new variant if it doesn't exist already: */
-      v = create_variant(shader, key, write_disasm);
+      v = create_variant(shader, key, write_disasm, shader);
       if (v) {
          v->next = shader->variants;
          shader->variants = v;

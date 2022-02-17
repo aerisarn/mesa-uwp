@@ -912,9 +912,14 @@ ir3_max_const(const struct ir3_shader_variant *v)
 
 void *ir3_shader_assemble(struct ir3_shader_variant *v);
 struct ir3_shader_variant *
+ir3_shader_create_variant(struct ir3_shader *shader,
+                          const struct ir3_shader_key *key,
+                          bool keep_ir);
+struct ir3_shader_variant *
 ir3_shader_get_variant(struct ir3_shader *shader,
                        const struct ir3_shader_key *key, bool binning_pass,
                        bool keep_ir, bool *created);
+
 
 struct ir3_shader_options {
    unsigned reserved_user_consts;
