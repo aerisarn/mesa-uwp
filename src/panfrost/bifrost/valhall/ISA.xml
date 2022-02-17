@@ -780,7 +780,7 @@
     <imm name="table" start="16" size="4"/>
   </ins>
 
-  <ins name="LEA_IMAGE_IMM" title="Load effective address of image texel" opcode="0x67" unit="LS">
+  <ins name="LEA_TEX_IMM" title="Load effective address of image texel" opcode="0x67" unit="LS">
     <desc>
       Load the effective address of a texel from the image specified with the
       given immediate index. Returns three staging register: the low/high
@@ -798,8 +798,8 @@
     <imm name="unk" start="36" size="4"/>
     <src>X/Y coordinates (16:16)</src>
     <src>Z/W coordinates (16:16)</src>
+    <imm name="table" start="16" size="4"/>
     <imm name="index" start="20" size="4"/>
-    <imm name="unk2" start="16" size="4"/>
   </ins>
 
   <ins name="LD_BUFFER.i8" title="Global memory load" opcode="0x6a" opcode2="0" unit="LS">
