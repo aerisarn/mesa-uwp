@@ -1840,7 +1840,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxPushConstantsSize                     = MAX_PUSH_CONSTANTS_SIZE,
       .maxMemoryAllocationCount                 = UINT32_MAX,
       .maxSamplerAllocationCount                = 64 * 1024,
-      .bufferImageGranularity                   = 64, /* A cache line */
+      .bufferImageGranularity                   = 1,
       .sparseAddressSpaceSize                   = 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
       .maxPerStageDescriptorSamplers            = max_samplers,
