@@ -23,6 +23,8 @@
 #ifndef RADEON_COMPILER_H
 #define RADEON_COMPILER_H
 
+#include <stdbool.h>
+
 #include "memory_pool.h"
 #include "radeon_code.h"
 #include "radeon_program.h"
@@ -159,7 +161,7 @@ struct rc_program_stats {
 void rc_get_stats(struct radeon_compiler *c, struct rc_program_stats *s);
 
 /* Executes a list of compiler passes given in the parameter 'list'. */
-void rc_run_compiler_passes(struct radeon_compiler *c, struct radeon_compiler_pass *list);
+bool rc_run_compiler_passes(struct radeon_compiler *c, struct radeon_compiler_pass *list);
 void rc_run_compiler(struct radeon_compiler *c, struct radeon_compiler_pass *list);
 void rc_validate_final_shader(struct radeon_compiler *c, void *user);
 

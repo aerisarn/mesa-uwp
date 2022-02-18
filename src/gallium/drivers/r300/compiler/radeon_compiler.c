@@ -382,14 +382,14 @@ static const char *shader_name[RC_NUM_PROGRAM_TYPES] = {
 	"Fragment Program"
 };
 
-void rc_run_compiler_passes(struct radeon_compiler *c, struct radeon_compiler_pass *list)
+bool rc_run_compiler_passes(struct radeon_compiler *c, struct radeon_compiler_pass *list)
 {
 	for (unsigned i = 0; list[i].name; i++) {
 		if (list[i].predicate) {
 			list[i].run(c, list[i].user);
 
 			if (c->Error)
-				return;
+				return false;
 
 			if ((c->Debug & RC_DBG_LOG) && list[i].dump) {
 				fprintf(stderr, "%s: after '%s'\n", shader_name[c->type], list[i].name);
@@ -397,6 +397,7 @@ void rc_run_compiler_passes(struct radeon_compiler *c, struct radeon_compiler_pa
 			}
 		}
 	}
+	return true;
 }
 
 /* Executes a list of compiler passes given in the parameter 'list'. */
@@ -407,9 +408,9 @@ void rc_run_compiler(struct radeon_compiler *c, struct radeon_compiler_pass *lis
 		rc_print_program(&c->Program);
 	}
 
-	rc_run_compiler_passes(c, list);
-
-	print_stats(c);
+	if(rc_run_compiler_passes(c, list)) {
+		print_stats(c);
+	}
 }
 
 void rc_validate_final_shader(struct radeon_compiler *c, void *user)
