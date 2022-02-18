@@ -65,6 +65,10 @@
 static bool
 bi_should_serialize(bi_instr *I)
 {
+        /* For debug, serialize everything to disable scoreboard opts */
+        if (bifrost_debug & BIFROST_DBG_NOSB)
+                return true;
+
         /* Although nominally on the attribute unit, image loads have the same
          * coherency requirements as general memory loads. Serialize them for
          * now until we can do something more clever.

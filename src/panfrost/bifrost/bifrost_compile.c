@@ -47,6 +47,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"novalidate",BIFROST_DBG_NOVALIDATE,   "Skip IR validation"},
         {"noopt",     BIFROST_DBG_NOOPT,        "Skip optimization passes"},
         {"noidvs",    BIFROST_DBG_NOIDVS,       "Disable IDVS"},
+        {"nosb",      BIFROST_DBG_NOSB,         "Disable scoreboarding"},
         DEBUG_NAMED_VALUE_END
 };
 
