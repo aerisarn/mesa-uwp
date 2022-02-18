@@ -26,6 +26,7 @@
 #include "util/macros.h"
 #include "util/os_file.h"
 #include "util/xmlconfig.h"
+#include "vk_format.h"
 #include "vk_util.h"
 #include "drm-uapi/drm_fourcc.h"
 
@@ -112,18 +113,6 @@ select_memory_type(const struct wsi_device *wsi,
    }
 
    unreachable("No memory type found");
-}
-
-static uint32_t
-vk_format_size(VkFormat format)
-{
-   switch (format) {
-   case VK_FORMAT_B8G8R8A8_UNORM:
-   case VK_FORMAT_B8G8R8A8_SRGB:
-      return 4;
-   default:
-      unreachable("Unknown WSI Format");
-   }
 }
 
 static const struct VkDrmFormatModifierPropertiesEXT *
@@ -563,7 +552,7 @@ wsi_finish_create_prime_image(const struct wsi_swapchain *chain,
       struct VkBufferImageCopy buffer_image_copy = {
          .bufferOffset = 0,
          .bufferRowLength = info->linear_stride /
-                            vk_format_size(info->create.format),
+                            vk_format_get_blocksize(info->create.format),
          .bufferImageHeight = 0,
          .imageSubresource = {
             .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -603,7 +592,7 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
    info->wsi.prime_blit_src = true,
    info->prime_use_linear_modifier = use_modifier;
 
-   const uint32_t cpp = vk_format_size(info->create.format);
+   const uint32_t cpp = vk_format_get_blocksize(info->create.format);
    info->linear_stride = ALIGN_POT(info->create.extent.width * cpp,
                                    WSI_PRIME_LINEAR_STRIDE_ALIGN);
 
