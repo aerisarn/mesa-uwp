@@ -2280,6 +2280,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 fail:
    if (screen->loader_lib)
       util_dl_close(screen->loader_lib);
+   if (screen->threaded)
+      util_queue_destroy(&screen->flush_queue);
 
    ralloc_free(screen);
    return NULL;
