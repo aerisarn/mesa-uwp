@@ -336,7 +336,8 @@ brw_nir_create_trivial_return_shader(const struct brw_compiler *compiler,
 
          nir_trace_ray_intel(b,
                              nir_load_btd_global_arg_addr_intel(b),
-                             ray_level, ray_op);
+                             ray_level, ray_op,
+                             .synchronous = false);
       }
       nir_push_else(b, NULL);
       {
