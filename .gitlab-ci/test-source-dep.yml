@@ -404,6 +404,31 @@
       when: on_success
     - when: never
 
+# Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
+# rules duplication manually
+.virgl-lava-rules-performance:
+  stage: layered-backends
+  rules:
+    - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
+    # Run only on pre-merge pipelines from Marge
+    - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
+      when: never
+    - changes:
+        *mesa_core_file_list
+      when: manual
+    - changes:
+        *gallium_core_file_list
+      when: manual
+    - changes:
+        *llvmpipe_file_list
+      when: manual
+    - changes:
+        *virgl_file_list
+      when: manual
+    - when: never
+
 .radeonsi-rules:
   stage: amd
   rules:
