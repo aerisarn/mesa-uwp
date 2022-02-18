@@ -155,7 +155,7 @@ get_video_mem(struct zink_screen *screen)
    return size;
 }
 
-static void
+static bool
 disk_cache_init(struct zink_screen *screen)
 {
 #ifdef ENABLE_SHADER_CACHE
@@ -163,11 +163,25 @@ disk_cache_init(struct zink_screen *screen)
    snprintf(buf, sizeof(buf), "zink_%x04x", screen->info.props.vendorID);
 
    screen->disk_cache = disk_cache_create(buf, screen->info.props.deviceName, 0);
-   if (screen->disk_cache) {
-      util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
-      util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
+   if (!screen->disk_cache)
+      return false;
+
+   if (!util_queue_init(&screen->cache_put_thread, "zcq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen) ||
+      !util_queue_init(&screen->cache_get_thread, "zcfq", 8, 4,
+         UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen)) {
+      mesa_loge("zink: Failed to create disk cache queue\n");
+
+      disk_cache_destroy(screen->disk_cache);
+      screen->disk_cache = NULL;
+
+      util_queue_destroy(&screen->cache_put_thread);
+      util_queue_destroy(&screen->cache_get_thread);
+
+      return false;
    }
 #endif
+
+   return true;
 }
 
 
@@ -2107,8 +2121,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       goto fail;
    }
 
-   if (screen->threaded)
-      util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
+   if (screen->threaded && !util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen)) {
+      mesa_loge("zink: Failed to create flush queue.\n");
+      goto fail;
+   }
 
    zink_internal_setup_moltenvk(screen);
    if (!screen->info.have_KHR_timeline_semaphore) {
@@ -2191,7 +2207,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    zink_screen_fence_init(&screen->base);
 
    zink_screen_init_compiler(screen);
-   disk_cache_init(screen);
+   if (!disk_cache_init(screen))
+      goto fail;
    populate_format_props(screen);
    pre_hash_descriptor_states(screen);
 
