@@ -107,3 +107,45 @@ TEST_F(SchedulerPredicates, RestrictionsOnModifiersOfSameCycleTemporaries)
       }
    }
 }
+
+TEST_F(SchedulerPredicates, RestrictionsOnFAddV2F16)
+{
+   bi_index x = bi_register(0);
+   bi_index y = bi_register(1);
+
+   /* Basic */
+   bi_instr *fadd = bi_fadd_v2f16_to(b, TMP(), x, x, BI_ROUND_NONE);
+
+   ASSERT_TRUE(bi_can_fma(fadd));
+   ASSERT_TRUE(bi_can_add(fadd));
+
+   /* With imbalanced abs */
+   fadd->src[0].abs = true;
+
+   ASSERT_TRUE(bi_can_fma(fadd));
+   ASSERT_TRUE(bi_can_add(fadd));
+
+   /* With equal abs */
+   fadd->src[1].abs = true;
+
+   ASSERT_FALSE(bi_can_fma(fadd));
+   ASSERT_TRUE(bi_can_add(fadd));
+
+   /* With equal abs but different sources */
+   fadd->src[1] = bi_abs(y);
+
+   ASSERT_TRUE(bi_can_fma(fadd));
+   ASSERT_TRUE(bi_can_add(fadd));
+
+   /* With clamp */
+   fadd->clamp = BI_CLAMP_CLAMP_M1_1;
+
+   ASSERT_TRUE(bi_can_fma(fadd));
+   ASSERT_FALSE(bi_can_add(fadd));
+
+   /* Impossible encoding (should never be seen) */
+   fadd->src[1] = fadd->src[0];
+
+   ASSERT_FALSE(bi_can_fma(fadd));
+   ASSERT_FALSE(bi_can_add(fadd));
+}
