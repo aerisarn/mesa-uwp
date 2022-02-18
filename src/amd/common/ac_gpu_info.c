@@ -1295,7 +1295,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    chip_class = %i\n", info->chip_class);
    fprintf(f, "    family_id = %i\n", info->family_id);
    fprintf(f, "    chip_external_rev = %i\n", info->chip_external_rev);
-   fprintf(f, "    clock_crystal_freq = %i\n", info->clock_crystal_freq);
+   fprintf(f, "    clock_crystal_freq = %i KHz\n", info->clock_crystal_freq);
 
    fprintf(f, "Features:\n");
    fprintf(f, "    has_graphics = %i\n", info->has_graphics);
@@ -1340,7 +1340,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    gds_gfx_partition_size = %u kB\n", info->gds_gfx_partition_size / 1024);
    fprintf(f, "    max_alloc_size = %i MB\n", (int)DIV_ROUND_UP(info->max_alloc_size, 1024 * 1024));
    fprintf(f, "    min_alloc_size = %u\n", info->min_alloc_size);
-   fprintf(f, "    address32_hi = %u\n", info->address32_hi);
+   fprintf(f, "    address32_hi = 0x%x\n", info->address32_hi);
    fprintf(f, "    has_dedicated_vram = %u\n", info->has_dedicated_vram);
    fprintf(f, "    all_vram_visible = %u\n", info->all_vram_visible);
    fprintf(f, "    smart_access_memory = %u\n", info->smart_access_memory);
@@ -1352,7 +1352,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    lds_size_per_workgroup = %u\n", info->lds_size_per_workgroup);
    fprintf(f, "    lds_alloc_granularity = %i\n", info->lds_alloc_granularity);
    fprintf(f, "    lds_encode_granularity = %i\n", info->lds_encode_granularity);
-   fprintf(f, "    max_memory_clock = %i\n", info->max_memory_clock);
+   fprintf(f, "    max_memory_clock = %i MHz\n", info->max_memory_clock);
    fprintf(f, "    ce_ram_size = %i\n", info->ce_ram_size);
    fprintf(f, "    l1_cache_size = %i\n", info->l1_cache_size);
    fprintf(f, "    l2_cache_size = %i\n", info->l2_cache_size);
@@ -1414,7 +1414,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
       }
    }
    fprintf(f, "    spi_cu_en_has_effect = %i\n", info->spi_cu_en_has_effect);
-   fprintf(f, "    max_shader_clock = %i\n", info->max_shader_clock);
+   fprintf(f, "    max_shader_clock = %i MHz\n", info->max_shader_clock);
    fprintf(f, "    num_good_compute_units = %i\n", info->num_good_compute_units);
    fprintf(f, "    max_good_cu_per_sa = %i\n", info->max_good_cu_per_sa);
    fprintf(f, "    min_good_cu_per_sa = %i\n", info->min_good_cu_per_sa);
