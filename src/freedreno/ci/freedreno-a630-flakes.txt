@@ -106,9 +106,6 @@ KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2
 KHR-GLES31.core.geometry_shader.layered_framebuffer.depth_support
 KHR-GLES31.core.tessellation_shader.tessellation_shader_tc_barriers.barrier_guarded_read_calls
 
-# First flaked on 2021-08-19 with a kernel update.
-KHR-GLES31.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize
-
 # edfff331b3241d1c18d5c589fcdf75728089c886 mostly fixed this, but apparently it still flakes.
 dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_scale
 
