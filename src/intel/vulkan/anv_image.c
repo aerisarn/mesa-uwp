@@ -1856,6 +1856,9 @@ VkResult anv_BindImageMemory2(
          if (!isl_aux_usage_has_ccs(image->planes[p].aux_usage))
             continue;
 
+         anv_perf_warn(VK_LOG_OBJS(&image->vk.base),
+                       "BO lacks implicit CCS. Disabling the CCS aux usage.");
+
          if (image->planes[p].aux_surface.memory_range.size > 0) {
             assert(image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS ||
                    image->planes[p].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT);
