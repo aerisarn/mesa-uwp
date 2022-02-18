@@ -90,8 +90,6 @@ brw_load_eu_thread_simd(nir_builder *b)
 static inline nir_ssa_def *
 brw_nir_rt_async_stack_id(nir_builder *b)
 {
-   assert(gl_shader_stage_is_callable(b->shader->info.stage) ||
-          b->shader->info.stage == MESA_SHADER_RAYGEN);
    return nir_iadd(b, nir_umul_32x16(b, nir_load_ray_num_dss_rt_stacks_intel(b),
                                         brw_load_btd_dss_id(b)),
                       nir_load_btd_stack_id_intel(b));
