@@ -274,6 +274,8 @@ struct tu_pipeline_builder
    uint32_t render_components;
    uint32_t multiview_mask;
 
+   bool subpass_raster_order_attachment_access;
+   bool subpass_feedback_loop_color;
    bool subpass_feedback_loop_ds;
 };
 
@@ -3152,6 +3154,78 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
 }
 
 static void
+tu_pipeline_builder_parse_rasterization_order(
+   struct tu_pipeline_builder *builder, struct tu_pipeline *pipeline)
+{
+   if (builder->rasterizer_discard)
+      return;
+
+   pipeline->subpass_feedback_loop_ds = builder->subpass_feedback_loop_ds;
+
+   const VkPipelineColorBlendStateCreateInfo *blend_info =
+      builder->create_info->pColorBlendState;
+
+   const VkPipelineDepthStencilStateCreateInfo *ds_info =
+      builder->create_info->pDepthStencilState;
+
+   if (builder->use_color_attachments) {
+      pipeline->raster_order_attachment_access =
+         blend_info->flags &
+         VK_PIPELINE_COLOR_BLEND_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_BIT_ARM;
+   }
+
+   if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED) {
+      pipeline->raster_order_attachment_access |=
+         ds_info->flags &
+         (VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_DEPTH_ACCESS_BIT_ARM |
+          VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM);
+   }
+
+   /* VK_EXT_blend_operation_advanced would also require ordered access
+    * when implemented in the future.
+    */
+
+   uint32_t sysmem_prim_mode = NO_FLUSH;
+   uint32_t gmem_prim_mode = NO_FLUSH;
+
+   if (pipeline->raster_order_attachment_access) {
+      /* VK_ARM_rasterization_order_attachment_access:
+       *
+       * This extension allow access to framebuffer attachments when used as
+       * both input and color attachments from one fragment to the next,
+       * in rasterization order, without explicit synchronization.
+       */
+      sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
+      gmem_prim_mode = FLUSH_PER_OVERLAP;
+   } else {
+      /* If there is a feedback loop, then the shader can read the previous value
+       * of a pixel being written out. It can also write some components and then
+       * read different components without a barrier in between. This is a
+       * problem in sysmem mode with UBWC, because the main buffer and flags
+       * buffer can get out-of-sync if only one is flushed. We fix this by
+       * setting the SINGLE_PRIM_MODE field to the same value that the blob does
+       * for advanced_blend in sysmem mode if a feedback loop is detected.
+       */
+      if (builder->subpass_feedback_loop_color ||
+          builder->subpass_feedback_loop_ds) {
+         sysmem_prim_mode = FLUSH_PER_OVERLAP_AND_OVERWRITE;
+      }
+   }
+
+   struct tu_cs cs;
+
+   pipeline->prim_order_state_gmem = tu_cs_draw_state(&pipeline->cs, &cs, 2);
+   tu_cs_emit_write_reg(&cs, REG_A6XX_GRAS_SC_CNTL,
+                        A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) |
+                        A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(gmem_prim_mode));
+
+   pipeline->prim_order_state_sysmem = tu_cs_draw_state(&pipeline->cs, &cs, 2);
+   tu_cs_emit_write_reg(&cs, REG_A6XX_GRAS_SC_CNTL,
+                        A6XX_GRAS_SC_CNTL_CCUSINGLECACHELINESIZE(2) |
+                        A6XX_GRAS_SC_CNTL_SINGLE_PRIM_MODE(sysmem_prim_mode));
+}
+
+static void
 tu_pipeline_finish(struct tu_pipeline *pipeline,
                    struct tu_device *dev,
                    const VkAllocationCallbacks *alloc)
@@ -3176,7 +3250,6 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    (*pipeline)->layout = builder->layout;
-   (*pipeline)->subpass_feedback_loop_ds = builder->subpass_feedback_loop_ds;
    (*pipeline)->executables_mem_ctx = ralloc_context(NULL);
    util_dynarray_init(&(*pipeline)->executables, (*pipeline)->executables_mem_ctx);
 
@@ -3236,6 +3309,7 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    tu_pipeline_builder_parse_rasterization(builder, *pipeline);
    tu_pipeline_builder_parse_depth_stencil(builder, *pipeline);
    tu_pipeline_builder_parse_multisample_and_color_blend(builder, *pipeline);
+   tu_pipeline_builder_parse_rasterization_order(builder, *pipeline);
    tu6_emit_load_state(*pipeline, false);
 
    /* we should have reserved enough space upfront such that the CS never
@@ -3290,6 +3364,9 @@ tu_pipeline_builder_init_graphics(
    const struct tu_subpass *subpass =
       &pass->subpasses[create_info->subpass];
 
+   builder->subpass_raster_order_attachment_access =
+      subpass->raster_order_attachment_access;
+   builder->subpass_feedback_loop_color = subpass->feedback_loop_color;
    builder->subpass_feedback_loop_ds = subpass->feedback_loop_ds;
 
    builder->multiview_mask = subpass->multiview_mask;

@@ -205,6 +205,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_image_robustness = true,
       /* For Graphics Flight Recorder (GFR) */
       .AMD_buffer_marker = true,
+      .ARM_rasterization_order_attachment_access = true,
 #ifdef ANDROID
       .ANDROID_native_buffer = true,
 #endif
@@ -808,6 +809,14 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT *)ext;
          features->primitiveTopologyListRestart = true;
          features->primitiveTopologyPatchListRestart = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RASTERIZATION_ORDER_ATTACHMENT_ACCESS_FEATURES_ARM: {
+         VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM *features =
+            (VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM *)ext;
+         features->rasterizationOrderColorAttachmentAccess = true;
+         features->rasterizationOrderDepthAttachmentAccess = true;
+         features->rasterizationOrderStencilAttachmentAccess = true;
          break;
       }
 

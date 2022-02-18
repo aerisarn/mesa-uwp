@@ -616,6 +616,8 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM,
    TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM,
    TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE,
+   TU_DRAW_STATE_PRIM_MODE_GMEM,
+   TU_DRAW_STATE_PRIM_MODE_SYSMEM,
 
    /* dynamic state related draw states */
    TU_DRAW_STATE_DYNAMIC,
@@ -1317,6 +1319,7 @@ struct tu_pipeline
 
    /* draw states for the pipeline */
    struct tu_draw_state load_state, rast_state, blend_state;
+   struct tu_draw_state prim_order_state_sysmem, prim_order_state_gmem;
 
    /* for vertex buffers state */
    uint32_t num_vbs;
@@ -1359,6 +1362,8 @@ struct tu_pipeline
 
    struct tu_lrz_pipeline lrz;
 
+   /* In other words - framebuffer fetch support */
+   bool raster_order_attachment_access;
    bool subpass_feedback_loop_ds;
 
    /* Base drawcall cost for sysmem vs gmem autotuner */
@@ -1700,6 +1705,9 @@ struct tu_subpass
 
    /* True if we must invalidate UCHE thanks to a feedback loop. */
    bool feedback_invalidate;
+
+   /* In other words - framebuffer fetch support */
+   bool raster_order_attachment_access;
 
    struct tu_subpass_attachment *input_attachments;
    struct tu_subpass_attachment *color_attachments;
