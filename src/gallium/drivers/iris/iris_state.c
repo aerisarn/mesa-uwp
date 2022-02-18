@@ -7666,6 +7666,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       batch_mark_sync_for_pipe_control(batch, flags);
       iris_batch_sync_region_start(batch);
 
+      assert(!(flags & PIPE_CONTROL_WRITE_DEPTH_COUNT));
+
       /* The blitter doesn't actually use PIPE_CONTROL; rather it uses the
        * MI_FLUSH_DW command.  However, all of our code is set up to flush
        * via emitting a pipe control, so we just translate it at this point,
@@ -7674,6 +7676,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       iris_emit_cmd(batch, GENX(MI_FLUSH_DW), fd) {
          fd.Address = rw_bo(bo, offset, IRIS_DOMAIN_OTHER_WRITE);
          fd.ImmediateData = imm;
+         fd.PostSyncOperation = flags_to_post_sync_op(flags);
 #if GFX_VERx10 >= 125
          /* TODO: This may not always be necessary */
          fd.FlushCCS = true;
