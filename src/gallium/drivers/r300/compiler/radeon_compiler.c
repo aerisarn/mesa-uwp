@@ -370,7 +370,7 @@ static void print_stats(struct radeon_compiler * c)
 	 * only the FS has, becasue shader-db's report.py wants all shaders to
 	 * have the same set.
 	 */
-	pipe_debug_message(c->debug, SHADER_INFO, "%s shader: %d inst, %d vinst, %d sinst, %d flowcontrol, %d tex, %d presub, %d omod, %d temps, %d consts, %d lits",
+	pipe_debug_message(c->debug, SHADER_INFO, "%s shader: %u inst, %u vinst, %u sinst, %u flowcontrol, %u tex, %u presub, %u omod, %u temps, %u consts, %u lits",
 	                   c->type == RC_VERTEX_PROGRAM ? "VS" : "FS",
 	                   s.num_insts, s.num_rgb_insts, s.num_alpha_insts,
 	                   s.num_fc_insts, s.num_tex_insts, s.num_presub_ops,
