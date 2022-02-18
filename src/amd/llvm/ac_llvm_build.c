@@ -1124,18 +1124,18 @@ static unsigned get_load_cache_policy(struct ac_llvm_context *ctx, unsigned cach
 static void ac_build_buffer_store_common(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                          LLVMValueRef data, LLVMValueRef vindex,
                                          LLVMValueRef voffset, LLVMValueRef soffset,
-                                         unsigned cache_policy, bool use_format, bool structurized)
+                                         unsigned cache_policy, bool use_format)
 {
    LLVMValueRef args[6];
    int idx = 0;
    args[idx++] = data;
    args[idx++] = LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "");
-   if (structurized)
+   if (vindex)
       args[idx++] = vindex ? vindex : ctx->i32_0;
    args[idx++] = voffset ? voffset : ctx->i32_0;
    args[idx++] = soffset ? soffset : ctx->i32_0;
    args[idx++] = LLVMConstInt(ctx->i32, cache_policy, 0);
-   const char *indexing_kind = structurized ? "struct" : "raw";
+   const char *indexing_kind = vindex ? "struct" : "raw";
    char name[256], type_name[8];
 
    ac_build_type_name_for_intr(LLVMTypeOf(data), type_name, sizeof(type_name));
@@ -1153,7 +1153,7 @@ static void ac_build_buffer_store_common(struct ac_llvm_context *ctx, LLVMValueR
 void ac_build_buffer_store_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef data,
                                   LLVMValueRef vindex, LLVMValueRef voffset, unsigned cache_policy)
 {
-   ac_build_buffer_store_common(ctx, rsrc, data, vindex, voffset, NULL, cache_policy, true, true);
+   ac_build_buffer_store_common(ctx, rsrc, data, vindex, voffset, NULL, cache_policy, true);
 }
 
 /* buffer_store_dword(,x2,x3,x4) <- the suffix is selected by the type of vdata. */
@@ -1189,7 +1189,7 @@ void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
          offset = LLVMBuildAdd(ctx->builder, offset, LLVMConstInt(ctx->i32, inst_offset, 0), "");
 
       ac_build_buffer_store_common(ctx, rsrc, ac_to_float(ctx, vdata), vindex, voffset, offset,
-                                   cache_policy, false, false);
+                                   cache_policy, false);
       return;
    }
 
@@ -1734,8 +1734,7 @@ void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc
 {
    vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i16, "");
 
-   ac_build_buffer_store_common(ctx, rsrc, vdata, NULL, voffset, soffset, cache_policy, false,
-                                false);
+   ac_build_buffer_store_common(ctx, rsrc, vdata, NULL, voffset, soffset, cache_policy, false);
 }
 
 void ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
@@ -1743,8 +1742,7 @@ void ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
 {
    vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i8, "");
 
-   ac_build_buffer_store_common(ctx, rsrc, vdata, NULL, voffset, soffset, cache_policy, false,
-                                false);
+   ac_build_buffer_store_common(ctx, rsrc, vdata, NULL, voffset, soffset, cache_policy, false);
 }
 
 /**
