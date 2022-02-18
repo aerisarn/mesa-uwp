@@ -490,12 +490,28 @@ bi_can_iaddc(bi_instr *ins)
                 ins->src[1].swizzle == BI_SWIZZLE_H01);
 }
 
+/*
+ * The encoding of *FADD.v2f16 only specifies a single abs flag. All abs
+ * encodings are permitted by swapping operands; however, this scheme fails if
+ * both operands are equal. Test for this case.
+ */
+static bool
+bi_impacted_abs(bi_instr *I)
+{
+        return I->src[0].abs && I->src[1].abs &&
+               bi_is_word_equiv(I->src[0], I->src[1]);
+}
+
 bool
 bi_can_fma(bi_instr *ins)
 {
         /* +IADD.i32 -> *IADDC.i32 */
         if (bi_can_iaddc(ins))
                 return true;
+
+        /* *FADD.v2f16 has restricted abs modifiers, use +FADD.v2f16 instead */
+        if (ins->op == BI_OPCODE_FADD_V2F16 && bi_impacted_abs(ins))
+                return false;
 
         /* TODO: some additional fp16 constraints */
         return bi_opcode_props[ins->op].fma;
