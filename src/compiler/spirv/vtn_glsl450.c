@@ -32,9 +32,15 @@
 #include "vtn_private.h"
 #include "GLSL.std.450.h"
 
+#ifndef M_PIf
 #define M_PIf   ((float) M_PI)
+#endif
+#ifndef M_PI_2f
 #define M_PI_2f ((float) M_PI_2)
+#endif
+#ifndef M_PI_4f
 #define M_PI_4f ((float) M_PI_4)
+#endif
 
 static nir_ssa_def *build_det(nir_builder *b, nir_ssa_def **col, unsigned cols);
 
