@@ -1327,16 +1327,16 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
 {
    struct zink_resource *res = zink_resource(view->resource);
    struct pipe_surface tmpl = {0};
+   enum pipe_texture_target target = res->base.b.target == PIPE_TEXTURE_3D ? PIPE_TEXTURE_2D : res->base.b.target;
    tmpl.format = view->format;
    tmpl.u.tex.level = view->u.tex.level;
    tmpl.u.tex.first_layer = view->u.tex.first_layer;
    tmpl.u.tex.last_layer = view->u.tex.last_layer;
-   struct pipe_surface *psurf = ctx->base.create_surface(&ctx->base, &res->base.b, &tmpl);
+   VkImageViewCreateInfo ivci = create_ivci(zink_screen(ctx->base.screen), res, &tmpl, target);
+   struct pipe_surface *psurf = zink_get_surface(ctx, view->resource, &tmpl, &ivci);
    if (!psurf)
       return NULL;
-   /* this is actually a zink_ctx_surface, but we just want the inner surface */
-   struct zink_surface *surface = zink_csurface(psurf);
-   FREE(psurf);
+   struct zink_surface *surface = zink_surface(psurf);
    if (is_compute)
       flush_pending_clears(ctx, res);
    return surface;
