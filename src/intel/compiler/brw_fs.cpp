@@ -9217,9 +9217,6 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       fixup_3src_null_dest();
 
       allocate_registers(allow_spilling);
-
-      if (failed)
-         return false;
    }
 
    return !failed;
@@ -9255,9 +9252,6 @@ fs_visitor::run_cs(bool allow_spilling)
    fixup_3src_null_dest();
    allocate_registers(allow_spilling);
 
-   if (failed)
-      return false;
-
    return !failed;
 }
 
@@ -9285,9 +9279,6 @@ fs_visitor::run_bs(bool allow_spilling)
 
    fixup_3src_null_dest();
    allocate_registers(allow_spilling);
-
-   if (failed)
-      return false;
 
    return !failed;
 }
@@ -9333,9 +9324,6 @@ fs_visitor::run_task(bool allow_spilling)
    fixup_3src_null_dest();
    allocate_registers(allow_spilling);
 
-   if (failed)
-      return false;
-
    return !failed;
 }
 
@@ -9379,9 +9367,6 @@ fs_visitor::run_mesh(bool allow_spilling)
 
    fixup_3src_null_dest();
    allocate_registers(allow_spilling);
-
-   if (failed)
-      return false;
 
    return !failed;
 }
