@@ -904,7 +904,7 @@ resource_create(struct pipe_screen *pscreen,
 
    res->base.b = *templ;
 
-   threaded_resource_init(&res->base.b, false, 0);
+   threaded_resource_init(&res->base.b, false);
    pipe_reference_init(&res->base.b.reference, 1);
    res->base.b.screen = pscreen;
 

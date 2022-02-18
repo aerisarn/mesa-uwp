@@ -297,7 +297,7 @@ convert_planar_resource(struct d3d12_resource *res)
          *plane_res = *res;
          d3d12_bo_reference(plane_res->bo);
          pipe_reference_init(&plane_res->base.b.reference, 1);
-         threaded_resource_init(&plane_res->base.b, false, 0);
+         threaded_resource_init(&plane_res->base.b, false);
       }
 
       plane_res->base.b.next = next;
@@ -357,7 +357,7 @@ d3d12_resource_create(struct pipe_screen *pscreen,
    init_valid_range(res);
    threaded_resource_init(&res->base.b,
       templ->usage == PIPE_USAGE_DEFAULT &&
-      templ->target == PIPE_BUFFER, 64);
+      templ->target == PIPE_BUFFER);
 
    memset(&res->bind_counts, 0, sizeof(d3d12_resource::bind_counts));
 
@@ -556,7 +556,7 @@ d3d12_resource_from_handle(struct pipe_screen *pscreen,
    }
    init_valid_range(res);
 
-   threaded_resource_init(&res->base.b, false, 0);
+   threaded_resource_init(&res->base.b, false);
    convert_planar_resource(res);
 
    return &res->base.b;

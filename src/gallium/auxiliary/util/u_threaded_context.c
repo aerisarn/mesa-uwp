@@ -671,8 +671,7 @@ tc_is_buffer_busy(struct threaded_context *tc, struct threaded_resource *tbuf,
  * allow_cpu_storage should be false for user memory and imported buffers.
  */
 void
-threaded_resource_init(struct pipe_resource *res, bool allow_cpu_storage,
-                       unsigned map_buffer_alignment)
+threaded_resource_init(struct pipe_resource *res, bool allow_cpu_storage)
 {
    struct threaded_resource *tres = threaded_resource(res);
 
@@ -692,7 +691,9 @@ threaded_resource_init(struct pipe_resource *res, bool allow_cpu_storage,
        /* We need buffer invalidation and buffer busyness tracking for the CPU
         * storage, which aren't supported with pipe_vertex_state. */
        !(res->bind & PIPE_BIND_VERTEX_STATE))
-      tres->cpu_storage = align_malloc(res->width0, map_buffer_alignment);
+      tres->allow_cpu_storage = true;
+   else
+      tres->allow_cpu_storage = false;
 }
 
 void
@@ -2173,24 +2174,31 @@ tc_buffer_map(struct pipe_context *_pipe,
    usage = tc_improve_map_buffer_flags(tc, tres, usage, box->x, box->width);
 
    /* If the CPU storage is enabled, return it directly. */
-   if (tres->cpu_storage && !(usage & TC_TRANSFER_MAP_UPLOAD_CPU_STORAGE)) {
+   if (tres->allow_cpu_storage && !(usage & TC_TRANSFER_MAP_UPLOAD_CPU_STORAGE)) {
       /* We can't let resource_copy_region disable the CPU storage. */
       assert(!(tres->b.flags & PIPE_RESOURCE_FLAG_DONT_MAP_DIRECTLY));
 
-      struct threaded_transfer *ttrans = slab_alloc(&tc->pool_transfers);
-      ttrans->b.resource = resource;
-      ttrans->b.level = 0;
-      ttrans->b.usage = usage;
-      ttrans->b.box = *box;
-      ttrans->b.stride = 0;
-      ttrans->b.layer_stride = 0;
-      ttrans->b.offset = 0;
-      ttrans->staging = NULL;
-      ttrans->valid_buffer_range = &tres->valid_buffer_range;
-      ttrans->cpu_storage_mapped = true;
-      *transfer = &ttrans->b;
+      if (!tres->cpu_storage)
+         tres->cpu_storage = align_malloc(resource->width0, tc->map_buffer_alignment);
 
-      return (uint8_t*)tres->cpu_storage + box->x;
+      if (tres->cpu_storage) {
+         struct threaded_transfer *ttrans = slab_alloc(&tc->pool_transfers);
+         ttrans->b.resource = resource;
+         ttrans->b.level = 0;
+         ttrans->b.usage = usage;
+         ttrans->b.box = *box;
+         ttrans->b.stride = 0;
+         ttrans->b.layer_stride = 0;
+         ttrans->b.offset = 0;
+         ttrans->staging = NULL;
+         ttrans->valid_buffer_range = &tres->valid_buffer_range;
+         ttrans->cpu_storage_mapped = true;
+         *transfer = &ttrans->b;
+
+         return (uint8_t*)tres->cpu_storage + box->x;
+      } else {
+         tres->allow_cpu_storage = false;
+      }
    }
 
    /* Do a staging transfer within the threaded context. The driver should
