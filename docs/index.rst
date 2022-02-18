@@ -112,6 +112,7 @@ Linux, FreeBSD, and other operating systems.
    release-calendar
    dispatch
    gallium/index
+   vulkan/index
    nir/index
    isl/index
    android
