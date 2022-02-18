@@ -3549,6 +3549,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS(progress, nir, nir_opt_undef);
                 NIR_PASS(progress, nir, nir_lower_undef_to_zero);
 
+                NIR_PASS(progress, nir, nir_opt_shrink_vectors);
                 NIR_PASS(progress, nir, nir_opt_loop_unroll);
         } while (progress);
 
