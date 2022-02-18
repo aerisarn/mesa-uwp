@@ -349,8 +349,11 @@ void rc_get_stats(struct radeon_compiler *c, struct rc_program_stats *s)
 			}
 			info = rc_get_opcode_info(tmp->U.P.RGB.Opcode);
 		}
-		if (info->IsFlowControl)
+		if (info->IsFlowControl) {
 			s->num_fc_insts++;
+			if (info->Opcode == RC_OPCODE_BGNLOOP)
+				s->num_loops++;
+		}
 		if (info->HasTexture)
 			s->num_tex_insts++;
 		s->num_insts++;
@@ -370,10 +373,10 @@ static void print_stats(struct radeon_compiler * c)
 	 * only the FS has, becasue shader-db's report.py wants all shaders to
 	 * have the same set.
 	 */
-	pipe_debug_message(c->debug, SHADER_INFO, "%s shader: %u inst, %u vinst, %u sinst, %u flowcontrol, %u tex, %u presub, %u omod, %u temps, %u consts, %u lits",
+	pipe_debug_message(c->debug, SHADER_INFO, "%s shader: %u inst, %u vinst, %u sinst, %u flowcontrol, %u loops, %u tex, %u presub, %u omod, %u temps, %u consts, %u lits",
 	                   c->type == RC_VERTEX_PROGRAM ? "VS" : "FS",
 	                   s.num_insts, s.num_rgb_insts, s.num_alpha_insts,
-	                   s.num_fc_insts, s.num_tex_insts, s.num_presub_ops,
+	                   s.num_fc_insts, s.num_loops, s.num_tex_insts, s.num_presub_ops,
 	                   s.num_omod_ops, s.num_temp_regs, s.num_consts, s.num_inline_literals);
 }
 
