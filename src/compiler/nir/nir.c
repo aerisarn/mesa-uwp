@@ -3057,22 +3057,34 @@ nir_ssa_alu_instr_src_components(const nir_alu_instr *instr, unsigned src)
    return nir_dest_num_components(instr->dest.dest);
 }
 
+#define CASE_ALL_SIZES(op) \
+   case op: \
+   case op ## 8: \
+   case op ## 16: \
+   case op ## 32: \
+
 bool
 nir_alu_instr_is_comparison(const nir_alu_instr *instr)
 {
    switch (instr->op) {
-   case nir_op_flt:
-   case nir_op_fge:
-   case nir_op_feq:
-   case nir_op_fneu:
-   case nir_op_ilt:
-   case nir_op_ult:
-   case nir_op_ige:
-   case nir_op_uge:
-   case nir_op_ieq:
-   case nir_op_ine:
+   CASE_ALL_SIZES(nir_op_flt)
+   CASE_ALL_SIZES(nir_op_fge)
+   CASE_ALL_SIZES(nir_op_feq)
+   CASE_ALL_SIZES(nir_op_fneu)
+   CASE_ALL_SIZES(nir_op_ilt)
+   CASE_ALL_SIZES(nir_op_ult)
+   CASE_ALL_SIZES(nir_op_ige)
+   CASE_ALL_SIZES(nir_op_uge)
+   CASE_ALL_SIZES(nir_op_ieq)
+   CASE_ALL_SIZES(nir_op_ine)
    case nir_op_i2b1:
+   case nir_op_i2b8:
+   case nir_op_i2b16:
+   case nir_op_i2b32:
    case nir_op_f2b1:
+   case nir_op_f2b8:
+   case nir_op_f2b16:
+   case nir_op_f2b32:
    case nir_op_inot:
       return true;
    default:
@@ -3080,6 +3092,7 @@ nir_alu_instr_is_comparison(const nir_alu_instr *instr)
    }
 }
 
+#undef CASE_ALL_SIZES
 
 unsigned
 nir_intrinsic_src_components(const nir_intrinsic_instr *intr, unsigned srcn)
