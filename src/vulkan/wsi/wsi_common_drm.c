@@ -419,13 +419,6 @@ wsi_create_native_image_mem(const struct wsi_swapchain *chain,
    return VK_SUCCESS;
 }
 
-static inline uint32_t
-align_u32(uint32_t v, uint32_t a)
-{
-   assert(a != 0 && a == (a & -a));
-   return (v + a - 1) & ~(a - 1);
-}
-
 #define WSI_PRIME_LINEAR_STRIDE_ALIGN 256
 
 static VkResult
@@ -437,7 +430,7 @@ wsi_create_prime_image_mem(const struct wsi_swapchain *chain,
    VkResult result;
 
    uint32_t linear_size = info->linear_stride * info->create.extent.height;
-   linear_size = align_u32(linear_size, 4096);
+   linear_size = ALIGN_POT(linear_size, 4096);
 
    const VkExternalMemoryBufferCreateInfo prime_buffer_external_info = {
       .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO,
@@ -611,7 +604,7 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
    info->prime_use_linear_modifier = use_modifier;
 
    const uint32_t cpp = vk_format_size(info->create.format);
-   info->linear_stride = align_u32(info->create.extent.width * cpp,
+   info->linear_stride = ALIGN_POT(info->create.extent.width * cpp,
                                    WSI_PRIME_LINEAR_STRIDE_ALIGN);
 
    info->create_mem = wsi_create_prime_image_mem;
