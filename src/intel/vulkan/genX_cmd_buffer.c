@@ -6549,7 +6549,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
    struct anv_subpass *subpass = &pass->subpasses[subpass_id];
    cmd_state->subpass = subpass;
 
-   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
+   cmd_state->gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
 
    /* Our implementation of VK_KHR_multiview uses instancing to draw the
     * different views.  If the client asks for instancing, we need to use the
@@ -6559,7 +6559,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
     * of each subpass.
     */
    if (GFX_VER == 7)
-      cmd_buffer->state.gfx.vb_dirty |= ~0;
+      cmd_state->gfx.vb_dirty |= ~0;
 
    /* It is possible to start a render pass with an old pipeline.  Because the
     * render pass and subpass index are both baked into the pipeline, this is
@@ -6570,37 +6570,36 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
     * with this edge case, we just dirty the pipeline at the start of every
     * subpass.
     */
-   cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
+   cmd_state->gfx.dirty |= ANV_CMD_DIRTY_PIPELINE;
 
    /* Accumulate any subpass flushes that need to happen before the subpass */
    anv_add_pending_pipe_bits(cmd_buffer,
-                             cmd_buffer->state.pass->subpass_flushes[subpass_id],
+                             pass->subpass_flushes[subpass_id],
                              "begin subpass deps/attachments");
 
-   VkRect2D render_area = cmd_buffer->state.render_area;
-   struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   VkRect2D render_area = cmd_state->render_area;
+   struct anv_framebuffer *fb = cmd_state->framebuffer;
 
    bool is_multiview = subpass->view_mask != 0;
 
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
-      const uint32_t a = subpass->attachments[i].attachment;
+      struct anv_subpass_attachment *att = &subpass->attachments[i];
+      const uint32_t a = att->attachment;
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
-      assert(a < cmd_state->pass->attachment_count);
-      struct anv_subpass_attachment *att = &subpass->attachments[i];
+      assert(a < pass->attachment_count);
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
 
       struct anv_image_view *iview = att_state->image_view;
       const struct anv_image *image = iview->image;
 
       VkImageLayout target_layout = att->layout;
-      VkImageLayout target_stencil_layout =
-         subpass->attachments[i].stencil_layout;
+      VkImageLayout target_stencil_layout = att->stencil_layout;
 
       uint32_t level = iview->planes[0].isl.base_level;
-      uint32_t width = anv_minify(iview->image->vk.extent.width, level);
-      uint32_t height = anv_minify(iview->image->vk.extent.height, level);
+      uint32_t width = anv_minify(image->vk.extent.width, level);
+      uint32_t height = anv_minify(image->vk.extent.height, level);
       bool full_surface_draw =
          render_area.offset.x == 0 && render_area.offset.y == 0 &&
          render_area.extent.width == width &&
@@ -6609,7 +6608,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       uint32_t base_layer, layer_count;
       if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
          base_layer = 0;
-         layer_count = anv_minify(iview->image->vk.extent.depth, level);
+         layer_count = anv_minify(image->vk.extent.depth, level);
       } else {
          base_layer = iview->planes[0].isl.base_array_layer;
          layer_count = fb->layers;
@@ -6717,19 +6716,20 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                        .size = isl_extent3d(fb->width, fb->height, fb->layers));
 
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
-      const uint32_t att = subpass->attachments[i].attachment;
-      if (att == VK_ATTACHMENT_UNUSED)
+      struct anv_subpass_attachment *att = &subpass->attachments[i];
+      const uint32_t a = att->attachment;
+      if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
-      assert(att < cmd_state->pass->attachment_count);
-      struct anv_render_pass_attachment *pass_att = &pass->attachments[att];
-      struct anv_attachment_state *att_state = &cmd_state->attachments[att];
+      assert(a < pass->attachment_count);
+      struct anv_render_pass_attachment *pass_att = &pass->attachments[a];
+      struct anv_attachment_state *att_state = &cmd_state->attachments[a];
       struct anv_image_view *iview = att_state->image_view;
 
       if (!vk_format_is_color(pass_att->format))
          continue;
 
-      const VkImageUsageFlagBits att_usage = subpass->attachments[i].usage;
+      const VkImageUsageFlagBits att_usage = att->usage;
       assert(util_bitcount(att_usage) == 1);
 
       struct anv_surface_state *surface_state;
@@ -6829,10 +6829,9 @@ cmd_buffer_clear_state_pointers(struct anv_cmd_state *cmd_state)
     * accidentally use them between now and the next subpass.
     */
    for (uint32_t i = 0; i < cmd_state->pass->attachment_count; ++i) {
-      memset(&cmd_state->attachments[i].color, 0,
-             sizeof(cmd_state->attachments[i].color));
-      memset(&cmd_state->attachments[i].input, 0,
-             sizeof(cmd_state->attachments[i].input));
+      struct anv_attachment_state *att_state = &cmd_state->attachments[i];
+      memset(&att_state->color, 0, sizeof(att_state->color));
+      memset(&att_state->input, 0, sizeof(att_state->input));
    }
    cmd_state->null_surface_state = ANV_STATE_NULL;
    cmd_state->attachment_states = ANV_STATE_NULL;
@@ -6845,7 +6844,8 @@ cmd_buffer_mark_images_written(struct anv_cmd_buffer *cmd_buffer,
                                struct anv_framebuffer *fb)
 {
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
-      const uint32_t a = subpass->attachments[i].attachment;
+      struct anv_subpass_attachment *att = &subpass->attachments[i];
+      const uint32_t a = att->attachment;
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
@@ -6853,9 +6853,8 @@ cmd_buffer_mark_images_written(struct anv_cmd_buffer *cmd_buffer,
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
       struct anv_image_view *iview = att_state->image_view;
 
-      assert(util_bitcount(subpass->attachments[i].usage) == 1);
-      if (subpass->attachments[i].usage ==
-          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+      assert(util_bitcount(att->usage) == 1);
+      if (att->usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
          /* We assume that if we're ending a subpass, we did do some rendering
           * so we may end up with compressed data.
           */
@@ -6865,8 +6864,7 @@ cmd_buffer_mark_images_written(struct anv_cmd_buffer *cmd_buffer,
                                              iview->planes[0].isl.base_level,
                                              iview->planes[0].isl.base_array_layer,
                                              fb->layers);
-      } else if (subpass->attachments[i].usage ==
-                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+      } else if (att->usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
          /* We may be writing depth or stencil so we need to mark the surface.
           * Unfortunately, there's no way to know at this point whether the
           * depth or stencil tests used will actually write to the surface.
@@ -6905,6 +6903,8 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
                                struct anv_framebuffer *fb,
                                uint32_t subpass_id)
 {
+   struct anv_attachment_state *attachments = cmd_state->attachments;
+
    if (subpass->has_color_resolve) {
       /* We are about to do some MSAA resolves.  We need to flush so that the
        * result of writes to the MSAA color attachments show up in the sampler
@@ -6922,10 +6922,10 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
          if (dst_att == VK_ATTACHMENT_UNUSED)
             continue;
 
-         assert(src_att < cmd_buffer->state.pass->attachment_count);
-         assert(dst_att < cmd_buffer->state.pass->attachment_count);
+         assert(src_att < cmd_state->pass->attachment_count);
+         assert(dst_att < cmd_state->pass->attachment_count);
 
-         if (cmd_buffer->state.attachments[dst_att].pending_clear_aspects) {
+         if (attachments[dst_att].pending_clear_aspects) {
             /* From the Vulkan 1.0 spec:
              *
              *    If the first use of an attachment in a render pass is as a
@@ -6933,18 +6933,16 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
              *    as the resolve is guaranteed to overwrite all pixels in the
              *    render area.
              */
-            cmd_buffer->state.attachments[dst_att].pending_clear_aspects = 0;
+            attachments[dst_att].pending_clear_aspects = 0;
          }
 
-         struct anv_image_view *src_iview = cmd_state->attachments[src_att].image_view;
-         struct anv_image_view *dst_iview = cmd_state->attachments[dst_att].image_view;
+         struct anv_image_view *src_iview = attachments[src_att].image_view;
+         struct anv_image_view *dst_iview = attachments[dst_att].image_view;
 
-         const VkRect2D render_area = cmd_buffer->state.render_area;
+         const VkRect2D render_area = cmd_state->render_area;
 
-         enum isl_aux_usage src_aux_usage =
-            cmd_buffer->state.attachments[src_att].aux_usage;
-         enum isl_aux_usage dst_aux_usage =
-            cmd_buffer->state.attachments[dst_att].aux_usage;
+         enum isl_aux_usage src_aux_usage = attachments[src_att].aux_usage;
+         enum isl_aux_usage dst_aux_usage = attachments[dst_att].aux_usage;
 
          assert(src_iview->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT &&
                 dst_iview->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT);
@@ -6978,10 +6976,10 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
       uint32_t src_att = subpass->depth_stencil_attachment->attachment;
       uint32_t dst_att = subpass->ds_resolve_attachment->attachment;
 
-      assert(src_att < cmd_buffer->state.pass->attachment_count);
-      assert(dst_att < cmd_buffer->state.pass->attachment_count);
+      assert(src_att < cmd_state->pass->attachment_count);
+      assert(dst_att < cmd_state->pass->attachment_count);
 
-      if (cmd_buffer->state.attachments[dst_att].pending_clear_aspects) {
+      if (attachments[dst_att].pending_clear_aspects) {
          /* From the Vulkan 1.0 spec:
           *
           *    If the first use of an attachment in a render pass is as a
@@ -6989,18 +6987,16 @@ cmd_buffer_resolve_attachments(struct anv_cmd_buffer *cmd_buffer,
           *    as the resolve is guaranteed to overwrite all pixels in the
           *    render area.
           */
-         cmd_buffer->state.attachments[dst_att].pending_clear_aspects = 0;
+         attachments[dst_att].pending_clear_aspects = 0;
       }
 
-      struct anv_image_view *src_iview = cmd_state->attachments[src_att].image_view;
-      struct anv_image_view *dst_iview = cmd_state->attachments[dst_att].image_view;
+      struct anv_image_view *src_iview = attachments[src_att].image_view;
+      struct anv_image_view *dst_iview = attachments[dst_att].image_view;
 
-      const VkRect2D render_area = cmd_buffer->state.render_area;
+      const VkRect2D render_area = cmd_state->render_area;
 
-      struct anv_attachment_state *src_state =
-         &cmd_state->attachments[src_att];
-      struct anv_attachment_state *dst_state =
-         &cmd_state->attachments[dst_att];
+      struct anv_attachment_state *src_state = &attachments[src_att];
+      struct anv_attachment_state *dst_state = &attachments[dst_att];
 
       if ((src_iview->image->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
           subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE_KHR) {
@@ -7149,25 +7145,26 @@ cmd_buffer_do_layout_transitions(struct anv_cmd_buffer *cmd_buffer,
                                  struct anv_framebuffer *fb,
                                  uint32_t subpass_id)
 {
+   struct anv_render_pass *pass = cmd_state->pass;
+
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
-      const uint32_t a = subpass->attachments[i].attachment;
+      struct anv_subpass_attachment *att = &subpass->attachments[i];
+      const uint32_t a = att->attachment;
       if (a == VK_ATTACHMENT_UNUSED)
          continue;
 
-      if (cmd_state->pass->attachments[a].last_subpass_idx != subpass_id)
+      struct anv_render_pass_attachment *pass_att = &pass->attachments[a];
+      if (pass_att->last_subpass_idx != subpass_id)
          continue;
 
-      assert(a < cmd_state->pass->attachment_count);
-      struct anv_subpass_attachment *att = &subpass->attachments[i];
+      assert(a < pass->attachment_count);
       struct anv_attachment_state *att_state = &cmd_state->attachments[a];
       struct anv_image_view *iview = att_state->image_view;
       const struct anv_image *image = iview->image;
 
       /* Transition the image into the final layout for this render pass */
-      VkImageLayout target_layout =
-         cmd_state->pass->attachments[a].final_layout;
-      VkImageLayout target_stencil_layout =
-         cmd_state->pass->attachments[a].stencil_final_layout;
+      VkImageLayout target_layout = pass_att->final_layout;
+      VkImageLayout target_stencil_layout = pass_att->stencil_final_layout;
 
       uint32_t base_layer, layer_count;
       if (image->vk.image_type == VK_IMAGE_TYPE_3D) {
