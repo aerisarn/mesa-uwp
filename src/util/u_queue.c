@@ -392,8 +392,10 @@ util_queue_adjust_num_threads(struct util_queue *queue, unsigned num_threads)
     */
    queue->num_threads = num_threads;
    for (unsigned i = old_num_threads; i < num_threads; i++) {
-      if (!util_queue_create_thread(queue, i))
+      if (!util_queue_create_thread(queue, i)) {
+         queue->num_threads = i;
          break;
+      }
    }
    simple_mtx_unlock(&queue->finish_lock);
 }
