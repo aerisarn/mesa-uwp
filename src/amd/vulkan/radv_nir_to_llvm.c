@@ -682,11 +682,6 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
    unsigned attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[attrib_index];
    unsigned attrib_stride = ctx->options->key.vs.vertex_attribute_strides[attrib_index];
 
-   if (ctx->options->key.vs.vertex_post_shuffle & (1 << attrib_index)) {
-      /* Always load, at least, 3 channels for formats that need to be shuffled because X<->Z. */
-      num_channels = MAX2(num_channels, 3);
-   }
-
    unsigned desc_index =
       ctx->shader_info->vs.use_per_attribute_vb_descs ? attrib_index : attrib_binding;
    desc_index = util_bitcount(ctx->shader_info->vs.vb_desc_usage_mask &
@@ -737,16 +732,6 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
       input = ac_build_struct_tbuffer_load(
          &ctx->ac, t_list, buffer_index, LLVMConstInt(ctx->ac.i32, attrib_offset, false),
          ctx->ac.i32_0, ctx->ac.i32_0, num_channels, data_format, num_format, 0, true);
-   }
-
-   if (ctx->options->key.vs.vertex_post_shuffle & (1 << attrib_index)) {
-      LLVMValueRef c[4];
-      c[0] = ac_llvm_extract_elem(&ctx->ac, input, 2);
-      c[1] = ac_llvm_extract_elem(&ctx->ac, input, 1);
-      c[2] = ac_llvm_extract_elem(&ctx->ac, input, 0);
-      c[3] = ac_llvm_extract_elem(&ctx->ac, input, 3);
-
-      input = ac_build_gather_values(&ctx->ac, c, 4);
    }
 
    input = radv_fixup_vertex_input_fetches(ctx, input, num_channels, is_float);

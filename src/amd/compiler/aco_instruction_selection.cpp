@@ -5110,9 +5110,6 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
 
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa) << component;
       unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
-      bool post_shuffle = ctx->options->key.vs.vertex_post_shuffle & (1 << location);
-      if (post_shuffle)
-         num_channels = MAX2(num_channels, 3);
 
       unsigned desc_index =
          ctx->program->info->vs.use_per_attribute_vb_descs ? location : attrib_binding;
@@ -5147,12 +5144,10 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
       bool direct_fetch = false;
 
       /* skip unused channels at the start */
-      if (vtx_info->chan_byte_size && !post_shuffle) {
+      if (vtx_info->chan_byte_size) {
          channel_start = ffs(mask) - 1;
          for (unsigned i = 0; i < MIN2(channel_start, num_channels); i++)
             channels[i] = Temp(0, s1);
-      } else if (vtx_info->chan_byte_size && post_shuffle && !(mask & 0x8)) {
-         num_channels = 3 - (ffs(mask) - 1);
       }
 
       /* load channels */
@@ -5237,7 +5232,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          }
 
          Temp fetch_dst;
-         if (channel_start == 0 && fetch_bytes == dst.bytes() && !post_shuffle && !expanded &&
+         if (channel_start == 0 && fetch_bytes == dst.bytes() && !expanded &&
              num_channels <= 3) {
             direct_fetch = true;
             fetch_dst = dst;
@@ -5274,9 +5269,6 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          bool is_float =
             nfmt != V_008F0C_BUF_NUM_FORMAT_UINT && nfmt != V_008F0C_BUF_NUM_FORMAT_SINT;
 
-         static const unsigned swizzle_normal[4] = {0, 1, 2, 3};
-         static const unsigned swizzle_post_shuffle[4] = {2, 1, 0, 3};
-         const unsigned* swizzle = post_shuffle ? swizzle_post_shuffle : swizzle_normal;
          unsigned num_components = instr->dest.ssa.num_components;
 
          aco_ptr<Instruction> vec{create_instruction<Pseudo_instruction>(
@@ -5285,8 +5277,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
          unsigned num_temp = 0;
          for (unsigned i = 0; i < num_components; i++) {
             unsigned idx = i + component;
-            if (swizzle[idx] < num_channels && channels[swizzle[idx]].id()) {
-               Temp channel = channels[swizzle[idx]];
+            if (idx < num_channels && channels[idx].id()) {
+               Temp channel = channels[idx];
                vec->operands[i] = Operand(channel);
 
                num_temp++;

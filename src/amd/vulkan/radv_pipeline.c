@@ -3760,24 +3760,46 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
 
          unsigned location = nir_intrinsic_base(intrin) - VERT_ATTRIB_GENERIC0;
          enum radv_vs_input_alpha_adjust alpha_adjust = pipeline_key->vs.vertex_alpha_adjust[location];
+         bool post_shuffle = pipeline_key->vs.vertex_post_shuffle & (1 << location);
 
-         if (alpha_adjust == ALPHA_ADJUST_NONE)
+         if (alpha_adjust == ALPHA_ADJUST_NONE && !post_shuffle)
             continue;
 
          unsigned component = nir_intrinsic_component(intrin);
          unsigned num_components = intrin->dest.ssa.num_components;
 
-         b.cursor = nir_after_instr(instr);
+         static const unsigned swizzle_normal[4] = {0, 1, 2, 3};
+         static const unsigned swizzle_post_shuffle[4] = {2, 1, 0, 3};
+         const unsigned *swizzle = post_shuffle ? swizzle_post_shuffle : swizzle_normal;
 
-         if (component + num_components == 4) {
-            unsigned idx = num_components - 1;
-            nir_ssa_def *alpha = radv_adjust_vertex_fetch_alpha(
-               &b, alpha_adjust, nir_channel(&b, &intrin->dest.ssa, idx));
-            nir_ssa_def *new_dest = nir_vector_insert_imm(&b, &intrin->dest.ssa, alpha, idx);
-            nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, new_dest,
-                                           new_dest->parent_instr);
-            progress = true;
+         b.cursor = nir_after_instr(instr);
+         nir_ssa_def *channels[4];
+
+         if (post_shuffle) {
+            /* Expand to load 3 components because it's shuffled like X<->Z. */
+            intrin->num_components = MAX2(component + num_components, 3);
+            intrin->dest.ssa.num_components = intrin->num_components;
+
+            nir_intrinsic_set_component(intrin, 0);
          }
+
+         for (uint32_t i = 0; i < num_components; i++) {
+            unsigned idx = i + (post_shuffle ? component : 0);
+
+            channels[i] = nir_channel(&b, &intrin->dest.ssa, swizzle[idx]);
+         }
+
+         if (alpha_adjust != ALPHA_ADJUST_NONE && component + num_components == 4) {
+            unsigned idx = num_components - 1;
+            channels[idx] = radv_adjust_vertex_fetch_alpha(&b, alpha_adjust, channels[idx]);
+         }
+
+         nir_ssa_def *new_dest = nir_vec(&b, channels, num_components);
+
+         nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, new_dest,
+                                        new_dest->parent_instr);
+
+         progress = true;
       }
    }
 
