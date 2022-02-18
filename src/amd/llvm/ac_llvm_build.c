@@ -55,7 +55,7 @@ static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsr
                                    LLVMValueRef vdata, LLVMValueRef vindex, LLVMValueRef voffset,
                                    LLVMValueRef soffset, LLVMValueRef immoffset,
                                    unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                   unsigned cache_policy, bool structurized);
+                                   unsigned cache_policy);
 
 /* Initialize module-independent parts of the context.
  *
@@ -1201,7 +1201,7 @@ void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
    LLVMValueRef immoffset = LLVMConstInt(ctx->i32, inst_offset, 0);
 
    ac_build_tbuffer_store(ctx, rsrc, vdata, vindex, voffset, soffset, immoffset, num_channels, dfmt,
-                          nfmt, cache_policy, false);
+                          nfmt, cache_policy);
 }
 
 static LLVMValueRef ac_build_buffer_load_common(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
@@ -1682,7 +1682,7 @@ static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsr
                                    LLVMValueRef vdata, LLVMValueRef vindex, LLVMValueRef voffset,
                                    LLVMValueRef soffset, LLVMValueRef immoffset,
                                    unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                   unsigned cache_policy, bool structurized)
+                                   unsigned cache_policy)
 {
    voffset = LLVMBuildAdd(ctx->builder, voffset ? voffset : ctx->i32_0, immoffset, "");
 
@@ -1690,7 +1690,7 @@ static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsr
    int idx = 0;
    args[idx++] = vdata;
    args[idx++] = LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "");
-   if (structurized)
+   if (vindex)
       args[idx++] = vindex ? vindex : ctx->i32_0;
    args[idx++] = voffset ? voffset : ctx->i32_0;
    args[idx++] = soffset ? soffset : ctx->i32_0;
@@ -1698,7 +1698,7 @@ static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsr
    args[idx++] = LLVMConstInt(ctx->i32, cache_policy, 0);
    unsigned func =
       !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
-   const char *indexing_kind = structurized ? "struct" : "raw";
+   const char *indexing_kind = vindex ? "struct" : "raw";
    char name[256], type_name[8];
 
    LLVMTypeRef type = func > 1 ? LLVMVectorType(ctx->i32, func) : ctx->i32;
@@ -1716,7 +1716,7 @@ void ac_build_struct_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsr
                                    unsigned cache_policy)
 {
    ac_build_tbuffer_store(ctx, rsrc, vdata, vindex, voffset, soffset, immoffset, num_channels, dfmt,
-                          nfmt, cache_policy, true);
+                          nfmt, cache_policy);
 }
 
 void ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
@@ -1725,7 +1725,7 @@ void ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc, 
                                 unsigned cache_policy)
 {
    ac_build_tbuffer_store(ctx, rsrc, vdata, NULL, voffset, soffset, immoffset, num_channels, dfmt,
-                          nfmt, cache_policy, false);
+                          nfmt, cache_policy);
 }
 
 void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
