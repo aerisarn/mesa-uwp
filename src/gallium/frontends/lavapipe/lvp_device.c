@@ -1552,7 +1552,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    assert(pCreateInfo->queueCreateInfoCount == 1);
    assert(pCreateInfo->pQueueCreateInfos[0].queueFamilyIndex == 0);
    assert(pCreateInfo->pQueueCreateInfos[0].queueCount == 1);
-   lvp_queue_init(device, &device->queue, pCreateInfo->pQueueCreateInfos, 0);
+   result = lvp_queue_init(device, &device->queue, pCreateInfo->pQueueCreateInfos, 0);
+   if (result != VK_SUCCESS) {
+      vk_free(&device->vk.alloc, device);
+      return result;
+   }
 
    *pDevice = lvp_device_to_handle(device);
 
