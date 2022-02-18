@@ -1327,11 +1327,29 @@ create_image_surface(struct zink_context *ctx, const struct pipe_image_view *vie
 {
    struct zink_resource *res = zink_resource(view->resource);
    struct pipe_surface tmpl = {0};
-   enum pipe_texture_target target = res->base.b.target == PIPE_TEXTURE_3D ? PIPE_TEXTURE_2D : res->base.b.target;
+   enum pipe_texture_target target = res->base.b.target;
    tmpl.format = view->format;
    tmpl.u.tex.level = view->u.tex.level;
    tmpl.u.tex.first_layer = view->u.tex.first_layer;
    tmpl.u.tex.last_layer = view->u.tex.last_layer;
+   unsigned depth = 1 + tmpl.u.tex.last_layer - tmpl.u.tex.first_layer;
+   switch (target) {
+   case PIPE_TEXTURE_3D:
+      if (depth < res->base.b.depth0) {
+         assert(depth == 1);
+         target = PIPE_TEXTURE_2D;
+      } else {
+         assert(tmpl.u.tex.first_layer == 0);
+         tmpl.u.tex.last_layer = 0;
+      }
+      break;
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      if (depth < res->base.b.array_size && depth == 1)
+         target = target == PIPE_TEXTURE_2D_ARRAY ? PIPE_TEXTURE_2D : PIPE_TEXTURE_1D;
+      break;
+   default: break;
+   }
    VkImageViewCreateInfo ivci = create_ivci(zink_screen(ctx->base.screen), res, &tmpl, target);
    struct pipe_surface *psurf = zink_get_surface(ctx, view->resource, &tmpl, &ivci);
    if (!psurf)
