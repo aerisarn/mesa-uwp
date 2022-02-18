@@ -107,6 +107,78 @@ TEST_F(Optimizer, FusedFABSNEGForFP16)
         bi_fmin_v2f16_to(b, reg, negabsx, bi_neg(y)));
 }
 
+TEST_F(Optimizer, FuseFADD_F32WithEqualSourcesAbsAbsAndClamp)
+{
+   CASE({
+         bi_instr *I = bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, bi_abs(x)), bi_abs(x), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   }, {
+         bi_instr *I = bi_fadd_f32_to(b, reg, bi_abs(x), bi_abs(x), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+         bi_instr *I = bi_fadd_f32_to(b, reg, bi_abs(x), bi_fabsneg_f32(b, bi_abs(x)), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   }, {
+         bi_instr *I = bi_fadd_f32_to(b, reg, bi_abs(x), bi_abs(x), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+         bi_instr *I = bi_fclamp_f32_to(b, reg, bi_fadd_f32(b, bi_abs(x), bi_abs(x), BI_ROUND_NONE));
+         I->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+         bi_instr *I = bi_fadd_f32_to(b, reg, bi_abs(x), bi_abs(x), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_INF;
+   });
+}
+
+TEST_F(Optimizer, FuseFADD_V2F16WithDifferentSourcesAbsAbsAndClamp)
+{
+   CASE({
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, bi_abs(x)), bi_abs(y), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   }, {
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_abs(x), bi_abs(y), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_abs(x), bi_fabsneg_v2f16(b, bi_abs(y)), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   }, {
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_abs(x), bi_abs(y), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   CASE({
+         bi_instr *I = bi_fclamp_v2f16_to(b, reg, bi_fadd_v2f16(b, bi_abs(x), bi_abs(y), BI_ROUND_NONE));
+         I->clamp = BI_CLAMP_CLAMP_0_INF;
+   }, {
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_abs(x), bi_abs(y), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_INF;
+   });
+}
+
+TEST_F(Optimizer, AvoidFADD_V2F16WithEqualSourcesAbsAbsAndClamp)
+{
+   NEGCASE({
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, bi_abs(x)), bi_abs(x), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   NEGCASE({
+         bi_instr *I = bi_fadd_v2f16_to(b, reg, bi_abs(x), bi_fabsneg_v2f16(b, bi_abs(x)), BI_ROUND_NONE);
+         I->clamp = BI_CLAMP_CLAMP_0_1;
+   });
+
+   NEGCASE({
+      bi_instr *I = bi_fclamp_v2f16_to(b, reg, bi_fadd_v2f16(b, bi_abs(x), bi_abs(x), BI_ROUND_NONE));
+      I->clamp = BI_CLAMP_CLAMP_0_INF;
+   });
+}
+
 TEST_F(Optimizer, SwizzlesComposedForFP16)
 {
    CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, bi_swz_16(negabsx, true, false)), y, BI_ROUND_RTP),
