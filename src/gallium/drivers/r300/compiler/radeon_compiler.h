@@ -152,6 +152,7 @@ struct rc_program_stats {
 	unsigned num_tex_insts;
 	unsigned num_rgb_insts;
 	unsigned num_alpha_insts;
+	unsigned num_pred_insts;
 	unsigned num_presub_ops;
 	unsigned num_temp_regs;
 	unsigned num_omod_ops;

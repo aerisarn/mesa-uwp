@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "util/u_debug.h"
 #include "pipe/p_state.h"
@@ -354,6 +355,11 @@ void rc_get_stats(struct radeon_compiler *c, struct rc_program_stats *s)
 			if (info->Opcode == RC_OPCODE_BGNLOOP)
 				s->num_loops++;
 		}
+		/* VS flow control was already translated to the predicate instructions */
+		if (c->type == RC_VERTEX_PROGRAM)
+			if (strstr(info->Name, "PRED") != NULL)
+				s->num_pred_insts++;
+
 		if (info->HasTexture)
 			s->num_tex_insts++;
 		s->num_insts++;
@@ -373,9 +379,9 @@ static void print_stats(struct radeon_compiler * c)
 	 * only the FS has, becasue shader-db's report.py wants all shaders to
 	 * have the same set.
 	 */
-	pipe_debug_message(c->debug, SHADER_INFO, "%s shader: %u inst, %u vinst, %u sinst, %u flowcontrol, %u loops, %u tex, %u presub, %u omod, %u temps, %u consts, %u lits",
+	pipe_debug_message(c->debug, SHADER_INFO, "%s shader: %u inst, %u vinst, %u sinst, %u predicate, %u flowcontrol, %u loops, %u tex, %u presub, %u omod, %u temps, %u consts, %u lits",
 	                   c->type == RC_VERTEX_PROGRAM ? "VS" : "FS",
-	                   s.num_insts, s.num_rgb_insts, s.num_alpha_insts,
+	                   s.num_insts, s.num_rgb_insts, s.num_alpha_insts, s.num_pred_insts,
 	                   s.num_fc_insts, s.num_loops, s.num_tex_insts, s.num_presub_ops,
 	                   s.num_omod_ops, s.num_temp_regs, s.num_consts, s.num_inline_literals);
 }
