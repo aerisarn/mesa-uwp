@@ -252,7 +252,11 @@ void
 brw_inst_set_group(const struct intel_device_info *devinfo,
                    brw_inst *inst, unsigned group)
 {
-   if (devinfo->ver >= 7) {
+   if (devinfo->ver >= 20) {
+      assert(group % 8 == 0 && group < 32);
+      brw_inst_set_qtr_control(devinfo, inst, group / 8);
+
+   } else if (devinfo->ver >= 7) {
       assert(group % 4 == 0 && group < 32);
       brw_inst_set_qtr_control(devinfo, inst, group / 8);
       brw_inst_set_nib_control(devinfo, inst, (group / 4) % 2);
