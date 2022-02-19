@@ -112,7 +112,7 @@ namespace {
           (inst->opcode == BRW_OPCODE_MAD &&
            MIN2(type_sz(inst->src[1].type), type_sz(inst->src[2].type)) >= 4));
 
-      if (is_unordered(inst))
+      if (is_unordered(devinfo, inst))
          return TGL_PIPE_NONE;
       else if (devinfo->verx10 < 125)
          return TGL_PIPE_FLOAT;
@@ -173,8 +173,9 @@ namespace {
           * (again) don't use virtual instructions if you want optimal
           * scheduling.
           */
-         if (!is_unordered(inst) && (p == IDX(inferred_exec_pipe(devinfo, inst)) ||
-                                     p == IDX(TGL_PIPE_ALL)))
+         if (!is_unordered(devinfo, inst) &&
+             (p == IDX(inferred_exec_pipe(devinfo, inst)) ||
+              p == IDX(TGL_PIPE_ALL)))
             return 1;
          else
             return 0;
@@ -623,7 +624,7 @@ namespace {
    dependency_for_write(const struct intel_device_info *devinfo,
                         const fs_inst *inst, dependency dep)
    {
-      if (!is_unordered(inst) &&
+      if (!is_unordered(devinfo, inst) &&
           is_single_pipe(dep.jp, inferred_exec_pipe(devinfo, inst)))
          dep.ordered &= TGL_REGDIST_DST;
       return dep;
@@ -942,7 +943,7 @@ namespace {
 
       if (find_unordered_dependency(deps, TGL_SBID_SET, exec_all))
          return find_unordered_dependency(deps, TGL_SBID_SET, exec_all);
-      else if (has_ordered && is_unordered(inst))
+      else if (has_ordered && is_unordered(devinfo, inst))
          return TGL_SBID_NULL;
       else if (find_unordered_dependency(deps, TGL_SBID_DST, exec_all) &&
                (!has_ordered || ordered_pipe == inferred_sync_pipe(devinfo, inst)))
@@ -977,7 +978,7 @@ namespace {
          return true;
       else
          return ordered_pipe == inferred_sync_pipe(devinfo, inst) &&
-                unordered_mode == (is_unordered(inst) ? TGL_SBID_SET :
+                unordered_mode == (is_unordered(devinfo, inst) ? TGL_SBID_SET :
                                    TGL_SBID_DST);
    }
 
@@ -1032,7 +1033,7 @@ namespace {
 
       /* Track any destination registers of this instruction. */
       const dependency wr_dep =
-         is_unordered(inst) ? dependency(TGL_SBID_DST, ip, exec_all) :
+         is_unordered(devinfo, inst) ? dependency(TGL_SBID_DST, ip, exec_all) :
          is_ordered ? dependency(TGL_REGDIST_DST, jp, exec_all) :
          dependency();
 
@@ -1158,7 +1159,7 @@ namespace {
                   sb.get(brw_uvec_mrf(8, inst->base_mrf + j, 0))));
          }
 
-         if (is_unordered(inst) && !inst->eot)
+         if (is_unordered(devinfo, inst) && !inst->eot)
             add_dependency(ids, deps[ip],
                            dependency(TGL_SBID_SET, ip, exec_all));
 

@@ -207,7 +207,7 @@ namespace {
    has_invalid_src_region(const intel_device_info *devinfo, const fs_inst *inst,
                           unsigned i)
    {
-      if (is_unordered(inst) || inst->is_control_source(i))
+      if (is_send(inst) || inst->is_math() || inst->is_control_source(i))
          return false;
 
       /* Empirical testing shows that Broadwell has a bug affecting half-float
@@ -248,7 +248,7 @@ namespace {
    has_invalid_dst_region(const intel_device_info *devinfo,
                           const fs_inst *inst)
    {
-      if (is_unordered(inst)) {
+      if (is_send(inst) || inst->is_math()) {
          return false;
       } else {
          const brw_reg_type exec_type = get_exec_type(inst);

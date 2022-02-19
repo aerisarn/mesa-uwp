@@ -546,7 +546,7 @@ is_send(const fs_inst *inst)
  * assumed to complete in-order.
  */
 static inline bool
-is_unordered(const fs_inst *inst)
+is_unordered(const intel_device_info *devinfo, const fs_inst *inst)
 {
    return is_send(inst) || inst->is_math();
 }
