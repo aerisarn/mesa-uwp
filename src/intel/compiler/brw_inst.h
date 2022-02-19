@@ -82,9 +82,11 @@ brw_inst_##name(const struct intel_device_info *devinfo,      \
 #define F(name, hi4, lo4, hi12, lo12) FC(name, hi4, lo4, hi12, lo12, true)
 
 #define BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                     \
-               hi7, lo7, hi8, lo8, hi12, lo12)                               \
+               hi7, lo7, hi8, lo8, hi12, lo12, hi20, lo20)                   \
    unsigned high, low;                                                       \
-   if (devinfo->ver >= 12) {                                                 \
+   if (devinfo->ver >= 20) {                                                 \
+      high = hi20; low = lo20;                                               \
+   } else if (devinfo->ver >= 12) {                                          \
       high = hi12; low = lo12;                                               \
    } else if (devinfo->ver >= 8) {                                           \
       high = hi8;  low = lo8;                                                \
@@ -106,20 +108,20 @@ brw_inst_##name(const struct intel_device_info *devinfo,      \
  * bits are identical, removing some of the inefficiency.
  */
 #define FF(name, hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                    \
-           hi7, lo7, hi8, lo8, hi12, lo12)                                    \
+           hi7, lo7, hi8, lo8, hi12, lo12, hi20, lo20)                        \
 static inline void                                                            \
 brw_inst_set_##name(const struct intel_device_info *devinfo,                  \
                     brw_inst *inst, uint64_t value)                           \
 {                                                                             \
    BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                           \
-          hi7, lo7, hi8, lo8, hi12, lo12)                                     \
+          hi7, lo7, hi8, lo8, hi12, lo12, hi20, lo20)                         \
    brw_inst_set_bits(inst, high, low, value);                                 \
 }                                                                             \
 static inline uint64_t                                                        \
 brw_inst_##name(const struct intel_device_info *devinfo, const brw_inst *inst)\
 {                                                                             \
    BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                           \
-          hi7, lo7, hi8, lo8, hi12, lo12)                                     \
+          hi7, lo7, hi8, lo8, hi12, lo12, hi20, lo20)                         \
    return brw_inst_bits(inst, high, low);                                     \
 }
 
@@ -133,7 +135,8 @@ FF(name,                                                   \
    /* 6:   */ gfx4_high, gfx4_low,                         \
    /* 7:   */ gfx4_high, gfx4_low,                         \
    /* 8:   */ gfx8_high, gfx8_low,                         \
-   /* 12:  */ gfx12_high, gfx12_low);
+   /* 12:  */ gfx12_high, gfx12_low,                       \
+   /* 20:  */ gfx12_high, gfx12_low);
 
 /* Macro for fields that gained extra discontiguous MSBs in Gfx12 (specified
  * by hi12ex-lo12ex).
@@ -152,7 +155,7 @@ brw_inst_set_##name(const struct intel_device_info *devinfo,                  \
       brw_inst_set_bits(inst, hi12, lo12, value & ((1ull << k) - 1));         \
    } else {                                                                   \
       BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                        \
-             hi7, lo7, hi8, lo8, -1, -1);                                     \
+             hi7, lo7, hi8, lo8, -1, -1, -1, -1);                             \
       brw_inst_set_bits(inst, high, low, value);                              \
    }                                                                          \
 }                                                                             \
@@ -167,7 +170,7 @@ brw_inst_##name(const struct intel_device_info *devinfo, const brw_inst *inst)\
              brw_inst_bits(inst, hi12, lo12);                                 \
    } else {                                                                   \
       BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                        \
-             hi7, lo7, hi8, lo8, -1, -1);                                     \
+             hi7, lo7, hi8, lo8, -1, -1, -1, -1);                             \
       return brw_inst_bits(inst, high, low);                                  \
    }                                                                          \
 }
@@ -200,7 +203,7 @@ brw_inst_set_##name(const struct intel_device_info *devinfo,                  \
          brw_inst_set_bits(inst, lo12, lo12, value & 1);                      \
    } else {                                                                   \
       BOUNDS(hi4, lo4, hi4, lo4, hi4, lo4, hi4, lo4,                          \
-             hi4, lo4, hi8, lo8, -1, -1);                                     \
+             hi4, lo4, hi8, lo8, -1, -1, -1, -1);                             \
       brw_inst_set_bits(inst, high, low, value);                              \
    }                                                                          \
 }                                                                             \
@@ -213,7 +216,7 @@ brw_inst_##name(const struct intel_device_info *devinfo, const brw_inst *inst)\
               brw_inst_bits(inst, lo12, lo12) : 1);                           \
    } else {                                                                   \
       BOUNDS(hi4, lo4, hi4, lo4, hi4, lo4, hi4, lo4,                          \
-             hi4, lo4, hi8, lo8, -1, -1);                                     \
+             hi4, lo4, hi8, lo8, -1, -1, -1, -1);                             \
       return brw_inst_bits(inst, high, low);                                  \
    }                                                                          \
 }
@@ -293,7 +296,8 @@ FF(flag_reg_nr,
    /* 4-6: doesn't exist */ -1, -1, -1, -1, -1, -1, -1, -1,
    /* 7: */ 90, 90,
    /* 8: */ 33, 33,
-   /* 12: */ 23, 23)
+   /* 12: */ 23, 23,
+   /* 20: */ 23, 22)
 F8(flag_subreg_nr,     /* 4+ */ 89,  89,  /* 8+ */ 32, 32,   /* 12+ */ 22, 22)
 F(saturate,            /* 4+ */ 31,  31,  /* 12+ */ 34, 34)
 F(debug_control,       /* 4+ */ 30,  30,  /* 12+ */ 30, 30)
@@ -314,7 +318,8 @@ FF(nib_control,
    /* 4-6: doesn't exist */ -1, -1, -1, -1, -1, -1, -1, -1,
    /* 7: */ 47, 47,
    /* 8: */ 11, 11,
-   /* 12: */ 19, 19)
+   /* 12: */ 19, 19,
+   /* 20: */ -1, -1)
 F8(no_dd_check,        /* 4+ */  11, 11,  /* 8+ */  10,  10, /* 12+ */ -1, -1)
 F8(no_dd_clear,        /* 4+ */  10, 10,  /* 8+ */   9,   9, /* 12+ */ -1, -1)
 F(swsb,                /* 4+ */  -1, -1,  /* 12+ */ 15,  8)
@@ -358,7 +363,8 @@ FF(3src_a16_dst_reg_file,
    /* 4-5: doesn't exist - no 3-source instructions */ -1, -1, -1, -1, -1, -1,
    /* 6: */ 32, 32,
    /* 7-8: doesn't exist - no MRFs */ -1, -1, -1, -1,
-   /* 12: */ -1, -1)
+   /* 12: */ -1, -1,
+   /* 20: */ -1, -1)
 F(3src_saturate,            /* 4+ */ 31, 31,   /* 12+ */ 34, 34)
 F(3src_debug_control,       /* 4+ */ 30, 30,   /* 12+ */ 30, 30)
 F(3src_cmpt_control,        /* 4+ */ 29, 29,   /* 12+ */ 29, 29)
@@ -856,7 +862,8 @@ FF(mlen,
    /* 6:   */ 124, 121,
    /* 7:   */ 124, 121,
    /* 8:   */ 124, 121,
-   /* 12:  */ MD12(28), MD12(25));
+   /* 12:  */ MD12(28), MD12(25),
+   /* 20:  */ MD12(28), MD12(25));
 FF(rlen,
    /* 4:   */ 115, 112,
    /* 4.5: */ 115, 112,
@@ -864,14 +871,16 @@ FF(rlen,
    /* 6:   */ 120, 116,
    /* 7:   */ 120, 116,
    /* 8:   */ 120, 116,
-   /* 12:  */ MD12(24), MD12(20));
+   /* 12:  */ MD12(24), MD12(20),
+   /* 20:  */ MD12(24), MD12(20));
 FF(header_present,
    /* 4: doesn't exist */ -1, -1, -1, -1,
    /* 5:   */ 115, 115,
    /* 6:   */ 115, 115,
    /* 7:   */ 115, 115,
    /* 8:   */ 115, 115,
-   /* 12:  */ MD12(19), MD12(19))
+   /* 12:  */ MD12(19), MD12(19),
+   /* 20:  */ MD12(19), MD12(19))
 F(gateway_notify, /* 4+ */ MD(16), MD(15), /* 12+ */ -1, -1)
 FD(function_control,
    /* 4:   */ 111,  96,
@@ -888,7 +897,8 @@ FF(gateway_subfuncid,
    /* 6:   */ MD(2), MD(0),
    /* 7:   */ MD(2), MD(0),
    /* 8:   */ MD(2), MD(0),
-   /* 12:  */ MD12(2), MD12(0))
+   /* 12:  */ MD12(2), MD12(0),
+   /* 20:  */ MD12(2), MD12(0))
 FF(sfid,
    /* 4:   */ 123, 120, /* called msg_target */
    /* 4.5  */ 123, 120,
@@ -896,11 +906,13 @@ FF(sfid,
    /* 6:   */  27,  24,
    /* 7:   */  27,  24,
    /* 8:   */  27,  24,
-   /* 12:  */  95,  92)
+   /* 12:  */  95,  92,
+   /* 20:  */  95,  92)
 FF(null_rt,
    /* 4-7: */ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
    /* 8:   */ 80, 80,
-   /* 12:  */ 44, 44) /* actually only Gfx11+ */
+   /* 12:  */ 44, 44,
+   /* 20:  */ 44, 44) /* actually only Gfx11+ */
 FC(base_mrf,   /* 4+ */ 27,  24, /* 12+ */ -1, -1, devinfo->ver < 6);
 FF(send_rta_index,
    /* 4:   */  -1,  -1,
@@ -909,7 +921,8 @@ FF(send_rta_index,
    /* 6:   */  -1,  -1,
    /* 7:   */  -1,  -1,
    /* 8:   */  -1,  -1,
-   /* 12:  */  38,  36)
+   /* 12:  */  38,  36,
+   /* 20:  */  38,  36)
 /** @} */
 
 /**
@@ -920,7 +933,8 @@ FF(urb_per_slot_offset,
    /* 4-6: */ -1, -1, -1, -1, -1, -1, -1, -1,
    /* 7:   */ MD(16), MD(16),
    /* 8:   */ MD(17), MD(17),
-   /* 12:  */ MD12(17), MD12(17))
+   /* 12:  */ MD12(17), MD12(17),
+   /* 20:  */ MD12(17), MD12(17))
 FC(urb_channel_mask_present, /* 4+ */ MD(15), MD(15), /* 12+ */ MD12(15), MD12(15), devinfo->ver >= 8)
 FC(urb_complete, /* 4+ */ MD(15), MD(15), /* 12+ */ -1, -1, devinfo->ver < 8)
 FC(urb_used,     /* 4+ */ MD(14), MD(14), /* 12+ */ -1, -1, devinfo->ver < 7)
@@ -932,7 +946,8 @@ FF(urb_swizzle_control,
    /* 6:   */ MD(11), MD(10),
    /* 7:   */ MD(14), MD(14),
    /* 8:   */ MD(15), MD(15),
-   /* 12:  */ -1, -1)
+   /* 12:  */ -1, -1,
+   /* 20:  */ -1, -1)
 FD(urb_global_offset,
    /* 4:   */ MD( 9), MD(4),
    /* 4.5: */ MD( 9), MD(4),
@@ -948,7 +963,8 @@ FF(urb_opcode,
    /* 6:   */ MD( 3), MD(0),
    /* 7:   */ MD( 2), MD(0),
    /* 8:   */ MD( 3), MD(0),
-   /* 12:  */ MD12(3), MD12(0))
+   /* 12:  */ MD12(3), MD12(0),
+   /* 20:  */ MD12(3), MD12(0))
 /** @} */
 
 /**
@@ -972,7 +988,8 @@ FF(sampler_simd_mode,
    /* 6:   */ MD(17), MD(16),
    /* 7:   */ MD(18), MD(17),
    /* 8:   */ MD(18), MD(17),
-   /* 12:  */ MD12(18), MD12(17))
+   /* 12:  */ MD12(18), MD12(17),
+   /* 20:  */ MD12(18), MD12(17))
 FF(sampler_msg_type,
    /* 4:   */ MD(15), MD(14),
    /* 4.5: */ MD(15), MD(12),
@@ -980,7 +997,8 @@ FF(sampler_msg_type,
    /* 6:   */ MD(15), MD(12),
    /* 7:   */ MD(16), MD(12),
    /* 8:   */ MD(16), MD(12),
-   /* 12:  */ MD12(16), MD12(12))
+   /* 12:  */ MD12(16), MD12(12),
+   /* 20:  */ MD12(16), MD12(12))
 FC(sampler_return_format, /* 4+ */ MD(13), MD(12), /* 12+ */ -1, -1, devinfo->verx10 == 40)
 FD(sampler,
    /* 4:   */ MD(11), MD(8),
@@ -1007,7 +1025,8 @@ FF(dp_read_msg_type,
    /* 6:   */ MD(16), MD(13),
    /* 7:   */ MD(17), MD(14),
    /* 8:   */ MD(17), MD(14),
-   /* 12:  */ MD12(17), MD12(14))
+   /* 12:  */ MD12(17), MD12(14),
+   /* 20:  */ MD12(17), MD12(14))
 FF(dp_write_msg_type,
    /* 4:   */ MD(14), MD(12),
    /* 4.5: */ MD(14), MD(12),
@@ -1015,7 +1034,8 @@ FF(dp_write_msg_type,
    /* 6:   */ MD(16), MD(13),
    /* 7:   */ MD(17), MD(14),
    /* 8:   */ MD(17), MD(14),
-   /* 12:  */ MD12(17), MD12(14))
+   /* 12:  */ MD12(17), MD12(14),
+   /* 20:  */ MD12(17), MD12(14))
 FD(dp_read_msg_control,
    /* 4:   */ MD(11), MD( 8),
    /* 4.5: */ MD(10), MD( 8),
@@ -1040,7 +1060,8 @@ FF(dp_write_commit,
    /* 5:   */ MD(15),  MD(15),
    /* 6:   */ MD(17),  MD(17),
    /* 7+: does not exist */ -1, -1, -1, -1,
-   /* 12:  */ -1, -1)
+   /* 12:  */ -1, -1,
+   /* 20:  */ -1, -1)
 
 /* Gfx6+ use the same bit locations for everything. */
 FF(dp_msg_type,
@@ -1049,7 +1070,8 @@ FF(dp_msg_type,
    /* 6:   */ MD(16), MD(13),
    /* 7:   */ MD(17), MD(14),
    /* 8:   */ MD(18), MD(14),
-   /* 12:  */ MD12(18), MD12(14))
+   /* 12:  */ MD12(18), MD12(14),
+   /* 20:  */ MD12(18), MD12(14))
 FD(dp_msg_control,
    /* 4:   */ MD(11), MD( 8),
    /* 4.5-5: use dp_read_msg_control or dp_write_msg_control */ -1, -1, -1, -1,
@@ -1088,7 +1110,8 @@ FF(rt_last,
    /* 6:   */ MD(12), MD(12),
    /* 7:   */ MD(12), MD(12),
    /* 8:   */ MD(12), MD(12),
-   /* 12:  */ MD12(12), MD12(12))
+   /* 12:  */ MD12(12), MD12(12),
+   /* 20:  */ MD12(12), MD12(12))
 FC(rt_slot_group,      /* 4+ */ MD(11),  MD(11), /* 12+ */ MD12(11), MD12(11), devinfo->ver >= 6)
 F(rt_message_type,     /* 4+ */ MD(10),  MD( 8), /* 12+ */ MD12(10), MD12(8))
 /** @} */
