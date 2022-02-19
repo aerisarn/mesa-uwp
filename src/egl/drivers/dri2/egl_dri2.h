@@ -364,6 +364,10 @@ struct dri2_egl_surface
 #ifdef HAVE_ANDROID_PLATFORM
    struct ANativeWindow *window;
    struct ANativeWindowBuffer *buffer;
+
+   /* in-fence associated with buffer, -1 once passed down to dri layer: */
+   int in_fence_fd;
+
    __DRIimage *dri_image_back;
    __DRIimage *dri_image_front;
 
