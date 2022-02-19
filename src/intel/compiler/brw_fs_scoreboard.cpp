@@ -135,8 +135,13 @@ namespace {
          return TGL_PIPE_INT;
       else if (inst->opcode == FS_OPCODE_PACK_HALF_2x16_SPLIT)
          return TGL_PIPE_FLOAT;
-      else if (type_sz(inst->dst.type) >= 8 || type_sz(t) >= 8 ||
-               is_dword_multiply) {
+      else if (devinfo->ver >= 20 && type_sz(inst->dst.type) >= 8 &&
+               brw_reg_type_is_floating_point(inst->dst.type)) {
+         assert(devinfo->has_64bit_float);
+         return TGL_PIPE_LONG;
+      } else if (devinfo->ver < 20 &&
+                 (type_sz(inst->dst.type) >= 8 || type_sz(t) >= 8 ||
+                  is_dword_multiply)) {
          assert(devinfo->has_64bit_float || devinfo->has_64bit_int ||
                 devinfo->has_integer_dword_mul);
          return TGL_PIPE_LONG;
