@@ -81,6 +81,33 @@ brw_inst_##name(const struct intel_device_info *devinfo,      \
  */
 #define F(name, hi4, lo4, hi12, lo12) FC(name, hi4, lo4, hi12, lo12, true)
 
+/* A simple macro for fields which stay in the same place on all generations,
+ * except for Gfx12 and Gfx20.
+ */
+#define F20(name, hi4, lo4, hi12, lo12, hi20, lo20)                \
+   static inline void                                              \
+   brw_inst_set_##name(const struct intel_device_info *devinfo,    \
+                       brw_inst *inst, uint64_t v)                 \
+   {                                                               \
+      if (devinfo->ver >= 20)                                      \
+         brw_inst_set_bits(inst, hi20, lo20, v);                   \
+      else if (devinfo->ver >= 12)                                 \
+         brw_inst_set_bits(inst, hi12, lo12, v);                   \
+      else                                                         \
+         brw_inst_set_bits(inst, hi4, lo4, v);                     \
+   }                                                               \
+   static inline uint64_t                                          \
+   brw_inst_##name(const struct intel_device_info *devinfo,        \
+                   const brw_inst *inst)                           \
+   {                                                               \
+      if (devinfo->ver >= 20)                                      \
+         return brw_inst_bits(inst, hi20, lo20);                   \
+      else if (devinfo->ver >= 12)                                 \
+         return brw_inst_bits(inst, hi12, lo12);                   \
+      else                                                         \
+         return brw_inst_bits(inst, hi4, lo4);                     \
+   }
+
 #define BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                     \
                hi7, lo7, hi8, lo8, hi12, lo12, hi20, lo20)                   \
    unsigned high, low;                                                       \
@@ -298,7 +325,11 @@ FF(flag_reg_nr,
    /* 8: */ 33, 33,
    /* 12: */ 23, 23,
    /* 20: */ 23, 22)
-F8(flag_subreg_nr,     /* 4+ */ 89,  89,  /* 8+ */ 32, 32,   /* 12+ */ 22, 22)
+FF(flag_subreg_nr,
+   /* 4-7: */ 89, 89,  89, 89,  89, 89,  89, 89,  89, 89,
+   /* 8: */ 32, 32,
+   /* 12: */ 22, 22,
+   /* 20: */ 21, 21)
 F(saturate,            /* 4+ */ 31,  31,  /* 12+ */ 34, 34)
 F(debug_control,       /* 4+ */ 30,  30,  /* 12+ */ 30, 30)
 F(cmpt_control,        /* 4+ */ 29,  29,  /* 12+ */ 29, 29)
@@ -308,12 +339,12 @@ FC(mask_control_ex,    /* 4+ */ 28,  28,  /* 12+ */ -1, -1, devinfo->verx10 == 4
                                                             devinfo->ver == 5)
 F(cond_modifier,       /* 4+ */ 27,  24,  /* 12+ */ 95, 92)
 FC(math_function,      /* 4+ */ 27,  24,  /* 12+ */ 95, 92, devinfo->ver >= 6)
-F(exec_size,           /* 4+ */ 23,  21,  /* 12+ */ 18, 16)
+F20(exec_size,         /* 4+ */ 23,  21,  /* 12+ */ 18, 16,  /* 20+ */ 20, 18)
 F(pred_inv,            /* 4+ */ 20,  20,  /* 12+ */ 28, 28)
-F(pred_control,        /* 4+ */ 19,  16,  /* 12+ */ 27, 24)
+F20(pred_control,      /* 4+ */ 19,  16,  /* 12+ */ 27, 24,  /* 20+ */ 27, 26)
 F(thread_control,      /* 4+ */ 15,  14,  /* 12+ */ -1, -1)
 F(atomic_control,      /* 4+ */ -1,  -1,  /* 12+ */ 32, 32)
-F(qtr_control,         /* 4+ */ 13,  12,  /* 12+ */ 21, 20)
+F20(qtr_control,       /* 4+ */ 13,  12,  /* 12+ */ 21, 20,  /* 20+ */ 25, 24)
 FF(nib_control,
    /* 4-6: doesn't exist */ -1, -1, -1, -1, -1, -1, -1, -1,
    /* 7: */ 47, 47,
@@ -322,7 +353,7 @@ FF(nib_control,
    /* 20: */ -1, -1)
 F8(no_dd_check,        /* 4+ */  11, 11,  /* 8+ */  10,  10, /* 12+ */ -1, -1)
 F8(no_dd_clear,        /* 4+ */  10, 10,  /* 8+ */   9,   9, /* 12+ */ -1, -1)
-F(swsb,                /* 4+ */  -1, -1,  /* 12+ */ 15,  8)
+F20(swsb,              /* 4+ */  -1, -1,  /* 12+ */ 15,   8, /* 20+ */ 17, 8)
 FK(access_mode,        /* 4+ */   8,  8,  /* 12+ */ BRW_ALIGN_1)
 /* Bit 7 is Reserved (for future Opcode expansion) */
 F(hw_opcode,           /* 4+ */   6,  0,  /* 12+ */ 6,  0)
