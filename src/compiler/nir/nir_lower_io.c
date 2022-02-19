@@ -2274,6 +2274,24 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
                break;
             }
 
+            case nir_intrinsic_launch_mesh_workgroups_with_payload_deref: {
+               if (modes & nir_var_mem_task_payload) {
+                  /* Get address and size of the payload variable. */
+                  nir_deref_instr *deref = nir_src_as_deref(intrin->src[1]);
+                  assert(deref->deref_type == nir_deref_type_var);
+                  unsigned base = deref->var->data.explicit_location;
+                  unsigned size = glsl_get_explicit_size(deref->var->type, false);
+
+                  /* Replace the current instruction with the explicit intrinsic. */
+                  nir_ssa_def *dispatch_3d = intrin->src[0].ssa;
+                  b.cursor = nir_instr_remove(instr);
+                  nir_launch_mesh_workgroups(&b, dispatch_3d, .base = base, .range = size);
+                  progress = true;
+               }
+
+               break;
+            }
+
             default:
                break;
             }

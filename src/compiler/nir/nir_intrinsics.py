@@ -500,6 +500,11 @@ intrinsic("set_vertex_and_primitive_count", src_comp=[1, 1], indices=[STREAM_ID]
 # src[] = {vec(x, y, z)}
 intrinsic("launch_mesh_workgroups", src_comp=[3], indices=[BASE, RANGE])
 
+# Launches mesh shader workgroups from a task shader, with task_payload variable deref.
+# Same rules as launch_mesh_workgroups apply here as well.
+# src[] = {vec(x, y, z), payload pointer}
+intrinsic("launch_mesh_workgroups_with_payload_deref", src_comp=[3, -1], indices=[])
+
 # Trace a ray through an acceleration structure
 #
 # This instruction has a lot of parameters:

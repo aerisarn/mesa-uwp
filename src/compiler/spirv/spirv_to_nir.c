@@ -6289,6 +6289,29 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
          &b->nb, vtn_get_nir_ssa(b, w[1]), vtn_get_nir_ssa(b, w[2]));
       break;
 
+   case SpvOpEmitMeshTasksEXT: {
+      /* Launches mesh shader workgroups from the task shader.
+       * Arguments are: vec(x, y, z), payload pointer
+       */
+      nir_ssa_def *dimensions =
+         nir_vec3(&b->nb, vtn_get_nir_ssa(b, w[1]),
+                          vtn_get_nir_ssa(b, w[2]),
+                          vtn_get_nir_ssa(b, w[3]));
+
+      /* The payload variable is optional.
+       * We don't have a NULL deref in NIR, so just emit the explicit
+       * intrinsic when there is no payload.
+       */
+      if (count == 4)
+         nir_launch_mesh_workgroups(&b->nb, dimensions);
+      else if (count == 5)
+         nir_launch_mesh_workgroups_with_payload_deref(&b->nb, dimensions,
+                                                       vtn_get_nir_ssa(b, w[4]));
+      else
+         vtn_fail("Invalid EmitMeshTasksEXT.");
+      break;
+   }
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
