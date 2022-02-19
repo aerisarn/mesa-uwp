@@ -29,11 +29,7 @@
 #ifndef EMULATED_THREADS_H_INCLUDED_
 #define EMULATED_THREADS_H_INCLUDED_
 
-#include <time.h>
-
-#ifndef TIME_UTC
-#define TIME_UTC 1
-#endif
+#include "c11/time.h"
 
 /*---------------------------- types ----------------------------*/
 typedef void (*tss_dtor_t)(void*);

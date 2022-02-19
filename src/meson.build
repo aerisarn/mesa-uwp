@@ -64,6 +64,7 @@ else
   idep_getopt = null_dep
 endif
 subdir('android_stub')
+subdir('c11/impl')
 subdir('util')
 subdir('mapi')
 # TODO: opengl

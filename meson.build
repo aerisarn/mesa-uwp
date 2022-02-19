@@ -1453,6 +1453,10 @@ foreach f, prefix: functions_to_detect
   endif
 endforeach
 
+if cc.has_header_symbol('time.h', 'struct timespec')
+   pre_args += '-DHAVE_STRUCT_TIMESPEC'
+endif
+
 if cc.has_header_symbol('errno.h', 'program_invocation_name',
                         args : '-D_GNU_SOURCE')
    pre_args += '-DHAVE_PROGRAM_INVOCATION_NAME'

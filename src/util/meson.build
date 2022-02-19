@@ -206,6 +206,7 @@ deps_for_libmesa_util = [
   dep_zstd,
   dep_dl,
   dep_unwind,
+  idep_mesautilc11
 ]
 
 if with_platform_android

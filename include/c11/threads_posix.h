@@ -378,19 +378,3 @@ tss_set(tss_t key, void *val)
 {
     return (pthread_setspecific(key, val) == 0) ? thrd_success : thrd_error;
 }
-
-
-/*-------------------- 7.25.7 Time functions --------------------*/
-// 7.25.6.1
-#ifndef HAVE_TIMESPEC_GET
-static inline int
-timespec_get(struct timespec *ts, int base)
-{
-    if (!ts) return 0;
-    if (base == TIME_UTC) {
-        clock_gettime(CLOCK_REALTIME, ts);
-        return base;
-    }
-    return 0;
-}
-#endif

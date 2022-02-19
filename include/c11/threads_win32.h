@@ -128,7 +128,6 @@ static time_t impl_timespec2msec(const struct timespec *ts)
     return (ts->tv_sec * 1000U) + (ts->tv_nsec / 1000000L);
 }
 
-#ifdef HAVE_TIMESPEC_GET
 static DWORD impl_abs2relmsec(const struct timespec *abs_time)
 {
     const time_t abs_ms = impl_timespec2msec(abs_time);
@@ -138,7 +137,6 @@ static DWORD impl_abs2relmsec(const struct timespec *abs_time)
     const DWORD rel_ms = (abs_ms > now_ms) ? (DWORD)(abs_ms - now_ms) : 0;
     return rel_ms;
 }
-#endif
 
 #ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 struct impl_call_once_param { void (*func)(void); };
@@ -253,14 +251,10 @@ cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
     assert(cond != NULL);
     assert(mtx != NULL);
     assert(abs_time != NULL);
-#ifdef HAVE_TIMESPEC_GET
     const DWORD timeout = impl_abs2relmsec(abs_time);
     if (SleepConditionVariableCS(cond, mtx, timeout))
         return thrd_success;
     return (GetLastError() == ERROR_TIMEOUT) ? thrd_timedout : thrd_error;
-#else
-    return thrd_error;
-#endif
 }
 
 // 7.25.3.6
@@ -312,7 +306,6 @@ mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 {
     assert(mtx != NULL);
     assert(ts != NULL);
-#ifdef HAVE_TIMESPEC_GET
     while (mtx_trylock(mtx) != thrd_success) {
         if (impl_abs2relmsec(ts) == 0)
             return thrd_timedout;
@@ -320,9 +313,6 @@ mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
         thrd_yield();
     }
     return thrd_success;
-#else
-    return thrd_error;
-#endif
 }
 
 // 7.25.4.5
@@ -502,20 +492,3 @@ tss_set(tss_t key, void *val)
 {
     return TlsSetValue(key, val) ? thrd_success : thrd_error;
 }
-
-
-/*-------------------- 7.25.7 Time functions --------------------*/
-// 7.25.6.1
-#ifndef HAVE_TIMESPEC_GET
-static inline int
-timespec_get(struct timespec *ts, int base)
-{
-    assert(ts != NULL);
-    if (base == TIME_UTC) {
-        ts->tv_sec = time(NULL);
-        ts->tv_nsec = 0;
-        return base;
-    }
-    return 0;
-}
-#endif
