@@ -353,6 +353,10 @@ dri2_destroy_image(__DRIimage *img)
    }
 
    pipe_resource_reference(&img->texture, NULL);
+
+   if (img->in_fence_fd != -1)
+      close(img->in_fence_fd);
+
    FREE(img);
 }
 

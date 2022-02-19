@@ -1689,6 +1689,17 @@ struct __DRIimageExtensionRec {
                                       uint32_t flags,
                                       int *strides, int *offsets,
                                       void *loaderPrivate);
+
+   /**
+    * Set an in-fence-fd on the image.  If a fence-fd is already set
+    * (but not yet consumed), the existing and new fence will be merged
+    *
+    * This does *not* take ownership of the fd.  The fd does not need
+    * to be kept alive once the call has returned.
+    *
+    * \since 21
+    */
+   void (*setInFenceFd)(__DRIimage *image, int fd);
 };
 
 

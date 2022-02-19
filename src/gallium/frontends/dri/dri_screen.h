@@ -116,6 +116,8 @@ struct __DRIimageRec {
    unsigned use;
    unsigned plane;
 
+   int in_fence_fd;
+
    void *loader_private;
 
    boolean imported_dmabuf;

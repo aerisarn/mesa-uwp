@@ -35,6 +35,8 @@
 #include "util/u_inlines.h"
 #include "util/format/u_format.h"
 #include "util/u_debug.h"
+#include "util/libsync.h"
+#include "util/os_file.h"
 #include "frontend/drm_driver.h"
 #include "state_tracker/st_format.h"
 #include "state_tracker/st_cb_texture.h"
@@ -386,6 +388,32 @@ dri2_release_buffer(__DRIscreen *sPriv, __DRIbuffer *bPriv)
    FREE(buffer);
 }
 
+static void
+dri2_set_in_fence_fd(__DRIimage *img, int fd)
+{
+   sync_accumulate("dri", &img->in_fence_fd, fd);
+}
+
+static void
+handle_in_fence(__DRIcontext *context, __DRIimage *img)
+{
+   struct dri_context *ctx = dri_context(context);
+   struct pipe_context *pipe = ctx->st->pipe;
+   struct pipe_fence_handle *fence;
+   int fd = img->in_fence_fd;
+
+   if (fd == -1)
+      return;
+
+   img->in_fence_fd = -1;
+
+   pipe->create_fence_fd(pipe, &fence, fd, PIPE_FD_TYPE_NATIVE_SYNC);
+   pipe->fence_server_sync(pipe, fence);
+   pipe->screen->fence_reference(pipe->screen, &fence, NULL);
+
+   close(fd);
+}
+
 /*
  * Backend functions for st_framebuffer interface.
  */
@@ -492,6 +520,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          dri_drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
+         handle_in_fence(ctx->cPriv, images.front);
       }
 
       if (images.image_mask & __DRI_IMAGE_BUFFER_BACK) {
@@ -503,6 +532,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          dri_drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
+         handle_in_fence(ctx->cPriv, images.back);
       }
 
       if (images.image_mask & __DRI_IMAGE_BUFFER_SHARED) {
@@ -514,6 +544,7 @@ dri2_allocate_textures(struct dri_context *ctx,
          dri_drawable->h = texture->height0;
 
          pipe_resource_reference(buf, texture);
+         handle_in_fence(ctx->cPriv, images.back);
 
          ctx->is_shared_buffer_bound = true;
       } else {
@@ -927,6 +958,7 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
    img->level = 0;
    img->layer = 0;
    img->use = 0;
+   img->in_fence_fd = -1;
    img->loader_private = loaderPrivate;
    img->sPriv = _screen;
 
@@ -1137,6 +1169,7 @@ dri2_create_image_common(__DRIscreen *_screen,
    img->dri_fourcc = map->dri_fourcc;
    img->dri_components = 0;
    img->use = use;
+   img->in_fence_fd = -1;
 
    img->loader_private = loaderPrivate;
    img->sPriv = _screen;
@@ -1403,6 +1436,8 @@ dri2_dup_image(__DRIimage *image, void *loaderPrivate)
    /* This should be 0 for sub images, but dup is also used for base images. */
    img->dri_components = image->dri_components;
    img->use = image->use;
+   img->in_fence_fd = (image->in_fence_fd > 0) ?
+         os_dupfd_cloexec(image->in_fence_fd) : -1;
    img->loader_private = loaderPrivate;
    img->sPriv = image->sPriv;
 
@@ -1704,6 +1739,8 @@ dri2_blit_image(__DRIcontext *context, __DRIimage *dst, __DRIimage *src,
    if (!dst || !src)
       return;
 
+   handle_in_fence(context, dst);
+
    memset(&blit, 0, sizeof(blit));
    blit.dst.resource = dst->texture;
    blit.dst.box.x = dstx0;
@@ -1754,6 +1791,8 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    if (plane >= dri2_get_mapping_by_format(image->dri_format)->nplanes)
       return NULL;
 
+   handle_in_fence(context, image);
+
    struct pipe_resource *resource = image->texture;
    while (plane--)
       resource = resource->next;
@@ -1792,7 +1831,7 @@ dri2_get_capabilities(__DRIscreen *_screen)
 
 /* The extension is modified during runtime if DRI_PRIME is detected */
 static const __DRIimageExtension dri2ImageExtensionTempl = {
-    .base = { __DRI_IMAGE, 20 },
+    .base = { __DRI_IMAGE, 21 },
 
     .createImageFromName          = dri2_create_image_from_name,
     .createImageFromRenderbuffer  = dri2_create_image_from_renderbuffer,
@@ -2289,6 +2328,10 @@ dri2_init_screen_extensions(struct dri_screen *screen,
          dri2_create_image_with_modifiers;
       screen->image_extension.createImageWithModifiers2 =
          dri2_create_image_with_modifiers2;
+   }
+
+   if (pscreen->get_param(pscreen, PIPE_CAP_NATIVE_FENCE_FD)) {
+      screen->image_extension.setInFenceFd = dri2_set_in_fence_fd;
    }
 
    if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
