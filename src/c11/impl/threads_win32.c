@@ -26,13 +26,18 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-#ifndef assert
 #include <assert.h>
-#endif
 #include <limits.h>
 #include <errno.h>
 #include <process.h>  // MSVCRT
 #include <stdlib.h>
+
+#include "c11/threads.h"
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
+#endif
+#include <windows.h>
 
 /*
 Configuration macro:
@@ -54,50 +59,17 @@ Configuration macro:
 #endif
 #define EMULATED_THREADS_TSS_DTOR_SLOTNUM 64  // see TLS_MINIMUM_AVAILABLE
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1
-#endif
-#include <windows.h>
-
 // check configuration
 #if defined(EMULATED_THREADS_USE_NATIVE_CALL_ONCE) && (_WIN32_WINNT < 0x0600)
 #error EMULATED_THREADS_USE_NATIVE_CALL_ONCE requires _WIN32_WINNT>=0x0600
 #endif
 
-/*---------------------------- macros ----------------------------*/
-#ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-#define ONCE_FLAG_INIT INIT_ONCE_STATIC_INIT
-#else
-#define ONCE_FLAG_INIT {0}
-#endif
-#define TSS_DTOR_ITERATIONS 1
 
-// FIXME: temporary non-standard hack to ease transition
-#define _MTX_INITIALIZER_NP {(PCRITICAL_SECTION_DEBUG)-1, -1, 0, 0, 0, 0}
-
-/*---------------------------- types ----------------------------*/
-typedef CONDITION_VARIABLE cnd_t;
-
-typedef HANDLE thrd_t;
-
-typedef DWORD tss_t;
-
-typedef CRITICAL_SECTION mtx_t;
-
-#ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-typedef INIT_ONCE once_flag;
-#else
-typedef struct once_flag_t {
-    volatile LONG status;
-} once_flag;
-#endif
-
-
-static inline void * tss_get(tss_t key);
-static inline void thrd_yield(void);
-static inline int mtx_trylock(mtx_t *mtx);
-static inline int mtx_lock(mtx_t *mtx);
-static inline int mtx_unlock(mtx_t *mtx);
+static_assert(sizeof(cnd_t) == sizeof(CONDITION_VARIABLE), "The size of cnd_t must equal to CONDITION_VARIABLE");
+static_assert(sizeof(thrd_t) == sizeof(HANDLE), "The size of thrd_t must equal to HANDLE");
+static_assert(sizeof(tss_t) == sizeof(DWORD), "The size of tss_t must equal to DWORD");
+static_assert(sizeof(mtx_t) == sizeof(CRITICAL_SECTION), "The size of mtx_t must equal to CRITICAL_SECTION");
+static_assert(sizeof(once_flag) == sizeof(INIT_ONCE), "The size of once_flag must equal to INIT_ONCE");
 
 /*
 Implementation limits:
@@ -168,7 +140,7 @@ static int impl_tss_dtor_register(tss_t key, tss_dtor_t dtor)
     return 0;
 }
 
-static void impl_tss_dtor_invoke()
+static void impl_tss_dtor_invoke(void)
 {
     int i;
     for (i = 0; i < EMULATED_THREADS_TSS_DTOR_SLOTNUM; i++) {
@@ -183,7 +155,7 @@ static void impl_tss_dtor_invoke()
 
 /*--------------- 7.25.2 Initialization functions ---------------*/
 // 7.25.2.1
-static inline void
+void
 call_once(once_flag *flag, void (*func)(void))
 {
     assert(flag && func);
@@ -191,12 +163,12 @@ call_once(once_flag *flag, void (*func)(void))
     {
     struct impl_call_once_param param;
     param.func = func;
-    InitOnceExecuteOnce(flag, impl_call_once_callback, (PVOID)&param, NULL);
+    InitOnceExecuteOnce((PINIT_ONCE)flag, impl_call_once_callback, (PVOID)&param, NULL);
     }
 #else
-    if (InterlockedCompareExchange(&flag->status, 1, 0) == 0) {
+    if (InterlockedCompareExchangePointer((PVOID volatile *)&flag->status, (PVOID)1, (PVOID)0) == 0) {
         (func)();
-        InterlockedExchange(&flag->status, 2);
+        InterlockedExchangePointer((PVOID volatile *)&flag->status, (PVOID)2);
     } else {
         while (flag->status == 1) {
             // busy loop!
@@ -209,16 +181,16 @@ call_once(once_flag *flag, void (*func)(void))
 
 /*------------- 7.25.3 Condition variable functions -------------*/
 // 7.25.3.1
-static inline int
+int
 cnd_broadcast(cnd_t *cond)
 {
     assert(cond != NULL);
-    WakeAllConditionVariable(cond);
+    WakeAllConditionVariable((PCONDITION_VARIABLE)cond);
     return thrd_success;
 }
 
 // 7.25.3.2
-static inline void
+void
 cnd_destroy(cnd_t *cond)
 {
     (void)cond;
@@ -227,58 +199,58 @@ cnd_destroy(cnd_t *cond)
 }
 
 // 7.25.3.3
-static inline int
+int
 cnd_init(cnd_t *cond)
 {
     assert(cond != NULL);
-    InitializeConditionVariable(cond);
+    InitializeConditionVariable((PCONDITION_VARIABLE)cond);
     return thrd_success;
 }
 
 // 7.25.3.4
-static inline int
+int
 cnd_signal(cnd_t *cond)
 {
     assert(cond != NULL);
-    WakeConditionVariable(cond);
+    WakeConditionVariable((PCONDITION_VARIABLE)cond);
     return thrd_success;
 }
 
 // 7.25.3.5
-static inline int
+int
 cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
 {
     assert(cond != NULL);
     assert(mtx != NULL);
     assert(abs_time != NULL);
     const DWORD timeout = impl_abs2relmsec(abs_time);
-    if (SleepConditionVariableCS(cond, mtx, timeout))
+    if (SleepConditionVariableCS((PCONDITION_VARIABLE)cond, (PCRITICAL_SECTION)mtx, timeout))
         return thrd_success;
     return (GetLastError() == ERROR_TIMEOUT) ? thrd_timedout : thrd_error;
 }
 
 // 7.25.3.6
-static inline int
+int
 cnd_wait(cnd_t *cond, mtx_t *mtx)
 {
     assert(cond != NULL);
     assert(mtx != NULL);
-    SleepConditionVariableCS(cond, mtx, INFINITE);
+    SleepConditionVariableCS((PCONDITION_VARIABLE)cond, (PCRITICAL_SECTION)mtx, INFINITE);
     return thrd_success;
 }
 
 
 /*-------------------- 7.25.4 Mutex functions --------------------*/
 // 7.25.4.1
-static inline void
+void
 mtx_destroy(mtx_t *mtx)
 {
     assert(mtx);
-    DeleteCriticalSection(mtx);
+    DeleteCriticalSection((PCRITICAL_SECTION)mtx);
 }
 
 // 7.25.4.2
-static inline int
+int
 mtx_init(mtx_t *mtx, int type)
 {
     assert(mtx != NULL);
@@ -287,21 +259,21 @@ mtx_init(mtx_t *mtx, int type)
       && type != (mtx_timed|mtx_recursive)
       && type != (mtx_try|mtx_recursive))
         return thrd_error;
-    InitializeCriticalSection(mtx);
+    InitializeCriticalSection((PCRITICAL_SECTION)mtx);
     return thrd_success;
 }
 
 // 7.25.4.3
-static inline int
+int
 mtx_lock(mtx_t *mtx)
 {
     assert(mtx != NULL);
-    EnterCriticalSection(mtx);
+    EnterCriticalSection((PCRITICAL_SECTION)mtx);
     return thrd_success;
 }
 
 // 7.25.4.4
-static inline int
+int
 mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 {
     assert(mtx != NULL);
@@ -316,26 +288,26 @@ mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 }
 
 // 7.25.4.5
-static inline int
+int
 mtx_trylock(mtx_t *mtx)
 {
     assert(mtx != NULL);
-    return TryEnterCriticalSection(mtx) ? thrd_success : thrd_busy;
+    return TryEnterCriticalSection((PCRITICAL_SECTION)mtx) ? thrd_success : thrd_busy;
 }
 
 // 7.25.4.6
-static inline int
+int
 mtx_unlock(mtx_t *mtx)
 {
     assert(mtx != NULL);
-    LeaveCriticalSection(mtx);
+    LeaveCriticalSection((PCRITICAL_SECTION)mtx);
     return thrd_success;
 }
 
 
 /*------------------- 7.25.5 Thread functions -------------------*/
 // 7.25.5.1
-static inline int
+int
 thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
 {
     struct impl_thrd_param *pack;
@@ -397,7 +369,7 @@ thrd_current(void)
 #endif
 
 // 7.25.5.3
-static inline int
+int
 thrd_detach(thrd_t thr)
 {
     CloseHandle(thr);
@@ -405,14 +377,15 @@ thrd_detach(thrd_t thr)
 }
 
 // 7.25.5.4
-static inline int
+int
 thrd_equal(thrd_t thr0, thrd_t thr1)
 {
     return GetThreadId(thr0) == GetThreadId(thr1);
 }
 
 // 7.25.5.5
-static inline void
+_Noreturn
+void
 thrd_exit(int res)
 {
     impl_tss_dtor_invoke();
@@ -420,7 +393,7 @@ thrd_exit(int res)
 }
 
 // 7.25.5.6
-static inline int
+int
 thrd_join(thrd_t thr, int *res)
 {
     DWORD w, code;
@@ -439,17 +412,18 @@ thrd_join(thrd_t thr, int *res)
 }
 
 // 7.25.5.7
-static inline void
+int
 thrd_sleep(const struct timespec *time_point, struct timespec *remaining)
 {
     (void)remaining;
     assert(time_point);
     assert(!remaining); /* not implemented */
     Sleep((DWORD)impl_timespec2msec(time_point));
+    return 0;
 }
 
 // 7.25.5.8
-static inline void
+void
 thrd_yield(void)
 {
     SwitchToThread();
@@ -458,7 +432,7 @@ thrd_yield(void)
 
 /*----------- 7.25.6 Thread-specific storage functions -----------*/
 // 7.25.6.1
-static inline int
+int
 tss_create(tss_t *key, tss_dtor_t dtor)
 {
     assert(key != NULL);
@@ -473,21 +447,21 @@ tss_create(tss_t *key, tss_dtor_t dtor)
 }
 
 // 7.25.6.2
-static inline void
+void
 tss_delete(tss_t key)
 {
     TlsFree(key);
 }
 
 // 7.25.6.3
-static inline void *
+void *
 tss_get(tss_t key)
 {
     return TlsGetValue(key);
 }
 
 // 7.25.6.4
-static inline int
+int
 tss_set(tss_t key, void *val)
 {
     return TlsSetValue(key, val) ? thrd_success : thrd_error;

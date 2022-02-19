@@ -27,14 +27,14 @@
  * DEALINGS IN THE SOFTWARE.
  */
 #include <stdlib.h>
-#ifndef assert
 #include <assert.h>
-#endif
 #include <limits.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sched.h>
 #include <stdint.h> /* for intptr_t */
+
+#include "c11/threads.h"
 
 /*
 Configuration macro:
@@ -47,27 +47,7 @@ Configuration macro:
 #define EMULATED_THREADS_USE_NATIVE_TIMEDLOCK
 #endif
 
-
-#include <pthread.h>
-
-/*---------------------------- macros ----------------------------*/
-#define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
-#ifdef INIT_ONCE_STATIC_INIT
-#define TSS_DTOR_ITERATIONS PTHREAD_DESTRUCTOR_ITERATIONS
-#else
-#define TSS_DTOR_ITERATIONS 1  // assume TSS dtor MAY be called at least once.
-#endif
-
-// FIXME: temporary non-standard hack to ease transition
-#define _MTX_INITIALIZER_NP PTHREAD_MUTEX_INITIALIZER
-
 /*---------------------------- types ----------------------------*/
-typedef pthread_cond_t  cnd_t;
-typedef pthread_t       thrd_t;
-typedef pthread_key_t   tss_t;
-typedef pthread_mutex_t mtx_t;
-typedef pthread_once_t  once_flag;
-
 
 /*
 Implementation limits:
@@ -79,7 +59,7 @@ struct impl_thrd_param {
     void *arg;
 };
 
-static inline void *
+static void *
 impl_thrd_routine(void *p)
 {
     struct impl_thrd_param pack = *((struct impl_thrd_param *)p);
@@ -90,7 +70,7 @@ impl_thrd_routine(void *p)
 
 /*--------------- 7.25.2 Initialization functions ---------------*/
 // 7.25.2.1
-static inline void
+void
 call_once(once_flag *flag, void (*func)(void))
 {
     pthread_once(flag, func);
@@ -99,7 +79,7 @@ call_once(once_flag *flag, void (*func)(void))
 
 /*------------- 7.25.3 Condition variable functions -------------*/
 // 7.25.3.1
-static inline int
+int
 cnd_broadcast(cnd_t *cond)
 {
     assert(cond != NULL);
@@ -107,7 +87,7 @@ cnd_broadcast(cnd_t *cond)
 }
 
 // 7.25.3.2
-static inline void
+void
 cnd_destroy(cnd_t *cond)
 {
     assert(cond);
@@ -115,7 +95,7 @@ cnd_destroy(cnd_t *cond)
 }
 
 // 7.25.3.3
-static inline int
+int
 cnd_init(cnd_t *cond)
 {
     assert(cond != NULL);
@@ -123,7 +103,7 @@ cnd_init(cnd_t *cond)
 }
 
 // 7.25.3.4
-static inline int
+int
 cnd_signal(cnd_t *cond)
 {
     assert(cond != NULL);
@@ -131,7 +111,7 @@ cnd_signal(cnd_t *cond)
 }
 
 // 7.25.3.5
-static inline int
+int
 cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
 {
     int rt;
@@ -147,7 +127,7 @@ cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
 }
 
 // 7.25.3.6
-static inline int
+int
 cnd_wait(cnd_t *cond, mtx_t *mtx)
 {
     assert(mtx != NULL);
@@ -158,7 +138,7 @@ cnd_wait(cnd_t *cond, mtx_t *mtx)
 
 /*-------------------- 7.25.4 Mutex functions --------------------*/
 // 7.25.4.1
-static inline void
+void
 mtx_destroy(mtx_t *mtx)
 {
     assert(mtx != NULL);
@@ -192,7 +172,7 @@ int pthread_mutexattr_destroy(pthread_mutexattr_t *attr);
 #endif
 
 // 7.25.4.2
-static inline int
+int
 mtx_init(mtx_t *mtx, int type)
 {
     pthread_mutexattr_t attr;
@@ -216,21 +196,15 @@ mtx_init(mtx_t *mtx, int type)
 }
 
 // 7.25.4.3
-static inline int
+int
 mtx_lock(mtx_t *mtx)
 {
     assert(mtx != NULL);
     return (pthread_mutex_lock(mtx) == 0) ? thrd_success : thrd_error;
 }
 
-static inline int
-mtx_trylock(mtx_t *mtx);
-
-static inline void
-thrd_yield(void);
-
 // 7.25.4.4
-static inline int
+int
 mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 {
     assert(mtx != NULL);
@@ -259,7 +233,7 @@ mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 }
 
 // 7.25.4.5
-static inline int
+int
 mtx_trylock(mtx_t *mtx)
 {
     assert(mtx != NULL);
@@ -267,7 +241,7 @@ mtx_trylock(mtx_t *mtx)
 }
 
 // 7.25.4.6
-static inline int
+int
 mtx_unlock(mtx_t *mtx)
 {
     assert(mtx != NULL);
@@ -277,7 +251,7 @@ mtx_unlock(mtx_t *mtx)
 
 /*------------------- 7.25.5 Thread functions -------------------*/
 // 7.25.5.1
-static inline int
+int
 thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
 {
     struct impl_thrd_param *pack;
@@ -294,35 +268,36 @@ thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
 }
 
 // 7.25.5.2
-static inline thrd_t
+thrd_t
 thrd_current(void)
 {
     return pthread_self();
 }
 
 // 7.25.5.3
-static inline int
+int
 thrd_detach(thrd_t thr)
 {
     return (pthread_detach(thr) == 0) ? thrd_success : thrd_error;
 }
 
 // 7.25.5.4
-static inline int
+int
 thrd_equal(thrd_t thr0, thrd_t thr1)
 {
     return pthread_equal(thr0, thr1);
 }
 
 // 7.25.5.5
-static inline void
+_Noreturn
+void
 thrd_exit(int res)
 {
     pthread_exit((void*)(intptr_t)res);
 }
 
 // 7.25.5.6
-static inline int
+int
 thrd_join(thrd_t thr, int *res)
 {
     void *code;
@@ -334,15 +309,15 @@ thrd_join(thrd_t thr, int *res)
 }
 
 // 7.25.5.7
-static inline void
+int
 thrd_sleep(const struct timespec *time_point, struct timespec *remaining)
 {
     assert(time_point != NULL);
-    nanosleep(time_point, remaining);
+    return nanosleep(time_point, remaining);
 }
 
 // 7.25.5.8
-static inline void
+void
 thrd_yield(void)
 {
     sched_yield();
@@ -351,7 +326,7 @@ thrd_yield(void)
 
 /*----------- 7.25.6 Thread-specific storage functions -----------*/
 // 7.25.6.1
-static inline int
+int
 tss_create(tss_t *key, tss_dtor_t dtor)
 {
     assert(key != NULL);
@@ -359,21 +334,21 @@ tss_create(tss_t *key, tss_dtor_t dtor)
 }
 
 // 7.25.6.2
-static inline void
+void
 tss_delete(tss_t key)
 {
     pthread_key_delete(key);
 }
 
 // 7.25.6.3
-static inline void *
+void *
 tss_get(tss_t key)
 {
     return pthread_getspecific(key);
 }
 
 // 7.25.6.4
-static inline int
+int
 tss_set(tss_t key, void *val)
 {
     return (pthread_setspecific(key, val) == 0) ? thrd_success : thrd_error;

@@ -22,6 +22,12 @@ files_mesa_util_c11 = files(
   'time.c',
 )
 
+if host_machine.system() == 'windows'
+  files_mesa_util_c11 += 'threads_win32.c'
+else
+  files_mesa_util_c11 += 'threads_posix.c'
+endif
+
 _libmesa_util_c11 = static_library(
   'mesa_util_c11',
   [files_mesa_util_c11],
