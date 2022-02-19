@@ -108,6 +108,61 @@ brw_inst_##name(const struct intel_device_info *devinfo,      \
          return brw_inst_bits(inst, hi4, lo4);                     \
    }
 
+#define FV20(name, hi4, lo4, hi12, lo12, hi20, lo20)               \
+   static inline void                                              \
+   brw_inst_set_##name(const struct intel_device_info *devinfo,    \
+                       brw_inst *inst, uint64_t v)                 \
+   {                                                               \
+      if (devinfo->ver >= 20)                                      \
+         brw_inst_set_bits(inst, hi20, lo20, v & 0x7);             \
+      else if (devinfo->ver >= 12)                                 \
+         brw_inst_set_bits(inst, hi12, lo12, v);                   \
+      else                                                         \
+         brw_inst_set_bits(inst, hi4, lo4, v);                     \
+   }                                                               \
+   static inline uint64_t                                          \
+   brw_inst_##name(const struct intel_device_info *devinfo,        \
+                   const brw_inst *inst)                           \
+   {                                                               \
+      if (devinfo->ver >= 20)                                      \
+         return brw_inst_bits(inst, hi20, lo20) == 0x7 ? 0xF :     \
+                brw_inst_bits(inst, hi20, lo20);                   \
+      else if (devinfo->ver >= 12)                                 \
+         return brw_inst_bits(inst, hi12, lo12);                   \
+      else                                                         \
+         return brw_inst_bits(inst, hi4, lo4);                     \
+   }
+
+#define FD20(name, hi4, lo4, hi12, lo12, hi20, lo20, zero20)       \
+   static inline void                                              \
+   brw_inst_set_##name(const struct intel_device_info *devinfo,    \
+                       brw_inst *inst, uint64_t v)                 \
+   {                                                               \
+      if (devinfo->ver >= 20) {                                    \
+         brw_inst_set_bits(inst, hi20, lo20, v >> 1);              \
+         if (zero20 == -1)                                         \
+            assert((v & 1) == 0);                                  \
+         else                                                      \
+            brw_inst_set_bits(inst, zero20, zero20, v & 1);        \
+      } else if (devinfo->ver >= 12)                               \
+         brw_inst_set_bits(inst, hi12, lo12, v);                   \
+      else                                                         \
+         brw_inst_set_bits(inst, hi4, lo4, v);                     \
+   }                                                               \
+   static inline uint64_t                                          \
+   brw_inst_##name(const struct intel_device_info *devinfo,        \
+                   const brw_inst *inst)                           \
+   {                                                               \
+      if (devinfo->ver >= 20)                                      \
+         return (brw_inst_bits(inst, hi20, lo20) << 1) |           \
+                (zero20 == -1 ? 0 :                                \
+                 brw_inst_bits(inst, zero20, zero20));             \
+      else if (devinfo->ver >= 12)                                 \
+         return brw_inst_bits(inst, hi12, lo12);                   \
+      else                                                         \
+         return brw_inst_bits(inst, hi4, lo4);                     \
+   }
+
 #define BOUNDS(hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                     \
                hi7, lo7, hi8, lo8, hi12, lo12, hi20, lo20)                   \
    unsigned high, low;                                                       \
@@ -271,7 +326,7 @@ brw_inst_##name(const struct intel_device_info *devinfo,      \
       return brw_inst_bits(inst, hi4, lo4);                   \
 }
 
-F(src1_vstride,        /* 4+ */ 120, 117, /* 12+ */ 119, 116)
+FV20(src1_vstride,     /* 4+ */ 120, 117, /* 12+ */ 119, 116, /* 20+ */ 118, 116)
 F(src1_width,          /* 4+ */ 116, 114, /* 12+ */ 115, 113)
 F(src1_da16_swiz_w,    /* 4+ */ 115, 114, /* 12+ */ -1, -1)
 F(src1_da16_swiz_z,    /* 4+ */ 113, 112, /* 12+ */ -1, -1)
@@ -284,13 +339,13 @@ F(src1_abs,            /* 4+ */ 109, 109, /* 12+ */ 120, 120)
 F8(src1_ia_subreg_nr,  /* 4+ */ 108, 106, /* 8+ */  108, 105, /* 12+ */ 111, 108)
 F(src1_da_reg_nr,      /* 4+ */ 108, 101, /* 12+ */ 111, 104)
 F(src1_da16_subreg_nr, /* 4+ */ 100, 100, /* 12+ */ -1, -1)
-F(src1_da1_subreg_nr,  /* 4+ */ 100,  96, /* 12+ */ 103, 99)
+FD20(src1_da1_subreg_nr, /* 4+ */ 100, 96, /* 12+ */ 103, 99, /* 20+ */ 103, 99, -1)
 F(src1_da16_swiz_y,    /* 4+ */ 99,  98,  /* 12+ */ -1, -1)
 F(src1_da16_swiz_x,    /* 4+ */ 97,  96,  /* 12+ */ -1, -1)
 F8(src1_reg_hw_type,   /* 4+ */ 46,  44,  /* 8+ */  94,  91, /* 12+ */ 91, 88)
 FI(src1_reg_file,      /* 4+ */ 43,  42,  /* 8+ */  90,  89, /* 12+ */ 47, 98)
 F(src1_is_imm,         /* 4+ */ -1,  -1,  /* 12+ */ 47, 47)
-F(src0_vstride,        /* 4+ */ 88,  85,  /* 12+ */ 87, 84)
+FV20(src0_vstride,     /* 4+ */ 88,  85,  /* 12+ */ 87, 84,  /* 20+ */ 86, 84)
 F(src0_width,          /* 4+ */ 84,  82,  /* 12+ */ 83, 81)
 F(src0_da16_swiz_w,    /* 4+ */ 83,  82,  /* 12+ */ -1, -1)
 F(src0_da16_swiz_z,    /* 4+ */ 81,  80,  /* 12+ */ -1, -1)
@@ -303,7 +358,7 @@ F(src0_abs,            /* 4+ */ 77,  77,  /* 12+ */ 44, 44)
 F8(src0_ia_subreg_nr,  /* 4+ */ 76,  74,  /* 8+ */  76,  73, /* 12+ */ 79, 76)
 F(src0_da_reg_nr,      /* 4+ */ 76,  69,  /* 12+ */ 79, 72)
 F(src0_da16_subreg_nr, /* 4+ */ 68,  68,  /* 12+ */ -1, -1)
-F(src0_da1_subreg_nr,  /* 4+ */ 68,  64,  /* 12+ */ 71, 67)
+FD20(src0_da1_subreg_nr, /* 4+ */ 68, 64, /* 12+ */ 71,  67, /* 20+ */ 71, 67, 87)
 F(src0_da16_swiz_y,    /* 4+ */ 67,  66,  /* 12+ */ -1, -1)
 F(src0_da16_swiz_x,    /* 4+ */ 65,  64,  /* 12+ */ -1, -1)
 F(dst_address_mode,    /* 4+ */ 63,  63,  /* 12+ */ 35, 35)
@@ -311,7 +366,7 @@ F(dst_hstride,         /* 4+ */ 62,  61,  /* 12+ */ 49, 48)
 F8(dst_ia_subreg_nr,   /* 4+ */ 60,  58,  /* 8+ */  60,  57, /* 12+ */ 63, 60)
 F(dst_da_reg_nr,       /* 4+ */ 60,  53,  /* 12+ */ 63, 56)
 F(dst_da16_subreg_nr,  /* 4+ */ 52,  52,  /* 12+ */ -1, -1)
-F(dst_da1_subreg_nr,   /* 4+ */ 52,  48,  /* 12+ */ 55, 51)
+FD20(dst_da1_subreg_nr, /* 4+ */ 52, 48,  /* 12+ */ 55, 51, /* 20+ */ 55, 51, 33)
 F(da16_writemask,      /* 4+ */ 51,  48,  /* 12+ */ -1, -1) /* Dst.ChanEn */
 F8(src0_reg_hw_type,   /* 4+ */ 41,  39,  /* 8+ */  46,  43, /* 12+ */ 43, 40)
 FI(src0_reg_file,      /* 4+ */ 38,  37,  /* 8+ */  42,  41, /* 12+ */ 46, 66)
