@@ -33,6 +33,8 @@
 
 using namespace brw;
 
+#define REG_CLASS_COUNT 20
+
 static void
 assign_reg(unsigned *reg_hw_locations, fs_reg *reg)
 {
@@ -113,21 +115,22 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
     * instruction, and on gfx4 we need 8 contiguous regs for workaround simd16
     * texturing.
     */
-   const int class_count = MAX_VGRF_SIZE;
-   int class_sizes[MAX_VGRF_SIZE];
-   for (unsigned i = 0; i < MAX_VGRF_SIZE; i++)
+   int class_sizes[REG_CLASS_COUNT];
+   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE);
+   for (unsigned i = 0; i < REG_CLASS_COUNT; i++)
       class_sizes[i] = i + 1;
 
    struct ra_regs *regs = ra_alloc_reg_set(compiler, BRW_MAX_GRF, false);
    if (devinfo->ver >= 6)
       ra_set_allocate_round_robin(regs);
-   struct ra_class **classes = ralloc_array(compiler, struct ra_class *, class_count);
+   struct ra_class **classes = ralloc_array(compiler, struct ra_class *,
+                                            REG_CLASS_COUNT);
    struct ra_class *aligned_bary_class = NULL;
 
    /* Now, make the register classes for each size of contiguous register
     * allocation we might need to make.
     */
-   for (int i = 0; i < class_count; i++) {
+   for (int i = 0; i < REG_CLASS_COUNT; i++) {
       classes[i] = ra_alloc_contig_reg_class(regs, class_sizes[i]);
 
       if (devinfo->ver <= 5 && dispatch_width >= 16) {
@@ -166,7 +169,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
    compiler->fs_reg_sets[index].regs = regs;
    for (unsigned i = 0; i < ARRAY_SIZE(compiler->fs_reg_sets[index].classes); i++)
       compiler->fs_reg_sets[index].classes[i] = NULL;
-   for (int i = 0; i < class_count; i++)
+   for (int i = 0; i < REG_CLASS_COUNT; i++)
       compiler->fs_reg_sets[index].classes[class_sizes[i] - 1] = classes[i];
    compiler->fs_reg_sets[index].aligned_bary_class = aligned_bary_class;
 }
