@@ -1370,20 +1370,29 @@ REG_TYPE(src1)
 
 /* The AddrImm fields are split into two discontiguous sections on Gfx8+ */
 #define BRW_IA1_ADDR_IMM(reg, g4_high, g4_low, g8_nine, g8_high, g8_low, \
-                         g12_high, g12_low)                              \
+                         g12_high, g12_low, g20_high, g20_low, g20_zero) \
 static inline void                                                       \
 brw_inst_set_##reg##_ia1_addr_imm(const struct                           \
                                   intel_device_info *devinfo,            \
                                   brw_inst *inst,                        \
                                   unsigned value)                        \
 {                                                                        \
-   assert((value & ~0x3ff) == 0);                                        \
-   if (devinfo->ver >= 12) {                                             \
+   if (devinfo->ver >= 20) {                                             \
+      assert((value & ~0x7ff) == 0);                                     \
+      brw_inst_set_bits(inst, g20_high, g20_low, value >> 1);            \
+      if (g20_zero == -1)                                                \
+         assert((value & 1) == 0);                                       \
+      else                                                               \
+         brw_inst_set_bits(inst, g20_zero, g20_zero, value & 1);         \
+   } else if (devinfo->ver >= 12) {                                      \
+      assert((value & ~0x3ff) == 0);                                     \
       brw_inst_set_bits(inst, g12_high, g12_low, value);                 \
    } else if (devinfo->ver >= 8) {                                       \
+      assert((value & ~0x3ff) == 0);                                     \
       brw_inst_set_bits(inst, g8_high, g8_low, value & 0x1ff);           \
       brw_inst_set_bits(inst, g8_nine, g8_nine, value >> 9);             \
    } else {                                                              \
+      assert((value & ~0x3ff) == 0);                                     \
       brw_inst_set_bits(inst, g4_high, g4_low, value);                   \
    }                                                                     \
 }                                                                        \
@@ -1391,7 +1400,11 @@ static inline unsigned                                                   \
 brw_inst_##reg##_ia1_addr_imm(const struct intel_device_info *devinfo,   \
                               const brw_inst *inst)                      \
 {                                                                        \
-   if (devinfo->ver >= 12) {                                             \
+   if (devinfo->ver >= 20) {                                             \
+      return brw_inst_bits(inst, g20_high, g20_low) << 1 |               \
+             (g20_zero == -1 ? 0 :                                       \
+              brw_inst_bits(inst, g20_zero, g20_zero));                  \
+   } else if (devinfo->ver >= 12) {                                      \
       return brw_inst_bits(inst, g12_high, g12_low);                     \
    } else if (devinfo->ver >= 8) {                                       \
       return brw_inst_bits(inst, g8_high, g8_low) |                      \
@@ -1401,11 +1414,11 @@ brw_inst_##reg##_ia1_addr_imm(const struct intel_device_info *devinfo,   \
    }                                                                     \
 }
 
-/* AddrImm[9:0] for Align1 Indirect Addressing        */
-/*                     -Gen 4-  ----Gfx8----  -Gfx12- */
-BRW_IA1_ADDR_IMM(src1, 105, 96, 121, 104, 96, 107, 98)
-BRW_IA1_ADDR_IMM(src0,  73, 64,  95,  72, 64,  75, 66)
-BRW_IA1_ADDR_IMM(dst,   57, 48,  47,  56, 48,  59, 50)
+/* AddrImm for Align1 Indirect Addressing                          */
+/*                     -Gen 4-  ----Gfx8----  -Gfx12-  ---Gfx20--- */
+BRW_IA1_ADDR_IMM(src1, 105, 96, 121, 104, 96, 107, 98, 107, 98, -1)
+BRW_IA1_ADDR_IMM(src0,  73, 64,  95,  72, 64,  75, 66,  75, 66, 87)
+BRW_IA1_ADDR_IMM(dst,   57, 48,  47,  56, 48,  59, 50,  59, 50, 33)
 
 #define BRW_IA16_ADDR_IMM(reg, g4_high, g4_low, g8_nine, g8_high, g8_low) \
 static inline void                                                        \
