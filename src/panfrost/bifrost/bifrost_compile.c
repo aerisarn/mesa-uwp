@@ -695,6 +695,27 @@ bi_should_remove_store(nir_intrinsic_instr *intr, enum bi_idvs_mode idvs)
         }
 }
 
+static bool
+bifrost_nir_specialize_idvs(nir_builder *b, nir_instr *instr, void *data)
+{
+        enum bi_idvs_mode *idvs = data;
+
+        if (instr->type != nir_instr_type_intrinsic)
+                return false;
+
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+        if (intr->intrinsic != nir_intrinsic_store_output)
+                return false;
+
+        if (bi_should_remove_store(intr, *idvs)) {
+                nir_instr_remove(instr);
+                return  true;
+        }
+
+        return false;
+}
+
 static void
 bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -709,12 +730,6 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 
         unsigned imm_index = 0;
         bool immediate = bi_is_intr_immediate(instr, &imm_index, 16);
-
-        /* Skip stores to the wrong kind of variable in a specialized IDVS
-         * shader. Backend dead code elimination will clean up the mess.
-         */
-        if (bi_should_remove_store(instr, b->shader->idvs))
-                return;
 
         /* Only look at the total components needed. In effect, we fill in all
          * the intermediate "holes" in the write mask, since we can't mask off
@@ -3607,8 +3622,6 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS_V(nir, nir_shader_instructions_pass,
                         nir_invalidate_divergence, nir_metadata_all, NULL);
         }
-
-        NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 }
 
 /* The cmdstream lowers 8-bit fragment output as 16-bit, so we need to do the
@@ -3870,6 +3883,35 @@ bi_compile_variant_nir(nir_shader *nir,
         ctx->arch = inputs->gpu_id >> 12;
         ctx->info = info;
         ctx->idvs = idvs;
+
+        if (idvs != BI_IDVS_NONE) {
+                /* Specializing shaders for IDVS is destructive, so we need to
+                 * clone. However, the last (second) IDVS shader does not need
+                 * to be preserved so we can skip cloning that one.
+                 */
+                if (offset == 0)
+                        ctx->nir = nir = nir_shader_clone(ctx, nir);
+
+                NIR_PASS_V(nir, nir_shader_instructions_pass,
+                           bifrost_nir_specialize_idvs,
+                           nir_metadata_block_index | nir_metadata_dominance,
+                           &idvs);
+
+                /* After specializing, clean up the mess */
+                bool progress = true;
+
+                while (progress) {
+                        progress = false;
+
+                        NIR_PASS(progress, nir, nir_opt_dce);
+                        NIR_PASS(progress, nir, nir_opt_dead_cf);
+                }
+        }
+
+        /* We can only go out-of-SSA after speciailizing IDVS, as opt_dead_cf
+         * doesn't know how to deal with nir_register.
+         */
+        NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
         /* If nothing is pushed, all UBOs need to be uploaded */
         ctx->ubo_mask = ~0;
