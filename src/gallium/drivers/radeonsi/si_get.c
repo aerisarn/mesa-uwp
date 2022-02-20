@@ -613,9 +613,15 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
 
       switch (codec) {
       case PIPE_VIDEO_FORMAT_MPEG12:
-         return profile != PIPE_VIDEO_PROFILE_MPEG1;
+         if (sscreen->info.chip_class >= GFX11)
+            return false;
+         else
+            return profile != PIPE_VIDEO_PROFILE_MPEG1;
       case PIPE_VIDEO_FORMAT_MPEG4:
-         return 1;
+         if (sscreen->info.chip_class >= GFX11)
+            return false;
+         else
+            return true;
       case PIPE_VIDEO_FORMAT_MPEG4_AVC:
          if ((sscreen->info.family == CHIP_POLARIS10 || sscreen->info.family == CHIP_POLARIS11) &&
              sscreen->info.uvd_fw_version < UVD_FW_1_66_16) {
@@ -624,7 +630,10 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          }
          return true;
       case PIPE_VIDEO_FORMAT_VC1:
-         return true;
+         if (sscreen->info.chip_class >= GFX11)
+            return false;
+         else
+            return true;
       case PIPE_VIDEO_FORMAT_HEVC:
          /* Carrizo only supports HEVC Main */
          if (sscreen->info.family >= CHIP_STONEY)
