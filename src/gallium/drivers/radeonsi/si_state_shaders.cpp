@@ -96,8 +96,8 @@ unsigned si_determine_wave_size(struct si_screen *sscreen, struct si_shader *sha
     * in some cases. Alpha test in Wave32 is luckily unaffected.
     */
    if (stage == MESA_SHADER_FRAGMENT && info->base.fs.uses_discard &&
-       !(info && info->options & SI_PROFILE_IGNORE_LLVM_DISCARD_BUG) &&
-       LLVM_VERSION_MAJOR >= 13 && !(sscreen->debug_flags & DBG(W32_PS_DISCARD)))
+       !(info && info->options & SI_PROFILE_IGNORE_LLVM13_DISCARD_BUG) &&
+       LLVM_VERSION_MAJOR == 13 && !(sscreen->debug_flags & DBG(W32_PS_DISCARD)))
       return 64;
 
    /* Debug flags except w32psdiscard don't override the discard bug workaround,

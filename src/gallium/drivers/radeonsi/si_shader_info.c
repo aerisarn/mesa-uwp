@@ -41,7 +41,7 @@ static struct si_shader_profile profiles[] =
    {
       /* Viewperf/Energy isn't affected by the discard bug. */
       {0x17118671, 0xd0102e0c, 0x947f3592, 0xb2057e7b, 0x4da5d9b0},
-      SI_PROFILE_IGNORE_LLVM_DISCARD_BUG,
+      SI_PROFILE_IGNORE_LLVM13_DISCARD_BUG,
    },
    {
       /* Viewperf/Medical */
