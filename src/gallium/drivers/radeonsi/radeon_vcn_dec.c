@@ -2764,6 +2764,10 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->reg.cntl = RDECODE_VCN2_5_ENGINE_CNTL;
       dec->jpg.direct_reg = true;
       break;
+   case CHIP_GFX1100:
+   case CHIP_GFX1102:
+      dec->jpg.direct_reg = true;
+      break;
    default:
       RVID_ERR("VCN is not supported.\n");
       goto error;
