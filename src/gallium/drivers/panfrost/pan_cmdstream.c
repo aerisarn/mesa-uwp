@@ -2410,9 +2410,9 @@ panfrost_initialize_surface(struct panfrost_batch *batch,
         }
 }
 
-/* Generate a fragment job. This should be called once per frame. (According to
- * presentations, this is supposed to correspond to eglSwapBuffers) */
-
+/* Generate a fragment job. This should be called once per frame. (Usually,
+ * this corresponds to eglSwapBuffers or one of glFlush, glFinish)
+ */
 static mali_ptr
 emit_fragment_job(struct panfrost_batch *batch, const struct pan_fb_info *pfb)
 {
