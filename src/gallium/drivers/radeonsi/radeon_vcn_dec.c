@@ -1999,9 +1999,79 @@ static void send_cmd(struct radeon_decoder *dec, unsigned cmd, struct pb_buffer 
    addr = dec->ws->buffer_get_virtual_address(buf);
    addr = addr + off;
 
-   set_reg(dec, dec->reg.data0, addr);
-   set_reg(dec, dec->reg.data1, addr >> 32);
-   set_reg(dec, dec->reg.cmd, cmd << 1);
+   if (dec->vcn_dec_sw_ring == false) {
+      set_reg(dec, dec->reg.data0, addr);
+      set_reg(dec, dec->reg.data1, addr >> 32);
+      set_reg(dec, dec->reg.cmd, cmd << 1);
+      return;
+   }
+
+   if (!dec->cs.current.cdw) {
+      rvcn_decode_ib_package_t *ib_header =
+         (rvcn_decode_ib_package_t *)&(dec->cs.current.buf[dec->cs.current.cdw]);
+
+      ib_header->package_size = sizeof(struct rvcn_decode_buffer_s) +
+         sizeof(struct rvcn_decode_ib_package_s);
+      dec->cs.current.cdw++;
+      ib_header->package_type = (RDECODE_IB_PARAM_DECODE_BUFFER);
+      dec->cs.current.cdw++;
+
+      dec->decode_buffer =
+         (rvcn_decode_buffer_t *)&(dec->cs.current.buf[dec->cs.current.cdw]);
+
+      dec->cs.current.cdw += sizeof(struct rvcn_decode_buffer_s) / 4;
+      memset(dec->decode_buffer, 0, sizeof(struct rvcn_decode_buffer_s));
+   }
+
+   switch(cmd) {
+      case RDECODE_CMD_MSG_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= RDECODE_CMDBUF_FLAGS_MSG_BUFFER;
+            dec->decode_buffer->msg_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->msg_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_DPB_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_DPB_BUFFER);
+            dec->decode_buffer->dpb_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->dpb_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_DECODING_TARGET_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_DECODING_TARGET_BUFFER);
+            dec->decode_buffer->target_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->target_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_FEEDBACK_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_FEEDBACK_BUFFER);
+            dec->decode_buffer->feedback_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->feedback_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_PROB_TBL_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_PROB_TBL_BUFFER);
+            dec->decode_buffer->prob_tbl_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->prob_tbl_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_SESSION_CONTEXT_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_SESSION_CONTEXT_BUFFER);
+            dec->decode_buffer->session_contex_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->session_contex_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_BITSTREAM_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_BITSTREAM_BUFFER);
+            dec->decode_buffer->bitstream_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->bitstream_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_IT_SCALING_TABLE_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_IT_SCALING_BUFFER);
+            dec->decode_buffer->it_sclr_table_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->it_sclr_table_buffer_address_lo = (addr);
+         break;
+      case RDECODE_CMD_CONTEXT_BUFFER:
+            dec->decode_buffer->valid_buf_flag |= (RDECODE_CMDBUF_FLAGS_CONTEXT_BUFFER);
+            dec->decode_buffer->context_buffer_address_hi = (addr >> 32);
+            dec->decode_buffer->context_buffer_address_lo = (addr);
+         break;
+      default:
+            printf("Not Support!");
+   }
 }
 
 /* do the codec needs an IT buffer ?*/
@@ -2430,7 +2500,9 @@ void send_cmd_dec(struct radeon_decoder *dec, struct pipe_video_buffer *target,
    else if (have_probs(dec))
       send_cmd(dec, RDECODE_CMD_PROB_TBL_BUFFER, msg_fb_it_probs_buf->res->buf,
                FB_BUFFER_OFFSET + FB_BUFFER_SIZE, RADEON_USAGE_READ, RADEON_DOMAIN_GTT);
-   set_reg(dec, dec->reg.cntl, 1);
+
+   if (dec->vcn_dec_sw_ring == false)
+      set_reg(dec, dec->reg.cntl, 1);
 }
 
 /**
@@ -2548,6 +2620,10 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    dec->stream_handle = si_vid_alloc_stream_handle();
    dec->screen = context->screen;
    dec->ws = ws;
+
+   if (u_reduce_video_profile(templ->profile) != PIPE_VIDEO_FORMAT_JPEG &&
+       sctx->chip_class >= GFX11)
+      dec->vcn_dec_sw_ring = true;
 
    if (!ws->cs_create(&dec->cs, sctx->ctx, ring, NULL, NULL, false)) {
       RVID_ERR("Can't get command submission context.\n");
