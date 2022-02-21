@@ -109,26 +109,13 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    map[300] = pipeline_null | 0x4;
    map[305] = 0x12;
    map[306] = pipeline_store | 0x4;
-   map[352] = 1;
-   map[360] = 0x1c;
-   map[362] = encoder_id;
-   map[365] = 0xffffffff;
-   map[366] = 1;
 
-   uint64_t unk6 = demo_unk6(pool);
-   map[370] = unk6 & 0xFFFFFFFF;
-   map[371] = unk6 >> 32;
-
-   map[374] = width;
-   map[375] = height;
-   map[376] = 1;
-   map[377] = 8;
-   map[378] = 8;
-
-   map[393] = 8;
-   map[394] = 32;
-   map[395] = 32;
-   map[396] = 1;
+   agx_pack(map + 344, IOGPU_MISC, cfg) {
+      cfg.encoder_id = encoder_id;
+      cfg.unknown_buffer = demo_unk6(pool);
+      cfg.width = width;
+      cfg.height = height;
+   }
 
    unsigned offset_unk = (458 * 4);
    unsigned offset_attachments = (470 * 4);

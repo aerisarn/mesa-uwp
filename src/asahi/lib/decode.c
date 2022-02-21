@@ -446,6 +446,7 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    DUMP_CL(IOGPU_INTERNAL_PIPELINES, ((uint32_t *) cmdbuf->ptr.cpu) + 156, "Internal pipelines");
    DUMP_CL(IOGPU_AUX_FRAMEBUFFER, ((uint32_t *) cmdbuf->ptr.cpu) + 220, "Aux Framebuffer");
    DUMP_CL(IOGPU_CLEAR_Z_S, ((uint32_t *) cmdbuf->ptr.cpu) + 276, "Clear Z/S");
+   DUMP_CL(IOGPU_MISC, ((uint32_t *) cmdbuf->ptr.cpu) + 344, "Misc");
 
    uint32_t *attachments = (uint32_t *) ((uint8_t *) cmdbuf->ptr.cpu + cmd.attachment_offset_1);
    unsigned attachment_count = attachments[3];
