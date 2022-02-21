@@ -126,7 +126,8 @@ v3d_choose_spill_node(struct v3d_compile *c,
                          * starting output writes.
                          */
                         bool no_spilling =
-                                c->threads > 1 && started_last_seg;
+                                (c->threads > 1 && started_last_seg) ||
+                                (c->max_tmu_spills == 0);
 
                         /* Discourage spilling of TMU operations */
                         for (int i = 0; i < vir_get_nsrc(inst); i++) {
