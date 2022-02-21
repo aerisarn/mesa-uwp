@@ -546,4 +546,14 @@
          in a decimal percentage [0, 100] <field name="Percent" start="5:16" -->
     <field name="Percent" start="5:16" size="16" type="uint"/>
   </struct>
+
+  <struct name="IOGPU Clear Z/S" size="32">
+    <!-- Encoded like the depth attachment -->
+    <field name="Depth clear value" start="2:0" size="32" type="hex"/>
+    <field name="Stencil clear value" start="3:0" size="8" type="uint"/>
+    <field name="Unk 1" start="3:8" size="8" type="hex" default="3"/>
+    <field name="Unk 2" start="5:8" size="8" type="hex" default="1"/>
+    <field name="Z16 Unorm attachment" start="7:8" size="1" type="bool"/>
+  </struct>
+
 </agxml>

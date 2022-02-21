@@ -96,12 +96,12 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    map[226] = unk_buffer_2 & 0xFFFFFFFF;
    map[227] = unk_buffer_2 >> 32;
 
-   float depth_clear = 1.0;
-   uint8_t stencil_clear = 0;
+   agx_pack(map + 276, IOGPU_CLEAR_Z_S, cfg) {
+      cfg.depth_clear_value = fui(1.0); // 32-bit float
+      cfg.stencil_clear_value = 0;
+      cfg.z16_unorm_attachment = false;
+   }
 
-   map[278] = fui(depth_clear);
-   map[279] = (0x3 << 8) | stencil_clear;
-   map[282] = 0x1000000;
    map[284] = 0xffffffff;
    map[285] = 0xffffffff;
    map[286] = 0xffffffff;
