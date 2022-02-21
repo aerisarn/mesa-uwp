@@ -208,7 +208,11 @@ static inline uint32_t
 _mi_value_as_gpr(struct mi_value val)
 {
    assert(mi_value_is_gpr(val));
-   assert(val.reg % 8 == 0);
+   /* Some of the GRL metakernels will generate 64bit value in a GP register,
+    * then use only half of that as the last operation on that value. So allow
+    * unref on part of a GP register.
+    */
+   assert(val.reg % 4 == 0);
    return (val.reg - _MI_BUILDER_GPR_BASE) / 8;
 }
 
