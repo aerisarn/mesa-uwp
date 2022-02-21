@@ -1568,7 +1568,8 @@ v3d_attempt_compile(struct v3d_compile *c)
         if (!c->disable_constant_ubo_load_sorting)
                 NIR_PASS_V(c->s, v3d_nir_sort_constant_ubo_loads, c);
 
-        NIR_PASS_V(c->s, nir_opt_move, nir_move_load_uniform);
+        NIR_PASS_V(c->s, nir_opt_move, nir_move_load_uniform |
+                                       nir_move_const_undef);
 
         v3d_nir_to_vir(c);
 }
