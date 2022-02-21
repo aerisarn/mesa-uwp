@@ -79,15 +79,14 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    uint64_t unk_buffer = demo_zero(pool, 0x1000);
    uint64_t unk_buffer_2 = demo_zero(pool, 0x8000);
 
-   // This is a pipeline bind
-   map[156] = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
-   map[158] = pipeline_clear | 0x4;
-   map[163] = 0x12;
-   map[164] = pipeline_store | 0x4;
-   map[166] = scissor_ptr & 0xFFFFFFFF;
-   map[167] = scissor_ptr >> 32;
-   map[168] = unk_buffer & 0xFFFFFFFF;
-   map[169] = unk_buffer >> 32;
+   agx_pack(map + 156, IOGPU_INTERNAL_PIPELINES, cfg) {
+      cfg.clear_pipeline_bind = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
+      cfg.clear_pipeline = pipeline_clear;
+      cfg.store_pipeline_bind = 0x12;
+      cfg.store_pipeline = pipeline_store;
+      cfg.scissor_array = scissor_ptr;
+      cfg.unknown_buffer = unk_buffer;
+   }
 
    agx_pack(map + 220, IOGPU_AUX_FRAMEBUFFER, cfg) {
       cfg.width = width;

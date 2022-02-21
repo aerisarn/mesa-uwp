@@ -547,6 +547,37 @@
     <field name="Percent" start="5:16" size="16" type="uint"/>
   </struct>
 
+  <struct name="IOGPU Internal Pipelines" size="256">
+    <field name="Clear pipeline bind" start="0:0" size="32" type="hex"/>
+    <field name="Clear pipeline unk" start="2:0" size="4" default="4" type="hex"/>
+    <field name="Clear pipeline" start="2:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Store pipeline bind" start="7:0" size="32" type="hex"/>
+    <field name="Store pipeline unk" start="8:0" size="4" default="4" type="hex"/>
+    <field name="Store pipeline" start="8:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Scissor array" start="10:0" size="64" type="address"/>
+    <!-- Points to zeroes, allocation of 0xc0000 bytes unknwon type 28000000 -->
+    <field name="Unknown buffer" start="12:0" size="64" type="address"/>
+    <field name="Depth pipeline unk" start="16:0" size="4" default="4" type="hex"/>
+    <!-- 0xc0150 with depth clear and z32f and s8
+         0x40150 with z32f and s8
+         0x40 with z32f
+         0x4000040 with z16?
+    -->
+    <field name="Depth pipeline" start="16:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Depth unknown 1" start="22:0" size="32" type="hex"/>
+    <field name="Depth buffer (if clearing)" start="24:0" size="64" type="address"/>
+    <field name="Depth acceleration buffer (if clearing)" start="30:0" size="64" type="address"/>
+    <!-- bytes unknown type 888F50 -->
+    <field name="Depth buffer" start="34:0" size="64" type="address"/>
+    <!-- 16384 bytes, initialized with 0x7F bytes -->
+    <field name="Depth acceleration buffer" start="40:0" size="64" type="address"/>
+    <field name="Stencil buffer" start="44:0" size="64" type="address"/>
+    <!--- 16384 bytes, initialized with 0x1F bytes -->
+    <field name="Stencil acceleration buffer" start="50:0" size="64" type="address"/>
+    <field name="Stencil buffer 2" start="54:0" size="64" type="address"/>
+    <field name="Stencil acceleration buffer 2" start="60:0" size="64" type="address"/>
+  </struct>
+
   <struct name="IOGPU Aux Framebuffer" size="32">
     <field name="Unk 0" start="0:0" size="32" default="0x4" type="hex"/>
     <field name="Unk 1" start="2:0" size="16" default="0xc000" type="hex"/>
