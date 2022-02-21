@@ -1893,7 +1893,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
             dst[1] = va >> 32;
          } else {
             memcpy(dst, src, A6XX_TEX_CONST_DWORDS * 4);
-            /* Note: A6XX_IBO_5_DEPTH is always 0 */
+            /* Note: A6XX_TEX_CONST_5_DEPTH is always 0 */
             uint64_t va = dst[4] | ((uint64_t)dst[5] << 32);
             va += offset;
             dst[4] = va;

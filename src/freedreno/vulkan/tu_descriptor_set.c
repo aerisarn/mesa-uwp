@@ -863,17 +863,17 @@ write_buffer_descriptor(const struct tu_device *device,
 
    /* newer a6xx allows using 16-bit descriptor for both 16-bit and 32-bit access */
    if (device->physical_device->info->a6xx.storage_16bit) {
-      dst[0] = A6XX_IBO_0_TILE_MODE(TILE6_LINEAR) | A6XX_IBO_0_FMT(FMT6_16_UINT);
+      dst[0] = A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) | A6XX_TEX_CONST_0_FMT(FMT6_16_UINT);
       dst[1] = DIV_ROUND_UP(range, 2);
    } else {
-      dst[0] = A6XX_IBO_0_TILE_MODE(TILE6_LINEAR) | A6XX_IBO_0_FMT(FMT6_32_UINT);
+      dst[0] = A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) | A6XX_TEX_CONST_0_FMT(FMT6_32_UINT);
       dst[1] = DIV_ROUND_UP(range, 4);
    }
    dst[2] =
-      A6XX_IBO_2_UNK4 | A6XX_IBO_2_TYPE(A6XX_TEX_1D) | A6XX_IBO_2_UNK31;
+      A6XX_TEX_CONST_2_BUFFER | A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
    dst[3] = 0;
-   dst[4] = A6XX_IBO_4_BASE_LO(va);
-   dst[5] = A6XX_IBO_5_BASE_HI(va >> 32);
+   dst[4] = A6XX_TEX_CONST_4_BASE_LO(va);
+   dst[5] = A6XX_TEX_CONST_5_BASE_HI(va >> 32);
    for (int i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
       dst[i] = 0;
 }
