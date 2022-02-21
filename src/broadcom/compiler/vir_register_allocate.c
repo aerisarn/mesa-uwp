@@ -110,7 +110,7 @@ static int
 v3d_choose_spill_node(struct v3d_compile *c,
                       struct temp_to_node_map *temp_to_node)
 {
-        const float tmu_scale = 5;
+        const float tmu_scale = 10;
         float block_scale = 1.0;
         float spill_costs[c->num_temps];
         bool in_tmu_operation = false;
