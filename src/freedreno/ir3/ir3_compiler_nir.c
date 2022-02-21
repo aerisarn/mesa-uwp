@@ -1314,10 +1314,10 @@ get_image_samp_tex_src(struct ir3_context *ctx, nir_intrinsic_instr *intr)
    struct ir3_block *b = ctx->block;
    struct tex_src_info info = {0};
    nir_intrinsic_instr *bindless_tex = ir3_bindless_resource(intr->src[0]);
-   ctx->so->bindless_tex = true;
 
    if (bindless_tex) {
       /* Bindless case */
+      ctx->so->bindless_tex = true;
       info.flags |= IR3_INSTR_B;
 
       /* Gather information required to determine which encoding to
