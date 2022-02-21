@@ -889,6 +889,7 @@ agx_create_shader_state(struct pipe_context *pctx,
    return so;
 }
 
+/* Does not take ownership of key. Clones if necessary. */
 static bool
 agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
                   enum pipe_shader_type stage, struct asahi_shader_key *key)
@@ -967,7 +968,13 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    ralloc_free(nir);
    util_dynarray_fini(&binary);
 
-   he = _mesa_hash_table_insert(so->variants, key, compiled);
+   /* key may be destroyed after we return, so clone it before using it as a
+    * hash table key. The clone is logically owned by the hash table.
+    */
+   struct asahi_shader_key *cloned_key = ralloc(so->variants, struct asahi_shader_key);
+   memcpy(cloned_key, key, sizeof(struct asahi_shader_key));
+
+   he = _mesa_hash_table_insert(so->variants, cloned_key, compiled);
    *out = he->data;
    return true;
 }
