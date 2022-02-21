@@ -547,6 +547,15 @@
     <field name="Percent" start="5:16" size="16" type="uint"/>
   </struct>
 
+  <struct name="IOGPU Aux Framebuffer" size="32">
+    <field name="Unk 0" start="0:0" size="32" default="0x4" type="hex"/>
+    <field name="Unk 1" start="2:0" size="16" default="0xc000" type="hex"/>
+    <field name="Z16 Unorm attachment" start="2:18" size="1" type="bool"/>
+    <field name="Width" start="4:0" size="32" type="uint"/>
+    <field name="Height" start="5:0" size="32" type="uint"/>
+    <field name="Pointer" start="6:0" size="64" type="address"/>
+  </struct>
+
   <struct name="IOGPU Clear Z/S" size="32">
     <!-- Encoded like the depth attachment -->
     <field name="Depth clear value" start="2:0" size="32" type="hex"/>

@@ -443,6 +443,7 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    DUMP_UNPACKED(IOGPU_HEADER, cmd, "IOGPU Header\n");
    assert(cmd.attachment_offset_1 == cmd.attachment_offset_2);
 
+   DUMP_CL(IOGPU_AUX_FRAMEBUFFER, ((uint32_t *) cmdbuf->ptr.cpu) + 220, "Aux Framebuffer");
    DUMP_CL(IOGPU_CLEAR_Z_S, ((uint32_t *) cmdbuf->ptr.cpu) + 276, "Clear Z/S");
 
    uint32_t *attachments = (uint32_t *) ((uint8_t *) cmdbuf->ptr.cpu + cmd.attachment_offset_1);

@@ -89,12 +89,12 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    map[168] = unk_buffer & 0xFFFFFFFF;
    map[169] = unk_buffer >> 32;
 
-   map[220] = 4;
-   map[222] = 0xc000;
-   map[224] = width;
-   map[225] = height;
-   map[226] = unk_buffer_2 & 0xFFFFFFFF;
-   map[227] = unk_buffer_2 >> 32;
+   agx_pack(map + 220, IOGPU_AUX_FRAMEBUFFER, cfg) {
+      cfg.width = width;
+      cfg.height = height;
+      cfg.z16_unorm_attachment = false;
+      cfg.pointer = unk_buffer_2;
+   }
 
    agx_pack(map + 276, IOGPU_CLEAR_Z_S, cfg) {
       cfg.depth_clear_value = fui(1.0); // 32-bit float
