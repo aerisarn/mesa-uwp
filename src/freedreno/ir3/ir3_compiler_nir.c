@@ -1396,7 +1396,7 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
    /* If the image can be written, must use LDIB to retrieve data, rather than
     * through ISAM (which uses the texture cache and won't get previous writes).
     */
-   if (!(nir_intrinsic_access(intr) & ACCESS_NON_WRITEABLE) && ctx->compiler->gen >= 5) {
+   if (!(nir_intrinsic_access(intr) & ACCESS_CAN_REORDER) && ctx->compiler->gen >= 5) {
       ctx->funcs->emit_intrinsic_load_image(ctx, intr, dst);
       return;
    }
