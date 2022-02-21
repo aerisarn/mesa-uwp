@@ -845,6 +845,11 @@ struct v3d_compile {
 
         struct qreg undef;
         uint32_t num_temps;
+        /* Number of temps in the program right before we spill a new temp. We
+         * use this to know which temps existed before a spill and which were
+         * added with the spill itself.
+         */
+        uint32_t spill_start_num_temps;
 
         struct vir_cursor cursor;
         struct list_head blocks;

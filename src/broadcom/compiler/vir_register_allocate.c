@@ -356,7 +356,7 @@ v3d_emit_spill_tmua(struct v3d_compile *c,
          * is not affected (and only the spilled temp starts at ip). Something
          * that ends at ip won't be affected either.
          */
-        for (int i = 0; i < c->num_temps; i++) {
+        for (int i = 0; i < c->spill_start_num_temps; i++) {
                 bool thrsw_cross = fill_dst ?
                         c->temp_start[i] < ip && c->temp_end[i] >= ip :
                         c->temp_start[i] < ip && c->temp_end[i] > ip;
@@ -414,7 +414,7 @@ interferes(int32_t t0_start, int32_t t0_end, int32_t t1_start, int32_t t1_end)
 static void
 v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
 {
-        int start_num_temps = c->num_temps;
+        c->spill_start_num_temps = c->num_temps;
         c->spilling = true;
 
         bool is_uniform = vir_is_mov_uniform(c, spill_temp);
@@ -564,7 +564,7 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
         /* Don't allow spilling of our spilling instructions.  There's no way
          * they can help get things colored.
          */
-        for (int i = start_num_temps; i < c->num_temps; i++)
+        for (int i = c->spill_start_num_temps; i < c->num_temps; i++)
                 BITSET_CLEAR(c->spillable, i);
 
         /* Reset interference for spilled node */
@@ -592,7 +592,8 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
                 uint32_t node = c->ra_map.temp[i].node;
                 c->ra_map.node[node].priority = c->temp_end[i] - c->temp_start[i];
 
-                for (uint32_t j = MAX2(i + 1, start_num_temps); j < c->num_temps; j++) {
+                for (uint32_t j = MAX2(i + 1, c->spill_start_num_temps);
+                     j < c->num_temps; j++) {
                         if (interferes(c->temp_start[i], c->temp_end[i],
                                        c->temp_start[j], c->temp_end[j])) {
                                 ra_add_node_interference(c->g,
