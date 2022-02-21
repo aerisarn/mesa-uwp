@@ -2039,15 +2039,8 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
       emit_intrinsic_store_scratch(ctx, intr);
       break;
    case nir_intrinsic_image_load:
-      emit_intrinsic_load_image(ctx, intr, dst);
-      break;
    case nir_intrinsic_bindless_image_load:
-      /* Bindless uses the IBO state, which doesn't have swizzle filled out,
-       * so using isam doesn't work.
-       *
-       * TODO: can we use isam if we fill out more fields?
-       */
-      ctx->funcs->emit_intrinsic_load_image(ctx, intr, dst);
+      emit_intrinsic_load_image(ctx, intr, dst);
       break;
    case nir_intrinsic_image_store:
    case nir_intrinsic_bindless_image_store:
