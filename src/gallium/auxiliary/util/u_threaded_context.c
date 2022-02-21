@@ -2459,6 +2459,13 @@ tc_buffer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
                            0, tres->b.width0, tres->cpu_storage);
          /* This shouldn't have been freed by buffer_subdata. */
          assert(tres->cpu_storage);
+      } else {
+         static bool warned_once = false;
+         if (!warned_once) {
+            fprintf(stderr, "This application is incompatible with cpu_storage.\n");
+            fprintf(stderr, "Use tc_max_cpu_storage_size=0 to disable it and report this issue to Mesa.\n");
+            warned_once = true;
+         }
       }
 
       tc_drop_resource_reference(ttrans->staging);
