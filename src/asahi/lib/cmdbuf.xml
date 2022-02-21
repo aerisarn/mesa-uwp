@@ -517,6 +517,7 @@
   <enum name="IOGPU Attachment Type">
     <value name="Colour" value="0xA"/>
     <value name="Depth" value="0xC"/>
+    <value name="Stencil" value="0xD"/>
   </enum>
 
   <struct name="IOGPU Header" size="192">
