@@ -682,9 +682,6 @@ llvmpipe_is_format_supported( struct pipe_screen *_screen,
    if (sample_count != 0 && sample_count != 1 && sample_count != 4)
       return false;
 
-   if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
-      return false;
-
    if (bind & (PIPE_BIND_RENDER_TARGET | PIPE_BIND_SHADER_IMAGE)) {
       if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB) {
          /* this is a lie actually other formats COULD exist where we would fail */
