@@ -5643,10 +5643,15 @@ cmd_buffer_trace_rays(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
+   const struct brw_cs_prog_data *cs_prog_data =
+      brw_cs_prog_data_const(device->rt_trampoline->prog_data);
+   struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(device->info, cs_prog_data, NULL);
+
    anv_batch_emit(&cmd_buffer->batch, GENX(COMPUTE_WALKER), cw) {
       cw.IndirectParameterEnable        = is_indirect;
       cw.PredicateEnable                = false;
-      cw.SIMDSize                       = SIMD8;
+      cw.SIMDSize                       = dispatch.simd_size / 16;
       cw.LocalXMaximum                  = (1 << local_size_log2[0]) - 1;
       cw.LocalYMaximum                  = (1 << local_size_log2[1]) - 1;
       cw.LocalZMaximum                  = (1 << local_size_log2[2]) - 1;
