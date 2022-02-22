@@ -251,6 +251,7 @@ struct agx_resource {
    struct {
       unsigned offset;
       unsigned line_stride;
+      unsigned size;
    } slices[PIPE_MAX_TEXTURE_LEVELS];
 
    /* Bytes from one miptree to the next */

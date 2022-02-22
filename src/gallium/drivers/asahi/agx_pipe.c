@@ -186,7 +186,9 @@ agx_resource_create(struct pipe_screen *screen,
       }
 
       nresource->slices[l].offset = offset;
-      offset += ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
+      nresource->slices[l].size = ALIGN_POT(nresource->slices[l].line_stride * height, 0x80);
+
+      offset += nresource->slices[l].size;
    }
 
    /* Arrays and cubemaps have the entire miptree duplicated and page aligned (16K) */
