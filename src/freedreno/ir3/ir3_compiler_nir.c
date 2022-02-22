@@ -469,12 +469,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
       dst[0] = create_cov(ctx, create_cov(ctx, src[0], 32, nir_op_f2f16_rtne),
                           16, nir_op_f2f32);
       break;
-   case nir_op_f2b1:
-      dst[0] = ir3_CMPS_F(
-         b, src[0], 0,
-         create_immed_typed(b, 0, type_float_size(bs[0])), 0);
-      dst[0]->cat2.condition = IR3_COND_NE;
-      break;
 
    case nir_op_b2b1:
       /* b2b1 will appear when translating from

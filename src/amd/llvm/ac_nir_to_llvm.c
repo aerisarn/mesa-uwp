@@ -277,13 +277,6 @@ static LLVMValueRef emit_b2f(struct ac_llvm_context *ctx, LLVMValueRef src0, uns
    }
 }
 
-static LLVMValueRef emit_f2b(struct ac_llvm_context *ctx, LLVMValueRef src0)
-{
-   src0 = ac_to_float(ctx, src0);
-   LLVMValueRef zero = LLVMConstNull(LLVMTypeOf(src0));
-   return LLVMBuildFCmp(ctx->builder, LLVMRealUNE, src0, zero, "");
-}
-
 static LLVMValueRef emit_b2i(struct ac_llvm_context *ctx, LLVMValueRef src0, unsigned bitsize)
 {
    switch (bitsize) {
@@ -1096,9 +1089,6 @@ static bool visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_b2f32:
    case nir_op_b2f64:
       result = emit_b2f(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
-      break;
-   case nir_op_f2b1:
-      result = emit_f2b(&ctx->ac, src[0]);
       break;
    case nir_op_b2i8:
    case nir_op_b2i16:

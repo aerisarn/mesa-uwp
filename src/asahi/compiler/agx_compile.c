@@ -862,8 +862,6 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       else
          return agx_not_to(b, dst, s0);
 
-   case nir_op_f2b1:
-      return agx_fcmpsel_to(b, dst, s0, i0, i0, i1, AGX_FCOND_EQ);
    case nir_op_b2b1:
       return agx_icmpsel_to(b, dst, s0, i0, i0, i1, AGX_ICOND_UEQ);
 
