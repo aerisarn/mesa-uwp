@@ -389,7 +389,9 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
 {
    struct agx_context *ctx = agx_context(pctx);
    ctx->batch->clear |= buffers;
-   memcpy(ctx->batch->clear_color, color->f, sizeof(color->f));
+
+   if (buffers & PIPE_CLEAR_COLOR0)
+      memcpy(ctx->batch->clear_color, color->f, sizeof(color->f));
 }
 
 
