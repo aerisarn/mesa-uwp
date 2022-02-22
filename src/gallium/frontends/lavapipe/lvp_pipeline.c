@@ -369,7 +369,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
 
    /* pDepthStencilState */
    if (src->pDepthStencilState && !rasterization_disabled &&
-       (pass ? pass->has_zs_attachment : (rp_info->depthAttachmentFormat || rp_info->stencilAttachmentFormat))) {
+       (pass ? pass->subpasses[src->subpass].has_zs_attachment : (rp_info->depthAttachmentFormat || rp_info->stencilAttachmentFormat))) {
       LVP_PIPELINE_DUP(dst->pDepthStencilState,
                        src->pDepthStencilState,
                        VkPipelineDepthStencilStateCreateInfo,
@@ -379,7 +379,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
 
    /* pColorBlendState */
    if (src->pColorBlendState && !rasterization_disabled &&
-       (pass ? pass->has_color_attachment : rp_info->colorAttachmentCount)) {
+       (pass ? pass->subpasses[src->subpass].has_color_attachment : rp_info->colorAttachmentCount)) {
       VkPipelineColorBlendStateCreateInfo*    cb_state;
 
       cb_state = ralloc(mem_ctx, VkPipelineColorBlendStateCreateInfo);
