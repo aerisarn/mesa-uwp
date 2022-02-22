@@ -102,7 +102,7 @@ brw_vec4_alloc_reg_set(struct brw_compiler *compiler)
     * SEND-from-GRF sources cannot be split, so we also need classes for each
     * potential message length.
     */
-   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE);
+   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE(compiler->devinfo));
    int class_sizes[REG_CLASS_COUNT];
 
    for (int i = 0; i < REG_CLASS_COUNT; i++)
@@ -178,7 +178,7 @@ vec4_visitor::reg_allocate()
 
    for (unsigned i = 0; i < alloc.count; i++) {
       int size = this->alloc.sizes[i];
-      assert(size >= 1 && size <= MAX_VGRF_SIZE);
+      assert(size >= 1 && size <= MAX_VGRF_SIZE(devinfo));
       ra_set_node_class(g, i, compiler->vec4_reg_set.classes[size - 1]);
 
       for (unsigned j = 0; j < i; j++) {

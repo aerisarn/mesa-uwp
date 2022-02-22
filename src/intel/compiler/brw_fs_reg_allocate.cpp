@@ -116,7 +116,7 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
     * texturing.
     */
    int class_sizes[REG_CLASS_COUNT];
-   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE);
+   assert(REG_CLASS_COUNT == MAX_VGRF_SIZE(devinfo));
    for (unsigned i = 0; i < REG_CLASS_COUNT; i++)
       class_sizes[i] = i + 1;
 
