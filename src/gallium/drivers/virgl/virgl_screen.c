@@ -700,6 +700,11 @@ virgl_is_format_supported( struct pipe_screen *screen,
 
       if (sample_count > caps->v1.max_samples)
          return false;
+
+      if (caps->v2.host_feature_check_version >= 9 &&
+          !has_format_bit(&caps->v2.supported_multisample_formats,
+                          pipe_to_virgl_format(format)))
+         return false;
    }
 
    if (bind & PIPE_BIND_VERTEX_BUFFER) {
