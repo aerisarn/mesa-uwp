@@ -38,7 +38,7 @@
  * 3. The shader must wait on slot #6 before running BLEND, ATEST
  * 4. The shader must wait on slot #7 before running BLEND, ST_TILE
  * 5. ATEST, ZS_EMIT must be issued with slot #0
- * 6. BARRIER must be issued with slot #7
+ * 6. BARRIER must be issued with slot #7 and wait on every active slot.
  * 7. Only slots #0 through #5 may be used for clauses not otherwise specified.
  * 8. If a clause writes to a read staging register of an unresolved
  * dependency, it must set a staging barrier.
