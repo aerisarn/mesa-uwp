@@ -131,6 +131,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_color_write_enable                = true,
    .EXT_conditional_rendering             = true,
    .EXT_depth_clip_enable                 = true,
+   .EXT_depth_clip_control                = true,
    .EXT_extended_dynamic_state            = true,
    .EXT_extended_dynamic_state2           = true,
    .EXT_external_memory_host              = true,
@@ -590,6 +591,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *features =
             (VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *)ext;
          features->vertexInputDynamicState = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
+         VkPhysicalDeviceDepthClipControlFeaturesEXT *features =
+            (VkPhysicalDeviceDepthClipControlFeaturesEXT *)ext;
+         features->depthClipControl = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {

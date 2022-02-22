@@ -100,6 +100,9 @@ struct rendering_state {
 
    int num_viewports;
    struct pipe_viewport_state viewports[16];
+   struct {
+      float min, max;
+   } depth[16];
 
    uint8_t patch_vertices;
    ubyte index_size;
@@ -384,23 +387,36 @@ static void handle_compute_pipeline(struct vk_cmd_queue_entry *cmd,
 }
 
 static void
-get_viewport_xform(const VkViewport *viewport,
-                   float scale[3], float translate[3])
+set_viewport_depth_xform(struct rendering_state *state, unsigned idx)
+{
+   double n = state->depth[idx].min;
+   double f = state->depth[idx].max;
+
+   if (!state->rs_state.clip_halfz) {
+      state->viewports[idx].scale[2] = 0.5 * (f - n);
+      state->viewports[idx].translate[2] = 0.5 * (n + f);
+   } else {
+      state->viewports[idx].scale[2] = (f - n);
+      state->viewports[idx].translate[2] = n;
+   }
+}
+
+static void
+get_viewport_xform(struct rendering_state *state,
+                   const VkViewport *viewport,
+                   unsigned idx)
 {
    float x = viewport->x;
    float y = viewport->y;
    float half_width = 0.5f * viewport->width;
    float half_height = 0.5f * viewport->height;
-   double n = viewport->minDepth;
-   double f = viewport->maxDepth;
 
-   scale[0] = half_width;
-   translate[0] = half_width + x;
-   scale[1] = half_height;
-   translate[1] = half_height + y;
+   state->viewports[idx].scale[0] = half_width;
+   state->viewports[idx].translate[0] = half_width + x;
+   state->viewports[idx].scale[1] = half_height;
+   state->viewports[idx].translate[1] = half_height + y;
 
-   scale[2] = (f - n);
-   translate[2] = n;
+   memcpy(&state->depth[idx].min, &viewport->minDepth, sizeof(float) * 2);
 }
 
 /* enum re-indexing:
@@ -471,6 +487,7 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
    bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+32];
    unsigned fb_samples = 0;
+   bool clip_halfz = state->rs_state.clip_halfz;
 
    memset(dynamic_states, 0, sizeof(dynamic_states));
    if (pipeline->graphics_create_info.pDynamicState)
@@ -558,7 +575,6 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       state->rs_state.point_size_per_vertex = true;
       state->rs_state.flatshade_first = !pipeline->provoking_vertex_last;
       state->rs_state.point_quad_rasterization = true;
-      state->rs_state.clip_halfz = true;
       state->rs_state.half_pixel_center = true;
       state->rs_state.scissor = true;
       state->rs_state.no_ms_sample_mask_out = true;
@@ -804,6 +820,12 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    } else
       state->patch_vertices = 0;
 
+   bool halfz_changed = false;
+   if (!pipeline->negative_one_to_one != clip_halfz) {
+      state->rs_state.clip_halfz = !pipeline->negative_one_to_one;
+      halfz_changed = state->rs_dirty = true;
+   }
+
    if (pipeline->graphics_create_info.pViewportState) {
       const VkPipelineViewportStateCreateInfo *vpi= pipeline->graphics_create_info.pViewportState;
       int i;
@@ -819,8 +841,16 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
 
       if (!dynamic_states[VK_DYNAMIC_STATE_VIEWPORT] &&
           !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)]) {
-         for (i = 0; i < vpi->viewportCount; i++)
-            get_viewport_xform(&vpi->pViewports[i], state->viewports[i].scale, state->viewports[i].translate);
+         for (i = 0; i < vpi->viewportCount; i++) {
+            get_viewport_xform(state, &vpi->pViewports[i], i);
+            set_viewport_depth_xform(state, i);
+         }
+         state->vp_dirty = true;
+      } else if (halfz_changed) {
+         /* handle dynamic state: convert from one transform to the other */
+         unsigned num_viewports = dynamic_states[VK_DYNAMIC_STATE_VIEWPORT] ? vpi->viewportCount : state->num_viewports;
+         for (i = 0; i < num_viewports; i++)
+            set_viewport_depth_xform(state, i);
          state->vp_dirty = true;
       }
       if (!dynamic_states[VK_DYNAMIC_STATE_SCISSOR] &&
@@ -2089,7 +2119,8 @@ static void set_viewport(unsigned first_viewport, unsigned viewport_count,
    for (i = 0; i < viewport_count; i++) {
       int idx = i + base;
       const VkViewport *vp = &viewports[i];
-      get_viewport_xform(vp, state->viewports[idx].scale, state->viewports[idx].translate);
+      get_viewport_xform(state, vp, idx);
+      set_viewport_depth_xform(state, idx);
    }
    state->vp_dirty = true;
 }
