@@ -1552,6 +1552,29 @@ radv_UpdateDescriptorSetWithTemplate(VkDevice _device, VkDescriptorSet descripto
    radv_update_descriptor_set_with_template_impl(device, NULL, set, descriptorUpdateTemplate, pData);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+radv_GetDescriptorSetLayoutHostMappingInfoVALVE(
+   VkDevice _device, const VkDescriptorSetBindingReferenceVALVE *pBindingReference,
+   VkDescriptorSetLayoutHostMappingInfoVALVE *pHostMapping)
+{
+   struct radv_descriptor_set_layout *set_layout =
+      radv_descriptor_set_layout_from_handle(pBindingReference->descriptorSetLayout);
+
+   const struct radv_descriptor_set_binding_layout *binding_layout =
+      set_layout->binding + pBindingReference->binding;
+
+   pHostMapping->descriptorOffset = binding_layout->offset;
+   pHostMapping->descriptorSize = binding_layout->size;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_GetDescriptorSetHostMappingVALVE(VkDevice _device, VkDescriptorSet descriptorSet,
+                                      void **ppData)
+{
+   RADV_FROM_HANDLE(radv_descriptor_set, set, descriptorSet);
+   *ppData = set->header.mapped_ptr;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateSamplerYcbcrConversion(VkDevice _device,
                                   const VkSamplerYcbcrConversionCreateInfo *pCreateInfo,
