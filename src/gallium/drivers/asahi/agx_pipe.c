@@ -38,6 +38,7 @@
 #include "frontend/winsys_handle.h"
 #include "frontend/sw_winsys.h"
 #include "gallium/auxiliary/util/u_transfer.h"
+#include "gallium/auxiliary/util/u_transfer_helper.h"
 #include "gallium/auxiliary/util/u_surface.h"
 #include "gallium/auxiliary/util/u_framebuffer.h"
 #include "agx_public.h"
@@ -164,6 +165,7 @@ agx_resource_create(struct pipe_screen *screen,
 
    nresource->modifier = agx_select_modifier(nresource);
    nresource->mipmapped = (templ->last_level > 0);
+   nresource->internal_format = nresource->base.format;
 
    unsigned offset = 0;
    unsigned blocksize = util_format_get_blocksize(templ->format);
@@ -625,11 +627,13 @@ agx_create_context(struct pipe_screen *screen,
    pctx->end_query = agx_end_query;
    pctx->get_query_result = agx_get_query_result;
    pctx->set_active_query_state = agx_set_active_query_state;
-   pctx->buffer_map = agx_transfer_map;
-   pctx->texture_map = agx_transfer_map;
-   pctx->transfer_flush_region = agx_transfer_flush_region;
-   pctx->buffer_unmap = agx_transfer_unmap;
-   pctx->texture_unmap = agx_transfer_unmap;
+
+   pctx->buffer_map = u_transfer_helper_transfer_map;
+   pctx->buffer_unmap = u_transfer_helper_transfer_unmap;
+   pctx->texture_map = u_transfer_helper_transfer_map;
+   pctx->texture_unmap = u_transfer_helper_transfer_unmap;
+   pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
+
    pctx->buffer_subdata = u_default_buffer_subdata;
    pctx->texture_subdata = u_default_texture_subdata;
    pctx->invalidate_resource = agx_invalidate_resource;
@@ -1050,6 +1054,7 @@ agx_get_timestamp(struct pipe_screen *pscreen)
 static void
 agx_destroy_screen(struct pipe_screen *screen)
 {
+   u_transfer_helper_destroy(screen->transfer_helper);
    agx_close_device(agx_device(screen));
    ralloc_free(screen);
 }
@@ -1077,6 +1082,36 @@ agx_get_compiler_options(struct pipe_screen *pscreen,
 {
    return &agx_nir_options;
 }
+
+static void
+agx_resource_set_stencil(struct pipe_resource *prsrc,
+                         struct pipe_resource *stencil)
+{
+   agx_resource(prsrc)->separate_stencil = agx_resource(stencil);
+}
+
+static struct pipe_resource *
+agx_resource_get_stencil(struct pipe_resource *prsrc)
+{
+   return (struct pipe_resource *) agx_resource(prsrc)->separate_stencil;
+}
+
+static enum pipe_format
+agx_resource_get_internal_format(struct pipe_resource *prsrc)
+{
+   return agx_resource(prsrc)->internal_format;
+}
+
+static const struct u_transfer_vtbl transfer_vtbl = {
+   .resource_create          = agx_resource_create,
+   .resource_destroy         = agx_resource_destroy,
+   .transfer_map             = agx_transfer_map,
+   .transfer_unmap           = agx_transfer_unmap,
+   .transfer_flush_region    = agx_transfer_flush_region,
+   .get_internal_format      = agx_resource_get_internal_format,
+   .set_stencil              = agx_resource_set_stencil,
+   .get_stencil              = agx_resource_get_stencil,
+};
 
 struct pipe_screen *
 agx_screen_create(struct sw_winsys *winsys)
@@ -1124,15 +1159,18 @@ agx_screen_create(struct sw_winsys *winsys)
    screen->get_paramf = agx_get_paramf;
    screen->is_format_supported = agx_is_format_supported;
    screen->context_create = agx_create_context;
-   screen->resource_create = agx_resource_create;
    screen->resource_from_handle = agx_resource_from_handle;
    screen->resource_get_handle = agx_resource_get_handle;
-   screen->resource_destroy = agx_resource_destroy;
    screen->flush_frontbuffer = agx_flush_frontbuffer;
    screen->get_timestamp = agx_get_timestamp;
    screen->fence_reference = agx_fence_reference;
    screen->fence_finish = agx_fence_finish;
    screen->get_compiler_options = agx_get_compiler_options;
+
+   screen->resource_create = u_transfer_helper_resource_create;
+   screen->resource_destroy = u_transfer_helper_resource_destroy;
+   screen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
+                                                      true, true, false, true);
 
    agx_internal_shaders(&agx_screen->dev);
 
