@@ -558,14 +558,17 @@
     <field name="Scissor array" start="14:0" size="64" type="address"/>
     <!-- Points to zeroes, allocation of 0xc0000 bytes unknwon type 28000000 -->
     <field name="Unknown buffer" start="16:0" size="64" type="address"/>
-    <field name="Depth pipeline unk" start="20:0" size="4" default="4" type="hex"/>
-    <!-- 0xc0150 with depth clear and z32f and s8
-         0x40150 with z32f and s8
-         0x40 with z32f
-         0x4000040 with z16?
+    <!-- 0xc0154 with depth clear and z32f and s8
+         0x40154 with z32f and s8
+         0x44 with z32f
+         0x4000044 with z16?
     -->
-    <field name="Depth pipeline" start="20:4" size="28" type="address" modifier="shr(4)"/>
-    <field name="Depth unknown 1" start="26:0" size="32" type="hex"/>
+    <field name="Depth flags" start="20:0" size="32" type="hex"/>
+    <field name="Depth compression" start="20:6" size="1" type="bool"/>
+    <field name="Depth reload" start="20:15" size="1" type="bool"/>
+    <field name="Depth format 16 unorm" start="20:26" size="1" type="bool"/>
+    <field name="Depth width" start="26:0" size="15" type="uint" default="1" modifier="minus(1)"/>
+    <field name="Depth height" start="26:15" size="15" type="uint" default="1" modifier="minus(1)"/>
     <field name="Depth buffer (if clearing)" start="28:0" size="64" type="address"/>
     <field name="Depth acceleration buffer (if clearing)" start="34:0" size="64" type="address"/>
     <!-- bytes unknown type 888F50 -->
@@ -593,7 +596,8 @@
     <field name="Depth clear value" start="0:0" size="32" type="hex"/>
     <field name="Stencil clear value" start="1:0" size="8" type="uint"/>
     <field name="Unk 1" start="1:8" size="8" type="hex" default="3"/>
-    <field name="Unk 2" start="3:8" size="8" type="hex" default="0"/>
+    <field name="Set when reloading Z 1" start="3:8" size="1" type="bool"/>
+    <field name="Set when reloading Z 2" start="4:24" size="1" type="bool"/>
     <field name="Z16 Unorm attachment" start="5:8" size="1" type="bool"/>
     <field name="Unk 3" start="6:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 4" start="7:0" size="32" type="hex" default="0xffffffff"/>
