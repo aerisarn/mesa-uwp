@@ -305,8 +305,7 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
     * lp_jit.h's lp_jit_frag_func function pointer type, and vice-versa.
     */
 
-   snprintf(func_name, sizeof(func_name), "fs%u_variant%u_linear",
-            shader->no, variant->no);
+   snprintf(func_name, sizeof(func_name), "fs_variant_linear");
 
    ret_type = pint8t;
    arg_types[0] = variant->jit_linear_context_ptr_type; /* context */
@@ -329,6 +328,9 @@ llvmpipe_fs_variant_linear_llvm(struct llvmpipe_context *lp,
          lp_add_function_attr(function, i + 1, LP_FUNC_ATTR_NOALIAS);
       }
    }
+
+   if (variant->gallivm->cache->data_size)
+      return;
 
    context_ptr  = LLVMGetParam(function, 0);
    x            = LLVMGetParam(function, 1);
