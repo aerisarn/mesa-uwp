@@ -80,15 +80,6 @@
       unreachable("Unknown hardware generation"); \
    }
 
-static void
-iris_flush_frontbuffer(struct pipe_screen *_screen,
-                       struct pipe_context *_pipe,
-                       struct pipe_resource *resource,
-                       unsigned level, unsigned layer,
-                       void *context_private, struct pipe_box *box)
-{
-}
-
 static const char *
 iris_get_vendor(struct pipe_screen *pscreen)
 {
@@ -873,7 +864,6 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->get_disk_shader_cache = iris_get_disk_shader_cache;
    pscreen->is_format_supported = iris_is_format_supported;
    pscreen->context_create = iris_create_context;
-   pscreen->flush_frontbuffer = iris_flush_frontbuffer;
    pscreen->get_timestamp = iris_get_timestamp;
    pscreen->query_memory_info = iris_query_memory_info;
    pscreen->get_driver_query_group_info = iris_get_monitor_group_info;
