@@ -615,8 +615,7 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VS_PARAMS,
    TU_DRAW_STATE_INPUT_ATTACHMENTS_GMEM,
    TU_DRAW_STATE_INPUT_ATTACHMENTS_SYSMEM,
-   TU_DRAW_STATE_LRZ,
-   TU_DRAW_STATE_DEPTH_PLANE,
+   TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE,
 
    /* dynamic state related draw states */
    TU_DRAW_STATE_DYNAMIC,
@@ -1012,7 +1011,6 @@ struct tu_lrz_state
    /* Depth/Stencil image currently on use to do LRZ */
    struct tu_image *image;
    bool valid : 1;
-   struct tu_draw_state state;
    enum tu_lrz_direction prev_direction;
 };
 
@@ -1127,7 +1125,7 @@ struct tu_cmd_state
 
    struct tu_lrz_state lrz;
 
-   struct tu_draw_state depth_plane_state;
+   struct tu_draw_state lrz_and_depth_plane_state;
 
    struct tu_vs_params last_vs_params;
 };

@@ -3790,24 +3790,19 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
    return gras_lrz_cntl;
 }
 
-static struct tu_draw_state
-tu6_build_lrz(struct tu_cmd_buffer *cmd)
+static void
+tu6_build_lrz(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    const uint32_t a = cmd->state.subpass->depth_stencil_attachment.attachment;
-   struct tu_cs lrz_cs;
-   struct tu_draw_state ds = tu_cs_draw_state(&cmd->sub_cs, &lrz_cs, 4);
-
    struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = tu6_calculate_lrz_state(cmd, a);
 
-   tu_cs_emit_regs(&lrz_cs, A6XX_GRAS_LRZ_CNTL(
+   tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_CNTL(
       .enable = gras_lrz_cntl.enable,
       .greater = gras_lrz_cntl.greater,
       .lrz_write = gras_lrz_cntl.lrz_write,
       .z_test_enable = gras_lrz_cntl.z_test_enable,
       .z_bounds_enable = gras_lrz_cntl.z_bounds_enable));
-   tu_cs_emit_regs(&lrz_cs, A6XX_RB_LRZ_CNTL(.enable = gras_lrz_cntl.enable));
-
-   return ds;
+   tu_cs_emit_regs(cs, A6XX_RB_LRZ_CNTL(.enable = gras_lrz_cntl.enable));
 }
 
 static bool
@@ -3868,12 +3863,9 @@ tu6_writes_stencil(struct tu_cmd_buffer *cmd)
        (stencil_back_writemask && stencil_back_op_writes));
 }
 
-static struct tu_draw_state
-tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd)
+static void
+tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
-   struct tu_cs cs;
-   struct tu_draw_state ds = tu_cs_draw_state(&cmd->sub_cs, &cs, 4);
-
    enum a6xx_ztest_mode zmode = A6XX_EARLY_Z;
    bool depth_test_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
    bool depth_write = tu6_writes_depth(cmd, depth_test_enable);
@@ -3892,12 +3884,11 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd)
    if (cmd->state.pipeline->lrz.early_fragment_tests)
       zmode = A6XX_EARLY_Z;
 
-   tu_cs_emit_pkt4(&cs, REG_A6XX_GRAS_SU_DEPTH_PLANE_CNTL, 1);
-   tu_cs_emit(&cs, A6XX_GRAS_SU_DEPTH_PLANE_CNTL_Z_MODE(zmode));
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SU_DEPTH_PLANE_CNTL, 1);
+   tu_cs_emit(cs, A6XX_GRAS_SU_DEPTH_PLANE_CNTL_Z_MODE(zmode));
 
-   tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_PLANE_CNTL, 1);
-   tu_cs_emit(&cs, A6XX_RB_DEPTH_PLANE_CNTL_Z_MODE(zmode));
-   return ds;
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_PLANE_CNTL, 1);
+   tu_cs_emit(cs, A6XX_RB_DEPTH_PLANE_CNTL_Z_MODE(zmode));
 }
 
 static VkResult
@@ -3941,8 +3932,11 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       &cmd->descriptors[VK_PIPELINE_BIND_POINT_GRAPHICS];
 
    if (dirty_lrz) {
-      cmd->state.lrz.state = tu6_build_lrz(cmd);
-      cmd->state.depth_plane_state = tu6_build_depth_plane_z_mode(cmd);
+      struct tu_cs cs;
+      cmd->state.lrz_and_depth_plane_state =
+         tu_cs_draw_state(&cmd->sub_cs, &cs, 8);
+      tu6_build_lrz(cmd, &cs);
+      tu6_build_depth_plane_z_mode(cmd, &cs);
    }
 
    if (cmd->state.dirty & TU_CMD_DIRTY_RASTERIZER_DISCARD) {
@@ -4012,8 +4006,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ, cmd->state.lrz.state);
-      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DEPTH_PLANE, cmd->state.depth_plane_state);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE, cmd->state.lrz_and_depth_plane_state);
 
       for (uint32_t i = 0; i < ARRAY_SIZE(cmd->state.dynamic_state); i++) {
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i,
@@ -4031,7 +4024,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          ((cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          ((cmd->state.dirty & TU_CMD_DIRTY_VS_PARAMS) ? 1 : 0) +
-         (dirty_lrz ? 2 : 0);
+         (dirty_lrz ? 1 : 0);
 
       if ((cmd->state.dirty & TU_CMD_DIRTY_VB_STRIDE) &&
           (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VB_STRIDE))) {
@@ -4058,8 +4051,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
 
       if (dirty_lrz) {
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ, cmd->state.lrz.state);
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DEPTH_PLANE, cmd->state.depth_plane_state);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_LRZ_AND_DEPTH_PLANE, cmd->state.lrz_and_depth_plane_state);
       }
    }
 
