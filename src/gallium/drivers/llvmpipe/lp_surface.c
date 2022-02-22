@@ -51,10 +51,10 @@ lp_resource_copy_ms(struct pipe_context *pipe,
 
    src_format = src->format;
 
-   for (unsigned i = 0; i < src->nr_samples; i++) {
+   for (unsigned i = 0; i < MAX2(src->nr_samples, dst->nr_samples); i++) {
       struct pipe_transfer *src_trans, *dst_trans;
       const uint8_t *src_map = llvmpipe_transfer_map_ms(pipe,
-                                                        src, 0, PIPE_MAP_READ, i,
+                                                        src, 0, PIPE_MAP_READ, MIN2(i, src->nr_samples - 1),
                                                         src_box,
                                                         &src_trans);
       if (!src_map)
@@ -103,7 +103,8 @@ lp_resource_copy(struct pipe_context *pipe,
                            "blit src");
 
    if (dst->nr_samples > 1 &&
-       dst->nr_samples == src->nr_samples) {
+       (dst->nr_samples == src->nr_samples ||
+       (src->nr_samples == 1 && dst->nr_samples > 1))) {
       lp_resource_copy_ms(pipe, dst, dst_level, dstx, dsty, dstz,
                           src, src_level, src_box);
       return;
