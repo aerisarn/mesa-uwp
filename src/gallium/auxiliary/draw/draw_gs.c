@@ -772,7 +772,7 @@ draw_create_geometry_shader(struct draw_context *draw,
 
       gs = &llvm_gs->base;
 
-      make_empty_list(&llvm_gs->variants);
+      list_inithead(&llvm_gs->variants.list);
    } else
 #endif
    {
@@ -931,13 +931,10 @@ void draw_delete_geometry_shader(struct draw_context *draw,
 #ifdef DRAW_LLVM_AVAILABLE
    if (draw->llvm) {
       struct llvm_geometry_shader *shader = llvm_geometry_shader(dgs);
-      struct draw_gs_llvm_variant_list_item *li;
+      struct draw_gs_llvm_variant_list_item *li, *next;
 
-      li = first_elem(&shader->variants);
-      while(!at_end(&shader->variants, li)) {
-         struct draw_gs_llvm_variant_list_item *next = next_elem(li);
+      LIST_FOR_EACH_ENTRY_SAFE(li, next, &shader->variants.list, list) {
          draw_gs_llvm_destroy_variant(li->base);
-         li = next;
       }
 
       assert(shader->variants_cached == 0);

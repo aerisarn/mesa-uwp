@@ -58,7 +58,6 @@
 #include "util/u_math.h"
 #include "util/u_pointer.h"
 #include "util/u_string.h"
-#include "util/simple_list.h"
 #include "nir_serialize.h"
 #include "util/mesa-sha1.h"
 #define DEBUG_STORE 0
@@ -803,16 +802,16 @@ draw_llvm_create(struct draw_context *draw, LLVMContextRef context)
       goto fail;
 
    llvm->nr_variants = 0;
-   make_empty_list(&llvm->vs_variants_list);
+   list_inithead(&llvm->vs_variants_list.list);
 
    llvm->nr_gs_variants = 0;
-   make_empty_list(&llvm->gs_variants_list);
+   list_inithead(&llvm->gs_variants_list.list);
 
    llvm->nr_tcs_variants = 0;
-   make_empty_list(&llvm->tcs_variants_list);
+   list_inithead(&llvm->tcs_variants_list.list);
 
    llvm->nr_tes_variants = 0;
-   make_empty_list(&llvm->tes_variants_list);
+   list_inithead(&llvm->tes_variants_list.list);
 
    return llvm;
 
@@ -2689,9 +2688,9 @@ draw_llvm_destroy_variant(struct draw_llvm_variant *variant)
 
    gallivm_destroy(variant->gallivm);
 
-   remove_from_list(&variant->list_item_local);
+   list_del(&variant->list_item_local.list);
    variant->shader->variants_cached--;
-   remove_from_list(&variant->list_item_global);
+   list_del(&variant->list_item_global.list);
    llvm->nr_variants--;
    FREE(variant);
 }
@@ -3007,9 +3006,9 @@ draw_gs_llvm_destroy_variant(struct draw_gs_llvm_variant *variant)
 
    gallivm_destroy(variant->gallivm);
 
-   remove_from_list(&variant->list_item_local);
+   list_del(&variant->list_item_local.list);
    variant->shader->variants_cached--;
-   remove_from_list(&variant->list_item_global);
+   list_del(&variant->list_item_global.list);
    llvm->nr_gs_variants--;
    FREE(variant);
 }
@@ -3673,9 +3672,9 @@ draw_tcs_llvm_destroy_variant(struct draw_tcs_llvm_variant *variant)
 
    gallivm_destroy(variant->gallivm);
 
-   remove_from_list(&variant->list_item_local);
+   list_del(&variant->list_item_local.list);
    variant->shader->variants_cached--;
-   remove_from_list(&variant->list_item_global);
+   list_del(&variant->list_item_global.list);
    llvm->nr_tcs_variants--;
    FREE(variant);
 }
@@ -4200,9 +4199,9 @@ draw_tes_llvm_destroy_variant(struct draw_tes_llvm_variant *variant)
 
    gallivm_destroy(variant->gallivm);
 
-   remove_from_list(&variant->list_item_local);
+   list_del(&variant->list_item_local.list);
    variant->shader->variants_cached--;
-   remove_from_list(&variant->list_item_global);
+   list_del(&variant->list_item_global.list);
    llvm->nr_tes_variants--;
    FREE(variant);
 }

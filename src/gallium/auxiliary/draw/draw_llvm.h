@@ -38,7 +38,7 @@
 #include "gallivm/lp_bld_limits.h"
 
 #include "pipe/p_context.h"
-#include "util/simple_list.h"
+#include "util/list.h"
 
 
 struct draw_llvm;
@@ -649,26 +649,26 @@ draw_tes_llvm_variant_key_images(struct draw_tes_llvm_variant_key *key)
 
 struct draw_llvm_variant_list_item
 {
+   struct list_head list;
    struct draw_llvm_variant *base;
-   struct draw_llvm_variant_list_item *next, *prev;
 };
 
 struct draw_gs_llvm_variant_list_item
 {
+   struct list_head list;
    struct draw_gs_llvm_variant *base;
-   struct draw_gs_llvm_variant_list_item *next, *prev;
 };
 
 struct draw_tcs_llvm_variant_list_item
 {
+   struct list_head list;
    struct draw_tcs_llvm_variant *base;
-   struct draw_tcs_llvm_variant_list_item *next, *prev;
 };
 
 struct draw_tes_llvm_variant_list_item
 {
+   struct list_head list;
    struct draw_tes_llvm_variant *base;
-   struct draw_tes_llvm_variant_list_item *next, *prev;
 };
 
 struct draw_llvm_variant

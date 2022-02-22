@@ -431,7 +431,7 @@ draw_create_tess_ctrl_shader(struct draw_context *draw,
 
       tcs = &llvm_tcs->base;
 
-      make_empty_list(&llvm_tcs->variants);
+      list_inithead(&llvm_tcs->variants.list);
    } else
 #endif
    {
@@ -489,13 +489,10 @@ void draw_delete_tess_ctrl_shader(struct draw_context *draw,
    if (draw->llvm) {
       struct llvm_tess_ctrl_shader *shader = llvm_tess_ctrl_shader(dtcs);
 
-      struct draw_tcs_llvm_variant_list_item *li;
+      struct draw_tcs_llvm_variant_list_item *li, *next;
 
-      li = first_elem(&shader->variants);
-      while(!at_end(&shader->variants, li)) {
-         struct draw_tcs_llvm_variant_list_item *next = next_elem(li);
+      LIST_FOR_EACH_ENTRY_SAFE(li, next, &shader->variants.list, list) {
          draw_tcs_llvm_destroy_variant(li->base);
-         li = next;
       }
 
       assert(shader->variants_cached == 0);
@@ -535,7 +532,7 @@ draw_create_tess_eval_shader(struct draw_context *draw,
          return NULL;
 
       tes = &llvm_tes->base;
-      make_empty_list(&llvm_tes->variants);
+      list_inithead(&llvm_tes->variants.list);
    } else
 #endif
    {
@@ -619,13 +616,10 @@ void draw_delete_tess_eval_shader(struct draw_context *draw,
 #ifdef DRAW_LLVM_AVAILABLE
    if (draw->llvm) {
       struct llvm_tess_eval_shader *shader = llvm_tess_eval_shader(dtes);
-      struct draw_tes_llvm_variant_list_item *li;
+      struct draw_tes_llvm_variant_list_item *li, *next;
 
-      li = first_elem(&shader->variants);
-      while(!at_end(&shader->variants, li)) {
-         struct draw_tes_llvm_variant_list_item *next = next_elem(li);
+      LIST_FOR_EACH_ENTRY_SAFE(li, next, &shader->variants.list, list) {
          draw_tes_llvm_destroy_variant(li->base);
-         li = next;
       }
 
       assert(shader->variants_cached == 0);
