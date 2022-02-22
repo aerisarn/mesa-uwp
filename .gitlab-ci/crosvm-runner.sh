@@ -58,9 +58,9 @@ trap 'exit ${exit_code}' INT TERM
 trap 'exit_code=$?; [ -z "${CROSVM_PID}${SOCAT_PIDS}" ] || kill ${CROSVM_PID} ${SOCAT_PIDS} >/dev/null 2>&1 || true; rm -rf ${VSOCK_TEMP_DIR}' EXIT
 
 # Securely pass the current variables to the crosvm environment
-CI_COMMON="${CI_PROJECT_DIR}"/install/common
 echo "Variables passed through:"
-"${CI_COMMON}"/generate-env.sh | tee ${VSOCK_TEMP_DIR}/crosvm-env.sh
+SCRIPT_DIR=$(readlink -en "${0%/*}")
+${SCRIPT_DIR}/common/generate-env.sh | tee ${VSOCK_TEMP_DIR}/crosvm-env.sh
 
 # Set the crosvm-script as the arguments of the current script
 echo "$@" > ${VSOCK_TEMP_DIR}/crosvm-script.sh
@@ -80,7 +80,7 @@ unset DISPLAY
 unset XDG_RUNTIME_DIR
 
 CROSVM_KERN_ARGS="quiet console=null root=my_root rw rootfstype=virtiofs ip=192.168.30.2::192.168.30.1:255.255.255.0:crosvm:eth0"
-CROSVM_KERN_ARGS="${CROSVM_KERN_ARGS} init=${CI_PROJECT_DIR}/install/crosvm-init.sh -- ${VSOCK_STDOUT} ${VSOCK_STDERR} ${VSOCK_TEMP_DIR}"
+CROSVM_KERN_ARGS="${CROSVM_KERN_ARGS} init=${SCRIPT_DIR}/crosvm-init.sh -- ${VSOCK_STDOUT} ${VSOCK_STDERR} ${VSOCK_TEMP_DIR}"
 
 set +e -x
 
