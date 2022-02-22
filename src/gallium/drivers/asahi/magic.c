@@ -50,17 +50,113 @@ demo_zero(struct agx_pool *pool, unsigned count)
    return ptr.gpu;
 }
 
+static size_t
+asahi_size_resource(struct pipe_resource *prsrc, unsigned level)
+{
+   struct agx_resource *rsrc = agx_resource(prsrc);
+   size_t size = rsrc->slices[level].size;
+
+   if (rsrc->separate_stencil)
+      size += asahi_size_resource(&rsrc->separate_stencil->base, level);
+
+   return size;
+}
+
+static size_t
+asahi_size_surface(struct pipe_surface *surf)
+{
+   return asahi_size_resource(surf->texture, surf->u.tex.level);
+}
+
+static size_t
+asahi_size_attachments(struct pipe_framebuffer_state *framebuffer)
+{
+   size_t sum = 0;
+
+   for (unsigned i = 0; i < framebuffer->nr_cbufs; ++i)
+      sum += asahi_size_surface(framebuffer->cbufs[i]);
+
+   if (framebuffer->zsbuf)
+      sum += asahi_size_surface(framebuffer->zsbuf);
+
+   return sum;
+}
+
+static enum agx_iogpu_attachment_type
+asahi_classify_attachment(enum pipe_format format)
+{
+   const struct util_format_description *desc = util_format_description(format);
+
+   if (util_format_has_depth(desc))
+      return AGX_IOGPU_ATTACHMENT_TYPE_DEPTH;
+   else if (util_format_has_stencil(desc))
+      return AGX_IOGPU_ATTACHMENT_TYPE_STENCIL;
+   else
+      return AGX_IOGPU_ATTACHMENT_TYPE_COLOUR;
+}
+
+static void
+asahi_pack_iogpu_attachment(void *out, struct agx_resource *rsrc,
+                            struct pipe_surface *surf,
+                            unsigned total_size)
+{
+   /* We don't support layered rendering yet */
+   assert(surf->u.tex.first_layer == surf->u.tex.last_layer);
+
+   agx_pack(out, IOGPU_ATTACHMENT, cfg) {
+      cfg.type = asahi_classify_attachment(rsrc->base.format);
+
+      cfg.address = agx_map_texture_gpu(rsrc, surf->u.tex.level,
+                                              surf->u.tex.first_layer);
+
+      cfg.size = rsrc->slices[surf->u.tex.level].size;
+
+      cfg.percent = (100 * cfg.size) / total_size;
+   }
+}
+
+static unsigned
+asahi_pack_iogpu_attachments(void *out, struct pipe_framebuffer_state *framebuffer)
+{
+   unsigned total_attachment_size = asahi_size_attachments(framebuffer);
+   struct agx_iogpu_attachment_packed *attachments = out;
+   unsigned nr = 0;
+
+   for (unsigned i = 0; i < framebuffer->nr_cbufs; ++i) {
+      asahi_pack_iogpu_attachment(attachments + (nr++),
+                                  agx_resource(framebuffer->cbufs[i]->texture),
+                                  framebuffer->cbufs[i],
+                                  total_attachment_size);
+   }
+
+   if (framebuffer->zsbuf) {
+         struct agx_resource *rsrc = agx_resource(framebuffer->zsbuf->texture);
+
+         asahi_pack_iogpu_attachment(attachments + (nr++),
+                                     rsrc, framebuffer->zsbuf,
+                                     total_attachment_size);
+
+         if (rsrc->separate_stencil) {
+            asahi_pack_iogpu_attachment(attachments + (nr++),
+                                        rsrc->separate_stencil,
+                                        framebuffer->zsbuf,
+                                        total_attachment_size);
+         }
+   }
+
+   return nr;
+}
+
 unsigned
 demo_cmdbuf(uint64_t *buf, size_t size,
             struct agx_pool *pool,
+            struct pipe_framebuffer_state *framebuffer,
             uint64_t encoder_ptr,
             uint64_t encoder_id,
             uint64_t scissor_ptr,
-            unsigned width, unsigned height, unsigned bpp,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,
             uint32_t pipeline_store,
-            uint64_t rt0,
             bool clear_pipeline_textures)
 {
    uint32_t *map = (uint32_t *) buf;
@@ -89,8 +185,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    }
 
    agx_pack(map + 220, IOGPU_AUX_FRAMEBUFFER, cfg) {
-      cfg.width = width;
-      cfg.height = height;
+      cfg.width = framebuffer->width;
+      cfg.height = framebuffer->height;
       cfg.z16_unorm_attachment = false;
       cfg.pointer = unk_buffer_2;
    }
@@ -113,23 +209,18 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    agx_pack(map + 344, IOGPU_MISC, cfg) {
       cfg.encoder_id = encoder_id;
       cfg.unknown_buffer = demo_unk6(pool);
-      cfg.width = width;
-      cfg.height = height;
+      cfg.width = framebuffer->width;
+      cfg.height = framebuffer->height;
    }
 
    unsigned offset_unk = (458 * 4);
    unsigned offset_attachments = (470 * 4);
-   unsigned nr_attachments = 1;
 
-   map[473] = nr_attachments;
+   unsigned nr_attachments =
+      asahi_pack_iogpu_attachments(map + (offset_attachments / 4) + 4,
+                                   framebuffer);
 
-   /* A single attachment follows, depth/stencil have their own attachments */
-   agx_pack((map + (offset_attachments / 4) + 4), IOGPU_ATTACHMENT, cfg) {
-      cfg.address = rt0;
-      cfg.type = AGX_IOGPU_ATTACHMENT_TYPE_COLOUR;
-      cfg.size = width * height * 4;
-      cfg.percent = 100;
-   }
+   map[(offset_attachments / 4) + 3] = nr_attachments;
 
    unsigned total_size = offset_attachments + (AGX_IOGPU_ATTACHMENT_LENGTH * nr_attachments) + 16;
 

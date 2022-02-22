@@ -524,16 +524,13 @@ agx_flush(struct pipe_context *pctx,
    unsigned cmdbuf_size = demo_cmdbuf(dev->cmdbuf.ptr.cpu,
                dev->cmdbuf.size,
                &ctx->batch->pool,
+               &ctx->framebuffer,
                ctx->batch->encoder->ptr.gpu,
                encoder_id,
                ctx->batch->scissor.bo->ptr.gpu,
-               ctx->batch->width,
-               ctx->batch->height,
-               util_format_get_blocksize(rt0->base.format),
                pipeline_null.gpu,
                pipeline_clear,
                pipeline_store,
-               rt0->bo->ptr.gpu,
                clear_pipeline_textures);
 
    /* Generate the mapping table from the BO list */
