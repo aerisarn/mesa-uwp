@@ -1098,6 +1098,9 @@ struct anv_queue {
 
    uint32_t                                  exec_flags;
 
+   /** Synchronization object for debug purposes (DEBUG_SYNC) */
+   struct vk_sync                           *sync;
+
    struct intel_ds_queue *                   ds;
 };
 

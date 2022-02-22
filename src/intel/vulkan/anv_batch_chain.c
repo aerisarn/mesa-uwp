@@ -2143,6 +2143,15 @@ anv_queue_exec_locked(struct anv_queue *queue,
          goto error;
    }
 
+   if (queue->sync) {
+      result = anv_execbuf_add_sync(device, &execbuf,
+                                    queue->sync,
+                                    true /* is_signal */,
+                                    0 /* signal_value */);
+      if (result != VK_SUCCESS)
+         goto error;
+   }
+
    if (cmd_buffer_count) {
       result = setup_execbuf_for_cmd_buffers(&execbuf, queue,
                                              cmd_buffers,
@@ -2257,6 +2266,15 @@ anv_queue_exec_locked(struct anv_queue *queue,
       anv_gem_execbuffer(queue->device, &execbuf.execbuf);
    if (ret)
       result = vk_queue_set_lost(&queue->vk, "execbuf2 failed: %m");
+
+   if (queue->sync) {
+      VkResult result = vk_sync_wait(&device->vk,
+                                     queue->sync, 0,
+                                     VK_SYNC_WAIT_COMPLETE,
+                                     UINT64_MAX);
+      if (result != VK_SUCCESS)
+         result = vk_queue_set_lost(&queue->vk, "sync wait failed");
+   }
 
    struct drm_i915_gem_exec_object2 *objects = execbuf.objects;
    for (uint32_t k = 0; k < execbuf.bo_count; k++) {
