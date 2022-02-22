@@ -403,6 +403,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_sample_id_no_per_sample:
    case nir_intrinsic_load_sample_mask_in:
    case nir_intrinsic_load_interpolated_input:
+   case nir_intrinsic_load_point_coord_maybe_flipped:
    case nir_intrinsic_load_barycentric_pixel:
    case nir_intrinsic_load_barycentric_centroid:
    case nir_intrinsic_load_barycentric_sample:
