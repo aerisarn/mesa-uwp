@@ -8,7 +8,23 @@
 set -ex
 
 # Set up any devices required by the jobs
-[ -z "$HWCI_KERNEL_MODULES" ] || (echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe)
+[ -z "$HWCI_KERNEL_MODULES" ] || {
+    echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe
+}
+
+# Load the KVM module specific to the detected CPU virtualization extensions:
+# - vmx for Intel VT
+# - svm for AMD-V
+if [ "$HWCI_KVM" = "true" ]; then
+    unset KVM_KERNEL_MODULE
+    grep -qs '\bvmx\b' /proc/cpuinfo && KVM_KERNEL_MODULE=kvm_intel || {
+        grep -qs '\bsvm\b' /proc/cpuinfo && KVM_KERNEL_MODULE=kvm_amd
+    }
+
+    [ -z "${KVM_KERNEL_MODULE}" ] && \
+        echo "WARNING: Failed to detect CPU virtualization extensions" || \
+        modprobe ${KVM_KERNEL_MODULE}
+fi
 
 # Fix prefix confusion: the build installs to $CI_PROJECT_DIR, but we expect
 # it in /install

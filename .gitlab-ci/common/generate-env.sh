@@ -61,6 +61,7 @@ for var in \
     GTEST_SKIPS \
     HWCI_FREQ_MAX \
     HWCI_KERNEL_MODULES \
+    HWCI_KVM \
     HWCI_START_XORG \
     HWCI_TEST_SCRIPT \
     IR3_SHADER_DEBUG \
