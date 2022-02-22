@@ -12,9 +12,13 @@ set -ex
     echo -n $HWCI_KERNEL_MODULES | xargs -d, -n1 /usr/sbin/modprobe
 }
 
+#
 # Load the KVM module specific to the detected CPU virtualization extensions:
 # - vmx for Intel VT
 # - svm for AMD-V
+#
+# Additionally, download the kernel image to boot the VM via HWCI_TEST_SCRIPT.
+#
 if [ "$HWCI_KVM" = "true" ]; then
     unset KVM_KERNEL_MODULE
     grep -qs '\bvmx\b' /proc/cpuinfo && KVM_KERNEL_MODULE=kvm_intel || {
@@ -24,6 +28,10 @@ if [ "$HWCI_KVM" = "true" ]; then
     [ -z "${KVM_KERNEL_MODULE}" ] && \
         echo "WARNING: Failed to detect CPU virtualization extensions" || \
         modprobe ${KVM_KERNEL_MODULE}
+
+    mkdir -p /lava-files
+    wget -S --progress=dot:giga -O /lava-files/${KERNEL_IMAGE_NAME} \
+        "${KERNEL_IMAGE_BASE_URL}/${KERNEL_IMAGE_NAME}"
 fi
 
 # Fix prefix confusion: the build installs to $CI_PROJECT_DIR, but we expect

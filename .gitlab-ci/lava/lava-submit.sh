@@ -16,7 +16,10 @@ mkdir -p results/job-rootfs-overlay/
 
 cp artifacts/ci-common/capture-devcoredump.sh results/job-rootfs-overlay/
 cp artifacts/ci-common/init-*.sh results/job-rootfs-overlay/
-artifacts/ci-common/generate-env.sh > results/job-rootfs-overlay/set-job-env-vars.sh
+
+# Prepare env vars for upload.
+KERNEL_IMAGE_BASE_URL="https://${BASE_SYSTEM_HOST_PATH}" \
+	artifacts/ci-common/generate-env.sh > results/job-rootfs-overlay/set-job-env-vars.sh
 
 tar zcf job-rootfs-overlay.tar.gz -C results/job-rootfs-overlay/ .
 ci-fairy minio login --token-file "${CI_JOB_JWT_FILE}"

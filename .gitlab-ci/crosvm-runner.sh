@@ -91,7 +91,7 @@ crosvm run \
     --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
     --host_ip "192.168.30.1" --netmask "255.255.255.0" --mac "AA:BB:CC:00:00:12" \
     --cid ${VSOCK_CID} -p "${CROSVM_KERN_ARGS}" \
-    /lava-files/bzImage > ${VSOCK_TEMP_DIR}/crosvm 2>&1 &
+    /lava-files/${KERNEL_IMAGE_NAME:-bzImage} > ${VSOCK_TEMP_DIR}/crosvm 2>&1 &
 
 # Wait for crosvm process to terminate
 CROSVM_PID=$!
