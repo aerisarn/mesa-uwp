@@ -352,14 +352,15 @@ v3d_emit_spill_tmua(struct v3d_compile *c,
          * is not affected by the thrsw. Something that ends at ip will be
          * affected though.
          *
-         * Spills inject code after ip, so anything that starts later than ip
-         * is not affected (and only the spilled temp starts at ip). Something
-         * that ends at ip won't be affected either.
+         * Spills inject code after ip, so anything that starts strictly later
+         * than ip is not affected (the temp starting at ip is usually the
+         * spilled temp except for postponed spills). Something that ends at ip
+         * won't be affected either.
          */
         for (int i = 0; i < c->spill_start_num_temps; i++) {
                 bool thrsw_cross = fill_dst ?
                         c->temp_start[i] < ip && c->temp_end[i] >= ip :
-                        c->temp_start[i] < ip && c->temp_end[i] > ip;
+                        c->temp_start[i] <= ip && c->temp_end[i] > ip;
                 if (thrsw_cross) {
                         ra_set_node_class(c->g, c->ra_map.temp[i].node,
                                           choose_reg_class(c, CLASS_BITS_PHYS));
