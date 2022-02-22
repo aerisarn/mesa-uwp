@@ -669,13 +669,13 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
    if (!res)
       return NULL;
 
-   enum radeon_bo_domain domains = sscreen->ws->buffer_get_initial_domain(res->buf);
+   enum radeon_bo_domain domains = sscreen->ws->buffer_get_initial_domain(imported_buf);
 
    /* Get or guess the BO flags. */
    unsigned flags = RADEON_FLAG_NO_SUBALLOC;
 
    if (sscreen->ws->buffer_get_flags)
-      res->flags |= sscreen->ws->buffer_get_flags(res->buf);
+      res->flags |= sscreen->ws->buffer_get_flags(imported_buf);
    else
       flags |= RADEON_FLAG_GTT_WC; /* unknown flags, guess them */
 
@@ -709,8 +709,8 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
    if (res->flags & RADEON_FLAG_NO_CPU_ACCESS)
       res->b.b.flags |= PIPE_RESOURCE_FLAG_UNMAPPABLE;
 
-   util_range_add((struct pipe_resource *)templ, &res->valid_buffer_range, 0, templ->width0);
-   util_range_add((struct pipe_resource *)templ, &res->b.valid_buffer_range, 0, templ->width0);
+   util_range_add(&res->b.b, &res->valid_buffer_range, 0, templ->width0);
+   util_range_add(&res->b.b, &res->b.valid_buffer_range, 0, templ->width0);
 
    return &res->b.b;
 }
