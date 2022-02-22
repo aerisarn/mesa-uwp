@@ -165,31 +165,15 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
                         return true;
                 }
         } else if (handle->type == WINSYS_HANDLE_TYPE_FD) {
-                if (scanout) {
-                        struct drm_prime_handle args = {
-                                .handle = scanout->handle,
-                                .flags = DRM_CLOEXEC,
-                        };
+                int fd = panfrost_bo_export(rsrc->image.data.bo);
 
-                        int ret = drmIoctl(dev->ro->kms_fd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &args);
-                        if (ret == -1)
-                                return false;
+                if (fd < 0)
+                        return false;
 
-                        handle->stride = scanout->stride;
-                        handle->handle = args.fd;
-
-                        return true;
-                } else {
-                        int fd = panfrost_bo_export(rsrc->image.data.bo);
-
-                        if (fd < 0)
-                                return false;
-
-                        handle->handle = fd;
-                        handle->stride = rsrc->image.layout.slices[0].line_stride;
-                        handle->offset = rsrc->image.layout.slices[0].offset;
-                        return true;
-                }
+                handle->handle = fd;
+                handle->stride = rsrc->image.layout.slices[0].line_stride;
+                handle->offset = rsrc->image.layout.slices[0].offset;
+                return true;
         }
 
         return false;
