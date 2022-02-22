@@ -90,14 +90,16 @@ nir_lower_pstipple_block(nir_block *block,
 
    nir_builder_instr_insert(b, &tex->instr);
 
-   nir_ssa_def *condition = nir_f2b32(b, nir_channel(b, &tex->dest.ssa, 3));
+   nir_ssa_def *condition;
 
    switch (state->bool_type) {
    case nir_type_bool1:
-      condition = nir_f2b(b, nir_channel(b, &tex->dest.ssa, 3));
+      condition = nir_fneu(b, nir_channel(b, &tex->dest.ssa, 3),
+                           nir_imm_floatN_t(b, 0.0, tex->dest.ssa.bit_size));
       break;
    case nir_type_bool32:
-      condition = nir_f2b32(b, nir_channel(b, &tex->dest.ssa, 3));
+      condition = nir_fneu32(b, nir_channel(b, &tex->dest.ssa, 3),
+                             nir_imm_floatN_t(b, 0.0, tex->dest.ssa.bit_size));
       break;
    default:
       unreachable("Invalid Boolean type.");
