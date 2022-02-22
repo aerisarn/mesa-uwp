@@ -1564,54 +1564,6 @@ dxil_nir_split_typed_samplers(nir_shader *nir)
 
 
 static bool
-lower_bool_input_filter(const nir_instr *instr,
-                        UNUSED const void *_options)
-{
-   if (instr->type != nir_instr_type_intrinsic)
-      return false;
-
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic == nir_intrinsic_load_front_face)
-      return true;
-
-   if (intr->intrinsic == nir_intrinsic_load_deref) {
-      nir_deref_instr *deref = nir_instr_as_deref(intr->src[0].ssa->parent_instr);
-      nir_variable *var = nir_deref_instr_get_variable(deref);
-      return var->data.mode == nir_var_shader_in &&
-             glsl_get_base_type(var->type) == GLSL_TYPE_BOOL;
-   }
-
-   return false;
-}
-
-static nir_ssa_def *
-lower_bool_input_impl(nir_builder *b, nir_instr *instr,
-                      UNUSED void *_options)
-{
-   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-
-   if (intr->intrinsic == nir_intrinsic_load_deref) {
-      nir_deref_instr *deref = nir_instr_as_deref(intr->src[0].ssa->parent_instr);
-      nir_variable *var = nir_deref_instr_get_variable(deref);
-
-      /* rewrite var->type */
-      var->type = glsl_vector_type(GLSL_TYPE_UINT,
-                                   glsl_get_vector_elements(var->type));
-      deref->type = var->type;
-   }
-
-   intr->dest.ssa.bit_size = 32;
-   return nir_i2b(b, &intr->dest.ssa);
-}
-
-bool
-dxil_nir_lower_bool_input(struct nir_shader *s)
-{
-   return nir_shader_lower_instructions(s, lower_bool_input_filter,
-                                        lower_bool_input_impl, NULL);
-}
-
-static bool
 lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
 {
    if (instr->type != nir_instr_type_intrinsic)
@@ -1637,9 +1589,22 @@ lower_sysval_to_load_input_impl(nir_builder *b, nir_instr *instr, void *data)
    nir_variable *var = sysval_vars[sysval];
    assert(var);
 
+   const nir_alu_type dest_type = (sysval == SYSTEM_VALUE_FRONT_FACE)
+      ? nir_type_uint32 : nir_get_nir_type_for_glsl_type(var->type);
+   const unsigned bit_size = (sysval == SYSTEM_VALUE_FRONT_FACE)
+      ? 32 : intr->dest.ssa.bit_size;
+
    b->cursor = nir_before_instr(instr);
-   nir_ssa_def *result = nir_build_load_input(b, intr->dest.ssa.num_components, intr->dest.ssa.bit_size, nir_imm_int(b, 0),
-      .base = var->data.driver_location, .dest_type = nir_get_nir_type_for_glsl_type(var->type));
+   nir_ssa_def *result = nir_build_load_input(b, intr->dest.ssa.num_components, bit_size, nir_imm_int(b, 0),
+      .base = var->data.driver_location, .dest_type = dest_type);
+
+   /* The nir_type_uint32 is really a nir_type_bool32, but that type is very
+    * inconvenient at this point during compilation.  Convert to
+    * nir_type_bool1 by comparing with zero.
+    */
+   if (sysval == SYSTEM_VALUE_FRONT_FACE)
+      result = nir_ine_imm(b, result, 0);
+
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    return true;
 }
