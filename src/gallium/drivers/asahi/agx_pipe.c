@@ -412,10 +412,6 @@ agx_flush(struct pipe_context *pctx,
    if (fence)
       *fence = NULL;
 
-   /* TODO */
-   if (!ctx->batch->cbufs[0])
-      return;
-
    /* Nothing to do */
    if (!(ctx->batch->draw | ctx->batch->clear))
       return;
@@ -430,7 +426,7 @@ agx_flush(struct pipe_context *pctx,
 
    struct agx_device *dev = agx_device(pctx->screen);
 
-   if (ctx->batch->clear & PIPE_CLEAR_COLOR0) {
+   if ((ctx->batch->clear & PIPE_CLEAR_COLOR0) || !ctx->batch->cbufs[0]) {
       uint16_t clear_colour[4] = {
          _mesa_float_to_half(ctx->batch->clear_color[0]),
          _mesa_float_to_half(ctx->batch->clear_color[1]),
@@ -463,14 +459,20 @@ agx_flush(struct pipe_context *pctx,
       agx_pool_alloc_aligned(&ctx->batch->pipeline_pool, 64, 64);
    memset(pipeline_null.cpu, 0, 64);
 
-   struct agx_resource *rt0 = agx_resource(ctx->batch->cbufs[0]->texture);
-   BITSET_SET(rt0->data_valid, 0);
+   for (unsigned i = 0; i < ctx->batch->nr_cbufs; ++i) {
+      struct agx_resource *rt = agx_resource(ctx->batch->cbufs[i]->texture);
+      BITSET_SET(rt->data_valid, 0);
+   }
 
    struct agx_resource *zbuf = ctx->batch->zsbuf ?
       agx_resource(ctx->batch->zsbuf->texture) : NULL;
 
-   if (zbuf)
+   if (zbuf) {
       BITSET_SET(zbuf->data_valid, 0);
+
+      if (zbuf->separate_stencil)
+         BITSET_SET(zbuf->separate_stencil->data_valid, 0);
+   }
 
    /* BO list for a given batch consists of:
     *  - BOs for the batch's framebuffer surfaces
@@ -497,6 +499,9 @@ agx_flush(struct pipe_context *pctx,
       struct pipe_surface *surf = batch->zsbuf;
       struct agx_resource *rsrc = agx_resource(surf->texture);
       agx_batch_add_bo(batch, rsrc->bo);
+
+      if (rsrc->separate_stencil)
+         agx_batch_add_bo(batch, rsrc->separate_stencil->bo);
    }
 
    unsigned handle_count =
