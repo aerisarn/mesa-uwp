@@ -91,6 +91,7 @@ struct si_state_rasterizer {
    unsigned poly_stipple_enable : 1;
    unsigned line_smooth : 1;
    unsigned poly_smooth : 1;
+   unsigned point_smooth : 1;
    unsigned uses_poly_offset : 1;
    unsigned clamp_fragment_color : 1;
    unsigned clamp_vertex_color : 1;

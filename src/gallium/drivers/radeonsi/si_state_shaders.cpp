@@ -1770,17 +1770,6 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    polaris_set_vgt_vertex_reuse(sscreen, shader->selector, shader);
 }
 
-static unsigned si_get_ps_num_interp(struct si_shader *ps)
-{
-   struct si_shader_info *info = &ps->selector->info;
-   unsigned num_colors = !!(info->colors_read & 0x0f) + !!(info->colors_read & 0xf0);
-   unsigned num_interp =
-      ps->selector->info.num_inputs + (ps->key.ps.part.prolog.color_two_side ? num_colors : 0);
-
-   assert(num_interp <= 32);
-   return MIN2(num_interp, 32);
-}
-
 static unsigned si_get_spi_shader_col_format(struct si_shader *shader)
 {
    unsigned spi_shader_col_format = shader->key.ps.part.epilog.spi_shader_col_format;
@@ -1994,8 +1983,11 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    spi_ps_in_control = S_0286D8_NUM_INTERP(num_interp) |
                        S_0286D8_PS_W32_EN(shader->wave_size == 32);
 
-   /* Workaround when there are no PS inputs but LDS is used. */
-   if (sscreen->info.gfx_level == GFX11 && !num_interp && shader->config.lds_size)
+   /* Enable PARAM_GEN for point smoothing.
+    * Gfx11 workaround when there are no PS inputs but LDS is used.
+    */
+   if ((sscreen->info.gfx_level == GFX11 && !num_interp && shader->config.lds_size) ||
+       shader->key.ps.mono.point_smoothing)
       spi_ps_in_control |= S_0286D8_PARAM_GEN(1);
 
    shader->ctx_reg.ps.num_interp = num_interp;
@@ -2187,7 +2179,8 @@ void si_update_ps_inputs_read_or_disabled(struct si_context *sctx)
                             ps->info.writes_samplemask ||
                             sctx->queued.named.blend->alpha_to_coverage ||
                             sctx->queued.named.dsa->alpha_func != PIPE_FUNC_ALWAYS ||
-                            sctx->queued.named.rasterizer->poly_stipple_enable;
+                            sctx->queued.named.rasterizer->poly_stipple_enable ||
+                            sctx->queued.named.rasterizer->point_smooth;
       unsigned ps_colormask = si_get_total_colormask(sctx);
 
       ps_disabled = sctx->queued.named.rasterizer->rasterizer_discard ||
@@ -2388,6 +2381,9 @@ static void si_ps_key_update_primtype_shader_rasterizer_framebuffer(struct si_co
    key->ps.mono.poly_line_smoothing =
       ((is_poly && rs->poly_smooth) || (is_line && rs->line_smooth)) &&
       sctx->framebuffer.nr_samples <= 1;
+
+   key->ps.mono.point_smoothing = rs->point_smooth &&
+                                  sctx->current_rast_prim == PIPE_PRIM_POINTS;
 }
 
 void si_ps_key_update_sample_shading(struct si_context *sctx)
@@ -3552,7 +3548,7 @@ void si_update_vrs_flat_shading(struct si_context *sctx)
 
       if (allow_flat_shading &&
           (rs->line_smooth || rs->poly_smooth || rs->poly_stipple_enable ||
-           (!rs->flatshade && info->uses_interp_color)))
+           rs->point_smooth || (!rs->flatshade && info->uses_interp_color)))
          allow_flat_shading = false;
 
       if (sctx->allow_flat_shading != allow_flat_shading) {

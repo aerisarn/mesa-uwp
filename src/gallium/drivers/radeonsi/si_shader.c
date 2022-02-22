@@ -43,6 +43,18 @@ static const char scratch_rsrc_dword1_symbol[] = "SCRATCH_RSRC_DWORD1";
 
 static void si_dump_shader_key(const struct si_shader *shader, FILE *f);
 
+/* Get the number of all interpolated inputs */
+unsigned si_get_ps_num_interp(struct si_shader *ps)
+{
+   struct si_shader_info *info = &ps->selector->info;
+   unsigned num_colors = !!(info->colors_read & 0x0f) + !!(info->colors_read & 0xf0);
+   unsigned num_interp =
+      ps->selector->info.num_inputs + (ps->key.ps.part.prolog.color_two_side ? num_colors : 0);
+
+   assert(num_interp <= 32);
+   return MIN2(num_interp, 32);
+}
+
 /** Whether the shader runs as a combination of multiple API shaders */
 bool si_is_multi_part_shader(struct si_shader *shader)
 {
@@ -1293,6 +1305,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
       fprintf(f, "  epilog.clamp_color = %u\n", key->ps.part.epilog.clamp_color);
       fprintf(f, "  epilog.dual_src_blend_swizzle = %u\n", key->ps.part.epilog.dual_src_blend_swizzle);
       fprintf(f, "  mono.poly_line_smoothing = %u\n", key->ps.mono.poly_line_smoothing);
+      fprintf(f, "  mono.point_smoothing = %u\n", key->ps.mono.point_smoothing);
       fprintf(f, "  mono.interpolate_at_sample_force_center = %u\n",
               key->ps.mono.interpolate_at_sample_force_center);
       fprintf(f, "  mono.fbfetch_msaa = %u\n", key->ps.mono.fbfetch_msaa);
@@ -1649,6 +1662,9 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
 
    if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.poly_line_smoothing)
       NIR_PASS(progress, nir, nir_lower_poly_line_smooth, SI_NUM_SMOOTH_AA_SAMPLES);
+
+   if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.point_smoothing)
+      NIR_PASS(progress, nir, nir_lower_point_smooth);
 
    if (progress)
       si_nir_opts(sel->screen, nir, true);

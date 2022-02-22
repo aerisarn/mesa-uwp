@@ -1137,6 +1137,9 @@ struct si_context {
    bool ps_uses_fbfetch;
    bool smoothing_enabled;
 
+   /* point smoothing state.*/
+   bool point_smoothing_enabled;
+
    /* DB render state. */
    unsigned ps_db_shader_control;
    unsigned dbcb_copy_sample;

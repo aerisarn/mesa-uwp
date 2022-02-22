@@ -899,6 +899,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          ctx->abi.color1 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
       }
 
+      ctx->abi.num_interp = si_get_ps_num_interp(shader);
       ctx->abi.interp_at_sample_force_center =
          ctx->shader->key.ps.mono.interpolate_at_sample_force_center;
 

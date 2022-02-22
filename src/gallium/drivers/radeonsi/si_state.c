@@ -949,6 +949,7 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
    rs->line_smooth = state->line_smooth;
    rs->line_width = state->line_width;
    rs->poly_smooth = state->poly_smooth;
+   rs->point_smooth = state->point_smooth;
    rs->uses_poly_offset = state->offset_point || state->offset_line || state->offset_tri;
    rs->clamp_fragment_color = state->clamp_fragment_color;
    rs->clamp_vertex_color = state->clamp_vertex_color;
@@ -1195,6 +1196,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
        old_rs->multisample_enable != rs->multisample_enable ||
        old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
        old_rs->poly_smooth != rs->poly_smooth || old_rs->line_smooth != rs->line_smooth ||
+       old_rs->point_smooth != rs->point_smooth ||
        old_rs->clamp_fragment_color != rs->clamp_fragment_color ||
        old_rs->force_persample_interp != rs->force_persample_interp ||
        old_rs->polygon_mode_is_points != rs->polygon_mode_is_points) {
@@ -1207,6 +1209,7 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
 
    if (old_rs->line_smooth != rs->line_smooth ||
        old_rs->poly_smooth != rs->poly_smooth ||
+       old_rs->point_smooth != rs->point_smooth ||
        old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
        old_rs->flatshade != rs->flatshade)
       si_update_vrs_flat_shading(sctx);

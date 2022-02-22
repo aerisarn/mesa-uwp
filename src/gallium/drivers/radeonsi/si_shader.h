@@ -733,6 +733,7 @@ struct si_shader_key_ps {
    /* Flags for monolithic compilation only. */
    struct {
       unsigned poly_line_smoothing : 1;
+      unsigned point_smoothing : 1;
       unsigned interpolate_at_sample_force_center : 1;
       unsigned fbfetch_msaa : 1;
       unsigned fbfetch_is_1D : 1;
@@ -979,6 +980,7 @@ void si_multiwave_lds_size_workaround(struct si_screen *sscreen, unsigned *lds_s
 const char *si_get_shader_name(const struct si_shader *shader);
 void si_shader_binary_clean(struct si_shader_binary *binary);
 struct nir_shader *si_deserialize_shader(struct si_shader_selector *sel);
+unsigned si_get_ps_num_interp(struct si_shader *ps);
 
 /* si_shader_info.c */
 void si_nir_scan_shader(struct si_screen *sscreen,  const struct nir_shader *nir,
@@ -1059,6 +1061,7 @@ static inline bool si_shader_uses_discard(struct si_shader *shader)
    /* Changes to this should also update ps_modifies_zs. */
    return shader->selector->info.base.fs.uses_discard ||
           shader->key.ps.part.prolog.poly_stipple ||
+          shader->key.ps.mono.point_smoothing ||
           shader->key.ps.part.epilog.alpha_func != PIPE_FUNC_ALWAYS;
 }
 
