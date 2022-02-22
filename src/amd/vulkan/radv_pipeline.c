@@ -3872,6 +3872,169 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
    return progress;
 }
 
+static bool
+radv_lower_fs_output(nir_shader *nir, const struct radv_pipeline_key *pipeline_key)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (intrin->intrinsic != nir_intrinsic_store_output)
+            continue;
+
+         int slot = nir_intrinsic_base(intrin) - FRAG_RESULT_DATA0;
+         if (slot < 0)
+            continue;
+
+         unsigned write_mask = nir_intrinsic_write_mask(intrin);
+         unsigned col_format = (pipeline_key->ps.col_format >> (4 * slot)) & 0xf;
+         bool is_int8 = (pipeline_key->ps.is_int8 >> slot) & 1;
+         bool is_int10 = (pipeline_key->ps.is_int10 >> slot) & 1;
+         bool is_16bit = intrin->src[0].ssa->bit_size == 16;
+
+         if (col_format == V_028714_SPI_SHADER_ZERO)
+            continue;
+
+         b.cursor = nir_before_instr(instr);
+         nir_ssa_def *values[4];
+
+         /* Extract the export values. */
+         for (unsigned i = 0; i < 4; i++) {
+            if (write_mask & (1 << i)) {
+               values[i] = nir_channel(&b, intrin->src[0].ssa, i);
+            } else {
+               values[i] = nir_ssa_undef(&b, 1, 32);
+            }
+         }
+
+         /* Replace NaN by zero (only 32-bit) to fix game bugs if requested. */
+         if (pipeline_key->ps.enable_mrt_output_nan_fixup && !nir->info.internal && !is_16bit &&
+             (col_format == V_028714_SPI_SHADER_32_R ||
+              col_format == V_028714_SPI_SHADER_32_GR ||
+              col_format == V_028714_SPI_SHADER_32_AR ||
+              col_format == V_028714_SPI_SHADER_32_ABGR ||
+              col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
+            u_foreach_bit(i, write_mask) {
+               const bool save_exact = b.exact;
+
+               b.exact = true;
+               nir_ssa_def *isnan = nir_fneu(&b, values[i], values[i]);
+               b.exact = save_exact;
+
+               values[i] = nir_bcsel(&b, isnan, nir_imm_zero(&b, 1, 32), values[i]);
+            }
+         }
+
+         if (col_format == V_028714_SPI_SHADER_FP16_ABGR ||
+             col_format == V_028714_SPI_SHADER_UNORM16_ABGR ||
+             col_format == V_028714_SPI_SHADER_SNORM16_ABGR ||
+             col_format == V_028714_SPI_SHADER_UINT16_ABGR ||
+             col_format == V_028714_SPI_SHADER_SINT16_ABGR) {
+            /* Convert and/or clamp the export values. */
+            switch (col_format) {
+            case V_028714_SPI_SHADER_UINT16_ABGR: {
+               unsigned max_rgb = is_int8 ? 255 : is_int10 ? 1023 : 0;
+               u_foreach_bit(i, write_mask) {
+                  if (is_int8 || is_int10) {
+                     values[i] = nir_umin(&b, values[i], i == 3 && is_int10 ? nir_imm_int(&b, 3u)
+                                                                            : nir_imm_int(&b, max_rgb));
+                  } else if (is_16bit) {
+                     values[i] = nir_u2u32(&b, values[i]);
+                  }
+               }
+               break;
+            }
+            case V_028714_SPI_SHADER_SINT16_ABGR: {
+               unsigned max_rgb = is_int8 ? 127 : is_int10 ? 511 : 0;
+               unsigned min_rgb = is_int8 ? -128 : is_int10 ? -512 : 0;
+               u_foreach_bit(i, write_mask) {
+                  if (is_int8 || is_int10) {
+                     values[i] = nir_imin(&b, values[i], i == 3 && is_int10 ? nir_imm_int(&b, 1u)
+                                                                            : nir_imm_int(&b, max_rgb));
+                     values[i] = nir_imax(&b, values[i], i == 3 && is_int10 ? nir_imm_int(&b, -2u)
+                                                                            : nir_imm_int(&b, min_rgb));
+                  } else if (is_16bit) {
+                     values[i] = nir_i2i32(&b, values[i]);
+                  }
+               }
+               break;
+            }
+            case V_028714_SPI_SHADER_UNORM16_ABGR:
+            case V_028714_SPI_SHADER_SNORM16_ABGR:
+               u_foreach_bit(i, write_mask) {
+                  if (is_16bit) {
+                     values[i] = nir_f2f32(&b, values[i]);
+                  }
+               }
+               break;
+            default:
+               break;
+            }
+
+            /* Only nir_pack_32_2x16_split needs 16-bit inputs. */
+            bool input_16_bit = col_format == V_028714_SPI_SHADER_FP16_ABGR && is_16bit;
+            unsigned new_write_mask = 0;
+
+            /* Pack the export values. */
+            for (unsigned i = 0; i < 2; i++) {
+               bool enabled = (write_mask >> (i * 2)) & 0x3;
+
+               if (!enabled) {
+                  values[i] = nir_ssa_undef(&b, 1, 32);
+                  continue;
+               }
+
+               nir_ssa_def *src0 = values[i * 2];
+               nir_ssa_def *src1 = values[i * 2 + 1];
+
+               if (!(write_mask & (1 << (i * 2))))
+                  src0 = nir_imm_zero(&b, 1, input_16_bit ? 16 : 32);
+               if (!(write_mask & (1 << (i * 2 + 1))))
+                  src1 = nir_imm_zero(&b, 1, input_16_bit ? 16 : 32);
+
+               if (col_format == V_028714_SPI_SHADER_FP16_ABGR) {
+                  if (is_16bit) {
+                     values[i] = nir_pack_32_2x16_split(&b, src0, src1);
+                  } else {
+                     values[i] = nir_pack_half_2x16_split(&b, src0, src1);
+                  }
+               } else if (col_format == V_028714_SPI_SHADER_UNORM16_ABGR) {
+                  values[i] = nir_pack_unorm_2x16(&b, nir_vec2(&b, src0, src1));
+               } else if (col_format == V_028714_SPI_SHADER_SNORM16_ABGR) {
+                  values[i] = nir_pack_snorm_2x16(&b, nir_vec2(&b, src0, src1));
+               } else if (col_format == V_028714_SPI_SHADER_UINT16_ABGR) {
+                  values[i] = nir_pack_uint_2x16(&b, nir_vec2(&b, src0, src1));
+               } else if (col_format == V_028714_SPI_SHADER_SINT16_ABGR) {
+                  values[i] = nir_pack_sint_2x16(&b, nir_vec2(&b, src0, src1));
+               }
+
+               new_write_mask |= 1 << i;
+            }
+
+            /* Update the write mask for compressed outputs. */
+            nir_intrinsic_set_write_mask(intrin, new_write_mask);
+            intrin->num_components = util_last_bit(new_write_mask);
+         }
+
+         nir_ssa_def *new_src = nir_vec(&b, values, intrin->num_components);
+
+         nir_instr_rewrite_src(&intrin->instr, &intrin->src[0], nir_src_for_ssa(new_src));
+
+         progress = true;
+      }
+   }
+
+   return progress;
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4008,6 +4171,11 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
    if (nir[MESA_SHADER_VERTEX]) {
       NIR_PASS_V(nir[MESA_SHADER_VERTEX], radv_lower_vs_input, pipeline_key);
+   }
+
+   if (nir[MESA_SHADER_FRAGMENT] && !radv_use_llvm_for_stage(device, MESA_SHADER_FRAGMENT)) {
+      /* TODO: Convert the LLVM backend. */
+      NIR_PASS_V(nir[MESA_SHADER_FRAGMENT], radv_lower_fs_output, pipeline_key);
    }
 
    radv_fill_shader_info(pipeline, pipeline_layout, pStages, pipeline_key, infos, nir);

@@ -10615,32 +10615,11 @@ export_fs_mrt_color(isel_context* ctx, int slot)
 
    unsigned target, col_format;
    unsigned enabled_channels = 0;
-   aco_opcode compr_op = (aco_opcode)0;
    bool compr = false;
 
    slot -= FRAG_RESULT_DATA0;
    target = V_008DFC_SQ_EXP_MRT + slot;
    col_format = (ctx->options->key.ps.col_format >> (4 * slot)) & 0xf;
-
-   bool is_int8 = (ctx->options->key.ps.is_int8 >> slot) & 1;
-   bool is_int10 = (ctx->options->key.ps.is_int10 >> slot) & 1;
-   bool is_16bit = values[0].regClass() == v2b;
-
-   /* Replace NaN by zero (only 32-bit) to fix game bugs if requested. */
-   if (ctx->options->enable_mrt_output_nan_fixup && !is_16bit &&
-       (col_format == V_028714_SPI_SHADER_32_R || col_format == V_028714_SPI_SHADER_32_GR ||
-        col_format == V_028714_SPI_SHADER_32_AR || col_format == V_028714_SPI_SHADER_32_ABGR ||
-        col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
-      for (int i = 0; i < 4; i++) {
-         if (!(write_mask & (1 << i)))
-            continue;
-
-         Temp isnan = bld.vopc(aco_opcode::v_cmp_class_f32, bld.hint_vcc(bld.def(bld.lm)),
-                               values[i], bld.copy(bld.def(v1), Operand::c32(3u)));
-         values[i] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), values[i],
-                              bld.copy(bld.def(v1), Operand::zero()), isnan);
-      }
-   }
 
    switch (col_format) {
    case V_028714_SPI_SHADER_32_R: enabled_channels = 1; break;
@@ -10659,103 +10638,12 @@ export_fs_mrt_color(isel_context* ctx, int slot)
       break;
 
    case V_028714_SPI_SHADER_FP16_ABGR:
-      for (int i = 0; i < 2; i++) {
-         bool enabled = (write_mask >> (i * 2)) & 0x3;
-         if (enabled) {
-            enabled_channels |= 0x3 << (i * 2);
-            if (is_16bit) {
-               values[i] =
-                  bld.pseudo(aco_opcode::p_create_vector, bld.def(v1),
-                             values[i * 2].isUndefined() ? Operand(v2b) : values[i * 2],
-                             values[i * 2 + 1].isUndefined() ? Operand(v2b) : values[i * 2 + 1]);
-            } else if (ctx->options->chip_class == GFX8 || ctx->options->chip_class == GFX9) {
-               values[i] =
-                  bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32_e64, bld.def(v1),
-                           values[i * 2].isUndefined() ? Operand::zero() : values[i * 2],
-                           values[i * 2 + 1].isUndefined() ? Operand::zero() : values[i * 2 + 1]);
-            } else {
-               values[i] =
-                  bld.vop2(aco_opcode::v_cvt_pkrtz_f16_f32, bld.def(v1),
-                           values[i * 2].isUndefined() ? values[i * 2 + 1] : values[i * 2],
-                           values[i * 2 + 1].isUndefined() ? values[i * 2] : values[i * 2 + 1]);
-            }
-         } else {
-            values[i] = Operand(v1);
-         }
-      }
-      values[2] = Operand(v1);
-      values[3] = Operand(v1);
-      compr = true;
-      break;
-
    case V_028714_SPI_SHADER_UNORM16_ABGR:
-      if (is_16bit && ctx->options->chip_class >= GFX9) {
-         compr_op = aco_opcode::v_cvt_pknorm_u16_f16;
-      } else {
-         compr_op = aco_opcode::v_cvt_pknorm_u16_f32;
-      }
-      break;
-
    case V_028714_SPI_SHADER_SNORM16_ABGR:
-      if (is_16bit && ctx->options->chip_class >= GFX9) {
-         compr_op = aco_opcode::v_cvt_pknorm_i16_f16;
-      } else {
-         compr_op = aco_opcode::v_cvt_pknorm_i16_f32;
-      }
-      break;
-
-   case V_028714_SPI_SHADER_UINT16_ABGR: {
-      compr_op = aco_opcode::v_cvt_pk_u16_u32;
-      if (is_int8 || is_int10) {
-         /* clamp */
-         uint32_t max_rgb = is_int8 ? 255 : is_int10 ? 1023 : 0;
-         Temp max_rgb_val = bld.copy(bld.def(s1), Operand::c32(max_rgb));
-
-         for (unsigned i = 0; i < 4; i++) {
-            if ((write_mask >> i) & 1) {
-               values[i] =
-                  bld.vop2(aco_opcode::v_min_u32, bld.def(v1),
-                           i == 3 && is_int10 ? Operand::c32(3u) : Operand(max_rgb_val), values[i]);
-            }
-         }
-      } else if (is_16bit) {
-         for (unsigned i = 0; i < 4; i++) {
-            if ((write_mask >> i) & 1) {
-               Temp tmp = convert_int(ctx, bld, values[i].getTemp(), 16, 32, false);
-               values[i] = Operand(tmp);
-            }
-         }
-      }
-      break;
-   }
-
+   case V_028714_SPI_SHADER_UINT16_ABGR:
    case V_028714_SPI_SHADER_SINT16_ABGR:
-      compr_op = aco_opcode::v_cvt_pk_i16_i32;
-      if (is_int8 || is_int10) {
-         /* clamp */
-         uint32_t max_rgb = is_int8 ? 127 : is_int10 ? 511 : 0;
-         uint32_t min_rgb = is_int8 ? -128 : is_int10 ? -512 : 0;
-         Temp max_rgb_val = bld.copy(bld.def(s1), Operand::c32(max_rgb));
-         Temp min_rgb_val = bld.copy(bld.def(s1), Operand::c32(min_rgb));
-
-         for (unsigned i = 0; i < 4; i++) {
-            if ((write_mask >> i) & 1) {
-               values[i] =
-                  bld.vop2(aco_opcode::v_min_i32, bld.def(v1),
-                           i == 3 && is_int10 ? Operand::c32(1u) : Operand(max_rgb_val), values[i]);
-               values[i] = bld.vop2(aco_opcode::v_max_i32, bld.def(v1),
-                                    i == 3 && is_int10 ? Operand::c32(-2u) : Operand(min_rgb_val),
-                                    values[i]);
-            }
-         }
-      } else if (is_16bit) {
-         for (unsigned i = 0; i < 4; i++) {
-            if ((write_mask >> i) & 1) {
-               Temp tmp = convert_int(ctx, bld, values[i].getTemp(), 16, 32, true);
-               values[i] = Operand(tmp);
-            }
-         }
-      }
+      enabled_channels = util_widen_mask(write_mask, 2);
+      compr = true;
       break;
 
    case V_028714_SPI_SHADER_32_ABGR: enabled_channels = 0xF; break;
@@ -10764,23 +10652,7 @@ export_fs_mrt_color(isel_context* ctx, int slot)
    default: return false;
    }
 
-   if ((bool)compr_op) {
-      for (int i = 0; i < 2; i++) {
-         /* check if at least one of the values to be compressed is enabled */
-         bool enabled = (write_mask >> (i * 2)) & 0x3;
-         if (enabled) {
-            enabled_channels |= 0x3 << (i * 2);
-            values[i] = bld.vop3(
-               compr_op, bld.def(v1), values[i * 2].isUndefined() ? Operand::zero() : values[i * 2],
-               values[i * 2 + 1].isUndefined() ? Operand::zero() : values[i * 2 + 1]);
-         } else {
-            values[i] = Operand(v1);
-         }
-      }
-      values[2] = Operand(v1);
-      values[3] = Operand(v1);
-      compr = true;
-   } else if (!compr) {
+   if (!compr) {
       for (int i = 0; i < 4; i++)
          values[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
    }
