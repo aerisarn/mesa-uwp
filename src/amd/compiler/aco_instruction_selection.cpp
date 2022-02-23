@@ -10388,7 +10388,8 @@ visit_loop(isel_context* ctx, nir_loop* loop)
 }
 
 static void
-begin_divergent_if_then(isel_context* ctx, if_context* ic, Temp cond)
+begin_divergent_if_then(isel_context* ctx, if_context* ic, Temp cond,
+                        nir_selection_control sel_ctrl = nir_selection_control_none)
 {
    ic->cond = cond;
 
@@ -10402,6 +10403,7 @@ begin_divergent_if_then(isel_context* ctx, if_context* ic, Temp cond)
                                                               Format::PSEUDO_BRANCH, 1, 1));
    branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->operands[0] = Operand(cond);
+   branch->selection_control = sel_ctrl;
    ctx->block->instructions.push_back(std::move(branch));
 
    ic->BB_if_idx = ctx->block->index;
@@ -10432,7 +10434,8 @@ begin_divergent_if_then(isel_context* ctx, if_context* ic, Temp cond)
 }
 
 static void
-begin_divergent_if_else(isel_context* ctx, if_context* ic)
+begin_divergent_if_else(isel_context* ctx, if_context* ic,
+                        nir_selection_control sel_ctrl = nir_selection_control_none)
 {
    Block* BB_then_logical = ctx->block;
    append_logical_end(BB_then_logical);
@@ -10470,6 +10473,7 @@ begin_divergent_if_else(isel_context* ctx, if_context* ic)
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch,
                                                               Format::PSEUDO_BRANCH, 0, 1));
    branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
+   branch->selection_control = sel_ctrl;
    ctx->block->instructions.push_back(std::move(branch));
 
    ic->exec_potentially_empty_discard_old |= ctx->cf_info.exec_potentially_empty_discard;
@@ -10700,10 +10704,10 @@ visit_if(isel_context* ctx, nir_if* if_stmt)
        * *) Exceptions may be due to break and continue statements within loops
        **/
 
-      begin_divergent_if_then(ctx, &ic, cond);
+      begin_divergent_if_then(ctx, &ic, cond, if_stmt->control);
       visit_cf_list(ctx, &if_stmt->then_list);
 
-      begin_divergent_if_else(ctx, &ic);
+      begin_divergent_if_else(ctx, &ic, if_stmt->control);
       visit_cf_list(ctx, &if_stmt->else_list);
 
       end_divergent_if(ctx, &ic);

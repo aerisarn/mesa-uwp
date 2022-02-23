@@ -1726,8 +1726,9 @@ struct Pseudo_branch_instruction : public Instruction {
     * A value of 0 means the target has not been initialized (BB0 cannot be a branch target).
     */
    uint32_t target[2];
+   nir_selection_control selection_control;
 };
-static_assert(sizeof(Pseudo_branch_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
+static_assert(sizeof(Pseudo_branch_instruction) == sizeof(Instruction) + 12, "Unexpected padding");
 
 struct Pseudo_barrier_instruction : public Instruction {
    memory_sync_info sync;

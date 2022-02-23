@@ -2388,7 +2388,15 @@ lower_to_hw_instr(Program* program)
             /* Check if the branch instruction can be removed.
              * This is beneficial when executing the next block with an empty exec mask
              * is faster than the branch instruction itself.
+             *
+             * Override this judgement when:
+             * - The application prefers to remove control flow
+             * - The compiler stack knows that it's a divergent branch always taken
              */
+            const bool prefer_remove =
+               (branch->selection_control == nir_selection_control_flatten ||
+                branch->selection_control == nir_selection_control_divergent_always_taken) &&
+               ctx.program->gfx_level >= GFX10;
             bool can_remove = block->index < target;
             unsigned num_scalar = 0;
             unsigned num_vector = 0;
@@ -2427,29 +2435,36 @@ lower_to_hw_instr(Program* program)
                               num_scalar++;
                         }
                      }
-                  } else if (inst->isVMEM() || inst->isFlatLike() || inst->isDS() ||
-                             inst->isEXP() || inst->isLDSDIR()) {
-                     // TODO: GFX6-9 can use vskip
+                  } else if (inst->isEXP()) {
+                     /* Export instructions with exec=0 can hang some GFX10+ (unclear on old GPUs). */
                      can_remove = false;
+                  } else if (inst->isVMEM() || inst->isFlatLike() || inst->isDS() ||
+                             inst->isLDSDIR()) {
+                     // TODO: GFX6-9 can use vskip
+                     can_remove = prefer_remove;
                   } else if (inst->isSMEM()) {
                      /* SMEM are at least as expensive as branches */
-                     can_remove = false;
+                     can_remove = prefer_remove;
                   } else if (inst->isBarrier()) {
-                     can_remove = false;
+                     can_remove = prefer_remove;
                   } else {
                      can_remove = false;
                      assert(false && "Pseudo instructions should be lowered by this point.");
                   }
 
-                  /* Under these conditions, we shouldn't remove the branch */
-                  unsigned est_cycles;
-                  if (ctx.program->gfx_level >= GFX10)
-                     est_cycles = num_scalar * 2 + num_vector;
-                  else
-                     est_cycles = num_scalar * 4 + num_vector * 4;
+                  if (!prefer_remove) {
+                     /* Under these conditions, we shouldn't remove the branch.
+                      * Don't care about the estimated cycles when the shader prefers flattening.
+                      */
+                     unsigned est_cycles;
+                     if (ctx.program->gfx_level >= GFX10)
+                        est_cycles = num_scalar * 2 + num_vector;
+                     else
+                        est_cycles = num_scalar * 4 + num_vector * 4;
 
-                  if (est_cycles > 16)
-                     can_remove = false;
+                     if (est_cycles > 16)
+                        can_remove = false;
+                  }
 
                   if (!can_remove)
                      break;
