@@ -1081,6 +1081,8 @@ zink_descriptor_pool_deinit(struct zink_context *ctx)
       /* do not free: programs own these pools */
       _mesa_hash_table_destroy(ctx->dd->descriptor_pools[i], NULL);
    }
+   descriptor_pool_free(zink_screen(ctx->base.screen), ctx->dd->push_pool[0]);
+   descriptor_pool_free(zink_screen(ctx->base.screen), ctx->dd->push_pool[1]);
 }
 
 static bool
