@@ -4435,16 +4435,17 @@ VKAPI_ATTR void VKAPI_CALL
 radv_FreeCommandBuffers(VkDevice device, VkCommandPool commandPool, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCommandBuffers)
 {
+   RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
+
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, pCommandBuffers[i]);
 
-      if (cmd_buffer) {
-         if (cmd_buffer->pool) {
-            list_del(&cmd_buffer->pool_link);
-            list_addtail(&cmd_buffer->pool_link, &cmd_buffer->pool->free_cmd_buffers);
-         } else
-            radv_destroy_cmd_buffer(cmd_buffer);
-      }
+      if (!cmd_buffer)
+         continue;
+      assert(cmd_buffer->pool == pool);
+
+      list_del(&cmd_buffer->pool_link);
+      list_addtail(&cmd_buffer->pool_link, &pool->free_cmd_buffers);
    }
 }
 
