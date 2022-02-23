@@ -213,41 +213,45 @@ static void
 descriptor_set_invalidate(struct zink_descriptor_set *zds)
 {
    zds->invalid = true;
+   unsigned idx = 0;
    for (unsigned i = 0; i < zds->pool->key->layout->num_bindings; i++) {
-      switch (zds->pool->type) {
-      case ZINK_DESCRIPTOR_TYPE_UBO:
-      case ZINK_DESCRIPTOR_TYPE_SSBO:
-         if (zds->res_objs[i])
-            pop_desc_set_ref(zds, &zds->res_objs[i]->desc_set_refs.refs);
-         zds->res_objs[i] = NULL;
-         break;
-      case ZINK_DESCRIPTOR_TYPE_IMAGE:
-         if (zds->surfaces[i].is_buffer) {
-            if (zds->surfaces[i].bufferview)
-               pop_desc_set_ref(zds, &zds->surfaces[i].bufferview->desc_set_refs.refs);
-            zds->surfaces[i].bufferview = NULL;
-         } else {
-            if (zds->surfaces[i].surface)
-               pop_desc_set_ref(zds, &zds->surfaces[i].surface->desc_set_refs.refs);
-            zds->surfaces[i].surface = NULL;
+      for (unsigned j = 0; j < zds->pool->key->layout->bindings[i].descriptorCount; j++) {
+         switch (zds->pool->type) {
+         case ZINK_DESCRIPTOR_TYPE_UBO:
+         case ZINK_DESCRIPTOR_TYPE_SSBO:
+            if (zds->res_objs[idx])
+               pop_desc_set_ref(zds, &zds->res_objs[idx]->desc_set_refs.refs);
+            zds->res_objs[idx] = NULL;
+            break;
+         case ZINK_DESCRIPTOR_TYPE_IMAGE:
+            if (zds->surfaces[idx].is_buffer) {
+               if (zds->surfaces[idx].bufferview)
+                  pop_desc_set_ref(zds, &zds->surfaces[idx].bufferview->desc_set_refs.refs);
+               zds->surfaces[idx].bufferview = NULL;
+            } else {
+               if (zds->surfaces[idx].surface)
+                  pop_desc_set_ref(zds, &zds->surfaces[idx].surface->desc_set_refs.refs);
+               zds->surfaces[idx].surface = NULL;
+            }
+            break;
+         case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+            if (zds->surfaces[idx].is_buffer) {
+               if (zds->surfaces[idx].bufferview)
+                  pop_desc_set_ref(zds, &zds->surfaces[idx].bufferview->desc_set_refs.refs);
+               zds->surfaces[idx].bufferview = NULL;
+            } else {
+               if (zds->surfaces[idx].surface)
+                  pop_desc_set_ref(zds, &zds->surfaces[idx].surface->desc_set_refs.refs);
+               zds->surfaces[idx].surface = NULL;
+            }
+            if (zds->sampler_states[idx])
+               pop_desc_set_ref(zds, &zds->sampler_states[idx]->desc_set_refs.refs);
+            zds->sampler_states[idx] = NULL;
+            break;
+         default:
+            break;
          }
-         break;
-      case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-         if (zds->surfaces[i].is_buffer) {
-            if (zds->surfaces[i].bufferview)
-               pop_desc_set_ref(zds, &zds->surfaces[i].bufferview->desc_set_refs.refs);
-            zds->surfaces[i].bufferview = NULL;
-         } else {
-            if (zds->surfaces[i].surface)
-               pop_desc_set_ref(zds, &zds->surfaces[i].surface->desc_set_refs.refs);
-            zds->surfaces[i].surface = NULL;
-         }
-         if (zds->sampler_states[i])
-            pop_desc_set_ref(zds, &zds->sampler_states[i]->desc_set_refs.refs);
-         zds->sampler_states[i] = NULL;
-         break;
-      default:
-         break;
+         idx++;
       }
    }
 }
