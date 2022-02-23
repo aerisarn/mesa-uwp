@@ -91,7 +91,7 @@ if [ -n "$HWCI_START_XORG" ]; then
   export DISPLAY=:0
 fi
 
-sh "$HWCI_TEST_SCRIPT" && RESULT=pass || RESULT=fail
+sh -c "$HWCI_TEST_SCRIPT" && RESULT=pass || RESULT=fail
 
 # Let's make sure the results are always stored in current working directory
 mv -f ${CI_PROJECT_DIR}/results ./ 2>/dev/null || true
