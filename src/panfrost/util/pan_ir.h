@@ -186,6 +186,33 @@ struct bifrost_shader_blend_info {
         unsigned format;
 };
 
+/*
+ * Unpacked form of a v7 message preload descriptor, produced by the compiler's
+ * message preload optimization. By splitting out this struct, the compiler does
+ * not need to know about data structure packing, avoiding a dependency on
+ * GenXML.
+ */
+struct bifrost_message_preload {
+        /* Whether to preload this message */
+        bool enabled;
+
+        /* Varying to load from */
+        unsigned varying_index;
+
+        /* Register type, FP32 otherwise */
+        bool fp16;
+
+        /* Number of components, ignored if texturing */
+        unsigned num_components;
+
+        /* If texture is set, performs a texture instruction according to
+         * sampler_index, skip, and zero_lod. If texture is unset, only the
+         * varying load is performed.
+         */
+        bool texture, skip, zero_lod;
+        unsigned sampler_index;
+};
+
 struct bifrost_shader_info {
         struct bifrost_shader_blend_info blend[8];
         nir_alu_type blend_src1_type;
