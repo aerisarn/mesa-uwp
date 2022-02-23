@@ -522,11 +522,13 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
          if (ctx.info[block->index].exec.size() >= 2) {
             if (needs == WQM) {
                /* Preserve the WQM mask */
-               ctx.info[block->index].exec[1].second  &= ~mask_type_global;
+               ctx.info[block->index].exec[1].second &= ~mask_type_global;
             } else if (block->kind & block_kind_top_level) {
-               assert(state == WQM);
-               /* Transition to Exact without extra instruction */
-               ctx.info[block->index].exec.pop_back();
+               /* Transition to Exact without extra instruction. Since needs != WQM, we won't need
+                * WQM again.
+                */
+               ctx.info[block->index].exec.resize(1);
+               assert(ctx.info[block->index].exec[0].second == (mask_type_exact | mask_type_global));
                current_exec = get_exec_op(ctx.info[block->index].exec.back().first);
                ctx.info[block->index].exec[0].first = Operand(bld.lm);
             }
