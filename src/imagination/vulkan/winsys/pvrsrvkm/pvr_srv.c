@@ -328,10 +328,13 @@ static void pvr_srv_winsys_destroy(struct pvr_winsys *ws)
    pvr_srv_connection_destroy(fd);
 }
 
-static int pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
-                                           struct pvr_device_info *dev_info)
+static int
+pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
+                                struct pvr_device_info *dev_info,
+                                struct pvr_device_runtime_info *runtime_info)
 {
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
+   VkResult result;
    int ret;
 
    ret = pvr_device_info_init(dev_info, srv_ws->bvnc);
@@ -342,6 +345,17 @@ static int pvr_srv_winsys_device_info_init(struct pvr_winsys *ws,
                 PVR_BVNC_UNPACK_N(srv_ws->bvnc),
                 PVR_BVNC_UNPACK_C(srv_ws->bvnc));
       return ret;
+   }
+
+   if (PVR_HAS_FEATURE(dev_info, gpu_multicore_support)) {
+      result = pvr_srv_get_multicore_info(srv_ws->render_fd,
+                                          0,
+                                          NULL,
+                                          &runtime_info->core_count);
+      if (result != VK_SUCCESS)
+         return -ENODEV;
+   } else {
+      runtime_info->core_count = 1;
    }
 
    return 0;

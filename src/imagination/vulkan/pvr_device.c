@@ -355,7 +355,9 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
       goto err_vk_free_master_path;
    }
 
-   ret = pdevice->ws->ops->device_info_init(pdevice->ws, &pdevice->dev_info);
+   ret = pdevice->ws->ops->device_info_init(pdevice->ws,
+                                            &pdevice->dev_info,
+                                            &pdevice->dev_runtime_info);
    if (ret) {
       result = VK_ERROR_INITIALIZATION_FAILED;
       goto err_pvr_winsys_destroy;

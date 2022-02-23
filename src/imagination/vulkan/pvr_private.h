@@ -201,6 +201,10 @@ struct pvr_physical_device {
    struct pvr_winsys *ws;
    struct pvr_device_info dev_info;
 
+   struct pvr_device_runtime_info {
+      uint32_t core_count;
+   } dev_runtime_info;
+
    VkPhysicalDeviceMemoryProperties memory;
 
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];

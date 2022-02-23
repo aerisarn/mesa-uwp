@@ -40,6 +40,7 @@
 
 #define PVR_SRV_BRIDGE_SRVCORE_CONNECT 0UL
 #define PVR_SRV_BRIDGE_SRVCORE_DISCONNECT 1UL
+#define PVR_SRV_BRIDGE_SRVCORE_GETMULTICOREINFO 12U
 
 #define PVR_SRV_BRIDGE_SYNC 2UL
 
@@ -173,6 +174,21 @@ struct pvr_srv_bridge_connect_ret {
 
 struct pvr_srv_bridge_disconnect_ret {
    enum pvr_srv_error error;
+} PACKED;
+
+/******************************************************************************
+   PVR_SRV_BRIDGE_SRVCORE_GETMULTICOREINFO structs
+ ******************************************************************************/
+
+struct pvr_srv_bridge_getmulticoreinfo_cmd {
+   uint64_t *caps;
+   uint32_t caps_size;
+} PACKED;
+
+struct pvr_srv_bridge_getmulticoreinfo_ret {
+   uint64_t *caps;
+   enum pvr_srv_error error;
+   uint32_t num_cores;
 } PACKED;
 
 /******************************************************************************
@@ -710,6 +726,11 @@ struct drm_srvkm_cmd {
 
 VkResult pvr_srv_connection_create(int fd, uint64_t *const bvnc_out);
 void pvr_srv_connection_destroy(int fd);
+
+VkResult pvr_srv_get_multicore_info(int fd,
+                                    uint32_t caps_size,
+                                    uint64_t *caps,
+                                    uint32_t *num_cores);
 
 VkResult pvr_srv_alloc_sync_primitive_block(int fd,
                                             void **const handle_out,

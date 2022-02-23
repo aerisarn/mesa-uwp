@@ -125,6 +125,42 @@ void pvr_srv_connection_destroy(int fd)
    }
 }
 
+VkResult pvr_srv_get_multicore_info(int fd,
+                                    uint32_t caps_size,
+                                    uint64_t *caps,
+                                    uint32_t *num_cores)
+{
+   struct pvr_srv_bridge_getmulticoreinfo_cmd cmd = {
+      .caps = caps,
+      .caps_size = caps_size,
+   };
+
+   struct pvr_srv_bridge_getmulticoreinfo_ret ret = {
+      .caps = caps,
+      .error = PVR_SRV_ERROR_BRIDGE_CALL_FAILED,
+   };
+
+   int result;
+
+   result = pvr_srv_bridge_call(fd,
+                                PVR_SRV_BRIDGE_SRVCORE,
+                                PVR_SRV_BRIDGE_SRVCORE_GETMULTICOREINFO,
+                                &cmd,
+                                sizeof(cmd),
+                                &ret,
+                                sizeof(ret));
+   if (result || ret.error != PVR_SRV_OK) {
+      return vk_bridge_err(VK_ERROR_INITIALIZATION_FAILED,
+                           "PVR_SRV_BRIDGE_SRVCORE_GETMULTICOREINFO",
+                           ret);
+   }
+
+   if (!num_cores)
+      *num_cores = ret.num_cores;
+
+   return VK_SUCCESS;
+}
+
 VkResult pvr_srv_alloc_sync_primitive_block(int fd,
                                             void **const handle_out,
                                             void **const pmr_out,
