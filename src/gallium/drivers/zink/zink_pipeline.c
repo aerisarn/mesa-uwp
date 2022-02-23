@@ -145,11 +145,18 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    }
 
    VkPipelineViewportStateCreateInfo viewport_state = {0};
+   VkPipelineViewportDepthClipControlCreateInfoEXT clip = {
+      VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT,
+      NULL,
+      VK_TRUE
+   };
    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
    viewport_state.viewportCount = screen->info.have_EXT_extended_dynamic_state ? 0 : state->dyn_state1.num_viewports;
    viewport_state.pViewports = NULL;
    viewport_state.scissorCount = screen->info.have_EXT_extended_dynamic_state ? 0 : state->dyn_state1.num_viewports;
    viewport_state.pScissors = NULL;
+   if (screen->info.have_EXT_depth_clip_control && !hw_rast_state->clip_halfz)
+      viewport_state.pNext = &clip;
 
    VkPipelineRasterizationStateCreateInfo rast_state = {0};
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
