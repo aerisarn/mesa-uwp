@@ -134,6 +134,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
          zm->key_size = key->size;
          memcpy(zm->key, key, key->size);
       } else {
+         zm->key_size = 0;
          memset(zm->key, 0, key->size);
       }
       if (base_size)
