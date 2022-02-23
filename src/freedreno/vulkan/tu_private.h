@@ -119,8 +119,10 @@ typedef uint32_t xcb_window_t;
 #define MAX_PUSH_DESCRIPTORS 32
 #define MAX_DYNAMIC_UNIFORM_BUFFERS 16
 #define MAX_DYNAMIC_STORAGE_BUFFERS 8
-#define MAX_DYNAMIC_BUFFERS                                                  \
-   (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
+#define MAX_DYNAMIC_BUFFERS_SIZE                                             \
+   (MAX_DYNAMIC_UNIFORM_BUFFERS + 2 * MAX_DYNAMIC_STORAGE_BUFFERS) *         \
+   A6XX_TEX_CONST_DWORDS
+
 #define TU_MAX_DRM_DEVICES 8
 #define MAX_VIEWS 16
 #define MAX_BIND_POINTS 2 /* compute + graphics */
@@ -807,7 +809,7 @@ struct tu_descriptor_state
 {
    struct tu_descriptor_set *sets[MAX_SETS];
    struct tu_descriptor_set push_set;
-   uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS * A6XX_TEX_CONST_DWORDS];
+   uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS_SIZE];
 };
 
 enum tu_cmd_dirty_bits

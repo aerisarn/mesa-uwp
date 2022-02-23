@@ -54,7 +54,7 @@ pool_base(struct tu_descriptor_pool *pool)
 }
 
 static uint32_t
-descriptor_size(VkDescriptorType type)
+descriptor_size(struct tu_device *dev, VkDescriptorType type)
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -69,6 +69,16 @@ descriptor_size(VkDescriptorType type)
        * and samplers are actually two descriptors, so they have size 2.
        */
       return A6XX_TEX_CONST_DWORDS * 4 * 2;
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      /* When we support 16-bit storage, we need an extra descriptor setup as
+       * a 32-bit array for isam to work.
+       */
+      if (dev->physical_device->info->a6xx.storage_16bit) {
+         return A6XX_TEX_CONST_DWORDS * 4 * 2;
+      } else {
+         return A6XX_TEX_CONST_DWORDS * 4;
+      }
    default:
       return A6XX_TEX_CONST_DWORDS * 4;
    }
@@ -82,12 +92,12 @@ is_dynamic(VkDescriptorType type)
 }
 
 static uint32_t
-mutable_descriptor_size(const VkMutableDescriptorTypeListVALVE *list)
+mutable_descriptor_size(struct tu_device *dev, const VkMutableDescriptorTypeListVALVE *list)
 {
    uint32_t max_size = 0;
 
    for (uint32_t i = 0; i < list->descriptorTypeCount; i++) {
-      uint32_t size = descriptor_size(list->pDescriptorTypes[i]);
+      uint32_t size = descriptor_size(dev, list->pDescriptorTypes[i]);
       max_size = MAX2(max_size, size);
    }
 
@@ -188,9 +198,9 @@ tu_CreateDescriptorSetLayout(
           * largest descriptor type that the binding can mutate to.
           */
          set_layout->binding[b].size =
-            mutable_descriptor_size(&mutable_info->pMutableDescriptorTypeLists[j]);
+            mutable_descriptor_size(device, &mutable_info->pMutableDescriptorTypeLists[j]);
       } else {
-         set_layout->binding[b].size = descriptor_size(binding->descriptorType);
+         set_layout->binding[b].size = descriptor_size(device, binding->descriptorType);
       }
 
       if (variable_flags && binding->binding < variable_flags->bindingCount &&
@@ -281,10 +291,12 @@ tu_descriptor_set_layout_destroy(struct tu_device *device,
 
 VKAPI_ATTR void VKAPI_CALL
 tu_GetDescriptorSetLayoutSupport(
-   VkDevice device,
+   VkDevice _device,
    const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
    VkDescriptorSetLayoutSupport *pSupport)
 {
+   TU_FROM_HANDLE(tu_device, device, _device);
+
    VkDescriptorSetLayoutBinding *bindings = NULL;
    VkResult result = vk_create_sorted_bindings(
       pCreateInfo->pBindings, pCreateInfo->bindingCount, &bindings);
@@ -334,9 +346,9 @@ tu_GetDescriptorSetLayoutSupport(
          }
 
          descriptor_sz =
-            mutable_descriptor_size(&mutable_info->pMutableDescriptorTypeLists[i]);
+            mutable_descriptor_size(device, &mutable_info->pMutableDescriptorTypeLists[i]);
       } else {
-         descriptor_sz = descriptor_size(binding->descriptorType);
+         descriptor_sz = descriptor_size(device, binding->descriptorType);
       }
       uint64_t descriptor_alignment = 8;
 
@@ -613,14 +625,11 @@ tu_CreateDescriptorPool(VkDevice _device,
          if (mutable_info && i < mutable_info->mutableDescriptorTypeListCount &&
              mutable_info->pMutableDescriptorTypeLists[i].descriptorTypeCount > 0) {
             bo_size +=
-               mutable_descriptor_size(&mutable_info->pMutableDescriptorTypeLists[i]) *
+               mutable_descriptor_size(device, &mutable_info->pMutableDescriptorTypeLists[i]) *
                   pCreateInfo->pPoolSizes[i].descriptorCount;
          } else {
-            /* Allocate the maximum size possible.
-             * Since we don't support VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER for
-             * mutable descriptors, we can set the default size of descriptor types.
-             */
-            bo_size += A6XX_TEX_CONST_DWORDS * 4 *
+            /* Allocate the maximum size possible. */
+            bo_size += 2 * A6XX_TEX_CONST_DWORDS * 4 *
                   pCreateInfo->pPoolSizes[i].descriptorCount;
          }
          continue;
@@ -628,7 +637,7 @@ tu_CreateDescriptorPool(VkDevice _device,
          break;
       }
 
-      bo_size += descriptor_size(pCreateInfo->pPoolSizes[i].type) *
+      bo_size += descriptor_size(device, pCreateInfo->pPoolSizes[i].type) *
                            pCreateInfo->pPoolSizes[i].descriptorCount;
    }
 
@@ -842,8 +851,14 @@ write_buffer_descriptor(const struct tu_device *device,
                         uint32_t *dst,
                         const VkDescriptorBufferInfo *buffer_info)
 {
+   bool storage_16bit = device->physical_device->info->a6xx.storage_16bit;
+   /* newer a6xx allows using 16-bit descriptor for both 16-bit and 32-bit
+    * access, but we need to keep a 32-bit descriptor for readonly access via
+    * isam.
+    */
+   unsigned descriptors = storage_16bit ? 2 : 1;
    if (buffer_info->buffer == VK_NULL_HANDLE) {
-      memset(dst, 0, A6XX_TEX_CONST_DWORDS * sizeof(uint32_t));
+      memset(dst, 0, descriptors * A6XX_TEX_CONST_DWORDS * sizeof(uint32_t));
       return;
    }
 
@@ -853,21 +868,23 @@ write_buffer_descriptor(const struct tu_device *device,
    uint64_t va = buffer->iova + buffer_info->offset;
    uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
 
-   /* newer a6xx allows using 16-bit descriptor for both 16-bit and 32-bit access */
-   if (device->physical_device->info->a6xx.storage_16bit) {
-      dst[0] = A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) | A6XX_TEX_CONST_0_FMT(FMT6_16_UINT);
-      dst[1] = DIV_ROUND_UP(range, 2);
-   } else {
-      dst[0] = A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) | A6XX_TEX_CONST_0_FMT(FMT6_32_UINT);
-      dst[1] = DIV_ROUND_UP(range, 4);
+   for (unsigned i = 0; i < descriptors; i++) {
+      if (storage_16bit && i == 0) {
+         dst[0] = A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) | A6XX_TEX_CONST_0_FMT(FMT6_16_UINT);
+         dst[1] = DIV_ROUND_UP(range, 2);
+      } else {
+         dst[0] = A6XX_TEX_CONST_0_TILE_MODE(TILE6_LINEAR) | A6XX_TEX_CONST_0_FMT(FMT6_32_UINT);
+         dst[1] = DIV_ROUND_UP(range, 4);
+      }
+      dst[2] =
+         A6XX_TEX_CONST_2_BUFFER | A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
+      dst[3] = 0;
+      dst[4] = A6XX_TEX_CONST_4_BASE_LO(va);
+      dst[5] = A6XX_TEX_CONST_5_BASE_HI(va >> 32);
+      for (int j = 6; j < A6XX_TEX_CONST_DWORDS; j++)
+         dst[j] = 0;
+      dst += A6XX_TEX_CONST_DWORDS;
    }
-   dst[2] =
-      A6XX_TEX_CONST_2_BUFFER | A6XX_TEX_CONST_2_TYPE(A6XX_TEX_BUFFER);
-   dst[3] = 0;
-   dst[4] = A6XX_TEX_CONST_4_BASE_LO(va);
-   dst[5] = A6XX_TEX_CONST_5_BASE_HI(va >> 32);
-   for (int i = 6; i < A6XX_TEX_CONST_DWORDS; i++)
-      dst[i] = 0;
 }
 
 static void

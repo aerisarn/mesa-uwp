@@ -1864,11 +1864,16 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                   dst[0] = va;
                   dst[1] = va >> 32;
                } else {
-                  /* Note: A6XX_TEX_CONST_5_DEPTH is always 0 */
-                  uint64_t va = dst[4] | ((uint64_t)dst[5] << 32);
-                  va += offset;
-                  dst[4] = va;
-                  dst[5] = va >> 32;
+                  uint32_t *dst_desc = dst;
+                  for (unsigned i = 0;
+                       i < binding->size / (4 * A6XX_TEX_CONST_DWORDS);
+                       i++, dst_desc += A6XX_TEX_CONST_DWORDS) {
+                     /* Note: A6XX_TEX_CONST_5_DEPTH is always 0 */
+                     uint64_t va = dst_desc[4] | ((uint64_t)dst_desc[5] << 32);
+                     va += offset;
+                     dst_desc[4] = va;
+                     dst_desc[5] = va >> 32;
+                  }
                }
 
                dst += binding->size / 4;

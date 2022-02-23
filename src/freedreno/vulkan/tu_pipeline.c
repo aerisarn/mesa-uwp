@@ -178,17 +178,19 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
             FALLTHROUGH;
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            unsigned mul = binding->size / (A6XX_TEX_CONST_DWORDS * 4);
             /* IBO-backed resources only need one packet for all graphics stages */
             if (stages & ~VK_SHADER_STAGE_COMPUTE_BIT) {
                emit_load_state(&cs, CP_LOAD_STATE6, ST6_SHADER, SB6_IBO,
-                               base, offset, count);
+                               base, offset, count * mul);
             }
             if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
                emit_load_state(&cs, CP_LOAD_STATE6_FRAG, ST6_IBO, SB6_CS_SHADER,
-                               base, offset, count);
+                               base, offset, count * mul);
             }
             break;
+         }
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
             /* nothing - input attachment doesn't use bindless */

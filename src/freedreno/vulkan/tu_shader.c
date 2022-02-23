@@ -257,7 +257,8 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin)
 }
 
 static void
-lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
+lower_ssbo_ubo_intrinsic(struct tu_device *dev,
+                         nir_builder *b, nir_intrinsic_instr *intrin)
 {
    const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
 
@@ -277,6 +278,16 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 
    nir_ssa_scalar scalar_idx = nir_ssa_scalar_resolved(intrin->src[buffer_src].ssa, 0);
    nir_ssa_def *descriptor_idx = nir_channel(b, intrin->src[buffer_src].ssa, 1);
+
+   /* For isam, we need to use the appropriate descriptor if 16-bit storage is
+    * enabled. Descriptor 0 is the 16-bit one, descriptor 1 is the 32-bit one.
+    */
+   if (dev->physical_device->info->a6xx.storage_16bit &&
+       intrin->intrinsic == nir_intrinsic_load_ssbo &&
+       (nir_intrinsic_access(intrin) & ACCESS_CAN_REORDER) &&
+       intrin->dest.ssa.bit_size > 16) {
+      descriptor_idx = nir_iadd(b, descriptor_idx, nir_imm_int(b, 1));
+   }
 
    nir_ssa_def *results[MAX_SETS + 1] = { NULL };
 
@@ -409,6 +420,7 @@ lower_image_deref(nir_builder *b,
 
 static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
+                struct tu_device *dev,
                 struct tu_shader *shader,
                 const struct tu_pipeline_layout *layout)
 {
@@ -446,7 +458,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_ssbo_atomic_fmax:
    case nir_intrinsic_ssbo_atomic_fcomp_swap:
    case nir_intrinsic_get_ssbo_size:
-      lower_ssbo_ubo_intrinsic(b, instr);
+      lower_ssbo_ubo_intrinsic(dev, b, instr);
       return true;
 
    case nir_intrinsic_image_deref_load:
@@ -560,6 +572,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
 }
 
 struct lower_instr_params {
+   struct tu_device *dev;
    struct tu_shader *shader;
    const struct tu_pipeline_layout *layout;
 };
@@ -573,7 +586,7 @@ lower_instr(nir_builder *b, nir_instr *instr, void *cb_data)
    case nir_instr_type_tex:
       return lower_tex(b, nir_instr_as_tex(instr), params->shader, params->layout);
    case nir_instr_type_intrinsic:
-      return lower_intrinsic(b, nir_instr_as_intrinsic(instr), params->shader, params->layout);
+      return lower_intrinsic(b, nir_instr_as_intrinsic(instr), params->dev, params->shader, params->layout);
    default:
       return false;
    }
@@ -626,12 +639,14 @@ gather_push_constants(nir_shader *shader, struct tu_shader *tu_shader)
 }
 
 static bool
-tu_lower_io(nir_shader *shader, struct tu_shader *tu_shader,
+tu_lower_io(nir_shader *shader, struct tu_device *dev,
+            struct tu_shader *tu_shader,
             const struct tu_pipeline_layout *layout)
 {
    gather_push_constants(shader, tu_shader);
 
    struct lower_instr_params params = {
+      .dev = dev,
       .shader = tu_shader,
       .layout = layout,
    };
@@ -808,7 +823,7 @@ tu_shader_create(struct tu_device *dev,
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, &so_info);
 
-   NIR_PASS_V(nir, tu_lower_io, shader, layout);
+   NIR_PASS_V(nir, tu_lower_io, dev, shader, layout);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
