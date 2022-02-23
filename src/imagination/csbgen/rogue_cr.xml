@@ -551,6 +551,10 @@ SOFTWARE.
 		<field name="addr" start="2" end="39" shift="2" type="address"/>
 	</struct>
 
+	<struct name="ISP_OCLQRY_BASE" length="2">
+		<field name="addr" start="4" end="39" shift="4" type="address"/>
+	</struct>
+
 	<struct name="ISP_ZLS_PIXELS" length="1">
 		<field name="y" start="15" end="29" type="uint"/>
 		<field name="x" start="0" end="14" type="uint"/>

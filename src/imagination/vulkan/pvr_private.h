@@ -1087,6 +1087,18 @@ struct pvr_graphics_pipeline {
    struct pvr_fragment_shader_state fragment_shader_state;
 };
 
+struct pvr_query_pool {
+   struct vk_object_base base;
+
+   /* Stride of result_buffer to get to the start of the results for the next
+    * Phantom.
+    */
+   uint32_t result_stride;
+
+   struct pvr_bo *result_buffer;
+   struct pvr_bo *availability_buffer;
+};
+
 struct pvr_render_target {
    struct pvr_rt_dataset *rt_dataset;
 
@@ -1359,6 +1371,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_pipeline,
                                base,
                                VkPipeline,
                                VK_OBJECT_TYPE_PIPELINE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_query_pool,
+                               base,
+                               VkQueryPool,
+                               VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_framebuffer,
                                base,
                                VkFramebuffer,
