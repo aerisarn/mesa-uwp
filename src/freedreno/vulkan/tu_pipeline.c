@@ -174,7 +174,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             base = MAX_SETS;
             offset = (layout->set[i].dynamic_offset_start +
-                      binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
+                      binding->dynamic_offset_offset) / 4;
             FALLTHROUGH;
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -207,7 +207,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             base = MAX_SETS;
             offset = (layout->set[i].dynamic_offset_start +
-                      binding->dynamic_offset_offset) * A6XX_TEX_CONST_DWORDS;
+                      binding->dynamic_offset_offset) / 4;
             FALLTHROUGH;
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
             tu_foreach_stage(stage, stages) {

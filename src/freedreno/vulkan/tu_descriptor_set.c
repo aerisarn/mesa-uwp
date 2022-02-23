@@ -57,13 +57,8 @@ static uint32_t
 descriptor_size(VkDescriptorType type)
 {
    switch (type) {
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-      /* These are remapped to the special driver-managed descriptor set,
-       * hence they don't take up any space in the original descriptor set:
-       * Input attachment doesn't use descriptor sets at all
-       */
+      /* Input attachment doesn't use descriptor sets at all */
       return 0;
    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       /* We make offsets and sizes all 16 dwords, to match how the hardware
@@ -77,6 +72,13 @@ descriptor_size(VkDescriptorType type)
    default:
       return A6XX_TEX_CONST_DWORDS * 4;
    }
+}
+
+static bool
+is_dynamic(VkDescriptorType type)
+{
+   return type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+          type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 }
 
 static uint32_t
@@ -174,9 +176,8 @@ tu_CreateDescriptorSetLayout(
    set_layout->shader_stages = 0;
    set_layout->has_immutable_samplers = false;
    set_layout->size = 0;
-   set_layout->dynamic_ubo = 0;
 
-   uint32_t dynamic_offset_count = 0;
+   uint32_t dynamic_offset_size = 0;
 
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       const VkDescriptorSetLayoutBinding *binding = bindings + j;
@@ -185,7 +186,7 @@ tu_CreateDescriptorSetLayout(
       set_layout->binding[b].type = binding->descriptorType;
       set_layout->binding[b].array_size = binding->descriptorCount;
       set_layout->binding[b].offset = set_layout->size;
-      set_layout->binding[b].dynamic_offset_offset = dynamic_offset_count;
+      set_layout->binding[b].dynamic_offset_offset = dynamic_offset_size;
       set_layout->binding[b].shader_stages = binding->stageFlags;
 
       if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
@@ -242,17 +243,12 @@ tu_CreateDescriptorSetLayout(
          }
       }
 
-      set_layout->size +=
-         binding->descriptorCount * set_layout->binding[b].size;
-      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
-          binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-         if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-            STATIC_ASSERT(MAX_DYNAMIC_BUFFERS <= 8 * sizeof(set_layout->dynamic_ubo));
-            set_layout->dynamic_ubo |=
-               ((1u << binding->descriptorCount) - 1) << dynamic_offset_count;
-         }
-
-         dynamic_offset_count += binding->descriptorCount;
+      if (is_dynamic(binding->descriptorType)) {
+         dynamic_offset_size +=
+            binding->descriptorCount * set_layout->binding[b].size;
+      } else {
+         set_layout->size +=
+            binding->descriptorCount * set_layout->binding[b].size;
       }
 
       set_layout->shader_stages |= binding->stageFlags;
@@ -260,7 +256,7 @@ tu_CreateDescriptorSetLayout(
 
    free(bindings);
 
-   set_layout->dynamic_offset_count = dynamic_offset_count;
+   set_layout->dynamic_offset_size = dynamic_offset_size;
 
    *pSetLayout = tu_descriptor_set_layout_to_handle(set_layout);
 
@@ -327,7 +323,9 @@ tu_GetDescriptorSetLayoutSupport(
 
       uint64_t descriptor_sz;
 
-      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
+      if (is_dynamic(binding->descriptorType)) {
+         descriptor_sz = 0;
+      } else if (binding->descriptorType == VK_DESCRIPTOR_TYPE_MUTABLE_VALVE) {
          const VkMutableDescriptorTypeListVALVE *list =
             &mutable_info->pMutableDescriptorTypeLists[i];
 
@@ -400,21 +398,21 @@ tu_CreatePipelineLayout(VkDevice _device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    layout->num_sets = pCreateInfo->setLayoutCount;
-   layout->dynamic_offset_count = 0;
+   layout->dynamic_offset_size = 0;
 
-   unsigned dynamic_offset_count = 0;
+   unsigned dynamic_offset_size = 0;
 
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       TU_FROM_HANDLE(tu_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
       layout->set[set].layout = set_layout;
+      layout->set[set].dynamic_offset_start = dynamic_offset_size;
       tu_descriptor_set_layout_ref(set_layout);
 
-      layout->set[set].dynamic_offset_start = dynamic_offset_count;
-      dynamic_offset_count += set_layout->dynamic_offset_count;
+      dynamic_offset_size += set_layout->dynamic_offset_size;
    }
 
-   layout->dynamic_offset_count = dynamic_offset_count;
+   layout->dynamic_offset_size = dynamic_offset_size;
    layout->push_constant_size = 0;
 
    for (unsigned i = 0; i < pCreateInfo->pushConstantRangeCount; ++i) {
@@ -457,8 +455,7 @@ tu_descriptor_set_create(struct tu_device *device,
 {
    struct tu_descriptor_set *set;
    unsigned dynamic_offset = sizeof(struct tu_descriptor_set);
-   unsigned mem_size = dynamic_offset +
-      A6XX_TEX_CONST_DWORDS * 4 * layout->dynamic_offset_count;
+   unsigned mem_size = dynamic_offset + layout->dynamic_offset_size;
 
    if (pool->host_memory_base) {
       if (pool->host_memory_end - pool->host_memory_ptr < mem_size)
@@ -477,7 +474,7 @@ tu_descriptor_set_create(struct tu_device *device,
    memset(set, 0, mem_size);
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
-   if (layout->dynamic_offset_count) {
+   if (layout->dynamic_offset_size) {
       set->dynamic_descriptors = (uint32_t *)((uint8_t*)set + dynamic_offset);
    }
 
@@ -601,7 +598,7 @@ tu_CreateDescriptorPool(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_descriptor_pool *pool;
    uint64_t size = sizeof(struct tu_descriptor_pool);
-   uint64_t bo_size = 0, bo_count = 0, dynamic_count = 0;
+   uint64_t bo_size = 0, bo_count = 0, dynamic_size = 0;
    VkResult ret;
 
    const VkMutableDescriptorTypeCreateInfoVALVE *mutable_info =
@@ -615,7 +612,8 @@ tu_CreateDescriptorPool(VkDevice _device,
       switch(pCreateInfo->pPoolSizes[i].type) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         dynamic_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+         dynamic_size += descriptor_size(device, pCreateInfo->pPoolSizes[i].type) *
+            pCreateInfo->pPoolSizes[i].descriptorCount;
          break;
       case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
          if (mutable_info && i < mutable_info->mutableDescriptorTypeListCount &&
@@ -643,7 +641,7 @@ tu_CreateDescriptorPool(VkDevice _device,
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
       uint64_t host_size = pCreateInfo->maxSets * sizeof(struct tu_descriptor_set);
       host_size += sizeof(struct tu_bo*) * bo_count;
-      host_size += A6XX_TEX_CONST_DWORDS * 4 * dynamic_count;
+      host_size += dynamic_size;
       size += host_size;
    } else {
       size += sizeof(struct tu_descriptor_pool_entry) * pCreateInfo->maxSets;
@@ -960,36 +958,29 @@ tu_update_descriptor_sets(const struct tu_device *device,
       const struct tu_descriptor_set_binding_layout *binding_layout =
          set->layout->binding + writeset->dstBinding;
       uint32_t *ptr = set->mapped_ptr;
+      if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+          writeset->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+         ptr = set->dynamic_descriptors;
+         ptr += binding_layout->dynamic_offset_offset / 4;
+      } else {
+         ptr = set->mapped_ptr;
+         ptr += binding_layout->offset / 4;
+      }
+
       /* for immutable samplers with push descriptors: */
       const bool copy_immutable_samplers =
          dstSetOverride && binding_layout->immutable_samplers_offset;
       const struct tu_sampler *samplers =
          tu_immutable_samplers(set->layout, binding_layout);
 
-      ptr += binding_layout->offset / 4;
-
       ptr += (binding_layout->size / 4) * writeset->dstArrayElement;
       for (j = 0; j < writeset->descriptorCount; ++j) {
          switch(writeset->descriptorType) {
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
-            assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
-            unsigned idx = writeset->dstArrayElement + j;
-            idx += binding_layout->dynamic_offset_offset;
-            write_ubo_descriptor(set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
-                                 writeset->pBufferInfo + j);
-            break;
-         }
+         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             write_ubo_descriptor(ptr, writeset->pBufferInfo + j);
             break;
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-            assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
-            unsigned idx = writeset->dstArrayElement + j;
-            idx += binding_layout->dynamic_offset_offset;
-            write_buffer_descriptor(device, set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
-                                    writeset->pBufferInfo + j);
-            break;
-         }
+         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
             write_buffer_descriptor(device, ptr, writeset->pBufferInfo + j);
             break;
@@ -1039,9 +1030,18 @@ tu_update_descriptor_sets(const struct tu_device *device,
          dst_set->layout->binding + copyset->dstBinding;
       uint32_t *src_ptr = src_set->mapped_ptr;
       uint32_t *dst_ptr = dst_set->mapped_ptr;
-
-      src_ptr += src_binding_layout->offset / 4;
-      dst_ptr += dst_binding_layout->offset / 4;
+      if (src_binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+          src_binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+         src_ptr = src_set->dynamic_descriptors;
+         dst_ptr = dst_set->dynamic_descriptors;
+         src_ptr += src_binding_layout->dynamic_offset_offset / 4;
+         dst_ptr += dst_binding_layout->dynamic_offset_offset / 4;
+      } else {
+         src_ptr = src_set->mapped_ptr;
+         dst_ptr = dst_set->mapped_ptr;
+         src_ptr += src_binding_layout->offset / 4;
+         dst_ptr += dst_binding_layout->offset / 4;
+      }
 
       src_ptr += src_binding_layout->size * copyset->srcArrayElement / 4;
       dst_ptr += dst_binding_layout->size * copyset->dstArrayElement / 4;
@@ -1052,23 +1052,7 @@ tu_update_descriptor_sets(const struct tu_device *device,
       uint32_t copy_size = MIN2(src_binding_layout->size, dst_binding_layout->size);
 
       for (j = 0; j < copyset->descriptorCount; ++j) {
-         switch (src_binding_layout->type) {
-         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-            unsigned src_idx = copyset->srcArrayElement + j;
-            unsigned dst_idx = copyset->dstArrayElement + j;
-            src_idx += src_binding_layout->dynamic_offset_offset;
-            dst_idx += dst_binding_layout->dynamic_offset_offset;
-
-            uint32_t *src_dynamic, *dst_dynamic;
-            src_dynamic = src_set->dynamic_descriptors + src_idx * A6XX_TEX_CONST_DWORDS;
-            dst_dynamic = dst_set->dynamic_descriptors + dst_idx * A6XX_TEX_CONST_DWORDS;
-            memcpy(dst_dynamic, src_dynamic, A6XX_TEX_CONST_DWORDS * 4);
-            break;
-         }
-         default:
-            memcpy(dst_ptr, src_ptr, copy_size);
-         }
+         memcpy(dst_ptr, src_ptr, copy_size);
 
          src_ptr += src_binding_layout->size / 4;
          dst_ptr += dst_binding_layout->size / 4;
@@ -1138,9 +1122,7 @@ tu_CreateDescriptorUpdateTemplate(
       switch (entry->descriptorType) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-         dst_offset = (binding_layout->dynamic_offset_offset +
-            entry->dstArrayElement) * A6XX_TEX_CONST_DWORDS;
-         dst_stride = A6XX_TEX_CONST_DWORDS;
+         dst_offset = binding_layout->dynamic_offset_offset / 4;
          break;
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -1152,9 +1134,10 @@ tu_CreateDescriptorUpdateTemplate(
          FALLTHROUGH;
       default:
          dst_offset = binding_layout->offset / 4;
-         dst_offset += (binding_layout->size * entry->dstArrayElement) / 4;
-         dst_stride = binding_layout->size / 4;
       }
+
+      dst_offset += (binding_layout->size * entry->dstArrayElement) / 4;
+      dst_stride = binding_layout->size / 4;
 
       templ->entry[i] = (struct tu_descriptor_update_template_entry) {
          .descriptor_type = entry->descriptorType,

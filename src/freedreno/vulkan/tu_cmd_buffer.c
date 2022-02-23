@@ -1839,34 +1839,41 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       descriptors_state->sets[idx] = set;
 
-      for(unsigned j = 0; j < set->layout->dynamic_offset_count; ++j, ++dyn_idx) {
-         /* update the contents of the dynamic descriptor set */
-         unsigned src_idx = j;
-         unsigned dst_idx = j + layout->set[idx].dynamic_offset_start;
-         assert(dyn_idx < dynamicOffsetCount);
+      if (!set->layout->dynamic_offset_size)
+         continue;
 
-         uint32_t *dst =
-            &descriptors_state->dynamic_descriptors[dst_idx * A6XX_TEX_CONST_DWORDS];
-         uint32_t *src =
-            &set->dynamic_descriptors[src_idx * A6XX_TEX_CONST_DWORDS];
-         uint32_t offset = pDynamicOffsets[dyn_idx];
+      uint32_t *src = set->dynamic_descriptors;
+      uint32_t *dst = descriptors_state->dynamic_descriptors +
+         layout->set[idx].dynamic_offset_start / 4;
+      for (unsigned j = 0; j < set->layout->binding_count; j++) {
+         struct tu_descriptor_set_binding_layout *binding =
+            &set->layout->binding[j];
+         if (binding->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+             binding->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+            for (unsigned k = 0; k < binding->array_size; k++, dyn_idx++) {
+               assert(dyn_idx < dynamicOffsetCount);
+               uint32_t offset = pDynamicOffsets[dyn_idx];
+               memcpy(dst, src, binding->size);
 
-         /* Patch the storage/uniform descriptors right away. */
-         if (layout->set[idx].layout->dynamic_ubo & (1 << j)) {
-            /* Note: we can assume here that the addition won't roll over and
-             * change the SIZE field.
-             */
-            uint64_t va = src[0] | ((uint64_t)src[1] << 32);
-            va += offset;
-            dst[0] = va;
-            dst[1] = va >> 32;
-         } else {
-            memcpy(dst, src, A6XX_TEX_CONST_DWORDS * 4);
-            /* Note: A6XX_TEX_CONST_5_DEPTH is always 0 */
-            uint64_t va = dst[4] | ((uint64_t)dst[5] << 32);
-            va += offset;
-            dst[4] = va;
-            dst[5] = va >> 32;
+               if (binding->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+                  /* Note: we can assume here that the addition won't roll
+                   * over and change the SIZE field.
+                   */
+                  uint64_t va = src[0] | ((uint64_t)src[1] << 32);
+                  va += offset;
+                  dst[0] = va;
+                  dst[1] = va >> 32;
+               } else {
+                  /* Note: A6XX_TEX_CONST_5_DEPTH is always 0 */
+                  uint64_t va = dst[4] | ((uint64_t)dst[5] << 32);
+                  va += offset;
+                  dst[4] = va;
+                  dst[5] = va >> 32;
+               }
+
+               dst += binding->size / 4;
+               src += binding->size / 4;
+            }
          }
       }
    }
@@ -1882,10 +1889,11 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          addr[i] = set->va | 3;
    }
 
-   if (layout->dynamic_offset_count) {
+   if (layout->dynamic_offset_size) {
       /* allocate and fill out dynamic descriptor set */
       struct tu_cs_memory dynamic_desc_set;
-      VkResult result = tu_cs_alloc(&cmd->sub_cs, layout->dynamic_offset_count,
+      VkResult result = tu_cs_alloc(&cmd->sub_cs,
+                                    layout->dynamic_offset_size / (4 * A6XX_TEX_CONST_DWORDS),
                                     A6XX_TEX_CONST_DWORDS, &dynamic_desc_set);
       if (result != VK_SUCCESS) {
          cmd->record_result = result;
@@ -1893,7 +1901,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       }
 
       memcpy(dynamic_desc_set.map, descriptors_state->dynamic_descriptors,
-             layout->dynamic_offset_count * A6XX_TEX_CONST_DWORDS * 4);
+             layout->dynamic_offset_size);
       addr[MAX_SETS] = dynamic_desc_set.iova | 3;
    }
 

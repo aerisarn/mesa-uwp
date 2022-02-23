@@ -203,8 +203,8 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
    switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-      base = layout->set[set].dynamic_offset_start +
-         binding_layout->dynamic_offset_offset;
+      base = (layout->set[set].dynamic_offset_start +
+         binding_layout->dynamic_offset_offset) / (4 * A6XX_TEX_CONST_DWORDS);
       set = MAX_SETS;
       break;
    default:
