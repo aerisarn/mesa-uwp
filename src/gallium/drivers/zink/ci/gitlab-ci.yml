@@ -5,6 +5,7 @@
     ZINK_USE_LAVAPIPE: "true"
     LIBGL_ALWAYS_SOFTWARE: "1"
     GPU_VERSION: zink-lvp
+    FLAKES_CHANNEL: "#zink-ci"
     # Fix non-conformant llvmpipe filter defaults
     GALLIVM_PERF: "no_quad_lod"
     LP_NUM_THREADS: 0
