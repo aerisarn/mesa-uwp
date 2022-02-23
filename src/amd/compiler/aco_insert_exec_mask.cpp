@@ -613,12 +613,11 @@ process_instructions(exec_ctx& ctx, Block* block, std::vector<aco_ptr<Instructio
 
          for (int i = num; i >= 0; i--) {
             if (ctx.info[block->index].exec[i].second & mask_type_exact) {
-               Instruction* andn2 = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc),
-                                             ctx.info[block->index].exec[i].first, cond);
-               if (i == (int)ctx.info[block->index].exec.size() - 1) {
-                  andn2->operands[0] = Operand(exec, bld.lm);
+               Instruction* andn2 =
+                  bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc),
+                           get_exec_op(ctx.info[block->index].exec[i].first), cond);
+               if (i == (int)ctx.info[block->index].exec.size() - 1)
                   andn2->definitions[0] = Definition(exec, bld.lm);
-               }
 
                ctx.info[block->index].exec[i].first = Operand(andn2->definitions[0].getTemp());
                exit_cond = andn2->definitions[1].getTemp();
