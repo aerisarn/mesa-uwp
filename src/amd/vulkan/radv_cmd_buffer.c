@@ -5811,9 +5811,6 @@ radv_TrimCommandPool(VkDevice device, VkCommandPool commandPool, VkCommandPoolTr
 {
    RADV_FROM_HANDLE(radv_cmd_pool, pool, commandPool);
 
-   if (!pool)
-      return;
-
    list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer, &pool->free_cmd_buffers, pool_link)
    {
       radv_destroy_cmd_buffer(cmd_buffer);
