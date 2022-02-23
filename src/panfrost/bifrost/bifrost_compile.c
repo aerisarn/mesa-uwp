@@ -3260,6 +3260,34 @@ bi_count_tuple_stats(bi_clause *clause, bi_tuple *tuple, struct bi_stats *stats)
 
 }
 
+/*
+ * v7 allows preloading LD_VAR or VAR_TEX messages that must complete before the
+ * shader completes. These costs are not accounted for in the general cycle
+ * counts, so this function calculates the effective cost of these messages, as
+ * if they were executed by shader code.
+ */
+static unsigned
+bi_count_preload_cost(bi_context *ctx)
+{
+        /* Units: 1/16 of a normalized cycle, assuming that we may interpolate
+         * 16 fp16 varying components per cycle or fetch two texels per cycle.
+         */
+        unsigned cost = 0;
+
+        for (unsigned i = 0; i < ARRAY_SIZE(ctx->info.bifrost->messages); ++i) {
+                struct bifrost_message_preload msg = ctx->info.bifrost->messages[i];
+
+                if (msg.enabled && msg.texture) {
+                        /* 2 coordinate, 2 half-words each, plus texture */
+                        cost += 12;
+                } else if (msg.enabled) {
+                        cost += (msg.num_components * (msg.fp16 ? 1 : 2));
+                }
+        }
+
+        return cost;
+}
+
 static const char *
 bi_shader_stage_name(bi_context *ctx)
 {
@@ -3313,20 +3341,26 @@ bi_print_stats(bi_context *ctx, unsigned size, FILE *fp)
         unsigned nr_threads = full_threads ? 2 : 1;
 
         /* Dump stats */
-
-        fprintf(stderr, "%s - %s shader: "
+        char *str = ralloc_asprintf(NULL, "%s - %s shader: "
                         "%u inst, %u tuples, %u clauses, "
                         "%f cycles, %f arith, %f texture, %f vary, %f ldst, "
-                        "%u quadwords, %u threads, %u loops, "
-                        "%u:%u spills:fills\n",
+                        "%u quadwords, %u threads",
                         ctx->nir->info.label ?: "",
                         bi_shader_stage_name(ctx),
                         stats.nr_ins, stats.nr_tuples, stats.nr_clauses,
                         cycles_bound, cycles_arith, cycles_texture,
                         cycles_varying, cycles_ldst,
-                        size / 16, nr_threads,
-                        ctx->loop_count,
-                        ctx->spills, ctx->fills);
+                        size / 16, nr_threads);
+
+        if (ctx->arch == 7) {
+                ralloc_asprintf_append(&str, ", %u preloads", bi_count_preload_cost(ctx));
+        }
+
+        ralloc_asprintf_append(&str, ", %u loops, %u:%u spills:fills\n",
+                        ctx->loop_count, ctx->spills, ctx->fills);
+
+        fputs(str, stderr);
+        ralloc_free(str);
 }
 
 static int
