@@ -173,7 +173,8 @@ mark_whole_variable(nir_shader *shader, nir_variable *var,
    if (nir_is_arrayed_io(var, shader->info.stage) ||
        /* For NV_mesh_shader. */
        (shader->info.stage == MESA_SHADER_MESH &&
-        var->data.location == VARYING_SLOT_PRIMITIVE_INDICES)) {
+        var->data.location == VARYING_SLOT_PRIMITIVE_INDICES &&
+        !var->data.per_primitive)) {
       assert(glsl_type_is_array(type));
       type = glsl_get_array_element(type);
    }

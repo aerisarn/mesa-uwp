@@ -156,7 +156,7 @@ nir_is_arrayed_io(const nir_variable *var, gl_shader_stage stage)
    if (stage == MESA_SHADER_MESH) {
       /* NV_mesh_shader: this is flat array for the whole workgroup. */
       if (var->data.location == VARYING_SLOT_PRIMITIVE_INDICES)
-         return false;
+         return var->data.per_primitive;
    }
 
    if (var->data.mode == nir_var_shader_in)
@@ -180,6 +180,18 @@ static unsigned get_number_of_slots(struct lower_io_state *state,
       assert(glsl_type_is_array(type));
       type = glsl_get_array_element(type);
    }
+
+   /* NV_mesh_shader:
+    * PRIMITIVE_INDICES is a flat array, not a proper arrayed output,
+    * as opposed to D3D-style mesh shaders where it's addressed by
+    * the primitive index.
+    * Prevent assigning several slots to primitive indices,
+    * to avoid some issues.
+    */
+   if (state->builder.shader->info.stage == MESA_SHADER_MESH &&
+       var->data.location == VARYING_SLOT_PRIMITIVE_INDICES &&
+       !nir_is_arrayed_io(var, state->builder.shader->info.stage))
+      return 1;
 
    return state->type_size(type, var->data.bindless);
 }
@@ -452,12 +464,6 @@ emit_store(struct lower_io_state *state, nir_ssa_def *data,
       var->data.precision == GLSL_PRECISION_LOW;
    semantics.per_view = var->data.per_view;
    semantics.invariant = var->data.invariant;
-
-   /* NV_mesh_shader: prevent assigning several slots to primitive indices. */
-   if (b->shader->info.stage == MESA_SHADER_MESH &&
-       var->data.location == VARYING_SLOT_PRIMITIVE_INDICES &&
-       !nir_is_arrayed_io(var, b->shader->info.stage))
-      semantics.num_slots = 1;
 
    nir_intrinsic_set_io_semantics(store, semantics);
 
