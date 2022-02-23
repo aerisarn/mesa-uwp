@@ -1133,6 +1133,15 @@ bi_after_instr(bi_instr *instr)
     };
 }
 
+static inline bi_cursor
+bi_before_nonempty_block(bi_block *block)
+{
+        bi_instr *I = list_first_entry(&block->instructions, bi_instr, link);
+        assert(I != NULL);
+
+        return bi_before_instr(I);
+}
+
 /* Invariant: a tuple must be nonempty UNLESS it is the last tuple of a clause,
  * in which case there must exist a nonempty penultimate tuple */
 
