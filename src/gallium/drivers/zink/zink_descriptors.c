@@ -1757,8 +1757,9 @@ zink_descriptor_util_init_fbfetch(struct zink_context *ctx)
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    VKSCR(DestroyDescriptorSetLayout)(screen->dev, ctx->dd->push_dsl[0]->layout, NULL);
-   ralloc_free(ctx->dd->push_dsl[0]);
-   ralloc_free(ctx->dd->push_layout_keys[0]);
+   //don't free these now, let ralloc free on teardown to avoid invalid access
+   //ralloc_free(ctx->dd->push_dsl[0]);
+   //ralloc_free(ctx->dd->push_layout_keys[0]);
    ctx->dd->push_dsl[0] = create_gfx_layout(ctx, &ctx->dd->push_layout_keys[0], true);
    ctx->dd->has_fbfetch = true;
    if (screen->descriptor_mode != ZINK_DESCRIPTOR_MODE_LAZY)
