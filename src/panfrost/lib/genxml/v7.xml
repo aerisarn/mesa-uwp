@@ -881,8 +881,8 @@
     <field name="Thread Balancing" size="16" start="13:0" type="uint"/>
     <field name="Secondary preload" size="32" start="13:0" type="Preload"/>
     <field name="Secondary shader" size="64" start="14:0" type="address"/>
-    <field name="Message Preload 1" size="16" start="15:0" type="uint"/>
-    <field name="Message Preload 2" size="16" start="15:16" type="uint"/>
+    <field name="Message Preload 1" size="16" start="15:0" type="Message Preload"/>
+    <field name="Message Preload 2" size="16" start="15:16" type="Message Preload"/>
   </struct>
 
   <struct name="Uniform Buffer" align="8">

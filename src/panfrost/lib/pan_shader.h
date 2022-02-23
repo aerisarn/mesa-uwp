@@ -160,6 +160,33 @@ pan_make_preload(gl_shader_stage stage,
         }
 }
 
+#if PAN_ARCH == 7
+static inline void
+pan_pack_message_preload(struct MALI_MESSAGE_PRELOAD *cfg,
+                         const struct bifrost_message_preload *msg)
+{
+        enum mali_message_preload_register_format regfmt = msg->fp16 ?
+                MALI_MESSAGE_PRELOAD_REGISTER_FORMAT_F16 :
+                MALI_MESSAGE_PRELOAD_REGISTER_FORMAT_F32;
+
+        if (msg->enabled && msg->texture) {
+                cfg->type = MALI_MESSAGE_TYPE_VAR_TEX;
+                cfg->var_tex.varying_index = msg->varying_index;
+                cfg->var_tex.sampler_index = msg->sampler_index;
+                cfg->var_tex.register_format = regfmt;
+                cfg->var_tex.skip = msg->skip;
+                cfg->var_tex.zero_lod = msg->zero_lod;
+        } else if (msg->enabled) {
+                cfg->type = MALI_MESSAGE_TYPE_LD_VAR;
+                cfg->ld_var.varying_index = msg->varying_index;
+                cfg->ld_var.register_format = regfmt;
+                cfg->ld_var.num_components = msg->num_components;
+        } else {
+                cfg->type = MALI_MESSAGE_TYPE_DISABLED;
+        }
+}
+#endif
+
 static inline void
 pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                                struct MALI_RENDERER_STATE *rsd)
@@ -188,8 +215,8 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 rsd->properties.shader_wait_dependency_6 = info->bifrost.wait_6;
                 rsd->properties.shader_wait_dependency_7 = info->bifrost.wait_7;
 
-                rsd->message_preload_1 = info->bifrost.messages[0];
-                rsd->message_preload_2 = info->bifrost.messages[1];
+                pan_pack_message_preload(&rsd->message_preload_1, &info->bifrost.messages[0]);
+                pan_pack_message_preload(&rsd->message_preload_2, &info->bifrost.messages[1]);
 #endif
         } else if (info->stage == MESA_SHADER_VERTEX && info->vs.secondary_enable) {
                 rsd->secondary_preload.uniform_count = fau_count;
