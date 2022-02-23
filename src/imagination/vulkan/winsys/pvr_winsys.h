@@ -56,6 +56,7 @@ struct pvr_winsys_heaps {
    struct pvr_winsys_heap *pds_heap;
    struct pvr_winsys_heap *rgn_hdr_heap;
    struct pvr_winsys_heap *usc_heap;
+   struct pvr_winsys_heap *vis_test_heap;
 };
 
 struct pvr_winsys_static_data_offsets {

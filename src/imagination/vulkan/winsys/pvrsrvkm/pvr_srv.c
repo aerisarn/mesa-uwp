@@ -123,10 +123,10 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
    const struct pvr_winsys_static_data_offsets usc_heap_static_data_offsets = {
       .vdm_sync = FWIF_USC_HEAP_VDM_SYNC_OFFSET_BYTES,
    };
-   const struct pvr_winsys_static_data_offsets
-      rgn_hdr_heap_static_data_offsets = { 0 };
+   const struct pvr_winsys_static_data_offsets no_static_data_offsets = { 0 };
 
    char heap_name[PVR_SRV_DEVMEM_HEAPNAME_MAXLENGTH];
+   int vis_test_heap_idx = -1;
    int general_heap_idx = -1;
    int rgn_hdr_heap_idx = -1;
    int pds_heap_idx = -1;
@@ -181,11 +181,17 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
                          PVR_SRV_USCCODE_HEAP_IDENT,
                          sizeof(PVR_SRV_USCCODE_HEAP_IDENT)) == 0) {
          usc_heap_idx = i;
+      } else if (vis_test_heap_idx == -1 &&
+                 strncmp(heap_name,
+                         PVR_SRV_VISIBILITY_TEST_HEAP_IDENT,
+                         sizeof(PVR_SRV_VISIBILITY_TEST_HEAP_IDENT)) == 0) {
+         vis_test_heap_idx = i;
       }
    }
 
-   /* Check for and initialize required heaps. */
-   if (general_heap_idx == -1 || pds_heap_idx == -1 || usc_heap_idx == -1) {
+   /* Check for and initialise required heaps. */
+   if (general_heap_idx == -1 || pds_heap_idx == -1 || usc_heap_idx == -1 ||
+       vis_test_heap_idx == -1) {
       result = vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
       goto err_pvr_srv_int_ctx_destroy;
    }
@@ -211,14 +217,21 @@ static VkResult pvr_srv_memctx_init(struct pvr_srv_winsys *srv_ws)
    if (result != VK_SUCCESS)
       goto err_pvr_srv_heap_finish_pds;
 
+   result = pvr_srv_heap_init(srv_ws,
+                              &srv_ws->vis_test_heap,
+                              vis_test_heap_idx,
+                              &no_static_data_offsets);
+   if (result != VK_SUCCESS)
+      goto err_pvr_srv_heap_finish_usc;
+
    /* Check for and set up optional heaps. */
    if (rgn_hdr_heap_idx != -1) {
       result = pvr_srv_heap_init(srv_ws,
                                  &srv_ws->rgn_hdr_heap,
                                  rgn_hdr_heap_idx,
-                                 &rgn_hdr_heap_static_data_offsets);
+                                 &no_static_data_offsets);
       if (result != VK_SUCCESS)
-         goto err_pvr_srv_heap_finish_usc;
+         goto err_pvr_srv_heap_finish_vis_test;
       srv_ws->rgn_hdr_heap_present = true;
    } else {
       srv_ws->rgn_hdr_heap_present = false;
@@ -254,6 +267,9 @@ err_pvr_srv_heap_finish_rgn_hdr:
    if (srv_ws->rgn_hdr_heap_present)
       pvr_srv_heap_finish(srv_ws, &srv_ws->rgn_hdr_heap);
 
+err_pvr_srv_heap_finish_vis_test:
+   pvr_srv_heap_finish(srv_ws, &srv_ws->vis_test_heap);
+
 err_pvr_srv_heap_finish_usc:
    pvr_srv_heap_finish(srv_ws, &srv_ws->usc_heap);
 
@@ -281,6 +297,12 @@ static void pvr_srv_memctx_finish(struct pvr_srv_winsys *srv_ws)
                    VK_ERROR_UNKNOWN,
                    "Region header heap in use, can not deinit");
       }
+   }
+
+   if (!pvr_srv_heap_finish(srv_ws, &srv_ws->vis_test_heap)) {
+      vk_errorf(NULL,
+                VK_ERROR_UNKNOWN,
+                "Visibility test heap in use, can not deinit");
    }
 
    if (!pvr_srv_heap_finish(srv_ws, &srv_ws->usc_heap))
@@ -369,6 +391,7 @@ static void pvr_srv_winsys_get_heaps_info(struct pvr_winsys *ws,
    heaps->general_heap = &srv_ws->general_heap.base;
    heaps->pds_heap = &srv_ws->pds_heap.base;
    heaps->usc_heap = &srv_ws->usc_heap.base;
+   heaps->vis_test_heap = &srv_ws->vis_test_heap.base;
 
    if (srv_ws->rgn_hdr_heap_present)
       heaps->rgn_hdr_heap = &srv_ws->rgn_hdr_heap.base;
