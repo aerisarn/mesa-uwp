@@ -48,6 +48,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"noopt",     BIFROST_DBG_NOOPT,        "Skip optimization passes"},
         {"noidvs",    BIFROST_DBG_NOIDVS,       "Disable IDVS"},
         {"nosb",      BIFROST_DBG_NOSB,         "Disable scoreboarding"},
+        {"nopreload", BIFROST_DBG_NOPRELOAD,    "Disable message preloading"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -4012,6 +4013,16 @@ bi_compile_variant_nir(nir_shader *nir,
                 bi_opt_copy_prop(ctx);
                 bi_opt_mod_prop_forward(ctx);
                 bi_opt_mod_prop_backward(ctx);
+
+                /* Push LD_VAR_IMM/VAR_TEX instructions. Must run after
+                 * mod_prop_backward to fuse VAR_TEX */
+                if (ctx->arch == 7 && ctx->stage == MESA_SHADER_FRAGMENT &&
+                    !(bifrost_debug & BIFROST_DBG_NOPRELOAD)) {
+                        bi_opt_dead_code_eliminate(ctx);
+                        bi_opt_message_preload(ctx);
+                        bi_opt_copy_prop(ctx);
+                }
+
                 bi_opt_dead_code_eliminate(ctx);
                 bi_opt_cse(ctx);
                 bi_opt_dead_code_eliminate(ctx);
