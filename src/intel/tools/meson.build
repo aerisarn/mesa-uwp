@@ -72,6 +72,17 @@ error2aub = executable(
   install : true
 )
 
+intel_hang_replay = executable(
+  'intel_hang_replay',
+  files('intel_hang_replay.c'),
+  dependencies : [idep_libintel_common, dep_libdrm, dep_dl, dep_thread, dep_m],
+  include_directories : [inc_include, inc_src, inc_intel],
+  link_with : [libintel_dev, libintel_compiler],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  install : true
+)
+
 sanitize_data = configuration_data()
 sanitize_data.set(
   'install_libexecdir',
