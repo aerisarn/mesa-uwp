@@ -357,7 +357,7 @@ mir_compute_interference(
                  * avoid this situation.
                  */
                 util_dynarray_foreach(&blk->bundles, midgard_bundle, bundle) {
-                        midgard_instruction *instrs[2][3];
+                        midgard_instruction *instrs[2][4];
                         unsigned instr_count[2] = { 0, 0 };
 
                         for (unsigned i = 0; i < bundle->instruction_count; i++) {
