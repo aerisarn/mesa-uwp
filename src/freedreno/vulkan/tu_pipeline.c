@@ -422,7 +422,16 @@ tu_xs_get_immediates_packet_size_dwords(const struct ir3_shader_variant *xs)
 static uint32_t
 tu_xs_get_additional_cs_size_dwords(const struct ir3_shader_variant *xs)
 {
+   const struct ir3_const_state *const_state = ir3_const_state(xs);
+
    uint32_t size = tu_xs_get_immediates_packet_size_dwords(xs);
+
+   /* Variable number of UBO upload ranges. */
+   size += 4 * const_state->ubo_state.num_enabled;
+
+   /* Variable number of dwords for the primitive map */
+   size += DIV_ROUND_UP(xs->input_size, 4);
+
    return size;
 }
 
@@ -2260,7 +2269,7 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
                         struct tu_pipeline_cache *cache,
                         struct ir3_shader_variant *compute)
 {
-   uint32_t size = 2048 + tu6_load_state_size(pipeline, layout, compute);
+   uint32_t size = 1024 + tu6_load_state_size(pipeline, layout, compute);
 
    /* graphics case: */
    if (builder) {
