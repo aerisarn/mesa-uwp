@@ -7,6 +7,7 @@ variables:
           bash download-git-cache.sh
           rm download-git-cache.sh
           set +o xtrace
+  CI_JOB_JWT_FILE: /minio_jwt
   MINIO_HOST: minio-packet.freedesktop.org
   # per-pipeline artifact storage on MinIO
   PIPELINE_ARTIFACTS_BASE: ${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
@@ -22,7 +23,6 @@ variables:
 default:
   before_script:
     - echo -e "\e[0Ksection_start:$(date +%s):unset_env_vars_section[collapsed=true]\r\e[0KUnsetting vulnerable environment variables"
-    - export CI_JOB_JWT_FILE="${CI_JOB_JWT_FILE:-$(mktemp)}"
     - echo -n "${CI_JOB_JWT}" > "${CI_JOB_JWT_FILE}"
     - unset CI_JOB_JWT
     - echo -e "\e[0Ksection_end:$(date +%s):unset_env_vars_section\r\e[0K"
@@ -1308,9 +1308,7 @@ debian-mingw32-x86_64:
       - results/summary/
       - results/*.txt
   variables:
-    CI_JOB_JWT_FILE: /minio_jwt  # JWT file on piglit jobs should be available on / partition
     PIGLIT_REPLAY_EXTRA_ARGS:  --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/ --minio_host=minio-packet.freedesktop.org --minio_bucket=mesa-tracie-public --role-session-name=${CI_PROJECT_PATH}:${CI_JOB_ID} --jwt-file=${CI_JOB_JWT_FILE}
-    CI_JOB_JWT_FILE: /minio_jwt  # JWT file on piglit jobs should be available on / partition
   script:
     - install/piglit/piglit-traces.sh
 
