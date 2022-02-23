@@ -212,9 +212,13 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
       break;
    }
 
+   unsigned stride = binding_layout->size / (4 * A6XX_TEX_CONST_DWORDS);
+   assert(util_is_power_of_two_nonzero(stride));
+   nir_ssa_def *shift = nir_imm_int(b, util_logbase2(stride));
    nir_ssa_def *def = nir_vec3(b, nir_imm_int(b, set),
-                               nir_iadd(b, nir_imm_int(b, base), vulkan_idx),
-                               nir_imm_int(b, 0));
+                               nir_iadd(b, nir_imm_int(b, base),
+                                        nir_ishl(b, vulkan_idx, shift)),
+                               shift);
 
    nir_ssa_def_rewrite_uses(&instr->dest.ssa, def);
    nir_instr_remove(&instr->instr);
@@ -225,23 +229,30 @@ lower_vulkan_resource_reindex(nir_builder *b, nir_intrinsic_instr *instr)
 {
    nir_ssa_def *old_index = instr->src[0].ssa;
    nir_ssa_def *delta = instr->src[1].ssa;
+   nir_ssa_def *shift = nir_channel(b, old_index, 2);
 
    nir_ssa_def *new_index =
       nir_vec3(b, nir_channel(b, old_index, 0),
-               nir_iadd(b, nir_channel(b, old_index, 1), delta),
-               nir_channel(b, old_index, 2));
+               nir_iadd(b, nir_channel(b, old_index, 1),
+                        nir_ishl(b, delta, shift)),
+               shift);
 
    nir_ssa_def_rewrite_uses(&instr->dest.ssa, new_index);
    nir_instr_remove(&instr->instr);
 }
 
 static void
-lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin)
+lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin)
 {
+   nir_ssa_def *old_index = intrin->src[0].ssa;
    /* Loading the descriptor happens as part of the load/store instruction so
-    * this is a no-op.
+    * this is a no-op. We just need to turn the shift into an offset of 0.
     */
-   nir_ssa_def_rewrite_uses_src(&intrin->dest.ssa, intrin->src[0]);
+   nir_ssa_def *new_index =
+      nir_vec3(b, nir_channel(b, old_index, 0),
+               nir_channel(b, old_index, 1),
+               nir_imm_int(b, 0));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_index);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -407,7 +418,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       return true;
 
    case nir_intrinsic_load_vulkan_descriptor:
-      lower_load_vulkan_descriptor(instr);
+      lower_load_vulkan_descriptor(b, instr);
       return true;
 
    case nir_intrinsic_vulkan_resource_index:

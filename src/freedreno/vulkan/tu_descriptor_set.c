@@ -86,16 +86,10 @@ mutable_descriptor_size(const VkMutableDescriptorTypeListVALVE *list)
 {
    uint32_t max_size = 0;
 
-   /* Since we don't support VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER for
-    * mutable descriptors, max_size should be always A6XX_TEX_CONST_DWORDS * 4.
-    * But we leave this as-is and add an assert.
-    */
    for (uint32_t i = 0; i < list->descriptorTypeCount; i++) {
       uint32_t size = descriptor_size(list->pDescriptorTypes[i]);
       max_size = MAX2(max_size, size);
    }
-
-   assert(max_size == A6XX_TEX_CONST_DWORDS * 4);
 
    return max_size;
 }
