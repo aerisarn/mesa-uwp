@@ -473,7 +473,6 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws, uint64_t size, unsigned 
       request.flags |= AMDGPU_GEM_CREATE_VM_ALWAYS_VALID;
    }
 
-   /* this won't do anything on pre 4.9 kernels */
    if (initial_domain & RADEON_DOMAIN_VRAM) {
       if (ws->zero_all_vram_allocs || (flags & RADEON_FLAG_ZERO_VRAM))
          request.flags |= AMDGPU_GEM_CREATE_VRAM_CLEARED;
