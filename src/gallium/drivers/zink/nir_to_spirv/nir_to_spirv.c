@@ -43,6 +43,7 @@ struct ntv_context {
    bool explicit_lod; //whether to set lod=0 for texture()
 
    struct spirv_builder builder;
+   nir_shader *nir;
 
    struct hash_table *glsl_types;
    struct hash_table *bo_types;
@@ -3698,6 +3699,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
 
    struct ntv_context ctx = {0};
    ctx.mem_ctx = ralloc_context(NULL);
+   ctx.nir = s;
    ctx.builder.mem_ctx = ctx.mem_ctx;
    assert(spirv_version >= SPIRV_VERSION(1, 0));
    ctx.spirv_1_4_interfaces = spirv_version >= SPIRV_VERSION(1, 4);
