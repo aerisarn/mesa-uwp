@@ -20,8 +20,6 @@ glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 shaders@glsl-bug-110796,Fail
-shaders@glsl-uniform-interstage-limits@subdivide 5,Crash
-shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Crash
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
 shaders@point-vertex-id gl_instanceid,Fail
