@@ -265,6 +265,36 @@ nir_lower_system_values(nir_shader *shader)
    return progress;
 }
 
+static nir_ssa_def *
+lower_id_to_index(nir_builder *b, nir_ssa_def *index, nir_ssa_def *size,
+                  unsigned bit_size)
+{
+   /* We lower gl_LocalInvocationID to gl_LocalInvocationIndex based
+    * on this formula:
+    *
+    *    id.x = index % size.x;
+    *    id.y = (index / size.x) % gl_WorkGroupSize.y;
+    *    id.z = (index / (size.x * size.y)) % size.z;
+    *
+    * However, the final % size.z does nothing unless we
+    * accidentally end up with an index that is too
+    * large so it can safely be omitted.
+    *
+    * Because no hardware supports a local workgroup size greater than
+    * about 1K, this calculation can be done in 32-bit and can save some
+    * 64-bit arithmetic.
+    */
+
+   nir_ssa_def *size_x = nir_channel(b, size, 0);
+   nir_ssa_def *size_y = nir_channel(b, size, 1);
+
+   nir_ssa_def *id_x = nir_umod(b, index, size_x);
+   nir_ssa_def *id_y = nir_umod(b, nir_udiv(b, index, size_x), size_y);
+   nir_ssa_def *id_z = nir_udiv(b, index, nir_imul(b, size_x, size_y));
+
+   return nir_u2u(b, nir_vec3(b, id_x, id_y, id_z), bit_size);
+}
+
 static bool
 lower_compute_system_value_filter(const nir_instr *instr, const void *_state)
 {
@@ -293,40 +323,9 @@ lower_compute_system_value_instr(nir_builder *b,
        */
       if (b->shader->options->lower_cs_local_id_to_index ||
           (options && options->lower_cs_local_id_to_index)) {
-         /* We lower gl_LocalInvocationID to gl_LocalInvocationIndex based
-          * on this formula:
-          *
-          *    gl_LocalInvocationID.x =
-          *       gl_LocalInvocationIndex % gl_WorkGroupSize.x;
-          *    gl_LocalInvocationID.y =
-          *       (gl_LocalInvocationIndex / gl_WorkGroupSize.x) %
-          *       gl_WorkGroupSize.y;
-          *    gl_LocalInvocationID.z =
-          *       (gl_LocalInvocationIndex /
-          *        (gl_WorkGroupSize.x * gl_WorkGroupSize.y)) %
-          *       gl_WorkGroupSize.z;
-          *
-          * However, the final % gl_WorkGroupSize.z does nothing unless we
-          * accidentally end up with a gl_LocalInvocationIndex that is too
-          * large so it can safely be omitted.
-          */
          nir_ssa_def *local_index = nir_load_local_invocation_index(b);
          nir_ssa_def *local_size = nir_load_workgroup_size(b);
-
-         /* Because no hardware supports a local workgroup size greater than
-          * about 1K, this calculation can be done in 32-bit and can save some
-          * 64-bit arithmetic.
-          */
-         nir_ssa_def *id_x, *id_y, *id_z;
-         id_x = nir_umod(b, local_index,
-                            nir_channel(b, local_size, 0));
-         id_y = nir_umod(b, nir_udiv(b, local_index,
-                                        nir_channel(b, local_size, 0)),
-                            nir_channel(b, local_size, 1));
-         id_z = nir_udiv(b, local_index,
-                            nir_imul(b, nir_channel(b, local_size, 0),
-                                        nir_channel(b, local_size, 1)));
-         return nir_u2u(b, nir_vec3(b, id_x, id_y, id_z), bit_size);
+         return lower_id_to_index(b, local_index, local_size, bit_size);
       }
       if (options && options->shuffle_local_ids_for_quad_derivatives &&
           b->shader->info.cs.derivative_group == DERIVATIVE_GROUP_QUADS &&
