@@ -148,8 +148,7 @@ a618_vk:
     DTB: sc7180-trogdor-lazor-limozeen-nots
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
-  tags:
-    - mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
+    RUNNER_TAG: mesa-ci-x86-64-lava-sc7180-trogdor-lazor-limozeen
 
 a618_vk_full:
   extends:

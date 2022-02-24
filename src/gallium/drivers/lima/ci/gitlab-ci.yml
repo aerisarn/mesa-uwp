@@ -10,6 +10,4 @@
     FDO_CI_CONCURRENT: 4
     DEQP_EXPECTED_RENDERER: Mali450
     VISIBILITY_GROUP: "mesa-ci"
-
-  tags:
-    - mesa-ci-x86-64-lava-lima
+    RUNNER_TAG: mesa-ci-x86-64-lava-lima

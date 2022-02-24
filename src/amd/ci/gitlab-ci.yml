@@ -75,8 +75,7 @@ radv_stoney_vkcts:amd64:
     HWCI_FREQ_MAX: "true"
     VK_DRIVER: radeon
     DRIVER_NAME: radv
-  tags:
-    - mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
+    RUNNER_TAG: mesa-ci-x86-64-lava-hp-11A-G6-EE-grunt
 
 .radv-fossils:
   extends:

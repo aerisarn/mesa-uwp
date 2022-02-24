@@ -150,6 +150,8 @@
   rules:
     - if: '$FD_FARM == "offline"'
       when: never
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
@@ -177,6 +179,8 @@
   rules:
     - if: '$FD_FARM == "offline"'
       when: never
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     # If the triggerer has access to the restricted traces and if it is pre-merge
     - if: '($GITLAB_USER_LOGIN !~ "/^(robclark|anholt|flto|cwabbott0|Danil|tomeu)$/") &&
            ($GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH)'
@@ -203,6 +207,8 @@
   rules:
     - if: '$FD_FARM == "offline"'
       when: never
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - *ignore_scheduled_pipelines
     # Run only on pre-merge pipelines from Marge
     - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
@@ -225,6 +231,8 @@
   stage: arm
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -251,6 +259,8 @@
   stage: arm
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -346,6 +356,8 @@
   stage: amd
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -378,6 +390,8 @@
   stage: amd
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -399,6 +413,8 @@
   stage: amd
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -452,6 +468,8 @@
   stage: intel
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -471,6 +489,8 @@
   stage: intel
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     # Run only on pre-merge pipelines from Marge
     - if: '$GITLAB_USER_LOGIN != "marge-bot" || $CI_COMMIT_BRANCH'
       when: never
@@ -489,6 +509,8 @@
   stage: intel
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success

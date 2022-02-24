@@ -28,6 +28,8 @@
       - results/
     exclude:
       - results/*.shader_cache
+  tags:
+    - $RUNNER_TAG
   after_script:
     - wget -q "https://${JOB_RESULTS_PATH}" -O- | tar -xz
 
