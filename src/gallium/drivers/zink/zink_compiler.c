@@ -730,6 +730,9 @@ update_so_info(struct zink_shader *zs, const struct pipe_stream_output_info *so_
          var->data.xfb.stride = so_info->stride[output->output_buffer] * 4;
          var->data.offset = output->dst_offset * 4;
          var->data.stream = output->stream;
+         /* GLSL specifies that interface blocks are split per-buffer in XFB */
+         if (glsl_type_is_array(var->type) && glsl_array_size(var->type) > 1 && glsl_type_is_interface(glsl_without_array(var->type)))
+            zs->sinfo.so_propagate |= BITFIELD_BIT(var->data.location - VARYING_SLOT_VAR0);
          /* mark all slot components inlined to skip subsequent loop iterations */
          for (unsigned j = 0; j < num_slots; j++) {
             slot = var->data.location + j;
@@ -745,7 +748,7 @@ out:
       /* Map Gallium's condensed "slots" back to real VARYING_SLOT_* enums */
       zs->sinfo.so_info_slots[zs->sinfo.so_info.num_outputs++] = reverse_map[output->register_index];
    }
-   zs->sinfo.have_xfb = !!zs->sinfo.so_info.num_outputs;
+   zs->sinfo.have_xfb = zs->sinfo.so_info.num_outputs || zs->sinfo.so_propagate;
    /* ensure this doesn't get output in the shader by unsetting location */
    if (have_fake_psiz && psiz)
       update_psiz_location(zs->nir, psiz);
