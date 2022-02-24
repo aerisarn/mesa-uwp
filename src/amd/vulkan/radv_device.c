@@ -986,9 +986,6 @@ radv_init_dri_options(struct radv_instance *instance)
    if (driQueryOptionb(&instance->dri_options, "radv_no_dynamic_bounds"))
       instance->debug_flags |= RADV_DEBUG_NO_DYNAMIC_BOUNDS;
 
-   if (driQueryOptionb(&instance->dri_options, "radv_zero_vram"))
-      instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
-
    if (driQueryOptionb(&instance->dri_options, "radv_lower_discard_to_demote"))
       instance->debug_flags |= RADV_DEBUG_DISCARD_TO_DEMOTE;
 
@@ -1000,6 +997,9 @@ radv_init_dri_options(struct radv_instance *instance)
 
    if (driQueryOptionb(&instance->dri_options, "radv_disable_dcc"))
       instance->debug_flags |= RADV_DEBUG_NO_DCC;
+
+   instance->zero_vram =
+      driQueryOptionb(&instance->dri_options, "radv_zero_vram");
 
    instance->report_apu_as_dgpu =
       driQueryOptionb(&instance->dri_options, "radv_report_apu_as_dgpu");
@@ -4933,6 +4933,9 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
       const VkMemoryAllocateFlagsInfo *flags_info = vk_find_struct_const(pAllocateInfo->pNext, MEMORY_ALLOCATE_FLAGS_INFO);
       if (flags_info && flags_info->flags & VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_CAPTURE_REPLAY_BIT)
          flags |= RADEON_FLAG_REPLAYABLE;
+
+      if (device->instance->zero_vram)
+         flags |= RADEON_FLAG_ZERO_VRAM;
 
       if (device->overallocation_disallowed) {
          uint64_t total_size =

@@ -353,6 +353,7 @@ struct radv_instance {
    bool report_apu_as_dgpu;
    bool disable_htile_layers;
    bool disable_aniso_single_level;
+   bool zero_vram;
 };
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);
