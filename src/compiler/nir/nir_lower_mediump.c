@@ -609,12 +609,8 @@ nir_legalize_16bit_sampler_srcs(nir_shader *nir,
                continue;
 
             /* Fix the bit size. */
-            bool is_sint = i == nir_tex_src_offset;
-            bool is_uint = !is_sint &&
-                           (tex->op == nir_texop_txf ||
-                            tex->op == nir_texop_txf_ms ||
-                            tex->op == nir_texop_txs ||
-                            tex->op == nir_texop_samples_identical);
+            bool is_sint = nir_tex_instr_src_type(tex, i) == nir_type_int;
+            bool is_uint = nir_tex_instr_src_type(tex, i) == nir_type_uint;
             nir_ssa_def *(*convert)(nir_builder *, nir_ssa_def *);
 
             switch (bit_size) {
