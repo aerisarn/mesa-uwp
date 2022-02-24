@@ -56,6 +56,7 @@ struct vn_renderer_info {
    bool has_cache_management;
    bool has_external_sync;
    bool has_implicit_fencing;
+   bool has_guest_vram;
 
    uint32_t max_sync_queue_count;
 

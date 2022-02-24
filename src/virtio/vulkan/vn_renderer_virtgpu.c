@@ -41,6 +41,15 @@ struct drm_virtgpu_context_init {
 #define VIRTGPU_PARAM_MAX_SYNC_QUEUE_COUNT 100
 #endif /* VIRTGPU_PARAM_MAX_SYNC_QUEUE_COUNT */
 
+#ifndef VIRTGPU_PARAM_GUEST_VRAM
+/* All guest allocations happen via virtgpu dedicated heap. */
+#define VIRTGPU_PARAM_GUEST_VRAM 9
+#endif
+
+#ifndef VIRTGPU_BLOB_MEM_GUEST_VRAM
+#define VIRTGPU_BLOB_MEM_GUEST_VRAM 0x0004
+#endif
+
 /* XXX comment these out to really use kernel uapi */
 #define SIMULATE_BO_SIZE_FIX 1
 //#define SIMULATE_CONTEXT_INIT 1
@@ -104,6 +113,7 @@ struct virtgpu {
    } capset;
 
    uint32_t shmem_blob_mem;
+   uint32_t bo_blob_mem;
 
    /* note that we use gem_handle instead of res_id to index because
     * res_id is monotonically increasing by default (see
@@ -1175,8 +1185,8 @@ virtgpu_bo_create_from_dma_buf(struct vn_renderer *renderer,
    uint32_t blob_flags;
    size_t mmap_size;
    if (info.blob_mem) {
-      /* must be VIRTGPU_BLOB_MEM_HOST3D */
-      if (info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D)
+      /* must be VIRTGPU_BLOB_MEM_HOST3D or VIRTGPU_BLOB_MEM_GUEST_VRAM */
+      if (info.blob_mem != gpu->bo_blob_mem)
          goto fail;
 
       /* blob_flags is not passed to the kernel and is only for internal use
@@ -1254,7 +1264,7 @@ virtgpu_bo_create_from_device_memory(
 
    uint32_t res_id;
    uint32_t gem_handle = virtgpu_ioctl_resource_create_blob(
-      gpu, VIRTGPU_BLOB_MEM_HOST3D, blob_flags, size, mem_id, &res_id);
+      gpu, gpu->bo_blob_mem, blob_flags, size, mem_id, &res_id);
    if (!gem_handle)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
@@ -1398,6 +1408,9 @@ virtgpu_init_renderer_info(struct virtgpu *gpu)
    info->vk_mesa_venus_protocol_spec_version =
       capset->vk_mesa_venus_protocol_spec_version;
    info->supports_blob_id_0 = capset->supports_blob_id_0;
+
+   if (gpu->bo_blob_mem == VIRTGPU_BLOB_MEM_GUEST_VRAM)
+      info->has_guest_vram = true;
 }
 
 static void
@@ -1487,8 +1500,8 @@ virtgpu_init_params(struct virtgpu *gpu)
 {
    const uint64_t required_params[] = {
       VIRTGPU_PARAM_3D_FEATURES,   VIRTGPU_PARAM_CAPSET_QUERY_FIX,
-      VIRTGPU_PARAM_RESOURCE_BLOB, VIRTGPU_PARAM_HOST_VISIBLE,
-      VIRTGPU_PARAM_CROSS_DEVICE,  VIRTGPU_PARAM_CONTEXT_INIT,
+      VIRTGPU_PARAM_RESOURCE_BLOB, VIRTGPU_PARAM_CROSS_DEVICE,
+      VIRTGPU_PARAM_CONTEXT_INIT,
    };
    uint64_t val;
    for (uint32_t i = 0; i < ARRAY_SIZE(required_params); i++) {
@@ -1500,6 +1513,23 @@ virtgpu_init_params(struct virtgpu *gpu)
          }
          return VK_ERROR_INITIALIZATION_FAILED;
       }
+   }
+
+   val = virtgpu_ioctl_getparam(gpu, VIRTGPU_PARAM_HOST_VISIBLE);
+   if (val) {
+      gpu->bo_blob_mem = VIRTGPU_BLOB_MEM_HOST3D;
+   } else {
+      val = virtgpu_ioctl_getparam(gpu, VIRTGPU_PARAM_GUEST_VRAM);
+      if (val) {
+         gpu->bo_blob_mem = VIRTGPU_BLOB_MEM_GUEST_VRAM;
+      }
+   }
+
+   if (!val) {
+      vn_log(gpu->instance,
+             "one of required kernel params (%d or %d) is missing",
+             (int)VIRTGPU_PARAM_HOST_VISIBLE, (int)VIRTGPU_PARAM_GUEST_VRAM);
+      return VK_ERROR_INITIALIZATION_FAILED;
    }
 
    val = virtgpu_ioctl_getparam(gpu, VIRTGPU_PARAM_MAX_SYNC_QUEUE_COUNT);
