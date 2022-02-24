@@ -458,10 +458,10 @@ F(3src_acc_wr_control,      /* 4+ */ 28, 28,   /* 12+ */ 33, 33)
 F(3src_cond_modifier,       /* 4+ */ 27, 24,   /* 12+ */ 95, 92)
 F(3src_exec_size,           /* 4+ */ 23, 21,   /* 12+ */ 18, 16)
 F(3src_pred_inv,            /* 4+ */ 20, 20,   /* 12+ */ 28, 28)
-F(3src_pred_control,        /* 4+ */ 19, 16,   /* 12+ */ 27, 24)
+F20(3src_pred_control,      /* 4+ */ 19, 16,   /* 12+ */ 27, 24, /* 20+ */ 27, 26)
 F(3src_thread_control,      /* 4+ */ 15, 14,   /* 12+ */ -1, -1)
 F(3src_atomic_control,      /* 4+ */ -1, -1,   /* 12+ */ 32, 32)
-F(3src_qtr_control,         /* 4+ */ 13, 12,   /* 12+ */ 21, 20)
+F20(3src_qtr_control,       /* 4+ */ 13, 12,   /* 12+ */ 21, 20, /* 20+ */ 25, 24)
 F8(3src_no_dd_check,        /* 4+ */ 11, 11,   /* 8+ */  10, 10, /* 12+ */ -1, -1)
 F8(3src_no_dd_clear,        /* 4+ */ 10, 10,   /* 8+ */   9,  9, /* 12+ */ -1, -1)
 F8(3src_mask_control,       /* 4+ */ 9,  9,    /* 8+ */  34, 34, /* 12+ */ 31, 31)
@@ -498,19 +498,19 @@ REG_TYPE(src)
  */
 /* Reserved 127:126 */
 /* src2_reg_nr same in align16 */
-FC(3src_a1_src2_subreg_nr,  /* 4+ */   117, 113, /* 12+ */ 119, 115, devinfo->ver >= 10)
+FD20(3src_a1_src2_subreg_nr,/* 4+ */   117, 113, /* 12+ */ 119, 115, /* 20+ */ 119, 115, -1)
 FC(3src_a1_src2_hstride,    /* 4+ */   112, 111, /* 12+ */ 113, 112, devinfo->ver >= 10)
 /* Reserved 110:109. src2 vstride is an implied parameter */
 FC(3src_a1_src2_hw_type,    /* 4+ */   108, 106, /* 12+ */ 82, 80, devinfo->ver >= 10)
 /* Reserved 105 */
 /* src1_reg_nr same in align16 */
-FC(3src_a1_src1_subreg_nr,  /* 4+ */   96,  92,  /* 12+ */ 103, 99, devinfo->ver >= 10)
+FD20(3src_a1_src1_subreg_nr, /* 4+ */   96,  92, /* 12+ */ 103, 99, /* 20+ */ 103, 99, -1)
 FC(3src_a1_src1_hstride,    /* 4+ */   91,  90,  /* 12+ */ 97, 96, devinfo->ver >= 10)
 FDC(3src_a1_src1_vstride,  /* 4+ */   89,  88,  /* 12+ */ 91, 91, 83, 83, devinfo->ver >= 10)
 FC(3src_a1_src1_hw_type,    /* 4+ */   87,  85,  /* 12+ */ 90, 88, devinfo->ver >= 10)
 /* Reserved 84 */
 /* src0_reg_nr same in align16 */
-FC(3src_a1_src0_subreg_nr,  /* 4+ */   75,  71,  /* 12+ */ 71, 67, devinfo->ver >= 10)
+FD20(3src_a1_src0_subreg_nr, /* 4+ */   75,  71, /* 12+ */ 71, 67, /* 20+ */ 71, 67, -1)
 FC(3src_a1_src0_hstride,    /* 4+ */   70,  69,  /* 12+ */ 65, 64, devinfo->ver >= 10)
 FDC(3src_a1_src0_vstride,  /* 4+ */   68,  67,  /* 12+ */ 43, 43, 35, 35, devinfo->ver >= 10)
 FC(3src_a1_src0_hw_type,    /* 4+ */   66,  64,  /* 12+ */ 42, 40, devinfo->ver >= 10)
