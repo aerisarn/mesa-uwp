@@ -121,6 +121,9 @@ struct lp_build_nir_context
    LLVMValueRef (*get_ssbo_size)(struct lp_build_nir_context *bld_base,
                                  LLVMValueRef index);
 
+   void (*load_const)(struct lp_build_nir_context *bld_base,
+                      const nir_load_const_instr *instr,
+                      LLVMValueRef result[NIR_MAX_VEC_COMPONENTS]);
    void (*load_var)(struct lp_build_nir_context *bld_base,
                     nir_variable_mode deref_mode,
                     unsigned num_components,

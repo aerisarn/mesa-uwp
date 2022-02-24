@@ -1028,6 +1028,17 @@ static void emit_load_ubo(struct lp_build_nir_context *bld_base,
    }
 }
 
+static void
+emit_load_const(struct lp_build_nir_context *bld_base,
+                const nir_load_const_instr *instr,
+                LLVMValueRef outval[NIR_MAX_VEC_COMPONENTS])
+{
+   struct lp_build_context *int_bld = get_int_bld(bld_base, true, instr->def.bit_size);
+   for (unsigned i = 0; i < instr->def.num_components; i++)
+     outval[i] = lp_build_const_int_vec(bld_base->base.gallivm, int_bld->type, instr->def.bit_size == 32 ? instr->value[i].u32 : instr->value[i].u64);
+   memset(&outval[instr->def.num_components], 0, NIR_MAX_VEC_COMPONENTS - instr->def.num_components);
+}
+
 
 static void emit_load_mem(struct lp_build_nir_context *bld_base,
                           unsigned nc,
@@ -2506,6 +2517,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.interp_at = emit_interp_at;
    bld.bld_base.load_scratch = emit_load_scratch;
    bld.bld_base.store_scratch = emit_store_scratch;
+   bld.bld_base.load_const = emit_load_const;
 
    bld.mask = params->mask;
    bld.inputs = params->inputs;

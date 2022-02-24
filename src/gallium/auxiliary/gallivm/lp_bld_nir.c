@@ -1145,10 +1145,7 @@ static void visit_load_const(struct lp_build_nir_context *bld_base,
                              const nir_load_const_instr *instr)
 {
    LLVMValueRef result[NIR_MAX_VEC_COMPONENTS];
-   struct lp_build_context *int_bld = get_int_bld(bld_base, true, instr->def.bit_size);
-   for (unsigned i = 0; i < instr->def.num_components; i++)
-      result[i] = lp_build_const_int_vec(bld_base->base.gallivm, int_bld->type, instr->def.bit_size == 32 ? instr->value[i].u32 : instr->value[i].u64);
-   memset(&result[instr->def.num_components], 0, NIR_MAX_VEC_COMPONENTS - instr->def.num_components);
+   bld_base->load_const(bld_base, instr, result);
    assign_ssa_dest(bld_base, &instr->def, result);
 }
 
