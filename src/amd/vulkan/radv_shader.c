@@ -723,7 +723,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
       /* Mesh shaders run as NGG which can implement local_invocation_index from
        * the wave ID in merged_wave_info, but they don't have local_invocation_ids.
        */
-      .lower_cs_local_id_from_index = nir->info.stage == MESA_SHADER_MESH,
+      .lower_cs_local_id_to_index = nir->info.stage == MESA_SHADER_MESH,
       .lower_local_invocation_index = nir->info.stage == MESA_SHADER_COMPUTE &&
                                       ((nir->info.workgroup_size[0] == 1) +
                                        (nir->info.workgroup_size[1] == 1) +

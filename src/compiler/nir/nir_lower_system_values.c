@@ -288,12 +288,12 @@ lower_compute_system_value_instr(nir_builder *b,
 
    switch (intrin->intrinsic) {
    case nir_intrinsic_load_local_invocation_id:
-      /* If lower_cs_local_id_from_index is true, then we derive the local
-       * index from the local id.
+      /* If lower_cs_local_id_to_index is true, then we replace
+       * local_invocation_id with a formula based on local_invocation_index.
        */
-      if (b->shader->options->lower_cs_local_id_from_index ||
-          (options && options->lower_cs_local_id_from_index)) {
-         /* We lower gl_LocalInvocationID from gl_LocalInvocationIndex based
+      if (b->shader->options->lower_cs_local_id_to_index ||
+          (options && options->lower_cs_local_id_to_index)) {
+         /* We lower gl_LocalInvocationID to gl_LocalInvocationIndex based
           * on this formula:
           *
           *    gl_LocalInvocationID.x =
@@ -422,10 +422,10 @@ lower_compute_system_value_instr(nir_builder *b,
       return NULL;
 
    case nir_intrinsic_load_local_invocation_index:
-      /* If lower_cs_local_index_from_id is true, then we derive the local
-       * index from the local id.
+      /* If lower_cs_local_index_to_id is true, then we replace
+       * local_invocation_index with a formula based on local_invocation_id.
        */
-      if (b->shader->options->lower_cs_local_index_from_id ||
+      if (b->shader->options->lower_cs_local_index_to_id ||
           (options && options->lower_local_invocation_index)) {
          /* From the GLSL man page for gl_LocalInvocationIndex:
           *
