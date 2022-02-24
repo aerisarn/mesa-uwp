@@ -463,6 +463,8 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
             src_alu = nir_instr_as_alu(src);
             b.cursor = nir_before_instr(src);
 
+            nir_alu_type src_type = nir_tex_instr_src_type(tex, i);
+
             if (src_alu->op == nir_op_mov) {
                assert(!"The IR shouldn't contain any movs to make this pass"
                        " effective.");
@@ -473,8 +475,8 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
             if (nir_op_is_vec(src_alu->op)) {
                /* See if the vector is made of f16->f32 opcodes. */
                unsigned num = nir_dest_num_components(src_alu->dest.dest);
-               bool is_f16_to_f32 = true;
-               bool is_u16_to_u32 = true;
+               bool is_f16_to_f32 = src_type == nir_type_float;
+               bool is_u16_to_u32 = src_type & (nir_type_int | nir_type_uint);
 
                for (unsigned comp = 0; comp < num; comp++) {
                   nir_instr *instr = src_alu->src[comp].src.ssa->parent_instr;
@@ -507,9 +509,11 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
                nir_instr_rewrite_src_ssa(&tex->instr, &tex->src[i].src,
                                          &new_vec->dest.dest.ssa);
                changed = true;
-            } else if (is_f16_to_f32_conversion(&src_alu->instr) ||
-                       is_u16_to_u32_conversion(&src_alu->instr) ||
-                       is_i16_to_i32_conversion(&src_alu->instr)) {
+            } else if ((is_f16_to_f32_conversion(&src_alu->instr) &&
+                        src_type == nir_type_float) ||
+                       ((is_u16_to_u32_conversion(&src_alu->instr) ||
+                         is_i16_to_i32_conversion(&src_alu->instr)) &&
+                        src_type & (nir_type_int | nir_type_uint))) {
                /* Handle scalar sources. */
                replace_with_mov(&b, &tex->instr, &tex->src[i].src, src_alu);
                changed = true;
