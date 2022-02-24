@@ -266,6 +266,35 @@ nir_lower_system_values(nir_shader *shader)
 }
 
 static nir_ssa_def *
+lower_id_to_index_no_umod(nir_builder *b, nir_ssa_def *index,
+                          nir_ssa_def *size, unsigned bit_size)
+{
+   /* We lower ID to Index with the following formula:
+    *
+    *    id.z = index / (size.x * size.y)
+    *    id.y = (index - (id.z * (size.x * size.y))) / size.x
+    *    id.x = index - ((id.z * (size.x * size.y)) + (id.y * size.x))
+    *
+    * This is more efficient on HW that doesn't have a
+    * modulo division instruction and when the size is either
+    * not compile time known or not a power of two.
+    */
+
+   nir_ssa_def *size_x = nir_channel(b, size, 0);
+   nir_ssa_def *size_y = nir_channel(b, size, 1);
+   nir_ssa_def *size_x_y = nir_imul(b, size_x, size_y);
+
+   nir_ssa_def *id_z = nir_udiv(b, index, size_x_y);
+   nir_ssa_def *z_portion = nir_imul(b, id_z, size_x_y);
+   nir_ssa_def *id_y = nir_udiv(b, nir_isub(b, index, z_portion), size_x);
+   nir_ssa_def *y_portion = nir_imul(b, id_y, size_x);
+   nir_ssa_def *id_x = nir_isub(b, index, nir_iadd(b, z_portion, y_portion));
+
+   return nir_u2u(b, nir_vec3(b, id_x, id_y, id_z), bit_size);
+}
+
+
+static nir_ssa_def *
 lower_id_to_index(nir_builder *b, nir_ssa_def *index, nir_ssa_def *size,
                   unsigned bit_size)
 {
@@ -520,8 +549,13 @@ lower_compute_system_value_instr(nir_builder *b,
       if (options && options->has_base_workgroup_id)
          return nir_iadd(b, nir_u2u(b, nir_load_workgroup_id_zero_base(b), bit_size),
                             nir_load_base_workgroup_id(b, bit_size));
-      else
-         return NULL;
+      else if (options && options->lower_workgroup_id_to_index)
+         return lower_id_to_index_no_umod(b, nir_load_workgroup_index(b),
+                                          nir_load_num_workgroups(b, bit_size),
+                                          bit_size);
+
+      return NULL;
+
    }
 
    default:

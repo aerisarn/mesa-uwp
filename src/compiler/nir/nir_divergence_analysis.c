@@ -264,6 +264,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
          assert(stage == MESA_SHADER_TESS_CTRL);
       break;
 
+   case nir_intrinsic_load_workgroup_index:
    case nir_intrinsic_load_workgroup_id:
       assert(gl_shader_stage_uses_workgroup(stage));
       if (stage == MESA_SHADER_COMPUTE)

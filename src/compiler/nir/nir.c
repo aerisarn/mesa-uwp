@@ -2419,6 +2419,8 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_local_invocation_index;
    case SYSTEM_VALUE_WORKGROUP_ID:
       return nir_intrinsic_load_workgroup_id;
+   case SYSTEM_VALUE_WORKGROUP_INDEX:
+      return nir_intrinsic_load_workgroup_index;
    case SYSTEM_VALUE_NUM_WORKGROUPS:
       return nir_intrinsic_load_num_workgroups;
    case SYSTEM_VALUE_PRIMITIVE_ID:
@@ -2556,6 +2558,8 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_NUM_WORKGROUPS;
    case nir_intrinsic_load_workgroup_id:
       return SYSTEM_VALUE_WORKGROUP_ID;
+   case nir_intrinsic_load_workgroup_index:
+      return SYSTEM_VALUE_WORKGROUP_INDEX;
    case nir_intrinsic_load_primitive_id:
       return SYSTEM_VALUE_PRIMITIVE_ID;
    case nir_intrinsic_load_tess_coord:

@@ -4764,6 +4764,7 @@ typedef struct nir_lower_compute_system_values_options {
    bool shuffle_local_ids_for_quad_derivatives:1;
    bool lower_local_invocation_index:1;
    bool lower_cs_local_id_to_index:1;
+   bool lower_workgroup_id_to_index:1;
 } nir_lower_compute_system_values_options;
 
 bool nir_lower_compute_system_values(nir_shader *shader,
