@@ -592,20 +592,11 @@ struct v3d_interp_input {
    unsigned mode; /* interpolation mode */
 };
 
-/* Data types used during register allocation to map nodes and temps */
-struct node_to_temp_map {
-        uint32_t temp;
-        uint32_t priority;
-};
-
-struct temp_to_node_map {
-        uint32_t node;
-        uint8_t  class_bits;
-};
-
-struct v3d_ra_temp_node_info {
-        struct node_to_temp_map *node;
-        struct temp_to_node_map *temp;
+struct v3d_ra_node_info {
+        struct {
+                uint32_t priority;
+                uint8_t class_bits;
+        } *info;
         uint32_t alloc_count;
 };
 
@@ -807,7 +798,7 @@ struct v3d_compile {
 
         /* Used during register allocation */
         int thread_index;
-        struct v3d_ra_temp_node_info ra_map;
+        struct v3d_ra_node_info nodes;
         struct ra_graph *g;
 
         /**
