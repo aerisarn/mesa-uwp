@@ -391,6 +391,8 @@ dri2_release_buffer(__DRIscreen *sPriv, __DRIbuffer *bPriv)
 static void
 dri2_set_in_fence_fd(__DRIimage *img, int fd)
 {
+   validate_fence_fd(fd);
+   validate_fence_fd(img->in_fence_fd);
    sync_accumulate("dri", &img->in_fence_fd, fd);
 }
 
@@ -404,6 +406,8 @@ handle_in_fence(__DRIcontext *context, __DRIimage *img)
 
    if (fd == -1)
       return;
+
+   validate_fence_fd(fd);
 
    img->in_fence_fd = -1;
 

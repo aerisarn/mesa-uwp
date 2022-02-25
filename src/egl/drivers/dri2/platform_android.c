@@ -41,6 +41,7 @@
 
 #include "util/compiler.h"
 #include "util/os_file.h"
+#include "util/libsync.h"
 
 #include "loader.h"
 #include "egl_dri2.h"
@@ -470,6 +471,8 @@ handle_in_fence_fd(struct dri2_egl_surface *dri2_surf, __DRIimage *img)
    if (dri2_surf->in_fence_fd < 0)
       return;
 
+   validate_fence_fd(dri2_surf->in_fence_fd);
+
    if (dri2_dpy->image->base.version >= 21 &&
        dri2_dpy->image->setInFenceFd != NULL) {
       dri2_dpy->image->setInFenceFd(img, dri2_surf->in_fence_fd);
@@ -481,6 +484,7 @@ handle_in_fence_fd(struct dri2_egl_surface *dri2_surf, __DRIimage *img)
 static void
 close_in_fence_fd(struct dri2_egl_surface *dri2_surf)
 {
+   validate_fence_fd(dri2_surf->in_fence_fd);
    if (dri2_surf->in_fence_fd >= 0)
       close(dri2_surf->in_fence_fd);
    dri2_surf->in_fence_fd = -1;
@@ -496,6 +500,8 @@ droid_window_dequeue_buffer(struct dri2_egl_surface *dri2_surf)
       return EGL_FALSE;
 
    close_in_fence_fd(dri2_surf);
+
+   validate_fence_fd(fence_fd);
 
    dri2_surf->in_fence_fd = fence_fd;
 
@@ -1448,6 +1454,7 @@ droid_display_shared_buffer(__DRIdrawable *driDrawable, int fence_fd,
    }
 
    close_in_fence_fd(dri2_surf);
+   validate_fence_fd(fence_fd);
    dri2_surf->in_fence_fd = fence_fd;
    handle_in_fence_fd(dri2_surf, dri2_surf->dri_image_back);
 }
