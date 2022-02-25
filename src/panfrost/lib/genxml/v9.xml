@@ -440,7 +440,7 @@
     <field name="Table" size="6" start="1:0" type="uint"/>
     <field name="Frequency" size="2" start="1:6" type="Attribute Frequency"/> <!-- Internally, ID select -->
     <field name="Divisor R" size="5" start="1:24" type="uint"/>
-    <field name="Divisor E" size="1" start="1:29" type="bool"/>
+    <field name="Divisor E" size="1" start="1:29" type="uint"/>
     <field name="Offset" size="32" start="2:0" type="int"/>
     <field name="Buffer index" size="32" start="3:0" type="uint"/> 
     <field name="Stride" size="32" start="4:0" type="uint"/>
