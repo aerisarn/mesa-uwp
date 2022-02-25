@@ -6947,6 +6947,25 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
 }
 
+unsigned
+aco_storage_mode_from_nir_mem_mode(unsigned mem_mode)
+{
+   unsigned storage = storage_none;
+
+   if (mem_mode & nir_var_shader_out)
+      storage |= storage_vmem_output;
+   if ((mem_mode & nir_var_mem_ssbo) || (mem_mode & nir_var_mem_global))
+      storage |= storage_buffer;
+   if (mem_mode & nir_var_mem_task_payload)
+      storage |= storage_task_payload;
+   if (mem_mode & nir_var_mem_shared)
+      storage |= storage_shared;
+   if (mem_mode & nir_var_image)
+      storage |= storage_image;
+
+   return storage;
+}
+
 void
 visit_load_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
 {
@@ -7012,8 +7031,8 @@ emit_scoped_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
 
+   unsigned storage_allowed = storage_buffer | storage_image;
    unsigned semantics = 0;
-   unsigned storage = 0;
    sync_scope mem_scope = translate_nir_scope(nir_intrinsic_memory_scope(instr));
    sync_scope exec_scope = translate_nir_scope(nir_intrinsic_execution_scope(instr));
 
@@ -7028,6 +7047,17 @@ emit_scoped_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
                               (ctx->stage.hw == HWStage::GS && ctx->program->chip_class >= GFX9) ||
                               ctx->stage.hw == HWStage::NGG;
 
+   if (shared_storage_used)
+      storage_allowed |= storage_shared;
+
+   /* Task payload: Task Shader output, Mesh Shader input */
+   if (ctx->stage.has(SWStage::MS) || ctx->stage.has(SWStage::TS))
+      storage_allowed |= storage_task_payload;
+
+   /* Allow VMEM output for all stages that can have outputs. */
+   if (ctx->stage.hw != HWStage::CS && ctx->stage.hw != HWStage::FS)
+      storage_allowed |= storage_vmem_output;
+
    /* Workgroup barriers can hang merged shaders that can potentially have 0 threads in either half.
     * They are allowed in CS, TCS, and in any NGG shader.
     */
@@ -7035,12 +7065,8 @@ emit_scoped_barrier(isel_context* ctx, nir_intrinsic_instr* instr)
       ctx->stage.hw == HWStage::CS || ctx->stage.hw == HWStage::HS || ctx->stage.hw == HWStage::NGG;
 
    unsigned nir_storage = nir_intrinsic_memory_modes(instr);
-   if (nir_storage & (nir_var_mem_ssbo | nir_var_mem_global))
-      storage |= storage_buffer;
-   if (nir_storage & nir_var_image)
-      storage |= storage_image;
-   if (shared_storage_used && (nir_storage & nir_var_mem_shared))
-      storage |= storage_shared;
+   unsigned storage = aco_storage_mode_from_nir_mem_mode(nir_storage);
+   storage &= storage_allowed;
 
    unsigned nir_semantics = nir_intrinsic_memory_semantics(instr);
    if (nir_semantics & NIR_MEMORY_ACQUIRE)
