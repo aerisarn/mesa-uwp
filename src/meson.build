@@ -94,6 +94,9 @@ endif
 if with_gallium_freedreno or with_freedreno_vk or with_tools.contains('freedreno')
   subdir('freedreno')
 endif
+if with_imagination_vk
+  subdir('imagination')
+endif
 if with_gallium_panfrost or with_gallium_lima or with_panfrost_vk or with_tools.contains('panfrost')
   subdir('panfrost')
 endif

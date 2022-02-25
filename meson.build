@@ -272,6 +272,8 @@ with_swrast_vk = _vulkan_drivers.contains('swrast')
 with_virtio_vk = _vulkan_drivers.contains('virtio-experimental')
 with_freedreno_kgsl = get_option('freedreno-kgsl')
 with_broadcom_vk = _vulkan_drivers.contains('broadcom')
+with_imagination_vk = _vulkan_drivers.contains('imagination-experimental')
+with_imagination_srv = get_option('imagination-srv')
 with_any_vk = _vulkan_drivers.length() != 0
 
 with_any_broadcom = with_gallium_vc4 or with_gallium_v3d or with_broadcom_vk

@@ -109,6 +109,11 @@ meson.build @dbaker @eric
 # Freedreno
 /src/gallium/drivers/freedreno/ @robclark
 
+# Imagination
+/include/drm-uapi/pvr_drm.h @CreativeCylon @frankbinns @rajnesh-kanwal
+/src/imagination/ @CreativeCylon @frankbinns @rajnesh-kanwal
+/src/imagination/rogue/ @simon-perretta-img
+
 # Intel
 /include/drm-uapi/i915_drm.h @kwg @llandwerlin @jekstrand @idr
 /include/pci_ids/i*_pci_ids.h @kwg @llandwerlin @jekstrand @idr
