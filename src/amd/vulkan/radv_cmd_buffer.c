@@ -647,10 +647,9 @@ radv_cmd_buffer_upload_data(struct radv_cmd_buffer *cmd_buffer, unsigned size, c
 
    if (!radv_cmd_buffer_upload_alloc(cmd_buffer, size, out_offset, (void **)&ptr))
       return false;
+   assert(ptr);
 
-   if (ptr)
-      memcpy(ptr, data, size);
-
+   memcpy(ptr, data, size);
    return true;
 }
 
