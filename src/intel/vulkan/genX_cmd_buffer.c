@@ -3413,6 +3413,11 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 }
 
+#define GFX_HAS_GENERATED_CMDS GFX_VER >= 11
+#if GFX_VER >= 11
+#include "genX_cmd_draw_generated_indirect.h"
+#endif
+
 VkResult
 genX(BeginCommandBuffer)(
     VkCommandBuffer                             commandBuffer,
@@ -3618,6 +3623,10 @@ genX(EndCommandBuffer)(
 
    anv_measure_endcommandbuffer(cmd_buffer);
 
+#if GFX_HAS_GENERATED_CMDS
+   genX(cmd_buffer_flush_generated_draws)(cmd_buffer);
+#endif
+
    /* We want every command buffer to start with the PMA fix in a known state,
     * so we disable it at the end of the command buffer.
     */
@@ -3656,6 +3665,10 @@ genX(CmdExecuteCommands)(
     * flushed prior to their execution.  Apply those flushes now.
     */
    genX(cmd_buffer_apply_pipe_flushes)(primary);
+
+#if GFX_HAS_GENERATED_CMDS
+   genX(cmd_buffer_flush_generated_draws)(primary);
+#endif
 
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       ANV_FROM_HANDLE(anv_cmd_buffer, secondary, pCmdBuffers[i]);
@@ -3818,6 +3831,11 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
    enum anv_pipe_bits bits =
       anv_pipe_flush_bits_for_access_flags(cmd_buffer->device, src_flags) |
       anv_pipe_invalidate_bits_for_access_flags(cmd_buffer->device, dst_flags);
+
+#if GFX_HAS_GENERATED_CMDS
+   if (dst_flags & VK_ACCESS_INDIRECT_COMMAND_READ_BIT)
+      genX(cmd_buffer_flush_generated_draws)(cmd_buffer);
+#endif
 
    anv_add_pending_pipe_bits(cmd_buffer, bits, reason);
 }
@@ -4442,9 +4460,24 @@ void genX(CmdDrawIndirect)(
                         drawCount);
    trace_intel_begin_draw_indirect(&cmd_buffer->trace);
 
+#if GFX_HAS_GENERATED_CMDS
+   if (anv_use_generated_draws(cmd_buffer->device, drawCount)) {
+      genX(cmd_buffer_emit_indirect_generated_draws)(
+         cmd_buffer,
+         anv_address_add(buffer->address, offset),
+         MAX2(stride, sizeof(VkDrawIndirectCommand)),
+         drawCount,
+         false /* indexed */);
+   } else {
+      emit_indirect_draws(cmd_buffer,
+                          anv_address_add(buffer->address, offset),
+                          stride, drawCount, false /* indexed */);
+   }
+#else
    emit_indirect_draws(cmd_buffer,
                        anv_address_add(buffer->address, offset),
                        stride, drawCount, false /* indexed */);
+#endif
 
    trace_intel_end_draw_indirect(&cmd_buffer->trace, drawCount);
 }
@@ -4468,9 +4501,24 @@ void genX(CmdDrawIndexedIndirect)(
                         drawCount);
    trace_intel_begin_draw_indexed_indirect(&cmd_buffer->trace);
 
+#if GFX_HAS_GENERATED_CMDS
+   if (anv_use_generated_draws(cmd_buffer->device, drawCount)) {
+      genX(cmd_buffer_emit_indirect_generated_draws)(
+         cmd_buffer,
+         anv_address_add(buffer->address, offset),
+         MAX2(stride, sizeof(VkDrawIndexedIndirectCommand)),
+         drawCount,
+         true /* indexed */);
+   } else {
+      emit_indirect_draws(cmd_buffer,
+                          anv_address_add(buffer->address, offset),
+                          stride, drawCount, true /* indexed */);
+   }
+#else
    emit_indirect_draws(cmd_buffer,
                        anv_address_add(buffer->address, offset),
                        stride, drawCount, true /* indexed */);
+#endif
 
    trace_intel_end_draw_indexed_indirect(&cmd_buffer->trace, drawCount);
 }
@@ -4643,12 +4691,37 @@ void genX(CmdDrawIndirectCount)(
                         0);
    trace_intel_begin_draw_indirect_count(&cmd_buffer->trace);
 
+   struct anv_address indirect_data_address =
+      anv_address_add(buffer->address, offset);
+   struct anv_address count_address =
+      anv_address_add(count_buffer->address, countBufferOffset);
+   stride = MAX2(stride, sizeof(VkDrawIndirectCommand));
+
+#if GFX_HAS_GENERATED_CMDS
+   if (anv_use_generated_draws(cmd_buffer->device, maxDrawCount)) {
+      genX(cmd_buffer_emit_indirect_generated_draws_count)(
+         cmd_buffer,
+         indirect_data_address,
+         stride,
+         count_address,
+         maxDrawCount,
+         false /* indexed */);
+   } else {
+      emit_indirect_count_draws(cmd_buffer,
+                                indirect_data_address,
+                                stride,
+                                count_address,
+                                maxDrawCount,
+                                false /* indexed */);
+   }
+#else
    emit_indirect_count_draws(cmd_buffer,
-                             anv_address_add(buffer->address, offset),
-                             MAX2(stride, sizeof(VkDrawIndirectCommand)),
-                             anv_address_add(count_buffer->address, countBufferOffset),
+                             indirect_data_address,
+                             stride,
+                             count_address,
                              maxDrawCount,
                              false /* indexed */);
+#endif
 
    trace_intel_end_draw_indirect_count(&cmd_buffer->trace, maxDrawCount);
 }
@@ -4675,12 +4748,37 @@ void genX(CmdDrawIndexedIndirectCount)(
                         0);
    trace_intel_begin_draw_indexed_indirect_count(&cmd_buffer->trace);
 
+   struct anv_address indirect_data_address =
+      anv_address_add(buffer->address, offset);
+   struct anv_address count_address =
+      anv_address_add(count_buffer->address, countBufferOffset);
+   stride = MAX2(stride, sizeof(VkDrawIndexedIndirectCommand));
+
+#if GFX_HAS_GENERATED_CMDS
+   if (anv_use_generated_draws(cmd_buffer->device, maxDrawCount)) {
+      genX(cmd_buffer_emit_indirect_generated_draws_count)(
+         cmd_buffer,
+         indirect_data_address,
+         stride,
+         count_address,
+         maxDrawCount,
+         true /* indexed */);
+   } else {
+      emit_indirect_count_draws(cmd_buffer,
+                                indirect_data_address,
+                                stride,
+                                count_address,
+                                maxDrawCount,
+                                true /* indexed */);
+   }
+#else
    emit_indirect_count_draws(cmd_buffer,
-                             anv_address_add(buffer->address, offset),
-                             MAX2(stride, sizeof(VkDrawIndirectCommand)),
-                             anv_address_add(count_buffer->address, countBufferOffset),
+                             indirect_data_address,
+                             stride,
+                             count_address,
                              maxDrawCount,
                              true /* indexed */);
+#endif
 
    trace_intel_end_draw_indexed_indirect_count(&cmd_buffer->trace, maxDrawCount);
 

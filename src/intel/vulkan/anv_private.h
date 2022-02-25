@@ -1009,6 +1009,15 @@ struct anv_physical_device {
 
     bool                                        always_flush_cache;
 
+    /**
+     * True if the generated indirect draw optimization is turned on.
+     *
+     * This optimization is currently only available on Gfx11+ to avoid
+     * dealing with the annoying Gfx8/9 tracking of vertex buffer for the VF
+     * cache workaround.
+     */
+    bool                                        generated_indirect_draws;
+
     struct {
       uint32_t                                  family_count;
       struct anv_queue_family                   families[ANV_MAX_QUEUE_FAMILIES];
@@ -1075,6 +1084,7 @@ struct anv_instance {
     bool                                        sample_mask_out_opengl_behaviour;
     bool                                        fp64_workaround_enabled;
     float                                       lower_depth_range_rate;
+    unsigned                                    generated_indirect_threshold;
 };
 
 VkResult anv_init_wsi(struct anv_physical_device *physical_device);
@@ -1240,6 +1250,15 @@ struct anv_device {
     struct anv_shader_bin                      *rt_trivial_return;
 
     enum anv_rt_bvh_build_method                bvh_build_method;
+
+    /** Draw generation shader
+     *
+     * Generates direct draw calls out of indirect parameters. Used to
+     * workaround slowness with indirect draw calls.
+     */
+    struct anv_shader_bin                      *generated_draw_kernel;
+    struct anv_shader_bin                      *generated_draw_count_kernel;
+    const struct intel_l3_config               *generated_draw_l3_config;
 
     pthread_mutex_t                             mutex;
     pthread_cond_t                              queue_submit;
@@ -1462,6 +1481,7 @@ struct anv_batch {
 
 void *anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords);
 VkResult anv_batch_emit_ensure_space(struct anv_batch *batch, uint32_t size);
+void anv_batch_advance(struct anv_batch *batch, uint32_t size);
 void anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other);
 struct anv_address anv_batch_address(struct anv_batch *batch, void *batch_location);
 
@@ -2887,6 +2907,13 @@ void anv_cmd_buffer_dump(struct anv_cmd_buffer *cmd_buffer);
 
 void anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer);
 
+static inline unsigned
+anv_cmd_buffer_get_view_count(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   return MAX2(1, util_bitcount(gfx->view_mask));
+}
+
 enum anv_bo_sync_state {
    /** Indicates that this is a new (or newly reset fence) */
    ANV_BO_SYNC_STATE_RESET,
@@ -4138,6 +4165,18 @@ struct anv_memcpy_state {
    struct anv_vb_cache_range vb_bound;
    struct anv_vb_cache_range vb_dirty;
 };
+
+VkResult
+anv_device_init_generated_indirect_draws(struct anv_device *device);
+void
+anv_device_finish_generated_indirect_draws(struct anv_device *device);
+
+static inline bool anv_use_generated_draws(const struct anv_device *device,
+                                           uint32_t count)
+{
+   return device->physical->generated_indirect_draws &&
+          count >= device->physical->instance->generated_indirect_threshold;
+}
 
 struct anv_utrace_flush_copy {
    /* Needs to be the first field */

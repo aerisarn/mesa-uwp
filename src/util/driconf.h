@@ -615,4 +615,8 @@
    DRI_CONF_OPT_B(fp64_workaround_enabled, def, \
                   "Use softpf64 when the shader uses float64, but the device doesn't support that type")
 
+#define DRI_CONF_ANV_GENERATED_INDIRECT_THRESHOLD(def) \
+   DRI_CONF_OPT_I(generated_indirect_threshold, def, 0, INT32_MAX, \
+                  "Indirect threshold count above which we start generating commands")
+
 #endif
