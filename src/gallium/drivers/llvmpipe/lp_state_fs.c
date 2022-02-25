@@ -3878,7 +3878,7 @@ llvmpipe_create_fs_state(struct pipe_context *pipe,
    if (templ->type == PIPE_SHADER_IR_TGSI)
      llvmpipe_fs_analyse(shader, templ->tokens);
    else
-     shader->kind = LP_FS_KIND_GENERAL;
+     llvmpipe_fs_analyse_nir(shader);
 
    return shader;
 }

@@ -39,6 +39,11 @@
 #include "nir_deref.h"
 #include "nir_search_helpers.h"
 
+static bool is_aos(const struct lp_build_nir_context *bld_base)
+{
+   return bld_base->base.type.length == 16 && bld_base->base.type.width == 8;
+}
+
 static void visit_cf_list(struct lp_build_nir_context *bld_base,
                           struct exec_list *list);
 
@@ -169,7 +174,7 @@ static void assign_ssa(struct lp_build_nir_context *bld_base, int idx, LLVMValue
 static void assign_ssa_dest(struct lp_build_nir_context *bld_base, const nir_ssa_def *ssa,
                             LLVMValueRef vals[NIR_MAX_VEC_COMPONENTS])
 {
-   assign_ssa(bld_base, ssa->index, ssa->num_components == 1 ? vals[0] : lp_nir_array_build_gather_values(bld_base->base.gallivm->builder, vals, ssa->num_components));
+   assign_ssa(bld_base, ssa->index, (ssa->num_components == 1 || is_aos(bld_base)) ? vals[0] : lp_nir_array_build_gather_values(bld_base->base.gallivm->builder, vals, ssa->num_components));
 }
 
 static void assign_reg(struct lp_build_nir_context *bld_base, const nir_reg_dest *reg,
@@ -276,6 +281,10 @@ static LLVMValueRef get_alu_src(struct lp_build_nir_context *bld_base,
    bool need_swizzle = false;
 
    assert(value);
+
+   if (is_aos(bld_base))
+      return value;
+
    unsigned src_components = nir_src_num_components(src.src);
    for (unsigned i = 0; i < num_components; ++i) {
       assert(src.swizzle[i] < src_components);
@@ -1110,6 +1119,15 @@ static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr
       src_bit_size[i] = nir_src_bit_size(instr->src[i].src);
    }
 
+   if (instr->op == nir_op_mov && is_aos(bld_base) && !instr->dest.dest.is_ssa) {
+      for (unsigned i = 0; i < 4; i++) {
+         if (instr->dest.write_mask & (1 << i)) {
+            assign_reg(bld_base, &instr->dest.dest.reg, (1 << i), src);
+         }
+      }
+      return;
+   }
+
    LLVMValueRef result[NIR_MAX_VEC_COMPONENTS];
    if (instr->op == nir_op_vec4 || instr->op == nir_op_vec3 || instr->op == nir_op_vec2 || instr->op == nir_op_vec8 || instr->op == nir_op_vec16) {
       for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
@@ -1122,7 +1140,15 @@ static void visit_alu(struct lp_build_nir_context *bld_base, const nir_alu_instr
          temp_chan = cast_type(bld_base, temp_chan, nir_op_infos[instr->op].input_types[0], src_bit_size[0]);
          result[0] = (c == 0) ? temp_chan : lp_build_add(get_flt_bld(bld_base, src_bit_size[0]), result[0], temp_chan);
       }
-    } else {
+    } else if (is_aos(bld_base)) {
+      if (instr->op == nir_op_fmul) {
+         if (LLVMIsConstant(src[0]))
+            src[0] = lp_nir_aos_conv_const(gallivm, src[0], 1);
+         if (LLVMIsConstant(src[1]))
+            src[1] = lp_nir_aos_conv_const(gallivm, src[1], 1);
+      }
+      result[0] = do_alu_action(bld_base, instr, src_bit_size, src);
+   } else {
       for (unsigned c = 0; c < num_components; c++) {
          LLVMValueRef src_chan[NIR_MAX_VEC_COMPONENTS];
 
@@ -2019,7 +2045,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
    LLVMValueRef texel[NIR_MAX_VEC_COMPONENTS];
    unsigned lod_src = 0;
    LLVMValueRef coord_undef = LLVMGetUndef(bld_base->base.int_vec_type);
-
+   unsigned coord_vals = is_aos(bld_base) ? 1 : instr->coord_components;
    memset(&params, 0, sizeof(params));
    enum lp_sampler_lod_property lod_property = LP_SAMPLER_LOD_SCALAR;
 
@@ -2038,14 +2064,14 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
       switch (instr->src[i].src_type) {
       case nir_tex_src_coord: {
          LLVMValueRef coord = get_src(bld_base, instr->src[i].src);
-         if (instr->coord_components == 1)
+         if (coord_vals == 1)
             coords[0] = coord;
          else {
             for (unsigned chan = 0; chan < instr->coord_components; ++chan)
                coords[chan] = LLVMBuildExtractValue(builder, coord,
                                                     chan, "");
          }
-         for (unsigned chan = instr->coord_components; chan < 5; chan++)
+         for (unsigned chan = coord_vals; chan < 5; chan++)
             coords[chan] = coord_undef;
 
          break;
@@ -2144,7 +2170,7 @@ static void visit_tex(struct lp_build_nir_context *bld_base, nir_tex_instr *inst
 
    if (instr->op == nir_texop_tex || instr->op == nir_texop_tg4 || instr->op == nir_texop_txb ||
        instr->op == nir_texop_txl || instr->op == nir_texop_txd || instr->op == nir_texop_lod)
-      for (unsigned chan = 0; chan < instr->coord_components; ++chan)
+      for (unsigned chan = 0; chan < coord_vals; ++chan)
          coords[chan] = cast_type(bld_base, coords[chan], nir_type_float, 32);
    else if (instr->op == nir_texop_txf || instr->op == nir_texop_txf_ms)
       for (unsigned chan = 0; chan < instr->coord_components; ++chan)
@@ -2375,6 +2401,9 @@ handle_shader_output_decl(struct lp_build_nir_context *bld_base,
 static LLVMTypeRef get_register_type(struct lp_build_nir_context *bld_base,
                                      nir_register *reg)
 {
+   if (is_aos(bld_base))
+      return bld_base->base.int_vec_type;
+
    struct lp_build_context *int_bld = get_int_bld(bld_base, true, reg->bit_size == 1 ? 32 : reg->bit_size);
 
    LLVMTypeRef type = int_bld->vec_type;
@@ -2397,6 +2426,11 @@ bool lp_build_nir_llvm(
    nir_lower_locals_to_regs(nir);
    nir_remove_dead_derefs(nir);
    nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
+
+   if (is_aos(bld_base)) {
+      nir_move_vec_src_uses_to_dest(nir);
+      nir_lower_vec_to_movs(nir, NULL, NULL);
+   }
 
    nir_foreach_shader_out_variable(variable, nir)
       handle_shader_output_decl(bld_base, nir, variable);
