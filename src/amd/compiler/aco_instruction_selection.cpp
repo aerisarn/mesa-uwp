@@ -5977,13 +5977,17 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    if (is_sparse)
       expand_mask |= 1 << result_size;
-   unsigned num_components = util_bitcount(dmask) + is_sparse;
+
+   bool d16 = instr->dest.ssa.bit_size == 16;
+   assert(!d16 || !is_sparse);
+
+   unsigned num_bytes = util_bitcount(dmask) * (d16 ? 2 : 4) + is_sparse * 4;
 
    Temp tmp;
-   if (num_components == dst.size() && dst.type() == RegType::vgpr)
+   if (num_bytes == dst.bytes() && dst.type() == RegType::vgpr)
       tmp = dst;
    else
-      tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_components));
+      tmp = bld.tmp(RegClass::get(RegType::vgpr, num_bytes));
 
    Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
 
@@ -5991,12 +5995,22 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
 
       aco_opcode opcode;
-      switch (util_bitcount(dmask)) {
-      case 1: opcode = aco_opcode::buffer_load_format_x; break;
-      case 2: opcode = aco_opcode::buffer_load_format_xy; break;
-      case 3: opcode = aco_opcode::buffer_load_format_xyz; break;
-      case 4: opcode = aco_opcode::buffer_load_format_xyzw; break;
-      default: unreachable(">4 channel buffer image load");
+      if (!d16) {
+         switch (util_bitcount(dmask)) {
+         case 1: opcode = aco_opcode::buffer_load_format_x; break;
+         case 2: opcode = aco_opcode::buffer_load_format_xy; break;
+         case 3: opcode = aco_opcode::buffer_load_format_xyz; break;
+         case 4: opcode = aco_opcode::buffer_load_format_xyzw; break;
+         default: unreachable(">4 channel buffer image load");
+         }
+      } else {
+         switch (util_bitcount(dmask)) {
+         case 1: opcode = aco_opcode::buffer_load_format_d16_x; break;
+         case 2: opcode = aco_opcode::buffer_load_format_d16_xy; break;
+         case 3: opcode = aco_opcode::buffer_load_format_d16_xyz; break;
+         case 4: opcode = aco_opcode::buffer_load_format_d16_xyzw; break;
+         default: unreachable(">4 channel buffer image load");
+         }
       }
       aco_ptr<MUBUF_instruction> load{
          create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 3 + is_sparse, 1)};
@@ -6024,6 +6038,7 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
       load->dlc = load->glc && ctx->options->chip_class >= GFX10;
       load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
+      load->d16 = d16;
       load->dmask = dmask;
       load->unrm = true;
       load->da = should_declare_array(ctx, dim, is_array);
