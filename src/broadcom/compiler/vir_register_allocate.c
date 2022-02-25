@@ -785,15 +785,6 @@ vir_init_reg_sets(struct v3d_compiler *compiler)
         return true;
 }
 
-static int
-node_to_temp_priority(const void *in_a, const void *in_b)
-{
-        const struct node_to_temp_map *a = in_a;
-        const struct node_to_temp_map *b = in_b;
-
-        return a->priority - b->priority;
-}
-
 static inline bool
 tmu_spilling_allowed(struct v3d_compile *c)
 {
@@ -970,24 +961,18 @@ v3d_register_allocate(struct v3d_compile *c)
                 ra_set_node_reg(c->g, acc_nodes[i], ACC_INDEX + i);
         }
 
+        /* Initialize our node/temp map */
         for (uint32_t i = 0; i < c->num_temps; i++) {
                 c->ra_map.node[i].temp = i;
                 c->ra_map.node[i].priority =
                         c->temp_end[i] - c->temp_start[i];
+                c->ra_map.temp[i].node = i;
+                c->ra_map.temp[i].class_bits = CLASS_BITS_ANY;
         }
-
-        qsort(c->ra_map.node, c->num_temps, sizeof(c->ra_map.node[0]),
-              node_to_temp_priority);
-
-        for (uint32_t i = 0; i < c->num_temps; i++)
-                c->ra_map.temp[c->ra_map.node[i].temp].node = i;
 
         /* Walk the instructions adding register class restrictions and
          * interferences.
          */
-        for (uint32_t i = 0; i < c->num_temps; i++)
-                c->ra_map.temp[i].class_bits = CLASS_BITS_ANY;
-
         int ip = 0;
         vir_for_each_inst_inorder(inst, c) {
                 inst->ip = ip++;
