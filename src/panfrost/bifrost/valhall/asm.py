@@ -218,9 +218,12 @@ def parse_asm(line):
         die_if(any([x[0] != 'r' for x in parts]), f'Expected registers, got {op}')
         regs = [parse_int(x[1:], 0, 63) for x in parts]
 
+        extended_write = "staging_register_write_count" in [x.name for x in ins.modifiers] and sr.write
+        max_sr_count = 8 if extended_write else 7
+
         sr_count = len(regs)
         die_if(sr_count < 1, f'Expected staging register, got {op}')
-        die_if(sr_count > 7, f'Too many staging registers {sr_count}')
+        die_if(sr_count > max_sr_count, f'Too many staging registers {sr_count}')
 
         base = regs[0]
         die_if(any([reg != (base + i) for i, reg in enumerate(regs)]),
@@ -229,9 +232,13 @@ def parse_asm(line):
                 'Consecutive staging registers must be aligned to a register pair')
 
         if sr.count == 0:
-            modifier_map["staging_register_count"] = sr_count
+            if "staging_register_write_count" in [x.name for x in ins.modifiers] and sr.write:
+                modifier_map["staging_register_write_count"] = sr_count - 1
+            else:
+                assert "staging_register_count" in [x.name for x in ins.modifiers]
+                modifier_map["staging_register_count"] = sr_count
         else:
-            die_if(sr_count != sr.count, f"Expected 4 staging registers, got {sr_count}")
+            die_if(sr_count != sr.count, f"Expected {sr.count} staging registers, got {sr_count}")
 
         encoded |= ((sr.encoded_flags | base) << sr.start)
     operands = operands[len(ins.staging):]
