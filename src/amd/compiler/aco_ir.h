@@ -138,9 +138,10 @@ enum storage_class : uint8_t {
    storage_image = 0x4,
    storage_shared = 0x8,       /* or TCS output */
    storage_vmem_output = 0x10, /* GS or TCS output stores using VMEM */
-   storage_scratch = 0x20,
-   storage_vgpr_spill = 0x40,
-   storage_count = 8,
+   storage_task_payload = 0x20,/* Task-Mesh payload */
+   storage_scratch = 0x40,
+   storage_vgpr_spill = 0x80,
+   storage_count = 8, /* not counting storage_none */
 };
 
 enum memory_semantics : uint8_t {

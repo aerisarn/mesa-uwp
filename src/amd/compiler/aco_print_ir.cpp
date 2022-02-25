@@ -219,6 +219,8 @@ print_storage(storage_class storage, FILE* output)
       printed += fprintf(output, "%simage", printed ? "," : "");
    if (storage & storage_shared)
       printed += fprintf(output, "%sshared", printed ? "," : "");
+   if (storage & storage_task_payload)
+      printed += fprintf(output, "%stask_payload", printed ? "," : "");
    if (storage & storage_vmem_output)
       printed += fprintf(output, "%svmem_output", printed ? "," : "");
    if (storage & storage_scratch)
