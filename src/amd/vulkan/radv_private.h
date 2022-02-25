@@ -1909,6 +1909,7 @@ struct radv_pipeline {
          struct radv_pipeline_shader_stack_size *rt_stack_sizes;
          bool dynamic_stack_size;
          uint32_t group_count;
+         bool cs_regalloc_hang_bug;
       } compute;
       struct {
          unsigned stage_count;

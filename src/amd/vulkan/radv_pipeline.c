@@ -6504,6 +6504,14 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    pipeline->push_constant_size = pipeline_layout->push_constant_size;
    pipeline->dynamic_offset_count = pipeline_layout->dynamic_offset_count;
 
+   if (device->physical_device->rad_info.has_cs_regalloc_hang_bug) {
+      struct radv_shader *compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+      unsigned *cs_block_size = compute_shader->info.cs.block_size;
+
+      pipeline->compute.cs_regalloc_hang_bug =
+         cs_block_size[0] * cs_block_size[1] * cs_block_size[2] > 256;
+   }
+
    radv_compute_generate_pm4(pipeline);
 
    *pPipeline = radv_pipeline_to_handle(pipeline);
