@@ -154,7 +154,15 @@ va_disasm_instr(FILE *fp, uint64_t instr)
 % endif
 <%
     no_comma = False
-    sr_count = "((instr >> 33) & MASK(3))" if sr.count == 0 else sr.count
+
+    if sr.count != 0:
+        sr_count = sr.count
+    elif "staging_register_write_count" in [x.name for x in op.modifiers] and sr.write:
+        sr_count = "(((instr >> 36) & MASK(3)) + 1)"
+    elif "staging_register_count" in [x.name for x in op.modifiers]:
+        sr_count = "((instr >> 33) & MASK(3))"
+    else:
+        assert(0)
 %>
 //            assert(((instr >> ${sr.start}) & 0xC0) == ${sr.encoded_flags});
             for (unsigned i = 0; i < ${sr_count}; ++i) {
