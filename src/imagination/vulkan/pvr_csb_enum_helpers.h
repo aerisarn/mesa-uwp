@@ -119,4 +119,14 @@ pvr_ta_objtype(VkPrimitiveTopology topology)
    }
 }
 
+/******************************************************************************
+   TEXSTATE
+ ******************************************************************************/
+
+static inline enum PVRX(TEXSTATE_CMP_MODE) pvr_texstate_cmpmode(VkCompareOp op)
+{
+   /* enum values are identical, so we can just cast the input directly. */
+   return (enum PVRX(TEXSTATE_CMP_MODE))op;
+}
+
 #endif /* PVR_CSB_ENUM_HELPERS_H */

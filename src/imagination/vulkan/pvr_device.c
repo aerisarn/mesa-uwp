@@ -41,6 +41,7 @@
 #include "hwdef/rogue_hw_utils.h"
 #include "pvr_bo.h"
 #include "pvr_csb.h"
+#include "pvr_csb_enum_helpers.h"
 #include "pvr_device_info.h"
 #include "pvr_job_render.h"
 #include "pvr_limits.h"
@@ -2082,6 +2083,9 @@ VkResult pvr_CreateSampler(VkDevice _device,
    float min_lod;
    float max_lod;
 
+   STATIC_ASSERT(sizeof(((union pvr_sampler_descriptor *)NULL)->data) ==
+                 sizeof(((union pvr_sampler_descriptor *)NULL)->words));
+
    sampler = vk_object_alloc(&device->vk,
                              pAllocator,
                              sizeof(*sampler),
@@ -2115,7 +2119,18 @@ VkResult pvr_CreateSampler(VkDevice _device,
       }
    }
 
-   pvr_csb_pack (&sampler->sampler_word, TEXSTATE_SAMPLER, word) {
+   if (pCreateInfo->compareEnable) {
+      sampler->descriptor.data.compare_op =
+         (uint32_t)pvr_texstate_cmpmode(pCreateInfo->compareOp);
+   } else {
+      sampler->descriptor.data.compare_op =
+         (uint32_t)pvr_texstate_cmpmode(VK_COMPARE_OP_NEVER);
+   }
+
+   sampler->descriptor.data.word3 = 0;
+   pvr_csb_pack (&sampler->descriptor.data.sampler_word,
+                 TEXSTATE_SAMPLER,
+                 word) {
       const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
       const float lod_clamp_max = (float)PVRX(TEXSTATE_CLAMP_MAX) /
                                   (1 << PVRX(TEXSTATE_CLAMP_FRACTIONAL_BITS));
@@ -2138,6 +2153,13 @@ VkResult pvr_CreateSampler(VkDevice _device,
          pvr_sampler_get_hw_addr_mode_from_vk(pCreateInfo->addressModeV);
       word.addrmode_w =
          pvr_sampler_get_hw_addr_mode_from_vk(pCreateInfo->addressModeW);
+
+      /* TODO: Figure out defines for these. */
+      if (word.addrmode_u == PVRX(TEXSTATE_ADDRMODE_FLIP))
+         sampler->descriptor.data.word3 |= 0x40000000;
+
+      if (word.addrmode_v == PVRX(TEXSTATE_ADDRMODE_FLIP))
+         sampler->descriptor.data.word3 |= 0x20000000;
 
       /* The Vulkan 1.0.205 spec says:
        *

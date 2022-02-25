@@ -74,6 +74,8 @@
 
 #define PVR_WORKGROUP_DIMENSIONS 3U
 
+#define PVR_SAMPLER_DESCRIPTOR_SIZE 4U
+
 #define PVR_STATE_PBE_DWORDS 2U
 
 #define PVR_PIPELINE_LAYOUT_SUPPORTED_DESCRIPTOR_TYPE_COUNT \
@@ -355,10 +357,24 @@ struct pvr_image_view {
    uint64_t texture_state[PVR_TEXTURE_STATE_MAX_ENUM][2];
 };
 
+union pvr_sampler_descriptor {
+   uint32_t words[PVR_SAMPLER_DESCRIPTOR_SIZE];
+
+   struct {
+      /* Packed PVRX(TEXSTATE_SAMPLER). */
+      uint64_t sampler_word;
+      uint32_t compare_op;
+      /* TODO: Figure out what this word is for and rename.
+       * Sampler state word 1?
+       */
+      uint32_t word3;
+   } data;
+};
+
 struct pvr_sampler {
    struct vk_object_base base;
 
-   uint64_t sampler_word;
+   union pvr_sampler_descriptor descriptor;
 };
 
 struct pvr_descriptor_size_info {

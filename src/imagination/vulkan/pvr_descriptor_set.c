@@ -88,9 +88,9 @@ static void pvr_descriptor_size_info_init(
     */
    static const struct pvr_descriptor_size_info template_size_infos[] = {
       /* VK_DESCRIPTOR_TYPE_SAMPLER */
-      { 4, 0, 4 },
+      { PVR_SAMPLER_DESCRIPTOR_SIZE, 0, 4 },
       /* VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER */
-      { 8, UINT_MAX, 4 },
+      { PVR_SAMPLER_DESCRIPTOR_SIZE + 4, UINT_MAX, 4 },
       /* VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE */
       { 4, UINT_MAX, 4 },
       /* VK_DESCRIPTOR_TYPE_STORAGE_IMAGE */
@@ -1125,13 +1125,6 @@ static uint16_t pvr_get_descriptor_secondary_offset(
    return (uint16_t)offset;
 }
 
-static void pvr_write_sampler_descriptor(uint32_t *primary,
-                                         const struct pvr_sampler *sampler)
-{
-   /* TODO: Implement based on WriteSamplerDescriptor. */
-   pvr_finishme("Implement after vkCreateSampler API.");
-}
-
 #define PVR_MAX_DESCRIPTOR_MEM_SIZE_IN_DWORDS (4 * 1024)
 
 static VkResult
@@ -1162,6 +1155,7 @@ pvr_descriptor_set_create(struct pvr_device *device,
     * for max descriptors supported by pool as done by v3dv. Also check the
     * possibility if this can be removed from here and done on need basis.
     */
+
    if (layout->binding_count > 0) {
       const uint32_t cache_line_size =
          rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
@@ -1209,9 +1203,9 @@ pvr_descriptor_set_create(struct pvr_device *device,
             if (binding->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
                offset_in_dwords += 4;
 
-            pvr_write_sampler_descriptor(map +
-                                            offset_in_dwords * sizeof(uint32_t),
-                                         sampler);
+            memcpy((uint8_t *)map + offset_in_dwords * sizeof(uint32_t),
+                   sampler->descriptor.words,
+                   sizeof(sampler->descriptor.words));
          }
       }
    }
