@@ -521,6 +521,7 @@ typedef struct {
                 struct {
                         bool bytes2; /* RROT_DOUBLE, FRSHIFT_DOUBLE */
                         bool result_word;
+                        bool arithmetic; /* ARSHIFT_OR */
                 };
 
                 struct {

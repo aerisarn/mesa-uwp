@@ -452,7 +452,7 @@ bi_load_sample_id_to(bi_builder *b, bi_index dst)
          * as zero), so use a 5-bit mask instead of 8-bits */
 
         bi_rshift_and_i32_to(b, dst, bi_register(61), bi_imm_u32(0x1f),
-                                bi_imm_u8(16));
+                                bi_imm_u8(16), false);
 }
 
 static bi_index
@@ -2109,11 +2109,14 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_lshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0));
                 break;
         case nir_op_ushr:
-                bi_rshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0));
+                bi_rshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0), false);
                 break;
 
         case nir_op_ishr:
-                bi_arshift_to(b, sz, dst, s0, bi_null(), bi_byte(s1, 0));
+                if (b->shader->arch >= 9)
+                        bi_rshift_or_to(b, sz, dst, s0, bi_zero(), bi_byte(s1, 0), true);
+                else
+                        bi_arshift_to(b, sz, dst, s0, bi_null(), bi_byte(s1, 0));
                 break;
 
         case nir_op_imin:

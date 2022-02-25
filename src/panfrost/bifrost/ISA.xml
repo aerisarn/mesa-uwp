@@ -2036,6 +2036,7 @@
       <opt>not</opt>
       <opt>none</opt>
     </mod>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
   </ins>
 
   <ins name="*RSHIFT_AND.v2i16">
@@ -2056,6 +2057,7 @@
       <opt>not</opt>
       <opt>none</opt>
     </mod>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <encoding mask="0x7f3800" exact="0x300800">
       <or>
         <eq left="lanes2" right="#b00"/>
@@ -2089,6 +2091,7 @@
     <src start="0" mask="0xfb"/>
     <src start="3" mask="0xfb"/>
     <src start="6"/>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <mod name="lanes2" size="3" default="b0123">
       <opt>b0123</opt>
       <opt>b0000</opt>
@@ -2144,6 +2147,7 @@
       <opt>not</opt>
       <opt>none</opt>
     </mod>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <mod name="not_result" start="15" size="1" opt="not"/>
   </ins>
 
@@ -2165,6 +2169,7 @@
       <opt>none</opt>
     </mod>
     <mod name="not_result" start="15" size="1" opt="not"/>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <encoding mask="0x7f3800" exact="0x302800">
       <or>
         <eq left="lanes2" right="#b00"/>
@@ -2210,6 +2215,7 @@
       <opt>none</opt>
     </mod>
     <mod name="not_result" start="15" size="1" opt="not"/>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <encoding mask="0x7f3800" exact="0x302000">
       <neq left="lanes2" right="#b0123"/>
       <derived start="9" size="2">
@@ -2235,6 +2241,7 @@
       <opt>b3</opt>
     </mod>
     <mod name="not_result" start="13" size="1" opt="not"/>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
   </ins>
 
   <ins name="*RSHIFT_XOR.v2i16">
@@ -2251,6 +2258,7 @@
       <opt>b02</opt>
     </mod>
     <mod name="not_result" start="13" size="1" opt="not"/>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <encoding mask="0x7fd800" exact="0x320800">
       <or>
         <eq left="lanes2" right="#b00"/>
@@ -2292,6 +2300,7 @@
       <opt>b3333</opt>
     </mod>
     <mod name="not_result" start="13" size="1" opt="not"/>
+    <mod name="arithmetic" opt="arithmetic" size="1" start="1" pseudo="true"/>
     <encoding mask="0x7fd800" exact="0x320000">
       <neq left="lanes2" right="#b0123"/>
       <derived start="9" size="2">
