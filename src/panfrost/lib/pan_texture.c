@@ -449,14 +449,13 @@ panfrost_adjust_cube_dimensions(
         assert((*first_layer == *last_layer) || (*first_face == 0 && *last_face == 5));
 }
 
-/* Following the texture descriptor is a number of pointers. How many? */
+/* Following the texture descriptor is a number of descriptors. How many? */
 
 static unsigned
 panfrost_texture_num_elements(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
-                unsigned nr_samples,
-                bool is_cube, bool manual_stride)
+                unsigned nr_samples, bool is_cube)
 {
         unsigned first_face  = 0, last_face = 0;
 
@@ -468,12 +467,8 @@ panfrost_texture_num_elements(
         unsigned levels = 1 + last_level - first_level;
         unsigned layers = 1 + last_layer - first_layer;
         unsigned faces  = 1 + last_face  - first_face;
-        unsigned num_elements = levels * layers * faces * MAX2(nr_samples, 1);
 
-        if (manual_stride)
-                num_elements *= 2;
-
-        return num_elements;
+        return levels * layers * faces * MAX2(nr_samples, 1);
 }
 
 /* Conservative estimate of the size of the texture payload a priori.
@@ -485,18 +480,20 @@ panfrost_texture_num_elements(
 unsigned
 GENX(panfrost_estimate_texture_payload_size)(const struct pan_image_view *iview)
 {
-        /* Assume worst case */
-        unsigned manual_stride = PAN_ARCH >= 6 ||
-                                 (iview->image->layout.modifier == DRM_FORMAT_MOD_LINEAR);
+#if PAN_ARCH >= 9
+        size_t element_size = pan_size(PLANE);
+#else
+        /* Assume worst case. Overestimates on Midgard, but that's ok. */
+        size_t element_size = pan_size(SURFACE_WITH_STRIDE);
+#endif
 
         unsigned elements =
                 panfrost_texture_num_elements(iview->first_level, iview->last_level,
                                               iview->first_layer, iview->last_layer,
                                               iview->image->layout.nr_samples,
-                                              iview->dim == MALI_TEXTURE_DIMENSION_CUBE,
-                                              manual_stride);
+                                              iview->dim == MALI_TEXTURE_DIMENSION_CUBE);
 
-        return sizeof(mali_ptr) * elements;
+        return element_size * elements;
 }
 
 struct panfrost_surface_iter {
