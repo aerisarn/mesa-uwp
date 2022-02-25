@@ -142,12 +142,16 @@ class Dest:
         self.name = name
 
 class Staging:
-    def __init__(self, read = False, write = False, index = 0, count = 0, flags = True, name = ""):
+    def __init__(self, read = False, write = False, count = 0, flags = True, name = ""):
         self.name = name
         self.read = read
         self.write = write
         self.count = count
         self.flags = flags
+        self.start = 40
+
+        if write and not flags:
+            self.start = 16
 
         # For compatibility
         self.absneg = False
@@ -158,13 +162,8 @@ class Staging:
         self.lane = False
         self.size = 32
 
-        assert(index < 2)
-        self.start = 40 if index == 0 else 16
-
         if not flags:
             self.encoded_flags = 0
-        elif index > 0:
-            self.encoded_flags = 0xC0
         else:
             self.encoded_flags = (0x80 if write else 0) | (0x40 if read else 0)
 
@@ -236,7 +235,7 @@ def build_staging(i, el):
     count = int(el.attrib.get('count', '0'))
     flags = xmlbool(el.attrib.get('flags', 'true'))
 
-    return Staging(r, w, i, count, flags, el.text or '')
+    return Staging(r, w, count, flags, el.text or '')
 
 def build_modifier(el):
     name = el.attrib['name']
