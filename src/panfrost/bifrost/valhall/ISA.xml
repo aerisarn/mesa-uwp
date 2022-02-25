@@ -1721,6 +1721,34 @@
     <src>Mask</src>
   </ins>
 
+  <ins name="MUX.v2i16" title="Mux" dests="1" opcode="0xB9" unit="SFU">
+    <desc>
+      Mux between A and B based on the provided mask. The condition specified
+      as the `mux` modifier is evaluated on the mask. If true, `A` is chosen,
+      else `B` is chosen. The `bit` modifier acts bitwise, equivalent to
+      `bitselect()` in OpenCL, so `MUX.i32.bit A, B, mask` calculates
+      `(A &amp; mask) | (A &amp; ~mask)`.
+    </desc>
+    <mod name="mux" start="32" size="2"/>
+    <src swizzle="true">A</src>
+    <src swizzle="true">B</src>
+    <src swizzle="true">Mask</src>
+  </ins>
+
+  <ins name="MUX.v4i8" title="Mux" dests="1" opcode="0xBA" unit="SFU">
+    <desc>
+      Mux between A and B based on the provided mask. The condition specified
+      as the `mux` modifier is evaluated on the mask. If true, `A` is chosen,
+      else `B` is chosen. The `bit` modifier acts bitwise, equivalent to
+      `bitselect()` in OpenCL, so `MUX.i32.bit A, B, mask` calculates
+      `(A &amp; mask) | (A &amp; ~mask)`.
+    </desc>
+    <mod name="mux" start="32" size="2"/>
+    <src>A</src>
+    <src>B</src>
+    <src>Mask</src>
+  </ins>
+
   <ins name="CUBE_SSEL" title="Cube S-coordinate select" dests="1" opcode="0xBC" opcode2="0" unit="SFU">
     <desc>During a cube map transform, select the S coordinate given a selected face.</desc>
     <src absneg="true">Z coordinate as 32-bit floating point</src>
