@@ -1520,3 +1520,10 @@ system_value("leaf_procedural_intel", 1, bit_sizes=[1])
 #  3: Intersection
 system_value("btd_shader_type_intel", 1)
 system_value("ray_query_global_intel", 1, bit_sizes=[64])
+
+# In order to deal with flipped render targets, gl_PointCoord may be flipped
+# in the shader requiring a shader key or extra instructions or it may be
+# flipped in hardware based on a state bit.  This version of gl_PointCoord
+# is defined to be whatever thing the hardware can easily give you, so long as
+# it's in normalized coordinates in the range [0, 1] across the point.
+intrinsic("load_point_coord_maybe_flipped", dest_comp=2, bit_sizes=[32])
