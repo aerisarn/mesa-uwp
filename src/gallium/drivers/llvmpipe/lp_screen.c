@@ -504,10 +504,10 @@ llvmpipe_get_compute_param(struct pipe_screen *_screen,
       return sizeof(uint64_t);
    case PIPE_COMPUTE_CAP_GRID_DIMENSION:
       if (ret) {
-         uint32_t *grid_dim = ret;
+         uint64_t *grid_dim = ret;
          *grid_dim = 3;
       }
-      return sizeof(uint32_t);
+      return sizeof(uint64_t);
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
       if (ret) {
          uint64_t *max_global_size = ret;
