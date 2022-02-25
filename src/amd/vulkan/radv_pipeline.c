@@ -4514,6 +4514,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
             /* Skip if there are potentially conflicting rounding modes */
             if (!nir_has_any_rounding_mode_enabled(stages[i].nir->info.float_controls_execution_mode))
                NIR_PASS_V(stages[i].nir, nir_fold_16bit_sampler_conversions, 0, sampler_dims);
+            NIR_PASS_V(stages[i].nir, nir_fold_16bit_image_load_store_conversions);
 
             NIR_PASS_V(stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, NULL);
           }
