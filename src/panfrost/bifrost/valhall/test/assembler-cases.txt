@@ -9,8 +9,6 @@ e6 00 00 00 00 c1 91 06    MOV.i32.id r1, core_id
 01 02 00 00 10 c0 a4 00    FADD.f32 r0, r1, r2.neg
 01 02 00 00 30 c0 a4 00    FADD.f32 r0, r1, r2.neg.abs
 01 02 00 00 32 c0 a4 00    FADD.f32.clamp_m1_1 r0, r1, r2.neg.abs
-03 20 c4 10 02 42 28 01    TEX.computed.2d.slot0 @r2, @r4:r5:r6:r7, r3
-03 20 c4 10 82 42 28 01    TEX.computed.2d.skip.slot0 @r2, @r4:r5:r6:r7, r3
 41 03 00 00 00 c0 1f 50    BRANCHZ.reconverge `r1, offset:3
 01 d0 00 00 00 c0 a4 00    FADD.f32 r0, r1, 0x3F800000
 01 d0 00 00 10 c0 a4 00    FADD.f32 r0, r1, 0x3F800000.neg
