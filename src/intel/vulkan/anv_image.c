@@ -1441,10 +1441,11 @@ anv_image_init_from_create_info(struct anv_device *device,
       return anv_image_init_from_gralloc(device, image, pCreateInfo,
                                          gralloc_info);
 
-   return anv_image_init(device, image,
-                         &(struct anv_image_create_info) {
-                            .vk_info = pCreateInfo,
-                         });
+   struct anv_image_create_info create_info = {
+      .vk_info = pCreateInfo,
+   };
+
+   return anv_image_init(device, image, &create_info);
 }
 
 VkResult anv_CreateImage(
