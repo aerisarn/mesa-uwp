@@ -4668,7 +4668,7 @@ void
 load_vmem_mubuf(isel_context* ctx, Temp dst, Temp descriptor, Temp voffset, Temp soffset,
                 unsigned base_const_offset, unsigned elem_size_bytes, unsigned num_components,
                 unsigned stride = 0u, bool allow_combining = true, bool allow_reorder = true,
-                bool slc = false)
+                bool slc = false, memory_sync_info sync = memory_sync_info())
 {
    assert(elem_size_bytes == 1 || elem_size_bytes == 2 || elem_size_bytes == 4 || elem_size_bytes == 8);
    assert((num_components * elem_size_bytes) == dst.bytes());
@@ -4685,6 +4685,7 @@ load_vmem_mubuf(isel_context* ctx, Temp dst, Temp descriptor, Temp voffset, Temp
    info.align_offset = 0;
    info.soffset = soffset;
    info.const_offset = base_const_offset;
+   info.sync = sync;
    emit_load(ctx, bld, info, mubuf_load_params);
 }
 
@@ -6985,8 +6986,11 @@ visit_load_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    unsigned num_components = intrin->dest.ssa.num_components;
    unsigned swizzle_element_size = swizzled ? (ctx->program->chip_class <= GFX8 ? 4 : 16) : 0;
 
+   nir_variable_mode mem_mode = nir_intrinsic_memory_modes(intrin);
+   memory_sync_info sync(aco_storage_mode_from_nir_mem_mode(mem_mode));
+
    load_vmem_mubuf(ctx, dst, descriptor, v_offset, s_offset, const_offset, elem_size_bytes,
-                   num_components, swizzle_element_size, !swizzled, reorder, slc);
+                   num_components, swizzle_element_size, !swizzled, reorder, slc, sync);
 }
 
 void
@@ -7005,7 +7009,7 @@ visit_store_buffer(isel_context* ctx, nir_intrinsic_instr* intrin)
    unsigned elem_size_bytes = intrin->src[0].ssa->bit_size / 8u;
 
    nir_variable_mode mem_mode = nir_intrinsic_memory_modes(intrin);
-   memory_sync_info sync(mem_mode == nir_var_shader_out ? storage_vmem_output : storage_none);
+   memory_sync_info sync(aco_storage_mode_from_nir_mem_mode(mem_mode));
 
    store_vmem_mubuf(ctx, store_src, descriptor, v_offset, s_offset, const_offset, elem_size_bytes,
                     write_mask, !swizzled, sync, slc);
