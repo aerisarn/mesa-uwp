@@ -7378,8 +7378,10 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_inf
 {
    bool has_prefetch = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7;
    bool pipeline_is_dirty = pipeline != cmd_buffer->state.emitted_compute_pipeline;
+   struct radv_shader *compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+   unsigned *cs_block_size = compute_shader->info.cs.block_size;
    bool cs_regalloc_hang = cmd_buffer->device->physical_device->rad_info.has_cs_regalloc_hang_bug &&
-                           info->blocks[0] * info->blocks[1] * info->blocks[2] > 256;
+                           cs_block_size[0] * cs_block_size[1] * cs_block_size[2] > 256;
 
    if (cs_regalloc_hang)
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
