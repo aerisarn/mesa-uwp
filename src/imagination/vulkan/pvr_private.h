@@ -396,9 +396,9 @@ struct pvr_descriptor_set_layout_binding {
       uint32_t secondary;
    } per_stage_offset_in_dwords[PVR_STAGE_ALLOCATION_COUNT];
 
+   bool has_immutable_samplers;
    /* Index at which the samplers can be found in the descriptor_set_layout.
     * 0 when the samplers are at index 0 or no samplers are present.
-    * Check descriptor_count to differentiate. It will be 0 for 0 samplers.
     */
    uint32_t immutable_samplers_index;
 };
@@ -428,7 +428,7 @@ struct pvr_descriptor_set_layout {
    struct pvr_descriptor_set_layout_binding *bindings;
 
    uint32_t immutable_sampler_count;
-   struct pvr_sampler **immutable_samplers;
+   const struct pvr_sampler **immutable_samplers;
 
    /* Shader stages requiring access to descriptors in this set. */
    VkShaderStageFlags shader_stages;

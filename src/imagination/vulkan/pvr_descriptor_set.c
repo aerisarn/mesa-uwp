@@ -201,7 +201,7 @@ pvr_descriptor_set_layout_allocate(struct pvr_device *device,
    struct pvr_descriptor_set_layout_binding *bindings;
    struct pvr_descriptor_set_layout *layout;
    __typeof__(layout->per_stage_descriptor_count) counts;
-   struct pvr_sampler **immutable_samplers;
+   const struct pvr_sampler **immutable_samplers;
 
    VK_MULTIALLOC(ma);
    vk_multialloc_add(&ma, &layout, __typeof__(*layout), 1);
@@ -531,6 +531,7 @@ VkResult pvr_CreateDescriptorSetLayout(
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_SAMPLER:
          if (binding->pImmutableSamplers && binding->descriptorCount > 0) {
+            internal_binding->has_immutable_samplers = true;
             internal_binding->immutable_samplers_index =
                layout->immutable_sampler_count;
 
@@ -1186,9 +1187,7 @@ pvr_descriptor_set_create(struct pvr_device *device,
       const struct pvr_descriptor_set_layout_binding *binding =
          &layout->bindings[i];
 
-      if (binding->descriptor_count == 0 ||
-          (binding->type != VK_DESCRIPTOR_TYPE_SAMPLER &&
-           binding->type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
+      if (binding->descriptor_count == 0 || !binding->has_immutable_samplers)
          continue;
 
       for (uint32_t stage = 0;
@@ -1199,7 +1198,7 @@ pvr_descriptor_set_create(struct pvr_device *device,
 
          for (uint32_t j = 0; j < binding->descriptor_count; j++) {
             uint32_t idx = binding->immutable_samplers_index + j;
-            struct pvr_sampler *sampler = layout->immutable_samplers[idx];
+            const struct pvr_sampler *sampler = layout->immutable_samplers[idx];
             unsigned int offset_in_dwords =
                pvr_get_descriptor_primary_offset(device,
                                                  layout,
