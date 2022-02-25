@@ -73,17 +73,18 @@ def build_enum(el):
     return Enum(el.attrib['name'], values)
 
 class Modifier:
-    def __init__(self, name, start, size, implied = False):
+    def __init__(self, name, start, size, implied = False, force_enum = None):
         self.name = name
         self.start = start
         self.size = size
         self.implied = implied
+        self.is_enum = (force_enum is not None) or size > 1
 
-        if size == 1:
+        if not self.is_enum:
             self.bare_values = ['', name]
             self.default = 0
         else:
-            enum = enums[name]
+            enum = enums[force_enum or name]
             self.bare_values = [x.value for x in enum.values]
             defaults = [x for x in enum.values if x.default]
             assert(len(defaults) <= 1)
