@@ -1462,6 +1462,12 @@ VkResult anv_batch_emit_ensure_space(struct anv_batch *batch, uint32_t size);
 void anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other);
 struct anv_address anv_batch_address(struct anv_batch *batch, void *batch_location);
 
+static inline struct anv_address
+anv_batch_current_address(struct anv_batch *batch)
+{
+   return anv_batch_address(batch, batch->next);
+}
+
 static inline void
 anv_batch_set_storage(struct anv_batch *batch, struct anv_address addr,
                       void *map, size_t size)
