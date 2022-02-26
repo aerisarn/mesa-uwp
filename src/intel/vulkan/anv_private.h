@@ -1444,7 +1444,7 @@ struct anv_batch {
    /* This callback is called (with the associated user data) in the event
     * that the batch runs out of space.
     */
-   VkResult (*extend_cb)(struct anv_batch *, void *);
+   VkResult (*extend_cb)(struct anv_batch *, uint32_t, void *);
    void *                                       user_data;
 
    /**
@@ -1458,6 +1458,7 @@ struct anv_batch {
 };
 
 void *anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords);
+VkResult anv_batch_emit_ensure_space(struct anv_batch *batch, uint32_t size);
 void anv_batch_emit_batch(struct anv_batch *batch, struct anv_batch *other);
 struct anv_address anv_batch_address(struct anv_batch *batch, void *batch_location);
 
