@@ -2745,7 +2745,7 @@ struct anv_cmd_buffer {
    struct u_vector                              dynamic_bos;
 
    /**
-    *
+    * Structure holding tracepoints recorded in the command buffer.
     */
    struct u_trace                               trace;
 };
