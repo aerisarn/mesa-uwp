@@ -2681,6 +2681,7 @@ struct anv_cmd_buffer {
    struct anv_device *                          device;
    struct anv_queue_family *                    queue_family;
 
+   /** Batch where the main commands live */
    struct anv_batch                             batch;
 
    /* Pointer to the location in the batch where MI_BATCH_BUFFER_END was
@@ -2752,6 +2753,28 @@ struct anv_cmd_buffer {
     * Used to increase allocation size for long command buffers.
     */
    uint32_t                                     total_batch_size;
+
+   /** Batch generating part of the anv_cmd_buffer::batch */
+   struct anv_batch                             generation_batch;
+
+   /**
+    * Location in anv_cmd_buffer::batch at which we left some space to insert
+    * a MI_BATCH_BUFFER_START into the generation_batch if needed.
+    */
+   struct anv_address                           generation_jump_addr;
+
+   /**
+    * Location in anv_cmd_buffer::batch at which the generation batch should
+    * jump back to.
+    */
+   struct anv_address                           generation_return_addr;
+
+   /** List of anv_batch_bo used for generation
+    *
+    * We have to keep this separated of the anv_cmd_buffer::batch_bos that is
+    * used for a chaining optimization.
+    */
+   struct list_head                             generation_batch_bos;
 
    /**
     * A vector of anv_bo pointers for chunks of memory used by the command

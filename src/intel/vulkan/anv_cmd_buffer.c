@@ -103,6 +103,7 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
       &cmd_buffer->state.gfx.sample_locations;
 
    cmd_buffer->batch.status = VK_SUCCESS;
+   cmd_buffer->generation_batch.status = VK_SUCCESS;
 
    cmd_buffer->device = device;
 
@@ -127,6 +128,8 @@ anv_create_cmd_buffer(struct vk_command_pool *pool,
       goto fail_batch_bo;
 
    cmd_buffer->self_mod_locations = NULL;
+
+   cmd_buffer->generation_return_addr = ANV_NULL_ADDRESS;
 
    anv_cmd_state_init(cmd_buffer);
 
