@@ -1433,6 +1433,12 @@ struct anv_batch_bo {
 struct anv_batch {
    const VkAllocationCallbacks *                alloc;
 
+   /**
+    * Sum of all the anv_batch_bo sizes allocated for this command buffer.
+    * Used to increase allocation size for long command buffers.
+    */
+   size_t                                       total_batch_size;
+
    struct anv_address                           start_addr;
 
    void *                                       start;
