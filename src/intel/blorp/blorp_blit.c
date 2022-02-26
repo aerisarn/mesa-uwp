@@ -2456,9 +2456,9 @@ blorp_blit_supports_compute(struct blorp_context *blorp,
    }
 }
 
-static bool
-blitter_supports_aux(const struct intel_device_info *devinfo,
-                     enum isl_aux_usage aux_usage)
+bool
+blorp_blitter_supports_aux(const struct intel_device_info *devinfo,
+                           enum isl_aux_usage aux_usage)
 {
    switch (aux_usage) {
    case ISL_AUX_USAGE_NONE:
@@ -2486,10 +2486,10 @@ blorp_copy_supports_blitter(struct blorp_context *blorp,
    if (dst_surf->samples > 1 || src_surf->samples > 1)
       return false;
 
-   if (!blitter_supports_aux(devinfo, dst_aux_usage))
+   if (!blorp_blitter_supports_aux(devinfo, dst_aux_usage))
       return false;
 
-   if (!blitter_supports_aux(devinfo, src_aux_usage))
+   if (!blorp_blitter_supports_aux(devinfo, src_aux_usage))
       return false;
 
    const struct isl_format_layout *fmtl =

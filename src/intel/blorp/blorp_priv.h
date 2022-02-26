@@ -412,6 +412,9 @@ struct brw_blorp_blit_prog_key
  * Used internally by gfx6_blorp_exec() and gfx7_blorp_exec().
  */
 
+bool blorp_blitter_supports_aux(const struct intel_device_info *devinfo,
+                                enum isl_aux_usage aux_usage);
+
 void brw_blorp_init_wm_prog_key(struct brw_wm_prog_key *wm_key);
 void brw_blorp_init_cs_prog_key(struct brw_cs_prog_key *cs_key);
 
