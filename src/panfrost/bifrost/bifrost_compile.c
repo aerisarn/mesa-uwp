@@ -147,7 +147,7 @@ bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
 
                 if (sz == 16) {
                         f16 = bi_fma_v2f16(b, offset, bi_imm_f16(256.0),
-                                        bi_imm_f16(128.0), BI_ROUND_NONE);
+                                        bi_imm_f16(128.0));
                 } else {
                         assert(sz == 32);
                         bi_index f[2];
@@ -155,13 +155,13 @@ bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
                                 f[i] = bi_fadd_rscale_f32(b,
                                                 bi_word(offset, i),
                                                 bi_imm_f32(0.5), bi_imm_u32(8),
-                                                BI_ROUND_NONE, BI_SPECIAL_NONE);
+                                                BI_SPECIAL_NONE);
                         }
 
-                        f16 = bi_v2f32_to_v2f16(b, f[0], f[1], BI_ROUND_NONE);
+                        f16 = bi_v2f32_to_v2f16(b, f[0], f[1]);
                 }
 
-                return bi_v2f16_to_v2s16(b, f16, BI_ROUND_RTZ);
+                return bi_v2f16_to_v2s16(b, f16);
         }
 
         case nir_intrinsic_load_barycentric_pixel:
@@ -1244,7 +1244,7 @@ bi_emit_load_frag_coord(bi_builder *b, nir_intrinsic_instr *instr)
         for (unsigned i = 0; i < 2; ++i) {
                 src[i] = bi_fadd_f32(b,
                                 bi_u16_to_f32(b, bi_half(bi_register(59), i)),
-                                bi_imm_f32(0.5f), BI_ROUND_NONE);
+                                bi_imm_f32(0.5f));
         }
 
         for (unsigned i = 0; i < 2; ++i) {
@@ -1691,7 +1691,7 @@ bi_nir_round(nir_op op)
 static bi_index
 bi_fmul_f32(bi_builder *b, bi_index s0, bi_index s1)
 {
-        return bi_fma_f32(b, s0, s1, bi_imm_f32(-0.0f), BI_ROUND_NONE);
+        return bi_fma_f32(b, s0, s1, bi_imm_f32(-0.0f));
 }
 
 /* Approximate with FRCP_APPROX.f32 and apply a single iteration of
@@ -1704,9 +1704,8 @@ bi_lower_frcp_32(bi_builder *b, bi_index dst, bi_index s0)
         bi_index m  = bi_frexpm_f32(b, s0, false, false);
         bi_index e  = bi_frexpe_f32(b, bi_neg(s0), false, false);
         bi_index t1 = bi_fma_rscale_f32(b, m, bi_neg(x1), bi_imm_f32(1.0),
-                        bi_zero(), BI_ROUND_NONE, BI_SPECIAL_N);
-        bi_fma_rscale_f32_to(b, dst, t1, x1, x1, e,
-                        BI_ROUND_NONE, BI_SPECIAL_NONE);
+                        bi_zero(), BI_SPECIAL_N);
+        bi_fma_rscale_f32_to(b, dst, t1, x1, x1, e, BI_SPECIAL_NONE);
 }
 
 static void
@@ -1717,9 +1716,8 @@ bi_lower_frsq_32(bi_builder *b, bi_index dst, bi_index s0)
         bi_index e  = bi_frexpe_f32(b, bi_neg(s0), false, true);
         bi_index t1 = bi_fmul_f32(b, x1, x1);
         bi_index t2 = bi_fma_rscale_f32(b, m, bi_neg(t1), bi_imm_f32(1.0),
-                        bi_imm_u32(-1), BI_ROUND_NONE, BI_SPECIAL_N);
-        bi_fma_rscale_f32_to(b, dst, t2, x1, x1, e,
-                        BI_ROUND_NONE, BI_SPECIAL_N);
+                        bi_imm_u32(-1), BI_SPECIAL_N);
+        bi_fma_rscale_f32_to(b, dst, t2, x1, x1, e, BI_SPECIAL_N);
 }
 
 /* More complex transcendentals, see
@@ -1730,26 +1728,23 @@ static void
 bi_lower_fexp2_32(bi_builder *b, bi_index dst, bi_index s0)
 {
         bi_index t1 = bi_temp(b->shader);
-        bi_instr *t1_instr = bi_fadd_f32_to(b, t1,
-                        s0, bi_imm_u32(0x49400000), BI_ROUND_NONE);
+        bi_instr *t1_instr = bi_fadd_f32_to(b, t1, s0, bi_imm_u32(0x49400000));
         t1_instr->clamp = BI_CLAMP_CLAMP_0_INF;
 
-        bi_index t2 = bi_fadd_f32(b, t1, bi_imm_u32(0xc9400000), BI_ROUND_NONE);
+        bi_index t2 = bi_fadd_f32(b, t1, bi_imm_u32(0xc9400000));
 
-        bi_instr *a2 = bi_fadd_f32_to(b, bi_temp(b->shader),
-                        s0, bi_neg(t2), BI_ROUND_NONE);
+        bi_instr *a2 = bi_fadd_f32_to(b, bi_temp(b->shader), s0, bi_neg(t2));
         a2->clamp = BI_CLAMP_CLAMP_M1_1;
 
         bi_index a1t = bi_fexp_table_u4(b, t1, BI_ADJ_NONE);
         bi_index t3 = bi_isub_u32(b, t1, bi_imm_u32(0x49400000), false);
         bi_index a1i = bi_arshift_i32(b, t3, bi_null(), bi_imm_u8(4));
         bi_index p1 = bi_fma_f32(b, a2->dest[0], bi_imm_u32(0x3d635635),
-                        bi_imm_u32(0x3e75fffa), BI_ROUND_NONE);
-        bi_index p2 = bi_fma_f32(b, p1, a2->dest[0],
-                        bi_imm_u32(0x3f317218), BI_ROUND_NONE);
+                        bi_imm_u32(0x3e75fffa));
+        bi_index p2 = bi_fma_f32(b, p1, a2->dest[0], bi_imm_u32(0x3f317218));
         bi_index p3 = bi_fmul_f32(b, a2->dest[0], p2);
         bi_instr *x = bi_fma_rscale_f32_to(b, bi_temp(b->shader),
-                        p3, a1t, a1t, a1i, BI_ROUND_NONE, BI_SPECIAL_NONE);
+                        p3, a1t, a1t, a1i, BI_SPECIAL_NONE);
         x->clamp = BI_CLAMP_CLAMP_0_INF;
 
         bi_instr *max = bi_fmax_f32_to(b, dst, x->dest[0], s0);
@@ -1762,12 +1757,13 @@ bi_fexp_32(bi_builder *b, bi_index dst, bi_index s0, bi_index log2_base)
         /* Scale by base, Multiply by 2*24 and convert to integer to get a 8:24
          * fixed-point input */
         bi_index scale = bi_fma_rscale_f32(b, s0, log2_base, bi_negzero(),
-                        bi_imm_u32(24), BI_ROUND_NONE, BI_SPECIAL_NONE);
-        bi_index fixed_pt = bi_f32_to_s32(b, scale, BI_ROUND_NONE);
+                        bi_imm_u32(24), BI_SPECIAL_NONE);
+        bi_instr *fixed_pt = bi_f32_to_s32_to(b, bi_temp(b->shader), scale);
+        fixed_pt->round = BI_ROUND_NONE; // XXX
 
         /* Compute the result for the fixed-point input, but pass along
          * the floating-point scale for correct NaN propagation */
-        bi_fexp_f32_to(b, dst, fixed_pt, scale);
+        bi_fexp_f32_to(b, dst, fixed_pt->dest[0], scale);
 }
 
 static void
@@ -1776,7 +1772,7 @@ bi_lower_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
         /* s0 = a1 * 2^e, with a1 in [0.75, 1.5) */
         bi_index a1 = bi_frexpm_f32(b, s0, true, false);
         bi_index ei = bi_frexpe_f32(b, s0, true, false);
-        bi_index ef = bi_s32_to_f32(b, ei, BI_ROUND_RTZ);
+        bi_index ef = bi_s32_to_f32(b, ei);
 
         /* xt estimates -log(r1), a coarse approximation of log(a1) */
         bi_index r1 = bi_flog_table_f32(b, s0, BI_MODE_RED, BI_PRECISION_NONE);
@@ -1785,33 +1781,32 @@ bi_lower_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
         /* log(s0) = log(a1 * 2^e) = e + log(a1) = e + log(a1 * r1) -
          * log(r1), so let x1 = e - log(r1) ~= e + xt and x2 = log(a1 * r1),
          * and then log(s0) = x1 + x2 */
-        bi_index x1 = bi_fadd_f32(b, ef, xt, BI_ROUND_NONE);
+        bi_index x1 = bi_fadd_f32(b, ef, xt);
 
         /* Since a1 * r1 is close to 1, x2 = log(a1 * r1) may be computed by
          * polynomial approximation around 1. The series is expressed around
          * 1, so set y = (a1 * r1) - 1.0 */
-        bi_index y = bi_fma_f32(b, a1, r1, bi_imm_f32(-1.0), BI_ROUND_NONE);
+        bi_index y = bi_fma_f32(b, a1, r1, bi_imm_f32(-1.0));
 
         /* x2 = log_2(1 + y) = log_e(1 + y) * (1/log_e(2)), so approximate
          * log_e(1 + y) by the Taylor series (lower precision than the blob):
          * y - y^2/2 + O(y^3) = y(1 - y/2) + O(y^3) */
         bi_index loge = bi_fmul_f32(b, y,
-                bi_fma_f32(b, y, bi_imm_f32(-0.5), bi_imm_f32(1.0), BI_ROUND_NONE));
+                bi_fma_f32(b, y, bi_imm_f32(-0.5), bi_imm_f32(1.0)));
 
         bi_index x2 = bi_fmul_f32(b, loge, bi_imm_f32(1.0 / logf(2.0)));
 
         /* log(s0) = x1 + x2 */
-        bi_fadd_f32_to(b, dst, x1, x2, BI_ROUND_NONE);
+        bi_fadd_f32_to(b, dst, x1, x2);
 }
 
 static void
 bi_flog2_32(bi_builder *b, bi_index dst, bi_index s0)
 {
         bi_index frexp = bi_frexpe_f32(b, s0, true, false);
-        bi_index frexpi = bi_s32_to_f32(b, frexp, BI_ROUND_RTZ);
+        bi_index frexpi = bi_s32_to_f32(b, frexp);
         bi_index add = bi_fadd_lscale_f32(b, bi_imm_f32(-1.0f), s0);
-        bi_fma_f32_to(b, dst, bi_flogd_f32(b, s0), add, frexpi,
-                        BI_ROUND_NONE);
+        bi_fma_f32_to(b, dst, bi_flogd_f32(b, s0), add, frexpi);
 }
 
 static void
@@ -1862,12 +1857,11 @@ static void
 bi_lower_fsincos_32(bi_builder *b, bi_index dst, bi_index s0, bool cos)
 {
         /* bottom 6-bits of result times pi/32 approximately s0 mod 2pi */
-        bi_index x_u6 = bi_fma_f32(b, s0, TWO_OVER_PI, SINCOS_BIAS, BI_ROUND_NONE);
+        bi_index x_u6 = bi_fma_f32(b, s0, TWO_OVER_PI, SINCOS_BIAS);
 
         /* Approximate domain error (small) */
-        bi_index e = bi_fma_f32(b, bi_fadd_f32(b, x_u6, bi_neg(SINCOS_BIAS),
-                                BI_ROUND_NONE),
-                        MPI_OVER_TWO, s0, BI_ROUND_NONE);
+        bi_index e = bi_fma_f32(b, bi_fadd_f32(b, x_u6, bi_neg(SINCOS_BIAS)),
+                        MPI_OVER_TWO, s0);
 
         /* Lookup sin(x), cos(x) */
         bi_index sinx = bi_fsin_table_u6(b, x_u6, false);
@@ -1875,21 +1869,21 @@ bi_lower_fsincos_32(bi_builder *b, bi_index dst, bi_index s0, bool cos)
 
         /* e^2 / 2 */
         bi_index e2_over_2 = bi_fma_rscale_f32(b, e, e, bi_negzero(),
-                        bi_imm_u32(-1), BI_ROUND_NONE, BI_SPECIAL_NONE);
+                        bi_imm_u32(-1), BI_SPECIAL_NONE);
 
         /* (-e^2)/2 f''(x) */
         bi_index quadratic = bi_fma_f32(b, bi_neg(e2_over_2),
                         cos ? cosx : sinx,
-                        bi_negzero(),  BI_ROUND_NONE);
+                        bi_negzero());
 
         /* e f'(x) - (e^2/2) f''(x) */
         bi_instr *I = bi_fma_f32_to(b, bi_temp(b->shader), e,
                         cos ? bi_neg(sinx) : cosx,
-                        quadratic, BI_ROUND_NONE);
+                        quadratic);
         I->clamp = BI_CLAMP_CLAMP_M1_1;
 
         /* f(x) + e f'(x) - (e^2/2) f''(x) */
-        bi_fadd_f32_to(b, dst, I->dest[0], cos ? cosx : sinx, BI_ROUND_NONE);
+        bi_fadd_f32_to(b, dst, I->dest[0], cos ? cosx : sinx);
 }
 
 /* The XOR lane op is useful for derivative calculation, but was added in v7.
@@ -2056,7 +2050,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_index s1 = comps > 1 ?
                         bi_word(idx, instr->src[0].swizzle[1]) : s0;
 
-                bi_v2f32_to_v2f16_to(b, dst, s0, s1, BI_ROUND_NONE);
+                bi_v2f32_to_v2f16_to(b, dst, s0, s1);
                 return;
 
         /* Vectorized downcasts */
@@ -2095,9 +2089,9 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                                           bi_half(s1, false));
 
                 if (instr->op == nir_op_u2f16)
-                        bi_v2u16_to_v2f16_to(b, dst, t, BI_ROUND_NONE);
+                        bi_v2u16_to_v2f16_to(b, dst, t);
                 else
-                        bi_v2s16_to_v2f16_to(b, dst, t, BI_ROUND_NONE);
+                        bi_v2s16_to_v2f16_to(b, dst, t);
 
                 return;
         }
@@ -2158,18 +2152,18 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         switch (instr->op) {
         case nir_op_ffma:
-                bi_fma_to(b, sz, dst, s0, s1, s2, BI_ROUND_NONE);
+                bi_fma_to(b, sz, dst, s0, s1, s2);
                 break;
 
         case nir_op_fmul:
-                bi_fma_to(b, sz, dst, s0, s1, bi_negzero(), BI_ROUND_NONE);
+                bi_fma_to(b, sz, dst, s0, s1, bi_negzero());
                 break;
 
         case nir_op_fsub:
                 s1 = bi_neg(s1);
                 FALLTHROUGH;
         case nir_op_fadd:
-                bi_fadd_to(b, sz, dst, s0, s1, BI_ROUND_NONE);
+                bi_fadd_to(b, sz, dst, s0, s1);
                 break;
 
         case nir_op_fsat: {
@@ -2245,7 +2239,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_ldexp:
-                bi_ldexp_to(b, sz, dst, s0, s1, BI_ROUND_NONE);
+                bi_ldexp_to(b, sz, dst, s0, s1);
                 break;
 
         case nir_op_b8csel:
@@ -2290,7 +2284,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         case nir_op_fddy_must_abs_mali: {
                 bi_index bit = bi_imm_u32(instr->op == nir_op_fddx_must_abs_mali ? 1 : 2);
                 bi_index adjacent = bi_clper_xor(b, s0, bit);
-                bi_fadd_to(b, sz, dst, adjacent, bi_neg(s0), BI_ROUND_NONE);
+                bi_fadd_to(b, sz, dst, adjacent, bi_neg(s0));
                 break;
         }
 
@@ -2355,7 +2349,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                                         BI_SUBGROUP_SUBGROUP4);
                 }
 
-                bi_fadd_to(b, sz, dst, right, bi_neg(left), BI_ROUND_NONE);
+                bi_fadd_to(b, sz, dst, right, bi_neg(left));
                 break;
         }
 
@@ -2365,45 +2359,45 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_f2i32:
                 if (src_sz == 32)
-                        bi_f32_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_f32_to_s32_to(b, dst, s0);
                 else
-                        bi_f16_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_f16_to_s32_to(b, dst, s0);
                 break;
 
         /* Note 32-bit sources => no vectorization, so 32-bit works */
         case nir_op_f2u16:
                 if (src_sz == 32)
-                        bi_f32_to_u32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_f32_to_u32_to(b, dst, s0);
                 else
-                        bi_v2f16_to_v2u16_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_v2f16_to_v2u16_to(b, dst, s0);
                 break;
 
         case nir_op_f2i16:
                 if (src_sz == 32)
-                        bi_f32_to_s32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_f32_to_s32_to(b, dst, s0);
                 else
-                        bi_v2f16_to_v2s16_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_v2f16_to_v2s16_to(b, dst, s0);
                 break;
 
         case nir_op_f2u32:
                 if (src_sz == 32)
-                        bi_f32_to_u32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_f32_to_u32_to(b, dst, s0);
                 else
-                        bi_f16_to_u32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_f16_to_u32_to(b, dst, s0);
                 break;
 
         case nir_op_u2f16:
                 if (src_sz == 32)
-                        bi_v2u16_to_v2f16_to(b, dst, bi_half(s0, false), BI_ROUND_RTZ);
+                        bi_v2u16_to_v2f16_to(b, dst, bi_half(s0, false));
                 else if (src_sz == 16)
-                        bi_v2u16_to_v2f16_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_v2u16_to_v2f16_to(b, dst, s0);
                 else if (src_sz == 8)
                         bi_v2u8_to_v2f16_to(b, dst, s0);
                 break;
 
         case nir_op_u2f32:
                 if (src_sz == 32)
-                        bi_u32_to_f32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_u32_to_f32_to(b, dst, s0);
                 else if (src_sz == 16)
                         bi_u16_to_f32_to(b, dst, s0);
                 else
@@ -2412,9 +2406,9 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_i2f16:
                 if (src_sz == 32)
-                        bi_v2s16_to_v2f16_to(b, dst, bi_half(s0, false), BI_ROUND_RTZ);
+                        bi_v2s16_to_v2f16_to(b, dst, bi_half(s0, false));
                 else if (src_sz == 16)
-                        bi_v2s16_to_v2f16_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_v2s16_to_v2f16_to(b, dst, s0);
                 else if (src_sz == 8)
                         bi_v2s8_to_v2f16_to(b, dst, s0);
                 break;
@@ -2423,7 +2417,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 assert(src_sz == 32 || src_sz == 16 || src_sz == 8);
 
                 if (src_sz == 32)
-                        bi_s32_to_f32_to(b, dst, s0, BI_ROUND_RTZ);
+                        bi_s32_to_f32_to(b, dst, s0);
                 else if (src_sz == 16)
                         bi_s16_to_f32_to(b, dst, s0);
                 else if (src_sz == 8)
@@ -2732,7 +2726,9 @@ bi_emit_texc_array_index(bi_builder *b, bi_index idx, nir_alu_type T)
          * 0, dt - 1). So we use round RTE, clamping is handled at the data
          * structure level */
 
-        return bi_f32_to_u32(b, idx, BI_ROUND_NONE);
+        bi_instr *I = bi_f32_to_u32_to(b, bi_temp(b->shader), idx);
+        I->round = BI_ROUND_NONE;
+        return I->dest[0];
 }
 
 /* TEXC's explicit and bias LOD modes requires the LOD to be transformed to a
@@ -2760,16 +2756,15 @@ bi_emit_texc_lod_88(bi_builder *b, bi_index lod, bool fp16)
 
         bi_instr *fsat = bi_fma_f32_to(b, bi_temp(b->shader),
                         fp16 ? bi_half(lod, false) : lod,
-                        bi_imm_f32(1.0f / max_lod), bi_negzero(), BI_ROUND_NONE);
+                        bi_imm_f32(1.0f / max_lod), bi_negzero());
 
         fsat->clamp = BI_CLAMP_CLAMP_M1_1;
 
         bi_index fmul = bi_fma_f32(b, fsat->dest[0], bi_imm_f32(max_lod * 256.0f),
-                        bi_negzero(), BI_ROUND_NONE);
+                        bi_negzero());
 
         return bi_mkvec_v2i16(b,
-                        bi_half(bi_f32_to_s32(b, fmul, BI_ROUND_RTZ), false),
-                        bi_imm_u16(0));
+                        bi_half(bi_f32_to_s32(b, fmul), false), bi_imm_u16(0));
 }
 
 /* FETCH takes a 32-bit staging register containing the LOD as an integer in
@@ -2911,17 +2906,14 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
         bi_index rcp = bi_frcp_f32(b, maxxyz);
 
         /* Calculate 0.5 * (1.0 / max{x, y, z}) */
-        bi_index fma1 = bi_fma_f32(b, rcp, bi_imm_f32(0.5f), bi_negzero(),
-                        BI_ROUND_NONE);
+        bi_index fma1 = bi_fma_f32(b, rcp, bi_imm_f32(0.5f), bi_negzero());
 
         /* Transform the coordinates */
         *s = bi_temp(b->shader);
         *t = bi_temp(b->shader);
 
-        bi_instr *S = bi_fma_f32_to(b, *s, fma1, ssel, bi_imm_f32(0.5f),
-                        BI_ROUND_NONE);
-        bi_instr *T = bi_fma_f32_to(b, *t, fma1, tsel, bi_imm_f32(0.5f),
-                        BI_ROUND_NONE);
+        bi_instr *S = bi_fma_f32_to(b, *s, fma1, ssel, bi_imm_f32(0.5f));
+        bi_instr *T = bi_fma_f32_to(b, *t, fma1, tsel, bi_imm_f32(0.5f));
 
         S->clamp = BI_CLAMP_CLAMP_0_1;
         T->clamp = BI_CLAMP_CLAMP_0_1;

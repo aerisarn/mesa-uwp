@@ -186,6 +186,6 @@ TEST_F(ConstantFold, OtherOperationsShouldNotFold)
    bi_index zero = bi_fau(bir_fau(BIR_FAU_IMMEDIATE | 0), false);
    bi_index reg = bi_register(0);
 
-   EXPECT_NOT_FOLD(bi_fma_f32_to(b, reg, zero, zero, zero, BI_ROUND_NONE));
-   EXPECT_NOT_FOLD(bi_fadd_f32_to(b, reg, zero, zero, BI_ROUND_NONE));
+   EXPECT_NOT_FOLD(bi_fma_f32_to(b, reg, zero, zero, zero));
+   EXPECT_NOT_FOLD(bi_fadd_f32_to(b, reg, zero, zero));
 }

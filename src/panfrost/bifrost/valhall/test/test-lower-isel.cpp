@@ -102,7 +102,7 @@ TEST_F(LowerIsel, IntegerCSEL) {
 }
 
 TEST_F(LowerIsel, Smoke) {
-   NEGCASE(bi_fadd_f32_to(b, reg, reg, reg, BI_ROUND_RTP));
+   NEGCASE(bi_fadd_f32_to(b, reg, reg, reg));
    NEGCASE(bi_csel_s32_to(b, reg, reg, reg, reg, reg, BI_CMPF_LT));
    NEGCASE(bi_csel_u32_to(b, reg, reg, reg, reg, reg, BI_CMPF_LT));
 }

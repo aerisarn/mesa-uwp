@@ -65,42 +65,42 @@ TEST_F(ValhallPacking, Moves) {
 }
 
 TEST_F(ValhallPacking, Fadd) {
-   CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1), bi_register(2), BI_ROUND_NONE),
+   CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1), bi_register(2)),
          0x00a4c00000000201ULL);
-   CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1), bi_abs(bi_register(2)), BI_ROUND_NONE),
+   CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1), bi_abs(bi_register(2))),
          0x00a4c02000000201ULL);
-   CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1), bi_neg(bi_register(2)), BI_ROUND_NONE),
+   CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1), bi_neg(bi_register(2))),
          0x00a4c01000000201ULL);
 
    CASE(bi_fadd_v2f16_to(b, bi_register(0), bi_swz_16(bi_register(1), false, false),
-                         bi_swz_16(bi_register(0), true, true), BI_ROUND_NONE),
+                         bi_swz_16(bi_register(0), true, true)),
          0x00a5c0000c000001ULL);
 
-   CASE(bi_fadd_v2f16_to(b, bi_register(0), bi_register(1), bi_register(0), BI_ROUND_NONE),
+   CASE(bi_fadd_v2f16_to(b, bi_register(0), bi_register(1), bi_register(0)),
          0x00a5c00028000001ULL);
 
    CASE(bi_fadd_v2f16_to(b, bi_register(0), bi_register(1),
-                         bi_swz_16(bi_register(0), true, false), BI_ROUND_NONE),
+                         bi_swz_16(bi_register(0), true, false)),
          0x00a5c00024000001ULL);
 
    CASE(bi_fadd_v2f16_to(b, bi_register(0), bi_discard(bi_abs(bi_register(0))),
-                         bi_neg(zero), BI_ROUND_NONE),
+                         bi_neg(zero)),
          0x00a5c0902800c040ULL);
 
    CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1),
-                       zero, BI_ROUND_NONE),
+                       zero),
          0x00a4c0000000c001ULL);
 
    CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1),
-                       bi_neg(zero), BI_ROUND_NONE),
+                       bi_neg(zero)),
          0x00a4c0100000c001ULL);
 
    CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1),
-                       bi_half(bi_register(0), true), BI_ROUND_NONE),
+                       bi_half(bi_register(0), true)),
          0x00a4c00008000001ULL);
 
    CASE(bi_fadd_f32_to(b, bi_register(0), bi_register(1),
-                       bi_half(bi_register(0), false), BI_ROUND_NONE),
+                       bi_half(bi_register(0), false)),
          0x00a4c00004000001ULL);
 }
 
@@ -112,8 +112,7 @@ TEST_F(ValhallPacking, Clper) {
 
 TEST_F(ValhallPacking, Clamps) {
    bi_instr *I = bi_fadd_f32_to(b, bi_register(0), bi_register(1),
-         bi_neg(bi_abs(bi_register(2))),
-         BI_ROUND_NONE);
+                                bi_neg(bi_abs(bi_register(2))));
    CASE(I, 0x00a4c03000000201ULL);
 
    I->clamp = BI_CLAMP_CLAMP_M1_1;
@@ -123,7 +122,7 @@ TEST_F(ValhallPacking, Clamps) {
 TEST_F(ValhallPacking, Misc) {
    CASE(bi_fma_f32_to(b, bi_register(1), bi_discard(bi_register(1)),
                          bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 4), false),
-                         bi_neg(zero), BI_ROUND_NONE),
+                         bi_neg(zero)),
          0x00b2c10400c08841ULL);
 
    CASE(bi_fround_f32_to(b, bi_register(2), bi_discard(bi_neg(bi_register(2))),
@@ -164,7 +163,7 @@ TEST_F(ValhallPacking, Comparions) {
 }
 
 TEST_F(ValhallPacking, Conversions) {
-   CASE(bi_v2s16_to_v2f16_to(b, bi_register(2), bi_discard(bi_register(2)), BI_ROUND_NONE),
+   CASE(bi_v2s16_to_v2f16_to(b, bi_register(2), bi_discard(bi_register(2))),
          0x0090c22000070042);
 }
 
@@ -219,7 +218,7 @@ TEST_F(ValhallPacking, Transcendentals) {
    CASE(bi_frsq_f32_to(b, bi_register(2), bi_register(1)),
         0x009cc20000020001);
 
-   CASE(bi_fma_rscale_f32_to(b, bi_register(0), bi_discard(bi_register(1)), bi_discard(bi_register(2)), bi_neg(zero), bi_discard(bi_register(0)), BI_ROUND_NONE, BI_SPECIAL_LEFT),
+   CASE(bi_fma_rscale_f32_to(b, bi_register(0), bi_discard(bi_register(1)), bi_discard(bi_register(2)), bi_neg(zero), bi_discard(bi_register(0)), BI_SPECIAL_LEFT),
         0x0162c00440c04241);
 }
 

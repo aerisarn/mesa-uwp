@@ -56,7 +56,7 @@ TEST_F(SchedulerPredicates, MOV)
 
 TEST_F(SchedulerPredicates, FMA)
 {
-   bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero(), BI_ROUND_NONE);
+   bi_instr *fma = bi_fma_f32_to(b, TMP(), TMP(), TMP(), bi_zero());
    ASSERT_TRUE(bi_can_fma(fma));
    ASSERT_FALSE(bi_can_add(fma));
    ASSERT_FALSE(bi_must_message(fma));
@@ -96,12 +96,12 @@ TEST_F(SchedulerPredicates, BLEND)
 
 TEST_F(SchedulerPredicates, RestrictionsOnModifiersOfSameCycleTemporaries)
 {
-   bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP(), BI_ROUND_NONE);
+   bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP());
    ASSERT_TRUE(bi_reads_t(fadd, 0));
 
    for (unsigned i = 0; i < 2; ++i) {
       for (unsigned j = 0; j < 2; ++j) {
-         bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP(), BI_ROUND_NONE);
+         bi_instr *fadd = bi_fadd_f32_to(b, TMP(), TMP(), TMP());
          fadd->src[i] = bi_swz_16(TMP(), j, j);
          ASSERT_TRUE(bi_reads_t(fadd, 1 - i));
          ASSERT_FALSE(bi_reads_t(fadd, i));
@@ -115,7 +115,7 @@ TEST_F(SchedulerPredicates, RestrictionsOnFAddV2F16)
    bi_index y = bi_register(1);
 
    /* Basic */
-   bi_instr *fadd = bi_fadd_v2f16_to(b, TMP(), x, x, BI_ROUND_NONE);
+   bi_instr *fadd = bi_fadd_v2f16_to(b, TMP(), x, x);
 
    ASSERT_TRUE(bi_can_fma(fadd));
    ASSERT_TRUE(bi_can_add(fadd));

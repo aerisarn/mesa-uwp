@@ -278,6 +278,7 @@ def combine_ir_variants(instructions, key):
     # Great, we've checked srcs/immediates are consistent and we've summed over
     # modifiers
     return {
+            'key': key,
             'srcs': variants[0]['srcs'],
             'dests': variants[0]['dests'],
             'staging': variants[0]['staging'],
