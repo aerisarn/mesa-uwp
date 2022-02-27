@@ -75,17 +75,14 @@ TEST_F(Optimizer, FusedFABSNEG)
    CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, x), y, BI_ROUND_NONE),
         bi_fadd_f32_to(b, reg, x, y, BI_ROUND_NONE));
 
-   CASE(bi_fadd_f32_to(b, reg, bi_fabsneg_f32(b, negabsx), y, BI_ROUND_RTP),
-        bi_fadd_f32_to(b, reg, negabsx, y, BI_ROUND_RTP));
-
    CASE(bi_fmin_f32_to(b, reg, bi_fabsneg_f32(b, negabsx), bi_neg(y)),
         bi_fmin_f32_to(b, reg, negabsx, bi_neg(y)));
 }
 
 TEST_F(Optimizer, FusedFABSNEGForFP16)
 {
-   CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, negabsx), y, BI_ROUND_RTP),
-        bi_fadd_v2f16_to(b, reg, negabsx, y, BI_ROUND_RTP));
+   CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, negabsx), y, BI_ROUND_NONE),
+        bi_fadd_v2f16_to(b, reg, negabsx, y, BI_ROUND_NONE));
 
    CASE(bi_fmin_v2f16_to(b, reg, bi_fabsneg_v2f16(b, negabsx), bi_neg(y)),
         bi_fmin_v2f16_to(b, reg, negabsx, bi_neg(y)));
@@ -165,20 +162,20 @@ TEST_F(Optimizer, AvoidFADD_V2F16WithEqualSourcesAbsAbsAndClamp)
 
 TEST_F(Optimizer, SwizzlesComposedForFP16)
 {
-   CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, bi_swz_16(negabsx, true, false)), y, BI_ROUND_RTP),
-        bi_fadd_v2f16_to(b, reg, bi_swz_16(negabsx, true, false), y, BI_ROUND_RTP));
+   CASE(bi_fadd_v2f16_to(b, reg, bi_fabsneg_v2f16(b, bi_swz_16(negabsx, true, false)), y, BI_ROUND_NONE),
+        bi_fadd_v2f16_to(b, reg, bi_swz_16(negabsx, true, false), y, BI_ROUND_NONE));
 
-   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, negabsx), true, false), y, BI_ROUND_RTP),
-        bi_fadd_v2f16_to(b, reg, bi_swz_16(negabsx, true, false), y, BI_ROUND_RTP));
+   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, negabsx), true, false), y, BI_ROUND_NONE),
+        bi_fadd_v2f16_to(b, reg, bi_swz_16(negabsx, true, false), y, BI_ROUND_NONE));
 
-   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_swz_16(negabsx, true, false)), true, false), y, BI_ROUND_RTP),
-        bi_fadd_v2f16_to(b, reg, negabsx, y, BI_ROUND_RTP));
+   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_swz_16(negabsx, true, false)), true, false), y, BI_ROUND_NONE),
+        bi_fadd_v2f16_to(b, reg, negabsx, y, BI_ROUND_NONE));
 
-   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_half(negabsx, false)), true, false), y, BI_ROUND_RTP),
-        bi_fadd_v2f16_to(b, reg, bi_half(negabsx, false), y, BI_ROUND_RTP));
+   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_half(negabsx, false)), true, false), y, BI_ROUND_NONE),
+        bi_fadd_v2f16_to(b, reg, bi_half(negabsx, false), y, BI_ROUND_NONE));
 
-   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_half(negabsx, true)), true, false), y, BI_ROUND_RTP),
-        bi_fadd_v2f16_to(b, reg, bi_half(negabsx, true), y, BI_ROUND_RTP));
+   CASE(bi_fadd_v2f16_to(b, reg, bi_swz_16(bi_fabsneg_v2f16(b, bi_half(negabsx, true)), true, false), y, BI_ROUND_NONE),
+        bi_fadd_v2f16_to(b, reg, bi_half(negabsx, true), y, BI_ROUND_NONE));
 }
 
 TEST_F(Optimizer, PreserveWidens)
