@@ -8165,15 +8165,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
                     ids[1].used ? Operand(get_arg(ctx, ids[1])) : Operand::zero(),
                     ids[2].used ? Operand(get_arg(ctx, ids[2])) : Operand::zero());
          emit_split_vector(ctx, dst, 3);
-      } else if (ctx->stage == mesh_ngg) {
-         /* TODO: support 3 dimensional workgroup IDs properly. */
-         Temp idx_arg = get_arg(ctx, ctx->args->ac.vertex_id);
-         Temp base_arg = get_arg(ctx, ctx->args->ac.base_vertex);
-         Temp idx = bld.vop1(aco_opcode::v_readfirstlane_b32, bld.def(s1), idx_arg);
-         Temp workgroup_index = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), idx, base_arg);
-         Temp zero = bld.copy(bld.def(s1), Operand::zero());
-         Temp workgroup_ids[3] = {workgroup_index, zero, zero};
-         create_vec_from_array(ctx, workgroup_ids, 3, RegType::sgpr, 4, 0, dst);
+      } else {
+         isel_err(&instr->instr, "Unsupported stage for load_workgroup_id");
       }
       break;
    }
