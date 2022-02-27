@@ -99,7 +99,7 @@ bi_instr * bi_${opcode.replace('.', '_').lower()}${to_suffix(ops[opcode])}(${sig
     I->src[${src}] = src${src};
 % endfor
 % for mod in ops[opcode]["modifiers"]:
-% if mod[0:-1] not in SKIP and mod not in SKIP:
+% if not should_skip(mod):
     I->${mod} = ${mod};
 % endif
 % endfor
@@ -198,4 +198,6 @@ def arguments(op, temp_dest = True):
         modifier_signature(op) +
         op["immediates"])
 
-print(Template(COPYRIGHT + TEMPLATE).render(ops = ir_instructions, modifiers = modifier_lists, signature = signature, arguments = arguments, src_count = src_count, typesize = typesize, SKIP = SKIP))
+print(Template(COPYRIGHT + TEMPLATE).render(ops = ir_instructions, modifiers =
+    modifier_lists, signature = signature, arguments = arguments, src_count =
+    src_count, typesize = typesize, should_skip = should_skip))
