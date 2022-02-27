@@ -649,4 +649,6 @@ void radeon_enc_2_0_init(struct radeon_encoder *enc);
 
 void radeon_enc_3_0_init(struct radeon_encoder *enc);
 
+void radeon_enc_4_0_init(struct radeon_encoder *enc);
+
 #endif // _RADEON_VCN_ENC_H
