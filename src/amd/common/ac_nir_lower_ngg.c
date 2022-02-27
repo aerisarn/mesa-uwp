@@ -2451,10 +2451,11 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
       nir_ssa_def *prim_idx_addr = nir_imul_imm(b, invocation_index, s->vertices_per_prim);
       nir_ssa_def *indices_loaded = nir_load_shared(b, s->vertices_per_prim, 8, prim_idx_addr, .base = s->prim_vtx_indices_addr);
       nir_ssa_def *indices[3];
+      nir_ssa_def *max_vtx_idx = nir_iadd_imm(b, num_vtx, -1u);
 
       for (unsigned i = 0; i < s->vertices_per_prim; ++i) {
          indices[i] = nir_u2u32(b, nir_channel(b, indices_loaded, i));
-         indices[i] = nir_umin(b, indices[i], nir_imm_int(b, shader->info.mesh.max_vertices_out - 1));
+         indices[i] = nir_umin(b, indices[i], max_vtx_idx);
       }
 
       nir_ssa_def *prim_exp_arg = emit_pack_ngg_prim_exp_arg(b, s->vertices_per_prim, indices, NULL, false);
