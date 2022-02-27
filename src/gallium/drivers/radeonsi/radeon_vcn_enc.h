@@ -187,6 +187,7 @@ typedef struct rvcn_enc_session_init_s {
    uint32_t padding_height;
    uint32_t pre_encode_mode;
    uint32_t pre_encode_chroma_enabled;
+   uint32_t slice_output_enabled;
    uint32_t display_remote;
 } rvcn_enc_session_init_t;
 

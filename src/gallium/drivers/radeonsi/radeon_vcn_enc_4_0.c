@@ -38,6 +38,38 @@
 #define RENCODE_FW_INTERFACE_MAJOR_VERSION   1
 #define RENCODE_FW_INTERFACE_MINOR_VERSION   0
 
+static void radeon_enc_session_init(struct radeon_encoder *enc)
+{
+   if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
+      enc->enc_pic.session_init.encode_standard = RENCODE_ENCODE_STANDARD_H264;
+      enc->enc_pic.session_init.aligned_picture_width = align(enc->base.width, 16);
+   } else if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_HEVC) {
+      enc->enc_pic.session_init.encode_standard = RENCODE_ENCODE_STANDARD_HEVC;
+      enc->enc_pic.session_init.aligned_picture_width = align(enc->base.width, 64);
+   }
+   enc->enc_pic.session_init.aligned_picture_height = align(enc->base.height, 16);
+   enc->enc_pic.session_init.padding_width =
+      enc->enc_pic.session_init.aligned_picture_width - enc->base.width;
+   enc->enc_pic.session_init.padding_height =
+      enc->enc_pic.session_init.aligned_picture_height - enc->base.height;
+   enc->enc_pic.session_init.pre_encode_mode = RENCODE_PREENCODE_MODE_NONE;
+   enc->enc_pic.session_init.pre_encode_chroma_enabled = false;
+   enc->enc_pic.session_init.slice_output_enabled = false;
+   enc->enc_pic.session_init.display_remote = 0;
+
+   RADEON_ENC_BEGIN(enc->cmd.session_init);
+   RADEON_ENC_CS(enc->enc_pic.session_init.encode_standard);
+   RADEON_ENC_CS(enc->enc_pic.session_init.aligned_picture_width);
+   RADEON_ENC_CS(enc->enc_pic.session_init.aligned_picture_height);
+   RADEON_ENC_CS(enc->enc_pic.session_init.padding_width);
+   RADEON_ENC_CS(enc->enc_pic.session_init.padding_height);
+   RADEON_ENC_CS(enc->enc_pic.session_init.pre_encode_mode);
+   RADEON_ENC_CS(enc->enc_pic.session_init.pre_encode_chroma_enabled);
+   RADEON_ENC_CS(enc->enc_pic.session_init.slice_output_enabled);
+   RADEON_ENC_CS(enc->enc_pic.session_init.display_remote);
+   RADEON_ENC_END();
+}
+
 static void radeon_enc_ctx(struct radeon_encoder *enc)
 {
    enc->enc_pic.ctx_buf.swizzle_mode = 0;
@@ -95,6 +127,7 @@ void radeon_enc_4_0_init(struct radeon_encoder *enc)
 {
    radeon_enc_3_0_init(enc);
 
+   enc->session_init = radeon_enc_session_init;
    enc->ctx = radeon_enc_ctx;
 
    enc->enc_pic.session_info.interface_version =
