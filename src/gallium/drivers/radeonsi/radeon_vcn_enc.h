@@ -353,6 +353,18 @@ typedef struct rvcn_enc_reconstructed_picture_s {
    uint32_t chroma_offset;
 } rvcn_enc_reconstructed_picture_t;
 
+typedef struct rvcn_enc_reconstructed_picture_v4_0_s {
+   uint32_t luma_offset;
+   uint32_t chroma_offset;
+   union {
+      struct
+      {
+         uint32_t  unused_offset1;
+         uint32_t  unused_offset2;
+      } unused;
+   };
+} rvcn_enc_reconstructed_picture_v4_0_t;
+
 typedef struct rvcn_enc_picture_info_s
 {
    bool in_use;
@@ -381,12 +393,14 @@ typedef struct rvcn_enc_encode_context_buffer_s {
    uint32_t rec_chroma_pitch;
    uint32_t num_reconstructed_pictures;
    rvcn_enc_reconstructed_picture_t reconstructed_pictures[RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES];
+   rvcn_enc_reconstructed_picture_v4_0_t reconstructed_pictures_v4_0[RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES];
    uint32_t pre_encode_picture_luma_pitch;
    uint32_t pre_encode_picture_chroma_pitch;
    rvcn_enc_reconstructed_picture_t
       pre_encode_reconstructed_pictures[RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES];
    rvcn_enc_pre_encode_input_picture_t pre_encode_input_picture;
    uint32_t two_pass_search_center_map_offset;
+   uint32_t colloc_buffer_offset;
 } rvcn_enc_encode_context_buffer_t;
 
 typedef struct rvcn_enc_video_bitstream_buffer_s {

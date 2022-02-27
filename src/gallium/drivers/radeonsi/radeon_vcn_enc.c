@@ -476,7 +476,8 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder, void *feed
    FREE(fb);
 }
 
-static int setup_dpb(struct radeon_encoder *enc, enum pipe_format buffer_format)
+static int setup_dpb(struct radeon_encoder *enc, enum pipe_format buffer_format,
+                     enum chip_class chip_class)
 {
    uint32_t aligned_width = align(enc->base.width, 16);
    uint32_t aligned_height = align(enc->base.height, 16);
@@ -493,10 +494,17 @@ static int setup_dpb(struct radeon_encoder *enc, enum pipe_format buffer_format)
 
    int i;
    for (i = 0; i < num_reconstructed_pictures; i++) {
-      enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset = offset;
-      offset += luma_size;
-      enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset = offset;
-      offset += chroma_size;
+      if (chip_class >= GFX11) {
+         enc->enc_pic.ctx_buf.reconstructed_pictures_v4_0[i].luma_offset = offset;
+         offset += luma_size;
+         enc->enc_pic.ctx_buf.reconstructed_pictures_v4_0[i].chroma_offset = offset;
+         offset += chroma_size;
+      } else {
+         enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset = offset;
+         offset += luma_size;
+         enc->enc_pic.ctx_buf.reconstructed_pictures[i].chroma_offset = offset;
+         offset += chroma_size;
+      }
    }
    for (; i < RENCODE_MAX_NUM_RECONSTRUCTED_PICTURES; i++) {
       enc->enc_pic.ctx_buf.reconstructed_pictures[i].luma_offset = 0;
@@ -574,7 +582,7 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
    cpb_size = cpb_size * enc->cpb_num;
    tmp_buf->destroy(tmp_buf);
 
-   cpb_size += setup_dpb(enc, templat.buffer_format);
+   cpb_size += setup_dpb(enc, templat.buffer_format, sscreen->info.chip_class);
 
    if (!si_vid_create_buffer(enc->screen, &enc->cpb, cpb_size, PIPE_USAGE_DEFAULT)) {
       RVID_ERR("Can't create CPB buffer.\n");
