@@ -2763,11 +2763,13 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
 
    handle_smaller_ms_api_workgroup(b, &state);
    emit_ms_prelude(b, &state);
+   nir_metadata_preserve(impl, nir_metadata_none);
 
    lower_ms_intrinsics(shader, &state);
+
    emit_ms_finale(b, &state);
+   nir_metadata_preserve(impl, nir_metadata_none);
 
    /* Cleanup */
    nir_validate_shader(shader, "after emitting NGG MS");
-   nir_metadata_preserve(impl, nir_metadata_none);
 }
