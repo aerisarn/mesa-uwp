@@ -35,7 +35,14 @@
 #include "radeon_video.h"
 #include "radeon_vcn_enc.h"
 
+#define RENCODE_FW_INTERFACE_MAJOR_VERSION   1
+#define RENCODE_FW_INTERFACE_MINOR_VERSION   0
+
 void radeon_enc_4_0_init(struct radeon_encoder *enc)
 {
    radeon_enc_3_0_init(enc);
+
+   enc->enc_pic.session_info.interface_version =
+      ((RENCODE_FW_INTERFACE_MAJOR_VERSION << RENCODE_IF_MAJOR_VERSION_SHIFT) |
+      (RENCODE_FW_INTERFACE_MINOR_VERSION << RENCODE_IF_MINOR_VERSION_SHIFT));
 }
