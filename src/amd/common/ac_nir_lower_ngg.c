@@ -2367,18 +2367,10 @@ ms_emit_arrayed_outputs(nir_builder *b,
 }
 
 static void
-emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
+emit_ms_finale(nir_builder *b, lower_ngg_ms_state *s)
 {
-   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   assert(impl);
-   nir_block *last_block = nir_impl_last_block(impl);
-   assert(last_block);
-
    /* We assume there is always a single end block in the shader. */
-
-   nir_builder builder;
-   nir_builder *b = &builder; /* This is to avoid the & */
-   nir_builder_init(b, impl);
+   nir_block *last_block = nir_impl_last_block(b->impl);
    b->cursor = nir_after_block(last_block);
 
    nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
@@ -2404,8 +2396,8 @@ emit_ms_finale(nir_shader *shader, lower_ngg_ms_state *s)
    nir_pop_if(b, if_elected);
    loaded_num_prm = nir_if_phi(b, loaded_num_prm, dont_care);
    nir_ssa_def *num_prm = nir_read_first_invocation(b, loaded_num_prm);
-   nir_ssa_def *num_vtx = nir_imm_int(b, shader->info.mesh.max_vertices_out);
-   num_prm = nir_umin(b, num_prm, nir_imm_int(b, shader->info.mesh.max_primitives_out));
+   nir_ssa_def *num_vtx = nir_imm_int(b, b->shader->info.mesh.max_vertices_out);
+   num_prm = nir_umin(b, num_prm, nir_imm_int(b, b->shader->info.mesh.max_primitives_out));
 
    /* If the shader doesn't actually create any primitives, don't allocate any output. */
    num_vtx = nir_bcsel(b, nir_ieq_imm(b, num_prm, 0), nir_imm_int(b, 0), num_vtx);
@@ -2686,7 +2678,7 @@ ac_nir_lower_ngg_ms(nir_shader *shader,
    }
 
    lower_ms_intrinsics(shader, &state);
-   emit_ms_finale(shader, &state);
+   emit_ms_finale(b, &state);
 
    /* Cleanup */
    nir_validate_shader(shader, "after emitting NGG MS");
