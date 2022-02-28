@@ -428,7 +428,7 @@ fd4_emit_vertex_bufs(struct fd_ringbuffer *ring, struct fd4_emit *emit)
          bool isint = util_format_is_pure_integer(pfmt);
          uint32_t fs = util_format_get_blocksize(pfmt);
          uint32_t off = vb->buffer_offset + elem->src_offset;
-         uint32_t size = fd_bo_size(rsc->bo) - off;
+         uint32_t size = vb->buffer.resource->width0 - off;
          debug_assert(fmt != VFMT4_NONE);
 
 #ifdef DEBUG
