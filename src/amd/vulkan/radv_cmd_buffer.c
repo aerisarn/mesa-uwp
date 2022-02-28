@@ -6384,6 +6384,40 @@ radv_cs_emit_indirect_draw_packet(struct radv_cmd_buffer *cmd_buffer, bool index
 }
 
 ALWAYS_INLINE static void
+radv_cs_emit_indirect_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer, uint32_t draw_count,
+                                       uint64_t count_va, uint32_t stride)
+{
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   bool draw_id_enable = cmd_buffer->state.graphics_pipeline->uses_drawid;
+   uint32_t base_reg = cmd_buffer->state.graphics_pipeline->vtx_base_sgpr;
+   bool predicating = cmd_buffer->state.predicating;
+   assert(base_reg);
+
+   /* Reset draw state. */
+   cmd_buffer->state.last_first_instance = -1;
+   cmd_buffer->state.last_num_instances = -1;
+   cmd_buffer->state.last_drawid = -1;
+   cmd_buffer->state.last_vertex_offset = -1;
+
+   /* Note: firstTask/firstVertex is not supported by this draw packet. */
+   uint32_t xyz_dim_reg = (base_reg + 4 - SI_SH_REG_OFFSET) >> 2;
+   uint32_t draw_id_reg = (base_reg + 16 - SI_SH_REG_OFFSET) >> 2;
+
+   radeon_emit(cs, PKT3(PKT3_DISPATCH_MESH_INDIRECT_MULTI, 7, predicating));
+   radeon_emit(cs, 0); /* data_offset */
+   radeon_emit(cs, (xyz_dim_reg & 0xFFFF) | (draw_id_reg << 16));
+   radeon_emit(cs,
+               S_2C3_DRAW_INDEX_ENABLE(draw_id_enable) | S_2C3_COUNT_INDIRECT_ENABLE(!!count_va));
+   radeon_emit(cs, draw_count);
+   radeon_emit(cs, count_va & 0xFFFFFFFF);
+   radeon_emit(cs, count_va >> 32);
+   radeon_emit(cs, stride);
+   radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX);
+
+   cmd_buffer->state.uses_draw_indirect_multi = true;
+}
+
+ALWAYS_INLINE static void
 radv_cs_emit_dispatch_taskmesh_direct_ace_packet(struct radv_cmd_buffer *cmd_buffer,
                                                  const uint32_t x, const uint32_t y,
                                                  const uint32_t z)
@@ -6820,6 +6854,43 @@ radv_emit_direct_mesh_draw_packet(struct radv_cmd_buffer *cmd_buffer,
       u_foreach_bit(view, view_mask) {
          radv_emit_view_index(cmd_buffer, view);
          radv_cs_emit_draw_packet(cmd_buffer, count, 0);
+      }
+   }
+}
+
+ALWAYS_INLINE static void
+radv_emit_indirect_mesh_draw_packets(struct radv_cmd_buffer *cmd_buffer,
+                                     const struct radv_draw_info *info)
+{
+   const struct radv_cmd_state *state = &cmd_buffer->state;
+   struct radeon_winsys *ws = cmd_buffer->device->ws;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   const uint64_t va =
+      radv_buffer_get_va(info->indirect->bo) + info->indirect->offset + info->indirect_offset;
+   const uint64_t count_va = !info->count_buffer
+                                ? 0
+                                : radv_buffer_get_va(info->count_buffer->bo) +
+                                     info->count_buffer->offset + info->count_buffer_offset;
+
+   radv_cs_add_buffer(ws, cs, info->indirect->bo);
+
+   if (info->count_buffer) {
+      radv_cs_add_buffer(ws, cs, info->count_buffer->bo);
+   }
+
+   radeon_emit(cs, PKT3(PKT3_SET_BASE, 2, 0));
+   radeon_emit(cs, 1);
+   radeon_emit(cs, va);
+   radeon_emit(cs, va >> 32);
+
+   radv_emit_userdata_mesh_first_task_0_draw_id_0(cmd_buffer);
+
+   if (!state->subpass->view_mask) {
+      radv_cs_emit_indirect_mesh_draw_packet(cmd_buffer, info->count, count_va, info->stride);
+   } else {
+      u_foreach_bit (i, state->subpass->view_mask) {
+         radv_emit_view_index(cmd_buffer, i);
+         radv_cs_emit_indirect_mesh_draw_packet(cmd_buffer, info->count, count_va, info->stride);
       }
    }
 }
@@ -7844,6 +7915,34 @@ radv_CmdDrawMeshTasksNV(VkCommandBuffer commandBuffer, uint32_t taskCount, uint3
 }
 
 VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMeshTasksEXT(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, uint32_t z)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_draw_info info;
+
+   info.count = x * y * z;
+   info.instance_count = 1;
+   info.first_instance = 0;
+   info.stride = 0;
+   info.indexed = false;
+   info.strmout_buffer = NULL;
+   info.count_buffer = NULL;
+   info.indirect = NULL;
+
+   if (!radv_before_taskmesh_draw(cmd_buffer, &info, 1))
+      return;
+
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
+      radv_emit_direct_taskmesh_draw_packets(cmd_buffer, x, y, z, 0);
+   } else {
+      radv_emit_direct_mesh_draw_packet(cmd_buffer, x, y, z, 0);
+   }
+
+   radv_after_draw(cmd_buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawMeshTasksIndirectNV(VkCommandBuffer commandBuffer, VkBuffer _buffer,
                                 VkDeviceSize offset, uint32_t drawCount, uint32_t stride)
 {
@@ -7903,6 +8002,40 @@ radv_CmdDrawMeshTasksIndirectNV(VkCommandBuffer commandBuffer, VkBuffer _buffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMeshTasksIndirectEXT(VkCommandBuffer commandBuffer, VkBuffer _buffer,
+                                 VkDeviceSize offset, uint32_t drawCount, uint32_t stride)
+{
+   if (!drawCount)
+      return;
+
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_buffer, buffer, _buffer);
+
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_draw_info info;
+
+   info.indirect = buffer;
+   info.indirect_offset = offset;
+   info.stride = stride;
+   info.count = drawCount;
+   info.strmout_buffer = NULL;
+   info.count_buffer = NULL;
+   info.indexed = false;
+   info.instance_count = 0;
+
+   if (!radv_before_taskmesh_draw(cmd_buffer, &info, drawCount))
+      return;
+
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
+      radv_emit_indirect_taskmesh_draw_packets(cmd_buffer, &info, 0, 0);
+   } else {
+      radv_emit_indirect_mesh_draw_packets(cmd_buffer, &info);
+   }
+
+   radv_after_draw(cmd_buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 radv_CmdDrawMeshTasksIndirectCountNV(VkCommandBuffer commandBuffer, VkBuffer _buffer,
                                      VkDeviceSize offset, VkBuffer _countBuffer,
                                      VkDeviceSize countBufferOffset, uint32_t maxDrawCount,
@@ -7946,6 +8079,42 @@ radv_CmdDrawMeshTasksIndirectCountNV(VkCommandBuffer commandBuffer, VkBuffer _bu
       info.stride = sizeof(VkDrawIndirectCommand);
 
       radv_emit_indirect_draw_packets(cmd_buffer, &info);
+   }
+
+   radv_after_draw(cmd_buffer);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdDrawMeshTasksIndirectCountEXT(VkCommandBuffer commandBuffer, VkBuffer _buffer,
+                                      VkDeviceSize offset, VkBuffer _countBuffer,
+                                      VkDeviceSize countBufferOffset, uint32_t maxDrawCount,
+                                      uint32_t stride)
+{
+
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_buffer, buffer, _buffer);
+   RADV_FROM_HANDLE(radv_buffer, count_buffer, _countBuffer);
+
+   struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
+   struct radv_draw_info info;
+
+   info.indirect = buffer;
+   info.indirect_offset = offset;
+   info.stride = stride;
+   info.count = maxDrawCount;
+   info.strmout_buffer = NULL;
+   info.count_buffer = count_buffer;
+   info.count_buffer_offset = countBufferOffset;
+   info.indexed = false;
+   info.instance_count = 0;
+
+   if (!radv_before_taskmesh_draw(cmd_buffer, &info, maxDrawCount))
+      return;
+
+   if (radv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
+      radv_emit_indirect_taskmesh_draw_packets(cmd_buffer, &info, 0, 0);
+   } else {
+      radv_emit_indirect_mesh_draw_packets(cmd_buffer, &info);
    }
 
    radv_after_draw(cmd_buffer);
