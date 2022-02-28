@@ -607,6 +607,9 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
          /* Needed to address the task draw/payload rings. */
          info->cs.uses_block_id[0] = true;
+         info->cs.uses_block_id[1] = true;
+         info->cs.uses_block_id[2] = true;
+         info->cs.uses_grid_size = true;
 
          /* Needed for storing draw ready only on the 1st thread. */
          info->cs.uses_local_invocation_idx = true;
