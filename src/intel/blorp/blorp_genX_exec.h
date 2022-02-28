@@ -2399,7 +2399,7 @@ blorp_xy_block_copy_blt(struct blorp_batch *batch,
                         const struct blorp_params *params)
 {
 #if GFX_VER < 12
-   unreachable("Blitter is only suppotred on Gfx12+");
+   unreachable("Blitter is only supported on Gfx12+");
 #else
    UNUSED const struct isl_device *isl_dev = batch->blorp->isl_dev;
 
