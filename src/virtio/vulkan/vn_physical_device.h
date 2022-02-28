@@ -17,6 +17,28 @@
 
 #include "vn_wsi.h"
 
+struct vn_physical_device_features {
+   VkPhysicalDeviceFeatures vulkan_1_0;
+   VkPhysicalDeviceVulkan11Features vulkan_1_1;
+   VkPhysicalDeviceVulkan12Features vulkan_1_2;
+
+   /* EXT */
+   VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
+   VkPhysicalDevice4444FormatsFeaturesEXT argb_4444_formats;
+   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state;
+   VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
+};
+
+struct vn_physical_device_properties {
+   VkPhysicalDeviceProperties vulkan_1_0;
+   VkPhysicalDeviceVulkan11Properties vulkan_1_1;
+   VkPhysicalDeviceVulkan12Properties vulkan_1_2;
+
+   /* EXT */
+   VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;
+   VkPhysicalDeviceCustomBorderColorPropertiesEXT custom_border_color;
+};
+
 struct vn_format_properties_entry {
    atomic_bool valid;
    VkFormatProperties properties;
@@ -44,22 +66,8 @@ struct vn_physical_device {
    struct vk_device_extension_table renderer_extensions;
    uint32_t *extension_spec_versions;
 
-   VkPhysicalDeviceFeatures2 features;
-   VkPhysicalDeviceVulkan11Features vulkan_1_1_features;
-   VkPhysicalDeviceVulkan12Features vulkan_1_2_features;
-   VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback_features;
-   VkPhysicalDevice4444FormatsFeaturesEXT argb_4444_formats_features;
-   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT
-      extended_dynamic_state_features;
-   VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color_features;
-
-   VkPhysicalDeviceProperties2 properties;
-   VkPhysicalDeviceVulkan11Properties vulkan_1_1_properties;
-   VkPhysicalDeviceVulkan12Properties vulkan_1_2_properties;
-   VkPhysicalDeviceTransformFeedbackPropertiesEXT
-      transform_feedback_properties;
-   VkPhysicalDeviceCustomBorderColorPropertiesEXT
-      custom_border_color_properties;
+   struct vn_physical_device_features features;
+   struct vn_physical_device_properties properties;
 
    VkQueueFamilyProperties2 *queue_family_properties;
    uint32_t queue_family_count;
