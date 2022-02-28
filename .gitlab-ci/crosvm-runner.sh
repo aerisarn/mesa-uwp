@@ -8,8 +8,8 @@ set -e
 #
 # A CID is a 32-bit Context Identifier to be assigned to a crosvm instance
 # and must be unique across the host system. For this purpose, let's take
-# the least significant 26 bits from CI_JOB_ID as a base and generate a 6-bit
-# prefix number to handle up to 64 concurrent crosvm instances per job runner.
+# the least significant 25 bits from CI_JOB_ID as a base and generate a 7-bit
+# prefix number to handle up to 128 concurrent crosvm instances per job runner.
 #
 # As a result, the following variables are set:
 #  - VSOCK_CID: the crosvm unique CID to be passed as a run argument
@@ -30,7 +30,7 @@ set_vsock_context() {
     local cid_prefix=0
     unset VSOCK_TEMP_DIR
 
-    while [ ${cid_prefix} -lt 64 ]; do
+    while [ ${cid_prefix} -lt 128 ]; do
         VSOCK_TEMP_DIR=${dir_prefix}${cid_prefix}
         mkdir "${VSOCK_TEMP_DIR}" >/dev/null 2>&1 && break || unset VSOCK_TEMP_DIR
         cid_prefix=$((cid_prefix + 1))
@@ -38,9 +38,10 @@ set_vsock_context() {
 
     [ -n "${VSOCK_TEMP_DIR}" ] || return 1
 
-    VSOCK_CID=$(((CI_JOB_ID & 0x3ffffff) | ((cid_prefix & 0x3f) << 26)))
+    VSOCK_CID=$(((CI_JOB_ID & 0x1ffffff) | ((cid_prefix & 0x7f) << 25)))
     VSOCK_STDOUT=5001
     VSOCK_STDERR=5002
+
     return 0
 }
 
