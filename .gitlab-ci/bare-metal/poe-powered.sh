@@ -111,7 +111,7 @@ echo "$BM_CMDLINE" > /tftp/cmdline.txt
 printf "$BM_BOOTCONFIG" >> /tftp/config.txt
 
 set +e
-ATTEMPTS=2
+ATTEMPTS=10
 while [ $((ATTEMPTS--)) -gt 0 ]; do
   python3 $BM/poe_run.py \
           --dev="$BM_SERIAL" \
