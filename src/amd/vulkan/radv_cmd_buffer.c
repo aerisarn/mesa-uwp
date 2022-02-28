@@ -8340,17 +8340,10 @@ radv_handle_image_transition(struct radv_cmd_buffer *cmd_buffer, struct radv_ima
    }
 }
 
-struct radv_barrier_info {
-   enum rgp_barrier_reason reason;
-   uint32_t eventCount;
-   const VkEvent *pEvents;
-};
-
 static void
 radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfoKHR *dep_info,
-             const struct radv_barrier_info *info)
+             enum rgp_barrier_reason reason)
 {
-   struct radeon_cmdbuf *cs = cmd_buffer->cs;
    enum radv_cmd_flush_bits src_flush_bits = 0;
    enum radv_cmd_flush_bits dst_flush_bits = 0;
    VkPipelineStageFlags2KHR src_stage_mask = 0;
@@ -8359,19 +8352,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfoKHR *dep_
    if (cmd_buffer->state.subpass)
       radv_mark_noncoherent_rb(cmd_buffer);
 
-   radv_describe_barrier_start(cmd_buffer, info->reason);
-
-   for (unsigned i = 0; i < info->eventCount; ++i) {
-      RADV_FROM_HANDLE(radv_event, event, info->pEvents[i]);
-      uint64_t va = radv_buffer_get_va(event->bo);
-
-      radv_cs_add_buffer(cmd_buffer->device->ws, cs, event->bo);
-
-      ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 7);
-
-      radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, va, 1, 0xffffffff);
-      assert(cmd_buffer->cs->cdw <= cdw_max);
-   }
+   radv_describe_barrier_start(cmd_buffer, reason);
 
    for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++) {
       src_stage_mask |= dep_info->pMemoryBarriers[i].srcStageMask;
@@ -8461,13 +8442,8 @@ radv_CmdPipelineBarrier2KHR(VkCommandBuffer commandBuffer,
                             const VkDependencyInfoKHR *pDependencyInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct radv_barrier_info info;
 
-   info.reason = RGP_BARRIER_EXTERNAL_CMD_PIPELINE_BARRIER;
-   info.eventCount = 0;
-   info.pEvents = NULL;
-
-   radv_barrier(cmd_buffer, pDependencyInfo, &info);
+   radv_barrier(cmd_buffer, pDependencyInfo, RGP_BARRIER_EXTERNAL_CMD_PIPELINE_BARRIER);
 }
 
 static void
@@ -8588,13 +8564,21 @@ radv_CmdWaitEvents2KHR(VkCommandBuffer commandBuffer, uint32_t eventCount, const
                        const VkDependencyInfoKHR* pDependencyInfos)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-   struct radv_barrier_info info;
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
-   info.reason = RGP_BARRIER_EXTERNAL_CMD_WAIT_EVENTS;
-   info.eventCount = eventCount;
-   info.pEvents = pEvents;
+   for (unsigned i = 0; i < eventCount; ++i) {
+      RADV_FROM_HANDLE(radv_event, event, pEvents[i]);
+      uint64_t va = radv_buffer_get_va(event->bo);
 
-   radv_barrier(cmd_buffer, pDependencyInfos, &info);
+      radv_cs_add_buffer(cmd_buffer->device->ws, cs, event->bo);
+
+      ASSERTED unsigned cdw_max = radeon_check_space(cmd_buffer->device->ws, cs, 7);
+
+      radv_cp_wait_mem(cs, WAIT_REG_MEM_EQUAL, va, 1, 0xffffffff);
+      assert(cmd_buffer->cs->cdw <= cdw_max);
+   }
+
+   radv_barrier(cmd_buffer, pDependencyInfos, RGP_BARRIER_EXTERNAL_CMD_WAIT_EVENTS);
 }
 
 VKAPI_ATTR void VKAPI_CALL
