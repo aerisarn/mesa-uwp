@@ -152,6 +152,9 @@ spec@arb_depth_texture@fbo-clear-formats
 # Flaky since 2021-12-02, during piglit uprev with commit
 # 0ef03f824d1833a853d1a20b4be121089bb9246c
 spec@arb_draw_indirect@arb_draw_indirect-transform-feedback
+
+# Flaky since around 2021-05-21, the day after a piglit uprev reshuffled us.
+# *** gpu fault: ttbr0=000000001c941000 iova=000000010066a000 dir=READ type=TRANSLATION source=TP|VFD (0,0,0,1)
 spec@arb_map_buffer_range@map_invalidate_buffer_bit offset=0
 
 # Always been flaky, but didn't show up until the testscase was fixed to not spuriously skip.
@@ -169,9 +172,6 @@ spec@ext_framebuffer_object@fbo-blending-format-quirks
 # Flaky since around 2021-04-21.  First appeared on
 # https://gitlab.freedesktop.org/robclark/mesa/-/jobs/9101752 (fd/go-fast)
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil
-
-# Flaky since around 2021-05-21, the day after a piglit uprev reshuffled us.
-spec@arb_map_buffer_range@map_invalidate_buffer_bit offset=0
 
 # Flaky since around 2021-06-21.
 spec@arb_texture_gather@texturegatheroffset@vs-rgb-blue-uint-2darray
