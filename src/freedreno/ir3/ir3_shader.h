@@ -906,8 +906,6 @@ ir3_find_output(const struct ir3_shader_variant *so, gl_varying_slot slot)
       if (so->outputs[j].slot == slot)
          return j;
 
-   debug_assert(0);
-
    return -1;
 }
 
