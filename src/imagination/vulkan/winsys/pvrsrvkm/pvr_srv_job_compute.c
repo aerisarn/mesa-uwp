@@ -118,7 +118,7 @@ err_close_timeline:
 err_free_srv_ctx:
    vk_free(srv_ws->alloc, srv_ctx);
 
-   return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
+   return result;
 }
 
 void pvr_srv_winsys_compute_ctx_destroy(struct pvr_winsys_compute_ctx *ctx)
