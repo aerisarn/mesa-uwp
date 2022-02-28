@@ -8403,7 +8403,7 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfoKHR *dep_
 
       const struct VkSampleLocationsInfoEXT *sample_locs_info =
          vk_find_struct_const(dep_info->pImageMemoryBarriers[i].pNext, SAMPLE_LOCATIONS_INFO_EXT);
-      struct radv_sample_locations_state sample_locations = {0};
+      struct radv_sample_locations_state sample_locations;
 
       if (sample_locs_info) {
          assert(image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
