@@ -537,7 +537,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_EXT_custom_border_color                            DONE (anv, lvp, radv, tu, v3dv)
   VK_EXT_debug_marker                                   DONE (radv)
   VK_EXT_depth_clip_enable                              DONE (anv, lvp, radv, tu)
-  VK_EXT_depth_clip_control                             DONE (lvp, tu)
+  VK_EXT_depth_clip_control                             DONE (lvp, radv, tu)
   VK_EXT_depth_range_unrestricted                       DONE (radv)
   VK_EXT_discard_rectangles                             DONE (radv)
   VK_EXT_display_control                                DONE (anv, tu)
