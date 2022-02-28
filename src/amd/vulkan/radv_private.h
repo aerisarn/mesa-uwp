@@ -1893,6 +1893,7 @@ struct radv_pipeline {
          unsigned cb_color_control;
          bool uses_dynamic_stride;
          bool uses_conservative_overestimate;
+         bool negative_one_to_one;
 
          /* Used for rbplus */
          uint32_t col_format;

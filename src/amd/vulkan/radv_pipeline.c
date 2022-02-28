@@ -1859,7 +1859,7 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
    }
 
    pipeline->graphics.pa_cl_clip_cntl =
-      S_028810_DX_CLIP_SPACE_DEF(1) | // vulkan uses DX conventions.
+      S_028810_DX_CLIP_SPACE_DEF(!pipeline->graphics.negative_one_to_one) |
       S_028810_ZCLIP_NEAR_DISABLE(depth_clip_disable ? 1 : 0) |
       S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
       S_028810_DX_RASTERIZATION_KILL(raster_info->rasterizerDiscardEnable ? 1 : 0) |
@@ -1868,6 +1868,21 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
    pipeline->graphics.uses_conservative_overestimate =
       radv_get_conservative_raster_mode(pCreateInfo->pRasterizationState) ==
          VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+}
+
+static void
+radv_pipeline_init_viewport_state(struct radv_pipeline *pipeline,
+                                  const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
+      return;
+
+   const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
+      vk_find_struct_const(pCreateInfo->pViewportState->pNext,
+                           PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
+   if (depth_clip_control) {
+      pipeline->graphics.negative_one_to_one = !!depth_clip_control->negativeOneToOne;
+   }
 }
 
 static struct radv_depth_stencil_state
@@ -6397,6 +6412,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
    if (!radv_pipeline_has_mesh(pipeline))
       radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo);
    radv_pipeline_init_dynamic_state(pipeline, pCreateInfo);
+   radv_pipeline_init_viewport_state(pipeline, pCreateInfo);
    radv_pipeline_init_raster_state(pipeline, pCreateInfo);
 
    struct radv_depth_stencil_state ds_state =

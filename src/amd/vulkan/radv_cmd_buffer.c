@@ -1422,6 +1422,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 {
+   bool negative_one_to_one = cmd_buffer->state.pipeline->graphics.negative_one_to_one;
    const struct radv_viewport_state *viewport = &cmd_buffer->state.dynamic.viewport;
    int i;
    const unsigned count = viewport->count;
@@ -1434,8 +1435,18 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
       radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[0]));
       radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].scale[1]));
       radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[1]));
-      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].scale[2]));
-      radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[2]));
+
+      double scale_z, translate_z;
+      if (negative_one_to_one) {
+         scale_z = viewport->xform[i].scale[2] * 0.5f;
+         translate_z = (viewport->xform[i].translate[2] + viewport->viewports[i].maxDepth) * 0.5f;
+      } else {
+         scale_z = viewport->xform[i].scale[2];
+         translate_z = viewport->xform[i].translate[2];
+
+      }
+      radeon_emit(cmd_buffer->cs, fui(scale_z));
+      radeon_emit(cmd_buffer->cs, fui(translate_z));
    }
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_0282D0_PA_SC_VPORT_ZMIN_0, count * 2);
