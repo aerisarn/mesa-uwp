@@ -2635,8 +2635,28 @@ ms_store_arrayed_output_intrin(nir_builder *b,
                                nir_intrinsic_instr *intrin,
                                lower_ngg_ms_state *s)
 {
-   ms_out_mode out_mode;
    unsigned location = nir_intrinsic_io_semantics(intrin).location;
+
+   if (location == VARYING_SLOT_PRIMITIVE_INDICES) {
+      /* EXT_mesh_shader primitive indices: array of vectors.
+       * They don't count as per-primitive outputs, but the array is indexed
+       * by the primitive index, so they are practically per-primitive.
+       *
+       * The max vertex count is 256, so these indices always fit 8 bits.
+       * To reduce LDS use, store these as a flat array of 8-bit values.
+       */
+      assert(nir_src_is_const(*nir_get_io_offset_src(intrin)));
+      assert(nir_src_as_uint(*nir_get_io_offset_src(intrin)) == 0);
+      assert(nir_intrinsic_component(intrin) == 0);
+
+      nir_ssa_def *store_val = intrin->src[0].ssa;
+      nir_ssa_def *arr_index = nir_get_io_arrayed_index_src(intrin)->ssa;
+      nir_ssa_def *offset = nir_imul_imm(b, arr_index, s->vertices_per_prim);
+      ms_store_prim_indices(b, store_val, offset, s);
+      return;
+   }
+
+   ms_out_mode out_mode;
    const ms_out_part *out = ms_get_out_layout_part(location, &b->shader->info, &out_mode, s);
    update_ms_output_info(intrin, out, s);
 
