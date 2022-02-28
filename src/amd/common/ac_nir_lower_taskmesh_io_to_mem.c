@@ -124,10 +124,12 @@ ac_nir_apply_first_task_to_task_shader(nir_shader *shader)
    nir_pop_if(b, if_stride);
    first_task = nir_if_phi(b, first_task, zero);
 
-   /* NV_mesh_shader workgroups are 1 dimensional so we only care about X here. */
+   /* NV_mesh_shader workgroups are 1 dimensional.
+    * Apply firstTask to the X dimension, but leave Y and Z intact.
+    */
    nir_ssa_def *hw_workgroup_id = nir_load_workgroup_id(b, 32);
    nir_ssa_def *api_workgroup_id_x = nir_iadd(b, nir_channel(b, hw_workgroup_id, 0), first_task);
-   nir_ssa_def *api_workgroup_id = nir_vec3(b, api_workgroup_id_x, zero, zero);
+   nir_ssa_def *api_workgroup_id = nir_vector_insert_imm(b, hw_workgroup_id, api_workgroup_id_x, 0);
 
    add_first_task_to_workgroup_id_state state = {
       .hw_workgroup_id = hw_workgroup_id,
