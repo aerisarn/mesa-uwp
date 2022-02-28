@@ -2403,6 +2403,14 @@ lower_ms_load_workgroup_id(nir_builder *b,
 }
 
 static nir_ssa_def *
+lower_ms_load_workgroup_index(nir_builder *b,
+                              UNUSED nir_intrinsic_instr *intrin,
+                              lower_ngg_ms_state *s)
+{
+   return s->workgroup_index;
+}
+
+static nir_ssa_def *
 update_ms_scoped_barrier(nir_builder *b,
                          nir_intrinsic_instr *intrin,
                          lower_ngg_ms_state *s)
@@ -2447,6 +2455,8 @@ lower_ms_intrinsic(nir_builder *b, nir_instr *instr, void *state)
       return lower_ms_load_workgroup_id(b, intrin, s);
    case nir_intrinsic_scoped_barrier:
       return update_ms_scoped_barrier(b, intrin, s);
+   case nir_intrinsic_load_workgroup_index:
+      return lower_ms_load_workgroup_index(b, intrin, s);
    default:
       unreachable("Not a lowerable mesh shader intrinsic.");
    }
@@ -2467,7 +2477,8 @@ filter_ms_intrinsic(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_store_per_primitive_output ||
           intrin->intrinsic == nir_intrinsic_load_per_primitive_output ||
           intrin->intrinsic == nir_intrinsic_scoped_barrier ||
-          intrin->intrinsic == nir_intrinsic_load_workgroup_id;
+          intrin->intrinsic == nir_intrinsic_load_workgroup_id ||
+          intrin->intrinsic == nir_intrinsic_load_workgroup_index;
 }
 
 static void
@@ -2522,7 +2533,8 @@ emit_ms_prelude(nir_builder *b, lower_ngg_ms_state *s)
    }
 
    bool uses_workgroup_id =
-      BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID);
+      BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_ID) ||
+      BITSET_TEST(b->shader->info.system_values_read, SYSTEM_VALUE_WORKGROUP_INDEX);
 
    if (!uses_workgroup_id)
       return;
