@@ -77,10 +77,15 @@ gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
           * framebuffer at the time we emit the packet.  Otherwise, we have
           * fall back to a worst-case guardband of [-1, 1].
           */
-         intel_calculate_guardband_size(0, gfx->render_area.offset.x +
-                                           gfx->render_area.extent.width,
-                                        0, gfx->render_area.offset.y +
-                                           gfx->render_area.extent.height,
+         const uint32_t x_min = gfx->render_area.offset.x;
+         const uint32_t x_max = gfx->render_area.offset.x +
+                                gfx->render_area.extent.width;
+
+         const uint32_t y_min = gfx->render_area.offset.y;
+         const uint32_t y_max = gfx->render_area.offset.y +
+                                gfx->render_area.extent.height;
+
+         intel_calculate_guardband_size(x_min, x_max, y_min, y_max,
                                         sfv.ViewportMatrixElementm00,
                                         sfv.ViewportMatrixElementm11,
                                         sfv.ViewportMatrixElementm30,
