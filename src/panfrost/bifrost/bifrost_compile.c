@@ -30,6 +30,7 @@
 #include "util/u_debug.h"
 
 #include "disassemble.h"
+#include "valhall/disassemble.h"
 #include "bifrost_compile.h"
 #include "compiler.h"
 #include "bi_quirks.h"
@@ -4083,8 +4084,16 @@ bi_compile_variant_nir(nir_shader *nir,
         }
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
-                disassemble_bifrost(stdout, binary->data + offset, binary->size - offset,
-                                    bifrost_debug & BIFROST_DBG_VERBOSE);
+                if (ctx->arch <= 8) {
+                        disassemble_bifrost(stdout, binary->data + offset,
+                                            binary->size - offset,
+                                            bifrost_debug & BIFROST_DBG_VERBOSE);
+                } else {
+                        disassemble_valhall(stdout, binary->data + offset,
+                                            binary->size - offset,
+                                            bifrost_debug & BIFROST_DBG_VERBOSE);
+                }
+
                 fflush(stdout);
         }
 
