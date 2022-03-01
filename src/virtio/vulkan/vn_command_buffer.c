@@ -1803,6 +1803,24 @@ vn_CmdDispatchBase(VkCommandBuffer commandBuffer,
 }
 
 void
+vn_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer,
+                        uint32_t lineStippleFactor,
+                        uint16_t lineStipplePattern)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdSetLineStippleEXT(
+      commandBuffer, lineStippleFactor, lineStipplePattern);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdSetLineStippleEXT(&cmd->cs, 0, commandBuffer,
+                                    lineStippleFactor, lineStipplePattern);
+}
+
+void
 vn_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer,
                            VkQueryPool queryPool,
                            uint32_t query,
