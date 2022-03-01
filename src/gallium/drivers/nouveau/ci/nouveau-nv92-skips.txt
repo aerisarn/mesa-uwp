@@ -1,0 +1,9 @@
+KHR-GL33.packed_pixels.*
+KHR-GL33.texture_swizzle.smoke
+
+max.*size
+streaming-texture-leak
+ppgtt_memory_alignment
+
+# @anholt was running piglit under GBM
+glx@
