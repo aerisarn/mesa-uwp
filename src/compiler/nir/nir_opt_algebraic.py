@@ -1158,6 +1158,23 @@ optimizations.extend([
    (('bany_fnequal3', a, b), ('ior', ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), ('fneu', 'a.z', 'b.z')), 'options->lower_vector_cmp'),
    (('bany_fnequal4', a, b), ('ior', ('ior', ('fneu', 'a.x', 'b.x'), ('fneu', 'a.y', 'b.y')), ('ior', ('fneu', 'a.z', 'b.z'), ('fneu', 'a.w', 'b.w'))), 'options->lower_vector_cmp'),
 
+   (('feq', ('seq', a, b), 1.0), ('feq', a, b)),
+   (('feq', ('sne', a, b), 1.0), ('fneu', a, b)),
+   (('feq', ('slt', a, b), 1.0), ('flt', a, b)),
+   (('feq', ('sge', a, b), 1.0), ('fge', a, b)),
+   (('fneu', ('seq', a, b), 0.0), ('feq', a, b)),
+   (('fneu', ('sne', a, b), 0.0), ('fneu', a, b)),
+   (('fneu', ('slt', a, b), 0.0), ('flt', a, b)),
+   (('fneu', ('sge', a, b), 0.0), ('fge', a, b)),
+   (('feq', ('seq', a, b), 0.0), ('fneu', a, b)),
+   (('feq', ('sne', a, b), 0.0), ('feq', a, b)),
+   (('feq', ('slt', a, b), 0.0), ('fge', a, b)),
+   (('feq', ('sge', a, b), 0.0), ('flt', a, b)),
+   (('fneu', ('seq', a, b), 1.0), ('fneu', a, b)),
+   (('fneu', ('sne', a, b), 1.0), ('feq', a, b)),
+   (('fneu', ('slt', a, b), 1.0), ('fge', a, b)),
+   (('fneu', ('sge', a, b), 1.0), ('flt', a, b)),
+
    (('fneu', ('fneg', a), a), ('fneu', a, 0.0)),
    (('feq', ('fneg', a), a), ('feq', a, 0.0)),
    # Emulating booleans
