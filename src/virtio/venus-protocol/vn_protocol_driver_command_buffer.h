@@ -6361,6 +6361,54 @@ static inline void vn_decode_vkCmdDrawIndirectByteCountEXT_reply(struct vn_cs_de
     /* skip vertexStride */
 }
 
+static inline size_t vn_sizeof_vkCmdSetLineStippleEXT(VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern)
+{
+    const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkCmdSetLineStippleEXT_EXT;
+    const VkFlags cmd_flags = 0;
+    size_t cmd_size = vn_sizeof_VkCommandTypeEXT(&cmd_type) + vn_sizeof_VkFlags(&cmd_flags);
+
+    cmd_size += vn_sizeof_VkCommandBuffer(&commandBuffer);
+    cmd_size += vn_sizeof_uint32_t(&lineStippleFactor);
+    cmd_size += vn_sizeof_uint16_t(&lineStipplePattern);
+
+    return cmd_size;
+}
+
+static inline void vn_encode_vkCmdSetLineStippleEXT(struct vn_cs_encoder *enc, VkCommandFlagsEXT cmd_flags, VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern)
+{
+    const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkCmdSetLineStippleEXT_EXT;
+
+    vn_encode_VkCommandTypeEXT(enc, &cmd_type);
+    vn_encode_VkFlags(enc, &cmd_flags);
+
+    vn_encode_VkCommandBuffer(enc, &commandBuffer);
+    vn_encode_uint32_t(enc, &lineStippleFactor);
+    vn_encode_uint16_t(enc, &lineStipplePattern);
+}
+
+static inline size_t vn_sizeof_vkCmdSetLineStippleEXT_reply(VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern)
+{
+    const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkCmdSetLineStippleEXT_EXT;
+    size_t cmd_size = vn_sizeof_VkCommandTypeEXT(&cmd_type);
+
+    /* skip commandBuffer */
+    /* skip lineStippleFactor */
+    /* skip lineStipplePattern */
+
+    return cmd_size;
+}
+
+static inline void vn_decode_vkCmdSetLineStippleEXT_reply(struct vn_cs_decoder *dec, VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern)
+{
+    VkCommandTypeEXT command_type;
+    vn_decode_VkCommandTypeEXT(dec, &command_type);
+    assert(command_type == VK_COMMAND_TYPE_vkCmdSetLineStippleEXT_EXT);
+
+    /* skip commandBuffer */
+    /* skip lineStippleFactor */
+    /* skip lineStipplePattern */
+}
+
 static inline size_t vn_sizeof_vkCmdSetCullMode(VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)
 {
     const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkCmdSetCullMode_EXT;
@@ -9164,6 +9212,27 @@ static inline void vn_submit_vkCmdDrawIndirectByteCountEXT(struct vn_instance *v
     }
 }
 
+static inline void vn_submit_vkCmdSetLineStippleEXT(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern, struct vn_instance_submit_command *submit)
+{
+    uint8_t local_cmd_data[VN_SUBMIT_LOCAL_CMD_SIZE];
+    void *cmd_data = local_cmd_data;
+    size_t cmd_size = vn_sizeof_vkCmdSetLineStippleEXT(commandBuffer, lineStippleFactor, lineStipplePattern);
+    if (cmd_size > sizeof(local_cmd_data)) {
+        cmd_data = malloc(cmd_size);
+        if (!cmd_data)
+            cmd_size = 0;
+    }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkCmdSetLineStippleEXT_reply(commandBuffer, lineStippleFactor, lineStipplePattern) : 0;
+
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkCmdSetLineStippleEXT(enc, cmd_flags, commandBuffer, lineStippleFactor, lineStipplePattern);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
+}
+
 static inline void vn_submit_vkCmdSetCullMode(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, VkCommandBuffer commandBuffer, VkCullModeFlags cullMode, struct vn_instance_submit_command *submit)
 {
     uint8_t local_cmd_data[VN_SUBMIT_LOCAL_CMD_SIZE];
@@ -10982,6 +11051,25 @@ static inline void vn_async_vkCmdDrawIndirectByteCountEXT(struct vn_instance *vn
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkCmdDrawIndirectByteCountEXT(vn_instance, 0, commandBuffer, instanceCount, firstInstance, counterBuffer, counterBufferOffset, counterOffset, vertexStride, &submit);
+}
+
+static inline void vn_call_vkCmdSetLineStippleEXT(struct vn_instance *vn_instance, VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern)
+{
+    VN_TRACE_FUNC();
+
+    struct vn_instance_submit_command submit;
+    vn_submit_vkCmdSetLineStippleEXT(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, commandBuffer, lineStippleFactor, lineStipplePattern, &submit);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkCmdSetLineStippleEXT_reply(dec, commandBuffer, lineStippleFactor, lineStipplePattern);
+        vn_instance_free_command_reply(vn_instance, &submit);
+    }
+}
+
+static inline void vn_async_vkCmdSetLineStippleEXT(struct vn_instance *vn_instance, VkCommandBuffer commandBuffer, uint32_t lineStippleFactor, uint16_t lineStipplePattern)
+{
+    struct vn_instance_submit_command submit;
+    vn_submit_vkCmdSetLineStippleEXT(vn_instance, 0, commandBuffer, lineStippleFactor, lineStipplePattern, &submit);
 }
 
 static inline void vn_call_vkCmdSetCullMode(struct vn_instance *vn_instance, VkCommandBuffer commandBuffer, VkCullModeFlags cullMode)

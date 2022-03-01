@@ -18,6 +18,59 @@
  *   vkGetMemoryFdPropertiesKHR
  */
 
+/* struct VkCalibratedTimestampInfoEXT chain */
+
+static inline size_t
+vn_sizeof_VkCalibratedTimestampInfoEXT_pnext(const void *val)
+{
+    /* no known/supported struct */
+    return vn_sizeof_simple_pointer(NULL);
+}
+
+static inline size_t
+vn_sizeof_VkCalibratedTimestampInfoEXT_self(const VkCalibratedTimestampInfoEXT *val)
+{
+    size_t size = 0;
+    /* skip val->{sType,pNext} */
+    size += vn_sizeof_VkTimeDomainEXT(&val->timeDomain);
+    return size;
+}
+
+static inline size_t
+vn_sizeof_VkCalibratedTimestampInfoEXT(const VkCalibratedTimestampInfoEXT *val)
+{
+    size_t size = 0;
+
+    size += vn_sizeof_VkStructureType(&val->sType);
+    size += vn_sizeof_VkCalibratedTimestampInfoEXT_pnext(val->pNext);
+    size += vn_sizeof_VkCalibratedTimestampInfoEXT_self(val);
+
+    return size;
+}
+
+static inline void
+vn_encode_VkCalibratedTimestampInfoEXT_pnext(struct vn_cs_encoder *enc, const void *val)
+{
+    /* no known/supported struct */
+    vn_encode_simple_pointer(enc, NULL);
+}
+
+static inline void
+vn_encode_VkCalibratedTimestampInfoEXT_self(struct vn_cs_encoder *enc, const VkCalibratedTimestampInfoEXT *val)
+{
+    /* skip val->{sType,pNext} */
+    vn_encode_VkTimeDomainEXT(enc, &val->timeDomain);
+}
+
+static inline void
+vn_encode_VkCalibratedTimestampInfoEXT(struct vn_cs_encoder *enc, const VkCalibratedTimestampInfoEXT *val)
+{
+    assert(val->sType == VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT);
+    vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT });
+    vn_encode_VkCalibratedTimestampInfoEXT_pnext(enc, val->pNext);
+    vn_encode_VkCalibratedTimestampInfoEXT_self(enc, val);
+}
+
 /* struct VkCommandStreamDescriptionMESA */
 
 static inline size_t
@@ -414,6 +467,97 @@ vn_encode_VkMemoryResourcePropertiesMESA_partial(struct vn_cs_encoder *enc, cons
     vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_MEMORY_RESOURCE_PROPERTIES_MESA });
     vn_encode_VkMemoryResourcePropertiesMESA_pnext_partial(enc, val->pNext);
     vn_encode_VkMemoryResourcePropertiesMESA_self_partial(enc, val);
+}
+
+static inline size_t vn_sizeof_vkGetCalibratedTimestampsEXT(VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation)
+{
+    const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkGetCalibratedTimestampsEXT_EXT;
+    const VkFlags cmd_flags = 0;
+    size_t cmd_size = vn_sizeof_VkCommandTypeEXT(&cmd_type) + vn_sizeof_VkFlags(&cmd_flags);
+
+    cmd_size += vn_sizeof_VkDevice(&device);
+    cmd_size += vn_sizeof_uint32_t(&timestampCount);
+    if (pTimestampInfos) {
+        cmd_size += vn_sizeof_array_size(timestampCount);
+        for (uint32_t i = 0; i < timestampCount; i++)
+            cmd_size += vn_sizeof_VkCalibratedTimestampInfoEXT(&pTimestampInfos[i]);
+    } else {
+        cmd_size += vn_sizeof_array_size(0);
+    }
+    cmd_size += vn_sizeof_simple_pointer(pTimestamps); /* out */
+    cmd_size += vn_sizeof_simple_pointer(pMaxDeviation); /* out */
+
+    return cmd_size;
+}
+
+static inline void vn_encode_vkGetCalibratedTimestampsEXT(struct vn_cs_encoder *enc, VkCommandFlagsEXT cmd_flags, VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation)
+{
+    const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkGetCalibratedTimestampsEXT_EXT;
+
+    vn_encode_VkCommandTypeEXT(enc, &cmd_type);
+    vn_encode_VkFlags(enc, &cmd_flags);
+
+    vn_encode_VkDevice(enc, &device);
+    vn_encode_uint32_t(enc, &timestampCount);
+    if (pTimestampInfos) {
+        vn_encode_array_size(enc, timestampCount);
+        for (uint32_t i = 0; i < timestampCount; i++)
+            vn_encode_VkCalibratedTimestampInfoEXT(enc, &pTimestampInfos[i]);
+    } else {
+        vn_encode_array_size(enc, 0);
+    }
+    vn_encode_array_size(enc, pTimestamps ? timestampCount : 0); /* out */
+    vn_encode_simple_pointer(enc, pMaxDeviation); /* out */
+}
+
+static inline size_t vn_sizeof_vkGetCalibratedTimestampsEXT_reply(VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation)
+{
+    const VkCommandTypeEXT cmd_type = VK_COMMAND_TYPE_vkGetCalibratedTimestampsEXT_EXT;
+    size_t cmd_size = vn_sizeof_VkCommandTypeEXT(&cmd_type);
+
+    VkResult ret;
+    cmd_size += vn_sizeof_VkResult(&ret);
+    /* skip device */
+    /* skip timestampCount */
+    /* skip pTimestampInfos */
+    if (pTimestamps) {
+        cmd_size += vn_sizeof_array_size(timestampCount);
+        cmd_size += vn_sizeof_uint64_t_array(pTimestamps, timestampCount);
+    } else {
+        cmd_size += vn_sizeof_array_size(0);
+    }
+    cmd_size += vn_sizeof_simple_pointer(pMaxDeviation);
+    if (pMaxDeviation)
+        cmd_size += vn_sizeof_uint64_t(pMaxDeviation);
+
+    return cmd_size;
+}
+
+static inline VkResult vn_decode_vkGetCalibratedTimestampsEXT_reply(struct vn_cs_decoder *dec, VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation)
+{
+    VkCommandTypeEXT command_type;
+    vn_decode_VkCommandTypeEXT(dec, &command_type);
+    assert(command_type == VK_COMMAND_TYPE_vkGetCalibratedTimestampsEXT_EXT);
+
+    VkResult ret;
+    vn_decode_VkResult(dec, &ret);
+    /* skip device */
+    /* skip timestampCount */
+    /* skip pTimestampInfos */
+    if (vn_peek_array_size(dec)) {
+        const size_t array_size = vn_decode_array_size(dec, timestampCount);
+        vn_decode_uint64_t_array(dec, pTimestamps, array_size);
+    } else {
+        vn_decode_array_size_unchecked(dec);
+        pTimestamps = NULL;
+    }
+    if (vn_decode_simple_pointer(dec)) {
+        vn_decode_uint64_t(dec, pMaxDeviation);
+    } else {
+        pMaxDeviation = NULL;
+    }
+
+    return ret;
 }
 
 static inline size_t vn_sizeof_vkSetReplyCommandStreamMESA(const VkCommandStreamDescriptionMESA* pStream)
@@ -903,6 +1047,27 @@ static inline void vn_decode_vkGetVenusExperimentalFeatureData100000MESA_reply(s
     }
 }
 
+static inline void vn_submit_vkGetCalibratedTimestampsEXT(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation, struct vn_instance_submit_command *submit)
+{
+    uint8_t local_cmd_data[VN_SUBMIT_LOCAL_CMD_SIZE];
+    void *cmd_data = local_cmd_data;
+    size_t cmd_size = vn_sizeof_vkGetCalibratedTimestampsEXT(device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
+    if (cmd_size > sizeof(local_cmd_data)) {
+        cmd_data = malloc(cmd_size);
+        if (!cmd_data)
+            cmd_size = 0;
+    }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkGetCalibratedTimestampsEXT_reply(device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation) : 0;
+
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkGetCalibratedTimestampsEXT(enc, cmd_flags, device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
+}
+
 static inline void vn_submit_vkSetReplyCommandStreamMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, const VkCommandStreamDescriptionMESA* pStream, struct vn_instance_submit_command *submit)
 {
     uint8_t local_cmd_data[VN_SUBMIT_LOCAL_CMD_SIZE];
@@ -1090,6 +1255,28 @@ static inline void vn_submit_vkGetVenusExperimentalFeatureData100000MESA(struct 
         if (cmd_data != local_cmd_data)
             free(cmd_data);
     }
+}
+
+static inline VkResult vn_call_vkGetCalibratedTimestampsEXT(struct vn_instance *vn_instance, VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation)
+{
+    VN_TRACE_FUNC();
+
+    struct vn_instance_submit_command submit;
+    vn_submit_vkGetCalibratedTimestampsEXT(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation, &submit);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        const VkResult ret = vn_decode_vkGetCalibratedTimestampsEXT_reply(dec, device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
+        vn_instance_free_command_reply(vn_instance, &submit);
+        return ret;
+    } else {
+        return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+}
+
+static inline void vn_async_vkGetCalibratedTimestampsEXT(struct vn_instance *vn_instance, VkDevice device, uint32_t timestampCount, const VkCalibratedTimestampInfoEXT* pTimestampInfos, uint64_t* pTimestamps, uint64_t* pMaxDeviation)
+{
+    struct vn_instance_submit_command submit;
+    vn_submit_vkGetCalibratedTimestampsEXT(vn_instance, 0, device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation, &submit);
 }
 
 static inline void vn_call_vkSetReplyCommandStreamMESA(struct vn_instance *vn_instance, const VkCommandStreamDescriptionMESA* pStream)
