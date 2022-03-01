@@ -105,6 +105,7 @@
 #define PKT3_INDEX_BUFFER_SIZE              0x13
 #define PKT3_DISPATCH_DIRECT                0x15
 #define PKT3_DISPATCH_INDIRECT              0x16
+#define PKT3_ATOMIC_MEM                     0x1E
 #define PKT3_OCCLUSION_QUERY                0x1F /* new for CIK */
 #define PKT3_SET_PREDICATION                0x20
 #define PKT3_COND_EXEC                      0x22
