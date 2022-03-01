@@ -307,13 +307,14 @@ zink_blit(struct pipe_context *pctx,
          if (blit_resolve(ctx, info, &needs_present_readback))
             goto end;
       } else {
+         if (try_copy_region(pctx, info))
+            goto end;
          if (blit_native(ctx, info, &needs_present_readback))
             goto end;
       }
    }
 
-   if (try_copy_region(pctx, info))
-      goto end;
+
 
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
       debug_printf("blit unsupported %s -> %s\n",
