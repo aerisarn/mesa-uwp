@@ -200,10 +200,50 @@ src_vector(struct i915_fp_compile *p,
       }
       break;
 
-   case TGSI_FILE_IMMEDIATE:
+   case TGSI_FILE_IMMEDIATE: {
       assert(index < p->num_immediates);
+
+      uint8_t swiz[4] = {
+         source->Register.SwizzleX,
+         source->Register.SwizzleY,
+         source->Register.SwizzleZ,
+         source->Register.SwizzleW
+      };
+
+      uint8_t neg[4] = {
+         source->Register.Negate,
+         source->Register.Negate,
+         source->Register.Negate,
+         source->Register.Negate
+      };
+
+      unsigned i;
+
+      for (i = 0; i < 4; i++) {
+         if (swiz[i] == TGSI_SWIZZLE_ZERO || swiz[i] == TGSI_SWIZZLE_ONE) {
+            continue;
+         } else if (p->immediates[index][swiz[i]] == 0.0) {
+            swiz[i] = TGSI_SWIZZLE_ZERO;
+         } else if (p->immediates[index][swiz[i]] == 1.0) {
+            swiz[i] = TGSI_SWIZZLE_ONE;
+         } else if (p->immediates[index][swiz[i]] == -1.0) {
+            swiz[i] = TGSI_SWIZZLE_ONE;
+            neg[i] ^= 1;
+         } else {
+            break;
+         }
+      }
+
+      if (i == 4) {
+         return negate(swizzle(UREG(REG_TYPE_R, 0),
+                               swiz[0], swiz[1], swiz[2], swiz[3]),
+                       neg[0], neg[1], neg[2], neg[3]);
+      }
+
       index = p->immediates_map[index];
       FALLTHROUGH;
+   }
+
    case TGSI_FILE_CONSTANT:
       src = UREG(REG_TYPE_CONST, index);
       break;

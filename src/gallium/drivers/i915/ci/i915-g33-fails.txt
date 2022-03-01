@@ -43,7 +43,6 @@ dEQP-GLES2.functional.shaders.loops.for_constant_iterations.conditional_continue
 dEQP-GLES2.functional.shaders.loops.for_constant_iterations.double_continue_fragment,Fail
 dEQP-GLES2.functional.shaders.loops.for_constant_iterations.mixed_break_continue_fragment,Fail
 
-dEQP-GLES2.functional.shaders.random.all_features.fragment.22,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.38,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.5,Fail
 dEQP-GLES2.functional.shaders.random.all_features.fragment.79,Fail
