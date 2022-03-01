@@ -8657,4 +8657,13 @@
     <src start="3"/>
   </ins>
 
+  <ins name="+BRANCHZI" pseudo="true" last="true" dests="0">
+    <src start="0"/>
+    <src start="6" mask="0xf7"/>
+    <mod name="cmpf" size="1">
+      <opt>eq</opt>
+      <opt>ne</opt>
+    </mod>
+  </ins>
+
 </bifrost>
