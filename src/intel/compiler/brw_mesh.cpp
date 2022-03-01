@@ -457,70 +457,66 @@ brw_nir_lower_mue_outputs(nir_shader *nir, const struct brw_mue_map *map)
                 nir_lower_io_lower_64bit_to_32);
 }
 
+static bool
+brw_nir_adjust_offset_for_arrayed_indices_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   const struct brw_mue_map *map = (const struct brw_mue_map *) data;
+
+   /* Remap per_vertex and per_primitive offsets using the extra source and
+    * the pitch.
+    */
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_per_vertex_output:
+   case nir_intrinsic_store_per_vertex_output: {
+      const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_vertex_output;
+      nir_src *index_src = &intrin->src[is_load ? 0 : 1];
+      nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
+
+      assert(index_src->is_ssa);
+      b->cursor = nir_before_instr(&intrin->instr);
+      nir_ssa_def *offset =
+         nir_iadd(b,
+                  offset_src->ssa,
+                  nir_imul_imm(b, index_src->ssa, map->per_vertex_pitch_dw));
+      nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+      return true;
+   }
+
+   case nir_intrinsic_load_per_primitive_output:
+   case nir_intrinsic_store_per_primitive_output: {
+      const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_primitive_output;
+      nir_src *index_src = &intrin->src[is_load ? 0 : 1];
+      nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
+
+      assert(index_src->is_ssa);
+      b->cursor = nir_before_instr(&intrin->instr);
+
+      assert(index_src->is_ssa);
+      nir_ssa_def *offset =
+         nir_iadd(b,
+                  offset_src->ssa,
+                  nir_imul_imm(b, index_src->ssa, map->per_primitive_pitch_dw));
+      nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
+      return true;
+   }
+
+   default:
+      return false;
+   }
+}
+
 static void
 brw_nir_adjust_offset_for_arrayed_indices(nir_shader *nir, const struct brw_mue_map *map)
 {
-   /* TODO(mesh): Check if we need to inject extra vertex header / primitive
-    * setup.  If so, we should add them together some required value for
-    * vertex/primitive.
-    */
-
-   /* Remap per_vertex and per_primitive offsets using the extra source and the pitch. */
-   nir_foreach_function(function, nir) {
-      if (function->impl) {
-         nir_builder b;
-         nir_builder_init(&b, function->impl);
-
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr(instr, block) {
-               if (instr->type != nir_instr_type_intrinsic)
-                  continue;
-               nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
-               switch (intrin->intrinsic) {
-               case nir_intrinsic_load_per_vertex_output:
-               case nir_intrinsic_store_per_vertex_output: {
-                  const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_vertex_output;
-                  nir_src *index_src = &intrin->src[is_load ? 0 : 1];
-                  nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
-
-                  assert(index_src->is_ssa);
-                  b.cursor = nir_before_instr(&intrin->instr);
-                  nir_ssa_def *offset =
-                     nir_iadd(&b,
-                              offset_src->ssa,
-                              nir_imul_imm(&b, index_src->ssa, map->per_vertex_pitch_dw));
-                  nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
-                  break;
-               }
-
-               case nir_intrinsic_load_per_primitive_output:
-               case nir_intrinsic_store_per_primitive_output: {
-                  const bool is_load = intrin->intrinsic == nir_intrinsic_load_per_primitive_output;
-                  nir_src *index_src = &intrin->src[is_load ? 0 : 1];
-                  nir_src *offset_src = &intrin->src[is_load ? 1 : 2];
-
-                  assert(index_src->is_ssa);
-                  b.cursor = nir_before_instr(&intrin->instr);
-
-                  assert(index_src->is_ssa);
-                  nir_ssa_def *offset =
-                     nir_iadd(&b,
-                              offset_src->ssa,
-                              nir_imul_imm(&b, index_src->ssa, map->per_primitive_pitch_dw));
-                  nir_instr_rewrite_src(&intrin->instr, offset_src, nir_src_for_ssa(offset));
-                  break;
-               }
-
-               default:
-                  /* Nothing to do. */
-                  break;
-               }
-            }
-         }
-         nir_metadata_preserve(function->impl, nir_metadata_none);
-      }
-   }
+   nir_shader_instructions_pass(nir, brw_nir_adjust_offset_for_arrayed_indices_instr,
+                                nir_metadata_block_index |
+                                nir_metadata_dominance,
+                                (void *)map);
 }
 
 const unsigned *
