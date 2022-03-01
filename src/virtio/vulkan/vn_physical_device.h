@@ -29,6 +29,7 @@ struct vn_physical_device_features {
    /* EXT */
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
    VkPhysicalDeviceLineRasterizationFeaturesEXT line_rasterization;
+   VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
 };
 
@@ -40,6 +41,7 @@ struct vn_physical_device_properties {
    /* EXT */
    VkPhysicalDeviceCustomBorderColorPropertiesEXT custom_border_color;
    VkPhysicalDeviceLineRasterizationPropertiesEXT line_rasterization;
+   VkPhysicalDeviceProvokingVertexPropertiesEXT provoking_vertex;
    VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;
 };
 

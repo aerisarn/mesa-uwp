@@ -133,6 +133,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
                        feats->line_rasterization,
                        LINE_RASTERIZATION_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, feats->provoking_vertex,
+                       PROVOKING_VERTEX_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
                        feats->transform_feedback,
                        TRANSFORM_FEEDBACK_FEATURES_EXT, features2);
@@ -425,6 +427,8 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
                        props->line_rasterization,
                        LINE_RASTERIZATION_PROPERTIES_EXT, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_provoking_vertex, props->provoking_vertex,
+                       PROVOKING_VERTEX_PROPERTIES_EXT, properties2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
                        props->transform_feedback,
                        TRANSFORM_FEEDBACK_PROPERTIES_EXT, properties2);
@@ -922,6 +926,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_image_drm_format_modifier = true,
 #endif
       .EXT_line_rasterization = true,
+      .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
       .EXT_transform_feedback = true,
    };
@@ -1641,6 +1646,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* EXT */
       VkPhysicalDeviceCustomBorderColorFeaturesEXT *custom_border_color;
       VkPhysicalDeviceLineRasterizationFeaturesEXT *line_rasterization;
+      VkPhysicalDeviceProvokingVertexFeaturesEXT *provoking_vertex;
       VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
    } u;
 
@@ -1817,6 +1823,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
          *u.line_rasterization = feats->line_rasterization;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT:
+         *u.provoking_vertex = feats->provoking_vertex;
+         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
          *u.transform_feedback = feats->transform_feedback;
          break;
@@ -1869,6 +1878,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceLineRasterizationPropertiesEXT *line_rasterization;
       VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
       VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
+      VkPhysicalDeviceProvokingVertexPropertiesEXT *provoking_vertex;
       VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
    } u;
 
@@ -2074,6 +2084,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID:
          u.presentation_properties->sharedImage = VK_FALSE;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT:
+         *u.provoking_vertex = props->provoking_vertex;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
          *u.transform_feedback = props->transform_feedback;
