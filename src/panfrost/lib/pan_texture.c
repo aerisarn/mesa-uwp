@@ -768,8 +768,14 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
                 else
                         cfg.sample_count = layout->nr_samples;
                 cfg.swizzle = swizzle;
+#if PAN_ARCH >= 9
+                cfg.texel_interleave =
+                        (layout->modifier != DRM_FORMAT_MOD_LINEAR) ||
+                        util_format_is_compressed(format);
+#else
                 cfg.texel_ordering =
                         panfrost_modifier_to_layout(layout->modifier);
+#endif
                 cfg.levels = iview->last_level - iview->first_level + 1;
                 cfg.array_size = array_size;
 
