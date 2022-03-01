@@ -25,6 +25,7 @@
 
 #include "ac_gpu_info.h"
 #include "ac_shader_util.h"
+#include "ac_debug.h"
 
 #include "addrlib/src/amdgpu_asic_addr.h"
 #include "sid.h"
@@ -1258,6 +1259,23 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->num_simd_per_compute_unit = info->chip_class >= GFX10 ? 2 : 4;
 
    set_custom_cu_en_mask(info);
+
+   const char *ib_filename = debug_get_option("AMD_PARSE_IB", NULL);
+   if (ib_filename) {
+	   FILE *f = fopen(ib_filename, "r");
+	   if (f) {
+		   fseek(f, 0, SEEK_END);
+		   int size = ftell(f);
+		   uint32_t *ib = (uint32_t *)malloc(size);
+		   fseek(f, 0, SEEK_SET);
+		   fread(ib, 1, size, f);
+		   fclose(f);
+
+		   ac_parse_ib(stdout, ib, size / 4, NULL, 0, "IB", info->chip_class, NULL, NULL);
+		   free(ib);
+		   exit(0);
+	   }
+   }
    return true;
 }
 
