@@ -472,6 +472,12 @@ st_translate_stream_output_info(struct gl_program *prog)
    memset(output_mapping, 0, sizeof(output_mapping));
 
    for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
+      /* this output was added by mesa/st and should not be tracked for xfb:
+       * drivers must check var->data.explicit_location to find the original output
+       * and only emit that one for xfb
+       */
+      if (prog->skip_pointsize_xfb && attr == VARYING_SLOT_PSIZ)
+         continue;
       if (prog->info.outputs_written & BITFIELD64_BIT(attr))
          output_mapping[attr] = num_outputs++;
    }

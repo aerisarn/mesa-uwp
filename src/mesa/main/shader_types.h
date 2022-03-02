@@ -531,6 +531,9 @@ struct gl_program
    /** Is this program written to on disk shader cache */
    bool program_written_to_cache;
 
+   /** whether to skip VARYING_SLOT_PSIZ in st_translate_stream_output_info() */
+   bool skip_pointsize_xfb;
+
    /** A bitfield indicating which vertex shader inputs consume two slots
     *
     * This is used for mapping from single-slot input locations in the GL API

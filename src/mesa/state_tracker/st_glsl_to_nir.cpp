@@ -304,6 +304,8 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
          st->ctx->SoftFP64 = glsl_float64_funcs_to_nir(st->ctx, options);
    }
 
+   prog->skip_pointsize_xfb = !(nir->info.outputs_written & VARYING_BIT_PSIZ);
+
    /* ES has strict SSO validation rules for shader IO matching so we can't
     * remove dead IO until the resource list has been built. Here we skip
     * removing them until later. This will potentially make the IO lowering
