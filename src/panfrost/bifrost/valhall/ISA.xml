@@ -593,12 +593,12 @@
     <value desc="Slot #7">slot7</value>
   </enum>
 
-  <enum name="Store segment">
-    <desc>Memory segment written to by a `STORE` instruction.</desc>
-    <value desc="Global or workgroup local memory" default="none">global</value>
-    <value desc="Position output (in a position shader)">pos</value>
-    <value desc="Varyings with LEA_VARY computed addresses">vary</value>
-    <value desc="Thread local storage">tl</value>
+  <enum name="Memory access">
+    <desc>Memory access hint for a `LOAD` or `STORE` instruction.</desc>
+    <value desc="No hint (global)" default="true">none</value>
+    <value desc="Internally streaming (position output)">istream</value>
+    <value desc="Externally streaming (varying output)">estream</value>
+    <value desc="Force access in discarded threads (thread local storage)">force</value>
   </enum>
 
   <enum name="Subgroup size">
@@ -1123,7 +1123,7 @@
     <ins name="STORE.i96" opcode2="0x6"/>
     <ins name="STORE.i128" opcode2="0x7"/>
     <sr_count/>
-    <store_segment/>
+    <memory_access/>
     <slot/>
     <src>Address to store to after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
