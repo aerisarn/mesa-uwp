@@ -706,22 +706,40 @@ i915_translate_instruction(struct i915_fp_compile *p,
                       0);
       break;
 
-   case TGSI_OPCODE_SEQ:
+   case TGSI_OPCODE_SEQ: {
+      const uint32_t zero = swizzle(UREG(REG_TYPE_R, 0),
+                                    SRC_ZERO, SRC_ZERO, SRC_ZERO, SRC_ZERO);
+
       /* if we're both >= and <= then we're == */
       src0 = src_vector(p, &inst->Src[0], fs);
       src1 = src_vector(p, &inst->Src[1], fs);
       tmp = i915_get_utemp(p);
 
-      i915_emit_arith(p, A0_SGE, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
+      if (src0 == zero || src1 == zero) {
+         if (src0 == zero)
+            src0 = src1;
 
-      i915_emit_arith(p, A0_SGE, get_result_vector(p, &inst->Dst[0]),
-                      get_result_flags(inst), 0, src1, src0, 0);
+         /* x == 0 is equivalent to -abs(x) >= 0, but the latter requires only
+          * two instructions instead of three.
+          */
+         i915_emit_arith(p, A0_MAX, tmp, A0_DEST_CHANNEL_ALL, 0, src0,
+                         negate(src0, 1, 1, 1, 1), 0);
+         i915_emit_arith(p, A0_SGE, get_result_vector(p, &inst->Dst[0]),
+                         get_result_flags(inst), 0,
+                         negate(tmp, 1, 1, 1, 1), zero, 0);
+      } else {
+         i915_emit_arith(p, A0_SGE, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
 
-      i915_emit_arith(p, A0_MUL, get_result_vector(p, &inst->Dst[0]),
-                      get_result_flags(inst), 0,
-                      get_result_vector(p, &inst->Dst[0]), tmp, 0);
+         i915_emit_arith(p, A0_SGE, get_result_vector(p, &inst->Dst[0]),
+                         get_result_flags(inst), 0, src1, src0, 0);
+
+         i915_emit_arith(p, A0_MUL, get_result_vector(p, &inst->Dst[0]),
+                         get_result_flags(inst), 0,
+                         get_result_vector(p, &inst->Dst[0]), tmp, 0);
+      }
 
       break;
+   }
 
    case TGSI_OPCODE_SGE:
       emit_simple_arith(p, inst, A0_SGE, 2, fs);
@@ -741,21 +759,39 @@ i915_translate_instruction(struct i915_fp_compile *p,
       emit_simple_arith_swap2(p, inst, A0_SLT, 2, fs);
       break;
 
-   case TGSI_OPCODE_SNE:
+   case TGSI_OPCODE_SNE: {
+      const uint32_t zero = swizzle(UREG(REG_TYPE_R, 0),
+                                    SRC_ZERO, SRC_ZERO, SRC_ZERO, SRC_ZERO);
+
       /* if we're < or > then we're != */
       src0 = src_vector(p, &inst->Src[0], fs);
       src1 = src_vector(p, &inst->Src[1], fs);
       tmp = i915_get_utemp(p);
 
-      i915_emit_arith(p, A0_SLT, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
+      if (src0 == zero || src1 == zero) {
+         if (src0 == zero)
+            src0 = src1;
 
-      i915_emit_arith(p, A0_SLT, get_result_vector(p, &inst->Dst[0]),
-                      get_result_flags(inst), 0, src1, src0, 0);
+         /* x != 0 is equivalent to -abs(x) < 0, but the latter requires only
+          * two instructions instead of three.
+          */
+         i915_emit_arith(p, A0_MAX, tmp, A0_DEST_CHANNEL_ALL, 0, src0,
+                         negate(src0, 1, 1, 1, 1), 0);
+         i915_emit_arith(p, A0_SLT, get_result_vector(p, &inst->Dst[0]),
+                         get_result_flags(inst), 0,
+                         negate(tmp, 1, 1, 1, 1), zero, 0);
+      } else {
+         i915_emit_arith(p, A0_SLT, tmp, A0_DEST_CHANNEL_ALL, 0, src0, src1, 0);
 
-      i915_emit_arith(p, A0_ADD, get_result_vector(p, &inst->Dst[0]),
-                      get_result_flags(inst), 0,
-                      get_result_vector(p, &inst->Dst[0]), tmp, 0);
+         i915_emit_arith(p, A0_SLT, get_result_vector(p, &inst->Dst[0]),
+                         get_result_flags(inst), 0, src1, src0, 0);
+
+         i915_emit_arith(p, A0_ADD, get_result_vector(p, &inst->Dst[0]),
+                         get_result_flags(inst), 0,
+                         get_result_vector(p, &inst->Dst[0]), tmp, 0);
+      }
       break;
+   }
 
    case TGSI_OPCODE_SSG:
       /* compute (src>0) - (src<0) */
