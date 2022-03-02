@@ -272,6 +272,23 @@ zink_compute_program_reference(struct zink_context *ctx,
    return ret;
 }
 
+static inline bool
+zink_program_reference(struct zink_context *ctx,
+                       struct zink_program **dst,
+                       struct zink_program *src)
+{
+   struct zink_program *pg = src ? src : dst ? *dst : NULL;
+   if (!pg)
+      return false;
+   if (pg->is_compute) {
+      struct zink_compute_program *comp = (struct zink_compute_program*)pg;
+      return zink_compute_program_reference(ctx, &comp, NULL);
+   } else {
+      struct zink_gfx_program *prog = (struct zink_gfx_program*)pg;
+      return zink_gfx_program_reference(ctx, &prog, NULL);
+   }
+}
+
 VkPipelineLayout
 zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg, uint32_t *compat);
 

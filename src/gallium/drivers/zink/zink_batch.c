@@ -84,13 +84,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    set_foreach_remove(bs->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
       zink_batch_usage_unset(&pg->batch_uses, bs);
-      if (pg->is_compute) {
-         struct zink_compute_program *comp = (struct zink_compute_program*)pg;
-         zink_compute_program_reference(ctx, &comp, NULL);
-      } else {
-         struct zink_gfx_program *prog = (struct zink_gfx_program*)pg;
-         zink_gfx_program_reference(ctx, &prog, NULL);
-      }
+      zink_program_reference(ctx, &pg, NULL);
    }
 
    pipe_resource_reference(&bs->flush_res, NULL);
