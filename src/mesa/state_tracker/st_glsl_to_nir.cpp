@@ -43,6 +43,7 @@
 #include "st_shader_cache.h"
 
 #include "compiler/nir/nir.h"
+#include "compiler/nir/nir_builder.h"
 #include "nir_xfb_info.h"
 #include "compiler/glsl_types.h"
 #include "compiler/glsl/glsl_to_nir.h"
@@ -250,6 +251,36 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
    }
 }
 
+/* - create a gl_PointSizeMESA variable
+ * - find every gl_Position write
+ * - store 1.0 to gl_PointSizeMESA after every gl_Position write
+ */
+static void
+st_nir_add_point_size(nir_shader *nir)
+{
+   nir_variable *psiz = nir_variable_create(nir, nir_var_shader_out, glsl_float_type(), "gl_PointSizeMESA");
+   psiz->data.location = VARYING_SLOT_PSIZ;
+
+   nir_builder b;
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   nir_builder_init(&b, impl);
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type == nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic == nir_intrinsic_store_deref) {
+               nir_variable *var = nir_intrinsic_get_var(intr, 0);
+               if (var->data.location == VARYING_SLOT_POS) {
+                  b.cursor = nir_after_instr(instr);
+                  nir_deref_instr *deref = nir_build_deref_var(&b, psiz);
+                  nir_store_deref(&b, deref, nir_imm_float(&b, 1.0), BITFIELD_BIT(0));
+               }
+            }
+         }
+      }
+   }
+}
+
 static void
 shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 {
@@ -305,6 +336,27 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    }
 
    prog->skip_pointsize_xfb = !(nir->info.outputs_written & VARYING_BIT_PSIZ);
+   if (st->lower_point_size && _mesa_is_gles(st->ctx) &&
+       (stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY)) {
+      struct gl_shader *sh = NULL;
+      for (unsigned i = 0; i < shader_program->NumShaders; i++) {
+         if (shader_program->Shaders[i]->Stage == nir->info.stage) {
+            sh = shader_program->Shaders[i];
+            break;
+         }
+      }
+      assert(sh);
+      bool add_point_size = false;
+      if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+         if (!sh->OES_tessellation_point_size_enable)
+            add_point_size = true;
+      } else {
+         if (!sh->OES_geometry_point_size_enable)
+            add_point_size = true;
+      }
+      if (add_point_size)
+         NIR_PASS_V(nir, st_nir_add_point_size);
+   }
 
    /* ES has strict SSO validation rules for shader IO matching so we can't
     * remove dead IO until the resource list has been built. Here we skip
