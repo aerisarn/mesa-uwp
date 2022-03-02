@@ -2160,8 +2160,6 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
                 nir_move_const_undef | nir_move_comparisons | nir_move_copies |
                 nir_move_load_ubo | nir_move_load_uniform;
         NIR_PASS(progress, s, nir_opt_sink, sink_opts);
-
-        NIR_PASS(progress, s, nir_opt_move, nir_move_load_ubo);
 }
 
 static int
