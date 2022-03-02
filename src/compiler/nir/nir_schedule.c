@@ -1016,8 +1016,17 @@ nir_schedule_get_delay(nir_instr *instr)
       return 1;
 
    case nir_instr_type_intrinsic:
-      /* XXX: Pick a large number for UBO/SSBO/image/shared loads */
-      return 1;
+      switch (nir_instr_as_intrinsic(instr)->intrinsic) {
+      case nir_intrinsic_load_ubo:
+      case nir_intrinsic_load_ssbo:
+      case nir_intrinsic_load_scratch:
+      case nir_intrinsic_load_shared:
+      case nir_intrinsic_image_load:
+         return 50;
+      default:
+         return 1;
+      }
+      break;
 
    case nir_instr_type_tex:
       /* Pick some large number to try to fetch textures early and sample them
