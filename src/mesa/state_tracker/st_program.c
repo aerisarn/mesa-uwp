@@ -798,29 +798,25 @@ st_create_common_variant(struct st_context *st,
 
       if (key->export_point_size) {
          /* if flag is set, shader must export psiz */
-         nir_shader *nir = state.ir.nir;
-         /* avoid clobbering existing psiz output */
-         if (!(nir->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PSIZ))) {
-            _mesa_add_state_reference(params, point_size_state);
-            NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
-                       point_size_state);
+         _mesa_add_state_reference(params, point_size_state);
+         NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
+                    point_size_state);
 
-            switch (prog->info.stage) {
-            case MESA_SHADER_VERTEX:
-               prog->affected_states |= ST_NEW_VS_CONSTANTS;
-               break;
-            case MESA_SHADER_TESS_EVAL:
-               prog->affected_states |= ST_NEW_TES_CONSTANTS;
-               break;
-            case MESA_SHADER_GEOMETRY:
-               prog->affected_states |= ST_NEW_GS_CONSTANTS;
-               break;
-            default:
-               unreachable("bad shader stage");
-            }
-
-            finalize = true;
+         switch (prog->info.stage) {
+         case MESA_SHADER_VERTEX:
+            prog->affected_states |= ST_NEW_VS_CONSTANTS;
+            break;
+         case MESA_SHADER_TESS_EVAL:
+            prog->affected_states |= ST_NEW_TES_CONSTANTS;
+            break;
+         case MESA_SHADER_GEOMETRY:
+            prog->affected_states |= ST_NEW_GS_CONSTANTS;
+            break;
+         default:
+            unreachable("bad shader stage");
          }
+
+         finalize = true;
       }
 
       if (key->lower_ucp) {
