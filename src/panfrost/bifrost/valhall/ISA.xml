@@ -2065,6 +2065,29 @@
     <src>Image to read from</src>
   </ins>
 
+  <ins name="TEX_GATHER" title="Texel gather" opcode="0x129" unit="T">
+    <desc>Texture gather instruction.</desc>
+    <slot/>
+    <skip/>
+    <register_type/>
+    <register_width/>
+    <write_mask/>
+    <dimension/>
+    <wide_indices/>
+    <array_enable/>
+    <texel_offset/>
+    <integer_coordinates/>
+    <fetch_component/>
+
+    <!-- Leave secondary_register_width as 0 -->
+    <sr_count/>
+    <sr_write_count/>
+
+    <sr write="true" flags="false"/>
+    <sr read="true" flags="false"/>
+    <src>Image to read from</src>
+  </ins>
+
   <ins name="TEX_DUAL" title="Dual texture" opcode="0x12F" unit="T">
     <desc>Pair of texture instructions.</desc>
     <slot/>
