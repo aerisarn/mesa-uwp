@@ -185,6 +185,8 @@ struct gl_shader
    bool EarlyFragmentTests;
 
    bool ARB_fragment_coord_conventions_enable;
+   bool OES_geometry_point_size_enable;
+   bool OES_tessellation_point_size_enable;
 
    bool redeclares_gl_fragcoord;
    bool uses_gl_fragcoord;
