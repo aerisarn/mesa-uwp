@@ -2065,6 +2065,27 @@
     <src>Image to read from</src>
   </ins>
 
+  <ins name="TEX_DUAL" title="Dual texture" opcode="0x12F" unit="T">
+    <desc>Pair of texture instructions.</desc>
+    <slot/>
+    <skip/>
+    <register_type/>
+    <register_width/>
+    <secondary_register_width/>
+    <write_mask/>
+    <dimension/>
+    <wide_indices/>
+    <array_enable/>
+    <texel_offset/>
+
+    <sr_count/>
+    <sr_write_count/>
+
+    <sr write="true" flags="false"/>
+    <sr read="true" flags="false"/>
+    <src>Image to read from</src>
+  </ins>
+
   <ins name="TODO.VAR_TEX" title="Fused varying-texturing" opcode="0x130" unit="VT">
     <desc>
       Only works for FP32 varyings. Performance characteristics are similar
