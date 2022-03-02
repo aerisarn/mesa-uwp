@@ -79,16 +79,16 @@ class Modifier:
         self.size = size
         self.implied = implied
         self.is_enum = (force_enum is not None) or size > 1
+        self.enum = force_enum or name
 
         if not self.is_enum:
             self.bare_values = ['', name]
             self.default = 0
         else:
-            enum = enums[force_enum or name]
-            self.bare_values = [x.value for x in enum.values]
-            defaults = [x for x in enum.values if x.default]
+            self.bare_values = [x.value for x in enums[self.enum].values]
+            defaults = [x for x in enums[self.enum].values if x.default]
             assert(len(defaults) <= 1)
-            
+
             if len(defaults) > 0:
                 self.default = self.bare_values.index(defaults[0].value)
             else:

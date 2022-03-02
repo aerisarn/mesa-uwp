@@ -159,7 +159,7 @@ va_disasm_instr(FILE *fp, uint64_t instr)
 % for mod in op.modifiers:
 % if mod.name not in ["left", "staging_register_count", "staging_register_write_count"]:
 % if mod.is_enum:
-            fputs(valhall_${safe_name(mod.name)}[(instr >> ${mod.start}) & ${hex((1 << mod.size) - 1)}], fp);
+            fputs(valhall_${safe_name(mod.enum)}[(instr >> ${mod.start}) & ${hex((1 << mod.size) - 1)}], fp);
 % else:
             if (instr & BIT(${mod.start})) fputs(".${mod.name}", fp);
 % endif
