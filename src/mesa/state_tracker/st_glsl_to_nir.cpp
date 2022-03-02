@@ -337,7 +337,8 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
 
    prog->skip_pointsize_xfb = !(nir->info.outputs_written & VARYING_BIT_PSIZ);
    if (st->lower_point_size && _mesa_is_gles(st->ctx) &&
-       (stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY)) {
+       (stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY) &&
+       st_can_add_pointsize_to_program(st, prog)) {
       struct gl_shader *sh = NULL;
       for (unsigned i = 0; i < shader_program->NumShaders; i++) {
          if (shader_program->Shaders[i]->Stage == nir->info.stage) {

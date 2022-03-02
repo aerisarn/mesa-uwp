@@ -1933,6 +1933,35 @@ st_destroy_program_variants(struct st_context *st)
                   destroy_shader_program_variants_cb, st);
 }
 
+bool
+st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog)
+{
+   nir_shader *nir = prog->nir;
+   if (!nir)
+      return true; //fixedfunction
+   assert(nir->info.stage == MESA_SHADER_VERTEX ||
+          nir->info.stage == MESA_SHADER_TESS_EVAL ||
+          nir->info.stage == MESA_SHADER_GEOMETRY);
+   unsigned max_components = nir->info.stage == MESA_SHADER_GEOMETRY ?
+                             st->ctx->Const.MaxGeometryTotalOutputComponents :
+                             st->ctx->Const.Program[nir->info.stage].MaxOutputComponents * 4;
+   unsigned num_components = 0;
+   unsigned needed_components = nir->info.stage == MESA_SHADER_GEOMETRY ? nir->info.gs.vertices_out : 1;
+   u_foreach_bit64(loc, nir->info.outputs_written) {
+      nir_variable *var = NULL;
+      unsigned location = loc; //can't modify bit iterator
+      while (!var)
+         var = nir_find_variable_with_location(nir, nir_var_shader_out, location--);
+      assert(var);
+      num_components += glsl_count_dword_slots(var->type, false);
+   }
+   /* Ensure that there is enough attribute space to emit at least one primitive */
+   if (nir->info.stage == MESA_SHADER_GEOMETRY)
+      num_components *= nir->info.gs.vertices_out;
+
+   return num_components + needed_components <= max_components;
+}
+
 static bool
 is_last_vertex_stage(struct gl_context *ctx, struct gl_program *prog)
 {
