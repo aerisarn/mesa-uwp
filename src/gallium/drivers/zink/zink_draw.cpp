@@ -564,6 +564,8 @@ zink_draw(struct pipe_context *pctx,
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
+   zink_query_update_gs_states(ctx);
+
    zink_batch_rp(ctx);
 
    if (BATCH_CHANGED)
@@ -765,8 +767,6 @@ zink_draw(struct pipe_context *pctx,
       zink_bind_vertex_state(batch, ctx, vstate, partial_velem_mask);
    else if (BATCH_CHANGED || ctx->vertex_buffers_dirty)
       zink_bind_vertex_buffers<DYNAMIC_STATE>(batch, ctx);
-
-   zink_query_update_gs_states(ctx);
 
    if (BATCH_CHANGED) {
       ctx->pipeline_changed[0] = false;
