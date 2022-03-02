@@ -678,13 +678,13 @@ allocate_desc_set(struct zink_context *ctx, struct zink_program *pg, enum zink_d
 #endif
       switch (type) {
       case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-         zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pool->key->layout->num_bindings];
+         zds->sampler_states = (struct zink_sampler_state**)&samplers[i * num_resources];
          FALLTHROUGH;
       case ZINK_DESCRIPTOR_TYPE_IMAGE:
-         zds->surfaces = &surfaces[i * pool->key->layout->num_bindings];
+         zds->surfaces = &surfaces[i * num_resources];
          break;
       default:
-         zds->res_objs = (struct zink_resource_object**)&res_objs[i * pool->key->layout->num_bindings];
+         zds->res_objs = (struct zink_resource_object**)&res_objs[i * num_resources];
          break;
       }
       zds->desc_set = desc_set[i];
