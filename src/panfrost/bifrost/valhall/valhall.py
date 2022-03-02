@@ -362,6 +362,7 @@ MODIFIERS = {
     "inactive_result": Modifier("inactive_result", 22, 4),
     "store_segment": Modifier("store_segment", 24, 2),
     "regfmt": Modifier("register_format", 24, 3),
+    "source_format": Modifier("source_format", 24, 4),
     "vecsize": Modifier("vector_size", 28, 2),
 
     "slot": Modifier("slot", 30, 3),

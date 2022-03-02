@@ -689,6 +689,16 @@
     <value desc="Clobber saved position">clobber</value>
   </enum>
 
+  <enum name="Source format">
+    <desc>
+      In-memory format of varyings.
+    </desc>
+    <value desc="Uninterpreted 32-bit values">src_flat32</value>
+    <reserved/>
+    <value desc="Interpolated 32-bit floats">src_f32</value>
+    <value desc="Interpolated 16-bit floats">src_f16</value>
+  </enum>
+
   <ins name="NOP" title="No operation" dests="0" opcode="0x00" unit="CVT">
     <desc>
       Do nothing. Useful at the start of a block for waiting on slots required
@@ -798,18 +808,17 @@
     <imm name="index" start="12" size="4"/> <!-- 0 for pointx, 1 for pointy, 2 for fragw, 3 for fragz -->
   </ins>
 
-  <group name="LD_VAR_IMM_F32" title="Load immediate varying" unit="V">
-    <desc>Interpolates a given varying</desc>
-    <ins name="LD_VAR_IMM_F32" opcode="0x5C"/>
-    <ins name="LD_VAR_IMM_F16" opcode="0x5D"/>
-    <sr write="true"/>
+  <group name="LD_VAR_BUF_IMM" title="Load immediate varying" unit="V">
+    <desc>Interpolates a given varying from hardware buffer</desc>
+    <ins name="LD_VAR_BUF_IMM.f32" opcode="0x5C"/>
+    <ins name="LD_VAR_BUF_IMM.f16" opcode="0x5D"/>
+    <slot/>
     <vecsize/>
-    <sr_count/>
-    <mod name="half" start="24" size="1"/>
-    <mod name="smooth" start="25" size="1"/>
+    <source_format/>
     <sample/>
     <update/>
-    <slot/>
+    <sr write="true"/>
+    <sr_count/>
     <src/>
     <imm name="index" start="16" size="8"/>
   </group>
