@@ -2021,7 +2021,9 @@ st_precompile_shader_variant(struct st_context *st,
       if (prog->Target == GL_VERTEX_PROGRAM_ARB ||
           prog->Target == GL_TESS_EVALUATION_PROGRAM_NV ||
           prog->Target == GL_GEOMETRY_PROGRAM_NV) {
-         if (st->lower_point_size && !st->ctx->VertexProgram.PointSizeEnabled)
+         if (st->lower_point_size &&
+             !st->ctx->VertexProgram.PointSizeEnabled &&
+             st_can_add_pointsize_to_program(st, prog))
             key.export_point_size = is_last_vertex_stage(st->ctx, prog) &&
                                     (!prog->nir || !nir_find_variable_with_location(prog->nir, nir_var_shader_out, VARYING_SLOT_PSIZ));
       }
