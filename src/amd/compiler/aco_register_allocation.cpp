@@ -2577,6 +2577,13 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             continue;
          }
 
+         /* unconditional branches are handled after phis of the target */
+         if (instr->opcode == aco_opcode::p_branch) {
+            /* last instruction of the block */
+            instructions.emplace_back(std::move(instr));
+            break;
+         }
+
          std::vector<std::pair<Operand, Definition>> parallelcopy;
 
          assert(!is_phi(instr));
