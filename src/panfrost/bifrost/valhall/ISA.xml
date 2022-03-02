@@ -548,6 +548,13 @@
     <value default="true">rgba</value>
   </enum>
 
+  <enum name="Fetch component">
+    <value desc="Red">gather4_r</value>
+    <value desc="Green">gather4_g</value>
+    <value desc="Blue">gather4_b</value>
+    <value desc="Alpha">gather4_a</value>
+  </enum>
+
   <enum name="Register type">
     <desc>Unsized type, part of a register format.</desc>
     <reserved/>

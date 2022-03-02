@@ -349,6 +349,8 @@ MODIFIERS = {
     "array_enable": Flag("array_enable", 10),
     "texel_offset": Flag("texel_offset", 11),
     "shadow": Flag("shadow", 12),
+    "integer_coordinates": Flag("integer_coordinates", 13),
+    "fetch_component": Modifier("fetch_component", 14, 2),
     "lod_mode": Modifier("lod_mode", 13, 3),
     "write_mask": Modifier("write_mask", 22, 4),
     "register_type": Modifier("register_type", 26, 2),
