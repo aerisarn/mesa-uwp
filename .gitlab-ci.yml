@@ -1436,7 +1436,7 @@ debian-mingw32-x86_64:
   # like FDO_DISTRIBUTION_TAG for *the* image, there is no way to
   # depend on more than one image per job. So, the job container is
   # built as part of the CI in the boot2container project.
-  image: registry.freedesktop.org/mupuf/valve-infra/mesa-trigger:2022-02-17.1
+  image: registry.freedesktop.org/mupuf/valve-infra/mesa-trigger:2022-03-03.2
   extends:
     # Only pull in what is needed to build up the MESA_IMAGE (which is
     # called for clarity IMAGE_UNDER_TEST). This is in distinction to
