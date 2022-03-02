@@ -2207,7 +2207,6 @@ lower_to_hw_instr(Program* program)
             bool can_remove = block->index < target;
             unsigned num_scalar = 0;
             unsigned num_vector = 0;
-            bool has_sopp = false;
 
             /* Check the instructions between branch and target */
             for (unsigned i = block->index + 1; i < branch->target[0]; i++) {
@@ -2221,19 +2220,17 @@ lower_to_hw_instr(Program* program)
 
                for (aco_ptr<Instruction>& inst : program->blocks[i].instructions) {
                   if (inst->isSOPP()) {
-                     /* we allow at most one inner branch */
-                     if (has_sopp)
+                     /* Discard early exits and loop breaks and continues should work fine with an
+                      * empty exec mask.
+                      */
+                     bool is_break_continue =
+                        program->blocks[i].kind & (block_kind_break | block_kind_continue);
+                     bool discard_early_exit =
+                        discard_block && (unsigned)inst->sopp().block == discard_block->index;
+                     if ((inst->opcode != aco_opcode::s_cbranch_scc0 &&
+                          inst->opcode != aco_opcode::s_cbranch_scc1) ||
+                         (!discard_early_exit && !is_break_continue))
                         can_remove = false;
-
-                     /* These instructions must conditionally be jumped over */
-                     if (inst->opcode == aco_opcode::s_endpgm ||
-                         inst->opcode == aco_opcode::s_sendmsg ||
-                         inst->opcode == aco_opcode::s_sendmsghalt ||
-                         inst->opcode == aco_opcode::s_trap ||
-                         inst->opcode == aco_opcode::s_barrier)
-                        can_remove = false;
-
-                     has_sopp = true;
                   } else if (inst->isSALU()) {
                      num_scalar++;
                   } else if (inst->isVALU() || inst->isVINTRP()) {
