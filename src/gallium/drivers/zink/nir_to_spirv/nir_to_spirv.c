@@ -193,6 +193,21 @@ emit_access_decorations(struct ntv_context *ctx, nir_variable *var, SpvId var_id
           unreachable("unknown access bit");
        }
     }
+    /* The Simple, GLSL, and Vulkan memory models can assume that aliasing is generally
+     * not present between the memory object declarations. Specifically, the consumer
+     * is free to assume aliasing is not present between memory object declarations,
+     * unless the memory object declarations explicitly indicate they alias.
+     * ...
+     * Applying Restrict is allowed, but has no effect.
+     * ...
+     * Only those memory object declarations decorated with Aliased or AliasedPointer may alias each other.
+     *
+     * - SPIRV 2.18.2 Aliasing
+     *
+     * thus if the variable isn't marked restrict, assume it may alias
+     */
+    if (!(var->data.access & ACCESS_RESTRICT))
+       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationAliased);
 }
 
 static SpvOp
