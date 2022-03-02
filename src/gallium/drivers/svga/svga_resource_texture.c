@@ -342,9 +342,9 @@ svga_texture_transfer_map_direct(struct svga_context *svga,
 
       if (!svga->swc->force_coherent || tex->imported) {
          /* Readback the whole surface */
-	 readback_texture_surface(svga, tex, surf);
+         readback_texture_surface(svga, tex, surf);
 
-         svga_context_flush(svga, NULL);
+         svga_context_finish(svga);
       }
       /*
        * Note: if PIPE_MAP_DISCARD_WHOLE_RESOURCE were specified
