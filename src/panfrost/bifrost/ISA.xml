@@ -8347,4 +8347,151 @@
     </mod>
   </ins>
 
+  <ins name="+TEX_SINGLE" staging="rw=sr_count" message="tex" pseudo="true">
+    <src start="0"/>
+    <src start="1"/>
+    <immediate name="sr_count" size="4" pseudo="true"/>
+    <mod name="texel_offset" start="9" size="1" opt="texel_offset"/>
+    <mod name="skip" start="9" size="1" opt="skip"/>
+    <mod name="shadow" start="9" size="1" opt="shadow"/>
+    <mod name="array_enable" start="9" size="1" opt="array_enable"/>
+    <mod name="dimension" start="9" size="2">
+      <opt>1d</opt>
+      <opt>2d</opt>
+      <opt>3d</opt>
+      <opt>cube</opt>
+    </mod>
+    <mod name="write_mask" start="9" size="2">
+      <opt>none</opt>
+      <opt>r</opt>
+      <opt>g</opt>
+      <opt>rg</opt>
+      <opt>b</opt>
+      <opt>rb</opt>
+      <opt>gb</opt>
+      <opt>rgb</opt>
+      <opt>a</opt>
+      <opt>ra</opt>
+      <opt>ga</opt>
+      <opt>rga</opt>
+      <opt>ba</opt>
+      <opt>rba</opt>
+      <opt>gba</opt>
+      <opt>rgba</opt>
+    </mod>
+    <mod name="va_lod_mode" start="13" size="3" default="zero_lod">
+      <opt>zero_lod</opt>
+      <opt>computed_lod</opt>
+      <opt>explicit</opt>
+      <opt>computed_bias</opt>
+      <opt>grdesc</opt>
+    </mod>
+    <mod name="register_format" size="4">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+    </mod>
+  </ins>
+
+  <ins name="+TEX_FETCH" staging="rw=sr_count" message="tex" pseudo="true">
+    <src start="0"/>
+    <src start="1"/>
+    <immediate name="sr_count" size="4" pseudo="true"/>
+    <mod name="texel_offset" start="9" size="1" opt="texel_offset"/>
+    <mod name="skip" start="9" size="1" opt="skip"/>
+    <mod name="array_enable" start="9" size="1" opt="array_enable"/>
+    <mod name="dimension" start="9" size="2">
+      <opt>1d</opt>
+      <opt>2d</opt>
+      <opt>3d</opt>
+      <opt>cube</opt>
+    </mod>
+    <mod name="write_mask" start="9" size="2">
+      <opt>none</opt>
+      <opt>r</opt>
+      <opt>g</opt>
+      <opt>rg</opt>
+      <opt>b</opt>
+      <opt>rb</opt>
+      <opt>gb</opt>
+      <opt>rgb</opt>
+      <opt>a</opt>
+      <opt>ra</opt>
+      <opt>ga</opt>
+      <opt>rga</opt>
+      <opt>ba</opt>
+      <opt>rba</opt>
+      <opt>gba</opt>
+      <opt>rgba</opt>
+    </mod>
+    <mod name="register_format" size="4">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+    </mod>
+  </ins>
+
+  <ins name="+TEX_GATHER" staging="rw=sr_count" message="tex" pseudo="true">
+    <src start="0"/>
+    <src start="1"/>
+    <immediate name="sr_count" size="4" pseudo="true"/>
+    <mod name="texel_offset" start="9" size="1" opt="texel_offset"/>
+    <mod name="skip" start="9" size="1" opt="skip"/>
+    <mod name="array_enable" start="9" size="1" opt="array_enable"/>
+    <mod name="integer_coordinates" start="9" size="1" opt="integer_coordinates"/>
+    <mod name="fetch_component" start="9" size="2">
+      <opt>gather4_r</opt>
+      <opt>gather4_g</opt>
+      <opt>gather4_b</opt>
+      <opt>gather4_a</opt>
+    </mod>
+    <mod name="dimension" start="9" size="2">
+      <opt>1d</opt>
+      <opt>2d</opt>
+      <opt>3d</opt>
+      <opt>cube</opt>
+    </mod>
+    <mod name="write_mask" start="9" size="2">
+      <opt>none</opt>
+      <opt>r</opt>
+      <opt>g</opt>
+      <opt>rg</opt>
+      <opt>b</opt>
+      <opt>rb</opt>
+      <opt>gb</opt>
+      <opt>rgb</opt>
+      <opt>a</opt>
+      <opt>ra</opt>
+      <opt>ga</opt>
+      <opt>rga</opt>
+      <opt>ba</opt>
+      <opt>rba</opt>
+      <opt>gba</opt>
+      <opt>rgba</opt>
+    </mod>
+    <mod name="register_format" size="4">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+    </mod>
+  </ins>
+
+  <ins name="+CUBEFACE2_V9" pseudo="true">
+    <src start="0" mask="0xfb"/>
+    <src start="3" mask="0xfb"/>
+    <src start="6"/>
+    <mod name="neg0" size="1" opt="neg"/>
+    <mod name="neg1" size="1" opt="neg"/>
+    <mod name="neg2" size="1" opt="neg"/>
+  </ins>
+
 </bifrost>
