@@ -818,29 +818,35 @@ zink_get_query_result(struct pipe_context *pctx,
    return get_query_result(pctx, q, wait, result);
 }
 
+static void
+suspend_query(struct zink_context *ctx, struct zink_query *query)
+{
+   /* if a query isn't active here then we don't need to reactivate it on the next batch */
+   if (query->active && !is_time_query(query))
+      end_query(ctx, &ctx->batch, query);
+   if (query->needs_update)
+      update_qbo(ctx, query);
+   /* do an implicit copy+reset if:
+    * - query is being read from and >50% of pool is used
+    * - >90% of pool is used
+    *
+    * this avoids overflow
+    */
+   if ((query->last_start && query->curr_query > NUM_QUERIES / 2) || (query->curr_query > NUM_QUERIES * 0.9))
+      reset_pool(ctx, &ctx->batch, query);
+}
+
 void
 zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
 {
    set_foreach(batch->state->active_queries, entry) {
       struct zink_query *query = (void*)entry->key;
-      /* if a query isn't active here then we don't need to reactivate it on the next batch */
-      if (query->active && !is_time_query(query)) {
-         end_query(ctx, batch, query);
+      if (query->active && !is_time_query(query))
          /* the fence is going to steal the set off the batch, so we have to copy
           * the active queries onto a list
           */
          list_addtail(&query->active_list, &ctx->suspended_queries);
-      }
-      if (query->needs_update)
-         update_qbo(ctx, query);
-      /* do an implicit copy+reset if:
-       * - query is being read from and >50% of pool is used
-       * - >90% of pool is used
-       *
-       * this avoids overflow
-       */
-      if ((query->last_start && query->curr_query > NUM_QUERIES / 2) || (query->curr_query > NUM_QUERIES * 0.9))
-         reset_pool(ctx, batch, query);
+      suspend_query(ctx, query);
    }
 }
 
