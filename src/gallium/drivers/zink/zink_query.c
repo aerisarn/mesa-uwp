@@ -48,6 +48,7 @@ struct zink_query {
    struct list_head stats_list; /* when active, statistics queries are added to ctx->primitives_generated_queries */
    bool have_gs[NUM_QUERIES]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT */
    bool have_xfb[NUM_QUERIES]; /* xfb was active during this query */
+   bool has_draws; /* have_gs and have_xfb are valid for idx=curr_query */
 
    struct zink_batch_usage *batch_id; //batch that the query was started in
 
@@ -716,6 +717,7 @@ update_query_id(struct zink_context *ctx, struct zink_query *q)
       q->needs_reset = true;
    }
    ctx->batch.has_work = true;
+   q->has_draws = false;
 
    if (ctx->batch.in_rp)
       q->needs_update = true;
@@ -867,8 +869,18 @@ zink_query_update_gs_states(struct zink_context *ctx)
    LIST_FOR_EACH_ENTRY(query, &ctx->primitives_generated_queries, stats_list) {
       assert(query->curr_query < ARRAY_SIZE(query->have_gs));
       assert(query->active);
-      query->have_gs[query->curr_query] = !!ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
-      query->have_xfb[query->curr_query] = !!ctx->num_so_targets;
+      bool have_gs = !!ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
+      bool have_xfb = !!ctx->num_so_targets;
+      if (query->has_draws) {
+         if (query->have_gs[query->curr_query] != have_gs ||
+             query->have_xfb[query->curr_query] != have_xfb) {
+            suspend_query(ctx, query);
+            begin_query(ctx, &ctx->batch, query);
+         }
+      }
+      query->have_gs[query->curr_query] = have_gs;
+      query->have_xfb[query->curr_query] = have_xfb;
+      query->has_draws = true;
    }
 }
 
