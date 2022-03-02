@@ -163,9 +163,7 @@ block_label(struct ntv_context *ctx, nir_block *block)
 static void
 emit_access_decorations(struct ntv_context *ctx, nir_variable *var, SpvId var_id)
 {
-    unsigned access = var->data.access;
-    while (access) {
-       unsigned bit = u_bit_scan(&access);
+    u_foreach_bit(bit, var->data.access) {
        switch (1 << bit) {
        case ACCESS_COHERENT:
           /* SpvDecorationCoherent can't be used with vulkan memory model */
