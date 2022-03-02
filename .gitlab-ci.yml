@@ -125,7 +125,7 @@ stages:
     - .ci-run-policy
   script:
   - apk --no-cache add graphviz doxygen
-  - pip3 install "sphinx<4.0" breathe mako sphinx_rtd_theme
+  - pip3 install sphinx breathe mako sphinx_rtd_theme
   - docs/doxygen-wrapper.py --out-dir=docs/doxygen_xml
   - sphinx-build -W -b html docs public
 
