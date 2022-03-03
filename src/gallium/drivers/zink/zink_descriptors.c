@@ -772,20 +772,28 @@ zink_descriptor_set_get(struct zink_context *ctx,
 
    simple_mtx_lock(&pool->mtx);
    if (last_set && last_set->hash == hash && desc_state_equal(&last_set->key, &key)) {
+      bool was_recycled = false;
       zds = last_set;
       *cache_hit = !zds->invalid;
       if (zds->recycled) {
          struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->free_desc_sets, hash, &key);
-         if (he)
+         if (he) {
+            was_recycled = true;
             _mesa_hash_table_remove(pool->free_desc_sets, he);
+         }
          zds->recycled = false;
       }
       if (zds->invalid) {
           if (zink_batch_usage_exists(zds->batch_uses))
              punt_invalid_set(zds, NULL);
-          else
+          else {
+             if (was_recycled) {
+                descriptor_set_invalidate(zds);
+                goto out;
+             }
              /* this set is guaranteed to be in pool->alloc_desc_sets */
              goto skip_hash_tables;
+          }
           zds = NULL;
       }
       if (zds)
