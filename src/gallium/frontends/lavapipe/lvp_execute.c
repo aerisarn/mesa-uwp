@@ -43,6 +43,7 @@
 #include "util/u_prim_restart.h"
 #include "util/format/u_format_zs.h"
 #include "util/ptralloc.h"
+#include "tgsi/tgsi_from_mesa.h"
 
 #include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_util.h"
@@ -127,6 +128,7 @@ struct rendering_state {
    struct pipe_vertex_buffer vb[PIPE_MAX_ATTRIBS];
    struct cso_velems_state velem;
 
+   struct lvp_access_info access[MESA_SHADER_STAGES];
    struct pipe_sampler_view *sv[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
    int num_sampler_views[PIPE_SHADER_TYPES];
    struct pipe_sampler_state ss[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
@@ -397,7 +399,7 @@ static void emit_state(struct rendering_state *state)
       if (state->sb_dirty[sh]) {
          state->pctx->set_shader_buffers(state->pctx, sh,
                                          0, state->num_shader_buffers[sh],
-                                         state->sb[sh], (1 << state->num_shader_buffers[sh]) - 1);
+                                         state->sb[sh], state->access[tgsi_processor_to_shader_stage(sh)].buffers_written);
       }
    }
 
@@ -449,6 +451,13 @@ static void handle_compute_pipeline(struct vk_cmd_queue_entry *cmd,
       state->uniform_blocks[PIPE_SHADER_COMPUTE].size[j] = pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
    if (!state->has_pcbuf[PIPE_SHADER_COMPUTE] && !pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
       state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
+
+   state->iv_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_images[MESA_SHADER_COMPUTE] &&
+                          (state->access[MESA_SHADER_COMPUTE].images_read != pipeline->access[MESA_SHADER_COMPUTE].images_read ||
+                           state->access[MESA_SHADER_COMPUTE].images_written != pipeline->access[MESA_SHADER_COMPUTE].images_written);
+   state->sb_dirty[MESA_SHADER_COMPUTE] |= state->num_shader_buffers[MESA_SHADER_COMPUTE] &&
+                                           state->access[MESA_SHADER_COMPUTE].buffers_written != pipeline->access[MESA_SHADER_COMPUTE].buffers_written;
+   memcpy(&state->access[MESA_SHADER_COMPUTE], &pipeline->access[MESA_SHADER_COMPUTE], sizeof(struct lvp_access_info));
 
    state->dispatch_info.block[0] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.workgroup_size[0];
    state->dispatch_info.block[1] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.workgroup_size[1];
@@ -558,6 +567,14 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+32];
    unsigned fb_samples = 0;
    bool clip_halfz = state->rs_state.clip_halfz;
+
+   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++) {
+      state->iv_dirty[sh] |= state->num_shader_images[sh] &&
+                             (state->access[sh].images_read != pipeline->access[sh].images_read ||
+                              state->access[sh].images_written != pipeline->access[sh].images_written);
+      state->sb_dirty[sh] |= state->num_shader_buffers[sh] && state->access[sh].buffers_written != pipeline->access[sh].buffers_written;
+   }
+   memcpy(state->access, pipeline->access, sizeof(struct lvp_access_info) * 5); //4 vertex stages + fragment
 
    memset(dynamic_states, 0, sizeof(dynamic_states));
    if (pipeline->graphics_create_info.pDynamicState)
@@ -1219,8 +1236,19 @@ static void fill_image_view_stage(struct rendering_state *state,
       state->iv[p_stage][idx].u.tex.last_layer = 0;
       state->iv[p_stage][idx].u.tex.level = 0;
    }
-   state->iv[p_stage][idx].access = PIPE_IMAGE_ACCESS_READ_WRITE;
-   state->iv[p_stage][idx].shader_access = PIPE_IMAGE_ACCESS_READ_WRITE;
+
+   assert(idx < 32);
+   state->iv[p_stage][idx].access = 0;
+   state->iv[p_stage][idx].shader_access = 0;
+   if (state->access[stage].images_read & BITFIELD_BIT(idx)) {
+      state->iv[p_stage][idx].access |= PIPE_IMAGE_ACCESS_READ;
+      state->iv[p_stage][idx].shader_access |= PIPE_IMAGE_ACCESS_READ;
+   }
+   if (state->access[stage].images_written & BITFIELD_BIT(idx)) {
+      state->iv[p_stage][idx].access |= PIPE_IMAGE_ACCESS_WRITE;
+      state->iv[p_stage][idx].shader_access |= PIPE_IMAGE_ACCESS_WRITE;
+   }
+
    if (state->num_shader_images[p_stage] <= idx)
       state->num_shader_images[p_stage] = idx + 1;
 
