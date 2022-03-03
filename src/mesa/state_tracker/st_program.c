@@ -2022,7 +2022,8 @@ st_precompile_shader_variant(struct st_context *st,
           prog->Target == GL_TESS_EVALUATION_PROGRAM_NV ||
           prog->Target == GL_GEOMETRY_PROGRAM_NV) {
          if (st->lower_point_size && !st->ctx->VertexProgram.PointSizeEnabled)
-            key.export_point_size = is_last_vertex_stage(st->ctx, prog);
+            key.export_point_size = is_last_vertex_stage(st->ctx, prog) &&
+                                    !nir_find_variable_with_location(prog->nir, nir_var_shader_out, VARYING_SLOT_PSIZ);
       }
       key.st = st->has_shareable_shaders ? NULL : st;
       st_get_common_variant(st, prog, &key);
