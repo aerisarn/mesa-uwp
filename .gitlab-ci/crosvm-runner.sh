@@ -82,10 +82,15 @@ unset XDG_RUNTIME_DIR
 CROSVM_KERN_ARGS="quiet console=null root=my_root rw rootfstype=virtiofs ip=192.168.30.2::192.168.30.1:255.255.255.0:crosvm:eth0"
 CROSVM_KERN_ARGS="${CROSVM_KERN_ARGS} init=${SCRIPT_DIR}/crosvm-init.sh -- ${VSOCK_STDOUT} ${VSOCK_STDERR} ${VSOCK_TEMP_DIR}"
 
+[ "${CROSVM_GALLIUM_DRIVER}" = "llvmpipe" ] && \
+    CROSVM_LIBGL_ALWAYS_SOFTWARE=true || CROSVM_LIBGL_ALWAYS_SOFTWARE=false
+
 set +e -x
 
-# We aren't testing LLVMPipe here, so we don't need to validate NIR on the host
-NIR_DEBUG="novalidate" LIBGL_ALWAYS_SOFTWARE="true" GALLIUM_DRIVER=${CROSVM_GALLIUM_DRIVER} \
+# We aren't testing the host driver here, so we don't need to validate NIR on the host
+NIR_DEBUG="novalidate" \
+LIBGL_ALWAYS_SOFTWARE=${CROSVM_LIBGL_ALWAYS_SOFTWARE} \
+GALLIUM_DRIVER=${CROSVM_GALLIUM_DRIVER} \
 crosvm run \
     --gpu "${CROSVM_GPU_ARGS}" -m 4096 -c 2 --disable-sandbox \
     --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
