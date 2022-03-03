@@ -572,12 +572,14 @@ static void
 llvmpipe_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
 {
    memset(uuid, 0, PIPE_UUID_SIZE);
+   snprintf(uuid, PIPE_UUID_SIZE, "llvmpipeUUID");
 }
 
 static void
 llvmpipe_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
 {
    memset(uuid, 0, PIPE_UUID_SIZE);
+   snprintf(uuid, PIPE_UUID_SIZE, "mesa" PACKAGE_VERSION);
 }
 
 static const struct nir_shader_compiler_options gallivm_nir_options = {

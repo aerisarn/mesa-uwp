@@ -851,8 +851,8 @@ lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
 {
    assert(p->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES);
 
-   memset(p->deviceUUID, 0, VK_UUID_SIZE);
-   memset(p->driverUUID, 0, VK_UUID_SIZE);
+   pdevice->pscreen->get_device_uuid(pdevice->pscreen, (char*)(p->deviceUUID));
+   pdevice->pscreen->get_driver_uuid(pdevice->pscreen, (char*)(p->driverUUID));
    memset(p->deviceLUID, 0, VK_LUID_SIZE);
    /* The LUID is for Windows. */
    p->deviceLUIDValid = false;
