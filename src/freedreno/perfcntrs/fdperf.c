@@ -159,6 +159,8 @@ find_device(void)
    if (!dev.io) {
       err(1, "could not map device");
    }
+
+   fd_pipe_set_param(dev.pipe, FD_SYSPROF, 1);
 }
 
 /*

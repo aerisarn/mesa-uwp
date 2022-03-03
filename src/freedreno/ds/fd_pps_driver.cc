@@ -454,6 +454,8 @@ FreedrenoDriver::init_perfcnt()
       has_suspend_count = true;
    }
 
+   fd_pipe_set_param(pipe, FD_SYSPROF, 1);
+
    perfcntrs = fd_perfcntrs(fd_pipe_dev_id(pipe), &num_perfcntrs);
    if (num_perfcntrs == 0) {
       PERFETTO_FATAL("No hw counters available");
