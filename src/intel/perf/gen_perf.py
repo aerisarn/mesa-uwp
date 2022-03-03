@@ -461,19 +461,13 @@ def output_counter_report(set, counter, counter_to_idx, current_offset):
     key = counter_key(counter)
     idx = str(counter_to_idx[key])
 
-    c("counter = &query->counters[query->n_counters++];\n")
-    c("counter->oa_counter_read_" + data_type + " = " + set.read_funcs[counter.get('symbol_name')] + ";\n")
-    c("counter->name = counters[" + idx + "].name;\n")
-    c("counter->desc = counters[" + idx + "].desc;\n")
-    c("counter->symbol_name = counters[" + idx + "].symbol_name;\n")
-    c("counter->category = counters[" + idx + "].category;\n")
-    c("counter->type = counters[" + idx + "].type;\n")
-    c("counter->data_type = counters[" + idx + "].data_type;\n")
-    c("counter->units = counters[" + idx + "].units;\n")
-    c("counter->raw_max = " + set.max_values[counter.get('symbol_name')] + ";\n")
-
     current_offset = pot_align(current_offset, sizeof(c_type))
-    c("counter->offset = " + str(current_offset) + ";\n")
+
+    c("counter = &query->counters[query->n_counters++];\n")
+    c("intel_perf_query_add_counter(counter, " + idx + ", " +
+        str(current_offset) + ", " +
+        set.max_values[counter.get('symbol_name')] + ", (oa_counter_read_func)" +
+        set.read_funcs[counter.get('symbol_name')] + ");\n")
 
     if availability:
         c_outdent(3);
@@ -757,7 +751,32 @@ def main():
                     idx += 1
 
     c_outdent(3)
-    c("};\n")
+    c("};\n\n")
+
+    c(textwrap.dedent("""\
+        typedef uint64_t (*oa_counter_read_func)(struct intel_perf_config *perf,
+                                                 const struct intel_perf_query_info *query,
+                                                 const struct intel_perf_query_result *results);
+        static void ATTRIBUTE_NOINLINE
+        intel_perf_query_add_counter(struct intel_perf_query_counter *dest,
+                                     int counter_idx, size_t offset,
+                                     uint64_t raw_max, oa_counter_read_func oa_counter_read_uint64)
+        {
+           const struct intel_perf_query_counter *counter = &counters[counter_idx];
+
+           dest->name = counter->name;
+           dest->desc = counter->desc;
+           dest->symbol_name = counter->symbol_name;
+           dest->category = counter->category;
+           dest->raw_max = raw_max;
+
+           dest->offset = offset;
+           dest->type = counter->type;
+           dest->data_type = counter->data_type;
+           dest->units = counter->units;
+           dest->oa_counter_read_uint64 = oa_counter_read_uint64;
+        }
+        """))
 
     # Print out all metric sets registration functions for each set in each
     # generation.
