@@ -397,6 +397,9 @@ typedef struct {
         enum bi_register_format register_format;
         enum bi_vecsize vecsize;
 
+        /* Action (flow control) associated with a Valhall instruction */
+        uint8_t action;
+
         /* Can we spill the value written here? Used to prevent
          * useless double fills */
         bool no_spill;
