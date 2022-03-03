@@ -736,7 +736,7 @@ def main():
                 output_counter_max(gen, set, counter)
 
     c("\n")
-    c("static const struct intel_perf_query_counter counters[] = {\n")
+    c("static const struct intel_perf_query_counter_data counters[] = {\n")
     c_indent(3)
 
     counter_to_idx = collections.OrderedDict()
@@ -762,7 +762,7 @@ def main():
                                      int counter_idx, size_t offset,
                                      uint64_t raw_max, oa_counter_read_func oa_counter_read_uint64)
         {
-           const struct intel_perf_query_counter *counter = &counters[counter_idx];
+           const struct intel_perf_query_counter_data *counter = &counters[counter_idx];
 
            dest->name = counter->name;
            dest->desc = counter->desc;
