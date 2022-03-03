@@ -1398,6 +1398,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
       if (pg->dd->push_usage) {
          if (pg->dd->fbfetch) {
             /* fbfetch is not cacheable: grab a lazy set because it's faster */
+            cache_hit = false;
             desc_set = zink_descriptors_alloc_lazy_push(ctx);
          } else {
             zds = zink_descriptor_set_get(ctx, ZINK_DESCRIPTOR_TYPES, is_compute, &cache_hit);
