@@ -700,12 +700,13 @@ static int transform_nonnative_modifiers(
 			new_inst->U.I.DstReg.File = RC_FILE_TEMPORARY;
 			new_inst->U.I.DstReg.Index = temp;
 			new_inst->U.I.SrcReg[0] = inst->U.I.SrcReg[i];
+			new_inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_XYZW;
 			new_inst->U.I.SrcReg[1] = inst->U.I.SrcReg[i];
+			new_inst->U.I.SrcReg[1].Swizzle = RC_SWIZZLE_XYZW;
 			new_inst->U.I.SrcReg[1].Negate ^= RC_MASK_XYZW;
 
 			inst->U.I.SrcReg[i].File = RC_FILE_TEMPORARY;
 			inst->U.I.SrcReg[i].Index = temp;
-			inst->U.I.SrcReg[i].Swizzle = RC_SWIZZLE_XYZW;
 			inst->U.I.SrcReg[i].RelAddr = 0;
 		}
 	}
