@@ -818,6 +818,8 @@ zink_descriptor_set_get(struct zink_context *ctx,
       zds = (void*)he->data;
       *cache_hit = !zds->invalid;
       if (recycled) {
+         if (zds->invalid)
+            descriptor_set_invalidate(zds);
          /* need to migrate this entry back to the in-use hash */
          _mesa_hash_table_remove(pool->free_desc_sets, he);
          goto out;
