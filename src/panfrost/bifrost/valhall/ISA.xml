@@ -1026,6 +1026,7 @@
   <ins name="LOAD.i8" title="Global memory load" opcode="0x60" opcode2="0" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_8_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1037,6 +1038,7 @@
   <ins name="LOAD.i16" title="Global memory load" opcode="0x60" opcode2="1" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_16_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1048,6 +1050,7 @@
   <ins name="LOAD.i24" title="Global memory load" opcode="0x60" opcode2="2" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_24_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1059,6 +1062,7 @@
   <ins name="LOAD.i32" title="Global memory load" opcode="0x60" opcode2="3" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_32_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1070,6 +1074,7 @@
   <ins name="LOAD.i48" title="Global memory load" opcode="0x60" opcode2="4" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_48_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1081,6 +1086,7 @@
   <ins name="LOAD.i64" title="Global memory load" opcode="0x60" opcode2="5" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_64_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1092,6 +1098,7 @@
   <ins name="LOAD.i96" title="Global memory load" opcode="0x60" opcode2="6" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_96_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
@@ -1103,6 +1110,7 @@
   <ins name="LOAD.i128" title="Global memory load" opcode="0x60" opcode2="7" unit="LS">
     <desc>Loads from main memory</desc>
     <sr write="true"/>
+    <memory_access/>
     <sr_count/>
     <mod name="load_lane_128_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
