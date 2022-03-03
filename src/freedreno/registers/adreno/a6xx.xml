@@ -1165,6 +1165,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0506" name="RBBM_PERFCTR_LOAD_VALUE_HI"/>
 	<array offset="0x0507" name="RBBM_PERFCTR_RBBM_SEL" stride="1" length="4"/>
 	<reg32 offset="0x050B" name="RBBM_PERFCTR_GPU_BUSY_MASKED"/>
+	<reg32 offset="0x050e" name="RBBM_PERFCTR_SRAM_INIT_CMD"/>
+	<reg32 offset="0x050f" name="RBBM_PERFCTR_SRAM_INIT_STATUS"/>
 	<reg32 offset="0x0533" name="RBBM_ISDB_CNT"/>
 
 	<!---
