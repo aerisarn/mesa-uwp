@@ -20,6 +20,7 @@
 # IN THE SOFTWARE.
 
 import argparse
+import collections
 import os
 import sys
 import textwrap
@@ -395,7 +396,48 @@ def desc_units(unit):
     return "Unit: " + unit + "."
 
 
-def output_counter_report(set, counter, current_offset):
+counter_key_tuple = collections.namedtuple(
+    'counter_key',
+    [
+        'name',
+        'description',
+        'symbol_name',
+        'mdapi_group',
+        'semantic_type',
+        'data_type',
+        'units',
+    ]
+)
+
+
+def counter_key(counter):
+    return counter_key_tuple._make([counter.get(field) for field in counter_key_tuple._fields])
+
+
+def output_counter_struct(set, counter, idx):
+    data_type = counter.data_type
+    data_type_uc = data_type.upper()
+
+    semantic_type = counter.semantic_type
+    if semantic_type in semantic_type_map:
+        semantic_type = semantic_type_map[semantic_type]
+
+    semantic_type_uc = semantic_type.upper()
+
+    c("[" + str(idx) + "] = {\n")
+    c_indent(3)
+    c(".name = \"" + counter.name + "\",\n")
+    c(".desc = \"" + counter.description + " " + desc_units(counter.units) + "\",\n")
+    c(".symbol_name = \"" + counter.symbol_name + "\",\n")
+    c(".category = \"" + counter.mdapi_group + "\",\n")
+    c(".type = INTEL_PERF_COUNTER_TYPE_" + semantic_type_uc + ",\n")
+    c(".data_type = INTEL_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ",\n")
+    c(".units = INTEL_PERF_COUNTER_UNITS_" + output_units(counter.units) + ",\n")
+    c_outdent(3)
+    c("},\n")
+
+
+def output_counter_report(set, counter, counter_to_idx, current_offset):
     data_type = counter.get('data_type')
     data_type_uc = data_type.upper()
     c_type = data_type
@@ -416,15 +458,18 @@ def output_counter_report(set, counter, current_offset):
         output_availability(set, availability, counter.get('name'))
         c_indent(3)
 
+    key = counter_key(counter)
+    idx = str(counter_to_idx[key])
+
     c("counter = &query->counters[query->n_counters++];\n")
     c("counter->oa_counter_read_" + data_type + " = " + set.read_funcs[counter.get('symbol_name')] + ";\n")
-    c("counter->name = \"" + counter.get('name') + "\";\n")
-    c("counter->desc = \"" + counter.get('description') + " " + desc_units(counter.get('units')) + "\";\n")
-    c("counter->symbol_name = \"" + counter.get('symbol_name') + "\";\n")
-    c("counter->category = \"" + counter.get('mdapi_group') + "\";\n")
-    c("counter->type = INTEL_PERF_COUNTER_TYPE_" + semantic_type_uc + ";\n")
-    c("counter->data_type = INTEL_PERF_COUNTER_DATA_TYPE_" + data_type_uc + ";\n")
-    c("counter->units = INTEL_PERF_COUNTER_UNITS_" + output_units(counter.get('units')) + ";\n")
+    c("counter->name = counters[" + idx + "].name;\n")
+    c("counter->desc = counters[" + idx + "].desc;\n")
+    c("counter->symbol_name = counters[" + idx + "].symbol_name;\n")
+    c("counter->category = counters[" + idx + "].category;\n")
+    c("counter->type = counters[" + idx + "].type;\n")
+    c("counter->data_type = counters[" + idx + "].data_type;\n")
+    c("counter->units = counters[" + idx + "].units;\n")
     c("counter->raw_max = " + set.max_values[counter.get('symbol_name')] + ";\n")
 
     current_offset = pot_align(current_offset, sizeof(c_type))
@@ -696,6 +741,24 @@ def main():
                 output_counter_read(gen, set, counter)
                 output_counter_max(gen, set, counter)
 
+    c("\n")
+    c("static const struct intel_perf_query_counter counters[] = {\n")
+    c_indent(3)
+
+    counter_to_idx = collections.OrderedDict()
+    idx = 0
+    for gen in gens:
+        for set in gen.sets:
+            for counter in set.counters:
+                key = counter_key(counter)
+                if key not in counter_to_idx:
+                    counter_to_idx[key] = idx
+                    output_counter_struct(set, key, idx)
+                    idx += 1
+
+    c_outdent(3)
+    c("};\n")
+
     # Print out all metric sets registration functions for each set in each
     # generation.
     for gen in gens:
@@ -731,7 +794,7 @@ def main():
 
             offset = 0
             for counter in counters:
-                offset = output_counter_report(set, counter, offset)
+                offset = output_counter_report(set, counter, counter_to_idx, offset)
 
 
             c("\nquery->data_size = counter->offset + intel_perf_query_counter_get_size(counter);\n")
