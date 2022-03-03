@@ -108,6 +108,32 @@ msm_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
 }
 
 static int
+set_param(struct fd_pipe *pipe, uint32_t param, uint64_t value)
+{
+   struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
+   struct drm_msm_param req = {
+      .pipe  = msm_pipe->pipe,
+      .param = param,
+      .value = value,
+   };
+
+   return drmCommandWriteRead(pipe->dev->fd, DRM_MSM_SET_PARAM,
+                              &req, sizeof(req));
+}
+
+static int
+msm_pipe_set_param(struct fd_pipe *pipe, enum fd_param_id param, uint64_t value)
+{
+   switch (param) {
+   case FD_SYSPROF:
+      return set_param(pipe, MSM_PARAM_SYSPROF, value);
+   default:
+      ERROR_MSG("invalid param id: %d", param);
+      return -1;
+   }
+}
+
+static int
 msm_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence, uint64_t timeout)
 {
    struct fd_device *dev = pipe->dev;
@@ -182,6 +208,7 @@ static const struct fd_pipe_funcs sp_funcs = {
    .submit_new = msm_submit_sp_new,
    .flush = msm_pipe_sp_flush,
    .get_param = msm_pipe_get_param,
+   .set_param = msm_pipe_set_param,
    .wait = msm_pipe_wait,
    .destroy = msm_pipe_destroy,
 };
@@ -190,6 +217,7 @@ static const struct fd_pipe_funcs legacy_funcs = {
    .ringbuffer_new_object = msm_ringbuffer_new_object,
    .submit_new = msm_submit_new,
    .get_param = msm_pipe_get_param,
+   .set_param = msm_pipe_set_param,
    .wait = msm_pipe_wait,
    .destroy = msm_pipe_destroy,
 };

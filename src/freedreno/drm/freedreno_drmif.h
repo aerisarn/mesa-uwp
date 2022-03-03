@@ -62,6 +62,7 @@ enum fd_param_id {
    FD_CTX_FAULTS,    /* # of per context faults */
    FD_GLOBAL_FAULTS, /* # of global (all context) faults */
    FD_SUSPEND_COUNT, /* # of times the GPU has suspended, and potentially lost state */
+   FD_SYSPROF,       /* Settable (for CAP_SYS_ADMIN) param for system profiling */
 };
 
 /**
@@ -149,6 +150,8 @@ void fd_pipe_purge(struct fd_pipe *pipe);
 const struct fd_dev_id * fd_pipe_dev_id(struct fd_pipe *pipe);
 int fd_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
                       uint64_t *value);
+int fd_pipe_set_param(struct fd_pipe *pipe, enum fd_param_id param,
+                      uint64_t value);
 int fd_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence);
 /* timeout in nanosec */
 int fd_pipe_wait_timeout(struct fd_pipe *pipe, const struct fd_fence *fence,

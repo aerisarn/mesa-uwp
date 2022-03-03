@@ -198,6 +198,8 @@ struct fd_pipe_funcs {
 
    int (*get_param)(struct fd_pipe *pipe, enum fd_param_id param,
                     uint64_t *value);
+   int (*set_param)(struct fd_pipe *pipe, enum fd_param_id param,
+                    uint64_t value);
    int (*wait)(struct fd_pipe *pipe, const struct fd_fence *fence,
                uint64_t timeout);
    void (*destroy)(struct fd_pipe *pipe);
