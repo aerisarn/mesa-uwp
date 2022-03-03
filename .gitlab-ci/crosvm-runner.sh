@@ -55,7 +55,7 @@ set_vsock_context || { echo "Could not generate crosvm vsock CID" >&2; exit 1; }
 
 # Ensure cleanup on script exit
 trap 'exit ${exit_code}' INT TERM
-trap 'exit_code=$?; [ -z "${SOCAT_PIDS}" ] || kill ${SOCAT_PIDS} >/dev/null 2>&1 || true; rm -rf ${VSOCK_TEMP_DIR}' EXIT
+trap 'exit_code=$?; [ -z "${CROSVM_PID}${SOCAT_PIDS}" ] || kill ${CROSVM_PID} ${SOCAT_PIDS} >/dev/null 2>&1 || true; rm -rf ${VSOCK_TEMP_DIR}' EXIT
 
 # Securely pass the current variables to the crosvm environment
 CI_COMMON="${CI_PROJECT_DIR}"/install/common
@@ -65,15 +65,15 @@ echo "Variables passed through:"
 # Set the crosvm-script as the arguments of the current script
 echo "$@" > ${VSOCK_TEMP_DIR}/crosvm-script.sh
 
+# Setup networking
+/usr/sbin/iptables-legacy -w -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
 # Start background processes to receive output from guest
 socat -u vsock-connect:${VSOCK_CID}:${VSOCK_STDERR},retry=200,interval=0.1 stderr &
 SOCAT_PIDS=$!
 socat -u vsock-connect:${VSOCK_CID}:${VSOCK_STDOUT},retry=200,interval=0.1 stdout &
 SOCAT_PIDS="${SOCAT_PIDS} $!"
-
-# Setup networking
-/usr/sbin/iptables-legacy -w -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Prepare to start crosvm
 unset DISPLAY
@@ -91,12 +91,18 @@ crosvm run \
     --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
     --host_ip "192.168.30.1" --netmask "255.255.255.0" --mac "AA:BB:CC:00:00:12" \
     --cid ${VSOCK_CID} -p "${CROSVM_KERN_ARGS}" \
-    /lava-files/bzImage > ${VSOCK_TEMP_DIR}/crosvm 2>&1
+    /lava-files/bzImage > ${VSOCK_TEMP_DIR}/crosvm 2>&1 &
 
+# Wait for crosvm process to terminate
+CROSVM_PID=$!
+wait ${CROSVM_PID}
 CROSVM_RET=$?
+unset CROSVM_PID
+
 [ ${CROSVM_RET} -eq 0 ] && {
-    # socat bg processes should terminate as soon as the remote peers exit
+    # socat background processes terminate gracefully on remote peers exit
     wait
+    unset SOCAT_PIDS
     # The actual return code is the crosvm guest script's exit code
     CROSVM_RET=$(cat ${VSOCK_TEMP_DIR}/exit_code 2>/dev/null)
     # Force error when the guest script's exit code is not available
