@@ -77,6 +77,7 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       VN_ADD_TO_PNEXT(feats->vulkan_1_1, VULKAN_1_1_FEATURES, features2);
       VN_ADD_TO_PNEXT(feats->vulkan_1_2, VULKAN_1_2_FEATURES, features2);
    } else {
+      /* Vulkan 1.1 */
       VN_ADD_TO_PNEXT(local_feats.sixteen_bit_storage, 16BIT_STORAGE_FEATURES,
                       features2);
       VN_ADD_TO_PNEXT(local_feats.multiview, MULTIVIEW_FEATURES, features2);
@@ -88,6 +89,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                       SAMPLER_YCBCR_CONVERSION_FEATURES, features2);
       VN_ADD_TO_PNEXT(local_feats.shader_draw_parameters,
                       SHADER_DRAW_PARAMETERS_FEATURES, features2);
+
+      /* Vulkan 1.2 */
       VN_ADD_TO_PNEXT(local_feats.eight_bit_storage, 8BIT_STORAGE_FEATURES,
                       features2);
       VN_ADD_TO_PNEXT(local_feats.shader_atomic_int64,
@@ -116,17 +119,18 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                       VULKAN_MEMORY_MODEL_FEATURES, features2);
    }
 
+   /* EXT */
    VN_ADD_EXT_TO_PNEXT(exts->EXT_4444_formats, feats->argb_4444_formats,
                        4444_FORMATS_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
-                       feats->transform_feedback,
-                       TRANSFORM_FEEDBACK_FEATURES_EXT, features2);
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state,
-                       feats->extended_dynamic_state,
-                       EXTENDED_DYNAMIC_STATE_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
                        feats->custom_border_color,
                        CUSTOM_BORDER_COLOR_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_extended_dynamic_state,
+                       feats->extended_dynamic_state,
+                       EXTENDED_DYNAMIC_STATE_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
+                       feats->transform_feedback,
+                       TRANSFORM_FEEDBACK_FEATURES_EXT, features2);
 
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev), &features2);
@@ -383,6 +387,7 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       VN_ADD_TO_PNEXT(props->vulkan_1_1, VULKAN_1_1_PROPERTIES, properties2);
       VN_ADD_TO_PNEXT(props->vulkan_1_2, VULKAN_1_2_PROPERTIES, properties2);
    } else {
+      /* Vulkan 1.1 */
       VN_ADD_TO_PNEXT(local_props.id, ID_PROPERTIES, properties2);
       VN_ADD_TO_PNEXT(local_props.subgroup, SUBGROUP_PROPERTIES, properties2);
       VN_ADD_TO_PNEXT(local_props.point_clipping, POINT_CLIPPING_PROPERTIES,
@@ -393,6 +398,8 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
                       PROTECTED_MEMORY_PROPERTIES, properties2);
       VN_ADD_TO_PNEXT(local_props.maintenance_3, MAINTENANCE_3_PROPERTIES,
                       properties2);
+
+      /* Vulkan 1.2 */
       VN_ADD_TO_PNEXT(local_props.driver, DRIVER_PROPERTIES, properties2);
       VN_ADD_TO_PNEXT(local_props.float_controls, FLOAT_CONTROLS_PROPERTIES,
                       properties2);
@@ -406,12 +413,13 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
                       TIMELINE_SEMAPHORE_PROPERTIES, properties2);
    }
 
-   VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
-                       props->transform_feedback,
-                       TRANSFORM_FEEDBACK_PROPERTIES_EXT, properties2);
+   /* EXT */
    VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
                        props->custom_border_color,
                        CUSTOM_BORDER_COLOR_PROPERTIES_EXT, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
+                       props->transform_feedback,
+                       TRANSFORM_FEEDBACK_PROPERTIES_EXT, properties2);
 
    vn_call_vkGetPhysicalDeviceProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &properties2);
@@ -899,6 +907,7 @@ vn_physical_device_get_passthrough_extensions(
       /* promoted to VK_VERSION_1_3 */
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
+
       /* EXT */
       .EXT_custom_border_color = true,
 #ifndef ANDROID
@@ -1585,7 +1594,11 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       &feats->vulkan_1_2;
    union {
       VkBaseOutStructure *pnext;
+
       VkPhysicalDeviceFeatures2 *features2;
+      VkPhysicalDeviceVulkan11Features *vulkan_1_1;
+      VkPhysicalDeviceVulkan12Features *vulkan_1_2;
+
       /* Vulkan 1.1 */
       VkPhysicalDevice16BitStorageFeatures *sixteen_bit_storage;
       VkPhysicalDeviceMultiviewFeatures *multiview;
@@ -1612,10 +1625,11 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceBufferDeviceAddressFeatures *buffer_device_address;
       VkPhysicalDeviceVulkanMemoryModelFeatures *vulkan_memory_model;
 
+      /* EXT */
       VkPhysicalDevice4444FormatsFeaturesEXT *argb_4444_formats;
-      VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
-      VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
       VkPhysicalDeviceCustomBorderColorFeaturesEXT *custom_border_color;
+      VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
+      VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pFeatures;
@@ -1626,11 +1640,13 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          u.features2->features = feats->vulkan_1_0;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
-         memcpy(u.pnext, vk11_feats, sizeof(*vk11_feats));
+         *u.vulkan_1_1 = *vk11_feats;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
-         memcpy(u.pnext, vk12_feats, sizeof(*vk12_feats));
+         *u.vulkan_1_2 = *vk12_feats;
          break;
+
+      /* Vulkan 1.1 */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES:
          u.sixteen_bit_storage->storageBuffer16BitAccess =
             vk11_feats->storageBuffer16BitAccess;
@@ -1664,6 +1680,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          u.shader_draw_parameters->shaderDrawParameters =
             vk11_feats->shaderDrawParameters;
          break;
+
+      /* Vulkan 1.2 */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES:
          u.eight_bit_storage->storageBuffer8BitAccess =
             vk12_feats->storageBuffer8BitAccess;
@@ -1771,27 +1789,25 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          u.vulkan_memory_model->vulkanMemoryModelAvailabilityVisibilityChains =
             vk12_feats->vulkanMemoryModelAvailabilityVisibilityChains;
          break;
+
+      /* EXT */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
-         memcpy(u.argb_4444_formats, &feats->argb_4444_formats,
-                sizeof(feats->argb_4444_formats));
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
-         memcpy(u.transform_feedback, &feats->transform_feedback,
-                sizeof(feats->transform_feedback));
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
-         u.extended_dynamic_state->extendedDynamicState =
-            feats->extended_dynamic_state.extendedDynamicState;
+         *u.argb_4444_formats = feats->argb_4444_formats;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
-         memcpy(u.custom_border_color, &feats->custom_border_color,
-                sizeof(feats->custom_border_color));
+         *u.custom_border_color = feats->custom_border_color;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT:
+         *u.extended_dynamic_state = feats->extended_dynamic_state;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
+         *u.transform_feedback = feats->transform_feedback;
          break;
       default:
          break;
       }
-      u.pnext->pNext = saved;
 
+      u.pnext->pNext = saved;
       u.pnext = u.pnext->pNext;
    }
 }
@@ -1810,7 +1826,10 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       &props->vulkan_1_2;
    union {
       VkBaseOutStructure *pnext;
+
       VkPhysicalDeviceProperties2 *properties2;
+      VkPhysicalDeviceVulkan11Properties *vulkan_1_1;
+      VkPhysicalDeviceVulkan12Properties *vulkan_1_2;
 
       /* Vulkan 1.1 */
       VkPhysicalDeviceIDProperties *id;
@@ -1828,10 +1847,11 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceSamplerFilterMinmaxProperties *sampler_filter_minmax;
       VkPhysicalDeviceTimelineSemaphoreProperties *timeline_semaphore;
 
-      VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
-      VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
+      /* EXT */
       VkPhysicalDeviceCustomBorderColorPropertiesEXT *custom_border_color;
+      VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
       VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
+      VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pProperties;
@@ -1842,11 +1862,13 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          u.properties2->properties = props->vulkan_1_0;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
-         memcpy(u.pnext, vk11_props, sizeof(*vk11_props));
+         *u.vulkan_1_1 = *vk11_props;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES:
-         memcpy(u.pnext, vk12_props, sizeof(*vk12_props));
+         *u.vulkan_1_2 = *vk12_props;
          break;
+
+      /* Vulkan 1.1 */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES:
          memcpy(u.id->deviceUUID, vk11_props->deviceUUID,
                 sizeof(vk11_props->deviceUUID));
@@ -1884,6 +1906,8 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          u.maintenance_3->maxMemoryAllocationSize =
             vk11_props->maxMemoryAllocationSize;
          break;
+
+      /* Vulkan 1.2 */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES:
          u.driver->driverID = vk12_props->driverID;
          memcpy(u.driver->driverName, vk12_props->driverName,
@@ -2009,6 +2033,11 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          u.timeline_semaphore->maxTimelineSemaphoreValueDifference =
             vk12_props->maxTimelineSemaphoreValueDifference;
          break;
+
+      /* EXT */
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
+         *u.custom_border_color = props->custom_border_color;
+         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
          /* this is used by WSI */
          if (physical_dev->instance->renderer->info.pci.has_bus_info) {
@@ -2022,22 +2051,17 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                physical_dev->instance->renderer->info.pci.function;
          }
          break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
-         memcpy(u.transform_feedback, &props->transform_feedback,
-                sizeof(props->transform_feedback));
-         break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
-         memcpy(u.custom_border_color, &props->custom_border_color,
-                sizeof(props->custom_border_color));
-         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID:
          u.presentation_properties->sharedImage = VK_FALSE;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
+         *u.transform_feedback = props->transform_feedback;
          break;
       default:
          break;
       }
-      u.pnext->pNext = saved;
 
+      u.pnext->pNext = saved;
       u.pnext = u.pnext->pNext;
    }
 }

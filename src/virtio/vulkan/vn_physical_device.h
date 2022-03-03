@@ -23,10 +23,10 @@ struct vn_physical_device_features {
    VkPhysicalDeviceVulkan12Features vulkan_1_2;
 
    /* EXT */
-   VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
    VkPhysicalDevice4444FormatsFeaturesEXT argb_4444_formats;
-   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state;
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
+   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state;
+   VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
 };
 
 struct vn_physical_device_properties {
@@ -35,8 +35,8 @@ struct vn_physical_device_properties {
    VkPhysicalDeviceVulkan12Properties vulkan_1_2;
 
    /* EXT */
-   VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;
    VkPhysicalDeviceCustomBorderColorPropertiesEXT custom_border_color;
+   VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;
 };
 
 struct vn_format_properties_entry {
