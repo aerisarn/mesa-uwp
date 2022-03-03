@@ -1002,8 +1002,13 @@ nir_schedule_instructions(nir_schedule_scoreboard *scoreboard, nir_block *block)
 }
 
 static uint32_t
-nir_schedule_get_delay(nir_instr *instr)
+nir_schedule_get_delay(nir_schedule_scoreboard *scoreboard, nir_instr *instr)
 {
+   if (scoreboard->options->instr_delay_cb) {
+      void *cb_data = scoreboard->options->instr_delay_cb_data;
+      return scoreboard->options->instr_delay_cb(instr, cb_data);
+   }
+
    switch (instr->type) {
    case nir_instr_type_ssa_undef:
    case nir_instr_type_load_const:
@@ -1065,7 +1070,7 @@ nir_schedule_block(nir_schedule_scoreboard *scoreboard, nir_block *block)
          rzalloc(mem_ctx, nir_schedule_node);
 
       n->instr = instr;
-      n->delay = nir_schedule_get_delay(instr);
+      n->delay = nir_schedule_get_delay(scoreboard, instr);
       dag_init_node(scoreboard->dag, &n->dag);
 
       _mesa_hash_table_insert(scoreboard->instr_map, instr, n);
