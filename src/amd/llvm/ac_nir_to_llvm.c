@@ -578,6 +578,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_pack_half_2x16:
    case nir_op_pack_snorm_2x16:
    case nir_op_pack_unorm_2x16:
+   case nir_op_pack_uint_2x16:
+   case nir_op_pack_sint_2x16:
    case nir_op_pack_32_2x16:
    case nir_op_pack_64_2x32:
       src_components = 2;
@@ -1123,6 +1125,24 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_pack_unorm_2x16:
       result = emit_pack_2x16(&ctx->ac, src[0], ac_build_cvt_pknorm_u16);
       break;
+   case nir_op_pack_uint_2x16: {
+      LLVMValueRef comp[2];
+
+      comp[0] = LLVMBuildExtractElement(ctx->ac.builder, src[0], ctx->ac.i32_0, "");
+      comp[1] = LLVMBuildExtractElement(ctx->ac.builder, src[0], ctx->ac.i32_1, "");
+
+      result = ac_build_cvt_pk_u16(&ctx->ac, comp, 16, false);
+      break;
+   }
+   case nir_op_pack_sint_2x16: {
+      LLVMValueRef comp[2];
+
+      comp[0] = LLVMBuildExtractElement(ctx->ac.builder, src[0], ctx->ac.i32_0, "");
+      comp[1] = LLVMBuildExtractElement(ctx->ac.builder, src[0], ctx->ac.i32_1, "");
+
+      result = ac_build_cvt_pk_i16(&ctx->ac, comp, 16, false);
+      break;
+   }
    case nir_op_unpack_half_2x16:
       result = emit_unpack_half_2x16(&ctx->ac, src[0]);
       break;
