@@ -335,7 +335,7 @@ static void emit_state(struct rendering_state *state)
       if (state->sb_dirty[sh]) {
          state->pctx->set_shader_buffers(state->pctx, sh,
                                          0, state->num_shader_buffers[sh],
-                                         state->sb[sh], 0);
+                                         state->sb[sh], (1 << state->num_shader_buffers[sh]) - 1);
       }
    }
 
@@ -1136,8 +1136,11 @@ static void fill_image_view_stage(struct rendering_state *state,
       state->iv[p_stage][idx].u.tex.last_layer = iv->subresourceRange.baseArrayLayer + lvp_get_layerCount(iv->image, &iv->subresourceRange) - 1;
    }
    state->iv[p_stage][idx].u.tex.level = iv->subresourceRange.baseMipLevel;
+   state->iv[p_stage][idx].access = PIPE_IMAGE_ACCESS_READ_WRITE;
+   state->iv[p_stage][idx].shader_access = PIPE_IMAGE_ACCESS_READ_WRITE;
    if (state->num_shader_images[p_stage] <= idx)
       state->num_shader_images[p_stage] = idx + 1;
+
    state->iv_dirty[p_stage] = true;
 }
 
