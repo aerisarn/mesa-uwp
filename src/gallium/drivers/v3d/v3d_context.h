@@ -165,6 +165,12 @@ struct v3d_sampler_view {
          * raster texture.
          */
         struct pipe_resource *texture;
+
+        /* A serial ID used to identify cases where a new BO has been created
+         * and we need to rebind a sampler view that was created against the
+         * previous BO to to point to the new one.
+         */
+        uint32_t serial_id;
 };
 
 struct v3d_sampler_state {

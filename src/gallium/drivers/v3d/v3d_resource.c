@@ -103,6 +103,7 @@ v3d_resource_bo_alloc(struct v3d_resource *rsc)
         if (bo) {
                 v3d_bo_unreference(&rsc->bo);
                 rsc->bo = bo;
+                rsc->serial_id++;
                 v3d_debug_resource_layout(rsc, "alloc");
                 return true;
         } else {
@@ -186,6 +187,13 @@ v3d_map_usage_prep(struct pipe_context *pctx,
                                 v3d->dirty |= V3D_DIRTY_VTXBUF;
                         if (prsc->bind & PIPE_BIND_CONSTANT_BUFFER)
                                 v3d->dirty |= V3D_DIRTY_CONSTBUF;
+                        /* Since we are changing the texture BO we need to
+                         * update any bound samplers to point to the new
+                         * BO. Notice we can have samplers that are not
+                         * currently bound to the state that won't be
+                         * updated. These will be fixed when they are bound in
+                         * v3d_set_sampler_views.
+                         */
                         if (prsc->bind & PIPE_BIND_SAMPLER_VIEW)
                                 rebind_sampler_views(v3d, rsc);
                 } else {
@@ -739,6 +747,8 @@ v3d_resource_setup(struct pipe_screen *pscreen,
                         break;
                 }
         }
+
+        rsc->serial_id++;
 
         assert(rsc->cpp);
 
