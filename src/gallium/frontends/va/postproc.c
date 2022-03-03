@@ -328,7 +328,10 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
       if (vlVaHandleSurfaceAllocate(drv, surf, &surf->templat, NULL, 0) != VA_STATUS_SUCCESS)
          return VA_STATUS_ERROR_ALLOCATION_FAILED;
 
+      pipe_resource_reference(&(((struct vl_video_buffer *)(surf->buffer))->resources[0]), ((struct vl_video_buffer *)(src_surface->buffer))->resources[0]);
       context->target = surf->buffer;
+
+      return VA_STATUS_SUCCESS;
    }
 
    if (!src_surface || !src_surface->buffer)
