@@ -1111,7 +1111,8 @@ static void emit_instruction(
 	update_max_score(s, &s->ReadyAlpha, &max_score, &max_inst, &max_list);
 
 	if (tex_count >= s->max_tex_group || max_score == -1
-		|| (s->TEXCount > 0 && tex_count == s->TEXCount)) {
+		|| (s->TEXCount > 0 && tex_count == s->TEXCount)
+		|| (tex_count > 0 && max_score < NO_OUTPUT_SCORE)) {
 		emit_all_tex(s, before);
 	} else {
 
