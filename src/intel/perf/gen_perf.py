@@ -466,8 +466,7 @@ def output_counter_report(set, counter, counter_to_idx, current_offset):
 
     current_offset = pot_align(current_offset, sizeof(c_type))
 
-    c("counter = &query->counters[query->n_counters++];\n")
-    c("intel_perf_query_add_counter(counter, " + idx + ", " +
+    c("intel_perf_query_add_counter(query, " + idx + ", " +
         str(current_offset) + ", " +
         set.max_values[counter.get('symbol_name')] + ", (oa_counter_read_func)" +
         set.read_funcs[counter.get('symbol_name')] + ");\n")
@@ -812,10 +811,11 @@ def main():
                                                  const struct intel_perf_query_info *query,
                                                  const struct intel_perf_query_result *results);
         static void ATTRIBUTE_NOINLINE
-        intel_perf_query_add_counter(struct intel_perf_query_counter *dest,
+        intel_perf_query_add_counter(struct intel_perf_query_info *query,
                                      int counter_idx, size_t offset,
                                      uint64_t raw_max, oa_counter_read_func oa_counter_read_uint64)
         {
+           struct intel_perf_query_counter *dest = &query->counters[query->n_counters++];
            const struct intel_perf_query_counter_data *counter = &counters[counter_idx];
 
            dest->name = &name[counter->name_idx];
@@ -870,7 +870,8 @@ def main():
                 offset = output_counter_report(set, counter, counter_to_idx, offset)
 
 
-            c("\nquery->data_size = counter->offset + intel_perf_query_counter_get_size(counter);\n")
+            c("\ncounter = &query->counters[query->n_counters - 1];\n")
+            c("query->data_size = counter->offset + intel_perf_query_counter_get_size(counter);\n")
 
             c_outdent(3)
             c("}");
