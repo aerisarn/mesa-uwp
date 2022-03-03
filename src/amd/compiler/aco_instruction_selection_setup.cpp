@@ -517,6 +517,8 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_op_pack_half_2x16_split:
                case nir_op_pack_unorm_2x16:
                case nir_op_pack_snorm_2x16:
+               case nir_op_pack_uint_2x16:
+               case nir_op_pack_sint_2x16:
                case nir_op_unpack_half_2x16_split_x:
                case nir_op_unpack_half_2x16_split_y:
                case nir_op_fddx:

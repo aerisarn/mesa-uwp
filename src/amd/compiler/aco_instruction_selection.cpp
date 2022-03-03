@@ -3294,6 +3294,16 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
       bld.vop3(opcode, Definition(dst), src0, src1);
       break;
    }
+   case nir_op_pack_uint_2x16:
+   case nir_op_pack_sint_2x16: {
+      Temp src = get_alu_src(ctx, instr->src[0], 2);
+      Temp src0 = emit_extract_vector(ctx, src, 0, v1);
+      Temp src1 = emit_extract_vector(ctx, src, 1, v1);
+      aco_opcode opcode = instr->op == nir_op_pack_uint_2x16 ? aco_opcode::v_cvt_pk_u16_u32
+                                                             : aco_opcode::v_cvt_pk_i16_i32;
+      bld.vop3(opcode, Definition(dst), src0, src1);
+      break;
+   }
    case nir_op_unpack_half_2x16_split_x_flush_to_zero:
    case nir_op_unpack_half_2x16_split_x: {
       Temp src = get_alu_src(ctx, instr->src[0]);
