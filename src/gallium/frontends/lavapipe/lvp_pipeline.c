@@ -461,6 +461,107 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 }
 
 static void
+set_image_access(struct lvp_pipeline *pipeline, nir_shader *nir,
+                   nir_intrinsic_instr *instr,
+                   bool reads, bool writes)
+{
+   nir_variable *var = nir_intrinsic_get_var(instr, 0);
+   const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
+   unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
+
+   nir->info.images_used |= mask;
+   if (reads)
+      pipeline->access[nir->info.stage].images_read |= mask;
+   if (writes)
+      pipeline->access[nir->info.stage].images_written |= mask;
+}
+
+static void
+set_buffer_access(struct lvp_pipeline *pipeline, nir_shader *nir,
+                    nir_intrinsic_instr *instr)
+{
+   nir_variable *var = nir_intrinsic_get_var(instr, 0);
+   if (!var) {
+      nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
+      if (deref->modes != nir_var_mem_ssbo)
+         return;
+      nir_binding b = nir_chase_binding(instr->src[0]);
+      var = nir_get_binding_variable(nir, b);
+      if (!var)
+         return;
+   }
+   if (var->data.mode != nir_var_mem_ssbo)
+      return;
+   /* Structs have been lowered already, so get_aoa_size is sufficient. */
+   const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
+   unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
+
+   pipeline->access[nir->info.stage].buffers_written |= mask;
+}
+
+static void
+scan_intrinsic(struct lvp_pipeline *pipeline, nir_shader *nir, nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_image_deref_sparse_load:
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_image_deref_samples:
+      set_image_access(pipeline, nir, instr, true, false);
+      break;
+   case nir_intrinsic_image_deref_store:
+      set_image_access(pipeline, nir, instr, false, true);
+      break;
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_atomic_fadd:
+      set_image_access(pipeline, nir, instr, true, true);
+      break;
+   case nir_intrinsic_deref_atomic_add:
+   case nir_intrinsic_deref_atomic_and:
+   case nir_intrinsic_deref_atomic_comp_swap:
+   case nir_intrinsic_deref_atomic_exchange:
+   case nir_intrinsic_deref_atomic_fadd:
+   case nir_intrinsic_deref_atomic_fcomp_swap:
+   case nir_intrinsic_deref_atomic_fmax:
+   case nir_intrinsic_deref_atomic_fmin:
+   case nir_intrinsic_deref_atomic_imax:
+   case nir_intrinsic_deref_atomic_imin:
+   case nir_intrinsic_deref_atomic_or:
+   case nir_intrinsic_deref_atomic_umax:
+   case nir_intrinsic_deref_atomic_umin:
+   case nir_intrinsic_deref_atomic_xor:
+   case nir_intrinsic_store_deref:
+      set_buffer_access(pipeline, nir, instr);
+      break;
+   default: break;
+   }
+}
+
+static void
+scan_pipeline_info(struct lvp_pipeline *pipeline, nir_shader *nir)
+{
+   nir_foreach_function(function, nir) {
+      if (function->impl)
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type == nir_instr_type_intrinsic)
+                  scan_intrinsic(pipeline, nir, nir_instr_as_intrinsic(instr));
+            }
+         }
+   }
+
+}
+
+static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
                          struct vk_shader_module *module,
                          const char *entrypoint_name,
@@ -565,6 +666,8 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
    NIR_PASS_V(nir, nir_remove_dead_variables,
               nir_var_uniform | nir_var_image, NULL);
+
+   scan_pipeline_info(pipeline, nir);
 
    lvp_lower_pipeline_layout(pipeline->device, pipeline->layout, nir);
 
