@@ -1440,6 +1440,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                      pdd_cached(pg)->cache_misses[h] = 0;
                   } else if (likely(zink_screen(ctx->base.screen)->descriptor_mode != ZINK_DESCRIPTOR_MODE_NOFALLBACK)) {
                      if (++pdd_cached(pg)->cache_misses[h] == MAX_CACHE_MISSES) {
+#ifdef PRINT_DEBUG
                         const char *set_names[] = {
                            "UBO",
                            "TEXTURES",
@@ -1447,6 +1448,7 @@ zink_descriptors_update(struct zink_context *ctx, bool is_compute)
                            "IMAGES",
                         };
                         debug_printf("zink: descriptor cache exploded for prog %p set %s: getting lazy (not a bug, just lettin you know)\n", pg, set_names[h]);
+#endif
                      }
                   }
                } else
