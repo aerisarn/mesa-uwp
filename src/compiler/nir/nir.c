@@ -3298,6 +3298,8 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
       case nir_texop_txf_ms_fb:
       case nir_texop_txf_ms_mcs_intel:
       case nir_texop_samples_identical:
+      case nir_texop_fragment_fetch_amd:
+      case nir_texop_fragment_mask_fetch_amd:
          return nir_type_int;
 
       default:
@@ -3309,6 +3311,8 @@ nir_tex_instr_src_type(const nir_tex_instr *instr, unsigned src)
       case nir_texop_txs:
       case nir_texop_txf:
       case nir_texop_txf_ms:
+      case nir_texop_fragment_fetch_amd:
+      case nir_texop_fragment_mask_fetch_amd:
          return nir_type_int;
 
       default:
