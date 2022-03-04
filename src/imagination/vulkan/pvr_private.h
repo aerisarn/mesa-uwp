@@ -1338,6 +1338,66 @@ to_pvr_graphics_pipeline(struct pvr_pipeline *pipeline)
    return container_of(pipeline, struct pvr_graphics_pipeline, base);
 }
 
+static enum pvr_pipeline_stage_bits
+pvr_stage_mask(VkPipelineStageFlags2 stage_mask)
+{
+   enum pvr_pipeline_stage_bits stages = 0;
+
+   if (stage_mask & VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
+      return PVR_PIPELINE_STAGE_ALL_BITS;
+
+   if (stage_mask & (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT))
+      stages |= PVR_PIPELINE_STAGE_ALL_GRAPHICS_BITS;
+
+   if (stage_mask & (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+                     VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+                     VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                     VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+                     VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+                     VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
+      stages |= PVR_PIPELINE_STAGE_GEOM_BIT;
+   }
+
+   if (stage_mask & (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                     VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)) {
+      stages |= PVR_PIPELINE_STAGE_FRAG_BIT;
+   }
+
+   if (stage_mask & (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)) {
+      stages |= PVR_PIPELINE_STAGE_COMPUTE_BIT;
+   }
+
+   if (stage_mask & (VK_PIPELINE_STAGE_TRANSFER_BIT))
+      stages |= PVR_PIPELINE_STAGE_TRANSFER_BIT;
+
+   return stages;
+}
+
+static inline enum pvr_pipeline_stage_bits
+pvr_stage_mask_src(VkPipelineStageFlags2KHR stage_mask)
+{
+   /* If the source is bottom of pipe, all stages will need to be waited for. */
+   if (stage_mask & VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+      return PVR_PIPELINE_STAGE_ALL_BITS;
+
+   return pvr_stage_mask(stage_mask);
+}
+
+static inline enum pvr_pipeline_stage_bits
+pvr_stage_mask_dst(VkPipelineStageFlags2KHR stage_mask)
+{
+   /* If the destination is top of pipe, all stages should be blocked by prior
+    * commands.
+    */
+   if (stage_mask & VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+      return PVR_PIPELINE_STAGE_ALL_BITS;
+
+   return pvr_stage_mask(stage_mask);
+}
+
 VkResult pvr_pds_fragment_program_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *allocator,

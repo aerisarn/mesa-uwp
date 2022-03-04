@@ -189,46 +189,6 @@ VkResult pvr_QueueWaitIdle(VkQueue _queue)
    return VK_SUCCESS;
 }
 
-static enum pvr_pipeline_stage_bits
-pvr_convert_stage_mask(VkPipelineStageFlags2 stage_mask)
-{
-   enum pvr_pipeline_stage_bits stages = 0;
-
-   if (stage_mask & VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT ||
-       stage_mask & VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) {
-      return PVR_PIPELINE_STAGE_ALL_BITS;
-   }
-
-   if (stage_mask & (VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT))
-      stages |= PVR_PIPELINE_STAGE_ALL_GRAPHICS_BITS;
-
-   if (stage_mask & (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
-                     VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
-                     VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-                     VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
-                     VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
-                     VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT)) {
-      stages |= PVR_PIPELINE_STAGE_GEOM_BIT;
-   }
-
-   if (stage_mask & (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-                     VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
-                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)) {
-      stages |= PVR_PIPELINE_STAGE_FRAG_BIT;
-   }
-
-   if (stage_mask & (VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
-                     VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)) {
-      stages |= PVR_PIPELINE_STAGE_COMPUTE_BIT;
-   }
-
-   if (stage_mask & (VK_PIPELINE_STAGE_TRANSFER_BIT))
-      stages |= PVR_PIPELINE_STAGE_TRANSFER_BIT;
-
-   return stages;
-}
-
 static VkResult
 pvr_process_graphics_cmd(struct pvr_device *device,
                          struct pvr_queue *queue,
@@ -655,7 +615,7 @@ VkResult pvr_QueueSubmit(VkQueue _queue,
          assert(!(sync->flags & VK_SYNC_IS_TIMELINE));
 
          stage_flags[wait_count] =
-            pvr_convert_stage_mask(desc->pWaitDstStageMask[j]);
+            pvr_stage_mask_dst(desc->pWaitDstStageMask[j]);
          waits[wait_count] = vk_semaphore_get_active_sync(semaphore);
          wait_count++;
       }

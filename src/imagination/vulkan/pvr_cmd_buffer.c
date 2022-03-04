@@ -45,6 +45,7 @@
 #include "pvr_private.h"
 #include "pvr_types.h"
 #include "pvr_winsys.h"
+#include "util/bitscan.h"
 #include "util/compiler.h"
 #include "util/list.h"
 #include "util/macros.h"
@@ -4775,10 +4776,95 @@ void pvr_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
-void pvr_CmdPipelineBarrier2KHR(VkCommandBuffer commandBuffer,
-                                const VkDependencyInfo *pDependencyInfo)
+/* This is just enough to handle vkCmdPipelineBarrier().
+ * TODO: Complete?
+ */
+void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
+                             const VkDependencyInfo *pDependencyInfo)
 {
-   assert(!"Unimplemented");
+   PVR_FROM_HANDLE(pvr_cmd_buffer, cmd_buffer, commandBuffer);
+   struct pvr_cmd_buffer_state *const state = &cmd_buffer->state;
+   const struct pvr_render_pass *const render_pass =
+      state->render_pass_info.pass;
+   VkPipelineStageFlags vk_src_stage_mask = 0U;
+   VkPipelineStageFlags vk_dst_stage_mask = 0U;
+   uint32_t required_stage_mask = 0U;
+   uint32_t src_stage_mask;
+   uint32_t dst_stage_mask;
+   bool is_barrier_needed;
+
+   PVR_CHECK_COMMAND_BUFFER_BUILDING_STATE(cmd_buffer);
+
+   for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++) {
+      vk_src_stage_mask |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
+      vk_dst_stage_mask |= pDependencyInfo->pMemoryBarriers[i].dstStageMask;
+   }
+
+   for (uint32_t i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++) {
+      vk_src_stage_mask |=
+         pDependencyInfo->pBufferMemoryBarriers[i].srcStageMask;
+      vk_dst_stage_mask |=
+         pDependencyInfo->pBufferMemoryBarriers[i].dstStageMask;
+   }
+
+   for (uint32_t i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++) {
+      vk_src_stage_mask |=
+         pDependencyInfo->pImageMemoryBarriers[i].srcStageMask;
+      vk_dst_stage_mask |=
+         pDependencyInfo->pImageMemoryBarriers[i].dstStageMask;
+   }
+
+   src_stage_mask = pvr_stage_mask_src(vk_src_stage_mask);
+   dst_stage_mask = pvr_stage_mask_dst(vk_dst_stage_mask);
+
+   for (uint32_t stage = 0U; stage != PVR_NUM_SYNC_PIPELINE_STAGES; stage++) {
+      if (!(dst_stage_mask & BITFIELD_BIT(stage)))
+         continue;
+
+      required_stage_mask |= state->barriers_needed[stage];
+   }
+
+   src_stage_mask &= required_stage_mask;
+   for (uint32_t stage = 0U; stage != PVR_NUM_SYNC_PIPELINE_STAGES; stage++) {
+      if (!(dst_stage_mask & BITFIELD_BIT(stage)))
+         continue;
+
+      state->barriers_needed[stage] &= ~src_stage_mask;
+   }
+
+   if (src_stage_mask == 0 || dst_stage_mask == 0) {
+      is_barrier_needed = false;
+   } else if (src_stage_mask == PVR_PIPELINE_STAGE_GEOM_BIT &&
+              dst_stage_mask == PVR_PIPELINE_STAGE_FRAG_BIT) {
+      /* This is implicit so no need to barrier. */
+      is_barrier_needed = false;
+   } else if (src_stage_mask == dst_stage_mask &&
+              util_bitcount(src_stage_mask) == 1) {
+      switch (src_stage_mask) {
+      case PVR_PIPELINE_STAGE_FRAG_BIT:
+         pvr_finishme("Handle fragment stage pipeline barrier.");
+         is_barrier_needed = true;
+         break;
+
+      case PVR_PIPELINE_STAGE_COMPUTE_BIT:
+         pvr_finishme("Handle compute stage pipeline barrier.");
+         is_barrier_needed = false;
+         break;
+
+      default:
+         is_barrier_needed = false;
+         break;
+      };
+   } else {
+      is_barrier_needed = true;
+   }
+
+   if (render_pass) {
+      pvr_finishme("Insert mid fragment stage barrier if needed.");
+   } else {
+      if (is_barrier_needed)
+         pvr_finishme("Insert barrier if needed.");
+   }
 }
 
 void pvr_CmdResetEvent2KHR(VkCommandBuffer commandBuffer,
