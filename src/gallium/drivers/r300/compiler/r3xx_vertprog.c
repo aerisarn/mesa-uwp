@@ -372,11 +372,13 @@ static void translate_vertex_program(struct radeon_compiler *c, void *user)
 	unsigned loops[R500_PVS_MAX_LOOP_DEPTH] = {};
 	unsigned loop_depth = 0;
 	bool last_input_read_at_loop_end = false;
+	bool last_pos_write_at_loop_end = false;
 
 	compiler->code->pos_end = 0;	/* Not supported yet */
 	compiler->code->length = 0;
 	compiler->code->num_temporaries = 0;
 	compiler->code->last_input_read = 0;
+	compiler->code->last_pos_write = 0;
 
 	compiler->SetHwInputOutput(compiler);
 
@@ -453,6 +455,10 @@ static void translate_vertex_program(struct radeon_compiler *c, void *user)
 			if (loop_depth == 1 && last_input_read_at_loop_end) {
 				compiler->code->last_input_read = compiler->code->length / 4;
 				last_input_read_at_loop_end = false;
+			}
+			if (loop_depth == 1 && last_pos_write_at_loop_end) {
+				compiler->code->last_pos_write = compiler->code->length / 4;
+				last_pos_write_at_loop_end = false;
 			}
 
 			ret_addr = loops[--loop_depth];
@@ -542,6 +548,15 @@ static void translate_vertex_program(struct radeon_compiler *c, void *user)
 		if (info->HasDstReg && vpi->DstReg.File == RC_FILE_TEMPORARY &&
 		    vpi->DstReg.Index >= compiler->code->num_temporaries)
 			compiler->code->num_temporaries = vpi->DstReg.Index + 1;
+
+		/* last instruction that writes position */
+		if (info->HasDstReg && vpi->DstReg.File == RC_FILE_OUTPUT &&
+		    t_dst_index(compiler->code, &vpi->DstReg) == 0) {
+			if (loop_depth == 0)
+				compiler->code->last_pos_write = compiler->code->length / 4;
+			else
+				last_pos_write_at_loop_end = true;
+		}
 
 		for (unsigned i = 0; i < info->NumSrcRegs; i++) {
 			if (vpi->SrcReg[i].File == RC_FILE_TEMPORARY &&

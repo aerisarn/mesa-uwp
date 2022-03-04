@@ -1126,7 +1126,7 @@ void r300_emit_vs_state(struct r300_context* r300, unsigned size, void* state)
      * R300_VAP_PVS_CODE_CNTL_1
      * See the r5xx docs for instructions on how to use these. */
     OUT_CS_REG(R300_VAP_PVS_CODE_CNTL_0, R300_PVS_FIRST_INST(0) |
-	       R300_PVS_XYZW_VALID_INST(instruction_count - 1) |
+	       R300_PVS_XYZW_VALID_INST(code->last_pos_write) |
 	       R300_PVS_LAST_INST(instruction_count - 1));
     OUT_CS_REG(R300_VAP_PVS_CODE_CNTL_1, code->last_input_read);
 

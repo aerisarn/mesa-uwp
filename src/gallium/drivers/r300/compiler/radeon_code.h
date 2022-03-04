@@ -271,6 +271,7 @@ struct r300_vertex_program_code {
 	int inputs[VSF_MAX_INPUTS];
 	int outputs[VSF_MAX_OUTPUTS];
 	unsigned last_input_read;
+	unsigned last_pos_write;
 
 	struct rc_constant_list constants;
 	unsigned *constants_remap_table;
