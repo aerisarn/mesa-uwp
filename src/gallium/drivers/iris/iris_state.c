@@ -5617,6 +5617,9 @@ setup_constant_buffers(struct iris_context *ice,
 
       assert(cbuf->buffer_offset % 32 == 0);
 
+      if (res)
+         iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
+
       push_bos->buffers[n].length = range->length;
       push_bos->buffers[n].addr =
          res ? ro_bo(res->bo, range->start * 32 + cbuf->buffer_offset)
