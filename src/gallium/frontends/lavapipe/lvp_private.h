@@ -169,6 +169,7 @@ struct lvp_queue {
    uint64_t last_fence_timeline;
    struct pipe_fence_handle *last_fence;
    volatile int count;
+   void *state;
 };
 
 struct lvp_semaphore_wait {
@@ -650,7 +651,8 @@ struct lvp_cmd_push_descriptor_set {
 VkResult lvp_execute_cmds(struct lvp_device *device,
                           struct lvp_queue *queue,
                           struct lvp_cmd_buffer *cmd_buffer);
-
+size_t
+lvp_get_rendering_state_size(void);
 struct lvp_image *lvp_swapchain_get_image(VkSwapchainKHR swapchain,
 					  uint32_t index);
 

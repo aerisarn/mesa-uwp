@@ -4140,45 +4140,51 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
                           struct lvp_queue *queue,
                           struct lvp_cmd_buffer *cmd_buffer)
 {
-   struct rendering_state state;
-   memset(&state, 0, sizeof(state));
-   state.pctx = queue->ctx;
-   state.cso = queue->cso;
-   state.blend_dirty = true;
-   state.dsa_dirty = true;
-   state.rs_dirty = true;
-   state.vp_dirty = true;
+   struct rendering_state *state = queue->state;
+   memset(state, 0, sizeof(*state));
+   state->pctx = queue->ctx;
+   state->cso = queue->cso;
+   state->blend_dirty = true;
+   state->dsa_dirty = true;
+   state->rs_dirty = true;
+   state->vp_dirty = true;
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
       for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++)
-         state.cso_ss_ptr[s][i] = &state.ss[s][i];
+         state->cso_ss_ptr[s][i] = &state->ss[s][i];
    }
    /* create a gallium context */
-   lvp_execute_cmd_buffer(cmd_buffer, &state);
+   lvp_execute_cmd_buffer(cmd_buffer, state);
 
-   state.start_vb = -1;
-   state.num_vb = 0;
+   state->start_vb = -1;
+   state->num_vb = 0;
    cso_unbind_context(queue->cso);
    for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
-      if (state.so_targets[i]) {
-         state.pctx->stream_output_target_destroy(state.pctx, state.so_targets[i]);
+      if (state->so_targets[i]) {
+         state->pctx->stream_output_target_destroy(state->pctx, state->so_targets[i]);
       }
    }
 
    for (enum pipe_shader_type s = PIPE_SHADER_VERTEX; s < PIPE_SHADER_TYPES; s++) {
       for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++) {
-         if (state.sv[s][i])
-            pipe_sampler_view_reference(&state.sv[s][i], NULL);
+         if (state->sv[s][i])
+            pipe_sampler_view_reference(&state->sv[s][i], NULL);
       }
    }
 
    for (unsigned i = 0; i < PIPE_MAX_SAMPLERS; i++) {
-      if (state.cso_ss_ptr[PIPE_SHADER_COMPUTE][i])
-         state.pctx->delete_sampler_state(state.pctx, state.ss_cso[PIPE_SHADER_COMPUTE][i]);
+      if (state->cso_ss_ptr[PIPE_SHADER_COMPUTE][i])
+         state->pctx->delete_sampler_state(state->pctx, state->ss_cso[PIPE_SHADER_COMPUTE][i]);
    }
 
-   free(state.imageless_views);
-   free(state.pending_clear_aspects);
-   free(state.cleared_views);
-   free(state.attachments);
+   free(state->imageless_views);
+   free(state->pending_clear_aspects);
+   free(state->cleared_views);
+   free(state->attachments);
    return VK_SUCCESS;
+}
+
+size_t
+lvp_get_rendering_state_size(void)
+{
+   return sizeof(struct rendering_state);
 }
