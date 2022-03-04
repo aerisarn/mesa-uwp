@@ -1128,7 +1128,7 @@ void r300_emit_vs_state(struct r300_context* r300, unsigned size, void* state)
     OUT_CS_REG(R300_VAP_PVS_CODE_CNTL_0, R300_PVS_FIRST_INST(0) |
 	       R300_PVS_XYZW_VALID_INST(instruction_count - 1) |
 	       R300_PVS_LAST_INST(instruction_count - 1));
-    OUT_CS_REG(R300_VAP_PVS_CODE_CNTL_1, instruction_count - 1);
+    OUT_CS_REG(R300_VAP_PVS_CODE_CNTL_1, code->last_input_read);
 
     OUT_CS_REG(R300_VAP_PVS_VECTOR_INDX_REG, 0);
     OUT_CS_ONE_REG(R300_VAP_PVS_UPLOAD_DATA, code->length);
