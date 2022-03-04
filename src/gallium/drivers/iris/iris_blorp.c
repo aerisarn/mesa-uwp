@@ -400,7 +400,7 @@ iris_blorp_exec_render(struct blorp_batch *blorp_batch,
 
    if (params->src.enabled)
       iris_bo_bump_seqno(params->src.addr.buffer, batch->next_seqno,
-                         IRIS_DOMAIN_OTHER_READ);
+                         IRIS_DOMAIN_SAMPLER_READ);
    if (params->dst.enabled)
       iris_bo_bump_seqno(params->dst.addr.buffer, batch->next_seqno,
                          IRIS_DOMAIN_RENDER_WRITE);

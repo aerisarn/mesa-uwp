@@ -499,7 +499,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                     info->src.level, 1, info->src.box.z,
                                     info->src.box.depth);
       iris_emit_buffer_barrier_for(batch, src_res->bo,
-                                   IRIS_DOMAIN_OTHER_READ);
+                                   IRIS_DOMAIN_SAMPLER_READ);
 
       struct iris_format_info dst_fmt =
          iris_format_for_usage(devinfo, dst_pfmt,
@@ -698,7 +698,7 @@ iris_copy_region(struct blorp_context *blorp,
       };
 
       iris_emit_buffer_barrier_for(batch, src_res->bo,
-                                   IRIS_DOMAIN_OTHER_READ);
+                                   IRIS_DOMAIN_SAMPLER_READ);
       iris_emit_buffer_barrier_for(batch, dst_res->bo, write_domain);
 
       iris_batch_maybe_flush(batch, 1500);
@@ -723,7 +723,7 @@ iris_copy_region(struct blorp_context *blorp,
                                    dst_aux_usage, dst_clear_supported);
 
       iris_emit_buffer_barrier_for(batch, src_res->bo,
-                                   IRIS_DOMAIN_OTHER_READ);
+                                   IRIS_DOMAIN_SAMPLER_READ);
       iris_emit_buffer_barrier_for(batch, dst_res->bo, write_domain);
 
       for (int slice = 0; slice < src_box->depth; slice++) {

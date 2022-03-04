@@ -4992,15 +4992,15 @@ use_sampler_view(struct iris_context *ice,
 
    if (isv->res->aux.clear_color_bo) {
       iris_use_pinned_bo(batch, isv->res->aux.clear_color_bo,
-                         false, IRIS_DOMAIN_OTHER_READ);
+                         false, IRIS_DOMAIN_SAMPLER_READ);
    }
 
    if (isv->res->aux.bo) {
       iris_use_pinned_bo(batch, isv->res->aux.bo,
-                         false, IRIS_DOMAIN_OTHER_READ);
+                         false, IRIS_DOMAIN_SAMPLER_READ);
    }
 
-   iris_use_pinned_bo(batch, isv->res->bo, false, IRIS_DOMAIN_OTHER_READ);
+   iris_use_pinned_bo(batch, isv->res->bo, false, IRIS_DOMAIN_SAMPLER_READ);
 
    return use_surface_state(batch, &isv->surface_state, aux_usage);
 }
@@ -5133,7 +5133,7 @@ iris_populate_binding_table(struct iris_context *ice,
       if (cso_fb->cbufs[i]) {
          addr = use_surface(ice, batch, cso_fb->cbufs[i],
                             false, ice->state.draw_aux_usage[i], true,
-                            IRIS_DOMAIN_OTHER_READ);
+                            IRIS_DOMAIN_SAMPLER_READ);
          push_bt_entry(addr);
       }
    }
@@ -7610,6 +7610,7 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
       if ((flags & (PIPE_CONTROL_CACHE_FLUSH_BITS |
                     PIPE_CONTROL_STALL_AT_SCOREBOARD))) {
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_VF_READ);
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_SAMPLER_READ);
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_OTHER_READ);
       }
    }
@@ -7629,8 +7630,10 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
    if ((flags & PIPE_CONTROL_VF_CACHE_INVALIDATE))
       iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_VF_READ);
 
-   if ((flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE) &&
-       (flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE))
+   if ((flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE))
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_SAMPLER_READ);
+
+   if ((flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE))
       iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_OTHER_READ);
 }
 

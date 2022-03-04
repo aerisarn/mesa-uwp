@@ -109,7 +109,7 @@ resolve_sampler_views(struct iris_context *ice,
       }
 
       iris_emit_buffer_barrier_for(batch, isv->res->bo,
-                                   IRIS_DOMAIN_OTHER_READ);
+                                   IRIS_DOMAIN_SAMPLER_READ);
    }
 }
 
