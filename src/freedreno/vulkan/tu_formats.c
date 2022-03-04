@@ -212,24 +212,14 @@ tu_physical_device_get_format_properties(
    if (supported_color) {
       assert(supported_tex);
       optimal |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-                 VK_FORMAT_FEATURE_BLIT_DST_BIT;
+                 VK_FORMAT_FEATURE_BLIT_DST_BIT |
+                 VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
+                 VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                 VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
 
-      /* IBO's don't have a swap field at all, so swapped formats can't be
-       * supported, even with linear images.
-       *
-       * TODO: See if setting the swap field from the tex descriptor works,
-       * after we enable shaderStorageImageReadWithoutFormat and there are
-       * tests for these formats.
-       */
-      struct tu_native_format tex = tu6_format_texture(format, TILE6_LINEAR);
-      if (tex.swap == WZYX && tex.fmt != FMT6_1_5_5_5_UNORM) {
-         optimal |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
-                    VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
-                    VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
-         buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT |
-                   VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
-                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
-      }
+      buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT |
+                VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
 
       /* TODO: The blob also exposes these for R16G16_UINT/R16G16_SINT, but we
        * don't have any tests for those.
