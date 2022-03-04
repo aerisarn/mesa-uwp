@@ -136,7 +136,8 @@ pvr_pack_tex_state(struct pvr_device *device,
    /* Texture type specific stuff (word 1) */
    if (texture_type == PVRX(TEXSTATE_TEXTYPE_STRIDE)) {
       pvr_csb_pack (&state[1], TEXSTATE_STRIDE_IMAGE_WORD1, word1) {
-         word1.stride = info->stride;
+         assert(info->stride > 0U);
+         word1.stride = info->stride - 1U;
          word1.num_mip_levels = info->mip_levels;
          word1.mipmaps_present = info->mipmaps_present;
 

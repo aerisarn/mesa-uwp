@@ -1311,6 +1311,60 @@ pvr_compute_generate_control_stream(struct pvr_csb *csb,
    }
 }
 
+/* TODO: This can be pre-packed and uploaded directly. Would that provide any
+ * speed up?
+ */
+static void
+pvr_compute_generate_idfwdf(struct pvr_cmd_buffer *cmd_buffer,
+                            struct pvr_sub_cmd_compute *const sub_cmd)
+{
+   struct pvr_cmd_buffer_state *state = &cmd_buffer->state;
+   bool *const is_sw_barier_required =
+      &state->current_sub_cmd->compute.pds_sw_barrier_requires_clearing;
+   const struct pvr_physical_device *pdevice = cmd_buffer->device->pdevice;
+   struct pvr_csb *csb = &sub_cmd->control_stream;
+   const struct pvr_pds_upload *program;
+
+   if (PVR_NEED_SW_COMPUTE_PDS_BARRIER(&pdevice->dev_info) &&
+       *is_sw_barier_required) {
+      *is_sw_barier_required = false;
+      program = &cmd_buffer->device->idfwdf_state.sw_compute_barrier_pds;
+   } else {
+      program = &cmd_buffer->device->idfwdf_state.pds;
+   }
+
+   struct pvr_compute_kernel_info info = {
+      .indirect_buffer_addr = PVR_DEV_ADDR_INVALID,
+      .global_offsets_present = false,
+      .usc_common_size =
+         DIV_ROUND_UP(cmd_buffer->device->idfwdf_state.usc_shareds << 2,
+                      PVRX(CDMCTRL_KERNEL0_USC_COMMON_SIZE_UNIT_SIZE)),
+      .usc_unified_size = 0U,
+      .pds_temp_size = 0U,
+      .pds_data_size =
+         DIV_ROUND_UP(program->data_size << 2,
+                      PVRX(CDMCTRL_KERNEL0_PDS_DATA_SIZE_UNIT_SIZE)),
+      .usc_target = PVRX(CDMCTRL_USC_TARGET_ALL),
+      .is_fence = false,
+      .pds_data_offset = program->data_offset,
+      .sd_type = PVRX(CDMCTRL_SD_TYPE_USC),
+      .usc_common_shared = true,
+      .pds_code_offset = program->code_offset,
+      .global_size = { 1U, 1U, 1U },
+      .local_size = { 1U, 1U, 1U },
+   };
+
+   /* We don't need to pad work-group size for this case. */
+
+   info.max_instances =
+      pvr_compute_flat_slot_size(pdevice,
+                                 cmd_buffer->device->idfwdf_state.usc_shareds,
+                                 false,
+                                 1U);
+
+   pvr_compute_generate_control_stream(csb, &info);
+}
+
 static void
 pvr_compute_generate_fence(struct pvr_cmd_buffer *cmd_buffer,
                            struct pvr_sub_cmd_compute *const sub_cmd,
@@ -4846,10 +4900,35 @@ void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
          is_barrier_needed = true;
          break;
 
-      case PVR_PIPELINE_STAGE_COMPUTE_BIT:
-         pvr_finishme("Handle compute stage pipeline barrier.");
+      case PVR_PIPELINE_STAGE_COMPUTE_BIT: {
+         struct pvr_sub_cmd *const current_sub_cmd = state->current_sub_cmd;
+
          is_barrier_needed = false;
+
+         if (!current_sub_cmd ||
+             current_sub_cmd->type != PVR_SUB_CMD_TYPE_COMPUTE) {
+            break;
+         }
+
+         /* Multiple dispatches can be merged into a single job. When back to
+          * back dispatches have a sequential dependency (CDM -> CDM pipeline
+          * barrier) we need to do the following.
+          *   - Dispatch a kernel which fences all previous memory writes and
+          *     flushes the MADD cache.
+          *   - Issue a CDM fence which ensures all previous tasks emitted by
+          *     the CDM are completed before starting anything new.
+          */
+
+         /* Issue Data Fence, Wait for Data Fence (IDFWDF) makes the PDS wait
+          * for data.
+          */
+         pvr_compute_generate_idfwdf(cmd_buffer, &current_sub_cmd->compute);
+
+         pvr_compute_generate_fence(cmd_buffer,
+                                    &current_sub_cmd->compute,
+                                    false);
          break;
+      }
 
       default:
          is_barrier_needed = false;

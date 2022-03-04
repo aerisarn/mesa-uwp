@@ -286,7 +286,7 @@ VkResult pvr_CreateImageView(VkDevice _device,
    info.offset = iview->vk.base_array_layer * image->layer_size +
                  image->mip_levels[info.base_level].offset;
    info.mipmaps_present = (image->vk.mip_levels > 1) ? true : false;
-   info.stride = image->physical_extent.width - 1;
+   info.stride = image->physical_extent.width;
    info.tex_state_type = PVR_TEXTURE_STATE_SAMPLE;
    info.mem_layout = image->memlayout;
    info.flags = 0;
@@ -331,7 +331,7 @@ VkResult pvr_CreateImageView(VkDevice _device,
 
    info.mip_levels = 1;
    info.mipmaps_present = false;
-   info.stride = u_minify(image->physical_extent.width, info.base_level) - 1;
+   info.stride = u_minify(image->physical_extent.width, info.base_level);
    info.base_level = 0;
    info.tex_state_type = PVR_TEXTURE_STATE_ATTACHMENT;
 

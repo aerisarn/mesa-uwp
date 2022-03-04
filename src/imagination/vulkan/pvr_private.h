@@ -610,6 +610,8 @@ struct pvr_sub_cmd_compute {
    bool uses_atomic_ops;
 
    bool uses_barrier;
+
+   bool pds_sw_barrier_requires_clearing;
 };
 
 struct pvr_sub_cmd_transfer {
