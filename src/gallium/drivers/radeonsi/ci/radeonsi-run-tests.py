@@ -141,8 +141,7 @@ for f in os.listdir("/dev/dri/by-path"):
     available_gpus += [(os.path.join("/dev/dri/by-path", f),
                         f[:idx].replace(':', '_').replace('.', '_'))]
 
-if len(available_gpus) > 1:
-    parser.add_argument('--gpu', type=int, dest="gpu", default=0, help='Select GPU (0..{})'.format(len(available_gpus) - 1))
+parser.add_argument('--gpu', type=int, dest="gpu", default=0, help='Select GPU (0..{})'.format(len(available_gpus) - 1))
 
 args = parser.parse_args(sys.argv[1:])
 piglit_path = args.piglit_path
