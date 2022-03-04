@@ -163,9 +163,9 @@ static void
 tu_physical_device_get_format_properties(
    struct tu_physical_device *physical_device,
    VkFormat vk_format,
-   VkFormatProperties *out_properties)
+   VkFormatProperties3 *out_properties)
 {
-   VkFormatFeatureFlags linear = 0, optimal = 0, buffer = 0;
+   VkFormatFeatureFlags2 linear = 0, optimal = 0, buffer = 0;
    enum pipe_format format = tu_vk_format_to_pipe_format(vk_format);
    const struct util_format_description *desc = util_format_description(format);
 
@@ -223,8 +223,12 @@ tu_physical_device_get_format_properties(
        */
       struct tu_native_format tex = tu6_format_texture(format, TILE6_LINEAR);
       if (tex.swap == WZYX && tex.fmt != FMT6_1_5_5_5_UNORM) {
-         optimal |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
-         buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
+         optimal |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT |
+                    VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                    VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
+         buffer |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT |
+                   VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                   VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
       }
 
       /* TODO: The blob also exposes these for R16G16_UINT/R16G16_SINT, but we
@@ -274,6 +278,12 @@ tu_physical_device_get_format_properties(
       buffer = 0;
    }
 
+   /* All our depth formats support shadow comparisons. */
+   if (vk_format_has_depth(vk_format) && (optimal & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+      optimal |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
+      linear |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
+   }
+
    /* From the Vulkan 1.3.205 spec, section 19.3 "43.3. Required Format Support":
     *
     *    Mandatory format support: depth/stencil with VkImageType
@@ -304,8 +314,20 @@ tu_GetPhysicalDeviceFormatProperties2(
 {
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
 
+   VkFormatProperties3 local_props3;
+   VkFormatProperties3 *props3 =
+      vk_find_struct(pFormatProperties->pNext, FORMAT_PROPERTIES_3);
+   if (!props3)
+      props3 = &local_props3;
+
    tu_physical_device_get_format_properties(
-      physical_device, format, &pFormatProperties->formatProperties);
+      physical_device, format, props3);
+
+   pFormatProperties->formatProperties = (VkFormatProperties) {
+      .linearTilingFeatures = props3->linearTilingFeatures,
+      .optimalTilingFeatures = props3->optimalTilingFeatures,
+      .bufferFeatures = props3->bufferFeatures,
+   };
 
    VkDrmFormatModifierPropertiesListEXT *list =
       vk_find_struct(pFormatProperties->pNext, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT);
@@ -344,7 +366,7 @@ tu_get_image_format_properties(
    VkImageFormatProperties *pImageFormatProperties,
    VkFormatFeatureFlags *p_feature_flags)
 {
-   VkFormatProperties format_props;
+   VkFormatProperties3 format_props;
    VkFormatFeatureFlags format_feature_flags;
    VkExtent3D maxExtent;
    uint32_t maxMipLevels;
