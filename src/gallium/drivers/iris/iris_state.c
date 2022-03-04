@@ -5094,7 +5094,7 @@ iris_populate_binding_table(struct iris_context *ice,
       struct iris_state_ref *grid_data = &ice->state.grid_size;
       struct iris_state_ref *grid_state = &ice->state.grid_surf_state;
       iris_use_pinned_bo(batch, iris_resource_bo(grid_data->res), false,
-                         IRIS_DOMAIN_OTHER_READ);
+                         IRIS_DOMAIN_PULL_CONSTANT_READ);
       iris_use_pinned_bo(batch, iris_resource_bo(grid_state->res), false,
                          IRIS_DOMAIN_NONE);
       push_bt_entry(grid_state->offset);
@@ -5153,7 +5153,7 @@ iris_populate_binding_table(struct iris_context *ice,
    foreach_surface_used(i, IRIS_SURFACE_GROUP_UBO) {
       uint32_t addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
                                    &shs->constbuf_surf_state[i], false,
-                                   IRIS_DOMAIN_OTHER_READ);
+                                   IRIS_DOMAIN_PULL_CONSTANT_READ);
       push_bt_entry(addr);
    }
 
@@ -7611,6 +7611,7 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
                     PIPE_CONTROL_STALL_AT_SCOREBOARD))) {
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_VF_READ);
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_SAMPLER_READ);
+         iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_PULL_CONSTANT_READ);
          iris_batch_mark_flush_sync(batch, IRIS_DOMAIN_OTHER_READ);
       }
    }
@@ -7633,8 +7634,24 @@ batch_mark_sync_for_pipe_control(struct iris_batch *batch, uint32_t flags)
    if ((flags & PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE))
       iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_SAMPLER_READ);
 
+   /* Technically, to invalidate IRIS_DOMAIN_PULL_CONSTANT_READ, we need
+    * both "Constant Cache Invalidate" and either "Texture Cache Invalidate"
+    * or "Data Cache Flush" set, depending on the setting of
+    * compiler->indirect_ubos_use_sampler.
+    *
+    * However, "Data Cache Flush" and "Constant Cache Invalidate" will never
+    * appear in the same PIPE_CONTROL command, because one is bottom-of-pipe
+    * while the other is top-of-pipe.  Because we only look at one flush at
+    * a time, we won't see both together.
+    *
+    * To deal with this, we mark it as invalidated when the constant cache
+    * is invalidated, and trust the callers to also flush the other related
+    * cache correctly at the same time.
+    */
    if ((flags & PIPE_CONTROL_CONST_CACHE_INVALIDATE))
-      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_OTHER_READ);
+      iris_batch_mark_invalidate_sync(batch, IRIS_DOMAIN_PULL_CONSTANT_READ);
+
+   /* IRIS_DOMAIN_OTHER_READ no longer uses any caches. */
 }
 
 static unsigned

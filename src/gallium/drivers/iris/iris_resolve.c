@@ -381,7 +381,7 @@ flush_ubos(struct iris_batch *batch,
       const int i = u_bit_scan(&cbufs);
       struct pipe_shader_buffer *cbuf = &shs->constbuf[i];
       struct iris_resource *res = (void *)cbuf->buffer;
-      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_OTHER_READ);
+      iris_emit_buffer_barrier_for(batch, res->bo, IRIS_DOMAIN_PULL_CONSTANT_READ);
    }
 
    shs->dirty_cbufs = 0;

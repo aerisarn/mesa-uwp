@@ -184,6 +184,8 @@ iris_emit_buffer_barrier_for(struct iris_batch *batch,
                              struct iris_bo *bo,
                              enum iris_domain access)
 {
+   const struct brw_compiler *compiler = batch->screen->compiler;
+
    const uint32_t all_flush_bits = (PIPE_CONTROL_CACHE_FLUSH_BITS |
                                     PIPE_CONTROL_STALL_AT_SCOREBOARD |
                                     PIPE_CONTROL_FLUSH_ENABLE);
@@ -194,6 +196,7 @@ iris_emit_buffer_barrier_for(struct iris_batch *batch,
       [IRIS_DOMAIN_OTHER_WRITE] = PIPE_CONTROL_FLUSH_ENABLE,
       [IRIS_DOMAIN_VF_READ] = PIPE_CONTROL_STALL_AT_SCOREBOARD,
       [IRIS_DOMAIN_SAMPLER_READ] = PIPE_CONTROL_STALL_AT_SCOREBOARD,
+      [IRIS_DOMAIN_PULL_CONSTANT_READ] = PIPE_CONTROL_STALL_AT_SCOREBOARD,
       [IRIS_DOMAIN_OTHER_READ] = PIPE_CONTROL_STALL_AT_SCOREBOARD,
    };
    const uint32_t invalidate_bits[NUM_IRIS_DOMAINS] = {
@@ -203,7 +206,10 @@ iris_emit_buffer_barrier_for(struct iris_batch *batch,
       [IRIS_DOMAIN_OTHER_WRITE] = PIPE_CONTROL_FLUSH_ENABLE,
       [IRIS_DOMAIN_VF_READ] = PIPE_CONTROL_VF_CACHE_INVALIDATE,
       [IRIS_DOMAIN_SAMPLER_READ] = PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE,
-      [IRIS_DOMAIN_OTHER_READ] = PIPE_CONTROL_CONST_CACHE_INVALIDATE,
+      [IRIS_DOMAIN_PULL_CONSTANT_READ] = PIPE_CONTROL_CONST_CACHE_INVALIDATE |
+         (compiler->indirect_ubos_use_sampler ?
+          PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE :
+          PIPE_CONTROL_DATA_CACHE_FLUSH),
    };
    uint32_t bits = 0;
 
