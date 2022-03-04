@@ -993,6 +993,17 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t *dynamic_offset_count,
                                    const uint32_t **dynamic_offsets)
 {
+   /* Either we have no pool because it's a push descriptor or the pool is not
+    * host only :
+    *
+    * VUID-vkCmdBindDescriptorSets-pDescriptorSets-04616:
+    *
+    *    "Each element of pDescriptorSets must not have been allocated from a
+    *     VkDescriptorPool with the
+    *     VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_VALVE flag set"
+    */
+   assert(!set->pool || !set->pool->host_only);
+
    struct anv_descriptor_set_layout *set_layout =
       layout->set[set_index].layout;
 
