@@ -20,6 +20,13 @@
 
 inc_anv = include_directories('.')
 
+anv_flags = [
+  no_override_init_args,
+  c_sse2_args,
+]
+
+anv_cpp_flags = []
+
 subdir('grl')
 
 anv_entrypoints = custom_target(
@@ -92,10 +99,7 @@ foreach g : [['90', ['gfx8_cmd_buffer.c']],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler, inc_intel,
     ],
-    c_args : [
-      no_override_init_args, c_sse2_args,
-      '-DGFX_VERx10=@0@'.format(_gfx_ver),
-    ],
+    c_args : anv_flags + ['-DGFX_VERx10=@0@'.format(_gfx_ver)],
     gnu_symbol_visibility : 'hidden',
     dependencies : [
       dep_libdrm, dep_valgrind, idep_nir_headers, idep_genxml,
@@ -146,12 +150,6 @@ anv_deps = [
   idep_vulkan_runtime_headers,
   idep_vulkan_wsi_headers,
 ]
-anv_flags = [
-  no_override_init_args,
-  c_sse2_args,
-]
-
-anv_cpp_flags = []
 
 if with_platform_x11
   anv_deps += dep_xcb_dri3
