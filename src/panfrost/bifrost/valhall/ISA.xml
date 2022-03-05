@@ -1194,7 +1194,7 @@
       can never introduce divergence, so `.reconverge` is not required.
 
       In the blend shader path, `BLEND` ignores the specified flow control and
-      does not branch to the specified offset. Instead, execution considers
+      does not branch to the specified offset. Instead, execution continues
       normally with the next instruction. The compiler should insert code for
       calling a blend shader after the `BLEND` instruction unless it is known
       that a blend shader will never be required.
