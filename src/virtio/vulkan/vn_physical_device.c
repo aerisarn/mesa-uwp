@@ -127,6 +127,10 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
                        EXTENDED_DYNAMIC_STATE_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_image_robustness, feats->image_robustness,
                        IMAGE_ROBUSTNESS_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_shader_demote_to_helper_invocation,
+                       feats->shader_demote_to_helper_invocation,
+                       SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES,
+                       features2);
 
    /* EXT */
    VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
@@ -922,6 +926,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
       .EXT_image_robustness = true,
+      .EXT_shader_demote_to_helper_invocation = true,
 
       /* EXT */
       .EXT_custom_border_color = true,
@@ -1646,6 +1651,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDevice4444FormatsFeaturesEXT *argb_4444_formats;
       VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *extended_dynamic_state;
       VkPhysicalDeviceImageRobustnessFeaturesEXT *image_robustness;
+      VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
+         *shader_demote_to_helper_invocation;
 
       /* EXT */
       VkPhysicalDeviceCustomBorderColorFeaturesEXT *custom_border_color;
@@ -1821,6 +1828,10 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT:
          *u.image_robustness = feats->image_robustness;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES:
+         *u.shader_demote_to_helper_invocation =
+            feats->shader_demote_to_helper_invocation;
          break;
 
       /* EXT */

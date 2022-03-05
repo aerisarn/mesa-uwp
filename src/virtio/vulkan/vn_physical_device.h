@@ -26,6 +26,8 @@ struct vn_physical_device_features {
    VkPhysicalDevice4444FormatsFeaturesEXT argb_4444_formats;
    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT extended_dynamic_state;
    VkPhysicalDeviceImageRobustnessFeaturesEXT image_robustness;
+   VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures
+      shader_demote_to_helper_invocation;
 
    /* EXT */
    VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_color;
