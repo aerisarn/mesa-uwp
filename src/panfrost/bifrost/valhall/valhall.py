@@ -102,6 +102,7 @@ class Source:
     def __init__(self, index, size, is_float = False, swizzle = False,
             halfswizzle = False, widen = False, lanes = False, combine = False, lane = None, absneg = False, notted = False, name = ""):
         self.is_float = is_float or absneg
+        self.start = (index * 8)
         self.size = size
         self.absneg = absneg
         self.notted = notted

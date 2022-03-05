@@ -258,7 +258,7 @@ def parse_asm(line):
 
     for i, (op, src) in enumerate(zip(operands, ins.srcs)):
         parts = op.split('.')
-        encoded |= encode_source(parts[0], fau) << (i * 8)
+        encoded |= encode_source(parts[0], fau) << src.start
 
         # Has a swizzle been applied yet?
         swizzled = False

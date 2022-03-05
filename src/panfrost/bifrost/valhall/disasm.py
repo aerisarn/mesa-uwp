@@ -199,13 +199,13 @@ va_disasm_instr(FILE *fp, uint64_t instr)
 % endif
 <% no_comma = False %>
 % if src.absneg:
-            va_print_float_src(fp, instr >> ${8 * i}, imm_mode,
+            va_print_float_src(fp, instr >> ${src.start}, imm_mode,
                     instr & BIT(${src.offset['neg']}),
                     instr & BIT(${src.offset['abs']}));
 % elif src.is_float:
-            va_print_float_src(fp, instr >> ${8 * i}, imm_mode, false, false);
+            va_print_float_src(fp, instr >> ${src.start}, imm_mode, false, false);
 % else:
-            va_print_src(fp, instr >> ${8 * i}, imm_mode);
+            va_print_src(fp, instr >> ${src.start}, imm_mode);
 % endif
 % if src.swizzle:
 % if src.size == 32:
