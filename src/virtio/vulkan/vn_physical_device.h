@@ -36,6 +36,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
    VkPhysicalDeviceRobustness2FeaturesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
+   VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vertex_attribute_divisor;
 };
 
 struct vn_physical_device_properties {
@@ -51,6 +52,8 @@ struct vn_physical_device_properties {
    VkPhysicalDeviceProvokingVertexPropertiesEXT provoking_vertex;
    VkPhysicalDeviceRobustness2PropertiesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;
+   VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT
+      vertex_attribute_divisor;
 };
 
 struct vn_format_properties_entry {

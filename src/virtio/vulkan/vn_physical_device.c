@@ -148,6 +148,9 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
                        feats->transform_feedback,
                        TRANSFORM_FEEDBACK_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_vertex_attribute_divisor,
+                       feats->vertex_attribute_divisor,
+                       VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT, features2);
 
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev), &features2);
@@ -447,6 +450,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_transform_feedback,
                        props->transform_feedback,
                        TRANSFORM_FEEDBACK_PROPERTIES_EXT, properties2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_vertex_attribute_divisor,
+                       props->vertex_attribute_divisor,
+                       VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT, properties2);
 
    vn_call_vkGetPhysicalDeviceProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &properties2);
@@ -950,6 +956,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_robustness2 = true,
       .EXT_shader_stencil_export = true,
       .EXT_transform_feedback = true,
+      .EXT_vertex_attribute_divisor = true,
    };
 }
 
@@ -1674,6 +1681,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceProvokingVertexFeaturesEXT *provoking_vertex;
       VkPhysicalDeviceRobustness2FeaturesEXT *robustness_2;
       VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
+      VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT
+         *vertex_attribute_divisor;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pFeatures;
@@ -1868,6 +1877,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
          *u.transform_feedback = feats->transform_feedback;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT:
+         *u.vertex_attribute_divisor = feats->vertex_attribute_divisor;
+         break;
       default:
          break;
       }
@@ -1922,6 +1934,8 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceProvokingVertexPropertiesEXT *provoking_vertex;
       VkPhysicalDeviceRobustness2PropertiesEXT *robustness_2;
       VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
+      VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT
+         *vertex_attribute_divisor;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pProperties;
@@ -2138,6 +2152,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
          *u.transform_feedback = props->transform_feedback;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT:
+         *u.vertex_attribute_divisor = props->vertex_attribute_divisor;
          break;
       default:
          break;
