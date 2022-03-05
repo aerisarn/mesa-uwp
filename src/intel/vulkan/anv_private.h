@@ -3123,13 +3123,22 @@ struct anv_pipeline {
    const struct intel_l3_config *               l3_config;
 };
 
-struct anv_graphics_pipeline {
+/* The base graphics pipeline object only hold shaders. */
+struct anv_graphics_base_pipeline {
    struct anv_pipeline                          base;
 
    /* Shaders */
    struct anv_shader_bin *                      shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT];
 
    VkShaderStageFlags                           active_stages;
+};
+
+/* The final graphics pipeline object has all the graphics state ready to be
+ * programmed into HW packets (dynamic_state field) or fully baked in its
+ * batch.
+ */
+struct anv_graphics_pipeline {
+   struct anv_graphics_base_pipeline            base;
 
    struct vk_vertex_input_state                 vertex_input;
    struct vk_sample_locations_state             sample_locations;
@@ -3237,6 +3246,7 @@ struct anv_ray_tracing_pipeline {
    }
 
 ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_PIPELINE_GRAPHICS)
+ANV_DECL_PIPELINE_DOWNCAST(graphics_base, ANV_PIPELINE_GRAPHICS)
 ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_PIPELINE_COMPUTE)
 ANV_DECL_PIPELINE_DOWNCAST(ray_tracing, ANV_PIPELINE_RAY_TRACING)
 
@@ -3244,7 +3254,7 @@ static inline bool
 anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
                        gl_shader_stage stage)
 {
-   return (pipeline->active_stages & mesa_to_vk_shader_stage(stage)) != 0;
+   return (pipeline->base.active_stages & mesa_to_vk_shader_stage(stage)) != 0;
 }
 
 static inline bool
@@ -3298,7 +3308,7 @@ get_##prefix##_prog_data(const struct anv_graphics_pipeline *pipeline)  \
 {                                                                       \
    if (anv_pipeline_has_stage(pipeline, stage)) {                       \
       return (const struct brw_##prefix##_prog_data *)                  \
-             pipeline->shaders[stage]->prog_data;                       \
+         pipeline->base.shaders[stage]->prog_data;                      \
    } else {                                                             \
       return NULL;                                                      \
    }                                                                    \

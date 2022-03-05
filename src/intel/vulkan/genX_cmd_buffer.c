@@ -1939,7 +1939,7 @@ static void
 cmd_buffer_alloc_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
    VkShaderStageFlags stages =
-      cmd_buffer->state.gfx.pipeline->active_stages;
+      cmd_buffer->state.gfx.pipeline->base.active_stages;
 
    /* In order to avoid thrash, we assume that vertex and fragment stages
     * always exist.  In the rare case where one is missing *and* the other
@@ -2677,7 +2677,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
 
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
-            &pipeline->shaders[stage]->bind_map;
+            &pipeline->base.shaders[stage]->bind_map;
 
          /* The Skylake PRM contains the following restriction:
           *
@@ -2727,7 +2727,7 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
    gl_shader_stage stage = vk_to_mesa_shader_stage(shader_mask);
 
    const struct anv_pipeline_bind_map *bind_map =
-      &pipeline->shaders[stage]->bind_map;
+      &pipeline->base.shaders[stage]->bind_map;
 
    uint32_t *dw;
    const uint32_t buffer_mask = (1 << buffer_count) - 1;
@@ -2770,7 +2770,7 @@ cmd_buffer_flush_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer,
          if (!anv_pipeline_has_stage(pipeline, stage))
             continue;
 
-         const struct anv_shader_bin *shader = pipeline->shaders[stage];
+         const struct anv_shader_bin *shader = pipeline->base.shaders[stage];
          const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
          struct anv_push_constants *push = &gfx_state->base.push_constants;
 
@@ -2815,7 +2815,7 @@ cmd_buffer_flush_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer,
 
       struct anv_address buffers[4] = {};
       if (anv_pipeline_has_stage(pipeline, stage)) {
-         const struct anv_shader_bin *shader = pipeline->shaders[stage];
+         const struct anv_shader_bin *shader = pipeline->base.shaders[stage];
          const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
 
          /* We have to gather buffer addresses as a second step because the
@@ -2890,7 +2890,7 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
    if (dirty_stages & VK_SHADER_STAGE_TASK_BIT_EXT &&
        anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
 
-      const struct anv_shader_bin *shader = pipeline->shaders[MESA_SHADER_TASK];
+      const struct anv_shader_bin *shader = pipeline->base.shaders[MESA_SHADER_TASK];
       const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_TASK_SHADER_DATA), data) {
@@ -2913,7 +2913,7 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
    if (dirty_stages & VK_SHADER_STAGE_MESH_BIT_EXT &&
        anv_pipeline_has_stage(pipeline, MESA_SHADER_MESH)) {
 
-      const struct anv_shader_bin *shader = pipeline->shaders[MESA_SHADER_MESH];
+      const struct anv_shader_bin *shader = pipeline->base.shaders[MESA_SHADER_MESH];
       const struct anv_pipeline_bind_map *bind_map = &shader->bind_map;
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_MESH_SHADER_DATA), data) {
@@ -3323,9 +3323,9 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       &cmd_buffer->vk.dynamic_graphics_state;
    uint32_t *p;
 
-   assert((pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT) == 0);
+   assert((pipeline->base.active_stages & VK_SHADER_STAGE_COMPUTE_BIT) == 0);
 
-   genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->base.l3_config);
+   genX(cmd_buffer_config_l3)(cmd_buffer, pipeline->base.base.l3_config);
 
    genX(cmd_buffer_emit_hashing_mode)(cmd_buffer, UINT_MAX, UINT_MAX, 1);
 
@@ -3415,15 +3415,15 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    const bool any_dynamic_state_dirty =
       vk_dynamic_graphics_state_any_dirty(dyn);
    uint32_t descriptors_dirty = cmd_buffer->state.descriptors_dirty &
-                                pipeline->active_stages;
+                                pipeline->base.active_stages;
 
    const uint32_t push_descriptor_dirty =
       cmd_buffer->state.push_descriptors_dirty &
-      pipeline->base.use_push_descriptor;
+      pipeline->base.base.use_push_descriptor;
    if (push_descriptor_dirty) {
       flush_push_descriptor_set(cmd_buffer,
                                 &cmd_buffer->state.gfx.base,
-                                &pipeline->base);
+                                &pipeline->base.base);
       descriptors_dirty |= push_descriptor_dirty;
       cmd_buffer->state.push_descriptors_dirty &= ~push_descriptor_dirty;
    }
@@ -3495,7 +3495,7 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
-      anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->base.batch);
+      anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->base.base.batch);
 
       /* If the pipeline changed, we may need to re-allocate push constant
        * space in the URB.
@@ -3519,8 +3519,8 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       dirty = flush_descriptor_sets(cmd_buffer,
                                     &cmd_buffer->state.gfx.base,
                                     descriptors_dirty,
-                                    pipeline->shaders,
-                                    ARRAY_SIZE(pipeline->shaders));
+                                    pipeline->base.shaders,
+                                    ARRAY_SIZE(pipeline->base.shaders));
       cmd_buffer->state.descriptors_dirty &= ~dirty;
    }
 
@@ -3528,7 +3528,7 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       /* Because we're pushing UBOs, we have to push whenever either
        * descriptors or push constants is dirty.
        */
-      dirty |= cmd_buffer->state.push_constants_dirty & pipeline->active_stages;
+      dirty |= cmd_buffer->state.push_constants_dirty & pipeline->base.active_stages;
       cmd_buffer_flush_gfx_push_constants(cmd_buffer,
                                       dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
 #if GFX_VERx10 >= 125

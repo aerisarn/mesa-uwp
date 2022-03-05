@@ -183,13 +183,13 @@ anv_measure_start_snapshot(struct anv_cmd_buffer *cmd_buffer,
    } else if (cmd_buffer->state.gfx.pipeline) {
       const struct anv_graphics_pipeline *pipeline =
          cmd_buffer->state.gfx.pipeline;
-      snapshot->vs = (uintptr_t) pipeline->shaders[MESA_SHADER_VERTEX];
-      snapshot->tcs = (uintptr_t) pipeline->shaders[MESA_SHADER_TESS_CTRL];
-      snapshot->tes = (uintptr_t) pipeline->shaders[MESA_SHADER_TESS_EVAL];
-      snapshot->gs = (uintptr_t) pipeline->shaders[MESA_SHADER_GEOMETRY];
-      snapshot->fs = (uintptr_t) pipeline->shaders[MESA_SHADER_FRAGMENT];
-      snapshot->ms = (uintptr_t) pipeline->shaders[MESA_SHADER_MESH];
-      snapshot->ts = (uintptr_t) pipeline->shaders[MESA_SHADER_TASK];
+      snapshot->vs = (uintptr_t) pipeline->base.shaders[MESA_SHADER_VERTEX];
+      snapshot->tcs = (uintptr_t) pipeline->base.shaders[MESA_SHADER_TESS_CTRL];
+      snapshot->tes = (uintptr_t) pipeline->base.shaders[MESA_SHADER_TESS_EVAL];
+      snapshot->gs = (uintptr_t) pipeline->base.shaders[MESA_SHADER_GEOMETRY];
+      snapshot->fs = (uintptr_t) pipeline->base.shaders[MESA_SHADER_FRAGMENT];
+      snapshot->ms = (uintptr_t) pipeline->base.shaders[MESA_SHADER_MESH];
+      snapshot->ts = (uintptr_t) pipeline->base.shaders[MESA_SHADER_TASK];
    }
 }
 
@@ -237,13 +237,13 @@ state_changed(struct anv_cmd_buffer *cmd_buffer,
    } else if (type == INTEL_SNAPSHOT_DRAW) {
       const struct anv_graphics_pipeline *gfx = cmd_buffer->state.gfx.pipeline;
       assert(gfx);
-      vs = (uintptr_t) gfx->shaders[MESA_SHADER_VERTEX];
-      tcs = (uintptr_t) gfx->shaders[MESA_SHADER_TESS_CTRL];
-      tes = (uintptr_t) gfx->shaders[MESA_SHADER_TESS_EVAL];
-      gs = (uintptr_t) gfx->shaders[MESA_SHADER_GEOMETRY];
-      fs = (uintptr_t) gfx->shaders[MESA_SHADER_FRAGMENT];
-      ms = (uintptr_t) gfx->shaders[MESA_SHADER_MESH];
-      ts = (uintptr_t) gfx->shaders[MESA_SHADER_TASK];
+      vs = (uintptr_t) gfx->base.shaders[MESA_SHADER_VERTEX];
+      tcs = (uintptr_t) gfx->base.shaders[MESA_SHADER_TESS_CTRL];
+      tes = (uintptr_t) gfx->base.shaders[MESA_SHADER_TESS_EVAL];
+      gs = (uintptr_t) gfx->base.shaders[MESA_SHADER_GEOMETRY];
+      fs = (uintptr_t) gfx->base.shaders[MESA_SHADER_FRAGMENT];
+      ms = (uintptr_t) gfx->base.shaders[MESA_SHADER_MESH];
+      ts = (uintptr_t) gfx->base.shaders[MESA_SHADER_TASK];
    }
    /* else blorp, all programs NULL */
 

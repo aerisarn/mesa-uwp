@@ -380,7 +380,7 @@ genX(emit_shading_rate)(struct anv_batch *batch,
    }
 
    anv_batch_emit(batch, GENX(3DSTATE_CPS_POINTERS), cps) {
-      struct anv_device *device = pipeline->base.device;
+      struct anv_device *device = pipeline->base.base.device;
 
       cps.CoarsePixelShadingStateArrayPointer =
          get_cps_state_offset(device, cps_enable, fsr);
@@ -714,7 +714,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 #endif
 
-   if (pipeline->base.device->vk.enabled_extensions.EXT_sample_locations &&
+   if (cmd_buffer->device->vk.enabled_extensions.EXT_sample_locations &&
        (BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS) ||
         BITSET_TEST(dyn->dirty, MESA_VK_DYNAMIC_MS_SAMPLE_LOCATIONS_ENABLE))) {
       genX(emit_sample_pattern)(&cmd_buffer->batch,
