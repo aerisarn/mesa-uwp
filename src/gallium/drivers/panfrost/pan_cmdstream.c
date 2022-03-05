@@ -777,8 +777,18 @@ static void panfrost_upload_txs_sysval(struct panfrost_batch *batch,
                 uniform->i[2] = u_minify(tex->texture->depth0,
                                          tex->u.tex.first_level);
 
-        if (is_array)
-                uniform->i[dim] = tex->texture->array_size;
+        if (is_array) {
+                unsigned size = tex->texture->array_size;
+
+                /* Internally, we store the number of 2D images (faces * array
+                 * size). Externally, we report the array size in terms of
+                 * complete cubes. So divide by the # of faces per cube.
+                 */
+                if (tex->target == PIPE_TEXTURE_CUBE_ARRAY)
+                        size /= 6;
+
+                uniform->i[dim] = size;
+        }
 }
 
 static void panfrost_upload_image_size_sysval(struct panfrost_batch *batch,

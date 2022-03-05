@@ -113,14 +113,6 @@ spec@arb_shading_language_420pack@active sampler conflict,Crash
 spec@arb_texture_buffer_object@formats (fs- arb),Crash
 spec@arb_texture_buffer_object@formats (vs- arb),Crash
 spec@arb_texture_buffer_object@render-no-bo,Crash
-spec@arb_texture_cube_map_array@texturesize@fs-texturesize-isamplercubearray,Fail
-spec@arb_texture_cube_map_array@texturesize@fs-texturesize-samplercubearray,Fail
-spec@arb_texture_cube_map_array@texturesize@fs-texturesize-samplercubearrayshadow,Fail
-spec@arb_texture_cube_map_array@texturesize@fs-texturesize-usamplercubearray,Fail
-spec@arb_texture_cube_map_array@texturesize@vs-texturesize-isamplercubearray,Fail
-spec@arb_texture_cube_map_array@texturesize@vs-texturesize-samplercubearray,Fail
-spec@arb_texture_cube_map_array@texturesize@vs-texturesize-samplercubearrayshadow,Fail
-spec@arb_texture_cube_map_array@texturesize@vs-texturesize-usamplercubearray,Fail
 spec@arb_texture_float@arb_texture_float-texture-float-formats,Fail
 spec@arb_texture_float@fbo-alphatest-formats,Crash
 spec@arb_texture_float@fbo-blending-formats,Crash
