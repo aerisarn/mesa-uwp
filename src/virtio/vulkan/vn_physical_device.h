@@ -34,6 +34,7 @@ struct vn_physical_device_features {
    VkPhysicalDeviceDepthClipEnableFeaturesEXT depth_clip_enable;
    VkPhysicalDeviceLineRasterizationFeaturesEXT line_rasterization;
    VkPhysicalDeviceProvokingVertexFeaturesEXT provoking_vertex;
+   VkPhysicalDeviceRobustness2FeaturesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback;
 };
 
@@ -48,6 +49,7 @@ struct vn_physical_device_properties {
    VkPhysicalDeviceCustomBorderColorPropertiesEXT custom_border_color;
    VkPhysicalDeviceLineRasterizationPropertiesEXT line_rasterization;
    VkPhysicalDeviceProvokingVertexPropertiesEXT provoking_vertex;
+   VkPhysicalDeviceRobustness2PropertiesEXT robustness_2;
    VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback;
 };
 
