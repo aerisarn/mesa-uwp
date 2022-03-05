@@ -136,6 +136,8 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
    VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
                        feats->custom_border_color,
                        CUSTOM_BORDER_COLOR_FEATURES_EXT, features2);
+   VN_ADD_EXT_TO_PNEXT(exts->EXT_depth_clip_enable, feats->depth_clip_enable,
+                       DEPTH_CLIP_ENABLE_FEATURES_EXT, features2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_line_rasterization,
                        feats->line_rasterization,
                        LINE_RASTERIZATION_FEATURES_EXT, features2);
@@ -934,6 +936,7 @@ vn_physical_device_get_passthrough_extensions(
       /* EXT */
       .EXT_conservative_rasterization = true,
       .EXT_custom_border_color = true,
+      .EXT_depth_clip_enable = true,
 #ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
 #endif
@@ -1660,6 +1663,7 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 
       /* EXT */
       VkPhysicalDeviceCustomBorderColorFeaturesEXT *custom_border_color;
+      VkPhysicalDeviceDepthClipEnableFeaturesEXT *depth_clip_enable;
       VkPhysicalDeviceLineRasterizationFeaturesEXT *line_rasterization;
       VkPhysicalDeviceProvokingVertexFeaturesEXT *provoking_vertex;
       VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
@@ -1841,6 +1845,9 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       /* EXT */
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
          *u.custom_border_color = feats->custom_border_color;
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT:
+         *u.depth_clip_enable = feats->depth_clip_enable;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
          *u.line_rasterization = feats->line_rasterization;
