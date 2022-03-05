@@ -8435,7 +8435,7 @@
       <opt>3d</opt>
       <opt>cube</opt>
     </mod>
-    <mod name="write_mask" start="9" size="2">
+    <mod name="write_mask" start="9" size="4">
       <opt>none</opt>
       <opt>r</opt>
       <opt>g</opt>
@@ -8483,7 +8483,7 @@
       <opt>3d</opt>
       <opt>cube</opt>
     </mod>
-    <mod name="write_mask" start="9" size="2">
+    <mod name="write_mask" start="9" size="4">
       <opt>none</opt>
       <opt>r</opt>
       <opt>g</opt>
@@ -8532,7 +8532,7 @@
       <opt>3d</opt>
       <opt>cube</opt>
     </mod>
-    <mod name="write_mask" start="9" size="2">
+    <mod name="write_mask" start="9" size="4">
       <opt>none</opt>
       <opt>r</opt>
       <opt>g</opt>
