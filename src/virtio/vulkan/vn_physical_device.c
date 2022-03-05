@@ -427,6 +427,9 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    }
 
    /* EXT */
+   VN_ADD_EXT_TO_PNEXT(
+      exts->EXT_conservative_rasterization, props->conservative_rasterization,
+      CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT, properties2);
    VN_ADD_EXT_TO_PNEXT(exts->EXT_custom_border_color,
                        props->custom_border_color,
                        CUSTOM_BORDER_COLOR_PROPERTIES_EXT, properties2);
@@ -929,6 +932,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_shader_demote_to_helper_invocation = true,
 
       /* EXT */
+      .EXT_conservative_rasterization = true,
       .EXT_custom_border_color = true,
 #ifndef ANDROID
       .EXT_image_drm_format_modifier = true,
@@ -1892,6 +1896,8 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceTimelineSemaphoreProperties *timeline_semaphore;
 
       /* EXT */
+      VkPhysicalDeviceConservativeRasterizationPropertiesEXT
+         *conservative_rasterization;
       VkPhysicalDeviceCustomBorderColorPropertiesEXT *custom_border_color;
       VkPhysicalDeviceLineRasterizationPropertiesEXT *line_rasterization;
       VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
@@ -2081,6 +2087,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          break;
 
       /* EXT */
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT:
+         *u.conservative_rasterization = props->conservative_rasterization;
+         break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT:
          *u.custom_border_color = props->custom_border_color;
          break;
