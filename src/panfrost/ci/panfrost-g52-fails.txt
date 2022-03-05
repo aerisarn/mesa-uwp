@@ -73,8 +73,6 @@ spec@arb_get_program_binary@restore-sso-program,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small@GL_DEPTH32F_STENCIL8-GL_DEPTH_STENCIL,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small@GL_DEPTH32F_STENCIL8-GL_STENCIL_INDEX,Fail
-spec@arb_pixel_buffer_object@texsubimage array pbo,Fail
-spec@arb_pixel_buffer_object@texsubimage cube_map_array pbo,Fail
 spec@arb_point_sprite@arb_point_sprite-checkerboard,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_sample_shading@samplemask 2@0.250000 mask_in_one,Fail
@@ -115,10 +113,6 @@ spec@arb_shading_language_420pack@active sampler conflict,Crash
 spec@arb_texture_buffer_object@formats (fs- arb),Crash
 spec@arb_texture_buffer_object@formats (vs- arb),Crash
 spec@arb_texture_buffer_object@render-no-bo,Crash
-spec@arb_texture_cube_map_array@arb_texture_cube_map_array-cubemap,Fail
-spec@arb_texture_cube_map_array@arb_texture_cube_map_array-cubemap-lod,Fail
-spec@arb_texture_cube_map_array@arb_texture_cube_map_array-fbo-cubemap-array,Fail
-spec@arb_texture_cube_map_array@texsubimage cube_map_array,Fail
 spec@arb_texture_cube_map_array@texturesize@fs-texturesize-isamplercubearray,Fail
 spec@arb_texture_cube_map_array@texturesize@fs-texturesize-samplercubearray,Fail
 spec@arb_texture_cube_map_array@texturesize@fs-texturesize-samplercubearrayshadow,Fail
@@ -137,117 +131,6 @@ spec@arb_texture_float@fbo-generatemipmap-formats@GL_INTENSITY16F_ARB,Fail
 spec@arb_texture_float@fbo-generatemipmap-formats@GL_INTENSITY16F_ARB NPOT,Fail
 spec@arb_texture_float@multisample-formats 2 gl_arb_texture_float,Fail
 spec@arb_texture_float@multisample-formats 4 gl_arb_texture_float,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-alpha-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-alpha-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-alpha-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-alpha-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-blue-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-blue-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-blue-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-blue-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-green-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-green-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-green-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-green-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgba-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-blue-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-blue-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-blue-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-blue-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-green-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-green-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-green-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-green-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rgb-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-green-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-green-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-green-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-green-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-rg-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@fs-r-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-alpha-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-alpha-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-alpha-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-alpha-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-blue-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-blue-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-blue-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-blue-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-green-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-green-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-green-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-green-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgba-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-blue-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-blue-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-blue-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-blue-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-green-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-green-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-green-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-green-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rgb-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-green-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-green-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-green-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-green-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-rg-red-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-none-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-none-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-none-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-none-unorm-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-red-float-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-red-int-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-red-uint-cubearray,Fail
-spec@arb_texture_gather@texturegather@vs-r-red-unorm-cubearray,Fail
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch,Fail
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type: GL_R16I,Fail
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch@Texture type: GL_R16_SNORM,Fail
@@ -364,18 +247,6 @@ spec@ext_framebuffer_object@fbo-colormask-formats@GL_LUMINANCE,Fail
 spec@ext_framebuffer_object@fbo-fast-clear,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
-spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@fs-texelfetch-usampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@fs-texelfetch-usampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetchoffset@vs-texelfetch-usampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-isampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-sampler1darray,Fail
-spec@ext_gpu_shader4@execution@texelfetch@vs-texelfetch-usampler1darray,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-invalid_attributes,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-invalid_hints,Crash
@@ -401,13 +272,6 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-unsupported_format,Crash
-spec@ext_texture_array@array-texture,Fail
-spec@ext_texture_array@copyteximage 1d_array,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=2,Fail
-spec@ext_texture_array@copyteximage 1d_array samples=4,Fail
-spec@ext_texture_array@fbo-generatemipmap-array,Fail
-spec@ext_texture_array@fbo-generatemipmap-array rgb9_e5,Fail
-spec@ext_texture_array@texsubimage array,Fail
 spec@ext_texture_compression_rgtc@rgtc-teximage-01,Fail
 spec@ext_texture_compression_rgtc@rgtc-teximage-02,Fail
 spec@ext_texture_srgb@fbo-fast-clear,Fail
@@ -540,47 +404,14 @@ spec@glsl-1.10@execution@varying-packing@simple vec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 arrays_of_arrays,Fail
 spec@glsl-1.30@execution@clipping@clip-plane-transformation pos,Fail
-spec@glsl-1.30@execution@texelfetch@fs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@fs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@fs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@fs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetchoffset@vs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@vs-texelfetch-isampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@vs-texelfetch-sampler1darray,Fail
-spec@glsl-1.30@execution@texelfetch@vs-texelfetch-usampler1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 2drectshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) cubearray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() cubearray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texture() cubearrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2drectshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubearray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texturegradoffset 2drectshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelod cubearray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection texturelodoffset 1darrayshadow,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection textureoffset 2drectshadow,Crash
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darray,Fail
-spec@glsl-1.30@execution@tex-miplevel-selection textureoffset(bias) 1darrayshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection textureproj 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection textureproj 2drect_projvec4,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection textureproj 2drectshadow,Crash

@@ -2815,6 +2815,7 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 bi_index index = bi_src_index(&instr->src[i].src);
                 unsigned sz = nir_src_bit_size(instr->src[i].src);
+                unsigned components = nir_src_num_components(instr->src[i].src);
                 ASSERTED nir_alu_type base = nir_tex_instr_src_type(instr, i);
                 nir_alu_type T = base | sz;
 
@@ -2823,27 +2824,25 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                                 cx = bi_emit_texc_cube_coord(b, index, &cy);
 			} else {
-                                unsigned components = nir_src_num_components(instr->src[i].src);
-
                                 /* Copy XY (for 2D+) or XX (for 1D) */
                                 cx = index;
                                 cy = bi_word(index, MIN2(1, components - 1));
 
                                 assert(components >= 1 && components <= 3);
 
-                                if (components < 3) {
-                                        /* nothing to do */
-                                } else if (desc.array) {
-                                        /* 2D array */
-                                        dregs[BIFROST_TEX_DREG_ARRAY] =
-                                                bi_emit_texc_array_index(b,
-                                                                bi_word(index, 2), T);
-                                } else {
+                                if (components == 3 && !desc.array) {
                                         /* 3D */
                                         dregs[BIFROST_TEX_DREG_Z_COORD] =
                                                 bi_word(index, 2);
                                 }
                         }
+
+                        if (desc.array) {
+                                dregs[BIFROST_TEX_DREG_ARRAY] =
+                                                bi_emit_texc_array_index(b,
+                                                                bi_word(index, components - 1), T);
+                        }
+
                         break;
 
                 case nir_tex_src_lod:
