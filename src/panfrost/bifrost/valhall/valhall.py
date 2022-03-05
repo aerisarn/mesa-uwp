@@ -258,7 +258,20 @@ def build_instr(el, overrides = {}):
 
     # Get explicit sources/dests
     tsize = typesize(name)
-    sources = [build_source(src, i, tsize) for i, src in enumerate(el.findall('src'))]
+    sources = []
+    i = 0
+
+    for src in el.findall('src'):
+        built = build_source(src, i, tsize)
+        sources += [built]
+
+        # 64-bit sources in a 32-bit (message) instruction count as two slots
+        # Affects BLEND, ST_CVT
+        if tsize != 64 and built.size == 64:
+            i = i + 2
+        else:
+            i = i + 1
+
     dests = [Dest(dest.text or '') for dest in el.findall('dest')]
 
     # Get implicit ones
