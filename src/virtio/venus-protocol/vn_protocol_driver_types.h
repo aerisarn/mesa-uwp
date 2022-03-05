@@ -2898,6 +2898,27 @@ vn_decode_VkTimeDomainEXT_array(struct vn_cs_decoder *dec, VkTimeDomainEXT *val,
     vn_decode_int32_t_array(dec, (int32_t *)val, count);
 }
 
+/* enum VkConservativeRasterizationModeEXT */
+
+static inline size_t
+vn_sizeof_VkConservativeRasterizationModeEXT(const VkConservativeRasterizationModeEXT *val)
+{
+    assert(sizeof(*val) == sizeof(int32_t));
+    return vn_sizeof_int32_t((const int32_t *)val);
+}
+
+static inline void
+vn_encode_VkConservativeRasterizationModeEXT(struct vn_cs_encoder *enc, const VkConservativeRasterizationModeEXT *val)
+{
+    vn_encode_int32_t(enc, (const int32_t *)val);
+}
+
+static inline void
+vn_decode_VkConservativeRasterizationModeEXT(struct vn_cs_decoder *dec, VkConservativeRasterizationModeEXT *val)
+{
+    vn_decode_int32_t(dec, (int32_t *)val);
+}
+
 /* enum VkSemaphoreType */
 
 static inline size_t
