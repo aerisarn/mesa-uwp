@@ -2457,8 +2457,7 @@ vn_GetPhysicalDeviceExternalFenceProperties(
          VK_EXTERNAL_FENCE_FEATURE_EXPORTABLE_BIT |
          VK_EXTERNAL_FENCE_FEATURE_IMPORTABLE_BIT;
    } else {
-      pExternalFenceProperties->compatibleHandleTypes =
-         pExternalFenceInfo->handleType;
+      pExternalFenceProperties->compatibleHandleTypes = 0;
       pExternalFenceProperties->exportFromImportedHandleTypes = 0;
       pExternalFenceProperties->externalFenceFeatures = 0;
    }
@@ -2489,8 +2488,7 @@ vn_GetPhysicalDeviceExternalSemaphoreProperties(
          VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT |
          VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT;
    } else {
-      pExternalSemaphoreProperties->compatibleHandleTypes =
-         pExternalSemaphoreInfo->handleType;
+      pExternalSemaphoreProperties->compatibleHandleTypes = 0;
       pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
       pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
    }
