@@ -948,6 +948,7 @@ vn_physical_device_get_passthrough_extensions(
       .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
       .EXT_robustness2 = true,
+      .EXT_shader_stencil_export = true,
       .EXT_transform_feedback = true,
    };
 }
