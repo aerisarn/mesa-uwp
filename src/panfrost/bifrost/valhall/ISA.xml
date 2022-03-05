@@ -1203,8 +1203,8 @@
       shaders efficiently and without shader variants.
     </desc>
     <sr read="true"/>
-    <sr write="true" count="1" flags="false"/>
-    <src>Blend descriptor</src>
+    <src size="64">Blend descriptor</src>
+    <src>Sample coverage</src>
     <imm name="target" start="8" size="8"/>
     <slot/>
     <sr_count/>
