@@ -605,9 +605,9 @@ zink_draw(struct pipe_context *pctx,
       VKCTX(CmdBindIndexBuffer)(batch->state->cmdbuf, res->obj->buffer, index_offset, index_type[index_size >> 1]);
    }
    if (DYNAMIC_STATE < ZINK_DYNAMIC_STATE2) {
-      if (ctx->gfx_pipeline_state.primitive_restart != dinfo->primitive_restart)
+      if (ctx->gfx_pipeline_state.dyn_state2.primitive_restart != dinfo->primitive_restart)
          ctx->gfx_pipeline_state.dirty = true;
-      ctx->gfx_pipeline_state.primitive_restart = dinfo->primitive_restart;
+      ctx->gfx_pipeline_state.dyn_state2.primitive_restart = dinfo->primitive_restart;
    }
 
    if (have_streamout && ctx->dirty_so_targets)

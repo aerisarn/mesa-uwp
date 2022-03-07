@@ -60,7 +60,9 @@ struct zink_gfx_pipeline_state {
       unsigned num_viewports;
    } dyn_state1;
 
-   bool primitive_restart; //dynamic state2
+   struct {
+      bool primitive_restart;
+   } dyn_state2;
 
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];
    bool modules_changed;
