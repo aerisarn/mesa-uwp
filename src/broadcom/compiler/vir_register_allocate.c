@@ -916,6 +916,11 @@ update_graph_and_reg_classes_for_inst(struct v3d_compile *c, int *acc_nodes,
         if (inst->dst.file == QFILE_TEMP) {
                 /* Only a ldunif gets to write to R5, which only has a
                  * single 32-bit channel of storage.
+                 *
+                 * NOTE: ldunifa is subject to the same, however, going by
+                 * shader-db it is best to keep r5 exclusive to ldunif, probably
+                 * because ldunif has usually a shorter lifespan, allowing for
+                 * more accumulator reuse and QPU merges.
                  */
                 if (!inst->qpu.sig.ldunif) {
                         uint8_t class_bits =
