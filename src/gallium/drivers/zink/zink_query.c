@@ -706,7 +706,8 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    _mesa_set_add(batch->state->active_queries, q);
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       ctx->primitives_generated_active = true;
-      zink_set_rasterizer_discard(ctx, true);
+      if (zink_set_rasterizer_discard(ctx, true))
+         zink_set_color_write_enables(ctx);
    }
 }
 
@@ -777,7 +778,8 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    update_query_id(ctx, q);
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       ctx->primitives_generated_active = false;
-      zink_set_rasterizer_discard(ctx, false);
+      if (zink_set_rasterizer_discard(ctx, false))
+         zink_set_color_write_enables(ctx);
    }
 }
 

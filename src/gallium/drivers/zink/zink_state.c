@@ -681,6 +681,7 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    bool pv_last = ctx->rast_state ? ctx->rast_state->hw_state.pv_last : false;
    bool force_persample_interp = ctx->rast_state ? ctx->rast_state->hw_state.force_persample_interp : false;
    bool clip_halfz = ctx->rast_state ? ctx->rast_state->hw_state.clip_halfz : false;
+   bool rasterizer_discard = ctx->rast_state ? ctx->rast_state->base.rasterizer_discard : false;
    ctx->rast_state = cso;
 
    if (ctx->rast_state) {
@@ -710,6 +711,8 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       }
       if (!ctx->primitives_generated_active)
          zink_set_rasterizer_discard(ctx, false);
+      else if (rasterizer_discard != ctx->rast_state->base.rasterizer_discard)
+         zink_set_color_write_enables(ctx);
 
       if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
          zink_set_fs_point_coord_key(ctx);

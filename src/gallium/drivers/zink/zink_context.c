@@ -2574,13 +2574,23 @@ zink_set_color_write_enables(struct zink_context *ctx)
    const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
    const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
    const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, zink_screen(ctx->base.screen)->info.props.limits.maxColorAttachments);
+   bool disable_color_writes = ctx->rast_state && ctx->rast_state->base.rasterizer_discard && ctx->primitives_generated_active;
+   if (ctx->disable_color_writes == disable_color_writes)
+      return;
+   ctx->disable_color_writes = disable_color_writes;
    if (zink_screen(ctx->base.screen)->driver_workarounds.color_write_missing) {
       /* use dummy color buffers instead of the more sane option */
       zink_end_render_pass(ctx);
       update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
    } else {
-      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, enables);
+      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, disable_color_writes ? disables : enables);
    }
+   if (!zink_screen(ctx->base.screen)->info.have_EXT_extended_dynamic_state) {
+      /* TODO: maybe pipeline variants for this */
+      return;
+   }
+   if (ctx->dsa_state)
+      VKCTX(CmdSetDepthWriteEnableEXT)(ctx->batch.state->cmdbuf, disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
 }
 
 static void
