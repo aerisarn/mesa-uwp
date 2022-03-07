@@ -3200,8 +3200,10 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_ubo:
         case nir_intrinsic_load_ssbo:
-                if (!ntq_emit_load_unifa(c, instr))
+                if (!ntq_emit_load_unifa(c, instr)) {
                         ntq_emit_tmu_general(c, instr, false);
+                        c->has_general_tmu_load = true;
+                }
                 break;
 
         case nir_intrinsic_ssbo_atomic_add:
@@ -3228,14 +3230,17 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_shared_atomic_xor:
         case nir_intrinsic_shared_atomic_exchange:
         case nir_intrinsic_shared_atomic_comp_swap:
-        case nir_intrinsic_load_shared:
         case nir_intrinsic_store_shared:
-        case nir_intrinsic_load_scratch:
         case nir_intrinsic_store_scratch:
                 ntq_emit_tmu_general(c, instr, true);
                 break;
 
-        case nir_intrinsic_image_load:
+        case nir_intrinsic_load_scratch:
+        case nir_intrinsic_load_shared:
+                ntq_emit_tmu_general(c, instr, true);
+                c->has_general_tmu_load = true;
+                break;
+
         case nir_intrinsic_image_store:
         case nir_intrinsic_image_atomic_add:
         case nir_intrinsic_image_atomic_imin:
@@ -3248,6 +3253,15 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
         case nir_intrinsic_image_atomic_exchange:
         case nir_intrinsic_image_atomic_comp_swap:
                 v3d40_vir_emit_image_load_store(c, instr);
+                break;
+
+        case nir_intrinsic_image_load:
+                v3d40_vir_emit_image_load_store(c, instr);
+                /* Not really a general TMU load, but we only use this flag
+                 * for NIR scheduling and we do schedule these under the same
+                 * policy as general TMU.
+                 */
+                c->has_general_tmu_load = true;
                 break;
 
         case nir_intrinsic_get_ssbo_size:

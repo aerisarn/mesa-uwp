@@ -550,6 +550,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                  uint32_t max_threads,
                  uint32_t min_threads_for_reg_alloc,
                  uint32_t max_tmu_spills,
+                 bool disable_general_tmu_sched,
                  bool disable_loop_unrolling,
                  bool disable_constant_ubo_load_sorting,
                  bool disable_tmu_pipelining,
@@ -569,6 +570,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->min_threads_for_reg_alloc = min_threads_for_reg_alloc;
         c->max_tmu_spills = max_tmu_spills;
         c->fallback_scheduler = fallback_scheduler;
+        c->disable_general_tmu_sched = disable_general_tmu_sched;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
         c->disable_loop_unrolling = V3D_DEBUG & V3D_DEBUG_NO_LOOP_UNROLL
@@ -1122,6 +1124,8 @@ v3d_intrinsic_dependency_cb(nir_intrinsic_instr *intr,
 static unsigned
 v3d_instr_delay_cb(nir_instr *instr, void *data)
 {
+   struct v3d_compile *c = (struct v3d_compile *) data;
+
    switch (instr->type) {
    case nir_instr_type_ssa_undef:
    case nir_instr_type_load_const:
@@ -1134,18 +1138,22 @@ v3d_instr_delay_cb(nir_instr *instr, void *data)
       return 1;
 
    case nir_instr_type_intrinsic: {
-      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-      switch (intr->intrinsic) {
-      case nir_intrinsic_load_ssbo:
-      case nir_intrinsic_load_scratch:
-      case nir_intrinsic_load_shared:
-      case nir_intrinsic_image_load:
-         return 30;
-      case nir_intrinsic_load_ubo:
-         if (nir_src_is_divergent(intr->src[1]))
+      if (!c->disable_general_tmu_sched) {
+         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+         switch (intr->intrinsic) {
+         case nir_intrinsic_load_ssbo:
+         case nir_intrinsic_load_scratch:
+         case nir_intrinsic_load_shared:
+         case nir_intrinsic_image_load:
             return 30;
-         FALLTHROUGH;
-      default:
+         case nir_intrinsic_load_ubo:
+            if (nir_src_is_divergent(intr->src[1]))
+               return 30;
+            FALLTHROUGH;
+         default:
+            return 1;
+         }
+      } else {
          return 1;
       }
       break;
@@ -1674,20 +1682,23 @@ struct v3d_compiler_strategy {
         const char *name;
         uint32_t max_threads;
         uint32_t min_threads;
+        bool disable_general_tmu_sched;
         bool disable_loop_unrolling;
         bool disable_ubo_load_sorting;
         bool disable_tmu_pipelining;
         uint32_t max_tmu_spills;
 } static const strategies[] = {
-  /*0*/ { "default",                        4, 4, false, false, false,  0 },
-  /*1*/ { "disable loop unrolling",         4, 4, true,  false, false,  0 },
-  /*2*/ { "disable UBO load sorting",       4, 4, true,  true,  false,  0 },
-  /*3*/ { "disable TMU pipelining",         4, 4, true,  true,  true,   0 },
-  /*4*/ { "lower thread count",             2, 1, false, false, false, -1 },
-  /*5*/ { "disable loop unrolling (ltc)",   2, 1, true,  false, false, -1 },
-  /*6*/ { "disable UBO load sorting (ltc)", 2, 1, true,  true,  false, -1 },
-  /*7*/ { "disable TMU pipelining (ltc)",   2, 1, true,  true,  true,  -1 },
-  /*8*/ { "fallback scheduler",             2, 1, true,  true,  true,  -1 }
+  /*0*/  { "default",                        4, 4, false, false, false, false,  0 },
+  /*1*/  { "disable general TMU sched",      4, 4, true,  false, false, false,  0 },
+  /*2*/  { "disable loop unrolling",         4, 4, true,  true,  false, false,  0 },
+  /*3*/  { "disable UBO load sorting",       4, 4, true,  true,  true,  false,  0 },
+  /*4*/  { "disable TMU pipelining",         4, 4, true,  true,  true,  true,   0 },
+  /*5*/  { "lower thread count",             2, 1, false, false, false, false, -1 },
+  /*6*/  { "disable general TMU sched (2t)", 2, 1, true,  false, false, false, -1 },
+  /*7*/  { "disable loop unrolling (2t)",    2, 1, true,  true,  false, false, -1 },
+  /*8*/  { "disable UBO load sorting (2t)",  2, 1, true,  true,  true,  false, -1 },
+  /*9*/  { "disable TMU pipelining (2t)",    2, 1, true,  true,  true,  true,  -1 },
+  /*10*/ { "fallback scheduler",             2, 1, true,  true,  true,  true,  -1 }
 };
 
 /**
@@ -1695,7 +1706,7 @@ struct v3d_compiler_strategy {
  * attempt disabling it alone won't allow us to compile the shader successfuly,
  * since we'll end up with the same code. Detect these scenarios so we can
  * avoid wasting time with useless compiles. We should also consider if the
- * strategy changes other aspects of the compilation process though, like
+ * gy changes other aspects of the compilation process though, like
  * spilling, and not skip it in that case.
  */
 static bool
@@ -1714,20 +1725,24 @@ skip_compile_strategy(struct v3d_compile *c, uint32_t idx)
    }
 
    switch (idx) {
-   /* Loop unrolling: skip if we didn't unroll any loops */
+   /* General TMU sched.: skip if we didn't emit any TMU loads */
    case 1:
-   case 5:
+   case 6:
+           return !c->has_general_tmu_load;
+   /* Loop unrolling: skip if we didn't unroll any loops */
+   case 2:
+   case 7:
            return !c->unrolled_any_loops;
    /* UBO load sorting: skip if we didn't sort any loads */
-   case 2:
-   case 6:
+   case 3:
+   case 8:
            return !c->sorted_any_ubo_loads;
    /* TMU pipelining: skip if we didn't pipeline any TMU ops */
-   case 3:
-   case 7:
+   case 4:
+   case 9:
            return !c->pipelined_any_tmu;
    /* Lower thread count: skip if we already tried less that 4 threads */
-   case 4:
+   case 5:
           return c->threads < 4;
    default:
            return false;
@@ -1780,6 +1795,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                                      strategies[strat].max_threads,
                                      strategies[strat].min_threads,
                                      strategies[strat].max_tmu_spills,
+                                     strategies[strat].disable_general_tmu_sched,
                                      strategies[strat].disable_loop_unrolling,
                                      strategies[strat].disable_ubo_load_sorting,
                                      strategies[strat].disable_tmu_pipelining,

@@ -710,6 +710,11 @@ struct v3d_compile {
         bool disable_loop_unrolling;
         bool unrolled_any_loops;
 
+        /* Disables scheduling of general TMU loads (and unfiltered image load).
+         */
+        bool disable_general_tmu_sched;
+        bool has_general_tmu_load;
+
         /* Minimum number of threads we are willing to use to register allocate
          * a shader with the current compilation strategy. This only prevents
          * us from lowering the thread count to register allocate successfully,
