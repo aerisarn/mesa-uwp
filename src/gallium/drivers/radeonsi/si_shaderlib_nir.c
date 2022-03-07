@@ -53,6 +53,52 @@ static void unpack_2x16(nir_builder *b, nir_ssa_def *src, nir_ssa_def **x, nir_s
    *y = nir_ushr(b, src, nir_imm_int(b, 16));
 }
 
+/* Create a NIR compute shader implementing copy_image.
+ *
+ * This is the NIR version of the removed si_create_copy_image_compute_shader() [TGSI].
+ * It inherits the following note from the TGSI version:
+ * "Luckily, this works with all texture targets except 1D_ARRAY."
+ */
+void *si_create_copy_image_cs(struct pipe_context *ctx)
+{
+   struct si_context *sctx = (struct si_context *) ctx;
+
+   const nir_shader_compiler_options *options =
+      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "copy_image_cs");
+
+   b.shader->info.workgroup_size_variable = true;
+   b.shader->info.cs.user_data_components_amd = 3;
+   b.shader->info.num_images = 2;
+
+   nir_ssa_def *coord_src = NULL, *coord_dst = NULL;
+   unpack_2x16(&b, nir_load_user_data_amd(&b), &coord_src, &coord_dst);
+
+   nir_ssa_def *ids = get_global_ids(&b, 3);
+   coord_src = nir_iadd(&b, coord_src, ids);
+   coord_dst = nir_iadd(&b, coord_dst, ids);
+
+   const struct glsl_type *img_type =
+      glsl_image_type(GLSL_SAMPLER_DIM_2D, /*is_array*/ true, GLSL_TYPE_FLOAT);
+
+   nir_variable *img_src = nir_variable_create(b.shader, nir_var_image, img_type, "img_src");
+   img_src->data.binding = 0;
+
+   nir_variable *img_dst = nir_variable_create(b.shader, nir_var_image, img_type, "img_dst");
+   img_dst->data.binding = 1;
+
+   nir_ssa_def *data = nir_image_deref_load(&b, /*num_components*/ 4, /*bit_size*/ 32,
+      &nir_build_deref_var(&b, img_src)->dest.ssa, coord_src, nir_ssa_undef(&b, 1, 32),
+      nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
+
+   nir_image_deref_store(&b,
+      &nir_build_deref_var(&b, img_dst)->dest.ssa, coord_dst, nir_ssa_undef(&b, 1, 32), data,
+      nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
+
+   return create_nir_cs(sctx, &b);
+}
+
 void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf)
 {
    const nir_shader_compiler_options *options =

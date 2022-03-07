@@ -429,46 +429,6 @@ void *si_create_query_result_cs(struct si_context *sctx)
    return sctx->b.create_compute_state(&sctx->b, &state);
 }
 
-/* Create a compute shader implementing copy_image.
- * Luckily, this works with all texture targets except 1D_ARRAY.
- */
-void *si_create_copy_image_compute_shader(struct pipe_context *ctx)
-{
-   static const char text[] =
-      "COMP\n"
-      "PROPERTY CS_USER_DATA_COMPONENTS_AMD 3\n"
-      "DCL SV[0], THREAD_ID\n"
-      "DCL SV[1], BLOCK_ID\n"
-      "DCL SV[2], BLOCK_SIZE\n"
-      "DCL SV[3], CS_USER_DATA_AMD\n"
-      "DCL IMAGE[0], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
-      "DCL IMAGE[1], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
-      "DCL TEMP[0..3], LOCAL\n"
-      "IMM[0] UINT32 {65535, 16, 0, 0}\n"
-
-      "UMAD TEMP[0].xyz, SV[1], SV[2], SV[0]\n" /* threadID.xyz */
-      "AND TEMP[1].xyz, SV[3], IMM[0].xxxx\n"    /* src.xyz */
-      "UADD TEMP[1].xyz, TEMP[1], TEMP[0]\n" /* src.xyz + threadID.xyz */
-      "LOAD TEMP[3], IMAGE[0], TEMP[1], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
-      "USHR TEMP[2].xyz, SV[3], IMM[0].yyyy\n"   /* dst.xyz */
-      "UADD TEMP[2].xyz, TEMP[2], TEMP[0]\n" /* dst.xyz + threadID.xyz */
-      "STORE IMAGE[1], TEMP[2], TEMP[3], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
-      "END\n";
-
-   struct tgsi_token tokens[1024];
-   struct pipe_compute_state state = {0};
-
-   if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
-      assert(false);
-      return NULL;
-   }
-
-   state.ir_type = PIPE_SHADER_IR_TGSI;
-   state.prog = tokens;
-
-   return ctx->create_compute_state(ctx, &state);
-}
-
 void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx)
 {
    static const char text[] =
