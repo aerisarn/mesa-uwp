@@ -703,6 +703,16 @@ v3d_ra_select_accum(struct v3d_ra_select_callback_data *v3d_ra,
                     BITSET_WORD *regs,
                     unsigned int *out)
 {
+        /* Choose r5 for our ldunifs if possible (nobody else can load to that
+         * reg, and it keeps the QPU cond field free from being occupied by
+         * ldunifrf).
+         */
+        int r5 = ACC_INDEX + 5;
+        if (BITSET_TEST(regs, r5)) {
+                *out = r5;
+                return true;
+        }
+
         /* Round-robin through our accumulators to give post-RA instruction
          * selection more options.
          */
@@ -743,14 +753,6 @@ static unsigned int
 v3d_ra_select_callback(unsigned int n, BITSET_WORD *regs, void *data)
 {
         struct v3d_ra_select_callback_data *v3d_ra = data;
-        int r5 = ACC_INDEX + 5;
-
-        /* Choose r5 for our ldunifs if possible (nobody else can load to that
-         * reg, and it keeps the QPU cond field free from being occupied by
-         * ldunifrf).
-         */
-        if (BITSET_TEST(regs, r5))
-                return r5;
 
         unsigned int reg;
         if (v3d_ra_favor_accum(v3d_ra, regs, v3d_ra->nodes->info[n].priority) &&
