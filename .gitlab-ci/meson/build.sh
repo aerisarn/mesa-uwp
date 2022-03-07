@@ -71,6 +71,7 @@ meson _build --native-file=native.file \
       ${GALLIUM_ST} \
       -D gallium-drivers=${GALLIUM_DRIVERS:-[]} \
       -D vulkan-drivers=${VULKAN_DRIVERS:-[]} \
+      -D video-codecs=h264dec,h264enc,h265dec,h265enc,vc1dec \
       -D werror=true \
       ${EXTRA_OPTION}
 cd _build

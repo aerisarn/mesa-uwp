@@ -320,6 +320,11 @@ if with_vulkan_beta
   pre_args += '-DVK_ENABLE_BETA_EXTENSIONS'
 endif
 
+_codecs = get_option('video-codecs')
+foreach c : ['vc1dec', 'h264dec', 'h264enc', 'h265dec', 'h265enc']
+   pre_args += '-DVIDEO_CODEC_@0@=@1@'.format(c.to_upper(), _codecs.contains(c).to_int())
+endforeach
+
 _platforms = get_option('platforms')
 if _platforms.contains('auto')
   if system_has_kms_drm
@@ -2273,6 +2278,9 @@ if with_gbm
 endif
 
 lines += ''
+lines += 'Video Codecs: ' + ' '.join(_codecs)
+lines += ''
+
 if with_any_vk
   lines += 'Vulkan drivers:  ' + ' '.join(_vulkan_drivers)
   lines += 'Vulkan ICD dir:  ' + with_vulkan_icd_dir

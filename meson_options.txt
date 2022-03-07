@@ -527,3 +527,12 @@ option(
   value : 'disabled',
   description : 'Build the intel-clc compiler (required for ray queries).'
 )
+option(
+  'video-codecs',
+  type : 'array',
+  value : [],
+  choices: [
+    'vc1dec', 'h264dec', 'h264enc', 'h265dec', 'h265enc'
+  ],
+  description : 'List of patent encumbered codecs to build support for. Distros might want to consult their legal department before enabling these. This is used for all video APIs (vaapi, vdpau, vulkan). Non-patent encumbered codecs will be enabled by default.'
+)
