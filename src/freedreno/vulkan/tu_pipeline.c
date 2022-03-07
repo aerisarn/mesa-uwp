@@ -3181,6 +3181,9 @@ tu_pipeline_builder_parse_rasterization_order(
           VK_PIPELINE_DEPTH_STENCIL_STATE_CREATE_RASTERIZATION_ORDER_ATTACHMENT_STENCIL_ACCESS_BIT_ARM);
    }
 
+   if (unlikely(builder->device->physical_device->instance->debug_flags & TU_DEBUG_RAST_ORDER))
+      pipeline->raster_order_attachment_access = true;
+
    /* VK_EXT_blend_operation_advanced would also require ordered access
     * when implemented in the future.
     */

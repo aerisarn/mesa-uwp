@@ -336,6 +336,7 @@ static const struct debug_control tu_debug_options[] = {
    { "flushall", TU_DEBUG_FLUSHALL },
    { "syncdraw", TU_DEBUG_SYNCDRAW },
    { "dontcare_as_load", TU_DEBUG_DONT_CARE_AS_LOAD },
+   { "rast_order", TU_DEBUG_RAST_ORDER },
    { NULL, 0 }
 };
 
