@@ -1119,6 +1119,45 @@ v3d_intrinsic_dependency_cb(nir_intrinsic_instr *intr,
         return false;
 }
 
+static unsigned
+v3d_instr_delay_cb(nir_instr *instr, void *data)
+{
+   switch (instr->type) {
+   case nir_instr_type_ssa_undef:
+   case nir_instr_type_load_const:
+   case nir_instr_type_alu:
+   case nir_instr_type_deref:
+   case nir_instr_type_jump:
+   case nir_instr_type_parallel_copy:
+   case nir_instr_type_call:
+   case nir_instr_type_phi:
+      return 1;
+
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+      switch (intr->intrinsic) {
+      case nir_intrinsic_load_ssbo:
+      case nir_intrinsic_load_scratch:
+      case nir_intrinsic_load_shared:
+      case nir_intrinsic_image_load:
+         return 30;
+      case nir_intrinsic_load_ubo:
+         if (nir_src_is_divergent(intr->src[1]))
+            return 30;
+         FALLTHROUGH;
+      default:
+         return 1;
+      }
+      break;
+   }
+
+   case nir_instr_type_tex:
+      return 50;
+   }
+
+   return 0;
+}
+
 static bool
 should_split_wrmask(const nir_instr *instr, const void *data)
 {
@@ -1562,6 +1601,9 @@ v3d_attempt_compile(struct v3d_compile *c)
 
                 .intrinsic_cb = v3d_intrinsic_dependency_cb,
                 .intrinsic_cb_data = c,
+
+                .instr_delay_cb = v3d_instr_delay_cb,
+                .instr_delay_cb_data = c,
         };
         NIR_PASS_V(c->s, nir_schedule, &schedule_options);
 
