@@ -1921,6 +1921,8 @@ struct anv_descriptor {
       };
 
       struct anv_buffer_view *buffer_view;
+
+      struct anv_acceleration_structure *accel_struct;
    };
 };
 

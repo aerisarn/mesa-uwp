@@ -1686,7 +1686,11 @@ anv_descriptor_set_write_acceleration_structure(struct anv_device *device,
    assert(bind_layout->data & ANV_DESCRIPTOR_ADDRESS_RANGE);
    *desc = (struct anv_descriptor) {
       .type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+      .accel_struct = accel,
    };
+
+   if (set->pool && !set->pool->allocate_surface_states)
+      return;
 
    struct anv_address_range_descriptor desc_data = { };
    if (accel != NULL) {
@@ -1867,13 +1871,8 @@ void anv_UpdateDescriptorSets(
          }
 
          case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR: {
-            const VkWriteDescriptorSetAccelerationStructureKHR *accel_write =
-               vk_find_struct_const(dst_desc, WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR);
-            assert(accel_write->accelerationStructureCount ==
-                   copy->descriptorCount);
-            ANV_FROM_HANDLE(anv_acceleration_structure, accel, accel_write->pAccelerationStructures[j]);
             anv_descriptor_set_write_acceleration_structure(device, dst,
-                                                            accel,
+                                                            src_desc[j].accel_struct,
                                                             copy->dstBinding,
                                                             copy->dstArrayElement + j);
             break;
