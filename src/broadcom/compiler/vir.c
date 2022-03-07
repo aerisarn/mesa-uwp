@@ -1595,7 +1595,7 @@ v3d_attempt_compile(struct v3d_compile *c)
                 /* Schedule for about half our register space, to enable more
                  * shaders to hit 4 threads.
                  */
-                .threshold = 24,
+                .threshold = c->threads == 4 ? 24 : 48,
 
                 /* Vertex shaders share the same memory for inputs and outputs,
                  * fragement and geometry shaders do not.
