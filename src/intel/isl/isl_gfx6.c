@@ -53,11 +53,11 @@ isl_gfx6_choose_msaa_layout(const struct isl_device *dev,
    if (info->dim != ISL_SURF_DIM_2D)
       return false;
 
+   /* Should have been filtered by isl_gfx6_filter_tiling() */
+   assert(!isl_surf_usage_is_display(info->usage));
+   assert(tiling != ISL_TILING_LINEAR);
+
    /* More obvious restrictions */
-   if (isl_surf_usage_is_display(info->usage))
-      return false;
-   if (tiling == ISL_TILING_LINEAR)
-      return false;
    if (info->levels > 1)
       return false;
 
