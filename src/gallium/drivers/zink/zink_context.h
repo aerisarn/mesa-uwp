@@ -364,6 +364,7 @@ struct zink_context {
    bool rast_state_changed : 1;
    bool dsa_state_changed : 1;
    bool stencil_ref_changed : 1;
+   bool rasterizer_discard_changed : 1;
 };
 
 static inline struct zink_context *

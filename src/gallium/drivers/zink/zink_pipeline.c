@@ -162,7 +162,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 
    rast_state.depthClampEnable = hw_rast_state->depth_clamp;
-   rast_state.rasterizerDiscardEnable = hw_rast_state->rasterizer_discard;
+   rast_state.rasterizerDiscardEnable = state->dyn_state2.rasterizer_discard;
    rast_state.polygonMode = hw_rast_state->polygon_mode;
    rast_state.cullMode = hw_rast_state->cull_mode;
    rast_state.frontFace = state->dyn_state1.front_face;
@@ -228,8 +228,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       else if (screen->info.have_EXT_extended_dynamic_state)
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
    }
-   if (screen->info.have_EXT_extended_dynamic_state2)
+   if (screen->info.have_EXT_extended_dynamic_state2) {
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT;
+   }
 
    VkPipelineRasterizationLineStateCreateInfoEXT rast_line_state;
    if (screen->info.have_EXT_line_rasterization) {

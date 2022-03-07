@@ -786,6 +786,11 @@ zink_draw(struct pipe_context *pctx,
       ctx->primitive_restart = dinfo->primitive_restart;
    }
 
+   if (DYNAMIC_STATE >= ZINK_DYNAMIC_STATE2 && (BATCH_CHANGED || ctx->rasterizer_discard_changed)) {
+      VKCTX(CmdSetRasterizerDiscardEnableEXT)(batch->state->cmdbuf, ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard);
+      ctx->rasterizer_discard_changed = false;
+   }
+
    if (zink_program_has_descriptors(&ctx->curr_program->base))
       screen->descriptors_update(ctx, false);
 

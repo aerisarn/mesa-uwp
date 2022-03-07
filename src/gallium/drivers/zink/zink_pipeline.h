@@ -42,7 +42,7 @@ struct zink_vertex_elements_state;
 struct zink_gfx_pipeline_state {
    uint32_t rast_state : ZINK_RAST_HW_STATE_SIZE; //zink_rasterizer_hw_state
    uint32_t vertices_per_patch:5;
-   uint32_t rast_samples:7;
+   uint32_t rast_samples:8; //2 extra bits
    uint32_t void_alpha_attachments:PIPE_MAX_COLOR_BUFS;
    VkSampleMask sample_mask;
 
@@ -62,6 +62,7 @@ struct zink_gfx_pipeline_state {
 
    struct {
       bool primitive_restart;
+      bool rasterizer_discard;
    } dyn_state2;
 
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];

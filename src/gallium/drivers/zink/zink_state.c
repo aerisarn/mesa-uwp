@@ -589,7 +589,6 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
 
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
    state->hw_state.depth_clamp = rs_state->depth_clip_near == 0;
-   state->hw_state.rasterizer_discard = rs_state->rasterizer_discard;
    state->hw_state.force_persample_interp = rs_state->force_persample_interp;
    state->hw_state.pv_last = !rs_state->flatshade_first;
    state->hw_state.clip_halfz = rs_state->clip_halfz;
@@ -708,6 +707,12 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       if (ctx->gfx_pipeline_state.dyn_state1.front_face != ctx->rast_state->front_face) {
          ctx->gfx_pipeline_state.dyn_state1.front_face = ctx->rast_state->front_face;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
+      }
+      if (ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard != ctx->rast_state->base.rasterizer_discard) {
+         ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard = ctx->rast_state->base.rasterizer_discard;
+         ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state2;
+         if (zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state2)
+            ctx->rasterizer_discard_changed = true;
       }
       if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
          zink_set_fs_point_coord_key(ctx);
