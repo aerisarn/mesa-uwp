@@ -845,7 +845,7 @@ debian-gallium:
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
       -D osmesa=true
-      -D tools=all
+      -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,xvmc,lima,panfrost,asahi
   script:
     - .gitlab-ci/meson/build.sh
     - .gitlab-ci/run-shader-db.sh
@@ -872,12 +872,13 @@ debian-release:
       -D gallium-opencl=disabled
       -D llvm=enabled
     GALLIUM_DRIVERS: "i915,iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,crocus"
-    VULKAN_DRIVERS: "amd"
+    VULKAN_DRIVERS: "amd,imagination-experimental"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
       -D osmesa=true
       -D tools=all
       -D intel-clc=enabled
+      -D imagination-srv=true
   script:
     - .gitlab-ci/meson/build.sh
 
@@ -903,8 +904,9 @@ fedora-release:
     EXTRA_OPTION: >
       -D osmesa=true
       -D selinux=true
-      -D tools=drm-shim,etnaviv,freedreno,glsl,intel,nir,nouveau,lima,panfrost
+      -D tools=drm-shim,etnaviv,freedreno,glsl,intel,nir,nouveau,lima,panfrost,imagination
       -D intel-clc=enabled
+      -D imagination-srv=true
     GALLIUM_DRIVERS: "crocus,etnaviv,freedreno,iris,kmsro,lima,nouveau,panfrost,r300,r600,radeonsi,svga,swrast,tegra,v3d,vc4,virgl,zink"
     GALLIUM_ST: >
       -D dri3=enabled
@@ -924,7 +926,7 @@ fedora-release:
       -D vulkan-device-select-layer=true
     LLVM_VERSION: ""
     UNWIND: "disabled"
-    VULKAN_DRIVERS: "amd,broadcom,freedreno,intel"
+    VULKAN_DRIVERS: "amd,broadcom,freedreno,intel,imagination-experimental"
   script:
     - .gitlab-ci/meson/build.sh
 
@@ -1027,10 +1029,11 @@ debian-arm64:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
-    VULKAN_DRIVERS: "freedreno,broadcom,panfrost"
+    VULKAN_DRIVERS: "freedreno,broadcom,panfrost,imagination-experimental"
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=false
+      -D imagination-srv=true
     MINIO_ARTIFACT_NAME: mesa-arm64
   script:
     - .gitlab-ci/meson/build.sh
@@ -1058,7 +1061,7 @@ debian-arm64-build-test:
   variables:
     VULKAN_DRIVERS: "amd"
     EXTRA_OPTION: >
-      -Dtools=panfrost
+      -Dtools=panfrost,imagination
   script:
     - .gitlab-ci/meson/build.sh
 
@@ -1085,7 +1088,9 @@ debian-clang:
     DRI_LOADERS: >
       -D glvnd=true
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus,i915,asahi"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost,imagination-experimental
+    EXTRA_OPTIONS:
+      -D imagination-srv=true
     CC: clang
     CXX: clang++
 
@@ -1149,11 +1154,12 @@ debian-vulkan:
       -D c_args=-fno-sanitize-recover=all
       -D cpp_args=-fno-sanitize-recover=all
     UBSAN_OPTIONS: "print_stacktrace=1"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,imagination-experimental
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
       -D intel-clc=enabled
+      -D imagination-srv=true
 
 debian-i386:
   extends:
