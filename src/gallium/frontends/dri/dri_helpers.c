@@ -314,6 +314,7 @@ dri2_create_image_from_renderbuffer2(__DRIcontext *context,
    img->dri_format = driGLFormatToImageFormat(rb->Format);
    img->loader_private = loaderPrivate;
    img->sPriv = context->driScreenPriv;
+   img->in_fence_fd = -1;
 
    pipe_resource_reference(&img->texture, tex);
 
@@ -413,6 +414,7 @@ dri2_create_from_texture(__DRIcontext *context, int target, unsigned texture,
 
    img->level = level;
    img->layer = depth;
+   img->in_fence_fd = -1;
    img->dri_format = driGLFormatToImageFormat(obj->Image[face][level]->TexFormat);
 
    img->loader_private = loaderPrivate;
