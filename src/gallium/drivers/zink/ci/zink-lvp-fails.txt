@@ -12,10 +12,6 @@ KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.degenerate_c
 KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.inner_tessellation_level_rounding,Fail
 KHR-GL46.tessellation_shader.tessellation_shader_tessellation.gl_InvocationID_PatchVerticesIn_PrimitiveID,Fail
 KHR-GL46.tessellation_shader.vertex.vertex_spacing,Fail
-KHR-GL46.texture_barrier_ARB.disjoint-texels,Fail
-KHR-GL46.texture_barrier_ARB.overlapping-texels,Fail
-KHR-GL46.texture_barrier.disjoint-texels,Fail
-KHR-GL46.texture_barrier.overlapping-texels,Fail
 KHR-GL46.texture_view.view_sampling,Fail
 
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
