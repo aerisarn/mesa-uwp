@@ -288,7 +288,7 @@ zink_create_query(struct pipe_context *pctx,
    pool_create.queryCount = NUM_QUERIES;
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
      pool_create.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
-                                      VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT;
+                                      VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
    else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
       pool_create.pipelineStatistics = pipeline_statistic_convert(index);
 
@@ -386,8 +386,8 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
          if (query->have_xfb[query->last_start + i / 2] || query->index)
             result->u64 += xfb_results[i + 1];
          else
-            /* if a given draw had a geometry shader, we need to use the second result */
-            result->u64 += results[i + query->have_gs[query->last_start + i / 2]];
+            /* if a given draw had a geometry shader, we need to use the first result */
+            result->u64 += results[i + !query->have_gs[query->last_start + i / 2]];
          break;
       case PIPE_QUERY_PRIMITIVES_EMITTED:
          /* A query pool created with this type will capture 2 integers -
