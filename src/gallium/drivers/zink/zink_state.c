@@ -708,12 +708,9 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
          ctx->gfx_pipeline_state.dyn_state1.front_face = ctx->rast_state->front_face;
          ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
-      if (ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard != ctx->rast_state->base.rasterizer_discard) {
-         ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard = ctx->rast_state->base.rasterizer_discard;
-         ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state2;
-         if (zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state2)
-            ctx->rasterizer_discard_changed = true;
-      }
+      if (!ctx->primitives_generated_active)
+         zink_set_rasterizer_discard(ctx, false);
+
       if (ctx->rast_state->base.point_quad_rasterization != point_quad_rasterization)
          zink_set_fs_point_coord_key(ctx);
       if (ctx->rast_state->base.scissor != scissor)

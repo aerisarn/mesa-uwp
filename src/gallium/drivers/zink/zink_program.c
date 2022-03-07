@@ -1130,3 +1130,16 @@ zink_program_init(struct zink_context *ctx)
    ctx->base.bind_compute_state = zink_bind_cs_state;
    ctx->base.delete_compute_state = zink_delete_shader_state;
 }
+
+void
+zink_set_rasterizer_discard(struct zink_context *ctx, bool disable)
+{
+   bool value = disable ? false : (ctx->rast_state ? ctx->rast_state->base.rasterizer_discard : false);
+   bool changed = ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard != value;
+   ctx->gfx_pipeline_state.dyn_state2.rasterizer_discard = value;
+   if (!changed)
+      return;
+   if (!zink_screen(ctx->base.screen)->info.have_EXT_extended_dynamic_state2)
+      ctx->gfx_pipeline_state.dirty |= true;
+   ctx->rasterizer_discard_changed = true;
+}

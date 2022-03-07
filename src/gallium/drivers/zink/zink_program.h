@@ -379,6 +379,9 @@ zink_set_fs_point_coord_key(struct zink_context *ctx)
    }
 }
 
+void
+zink_set_rasterizer_discard(struct zink_context *ctx, bool disable);
+
 #ifdef __cplusplus
 }
 #endif

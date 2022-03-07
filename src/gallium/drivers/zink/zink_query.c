@@ -2,6 +2,7 @@
 
 #include "zink_context.h"
 #include "zink_fence.h"
+#include "zink_program.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 
@@ -703,6 +704,10 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    zink_batch_usage_set(&q->batch_id, batch->state);
    _mesa_set_add(batch->state->active_queries, q);
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+      ctx->primitives_generated_active = true;
+      zink_set_rasterizer_discard(ctx, true);
+   }
 }
 
 static bool
@@ -770,6 +775,10 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
       list_delinit(&q->stats_list);
 
    update_query_id(ctx, q);
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+      ctx->primitives_generated_active = false;
+      zink_set_rasterizer_discard(ctx, false);
+   }
 }
 
 static bool

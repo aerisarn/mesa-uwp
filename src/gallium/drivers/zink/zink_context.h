@@ -290,6 +290,7 @@ struct zink_context {
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;
    struct zink_query *vertices_query;
+   bool primitives_generated_active;
    bool queries_disabled, render_condition_active;
    struct {
       struct zink_query *query;
