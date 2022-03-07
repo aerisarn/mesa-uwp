@@ -244,6 +244,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       }
       rast_state.pNext = &rast_line_state;
    }
+   assert(state_count < ARRAY_SIZE(dynamicStateEnables));
 
    VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {0};
    pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
