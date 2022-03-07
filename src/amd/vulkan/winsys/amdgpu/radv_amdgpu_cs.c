@@ -112,10 +112,22 @@ ring_to_hw_ip(enum ring_type ring)
    switch (ring) {
    case RING_GFX:
       return AMDGPU_HW_IP_GFX;
-   case RING_DMA:
-      return AMDGPU_HW_IP_DMA;
    case RING_COMPUTE:
       return AMDGPU_HW_IP_COMPUTE;
+   case RING_DMA:
+      return AMDGPU_HW_IP_DMA;
+   case RING_UVD:
+      return AMDGPU_HW_IP_UVD;
+   case RING_VCE:
+      return AMDGPU_HW_IP_VCE;
+   case RING_UVD_ENC:
+      return AMDGPU_HW_IP_UVD_ENC;
+   case RING_VCN_DEC:
+      return AMDGPU_HW_IP_VCN_DEC;
+   case RING_VCN_ENC:
+      return AMDGPU_HW_IP_VCN_ENC;
+   case RING_VCN_JPEG:
+      return AMDGPU_HW_IP_VCN_JPEG;
    default:
       unreachable("unsupported ring");
    }
@@ -127,10 +139,22 @@ hw_ip_to_ring(int hw_ip)
    switch (hw_ip) {
    case AMDGPU_HW_IP_GFX:
       return RING_GFX;
-   case AMDGPU_HW_IP_DMA:
-      return RING_DMA;
    case AMDGPU_HW_IP_COMPUTE:
       return RING_COMPUTE;
+   case AMDGPU_HW_IP_DMA:
+      return RING_DMA;
+   case AMDGPU_HW_IP_UVD:
+      return RING_UVD;
+   case AMDGPU_HW_IP_VCE:
+      return RING_VCE;
+   case AMDGPU_HW_IP_UVD_ENC:
+      return RING_UVD_ENC;
+   case AMDGPU_HW_IP_VCN_DEC:
+      return RING_VCN_DEC;
+   case AMDGPU_HW_IP_VCN_ENC:
+      return RING_VCN_ENC;
+   case AMDGPU_HW_IP_VCN_JPEG:
+      return RING_VCN_JPEG;
    default:
       unreachable("unsupported hw ip");
    }
