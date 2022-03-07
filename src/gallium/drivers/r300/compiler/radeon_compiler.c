@@ -143,19 +143,37 @@ void rc_copy_output(struct radeon_compiler * c, unsigned output, unsigned dup_ou
 {
 	unsigned tempreg = rc_find_free_temporary(c);
 	struct rc_instruction * inst;
+	struct rc_instruction * insert_pos = c->Program.Instructions.Prev;
+	unsigned branch_depth = 0;
+	unsigned loop_depth = 0;
+	bool emit_after_control_flow = false;
 
 	for(inst = c->Program.Instructions.Next; inst != &c->Program.Instructions; inst = inst->Next) {
 		const struct rc_opcode_info * opcode = rc_get_opcode_info(inst->U.I.Opcode);
+
+		if (inst->U.I.Opcode == RC_OPCODE_BGNLOOP)
+			loop_depth++;
+		if (inst->U.I.Opcode == RC_OPCODE_IF)
+			branch_depth++;
+		if ((inst->U.I.Opcode == RC_OPCODE_ENDLOOP && loop_depth--) ||
+		    (inst->U.I.Opcode == RC_OPCODE_ENDIF && branch_depth--))
+			if (emit_after_control_flow && loop_depth == 0 && branch_depth == 0) {
+				insert_pos = inst;
+				emit_after_control_flow = false;
+			}
 
 		if (opcode->HasDstReg) {
 			if (inst->U.I.DstReg.File == RC_FILE_OUTPUT && inst->U.I.DstReg.Index == output) {
 				inst->U.I.DstReg.File = RC_FILE_TEMPORARY;
 				inst->U.I.DstReg.Index = tempreg;
+				insert_pos = inst;
+				if (loop_depth != 0 && branch_depth != 0)
+					emit_after_control_flow = true;
 			}
 		}
 	}
 
-	inst = rc_insert_new_instruction(c, c->Program.Instructions.Prev);
+	inst = rc_insert_new_instruction(c, insert_pos);
 	inst->U.I.Opcode = RC_OPCODE_MOV;
 	inst->U.I.DstReg.File = RC_FILE_OUTPUT;
 	inst->U.I.DstReg.Index = output;
@@ -164,7 +182,7 @@ void rc_copy_output(struct radeon_compiler * c, unsigned output, unsigned dup_ou
 	inst->U.I.SrcReg[0].Index = tempreg;
 	inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_XYZW;
 
-	inst = rc_insert_new_instruction(c, c->Program.Instructions.Prev);
+	inst = rc_insert_new_instruction(c, inst);
 	inst->U.I.Opcode = RC_OPCODE_MOV;
 	inst->U.I.DstReg.File = RC_FILE_OUTPUT;
 	inst->U.I.DstReg.Index = dup_output;
