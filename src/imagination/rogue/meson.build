@@ -19,6 +19,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+with_imagination_tools = with_tools.contains('imagination')
+
 libpowervr_rogue_files = files(
   'nir/rogue_nir_constreg.c',
   'nir/rogue_nir_lower_io.c',
@@ -73,5 +75,6 @@ rogue_compiler = executable(
     inc_gallium_aux,
     inc_compiler,
   ],
-  install : false,
+  build_by_default : with_imagination_tools,
+  install : with_imagination_tools,
 )

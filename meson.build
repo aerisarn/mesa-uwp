@@ -84,6 +84,7 @@ if with_tools.contains('all')
     'nouveau',
     'xvmc',
     'asahi',
+    'imagination',
   ]
 endif
 
