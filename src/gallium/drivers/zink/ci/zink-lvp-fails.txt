@@ -328,13 +328,6 @@ spec@!opengl 3.0@clearbuffer-depth-cs-probe,Fail
 spec@arb_post_depth_coverage@arb_post_depth_coverage-multisampling,Fail
 spec@arb_shader_image_load_store@early-z,Fail
 spec@arb_shader_image_load_store@early-z@occlusion query test/early-z pass,Fail
-spec@arb_shader_image_load_store@indexing,Fail
-spec@arb_shader_image_load_store@indexing@Compute shader/dynamically uniform indexing test,Fail
-spec@arb_shader_image_load_store@indexing@Fragment shader/dynamically uniform indexing test,Fail
-spec@arb_shader_image_load_store@indexing@Geometry shader/dynamically uniform indexing test,Fail
-spec@arb_shader_image_load_store@indexing@Tessellation control shader/dynamically uniform indexing test,Fail
-spec@arb_shader_image_load_store@indexing@Tessellation evaluation shader/dynamically uniform indexing test,Fail
-spec@arb_shader_image_load_store@indexing@Vertex shader/dynamically uniform indexing test,Fail
 spec@arb_shader_image_load_store@invalid,Fail
 spec@arb_shader_image_load_store@invalid@imageLoad/incompatible format test/imageBuffer,Fail
 spec@khr_texture_compression_astc@array-gles,Fail

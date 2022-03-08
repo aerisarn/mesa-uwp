@@ -719,6 +719,39 @@ lower_demote(nir_shader *nir)
    return nir_shader_instructions_pass(nir, lower_demote_impl, nir_metadata_dominance, NULL);
 }
 
+static bool
+find_tex(const nir_instr *instr, const void *data_cb)
+{
+   if (instr->type == nir_instr_type_tex)
+      return true;
+   return false;
+}
+
+static nir_ssa_def *
+fixup_tex_instr(struct nir_builder *b, nir_instr *instr, void *data_cb)
+{
+   nir_tex_instr *tex_instr = nir_instr_as_tex(instr);
+   unsigned offset = 0;
+
+   int idx = nir_tex_instr_src_index(tex_instr, nir_tex_src_texture_offset);
+   if (idx == -1)
+      return NULL;
+
+   if (!nir_src_is_const(tex_instr->src[idx].src))
+      return NULL;
+   offset = nir_src_comp_as_uint(tex_instr->src[idx].src, 0);
+
+   nir_tex_instr_remove_src(tex_instr, idx);
+   tex_instr->texture_index += offset;
+   return NIR_LOWER_INSTR_PROGRESS;
+}
+
+static bool
+lvp_nir_fixup_indirect_tex(nir_shader *shader)
+{
+   return nir_shader_lower_instructions(shader, find_tex, fixup_tex_instr, NULL);
+}
+
 static void
 optimize(nir_shader *nir)
 {
@@ -763,6 +796,8 @@ optimize(nir_shader *nir)
 
       NIR_PASS(progress, nir, nir_opt_deref);
       NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+      NIR_PASS(progress, nir, nir_opt_loop_unroll);
+      NIR_PASS(progress, nir, lvp_nir_fixup_indirect_tex);
    } while (progress);
 }
 
