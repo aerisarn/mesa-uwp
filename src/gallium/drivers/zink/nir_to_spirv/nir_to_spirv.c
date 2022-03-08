@@ -1323,6 +1323,9 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
    case GLSL_TYPE_UINT:
       return get_uvec_type(ctx, 32, num_components);
 
+   case GLSL_TYPE_DOUBLE:
+      return get_fvec_type(ctx, 64, num_components);
+
    default:
       break;
    }
