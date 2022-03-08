@@ -1379,7 +1379,7 @@ emit_sam(struct ir3_context *ctx, opc_t opc, struct tex_src_info info,
    if (info.flags & IR3_INSTR_A1EN) {
       addr = ir3_get_addr1(ctx, info.a1_val);
    }
-   sam = ir3_SAM(ctx->block, opc, type, 0b1111, info.flags, info.samp_tex, src0,
+   sam = ir3_SAM(ctx->block, opc, type, wrmask, info.flags, info.samp_tex, src0,
                  src1);
    if (info.flags & IR3_INSTR_A1EN) {
       ir3_instr_set_address(sam, addr);
