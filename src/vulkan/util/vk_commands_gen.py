@@ -47,6 +47,9 @@ MANUAL_COMMANDS = ['CmdPushDescriptorSetKHR',             # This script doesn't 
                    'CmdResolveImage',
                    'CmdBeginRendering',
                    'CmdBeginRenderingKHR',
+                   'CmdSetPerformanceMarkerINTEL',
+                   'CmdSetPerformanceStreamMarkerINTEL',
+                   'CmdSetPerformanceOverrideINTEL',
                   ]
 
 TEMPLATE_C = Template(COPYRIGHT + """
@@ -66,7 +69,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
 % if c.guard is not None:
 #ifdef ${c.guard}
 % endif
-VKAPI_ATTR ${c.return_type} VKAPI_CALL lvp_${c.name}(${c.decl_params()})
+VKAPI_ATTR void VKAPI_CALL lvp_${c.name}(${c.decl_params()})
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -75,9 +78,6 @@ VKAPI_ATTR ${c.return_type} VKAPI_CALL lvp_${c.name}(${c.decl_params()})
 % else:
    vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->queue,
                                        ${c.call_params(start=1)});
-% endif
-% if c.return_type == 'VkResult':
-   return VK_SUCCESS;
 % endif
 }
 % if c.guard is not None:

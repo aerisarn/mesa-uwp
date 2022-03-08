@@ -53,6 +53,11 @@ MANUAL_COMMANDS = [
     # Lavapipe implements internally
     'CmdBeginRendering',
     'CmdBeginRenderingKHR',
+
+    # These don't return void
+    'CmdSetPerformanceMarkerINTEL',
+    'CmdSetPerformanceStreamMarkerINTEL',
+    'CmdSetPerformanceOverrideINTEL',
 ]
 
 TEMPLATE_H = Template(COPYRIGHT + """\
