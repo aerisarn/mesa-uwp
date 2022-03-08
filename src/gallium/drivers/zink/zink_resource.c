@@ -1352,15 +1352,14 @@ create_transfer(struct zink_context *ctx, struct pipe_resource *pres, unsigned u
    struct zink_transfer *trans;
 
    if (usage & PIPE_MAP_THREAD_SAFE)
-      trans = malloc(sizeof(*trans));
+      trans = calloc(1, sizeof(*trans));
    else if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
-      trans = slab_alloc(&ctx->transfer_pool_unsync);
+      trans = slab_zalloc(&ctx->transfer_pool_unsync);
    else
-      trans = slab_alloc(&ctx->transfer_pool);
+      trans = slab_zalloc(&ctx->transfer_pool);
    if (!trans)
       return NULL;
 
-   memset(trans, 0, sizeof(*trans));
    pipe_resource_reference(&trans->base.b.resource, pres);
 
    trans->base.b.usage = usage;
