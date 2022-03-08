@@ -206,10 +206,9 @@ The integer capabilities:
 * ``PIPE_CAP_MIXED_FRAMEBUFFER_SIZES``: Whether it is allowed to have
   different sizes for fb color/zs attachments. This controls whether
   ARB_framebuffer_object is provided.
-* ``PIPE_CAP_TGSI_VS_LAYER_VIEWPORT``: Whether ``TGSI_SEMANTIC_LAYER`` and
-  ``TGSI_SEMANTIC_VIEWPORT_INDEX`` are supported as vertex shader
-  outputs. Note that the viewport will only be used if multiple viewports are
-  exposed.
+* ``PIPE_CAP_VS_LAYER_VIEWPORT``: Whether ``VARYING_SLOT_LAYER`` and
+  ``VARYING_SLOT_VIEWPORT`` are supported as vertex shader outputs. Note that
+  the viewport will only be used if multiple viewports are exposed.
 * ``PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES``: The maximum number of vertices
   output by a single invocation of a geometry shader.
 * ``PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS``: The maximum number of
@@ -439,8 +438,8 @@ The integer capabilities:
   most 64KB.
 * ``PIPE_CAP_TGSI_BALLOT``: Whether the BALLOT and READ_* opcodes as well as
   the SUBGROUP_* semantics are supported.
-* ``PIPE_CAP_TGSI_TES_LAYER_VIEWPORT``: Whether ``TGSI_SEMANTIC_LAYER`` and
-  ``TGSI_SEMANTIC_VIEWPORT_INDEX`` are supported as tessellation evaluation
+* ``PIPE_CAP_TES_LAYER_VIEWPORT``: Whether ``VARYING_SLOT_LAYER`` and
+  ``VARYING_SLOT_VIEWPORT`` are supported as tessellation evaluation
   shader outputs.
 * ``PIPE_CAP_CAN_BIND_CONST_BUFFER_AS_VERTEX``: Whether a buffer with just
   PIPE_BIND_CONSTANT_BUFFER can be legally passed to set_vertex_buffers.
