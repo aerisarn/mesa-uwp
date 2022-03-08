@@ -2127,18 +2127,6 @@ anv_descriptor_set_write_template(struct anv_device *device,
                                   const struct anv_descriptor_update_template *template,
                                   const void *data);
 
-VkResult
-anv_descriptor_set_create(struct anv_device *device,
-                          struct anv_descriptor_pool *pool,
-                          struct anv_descriptor_set_layout *layout,
-                          uint32_t var_desc_count,
-                          struct anv_descriptor_set **out_set);
-
-void
-anv_descriptor_set_destroy(struct anv_device *device,
-                           struct anv_descriptor_pool *pool,
-                           struct anv_descriptor_set *set);
-
 #define ANV_DESCRIPTOR_SET_NULL             (UINT8_MAX - 5)
 #define ANV_DESCRIPTOR_SET_PUSH_CONSTANTS   (UINT8_MAX - 4)
 #define ANV_DESCRIPTOR_SET_DESCRIPTORS      (UINT8_MAX - 3)

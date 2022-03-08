@@ -1132,7 +1132,7 @@ anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout,
           buffer_view_count * sizeof(struct anv_buffer_view);
 }
 
-VkResult
+static VkResult
 anv_descriptor_set_create(struct anv_device *device,
                           struct anv_descriptor_pool *pool,
                           struct anv_descriptor_set_layout *layout,
@@ -1244,7 +1244,7 @@ anv_descriptor_set_create(struct anv_device *device,
    return VK_SUCCESS;
 }
 
-void
+static void
 anv_descriptor_set_destroy(struct anv_device *device,
                            struct anv_descriptor_pool *pool,
                            struct anv_descriptor_set *set)
