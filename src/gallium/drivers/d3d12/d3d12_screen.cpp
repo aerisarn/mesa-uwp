@@ -268,7 +268,7 @@ d3d12_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
-   case PIPE_CAP_TGSI_INSTANCEID:
+   case PIPE_CAP_VS_INSTANCEID:
    case PIPE_CAP_TGSI_TEX_TXF_LZ:
    case PIPE_CAP_OCCLUSION_QUERY:
    case PIPE_CAP_POINT_SPRITE:

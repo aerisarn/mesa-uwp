@@ -337,7 +337,7 @@ struct blitter_context *util_blitter_create(struct pipe_context *pipe)
    }
 
    ctx->has_layered =
-      pipe->screen->get_param(pipe->screen, PIPE_CAP_TGSI_INSTANCEID) &&
+      pipe->screen->get_param(pipe->screen, PIPE_CAP_VS_INSTANCEID) &&
       pipe->screen->get_param(pipe->screen, PIPE_CAP_TGSI_VS_LAYER_VIEWPORT);
 
    /* set invariant vertex coordinates */

@@ -667,7 +667,7 @@ st_init_pbo_helpers(struct st_context *st)
    st->pbo.rgba_only =
       screen->get_param(screen, PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY);
 
-   if (screen->get_param(screen, PIPE_CAP_TGSI_INSTANCEID)) {
+   if (screen->get_param(screen, PIPE_CAP_VS_INSTANCEID)) {
       if (screen->get_param(screen, PIPE_CAP_TGSI_VS_LAYER_VIEWPORT)) {
          st->pbo.layers = true;
       } else if (screen->get_param(screen, PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES) >= 3 &&

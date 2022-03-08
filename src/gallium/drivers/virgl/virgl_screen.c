@@ -138,7 +138,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return vscreen->caps.caps.v1.bset.primitive_restart;
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
       return vscreen->caps.caps.v1.bset.shader_stencil_export;
-   case PIPE_CAP_TGSI_INSTANCEID:
+   case PIPE_CAP_VS_INSTANCEID:
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
       return 1;
    case PIPE_CAP_SEAMLESS_CUBE_MAP:

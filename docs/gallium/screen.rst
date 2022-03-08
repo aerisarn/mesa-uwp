@@ -83,8 +83,8 @@ The integer capabilities:
   clipping. If not, depth_clamp will be the inverse of depth_clip_far.
 * ``PIPE_CAP_SHADER_STENCIL_EXPORT``: Whether a stencil reference value can be
   written from a fragment shader.
-* ``PIPE_CAP_TGSI_INSTANCEID``: Whether TGSI_SEMANTIC_INSTANCEID is supported
-  in the vertex shader.
+* ``PIPE_CAP_VS_INSTANCEID``: Whether ``SYSTEM_VALUE_INSTANCE_ID`` is
+  supported in the vertex shader.
 * ``PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR``: Whether the driver supports
   per-instance vertex attribs.
 * ``PIPE_CAP_FRAGMENT_COLOR_CLAMPED``: Whether fragment color clamping is
