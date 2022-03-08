@@ -7027,14 +7027,11 @@ iris_upload_render_state(struct iris_context *ice,
    } else if (indirect && indirect->count_from_stream_output) {
       struct iris_stream_output_target *so =
          (void *) indirect->count_from_stream_output;
+      struct iris_bo *so_bo = iris_resource_bo(so->offset.res);
 
-      /* XXX: Replace with actual cache tracking */
-      iris_emit_pipe_control_flush(batch,
-                                   "draw count from stream output stall",
-                                   PIPE_CONTROL_CS_STALL);
+      iris_emit_buffer_barrier_for(batch, so_bo, IRIS_DOMAIN_OTHER_READ);
 
-      struct iris_address addr =
-         ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
+      struct iris_address addr = ro_bo(so_bo, so->offset.offset);
       struct mi_value offset =
          mi_iadd_imm(&b, mi_mem32(addr), -so->base.buffer_offset);
       mi_store(&b, mi_reg32(_3DPRIM_VERTEX_COUNT),
