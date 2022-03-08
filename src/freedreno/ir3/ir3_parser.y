@@ -789,7 +789,7 @@ iflag:             T_SY   { iflags.flags |= IR3_INSTR_SY; }
 iflags:
 |                  iflag iflags
 
-instrs:            instr instrs
+instrs:            instrs instr
 |                  instr
 
 instr:             iflags cat0_instr
