@@ -686,6 +686,10 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    }
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
       VKCTX(CmdBeginQuery)(batch->state->cmdbuf, q->query_pool, q->curr_query, flags);
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && q->index == PIPE_STAT_QUERY_IA_VERTICES)  {
+      assert(!ctx->vertices_query);
+      ctx->vertices_query = q;
+   }
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    zink_batch_usage_set(&q->batch_id, batch->state);
@@ -748,6 +752,10 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    }
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
       VKCTX(CmdEndQuery)(batch->state->cmdbuf, q->query_pool, q->curr_query);
+
+   if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
+       q->index == PIPE_STAT_QUERY_IA_VERTICES)
+      ctx->vertices_query = NULL;
 
    if (needs_stats_list(q))
       list_delinit(&q->stats_list);
