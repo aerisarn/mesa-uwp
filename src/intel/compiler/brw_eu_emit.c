@@ -638,7 +638,7 @@ brw_inst_set_state(const struct brw_isa_info *isa,
          brw_inst_set_flag_reg_nr(devinfo, insn, state->flag_subreg / 2);
    }
 
-   if (devinfo->ver >= 6)
+   if (devinfo->ver >= 6 && devinfo->ver < 20)
       brw_inst_set_acc_wr_control(devinfo, insn, state->acc_wr_control);
 }
 

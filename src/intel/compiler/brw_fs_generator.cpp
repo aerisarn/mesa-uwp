@@ -1762,7 +1762,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       brw_set_default_flag_reg(p, flag_subreg / 2, flag_subreg % 2);
       brw_set_default_saturate(p, inst->saturate);
       brw_set_default_mask_control(p, inst->force_writemask_all);
-      brw_set_default_acc_write_control(p, inst->writes_accumulator);
+      if (devinfo->ver >= 20 && inst->writes_accumulator) {
+         assert(inst->dst.is_accumulator() ||
+                inst->opcode == BRW_OPCODE_ADDC ||
+                inst->opcode == BRW_OPCODE_MACH ||
+                inst->opcode == BRW_OPCODE_SUBB);
+      } else {
+         brw_set_default_acc_write_control(p, inst->writes_accumulator);
+      }
       brw_set_default_swsb(p, swsb);
 
       unsigned exec_size = inst->exec_size;
