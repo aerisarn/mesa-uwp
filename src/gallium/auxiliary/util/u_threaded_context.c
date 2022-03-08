@@ -2182,15 +2182,10 @@ tc_buffer_map(struct pipe_context *_pipe,
          tres->cpu_storage = align_malloc(resource->width0, tc->map_buffer_alignment);
 
       if (tres->cpu_storage) {
-         struct threaded_transfer *ttrans = slab_alloc(&tc->pool_transfers);
+         struct threaded_transfer *ttrans = slab_zalloc(&tc->pool_transfers);
          ttrans->b.resource = resource;
-         ttrans->b.level = 0;
          ttrans->b.usage = usage;
          ttrans->b.box = *box;
-         ttrans->b.stride = 0;
-         ttrans->b.layer_stride = 0;
-         ttrans->b.offset = 0;
-         ttrans->staging = NULL;
          ttrans->valid_buffer_range = &tres->valid_buffer_range;
          ttrans->cpu_storage_mapped = true;
          *transfer = &ttrans->b;
@@ -2205,10 +2200,8 @@ tc_buffer_map(struct pipe_context *_pipe,
     * only get resource_copy_region.
     */
    if (usage & PIPE_MAP_DISCARD_RANGE) {
-      struct threaded_transfer *ttrans = slab_alloc(&tc->pool_transfers);
+      struct threaded_transfer *ttrans = slab_zalloc(&tc->pool_transfers);
       uint8_t *map;
-
-      ttrans->staging = NULL;
 
       u_upload_alloc(tc->base.stream_uploader, 0,
                      box->width + (box->x % tc->map_buffer_alignment),
