@@ -2544,6 +2544,9 @@ iris_dirty_for_history(struct iris_context *ice,
    if (res->bind_history & PIPE_BIND_VERTEX_BUFFER)
       dirty |= IRIS_DIRTY_VERTEX_BUFFER_FLUSHES;
 
+   if (ice->state.streamout_active && (res->bind_history & PIPE_BIND_STREAM_OUTPUT))
+      dirty |= IRIS_DIRTY_SO_BUFFERS;
+
    ice->state.dirty |= dirty;
    ice->state.stage_dirty |= stage_dirty;
 }
