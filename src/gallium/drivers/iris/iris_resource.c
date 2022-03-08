@@ -2255,16 +2255,15 @@ iris_transfer_map(struct pipe_context *ctx,
    struct iris_transfer *map;
 
    if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
-      map = slab_alloc(&ice->transfer_pool_unsync);
+      map = slab_zalloc(&ice->transfer_pool_unsync);
    else
-      map = slab_alloc(&ice->transfer_pool);
+      map = slab_zalloc(&ice->transfer_pool);
 
    if (!map)
       return NULL;
 
    struct pipe_transfer *xfer = &map->base.b;
 
-   memset(map, 0, sizeof(*map));
    map->dbg = &ice->dbg;
 
    pipe_resource_reference(&xfer->resource, resource);
