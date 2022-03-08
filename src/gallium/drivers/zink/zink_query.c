@@ -48,6 +48,7 @@ struct zink_query {
    struct list_head stats_list; /* when active, statistics queries are added to ctx->primitives_generated_queries */
    bool have_gs[NUM_QUERIES]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT */
    bool have_xfb[NUM_QUERIES]; /* xfb was active during this query */
+   bool was_line_loop[NUM_QUERIES];
    bool has_draws; /* have_gs and have_xfb are valid for idx=curr_query */
 
    struct zink_batch_usage *batch_id; //batch that the query was started in
@@ -406,7 +407,14 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
             result->b |= results[i] != results[i + 1];
          break;
       case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
-         result->u64 += results[i];
+         switch (query->index) {
+         case PIPE_STAT_QUERY_IA_VERTICES:
+            result->u64 += query->was_line_loop[query->last_start + i] ? results[i] / 2 : results[i];
+            break;
+         default:
+            result->u64 += results[i];
+            break;
+         }
          break;
 
       default:
@@ -579,6 +587,7 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
    }
    memset(q->have_gs, 0, sizeof(q->have_gs));
    memset(q->have_xfb, 0, sizeof(q->have_xfb));
+   memset(q->was_line_loop, 0, sizeof(q->was_line_loop));
    q->last_start = q->curr_query = 0;
    q->needs_reset = false;
    /* create new qbo for non-timestamp queries:
@@ -871,7 +880,7 @@ zink_resume_queries(struct zink_context *ctx, struct zink_batch *batch)
 }
 
 void
-zink_query_update_gs_states(struct zink_context *ctx)
+zink_query_update_gs_states(struct zink_context *ctx, bool was_line_loop)
 {
    struct zink_query *query;
    LIST_FOR_EACH_ENTRY(query, &ctx->primitives_generated_queries, stats_list) {
@@ -888,6 +897,17 @@ zink_query_update_gs_states(struct zink_context *ctx)
       }
       query->have_gs[query->curr_query] = have_gs;
       query->have_xfb[query->curr_query] = have_xfb;
+      query->has_draws = true;
+   }
+   if (ctx->vertices_query) {
+      query = ctx->vertices_query;
+      assert(query->curr_query < ARRAY_SIZE(query->have_gs));
+      assert(query->active);
+      if (query->was_line_loop[query->curr_query] != was_line_loop) {
+         suspend_query(ctx, query);
+         begin_query(ctx, &ctx->batch, query);
+      }
+      query->was_line_loop[query->curr_query] = was_line_loop;
       query->has_draws = true;
    }
 }
