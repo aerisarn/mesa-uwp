@@ -70,6 +70,8 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 extern "C" {
 #endif
 
+struct vk_device_dispatch_table;
+
 struct vk_cmd_queue {
    const VkAllocationCallbacks *alloc;
    struct list_head cmds;
@@ -169,6 +171,10 @@ vk_cmd_queue_finish(struct vk_cmd_queue *queue)
    list_inithead(&queue->cmds);
 }
 
+void vk_cmd_queue_execute(struct vk_cmd_queue *queue,
+                          VkCommandBuffer commandBuffer,
+                          const struct vk_device_dispatch_table *disp);
+
 #ifdef __cplusplus
 }
 #endif
@@ -185,6 +191,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
 #include "vk_alloc.h"
 #include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_command_buffer.h"
+#include "vk_dispatch_table.h"
 
 const char *vk_cmd_queue_type_names[] = {
 % for c in commands:
@@ -272,6 +279,33 @@ vk_free_queue(struct vk_cmd_queue *queue)
 % endfor
       }
       vk_free(queue->alloc, cmd);
+   }
+}
+
+void
+vk_cmd_queue_execute(struct vk_cmd_queue *queue,
+                     VkCommandBuffer commandBuffer,
+                     const struct vk_device_dispatch_table *disp)
+{
+   list_for_each_entry(struct vk_cmd_queue_entry, cmd, &queue->cmds, cmd_link) {
+      switch (cmd->type) {
+% for c in commands:
+% if c.guard is not None:
+#ifdef ${c.guard}
+% endif
+      case ${to_enum_name(c.name)}:
+          disp->${c.name}(commandBuffer
+% for p in c.params[1:]:
+             , cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)}\\
+% endfor
+          );
+          break;
+% if c.guard is not None:
+#endif // ${c.guard}
+% endif
+% endfor
+      default: unreachable("Unsupported command");
+      }
    }
 }
 
