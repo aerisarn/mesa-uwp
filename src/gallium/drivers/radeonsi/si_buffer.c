@@ -317,21 +317,16 @@ static void *si_buffer_get_transfer(struct pipe_context *ctx, struct pipe_resour
    struct si_transfer *transfer;
 
    if (usage & PIPE_MAP_THREAD_SAFE)
-      transfer = malloc(sizeof(*transfer));
+      transfer = calloc(1, sizeof(*transfer));
    else if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
-      transfer = slab_alloc(&sctx->pool_transfers_unsync);
+      transfer = slab_zalloc(&sctx->pool_transfers_unsync);
    else
-      transfer = slab_alloc(&sctx->pool_transfers);
+      transfer = slab_zalloc(&sctx->pool_transfers);
 
-   transfer->b.b.resource = NULL;
    pipe_resource_reference(&transfer->b.b.resource, resource);
-   transfer->b.b.level = 0;
    transfer->b.b.usage = usage;
    transfer->b.b.box = *box;
-   transfer->b.b.stride = 0;
-   transfer->b.b.layer_stride = 0;
    transfer->b.b.offset = offset;
-   transfer->b.staging = NULL;
    transfer->staging = staging;
    *ptransfer = &transfer->b.b;
    return data;
