@@ -47,7 +47,15 @@ struct vk_device {
 
    /** Command dispatch table
     *
-    * This is used for emulated secondary command buffer support.
+    * This is used for emulated secondary command buffer support.  To use
+    * emulated (trace/replay) secondary command buffers:
+    *
+    *  1. Provide your "real" command buffer dispatch table here.  Because
+    *     this doesn't get populated by vk_device_init(), the driver will have
+    *     to add the vk_common entrypoints to this table itself.
+    *
+    *  2. Add vk_enqueue_unless_primary_device_entrypoint_table to your device
+    *     level dispatch table.
     */
    const struct vk_device_dispatch_table *command_dispatch_table;
 

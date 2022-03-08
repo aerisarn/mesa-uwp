@@ -24,6 +24,8 @@
 #include "vk_command_buffer.h"
 
 #include "vk_command_pool.h"
+#include "vk_common_entrypoints.h"
+#include "vk_device.h"
 
 VkResult
 vk_command_buffer_init(struct vk_command_buffer *command_buffer,
@@ -62,4 +64,20 @@ vk_command_buffer_finish(struct vk_command_buffer *command_buffer)
    vk_cmd_queue_finish(&command_buffer->cmd_queue);
    util_dynarray_fini(&command_buffer->labels);
    vk_object_base_finish(&command_buffer->base);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdExecuteCommands(VkCommandBuffer commandBuffer,
+                             uint32_t commandBufferCount,
+                             const VkCommandBuffer *pCommandBuffers)
+{
+   VK_FROM_HANDLE(vk_command_buffer, primary, commandBuffer);
+   const struct vk_device_dispatch_table *disp =
+      primary->base.device->command_dispatch_table;
+
+   for (uint32_t i = 0; i < commandBufferCount; i++) {
+      VK_FROM_HANDLE(vk_command_buffer, secondary, pCommandBuffers[i]);
+
+      vk_cmd_queue_execute(&secondary->cmd_queue, commandBuffer, disp);
+   }
 }
