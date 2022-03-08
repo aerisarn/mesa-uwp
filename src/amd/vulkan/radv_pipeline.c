@@ -6710,6 +6710,14 @@ radv_GetPipelineExecutableStatisticsKHR(VkDevice _device,
    VkResult result = VK_SUCCESS;
 
    if (s < end) {
+      desc_copy(s->name, "Driver pipeline hash");
+      desc_copy(s->description, "Driver pipeline hash used by RGP");
+      s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+      s->value.u64 = pipeline->pipeline_hash;
+   }
+   ++s;
+
+   if (s < end) {
       desc_copy(s->name, "SGPRs");
       desc_copy(s->description, "Number of SGPR registers allocated per subgroup");
       s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
