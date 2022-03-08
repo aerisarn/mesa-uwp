@@ -1327,9 +1327,9 @@ get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_c
       return get_fvec_type(ctx, 64, num_components);
 
    default:
+      unreachable("unknown type");
       break;
    }
-   unreachable("unknown type");
    return 0;
 }
 
