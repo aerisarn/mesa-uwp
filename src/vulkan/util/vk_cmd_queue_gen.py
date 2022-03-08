@@ -185,6 +185,8 @@ TEMPLATE_C = Template(COPYRIGHT + """
 #include <vulkan/vulkan.h>
 
 #include "vk_alloc.h"
+#include "vk_cmd_enqueue_entrypoints.h"
+#include "vk_command_buffer.h"
 
 const char *vk_cmd_queue_type_names[] = {
 % for c in commands:
@@ -272,6 +274,32 @@ vk_free_queue(struct vk_cmd_queue *queue)
    }
 }
 
+% for c in commands:
+% if c.name in manual_commands:
+/* TODO: Generate vk_cmd_enqueue_${c.name}() */
+<% continue %>
+% endif
+
+% if c.guard is not None:
+#ifdef ${c.guard}
+% endif
+<% assert c.return_type == 'void' %>
+VKAPI_ATTR void VKAPI_CALL
+vk_cmd_enqueue_${c.name}(${c.decl_params()})
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+
+% if len(c.params) == 1:
+   vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue);
+% else:
+   vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue,
+                                       ${c.call_params(1)});
+% endif
+}
+% if c.guard is not None:
+#endif // ${c.guard}
+% endif
+% endfor
 """, output_encoding='utf-8')
 
 def remove_prefix(text, prefix):

@@ -45,6 +45,12 @@ struct vk_device {
 
    struct vk_device_dispatch_table dispatch_table;
 
+   /** Command dispatch table
+    *
+    * This is used for emulated secondary command buffer support.
+    */
+   const struct vk_device_dispatch_table *command_dispatch_table;
+
    /* For VK_EXT_private_data */
    uint32_t private_data_next_index;
 
