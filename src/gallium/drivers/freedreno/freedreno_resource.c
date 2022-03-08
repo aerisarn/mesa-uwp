@@ -956,17 +956,15 @@ fd_resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
    }
 
    if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC) {
-      ptrans = slab_alloc(&ctx->transfer_pool_unsync);
+      ptrans = slab_zalloc(&ctx->transfer_pool_unsync);
    } else {
-      ptrans = slab_alloc(&ctx->transfer_pool);
+      ptrans = slab_zalloc(&ctx->transfer_pool);
    }
 
    if (!ptrans)
       return NULL;
 
-   /* slab_alloc_st() doesn't zero: */
    trans = fd_transfer(ptrans);
-   memset(trans, 0, sizeof(*trans));
 
    usage = improve_transfer_map_usage(ctx, rsc, usage, box);
 
