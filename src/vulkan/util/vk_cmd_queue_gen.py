@@ -35,14 +35,25 @@ from mako.template import Template
 # '{file_without_suffix}_depend_files'.
 from vk_entrypoints import get_entrypoints_from_xml, EntrypointParam
 
-MANUAL_COMMANDS = ['CmdPushDescriptorSetKHR',             # This script doesn't know how to copy arrays in structs in arrays
-                   'CmdPushDescriptorSetWithTemplateKHR', # pData's size cannot be calculated from the xml
-                   'CmdDrawMultiEXT',                     # The size of the elements is specified in a stride param
-                   'CmdDrawMultiIndexedEXT',              # The size of the elements is specified in a stride param
-                   'CmdBindDescriptorSets',               # The VkPipelineLayout object could be released before the command is executed
-                   'CmdBeginRendering',               # The VkPipelineLayout object could be released before the command is executed
-                   'CmdBeginRenderingKHR',               # The VkPipelineLayout object could be released before the command is executed
-                  ]
+MANUAL_COMMANDS = [
+    # This script doesn't know how to copy arrays in structs in arrays
+    'CmdPushDescriptorSetKHR',
+
+    # pData's size cannot be calculated from the xml
+    'CmdPushDescriptorSetWithTemplateKHR',
+
+    # The size of the elements is specified in a stride param
+    'CmdDrawMultiEXT',
+    'CmdDrawMultiIndexedEXT',
+
+    # The VkPipelineLayout object could be released before the command is
+    # executed
+    'CmdBindDescriptorSets',
+
+    # Lavapipe implements internally
+    'CmdBeginRendering',
+    'CmdBeginRenderingKHR',
+]
 
 TEMPLATE_H = Template(COPYRIGHT + """\
 /* This file generated from ${filename}, don't edit directly. */
