@@ -134,6 +134,8 @@ struct radeon_info {
    unsigned ib_alignment; /* both start and size alignment */
    uint32_t me_fw_version;
    uint32_t me_fw_feature;
+   uint32_t mec_fw_version;
+   uint32_t mec_fw_feature;
    uint32_t pfp_fw_version;
    uint32_t pfp_fw_feature;
    uint32_t ce_fw_version;
