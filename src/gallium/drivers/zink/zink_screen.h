@@ -286,7 +286,7 @@ zink_stub_function_not_loaded(void);
    do { \
       static bool warned = false; \
       if (!warned) { \
-         fprintf(stderr, "WARNING: Incorrect rendering will happen, " \
+         mesa_logw("WARNING: Incorrect rendering will happen, " \
                          "because the Vulkan device doesn't support " \
                          "the %s feature\n", feat); \
          warned = true; \
