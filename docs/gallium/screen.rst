@@ -328,8 +328,8 @@ The integer capabilities:
 * ``PIPE_CAP_DRAW_PARAMETERS``: Whether ``TGSI_SEMANTIC_BASEVERTEX``,
   ``TGSI_SEMANTIC_BASEINSTANCE``, and ``TGSI_SEMANTIC_DRAWID`` are
   supported in vertex shaders.
-* ``PIPE_CAP_TGSI_PACK_HALF_FLOAT``: Whether the ``UP2H`` and ``PK2H``
-  TGSI opcodes are supported.
+* ``PIPE_CAP_SHADER_PACK_HALF_FLOAT``: Whether packed 16-bit float
+  packing/unpacking opcodes are supported.
 * ``PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL``: If gallium frontends should use
   a system value for the POSITION fragment shader input.
 * ``PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL``: If gallium frontends should use

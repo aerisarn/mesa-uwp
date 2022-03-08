@@ -133,7 +133,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
         case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
         case PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET:
         case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
-        case PIPE_CAP_TGSI_PACK_HALF_FLOAT:
+        case PIPE_CAP_SHADER_PACK_HALF_FLOAT:
         case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
         case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
         case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
