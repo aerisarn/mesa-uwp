@@ -1,6 +1,3 @@
-KHR-GL46.gpu_shader_fp64.builtin.mod_dvec2,Fail
-KHR-GL46.gpu_shader_fp64.builtin.mod_dvec3,Fail
-KHR-GL46.gpu_shader_fp64.builtin.mod_dvec4,Fail
 KHR-GL46.pipeline_statistics_query_tests_ARB.functional_primitives_vertices_submitted_and_clipping_input_output_primitives,Fail
 KHR-GL46.shader_ballot_tests.ShaderBallotAvailability,Crash
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Crash
