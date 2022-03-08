@@ -39,6 +39,7 @@
 #include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/driconf.h"
+#include "util/os_misc.h"
 #include "util/u_atomic.h"
 #include "vk_format.h"
 #include "vk_util.h"
@@ -411,7 +412,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    instance->physical_device_count = -1;
 
    instance->debug_flags =
-      parse_debug_string(getenv("TU_DEBUG"), tu_debug_options);
+      parse_debug_string(os_get_option("TU_DEBUG"), tu_debug_options);
 
 #ifdef DEBUG
    /* Enable startup debugging by default on debug drivers.  You almost always
