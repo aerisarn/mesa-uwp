@@ -34,6 +34,7 @@
 #include "nir_conversion_builder.h"
 #include "spirv/nir_spirv.h"
 #include "util/mesa-sha1.h"
+#include "vk_shader_module.h"
 
 #include "pan_shader.h"
 #include "util/pan_lower_framebuffer.h"
@@ -541,7 +542,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
                               bool static_blend_constants,
                               const VkAllocationCallbacks *alloc)
 {
-   const struct panvk_shader_module *module = panvk_shader_module_from_handle(stage_info->module);
+   VK_FROM_HANDLE(vk_shader_module, module, stage_info->module);
    struct panfrost_device *pdev = &dev->physical_device->pdev;
    struct panvk_shader *shader;
 
@@ -553,9 +554,9 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    util_dynarray_init(&shader->binary, NULL);
 
    /* translate SPIR-V to NIR */
-   assert(module->code_size % 4 == 0);
-   nir_shader *nir = panvk_spirv_to_nir(module->code,
-                                        module->code_size,
+   assert(module->size % 4 == 0);
+   nir_shader *nir = panvk_spirv_to_nir(module->data,
+                                        module->size,
                                         stage, stage_info->pName,
                                         stage_info->pSpecializationInfo,
                                         GENX(pan_shader_get_compiler_options)());

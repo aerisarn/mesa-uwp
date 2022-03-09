@@ -742,14 +742,6 @@ struct panvk_event {
    uint32_t syncobj;
 };
 
-struct panvk_shader_module {
-   struct vk_object_base base;
-   unsigned char sha1[20];
-
-   uint32_t code_size;
-   const uint32_t *code[0];
-};
-
 struct panvk_shader {
    struct pan_shader_info info;
    struct util_dynarray binary;
@@ -1069,7 +1061,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline, base, VkPipeline, VK_OBJECT_TYPE_
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_render_pass, base, VkRenderPass, VK_OBJECT_TYPE_RENDER_PASS)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_shader_module, base, VkShaderModule, VK_OBJECT_TYPE_SHADER_MODULE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_semaphore, base, VkSemaphore, VK_OBJECT_TYPE_SEMAPHORE)
 
 #define panvk_arch_name(name, version) panvk_## version ## _ ## name
