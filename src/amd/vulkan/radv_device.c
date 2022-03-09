@@ -544,7 +544,6 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .AMD_shader_explicit_vertex_parameter = true,
       .AMD_shader_fragment_mask = true,
       .AMD_shader_image_load_store_lod = true,
-      .AMD_shader_info = true,
       .AMD_shader_trinary_minmax = true,
       .AMD_texture_gather_bias_lod = true,
 #ifdef ANDROID
@@ -3229,8 +3228,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->ws = physical_device->ws;
    device->vk.create_sync_for_memory = radv_create_sync_for_memory;
    vk_device_set_drm_fd(&device->vk, device->ws->get_fd(device->ws));
-
-   keep_shader_info = device->vk.enabled_extensions.AMD_shader_info;
 
    /* With update after bind we can't attach bo's to the command buffer
     * from the descriptor set anymore, so we have to use a global BO list.

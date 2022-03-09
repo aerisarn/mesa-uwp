@@ -596,7 +596,6 @@ Khronos extensions that are not part of any Vulkan version:
   VK_AMD_shader_explicit_vertex_parameter               DONE (radv)
   VK_AMD_shader_fragment_mask                           DONE (radv)
   VK_AMD_shader_image_load_store_lod                    DONE (radv)
-  VK_AMD_shader_info                                    DONE (radv)
   VK_AMD_shader_trinary_minmax                          DONE (radv)
   VK_AMD_texture_gather_bias_lod                        DONE (radv)
   VK_ARM_rasterization_order_attachment_access          DONE (tu)
