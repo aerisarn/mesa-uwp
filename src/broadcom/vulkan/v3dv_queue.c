@@ -1619,6 +1619,8 @@ v3dv_GetPhysicalDeviceExternalSemaphoreProperties(
     const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
     VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
 {
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physicalDevice);
+
    switch (pExternalSemaphoreInfo->handleType) {
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
@@ -1629,21 +1631,16 @@ v3dv_GetPhysicalDeviceExternalSemaphoreProperties(
          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT |
          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
 
-      /* FIXME: we can't import external semaphores until we improve the kernel
-       * submit interface to handle multiple in syncobjs, because once we have
-       * an imported semaphore in our list of semaphores to wait on, we can no
-       * longer use the workaround of waiting on the last syncobj fence produced
-       * from the device, since the imported semaphore may not (and in fact, it
-       * would typically not) have been produced from same device.
-       *
-       * This behavior is exercised via dEQP-VK.synchronization.cross_instance.*.
-       * Particularly, this test:
-       * dEQP-VK.synchronization.cross_instance.dedicated.
-       * write_ssbo_compute_read_vertex_input.buffer_16384_binary_semaphore_fd
-       * fails consistently because of this, so it'll be a good reference to
-       * verify the implementation when the kernel bits are in place.
+      /* We need to have multisync support in our kernel interface to support
+       * external semaphore imports because once we have an imported semaphore
+       * in our list of semaphores to wait on, we can no longer use the
+       * workaround of waiting on the last syncobj fence produced from the
+       * device, since the imported semaphore may not (and in fact, it would
+       * typically not) have been produced from same device.
        */
-      pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
+      pExternalSemaphoreProperties->externalSemaphoreFeatures =
+         pdevice->caps.multisync ?
+            VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT : 0;
 
       /* FIXME: See comment in GetPhysicalDeviceExternalFenceProperties
        * for details on why we can't export to SYNC_FD.
