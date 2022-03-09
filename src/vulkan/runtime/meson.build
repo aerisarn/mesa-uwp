@@ -48,6 +48,8 @@ vulkan_runtime_files = files(
   'vk_instance.h',
   'vk_log.c',
   'vk_log.h',
+  'vk_nir.c',
+  'vk_nir.h',
   'vk_object.c',
   'vk_object.h',
   'vk_physical_device.c',
