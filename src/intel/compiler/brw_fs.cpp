@@ -7303,6 +7303,14 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
    prog_data->persample_dispatch = MIN2(prog_data->persample_dispatch,
                                         key->multisample_fbo);
 
+   /* Currently only the Vulkan API allows alpha_to_coverage to be dynamic. If
+    * persample_dispatch & multisample_fbo are not dynamic, Anv should be able
+    * to definitively tell whether alpha_to_coverage is on or off.
+    */
+   prog_data->alpha_to_coverage = key->alpha_to_coverage;
+   assert(prog_data->alpha_to_coverage != BRW_SOMETIMES ||
+          prog_data->persample_dispatch == BRW_SOMETIMES);
+
    if (devinfo->ver >= 6) {
       prog_data->uses_sample_mask =
          BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
@@ -7411,13 +7419,13 @@ brw_compile_fs(const struct brw_compiler *compiler,
     *  "If Pixel Shader outputs oMask, AlphaToCoverage is disabled in
     *   hardware, regardless of the state setting for this feature."
     */
-   if (devinfo->ver > 6 && key->alpha_to_coverage) {
+   if (devinfo->ver > 6 && key->alpha_to_coverage != BRW_NEVER) {
       /* Run constant fold optimization in order to get the correct source
        * offset to determine render target 0 store instruction in
        * emit_alpha_to_coverage pass.
        */
       NIR_PASS_V(nir, nir_opt_constant_folding);
-      NIR_PASS_V(nir, brw_nir_lower_alpha_to_coverage);
+      NIR_PASS_V(nir, brw_nir_lower_alpha_to_coverage, key, prog_data);
    }
 
    NIR_PASS_V(nir, brw_nir_move_interpolation_to_top);

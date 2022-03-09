@@ -487,8 +487,10 @@ struct brw_wm_prog_key {
    bool emit_alpha_test:1;
    enum compare_func alpha_test_func:3; /* < For Gfx4/5 MRT alpha test */
    bool alpha_test_replicate_alpha:1;
-   bool alpha_to_coverage:1;
+   enum brw_sometimes alpha_to_coverage:2;
    bool clamp_fragment_color:1;
+
+   bool force_dual_color_blend:1;
 
    /** Whether or inputs are interpolated at sample rate by default
     *
@@ -504,12 +506,12 @@ struct brw_wm_prog_key {
    enum brw_sometimes multisample_fbo:2;
 
    enum brw_sometimes line_aa:2;
-   bool force_dual_color_blend:1;
+
    bool coherent_fb_fetch:1;
    bool ignore_sample_mask_out:1;
    bool coarse_pixel:1;
 
-   uint64_t padding:56;
+   uint64_t padding:55;
 };
 
 struct brw_cs_prog_key {
@@ -863,6 +865,9 @@ enum brw_wm_msaa_flags {
    /** True if inputs should be interpolated per-sample by default */
    BRW_WM_MSAA_FLAG_PERSAMPLE_INTERP = (1 << 3),
 
+   /** True if this shader has been dispatched with alpha-to-coverage */
+   BRW_WM_MSAA_FLAG_ALPHA_TO_COVERAGE = (1 << 4),
+
    /** True if this shader has been dispatched coarse
     *
     * This is intentionally chose to be bit 15 to correspond to the coarse bit
@@ -948,6 +953,12 @@ struct brw_wm_prog_data {
     * Shader is ran at the coarse pixel shading dispatch rate (3DSTATE_CPS).
     */
    enum brw_sometimes coarse_pixel_dispatch;
+
+   /**
+    * Shader writes the SampleMask and this is AND-ed with the API's
+    * SampleMask to generate a new coverage mask.
+    */
+   enum brw_sometimes alpha_to_coverage;
 
    unsigned msaa_flags_param;
 

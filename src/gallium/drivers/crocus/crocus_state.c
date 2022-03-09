@@ -4836,7 +4836,8 @@ crocus_populate_fs_key(const struct crocus_context *ice,
 
    key->clamp_fragment_color = rast->cso.clamp_fragment_color;
 
-   key->alpha_to_coverage = blend->cso.alpha_to_coverage;
+   key->alpha_to_coverage = blend->cso.alpha_to_coverage ?
+      BRW_ALWAYS : BRW_NEVER;
 
    key->alpha_test_replicate_alpha = fb->nr_cbufs > 1 && zsa->cso.alpha_enabled;
 
