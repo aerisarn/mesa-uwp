@@ -1295,6 +1295,19 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
 #else
    GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, depth_stencil_dw, &depth_stencil);
 #endif
+
+#if GFX_VER >= 12
+   if ((dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
+                          ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE)) == 0) {
+      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_DEPTH_BOUNDS), db) {
+         db.DepthBoundsTestValueModifyDisable = false;
+         db.DepthBoundsTestEnableModifyDisable = false;
+         db.DepthBoundsTestEnable = pCreateInfo->depthBoundsTestEnable;
+         db.DepthBoundsTestMinValue = pCreateInfo->minDepthBounds;
+         db.DepthBoundsTestMaxValue = pCreateInfo->maxDepthBounds;
+      }
+   }
+#endif
 }
 
 static bool
