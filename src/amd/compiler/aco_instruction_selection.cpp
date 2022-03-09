@@ -3266,19 +3266,10 @@ visit_alu_instr(isel_context* ctx, nir_alu_instr* instr)
    case nir_op_pack_32_4x8: bld.copy(Definition(dst), get_alu_src(ctx, instr->src[0], 4)); break;
    case nir_op_pack_half_2x16_split: {
       if (dst.regClass() == v1) {
-         if (!ctx->block->fp_mode.care_about_round16_64 ||
-             ctx->block->fp_mode.round16_64 == fp_round_tz) {
-            if (ctx->program->chip_class == GFX8 || ctx->program->chip_class == GFX9)
-               emit_vop3a_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32_e64, dst);
-            else
-               emit_vop2_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32, dst, false);
-         } else {
-            Temp src0 =
-               bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), get_alu_src(ctx, instr->src[0]));
-            Temp src1 =
-               bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), get_alu_src(ctx, instr->src[1]));
-            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src0, src1);
-         }
+         if (ctx->program->chip_class == GFX8 || ctx->program->chip_class == GFX9)
+            emit_vop3a_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32_e64, dst);
+         else
+            emit_vop2_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32, dst, false);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
