@@ -350,7 +350,7 @@ static int compute_memory_promote_item(struct compute_memory_pool *pool,
 		 * In this case, we need to keep the temporary buffer 'alive'
 		 * because it is possible to keep a map active for reading
 		 * while a kernel (that reads from it) executes */
-		if (!(item->status & ITEM_MAPPED_FOR_READING)) {
+		if (!(item->status & ITEM_MAPPED_FOR_READING) && !is_item_user_ptr(item)) {
 			pool->screen->b.b.resource_destroy(screen, src);
 			item->real_buffer = NULL;
 		}
@@ -495,6 +495,22 @@ static void compute_memory_move_item(struct compute_memory_pool *pool,
 }
 
 /**
+ * Frees one item for compute_memory_free()
+ */
+static void compute_memory_free_item(struct pipe_screen *screen,
+	struct compute_memory_item *item)
+{
+	struct pipe_resource *res = (struct pipe_resource *)item->real_buffer;
+
+	list_del(&item->link);
+
+	if (res && !is_item_user_ptr(item))
+		screen->resource_destroy(screen, res);
+
+	free(item);
+}
+
+/**
  * Frees the memory associated to the item with id \a id from the pool.
  * \param id	The id of the item to be freed.
  */
@@ -502,45 +518,23 @@ void compute_memory_free(struct compute_memory_pool* pool, int64_t id)
 {
 	struct compute_memory_item *item, *next;
 	struct pipe_screen *screen = (struct pipe_screen *)pool->screen;
-	struct pipe_resource *res;
 
 	COMPUTE_DBG(pool->screen, "* compute_memory_free() id + %"PRIi64" \n", id);
 
 	LIST_FOR_EACH_ENTRY_SAFE(item, next, pool->item_list, link) {
-
 		if (item->id == id) {
-
 			if (item->link.next != pool->item_list) {
 				pool->status |= POOL_FRAGMENTED;
 			}
 
-			list_del(&item->link);
-
-			if (item->real_buffer) {
-				res = (struct pipe_resource *)item->real_buffer;
-				pool->screen->b.b.resource_destroy(
-						screen, res);
-			}
-
-			free(item);
-
+			compute_memory_free_item(screen, item);
 			return;
 		}
 	}
 
 	LIST_FOR_EACH_ENTRY_SAFE(item, next, pool->unallocated_list, link) {
-
 		if (item->id == id) {
-			list_del(&item->link);
-
-			if (item->real_buffer) {
-				res = (struct pipe_resource *)item->real_buffer;
-				pool->screen->b.b.resource_destroy(
-						screen, res);
-			}
-
-			free(item);
-
+			compute_memory_free_item(screen, item);
 			return;
 		}
 	}

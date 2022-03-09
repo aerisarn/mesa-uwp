@@ -26,6 +26,7 @@
 
 #include "r600_cs.h"
 #include "evergreen_compute.h"
+#include "compute_memory_pool.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 #include <inttypes.h>
@@ -347,7 +348,8 @@ void *r600_buffer_transfer_map(struct pipe_context *ctx,
 	uint8_t *data;
 
 	if (r600_resource(resource)->compute_global_bo) {
-		return r600_compute_global_transfer_map(ctx, resource, level, usage, box, ptransfer);
+		if ((data = r600_compute_global_transfer_map(ctx, resource, level, usage, box, ptransfer)))
+			return data;
 	}
 
 	assert(box->x + box->width <= resource->width0);
@@ -524,8 +526,9 @@ void r600_buffer_transfer_unmap(struct pipe_context *ctx,
 {
 	struct r600_common_context *rctx = (struct r600_common_context*)ctx;
 	struct r600_transfer *rtransfer = (struct r600_transfer*)transfer;
+	struct r600_resource *rtransferr = r600_resource(transfer->resource);
 
-	if (r600_resource(transfer->resource)->compute_global_bo) {
+	if (rtransferr->compute_global_bo && !rtransferr->b.is_user_ptr) {
 		r600_compute_global_transfer_unmap(ctx, transfer);
 		return;
 	}
@@ -636,7 +639,15 @@ r600_buffer_from_user_memory(struct pipe_screen *screen,
 {
 	struct r600_common_screen *rscreen = (struct r600_common_screen*)screen;
 	struct radeon_winsys *ws = rscreen->ws;
-	struct r600_resource *rbuffer = r600_alloc_buffer_struct(screen, templ);
+	struct r600_resource *rbuffer;
+
+	if ((templ->bind & PIPE_BIND_GLOBAL) &&
+	    (templ->bind & PIPE_BIND_COMPUTE_RESOURCE)) {
+		rbuffer = r600_resource(r600_compute_global_buffer_create(screen, templ));
+		((struct r600_resource_global *)rbuffer)->chunk->real_buffer = rbuffer;
+	} else {
+		rbuffer = r600_alloc_buffer_struct(screen, templ);
+	}
 
 	rbuffer->domains = RADEON_DOMAIN_GTT;
 	rbuffer->flags = 0;

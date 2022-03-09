@@ -1277,6 +1277,9 @@ void *r600_compute_global_transfer_map(struct pipe_context *ctx,
 	assert(box->y == 0);
 	assert(box->z == 0);
 
+	if (buffer->base.b.is_user_ptr)
+		return NULL;
+
 	///TODO: do it better, mapping is not possible if the pool is too big
 	return pipe_buffer_map_range(ctx, dst,
 			offset, box->width, usage, ptransfer);
@@ -1311,9 +1314,12 @@ void r600_compute_global_buffer_destroy(struct pipe_screen *screen,
 	rscreen = (struct r600_screen*)screen;
 
 	compute_memory_free(rscreen->global_pool, buffer->chunk->id);
-
 	buffer->chunk = NULL;
-	free(res);
+
+	if (buffer->base.b.is_user_ptr)
+		r600_buffer_destroy(screen, res);
+	else
+		free(res);
 }
 
 struct pipe_resource *r600_compute_global_buffer_create(struct pipe_screen *screen,
