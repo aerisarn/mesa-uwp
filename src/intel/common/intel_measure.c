@@ -76,15 +76,15 @@ intel_measure_init(struct intel_measure_device *device)
        * warning on the output filehandle.
        */
 
-      /* default batch_size allows for 8k renders in a single batch */
-      const int DEFAULT_BATCH_SIZE = 16 * 1024;
+      /* default batch_size allows for 64k renders in a single batch */
+      const int DEFAULT_BATCH_SIZE = 64 * 1024;
       config.batch_size = DEFAULT_BATCH_SIZE;
 
-      /* Default buffer_size allows for 16k batches per line of output in the
+      /* Default buffer_size allows for 64k batches per line of output in the
        * csv.  Overflow may occur for offscreen workloads or large 'interval'
        * settings.
        */
-      const int DEFAULT_BUFFER_SIZE = 16 * 1024;
+      const int DEFAULT_BUFFER_SIZE = 64 * 1024;
       config.buffer_size = DEFAULT_BUFFER_SIZE;
 
       const char *filename = strstr(env, "file=");
