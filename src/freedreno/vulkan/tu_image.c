@@ -402,6 +402,12 @@ tu_CreateImage(VkDevice _device,
       ubwc_enabled = false;
    }
 
+   /* No sense in tiling a 1D image, you'd just waste space and cache locality. */
+   if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D) {
+      tile_mode = TILE6_LINEAR;
+      ubwc_enabled = false;
+   }
+
    enum pipe_format format =
       tu_vk_format_to_pipe_format(image->vk_format);
    /* Whether a view of the image with an R8G8 format could be made. */
