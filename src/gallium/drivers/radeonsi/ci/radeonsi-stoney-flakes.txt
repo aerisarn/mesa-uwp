@@ -3,3 +3,7 @@ dEQP-GLES3.functional.buffer.map.write.explicit_flush.pixel_unpack_partial
 dEQP-GLES3.functional.buffer.map.write.explicit_flush.transform_feedback_partial
 dEQP-GLES3.functional.buffer.map.write.explicit_flush.uniform_all
 dEQP-GLES3.functional.buffer.map.write.explicit_flush.transform_feedback_all
+
+# sometimes passes?
+spec@egl_chromium_sync_control@conformance
+spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test
