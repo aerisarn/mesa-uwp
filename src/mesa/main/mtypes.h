@@ -1787,6 +1787,15 @@ struct gl_selection
    GLboolean HitFlag;	/**< hit flag */
    GLfloat HitMinZ;	/**< minimum hit depth */
    GLfloat HitMaxZ;	/**< maximum hit depth */
+
+   /* HW GL_SELECT */
+   void *SaveBuffer;        /**< array holds multi stack data */
+   GLuint SaveBufferTail;   /**< offset to SaveBuffer's tail */
+   GLuint SavedStackNum;    /**< number of saved stacks */
+
+   GLboolean ResultUsed;    /**< whether any draw used result buffer */
+   GLuint ResultOffset;     /**< offset into result buffer */
+   struct gl_buffer_object *Result; /**< result buffer */
 };
 
 

@@ -1136,6 +1136,7 @@ _mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
 
    _mesa_free_attrib_data(ctx);
    _mesa_free_eval_data( ctx );
+   _mesa_free_feedback(ctx);
    _mesa_free_texture_data( ctx );
    _mesa_free_image_textures(ctx);
    _mesa_free_matrix_data( ctx );

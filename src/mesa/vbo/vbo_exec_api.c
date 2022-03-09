@@ -922,8 +922,13 @@ _mesa_End(void)
       last_draw->count = count;
       exec->vtx.markers[last].end = 1;
 
-      if (count)
+      if (count) {
+         /* mark result buffer used */
+         if (_mesa_hw_select_enabled(ctx))
+            ctx->Select.ResultUsed = GL_TRUE;
+
          ctx->Driver.NeedFlush |= FLUSH_STORED_VERTICES;
+      }
 
       /* Special handling for GL_LINE_LOOP */
       if (exec->vtx.mode[last] == GL_LINE_LOOP &&
