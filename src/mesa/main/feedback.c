@@ -221,68 +221,66 @@ _mesa_update_hitflag(struct gl_context *ctx, GLfloat z)
    }
 }
 
-
-/**
- * Write the hit record.
- *
- * \param ctx GL context.
- *
- * Write the hit record, i.e., the number of names in the stack, the minimum and
- * maximum depth values and the number of names in the name stack at the time
- * of the event. Resets the hit flag. 
- *
- * \sa gl_selection.
- */
 static void
-write_hit_record(struct gl_context *ctx)
+update_hit_record(struct gl_context *ctx)
 {
-   GLuint i;
-   GLuint zmin, zmax, zscale = (~0u);
+   struct gl_selection *s = &ctx->Select;
 
-   /* HitMinZ and HitMaxZ are in [0,1].  Multiply these values by */
-   /* 2^32-1 and round to nearest unsigned integer. */
+   if (ctx->Const.HardwareAcceleratedSelect) {
 
-   assert( ctx != NULL ); /* this line magically fixes a SunOS 5.x/gcc bug */
-   zmin = (GLuint) ((GLfloat) zscale * ctx->Select.HitMinZ);
-   zmax = (GLuint) ((GLfloat) zscale * ctx->Select.HitMaxZ);
+   } else {
+      if (!s->HitFlag)
+         return;
 
-   write_record( ctx, ctx->Select.NameStackDepth );
-   write_record( ctx, zmin );
-   write_record( ctx, zmax );
-   for (i = 0; i < ctx->Select.NameStackDepth; i++) {
-      write_record( ctx, ctx->Select.NameStack[i] );
+      /* HitMinZ and HitMaxZ are in [0,1].  Multiply these values by */
+      /* 2^32-1 and round to nearest unsigned integer. */
+      GLuint zscale = (~0u);
+      GLuint zmin = (GLuint) ((GLfloat) zscale * s->HitMinZ);
+      GLuint zmax = (GLuint) ((GLfloat) zscale * s->HitMaxZ);
+
+      write_record(ctx, s->NameStackDepth);
+      write_record(ctx, zmin);
+      write_record(ctx, zmax);
+      for (int i = 0; i < s->NameStackDepth; i++)
+         write_record(ctx, s->NameStack[i]);
+
+      s->HitFlag = GL_FALSE;
+      s->HitMinZ = 1.0;
+      s->HitMaxZ = -1.0;
+
+      s->Hits++;
    }
-
-   ctx->Select.Hits++;
-   ctx->Select.HitFlag = GL_FALSE;
-   ctx->Select.HitMinZ = 1.0;
-   ctx->Select.HitMaxZ = -1.0;
 }
 
+static void
+reset_name_stack_to_empty(struct gl_context *ctx)
+{
+   struct gl_selection *s = &ctx->Select;
+
+   s->NameStackDepth = 0;
+   s->HitFlag = GL_FALSE;
+   s->HitMinZ = 1.0;
+   s->HitMaxZ = 0.0;
+}
 
 /**
  * Initialize the name stack.
- *
- * Verifies we are in select mode and resets the name stack depth and resets
- * the hit record data in gl_selection. Marks new render mode in
- * __struct gl_contextRec::NewState.
  */
 void GLAPIENTRY
 _mesa_InitNames( void )
 {
    GET_CURRENT_CONTEXT(ctx);
+
+   /* Calls to glInitNames while the render mode is not GL_SELECT are ignored. */
+   if (ctx->RenderMode != GL_SELECT)
+      return;
+
    FLUSH_VERTICES(ctx, 0, 0);
 
-   /* Record the hit before the HitFlag is wiped out again. */
-   if (ctx->RenderMode == GL_SELECT) {
-      if (ctx->Select.HitFlag) {
-         write_hit_record( ctx );
-      }
-   }
-   ctx->Select.NameStackDepth = 0;
-   ctx->Select.HitFlag = GL_FALSE;
-   ctx->Select.HitMinZ = 1.0;
-   ctx->Select.HitMaxZ = 0.0;
+   update_hit_record(ctx);
+
+   reset_name_stack_to_empty(ctx);
+
    ctx->NewState |= _NEW_RENDERMODE;
 }
 
@@ -291,12 +289,6 @@ _mesa_InitNames( void )
  * Load the top-most name of the name stack.
  *
  * \param name name.
- *
- * Verifies we are in selection mode and that the name stack is not empty.
- * Flushes vertices. If there is a hit flag writes it (via write_hit_record()),
- * and replace the top-most name in the stack.
- *
- * sa __struct gl_contextRec::Select.
  */
 void GLAPIENTRY
 _mesa_LoadName( GLuint name )
@@ -311,17 +303,13 @@ _mesa_LoadName( GLuint name )
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_RENDERMODE, 0);
+   if (!ctx->Const.HardwareAcceleratedSelect) {
+      FLUSH_VERTICES(ctx, 0, 0);
+      update_hit_record(ctx);
+   }
 
-   if (ctx->Select.HitFlag) {
-      write_hit_record( ctx );
-   }
-   if (ctx->Select.NameStackDepth < MAX_NAME_STACK_DEPTH) {
-      ctx->Select.NameStack[ctx->Select.NameStackDepth-1] = name;
-   }
-   else {
-      ctx->Select.NameStack[MAX_NAME_STACK_DEPTH-1] = name;
-   }
+   ctx->Select.NameStack[ctx->Select.NameStackDepth-1] = name;
+   ctx->NewState |= _NEW_RENDERMODE;
 }
 
 
@@ -329,12 +317,6 @@ _mesa_LoadName( GLuint name )
  * Push a name into the name stack.
  *
  * \param name name.
- *
- * Verifies we are in selection mode and that the name stack is not full.
- * Flushes vertices. If there is a hit flag writes it (via write_hit_record()),
- * and adds the name to the top of the name stack.
- *
- * sa __struct gl_contextRec::Select.
  */
 void GLAPIENTRY
 _mesa_PushName( GLuint name )
@@ -345,26 +327,23 @@ _mesa_PushName( GLuint name )
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_RENDERMODE, 0);
-   if (ctx->Select.HitFlag) {
-      write_hit_record( ctx );
-   }
    if (ctx->Select.NameStackDepth >= MAX_NAME_STACK_DEPTH) {
       _mesa_error( ctx, GL_STACK_OVERFLOW, "glPushName" );
+      return;
    }
-   else
-      ctx->Select.NameStack[ctx->Select.NameStackDepth++] = name;
+
+   if (!ctx->Const.HardwareAcceleratedSelect) {
+      FLUSH_VERTICES(ctx, 0, 0);
+      update_hit_record(ctx);
+   }
+
+   ctx->Select.NameStack[ctx->Select.NameStackDepth++] = name;
+   ctx->NewState |= _NEW_RENDERMODE;
 }
 
 
 /**
  * Pop a name into the name stack.
- *
- * Verifies we are in selection mode and that the name stack is not empty.
- * Flushes vertices. If there is a hit flag writes it (via write_hit_record()),
- * and removes top-most name in the name stack.
- *
- * sa __struct gl_contextRec::Select.
  */
 void GLAPIENTRY
 _mesa_PopName( void )
@@ -375,15 +354,18 @@ _mesa_PopName( void )
       return;
    }
 
-   FLUSH_VERTICES(ctx, _NEW_RENDERMODE, 0);
-   if (ctx->Select.HitFlag) {
-      write_hit_record( ctx );
-   }
    if (ctx->Select.NameStackDepth == 0) {
       _mesa_error( ctx, GL_STACK_UNDERFLOW, "glPopName" );
+      return;
    }
-   else
-      ctx->Select.NameStackDepth--;
+
+   if (!ctx->Const.HardwareAcceleratedSelect) {
+      FLUSH_VERTICES(ctx, 0, 0);
+      update_hit_record(ctx);
+   }
+
+   ctx->Select.NameStackDepth--;
+   ctx->NewState |= _NEW_RENDERMODE;
 }
 
 /*@}*/
@@ -426,9 +408,8 @@ _mesa_RenderMode( GLenum mode )
 	 result = 0;
 	 break;
       case GL_SELECT:
-	 if (ctx->Select.HitFlag) {
-	    write_hit_record( ctx );
-	 }
+	 update_hit_record(ctx);
+
 	 if (ctx->Select.BufferCount > ctx->Select.BufferSize) {
 	    /* overflow */
 #ifndef NDEBUG
@@ -441,7 +422,8 @@ _mesa_RenderMode( GLenum mode )
 	 }
 	 ctx->Select.BufferCount = 0;
 	 ctx->Select.Hits = 0;
-	 ctx->Select.NameStackDepth = 0;
+	 /* name stack should be in empty state after exiting GL_SELECT mode */
+	 reset_name_stack_to_empty(ctx);
 	 break;
       case GL_FEEDBACK:
 	 if (ctx->Feedback.Count > ctx->Feedback.BufferSize) {
