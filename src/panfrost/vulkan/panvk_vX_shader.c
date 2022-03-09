@@ -41,45 +41,6 @@
 
 #include "vk_util.h"
 
-static nir_shader *
-panvk_spirv_to_nir(const void *code,
-                   size_t codesize,
-                   gl_shader_stage stage,
-                   const char *entry_point_name,
-                   const VkSpecializationInfo *spec_info,
-                   const nir_shader_compiler_options *nir_options)
-{
-   /* TODO these are made-up */
-   const struct spirv_to_nir_options spirv_options = {
-      .caps = { false },
-      .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_32bit_index_offset,
-   };
-
-   /* convert VkSpecializationInfo */
-   uint32_t num_spec = 0;
-   struct nir_spirv_specialization *spec =
-      vk_spec_info_to_nir_spirv(spec_info, &num_spec);
-
-   nir_shader *nir = spirv_to_nir(code, codesize / sizeof(uint32_t), spec,
-                                  num_spec, stage, entry_point_name,
-                                  &spirv_options, nir_options);
-
-   free(spec);
-
-   assert(nir->info.stage == stage);
-   nir_validate_shader(nir, "after spirv_to_nir");
-
-   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
-      .frag_coord = PAN_ARCH <= 5,
-      .point_coord = PAN_ARCH <= 5,
-      .front_face = PAN_ARCH <= 5,
-   };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
-
-   return nir;
-}
-
 struct panvk_lower_misc_ctx {
    struct panvk_shader *shader;
    const struct panvk_pipeline_layout *layout;
@@ -553,17 +514,34 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
 
    util_dynarray_init(&shader->binary, NULL);
 
-   /* translate SPIR-V to NIR */
-   assert(module->size % 4 == 0);
-   nir_shader *nir = panvk_spirv_to_nir(module->data,
-                                        module->size,
-                                        stage, stage_info->pName,
-                                        stage_info->pSpecializationInfo,
-                                        GENX(pan_shader_get_compiler_options)());
-   if (!nir) {
+   /* TODO these are made-up */
+   const struct spirv_to_nir_options spirv_options = {
+      .caps = { false },
+      .ubo_addr_format = nir_address_format_32bit_index_offset,
+      .ssbo_addr_format = nir_address_format_32bit_index_offset,
+   };
+
+   nir_shader *nir;
+   VkResult result = vk_shader_module_to_nir(&dev->vk, module, stage,
+                                             stage_info->pName,
+                                             stage_info->pSpecializationInfo,
+                                             &spirv_options,
+                                             GENX(pan_shader_get_compiler_options)(),
+                                             NULL, &nir);
+   if (result != VK_SUCCESS) {
       vk_free2(&dev->vk.alloc, alloc, shader);
       return NULL;
    }
+
+   NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+              nir_shader_get_entrypoint(nir), true, true);
+
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .frag_coord = PAN_ARCH <= 5,
+      .point_coord = PAN_ARCH <= 5,
+      .front_face = PAN_ARCH <= 5,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    struct panfrost_compile_inputs inputs = {
       .gpu_id = pdev->gpu_id,
@@ -571,33 +549,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       .no_idvs = true, /* TODO */
       .sysval_ubo = sysval_ubo,
    };
-
-   /* multi step inlining procedure */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_copy_prop);
-   NIR_PASS_V(nir, nir_opt_deref);
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (!func->is_entrypoint)
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
-   NIR_PASS_V(nir, nir_lower_variable_initializers, ~nir_var_function_temp);
-
-   /* Split member structs.  We do this before lower_io_to_temporaries so that
-    * it doesn't lower system values to temporaries by accident.
-    */
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_per_member_structs);
-
-   NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out |
-              nir_var_system_value | nir_var_mem_shared,
-              NULL);
-
-   NIR_PASS_V(nir, nir_lower_io_to_temporaries,
-              nir_shader_get_entrypoint(nir), true, true);
 
    NIR_PASS_V(nir, nir_lower_indirect_derefs,
               nir_var_shader_in | nir_var_shader_out,
