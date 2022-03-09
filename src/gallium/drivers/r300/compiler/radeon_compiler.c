@@ -144,9 +144,11 @@ void rc_copy_output(struct radeon_compiler * c, unsigned output, unsigned dup_ou
 	unsigned tempreg = rc_find_free_temporary(c);
 	struct rc_instruction * inst;
 	struct rc_instruction * insert_pos = c->Program.Instructions.Prev;
+	struct rc_instruction * last_write_inst = NULL;
 	unsigned branch_depth = 0;
 	unsigned loop_depth = 0;
 	bool emit_after_control_flow = false;
+	unsigned num_writes = 0;
 
 	for(inst = c->Program.Instructions.Next; inst != &c->Program.Instructions; inst = inst->Next) {
 		const struct rc_opcode_info * opcode = rc_get_opcode_info(inst->U.I.Opcode);
@@ -164,32 +166,50 @@ void rc_copy_output(struct radeon_compiler * c, unsigned output, unsigned dup_ou
 
 		if (opcode->HasDstReg) {
 			if (inst->U.I.DstReg.File == RC_FILE_OUTPUT && inst->U.I.DstReg.Index == output) {
+				num_writes++;
 				inst->U.I.DstReg.File = RC_FILE_TEMPORARY;
 				inst->U.I.DstReg.Index = tempreg;
 				insert_pos = inst;
+				last_write_inst = inst;
 				if (loop_depth != 0 && branch_depth != 0)
 					emit_after_control_flow = true;
 			}
 		}
 	}
 
-	inst = rc_insert_new_instruction(c, insert_pos);
-	inst->U.I.Opcode = RC_OPCODE_MOV;
-	inst->U.I.DstReg.File = RC_FILE_OUTPUT;
-	inst->U.I.DstReg.Index = output;
+	/* If there is only a single write, just duplicate the whole instruction instead.
+	 * We can do this even when the single write was is a control flow.
+	 */
+	if (num_writes == 1) {
+		last_write_inst->U.I.DstReg.File = RC_FILE_OUTPUT;
+		last_write_inst->U.I.DstReg.Index = output;
 
-	inst->U.I.SrcReg[0].File = RC_FILE_TEMPORARY;
-	inst->U.I.SrcReg[0].Index = tempreg;
-	inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_XYZW;
+		inst = rc_insert_new_instruction(c, last_write_inst);
+		struct rc_instruction * prev = inst->Prev;
+		struct rc_instruction * next = inst->Next;
+		memcpy(inst, last_write_inst, sizeof(struct rc_instruction));
+		inst->Prev = prev;
+		inst->Next = next;
+		inst->U.I.DstReg.Index = dup_output;
+	} else {
+		inst = rc_insert_new_instruction(c, insert_pos);
+		inst->U.I.Opcode = RC_OPCODE_MOV;
+		inst->U.I.DstReg.File = RC_FILE_OUTPUT;
+		inst->U.I.DstReg.Index = output;
 
-	inst = rc_insert_new_instruction(c, inst);
-	inst->U.I.Opcode = RC_OPCODE_MOV;
-	inst->U.I.DstReg.File = RC_FILE_OUTPUT;
-	inst->U.I.DstReg.Index = dup_output;
+		inst->U.I.SrcReg[0].File = RC_FILE_TEMPORARY;
+		inst->U.I.SrcReg[0].Index = tempreg;
+		inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_XYZW;
 
-	inst->U.I.SrcReg[0].File = RC_FILE_TEMPORARY;
-	inst->U.I.SrcReg[0].Index = tempreg;
-	inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_XYZW;
+		inst = rc_insert_new_instruction(c, inst);
+		inst->U.I.Opcode = RC_OPCODE_MOV;
+		inst->U.I.DstReg.File = RC_FILE_OUTPUT;
+		inst->U.I.DstReg.Index = dup_output;
+
+		inst->U.I.SrcReg[0].File = RC_FILE_TEMPORARY;
+		inst->U.I.SrcReg[0].Index = tempreg;
+		inst->U.I.SrcReg[0].Swizzle = RC_SWIZZLE_XYZW;
+	}
 
 	c->Program.OutputsWritten |= 1U << dup_output;
 }
