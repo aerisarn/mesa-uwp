@@ -123,7 +123,7 @@ static const struct debug_control panvk_debug_options[] = {
 #define PANVK_USE_WSI_PLATFORM
 #endif
 
-#define PANVK_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#define PANVK_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 
 VkResult
 panvk_EnumerateInstanceVersion(uint32_t *pApiVersion)
