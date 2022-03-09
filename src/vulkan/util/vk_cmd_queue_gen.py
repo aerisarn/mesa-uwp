@@ -192,6 +192,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
 #include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_command_buffer.h"
 #include "vk_dispatch_table.h"
+#include "vk_device.h"
 
 const char *vk_cmd_queue_type_names[] = {
 % for c in commands:
@@ -330,6 +331,21 @@ vk_cmd_enqueue_${c.name}(${c.decl_params()})
    vk_enqueue_${to_underscore(c.name)}(&cmd_buffer->cmd_queue,
                                        ${c.call_params(1)});
 % endif
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_cmd_enqueue_unless_primary_${c.name}(${c.decl_params()})
+{
+    VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+
+   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+      const struct vk_device_dispatch_table *disp =
+         cmd_buffer->base.device->command_dispatch_table;
+
+      disp->${c.name}(${c.call_params()});
+   } else {
+      vk_cmd_enqueue_${c.name}(${c.call_params()});
+   }
 }
 % if c.guard is not None:
 #endif // ${c.guard}
