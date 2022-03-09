@@ -58,25 +58,11 @@ get_temp_class_bits(struct v3d_ra_node_info *nodes,
         return nodes->info[temp_to_node(temp)].class_bits;
 }
 
-static inline uint32_t
-get_temp_priority(struct v3d_ra_node_info *nodes,
-                  uint32_t temp)
-{
-        return nodes->info[temp_to_node(temp)].priority;
-}
-
 static inline void
 set_temp_class_bits(struct v3d_ra_node_info *nodes,
                     uint32_t temp, uint8_t class_bits)
 {
         nodes->info[temp_to_node(temp)].class_bits = class_bits;
-}
-
-static inline void
-set_temp_priority(struct v3d_ra_node_info *nodes,
-                  uint32_t temp, uint32_t priority)
-{
-        nodes->info[temp_to_node(temp)].priority = priority;
 }
 
 static struct ra_class *
