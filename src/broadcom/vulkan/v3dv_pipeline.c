@@ -298,6 +298,13 @@ nir_optimize(nir_shader *nir, bool allow_copies)
           */
          OPT(nir_opt_find_array_copies);
       }
+
+      OPT(nir_remove_dead_variables,
+          (nir_variable_mode)(nir_var_function_temp |
+                              nir_var_shader_temp |
+                              nir_var_mem_shared),
+          NULL);
+
       OPT(nir_opt_copy_prop_vars);
       OPT(nir_opt_dead_write_vars);
       OPT(nir_opt_combine_stores, nir_var_all);
@@ -326,19 +333,48 @@ nir_optimize(nir_shader *nir, bool allow_copies)
       OPT(nir_opt_intrinsics);
       OPT(nir_opt_idiv_const, 32);
       OPT(nir_opt_algebraic);
+      OPT(nir_lower_alu);
       OPT(nir_opt_constant_folding);
 
       OPT(nir_opt_dead_cf);
-
-      OPT(nir_opt_if, false);
+      if (nir_opt_trivial_continues(nir)) {
+         progress = true;
+         OPT(nir_copy_prop);
+         OPT(nir_opt_dce);
+      }
       OPT(nir_opt_conditional_discard);
 
       OPT(nir_opt_remove_phis);
+      OPT(nir_opt_gcm, false);
+      OPT(nir_opt_if, false);
       OPT(nir_opt_undef);
       OPT(nir_lower_pack);
-   } while (progress);
 
-   OPT(nir_remove_dead_variables, nir_var_function_temp, NULL);
+      /* There are two optimizations that we don't do here, and we rely on the
+       * backend:
+       *
+       * nir_lower_flrp only needs to be called once, as nothing should
+       * rematerialize any flrps. As we are already calling it on the backend
+       * compiler, we don't call it again.
+       *
+       * nir_opt_loop_unroll: as the backend includes custom strategies in
+       * order to get the lowest spill/fills possible, and some of them
+       * include disable loop unrolling.
+       *
+       * FIXME: ideally we would like to just remove this method and
+       * v3d_optimize_nir. But:
+       *
+       *   * Using it leads to some regressions on Vulkan CTS tests, due to
+       *     some lowering use there
+       *   * We would need to move to the backend some additional
+       *     lowerings/optimizations that are used on the Vulkan
+       *     frontend. That would require to check that we are not getting any
+       *     regression or performance drop on OpenGL
+       *
+       * For now we would keep this Vulkan fronted nir_optimize
+       */
+
+   } while (progress);
 }
 
 static void
@@ -1698,59 +1734,6 @@ pipeline_compile_shader_variant(struct v3dv_pipeline_stage *p_stage,
    return variant;
 }
 
-/* FIXME: C&P from st, common place? */
-static void
-st_nir_opts(nir_shader *nir)
-{
-   bool progress;
-
-   do {
-      progress = false;
-
-      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-
-      /* Linking deals with unused inputs/outputs, but here we can remove
-       * things local to the shader in the hopes that we can cleanup other
-       * things. This pass will also remove variables with only stores, so we
-       * might be able to make progress after it.
-       */
-      NIR_PASS(progress, nir, nir_remove_dead_variables,
-               (nir_variable_mode)(nir_var_function_temp |
-                                   nir_var_shader_temp |
-                                   nir_var_mem_shared),
-               NULL);
-
-      NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
-      NIR_PASS(progress, nir, nir_opt_dead_write_vars);
-
-      if (nir->options->lower_to_scalar) {
-         NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
-         NIR_PASS_V(nir, nir_lower_phis_to_scalar, false);
-      }
-
-      NIR_PASS_V(nir, nir_lower_alu);
-      NIR_PASS_V(nir, nir_lower_pack);
-      NIR_PASS(progress, nir, nir_copy_prop);
-      NIR_PASS(progress, nir, nir_opt_remove_phis);
-      NIR_PASS(progress, nir, nir_opt_dce);
-      if (nir_opt_trivial_continues(nir)) {
-         progress = true;
-         NIR_PASS(progress, nir, nir_copy_prop);
-         NIR_PASS(progress, nir, nir_opt_dce);
-      }
-      NIR_PASS(progress, nir, nir_opt_if, false);
-      NIR_PASS(progress, nir, nir_opt_dead_cf);
-      NIR_PASS(progress, nir, nir_opt_cse);
-      NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
-
-      NIR_PASS(progress, nir, nir_opt_algebraic);
-      NIR_PASS(progress, nir, nir_opt_constant_folding);
-
-      NIR_PASS(progress, nir, nir_opt_undef);
-      NIR_PASS(progress, nir, nir_opt_conditional_discard);
-   } while (progress);
-}
-
 static void
 link_shaders(nir_shader *producer, nir_shader *consumer)
 {
@@ -1764,11 +1747,11 @@ link_shaders(nir_shader *producer, nir_shader *consumer)
 
    nir_lower_io_arrays_to_elements(producer, consumer);
 
-   st_nir_opts(producer);
-   st_nir_opts(consumer);
+   nir_optimize(producer, false);
+   nir_optimize(consumer, false);
 
    if (nir_link_opt_varyings(producer, consumer))
-      st_nir_opts(consumer);
+      nir_optimize(consumer, false);
 
    NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_out, NULL);
    NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in, NULL);
@@ -1777,8 +1760,8 @@ link_shaders(nir_shader *producer, nir_shader *consumer)
       NIR_PASS_V(producer, nir_lower_global_vars_to_local);
       NIR_PASS_V(consumer, nir_lower_global_vars_to_local);
 
-      st_nir_opts(producer);
-      st_nir_opts(consumer);
+      nir_optimize(producer, false);
+      nir_optimize(consumer, false);
 
       /* Optimizations can cause varyings to become unused.
        * nir_compact_varyings() depends on all dead varyings being removed so
@@ -3280,7 +3263,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->nir = pipeline_stage_get_nir(p_stage, pipeline, cache);
    assert(p_stage->nir);
 
-   st_nir_opts(p_stage->nir);
+   nir_optimize(p_stage->nir, false);
    pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
    lower_cs_shared(p_stage->nir);
 
