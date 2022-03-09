@@ -338,14 +338,6 @@ panvk_CmdSetStencilReference(VkCommandBuffer commandBuffer,
    cmdbuf->state.fs_rsd = 0;
 }
 
-void
-panvk_CmdExecuteCommands(VkCommandBuffer commandBuffer,
-                         uint32_t commandBufferCount,
-                         const VkCommandBuffer *pCmdBuffers)
-{
-   panvk_stub();
-}
-
 VkResult
 panvk_CreateCommandPool(VkDevice _device,
                         const VkCommandPoolCreateInfo *pCreateInfo,

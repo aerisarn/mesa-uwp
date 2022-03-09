@@ -246,6 +246,8 @@ struct panvk_queue {
 struct panvk_device {
    struct vk_device vk;
 
+   struct vk_device_dispatch_table cmd_dispatch;
+
    struct panvk_instance *instance;
 
    struct panvk_queue *queues[PANVK_MAX_QUEUE_FAMILIES];

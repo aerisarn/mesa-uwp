@@ -5,6 +5,11 @@ renderer_check = "Mali-G52"
 include = [
     "dEQP-VK.pipeline.blend.*",
     "dEQP-VK.api.buffer_view.*",
+    "dEQP-VK.api.command_buffers.record_many_draws_secondary_2",
+    "dEQP-VK.api.command_buffers.record_many_secondary",
+    "dEQP-VK.api.command_buffers.record_one_time_submit_secondary",
+    "dEQP-VK.api.command_buffers.render_pass_continue",
+    "dEQP-VK.api.command_buffers.render_pass_continue_no_fb",
     "dEQP-VK.api.copy_and_blit.core.*",
     "dEQP-VK.compute.builtin_var.*",
     "dEQP-VK.draw.renderpass.instanced.draw_indexed_vk_*",

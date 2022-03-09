@@ -31,6 +31,8 @@
 #include "pan_bo.h"
 #include "pan_encoder.h"
 #include "pan_util.h"
+#include "vk_common_entrypoints.h"
+#include "vk_cmd_enqueue_entrypoints.h"
 
 #include <fcntl.h>
 #include <libsync.h>
@@ -920,6 +922,25 @@ panvk_queue_finish(struct panvk_queue *queue)
    vk_queue_finish(&queue->vk);
 }
 
+static void
+panvk_ref_pipeline_layout(struct vk_device *dev,
+                          VkPipelineLayout layout)
+{
+   VK_FROM_HANDLE(panvk_pipeline_layout, playout, layout);
+
+   panvk_pipeline_layout_ref(playout);
+}
+
+static void
+panvk_unref_pipeline_layout(struct vk_device *dev,
+                            VkPipelineLayout layout)
+{
+   struct panvk_device *device = container_of(dev, struct panvk_device, vk);
+   VK_FROM_HANDLE(panvk_pipeline_layout, playout, layout);
+
+   panvk_pipeline_layout_unref(device, playout);
+}
+
 VkResult
 panvk_CreateDevice(VkPhysicalDevice physicalDevice,
                    const VkDeviceCreateInfo *pCreateInfo,
@@ -952,21 +973,48 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
       unreachable("Unsupported architecture");
    }
 
+   /* For secondary command buffer support, overwrite any command entrypoints
+    * in the main device-level dispatch table with
+    * vk_cmd_enqueue_unless_primary_Cmd*.
+    */
+   vk_device_dispatch_table_from_entrypoints(&dispatch_table,
+                                             &vk_cmd_enqueue_unless_primary_device_entrypoints,
+                                             true);
+
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
                                              dev_entrypoints,
-                                             true);
+                                             false);
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
                                              &panvk_device_entrypoints,
                                              false);
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
                                              &wsi_device_entrypoints,
                                              false);
+
+   /* Populate our primary cmd_dispatch table. */
+   vk_device_dispatch_table_from_entrypoints(&device->cmd_dispatch,
+                                             dev_entrypoints,
+                                             true);
+   vk_device_dispatch_table_from_entrypoints(&device->cmd_dispatch,
+                                             &panvk_device_entrypoints,
+                                             false);
+   vk_device_dispatch_table_from_entrypoints(&device->cmd_dispatch,
+                                             &vk_common_device_entrypoints,
+                                             false);
+
    result = vk_device_init(&device->vk, &physical_device->vk, &dispatch_table,
                            pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       vk_free(&device->vk.alloc, device);
       return result;
    }
+
+   /* Must be done after vk_device_init() because this function memset(0) the
+    * whole struct.
+    */
+   device->vk.command_dispatch_table = &device->cmd_dispatch;
+   device->vk.ref_pipeline_layout = panvk_ref_pipeline_layout;
+   device->vk.unref_pipeline_layout = panvk_unref_pipeline_layout;
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;

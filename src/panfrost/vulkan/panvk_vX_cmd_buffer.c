@@ -1071,11 +1071,15 @@ VkResult
 panvk_per_arch(EndCommandBuffer)(VkCommandBuffer commandBuffer)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
+   VkResult ret =
+      cmdbuf->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY ?
+      cmdbuf->vk.cmd_queue.error : cmdbuf->record_result;
 
    panvk_per_arch(cmd_close_batch)(cmdbuf);
-   cmdbuf->status = PANVK_CMD_BUFFER_STATUS_EXECUTABLE;
-
-   return cmdbuf->record_result;
+   cmdbuf->status = ret == VK_SUCCESS ?
+                    PANVK_CMD_BUFFER_STATUS_EXECUTABLE :
+                    PANVK_CMD_BUFFER_STATUS_INVALID;
+   return ret;
 }
 
 void
