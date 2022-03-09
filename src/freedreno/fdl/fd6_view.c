@@ -342,7 +342,8 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
    view->storage_descriptor[0] =
       A6XX_TEX_CONST_0_FMT(storage_format) |
       fdl6_texswiz(args, has_z24uint_s8uint) |
-      A6XX_TEX_CONST_0_TILE_MODE(tile_mode);
+      A6XX_TEX_CONST_0_TILE_MODE(tile_mode) |
+      A6XX_TEX_CONST_0_SWAP(color_swap);
    view->storage_descriptor[1] = view->descriptor[1];
    view->storage_descriptor[2] =
       A6XX_TEX_CONST_2_PITCH(pitch) |
