@@ -128,6 +128,8 @@ struct vk_cmd_queue_entry {
 % endfor
    } u;
    void *driver_data;
+   void (*driver_free_cb)(struct vk_cmd_queue *queue,
+                          struct vk_cmd_queue_entry *cmd);
 };
 
 % for c in commands:
@@ -256,7 +258,10 @@ vk_free_queue(struct vk_cmd_queue *queue)
 #ifdef ${c.guard}
 % endif
       case ${to_enum_name(c.name)}:
-         vk_free(queue->alloc, cmd->driver_data);
+         if (cmd->driver_free_cb)
+            cmd->driver_free_cb(queue, cmd);
+         else
+            vk_free(queue->alloc, cmd->driver_data);
 % for p in c.params[1:]:
 % if p.len:
          vk_free(queue->alloc, (${remove_suffix(p.decl.replace("const", ""), p.name)})cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)});
