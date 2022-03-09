@@ -111,6 +111,41 @@ impl Program {
         self.build_info().kernels.clone()
     }
 
+    pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
+        let mut info = self.build_info();
+        let d = Self::dev_build_info(&mut info, dev);
+
+        let args = prepare_options(&options);
+        let (spirv, log) =
+            spirv::SPIRVBin::from_clc(&self.src, &args, &Vec::new(), dev.cl_features());
+
+        d.log = log;
+        d.options = options;
+        if spirv.is_none() {
+            d.status = CL_BUILD_ERROR;
+            return false;
+        }
+
+        let spirvs = vec![spirv.as_ref().unwrap()];
+        let (spirv, log) = spirv::SPIRVBin::link(&spirvs, false);
+
+        d.log.push_str(&log);
+        d.spirv = spirv;
+
+        d.status = match &d.spirv {
+            None => CL_BUILD_ERROR,
+            Some(_) => CL_BUILD_SUCCESS as cl_build_status,
+        };
+
+        if d.spirv.is_some() {
+            let mut kernels = d.spirv.as_ref().unwrap().kernels();
+            info.kernels.append(&mut kernels);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn compile(
         &self,
         dev: &Arc<Device>,

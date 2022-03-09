@@ -149,12 +149,10 @@ pub fn build_program(
     // CL_BUILD_PROGRAM_FAILURE if there is a failure to build the program executable. This error
     // will be returned if clBuildProgram does not return until the build has completed.
     for dev in devs {
-        res &= p.compile(&dev, c_string_to_string(options), &Vec::new());
+        res &= p.build(&dev, c_string_to_string(options));
     }
 
     call_cb(pfn_notify, program, user_data);
-
-    // TODO link
 
     //• CL_INVALID_BINARY if program is created with clCreateProgramWithBinary and devices listed in device_list do not have a valid program binary loaded.
     //• CL_INVALID_BUILD_OPTIONS if the build options specified by options are invalid.
