@@ -47,7 +47,6 @@ libpanvk_files = files(
   'panvk_private.h',
   'panvk_query.c',
   'panvk_shader.c',
-  'panvk_sync.c',
   'panvk_util.c',
   'panvk_wsi.c',
 )

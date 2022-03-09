@@ -58,6 +58,7 @@
 #include "vk_object.h"
 #include "vk_physical_device.h"
 #include "vk_queue.h"
+#include "vk_sync.h"
 #include "wsi_common.h"
 
 #include "drm-uapi/panfrost_drm.h"
@@ -185,6 +186,9 @@ struct panvk_physical_device {
    uint8_t device_uuid[VK_UUID_SIZE];
    uint8_t cache_uuid[VK_UUID_SIZE];
 
+   struct vk_sync_type drm_syncobj_type;
+   const struct vk_sync_type *sync_types[2];
+
    struct wsi_device wsi_device;
    struct panvk_meta meta;
 
@@ -289,10 +293,6 @@ struct panvk_batch {
    bool issued;
 };
 
-struct panvk_syncobj {
-   uint32_t permanent, temporary;
-};
-
 enum panvk_event_op_type {
    PANVK_EVENT_OP_SET,
    PANVK_EVENT_OP_RESET,
@@ -303,25 +303,6 @@ struct panvk_event_op {
    enum panvk_event_op_type type;
    struct panvk_event *event;
 };
-
-struct panvk_fence {
-   struct vk_object_base base;
-   struct panvk_syncobj syncobj;
-};
-
-struct panvk_semaphore {
-   struct vk_object_base base;
-   struct panvk_syncobj syncobj;
-};
-
-int
-panvk_signal_syncobjs(struct panvk_device *device,
-                      struct panvk_syncobj *syncobj1,
-                      struct panvk_syncobj *syncobj2);
-
-int
-panvk_syncobj_to_fd(struct panvk_device *device,
-                    struct panvk_syncobj *sync);
 
 struct panvk_device_memory {
    struct vk_object_base base;
@@ -1054,7 +1035,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_set, base, VkDescriptorSet, VK_O
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_descriptor_set_layout, base,
                                VkDescriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_device_memory, base, VkDeviceMemory, VK_OBJECT_TYPE_DEVICE_MEMORY)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_fence, base, VkFence, VK_OBJECT_TYPE_FENCE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_framebuffer, base, VkFramebuffer, VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
@@ -1064,7 +1044,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline, base, VkPipeline, VK_OBJECT_TYPE_
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_render_pass, base, VkRenderPass, VK_OBJECT_TYPE_RENDER_PASS)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_sampler, base, VkSampler, VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_semaphore, base, VkSemaphore, VK_OBJECT_TYPE_SEMAPHORE)
 
 #define panvk_arch_name(name, version) panvk_## version ## _ ## name
 
@@ -1088,12 +1067,14 @@ do { \
 #endif
 #include "panvk_vX_cmd_buffer.h"
 #include "panvk_vX_cs.h"
+#include "panvk_vX_device.h"
 #include "panvk_vX_meta.h"
 #else
 #define PAN_ARCH 5
 #define panvk_per_arch(name) panvk_arch_name(name, v5)
 #include "panvk_vX_cmd_buffer.h"
 #include "panvk_vX_cs.h"
+#include "panvk_vX_device.h"
 #include "panvk_vX_meta.h"
 #undef PAN_ARCH
 #undef panvk_per_arch
@@ -1101,6 +1082,7 @@ do { \
 #define panvk_per_arch(name) panvk_arch_name(name, v6)
 #include "panvk_vX_cmd_buffer.h"
 #include "panvk_vX_cs.h"
+#include "panvk_vX_device.h"
 #include "panvk_vX_meta.h"
 #undef PAN_ARCH
 #undef panvk_per_arch
@@ -1108,6 +1090,7 @@ do { \
 #define panvk_per_arch(name) panvk_arch_name(name, v7)
 #include "panvk_vX_cmd_buffer.h"
 #include "panvk_vX_cs.h"
+#include "panvk_vX_device.h"
 #include "panvk_vX_meta.h"
 #undef PAN_ARCH
 #undef panvk_per_arch

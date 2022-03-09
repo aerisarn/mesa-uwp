@@ -47,6 +47,7 @@
 #include "util/disk_cache.h"
 #include "util/strtod.h"
 #include "vk_format.h"
+#include "vk_drm_syncobj.h"
 #include "vk_util.h"
 
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
@@ -339,6 +340,17 @@ panvk_physical_device_init(struct panvk_physical_device *device,
 
    panvk_get_driver_uuid(&device->device_uuid);
    panvk_get_device_uuid(&device->device_uuid);
+
+   device->drm_syncobj_type = vk_drm_syncobj_get_type(device->pdev.fd);
+   /* We don't support timelines in the uAPI yet and we don't want it getting
+    * suddenly turned on by vk_drm_syncobj_get_type() without us adding panvk
+    * code for it first.
+    */
+   device->drm_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
+
+   device->sync_types[0] = &device->drm_syncobj_type;
+   device->sync_types[1] = NULL;
+   device->vk.supported_sync_types = device->sync_types;
 
    result = panvk_wsi_init(device);
    if (result != VK_SUCCESS) {
@@ -943,6 +955,13 @@ panvk_queue_init(struct panvk_device *device,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
+   switch (pdev->arch) {
+   case 5: queue->vk.driver_submit = panvk_v5_queue_submit; break;
+   case 6: queue->vk.driver_submit = panvk_v6_queue_submit; break;
+   case 7: queue->vk.driver_submit = panvk_v7_queue_submit; break;
+   default: unreachable("Invalid arch");
+   }
+
    queue->sync = create.handle;
    return VK_SUCCESS;
 }
@@ -1003,6 +1022,9 @@ panvk_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
+
+   const struct panfrost_device *pdev = &physical_device->pdev;
+   vk_device_set_drm_fd(&device->vk, pdev->fd);
 
    for (unsigned i = 0; i < pCreateInfo->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_create =
