@@ -403,6 +403,10 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
 
    case nir_intrinsic_control_barrier:
    case nir_intrinsic_memory_barrier_shared:
+   /* A generic memory barrier can be emitted when multiple synchronization
+    * semantics are involved, including shared memory.
+    */
+   case nir_intrinsic_memory_barrier:
       add_write_dep(state, &state->store_shared, n);
 
       /* Serialize against ssbos/atomics/etc. */
