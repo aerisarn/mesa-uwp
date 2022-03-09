@@ -1089,7 +1089,8 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
 }
 
 static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
-                                                   void *pointer, uint64_t size)
+                                                   void *pointer, uint64_t size,
+                                                   enum radeon_bo_flag flags)
 {
    struct radeon_drm_winsys *ws = radeon_drm_winsys(rws);
    struct drm_radeon_gem_userptr args;
@@ -1103,9 +1104,15 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
    memset(&args, 0, sizeof(args));
    args.addr = (uintptr_t)pointer;
    args.size = align(size, ws->info.gart_page_size);
-   args.flags = RADEON_GEM_USERPTR_ANONONLY |
-                RADEON_GEM_USERPTR_VALIDATE |
-                RADEON_GEM_USERPTR_REGISTER;
+
+   if (flags & RADEON_FLAG_READ_ONLY)
+      args.flags = RADEON_GEM_USERPTR_READONLY |
+                   RADEON_GEM_USERPTR_VALIDATE;
+   else
+      args.flags = RADEON_GEM_USERPTR_ANONONLY |
+                   RADEON_GEM_USERPTR_REGISTER |
+                   RADEON_GEM_USERPTR_VALIDATE;
+
    if (drmCommandWriteRead(ws->fd, DRM_RADEON_GEM_USERPTR,
                            &args, sizeof(args))) {
       FREE(bo);

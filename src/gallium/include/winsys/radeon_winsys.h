@@ -388,7 +388,7 @@ struct radeon_winsys {
     * \param pointer   User pointer to turn into a buffer object.
     * \param Size      Size in bytes for the new buffer.
     */
-   struct pb_buffer *(*buffer_from_ptr)(struct radeon_winsys *ws, void *pointer, uint64_t size);
+   struct pb_buffer *(*buffer_from_ptr)(struct radeon_winsys *ws, void *pointer, uint64_t size, enum radeon_bo_flag flags);
 
    /**
     * Whether the buffer was created from a user pointer.

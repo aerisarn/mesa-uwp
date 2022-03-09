@@ -650,7 +650,7 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
    buf->b.buffer_id_unique = util_idalloc_mt_alloc(&sscreen->buffer_ids);
 
    /* Convert a user pointer to a buffer. */
-   buf->buf = ws->buffer_from_ptr(ws, user_memory, templ->width0);
+   buf->buf = ws->buffer_from_ptr(ws, user_memory, templ->width0, 0);
    if (!buf->buf) {
       si_resource_destroy(screen, &buf->b.b);
       return NULL;
