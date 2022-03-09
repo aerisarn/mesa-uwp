@@ -44,6 +44,11 @@ gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
    struct anv_state sf_clip_state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 64, 64);
 
+   bool negative_one_to_one =
+      cmd_buffer->state.gfx.pipeline->negative_one_to_one;
+
+   float scale = negative_one_to_one ? 0.5f : 1.0f;
+
    for (uint32_t i = 0; i < count; i++) {
       const VkViewport *vp = &viewports[i];
 
@@ -52,10 +57,11 @@ gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
       struct GENX(SF_CLIP_VIEWPORT) sfv = {
          .ViewportMatrixElementm00 = vp->width / 2,
          .ViewportMatrixElementm11 = vp->height / 2,
-         .ViewportMatrixElementm22 = vp->maxDepth - vp->minDepth,
+         .ViewportMatrixElementm22 = (vp->maxDepth - vp->minDepth) * scale,
          .ViewportMatrixElementm30 = vp->x + vp->width / 2,
          .ViewportMatrixElementm31 = vp->y + vp->height / 2,
-         .ViewportMatrixElementm32 = vp->minDepth,
+         .ViewportMatrixElementm32 = negative_one_to_one ?
+            (vp->minDepth + vp->maxDepth) * scale : vp->minDepth,
          .XMinClipGuardband = -1.0f,
          .XMaxClipGuardband = 1.0f,
          .YMinClipGuardband = -1.0f,

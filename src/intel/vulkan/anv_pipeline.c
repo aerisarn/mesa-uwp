@@ -2142,6 +2142,13 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
    if (!raster_discard) {
       assert(pCreateInfo->pViewportState);
 
+      const VkPipelineViewportDepthClipControlCreateInfoEXT *ccontrol =
+         vk_find_struct_const(pCreateInfo->pViewportState,
+                              PIPELINE_VIEWPORT_DEPTH_CLIP_CONTROL_CREATE_INFO_EXT);
+
+      if (ccontrol)
+         pipeline->negative_one_to_one = ccontrol->negativeOneToOne;
+
       dynamic->viewport.count = pCreateInfo->pViewportState->viewportCount;
       if (states & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT) {
          typed_memcpy(dynamic->viewport.viewports,
@@ -2571,7 +2578,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    const VkPipelineRasterizationDepthClipStateCreateInfoEXT *clip_info =
       vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
                            PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
-   pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable : !pipeline->depth_clamp_enable;
+   pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable :
+      !(pipeline->depth_clamp_enable || pipeline->negative_one_to_one);
 
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
