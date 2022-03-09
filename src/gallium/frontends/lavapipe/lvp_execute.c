@@ -43,6 +43,7 @@
 #include "util/format/u_format_zs.h"
 #include "util/ptralloc.h"
 
+#include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_util.h"
 
 #define VK_PROTOTYPES
@@ -3850,6 +3851,106 @@ static void handle_set_color_write_enable(struct vk_cmd_queue_entry *cmd,
    state->color_write_disables = disable_mask;
 }
 
+void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
+{
+   struct vk_device_dispatch_table cmd_enqueue_dispatch;
+   vk_device_dispatch_table_from_entrypoints(&cmd_enqueue_dispatch,
+      &vk_cmd_enqueue_device_entrypoints, true);
+
+#define ENQUEUE_CMD(CmdName) \
+   assert(cmd_enqueue_dispatch.CmdName != NULL); \
+   disp->CmdName = cmd_enqueue_dispatch.CmdName;
+
+   /* This list needs to match what's in lvp_execute_cmd_buffer exactly */
+   ENQUEUE_CMD(CmdBindPipeline)
+   ENQUEUE_CMD(CmdSetViewport)
+   ENQUEUE_CMD(CmdSetViewportWithCount)
+   ENQUEUE_CMD(CmdSetScissor)
+   ENQUEUE_CMD(CmdSetScissorWithCount)
+   ENQUEUE_CMD(CmdSetLineWidth)
+   ENQUEUE_CMD(CmdSetDepthBias)
+   ENQUEUE_CMD(CmdSetBlendConstants)
+   ENQUEUE_CMD(CmdSetDepthBounds)
+   ENQUEUE_CMD(CmdSetStencilCompareMask)
+   ENQUEUE_CMD(CmdSetStencilWriteMask)
+   ENQUEUE_CMD(CmdSetStencilReference)
+//   ENQUEUE_CMD(CmdBindDescriptorSets)
+   ENQUEUE_CMD(CmdBindIndexBuffer)
+   ENQUEUE_CMD(CmdBindVertexBuffers)
+   ENQUEUE_CMD(CmdBindVertexBuffers2)
+   ENQUEUE_CMD(CmdDraw)
+//   ENQUEUE_CMD(CmdDrawMultiEXT)
+   ENQUEUE_CMD(CmdDrawIndexed)
+   ENQUEUE_CMD(CmdDrawIndirect)
+   ENQUEUE_CMD(CmdDrawIndexedIndirect)
+//   ENQUEUE_CMD(CmdDrawMultiIndexedEXT)
+   ENQUEUE_CMD(CmdDispatch)
+   ENQUEUE_CMD(CmdDispatchBase)
+   ENQUEUE_CMD(CmdDispatchIndirect)
+   ENQUEUE_CMD(CmdCopyBuffer2)
+   ENQUEUE_CMD(CmdCopyImage2)
+   ENQUEUE_CMD(CmdBlitImage2)
+   ENQUEUE_CMD(CmdCopyBufferToImage2)
+   ENQUEUE_CMD(CmdCopyImageToBuffer2)
+   ENQUEUE_CMD(CmdUpdateBuffer)
+   ENQUEUE_CMD(CmdFillBuffer)
+   ENQUEUE_CMD(CmdClearColorImage)
+   ENQUEUE_CMD(CmdClearDepthStencilImage)
+   ENQUEUE_CMD(CmdClearAttachments)
+   ENQUEUE_CMD(CmdResolveImage2)
+   ENQUEUE_CMD(CmdSetEvent)
+   ENQUEUE_CMD(CmdResetEvent)
+   ENQUEUE_CMD(CmdWaitEvents)
+   ENQUEUE_CMD(CmdPipelineBarrier)
+   ENQUEUE_CMD(CmdBeginQueryIndexedEXT)
+   ENQUEUE_CMD(CmdEndQueryIndexedEXT)
+   ENQUEUE_CMD(CmdBeginQuery)
+   ENQUEUE_CMD(CmdEndQuery)
+   ENQUEUE_CMD(CmdResetQueryPool)
+   ENQUEUE_CMD(CmdWriteTimestamp)
+   ENQUEUE_CMD(CmdCopyQueryPoolResults)
+   ENQUEUE_CMD(CmdPushConstants)
+   ENQUEUE_CMD(CmdBeginRenderPass)
+   ENQUEUE_CMD(CmdBeginRenderPass2)
+   ENQUEUE_CMD(CmdNextSubpass)
+   ENQUEUE_CMD(CmdNextSubpass2)
+   ENQUEUE_CMD(CmdEndRenderPass)
+   ENQUEUE_CMD(CmdEndRenderPass2)
+   ENQUEUE_CMD(CmdExecuteCommands)
+   ENQUEUE_CMD(CmdDrawIndirectCount)
+   ENQUEUE_CMD(CmdDrawIndexedIndirectCount)
+//   ENQUEUE_CMD(CmdPushDescriptorSetKHR)
+//   ENQUEUE_CMD(CmdPushDescriptorSetWithTemplateKHR)
+   ENQUEUE_CMD(CmdBindTransformFeedbackBuffersEXT)
+   ENQUEUE_CMD(CmdBeginTransformFeedbackEXT)
+   ENQUEUE_CMD(CmdEndTransformFeedbackEXT)
+   ENQUEUE_CMD(CmdDrawIndirectByteCountEXT)
+   ENQUEUE_CMD(CmdBeginConditionalRenderingEXT)
+   ENQUEUE_CMD(CmdEndConditionalRenderingEXT)
+   ENQUEUE_CMD(CmdSetVertexInputEXT)
+   ENQUEUE_CMD(CmdSetCullMode)
+   ENQUEUE_CMD(CmdSetFrontFace)
+   ENQUEUE_CMD(CmdSetPrimitiveTopology)
+   ENQUEUE_CMD(CmdSetDepthTestEnable)
+   ENQUEUE_CMD(CmdSetDepthWriteEnable)
+   ENQUEUE_CMD(CmdSetDepthCompareOp)
+   ENQUEUE_CMD(CmdSetDepthBoundsTestEnable)
+   ENQUEUE_CMD(CmdSetStencilTestEnable)
+   ENQUEUE_CMD(CmdSetStencilOp)
+   ENQUEUE_CMD(CmdSetLineStippleEXT)
+   ENQUEUE_CMD(CmdSetDepthBiasEnable)
+   ENQUEUE_CMD(CmdSetLogicOpEXT)
+   ENQUEUE_CMD(CmdSetPatchControlPointsEXT)
+   ENQUEUE_CMD(CmdSetPrimitiveRestartEnable)
+   ENQUEUE_CMD(CmdSetRasterizerDiscardEnable)
+   ENQUEUE_CMD(CmdSetColorWriteEnableEXT)
+//   ENQUEUE_CMD(CmdBeginRendering)
+   ENQUEUE_CMD(CmdEndRendering)
+   ENQUEUE_CMD(CmdSetDeviceMask)
+
+#undef ENQUEUE_CMD
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -3857,7 +3958,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
    bool first = true;
    bool did_flush = false;
 
-   LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->queue.cmds, cmd_link) {
+   LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->vk.cmd_queue.cmds, cmd_link) {
       switch (cmd->type) {
       case VK_CMD_BIND_PIPELINE:
          handle_pipeline(cmd, state);
@@ -3989,7 +4090,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          /* skip flushes since every cmdbuf does a flush
             after iterating its cmds and so this is redundant
           */
-         if (first || did_flush || cmd->cmd_link.next == &cmd_buffer->queue.cmds)
+         if (first || did_flush || cmd->cmd_link.next == &cmd_buffer->vk.cmd_queue.cmds)
             continue;
          handle_pipeline_barrier(cmd, state);
          did_flush = true;

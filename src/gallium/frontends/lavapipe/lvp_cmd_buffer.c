@@ -47,9 +47,6 @@ static VkResult lvp_create_cmd_buffer(
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
 
-   cmd_buffer->queue.alloc = &pool->vk.alloc;
-   list_inithead(&cmd_buffer->queue.cmds);
-
    cmd_buffer->status = LVP_CMD_BUFFER_STATUS_INITIAL;
    if (pool) {
       list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
@@ -68,8 +65,6 @@ static VkResult lvp_reset_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer)
 {
    vk_command_buffer_reset(&cmd_buffer->vk);
 
-   vk_free_queue(&cmd_buffer->queue);
-   list_inithead(&cmd_buffer->queue.cmds);
    cmd_buffer->status = LVP_CMD_BUFFER_STATUS_INITIAL;
    return VK_SUCCESS;
 }
@@ -123,8 +118,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateCommandBuffers(
 static void
 lvp_cmd_buffer_destroy(struct lvp_cmd_buffer *cmd_buffer)
 {
-   vk_free_queue(&cmd_buffer->queue);
-   list_del(&cmd_buffer->pool_link);
    vk_command_buffer_finish(&cmd_buffer->vk);
    vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer);
 }
@@ -278,19 +271,19 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiEXT(
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
 
-   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->queue.alloc,
+   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!cmd)
       return;
 
    cmd->type = VK_CMD_DRAW_MULTI_EXT;
-   list_addtail(&cmd->cmd_link, &cmd_buffer->queue.cmds);
+   list_addtail(&cmd->cmd_link, &cmd_buffer->vk.cmd_queue.cmds);
 
    cmd->u.draw_multi_ext.draw_count = drawCount;
    if (pVertexInfo) {
       unsigned i = 0;
-      cmd->u.draw_multi_ext.vertex_info = vk_zalloc(cmd_buffer->queue.alloc,
+      cmd->u.draw_multi_ext.vertex_info = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                                     sizeof(*cmd->u.draw_multi_ext.vertex_info) * drawCount,
                                                     8,
                                                     VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -313,20 +306,20 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiIndexedEXT(
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
 
-   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->queue.alloc,
+   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!cmd)
       return;
 
    cmd->type = VK_CMD_DRAW_MULTI_INDEXED_EXT;
-   list_addtail(&cmd->cmd_link, &cmd_buffer->queue.cmds);
+   list_addtail(&cmd->cmd_link, &cmd_buffer->vk.cmd_queue.cmds);
 
    cmd->u.draw_multi_indexed_ext.draw_count = drawCount;
 
    if (pIndexInfo) {
       unsigned i = 0;
-      cmd->u.draw_multi_indexed_ext.index_info = vk_zalloc(cmd_buffer->queue.alloc,
+      cmd->u.draw_multi_indexed_ext.index_info = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                                            sizeof(*cmd->u.draw_multi_indexed_ext.index_info) * drawCount,
                                                            8,
                                                            VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -343,7 +336,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawMultiIndexedEXT(
    cmd->u.draw_multi_indexed_ext.stride = stride;
 
    if (pVertexOffset) {
-      cmd->u.draw_multi_indexed_ext.vertex_offset = vk_zalloc(cmd_buffer->queue.alloc, sizeof(*cmd->u.draw_multi_indexed_ext.vertex_offset), 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      cmd->u.draw_multi_indexed_ext.vertex_offset = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*cmd->u.draw_multi_indexed_ext.vertex_offset), 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       memcpy(cmd->u.draw_multi_indexed_ext.vertex_offset, pVertexOffset, sizeof(*cmd->u.draw_multi_indexed_ext.vertex_offset));
    }
 }
@@ -359,7 +352,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetKHR(
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    struct vk_cmd_push_descriptor_set_khr *pds;
 
-   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->queue.alloc,
+   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!cmd)
@@ -368,7 +361,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetKHR(
    pds = &cmd->u.push_descriptor_set_khr;
 
    cmd->type = VK_CMD_PUSH_DESCRIPTOR_SET_KHR;
-   list_addtail(&cmd->cmd_link, &cmd_buffer->queue.cmds);
+   list_addtail(&cmd->cmd_link, &cmd_buffer->vk.cmd_queue.cmds);
 
    pds->pipeline_bind_point = pipelineBindPoint;
    pds->layout = layout;
@@ -376,7 +369,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetKHR(
    pds->descriptor_write_count = descriptorWriteCount;
 
    if (pDescriptorWrites) {
-      pds->descriptor_writes = vk_zalloc(cmd_buffer->queue.alloc,
+      pds->descriptor_writes = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                          sizeof(*pds->descriptor_writes) * descriptorWriteCount,
                                          8,
                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -391,7 +384,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetKHR(
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            pds->descriptor_writes[i].pImageInfo = vk_zalloc(cmd_buffer->queue.alloc,
+            pds->descriptor_writes[i].pImageInfo = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                          sizeof(VkDescriptorImageInfo) * pds->descriptor_writes[i].descriptorCount,
                                          8,
                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -401,7 +394,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetKHR(
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            pds->descriptor_writes[i].pTexelBufferView = vk_zalloc(cmd_buffer->queue.alloc,
+            pds->descriptor_writes[i].pTexelBufferView = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                          sizeof(VkBufferView) * pds->descriptor_writes[i].descriptorCount,
                                          8,
                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -414,7 +407,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetKHR(
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          default:
-            pds->descriptor_writes[i].pBufferInfo = vk_zalloc(cmd_buffer->queue.alloc,
+            pds->descriptor_writes[i].pBufferInfo = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                          sizeof(VkDescriptorBufferInfo) * pds->descriptor_writes[i].descriptorCount,
                                          8,
                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -437,7 +430,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetWithTemplateKHR(
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    LVP_FROM_HANDLE(lvp_descriptor_update_template, templ, descriptorUpdateTemplate);
    size_t info_size = 0;
-   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->queue.alloc,
+   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!cmd)
@@ -445,7 +438,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetWithTemplateKHR(
 
    cmd->type = VK_CMD_PUSH_DESCRIPTOR_SET_WITH_TEMPLATE_KHR;
 
-   list_addtail(&cmd->cmd_link, &cmd_buffer->queue.cmds);
+   list_addtail(&cmd->cmd_link, &cmd_buffer->vk.cmd_queue.cmds);
 
    cmd->u.push_descriptor_set_with_template_khr.descriptor_update_template = descriptorUpdateTemplate;
    cmd->u.push_descriptor_set_with_template_khr.layout = layout;
@@ -476,7 +469,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetWithTemplateKHR(
       }
    }
 
-   cmd->u.push_descriptor_set_with_template_khr.data = vk_zalloc(cmd_buffer->queue.alloc, info_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   cmd->u.push_descriptor_set_with_template_khr.data = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, info_size, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
 
    uint64_t offset = 0;
    for (unsigned i = 0; i < templ->entry_count; i++) {
@@ -522,17 +515,17 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindDescriptorSets(
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    LVP_FROM_HANDLE(lvp_pipeline_layout, layout, _layout);
-   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->queue.alloc,
+   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!cmd)
       return;
 
    cmd->type = VK_CMD_BIND_DESCRIPTOR_SETS;
-   list_addtail(&cmd->cmd_link, &cmd_buffer->queue.cmds);
+   list_addtail(&cmd->cmd_link, &cmd_buffer->vk.cmd_queue.cmds);
 
    /* _layout could have been destroyed by when this command executes */
-   struct lvp_descriptor_set_layout **set_layout = vk_zalloc(cmd_buffer->queue.alloc, sizeof(*set_layout) * layout->num_sets, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   struct lvp_descriptor_set_layout **set_layout = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*set_layout) * layout->num_sets, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    cmd->driver_data = set_layout;
    for (unsigned i = 0; i < layout->num_sets; i++)
       set_layout[i] = layout->set[i].layout;
@@ -541,12 +534,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindDescriptorSets(
    cmd->u.bind_descriptor_sets.first_set = firstSet;
    cmd->u.bind_descriptor_sets.descriptor_set_count = descriptorSetCount;
    if (pDescriptorSets) {
-      cmd->u.bind_descriptor_sets.descriptor_sets = vk_zalloc(cmd_buffer->queue.alloc, sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      cmd->u.bind_descriptor_sets.descriptor_sets = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       memcpy(( VkDescriptorSet* )cmd->u.bind_descriptor_sets.descriptor_sets, pDescriptorSets, sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount);
    }
    cmd->u.bind_descriptor_sets.dynamic_offset_count = dynamicOffsetCount;
    if (pDynamicOffsets) {
-      cmd->u.bind_descriptor_sets.dynamic_offsets = vk_zalloc(cmd_buffer->queue.alloc, sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      cmd->u.bind_descriptor_sets.dynamic_offsets = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       memcpy(( uint32_t* )cmd->u.bind_descriptor_sets.dynamic_offsets, pDynamicOffsets, sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount);
    }
 }
@@ -557,7 +550,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRendering(VkCommandBuffer                
 )
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
-   struct vk_cmd_queue *queue = &cmd_buffer->queue;
+   struct vk_cmd_queue *queue = &cmd_buffer->vk.cmd_queue;
    struct vk_cmd_queue_entry *cmd = vk_zalloc(queue->alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);

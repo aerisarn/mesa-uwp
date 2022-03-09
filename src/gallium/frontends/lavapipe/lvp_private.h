@@ -580,8 +580,6 @@ struct lvp_cmd_buffer {
    struct lvp_cmd_pool *                        pool;
    struct list_head                             pool_link;
 
-   struct vk_cmd_queue                          queue;
-
    uint8_t push_constants[MAX_PUSH_CONSTANTS_SIZE];
 };
 
@@ -655,6 +653,8 @@ struct lvp_cmd_push_descriptor_set {
    struct lvp_write_descriptor *descriptors;
    union lvp_descriptor_info *infos;
 };
+
+void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp);
 
 VkResult lvp_execute_cmds(struct lvp_device *device,
                           struct lvp_queue *queue,
