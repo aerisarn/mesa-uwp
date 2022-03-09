@@ -367,14 +367,6 @@ preprocess_nir(nir_shader *nir)
                        });
    }
 
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_push_const,
-              nir_address_format_32bit_offset);
-
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_ubo | nir_var_mem_ssbo,
-              nir_address_format_32bit_index_offset);
-
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
 
@@ -391,6 +383,14 @@ preprocess_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_split_struct_vars, nir_var_function_temp);
 
    nir_optimize(nir, true);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_push_const,
+              nir_address_format_32bit_offset);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_ubo | nir_var_mem_ssbo,
+              nir_address_format_32bit_index_offset);
 
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
 
