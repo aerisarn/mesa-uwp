@@ -772,7 +772,7 @@ void trace_dump_image_view(const struct pipe_image_view *state)
 
    trace_dump_struct_begin("pipe_image_view");
    trace_dump_member(ptr, state, resource);
-   trace_dump_member(uint, state, format);
+   trace_dump_member(format, state, format);
    trace_dump_member(uint, state, access);
 
    trace_dump_member_begin("u");
