@@ -25,6 +25,7 @@
 #include "vk_alloc.h"
 #include "vk_cmd_enqueue_entrypoints.h"
 #include "vk_command_buffer.h"
+#include "vk_device.h"
 #include "vk_util.h"
 
 VKAPI_ATTR void VKAPI_CALL
@@ -192,5 +193,72 @@ vk_cmd_enqueue_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
             break;
          }
       }
+   }
+}
+
+static void
+unref_pipeline_layout(struct vk_cmd_queue *queue,
+                      struct vk_cmd_queue_entry *cmd)
+{
+   struct vk_command_buffer *cmd_buffer =
+      container_of(queue, struct vk_command_buffer, cmd_queue);
+   struct vk_device *device = cmd_buffer->base.device;
+
+   assert(cmd->type == VK_CMD_BIND_DESCRIPTOR_SETS);
+
+   device->unref_pipeline_layout(device, cmd->u.bind_descriptor_sets.layout);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_cmd_enqueue_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
+                                     VkPipelineBindPoint pipelineBindPoint,
+                                     VkPipelineLayout layout,
+                                     uint32_t firstSet,
+                                     uint32_t descriptorSetCount,
+                                     const VkDescriptorSet* pDescriptorSets,
+                                     uint32_t dynamicOffsetCount,
+                                     const uint32_t *pDynamicOffsets)
+{
+   VK_FROM_HANDLE(vk_command_buffer, cmd_buffer, commandBuffer);
+   struct vk_device *device = cmd_buffer->base.device;
+
+   struct vk_cmd_queue_entry *cmd =
+      vk_zalloc(cmd_buffer->cmd_queue.alloc, sizeof(*cmd), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!cmd)
+      return;
+
+   cmd->type = VK_CMD_BIND_DESCRIPTOR_SETS;
+   list_addtail(&cmd->cmd_link, &cmd_buffer->cmd_queue.cmds);
+
+   /* We need to hold a reference to the descriptor set as long as this
+    * command is in the queue.  Otherwise, it may get deleted out from under
+    * us before the command is replayed.
+    */
+   device->ref_pipeline_layout(device, layout);
+   cmd->u.bind_descriptor_sets.layout = layout;
+   cmd->driver_free_cb = unref_pipeline_layout;
+
+   cmd->u.bind_descriptor_sets.pipeline_bind_point = pipelineBindPoint;
+   cmd->u.bind_descriptor_sets.first_set = firstSet;
+   cmd->u.bind_descriptor_sets.descriptor_set_count = descriptorSetCount;
+   if (pDescriptorSets) {
+      cmd->u.bind_descriptor_sets.descriptor_sets =
+         vk_zalloc(cmd_buffer->cmd_queue.alloc,
+                   sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount, 8,
+                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+
+      memcpy(cmd->u.bind_descriptor_sets.descriptor_sets, pDescriptorSets,
+             sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount);
+   }
+   cmd->u.bind_descriptor_sets.dynamic_offset_count = dynamicOffsetCount;
+   if (pDynamicOffsets) {
+      cmd->u.bind_descriptor_sets.dynamic_offsets =
+         vk_zalloc(cmd_buffer->cmd_queue.alloc,
+                   sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount, 8,
+                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+
+      memcpy(cmd->u.bind_descriptor_sets.dynamic_offsets, pDynamicOffsets,
+             sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount);
    }
 }
