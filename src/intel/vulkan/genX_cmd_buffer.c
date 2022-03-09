@@ -4609,6 +4609,10 @@ void genX(CmdDrawIndirect)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw indirect",
+                        drawCount);
    trace_intel_begin_draw_indirect(&cmd_buffer->trace, cmd_buffer);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
@@ -4662,6 +4666,10 @@ void genX(CmdDrawIndexedIndirect)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw indexed indirect",
+                        drawCount);
    trace_intel_begin_draw_indexed_indirect(&cmd_buffer->trace, cmd_buffer);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
@@ -4825,6 +4833,10 @@ void genX(CmdDrawIndirectCount)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw indirect count",
+                        0);
    trace_intel_begin_draw_indirect_count(&cmd_buffer->trace, cmd_buffer);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
@@ -4889,6 +4901,10 @@ void genX(CmdDrawIndexedIndirectCount)(
    if (anv_batch_has_error(&cmd_buffer->batch))
       return;
 
+   anv_measure_snapshot(cmd_buffer,
+                        INTEL_SNAPSHOT_DRAW,
+                        "draw indexed indirect count",
+                        0);
    trace_intel_begin_draw_indexed_indirect_count(&cmd_buffer->trace, cmd_buffer);
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
