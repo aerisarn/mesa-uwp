@@ -1056,8 +1056,6 @@ static void fill_sampler_view_stage(struct rendering_state *state,
    */
    if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT ||
        iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      if (templ.swizzle_a == PIPE_SWIZZLE_X)
-         templ.swizzle_r = PIPE_SWIZZLE_X;
       fix_depth_swizzle(templ.swizzle_r);
       fix_depth_swizzle(templ.swizzle_g);
       fix_depth_swizzle(templ.swizzle_b);
