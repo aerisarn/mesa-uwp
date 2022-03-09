@@ -353,6 +353,21 @@ zink_screen_init_compiler(struct zink_screen *screen)
       screen->nir_options.lower_flrp64 = true;
       screen->nir_options.lower_ffma64 = true;
    }
+
+   /*
+       The OpFRem and OpFMod instructions use cheap approximations of remainder,
+       and the error can be large due to the discontinuity in trunc() and floor().
+       This can produce mathematically unexpected results in some cases, such as
+       FMod(x,x) computing x rather than 0, and can also cause the result to have
+       a different sign than the infinitely precise result.
+
+       -Table 84. Precision of core SPIR-V Instructions
+       * for drivers that are known to have imprecise fmod for doubles, lower dmod
+    */
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV ||
+       screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
+       screen->info.driver_props.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
+      screen->nir_options.lower_doubles_options = nir_lower_dmod;
 }
 
 const void *
