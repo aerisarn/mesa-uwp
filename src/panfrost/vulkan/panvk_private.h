@@ -380,6 +380,7 @@ struct panvk_descriptor_set_binding_layout {
 
 struct panvk_descriptor_set_layout {
    struct vk_object_base base;
+   int32_t refcount;
 
    /* The create flags for this descriptor set layout */
    VkDescriptorSetLayoutCreateFlags flags;
@@ -403,8 +404,30 @@ struct panvk_descriptor_set_layout {
    struct panvk_descriptor_set_binding_layout bindings[0];
 };
 
+void
+panvk_descriptor_set_layout_destroy(struct panvk_device *dev,
+                                    struct panvk_descriptor_set_layout *layout);
+
+static inline void
+panvk_descriptor_set_layout_unref(struct panvk_device *dev,
+                                  struct panvk_descriptor_set_layout *layout)
+{
+   if (layout && p_atomic_dec_zero(&layout->refcount))
+      panvk_descriptor_set_layout_destroy(dev, layout);
+}
+
+static inline struct panvk_descriptor_set_layout *
+panvk_descriptor_set_layout_ref(struct panvk_descriptor_set_layout *layout)
+{
+   if (layout)
+      p_atomic_inc(&layout->refcount);
+
+   return layout;
+}
+
 struct panvk_pipeline_layout {
    struct vk_object_base base;
+   int32_t refcount;
    unsigned char sha1[20];
 
    unsigned num_samplers;
@@ -432,6 +455,27 @@ struct panvk_pipeline_layout {
       unsigned img_offset;
    } sets[MAX_SETS];
 };
+
+void
+panvk_pipeline_layout_destroy(struct panvk_device *dev,
+                              struct panvk_pipeline_layout *layout);
+
+static inline void
+panvk_pipeline_layout_unref(struct panvk_device *dev,
+                            struct panvk_pipeline_layout *layout)
+{
+   if (layout && p_atomic_dec_zero(&layout->refcount))
+      panvk_pipeline_layout_destroy(dev, layout);
+}
+
+static inline struct panvk_pipeline_layout *
+panvk_pipeline_layout_ref(struct panvk_pipeline_layout *layout)
+{
+   if (layout)
+      p_atomic_inc(&layout->refcount);
+
+   return layout;
+}
 
 struct panvk_desc_pool_counters {
    unsigned samplers;

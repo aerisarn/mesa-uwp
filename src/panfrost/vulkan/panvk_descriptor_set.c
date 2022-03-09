@@ -71,7 +71,7 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
                  (sizeof(struct panvk_descriptor_set_binding_layout) *
                   num_bindings) +
                  (sizeof(struct panvk_sampler *) * num_immutable_samplers);
-   set_layout = vk_object_zalloc(&device->vk, pAllocator, size,
+   set_layout = vk_object_zalloc(&device->vk, NULL, size,
                                  VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
    if (!set_layout) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -165,6 +165,7 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->num_ssbos = ssbo_idx;
    set_layout->num_dyn_ssbos = dyn_ssbo_idx;
    set_layout->num_imgs = img_idx;
+   p_atomic_set(&set_layout->refcount, 1);
 
    free(bindings);
    *pSetLayout = panvk_descriptor_set_layout_to_handle(set_layout);
@@ -173,6 +174,13 @@ panvk_CreateDescriptorSetLayout(VkDevice _device,
 err_free_bindings:
    free(bindings);
    return vk_error(device, result);
+}
+
+void
+panvk_descriptor_set_layout_destroy(struct panvk_device *device,
+                                    struct panvk_descriptor_set_layout *layout)
+{
+   vk_object_free(&device->vk, NULL, layout);
 }
 
 void
@@ -186,7 +194,7 @@ panvk_DestroyDescriptorSetLayout(VkDevice _device,
    if (!set_layout)
       return;
 
-   vk_object_free(&device->vk, pAllocator, set_layout);
+   panvk_descriptor_set_layout_unref(device, set_layout);
 }
 
 /* FIXME: make sure those values are correct */
@@ -281,7 +289,7 @@ panvk_CreatePipelineLayout(VkDevice _device,
    struct panvk_pipeline_layout *layout;
    struct mesa_sha1 ctx;
 
-   layout = vk_object_zalloc(&device->vk, pAllocator, sizeof(*layout),
+   layout = vk_object_zalloc(&device->vk, NULL, sizeof(*layout),
                              VK_OBJECT_TYPE_PIPELINE_LAYOUT);
    if (layout == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -294,7 +302,8 @@ panvk_CreatePipelineLayout(VkDevice _device,
    for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++) {
       VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
-      layout->sets[set].layout = set_layout;
+      layout->sets[set].layout = panvk_descriptor_set_layout_ref(set_layout);
+      p_atomic_inc(&set_layout->refcount);
       layout->sets[set].sampler_offset = sampler_idx;
       layout->sets[set].tex_offset = tex_idx;
       layout->sets[set].ubo_offset = ubo_idx;
@@ -357,8 +366,20 @@ panvk_CreatePipelineLayout(VkDevice _device,
 
    _mesa_sha1_final(&ctx, layout->sha1);
 
+   p_atomic_set(&layout->refcount, 1);
+
    *pPipelineLayout = panvk_pipeline_layout_to_handle(layout);
    return VK_SUCCESS;
+}
+
+void
+panvk_pipeline_layout_destroy(struct panvk_device *device,
+                              struct panvk_pipeline_layout *layout)
+{
+   for (unsigned i = 0; i < layout->num_sets; i++)
+      panvk_descriptor_set_layout_unref(device, layout->sets[i].layout);
+
+   vk_object_free(&device->vk, NULL, layout);
 }
 
 void
@@ -372,7 +393,7 @@ panvk_DestroyPipelineLayout(VkDevice _device,
    if (!pipeline_layout)
       return;
 
-   vk_object_free(&device->vk, pAllocator, pipeline_layout);
+   panvk_pipeline_layout_unref(device, pipeline_layout);
 }
 
 VkResult
