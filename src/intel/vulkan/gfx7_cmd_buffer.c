@@ -110,7 +110,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
       uint32_t topology;
       if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
          topology = pipeline->topology;
@@ -120,21 +121,21 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.gfx.primitive_topology = topology;
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_RENDER_TARGETS |
-                                      ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
-                                      ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
-                                      ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_RENDER_TARGETS |
+                                          ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
+                                          ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
+                                          ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
+                                          ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
+                                          ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |
+                                          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
       /* Take dynamic primitive topology in to account with
        *    3DSTATE_SF::MultisampleRasterizationMode
        */
       uint32_t ms_rast_mode = 0;
 
-      if (cmd_buffer->state.gfx.pipeline->dynamic_states &
-          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+      if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                             ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
          VkPrimitiveTopology primitive_topology =
             cmd_buffer->state.gfx.dynamic.primitive_topology;
 
@@ -166,8 +167,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gfx7.sf);
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |
+                                          ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)) {
       struct anv_state cc_state =
          anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
                                             GENX(COLOR_CALC_STATE_length) * 4,
@@ -187,7 +189,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_LINE_STIPPLE), ls) {
          ls.LineStipplePattern = d->line_stipple.pattern;
          ls.LineStippleInverseRepeatCount =
@@ -196,15 +199,15 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_RENDER_TARGETS |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
-                                      ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP)) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_RENDER_TARGETS |
+                                          ANV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK |
+                                          ANV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
+                                          ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE |
+                                          ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE |
+                                          ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
+                                          ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |
+                                          ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP)) {
       uint32_t depth_stencil_dw[GENX(DEPTH_STENCIL_STATE_length)];
 
       struct GENX(DEPTH_STENCIL_STATE) depth_stencil = {
@@ -245,9 +248,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    if (cmd_buffer->state.gfx.gfx7.index_buffer &&
-       cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_INDEX_BUFFER |
-                                      ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
+       anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_INDEX_BUFFER |
+                                          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)) {
       struct anv_buffer *buffer = cmd_buffer->state.gfx.gfx7.index_buffer;
       uint32_t offset = cmd_buffer->state.gfx.gfx7.index_offset;
 
@@ -277,8 +280,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
     * threads or if we have dirty dynamic primitive topology state and
     * need to toggle 3DSTATE_WM::MultisampleRasterizationMode dynamically.
     */
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE ||
-       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                                          ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
       const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
 
       bool dirty_color_blend =
@@ -311,14 +315,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
       genX(emit_multisample)(&cmd_buffer->batch,
                              cmd_buffer->state.gfx.dynamic.sample_locations.samples,
                              cmd_buffer->state.gfx.dynamic.sample_locations.locations);
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE ||
-       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP) {
+   if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
+                                          ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                                          ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
       bool dirty_color_blend =
          cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;

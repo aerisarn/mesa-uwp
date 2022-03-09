@@ -3543,6 +3543,31 @@ anv_pipeline_get_last_vue_prog_data(const struct anv_graphics_pipeline *pipeline
       return &get_vs_prog_data(pipeline)->base;
 }
 
+static inline bool
+anv_cmd_buffer_needs_dynamic_state(const struct anv_cmd_buffer *cmd_buffer,
+                                   anv_cmd_dirty_mask_t mask)
+{
+   /* Only dynamic state */
+   assert((mask & ANV_CMD_DIRTY_PIPELINE) == 0);
+
+   /* If all the state is statically put into the pipeline batch, nothing to
+    * do.
+    */
+   if ((cmd_buffer->state.gfx.pipeline->static_state_mask & mask) == mask)
+      return false;
+
+   /* Dynamic state affected by vkCmd* commands */
+   if (cmd_buffer->state.gfx.dirty & mask)
+      return true;
+
+   /* For all other states we might have part of the information in the
+    * anv_graphics_pipeline::dynamic_state not emitted as part of the pipeline
+    * batch so we need to reemit the packet associated with this state if the
+    * pipeline changed.
+    */
+   return (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) != 0;
+}
+
 VkResult
 anv_device_init_rt_shaders(struct anv_device *device);
 
