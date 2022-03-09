@@ -43,42 +43,6 @@
 /* Needed for SWIZZLE macros */
 #include "program/prog_instruction.h"
 
-// Shader functions
-#define SPIR_V_MAGIC_NUMBER 0x07230203
-
-struct anv_spirv_debug_data {
-   struct anv_device *device;
-   const struct vk_shader_module *module;
-};
-
-static void anv_spirv_nir_debug(void *private_data,
-                                enum nir_spirv_debug_level level,
-                                size_t spirv_offset,
-                                const char *message)
-{
-   struct anv_spirv_debug_data *debug_data = private_data;
-
-   switch (level) {
-   case NIR_SPIRV_DEBUG_LEVEL_INFO:
-      //vk_logi(VK_LOG_OBJS(&debug_data->module->base),
-              //"SPIR-V offset %lu: %s",
-              //(unsigned long) spirv_offset, message);
-      break;
-   case NIR_SPIRV_DEBUG_LEVEL_WARNING:
-      vk_logw(VK_LOG_OBJS(&debug_data->module->base),
-              "SPIR-V offset %lu: %s",
-              (unsigned long) spirv_offset, message);
-      break;
-   case NIR_SPIRV_DEBUG_LEVEL_ERROR:
-      vk_loge(VK_LOG_OBJS(&debug_data->module->base),
-              "SPIR-V offset %lu: %s",
-              (unsigned long) spirv_offset, message);
-      break;
-   default:
-      break;
-   }
-}
-
 /* Eventually, this will become part of anv_CreateShader.  Unfortunately,
  * we can't do that yet because we don't have the ability to copy nir.
  */
@@ -95,19 +59,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
    const nir_shader_compiler_options *nir_options =
       compiler->nir_options[stage];
 
-   uint32_t *spirv = (uint32_t *) module->data;
-   assert(spirv[0] == SPIR_V_MAGIC_NUMBER);
-   assert(module->size % 4 == 0);
-
-   uint32_t num_spec_entries = 0;
-   struct nir_spirv_specialization *spec_entries =
-      vk_spec_info_to_nir_spirv(spec_info, &num_spec_entries);
-
-   struct anv_spirv_debug_data spirv_debug_data = {
-      .device = device,
-      .module = module,
-   };
-   struct spirv_to_nir_options spirv_options = {
+   const struct spirv_to_nir_options spirv_options = {
       .caps = {
          .demote_to_helper_invocation = true,
          .derivative_group = true,
@@ -177,33 +129,15 @@ anv_shader_compile_to_nir(struct anv_device *device,
        * with certain code / code generators.
        */
       .shared_addr_format = nir_address_format_32bit_offset,
-      .debug = {
-         .func = anv_spirv_nir_debug,
-         .private_data = &spirv_debug_data,
-      },
    };
 
-
-   nir_shader *nir =
-      spirv_to_nir(spirv, module->size / 4,
-                   spec_entries, num_spec_entries,
-                   stage, entrypoint_name, &spirv_options, nir_options);
-   if (!nir) {
-      free(spec_entries);
+   nir_shader *nir;
+   VkResult result = vk_shader_module_to_nir(&device->vk, module,
+                                             stage, entrypoint_name,
+                                             spec_info, &spirv_options,
+                                             nir_options, mem_ctx, &nir);
+   if (result != VK_SUCCESS)
       return NULL;
-   }
-
-   assert(nir->info.stage == stage);
-   nir_validate_shader(nir, "after spirv_to_nir");
-   nir_validate_ssa_dominance(nir, "after spirv_to_nir");
-   ralloc_steal(mem_ctx, nir);
-
-   free(spec_entries);
-
-   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
-      .point_coord = true,
-   };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    if (INTEL_DEBUG(intel_debug_flag_for_shader_stage(stage))) {
       fprintf(stderr, "NIR (from SPIR-V) for %s shader:\n",
@@ -211,50 +145,19 @@ anv_shader_compile_to_nir(struct anv_device *device,
       nir_print_shader(nir, stderr);
    }
 
-   /* We have to lower away local constant initializers right before we
-    * inline functions.  That way they get properly initialized at the top
-    * of the function and not at the top of its caller.
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_copy_prop);
-   NIR_PASS_V(nir, nir_opt_deref);
+   NIR_PASS_V(nir, nir_lower_io_to_temporaries,
+              nir_shader_get_entrypoint(nir), true, false);
 
-   /* Pick off the single entrypoint that we want */
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (!func->is_entrypoint)
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
-
-   /* Now that we've deleted all but the main function, we can go ahead and
-    * lower the rest of the constant initializers.  We do this here so that
-    * nir_remove_dead_variables and split_per_member_structs below see the
-    * corresponding stores.
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .point_coord = true,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    const nir_opt_access_options opt_access_options = {
       .is_vulkan = true,
       .infer_non_readable = true,
    };
    NIR_PASS_V(nir, nir_opt_access, &opt_access_options);
-
-   /* Split member structs.  We do this before lower_io_to_temporaries so that
-    * it doesn't lower system values to temporaries by accident.
-    */
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_per_member_structs);
-
-   NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out | nir_var_system_value |
-              nir_var_shader_call_data | nir_var_ray_hit_attrib,
-              NULL);
-
-   NIR_PASS_V(nir, nir_propagate_invariant, false);
-   NIR_PASS_V(nir, nir_lower_io_to_temporaries,
-              nir_shader_get_entrypoint(nir), true, false);
 
    NIR_PASS_V(nir, nir_lower_frexp);
 
@@ -1498,15 +1401,6 @@ anv_pipeline_add_executables(struct anv_pipeline *pipeline,
    pipeline->ray_queries = MAX2(pipeline->ray_queries, bin->prog_data->ray_queries);
 }
 
-static uint32_t
-get_module_spirv_version(const struct vk_shader_module *module)
-{
-   uint32_t *spirv = (uint32_t *) module->data;
-   assert(module->size >= 8);
-   assert(spirv[0] == SPIR_V_MAGIC_NUMBER);
-   return spirv[1];
-}
-
 static enum brw_subgroup_size_type
 anv_subgroup_size_type(gl_shader_stage stage,
                        const struct vk_shader_module *module,
@@ -1517,7 +1411,7 @@ anv_subgroup_size_type(gl_shader_stage stage,
 
    const bool allow_varying =
       flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT ||
-      get_module_spirv_version(module) >= 0x10600;
+      vk_shader_module_spirv_version(module) >= 0x10600;
 
    if (rss_info) {
       assert(gl_shader_stage_uses_workgroup(stage));
