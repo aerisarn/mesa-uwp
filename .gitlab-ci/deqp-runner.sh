@@ -123,8 +123,6 @@ if [ -e "$INSTALL/$GPU_VERSION-skips.txt" ]; then
     DEQP_SKIPS="$DEQP_SKIPS $INSTALL/$GPU_VERSION-skips.txt"
 fi
 
-set +e
-
 report_load() {
     echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
     echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
@@ -167,6 +165,7 @@ echo -e "\e[0Ksection_end:$(date +%s):test_setup\r\e[0K"
 echo -e "\e[0Ksection_start:$(date +%s):deqp[collapsed=false]\r\e[0Kdeqp-runner"
 set -x
 
+set +e
 if [ -z "$DEQP_SUITE" ]; then
     deqp-runner \
         run \
