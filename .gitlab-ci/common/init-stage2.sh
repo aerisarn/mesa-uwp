@@ -99,11 +99,10 @@ mv -f ${CI_PROJECT_DIR}/results ./ 2>/dev/null || true
 [ "${RESULT}" = "fail" ] || rm -rf results/trace/$PIGLIT_REPLAY_DEVICE_NAME
 
 # upload artifacts
-MINIO=$(cat /proc/cmdline | tr ' ' '\n' | grep minio_results | cut -d '=' -f 2 || true)
-if [ -n "$MINIO" ]; then
+if [ -n "$MINIO_RESULTS_UPLOAD" ]; then
   tar -czf results.tar.gz results/;
   ci-fairy minio login --token-file "${CI_JOB_JWT_FILE}";
-  ci-fairy minio cp results.tar.gz minio://"$MINIO"/results.tar.gz;
+  ci-fairy minio cp results.tar.gz minio://"$MINIO_RESULTS_UPLOAD"/results.tar.gz;
 fi
 
 echo "hwci: mesa: $RESULT"

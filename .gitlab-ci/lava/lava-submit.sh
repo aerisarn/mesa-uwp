@@ -33,7 +33,6 @@ artifacts/lava/lava_job_submitter.py \
 	--base-system-url-prefix "https://${BASE_SYSTEM_HOST_PATH}" \
 	--mesa-build-url "${FDO_HTTP_CACHE_URI:-}https://${MESA_BUILD_PATH}" \
 	--job-rootfs-overlay-url "${FDO_HTTP_CACHE_URI:-}https://${JOB_ROOTFS_OVERLAY_PATH}" \
-	--job-artifacts-base ${JOB_ARTIFACTS_BASE} \
 	--job-timeout ${JOB_TIMEOUT:-30} \
 	--first-stage-init artifacts/ci-common/init-stage1.sh \
 	--ci-project-dir ${CI_PROJECT_DIR} \

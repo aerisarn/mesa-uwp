@@ -74,7 +74,7 @@ def generate_lava_yaml(args):
         'visibility': { 'group': [ args.visibility_group ] },
         'priority': 75,
         'context': {
-            'extra_nfsroot_args': ' init=/init rootwait minio_results={}'.format(args.job_artifacts_base)
+            'extra_nfsroot_args': ' init=/init rootwait'
         },
         'timeouts': {
             'job': {
@@ -349,7 +349,6 @@ def create_parser():
     parser.add_argument("--base-system-url-prefix")
     parser.add_argument("--mesa-build-url")
     parser.add_argument("--job-rootfs-overlay-url")
-    parser.add_argument("--job-artifacts-base")
     parser.add_argument("--job-timeout", type=int)
     parser.add_argument("--first-stage-init")
     parser.add_argument("--ci-project-dir")
