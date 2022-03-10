@@ -52,13 +52,6 @@ gather_intrinsic_load_input_info(const nir_shader *nir, const nir_intrinsic_inst
 }
 
 static void
-set_writes_memory(const nir_shader *nir, struct radv_shader_info *info)
-{
-   if (nir->info.stage == MESA_SHADER_FRAGMENT)
-      info->ps.writes_memory = true;
-}
-
-static void
 gather_intrinsic_store_output_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
                                    struct radv_shader_info *info)
 {
@@ -240,52 +233,8 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
       nir_variable *var =
          nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
       mark_sampler_desc(var, info);
-
-      if (instr->intrinsic == nir_intrinsic_image_deref_store ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_add ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_imin ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_umin ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_imax ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_umax ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_and ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_or ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_xor ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_exchange ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_fmin ||
-          instr->intrinsic == nir_intrinsic_image_deref_atomic_fmax) {
-         set_writes_memory(nir, info);
-      }
       break;
    }
-   case nir_intrinsic_store_ssbo:
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_ssbo_atomic_imin:
-   case nir_intrinsic_ssbo_atomic_umin:
-   case nir_intrinsic_ssbo_atomic_imax:
-   case nir_intrinsic_ssbo_atomic_umax:
-   case nir_intrinsic_ssbo_atomic_and:
-   case nir_intrinsic_ssbo_atomic_or:
-   case nir_intrinsic_ssbo_atomic_xor:
-   case nir_intrinsic_ssbo_atomic_exchange:
-   case nir_intrinsic_ssbo_atomic_comp_swap:
-   case nir_intrinsic_ssbo_atomic_fmin:
-   case nir_intrinsic_ssbo_atomic_fmax:
-   case nir_intrinsic_store_global:
-   case nir_intrinsic_global_atomic_add:
-   case nir_intrinsic_global_atomic_imin:
-   case nir_intrinsic_global_atomic_umin:
-   case nir_intrinsic_global_atomic_imax:
-   case nir_intrinsic_global_atomic_umax:
-   case nir_intrinsic_global_atomic_and:
-   case nir_intrinsic_global_atomic_or:
-   case nir_intrinsic_global_atomic_xor:
-   case nir_intrinsic_global_atomic_exchange:
-   case nir_intrinsic_global_atomic_comp_swap:
-   case nir_intrinsic_global_atomic_fmin:
-   case nir_intrinsic_global_atomic_fmax:
-      set_writes_memory(nir, info);
-      break;
    case nir_intrinsic_load_input:
       gather_intrinsic_load_input_info(nir, instr, info);
       break;
@@ -738,6 +687,7 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->ps.post_depth_coverage = nir->info.fs.post_depth_coverage;
       info->ps.depth_layout = nir->info.fs.depth_layout;
       info->ps.uses_sample_shading = nir->info.fs.uses_sample_shading;
+      info->ps.writes_memory = nir->info.writes_memory;
       break;
    case MESA_SHADER_GEOMETRY:
       info->gs.vertices_in = nir->info.gs.vertices_in;
