@@ -341,7 +341,6 @@ struct lvp_descriptor_set_binding_layout {
 struct lvp_descriptor_set_layout {
    struct vk_object_base base;
 
-   const VkAllocationCallbacks *alloc;
    /* Descriptor set layouts can be destroyed at almost any time */
    uint32_t ref_cnt;
 

@@ -62,8 +62,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
                  num_bindings * sizeof(set_layout->binding[0]) +
                  immutable_sampler_count * sizeof(struct lvp_sampler *);
 
-   set_layout = vk_zalloc2(&device->vk.alloc, pAllocator, size, 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   set_layout = vk_zalloc(&device->vk.alloc, size, 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!set_layout)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -74,7 +74,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    struct lvp_sampler **samplers =
       (struct lvp_sampler **)&set_layout->binding[num_bindings];
 
-   set_layout->alloc = pAllocator;
    set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
    set_layout->size = 0;
@@ -85,7 +84,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
                                                &bindings);
    if (result != VK_SUCCESS) {
       vk_object_base_finish(&set_layout->base);
-      vk_free2(&device->vk.alloc, pAllocator, set_layout);
+      vk_free(&device->vk.alloc, set_layout);
       return vk_error(device, result);
    }
 
@@ -187,7 +186,7 @@ lvp_descriptor_set_layout_destroy(struct lvp_device *device,
 {
    assert(layout->ref_cnt == 0);
    vk_object_base_finish(&layout->base);
-   vk_free2(&device->vk.alloc, layout->alloc, layout);
+   vk_free(&device->vk.alloc, layout);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_DestroyDescriptorSetLayout(
