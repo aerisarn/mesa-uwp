@@ -2134,18 +2134,6 @@ void pvr_GetBufferMemoryRequirements2(
       ALIGN_POT(buffer->size, buffer->alignment);
 }
 
-void pvr_GetDeviceQueue(VkDevice _device,
-                        uint32_t queueFamilyIndex,
-                        uint32_t queueIndex,
-                        VkQueue *pQueue)
-{
-   PVR_FROM_HANDLE(pvr_device, device, _device);
-
-   assert(queueFamilyIndex == 0);
-
-   *pQueue = pvr_queue_to_handle(&device->queues[queueIndex]);
-}
-
 void pvr_GetImageMemoryRequirements2(VkDevice _device,
                                      const VkImageMemoryRequirementsInfo2 *pInfo,
                                      VkMemoryRequirements2 *pMemoryRequirements)
