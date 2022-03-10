@@ -3942,7 +3942,7 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetPrimitiveRestartEnable)
    ENQUEUE_CMD(CmdSetRasterizerDiscardEnable)
    ENQUEUE_CMD(CmdSetColorWriteEnableEXT)
-//   ENQUEUE_CMD(CmdBeginRendering)
+   ENQUEUE_CMD(CmdBeginRendering)
    ENQUEUE_CMD(CmdEndRendering)
    ENQUEUE_CMD(CmdSetDeviceMask)
 

@@ -50,10 +50,6 @@ MANUAL_COMMANDS = [
     # executed
     'CmdBindDescriptorSets',
 
-    # Lavapipe implements internally
-    'CmdBeginRendering',
-    'CmdBeginRenderingKHR',
-
     # These don't return void
     'CmdSetPerformanceMarkerINTEL',
     'CmdSetPerformanceStreamMarkerINTEL',
