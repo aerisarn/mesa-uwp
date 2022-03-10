@@ -905,6 +905,14 @@ reload(struct ra_spill_ctx *ctx, struct ir3_register *reg,
       ir3_instr_create(block, OPC_RELOAD_MACRO, 1, 3);
    struct ir3_register *dst = __ssa_dst(reload);
    dst->flags |= reg->flags & (IR3_REG_HALF | IR3_REG_ARRAY);
+   /* The reload may be split into multiple pieces, and if the destination
+    * overlaps with the base register then it could get clobbered before the
+    * last ldp in the sequence. Note that we always reserve space for the base
+    * register throughout the whole program, so effectively extending its live
+    * range past the end of the instruction isn't a problem for our pressure
+    * accounting.
+    */
+   dst->flags |= IR3_REG_EARLY_CLOBBER;
    ir3_src_create(reload, INVALID_REG, ctx->base_reg->flags)->def = ctx->base_reg;
    struct ir3_register *offset_reg =
       ir3_src_create(reload, INVALID_REG, IR3_REG_IMMED);
