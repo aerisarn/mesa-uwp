@@ -1116,7 +1116,6 @@ struct_member_decoration_cb(struct vtn_builder *b,
    case SpvDecorationGLSLShared:
    case SpvDecorationGLSLPacked:
    case SpvDecorationInvariant:
-   case SpvDecorationRestrict:
    case SpvDecorationAliased:
    case SpvDecorationConstant:
    case SpvDecorationIndex:
@@ -1128,6 +1127,14 @@ struct_member_decoration_cb(struct vtn_builder *b,
    case SpvDecorationCPacked:
       vtn_warn("Decoration not allowed on struct members: %s",
                spirv_decoration_to_string(dec->decoration));
+      break;
+
+   case SpvDecorationRestrict:
+      /* While "Restrict" is invalid for struct members, glslang incorrectly
+       * generates it and it ends up hiding actual driver issues in a wall of
+       * spam from deqp-vk.  Return it to the above block once the issue is
+       * resolved.  https://github.com/KhronosGroup/glslang/issues/703
+       */
       break;
 
    case SpvDecorationXfbBuffer:
