@@ -416,6 +416,15 @@ event_wait_thread_func(void *_info)
    struct v3dv_queue *queue = &job->device->queue;
    list_for_each_entry_from(struct v3dv_job, pjob, job->list_link.next,
                             &job->cmd_buffer->jobs, list_link) {
+      /* We can't signal semaphores from wait threads because in this case
+       * we can't ensure job completion order any more (i.e. if the wait for
+       * events is in the first command buffer of a batch then the last job
+       * from the last command buffer in that batch can't signal). We always
+       * need to signal from the master thread in that case, when we know we
+       * are done submitting all jobs from all command buffers.
+       */
+      pjob->do_sem_signal = false;
+
       /* We don't want to spawn more than one wait thread per command buffer.
        * If this job also requires a wait for events, we will do the wait here.
        */
@@ -628,16 +637,18 @@ fence_get_sync(struct v3dv_fence *fence)
 
 static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
-                             uint32_t count, const VkSemaphore *sems)
+                             uint32_t count, const VkSemaphore *sems,
+                             bool is_master_thread)
 {
    if (count == 0)
       return VK_SUCCESS;
 
    /* If multisync is supported, we are signalling semaphores in the last job
     * of the last command buffer and, therefore, we do not need to process any
-    * semaphores here.
+    * semaphores here, unless we come from a wait thread, because in that case
+    * we never signal.
     */
-   if (device->pdevice->caps.multisync)
+   if (device->pdevice->caps.multisync && !is_master_thread)
       return VK_SUCCESS;
 
    int render_fd = device->pdevice->render_fd;
@@ -1346,13 +1357,6 @@ add_signal_semaphores_to_wait_list(struct v3dv_device *device,
    if (pSubmit->signalSemaphoreCount == 0)
       return;
 
-   /* If multisync is supported, we just signal semaphores in the last job of
-    * the last command buffer and, therefore, we do not need to add any
-    * semaphores here.
-    */
-   if (device->pdevice->caps.multisync)
-      return;
-
    /* Otherwise, we put all the semaphores in a list and we signal all of them
     * together from the submit master thread when the last wait thread in the
     * submit completes.
@@ -1451,7 +1455,8 @@ queue_submit_cmd_buffer_batch(struct v3dv_queue *queue,
    if (!has_wait_threads) {
       return process_semaphores_to_signal(queue->device,
                                           pSubmit->signalSemaphoreCount,
-                                          pSubmit->pSignalSemaphores);
+                                          pSubmit->pSignalSemaphores,
+                                          false);
    } else {
       assert(*wait_info);
       add_signal_semaphores_to_wait_list(queue->device, pSubmit, *wait_info);
@@ -1478,7 +1483,8 @@ master_wait_thread_func(void *_wait_info)
    VkResult result;
    result = process_semaphores_to_signal(wait_info->device,
                                          wait_info->signal_semaphore_count,
-                                         wait_info->signal_semaphores);
+                                         wait_info->signal_semaphores,
+                                         true);
    if (result != VK_SUCCESS)
       fprintf(stderr, "Wait thread semaphore signaling failed.");
 
