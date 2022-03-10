@@ -355,14 +355,14 @@ def output_counter_read(gen, set, counter):
 def output_counter_max(gen, set, counter):
     max_eq = counter.get('max_equation')
 
-    if not counter.has_max_func():
+    if not counter.has_custom_max_func():
         return
 
     c("\n")
     c("/* {0} :: {1} */".format(set.name, counter.get('name')))
 
     if counter.max_hash in hashed_funcs:
-        c("#define %s \\" % counter.max_sym())
+        c("#define %s \\" % counter.max_sym)
         c_indent(3)
         c("%s" % hashed_funcs[counter.max_hash])
         c_outdent(3)
@@ -372,14 +372,18 @@ def output_counter_max(gen, set, counter):
             ret_type = "uint64_t"
 
         c("static " + ret_type)
-        c(counter.max_sym() + "(struct intel_perf_config *perf)\n")
+        c(counter.max_sym + "(struct intel_perf_config *perf,\n")
+        c_indent(len(counter.read_sym) + 1)
+        c("const struct intel_perf_query_info *query,\n")
+        c("const struct intel_perf_query_result *results)\n")
+        c_outdent(len(counter.read_sym) + 1)
         c("{")
         c_indent(3)
         output_rpn_equation_code(set, counter, max_eq)
         c_outdent(3)
         c("}")
 
-        hashed_funcs[counter.max_hash] = counter.max_sym()
+        hashed_funcs[counter.max_hash] = counter.max_sym
 
 
 c_type_sizes = { "uint32_t": 4, "uint64_t": 8, "float": 4, "double": 8, "bool": 4 }
@@ -515,10 +519,17 @@ def output_counter_report(set, counter, counter_to_idx, current_offset):
 
     current_offset = pot_align(current_offset, sizeof(c_type))
 
-    c("intel_perf_query_add_counter(query, " + idx + ", " +
-        str(current_offset) + ", " +
-        set.max_values[counter.get('symbol_name')] + ", (oa_counter_read_func)" +
-        set.read_funcs[counter.get('symbol_name')] + ");\n")
+    if data_type == 'uint64':
+        c("intel_perf_query_add_counter_uint64(query, " + idx + ", " +
+          str(current_offset) + ", " +
+          set.max_funcs[counter.get('symbol_name')] + "," +
+          set.read_funcs[counter.get('symbol_name')] + ");\n")
+    else:
+        c("intel_perf_query_add_counter_float(query, " + idx + ", " +
+          str(current_offset) + ", " +
+          set.max_funcs[counter.get('symbol_name')] + "," +
+          set.read_funcs[counter.get('symbol_name')] + ");\n")
+
 
     if availability:
         c_outdent(3);
@@ -607,6 +618,7 @@ class Counter:
         self.read_sym = "{0}__{1}__{2}__read".format(self.set.gen.chipset,
                                                      self.set.underscore_name,
                                                      self.xml.get('underscore_name'))
+        self.max_sym = self.build_max_sym()
 
     def get(self, prop):
         return self.xml.get(prop)
@@ -632,45 +644,44 @@ class Counter:
         if max_eq:
             self.max_hash = ' '.join(map(replace_token, max_eq.split()))
 
-    def has_max_func(self):
+    def has_custom_max_func(self):
         max_eq = self.xml.get('max_equation')
         if not max_eq:
             return False
 
         try:
             val = float(max_eq)
-            return False
+            if val == 100:
+                return False
         except ValueError:
             pass
 
         for token in max_eq.split():
-            if token[0] == '$' and resolve_variable(token, self.set, False) == None:
+            if token[0] == '$' and resolve_variable(token, self.set, True) == None:
+                print("unresolved token " + token)
                 return False
         return True
 
-    def max_sym(self):
-        assert self.has_max_func()
+    def build_max_sym(self):
+        max_eq = self.xml.get('max_equation')
+        if not max_eq:
+            return "NULL"
+
+        try:
+            val = float(max_eq)
+            if val == 100:
+                if self.xml.get('data_type') == 'uint64':
+                    return "percentage_max_uint64"
+                else:
+                    return "percentage_max_float"
+        except ValueError:
+            pass
+
+        assert self.has_custom_max_func()
         return "{0}__{1}__{2}__max".format(self.set.gen.chipset,
                                            self.set.underscore_name,
                                            self.xml.get('underscore_name'))
 
-    def max_value(self):
-        max_eq = self.xml.get('max_equation')
-        if not max_eq:
-            return "0 /* undefined */"
-
-        try:
-            return "{0}".format(float(max_eq))
-        except ValueError:
-            pass
-
-        for token in max_eq.split():
-            if token[0] == '$' and resolve_variable(token, self.set, False) == None:
-                return "0 /* unsupported (varies over time) */"
-
-        return "{0}__{1}__{2}__max(perf)".format(self.set.gen.chipset,
-                                                 self.set.underscore_name,
-                                                 self.xml.get('underscore_name'))
 
 # Wraps a <set> element from the oa-*.xml files.
 class Set:
@@ -679,7 +690,7 @@ class Set:
         self.xml = xml
 
         self.counter_vars = {}
-        self.max_values = {}
+        self.max_funcs = {}
         self.read_funcs = {}
 
         xml_counters = self.xml.findall("counter")
@@ -689,7 +700,7 @@ class Set:
             self.counters.append(counter)
             self.counter_vars['$' + counter.get('symbol_name')] = counter
             self.read_funcs[counter.get('symbol_name')] = counter.read_sym
-            self.max_values[counter.get('symbol_name')] = counter.max_value()
+            self.max_funcs[counter.get('symbol_name')] = counter.max_sym
 
         for counter in self.counters:
             counter.compute_hashes()
@@ -856,13 +867,11 @@ def main():
     c("};\n\n")
 
     c(textwrap.dedent("""\
-        typedef uint64_t (*oa_counter_read_func)(struct intel_perf_config *perf,
-                                                 const struct intel_perf_query_info *query,
-                                                 const struct intel_perf_query_result *results);
         static void ATTRIBUTE_NOINLINE
-        intel_perf_query_add_counter(struct intel_perf_query_info *query,
-                                     int counter_idx, size_t offset,
-                                     uint64_t raw_max, oa_counter_read_func oa_counter_read_uint64)
+        intel_perf_query_add_counter_uint64(struct intel_perf_query_info *query,
+                                            int counter_idx, size_t offset,
+                                            intel_counter_read_uint64_t oa_counter_max,
+                                            intel_counter_read_uint64_t oa_counter_read)
         {
            struct intel_perf_query_counter *dest = &query->counters[query->n_counters++];
            const struct intel_perf_query_counter_data *counter = &counters[counter_idx];
@@ -871,13 +880,51 @@ def main():
            dest->desc = &desc[counter->desc_idx];
            dest->symbol_name = &symbol_name[counter->symbol_name_idx];
            dest->category = &category[counter->category_idx];
-           dest->raw_max = raw_max;
 
            dest->offset = offset;
            dest->type = counter->type;
            dest->data_type = counter->data_type;
            dest->units = counter->units;
-           dest->oa_counter_read_uint64 = oa_counter_read_uint64;
+           dest->oa_counter_max_uint64 = oa_counter_max;
+           dest->oa_counter_read_uint64 = oa_counter_read;
+        }
+
+        static void ATTRIBUTE_NOINLINE
+        intel_perf_query_add_counter_float(struct intel_perf_query_info *query,
+                                           int counter_idx, size_t offset,
+                                           intel_counter_read_float_t oa_counter_max,
+                                           intel_counter_read_float_t oa_counter_read)
+        {
+           struct intel_perf_query_counter *dest = &query->counters[query->n_counters++];
+           const struct intel_perf_query_counter_data *counter = &counters[counter_idx];
+
+           dest->name = &name[counter->name_idx];
+           dest->desc = &desc[counter->desc_idx];
+           dest->symbol_name = &symbol_name[counter->symbol_name_idx];
+           dest->category = &category[counter->category_idx];
+
+           dest->offset = offset;
+           dest->type = counter->type;
+           dest->data_type = counter->data_type;
+           dest->units = counter->units;
+           dest->oa_counter_max_float = oa_counter_max;
+           dest->oa_counter_read_float = oa_counter_read;
+        }
+
+        static float ATTRIBUTE_NOINLINE
+        percentage_max_float(struct intel_perf_config *perf,
+                             const struct intel_perf_query_info *query,
+                             const struct intel_perf_query_result *results)
+        {
+           return 100;
+        }
+
+        static uint64_t ATTRIBUTE_NOINLINE
+        percentage_max_uint64(struct intel_perf_config *perf,
+                              const struct intel_perf_query_info *query,
+                              const struct intel_perf_query_result *results)
+        {
+           return 100;
         }
         """))
 

@@ -37,6 +37,7 @@
 
 #include "compiler/glsl/list.h"
 #include "dev/intel_device_info.h"
+#include "util/bitscan.h"
 #include "util/hash_table.h"
 #include "util/ralloc.h"
 
@@ -178,6 +179,14 @@ struct intel_perf_query_result {
    bool query_disjoint;
 };
 
+typedef uint64_t (*intel_counter_read_uint64_t)(struct intel_perf_config *perf,
+                                                const struct intel_perf_query_info *query,
+                                                const struct intel_perf_query_result *results);
+
+typedef float (*intel_counter_read_float_t)(struct intel_perf_config *perf,
+                                            const struct intel_perf_query_info *query,
+                                            const struct intel_perf_query_result *results);
+
 struct intel_perf_query_counter {
    const char *name;
    const char *desc;
@@ -186,16 +195,16 @@ struct intel_perf_query_counter {
    enum intel_perf_counter_type type;
    enum intel_perf_counter_data_type data_type;
    enum intel_perf_counter_units units;
-   uint64_t raw_max;
    size_t offset;
 
    union {
-      uint64_t (*oa_counter_read_uint64)(struct intel_perf_config *perf,
-                                         const struct intel_perf_query_info *query,
-                                         const struct intel_perf_query_result *results);
-      float (*oa_counter_read_float)(struct intel_perf_config *perf,
-                                     const struct intel_perf_query_info *query,
-                                     const struct intel_perf_query_result *results);
+      intel_counter_read_uint64_t oa_counter_max_uint64;
+      intel_counter_read_float_t  oa_counter_max_float;
+   };
+
+   union {
+      intel_counter_read_uint64_t oa_counter_read_uint64;
+      intel_counter_read_float_t  oa_counter_read_float;
       struct intel_pipeline_stat pipeline_stat;
    };
 };
@@ -428,6 +437,12 @@ struct intel_perf_registers *intel_perf_load_configuration(struct intel_perf_con
 uint64_t intel_perf_store_configuration(struct intel_perf_config *perf_cfg, int fd,
                                         const struct intel_perf_registers *config,
                                         const char *guid);
+
+static inline unsigned
+intel_perf_query_counter_info_first_query(const struct intel_perf_query_counter_info *counter_info)
+{
+   return ffsll(counter_info->query_mask);
+}
 
 /** Read the slice/unslice frequency from 2 OA reports and store then into
  *  result.
