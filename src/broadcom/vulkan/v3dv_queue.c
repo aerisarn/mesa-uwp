@@ -606,6 +606,26 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
    return VK_SUCCESS;
 }
 
+static uint32_t
+semaphore_get_sync(struct v3dv_semaphore *sem)
+{
+   if (!sem->has_temp)
+      return sem->sync;
+
+   assert(sem->temp_sync > 0);
+   return sem->temp_sync;
+}
+
+static uint32_t
+fence_get_sync(struct v3dv_fence *fence)
+{
+   if (!fence->has_temp)
+      return fence->sync;
+
+   assert(fence->temp_sync > 0);
+   return fence->temp_sync;
+}
+
 static VkResult
 process_semaphores_to_signal(struct v3dv_device *device,
                              uint32_t count, const VkSemaphore *sems)
@@ -634,13 +654,8 @@ process_semaphores_to_signal(struct v3dv_device *device,
    VkResult result = VK_SUCCESS;
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_semaphore *sem = v3dv_semaphore_from_handle(sems[i]);
-
-      int ret;
-      if (!sem->temp_sync)
-         ret = drmSyncobjImportSyncFile(render_fd, sem->sync, fd);
-      else
-         ret = drmSyncobjImportSyncFile(render_fd, sem->temp_sync, fd);
-
+      uint32_t sync = semaphore_get_sync(sem);
+      int ret = drmSyncobjImportSyncFile(render_fd, sync, fd);
       if (ret) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          break;
@@ -697,11 +712,8 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
    if (fd == -1)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   int ret;
-   if (!fence->temp_sync)
-      ret = drmSyncobjImportSyncFile(render_fd, fence->sync, fd);
-   else
-      ret = drmSyncobjImportSyncFile(render_fd, fence->temp_sync, fd);
+   uint32_t sync = fence_get_sync(fence);
+   int ret = drmSyncobjImportSyncFile(render_fd, sync, fd);
 
    assert(fd >= 0);
    close(fd);
@@ -753,7 +765,22 @@ set_in_syncs(struct v3dv_device *device,
       for (int i = 0; i < *count; i++) {
          struct v3dv_semaphore *sem =
             v3dv_semaphore_from_handle(sems_info->wait_sems[i]);
-         syncs[i].handle = sem->sync;
+         syncs[i].handle = semaphore_get_sync(sem);
+
+         /* From the Vulkan 1.0 spec:
+          *
+          *    "If the import is temporary, the implementation must restore
+          *     the semaphore to its prior permanent state after submitting
+          *     the next semaphore wait operation."
+          *
+          * We can't destroy the temporary sync until the kernel is done
+          * with it, this is why we need to have this 'has_temp' flag instead
+          * of checking temp_sync for 0 to know if we have a temporary
+          * payload. The temporary sync will be destroyed if we import into
+          * the semaphore again or if the semaphore is destroyed by the
+          * client.
+          */
+         sem->has_temp = false;
       }
    } else {
       for (int i = 0; i < *count; i++)
@@ -791,7 +818,7 @@ set_out_syncs(struct v3dv_device *device,
       for (unsigned i = 0; i < n_sems; i++) {
          struct v3dv_semaphore *sem =
             v3dv_semaphore_from_handle(sems_info->signal_sems[i]);
-         syncs[i].handle = sem->sync;
+         syncs[i].handle = semaphore_get_sync(sem);
       }
    }
 
@@ -799,7 +826,7 @@ set_out_syncs(struct v3dv_device *device,
 
    if (sems_info->fence) {
       struct v3dv_fence *fence = v3dv_fence_from_handle(sems_info->fence);
-      syncs[++n_sems].handle = fence->sync;
+      syncs[++n_sems].handle = fence_get_sync(fence);
    }
 
    return syncs;
@@ -1121,8 +1148,9 @@ queue_submit_job(struct v3dv_queue *queue,
          int render_fd = queue->device->pdevice->render_fd;
          struct v3dv_semaphore *sem =
             v3dv_semaphore_from_handle(sems_info->wait_sems[i]);
-	 int ret = drmSyncobjWait(render_fd, &sem->sync, 1, 0, 0, NULL);
-	 assert(ret == 0);
+         uint32_t sem_sync = semaphore_get_sync(sem);
+         int ret = drmSyncobjWait(render_fd, &sem_sync, 1, 0, 0, NULL);
+         assert(ret == 0);
       }
 #endif
       sems_info->wait_sem_count = 0;
@@ -1658,9 +1686,14 @@ v3dv_ImportSemaphoreFdKHR(
       return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
-   destroy_syncobj(render_fd, &sem->temp_sync);
+   if (sem->temp_sync) {
+      destroy_syncobj(render_fd, &sem->temp_sync);
+      sem->has_temp = false;
+   }
+
    if (is_temporary) {
       sem->temp_sync = new_sync;
+      sem->has_temp = true;
    } else {
       destroy_syncobj(render_fd, &sem->sync);
       sem->sync = new_sync;
@@ -1724,7 +1757,8 @@ v3dv_DestroySemaphore(VkDevice _device,
       return;
 
    destroy_syncobj(device->pdevice->render_fd, &sem->sync);
-   destroy_syncobj(device->pdevice->render_fd, &sem->temp_sync);
+   if (sem->temp_sync)
+      destroy_syncobj(device->pdevice->render_fd, &sem->temp_sync);
 
    vk_object_free(&device->vk, pAllocator, sem);
 }
@@ -1857,9 +1891,14 @@ v3dv_ImportFenceFdKHR(VkDevice _device,
       return vk_error(device, VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
 
-   destroy_syncobj(render_fd, &fence->temp_sync);
+   if (fence->temp_sync) {
+      destroy_syncobj(render_fd, &fence->temp_sync);
+      fence->has_temp = false;
+   }
+
    if (is_temporary) {
       fence->temp_sync = new_sync;
+      fence->has_temp = true;
    } else {
       destroy_syncobj(render_fd, &fence->sync);
       fence->sync = new_sync;
@@ -1892,7 +1931,8 @@ v3dv_DestroyFence(VkDevice _device,
       return;
 
    destroy_syncobj(device->pdevice->render_fd, &fence->sync);
-   destroy_syncobj(device->pdevice->render_fd, &fence->temp_sync);
+   if (fence->temp_sync)
+      destroy_syncobj(device->pdevice->render_fd, &fence->temp_sync);
 
    vk_object_free(&device->vk, pAllocator, fence);
 }
@@ -1903,7 +1943,8 @@ v3dv_GetFenceStatus(VkDevice _device, VkFence _fence)
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_fence, fence, _fence);
 
-   int ret = drmSyncobjWait(device->pdevice->render_fd, &fence->sync, 1,
+   uint32_t sync = fence_get_sync(fence);
+   int ret = drmSyncobjWait(device->pdevice->render_fd, &sync, 1,
                             0, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
    if (ret == -ETIME)
       return VK_NOT_READY;
@@ -1969,10 +2010,13 @@ v3dv_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
        *
        * To restore the previous state, we just need to destroy the temporary.
        */
-      if (fence->temp_sync)
+      if (fence->has_temp) {
+         assert(fence->temp_sync);
          destroy_syncobj(render_fd, &fence->temp_sync);
-      else
+         fence->has_temp = false;
+      } else {
          syncobjs[reset_count++] = fence->sync;
+      }
    }
 
    int ret = 0;
@@ -2005,7 +2049,7 @@ v3dv_WaitForFences(VkDevice _device,
 
    for (uint32_t i = 0; i < fenceCount; i++) {
       struct v3dv_fence *fence = v3dv_fence_from_handle(pFences[i]);
-      syncobjs[i] = fence->temp_sync ? fence->temp_sync : fence->sync;
+      syncobjs[i] = fence_get_sync(fence);
    }
 
    unsigned flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;
