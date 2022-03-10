@@ -2861,7 +2861,11 @@ nir_binding nir_chase_binding(nir_src rsrc)
    if (nir_src_is_const(rsrc)) {
       /* GL binding model after deref lowering */
       res.success = true;
-      res.binding = nir_src_as_uint(rsrc);
+      /* Can't use just nir_src_as_uint. Vulkan resource index produces a
+       * vec2. Some drivers lower it to vec1 (to handle get_ssbo_size for
+       * example) but others just keep it around as a vec2 (v3dv).
+       */
+      res.binding = nir_src_comp_as_uint(rsrc, 0);
       return res;
    }
 
