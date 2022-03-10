@@ -26,5 +26,4 @@ dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_equal_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_even_spacing
 dEQP-VK.tessellation.invariance.outer_triangle_set.triangles_fractional_odd_spacing
 
-dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 dEQP-VK.graphicsfuzz.cov-int-initialize-from-multiple-large-arrays
