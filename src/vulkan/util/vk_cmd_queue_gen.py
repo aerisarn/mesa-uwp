@@ -356,11 +356,14 @@ def get_array_copy(command, param):
 
 def get_array_member_copy(struct, src_name, member):
     field_name = "%s->%s" % (struct, member.name)
-    len_field_name = "%s->%s" % (struct, member.len)
-    allocation = "%s = vk_zalloc(queue->alloc, sizeof(*%s) * %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);" % (field_name, field_name, len_field_name)
+    if member.len == "struct-ptr":
+        field_size = "sizeof(*%s)" % (field_name)
+    else:
+        field_size = "sizeof(*%s) * %s->%s" % (field_name, struct, member.len)
+    allocation = "%s = vk_zalloc(queue->alloc, %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);" % (field_name, field_size)
     const_cast = remove_suffix(member.decl.replace("const", ""), member.name)
-    copy = "memcpy((%s)%s, %s->%s, sizeof(*%s) * %s);" % (const_cast, field_name, src_name, member.name, field_name, len_field_name)
-    return "%s\n   %s\n" % (allocation, copy)
+    copy = "memcpy((%s)%s, %s->%s, %s);" % (const_cast, field_name, src_name, member.name, field_size)
+    return "if (%s->%s) {\n   %s\n   %s\n}\n" % (src_name, member.name, allocation, copy)
 
 def get_pnext_member_copy(struct, src_type, member, types, level):
     if not types[src_type].extended_by:
@@ -431,13 +434,20 @@ def get_types(doc):
         members = []
         type_enum = None
         for p in _type.findall('./member'):
-            member = EntrypointParam(type=p.find('./type').text,
-                                     name=p.find('./name').text,
-                                     decl=''.join(p.itertext()),
-                                     len=p.attrib.get('len', None))
+            mem_type = p.find('./type').text
+            mem_name = p.find('./name').text
+            mem_decl = ''.join(p.itertext())
+            mem_len = p.attrib.get('len', None)
+            if mem_len is None and '*' in mem_decl and mem_name != 'pNext':
+                mem_len = "struct-ptr"
+
+            member = EntrypointParam(type=mem_type,
+                                     name=mem_name,
+                                     decl=mem_decl,
+                                     len=mem_len)
             members.append(member)
 
-            if p.find('./name').text == 'sType':
+            if mem_name == 'sType':
                 type_enum = p.attrib.get('values')
         types[_type.attrib['name']] = EntrypointType(name=_type.attrib['name'], enum=type_enum, members=members, extended_by=[])
 
