@@ -17,6 +17,15 @@ pub struct SPIRVBin {
     info: Option<clc_parsed_spirv>,
 }
 
+#[derive(PartialEq, Eq, Hash)]
+pub struct SPIRVKernelArg {
+    pub name: String,
+    pub type_name: String,
+    pub access_qualifier: clc_kernel_arg_access_qualifier,
+    pub address_qualifier: clc_kernel_arg_address_qualifier,
+    pub type_qualifier: clc_kernel_arg_type_qualifier,
+}
+
 pub struct CLCHeader<'a> {
     pub name: CString,
     pub source: &'a CString,
@@ -122,16 +131,40 @@ impl SPIRVBin {
         (res, msgs.join("\n"))
     }
 
+    fn kernel_infos(&self) -> &[clc_kernel_info] {
+        match self.info {
+            None => &[],
+            Some(info) => unsafe { slice::from_raw_parts(info.kernels, info.num_kernels as usize) },
+        }
+    }
+
+    fn kernel_info(&self, name: &str) -> Option<&clc_kernel_info> {
+        self.kernel_infos()
+            .iter()
+            .find(|i| c_string_to_string(i.name) == name)
+    }
+
     pub fn kernels(&self) -> Vec<String> {
-        unsafe {
-            match self.info {
-                None => Vec::new(),
-                Some(info) => slice::from_raw_parts(info.kernels, info.num_kernels as usize)
-                    .iter()
-                    .map(|i| i.name)
-                    .map(c_string_to_string)
-                    .collect(),
-            }
+        self.kernel_infos()
+            .iter()
+            .map(|i| i.name)
+            .map(c_string_to_string)
+            .collect()
+    }
+
+    pub fn args(&self, name: &str) -> Vec<SPIRVKernelArg> {
+        match self.kernel_info(name) {
+            None => Vec::new(),
+            Some(info) => unsafe { slice::from_raw_parts(info.args, info.num_args) }
+                .iter()
+                .map(|a| SPIRVKernelArg {
+                    name: c_string_to_string(a.name),
+                    type_name: c_string_to_string(a.type_name),
+                    access_qualifier: clc_kernel_arg_access_qualifier(a.access_qualifier),
+                    address_qualifier: a.address_qualifier,
+                    type_qualifier: clc_kernel_arg_type_qualifier(a.type_qualifier),
+                })
+                .collect(),
         }
     }
 }

@@ -40,6 +40,7 @@ impl CLInfo<cl_program_info> for cl_program {
                         .collect(),
                 )
             }
+            CL_PROGRAM_KERNEL_NAMES => cl_prop::<String>(prog.kernels().join(";")),
             CL_PROGRAM_NUM_DEVICES => cl_prop::<cl_uint>(prog.devs.len() as cl_uint),
             CL_PROGRAM_NUM_KERNELS => cl_prop::<usize>(prog.kernels().len()),
             CL_PROGRAM_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),

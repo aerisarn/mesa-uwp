@@ -127,6 +127,7 @@ rusticl_opencl_bindings_rs = rust.bindgen(
     '--whitelist-var', 'CL_.*',
     # some info types need to be strongly typed so we can implement various get_infos
     '--new-type-alias-deref', 'cl_(mem|image)_info',
+    '--new-type-alias-deref', 'cl_kernel_(arg|work_group)_info',
   ],
 )
 
@@ -177,6 +178,10 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--whitelist-function', 'clc_.*',
     '--whitelist-function', 'pipe_.*',
     '--whitelist-type', 'pipe_endian',
+    '--whitelist-type', 'clc_kernel_arg_access_qualifier',
+    '--bitfield-enum', 'clc_kernel_arg_access_qualifier',
+    '--whitelist-type', 'clc_kernel_arg_type_qualifier',
+    '--bitfield-enum', 'clc_kernel_arg_type_qualifier',
     '--whitelist-var', 'PIPE_.*',
     '--bitfield-enum', 'pipe_map_flags',
   ],

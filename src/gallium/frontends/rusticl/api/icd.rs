@@ -58,14 +58,14 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clGetProgramBuildInfo: Some(cl_get_program_build_info),
     clCreateKernel: Some(cl_create_kernel),
     clCreateKernelsInProgram: Some(cl_create_kernels_in_program),
-    clRetainKernel: None,
-    clReleaseKernel: None,
-    clSetKernelArg: None,
-    clGetKernelInfo: None,
-    clGetKernelWorkGroupInfo: None,
+    clRetainKernel: Some(cl_retain_kernel),
+    clReleaseKernel: Some(cl_release_kernel),
+    clSetKernelArg: Some(cl_set_kernel_arg),
+    clGetKernelInfo: Some(cl_get_kernel_info),
+    clGetKernelWorkGroupInfo: Some(cl_get_kernel_work_group_info),
     clWaitForEvents: Some(cl_wait_for_events),
     clGetEventInfo: Some(cl_get_event_info),
-    clRetainEvent: None,
+    clRetainEvent: Some(cl_retain_event),
     clReleaseEvent: Some(cl_release_event),
     clGetEventProfilingInfo: Some(cl_get_event_profiling_info),
     clFlush: Some(cl_flush),
@@ -81,7 +81,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clEnqueueMapBuffer: Some(cl_enqueue_map_buffer),
     clEnqueueMapImage: Some(cl_enqueue_map_image),
     clEnqueueUnmapMemObject: Some(cl_enqueue_unmap_mem_object),
-    clEnqueueNDRangeKernel: None,
+    clEnqueueNDRangeKernel: Some(cl_enqueue_ndrange_kernel),
     clEnqueueTask: None,
     clEnqueueNativeKernel: None,
     clEnqueueMarker: None,
@@ -123,7 +123,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clCompileProgram: Some(cl_compile_program),
     clLinkProgram: Some(cl_link_program),
     clUnloadPlatformCompiler: Some(cl_unload_platform_compiler),
-    clGetKernelArgInfo: None,
+    clGetKernelArgInfo: Some(cl_get_kernel_arg_info),
     clEnqueueFillBuffer: None,
     clEnqueueFillImage: Some(cl_enqueue_fill_image),
     clEnqueueMigrateMemObjects: None,
@@ -775,6 +775,55 @@ extern "C" fn cl_create_kernels_in_program(
     CL_OUT_OF_HOST_MEMORY
 }
 
+extern "C" fn cl_retain_kernel(kernel: cl_kernel) -> cl_int {
+    match_err!(kernel.retain())
+}
+
+extern "C" fn cl_release_kernel(kernel: cl_kernel) -> cl_int {
+    match_err!(kernel.release())
+}
+
+extern "C" fn cl_set_kernel_arg(
+    kernel: cl_kernel,
+    arg_index: cl_uint,
+    arg_size: usize,
+    arg_value: *const ::std::os::raw::c_void,
+) -> cl_int {
+    match_err!(set_kernel_arg(kernel, arg_index, arg_size, arg_value))
+}
+
+extern "C" fn cl_get_kernel_info(
+    kernel: cl_kernel,
+    param_name: cl_kernel_info,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
+) -> cl_int {
+    match_err!(kernel.get_info(
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret,
+    ))
+}
+
+extern "C" fn cl_get_kernel_work_group_info(
+    kernel: cl_kernel,
+    device: cl_device_id,
+    param_name: cl_kernel_work_group_info,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
+) -> cl_int {
+    match_err!(kernel.get_info_obj(
+        device,
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret,
+    ))
+}
+
 extern "C" fn cl_wait_for_events(_num_events: cl_uint, _event_list: *const cl_event) -> cl_int {
     println!("cl_wait_for_events not implemented");
     CL_OUT_OF_HOST_MEMORY
@@ -793,6 +842,10 @@ extern "C" fn cl_get_event_info(
         param_value,
         param_value_size_ret,
     ))
+}
+
+extern "C" fn cl_retain_event(event: cl_event) -> cl_int {
+    match_err!(event.retain())
 }
 
 extern "C" fn cl_release_event(event: cl_event) -> cl_int {
@@ -1025,6 +1078,21 @@ extern "C" fn cl_enqueue_unmap_mem_object(
     ))
 }
 
+extern "C" fn cl_enqueue_ndrange_kernel(
+    _command_queue: cl_command_queue,
+    _kernel: cl_kernel,
+    _work_dim: cl_uint,
+    _global_work_offset: *const usize,
+    _global_work_size: *const usize,
+    _local_work_size: *const usize,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    println!("cl_enqueue_ndrange_kernel not implemented");
+    CL_OUT_OF_HOST_MEMORY
+}
+
 extern "C" fn cl_get_extension_function_address(
     function_name: *const ::std::os::raw::c_char,
 ) -> *mut ::std::ffi::c_void {
@@ -1247,6 +1315,23 @@ extern "C" fn cl_link_program(
 extern "C" fn cl_unload_platform_compiler(_platform: cl_platform_id) -> cl_int {
     println!("cl_unload_platform_compiler not implemented");
     CL_OUT_OF_HOST_MEMORY
+}
+
+extern "C" fn cl_get_kernel_arg_info(
+    kernel: cl_kernel,
+    arg_indx: cl_uint,
+    param_name: cl_kernel_arg_info,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
+) -> cl_int {
+    match_err!(kernel.get_info_obj(
+        arg_indx,
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret,
+    ))
 }
 
 extern "C" fn cl_enqueue_fill_image(
