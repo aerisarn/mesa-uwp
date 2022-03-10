@@ -214,13 +214,14 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
 
-   layout = vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*layout), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   layout = vk_alloc(&device->vk.alloc, sizeof(*layout), 8,
+                     VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (layout == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &layout->base,
                        VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+   layout->ref_cnt = 1;
    layout->num_sets = pCreateInfo->setLayoutCount;
 
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
@@ -242,6 +243,18 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
    return VK_SUCCESS;
 }
 
+void lvp_pipeline_layout_destroy(struct lvp_device *device,
+                                 struct lvp_pipeline_layout *pipeline_layout)
+{
+   assert(pipeline_layout->ref_cnt == 0);
+
+   for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
+      lvp_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
+
+   vk_object_base_finish(&pipeline_layout->base);
+   vk_free(&device->vk.alloc, pipeline_layout);
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipelineLayout(
     VkDevice                                    _device,
     VkPipelineLayout                            _pipelineLayout,
@@ -252,11 +265,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipelineLayout(
 
    if (!_pipelineLayout)
      return;
-   for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
-      lvp_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
 
-   vk_object_base_finish(&pipeline_layout->base);
-   vk_free2(&device->vk.alloc, pAllocator, pipeline_layout);
+   lvp_pipeline_layout_unref(device, pipeline_layout);
 }
 
 VkResult

@@ -443,6 +443,10 @@ lvp_descriptor_set_destroy(struct lvp_device *device,
 
 struct lvp_pipeline_layout {
    struct vk_object_base base;
+
+   /* Pipeline layouts can be destroyed at almost any time */
+   uint32_t ref_cnt;
+
    struct {
       struct lvp_descriptor_set_layout *layout;
    } set[MAX_SETS];
@@ -453,6 +457,25 @@ struct lvp_pipeline_layout {
       bool has_dynamic_offsets;
    } stage[MESA_SHADER_STAGES];
 };
+
+void lvp_pipeline_layout_destroy(struct lvp_device *device,
+                                 struct lvp_pipeline_layout *layout);
+
+static inline void
+lvp_pipeline_layout_ref(struct lvp_pipeline_layout *layout)
+{
+   assert(layout && layout->ref_cnt >= 1);
+   p_atomic_inc(&layout->ref_cnt);
+}
+
+static inline void
+lvp_pipeline_layout_unref(struct lvp_device *device,
+                          struct lvp_pipeline_layout *layout)
+{
+   assert(layout && layout->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&layout->ref_cnt))
+      lvp_pipeline_layout_destroy(device, layout);
+}
 
 struct lvp_access_info {
    uint32_t images_read;
