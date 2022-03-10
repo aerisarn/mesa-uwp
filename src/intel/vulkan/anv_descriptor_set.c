@@ -1281,7 +1281,7 @@ VkResult anv_AllocateDescriptorSets(
    ANV_FROM_HANDLE(anv_descriptor_pool, pool, pAllocateInfo->descriptorPool);
 
    VkResult result = VK_SUCCESS;
-   struct anv_descriptor_set *set;
+   struct anv_descriptor_set *set = NULL;
    uint32_t i;
 
    const VkDescriptorSetVariableDescriptorCountAllocateInfo *vdcai =
