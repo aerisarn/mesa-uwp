@@ -3,9 +3,6 @@
 dEQP-VK.rasterization.provoking_vertex.transform_feedback.first.line_strip_with_adjacency,Fail
 dEQP-VK.rasterization.provoking_vertex.transform_feedback.per_pipeline.triangle_strip_with_adjacency,Fail
 
-# regression: mesa/mesa#5458
-dEQP-VK.graphicsfuzz.spv-stable-mergesort-flatten-selection-dead-continues,Fail
-
 #full list
 dEQP-VK.api.driver_properties.conformance_version,Fail
 dEQP-VK.fragment_operations.early_fragment.sample_count_early_fragment_tests_depth_samples_4,Fail
