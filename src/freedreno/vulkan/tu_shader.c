@@ -33,6 +33,7 @@
 
 nir_shader *
 tu_spirv_to_nir(struct tu_device *dev,
+                void *mem_ctx,
                 const VkPipelineShaderStageCreateInfo *stage_info,
                 gl_shader_stage stage)
 {
@@ -91,59 +92,28 @@ tu_spirv_to_nir(struct tu_device *dev,
    const nir_shader_compiler_options *nir_options =
       ir3_get_compiler_options(dev->compiler);
 
-   /* convert VkSpecializationInfo */
-   const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
-   uint32_t num_spec = 0;
-   struct nir_spirv_specialization *spec =
-      vk_spec_info_to_nir_spirv(spec_info, &num_spec);
-
    struct vk_shader_module *module =
       vk_shader_module_from_handle(stage_info->module);
    assert(module->size % 4 == 0);
-   nir_shader *nir =
-      spirv_to_nir((void*)module->data, module->size / 4,
-                   spec, num_spec, stage, stage_info->pName,
-                   &spirv_options, nir_options);
 
-   free(spec);
-
-   assert(nir->info.stage == stage);
-   nir_validate_shader(nir, "after spirv_to_nir");
-
-   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
-      .point_coord = true,
-   };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+   nir_shader *nir;
+   VkResult result = vk_shader_module_to_nir(&dev->vk, module,
+                                             stage, stage_info->pName,
+                                             stage_info->pSpecializationInfo,
+                                             &spirv_options, nir_options,
+                                             mem_ctx, &nir);
+   if (result != VK_SUCCESS)
+      return NULL;
 
    if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_NIR)) {
       fprintf(stderr, "translated nir:\n");
       nir_print_shader(nir, stderr);
    }
 
-   /* multi step inlining procedure */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_copy_prop);
-   NIR_PASS_V(nir, nir_opt_deref);
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (!func->is_entrypoint)
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
-   NIR_PASS_V(nir, nir_lower_variable_initializers, ~nir_var_function_temp);
-
-   /* Split member structs.  We do this before lower_io_to_temporaries so that
-    * it doesn't lower system values to temporaries by accident.
-    */
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_per_member_structs);
-
-   NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
-              NULL);
-
-   NIR_PASS_V(nir, nir_propagate_invariant, false);
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .point_coord = true,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
    NIR_PASS_V(nir, nir_split_var_copies);

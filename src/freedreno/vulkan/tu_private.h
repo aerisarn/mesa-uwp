@@ -1263,6 +1263,7 @@ tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, bool *multi_pos_output,
 
 nir_shader *
 tu_spirv_to_nir(struct tu_device *dev,
+                void *mem_ctx,
                 const VkPipelineShaderStageCreateInfo *stage_info,
                 gl_shader_stage stage);
 

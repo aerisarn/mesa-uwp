@@ -248,6 +248,7 @@ tu6_emit_load_state(struct tu_pipeline *pipeline, bool compute)
 struct tu_pipeline_builder
 {
    struct tu_device *device;
+   void *mem_ctx;
    struct tu_pipeline_cache *cache;
    struct tu_pipeline_layout *layout;
    const VkAllocationCallbacks *alloc;
@@ -2461,7 +2462,7 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       if (!stage_info)
          continue;
 
-      nir[stage] = tu_spirv_to_nir(builder->device, stage_info, stage);
+      nir[stage] = tu_spirv_to_nir(builder->device, builder->mem_ctx, stage_info, stage);
       if (!nir[stage])
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
@@ -3360,6 +3361,7 @@ tu_pipeline_builder_finish(struct tu_pipeline_builder *builder)
          continue;
       tu_shader_destroy(builder->device, builder->shaders[i], builder->alloc);
    }
+   ralloc_free(builder->mem_ctx);
 }
 
 static void
@@ -3374,6 +3376,7 @@ tu_pipeline_builder_init_graphics(
 
    *builder = (struct tu_pipeline_builder) {
       .device = dev,
+      .mem_ctx = ralloc_context(NULL),
       .cache = cache,
       .create_info = create_info,
       .alloc = alloc,
@@ -3520,7 +3523,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    struct ir3_shader_key key = {};
 
-   nir_shader *nir = tu_spirv_to_nir(dev, stage_info, MESA_SHADER_COMPUTE);
+   void *pipeline_mem_ctx = ralloc_context(NULL);
+   nir_shader *nir = tu_spirv_to_nir(dev, pipeline_mem_ctx, stage_info, MESA_SHADER_COMPUTE);
 
    const bool executable_info = pCreateInfo->flags &
       VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
@@ -3573,6 +3577,7 @@ tu_compute_pipeline_create(VkDevice device,
    tu_append_executable(pipeline, v, nir_initial_disasm);
 
    tu_shader_destroy(dev, shader, pAllocator);
+   ralloc_free(pipeline_mem_ctx);
 
    *pPipeline = tu_pipeline_to_handle(pipeline);
 
@@ -3581,6 +3586,8 @@ tu_compute_pipeline_create(VkDevice device,
 fail:
    if (shader)
       tu_shader_destroy(dev, shader, pAllocator);
+
+   ralloc_free(pipeline_mem_ctx);
 
    vk_object_free(&dev->vk, pAllocator, pipeline);
 
