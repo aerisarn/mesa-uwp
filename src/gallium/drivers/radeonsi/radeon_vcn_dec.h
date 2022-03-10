@@ -51,6 +51,7 @@ struct radeon_decoder {
    unsigned dpb_size;
    unsigned last_width;
    unsigned last_height;
+   unsigned addr_gfx_mode;
 
    struct pipe_screen *screen;
    struct radeon_winsys *ws;

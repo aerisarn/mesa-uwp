@@ -1788,6 +1788,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       decode->db_aligned_height = align(dec->base.height, 64);
 
    decode->db_surf_tile_config = 0;
+   decode->db_array_mode = dec->addr_gfx_mode;
 
    decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
    decode->dt_uv_pitch = chroma->surface.u.gfx9.surf_pitch * chroma->surface.blk_w;
@@ -1799,7 +1800,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
    decode->dt_tiling_mode = 0;
    decode->dt_swizzle_mode = luma->surface.u.gfx9.swizzle_mode;
-   decode->dt_array_mode = RDECODE_ARRAY_MODE_LINEAR;
+   decode->dt_array_mode = dec->addr_gfx_mode;
    decode->dt_field_mode = ((struct vl_video_buffer *)target)->base.interlaced;
    decode->dt_surf_tile_config = 0;
    decode->dt_uv_surf_tile_config = 0;
@@ -2730,6 +2731,8 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    }
    si_vid_clear_buffer(context, &dec->sessionctx);
 
+   dec->addr_gfx_mode = RDECODE_ARRAY_MODE_LINEAR;
+
    switch (sctx->family) {
    case CHIP_RAVEN:
    case CHIP_RAVEN2:
@@ -2767,6 +2770,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    case CHIP_GFX1100:
    case CHIP_GFX1102:
       dec->jpg.direct_reg = true;
+      dec->addr_gfx_mode = RDECODE_ARRAY_MODE_ADDRLIB_SEL_GFX11;
       break;
    default:
       RVID_ERR("VCN is not supported.\n");
