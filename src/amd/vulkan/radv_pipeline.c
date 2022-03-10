@@ -3762,11 +3762,18 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
          enum radv_vs_input_alpha_adjust alpha_adjust = pipeline_key->vs.vertex_alpha_adjust[location];
          bool post_shuffle = pipeline_key->vs.vertex_post_shuffle & (1 << location);
 
-         if (alpha_adjust == ALPHA_ADJUST_NONE && !post_shuffle)
-            continue;
-
          unsigned component = nir_intrinsic_component(intrin);
          unsigned num_components = intrin->dest.ssa.num_components;
+
+         unsigned attrib_format = pipeline_key->vs.vertex_attribute_formats[location];
+         unsigned dfmt = attrib_format & 0xf;
+         unsigned nfmt = (attrib_format >> 4) & 0x7;
+         const struct ac_data_format_info *vtx_info = ac_get_data_format_info(dfmt);
+         bool is_float =
+            nfmt != V_008F0C_BUF_NUM_FORMAT_UINT && nfmt != V_008F0C_BUF_NUM_FORMAT_SINT;
+
+         unsigned mask = nir_ssa_def_components_read(&intrin->dest.ssa) << component;
+         unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
 
          static const unsigned swizzle_normal[4] = {0, 1, 2, 3};
          static const unsigned swizzle_post_shuffle[4] = {2, 1, 0, 3};
@@ -3781,12 +3788,20 @@ radv_lower_vs_input(nir_shader *nir, const struct radv_pipeline_key *pipeline_ke
             intrin->dest.ssa.num_components = intrin->num_components;
 
             nir_intrinsic_set_component(intrin, 0);
+
+            num_channels = MAX2(num_channels, 3);
          }
 
          for (uint32_t i = 0; i < num_components; i++) {
             unsigned idx = i + (post_shuffle ? component : 0);
 
-            channels[i] = nir_channel(&b, &intrin->dest.ssa, swizzle[idx]);
+            if (swizzle[i + component] < num_channels) {
+               channels[i] = nir_channel(&b, &intrin->dest.ssa, swizzle[idx]);
+            } else if (i + component == 3) {
+               channels[i] = is_float ? nir_imm_float(&b, 1.0f) : nir_imm_int(&b, 1u);
+            } else {
+               channels[i] = nir_imm_zero(&b, 1, 32);
+            }
          }
 
          if (alpha_adjust != ALPHA_ADJUST_NONE && component + num_components == 4) {
