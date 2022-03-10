@@ -372,10 +372,12 @@ _libnir = static_library(
   build_by_default : false,
 )
 
+inc_nir = include_directories('.')
+
 # Headers-only dependency
 idep_nir_headers = declare_dependency(
   sources : [nir_opcodes_h, nir_builder_opcodes_h, nir_intrinsics_h, nir_intrinsics_indices_h],
-  include_directories : include_directories('.'),
+  include_directories : inc_nir,
 )
 
 # Also link with nir

@@ -31,6 +31,7 @@ libmesa_rust_util_files = files(
 libmesa_rust_files = files(
   'mesa/lib.rs',
   'mesa/compiler/mod.rs',
+  'mesa/compiler/nir.rs',
   'mesa/compiler/clc/mod.rs',
   'mesa/compiler/clc/spirv.rs',
   'mesa/pipe/context.rs',
@@ -167,16 +168,20 @@ rusticl_mesa_bindings_rs = rust.bindgen(
   input : 'rusticl_mesa_bindings.h',
   output : 'rusticl_mesa_bindings.rs',
   include_directories : [
+    inc_compiler,
     inc_gallium,
     inc_gallium_aux,
     inc_include,
+    inc_nir,
     inc_src,
   ],
   c_args : pre_args,
   args : [
     rusticl_bindgen_args,
     '--whitelist-function', 'clc_.*',
+    '--whitelist-function', 'nir_.*',
     '--whitelist-function', 'pipe_.*',
+    '--whitelist-function', 'ralloc_.*',
     '--whitelist-type', 'pipe_endian',
     '--whitelist-type', 'clc_kernel_arg_access_qualifier',
     '--bitfield-enum', 'clc_kernel_arg_access_qualifier',
