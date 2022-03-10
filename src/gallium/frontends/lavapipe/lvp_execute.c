@@ -1292,18 +1292,18 @@ static void handle_compute_descriptor_sets(struct vk_cmd_queue_entry *cmd,
                                            struct rendering_state *state)
 {
    struct vk_cmd_bind_descriptor_sets *bds = &cmd->u.bind_descriptor_sets;
-   struct lvp_descriptor_set_layout **set_layout = cmd->driver_data;
+   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, bds->layout);
    int i;
 
    for (i = 0; i < bds->first_set; i++) {
-      increment_dyn_info(dyn_info, set_layout[i], false);
+      increment_dyn_info(dyn_info, layout->set[i].layout, false);
    }
    for (i = 0; i < bds->descriptor_set_count; i++) {
       const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
          handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE);
-      increment_dyn_info(dyn_info, set_layout[bds->first_set + i], true);
+      increment_dyn_info(dyn_info, layout->set[bds->first_set + i].layout, true);
    }
 }
 
@@ -1311,7 +1311,7 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
                                    struct rendering_state *state)
 {
    struct vk_cmd_bind_descriptor_sets *bds = &cmd->u.bind_descriptor_sets;
-   struct lvp_descriptor_set_layout **set_layout = cmd->driver_data;
+   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, bds->layout);
    int i;
    struct dyn_info dyn_info;
 
@@ -1326,7 +1326,7 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
    }
 
    for (i = 0; i < bds->first_set; i++) {
-      increment_dyn_info(&dyn_info, set_layout[i], false);
+      increment_dyn_info(&dyn_info, layout->set[i].layout, false);
    }
 
    for (i = 0; i < bds->descriptor_set_count; i++) {
@@ -1353,7 +1353,7 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
       if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT);
 
-      increment_dyn_info(&dyn_info, set_layout[bds->first_set + i], true);
+      increment_dyn_info(&dyn_info, layout->set[bds->first_set + i].layout, true);
    }
 }
 
@@ -3872,7 +3872,7 @@ void lvp_add_enqueue_cmd_entrypoints(struct vk_device_dispatch_table *disp)
    ENQUEUE_CMD(CmdSetStencilCompareMask)
    ENQUEUE_CMD(CmdSetStencilWriteMask)
    ENQUEUE_CMD(CmdSetStencilReference)
-//   ENQUEUE_CMD(CmdBindDescriptorSets)
+   ENQUEUE_CMD(CmdBindDescriptorSets)
    ENQUEUE_CMD(CmdBindIndexBuffer)
    ENQUEUE_CMD(CmdBindVertexBuffers)
    ENQUEUE_CMD(CmdBindVertexBuffers2)

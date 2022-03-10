@@ -344,48 +344,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdPushDescriptorSetWithTemplateKHR(
    }
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_CmdBindDescriptorSets(
-   VkCommandBuffer                             commandBuffer,
-   VkPipelineBindPoint                         pipelineBindPoint,
-   VkPipelineLayout                            _layout,
-   uint32_t                                    firstSet,
-   uint32_t                                    descriptorSetCount,
-   const VkDescriptorSet*                      pDescriptorSets,
-   uint32_t                                    dynamicOffsetCount,
-   const uint32_t*                             pDynamicOffsets)
-{
-   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
-   LVP_FROM_HANDLE(lvp_pipeline_layout, layout, _layout);
-   struct vk_cmd_queue_entry *cmd = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc,
-                                              sizeof(*cmd), 8,
-                                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!cmd)
-      return;
-
-   cmd->type = VK_CMD_BIND_DESCRIPTOR_SETS;
-   list_addtail(&cmd->cmd_link, &cmd_buffer->vk.cmd_queue.cmds);
-
-   /* _layout could have been destroyed by when this command executes */
-   struct lvp_descriptor_set_layout **set_layout = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*set_layout) * layout->num_sets, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   cmd->driver_data = set_layout;
-   for (unsigned i = 0; i < layout->num_sets; i++)
-      set_layout[i] = layout->set[i].layout;
-
-   cmd->u.bind_descriptor_sets.pipeline_bind_point = pipelineBindPoint;
-   cmd->u.bind_descriptor_sets.first_set = firstSet;
-   cmd->u.bind_descriptor_sets.descriptor_set_count = descriptorSetCount;
-   if (pDescriptorSets) {
-      cmd->u.bind_descriptor_sets.descriptor_sets = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      memcpy(( VkDescriptorSet* )cmd->u.bind_descriptor_sets.descriptor_sets, pDescriptorSets, sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount);
-   }
-   cmd->u.bind_descriptor_sets.dynamic_offset_count = dynamicOffsetCount;
-   if (pDynamicOffsets) {
-      cmd->u.bind_descriptor_sets.dynamic_offsets = vk_zalloc(cmd_buffer->vk.cmd_queue.alloc, sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      memcpy(( uint32_t* )cmd->u.bind_descriptor_sets.dynamic_offsets, pDynamicOffsets, sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount);
-   }
-}
-
-
 VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRendering(VkCommandBuffer                             commandBuffer,
  const VkRenderingInfoKHR*                           pRenderingInfo
 )
