@@ -1912,8 +1912,8 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
       return;
    }
    bool has_ds = !!info->pDepthAttachment + !!info->pStencilAttachment;
-   struct lvp_render_pass_attachment *resolve_attachments = num_resolves ? &attachments[subpass->color_count + has_ds] : NULL;
-   struct lvp_render_pass_attachment **resolve_attachment_refs = num_resolves ? &attachment_refs[subpass->color_count + has_ds] : NULL;
+   struct lvp_render_pass_attachment *resolve_attachments = num_resolves ? &attachments[info->colorAttachmentCount + has_ds] : NULL;
+   struct lvp_render_pass_attachment **resolve_attachment_refs = num_resolves ? &attachment_refs[info->colorAttachmentCount + has_ds] : NULL;
    subpass->color_count = info->colorAttachmentCount;
 
    subpass->view_mask = info->viewMask;
