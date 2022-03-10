@@ -40,7 +40,7 @@ vk_cmd_enqueue_CmdDrawMultiEXT(VkCommandBuffer commandBuffer,
 
    struct vk_cmd_queue_entry *cmd =
       vk_zalloc(cmd_buffer->cmd_queue.alloc, sizeof(*cmd), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmd)
       return;
 
@@ -53,7 +53,7 @@ vk_cmd_enqueue_CmdDrawMultiEXT(VkCommandBuffer commandBuffer,
       cmd->u.draw_multi_ext.vertex_info =
          vk_zalloc(cmd_buffer->cmd_queue.alloc,
                    sizeof(*cmd->u.draw_multi_ext.vertex_info) * drawCount, 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       vk_foreach_multi_draw(draw, i, pVertexInfo, drawCount, stride) {
          memcpy(&cmd->u.draw_multi_ext.vertex_info[i], draw,
@@ -78,7 +78,7 @@ vk_cmd_enqueue_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
 
    struct vk_cmd_queue_entry *cmd =
       vk_zalloc(cmd_buffer->cmd_queue.alloc, sizeof(*cmd), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmd)
       return;
 
@@ -92,7 +92,7 @@ vk_cmd_enqueue_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
       cmd->u.draw_multi_indexed_ext.index_info =
          vk_zalloc(cmd_buffer->cmd_queue.alloc,
                    sizeof(*cmd->u.draw_multi_indexed_ext.index_info) * drawCount, 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       vk_foreach_multi_draw_indexed(draw, i, pIndexInfo, drawCount, stride) {
          cmd->u.draw_multi_indexed_ext.index_info[i].firstIndex = draw->firstIndex;
@@ -110,7 +110,7 @@ vk_cmd_enqueue_CmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer,
       cmd->u.draw_multi_indexed_ext.vertex_offset =
          vk_zalloc(cmd_buffer->cmd_queue.alloc,
                    sizeof(*cmd->u.draw_multi_indexed_ext.vertex_offset), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       memcpy(cmd->u.draw_multi_indexed_ext.vertex_offset, pVertexOffset,
              sizeof(*cmd->u.draw_multi_indexed_ext.vertex_offset));
@@ -130,7 +130,7 @@ vk_cmd_enqueue_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
 
    struct vk_cmd_queue_entry *cmd =
       vk_zalloc(cmd_buffer->cmd_queue.alloc, sizeof(*cmd), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmd)
       return;
 
@@ -148,7 +148,7 @@ vk_cmd_enqueue_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
       pds->descriptor_writes =
          vk_zalloc(cmd_buffer->cmd_queue.alloc,
                    sizeof(*pds->descriptor_writes) * descriptorWriteCount, 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       memcpy(pds->descriptor_writes,
              pDescriptorWrites,
              sizeof(*pds->descriptor_writes) * descriptorWriteCount);
@@ -163,7 +163,7 @@ vk_cmd_enqueue_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
             pds->descriptor_writes[i].pImageInfo =
                vk_zalloc(cmd_buffer->cmd_queue.alloc,
                          sizeof(VkDescriptorImageInfo) * pds->descriptor_writes[i].descriptorCount, 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
             memcpy((VkDescriptorImageInfo *)pds->descriptor_writes[i].pImageInfo,
                    pDescriptorWrites[i].pImageInfo,
                    sizeof(VkDescriptorImageInfo) * pds->descriptor_writes[i].descriptorCount);
@@ -173,7 +173,7 @@ vk_cmd_enqueue_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
             pds->descriptor_writes[i].pTexelBufferView =
                vk_zalloc(cmd_buffer->cmd_queue.alloc,
                          sizeof(VkBufferView) * pds->descriptor_writes[i].descriptorCount, 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
             memcpy((VkBufferView *)pds->descriptor_writes[i].pTexelBufferView,
                    pDescriptorWrites[i].pTexelBufferView,
                    sizeof(VkBufferView) * pds->descriptor_writes[i].descriptorCount);
@@ -186,7 +186,7 @@ vk_cmd_enqueue_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
             pds->descriptor_writes[i].pBufferInfo =
                vk_zalloc(cmd_buffer->cmd_queue.alloc,
                          sizeof(VkDescriptorBufferInfo) * pds->descriptor_writes[i].descriptorCount, 8,
-                         VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
             memcpy((VkDescriptorBufferInfo *)pds->descriptor_writes[i].pBufferInfo,
                    pDescriptorWrites[i].pBufferInfo,
                    sizeof(VkDescriptorBufferInfo) * pds->descriptor_writes[i].descriptorCount);
@@ -224,7 +224,7 @@ vk_cmd_enqueue_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
    struct vk_cmd_queue_entry *cmd =
       vk_zalloc(cmd_buffer->cmd_queue.alloc, sizeof(*cmd), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmd)
       return;
 
@@ -246,7 +246,7 @@ vk_cmd_enqueue_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       cmd->u.bind_descriptor_sets.descriptor_sets =
          vk_zalloc(cmd_buffer->cmd_queue.alloc,
                    sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount, 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       memcpy(cmd->u.bind_descriptor_sets.descriptor_sets, pDescriptorSets,
              sizeof(*cmd->u.bind_descriptor_sets.descriptor_sets) * descriptorSetCount);
@@ -256,7 +256,7 @@ vk_cmd_enqueue_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       cmd->u.bind_descriptor_sets.dynamic_offsets =
          vk_zalloc(cmd_buffer->cmd_queue.alloc,
                    sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount, 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       memcpy(cmd->u.bind_descriptor_sets.dynamic_offsets, pDynamicOffsets,
              sizeof(*cmd->u.bind_descriptor_sets.dynamic_offsets) * dynamicOffsetCount);

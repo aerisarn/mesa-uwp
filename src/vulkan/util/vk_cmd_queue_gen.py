@@ -247,7 +247,7 @@ void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
 
    struct vk_cmd_queue_entry *cmd = vk_zalloc(queue->alloc,
                                               sizeof(*cmd), 8,
-                                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+                                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmd) goto err;
 
    cmd->type = ${to_enum_name(c.name)};
@@ -422,7 +422,7 @@ def get_array_copy(command, param):
         field_size = "1"
     else:
         field_size = "sizeof(*%s)" % field_name
-    allocation = "%s = vk_zalloc(queue->alloc, %s * %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);\n   if (%s == NULL) goto err;\n" % (field_name, field_size, param.len, field_name)
+    allocation = "%s = vk_zalloc(queue->alloc, %s * %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);\n   if (%s == NULL) goto err;\n" % (field_name, field_size, param.len, field_name)
     const_cast = remove_suffix(param.decl.replace("const", ""), param.name)
     copy = "memcpy((%s)%s, %s, %s * %s);" % (const_cast, field_name, param.name, field_size, param.len)
     return "%s\n   %s" % (allocation, copy)
@@ -433,7 +433,7 @@ def get_array_member_copy(struct, src_name, member):
         field_size = "sizeof(*%s)" % (field_name)
     else:
         field_size = "sizeof(*%s) * %s->%s" % (field_name, struct, member.len)
-    allocation = "%s = vk_zalloc(queue->alloc, %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);\n   if (%s == NULL) goto err;\n" % (field_name, field_size, field_name)
+    allocation = "%s = vk_zalloc(queue->alloc, %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);\n   if (%s == NULL) goto err;\n" % (field_name, field_size, field_name)
     const_cast = remove_suffix(member.decl.replace("const", ""), member.name)
     copy = "memcpy((%s)%s, %s->%s, %s);" % (const_cast, field_name, src_name, member.name, field_size)
     return "if (%s->%s) {\n   %s\n   %s\n}\n" % (src_name, member.name, allocation, copy)
@@ -463,7 +463,7 @@ def get_struct_copy(dst, src_name, src_type, size, types, level=0):
     global tmp_dst_idx
     global tmp_src_idx
 
-    allocation = "%s = vk_zalloc(queue->alloc, %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);\n      if (%s == NULL) goto err;\n" % (dst, size, dst)
+    allocation = "%s = vk_zalloc(queue->alloc, %s, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);\n      if (%s == NULL) goto err;\n" % (dst, size, dst)
     copy = "memcpy((void*)%s, %s, %s);" % (dst, src_name, size)
 
     level += 1
