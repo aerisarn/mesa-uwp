@@ -497,7 +497,8 @@ enum panvk_dynamic_state_bits {
    PANVK_DYNAMIC_STENCIL_REFERENCE = 1 << 8,
    PANVK_DYNAMIC_DISCARD_RECTANGLE = 1 << 9,
    PANVK_DYNAMIC_SSBO = 1 << 10,
-   PANVK_DYNAMIC_ALL = (1 << 11) - 1,
+   PANVK_DYNAMIC_VERTEX_INSTANCE_OFFSETS = 1 << 11,
+   PANVK_DYNAMIC_ALL = (1 << 12) - 1,
 };
 
 struct panvk_descriptor_state {
@@ -523,8 +524,10 @@ struct panvk_descriptor_state {
 struct panvk_draw_info {
    unsigned first_index;
    unsigned index_count;
+   unsigned index_size;
    unsigned first_vertex;
    unsigned vertex_count;
+   unsigned vertex_range;
    unsigned padded_vertex_count;
    unsigned first_instance;
    unsigned instance_count;
@@ -542,6 +545,7 @@ struct panvk_draw_info {
    mali_ptr samplers;
    mali_ptr ubos;
    mali_ptr position;
+   mali_ptr indices;
    union {
       mali_ptr psiz;
       float line_width;
@@ -626,10 +630,8 @@ struct panvk_cmd_state {
    struct {
       struct panvk_buffer *buffer;
       uint64_t offset;
-      uint32_t type;
-      uint32_t max_index_count;
       uint8_t index_size;
-      uint64_t index_va;
+      uint32_t first_vertex, base_vertex, base_instance;
    } ib;
 
    struct {

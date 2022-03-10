@@ -350,7 +350,7 @@ panvk_emit_attrib(const struct panvk_device *dev,
    pan_pack(attrib, ATTRIBUTE, cfg) {
       cfg.buffer_index = buf_idx * 2;
       cfg.offset = attribs->attrib[idx].offset +
-                   (bufs[cfg.buffer_index].address & 63);
+                   (bufs[buf_idx].address & 63);
 
       if (buf_info->per_instance)
          cfg.offset += draw->first_instance * buf_info->stride;
@@ -513,8 +513,22 @@ panvk_emit_tiler_primitive(const struct panvk_pipeline *pipeline,
       if (pipeline->ia.primitive_restart)
          cfg.primitive_restart = MALI_PRIMITIVE_RESTART_IMPLICIT;
       cfg.job_task_split = 6;
-      /* TODO: indexed draws */
-      cfg.index_count = draw->vertex_count;
+
+      if (draw->index_size) {
+         cfg.index_count = draw->index_count;
+         cfg.indices = draw->indices;
+         cfg.base_vertex_offset = draw->vertex_offset - draw->offset_start;
+
+         switch (draw->index_size) {
+         case 32: cfg.index_type = MALI_INDEX_TYPE_UINT32; break;
+         case 16: cfg.index_type = MALI_INDEX_TYPE_UINT16; break;
+         case 8: cfg.index_type = MALI_INDEX_TYPE_UINT8; break;
+         default: unreachable("Invalid index size");
+         }
+      } else {
+         cfg.index_count = draw->vertex_count;
+         cfg.index_type = MALI_INDEX_TYPE_NONE;
+      }
    }
 }
 

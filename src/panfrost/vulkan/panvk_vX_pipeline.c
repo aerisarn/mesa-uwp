@@ -244,6 +244,9 @@ panvk_pipeline_builder_alloc_static_state_bo(struct panvk_pipeline_builder *buil
          case PAN_SYSVAL_SSBO:
             pipeline->sysvals[i].dirty_mask |= PANVK_DYNAMIC_SSBO;
             break;
+         case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
+            pipeline->sysvals[i].dirty_mask |= PANVK_DYNAMIC_VERTEX_INSTANCE_OFFSETS;
+            break;
          default:
             break;
          }
