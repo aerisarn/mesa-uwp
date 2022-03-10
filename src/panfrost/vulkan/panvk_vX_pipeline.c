@@ -875,6 +875,10 @@ panvk_pipeline_builder_parse_vertex_input(struct panvk_pipeline_builder *builder
    const VkPipelineVertexInputStateCreateInfo *info =
       builder->create_info.gfx->pVertexInputState;
 
+   const VkPipelineVertexInputDivisorStateCreateInfoEXT *div_info =
+      vk_find_struct_const(info->pNext,
+                           PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
+
    for (unsigned i = 0; i < info->vertexBindingDescriptionCount; i++) {
       const VkVertexInputBindingDescription *desc =
          &info->pVertexBindingDescriptions[i];
@@ -893,6 +897,14 @@ panvk_pipeline_builder_parse_vertex_input(struct panvk_pipeline_builder *builder
       attribs->attrib[desc->location].format =
          vk_format_to_pipe_format(desc->format);
       attribs->attrib[desc->location].offset = desc->offset;
+   }
+
+   if (div_info) {
+      for (unsigned i = 0; i < div_info->vertexBindingDivisorCount; i++) {
+         const VkVertexInputBindingDivisorDescriptionEXT *div =
+            &div_info->pVertexBindingDivisors[i];
+         attribs->buf[div->binding].instance_divisor = div->divisor;
+      }
    }
 
    const struct pan_shader_info *vs =
