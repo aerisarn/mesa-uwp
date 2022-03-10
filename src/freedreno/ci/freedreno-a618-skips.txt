@@ -30,7 +30,6 @@ KHR-GLES31.core.shader_image_load_store.basic-allFormats-store-fs
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
-spill-dEQP-VK.graphicsfuzz.spv-stable-pillars-volatile-nontemporal-store
 
 # Crashes in RA, but slow enough to get there that CI times out sometimes
 dEQP-VK.spirv_assembly.instruction.*.spirv_ids_abuse.lots_ids.*

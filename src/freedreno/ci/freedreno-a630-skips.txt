@@ -28,10 +28,6 @@ KHR-GLES31.core.shader_image_load_store.basic-allFormats-store-fs
 # 60s timeout
 KHR-GLES31.core.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize
 
-# causes a hangcheck timeout on a630:
-# msm ae00000.mdss: [drm:hangcheck_handler] *ERROR* A630: hangcheck detected gpu lockup rb 0!
-spill-dEQP-VK.graphicsfuzz.spv-stable-pillars-volatile-nontemporal-store
-
 # These take most of a minute to run
 spec@!opengl 3.0@clearbuffer-depth-cs-probe
 spec@ext_texture_array@fbo-depth-array depth-clear
