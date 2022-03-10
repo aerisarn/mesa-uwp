@@ -949,6 +949,11 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
    }
 
+   // TODO: also optimize the tex srcs. see radeonSI for reference */
+   /* Skip if there are potentially conflicting rounding modes */
+   if (!nir_has_any_rounding_mode_enabled(nir->info.float_controls_execution_mode))
+      NIR_PASS_V(nir, nir_fold_16bit_sampler_conversions, 0, UINT32_MAX);
+
    optimize(nir);
 
    NIR_PASS_V(nir, nir_lower_var_copies);
