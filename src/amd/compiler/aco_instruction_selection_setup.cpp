@@ -635,7 +635,6 @@ init_context(isel_context* ctx, nir_shader* shader)
                case nir_intrinsic_load_scalar_arg_amd:
                case nir_intrinsic_load_smem_amd: type = RegType::sgpr; break;
                case nir_intrinsic_load_sample_id:
-               case nir_intrinsic_load_sample_mask_in:
                case nir_intrinsic_load_input:
                case nir_intrinsic_load_output:
                case nir_intrinsic_load_input_vertex:

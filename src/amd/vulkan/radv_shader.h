@@ -682,4 +682,8 @@ void radv_get_nir_options(struct radv_physical_device *device);
 
 bool radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *device);
 
+bool radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_info *info,
+                              const struct radv_shader_args *args,
+                              const struct radv_pipeline_key *key);
+
 #endif

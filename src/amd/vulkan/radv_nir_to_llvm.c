@@ -239,32 +239,6 @@ load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
    return result;
 }
 
-static LLVMValueRef
-load_sample_mask_in(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   uint8_t log2_ps_iter_samples;
-
-   if (ctx->shader_info->ps.uses_sample_shading) {
-      log2_ps_iter_samples = util_logbase2(ctx->options->key.ps.num_samples);
-   } else {
-      log2_ps_iter_samples = ctx->options->key.ps.log2_ps_iter_samples;
-   }
-
-   LLVMValueRef result, sample_id;
-   if (log2_ps_iter_samples) {
-      /* gl_SampleMaskIn[0] = (SampleCoverage & (1 << gl_SampleID)). */
-      sample_id = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.ancillary), 8, 4);
-      sample_id = LLVMBuildShl(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, 1, false), sample_id, "");
-      result = LLVMBuildAnd(ctx->ac.builder, sample_id,
-                            ac_get_arg(&ctx->ac, ctx->args->ac.sample_coverage), "");
-   } else {
-      result = ac_get_arg(&ctx->ac, ctx->args->ac.sample_coverage);
-   }
-
-   return result;
-}
-
 static void gfx10_ngg_gs_emit_vertex(struct radv_shader_context *ctx, unsigned stream,
                                      LLVMValueRef vertexidx, LLVMValueRef *addrs);
 
@@ -2202,7 +2176,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
          ctx.abi.load_inputs = radv_load_vs_inputs;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT) {
          ctx.abi.load_sample_position = load_sample_position;
-         ctx.abi.load_sample_mask_in = load_sample_mask_in;
       }
 
       if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX && info->is_ngg &&

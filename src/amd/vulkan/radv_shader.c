@@ -468,6 +468,61 @@ radv_force_primitive_shading_rate(nir_shader *nir, struct radv_device *device)
    return progress;
 }
 
+bool
+radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_info *info,
+                         const struct radv_shader_args *args, const struct radv_pipeline_key *key)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         b.cursor = nir_after_instr(&intrin->instr);
+
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_load_sample_mask_in: {
+            uint8_t log2_ps_iter_samples;
+
+            if (info->ps.uses_sample_shading) {
+               log2_ps_iter_samples = util_logbase2(key->ps.num_samples);
+            } else {
+               log2_ps_iter_samples = key->ps.log2_ps_iter_samples;
+            }
+
+            nir_ssa_def *sample_coverage =
+               nir_load_vector_arg_amd(&b, 1, .base = args->ac.sample_coverage.arg_index);
+
+            nir_ssa_def *def = NULL;
+            if (log2_ps_iter_samples) {
+               /* gl_SampleMaskIn[0] = (SampleCoverage & (1 << gl_SampleID)). */
+               nir_ssa_def *sample_id = nir_load_sample_id(&b);
+               def = nir_iand(&b, sample_coverage, nir_ishl(&b, nir_imm_int(&b, 1u), sample_id));
+            } else {
+               def = sample_coverage;
+            }
+
+            nir_ssa_def_rewrite_uses(&intrin->dest.ssa, def);
+
+            nir_instr_remove(instr);
+            progress = true;
+            break;
+         }
+         default:
+            break;
+         }
+      }
+   }
+
+   return progress;
+}
+
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *module,
                            const char *entrypoint_name, gl_shader_stage stage,

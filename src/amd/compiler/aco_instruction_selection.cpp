@@ -7016,34 +7016,6 @@ visit_store_scratch(isel_context* ctx, nir_intrinsic_instr* instr)
 }
 
 void
-visit_load_sample_mask_in(isel_context* ctx, nir_intrinsic_instr* instr)
-{
-   uint8_t log2_ps_iter_samples;
-   if (ctx->program->info->ps.uses_sample_shading) {
-      log2_ps_iter_samples = util_logbase2(ctx->options->key.ps.num_samples);
-   } else {
-      log2_ps_iter_samples = ctx->options->key.ps.log2_ps_iter_samples;
-   }
-
-   Builder bld(ctx->program, ctx->block);
-
-   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-
-   if (log2_ps_iter_samples) {
-      /* gl_SampleMaskIn[0] = (SampleCoverage & (1 << gl_SampleID)). */
-      Temp sample_id =
-         bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), get_arg(ctx, ctx->args->ac.ancillary),
-                  Operand::c32(8u), Operand::c32(4u));
-      Temp mask = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), sample_id,
-                           bld.copy(bld.def(v1), Operand::c32(1u)));
-      bld.vop2(aco_opcode::v_and_b32, Definition(dst), mask,
-               get_arg(ctx, ctx->args->ac.sample_coverage));
-   } else {
-      bld.copy(Definition(dst), get_arg(ctx, ctx->args->ac.sample_coverage));
-   }
-}
-
-void
 visit_emit_vertex_with_counter(isel_context* ctx, nir_intrinsic_instr* instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -8027,10 +7999,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_sample_id: {
       bld.vop3(aco_opcode::v_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
                get_arg(ctx, ctx->args->ac.ancillary), Operand::c32(8u), Operand::c32(4u));
-      break;
-   }
-   case nir_intrinsic_load_sample_mask_in: {
-      visit_load_sample_mask_in(ctx, instr);
       break;
    }
    case nir_intrinsic_read_first_invocation: {

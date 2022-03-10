@@ -4217,6 +4217,11 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    struct radv_shader_args args[MESA_VULKAN_SHADER_STAGES] = {{{{{0}}}}};
    radv_declare_pipeline_args(device, args, nir, infos, pipeline_key);
 
+   if (nir[MESA_SHADER_FRAGMENT]) {
+      NIR_PASS_V(nir[MESA_SHADER_FRAGMENT], radv_lower_fs_intrinsics, &infos[MESA_SHADER_FRAGMENT],
+                 &args[MESA_SHADER_FRAGMENT], pipeline_key);
+   }
+
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       if (nir[i]) {
          radv_start_feedback(stage_feedbacks[i]);
