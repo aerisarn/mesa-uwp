@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo -e "\e[0Ksection_start:$(date +%s):test_setup[collapsed=true]\r\e[0Kpreparing test setup"
+
 set -ex
 
 # Needed so configuration files can contain paths to files in /install
@@ -157,7 +159,15 @@ if [ -z "$DEQP_SUITE" ]; then
     if [ $DEQP_VER != vk -a $DEQP_VER != egl ]; then
         export DEQP_RUNNER_OPTIONS="$DEQP_RUNNER_OPTIONS --version-check `cat $INSTALL/VERSION | sed 's/[() ]/./g'`"
     fi
+fi
 
+set +x
+echo -e "\e[0Ksection_end:$(date +%s):test_setup\r\e[0K"
+
+echo -e "\e[0Ksection_start:$(date +%s):deqp[collapsed=false]\r\e[0Kdeqp-runner"
+set -x
+
+if [ -z "$DEQP_SUITE" ]; then
     deqp-runner \
         run \
         --deqp $DEQP \
@@ -186,7 +196,13 @@ fi
 
 DEQP_EXITCODE=$?
 
-quiet report_load
+set +x
+echo -e "\e[0Ksection_end:$(date +%s):deqp\r\e[0K"
+
+report_load
+
+echo -e "\e[0Ksection_start:$(date +%s):test_post_process[collapsed=true]\r\e[0Kpost-processing test results"
+set -x
 
 # Remove all but the first 50 individual XML files uploaded as artifacts, to
 # save fd.o space when you break everything.
@@ -221,5 +237,7 @@ if [ -n "$FLAKES_CHANNEL" ]; then
          --branch "${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME:-$CI_COMMIT_BRANCH}" \
          --branch-title "${CI_MERGE_REQUEST_TITLE:-$CI_COMMIT_TITLE}"
 fi
+
+echo -e "\e[0Ksection_end:$(date +%s):test_post_process\r\e[0K"
 
 exit $DEQP_EXITCODE
