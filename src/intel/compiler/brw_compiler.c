@@ -146,10 +146,10 @@ brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
       nir_lower_dsub |
       nir_lower_ddiv;
 
-   if (!devinfo->has_64bit_float || INTEL_DEBUG(DEBUG_SOFT64)) {
-      int64_options |= (nir_lower_int64_options)~0;
+   if (!devinfo->has_64bit_float || INTEL_DEBUG(DEBUG_SOFT64))
       fp64_options |= nir_lower_fp64_full_software;
-   }
+   if (!devinfo->has_64bit_int)
+      int64_options |= (nir_lower_int64_options)~0;
 
    /* The Bspec's section tittled "Instruction_multiply[DevBDW+]" claims that
     * destination type can be Quadword and source type Doubleword for Gfx8 and
