@@ -935,6 +935,9 @@ lower_view_index(nir_shader *nir)
          nir_ssa_def *def = nir_load_var(&b, layer);
          nir_ssa_def_rewrite_uses(&load->dest.ssa, def);
 
+         /* Update inputs_read to reflect that the pass added a new input. */
+         nir->info.inputs_read |= VARYING_BIT_LAYER;
+
          nir_instr_remove(instr);
          progress = true;
       }
