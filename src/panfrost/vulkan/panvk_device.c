@@ -791,7 +791,7 @@ panvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .viewportSubPixelBits = 8,
       .minMemoryMapAlignment = 4096, /* A page */
       .minTexelBufferOffsetAlignment = 64,
-      .minUniformBufferOffsetAlignment = 4,
+      .minUniformBufferOffsetAlignment = 16,
       .minStorageBufferOffsetAlignment = 4,
       .minTexelOffset = -32,
       .maxTexelOffset = 31,
