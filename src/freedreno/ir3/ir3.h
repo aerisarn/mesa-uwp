@@ -2037,8 +2037,6 @@ ir3_NOP(struct ir3_block *block)
    return ir3_instr_create(block, OPC_NOP, 0, 0);
 }
 
-#define IR3_INSTR_0 0
-
 /* clang-format off */
 #define __INSTR0(flag, name, opc)                                              \
 static inline struct ir3_instruction *ir3_##name(struct ir3_block *block)      \
