@@ -52,6 +52,7 @@
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_device.h"
+#include "vk_image.h"
 #include "vk_instance.h"
 #include "vk_log.h"
 #include "vk_object.h"
@@ -933,23 +934,9 @@ struct panvk_plane_memory {
 #define PANVK_MAX_PLANES 1
 
 struct panvk_image {
-   struct vk_object_base base;
+   struct vk_image vk;
+
    struct pan_image pimage;
-   VkImageType type;
-
-   /* The original VkFormat provided by the client.  This may not match any
-    * of the actual surface formats.
-    */
-   VkFormat vk_format;
-   VkImageAspectFlags aspects;
-   VkImageUsageFlags usage;  /**< Superset of VkImageCreateInfo::usage. */
-   VkImageTiling tiling;     /** VkImageCreateInfo::tiling */
-   VkImageCreateFlags flags; /** VkImageCreateInfo::flags */
-   VkExtent3D extent;
-
-   unsigned queue_family_mask;
-   bool exclusive;
-   bool shareable;
 };
 
 unsigned
@@ -1075,7 +1062,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_device_memory, base, VkDeviceMemory, VK_OBJ
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_fence, base, VkFence, VK_OBJECT_TYPE_FENCE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_framebuffer, base, VkFramebuffer, VK_OBJECT_TYPE_FRAMEBUFFER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image, base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image_view, base, VkImageView, VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline_cache, base, VkPipelineCache, VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline, base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)

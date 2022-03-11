@@ -133,7 +133,7 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
 
    struct panfrost_device *pdev = &device->physical_device->pdev;
 
-   if (image->usage &
+   if (image->vk.usage &
        (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       unsigned bo_size =
          GENX(panfrost_estimate_texture_payload_size)(&view->pview) +
@@ -154,7 +154,7 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
       GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
    }
 
-   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       uint8_t *attrib_buf = (uint8_t *)view->descs.img_attrib_buf;
       bool is_3d = image->pimage.layout.dim == MALI_TEXTURE_DIMENSION_3D;
       unsigned offset = image->pimage.data.offset;
