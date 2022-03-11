@@ -205,7 +205,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
    }
 
    /* Disable DCC? (it can't be disabled if modifiers are used) */
-   if (sscreen->info.chip_class >= GFX8 && modifier == DRM_FORMAT_MOD_INVALID) {
+   if (sscreen->info.chip_class >= GFX8 && modifier == DRM_FORMAT_MOD_INVALID && !is_imported) {
       /* Global options that disable DCC. */
       if (ptex->flags & SI_RESOURCE_FLAG_DISABLE_DCC)
          flags |= RADEON_SURF_DISABLE_DCC;
