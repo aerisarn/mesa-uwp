@@ -2140,16 +2140,50 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         }
 
         case nir_op_fddx:
-        case nir_op_fddy: {
-                unsigned axis = instr->op == nir_op_fddx ? 1 : 2;
-                bi_index lane1 = bi_lshift_and_i32(b,
+        case nir_op_fddy:
+        case nir_op_fddx_coarse:
+        case nir_op_fddy_coarse:
+        case nir_op_fddx_fine:
+        case nir_op_fddy_fine: {
+                unsigned axis;
+                switch (instr->op) {
+                case nir_op_fddx:
+                case nir_op_fddx_coarse:
+                case nir_op_fddx_fine:
+                        axis = 1;
+                        break;
+                case nir_op_fddy:
+                case nir_op_fddy_coarse:
+                case nir_op_fddy_fine:
+                        axis = 2;
+                        break;
+                default:
+                        unreachable("Invalid derivative op");
+                }
+
+                bi_index lane1, lane2;
+                switch (instr->op) {
+                case nir_op_fddx:
+                case nir_op_fddx_fine:
+                case nir_op_fddy:
+                case nir_op_fddy_fine:
+                        lane1 = bi_lshift_and_i32(b,
                                 bi_fau(BIR_FAU_LANE_ID, false),
                                 bi_imm_u32(0x3 & ~axis),
                                 bi_imm_u8(0));
 
-                bi_index lane2 = bi_iadd_u32(b, lane1,
+                        lane2 = bi_iadd_u32(b, lane1,
                                 bi_imm_u32(axis),
                                 false);
+                        break;
+                case nir_op_fddx_coarse:
+                case nir_op_fddy_coarse:
+                        lane1 = bi_imm_u32(0);
+                        lane2 = bi_imm_u32(axis);
+                        break;
+                default:
+                        unreachable("Invalid derivative op");
+                }
 
                 bi_index left, right;
 
