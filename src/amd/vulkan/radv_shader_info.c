@@ -144,24 +144,6 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
          info->ps.needs_sample_positions = true;
       break;
    }
-   case nir_intrinsic_load_barycentric_model:
-      info->ps.reads_barycentric_model = true;
-      break;
-   case nir_intrinsic_load_draw_id:
-      info->vs.needs_draw_id = true;
-      break;
-   case nir_intrinsic_load_base_instance:
-      info->vs.needs_base_instance = true;
-      break;
-   case nir_intrinsic_load_instance_id:
-      info->vs.needs_instance_id = true;
-      break;
-   case nir_intrinsic_load_num_workgroups:
-      info->cs.uses_grid_size = true;
-      break;
-   case nir_intrinsic_load_ray_launch_size:
-      info->cs.uses_ray_launch_size = true;
-      break;
    case nir_intrinsic_load_local_invocation_id:
    case nir_intrinsic_load_workgroup_id: {
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
@@ -175,37 +157,11 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
       }
       break;
    }
-   case nir_intrinsic_load_local_invocation_index:
-   case nir_intrinsic_load_subgroup_id:
-   case nir_intrinsic_load_num_subgroups:
-      info->cs.uses_local_invocation_idx = true;
-      break;
-   case nir_intrinsic_load_sample_mask_in:
-      info->ps.reads_sample_mask_in = true;
-      break;
-   case nir_intrinsic_load_sample_id:
-      info->ps.reads_sample_id = true;
-      break;
-   case nir_intrinsic_load_frag_shading_rate:
-      info->ps.reads_frag_shading_rate = true;
-      break;
-   case nir_intrinsic_load_front_face:
-      info->ps.reads_front_face = true;
-      break;
    case nir_intrinsic_load_frag_coord:
       info->ps.reads_frag_coord_mask = nir_ssa_def_components_read(&instr->dest.ssa);
       break;
    case nir_intrinsic_load_sample_pos:
       info->ps.reads_sample_pos_mask = nir_ssa_def_components_read(&instr->dest.ssa);
-      break;
-   case nir_intrinsic_load_view_index:
-      info->uses_view_index = true;
-      break;
-   case nir_intrinsic_load_invocation_id:
-      info->uses_invocation_id = true;
-      break;
-   case nir_intrinsic_load_primitive_id:
-      info->uses_prim_id = true;
       break;
    case nir_intrinsic_load_push_constant:
       gather_push_constant_info(nir, instr, info);
@@ -620,10 +576,23 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->ps.num_prim_interp = num_per_primitive_inputs;
    }
 
+   info->vs.needs_draw_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_DRAW_ID);
+   info->vs.needs_base_instance |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BASE_INSTANCE);
+   info->vs.needs_instance_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID);
+   info->uses_view_index |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_VIEW_INDEX);
+   info->uses_invocation_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_INVOCATION_ID);
+   info->uses_prim_id |= BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);
+
+   /* Used by compute and mesh shaders. */
+   info->cs.uses_grid_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_NUM_WORKGROUPS);
+   info->cs.uses_local_invocation_idx = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) |
+                                        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SUBGROUP_ID) |
+                                        BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_NUM_SUBGROUPS);
    switch (nir->info.stage) {
    case MESA_SHADER_COMPUTE:
       for (int i = 0; i < 3; ++i)
          info->cs.block_size[i] = nir->info.workgroup_size[i];
+      info->cs.uses_ray_launch_size = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_RAY_LAUNCH_SIZE);
       break;
    case MESA_SHADER_FRAGMENT:
       info->ps.can_discard = nir->info.fs.uses_discard;
@@ -639,6 +608,11 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->ps.writes_z = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
       info->ps.writes_stencil = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
       info->ps.writes_sample_mask = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
+      info->ps.reads_sample_mask_in = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN);
+      info->ps.reads_sample_id = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+      info->ps.reads_frag_shading_rate = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_SHADING_RATE);
+      info->ps.reads_front_face = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
+      info->ps.reads_barycentric_model = BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL);
       break;
    case MESA_SHADER_GEOMETRY:
       info->gs.vertices_in = nir->info.gs.vertices_in;
