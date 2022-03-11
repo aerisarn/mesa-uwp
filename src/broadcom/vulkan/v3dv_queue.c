@@ -1150,8 +1150,18 @@ queue_submit_job(struct v3dv_queue *queue,
     * that any previous work has been completed, at which point any wait
     * semaphores must be signalled, and we never need to do this again for the
     * same batch.
+    *
+    * There is a corner case here when the semaphore has been imported from
+    * another instance/process. In that scenario, the Vulkan spec still requires
+    * that a signaling operation has been submitted before this semaphore wait
+    * but our wait for idle checks won't know about that submission (since they
+    * are based on the last jobs sent from our instance). To fix that we submit
+    * a noop job to "consume" the semaphores and then we wait for idle, which
+    * will ensure that our CPU job waits for the semaphores to be signaled even
+    * if they are signaled from another instance or process.
     */
    if (!v3dv_job_type_is_gpu(job) && sems_info->wait_sem_count) {
+      queue_submit_noop_job(queue, sems_info, false, false);
       v3dv_QueueWaitIdle(v3dv_queue_to_handle(&job->device->queue));
 #ifdef DEBUG
       /* Loop through wait sems and check they are all signalled */
