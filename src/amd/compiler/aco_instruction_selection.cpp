@@ -169,19 +169,16 @@ emit_mbcnt(isel_context* ctx, Temp dst, Operand mask = Operand(), Operand base =
 Temp
 emit_wqm(Builder& bld, Temp src, Temp dst = Temp(0, s1), bool program_needs_wqm = false)
 {
-   if (!dst.id())
-      dst = bld.tmp(src.regClass());
-
-   assert(src.size() == dst.size());
-
    if (bld.program->stage != fragment_fs) {
       if (!dst.id())
          return src;
-
-      bld.copy(Definition(dst), src);
-      return dst;
+      else
+         return bld.copy(Definition(dst), src);
+   } else if (!dst.id()) {
+      dst = bld.tmp(src.regClass());
    }
 
+   assert(src.size() == dst.size());
    bld.pseudo(aco_opcode::p_wqm, Definition(dst), src);
    bld.program->needs_wqm |= program_needs_wqm;
    return dst;
