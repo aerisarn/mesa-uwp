@@ -71,7 +71,6 @@ if with_platform_wayland
 endif
 
 if system_has_kms_drm and not with_platform_android
-  libtu_files += files('tu_wsi_display.c')
   tu_wsi = true
 endif
 

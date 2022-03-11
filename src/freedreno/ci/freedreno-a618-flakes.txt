@@ -11,6 +11,3 @@ dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 
 # Sometimes hangchecks
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
-
-# "dEQP-VK.wsi.display_control.register_display_event: vkRegisterDisplayEventEXT returned invalid result (Fail)"
-dEQP-VK.wsi.display_control.register_display_event

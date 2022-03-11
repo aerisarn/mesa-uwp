@@ -95,9 +95,6 @@ dEQP-GLES3.functional.fbo.blit.conversion.rg8_to_r16f
 dEQP-VK.api.command_buffers.record_many_draws_primary_2
 dEQP-VK.api.command_buffers.record_many_draws_secondary_2
 
-# "dEQP-VK.wsi.display_control.register_display_event: vkRegisterDisplayEventEXT returned invalid result (Fail)"
-dEQP-VK.wsi.display_control.register_display_event
-
 # Looks likely to be a hangcheck trigger.
 spill-dEQP-VK.graphicsfuzz.cov-nested-loop-large-array-index-using-vector-components
 
