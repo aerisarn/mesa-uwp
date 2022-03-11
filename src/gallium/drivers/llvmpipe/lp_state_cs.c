@@ -373,8 +373,12 @@ generate_compute(struct llvmpipe_context *lp,
       system_values.work_dim = work_dim_arg;
 
       system_values.subgroup_id = coro_idx;
-      system_values.num_subgroups = LLVMBuildMul(builder, num_x_loop,
-                                                 LLVMBuildMul(builder, block_y_size_arg, block_z_size_arg, ""), "");
+      LLVMValueRef num_subgroups = LLVMBuildUDiv(builder,
+                                                 LLVMBuildMul(builder, block_x_size_arg,
+                                                              LLVMBuildMul(builder, block_y_size_arg, block_z_size_arg, ""), ""),
+                                                 vec_length, "");
+      LLVMValueRef subgroup_cmp = LLVMBuildICmp(gallivm->builder, LLVMIntEQ, num_subgroups, lp_build_const_int32(gallivm, 0), "");
+      system_values.num_subgroups = LLVMBuildSelect(builder, subgroup_cmp, lp_build_const_int32(gallivm, 1), num_subgroups, "");
 
       LLVMValueRef bsize[3] = { block_x_size_arg, block_y_size_arg, block_z_size_arg };
       system_values.block_size = LLVMGetUndef(LLVMVectorType(int32_type, 3));
