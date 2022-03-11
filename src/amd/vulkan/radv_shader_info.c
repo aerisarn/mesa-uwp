@@ -336,21 +336,9 @@ gather_info_input_decl_ps(const nir_shader *nir, const nir_variable *var,
    int idx = var->data.location;
 
    switch (idx) {
-   case VARYING_SLOT_PNTC:
-      info->ps.has_pcoord = true;
-      break;
-   case VARYING_SLOT_PRIMITIVE_ID:
-      info->ps.prim_id_input = true;
-      break;
-   case VARYING_SLOT_LAYER:
-      info->ps.layer_input = true;
-      break;
    case VARYING_SLOT_CLIP_DIST0:
    case VARYING_SLOT_CLIP_DIST1:
       info->ps.num_input_clips_culls += attrib_count;
-      break;
-   case VARYING_SLOT_VIEWPORT:
-      info->ps.viewport_index_input = true;
       break;
    default:
       break;
@@ -390,27 +378,6 @@ gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
       break;
    case MESA_SHADER_FRAGMENT:
       gather_info_input_decl_ps(nir, var, info);
-      break;
-   default:
-      break;
-   }
-}
-
-static void
-gather_info_output_decl_ps(const nir_shader *nir, const nir_variable *var,
-                           struct radv_shader_info *info)
-{
-   int idx = var->data.location;
-
-   switch (idx) {
-   case FRAG_RESULT_DEPTH:
-      info->ps.writes_z = true;
-      break;
-   case FRAG_RESULT_STENCIL:
-      info->ps.writes_stencil = true;
-      break;
-   case FRAG_RESULT_SAMPLE_MASK:
-      info->ps.writes_sample_mask = true;
       break;
    default:
       break;
@@ -463,9 +430,6 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
    struct radv_vs_output_info *vs_info = get_vs_output_info(nir, info);
 
    switch (nir->info.stage) {
-   case MESA_SHADER_FRAGMENT:
-      gather_info_output_decl_ps(nir, var, info);
-      break;
    case MESA_SHADER_VERTEX:
       break;
    case MESA_SHADER_GEOMETRY:
@@ -687,6 +651,13 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       info->ps.depth_layout = nir->info.fs.depth_layout;
       info->ps.uses_sample_shading = nir->info.fs.uses_sample_shading;
       info->ps.writes_memory = nir->info.writes_memory;
+      info->ps.has_pcoord = nir->info.inputs_read & VARYING_BIT_PNTC;
+      info->ps.prim_id_input = nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID;
+      info->ps.layer_input = nir->info.inputs_read & VARYING_BIT_LAYER;
+      info->ps.viewport_index_input = nir->info.inputs_read & VARYING_BIT_VIEWPORT;
+      info->ps.writes_z = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+      info->ps.writes_stencil = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+      info->ps.writes_sample_mask = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
       break;
    case MESA_SHADER_GEOMETRY:
       info->gs.vertices_in = nir->info.gs.vertices_in;
