@@ -685,6 +685,9 @@ static void
 panvk_pipeline_builder_parse_zs(struct panvk_pipeline_builder *builder,
                                 struct panvk_pipeline *pipeline)
 {
+   if (!builder->use_depth_stencil_attachment)
+      return;
+
    pipeline->zs.z_test = builder->create_info.gfx->pDepthStencilState->depthTestEnable;
    pipeline->zs.z_write = builder->create_info.gfx->pDepthStencilState->depthWriteEnable;
    pipeline->zs.z_compare_func =
