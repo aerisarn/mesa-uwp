@@ -12,7 +12,6 @@ dEQP-GLES3.functional.rasterization.interpolation.basic.lines_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_loop_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.line_strip_wide,Fail
 dEQP-GLES3.functional.rasterization.interpolation.projected.lines_wide,Fail
-KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
 
 # frontbuffer reading failures?
 spec@!opengl 1.1@read-front,Fail

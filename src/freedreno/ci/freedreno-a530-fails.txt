@@ -66,9 +66,6 @@ KHR-GLES31.core.internalformat.copy_tex_image.alpha,Fail
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls1,Fail
 KHR-GLES31.core.arrays_of_arrays.InteractionFunctionCalls2,Fail
 
-# Got wrong error code: GL_INVALID_OPERATION, expected: GL_INVALID_VALUE after step 0 at glcCompressedFormatTests.cpp:1463 (Fail)
-KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
-
 # "../src/gallium/drivers/freedreno/a5xx/fd5_emit.c:82: fd5_emit_const_bo: Assertion `dst_off % 4 == 0' failed."
 KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-arrays,Fail
 KHR-GLES31.core.draw_indirect.advanced-twoPass-transformFeedback-elements,Fail
@@ -391,7 +388,6 @@ spec@khr_texture_compression_astc@array-gl@5x5 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles,Fail
 spec@khr_texture_compression_astc@array-gles@12x12 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles@5x5 Block Dim,Fail
-spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gl hdr,Fail
 spec@khr_texture_compression_astc@miptree-gl hdr@HDR Profile,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr,Fail

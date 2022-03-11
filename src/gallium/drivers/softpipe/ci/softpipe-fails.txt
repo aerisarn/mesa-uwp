@@ -875,7 +875,6 @@ KHR-GLES2.texture_3d.filtering.sizes.63x63x63_nearest_mipmap_nearest,Fail
 KHR-GLES3.framebuffer_completeness.all_rbos_expect_same_numsamples,Fail
 KHR-GLES3.framebuffer_completeness.rbo_and_texture_expect_zero_numsamples,Fail
 KHR-GLES3.shaders.indexing.tmp_array.vertexid,Fail
-KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
 KHR-GLES31.core.draw_buffers_indexed.blending,Fail
 KHR-GLES31.core.draw_buffers_indexed.color_masks,Fail
 KHR-GLES31.core.framebuffer_completeness.all_rbos_expect_same_numsamples,Fail
@@ -1309,7 +1308,6 @@ spec@khr_texture_compression_astc@array-gl@5x5 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles,Fail
 spec@khr_texture_compression_astc@array-gles@12x12 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles@5x5 Block Dim,Fail
-spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr@LDR Profile,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb,Fail

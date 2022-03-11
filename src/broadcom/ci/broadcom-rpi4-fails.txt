@@ -1,6 +1,3 @@
-# Got wrong error code: GL_INVALID_OPERATION, expected: GL_INVALID_VALUE after step 0 at glcCompressedFormatTests.cpp:1463 (Fail)
-KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
-
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
 glx@glx-multithread-buffer,Fail
@@ -273,7 +270,6 @@ spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
 spec@glsl-1.20@execution@fs-underflow-mul-compare-zero,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
-spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail

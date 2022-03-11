@@ -351,7 +351,6 @@ spec@arb_shader_image_load_store@invalid@imageLoad/incompatible format test/imag
 spec@khr_texture_compression_astc@array-gles,Fail
 spec@khr_texture_compression_astc@array-gles@12x12 Block Dim,Fail
 spec@khr_texture_compression_astc@array-gles@5x5 Block Dim,Fail
-spec@khr_texture_compression_astc@basic-gles,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageStore,Fail

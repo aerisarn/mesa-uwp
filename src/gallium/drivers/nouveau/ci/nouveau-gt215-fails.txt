@@ -99,9 +99,6 @@ KHR-GLES3.packed_pixels.varied_rectangle.rgba,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba4,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba8,Fail
 
-# Common?
-KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
-
 # TODO
 KHR-GLES31.core.compute_shader.atomic-case3,Crash
 KHR-GLES31.core.compute_shader.shared-max,Fail

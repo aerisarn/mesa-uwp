@@ -203,9 +203,6 @@ KHR-GLES3.packed_pixels.varied_rectangle.rgba,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba4,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba8,Fail
 
-# TODO investigate
-KHR-GLES31.core.compressed_format.api.invalid_teximage_with_compressed_format,Fail
-
 # TODO investigate, or skip?
 KHR-GLES31.core.compute_shader.pipeline-post-xfb,Timeout
 
