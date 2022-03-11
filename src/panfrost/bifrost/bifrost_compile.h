@@ -77,6 +77,7 @@ static const nir_shader_compiler_options bifrost_nir_options = {
         /* TODO: Use IMULD on v7 */
         .lower_mul_high = true,
         .lower_uadd_carry = true,
+        .lower_usub_borrow = true,
 
         .has_fsub = true,
         .has_isub = true,
