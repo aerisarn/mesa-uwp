@@ -7,6 +7,8 @@ include = [
     "dEQP-VK.api.copy_and_blit.core.*",
     "dEQP-VK.compute.builtin_var.*",
     "dEQP-VK.glsl.builtin.function.integer.usubborrow.*",
+    "dEQP-VK.glsl.builtin.precision.frexp.*",
+    "dEQP-VK.glsl.builtin.precision.ldexp.*",
     "dEQP-VK.image.load_store.with_format.1d.*",
     "dEQP-VK.image.load_store.with_format.1d_array.*",
     "dEQP-VK.image.load_store.with_format.2d.*",

@@ -2093,6 +2093,18 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
                 break;
 
+        case nir_op_frexp_exp:
+                bi_frexpe_to(b, sz, dst, s0, false, false);
+                break;
+
+        case nir_op_frexp_sig:
+                bi_frexpm_to(b, sz, dst, s0, false, false);
+                break;
+
+        case nir_op_ldexp:
+                bi_ldexp_to(b, sz, dst, s0, s1, BI_ROUND_NONE);
+                break;
+
         case nir_op_b8csel:
                 bi_mux_v4i8_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
                 break;
