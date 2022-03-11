@@ -155,6 +155,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_separate_stencil_usage            = true,
    .EXT_shader_stencil_export             = true,
    .EXT_shader_viewport_index_layer       = true,
+   .EXT_texel_buffer_alignment            = true,
    .EXT_transform_feedback                = true,
    .EXT_vertex_attribute_divisor          = true,
    .EXT_vertex_input_dynamic_state        = true,
@@ -762,6 +763,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->shaderZeroInitializeWorkgroupMemory = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *features =
+            (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *)ext;
+         features->texelBufferAlignment = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
          VkPhysicalDeviceTransformFeedbackFeaturesEXT *features =
             (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)ext;
@@ -1089,6 +1096,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
          VkPhysicalDeviceMultiDrawPropertiesEXT *props = (VkPhysicalDeviceMultiDrawPropertiesEXT *)ext;
          props->maxMultiDrawCount = 2048;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *properties =
+            (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT *)ext;
+         int alignment = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
+         properties->storageTexelBufferOffsetAlignmentBytes = alignment;
+         properties->storageTexelBufferOffsetSingleTexelAlignment = true;
+         properties->uniformTexelBufferOffsetAlignmentBytes = alignment;
+         properties->uniformTexelBufferOffsetSingleTexelAlignment = true;
          break;
       }
       default:
