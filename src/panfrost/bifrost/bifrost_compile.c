@@ -3947,6 +3947,12 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
 
+        /* nir_lower[_explicit]_io is lazy and emits mul+add chains even for
+         * offsets it could figure out are constant.  Do some constant folding
+         * before bifrost_nir_lower_store_component below.
+         */
+        NIR_PASS_V(nir, nir_opt_constant_folding);
+
         if (nir->info.stage == MESA_SHADER_FRAGMENT) {
                 NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
                                 ~0, false);
