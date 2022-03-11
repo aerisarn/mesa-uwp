@@ -146,3 +146,42 @@ void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *
 
    return create_nir_cs(sctx, &b);
 }
+
+/* Create a compute shader implementing clear_buffer or copy_buffer. */
+void *si_create_clear_buffer_rmw_cs(struct si_context *sctx)
+{
+   const nir_shader_compiler_options *options =
+      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   nir_builder b =
+      nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "clear_buffer_rmw_cs");
+   b.shader->info.workgroup_size[0] = 64;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.cs.user_data_components_amd = 2;
+   b.shader->info.num_ssbos = 1;
+
+   /* address = blockID * 64 + threadID; */
+   nir_ssa_def *address = get_global_ids(&b, 1);
+
+   /* address = address * 16; (byte offset, loading one vec4 per thread) */
+   address = nir_ishl(&b, address, nir_imm_int(&b, 4));
+   
+   nir_ssa_def *zero = nir_imm_int(&b, 0);
+   nir_ssa_def *data = nir_load_ssbo(&b, 4, 32, zero, address, .align_mul = 4);
+
+   /* Get user data SGPRs. */
+   nir_ssa_def *user_sgprs = nir_load_user_data_amd(&b);
+
+   /* data &= inverted_writemask; */
+   data = nir_iand(&b, data, nir_channel(&b, user_sgprs, 1));
+   /* data |= clear_value_masked; */
+   data = nir_ior(&b, data, nir_channel(&b, user_sgprs, 0));
+
+   nir_store_ssbo(&b, data, zero, address,
+      .access = SI_COMPUTE_DST_CACHE_POLICY != L2_LRU ? ACCESS_STREAM_CACHE_POLICY : 0,
+      .align_mul = 4);
+
+   return create_nir_cs(sctx, &b);
+}
+

@@ -243,7 +243,7 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
    sctx->cs_user_data[1] = ~writebitmask;
 
    if (!sctx->cs_clear_buffer_rmw)
-      sctx->cs_clear_buffer_rmw = si_create_clear_buffer_rmw_cs(&sctx->b);
+      sctx->cs_clear_buffer_rmw = si_create_clear_buffer_rmw_cs(sctx);
 
    si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_clear_buffer_rmw, flags, coher,
                                  1, &sb, 0x1);
