@@ -372,7 +372,25 @@ generate_compute(struct llvmpipe_context *lp,
 
       system_values.work_dim = work_dim_arg;
 
-      system_values.subgroup_id = coro_idx;
+      /* subgroup_id = ((z * block_size_x * block_size_y) + (y * block_size_x) + x) / subgroup_size
+       *
+       * this breaks if z or y is zero, so distribute the division to preserve ids
+       *
+       * subgroup_id = ((z * block_size_x * block_size_y) / subgroup_size) + ((y * block_size_x) / subgroup_size) + (x / subgroup_size)
+       *
+       * except "x" is pre-divided here
+       *
+       * subgroup_id = ((z * block_size_x * block_size_y) / subgroup_size) + ((y * block_size_x) / subgroup_size) + x
+       */
+      LLVMValueRef subgroup_id = LLVMBuildUDiv(builder,
+                                               LLVMBuildMul(gallivm->builder, z_size_arg, LLVMBuildMul(gallivm->builder, block_x_size_arg, block_y_size_arg, ""), ""),
+                                               vec_length, "");
+      subgroup_id = LLVMBuildAdd(gallivm->builder,
+                                 subgroup_id,
+                                 LLVMBuildUDiv(builder, LLVMBuildMul(gallivm->builder, y_size_arg, block_x_size_arg, ""), vec_length, ""),
+                                 "");
+      subgroup_id = LLVMBuildAdd(gallivm->builder, subgroup_id, x_size_arg, "");
+      system_values.subgroup_id = subgroup_id;
       LLVMValueRef num_subgroups = LLVMBuildUDiv(builder,
                                                  LLVMBuildMul(builder, block_x_size_arg,
                                                               LLVMBuildMul(builder, block_y_size_arg, block_z_size_arg, ""), ""),
