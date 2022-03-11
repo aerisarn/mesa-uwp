@@ -148,7 +148,8 @@ nir_remove_unused_io_vars(nir_shader *shader,
          used = used_by_other_stage;
 
       if (var->data.location < VARYING_SLOT_VAR0 && var->data.location >= 0)
-         continue;
+         if (shader->info.stage != MESA_SHADER_MESH || var->data.location != VARYING_SLOT_PRIMITIVE_ID)
+            continue;
 
       if (var->data.always_active_io)
          continue;
