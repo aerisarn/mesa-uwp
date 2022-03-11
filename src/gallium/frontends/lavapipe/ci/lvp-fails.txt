@@ -10,8 +10,3 @@ dEQP-VK.subgroups.size_control.compute.required_subgroup_size_min_require_full_s
 dEQP-VK.api.driver_properties.conformance_version,Fail
 dEQP-VK.fragment_operations.early_fragment.sample_count_early_fragment_tests_depth_samples_4,Fail
 dEQP-VK.glsl.crash_test.divbyzero_comp,Crash
-dEQP-VK.glsl.texture_functions.query.texturequerylod.isamplercube_zero_uv_width_fragment,Fail
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercube_float_zero_uv_width_fragment,Fail
-dEQP-VK.glsl.texture_functions.query.texturequerylod.samplercubeshadow_zero_uv_width_fragment,Fail
-dEQP-VK.glsl.texture_functions.query.texturequerylod.usamplercube_zero_uv_width_fragment,Fail
-
