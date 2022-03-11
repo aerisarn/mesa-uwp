@@ -63,9 +63,6 @@ panvk_convert_swizzle(const VkComponentMapping *in,
    const VkComponentSwizzle *comp = &in->r;
    for (unsigned i = 0; i < 4; i++) {
       switch (comp[i]) {
-      case VK_COMPONENT_SWIZZLE_IDENTITY:
-         out[i] = PIPE_SWIZZLE_X + i;
-         break;
       case VK_COMPONENT_SWIZZLE_ZERO:
          out[i] = PIPE_SWIZZLE_0;
          break;
@@ -100,40 +97,28 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
    VK_FROM_HANDLE(panvk_image, image, pCreateInfo->image);
    struct panvk_image_view *view;
 
-   view = vk_object_zalloc(&device->vk, pAllocator, sizeof(*view),
-                          VK_OBJECT_TYPE_IMAGE_VIEW);
+   view = vk_image_view_create(&device->vk, pCreateInfo,
+                               pAllocator, sizeof(*view));
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   view->pview.format = vk_format_to_pipe_format(pCreateInfo->format);
-
-   if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT)
-      view->pview.format = util_format_get_depth_only(view->pview.format);
-   else if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
-      view->pview.format = util_format_stencil_only(view->pview.format);
-
-   unsigned level_count =
-      pCreateInfo->subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS ?
-      image->pimage.layout.nr_slices - pCreateInfo->subresourceRange.baseMipLevel :
-      pCreateInfo->subresourceRange.levelCount;
-   unsigned layer_count =
-      pCreateInfo->subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS ?
-      image->pimage.layout.array_size - pCreateInfo->subresourceRange.baseArrayLayer :
-      pCreateInfo->subresourceRange.layerCount;
-
-   view->pview.dim = panvk_view_type_to_mali_tex_dim(pCreateInfo->viewType);
-   view->pview.first_level = pCreateInfo->subresourceRange.baseMipLevel;
-   view->pview.last_level = pCreateInfo->subresourceRange.baseMipLevel + level_count - 1;
-   view->pview.first_layer = pCreateInfo->subresourceRange.baseArrayLayer;
-   view->pview.last_layer = pCreateInfo->subresourceRange.baseArrayLayer + layer_count - 1;
-   panvk_convert_swizzle(&pCreateInfo->components, view->pview.swizzle);
-   view->pview.image = &image->pimage;
-   view->pview.nr_samples = image->pimage.layout.nr_samples;
-   view->vk_format = pCreateInfo->format;
+   view->pview = (struct pan_image_view) {
+      .image = &image->pimage,
+      .format = vk_format_to_pipe_format(view->vk.view_format),
+      .dim = panvk_view_type_to_mali_tex_dim(view->vk.view_type),
+      .nr_samples = image->pimage.layout.nr_samples,
+      .first_level = view->vk.base_mip_level,
+      .last_level = view->vk.base_mip_level +
+                    view->vk.level_count - 1,
+      .first_layer = view->vk.base_array_layer,
+      .last_layer = view->vk.base_array_layer +
+                    view->vk.layer_count - 1,
+   };
+   panvk_convert_swizzle(&view->vk.swizzle, view->pview.swizzle);
 
    struct panfrost_device *pdev = &device->physical_device->pdev;
 
-   if (image->vk.usage &
+   if (view->vk.usage &
        (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       unsigned bo_size =
          GENX(panfrost_estimate_texture_payload_size)(&view->pview) +
@@ -154,7 +139,7 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
       GENX(panfrost_new_texture)(pdev, &view->pview, tex_desc, &surf_descs);
    }
 
-   if (image->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (view->vk.usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       uint8_t *attrib_buf = (uint8_t *)view->descs.img_attrib_buf;
       bool is_3d = image->pimage.layout.dim == MALI_TEXTURE_DIMENSION_3D;
       unsigned offset = image->pimage.data.offset;

@@ -258,7 +258,7 @@ panvk_DestroyImageView(VkDevice _device,
       return;
 
    panfrost_bo_unreference(view->bo);
-   vk_object_free(&device->vk, pAllocator, view);
+   vk_image_view_destroy(&device->vk, pAllocator, &view->vk);
 }
 
 void

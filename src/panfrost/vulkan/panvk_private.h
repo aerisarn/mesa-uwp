@@ -949,10 +949,10 @@ panvk_image_get_total_size(const struct panvk_image *image);
 #define ATTRIB_BUF_DESC_WORDS 4
 
 struct panvk_image_view {
-   struct vk_object_base base;
+   struct vk_image_view vk;
+
    struct pan_image_view pview;
 
-   VkFormat vk_format;
    struct panfrost_bo *bo;
    struct {
       uint32_t tex[TEXTURE_DESC_WORDS];
@@ -1063,7 +1063,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_fence, base, VkFence, VK_OBJECT_TYPE_FENCE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_framebuffer, base, VkFramebuffer, VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image_view, base, VkImageView, VK_OBJECT_TYPE_IMAGE_VIEW);
+VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_image_view, vk.base, VkImageView, VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline_cache, base, VkPipelineCache, VK_OBJECT_TYPE_PIPELINE_CACHE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline, base, VkPipeline, VK_OBJECT_TYPE_PIPELINE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(panvk_pipeline_layout, base, VkPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT)
