@@ -31,12 +31,6 @@ bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.overlay,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.screen,Fail
 bypass-dEQP-GLES31.functional.blend_equation_advanced.msaa.softlight,Fail
 
-# Missing 16-bit storage access at vktAmberTestCase.cpp:422 (InternalError)
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat3,Fail
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat4,Fail
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat3,Fail
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat4,Fail
-
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3505
 dEQP-VK.subgroups.multiple_dispatches.uniform_subgroup_size,Fail
 

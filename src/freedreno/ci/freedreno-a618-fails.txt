@@ -1,10 +1,3 @@
-# Missing 16-bit storage access at vktAmberTestCase.cpp:422 (InternalError)
-# Possibly fixed by VK-GL-CTS 54c075fd1cdb ("Fix amber vs cts device feature requirements")
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat3,Fail
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.determinant.compute.mat4,Fail
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat3,Fail
-dEQP-VK.glsl.builtin.precision_fp16_storage16b.inverse.compute.mat4,Fail
-
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3505
 dEQP-VK.subgroups.multiple_dispatches.uniform_subgroup_size,Fail
 
