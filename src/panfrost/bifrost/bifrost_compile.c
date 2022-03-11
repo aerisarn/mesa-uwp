@@ -2141,13 +2141,14 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_fddx:
         case nir_op_fddy: {
+                unsigned axis = instr->op == nir_op_fddx ? 1 : 2;
                 bi_index lane1 = bi_lshift_and_i32(b,
                                 bi_fau(BIR_FAU_LANE_ID, false),
-                                bi_imm_u32(instr->op == nir_op_fddx ? 2 : 1),
+                                bi_imm_u32(0x3 & ~axis),
                                 bi_imm_u8(0));
 
                 bi_index lane2 = bi_iadd_u32(b, lane1,
-                                bi_imm_u32(instr->op == nir_op_fddx ? 1 : 2),
+                                bi_imm_u32(axis),
                                 false);
 
                 bi_index left, right;
