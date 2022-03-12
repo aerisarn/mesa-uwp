@@ -824,9 +824,8 @@ extern "C" fn cl_get_kernel_work_group_info(
     ))
 }
 
-extern "C" fn cl_wait_for_events(_num_events: cl_uint, _event_list: *const cl_event) -> cl_int {
-    println!("cl_wait_for_events not implemented");
-    CL_OUT_OF_HOST_MEMORY
+extern "C" fn cl_wait_for_events(num_events: cl_uint, event_list: *const cl_event) -> cl_int {
+    match_err!(wait_for_events(num_events, event_list))
 }
 
 extern "C" fn cl_get_event_info(

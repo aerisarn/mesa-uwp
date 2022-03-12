@@ -7,6 +7,7 @@ use crate::core::queue::*;
 
 use self::rusticl_opencl_gen::*;
 
+use std::collections::HashSet;
 use std::ptr;
 use std::sync::Arc;
 
@@ -38,6 +39,39 @@ impl CLInfo<cl_event_info> for cl_event {
 pub fn create_user_event(context: cl_context) -> CLResult<cl_event> {
     let c = context.get_arc()?;
     Ok(cl_event::from_arc(Event::new_user(c)))
+}
+
+pub fn wait_for_events(num_events: cl_uint, event_list: *const cl_event) -> CLResult<()> {
+    let evs = cl_event::get_arc_vec_from_arr(event_list, num_events)?;
+
+    // CL_INVALID_VALUE if num_events is zero or event_list is NULL.
+    if evs.is_empty() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_CONTEXT if events specified in event_list do not belong to the same context.
+    let contexts: HashSet<_> = evs.iter().map(|e| &e.context).collect();
+    if contexts.len() != 1 {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // TODO better impl
+    let mut err = false;
+    for e in evs {
+        if let Some(q) = &e.queue {
+            q.flush(true)?;
+        }
+
+        err |= e.status() < 0;
+    }
+
+    // CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the execution status of any of the events
+    // in event_list is a negative integer value.
+    if err {
+        return Err(CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST);
+    }
+
+    Ok(())
 }
 
 pub fn create_and_queue(
