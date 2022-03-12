@@ -68,7 +68,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clRetainEvent: None,
     clReleaseEvent: Some(cl_release_event),
     clGetEventProfilingInfo: Some(cl_get_event_profiling_info),
-    clFlush: None,
+    clFlush: Some(cl_flush),
     clFinish: Some(cl_finish),
     clEnqueueReadBuffer: Some(cl_enqueue_read_buffer),
     clEnqueueWriteBuffer: Some(cl_enqueue_write_buffer),
@@ -808,6 +808,10 @@ extern "C" fn cl_get_event_profiling_info(
 ) -> cl_int {
     println!("cl_get_event_profiling_info not implemented");
     CL_OUT_OF_HOST_MEMORY
+}
+
+extern "C" fn cl_flush(command_queue: cl_command_queue) -> cl_int {
+    match_err!(flush_queue(command_queue))
 }
 
 extern "C" fn cl_finish(command_queue: cl_command_queue) -> cl_int {
