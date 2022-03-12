@@ -515,6 +515,7 @@ brw_nir_initialize_mue(nir_shader *nir,
       nir_store_per_primitive_output(&b, zerovec, prim, dw_off,
                                      .base = (int)map->per_primitive_start_dw,
                                      .write_mask = WRITEMASK_XYZW,
+                                     .component = 0,
                                      .src_type = nir_type_uint32);
    }
 
@@ -535,6 +536,7 @@ brw_nir_initialize_mue(nir_shader *nir,
          nir_store_per_primitive_output(&b, zerovec, prim, dw_off,
                                         .base = (int)map->per_primitive_start_dw,
                                         .write_mask = WRITEMASK_XYZW,
+                                        .component = 0,
                                         .src_type = nir_type_uint32);
       }
       nir_pop_if(&b, if_stmt);
