@@ -42,6 +42,7 @@
 #include "util/os_misc.h"
 #include "util/u_atomic.h"
 #include "vk_format.h"
+#include "vk_sampler.h"
 #include "vk_util.h"
 
 /* for fd_get_driver/device_uuid() */
@@ -1868,18 +1869,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    global->dbg_gmem_taken_loads = 0;
    global->dbg_gmem_total_stores = 0;
    global->dbg_gmem_taken_stores = 0;
-   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK],
-                         &(VkClearColorValue) {}, false);
-   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_TRANSPARENT_BLACK],
-                         &(VkClearColorValue) {}, true);
-   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK],
-                         &(VkClearColorValue) { .float32[3] = 1.0f }, false);
-   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_OPAQUE_BLACK],
-                         &(VkClearColorValue) { .int32[3] = 1 }, true);
-   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE],
-                         &(VkClearColorValue) { .float32[0 ... 3] = 1.0f }, false);
-   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_OPAQUE_WHITE],
-                         &(VkClearColorValue) { .int32[0 ... 3] = 1 }, true);
+   for (int i = 0; i < TU_BORDER_COLOR_BUILTIN; i++) {
+      VkClearColorValue border_color = vk_border_color_value(i);
+      tu6_pack_border_color(&global->bcolor_builtin[i], &border_color,
+                            vk_border_color_is_int(i));
+   }
 
    /* initialize to ones so ffs can be used to find unused slots */
    BITSET_ONES(device->custom_border_color);
