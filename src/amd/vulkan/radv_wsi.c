@@ -60,11 +60,14 @@ radv_wsi_get_prime_blit_queue(VkDevice _device)
 
    if (device->physical_device->rad_info.chip_class >= GFX9 &&
        !(device->physical_device->instance->debug_flags & RADV_DEBUG_NO_DMA_BLIT)) {
+
+      device->physical_device->vk_queue_to_radv[device->physical_device->num_queues++] = RADV_QUEUE_TRANSFER;
       const VkDeviceQueueCreateInfo queue_create = {
          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-         .queueFamilyIndex = RADV_QUEUE_TRANSFER,
+         .queueFamilyIndex = device->physical_device->num_queues - 1,
          .queueCount = 1,
       };
+
       device->private_sdma_queue = vk_zalloc(&device->vk.alloc, sizeof(struct radv_queue), 8,
                                              VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 

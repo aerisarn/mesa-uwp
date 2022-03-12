@@ -568,15 +568,19 @@ radv_is_conformant(const struct radv_physical_device *pdevice)
 static void
 radv_physical_device_init_queue_table(struct radv_physical_device *pdevice)
 {
-   pdevice->vk_queue_to_radv[0] = RADV_QUEUE_GENERAL;
+   int idx = 0;
+   pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_GENERAL;
+   idx++;
 
    for (unsigned i = 1; i < RADV_MAX_QUEUE_FAMILIES; i++)
       pdevice->vk_queue_to_radv[i] = RADV_MAX_QUEUE_FAMILIES + 1;
 
    if (pdevice->rad_info.num_rings[RING_COMPUTE] > 0 &&
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE)) {
-      pdevice->vk_queue_to_radv[1] = RADV_QUEUE_COMPUTE;
+      pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_COMPUTE;
+      idx++;
    }
+   pdevice->num_queues = idx;
 }
 
 static VkResult
