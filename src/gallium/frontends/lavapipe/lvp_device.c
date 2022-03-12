@@ -26,6 +26,7 @@
 #include "pipe-loader/pipe_loader.h"
 #include "git_sha1.h"
 #include "vk_cmd_enqueue_entrypoints.h"
+#include "vk_sampler.h"
 #include "vk_util.h"
 #include "pipe/p_config.h"
 #include "pipe/p_defines.h"
@@ -2158,9 +2159,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    const VkSamplerReductionModeCreateInfo *reduction_mode_create_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            SAMPLER_REDUCTION_MODE_CREATE_INFO);
-   const VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color_create_info =
-      vk_find_struct_const(pCreateInfo->pNext,
-                           SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
@@ -2173,40 +2171,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
                        VK_OBJECT_TYPE_SAMPLER);
    sampler->create_info = *pCreateInfo;
 
-   switch (pCreateInfo->borderColor) {
-   case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
-   case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
-   default:
-      memset(&sampler->border_color, 0, sizeof(union pipe_color_union));
-      break;
-   case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
-      sampler->border_color.f[0] = sampler->border_color.f[1] =
-      sampler->border_color.f[2] = 0.0f;
-      sampler->border_color.f[3] = 1.0f;
-      break;
-   case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
-      sampler->border_color.i[0] = sampler->border_color.i[1] =
-      sampler->border_color.i[2] = 0;
-      sampler->border_color.i[3] = 1;
-      break;
-   case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
-      sampler->border_color.f[0] = sampler->border_color.f[1] =
-      sampler->border_color.f[2] = 1.0f;
-      sampler->border_color.f[3] = 1.0f;
-      break;
-   case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
-      sampler->border_color.i[0] = sampler->border_color.i[1] =
-      sampler->border_color.i[2] = 1;
-      sampler->border_color.i[3] = 1;
-      break;
-   case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
-   case VK_BORDER_COLOR_INT_CUSTOM_EXT:
-      assert(custom_border_color_create_info != NULL);
-      memcpy(&sampler->border_color,
-             &custom_border_color_create_info->customBorderColor,
-             sizeof(union pipe_color_union));
-      break;
-   }
+   VkClearColorValue border_color =
+      vk_sampler_border_color_value(pCreateInfo, NULL);
+   STATIC_ASSERT(sizeof(sampler->border_color) == sizeof(border_color));
+   memcpy(&sampler->border_color, &border_color, sizeof(border_color));
 
    sampler->reduction_mode = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
    if (reduction_mode_create_info)
