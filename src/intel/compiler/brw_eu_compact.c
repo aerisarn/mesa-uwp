@@ -1698,6 +1698,30 @@ has_immediate(const struct intel_device_info *devinfo, const brw_inst *inst,
 static brw_inst
 precompact(const struct intel_device_info *devinfo, brw_inst inst)
 {
+   /* In XeHP the compaction tables removed the entries for source regions
+    * <8;8,1> giving preference to <1;1,0> as the way to indicate
+    * sequential elements, so convert to those before compacting.
+    */
+   if (devinfo->verx10 >= 125) {
+      if (brw_inst_src0_reg_file(devinfo, &inst) == BRW_GENERAL_REGISTER_FILE &&
+          brw_inst_src0_vstride(devinfo, &inst) > BRW_VERTICAL_STRIDE_1 &&
+          brw_inst_src0_vstride(devinfo, &inst) == (brw_inst_src0_width(devinfo, &inst) + 1) &&
+          brw_inst_src0_hstride(devinfo, &inst) == BRW_HORIZONTAL_STRIDE_1) {
+         brw_inst_set_src0_vstride(devinfo, &inst, BRW_VERTICAL_STRIDE_1);
+         brw_inst_set_src0_width(devinfo, &inst, BRW_WIDTH_1);
+         brw_inst_set_src0_hstride(devinfo, &inst, BRW_HORIZONTAL_STRIDE_0);
+      }
+
+      if (brw_inst_src1_reg_file(devinfo, &inst) == BRW_GENERAL_REGISTER_FILE &&
+          brw_inst_src1_vstride(devinfo, &inst) > BRW_VERTICAL_STRIDE_1 &&
+          brw_inst_src1_vstride(devinfo, &inst) == (brw_inst_src1_width(devinfo, &inst) + 1) &&
+          brw_inst_src1_hstride(devinfo, &inst) == BRW_HORIZONTAL_STRIDE_1) {
+         brw_inst_set_src1_vstride(devinfo, &inst, BRW_VERTICAL_STRIDE_1);
+         brw_inst_set_src1_width(devinfo, &inst, BRW_WIDTH_1);
+         brw_inst_set_src1_hstride(devinfo, &inst, BRW_HORIZONTAL_STRIDE_0);
+      }
+   }
+
    if (brw_inst_src0_reg_file(devinfo, &inst) != BRW_IMMEDIATE_VALUE)
       return inst;
 
