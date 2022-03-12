@@ -80,13 +80,13 @@ panvk_translate_sampler_border_color(const VkSamplerCreateInfo *pCreateInfo,
       border_color[0] = border_color[1] = border_color[2] = 0;
       border_color[3] =
          pCreateInfo->borderColor == VK_BORDER_COLOR_INT_OPAQUE_BLACK ?
-         UINT_MAX : 0;
+         1 : 0;
       break;
    case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
       border_color[0] = border_color[1] = border_color[2] = border_color[3] = fui(1.0);
       break;
    case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
-      border_color[0] = border_color[1] = border_color[2] = border_color[3] = UINT_MAX;
+      border_color[0] = border_color[1] = border_color[2] = border_color[3] = 1;
       break;
    case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
    case VK_BORDER_COLOR_INT_CUSTOM_EXT:

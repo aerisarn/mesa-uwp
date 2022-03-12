@@ -11,5 +11,6 @@ include = [
     "dEQP-VK.glsl.builtin.precision.frexp.*",
     "dEQP-VK.glsl.builtin.precision.ldexp.*",
     "dEQP-VK.image.load_store.with_format.*",
+    "dEQP-VK.pipeline.sampler.view_type.*.format.r*.address_modes.all_mode_clamp_to_border*",
     "dEQP-VK.ssbo.layout.single_basic_type.*",
 ]
