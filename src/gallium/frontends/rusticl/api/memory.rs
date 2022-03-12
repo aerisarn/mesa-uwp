@@ -788,6 +788,58 @@ pub fn create_sampler(
     Ok(cl_sampler::from_arc(sampler))
 }
 
+pub fn enqueue_read_buffer(
+    command_queue: cl_command_queue,
+    buffer: cl_mem,
+    blocking_read: cl_bool,
+    offset: usize,
+    cb: usize,
+    ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let b = buffer.get_arc()?;
+    let block = check_cl_bool(blocking_read).ok_or(CL_INVALID_VALUE)?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_VALUE if the region being read or written specified by (offset, size) is out of
+    // bounds or if ptr is a NULL value.
+    if offset + cb > b.size || ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue and buffer are not the same
+    if b.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the read and write operations are blocking
+    // and the execution status of any of the events in event_wait_list is a negative integer value.
+    if block && evs.iter().any(|e| e.is_error()) {
+        return Err(CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST);
+    }
+
+    // CL_INVALID_OPERATION if clEnqueueReadBuffer is called on buffer which has been created with
+    // CL_MEM_HOST_WRITE_ONLY or CL_MEM_HOST_NO_ACCESS.
+    if bit_check(b.flags, CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS) {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    create_and_queue(
+        q,
+        CL_COMMAND_READ_BUFFER,
+        evs,
+        event,
+        block,
+        Box::new(move |q, ctx| b.read_to_user(q, ctx, offset, ptr, cb)),
+    )
+
+    // TODO
+    // CL_MISALIGNED_SUB_BUFFER_OFFSET if buffer is a sub-buffer object and offset specified when the sub-buffer object is created is not aligned to CL_DEVICE_MEM_BASE_ADDR_ALIGN value for device associated with queue.
+}
+
 pub fn enqueue_write_buffer(
     command_queue: cl_command_queue,
     buffer: cl_mem,

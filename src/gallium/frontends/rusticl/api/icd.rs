@@ -819,18 +819,27 @@ extern "C" fn cl_finish(command_queue: cl_command_queue) -> cl_int {
 }
 
 extern "C" fn cl_enqueue_read_buffer(
-    _command_queue: cl_command_queue,
-    _buffer: cl_mem,
-    _blocking_read: cl_bool,
-    _offset: usize,
-    _cb: usize,
-    _ptr: *mut ::std::os::raw::c_void,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    buffer: cl_mem,
+    blocking_read: cl_bool,
+    offset: usize,
+    cb: usize,
+    ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_read_buffer not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_read_buffer(
+        command_queue,
+        buffer,
+        blocking_read,
+        offset,
+        cb,
+        ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event
+    ))
 }
 
 extern "C" fn cl_enqueue_write_buffer(
