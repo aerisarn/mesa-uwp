@@ -85,31 +85,31 @@ struct panvk_lower_misc_ctx {
    bool has_img_access;
 };
 
-static unsigned
-get_fixed_sampler_index(nir_deref_instr *deref,
-                        const struct panvk_lower_misc_ctx *ctx)
+static void
+get_resource_deref_binding(nir_deref_instr *deref,
+                           uint32_t *set, uint32_t *binding,
+                           uint32_t *index_imm, nir_ssa_def **index_ssa)
 {
-   nir_variable *var = nir_deref_instr_get_variable(deref);
-   unsigned set = var->data.descriptor_set;
-   unsigned binding = var->data.binding;
-   const struct panvk_descriptor_set_binding_layout *bind_layout =
-      &ctx->layout->sets[set].layout->bindings[binding];
+   *index_imm = 0;
+   *index_ssa = NULL;
 
-   return bind_layout->sampler_idx + ctx->layout->sets[set].sampler_offset;
+   if (deref->deref_type == nir_deref_type_array) {
+      assert(deref->arr.index.is_ssa);
+      if (index_imm != NULL && nir_src_is_const(deref->arr.index))
+         *index_imm = nir_src_as_uint(deref->arr.index);
+      else
+         *index_ssa = deref->arr.index.ssa;
+
+      deref = nir_deref_instr_parent(deref);
+   }
+
+   assert(deref->deref_type == nir_deref_type_var);
+   nir_variable *var = deref->var;
+
+   *set = var->data.descriptor_set;
+   *binding = var->data.binding;
 }
 
-static unsigned
-get_fixed_texture_index(nir_deref_instr *deref,
-                        const struct panvk_lower_misc_ctx *ctx)
-{
-   nir_variable *var = nir_deref_instr_get_variable(deref);
-   unsigned set = var->data.descriptor_set;
-   unsigned binding = var->data.binding;
-   const struct panvk_descriptor_set_binding_layout *bind_layout =
-      &ctx->layout->sets[set].layout->bindings[binding];
-
-   return bind_layout->tex_idx + ctx->layout->sets[set].tex_offset;
-}
 
 static bool
 lower_tex(nir_builder *b, nir_tex_instr *tex,
@@ -122,16 +122,46 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
 
    if (sampler_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
-      tex->sampler_index = get_fixed_sampler_index(deref, ctx);
       nir_tex_instr_remove_src(tex, sampler_src_idx);
+
+      uint32_t set, binding, index_imm;
+      nir_ssa_def *index_ssa;
+      get_resource_deref_binding(deref, &set, &binding,
+                                 &index_imm, &index_ssa);
+
+      const struct panvk_descriptor_set_binding_layout *bind_layout =
+         &ctx->layout->sets[set].layout->bindings[binding];
+
+      tex->sampler_index = ctx->layout->sets[set].sampler_offset +
+                           bind_layout->sampler_idx + index_imm;
+
+      if (index_ssa != NULL) {
+         nir_tex_instr_add_src(tex, nir_tex_src_sampler_offset,
+                               nir_src_for_ssa(index_ssa));
+      }
       progress = true;
    }
 
    int tex_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
    if (tex_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
-      tex->texture_index = get_fixed_texture_index(deref, ctx);
       nir_tex_instr_remove_src(tex, tex_src_idx);
+
+      uint32_t set, binding, index_imm;
+      nir_ssa_def *index_ssa;
+      get_resource_deref_binding(deref, &set, &binding,
+                                 &index_imm, &index_ssa);
+
+      const struct panvk_descriptor_set_binding_layout *bind_layout =
+         &ctx->layout->sets[set].layout->bindings[binding];
+
+      tex->texture_index = ctx->layout->sets[set].tex_offset +
+                           bind_layout->tex_idx + index_imm;
+
+      if (index_ssa != NULL) {
+         nir_tex_instr_add_src(tex, nir_tex_src_texture_offset,
+                               nir_src_for_ssa(index_ssa));
+      }
       progress = true;
    }
 
@@ -189,35 +219,29 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin)
    nir_instr_remove(&intrin->instr);
 }
 
-static void
-type_size_align_1(const struct glsl_type *type, unsigned *size, unsigned *align)
-{
-   unsigned s;
-
-   if (glsl_type_is_array(type))
-      s = glsl_get_aoa_size(type);
-   else
-      s = 1;
-
-   *size = s;
-   *align = s;
-}
-
 static nir_ssa_def *
 get_img_index(nir_builder *b, nir_deref_instr *deref,
               const struct panvk_lower_misc_ctx *ctx)
 {
-   nir_variable *var = nir_deref_instr_get_variable(deref);
-   unsigned set = var->data.descriptor_set;
-   unsigned binding = var->data.binding;
+   uint32_t set, binding, index_imm;
+   nir_ssa_def *index_ssa;
+   get_resource_deref_binding(deref, &set, &binding, &index_imm, &index_ssa);
+
    const struct panvk_descriptor_set_binding_layout *bind_layout =
       &ctx->layout->sets[set].layout->bindings[binding];
    assert(bind_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
           bind_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
           bind_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
 
-   return nir_iadd_imm(b, nir_build_deref_offset(b, deref, type_size_align_1),
-                       bind_layout->img_idx + ctx->layout->sets[set].img_offset);
+   unsigned img_offset = ctx->layout->sets[set].img_offset +
+                         bind_layout->img_idx;
+
+   if (index_ssa == NULL) {
+      return nir_imm_int(b, img_offset + index_imm);
+   } else {
+      assert(index_imm == 0);
+      return nir_iadd_imm(b, index_ssa, img_offset);
+   }
 }
 
 static bool
