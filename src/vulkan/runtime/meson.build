@@ -63,6 +63,8 @@ vulkan_runtime_files = files(
   'vk_queue.c',
   'vk_queue.h',
   'vk_render_pass.c',
+  'vk_sampler.c',
+  'vk_sampler.h',
   'vk_semaphore.c',
   'vk_semaphore.h',
   'vk_shader_module.c',
