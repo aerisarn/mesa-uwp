@@ -315,8 +315,12 @@ panvk_sysval_upload_ssbo_info(struct panvk_cmd_buffer *cmdbuf,
          ssbo = &desc_state->dyn.ssbos[ssbo_id - pipeline->layout->num_ssbos];
 
       if (ssbo) {
-         data->u64[0] = ssbo->buffer->bo->ptr.gpu + ssbo->offset;
-         data->u32[2] = ssbo->size == VK_WHOLE_SIZE ? ssbo->buffer->size - ssbo->offset : ssbo->size;
+         data->u64[0] = ssbo->buffer->bo->ptr.gpu +
+                        ssbo->buffer->bo_offset +
+                        ssbo->offset;
+         data->u32[2] = ssbo->size == VK_WHOLE_SIZE ?
+                        ssbo->buffer->size - ssbo->offset :
+                        ssbo->size;
       }
    }
 }
