@@ -2056,6 +2056,12 @@ zink_get_sample_pixel_grid(struct pipe_screen *pscreen, unsigned sample_count,
    *height = screen->maxSampleLocationGridSize[idx].height;
 }
 
+static void
+init_driver_workarounds(struct zink_screen *screen)
+{
+   screen->driver_workarounds.color_write_missing = !screen->info.have_EXT_color_write_enable;
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -2265,6 +2271,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.create_vertex_state = zink_cache_create_vertex_state;
    screen->base.vertex_state_destroy = zink_cache_vertex_state_destroy;
    glsl_type_singleton_init_or_ref();
+
+   init_driver_workarounds(screen);
 
    return screen;
 
