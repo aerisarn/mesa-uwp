@@ -631,7 +631,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         }
 
         if (emit_zs) {
-                bi_index z = { 0 }, s = { 0 };
+                bi_index z = bi_dontcare(b), s = bi_dontcare(b);
 
                 if (writeout & PAN_WRITEOUT_Z)
                         z = bi_src_index(&instr->src[2]);

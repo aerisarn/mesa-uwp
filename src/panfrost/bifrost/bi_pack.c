@@ -309,8 +309,6 @@ bi_get_src_new(bi_instr *ins, bi_registers *regs, unsigned s)
                 return bi_get_src_slot(regs, src.value);
         else if (src.type == BI_INDEX_PASS)
                 return src.value;
-        else if (bi_is_null(src) && ins->op == BI_OPCODE_ZS_EMIT && s < 2)
-                return BIFROST_SRC_STAGE;
         else {
                 /* TODO make safer */
                 return BIFROST_SRC_STAGE;
