@@ -111,9 +111,9 @@ def encode_source(op, fau):
     elif op[0] == 'r':
         return parse_int(op[1:], 0, 63)
     elif op[0] == 'u':
-        val = parse_int(op[1:], 0, 63)
+        val = parse_int(op[1:], 0, 127)
         fau.set_page(val >> 6)
-        return val | 0x80
+        return (val & 0x3F) | 0x80
     elif op[0] == 'i':
         return int(op[3:]) | 0xC0
     elif op in enums['thread_storage_pointers'].bare_values:

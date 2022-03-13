@@ -102,7 +102,7 @@ va_print_src(FILE *fp, uint8_t src, unsigned imm_mode)
             fprintf(fp, "0x%X", va_immediates[value]);
         }
 	} else if (type == VA_SRC_UNIFORM_TYPE) {
-		fprintf(fp, "u%u", value);
+		fprintf(fp, "u%u", value | (imm_mode << 6));
 	} else {
 		bool discard = (type & 1);
 		fprintf(fp, "%sr%u", discard ? "`" : "", value);

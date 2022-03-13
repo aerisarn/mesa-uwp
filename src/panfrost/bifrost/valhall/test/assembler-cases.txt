@@ -214,3 +214,5 @@ f0 00 3c 32 08 40 7f 78    BLEND.slot0.v4.f32.return @r0:r1:r2:r3, blend_descrip
 c0 00 00 00 00 f6 10 01    IADD_IMM.i32 r54, 0x0, #0x0
 c0 f1 00 00 10 c1 2f 08    BRANCHZI.eq.absolute.wait0 0x0, blend_descriptor_0_y
 80 00 c0 17 34 7c 25 01    TEX_FETCH.slot0.f.32.2d @r0:r1:r2:r3, @r60:r61, u0
+80 00 00 00 00 c1 91 02    MOV.i32 r1, u64
+81 00 00 00 00 c1 91 02    MOV.i32 r1, u65
