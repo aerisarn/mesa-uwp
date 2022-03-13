@@ -278,6 +278,16 @@ struct pan_shader_info {
                 struct {
                         bool writes_point_size;
 
+                        /* If the primary shader writes point size, the Valhall
+                         * driver may need a variant that does not write point
+                         * size. Offset to such a shader in the program binary.
+                         *
+                         * Zero if no such variant is required.
+                         *
+                         * Only used with IDVS on Valhall.
+                         */
+                        unsigned no_psiz_offset;
+
                         /* Set if Index-Driven Vertex Shading is in use */
                         bool idvs;
 

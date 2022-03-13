@@ -4705,6 +4705,27 @@ bi_compile_variant(nir_shader *nir,
                 info->work_reg_count = ctx->info.work_reg_count;
         }
 
+        if (idvs == BI_IDVS_POSITION &&
+            nir->info.outputs_written & BITFIELD_BIT(VARYING_SLOT_PSIZ)) {
+                /* Find the psiz write */
+                bi_instr *write = NULL;
+
+                bi_foreach_instr_global(ctx, I) {
+                        if (I->op == BI_OPCODE_STORE_I16 && I->seg == BI_SEG_POS) {
+                                write = I;
+                                break;
+                        }
+                }
+
+                assert(write != NULL);
+
+                /* Remove it, TODO: DCE */
+                bi_remove_instruction(write);
+
+                info->vs.no_psiz_offset = binary->size;
+                bi_pack_valhall(ctx, binary);
+        }
+
         ralloc_free(ctx);
 }
 
