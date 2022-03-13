@@ -1242,10 +1242,12 @@
     </desc>
     <mod name="z" start="25" size="1"/>
     <mod name="stencil" start="24" size="1"/>
-    <dest>Updated coverage mask</dest>
+    <sr write="true">Updated coverage mask</sr>
     <src>Depth value</src>
     <src>Stencil value</src>
     <src>Input coverage mask</src>
+    <sr_count/>
+    <slot/>
   </ins>
 
   <group name="CONVERT" title="Data conversions" dests="1" opcode="0x90" unit="CVT">
