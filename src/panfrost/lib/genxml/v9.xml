@@ -750,8 +750,8 @@
   </struct>
 
   <struct name="Plane ASTC Overlay" size="8">
-    <field name="Decode Narrow" size="1" start="24" type="bool"/>
-    <field name="Decode HDR" size="1" start="25" type="bool"/>
+    <field name="Decode HDR" size="1" start="24" type="bool"/>
+    <field name="Decode Wide" size="1" start="25" type="bool"/>
 
     <field name="2D" size="32" start="0" type="Plane ASTC 2D Overlay"/>
     <field name="3D" size="32" start="0" type="Plane ASTC 3D Overlay"/>
