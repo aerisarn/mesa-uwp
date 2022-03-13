@@ -304,12 +304,16 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                         }
                 }
 
-                /* Valhall needs >= 64-bit staging reads to be pair-aligned */
-                if (aligned_sr && bi_count_read_registers(ins, 0) >= 2) {
-                        unsigned node = bi_get_node(ins->src[0]);
+                /* Valhall needs >= 64-bit reads to be pair-aligned */
+                if (aligned_sr) {
+                        bi_foreach_src(ins, s) {
+                                if (bi_count_read_registers(ins, s) >= 2) {
+                                        unsigned node = bi_get_node(ins->src[s]);
 
-                        if (node < node_count)
-                                l->affinity[node] &= EVEN_BITS_MASK;
+                                        if (node < node_count)
+                                                l->affinity[node] &= EVEN_BITS_MASK;
+                                }
+                        }
                 }
 
                 if (!is_blend && ins->op == BI_OPCODE_BLEND) {
