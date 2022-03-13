@@ -4130,8 +4130,11 @@ bi_compile_variant_nir(nir_shader *nir,
 
         /* Analyze before register allocation to avoid false dependencies. The
          * skip bit is a function of only the data flow graph and is invariant
-         * under valid scheduling. */
-        bi_analyze_helper_requirements(ctx);
+         * under valid scheduling. Helpers are only defined for fragment
+         * shaders, so this analysis is only required in fragment shaders.
+         */
+        if (ctx->stage == MESA_SHADER_FRAGMENT)
+                bi_analyze_helper_requirements(ctx);
 
         /* Fuse TEXC after analyzing helper requirements so the analysis
          * doesn't have to know about dual textures */
