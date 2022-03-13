@@ -108,16 +108,24 @@
       uniforms defined purely in software, Valhall has a some special
       "constants" passing through data structures. These are encoded like the
       table of immediates, as if special constant $i$ were lookup table entry
-      $32 + i$. These special values are selected with the `.ts` modifier.
+      $32 + i$.
     </desc>
     <reserved/>
+    <value desc="Thread local storage base pointer">thread_local_pointer</value>
     <reserved/>
-    <value desc="Thread local storage base pointer (low word)">tls_ptr</value>
-    <value desc="Thread local storage base pointer (high word)">tls_ptr_hi</value>
+    <value desc="Workgroup local storage base pointer">workgroup_local_pointer</value>
     <reserved/>
     <reserved/>
-    <value desc="Workgroup local storage base pointer (low word)">wls_ptr</value>
-    <value desc="Workgroup local storage base pointer (high word)">wls_ptr_hi</value>
+    <reserved/>
+    <value desc="Shader resource table base pointer">resource_table_pointer</value>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
   </enum>
 
   <enum name="Thread identification">
@@ -126,13 +134,10 @@
       uniforms defined purely in software, Valhall has a some special
       "constants" passing through data structures. These are encoded like the
       table of immediates, as if special constant $i$ were lookup table entry
-      $32 + i$. These special values are selected with the `.id` modifier.
+      $32 + i$.
     </desc>
     <reserved/>
-    <reserved/>
     <value desc="Lane ID">lane_id</value>
-    <reserved/>
-    <reserved/>
     <reserved/>
     <value desc="Core ID">core_id</value>
     <reserved/>
@@ -146,20 +151,7 @@
     <reserved/>
     <reserved/>
     <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
-    <reserved/>
     <value desc="Program counter">program_counter</value>
-    <reserved/>
   </enum>
 
   <enum name="Swizzles (8-bit)">

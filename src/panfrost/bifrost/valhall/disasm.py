@@ -86,15 +86,11 @@ va_print_src(FILE *fp, uint8_t src, unsigned fau_page)
                 else
                     fprintf(fp, "unk:%X", value);
             } else if (fau_page == 1) {
-                if (value < 0x28)
-                    fputs(valhall_thread_storage_pointers[value - 0x20] + 1, fp);
-                else
-                    fprintf(fp, "unk:%X", value);
+                fputs(valhall_thread_storage_pointers[(value - 0x20) >> 1] + 1, fp);
+                fprintf(fp, ".w%u", value & 1);
             } else if (fau_page == 3) {
-                if (value < 0x40)
-                    fputs(valhall_thread_identification[value - 0x20] + 1, fp);
-                else
-                    fprintf(fp, "unk:%X", value);
+                fputs(valhall_thread_identification[(value - 0x20) >> 1] + 1, fp);
+                fprintf(fp, ".w%u", value & 1);
             } else {
                     fprintf(fp, "unk:%X", value);
             }

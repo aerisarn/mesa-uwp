@@ -117,11 +117,11 @@ def encode_source(op, fau):
     elif op[0] == 'i':
         return int(op[3:]) | 0xC0
     elif op in enums['thread_storage_pointers'].bare_values:
-        idx = 32 + enums['thread_storage_pointers'].bare_values.index(op)
+        idx = 32 + (enums['thread_storage_pointers'].bare_values.index(op) << 1)
         fau.set_page(1)
         return idx | 0xC0
     elif op in enums['thread_identification'].bare_values:
-        idx = 32 + enums['thread_identification'].bare_values.index(op)
+        idx = 32 + (enums['thread_identification'].bare_values.index(op) << 1)
         fau.set_page(3)
         return idx | 0xC0
     elif op.startswith('0x'):
@@ -241,8 +241,9 @@ def parse_asm(line):
     for i, (op, src) in enumerate(zip(operands, ins.srcs)):
         parts = op.split('.')
         encoded_src = encode_source(parts[0], fau)
-        encoded |= encoded_src << src.start
-        fau.push(encoded_src)
+
+        # Require a word selection for special FAU values
+        needs_word_select = ((encoded_src >> 5) == 0b111)
 
         # Has a swizzle been applied yet?
         swizzled = False
@@ -295,6 +296,14 @@ def parse_asm(line):
                 swizzled = True
                 val = enums['lanes_8_bit'].bare_values.index(mod)
                 encoded |= (val << src.offset['widen'])
+            elif mod in ['w0', 'w1']:
+                # Chck for special
+                die_if(not needs_word_select, 'Unexpected word select')
+
+                if mod == 'w1':
+                    encoded_src |= 0x1
+
+                needs_word_select = False
             else:
                 die(f"Unknown modifier {mod}")
 
@@ -308,6 +317,9 @@ def parse_asm(line):
             mod = enums['swizzles_16_bit'].default
             val = enums['swizzles_16_bit'].bare_values.index(mod)
             encoded |= (val << src.offset['widen'])
+
+        encoded |= encoded_src << src.start
+        fau.push(encoded_src)
 
     operands = operands[len(ins.srcs):]
 
