@@ -57,8 +57,6 @@ va_print_metadata(FILE *fp, uint8_t meta)
 	struct va_metadata m;
 	memcpy(&m, &meta, 1);
 
-    fputs(valhall_immediate_mode[m.immediate_mode], fp);
-
 	if (m.do_action) {
         fputs(valhall_action[m.action], fp);
 	} else if (m.action) {

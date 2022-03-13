@@ -1,9 +1,9 @@
 02 00 00 00 00 c1 91 00    MOV.i32 r1, r2
 8a 00 00 00 00 c1 91 00    MOV.i32 r1, u10
-e3 00 00 00 00 c1 91 02    MOV.i32.ts r1, tls_ptr_hi
-e6 00 00 00 00 c1 91 02    MOV.i32.ts r1, wls_ptr
-e2 00 00 00 00 c1 91 06    MOV.i32.id r1, lane_id
-e6 00 00 00 00 c1 91 06    MOV.i32.id r1, core_id
+e3 00 00 00 00 c1 91 02    MOV.i32 r1, tls_ptr_hi
+e6 00 00 00 00 c1 91 02    MOV.i32 r1, wls_ptr
+e2 00 00 00 00 c1 91 06    MOV.i32 r1, lane_id
+e6 00 00 00 00 c1 91 06    MOV.i32 r1, core_id
 01 02 00 00 00 c0 a4 00    FADD.f32 r0, r1, r2
 01 02 00 00 20 c0 a4 00    FADD.f32 r0, r1, r2.abs
 01 02 00 00 10 c0 a4 00    FADD.f32 r0, r1, r2.neg

@@ -33,53 +33,37 @@ class ParseError(Exception):
         self.error = error
 
 class FAUState:
-    def __init__(self, mode, single_uniform_slot = True):
-        self.mode = mode
-        self.single_uniform_slot = single_uniform_slot
-        self.uniform_slot = None
-        self.special = None
+    def __init__(self, message = False):
+        self.message = message
+        self.page = None
+        self.words = set()
         self.buffer = set()
 
-    def push(self, s):
-        self.buffer.add(s)
+    def set_page(self, page):
+        assert(page <= 3)
+        die_if(self.page is not None and self.page != page, 'Mismatched pages')
+        self.page = page
+
+    def push(self, source):
+        if not (source & (1 << 7)):
+            # Skip registers
+            return
+
+        self.buffer.add(source)
         die_if(len(self.buffer) > 2, "Overflowed FAU buffer")
 
-    def push_special(self, s):
-        die_if(self.special is not None and self.special != s,
-                'Multiple special immediates')
-        self.special = s
-        self.push(s)
+        if (source >> 5) == 0b110:
+            # Small constants need to check if the buffer overflows but no else
+            return
 
-    def descriptor(self, s):
-        die_if(self.mode != 'none', f'Expected no modifier with {s}')
-        self.push_special(s)
+        slot = (source >> 1)
 
-    def uniform(self, v):
-        slot = v >> 1
+        self.words.add(source)
 
-        die_if(self.mode != 'none',
-                'Expected uniform with default immediate mode')
-        die_if(self.uniform_slot is not None and self.uniform_slot != slot,
-                'Overflowed uniform slots')
-
-        if self.single_uniform_slot:
-            self.uniform_slot = slot
-
-        self.push(f'uniform{v}')
-
-    def id(self, s):
-        die_if(self.mode != 'id',
-                'Expected .id modifier with thread storage pointer')
-
-        self.push_special(f'id{s}')
-
-    def ts(self, s):
-        die_if(self.mode != 'ts',
-                'Expected .ts modifier with thread pointer')
-        self.push_special(f'ts{s}')
-
-    def constant(self, cons):
-        self.push(cons)
+        # Check the encoded slots
+        slots = set([(x >> 1) for x in self.words])
+        die_if(len(slots) > (2 if self.message else 1), 'Too many FAU slots')
+        die_if(len(self.words) > (3 if self.message else 2), 'Too many FAU words')
 
 # When running standalone, exit with the error since we're dealing with a
 # human. Otherwise raise a Python exception so the test harness can handle it.
@@ -108,10 +92,11 @@ def parse_int(s, minimum, maximum):
 
 def encode_source(op, fau):
     if op == 'atest_datum':
-        fau.descriptor(op)
+        fau.set_page(0)
         return 0x2A | 0xC0
     elif op.startswith('blend_descriptor_'):
-        fau.descriptor(op)
+        fau.set_page(0)
+
         fin = op[len('blend_descriptor_'):]
         die_if(len(fin) != 3, 'Bad syntax')
         die_if(fin[1] != '_', 'Bad syntax')
@@ -127,17 +112,17 @@ def encode_source(op, fau):
         return parse_int(op[1:], 0, 63)
     elif op[0] == 'u':
         val = parse_int(op[1:], 0, 63)
-        fau.uniform(val)
+        fau.set_page(val >> 6)
         return val | 0x80
     elif op[0] == 'i':
         return int(op[3:]) | 0xC0
     elif op in enums['thread_storage_pointers'].bare_values:
-        fau.ts(op)
         idx = 32 + enums['thread_storage_pointers'].bare_values.index(op)
+        fau.set_page(1)
         return idx | 0xC0
     elif op in enums['thread_identification'].bare_values:
-        fau.id(op)
         idx = 32 + enums['thread_identification'].bare_values.index(op)
+        fau.set_page(3)
         return idx | 0xC0
     elif op.startswith('0x'):
         try:
@@ -146,7 +131,6 @@ def encode_source(op, fau):
             die('Expected value')
 
         die_if(val not in immediates, 'Unexpected immediate value')
-        fau.constant(val)
         return immediates.index(val) | 0xC0
     else:
         die('Invalid operand')
@@ -251,14 +235,14 @@ def parse_asm(line):
         # Set a placeholder writemask to prevent encoding faults
         encoded |= (0xC0 << 40)
 
-    # TODO: Determine which instructions can only have address a single uniform
-    single_uniform_slot = not ins.name.startswith('LD_BUFFER')
-
-    fau = FAUState(immediate_mode, single_uniform_slot = single_uniform_slot)
+    # TODO: Other messages
+    fau = FAUState(message = ins.name.startswith('LD_BUFFER'))
 
     for i, (op, src) in enumerate(zip(operands, ins.srcs)):
         parts = op.split('.')
-        encoded |= encode_source(parts[0], fau) << src.start
+        encoded_src = encode_source(parts[0], fau)
+        encoded |= encoded_src << src.start
+        fau.push(encoded_src)
 
         # Has a swizzle been applied yet?
         swizzled = False
@@ -357,6 +341,10 @@ def parse_asm(line):
     encoded |= (ins.opcode << 48)
     encoded |= (ins.opcode2 << ins.secondary_shift)
 
+    # Encode FAU page
+    if fau.page:
+        encoded |= (fau.page << 57)
+
     # Encode modifiers
     has_action = False
     for mod in mods:
@@ -387,8 +375,6 @@ def parse_asm(line):
                 encoded |= (1 << 60)
             if 2 in slots:
                 encoded |= (1 << 61)
-        elif mod in enums['immediate_mode'].bare_values:
-            pass # handled specially
         else:
             candidates = [c for c in ins.modifiers if mod in c.bare_values]
 
