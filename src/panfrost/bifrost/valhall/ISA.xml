@@ -94,14 +94,6 @@
     <value name="Return from shader">return</value>
   </enum>
 
-  <enum name="Immediate mode">
-    <desc>Selects how immediates sources are interpreted.</desc>
-    <value desc="No special immediates" default="true">none</value>
-    <value desc="Thread storage pointers">ts</value>
-    <reserved/>
-    <value desc="Thread identification">id</value>
-  </enum>
-
   <enum name="Thread storage pointers">
     <desc>
       Situated between the immediates hard-coded in the hardware and the

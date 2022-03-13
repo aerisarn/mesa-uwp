@@ -181,12 +181,6 @@ def parse_asm(line):
 
     mods = head[len(ins.name) + 1:].split(".")
     modifier_map = {}
-    immediate_mode = 'none'
-
-    for mod in mods:
-        if mod in enums['immediate_mode'].bare_values:
-            die_if(immediate_mode != 'none', 'Multiple immediate modes specified')
-            immediate_mode = mod
 
     tail = line[(len(head) + 1):]
     operands = [x.strip() for x in tail.split(",") if len(x.strip()) > 0]
@@ -407,7 +401,6 @@ def parse_asm(line):
         assert(value < (1 << mod.size))
         encoded |= (value << mod.start)
 
-    encoded |= (enums['immediate_mode'].bare_values.index(immediate_mode) << 57)
     return encoded
 
 if __name__ == "__main__":
