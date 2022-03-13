@@ -174,6 +174,7 @@ EXTENSIONS = [
         features=True,
         guard=True),
     Extension("VK_KHR_timeline_semaphore", alias="timeline", features=True),
+    Extension("VK_EXT_color_write_enable", alias="cwrite", features=True),
     Extension("VK_EXT_4444_formats",
         alias="format_4444",
         features=True),
