@@ -232,6 +232,8 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT;
    }
+   if (!screen->driver_workarounds.color_write_missing)
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT;
 
    VkPipelineRasterizationLineStateCreateInfoEXT rast_line_state;
    if (screen->info.have_EXT_line_rasterization) {

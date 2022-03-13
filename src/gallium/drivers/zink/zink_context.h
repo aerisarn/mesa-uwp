@@ -526,7 +526,8 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res);
 
 void
 zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res);
-
+void
+zink_set_color_write_enables(struct zink_context *ctx);
 void
 zink_copy_buffer(struct zink_context *ctx, struct zink_resource *dst, struct zink_resource *src,
                  unsigned dst_offset, unsigned src_offset, unsigned size);

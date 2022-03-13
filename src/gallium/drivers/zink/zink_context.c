@@ -2513,6 +2513,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
+      zink_set_color_write_enables(ctx);
    }
 }
 
@@ -2565,6 +2566,14 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, bool chan
    res->fb_binds--;
    if (!res->fb_binds)
       check_resource_for_batch_ref(ctx, res);
+}
+
+void
+zink_set_color_write_enables(struct zink_context *ctx)
+{
+   const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
+   const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, zink_screen(ctx->base.screen)->info.props.limits.maxColorAttachments);
+   VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, enables);
 }
 
 static void
@@ -4299,6 +4308,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    zink_select_draw_vbo(ctx);
    zink_select_launch_grid(ctx);
+
+   zink_set_color_write_enables(ctx);
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {
       return &ctx->base;
