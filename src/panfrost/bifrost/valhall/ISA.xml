@@ -94,7 +94,7 @@
     <value name="Return from shader">return</value>
   </enum>
 
-  <enum name="Thread storage pointers">
+  <enum name="FAU special page 1">
     <desc>
       Situated between the immediates hard-coded in the hardware and the
       uniforms defined purely in software, Valhall has a some special
@@ -120,7 +120,7 @@
     <reserved/>
   </enum>
 
-  <enum name="Thread identification">
+  <enum name="FAU special page 3">
     <desc>
       Situated between the immediates hard-coded in the hardware and the
       uniforms defined purely in software, Valhall has a some special

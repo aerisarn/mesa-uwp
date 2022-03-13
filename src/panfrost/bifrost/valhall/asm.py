@@ -116,12 +116,12 @@ def encode_source(op, fau):
         return (val & 0x3F) | 0x80
     elif op[0] == 'i':
         return int(op[3:]) | 0xC0
-    elif op in enums['thread_storage_pointers'].bare_values:
-        idx = 32 + (enums['thread_storage_pointers'].bare_values.index(op) << 1)
+    elif op in enums['fau_special_page_1'].bare_values:
+        idx = 32 + (enums['fau_special_page_1'].bare_values.index(op) << 1)
         fau.set_page(1)
         return idx | 0xC0
-    elif op in enums['thread_identification'].bare_values:
-        idx = 32 + (enums['thread_identification'].bare_values.index(op) << 1)
+    elif op in enums['fau_special_page_3'].bare_values:
+        idx = 32 + (enums['fau_special_page_3'].bare_values.index(op) << 1)
         fau.set_page(3)
         return idx | 0xC0
     elif op.startswith('0x'):
