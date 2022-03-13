@@ -91,21 +91,7 @@ def parse_int(s, minimum, maximum):
     return number
 
 def encode_source(op, fau):
-    if op == 'atest_datum':
-        fau.set_page(0)
-        return 0x2A | 0xC0
-    elif op.startswith('blend_descriptor_'):
-        fau.set_page(0)
-
-        fin = op[len('blend_descriptor_'):]
-        die_if(len(fin) != 3, 'Bad syntax')
-        die_if(fin[1] != '_', 'Bad syntax')
-        die_if(fin[2] not in ['x', 'y'], 'Bad component')
-
-        rt = parse_int(fin[0], 0, 7)
-        hi = 1 if (fin[2] == 'y') else 0
-        return (0x30 | (2*rt) + hi) | 0xC0
-    elif op[0] == '`':
+    if op[0] == '`':
         die_if(op[1] != 'r', f"Expected register after discard {op}")
         return parse_int(op[2:], 0, 63) | 0x40
     elif op[0] == 'r':
@@ -116,14 +102,6 @@ def encode_source(op, fau):
         return (val & 0x3F) | 0x80
     elif op[0] == 'i':
         return int(op[3:]) | 0xC0
-    elif op in enums['fau_special_page_1'].bare_values:
-        idx = 32 + (enums['fau_special_page_1'].bare_values.index(op) << 1)
-        fau.set_page(1)
-        return idx | 0xC0
-    elif op in enums['fau_special_page_3'].bare_values:
-        idx = 32 + (enums['fau_special_page_3'].bare_values.index(op) << 1)
-        fau.set_page(3)
-        return idx | 0xC0
     elif op.startswith('0x'):
         try:
             val = int(op, base=0)
@@ -133,7 +111,14 @@ def encode_source(op, fau):
         die_if(val not in immediates, 'Unexpected immediate value')
         return immediates.index(val) | 0xC0
     else:
+        for i in [0, 1, 3]:
+            if op in enums[f'fau_special_page_{i}'].bare_values:
+                idx = 32 + (enums[f'fau_special_page_{i}'].bare_values.index(op) << 1)
+                fau.set_page(i)
+                return idx | 0xC0
+
         die('Invalid operand')
+
 
 def encode_dest(op):
     die_if(op[0] != 'r', f"Expected register destination {op}")

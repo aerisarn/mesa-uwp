@@ -94,6 +94,32 @@
     <value name="Return from shader">return</value>
   </enum>
 
+  <enum name="FAU special page 0">
+    <desc>
+      Situated between the immediates hard-coded in the hardware and the
+      uniforms defined purely in software, Valhall has a some special
+      "constants" passing through data structures. These are encoded like the
+      table of immediates, as if special constant $i$ were lookup table entry
+      $32 + i$.
+    </desc>
+    <reserved/>
+    <reserved/>
+    <value desc="Warp ID and warps/core - 1">warp_id</value>
+    <reserved/>
+    <value desc="Bounding box maximum X/Y">framebuffer_size</value>
+    <value desc="ATEST datum">atest_datum</value>
+    <value desc="Sample positions">sample</value>
+    <reserved/>
+    <value desc="Blend descriptor 0">blend_descriptor_0</value>
+    <value desc="Blend descriptor 1">blend_descriptor_1</value>
+    <value desc="Blend descriptor 2">blend_descriptor_2</value>
+    <value desc="Blend descriptor 3">blend_descriptor_3</value>
+    <value desc="Blend descriptor 4">blend_descriptor_4</value>
+    <value desc="Blend descriptor 5">blend_descriptor_5</value>
+    <value desc="Blend descriptor 6">blend_descriptor_6</value>
+    <value desc="Blend descriptor 7">blend_descriptor_7</value>
+  </enum>
+
   <enum name="FAU special page 1">
     <desc>
       Situated between the immediates hard-coded in the hardware and the

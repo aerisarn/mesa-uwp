@@ -48,9 +48,9 @@ e6 00 00 00 00 c1 91 06    MOV.i32 r1, core_id.w0
 42 43 04 00 00 c0 a5 00    V2F32_TO_V2F16 r0, `r2, `r3
 40 c0 00 28 90 c0 a5 48    FADD.v2f16.barrier r0, `r0.abs, 0x0.neg
 c0 00 00 00 00 f6 10 01    IADD_IMM.i32 r54, 0x0, #0x0
-3c d0 ea 00 02 bc 7d 68    ATEST.td @r60, r60, 0x3F800000, atest_datum
+3c d0 ea 00 02 bc 7d 68    ATEST.td @r60, r60, 0x3F800000, atest_datum.w0
 40 db 05 04 00 c1 a1 00    MKVEC.v2i16 r1, `r0.h00, 0x3C000000.h10
-f0 00 3c 33 04 40 7f 78    BLEND.slot0.v4.f16.return @r0:r1, blend_descriptor_0_x, r60, target:0x0
+f0 00 3c 33 04 40 7f 78    BLEND.slot0.v4.f16.return @r0:r1, blend_descriptor_0.w0, r60, target:0x0
 7b 0d 00 40 04 84 5e 08    LEA_BUF_IMM.slot1.wait0 @r4:r5, `r59, table:0xD, index:0x0
 00 dd c0 08 14 c2 b2 00    FMA.f32 r2, r0, 0x44000000.neg.h1, 0x0.neg
 41 88 c0 00 04 c1 b2 00    FMA.f32 r1, `r1, u8, 0x0.neg
@@ -202,7 +202,7 @@ c0 00 00 00 00 c9 10 01    IADD_IMM.i32 r9, 0x0, #0x0
 49 3e c0 22 04 c9 b3 30    FMA.v2f16.wait12 r9, `r9, r62.h00, 0x0.neg
 47 43 00 00 00 c3 a4 00    FADD.f32 r3, `r7, `r3
 43 09 00 08 00 c3 a4 40    FADD.f32.wait0126 r3, `r3, r9.h1
-3c 03 ea 00 02 bc 7d 68    ATEST.td @r60, r60, r3, atest_datum
+3c 03 ea 00 02 bc 7d 68    ATEST.td @r60, r60, r3, atest_datum.w0
 46 42 00 00 00 c2 a4 00    FADD.f32 r2, `r6, `r2
 44 40 00 00 00 c0 a4 00    FADD.f32 r0, `r4, `r0
 48 7e c0 22 04 ff b3 00    FMA.v2f16 r63, `r8, `r62.h00, 0x0.neg
@@ -210,9 +210,9 @@ c0 00 00 00 00 c9 10 01    IADD_IMM.i32 r9, 0x0, #0x0
 41 3f 00 08 00 c1 a4 00    FADD.f32 r1, `r1, r63.h1
 40 7f 00 04 00 c0 a4 00    FADD.f32 r0, `r0, `r63.h0
 42 49 00 04 00 c2 a4 48    FADD.f32.barrier r2, `r2, `r9.h0
-f0 00 3c 32 08 40 7f 78    BLEND.slot0.v4.f32.return @r0:r1:r2:r3, blend_descriptor_0_x, r60, target:0x0
+f0 00 3c 32 08 40 7f 78    BLEND.slot0.v4.f32.return @r0:r1:r2:r3, blend_descriptor_0.w0, r60, target:0x0
 c0 00 00 00 00 f6 10 01    IADD_IMM.i32 r54, 0x0, #0x0
-c0 f1 00 00 10 c1 2f 08    BRANCHZI.eq.absolute.wait0 0x0, blend_descriptor_0_y
+c0 f1 00 00 10 c1 2f 08    BRANCHZI.eq.absolute.wait0 0x0, blend_descriptor_0.w1
 80 00 c0 17 34 7c 25 01    TEX_FETCH.slot0.f.32.2d @r0:r1:r2:r3, @r60:r61, u0
 80 00 00 00 00 c1 91 02    MOV.i32 r1, u64
 81 00 00 00 00 c1 91 02    MOV.i32 r1, u65
