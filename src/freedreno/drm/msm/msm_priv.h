@@ -83,7 +83,6 @@ void msm_pipe_sp_ringpool_fini(struct msm_pipe *msm_pipe);
 struct msm_bo {
    struct fd_bo base;
    uint64_t offset;
-   uint32_t idx;
 };
 FD_DEFINE_CAST(fd_bo, msm_bo);
 

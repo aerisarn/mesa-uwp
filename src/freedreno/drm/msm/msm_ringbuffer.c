@@ -127,14 +127,13 @@ msm_ringbuffer_init(struct msm_ringbuffer *msm_ring, uint32_t size,
 static uint32_t
 append_bo(struct msm_submit *submit, struct fd_bo *bo)
 {
-   struct msm_bo *msm_bo = to_msm_bo(bo);
    uint32_t idx;
 
    /* NOTE: it is legal to use the same bo on different threads for
     * different submits.  But it is not legal to use the same submit
     * from given threads.
     */
-   idx = READ_ONCE(msm_bo->idx);
+   idx = READ_ONCE(bo->idx);
 
    if (unlikely((idx >= submit->nr_submit_bos) ||
                 (submit->submit_bos[idx].handle != bo->handle))) {
@@ -158,7 +157,7 @@ append_bo(struct msm_submit *submit, struct fd_bo *bo)
          _mesa_hash_table_insert_pre_hashed(submit->bo_table, hash, bo,
                                             (void *)(uintptr_t)idx);
       }
-      msm_bo->idx = idx;
+      bo->idx = idx;
    }
 
    return idx;

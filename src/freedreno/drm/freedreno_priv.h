@@ -351,6 +351,11 @@ struct fd_bo {
     */
    bool nosync : 1;
 
+   /* Most recent index in submit's bo table, used to optimize the common
+    * case where a bo is used many times in the same submit.
+    */
+   uint32_t idx;
+
    struct list_head list; /* bucket-list entry */
    time_t free_time;      /* time when added to bucket-list */
 
