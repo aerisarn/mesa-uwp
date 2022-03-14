@@ -1249,15 +1249,15 @@ pandecode_dcd(const struct MALI_DRAW *p,
 
         pandecode_depth_stencil(p->depth_stencil);
 
-        if (p->blend) {
+        for (unsigned i = 0; i < p->blend_count; ++i) {
                 struct pandecode_mapped_memory *blend_mem =
                         pandecode_find_mapped_gpu_mem_containing(p->blend);
 
                 struct mali_blend_packed *PANDECODE_PTR_VAR(blend_descs, blend_mem, p->blend);
 
-                mali_ptr blend_shader = pandecode_bifrost_blend(blend_descs, 0, 0, frag_shader);
+                mali_ptr blend_shader = pandecode_bifrost_blend(blend_descs, 0, i, frag_shader);
                 if (blend_shader) {
-                        fprintf(pandecode_dump_stream, "Blend shader");
+                        fprintf(pandecode_dump_stream, "Blend shader %u", i);
                         pandecode_shader_disassemble(blend_shader, 0, 0, gpu_id);
                 }
         }
