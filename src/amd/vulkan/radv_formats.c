@@ -1238,14 +1238,10 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
       return;
    }
 
+   VK_OUTARRAY_MAKE(out, mod_list->pDrmFormatModifierProperties, &mod_list->drmFormatModifierCount);
+
    ac_get_supported_modifiers(&dev->rad_info, &radv_modifier_options,
                               vk_format_to_pipe_format(format), &mod_count, NULL);
-   if (!mod_list->pDrmFormatModifierProperties) {
-      mod_list->drmFormatModifierCount = mod_count;
-      return;
-   }
-
-   mod_count = MIN2(mod_count, mod_list->drmFormatModifierCount);
 
    uint64_t *mods = malloc(mod_count * sizeof(uint64_t));
    if (!mods) {
@@ -1256,7 +1252,6 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
    ac_get_supported_modifiers(&dev->rad_info, &radv_modifier_options,
                               vk_format_to_pipe_format(format), &mod_count, mods);
 
-   mod_list->drmFormatModifierCount = 0;
    for (unsigned i = 0; i < mod_count; ++i) {
       VkFormatFeatureFlags2KHR features =
          radv_get_modifier_flags(dev, format, mods[i], format_props);
@@ -1271,14 +1266,13 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
       if (!features)
          continue;
 
-      mod_list->pDrmFormatModifierProperties[mod_list->drmFormatModifierCount].drmFormatModifier =
-         mods[i];
-      mod_list->pDrmFormatModifierProperties[mod_list->drmFormatModifierCount]
-         .drmFormatModifierPlaneCount = planes;
-      mod_list->pDrmFormatModifierProperties[mod_list->drmFormatModifierCount]
-         .drmFormatModifierTilingFeatures = features2_to_features(features);
-
-      ++mod_list->drmFormatModifierCount;
+      vk_outarray_append(&out, out_props) {
+         *out_props = (VkDrmFormatModifierPropertiesEXT) {
+            .drmFormatModifier = mods[i],
+            .drmFormatModifierPlaneCount = planes,
+            .drmFormatModifierTilingFeatures = features2_to_features(features),
+         };
+      };
    }
 
    free(mods);
@@ -1299,14 +1293,10 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
       return;
    }
 
+   VK_OUTARRAY_MAKE(out, mod_list->pDrmFormatModifierProperties, &mod_list->drmFormatModifierCount);
+
    ac_get_supported_modifiers(&dev->rad_info, &radv_modifier_options,
                               vk_format_to_pipe_format(format), &mod_count, NULL);
-   if (!mod_list->pDrmFormatModifierProperties) {
-      mod_list->drmFormatModifierCount = mod_count;
-      return;
-   }
-
-   mod_count = MIN2(mod_count, mod_list->drmFormatModifierCount);
 
    uint64_t *mods = malloc(mod_count * sizeof(uint64_t));
    if (!mods) {
@@ -1317,7 +1307,6 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
    ac_get_supported_modifiers(&dev->rad_info, &radv_modifier_options,
                               vk_format_to_pipe_format(format), &mod_count, mods);
 
-   mod_list->drmFormatModifierCount = 0;
    for (unsigned i = 0; i < mod_count; ++i) {
       VkFormatFeatureFlags2KHR features =
          radv_get_modifier_flags(dev, format, mods[i], format_props);
@@ -1332,14 +1321,13 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
       if (!features)
          continue;
 
-      mod_list->pDrmFormatModifierProperties[mod_list->drmFormatModifierCount].drmFormatModifier =
-         mods[i];
-      mod_list->pDrmFormatModifierProperties[mod_list->drmFormatModifierCount]
-         .drmFormatModifierPlaneCount = planes;
-      mod_list->pDrmFormatModifierProperties[mod_list->drmFormatModifierCount]
-         .drmFormatModifierTilingFeatures = features;
-
-      ++mod_list->drmFormatModifierCount;
+      vk_outarray_append(&out, out_props) {
+         *out_props = (VkDrmFormatModifierProperties2EXT) {
+            .drmFormatModifier = mods[i],
+            .drmFormatModifierPlaneCount = planes,
+            .drmFormatModifierTilingFeatures = features,
+         };
+      };
    }
 
    free(mods);
