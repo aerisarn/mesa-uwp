@@ -596,11 +596,11 @@ lower_demote_impl(nir_builder *b, nir_instr *instr, void *data)
    if (instr->type != nir_instr_type_intrinsic)
       return false;
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   if (intr->intrinsic == nir_intrinsic_demote) {
+   if (intr->intrinsic == nir_intrinsic_demote || intr->intrinsic == nir_intrinsic_terminate) {
       intr->intrinsic = nir_intrinsic_discard;
       return true;
    }
-   if (intr->intrinsic == nir_intrinsic_demote_if) {
+   if (intr->intrinsic == nir_intrinsic_demote_if || intr->intrinsic == nir_intrinsic_terminate_if) {
       intr->intrinsic = nir_intrinsic_discard_if;
       return true;
    }
