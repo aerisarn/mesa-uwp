@@ -234,9 +234,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         /* We would prefer varyings on Midgard, but proper sysvals on Bifrost */
-        case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
-        case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
-        case PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL:
+        case PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL:
+        case PIPE_CAP_FS_POSITION_IS_SYSVAL:
+        case PIPE_CAP_FS_POINT_IS_SYSVAL:
                 return dev->arch >= 6;
 
         case PIPE_CAP_SEAMLESS_CUBE_MAP:

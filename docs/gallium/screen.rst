@@ -329,11 +329,11 @@ The integer capabilities:
   supported in vertex shaders.
 * ``PIPE_CAP_SHADER_PACK_HALF_FLOAT``: Whether packed 16-bit float
   packing/unpacking opcodes are supported.
-* ``PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL``: If gallium frontends should use
-  a system value for the POSITION fragment shader input.
-* ``PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL``: If gallium frontends should use
-  a system value for the POINT fragment shader input.
-* ``PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL``: If gallium frontends should use
+* ``PIPE_CAP_FS_POSITION_IS_SYSVAL``: If gallium frontends should use a
+  system value for the POSITION fragment shader input.
+* ``PIPE_CAP_FS_POINT_IS_SYSVAL``: If gallium frontends should use a system
+  value for the POINT fragment shader input.
+* ``PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL``: If gallium frontends should use
   a system value for the FACE fragment shader input.
   Also, the FACE system value is integer, not float.
 * ``PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT``: Describes the required
