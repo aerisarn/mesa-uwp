@@ -590,6 +590,29 @@ remove_scoped_barriers(nir_shader *nir, bool is_compute)
    return nir_shader_instructions_pass(nir, remove_scoped_barriers_impl, nir_metadata_dominance, (void*)is_compute);
 }
 
+static bool
+lower_demote_impl(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic == nir_intrinsic_demote) {
+      intr->intrinsic = nir_intrinsic_discard;
+      return true;
+   }
+   if (intr->intrinsic == nir_intrinsic_demote_if) {
+      intr->intrinsic = nir_intrinsic_discard_if;
+      return true;
+   }
+   return false;
+}
+
+static bool
+lower_demote(nir_shader *nir)
+{
+   return nir_shader_instructions_pass(nir, lower_demote_impl, nir_metadata_dominance, NULL);
+}
+
 static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
                          struct vk_shader_module *module,
@@ -643,6 +666,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
          .vk_memory_model_device_scope = true,
          .int8 = true,
          .float16 = true,
+         .demote_to_helper_invocation = true,
       },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_32bit_index_offset,
@@ -694,6 +718,8 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
 
    if (stage == MESA_SHADER_FRAGMENT)
       lvp_lower_input_attachments(nir, false);
+   NIR_PASS_V(nir, nir_lower_is_helper_invocation);
+   NIR_PASS_V(nir, lower_demote);
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
