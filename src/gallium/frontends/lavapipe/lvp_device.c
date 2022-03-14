@@ -144,6 +144,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_host_query_reset                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_multi_draw                        = true,
+   .EXT_pipeline_creation_feedback        = true,
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
    .EXT_primitive_topology_list_restart   = true,

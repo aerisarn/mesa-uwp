@@ -24,6 +24,7 @@
 #include "lvp_private.h"
 #include "vk_util.h"
 #include "glsl_types.h"
+#include "util/os_time.h"
 #include "spirv/nir_spirv.h"
 #include "nir/nir_builder.h"
 #include "lvp_lower_vulkan_resource.h"
@@ -1085,11 +1086,19 @@ lvp_graphics_pipeline_create(
 
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
+   uint64_t t0 = os_time_get_nano();
    result = lvp_graphics_pipeline_init(pipeline, device, cache, pCreateInfo,
                                        pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
+   }
+
+   VkPipelineCreationFeedbackCreateInfo *feedback = (void*)vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+   if (feedback) {
+      feedback->pPipelineCreationFeedback->duration = os_time_get_nano() - t0;
+      feedback->pPipelineCreationFeedback->flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+      memset(feedback->pPipelineStageCreationFeedbacks, 0, sizeof(VkPipelineCreationFeedback) * feedback->pipelineStageCreationFeedbackCount);
    }
 
    *pPipeline = lvp_pipeline_to_handle(pipeline);
@@ -1176,11 +1185,19 @@ lvp_compute_pipeline_create(
 
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
+   uint64_t t0 = os_time_get_nano();
    result = lvp_compute_pipeline_init(pipeline, device, cache, pCreateInfo,
                                       pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, pAllocator, pipeline);
       return result;
+   }
+
+   const VkPipelineCreationFeedbackCreateInfo *feedback = (void*)vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+   if (feedback) {
+      feedback->pPipelineCreationFeedback->duration = os_time_get_nano() - t0;
+      feedback->pPipelineCreationFeedback->flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+      memset(feedback->pPipelineStageCreationFeedbacks, 0, sizeof(VkPipelineCreationFeedback) * feedback->pipelineStageCreationFeedbackCount);
    }
 
    *pPipeline = lvp_pipeline_to_handle(pipeline);
