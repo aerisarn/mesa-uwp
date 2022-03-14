@@ -981,6 +981,15 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = LLVMBuildBitCast(builder, tmp, bld_base->uint64_bld.vec_type, "");
       break;
    }
+   case nir_op_pack_32_4x8_split: {
+      LLVMValueRef tmp1 = merge_16bit(bld_base, src[0], src[1]);
+      LLVMValueRef tmp2 = merge_16bit(bld_base, src[2], src[3]);
+      tmp1 = LLVMBuildBitCast(builder, tmp1, bld_base->uint16_bld.vec_type, "");
+      tmp2 = LLVMBuildBitCast(builder, tmp2, bld_base->uint16_bld.vec_type, "");
+      LLVMValueRef tmp = merge_16bit(bld_base, tmp1, tmp2);
+      result = LLVMBuildBitCast(builder, tmp, bld_base->uint_bld.vec_type, "");
+      break;
+   }
    case nir_op_u2f16:
       result = LLVMBuildUIToFP(builder, src[0],
                                bld_base->half_bld.vec_type, "");
