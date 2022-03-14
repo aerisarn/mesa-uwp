@@ -437,7 +437,7 @@ The integer capabilities:
 * ``PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE``: The page size of sparse buffers in
   bytes, or 0 if sparse buffers are not supported. The page size must be at
   most 64KB.
-* ``PIPE_CAP_TGSI_BALLOT``: Whether the BALLOT and READ_* opcodes as well as
+* ``PIPE_CAP_SHADER_BALLOT``: Whether the BALLOT and READ_* opcodes as well as
   the SUBGROUP_* semantics are supported.
 * ``PIPE_CAP_TES_LAYER_VIEWPORT``: Whether ``VARYING_SLOT_LAYER`` and
   ``VARYING_SLOT_VIEWPORT`` are supported as tessellation evaluation
