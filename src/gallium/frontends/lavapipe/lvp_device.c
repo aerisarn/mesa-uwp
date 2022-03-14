@@ -119,6 +119,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_shader_atomic_int64               = true,
    .KHR_shader_draw_parameters            = true,
    .KHR_shader_float16_int8               = true,
+   .KHR_shader_integer_dot_product        = true,
    .KHR_shader_subgroup_extended_types    = true,
    .KHR_spirv_1_4                         = true,
    .KHR_storage_buffer_storage_class      = true,
@@ -718,6 +719,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->indexTypeUint8 = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_FEATURES: {
+         VkPhysicalDeviceShaderIntegerDotProductFeatures *features =
+            (VkPhysicalDeviceShaderIntegerDotProductFeatures *)ext;
+         features->shaderIntegerDotProduct = true;
+         break;
+      }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
          VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT *features =
@@ -982,6 +989,15 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          VkPhysicalDevicePushDescriptorPropertiesKHR *properties =
             (VkPhysicalDevicePushDescriptorPropertiesKHR *) ext;
          properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES: {
+         VkPhysicalDeviceShaderIntegerDotProductProperties *properties =
+            (VkPhysicalDeviceShaderIntegerDotProductProperties *) ext;
+         void *pnext = properties->pNext;
+         memset(properties, 0, sizeof(VkPhysicalDeviceShaderIntegerDotProductProperties));
+         properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES;
+         properties->pNext = pnext;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
