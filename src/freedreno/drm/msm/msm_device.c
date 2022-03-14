@@ -34,9 +34,6 @@ static void
 msm_device_destroy(struct fd_device *dev)
 {
    struct msm_device *msm_dev = to_msm_device(dev);
-   if (util_queue_is_initialized(&msm_dev->submit_queue)) {
-      util_queue_destroy(&msm_dev->submit_queue);
-   }
    free(msm_dev);
 }
 
@@ -70,7 +67,7 @@ msm_device_new(int fd, drmVersionPtr version)
        * thread's comm truncating the interesting part of the
        * process name.
        */
-      util_queue_init(&msm_dev->submit_queue, "sq", 8, 1, 0, NULL);
+      util_queue_init(&dev->submit_queue, "sq", 8, 1, 0, NULL);
    }
 
    if (version->version_minor >= FD_VERSION_CACHED_COHERENT) {

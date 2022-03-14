@@ -152,6 +152,8 @@ fd_device_del_impl(struct fd_device *dev)
    fd_bo_cache_cleanup(&dev->ring_cache, 0);
    _mesa_hash_table_destroy(dev->handle_table, NULL);
    _mesa_hash_table_destroy(dev->name_table, NULL);
+   if (util_queue_is_initialized(&dev->submit_queue))
+      util_queue_destroy(&dev->submit_queue);
    dev->funcs->destroy(dev);
    if (close_fd >= 0)
       close(close_fd);

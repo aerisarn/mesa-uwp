@@ -171,6 +171,8 @@ struct fd_device {
    struct fd_bo *suballoc_bo;
    uint32_t suballoc_offset;
    simple_mtx_t suballoc_lock;
+
+   struct util_queue submit_queue;
 };
 
 #define foreach_submit(name, list) \
@@ -236,6 +238,14 @@ struct fd_pipe {
     * play)
     */
    uint32_t last_fence;
+
+   /**
+    * The last fence seqno that was flushed to kernel (doesn't mean that it
+    * is complete, just that the kernel knows about it)
+    */
+   uint32_t last_submit_fence;
+
+   uint32_t last_enqueue_fence;   /* just for debugging */
 
    struct fd_bo *control_mem;
    volatile struct fd_pipe_control *control;

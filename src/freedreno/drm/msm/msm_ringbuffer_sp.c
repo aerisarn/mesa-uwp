@@ -393,8 +393,8 @@ flush_submit_list(struct list_head *submit_list)
       free(submit_bos);
 
    pthread_mutex_lock(&flush_mtx);
-   assert(fd_fence_before(msm_pipe->last_submit_fence, msm_submit->base.fence));
-   msm_pipe->last_submit_fence = msm_submit->base.fence;
+   assert(fd_fence_before(msm_pipe->base.last_submit_fence, msm_submit->base.fence));
+   msm_pipe->base.last_submit_fence = msm_submit->base.fence;
    pthread_cond_broadcast(&flush_cnd);
    pthread_mutex_unlock(&flush_mtx);
 
@@ -427,7 +427,6 @@ enqueue_submit_list(struct list_head *submit_list)
 {
    struct fd_submit *submit = last_submit(submit_list);
    struct msm_submit_sp *msm_submit = to_msm_submit_sp(submit);
-   struct msm_device *msm_dev = to_msm_device(submit->pipe->dev);
 
    list_replace(submit_list, &msm_submit->submit_list);
    list_inithead(submit_list);
@@ -442,7 +441,7 @@ enqueue_submit_list(struct list_head *submit_list)
 
    DEBUG_MSG("enqueue: %u", submit->fence);
 
-   util_queue_add_job(&msm_dev->submit_queue,
+   util_queue_add_job(&submit->pipe->dev->submit_queue,
                       submit, fence,
                       msm_submit_sp_flush_execute,
                       msm_submit_sp_flush_cleanup,
@@ -476,7 +475,7 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
                     struct fd_submit_fence *out_fence)
 {
    struct fd_device *dev = submit->pipe->dev;
-   struct msm_pipe *msm_pipe = to_msm_pipe(submit->pipe);
+   struct fd_pipe *pipe = submit->pipe;
 
    /* Acquire lock before flush_prep() because it is possible to race between
     * this and pipe->flush():
@@ -502,8 +501,8 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
 
    bool has_shared = msm_submit_sp_flush_prep(submit, in_fence_fd, out_fence);
 
-   assert(fd_fence_before(msm_pipe->last_enqueue_fence, submit->fence));
-   msm_pipe->last_enqueue_fence = submit->fence;
+   assert(fd_fence_before(pipe->last_enqueue_fence, submit->fence));
+   pipe->last_enqueue_fence = submit->fence;
 
    /* If we don't need an out-fence, we can defer the submit.
     *
@@ -534,7 +533,6 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
 void
 msm_pipe_sp_flush(struct fd_pipe *pipe, uint32_t fence)
 {
-   struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
    struct fd_device *dev = pipe->dev;
    struct list_head submit_list;
 
@@ -544,7 +542,7 @@ msm_pipe_sp_flush(struct fd_pipe *pipe, uint32_t fence)
 
    simple_mtx_lock(&dev->submit_lock);
 
-   assert(!fd_fence_after(fence, msm_pipe->last_enqueue_fence));
+   assert(!fd_fence_after(fence, pipe->last_enqueue_fence));
 
    foreach_submit_safe (deferred_submit, &dev->deferred_submits) {
       /* We should never have submits from multiple pipes in the deferred
@@ -577,7 +575,7 @@ flush_sync:
     * them to the kernel
     */
    pthread_mutex_lock(&flush_mtx);
-   while (fd_fence_before(msm_pipe->last_submit_fence, fence)) {
+   while (fd_fence_before(pipe->last_submit_fence, fence)) {
       pthread_cond_wait(&flush_cnd, &flush_mtx);
    }
    pthread_mutex_unlock(&flush_mtx);

@@ -42,7 +42,6 @@
 
 struct msm_device {
    struct fd_device base;
-   struct util_queue submit_queue;
 };
 FD_DEFINE_CAST(fd_device, msm_device);
 
@@ -57,14 +56,6 @@ struct msm_pipe {
    uint32_t gmem;
    uint32_t queue_id;
    struct slab_parent_pool ring_pool;
-
-   /**
-    * The last fence seqno that was flushed to kernel (doesn't mean that it
-    * is complete, just that the kernel knows about it)
-    */
-   uint32_t last_submit_fence;
-
-   uint32_t last_enqueue_fence;   /* just for debugging */
 
    /**
     * If we *ever* see an in-fence-fd, assume that userspace is
