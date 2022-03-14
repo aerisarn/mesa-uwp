@@ -21,12 +21,12 @@ RESULTS=`pwd`/${DEQP_RESULTS_DIR:-results}
 mkdir -p $RESULTS
 
 # Ensure Mesa Shader Cache resides on tmpfs.
-GLSL_CACHE_HOME=${XDG_CACHE_HOME:-${HOME}/.cache}
-GLSL_CACHE_DIR=${MESA_GLSL_CACHE_DIR:-${GLSL_CACHE_HOME}/mesa_shader_cache}
+SHADER_CACHE_HOME=${XDG_CACHE_HOME:-${HOME}/.cache}
+SHADER_CACHE_DIR=${MESA_SHADER_CACHE_DIR:-${SHADER_CACHE_HOME}/mesa_shader_cache}
 
-findmnt -n tmpfs ${GLSL_CACHE_HOME} || findmnt -n tmpfs ${GLSL_CACHE_DIR} || {
-    mkdir -p ${GLSL_CACHE_DIR}
-    mount -t tmpfs -o nosuid,nodev,size=2G,mode=1755 tmpfs ${GLSL_CACHE_DIR}
+findmnt -n tmpfs ${SHADER_CACHE_HOME} || findmnt -n tmpfs ${SHADER_CACHE_DIR} || {
+    mkdir -p ${SHADER_CACHE_DIR}
+    mount -t tmpfs -o nosuid,nodev,size=2G,mode=1755 tmpfs ${SHADER_CACHE_DIR}
 }
 
 HANG_DETECTION_CMD=""
