@@ -13,6 +13,8 @@ dEQP-VK.renderpass.suballocation.formats.r32g32b32a32_sint.input.load.store.self
 dEQP-VK.renderpass2.dedicated_allocation.formats.a8b8g8r8_sint_pack32.input.clear.store.draw,Fail
 dEQP-VK.renderpass2.suballocation.formats.r16g16b16a16_unorm.input.dont_care.dont_care.draw,Fail
 dEQP-VK.renderpass2.suballocation.formats.r8g8b8a8_sint.input.load.dont_care.clear_draw,Fail
+dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.image.guard_local.image.vert,Fail
+dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.device.payload_local.buffer.guard_local.image.vert,Fail
 
 # Direct leak of 24 byte(s) in 1 object(s) allocated from:
 #     #0 0x7f29a36d1e8f in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
