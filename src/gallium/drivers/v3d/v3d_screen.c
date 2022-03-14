@@ -200,16 +200,16 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
 		return 140;
 
-        case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
+        case PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT:
                 return 1;
-        case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
+        case PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT:
                 return 0;
-        case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
+        case PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER:
                 if (screen->devinfo.ver >= 40)
                         return 0;
                 else
                         return 1;
-        case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
+        case PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
                 if (screen->devinfo.ver >= 40)
                         return 1;
                 else

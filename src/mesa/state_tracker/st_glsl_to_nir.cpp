@@ -675,16 +675,16 @@ st_nir_lower_wpos_ytransform(struct nir_shader *nir,
           sizeof(wpos_options.state_tokens));
    wpos_options.fs_coord_origin_upper_left =
       pscreen->get_param(pscreen,
-                         PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT);
+                         PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT);
    wpos_options.fs_coord_origin_lower_left =
       pscreen->get_param(pscreen,
-                         PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT);
+                         PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT);
    wpos_options.fs_coord_pixel_center_integer =
       pscreen->get_param(pscreen,
-                         PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER);
+                         PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER);
    wpos_options.fs_coord_pixel_center_half_integer =
       pscreen->get_param(pscreen,
-                         PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER);
+                         PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER);
 
    if (nir_lower_wpos_ytransform(nir, &wpos_options)) {
       nir_validate_shader(nir, "after nir_lower_wpos_ytransform");

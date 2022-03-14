@@ -6638,10 +6638,10 @@ emit_wpos(struct st_context *st,
     */
    if (program->info.fs.origin_upper_left) {
       /* Fragment shader wants origin in upper-left */
-      if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT)) {
+      if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT)) {
          /* the driver supports upper-left origin */
       }
-      else if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT)) {
+      else if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT)) {
          /* the driver supports lower-left origin, need to invert Y */
          ureg_property(ureg, TGSI_PROPERTY_FS_COORD_ORIGIN,
                        TGSI_FS_COORD_ORIGIN_LOWER_LEFT);
@@ -6652,11 +6652,11 @@ emit_wpos(struct st_context *st,
    }
    else {
       /* Fragment shader wants origin in lower-left */
-      if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT))
+      if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT))
          /* the driver supports lower-left origin */
          ureg_property(ureg, TGSI_PROPERTY_FS_COORD_ORIGIN,
                        TGSI_FS_COORD_ORIGIN_LOWER_LEFT);
-      else if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT))
+      else if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT))
          /* the driver supports upper-left origin, need to invert Y */
          invert = TRUE;
       else
@@ -6665,13 +6665,13 @@ emit_wpos(struct st_context *st,
 
    if (program->info.fs.pixel_center_integer) {
       /* Fragment shader wants pixel center integer */
-      if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER)) {
+      if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER)) {
          /* the driver supports pixel center integer */
          adjY[1] = 1.0f;
          ureg_property(ureg, TGSI_PROPERTY_FS_COORD_PIXEL_CENTER,
                        TGSI_FS_COORD_PIXEL_CENTER_INTEGER);
       }
-      else if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER)) {
+      else if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER)) {
          /* the driver supports pixel center half integer, need to bias X,Y */
          adjX = -0.5f;
          adjY[0] = -0.5f;
@@ -6682,10 +6682,10 @@ emit_wpos(struct st_context *st,
    }
    else {
       /* Fragment shader wants pixel center half integer */
-      if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER)) {
+      if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER)) {
          /* the driver supports pixel center half integer */
       }
-      else if (pscreen->get_param(pscreen, PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER)) {
+      else if (pscreen->get_param(pscreen, PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER)) {
          /* the driver supports pixel center integer, need to bias X,Y */
          adjX = adjY[0] = adjY[1] = 0.5f;
          ureg_property(ureg, TGSI_PROPERTY_FS_COORD_PIXEL_CENTER,

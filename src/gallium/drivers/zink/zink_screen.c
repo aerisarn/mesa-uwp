@@ -699,12 +699,12 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       /* but Gallium can't handle values that are too big, so clamp to VK spec minimum */
       return MIN2(get_smallest_buffer_heap(screen), 1 << 27);
 
-   case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
-   case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
+   case PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT:
+   case PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
       return 1;
 
-   case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
-   case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
+   case PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT:
+   case PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER:
       return 0;
 
    case PIPE_CAP_NIR_COMPACT_ARRAYS:

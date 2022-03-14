@@ -64,14 +64,14 @@ The integer capabilities:
 * ``PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS``: The maximum number of texture array
   layers supported. If 0, the array textures are not supported at all and
   the ARRAY texture targets are invalid.
-* ``PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT``: Whether the TGSI property
-  FS_COORD_ORIGIN with value UPPER_LEFT is supported.
-* ``PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT``: Whether the TGSI property
-  FS_COORD_ORIGIN with value LOWER_LEFT is supported.
-* ``PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER``: Whether the TGSI
-  property FS_COORD_PIXEL_CENTER with value HALF_INTEGER is supported.
-* ``PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER``: Whether the TGSI
-  property FS_COORD_PIXEL_CENTER with value INTEGER is supported.
+* ``PIPE_CAP_FS_COORD_ORIGIN_UPPER_LEFT``: Whether the upper-left origin
+  fragment convention is supported.
+* ``PIPE_CAP_FS_COORD_ORIGIN_LOWER_LEFT``: Whether the lower-left origin
+  fragment convention is supported.
+* ``PIPE_CAP_FS_COORD_PIXEL_CENTER_HALF_INTEGER``: Whether the half-integer
+  pixel-center fragment convention is supported.
+* ``PIPE_CAP_FS_COORD_PIXEL_CENTER_INTEGER``: Whether the integer
+  pixel-center fragment convention is supported.
 * ``PIPE_CAP_DEPTH_CLIP_DISABLE``: Whether the driver is capable of disabling
   depth clipping (through pipe_rasterizer_state).
 * ``PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE``: Whether the driver is capable of
