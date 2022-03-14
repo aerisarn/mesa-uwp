@@ -295,17 +295,9 @@ vn_cmd_encode_memory_barriers(struct vn_command_buffer *cmd,
 {
    const VkCommandBuffer cmd_handle = vn_command_buffer_to_handle(cmd);
 
-   const size_t cmd_size = vn_sizeof_vkCmdPipelineBarrier(
-      cmd_handle, src_stage_mask, dst_stage_mask, 0, 0, NULL,
-      buf_barrier_count, buf_barriers, img_barrier_count, img_barriers);
-   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size)) {
-      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
-      return;
-   }
-
-   vn_encode_vkCmdPipelineBarrier(
-      &cmd->cs, 0, cmd_handle, src_stage_mask, dst_stage_mask, 0, 0, NULL,
-      buf_barrier_count, buf_barriers, img_barrier_count, img_barriers);
+   VN_CMD_ENQUEUE(vkCmdPipelineBarrier, cmd_handle, src_stage_mask,
+                  dst_stage_mask, 0, 0, NULL, buf_barrier_count, buf_barriers,
+                  img_barrier_count, img_barriers);
 }
 
 static void
