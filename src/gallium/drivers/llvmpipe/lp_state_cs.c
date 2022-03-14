@@ -59,6 +59,7 @@ struct lp_cs_job_info {
    unsigned block_size[3];
    unsigned req_local_mem;
    unsigned work_dim;
+   bool zero_initialize_shared_memory;
    struct lp_cs_exec *current;
 };
 
@@ -476,9 +477,11 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
 
       pipe->screen->finalize_nir(pipe->screen, shader->base.ir.nir);
       shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
+      shader->zero_initialize_shared_memory = ((struct nir_shader *)shader->base.ir.nir)->info.zero_initialize_shared_memory;
    } else if (templ->ir_type == PIPE_SHADER_IR_NIR) {
       shader->base.ir.nir = (struct nir_shader *)templ->prog;
       shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
+      shader->zero_initialize_shared_memory = ((struct nir_shader *)shader->base.ir.nir)->info.zero_initialize_shared_memory;
    }
    if (shader->base.type == PIPE_SHADER_IR_TGSI) {
       /* get/save the summary info for this shader */
@@ -1311,6 +1314,8 @@ cs_exec_fn(void *init_data, int iter_idx, struct lp_cs_local_mem *lmem)
                                     job_info->req_local_mem);
       lmem->local_size = job_info->req_local_mem;
    }
+   if (job_info->zero_initialize_shared_memory)
+      memset(lmem->local_mem_ptr, 0, job_info->req_local_mem);
    thread_data.shared = lmem->local_mem_ptr;
 
    unsigned grid_z = iter_idx / (job_info->grid_size[0] * job_info->grid_size[1]);
@@ -1380,6 +1385,7 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
    job_info.block_size[2] = info->block[2];
    job_info.work_dim = info->work_dim;
    job_info.req_local_mem = llvmpipe->cs->req_local_mem;
+   job_info.zero_initialize_shared_memory = llvmpipe->cs->zero_initialize_shared_memory;
    job_info.current = &llvmpipe->csctx->cs.current;
 
    int num_tasks = job_info.grid_size[2] * job_info.grid_size[1] * job_info.grid_size[0];
