@@ -288,7 +288,7 @@ radv_pipeline_cache_add_entry(struct radv_pipeline_cache *cache, struct cache_en
 static bool
 radv_is_cache_disabled(struct radv_device *device)
 {
-   /* Pipeline caches can be disabled with RADV_DEBUG=nocache and with MESA_GLSL_CACHE_DISABLE=1. */
+   /* Pipeline caches can be disabled with RADV_DEBUG=nocache and with MESA_SHADER_CACHE_DISABLE=1. */
    return (device->instance->debug_flags & RADV_DEBUG_NO_CACHE);
 }
 
