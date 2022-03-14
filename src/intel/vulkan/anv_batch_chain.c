@@ -665,7 +665,7 @@ static VkResult
 anv_cmd_buffer_chain_batch(struct anv_batch *batch, void *_data)
 {
    struct anv_cmd_buffer *cmd_buffer = _data;
-   struct anv_batch_bo *new_bbo;
+   struct anv_batch_bo *new_bbo = NULL;
    /* Cap reallocation to chunk. */
    uint32_t alloc_size = MIN2(cmd_buffer->total_batch_size,
                               ANV_MAX_CMD_BUFFER_BATCH_SIZE);
@@ -837,7 +837,7 @@ anv_cmd_buffer_new_binding_table_block(struct anv_cmd_buffer *cmd_buffer)
 VkResult
 anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
 {
-   struct anv_batch_bo *batch_bo;
+   struct anv_batch_bo *batch_bo = NULL;
    VkResult result;
 
    list_inithead(&cmd_buffer->batch_bos);
@@ -2405,7 +2405,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
    uint32_t batch_size = align_u32(batch->next - batch->start, 8);
 
-   struct anv_bo *batch_bo;
+   struct anv_bo *batch_bo = NULL;
    result = anv_bo_pool_alloc(&device->batch_bo_pool, batch_size, &batch_bo);
    if (result != VK_SUCCESS)
       return result;

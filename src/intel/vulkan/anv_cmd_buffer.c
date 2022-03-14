@@ -618,7 +618,7 @@ void anv_CmdBindPipeline(
    }
 
    default:
-      assert(!"invalid bind point");
+      unreachable("invalid bind point");
       break;
    }
 
