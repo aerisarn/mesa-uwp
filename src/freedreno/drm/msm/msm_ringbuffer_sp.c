@@ -617,7 +617,7 @@ msm_submit_sp_new(struct fd_pipe *pipe)
    msm_submit->bo_table = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
                                                   _mesa_key_pointer_equal);
 
-   slab_create_child(&msm_submit->ring_pool, &to_msm_pipe(pipe)->ring_pool);
+   slab_create_child(&msm_submit->ring_pool, &pipe->ring_pool);
 
    submit = &msm_submit->base;
    submit->funcs = &submit_funcs;
@@ -626,18 +626,17 @@ msm_submit_sp_new(struct fd_pipe *pipe)
 }
 
 void
-msm_pipe_sp_ringpool_init(struct msm_pipe *msm_pipe)
+msm_pipe_sp_ringpool_init(struct fd_pipe *pipe)
 {
    // TODO tune size:
-   slab_create_parent(&msm_pipe->ring_pool, sizeof(struct msm_ringbuffer_sp),
-                      16);
+   slab_create_parent(&pipe->ring_pool, sizeof(struct msm_ringbuffer_sp), 16);
 }
 
 void
-msm_pipe_sp_ringpool_fini(struct msm_pipe *msm_pipe)
+msm_pipe_sp_ringpool_fini(struct fd_pipe *pipe)
 {
-   if (msm_pipe->ring_pool.num_elements)
-      slab_destroy_parent(&msm_pipe->ring_pool);
+   if (pipe->ring_pool.num_elements)
+      slab_destroy_parent(&pipe->ring_pool);
 }
 
 static void

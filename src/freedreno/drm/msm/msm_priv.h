@@ -29,7 +29,6 @@
 
 #include "freedreno_priv.h"
 
-#include "util/slab.h"
 #include "util/timespec.h"
 
 #include "pipe/p_defines.h"
@@ -55,7 +54,6 @@ struct msm_pipe {
    uint64_t gmem_base;
    uint32_t gmem;
    uint32_t queue_id;
-   struct slab_parent_pool ring_pool;
 
    /**
     * If we *ever* see an in-fence-fd, assume that userspace is
@@ -77,8 +75,8 @@ struct fd_submit *msm_submit_new(struct fd_pipe *pipe);
 struct fd_submit *msm_submit_sp_new(struct fd_pipe *pipe);
 void msm_pipe_sp_flush(struct fd_pipe *pipe, uint32_t fence);
 
-void msm_pipe_sp_ringpool_init(struct msm_pipe *msm_pipe);
-void msm_pipe_sp_ringpool_fini(struct msm_pipe *msm_pipe);
+void msm_pipe_sp_ringpool_init(struct fd_pipe *pipe);
+void msm_pipe_sp_ringpool_fini(struct fd_pipe *pipe);
 
 struct msm_bo {
    struct fd_bo base;

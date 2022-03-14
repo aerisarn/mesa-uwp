@@ -42,6 +42,7 @@
 #include "util/list.h"
 #include "util/log.h"
 #include "util/simple_mtx.h"
+#include "util/slab.h"
 #include "util/u_atomic.h"
 #include "util/u_debug.h"
 #include "util/u_math.h"
@@ -249,6 +250,8 @@ struct fd_pipe {
 
    struct fd_bo *control_mem;
    volatile struct fd_pipe_control *control;
+
+   struct slab_parent_pool ring_pool;
 
    const struct fd_pipe_funcs *funcs;
 };
