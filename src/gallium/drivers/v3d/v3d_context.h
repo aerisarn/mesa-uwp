@@ -41,6 +41,7 @@
 #include "broadcom/common/v3d_limits.h"
 
 #include "broadcom/simulator/v3d_simulator.h"
+#include "broadcom/compiler/v3d_compiler.h"
 
 struct v3d_job;
 struct v3d_bo;
@@ -793,6 +794,17 @@ void v3d_get_tile_buffer_size(bool is_msaa,
                               uint32_t *tile_width,
                               uint32_t *tile_height,
                               uint32_t *max_bpp);
+
+#ifdef ENABLE_SHADER_CACHE
+struct v3d_compiled_shader *v3d_disk_cache_retrieve(struct v3d_context *v3d,
+                                                    const struct v3d_key *key);
+
+void v3d_disk_cache_store(struct v3d_context *v3d,
+                          const struct v3d_key *key,
+                          const struct v3d_compiled_shader *shader,
+                          uint64_t *qpu_insts,
+                          uint32_t qpu_size);
+#endif /* ENABLE_SHADER_CACHE */
 
 #ifdef v3dX
 #  include "v3dx_context.h"

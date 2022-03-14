@@ -83,6 +83,12 @@ v3d_screen_destroy(struct pipe_screen *pscreen)
                 v3d_simulator_destroy(screen->sim_file);
 
         v3d_compiler_free(screen->compiler);
+
+#ifdef ENABLE_SHADER_CACHE
+        if (screen->disk_cache)
+                disk_cache_destroy(screen->disk_cache);
+#endif
+
         u_transfer_helper_destroy(pscreen->transfer_helper);
 
         close(screen->fd);
@@ -867,6 +873,10 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
         v3d_resource_screen_init(pscreen);
 
         screen->compiler = v3d_compiler_init(&screen->devinfo);
+
+#ifdef ENABLE_SHADER_CACHE
+        v3d_disk_cache_init(screen);
+#endif
 
         pscreen->get_name = v3d_screen_get_name;
         pscreen->get_vendor = v3d_screen_get_vendor;
