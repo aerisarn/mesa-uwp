@@ -110,6 +110,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_maintenance1                      = true,
    .KHR_maintenance2                      = true,
    .KHR_maintenance3                      = true,
+   .KHR_maintenance4                      = true,
    .KHR_multiview                         = true,
    .KHR_push_descriptor                   = true,
    .KHR_relaxed_block_layout              = true,
@@ -724,7 +725,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->vertexInputDynamicState = true;
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES: {
+         VkPhysicalDeviceMaintenance4Features *features =
+            (VkPhysicalDeviceMaintenance4Features *)ext;
+         features->maintenance4 = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_CONTROL_FEATURES_EXT: {
          VkPhysicalDeviceDepthClipControlFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipControlFeaturesEXT *)ext;
