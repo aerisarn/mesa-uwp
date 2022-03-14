@@ -67,6 +67,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++)
       ralloc_free(pipeline->pipeline_nir[i]);
 
+   lvp_pipeline_layout_unref(device, pipeline->layout);
+
    ralloc_free(pipeline->mem_ctx);
    vk_object_base_finish(&pipeline->base);
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
@@ -917,6 +919,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
       alloc = &device->vk.alloc;
    pipeline->device = device;
    pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
+   lvp_pipeline_layout_ref(pipeline->layout);
    pipeline->force_min_sample = false;
 
    pipeline->mem_ctx = ralloc_context(NULL);
@@ -1105,6 +1108,7 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
       alloc = &device->vk.alloc;
    pipeline->device = device;
    pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
+   lvp_pipeline_layout_ref(pipeline->layout);
    pipeline->force_min_sample = false;
 
    pipeline->mem_ctx = ralloc_context(NULL);
