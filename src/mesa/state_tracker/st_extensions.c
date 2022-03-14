@@ -1200,7 +1200,7 @@ void st_init_extensions(struct pipe_screen *screen,
       extensions->EXT_texture_buffer_object = GL_TRUE;
 
       if (consts->MaxTransformFeedbackBuffers &&
-          screen->get_param(screen, PIPE_CAP_TGSI_ARRAY_COMPONENTS))
+          screen->get_param(screen, PIPE_CAP_SHADER_ARRAY_COMPONENTS))
          extensions->ARB_enhanced_layouts = GL_TRUE;
    }
 
