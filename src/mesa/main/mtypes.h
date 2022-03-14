@@ -3062,7 +3062,6 @@ struct gl_client_attrib_node
  * The VBO module implemented in src/vbo.
  */
 struct vbo_context {
-   struct gl_vertex_buffer_binding binding;
    struct gl_array_attributes current[VBO_ATTRIB_MAX];
 
    struct gl_vertex_array_object *VAO;
