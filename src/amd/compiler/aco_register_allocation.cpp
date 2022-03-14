@@ -1041,8 +1041,8 @@ get_reg_for_create_vector_copy(ra_ctx& ctx, RegisterFile& reg_file,
    for (unsigned i = 0; i < instr->operands.size(); i++) {
       if (instr->operands[i].isTemp() && instr->operands[i].tempId() == id &&
           instr->operands[i].isKillBeforeDef()) {
-         assert(!reg_file.test(reg, info.rc.bytes()));
-         return {reg, !info.rc.is_subdword() || (reg.byte() % info.stride == 0)};
+         assert(!reg_file.test(reg, instr->operands[i].bytes()));
+         return {reg, info.rc.is_subdword() || reg.byte() == 0};
       }
       reg.reg_b += instr->operands[i].bytes();
    }
