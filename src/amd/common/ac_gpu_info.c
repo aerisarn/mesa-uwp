@@ -1272,13 +1272,18 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 	   FILE *f = fopen(ib_filename, "r");
 	   if (f) {
 		   fseek(f, 0, SEEK_END);
-		   int size = ftell(f);
+         size_t size = ftell(f);
 		   uint32_t *ib = (uint32_t *)malloc(size);
 		   fseek(f, 0, SEEK_SET);
-		   fread(ib, 1, size, f);
-		   fclose(f);
+         size_t n_read = fread(ib, 1, size, f);
+         fclose(f);
 
-		   ac_parse_ib(stdout, ib, size / 4, NULL, 0, "IB", info->chip_class, NULL, NULL);
+         if (n_read != size) {
+            fprintf(stderr, "failed to read %zu bytes from '%s'\n", size, ib_filename);
+            exit(1);
+         }
+
+         ac_parse_ib(stdout, ib, size / 4, NULL, 0, "IB", info->chip_class, NULL, NULL);
 		   free(ib);
 		   exit(0);
 	   }
