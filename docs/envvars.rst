@@ -136,13 +136,13 @@ Core Mesa environment variables
    integers, such as ``130``. Mesa will not really implement all the
    features of the given language version if it's higher than what's
    normally reported. (for developers only)
-:envvar:`MESA_GLSL_CACHE_DISABLE`
-   if set to ``true``, disables the GLSL shader cache. If set to
-   ``false``, enables the GLSL shader cache when it is disabled by
+:envvar:`MESA_SHADER_CACHE_DISABLE`
+   if set to ``true``, disables the on-disk shader cache. If set to
+   ``false``, enables the on-disk shader cache when it is disabled by
    default.
-:envvar:`MESA_GLSL_CACHE_MAX_SIZE`
+:envvar:`MESA_SHADER_CACHE_MAX_SIZE`
    if set, determines the maximum size of the on-disk cache of compiled
-   GLSL programs. Should be set to a number optionally followed by
+   shader programs. Should be set to a number optionally followed by
    ``K``, ``M``, or ``G`` to specify a size in kilobytes, megabytes, or
    gigabytes. By default, gigabytes will be assumed. And if unset, a
    maximum size of 1GB will be used.
@@ -154,9 +154,9 @@ Core Mesa environment variables
       you may end up with a 1GB cache for x86_64 and another 1GB cache for
       i386.
 
-:envvar:`MESA_GLSL_CACHE_DIR`
+:envvar:`MESA_SHADER_CACHE_DIR`
    if set, determines the directory to be used for the on-disk cache of
-   compiled GLSL programs. If this variable is not set, then the cache
+   compiled shader programs. If this variable is not set, then the cache
    will be stored in ``$XDG_CACHE_HOME/mesa_shader_cache`` (if that
    variable is set), or else within ``.cache/mesa_shader_cache`` within
    the user's home directory.
