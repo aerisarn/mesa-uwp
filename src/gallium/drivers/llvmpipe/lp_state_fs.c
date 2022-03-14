@@ -3394,6 +3394,9 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
    if (key->flatshade) {
       debug_printf("flatshade = 1\n");
    }
+   if (key->depth_clamp)
+      debug_printf("depth_clamp = 1\n");
+
    if (key->multisample) {
       debug_printf("multisample = 1\n");
       debug_printf("coverage samples = %d\n", key->coverage_samples);
