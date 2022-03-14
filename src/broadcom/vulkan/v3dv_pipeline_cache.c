@@ -300,7 +300,7 @@ v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
    struct disk_cache *disk_cache = device->pdevice->disk_cache;
    /* Note that the on-disk-cache can be independently disabled, while keeping
     * the pipeline cache working, by using the environment variable
-    * MESA_GLSL_CACHE_DISABLE.  In that case the calls to disk_cache_put/get
+    * MESA_SHADER_CACHE_DISABLE. In that case the calls to disk_cache_put/get
     * will not do anything.
     */
    if (disk_cache && device->instance->pipeline_cache_enabled) {
