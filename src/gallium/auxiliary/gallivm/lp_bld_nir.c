@@ -1907,6 +1907,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_shared_atomic(bld_base, instr, result);
       break;
    case nir_intrinsic_control_barrier:
+   case nir_intrinsic_scoped_barrier:
       visit_barrier(bld_base);
       break;
    case nir_intrinsic_group_memory_barrier:
