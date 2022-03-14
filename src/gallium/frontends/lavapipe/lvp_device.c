@@ -94,6 +94,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_draw_indirect_count               = true,
    .KHR_driver_properties                 = true,
    .KHR_dynamic_rendering                 = true,
+   .KHR_format_feature_flags2             = true,
    .KHR_external_fence                    = true,
    .KHR_external_memory                   = true,
 #ifdef PIPE_MEMORY_FD

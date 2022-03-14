@@ -77,7 +77,8 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
       out_properties->linearTilingFeatures = 0;
       out_properties->optimalTilingFeatures = VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
          VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT |
-         VK_FORMAT_FEATURE_2_BLIT_SRC_BIT | VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
+         VK_FORMAT_FEATURE_2_BLIT_SRC_BIT | VK_FORMAT_FEATURE_2_BLIT_DST_BIT |
+         VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
 
       if (lvp_is_filter_minmax_format_supported(format))
          out_properties->optimalTilingFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
@@ -113,11 +114,17 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
    if (physical_device->pscreen->is_format_supported(physical_device->pscreen, pformat,
                                                      PIPE_BUFFER, 0, 0, PIPE_BIND_SHADER_IMAGE)) {
       buffer_features |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
+      if (physical_device->pscreen->get_param(physical_device->pscreen, PIPE_CAP_IMAGE_LOAD_FORMATTED))
+         buffer_features |= VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT_KHR;
+      if (physical_device->pscreen->get_param(physical_device->pscreen, PIPE_CAP_IMAGE_STORE_FORMATTED))
+         buffer_features |= VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 
    if (physical_device->pscreen->is_format_supported(physical_device->pscreen, pformat,
                                                      PIPE_TEXTURE_2D, 0, 0, PIPE_BIND_SAMPLER_VIEW)) {
       features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
+      if (util_format_has_depth(util_format_description(pformat)))
+         features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_DEPTH_COMPARISON_BIT;
       if (!util_format_is_pure_integer(pformat))
          features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
       if (lvp_is_filter_minmax_format_supported(format))
@@ -135,6 +142,10 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
    if (physical_device->pscreen->is_format_supported(physical_device->pscreen, pformat,
                                                      PIPE_TEXTURE_2D, 0, 0, PIPE_BIND_SHADER_IMAGE)) {
       features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
+      if (physical_device->pscreen->get_param(physical_device->pscreen, PIPE_CAP_IMAGE_LOAD_FORMATTED))
+         features |= VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT_KHR;
+      if (physical_device->pscreen->get_param(physical_device->pscreen, PIPE_CAP_IMAGE_STORE_FORMATTED))
+         features |= VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 
    if (pformat == PIPE_FORMAT_R32_UINT || pformat == PIPE_FORMAT_R32_SINT) {
@@ -154,6 +165,7 @@ lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_d
        pformat != PIPE_FORMAT_B10G10R10A2_UNORM) {
       features |= VK_FORMAT_FEATURE_2_BLIT_SRC_BIT | VK_FORMAT_FEATURE_2_BLIT_DST_BIT;
    }
+
    out_properties->linearTilingFeatures = features;
    out_properties->optimalTilingFeatures = features;
    out_properties->bufferFeatures = buffer_features;
@@ -174,6 +186,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFormatProperties2(
    pFormatProperties->formatProperties.linearTilingFeatures = format_props.linearTilingFeatures & VK_ALL_FORMAT_FEATURE_FLAG_BITS;
    pFormatProperties->formatProperties.optimalTilingFeatures = format_props.optimalTilingFeatures & VK_ALL_FORMAT_FEATURE_FLAG_BITS;
    pFormatProperties->formatProperties.bufferFeatures = format_props.bufferFeatures & VK_ALL_FORMAT_FEATURE_FLAG_BITS;
+   VkFormatProperties3 *prop3 = (void*)vk_find_struct_const(pFormatProperties->pNext, FORMAT_PROPERTIES_3);
+   if (prop3)
+      *prop3 = format_props;
 }
 static VkResult lvp_get_image_format_properties(struct lvp_physical_device *physical_device,
                                                  const VkPhysicalDeviceImageFormatInfo2 *info,
