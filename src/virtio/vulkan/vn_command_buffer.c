@@ -23,10 +23,10 @@
          vn_command_buffer_from_handle(commandBuffer);                       \
       size_t _cmd_size = vn_sizeof_##cmd_name(commandBuffer, ##__VA_ARGS__); \
                                                                              \
-      if (!vn_cs_encoder_reserve(&_cmd->cs, _cmd_size))                      \
-         return;                                                             \
-                                                                             \
-      vn_encode_##cmd_name(&_cmd->cs, 0, commandBuffer, ##__VA_ARGS__);      \
+      if (vn_cs_encoder_reserve(&_cmd->cs, _cmd_size))                       \
+         vn_encode_##cmd_name(&_cmd->cs, 0, commandBuffer, ##__VA_ARGS__);   \
+      else                                                                   \
+         _cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;                      \
    } while (0)
 
 static bool
