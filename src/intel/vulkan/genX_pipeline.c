@@ -1406,8 +1406,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .AlphaToOneEnable = ms_info && ms_info->alphaToOneEnable,
 #endif
          .LogicOpEnable = info->logicOpEnable,
-         .LogicOpFunction = dynamic_states & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP ?
-                            0: genX(vk_to_intel_logic_op)[info->logicOp],
 
          /* Vulkan specification 1.2.168, VkLogicOp:
           *
@@ -1434,19 +1432,19 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .SourceAlphaBlendFactor = vk_to_intel_blend[a->srcAlphaBlendFactor],
          .DestinationAlphaBlendFactor = vk_to_intel_blend[a->dstAlphaBlendFactor],
          .AlphaBlendFunction = vk_to_intel_blend_op[a->alphaBlendOp],
-         .WriteDisableAlpha =
-            (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
-            !(a->colorWriteMask & VK_COLOR_COMPONENT_A_BIT),
-         .WriteDisableRed =
-            (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
-            !(a->colorWriteMask & VK_COLOR_COMPONENT_R_BIT),
-         .WriteDisableGreen =
-             (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
-             !(a->colorWriteMask & VK_COLOR_COMPONENT_G_BIT),
-         .WriteDisableBlue =
-             (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) == 0 &&
-             !(a->colorWriteMask & VK_COLOR_COMPONENT_B_BIT),
       };
+
+      /* Write logic op if not dynamic */
+      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP))
+         entry.LogicOpFunction = genX(vk_to_intel_logic_op)[info->logicOp];
+
+      /* Write blending color if not dynamic */
+      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
+         entry.WriteDisableAlpha = !(a->colorWriteMask & VK_COLOR_COMPONENT_A_BIT);
+         entry.WriteDisableRed   = !(a->colorWriteMask & VK_COLOR_COMPONENT_R_BIT);
+         entry.WriteDisableGreen = !(a->colorWriteMask & VK_COLOR_COMPONENT_G_BIT);
+         entry.WriteDisableBlue  = !(a->colorWriteMask & VK_COLOR_COMPONENT_B_BIT);
+      }
 
       if (a->srcColorBlendFactor != a->srcAlphaBlendFactor ||
           a->dstColorBlendFactor != a->dstAlphaBlendFactor ||
@@ -2319,11 +2317,11 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
          wm_prog_data->has_side_effects ||
          wm_prog_data->uses_kill;
 
-      if (pipeline->force_fragment_thread_dispatch ||
-          !has_color_buffer_write_enabled(pipeline, blend)) {
-         /* Only set this value in non dynamic mode. */
+      /* Only set this value in non dynamic mode. */
+      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
          wm.ForceThreadDispatchEnable =
-            !(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) ? ForceON : 0;
+            (pipeline->force_fragment_thread_dispatch ||
+             !has_color_buffer_write_enabled(pipeline, blend)) ? ForceON : 0;
       }
 #endif
 
@@ -2352,10 +2350,11 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
          wm_prog_data->has_side_effects ||
          wm.PixelShaderKillsPixel;
 
-      if (pipeline->force_fragment_thread_dispatch ||
-          has_color_buffer_write_enabled(pipeline, blend)) {
-         /* Only set this value in non dynamic mode. */
-         wm.ThreadDispatchEnable = !(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE);
+      /* Only set this value in non dynamic mode. */
+      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
+         wm.ThreadDispatchEnable =
+            pipeline->force_fragment_thread_dispatch ||
+            has_color_buffer_write_enabled(pipeline, blend);
       }
 
       if (multisample && multisample->rasterizationSamples > 1) {

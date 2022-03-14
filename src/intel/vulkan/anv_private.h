@@ -3383,6 +3383,8 @@ struct anv_graphics_pipeline {
    VkPolygonMode                                polygon_mode;
    uint32_t                                     rasterization_samples;
 
+   VkColorComponentFlags                        color_comp_writes[MAX_RTS];
+
    struct anv_shader_bin *                      shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT];
 
    VkShaderStageFlags                           active_stages;
@@ -3503,6 +3505,25 @@ static inline bool
 anv_pipeline_is_mesh(const struct anv_graphics_pipeline *pipeline)
 {
    return anv_pipeline_has_stage(pipeline, MESA_SHADER_MESH);
+}
+
+static inline bool
+anv_cmd_buffer_all_color_write_masked(const struct anv_cmd_buffer *cmd_buffer)
+{
+   const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
+   uint8_t color_writes = state->dynamic.color_writes;
+
+   /* All writes disabled through vkCmdSetColorWriteEnableEXT */
+   if ((color_writes & ((1u << state->color_att_count) - 1)) == 0)
+      return true;
+
+   /* Or all write masks are empty */
+   for (uint32_t i = 0; i < state->color_att_count; i++) {
+      if (state->pipeline->color_comp_writes[i] != 0)
+         return false;
+   }
+
+   return true;
 }
 
 #define ANV_DECL_GET_GRAPHICS_PROG_DATA_FUNC(prefix, stage)             \

@@ -2058,6 +2058,16 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    return VK_SUCCESS;
 }
 
+static bool
+anv_rendering_uses_color_attachment(const VkPipelineRenderingCreateInfo *rendering_info)
+{
+   for (unsigned i = 0; i < rendering_info->colorAttachmentCount; i++) {
+      if (rendering_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED)
+         return true;
+   }
+   return false;
+}
+
 /**
  * Copy pipeline state not marked as dynamic.
  * Dynamic state is pipeline state which hasn't been provided at pipeline
@@ -2176,13 +2186,7 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
     *    disabled or if the subpass of the render pass the pipeline is
     *    created against does not use any color attachments.
     */
-   bool uses_color_att = false;
-   for (unsigned i = 0; i < rendering_info->colorAttachmentCount; i++) {
-      if (rendering_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
-         uses_color_att = true;
-         break;
-      }
-   }
+   bool uses_color_att = anv_rendering_uses_color_attachment(rendering_info);
 
    if (uses_color_att && !raster_discard) {
       assert(pCreateInfo->pColorBlendState);
@@ -2554,6 +2558,17 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    pipeline->polygon_mode = pCreateInfo->pRasterizationState->polygonMode;
    pipeline->rasterization_samples =
       ms_info ? ms_info->rasterizationSamples : 1;
+
+   /* Store the color write masks, to be merged with color write enable if
+    * dynamic.
+    */
+   if (raster_enabled && anv_rendering_uses_color_attachment(rendering_info)) {
+      for (unsigned i = 0; i < pCreateInfo->pColorBlendState->attachmentCount; i++) {
+         const VkPipelineColorBlendAttachmentState *a =
+            &pCreateInfo->pColorBlendState->pAttachments[i];
+         pipeline->color_comp_writes[i] = a->colorWriteMask;
+      }
+   }
 
    return VK_SUCCESS;
 }

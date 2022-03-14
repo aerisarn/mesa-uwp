@@ -642,7 +642,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                           ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                           ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
-
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
@@ -651,7 +650,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          GENX(3DSTATE_WM_header),
 
          .ForceThreadDispatchEnable = (pipeline->force_fragment_thread_dispatch ||
-                                       !color_writes) ? ForceON : 0,
+                                       anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
+                                      ForceON : 0,
       };
       GENX(3DSTATE_WM_pack)(NULL, wm_dwords, &wm);
 
@@ -677,18 +677,24 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       /* Skip this part */
       dws += GENX(BLEND_STATE_length);
 
-      bool dirty_logic_op =
-         cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
-
       for (uint32_t i = 0; i < MAX_RTS; i++) {
-         bool write_disabled = (color_writes & BITFIELD_BIT(i)) == 0;
+         /* Disable anything above the current number of color attachments. */
+         bool write_disabled = i >= cmd_buffer->state.gfx.color_att_count ||
+                               (color_writes & BITFIELD_BIT(i)) == 0;
          struct GENX(BLEND_STATE_ENTRY) entry = {
-            .WriteDisableAlpha = write_disabled,
-            .WriteDisableRed   = write_disabled,
-            .WriteDisableGreen = write_disabled,
-            .WriteDisableBlue  = write_disabled,
-            .LogicOpFunction =
-               dirty_logic_op ? genX(vk_to_intel_logic_op)[d->logic_op] : 0,
+            .WriteDisableAlpha = write_disabled ||
+                                 (pipeline->color_comp_writes[i] &
+                                  VK_COLOR_COMPONENT_A_BIT) == 0,
+            .WriteDisableRed   = write_disabled ||
+                                 (pipeline->color_comp_writes[i] &
+                                  VK_COLOR_COMPONENT_R_BIT) == 0,
+            .WriteDisableGreen = write_disabled ||
+                                 (pipeline->color_comp_writes[i] &
+                                  VK_COLOR_COMPONENT_G_BIT) == 0,
+            .WriteDisableBlue  = write_disabled ||
+                                 (pipeline->color_comp_writes[i] &
+                                  VK_COLOR_COMPONENT_B_BIT) == 0,
+            .LogicOpFunction   = genX(vk_to_intel_logic_op)[d->logic_op],
          };
          GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
          dws += GENX(BLEND_STATE_ENTRY_length);
