@@ -57,6 +57,7 @@
 #include "rogue/rogue_compiler.h"
 #include "util/build_id.h"
 #include "util/log.h"
+#include "util/macros.h"
 #include "util/mesa-sha1.h"
 #include "util/os_misc.h"
 #include "util/u_math.h"
@@ -1474,6 +1475,104 @@ static void pvr_device_finish_compute_idfwdf_state(struct pvr_device *device)
    pvr_bo_free(device, device->idfwdf_state.usc);
 }
 
+static void pvr_device_setup_graphics_static_clear_ppp_base(
+   struct pvr_static_clear_ppp_base *const base)
+{
+   pvr_csb_pack (&base->wclamp, TA_WCLAMP, wclamp) {
+      wclamp.val = fui(0.00001f);
+   }
+
+   /* clang-format off */
+   pvr_csb_pack (&base->varying_word[0], TA_STATE_VARYING0, varying0);
+   pvr_csb_pack (&base->varying_word[1], TA_STATE_VARYING1, varying1);
+   pvr_csb_pack (&base->varying_word[2], TA_STATE_VARYING2, varying2);
+   /* clang-format on */
+
+   pvr_csb_pack (&base->ppp_ctrl, TA_STATE_PPP_CTRL, ppp_ctrl) {
+      ppp_ctrl.pretransform = true;
+      ppp_ctrl.cullmode = PVRX(TA_CULLMODE_NO_CULLING);
+   }
+
+   /* clang-format off */
+   pvr_csb_pack (&base->stream_out0, TA_STATE_STREAM_OUT0, stream_out0);
+   /* clang-format on */
+}
+
+static void pvr_device_setup_graphics_static_clear_ppp_templates(
+   struct pvr_static_clear_ppp_template
+      templates[static PVR_STATIC_CLEAR_VARIANT_COUNT])
+{
+   for (uint32_t i = 0; i < PVR_STATIC_CLEAR_VARIANT_COUNT; i++) {
+      const bool has_depth = !!(i & PVR_STATIC_CLEAR_DEPTH_BIT);
+      const bool has_stencil = !!(i & PVR_STATIC_CLEAR_STENCIL_BIT);
+      const bool has_color = !!(i & PVR_STATIC_CLEAR_COLOR_BIT);
+
+      struct pvr_static_clear_ppp_template *const template = &templates[i];
+
+      template->requires_pds_state = has_color;
+
+      pvr_csb_pack (&template->header, TA_STATE_HEADER, header) {
+         header.pres_stream_out_size = true;
+         header.pres_ppp_ctrl = true;
+         header.pres_varying_word2 = true;
+         header.pres_varying_word1 = true;
+         header.pres_varying_word0 = true;
+         header.pres_outselects = true;
+         header.pres_wclamp = true;
+         header.pres_region_clip = true;
+         header.pres_pds_state_ptr2 = template->requires_pds_state;
+         header.pres_pds_state_ptr1 = template->requires_pds_state;
+         header.pres_pds_state_ptr0 = template->requires_pds_state;
+         header.pres_ispctl_fb = true;
+         header.pres_ispctl_fa = true;
+         header.pres_ispctl = true;
+      }
+
+#define CS_HEADER(cs)    \
+   (struct PVRX(cs))     \
+   {                     \
+      pvr_cmd_header(cs) \
+   }
+
+      template->config.ispctl = CS_HEADER(TA_STATE_ISPCTL);
+      template->config.ispctl.tagwritedisable = !has_color;
+      template->config.ispctl.bpres = true;
+
+      template->config.ispa = CS_HEADER(TA_STATE_ISPA);
+      template->config.ispa.objtype = PVRX(TA_OBJTYPE_TRIANGLE);
+      template->config.ispa.passtype = PVRX(TA_PASSTYPE_TRANSLUCENT);
+      template->config.ispa.dwritedisable = !has_depth;
+      template->config.ispa.dcmpmode = (i == 0) ? PVRX(TA_CMPMODE_NEVER)
+                                                : PVRX(TA_CMPMODE_ALWAYS);
+      template->config.ispa.sref =
+         has_stencil ? PVRX(TA_STATE_ISPA_SREF_SIZE_MAX) : 0;
+
+      pvr_csb_pack (&template->ispb, TA_STATE_ISPB, ispb) {
+         ispb.scmpmode = PVRX(TA_CMPMODE_ALWAYS);
+         ispb.sop1 = PVRX(TA_ISPB_STENCILOP_KEEP);
+         ispb.sop2 = PVRX(TA_ISPB_STENCILOP_KEEP);
+
+         ispb.sop3 = has_stencil ? PVRX(TA_ISPB_STENCILOP_REPLACE)
+                                 : PVRX(TA_ISPB_STENCILOP_KEEP);
+
+         ispb.swmask = has_stencil ? 0xFF : 0;
+      }
+
+      template->config.pds_state = NULL;
+
+      template->config.region_clip0 = CS_HEADER(TA_REGION_CLIP0);
+      template->config.region_clip0.mode = PVRX(TA_REGION_CLIP_MODE_NONE);
+
+      template->config.region_clip1 = CS_HEADER(TA_REGION_CLIP1);
+
+      template->config.output_sel = CS_HEADER(TA_OUTPUT_SEL);
+      template->config.output_sel.vtxsize = 4;
+      template->config.output_sel.rhw_pres = true;
+
+#undef CS_HEADER
+   }
+}
+
 static VkResult
 pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
 {
@@ -1570,6 +1669,9 @@ pvr_device_init_graphics_static_clear_state(struct pvr_device *device)
       goto err_free_staging_buffer;
 
    vk_free(&device->vk.alloc, staging_buffer);
+
+   pvr_device_setup_graphics_static_clear_ppp_base(&state->ppp_base);
+   pvr_device_setup_graphics_static_clear_ppp_templates(state->ppp_templates);
 
    return VK_SUCCESS;
 

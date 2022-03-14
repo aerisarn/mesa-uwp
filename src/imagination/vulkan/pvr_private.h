@@ -175,6 +175,45 @@ enum pvr_scissor_accum_state {
    PVR_SCISSOR_ACCUM_ENABLED,
 };
 
+#define PVR_STATIC_CLEAR_PDS_STATE_COUNT          \
+   (pvr_cmd_length(TA_STATE_PDS_SHADERBASE) +     \
+    pvr_cmd_length(TA_STATE_PDS_TEXUNICODEBASE) + \
+    pvr_cmd_length(TA_STATE_PDS_SIZEINFO1) +      \
+    pvr_cmd_length(TA_STATE_PDS_SIZEINFO2) +      \
+    pvr_cmd_length(TA_STATE_PDS_VARYINGBASE) +    \
+    pvr_cmd_length(TA_STATE_PDS_TEXTUREDATABASE))
+
+/* These can be used as offsets within a PVR_STATIC_CLEAR_PDS_STATE_COUNT dwords
+ * sized array to get the respective state word.
+ *
+ * The values are based on the lengths of the state words.
+ */
+enum pvr_static_clear_ppp_pds_state_type {
+   /* Words enabled by pres_pds_state_ptr0. */
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_SHADERBASE = 0,
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXUNICODEBASE = 1,
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO1 = 2,
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_SIZEINFO2 = 3,
+
+   /* Word enabled by pres_pds_state_ptr1. */
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_VARYINGBASE = 4,
+
+   /* Word enabled by pres_pds_state_ptr2. */
+   PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE = 5,
+};
+
+static_assert(PVR_STATIC_CLEAR_PPP_PDS_TYPE_TEXTUREDATABASE + 1 ==
+                 PVR_STATIC_CLEAR_PDS_STATE_COUNT,
+              "pvr_static_clear_ppp_pds_state_type might require fixing.");
+
+enum pvr_static_clear_variant_bits {
+   PVR_STATIC_CLEAR_DEPTH_BIT = BITFIELD_BIT(0),
+   PVR_STATIC_CLEAR_STENCIL_BIT = BITFIELD_BIT(1),
+   PVR_STATIC_CLEAR_COLOR_BIT = BITFIELD_BIT(2),
+};
+
+#define PVR_STATIC_CLEAR_VARIANT_COUNT (PVR_STATIC_CLEAR_COLOR_BIT << 1U)
+
 struct pvr_bo;
 struct pvr_compute_ctx;
 struct pvr_compute_pipeline;
@@ -246,6 +285,42 @@ struct pvr_pds_upload {
    uint32_t code_size;
 };
 
+struct pvr_static_clear_ppp_base {
+   uint32_t wclamp;
+   uint32_t varying_word[3];
+   uint32_t ppp_ctrl;
+   uint32_t stream_out0;
+};
+
+struct pvr_static_clear_ppp_template {
+   /* Pre-packed control words. */
+   uint32_t header;
+   uint32_t ispb;
+
+   bool requires_pds_state;
+
+   /* Configurable control words.
+    * These are initialized and can be modified as needed before emitting them.
+    */
+   struct {
+      struct PVRX(TA_STATE_ISPCTL) ispctl;
+      struct PVRX(TA_STATE_ISPA) ispa;
+
+      /* In case the template requires_pds_state this needs to be a valid
+       * pointer to a pre-packed PDS state before emitting.
+       *
+       * Note: this is a pointer to an array of const uint32_t and not an array
+       * of pointers or a function pointer.
+       */
+      const uint32_t (*pds_state)[PVR_STATIC_CLEAR_PDS_STATE_COUNT];
+
+      struct PVRX(TA_REGION_CLIP0) region_clip0;
+      struct PVRX(TA_REGION_CLIP1) region_clip1;
+
+      struct PVRX(TA_OUTPUT_SEL) output_sel;
+   } config;
+};
+
 struct pvr_device {
    struct vk_device vk;
    struct pvr_instance *instance;
@@ -297,6 +372,10 @@ struct pvr_device {
       struct pvr_bo *usc_vertex_shader_bo;
       struct pvr_bo *vertices_bo;
       struct pvr_pds_upload pds;
+
+      struct pvr_static_clear_ppp_base ppp_base;
+      struct pvr_static_clear_ppp_template
+         ppp_templates[PVR_STATIC_CLEAR_VARIANT_COUNT];
    } static_clear_state;
 
    VkPhysicalDeviceFeatures features;

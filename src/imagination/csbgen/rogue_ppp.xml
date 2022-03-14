@@ -154,7 +154,9 @@ SOFTWARE.
     <field name="pointlinewidth" start="8" end="15" type="uint">
       <define name="SIZE_MAX" value="255"/>
     </field>
-    <field name="sref" start="0" end="7" type="uint"/>
+    <field name="sref" start="0" end="7" type="uint">
+      <define name="SIZE_MAX" value="255"/>
+    </field>
   </struct>
 
   <struct name="STATE_ISPB" length="1">
@@ -175,6 +177,10 @@ SOFTWARE.
   <struct name="REGION_CLIP1" length="1">
     <field name="top" start="16" end="24" type="uint"/>
     <field name="bottom" start="0" end="8" type="uint"/>
+  </struct>
+
+  <struct name="WCLAMP" length="1">
+    <field name="val" start="0" end="31" type="uint"/>
   </struct>
 
   <struct name="STATE_ISPDBSC" length="1">
@@ -226,6 +232,14 @@ SOFTWARE.
     <condition type="endif" check="TEXTURE_WRAP_VARYING"/>
   </struct>
 
+  <struct name="STATE_VARYING2" length="1">
+    <field name="output_clip_planes" start="16" end="19" type="uint"/>
+    <condition type="if" check="TEXTURE_WRAP_VARYING"/>
+      <field name="f16_npc_wrap" start="8" end="15" type="uint"/>
+      <field name="f16_linear_wrap" start="0" end="7" type="uint"/>
+    <condition type="endif" check="TEXTURE_WRAP_VARYING"/>
+  </struct>
+
   <struct name="STATE_TERMINATE0" length="1">
     <field name="clip_right" start="18" end="26" type="uint">
       <define name="BLOCK_SIZE_IN_PIXELS" value="32"/>
@@ -243,6 +257,14 @@ SOFTWARE.
       <define name="BLOCK_SIZE_IN_PIXELS" value="32"/>
     </field>
     <field name="render_target" start="0" end="10" type="uint"/>
+  </struct>
+
+  <struct name="STATE_STREAM_OUT0" length="1">
+    <field name="stream3_size" start="24" end="31" type="uint"/>
+    <field name="stream2_size" start="16" end="23" type="uint"/>
+    <field name="stream1_size" start="8" end="15" type="uint"/>
+    <field name="stream0_mem_output" start="1" end="1" type="bool"/>
+    <field name="stream0_ta_output" start="0" end="0" type="bool"/>
   </struct>
 
   <struct name="STATE_STREAM_OUT1" length="1">
