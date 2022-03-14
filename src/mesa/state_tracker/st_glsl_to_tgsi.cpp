@@ -7264,7 +7264,7 @@ get_mesa_program_tgsi(struct gl_context *ctx,
                                          prog->Parameters);
 
    /* Remove reads from output registers. */
-   if (!pscreen->get_param(pscreen, PIPE_CAP_TGSI_CAN_READ_OUTPUTS))
+   if (!pscreen->get_param(pscreen, PIPE_CAP_SHADER_CAN_READ_OUTPUTS))
       lower_output_reads(shader->Stage, shader->ir);
 
    /* Emit intermediate IR for main(). */

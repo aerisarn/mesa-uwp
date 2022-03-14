@@ -285,7 +285,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
    case PIPE_CAP_SHADER_ARRAY_COMPONENTS:
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-   case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
+   case PIPE_CAP_SHADER_CAN_READ_OUTPUTS:
    case PIPE_CAP_NATIVE_FENCE_FD:
       return 0;
 

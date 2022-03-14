@@ -376,7 +376,7 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
                  nir_shader_get_entrypoint(nir),
                  true, true);
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT ||
-              !screen->get_param(screen, PIPE_CAP_TGSI_CAN_READ_OUTPUTS)) {
+              !screen->get_param(screen, PIPE_CAP_SHADER_CAN_READ_OUTPUTS)) {
       NIR_PASS_V(nir, nir_lower_io_to_temporaries,
                  nir_shader_get_entrypoint(nir),
                  true, false);

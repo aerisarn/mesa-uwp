@@ -382,7 +382,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PCI_BUS:
    case PIPE_CAP_PCI_DEVICE:
    case PIPE_CAP_PCI_FUNCTION:
-   case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
+   case PIPE_CAP_SHADER_CAN_READ_OUTPUTS:
    case PIPE_CAP_NATIVE_FENCE_FD:
    case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
    case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
