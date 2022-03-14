@@ -1892,6 +1892,50 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_InvalidateMappedMemoryRanges(
    return VK_SUCCESS;
 }
 
+VKAPI_ATTR void lvp_GetDeviceBufferMemoryRequirements(
+    VkDevice                                    _device,
+    const VkDeviceBufferMemoryRequirements*     pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = 1;
+   pMemoryRequirements->memoryRequirements.alignment = 64;
+   pMemoryRequirements->memoryRequirements.size = 0;
+
+   VkBuffer _buffer;
+   if (lvp_CreateBuffer(_device, pInfo->pCreateInfo, NULL, &_buffer) != VK_SUCCESS)
+      return;
+   LVP_FROM_HANDLE(lvp_buffer, buffer, _buffer);
+   pMemoryRequirements->memoryRequirements.size = buffer->total_size;
+   lvp_DestroyBuffer(_device, _buffer, NULL);
+}
+
+VKAPI_ATTR void lvp_GetDeviceImageSparseMemoryRequirements(
+    VkDevice                                    device,
+    const VkDeviceImageMemoryRequirements*      pInfo,
+    uint32_t*                                   pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
+{
+   stub();
+}
+
+VKAPI_ATTR void lvp_GetDeviceImageMemoryRequirements(
+    VkDevice                                    _device,
+    const VkDeviceImageMemoryRequirements*     pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = 1;
+   pMemoryRequirements->memoryRequirements.alignment = 0;
+   pMemoryRequirements->memoryRequirements.size = 0;
+
+   VkImage _image;
+   if (lvp_CreateImage(_device, pInfo->pCreateInfo, NULL, &_image) != VK_SUCCESS)
+      return;
+   LVP_FROM_HANDLE(lvp_image, image, _image);
+   pMemoryRequirements->memoryRequirements.size = image->size;
+   pMemoryRequirements->memoryRequirements.alignment = image->alignment;
+   lvp_DestroyImage(_device, _image, NULL);
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_GetBufferMemoryRequirements(
    VkDevice                                    device,
    VkBuffer                                    _buffer,
