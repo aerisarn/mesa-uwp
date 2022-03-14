@@ -377,7 +377,7 @@ This instruction replicates its result.
 
 .. opcode:: DDX, DDX_FINE - Derivative Relative To X
 
-The fine variant is only used when ``PIPE_CAP_TGSI_FS_FINE_DERIVATIVE`` is
+The fine variant is only used when ``PIPE_CAP_FS_FINE_DERIVATIVE`` is
 advertised. When it is, the fine version guarantees one derivative per row
 while DDX is allowed to be the same for the entire 2x2 quad.
 
@@ -394,7 +394,7 @@ while DDX is allowed to be the same for the entire 2x2 quad.
 
 .. opcode:: DDY, DDY_FINE - Derivative Relative To Y
 
-The fine variant is only used when ``PIPE_CAP_TGSI_FS_FINE_DERIVATIVE`` is
+The fine variant is only used when ``PIPE_CAP_FS_FINE_DERIVATIVE`` is
 advertised. When it is, the fine version guarantees one derivative per column
 while DDY is allowed to be the same for the entire 2x2 quad.
 

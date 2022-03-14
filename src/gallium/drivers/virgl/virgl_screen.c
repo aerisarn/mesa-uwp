@@ -246,7 +246,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
               (vscreen->caps.caps.v2.host_feature_check_version < 2)) ? 4 : 1;
    case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
       return vscreen->caps.caps.v1.bset.conditional_render_inverted;
-   case PIPE_CAP_TGSI_FS_FINE_DERIVATIVE:
+   case PIPE_CAP_FS_FINE_DERIVATIVE:
       return vscreen->caps.caps.v1.bset.derivative_control;
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
       return vscreen->caps.caps.v1.bset.polygon_offset_clamp;
