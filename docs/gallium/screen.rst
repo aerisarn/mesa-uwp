@@ -378,7 +378,8 @@ The integer capabilities:
   VARYING_SLOT_CULL_DIST0 slot variables.
 * ``PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES``: Whether primitive restart is
   supported for patch primitives.
-* ``PIPE_CAP_TGSI_VOTE``: Whether the ``VOTE_*`` ops can be used in shaders.
+* ``PIPE_CAP_SHADER_GROUP_VOTE``: Whether the ``VOTE_*`` ops can be used in
+  shaders.
 * ``PIPE_CAP_MAX_WINDOW_RECTANGLES``: The maxium number of window rectangles
   supported in ``set_window_rectangles``.
 * ``PIPE_CAP_POLYGON_OFFSET_UNITS_UNSCALED``: If true, the driver implements support

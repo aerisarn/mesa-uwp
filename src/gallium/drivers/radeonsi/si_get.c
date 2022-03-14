@@ -147,7 +147,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_ALLOW_MAPPED_BUFFERS_DURING_EXECUTION:
    case PIPE_CAP_SIGNED_VERTEX_BUFFER_OFFSET:
    case PIPE_CAP_TGSI_BALLOT:
-   case PIPE_CAP_TGSI_VOTE:
+   case PIPE_CAP_SHADER_GROUP_VOTE:
    case PIPE_CAP_FBFETCH:
    case PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK:
    case PIPE_CAP_IMAGE_LOAD_FORMATTED:

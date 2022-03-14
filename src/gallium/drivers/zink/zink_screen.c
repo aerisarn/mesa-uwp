@@ -400,7 +400,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DRAW_PARAMETERS:
       return screen->info.feats11.shaderDrawParameters || screen->info.have_KHR_shader_draw_parameters;
 
-   case PIPE_CAP_TGSI_VOTE:
+   case PIPE_CAP_SHADER_GROUP_VOTE:
       return screen->spirv_version >= SPIRV_VERSION(1, 3);
 
    case PIPE_CAP_QUADS_FOLLOW_PROVOKING_VERTEX_CONVENTION:
