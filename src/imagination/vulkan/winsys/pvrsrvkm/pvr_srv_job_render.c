@@ -395,7 +395,9 @@ static void pvr_srv_geometry_cmd_init(
    fw_regs->tpu = state->regs.tpu;
    fw_regs->vdm_context_resume_task0_size =
       state->regs.vdm_ctx_resume_task0_size;
-   fw_regs->pds_ctrl = state->regs.pds_ctrl;
+
+   assert(state->regs.pds_ctrl >> 32U == 0U);
+   fw_regs->pds_ctrl = (uint32_t)state->regs.pds_ctrl;
 
    if (state->flags & PVR_WINSYS_GEOM_FLAG_FIRST_GEOMETRY)
       cmd->flags |= ROGUE_FWIF_TAFLAGS_FIRSTKICK;

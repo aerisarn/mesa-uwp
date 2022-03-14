@@ -759,15 +759,16 @@ static void pvr_render_ctx_ws_static_state_init(
    struct pvr_render_ctx *ctx,
    struct pvr_winsys_render_ctx_static_state *static_state)
 {
-   void *dst;
+   uint64_t *q_dst;
+   uint32_t *d_dst;
 
-   dst = &static_state->vdm_ctx_state_base_addr;
-   pvr_csb_pack (dst, CR_VDM_CONTEXT_STATE_BASE, base) {
+   q_dst = &static_state->vdm_ctx_state_base_addr;
+   pvr_csb_pack (q_dst, CR_VDM_CONTEXT_STATE_BASE, base) {
       base.addr = ctx->ctx_switch.vdm_state_bo->vma->dev_addr;
    }
 
-   dst = &static_state->geom_ctx_state_base_addr;
-   pvr_csb_pack (dst, CR_TA_CONTEXT_STATE_BASE, base) {
+   q_dst = &static_state->geom_ctx_state_base_addr;
+   pvr_csb_pack (q_dst, CR_TA_CONTEXT_STATE_BASE, base) {
       base.addr = ctx->ctx_switch.geom_state_bo->vma->dev_addr;
    }
 
@@ -776,8 +777,8 @@ static void pvr_render_ctx_ws_static_state_init(
       struct rogue_sr_programs *sr_prog = &ctx->ctx_switch.programs[i].sr;
 
       /* Context store state. */
-      dst = &static_state->geom_state[i].vdm_ctx_store_task0;
-      pvr_csb_pack (dst, CR_VDM_CONTEXT_STORE_TASK0, task0) {
+      q_dst = &static_state->geom_state[i].vdm_ctx_store_task0;
+      pvr_csb_pack (q_dst, CR_VDM_CONTEXT_STORE_TASK0, task0) {
          pvr_rogue_get_vdmctrl_pds_state_words(&sr_prog->pds.store_program,
                                                PVRX(VDMCTRL_USC_TARGET_ANY),
                                                sr_prog->usc.unified_size,
@@ -785,23 +786,23 @@ static void pvr_render_ctx_ws_static_state_init(
                                                &task0.pds_state1);
       }
 
-      dst = &static_state->geom_state[i].vdm_ctx_store_task1;
-      pvr_csb_pack (dst, CR_VDM_CONTEXT_STORE_TASK1, task1) {
+      d_dst = &static_state->geom_state[i].vdm_ctx_store_task1;
+      pvr_csb_pack (d_dst, CR_VDM_CONTEXT_STORE_TASK1, task1) {
          pvr_csb_pack (&task1.pds_state2, VDMCTRL_PDS_STATE2, state) {
             state.pds_code_addr.addr = sr_prog->pds.store_program.code_offset;
          }
       }
 
-      dst = &static_state->geom_state[i].vdm_ctx_store_task2;
-      pvr_csb_pack (dst, CR_VDM_CONTEXT_STORE_TASK2, task2) {
+      q_dst = &static_state->geom_state[i].vdm_ctx_store_task2;
+      pvr_csb_pack (q_dst, CR_VDM_CONTEXT_STORE_TASK2, task2) {
          pvr_rogue_get_geom_state_stream_out_words(&pt_prog->pds_store_program,
                                                    &task2.stream_out1,
                                                    &task2.stream_out2);
       }
 
       /* Context resume state. */
-      dst = &static_state->geom_state[i].vdm_ctx_resume_task0;
-      pvr_csb_pack (dst, CR_VDM_CONTEXT_RESUME_TASK0, task0) {
+      q_dst = &static_state->geom_state[i].vdm_ctx_resume_task0;
+      pvr_csb_pack (q_dst, CR_VDM_CONTEXT_RESUME_TASK0, task0) {
          pvr_rogue_get_vdmctrl_pds_state_words(&sr_prog->pds.load_program,
                                                PVRX(VDMCTRL_USC_TARGET_ALL),
                                                sr_prog->usc.unified_size,
@@ -809,15 +810,15 @@ static void pvr_render_ctx_ws_static_state_init(
                                                &task0.pds_state1);
       }
 
-      dst = &static_state->geom_state[i].vdm_ctx_resume_task1;
-      pvr_csb_pack (dst, CR_VDM_CONTEXT_RESUME_TASK1, task1) {
+      d_dst = &static_state->geom_state[i].vdm_ctx_resume_task1;
+      pvr_csb_pack (d_dst, CR_VDM_CONTEXT_RESUME_TASK1, task1) {
          pvr_csb_pack (&task1.pds_state2, VDMCTRL_PDS_STATE2, state) {
             state.pds_code_addr.addr = sr_prog->pds.load_program.code_offset;
          }
       }
 
-      dst = &static_state->geom_state[i].vdm_ctx_resume_task2;
-      pvr_csb_pack (dst, CR_VDM_CONTEXT_RESUME_TASK2, task2) {
+      q_dst = &static_state->geom_state[i].vdm_ctx_resume_task2;
+      pvr_csb_pack (q_dst, CR_VDM_CONTEXT_RESUME_TASK2, task2) {
          pvr_rogue_get_geom_state_stream_out_words(&pt_prog->pds_resume_program,
                                                    &task2.stream_out1,
                                                    &task2.stream_out2);

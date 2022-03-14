@@ -38,6 +38,7 @@
 #include "pvr_bo.h"
 #include "pvr_winsys.h"
 #include "util/list.h"
+#include "util/macros.h"
 
 #define __pvr_address_type pvr_dev_addr_t
 #define __pvr_get_address(pvr_dev_addr) (pvr_dev_addr).addr
@@ -137,13 +138,14 @@ VkResult pvr_csb_emit_terminate(struct pvr_csb *csb);
  *                     This can be used by the caller to modify the command or
  *                     state information before it's packed.
  */
-#define pvr_csb_pack(_dst, cmd, name)                              \
-   for (struct pvr_cmd_struct(cmd) name = { pvr_cmd_header(cmd) }, \
-                                   *_loop_terminate = &name;       \
-        __builtin_expect(_loop_terminate != NULL, 1);              \
-        ({                                                         \
-           pvr_cmd_pack(cmd)((_dst), &name);                       \
-           _loop_terminate = NULL;                                 \
+#define pvr_csb_pack(_dst, cmd, name)                                 \
+   for (struct pvr_cmd_struct(cmd) name = { pvr_cmd_header(cmd) },    \
+                                   *_loop_terminate = &name;          \
+        __builtin_expect(_loop_terminate != NULL, 1);                 \
+        ({                                                            \
+           STATIC_ASSERT(sizeof(*(_dst)) == pvr_cmd_length(cmd) * 4); \
+           pvr_cmd_pack(cmd)((_dst), &name);                          \
+           _loop_terminate = NULL;                                    \
         }))
 
 /**

@@ -233,10 +233,10 @@ struct pvr_winsys_compute_ctx_create_info {
 
       uint64_t cdm_ctx_store_pds0;
       uint64_t cdm_ctx_store_pds0_b;
-      uint64_t cdm_ctx_store_pds1;
+      uint32_t cdm_ctx_store_pds1;
 
       uint64_t cdm_ctx_terminate_pds;
-      uint64_t cdm_ctx_terminate_pds1;
+      uint32_t cdm_ctx_terminate_pds1;
 
       uint64_t cdm_ctx_resume_pds0;
       uint64_t cdm_ctx_resume_pds0_b;
@@ -262,7 +262,7 @@ struct pvr_winsys_compute_submit_info {
    struct {
       uint64_t tpu_border_colour_table;
       uint64_t cdm_item;
-      uint64_t compute_cluster;
+      uint32_t compute_cluster;
       uint64_t cdm_ctrl_stream_base;
       uint32_t tpu;
       uint32_t cdm_resume_pds1;
@@ -309,7 +309,7 @@ struct pvr_winsys_render_submit_info {
 
    struct pvr_winsys_geometry_state {
       struct {
-         uint32_t pds_ctrl;
+         uint64_t pds_ctrl;
          uint32_t ppp_ctrl;
          uint32_t te_psg;
          uint32_t tpu;
@@ -336,7 +336,7 @@ struct pvr_winsys_render_submit_info {
          uint64_t isp_stencil_load_store_base;
          uint64_t isp_zload_store_base;
          uint64_t isp_zlsctl;
-         uint64_t isp_zls_pixels;
+         uint32_t isp_zls_pixels;
          uint64_t pbe_word[PVR_MAX_COLOR_ATTACHMENTS]
                           [ROGUE_NUM_PBESTATE_REG_WORDS];
          uint32_t pixel_phantom;
