@@ -145,7 +145,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clEnqueueAcquireEGLObjectsKHR: None,
     clEnqueueReleaseEGLObjectsKHR: None,
     clCreateEventFromEGLSyncKHR: None,
-    clCreateCommandQueueWithProperties: None,
+    clCreateCommandQueueWithProperties: Some(cl_create_command_queue_with_properties),
     clCreatePipe: None,
     clGetPipeInfo: None,
     clSVMAlloc: None,
@@ -1354,6 +1354,16 @@ extern "C" fn cl_enqueue_fill_image(
 ) -> cl_int {
     println!("cl_enqueue_fill_image not implemented");
     CL_OUT_OF_HOST_MEMORY
+}
+
+extern "C" fn cl_create_command_queue_with_properties(
+    context: cl_context,
+    device: cl_device_id,
+    _arg3: *const cl_queue_properties,
+    errcode_ret: *mut cl_int,
+) -> cl_command_queue {
+    // TODO use own impl, this is enough to run the CL 3.0 CTS
+    match_obj!(create_command_queue(context, device, 0), errcode_ret)
 }
 
 // cl_khr_icd
