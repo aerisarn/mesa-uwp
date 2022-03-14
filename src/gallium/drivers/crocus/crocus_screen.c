@@ -214,7 +214,7 @@ crocus_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_FS_FINE_DERIVATIVE:
    case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-   case PIPE_CAP_TGSI_CLOCK:
+   case PIPE_CAP_SHADER_CLOCK:
    case PIPE_CAP_TEXTURE_QUERY_SAMPLES:
    case PIPE_CAP_COMPUTE:
    case PIPE_CAP_SAMPLER_VIEW_TARGET:

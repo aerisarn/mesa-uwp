@@ -144,7 +144,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
          * work to turn on, since CYCLE_COUNT_START needs to be issued. In
          * kbase, userspace requests this via BASE_JD_REQ_PERMON. There is not
          * yet way to request this with mainline TODO */
-        case PIPE_CAP_TGSI_CLOCK:
+        case PIPE_CAP_SHADER_CLOCK:
                 return 0;
 
         case PIPE_CAP_VS_INSTANCEID:
