@@ -1118,15 +1118,22 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateGraphicsPipelines(
    unsigned i = 0;
 
    for (; i < count; i++) {
-      VkResult r;
-      r = lvp_graphics_pipeline_create(_device,
-                                       pipelineCache,
-                                       &pCreateInfos[i],
-                                       pAllocator, &pPipelines[i]);
+      VkResult r = VK_PIPELINE_COMPILE_REQUIRED;
+      if (!(pCreateInfos[i].flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+         r = lvp_graphics_pipeline_create(_device,
+                                          pipelineCache,
+                                          &pCreateInfos[i],
+                                          pAllocator, &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+            break;
       }
+   }
+   if (result != VK_SUCCESS) {
+      for (; i < count; i++)
+         pPipelines[i] = VK_NULL_HANDLE;
    }
 
    return result;
@@ -1217,16 +1224,24 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateComputePipelines(
    unsigned i = 0;
 
    for (; i < count; i++) {
-      VkResult r;
-      r = lvp_compute_pipeline_create(_device,
-                                      pipelineCache,
-                                      &pCreateInfos[i],
-                                      pAllocator, &pPipelines[i]);
+      VkResult r = VK_PIPELINE_COMPILE_REQUIRED;
+      if (!(pCreateInfos[i].flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+         r = lvp_compute_pipeline_create(_device,
+                                         pipelineCache,
+                                         &pCreateInfos[i],
+                                         pAllocator, &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
+            break;
       }
    }
+   if (result != VK_SUCCESS) {
+      for (; i < count; i++)
+         pPipelines[i] = VK_NULL_HANDLE;
+   }
+
 
    return result;
 }

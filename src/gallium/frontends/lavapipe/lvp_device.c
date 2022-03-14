@@ -145,6 +145,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_index_type_uint8                  = true,
    .EXT_multi_draw                        = true,
    .EXT_pipeline_creation_feedback        = true,
+   .EXT_pipeline_creation_cache_control   = true,
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
    .EXT_primitive_topology_list_restart   = true,
@@ -692,6 +693,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDevicePrivateDataFeaturesEXT *features =
             (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
          features->privateData = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES: {
+         VkPhysicalDevicePipelineCreationCacheControlFeatures *features =
+            (VkPhysicalDevicePipelineCreationCacheControlFeatures *)ext;
+         features->pipelineCreationCacheControl = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
