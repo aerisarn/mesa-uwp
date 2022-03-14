@@ -142,6 +142,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_extended_dynamic_state2           = true,
    .EXT_external_memory_host              = true,
    .EXT_host_query_reset                  = true,
+   .EXT_image_robustness                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_multi_draw                        = true,
    .EXT_pipeline_creation_feedback        = true,
@@ -828,6 +829,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->extendedDynamicState2 = true;
          features->extendedDynamicState2LogicOp = true;
          features->extendedDynamicState2PatchControlPoints = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES: {
+         VkPhysicalDeviceImageRobustnessFeaturesEXT *features = (VkPhysicalDeviceImageRobustnessFeaturesEXT *)ext;
+         features->robustImageAccess = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIMITIVE_TOPOLOGY_LIST_RESTART_FEATURES_EXT: {
