@@ -1008,6 +1008,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          properties->transformFeedbackDraw = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR: {
+         VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
+            (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
+         properties->maxBufferSize = UINT32_MAX;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
          VkPhysicalDeviceLineRasterizationPropertiesEXT *properties =
             (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
