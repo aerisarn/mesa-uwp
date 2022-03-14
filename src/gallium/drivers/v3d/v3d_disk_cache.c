@@ -122,6 +122,14 @@ v3d_disk_cache_retrieve(struct v3d_context *v3d,
         size_t buffer_size;
         void *buffer = disk_cache_get(cache, cache_key, &buffer_size);
 
+        if (unlikely(V3D_DEBUG & V3D_DEBUG_CACHE)) {
+                char sha1[41];
+                _mesa_sha1_format(sha1, cache_key);
+                fprintf(stderr, "[v3d on-disk cache] %s %s\n",
+                        buffer ? "hit" : "miss",
+                        sha1);
+        }
+
         if (!buffer)
                 return NULL;
 
@@ -194,6 +202,12 @@ v3d_disk_cache_store(struct v3d_context *v3d,
 
         cache_key cache_key;
         v3d_disk_cache_compute_key(cache, key, cache_key);
+
+        if (unlikely(V3D_DEBUG & V3D_DEBUG_CACHE)) {
+                char sha1[41];
+                _mesa_sha1_format(sha1, cache_key);
+                fprintf(stderr, "[v3d on-disk cache] storing %s\n", sha1);
+        }
 
         struct blob blob;
         blob_init(&blob);

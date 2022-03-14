@@ -90,6 +90,10 @@ static const struct debug_named_value debug_control[] = {
           "Disable loop unrolling" },
         { "db", V3D_DEBUG_DOUBLE_BUFFER,
           "Enable double buffer for Tile Buffer when MSAA is disabled" },
+#ifdef ENABLE_SHADER_CACHE
+        { "cache", V3D_DEBUG_CACHE,
+          "Print during on-disk cache events" },
+#endif
         { NULL }
 };
 
