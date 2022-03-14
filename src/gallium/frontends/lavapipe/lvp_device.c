@@ -131,6 +131,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_uniform_buffer_standard_layout    = true,
    .KHR_variable_pointers                 = true,
    .KHR_vulkan_memory_model               = true,
+   .KHR_zero_initialize_workgroup_memory  = true,
    .EXT_4444_formats                      = true,
    .EXT_calibrated_timestamps             = true,
    .EXT_color_write_enable                = true,
@@ -744,6 +745,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceDepthClipControlFeaturesEXT *features =
             (VkPhysicalDeviceDepthClipControlFeaturesEXT *)ext;
          features->depthClipControl = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES: {
+         VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures *features =
+            (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures *)ext;
+         features->shaderZeroInitializeWorkgroupMemory = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
