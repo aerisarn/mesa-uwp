@@ -926,6 +926,9 @@ __glXInitialize(Display * dpy)
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
    glx_direct = !env_var_as_boolean("LIBGL_ALWAYS_INDIRECT", false);
    glx_accel = !env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
+   Bool zink;
+   const char *env = getenv("MESA_LOADER_DRIVER_OVERRIDE");
+   zink = env && !strcmp(env, "zink");
 
    dpyPriv->drawHash = __glxHashCreate();
 
@@ -942,7 +945,7 @@ __glXInitialize(Display * dpy)
     ** (e.g., those called in AllocAndFetchScreenConfigs).
     */
 #if defined(GLX_USE_DRM)
-   if (glx_direct && glx_accel) {
+   if (glx_direct && glx_accel && !zink) {
 #if defined(HAVE_DRI3)
       if (!env_var_as_boolean("LIBGL_DRI3_DISABLE", false))
          dpyPriv->dri3Display = dri3_create_display(dpy);
@@ -952,7 +955,7 @@ __glXInitialize(Display * dpy)
    }
 #endif /* GLX_USE_DRM */
    if (glx_direct)
-      dpyPriv->driswDisplay = driswCreateDisplay(dpy);
+      dpyPriv->driswDisplay = driswCreateDisplay(dpy, zink);
 #endif /* GLX_DIRECT_RENDERING && !GLX_USE_APPLEGL */
 
 #ifdef GLX_USE_APPLEGL

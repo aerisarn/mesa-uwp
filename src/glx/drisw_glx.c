@@ -33,6 +33,8 @@
 #include "drisw_priv.h"
 #include <X11/extensions/shmproto.h>
 #include <assert.h>
+#include "util/debug.h"
+#include "kopper_interface.h"
 
 static int xshm_error = 0;
 static int xshm_opcode = -1;
@@ -354,11 +356,6 @@ static const __DRIswrastLoaderExtension swrastLoaderExtension_shm = {
    .getImageShm2        = swrastGetImageShm2,
 };
 
-static const __DRIextension *loader_extensions_shm[] = {
-   &swrastLoaderExtension_shm.base,
-   NULL
-};
-
 static const __DRIswrastLoaderExtension swrastLoaderExtension = {
    .base = {__DRI_SWRAST_LOADER, 3 },
 
@@ -369,8 +366,44 @@ static const __DRIswrastLoaderExtension swrastLoaderExtension = {
    .getImage2           = swrastGetImage2,
 };
 
+static void
+kopperSetSurfaceCreateInfo(void *_draw, struct kopper_loader_info *out)
+{
+    __GLXDRIdrawable *draw = _draw;
+
+    out->xcb.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+    out->xcb.pNext = NULL;
+    out->xcb.flags = 0;
+    out->xcb.connection = XGetXCBConnection(draw->psc->dpy);
+    out->xcb.window = draw->xDrawable;
+}
+
+static const __DRIkopperLoaderExtension kopperLoaderExtension = {
+    .base = { __DRI_KOPPER_LOADER, 1 },
+
+    .SetSurfaceCreateInfo   = kopperSetSurfaceCreateInfo,
+};
+
+static const __DRIextension *loader_extensions_shm[] = {
+   &swrastLoaderExtension_shm.base,
+   &kopperLoaderExtension.base,
+   NULL
+};
+
 static const __DRIextension *loader_extensions_noshm[] = {
    &swrastLoaderExtension.base,
+   &kopperLoaderExtension.base,
+   NULL
+};
+
+extern const __DRIuseInvalidateExtension dri2UseInvalidate;
+extern const __DRIbackgroundCallableExtension driBackgroundCallable;
+
+static const __DRIextension *kopper_extensions_noshm[] = {
+   &swrastLoaderExtension.base,
+   &kopperLoaderExtension.base,
+   &dri2UseInvalidate.base,
+   &driBackgroundCallable.base,
    NULL
 };
 
@@ -623,6 +656,7 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    __GLXDRIconfigPrivate *config = (__GLXDRIconfigPrivate *) modes;
    struct drisw_screen *psc = (struct drisw_screen *) base;
    const __DRIswrastExtension *swrast = psc->swrast;
+   const __DRIkopperExtension *kopper = psc->kopper;
    Display *dpy = psc->base.dpy;
 
    pdp = calloc(1, sizeof(*pdp));
@@ -663,8 +697,12 @@ driswCreateDrawable(struct glx_screen *base, XID xDrawable,
    }
 
    /* Create a new drawable */
-   pdp->driDrawable =
-      (*swrast->createNewDrawable) (psc->driScreen, config->driConfig, pdp);
+   if (kopper)
+      pdp->driDrawable =
+         (*kopper->createNewDrawable) (psc->driScreen, config->driConfig, pdp, !(type & GLX_WINDOW_BIT));
+   else
+      pdp->driDrawable =
+         (*swrast->createNewDrawable) (psc->driScreen, config->driConfig, pdp);
 
    if (!pdp->driDrawable) {
       XDestroyDrawable(pdp, psc->base.dpy, xDrawable);
@@ -727,12 +765,11 @@ driswDestroyScreen(struct glx_screen *base)
    free(psc);
 }
 
-#define SWRAST_DRIVER_NAME "swrast"
-
 static char *
 drisw_get_driver_name(struct glx_screen *glx_screen)
 {
-    return strdup(SWRAST_DRIVER_NAME);
+   struct drisw_screen *psc = (struct drisw_screen *) glx_screen;
+   return strdup(psc->name);
 }
 
 static const struct glx_screen_vtable drisw_screen_vtable = {
@@ -824,7 +861,8 @@ check_xshm(Display *dpy)
 }
 
 static struct glx_screen *
-driswCreateScreen(int screen, struct glx_display *priv)
+driswCreateScreenDriver(int screen, struct glx_display *priv,
+                        const char *driver)
 {
    __GLXDRIscreen *psp;
    const __DRIconfig **driver_configs;
@@ -833,6 +871,7 @@ driswCreateScreen(int screen, struct glx_display *priv)
    struct glx_config *configs = NULL, *visuals = NULL;
    int i;
    const __DRIextension **loader_extensions_local;
+   const struct drisw_display *pdpyp = (struct drisw_display *)priv->driswDisplay;
 
    psc = calloc(1, sizeof *psc);
    if (psc == NULL)
@@ -843,11 +882,14 @@ driswCreateScreen(int screen, struct glx_display *priv)
       return NULL;
    }
 
-   extensions = driOpenDriver(SWRAST_DRIVER_NAME, &psc->driver);
+   extensions = driOpenDriver(driver, &psc->driver);
    if (extensions == NULL)
       goto handle_error;
+   psc->name = driver;
 
-   if (!check_xshm(psc->base.dpy))
+   if (pdpyp->zink)
+      loader_extensions_local = kopper_extensions_noshm;
+   else if (!check_xshm(psc->base.dpy))
       loader_extensions_local = loader_extensions_noshm;
    else
       loader_extensions_local = loader_extensions_shm;
@@ -857,6 +899,8 @@ driswCreateScreen(int screen, struct glx_display *priv)
 	 psc->core = (__DRIcoreExtension *) extensions[i];
       if (strcmp(extensions[i]->name, __DRI_SWRAST) == 0)
 	 psc->swrast = (__DRIswrastExtension *) extensions[i];
+      if (strcmp(extensions[i]->name, __DRI_KOPPER) == 0)
+	 psc->kopper = (__DRIkopperExtension *) extensions[i];
       if (strcmp(extensions[i]->name, __DRI_COPY_SUB_BUFFER) == 0)
 	 psc->copySubBuffer = (__DRIcopySubBufferExtension *) extensions[i];
    }
@@ -928,9 +972,20 @@ driswCreateScreen(int screen, struct glx_display *priv)
    glx_screen_cleanup(&psc->base);
    free(psc);
 
-   CriticalErrorMessageF("failed to load driver: %s\n", SWRAST_DRIVER_NAME);
+   CriticalErrorMessageF("failed to load driver: %s\n", driver);
 
    return NULL;
+}
+
+static struct glx_screen *
+driswCreateScreen(int screen, struct glx_display *priv)
+{
+   const struct drisw_display *pdpyp = (struct drisw_display *)priv->driswDisplay;
+   if (pdpyp->zink && !env_var_as_boolean("LIBGL_KOPPER_DISABLE", false)) {
+      return driswCreateScreenDriver(screen, priv, "zink");
+   }
+
+    return driswCreateScreenDriver(screen, priv, "swrast");
 }
 
 /* Called from __glXFreeDisplayPrivate.
@@ -947,7 +1002,7 @@ driswDestroyDisplay(__GLXDRIdisplay * dpy)
  * display pointer.
  */
 _X_HIDDEN __GLXDRIdisplay *
-driswCreateDisplay(Display * dpy)
+driswCreateDisplay(Display * dpy, bool zink)
 {
    struct drisw_display *pdpyp;
 
@@ -957,6 +1012,7 @@ driswCreateDisplay(Display * dpy)
 
    pdpyp->base.destroyDisplay = driswDestroyDisplay;
    pdpyp->base.createScreen = driswCreateScreen;
+   pdpyp->zink = zink;
 
    return &pdpyp->base;
 }
