@@ -4543,6 +4543,9 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                         psiz->data.precision = GLSL_PRECISION_MEDIUM;
         }
 
+        /* Get rid of any global vars before we lower to scratch. */
+        NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+
         /* Lower large arrays to scratch and small arrays to bcsel (TODO: tune
          * threshold, but not until addresses / csel is optimized better) */
         NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 16,
@@ -4550,7 +4553,6 @@ bi_finalize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
 
         NIR_PASS_V(nir, nir_split_var_copies);
-        NIR_PASS_V(nir, nir_lower_global_vars_to_local);
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
