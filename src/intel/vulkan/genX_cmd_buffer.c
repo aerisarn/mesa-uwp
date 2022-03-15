@@ -3575,20 +3575,48 @@ cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 #endif
       };
 
+      const uint32_t fb_size_max = 1 << 14;
+      uint32_t x_min = 0, x_max = fb_size_max;
+      uint32_t y_min = 0, y_max = fb_size_max;
+
+      /* If we have a valid renderArea, include that */
       if (gfx->render_area.extent.width > 0 &&
           gfx->render_area.extent.height > 0) {
-         /* We can only calculate a "real" guardband clip if we know the
-          * framebuffer at the time we emit the packet.  Otherwise, we have
-          * fall back to a worst-case guardband of [-1, 1].
-          */
-         const uint32_t x_min = gfx->render_area.offset.x;
-         const uint32_t x_max = gfx->render_area.offset.x +
-                                gfx->render_area.extent.width;
+         x_min = MAX2(x_min, gfx->render_area.offset.x);
+         x_max = MIN2(x_min, gfx->render_area.offset.x +
+                             gfx->render_area.extent.width);
+         y_min = MAX2(y_min, gfx->render_area.offset.y);
+         y_max = MIN2(y_min, gfx->render_area.offset.y +
+                             gfx->render_area.extent.height);
+      }
 
-         const uint32_t y_min = gfx->render_area.offset.y;
-         const uint32_t y_max = gfx->render_area.offset.y +
-                                gfx->render_area.extent.height;
+      /* The client is required to have enough scissors for whatever it sets
+       * as ViewportIndex but it's possible that they've got more viewports
+       * set from a previous command.  Also, from the Vulkan 1.3.207:
+       *
+       *    "The application must ensure (using scissor if necessary) that
+       *    all rendering is contained within the render area."
+       *
+       * If the client doesn't set a scissor, that basically means it
+       * guarantees everything is in-bounds already.  If we end up using a
+       * guardband of [-1, 1] in that case, there shouldn't be much loss.
+       * It's theoretically possible that they could do all their clipping
+       * with clip planes but that'd be a bit odd.
+       */
+      if (i < gfx->dynamic.scissor.count) {
+         const VkRect2D *scissor = &gfx->dynamic.scissor.scissors[i];
+         x_min = MAX2(x_min, scissor->offset.x);
+         x_max = MIN2(x_min, scissor->offset.x + scissor->extent.width);
+         y_min = MAX2(y_min, scissor->offset.y);
+         y_max = MIN2(y_min, scissor->offset.y + scissor->extent.height);
+      }
 
+      /* Only bother calculating the guardband if our known render area is
+       * less than the maximum size.  Otherwise, it will calculate [-1, 1]
+       * anyway but possibly with precision loss.
+       */
+      if (x_min > 0 || x_max < fb_size_max ||
+          y_min > 0 || y_max < fb_size_max) {
          intel_calculate_guardband_size(x_min, x_max, y_min, y_max,
                                         sfv.ViewportMatrixElementm00,
                                         sfv.ViewportMatrixElementm11,
@@ -3997,8 +4025,10 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          cmd_buffer_emit_streamout(cmd_buffer);
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
-                                  ANV_CMD_DIRTY_PIPELINE)) {
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
+                                      ANV_CMD_DIRTY_RENDER_TARGETS |
+                                      ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
+                                      ANV_CMD_DIRTY_PIPELINE)) {
       cmd_buffer_emit_viewport(cmd_buffer);
       cmd_buffer_emit_depth_viewport(cmd_buffer,
                                      pipeline->depth_clamp_enable);
