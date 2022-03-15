@@ -336,19 +336,6 @@ public:
        return def;
    }
 
-   Definition hint_${fixed}(Definition def) {
-       % if fixed == 'vcc' or fixed == 'exec':
-          //vcc_hi and exec_hi can still be used in wave32
-          assert(def.regClass().type() == RegType::sgpr && def.bytes() <= 8);
-       % endif
-       def.setHint(aco::${fixed});
-       return def;
-   }
-
-   Definition hint_${fixed}(RegClass rc) {
-       return hint_${fixed}(def(rc));
-   }
-
 % endfor
 
    Operand set16bit(Operand op) {

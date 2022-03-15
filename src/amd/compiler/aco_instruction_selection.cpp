@@ -7690,13 +7690,13 @@ emit_uniform_scan(isel_context* ctx, nir_intrinsic_instr* instr)
       uint32_t identity_hi = get_reduction_identity(reduce_op, 1);
 
       lo =
-         bld.writelane(bld.def(v1), bld.copy(bld.hint_m0(s1), Operand::c32(identity_lo)), lane, lo);
+         bld.writelane(bld.def(v1), bld.copy(bld.def(s1, m0), Operand::c32(identity_lo)), lane, lo);
       hi =
-         bld.writelane(bld.def(v1), bld.copy(bld.hint_m0(s1), Operand::c32(identity_hi)), lane, hi);
+         bld.writelane(bld.def(v1), bld.copy(bld.def(s1, m0), Operand::c32(identity_hi)), lane, hi);
       bld.pseudo(aco_opcode::p_create_vector, dst, lo, hi);
    } else {
       uint32_t identity = get_reduction_identity(reduce_op, 0);
-      bld.writelane(dst, bld.copy(bld.hint_m0(s1), Operand::c32(identity)), lane,
+      bld.writelane(dst, bld.copy(bld.def(s1, m0), Operand::c32(identity)), lane,
                     as_vgpr(ctx, src));
    }
 

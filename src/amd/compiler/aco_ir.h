@@ -895,8 +895,7 @@ private:
 class Definition final {
 public:
    constexpr Definition()
-       : temp(Temp(0, s1)), reg_(0), isFixed_(0), hasHint_(0), isKill_(0), isPrecise_(0), isNUW_(0),
-         isNoCSE_(0)
+       : temp(Temp(0, s1)), reg_(0), isFixed_(0), isKill_(0), isPrecise_(0), isNUW_(0), isNoCSE_(0)
    {}
    Definition(uint32_t index, RegClass type) noexcept : temp(index, type) {}
    explicit Definition(Temp tmp) noexcept : temp(tmp) {}
@@ -932,14 +931,6 @@ public:
       reg_ = reg;
    }
 
-   constexpr void setHint(PhysReg reg) noexcept
-   {
-      hasHint_ = 1;
-      reg_ = reg;
-   }
-
-   constexpr bool hasHint() const noexcept { return hasHint_; }
-
    constexpr void setKill(bool flag) noexcept { isKill_ = flag; }
 
    constexpr bool isKill() const noexcept { return isKill_; }
@@ -963,7 +954,6 @@ private:
    union {
       struct {
          uint8_t isFixed_ : 1;
-         uint8_t hasHint_ : 1;
          uint8_t isKill_ : 1;
          uint8_t isPrecise_ : 1;
          uint8_t isNUW_ : 1;
