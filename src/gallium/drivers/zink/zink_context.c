@@ -2499,6 +2499,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->oom_stall = false;
       ctx->dd->bindless_bound = false;
       ctx->di.bindless_refs_dirty = true;
+      ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
    }
