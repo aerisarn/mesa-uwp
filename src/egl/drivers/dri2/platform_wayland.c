@@ -45,6 +45,7 @@
 #include "util/u_vector.h"
 #include "util/anon_file.h"
 #include "eglglobals.h"
+#include "kopper_interface.h"
 
 #include <wayland-egl-backend.h>
 #include <wayland-client.h>
@@ -2589,9 +2590,29 @@ static const __DRIswrastLoaderExtension swrast_loader_extension = {
    .putImage2       = dri2_wl_swrast_put_image2,
 };
 
+static void
+kopperSetSurfaceCreateInfo(void *_draw, struct kopper_loader_info *out)
+{
+    struct dri2_egl_surface *dri2_surf = _draw;
+    struct dri2_egl_display *dri2_dpy = dri2_egl_display(dri2_surf->base.Resource.Display);
+    VkWaylandSurfaceCreateInfoKHR *wlsci = &out->wl;
+
+    wlsci->sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+    wlsci->pNext = NULL;
+    wlsci->flags = 0;
+    wlsci->display = dri2_dpy->wl_dpy;
+    wlsci->surface = dri2_surf->wl_surface_wrapper;
+}
+
+static const __DRIkopperLoaderExtension kopper_loader_extension = {
+    .base = { __DRI_KOPPER_LOADER, 1 },
+
+    .SetSurfaceCreateInfo   = kopperSetSurfaceCreateInfo,
+};
 static const __DRIextension *swrast_loader_extensions[] = {
    &swrast_loader_extension.base,
    &image_lookup_extension.base,
+   &kopper_loader_extension.base,
    NULL,
 };
 
@@ -2651,7 +2672,7 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
                                                      0, dri2_dpy->formats.num_formats))
       goto cleanup;
 
-   dri2_dpy->driver_name = strdup("swrast");
+   dri2_dpy->driver_name = strdup(disp->Options.Zink ? "zink" : "swrast");
    if (!dri2_load_driver_swrast(disp))
       goto cleanup;
 
