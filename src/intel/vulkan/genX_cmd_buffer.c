@@ -36,6 +36,7 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 #include "genxml/gen_rt_pack.h"
+#include "common/intel_guardband.h"
 
 #include "nir/nir_xfb_info.h"
 
@@ -3536,6 +3537,201 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 }
 
 static void
+cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   uint32_t count = gfx->dynamic.viewport.count;
+   const VkViewport *viewports = gfx->dynamic.viewport.viewports;
+   struct anv_state sf_clip_state =
+      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 64, 64);
+
+   bool negative_one_to_one =
+      cmd_buffer->state.gfx.pipeline->negative_one_to_one;
+
+   float scale = negative_one_to_one ? 0.5f : 1.0f;
+
+   for (uint32_t i = 0; i < count; i++) {
+      const VkViewport *vp = &viewports[i];
+
+      /* The gfx7 state struct has just the matrix and guardband fields, the
+       * gfx8 struct adds the min/max viewport fields. */
+      struct GENX(SF_CLIP_VIEWPORT) sfv = {
+         .ViewportMatrixElementm00 = vp->width / 2,
+         .ViewportMatrixElementm11 = vp->height / 2,
+         .ViewportMatrixElementm22 = (vp->maxDepth - vp->minDepth) * scale,
+         .ViewportMatrixElementm30 = vp->x + vp->width / 2,
+         .ViewportMatrixElementm31 = vp->y + vp->height / 2,
+         .ViewportMatrixElementm32 = negative_one_to_one ?
+            (vp->minDepth + vp->maxDepth) * scale : vp->minDepth,
+         .XMinClipGuardband = -1.0f,
+         .XMaxClipGuardband = 1.0f,
+         .YMinClipGuardband = -1.0f,
+         .YMaxClipGuardband = 1.0f,
+#if GFX_VER >= 8
+         .XMinViewPort = vp->x,
+         .XMaxViewPort = vp->x + vp->width - 1,
+         .YMinViewPort = MIN2(vp->y, vp->y + vp->height),
+         .YMaxViewPort = MAX2(vp->y, vp->y + vp->height) - 1,
+#endif
+      };
+
+      if (gfx->render_area.extent.width > 0 &&
+          gfx->render_area.extent.height > 0) {
+         /* We can only calculate a "real" guardband clip if we know the
+          * framebuffer at the time we emit the packet.  Otherwise, we have
+          * fall back to a worst-case guardband of [-1, 1].
+          */
+         const uint32_t x_min = gfx->render_area.offset.x;
+         const uint32_t x_max = gfx->render_area.offset.x +
+                                gfx->render_area.extent.width;
+
+         const uint32_t y_min = gfx->render_area.offset.y;
+         const uint32_t y_max = gfx->render_area.offset.y +
+                                gfx->render_area.extent.height;
+
+         intel_calculate_guardband_size(x_min, x_max, y_min, y_max,
+                                        sfv.ViewportMatrixElementm00,
+                                        sfv.ViewportMatrixElementm11,
+                                        sfv.ViewportMatrixElementm30,
+                                        sfv.ViewportMatrixElementm31,
+                                        &sfv.XMinClipGuardband,
+                                        &sfv.XMaxClipGuardband,
+                                        &sfv.YMinClipGuardband,
+                                        &sfv.YMaxClipGuardband);
+      }
+
+      GENX(SF_CLIP_VIEWPORT_pack)(NULL, sf_clip_state.map + i * 64, &sfv);
+   }
+
+   anv_batch_emit(&cmd_buffer->batch,
+                  GENX(3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP), clip) {
+      clip.SFClipViewportPointer = sf_clip_state.offset;
+   }
+}
+
+static void
+cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
+                               bool depth_clamp_enable)
+{
+   uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
+   const VkViewport *viewports =
+      cmd_buffer->state.gfx.dynamic.viewport.viewports;
+   struct anv_state cc_state =
+      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 8, 32);
+
+   for (uint32_t i = 0; i < count; i++) {
+      const VkViewport *vp = &viewports[i];
+
+      /* From the Vulkan spec:
+       *
+       *    "It is valid for minDepth to be greater than or equal to
+       *    maxDepth."
+       */
+      float min_depth = MIN2(vp->minDepth, vp->maxDepth);
+      float max_depth = MAX2(vp->minDepth, vp->maxDepth);
+
+      struct GENX(CC_VIEWPORT) cc_viewport = {
+         .MinimumDepth = depth_clamp_enable ? min_depth : 0.0f,
+         .MaximumDepth = depth_clamp_enable ? max_depth : 1.0f,
+      };
+
+      GENX(CC_VIEWPORT_pack)(NULL, cc_state.map + i * 8, &cc_viewport);
+   }
+
+   anv_batch_emit(&cmd_buffer->batch,
+                  GENX(3DSTATE_VIEWPORT_STATE_POINTERS_CC), cc) {
+      cc.CCViewportPointer = cc_state.offset;
+   }
+}
+
+static int64_t
+clamp_int64(int64_t x, int64_t min, int64_t max)
+{
+   if (x < min)
+      return min;
+   else if (x < max)
+      return x;
+   else
+      return max;
+}
+
+static void
+cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
+{
+   struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
+   uint32_t count = gfx->dynamic.scissor.count;
+   const VkRect2D *scissors = gfx->dynamic.scissor.scissors;
+   const VkViewport *viewports = gfx->dynamic.viewport.viewports;
+
+   /* Wa_1409725701:
+    *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
+    *    stored as an array of up to 16 elements. The location of first
+    *    element of the array, as specified by Pointer to SCISSOR_RECT, should
+    *    be aligned to a 64-byte boundary.
+    */
+   uint32_t alignment = 64;
+   struct anv_state scissor_state =
+      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, count * 8, alignment);
+
+   for (uint32_t i = 0; i < count; i++) {
+      const VkRect2D *s = &scissors[i];
+      const VkViewport *vp = &viewports[i];
+
+      /* Since xmax and ymax are inclusive, we have to have xmax < xmin or
+       * ymax < ymin for empty clips.  In case clip x, y, width height are all
+       * 0, the clamps below produce 0 for xmin, ymin, xmax, ymax, which isn't
+       * what we want. Just special case empty clips and produce a canonical
+       * empty clip. */
+      static const struct GENX(SCISSOR_RECT) empty_scissor = {
+         .ScissorRectangleYMin = 1,
+         .ScissorRectangleXMin = 1,
+         .ScissorRectangleYMax = 0,
+         .ScissorRectangleXMax = 0
+      };
+
+      const int max = 0xffff;
+
+      uint32_t y_min = MAX2(s->offset.y, MIN2(vp->y, vp->y + vp->height));
+      uint32_t x_min = MAX2(s->offset.x, vp->x);
+      uint32_t y_max = MIN2(s->offset.y + s->extent.height - 1,
+                       MAX2(vp->y, vp->y + vp->height) - 1);
+      uint32_t x_max = MIN2(s->offset.x + s->extent.width - 1,
+                       vp->x + vp->width - 1);
+
+      /* Do this math using int64_t so overflow gets clamped correctly. */
+      if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY) {
+         y_min = clamp_int64((uint64_t) y_min, gfx->render_area.offset.y, max);
+         x_min = clamp_int64((uint64_t) x_min, gfx->render_area.offset.x, max);
+         y_max = clamp_int64((uint64_t) y_max, 0,
+                             gfx->render_area.offset.y +
+                             gfx->render_area.extent.height - 1);
+         x_max = clamp_int64((uint64_t) x_max, 0,
+                             gfx->render_area.offset.x +
+                             gfx->render_area.extent.width - 1);
+      }
+
+      struct GENX(SCISSOR_RECT) scissor = {
+         .ScissorRectangleYMin = y_min,
+         .ScissorRectangleXMin = x_min,
+         .ScissorRectangleYMax = y_max,
+         .ScissorRectangleXMax = x_max
+      };
+
+      if (s->extent.width <= 0 || s->extent.height <= 0) {
+         GENX(SCISSOR_RECT_pack)(NULL, scissor_state.map + i * 8,
+                                 &empty_scissor);
+      } else {
+         GENX(SCISSOR_RECT_pack)(NULL, scissor_state.map + i * 8, &scissor);
+      }
+   }
+
+   anv_batch_emit(&cmd_buffer->batch,
+                  GENX(3DSTATE_SCISSOR_STATE_POINTERS), ssp) {
+      ssp.ScissorRectPointer = scissor_state.offset;
+   }
+}
+
+static void
 cmd_buffer_emit_streamout(struct anv_cmd_buffer *cmd_buffer)
 {
    const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
@@ -3803,15 +3999,15 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
                                   ANV_CMD_DIRTY_PIPELINE)) {
-      gfx8_cmd_buffer_emit_viewport(cmd_buffer);
-      gfx8_cmd_buffer_emit_depth_viewport(cmd_buffer,
-                                          pipeline->depth_clamp_enable);
+      cmd_buffer_emit_viewport(cmd_buffer);
+      cmd_buffer_emit_depth_viewport(cmd_buffer,
+                                     pipeline->depth_clamp_enable);
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
                                       ANV_CMD_DIRTY_RENDER_TARGETS |
                                       ANV_CMD_DIRTY_DYNAMIC_VIEWPORT))
-      gfx7_cmd_buffer_emit_scissor(cmd_buffer);
+      cmd_buffer_emit_scissor(cmd_buffer);
 
    genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 }

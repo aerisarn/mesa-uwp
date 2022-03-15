@@ -3172,11 +3172,6 @@ anv_cmd_buffer_alloc_dynamic_state(struct anv_cmd_buffer *cmd_buffer,
 VkResult
 anv_cmd_buffer_new_binding_table_block(struct anv_cmd_buffer *cmd_buffer);
 
-void gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer);
-void gfx8_cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
-                                         bool depth_clamp_enable);
-void gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer);
-
 void anv_cmd_buffer_emit_state_base_address(struct anv_cmd_buffer *cmd_buffer);
 
 struct anv_state
