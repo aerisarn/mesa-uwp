@@ -266,7 +266,7 @@ END_TEST
 
 Temp create_subbrev_co(Operand op0, Operand op1, Operand op2)
 {
-   return bld.vop2_e64(aco_opcode::v_subbrev_co_u32, bld.def(v1), bld.hint_vcc(bld.def(bld.lm)), op0, op1, op2);
+   return bld.vop2_e64(aco_opcode::v_subbrev_co_u32, bld.def(v1), bld.def(bld.lm), op0, op1, op2);
 }
 
 BEGIN_TEST(optimize.cndmask)

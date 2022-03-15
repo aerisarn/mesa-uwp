@@ -438,11 +438,11 @@ public:
          b = copy(def(v1), b);
 
       if (!carry_in.op.isUndefined())
-         return vop2(aco_opcode::v_addc_co_u32, Definition(dst), hint_vcc(def(lm)), a, b, carry_in);
+         return vop2(aco_opcode::v_addc_co_u32, Definition(dst), def(lm), a, b, carry_in);
       else if (program->chip_class >= GFX10 && carry_out)
          return vop3(aco_opcode::v_add_co_u32_e64, Definition(dst), def(lm), a, b);
       else if (program->chip_class < GFX9 || carry_out)
-         return vop2(aco_opcode::v_add_co_u32, Definition(dst), hint_vcc(def(lm)), a, b);
+         return vop2(aco_opcode::v_add_co_u32, Definition(dst), def(lm), a, b);
       else
          return vop2(aco_opcode::v_add_u32, Definition(dst), a, b);
    }
@@ -490,10 +490,9 @@ public:
       if (!borrow.op.isUndefined())
          sub->operands[2] = borrow.op;
       sub->definitions[0] = dst;
-      if (carry_out) {
+      if (carry_out)
          sub->definitions[1] = Definition(carry);
-         sub->definitions[1].setHint(aco::vcc);
-      }
+
       return insert(std::move(sub));
    }
 

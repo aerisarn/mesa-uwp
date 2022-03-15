@@ -110,7 +110,6 @@ enum Label {
    label_constant_64bit = 1 << 22,
    label_uniform_bitwise = 1 << 23,
    label_scc_invert = 1 << 24,
-   label_vcc_hint = 1 << 25,
    label_scc_needed = 1 << 26,
    label_b2i = 1 << 27,
    label_fcanonicalize = 1 << 28,
@@ -410,10 +409,6 @@ struct ssa_info {
    }
 
    bool is_uniform_bool() { return label & label_uniform_bool; }
-
-   void set_vcc_hint() { add_label(label_vcc_hint); }
-
-   bool is_vcc_hint() { return label & label_vcc_hint; }
 
    void set_b2i(Temp b2i_val)
    {
@@ -1743,9 +1738,7 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       else if (instr->operands[0].constantEquals(0) && instr->operands[1].constantEquals(1))
          ctx.info[instr->definitions[0].tempId()].set_b2i(instr->operands[2].getTemp());
 
-      ctx.info[instr->operands[2].tempId()].set_vcc_hint();
       break;
-   case aco_opcode::v_addc_co_u32: ctx.info[instr->operands[2].tempId()].set_vcc_hint(); break;
    case aco_opcode::v_cmp_lg_u32:
       if (instr->format == Format::VOPC && /* don't optimize VOP3 / SDWA / DPP */
           instr->operands[0].constantEquals(0) && instr->operands[1].isTemp() &&
@@ -2056,7 +2049,6 @@ combine_ordering_test(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       new_instr = static_cast<Instruction*>(vop3);
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_op, Format::VOPC, 2, 1);
-      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = Operand(op[0]);
    new_instr->operands[1] = Operand(op[1]);
@@ -2131,7 +2123,6 @@ combine_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       new_instr = new_vop3;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_op, Format::VOPC, 2, 1);
-      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = cmp->operands[0];
    new_instr->operands[1] = cmp->operands[1];
@@ -2257,7 +2248,6 @@ combine_constant_comparison_ordering(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       new_instr = new_vop3;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_op, Format::VOPC, 2, 1);
-      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = cmp->operands[0];
    new_instr->operands[1] = cmp->operands[1];
@@ -2337,7 +2327,6 @@ combine_inverse_comparison(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       new_instr = new_dpp;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_opcode, Format::VOPC, 2, 1);
-      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = cmp->operands[0];
    new_instr->operands[1] = cmp->operands[1];
@@ -2725,7 +2714,6 @@ combine_add_sub_b2i(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode new_op
              */
             ctx.uses.push_back(0);
          }
-         new_instr->definitions[1].setHint(vcc);
          new_instr->operands[0] = Operand::zero();
          new_instr->operands[1] = instr->operands[!i];
          new_instr->operands[2] = Operand(ctx.info[instr->operands[i].tempId()].temp);
@@ -3675,11 +3663,6 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (instr->isVOP3P() && instr->opcode != aco_opcode::v_fma_mix_f32 &&
        instr->opcode != aco_opcode::v_fma_mixlo_f16)
       return combine_vop3p(ctx, instr);
-
-   for (Definition& def : instr->definitions) {
-      if (ctx.info[def.tempId()].is_vcc_hint())
-         def.setHint(vcc);
-   }
 
    if (instr->isSDWA() || instr->isDPP())
       return;
