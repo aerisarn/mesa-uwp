@@ -1213,6 +1213,12 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_opt_move, nir_move_comparisons);
    OPT(nir_opt_dead_cf);
 
+   NIR_PASS_V(nir, nir_convert_to_lcssa, true, true);
+   NIR_PASS_V(nir, nir_divergence_analysis);
+
+   /* Clean up LCSSA phis */
+   OPT(nir_opt_remove_phis);
+
    OPT(nir_lower_bool_to_int32);
    OPT(nir_copy_prop);
    OPT(nir_opt_dce);
