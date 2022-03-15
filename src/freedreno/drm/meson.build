@@ -27,6 +27,9 @@ libfreedreno_drm_files = files(
   'freedreno_priv.h',
   'freedreno_ringbuffer.c',
   'freedreno_ringbuffer.h',
+  'freedreno_ringbuffer_sp.c',
+  'freedreno_ringbuffer_sp.h',
+  'freedreno_ringbuffer_sp_reloc.h',
 )
 libfreedreno_drm_flags = []
 libfreedreno_drm_includes = [
@@ -46,7 +49,6 @@ libfreedreno_drm_msm_files = files(
   'msm/msm_priv.h',
   'msm/msm_ringbuffer.c',
   'msm/msm_ringbuffer_sp.c',
-  'msm/msm_ringbuffer_sp.h',
 )
 libfreedreno_drm_files += libfreedreno_drm_msm_files
 

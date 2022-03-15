@@ -40,28 +40,28 @@ static void X(emit_reloc_common)(struct fd_ringbuffer *ring,
 #endif
 }
 
-static void X(msm_ringbuffer_sp_emit_reloc_nonobj)(struct fd_ringbuffer *ring,
+static void X(fd_ringbuffer_sp_emit_reloc_nonobj)(struct fd_ringbuffer *ring,
                                                    const struct fd_reloc *reloc)
 {
    X(emit_reloc_common)(ring, reloc);
 
    assert(!(ring->flags & _FD_RINGBUFFER_OBJECT));
 
-   struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+   struct fd_ringbuffer_sp *fd_ring = to_fd_ringbuffer_sp(ring);
 
-   struct msm_submit_sp *msm_submit = to_msm_submit_sp(msm_ring->u.submit);
+   struct fd_submit_sp *fd_submit = to_fd_submit_sp(fd_ring->u.submit);
 
-   msm_submit_append_bo(msm_submit, reloc->bo);
+   fd_submit_append_bo(fd_submit, reloc->bo);
 }
 
-static void X(msm_ringbuffer_sp_emit_reloc_obj)(struct fd_ringbuffer *ring,
+static void X(fd_ringbuffer_sp_emit_reloc_obj)(struct fd_ringbuffer *ring,
                                                 const struct fd_reloc *reloc)
 {
    X(emit_reloc_common)(ring, reloc);
 
    assert(ring->flags & _FD_RINGBUFFER_OBJECT);
 
-   struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+   struct fd_ringbuffer_sp *fd_ring = to_fd_ringbuffer_sp(ring);
 
    /* Avoid emitting duplicate BO references into the list.  Ringbuffer
     * objects are long-lived, so this saves ongoing work at draw time in
@@ -69,60 +69,60 @@ static void X(msm_ringbuffer_sp_emit_reloc_obj)(struct fd_ringbuffer *ring,
     * relocs per ringbuffer object is fairly small, so the O(n^2) doesn't
     * hurt much.
     */
-   if (!msm_ringbuffer_references_bo(ring, reloc->bo)) {
-      APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(reloc->bo));
+   if (!fd_ringbuffer_references_bo(ring, reloc->bo)) {
+      APPEND(&fd_ring->u, reloc_bos, fd_bo_ref(reloc->bo));
    }
 }
 
-static uint32_t X(msm_ringbuffer_sp_emit_reloc_ring)(
+static uint32_t X(fd_ringbuffer_sp_emit_reloc_ring)(
    struct fd_ringbuffer *ring, struct fd_ringbuffer *target, uint32_t cmd_idx)
 {
-   struct msm_ringbuffer_sp *msm_target = to_msm_ringbuffer_sp(target);
+   struct fd_ringbuffer_sp *fd_target = to_fd_ringbuffer_sp(target);
    struct fd_bo *bo;
    uint32_t size;
 
    if ((target->flags & FD_RINGBUFFER_GROWABLE) &&
-       (cmd_idx < msm_target->u.nr_cmds)) {
-      bo = msm_target->u.cmds[cmd_idx].ring_bo;
-      size = msm_target->u.cmds[cmd_idx].size;
+       (cmd_idx < fd_target->u.nr_cmds)) {
+      bo = fd_target->u.cmds[cmd_idx].ring_bo;
+      size = fd_target->u.cmds[cmd_idx].size;
    } else {
-      bo = msm_target->ring_bo;
+      bo = fd_target->ring_bo;
       size = offset_bytes(target->cur, target->start);
    }
 
    if (ring->flags & _FD_RINGBUFFER_OBJECT) {
-      X(msm_ringbuffer_sp_emit_reloc_obj)(ring, &(struct fd_reloc){
+      X(fd_ringbuffer_sp_emit_reloc_obj)(ring, &(struct fd_reloc){
                 .bo = bo,
-                .iova = bo->iova + msm_target->offset,
-                .offset = msm_target->offset,
+                .iova = bo->iova + fd_target->offset,
+                .offset = fd_target->offset,
              });
    } else {
-      X(msm_ringbuffer_sp_emit_reloc_nonobj)(ring, &(struct fd_reloc){
+      X(fd_ringbuffer_sp_emit_reloc_nonobj)(ring, &(struct fd_reloc){
                 .bo = bo,
-                .iova = bo->iova + msm_target->offset,
-                .offset = msm_target->offset,
+                .iova = bo->iova + fd_target->offset,
+                .offset = fd_target->offset,
              });
    }
 
    if (!(target->flags & _FD_RINGBUFFER_OBJECT))
       return size;
 
-   struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+   struct fd_ringbuffer_sp *fd_ring = to_fd_ringbuffer_sp(ring);
 
    if (ring->flags & _FD_RINGBUFFER_OBJECT) {
-      for (unsigned i = 0; i < msm_target->u.nr_reloc_bos; i++) {
-         struct fd_bo *target_bo = msm_target->u.reloc_bos[i];
-         if (!msm_ringbuffer_references_bo(ring, target_bo))
-            APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(target_bo));
+      for (unsigned i = 0; i < fd_target->u.nr_reloc_bos; i++) {
+         struct fd_bo *target_bo = fd_target->u.reloc_bos[i];
+         if (!fd_ringbuffer_references_bo(ring, target_bo))
+            APPEND(&fd_ring->u, reloc_bos, fd_bo_ref(target_bo));
       }
    } else {
       // TODO it would be nice to know whether we have already
       // seen this target before.  But hopefully we hit the
       // append_bo() fast path enough for this to not matter:
-      struct msm_submit_sp *msm_submit = to_msm_submit_sp(msm_ring->u.submit);
+      struct fd_submit_sp *fd_submit = to_fd_submit_sp(fd_ring->u.submit);
 
-      for (unsigned i = 0; i < msm_target->u.nr_reloc_bos; i++) {
-         msm_submit_append_bo(msm_submit, msm_target->u.reloc_bos[i]);
+      for (unsigned i = 0; i < fd_target->u.nr_reloc_bos; i++) {
+         fd_submit_append_bo(fd_submit, fd_target->u.reloc_bos[i]);
       }
    }
 

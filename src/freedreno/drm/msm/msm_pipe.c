@@ -26,6 +26,7 @@
 
 #include "util/slab.h"
 
+#include "freedreno_ringbuffer_sp.h"
 #include "msm_priv.h"
 
 static int
@@ -199,14 +200,14 @@ msm_pipe_destroy(struct fd_pipe *pipe)
    struct msm_pipe *msm_pipe = to_msm_pipe(pipe);
 
    close_submitqueue(pipe, msm_pipe->queue_id);
-   msm_pipe_sp_ringpool_fini(pipe);
+   fd_pipe_sp_ringpool_fini(pipe);
    free(msm_pipe);
 }
 
 static const struct fd_pipe_funcs sp_funcs = {
-   .ringbuffer_new_object = msm_ringbuffer_sp_new_object,
+   .ringbuffer_new_object = fd_ringbuffer_sp_new_object,
    .submit_new = msm_submit_sp_new,
-   .flush = msm_pipe_sp_flush,
+   .flush = fd_pipe_sp_flush,
    .get_param = msm_pipe_get_param,
    .set_param = msm_pipe_set_param,
    .wait = msm_pipe_wait,
@@ -281,7 +282,7 @@ msm_pipe_new(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
    if (open_submitqueue(pipe, prio))
       goto fail;
 
-   msm_pipe_sp_ringpool_init(pipe);
+   fd_pipe_sp_ringpool_init(pipe);
 
    return pipe;
 fail:
