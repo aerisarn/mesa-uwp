@@ -305,7 +305,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                           ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
       genX(emit_multisample)(&cmd_buffer->batch,
-                             d->sample_locations.samples,
+                             pipeline->rasterization_samples,
                              d->sample_locations.locations);
    }
 

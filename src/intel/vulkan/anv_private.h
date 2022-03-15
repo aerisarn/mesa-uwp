@@ -2738,7 +2738,6 @@ struct anv_dynamic_state {
    } line_stipple;
 
    struct {
-      uint32_t                                  samples;
       VkSampleLocationEXT                       locations[MAX_SAMPLE_LOCATIONS];
    } sample_locations;
 

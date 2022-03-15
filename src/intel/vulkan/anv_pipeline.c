@@ -2292,27 +2292,21 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       const VkPipelineSampleLocationsStateCreateInfoEXT *sl_info = ms_info ?
          vk_find_struct_const(ms_info, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT) : NULL;
 
+      uint32_t samples = ms_info ? ms_info->rasterizationSamples : 1;
       if (sl_info) {
-         dynamic->sample_locations.samples =
-            sl_info->sampleLocationsInfo.sampleLocationsCount;
          const VkSampleLocationEXT *positions =
             sl_info->sampleLocationsInfo.pSampleLocations;
-         for (uint32_t i = 0; i < dynamic->sample_locations.samples; i++) {
+         for (uint32_t i = 0; i < samples; i++) {
             dynamic->sample_locations.locations[i].x = positions[i].x;
             dynamic->sample_locations.locations[i].y = positions[i].y;
          }
-      }
-   }
-   /* Ensure we always have valid values for sample_locations. */
-   if (pipeline->base.device->vk.enabled_extensions.EXT_sample_locations &&
-       dynamic->sample_locations.samples == 0) {
-      dynamic->sample_locations.samples =
-         ms_info ? ms_info->rasterizationSamples : 1;
-      const struct intel_sample_position *positions =
-         intel_get_sample_positions(dynamic->sample_locations.samples);
-      for (uint32_t i = 0; i < dynamic->sample_locations.samples; i++) {
-         dynamic->sample_locations.locations[i].x = positions[i].x;
-         dynamic->sample_locations.locations[i].y = positions[i].y;
+      } else {
+         const struct intel_sample_position *positions =
+            intel_get_sample_positions(samples);
+         for (uint32_t i = 0; i < samples; i++) {
+            dynamic->sample_locations.locations[i].x = positions[i].x;
+            dynamic->sample_locations.locations[i].y = positions[i].y;
+         }
       }
    }
 

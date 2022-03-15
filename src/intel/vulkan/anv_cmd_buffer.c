@@ -199,10 +199,9 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
    ANV_CMP_COPY(logic_op, ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP);
 
    if (copy_mask & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
-      dest->sample_locations.samples = src->sample_locations.samples;
       typed_memcpy(dest->sample_locations.locations,
                    src->sample_locations.locations,
-                   dest->sample_locations.samples);
+                   ARRAY_SIZE(src->sample_locations.locations));
       changed |= ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
    }
 
@@ -857,7 +856,6 @@ void anv_CmdSetSampleLocationsEXT(
    struct anv_dynamic_state *dyn_state = &cmd_buffer->state.gfx.dynamic;
    uint32_t samples = pSampleLocationsInfo->sampleLocationsPerPixel;
 
-   dyn_state->sample_locations.samples = samples;
    typed_memcpy(dyn_state->sample_locations.locations,
                 pSampleLocationsInfo->pSampleLocations, samples);
 

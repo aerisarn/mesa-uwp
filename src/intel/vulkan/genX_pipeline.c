@@ -925,7 +925,7 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
 #if GFX_VER >= 8
    /* On Gfx8+ 3DSTATE_MULTISAMPLE only holds the number of samples. */
    genX(emit_multisample)(&pipeline->base.batch,
-                          info ? info->rasterizationSamples : 1,
+                          pipeline->rasterization_samples,
                           NULL);
 #endif
 
@@ -938,11 +938,11 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
        !(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
 #if GFX_VER >= 8
       genX(emit_sample_pattern)(&pipeline->base.batch,
-                                pipeline->dynamic_state.sample_locations.samples,
+                                pipeline->rasterization_samples,
                                 pipeline->dynamic_state.sample_locations.locations);
 #else
       genX(emit_multisample)(&pipeline->base.batch,
-                             pipeline->dynamic_state.sample_locations.samples,
+                             pipeline->rasterization_samples,
                              pipeline->dynamic_state.sample_locations.locations);
 #endif
    }
