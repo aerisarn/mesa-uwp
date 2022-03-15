@@ -4350,12 +4350,11 @@ pvr_emit_dirty_ppp_state(struct pvr_cmd_buffer *const cmd_buffer,
    return VK_SUCCESS;
 }
 
-static void
-pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
-                              const uint32_t vs_output_size,
-                              const bool raster_enable,
-                              uint32_t *const cam_size_out,
-                              uint32_t *const vs_max_instances_out)
+void pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
+                                   const uint32_t vs_output_size,
+                                   const bool raster_enable,
+                                   uint32_t *const cam_size_out,
+                                   uint32_t *const vs_max_instances_out)
 {
    /* First work out the size of a vertex in the UVS and multiply by 4 for
     * column ordering.

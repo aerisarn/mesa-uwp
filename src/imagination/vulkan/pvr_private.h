@@ -321,6 +321,12 @@ struct pvr_static_clear_ppp_template {
    } config;
 };
 
+#define PVR_CLEAR_VDM_STATE_DWORD_COUNT                                        \
+   (pvr_cmd_length(VDMCTRL_VDM_STATE0) + pvr_cmd_length(VDMCTRL_VDM_STATE2) +  \
+    pvr_cmd_length(VDMCTRL_VDM_STATE3) + pvr_cmd_length(VDMCTRL_VDM_STATE4) +  \
+    pvr_cmd_length(VDMCTRL_VDM_STATE5) + pvr_cmd_length(VDMCTRL_INDEX_LIST0) + \
+    pvr_cmd_length(VDMCTRL_INDEX_LIST2))
+
 struct pvr_device {
    struct vk_device vk;
    struct pvr_instance *instance;
@@ -376,6 +382,9 @@ struct pvr_device {
       struct pvr_static_clear_ppp_base ppp_base;
       struct pvr_static_clear_ppp_template
          ppp_templates[PVR_STATIC_CLEAR_VARIANT_COUNT];
+
+      uint32_t vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
+      uint32_t large_clear_vdm_words[PVR_CLEAR_VDM_STATE_DWORD_COUNT];
    } static_clear_state;
 
    VkPhysicalDeviceFeatures features;
@@ -1424,6 +1433,12 @@ VkResult pvr_cmd_buffer_alloc_mem(struct pvr_cmd_buffer *cmd_buffer,
                                   uint64_t size,
                                   uint32_t flags,
                                   struct pvr_bo **const pvr_bo_out);
+
+void pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
+                                   const uint32_t vs_output_size,
+                                   const bool raster_enable,
+                                   uint32_t *const cam_size_out,
+                                   uint32_t *const vs_max_instances_out);
 
 static inline struct pvr_compute_pipeline *
 to_pvr_compute_pipeline(struct pvr_pipeline *pipeline)
