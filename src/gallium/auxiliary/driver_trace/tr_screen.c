@@ -668,6 +668,32 @@ trace_screen_resource_create(struct pipe_screen *_screen,
 }
 
 static struct pipe_resource *
+trace_screen_resource_create_drawable(struct pipe_screen *_screen,
+                                      const struct pipe_resource *templat,
+                                      const void *loader_data)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+   struct pipe_resource *result;
+
+   trace_dump_call_begin("pipe_screen", "resource_create_drawable");
+
+   trace_dump_arg(ptr, screen);
+   trace_dump_arg(resource_template, templat);
+   trace_dump_arg(ptr, loader_data);
+
+   result = screen->resource_create_drawable(screen, templat, loader_data);
+
+   trace_dump_ret(ptr, result);
+
+   trace_dump_call_end();
+
+   if (result)
+      result->screen = _screen;
+   return result;
+}
+
+static struct pipe_resource *
 trace_screen_resource_create_with_modifiers(struct pipe_screen *_screen, const struct pipe_resource *templat,
                                             const uint64_t *modifiers, int modifiers_count)
 {
@@ -1283,6 +1309,7 @@ trace_screen_create(struct pipe_screen *screen)
    tr_scr->base.resource_create = trace_screen_resource_create;
    SCR_INIT(resource_create_with_modifiers);
    tr_scr->base.resource_create_unbacked = trace_screen_resource_create_unbacked;
+   SCR_INIT(resource_create_drawable);
    tr_scr->base.resource_bind_backing = trace_screen_resource_bind_backing;
    tr_scr->base.resource_from_handle = trace_screen_resource_from_handle;
    tr_scr->base.allocate_memory = trace_screen_allocate_memory;
@@ -1344,4 +1371,13 @@ trace_screen(struct pipe_screen *screen)
    assert(screen);
    assert(screen->destroy == trace_screen_destroy);
    return (struct trace_screen *)screen;
+}
+
+struct pipe_screen *
+trace_screen_unwrap(struct pipe_screen *_screen)
+{
+   if (_screen->destroy != trace_screen_destroy)
+      return _screen;
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   return tr_scr->screen;
 }

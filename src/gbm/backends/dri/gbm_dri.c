@@ -48,6 +48,7 @@
 
 #include "gbmint.h"
 #include "loader_dri_helper.h"
+#include "kopper_interface.h"
 #include "loader.h"
 #include "util/debug.h"
 #include "util/macros.h"
@@ -269,12 +270,19 @@ static const __DRIswrastLoaderExtension swrast_loader_extension = {
    .putImage2       = swrast_put_image2
 };
 
+static const __DRIkopperLoaderExtension kopper_loader_extension = {
+    .base = { __DRI_KOPPER_LOADER, 1 },
+
+    .SetSurfaceCreateInfo   = NULL,
+};
+
 static const __DRIextension *gbm_dri_screen_extensions[] = {
    &image_lookup_extension.base,
    &use_invalidate.base,
    &dri2_loader_extension.base,
    &image_loader_extension.base,
    &swrast_loader_extension.base,
+   &kopper_loader_extension.base,
    NULL,
 };
 
@@ -509,15 +517,22 @@ dri_screen_create_sw(struct gbm_dri_device *dri)
    char *driver_name;
    int ret;
 
-   driver_name = strdup("kms_swrast");
+   driver_name = strdup("zink");
    if (!driver_name)
       return -errno;
 
    ret = dri_screen_create_dri2(dri, driver_name);
-   if (ret != 0)
-      ret = dri_screen_create_swrast(dri);
-   if (ret != 0)
-      return ret;
+   if (ret != 0) {
+      driver_name = strdup("kms_swrast");
+      if (!driver_name)
+         return -errno;
+
+      ret = dri_screen_create_dri2(dri, driver_name);
+      if (ret != 0)
+         ret = dri_screen_create_swrast(dri);
+      if (ret != 0)
+         return ret;
+   }
 
    dri->software = true;
    return 0;

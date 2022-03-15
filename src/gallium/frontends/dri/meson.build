@@ -45,6 +45,10 @@ if with_dri2
   files_libdri += files('dri2.c')
 endif
 
+if with_gallium_zink
+  files_libdri += files('kopper.c')
+endif
+
 libdri_c_args = []
 if with_gallium_softpipe
   libdri_c_args += '-DGALLIUM_SOFTPIPE'
@@ -55,7 +59,7 @@ libdri = static_library(
   files_libdri,
   include_directories : [
     inc_include, inc_util, inc_mesa, inc_mapi, inc_src, inc_gallium,
-    inc_gallium_aux, inc_util,
+    inc_gallium_aux, inc_util,  inc_gallium_drivers,
   ],
   c_args : [libdri_c_args],
   gnu_symbol_visibility : 'hidden',
