@@ -438,8 +438,7 @@ populate_gs_prog_key(const struct anv_device *device,
 }
 
 static bool
-pipeline_has_coarse_pixel(const struct anv_graphics_base_pipeline *pipeline,
-                          const BITSET_WORD *dynamic,
+pipeline_has_coarse_pixel(const BITSET_WORD *dynamic,
                           const struct vk_multisample_state *ms,
                           const struct vk_fragment_shading_rate_state *fsr)
 {
@@ -569,7 +568,7 @@ populate_wm_prog_key(const struct anv_graphics_base_pipeline *pipeline,
    key->coarse_pixel =
       !key->persample_interp &&
       device->vk.enabled_extensions.KHR_fragment_shading_rate &&
-      pipeline_has_coarse_pixel(pipeline, dynamic, ms, fsr);
+      pipeline_has_coarse_pixel(dynamic, ms, fsr);
 }
 
 static void
@@ -1826,19 +1825,26 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
       prev_stage = stage;
    }
 
-   /* In the case the platform can write the primitive variable shading rate,
+   /* In the case the platform can write the primitive variable shading rate
+    * and KHR_fragment_shading_rate is enabled :
+    *    - there can be a fragment shader but we don't have it yet
+    *    - the fragment shader needs fragment shading rate
+    *
     * figure out the last geometry stage that should write the primitive
     * shading rate, and ensure it is marked as used there. The backend will
     * write a default value if the shader doesn't actually write it.
     *
     * We iterate backwards in the stage and stop on the first shader that can
     * set the value.
+    *
+    * Don't apply this to MESH stages, as this is a per primitive thing.
     */
    if (devinfo->has_coarse_pixel_primitive_and_cb &&
-       stages[MESA_SHADER_FRAGMENT].info &&
-       stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
-       !stages[MESA_SHADER_FRAGMENT].nir->info.fs.uses_sample_shading &&
-       stages[MESA_SHADER_MESH].info == NULL) {
+       device->vk.enabled_extensions.KHR_fragment_shading_rate &&
+       pipeline_has_coarse_pixel(state->dynamic, state->ms, state->fsr) &&
+       (!stages[MESA_SHADER_FRAGMENT].info ||
+        stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel) &&
+       stages[MESA_SHADER_MESH].nir == NULL) {
       struct anv_pipeline_stage *last_psr = NULL;
 
       for (unsigned i = 0; i < ARRAY_SIZE(graphics_shader_order); i++) {
@@ -1853,8 +1859,11 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
          break;
       }
 
-      assert(last_psr);
-      last_psr->nir->info.outputs_written |= VARYING_BIT_PRIMITIVE_SHADING_RATE;
+      /* Only set primitive shading rate if there is a pre-rasterization
+       * shader in this pipeline/pipeline-library.
+       */
+      if (last_psr)
+         last_psr->nir->info.outputs_written |= VARYING_BIT_PRIMITIVE_SHADING_RATE;
    }
 
    prev_stage = NULL;
