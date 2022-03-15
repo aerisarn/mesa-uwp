@@ -136,9 +136,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
       if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                              ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
-         VkPrimitiveTopology primitive_topology =
-            cmd_buffer->state.gfx.dynamic.primitive_topology;
-
+         VkPrimitiveTopology primitive_topology = d->primitive_topology;
          VkPolygonMode dynamic_raster_mode =
             genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
                                       primitive_topology);
@@ -284,8 +282,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                           ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                           ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)) {
       VkPolygonMode dynamic_raster_mode;
-      VkPrimitiveTopology primitive_topology =
-         cmd_buffer->state.gfx.dynamic.primitive_topology;
+      VkPrimitiveTopology primitive_topology = d->primitive_topology;
       dynamic_raster_mode =
          genX(raster_polygon_mode)(cmd_buffer->state.gfx.pipeline,
                                    primitive_topology);
@@ -308,14 +305,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                           ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
       genX(emit_multisample)(&cmd_buffer->batch,
-                             cmd_buffer->state.gfx.dynamic.sample_locations.samples,
-                             cmd_buffer->state.gfx.dynamic.sample_locations.locations);
+                             d->sample_locations.samples,
+                             d->sample_locations.locations);
    }
 
    if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                           ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                           ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
-      const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
+      const uint8_t color_writes = d->color_writes;
 
       uint32_t blend_dws[GENX(BLEND_STATE_length) +
                          MAX_RTS * GENX(BLEND_STATE_ENTRY_length)];

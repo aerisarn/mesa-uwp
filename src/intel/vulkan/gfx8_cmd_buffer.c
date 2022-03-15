@@ -325,8 +325,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #if GFX_VER >= 11
    if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                           ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE)) {
-      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline,
-                              &cmd_buffer->state.gfx.dynamic);
+      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline, d);
    }
 #endif /* GFX_VER >= 11 */
 
@@ -634,14 +633,14 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                           ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
       genX(emit_sample_pattern)(&cmd_buffer->batch,
-                                cmd_buffer->state.gfx.dynamic.sample_locations.samples,
-                                cmd_buffer->state.gfx.dynamic.sample_locations.locations);
+                                d->sample_locations.samples,
+                                d->sample_locations.locations);
    }
 
    if (anv_cmd_buffer_needs_dynamic_state(cmd_buffer,
                                           ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                           ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
-      const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
+      const uint8_t color_writes = d->color_writes;
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
