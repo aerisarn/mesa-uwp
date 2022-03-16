@@ -9,8 +9,8 @@ struct lp_setup_variant;
 
 struct lp_setup_variant_list_item
 {
+   struct list_head list;
    struct lp_setup_variant *base;
-   struct lp_setup_variant_list_item *next, *prev;
 };
 
 

@@ -30,6 +30,7 @@
 #define LP_STATE_FS_H_
 
 
+#include "util/list.h"
 #include "pipe/p_compiler.h"
 #include "pipe/p_state.h"
 #include "tgsi/tgsi_scan.h" /* for tgsi_shader_info */
@@ -151,8 +152,8 @@ lp_fs_variant_key_images(struct lp_fragment_shader_variant_key *key)
 /** doubly-linked list item */
 struct lp_fs_variant_list_item
 {
+   struct list_head list;
    struct lp_fragment_shader_variant *base;
-   struct lp_fs_variant_list_item *next, *prev;
 };
 
 

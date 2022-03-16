@@ -26,7 +26,6 @@
  **************************************************************************/
 
 #include <limits.h>
-#include "util/simple_list.h"
 
 #include "pipe/p_defines.h"
 #include "util/u_inlines.h"

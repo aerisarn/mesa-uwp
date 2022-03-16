@@ -36,7 +36,7 @@
 #include "util/u_inlines.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
-#include "util/simple_list.h"
+#include "util/list.h"
 #include "util/u_upload_mgr.h"
 #include "lp_clear.h"
 #include "lp_context.h"
@@ -199,11 +199,11 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
 
    memset(llvmpipe, 0, sizeof *llvmpipe);
 
-   make_empty_list(&llvmpipe->fs_variants_list);
+   list_inithead(&llvmpipe->fs_variants_list.list);
 
-   make_empty_list(&llvmpipe->setup_variants_list);
+   list_inithead(&llvmpipe->setup_variants_list.list);
 
-   make_empty_list(&llvmpipe->cs_variants_list);
+   list_inithead(&llvmpipe->cs_variants_list.list);
 
    llvmpipe->pipe.screen = screen;
    llvmpipe->pipe.priv = priv;

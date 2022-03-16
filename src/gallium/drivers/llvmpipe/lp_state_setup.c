@@ -28,7 +28,6 @@
 
 #include "util/u_math.h"
 #include "util/u_memory.h"
-#include "util/simple_list.h"
 #include "util/os_time.h"
 #include "gallivm/lp_bld_arit.h"
 #include "gallivm/lp_bld_bitarit.h"
@@ -833,7 +832,7 @@ remove_setup_variant(struct llvmpipe_context *lp,
       gallivm_destroy(variant->gallivm);
    }
 
-   remove_from_list(&variant->list_item_global);
+   list_del(&variant->list_item_global.list);
    lp->nr_setup_variants--;
    FREE(variant);
 }
@@ -858,10 +857,11 @@ cull_setup_variants(struct llvmpipe_context *lp)
 
    for (i = 0; i < LP_MAX_SETUP_VARIANTS / 4; i++) {
       struct lp_setup_variant_list_item *item;
-      if (is_empty_list(&lp->setup_variants_list)) {
+      if (list_is_empty(&lp->setup_variants_list.list)) {
          break;
       }
-      item = last_elem(&lp->setup_variants_list);
+      item = list_last_entry(&lp->setup_variants_list.list,
+                             struct lp_setup_variant_list_item, list);
       assert(item);
       assert(item->base);
       remove_setup_variant(lp, item->base);
@@ -874,7 +874,7 @@ cull_setup_variants(struct llvmpipe_context *lp)
  * prior to drawing something when some fragment-related state has
  * changed.
  */
-void 
+void
 llvmpipe_update_setup(struct llvmpipe_context *lp)
 {
    struct lp_setup_variant_key *key = &lp->setup_variant.key;
@@ -883,7 +883,7 @@ llvmpipe_update_setup(struct llvmpipe_context *lp)
 
    lp_make_setup_variant_key(lp, key);
 
-   foreach(li, &lp->setup_variants_list) {
+   LIST_FOR_EACH_ENTRY(li, &lp->setup_variants_list.list, list) {
       if(li->base->key.size == key->size &&
          memcmp(&li->base->key, key, key->size) == 0) {
          variant = li->base;
@@ -892,7 +892,7 @@ llvmpipe_update_setup(struct llvmpipe_context *lp)
    }
 
    if (variant) {
-      move_to_head(&lp->setup_variants_list, &variant->list_item_global);
+      list_move_to(&variant->list_item_global.list, &lp->setup_variants_list.list);
    }
    else {
       if (lp->nr_setup_variants >= LP_MAX_SETUP_VARIANTS) {
@@ -901,7 +901,7 @@ llvmpipe_update_setup(struct llvmpipe_context *lp)
 
       variant = generate_setup_variant(key, lp);
       if (variant) {
-         insert_at_head(&lp->setup_variants_list, &variant->list_item_global);
+         list_add(&variant->list_item_global.list, &lp->setup_variants_list.list);
          lp->nr_setup_variants++;
       }
    }
@@ -912,12 +912,9 @@ llvmpipe_update_setup(struct llvmpipe_context *lp)
 void
 lp_delete_setup_variants(struct llvmpipe_context *lp)
 {
-   struct lp_setup_variant_list_item *li;
-   li = first_elem(&lp->setup_variants_list);
-   while(!at_end(&lp->setup_variants_list, li)) {
-      struct lp_setup_variant_list_item *next = next_elem(li);
+   struct lp_setup_variant_list_item *li, *next;
+   LIST_FOR_EACH_ENTRY_SAFE(li, next, &lp->setup_variants_list.list, list) {
       remove_setup_variant(lp, li->base);
-      li = next;
    }
 }
 

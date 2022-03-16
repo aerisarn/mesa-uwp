@@ -40,7 +40,6 @@
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
-#include "util/simple_list.h"
 #include "util/u_transfer.h"
 
 #include "lp_context.h"
@@ -293,7 +292,7 @@ llvmpipe_resource_create_all(struct pipe_screen *_screen,
 
 #ifdef DEBUG
    mtx_lock(&resource_list_mutex);
-   insert_at_tail(&resource_list, lpr);
+   list_addtail(&lpr->list, &resource_list.list);
    mtx_unlock(&resource_list_mutex);
 #endif
 
@@ -422,7 +421,7 @@ llvmpipe_resource_from_memobj(struct pipe_screen *pscreen,
 
 #ifdef DEBUG
    mtx_lock(&resource_list_mutex);
-   insert_at_tail(&resource_list, lpr);
+   list_addtail(&lpr->list, &resource_list.list);
    mtx_unlock(&resource_list_mutex);
 #endif
 
@@ -461,8 +460,8 @@ llvmpipe_resource_destroy(struct pipe_screen *pscreen,
    }
 #ifdef DEBUG
    mtx_lock(&resource_list_mutex);
-   if (lpr->next)
-      remove_from_list(lpr);
+   if (!list_is_empty(&lpr->list))
+      list_del(&lpr->list);
    mtx_unlock(&resource_list_mutex);
 #endif
 
@@ -601,7 +600,7 @@ llvmpipe_resource_from_handle(struct pipe_screen *_screen,
 
 #ifdef DEBUG
    mtx_lock(&resource_list_mutex);
-   insert_at_tail(&resource_list, lpr);
+   list_addtail(&lpr->list, &resource_list.list);
    mtx_unlock(&resource_list_mutex);
 #endif
 
@@ -1029,7 +1028,7 @@ llvmpipe_print_resources(void)
 
    debug_printf("LLVMPIPE: current resources:\n");
    mtx_lock(&resource_list_mutex);
-   foreach(lpr, &resource_list) {
+   LIST_FOR_EACH_ENTRY(lpr, &resource_list.list, list) {
       unsigned size = llvmpipe_resource_size(&lpr->base);
       debug_printf("resource %u at %p, size %ux%ux%u: %u bytes, refcount %u\n",
                    lpr->id, (void *) lpr,
@@ -1122,7 +1121,7 @@ llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen)
       static boolean first_call = TRUE;
       if (first_call) {
          memset(&resource_list, 0, sizeof(resource_list));
-         make_empty_list(&resource_list);
+         list_inithead(&resource_list.list);
          first_call = FALSE;
       }
    }
