@@ -249,59 +249,12 @@ struct lvp_image_view {
    struct pipe_surface *surface; /* have we created a pipe surface for this? */
 };
 
-struct lvp_render_pass_attachment {
-   uint32_t                                     attachment; //index
-   VkFormat                                     format;
-   uint32_t                                     samples;
-   VkAttachmentLoadOp                           load_op;
-   VkAttachmentLoadOp                           stencil_load_op;
-};
-
-struct lvp_subpass {
-   uint32_t                                     input_count;
-   uint32_t                                     color_count;
-   struct lvp_render_pass_attachment **         input_attachments;
-   struct lvp_render_pass_attachment **         color_attachments;
-   struct lvp_render_pass_attachment **         resolve_attachments;
-   struct lvp_render_pass_attachment **         depth_stencil_attachment;
-   struct lvp_render_pass_attachment **         ds_resolve_attachment;
-   VkResolveModeFlagBits                        depth_resolve_mode;
-   VkResolveModeFlagBits                        stencil_resolve_mode;
-
-   /** Subpass has at least one color resolve attachment */
-   bool                                         has_color_resolve;
-   bool has_color_attachment;
-   bool has_zs_attachment;
-
-   uint32_t                                     view_mask;
-};
-
-struct lvp_render_pass {
-   struct vk_object_base                        base;
-   uint32_t                                     attachment_count;
-   uint32_t                                     subpass_count;
-   struct lvp_subpass_attachment *              subpass_attachments;
-   struct lvp_render_pass_attachment *          attachments;
-   struct lvp_subpass                           subpasses[0];
-};
-
 struct lvp_sampler {
    struct vk_object_base base;
    VkSamplerCreateInfo create_info;
    union pipe_color_union border_color;
    VkSamplerReductionMode reduction_mode;
    uint32_t state[4];
-};
-
-struct lvp_framebuffer {
-   struct vk_object_base                        base;
-   uint32_t                                     width;
-   uint32_t                                     height;
-   uint32_t                                     layers;
-
-   bool                                         imageless;
-   uint32_t                                     attachment_count;
-   struct lvp_image_view *                      attachments[0];
 };
 
 struct lvp_descriptor_set_binding_layout {
@@ -631,8 +584,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_update_template, base, VkDescripto
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_device_memory, base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_framebuffer, base, VkFramebuffer,
-                               VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
@@ -644,18 +595,11 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_layout, base, VkPipelineLayout,
                                VK_OBJECT_TYPE_PIPELINE_LAYOUT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_query_pool, base, VkQueryPool,
                                VK_OBJECT_TYPE_QUERY_POOL)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_render_pass, base, VkRenderPass,
-                               VK_OBJECT_TYPE_RENDER_PASS)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_fence, base, VkFence, VK_OBJECT_TYPE_FENCE);
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_semaphore, base, VkSemaphore,
                                VK_OBJECT_TYPE_SEMAPHORE);
-
-struct lvp_attachment_state {
-   VkImageAspectFlags pending_clear_aspects;
-   VkClearValue clear_value;
-};
 
 struct lvp_write_descriptor {
    uint32_t dst_binding;

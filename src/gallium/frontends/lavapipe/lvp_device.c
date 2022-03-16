@@ -2417,64 +2417,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetFenceStatus(
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateFramebuffer(
-   VkDevice                                    _device,
-   const VkFramebufferCreateInfo*              pCreateInfo,
-   const VkAllocationCallbacks*                pAllocator,
-   VkFramebuffer*                              pFramebuffer)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   struct lvp_framebuffer *framebuffer;
-   const VkFramebufferAttachmentsCreateInfo *imageless_create_info =
-      vk_find_struct_const(pCreateInfo->pNext,
-                           FRAMEBUFFER_ATTACHMENTS_CREATE_INFO);
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
-
-   size_t size = sizeof(*framebuffer);
-
-   if (!imageless_create_info)
-      size += sizeof(struct lvp_image_view *) * pCreateInfo->attachmentCount;
-   framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (framebuffer == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &framebuffer->base,
-                       VK_OBJECT_TYPE_FRAMEBUFFER);
-
-   if (!imageless_create_info) {
-      framebuffer->attachment_count = pCreateInfo->attachmentCount;
-      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-         VkImageView _iview = pCreateInfo->pAttachments[i];
-         framebuffer->attachments[i] = lvp_image_view_from_handle(_iview);
-      }
-   }
-
-   framebuffer->width = pCreateInfo->width;
-   framebuffer->height = pCreateInfo->height;
-   framebuffer->layers = pCreateInfo->layers;
-   framebuffer->imageless = !!imageless_create_info;
-
-   *pFramebuffer = lvp_framebuffer_to_handle(framebuffer);
-
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_DestroyFramebuffer(
-   VkDevice                                    _device,
-   VkFramebuffer                               _fb,
-   const VkAllocationCallbacks*                pAllocator)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_framebuffer, fb, _fb);
-
-   if (!fb)
-      return;
-   vk_object_base_finish(&fb->base);
-   vk_free2(&device->vk.alloc, pAllocator, fb);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
    VkDevice                                    _device,
    uint32_t                                    fenceCount,

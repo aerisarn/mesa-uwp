@@ -22,6 +22,7 @@
  */
 
 #include "lvp_private.h"
+#include "vk_render_pass.h"
 #include "vk_util.h"
 #include "glsl_types.h"
 #include "util/os_time.h"
@@ -284,15 +285,13 @@ deep_copy_graphics_create_info(void *mem_ctx,
    VkPipelineShaderStageCreateInfo *stages;
    VkPipelineVertexInputStateCreateInfo *vertex_input;
    VkPipelineRasterizationStateCreateInfo *rasterization_state;
-   LVP_FROM_HANDLE(lvp_render_pass, pass, src->renderPass);
-   const VkPipelineRenderingCreateInfoKHR *rp_info = vk_find_struct_const(src->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfoKHR *rp_info =
+      vk_get_pipeline_rendering_create_info(src);
 
    dst->sType = src->sType;
    dst->pNext = NULL;
    dst->flags = src->flags;
    dst->layout = src->layout;
-   dst->renderPass = src->renderPass;
-   dst->subpass = src->subpass;
    dst->basePipelineHandle = src->basePipelineHandle;
    dst->basePipelineIndex = src->basePipelineIndex;
 
@@ -375,7 +374,8 @@ deep_copy_graphics_create_info(void *mem_ctx,
 
    /* pDepthStencilState */
    if (src->pDepthStencilState && !rasterization_disabled &&
-       (pass ? pass->subpasses[src->subpass].has_zs_attachment : (rp_info->depthAttachmentFormat || rp_info->stencilAttachmentFormat))) {
+       (rp_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+        rp_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)) {
       LVP_PIPELINE_DUP(dst->pDepthStencilState,
                        src->pDepthStencilState,
                        VkPipelineDepthStencilStateCreateInfo,
@@ -383,9 +383,16 @@ deep_copy_graphics_create_info(void *mem_ctx,
    } else
       dst->pDepthStencilState = NULL;
 
+   bool uses_color_att = false;
+   for (unsigned i = 0; i < rp_info->colorAttachmentCount; i++) {
+      if (rp_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
+         uses_color_att = true;
+         break;
+      }
+   }
+
    /* pColorBlendState */
-   if (src->pColorBlendState && !rasterization_disabled &&
-       (pass ? pass->subpasses[src->subpass].has_color_attachment : rp_info->colorAttachmentCount)) {
+   if (src->pColorBlendState && !rasterization_disabled && uses_color_att) {
       VkPipelineColorBlendStateCreateInfo*    cb_state;
 
       cb_state = ralloc(mem_ctx, VkPipelineColorBlendStateCreateInfo);
