@@ -421,7 +421,7 @@ live_var_analysis(Program* program)
    std::vector<PhiInfo> phi_info(program->blocks.size());
    RegisterDemand new_demand;
 
-   program->needs_vcc = false;
+   program->needs_vcc = program->chip_class >= GFX10;
 
    /* this implementation assumes that the block idx corresponds to the block's position in
     * program->blocks vector */
