@@ -1,6 +1,7 @@
 extern crate rusticl_opencl_gen;
 
 use crate::api::icd::*;
+use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::event::*;
 use crate::core::queue::*;
@@ -59,10 +60,10 @@ pub fn wait_for_events(num_events: cl_uint, event_list: *const cl_event) -> CLRe
     let mut err = false;
     for e in evs {
         if let Some(q) = &e.queue {
-            q.flush(true)?;
+            q.flush(false)?;
         }
 
-        err |= e.status() < 0;
+        err |= e.wait() < 0;
     }
 
     // CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the execution status of any of the events
@@ -71,6 +72,50 @@ pub fn wait_for_events(num_events: cl_uint, event_list: *const cl_event) -> CLRe
         return Err(CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST);
     }
 
+    Ok(())
+}
+
+pub fn set_event_callback(
+    event: cl_event,
+    command_exec_callback_type: cl_int,
+    pfn_event_notify: Option<EventCB>,
+    user_data: *mut ::std::os::raw::c_void,
+) -> CLResult<()> {
+    let e = event.get_ref()?;
+
+    // CL_INVALID_VALUE if pfn_event_notify is NULL
+    // or if command_exec_callback_type is not CL_SUBMITTED, CL_RUNNING, or CL_COMPLETE.
+    if pfn_event_notify.is_none()
+        || ![CL_SUBMITTED, CL_RUNNING, CL_COMPLETE]
+            .contains(&(command_exec_callback_type as cl_uint))
+    {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    e.add_cb(
+        command_exec_callback_type,
+        pfn_event_notify.unwrap(),
+        user_data,
+    );
+
+    Ok(())
+}
+
+pub fn set_user_event_status(event: cl_event, execution_status: cl_int) -> CLResult<()> {
+    let e = event.get_ref()?;
+
+    // CL_INVALID_VALUE if the execution_status is not CL_COMPLETE or a negative integer value.
+    if execution_status != CL_COMPLETE as cl_int && execution_status > 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_OPERATION if the execution_status for event has already been changed by a
+    // previous call to clSetUserEventStatus.
+    if e.status() != CL_SUBMITTED as cl_int {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    e.set_user_status(execution_status);
     Ok(())
 }
 

@@ -1115,13 +1115,17 @@ extern "C" fn cl_get_extension_function_address(
 }
 
 extern "C" fn cl_set_event_callback(
-    _event: cl_event,
-    _command_exec_callback_type: cl_int,
-    _pfn_notify: Option<EventCB>,
-    _user_data: *mut ::std::os::raw::c_void,
+    event: cl_event,
+    command_exec_callback_type: cl_int,
+    pfn_notify: Option<EventCB>,
+    user_data: *mut ::std::os::raw::c_void,
 ) -> cl_int {
-    println!("cl_set_event_callback not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(set_event_callback(
+        event,
+        command_exec_callback_type,
+        pfn_notify,
+        user_data
+    ))
 }
 
 extern "C" fn cl_create_sub_buffer(
@@ -1151,9 +1155,8 @@ extern "C" fn cl_create_user_event(context: cl_context, errcode_ret: *mut cl_int
     match_obj!(create_user_event(context), errcode_ret)
 }
 
-extern "C" fn cl_set_user_event_status(_event: cl_event, _execution_status: cl_int) -> cl_int {
-    println!("cl_set_user_event_status not implemented");
-    CL_OUT_OF_HOST_MEMORY
+extern "C" fn cl_set_user_event_status(event: cl_event, execution_status: cl_int) -> cl_int {
+    match_err!(set_user_event_status(event, execution_status))
 }
 
 extern "C" fn cl_enqueue_read_buffer_rect(

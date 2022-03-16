@@ -1,20 +1,38 @@
 extern crate mesa_rust;
+extern crate mesa_rust_util;
 extern crate rusticl_opencl_gen;
 
 use crate::api::icd::*;
+use crate::api::types::*;
 use crate::core::context::*;
 use crate::core::queue::*;
 use crate::impl_cl_type_trait;
 
 use self::mesa_rust::pipe::context::*;
+use self::mesa_rust::pipe::fence::*;
+use self::mesa_rust_util::static_assert;
 use self::rusticl_opencl_gen::*;
 
+use std::os::raw::c_void;
 use std::slice;
-use std::sync::atomic::AtomicI32;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::sync::Condvar;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
+
+// we assert that those are a continous range of numbers so we won't have to use HashMaps
+static_assert!(CL_COMPLETE == 0);
+static_assert!(CL_RUNNING == 1);
+static_assert!(CL_SUBMITTED == 2);
+static_assert!(CL_QUEUED == 3);
 
 pub type EventSig = Box<dyn Fn(&Arc<Queue>, &Arc<PipeContext>) -> CLResult<()>>;
+
+struct EventMutState {
+    status: cl_int,
+    cbs: [Vec<(EventCB, *mut c_void)>; 3],
+    fence: Option<PipeFence>,
+}
 
 #[repr(C)]
 pub struct Event {
@@ -23,9 +41,9 @@ pub struct Event {
     pub queue: Option<Arc<Queue>>,
     pub cmd_type: cl_command_type,
     pub deps: Vec<Arc<Event>>,
-    // use AtomicI32 instead of cl_int so we can change it without a &mut reference
-    status: AtomicI32,
     work: Option<EventSig>,
+    state: Mutex<EventMutState>,
+    cv: Condvar,
 }
 
 impl_cl_type_trait!(cl_event, Event, CL_INVALID_EVENT);
@@ -47,8 +65,13 @@ impl Event {
             queue: Some(queue.clone()),
             cmd_type: cmd_type,
             deps: deps,
-            status: AtomicI32::new(CL_QUEUED as cl_int),
+            state: Mutex::new(EventMutState {
+                status: CL_QUEUED as cl_int,
+                cbs: [Vec::new(), Vec::new(), Vec::new()],
+                fence: None,
+            }),
             work: Some(work),
+            cv: Condvar::new(),
         })
     }
 
@@ -59,8 +82,13 @@ impl Event {
             queue: None,
             cmd_type: CL_COMMAND_USER,
             deps: Vec::new(),
-            status: AtomicI32::new(CL_SUBMITTED as cl_int),
+            state: Mutex::new(EventMutState {
+                status: CL_SUBMITTED as cl_int,
+                cbs: [Vec::new(), Vec::new(), Vec::new()],
+                fence: None,
+            }),
             work: None,
+            cv: Condvar::new(),
         })
     }
 
@@ -69,32 +97,83 @@ impl Event {
         s.iter().map(|e| e.get_arc()).collect()
     }
 
-    pub fn is_error(&self) -> bool {
-        self.status.load(Ordering::Relaxed) < 0
+    fn state(&self) -> MutexGuard<EventMutState> {
+        self.state.lock().unwrap()
     }
 
     pub fn status(&self) -> cl_int {
-        self.status.load(Ordering::Relaxed)
+        self.state().status
+    }
+
+    fn set_status(&self, lock: &mut MutexGuard<EventMutState>, new: cl_int) {
+        lock.status = new;
+        self.cv.notify_all();
+        if [CL_COMPLETE, CL_RUNNING, CL_SUBMITTED].contains(&(new as u32)) {
+            if let Some(cbs) = lock.cbs.get(new as usize) {
+                cbs.iter()
+                    .for_each(|(cb, data)| unsafe { cb(cl_event::from_ptr(self), new, *data) });
+            }
+        }
+    }
+
+    pub fn set_user_status(&self, status: cl_int) {
+        let mut lock = self.state();
+        self.set_status(&mut lock, status);
+    }
+
+    pub fn is_error(&self) -> bool {
+        self.status() < 0
+    }
+
+    pub fn add_cb(&self, state: cl_int, cb: EventCB, data: *mut c_void) {
+        let mut lock = self.state();
+        let status = lock.status;
+
+        // call cb if the status was already reached
+        if state >= status {
+            drop(lock);
+            unsafe { cb(cl_event::from_ptr(self), status, data) };
+        } else {
+            lock.cbs.get_mut(state as usize).unwrap().push((cb, data));
+        }
+    }
+
+    pub fn wait(&self) -> cl_int {
+        let mut lock = self.state();
+        while lock.status >= CL_SUBMITTED as cl_int {
+            if lock.fence.is_some() {
+                lock.fence.as_ref().unwrap().wait();
+                // so we trigger all cbs
+                self.set_status(&mut lock, CL_RUNNING as cl_int);
+                self.set_status(&mut lock, CL_COMPLETE as cl_int);
+            } else {
+                lock = self.cv.wait(lock).unwrap();
+            }
+        }
+        lock.status
     }
 
     // We always assume that work here simply submits stuff to the hardware even if it's just doing
     // sw emulation or nothing at all.
     // If anything requets waiting, we will update the status through fencing later.
     pub fn call(&self, ctx: &Arc<PipeContext>) -> cl_int {
-        let status = self.status();
+        let mut lock = self.state();
+        let status = lock.status;
         if status == CL_QUEUED as cl_int {
             let new = self.work.as_ref().map_or(
                 // if there is no work
                 CL_SUBMITTED as cl_int,
                 |w| {
-                    w(self.queue.as_ref().unwrap(), ctx).err().map_or(
+                    let res = w(self.queue.as_ref().unwrap(), ctx).err().map_or(
                         // if there is an error, negate it
                         CL_SUBMITTED as cl_int,
                         |e| e,
-                    )
+                    );
+                    lock.fence = Some(ctx.flush());
+                    res
                 },
             );
-            self.status.store(new, Ordering::Relaxed);
+            self.set_status(&mut lock, new);
             new
         } else {
             status

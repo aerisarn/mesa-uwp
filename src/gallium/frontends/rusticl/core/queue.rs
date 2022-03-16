@@ -24,7 +24,6 @@ pub struct Queue {
     pending: Mutex<Vec<Arc<Event>>>,
     _thrd: Option<JoinHandle<()>>,
     chan_in: mpsc::Sender<Vec<Arc<Event>>>,
-    chan_out: mpsc::Receiver<bool>,
 }
 
 impl_cl_type_trait!(cl_command_queue, Queue, CL_INVALID_COMMAND_QUEUE);
@@ -39,7 +38,6 @@ impl Queue {
         // should be detected earlier (e.g.: checking for CAPs).
         let pipe = device.screen().create_context().unwrap();
         let (tx_q, rx_t) = mpsc::channel::<Vec<Arc<Event>>>();
-        let (tx_t, rx_q) = mpsc::channel::<bool>();
         Ok(Arc::new(Self {
             base: CLObjectBase::new(),
             context: context,
@@ -54,17 +52,25 @@ impl Queue {
                         if r.is_err() {
                             break;
                         }
-                        for e in r.unwrap() {
-                            e.call(&pipe);
+                        let new_events = r.unwrap();
+                        for e in &new_events {
+                            // all events should be processed, but we might have to wait on user
+                            // events to happen
+                            let err = e.deps.iter().map(|e| e.wait()).find(|s| *s < 0);
+                            if let Some(err) = err {
+                                // if a dependency failed, fail this event as well
+                                e.set_user_status(err);
+                            } else {
+                                e.call(&pipe);
+                            }
                         }
-                        if tx_t.send(true).is_err() {
-                            break;
+                        for e in new_events {
+                            e.wait();
                         }
                     })
                     .unwrap(),
             ),
             chan_in: tx_q,
-            chan_out: rx_q,
         }))
     }
 
@@ -72,14 +78,18 @@ impl Queue {
         self.pending.lock().unwrap().push(e.clone());
     }
 
-    // TODO: implement non blocking flush
-    pub fn flush(&self, _wait: bool) -> CLResult<()> {
+    pub fn flush(&self, wait: bool) -> CLResult<()> {
         let mut p = self.pending.lock().unwrap();
+        let last = p.last().cloned();
         // This should never ever error, but if it does return an error
         self.chan_in
             .send((*p).drain(0..).collect())
             .map_err(|_| CL_OUT_OF_HOST_MEMORY)?;
-        self.chan_out.recv().unwrap();
+        if wait {
+            if let Some(last) = last {
+                last.wait();
+            }
+        }
         Ok(())
     }
 }
