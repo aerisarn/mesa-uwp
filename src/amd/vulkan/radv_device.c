@@ -3517,6 +3517,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    if (device->gfx_init)
       device->ws->buffer_destroy(device->ws, device->gfx_init);
 
+   radv_device_finish_notifier(device);
    radv_device_finish_vs_prologs(device);
    radv_device_finish_border_color(device);
    radv_device_finish_vrs_image(device);
