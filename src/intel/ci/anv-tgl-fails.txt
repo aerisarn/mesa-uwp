@@ -1036,19 +1036,6 @@ dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_8_32.samples_8.d32_sfloat_s8_
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_8_32.samples_8.d32_sfloat_s8_uint_separate_layouts.depth_zero_stencil_zero_testing_stencil_samplemask,Crash
 dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_8_32.samples_8.d32_sfloat_s8_uint_separate_layouts.depth_zero_stencil_zero_unused_resolve_testing_stencil_samplemask,Crash
 
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.all_ss_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.all_su_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.all_us_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.limits_packed_su_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.limits_packed_us_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.limits_packed_uu_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.limits_us_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.limits_uu_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.small_packed_ss_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.small_packed_su_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.small_ss_v4i8_out32,Fail
-dEQP-VK.spirv_assembly.instruction.compute.opudotaccsatkhr.small_su_v4i8_out32,Fail
-
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3505
 dEQP-VK.subgroups.multiple_dispatches.uniform_subgroup_size,Fail
 

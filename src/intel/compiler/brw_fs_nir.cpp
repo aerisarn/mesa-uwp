@@ -1889,7 +1889,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_sdot_4x8_iadd:
    case nir_op_sdot_4x8_iadd_sat:
-      inst = bld.DP4A(result,
+      inst = bld.DP4A(retype(result, BRW_REGISTER_TYPE_D),
                       retype(op[2], BRW_REGISTER_TYPE_D),
                       retype(op[0], BRW_REGISTER_TYPE_D),
                       retype(op[1], BRW_REGISTER_TYPE_D));
@@ -1900,7 +1900,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_udot_4x8_uadd:
    case nir_op_udot_4x8_uadd_sat:
-      inst = bld.DP4A(result,
+      inst = bld.DP4A(retype(result, BRW_REGISTER_TYPE_UD),
                       retype(op[2], BRW_REGISTER_TYPE_UD),
                       retype(op[0], BRW_REGISTER_TYPE_UD),
                       retype(op[1], BRW_REGISTER_TYPE_UD));
@@ -1911,7 +1911,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_sudot_4x8_iadd:
    case nir_op_sudot_4x8_iadd_sat:
-      inst = bld.DP4A(result,
+      inst = bld.DP4A(retype(result, BRW_REGISTER_TYPE_D),
                       retype(op[2], BRW_REGISTER_TYPE_D),
                       retype(op[0], BRW_REGISTER_TYPE_D),
                       retype(op[1], BRW_REGISTER_TYPE_UD));
