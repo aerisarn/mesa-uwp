@@ -92,6 +92,12 @@ pub fn get_platform_ids(
     Ok(())
 }
 
+pub fn unload_platform_compiler(platform: cl_platform_id) -> CLResult<()> {
+    platform.get_ref()?;
+    // TODO unload the compiler
+    Ok(())
+}
+
 #[test]
 fn test_get_platform_info() {
     let mut s: usize = 0;

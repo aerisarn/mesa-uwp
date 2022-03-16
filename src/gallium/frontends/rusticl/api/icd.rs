@@ -1360,9 +1360,8 @@ extern "C" fn cl_link_program(
     )
 }
 
-extern "C" fn cl_unload_platform_compiler(_platform: cl_platform_id) -> cl_int {
-    println!("cl_unload_platform_compiler not implemented");
-    CL_OUT_OF_HOST_MEMORY
+extern "C" fn cl_unload_platform_compiler(platform: cl_platform_id) -> cl_int {
+    match_err!(unload_platform_compiler(platform))
 }
 
 extern "C" fn cl_get_kernel_arg_info(
