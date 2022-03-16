@@ -31,7 +31,7 @@
  *
  * Fixed size array with linear probing on collision and LRU eviction
  * on full.
- * 
+ *
  * @author Jose Fonseca <jfonseca@vmware.com>
  */
 
@@ -55,7 +55,7 @@ struct util_cache_entry
 
    void *key;
    void *value;
-   
+
 #ifdef DEBUG
    unsigned count;
 #endif
@@ -66,7 +66,7 @@ struct util_cache
 {
    /** Hash function */
    uint32_t (*hash)(const void *key);
-   
+
    /** Compare two keys */
    int (*compare)(const void *key1, const void *key2);
 
@@ -75,10 +75,10 @@ struct util_cache
 
    /** Max entries in the cache */
    uint32_t size;
-   
+
    /** Array [size] of entries */
    struct util_cache_entry *entries;
-   
+
    /** Number of entries in the cache */
    unsigned count;
 
@@ -103,26 +103,26 @@ util_cache_create(uint32_t (*hash)(const void *key),
                   uint32_t size)
 {
    struct util_cache *cache;
-   
+
    cache = CALLOC_STRUCT(util_cache);
    if (!cache)
       return NULL;
-   
+
    cache->hash = hash;
    cache->compare = compare;
    cache->destroy = destroy;
 
-   make_empty_list(&cache->lru);
+   list_inithead(&cache->lru.list);
 
    size *= CACHE_DEFAULT_ALPHA;
    cache->size = size;
-   
+
    cache->entries = CALLOC(size, sizeof(struct util_cache_entry));
    if (!cache->entries) {
       FREE(cache);
       return NULL;
    }
-   
+
    ensure_sanity(cache);
    return cache;
 }
@@ -174,10 +174,10 @@ util_cache_entry_destroy(struct util_cache *cache,
 {
    void *key = entry->key;
    void *value = entry->value;
-   
+
    entry->key = NULL;
    entry->value = NULL;
-   
+
    if (entry->state == FILLED) {
       remove_from_list(entry);
       cache->count--;
@@ -213,11 +213,11 @@ util_cache_set(struct util_cache *cache,
       util_cache_entry_destroy(cache, cache->lru.prev);
 
    util_cache_entry_destroy(cache, entry);
-   
+
 #ifdef DEBUG
    ++entry->count;
 #endif
-   
+
    entry->key = key;
    entry->hash = hash;
    entry->value = value;
@@ -259,7 +259,7 @@ util_cache_get(struct util_cache *cache,
  * Remove all entries from the cache.  The 'destroy' function will be called
  * for each entry's (key, value).
  */
-void 
+void
 util_cache_clear(struct util_cache *cache)
 {
    uint32_t i;
@@ -297,15 +297,15 @@ util_cache_destroy(struct util_cache *cache)
       unsigned i;
       for (i = 0; i < cache->size; ++i) {
          double z = fabs(cache->entries[i].count - mean)/stddev;
-         /* This assert should not fail 99.9999998027% of the times, unless 
+         /* This assert should not fail 99.9999998027% of the times, unless
           * the hash function is a poor one */
          assert(z <= 6.0);
       }
    }
 #endif
-      
+
    util_cache_clear(cache);
-   
+
    FREE(cache->entries);
    FREE(cache);
 }
