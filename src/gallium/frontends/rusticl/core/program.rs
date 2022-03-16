@@ -40,6 +40,7 @@ struct ProgramDevBuild {
     status: cl_build_status,
     options: String,
     log: String,
+    bin_type: cl_program_binary_type,
 }
 
 fn prepare_options(options: &str, dev: &Device) -> Vec<CString> {
@@ -70,6 +71,7 @@ impl Program {
                         status: CL_BUILD_NONE,
                         log: String::from(""),
                         options: String::from(""),
+                        bin_type: CL_PROGRAM_BINARY_TYPE_NONE,
                     },
                 )
             })
@@ -108,6 +110,10 @@ impl Program {
             .clone()
     }
 
+    pub fn bin_type(&self, dev: &Arc<Device>) -> cl_program_binary_type {
+        Self::dev_build_info(&mut self.build_info(), dev).bin_type
+    }
+
     pub fn options(&self, dev: &Arc<Device>) -> String {
         Self::dev_build_info(&mut self.build_info(), dev)
             .options
@@ -129,6 +135,7 @@ impl Program {
     pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
+        let lib = options.contains("-create-library");
 
         let args = prepare_options(&options, dev);
         let (spirv, log) =
@@ -142,21 +149,22 @@ impl Program {
         }
 
         let spirvs = vec![spirv.as_ref().unwrap()];
-        let (spirv, log) = spirv::SPIRVBin::link(&spirvs, false);
+        let (spirv, log) = spirv::SPIRVBin::link(&spirvs, lib);
 
         d.log.push_str(&log);
         d.spirv = spirv;
-
-        d.status = match &d.spirv {
-            None => CL_BUILD_ERROR,
-            Some(_) => CL_BUILD_SUCCESS as cl_build_status,
-        };
-
         if d.spirv.is_some() {
+            d.bin_type = if lib {
+                CL_PROGRAM_BINARY_TYPE_LIBRARY
+            } else {
+                CL_PROGRAM_BINARY_TYPE_EXECUTABLE
+            };
+            d.status = CL_BUILD_SUCCESS as cl_build_status;
             let mut kernels = d.spirv.as_ref().unwrap().kernels();
             info.kernels.append(&mut kernels);
             true
         } else {
+            d.status = CL_BUILD_ERROR;
             false
         }
     }
@@ -179,6 +187,7 @@ impl Program {
 
         if d.spirv.is_some() {
             d.status = CL_BUILD_SUCCESS as cl_build_status;
+            d.bin_type = CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT;
             true
         } else {
             d.status = CL_BUILD_ERROR;
@@ -190,11 +199,13 @@ impl Program {
         context: Arc<Context>,
         devs: &[Arc<Device>],
         progs: &[Arc<Program>],
+        options: String,
     ) -> Arc<Program> {
         let devs: Vec<Arc<Device>> = devs.iter().map(|d| (*d).clone()).collect();
         let mut builds = HashMap::new();
         let mut kernels = HashSet::new();
         let mut locks: Vec<_> = progs.iter().map(|p| p.build_info()).collect();
+        let lib = options.contains("-create-library");
 
         for d in &devs {
             let bins: Vec<_> = locks
@@ -202,14 +213,23 @@ impl Program {
                 .map(|l| Self::dev_build_info(l, d).spirv.as_ref().unwrap())
                 .collect();
 
-            let (spirv, log) = spirv::SPIRVBin::link(&bins, false);
-            let status = if let Some(spirv) = &spirv {
+            let (spirv, log) = spirv::SPIRVBin::link(&bins, lib);
+
+            let status;
+            let bin_type;
+            if let Some(spirv) = &spirv {
                 for k in spirv.kernels() {
                     kernels.insert(k);
                 }
-                CL_BUILD_SUCCESS as cl_build_status
+                status = CL_BUILD_SUCCESS as cl_build_status;
+                bin_type = if lib {
+                    CL_PROGRAM_BINARY_TYPE_LIBRARY
+                } else {
+                    CL_PROGRAM_BINARY_TYPE_EXECUTABLE
+                };
             } else {
-                CL_BUILD_ERROR
+                status = CL_BUILD_ERROR;
+                bin_type = CL_PROGRAM_BINARY_TYPE_NONE;
             };
 
             builds.insert(
@@ -219,6 +239,7 @@ impl Program {
                     status: status,
                     log: log,
                     options: String::from(""),
+                    bin_type: bin_type,
                 },
             );
         }

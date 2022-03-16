@@ -56,6 +56,7 @@ impl CLInfoObj<cl_program_build_info, cl_device_id> for cl_program {
         let prog = self.get_ref()?;
         let dev = d.get_arc()?;
         Ok(match q {
+            CL_PROGRAM_BINARY_TYPE => cl_prop::<cl_program_binary_type>(prog.bin_type(&dev)),
             CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE => cl_prop::<usize>(0),
             CL_PROGRAM_BUILD_LOG => cl_prop::<String>(prog.log(&dev)),
             CL_PROGRAM_BUILD_OPTIONS => cl_prop::<String>(prog.options(&dev)),
@@ -228,7 +229,7 @@ pub fn link_program(
     context: cl_context,
     num_devices: cl_uint,
     device_list: *const cl_device_id,
-    _options: *const ::std::os::raw::c_char,
+    options: *const ::std::os::raw::c_char,
     num_input_programs: cl_uint,
     input_programs: *const cl_program,
     pfn_notify: Option<ProgramCB>,
@@ -265,7 +266,7 @@ pub fn link_program(
     }
 
     // CL_LINK_PROGRAM_FAILURE if there is a failure to link the compiled binaries and/or libraries.
-    let res = Program::link(c, &devs, &progs);
+    let res = Program::link(c, &devs, &progs, c_string_to_string(options));
     let code = if devs
         .iter()
         .map(|d| res.status(d))
