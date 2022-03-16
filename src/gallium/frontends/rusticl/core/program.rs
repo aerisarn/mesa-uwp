@@ -42,7 +42,11 @@ struct ProgramDevBuild {
     log: String,
 }
 
-fn prepare_options(options: &str) -> Vec<CString> {
+fn prepare_options(options: &str, dev: &Device) -> Vec<CString> {
+    let mut options = options.to_owned();
+    if !dev.image_supported() {
+        options.push_str(" -U__IMAGE_SUPPORT__");
+    }
     options
         .split_whitespace()
         .map(|a| match a {
@@ -126,7 +130,7 @@ impl Program {
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
 
-        let args = prepare_options(&options);
+        let args = prepare_options(&options, dev);
         let (spirv, log) =
             spirv::SPIRVBin::from_clc(&self.src, &args, &Vec::new(), dev.cl_features());
 
@@ -165,7 +169,7 @@ impl Program {
     ) -> bool {
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
-        let args = prepare_options(&options);
+        let args = prepare_options(&options, dev);
 
         let (spirv, log) = spirv::SPIRVBin::from_clc(&self.src, &args, headers, dev.cl_features());
 
