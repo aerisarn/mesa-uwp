@@ -2793,10 +2793,24 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             /* find free reg */
             if (instr->opcode == aco_opcode::p_split_vector) {
                PhysReg reg = instr->operands[0].physReg();
+               RegClass rc = definition->regClass();
                for (unsigned j = 0; j < i; j++)
                   reg.reg_b += instr->definitions[j].bytes();
-               if (get_reg_specified(ctx, register_file, definition->regClass(), instr, reg))
+               if (get_reg_specified(ctx, register_file, rc, instr, reg)) {
                   definition->setFixed(reg);
+               } else if (i == 0) {
+                  RegClass vec_rc = RegClass::get(rc.type(), instr->operands[0].bytes());
+                  DefInfo info(ctx, ctx.pseudo_dummy, vec_rc, -1);
+                  std::pair<PhysReg, bool> res = get_reg_simple(ctx, register_file, info);
+                  reg = res.first;
+                  if (res.second && get_reg_specified(ctx, register_file, rc, instr, reg))
+                     definition->setFixed(reg);
+               } else if (instr->definitions[i - 1].isFixed()) {
+                  reg = instr->definitions[i - 1].physReg();
+                  reg.reg_b += instr->definitions[i - 1].bytes();
+                  if (get_reg_specified(ctx, register_file, rc, instr, reg))
+                     definition->setFixed(reg);
+               }
             } else if (instr->opcode == aco_opcode::p_wqm ||
                        instr->opcode == aco_opcode::p_parallelcopy) {
                PhysReg reg = instr->operands[i].physReg();
