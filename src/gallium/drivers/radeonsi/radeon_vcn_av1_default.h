@@ -29,6 +29,7 @@
 #define _RADEON_VCN_AV1_DEFAULT_H
 
 #define TXB_SKIP_CONTEXTS 13
+#define EOB_COEF_CONTEXTS_VCN4 9
 #define EOB_COEF_CONTEXTS 22
 #define SIG_COEF_CONTEXTS_EOB 4
 #define SIG_COEF_CONTEXTS_2D 26
@@ -199,6 +200,8 @@ typedef enum {
 #define EXT_TX_SIZES 4
 #define EXT_TX_SETS_INTER 4
 #define EXT_TX_SETS_INTRA 3
+#define EXT_TX_SETS_INTER_VCN4 3
+#define EXT_TX_SETS_INTRA_VCN4 2
 #define DELTA_Q_SMALL 3
 #define DELTA_Q_PROBS (DELTA_Q_SMALL)
 #define DELTA_LF_SMALL 3
@@ -412,9 +415,9 @@ typedef enum {
 #define AOM_CDF16(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14) AOM_ICDF(a0), AOM_ICDF(a1), AOM_ICDF(a2), AOM_ICDF(a3), AOM_ICDF(a4), AOM_ICDF(a5), \
                  AOM_ICDF(a6), AOM_ICDF(a7), AOM_ICDF(a8), AOM_ICDF(a9), AOM_ICDF(a10), AOM_ICDF(a11), AOM_ICDF(a12), AOM_ICDF(a13), AOM_ICDF(a14), AOM_ICDF(CDF_PROB_TOP), 0
 
-typedef struct rvcn_av1_hw_frame_contexts {
+typedef struct rvcn_av1_vcn4_frame_contexts {
    uint16_t txb_skip_cdf[AV1_TX_SIZES][TXB_SKIP_CONTEXTS][CDF_SIZE(2)];
-   uint16_t eob_extra_cdf[AV1_TX_SIZES][AV1_PLANE_TYPES][EOB_COEF_CONTEXTS][CDF_SIZE(2)];
+   uint16_t eob_extra_cdf[AV1_TX_SIZES][AV1_PLANE_TYPES][EOB_COEF_CONTEXTS_VCN4][CDF_SIZE(2)];
    uint16_t dc_sign_cdf[AV1_PLANE_TYPES][DC_SIGN_CONTEXTS][CDF_SIZE(2)];
    uint16_t newmv_cdf[NEWMV_MODE_CONTEXTS][CDF_SIZE(2)];
    uint16_t zeromv_cdf[ZEROMV_MODE_CONTEXTS][CDF_SIZE(2)];
@@ -463,7 +466,7 @@ typedef struct rvcn_av1_hw_frame_contexts {
    uint16_t pred_cdf[SEG_TEMPORAL_PRED_CTXS][CDF_SIZE(2)];
    uint16_t compound_index_cdf[COMP_INDEX_CONTEXTS][CDF_SIZE(2)];
    uint16_t comp_group_idx_cdf[COMP_GROUP_IDX_CONTEXTS][CDF_SIZE(2)];
-   uint16_t reserve0[2];
+   uint16_t reserve0[8];
    uint16_t coeff_base_eob_cdf[AV1_TX_SIZES][AV1_PLANE_TYPES][SIG_COEF_CONTEXTS_EOB][CDF_SIZE(3)];
    uint16_t motion_mode_cdf[AV1_BLOCK_SIZES_ALL][CDF_SIZE(MOTION_MODES)];
    uint16_t switchable_restore_cdf[CDF_SIZE(RESTORE_SWITCHABLE_TYPES)];
@@ -517,11 +520,10 @@ typedef struct rvcn_av1_hw_frame_contexts {
    uint16_t uv_mode_cdf[CFL_ALLOWED_TYPES][AV1_INTRA_MODES][CDF_SIZE(UV_INTRA_MODES)];
    uint16_t reserve6[10];
    uint16_t wedge_idx_cdf[AV1_BLOCK_SIZES_ALL][CDF_SIZE(16)];
-   uint16_t intra_ext_tx_cdf[EXT_TX_SETS_INTRA][EXT_TX_SIZES][AV1_INTRA_MODES][CDF_SIZE(AV1_TX_TYPES)];
-   uint16_t inter_ext_tx_cdf[EXT_TX_SETS_INTER][EXT_TX_SIZES][CDF_SIZE(AV1_TX_TYPES)];
+   uint16_t intra_ext_tx_cdf[EXT_TX_SETS_INTRA_VCN4][EXT_TX_SIZES][AV1_INTRA_MODES][CDF_SIZE(AV1_TX_TYPES)];
+   uint16_t inter_ext_tx_cdf[EXT_TX_SETS_INTER_VCN4][EXT_TX_SIZES][CDF_SIZE(AV1_TX_TYPES)];
    uint16_t cfl_alpha_cdf[CFL_ALPHA_CONTEXTS][CDF_SIZE(CFL_ALPHABET_SIZE)];
-   uint16_t reserve7[8];
-} rvcn_av1_hw_frame_context_t;
+} rvcn_av1_vcn4_frame_context_t;
 
 static const av1_nmv_context default_nmv_context =
 {

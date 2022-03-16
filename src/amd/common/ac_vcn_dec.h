@@ -400,6 +400,9 @@
 #define RDECODE_FRAME_HDR_INFO_AV1_DISABLE_CDF_UPDATE_MASK            (0x00000002)
 #define RDECODE_FRAME_HDR_INFO_AV1_SHOW_FRAME_MASK                    (0x00000001)
 
+#define RDECODE_AV1_VER_0  0
+#define RDECODE_AV1_VER_1  1
+
 typedef struct rvcn_decode_buffer_s {
    unsigned int valid_buf_flag;
    unsigned int msg_buffer_address_hi;
@@ -1116,6 +1119,13 @@ typedef struct rvcn_dec_vp9_probs_segment_s {
       unsigned char segment_data[256];
    };
 } rvcn_dec_vp9_probs_segment_t;
+
+struct rvcn_av1_prob_funcs
+{
+   void (*init_mode_probs)(void * prob);
+   void (*init_mv_probs)(void *prob);
+   void (*default_coef_probs)(void *prob, int index);
+};
 
 typedef struct rvcn_dec_av1_fg_init_buf_s {
    short luma_grain_block[64][96];

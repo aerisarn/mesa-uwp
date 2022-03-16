@@ -76,6 +76,7 @@ struct radeon_decoder {
    void *render_pic_list[32];
    unsigned h264_valid_ref_num[17];
    unsigned h264_valid_poc_num[34];
+   unsigned av1_version;
    bool show_frame;
    unsigned ref_idx;
    bool tmz_ctx;
