@@ -15,6 +15,10 @@ dEQP-VK.renderpass2.suballocation.formats.r16g16b16a16_unorm.input.dont_care.don
 dEQP-VK.renderpass2.suballocation.formats.r8g8b8a8_sint.input.load.dont_care.clear_draw,Fail
 dEQP-VK.memory_model.message_passing.ext.u32.noncoherent.atomic_atomic.atomicwrite.device.payload_local.image.guard_local.image.vert,Fail
 dEQP-VK.memory_model.write_after_read.ext.u32.noncoherent.fence_fence.atomicwrite.device.payload_local.buffer.guard_local.image.vert,Fail
+dEQP-VK.synchronization2.op.single_queue.timeline_semaphore.write_image_geometry_read_copy_image.image_128x128_r8g8b8a8_unorm,Fail
+dEQP-VK.synchronization2.timeline_semaphore.device_host.write_image_vertex_read_image_compute.image_128x128_r32g32b32a32_sfloat,Fail
+dEQP-VK.synchronization2.timeline_semaphore.one_to_n.write_image_tess_control_read_image_tess_eval.image_128_r32_uint,Fail
+dEQP-VK.synchronization2.timeline_semaphore.wait_before_signal.write_image_tess_eval_read_copy_image.image_128x128_r8g8b8a8_unorm,Fail
 
 # Direct leak of 24 byte(s) in 1 object(s) allocated from:
 #     #0 0x7f29a36d1e8f in __interceptor_malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:145
