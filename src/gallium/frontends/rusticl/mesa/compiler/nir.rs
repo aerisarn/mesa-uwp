@@ -144,6 +144,10 @@ impl NirShader {
         }
     }
 
+    pub fn scratch_size(&self) -> u32 {
+        unsafe { (*self.nir.as_ptr()).scratch_size }
+    }
+
     pub fn shared_size(&self) -> u32 {
         unsafe { (*self.nir.as_ptr()).info.shared_size }
     }

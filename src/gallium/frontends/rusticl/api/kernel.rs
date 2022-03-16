@@ -64,10 +64,12 @@ impl CLInfoObj<cl_kernel_arg_info, cl_uint> for cl_kernel {
 
 impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
     fn query(&self, dev: cl_device_id, q: cl_kernel_work_group_info) -> CLResult<Vec<u8>> {
-        let _kernel = self.get_ref()?;
-        let _dev = dev.get_ref()?;
+        let kernel = self.get_ref()?;
+        let dev = dev.get_arc()?;
         Ok(match *q {
+            CL_KERNEL_LOCAL_MEM_SIZE => cl_prop::<cl_ulong>(kernel.local_mem_size(&dev)),
             CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE => cl_prop::<usize>(1),
+            CL_KERNEL_PRIVATE_MEM_SIZE => cl_prop::<cl_ulong>(kernel.priv_mem_size(&dev)),
             // TODO
             CL_KERNEL_WORK_GROUP_SIZE => cl_prop::<usize>(1),
             // CL_INVALID_VALUE if param_name is not one of the supported values

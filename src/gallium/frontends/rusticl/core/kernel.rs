@@ -486,4 +486,13 @@ impl Kernel {
     pub fn arg_type_name(&self, idx: cl_uint) -> &String {
         &self.args[idx as usize].spirv.type_name
     }
+
+    pub fn priv_mem_size(&self, dev: &Arc<Device>) -> cl_ulong {
+        self.nirs.get(dev).unwrap().scratch_size() as cl_ulong
+    }
+
+    pub fn local_mem_size(&self, dev: &Arc<Device>) -> cl_ulong {
+        // TODO include args
+        self.nirs.get(dev).unwrap().shared_size() as cl_ulong
+    }
 }
