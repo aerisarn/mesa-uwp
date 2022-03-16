@@ -7943,22 +7943,17 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    case nir_intrinsic_load_barycentric_centroid: {
       glsl_interp_mode mode = (glsl_interp_mode)nir_intrinsic_interp_mode(instr);
       Temp bary = get_interp_param(ctx, instr->intrinsic, mode);
+      assert(bary.size() == 2);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Temp p1 = emit_extract_vector(ctx, bary, 0, v1);
-      Temp p2 = emit_extract_vector(ctx, bary, 1, v1);
-      bld.pseudo(aco_opcode::p_create_vector, Definition(dst), Operand(p1), Operand(p2));
+      bld.copy(Definition(dst), bary);
       emit_split_vector(ctx, dst, 2);
       break;
    }
    case nir_intrinsic_load_barycentric_model: {
       Temp model = get_arg(ctx, ctx->args->ac.pull_model);
-
+      assert(model.size() == 3);
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      Temp p1 = emit_extract_vector(ctx, model, 0, v1);
-      Temp p2 = emit_extract_vector(ctx, model, 1, v1);
-      Temp p3 = emit_extract_vector(ctx, model, 2, v1);
-      bld.pseudo(aco_opcode::p_create_vector, Definition(dst), Operand(p1), Operand(p2),
-                 Operand(p3));
+      bld.copy(Definition(dst), model);
       emit_split_vector(ctx, dst, 3);
       break;
    }
