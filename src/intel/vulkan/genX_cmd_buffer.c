@@ -53,6 +53,8 @@
 #define __gen_get_batch_address(b, a) anv_batch_address(b, a)
 #include "common/mi_builder.h"
 
+#include "genX_cmd_draw_helpers.h"
+
 static void genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                                         uint32_t pipeline);
 
@@ -3826,127 +3828,6 @@ genX(cmd_buffer_flush_gfx_state)(struct anv_cmd_buffer *cmd_buffer)
       genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 }
 
-#if GFX_VER < 11
-static void
-emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
-               struct anv_address addr,
-               uint32_t size, uint32_t index)
-{
-   uint32_t *p = anv_batch_emitn(&cmd_buffer->batch, 5,
-                                 GENX(3DSTATE_VERTEX_BUFFERS));
-
-   GENX(VERTEX_BUFFER_STATE_pack)(&cmd_buffer->batch, p + 1,
-      &(struct GENX(VERTEX_BUFFER_STATE)) {
-         .VertexBufferIndex = index,
-         .AddressModifyEnable = true,
-         .BufferPitch = 0,
-         .MOCS = anv_mocs(cmd_buffer->device, addr.bo,
-                          ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
-         .NullVertexBuffer = size == 0,
-#if GFX_VER >= 12
-         .L3BypassDisable = true,
-#endif
-         .BufferStartingAddress = addr,
-         .BufferSize = size
-      });
-
-#if GFX_VER == 9
-   genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer,
-                                                  index, addr, size);
-#endif
-}
-
-static void
-emit_base_vertex_instance_bo(struct anv_cmd_buffer *cmd_buffer,
-                             struct anv_address addr)
-{
-   emit_vertex_bo(cmd_buffer, addr, addr.bo ? 8 : 0, ANV_SVGS_VB_INDEX);
-}
-
-static void
-emit_base_vertex_instance(struct anv_cmd_buffer *cmd_buffer,
-                          uint32_t base_vertex, uint32_t base_instance)
-{
-   if (base_vertex == 0 && base_instance == 0) {
-      emit_base_vertex_instance_bo(cmd_buffer, ANV_NULL_ADDRESS);
-   } else {
-      struct anv_state id_state =
-         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 8, 4);
-
-      ((uint32_t *)id_state.map)[0] = base_vertex;
-      ((uint32_t *)id_state.map)[1] = base_instance;
-
-      struct anv_address addr =
-         anv_state_pool_state_address(&cmd_buffer->device->dynamic_state_pool,
-                                      id_state);
-
-      emit_base_vertex_instance_bo(cmd_buffer, addr);
-   }
-}
-
-static void
-emit_draw_index(struct anv_cmd_buffer *cmd_buffer, uint32_t draw_index)
-{
-   struct anv_state state =
-      anv_cmd_buffer_alloc_dynamic_state(cmd_buffer, 4, 4);
-
-   ((uint32_t *)state.map)[0] = draw_index;
-
-   struct anv_address addr =
-      anv_state_pool_state_address(&cmd_buffer->device->dynamic_state_pool,
-                                   state);
-
-   emit_vertex_bo(cmd_buffer, addr, 4, ANV_DRAWID_VB_INDEX);
-}
-#endif /* GFX_VER <= 11 */
-
-static void
-update_dirty_vbs_for_gfx8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
-                                   uint32_t access_type)
-{
-#if GFX_VER == 9
-   struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
-   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
-
-   uint64_t vb_used = pipeline->vb_used;
-   if (vs_prog_data->uses_firstvertex ||
-       vs_prog_data->uses_baseinstance)
-      vb_used |= 1ull << ANV_SVGS_VB_INDEX;
-   if (vs_prog_data->uses_drawid)
-      vb_used |= 1ull << ANV_DRAWID_VB_INDEX;
-
-   genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(cmd_buffer,
-                                                       access_type == RANDOM,
-                                                       vb_used);
-#endif
-}
-
-#if GFX_VER < 11
-ALWAYS_INLINE static void
-cmd_buffer_emit_vertex_constants_and_flush(struct anv_cmd_buffer *cmd_buffer,
-                                           const struct brw_vs_prog_data *vs_prog_data,
-                                           uint32_t base_vertex,
-                                           uint32_t base_instance,
-                                           uint32_t draw_id,
-                                           bool force_flush)
-{
-   bool emitted = false;
-   if (vs_prog_data->uses_firstvertex ||
-       vs_prog_data->uses_baseinstance) {
-      emit_base_vertex_instance(cmd_buffer, base_vertex, base_instance);
-      emitted = true;
-   }
-   if (vs_prog_data->uses_drawid) {
-      emit_draw_index(cmd_buffer, draw_id);
-      emitted = true;
-   }
-   /* Emitting draw index or vertex index BOs may result in needing
-    * additional VF cache flushes.
-    */
-   if (emitted || force_flush)
-      genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
-}
-#endif
 
 #if GFX_VER >= 11
 #define _3DPRIMITIVE_DIRECT GENX(3DPRIMITIVE_EXTENDED)
