@@ -55,6 +55,37 @@ impl PipeContext {
         }
     }
 
+    pub fn resource_copy_region(
+        &self,
+        src: &PipeResource,
+        src_offset: i32,
+        dst: &PipeResource,
+        dst_offset: u32,
+        size: i32,
+    ) {
+        let b = pipe_box {
+            width: size,
+            height: 1,
+            depth: 1,
+            x: src_offset,
+            ..Default::default()
+        };
+
+        unsafe {
+            self.pipe.as_ref().resource_copy_region.unwrap()(
+                self.pipe.as_ptr(),
+                dst.pipe(),
+                0,
+                dst_offset,
+                0,
+                0,
+                src.pipe(),
+                0,
+                &b,
+            )
+        }
+    }
+
     pub fn buffer_map(
         &self,
         res: &PipeResource,
@@ -210,5 +241,6 @@ fn has_required_cbs(c: &pipe_context) -> bool {
         && c.flush.is_some()
         && c.launch_grid.is_some()
         && c.memory_barrier.is_some()
+        && c.resource_copy_region.is_some()
         && c.set_global_binding.is_some()
 }

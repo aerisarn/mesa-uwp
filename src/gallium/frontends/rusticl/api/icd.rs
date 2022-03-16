@@ -923,18 +923,27 @@ extern "C" fn cl_enqueue_write_buffer(
 }
 
 extern "C" fn cl_enqueue_copy_buffer(
-    _command_queue: cl_command_queue,
-    _src_buffer: cl_mem,
-    _dst_buffer: cl_mem,
-    _src_offset: usize,
-    _dst_offset: usize,
-    _cb: usize,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    src_buffer: cl_mem,
+    dst_buffer: cl_mem,
+    src_offset: usize,
+    dst_offset: usize,
+    cb: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_copy_buffer not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_copy_buffer(
+        command_queue,
+        src_buffer,
+        dst_buffer,
+        src_offset,
+        dst_offset,
+        cb,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+    ))
 }
 
 extern "C" fn cl_enqueue_read_image(
