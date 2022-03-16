@@ -116,11 +116,6 @@ struct si_dsa_order_invariance {
     * guaranteed to be invariant under changes to the order in which
     * fragments arrive. */
    bool pass_set : 1;
-
-   /** Whether the last fragment that passes the combined Z/S test at each
-    * sample is guaranteed to be invariant under changes to the order in
-    * which fragments arrive. */
-   bool pass_last : 1;
 };
 
 struct si_state_dsa {

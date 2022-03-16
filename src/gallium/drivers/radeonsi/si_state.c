@@ -1284,7 +1284,6 @@ static bool si_order_invariant_stencil_state(const struct pipe_stencil_state *st
 static void *si_create_dsa_state(struct pipe_context *ctx,
                                  const struct pipe_depth_stencil_alpha_state *state)
 {
-   struct si_context *sctx = (struct si_context *)ctx;
    struct si_state_dsa *dsa = CALLOC_STRUCT(si_state_dsa);
    struct si_pm4_state *pm4 = &dsa->pm4;
    unsigned db_depth_control;
@@ -1372,12 +1371,6 @@ static void *si_create_dsa_state(struct pipe_context *ctx,
    dsa->order_invariance[0].pass_set =
       !dsa->depth_write_enabled ||
       (state->depth_func == PIPE_FUNC_ALWAYS || state->depth_func == PIPE_FUNC_NEVER);
-
-   dsa->order_invariance[1].pass_last = sctx->screen->assume_no_z_fights &&
-                                        !dsa->stencil_write_enabled && dsa->depth_write_enabled &&
-                                        zfunc_is_ordered;
-   dsa->order_invariance[0].pass_last =
-      sctx->screen->assume_no_z_fights && dsa->depth_write_enabled && zfunc_is_ordered;
 
    return dsa;
 }
@@ -3528,8 +3521,7 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
       return false;
 
    struct si_dsa_order_invariance dsa_order_invariant = {.zs = true,
-                                                         .pass_set = true,
-                                                         .pass_last = false};
+                                                         .pass_set = true};
 
    if (sctx->framebuffer.state.zsbuf) {
       struct si_texture *zstex = (struct si_texture *)sctx->framebuffer.state.zsbuf->texture;
@@ -3563,10 +3555,8 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
          return false;
    }
 
-   if (colormask & ~blendmask) {
-      if (!dsa_order_invariant.pass_last)
-         return false;
-   }
+   if (colormask & ~blendmask)
+      return false;
 
    return true;
 }
