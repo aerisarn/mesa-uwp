@@ -323,13 +323,13 @@ llvm_fetch_gs_outputs(struct draw_geometry_shader *shader,
       int current_verts = shader->llvm_emitted_vertices[i + (stream * shader->vector_length)];
       int next_verts = shader->llvm_emitted_vertices[i + 1 + (stream * shader->vector_length)];
 #if 0
-      int j; 
+      int j;
       for (j = 0; j < current_verts; ++j) {
          struct vertex_header *vh = (struct vertex_header *)
             (output_ptr + shader->vertex_size * (i * next_prim_boundary + j));
          debug_printf("--- %d) [%f, %f, %f, %f]\n", j + vertex_count,
                       vh->data[0][0], vh->data[0][1], vh->data[0][2], vh->data[0][3]);
-         
+
       }
 #endif
       debug_assert(current_verts <= shader->max_output_vertices);
@@ -354,7 +354,7 @@ llvm_fetch_gs_outputs(struct draw_geometry_shader *shader,
                          vh->data[j][0], vh->data[j][1], vh->data[j][2], vh->data[j][3],
                          udata[0], udata[1], udata[2], udata[3]);
          }
-         
+
       }
    }
 #endif
@@ -471,8 +471,8 @@ static void gs_line(struct draw_geometry_shader *shader,
                         shader->fetched_prim_count);
    ++shader->in_prim_idx;
    ++shader->fetched_prim_count;
-   
-   if (draw_gs_should_flush(shader))   
+
+   if (draw_gs_should_flush(shader))
       gs_flush(shader);
 }
 
@@ -832,12 +832,12 @@ draw_create_geometry_shader(struct draw_context *draw,
       gs->max_output_vertices = 32;
 
    /* Primitive boundary is bigger than max_output_vertices by one, because
-    * the specification says that the geometry shader should exit if the 
+    * the specification says that the geometry shader should exit if the
     * number of emitted vertices is bigger or equal to max_output_vertices and
     * we can't do that because we're running in the SoA mode, which means that
     * our storing routines will keep getting called on channels that have
     * overflown.
-    * So we need some scratch area where we can keep writing the overflown 
+    * So we need some scratch area where we can keep writing the overflown
     * vertices without overwriting anything important or crashing.
     */
    gs->primitive_boundary = gs->max_output_vertices + 1;

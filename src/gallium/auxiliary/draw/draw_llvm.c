@@ -736,7 +736,7 @@ create_jit_types(struct draw_llvm_variant *variant)
 
    buffer_type = create_jit_dvbuffer_type(gallivm, "draw_vertex_buffer");
    variant->buffer_ptr_type = LLVMPointerType(buffer_type, 0);
-   
+
    vb_type = create_jit_vertex_buffer_type(gallivm, "pipe_vertex_buffer");
    variant->vb_ptr_type = LLVMPointerType(vb_type, 0);
 }
@@ -1341,7 +1341,7 @@ convert_to_aos(struct gallivm_state *gallivm,
             {
                LLVMValueRef iv =
                   LLVMBuildBitCast(builder, out, lp_build_int_vec_type(gallivm, soa_type), "");
-               
+
                lp_build_print_value(gallivm, "  ival = ", iv);
             }
 #endif
@@ -1904,7 +1904,7 @@ draw_gs_llvm_epilogue(const struct lp_build_gs_iface *gs_base,
    LLVMValueRef emitted_prims_ptr =
       draw_gs_jit_emitted_prims(gallivm, variant->context_ptr);
    LLVMValueRef stream_val = lp_build_const_int32(gallivm, stream);
-   
+
    emitted_verts_ptr = LLVMBuildGEP(builder, emitted_verts_ptr, &stream_val, 1, "");
    emitted_prims_ptr = LLVMBuildGEP(builder, emitted_prims_ptr, &stream_val, 1, "");
 
@@ -2604,7 +2604,7 @@ draw_llvm_set_mapped_image(struct draw_context *draw,
 
 
 void
-draw_llvm_set_sampler_state(struct draw_context *draw, 
+draw_llvm_set_sampler_state(struct draw_context *draw,
                             enum pipe_shader_type shader_type)
 {
    unsigned i;
