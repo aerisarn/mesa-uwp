@@ -38,6 +38,12 @@ if [ "$HWCI_FREQ_MAX" = "true" ]; then
   test -z "$GPU_AUTOSUSPEND" || echo -1 > $GPU_AUTOSUSPEND || true
 fi
 
+# Increase freedreno hangcheck timer because it's right at the edge of the
+# spilling tests timing out (and some traces, too)
+if [ -n "$FREEDRENO_HANGCHECK_MS" ]; then
+    echo $FREEDRENO_HANGCHECK_MS | tee -a /sys/kernel/debug/dri/128/hangcheck_period_ms
+fi
+
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
 ./capture-devcoredump.sh &
