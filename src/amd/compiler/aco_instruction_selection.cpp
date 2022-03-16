@@ -11855,8 +11855,13 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
 
    bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers, s1),
             get_arg_fixed(args, args->ac.vertex_buffers));
-   bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers.advance(4), s1),
-            Operand::c32((unsigned)options->address32_hi));
+   if (options->address32_hi >= 0xffff8000 || options->address32_hi <= 0x7fff) {
+      bld.sopk(aco_opcode::s_movk_i32, Definition(vertex_buffers.advance(4), s1),
+               options->address32_hi & 0xFFFF);
+   } else {
+      bld.sop1(aco_opcode::s_mov_b32, Definition(vertex_buffers.advance(4), s1),
+               Operand::c32((unsigned)options->address32_hi));
+   }
 
    /* calculate vgpr requirements */
    unsigned num_vgprs = attributes_start.reg() - 256;
