@@ -98,8 +98,9 @@ radv_get_current_time(void)
 }
 
 static int
-radv_device_get_cache_uuid(enum radeon_family family, void *uuid)
+radv_device_get_cache_uuid(struct radv_physical_device *pdevice, void *uuid)
 {
+   enum radeon_family family = pdevice->rad_info.family;
    struct mesa_sha1 ctx;
    unsigned char sha1[20];
    unsigned ptr_size = sizeof(void *);
@@ -109,7 +110,8 @@ radv_device_get_cache_uuid(enum radeon_family family, void *uuid)
 
    if (!disk_cache_get_function_identifier(radv_device_get_cache_uuid, &ctx)
 #ifdef LLVM_AVAILABLE
-       || !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx)
+       || (pdevice->use_llvm &&
+           !disk_cache_get_function_identifier(LLVMInitializeAMDGPUTargetInfo, &ctx))
 #endif
    )
       return -1;
@@ -716,7 +718,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
             radv_get_compiler_string(device));
 
 #ifdef ENABLE_SHADER_CACHE
-   if (radv_device_get_cache_uuid(device->rad_info.family, device->cache_uuid)) {
+   if (radv_device_get_cache_uuid(device, device->cache_uuid)) {
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED, "cannot generate UUID");
       goto fail_wsi;
    }
