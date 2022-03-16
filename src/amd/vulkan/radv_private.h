@@ -454,12 +454,10 @@ struct radv_meta_state {
     * Use array element `i` for images with `2^i` samples.
     */
    struct {
-      VkRenderPass render_pass[NUM_META_FS_KEYS];
       VkPipeline color_pipelines[NUM_META_FS_KEYS];
    } color_clear[MAX_SAMPLES_LOG2][MAX_RTS];
 
    struct {
-      VkRenderPass depthstencil_rp;
       VkPipeline depth_only_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
       VkPipeline stencil_only_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
       VkPipeline depthstencil_pipeline[NUM_DEPTH_CLEAR_PIPELINES];
