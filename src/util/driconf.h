@@ -476,10 +476,6 @@
    DRI_CONF_OPT_B(radeonsi_assume_no_z_fights, def, \
                   "Assume no Z fights (enables aggressive out-of-order rasterization to improve performance; may cause rendering errors)")
 
-#define DRI_CONF_RADEONSI_COMMUTATIVE_BLEND_ADD(def) \
-   DRI_CONF_OPT_B(radeonsi_commutative_blend_add, def, \
-                  "Commutative additive blending optimizations (may cause rendering errors)")
-
 #define DRI_CONF_RADEONSI_ZERO_ALL_VRAM_ALLOCS(def) \
    DRI_CONF_OPT_B(radeonsi_zerovram, def, \
                   "Zero all vram allocations")

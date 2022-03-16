@@ -567,7 +567,6 @@ struct si_screen {
    bool has_draw_indirect_multi;
    bool has_out_of_order_rast;
    bool assume_no_z_fights;
-   bool commutative_blend_add;
    bool allow_draw_out_of_order;
    bool dpbb_allowed;
    bool use_ngg;

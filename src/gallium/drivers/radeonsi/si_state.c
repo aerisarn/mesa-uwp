@@ -395,20 +395,9 @@ static void si_blend_check_commutativity(struct si_screen *sscreen, struct si_st
       (1u << PIPE_BLENDFACTOR_INV_CONST_ALPHA) | (1u << PIPE_BLENDFACTOR_INV_SRC1_COLOR) |
       (1u << PIPE_BLENDFACTOR_INV_SRC1_ALPHA);
 
-   if (dst == PIPE_BLENDFACTOR_ONE && (src_allowed & (1u << src))) {
-      /* Addition is commutative, but floating point addition isn't
-       * associative: subtle changes can be introduced via different
-       * rounding.
-       *
-       * Out-of-order is also non-deterministic, which means that
-       * this breaks OpenGL invariance requirements. So only enable
-       * out-of-order additive blending if explicitly allowed by a
-       * setting.
-       */
-      if (func == PIPE_BLEND_MAX || func == PIPE_BLEND_MIN ||
-          (func == PIPE_BLEND_ADD && sscreen->commutative_blend_add))
-         blend->commutative_4bit |= chanmask;
-   }
+   if (dst == PIPE_BLENDFACTOR_ONE && (src_allowed & (1u << src)) &&
+       (func == PIPE_BLEND_MAX || func == PIPE_BLEND_MIN))
+      blend->commutative_4bit |= chanmask;
 }
 
 /**

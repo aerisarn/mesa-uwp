@@ -1269,9 +1269,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       sscreen->info.has_out_of_order_rast && !(sscreen->debug_flags & DBG(NO_OUT_OF_ORDER));
    sscreen->assume_no_z_fights = driQueryOptionb(config->options, "radeonsi_assume_no_z_fights") ||
                                  driQueryOptionb(config->options, "allow_draw_out_of_order");
-   sscreen->commutative_blend_add =
-      driQueryOptionb(config->options, "radeonsi_commutative_blend_add") ||
-      driQueryOptionb(config->options, "allow_draw_out_of_order");
    sscreen->allow_draw_out_of_order = driQueryOptionb(config->options, "allow_draw_out_of_order");
 
    sscreen->use_ngg = !(sscreen->debug_flags & DBG(NO_NGG)) &&
