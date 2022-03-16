@@ -38,6 +38,7 @@
 #include "util/u_thread.h"
 #include "util/u_atomic.h"
 #include "util/timespec.h"
+#include "util/ptralloc.h"
 #include "os_time.h"
 
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || \
@@ -1732,11 +1733,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateDeviceLayerProperties(
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
-   VkQueue                                     _queue,
-   uint32_t                                    submitCount,
-   const VkSubmitInfo*                         pSubmits,
-   VkFence                                     _fence)
+VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit2KHR(
+    VkQueue                                     _queue,
+    uint32_t                                    submitCount,
+    const VkSubmitInfo2*                        pSubmits,
+    VkFence                                     _fence)
 {
    LVP_FROM_HANDLE(lvp_queue, queue, _queue);
    LVP_FROM_HANDLE(lvp_fence, fence, _fence);
@@ -1745,29 +1746,29 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
    for (uint32_t i = 0; i < submitCount; i++) {
       uint64_t timeline = ++queue->timeline;
       struct lvp_queue_work *task = malloc(sizeof(struct lvp_queue_work) +
-                                           pSubmits[i].commandBufferCount * sizeof(struct lvp_cmd_buffer *) +
-                                           pSubmits[i].signalSemaphoreCount * (sizeof(struct lvp_semaphore_timeline*) + sizeof(struct lvp_semaphore *)) +
-                                           pSubmits[i].waitSemaphoreCount * (sizeof(VkSemaphore) + sizeof(uint64_t)));
-      task->cmd_buffer_count = pSubmits[i].commandBufferCount;
-      task->timeline_count = pSubmits[i].signalSemaphoreCount;
-      task->signal_count = pSubmits[i].signalSemaphoreCount;
-      task->wait_count = pSubmits[i].waitSemaphoreCount;
+                                           pSubmits[i].commandBufferInfoCount * sizeof(struct lvp_cmd_buffer *) +
+                                           pSubmits[i].signalSemaphoreInfoCount * (sizeof(struct lvp_semaphore_timeline*) + sizeof(struct lvp_semaphore *)) +
+                                           pSubmits[i].waitSemaphoreInfoCount * (sizeof(VkSemaphore) + sizeof(uint64_t)));
+      task->cmd_buffer_count = pSubmits[i].commandBufferInfoCount;
+      task->timeline_count = pSubmits[i].signalSemaphoreInfoCount;
+      task->signal_count = pSubmits[i].signalSemaphoreInfoCount;
+      task->wait_count = pSubmits[i].waitSemaphoreInfoCount;
       task->fence = fence;
       task->timeline = timeline;
       task->cmd_buffers = (struct lvp_cmd_buffer **)(task + 1);
-      task->timelines = (struct lvp_semaphore_timeline**)((uint8_t*)task->cmd_buffers + pSubmits[i].commandBufferCount * sizeof(struct lvp_cmd_buffer *));
-      task->signals = (struct lvp_semaphore **)((uint8_t*)task->timelines + pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore_timeline *));
-      task->waits = (VkSemaphore*)((uint8_t*)task->signals + pSubmits[i].signalSemaphoreCount * sizeof(struct lvp_semaphore *));
-      task->wait_vals = (uint64_t*)((uint8_t*)task->waits + pSubmits[i].waitSemaphoreCount * sizeof(VkSemaphore));
+      task->timelines = (struct lvp_semaphore_timeline**)((uint8_t*)task->cmd_buffers + pSubmits[i].commandBufferInfoCount * sizeof(struct lvp_cmd_buffer *));
+      task->signals = (struct lvp_semaphore **)((uint8_t*)task->timelines + pSubmits[i].signalSemaphoreInfoCount * sizeof(struct lvp_semaphore_timeline *));
+      task->waits = (VkSemaphore*)((uint8_t*)task->signals + pSubmits[i].signalSemaphoreInfoCount * sizeof(struct lvp_semaphore *));
+      task->wait_vals = (uint64_t*)((uint8_t*)task->waits + pSubmits[i].waitSemaphoreInfoCount * sizeof(VkSemaphore));
 
       unsigned c = 0;
-      for (uint32_t j = 0; j < pSubmits[i].commandBufferCount; j++) {
-         task->cmd_buffers[c++] = lvp_cmd_buffer_from_handle(pSubmits[i].pCommandBuffers[j]);
+      for (uint32_t j = 0; j < pSubmits[i].commandBufferInfoCount; j++) {
+         task->cmd_buffers[c++] = lvp_cmd_buffer_from_handle(pSubmits[i].pCommandBufferInfos[j].commandBuffer);
       }
-      const VkTimelineSemaphoreSubmitInfo *info = vk_find_struct_const(pSubmits[i].pNext, TIMELINE_SEMAPHORE_SUBMIT_INFO);
       unsigned s = 0;
-      for (unsigned j = 0; j < pSubmits[i].signalSemaphoreCount; j++) {
-         LVP_FROM_HANDLE(lvp_semaphore, sema, pSubmits[i].pSignalSemaphores[j]);
+      for (unsigned j = 0; j < pSubmits[i].signalSemaphoreInfoCount; j++) {
+         const VkSemaphoreSubmitInfo *info = &pSubmits[i].pSignalSemaphoreInfos[j];
+         LVP_FROM_HANDLE(lvp_semaphore, sema, info->semaphore);
          task->signals[j] = sema;
          if (!sema->is_timeline) {
             task->timeline_count--;
@@ -1776,10 +1777,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
          simple_mtx_lock(&sema->lock);
          /* always prune first to make links available and update timeline id */
          prune_semaphore_links(queue->device, sema, queue->last_finished);
-         if (sema->current < info->pSignalSemaphoreValues[j]) {
+         if (sema->current < info->value) {
             /* only signal semaphores if the new id is >= the current one */
             struct lvp_semaphore_timeline *tl = get_semaphore_link(sema);
-            tl->signal = info->pSignalSemaphoreValues[j];
+            tl->signal = info->value;
             tl->timeline = timeline;
             task->timelines[s] = tl;
             s++;
@@ -1788,10 +1789,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
          simple_mtx_unlock(&sema->lock);
       }
       unsigned w = 0;
-      for (unsigned j = 0; j < pSubmits[i].waitSemaphoreCount; j++) {
-         LVP_FROM_HANDLE(lvp_semaphore, sema, pSubmits[i].pWaitSemaphores[j]);
+      for (unsigned j = 0; j < pSubmits[i].waitSemaphoreInfoCount; j++) {
+         const VkSemaphoreSubmitInfo *info = &pSubmits[i].pWaitSemaphoreInfos[j];
+         LVP_FROM_HANDLE(lvp_semaphore, sema, info->semaphore);
          if (!sema->is_timeline) {
-            task->waits[w] = pSubmits[i].pWaitSemaphores[j];
+            task->waits[w] = info->semaphore;
             task->wait_vals[w] = 0;
             w++;
             continue;
@@ -1799,16 +1801,16 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
          simple_mtx_lock(&sema->lock);
          /* always prune first to update timeline id */
          prune_semaphore_links(queue->device, sema, queue->last_finished);
-         if (info->pWaitSemaphoreValues[j] &&
-             pSubmits[i].pWaitDstStageMask && pSubmits[i].pWaitDstStageMask[j] &&
-             sema->current < info->pWaitSemaphoreValues[j]) {
+         if (info->value &&
+             info->stageMask &&
+             sema->current < info->value) {
             /* only wait on semaphores if the new id is > the current one and a wait mask is set
              * 
              * technically the mask could be used to check whether there's gfx/compute ops on a cmdbuf and no-op,
              * but probably that's not worth the complexity
              */
-            task->waits[w] = pSubmits[i].pWaitSemaphores[j];
-            task->wait_vals[w] = info->pWaitSemaphoreValues[j];
+            task->waits[w] = info->semaphore;
+            task->wait_vals[w] = info->value;
             w++;
          } else
             task->wait_count--;
