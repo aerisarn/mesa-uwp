@@ -79,3 +79,11 @@ pub fn finish_queue(command_queue: cl_command_queue) -> CLResult<()> {
     // CL_INVALID_COMMAND_QUEUE if command_queue is not a valid host command-queue.
     command_queue.get_ref()?.flush(true)
 }
+
+pub fn release_command_queue(command_queue: cl_command_queue) -> CLResult<()> {
+    // clReleaseCommandQueue performs an implicit flush to issue any previously queued OpenCL
+    // commands in command_queue.
+    flush_queue(command_queue)?;
+    command_queue.release()?;
+    Ok(())
+}

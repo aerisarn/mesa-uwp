@@ -534,7 +534,7 @@ extern "C" fn cl_retain_command_queue(command_queue: cl_command_queue) -> cl_int
 }
 
 extern "C" fn cl_release_command_queue(command_queue: cl_command_queue) -> cl_int {
-    match_err!(command_queue.release())
+    match_err!(release_command_queue(command_queue))
 }
 
 extern "C" fn cl_get_command_queue_info(
