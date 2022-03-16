@@ -2040,20 +2040,6 @@ anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
    bool aux_supported = true;
    bool clear_supported = isl_aux_usage_has_fast_clears(aux_usage);
 
-   const struct isl_format_layout *fmtl =
-      isl_format_get_layout(image->planes[plane].primary_surface.isl.format);
-
-   /* Disabling CCS for the following case avoids failures in:
-    *    - dEQP-VK.drm_format_modifiers.export_import.*
-    *    - dEQP-VK.synchronization*
-    */
-   if (usage & (VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                VK_IMAGE_USAGE_TRANSFER_SRC_BIT) && fmtl->bpb <= 16 &&
-       aux_usage == ISL_AUX_USAGE_CCS_E && devinfo->ver >= 12) {
-      aux_supported = false;
-      clear_supported = false;
-   }
-
    if ((usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) && !read_only) {
       /* This image could be used as both an input attachment and a render
        * target (depth, stencil, or color) at the same time and this can cause
