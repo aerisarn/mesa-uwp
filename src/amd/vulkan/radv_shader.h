@@ -46,6 +46,7 @@ struct radv_device;
 struct radv_pipeline;
 struct radv_pipeline_cache;
 struct radv_pipeline_key;
+struct radv_shader_args;
 struct radv_vs_input_state;
 struct radv_shader_args;
 
@@ -518,6 +519,11 @@ struct radv_pipeline_stage;
 nir_shader *radv_shader_compile_to_nir(struct radv_device *device,
                                        const struct radv_pipeline_stage *stage,
                                        const struct radv_pipeline_key *key);
+
+void radv_nir_lower_abi(nir_shader *shader, enum chip_class chip_class,
+                        const struct radv_shader_info *info,
+                        const struct radv_shader_args *args,
+                        const struct radv_pipeline_key *pl_key);
 
 void radv_init_shader_arenas(struct radv_device *device);
 void radv_destroy_shader_arenas(struct radv_device *device);
