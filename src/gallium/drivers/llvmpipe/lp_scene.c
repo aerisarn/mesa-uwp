@@ -375,7 +375,7 @@ lp_scene_new_data_block( struct lp_scene *scene )
       struct data_block *block = MALLOC_STRUCT(data_block);
       if (!block)
          return NULL;
-      
+
       scene->scene_size += sizeof *block;
 
       block->used = 0;

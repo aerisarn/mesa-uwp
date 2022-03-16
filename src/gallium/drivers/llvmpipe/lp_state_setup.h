@@ -57,7 +57,7 @@ typedef void (*lp_jit_setup_triangle)( const float (*v0)[4],
  */
 struct lp_setup_variant {
    struct lp_setup_variant_key key;
-   
+
    struct lp_setup_variant_list_item list_item_global;
 
    struct gallivm_state *gallivm;

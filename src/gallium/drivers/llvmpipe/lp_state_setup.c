@@ -111,7 +111,7 @@ store_coef(struct gallivm_state *gallivm,
 
 
 
-static void 
+static void
 emit_constant_coef4(struct gallivm_state *gallivm,
                     struct lp_setup_args *args,
                     unsigned slot,
@@ -126,7 +126,7 @@ emit_constant_coef4(struct gallivm_state *gallivm,
  * Setup the fragment input attribute with the front-facing value.
  * \param frontface  is the triangle front facing?
  */
-static void 
+static void
 emit_facing_coef(struct gallivm_state *gallivm,
                  struct lp_setup_args *args,
                  unsigned slot )
@@ -257,7 +257,7 @@ lp_do_offset_tri(struct gallivm_state *gallivm,
 
    /* mult = MAX2(dzdx, dzdy) * pgon_offset_scale */
    max = LLVMBuildFCmp(b, LLVMRealUGT, dzdx, dzdy, "");
-   max_value = LLVMBuildSelect(b, max, dzdx, dzdy, "max"); 
+   max_value = LLVMBuildSelect(b, max, dzdx, dzdy, "max");
 
    mult = LLVMBuildFMul(b, max_value,
                         lp_build_const_float(gallivm, key->pgon_offset_scale), "");
@@ -367,7 +367,7 @@ load_attribute(struct gallivm_state *gallivm,
  * sometimes completely in case of tris covering a block fully,
  * which obviously wouldn't work)).
  */
-static void 
+static void
 calc_coef4( struct gallivm_state *gallivm,
             struct lp_setup_args *args,
             LLVMValueRef a0,
@@ -425,7 +425,7 @@ emit_coef4( struct gallivm_state *gallivm,
 }
 
 
-static void 
+static void
 emit_linear_coef( struct gallivm_state *gallivm,
                   struct lp_setup_args *args,
                   unsigned slot,
@@ -433,7 +433,7 @@ emit_linear_coef( struct gallivm_state *gallivm,
 {
    /* nothing to do anymore */
    emit_coef4(gallivm,
-              args, slot, 
+              args, slot,
               attribv[0],
               attribv[1],
               attribv[2]);
@@ -448,7 +448,7 @@ emit_linear_coef( struct gallivm_state *gallivm,
  * Later, when we compute the value at a particular fragment position we'll
  * divide the interpolated value by the interpolated W at that fragment.
  */
-static void 
+static void
 apply_perspective_corr( struct gallivm_state *gallivm,
                         struct lp_setup_args *args,
                         unsigned slot,
@@ -474,7 +474,7 @@ apply_perspective_corr( struct gallivm_state *gallivm,
 /**
  * Compute the inputs-> dadx, dady, a0 values.
  */
-static void 
+static void
 emit_tri_coef( struct gallivm_state *gallivm,
                const struct lp_setup_variant_key *key,
                struct lp_setup_args *args)
