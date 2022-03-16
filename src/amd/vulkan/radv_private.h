@@ -630,7 +630,6 @@ struct radv_meta_state {
       VkPipelineLayout p_layout;
       VkPipeline decompress_pipeline;
       VkPipeline resummarize_pipeline;
-      VkRenderPass pass;
    } depth_decomp[MAX_SAMPLES_LOG2];
 
    VkDescriptorSetLayout expand_depth_stencil_compute_ds_layout;
