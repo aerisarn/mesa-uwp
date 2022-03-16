@@ -766,13 +766,17 @@ extern "C" fn cl_create_kernel(
 }
 
 extern "C" fn cl_create_kernels_in_program(
-    _program: cl_program,
-    _num_kernels: cl_uint,
-    _kernels: *mut cl_kernel,
-    _num_kernels_ret: *mut cl_uint,
+    program: cl_program,
+    num_kernels: cl_uint,
+    kernels: *mut cl_kernel,
+    num_kernels_ret: *mut cl_uint,
 ) -> cl_int {
-    println!("cl_create_kernels_in_program not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(create_kernels_in_program(
+        program,
+        num_kernels,
+        kernels,
+        num_kernels_ret
+    ))
 }
 
 extern "C" fn cl_retain_kernel(kernel: cl_kernel) -> cl_int {

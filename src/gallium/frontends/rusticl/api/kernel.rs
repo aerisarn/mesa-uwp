@@ -4,9 +4,12 @@ extern crate rusticl_opencl_gen;
 use crate::api::event::create_and_queue;
 use crate::api::icd::*;
 use crate::api::util::*;
+use crate::core::device::*;
 use crate::core::event::*;
 use crate::core::kernel::*;
+use crate::core::program::*;
 
+use self::mesa_rust_util::ptr::*;
 use self::mesa_rust_util::string::*;
 use self::rusticl_opencl_gen::*;
 
@@ -107,6 +110,19 @@ unsafe fn kernel_work_arr_or_default<'a>(arr: *const usize, work_dim: cl_uint) -
     }
 }
 
+fn get_devices_with_valid_build(p: &Arc<Program>) -> CLResult<Vec<&Arc<Device>>> {
+    // CL_INVALID_PROGRAM_EXECUTABLE if there is no successfully built executable for program.
+    let devs: Vec<_> = p
+        .devs
+        .iter()
+        .filter(|d| p.status(d) == CL_BUILD_SUCCESS as cl_build_status)
+        .collect();
+    if devs.is_empty() {
+        return Err(CL_INVALID_PROGRAM_EXECUTABLE);
+    }
+    Ok(devs)
+}
+
 pub fn create_kernel(
     program: cl_program,
     kernel_name: *const ::std::os::raw::c_char,
@@ -129,19 +145,10 @@ pub fn create_kernel(
         return Err(CL_INVALID_KERNEL_NAME);
     }
 
-    // CL_INVALID_PROGRAM_EXECUTABLE if there is no successfully built executable for program.
-    let devs: Vec<_> = p
-        .devs
-        .iter()
-        .filter(|d| p.status(d) == CL_BUILD_SUCCESS as cl_build_status)
-        .collect();
-    if devs.is_empty() {
-        return Err(CL_INVALID_PROGRAM_EXECUTABLE);
-    }
-
     // CL_INVALID_KERNEL_DEFINITION if the function definition for __kernel function given by
     // kernel_name such as the number of arguments, the argument types are not the same for all
     // devices for which the program executable has been built.
+    let devs = get_devices_with_valid_build(&p)?;
     let nirs = p.nirs(&name);
     let kernel_args: HashSet<_> = devs.iter().map(|d| p.args(d, &name)).collect();
     if kernel_args.len() != 1 {
@@ -154,6 +161,51 @@ pub fn create_kernel(
         nirs,
         kernel_args.into_iter().next().unwrap(),
     )))
+}
+
+pub fn create_kernels_in_program(
+    program: cl_program,
+    num_kernels: cl_uint,
+    kernels: *mut cl_kernel,
+    num_kernels_ret: *mut cl_uint,
+) -> CLResult<()> {
+    let p = program.get_arc()?;
+    let devs = get_devices_with_valid_build(&p)?;
+
+    // CL_INVALID_VALUE if kernels is not NULL and num_kernels is less than the number of kernels
+    // in program.
+    if !kernels.is_null() && p.kernels().len() > num_kernels as usize {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let mut num_kernels = 0;
+    for name in p.kernels() {
+        let kernel_args: HashSet<_> = devs.iter().map(|d| p.args(d, &name)).collect();
+        // Kernel objects are not created for any __kernel functions in program that do not have the
+        // same function definition across all devices for which a program executable has been
+        // successfully built.
+        if kernel_args.len() != 1 {
+            continue;
+        }
+
+        if !kernels.is_null() {
+            // we just assume the client isn't stupid
+            unsafe {
+                let nirs = p.nirs(&name);
+                kernels
+                    .add(num_kernels as usize)
+                    .write(cl_kernel::from_arc(Kernel::new(
+                        name,
+                        p.clone(),
+                        nirs,
+                        kernel_args.into_iter().next().unwrap(),
+                    )));
+            }
+        }
+        num_kernels += 1;
+    }
+    num_kernels_ret.write_checked(num_kernels);
+    Ok(())
 }
 
 pub fn set_kernel_arg(
