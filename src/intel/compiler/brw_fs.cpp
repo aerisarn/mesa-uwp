@@ -5478,6 +5478,33 @@ emit_predicate_on_sample_mask(const fs_builder &bld, fs_inst *inst)
    }
 }
 
+void
+fs_visitor::emit_is_helper_invocation(fs_reg result)
+{
+   /* Unlike the regular gl_HelperInvocation, that is defined at dispatch,
+    * the helperInvocationEXT() (aka SpvOpIsHelperInvocationEXT) takes into
+    * consideration demoted invocations.
+    */
+   result.type = BRW_REGISTER_TYPE_UD;
+
+   bld.MOV(result, brw_imm_ud(0));
+
+   /* See sample_mask_reg() for why we split SIMD32 into SIMD16 here. */
+   unsigned width = bld.dispatch_width();
+   for (unsigned i = 0; i < DIV_ROUND_UP(width, 16); i++) {
+      const fs_builder b = bld.group(MIN2(width, 16), i);
+
+      fs_inst *mov = b.MOV(offset(result, b, i), brw_imm_ud(~0));
+
+      /* The at() ensures that any code emitted to get the predicate happens
+       * before the mov right above.  This is not an issue elsewhere because
+       * lowering code already set up the builder this way.
+       */
+      emit_predicate_on_sample_mask(b.at(NULL, mov), mov);
+      mov->predicate_inverse = true;
+   }
+}
+
 /**
  * Predicate the specified instruction on the vector mask.
  */
