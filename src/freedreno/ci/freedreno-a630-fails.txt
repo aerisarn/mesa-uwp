@@ -132,6 +132,8 @@ spec@arb_sample_shading@samplemask 4,Fail
 spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
 
+spec@arb_shader_image_load_store@execution@image-array-out-of-bounds-access-load,Crash
+
 # These 3 fails started to happen after piglit uprev with commit
 # 0ef03f824d1833a853d1a20b4be121089bb9246c
 spec@arb_shader_image_load_store@qualifiers,Fail
@@ -269,7 +271,6 @@ spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 color,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 depth,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
-spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor@GL_DEPTH24_STENCIL8- border color only,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail

@@ -274,7 +274,6 @@ spec@egl_mesa_configless_context@basic,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
-spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-snorm,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-blit,Fail
 spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index1-copypixels,Fail

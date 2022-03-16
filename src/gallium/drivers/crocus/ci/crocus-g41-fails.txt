@@ -256,6 +256,11 @@ spec@ext_texture_format_bgra8888@api-errors,Fail
 # no info, just fails
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 
+# "Unexpected GL error: GL_INVALID_ENUM 0x500
+#  (Error at tests/spec/khr_texture_compression_astc/khr_compressed_astc-basic.c:349)
+#  Expected GL error: GL_INVALID_OPERATION 0x502"
+spec@khr_texture_compression_astc@basic-gles,Fail
+
 spec@khr_texture_compression_astc@miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@miptree-gl srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@miptree-gles srgb,Fail

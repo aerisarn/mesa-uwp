@@ -104,6 +104,26 @@ spec@arb_shading_language_packing@execution@built-in-functions@vs-unpackunorm2x1
 spec@ext_gpu_shader4@execution@open-coded-bitfieldreverse,Fail
 spec@glsl-1.10@execution@temp-array-indexing@glsl-fs-giant-temp-array,Fail
 spec@glsl-1.10@execution@temp-array-indexing@glsl-vs-giant-temp-array,Fail
+spec@glsl-1.10@execution@varying-packing@simple int array,Fail
+spec@glsl-1.10@execution@varying-packing@simple int arrays_of_arrays,Fail
+spec@glsl-1.10@execution@varying-packing@simple int separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec2 array,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec2 arrays_of_arrays,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec2 separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec3 array,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec3 arrays_of_arrays,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec3 separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple ivec4 separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple uint array,Fail
+spec@glsl-1.10@execution@varying-packing@simple uint arrays_of_arrays,Fail
+spec@glsl-1.10@execution@varying-packing@simple uint separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec2 array,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec2 arrays_of_arrays,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec2 separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec3 array,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec3 arrays_of_arrays,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec3 separate,Fail
+spec@glsl-1.10@execution@varying-packing@simple uvec4 separate,Fail
 spec@glsl-1.30@execution@fs-large-local-array,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec3,Fail

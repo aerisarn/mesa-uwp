@@ -1252,6 +1252,10 @@ spec@ext_texture_srgb@texwrap formats@GL_SRGB8_ALPHA8- NPOT,Fail
 spec@ext_transform_feedback2@counting with pause,Fail
 spec@ext_transform_feedback@pipeline-basic-primgen,Fail
 spec@ext_transform_feedback@primgen-query transform-feedback-disabled,Fail
+
+spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-read,Crash
+spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-write,Crash
+
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1d,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darray,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 1darrayshadow,Fail

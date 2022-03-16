@@ -823,6 +823,7 @@ spec@glsl-1.10@execution@fs-frontfacing-ternary-0.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1-neg-1,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-1.0-neg-1.0,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-neg-1.0-1.0,Fail
+spec@glsl-1.10@execution@fs-frontfacing-ternary-neg-1.0-1.0-alt,Fail
 spec@glsl-1.10@execution@fs-frontfacing-ternary-vec4-neg-1.0-1.0,Fail
 
 spec@glsl-1.10@execution@fs-loop-bounds-unrolled,Fail
