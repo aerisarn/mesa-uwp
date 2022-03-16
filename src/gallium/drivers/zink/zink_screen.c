@@ -2060,6 +2060,9 @@ static void
 init_driver_workarounds(struct zink_screen *screen)
 {
    screen->driver_workarounds.color_write_missing = !screen->info.have_EXT_color_write_enable;
+   /* #6111 */
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+      screen->driver_workarounds.color_write_missing = true;
 }
 
 static struct zink_screen *
