@@ -36,6 +36,7 @@ libmesa_rust_files = files(
   'mesa/compiler/clc/spirv.rs',
   'mesa/pipe/context.rs',
   'mesa/pipe/device.rs',
+  'mesa/pipe/fence.rs',
   'mesa/pipe/mod.rs',
   'mesa/pipe/screen.rs',
   'mesa/pipe/transfer.rs',

@@ -1,7 +1,9 @@
 extern crate mesa_rust_gen;
 
 use crate::compiler::nir::*;
+use crate::pipe::fence::*;
 use crate::pipe::resource::*;
+use crate::pipe::screen::*;
 use crate::pipe::transfer::*;
 
 use self::mesa_rust_gen::*;
@@ -13,15 +15,17 @@ use std::sync::Arc;
 
 pub struct PipeContext {
     pipe: NonNull<pipe_context>,
+    screen: Arc<PipeScreen>,
 }
 
 unsafe impl Send for PipeContext {}
 unsafe impl Sync for PipeContext {}
 
 impl PipeContext {
-    pub(super) fn new(context: *mut pipe_context) -> Option<Arc<Self>> {
+    pub(super) fn new(context: *mut pipe_context, screen: &Arc<PipeScreen>) -> Option<Arc<Self>> {
         let s = Self {
             pipe: NonNull::new(context)?,
+            screen: screen.clone(),
         };
 
         if !has_required_cbs(unsafe { s.pipe.as_ref() }) {
@@ -176,6 +180,14 @@ impl PipeContext {
     pub fn memory_barrier(&self, barriers: u32) {
         unsafe { self.pipe.as_ref().memory_barrier.unwrap()(self.pipe.as_ptr(), barriers) }
     }
+
+    pub fn flush(&self) -> PipeFence {
+        unsafe {
+            let mut fence = ptr::null_mut();
+            self.pipe.as_ref().flush.unwrap()(self.pipe.as_ptr(), &mut fence, 0);
+            PipeFence::new(fence, &self.screen)
+        }
+    }
 }
 
 impl Drop for PipeContext {
@@ -195,6 +207,7 @@ fn has_required_cbs(c: &pipe_context) -> bool {
         && c.buffer_unmap.is_some()
         && c.create_compute_state.is_some()
         && c.delete_compute_state.is_some()
+        && c.flush.is_some()
         && c.launch_grid.is_some()
         && c.memory_barrier.is_some()
         && c.set_global_binding.is_some()
