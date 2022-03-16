@@ -1216,6 +1216,21 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    NIR_PASS_V(nir, nir_convert_to_lcssa, true, true);
    NIR_PASS_V(nir, nir_divergence_analysis);
 
+   /* TODO: Enable nir_opt_uniform_atomics on Gfx7.x too.
+    * It currently fails Vulkan tests on Haswell for an unknown reason.
+    */
+   if (devinfo->ver >= 8 && OPT(nir_opt_uniform_atomics)) {
+      const nir_lower_subgroups_options subgroups_options = {
+         .ballot_bit_size = 32,
+         .ballot_components = 1,
+         .lower_elect = true,
+      };
+      OPT(nir_lower_subgroups, &subgroups_options);
+
+      if (OPT(nir_lower_int64))
+         brw_nir_optimize(nir, compiler, is_scalar, false);
+   }
+
    /* Clean up LCSSA phis */
    OPT(nir_opt_remove_phis);
 
