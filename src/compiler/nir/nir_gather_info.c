@@ -79,7 +79,9 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
             nir_deref_instr *deref, bool is_output_read)
 {
    for (int i = 0; i < len; i++) {
-      assert(var->data.location != -1);
+      /* Varyings might not have been assigned values yet so abort. */
+      if (var->data.location == -1)
+         return;
 
       int idx = var->data.location + offset + i;
       bool is_patch_generic = var->data.patch &&
@@ -90,11 +92,17 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
       uint64_t bitfield;
 
       if (is_patch_generic) {
-         assert(idx >= VARYING_SLOT_PATCH0 && idx < VARYING_SLOT_TESS_MAX);
+         /* Varyings might still have temp locations so abort */
+         if (idx < VARYING_SLOT_PATCH0 || idx >= VARYING_SLOT_TESS_MAX)
+            return;
+
          bitfield = BITFIELD64_BIT(idx - VARYING_SLOT_PATCH0);
       }
       else {
-         assert(idx < VARYING_SLOT_MAX);
+         /* Varyings might still have temp locations so abort */
+         if (idx >= VARYING_SLOT_MAX)
+            return;
+
          bitfield = BITFIELD64_BIT(idx);
       }
 
