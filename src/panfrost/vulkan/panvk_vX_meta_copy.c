@@ -654,7 +654,7 @@ static void
 panvk_meta_copy_img2img(struct panvk_cmd_buffer *cmdbuf,
                         const struct panvk_image *src,
                         const struct panvk_image *dst,
-                        const VkImageCopy *region)
+                        const VkImageCopy2 *region)
 {
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
    struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
@@ -849,20 +849,15 @@ panvk_meta_copy_img2img_init(struct panvk_physical_device *dev, bool is_ms)
 }
 
 void
-panvk_per_arch(CmdCopyImage)(VkCommandBuffer commandBuffer,
-                             VkImage srcImage,
-                             VkImageLayout srcImageLayout,
-                             VkImage destImage,
-                             VkImageLayout destImageLayout,
-                             uint32_t regionCount,
-                             const VkImageCopy *pRegions)
+panvk_per_arch(CmdCopyImage2)(VkCommandBuffer commandBuffer,
+                              const VkCopyImageInfo2 *pCopyImageInfo)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
-   VK_FROM_HANDLE(panvk_image, dst, destImage);
-   VK_FROM_HANDLE(panvk_image, src, srcImage);
+   VK_FROM_HANDLE(panvk_image, dst, pCopyImageInfo->dstImage);
+   VK_FROM_HANDLE(panvk_image, src, pCopyImageInfo->srcImage);
 
-   for (unsigned i = 0; i < regionCount; i++) {
-      panvk_meta_copy_img2img(cmdbuf, src, dst, &pRegions[i]);
+   for (unsigned i = 0; i < pCopyImageInfo->regionCount; i++) {
+      panvk_meta_copy_img2img(cmdbuf, src, dst, &pCopyImageInfo->pRegions[i]);
    }
 }
 
@@ -1121,7 +1116,7 @@ static void
 panvk_meta_copy_buf2img(struct panvk_cmd_buffer *cmdbuf,
                         const struct panvk_buffer *buf,
                         const struct panvk_image *img,
-                        const VkBufferImageCopy *region)
+                        const VkBufferImageCopy2 *region)
 {
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
    struct pan_fb_info *fbinfo = &cmdbuf->state.fb.info;
@@ -1271,19 +1266,15 @@ panvk_meta_copy_buf2img_init(struct panvk_physical_device *dev)
 }
 
 void
-panvk_per_arch(CmdCopyBufferToImage)(VkCommandBuffer commandBuffer,
-                                     VkBuffer srcBuffer,
-                                     VkImage destImage,
-                                     VkImageLayout destImageLayout,
-                                     uint32_t regionCount,
-                                     const VkBufferImageCopy *pRegions)
+panvk_per_arch(CmdCopyBufferToImage2)(VkCommandBuffer commandBuffer,
+                                      const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
-   VK_FROM_HANDLE(panvk_buffer, buf, srcBuffer);
-   VK_FROM_HANDLE(panvk_image, img, destImage);
+   VK_FROM_HANDLE(panvk_buffer, buf, pCopyBufferToImageInfo->srcBuffer);
+   VK_FROM_HANDLE(panvk_image, img, pCopyBufferToImageInfo->dstImage);
 
-   for (unsigned i = 0; i < regionCount; i++) {
-      panvk_meta_copy_buf2img(cmdbuf, buf, img, &pRegions[i]);
+   for (unsigned i = 0; i < pCopyBufferToImageInfo->regionCount; i++) {
+      panvk_meta_copy_buf2img(cmdbuf, buf, img, &pCopyBufferToImageInfo->pRegions[i]);
    }
 }
 
@@ -1587,7 +1578,7 @@ static void
 panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
                         const struct panvk_buffer *buf,
                         const struct panvk_image *img,
-                        const VkBufferImageCopy *region)
+                        const VkBufferImageCopy2 *region)
 {
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
    struct panvk_meta_copy_format_info key = {
@@ -1732,19 +1723,15 @@ panvk_meta_copy_img2buf_init(struct panvk_physical_device *dev)
 }
 
 void
-panvk_per_arch(CmdCopyImageToBuffer)(VkCommandBuffer commandBuffer,
-                                     VkImage srcImage,
-                                     VkImageLayout srcImageLayout,
-                                     VkBuffer destBuffer,
-                                     uint32_t regionCount,
-                                     const VkBufferImageCopy *pRegions)
+panvk_per_arch(CmdCopyImageToBuffer2)(VkCommandBuffer commandBuffer,
+                                      const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
-   VK_FROM_HANDLE(panvk_buffer, buf, destBuffer);
-   VK_FROM_HANDLE(panvk_image, img, srcImage);
+   VK_FROM_HANDLE(panvk_buffer, buf, pCopyImageToBufferInfo->dstBuffer);
+   VK_FROM_HANDLE(panvk_image, img, pCopyImageToBufferInfo->srcImage);
 
-   for (unsigned i = 0; i < regionCount; i++) {
-      panvk_meta_copy_img2buf(cmdbuf, buf, img, &pRegions[i]);
+   for (unsigned i = 0; i < pCopyImageToBufferInfo->regionCount; i++) {
+      panvk_meta_copy_img2buf(cmdbuf, buf, img, &pCopyImageToBufferInfo->pRegions[i]);
    }
 }
 
@@ -1840,7 +1827,7 @@ static void
 panvk_meta_copy_buf2buf(struct panvk_cmd_buffer *cmdbuf,
                         const struct panvk_buffer *src,
                         const struct panvk_buffer *dst,
-                        const VkBufferCopy *region)
+                        const VkBufferCopy2 *region)
 {
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
 
@@ -1889,18 +1876,15 @@ panvk_meta_copy_buf2buf(struct panvk_cmd_buffer *cmdbuf,
 }
 
 void
-panvk_per_arch(CmdCopyBuffer)(VkCommandBuffer commandBuffer,
-                              VkBuffer srcBuffer,
-                              VkBuffer destBuffer,
-                              uint32_t regionCount,
-                              const VkBufferCopy *pRegions)
+panvk_per_arch(CmdCopyBuffer2)(VkCommandBuffer commandBuffer,
+                               const VkCopyBufferInfo2 *pCopyBufferInfo)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
-   VK_FROM_HANDLE(panvk_buffer, src, srcBuffer);
-   VK_FROM_HANDLE(panvk_buffer, dst, destBuffer);
+   VK_FROM_HANDLE(panvk_buffer, src, pCopyBufferInfo->srcBuffer);
+   VK_FROM_HANDLE(panvk_buffer, dst, pCopyBufferInfo->dstBuffer);
 
-   for (unsigned i = 0; i < regionCount; i++) {
-      panvk_meta_copy_buf2buf(cmdbuf, src, dst, &pRegions[i]);
+   for (unsigned i = 0; i < pCopyBufferInfo->regionCount; i++) {
+      panvk_meta_copy_buf2buf(cmdbuf, src, dst, &pCopyBufferInfo->pRegions[i]);
    }
 }
 
