@@ -93,10 +93,10 @@ def generate_lava_yaml(args):
       'to': 'tftp',
       'os': 'oe',
       'kernel': {
-        'url': '{}/{}'.format(args.base_system_url_prefix, args.kernel_image_name),
+        'url': '{}/{}'.format(args.kernel_url_prefix, args.kernel_image_name),
       },
       'nfsrootfs': {
-        'url': '{}/lava-rootfs.tgz'.format(args.base_system_url_prefix),
+        'url': '{}/lava-rootfs.tgz'.format(args.rootfs_url_prefix),
         'compression': 'gz',
       }
     }
@@ -104,7 +104,7 @@ def generate_lava_yaml(args):
         deploy['kernel']['type'] = args.kernel_image_type
     if args.dtb:
         deploy['dtb'] = {
-          'url': '{}/{}.dtb'.format(args.base_system_url_prefix, args.dtb)
+          'url': '{}/{}.dtb'.format(args.kernel_url_prefix, args.dtb)
         }
 
     # always boot over NFS
@@ -160,7 +160,7 @@ def generate_lava_yaml(args):
 
     init_lines += [
       'mkdir -p {}'.format(args.ci_project_dir),
-      'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.mesa_build_url, args.ci_project_dir),
+      'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
       f'echo "export CI_JOB_JWT_FILE={args.jwt_file}" >> /set-job-env-vars.sh',
       'exec /init-stage2.sh',
@@ -346,8 +346,9 @@ def create_parser():
     parser = argparse.ArgumentParser("LAVA job submitter")
 
     parser.add_argument("--pipeline-info")
-    parser.add_argument("--base-system-url-prefix")
-    parser.add_argument("--mesa-build-url")
+    parser.add_argument("--rootfs-url-prefix")
+    parser.add_argument("--kernel-url-prefix")
+    parser.add_argument("--build-url")
     parser.add_argument("--job-rootfs-overlay-url")
     parser.add_argument("--job-timeout", type=int)
     parser.add_argument("--first-stage-init")
