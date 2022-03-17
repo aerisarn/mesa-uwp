@@ -199,6 +199,9 @@ class Instruction:
         if name.startswith("LOAD.i") or name.startswith("STORE.i") or name.startswith("LD_BUFFER.i"):
             self.secondary_shift = 27 # Alias with memory_size
             self.secondary_mask = 0x7
+        if "descriptor_type" in [x.name for x in self.modifiers]:
+            self.secondary_mask = 0x3
+            self.secondary_shift = 37
 
         assert(len(dests) == 0 or not staging)
         assert(not opcode2 or (opcode2 & self.secondary_mask) == opcode2)
