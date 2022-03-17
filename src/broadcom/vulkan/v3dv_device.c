@@ -157,6 +157,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_host_query_reset                = true,
       .EXT_image_drm_format_modifier       = true,
       .EXT_index_type_uint8                = true,
+      .EXT_line_rasterization              = true,
       .EXT_physical_device_drm             = true,
       .EXT_pipeline_creation_cache_control = true,
       .EXT_pipeline_creation_feedback      = true,
@@ -1158,6 +1159,18 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+         VkPhysicalDeviceLineRasterizationFeaturesEXT *features =
+            (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
+         features->rectangularLines = true;
+         features->bresenhamLines = true;
+         features->smoothLines = false;
+         features->stippledRectangularLines = false;
+         features->stippledBresenhamLines = false;
+         features->stippledSmoothLines = false;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
           VkPhysicalDeviceColorWriteEnableFeaturesEXT *features = (void *) ext;
           features->colorWriteEnable = true;
@@ -1596,6 +1609,12 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             props->renderMajor = (int64_t) major(pdevice->render_devid);
             props->renderMinor = (int64_t) minor(pdevice->render_devid);
          }
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+         VkPhysicalDeviceLineRasterizationPropertiesEXT *props =
+            (VkPhysicalDeviceLineRasterizationPropertiesEXT *)ext;
+         props->lineSubPixelPrecisionBits = V3D_COORD_SHIFT;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {

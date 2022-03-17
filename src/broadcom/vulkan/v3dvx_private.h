@@ -300,6 +300,7 @@ v3dX(pipeline_pack_state)(struct v3dv_pipeline *pipeline,
                           const VkPipelineDepthStencilStateCreateInfo *ds_info,
                           const VkPipelineRasterizationStateCreateInfo *rs_info,
                           const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *pv_info,
+                          const VkPipelineRasterizationLineStateCreateInfoEXT *ls_info,
                           const VkPipelineMultisampleStateCreateInfo *ms_info);
 void
 v3dX(pipeline_pack_compile_state)(struct v3dv_pipeline *pipeline,

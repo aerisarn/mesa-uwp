@@ -2823,6 +2823,14 @@ v3dv_CmdSetDepthBounds(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+v3dv_CmdSetLineStippleEXT(VkCommandBuffer commandBuffer,
+                          uint32_t lineStippleFactor,
+                          uint16_t lineStipplePattern)
+{
+   /* We do not support stippled line rasterization so we just ignore this. */
+}
+
+VKAPI_ATTR void VKAPI_CALL
 v3dv_CmdSetLineWidth(VkCommandBuffer commandBuffer,
                      float lineWidth)
 {
