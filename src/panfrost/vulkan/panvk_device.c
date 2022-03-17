@@ -1369,15 +1369,6 @@ panvk_BindImageMemory2(VkDevice device,
 }
 
 VkResult
-panvk_QueueBindSparse(VkQueue _queue,
-                      uint32_t bindInfoCount,
-                      const VkBindSparseInfo *pBindInfo,
-                      VkFence _fence)
-{
-   return VK_SUCCESS;
-}
-
-VkResult
 panvk_CreateEvent(VkDevice _device,
                   const VkEventCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
