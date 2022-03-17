@@ -131,6 +131,7 @@ pub struct Kernel {
     pub name: String,
     pub args: Vec<KernelArg>,
     pub values: Vec<RefCell<Option<KernelArgValue>>>,
+    pub work_group_size: [usize; 3],
     internal_args: Vec<InternalKernelArg>,
     nirs: HashMap<Arc<Device>, NirShader>,
 }
@@ -148,7 +149,7 @@ fn create_kernel_arr(vals: &[usize], val: u32) -> [u32; 3] {
 // mostly like clc_spirv_to_dxil
 // does not DCEe uniforms or images!
 fn lower_and_optimize_nir_pre_inputs(nir: &mut NirShader, lib_clc: &NirShader) {
-    nir.set_workgroup_size(&[0; 3]);
+    nir.set_workgroup_size_variable_if_zero();
     nir.structurize();
     while {
         let mut progress = false;
@@ -300,6 +301,8 @@ impl Kernel {
         nirs.iter_mut()
             .for_each(|(d, n)| lower_and_optimize_nir_pre_inputs(n, &d.lib_clc));
         let nir = nirs.values_mut().next().unwrap();
+        let wgs = nir.workgroup_size();
+        let work_group_size = [wgs[0] as usize, wgs[1] as usize, wgs[2] as usize];
         let mut args = KernelArg::from_spirv_nir(args, nir);
         // can't use vec!...
         let values = args.iter().map(|_| RefCell::new(None)).collect();
@@ -319,6 +322,7 @@ impl Kernel {
             prog: prog,
             name: name,
             args: args,
+            work_group_size: work_group_size,
             values: values,
             internal_args: internal_args,
             // caller has to verify all kernels have the same sig

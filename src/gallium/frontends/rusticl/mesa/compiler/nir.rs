@@ -152,13 +152,16 @@ impl NirShader {
         unsafe { (*self.nir.as_ptr()).info.shared_size }
     }
 
-    pub fn set_workgroup_size(&self, workgroup: &[u16; 3]) {
-        let mut nir = self.nir.as_ptr();
+    pub fn workgroup_size(&self) -> [u16; 3] {
+        unsafe { (*self.nir.as_ptr()).info.workgroup_size }
+    }
+
+    pub fn set_workgroup_size_variable_if_zero(&self) {
+        let nir = self.nir.as_ptr();
         unsafe {
-            (*nir).info.set_workgroup_size_variable(workgroup[0] == 0);
-            (*nir).info.workgroup_size[0] = workgroup[0];
-            (*nir).info.workgroup_size[1] = workgroup[1];
-            (*nir).info.workgroup_size[2] = workgroup[2];
+            (*nir)
+                .info
+                .set_workgroup_size_variable((*nir).info.workgroup_size[0] == 0);
         }
     }
 

@@ -181,6 +181,19 @@ where
     }
 }
 
+impl<T, const I: usize> CLProp for [T; I]
+where
+    T: CLProp,
+{
+    fn cl_vec(&self) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::new();
+        for i in self {
+            res.append(&mut i.cl_vec())
+        }
+        res
+    }
+}
+
 impl<T> CLProp for *const T {
     fn cl_vec(&self) -> Vec<u8> {
         (*self as usize).cl_vec()
