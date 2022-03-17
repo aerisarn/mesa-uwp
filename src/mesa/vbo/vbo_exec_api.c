@@ -180,6 +180,10 @@ vbo_exec_copy_to_current(struct vbo_exec_context *exec)
 
       assert(exec->vtx.attr[i].size);
 
+      /* VBO_ATTRIB_SELECT_RESULT_INDEX has no current */
+      if (!current)
+         continue;
+
       if (exec->vtx.attr[i].type == GL_DOUBLE ||
           exec->vtx.attr[i].type == GL_UNSIGNED_INT64_ARB) {
          memset(tmp, 0, sizeof(tmp));
@@ -556,7 +560,6 @@ do {                                                                    \
          vbo_exec_vtx_wrap(exec);                                       \
    }                                                                    \
 } while (0)
-
 
 #undef ERROR
 #define ERROR(err) _mesa_error(ctx, err, __func__)
@@ -1231,7 +1234,8 @@ _es_Materialf(GLenum face, GLenum pname, GLfloat param)
 #define ATTR_UNION(A, N, T, C, V0, V1, V2, V3)     \
    do {                                            \
       if ((A) == 0) {                              \
-         /* TODO: insert name stack attr. */       \
+         ATTR_UNION_BASE(VBO_ATTRIB_SELECT_RESULT_OFFSET, 1, GL_UNSIGNED_INT, uint32_t, \
+                         ctx->Select.ResultOffset, 0, 0, 0); \
       }                                            \
       ATTR_UNION_BASE(A, N, T, C, V0, V1, V2, V3); \
    } while (0)
