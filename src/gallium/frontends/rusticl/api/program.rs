@@ -20,7 +20,7 @@ use std::slice;
 use std::sync::Arc;
 
 impl CLInfo<cl_program_info> for cl_program {
-    fn query(&self, q: cl_program_info) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_program_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let prog = self.get_ref()?;
         Ok(match q {
             CL_PROGRAM_CONTEXT => {

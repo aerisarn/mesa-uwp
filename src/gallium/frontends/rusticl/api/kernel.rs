@@ -19,7 +19,7 @@ use std::slice;
 use std::sync::Arc;
 
 impl CLInfo<cl_kernel_info> for cl_kernel {
-    fn query(&self, q: cl_kernel_info) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_kernel_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let kernel = self.get_ref()?;
         Ok(match q {
             CL_KERNEL_CONTEXT => {

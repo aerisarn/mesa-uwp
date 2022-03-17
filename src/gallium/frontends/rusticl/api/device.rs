@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::sync::Once;
 
 impl CLInfo<cl_device_info> for cl_device_id {
-    fn query(&self, q: cl_device_info) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_device_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let dev = self.get_ref()?;
         Ok(match q {
             CL_DEVICE_ADDRESS_BITS => cl_prop::<cl_uint>(dev.address_bits()),

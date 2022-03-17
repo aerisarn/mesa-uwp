@@ -13,7 +13,7 @@ use std::ptr;
 use std::sync::Arc;
 
 impl CLInfo<cl_event_info> for cl_event {
-    fn query(&self, q: cl_event_info) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_event_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let event = self.get_ref()?;
         Ok(match q {
             CL_EVENT_COMMAND_EXECUTION_STATUS => cl_prop::<cl_int>(event.status()),

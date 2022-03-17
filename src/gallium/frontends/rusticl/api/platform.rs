@@ -18,7 +18,7 @@ pub struct _cl_platform_id {
 }
 
 impl CLInfo<cl_platform_info> for cl_platform_id {
-    fn query(&self, q: cl_platform_info) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_platform_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let p = self.get_ref()?;
         Ok(match q {
             CL_PLATFORM_EXTENSIONS => cl_prop("cl_khr_icd"),

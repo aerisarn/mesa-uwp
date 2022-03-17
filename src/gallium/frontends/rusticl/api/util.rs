@@ -20,7 +20,7 @@ use std::slice;
 use std::sync::Arc;
 
 pub trait CLInfo<I> {
-    fn query(&self, q: I) -> CLResult<Vec<u8>>;
+    fn query(&self, q: I, vals: &[u8]) -> CLResult<Vec<u8>>;
 
     fn get_info(
         &self,
@@ -29,7 +29,13 @@ pub trait CLInfo<I> {
         param_value: *mut ::std::os::raw::c_void,
         param_value_size_ret: *mut usize,
     ) -> CLResult<()> {
-        let d = self.query(param_name)?;
+        let arr = if !param_value.is_null() {
+            unsafe { slice::from_raw_parts(param_value.cast(), param_value_size) }
+        } else {
+            &[]
+        };
+
+        let d = self.query(param_name, arr)?;
         let size: usize = d.len();
 
         // CL_INVALID_VALUE [...] if size in bytes specified by param_value_size is < size of return

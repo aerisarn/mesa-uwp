@@ -17,7 +17,7 @@ use std::slice;
 use std::sync::Arc;
 
 impl CLInfo<cl_context_info> for cl_context {
-    fn query(&self, q: cl_context_info) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_context_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let ctx = self.get_ref()?;
         Ok(match q {
             CL_CONTEXT_DEVICES => {
