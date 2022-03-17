@@ -1527,3 +1527,40 @@ vn_CmdSetViewportWithCount(VkCommandBuffer commandBuffer,
    VN_CMD_ENQUEUE(vkCmdSetViewportWithCount, commandBuffer, viewportCount,
                   pViewports);
 }
+
+void
+vn_CmdSetDepthBiasEnable(VkCommandBuffer commandBuffer,
+                         VkBool32 depthBiasEnable)
+{
+   VN_CMD_ENQUEUE(vkCmdSetDepthBiasEnable, commandBuffer, depthBiasEnable);
+}
+
+void
+vn_CmdSetLogicOpEXT(VkCommandBuffer commandBuffer, VkLogicOp logicOp)
+{
+   VN_CMD_ENQUEUE(vkCmdSetLogicOpEXT, commandBuffer, logicOp);
+}
+
+void
+vn_CmdSetPatchControlPointsEXT(VkCommandBuffer commandBuffer,
+                               uint32_t patchControlPoints)
+{
+   VN_CMD_ENQUEUE(vkCmdSetPatchControlPointsEXT, commandBuffer,
+                  patchControlPoints);
+}
+
+void
+vn_CmdSetPrimitiveRestartEnable(VkCommandBuffer commandBuffer,
+                                VkBool32 primitiveRestartEnable)
+{
+   VN_CMD_ENQUEUE(vkCmdSetPrimitiveRestartEnable, commandBuffer,
+                  primitiveRestartEnable);
+}
+
+void
+vn_CmdSetRasterizerDiscardEnable(VkCommandBuffer commandBuffer,
+                                 VkBool32 rasterizerDiscardEnable)
+{
+   VN_CMD_ENQUEUE(vkCmdSetRasterizerDiscardEnable, commandBuffer,
+                  rasterizerDiscardEnable);
+}
