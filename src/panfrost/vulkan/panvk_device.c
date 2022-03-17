@@ -1335,22 +1335,6 @@ panvk_BindBufferMemory2(VkDevice device,
 }
 
 VkResult
-panvk_BindBufferMemory(VkDevice device,
-                       VkBuffer buffer,
-                       VkDeviceMemory memory,
-                       VkDeviceSize memoryOffset)
-{
-   const VkBindBufferMemoryInfo info = {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-      .buffer = buffer,
-      .memory = memory,
-      .memoryOffset = memoryOffset
-   };
-
-   return panvk_BindBufferMemory2(device, 1, &info);
-}
-
-VkResult
 panvk_BindImageMemory2(VkDevice device,
                        uint32_t bindInfoCount,
                        const VkBindImageMemoryInfo *pBindInfos)
@@ -1382,22 +1366,6 @@ panvk_BindImageMemory2(VkDevice device,
    }
 
    return VK_SUCCESS;
-}
-
-VkResult
-panvk_BindImageMemory(VkDevice device,
-                      VkImage image,
-                      VkDeviceMemory memory,
-                      VkDeviceSize memoryOffset)
-{
-   const VkBindImageMemoryInfo info = {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-      .image = image,
-      .memory = memory,
-      .memoryOffset = memoryOffset
-   };
-
-   return panvk_BindImageMemory2(device, 1, &info);
 }
 
 VkResult
