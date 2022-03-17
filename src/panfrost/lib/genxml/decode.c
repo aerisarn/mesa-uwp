@@ -1217,20 +1217,28 @@ pandecode_depth_stencil(mali_ptr addr)
 }
 
 static void
+pandecode_shader_environment(const struct MALI_SHADER_ENVIRONMENT *p,
+                             unsigned gpu_id)
+{
+        if (p->shader)
+                pandecode_shader(p->shader, "Shader", gpu_id);
+
+        if (p->resources)
+                pandecode_resource_tables(p->resources, "Resources");
+
+        if (p->thread_storage)
+                pandecode_local_storage(p->thread_storage, 0);
+
+        if (p->fau)
+                dump_fau(p->fau, p->fau_count, "FAU");
+}
+
+static void
 pandecode_dcd(const struct MALI_DRAW *p,
               int job_no, enum mali_job_type job_type,
               char *suffix, unsigned gpu_id)
 {
         mali_ptr frag_shader = 0;
-
-        if (p->fragment.shader)
-                pandecode_shader(p->fragment.shader, "Fragment", gpu_id);
-
-        if (p->varying.shader)
-                pandecode_shader(p->varying.shader, "Varying", gpu_id);
-
-        if (p->position.shader)
-                pandecode_shader(p->position.shader, "Position", gpu_id);
 
         pandecode_depth_stencil(p->depth_stencil);
 
@@ -1247,27 +1255,7 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 }
         }
 
-        if (p->fragment.resources)
-                pandecode_resource_tables(p->fragment.resources, "Fragment resources");
-        if (p->fragment.thread_storage)
-                pandecode_local_storage(p->fragment.thread_storage, 0);
-        if (p->fragment.fau)
-                dump_fau(p->fragment.fau, p->fragment.fau_count, "Fragment FAU");
-
-        if (p->position.resources)
-                pandecode_resource_tables(p->position.resources, "Position resources");
-        if (p->position.thread_storage)
-                pandecode_local_storage(p->position.thread_storage, 0);
-        if (p->position.fau)
-                dump_fau(p->position.fau, p->position.fau_count, "Position FAU");
-
-        if (p->varying.resources)
-                pandecode_resource_tables(p->varying.resources, "Varying resources");
-        if (p->varying.thread_storage)
-                pandecode_local_storage(p->varying.thread_storage, 0);
-        if (p->varying.fau)
-                dump_fau(p->varying.fau, p->varying.fau_count, "Varying FAU");
-
+        pandecode_shader_environment(&p->shader, gpu_id);
         DUMP_UNPACKED(DRAW, *p, "Draw:\n");
 }
 
@@ -1296,6 +1284,11 @@ pandecode_malloc_vertex_job(const struct pandecode_mapped_memory *mem,
         pandecode_indent--;
 
         pandecode_dcd(&dcd, 0, 0, NULL, gpu_id);
+
+        pan_section_unpack(p, MALLOC_VERTEX_JOB, POSITION, position);
+        pan_section_unpack(p, MALLOC_VERTEX_JOB, VARYING, varying);
+        pandecode_shader_environment(&position, gpu_id);
+        pandecode_shader_environment(&varying, gpu_id);
 }
 
 static void
