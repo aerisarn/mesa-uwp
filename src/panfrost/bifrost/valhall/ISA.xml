@@ -1168,22 +1168,19 @@
     <desc>
       Store to memory with data conversion. The address to store to is given in
       the first source, which must be a 64-bit register (a pair of 32-bit
-      registers). For backwards compatibility with Bifrost, there is a second
-      source which should be the high 32-bits of the register. However, on
-      Valhall the first source is 64-bit so the second source is unused. The
-      third source is the conversion descriptor used for the store.
+      registers). The other source is the conversion descriptor used for the store.
 
       Used with LEA_IMAGE_IMM to implement image stores.
     </desc>
-    <sr read="true"/>
-    <sr_count/>
+    <slot/>
+    <mod name="memory_access" start="37" size="3"/>
     <vecsize/>
     <regfmt/>
-    <slot/>
-    <src>64-bit address to store to (low)</src>
-    <src>64-bit address to store to (high)</src>
+    <sr read="true"/>
+    <sr_count/>
+    <src size="64">64-bit address to store to</src>
+    <imm name="offset" start="8" size="8"/>
     <src>Internal conversion descriptor</src>
-    <imm name="unk" start="36" size="4"/>
   </ins>
 
   <ins name="LD_TILE" title="Load from tilebuffer" opcode="0x78" unit="NONE">

@@ -106,9 +106,9 @@ c0 01 00 00 00 c4 10 51    IADD_IMM.i32.reconverge r4, 0x0, #0x1
 42 00 00 38 08 44 61 00    STORE.i128.slot0 @r4:r5:r6:r7, `r2, offset:0
 41 f8 ff ff 07 c0 1f 50    BRANCHZ.reconverge `r1, offset:-8
 7d c0 00 08 10 bc a1 00    IADD.v2u16 r60.h1, `r61.h10, 0x0
-44 00 46 32 28 40 71 78    ST_CVT.v4.f32.slot0.return @r0:r1:r2:r3, `r4, r0, `r6, unk:0x2
-44 00 46 34 28 40 71 78    ST_CVT.v4.s32.slot0.return @r0:r1:r2:r3, `r4, r0, `r6, unk:0x2
-44 00 46 36 28 40 71 78    ST_CVT.v4.u32.slot0.return @r0:r1:r2:r3, `r4, r0, `r6, unk:0x2
+44 00 46 32 28 40 71 78    ST_CVT.slot0.istream.v4.f32.return @r0:r1:r2:r3, `r4, `r6, offset:0x0
+44 00 46 34 28 40 71 78    ST_CVT.slot0.istream.v4.s32.return @r0:r1:r2:r3, `r4, `r6, offset:0x0
+44 00 46 36 28 40 71 78    ST_CVT.slot0.istream.v4.u32.return @r0:r1:r2:r3, `r4, `r6, offset:0x0
 7c c0 12 00 26 84 67 00    LEA_TEX_IMM.slot0 @r4:r5:r6, `r60, 0x0, table:0x2, index:0x1
 7c c0 02 00 26 84 67 00    LEA_TEX_IMM.slot0 @r4:r5:r6, `r60, 0x0, table:0x2, index:0x0
 82 81 00 28 f4 82 6a 00    LD_BUFFER.i64.unsigned.slot0 @r2:r3, u2, u1
