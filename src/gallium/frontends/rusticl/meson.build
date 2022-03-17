@@ -101,6 +101,10 @@ rusticl_bindgen_args = [
   '--anon-fields-prefix', 'anon_',
 ]
 
+rusticl_bindgen_c_args = [
+  '-fno-builtin-malloc',
+]
+
 rusticl_opencl_bindings_rs = rust.bindgen(
   input : [
     'rusticl_opencl_bindings.h',
@@ -111,6 +115,7 @@ rusticl_opencl_bindings_rs = rust.bindgen(
     inc_include,
   ],
   c_args : [
+    rusticl_bindgen_c_args,
     '-DCL_USE_DEPRECATED_OPENCL_1_0_APIS',
     '-DCL_USE_DEPRECATED_OPENCL_1_1_APIS',
     '-DCL_USE_DEPRECATED_OPENCL_1_2_APIS',
@@ -179,7 +184,10 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     inc_nir,
     inc_src,
   ],
-  c_args : pre_args,
+  c_args : [
+    rusticl_bindgen_c_args,
+    pre_args,
+  ],
   args : [
     rusticl_bindgen_args,
     '--whitelist-function', 'clc_.*',
@@ -189,6 +197,7 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--whitelist-function', 'rusticl_.*',
     '--whitelist-function', 'rz?alloc_.*',
     '--whitelist-function', 'spirv_.*',
+    '--whitelist-function', 'malloc',
     '--whitelist-type', 'pipe_endian',
     '--whitelist-type', 'clc_kernel_arg_access_qualifier',
     '--bitfield-enum', 'clc_kernel_arg_access_qualifier',

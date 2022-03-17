@@ -20,9 +20,11 @@ use std::slice;
 use std::sync::Arc;
 
 impl CLInfo<cl_program_info> for cl_program {
-    fn query(&self, q: cl_program_info, _: &[u8]) -> CLResult<Vec<u8>> {
+    fn query(&self, q: cl_program_info, vals: &[u8]) -> CLResult<Vec<u8>> {
         let prog = self.get_ref()?;
         Ok(match q {
+            CL_PROGRAM_BINARIES => cl_prop::<Vec<*mut u8>>(prog.binaries(vals)),
+            CL_PROGRAM_BINARY_SIZES => cl_prop::<Vec<usize>>(prog.bin_sizes()),
             CL_PROGRAM_CONTEXT => {
                 // Note we use as_ptr here which doesn't increase the reference count.
                 let ptr = Arc::as_ptr(&prog.context);
@@ -132,6 +134,64 @@ pub fn create_program_with_source(
         &c.devs,
         CString::new(source).map_err(|_| CL_INVALID_VALUE)?,
     )))
+}
+
+pub fn create_program_with_binary(
+    context: cl_context,
+    num_devices: cl_uint,
+    device_list: *const cl_device_id,
+    lengths: *const usize,
+    binaries: *mut *const ::std::os::raw::c_uchar,
+    binary_status: *mut cl_int,
+) -> CLResult<cl_program> {
+    let c = context.get_arc()?;
+    let devs = cl_device_id::get_arc_vec_from_arr(device_list, num_devices)?;
+
+    // CL_INVALID_VALUE if device_list is NULL or num_devices is zero.
+    if devs.is_empty() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if lengths or binaries is NULL
+    if lengths.is_null() || binaries.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_DEVICE if any device in device_list is not in the list of devices associated with
+    // context.
+    if !devs.iter().all(|d| c.devs.contains(d)) {
+        return Err(CL_INVALID_DEVICE);
+    }
+
+    let lengths = unsafe { slice::from_raw_parts(lengths, num_devices as usize) };
+    let binaries = unsafe { slice::from_raw_parts(binaries, num_devices as usize) };
+
+    // now device specific stuff
+    let mut err = 0;
+    let mut bins: Vec<&[u8]> = vec![&[]; num_devices as usize];
+    for i in 0..num_devices as usize {
+        let mut dev_err = 0;
+
+        // CL_INVALID_VALUE if lengths[i] is zero or if binaries[i] is a NULL value
+        if lengths[i] == 0 || binaries[i].is_null() {
+            dev_err = CL_INVALID_VALUE;
+        }
+
+        if !binary_status.is_null() {
+            unsafe { binary_status.add(i).write(dev_err) };
+        }
+
+        // just return the last one
+        err = dev_err;
+        bins[i] = unsafe { slice::from_raw_parts(binaries[i], lengths[i] as usize) };
+    }
+
+    if err != 0 {
+        return Err(err);
+    }
+
+    Ok(cl_program::from_arc(Program::from_bins(c, devs, &bins)))
+    //• CL_INVALID_BINARY if an invalid program binary was encountered for any device. binary_status will return specific status for each device.
 }
 
 pub fn build_program(

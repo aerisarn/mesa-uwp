@@ -15,9 +15,22 @@ use self::rusticl_opencl_gen::*;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::CString;
+use std::mem::size_of;
+use std::ptr;
+use std::slice;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+
+const BIN_HEADER_SIZE_V1: usize =
+    // 1. format version
+    size_of::<u32>() +
+    // 2. spirv len
+    size_of::<u32>() +
+    // 3. binary_type
+    size_of::<cl_program_binary_type>();
+
+const BIN_HEADER_SIZE: usize = BIN_HEADER_SIZE_V1;
 
 #[repr(C)]
 pub struct Program {
@@ -89,6 +102,76 @@ impl Program {
         })
     }
 
+    pub fn from_bins(
+        context: Arc<Context>,
+        devs: Vec<Arc<Device>>,
+        bins: &[&[u8]],
+    ) -> Arc<Program> {
+        let mut builds = HashMap::new();
+        let mut kernels = HashSet::new();
+
+        for (d, b) in devs.iter().zip(bins) {
+            let mut ptr = b.as_ptr();
+            let bin_type;
+            let spirv;
+
+            unsafe {
+                // 1. version
+                let version = ptr.cast::<u32>().read();
+                ptr = ptr.add(size_of::<u32>());
+
+                match version {
+                    1 => {
+                        // 2. size of the spirv
+                        let spirv_size = ptr.cast::<u32>().read();
+                        ptr = ptr.add(size_of::<u32>());
+
+                        // 3. binary_type
+                        bin_type = ptr.cast::<cl_program_binary_type>().read();
+                        ptr = ptr.add(size_of::<cl_program_binary_type>());
+
+                        // 4. the spirv
+                        assert!(b.as_ptr().add(BIN_HEADER_SIZE_V1) == ptr);
+                        assert!(b.len() == BIN_HEADER_SIZE_V1 + spirv_size as usize);
+                        spirv = Some(spirv::SPIRVBin::from_bin(
+                            slice::from_raw_parts(ptr, spirv_size as usize),
+                            bin_type == CL_PROGRAM_BINARY_TYPE_EXECUTABLE,
+                        ));
+                    }
+                    _ => panic!("unknown version"),
+                }
+            }
+
+            if let Some(spirv) = &spirv {
+                for k in spirv.kernels() {
+                    kernels.insert(k);
+                }
+            }
+
+            builds.insert(
+                d.clone(),
+                ProgramDevBuild {
+                    spirv: spirv,
+                    status: CL_BUILD_SUCCESS as cl_build_status,
+                    log: String::from(""),
+                    options: String::from(""),
+                    bin_type: bin_type,
+                },
+            );
+        }
+
+        Arc::new(Self {
+            base: CLObjectBase::new(),
+            context: context,
+            devs: devs,
+            src: CString::new("").unwrap(),
+            build: Mutex::new(ProgramBuild {
+                builds: builds,
+                kernels: kernels.into_iter().collect(),
+            }),
+        })
+    }
+
     fn build_info(&self) -> MutexGuard<ProgramBuild> {
         self.build.lock().unwrap()
     }
@@ -120,6 +203,65 @@ impl Program {
             .clone()
     }
 
+    // we need to precalculate the size
+    pub fn bin_sizes(&self) -> Vec<usize> {
+        let mut lock = self.build_info();
+        let mut res = Vec::new();
+        for d in &self.devs {
+            let info = Self::dev_build_info(&mut lock, d);
+
+            res.push(
+                info.spirv
+                    .as_ref()
+                    .map_or(0, |s| s.to_bin().len() + BIN_HEADER_SIZE),
+            );
+        }
+        res
+    }
+
+    pub fn binaries(&self, vals: &[u8]) -> Vec<*mut u8> {
+        // if the application didn't provide any pointers, just return the length of devices
+        if vals.is_empty() {
+            return vec![std::ptr::null_mut(); self.devs.len()];
+        }
+
+        // vals is an array of pointers where we should write the device binaries into
+        if vals.len() != self.devs.len() * size_of::<*const u8>() {
+            panic!("wrong size")
+        }
+
+        let ptrs: &[*mut u8] = unsafe {
+            slice::from_raw_parts(vals.as_ptr().cast(), vals.len() / size_of::<*mut u8>())
+        };
+
+        let mut lock = self.build_info();
+        for (i, d) in self.devs.iter().enumerate() {
+            let mut ptr = ptrs[i];
+            let info = Self::dev_build_info(&mut lock, d);
+            let spirv = info.spirv.as_ref().unwrap().to_bin();
+
+            unsafe {
+                // 1. binary format version
+                ptr.cast::<u32>().write(1);
+                ptr = ptr.add(size_of::<u32>());
+
+                // 2. size of the spirv
+                ptr.cast::<u32>().write(spirv.len() as u32);
+                ptr = ptr.add(size_of::<u32>());
+
+                // 3. binary_type
+                ptr.cast::<cl_program_binary_type>().write(info.bin_type);
+                ptr = ptr.add(size_of::<cl_program_binary_type>());
+
+                // 4. the spirv
+                assert!(ptrs[i].add(BIN_HEADER_SIZE) == ptr);
+                ptr::copy_nonoverlapping(spirv.as_ptr(), ptr, spirv.len());
+            }
+        }
+
+        ptrs.to_vec()
+    }
+
     pub fn args(&self, dev: &Arc<Device>, kernel: &str) -> Vec<spirv::SPIRVKernelArg> {
         Self::dev_build_info(&mut self.build_info(), dev)
             .spirv
@@ -133,6 +275,11 @@ impl Program {
     }
 
     pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
+        // program binary
+        if self.src.as_bytes().is_empty() {
+            return true;
+        }
+
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
         let lib = options.contains("-create-library");
@@ -175,6 +322,11 @@ impl Program {
         options: String,
         headers: &[spirv::CLCHeader],
     ) -> bool {
+        // program binary
+        if self.src.as_bytes().is_empty() {
+            return true;
+        }
+
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
         let args = prepare_options(&options, dev);

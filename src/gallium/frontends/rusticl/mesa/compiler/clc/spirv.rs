@@ -234,6 +234,33 @@ impl SPIRVBin {
             nir_load_libclc_shader(64, shader_cache, &spirv_options, nir_options)
         })
     }
+
+    pub fn to_bin(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts(self.spirv.data.cast(), self.spirv.size) }
+    }
+
+    pub fn from_bin(bin: &[u8], executable: bool) -> Self {
+        unsafe {
+            let ptr = malloc(bin.len());
+            ptr::copy_nonoverlapping(bin.as_ptr(), ptr.cast(), bin.len());
+            let spirv = clc_binary {
+                data: ptr,
+                size: bin.len(),
+            };
+            let info = if executable {
+                let mut pspirv = clc_parsed_spirv::default();
+                clc_parse_spirv(&spirv, ptr::null(), &mut pspirv);
+                Some(pspirv)
+            } else {
+                None
+            };
+
+            SPIRVBin {
+                spirv: spirv,
+                info: info,
+            }
+        }
+    }
 }
 
 impl Drop for SPIRVBin {

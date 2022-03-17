@@ -49,7 +49,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clReleaseSampler: Some(cl_release_sampler),
     clGetSamplerInfo: Some(cl_get_sampler_info),
     clCreateProgramWithSource: Some(cl_create_program_with_source),
-    clCreateProgramWithBinary: None,
+    clCreateProgramWithBinary: Some(cl_create_program_with_binary),
     clRetainProgram: Some(cl_retain_program),
     clReleaseProgram: Some(cl_release_program),
     clBuildProgram: Some(cl_build_program),
@@ -695,6 +695,28 @@ extern "C" fn cl_create_program_with_source(
 ) -> cl_program {
     match_obj!(
         create_program_with_source(context, count, strings, lengths),
+        errcode_ret
+    )
+}
+
+extern "C" fn cl_create_program_with_binary(
+    context: cl_context,
+    num_devices: cl_uint,
+    device_list: *const cl_device_id,
+    lengths: *const usize,
+    binaries: *mut *const ::std::os::raw::c_uchar,
+    binary_status: *mut cl_int,
+    errcode_ret: *mut cl_int,
+) -> cl_program {
+    match_obj!(
+        create_program_with_binary(
+            context,
+            num_devices,
+            device_list,
+            lengths,
+            binaries,
+            binary_status
+        ),
         errcode_ret
     )
 }
