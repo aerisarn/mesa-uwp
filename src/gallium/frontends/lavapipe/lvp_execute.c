@@ -3193,7 +3193,7 @@ static void handle_clear_color_image(struct vk_cmd_queue_entry *cmd,
       box.y = 0;
       box.z = 0;
 
-      uint32_t level_count = lvp_get_levelCount(image, range);
+      uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
       for (unsigned j = range->baseMipLevel; j < range->baseMipLevel + level_count; j++) {
          box.width = u_minify(image->bo->width0, j);
          box.height = u_minify(image->bo->height0, j);
@@ -3202,11 +3202,11 @@ static void handle_clear_color_image(struct vk_cmd_queue_entry *cmd,
             box.depth = u_minify(image->bo->depth0, j);
          else if (image->bo->target == PIPE_TEXTURE_1D_ARRAY) {
             box.y = range->baseArrayLayer;
-            box.height = lvp_get_layerCount(image, range);
+            box.height = vk_image_subresource_layer_count(&image->vk, range);
             box.depth = 1;
          } else {
             box.z = range->baseArrayLayer;
-            box.depth = lvp_get_layerCount(image, range);
+            box.depth = vk_image_subresource_layer_count(&image->vk, range);
          }
 
          state->pctx->clear_texture(state->pctx, image->bo,
@@ -3227,7 +3227,7 @@ static void handle_clear_ds_image(struct vk_cmd_queue_entry *cmd,
       if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
          ds_clear_flags |= PIPE_CLEAR_STENCIL;
 
-      uint32_t level_count = lvp_get_levelCount(image, range);
+      uint32_t level_count = vk_image_subresource_level_count(&image->vk, range);
       for (unsigned j = 0; j < level_count; j++) {
          struct pipe_surface *surf;
          unsigned width, height;
@@ -3238,7 +3238,7 @@ static void handle_clear_ds_image(struct vk_cmd_queue_entry *cmd,
          surf = create_img_surface_bo(state, range,
                                       image->bo, image->bo->format,
                                       width, height,
-                                      0, lvp_get_layerCount(image, range) - 1, j);
+                                      0, vk_image_subresource_layer_count(&image->vk, range) - 1, j);
 
          state->pctx->clear_depth_stencil(state->pctx,
                                           surf,

@@ -240,22 +240,6 @@ struct lvp_image {
    struct pipe_resource *bo;
 };
 
-static inline uint32_t
-lvp_get_layerCount(const struct lvp_image *image,
-                   const VkImageSubresourceRange *range)
-{
-   return range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
-      image->bo->array_size - range->baseArrayLayer : range->layerCount;
-}
-
-static inline uint32_t
-lvp_get_levelCount(const struct lvp_image *image,
-                   const VkImageSubresourceRange *range)
-{
-   return range->levelCount == VK_REMAINING_MIP_LEVELS ?
-      (image->bo->last_level + 1) - range->baseMipLevel : range->levelCount;
-}
-
 struct lvp_image_view {
    struct vk_image_view vk;
    const struct lvp_image *image; /**< VkImageViewCreateInfo::image */
