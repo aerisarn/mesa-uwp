@@ -335,23 +335,11 @@ nir_optimize(nir_shader *nir, bool allow_copies)
 static void
 preprocess_nir(nir_shader *nir)
 {
-   /* We have to lower away local variable initializers right before we
-    * inline functions.  That way they get properly initialized at the top
-    * of the function and not at the top of its caller.
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_opt_deref);
-
-   /* Pick off the single entrypoint that we want */
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (func->is_entrypoint)
-         func->name = ralloc_strdup(func, "main");
-      else
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .frag_coord = true,
+      .point_coord = true,
+   };
+   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
    /* Vulkan uses the separate-shader linking model */
    nir->info.separate_shader = true;
@@ -360,17 +348,6 @@ preprocess_nir(nir_shader *nir)
     * nir_remove_dead_variables below sees the corresponding stores
     */
    NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_shader_out);
-
-   /* Now that we've deleted all but the main function, we can go ahead and
-    * lower the rest of the variable initializers.
-    */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
-
-   /* Split member structs.  We do this before lower_io_to_temporaries so that
-    * it doesn't lower system values to temporaries by accident.
-    */
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_per_member_structs);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
@@ -389,11 +366,6 @@ preprocess_nir(nir_shader *nir)
               nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
 
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_in |
-              nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
-              NULL);
-
-   NIR_PASS_V(nir, nir_propagate_invariant, false);
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
 
@@ -438,52 +410,35 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    nir_shader *nir;
    const nir_shader_compiler_options *nir_options = &v3dv_nir_options;
 
-   if (!stage->module->nir) {
-      uint32_t *spirv = (uint32_t *) stage->module->data;
-      assert(stage->module->size % 4 == 0);
 
-      if (unlikely(V3D_DEBUG & V3D_DEBUG_DUMP_SPIRV))
-         v3dv_print_spirv(stage->module->data, stage->module->size, stderr);
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_DUMP_SPIRV) && stage->module->nir == NULL)
+      v3dv_print_spirv(stage->module->data, stage->module->size, stderr);
 
-      uint32_t num_spec_entries = 0;
-      struct nir_spirv_specialization *spec_entries =
-         vk_spec_info_to_nir_spirv(stage->spec_info, &num_spec_entries);
-      const struct spirv_to_nir_options spirv_options = default_spirv_options;
-      nir = spirv_to_nir(spirv, stage->module->size / 4,
-                         spec_entries, num_spec_entries,
-                         broadcom_shader_stage_to_gl(stage->stage),
-                         stage->entrypoint,
-                         &spirv_options, nir_options);
-      assert(nir);
-      nir_validate_shader(nir, "after spirv_to_nir");
-      free(spec_entries);
-      if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERDB)) {
-            char sha1buf[41];
-            _mesa_sha1_format(sha1buf, stage->pipeline->sha1);
-            nir->info.name = ralloc_strdup(nir, sha1buf);
-      }
-   } else {
-      /* For NIR modules created by the driver we can't consume the NIR
-       * directly, we need to clone it first, since ownership of the NIR code
-       * (as with SPIR-V code for SPIR-V shaders), belongs to the creator
-       * of the module and modules can be destroyed immediately after been used
-       * to create pipelines.
-       */
-      nir = nir_shader_clone(NULL, stage->module->nir);
-      nir_validate_shader(nir, "nir module");
-   }
+   /* vk_shader_module_to_nir also handles internal shaders, when module->nir
+    * != NULL. It also calls nir_validate_shader on both cases, so we don't
+    * call it again here.
+    */
+   VkResult result = vk_shader_module_to_nir(&device->vk, stage->module,
+                                             broadcom_shader_stage_to_gl(stage->stage),
+                                             stage->entrypoint,
+                                             stage->spec_info,
+                                             &default_spirv_options,
+                                             nir_options,
+                                             NULL, &nir);
+   if (result != VK_SUCCESS)
+      return NULL;
    assert(nir->info.stage == broadcom_shader_stage_to_gl(stage->stage));
 
-   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
-      .frag_coord = true,
-      .point_coord = true,
-   };
-   NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+   if (unlikely(V3D_DEBUG & V3D_DEBUG_SHADERDB) && stage->module->nir == NULL) {
+      char sha1buf[41];
+      _mesa_sha1_format(sha1buf, stage->pipeline->sha1);
+      nir->info.name = ralloc_strdup(nir, sha1buf);
+   }
 
    if (unlikely(V3D_DEBUG & (V3D_DEBUG_NIR |
                              v3d_debug_flag_for_shader_stage(
                                 broadcom_shader_stage_to_gl(stage->stage))))) {
-      fprintf(stderr, "Initial form: %s prog %d NIR:\n",
+      fprintf(stderr, "NIR after vk_shader_module_to_nir: %s prog %d NIR:\n",
               broadcom_shader_stage_name(stage->stage),
               stage->program_id);
       nir_print_shader(nir, stderr);

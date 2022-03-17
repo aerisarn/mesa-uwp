@@ -4282,7 +4282,7 @@ nir_to_vir(struct v3d_compile *c)
 
         /* Find the main function and emit the body. */
         nir_foreach_function(function, c->s) {
-                assert(strcmp(function->name, "main") == 0);
+                assert(function->is_entrypoint);
                 assert(function->impl);
                 ntq_emit_impl(c, function->impl);
         }
