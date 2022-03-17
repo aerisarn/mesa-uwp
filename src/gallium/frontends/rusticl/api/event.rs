@@ -15,7 +15,7 @@ use std::sync::Arc;
 impl CLInfo<cl_event_info> for cl_event {
     fn query(&self, q: cl_event_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let event = self.get_ref()?;
-        Ok(match q {
+        Ok(match *q {
             CL_EVENT_COMMAND_EXECUTION_STATUS => cl_prop::<cl_int>(event.status()),
             CL_EVENT_CONTEXT => {
                 // Note we use as_ptr here which doesn't increase the reference count.
@@ -32,6 +32,26 @@ impl CLInfo<cl_event_info> for cl_event {
             }
             CL_EVENT_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
             CL_EVENT_COMMAND_TYPE => cl_prop::<cl_command_type>(event.cmd_type),
+            _ => return Err(CL_INVALID_VALUE),
+        })
+    }
+}
+
+impl CLInfo<cl_profiling_info> for cl_event {
+    fn query(&self, q: cl_profiling_info, _: &[u8]) -> CLResult<Vec<u8>> {
+        let event = self.get_ref()?;
+        if event.cmd_type == CL_COMMAND_USER {
+            // CL_PROFILING_INFO_NOT_AVAILABLE [...] if event is a user event object.
+            return Err(CL_PROFILING_INFO_NOT_AVAILABLE);
+        }
+
+        Ok(match *q {
+            // TODO
+            CL_PROFILING_COMMAND_QUEUED => cl_prop::<cl_ulong>(0),
+            CL_PROFILING_COMMAND_SUBMIT => cl_prop::<cl_ulong>(1),
+            CL_PROFILING_COMMAND_START => cl_prop::<cl_ulong>(2),
+            CL_PROFILING_COMMAND_END => cl_prop::<cl_ulong>(3),
+            CL_PROFILING_COMMAND_COMPLETE => cl_prop::<cl_ulong>(3),
             _ => return Err(CL_INVALID_VALUE),
         })
     }

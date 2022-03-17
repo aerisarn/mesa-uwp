@@ -135,6 +135,7 @@ rusticl_opencl_bindings_rs = rust.bindgen(
     # some info types need to be strongly typed so we can implement various get_infos
     '--new-type-alias-deref', 'cl_(mem|image)_info',
     '--new-type-alias-deref', 'cl_kernel_(arg|work_group)_info',
+    '--new-type-alias-deref', 'cl_(event|profiling)_info',
   ],
 )
 

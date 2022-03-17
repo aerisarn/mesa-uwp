@@ -878,14 +878,18 @@ extern "C" fn cl_release_event(event: cl_event) -> cl_int {
 }
 
 extern "C" fn cl_get_event_profiling_info(
-    _event: cl_event,
-    _param_name: cl_profiling_info,
-    _param_value_size: usize,
-    _param_value: *mut ::std::os::raw::c_void,
-    _param_value_size_ret: *mut usize,
+    event: cl_event,
+    param_name: cl_profiling_info,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
 ) -> cl_int {
-    println!("cl_get_event_profiling_info not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(event.get_info(
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret,
+    ))
 }
 
 extern "C" fn cl_flush(command_queue: cl_command_queue) -> cl_int {
