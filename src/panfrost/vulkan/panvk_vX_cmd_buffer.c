@@ -1105,16 +1105,8 @@ panvk_per_arch(CmdEndRenderPass)(VkCommandBuffer cmd)
 
 
 void
-panvk_per_arch(CmdPipelineBarrier)(VkCommandBuffer commandBuffer,
-                                   VkPipelineStageFlags srcStageMask,
-                                   VkPipelineStageFlags destStageMask,
-                                   VkDependencyFlags dependencyFlags,
-                                   uint32_t memoryBarrierCount,
-                                   const VkMemoryBarrier *pMemoryBarriers,
-                                   uint32_t bufferMemoryBarrierCount,
-                                   const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                                   uint32_t imageMemoryBarrierCount,
-                                   const VkImageMemoryBarrier *pImageMemoryBarriers)
+panvk_per_arch(CmdPipelineBarrier2)(VkCommandBuffer commandBuffer,
+                                    const VkDependencyInfo *pDependencyInfo)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
@@ -1195,9 +1187,9 @@ panvk_add_wait_event_operation(struct panvk_cmd_buffer *cmdbuf,
 }
 
 void
-panvk_per_arch(CmdSetEvent)(VkCommandBuffer commandBuffer,
-                            VkEvent _event,
-                            VkPipelineStageFlags stageMask)
+panvk_per_arch(CmdSetEvent2)(VkCommandBuffer commandBuffer,
+                             VkEvent _event,
+                             const VkDependencyInfo *pDependencyInfo)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(panvk_event, event, _event);
@@ -1209,9 +1201,9 @@ panvk_per_arch(CmdSetEvent)(VkCommandBuffer commandBuffer,
 }
 
 void
-panvk_per_arch(CmdResetEvent)(VkCommandBuffer commandBuffer,
-                              VkEvent _event,
-                              VkPipelineStageFlags stageMask)
+panvk_per_arch(CmdResetEvent2)(VkCommandBuffer commandBuffer,
+                               VkEvent _event,
+                               VkPipelineStageFlags2 stageMask)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(panvk_event, event, _event);
@@ -1223,17 +1215,10 @@ panvk_per_arch(CmdResetEvent)(VkCommandBuffer commandBuffer,
 }
 
 void
-panvk_per_arch(CmdWaitEvents)(VkCommandBuffer commandBuffer,
-                              uint32_t eventCount,
-                              const VkEvent *pEvents,
-                              VkPipelineStageFlags srcStageMask,
-                              VkPipelineStageFlags dstStageMask,
-                              uint32_t memoryBarrierCount,
-                              const VkMemoryBarrier *pMemoryBarriers,
-                              uint32_t bufferMemoryBarrierCount,
-                              const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                              uint32_t imageMemoryBarrierCount,
-                              const VkImageMemoryBarrier *pImageMemoryBarriers)
+panvk_per_arch(CmdWaitEvents2)(VkCommandBuffer commandBuffer,
+                               uint32_t eventCount,
+                               const VkEvent *pEvents,
+                               const VkDependencyInfo *pDependencyInfos)
 {
    VK_FROM_HANDLE(panvk_cmd_buffer, cmdbuf, commandBuffer);
 
