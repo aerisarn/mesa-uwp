@@ -5015,6 +5015,7 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
       device->static_clear_state.ppp_templates[PVR_STATIC_CLEAR_COLOR_BIT];
    uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT] = { 0 };
    struct pvr_csb *csb = &sub_cmd->control_stream;
+   struct pvr_bo *ppp_bo;
    void *stream;
 
    assert(clear.requires_pds_state);
@@ -5034,7 +5035,8 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
 
    /* Emit PPP state from template. */
 
-   pvr_finishme("Emit PPP state from template.");
+   pvr_emit_ppp_from_template(csb, &clear, &ppp_bo);
+   list_add(&ppp_bo->link, &cmd_buffer->bo_list);
 
    /* Emit VDM state. */
 

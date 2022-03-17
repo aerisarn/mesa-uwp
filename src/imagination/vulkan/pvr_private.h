@@ -1440,6 +1440,11 @@ void pvr_calculate_vertex_cam_size(const struct pvr_device_info *dev_info,
                                    uint32_t *const cam_size_out,
                                    uint32_t *const vs_max_instances_out);
 
+VkResult pvr_emit_ppp_from_template(
+   struct pvr_csb *const csb,
+   const struct pvr_static_clear_ppp_template *const template,
+   struct pvr_bo **const pvr_bo_out);
+
 static inline struct pvr_compute_pipeline *
 to_pvr_compute_pipeline(struct pvr_pipeline *pipeline)
 {

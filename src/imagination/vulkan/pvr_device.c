@@ -1573,6 +1573,116 @@ static void pvr_device_setup_graphics_static_clear_ppp_templates(
    }
 }
 
+/**
+ * \brief Emit geom state from a configurable template.
+ *
+ * Note that the state is emitted by joining the template with a base so the
+ * base must have been setup before calling this.
+ *
+ * \param[in] csb          Control stream to emit to.
+ * \param[in] template     The configured template.
+ * \param[out] pvr_bo_out  Uploaded state's pvr_bo object.
+ *
+ * \return   VK_SUCCESS if the state was successfully uploaded.
+ */
+VkResult pvr_emit_ppp_from_template(
+   struct pvr_csb *const csb,
+   const struct pvr_static_clear_ppp_template *const template,
+   struct pvr_bo **const pvr_bo_out)
+{
+   const uint32_t dword_count =
+      pvr_cmd_length(TA_STATE_HEADER) + pvr_cmd_length(TA_STATE_ISPCTL) +
+      pvr_cmd_length(TA_STATE_ISPA) + pvr_cmd_length(TA_STATE_ISPB) +
+      (template->requires_pds_state ? PVR_STATIC_CLEAR_PDS_STATE_COUNT : 0) +
+      pvr_cmd_length(TA_REGION_CLIP0) + pvr_cmd_length(TA_REGION_CLIP1) +
+      pvr_cmd_length(TA_WCLAMP) + pvr_cmd_length(TA_OUTPUT_SEL) +
+      pvr_cmd_length(TA_STATE_VARYING0) + pvr_cmd_length(TA_STATE_VARYING1) +
+      pvr_cmd_length(TA_STATE_VARYING2) + pvr_cmd_length(TA_STATE_PPP_CTRL) +
+      pvr_cmd_length(TA_STATE_STREAM_OUT0);
+
+   struct pvr_device *const device = csb->device;
+   const uint32_t cache_line_size =
+      rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
+   const struct pvr_static_clear_ppp_base *const base =
+      &device->static_clear_state.ppp_base;
+   struct pvr_bo *pvr_bo;
+   uint32_t *stream;
+   VkResult result;
+
+   result = pvr_bo_alloc(device,
+                         device->heaps.general_heap,
+                         dword_count * sizeof(uint32_t),
+                         cache_line_size,
+                         PVR_BO_ALLOC_FLAG_CPU_MAPPED,
+                         &pvr_bo);
+   if (result != VK_SUCCESS) {
+      *pvr_bo_out = NULL;
+      return result;
+   }
+
+#define CS_WRITE(_dst, cmd, val)                                      \
+   do {                                                               \
+      static_assert(sizeof(*(_dst)) == pvr_cmd_length(cmd) * 4,       \
+                    "Size mismatch");                                 \
+      static_assert(sizeof(*(_dst)) == sizeof(val), "Size mismatch"); \
+      *(_dst) = val;                                                  \
+      (_dst) += pvr_cmd_length(cmd);                                  \
+   } while (0)
+
+#define CS_PACK_WRITE(_dst, cmd, val)                           \
+   do {                                                         \
+      static_assert(sizeof(*(_dst)) == pvr_cmd_length(cmd) * 4, \
+                    "Size mismatch");                           \
+      pvr_cmd_pack(cmd)((_dst), val);                           \
+      (_dst) += pvr_cmd_length(cmd);                            \
+   } while (0)
+
+   stream = (uint32_t *)pvr_bo->bo->map;
+
+   CS_WRITE(stream, TA_STATE_HEADER, template->header);
+   CS_PACK_WRITE(stream, TA_STATE_ISPCTL, &template->config.ispctl);
+   CS_PACK_WRITE(stream, TA_STATE_ISPA, &template->config.ispa);
+   CS_WRITE(stream, TA_STATE_ISPB, template->ispb);
+
+   if (template->requires_pds_state) {
+      static_assert(sizeof(*stream) == sizeof((*template->config.pds_state)[0]),
+                    "Size mismatch");
+      for (uint32_t i = 0; i < PVR_STATIC_CLEAR_PDS_STATE_COUNT; i++)
+         *stream++ = (*template->config.pds_state)[i];
+   }
+
+   CS_PACK_WRITE(stream, TA_REGION_CLIP0, &template->config.region_clip0);
+   CS_PACK_WRITE(stream, TA_REGION_CLIP1, &template->config.region_clip1);
+   CS_WRITE(stream, TA_WCLAMP, base->wclamp);
+   CS_PACK_WRITE(stream, TA_OUTPUT_SEL, &template->config.output_sel);
+   CS_WRITE(stream, TA_STATE_VARYING0, base->varying_word[0]);
+   CS_WRITE(stream, TA_STATE_VARYING1, base->varying_word[1]);
+   CS_WRITE(stream, TA_STATE_VARYING2, base->varying_word[2]);
+   CS_WRITE(stream, TA_STATE_PPP_CTRL, base->ppp_ctrl);
+   CS_WRITE(stream, TA_STATE_STREAM_OUT0, base->stream_out0);
+
+   assert((uint64_t)(stream - (uint32_t *)pvr_bo->bo->map) == dword_count);
+
+   pvr_bo_cpu_unmap(device, pvr_bo);
+   stream = NULL;
+
+#undef CS_PACK_WRITE
+#undef CS_WRITE
+
+   pvr_csb_emit (csb, VDMCTRL_PPP_STATE0, state) {
+      state.word_count = dword_count;
+      state.addrmsb = pvr_bo->vma->dev_addr;
+   }
+
+   pvr_csb_emit (csb, VDMCTRL_PPP_STATE1, state) {
+      state.addrlsb = pvr_bo->vma->dev_addr;
+   }
+
+   *pvr_bo_out = pvr_bo;
+
+   return VK_SUCCESS;
+}
+
 static void pvr_device_setup_graphics_static_clear_vdm_state(
    const struct pvr_device_info *const dev_info,
    const struct pvr_pds_upload *const program,
