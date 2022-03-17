@@ -1383,11 +1383,13 @@
     <field name="Shader" start="16:0" size="512" type="Shader Environment"/>
   </struct>
 
-  <struct name="IDVS Counts" size="4">
-    <field name="Instance count" start="0:0" size="32" type="uint"/>
-    <field name="Vertex packet stride" start="1:0" size="16" type="uint"/>
-    <field name="Vertex attribute stride" start="1:16" size="16" type="uint"/>
-    <field name="Tiler" size="64" start="2:0" type="address"/>
+  <struct name="Count" size="1">
+    <field name="Count" start="0:0" size="32" type="uint"/>
+  </struct>
+
+  <struct name="Allocation" size="1">
+    <field name="Vertex packet stride" start="0:0" size="16" type="uint"/>
+    <field name="Vertex attribute stride" start="0:16" size="16" type="uint"/>
   </struct>
 
   <struct name="Tiler Pointer" size="2">
@@ -1406,7 +1408,8 @@
   <aggregate name="Malloc Vertex Job" size="384" align="128">
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Primitive" offset="32" type="Primitive"/>
-    <section name="Counts" offset="48" type="IDVS Counts"/>
+    <section name="Instance Count" offset="48" type="Count"/>
+    <section name="Allocation" offset="52" type="Allocation"/>
     <section name="Tiler" offset="56" type="Tiler Pointer"/>
     <section name="Scissor" offset="104" type="Scissor"/>
     <section name="Primitive Size" offset="112" type="Primitive Size"/>

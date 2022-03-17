@@ -1266,7 +1266,8 @@ pandecode_malloc_vertex_job(const struct pandecode_mapped_memory *mem,
         struct mali_malloc_vertex_job_packed *PANDECODE_PTR_VAR(p, mem, job);
 
         DUMP_SECTION(MALLOC_VERTEX_JOB, PRIMITIVE, p, "Primitive:\n");
-        DUMP_SECTION(MALLOC_VERTEX_JOB, COUNTS, p, "Counts:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, INSTANCE_COUNT, p, "Instance count:\n");
+        DUMP_SECTION(MALLOC_VERTEX_JOB, ALLOCATION, p, "Allocation:\n");
         DUMP_SECTION(MALLOC_VERTEX_JOB, TILER, p, "Tiler:\n");
         DUMP_SECTION(MALLOC_VERTEX_JOB, SCISSOR, p, "Scissor:\n");
         DUMP_SECTION(MALLOC_VERTEX_JOB, PRIMITIVE_SIZE, p, "Primitive Size:\n");
