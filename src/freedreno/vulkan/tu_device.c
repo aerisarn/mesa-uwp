@@ -825,6 +825,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->depthClipControl = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+         VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *features =
+            (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT *)ext;
+         features->texelBufferAlignment = true;
+         break;
+      }
 
       default:
          break;
@@ -1020,10 +1026,9 @@ tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
    p->integerDotProductAccumulatingSaturating64BitSignedAccelerated = false;
    p->integerDotProductAccumulatingSaturating64BitMixedSignednessAccelerated = false;
 
-   /* VK_EXT_texel_buffer_alignment is not implemented */
-   p->storageTexelBufferOffsetAlignmentBytes = 0;
+   p->storageTexelBufferOffsetAlignmentBytes = 64;
    p->storageTexelBufferOffsetSingleTexelAlignment = false;
-   p->uniformTexelBufferOffsetAlignmentBytes = 0;
+   p->uniformTexelBufferOffsetAlignmentBytes = 64;
    p->uniformTexelBufferOffsetSingleTexelAlignment = false;
 
    /* TODO: find out the limit */

@@ -490,7 +490,7 @@ Vulkan 1.3 -- all DONE: anv, radv
   VK_EXT_image_robustness                               DONE (anv, radv, tu)
   VK_EXT_shader_demote_to_helper_invocation             DONE (anv, radv, tu)
   VK_EXT_subgroup_size_control                          DONE (anv, radv, tu)
-  VK_EXT_texel_buffer_alignment                         DONE (anv, radv)
+  VK_EXT_texel_buffer_alignment                         DONE (anv, radv, tu)
 
 Khronos extensions that are not part of any Vulkan version:
 
