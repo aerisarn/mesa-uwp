@@ -571,7 +571,6 @@ struct radv_meta_state {
    struct {
       VkPipelineLayout p_layout;
       VkPipeline pipeline[NUM_META_FS_KEYS];
-      VkRenderPass pass[NUM_META_FS_KEYS];
    } resolve;
 
    struct {
