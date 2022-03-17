@@ -24,6 +24,7 @@
 #include "va_compiler.h"
 #include "valhall.h"
 #include "valhall_enums.h"
+#include "bi_builder.h"
 
 /* This file contains the final passes of the compiler. Running after
  * scheduling and RA, the IR is now finalized, so we need to emit it to actual
@@ -902,12 +903,65 @@ va_lower_branch_target(bi_context *ctx, bi_block *start, bi_instr *I)
    I->branch_offset = offset;
 }
 
+/*
+ * Late lowering to insert blend shader calls after BLEND instructions. Required
+ * to support blend shaders, so this pass may be omitted if it is known that
+ * blend shaders are never used.
+ *
+ * This lowering runs late because it introduces control flow changes without
+ * modifying the control flow graph. It hardcodes registers, meaning running
+ * after RA makes sense. Finally, it hardcodes a manually sized instruction
+ * sequence, requiring it to run after scheduling.
+ *
+ * As it is Valhall specific, running it as a pre-pack lowering is sensible.
+ */
+static void
+va_lower_blend(bi_context *ctx)
+{
+   bool last_blend = true;
+
+   /* Link register (ABI between fragment and blend shaders) */
+   bi_index lr = bi_register(48);
+
+   /* Program counter for *next* instruction */
+   bi_index pc = bi_fau(BIR_FAU_PROGRAM_COUNTER, false);
+
+   bi_foreach_instr_global_rev(ctx, I) {
+      if (I->op != BI_OPCODE_BLEND)
+         continue;
+
+      bi_builder b = bi_init_builder(ctx, bi_after_instr(I));
+
+      unsigned prolog_length = 2 * 8;
+
+      if (last_blend)
+         bi_iadd_imm_i32_to(&b, lr, va_zero_lut(), 0);
+      else
+         bi_iadd_imm_i32_to(&b, lr, pc, prolog_length - 8);
+
+      bi_branchzi(&b, va_zero_lut(), I->src[3], BI_CMPF_EQ);
+
+      /* For fixed function: skip the prologue, or return */
+      if (last_blend)
+         I->flow = 0x7 | 0x8; /* .return */
+      else
+         I->branch_offset = prolog_length;
+
+      /* Iterate backwards makes the last BLEND easy to identify */
+      last_blend = false;
+   }
+}
+
 void
 bi_pack_valhall(bi_context *ctx, struct util_dynarray *emission)
 {
    unsigned orig_size = emission->size;
 
    va_validate(stderr, ctx);
+
+   /* Late lowering */
+   if (ctx->stage == MESA_SHADER_FRAGMENT && !ctx->inputs->is_blend)
+      va_lower_blend(ctx);
 
    bi_foreach_block(ctx, block) {
       bi_foreach_instr_in_block(block, I) {
