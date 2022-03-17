@@ -3926,7 +3926,8 @@ rebind_buffer(struct zink_context *ctx, struct zink_resource *res, uint32_t rebi
       }
    }
 end:
-   zink_batch_resource_usage_set(&ctx->batch, res, has_write);
+   if (num_rebinds)
+      zink_batch_resource_usage_set(&ctx->batch, res, has_write);
    return num_rebinds;
 }
 
