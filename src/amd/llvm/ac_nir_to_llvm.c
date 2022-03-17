@@ -2490,9 +2490,7 @@ static void get_image_coords(struct ac_nir_context *ctx, const nir_intrinsic_ins
 
       sample_index = adjust_sample_index_using_fmask(
          &ctx->ac, fmask_load_address[0], fmask_load_address[1], fmask_load_address[2],
-         sample_index,
-         get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), AC_DESC_FMASK,
-                          &instr->instr, dynamic_desc_index, true, false));
+         sample_index, get_image_descriptor(ctx, instr, dynamic_desc_index, AC_DESC_FMASK, false));
    }
    if (count == 1 && !gfx9_1d) {
       if (instr->src[1].ssa->num_components)
