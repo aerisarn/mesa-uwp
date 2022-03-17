@@ -2765,10 +2765,6 @@ si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
    }
 }
 
-void radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
-                                       const VkRenderPassBeginInfo *pRenderPassBegin);
-void radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer);
-
 static inline uint32_t
 si_translate_prim(unsigned topology)
 {

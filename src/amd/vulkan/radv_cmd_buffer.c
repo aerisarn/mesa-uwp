@@ -5971,35 +5971,27 @@ radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
    radv_describe_barrier_end(cmd_buffer);
 }
 
-void
-radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
-                                  const VkRenderPassBeginInfo *pRenderPassBegin)
-{
-   RADV_FROM_HANDLE(radv_render_pass, pass, pRenderPassBegin->renderPass);
-   RADV_FROM_HANDLE(radv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
-   VkResult result;
-
-   cmd_buffer->state.framebuffer = framebuffer;
-   cmd_buffer->state.pass = pass;
-   cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
-
-   result = radv_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBegin);
-   if (result != VK_SUCCESS)
-      return;
-
-   result = radv_cmd_state_setup_sample_locations(cmd_buffer, pass, pRenderPassBegin);
-   if (result != VK_SUCCESS)
-      return;
-}
-
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
                          const VkRenderPassBeginInfo *pRenderPassBeginInfo,
                          const VkSubpassBeginInfo *pSubpassBeginInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   RADV_FROM_HANDLE(radv_render_pass, pass, pRenderPassBeginInfo->renderPass);
+   RADV_FROM_HANDLE(radv_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
+   VkResult result;
 
-   radv_cmd_buffer_begin_render_pass(cmd_buffer, pRenderPassBeginInfo);
+   cmd_buffer->state.framebuffer = framebuffer;
+   cmd_buffer->state.pass = pass;
+   cmd_buffer->state.render_area = pRenderPassBeginInfo->renderArea;
+
+   result = radv_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBeginInfo);
+   if (result != VK_SUCCESS)
+      return;
+
+   result = radv_cmd_state_setup_sample_locations(cmd_buffer, pass, pRenderPassBeginInfo);
+   if (result != VK_SUCCESS)
+      return;
 
    radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
@@ -7650,19 +7642,6 @@ radv_CmdSetRayTracingPipelineStackSizeKHR(VkCommandBuffer commandBuffer, uint32_
    cmd_buffer->state.rt_stack_size = size;
 }
 
-void
-radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer)
-{
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
-   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.subpass_sample_locs);
-
-   cmd_buffer->state.pass = NULL;
-   cmd_buffer->state.subpass = NULL;
-   cmd_buffer->state.attachments = NULL;
-   cmd_buffer->state.framebuffer = NULL;
-   cmd_buffer->state.subpass_sample_locs = NULL;
-}
-
 VKAPI_ATTR void VKAPI_CALL
 radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pSubpassEndInfo)
 {
@@ -7674,7 +7653,14 @@ radv_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pS
 
    radv_cmd_buffer_end_subpass(cmd_buffer);
 
-   radv_cmd_buffer_end_render_pass(cmd_buffer);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.attachments);
+   vk_free(&cmd_buffer->pool->vk.alloc, cmd_buffer->state.subpass_sample_locs);
+
+   cmd_buffer->state.pass = NULL;
+   cmd_buffer->state.subpass = NULL;
+   cmd_buffer->state.attachments = NULL;
+   cmd_buffer->state.framebuffer = NULL;
+   cmd_buffer->state.subpass_sample_locs = NULL;
 }
 
 VKAPI_ATTR void VKAPI_CALL
