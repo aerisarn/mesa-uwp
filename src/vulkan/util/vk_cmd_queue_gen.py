@@ -35,12 +35,10 @@ from mako.template import Template
 # '{file_without_suffix}_depend_files'.
 from vk_entrypoints import get_entrypoints_from_xml, EntrypointParam
 
+# These have hand-typed implementations in vk_cmd_enqueue.c
 MANUAL_COMMANDS = [
     # This script doesn't know how to copy arrays in structs in arrays
     'CmdPushDescriptorSetKHR',
-
-    # pData's size cannot be calculated from the xml
-    'CmdPushDescriptorSetWithTemplateKHR',
 
     # The size of the elements is specified in a stride param
     'CmdDrawMultiEXT',
@@ -49,6 +47,11 @@ MANUAL_COMMANDS = [
     # The VkPipelineLayout object could be released before the command is
     # executed
     'CmdBindDescriptorSets',
+]
+
+NO_ENQUEUE_COMMANDS = [
+    # pData's size cannot be calculated from the xml
+    'CmdPushDescriptorSetWithTemplateKHR',
 
     # These don't return void
     'CmdSetPerformanceMarkerINTEL',
@@ -131,7 +134,7 @@ struct vk_cmd_queue_entry {
 };
 
 % for c in commands:
-% if c.name in manual_commands:
+% if c.name in manual_commands or c.name in no_enqueue_commands:
 <% continue %>
 % endif
 % if c.guard is not None:
@@ -207,7 +210,7 @@ const char *vk_cmd_queue_type_names[] = {
 };
 
 % for c in commands:
-% if c.name in manual_commands:
+% if c.name in manual_commands or c.name in no_enqueue_commands:
 <% continue %>
 % endif
 % if c.guard is not None:
@@ -311,7 +314,7 @@ vk_cmd_queue_execute(struct vk_cmd_queue *queue,
 }
 
 % for c in commands:
-% if c.name in manual_commands:
+% if c.name in no_enqueue_commands:
 /* TODO: Generate vk_cmd_enqueue_${c.name}() */
 <% continue %>
 % endif
@@ -320,6 +323,10 @@ vk_cmd_queue_execute(struct vk_cmd_queue *queue,
 #ifdef ${c.guard}
 % endif
 <% assert c.return_type == 'void' %>
+
+% if c.name in manual_commands:
+/* vk_cmd_enqueue_${c.name}() is hand-typed in vk_cmd_enqueue.c */
+% else:
 VKAPI_ATTR void VKAPI_CALL
 vk_cmd_enqueue_${c.name}(${c.decl_params()})
 {
@@ -332,6 +339,7 @@ vk_cmd_enqueue_${c.name}(${c.decl_params()})
                                        ${c.call_params(1)});
 % endif
 }
+% endif
 
 VKAPI_ATTR void VKAPI_CALL
 vk_cmd_enqueue_unless_primary_${c.name}(${c.decl_params()})
@@ -551,6 +559,7 @@ def main():
         'get_struct_free': get_struct_free,
         'types': types,
         'manual_commands': MANUAL_COMMANDS,
+        'no_enqueue_commands': NO_ENQUEUE_COMMANDS,
         'remove_suffix': remove_suffix,
     }
 
