@@ -73,8 +73,18 @@ debug_describe_zink_buffer_view(char *buf, const struct zink_buffer_view *ptr)
 ALWAYS_INLINE static void
 check_resource_for_batch_ref(struct zink_context *ctx, struct zink_resource *res)
 {
-   if (!zink_resource_has_binds(res))
-      zink_batch_reference_resource(&ctx->batch, res);
+   if (!zink_resource_has_binds(res)) {
+      /* avoid desync between usage and tracking:
+       * - if usage exists, it must be removed before the context is destroyed
+       * - having usage does not imply having tracking
+       * - if tracking will be added here, also reapply usage to avoid dangling usage once tracking is removed
+       * TODO: somehow fix this for perf because it's an extra hash lookup
+       */
+      if (res->obj->bo->reads || res->obj->bo->writes)
+         zink_batch_reference_resource_rw(&ctx->batch, res, !!res->obj->bo->writes);
+      else
+         zink_batch_reference_resource(&ctx->batch, res);
+   }
 }
 
 static void
