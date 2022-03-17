@@ -1907,8 +1907,8 @@ setup_execbuf_for_cmd_buffers(struct anv_execbuf *execbuf,
       __builtin_ia32_mfence();
       for (uint32_t i = 0; i < num_cmd_buffers; i++) {
          u_vector_foreach(bbo, &cmd_buffers[i]->seen_bbos) {
-            for (uint32_t i = 0; i < (*bbo)->length; i += CACHELINE_SIZE)
-               __builtin_ia32_clflush((*bbo)->bo->map + i);
+            for (uint32_t l = 0; l < (*bbo)->length; l += CACHELINE_SIZE)
+               __builtin_ia32_clflush((*bbo)->bo->map + l);
          }
       }
    }
