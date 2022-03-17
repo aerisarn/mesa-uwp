@@ -6595,7 +6595,7 @@ void genX(CmdBeginRendering)(
                                        VK_IMAGE_ASPECT_COLOR_BIT,
                                        iview->vk.base_mip_level, 1,
                                        iview->vk.base_array_layer,
-                                       iview->vk.layer_count,
+                                       gfx->layer_count,
                                        initial_layout, att->imageLayout,
                                        VK_QUEUE_FAMILY_IGNORED,
                                        VK_QUEUE_FAMILY_IGNORED,
@@ -6605,7 +6605,7 @@ void genX(CmdBeginRendering)(
 
          uint32_t clear_view_mask = pRenderingInfo->viewMask;
          uint32_t base_clear_layer = iview->vk.base_array_layer;
-         uint32_t clear_layer_count = iview->vk.layer_count;
+         uint32_t clear_layer_count = gfx->layer_count;
          if (fast_clear) {
             /* We only support fast-clears on the first layer */
             assert(iview->vk.base_mip_level == 0 &&
@@ -6812,7 +6812,7 @@ void genX(CmdBeginRendering)(
             } else {
                transition_depth_buffer(cmd_buffer, d_iview->image,
                                        d_iview->vk.base_array_layer,
-                                       d_iview->vk.layer_count,
+                                       gfx->layer_count,
                                        initial_depth_layout, depth_layout,
                                        hiz_clear);
             }
@@ -6837,7 +6837,7 @@ void genX(CmdBeginRendering)(
                transition_stencil_buffer(cmd_buffer, s_iview->image,
                                          s_iview->vk.base_mip_level, 1,
                                          s_iview->vk.base_array_layer,
-                                         s_iview->vk.layer_count,
+                                         gfx->layer_count,
                                          initial_stencil_layout,
                                          stencil_layout,
                                          hiz_clear);
@@ -6871,7 +6871,7 @@ void genX(CmdBeginRendering)(
          } else {
             uint32_t level = ds_iview->vk.base_mip_level;
             uint32_t base_layer = ds_iview->vk.base_array_layer;
-            uint32_t layer_count = ds_iview->vk.layer_count;
+            uint32_t layer_count = gfx->layer_count;
 
             if (hiz_clear) {
                anv_image_hiz_clear(cmd_buffer, ds_iview->image,
