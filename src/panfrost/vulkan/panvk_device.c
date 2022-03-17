@@ -1248,37 +1248,18 @@ panvk_InvalidateMappedMemoryRanges(VkDevice _device,
 }
 
 void
-panvk_GetBufferMemoryRequirements(VkDevice _device,
-                                  VkBuffer _buffer,
-                                  VkMemoryRequirements *pMemoryRequirements)
-{
-   VK_FROM_HANDLE(panvk_buffer, buffer, _buffer);
-
-   pMemoryRequirements->memoryTypeBits = 1;
-   pMemoryRequirements->alignment = 64;
-   pMemoryRequirements->size =
-      MAX2(align64(buffer->size, pMemoryRequirements->alignment), buffer->size);
-}
-
-void
 panvk_GetBufferMemoryRequirements2(VkDevice device,
                                    const VkBufferMemoryRequirementsInfo2 *pInfo,
                                    VkMemoryRequirements2 *pMemoryRequirements)
 {
-   panvk_GetBufferMemoryRequirements(device, pInfo->buffer,
-                                     &pMemoryRequirements->memoryRequirements);
-}
+   VK_FROM_HANDLE(panvk_buffer, buffer, pInfo->buffer);
 
-void
-panvk_GetImageMemoryRequirements(VkDevice _device,
-                                 VkImage _image,
-                                 VkMemoryRequirements *pMemoryRequirements)
-{
-   VK_FROM_HANDLE(panvk_image, image, _image);
+   const uint64_t align = 64;
+   const uint64_t size = align64(buffer->size, align);
 
-   pMemoryRequirements->memoryTypeBits = 1;
-   pMemoryRequirements->size = panvk_image_get_total_size(image);
-   pMemoryRequirements->alignment = 4096;
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = 1;
+   pMemoryRequirements->memoryRequirements.alignment = align;
+   pMemoryRequirements->memoryRequirements.size = size;
 }
 
 void
@@ -1286,16 +1267,14 @@ panvk_GetImageMemoryRequirements2(VkDevice device,
                                  const VkImageMemoryRequirementsInfo2 *pInfo,
                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
-   panvk_GetImageMemoryRequirements(device, pInfo->image,
-                                    &pMemoryRequirements->memoryRequirements);
-}
+   VK_FROM_HANDLE(panvk_image, image, pInfo->image);
 
-void
-panvk_GetImageSparseMemoryRequirements(VkDevice device, VkImage image,
-                                       uint32_t *pSparseMemoryRequirementCount,
-                                       VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
-{
-   panvk_stub();
+   const uint64_t align = 4096;
+   const uint64_t size = panvk_image_get_total_size(image);
+
+   pMemoryRequirements->memoryRequirements.memoryTypeBits = 1;
+   pMemoryRequirements->memoryRequirements.alignment = align;
+   pMemoryRequirements->memoryRequirements.size = size;
 }
 
 void
