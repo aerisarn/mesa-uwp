@@ -218,6 +218,11 @@ fn lower_and_optimize_nir_late(
     args: usize,
 ) -> Vec<InternalKernelArg> {
     let mut res = Vec::new();
+    let nir_options = unsafe {
+        &*dev
+            .screen
+            .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE)
+    };
     let mut lower_state = rusticl_lower_state::default();
 
     nir.pass2(
@@ -284,6 +289,18 @@ fn lower_and_optimize_nir_late(
     nir.pass0(nir_lower_vars_to_ssa);
 
     // TODO whatever clc is doing here
+
+    if nir_options.lower_to_scalar {
+        nir.pass2(
+            nir_lower_alu_to_scalar,
+            nir_options.lower_to_scalar_filter,
+            ptr::null(),
+        );
+    }
+
+    if nir_options.lower_int64_options.0 != 0 {
+        nir.pass0(nir_lower_int64);
+    }
 
     nir.pass1(nir_lower_convert_alu_types, None);
     nir.pass0(nir_opt_dce);

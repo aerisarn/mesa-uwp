@@ -210,6 +210,7 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--whitelist-var', 'PIPE_.*',
     '--bitfield-enum', 'pipe_map_flags',
     '--allowlist-var', 'stderr',
+    '--bitfield-enum', 'nir_lower_int64_options',
   ],
 )
 
