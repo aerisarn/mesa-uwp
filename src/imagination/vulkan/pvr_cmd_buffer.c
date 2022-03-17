@@ -4991,6 +4991,76 @@ void pvr_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    assert(!"Unimplemented");
 }
 
+static bool
+pvr_is_large_clear_required(const struct pvr_cmd_buffer *const cmd_buffer)
+{
+   const struct pvr_device_info *const dev_info =
+      &cmd_buffer->device->pdevice->dev_info;
+   const VkRect2D render_area = cmd_buffer->state.render_pass_info.render_area;
+   const uint32_t vf_max_x = rogue_get_param_vf_max_x(dev_info);
+   const uint32_t vf_max_y = rogue_get_param_vf_max_x(dev_info);
+
+   return (render_area.extent.width > (vf_max_x / 2) - 1) ||
+          (render_area.extent.height > (vf_max_y / 2) - 1);
+}
+
+static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
+                                       struct pvr_sub_cmd_gfx *const sub_cmd)
+{
+   struct pvr_device *const device = cmd_buffer->device;
+   /* Yes we want a copy. The user could be recording multiple command buffers
+    * in parallel so writing the template in place could cause problems.
+    */
+   struct pvr_static_clear_ppp_template clear =
+      device->static_clear_state.ppp_templates[PVR_STATIC_CLEAR_COLOR_BIT];
+   uint32_t pds_state[PVR_STATIC_CLEAR_PDS_STATE_COUNT] = { 0 };
+   struct pvr_csb *csb = &sub_cmd->control_stream;
+   void *stream;
+
+   assert(clear.requires_pds_state);
+
+   /* Patch the template. */
+
+   pvr_csb_pack (&pds_state[PVR_STATIC_CLEAR_PPP_PDS_TYPE_SHADERBASE],
+                 TA_STATE_PDS_SHADERBASE,
+                 shaderbase) {
+      shaderbase.addr = PVR_DEV_ADDR(device->nop_program.pds.data_offset);
+   }
+
+   clear.config.pds_state = &pds_state;
+
+   clear.config.ispctl.upass =
+      cmd_buffer->state.render_pass_info.userpass_spawn;
+
+   /* Emit PPP state from template. */
+
+   pvr_finishme("Emit PPP state from template.");
+
+   /* Emit VDM state. */
+
+   static_assert(sizeof(device->static_clear_state.large_clear_vdm_words) >=
+                    PVR_CLEAR_VDM_STATE_DWORD_COUNT * sizeof(uint32_t),
+                 "Large clear VDM control stream word length mismatch");
+   static_assert(sizeof(device->static_clear_state.vdm_words) ==
+                    PVR_CLEAR_VDM_STATE_DWORD_COUNT * sizeof(uint32_t),
+                 "Clear VDM control stream word length mismatch");
+
+   stream = pvr_csb_alloc_dwords(csb, PVR_CLEAR_VDM_STATE_DWORD_COUNT);
+
+   if (pvr_is_large_clear_required(cmd_buffer)) {
+      memcpy(stream,
+             device->static_clear_state.large_clear_vdm_words,
+             sizeof(device->static_clear_state.large_clear_vdm_words));
+   } else {
+      memcpy(stream,
+             device->static_clear_state.vdm_words,
+             sizeof(device->static_clear_state.vdm_words));
+   }
+
+   /* Reset graphics state. */
+   pvr_reset_graphics_dirty_state(&cmd_buffer->state, false);
+}
+
 /* This is just enough to handle vkCmdPipelineBarrier().
  * TODO: Complete?
  */
@@ -5055,15 +5125,22 @@ void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       is_barrier_needed = false;
    } else if (src_stage_mask == dst_stage_mask &&
               util_bitcount(src_stage_mask) == 1) {
+      struct pvr_sub_cmd *const current_sub_cmd = state->current_sub_cmd;
+
       switch (src_stage_mask) {
       case PVR_PIPELINE_STAGE_FRAG_BIT:
-         pvr_finishme("Handle fragment stage pipeline barrier.");
          is_barrier_needed = true;
+
+         if (!render_pass)
+            break;
+
+         assert(current_sub_cmd->type == PVR_SUB_CMD_TYPE_GRAPHICS);
+
+         /* Flush all fragment work up to this point. */
+         pvr_insert_transparent_obj(cmd_buffer, &current_sub_cmd->gfx);
          break;
 
-      case PVR_PIPELINE_STAGE_COMPUTE_BIT: {
-         struct pvr_sub_cmd *const current_sub_cmd = state->current_sub_cmd;
-
+      case PVR_PIPELINE_STAGE_COMPUTE_BIT:
          is_barrier_needed = false;
 
          if (!current_sub_cmd ||
@@ -5089,7 +5166,6 @@ void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
                                     &current_sub_cmd->compute,
                                     false);
          break;
-      }
 
       default:
          is_barrier_needed = false;
