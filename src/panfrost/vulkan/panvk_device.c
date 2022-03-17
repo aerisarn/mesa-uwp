@@ -770,40 +770,43 @@ panvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    strcpy(pProperties->properties.deviceName, pdevice->name);
    memcpy(pProperties->properties.pipelineCacheUUID, pdevice->cache_uuid, VK_UUID_SIZE);
 
+   VkPhysicalDeviceVulkan11Properties core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+      .deviceLUIDValid                       = false,
+      .pointClippingBehavior                 = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES,
+      .maxMultiviewViewCount                 = 0,
+      .maxMultiviewInstanceIndex             = 0,
+      .protectedNoFault                      = false,
+      /* Make sure everything is addressable by a signed 32-bit int, and
+       * our largest descriptors are 96 bytes. */
+      .maxPerSetDescriptors                  = (1ull << 31) / 96,
+      /* Our buffer size fields allow only this much */
+      .maxMemoryAllocationSize               = 0xFFFFFFFFull,
+   };
+   memcpy(core_1_1.driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
+   memcpy(core_1_1.deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+
+   const VkPhysicalDeviceVulkan12Properties core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+   };
+
+   const VkPhysicalDeviceVulkan13Properties core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
+   };
+
    vk_foreach_struct(ext, pProperties->pNext)
    {
+      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
+         continue;
+      if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
+         continue;
+
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
          VkPhysicalDevicePushDescriptorPropertiesKHR *properties = (VkPhysicalDevicePushDescriptorPropertiesKHR *)ext;
          properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-         VkPhysicalDeviceIDProperties *properties = (VkPhysicalDeviceIDProperties *)ext;
-         memcpy(properties->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
-         memcpy(properties->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
-         properties->deviceLUIDValid = false;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
-         VkPhysicalDeviceMultiviewProperties *properties = (VkPhysicalDeviceMultiviewProperties *)ext;
-         properties->maxMultiviewViewCount = 0;
-         properties->maxMultiviewInstanceIndex = 0;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-         VkPhysicalDevicePointClippingProperties *properties = (VkPhysicalDevicePointClippingProperties *)ext;
-         properties->pointClippingBehavior =
-            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
-         VkPhysicalDeviceMaintenance3Properties *properties = (VkPhysicalDeviceMaintenance3Properties *)ext;
-         /* Make sure everything is addressable by a signed 32-bit int, and
-          * our largest descriptors are 96 bytes. */
-         properties->maxPerSetDescriptors = (1ull << 31) / 96;
-         /* Our buffer size fields allow only this much */
-         properties->maxMemoryAllocationSize = 0xFFFFFFFFull;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
