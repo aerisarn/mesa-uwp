@@ -501,12 +501,17 @@ enum opcode {
    SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT,
 
    /**
-    * Return the index of an arbitrary live channel (i.e. one of the channels
-    * enabled in the current execution mask) and assign it to the first
-    * component of the destination.  Expected to be used as input for the
-    * BROADCAST pseudo-opcode.
+    * Return the index of the first enabled live channel and assign it to
+    * to the first component of the destination.  Frequently used as input
+    * for the BROADCAST pseudo-opcode.
     */
    SHADER_OPCODE_FIND_LIVE_CHANNEL,
+
+   /**
+    * Return the index of the last enabled live channel and assign it to
+    * the first component of the destination.
+    */
+   SHADER_OPCODE_FIND_LAST_LIVE_CHANNEL,
 
    /**
     * Return the current execution mask in the specified flag subregister.

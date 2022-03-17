@@ -2425,9 +2425,21 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                                           prog_data) ? brw_imm_ud(~0u) :
             stage == MESA_SHADER_FRAGMENT ? brw_vmask_reg() :
             brw_dmask_reg();
-         brw_find_live_channel(p, dst, mask);
+
+         brw_find_live_channel(p, dst, mask, false);
          break;
       }
+      case SHADER_OPCODE_FIND_LAST_LIVE_CHANNEL: {
+         /* ce0 doesn't consider the thread dispatch mask, so if we want
+          * to find the true last enabled channel, we need to apply that too.
+          */
+         const struct brw_reg mask =
+            stage == MESA_SHADER_FRAGMENT ? brw_vmask_reg() : brw_dmask_reg();
+
+         brw_find_live_channel(p, dst, mask, true);
+         break;
+      }
+
       case FS_OPCODE_LOAD_LIVE_CHANNELS: {
          assert(devinfo->ver >= 8);
          assert(inst->force_writemask_all && inst->group == 0);

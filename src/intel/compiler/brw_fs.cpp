@@ -1058,6 +1058,7 @@ fs_inst::flags_written(const intel_device_info *devinfo) const
        opcode == FS_OPCODE_FB_WRITE) {
       return flag_mask(this, 1);
    } else if (opcode == SHADER_OPCODE_FIND_LIVE_CHANNEL ||
+              opcode == SHADER_OPCODE_FIND_LAST_LIVE_CHANNEL ||
               opcode == FS_OPCODE_LOAD_LIVE_CHANNELS) {
       return flag_mask(this, 32);
    } else {

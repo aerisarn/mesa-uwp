@@ -384,6 +384,8 @@ brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
 
    case SHADER_OPCODE_FIND_LIVE_CHANNEL:
       return "find_live_channel";
+   case SHADER_OPCODE_FIND_LAST_LIVE_CHANNEL:
+      return "find_last_live_channel";
    case FS_OPCODE_LOAD_LIVE_CHANNELS:
       return "load_live_channels";
 
