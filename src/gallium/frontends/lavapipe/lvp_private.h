@@ -257,14 +257,10 @@ lvp_get_levelCount(const struct lvp_image *image,
 }
 
 struct lvp_image_view {
-   struct vk_object_base base;
+   struct vk_image_view vk;
    const struct lvp_image *image; /**< VkImageViewCreateInfo::image */
 
-   VkImageViewType view_type;
-   VkFormat format;
    enum pipe_format pformat;
-   VkComponentMapping components;
-   VkImageSubresourceRange subresourceRange;
 
    struct pipe_surface *surface; /* have we created a pipe surface for this? */
 };
@@ -654,7 +650,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_framebuffer, base, VkFramebuffer,
                                VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image_view, base, VkImageView,
+VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)

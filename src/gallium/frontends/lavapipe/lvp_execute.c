@@ -1093,35 +1093,31 @@ static void fill_sampler_view_stage(struct rendering_state *state,
    struct pipe_sampler_view templ;
 
    enum pipe_format pformat;
-   if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT)
-      pformat = lvp_vk_format_to_pipe_format(iv->format);
-   else if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
-      pformat = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->format));
+   if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
+      pformat = lvp_vk_format_to_pipe_format(iv->vk.format);
+   else if (iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+      pformat = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->vk.format));
    else
-      pformat = lvp_vk_format_to_pipe_format(iv->format);
+      pformat = lvp_vk_format_to_pipe_format(iv->vk.format);
    u_sampler_view_default_template(&templ,
                                    iv->image->bo,
                                    pformat);
-   if (iv->view_type == VK_IMAGE_VIEW_TYPE_1D)
+   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_1D)
       templ.target = PIPE_TEXTURE_1D;
-   if (iv->view_type == VK_IMAGE_VIEW_TYPE_2D)
+   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_2D)
       templ.target = PIPE_TEXTURE_2D;
-   if (iv->view_type == VK_IMAGE_VIEW_TYPE_CUBE)
+   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE)
       templ.target = PIPE_TEXTURE_CUBE;
-   if (iv->view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
       templ.target = PIPE_TEXTURE_CUBE_ARRAY;
-   templ.u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
-   templ.u.tex.last_layer = iv->subresourceRange.baseArrayLayer + lvp_get_layerCount(iv->image, &iv->subresourceRange) - 1;
-   templ.u.tex.first_level = iv->subresourceRange.baseMipLevel;
-   templ.u.tex.last_level = iv->subresourceRange.baseMipLevel + lvp_get_levelCount(iv->image, &iv->subresourceRange) - 1;
-   if (iv->components.r != VK_COMPONENT_SWIZZLE_IDENTITY)
-      templ.swizzle_r = vk_conv_swizzle(iv->components.r);
-   if (iv->components.g != VK_COMPONENT_SWIZZLE_IDENTITY)
-      templ.swizzle_g = vk_conv_swizzle(iv->components.g);
-   if (iv->components.b != VK_COMPONENT_SWIZZLE_IDENTITY)
-      templ.swizzle_b = vk_conv_swizzle(iv->components.b);
-   if (iv->components.a != VK_COMPONENT_SWIZZLE_IDENTITY)
-      templ.swizzle_a = vk_conv_swizzle(iv->components.a);
+   templ.u.tex.first_layer = iv->vk.base_array_layer;
+   templ.u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
+   templ.u.tex.first_level = iv->vk.base_mip_level;
+   templ.u.tex.last_level = iv->vk.base_mip_level + iv->vk.level_count - 1;
+   templ.swizzle_r = vk_conv_swizzle(iv->vk.swizzle.r);
+   templ.swizzle_g = vk_conv_swizzle(iv->vk.swizzle.g);
+   templ.swizzle_b = vk_conv_swizzle(iv->vk.swizzle.b);
+   templ.swizzle_a = vk_conv_swizzle(iv->vk.swizzle.a);
 
    /* depth stencil swizzles need special handling to pass VK CTS
     * but also for zink GL tests.
@@ -1129,8 +1125,8 @@ static void fill_sampler_view_stage(struct rendering_state *state,
     * only swizzling from R/0/1 (for alpha) fixes VK CTS tests
     * and a bunch of zink tests.
    */
-   if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT ||
-       iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+   if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT ||
+       iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
       fix_depth_swizzle(templ.swizzle_r);
       fix_depth_swizzle(templ.swizzle_g);
       fix_depth_swizzle(templ.swizzle_b);
@@ -1195,21 +1191,21 @@ static void fill_image_view_stage(struct rendering_state *state,
    idx += array_idx;
    idx += dyn_info->stage[stage].image_count;
    state->iv[p_stage][idx].resource = iv->image->bo;
-   if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT)
-      state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->format);
-   else if (iv->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
-      state->iv[p_stage][idx].format = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->format));
+   if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
+      state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->vk.format);
+   else if (iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+      state->iv[p_stage][idx].format = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->vk.format));
    else
-      state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->format);
+      state->iv[p_stage][idx].format = lvp_vk_format_to_pipe_format(iv->vk.format);
 
-   if (iv->view_type == VK_IMAGE_VIEW_TYPE_3D) {
+   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_3D) {
       state->iv[p_stage][idx].u.tex.first_layer = 0;
-      state->iv[p_stage][idx].u.tex.last_layer = u_minify(iv->image->bo->depth0, iv->subresourceRange.baseMipLevel) - 1;
+      state->iv[p_stage][idx].u.tex.last_layer = iv->vk.extent.depth - 1;
    } else {
-      state->iv[p_stage][idx].u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
-      state->iv[p_stage][idx].u.tex.last_layer = iv->subresourceRange.baseArrayLayer + lvp_get_layerCount(iv->image, &iv->subresourceRange) - 1;
+      state->iv[p_stage][idx].u.tex.first_layer = iv->vk.base_array_layer,
+      state->iv[p_stage][idx].u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
    }
-   state->iv[p_stage][idx].u.tex.level = iv->subresourceRange.baseMipLevel;
+   state->iv[p_stage][idx].u.tex.level = iv->vk.base_mip_level;
    state->iv[p_stage][idx].access = PIPE_IMAGE_ACCESS_READ_WRITE;
    state->iv[p_stage][idx].shader_access = PIPE_IMAGE_ACCESS_READ_WRITE;
    if (state->num_shader_images[p_stage] <= idx)
@@ -1477,8 +1473,12 @@ static struct pipe_surface *create_img_surface(struct rendering_state *state,
                                                int height,
                                                int base_layer, int layer_count)
 {
-   return create_img_surface_bo(state, &imgv->subresourceRange, imgv->image->bo,
-                                lvp_vk_format_to_pipe_format(format), width, height, base_layer, layer_count, 0);
+   VkImageSubresourceRange imgv_subres =
+      vk_image_view_subresource_range(&imgv->vk);
+
+   return create_img_surface_bo(state, &imgv_subres, imgv->image->bo,
+                                lvp_vk_format_to_pipe_format(format),
+                                width, height, base_layer, layer_count, 0);
 }
 
 static void add_img_view_surface(struct rendering_state *state,
@@ -1487,7 +1487,7 @@ static void add_img_view_surface(struct rendering_state *state,
    if (!imgv->surface) {
       imgv->surface = create_img_surface(state, imgv, format,
                                          width, height,
-                                         0, lvp_get_layerCount(imgv->image, &imgv->subresourceRange) - 1);
+                                         0, imgv->vk.layer_count - 1);
    }
 }
 
@@ -1531,7 +1531,7 @@ static void clear_attachment_layers(struct rendering_state *state,
 {
    struct pipe_surface *clear_surf = create_img_surface(state,
                                                         imgv,
-                                                        imgv->format,
+                                                        imgv->vk.format,
                                                         state->framebuffer.width,
                                                         state->framebuffer.height,
                                                         base_layer,
@@ -1828,8 +1828,8 @@ resolve_color(struct rendering_state *state, const struct lvp_subpass *subpass)
 
       info.dst.box = info.src.box;
 
-      info.src.level = src_imgv->subresourceRange.baseMipLevel;
-      info.dst.level = dst_imgv->subresourceRange.baseMipLevel;
+      info.src.level = src_imgv->vk.base_mip_level;
+      info.dst.level = dst_imgv->vk.base_mip_level;
 
       state->pctx->blit(state->pctx, &info);
    }
@@ -2043,7 +2043,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
       state->cleared_views[i] = 0;
 
       state->imageless_views[i] = lvp_image_view_from_handle(info->pColorAttachments[i].imageView);
-      att->format = state->imageless_views[i]->format;
+      att->format = state->imageless_views[i]->vk.format;
       att->samples = state->imageless_views[i]->image->bo->nr_samples;
       attachment_refs[i] = att;
       if (!suspending && info->pColorAttachments[i].resolveImageView) {
@@ -2051,7 +2051,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
          resolve_att->attachment = num_attachments + resolve_idx;
          resolve_att->load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          state->imageless_views[num_attachments + resolve_idx] = lvp_image_view_from_handle(info->pColorAttachments[i].resolveImageView);
-         resolve_att->format = state->imageless_views[num_attachments + resolve_idx]->format;
+         resolve_att->format = state->imageless_views[num_attachments + resolve_idx]->vk.format;
          resolve_att->samples = state->imageless_views[num_attachments + resolve_idx]->image->bo->nr_samples;
          resolve_attachment_refs[resolve_idx] = resolve_att;
          resolve_idx++;
@@ -2073,7 +2073,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
       state->cleared_views[i] = 0;
 
       state->imageless_views[i] = lvp_image_view_from_handle(info->pDepthAttachment->imageView);
-      att->format = state->imageless_views[i]->format;
+      att->format = state->imageless_views[i]->vk.format;
       att->samples = state->imageless_views[i]->image->bo->nr_samples;
       attachment_refs[i] = att;
       if (!suspending && info->pDepthAttachment->resolveImageView) {
@@ -2081,7 +2081,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
          resolve_att->attachment = num_attachments + resolve_idx;
          resolve_att->load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          state->imageless_views[num_attachments + resolve_idx] = lvp_image_view_from_handle(info->pDepthAttachment->resolveImageView);
-         resolve_att->format = state->imageless_views[num_attachments + resolve_idx]->format;
+         resolve_att->format = state->imageless_views[num_attachments + resolve_idx]->vk.format;
          resolve_att->samples = state->imageless_views[num_attachments + resolve_idx]->image->bo->nr_samples;
          resolve_attachment_refs[resolve_idx] = resolve_att;
       }
@@ -2104,7 +2104,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
       state->cleared_views[i] = 0;
 
       state->imageless_views[i] = lvp_image_view_from_handle(info->pStencilAttachment->imageView);
-      att->format = state->imageless_views[i]->format;
+      att->format = state->imageless_views[i]->vk.format;
       att->samples = state->imageless_views[i]->image->bo->nr_samples;
       attachment_refs[i] = att;
       if (!suspending && info->pStencilAttachment->resolveImageView) {
@@ -2112,7 +2112,7 @@ static void handle_begin_rendering(struct vk_cmd_queue_entry *cmd,
          resolve_att->attachment = num_attachments + resolve_idx;
          resolve_att->load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
          state->imageless_views[num_attachments + resolve_idx] = lvp_image_view_from_handle(info->pStencilAttachment->resolveImageView);
-         resolve_att->format = state->imageless_views[num_attachments + resolve_idx]->format;
+         resolve_att->format = state->imageless_views[num_attachments + resolve_idx]->vk.format;
          resolve_att->samples = state->imageless_views[num_attachments + resolve_idx]->image->bo->nr_samples;
          resolve_attachment_refs[resolve_idx] = resolve_att;
       }
