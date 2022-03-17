@@ -58,9 +58,15 @@ struct ProgramDevBuild {
 
 fn prepare_options(options: &str, dev: &Device) -> Vec<CString> {
     let mut options = options.to_owned();
+    if !options.contains("-cl-std=CL") {
+        options.push_str(" -cl-std=CL");
+        options.push_str(dev.clc_version.api_str());
+    }
     if !dev.image_supported() {
         options.push_str(" -U__IMAGE_SUPPORT__");
     }
+    options.push_str(" -D__OPENCL_VERSION__=");
+    options.push_str(dev.cl_version.clc_str());
     options
         .split_whitespace()
         .map(|a| match a {

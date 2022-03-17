@@ -60,6 +60,18 @@ impl CLVersion {
             CLVersion::Cl3_0 => "3.0",
         }
     }
+
+    pub fn clc_str(&self) -> &'static str {
+        match self {
+            CLVersion::Cl1_0 => "100",
+            CLVersion::Cl1_1 => "110",
+            CLVersion::Cl1_2 => "120",
+            CLVersion::Cl2_0 => "200",
+            CLVersion::Cl2_1 => "210",
+            CLVersion::Cl2_2 => "220",
+            CLVersion::Cl3_0 => "300",
+        }
+    }
 }
 
 impl TryFrom<u32> for CLVersion {
