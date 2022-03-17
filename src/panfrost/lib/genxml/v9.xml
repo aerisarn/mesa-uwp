@@ -1418,4 +1418,17 @@
     <section name="Position" offset="256" type="Shader Environment"/>
     <section name="Varying" offset="320" type="Shader Environment"/>
   </aggregate>
+
+  <aggregate name="Tiler Job" size="256" align="128">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Primitive" offset="32" type="Primitive"/>
+    <section name="Instance Count" offset="48" type="Count"/>
+    <section name="Vertex Count" offset="52" type="Count"/>
+    <section name="Tiler" offset="56" type="Tiler Pointer"/>
+    <section name="Scissor" offset="104" type="Scissor"/>
+    <section name="Primitive Size" offset="112" type="Primitive Size"/>
+    <section name="Indices" offset="120" type="Indices"/>
+    <section name="Draw" offset="128" type="Draw"/>
+  </aggregate>
+
 </panxml>

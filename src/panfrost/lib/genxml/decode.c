@@ -490,13 +490,13 @@ pandecode_invocation(const void *i)
 }
 #endif
 
-#if PAN_ARCH <= 7
 static void
 pandecode_primitive(const void *p)
 {
         pan_unpack(p, PRIMITIVE, primitive);
         DUMP_UNPACKED(PRIMITIVE, primitive, "Primitive:\n");
 
+#if PAN_ARCH <= 7
         /* Validate an index buffer is present if we need one. TODO: verify
          * relationship between invocation_count and index_count */
 
@@ -515,8 +515,20 @@ pandecode_primitive(const void *p)
                         pandecode_validate_buffer(primitive.indices, primitive.index_count * size);
         } else if (primitive.index_type)
                 pandecode_msg("XXX: unexpected index size\n");
+#endif
 }
 
+static void
+pandecode_primitive_size(const void *s, bool constant)
+{
+        pan_unpack(s, PRIMITIVE_SIZE, ps);
+        if (ps.size_array == 0x0)
+                return;
+
+        DUMP_UNPACKED(PRIMITIVE_SIZE, ps, "Primitive Size:\n")
+}
+
+#if PAN_ARCH <= 7
 static void
 pandecode_uniform_buffers(mali_ptr pubufs, int ubufs_count, int job_no)
 {
@@ -944,16 +956,6 @@ pandecode_dcd(const struct MALI_DRAW *p,
 }
 
 static void
-pandecode_primitive_size(const void *s, bool constant)
-{
-        pan_unpack(s, PRIMITIVE_SIZE, ps);
-        if (ps.size_array == 0x0)
-                return;
-
-        DUMP_UNPACKED(PRIMITIVE_SIZE, ps, "Primitive Size:\n")
-}
-
-static void
 pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
                                       const struct pandecode_mapped_memory *mem,
                                       mali_ptr job, int job_no, unsigned gpu_id)
@@ -1028,7 +1030,6 @@ pandecode_indexed_vertex_job(const struct MALI_JOB_HEADER *h,
 #endif
 #endif
 
-#if PAN_ARCH <= 7
 static void
 pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
                     const struct pandecode_mapped_memory *mem,
@@ -1039,7 +1040,11 @@ pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
         pandecode_dcd(&draw, job_no, h->type, "", gpu_id);
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
+
+#if PAN_ARCH <= 7
         pandecode_invocation(pan_section_ptr(p, TILER_JOB, INVOCATION));
+#endif
+
         pandecode_primitive(pan_section_ptr(p, TILER_JOB, PRIMITIVE));
         DUMP_UNPACKED(DRAW, draw, "Draw:\n");
 
@@ -1049,7 +1054,16 @@ pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
 
         /* TODO: gl_PointSize on Bifrost */
         pandecode_primitive_size(pan_section_ptr(p, TILER_JOB, PRIMITIVE_SIZE), true);
+
+#if PAN_ARCH >= 9
+        DUMP_SECTION(TILER_JOB, INSTANCE_COUNT, p, "Instance count:\n");
+        DUMP_SECTION(TILER_JOB, VERTEX_COUNT, p, "Vertex count:\n");
+        DUMP_SECTION(TILER_JOB, SCISSOR, p, "Scissor:\n");
+        DUMP_SECTION(TILER_JOB, INDICES, p, "Indices:\n");
+#else
         pan_section_unpack(p, TILER_JOB, PADDING, padding);
+#endif
+
 #else
         pan_section_unpack(p, TILER_JOB, PRIMITIVE, primitive);
         pandecode_primitive_size(pan_section_ptr(p, TILER_JOB, PRIMITIVE_SIZE),
@@ -1058,7 +1072,6 @@ pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
         pandecode_indent--;
         pandecode_log("\n");
 }
-#endif
 
 static void
 pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
@@ -1346,11 +1359,11 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
                         pandecode_cache_flush_job(mem, jc_gpu_va, job_no);
                         break;
 
-#if PAN_ARCH <= 7
                 case MALI_JOB_TYPE_TILER:
                         pandecode_tiler_job(&h, mem, jc_gpu_va, job_no, gpu_id);
                         break;
 
+#if PAN_ARCH <= 7
                 case MALI_JOB_TYPE_VERTEX:
                 case MALI_JOB_TYPE_COMPUTE:
                         pandecode_vertex_compute_geometry_job(&h, mem, jc_gpu_va, job_no, gpu_id);
