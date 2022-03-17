@@ -632,54 +632,6 @@ panvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 {
    VK_FROM_HANDLE(panvk_physical_device, pdevice, physicalDevice);
 
-   vk_foreach_struct(ext, pProperties->pNext)
-   {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-         VkPhysicalDevicePushDescriptorPropertiesKHR *properties = (VkPhysicalDevicePushDescriptorPropertiesKHR *)ext;
-         properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-         VkPhysicalDeviceIDProperties *properties = (VkPhysicalDeviceIDProperties *)ext;
-         memcpy(properties->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
-         memcpy(properties->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
-         properties->deviceLUIDValid = false;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
-         VkPhysicalDeviceMultiviewProperties *properties = (VkPhysicalDeviceMultiviewProperties *)ext;
-         properties->maxMultiviewViewCount = 0;
-         properties->maxMultiviewInstanceIndex = 0;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-         VkPhysicalDevicePointClippingProperties *properties = (VkPhysicalDevicePointClippingProperties *)ext;
-         properties->pointClippingBehavior =
-            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
-         VkPhysicalDeviceMaintenance3Properties *properties = (VkPhysicalDeviceMaintenance3Properties *)ext;
-         /* Make sure everything is addressable by a signed 32-bit int, and
-          * our largest descriptors are 96 bytes. */
-         properties->maxPerSetDescriptors = (1ull << 31) / 96;
-         /* Our buffer size fields allow only this much */
-         properties->maxMemoryAllocationSize = 0xFFFFFFFFull;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *properties =
-            (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
-         /* We have to restrict this a bit for multiview */
-         properties->maxVertexAttribDivisor = UINT32_MAX / (16 * 2048);
-         break;
-      }
-      default:
-         break;
-      }
-   }
-
    VkSampleCountFlags sample_counts =
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
 
@@ -696,7 +648,7 @@ panvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
        32 /* sampler, largest when combined with image */ +
        64 /* sampled image */ + 64 /* storage image */);
 
-   VkPhysicalDeviceLimits limits = {
+   const VkPhysicalDeviceLimits limits = {
       .maxImageDimension1D = (1 << 14),
       .maxImageDimension2D = (1 << 14),
       .maxImageDimension3D = (1 << 11),
@@ -817,6 +769,54 @@ panvk_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    strcpy(pProperties->properties.deviceName, pdevice->name);
    memcpy(pProperties->properties.pipelineCacheUUID, pdevice->cache_uuid, VK_UUID_SIZE);
+
+   vk_foreach_struct(ext, pProperties->pNext)
+   {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+         VkPhysicalDevicePushDescriptorPropertiesKHR *properties = (VkPhysicalDevicePushDescriptorPropertiesKHR *)ext;
+         properties->maxPushDescriptors = MAX_PUSH_DESCRIPTORS;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+         VkPhysicalDeviceIDProperties *properties = (VkPhysicalDeviceIDProperties *)ext;
+         memcpy(properties->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
+         memcpy(properties->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+         properties->deviceLUIDValid = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+         VkPhysicalDeviceMultiviewProperties *properties = (VkPhysicalDeviceMultiviewProperties *)ext;
+         properties->maxMultiviewViewCount = 0;
+         properties->maxMultiviewInstanceIndex = 0;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+         VkPhysicalDevicePointClippingProperties *properties = (VkPhysicalDevicePointClippingProperties *)ext;
+         properties->pointClippingBehavior =
+            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+         VkPhysicalDeviceMaintenance3Properties *properties = (VkPhysicalDeviceMaintenance3Properties *)ext;
+         /* Make sure everything is addressable by a signed 32-bit int, and
+          * our largest descriptors are 96 bytes. */
+         properties->maxPerSetDescriptors = (1ull << 31) / 96;
+         /* Our buffer size fields allow only this much */
+         properties->maxMemoryAllocationSize = 0xFFFFFFFFull;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *properties =
+            (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
+         /* We have to restrict this a bit for multiview */
+         properties->maxVertexAttribDivisor = UINT32_MAX / (16 * 2048);
+         break;
+      }
+      default:
+         break;
+      }
+   }
 }
 
 static const VkQueueFamilyProperties panvk_queue_family_properties = {
