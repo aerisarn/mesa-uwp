@@ -850,6 +850,23 @@
     <imm name="table" start="16" size="4"/>
   </ins>
 
+  <ins name="LEA_ATTR_IMM" title="Load effective address of image texel" opcode="0x67" opcode2="0" unit="LS">
+    <desc>
+      Load the effective address of an attribute specified with the
+      given immediate index. Returns three staging register: the low/high
+      32-bits of the address and the internal conversion descriptor.
+    </desc>
+    <vecsize/>
+    <slot/>
+    <sr_count/>
+    <mod name="descriptor_type" start="128" size="1" implied="true"/>
+    <sr write="true"/>
+    <src>Vertex index</src>
+    <src>Instance index</src>
+    <imm name="table" start="16" size="4"/>
+    <imm name="index" start="20" size="4"/>
+  </ins>
+
   <ins name="LEA_TEX_IMM" title="Load effective address of image texel" opcode="0x67" opcode2="1" unit="LS">
     <desc>
       Load the effective address of a texel from the image specified with the
