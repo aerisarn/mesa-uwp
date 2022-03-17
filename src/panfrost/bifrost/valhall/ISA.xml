@@ -507,7 +507,7 @@
 
   <enum name="Register format">
     <desc>Format of data loaded to / stored from registers for general memory access.</desc>
-    <reserved/>
+    <value desc="32-bit type based on descriptor format">auto</value>
     <reserved/>
     <value desc="32-bit floats">f32</value>
     <value desc="16-bit floats">f16</value>
