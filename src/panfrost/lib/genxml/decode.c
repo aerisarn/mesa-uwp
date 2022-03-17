@@ -1025,51 +1025,36 @@ pandecode_indexed_vertex_job(const struct MALI_JOB_HEADER *h,
 
         pan_section_unpack(p, INDEXED_VERTEX_JOB, PADDING, padding);
 }
+#endif
+#endif
 
+#if PAN_ARCH <= 7
 static void
-pandecode_tiler_job_bfr(const struct MALI_JOB_HEADER *h,
-                        const struct pandecode_mapped_memory *mem,
-                        mali_ptr job, int job_no, unsigned gpu_id)
+pandecode_tiler_job(const struct MALI_JOB_HEADER *h,
+                    const struct pandecode_mapped_memory *mem,
+                    mali_ptr job, int job_no, unsigned gpu_id)
 {
         struct mali_tiler_job_packed *PANDECODE_PTR_VAR(p, mem, job);
         pan_section_unpack(p, TILER_JOB, DRAW, draw);
-        pan_section_unpack(p, TILER_JOB, TILER, tiler_ptr);
         pandecode_dcd(&draw, job_no, h->type, "", gpu_id);
-
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
-        pandecode_bifrost_tiler(tiler_ptr.address, job_no);
-
         pandecode_invocation(pan_section_ptr(p, TILER_JOB, INVOCATION));
         pandecode_primitive(pan_section_ptr(p, TILER_JOB, PRIMITIVE));
+        DUMP_UNPACKED(DRAW, draw, "Draw:\n");
+
+#if PAN_ARCH >= 6
+        pan_section_unpack(p, TILER_JOB, TILER, tiler_ptr);
+        pandecode_bifrost_tiler(tiler_ptr.address, job_no);
 
         /* TODO: gl_PointSize on Bifrost */
         pandecode_primitive_size(pan_section_ptr(p, TILER_JOB, PRIMITIVE_SIZE), true);
         pan_section_unpack(p, TILER_JOB, PADDING, padding);
-        DUMP_UNPACKED(DRAW, draw, "Draw:\n");
-        pandecode_indent--;
-        pandecode_log("\n");
-}
-#endif
 #else
-static void
-pandecode_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
-                        const struct pandecode_mapped_memory *mem,
-                        mali_ptr job, int job_no, unsigned gpu_id)
-{
-        struct mali_tiler_job_packed *PANDECODE_PTR_VAR(p, mem, job);
-        pan_section_unpack(p, TILER_JOB, DRAW, draw);
-        pandecode_dcd(&draw, job_no, h->type, "", gpu_id);
-
-        pandecode_log("Tiler Job Payload:\n");
-        pandecode_indent++;
-        pandecode_invocation(pan_section_ptr(p, TILER_JOB, INVOCATION));
-        pandecode_primitive(pan_section_ptr(p, TILER_JOB, PRIMITIVE));
-        DUMP_UNPACKED(DRAW, draw, "Draw:\n");
-
         pan_section_unpack(p, TILER_JOB, PRIMITIVE, primitive);
         pandecode_primitive_size(pan_section_ptr(p, TILER_JOB, PRIMITIVE_SIZE),
                                  primitive.point_size_array_format == MALI_POINT_SIZE_ARRAY_FORMAT_NONE);
+#endif
         pandecode_indent--;
         pandecode_log("\n");
 }
@@ -1369,11 +1354,7 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
 
 #if PAN_ARCH <= 7
                 case MALI_JOB_TYPE_TILER:
-#if PAN_ARCH >= 6
-                        pandecode_tiler_job_bfr(&h, mem, jc_gpu_va, job_no, gpu_id);
-#else
-                        pandecode_tiler_job_mdg(&h, mem, jc_gpu_va, job_no, gpu_id);
-#endif
+                        pandecode_tiler_job(&h, mem, jc_gpu_va, job_no, gpu_id);
                         break;
 
                 case MALI_JOB_TYPE_VERTEX:
