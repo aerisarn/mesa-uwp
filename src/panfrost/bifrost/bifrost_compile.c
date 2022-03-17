@@ -674,9 +674,15 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 
         if (b->shader->inputs->is_blend) {
                 /* Jump back to the fragment shader, return address is stored
-                 * in r48 (see above).
+                 * in r48 (see above). On Valhall, only jump if the address is
+                 * nonzero. The check is free there and it implements the "jump
+                 * to 0 terminates the blend shader" that's automatic on
+                 * Bifrost.
                  */
-                bi_jump(b, bi_register(48));
+                if (b->shader->arch >= 8)
+                        bi_branchzi(b, bi_register(48), bi_register(48), BI_CMPF_NE);
+                else
+                        bi_jump(b, bi_register(48));
         }
 }
 
