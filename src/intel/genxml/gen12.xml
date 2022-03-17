@@ -5715,6 +5715,8 @@
     <field name="Command Type" start="29" end="31" type="uint" default="3" />
   </instruction>
   <instruction name="MI_ARB_CHECK" bias="1" length="1">
+    <field name="Pre-Parser Disable" start="0" end="0" type="bool" />
+    <field name="Pre-Parser Disable Mask" start="8" end="8" type="bool" />
     <field name="MI Command Opcode" start="23" end="28" type="uint" default="5" />
     <field name="Command Type" start="29" end="31" type="uint" default="0" />
   </instruction>
