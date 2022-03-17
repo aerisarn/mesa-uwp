@@ -2308,9 +2308,9 @@ radv_image_queue_family_mask(const struct radv_image *image,
 {
    if (!image->exclusive)
       return image->queue_family_mask;
-   if (family == VK_QUEUE_FAMILY_EXTERNAL || family == VK_QUEUE_FAMILY_FOREIGN_EXT)
+   if (family == RADV_QUEUE_FOREIGN)
       return ((1u << RADV_MAX_QUEUE_FAMILIES) - 1u) | (1u << RADV_QUEUE_FOREIGN);
-   if (family == VK_QUEUE_FAMILY_IGNORED)
+   if (family == RADV_QUEUE_IGNORED)
       return 1u << queue_family;
    return 1u << family;
 }

@@ -258,6 +258,7 @@ enum radv_queue_family {
    RADV_QUEUE_TRANSFER,
    RADV_MAX_QUEUE_FAMILIES,
    RADV_QUEUE_FOREIGN = RADV_MAX_QUEUE_FAMILIES,
+   RADV_QUEUE_IGNORED,
 };
 
 struct radv_physical_device {
@@ -699,9 +700,14 @@ struct radv_meta_state {
 struct radv_deferred_queue_submission;
 
 static inline enum radv_queue_family
-vk_queue_to_radv(struct radv_physical_device *phys_dev,
-                 int queue_family_index)
+vk_queue_to_radv(const struct radv_physical_device *phys_dev, int queue_family_index)
 {
+   if (queue_family_index == VK_QUEUE_FAMILY_EXTERNAL ||
+       queue_family_index == VK_QUEUE_FAMILY_FOREIGN_EXT)
+      return RADV_QUEUE_FOREIGN;
+   if (queue_family_index == VK_QUEUE_FAMILY_IGNORED)
+      return RADV_QUEUE_IGNORED;
+
    assert(queue_family_index < RADV_MAX_QUEUE_FAMILIES);
    return phys_dev->vk_queue_to_radv[queue_family_index];
 }
