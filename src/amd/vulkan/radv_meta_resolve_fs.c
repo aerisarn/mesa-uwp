@@ -363,9 +363,7 @@ static VkResult
 create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_log2, int index,
                                       VkResolveModeFlagBits resolve_mode)
 {
-   VkRenderPass *render_pass;
    VkPipeline *pipeline;
-   VkFormat src_format;
    VkResult result;
 
    mtx_lock(&device->meta_state.mtx);
@@ -420,71 +418,6 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
        .pSpecializationInfo = NULL},
    };
 
-   if (index == DEPTH_RESOLVE) {
-      src_format = VK_FORMAT_D32_SFLOAT;
-      render_pass = &device->meta_state.resolve_fragment.depth_render_pass;
-   } else {
-      render_pass = &device->meta_state.resolve_fragment.stencil_render_pass;
-      src_format = VK_FORMAT_S8_UINT;
-   }
-
-   if (!*render_pass) {
-      result = radv_CreateRenderPass2(
-         radv_device_to_handle(device),
-         &(VkRenderPassCreateInfo2){
-            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
-            .attachmentCount = 1,
-            .pAttachments =
-               &(VkAttachmentDescription2){
-                  .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-                  .format = src_format,
-                  .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                  .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                  .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
-                  .stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-                  .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
-                  .finalLayout = VK_IMAGE_LAYOUT_GENERAL,
-               },
-            .subpassCount = 1,
-            .pSubpasses =
-               &(VkSubpassDescription2){
-                  .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
-                  .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                  .inputAttachmentCount = 0,
-                  .colorAttachmentCount = 0,
-                  .pColorAttachments = NULL,
-                  .pResolveAttachments = NULL,
-                  .pDepthStencilAttachment =
-                     &(VkAttachmentReference2){
-                        .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-                        .attachment = 0,
-                        .layout = VK_IMAGE_LAYOUT_GENERAL,
-                     },
-                  .preserveAttachmentCount = 0,
-                  .pPreserveAttachments = NULL,
-               },
-            .dependencyCount = 2,
-            .pDependencies =
-               (VkSubpassDependency2[]){{.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
-                                         .srcSubpass = VK_SUBPASS_EXTERNAL,
-                                         .dstSubpass = 0,
-                                         .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                         .dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                                         .srcAccessMask = 0,
-                                         .dstAccessMask = 0,
-                                         .dependencyFlags = 0},
-                                        {.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
-                                         .srcSubpass = 0,
-                                         .dstSubpass = VK_SUBPASS_EXTERNAL,
-                                         .srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                                         .dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                                         .srcAccessMask = 0,
-                                         .dstAccessMask = 0,
-                                         .dependencyFlags = 0}},
-         },
-         &device->meta_state.alloc, render_pass);
-   }
-
    VkStencilOp stencil_op = index == DEPTH_RESOLVE ? VK_STENCIL_OP_KEEP : VK_STENCIL_OP_REPLACE;
 
    VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {
@@ -510,8 +443,15 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
    const VkPipelineVertexInputStateCreateInfo *vi_create_info;
    vi_create_info = &normal_vi_create_info;
 
+   const VkPipelineRenderingCreateInfo rendering_create_info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+      .depthAttachmentFormat = index == DEPTH_RESOLVE ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_UNDEFINED,
+      .stencilAttachmentFormat = index == STENCIL_RESOLVE ? VK_FORMAT_S8_UINT : VK_FORMAT_UNDEFINED,
+   };
+
    const VkGraphicsPipelineCreateInfo vk_pipeline_info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+      .pNext = &rendering_create_info,
       .stageCount = ARRAY_SIZE(pipeline_shader_stages),
       .pStages = pipeline_shader_stages,
       .pVertexInputState = vi_create_info,
@@ -570,7 +510,7 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
          },
       .flags = 0,
       .layout = device->meta_state.resolve_fragment.p_layout,
-      .renderPass = *render_pass,
+      .renderPass = VK_NULL_HANDLE,
       .subpass = 0,
    };
 
@@ -673,11 +613,6 @@ radv_device_finish_meta_resolve_fragment_state(struct radv_device *device)
       radv_DestroyPipeline(radv_device_to_handle(device),
                            state->resolve_fragment.stencil[i].min_pipeline, &state->alloc);
    }
-
-   radv_DestroyRenderPass(radv_device_to_handle(device), state->resolve_fragment.depth_render_pass,
-                          &state->alloc);
-   radv_DestroyRenderPass(radv_device_to_handle(device),
-                          state->resolve_fragment.stencil_render_pass, &state->alloc);
 
    radv_DestroyPipeline(radv_device_to_handle(device), state->resolve_fragment.depth_zero_pipeline,
                         &state->alloc);
