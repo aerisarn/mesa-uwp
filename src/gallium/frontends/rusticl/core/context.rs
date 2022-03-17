@@ -12,11 +12,13 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::os::raw::c_void;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 pub struct Context {
     pub base: CLObjectBase<CL_INVALID_CONTEXT>,
     pub devs: Vec<Arc<Device>>,
     pub properties: Vec<cl_context_properties>,
+    pub dtors: Mutex<Vec<Box<dyn Fn(cl_context)>>>,
 }
 
 impl_cl_type_trait!(cl_context, Context, CL_INVALID_CONTEXT);
@@ -27,6 +29,7 @@ impl Context {
             base: CLObjectBase::new(),
             devs: devs,
             properties: properties,
+            dtors: Mutex::new(Vec::new()),
         })
     }
 
@@ -58,5 +61,17 @@ impl Context {
             res.insert(Arc::clone(dev), Arc::new(resource?));
         }
         Ok(res)
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        let cl = cl_context::from_ptr(self);
+        self.dtors
+            .lock()
+            .unwrap()
+            .iter()
+            .rev()
+            .for_each(|cb| cb(cl));
     }
 }

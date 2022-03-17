@@ -170,7 +170,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clSetProgramSpecializationConstant: None,
     clCreateBufferWithProperties: None,
     clCreateImageWithProperties: None,
-    clSetContextDestructorCallback: None,
+    clSetContextDestructorCallback: Some(cl_set_context_destructor_callback),
 };
 
 pub type CLError = cl_int;
@@ -1501,6 +1501,16 @@ extern "C" fn cl_create_command_queue_with_properties(
 ) -> cl_command_queue {
     // TODO use own impl, this is enough to run the CL 3.0 CTS
     match_obj!(create_command_queue(context, device, 0), errcode_ret)
+}
+
+extern "C" fn cl_set_context_destructor_callback(
+    context: cl_context,
+    pfn_notify: ::std::option::Option<DeleteContextCB>,
+    user_data: *mut ::std::os::raw::c_void,
+) -> cl_int {
+    match_err!(set_context_destructor_callback(
+        context, pfn_notify, user_data
+    ))
 }
 
 // cl_khr_icd

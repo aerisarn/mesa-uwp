@@ -6,6 +6,7 @@ use crate::api::icd::*;
 use crate::api::platform::*;
 use crate::api::types::*;
 use crate::api::util::*;
+use crate::cl_closure;
 use crate::core::context::*;
 
 use self::mesa_rust_util::properties::Properties;
@@ -114,4 +115,23 @@ pub fn create_context_from_type(
         pfn_notify,
         user_data,
     )
+}
+
+pub fn set_context_destructor_callback(
+    context: cl_context,
+    pfn_notify: ::std::option::Option<DeleteContextCB>,
+    user_data: *mut ::std::os::raw::c_void,
+) -> CLResult<()> {
+    let c = context.get_ref()?;
+
+    // CL_INVALID_VALUE if pfn_notify is NULL.
+    if pfn_notify.is_none() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    c.dtors
+        .lock()
+        .unwrap()
+        .push(cl_closure!(|c| pfn_notify(c, user_data)));
+    Ok(())
 }
