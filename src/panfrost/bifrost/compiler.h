@@ -424,8 +424,6 @@ typedef struct {
                 uint32_t fill;
                 uint32_t index;
                 uint32_t attribute_index;
-                int32_t byte_offset;
-                int32_t branch_offset;
 
                 struct {
                         uint32_t varying_index;
@@ -437,6 +435,14 @@ typedef struct {
                 struct {
                         uint32_t sr_count;
                         uint32_t sr_count_2;
+
+                        union {
+                                /* Atomics effectively require all three */
+                                int32_t byte_offset;
+
+                                /* BLEND requires all three */
+                                int32_t branch_offset;
+                        };
                 };
         };
 
