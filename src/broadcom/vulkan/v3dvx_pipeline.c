@@ -170,8 +170,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
        * exposing, at least, a minimum of 4-bits of subpixel precision
        * (the minimum requirement).
        */
-      config.line_rasterization = 1; /* perp end caps */
-
+      config.line_rasterization = V3D_LINE_RASTERIZATION_PERP_END_CAPS;
       if (rs_info && rs_info->polygonMode != VK_POLYGON_MODE_FILL) {
          config.direct3d_wireframe_triangles_mode = true;
          config.direct3d_point_fill_mode =
