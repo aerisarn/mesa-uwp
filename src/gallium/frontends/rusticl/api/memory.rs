@@ -1507,14 +1507,48 @@ pub fn enqueue_unmap_mem_object(
 }
 
 pub fn enqueue_migrate_mem_objects(
-    _command_queue: cl_command_queue,
-    _num_mem_objects: cl_uint,
-    _mem_objects: *const cl_mem,
-    _flags: cl_mem_migration_flags,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    num_mem_objects: cl_uint,
+    mem_objects: *const cl_mem,
+    flags: cl_mem_migration_flags,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> CLResult<()> {
-    println!("enqueue_migrate_mem_objects not implemented");
-    Err(CL_OUT_OF_HOST_MEMORY)
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+    let bufs = cl_mem::get_arc_vec_from_arr(mem_objects, num_mem_objects)?;
+
+    // CL_INVALID_VALUE if num_mem_objects is zero or if mem_objects is NULL.
+    if bufs.is_empty() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue and memory objects in
+    // mem_objects are not the same
+    if bufs.iter().any(|b| b.context != q.context) {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_INVALID_VALUE if flags is not 0 or is not any of the values described in the table above.
+    if flags != 0
+        && !bit_check(
+            flags,
+            CL_MIGRATE_MEM_OBJECT_HOST | CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED,
+        )
+    {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // we should do something, but it's legal to not do anything at all
+    create_and_queue(
+        q,
+        CL_COMMAND_MIGRATE_MEM_OBJECTS,
+        evs,
+        event,
+        false,
+        Box::new(|_, _| Ok(())),
+    )
+
+    //• CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to allocate memory for the specified set of memory objects in mem_objects.
 }
