@@ -1408,16 +1408,15 @@ static LLVMValueRef get_buffer_size(struct ac_nir_context *ctx, LLVMValueRef des
  * runtime. In this case, return an i1 value that indicates whether the
  * descriptor was overridden (and hence a fixup of the sampler result is needed).
  */
-static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, nir_variable *var,
-                                          struct ac_image_args *args, const nir_tex_instr *instr)
+static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, struct ac_image_args *args,
+                                          const nir_tex_instr *instr)
 {
-   const struct glsl_type *type = glsl_without_array(var->type);
-   enum glsl_base_type stype = glsl_get_sampler_result_type(type);
+   nir_alu_type stype = nir_alu_type_get_base_type(instr->dest_type);
    LLVMValueRef wa_8888 = NULL;
    LLVMValueRef half_texel[2];
    LLVMValueRef result;
 
-   assert(stype == GLSL_TYPE_INT || stype == GLSL_TYPE_UINT);
+   assert(stype == nir_type_int || stype == nir_type_uint);
 
    if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
       LLVMValueRef formats;
@@ -1432,7 +1431,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, nir_varia
       wa_8888 = LLVMBuildICmp(ctx->builder, LLVMIntEQ, data_format,
                               LLVMConstInt(ctx->i32, V_008F14_IMG_DATA_FORMAT_8_8_8_8, false), "");
 
-      uint32_t wa_num_format = stype == GLSL_TYPE_UINT
+      uint32_t wa_num_format = stype == nir_type_uint
                                   ? S_008F14_NUM_FORMAT(V_008F14_IMG_NUM_FORMAT_USCALED)
                                   : S_008F14_NUM_FORMAT(V_008F14_IMG_NUM_FORMAT_SSCALED);
       wa_formats = LLVMBuildAnd(ctx->builder, formats,
@@ -1523,7 +1522,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, nir_varia
       /* if the cube workaround is in place, f2i the result. */
       for (unsigned c = 0; c < 4; c++) {
          tmp = LLVMBuildExtractElement(ctx->builder, result, LLVMConstInt(ctx->i32, c, false), "");
-         if (stype == GLSL_TYPE_UINT)
+         if (stype == nir_type_uint)
             tmp2 = LLVMBuildFPToUI(ctx->builder, tmp, ctx->i32, "");
          else
             tmp2 = LLVMBuildFPToSI(ctx->builder, tmp, ctx->i32, "");
@@ -1536,22 +1535,6 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, nir_varia
       }
    }
    return result;
-}
-
-static nir_deref_instr *get_tex_texture_deref(const nir_tex_instr *instr)
-{
-   nir_deref_instr *texture_deref_instr = NULL;
-
-   for (unsigned i = 0; i < instr->num_srcs; i++) {
-      switch (instr->src[i].src_type) {
-      case nir_tex_src_texture_deref:
-         texture_deref_instr = nir_src_as_deref(instr->src[i].src);
-         break;
-      default:
-         break;
-      }
-   }
-   return texture_deref_instr;
 }
 
 static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_tex_instr *instr,
@@ -1621,14 +1604,9 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    if (!ctx->ac.info->has_3d_cube_border_color_mipmap)
       args->level_zero = false;
 
-   if (instr->op == nir_texop_tg4 && ctx->ac.chip_class <= GFX8) {
-      nir_deref_instr *texture_deref_instr = get_tex_texture_deref(instr);
-      nir_variable *var = nir_deref_instr_get_variable(texture_deref_instr);
-      const struct glsl_type *type = glsl_without_array(var->type);
-      enum glsl_base_type stype = glsl_get_sampler_result_type(type);
-      if (stype == GLSL_TYPE_UINT || stype == GLSL_TYPE_INT) {
-         return lower_gather4_integer(&ctx->ac, var, args, instr);
-      }
+   if (instr->op == nir_texop_tg4 && ctx->ac.chip_class <= GFX8 &&
+       (instr->dest_type & (nir_type_int | nir_type_uint))) {
+      return lower_gather4_integer(&ctx->ac, args, instr);
    }
 
    /* Fixup for GFX9 which allocates 1D textures as 2D. */
