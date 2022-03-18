@@ -1114,31 +1114,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
    }
 }
 
-static void lvp_get_physical_device_queue_family_properties(
-   VkQueueFamilyProperties*                    pQueueFamilyProperties)
-{
-   *pQueueFamilyProperties = (VkQueueFamilyProperties) {
-      .queueFlags = VK_QUEUE_GRAPHICS_BIT |
-      VK_QUEUE_COMPUTE_BIT |
-      VK_QUEUE_TRANSFER_BIT,
-      .queueCount = 1,
-      .timestampValidBits = 64,
-      .minImageTransferGranularity = (VkExtent3D) { 1, 1, 1 },
-   };
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties(
-   VkPhysicalDevice                            physicalDevice,
-   uint32_t*                                   pCount,
-   VkQueueFamilyProperties*                    pQueueFamilyProperties)
-{
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
-
-   vk_outarray_append(&out, p) {
-      lvp_get_physical_device_queue_family_properties(p);
-   }
-}
-
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice                            physicalDevice,
    uint32_t*                                   pCount,
@@ -1147,7 +1122,14 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties2(
    VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
 
    vk_outarray_append(&out, p) {
-      lvp_get_physical_device_queue_family_properties(&p->queueFamilyProperties);
+      p->queueFamilyProperties = (VkQueueFamilyProperties) {
+         .queueFlags = VK_QUEUE_GRAPHICS_BIT |
+         VK_QUEUE_COMPUTE_BIT |
+         VK_QUEUE_TRANSFER_BIT,
+         .queueCount = 1,
+         .timestampValidBits = 64,
+         .minImageTransferGranularity = (VkExtent3D) { 1, 1, 1 },
+      };
    }
 }
 
