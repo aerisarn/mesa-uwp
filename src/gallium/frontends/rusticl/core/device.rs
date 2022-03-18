@@ -489,6 +489,13 @@ impl Device {
         &self.screen
     }
 
+    pub fn subgroups(&self) -> u32 {
+        ComputeParam::<u32>::compute_param(
+            self.screen.as_ref(),
+            pipe_compute_cap::PIPE_COMPUTE_CAP_SUBGROUP_SIZE,
+        )
+    }
+
     pub fn unified_memory(&self) -> bool {
         self.screen.param(pipe_cap::PIPE_CAP_UMA) == 1
     }
