@@ -174,6 +174,8 @@ fn lower_and_optimize_nir_pre_inputs(nir: &mut NirShader, lib_clc: &NirShader) {
     } {}
     nir.inline(lib_clc);
     nir.remove_non_entrypoints();
+    // that should free up tons of memory
+    nir.sweep_mem();
     while {
         let mut progress = false;
         progress |= nir.pass0(nir_copy_prop);
@@ -326,6 +328,7 @@ fn lower_and_optimize_nir_late(
     nir.pass1(nir_lower_convert_alu_types, None);
     nir.pass0(nir_opt_dce);
     dev.screen.finalize_nir(nir);
+    nir.sweep_mem();
     res
 }
 
