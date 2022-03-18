@@ -316,7 +316,7 @@ static void emit_state(struct rendering_state *state)
    }
    
 
-   for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
+   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
       if (state->constbuf_dirty[sh]) {
          for (unsigned idx = 0; idx < state->num_const_bufs[sh]; idx++)
             state->pctx->set_constant_buffer(state->pctx, sh,
@@ -325,14 +325,14 @@ static void emit_state(struct rendering_state *state)
       state->constbuf_dirty[sh] = false;
    }
 
-   for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
+   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
       if (state->pcbuf_dirty[sh]) {
          state->pctx->set_constant_buffer(state->pctx, sh,
                                           0, false, &state->pc_buffer[sh]);
       }
    }
 
-   for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
+   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
       if (state->sb_dirty[sh]) {
          state->pctx->set_shader_buffers(state->pctx, sh,
                                          0, state->num_shader_buffers[sh],
@@ -340,7 +340,7 @@ static void emit_state(struct rendering_state *state)
       }
    }
 
-   for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
+   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
       if (state->iv_dirty[sh]) {
          state->pctx->set_shader_images(state->pctx, sh,
                                         0, state->num_shader_images[sh], 0,
@@ -348,7 +348,7 @@ static void emit_state(struct rendering_state *state)
       }
    }
 
-   for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
+   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
 
       if (!state->sv_dirty[sh])
          continue;
@@ -358,7 +358,7 @@ static void emit_state(struct rendering_state *state)
       state->sv_dirty[sh] = false;
    }
 
-   for (sh = 0; sh < PIPE_SHADER_TYPES; sh++) {
+   for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
       if (!state->ss_dirty[sh])
          continue;
 
