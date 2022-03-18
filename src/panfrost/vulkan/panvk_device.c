@@ -832,16 +832,6 @@ static const VkQueueFamilyProperties panvk_queue_family_properties = {
 };
 
 void
-panvk_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice,
-                                             uint32_t *pQueueFamilyPropertyCount,
-                                             VkQueueFamilyProperties *pQueueFamilyProperties)
-{
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
-
-   vk_outarray_append(&out, p) { *p = panvk_queue_family_properties; }
-}
-
-void
 panvk_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
                                               uint32_t *pQueueFamilyPropertyCount,
                                               VkQueueFamilyProperties2 *pQueueFamilyProperties)
