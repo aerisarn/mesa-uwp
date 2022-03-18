@@ -146,8 +146,8 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clEnqueueReleaseEGLObjectsKHR: None,
     clCreateEventFromEGLSyncKHR: None,
     clCreateCommandQueueWithProperties: Some(cl_create_command_queue_with_properties),
-    clCreatePipe: None,
-    clGetPipeInfo: None,
+    clCreatePipe: Some(cl_create_pipe),
+    clGetPipeInfo: Some(cl_get_pipe_info),
     clSVMAlloc: Some(cl_svm_alloc),
     clSVMFree: Some(cl_svm_free),
     clEnqueueSVMFree: Some(cl_enqueue_svm_free),
@@ -158,18 +158,18 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clCreateSamplerWithProperties: None,
     clSetKernelArgSVMPointer: Some(cl_set_kernel_arg_svm_pointer),
     clSetKernelExecInfo: Some(cl_set_kernel_exec_info),
-    clGetKernelSubGroupInfoKHR: None,
+    clGetKernelSubGroupInfoKHR: Some(cl_get_kernel_sub_group_info),
     clCloneKernel: Some(cl_clone_kernel),
     clCreateProgramWithIL: Some(cl_create_program_with_il),
     clEnqueueSVMMigrateMem: Some(cl_enqueue_svm_migrate_mem),
-    clGetDeviceAndHostTimer: None,
+    clGetDeviceAndHostTimer: Some(cl_get_device_and_host_timer),
     clGetHostTimer: None,
-    clGetKernelSubGroupInfo: None,
+    clGetKernelSubGroupInfo: Some(cl_get_kernel_sub_group_info),
     clSetDefaultDeviceCommandQueue: None,
     clSetProgramReleaseCallback: None,
     clSetProgramSpecializationConstant: Some(cl_set_program_specialization_constant),
-    clCreateBufferWithProperties: None,
-    clCreateImageWithProperties: None,
+    clCreateBufferWithProperties: Some(cl_create_buffer_with_properties),
+    clCreateImageWithProperties: Some(cl_create_image_with_properties),
     clSetContextDestructorCallback: Some(cl_set_context_destructor_callback),
 };
 
@@ -1503,6 +1503,29 @@ extern "C" fn cl_create_command_queue_with_properties(
     match_obj!(create_command_queue(context, device, 0), errcode_ret)
 }
 
+extern "C" fn cl_create_pipe(
+    _context: cl_context,
+    _flags: cl_mem_flags,
+    _pipe_packet_size: cl_uint,
+    _pipe_max_packets: cl_uint,
+    _properties: *const cl_pipe_properties,
+    errcode_ret: *mut cl_int,
+) -> cl_mem {
+    errcode_ret.write_checked(CL_INVALID_OPERATION);
+    ptr::null_mut()
+}
+
+extern "C" fn cl_get_pipe_info(
+    _pipe: cl_mem,
+    _param_name: cl_pipe_info,
+    _param_value_size: usize,
+    _param_value: *mut ::std::os::raw::c_void,
+    _param_value_size_ret: *mut usize,
+) -> cl_int {
+    println!("get_pipe_info not implemented");
+    CL_OUT_OF_HOST_MEMORY
+}
+
 extern "C" fn cl_svm_alloc(
     _context: cl_context,
     _flags: cl_svm_mem_flags,
@@ -1619,6 +1642,29 @@ extern "C" fn cl_enqueue_svm_migrate_mem(
     CL_INVALID_OPERATION
 }
 
+extern "C" fn cl_get_device_and_host_timer(
+    _device: cl_device_id,
+    _device_timestamp: *mut cl_ulong,
+    _host_timestamp: *mut cl_ulong,
+) -> cl_int {
+    println!("cl_get_device_and_host_timer not implemented");
+    CL_OUT_OF_HOST_MEMORY
+}
+
+extern "C" fn cl_get_kernel_sub_group_info(
+    _kernel: cl_kernel,
+    _device: cl_device_id,
+    _param_name: cl_kernel_sub_group_info,
+    _input_value_size: usize,
+    _input_value: *const ::std::os::raw::c_void,
+    _param_value_size: usize,
+    _param_value: *mut ::std::os::raw::c_void,
+    _param_value_size_ret: *mut usize,
+) -> cl_int {
+    println!("cl_get_kernel_sub_group_info not implemented");
+    CL_OUT_OF_HOST_MEMORY
+}
+
 extern "C" fn cl_set_program_specialization_constant(
     program: cl_program,
     spec_id: cl_uint,
@@ -1628,6 +1674,33 @@ extern "C" fn cl_set_program_specialization_constant(
     match_err!(set_program_specialization_constant(
         program, spec_id, spec_size, spec_value
     ))
+}
+
+extern "C" fn cl_create_buffer_with_properties(
+    _context: cl_context,
+    _properties: *const cl_mem_properties,
+    _flags: cl_mem_flags,
+    _size: usize,
+    _host_ptr: *mut ::std::os::raw::c_void,
+    errcode_ret: *mut cl_int,
+) -> cl_mem {
+    println!("cl_create_buffer_with_properties not implemented");
+    errcode_ret.write_checked(CL_OUT_OF_HOST_MEMORY);
+    ptr::null_mut()
+}
+
+extern "C" fn cl_create_image_with_properties(
+    _context: cl_context,
+    _properties: *const cl_mem_properties,
+    _flags: cl_mem_flags,
+    _image_format: *const cl_image_format,
+    _image_desc: *const cl_image_desc,
+    _host_ptr: *mut ::std::os::raw::c_void,
+    errcode_ret: *mut cl_int,
+) -> cl_mem {
+    println!("cl_create_image_with_properties not implemented");
+    errcode_ret.write_checked(CL_OUT_OF_HOST_MEMORY);
+    ptr::null_mut()
 }
 
 extern "C" fn cl_set_context_destructor_callback(
