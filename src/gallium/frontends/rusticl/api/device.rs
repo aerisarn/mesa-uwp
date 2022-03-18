@@ -20,8 +20,16 @@ impl CLInfo<cl_device_info> for cl_device_id {
         let dev = self.get_ref()?;
         Ok(match q {
             CL_DEVICE_ADDRESS_BITS => cl_prop::<cl_uint>(dev.address_bits()),
-            CL_DEVICE_ATOMIC_FENCE_CAPABILITIES => cl_prop::<cl_device_atomic_capabilities>(0),
-            CL_DEVICE_ATOMIC_MEMORY_CAPABILITIES => cl_prop::<cl_device_atomic_capabilities>(0),
+            CL_DEVICE_ATOMIC_FENCE_CAPABILITIES => cl_prop::<cl_device_atomic_capabilities>(
+                (CL_DEVICE_ATOMIC_ORDER_RELAXED
+                    | CL_DEVICE_ATOMIC_ORDER_ACQ_REL
+                    | CL_DEVICE_ATOMIC_SCOPE_WORK_GROUP)
+                    as cl_device_atomic_capabilities,
+            ),
+            CL_DEVICE_ATOMIC_MEMORY_CAPABILITIES => cl_prop::<cl_device_atomic_capabilities>(
+                (CL_DEVICE_ATOMIC_ORDER_RELAXED | CL_DEVICE_ATOMIC_SCOPE_WORK_GROUP)
+                    as cl_device_atomic_capabilities,
+            ),
             CL_DEVICE_AVAILABLE => cl_prop::<bool>(true),
             CL_DEVICE_BUILT_IN_KERNELS => cl_prop::<&str>(""),
             CL_DEVICE_BUILT_IN_KERNELS_WITH_VERSION => cl_prop::<Vec<cl_name_version>>(Vec::new()),
