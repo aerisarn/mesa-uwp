@@ -2450,24 +2450,6 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
    *pCount = idx;
 }
 
-VKAPI_ATTR void VKAPI_CALL
-radv_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice, uint32_t *pCount,
-                                            VkQueueFamilyProperties *pQueueFamilyProperties)
-{
-   RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
-   if (!pQueueFamilyProperties) {
-      radv_get_physical_device_queue_family_properties(pdevice, pCount, NULL);
-      return;
-   }
-   VkQueueFamilyProperties *properties[] = {
-      pQueueFamilyProperties + 0,
-      pQueueFamilyProperties + 1,
-      pQueueFamilyProperties + 2,
-   };
-   radv_get_physical_device_queue_family_properties(pdevice, pCount, properties);
-   assert(*pCount <= 3);
-}
-
 static const VkQueueGlobalPriorityEXT radv_global_queue_priorities[] = {
    VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT,
    VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT,
