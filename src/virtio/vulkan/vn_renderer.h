@@ -66,6 +66,8 @@ struct vn_renderer_info {
    uint32_t vk_ext_command_serialization_spec_version;
    uint32_t vk_mesa_venus_protocol_spec_version;
    uint32_t supports_blob_id_0;
+   /* combined mask for vk_extension_mask1, 2,..., N */
+   uint32_t vk_extension_mask[32];
 };
 
 struct vn_renderer_submit_batch {
