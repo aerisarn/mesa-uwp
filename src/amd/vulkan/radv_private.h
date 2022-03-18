@@ -818,11 +818,6 @@ struct radv_device {
    bool robust_buffer_access;
    bool robust_buffer_access2;
 
-   /* Whether gl_FragCoord.z should be adjusted for VRS due to a hw bug
-    * on some GFX10.3 chips.
-    */
-   bool adjust_frag_coord_z;
-
    /* Whether to inline the compute dispatch size in user sgprs. */
    bool load_grid_size_from_user_sgpr;
 

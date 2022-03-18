@@ -2356,7 +2356,7 @@ radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader,
 }
 
 unsigned
-radv_compute_spi_ps_input(const struct radv_device *device,
+radv_compute_spi_ps_input(const struct radv_pipeline_key *pipeline_key,
                           const struct radv_shader_info *info)
 {
    unsigned spi_ps_input;
@@ -2379,7 +2379,7 @@ radv_compute_spi_ps_input(const struct radv_device *device,
             spi_ps_input |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
       }
 
-      if (device->adjust_frag_coord_z && info->ps.reads_frag_coord_mask & (1 << 2)) {
+      if (pipeline_key->adjust_frag_coord_z && info->ps.reads_frag_coord_mask & (1 << 2)) {
          spi_ps_input |= S_0286CC_ANCILLARY_ENA(1);
       }
    }

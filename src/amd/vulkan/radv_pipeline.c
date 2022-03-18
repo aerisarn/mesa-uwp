@@ -2940,6 +2940,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_blend_state *blend)
 {
+   struct radv_device *device = pipeline->device;
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    bool uses_dynamic_stride = false;
@@ -3083,7 +3084,12 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       key.invariant_geom = true;
 
    key.use_ngg = pipeline->device->physical_device->use_ngg;
-   key.adjust_frag_coord_z = pipeline->device->adjust_frag_coord_z;
+
+   if ((radv_is_vrs_enabled(pipeline, pCreateInfo) || device->force_vrs_enabled) &&
+       (device->physical_device->rad_info.family == CHIP_SIENNA_CICHLID ||
+        device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
+        device->physical_device->rad_info.family == CHIP_VANGOGH))
+      key.adjust_frag_coord_z = true;
 
    return key;
 }

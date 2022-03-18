@@ -3419,12 +3419,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
       }
    }
 
-   device->adjust_frag_coord_z =
-      (device->vk.enabled_extensions.KHR_fragment_shading_rate || device->force_vrs_enabled) &&
-      (device->physical_device->rad_info.family == CHIP_SIENNA_CICHLID ||
-       device->physical_device->rad_info.family == CHIP_NAVY_FLOUNDER ||
-       device->physical_device->rad_info.family == CHIP_VANGOGH);
-
    /* PKT3_LOAD_SH_REG_INDEX is supported on GFX8+, but it hangs with compute queues until GFX10.3. */
    device->load_grid_size_from_user_sgpr = device->physical_device->rad_info.chip_class >= GFX10_3;
 
