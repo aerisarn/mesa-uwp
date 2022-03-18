@@ -246,7 +246,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
 
-   layout = vk_alloc(&device->vk.alloc, sizeof(*layout), 8,
+   layout = vk_zalloc(&device->vk.alloc, sizeof(*layout), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (layout == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
