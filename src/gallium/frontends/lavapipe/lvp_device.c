@@ -145,6 +145,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_host_query_reset                  = true,
    .EXT_image_robustness                  = true,
    .EXT_index_type_uint8                  = true,
+   .EXT_inline_uniform_block              = true,
    .EXT_multi_draw                        = true,
    .EXT_pipeline_creation_feedback        = true,
    .EXT_pipeline_creation_cache_control   = true,
@@ -805,6 +806,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->formatA4B4G4R4 = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES: {
+         VkPhysicalDeviceInlineUniformBlockFeatures *features =
+            (VkPhysicalDeviceInlineUniformBlockFeatures*)ext;
+         features->inlineUniformBlock = true;
+         features->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
          VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
@@ -1085,6 +1093,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          properties->lineSubPixelPrecisionBits =
             pdevice->pscreen->get_param(pdevice->pscreen,
                                         PIPE_CAP_RASTERIZER_SUBPIXEL_BITS);
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES: {
+         VkPhysicalDeviceInlineUniformBlockProperties *properties =
+            (VkPhysicalDeviceInlineUniformBlockProperties *)ext;
+         properties->maxInlineUniformBlockSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE;
+         properties->maxPerStageDescriptorInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+         properties->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+         properties->maxDescriptorSetInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+         properties->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
