@@ -57,6 +57,9 @@
  * time, so in most cases there will be no locking.
  */
 
+void
+tu_autotune_free_results_locked(struct tu_device *dev, struct list_head *results);
+
 #define TU_AUTOTUNE_DEBUG_LOG 0
 /* Dump history entries on autotuner finish,
  * could be used to gather data from traces.
@@ -68,7 +71,6 @@
 /* For how many submissions we store renderpass stats. */
 #define MAX_HISTORY_LIFETIME 128
 
-#define TU_AUTOTUNE_RP_BO_SIZE 4096
 
 /**
  * Tracks results for a given renderpass key
@@ -88,62 +90,12 @@ struct tu_renderpass_history {
    uint32_t avg_samples;
 };
 
-struct tu_autotune_results_buffer
-{
-   int32_t ref_cnt;
-
-   struct tu_device *device;
-
-   /* TODO: It would be better to suballocate the space from
-    * a memory pool which would create less BOs and waste less space.
-    */
-   struct tu_bo **bos;
-   uint32_t num_bos;
-   uint32_t results_written;
-};
-
-static struct tu_autotune_results_buffer*
-tu_autotune_results_buffer_create(struct tu_device *dev)
-{
-   struct tu_autotune_results_buffer* buffer =
-      malloc(sizeof(struct tu_autotune_results_buffer));
-
-   buffer->ref_cnt = 1;
-   buffer->device = dev;
-   buffer->results_written = 0;
-   buffer->num_bos = 0;
-   buffer->bos = NULL;
-
-   return buffer;
-}
-
-void
-tu_autotune_results_buffer_ref(struct tu_autotune_results_buffer *buffer)
-{
-   assert(buffer && buffer->ref_cnt >= 1);
-   p_atomic_inc(&buffer->ref_cnt);
-}
-
-void
-tu_autotune_results_buffer_unref(struct tu_autotune_results_buffer *buffer)
-{
-   assert(buffer && buffer->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&buffer->ref_cnt)) {
-      for (int i = 0; i < buffer->num_bos; i++)
-         tu_bo_finish(buffer->device, buffer->bos[i]);
-
-      ralloc_free(buffer->bos);
-      free(buffer);
-   }
-}
-
 /* Holds per-submission cs which writes the fence. */
 struct tu_submission_data {
    struct list_head node;
    uint32_t fence;
 
    struct tu_cs fence_cs;
-   struct tu_autotune_results_buffer **buffers;
    uint32_t buffers_count;
 };
 
@@ -175,11 +127,7 @@ free_submission_data(struct tu_submission_data *data)
 {
    list_del(&data->node);
    tu_cs_finish(&data->fence_cs);
-   for (uint32_t i = 0; i < data->buffers_count; i++) {
-      tu_autotune_results_buffer_unref(data->buffers[i]);
-   }
 
-   free(data->buffers);
    free(data);
 }
 
@@ -220,16 +168,17 @@ hash_renderpass_instance(const struct tu_render_pass *pass,
 }
 
 static void
-free_result(struct tu_renderpass_result *result)
+free_result(struct tu_device *dev, struct tu_renderpass_result *result)
 {
+   tu_suballoc_bo_free(&dev->autotune_suballoc, &result->bo);
    list_del(&result->node);
    free(result);
 }
 
 static void
-free_history(struct tu_renderpass_history *history)
+free_history(struct tu_device *dev, struct tu_renderpass_history *history)
 {
-   tu_autotune_free_results(&history->results);
+   tu_autotune_free_results_locked(dev, &history->results);
    free(history);
 }
 
@@ -266,7 +215,7 @@ create_history_result(struct tu_autotune *at, uint64_t rp_key)
 }
 
 static void
-history_add_result(struct tu_renderpass_history *history,
+history_add_result(struct tu_device *dev, struct tu_renderpass_history *history,
                       struct tu_renderpass_result *result)
 {
    list_delinit(&result->node);
@@ -280,7 +229,9 @@ history_add_result(struct tu_renderpass_history *history,
        */
       struct tu_renderpass_result *old_result =
          list_last_entry(&history->results, struct tu_renderpass_result, node);
-      free_result(old_result);
+      mtx_lock(&dev->autotune_mutex);
+      free_result(dev, old_result);
+      mtx_unlock(&dev->autotune_mutex);
    }
 
    /* Do calculations here to avoid locking history in tu_autotune_use_bypass */
@@ -297,7 +248,8 @@ history_add_result(struct tu_renderpass_history *history,
 static void
 process_results(struct tu_autotune *at)
 {
-   struct tu6_global *global = at->device->global_bo->map;
+   struct tu_device *dev = at->device;
+   struct tu6_global *global = dev->global_bo->map;
    uint32_t current_fence = global->autotune_fence;
 
    list_for_each_entry_safe(struct tu_renderpass_result, result,
@@ -309,7 +261,7 @@ process_results(struct tu_autotune *at)
       result->samples_passed =
          result->samples->samples_end - result->samples->samples_start;
 
-      history_add_result(history, result);
+      history_add_result(dev, history, result);
    }
 
    list_for_each_entry_safe(struct tu_submission_data, submission_data,
@@ -338,6 +290,7 @@ queue_pending_results(struct tu_autotune *at, struct tu_cmd_buffer *cmdbuf)
          /* TODO: copying each result isn't nice */
          struct tu_renderpass_result *copy = malloc(sizeof(*result));
          *copy = *result;
+         tu_bo_get_ref(copy->bo.bo);
          list_addtail(&copy->node, &at->pending_results);
       }
    }
@@ -393,19 +346,13 @@ tu_autotune_on_submit(struct tu_device *dev,
    struct tu_submission_data *submission_data =
       create_submission_data(dev, at);
    submission_data->buffers_count = result_buffers;
-   submission_data->buffers =
-      malloc(sizeof(struct tu_autotune_results_buffer *) * result_buffers);
 
-   uint32_t buffer_idx = 0;
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       struct tu_cmd_buffer *cmdbuf = cmd_buffers[i];
       if (list_is_empty(&cmdbuf->renderpass_autotune_results))
          continue;
 
       queue_pending_results(at, cmdbuf);
-
-      submission_data->buffers[buffer_idx++] = cmdbuf->autotune_buffer;
-      tu_autotune_results_buffer_ref(cmdbuf->autotune_buffer);
    }
 
 #if TU_AUTOTUNE_DEBUG_LOG != 0
@@ -430,7 +377,9 @@ tu_autotune_on_submit(struct tu_device *dev,
       _mesa_hash_table_remove_key(at->ht, &history->key);
       u_rwlock_wrunlock(&at->ht_lock);
 
-      free_history(history);
+      mtx_lock(&dev->autotune_mutex);
+      free_history(dev, history);
+      mtx_unlock(&dev->autotune_mutex);
    }
 
    return &submission_data->fence_cs;
@@ -480,12 +429,14 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
    }
 #endif
 
-   tu_autotune_free_results(&at->pending_results);
+   tu_autotune_free_results(dev, &at->pending_results);
 
+   mtx_lock(&dev->autotune_mutex);
    hash_table_foreach(at->ht, entry) {
       struct tu_renderpass_history *history = entry->data;
-      free_history(history);
+      free_history(dev, history);
    }
+   mtx_unlock(&dev->autotune_mutex);
 
    list_for_each_entry_safe(struct tu_submission_data, submission_data,
                             &at->pending_submission_data, node) {
@@ -510,12 +461,20 @@ tu_autotune_submit_requires_fence(struct tu_cmd_buffer **cmd_buffers,
 }
 
 void
-tu_autotune_free_results(struct list_head *results)
+tu_autotune_free_results_locked(struct tu_device *dev, struct list_head *results)
 {
    list_for_each_entry_safe(struct tu_renderpass_result, result,
                             results, node) {
-      free_result(result);
+      free_result(dev, result);
    }
+}
+
+void
+tu_autotune_free_results(struct tu_device *dev, struct list_head *results)
+{
+   mtx_lock(&dev->autotune_mutex);
+   tu_autotune_free_results_locked(dev, results);
+   mtx_unlock(&dev->autotune_mutex);
 }
 
 static bool
@@ -624,32 +583,6 @@ tu_autotune_use_bypass(struct tu_autotune *at,
    return fallback_use_bypass(pass, framebuffer, cmd_buffer);
 }
 
-static uint32_t
-get_offset_for_renderpass(struct tu_autotune_results_buffer *buffer)
-{
-   uint32_t results_per_bo =
-      TU_AUTOTUNE_RP_BO_SIZE / sizeof(struct tu_renderpass_samples);
-   return (buffer->results_written % results_per_bo) *
-          sizeof(struct tu_renderpass_samples);
-}
-
-static struct tu_bo *
-get_bo_for_renderpass(struct tu_autotune_results_buffer *buffer)
-{
-   if (get_offset_for_renderpass(buffer) == 0) {
-      buffer->num_bos++;
-      buffer->bos =
-         reralloc(NULL, buffer->bos, struct tu_bo *, buffer->num_bos);
-      struct tu_bo **new_bo = &buffer->bos[buffer->num_bos - 1];
-
-      tu_bo_init_new(buffer->device, new_bo, TU_AUTOTUNE_RP_BO_SIZE,
-                     TU_BO_ALLOC_NO_FLAGS);
-      tu_bo_map(buffer->device, *new_bo);
-   }
-
-   return buffer->bos[buffer->num_bos - 1];
-}
-
 void
 tu_autotune_begin_renderpass(struct tu_cmd_buffer *cmd,
                              struct tu_cs *cs,
@@ -658,21 +591,21 @@ tu_autotune_begin_renderpass(struct tu_cmd_buffer *cmd,
    if (!autotune_result)
       return;
 
-   /* Lazily allocate memory for renderpass results.
-    * Secondary command buffers do not support renderpasses.
-    */
-   assert(cmd->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-   if (!cmd->autotune_buffer) {
-      cmd->autotune_buffer = tu_autotune_results_buffer_create(cmd->device);
+   struct tu_device *dev = cmd->device;
+
+   static const uint32_t size = sizeof(struct tu_renderpass_samples);
+
+   mtx_lock(&dev->autotune_mutex);
+   VkResult ret = tu_suballoc_bo_alloc(&autotune_result->bo, &dev->autotune_suballoc, size, size);
+   mtx_unlock(&dev->autotune_mutex);
+   if (ret != VK_SUCCESS) {
+      autotune_result->bo.iova = 0;
+      return;
    }
 
-   uint32_t bo_offset = get_offset_for_renderpass(cmd->autotune_buffer);
-   struct tu_bo *bo = get_bo_for_renderpass(cmd->autotune_buffer);
+   uint64_t result_iova = autotune_result->bo.iova;
 
-   uint64_t result_iova = bo->iova + bo_offset;
-
-   autotune_result->samples =
-      (struct tu_renderpass_samples *) (bo->map + bo_offset);
+   autotune_result->samples = tu_suballoc_bo_map(&autotune_result->bo);
 
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));
 
@@ -689,11 +622,10 @@ void tu_autotune_end_renderpass(struct tu_cmd_buffer *cmd,
    if (!autotune_result)
       return;
 
-   uint32_t bo_offset = get_offset_for_renderpass(cmd->autotune_buffer);
-   struct tu_bo *bo = cmd->autotune_buffer->bos[cmd->autotune_buffer->num_bos - 1];
-   cmd->autotune_buffer->results_written += 1;
+   if (!autotune_result->bo.iova)
+      return;
 
-   uint64_t result_iova = bo->iova + bo_offset +
+   uint64_t result_iova = autotune_result->bo.iova +
                           offsetof(struct tu_renderpass_samples, samples_end);
 
    tu_cs_emit_regs(cs, A6XX_RB_SAMPLE_COUNT_CONTROL(.copy = true));

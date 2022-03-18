@@ -32,6 +32,7 @@ struct tu_device;
 struct tu_cmd_buffer;
 
 struct tu_renderpass_history;
+struct tu_renderpass_result;
 
 /**
  * "autotune" our decisions about bypass vs GMEM rendering, based on historical
@@ -111,32 +112,13 @@ struct tu_renderpass_samples {
    uint64_t __pad1;
 };
 
-/**
- * Tracks the results from an individual renderpass. Initially created
- * per renderpass, and appended to the tail of at->pending_results. At a later
- * time, when the GPU has finished writing the results, we fill samples_passed.
- */
-struct tu_renderpass_result {
-   /* Points into GPU memory */
-   struct tu_renderpass_samples* samples;
-
-   /*
-    * Below here, only used internally within autotune
-    */
-   uint64_t rp_key;
-   struct tu_renderpass_history *history;
-   struct list_head node;
-   uint32_t fence;
-   uint64_t samples_passed;
-};
-
 VkResult tu_autotune_init(struct tu_autotune *at, struct tu_device *dev);
 void tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev);
 
 bool tu_autotune_use_bypass(struct tu_autotune *at,
                             struct tu_cmd_buffer *cmd_buffer,
                             struct tu_renderpass_result **autotune_result);
-void tu_autotune_free_results(struct list_head *results);
+void tu_autotune_free_results(struct tu_device *dev, struct list_head *results);
 
 bool tu_autotune_submit_requires_fence(struct tu_cmd_buffer **cmd_buffers,
                                        uint32_t cmd_buffer_count);
@@ -151,9 +133,6 @@ struct tu_cs *tu_autotune_on_submit(struct tu_device *dev,
                                     uint32_t cmd_buffer_count);
 
 struct tu_autotune_results_buffer;
-
-void tu_autotune_results_buffer_ref(struct tu_autotune_results_buffer *buffer);
-void tu_autotune_results_buffer_unref(struct tu_autotune_results_buffer *buffer);
 
 void tu_autotune_begin_renderpass(struct tu_cmd_buffer *cmd,
                                   struct tu_cs *cs,

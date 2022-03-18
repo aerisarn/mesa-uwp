@@ -438,6 +438,27 @@ enum global_shader {
    GLOBAL_SH_COUNT,
 };
 
+/**
+ * Tracks the results from an individual renderpass. Initially created
+ * per renderpass, and appended to the tail of at->pending_results. At a later
+ * time, when the GPU has finished writing the results, we fill samples_passed.
+ */
+struct tu_renderpass_result {
+   /* Points into GPU memory */
+   struct tu_renderpass_samples* samples;
+
+   struct tu_suballoc_bo bo;
+
+   /*
+    * Below here, only used internally within autotune
+    */
+   uint64_t rp_key;
+   struct tu_renderpass_history *history;
+   struct list_head node;
+   uint32_t fence;
+   uint64_t samples_passed;
+};
+
 #define TU_BORDER_COLOR_COUNT 4096
 #define TU_BORDER_COLOR_BUILTIN 6
 
@@ -513,6 +534,12 @@ struct tu_device
     */
    struct tu_suballocator pipeline_suballoc;
    mtx_t pipeline_mutex;
+
+   /* Device-global BO suballocator for reducing BO management for small
+    * gmem/sysmem autotune result buffers.  Synchronized by autotune_mutex.
+    */
+   struct tu_suballocator autotune_suballoc;
+   mtx_t autotune_mutex;
 
    /* the blob seems to always use 8K factor and 128K param sizes, copy them */
 #define TU_TESS_FACTOR_SIZE (8 * 1024)

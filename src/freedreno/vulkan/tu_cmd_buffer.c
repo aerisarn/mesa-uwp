@@ -1514,9 +1514,7 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
 
    u_trace_fini(&cmd_buffer->trace);
 
-   if (cmd_buffer->autotune_buffer)
-      tu_autotune_results_buffer_unref(cmd_buffer->autotune_buffer);
-   tu_autotune_free_results(&cmd_buffer->renderpass_autotune_results);
+   tu_autotune_free_results(cmd_buffer->device, &cmd_buffer->renderpass_autotune_results);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       if (cmd_buffer->descriptors[i].push_set.layout)
@@ -1542,16 +1540,7 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
    tu_cs_reset(&cmd_buffer->sub_cs);
 
-   /* We can't just reset the autotune_buffer's contents, because it is also
-    * referenced by the submission_data if the command buffer was submitted
-    * and we may be accessing it after cmdbuf reset/free.
-    */
-   if (cmd_buffer->autotune_buffer) {
-      tu_autotune_results_buffer_unref(cmd_buffer->autotune_buffer);
-      cmd_buffer->autotune_buffer = NULL;
-   }
-
-   tu_autotune_free_results(&cmd_buffer->renderpass_autotune_results);
+   tu_autotune_free_results(cmd_buffer->device, &cmd_buffer->renderpass_autotune_results);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       memset(&cmd_buffer->descriptors[i].sets, 0, sizeof(cmd_buffer->descriptors[i].sets));
