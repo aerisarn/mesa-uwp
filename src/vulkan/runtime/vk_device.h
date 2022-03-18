@@ -86,13 +86,24 @@ enum vk_queue_submit_mode {
    VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND,
 };
 
+/** Base struct for VkDevice */
 struct vk_device {
    struct vk_object_base base;
+
+   /** Allocator used to create this device
+    *
+    * This is used as a fall-back for when a NULL pAllocator is passed into a
+    * device-level create function such as vkCreateImage().
+    */
    VkAllocationCallbacks alloc;
+
+   /** Pointer to the physical device */
    struct vk_physical_device *physical;
 
+   /** Table of enabled extensions */
    struct vk_device_extension_table enabled_extensions;
 
+   /** Device-level dispatch table */
    struct vk_device_dispatch_table dispatch_table;
 
    /** Command dispatch table
@@ -228,6 +239,12 @@ struct vk_device {
       VK_DEVICE_TIMELINE_MODE_NATIVE,
    } timeline_mode;
 
+   /** Per-device submit mode
+    *
+    * This represents the device-wide submit strategy which may be different
+    * from the per-queue submit mode.  See vk_queue.submit.mode for more
+    * details.
+    */
    enum vk_queue_submit_mode submit_mode;
 
 #ifdef ANDROID
