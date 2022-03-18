@@ -287,8 +287,8 @@ Intel driver environment variables
       suppress generation of dual-object geometry shader code
    ``nofc``
       disable fast clears
-   ``norbc``
-      disable single sampled render buffer compression
+   ``noccs``
+      disable lossless color compression
    ``optimizer``
       dump shader assembly to files at each optimization pass and
       iteration that make progress
