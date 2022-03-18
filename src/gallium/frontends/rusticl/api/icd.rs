@@ -159,7 +159,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clSetKernelArgSVMPointer: None,
     clSetKernelExecInfo: None,
     clGetKernelSubGroupInfoKHR: None,
-    clCloneKernel: None,
+    clCloneKernel: Some(cl_clone_kernel),
     clCreateProgramWithIL: None,
     clEnqueueSVMMigrateMem: None,
     clGetDeviceAndHostTimer: None,
@@ -1501,6 +1501,10 @@ extern "C" fn cl_create_command_queue_with_properties(
 ) -> cl_command_queue {
     // TODO use own impl, this is enough to run the CL 3.0 CTS
     match_obj!(create_command_queue(context, device, 0), errcode_ret)
+}
+
+extern "C" fn cl_clone_kernel(source_kernel: cl_kernel, errcode_ret: *mut cl_int) -> cl_kernel {
+    match_obj!(clone_kernel(source_kernel), errcode_ret)
 }
 
 extern "C" fn cl_set_context_destructor_callback(

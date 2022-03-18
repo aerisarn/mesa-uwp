@@ -20,7 +20,7 @@ pub struct SPIRVBin {
     info: Option<clc_parsed_spirv>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct SPIRVKernelArg {
     pub name: String,
     pub type_name: String,

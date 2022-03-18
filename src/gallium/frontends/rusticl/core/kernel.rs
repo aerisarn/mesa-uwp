@@ -24,6 +24,7 @@ use std::ptr;
 use std::sync::Arc;
 
 // ugh, we are not allowed to take refs, so...
+#[derive(Clone)]
 pub enum KernelArgValue {
     None,
     Constant(Vec<u8>),
@@ -32,7 +33,7 @@ pub enum KernelArgValue {
     LocalMem(usize),
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub enum KernelArgType {
     Constant, // for anything passed by value
     Sampler,
@@ -41,12 +42,13 @@ pub enum KernelArgType {
     MemLocal,
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq, Clone)]
 pub enum InternalKernelArgType {
     ConstantBuffer,
     GlobalWorkOffsets,
 }
 
+#[derive(Clone)]
 pub struct KernelArg {
     spirv: spirv::SPIRVKernelArg,
     pub kind: KernelArgType,
@@ -55,7 +57,7 @@ pub struct KernelArg {
     pub dead: bool,
 }
 
-#[derive(Hash, PartialEq, Eq)]
+#[derive(Hash, PartialEq, Eq, Clone)]
 pub struct InternalKernelArg {
     pub kind: InternalKernelArgType,
     pub size: usize,
@@ -539,5 +541,20 @@ impl Kernel {
     pub fn local_mem_size(&self, dev: &Arc<Device>) -> cl_ulong {
         // TODO include args
         self.nirs.get(dev).unwrap().shared_size() as cl_ulong
+    }
+}
+
+impl Clone for Kernel {
+    fn clone(&self) -> Self {
+        Self {
+            base: CLObjectBase::new(),
+            prog: self.prog.clone(),
+            name: self.name.clone(),
+            args: self.args.clone(),
+            values: self.values.clone(),
+            work_group_size: self.work_group_size,
+            internal_args: self.internal_args.clone(),
+            nirs: self.nirs.clone(),
+        }
     }
 }

@@ -420,3 +420,8 @@ pub fn enqueue_task(
         event,
     )
 }
+
+pub fn clone_kernel(source_kernel: cl_kernel) -> CLResult<cl_kernel> {
+    let k = source_kernel.get_ref()?;
+    Ok(cl_kernel::from_arc(Arc::new(k.clone())))
+}
