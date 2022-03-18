@@ -139,6 +139,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_maintenance1 = true,
       .KHR_maintenance2 = true,
       .KHR_maintenance3 = true,
+      .KHR_maintenance4 = true,
       .KHR_multiview = true,
       .KHR_performance_query = device->instance->debug_flags & TU_DEBUG_PERFC,
       .KHR_pipeline_executable_properties = true,
@@ -606,7 +607,7 @@ tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
    features->shaderZeroInitializeWorkgroupMemory = true;
    features->dynamicRendering                    = false;
    features->shaderIntegerDotProduct             = true;
-   features->maintenance4                        = false;
+   features->maintenance4                        = true;
 }
 
 void
