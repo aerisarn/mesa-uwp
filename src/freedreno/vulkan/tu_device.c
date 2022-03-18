@@ -2270,18 +2270,14 @@ tu_InvalidateMappedMemoryRanges(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void VKAPI_CALL
-tu_GetBufferMemoryRequirements2(
-   VkDevice device,
-   const VkBufferMemoryRequirementsInfo2 *pInfo,
-   VkMemoryRequirements2 *pMemoryRequirements)
+static void
+tu_get_buffer_memory_requirements(uint64_t size, 
+                                  VkMemoryRequirements2 *pMemoryRequirements)
 {
-   TU_FROM_HANDLE(tu_buffer, buffer, pInfo->buffer);
-
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .memoryTypeBits = 1,
       .alignment = 64,
-      .size = MAX2(align64(buffer->size, 64), buffer->size),
+      .size = MAX2(align64(size, 64), size),
    };
 
    vk_foreach_struct(ext, pMemoryRequirements->pNext) {
@@ -2300,41 +2296,23 @@ tu_GetBufferMemoryRequirements2(
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_GetImageMemoryRequirements2(VkDevice device,
-                               const VkImageMemoryRequirementsInfo2 *pInfo,
-                               VkMemoryRequirements2 *pMemoryRequirements)
+tu_GetBufferMemoryRequirements2(
+   VkDevice device,
+   const VkBufferMemoryRequirementsInfo2 *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
 {
-   TU_FROM_HANDLE(tu_image, image, pInfo->image);
+   TU_FROM_HANDLE(tu_buffer, buffer, pInfo->buffer);
 
-   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
-      .memoryTypeBits = 1,
-      .alignment = image->layout[0].base_align,
-      .size = image->total_size
-   };
-
-   vk_foreach_struct(ext, pMemoryRequirements->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
-         VkMemoryDedicatedRequirements *req =
-            (VkMemoryDedicatedRequirements *) ext;
-         req->requiresDedicatedAllocation = image->shareable;
-         req->prefersDedicatedAllocation = req->requiresDedicatedAllocation;
-         break;
-      }
-      default:
-         break;
-      }
-   }
+   tu_get_buffer_memory_requirements(buffer->size, pMemoryRequirements);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_GetImageSparseMemoryRequirements2(
+tu_GetDeviceBufferMemoryRequirements(
    VkDevice device,
-   const VkImageSparseMemoryRequirementsInfo2 *pInfo,
-   uint32_t *pSparseMemoryRequirementCount,
-   VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
+   const VkDeviceBufferMemoryRequirements *pInfo,
+   VkMemoryRequirements2 *pMemoryRequirements)
 {
-   tu_stub();
+   tu_get_buffer_memory_requirements(pInfo->pCreateInfo->size, pMemoryRequirements);
 }
 
 VKAPI_ATTR void VKAPI_CALL
