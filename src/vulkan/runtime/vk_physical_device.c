@@ -127,6 +127,37 @@ vk_common_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 }
 
 VKAPI_ATTR void VKAPI_CALL
+vk_common_GetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice physicalDevice,
+                                                 uint32_t *pQueueFamilyPropertyCount,
+                                                 VkQueueFamilyProperties *pQueueFamilyProperties)
+{
+   VK_FROM_HANDLE(vk_physical_device, pdevice, physicalDevice);
+
+   if (!pQueueFamilyProperties) {
+      pdevice->dispatch_table.GetPhysicalDeviceQueueFamilyProperties2(physicalDevice,
+                                                                      pQueueFamilyPropertyCount,
+                                                                      NULL);
+      return;
+   }
+
+   STACK_ARRAY(VkQueueFamilyProperties2, props2, *pQueueFamilyPropertyCount);
+
+   for (unsigned i = 0; i < *pQueueFamilyPropertyCount; ++i) {
+      props2[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
+      props2[i].pNext = NULL;
+   }
+
+   pdevice->dispatch_table.GetPhysicalDeviceQueueFamilyProperties2(physicalDevice,
+                                                                   pQueueFamilyPropertyCount,
+                                                                   props2);
+
+   for (unsigned i = 0; i < *pQueueFamilyPropertyCount; ++i)
+      pQueueFamilyProperties[i] = props2[i].queueFamilyProperties;
+
+   STACK_ARRAY_FINISH(props2);
+}
+
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                             VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
