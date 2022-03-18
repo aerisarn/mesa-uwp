@@ -33,8 +33,6 @@
 static void
 msm_device_destroy(struct fd_device *dev)
 {
-   struct msm_device *msm_dev = to_msm_device(dev);
-   free(msm_dev);
 }
 
 static const struct fd_device_funcs funcs = {
