@@ -8,7 +8,7 @@ variables:
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
    DEBIAN_X86_TEST_IMAGE_PATH: "debian/x86_test-gl"
-   DEBIAN_X86_TEST_GL_TAG: "2022-03-03-nouveau"
+   DEBIAN_X86_TEST_GL_TAG: "2022-03-25-virglrenderer"
    DEBIAN_X86_TEST_VK_TAG: "2022-02-21-libdrm"
 
    FEDORA_X86_BUILD_TAG: "2022-03-18-spirv-tools-5"

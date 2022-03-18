@@ -200,7 +200,7 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_QUERY_TIME_ELAPSED:
       return 1;
    case PIPE_CAP_TGSI_TEXCOORD:
-      return 0;
+      return vscreen->caps.caps.v2.host_feature_check_version >= 10;
    case PIPE_CAP_MIN_MAP_BUFFER_ALIGNMENT:
       return VIRGL_MAP_BUFFER_ALIGNMENT;
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
