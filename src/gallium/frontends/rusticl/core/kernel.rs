@@ -21,6 +21,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto;
 use std::ptr;
+use std::slice;
 use std::sync::Arc;
 
 // ugh, we are not allowed to take refs, so...
@@ -46,6 +47,7 @@ pub enum KernelArgType {
 pub enum InternalKernelArgType {
     ConstantBuffer,
     GlobalWorkOffsets,
+    PrintfBuffer,
 }
 
 #[derive(Clone)]
@@ -156,7 +158,7 @@ where
 
 // mostly like clc_spirv_to_dxil
 // does not DCEe uniforms or images!
-fn lower_and_optimize_nir_pre_inputs(nir: &mut NirShader, lib_clc: &NirShader) {
+fn lower_and_optimize_nir_pre_inputs(dev: &Device, nir: &mut NirShader, lib_clc: &NirShader) {
     nir.set_workgroup_size_variable_if_zero();
     nir.structurize();
     while {
@@ -212,7 +214,12 @@ fn lower_and_optimize_nir_pre_inputs(nir: &mut NirShader, lib_clc: &NirShader) {
         nir_variable_mode::nir_var_function_temp,
         Some(glsl_get_cl_type_size_align),
     );
-    // TODO printf
+
+    let mut printf_opts = nir_lower_printf_options::default();
+    printf_opts.set_treat_doubles_as_floats(false);
+    printf_opts.max_buffer_size = dev.printf_buffer_size() as u32;
+    nir.pass1(nir_lower_printf, &printf_opts);
+
     nir.pass0(nir_split_var_copies);
     nir.pass0(nir_opt_copy_prop_vars);
     nir.pass0(nir_lower_var_copies);
@@ -255,6 +262,7 @@ fn lower_and_optimize_nir_late(
         Some(glsl_get_cl_type_size_align),
     );
     nir.extract_constant_initializers();
+
     // TODO printf
     // TODO 32 bit devices
     // add vars for global offsets
@@ -280,6 +288,19 @@ fn lower_and_optimize_nir_late(
             unsafe { glsl_uint64_t_type() },
             args + res.len() - 1,
             "constant_buffer_addr",
+        );
+    }
+    if nir.has_printf() {
+        res.push(InternalKernelArg {
+            kind: InternalKernelArgType::PrintfBuffer,
+            offset: 0,
+            size: 8,
+        });
+        lower_state.printf_buf = nir.add_var(
+            nir_variable_mode::nir_var_uniform,
+            unsafe { glsl_uint64_t_type() },
+            args + res.len() - 1,
+            "printf_buffer_addr",
         );
     }
 
@@ -332,6 +353,14 @@ fn lower_and_optimize_nir_late(
     res
 }
 
+fn extract<'a, const S: usize>(buf: &'a mut &[u8]) -> &'a [u8; S] {
+    let val;
+    (val, *buf) = (*buf).split_at(S);
+    // we split of 4 bytes and convert to [u8; 4], so this should be safe
+    // use split_array_ref once it's stable
+    val.try_into().unwrap()
+}
+
 impl Kernel {
     pub fn new(
         name: String,
@@ -340,7 +369,7 @@ impl Kernel {
         args: Vec<spirv::SPIRVKernelArg>,
     ) -> Arc<Kernel> {
         nirs.iter_mut()
-            .for_each(|(d, n)| lower_and_optimize_nir_pre_inputs(n, &d.lib_clc));
+            .for_each(|(d, n)| lower_and_optimize_nir_pre_inputs(d, n, &d.lib_clc));
         let nir = nirs.values_mut().next().unwrap();
         let wgs = nir.workgroup_size();
         let work_group_size = [wgs[0] as usize, wgs[1] as usize, wgs[2] as usize];
@@ -374,7 +403,7 @@ impl Kernel {
     // the painful part is, that host threads are allowed to modify the kernel object once it was
     // enqueued, so return a closure with all req data included.
     pub fn launch(
-        &self,
+        self: &Arc<Self>,
         q: &Arc<Queue>,
         work_dim: u32,
         block: &[usize],
@@ -388,6 +417,7 @@ impl Kernel {
         let mut input: Vec<u8> = Vec::new();
         let mut resource_info = Vec::new();
         let mut local_size: u32 = nir.shared_size();
+        let printf_size = q.device.printf_buffer_size() as u32;
 
         for i in 0..3 {
             if block[i] == 0 {
@@ -424,6 +454,7 @@ impl Kernel {
             }
         }
 
+        let mut printf_buf = None;
         for arg in &self.internal_args {
             input.append(&mut vec![0; arg.offset - input.len()]);
             match arg.kind {
@@ -447,23 +478,42 @@ impl Kernel {
                 InternalKernelArgType::GlobalWorkOffsets => {
                     input.extend_from_slice(&cl_prop::<[u64; 3]>(offsets));
                 }
+                InternalKernelArgType::PrintfBuffer => {
+                    let buf =
+                        Arc::new(q.device.screen.resource_create_buffer(printf_size).unwrap());
+
+                    input.extend_from_slice(&[0; 8]);
+                    resource_info.push((Some(buf.clone()), arg.offset));
+
+                    printf_buf = Some(buf);
+                }
             }
         }
 
-        let cso = q
-            .device
-            .helper_ctx()
-            .create_compute_state(nir, input.len() as u32, local_size);
-
-        Box::new(move |_, ctx| {
+        let k = self.clone();
+        Box::new(move |q, ctx| {
+            let nir = k.nirs.get(&q.device).unwrap();
             let mut input = input.clone();
             let mut resources = Vec::with_capacity(resource_info.len());
             let mut globals: Vec<*mut u32> = Vec::new();
+            let printf_format = nir.printf_format();
+            let printf_buf = printf_buf.clone();
 
             for (res, offset) in resource_info.clone() {
                 resources.push(res);
                 globals.push(unsafe { input.as_mut_ptr().add(offset) }.cast());
             }
+
+            if let Some(printf_buf) = &printf_buf {
+                let init_data: [u8; 1] = [4];
+                ctx.buffer_subdata(
+                    printf_buf,
+                    0,
+                    init_data.as_ptr().cast(),
+                    init_data.len() as u32,
+                );
+            }
+            let cso = ctx.create_compute_state(nir, input.len() as u32, local_size);
 
             ctx.bind_compute_state(cso);
             ctx.set_global_binding(resources.as_slice(), &mut globals);
@@ -471,6 +521,29 @@ impl Kernel {
             ctx.clear_global_binding(globals.len() as u32);
             ctx.delete_compute_state(cso);
             ctx.memory_barrier(PIPE_BARRIER_GLOBAL_BUFFER);
+
+            if let Some(printf_buf) = &printf_buf {
+                let tx = ctx
+                    .buffer_map(printf_buf, 0, printf_size as i32, true)
+                    .with_ctx(ctx);
+                let mut buf: &[u8] =
+                    unsafe { slice::from_raw_parts(tx.ptr().cast(), printf_size as usize) };
+                let length = u32::from_ne_bytes(*extract(&mut buf));
+
+                // update our slice to make sure we don't go out of bounds
+                buf = &buf[0..(length - 4) as usize];
+
+                unsafe {
+                    u_printf(
+                        stdout,
+                        buf.as_ptr().cast(),
+                        buf.len(),
+                        printf_format.as_ptr(),
+                        printf_format.len() as u32,
+                    );
+                }
+            }
+
             Ok(())
         })
     }

@@ -265,6 +265,18 @@ impl Device {
             }
         }
 
+        if self.embedded {
+            // The minimum value for the EMBEDDED profile is 1 KB.
+            if self.printf_buffer_size() < 1024 {
+                res = CLVersion::Cl1_1;
+            }
+        } else {
+            // The minimum value for the FULL profile is 1 MB.
+            if self.printf_buffer_size() < 1024 * 1024 {
+                res = CLVersion::Cl1_1;
+            }
+        }
+
         if !exts.contains(&"cl_khr_byte_addressable_store")
          || !exts.contains(&"cl_khr_global_int32_base_atomics")
          || !exts.contains(&"cl_khr_global_int32_extended_atomics")
@@ -493,6 +505,10 @@ impl Device {
             self.screen.as_ref(),
             pipe_compute_cap::PIPE_COMPUTE_CAP_MAX_INPUT_SIZE,
         ) as usize
+    }
+
+    pub fn printf_buffer_size(&self) -> usize {
+        1024 * 1024
     }
 
     pub fn screen(&self) -> &Arc<PipeScreen> {

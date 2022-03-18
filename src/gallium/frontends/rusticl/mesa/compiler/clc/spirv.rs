@@ -189,6 +189,7 @@ impl SPIRVBin {
                 kernel: true,
                 kernel_image: true,
                 linkage: true,
+                printf: true,
                 ..Default::default()
             },
 

@@ -10,4 +10,6 @@
 #include "pipe/p_state.h"
 #include "pipe-loader/pipe_loader.h"
 
+#include "util/u_printf.h"
+
 #include "rusticl_nir.h"

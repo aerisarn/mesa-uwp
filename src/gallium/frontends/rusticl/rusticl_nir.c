@@ -23,6 +23,8 @@ rusticl_lower_intrinsics_instr(
         return nir_load_var(b, state->base_global_invoc_id);
     case nir_intrinsic_load_constant_base_ptr:
         return nir_load_var(b, state->const_buf);
+    case nir_intrinsic_load_printf_buffer_address:
+        return nir_load_var(b, state->printf_buf);
     default:
         return NULL;
     }
