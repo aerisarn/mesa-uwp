@@ -8517,6 +8517,7 @@
     <immediate name="sr_count" size="4" pseudo="true"/>
     <mod name="texel_offset" start="9" size="1" opt="texel_offset"/>
     <mod name="skip" start="9" size="1" opt="skip"/>
+    <mod name="shadow" start="9" size="1" opt="shadow"/>
     <mod name="array_enable" start="9" size="1" opt="array_enable"/>
     <mod name="integer_coordinates" start="9" size="1" opt="integer_coordinates"/>
     <mod name="fetch_component" start="9" size="2">
