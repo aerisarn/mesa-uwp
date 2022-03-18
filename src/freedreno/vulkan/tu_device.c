@@ -1035,8 +1035,12 @@ tu_get_physical_device_properties_1_3(struct tu_physical_device *pdevice,
    p->uniformTexelBufferOffsetAlignmentBytes = 64;
    p->uniformTexelBufferOffsetSingleTexelAlignment = false;
 
-   /* TODO: find out the limit */
-   p->maxBufferSize = 0;
+   /* The address space is 4GB for current kernels, so there's no point
+    * allowing a larger buffer. Our buffer sizes are 64-bit though, so
+    * GetBufferDeviceRequirements won't fall over if someone actually creates
+    * a 4GB buffer.
+    */
+   p->maxBufferSize = 1ull << 32;
 }
 
 VKAPI_ATTR void VKAPI_CALL
