@@ -461,7 +461,6 @@ struct lvp_pipeline_layout {
    uint32_t push_constant_size;
    VkShaderStageFlags push_constant_stages;
    struct {
-      bool has_dynamic_offsets;
    } stage[MESA_SHADER_STAGES];
 };
 
