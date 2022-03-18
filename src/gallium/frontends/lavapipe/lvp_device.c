@@ -1132,13 +1132,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties(
    uint32_t*                                   pCount,
    VkQueueFamilyProperties*                    pQueueFamilyProperties)
 {
-   if (pQueueFamilyProperties == NULL) {
-      *pCount = 1;
-      return;
-   }
+   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
 
-   assert(*pCount >= 1);
-   lvp_get_physical_device_queue_family_properties(pQueueFamilyProperties);
+   vk_outarray_append(&out, p) {
+      lvp_get_physical_device_queue_family_properties(p);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties2(
@@ -1146,13 +1144,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties2(
    uint32_t*                                   pCount,
    VkQueueFamilyProperties2                   *pQueueFamilyProperties)
 {
-   if (pQueueFamilyProperties == NULL) {
-      *pCount = 1;
-      return;
-   }
+   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
 
-   assert(*pCount >= 1);
-   lvp_get_physical_device_queue_family_properties(&pQueueFamilyProperties->queueFamilyProperties);
+   vk_outarray_append(&out, p) {
+      lvp_get_physical_device_queue_family_properties(&p->queueFamilyProperties);
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties(
