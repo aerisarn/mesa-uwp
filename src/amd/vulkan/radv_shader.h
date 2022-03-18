@@ -553,7 +553,7 @@ void radv_free_shader_memory(struct radv_device *device, union radv_shader_arena
 struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
                            struct radv_shader_info *info, const struct radv_shader_args *args,
-                           struct radv_shader_binary **binary_out, bool multiview,
+                           struct radv_shader_binary **binary_out,
                            bool keep_shader_info, bool keep_statistic_info,
                            bool disable_optimizations);
 

@@ -2511,6 +2511,77 @@ radv_lower_viewport_to_zero(nir_shader *nir)
    return false;
 }
 
+static nir_variable *
+find_layer_out_var(nir_shader *nir)
+{
+   nir_variable *var = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_LAYER);
+   if (var != NULL)
+      return var;
+
+   var = nir_variable_create(nir, nir_var_shader_out, glsl_int_type(), "layer id");
+   var->data.per_primitive = nir->info.stage == MESA_SHADER_MESH;
+   var->data.location = VARYING_SLOT_LAYER;
+   var->data.interpolation = INTERP_MODE_NONE;
+
+   return var;
+}
+
+static bool
+radv_lower_multiview(nir_shader *nir)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+   bool progress = false;
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   /* Iterate in reverse order since there should be only one deref store to POS after
+    * lower_io_to_temporaries for vertex shaders and inject the layer there. For geometry shaders,
+    * the layer is injected right before every emit_vertex_with_counter.
+    */
+   nir_variable *layer = NULL;
+   nir_foreach_block_reverse(block, impl) {
+      nir_foreach_instr_reverse(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_emit_vertex_with_counter)
+               continue;
+
+            b.cursor = nir_before_instr(instr);
+         } else {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_store_deref)
+               continue;
+
+            nir_variable *var = nir_intrinsic_get_var(intr, 0);
+            if (var->data.mode != nir_var_shader_out || var->data.location != VARYING_SLOT_POS)
+               continue;
+
+            b.cursor = nir_after_instr(instr);
+         }
+
+         if (!layer)
+            layer = find_layer_out_var(nir);
+
+         nir_store_var(&b, layer, nir_load_view_index(&b), 1);
+
+         /* Update outputs_written to reflect that the pass added a new output. */
+         nir->info.outputs_written |= BITFIELD64_BIT(VARYING_SLOT_LAYER);
+         if (nir->info.stage == MESA_SHADER_MESH)
+            nir->info.per_primitive_outputs |= BITFIELD64_BIT(VARYING_SLOT_LAYER);
+
+         progress = true;
+         if (nir->info.stage == MESA_SHADER_VERTEX)
+            return progress;
+      }
+   }
+
+   return progress;
+}
+
 static void
 radv_link_shaders(struct radv_pipeline *pipeline,
                   const struct radv_pipeline_key *pipeline_key,
@@ -2686,6 +2757,14 @@ radv_link_shaders(struct radv_pipeline *pipeline,
        (shaders[MESA_SHADER_FRAGMENT]->info.inputs_read & VARYING_BIT_VIEWPORT) &&
        !(shaders[pipeline->graphics.last_vgt_api_stage]->info.outputs_written & VARYING_BIT_VIEWPORT)) {
       radv_lower_viewport_to_zero(shaders[MESA_SHADER_FRAGMENT]);
+   }
+
+   /* Export the layer in the last VGT stage if multiview is used. */
+   if (pipeline_key->has_multiview_view_index && pipeline->graphics.last_vgt_api_stage != -1 &&
+       !(shaders[pipeline->graphics.last_vgt_api_stage]->info.outputs_written &
+         VARYING_BIT_LAYER)) {
+      nir_shader *last_vgt_shader = shaders[pipeline->graphics.last_vgt_api_stage];
+      radv_lower_multiview(last_vgt_shader);
    }
 
    for (int i = 1; !optimize_conservatively && (i < shader_count); ++i) {
@@ -4377,8 +4456,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
       pipeline->gs_copy_shader = radv_create_gs_copy_shader(
          device, nir[MESA_SHADER_GEOMETRY], &info, &gs_copy_args, &gs_copy_binary,
-         keep_executable_info, keep_statistic_info, pipeline_key->has_multiview_view_index,
-         pipeline_key->optimisations_disabled);
+         keep_executable_info, keep_statistic_info, pipeline_key->optimisations_disabled);
    }
 
    if (nir[MESA_SHADER_FRAGMENT]) {

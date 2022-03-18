@@ -673,14 +673,6 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
 
    struct radv_vs_output_info *outinfo = get_vs_output_info(nir, info);
    if (outinfo) {
-      /* Make sure to export the LayerID if the subpass has multiviews. */
-      if (pipeline_key->has_multiview_view_index) {
-         if (nir->info.stage == MESA_SHADER_MESH)
-            outinfo->writes_layer_per_primitive = true;
-         else
-            outinfo->writes_layer = true;
-      }
-
       int pos_written = 0x1;
 
       if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer ||

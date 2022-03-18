@@ -10476,13 +10476,6 @@ create_vs_exports(isel_context* ctx)
             get_arg(ctx, ctx->args->ac.vs_prim_id);
    }
 
-   if (ctx->options->key.has_multiview_view_index &&
-       !outinfo->writes_layer_per_primitive) {
-      ctx->outputs.mask[VARYING_SLOT_LAYER] |= 0x1;
-      ctx->outputs.temps[VARYING_SLOT_LAYER * 4u] =
-         as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
-   }
-
    /* Hardware requires position data to always be exported, even if the
     * application did not write gl_Position.
     */
@@ -10530,13 +10523,6 @@ create_primitive_exports(isel_context *ctx, Temp prim_ch1)
       &ctx->program->info->vs.outinfo;
 
    Builder bld(ctx->program, ctx->block);
-
-   if (ctx->options->key.has_multiview_view_index &&
-       outinfo->writes_layer_per_primitive) {
-      ctx->outputs.mask[VARYING_SLOT_LAYER] |= 0x1;
-      ctx->outputs.temps[VARYING_SLOT_LAYER * 4u] =
-         as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
-   }
 
    /* Use zeroes if the shader doesn't write these but they are needed by eg. PS. */
    if (outinfo->writes_layer_per_primitive && !ctx->outputs.mask[VARYING_SLOT_LAYER])

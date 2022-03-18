@@ -1070,19 +1070,6 @@ handle_vs_outputs_post(struct radv_shader_context *ctx, bool export_prim_id, boo
    struct radv_shader_output_values *outputs;
    unsigned noutput = 0;
 
-   if (ctx->options->key.has_multiview_view_index) {
-      LLVMValueRef *tmp_out = &ctx->abi.outputs[ac_llvm_reg_index_soa(VARYING_SLOT_LAYER, 0)];
-      if (!*tmp_out) {
-         for (unsigned i = 0; i < 4; ++i)
-            ctx->abi.outputs[ac_llvm_reg_index_soa(VARYING_SLOT_LAYER, i)] =
-               ac_build_alloca_undef(&ctx->ac, ctx->ac.f32, "");
-      }
-
-      LLVMValueRef view_index = ac_get_arg(&ctx->ac, ctx->args->ac.view_index);
-      LLVMBuildStore(ctx->ac.builder, ac_to_float(&ctx->ac, view_index), *tmp_out);
-      ctx->output_mask |= 1ull << VARYING_SLOT_LAYER;
-   }
-
    if (ctx->shader_info->so.num_outputs && !ctx->args->is_gs_copy_shader) {
       /* The GS copy shader emission already emits streamout. */
       radv_emit_streamout(ctx, 0);
@@ -1176,9 +1163,6 @@ static LLVMValueRef
 ngg_gs_get_vertex_storage(struct radv_shader_context *ctx)
 {
    unsigned num_outputs = util_bitcount64(ctx->output_mask);
-
-   if (ctx->options->key.has_multiview_view_index)
-      num_outputs++;
 
    LLVMTypeRef elements[2] = {
       LLVMArrayType(ctx->ac.i32, 4 * num_outputs),
@@ -1650,12 +1634,11 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    ac_build_ifcc(&ctx->ac, tmp, 5145);
    {
       const struct radv_vs_output_info *outinfo = &ctx->shader_info->vs.outinfo;
-      bool export_view_index = ctx->options->key.has_multiview_view_index;
       struct radv_shader_output_values *outputs;
       unsigned noutput = 0;
 
       /* Allocate a temporary array for the output values. */
-      unsigned num_outputs = util_bitcount64(ctx->output_mask) + export_view_index;
+      unsigned num_outputs = util_bitcount64(ctx->output_mask);
       outputs = calloc(num_outputs, sizeof(outputs[0]));
 
       tmp = ngg_gs_vertex_ptr(ctx, tid);
@@ -1694,18 +1677,6 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
          for (unsigned j = length; j < 4; j++)
             outputs[noutput].values[j] = LLVMGetUndef(ctx->ac.f32);
 
-         noutput++;
-      }
-
-      /* Export ViewIndex. */
-      if (export_view_index) {
-         outputs[noutput].slot_name = VARYING_SLOT_LAYER;
-         outputs[noutput].slot_index = 0;
-         outputs[noutput].usage_mask = 0x1;
-         outputs[noutput].values[0] =
-            ac_to_float(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->ac.view_index));
-         for (unsigned j = 1; j < 4; j++)
-            outputs[noutput].values[j] = ctx->ac.f32_0;
          noutput++;
       }
 

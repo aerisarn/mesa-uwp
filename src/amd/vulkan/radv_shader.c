@@ -2051,12 +2051,11 @@ struct radv_shader *
 radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *shader,
                            struct radv_shader_info *info, const struct radv_shader_args *args,
                            struct radv_shader_binary **binary_out, bool keep_shader_info,
-                           bool keep_statistic_info, bool multiview, bool disable_optimizations)
+                           bool keep_statistic_info, bool disable_optimizations)
 {
    struct radv_nir_compiler_options options = {0};
    gl_shader_stage stage = MESA_SHADER_VERTEX;
 
-   options.key.has_multiview_view_index = multiview;
    options.key.optimisations_disabled = disable_optimizations;
 
    return shader_compile(device, NULL, &shader, 1, stage, info, args, &options, true, false,

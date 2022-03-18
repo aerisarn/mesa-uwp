@@ -74,38 +74,6 @@ struct user_sgpr_info {
    bool inlined_all_push_consts;
 };
 
-static bool
-needs_view_index_sgpr(const struct radv_pipeline_key *key, const struct radv_shader_info *info,
-                      gl_shader_stage stage)
-{
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      if (info->uses_view_index ||
-          (!info->vs.as_es && !info->vs.as_ls && key->has_multiview_view_index))
-         return true;
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      if (info->uses_view_index || (!info->tes.as_es && key->has_multiview_view_index))
-         return true;
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      if (info->uses_view_index)
-         return true;
-      break;
-   case MESA_SHADER_GEOMETRY:
-      if (info->uses_view_index || (info->is_ngg && key->has_multiview_view_index))
-         return true;
-      break;
-   case MESA_SHADER_MESH:
-      if (info->uses_view_index || key->has_multiview_view_index)
-         return true;
-      break;
-   default:
-      break;
-   }
-   return false;
-}
-
 static uint8_t
 count_vs_user_sgprs(const struct radv_shader_info *info)
 {
@@ -554,7 +522,7 @@ radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipeline_
                          struct radv_shader_args *args)
 {
    struct user_sgpr_info user_sgpr_info;
-   bool needs_view_index = needs_view_index_sgpr(key, info, stage);
+   bool needs_view_index = info->uses_view_index;
    bool has_api_gs = stage == MESA_SHADER_GEOMETRY;
 
    if (chip_class >= GFX10 && info->is_ngg && stage != MESA_SHADER_GEOMETRY) {
