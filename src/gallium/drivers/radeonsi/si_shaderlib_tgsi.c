@@ -429,45 +429,6 @@ void *si_create_query_result_cs(struct si_context *sctx)
    return sctx->b.create_compute_state(&sctx->b, &state);
 }
 
-void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx)
-{
-   static const char text[] =
-      "COMP\n"
-      "PROPERTY CS_FIXED_BLOCK_WIDTH 64\n"
-      "PROPERTY CS_FIXED_BLOCK_HEIGHT 1\n"
-      "PROPERTY CS_FIXED_BLOCK_DEPTH 1\n"
-      "PROPERTY CS_USER_DATA_COMPONENTS_AMD 3\n"
-      "DCL SV[0], THREAD_ID\n"
-      "DCL SV[1], BLOCK_ID\n"
-      "DCL SV[2], CS_USER_DATA_AMD\n"
-      "DCL IMAGE[0], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
-      "DCL IMAGE[1], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
-      "DCL TEMP[0..4], LOCAL\n"
-      "IMM[0] UINT32 {64, 1, 65535, 16}\n"
-
-      "UMAD TEMP[0].xz, SV[1].xyyy, IMM[0].xyyy, SV[0].xyyy\n" /* threadID.xz */
-      "AND TEMP[1].xz, SV[2], IMM[0].zzzz\n"    /* src.xz */
-      "UADD TEMP[1].xz, TEMP[1], TEMP[0]\n"     /* src.xz + threadID.xz */
-      "LOAD TEMP[3], IMAGE[0], TEMP[1].xzzz, 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
-      "USHR TEMP[2].xz, SV[2], IMM[0].wwww\n"   /* dst.xz */
-      "UADD TEMP[2].xz, TEMP[2], TEMP[0]\n" /* dst.xz + threadID.xz */
-      "STORE IMAGE[1], TEMP[2].xzzz, TEMP[3], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
-      "END\n";
-
-   struct tgsi_token tokens[1024];
-   struct pipe_compute_state state = {0};
-
-   if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
-      assert(false);
-      return NULL;
-   }
-
-   state.ir_type = PIPE_SHADER_IR_TGSI;
-   state.prog = tokens;
-
-   return ctx->create_compute_state(ctx, &state);
-}
-
 /* Create a compute shader implementing DCC decompression via a blit.
  * This is a trivial copy_image shader except that it has a variable block
  * size and a barrier.

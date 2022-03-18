@@ -1518,6 +1518,7 @@ void si_resume_queries(struct si_context *sctx);
 
 /* si_shaderlib_nir.c */
 void *si_create_copy_image_cs(struct pipe_context *ctx);
+void *si_create_copy_image_1d_array_cs(struct pipe_context *ctx);
 void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf);
 void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *tex);
 
@@ -1528,7 +1529,6 @@ void *si_create_fixed_func_tcs(struct si_context *sctx);
 void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy);
 void *si_create_clear_buffer_rmw_cs(struct si_context *sctx);
-void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx);
 void *si_create_dcc_decompress_cs(struct pipe_context *ctx);
 void *si_clear_render_target_shader(struct pipe_context *ctx);
 void *si_clear_render_target_shader_1d_array(struct pipe_context *ctx);

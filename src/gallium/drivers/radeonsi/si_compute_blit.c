@@ -620,7 +620,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       si_launch_grid_internal(sctx, &info, sctx->cs_dcc_decompress, flags | SI_OP_CS_IMAGE);
    } else if (dst->target == PIPE_TEXTURE_1D_ARRAY && src->target == PIPE_TEXTURE_1D_ARRAY) {
       if (!sctx->cs_copy_image_1d_array)
-         sctx->cs_copy_image_1d_array = si_create_copy_image_compute_shader_1d_array(ctx);
+         sctx->cs_copy_image_1d_array = si_create_copy_image_1d_array_cs(ctx);
 
       info.block[0] = 64;
       info.last_block[0] = width % 64;
