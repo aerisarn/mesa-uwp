@@ -173,7 +173,7 @@ softpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_SHADER_STENCIL_EXPORT:
       return 1;
-   case PIPE_CAP_TGSI_ATOMFADD:
+   case PIPE_CAP_IMAGE_ATOMIC_FLOAT_ADD:
    case PIPE_CAP_VS_INSTANCEID:
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
    case PIPE_CAP_START_INSTANCE:
