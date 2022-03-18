@@ -32,6 +32,7 @@
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_text.h"
 #include "tgsi/tgsi_parse.h"
+#include "tgsi/tgsi_from_mesa.h"
 
 #include "util/format/u_format.h"
 #include "util/u_surface.h"
@@ -72,6 +73,7 @@ struct rendering_state {
    bool vb_dirty;
    bool constbuf_dirty[PIPE_SHADER_TYPES];
    bool pcbuf_dirty[PIPE_SHADER_TYPES];
+   bool has_pcbuf[PIPE_SHADER_TYPES];
    bool vp_dirty;
    bool scissor_dirty;
    bool ib_dirty;
@@ -110,7 +112,6 @@ struct rendering_state {
    ubyte index_size;
    unsigned index_offset;
    struct pipe_resource *index_buffer;
-   struct pipe_constant_buffer pc_buffer[PIPE_SHADER_TYPES];
    struct pipe_constant_buffer const_buffer[PIPE_SHADER_TYPES][16];
    int num_const_bufs[PIPE_SHADER_TYPES];
    int num_vb;
@@ -144,6 +145,7 @@ struct rendering_state {
    void *velems_cso;
 
    uint8_t push_constants[128 * 4];
+   uint16_t push_size[2]; //gfx, compute
 
    const struct lvp_render_pass *pass;
    struct lvp_subpass *subpass;
@@ -195,6 +197,43 @@ static void finish_fence(struct rendering_state *state)
                                         &handle, NULL);
 }
 
+static unsigned
+get_pcbuf_size(struct rendering_state *state, enum pipe_shader_type pstage)
+{
+   bool is_compute = pstage == PIPE_SHADER_COMPUTE;
+   return state->has_pcbuf[pstage] ? state->push_size[is_compute] : 0;
+}
+
+static unsigned
+calc_ubo0_size(struct rendering_state *state, enum pipe_shader_type pstage)
+{
+   unsigned size = get_pcbuf_size(state, pstage);
+   return size;
+}
+
+static void
+fill_ubo0(struct rendering_state *state, uint8_t *mem, enum pipe_shader_type pstage)
+{
+   unsigned push_size = get_pcbuf_size(state, pstage);
+   if (push_size)
+      memcpy(mem, state->push_constants, push_size);
+}
+
+static void
+update_pcbuf(struct rendering_state *state, enum pipe_shader_type pstage)
+{
+   uint8_t *mem;
+   struct pipe_constant_buffer cbuf;
+   unsigned size = calc_ubo0_size(state, pstage);
+   cbuf.buffer_size = size;
+   cbuf.buffer = NULL;
+   cbuf.user_buffer = NULL;
+   u_upload_alloc(state->uploader, 0, size, 64, &cbuf.buffer_offset, &cbuf.buffer, (void**)&mem);
+   fill_ubo0(state, mem, pstage);
+   state->pctx->set_constant_buffer(state->pctx, pstage, 0, true, &cbuf);
+   state->pcbuf_dirty[pstage] = false;
+}
+
 static void emit_compute_state(struct rendering_state *state)
 {
    if (state->iv_dirty[PIPE_SHADER_COMPUTE]) {
@@ -204,11 +243,8 @@ static void emit_compute_state(struct rendering_state *state)
       state->iv_dirty[PIPE_SHADER_COMPUTE] = false;
    }
 
-   if (state->pcbuf_dirty[PIPE_SHADER_COMPUTE]) {
-      state->pctx->set_constant_buffer(state->pctx, PIPE_SHADER_COMPUTE,
-                                       0, false, &state->pc_buffer[PIPE_SHADER_COMPUTE]);
-      state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
-   }
+   if (state->pcbuf_dirty[PIPE_SHADER_COMPUTE])
+      update_pcbuf(state, PIPE_SHADER_COMPUTE);
 
    if (state->constbuf_dirty[PIPE_SHADER_COMPUTE]) {
       for (unsigned i = 0; i < state->num_const_bufs[PIPE_SHADER_COMPUTE]; i++)
@@ -327,10 +363,8 @@ static void emit_state(struct rendering_state *state)
    }
 
    for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
-      if (state->pcbuf_dirty[sh]) {
-         state->pctx->set_constant_buffer(state->pctx, sh,
-                                          0, false, &state->pc_buffer[sh]);
-      }
+      if (state->pcbuf_dirty[sh])
+         update_pcbuf(state, sh);
    }
 
    for (sh = 0; sh < PIPE_SHADER_COMPUTE; sh++) {
@@ -381,6 +415,11 @@ static void handle_compute_pipeline(struct vk_cmd_queue_entry *cmd,
                                     struct rendering_state *state)
 {
    LVP_FROM_HANDLE(lvp_pipeline, pipeline, cmd->u.bind_pipeline.pipeline);
+
+   if ((pipeline->layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
+      state->has_pcbuf[PIPE_SHADER_COMPUTE] = pipeline->layout->push_constant_size > 0;
+   if (!state->has_pcbuf[PIPE_SHADER_COMPUTE])
+      state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
 
    state->dispatch_info.block[0] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.workgroup_size[0];
    state->dispatch_info.block[1] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.workgroup_size[1];
@@ -504,6 +543,16 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
       }
    }
    state->has_color_write_disables = dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT)];
+
+   for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++)
+      state->has_pcbuf[sh] = false;
+
+   u_foreach_bit(stage, pipeline->layout->push_constant_stages) {
+      enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
+      state->has_pcbuf[sh] = pipeline->layout->push_constant_size > 0;
+      if (!state->has_pcbuf[sh])
+         state->pcbuf_dirty[sh] = false;
+   }
 
    bool has_stage[PIPE_SHADER_TYPES] = { false };
 
@@ -883,6 +932,7 @@ static void handle_pipeline(struct vk_cmd_queue_entry *cmd,
       handle_compute_pipeline(cmd, state);
    else
       handle_graphics_pipeline(cmd, state);
+   state->push_size[pipeline->is_compute_pipeline] = pipeline->layout->push_constant_size;
 }
 
 static void vertex_buffers(uint32_t first_binding,
@@ -2865,30 +2915,13 @@ static void handle_push_constants(struct vk_cmd_queue_entry *cmd,
 {
    memcpy(state->push_constants + cmd->u.push_constants.offset, cmd->u.push_constants.values, cmd->u.push_constants.size);
 
-   state->pc_buffer[PIPE_SHADER_VERTEX].buffer_size = 128 * 4;
-   state->pc_buffer[PIPE_SHADER_VERTEX].buffer_offset = 0;
-   state->pc_buffer[PIPE_SHADER_VERTEX].user_buffer = state->push_constants;
-   state->pcbuf_dirty[PIPE_SHADER_VERTEX] = true;
-   state->pc_buffer[PIPE_SHADER_FRAGMENT].buffer_size = 128 * 4;
-   state->pc_buffer[PIPE_SHADER_FRAGMENT].buffer_offset = 0;
-   state->pc_buffer[PIPE_SHADER_FRAGMENT].user_buffer = state->push_constants;
-   state->pcbuf_dirty[PIPE_SHADER_FRAGMENT] = true;
-   state->pc_buffer[PIPE_SHADER_GEOMETRY].buffer_size = 128 * 4;
-   state->pc_buffer[PIPE_SHADER_GEOMETRY].buffer_offset = 0;
-   state->pc_buffer[PIPE_SHADER_GEOMETRY].user_buffer = state->push_constants;
-   state->pcbuf_dirty[PIPE_SHADER_GEOMETRY] = true;
-   state->pc_buffer[PIPE_SHADER_TESS_CTRL].buffer_size = 128 * 4;
-   state->pc_buffer[PIPE_SHADER_TESS_CTRL].buffer_offset = 0;
-   state->pc_buffer[PIPE_SHADER_TESS_CTRL].user_buffer = state->push_constants;
-   state->pcbuf_dirty[PIPE_SHADER_TESS_CTRL] = true;
-   state->pc_buffer[PIPE_SHADER_TESS_EVAL].buffer_size = 128 * 4;
-   state->pc_buffer[PIPE_SHADER_TESS_EVAL].buffer_offset = 0;
-   state->pc_buffer[PIPE_SHADER_TESS_EVAL].user_buffer = state->push_constants;
-   state->pcbuf_dirty[PIPE_SHADER_TESS_EVAL] = true;
-   state->pc_buffer[PIPE_SHADER_COMPUTE].buffer_size = 128 * 4;
-   state->pc_buffer[PIPE_SHADER_COMPUTE].buffer_offset = 0;
-   state->pc_buffer[PIPE_SHADER_COMPUTE].user_buffer = state->push_constants;
-   state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = true;
+   VkShaderStageFlags stage_flags = cmd->u.push_constants.stage_flags;
+   state->pcbuf_dirty[PIPE_SHADER_VERTEX] |= (stage_flags & VK_SHADER_STAGE_VERTEX_BIT) > 0;
+   state->pcbuf_dirty[PIPE_SHADER_FRAGMENT] |= (stage_flags & VK_SHADER_STAGE_FRAGMENT_BIT) > 0;
+   state->pcbuf_dirty[PIPE_SHADER_GEOMETRY] |= (stage_flags & VK_SHADER_STAGE_GEOMETRY_BIT) > 0;
+   state->pcbuf_dirty[PIPE_SHADER_TESS_CTRL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) > 0;
+   state->pcbuf_dirty[PIPE_SHADER_TESS_EVAL] |= (stage_flags & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) > 0;
+   state->pcbuf_dirty[PIPE_SHADER_COMPUTE] |= (stage_flags & VK_SHADER_STAGE_COMPUTE_BIT) > 0;
 }
 
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
