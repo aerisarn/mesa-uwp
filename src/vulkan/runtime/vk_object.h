@@ -54,10 +54,10 @@ struct vk_object_base {
    char *object_name;
 };
 
-void vk_object_base_init(UNUSED struct vk_device *device,
+void vk_object_base_init(struct vk_device *device,
                          struct vk_object_base *base,
-                         UNUSED VkObjectType obj_type);
-void vk_object_base_finish(UNUSED struct vk_object_base *base);
+                         VkObjectType obj_type);
+void vk_object_base_finish(struct vk_object_base *base);
 
 static inline void
 vk_object_base_assert_valid(ASSERTED struct vk_object_base *base,
