@@ -2629,24 +2629,6 @@ anv_queue_family_properties_template = {
    .minImageTransferGranularity = { 1, 1, 1 },
 };
 
-void anv_GetPhysicalDeviceQueueFamilyProperties(
-    VkPhysicalDevice                            physicalDevice,
-    uint32_t*                                   pCount,
-    VkQueueFamilyProperties*                    pQueueFamilyProperties)
-{
-   ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
-
-   for (uint32_t i = 0; i < pdevice->queue.family_count; i++) {
-      struct anv_queue_family *queue_family = &pdevice->queue.families[i];
-      vk_outarray_append(&out, p) {
-         *p = anv_queue_family_properties_template;
-         p->queueFlags = queue_family->queueFlags;
-         p->queueCount = queue_family->queueCount;
-      }
-   }
-}
-
 void anv_GetPhysicalDeviceQueueFamilyProperties2(
     VkPhysicalDevice                            physicalDevice,
     uint32_t*                                   pQueueFamilyPropertyCount,
