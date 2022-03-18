@@ -235,9 +235,8 @@ The integer capabilities:
   implemented.
 * ``PIPE_CAP_TEXTURE_GATHER_OFFSETS``: Whether the ``TG4`` instruction can
   accept 4 offsets.
-* ``PIPE_CAP_TGSI_VS_WINDOW_SPACE_POSITION``: Whether
-  TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION is supported, which disables clipping
-  and viewport transformation.
+* ``PIPE_CAP_VS_WINDOW_SPACE_POSITION``: Whether window-space position is
+  supported, which disables clipping and viewport transformation.
 * ``PIPE_CAP_MAX_VERTEX_STREAMS``: The maximum number of vertex streams
   supported by the geometry shader. If stream-out is supported, this should be
   at least 1. If stream-out is not supported, this should be 0.
