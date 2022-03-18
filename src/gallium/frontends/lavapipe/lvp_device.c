@@ -46,7 +46,7 @@
     defined(VK_USE_PLATFORM_XLIB_KHR)
 #define LVP_USE_WSI_PLATFORM
 #endif
-#define LVP_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
+#define LVP_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateInstanceVersion(uint32_t* pApiVersion)
 {
@@ -670,6 +670,29 @@ lvp_get_physical_device_features_1_2(struct lvp_physical_device *pdevice,
    f->subgroupBroadcastDynamicId = true;
 }
 
+static void
+lvp_get_physical_device_features_1_3(struct lvp_physical_device *pdevice,
+                                     VkPhysicalDeviceVulkan13Features *f)
+{
+   assert(f->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES);
+
+   f->robustImageAccess = VK_TRUE;
+   f->inlineUniformBlock = VK_TRUE;
+   f->descriptorBindingInlineUniformBlockUpdateAfterBind = VK_TRUE;
+   f->pipelineCreationCacheControl = VK_TRUE;
+   f->privateData = VK_TRUE;
+   f->shaderDemoteToHelperInvocation = VK_TRUE;
+   f->shaderTerminateInvocation = VK_TRUE;
+   f->subgroupSizeControl = VK_TRUE;
+   f->computeFullSubgroups = VK_TRUE;
+   f->synchronization2 = VK_TRUE;
+   f->textureCompressionASTC_HDR = VK_FALSE;
+   f->shaderZeroInitializeWorkgroupMemory = VK_TRUE;
+   f->dynamicRendering = VK_TRUE;
+   f->shaderIntegerDotProduct = VK_TRUE;
+   f->maintenance4 = VK_TRUE;
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceFeatures2                  *pFeatures)
@@ -687,11 +710,18 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
    };
    lvp_get_physical_device_features_1_2(pdevice, &core_1_2);
 
+   VkPhysicalDeviceVulkan13Features core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+   };
+   lvp_get_physical_device_features_1_3(pdevice, &core_1_3);
+
    vk_foreach_struct(ext, pFeatures->pNext) {
 
       if (vk_get_physical_device_core_1_1_feature_ext(ext, &core_1_1))
          continue;
       if (vk_get_physical_device_core_1_2_feature_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_feature_ext(ext, &core_1_3))
          continue;
 
       switch (ext->sType) {
@@ -1022,6 +1052,28 @@ lvp_get_physical_device_properties_1_2(struct lvp_physical_device *pdevice,
    p->framebufferIntegerColorSampleCounts = VK_SAMPLE_COUNT_1_BIT;
 }
 
+static void
+lvp_get_physical_device_properties_1_3(struct lvp_physical_device *pdevice,
+                                       VkPhysicalDeviceVulkan13Properties *p)
+{
+   p->minSubgroupSize = lp_native_vector_width / 32;
+   p->maxSubgroupSize = lp_native_vector_width / 32;
+   p->maxComputeWorkgroupSubgroups = 32;
+   p->requiredSubgroupSizeStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+   p->maxInlineUniformTotalSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE * MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS;
+   p->maxInlineUniformBlockSize = MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE;
+   p->maxPerStageDescriptorInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+   p->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+   p->maxDescriptorSetInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+   p->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS;
+   int alignment = pdevice->pscreen->get_param(pdevice->pscreen, PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT);
+   p->storageTexelBufferOffsetAlignmentBytes = alignment;
+   p->storageTexelBufferOffsetSingleTexelAlignment = true;
+   p->uniformTexelBufferOffsetAlignmentBytes = alignment;
+   p->uniformTexelBufferOffsetSingleTexelAlignment = true;
+   p->maxBufferSize = UINT32_MAX;
+}
+
 VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceProperties2                *pProperties)
@@ -1039,11 +1091,18 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
    };
    lvp_get_physical_device_properties_1_2(pdevice, &core_1_2);
 
+   VkPhysicalDeviceVulkan13Properties core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
+   };
+   lvp_get_physical_device_properties_1_3(pdevice, &core_1_3);
+
    vk_foreach_struct(ext, pProperties->pNext) {
 
       if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1))
          continue;
       if (vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2))
+         continue;
+      if (vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
          continue;
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
