@@ -1914,7 +1914,6 @@ struct Block {
    /* this information is needed for predecessors to blocks with phis when
     * moving out of ssa */
    bool scc_live_out = false;
-   PhysReg scratch_sgpr = PhysReg(); /* only needs to be valid if scc_live_out != false */
 
    Block() : index(0) {}
 };

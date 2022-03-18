@@ -2524,9 +2524,6 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
    ra_ctx ctx(program, policy);
    get_affinities(ctx, live_out_per_block);
 
-   /* state of register file after phis */
-   std::vector<std::bitset<128>> sgpr_live_in(program->blocks.size());
-
    for (Block& block : program->blocks) {
       ctx.block = &block;
 
@@ -2550,9 +2547,8 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
          PhysReg br_reg = get_reg_phi(ctx, live_out_per_block[block.index], register_file,
                                       instructions, block, ctx.phi_dummy, Temp(0, s2));
          for (unsigned pred : block.linear_preds) {
+            program->blocks[pred].scc_live_out = register_file[scc];
             aco_ptr<Instruction>& br = program->blocks[pred].instructions.back();
-            if (br->definitions.empty())
-               continue;
 
             assert(br->definitions.size() == 1 && br->definitions[0].regClass() == s2 &&
                    br->definitions[0].isKill());
@@ -2560,11 +2556,6 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             br->definitions[0].setFixed(br_reg);
          }
       }
-
-      /* fill in sgpr_live_in */
-      for (unsigned i = 0; i <= ctx.max_used_sgpr; i++)
-         sgpr_live_in[block.index][i] = register_file[PhysReg{i}];
-      sgpr_live_in[block.index][127] = register_file[scc];
 
       /* Handle all other instructions of the block */
       auto NonPhi = [](aco_ptr<Instruction>& instr) -> bool { return instr && !is_phi(instr); };
@@ -2976,30 +2967,6 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
 
       block.instructions = std::move(instructions);
    } /* end for BB */
-
-   /* find scc spill registers which may be needed for parallelcopies created by phis */
-   for (Block& block : program->blocks) {
-      if (block.linear_preds.size() <= 1)
-         continue;
-
-      std::bitset<128> regs = sgpr_live_in[block.index];
-      if (!regs[127])
-         continue;
-
-      /* choose a register */
-      int16_t reg = 0;
-      for (; reg < ctx.program->max_reg_demand.sgpr && regs[reg]; reg++)
-         ;
-      assert(reg < ctx.program->max_reg_demand.sgpr);
-      adjust_max_used_regs(ctx, s1, reg);
-
-      /* update predecessors */
-      for (unsigned& pred_index : block.linear_preds) {
-         Block& pred = program->blocks[pred_index];
-         pred.scc_live_out = true;
-         pred.scratch_sgpr = PhysReg{(uint16_t)reg};
-      }
-   }
 
    /* num_gpr = rnd_up(max_used_gpr + 1) */
    program->config->num_vgprs = get_vgpr_alloc(program, ctx.max_used_vgpr + 1);
