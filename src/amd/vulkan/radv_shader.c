@@ -514,6 +514,34 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_shader_info *info,
             progress = true;
             break;
          }
+         case nir_intrinsic_load_frag_coord: {
+            if (!key->adjust_frag_coord_z)
+               continue;
+
+            if (!(nir_ssa_def_components_read(&intrin->dest.ssa) & (1 << 2)))
+               continue;
+
+            nir_ssa_def *frag_z = nir_channel(&b, &intrin->dest.ssa, 2);
+
+            /* adjusted_frag_z = fddx_fine(frag_z) * 0.0625 + frag_z */
+            nir_ssa_def *adjusted_frag_z = nir_fddx_fine(&b, frag_z);
+            adjusted_frag_z = nir_ffma_imm1(&b, adjusted_frag_z, 0.0625f, frag_z);
+
+            /* VRS Rate X = Ancillary[2:3] */
+            nir_ssa_def *ancillary =
+               nir_load_vector_arg_amd(&b, 1, .base = args->ac.ancillary.arg_index);
+            nir_ssa_def *x_rate = nir_ubfe(&b, ancillary, nir_imm_int(&b, 2), nir_imm_int(&b, 2));
+
+            /* xRate = xRate == 0x1 ? adjusted_frag_z : frag_z. */
+            nir_ssa_def *cond = nir_ieq(&b, x_rate, nir_imm_int(&b, 1));
+            frag_z = nir_bcsel(&b, cond, adjusted_frag_z, frag_z);
+
+            nir_ssa_def *new_dest = nir_vector_insert_imm(&b, &intrin->dest.ssa, frag_z, 2);
+            nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa, new_dest, new_dest->parent_instr);
+
+            progress = true;
+            break;
+         }
          default:
             break;
          }
@@ -1943,7 +1971,6 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
    options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
    options->enable_mrt_output_nan_fixup =
       module && !is_meta_shader(module->nir) && options->key.ps.enable_mrt_output_nan_fixup;
-   options->adjust_frag_coord_z = options->key.adjust_frag_coord_z;
    options->debug.func = radv_compiler_debug;
    options->debug.private_data = &debug_data;
 

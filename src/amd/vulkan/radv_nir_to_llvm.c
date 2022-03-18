@@ -2107,7 +2107,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    ctx.abi.load_ring_tess_offchip = load_ring_tess_offchip;
    ctx.abi.load_ring_esgs = load_ring_esgs;
    ctx.abi.clamp_shadow_reference = false;
-   ctx.abi.adjust_frag_coord_z = options->adjust_frag_coord_z;
    ctx.abi.robust_buffer_access = options->robust_buffer_access;
    ctx.abi.load_grid_size_from_user_sgpr = args->load_grid_size_from_user_sgpr;
 

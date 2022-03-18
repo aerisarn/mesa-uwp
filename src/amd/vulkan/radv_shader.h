@@ -115,7 +115,6 @@ struct radv_nir_compiler_options {
    struct radv_pipeline_layout *layout;
    struct radv_pipeline_key key;
    bool robust_buffer_access;
-   bool adjust_frag_coord_z;
    bool dump_shader;
    bool dump_preoptir;
    bool record_ir;
