@@ -1941,7 +1941,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_InvalidateMappedMemoryRanges(
    return VK_SUCCESS;
 }
 
-VKAPI_ATTR void lvp_GetDeviceBufferMemoryRequirements(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceBufferMemoryRequirements(
     VkDevice                                    _device,
     const VkDeviceBufferMemoryRequirements*     pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements)
@@ -1958,7 +1958,7 @@ VKAPI_ATTR void lvp_GetDeviceBufferMemoryRequirements(
    lvp_DestroyBuffer(_device, _buffer, NULL);
 }
 
-VKAPI_ATTR void lvp_GetDeviceImageSparseMemoryRequirements(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceImageSparseMemoryRequirements(
     VkDevice                                    device,
     const VkDeviceImageMemoryRequirements*      pInfo,
     uint32_t*                                   pSparseMemoryRequirementCount,
@@ -1967,7 +1967,7 @@ VKAPI_ATTR void lvp_GetDeviceImageSparseMemoryRequirements(
    stub();
 }
 
-VKAPI_ATTR void lvp_GetDeviceImageMemoryRequirements(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceImageMemoryRequirements(
     VkDevice                                    _device,
     const VkDeviceImageMemoryRequirements*     pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements)
