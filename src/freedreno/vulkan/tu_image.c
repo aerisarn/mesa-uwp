@@ -424,13 +424,20 @@ tu_CreateImage(VkDevice _device,
       const VkImageFormatListCreateInfo *fmt_list =
          vk_find_struct_const(pCreateInfo->pNext, IMAGE_FORMAT_LIST_CREATE_INFO);
       bool may_be_swapped = true;
+      /* Whether a view of the image with a non-R8G8 but R8G8 compatible format
+       * could be made.
+       */
+      bool has_r8g8_compatible = false;
       if (fmt_list) {
          may_be_swapped = false;
+         has_r8g8_compatible = !has_r8g8 && tu_is_r8g8_compatible(format);
          for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
             enum pipe_format format =
                tu_vk_format_to_pipe_format(fmt_list->pViewFormats[i]);
             bool is_r8g8 = tu_is_r8g8(format);
             has_r8g8 = has_r8g8 || is_r8g8;
+            has_r8g8_compatible = has_r8g8_compatible ||
+                                  (!is_r8g8 && tu_is_r8g8_compatible(format));
 
             if (tu6_format_texture(format, TILE6_LINEAR).swap) {
                may_be_swapped = true;
@@ -442,9 +449,19 @@ tu_CreateImage(VkDevice _device,
           * any compatible format.
           */
          has_r8g8 = tu_is_r8g8_compatible(format);
+         has_r8g8_compatible = has_r8g8;
       }
+
       if (may_be_swapped)
          tile_mode = TILE6_LINEAR;
+
+      /* R8G8 have a different block width/height and height alignment from other
+       * formats that would normally be compatible (like R16), and so if we are
+       * trying to, for example, sample R16 as R8G8 we need to demote to linear.
+       */
+      if (has_r8g8 && has_r8g8_compatible)
+         tile_mode = TILE6_LINEAR;
+
       ubwc_enabled = false;
    }
 
