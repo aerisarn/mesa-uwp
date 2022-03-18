@@ -301,6 +301,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
       const VkPushConstantRange *range = pCreateInfo->pPushConstantRanges + i;
       layout->push_constant_size = MAX2(layout->push_constant_size,
                                         range->offset + range->size);
+      layout->push_constant_stages |= (range->stageFlags & BITFIELD_MASK(MESA_SHADER_STAGES));
    }
    layout->push_constant_size = align(layout->push_constant_size, 16);
    *pPipelineLayout = lvp_pipeline_layout_to_handle(layout);
