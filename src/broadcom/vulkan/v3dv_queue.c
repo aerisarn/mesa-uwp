@@ -1228,18 +1228,26 @@ queue_submit_noop_job(struct v3dv_queue *queue,
    if (!do_sem_signal && !serialize && !sems_info->wait_sem_count)
       return VK_SUCCESS;
 
-   /* VkQueue host access is externally synchronized so we don't need to lock
-    * here for the static variable.
+   /* We need to protect noop_job against concurrent access. While
+    * the client must externally synchronize queue submissions, we
+    * may spawn threads that can submit noop jobs themselves.
     */
+   mtx_lock(&queue->noop_mutex);
    if (!queue->noop_job) {
       VkResult result = queue_create_noop_job(queue);
-      if (result != VK_SUCCESS)
+      if (result != VK_SUCCESS) {
+         mtx_unlock(&queue->noop_mutex);
          return result;
+      }
    }
    queue->noop_job->do_sem_signal = do_sem_signal;
    queue->noop_job->serialize = serialize;
 
-   return queue_submit_job(queue, queue->noop_job, sems_info, NULL);
+   VkResult result =
+      queue_submit_job(queue, queue->noop_job, sems_info, NULL);
+
+   mtx_unlock(&queue->noop_mutex);
+   return result;
 }
 
 /* This function takes a job type and returns True if we have

@@ -1827,6 +1827,7 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue,
    queue->noop_job = NULL;
    list_inithead(&queue->submit_wait_list);
    pthread_mutex_init(&queue->mutex, NULL);
+   pthread_mutex_init(&queue->noop_mutex, NULL);
    return VK_SUCCESS;
 }
 
@@ -1838,6 +1839,7 @@ queue_finish(struct v3dv_queue *queue)
    if (queue->noop_job)
       v3dv_job_destroy(queue->noop_job);
    pthread_mutex_destroy(&queue->mutex);
+   pthread_mutex_destroy(&queue->noop_mutex);
 }
 
 static void
