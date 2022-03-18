@@ -77,6 +77,8 @@ extern "C" {
 #define MAX_SETS         8
 #define MAX_PUSH_CONSTANTS_SIZE 128
 #define MAX_PUSH_DESCRIPTORS 32
+#define MAX_DESCRIPTOR_UNIFORM_BLOCK_SIZE 4096
+#define MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS 8
 
 #ifdef _WIN32
 #define lvp_printflike(a, b)
@@ -336,6 +338,8 @@ struct lvp_descriptor_set_binding_layout {
       int16_t sampler_index;
       int16_t sampler_view_index;
       int16_t image_index;
+      int16_t uniform_block_index;
+      int16_t uniform_block_offset;
    } stage[MESA_SHADER_STAGES];
 
    /* Immutable samplers (or NULL if no immutable samplers) */
@@ -365,6 +369,9 @@ struct lvp_descriptor_set_layout {
       uint16_t sampler_count;
       uint16_t sampler_view_count;
       uint16_t image_count;
+      uint16_t uniform_block_count;
+      uint16_t uniform_block_size;
+      uint16_t uniform_block_sizes[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS]; //zero-indexed
    } stage[MESA_SHADER_STAGES];
 
    /* Number of dynamic offsets used by this descriptor set */
@@ -405,6 +412,7 @@ union lvp_descriptor_info {
       VkDeviceSize range;
    };
    struct lvp_buffer_view *buffer_view;
+   uint8_t *uniform;
 };
 
 struct lvp_descriptor {
@@ -461,6 +469,9 @@ struct lvp_pipeline_layout {
    uint32_t push_constant_size;
    VkShaderStageFlags push_constant_stages;
    struct {
+      uint16_t uniform_block_size;
+      uint16_t uniform_block_count;
+      uint16_t uniform_block_sizes[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
    } stage[MESA_SHADER_STAGES];
 };
 

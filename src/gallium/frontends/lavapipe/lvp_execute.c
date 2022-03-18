@@ -146,6 +146,11 @@ struct rendering_state {
 
    uint8_t push_constants[128 * 4];
    uint16_t push_size[2]; //gfx, compute
+   struct {
+      void *block[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
+      uint16_t size[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
+      uint16_t count;
+   } uniform_blocks[PIPE_SHADER_TYPES];
 
    const struct lvp_render_pass *pass;
    struct lvp_subpass *subpass;
@@ -208,6 +213,8 @@ static unsigned
 calc_ubo0_size(struct rendering_state *state, enum pipe_shader_type pstage)
 {
    unsigned size = get_pcbuf_size(state, pstage);
+   for (unsigned i = 0; i < state->uniform_blocks[pstage].count; i++)
+      size += state->uniform_blocks[pstage].size[i];
    return size;
 }
 
@@ -217,6 +224,13 @@ fill_ubo0(struct rendering_state *state, uint8_t *mem, enum pipe_shader_type pst
    unsigned push_size = get_pcbuf_size(state, pstage);
    if (push_size)
       memcpy(mem, state->push_constants, push_size);
+
+   mem += push_size;
+   for (unsigned i = 0; i < state->uniform_blocks[pstage].count; i++) {
+      unsigned size = state->uniform_blocks[pstage].size[i];
+      memcpy(mem, state->uniform_blocks[pstage].block[i], size);
+      mem += size;
+   }
 }
 
 static void
@@ -418,7 +432,10 @@ static void handle_compute_pipeline(struct vk_cmd_queue_entry *cmd,
 
    if ((pipeline->layout->push_constant_stages & VK_SHADER_STAGE_COMPUTE_BIT) > 0)
       state->has_pcbuf[PIPE_SHADER_COMPUTE] = pipeline->layout->push_constant_size > 0;
-   if (!state->has_pcbuf[PIPE_SHADER_COMPUTE])
+   state->uniform_blocks[PIPE_SHADER_COMPUTE].count = pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count;
+   for (unsigned j = 0; j < pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count; j++)
+      state->uniform_blocks[PIPE_SHADER_COMPUTE].size[j] = pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_sizes[j];
+   if (!state->has_pcbuf[PIPE_SHADER_COMPUTE] && !pipeline->layout->stage[MESA_SHADER_COMPUTE].uniform_block_count)
       state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = false;
 
    state->dispatch_info.block[0] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.workgroup_size[0];
@@ -547,10 +564,16 @@ static void handle_graphics_pipeline(struct vk_cmd_queue_entry *cmd,
    for (enum pipe_shader_type sh = PIPE_SHADER_VERTEX; sh < PIPE_SHADER_COMPUTE; sh++)
       state->has_pcbuf[sh] = false;
 
+   for (unsigned i = 0; i < MESA_SHADER_COMPUTE; i++) {
+      enum pipe_shader_type sh = pipe_shader_type_from_mesa(i);
+      state->uniform_blocks[sh].count = pipeline->layout->stage[i].uniform_block_count;
+      for (unsigned j = 0; j < pipeline->layout->stage[i].uniform_block_count; j++)
+         state->uniform_blocks[sh].size[j] = pipeline->layout->stage[i].uniform_block_sizes[j];
+   }
    u_foreach_bit(stage, pipeline->layout->push_constant_stages) {
       enum pipe_shader_type sh = pipe_shader_type_from_mesa(stage);
       state->has_pcbuf[sh] = pipeline->layout->push_constant_size > 0;
-      if (!state->has_pcbuf[sh])
+      if (!state->has_pcbuf[sh] && !state->uniform_blocks[sh].count)
          state->pcbuf_dirty[sh] = false;
    }
 
@@ -992,6 +1015,7 @@ struct dyn_info {
       uint16_t sampler_count;
       uint16_t sampler_view_count;
       uint16_t image_count;
+      uint16_t uniform_block_count;
    } stage[MESA_SHADER_STAGES];
 
    uint32_t dyn_index;
@@ -1230,6 +1254,16 @@ static void handle_descriptor(struct rendering_state *state,
       type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 
    switch (type) {
+   case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK: {
+      int idx = binding->stage[stage].uniform_block_index;
+      if (idx == -1)
+         return;
+      idx += dyn_info->stage[stage].uniform_block_count;
+      assert(descriptor->uniform);
+      state->uniform_blocks[p_stage].block[idx] = descriptor->uniform;
+      state->pcbuf_dirty[p_stage] = true;
+      break;
+   }
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
       fill_image_view_stage(state, dyn_info, stage, p_stage, array_idx, descriptor, binding);
@@ -1299,6 +1333,7 @@ static void handle_descriptor(struct rendering_state *state,
       break;
    default:
       fprintf(stderr, "Unhandled descriptor set %d\n", type);
+      unreachable("oops");
       break;
    }
 }
@@ -1316,7 +1351,8 @@ static void handle_set_stage(struct rendering_state *state,
       binding = &set->layout->binding[j];
 
       if (binding->valid) {
-         for (int i = 0; i < binding->array_size; i++) {
+         unsigned array_size = binding->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK ? 1 : binding->array_size;
+         for (int i = 0; i < array_size; i++) {
             descriptor = &set->descriptors[binding->descriptor_index + i];
             handle_descriptor(state, dyn_info, binding, stage, p_stage, i, descriptor->type, &descriptor->info);
          }
@@ -1333,6 +1369,7 @@ static void increment_dyn_info(struct dyn_info *dyn_info,
       dyn_info->stage[stage].sampler_count += layout->stage[stage].sampler_count;
       dyn_info->stage[stage].sampler_view_count += layout->stage[stage].sampler_view_count;
       dyn_info->stage[stage].image_count += layout->stage[stage].image_count;
+      dyn_info->stage[stage].uniform_block_count += layout->stage[stage].uniform_block_count;
    }
    if (inc_dyn)
       dyn_info->dyn_index += layout->dynamic_offset_count;
