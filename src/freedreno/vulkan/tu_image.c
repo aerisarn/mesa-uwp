@@ -105,6 +105,20 @@ tu_format_for_aspect(enum pipe_format format, VkImageAspectFlags aspect_mask)
    }
 }
 
+static bool
+tu_is_r8g8(enum pipe_format format)
+{
+   return (util_format_get_blocksize(format) == 2) &&
+          (util_format_get_nr_components(format) == 2);
+}
+
+static bool
+tu_is_r8g8_compatible(enum pipe_format format)
+{
+   return (util_format_get_blocksize(format) == 2) &&
+          !util_format_is_depth_or_stencil(format);
+}
+
 void
 tu_cs_image_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer)
 {
@@ -388,6 +402,11 @@ tu_CreateImage(VkDevice _device,
       ubwc_enabled = false;
    }
 
+   enum pipe_format format =
+      tu_vk_format_to_pipe_format(image->vk_format);
+   /* Whether a view of the image with an R8G8 format could be made. */
+   bool has_r8g8 = tu_is_r8g8(format);
+
    /* Mutable images can be reinterpreted as any other compatible format.
     * This is a problem with UBWC (compression for different formats is different),
     * but also tiling ("swap" affects how tiled formats are stored in memory)
@@ -408,11 +427,21 @@ tu_CreateImage(VkDevice _device,
       if (fmt_list) {
          may_be_swapped = false;
          for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
-            if (tu6_format_texture(tu_vk_format_to_pipe_format(fmt_list->pViewFormats[i]), TILE6_LINEAR).swap) {
+            enum pipe_format format =
+               tu_vk_format_to_pipe_format(fmt_list->pViewFormats[i]);
+            bool is_r8g8 = tu_is_r8g8(format);
+            has_r8g8 = has_r8g8 || is_r8g8;
+
+            if (tu6_format_texture(format, TILE6_LINEAR).swap) {
                may_be_swapped = true;
                break;
             }
          }
+      } else {
+         /* If there is no format list it could be reinterpreted as
+          * any compatible format.
+          */
+         has_r8g8 = tu_is_r8g8_compatible(format);
       }
       if (may_be_swapped)
          tile_mode = TILE6_LINEAR;
@@ -429,6 +458,15 @@ tu_CreateImage(VkDevice _device,
 
    /* expect UBWC enabled if we asked for it */
    assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
+
+   /* Non-UBWC tiled R8G8 is probably buggy since media formats are always
+    * either linear or UBWC. There is no simple test to reproduce the bug.
+    * However it was observed in the wild leading to an unrecoverable hang
+    * on a650/a660.
+    */
+   if (has_r8g8 && tile_mode == TILE6_3 && !ubwc_enabled) {
+      tile_mode = TILE6_LINEAR;
+   }
 
    for (uint32_t i = 0; i < tu6_plane_count(image->vk_format); i++) {
       struct fdl_layout *layout = &image->layout[i];
