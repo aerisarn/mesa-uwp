@@ -579,7 +579,8 @@ The integer capabilities:
 * ``PIPE_CAP_TEXTURE_SHADOW_LOD``: True if the driver supports shadow sampler
   types with texture functions having interaction with LOD of texture lookup.
 * ``PIPE_CAP_SHADER_SAMPLES_IDENTICAL``: True if the driver supports a shader query to tell whether all samples of a multisampled surface are definitely identical.
-* ``PIPE_CAP_TGSI_ATOMINC_WRAP``: Atomic increment/decrement + wrap around are supported.
+* ``PIPE_CAP_IMAGE_ATOMIC_INC_WRAP``: Atomic increment/decrement + wrap around
+  are supported.
 * ``PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF``: True if gallium frontends should
   turn arrays whose contents can be deduced at compile time into constant
   buffer loads, or false if the driver can handle such arrays itself in a more
