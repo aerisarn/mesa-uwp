@@ -220,21 +220,17 @@ hash_renderpass_instance(const struct tu_render_pass *pass,
 }
 
 static void
-history_destructor(void *h)
+free_result(struct tu_renderpass_result *result)
 {
-   struct tu_renderpass_history *history = h;
-
-   list_for_each_entry_safe(struct tu_renderpass_result, result,
-                            &history->results, node) {
-      ralloc_free(result);
-   }
+   list_del(&result->node);
+   free(result);
 }
 
 static void
-result_destructor(void *r)
+free_history(struct tu_renderpass_history *history)
 {
-   struct tu_renderpass_result *result = r;
-   list_del(&result->node);
+   tu_autotune_free_results(&history->results);
+   free(history);
 }
 
 static bool
@@ -263,10 +259,8 @@ get_history(struct tu_autotune *at, uint64_t rp_key, uint32_t *avg_samples)
 static struct tu_renderpass_result *
 create_history_result(struct tu_autotune *at, uint64_t rp_key)
 {
-   struct tu_renderpass_result *result = rzalloc_size(NULL, sizeof(*result));
+   struct tu_renderpass_result *result = calloc(1, sizeof(*result));
    result->rp_key = rp_key;
-
-   ralloc_set_destructor(result, result_destructor);
 
    return result;
 }
@@ -286,8 +280,7 @@ history_add_result(struct tu_renderpass_history *history,
        */
       struct tu_renderpass_result *old_result =
          list_last_entry(&history->results, struct tu_renderpass_result, node);
-      list_delinit(&old_result->node);
-      ralloc_free(old_result);
+      free_result(old_result);
    }
 
    /* Do calculations here to avoid locking history in tu_autotune_use_bypass */
@@ -343,8 +336,7 @@ queue_pending_results(struct tu_autotune *at, struct tu_cmd_buffer *cmdbuf)
       list_for_each_entry_safe(struct tu_renderpass_result, result,
                               &cmdbuf->renderpass_autotune_results, node) {
          /* TODO: copying each result isn't nice */
-         struct tu_renderpass_result *copy = ralloc_size(NULL, sizeof(*result));
-         ralloc_set_destructor(result, result_destructor);
+         struct tu_renderpass_result *copy = malloc(sizeof(*result));
          *copy = *result;
          list_addtail(&copy->node, &at->pending_results);
       }
@@ -376,8 +368,7 @@ tu_autotune_on_submit(struct tu_device *dev,
          struct hash_entry *entry =
             _mesa_hash_table_search(at->ht, &result->rp_key);
          if (!entry) {
-            history = rzalloc_size(NULL, sizeof(*history));
-            ralloc_set_destructor(history, history_destructor);
+            history = calloc(1, sizeof(*history));
             history->key = result->rp_key;
             list_inithead(&history->results);
 
@@ -439,7 +430,7 @@ tu_autotune_on_submit(struct tu_device *dev,
       _mesa_hash_table_remove_key(at->ht, &history->key);
       u_rwlock_wrunlock(&at->ht_lock);
 
-      ralloc_free(history);
+      free_history(history);
    }
 
    return &submission_data->fence_cs;
@@ -493,7 +484,7 @@ tu_autotune_fini(struct tu_autotune *at, struct tu_device *dev)
 
    hash_table_foreach(at->ht, entry) {
       struct tu_renderpass_history *history = entry->data;
-      ralloc_free(history);
+      free_history(history);
    }
 
    list_for_each_entry_safe(struct tu_submission_data, submission_data,
@@ -523,7 +514,7 @@ tu_autotune_free_results(struct list_head *results)
 {
    list_for_each_entry_safe(struct tu_renderpass_result, result,
                             results, node) {
-      ralloc_free(result);
+      free_result(result);
    }
 }
 
