@@ -2429,14 +2429,19 @@ void radv_image_view_finish(struct radv_image_view *iview);
 
 VkFormat radv_get_aspect_format(struct radv_image *image, VkImageAspectFlags mask);
 
-struct radv_sampler_ycbcr_conversion {
-   struct vk_object_base base;
+struct radv_sampler_ycbcr_conversion_state {
    VkFormat format;
    VkSamplerYcbcrModelConversion ycbcr_model;
    VkSamplerYcbcrRange ycbcr_range;
    VkComponentMapping components;
    VkChromaLocation chroma_offsets[2];
    VkFilter chroma_filter;
+};
+
+struct radv_sampler_ycbcr_conversion {
+   struct vk_object_base base;
+   /* The state is hashed for the descriptor set layout. */
+   struct radv_sampler_ycbcr_conversion_state state;
 };
 
 struct radv_buffer_view {
