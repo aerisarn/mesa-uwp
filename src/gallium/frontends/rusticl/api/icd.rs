@@ -160,14 +160,14 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clSetKernelExecInfo: None,
     clGetKernelSubGroupInfoKHR: None,
     clCloneKernel: Some(cl_clone_kernel),
-    clCreateProgramWithIL: None,
+    clCreateProgramWithIL: Some(cl_create_program_with_il),
     clEnqueueSVMMigrateMem: None,
     clGetDeviceAndHostTimer: None,
     clGetHostTimer: None,
     clGetKernelSubGroupInfo: None,
     clSetDefaultDeviceCommandQueue: None,
     clSetProgramReleaseCallback: None,
-    clSetProgramSpecializationConstant: None,
+    clSetProgramSpecializationConstant: Some(cl_set_program_specialization_constant),
     clCreateBufferWithProperties: None,
     clCreateImageWithProperties: None,
     clSetContextDestructorCallback: Some(cl_set_context_destructor_callback),
@@ -1505,6 +1505,26 @@ extern "C" fn cl_create_command_queue_with_properties(
 
 extern "C" fn cl_clone_kernel(source_kernel: cl_kernel, errcode_ret: *mut cl_int) -> cl_kernel {
     match_obj!(clone_kernel(source_kernel), errcode_ret)
+}
+
+extern "C" fn cl_create_program_with_il(
+    context: cl_context,
+    il: *const ::std::os::raw::c_void,
+    length: usize,
+    errcode_ret: *mut cl_int,
+) -> cl_program {
+    match_obj!(create_program_with_il(context, il, length), errcode_ret)
+}
+
+extern "C" fn cl_set_program_specialization_constant(
+    program: cl_program,
+    spec_id: cl_uint,
+    spec_size: usize,
+    spec_value: *const ::std::os::raw::c_void,
+) -> cl_int {
+    match_err!(set_program_specialization_constant(
+        program, spec_id, spec_size, spec_value
+    ))
 }
 
 extern "C" fn cl_set_context_destructor_callback(
