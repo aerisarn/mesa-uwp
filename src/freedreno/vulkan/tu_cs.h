@@ -29,6 +29,11 @@
 
 #include "freedreno_pm4.h"
 
+/* For breadcrumbs we may open a network socket based on the envvar,
+ * it's not something that should be enabled by default.
+ */
+#define TU_BREADCRUMBS_ENABLED 0
+
 void
 tu_cs_init(struct tu_cs *cs,
            struct tu_device *device,
@@ -153,6 +158,9 @@ tu_cs_sanity_check(const struct tu_cs *cs)
    assert(cs->reserved_end <= cs->end);
 }
 
+void
+tu_cs_emit_sync_breadcrumb(struct tu_cs *cs, uint8_t opcode, uint16_t cnt);
+
 /**
  * Emit a uint32_t value into a command stream, without boundary checking.
  */
@@ -162,6 +170,12 @@ tu_cs_emit(struct tu_cs *cs, uint32_t value)
    assert(cs->cur < cs->reserved_end);
    *cs->cur = value;
    ++cs->cur;
+
+#if TU_BREADCRUMBS_ENABLED
+   cs->breadcrumb_emit_after--;
+   if (cs->breadcrumb_emit_after == 0)
+      tu_cs_emit_sync_breadcrumb(cs, -1, 0);
+#endif
 }
 
 /**
@@ -220,6 +234,10 @@ tu_cs_emit_pkt4(struct tu_cs *cs, uint16_t regindx, uint16_t cnt)
 static inline void
 tu_cs_emit_pkt7(struct tu_cs *cs, uint8_t opcode, uint16_t cnt)
 {
+#if TU_BREADCRUMBS_ENABLED
+   tu_cs_emit_sync_breadcrumb(cs, opcode, cnt + 1);
+#endif
+
    tu_cs_reserve(cs, cnt + 1);
    tu_cs_emit(cs, pm4_pkt7_hdr(opcode, cnt));
 }

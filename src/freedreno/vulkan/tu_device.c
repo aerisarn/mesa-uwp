@@ -2037,6 +2037,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
                      tu_trace_read_ts,
                      tu_trace_delete_flush_data);
 
+   tu_breadcrumbs_init(device);
+
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
 
@@ -2080,6 +2082,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
+
+   tu_breadcrumbs_finish(device);
 
    u_trace_context_fini(&device->trace_context);
 
@@ -2414,7 +2418,7 @@ tu_InvalidateMappedMemoryRanges(VkDevice _device,
 }
 
 static void
-tu_get_buffer_memory_requirements(uint64_t size, 
+tu_get_buffer_memory_requirements(uint64_t size,
                                   VkMemoryRequirements2 *pMemoryRequirements)
 {
    pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {

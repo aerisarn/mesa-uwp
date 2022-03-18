@@ -34,6 +34,7 @@ libtu_files = files(
   'tu_autotune.c',
   'tu_clear_blit.c',
   'tu_cmd_buffer.c',
+  'tu_cs_breadcrumbs.c',
   'tu_cs.c',
   'tu_cs.h',
   'tu_device.c',

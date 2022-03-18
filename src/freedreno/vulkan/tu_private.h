@@ -147,6 +147,7 @@ typedef uint32_t xcb_window_t;
  */
 
 struct tu_instance;
+struct breadcrumbs_context;
 
 VkResult
 __vk_startup_errorf(struct tu_instance *instance,
@@ -500,6 +501,13 @@ struct tu6_global
    volatile uint32_t dbg_gmem_total_stores;
    volatile uint32_t dbg_gmem_taken_stores;
 
+   /* Written from GPU */
+   volatile uint32_t breadcrumb_gpu_sync_seqno;
+   uint32_t _pad3;
+   /* Written from CPU, acknowledges value written from GPU */
+   volatile uint32_t breadcrumb_cpu_sync_seqno;
+   uint32_t _pad4;
+
    /* note: larger global bo will be used for customBorderColors */
    struct bcolor_entry bcolor_builtin[TU_BORDER_COLOR_BUILTIN], bcolor[];
 };
@@ -608,6 +616,8 @@ struct tu_device
    pthread_mutex_t submit_mutex;
 
    struct tu_autotune autotune;
+
+   struct breadcrumbs_context *breadcrumbs_ctx;
 
 #ifdef ANDROID
    const void *gralloc;
@@ -813,6 +823,8 @@ struct tu_cs
    uint32_t cond_stack_depth;
    uint32_t cond_flags[TU_COND_EXEC_STACK_SIZE];
    uint32_t *cond_dwords[TU_COND_EXEC_STACK_SIZE];
+
+   uint32_t breadcrumb_emit_after;
 };
 
 struct tu_device_memory
@@ -2310,6 +2322,12 @@ void
 tu_u_trace_submission_data_finish(
    struct tu_device *device,
    struct tu_u_trace_submission_data *submission_data);
+
+void
+tu_breadcrumbs_init(struct tu_device *device);
+
+void
+tu_breadcrumbs_finish(struct tu_device *device);
 
 #define TU_FROM_HANDLE(__tu_type, __name, __handle)                          \
    VK_FROM_HANDLE(__tu_type, __name, __handle)
