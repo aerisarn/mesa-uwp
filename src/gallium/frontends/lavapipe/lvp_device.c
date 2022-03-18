@@ -1492,6 +1492,7 @@ lvp_queue_init(struct lvp_device *device, struct lvp_queue *queue,
    queue->cso = cso_create_context(queue->ctx, CSO_NO_VBUF);
    util_queue_init(&queue->queue, "lavapipe", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, device);
    p_atomic_set(&queue->count, 0);
+   queue->uploader = u_upload_create(queue->ctx, 1024 * 1024, PIPE_BIND_CONSTANT_BUFFER, PIPE_USAGE_STREAM, 0);
 
    return VK_SUCCESS;
 }
@@ -1502,6 +1503,7 @@ lvp_queue_finish(struct lvp_queue *queue)
    util_queue_finish(&queue->queue);
    util_queue_destroy(&queue->queue);
 
+   u_upload_destroy(queue->uploader);
    cso_destroy_context(queue->cso);
    queue->ctx->destroy(queue->ctx);
    simple_mtx_destroy(&queue->last_lock);

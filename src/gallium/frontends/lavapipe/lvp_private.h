@@ -34,6 +34,7 @@
 #include "util/u_dynarray.h"
 #include "util/simple_mtx.h"
 #include "util/u_queue.h"
+#include "util/u_upload_mgr.h"
 
 #include "compiler/shader_enums.h"
 #include "pipe/p_screen.h"
@@ -163,6 +164,7 @@ struct lvp_queue {
    struct lvp_device *                         device;
    struct pipe_context *ctx;
    struct cso_context *cso;
+   struct u_upload_mgr *uploader;
    bool shutdown;
    uint64_t timeline;
    struct util_queue queue;

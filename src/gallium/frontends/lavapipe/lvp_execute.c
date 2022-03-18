@@ -59,6 +59,7 @@ enum gs_output {
 
 struct rendering_state {
    struct pipe_context *pctx;
+   struct u_upload_mgr *uploader;
    struct cso_context *cso;
 
    bool blend_dirty;
@@ -4254,6 +4255,7 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    struct rendering_state *state = queue->state;
    memset(state, 0, sizeof(*state));
    state->pctx = queue->ctx;
+   state->uploader = queue->uploader;
    state->cso = queue->cso;
    state->blend_dirty = true;
    state->dsa_dirty = true;
