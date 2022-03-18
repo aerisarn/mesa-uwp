@@ -148,20 +148,20 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clCreateCommandQueueWithProperties: Some(cl_create_command_queue_with_properties),
     clCreatePipe: None,
     clGetPipeInfo: None,
-    clSVMAlloc: None,
-    clSVMFree: None,
-    clEnqueueSVMFree: None,
-    clEnqueueSVMMemcpy: None,
-    clEnqueueSVMMemFill: None,
-    clEnqueueSVMMap: None,
-    clEnqueueSVMUnmap: None,
+    clSVMAlloc: Some(cl_svm_alloc),
+    clSVMFree: Some(cl_svm_free),
+    clEnqueueSVMFree: Some(cl_enqueue_svm_free),
+    clEnqueueSVMMemcpy: Some(cl_enqueue_svm_memcpy),
+    clEnqueueSVMMemFill: Some(cl_enqueue_svm_mem_fill),
+    clEnqueueSVMMap: Some(cl_enqueue_svm_map),
+    clEnqueueSVMUnmap: Some(cl_enqueue_svm_unmap),
     clCreateSamplerWithProperties: None,
-    clSetKernelArgSVMPointer: None,
-    clSetKernelExecInfo: None,
+    clSetKernelArgSVMPointer: Some(cl_set_kernel_arg_svm_pointer),
+    clSetKernelExecInfo: Some(cl_set_kernel_exec_info),
     clGetKernelSubGroupInfoKHR: None,
     clCloneKernel: Some(cl_clone_kernel),
     clCreateProgramWithIL: Some(cl_create_program_with_il),
-    clEnqueueSVMMigrateMem: None,
+    clEnqueueSVMMigrateMem: Some(cl_enqueue_svm_migrate_mem),
     clGetDeviceAndHostTimer: None,
     clGetHostTimer: None,
     clGetKernelSubGroupInfo: None,
@@ -1503,6 +1503,96 @@ extern "C" fn cl_create_command_queue_with_properties(
     match_obj!(create_command_queue(context, device, 0), errcode_ret)
 }
 
+extern "C" fn cl_svm_alloc(
+    _context: cl_context,
+    _flags: cl_svm_mem_flags,
+    _size: usize,
+    _alignment: ::std::os::raw::c_uint,
+) -> *mut ::std::os::raw::c_void {
+    ptr::null_mut()
+}
+
+extern "C" fn cl_svm_free(_context: cl_context, _svm_pointer: *mut ::std::os::raw::c_void) {}
+
+extern "C" fn cl_enqueue_svm_free(
+    _command_queue: cl_command_queue,
+    _num_svm_pointers: cl_uint,
+    _svm_pointers: *mut *mut ::std::os::raw::c_void,
+    _pfn_free_func: ::std::option::Option<SVMFreeCb>,
+    _user_data: *mut ::std::os::raw::c_void,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_enqueue_svm_memcpy(
+    _command_queue: cl_command_queue,
+    _blocking_copy: cl_bool,
+    _dst_ptr: *mut ::std::os::raw::c_void,
+    _src_ptr: *const ::std::os::raw::c_void,
+    _size: usize,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_enqueue_svm_mem_fill(
+    _command_queue: cl_command_queue,
+    _svm_ptr: *mut ::std::os::raw::c_void,
+    _pattern: *const ::std::os::raw::c_void,
+    _pattern_size: usize,
+    _size: usize,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_enqueue_svm_map(
+    _command_queue: cl_command_queue,
+    _blocking_map: cl_bool,
+    _flags: cl_map_flags,
+    _svm_ptr: *mut ::std::os::raw::c_void,
+    _size: usize,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_enqueue_svm_unmap(
+    _command_queue: cl_command_queue,
+    _svm_ptr: *mut ::std::os::raw::c_void,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_set_kernel_arg_svm_pointer(
+    _kernel: cl_kernel,
+    _arg_index: cl_uint,
+    _arg_value: *const ::std::os::raw::c_void,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_set_kernel_exec_info(
+    _kernel: cl_kernel,
+    _param_name: cl_kernel_exec_info,
+    _param_value_size: usize,
+    _param_value: *const ::std::os::raw::c_void,
+) -> cl_int {
+    CL_INVALID_OPERATION
+}
+
 extern "C" fn cl_clone_kernel(source_kernel: cl_kernel, errcode_ret: *mut cl_int) -> cl_kernel {
     match_obj!(clone_kernel(source_kernel), errcode_ret)
 }
@@ -1514,6 +1604,19 @@ extern "C" fn cl_create_program_with_il(
     errcode_ret: *mut cl_int,
 ) -> cl_program {
     match_obj!(create_program_with_il(context, il, length), errcode_ret)
+}
+
+extern "C" fn cl_enqueue_svm_migrate_mem(
+    _command_queue: cl_command_queue,
+    _num_svm_pointers: cl_uint,
+    _svm_pointers: *mut *const ::std::os::raw::c_void,
+    _sizes: *const usize,
+    _flags: cl_mem_migration_flags,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> cl_int {
+    CL_INVALID_OPERATION
 }
 
 extern "C" fn cl_set_program_specialization_constant(

@@ -62,6 +62,15 @@ cl_callback!(
     }
 );
 
+cl_callback!(
+    SVMFreeCb {
+        queue: cl_command_queue,
+        num_svm_pointers: cl_uint,
+        svm_pointers: *mut *mut ::std::os::raw::c_void,
+        user_data: *mut ::std::os::raw::c_void,
+    }
+);
+
 // a lot of APIs use 3 component vectors passed as C arrays
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CLVec<T> {

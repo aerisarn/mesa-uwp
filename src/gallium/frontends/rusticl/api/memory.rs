@@ -195,6 +195,7 @@ impl CLInfo<cl_mem_info> for cl_mem {
             CL_MEM_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
             CL_MEM_SIZE => cl_prop::<usize>(mem.size),
             CL_MEM_TYPE => cl_prop::<cl_mem_object_type>(mem.mem_type),
+            CL_MEM_USES_SVM_POINTER => cl_prop::<cl_bool>(CL_FALSE),
             _ => return Err(CL_INVALID_VALUE),
         })
     }
