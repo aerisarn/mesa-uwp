@@ -99,7 +99,7 @@ static void r300_shader_read_vs_outputs(
         }
     }
 
-    /* WPOS is a straight copy of POSITION and it's always emitted. */
+    /* WPOS is a straight copy of POSITION */
     vs_outputs->wpos = i;
 }
 
@@ -167,7 +167,8 @@ static void set_vertex_inputs_outputs(struct r300_vertex_program_compiler * c)
     }
 
     /* WPOS. */
-    c->code->outputs[outputs->wpos] = reg++;
+    if (vs->wpos)
+        c->code->outputs[outputs->wpos] = reg++;
 }
 
 void r300_init_vs_outputs(struct r300_context *r300,
@@ -253,11 +254,12 @@ void r300_translate_vertex_shader(struct r300_context *r300,
         compiler.Base.remove_unused_constants = TRUE;
     }
 
-    compiler.RequiredOutputs = ~(~0U << (vs->info.num_outputs + 1));
+    compiler.RequiredOutputs = ~(~0U << (vs->info.num_outputs + (vs->wpos ? 1 : 0)));
     compiler.SetHwInputOutput = &set_vertex_inputs_outputs;
 
     /* Insert the WPOS output. */
-    rc_copy_output(&compiler.Base, 0, vs->outputs.wpos);
+    if (vs->wpos)
+        rc_copy_output(&compiler.Base, 0, vs->outputs.wpos);
 
     /* Invoke the compiler */
     r3xx_compile_vertex_program(&compiler);
