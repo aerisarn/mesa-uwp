@@ -1452,6 +1452,40 @@ nir_copy_var(nir_builder *build, nir_variable *dest, nir_variable *src)
                          nir_build_deref_var(build, src));
 }
 
+static inline nir_ssa_def *
+nir_load_array_var(nir_builder *build, nir_variable *var, nir_ssa_def *index)
+{
+   nir_deref_instr *deref =
+      nir_build_deref_array(build, nir_build_deref_var(build, var), index);
+   return nir_load_deref(build, deref);
+}
+
+static inline nir_ssa_def *
+nir_load_array_var_imm(nir_builder *build, nir_variable *var, int64_t index)
+{
+   nir_deref_instr *deref =
+      nir_build_deref_array_imm(build, nir_build_deref_var(build, var), index);
+   return nir_load_deref(build, deref);
+}
+
+static inline void
+nir_store_array_var(nir_builder *build, nir_variable *var, nir_ssa_def *index,
+                    nir_ssa_def *value, unsigned writemask)
+{
+   nir_deref_instr *deref =
+      nir_build_deref_array(build, nir_build_deref_var(build, var), index);
+   nir_store_deref(build, deref, value, writemask);
+}
+
+static inline void
+nir_store_array_var_imm(nir_builder *build, nir_variable *var, int64_t index,
+                        nir_ssa_def *value, unsigned writemask)
+{
+   nir_deref_instr *deref =
+      nir_build_deref_array_imm(build, nir_build_deref_var(build, var), index);
+   nir_store_deref(build, deref, value, writemask);
+}
+
 #undef nir_load_global
 static inline nir_ssa_def *
 nir_load_global(nir_builder *build, nir_ssa_def *addr, unsigned align,
