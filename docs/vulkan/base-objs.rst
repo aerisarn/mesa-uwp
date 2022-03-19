@@ -10,6 +10,13 @@ which form the core of the Vulkan runtime code:
 .. contents::
    :local:
 
+As one might expect, :cpp:struct:`vk_instance` is the required base struct
+for implementing ``VkInstance``, :cpp:struct:`vk_physical_device` is
+required for ``VkPhysicalDevice``, and :cpp:struct:`vk_device` for
+``VkDevice``.  Everything else must derive from
+:cpp:struct:`vk_vk_objet_base` or from some struct that derives from
+:cpp:struct:`vk_vk_objet_base`.
+
 
 vk_object_base
 --------------
@@ -81,3 +88,79 @@ initialize it from a ``VkFoo`` handle in one smooth motion.
 .. doxygendefine:: VK_DEFINE_NONDISP_HANDLE_CASTS
 
 .. doxygendefine:: VK_FROM_HANDLE
+
+
+vk_instance
+-----------
+
+.. doxygenstruct:: vk_instance
+   :members:
+
+.. doxygenfunction:: vk_instance_init
+.. doxygenfunction:: vk_instance_finish
+
+Once a driver has a :cpp:struct:`vk_instance`, implementing all the various
+instance-level ``vkGet*ProcAddr()`` entrypoints is trivial:
+
+.. code-block:: c
+
+   VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+   drv_GetInstanceProcAddr(VkInstance _instance,
+                           const char *pName)
+   {
+      VK_FROM_HANDLE(vk_instance, instance, _instance);
+      return vk_instance_get_proc_addr(instance,
+                                       &drv_instance_entrypoints,
+                                       pName);
+   }
+
+   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+   vk_icdGetInstanceProcAddr(VkInstance instance,
+                             const char *pName);
+
+   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+   vk_icdGetInstanceProcAddr(VkInstance instance,
+                             const char *pName)
+   {
+      return drv_GetInstanceProcAddr(instance, pName);
+   }
+
+   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+   vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
+                                   const char* pName);
+
+   PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
+   vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
+                                   const char* pName)
+   {
+      VK_FROM_HANDLE(vk_instance, instance, _instance);
+      return vk_instance_get_physical_device_proc_addr(instance, pName);
+   }
+
+The prototypes for the ``vk_icd*`` versions are needed because those are not
+actually defined in the Vulkan headers and you need the prototype somewhere
+to get the C compiler to not complain.  These are all implemented by
+wrapping one of the provided ``vk_instance_get*_proc_addr()`` functions.
+
+.. doxygenfunction:: vk_instance_get_proc_addr
+.. doxygenfunction:: vk_instance_get_proc_addr_unchecked
+.. doxygenfunction:: vk_instance_get_physical_device_proc_addr
+
+We also provide an implementation of
+``vkEnumerateInstanceExtensionProperties()`` which can be used similarly:
+
+.. code-block:: c
+
+   VKAPI_ATTR VkResult VKAPI_CALL
+   drv_EnumerateInstanceExtensionProperties(const char *pLayerName,
+                                            uint32_t *pPropertyCount,
+                                            VkExtensionProperties *pProperties)
+   {
+      if (pLayerName)
+         return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
+
+      return vk_enumerate_instance_extension_properties(
+         &instance_extensions, pPropertyCount, pProperties);
+   }
+
+.. doxygenfunction:: vk_enumerate_instance_extension_properties
