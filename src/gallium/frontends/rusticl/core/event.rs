@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::sync::Condvar;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::time::Duration;
 
 // we assert that those are a continous range of numbers so we won't have to use HashMaps
 static_assert!(CL_COMPLETE == 0);
@@ -147,7 +148,11 @@ impl Event {
                 self.set_status(&mut lock, CL_RUNNING as cl_int);
                 self.set_status(&mut lock, CL_COMPLETE as cl_int);
             } else {
-                lock = self.cv.wait(lock).unwrap();
+                lock = self
+                    .cv
+                    .wait_timeout(lock, Duration::from_millis(50))
+                    .unwrap()
+                    .0;
             }
         }
         lock.status
