@@ -374,6 +374,6 @@ void r300_draw_init_vertex_shader(struct r300_context *r300,
     r300_init_vs_outputs(r300, vs);
 
     /* Make the last generic be WPOS. */
-    vs->outputs.wpos = vs->outputs.generic[transform.last_generic + 1];
-    vs->outputs.generic[transform.last_generic + 1] = ATTR_UNUSED;
+    vs->shader->outputs.wpos = vs->shader->outputs.generic[transform.last_generic + 1];
+    vs->shader->outputs.generic[transform.last_generic + 1] = ATTR_UNUSED;
 }

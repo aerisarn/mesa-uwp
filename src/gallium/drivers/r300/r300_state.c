@@ -1973,6 +1973,8 @@ static void* r300_create_vs_state(struct pipe_context* pipe,
        vs->state.tokens = tgsi_dup_tokens(vs->state.tokens);
     }
 
+    if (!vs->first)
+        vs->first = vs->shader = CALLOC_STRUCT(r300_vertex_shader_code);
     if (r300->screen->caps.has_tcl) {
         r300_init_vs_outputs(r300, vs);
         r300_translate_vertex_shader(r300, vs);
@@ -2003,17 +2005,17 @@ static void r300_bind_vs_state(struct pipe_context* pipe, void* shader)
     if (r300->screen->caps.has_tcl) {
         unsigned fc_op_dwords = r300->screen->caps.is_r500 ? 3 : 2;
         r300_mark_atom_dirty(r300, &r300->vs_state);
-        r300->vs_state.size = vs->code.length + 9 +
+        r300->vs_state.size = vs->shader->code.length + 9 +
 			(R300_VS_MAX_FC_OPS * fc_op_dwords + 4);
 
         r300_mark_atom_dirty(r300, &r300->vs_constants);
         r300->vs_constants.size =
                 2 +
-                (vs->externals_count ? vs->externals_count * 4 + 3 : 0) +
-                (vs->immediates_count ? vs->immediates_count * 4 + 3 : 0);
+                (vs->shader->externals_count ? vs->shader->externals_count * 4 + 3 : 0) +
+                (vs->shader->immediates_count ? vs->shader->immediates_count * 4 + 3 : 0);
 
         ((struct r300_constant_buffer*)r300->vs_constants.state)->remap_table =
-                vs->code.constants_remap_table;
+                vs->shader->code.constants_remap_table;
 
         r300_mark_atom_dirty(r300, &r300->pvs_flush);
     } else {
@@ -2028,8 +2030,13 @@ static void r300_delete_vs_state(struct pipe_context* pipe, void* shader)
     struct r300_vertex_shader* vs = (struct r300_vertex_shader*)shader;
 
     if (r300->screen->caps.has_tcl) {
-        rc_constants_destroy(&vs->code.constants);
-        FREE(vs->code.constants_remap_table);
+        while (vs->shader) {
+            rc_constants_destroy(&vs->shader->code.constants);
+            FREE(vs->shader->code.constants_remap_table);
+            vs->shader = vs->shader->next;
+            FREE(vs->first);
+            vs->first = vs->shader;
+	}
     } else {
         draw_delete_vertex_shader(r300->draw,
                 (struct draw_vertex_shader*)vs->draw_vs);
@@ -2081,8 +2088,7 @@ static void r300_set_constant_buffer(struct pipe_context *pipe,
 
     if (shader == PIPE_SHADER_VERTEX) {
         if (r300->screen->caps.has_tcl) {
-            struct r300_vertex_shader *vs =
-                    (struct r300_vertex_shader*)r300->vs_state.state;
+            struct r300_vertex_shader_code *vs = r300_vs(r300)->shader;
 
             if (!vs) {
                 cbuf->buffer_base = 0;

@@ -54,7 +54,7 @@ static void r300_draw_emit_attrib(struct r300_context* r300,
                                   enum attrib_emit emit,
                                   int index)
 {
-    struct r300_vertex_shader* vs = r300->vs_state.state;
+    struct r300_vertex_shader_code* vs = r300_vs(r300)->shader;
     struct tgsi_shader_info* info = &vs->info;
     int output;
 
@@ -66,7 +66,7 @@ static void r300_draw_emit_attrib(struct r300_context* r300,
 
 static void r300_draw_emit_all_attribs(struct r300_context* r300)
 {
-    struct r300_vertex_shader* vs = r300->vs_state.state;
+    struct r300_vertex_shader_code* vs = r300_vs(r300)->shader;
     struct r300_shader_semantics* vs_outputs = &vs->outputs;
     int i, gen_count;
 
@@ -303,7 +303,7 @@ static void r500_rs_tex_write(struct r300_rs_block* rs, int id, int fp_offset)
  * and error. */
 static void r300_update_rs_block(struct r300_context *r300)
 {
-    struct r300_vertex_shader *vs = r300->vs_state.state;
+    struct r300_vertex_shader_code *vs = r300_vs(r300)->shader;
     struct r300_shader_semantics *vs_outputs = &vs->outputs;
     struct r300_shader_semantics *fs_inputs = &r300_fs(r300)->shader->inputs;
     struct r300_rs_block rs = {0};

@@ -673,6 +673,11 @@ static inline struct r300_fragment_shader *r300_fs(struct r300_context *r300)
     return (struct r300_fragment_shader*)r300->fs.state;
 }
 
+static inline struct r300_vertex_shader *r300_vs(struct r300_context *r300)
+{
+    return (struct r300_vertex_shader*)r300->vs_state.state;
+}
+
 static inline void r300_mark_atom_dirty(struct r300_context *r300,
                                         struct r300_atom *atom)
 {

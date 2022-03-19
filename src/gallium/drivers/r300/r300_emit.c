@@ -1103,7 +1103,7 @@ void r300_emit_vap_invariant_state(struct r300_context *r300,
 
 void r300_emit_vs_state(struct r300_context* r300, unsigned size, void* state)
 {
-    struct r300_vertex_shader* vs = (struct r300_vertex_shader*)state;
+    struct r300_vertex_shader_code* vs = ((struct r300_vertex_shader*)state)->shader;
     struct r300_vertex_program_code* code = &vs->code;
     struct r300_screen* r300screen = r300->screen;
     unsigned instruction_count = code->length / 4;
@@ -1160,10 +1160,9 @@ void r300_emit_vs_state(struct r300_context* r300, unsigned size, void* state)
 void r300_emit_vs_constants(struct r300_context* r300,
                             unsigned size, void *state)
 {
-    unsigned count =
-        ((struct r300_vertex_shader*)r300->vs_state.state)->externals_count;
+    unsigned count = r300_vs(r300)->shader->externals_count;
     struct r300_constant_buffer *buf = (struct r300_constant_buffer*)state;
-    struct r300_vertex_shader *vs = (struct r300_vertex_shader*)r300->vs_state.state;
+    struct r300_vertex_shader_code *vs = r300_vs(r300)->shader;
     unsigned i;
     int imm_first = vs->externals_count;
     int imm_end = vs->code.constants.Count;

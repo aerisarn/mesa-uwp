@@ -33,9 +33,8 @@
 
 struct r300_context;
 
-struct r300_vertex_shader {
+struct r300_vertex_shader_code {
     /* Parent class */
-    struct pipe_shader_state state;
 
     struct tgsi_shader_info info;
     struct r300_shader_semantics outputs;
@@ -44,6 +43,8 @@ struct r300_vertex_shader {
      * compilation failure. */
     boolean dummy;
 
+    boolean wpos;
+
     /* Numbers of constants for each type. */
     unsigned externals_count;
     unsigned immediates_count;
@@ -51,6 +52,19 @@ struct r300_vertex_shader {
     /* HWTCL-specific.  */
     /* Machine code (if translated) */
     struct r300_vertex_program_code code;
+
+    struct r300_vertex_shader_code *next;
+};
+
+struct r300_vertex_shader {
+    /* Parent class */
+    struct pipe_shader_state state;
+
+    /* Currently-bound vertex shader. */
+    struct r300_vertex_shader_code *shader;
+
+    /* List of the same shaders compiled with different states. */
+    struct r300_vertex_shader_code *first;
 
     /* SWTCL-specific. */
     void *draw_vs;
