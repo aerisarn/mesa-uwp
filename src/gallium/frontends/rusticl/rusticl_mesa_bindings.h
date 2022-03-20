@@ -1,6 +1,7 @@
 #include "rusticl_mesa_inline_bindings_wrapper.h"
 
 #include "compiler/clc/clc.h"
+#include "compiler/clc/clc_helpers.h"
 #include "nir_types.h"
 #include "spirv/nir_spirv.h"
 
