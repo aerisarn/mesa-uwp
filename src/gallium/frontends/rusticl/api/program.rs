@@ -47,6 +47,8 @@ impl CLInfo<cl_program_info> for cl_program {
             CL_PROGRAM_NUM_DEVICES => cl_prop::<cl_uint>(prog.devs.len() as cl_uint),
             CL_PROGRAM_NUM_KERNELS => cl_prop::<usize>(prog.kernels().len()),
             CL_PROGRAM_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
+            CL_PROGRAM_SCOPE_GLOBAL_CTORS_PRESENT => cl_prop::<cl_bool>(CL_FALSE),
+            CL_PROGRAM_SCOPE_GLOBAL_DTORS_PRESENT => cl_prop::<cl_bool>(CL_FALSE),
             CL_PROGRAM_SOURCE => cl_prop::<&CStr>(prog.src.as_c_str()),
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
@@ -369,5 +371,13 @@ pub fn set_program_specialization_constant(
     _spec_value: *const ::std::os::raw::c_void,
 ) -> CLResult<()> {
     println!("set_program_specialization_constantnot implemented");
+    Err(CL_INVALID_OPERATION)
+}
+
+pub fn set_program_release_callback(
+    _program: cl_program,
+    _pfn_notify: ::std::option::Option<ProgramCB>,
+    _user_data: *mut ::std::os::raw::c_void,
+) -> CLResult<()> {
     Err(CL_INVALID_OPERATION)
 }

@@ -166,7 +166,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clGetHostTimer: None,
     clGetKernelSubGroupInfo: Some(cl_get_kernel_sub_group_info),
     clSetDefaultDeviceCommandQueue: None,
-    clSetProgramReleaseCallback: None,
+    clSetProgramReleaseCallback: Some(cl_set_program_release_callback),
     clSetProgramSpecializationConstant: Some(cl_set_program_specialization_constant),
     clCreateBufferWithProperties: Some(cl_create_buffer_with_properties),
     clCreateImageWithProperties: Some(cl_create_image_with_properties),
@@ -1667,6 +1667,14 @@ extern "C" fn cl_get_kernel_sub_group_info(
 ) -> cl_int {
     println!("cl_get_kernel_sub_group_info not implemented");
     CL_OUT_OF_HOST_MEMORY
+}
+
+extern "C" fn cl_set_program_release_callback(
+    program: cl_program,
+    pfn_notify: ::std::option::Option<ProgramCB>,
+    user_data: *mut ::std::os::raw::c_void,
+) -> cl_int {
+    match_err!(set_program_release_callback(program, pfn_notify, user_data))
 }
 
 extern "C" fn cl_set_program_specialization_constant(
