@@ -1604,3 +1604,10 @@ pub fn enqueue_migrate_mem_objects(
 
     //• CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to allocate memory for the specified set of memory objects in mem_objects.
 }
+
+impl CLInfo<cl_pipe_info> for cl_mem {
+    fn query(&self, _q: cl_pipe_info, _: &[u8]) -> CLResult<Vec<u8>> {
+        // CL_INVALID_MEM_OBJECT if pipe is a not a valid pipe object.
+        Err(CL_INVALID_MEM_OBJECT)
+    }
+}

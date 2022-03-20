@@ -1516,14 +1516,18 @@ extern "C" fn cl_create_pipe(
 }
 
 extern "C" fn cl_get_pipe_info(
-    _pipe: cl_mem,
-    _param_name: cl_pipe_info,
-    _param_value_size: usize,
-    _param_value: *mut ::std::os::raw::c_void,
-    _param_value_size_ret: *mut usize,
+    pipe: cl_mem,
+    param_name: cl_pipe_info,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
 ) -> cl_int {
-    println!("get_pipe_info not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(pipe.get_info(
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret,
+    ))
 }
 
 extern "C" fn cl_svm_alloc(
