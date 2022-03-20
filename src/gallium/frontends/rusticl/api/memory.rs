@@ -11,6 +11,7 @@ use crate::core::device::*;
 use crate::core::memory::*;
 use crate::*;
 
+use self::mesa_rust_util::properties::Properties;
 use self::mesa_rust_util::ptr::*;
 use self::rusticl_opencl_gen::*;
 
@@ -192,6 +193,7 @@ impl CLInfo<cl_mem_info> for cl_mem {
             CL_MEM_MAP_COUNT => cl_prop::<cl_uint>(0),
             CL_MEM_HOST_PTR => cl_prop::<*mut c_void>(mem.host_ptr),
             CL_MEM_OFFSET => cl_prop::<usize>(mem.offset),
+            CL_MEM_PROPERTIES => cl_prop::<&Vec<cl_mem_properties>>(&mem.props),
             CL_MEM_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
             CL_MEM_SIZE => cl_prop::<usize>(mem.size),
             CL_MEM_TYPE => cl_prop::<cl_mem_object_type>(mem.mem_type),
@@ -201,8 +203,9 @@ impl CLInfo<cl_mem_info> for cl_mem {
     }
 }
 
-pub fn create_buffer(
+pub fn create_buffer_with_properties(
     context: cl_context,
+    properties: *const cl_mem_properties,
     flags: cl_mem_flags,
     size: usize,
     host_ptr: *mut ::std::os::raw::c_void,
@@ -226,7 +229,27 @@ pub fn create_buffer(
 
     validate_host_ptr(host_ptr, flags)?;
 
-    Ok(cl_mem::from_arc(Mem::new_buffer(c, flags, size, host_ptr)?))
+    let props = Properties::from_ptr_raw(properties);
+    // CL_INVALID_PROPERTY if a property name in properties is not a supported property name, if
+    // the value specified for a supported property name is not valid, or if the same property name
+    // is specified more than once.
+    if props.len() > 1 {
+        // we don't support any properties besides the 0 property
+        return Err(CL_INVALID_PROPERTY);
+    }
+
+    Ok(cl_mem::from_arc(Mem::new_buffer(
+        c, flags, size, host_ptr, props,
+    )?))
+}
+
+pub fn create_buffer(
+    context: cl_context,
+    flags: cl_mem_flags,
+    size: usize,
+    host_ptr: *mut ::std::os::raw::c_void,
+) -> CLResult<cl_mem> {
+    create_buffer_with_properties(context, ptr::null(), flags, size, host_ptr)
 }
 
 pub fn create_sub_buffer(
@@ -649,8 +672,9 @@ impl CLInfo<cl_image_info> for cl_mem {
     }
 }
 
-pub fn create_image(
+pub fn create_image_with_properties(
     context: cl_context,
+    properties: *const cl_mem_properties,
     mut flags: cl_mem_flags,
     image_format: *const cl_image_format,
     image_desc: *const cl_image_desc,
@@ -687,6 +711,15 @@ pub fn create_image(
         .find(|f| *f & filtered_flags == filtered_flags)
         .ok_or(CL_IMAGE_FORMAT_NOT_SUPPORTED)?;
 
+    let props = Properties::from_ptr_raw(properties);
+    // CL_INVALID_PROPERTY if a property name in properties is not a supported property name, if
+    // the value specified for a supported property name is not valid, or if the same property name
+    // is specified more than once.
+    if props.len() > 1 {
+        // we don't support any properties besides the 0 property
+        return Err(CL_INVALID_PROPERTY);
+    }
+
     Ok(cl_mem::from_arc(Mem::new_image(
         c,
         desc.image_type,
@@ -695,7 +728,25 @@ pub fn create_image(
         desc,
         elem_size,
         host_ptr,
+        props,
     )))
+}
+
+pub fn create_image(
+    context: cl_context,
+    flags: cl_mem_flags,
+    image_format: *const cl_image_format,
+    image_desc: *const cl_image_desc,
+    host_ptr: *mut ::std::os::raw::c_void,
+) -> CLResult<cl_mem> {
+    create_image_with_properties(
+        context,
+        ptr::null(),
+        flags,
+        image_format,
+        image_desc,
+        host_ptr,
+    )
 }
 
 pub fn get_supported_image_formats(

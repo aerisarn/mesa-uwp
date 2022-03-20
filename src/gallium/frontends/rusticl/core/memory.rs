@@ -35,6 +35,7 @@ pub struct Mem {
     pub image_format: cl_image_format,
     pub image_desc: cl_image_desc,
     pub image_elem_size: u8,
+    pub props: Vec<cl_mem_properties>,
     pub cbs: Mutex<Vec<Box<dyn Fn(cl_mem)>>>,
     res: Option<HashMap<Arc<Device>, Arc<PipeResource>>>,
     maps: Mutex<HashMap<*mut c_void, (u32, PipeTransfer)>>,
@@ -72,6 +73,7 @@ impl Mem {
         flags: cl_mem_flags,
         size: usize,
         host_ptr: *mut c_void,
+        props: Vec<cl_mem_properties>,
     ) -> CLResult<Arc<Mem>> {
         if bit_check(flags, CL_MEM_ALLOC_HOST_PTR) {
             println!("host ptr semantics not implemented!");
@@ -108,6 +110,7 @@ impl Mem {
             image_format: cl_image_format::default(),
             image_desc: cl_image_desc::default(),
             image_elem_size: 0,
+            props: props,
             cbs: Mutex::new(Vec::new()),
             res: Some(buffer),
             maps: Mutex::new(HashMap::new()),
@@ -138,6 +141,7 @@ impl Mem {
             image_format: cl_image_format::default(),
             image_desc: cl_image_desc::default(),
             image_elem_size: 0,
+            props: Vec::new(),
             cbs: Mutex::new(Vec::new()),
             res: None,
             maps: Mutex::new(HashMap::new()),
@@ -152,6 +156,7 @@ impl Mem {
         image_desc: cl_image_desc,
         image_elem_size: u8,
         host_ptr: *mut c_void,
+        props: Vec<cl_mem_properties>,
     ) -> Arc<Mem> {
         if bit_check(
             flags,
@@ -178,6 +183,7 @@ impl Mem {
             image_format: *image_format,
             image_desc: image_desc,
             image_elem_size: image_elem_size,
+            props: props,
             cbs: Mutex::new(Vec::new()),
             res: None,
             maps: Mutex::new(HashMap::new()),
