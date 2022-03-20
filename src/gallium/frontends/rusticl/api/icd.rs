@@ -1656,17 +1656,22 @@ extern "C" fn cl_get_device_and_host_timer(
 }
 
 extern "C" fn cl_get_kernel_sub_group_info(
-    _kernel: cl_kernel,
-    _device: cl_device_id,
-    _param_name: cl_kernel_sub_group_info,
-    _input_value_size: usize,
-    _input_value: *const ::std::os::raw::c_void,
-    _param_value_size: usize,
-    _param_value: *mut ::std::os::raw::c_void,
-    _param_value_size_ret: *mut usize,
+    kernel: cl_kernel,
+    device: cl_device_id,
+    param_name: cl_kernel_sub_group_info,
+    input_value_size: usize,
+    input_value: *const ::std::os::raw::c_void,
+    param_value_size: usize,
+    param_value: *mut ::std::os::raw::c_void,
+    param_value_size_ret: *mut usize,
 ) -> cl_int {
-    println!("cl_get_kernel_sub_group_info not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(kernel.get_info_obj(
+        (device, input_value_size, input_value),
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret,
+    ))
 }
 
 extern "C" fn cl_set_program_release_callback(

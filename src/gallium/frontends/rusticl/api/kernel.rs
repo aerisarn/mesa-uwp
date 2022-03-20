@@ -14,6 +14,7 @@ use self::mesa_rust_util::string::*;
 use self::rusticl_opencl_gen::*;
 
 use std::collections::HashSet;
+use std::os::raw::c_void;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
@@ -98,6 +99,19 @@ impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
         })
+    }
+}
+
+impl CLInfoObj<cl_kernel_sub_group_info, (cl_device_id, usize, *const c_void)> for cl_kernel {
+    fn query(
+        &self,
+        (d, _input_value_size, _input_value): (cl_device_id, usize, *const c_void),
+        _q: cl_program_build_info,
+    ) -> CLResult<Vec<u8>> {
+        let _kernel = self.get_ref()?;
+        let _dev = d.get_arc()?;
+
+        Err(CL_INVALID_OPERATION)
     }
 }
 
