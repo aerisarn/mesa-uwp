@@ -1097,7 +1097,7 @@ dri2_create_screen(_EGLDisplay *disp)
    }
 
    if (dri2_dpy->dri_screen == NULL) {
-      _eglLog(_EGL_WARNING, "DRI2: failed to create dri screen");
+      _eglLog(_EGL_WARNING, "egl: failed to create dri2 screen");
       return EGL_FALSE;
    }
 

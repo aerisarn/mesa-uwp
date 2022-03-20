@@ -1229,7 +1229,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
    }
 
    if (psc->driScreen == NULL) {
-      ErrorMessageF("failed to create dri screen\n");
+      ErrorMessageF("glx: failed to create dri2 screen\n");
       goto handle_error;
    }
 

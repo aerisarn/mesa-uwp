@@ -950,7 +950,7 @@ dri3_create_screen(int screen, struct glx_display * priv)
                                           &driver_configs, psc);
 
    if (psc->driScreen == NULL) {
-      ErrorMessageF("failed to create dri screen\n");
+      ErrorMessageF("glx: failed to create dri3 screen\n");
       goto handle_error;
    }
 
