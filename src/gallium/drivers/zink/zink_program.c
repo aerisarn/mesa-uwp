@@ -91,20 +91,20 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    enum pipe_shader_type pstage = pipe_shader_type_from_mesa(stage);
    VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
-   unsigned base_size = 0;
+   unsigned inline_size = 0;
    struct zink_shader_key *key = &state->shader_keys.key[pstage];
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
       if (screen->is_cpu || prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS)
-         base_size = zs->nir->info.num_inlinable_uniforms;
+         inline_size = zs->nir->info.num_inlinable_uniforms;
       else
          key->inline_uniforms = false;
    }
 
    struct zink_shader_module *iter, *next;
-   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage][!!base_size], list) {
-      if (!shader_key_matches(iter, key, base_size))
+   LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage][!!inline_size], list) {
+      if (!shader_key_matches(iter, key, inline_size))
          continue;
       list_delinit(&iter->list);
       zm = iter;
@@ -112,7 +112,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    }
 
    if (!zm) {
-      zm = malloc(sizeof(struct zink_shader_module) + key->size + base_size * sizeof(uint32_t));
+      zm = malloc(sizeof(struct zink_shader_module) + key->size + inline_size * sizeof(uint32_t));
       if (!zm) {
          return NULL;
       }
@@ -128,7 +128,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       }
       zm->shader = mod;
       list_inithead(&zm->list);
-      zm->num_uniforms = base_size;
+      zm->num_uniforms = inline_size;
       if (pstage != PIPE_SHADER_TESS_CTRL || zs->is_generated) {
          /* non-generated tcs won't use the shader key */
          zm->key_size = key->size;
@@ -137,17 +137,17 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
          zm->key_size = 0;
          memset(zm->key, 0, key->size);
       }
-      if (base_size)
-         memcpy(zm->key + key->size, &key->base, base_size * sizeof(uint32_t));
+      if (inline_size)
+         memcpy(zm->key + key->size, &key->base, inline_size * sizeof(uint32_t));
       if (zs->is_generated)
          zm->hash = zink_get_tcs_key(ctx)->patch_vertices;
       else
          zm->hash = shader_module_hash(zm);
-      zm->default_variant = !base_size && list_is_empty(&prog->shader_cache[pstage][0]);
-      if (base_size)
+      zm->default_variant = !inline_size && list_is_empty(&prog->shader_cache[pstage][0]);
+      if (inline_size)
          prog->inlined_variant_count[pstage]++;
    }
-   list_add(&zm->list, &prog->shader_cache[pstage][!!base_size]);
+   list_add(&zm->list, &prog->shader_cache[pstage][!!inline_size]);
    return zm;
 }
 
@@ -278,21 +278,21 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
    struct zink_shader *zs = comp->shader;
    VkShaderModule mod;
    struct zink_shader_module *zm = NULL;
-   unsigned base_size = 0;
+   unsigned inline_size = 0;
    struct zink_shader_key *key = &ctx->compute_pipeline_state.key;
 
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(PIPE_SHADER_COMPUTE)) {
       if (screen->is_cpu || comp->inlined_variant_count < ZINK_MAX_INLINED_VARIANTS)
-         base_size = zs->nir->info.num_inlinable_uniforms;
+         inline_size = zs->nir->info.num_inlinable_uniforms;
       else
          key->inline_uniforms = false;
    }
 
-   if (base_size) {
+   if (inline_size) {
       struct zink_shader_module *iter, *next;
       LIST_FOR_EACH_ENTRY_SAFE(iter, next, &comp->shader_cache, list) {
-         if (!uniforms_match(iter, key->base.inlined_uniform_values, base_size))
+         if (!uniforms_match(iter, key->base.inlined_uniform_values, inline_size))
             continue;
          list_delinit(&iter->list);
          zm = iter;
@@ -303,7 +303,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
    }
 
    if (!zm) {
-      zm = malloc(sizeof(struct zink_shader_module) + base_size * sizeof(uint32_t));
+      zm = malloc(sizeof(struct zink_shader_module) + inline_size * sizeof(uint32_t));
       if (!zm) {
          return;
       }
@@ -314,10 +314,10 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
       }
       zm->shader = mod;
       list_inithead(&zm->list);
-      zm->num_uniforms = base_size;
+      zm->num_uniforms = inline_size;
       zm->key_size = 0;
-      assert(base_size);
-      memcpy(zm->key, key->base.inlined_uniform_values, base_size * sizeof(uint32_t));
+      assert(inline_size);
+      memcpy(zm->key, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
       zm->hash = cs_module_hash(zm);
       zm->default_variant = false;
       comp->inlined_variant_count++;
