@@ -410,6 +410,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
    util_dynarray_init(&sampler->desc_set_refs.refs, NULL);
    calc_descriptor_hash_sampler_state(sampler);
    sampler->custom_border_color = need_custom;
+   sampler->nonseamless = !state->seamless_cube_map;
 
    return sampler;
 }

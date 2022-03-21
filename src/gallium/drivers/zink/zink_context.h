@@ -80,6 +80,7 @@ struct zink_sampler_state {
    struct zink_descriptor_refs desc_set_refs;
    struct zink_batch_usage *batch_uses;
    bool custom_border_color;
+   bool nonseamless;
 };
 
 struct zink_buffer_view {
