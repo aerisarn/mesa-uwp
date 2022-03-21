@@ -2967,14 +2967,3 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceGroupPeerMemoryFeaturesKHR(
 {
    *pPeerMemoryFeatures = 0;
 }
-
-/* VK_EXT_tooling_info */
-VKAPI_ATTR VkResult VKAPI_CALL
-lvp_GetPhysicalDeviceToolPropertiesEXT(
-   VkPhysicalDevice physicalDevice,
-   uint32_t *pToolCount,
-   VkPhysicalDeviceToolPropertiesEXT *pToolProperties)
-{
-   *pToolCount = 0;
-   return VK_SUCCESS;
-}

@@ -283,3 +283,14 @@ vk_common_GetPhysicalDeviceSparseImageFormatProperties(VkPhysicalDevice physical
 
    STACK_ARRAY_FINISH(props2);
 }
+
+/* VK_EXT_tooling_info */
+VKAPI_ATTR VkResult VKAPI_CALL
+vk_common_GetPhysicalDeviceToolProperties(VkPhysicalDevice physicalDevice,
+                                          uint32_t *pToolCount,
+                                          VkPhysicalDeviceToolProperties *pToolProperties)
+{
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceToolProperties, out, pToolProperties, pToolCount);
+
+   return vk_outarray_status(&out);
+}
