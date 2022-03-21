@@ -964,19 +964,19 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
 
    zink_program_update_compute_pipeline_state(ctx, ctx->curr_compute, info->block);
    VkPipeline prev_pipeline = ctx->compute_pipeline_state.pipeline;
-   VkPipeline pipeline = zink_get_compute_pipeline(screen, ctx->curr_compute,
-                                               &ctx->compute_pipeline_state);
 
    if (BATCH_CHANGED) {
       zink_update_descriptor_refs(ctx, true);
       zink_batch_reference_program(&ctx->batch, &ctx->curr_compute->base);
    }
-
    if (ctx->dirty_shader_stages & BITFIELD_BIT(PIPE_SHADER_COMPUTE)) {
       /* update inlinable constants */
       zink_update_compute_program(ctx);
       ctx->dirty_shader_stages &= ~BITFIELD_BIT(PIPE_SHADER_COMPUTE);
    }
+
+   VkPipeline pipeline = zink_get_compute_pipeline(screen, ctx->curr_compute,
+                                               &ctx->compute_pipeline_state);
 
    if (prev_pipeline != pipeline || BATCH_CHANGED)
       VKCTX(CmdBindPipeline)(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
