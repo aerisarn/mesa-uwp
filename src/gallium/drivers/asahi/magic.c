@@ -160,22 +160,24 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             bool clear_pipeline_textures)
 {
    uint32_t *map = (uint32_t *) buf;
-   memset(map, 0, 474 * 4);
+   memset(map, 0, 518 * 4);
 
    map[54] = 0x6b0003;
    map[55] = 0x3a0012;
    map[56] = 1;
 
-   map[106] = 1;
-   map[108] = 0x1c;
-   map[112] = 0xffffffff;
-   map[113] = 0xffffffff;
-   map[114] = 0xffffffff;
+   /* Unknown address at word 110 */
+
+   map[112] = 1;
+   map[114] = 0x1c;
+   map[118] = 0xffffffff;
+   map[119] = 0xffffffff;
+   map[120] = 0xffffffff;
 
    uint64_t unk_buffer = demo_zero(pool, 0x1000);
    uint64_t unk_buffer_2 = demo_zero(pool, 0x8000);
 
-   agx_pack(map + 156, IOGPU_INTERNAL_PIPELINES, cfg) {
+   agx_pack(map + 160, IOGPU_INTERNAL_PIPELINES, cfg) {
       cfg.clear_pipeline_bind = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
       cfg.clear_pipeline = pipeline_clear;
       cfg.store_pipeline_bind = 0x12;
@@ -184,37 +186,33 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.unknown_buffer = unk_buffer;
    }
 
-   agx_pack(map + 220, IOGPU_AUX_FRAMEBUFFER, cfg) {
+   agx_pack(map + 228, IOGPU_AUX_FRAMEBUFFER, cfg) {
       cfg.width = framebuffer->width;
       cfg.height = framebuffer->height;
       cfg.z16_unorm_attachment = false;
       cfg.pointer = unk_buffer_2;
    }
 
-   agx_pack(map + 276, IOGPU_CLEAR_Z_S, cfg) {
+   agx_pack(map + 292, IOGPU_CLEAR_Z_S, cfg) {
       cfg.depth_clear_value = fui(1.0); // 32-bit float
       cfg.stencil_clear_value = 0;
       cfg.z16_unorm_attachment = false;
    }
 
-   map[284] = 0xffffffff;
-   map[285] = 0xffffffff;
-   map[286] = 0xffffffff;
+   map[312] = 0xffff8212;
+   map[314] = pipeline_null | 0x4;
+   map[320] = 0x12;
+   map[322] = pipeline_store | 0x4;
 
-   map[298] = 0xffff8212;
-   map[300] = pipeline_null | 0x4;
-   map[305] = 0x12;
-   map[306] = pipeline_store | 0x4;
-
-   agx_pack(map + 344, IOGPU_MISC, cfg) {
+   agx_pack(map + 356, IOGPU_MISC, cfg) {
       cfg.encoder_id = encoder_id;
       cfg.unknown_buffer = demo_unk6(pool);
       cfg.width = framebuffer->width;
       cfg.height = framebuffer->height;
    }
 
-   unsigned offset_unk = (458 * 4);
-   unsigned offset_attachments = (470 * 4);
+   unsigned offset_unk = (484 * 4);
+   unsigned offset_attachments = (496 * 4);
 
    unsigned nr_attachments =
       asahi_pack_iogpu_attachments(map + (offset_attachments / 4) + 4,
@@ -226,8 +224,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 
    agx_pack(map, IOGPU_HEADER, cfg) {
       cfg.total_size = total_size;
-      cfg.attachment_offset_1 = offset_attachments;
-      cfg.attachment_offset_2 = offset_attachments;
+      cfg.attachment_offset = offset_attachments;
       cfg.attachment_length = nr_attachments * AGX_IOGPU_ATTACHMENT_LENGTH;
       cfg.unknown_offset = offset_unk;
       cfg.encoder = encoder_ptr;

@@ -515,18 +515,18 @@
 
   <!--- The rest of this file is likely software defined by macOS kernel -->
   <enum name="IOGPU Attachment Type">
-    <value name="Colour" value="0xA"/>
-    <value name="Depth" value="0xC"/>
-    <value name="Stencil" value="0xD"/>
+    <value name="Colour" value="0xE"/>
+    <value name="Depth" value="0x10"/>
+    <value name="Stencil" value="0x11"/>
   </enum>
 
   <struct name="IOGPU Header" size="192">
     <field name="Unk 0" start="0:0" size="32" default="0x10000" type="hex"/>
     <field name="Total size" start="1:0" size="32" type="uint"/>
-    <field name="Unk 2" start="2:0" size="32" default="0x7" type="hex"/>
-    <field name="Attachment offset 1" start="8:0" size="32" type="uint"/>
+    <!-- 0x7 in 11.x -->
+    <field name="Unk 2" start="2:0" size="32" default="0x4" type="hex"/>
     <field name="Attachment length" start="9:0" size="32" type="uint"/>
-    <field name="Attachment offset 2" start="10:0" size="32" type="uint"/>
+    <field name="Attachment offset" start="10:0" size="32" type="uint"/>
     <field name="Unknown offset" start="11:0" size="32" type="uint"/>
     <field name="Unk 4" start="12:0" size="32" default="0x30" type="hex"/>
     <field name="Unk 5" start="13:0" size="32" default="0x01" type="hex"/>
@@ -541,42 +541,42 @@
     <field name="Unk 0" start="0:0" size="16" default="0x100" type="hex"/>
     <field name="Address" start="0:16" size="48" type="address"/>
     <field name="Type" start="2:16" size="16" type="IOGPU Attachment Type"/>
-    <field name="Size" start="3:16" size="32" type="uint"/>
+    <field name="Size" start="3:9" size="32" type="uint"/>
     <field name="Unk 3" start="4:16" size="4" type="hex" default="0xC"/>
     <!-- Percent of total attachment space used for this attachment, expressed
          in a decimal percentage [0, 100] <field name="Percent" start="5:16" -->
     <field name="Percent" start="5:16" size="16" type="uint"/>
   </struct>
 
-  <struct name="IOGPU Internal Pipelines" size="256">
-    <field name="Clear pipeline bind" start="0:0" size="32" type="hex"/>
-    <field name="Clear pipeline unk" start="2:0" size="4" default="4" type="hex"/>
-    <field name="Clear pipeline" start="2:4" size="28" type="address" modifier="shr(4)"/>
-    <field name="Store pipeline bind" start="7:0" size="32" type="hex"/>
-    <field name="Store pipeline unk" start="8:0" size="4" default="4" type="hex"/>
-    <field name="Store pipeline" start="8:4" size="28" type="address" modifier="shr(4)"/>
-    <field name="Scissor array" start="10:0" size="64" type="address"/>
+  <struct name="IOGPU Internal Pipelines" size="272">
+    <field name="Clear pipeline bind" start="2:0" size="32" type="hex"/>
+    <field name="Clear pipeline unk" start="4:0" size="4" default="4" type="hex"/>
+    <field name="Clear pipeline" start="4:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Store pipeline bind" start="10:0" size="32" type="hex"/>
+    <field name="Store pipeline unk" start="12:0" size="4" default="4" type="hex"/>
+    <field name="Store pipeline" start="12:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Scissor array" start="14:0" size="64" type="address"/>
     <!-- Points to zeroes, allocation of 0xc0000 bytes unknwon type 28000000 -->
-    <field name="Unknown buffer" start="12:0" size="64" type="address"/>
-    <field name="Depth pipeline unk" start="16:0" size="4" default="4" type="hex"/>
+    <field name="Unknown buffer" start="16:0" size="64" type="address"/>
+    <field name="Depth pipeline unk" start="20:0" size="4" default="4" type="hex"/>
     <!-- 0xc0150 with depth clear and z32f and s8
          0x40150 with z32f and s8
          0x40 with z32f
          0x4000040 with z16?
     -->
-    <field name="Depth pipeline" start="16:4" size="28" type="address" modifier="shr(4)"/>
-    <field name="Depth unknown 1" start="22:0" size="32" type="hex"/>
-    <field name="Depth buffer (if clearing)" start="24:0" size="64" type="address"/>
-    <field name="Depth acceleration buffer (if clearing)" start="30:0" size="64" type="address"/>
+    <field name="Depth pipeline" start="20:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Depth unknown 1" start="26:0" size="32" type="hex"/>
+    <field name="Depth buffer (if clearing)" start="28:0" size="64" type="address"/>
+    <field name="Depth acceleration buffer (if clearing)" start="34:0" size="64" type="address"/>
     <!-- bytes unknown type 888F50 -->
-    <field name="Depth buffer" start="34:0" size="64" type="address"/>
+    <field name="Depth buffer" start="38:0" size="64" type="address"/>
     <!-- 16384 bytes, initialized with 0x7F bytes -->
-    <field name="Depth acceleration buffer" start="40:0" size="64" type="address"/>
-    <field name="Stencil buffer" start="44:0" size="64" type="address"/>
+    <field name="Depth acceleration buffer" start="44:0" size="64" type="address"/>
+    <field name="Stencil buffer" start="48:0" size="64" type="address"/>
     <!--- 16384 bytes, initialized with 0x1F bytes -->
-    <field name="Stencil acceleration buffer" start="50:0" size="64" type="address"/>
-    <field name="Stencil buffer 2" start="54:0" size="64" type="address"/>
-    <field name="Stencil acceleration buffer 2" start="60:0" size="64" type="address"/>
+    <field name="Stencil acceleration buffer" start="54:0" size="64" type="address"/>
+    <field name="Stencil buffer 2" start="58:0" size="64" type="address"/>
+    <field name="Stencil acceleration buffer 2" start="64:0" size="64" type="address"/>
   </struct>
 
   <struct name="IOGPU Aux Framebuffer" size="32">
@@ -588,35 +588,42 @@
     <field name="Pointer" start="6:0" size="64" type="address"/>
   </struct>
 
-  <struct name="IOGPU Clear Z/S" size="32">
+  <struct name="IOGPU Clear Z/S" size="48">
     <!-- Encoded like the depth attachment -->
-    <field name="Depth clear value" start="2:0" size="32" type="hex"/>
-    <field name="Stencil clear value" start="3:0" size="8" type="uint"/>
-    <field name="Unk 1" start="3:8" size="8" type="hex" default="3"/>
-    <field name="Unk 2" start="5:8" size="8" type="hex" default="1"/>
-    <field name="Z16 Unorm attachment" start="7:8" size="1" type="bool"/>
+    <field name="Depth clear value" start="0:0" size="32" type="hex"/>
+    <field name="Stencil clear value" start="1:0" size="8" type="uint"/>
+    <field name="Unk 1" start="1:8" size="8" type="hex" default="3"/>
+    <field name="Unk 2" start="3:8" size="8" type="hex" default="0"/>
+    <field name="Z16 Unorm attachment" start="5:8" size="1" type="bool"/>
+    <field name="Unk 3" start="6:0" size="32" type="hex" default="0xffffffff"/>
+    <field name="Unk 4" start="7:0" size="32" type="hex" default="0xffffffff"/>
+    <field name="Unk 5" start="8:0" size="32" type="hex" default="0xffffffff"/>
   </struct>
 
-  <struct name="IOGPU Misc" size="256">
-    <field name="Stencil buffer" start="0:0" size="64" type="address"/>
-    <field name="Stencil acceleration buffer" start="2:0" size="64" type="address"/>
+  <struct name="IOGPU Misc" size="288">
+    <!-- New in 12.x -->
+    <field name="Depth buffer" start="0:0" size="64" type="address"/>
+    <field name="Depth acceleration buffer" start="2:0" size="64" type="address"/>
+    <field name="Stencil buffer" start="4:0" size="64" type="address"/>
+    <field name="Stencil acceleration buffer" start="6:0" size="64" type="address"/>
     <!-- maybe only set when doing a depth clear? -->
-    <field name="Unk 8:0" start="8:0" size="32" default="0x1" type="hex"/>
-    <field name="Unk 16:0" start="16:0" size="32" default="0x1c" type="hex"/>
-    <field name="Encoder ID" start="18:0" size="32" type="hex"/>
+    <field name="Unk 8:0" start="12:0" size="32" default="0x1" type="hex"/>
+    <field name="Unk 16:0" start="20:0" size="32" default="0x1c" type="hex"/>
+    <field name="Encoder ID" start="22:0" size="32" type="hex"/>
     <!-- top bit maybe only set with a depth clear? -->
-    <field name="Unk 21:0" start="21:0" size="64" default="0x1ffffffff" type="hex"/>
-    <field name="Unknown buffer" start="26:0" size="64" type="address"/>
-    <field name="Width" start="30:0" size="32" type="uint"/>
-    <field name="Height" start="31:0" size="32" type="uint"/>
-    <field name="Unk 32:0" start="32:0" size="32" default="1" type="uint"/>
-    <field name="Unk 33:0" start="33:0" size="32" default="8" type="uint"/>
-    <field name="Unk 34:0" start="34:0" size="32" default="8" type="uint"/>
-    <field name="Unk 49:0" start="49:0" size="32" default="8" type="uint"/>
-    <field name="Unk 50:0" start="50:0" size="32" default="32" type="uint"/>
-    <field name="Unk 51:0" start="51:0" size="32" default="32" type="uint"/>
-    <field name="Unk 52:0" start="52:0" size="32" default="1" type="uint"/>
-    <field name="Unk 56:0" start="56:0" size="32" default="1" type="uint"/>
+    <field name="Unk 21:0" start="25:0" size="64" default="0x1ffffffff" type="hex"/>
+    <field name="Unknown buffer" start="30:0" size="64" type="address"/>
+    <field name="Width" start="42:0" size="32" type="uint"/>
+    <field name="Height" start="43:0" size="32" type="uint"/>
+    <field name="Unk 32:0" start="44:0" size="32" default="1" type="uint"/>
+    <field name="Unk 33:0" start="45:0" size="32" default="8" type="uint"/>
+    <field name="Unk 34:0" start="46:0" size="32" default="8" type="uint"/>
+    <field name="Unk 49:0" start="61:0" size="32" default="8" type="uint"/>
+    <field name="Unk 50:0" start="62:0" size="32" default="32" type="uint"/>
+    <field name="Unk 51:0" start="63:0" size="32" default="32" type="uint"/>
+    <field name="Unk 52:0" start="64:0" size="32" default="1" type="uint"/>
+    <field name="Unk 56:0" start="68:0" size="32" default="0" type="uint"/>
+    <field name="Unk 70:0" start="70:0" size="32" default="1" type="uint"/>
   </struct>
 
 </agxml>
