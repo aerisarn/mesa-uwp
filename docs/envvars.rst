@@ -226,6 +226,16 @@ the :doc:`Xlib software driver page <xlibdriver>` for details.
 :envvar:`MESA_GLX_ALPHA_BITS`
    specifies default number of bits for alpha channel.
 
+Mesa WGL driver environment variables
+-------------------------------------
+
+The following are only applicable to the Mesa WGL driver, which is in use
+on Windows.
+
+:envvar:`WGL_FORCE_MSAA`
+   if set to a positive value, specifies the number of MSAA samples to
+   force when choosing the display configuration.
+
 Intel driver environment variables
 ----------------------------------------------------
 
