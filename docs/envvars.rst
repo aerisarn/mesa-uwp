@@ -600,6 +600,9 @@ VC4 driver environment variables
    ``dump``
       write a GPU command stream trace file (VC4 simulator only)
 
+
+.. _radv env-vars:
+
 RADV driver environment variables
 ---------------------------------
 
