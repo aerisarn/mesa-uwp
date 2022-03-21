@@ -2196,8 +2196,11 @@ void si_ps_key_update_framebuffer_blend(struct si_context *sctx)
    /* Eliminate shader code computing output values that are unused.
     * This enables dead code elimination between shader parts.
     * Check if any output is eliminated.
+    *
+    * Dual source blending never has color buffer 1 enabled, so ignore it.
     */
    if (sel->colors_written_4bit &
+       (blend->dual_src_blend ? 0xffffff0f : 0xffffffff) &
        ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
       key->ps.opt.prefer_mono = 1;
    else
