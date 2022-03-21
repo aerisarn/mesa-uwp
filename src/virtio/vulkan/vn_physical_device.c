@@ -15,7 +15,6 @@
 #include "git_sha1.h"
 #include "util/mesa-sha1.h"
 #include "venus-protocol/vn_protocol_driver_device.h"
-#include "venus-protocol/vn_protocol_driver_info.h"
 
 #include "vn_android.h"
 #include "vn_instance.h"
@@ -1046,14 +1045,14 @@ vn_physical_device_init_renderer_extensions(
             continue;
 
          /* check encoder support */
-         const struct vn_info_extension *enc_ext =
-            vn_info_extension_get(props->extensionName);
-         if (!enc_ext)
+         const uint32_t enc_ext_spec_version =
+            vn_extension_get_spec_version(props->extensionName);
+         if (!enc_ext_spec_version)
             continue;
 
          physical_dev->renderer_extensions.extensions[i] = true;
          physical_dev->extension_spec_versions[i] =
-            MIN2(exts[j].specVersion, enc_ext->spec_version);
+            MIN2(exts[j].specVersion, enc_ext_spec_version);
 
          break;
       }

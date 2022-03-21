@@ -236,6 +236,9 @@ vn_refcount_dec(struct vn_refcount *ref)
    return old == 1;
 }
 
+uint32_t
+vn_extension_get_spec_version(const char *name);
+
 void
 vn_relax(uint32_t *iter, const char *reason);
 

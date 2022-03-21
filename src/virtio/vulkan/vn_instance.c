@@ -266,17 +266,16 @@ vn_instance_init_renderer(struct vn_instance *instance)
       return VK_ERROR_INITIALIZATION_FAILED;
    }
 
-   const struct vn_info_extension *ext =
-      vn_info_extension_get("VK_EXT_command_serialization");
+   uint32_t spec_version =
+      vn_extension_get_spec_version("VK_EXT_command_serialization");
    if (renderer_info->vk_ext_command_serialization_spec_version >
-       ext->spec_version) {
-      renderer_info->vk_ext_command_serialization_spec_version =
-         ext->spec_version;
+       spec_version) {
+      renderer_info->vk_ext_command_serialization_spec_version = spec_version;
    }
 
-   ext = vn_info_extension_get("VK_MESA_venus_protocol");
-   if (renderer_info->vk_mesa_venus_protocol_spec_version > ext->spec_version)
-      renderer_info->vk_mesa_venus_protocol_spec_version = ext->spec_version;
+   spec_version = vn_extension_get_spec_version("VK_MESA_venus_protocol");
+   if (renderer_info->vk_mesa_venus_protocol_spec_version > spec_version)
+      renderer_info->vk_mesa_venus_protocol_spec_version = spec_version;
 
    if (VN_DEBUG(INIT)) {
       vn_log(instance, "connected to renderer");

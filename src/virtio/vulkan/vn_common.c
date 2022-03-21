@@ -15,6 +15,7 @@
 #include "util/debug.h"
 #include "util/log.h"
 #include "util/os_misc.h"
+#include "venus-protocol/vn_protocol_driver_info.h"
 #include "vk_enum_to_str.h"
 
 static const struct debug_control vn_debug_options[] = {
@@ -68,6 +69,13 @@ vn_log_result(struct vn_instance *instance,
 {
    vn_log(instance, "%s: %s", where, vk_Result_to_str(result));
    return result;
+}
+
+uint32_t
+vn_extension_get_spec_version(const char *name)
+{
+   const struct vn_info_extension *ext = vn_info_extension_get(name);
+   return ext ? ext->spec_version : 0;
 }
 
 void
