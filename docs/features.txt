@@ -462,7 +462,7 @@ Vulkan 1.2 -- all DONE: anv, vn
   VK_KHR_spirv_1_4                                      DONE (anv, lvp, radv, tu, vn)
   VK_KHR_timeline_semaphore                             DONE (anv, lvp, radv, tu, vn)
   VK_KHR_uniform_buffer_standard_layout                 DONE (anv, lvp, radv, tu, v3dv, vn)
-  VK_KHR_vulkan_memory_model                            DONE (anv, radv, tu, vn)
+  VK_KHR_vulkan_memory_model                            DONE (anv, lvp, radv, tu, vn)
   VK_EXT_descriptor_indexing                            DONE (anv/gen9+, radv, tu, vn)
   VK_EXT_host_query_reset                               DONE (anv, lvp, radv, tu, v3dv, vn)
   VK_EXT_sampler_filter_minmax                          DONE (anv/gen9+, lvp, radv, tu, vn)
@@ -470,7 +470,7 @@ Vulkan 1.2 -- all DONE: anv, vn
   VK_EXT_separate_stencil_usage                         DONE (anv, lvp, tu, vn)
   VK_EXT_shader_viewport_index_layer                    DONE (anv, lvp, radv, tu, vn)
 
-Vulkan 1.3 -- all DONE: anv, radv
+Vulkan 1.3 -- all DONE: anv, radv, lvp
 
   VK_KHR_copy_commands2                                 DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_dynamic_rendering                              DONE (anv, lvp, radv)
