@@ -10,4 +10,5 @@ hardware-agnostic bits in common code.
    :maxdepth: 2
 
    base-objs
+   dispatch
    renderpass
