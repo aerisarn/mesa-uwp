@@ -318,7 +318,7 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
    VkPipelineShaderStageCreateInfo stage = {0};
    stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
    stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-   stage.module = comp->module->shader;
+   stage.module = comp->curr->shader;
    stage.pName = "main";
 
    VkSpecializationInfo sinfo = {0};
