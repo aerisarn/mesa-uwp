@@ -99,6 +99,7 @@ struct zink_sampler_view {
       struct zink_surface *image_view;
       struct zink_buffer_view *buffer_view;
    };
+   struct zink_surface *cube_array;
 };
 
 struct zink_image_view {

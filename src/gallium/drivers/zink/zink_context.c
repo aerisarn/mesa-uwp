@@ -734,6 +734,13 @@ clamp_zs_swizzle(enum pipe_swizzle swizzle)
    return swizzle;
 }
 
+ALWAYS_INLINE static bool
+viewtype_is_cube(const VkImageViewCreateInfo *ivci)
+{
+   return ivci->viewType == VK_IMAGE_VIEW_TYPE_CUBE ||
+          ivci->viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+}
+
 static struct pipe_sampler_view *
 zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
                          const struct pipe_sampler_view *state)
@@ -806,6 +813,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       assert(ivci.format);
 
       sampler_view->image_view = (struct zink_surface*)zink_get_surface(ctx, pres, &templ, &ivci);
+      if (viewtype_is_cube(&sampler_view->image_view->ivci)) {
+         ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+         sampler_view->cube_array = (struct zink_surface*)zink_get_surface(ctx, pres, &templ, &ivci);
+      }
       err = !sampler_view->image_view;
    } else {
       VkBufferViewCreateInfo bvci = create_bvci(ctx, res, state->format, state->u.buf.offset, state->u.buf.size);
@@ -848,6 +859,7 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
       zink_buffer_view_reference(zink_screen(pctx->screen), &view->buffer_view, NULL);
    else {
       zink_surface_reference(zink_screen(pctx->screen), &view->image_view, NULL);
+      zink_surface_reference(zink_screen(pctx->screen), &view->cube_array, NULL);
    }
    pipe_resource_reference(&pview->texture, NULL);
    FREE_CL(view);
