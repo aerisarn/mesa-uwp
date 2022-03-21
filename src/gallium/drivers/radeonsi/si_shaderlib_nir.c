@@ -53,32 +53,46 @@ static void unpack_2x16(nir_builder *b, nir_ssa_def *src, nir_ssa_def **x, nir_s
    *y = nir_ushr(b, src, nir_imm_int(b, 16));
 }
 
-/* Create a NIR compute shader implementing copy_image for 1D_ARRAY images.
- */
-void *si_create_copy_image_1d_array_cs(struct pipe_context *ctx)
+static nir_ssa_def *
+deref_ssa(nir_builder *b, nir_variable *var)
 {
-   struct si_context *sctx = (struct si_context *) ctx;
+   return &nir_build_deref_var(b, var)->dest.ssa;
+}
 
+/* Create a NIR compute shader implementing copy_image.
+ *
+ * This shader can handle 1D and 2D, linear and non-linear images.
+ * It expects the source and destination (x,y,z) coords as user_data_amd,
+ * packed into 3 SGPRs as 2x16bits per component.
+ */
+void *si_create_copy_image_cs(struct si_context *sctx, bool is_1D)
+{
    const nir_shader_compiler_options *options =
       sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
 
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "copy_image_1d_array_cs");
-
-   b.shader->info.workgroup_size[0] = 64;
-   b.shader->info.workgroup_size[1] = 1;
-   b.shader->info.workgroup_size[2] = 1;
-
-   b.shader->info.cs.user_data_components_amd = 3;
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "copy_image_cs");
    b.shader->info.num_images = 2;
+
+   /* The workgroup size is either 8x8 for normal (non-linear) 2D images,
+    * or 64x1 for 1D and linear-2D images.
+    */
+   b.shader->info.workgroup_size_variable = true;
+
+   /* 1D uses 'x' as image coord, and 'y' as array index.
+    * 2D uses 'x'&'y' as image coords, and 'z' as array index.
+    */
+   int n_components = is_1D ? 2 : 3;
+   b.shader->info.cs.user_data_components_amd = n_components;
+   nir_ssa_def *ids = get_global_ids(&b, n_components);
 
    nir_ssa_def *coord_src = NULL, *coord_dst = NULL;
    unpack_2x16(&b, nir_load_user_data_amd(&b), &coord_src, &coord_dst);
 
-   nir_ssa_def *ids = get_global_ids(&b, 3);
-   coord_src = nir_channels(&b, nir_iadd(&b, coord_src, ids), /*xz*/ 0x5);
-   coord_dst = nir_channels(&b, nir_iadd(&b, coord_dst, ids), /*xz*/ 0x5);
+   coord_src = nir_iadd(&b, coord_src, ids);
+   coord_dst = nir_iadd(&b, coord_dst, ids);
 
-   const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_1D, /*is_array*/ true, GLSL_TYPE_FLOAT);
+   const struct glsl_type *img_type = glsl_image_type(is_1D ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D,
+                                                      /*is_array*/ true, GLSL_TYPE_FLOAT);
 
    nir_variable *img_src = nir_variable_create(b.shader, nir_var_image, img_type, "img_src");
    img_src->data.binding = 0;
@@ -90,56 +104,9 @@ void *si_create_copy_image_1d_array_cs(struct pipe_context *ctx)
    nir_ssa_def *zero = nir_imm_int(&b, 0);
 
    nir_ssa_def *data = nir_image_deref_load(&b, /*num_components*/ 4, /*bit_size*/ 32,
-      &nir_build_deref_var(&b, img_src)->dest.ssa, coord_src, undef32, zero);
+      deref_ssa(&b, img_src), coord_src, undef32, zero);
 
-   nir_image_deref_store(&b,
-      &nir_build_deref_var(&b, img_dst)->dest.ssa, coord_dst, undef32, data, zero);
-
-   return create_nir_cs(sctx, &b);
-}
-
-/* Create a NIR compute shader implementing copy_image.
- *
- * This is the NIR version of the removed si_create_copy_image_compute_shader() [TGSI].
- * It inherits the following note from the TGSI version:
- * "Luckily, this works with all texture targets except 1D_ARRAY."
- */
-void *si_create_copy_image_cs(struct pipe_context *ctx)
-{
-   struct si_context *sctx = (struct si_context *) ctx;
-
-   const nir_shader_compiler_options *options =
-      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
-
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "copy_image_cs");
-
-   b.shader->info.workgroup_size_variable = true;
-   b.shader->info.cs.user_data_components_amd = 3;
-   b.shader->info.num_images = 2;
-
-   nir_ssa_def *coord_src = NULL, *coord_dst = NULL;
-   unpack_2x16(&b, nir_load_user_data_amd(&b), &coord_src, &coord_dst);
-
-   nir_ssa_def *ids = get_global_ids(&b, 3);
-   coord_src = nir_iadd(&b, coord_src, ids);
-   coord_dst = nir_iadd(&b, coord_dst, ids);
-
-   const struct glsl_type *img_type =
-      glsl_image_type(GLSL_SAMPLER_DIM_2D, /*is_array*/ true, GLSL_TYPE_FLOAT);
-
-   nir_variable *img_src = nir_variable_create(b.shader, nir_var_image, img_type, "img_src");
-   img_src->data.binding = 0;
-
-   nir_variable *img_dst = nir_variable_create(b.shader, nir_var_image, img_type, "img_dst");
-   img_dst->data.binding = 1;
-
-   nir_ssa_def *data = nir_image_deref_load(&b, /*num_components*/ 4, /*bit_size*/ 32,
-      &nir_build_deref_var(&b, img_src)->dest.ssa, coord_src, nir_ssa_undef(&b, 1, 32),
-      nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
-
-   nir_image_deref_store(&b,
-      &nir_build_deref_var(&b, img_dst)->dest.ssa, coord_dst, nir_ssa_undef(&b, 1, 32), data,
-      nir_imm_int(&b, 0), .image_dim = GLSL_SAMPLER_DIM_2D);
+   nir_image_deref_store(&b, deref_ssa(&b, img_dst), coord_dst, undef32, data, zero);
 
    return create_nir_cs(sctx, &b);
 }
