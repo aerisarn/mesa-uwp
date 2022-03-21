@@ -507,6 +507,36 @@ add_interface_variables(const struct gl_constants *consts,
    return false;
 }
 
+bool
+nir_add_packed_var_to_resource_list(const struct gl_constants *consts,
+                                    struct gl_shader_program *shProg,
+                                    struct set *resource_set,
+                                    nir_variable *var,
+                                    unsigned stage, GLenum type)
+{
+   if (!add_shader_variable(consts, shProg, resource_set, 1 << stage,
+                            type, var, var->name, var->type, false,
+                            var->data.location - VARYING_SLOT_VAR0,
+                            inout_has_same_location(var, stage), NULL))
+      return false;
+
+   return true;
+}
+
+/**
+ * Initilise list of program resources that point to resource data.
+ */
+void
+init_program_resource_list(struct gl_shader_program *prog)
+{
+   /* Rebuild resource list. */
+   if (prog->data->ProgramResourceList) {
+      ralloc_free(prog->data->ProgramResourceList);
+      prog->data->ProgramResourceList = NULL;
+      prog->data->NumProgramResourceList = 0;
+   }
+}
+
 /* TODO: as we keep adding features, this method is becoming more and more
  * similar to its GLSL counterpart at linker.cpp. Eventually it would be good
  * to check if they could be refactored, and reduce code duplication somehow
@@ -517,11 +547,8 @@ nir_build_program_resource_list(const struct gl_constants *consts,
                                 bool rebuild_resourse_list)
 {
    /* Rebuild resource list. */
-   if (prog->data->ProgramResourceList && rebuild_resourse_list) {
-      ralloc_free(prog->data->ProgramResourceList);
-      prog->data->ProgramResourceList = NULL;
-      prog->data->NumProgramResourceList = 0;
-   }
+   if (rebuild_resourse_list)
+      init_program_resource_list(prog);
 
    int input_stage = MESA_SHADER_STAGES, output_stage = 0;
 

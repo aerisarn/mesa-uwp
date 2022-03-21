@@ -24,6 +24,8 @@
 #ifndef GL_NIR_LINKER_H
 #define GL_NIR_LINKER_H
 
+#include "main/glheader.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,6 +60,15 @@ bool gl_nir_link_uniforms(const struct gl_constants *consts,
 
 void gl_nir_set_uniform_initializers(const struct gl_constants *consts,
                                      struct gl_shader_program *prog);
+
+bool nir_add_packed_var_to_resource_list(const struct gl_constants *consts,
+                                         struct gl_shader_program *shProg,
+                                         struct set *resource_set,
+                                         nir_variable *var,
+                                         unsigned stage, GLenum type);
+
+void
+init_program_resource_list(struct gl_shader_program *prog);
 
 void nir_build_program_resource_list(const struct gl_constants *consts,
                                      struct gl_shader_program *prog,
