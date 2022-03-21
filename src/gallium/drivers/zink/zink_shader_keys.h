@@ -68,6 +68,7 @@ struct zink_tcs_key {
 };
 
 struct zink_shader_key_base {
+   uint32_t nonseamless_cube_mask;
    uint32_t inlined_uniform_values[MAX_INLINABLE_UNIFORMS];
 };
 
