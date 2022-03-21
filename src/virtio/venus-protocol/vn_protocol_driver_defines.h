@@ -325,6 +325,8 @@ typedef enum VkCommandTypeEXT {
     VK_COMMAND_TYPE_vkCmdDrawIndirectByteCountEXT_EXT = 186,
     VK_COMMAND_TYPE_vkGetMemoryFdKHR_EXT = 193,
     VK_COMMAND_TYPE_vkGetMemoryFdPropertiesKHR_EXT = 194,
+    VK_COMMAND_TYPE_vkImportFenceFdKHR_EXT = 238,
+    VK_COMMAND_TYPE_vkGetFenceFdKHR_EXT = 239,
     VK_COMMAND_TYPE_vkGetImageDrmFormatModifierPropertiesEXT_EXT = 187,
     VK_COMMAND_TYPE_vkCmdSetPatchControlPointsEXT_EXT = 233,
     VK_COMMAND_TYPE_vkCmdSetLogicOpEXT_EXT = 234,

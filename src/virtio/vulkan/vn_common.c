@@ -74,8 +74,8 @@ vn_log_result(struct vn_instance *instance,
 uint32_t
 vn_extension_get_spec_version(const char *name)
 {
-   const struct vn_info_extension *ext = vn_info_extension_get(name);
-   return ext ? ext->spec_version : 0;
+   const int32_t index = vn_info_extension_index(name);
+   return index >= 0 ? vn_info_extension_get(index)->spec_version : 0;
 }
 
 void
