@@ -138,7 +138,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
          memset(zm->key, 0, key->size);
       }
       if (inline_size)
-         memcpy(zm->key + key->size, &key->base, inline_size * sizeof(uint32_t));
+         memcpy(zm->key + key->size, key->base.inlined_uniform_values, inline_size * sizeof(uint32_t));
       if (zs->is_generated)
          zm->hash = zink_get_tcs_key(ctx)->patch_vertices;
       else
