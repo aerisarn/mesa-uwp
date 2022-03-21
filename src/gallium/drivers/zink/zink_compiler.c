@@ -38,6 +38,9 @@
 
 #include "util/u_memory.h"
 
+bool
+zink_lower_cubemap_to_array(nir_shader *s, uint32_t nonseamless_cube_mask);
+
 static void
 create_vs_pushconst(nir_shader *nir)
 {
@@ -1362,6 +1365,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
          }
          break;
       default: break;
+      }
+      if (key->base.nonseamless_cube_mask) {
+         NIR_PASS_V(nir, zink_lower_cubemap_to_array, key->base.nonseamless_cube_mask);
+         need_optimize = true;
       }
    }
    if (screen->driconf.inline_uniforms) {
