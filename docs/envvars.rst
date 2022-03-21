@@ -235,6 +235,9 @@ on Windows.
 :envvar:`WGL_FORCE_MSAA`
    if set to a positive value, specifies the number of MSAA samples to
    force when choosing the display configuration.
+:envvar:`WGL_DISABLE_ERROR_DIALOGS`
+   if set to 1, true or yes, disables Win32 error dialogs. Useful for
+   automated test-runs.
 
 Intel driver environment variables
 ----------------------------------------------------
