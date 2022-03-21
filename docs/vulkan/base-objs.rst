@@ -164,3 +164,12 @@ We also provide an implementation of
    }
 
 .. doxygenfunction:: vk_enumerate_instance_extension_properties
+
+vk_physical_device
+------------------
+
+.. doxygenstruct:: vk_physical_device
+   :members:
+
+.. doxygenfunction:: vk_physical_device_init
+.. doxygenfunction:: vk_physical_device_finish
