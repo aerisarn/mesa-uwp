@@ -608,8 +608,11 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
 {
    if (sv->base.target == PIPE_BUFFER)
       zink_batch_reference_bufferview(batch, sv->buffer_view);
-   else
+   else {
       zink_batch_reference_surface(batch, sv->image_view);
+      if (sv->cube_array)
+         zink_batch_reference_surface(batch, sv->cube_array);
+   }
 }
 
 void

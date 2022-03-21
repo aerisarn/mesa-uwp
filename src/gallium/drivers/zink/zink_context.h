@@ -268,7 +268,7 @@ struct zink_context {
    struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
    bool vertex_buffers_dirty;
 
-   void *sampler_states[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+   struct zink_sampler_state *sampler_states[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
 
    struct zink_viewport_state vp_state;
@@ -322,6 +322,8 @@ struct zink_context {
 
       VkDescriptorImageInfo textures[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       VkBufferView tbos[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
+      uint32_t nonseamless[PIPE_SHADER_TYPES];
+      uint32_t cubes[PIPE_SHADER_TYPES];
       uint8_t num_samplers[PIPE_SHADER_TYPES];
       uint8_t num_sampler_views[PIPE_SHADER_TYPES];
 

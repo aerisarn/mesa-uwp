@@ -437,7 +437,12 @@ get_imageview_for_binding(struct zink_context *ctx, enum pipe_shader_type stage,
    switch (type) {
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW: {
       struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[stage][idx]);
-      return sampler_view->base.texture ? sampler_view->image_view : NULL;
+      if (!sampler_view->base.texture)
+         return NULL;
+      /* if this is a non-seamless cube sampler, return the cube array view */
+      return (ctx->di.nonseamless[stage] & ctx->di.cubes[stage] & BITFIELD_BIT(idx)) ?
+             sampler_view->cube_array :
+             sampler_view->image_view;
    }
    case ZINK_DESCRIPTOR_TYPE_IMAGE: {
       struct zink_image_view *image_view = &ctx->image_views[stage][idx];
@@ -588,6 +593,21 @@ update_descriptor_state_image(struct zink_context *ctx, enum pipe_shader_type sh
 }
 
 static void
+update_nonseamless_shader_key(struct zink_context *ctx, enum pipe_shader_type pstage)
+{
+   uint32_t *mask;
+   if (pstage == PIPE_SHADER_COMPUTE)
+      mask = &ctx->compute_pipeline_state.key.base.nonseamless_cube_mask;
+   else
+      mask = &ctx->gfx_pipeline_state.shader_keys.key[pstage].base.nonseamless_cube_mask;
+
+   const uint32_t new_mask = ctx->di.nonseamless[pstage] & ctx->di.cubes[pstage];
+   if (new_mask != *mask)
+      ctx->dirty_shader_stages |= BITFIELD_BIT(pstage);
+   *mask = new_mask;
+}
+
+static void
 zink_bind_sampler_states(struct pipe_context *pctx,
                          enum pipe_shader_type shader,
                          unsigned start_slot,
@@ -595,16 +615,36 @@ zink_bind_sampler_states(struct pipe_context *pctx,
                          void **samplers)
 {
    struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   uint32_t mask = BITFIELD_RANGE(start_slot, num_samplers);
+   ctx->di.nonseamless[shader] &= ~mask;
    for (unsigned i = 0; i < num_samplers; ++i) {
       struct zink_sampler_state *state = samplers[i];
       if (ctx->sampler_states[shader][start_slot + i] != state)
          zink_screen(pctx->screen)->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, 1);
+      bool was_nonseamless = false;
+      if (ctx->sampler_states[shader][start_slot + i])
+         was_nonseamless = ctx->sampler_states[shader][start_slot + i]->nonseamless;
       ctx->sampler_states[shader][start_slot + i] = state;
       ctx->di.textures[shader][start_slot + i].sampler = state ? state->sampler : VK_NULL_HANDLE;
-      if (state)
+      if (state) {
          zink_batch_usage_set(&state->batch_uses, ctx->batch.state);
+         const uint32_t bit = BITFIELD_BIT(start_slot + i);
+         if (state->nonseamless)
+            ctx->di.nonseamless[shader] |= bit;
+         if (state->nonseamless != was_nonseamless && (ctx->di.cubes[shader] & bit)) {
+            struct zink_surface *surface = get_imageview_for_binding(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i);
+            if (surface && ctx->di.image_surfaces[shader][start_slot + i].surface != surface) {
+               ctx->di.images[shader][start_slot + i].imageView = surface->image_view;
+               ctx->di.image_surfaces[shader][start_slot + i].surface = surface;
+               update_descriptor_state_sampler(ctx, shader, start_slot + i, zink_resource(surface->base.texture));
+               screen->context_invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot + i, 1);
+            }
+         }
+      }
    }
    ctx->di.num_samplers[shader] = start_slot + num_samplers;
+   update_nonseamless_shader_key(ctx, shader);
 }
 
 static void
@@ -1499,6 +1539,9 @@ zink_set_sampler_views(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    unsigned i;
 
+   const uint32_t mask = BITFIELD_RANGE(start_slot, num_views);
+   ctx->di.cubes[shader_type] &= ~mask;
+
    bool update = false;
    for (i = 0; i < num_views; ++i) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
@@ -1545,6 +1588,10 @@ zink_set_sampler_views(struct pipe_context *pctx,
                 update = true;
              if (shader_type == PIPE_SHADER_COMPUTE)
                 flush_pending_clears(ctx, res);
+             if (viewtype_is_cube(&b->image_view->ivci)) {
+                ctx->di.cubes[shader_type] |= BITFIELD_BIT(start_slot + i);
+                zink_batch_usage_set(&b->cube_array->batch_uses, ctx->batch.state);
+             }
              check_for_layout_update(ctx, res, shader_type == PIPE_SHADER_COMPUTE);
              zink_batch_usage_set(&b->image_view->batch_uses, ctx->batch.state);
              if (!a)
@@ -1573,8 +1620,10 @@ zink_set_sampler_views(struct pipe_context *pctx,
       update_descriptor_state_sampler(ctx, shader_type, start_slot + i, NULL);
    }
    ctx->di.num_sampler_views[shader_type] = start_slot + num_views;
-   if (update)
+   if (update) {
       zink_screen(pctx->screen)->context_invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, start_slot, num_views);
+      update_nonseamless_shader_key(ctx, shader_type);
+   }
 }
 
 static uint64_t
@@ -2478,10 +2527,13 @@ update_resource_refs_for_stage(struct zink_context *ctx, enum pipe_shader_type s
             if (sampler_state && i == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW && j <= ctx->di.num_samplers[stage])
                zink_batch_usage_set(&sampler_state->batch_uses, ctx->batch.state);
             if (sv && i == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW && j <= ctx->di.num_sampler_views[stage]) {
-               if (res->obj->is_buffer)
+               if (res->obj->is_buffer) {
                   zink_batch_usage_set(&sv->buffer_view->batch_uses, ctx->batch.state);
-               else
+               } else {
                   zink_batch_usage_set(&sv->image_view->batch_uses, ctx->batch.state);
+                  if (sv->cube_array)
+                     zink_batch_usage_set(&sv->cube_array->batch_uses, ctx->batch.state);
+               }
                zink_batch_reference_sampler_view(batch, sv);
             } else if (i == ZINK_DESCRIPTOR_TYPE_IMAGE && j <= ctx->di.num_images[stage]) {
                if (res->obj->is_buffer)
