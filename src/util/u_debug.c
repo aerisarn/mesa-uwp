@@ -75,10 +75,10 @@ _util_debug_message(struct util_debug_callback *cb,
 }
 
 
-void
-debug_disable_error_message_boxes(void)
-{
 #ifdef _WIN32
+void
+debug_disable_win32_error_dialogs(void)
+{
    /* When Windows' error message boxes are disabled for this process (as is
     * typically the case when running tests in an automated fashion) we disable
     * CRT message boxes too.
@@ -97,8 +97,8 @@ debug_disable_error_message_boxes(void)
       _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
    }
-#endif /* _WIN32 */
 }
+#endif /* _WIN32 */
 
 
 #ifdef DEBUG

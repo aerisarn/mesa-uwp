@@ -120,7 +120,7 @@ stw_init(const struct stw_winsys *stw_winsys)
 {
    static struct stw_device stw_dev_storage;
 
-   debug_disable_error_message_boxes();
+   debug_disable_win32_error_dialogs();
 
    assert(!stw_dev);
 

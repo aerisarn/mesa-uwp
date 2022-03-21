@@ -177,13 +177,15 @@ void debug_print_blob( const char *name, const void *blob, unsigned size );
 #endif
 
 
+#ifdef _WIN32
 /**
- * Disable interactive error message boxes.
+ * Disable Win32 interactive error message boxes.
  *
  * Should be called as soon as possible for effectiveness.
  */
 void
-debug_disable_error_message_boxes(void);
+debug_disable_win32_error_dialogs(void);
+#endif
 
 
 /**
