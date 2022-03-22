@@ -103,7 +103,6 @@ static void init_navi10(struct radeon_info *info)
    info->use_display_dcc_with_retile_blit = false;
    info->has_graphics = true;
    info->tcc_cache_line_size = 128;
-   info->max_render_backends = 16;
 
    info->gb_addr_config = 0x00100044;
 }
@@ -118,14 +117,13 @@ static void init_navi14(struct radeon_info *info)
    info->use_display_dcc_with_retile_blit = false;
    info->has_graphics = true;
    info->tcc_cache_line_size = 128;
-   info->max_render_backends = 8;
 
    info->gb_addr_config = 0x00000043;
 }
 
-static void init_sienna_cichlid(struct radeon_info *info)
+static void init_gfx103(struct radeon_info *info)
 {
-   info->family = CHIP_SIENNA_CICHLID;
+   info->family = CHIP_SIENNA_CICHLID; /* This doesn't affect tests. */
    info->chip_class = GFX10_3;
    info->family_id = AMDGPU_FAMILY_NV;
    info->chip_external_rev = 0x28;
@@ -135,26 +133,8 @@ static void init_sienna_cichlid(struct radeon_info *info)
    info->tcc_cache_line_size = 128;
    info->has_rbplus = true;
    info->rbplus_allowed = true;
-   info->max_render_backends = 16;
 
-   info->gb_addr_config = 0x00000444;
-}
-
-static void init_navy_flounder(struct radeon_info *info)
-{
-   info->family = CHIP_NAVY_FLOUNDER;
-   info->chip_class = GFX10_3;
-   info->family_id = AMDGPU_FAMILY_NV;
-   info->chip_external_rev = 0x32;
-   info->use_display_dcc_unaligned = false;
-   info->use_display_dcc_with_retile_blit = true;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 128;
-   info->has_rbplus = true;
-   info->rbplus_allowed = true;
-   info->max_render_backends = 8;
-
-   info->gb_addr_config = 0x00000344;
+   info->gb_addr_config = 0x00000040; /* Other fields are set by test cases. */
 }
 
 struct testcase {
@@ -175,12 +155,16 @@ static struct testcase testcases[] = {
    {"vega20", init_vega20, 4, 2, 2, 2},
    {"raven", init_raven, 0, 2, 0, 1},
    {"raven2", init_raven2, 3, 1, 0, 1},
-   {"navi10", init_navi10, 0, 4, 1, 0},
-   {"navi10_diff_pipe", init_navi10, 0, 3, 1, 0},
-   {"navi10_diff_pkr", init_navi10, 1, 4, 1, 0},
-   {"navi14", init_navi14, 1, 3, 1, 0},
-   {"sienna_cichlid", init_sienna_cichlid},
-   {"navy_flounder", init_navy_flounder},
+   /* Just test a bunch of different numbers. (packers, pipes) */
+   {"navi10", init_navi10, 0, 4},
+   {"navi10_diff_pipe", init_navi10, 0, 3},
+   {"navi10_diff_pkr", init_navi10, 1, 4},
+   {"navi14", init_navi14, 1, 3},
+   {"gfx103_16pipe", init_gfx103, 4, 4},
+   {"gfx103_16pipe_8pkr", init_gfx103, 3, 4},
+   {"gfx103_8pipe", init_gfx103, 3, 3},
+   {"gfx103_4pipe", init_gfx103, 2, 2},
+   {"gfx103_4pipe_2pkr", init_gfx103, 1, 2},
 };
 
 static struct radeon_info get_radeon_info(struct testcase *testcase)
@@ -193,15 +177,6 @@ static struct radeon_info get_radeon_info(struct testcase *testcase)
    testcase->init(&info);
 
    switch(info.chip_class) {
-   case GFX10_3:
-      break;
-   case GFX10:
-      info.gb_addr_config = (info.gb_addr_config &
-                             C_0098F8_NUM_PIPES &
-                             C_0098F8_NUM_PKRS) |
-                             S_0098F8_NUM_PIPES(testcase->pipes) |
-                             S_0098F8_NUM_PKRS(testcase->banks_or_pkrs);
-      break;
    case GFX9:
       info.gb_addr_config = (info.gb_addr_config &
                              C_0098F8_NUM_PIPES &
@@ -212,6 +187,16 @@ static struct radeon_info get_radeon_info(struct testcase *testcase)
                              S_0098F8_NUM_BANKS(testcase->banks_or_pkrs) |
                              S_0098F8_NUM_SHADER_ENGINES_GFX9(testcase->se) |
                              S_0098F8_NUM_RB_PER_SE(testcase->rb_per_se);
+      break;
+   case GFX10:
+   case GFX10_3:
+      info.gb_addr_config = (info.gb_addr_config &
+                             C_0098F8_NUM_PIPES &
+                             C_0098F8_NUM_PKRS) |
+                             S_0098F8_NUM_PIPES(testcase->pipes) |
+                             S_0098F8_NUM_PKRS(testcase->banks_or_pkrs);
+      /* 1 packer implies 1 RB except gfx10 where the field is ignored. */
+      info.max_render_backends = info.chip_class == GFX10 || testcase->banks_or_pkrs ? 2 : 1;
       break;
    default:
       unreachable("Unhandled generation");
