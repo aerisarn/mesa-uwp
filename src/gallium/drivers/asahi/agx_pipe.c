@@ -451,10 +451,14 @@ agx_flush(struct pipe_context *pctx,
       clear_pipeline_textures = true;
    }
 
-   uint64_t pipeline_store =
-      agx_build_store_pipeline(ctx,
-                               dev->internal.store,
-                               agx_pool_upload(&ctx->batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
+   uint64_t pipeline_store = 0;
+
+   if (ctx->batch->cbufs[0]) {
+      pipeline_store =
+         agx_build_store_pipeline(ctx,
+                                  dev->internal.store,
+                                  agx_pool_upload(&ctx->batch->pool, ctx->render_target[0], sizeof(ctx->render_target)));
+   }
 
    /* Pipelines must 64 aligned */
    struct agx_ptr pipeline_null =
