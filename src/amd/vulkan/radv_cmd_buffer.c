@@ -5538,7 +5538,7 @@ radv_CmdSetColorWriteEnableEXT(VkCommandBuffer commandBuffer, uint32_t attachmen
    struct radv_cmd_state *state = &cmd_buffer->state;
    uint32_t color_write_enable = 0;
 
-   assert(attachmentCount < MAX_RTS);
+   assert(attachmentCount <= MAX_RTS);
 
    for (uint32_t i = 0; i < attachmentCount; i++) {
       color_write_enable |= pColorWriteEnables[i] ? (0xfu << (i * 4)) : 0;
