@@ -1161,8 +1161,10 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
          uint32_t h;
          bool success = drmPrimeFDToHandle(screen->drm_fd, fd, &h) == 0;
          close(fd);
-         if (!success)
+         if (!success) {
+            mesa_loge("zink: failed drmPrimeFDToHandle %s", strerror(errno));
             return false;
+         }
          fd = h;
       }
       whandle->handle = fd;
