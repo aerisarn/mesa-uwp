@@ -2575,7 +2575,7 @@ rebind_fb_state(struct zink_context *ctx, struct zink_resource *match_res, bool 
 }
 
 static void
-unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, bool changed)
+unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned idx, bool changed)
 {
    if (!surf)
       return;
@@ -2626,13 +2626,13 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       struct pipe_surface *surf = ctx->fb_state.cbufs[i];
       if (i < state->nr_cbufs)
          ctx->rp_changed |= !!zink_transient_surface(surf) != !!zink_transient_surface(state->cbufs[i]);
-      unbind_fb_surface(ctx, surf, i >= state->nr_cbufs || surf != state->cbufs[i]);
+      unbind_fb_surface(ctx, surf, i, i >= state->nr_cbufs || surf != state->cbufs[i]);
    }
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *surf = ctx->fb_state.zsbuf;
       struct zink_resource *res = zink_resource(surf->texture);
       bool changed = surf != state->zsbuf;
-      unbind_fb_surface(ctx, surf, changed);
+      unbind_fb_surface(ctx, surf, PIPE_MAX_COLOR_BUFS, changed);
       if (!changed)
          ctx->rp_changed |= !!zink_transient_surface(surf) != !!zink_transient_surface(state->zsbuf);
       if (changed && unlikely(res->obj->needs_zs_evaluate))
