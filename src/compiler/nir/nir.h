@@ -4824,6 +4824,11 @@ typedef struct nir_lower_tex_options {
    unsigned lower_txp;
 
    /**
+    * If true, lower texture projector for any array sampler dims
+    */
+   bool lower_txp_array;
+
+   /**
     * If true, lower away nir_tex_src_offset for all texelfetch instructions.
     */
    bool lower_txf_offset;

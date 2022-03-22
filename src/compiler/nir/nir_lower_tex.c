@@ -1319,7 +1319,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
       /* If we are clamping any coords, we must lower projector first
        * as clamping happens *after* projection:
        */
-      if (lower_txp || sat_mask) {
+      if (lower_txp || sat_mask ||
+          (options->lower_txp_array && tex->is_array)) {
          progress |= project_src(b, tex);
       }
 
