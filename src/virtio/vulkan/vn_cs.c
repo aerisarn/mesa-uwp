@@ -8,6 +8,46 @@
 #include "vn_instance.h"
 #include "vn_renderer.h"
 
+struct vn_cs_renderer_protocol_info _vn_cs_renderer_protocol_info = {
+   .mutex = _SIMPLE_MTX_INITIALIZER_NP,
+};
+
+static void
+vn_cs_renderer_protocol_info_init_once(struct vn_instance *instance)
+{
+   const struct vn_renderer_info *renderer_info = &instance->renderer->info;
+   /* assume renderer protocol supports all extensions if bit 0 is not set */
+   const bool support_all_exts =
+      !vn_info_extension_mask_test(renderer_info->vk_extension_mask, 0);
+
+   _vn_cs_renderer_protocol_info.api_version = renderer_info->vk_xml_version;
+
+   STATIC_ASSERT(sizeof(renderer_info->vk_extension_mask) >=
+                 sizeof(_vn_cs_renderer_protocol_info.extension_bitset));
+
+   for (uint32_t i = 1; i <= VN_INFO_EXTENSION_MAX_NUMBER; i++) {
+      /* use protocl helper to ensure mask decoding matches encoding */
+      if (support_all_exts ||
+          vn_info_extension_mask_test(renderer_info->vk_extension_mask, i))
+         BITSET_SET(_vn_cs_renderer_protocol_info.extension_bitset, i);
+   }
+}
+
+void
+vn_cs_renderer_protocol_info_init(struct vn_instance *instance)
+{
+   simple_mtx_lock(&_vn_cs_renderer_protocol_info.mutex);
+   if (_vn_cs_renderer_protocol_info.init_once) {
+      simple_mtx_unlock(&_vn_cs_renderer_protocol_info.mutex);
+      return;
+   }
+
+   vn_cs_renderer_protocol_info_init_once(instance);
+
+   _vn_cs_renderer_protocol_info.init_once = true;
+   simple_mtx_unlock(&_vn_cs_renderer_protocol_info.mutex);
+}
+
 static void
 vn_cs_encoder_sanity_check(struct vn_cs_encoder *enc)
 {
