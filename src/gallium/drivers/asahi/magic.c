@@ -165,7 +165,9 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,
             uint32_t pipeline_store,
-            bool clear_pipeline_textures)
+            bool clear_pipeline_textures,
+            double clear_depth,
+            unsigned clear_stencil)
 {
    uint32_t *map = (uint32_t *) buf;
    memset(map, 0, 518 * 4);
@@ -233,8 +235,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    }
 
    agx_pack(map + 292, IOGPU_CLEAR_Z_S, cfg) {
-      cfg.depth_clear_value = fui(1.0); // TODO
-      cfg.stencil_clear_value = 0;
+      cfg.depth_clear_value = fui(clear_depth);
+      cfg.stencil_clear_value = clear_stencil;
    }
 
    map[312] = 0xffff8212;

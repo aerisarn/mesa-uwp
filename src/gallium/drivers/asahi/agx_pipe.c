@@ -392,6 +392,12 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
 
    if (buffers & PIPE_CLEAR_COLOR0)
       memcpy(ctx->batch->clear_color, color->f, sizeof(color->f));
+
+   if (buffers & PIPE_CLEAR_DEPTH)
+      ctx->batch->clear_depth = depth;
+
+   if (buffers & PIPE_CLEAR_STENCIL)
+      ctx->batch->clear_stencil = stencil;
 }
 
 
@@ -544,7 +550,9 @@ agx_flush(struct pipe_context *pctx,
                pipeline_null.gpu,
                pipeline_clear,
                pipeline_store,
-               clear_pipeline_textures);
+               clear_pipeline_textures,
+               ctx->batch->clear_depth,
+               ctx->batch->clear_stencil);
 
    /* Generate the mapping table from the BO list */
    demo_mem_map(dev->memmap.ptr.cpu, dev->memmap.size, handles, handle_count,

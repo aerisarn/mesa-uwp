@@ -103,6 +103,8 @@ struct agx_batch {
    uint32_t clear, draw;
 
    float clear_color[4];
+   double clear_depth;
+   unsigned clear_stencil;
 
    /* Resource list requirements, represented as a bit set indexed by BO
     * handles (GEM handles on Linux, or IOGPU's equivalent on macOS) */
