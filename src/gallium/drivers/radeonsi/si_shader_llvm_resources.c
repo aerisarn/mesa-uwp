@@ -280,7 +280,10 @@ static LLVMValueRef si_nir_load_sampler_desc(struct ac_shader_abi *abi, unsigned
    }
 
    unsigned num_slots = image ? ctx->num_images : ctx->num_samplers;
-   assert(const_index < num_slots || dynamic_index);
+
+   /* Redirect invalid resource indices to the first array element. */
+   if (const_index >= num_slots)
+      const_index = base_index;
 
    LLVMValueRef list = ac_get_arg(&ctx->ac, ctx->samplers_and_images);
    LLVMValueRef index = LLVMConstInt(ctx->ac.i32, const_index, false);
