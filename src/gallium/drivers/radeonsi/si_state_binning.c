@@ -424,6 +424,8 @@ static void si_emit_dpbb_disable(struct si_context *sctx)
             S_028C44_BIN_SIZE_X(bin_size.x == 16) | S_028C44_BIN_SIZE_Y(bin_size.y == 16) |
             S_028C44_BIN_SIZE_X_EXTEND(bin_size_extend.x) |
             S_028C44_BIN_SIZE_Y_EXTEND(bin_size_extend.y) | S_028C44_DISABLE_START_OF_PRIM(1) |
+            S_028C44_FPOVS_PER_BATCH(63) |
+            S_028C44_OPTIMAL_BIN_SELECTION(1) |
             S_028C44_FLUSH_ON_BINNING_TRANSITION(1));
    } else {
       radeon_opt_set_context_reg(
