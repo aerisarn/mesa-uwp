@@ -2461,10 +2461,13 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
    if (!wait_flags)
       return;
 
+   unsigned expcnt = 7;
    unsigned lgkmcnt = 63;
    unsigned vmcnt = ctx->chip_class >= GFX9 ? 63 : 15;
    unsigned vscnt = 63;
 
+   if (wait_flags & AC_WAIT_EXP)
+      expcnt = 0;
    if (wait_flags & AC_WAIT_LGKM)
       lgkmcnt = 0;
    if (wait_flags & AC_WAIT_VLOAD)
@@ -2480,12 +2483,12 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
    /* There is no intrinsic for vscnt(0), so use a fence. */
    if ((wait_flags & AC_WAIT_LGKM && wait_flags & AC_WAIT_VLOAD && wait_flags & AC_WAIT_VSTORE) ||
        vscnt == 0) {
+      assert(!(wait_flags & AC_WAIT_EXP));
       LLVMBuildFence(ctx->builder, LLVMAtomicOrderingRelease, false, "");
       return;
    }
 
-   unsigned simm16 = (lgkmcnt << 8) | (7 << 4) | /* expcnt */
-                     (vmcnt & 0xf) | ((vmcnt >> 4) << 14);
+   unsigned simm16 = (lgkmcnt << 8) | (expcnt << 4) | (vmcnt & 0xf) | ((vmcnt >> 4) << 14);
 
    LLVMValueRef args[1] = {
       LLVMConstInt(ctx->i32, simm16, false),

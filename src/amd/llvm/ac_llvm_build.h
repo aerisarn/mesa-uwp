@@ -52,6 +52,7 @@ enum
 #define AC_WAIT_LGKM   (1 << 0) /* LDS, GDS, constant, message */
 #define AC_WAIT_VLOAD  (1 << 1) /* VMEM load/sample instructions */
 #define AC_WAIT_VSTORE (1 << 2) /* VMEM store instructions */
+#define AC_WAIT_EXP    (1 << 3) /* EXP instructions */
 
 struct ac_llvm_flow;
 struct ac_llvm_compiler;
