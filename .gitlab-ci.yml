@@ -589,7 +589,7 @@ debian/arm_test:
   script:
     - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $MESA_IMAGE $MESA_UPSTREAM_IMAGE ${DOCKERFILE} ${MESA_BASE_IMAGE}
 
-.windows_build_vs2019:
+windows_build_vs2019:
   inherit:
     default: false
   extends:
@@ -600,7 +600,7 @@ debian/arm_test:
     DOCKERFILE: Dockerfile_build
   timeout: 2h 30m # LLVM takes ages
 
-.windows_test_vs2019:
+windows_test_vs2019:
   inherit:
     default: false
   extends:
@@ -618,7 +618,7 @@ debian/arm_test:
   script:
     - .\.gitlab-ci\windows\mesa_container.ps1 $CI_REGISTRY $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $MESA_IMAGE $MESA_UPSTREAM_IMAGE Dockerfile_test ${MESA_BASE_IMAGE}
   needs:
-    - .windows_build_vs2019
+    - windows_build_vs2019
 
 .use-windows_build_vs2019:
   inherit:
@@ -629,7 +629,7 @@ debian/arm_test:
     MESA_IMAGE_PATH: *windows_build_image_path
     MESA_IMAGE_TAG: *windows_build_image_tag
   needs:
-    - .windows_build_vs2019
+    - windows_build_vs2019
 
 .use-windows_test_vs2019:
   inherit:
@@ -1089,7 +1089,7 @@ debian-clang:
     CC: clang
     CXX: clang++
 
-.windows-vs2019:
+windows-vs2019:
   extends:
     - .build-windows
     - .use-windows_build_vs2019
