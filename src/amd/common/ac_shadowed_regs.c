@@ -580,6 +580,10 @@ static const struct ac_reg_range Navi10NonShadowedRanges[] = {
       4,
    },
    {
+      R_030A00_PA_SU_LINE_STIPPLE_VALUE,
+      R_030A04_PA_SC_LINE_STIPPLE_STATE - R_030A00_PA_SU_LINE_STIPPLE_VALUE + 4,
+   },
+   {
       R_031100_SPI_CONFIG_CNTL_REMAP,
       4,
    },
@@ -797,6 +801,10 @@ static const struct ac_reg_range Gfx103NonShadowedRanges[] = {
    {
       R_030800_GRBM_GFX_INDEX,
       4,
+   },
+   {
+      R_030A00_PA_SU_LINE_STIPPLE_VALUE,
+      R_030A04_PA_SC_LINE_STIPPLE_STATE - R_030A00_PA_SU_LINE_STIPPLE_VALUE + 4,
    },
    {
       R_031100_SPI_CONFIG_CNTL_REMAP,
