@@ -2271,8 +2271,10 @@ LLVMValueRef ac_build_cvt_pknorm_i16_f16(struct ac_llvm_context *ctx,
    LLVMTypeRef param_types[] = {ctx->f16, ctx->f16};
    LLVMTypeRef calltype = LLVMFunctionType(ctx->i32, param_types, 2, false);
    LLVMValueRef code = LLVMConstInlineAsm(calltype,
-                                          "v_cvt_pknorm_i16_f16 $0, $1, $2", "=v,v,v",
-                                          false, false);
+                                          ctx->chip_class >= GFX11 ?
+                                             "v_cvt_pk_norm_i16_f16 $0, $1, $2" :
+                                             "v_cvt_pknorm_i16_f16 $0, $1, $2",
+                                          "=v,v,v", false, false);
    return LLVMBuildCall2(ctx->builder, calltype, code, args, 2, "");
 }
 
@@ -2282,8 +2284,10 @@ LLVMValueRef ac_build_cvt_pknorm_u16_f16(struct ac_llvm_context *ctx,
    LLVMTypeRef param_types[] = {ctx->f16, ctx->f16};
    LLVMTypeRef calltype = LLVMFunctionType(ctx->i32, param_types, 2, false);
    LLVMValueRef code = LLVMConstInlineAsm(calltype,
-                                          "v_cvt_pknorm_u16_f16 $0, $1, $2", "=v,v,v",
-                                          false, false);
+                                          ctx->chip_class >= GFX11 ?
+                                             "v_cvt_pk_norm_u16_f16 $0, $1, $2" :
+                                             "v_cvt_pknorm_u16_f16 $0, $1, $2",
+                                          "=v,v,v", false, false);
    return LLVMBuildCall2(ctx->builder, calltype, code, args, 2, "");
 }
 
@@ -2407,7 +2411,12 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
       return;
    }
 
-   unsigned simm16 = (lgkmcnt << 8) | (expcnt << 4) | (vmcnt & 0xf) | ((vmcnt >> 4) << 14);
+   unsigned simm16;
+
+   if (ctx->chip_class >= GFX11)
+      simm16 = expcnt | (lgkmcnt << 4) | (vmcnt << 10);
+   else
+      simm16 = (lgkmcnt << 8) | (expcnt << 4) | (vmcnt & 0xf) | ((vmcnt >> 4) << 14);
 
    LLVMValueRef args[1] = {
       LLVMConstInt(ctx->i32, simm16, false),
