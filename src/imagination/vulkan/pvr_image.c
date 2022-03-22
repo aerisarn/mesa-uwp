@@ -160,7 +160,9 @@ void pvr_DestroyImage(VkDevice _device,
    if (!image)
       return;
 
-   pvr_unbind_memory(device, image->vma);
+   if (image->vma)
+      pvr_unbind_memory(device, image->vma);
+
    vk_image_destroy(&device->vk, pAllocator, &image->vk);
 }
 

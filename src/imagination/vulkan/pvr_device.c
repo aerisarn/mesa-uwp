@@ -1579,7 +1579,9 @@ void pvr_DestroyBuffer(VkDevice _device,
    if (!buffer)
       return;
 
-   pvr_unbind_memory(device, buffer->vma);
+   if (buffer->vma)
+      pvr_unbind_memory(device, buffer->vma);
+
    vk_object_free(&device->vk, pAllocator, buffer);
 }
 
