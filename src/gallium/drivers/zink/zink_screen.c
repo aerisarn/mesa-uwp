@@ -2084,6 +2084,11 @@ static void
 init_driver_workarounds(struct zink_screen *screen)
 {
    screen->driver_workarounds.color_write_missing = !screen->info.have_EXT_color_write_enable;
+   screen->driver_workarounds.depth_clip_control_missing = !screen->info.have_EXT_depth_clip_control;
+   if (screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA) {
+      /* #6186 */
+      screen->driver_workarounds.depth_clip_control_missing = true;
+   }
    /* #6185 */
    if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV)
       screen->driver_workarounds.color_write_missing = true;

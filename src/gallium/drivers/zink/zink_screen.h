@@ -180,6 +180,7 @@ struct zink_screen {
 
    struct {
       bool color_write_missing;
+      bool depth_clip_control_missing;
    } driver_workarounds;
 };
 

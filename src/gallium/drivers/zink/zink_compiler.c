@@ -1269,7 +1269,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             if (zs->sinfo.have_xfb)
                sinfo->last_vertex = true;
 
-            if (!zink_vs_key_base(key)->clip_halfz && !screen->info.have_EXT_depth_clip_control) {
+            if (!zink_vs_key_base(key)->clip_halfz && screen->driver_workarounds.depth_clip_control_missing) {
                NIR_PASS_V(nir, nir_lower_clip_halfz);
             }
             if (zink_vs_key_base(key)->push_drawid) {
