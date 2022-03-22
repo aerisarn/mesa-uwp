@@ -1045,6 +1045,24 @@ agx_is_format_supported(struct pipe_screen* pscreen,
       }
    }
 
+   if (usage & PIPE_BIND_DEPTH_STENCIL) {
+      switch (format) {
+      /* natively supported
+       * TODO: we could also support Z16_UNORM */
+      case PIPE_FORMAT_Z32_FLOAT:
+      case PIPE_FORMAT_S8_UINT:
+
+      /* lowered by u_transfer_helper to one of the above */
+      case PIPE_FORMAT_Z24X8_UNORM:
+      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+      case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+         return true;
+
+      default:
+         return false;
+      }
+   }
+
    /* TODO */
    return true;
 }
