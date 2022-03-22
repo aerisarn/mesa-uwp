@@ -276,10 +276,10 @@ zink_blit(struct pipe_context *pctx,
       if (info->src.resource->nr_samples > 1 &&
           info->dst.resource->nr_samples <= 1) {
          if (blit_resolve(ctx, info))
-            return;
+            goto end;
       } else {
          if (blit_native(ctx, info))
-            return;
+            goto end;
       }
    }
 
@@ -293,14 +293,14 @@ zink_blit(struct pipe_context *pctx,
          new_info.render_condition_enable = false;
 
       if (util_try_blit_via_copy_region(pctx, &new_info, ctx->render_condition_active))
-         return;
+         goto end;
    }
 
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
       debug_printf("blit unsupported %s -> %s\n",
               util_format_short_name(info->src.resource->format),
               util_format_short_name(info->dst.resource->format));
-      return;
+      goto end;
    }
 
    /* this is discard_only because we're about to start a renderpass that will
@@ -314,6 +314,7 @@ zink_blit(struct pipe_context *pctx,
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
 
    util_blitter_blit(ctx->blitter, info);
+end:
 }
 
 /* similar to radeonsi */
