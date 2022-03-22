@@ -68,6 +68,7 @@ EXTENSIONS = [
     Extension("VK_KHR_external_semaphore_fd"),
     Extension("VK_EXT_external_memory_dma_buf"),
     Extension("VK_EXT_queue_family_foreign"),
+    Extension("VK_KHR_swapchain_mutable_format"),
     Extension("VK_EXT_provoking_vertex",
        alias="pv",
        features=True,
