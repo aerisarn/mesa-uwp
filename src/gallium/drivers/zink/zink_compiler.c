@@ -2111,11 +2111,18 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
    struct zink_screen *screen = zink_screen(pscreen);
    nir_shader *nir = nirptr;
 
-   if (!screen->info.feats.features.shaderImageGatherExtended) {
-      nir_lower_tex_options tex_opts = {0};
+   nir_lower_tex_options tex_opts = {0};
+   /*
+      Sampled Image must be an object whose type is OpTypeSampledImage.
+      The Dim operand of the underlying OpTypeImage must be 1D, 2D, 3D,
+      or Rect, and the Arrayed and MS operands must be 0.
+      - SPIRV, OpImageSampleProj* opcodes
+    */
+   tex_opts.lower_txp = BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) |
+                        BITFIELD_BIT(GLSL_SAMPLER_DIM_MS);
+   if (!screen->info.feats.features.shaderImageGatherExtended)
       tex_opts.lower_tg4_offsets = true;
-      NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
-   }
+   NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
    NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, true, false);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
