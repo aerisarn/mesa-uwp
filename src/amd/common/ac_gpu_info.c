@@ -67,6 +67,7 @@
 #define AMDGPU_INFO_MEMORY 0x19
 #define AMDGPU_INFO_VIDEO_CAPS_DECODE 0
 #define AMDGPU_INFO_VIDEO_CAPS_ENCODE 1
+#define AMDGPU_INFO_FW_GFX_MEC 0x08
 struct drm_amdgpu_heap_info {
    uint64_t total_heap_size;
 };
