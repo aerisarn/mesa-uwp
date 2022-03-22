@@ -264,6 +264,9 @@ zink_blit(struct pipe_context *pctx,
        unlikely(!zink_screen(pctx->screen)->info.have_EXT_conditional_rendering && !zink_check_conditional_render(ctx)))
       return;
 
+   struct zink_resource *src = zink_resource(info->src.resource);
+   struct zink_resource *dst = zink_resource(info->dst.resource);
+
    if (src_desc == dst_desc ||
        src_desc->nr_channels != 4 || src_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN ||
        (src_desc->nr_channels == 4 && src_desc->channel[3].type != UTIL_FORMAT_TYPE_VOID)) {
@@ -280,8 +283,6 @@ zink_blit(struct pipe_context *pctx,
       }
    }
 
-   struct zink_resource *src = zink_resource(info->src.resource);
-   struct zink_resource *dst = zink_resource(info->dst.resource);
    /* if we're copying between resources with matching aspects then we can probably just copy_region */
    if (src->aspect == dst->aspect) {
       struct pipe_blit_info new_info = *info;
