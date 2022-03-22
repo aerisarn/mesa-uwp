@@ -913,26 +913,19 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
 
-   if (key->blend.blend_enable) {
+   if (stage == PIPE_SHADER_FRAGMENT) {
       nir_lower_blend_options opts = {
          .format = { key->rt_formats[0] },
-         .scalar_blend_const = true
+         .scalar_blend_const = true,
+         .logicop_enable = key->blend.logicop_enable,
+         .logicop_func = key->blend.logicop_func,
       };
 
       memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
       NIR_PASS_V(nir, nir_lower_blend, &opts);
-   } else if (key->blend.logicop_enable) {
-      nir_lower_blend_options opts = {
-         .format = { key->rt_formats[0] },
-         .logicop_enable = true,
-         .logicop_func = key->blend.logicop_func,
-      };
 
-      NIR_PASS_V(nir, nir_lower_blend, &opts);
-   }
-
-   if (stage == PIPE_SHADER_FRAGMENT)
       NIR_PASS_V(nir, nir_lower_fragcolor, key->nr_cbufs);
+   }
 
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
