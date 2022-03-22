@@ -1051,6 +1051,28 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                                                       polygon_mode_enabled ||
                                                       rs->perpendicular_end_caps : 0));
 
+   if (state->bottom_edge_rule) {
+      /* OpenGL windows should set this. */
+      si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
+                     S_028230_ER_TRI(0xA) |
+                     S_028230_ER_POINT(0x5) |
+                     S_028230_ER_RECT(0x9) |
+                     S_028230_ER_LINE_LR(0x29) |
+                     S_028230_ER_LINE_RL(0x29) |
+                     S_028230_ER_LINE_TB(0xA) |
+                     S_028230_ER_LINE_BT(0xA));
+   } else {
+      /* OpenGL FBOs and Direct3D should set this. */
+      si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
+                     S_028230_ER_TRI(0xA) |
+                     S_028230_ER_POINT(0xA) |
+                     S_028230_ER_RECT(0xA) |
+                     S_028230_ER_LINE_LR(0x1A) |
+                     S_028230_ER_LINE_RL(0x26) |
+                     S_028230_ER_LINE_TB(0xA) |
+                     S_028230_ER_LINE_BT(0xA));
+   }
+
    if (!rs->uses_poly_offset)
       return rs;
 
@@ -5406,11 +5428,6 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
       si_pm4_set_reg(pm4, R_028A1C_VGT_HOS_MIN_TESS_LEVEL, fui(0));
 
    if (!has_clear_state) {
-      si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
-                     S_028230_ER_TRI(0xA) | S_028230_ER_POINT(0xA) | S_028230_ER_RECT(0xA) |
-                        /* Required by DX10_DIAMOND_TEST_ENA: */
-                        S_028230_ER_LINE_LR(0x1A) | S_028230_ER_LINE_RL(0x26) |
-                        S_028230_ER_LINE_TB(0xA) | S_028230_ER_LINE_BT(0xA));
       si_pm4_set_reg(pm4, R_028820_PA_CL_NANINF_CNTL, 0);
       si_pm4_set_reg(pm4, R_028AC0_DB_SRESULTS_COMPARE_STATE0, 0x0);
       si_pm4_set_reg(pm4, R_028AC4_DB_SRESULTS_COMPARE_STATE1, 0x0);

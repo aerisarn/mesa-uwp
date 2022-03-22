@@ -17,11 +17,11 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 1a089d8584a9e68e7ab08eada954741b
+        checksum: 8d71757cb74f8d71bf87c8af7e7f725a
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: c81c85f9b247dd1b06c3dd5b669cc283
+        checksum: 86318ec31a55a1246cb4a136a15475fd
   - path: pathfinder/canvas_moire.trace
     expectations:
       - device: gl-radeonsi-stoney
