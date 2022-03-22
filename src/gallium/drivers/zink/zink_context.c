@@ -2582,7 +2582,9 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    struct zink_surface *transient = zink_transient_surface(surf);
    struct zink_resource *res = zink_resource(surf->texture);
    if (changed) {
-      zink_fb_clears_apply(ctx, surf->texture);
+      if (zink_fb_clear_enabled(ctx, idx)) {
+         zink_fb_clears_apply(ctx, surf->texture);
+      }
       if (zink_batch_usage_exists(zink_csurface(surf)->batch_uses)) {
          zink_batch_reference_surface(&ctx->batch, zink_csurface(surf));
          if (transient)
