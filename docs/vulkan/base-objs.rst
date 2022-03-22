@@ -173,3 +173,12 @@ vk_physical_device
 
 .. doxygenfunction:: vk_physical_device_init
 .. doxygenfunction:: vk_physical_device_finish
+
+vk_device
+------------------
+
+.. doxygenstruct:: vk_device
+   :members:
+
+.. doxygenfunction:: vk_device_init
+.. doxygenfunction:: vk_device_finish

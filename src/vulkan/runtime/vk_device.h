@@ -254,8 +254,27 @@ struct vk_device {
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_device, base, VkDevice,
-                       VK_OBJECT_TYPE_DEVICE)
+                       VK_OBJECT_TYPE_DEVICE);
 
+/** Initialize a vk_device
+ *
+ * Along with initializing the data structures in `vk_device`, this function
+ * checks that every extension specified by
+ * `VkInstanceCreateInfo::ppEnabledExtensionNames` is actually supported by
+ * the physical device and returns `VK_ERROR_EXTENSION_NOT_PRESENT` if an
+ * unsupported extension is requested.  It also checks all the feature struct
+ * chained into the `pCreateInfo->pNext` chain against the features returned
+ * by `vkGetPhysicalDeviceFeatures2` and returns
+ * `VK_ERROR_FEATURE_NOT_PRESENT` if an unsupported feature is requested.
+ *
+ * @param[out] device               The device to initialize
+ * @param[in]  physical_device      The physical device
+ * @param[in]  dispatch_table       Device-level dispatch table
+ * @param[in]  pCreateInfo          VkDeviceCreateInfo pointer passed to
+ *                                  `vkCreateDevice()`
+ * @param[in]  alloc                Allocation callbacks passed to
+ *                                  `vkCreateDevice()`
+ */
 VkResult MUST_CHECK
 vk_device_init(struct vk_device *device,
                struct vk_physical_device *physical_device,
@@ -269,6 +288,10 @@ vk_device_set_drm_fd(struct vk_device *device, int drm_fd)
    device->drm_fd = drm_fd;
 }
 
+/** Tears down a vk_device
+ *
+ * @param[out] device               The device to tear down
+ */
 void
 vk_device_finish(struct vk_device *device);
 
