@@ -43,7 +43,8 @@ EXTENSIONS = [
     Extension("VK_KHR_surface"),
     Extension("VK_EXT_headless_surface"),
     Extension("VK_KHR_wayland_surface"),
-    Extension("VK_KHR_xcb_surface"),
+    Extension("VK_KHR_xcb_surface",
+              conditions=["!instance_info->disable_xcb_surface"]),
 ]
 
 # constructor: Layer(name, conditions=[])
@@ -73,10 +74,12 @@ header_code = """
 #include "MoltenVK/vk_mvk_moltenvk.h"
 #endif
 
+struct pipe_screen;
 struct zink_screen;
 
 struct zink_instance_info {
    uint32_t loader_version;
+   bool disable_xcb_surface;
 
 %for ext in extensions:
    bool have_${ext.name_with_vendor()};
