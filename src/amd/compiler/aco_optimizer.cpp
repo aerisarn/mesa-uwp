@@ -3487,7 +3487,7 @@ to_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    aco_ptr<VOP3P_instruction> vop3p{
       create_instruction<VOP3P_instruction>(aco_opcode::v_fma_mix_f32, Format::VOP3P, 3, 1)};
 
-   vop3p->opsel_lo = instr->isVOP3() ? (instr->vop3().opsel & 0x7) << is_add : 0x0;
+   vop3p->opsel_lo = instr->isVOP3() ? ((instr->vop3().opsel & 0x7) << (is_add ? 1 : 0)) : 0x0;
    vop3p->opsel_hi = 0x0;
    for (unsigned i = 0; i < instr->operands.size(); i++) {
       vop3p->operands[is_add + i] = instr->operands[i];
