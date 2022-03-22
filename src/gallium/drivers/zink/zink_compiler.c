@@ -2120,6 +2120,7 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
     */
    tex_opts.lower_txp = BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE) |
                         BITFIELD_BIT(GLSL_SAMPLER_DIM_MS);
+   tex_opts.lower_txp_array = true;
    if (!screen->info.feats.features.shaderImageGatherExtended)
       tex_opts.lower_tg4_offsets = true;
    NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
