@@ -937,12 +937,48 @@ bi_addr_high(nir_src *src)
 }
 
 static void
+bi_handle_segment(bi_builder *b, bi_index *addr, bi_index *addr_hi, enum bi_seg seg, int16_t *offset)
+{
+        /* Not needed on Bifrost or for global accesses */
+        if (b->shader->arch < 9 || seg == BI_SEG_NONE)
+                return;
+
+        /* There is no segment modifier on Valhall. Instead, we need to
+         * emit the arithmetic ourselves. We do have an offset
+         * available, which saves an instruction for constant offsets.
+         */
+        bool wls = (seg == BI_SEG_WLS);
+        assert(wls || (seg == BI_SEG_TL));
+
+        bi_index base = bi_fau(wls ? BIR_FAU_WLS_PTR : BIR_FAU_TLS_PTR, false);
+
+        if (addr->type == BI_INDEX_CONSTANT) {
+                int value = addr->value;
+
+                if (value == (int16_t) value) {
+                        *offset = value;
+                        *addr = base;
+                }
+        } else {
+                *addr = bi_iadd_u32(b, base, *addr, false);
+                bi_mov_i32_to(b, bi_word(*addr, 1), bi_imm_u32(0));
+        }
+
+        *addr_hi = bi_word(*addr, 1);
+}
+
+static void
 bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 {
+        int16_t offset = 0;
+        bi_index addr_lo = bi_src_index(&instr->src[0]);
+        bi_index addr_hi = bi_addr_high(&instr->src[0]);
+
+        bi_handle_segment(b, &addr_lo, &addr_hi, seg, &offset);
+
         bi_load_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
                    bi_dest_index(&instr->dest),
-                   bi_src_index(&instr->src[0]), bi_addr_high(&instr->src[0]),
-                   seg, 0);
+                   addr_lo, addr_hi, seg, offset);
 }
 
 static void
@@ -952,10 +988,15 @@ bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
         assert(nir_intrinsic_write_mask(instr) ==
                         BITFIELD_MASK(instr->num_components));
 
+        int16_t offset = 0;
+        bi_index addr_lo = bi_src_index(&instr->src[1]);
+        bi_index addr_hi = bi_addr_high(&instr->src[1]);
+
+        bi_handle_segment(b, &addr_lo, &addr_hi, seg, &offset);
+
         bi_store(b, instr->num_components * nir_src_bit_size(instr->src[0]),
-                    bi_src_index(&instr->src[0]),
-                    bi_src_index(&instr->src[1]), bi_addr_high(&instr->src[1]),
-                    seg, 0);
+                 bi_src_index(&instr->src[0]),
+                 addr_lo, addr_hi, seg, offset);
 }
 
 /* Exchanges the staging register with memory */
