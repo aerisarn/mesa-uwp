@@ -81,6 +81,18 @@ struct vn_cs_decoder {
    const void *end;
 };
 
+static inline bool
+vn_cs_renderer_protocol_has_api_version(UNUSED uint32_t api_version)
+{
+   return true;
+}
+
+static inline bool
+vn_cs_renderer_protocol_has_extension(UNUSED uint32_t ext_number)
+{
+   return true;
+}
+
 void
 vn_cs_encoder_init(struct vn_cs_encoder *enc,
                    struct vn_instance *instance,
