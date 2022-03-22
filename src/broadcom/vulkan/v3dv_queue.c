@@ -734,11 +734,10 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 
 static void
 multisync_free(struct v3dv_device *device,
-               struct drm_v3d_sem *out_syncs,
-               struct drm_v3d_sem *in_syncs)
+               struct drm_v3d_multi_sync *ms)
 {
-   vk_free(&device->vk.alloc, out_syncs);
-   vk_free(&device->vk.alloc, in_syncs);
+   vk_free(&device->vk.alloc, (void *)(uintptr_t)ms->out_syncs);
+   vk_free(&device->vk.alloc, (void *)(uintptr_t)ms->in_syncs);
 }
 
 static struct drm_v3d_sem *
@@ -864,12 +863,11 @@ set_multisync(struct drm_v3d_multi_sync *ms,
               struct drm_v3d_extension *next,
               struct v3dv_device *device,
               struct v3dv_job *job,
-              struct drm_v3d_sem *out_syncs,
-              struct drm_v3d_sem *in_syncs,
               enum v3dv_queue_type queue_sync,
               enum v3d_queue wait_stage)
 {
    uint32_t out_sync_count = 0, in_sync_count = 0;
+   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    in_syncs = set_in_syncs(device, job, queue_sync,
                            &in_sync_count, sems_info);
@@ -965,17 +963,16 @@ handle_cl_job(struct v3dv_queue *queue,
    const bool needs_bcl_sync =
       sems_info->wait_sem_count > 0 || job->needs_bcl_sync;
    const bool needs_rcl_sync = job->serialize && !needs_bcl_sync;
-   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    mtx_lock(&queue->device->mutex);
 
    /* Replace single semaphore settings whenever our kernel-driver supports
     * multiple semaphores extension.
     */
+   struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
-      struct drm_v3d_multi_sync ms = { 0 };
       enum v3d_queue wait_stage = needs_rcl_sync ? V3D_RENDER : V3D_BIN;
-      set_multisync(&ms, sems_info, NULL, device, job, out_syncs, in_syncs,
+      set_multisync(&ms, sems_info, NULL, device, job,
                     V3DV_QUEUE_CL, wait_stage);
       if (!ms.base.id) {
          mtx_unlock(&queue->device->mutex);
@@ -1008,8 +1005,7 @@ handle_cl_job(struct v3dv_queue *queue,
    }
 
    free(bo_handles);
-   if (device->pdevice->caps.multisync)
-      multisync_free(device, out_syncs, in_syncs);
+   multisync_free(device, &ms);
 
    if (ret)
       return vk_error(device, VK_ERROR_DEVICE_LOST);
@@ -1025,16 +1021,15 @@ handle_tfu_job(struct v3dv_queue *queue,
    struct v3dv_device *device = queue->device;
 
    const bool needs_sync = sems_info->wait_sem_count || job->serialize;
-   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    mtx_lock(&device->mutex);
 
    /* Replace single semaphore settings whenever our kernel-driver supports
     * multiple semaphore extension.
     */
+   struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
-      struct drm_v3d_multi_sync ms = { 0 };
-      set_multisync(&ms, sems_info, NULL, device, job, out_syncs, in_syncs,
+      set_multisync(&ms, sems_info, NULL, device, job,
                     V3DV_QUEUE_TFU, V3D_TFU);
       if (!ms.base.id) {
          mtx_unlock(&device->mutex);
@@ -1055,8 +1050,7 @@ handle_tfu_job(struct v3dv_queue *queue,
                         DRM_IOCTL_V3D_SUBMIT_TFU, &job->tfu);
    mtx_unlock(&device->mutex);
 
-   if (device->pdevice->caps.multisync)
-      multisync_free(device, out_syncs, in_syncs);
+   multisync_free(device, &ms);
 
    if (ret != 0) {
       fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
@@ -1087,15 +1081,14 @@ handle_csd_job(struct v3dv_queue *queue,
    submit->bo_handles = (uintptr_t)(void *)bo_handles;
 
    const bool needs_sync = sems_info->wait_sem_count || job->serialize;
-   struct drm_v3d_sem *out_syncs = NULL, *in_syncs = NULL;
 
    mtx_lock(&queue->device->mutex);
    /* Replace single semaphore settings whenever our kernel-driver supports
     * multiple semaphore extension.
     */
+   struct drm_v3d_multi_sync ms = { 0 };
    if (device->pdevice->caps.multisync) {
-      struct drm_v3d_multi_sync ms = { 0 };
-      set_multisync(&ms, sems_info, NULL, device, job, out_syncs, in_syncs,
+      set_multisync(&ms, sems_info, NULL, device, job,
                     V3DV_QUEUE_CSD, V3D_CSD);
       if (!ms.base.id) {
          mtx_unlock(&queue->device->mutex);
@@ -1125,8 +1118,7 @@ handle_csd_job(struct v3dv_queue *queue,
 
    free(bo_handles);
 
-   if (device->pdevice->caps.multisync)
-      multisync_free(device, out_syncs, in_syncs);
+   multisync_free(device, &ms);
 
    if (ret)
       return vk_error(device, VK_ERROR_DEVICE_LOST);
