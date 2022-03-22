@@ -46,6 +46,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateQueryPool(
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
       pipeq = PIPE_QUERY_PIPELINE_STATISTICS;
       break;
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      pipeq = PIPE_QUERY_PRIMITIVES_GENERATED;
+      break;
    default:
       return VK_ERROR_FEATURE_NOT_PRESENT;
    }
