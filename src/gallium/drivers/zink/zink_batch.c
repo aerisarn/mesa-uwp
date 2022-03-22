@@ -350,7 +350,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    struct zink_batch_state *bs = data;
    struct zink_context *ctx = bs->ctx;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkSubmitInfo si = {0};
+   VkSubmitInfo si[2] = {0};
 
    while (!bs->fence.batch_id)
       bs->fence.batch_id = p_atomic_inc_return(&screen->curr_batch);
@@ -369,41 +369,43 @@ submit_queue(void *data, void *gdata, int thread_index)
    }
 
    uint64_t batch_id = bs->fence.batch_id;
-   si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-   si.waitSemaphoreCount = util_dynarray_num_elements(&bs->wait_semaphores, VkSemaphore);
-   si.pWaitSemaphores = bs->wait_semaphores.data;
-   si.pWaitDstStageMask = bs->wait_semaphore_stages.data;
-   si.commandBufferCount = bs->has_barriers ? 2 : 1;
+   si[0].sType = si[1].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+   /* then the real submit */
+   si[1].waitSemaphoreCount = util_dynarray_num_elements(&bs->wait_semaphores, VkSemaphore);
+   si[1].pWaitSemaphores = bs->wait_semaphores.data;
+   si[1].pWaitDstStageMask = bs->wait_semaphore_stages.data;
+   si[1].commandBufferCount = bs->has_barriers ? 2 : 1;
    VkCommandBuffer cmdbufs[2] = {
       bs->barrier_cmdbuf,
       bs->cmdbuf,
    };
-   si.pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
+   si[1].pCommandBuffers = bs->has_barriers ? cmdbufs : &cmdbufs[1];
 
    VkSemaphore signals[2];
-   si.signalSemaphoreCount = !!bs->signal_semaphore;
+   si[1].signalSemaphoreCount = !!bs->signal_semaphore;
    signals[0] = bs->signal_semaphore;
-   si.pSignalSemaphores = signals;
+   si[1].pSignalSemaphores = signals;
    VkTimelineSemaphoreSubmitInfo tsi = {0};
    uint64_t signal_values[2] = {0};
    if (bs->have_timelines) {
       tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-      si.pNext = &tsi;
+      si[1].pNext = &tsi;
       tsi.pSignalSemaphoreValues = signal_values;
-      signal_values[si.signalSemaphoreCount] = batch_id;
-      signals[si.signalSemaphoreCount++] = screen->sem;
-      tsi.signalSemaphoreValueCount = si.signalSemaphoreCount;
+      signal_values[si[1].signalSemaphoreCount] = batch_id;
+      signals[si[1].signalSemaphoreCount++] = screen->sem;
+      tsi.signalSemaphoreValueCount = si[1].signalSemaphoreCount;
    }
 
    struct wsi_memory_signal_submit_info mem_signal = {
       .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,
-      .pNext = si.pNext,
+      .pNext = si[1].pNext,
    };
 
    if (bs->flush_res && screen->needs_mesa_flush_wsi) {
       struct zink_resource *flush_res = zink_resource(bs->flush_res);
       mem_signal.memory = zink_bo_get_mem(flush_res->scanout_obj ? flush_res->scanout_obj->bo : flush_res->obj->bo);
-      si.pNext = &mem_signal;
+      si[1].pNext = &mem_signal;
    }
 
    if (VKSCR(EndCommandBuffer)(bs->cmdbuf) != VK_SUCCESS) {
@@ -426,7 +428,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    }
 
    simple_mtx_lock(&screen->queue_lock);
-   if (VKSCR(QueueSubmit)(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
+   if (VKSCR(QueueSubmit)(bs->queue, 2, si, bs->fence.fence) != VK_SUCCESS) {
       mesa_loge("ZINK: vkQueueSubmit failed");
       bs->is_device_lost = true;
    }
