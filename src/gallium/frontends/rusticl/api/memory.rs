@@ -8,6 +8,7 @@ use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::device::*;
+use crate::core::format::*;
 use crate::core::memory::*;
 use crate::*;
 
@@ -329,41 +330,9 @@ fn validate_image_format<'a>(
 ) -> CLResult<(&'a cl_image_format, u8)> {
     // CL_INVALID_IMAGE_FORMAT_DESCRIPTOR ... if image_format is NULL.
     let format = unsafe { image_format.as_ref() }.ok_or(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR)?;
-
-    let channels = match format.image_channel_order {
-        CL_R | CL_A | CL_DEPTH | CL_LUMINANCE | CL_INTENSITY => 1,
-
-        CL_RG | CL_RA | CL_Rx => 2,
-
-        CL_RGB | CL_RGx | CL_sRGB => 3,
-
-        CL_RGBA | CL_ARGB | CL_BGRA | CL_ABGR | CL_RGBx | CL_sRGBA | CL_sBGRA | CL_sRGBx => 4,
-
-        _ => return Err(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR),
-    };
-
-    let channel_size = match format.image_channel_data_type {
-        CL_SNORM_INT8 | CL_UNORM_INT8 | CL_SIGNED_INT8 | CL_UNSIGNED_INT8 => 1,
-
-        CL_SNORM_INT16 | CL_UNORM_INT16 | CL_SIGNED_INT16 | CL_UNSIGNED_INT16 | CL_HALF_FLOAT
-        | CL_UNORM_SHORT_565 | CL_UNORM_SHORT_555 => 2,
-
-        CL_SIGNED_INT32
-        | CL_UNSIGNED_INT32
-        | CL_FLOAT
-        | CL_UNORM_INT_101010
-        | CL_UNORM_INT_101010_2 => 4,
-
-        _ => return Err(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR),
-    };
-
-    let packed = [
-        CL_UNORM_SHORT_565,
-        CL_UNORM_SHORT_555,
-        CL_UNORM_INT_101010,
-        CL_UNORM_INT_101010,
-    ]
-    .contains(&format.image_channel_data_type);
+    let pixel_size = format
+        .pixel_size()
+        .ok_or(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR)?;
 
     // special validation
     let valid_combination = match format.image_channel_data_type {
@@ -377,14 +346,7 @@ fn validate_image_format<'a>(
         return Err(CL_INVALID_IMAGE_FORMAT_DESCRIPTOR);
     }
 
-    Ok((
-        format,
-        if packed {
-            channel_size
-        } else {
-            channels * channel_size
-        },
-    ))
+    Ok((format, pixel_size))
 }
 
 fn validate_image_desc(
@@ -402,14 +364,11 @@ fn validate_image_desc(
     // image_type describes the image type and must be either CL_MEM_OBJECT_IMAGE1D,
     // CL_MEM_OBJECT_IMAGE1D_BUFFER, CL_MEM_OBJECT_IMAGE1D_ARRAY, CL_MEM_OBJECT_IMAGE2D,
     // CL_MEM_OBJECT_IMAGE2D_ARRAY, or CL_MEM_OBJECT_IMAGE3D.
-    let (dims, array) = match desc.image_type {
-        CL_MEM_OBJECT_IMAGE1D | CL_MEM_OBJECT_IMAGE1D_BUFFER => (1, false),
-        CL_MEM_OBJECT_IMAGE1D_ARRAY => (1, true),
-        CL_MEM_OBJECT_IMAGE2D => (2, false),
-        CL_MEM_OBJECT_IMAGE2D_ARRAY => (2, true),
-        CL_MEM_OBJECT_IMAGE3D => (3, false),
-        _ => return Err(err),
-    };
+    if !CL_IMAGE_TYPES.contains(&desc.image_type) {
+        return Err(err);
+    }
+
+    let (dims, array) = desc.type_info();
 
     // image_width is the width of the image in pixels. For a 2D image and image array, the image
     // width must be a value ≥ 1 and ≤ CL_DEVICE_IMAGE2D_MAX_WIDTH. For a 3D image, the image width
@@ -495,6 +454,8 @@ fn validate_image_desc(
         if desc.image_row_pitch != 0 || desc.image_slice_pitch != 0 {
             return Err(err);
         }
+        desc.image_row_pitch = desc.image_width * elem_size;
+        desc.image_slice_pitch = desc.image_row_pitch * desc.image_height;
     } else {
         if desc.image_row_pitch == 0 {
             desc.image_row_pitch = desc.image_width * elem_size;
@@ -729,7 +690,7 @@ pub fn create_image_with_properties(
         elem_size,
         host_ptr,
         props,
-    )))
+    )?))
 }
 
 pub fn create_image(
@@ -1515,11 +1476,198 @@ pub fn enqueue_map_buffer(
         Box::new(|_, _| Ok(())),
     )?;
 
-    Ok(b.map(&q, offset, size, block))
+    b.map(&q, offset, size, block)
     // TODO
     // CL_MISALIGNED_SUB_BUFFER_OFFSET if buffer is a sub-buffer object and offset specified when the sub-buffer object is created is not aligned to CL_DEVICE_MEM_BASE_ADDR_ALIGN value for the device associated with queue. This error code is missing before version 1.1.
     // CL_MAP_FAILURE if there is a failure to map the requested region into the host address space. This error cannot occur for buffer objects created with CL_MEM_USE_HOST_PTR or CL_MEM_ALLOC_HOST_PTR.
     // CL_INVALID_OPERATION if mapping would lead to overlapping regions being mapped for writing.
+}
+
+pub fn enqueue_read_image(
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    blocking_read: cl_bool,
+    origin: *const usize,
+    region: *const usize,
+    mut row_pitch: usize,
+    mut slice_pitch: usize,
+    ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let i = image.get_arc()?;
+    let block = check_cl_bool(blocking_read).ok_or(CL_INVALID_VALUE)?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+    let pixel_size = i.image_format.pixel_size().unwrap() as usize;
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue and image are not the same
+    if i.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_INVALID_OPERATION if clEnqueueReadImage is called on image which has been created with
+    // CL_MEM_HOST_WRITE_ONLY or CL_MEM_HOST_NO_ACCESS.
+    if bit_check(i.flags, CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS) {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if origin or region is NULL.
+    // CL_INVALID_VALUE if ptr is NULL.
+    if origin.is_null() || region.is_null() || ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if image is a 1D or 2D image and slice_pitch or input_slice_pitch is not 0.
+    if !i.image_desc.has_slice() && slice_pitch != 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let r = unsafe { CLVec::from_raw(region) };
+    let o = unsafe { CLVec::from_raw(origin) };
+
+    // If row_pitch (or input_row_pitch) is set to 0, the appropriate row pitch is calculated based
+    // on the size of each element in bytes multiplied by width.
+    if row_pitch == 0 {
+        row_pitch = r[0] * pixel_size;
+    }
+
+    // If slice_pitch (or input_slice_pitch) is set to 0, the appropriate slice pitch is calculated
+    // based on the row_pitch × height.
+    if slice_pitch == 0 {
+        slice_pitch = row_pitch * r[1];
+    }
+
+    create_and_queue(
+        q,
+        CL_COMMAND_READ_IMAGE,
+        evs,
+        event,
+        block,
+        Box::new(move |q, ctx| {
+            i.read_to_user_rect(
+                ptr,
+                q,
+                ctx,
+                &r,
+                &o,
+                i.image_desc.image_row_pitch,
+                i.image_desc.image_slice_pitch,
+                &CLVec::default(),
+                row_pitch,
+                slice_pitch,
+            )
+        }),
+    )
+
+    //• CL_INVALID_VALUE if the region being read or written specified by origin and region is out of bounds.
+    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
+    //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
+    //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for image are not supported by device associated with queue.
+    //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
+    //• CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the read and write operations are blocking and the execution status of any of the events in event_wait_list is a negative integer value.
+}
+
+pub fn enqueue_write_image(
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    blocking_write: cl_bool,
+    origin: *const usize,
+    region: *const usize,
+    mut row_pitch: usize,
+    mut slice_pitch: usize,
+    ptr: *const ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let i = image.get_arc()?;
+    let block = check_cl_bool(blocking_write).ok_or(CL_INVALID_VALUE)?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+    let pixel_size = i.image_format.pixel_size().unwrap() as usize;
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue and image are not the same
+    if i.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_INVALID_OPERATION if clEnqueueWriteImage is called on image which has been created with
+    // CL_MEM_HOST_READ_ONLY or CL_MEM_HOST_NO_ACCESS.
+    if bit_check(i.flags, CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS) {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    // CL_INVALID_VALUE if origin or region is NULL.
+    // CL_INVALID_VALUE if ptr is NULL.
+    if origin.is_null() || region.is_null() || ptr.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if image is a 1D or 2D image and slice_pitch or input_slice_pitch is not 0.
+    if !i.image_desc.has_slice() && slice_pitch != 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let r = unsafe { CLVec::from_raw(region) };
+    let o = unsafe { CLVec::from_raw(origin) };
+
+    // If row_pitch (or input_row_pitch) is set to 0, the appropriate row pitch is calculated based
+    // on the size of each element in bytes multiplied by width.
+    if row_pitch == 0 {
+        row_pitch = r[0] * pixel_size;
+    }
+
+    // If slice_pitch (or input_slice_pitch) is set to 0, the appropriate slice pitch is calculated
+    // based on the row_pitch × height.
+    if slice_pitch == 0 {
+        slice_pitch = row_pitch * r[1];
+    }
+
+    create_and_queue(
+        q,
+        CL_COMMAND_WRITE_BUFFER_RECT,
+        evs,
+        event,
+        block,
+        Box::new(move |q, ctx| {
+            i.write_from_user_rect(
+                ptr,
+                q,
+                ctx,
+                &r,
+                &CLVec::default(),
+                row_pitch,
+                slice_pitch,
+                &o,
+                i.image_desc.image_row_pitch,
+                i.image_desc.image_slice_pitch,
+            )
+        }),
+    )
+
+    //• CL_INVALID_VALUE if the region being read or written specified by origin and region is out of bounds.
+    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
+    //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
+    //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for image are not supported by device associated with queue.
+    //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
+    //• CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the read and write operations are blocking and the execution status of any of the events in event_wait_list is a negative integer value.
+}
+
+pub fn enqueue_copy_image(
+    _command_queue: cl_command_queue,
+    _src_image: cl_mem,
+    _dst_image: cl_mem,
+    _src_origin: *const usize,
+    _dst_origin: *const usize,
+    _region: *const usize,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> CLResult<()> {
+    println!("enqueue_copy_image not implemented");
+    Err(CL_OUT_OF_HOST_MEMORY)
 }
 
 pub fn enqueue_unmap_mem_object(

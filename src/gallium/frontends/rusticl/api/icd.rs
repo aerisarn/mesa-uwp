@@ -973,52 +973,83 @@ extern "C" fn cl_enqueue_copy_buffer(
 }
 
 extern "C" fn cl_enqueue_read_image(
-    _command_queue: cl_command_queue,
-    _image: cl_mem,
-    _blocking_read: cl_bool,
-    _origin: *const usize,
-    _region: *const usize,
-    _row_pitch: usize,
-    _slice_pitch: usize,
-    _ptr: *mut ::std::os::raw::c_void,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    blocking_read: cl_bool,
+    origin: *const usize,
+    region: *const usize,
+    row_pitch: usize,
+    slice_pitch: usize,
+    ptr: *mut ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_read_image not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_read_image(
+        command_queue,
+        image,
+        blocking_read,
+        origin,
+        region,
+        row_pitch,
+        slice_pitch,
+        ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+    ))
 }
 
 extern "C" fn cl_enqueue_write_image(
-    _command_queue: cl_command_queue,
-    _image: cl_mem,
-    _blocking_write: cl_bool,
-    _origin: *const usize,
-    _region: *const usize,
-    _input_row_pitch: usize,
-    _input_slice_pitch: usize,
-    _ptr: *const ::std::os::raw::c_void,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    blocking_write: cl_bool,
+    origin: *const usize,
+    region: *const usize,
+    input_row_pitch: usize,
+    input_slice_pitch: usize,
+    ptr: *const ::std::os::raw::c_void,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_write_image not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_write_image(
+        command_queue,
+        image,
+        blocking_write,
+        origin,
+        region,
+        input_row_pitch,
+        input_slice_pitch,
+        ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+    ))
 }
 
 extern "C" fn cl_enqueue_copy_image(
-    _command_queue: cl_command_queue,
-    _src_image: cl_mem,
-    _dst_image: cl_mem,
-    _src_origin: *const usize,
-    _dst_origin: *const usize,
-    _region: *const usize,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    src_image: cl_mem,
+    dst_image: cl_mem,
+    src_origin: *const usize,
+    dst_origin: *const usize,
+    region: *const usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_copy_image not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_copy_image(
+        command_queue,
+        src_image,
+        dst_image,
+        src_origin,
+        dst_origin,
+        region,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+    ))
 }
 
 extern "C" fn cl_enqueue_copy_image_to_buffer(

@@ -410,7 +410,7 @@ pub fn enqueue_ndrange_kernel(
             local_work_size,
             global_work_size,
             global_work_offset,
-        )
+        )?
     };
 
     create_and_queue(q, CL_COMMAND_NDRANGE_KERNEL, evs, event, false, cb)

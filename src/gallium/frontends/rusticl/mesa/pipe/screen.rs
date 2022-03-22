@@ -83,6 +83,20 @@ impl PipeScreen {
         )
     }
 
+    fn resource_create(&self, tmpl: &pipe_resource) -> Option<PipeResource> {
+        PipeResource::new(unsafe { (*self.screen).resource_create.unwrap()(self.screen, tmpl) })
+    }
+
+    fn resource_create_from_user(
+        &self,
+        tmpl: &pipe_resource,
+        mem: *mut c_void,
+    ) -> Option<PipeResource> {
+        PipeResource::new(unsafe {
+            (*self.screen).resource_from_user_memory.unwrap()(self.screen, tmpl, mem)
+        })
+    }
+
     pub fn resource_create_buffer(&self, size: u32) -> Option<PipeResource> {
         let mut tmpl = pipe_resource::default();
 
@@ -93,7 +107,7 @@ impl PipeScreen {
         tmpl.array_size = 1;
         tmpl.bind = PIPE_BIND_GLOBAL;
 
-        PipeResource::new(unsafe { (*self.screen).resource_create.unwrap()(self.screen, &tmpl) })
+        self.resource_create(&tmpl)
     }
 
     pub fn resource_create_buffer_from_user(
@@ -110,9 +124,52 @@ impl PipeScreen {
         tmpl.array_size = 1;
         tmpl.bind = PIPE_BIND_GLOBAL;
 
-        PipeResource::new(unsafe {
-            (*self.screen).resource_from_user_memory.unwrap()(self.screen, &tmpl, mem)
-        })
+        self.resource_create_from_user(&tmpl, mem)
+    }
+
+    pub fn resource_create_texture(
+        &self,
+        width: u32,
+        height: u16,
+        depth: u16,
+        array_size: u16,
+        target: pipe_texture_target,
+        format: pipe_format,
+    ) -> Option<PipeResource> {
+        let mut tmpl = pipe_resource::default();
+
+        tmpl.set_target(target);
+        tmpl.set_format(format);
+        tmpl.width0 = width;
+        tmpl.height0 = height;
+        tmpl.depth0 = depth;
+        tmpl.array_size = array_size;
+        tmpl.bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE;
+
+        self.resource_create(&tmpl)
+    }
+
+    pub fn resource_create_texture_from_user(
+        &self,
+        width: u32,
+        height: u16,
+        depth: u16,
+        array_size: u16,
+        target: pipe_texture_target,
+        format: pipe_format,
+        mem: *mut c_void,
+    ) -> Option<PipeResource> {
+        let mut tmpl = pipe_resource::default();
+
+        tmpl.set_target(target);
+        tmpl.set_format(format);
+        tmpl.width0 = width;
+        tmpl.height0 = height;
+        tmpl.depth0 = depth;
+        tmpl.array_size = array_size;
+        tmpl.bind = PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE;
+
+        self.resource_create_from_user(&tmpl, mem)
     }
 
     pub fn param(&self, cap: pipe_cap) -> i32 {

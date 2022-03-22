@@ -56,6 +56,14 @@ impl PipeTransfer {
         self.ptr
     }
 
+    pub fn row_pitch(&self) -> u32 {
+        unsafe { (*self.pipe).stride }
+    }
+
+    pub fn slice_pitch(&self) -> u32 {
+        unsafe { (*self.pipe).layer_stride }
+    }
+
     pub fn with_ctx(self, ctx: &PipeContext) -> GuardedPipeTransfer {
         GuardedPipeTransfer {
             inner: self,

@@ -55,6 +55,28 @@ impl PipeContext {
         }
     }
 
+    pub fn texture_subdata(
+        &self,
+        res: &PipeResource,
+        bx: &pipe_box,
+        data: *const c_void,
+        stride: u32,
+        layer_stride: u32,
+    ) {
+        unsafe {
+            self.pipe.as_ref().texture_subdata.unwrap()(
+                self.pipe.as_ptr(),
+                res.pipe(),
+                0,
+                pipe_map_flags::PIPE_MAP_WRITE.0, // TODO PIPE_MAP_x
+                bx,
+                data,
+                stride,
+                layer_stride,
+            )
+        }
+    }
+
     pub fn clear_buffer(&self, res: &PipeResource, pattern: &[u8], offset: u32, size: u32) {
         unsafe {
             self.pipe.as_ref().clear_buffer.unwrap()(
@@ -277,5 +299,6 @@ fn has_required_cbs(c: &pipe_context) -> bool {
         && c.resource_copy_region.is_some()
         && c.set_global_binding.is_some()
         && c.texture_map.is_some()
+        && c.texture_subdata.is_some()
         && c.texture_unmap.is_some()
 }
