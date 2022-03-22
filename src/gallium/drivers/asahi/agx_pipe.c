@@ -388,6 +388,11 @@ agx_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scissor
           const union pipe_color_union *color, double depth, unsigned stencil)
 {
    struct agx_context *ctx = agx_context(pctx);
+
+   /* TODO: support partial clears */
+   if (ctx->batch->clear | ctx->batch->draw)
+      pctx->flush(pctx, NULL, 0);
+
    ctx->batch->clear |= buffers;
 
    if (buffers & PIPE_CLEAR_COLOR0)
