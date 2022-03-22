@@ -34,7 +34,12 @@ static void
 virtio_device_destroy(struct fd_device *dev)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
+
    fd_bo_del_locked(virtio_dev->shmem_bo);
+
+   if (virtio_dev->userspace_allocates_iova) {
+      util_vma_heap_finish(&virtio_dev->address_space);
+   }
 }
 
 static const struct fd_device_funcs funcs = {
@@ -149,6 +154,8 @@ virtio_device_new(int fd, drmVersionPtr version)
    INFO_MSG("version_minor:       %u", caps.version_minor);
    INFO_MSG("version_patchlevel:  %u", caps.version_patchlevel);
    INFO_MSG("has_cached_coherent: %u", caps.u.msm.has_cached_coherent);
+   INFO_MSG("va_start:            0x%0"PRIx64, caps.u.msm.va_start);
+   INFO_MSG("va_size:             0x%0"PRIx64, caps.u.msm.va_size);
 
    if (caps.wire_format_version != 1) {
       ERROR_MSG("Unsupported protocol version: %u", caps.wire_format_version);
@@ -187,6 +194,15 @@ virtio_device_new(int fd, drmVersionPtr version)
    simple_mtx_init(&virtio_dev->eb_lock, mtx_plain);
 
    set_debuginfo(dev);
+
+   if (caps.u.msm.va_start && caps.u.msm.va_size) {
+      virtio_dev->userspace_allocates_iova = true;
+
+      util_vma_heap_init(&virtio_dev->address_space,
+                         caps.u.msm.va_start,
+                         caps.u.msm.va_size);
+      simple_mtx_init(&virtio_dev->address_space_lock, mtx_plain);
+   }
 
    return dev;
 }

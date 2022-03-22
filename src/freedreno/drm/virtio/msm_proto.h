@@ -65,6 +65,7 @@ enum msm_ccmd {
    MSM_CCMD_SUBMITQUEUE_QUERY,
    MSM_CCMD_WAIT_FENCE,
    MSM_CCMD_SET_DEBUGINFO,
+   MSM_CCMD_GEM_CLOSE,
    MSM_CCMD_LAST,
 };
 
@@ -138,6 +139,8 @@ struct msm_ccmd_gem_new_req {
    uint64_t size;
    uint32_t flags;
    uint32_t blob_id;
+
+   uint64_t iova;  /* non-zero for guest userspace iova allocation */
 };
 DEFINE_CAST(msm_ccmd_req, msm_ccmd_gem_new_req)
 
@@ -161,6 +164,8 @@ struct msm_ccmd_gem_info_req {
    uint32_t res_id;
    uint32_t blob_mem;   // TODO do we need this?
    uint32_t blob_id;    // TODO do we need this?
+
+   uint64_t iova;  /* non-zero for guest userspace iova allocation */
 };
 DEFINE_CAST(msm_ccmd_req, msm_ccmd_gem_info_req)
 
@@ -370,5 +375,20 @@ struct msm_ccmd_set_debuginfo_req {
    int8_t   payload[];
 };
 DEFINE_CAST(msm_ccmd_req, msm_ccmd_set_debuginfo_req)
+
+/*
+ * MSM_CCMD_GEM_CLOSE
+ *
+ * If guest userspace allocated iova's are used, this request can be used
+ * to clear the vma when the guest bo is deleted.
+ *
+ * No response.
+ */
+struct msm_ccmd_gem_close_req {
+   struct msm_ccmd_req hdr;
+
+   uint32_t host_handle;
+};
+DEFINE_CAST(msm_ccmd_req, msm_ccmd_gem_close_req)
 
 #endif /* MSM_PROTO_H_ */

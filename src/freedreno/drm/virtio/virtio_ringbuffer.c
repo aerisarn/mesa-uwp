@@ -25,10 +25,27 @@
 #include <inttypes.h>
 #include <pthread.h>
 
+#include "util/libsync.h"
 #include "util/os_file.h"
 
 #include "drm/freedreno_ringbuffer_sp.h"
 #include "virtio_priv.h"
+
+static void
+retire_execute(void *job, void *gdata, int thread_index)
+{
+   struct fd_submit_sp *fd_submit = job;
+
+   sync_wait(fd_submit->out_fence_fd, -1);
+   close(fd_submit->out_fence_fd);
+}
+
+static void
+retire_cleanup(void *job, void *gdata, int thread_index)
+{
+   struct fd_submit_sp *fd_submit = job;
+   fd_submit_del(&fd_submit->base);
+}
 
 static int
 flush_submit_list(struct list_head *submit_list)
@@ -36,6 +53,7 @@ flush_submit_list(struct list_head *submit_list)
    struct fd_submit_sp *fd_submit = to_fd_submit_sp(last_submit(submit_list));
    struct virtio_pipe *virtio_pipe = to_virtio_pipe(fd_submit->base.pipe);
    struct fd_device *dev = virtio_pipe->base.dev;
+   struct virtio_device *virtio_dev = to_virtio_device(dev);
 
    unsigned nr_cmds = 0;
 
@@ -116,8 +134,12 @@ flush_submit_list(struct list_head *submit_list)
    }
 
    for (unsigned i = 0; i < fd_submit->nr_bos; i++) {
+      struct virtio_bo *virtio_bo = to_virtio_bo(fd_submit->bos[i]);
+
+      assert(util_queue_fence_is_signalled(&virtio_bo->fence));
+
       submit_bos[i].flags = fd_submit->bos[i]->reloc_flags;
-      submit_bos[i].handle = to_virtio_bo(fd_submit->bos[i])->host_handle;
+      submit_bos[i].handle = virtio_bo->host_handle;
       submit_bos[i].presumed = 0;
    }
 
@@ -156,6 +178,12 @@ flush_submit_list(struct list_head *submit_list)
        */
       out_fence->use_fence_fd = true;
       out_fence_fd = &out_fence->fence_fd;
+   } else if (virtio_dev->userspace_allocates_iova) {
+      /* we are using retire_queue, so we need an out-fence for each
+       * submit.. we can just re-use fd_submit->out_fence_fd for temporary
+       * storage.
+       */
+      out_fence_fd = &fd_submit->out_fence_fd;
    }
 
    if (fd_submit->in_fence_fd != -1) {
@@ -176,6 +204,20 @@ flush_submit_list(struct list_head *submit_list)
 
    if (fd_submit->in_fence_fd != -1)
       close(fd_submit->in_fence_fd);
+
+   if (virtio_dev->userspace_allocates_iova) {
+      if (out_fence_fd != &fd_submit->out_fence_fd)
+         fd_submit->out_fence_fd = os_dupfd_cloexec(*out_fence_fd);
+      fd_submit_ref(&fd_submit->base);
+
+      util_queue_fence_init(&fd_submit->retire_fence);
+
+      util_queue_add_job(&virtio_pipe->retire_queue,
+                         fd_submit, &fd_submit->retire_fence,
+                         retire_execute,
+                         retire_cleanup,
+                         0);
+   }
 
    return 0;
 }

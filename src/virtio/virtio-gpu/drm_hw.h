@@ -18,6 +18,9 @@ struct virgl_renderer_capset_drm {
    union {
       struct {
          uint32_t has_cached_coherent;
+         uint32_t priorities;
+         uint64_t va_start;
+         uint64_t va_size;
       } msm;  /* context_type == VIRTGPU_DRM_CONTEXT_MSM */
    } u;
 };

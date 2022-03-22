@@ -170,6 +170,9 @@ virtio_pipe_destroy(struct fd_pipe *pipe)
 {
    struct virtio_pipe *virtio_pipe = to_virtio_pipe(pipe);
 
+   if (util_queue_is_initialized(&virtio_pipe->retire_queue))
+      util_queue_destroy(&virtio_pipe->retire_queue);
+
    close_submitqueue(pipe, virtio_pipe->queue_id);
    fd_pipe_sp_ringpool_fini(pipe);
    free(virtio_pipe);
@@ -253,6 +256,11 @@ virtio_pipe_new(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
 
    if (!(virtio_pipe->gpu_id || virtio_pipe->chip_id))
       goto fail;
+
+   if (to_virtio_device(dev)->userspace_allocates_iova) {
+      util_queue_init(&virtio_pipe->retire_queue, "rq", 8, 1,
+                      UTIL_QUEUE_INIT_RESIZE_IF_FULL, NULL);
+   }
 
    INFO_MSG("Pipe Info:");
    INFO_MSG(" GPU-id:          %d", virtio_pipe->gpu_id);
