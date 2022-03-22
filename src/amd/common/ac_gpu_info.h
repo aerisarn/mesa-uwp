@@ -88,6 +88,7 @@ struct radeon_info {
    bool has_32bit_predication;
    bool has_3d_cube_border_color_mipmap;
    bool never_stop_sq_perf_counters;
+   bool has_sqtt_rb_harvest_bug;
 
    /* Display features. */
    /* There are 2 display DCC codepaths, because display expects unaligned DCC. */

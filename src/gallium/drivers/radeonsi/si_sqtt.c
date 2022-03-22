@@ -303,6 +303,14 @@ si_emit_thread_trace_stop(struct si_context *sctx,
    radeon_emit(EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
    radeon_end();
 
+   if (sctx->screen->info.has_sqtt_rb_harvest_bug) {
+      /* Some chips with disabled RBs should wait for idle because FINISH_DONE doesn't work. */
+      sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB |
+                     SI_CONTEXT_FLUSH_AND_INV_DB |
+                     SI_CONTEXT_CS_PARTIAL_FLUSH;
+      sctx->emit_cache_flush(sctx, cs);
+   }
+
    for (unsigned se = 0; se < max_se; se++) {
       if (si_se_is_disabled(sctx, se))
          continue;
@@ -316,14 +324,16 @@ si_emit_thread_trace_stop(struct si_context *sctx,
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
 
       if (sctx->chip_class >= GFX10) {
-         /* Make sure to wait for the trace buffer. */
-         radeon_emit(PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-         radeon_emit(WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
-         radeon_emit(R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
-         radeon_emit(0);
-         radeon_emit(0); /* reference value */
-         radeon_emit(~C_008D20_FINISH_DONE); /* mask */
-         radeon_emit(4); /* poll interval */
+         if (!sctx->screen->info.has_sqtt_rb_harvest_bug) {
+            /* Make sure to wait for the trace buffer. */
+            radeon_emit(PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+            radeon_emit(WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
+            radeon_emit(R_008D20_SQ_THREAD_TRACE_STATUS >> 2);  /* register */
+            radeon_emit(0);
+            radeon_emit(0); /* reference value */
+            radeon_emit(~C_008D20_FINISH_DONE); /* mask */
+            radeon_emit(4); /* poll interval */
+         }
 
          /* Disable the thread trace mode. */
          radeon_set_privileged_config_reg(R_008D1C_SQ_THREAD_TRACE_CTRL,
