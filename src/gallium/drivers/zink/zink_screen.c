@@ -2140,7 +2140,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    }
 
    if (screen->threaded)
-      util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, NULL);
+      util_queue_init(&screen->flush_queue, "zfq", 8, 1, UTIL_QUEUE_INIT_RESIZE_IF_FULL, screen);
 
    /* Some Vulkan implementations have special requirements for WSI
     * allocations.
