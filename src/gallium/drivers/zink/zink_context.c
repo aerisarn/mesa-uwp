@@ -2045,6 +2045,40 @@ equals_framebuffer_imageless(const void *a, const void *b)
 }
 
 static void
+update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h)
+{
+   if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
+      ctx->scissor_changed = true;
+   /* get_framebuffer adds a ref if the fb is reused or created;
+    * always do get_framebuffer first to avoid deleting the same fb
+    * we're about to use
+    */
+   struct zink_framebuffer *fb = ctx->get_framebuffer(ctx);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (ctx->framebuffer && !screen->info.have_KHR_imageless_framebuffer) {
+      simple_mtx_lock(&screen->framebuffer_mtx);
+      struct hash_entry *he = _mesa_hash_table_search(&screen->framebuffer_cache, &ctx->framebuffer->state);
+      if (ctx->framebuffer && !ctx->framebuffer->state.num_attachments) {
+         /* if this has no attachments then its lifetime has ended */
+         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
+         he = NULL;
+         /* ensure an unflushed fb doesn't get destroyed by deferring it */
+         util_dynarray_append(&ctx->batch.state->dead_framebuffers, struct zink_framebuffer*, ctx->framebuffer);
+         ctx->framebuffer = NULL;
+      }
+      /* a framebuffer loses 1 ref every time we unset it;
+       * we do NOT add refs here, as the ref has already been added in
+       * get_framebuffer()
+       */
+      if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL) && he)
+         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
+      simple_mtx_unlock(&screen->framebuffer_mtx);
+   }
+   ctx->fb_changed |= ctx->framebuffer != fb;
+   ctx->framebuffer = fb;
+}
+
+static void
 setup_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -2146,40 +2180,6 @@ prep_fb_attachments(struct zink_context *ctx, VkImageView *att)
          att[ctx->fb_state.nr_cbufs] = prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
       }
    }
-}
-
-static void
-update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h)
-{
-   if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
-      ctx->scissor_changed = true;
-   /* get_framebuffer adds a ref if the fb is reused or created;
-    * always do get_framebuffer first to avoid deleting the same fb
-    * we're about to use
-    */
-   struct zink_framebuffer *fb = ctx->get_framebuffer(ctx);
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (ctx->framebuffer && !screen->info.have_KHR_imageless_framebuffer) {
-      simple_mtx_lock(&screen->framebuffer_mtx);
-      struct hash_entry *he = _mesa_hash_table_search(&screen->framebuffer_cache, &ctx->framebuffer->state);
-      if (ctx->framebuffer && !ctx->framebuffer->state.num_attachments) {
-         /* if this has no attachments then its lifetime has ended */
-         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
-         he = NULL;
-         /* ensure an unflushed fb doesn't get destroyed by deferring it */
-         util_dynarray_append(&ctx->batch.state->dead_framebuffers, struct zink_framebuffer*, ctx->framebuffer);
-         ctx->framebuffer = NULL;
-      }
-      /* a framebuffer loses 1 ref every time we unset it;
-       * we do NOT add refs here, as the ref has already been added in
-       * get_framebuffer()
-       */
-      if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL) && he)
-         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
-      simple_mtx_unlock(&screen->framebuffer_mtx);
-   }
-   ctx->fb_changed |= ctx->framebuffer != fb;
-   ctx->framebuffer = fb;
 }
 
 static unsigned
