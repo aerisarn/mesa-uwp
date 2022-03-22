@@ -130,11 +130,37 @@ impl PipeContext {
             )
         };
 
-        PipeTransfer::new(out, ptr)
+        PipeTransfer::new(true, out, ptr)
     }
 
     pub(super) fn buffer_unmap(&self, tx: *mut pipe_transfer) {
         unsafe { self.pipe.as_ref().buffer_unmap.unwrap()(self.pipe.as_ptr(), tx) };
+    }
+
+    pub fn texture_map(&self, res: &PipeResource, bx: &pipe_box, block: bool) -> PipeTransfer {
+        let mut out: *mut pipe_transfer = ptr::null_mut();
+
+        let flags = match block {
+            false => pipe_map_flags::PIPE_MAP_UNSYNCHRONIZED,
+            true => pipe_map_flags(0),
+        } | pipe_map_flags::PIPE_MAP_READ_WRITE;
+
+        let ptr = unsafe {
+            self.pipe.as_ref().texture_map.unwrap()(
+                self.pipe.as_ptr(),
+                res.pipe(),
+                0,
+                flags.0,
+                bx,
+                &mut out,
+            )
+        };
+
+        PipeTransfer::new(false, out, ptr)
+    }
+
+    pub(super) fn texture_unmap(&self, tx: *mut pipe_transfer) {
+        unsafe { self.pipe.as_ref().texture_unmap.unwrap()(self.pipe.as_ptr(), tx) };
     }
 
     pub fn blit(&self, src: &PipeResource, dst: &PipeResource) {
@@ -250,4 +276,6 @@ fn has_required_cbs(c: &pipe_context) -> bool {
         && c.memory_barrier.is_some()
         && c.resource_copy_region.is_some()
         && c.set_global_binding.is_some()
+        && c.texture_map.is_some()
+        && c.texture_unmap.is_some()
 }

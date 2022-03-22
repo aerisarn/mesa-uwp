@@ -12,6 +12,7 @@ pub struct PipeTransfer {
     pipe: *mut pipe_transfer,
     res: *mut pipe_resource,
     ptr: *mut c_void,
+    is_buffer: bool,
 }
 
 pub struct GuardedPipeTransfer<'a> {
@@ -29,13 +30,17 @@ impl<'a> Deref for GuardedPipeTransfer<'a> {
 
 impl<'a> Drop for GuardedPipeTransfer<'a> {
     fn drop(&mut self) {
-        self.ctx.buffer_unmap(self.inner.pipe);
+        if self.is_buffer {
+            self.ctx.buffer_unmap(self.inner.pipe);
+        } else {
+            self.ctx.texture_unmap(self.inner.pipe);
+        }
         unsafe { pipe_resource_reference(&mut self.inner.res, ptr::null_mut()) };
     }
 }
 
 impl PipeTransfer {
-    pub(super) fn new(pipe: *mut pipe_transfer, ptr: *mut c_void) -> Self {
+    pub(super) fn new(is_buffer: bool, pipe: *mut pipe_transfer, ptr: *mut c_void) -> Self {
         let mut res: *mut pipe_resource = ptr::null_mut();
         unsafe { pipe_resource_reference(&mut res, (*pipe).resource) }
 
@@ -43,6 +48,7 @@ impl PipeTransfer {
             pipe: pipe,
             res: res,
             ptr: ptr,
+            is_buffer: is_buffer,
         }
     }
 
