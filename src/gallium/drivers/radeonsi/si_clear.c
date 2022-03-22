@@ -169,15 +169,15 @@ bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format)
 {
    format = si_simplify_cb_format(format);
    const struct util_format_description *desc = util_format_description(format);
+   unsigned comp_swap = si_translate_colorswap(format, false);
 
-   /* Formats with 3 channels can't have alpha. */
-   if (desc->nr_channels == 3)
-      return true; /* same as xxxA; is any value OK here? */
+   /* The following code matches the hw behavior. */
+   if (desc->nr_channels == 1) {
+      return (comp_swap == V_028C70_SWAP_ALT_REV) != (sscreen->info.family == CHIP_RAVEN2 ||
+                                                      sscreen->info.family == CHIP_RENOIR);
+   }
 
-   if (sscreen->info.chip_class >= GFX10 && desc->nr_channels == 1)
-      return desc->swizzle[3] == PIPE_SWIZZLE_X;
-
-   return si_translate_colorswap(format, false) <= 1;
+   return comp_swap != V_028C70_SWAP_STD_REV && comp_swap != V_028C70_SWAP_ALT_REV;
 }
 
 static bool vi_get_fast_clear_parameters(struct si_screen *sscreen, enum pipe_format base_format,
