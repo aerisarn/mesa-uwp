@@ -8253,6 +8253,8 @@
       <opt>aand</opt>
       <opt>aor</opt>
       <opt>axor</opt>
+      <opt>axchg</opt> <!-- For Valhall -->
+      <opt>acmpxchg</opt> <!-- For Valhall -->
     </mod>
     <!-- not actually encoded, but used for IR -->
     <immediate name="sr_count" size="4" pseudo="true"/>
