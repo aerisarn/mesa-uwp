@@ -327,11 +327,13 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
             : aco_opcode::s_cmp_lg_u32;
    } else if ((instr->format == Format::PSEUDO_BRANCH && instr->operands.size() == 1 &&
                instr->operands[0].physReg() == scc) ||
-              instr->opcode == aco_opcode::s_cselect_b32) {
+              instr->opcode == aco_opcode::s_cselect_b32 ||
+              instr->opcode == aco_opcode::s_cselect_b64) {
 
       /* For cselect, operand 2 is the SCC condition */
       unsigned scc_op_idx = 0;
-      if (instr->opcode == aco_opcode::s_cselect_b32) {
+      if (instr->opcode == aco_opcode::s_cselect_b32 ||
+          instr->opcode == aco_opcode::s_cselect_b64) {
          scc_op_idx = 2;
       }
 
@@ -359,7 +361,8 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
          if (instr->format == Format::PSEUDO_BRANCH)
             instr->opcode = instr->opcode == aco_opcode::p_cbranch_z ? aco_opcode::p_cbranch_nz
                                                                      : aco_opcode::p_cbranch_z;
-         else if (instr->opcode == aco_opcode::s_cselect_b32)
+         else if (instr->opcode == aco_opcode::s_cselect_b32 ||
+                  instr->opcode == aco_opcode::s_cselect_b64)
             std::swap(instr->operands[0], instr->operands[1]);
          else
             unreachable(
