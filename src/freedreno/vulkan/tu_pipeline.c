@@ -3654,10 +3654,11 @@ tu_GetPipelineExecutablePropertiesKHR(
 {
    TU_FROM_HANDLE(tu_device, dev, _device);
    TU_FROM_HANDLE(tu_pipeline, pipeline, pPipelineInfo->pipeline);
-   VK_OUTARRAY_MAKE(out, pProperties, pExecutableCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPipelineExecutablePropertiesKHR, out,
+                          pProperties, pExecutableCount);
 
    util_dynarray_foreach (&pipeline->executables, struct tu_pipeline_executable, exe) {
-      vk_outarray_append(&out, props) {
+      vk_outarray_append_typed(VkPipelineExecutablePropertiesKHR, &out, props) {
          gl_shader_stage stage = exe->stage;
          props->stages = mesa_to_vk_shader_stage(stage);
 
@@ -3684,12 +3685,13 @@ tu_GetPipelineExecutableStatisticsKHR(
       VkPipelineExecutableStatisticKHR* pStatistics)
 {
    TU_FROM_HANDLE(tu_pipeline, pipeline, pExecutableInfo->pipeline);
-   VK_OUTARRAY_MAKE(out, pStatistics, pStatisticCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPipelineExecutableStatisticKHR, out,
+                          pStatistics, pStatisticCount);
 
    const struct tu_pipeline_executable *exe =
       tu_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Max Waves Per Core");
       WRITE_STR(stat->description,
                 "Maximum number of simultaneous waves per core.");
@@ -3697,7 +3699,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.max_waves;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Instruction Count");
       WRITE_STR(stat->description,
                 "Total number of IR3 instructions in the final generated "
@@ -3706,7 +3708,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.instrs_count;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Code size");
       WRITE_STR(stat->description,
                 "Total number of dwords in the final generated "
@@ -3715,7 +3717,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.sizedwords;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "NOPs Count");
       WRITE_STR(stat->description,
                 "Number of NOP instructions in the final generated "
@@ -3724,7 +3726,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.nops_count;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "MOV Count");
       WRITE_STR(stat->description,
                 "Number of MOV instructions in the final generated "
@@ -3733,7 +3735,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.mov_count;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "COV Count");
       WRITE_STR(stat->description,
                 "Number of COV instructions in the final generated "
@@ -3742,7 +3744,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.cov_count;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Registers used");
       WRITE_STR(stat->description,
                 "Number of registers used in the final generated "
@@ -3751,7 +3753,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.max_reg + 1;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Half-registers used");
       WRITE_STR(stat->description,
                 "Number of half-registers used in the final generated "
@@ -3760,7 +3762,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.max_half_reg + 1;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Instructions with SS sync bit");
       WRITE_STR(stat->description,
                 "SS bit is set for instructions which depend on a result "
@@ -3769,7 +3771,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.ss;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Instructions with SY sync bit");
       WRITE_STR(stat->description,
                 "SY bit is set for instructions which depend on a result "
@@ -3778,7 +3780,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.sy;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Estimated cycles stalled on SS");
       WRITE_STR(stat->description,
                 "A better metric to estimate the impact of SS syncs.");
@@ -3786,7 +3788,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.sstall;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "Estimated cycles stalled on SY");
       WRITE_STR(stat->description,
                 "A better metric to estimate the impact of SY syncs.");
@@ -3795,7 +3797,7 @@ tu_GetPipelineExecutableStatisticsKHR(
    }
 
    for (int i = 0; i < ARRAY_SIZE(exe->stats.instrs_per_cat); i++) {
-      vk_outarray_append(&out, stat) {
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
          WRITE_STR(stat->name, "cat%d instructions", i);
          WRITE_STR(stat->description,
                   "Number of cat%d instructions.", i);
@@ -3804,7 +3806,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       }
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "STP Count");
       WRITE_STR(stat->description,
                 "Number of STore Private instructions in the final generated "
@@ -3813,7 +3815,7 @@ tu_GetPipelineExecutableStatisticsKHR(
       stat->value.u64 = exe->stats.stp_count;
    }
 
-   vk_outarray_append(&out, stat) {
+   vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
       WRITE_STR(stat->name, "LDP Count");
       WRITE_STR(stat->description,
                 "Number of LoaD Private instructions in the final generated "
@@ -3854,14 +3856,15 @@ tu_GetPipelineExecutableInternalRepresentationsKHR(
     VkPipelineExecutableInternalRepresentationKHR* pInternalRepresentations)
 {
    TU_FROM_HANDLE(tu_pipeline, pipeline, pExecutableInfo->pipeline);
-   VK_OUTARRAY_MAKE(out, pInternalRepresentations, pInternalRepresentationCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPipelineExecutableInternalRepresentationKHR, out,
+                          pInternalRepresentations, pInternalRepresentationCount);
    bool incomplete_text = false;
 
    const struct tu_pipeline_executable *exe =
       tu_pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
 
    if (exe->nir_from_spirv) {
-      vk_outarray_append(&out, ir) {
+      vk_outarray_append_typed(VkPipelineExecutableInternalRepresentationKHR, &out, ir) {
          WRITE_STR(ir->name, "NIR from SPIRV");
          WRITE_STR(ir->description,
                    "Initial NIR before any optimizations");
@@ -3872,7 +3875,7 @@ tu_GetPipelineExecutableInternalRepresentationsKHR(
    }
 
    if (exe->nir_final) {
-      vk_outarray_append(&out, ir) {
+      vk_outarray_append_typed(VkPipelineExecutableInternalRepresentationKHR, &out, ir) {
          WRITE_STR(ir->name, "Final NIR");
          WRITE_STR(ir->description,
                    "Final NIR before going into the back-end compiler");
@@ -3883,7 +3886,7 @@ tu_GetPipelineExecutableInternalRepresentationsKHR(
    }
 
    if (exe->disasm) {
-      vk_outarray_append(&out, ir) {
+      vk_outarray_append_typed(VkPipelineExecutableInternalRepresentationKHR, &out, ir) {
          WRITE_STR(ir->name, "IR3 Assembly");
          WRITE_STR(ir->description,
                    "Final IR3 assembly for the generated shader binary");

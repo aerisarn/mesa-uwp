@@ -310,11 +310,12 @@ tu_GetPhysicalDeviceFormatProperties2(
    VkDrmFormatModifierPropertiesListEXT *list =
       vk_find_struct(pFormatProperties->pNext, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT);
    if (list) {
-      VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
-                       &list->drmFormatModifierCount);
+      VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierProperties2EXT, out,
+                             list->pDrmFormatModifierProperties,
+                             &list->drmFormatModifierCount);
 
       if (pFormatProperties->formatProperties.linearTilingFeatures) {
-         vk_outarray_append(&out, mod_props) {
+         vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
             mod_props->drmFormatModifierPlaneCount = 1;
             mod_props->drmFormatModifierTilingFeatures =
@@ -326,7 +327,7 @@ tu_GetPhysicalDeviceFormatProperties2(
       if (pFormatProperties->formatProperties.optimalTilingFeatures &&
           tiling_possible(format) &&
           ubwc_possible(format, VK_IMAGE_TYPE_2D, 0, 0, physical_device->info, VK_SAMPLE_COUNT_1_BIT)) {
-         vk_outarray_append(&out, mod_props) {
+         vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
             mod_props->drmFormatModifierPlaneCount = 1;
             mod_props->drmFormatModifierTilingFeatures =

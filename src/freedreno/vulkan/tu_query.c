@@ -1424,13 +1424,14 @@ tu_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
    const struct fd_perfcntr_group *group =
          fd_perfcntrs(&phydev->dev_id, &group_count);
 
-   VK_OUTARRAY_MAKE(out, pCounters, pCounterCount);
-   VK_OUTARRAY_MAKE(out_desc, pCounterDescriptions, &desc_count);
+   VK_OUTARRAY_MAKE_TYPED(VkPerformanceCounterKHR, out, pCounters, pCounterCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPerformanceCounterDescriptionKHR, out_desc,
+                          pCounterDescriptions, &desc_count);
 
    for (int i = 0; i < group_count; i++) {
       for (int j = 0; j < group[i].num_countables; j++) {
 
-         vk_outarray_append(&out, counter) {
+         vk_outarray_append_typed(VkPerformanceCounterKHR, &out, counter) {
             counter->scope = VK_QUERY_SCOPE_COMMAND_BUFFER_KHR;
             counter->unit =
                   fd_perfcntr_type_to_vk_unit[group[i].countables[j].query_type];
@@ -1444,7 +1445,7 @@ tu_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
             memcpy(counter->uuid, sha1_result, sizeof(counter->uuid));
          }
 
-         vk_outarray_append(&out_desc, desc) {
+         vk_outarray_append_typed(VkPerformanceCounterDescriptionKHR, &out_desc, desc) {
             desc->flags = 0;
 
             snprintf(desc->name, sizeof(desc->name),

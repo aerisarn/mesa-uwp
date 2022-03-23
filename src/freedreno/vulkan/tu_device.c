@@ -462,7 +462,8 @@ tu_EnumeratePhysicalDevices(VkInstance _instance,
                             VkPhysicalDevice *pPhysicalDevices)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
-   VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out,
+                          pPhysicalDevices, pPhysicalDeviceCount);
 
    VkResult result;
 
@@ -473,7 +474,7 @@ tu_EnumeratePhysicalDevices(VkInstance _instance,
    }
 
    for (uint32_t i = 0; i < instance->physical_device_count; ++i) {
-      vk_outarray_append(&out, p)
+      vk_outarray_append_typed(VkPhysicalDevice, &out, p)
       {
          *p = tu_physical_device_to_handle(instance->physical_devices + i);
       }
@@ -489,8 +490,9 @@ tu_EnumeratePhysicalDeviceGroups(
    VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
 {
    TU_FROM_HANDLE(tu_instance, instance, _instance);
-   VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
-                    pPhysicalDeviceGroupCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
+                          pPhysicalDeviceGroupProperties,
+                          pPhysicalDeviceGroupCount);
    VkResult result;
 
    if (instance->physical_device_count < 0) {
@@ -500,7 +502,7 @@ tu_EnumeratePhysicalDeviceGroups(
    }
 
    for (uint32_t i = 0; i < instance->physical_device_count; ++i) {
-      vk_outarray_append(&out, p)
+      vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p)
       {
          p->physicalDeviceCount = 1;
          p->physicalDevices[0] =
@@ -1298,9 +1300,10 @@ tu_GetPhysicalDeviceQueueFamilyProperties2(
    uint32_t *pQueueFamilyPropertyCount,
    VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties2, out,
+                          pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
-   vk_outarray_append(&out, p)
+   vk_outarray_append_typed(VkQueueFamilyProperties2, &out, p)
    {
       p->queueFamilyProperties = tu_queue_family_properties;
    }
