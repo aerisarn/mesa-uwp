@@ -3418,7 +3418,7 @@ static uint32_t pvr_calc_fscommon_size_and_tiles_in_flight(
       num_allocs = PVR_GET_FEATURE_VALUE(dev_info, num_raster_pipes, 0U);
    } else {
       uint32_t num_phantoms = rogue_get_num_phantoms(dev_info);
-      uint32_t min_cluster_per_phantom;
+      uint32_t min_cluster_per_phantom = 0;
 
       if (num_phantoms > 1) {
          pvr_finishme("Unimplemented path!!");
