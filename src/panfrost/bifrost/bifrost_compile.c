@@ -2790,8 +2790,6 @@ enum bifrost_tex_dreg {
 static void
 bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
 {
-        bool computed_lod = false;
-
         struct bifrost_texture_operation desc = {
                 .op = bi_tex_op(instr->op),
                 .offset_or_bias_disable = false, /* TODO */
@@ -2805,7 +2803,6 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         switch (desc.op) {
         case BIFROST_TEX_OP_TEX:
                 desc.lod_or_fetch = BIFROST_LOD_MODE_COMPUTE;
-                computed_lod = true;
                 break;
         case BIFROST_TEX_OP_FETCH:
                 desc.lod_or_fetch = (enum bifrost_lod_mode)
@@ -2885,7 +2882,6 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         dregs[BIFROST_TEX_DREG_LOD] =
                                 bi_emit_texc_lod_88(b, index, sz == 16);
                         desc.lod_or_fetch = BIFROST_LOD_MODE_BIAS;
-                        computed_lod = true;
                         break;
 
                 case nir_tex_src_ms_index:
@@ -2979,7 +2975,8 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
         uint32_t desc_u = 0;
         memcpy(&desc_u, &desc, sizeof(desc_u));
         bi_texc_to(b, sr_count ? idx : bi_dest_index(&instr->dest), bi_null(),
-                        idx, cx, cy, bi_imm_u32(desc_u), !computed_lod,
+                        idx, cx, cy, bi_imm_u32(desc_u),
+                        !nir_tex_instr_has_implicit_derivative(instr),
                         sr_count, 0);
 
         /* Explicit copy to facilitate tied operands */
