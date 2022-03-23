@@ -1238,7 +1238,9 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
       return;
    }
 
-   VK_OUTARRAY_MAKE(out, mod_list->pDrmFormatModifierProperties, &mod_list->drmFormatModifierCount);
+   VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierPropertiesEXT, out,
+                          mod_list->pDrmFormatModifierProperties,
+                          &mod_list->drmFormatModifierCount);
 
    ac_get_supported_modifiers(&dev->rad_info, &radv_modifier_options,
                               vk_format_to_pipe_format(format), &mod_count, NULL);
@@ -1266,7 +1268,7 @@ radv_list_drm_format_modifiers(struct radv_physical_device *dev, VkFormat format
       if (!features)
          continue;
 
-      vk_outarray_append(&out, out_props) {
+      vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT, &out, out_props) {
          *out_props = (VkDrmFormatModifierPropertiesEXT) {
             .drmFormatModifier = mods[i],
             .drmFormatModifierPlaneCount = planes,
@@ -1293,7 +1295,9 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
       return;
    }
 
-   VK_OUTARRAY_MAKE(out, mod_list->pDrmFormatModifierProperties, &mod_list->drmFormatModifierCount);
+   VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierProperties2EXT, out,
+                          mod_list->pDrmFormatModifierProperties,
+                          &mod_list->drmFormatModifierCount);
 
    ac_get_supported_modifiers(&dev->rad_info, &radv_modifier_options,
                               vk_format_to_pipe_format(format), &mod_count, NULL);
@@ -1321,7 +1325,7 @@ radv_list_drm_format_modifiers_2(struct radv_physical_device *dev, VkFormat form
       if (!features)
          continue;
 
-      vk_outarray_append(&out, out_props) {
+      vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, out_props) {
          *out_props = (VkDrmFormatModifierProperties2EXT) {
             .drmFormatModifier = mods[i],
             .drmFormatModifierPlaneCount = planes,
