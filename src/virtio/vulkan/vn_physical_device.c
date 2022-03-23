@@ -1425,9 +1425,9 @@ vn_EnumeratePhysicalDevices(VkInstance _instance,
    if (result != VK_SUCCESS)
       return vn_error(instance, result);
 
-   VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices, pPhysicalDeviceCount);
    for (uint32_t i = 0; i < instance->physical_device.device_count; i++) {
-      vk_outarray_append(&out, physical_dev) {
+      vk_outarray_append_typed(VkPhysicalDevice, &out, physical_dev) {
          *physical_dev = vn_physical_device_to_handle(
             &instance->physical_device.devices[i]);
       }
@@ -1449,10 +1449,11 @@ vn_EnumeratePhysicalDeviceGroups(
    if (result != VK_SUCCESS)
       return vn_error(instance, result);
 
-   VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
-                    pPhysicalDeviceGroupCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
+                          pPhysicalDeviceGroupProperties,
+                          pPhysicalDeviceGroupCount);
    for (uint32_t i = 0; i < instance->physical_device.group_count; i++) {
-      vk_outarray_append(&out, props) {
+      vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, props) {
          *props = instance->physical_device.groups[i];
       }
    }
@@ -1472,10 +1473,10 @@ vn_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
    if (pLayerName)
       return vn_error(physical_dev->instance, VK_ERROR_LAYER_NOT_PRESENT);
 
-   VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties, pPropertyCount);
    for (uint32_t i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
       if (physical_dev->base.base.supported_extensions.extensions[i]) {
-         vk_outarray_append(&out, prop) {
+         vk_outarray_append_typed(VkExtensionProperties, &out, prop) {
             *prop = vk_device_extensions[i];
             prop->specVersion = physical_dev->extension_spec_versions[i];
          }
@@ -1523,9 +1524,11 @@ vn_GetPhysicalDeviceQueueFamilyProperties(
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
 
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties, out,
+                          pQueueFamilyProperties,
+                          pQueueFamilyPropertyCount);
    for (uint32_t i = 0; i < physical_dev->queue_family_count; i++) {
-      vk_outarray_append(&out, props) {
+      vk_outarray_append_typed(VkQueueFamilyProperties, &out, props) {
          *props =
             physical_dev->queue_family_properties[i].queueFamilyProperties;
       }
@@ -2183,9 +2186,10 @@ vn_GetPhysicalDeviceQueueFamilyProperties2(
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
 
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties2, out,
+                          pQueueFamilyProperties, pQueueFamilyPropertyCount);
    for (uint32_t i = 0; i < physical_dev->queue_family_count; i++) {
-      vk_outarray_append(&out, props) {
+      vk_outarray_append_typed(VkQueueFamilyProperties2, &out, props) {
          *props = physical_dev->queue_family_properties[i];
       }
    }
