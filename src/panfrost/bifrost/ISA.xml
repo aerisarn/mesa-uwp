@@ -8598,9 +8598,69 @@
     </mod>
   </ins>
 
+  <ins name="+LD_VAR_BUF.f32" staging="w=format" message="varying" pseudo="true">
+    <src start="0"/>
+    <src start="1"/>
+    <mod name="vecsize" start="8" size="2">
+      <opt>none</opt>
+      <opt>v2</opt>
+      <opt>v3</opt>
+      <opt>v4</opt>
+    </mod>
+    <mod name="update" size="2">
+      <opt>store</opt>
+      <opt>retrieve</opt>
+      <opt>conditional</opt>
+      <opt>clobber</opt>
+    </mod>
+    <mod name="register_format" size="2">
+      <opt>f32</opt>
+      <opt>f16</opt>
+      <opt>u32</opt>
+      <opt>u16</opt>
+    </mod>
+    <mod name="sample" size="3">
+      <opt>center</opt>
+      <opt>centroid</opt>
+      <opt>sample</opt>
+      <opt>explicit</opt>
+      <opt>none</opt>
+    </mod>
+  </ins>
+
   <ins name="+LD_VAR_BUF_IMM.f16" staging="w=format" message="varying" pseudo="true">
     <src start="0"/>
     <immediate name="index" start="3" size="5"/>
+    <mod name="vecsize" start="8" size="2">
+      <opt>none</opt>
+      <opt>v2</opt>
+      <opt>v3</opt>
+      <opt>v4</opt>
+    </mod>
+    <mod name="update" size="2">
+      <opt>store</opt>
+      <opt>retrieve</opt>
+      <opt>conditional</opt>
+      <opt>clobber</opt>
+    </mod>
+    <mod name="register_format" size="2">
+      <opt>f32</opt>
+      <opt>f16</opt>
+      <opt>u32</opt>
+      <opt>u16</opt>
+    </mod>
+    <mod name="sample" size="3">
+      <opt>center</opt>
+      <opt>centroid</opt>
+      <opt>sample</opt>
+      <opt>explicit</opt>
+      <opt>none</opt>
+    </mod>
+  </ins>
+
+  <ins name="+LD_VAR_BUF.f16" staging="w=format" message="varying" pseudo="true">
+    <src start="0"/>
+    <src start="1"/>
     <mod name="vecsize" start="8" size="2">
       <opt>none</opt>
       <opt>v2</opt>
