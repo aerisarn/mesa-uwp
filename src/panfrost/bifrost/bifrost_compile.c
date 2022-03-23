@@ -523,7 +523,8 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
                 /* Conversion descriptor comes from the compile inputs, pixel
                  * indices derived at run time based on sample ID */
                 bi_st_tile(b, rgba, bi_pixel_indices(b, rt), bi_register(60),
-                                bi_imm_u32(blend_desc >> 32), BI_VECSIZE_V4);
+                                bi_imm_u32(blend_desc >> 32),
+                                regfmt, BI_VECSIZE_V4);
         } else if (b->shader->inputs->is_blend) {
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */

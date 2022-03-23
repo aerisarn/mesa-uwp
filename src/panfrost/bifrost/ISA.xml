@@ -7709,6 +7709,12 @@
       <opt>v3</opt>
       <opt>v4</opt>
     </mod>
+    <mod name="register_format" size="3" pseudo="true">
+      <opt>f32</opt>
+      <opt>f16</opt>
+      <opt>u32</opt>
+      <opt>s32</opt>
+    </mod>
   </ins>
 
   <ins name="+SWZ.v2i16" mask="0xfffc8" exact="0x3d948">
