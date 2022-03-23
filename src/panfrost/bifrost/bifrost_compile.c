@@ -4125,8 +4125,10 @@ bi_compile_variant_nir(nir_shader *nir,
         bi_lower_fau(ctx);
 
         /* Lowering FAU can create redundant moves. Run CSE+DCE to clean up. */
-        bi_opt_cse(ctx);
-        bi_opt_dead_code_eliminate(ctx);
+        if (likely(optimize)) {
+                bi_opt_cse(ctx);
+                bi_opt_dead_code_eliminate(ctx);
+        }
 
         /* Analyze before register allocation to avoid false dependencies. The
          * skip bit is a function of only the data flow graph and is invariant
