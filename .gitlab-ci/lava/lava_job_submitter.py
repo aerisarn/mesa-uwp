@@ -33,6 +33,7 @@ import urllib.parse
 import xmlrpc
 from datetime import datetime, timedelta
 from os import getenv
+from typing import Optional
 
 import lavacli
 import yaml
@@ -226,7 +227,7 @@ class LAVAJob():
     def heartbeat(self):
         self.last_log_time = datetime.now()
 
-    def validate(self):
+    def validate(self) -> Optional[dict]:
         try:
             return _call_proxy(
                 self.proxy.scheduler.jobs.validate, self.definition, True
@@ -386,7 +387,7 @@ def main(args):
     if args.validate_only:
         job = LAVAJob(proxy, job_definition)
         ret = job.validate()
-        if not ret:
+        if ret:
             fatal_err("Error in LAVA job definition")
         print("LAVA job definition validated successfully")
         return
