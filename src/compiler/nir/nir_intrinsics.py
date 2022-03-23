@@ -234,6 +234,9 @@ index("uint8_t", "offset1")
 # in hardware, instead of 4).
 index("bool", "st64")
 
+# When set, range analysis will use it for nir_unsigned_upper_bound
+index("unsigned", "arg_upper_bound_u32_amd")
+
 # Separate source/dest access flags for copies
 index("enum gl_access_qualifier", "dst_access")
 index("enum gl_access_qualifier", "src_access")
@@ -1346,8 +1349,8 @@ system_value("intersection_opaque_amd", 1, bit_sizes=[1])
 # Load forced VRS rates.
 intrinsic("load_force_vrs_rates_amd", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE, CAN_REORDER])
 
-intrinsic("load_scalar_arg_amd", dest_comp=0, bit_sizes=[32], indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
-intrinsic("load_vector_arg_amd", dest_comp=0, bit_sizes=[32], indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("load_scalar_arg_amd", dest_comp=0, bit_sizes=[32], indices=[BASE, ARG_UPPER_BOUND_U32_AMD], flags=[CAN_ELIMINATE, CAN_REORDER])
+intrinsic("load_vector_arg_amd", dest_comp=0, bit_sizes=[32], indices=[BASE, ARG_UPPER_BOUND_U32_AMD], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # src[] = { 64-bit base address, 32-bit offset }.
 intrinsic("load_smem_amd", src_comp=[1, 1], dest_comp=0, bit_sizes=[32],

@@ -1416,6 +1416,13 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
          /* Very generous maximum: TCS/TES executed by largest possible workgroup */
          res = config->max_workgroup_invocations / MAX2(shader->info.tess.tcs_vertices_out, 1u);
          break;
+      case nir_intrinsic_load_scalar_arg_amd:
+      case nir_intrinsic_load_vector_arg_amd: {
+         uint32_t upper_bound = nir_intrinsic_arg_upper_bound_u32_amd(intrin);
+         if (upper_bound)
+            res = upper_bound;
+         break;
+      }
       default:
          break;
       }
