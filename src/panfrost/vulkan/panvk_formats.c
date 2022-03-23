@@ -125,10 +125,11 @@ panvk_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
    VkDrmFormatModifierPropertiesListEXT *list =
       vk_find_struct(pFormatProperties->pNext, DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT);
    if (list) {
-      VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
-                       &list->drmFormatModifierCount);
+      VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierPropertiesEXT, out,
+                             list->pDrmFormatModifierProperties,
+                             &list->drmFormatModifierCount);
 
-      vk_outarray_append(&out, mod_props) {
+      vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, mod_props) {
          mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
          mod_props->drmFormatModifierPlaneCount = 1;
       }
