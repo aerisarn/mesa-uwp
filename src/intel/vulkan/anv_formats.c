@@ -869,8 +869,9 @@ get_drm_format_modifier_properties_list(const struct anv_physical_device *physic
    const struct intel_device_info *devinfo = &physical_device->info;
    const struct anv_format *anv_format = anv_get_format(vk_format);
 
-   VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
-                    &list->drmFormatModifierCount);
+   VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierPropertiesEXT, out,
+                          list->pDrmFormatModifierProperties,
+                          &list->drmFormatModifierCount);
 
    isl_drm_modifier_info_for_each(isl_mod_info) {
       VkFormatFeatureFlags2KHR features2 =
@@ -885,7 +886,7 @@ get_drm_format_modifier_properties_list(const struct anv_physical_device *physic
       if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE)
          ++planes;
 
-      vk_outarray_append(&out, out_props) {
+      vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT, &out, out_props) {
          *out_props = (VkDrmFormatModifierPropertiesEXT) {
             .drmFormatModifier = isl_mod_info->modifier,
             .drmFormatModifierPlaneCount = planes,
@@ -903,8 +904,9 @@ get_drm_format_modifier_properties_list_2(const struct anv_physical_device *phys
    const struct intel_device_info *devinfo = &physical_device->info;
    const struct anv_format *anv_format = anv_get_format(vk_format);
 
-   VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
-                    &list->drmFormatModifierCount);
+   VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierProperties2EXT, out,
+                          list->pDrmFormatModifierProperties,
+                          &list->drmFormatModifierCount);
 
    isl_drm_modifier_info_for_each(isl_mod_info) {
       VkFormatFeatureFlags2KHR features2 =
@@ -918,7 +920,7 @@ get_drm_format_modifier_properties_list_2(const struct anv_physical_device *phys
       if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE)
          ++planes;
 
-      vk_outarray_append(&out, out_props) {
+      vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT, &out, out_props) {
          *out_props = (VkDrmFormatModifierProperties2EXT) {
             .drmFormatModifier = isl_mod_info->modifier,
             .drmFormatModifierPlaneCount = planes,
