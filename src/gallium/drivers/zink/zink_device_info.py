@@ -71,6 +71,8 @@ EXTENSIONS = [
     Extension("VK_KHR_synchronization2",
               alias="sync2",
               features=True),
+    Extension("VK_KHR_external_memory_win32"),
+    Extension("VK_KHR_external_semaphore_win32"),
     Extension("VK_EXT_external_memory_dma_buf"),
     Extension("VK_EXT_queue_family_foreign"),
     Extension("VK_KHR_swapchain_mutable_format"),
