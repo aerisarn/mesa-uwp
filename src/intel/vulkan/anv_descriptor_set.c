@@ -800,12 +800,7 @@ VkResult anv_CreatePipelineLayout(
       anv_descriptor_set_layout_ref(set_layout);
 
       layout->set[set].dynamic_offset_start = dynamic_offset_count;
-      for (uint32_t b = 0; b < set_layout->binding_count; b++) {
-         if (set_layout->binding[b].dynamic_offset_index < 0)
-            continue;
-
-         dynamic_offset_count += set_layout->binding[b].array_size;
-      }
+      dynamic_offset_count += set_layout->dynamic_offset_count;
    }
    assert(dynamic_offset_count < MAX_DYNAMIC_BUFFERS);
 
