@@ -259,6 +259,12 @@ bi_lower_swizzle(bi_context *ctx)
                         ins->op = BI_OPCODE_MOV_I32;
                         ins->src[0].swizzle = BI_SWIZZLE_H01;
                 }
+
+                /* The above passes rely on replicating destinations.  For
+                 * Valhall, we will want to optimize this. For now, default
+                 * to Bifrost compatible behaviour.
+                 */
+                ins->dest[0].swizzle = BI_SWIZZLE_H01;
         }
 
         free(replicates_16);
