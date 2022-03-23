@@ -507,7 +507,8 @@ VkResult pvr_EnumeratePhysicalDevices(VkInstance _instance,
                                       VkPhysicalDevice *pPhysicalDevices)
 {
    PVR_FROM_HANDLE(pvr_instance, instance, _instance);
-   VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out,
+                          pPhysicalDevices, pPhysicalDeviceCount);
    VkResult result;
 
    if (instance->physical_devices_count < 0) {
@@ -520,7 +521,7 @@ VkResult pvr_EnumeratePhysicalDevices(VkInstance _instance,
       return VK_SUCCESS;
 
    assert(instance->physical_devices_count == 1);
-   vk_outarray_append (&out, p) {
+   vk_outarray_append_typed(VkPhysicalDevice, &out, p) {
       *p = pvr_physical_device_to_handle(&instance->physical_device);
    }
 
@@ -846,9 +847,9 @@ void pvr_GetPhysicalDeviceQueueFamilyProperties(
    uint32_t *pCount,
    VkQueueFamilyProperties *pQueueFamilyProperties)
 {
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pCount);
+   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties, out, pQueueFamilyProperties, pCount);
 
-   vk_outarray_append (&out, p) {
+   vk_outarray_append_typed(VkQueueFamilyProperties, &out, p) {
       *p = pvr_queue_family_properties;
    }
 }
@@ -858,9 +859,9 @@ void pvr_GetPhysicalDeviceQueueFamilyProperties2(
    uint32_t *pQueueFamilyPropertyCount,
    VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties2, out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
-   vk_outarray_append (&out, p) {
+   vk_outarray_append_typed(VkQueueFamilyProperties2, &out, p) {
       p->queueFamilyProperties = pvr_queue_family_properties;
 
       vk_foreach_struct (ext, p->pNext) {
