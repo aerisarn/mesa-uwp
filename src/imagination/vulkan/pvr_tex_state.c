@@ -127,7 +127,7 @@ pvr_pack_tex_state(struct pvr_device *device,
       }
 
       word0.width = info->extent.width - 1;
-      if (info->type != VK_IMAGE_VIEW_TYPE_1D ||
+      if (info->type != VK_IMAGE_VIEW_TYPE_1D &&
           info->type != VK_IMAGE_VIEW_TYPE_1D_ARRAY)
          word0.height = info->extent.height - 1;
    }
