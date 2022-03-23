@@ -780,7 +780,8 @@ wsi_wl_surface_get_formats(VkIcdSurfaceBase *icd_surface,
                            wsi_device->sw))
       return VK_ERROR_SURFACE_LOST_KHR;
 
-   VK_OUTARRAY_MAKE(out, pSurfaceFormats, pSurfaceFormatCount);
+   VK_OUTARRAY_MAKE_TYPED(VkSurfaceFormatKHR, out,
+                          pSurfaceFormats, pSurfaceFormatCount);
 
    struct wsi_wl_format *disp_fmt;
    u_vector_foreach(disp_fmt, &display.formats) {
@@ -791,7 +792,7 @@ wsi_wl_surface_get_formats(VkIcdSurfaceBase *icd_surface,
           !(disp_fmt->flags & WSI_WL_FMT_OPAQUE))
          continue;
 
-      vk_outarray_append(&out, out_fmt) {
+      vk_outarray_append_typed(VkSurfaceFormatKHR, &out, out_fmt) {
          out_fmt->format = disp_fmt->vk_format;
          out_fmt->colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
       }
@@ -818,7 +819,8 @@ wsi_wl_surface_get_formats2(VkIcdSurfaceBase *icd_surface,
                            wsi_device->sw))
       return VK_ERROR_SURFACE_LOST_KHR;
 
-   VK_OUTARRAY_MAKE(out, pSurfaceFormats, pSurfaceFormatCount);
+   VK_OUTARRAY_MAKE_TYPED(VkSurfaceFormat2KHR, out,
+                          pSurfaceFormats, pSurfaceFormatCount);
 
    struct wsi_wl_format *disp_fmt;
    u_vector_foreach(disp_fmt, &display.formats) {
@@ -829,7 +831,7 @@ wsi_wl_surface_get_formats2(VkIcdSurfaceBase *icd_surface,
           !(disp_fmt->flags & WSI_WL_FMT_OPAQUE))
          continue;
 
-      vk_outarray_append(&out, out_fmt) {
+      vk_outarray_append_typed(VkSurfaceFormat2KHR, &out, out_fmt) {
          out_fmt->surfaceFormat.format = disp_fmt->vk_format;
          out_fmt->surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
       }
@@ -865,9 +867,9 @@ wsi_wl_surface_get_present_rectangles(VkIcdSurfaceBase *surface,
                                       uint32_t* pRectCount,
                                       VkRect2D* pRects)
 {
-   VK_OUTARRAY_MAKE(out, pRects, pRectCount);
+   VK_OUTARRAY_MAKE_TYPED(VkRect2D, out, pRects, pRectCount);
 
-   vk_outarray_append(&out, rect) {
+   vk_outarray_append_typed(VkRect2D, &out, rect) {
       /* We don't know a size so just return the usual "I don't know." */
       *rect = (VkRect2D) {
          .offset = { 0, 0 },
