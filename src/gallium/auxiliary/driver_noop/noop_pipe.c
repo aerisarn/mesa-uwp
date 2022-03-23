@@ -664,6 +664,22 @@ static void noop_get_device_uuid(struct pipe_screen *screen, char *uuid)
    oscreen->get_device_uuid(oscreen, uuid);
 }
 
+static void noop_get_device_luid(struct pipe_screen *screen, char *luid)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   oscreen->get_device_luid(oscreen, luid);
+}
+
+static uint32_t noop_get_device_node_mask(struct pipe_screen *screen)
+{
+   struct noop_pipe_screen *noop_screen = (struct noop_pipe_screen*)screen;
+   struct pipe_screen *oscreen = noop_screen->oscreen;
+
+   return oscreen->get_device_node_mask(oscreen);
+}
+
 static int noop_get_sparse_texture_virtual_page_size(struct pipe_screen *screen,
                                                      enum pipe_texture_target target,
                                                      bool multi_sample,
@@ -763,6 +779,8 @@ struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
    screen->get_dmabuf_modifier_planes = noop_get_dmabuf_modifier_planes;
    screen->get_driver_uuid = noop_get_driver_uuid;
    screen->get_device_uuid = noop_get_device_uuid;
+   screen->get_device_luid = noop_get_device_luid;
+   screen->get_device_node_mask = noop_get_device_node_mask;
    screen->query_dmabuf_modifiers = noop_query_dmabuf_modifiers;
    screen->resource_create_with_modifiers = noop_resource_create_with_modifiers;
    screen->create_vertex_state = noop_create_vertex_state;
