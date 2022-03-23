@@ -224,6 +224,18 @@ void vk_image_view_destroy(struct vk_device *device,
                            const VkAllocationCallbacks *alloc,
                            struct vk_image_view *image_view);
 
+static inline VkImageSubresourceRange
+vk_image_view_subresource_range(const struct vk_image_view *view)
+{
+   return (VkImageSubresourceRange) {
+      .aspectMask = view->aspects,
+      .baseMipLevel = view->base_mip_level,
+      .levelCount = view->level_count,
+      .baseArrayLayer = view->base_array_layer,
+      .layerCount = view->layer_count,
+   };
+}
+
 bool vk_image_layout_is_read_only(VkImageLayout layout,
                                   VkImageAspectFlagBits aspect);
 bool vk_image_layout_is_depth_only(VkImageLayout layout);
