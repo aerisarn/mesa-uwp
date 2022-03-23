@@ -2985,6 +2985,12 @@ static inline enum PVRX(TA_CMPMODE) pvr_cmpmode(VkCompareOp op)
    return (enum PVRX(TA_CMPMODE))op;
 }
 
+static inline enum PVRX(TA_ISPB_STENCILOP) pvr_stencilop(VkStencilOp op)
+{
+   /* enum values are identical, so we can just cast the input directly. */
+   return (enum PVRX(TA_ISPB_STENCILOP))op;
+}
+
 static void pvr_setup_isp_faces_and_control(
    struct pvr_cmd_buffer *const cmd_buffer,
    struct pvr_cmd_struct(TA_STATE_ISPA) *const ispa_out)
@@ -3109,9 +3115,9 @@ static void pvr_setup_isp_faces_and_control(
             (!disable_stencil_write) * dynamic_state->write_mask.front;
          ispb.scmpmask = dynamic_state->compare_mask.front;
 
-         ispb.sop3 = gfx_pipeline->stencil_front.pass_op;
-         ispb.sop2 = gfx_pipeline->stencil_front.depth_fail_op;
-         ispb.sop1 = gfx_pipeline->stencil_front.fail_op;
+         ispb.sop3 = pvr_stencilop(gfx_pipeline->stencil_front.pass_op);
+         ispb.sop2 = pvr_stencilop(gfx_pipeline->stencil_front.depth_fail_op);
+         ispb.sop1 = pvr_stencilop(gfx_pipeline->stencil_front.fail_op);
 
          ispb.scmpmode = pvr_cmpmode(gfx_pipeline->stencil_front.compare_op);
       }
@@ -3121,9 +3127,9 @@ static void pvr_setup_isp_faces_and_control(
             (!disable_stencil_write) * dynamic_state->write_mask.back;
          ispb.scmpmask = dynamic_state->compare_mask.back;
 
-         ispb.sop3 = gfx_pipeline->stencil_back.pass_op;
-         ispb.sop2 = gfx_pipeline->stencil_back.depth_fail_op;
-         ispb.sop1 = gfx_pipeline->stencil_back.fail_op;
+         ispb.sop3 = pvr_stencilop(gfx_pipeline->stencil_back.pass_op);
+         ispb.sop2 = pvr_stencilop(gfx_pipeline->stencil_back.depth_fail_op);
+         ispb.sop1 = pvr_stencilop(gfx_pipeline->stencil_back.fail_op);
 
          ispb.scmpmode = pvr_cmpmode(gfx_pipeline->stencil_back.compare_op);
       }
