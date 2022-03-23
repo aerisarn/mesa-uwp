@@ -2183,6 +2183,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       screen->base.is_dmabuf_modifier_supported = zink_is_dmabuf_modifier_supported;
       screen->base.get_dmabuf_modifier_planes = zink_get_dmabuf_modifier_planes;
    }
+#ifdef _WIN32
+   if (screen->info.have_KHR_external_memory_win32)
+      screen->base.create_fence_win32 = zink_create_fence_win32;
+#endif
    screen->base.context_create = zink_context_create;
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
    screen->base.destroy = zink_destroy_screen;

@@ -80,6 +80,10 @@ zink_fence_reference(struct zink_screen *screen,
 
 void
 zink_create_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfence, int fd, enum pipe_fd_type type);
+#ifdef _WIN32
+void
+zink_create_fence_win32(struct pipe_screen *screen, struct pipe_fence_handle **pfence, void *handle, enum pipe_fd_type type);
+#endif
 void
 zink_fence_server_signal(struct pipe_context *pctx, struct pipe_fence_handle *pfence);
 void
