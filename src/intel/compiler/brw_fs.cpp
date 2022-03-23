@@ -9500,8 +9500,6 @@ brw_compute_barycentric_interp_modes(const struct intel_device_info *devinfo,
             case nir_intrinsic_load_barycentric_pixel:
             case nir_intrinsic_load_barycentric_centroid:
             case nir_intrinsic_load_barycentric_sample:
-            case nir_intrinsic_load_barycentric_at_sample:
-            case nir_intrinsic_load_barycentric_at_offset:
                break;
             default:
                continue;
