@@ -426,6 +426,8 @@ endif
 files_libgalliumvl = files(
   'vl/vl_bicubic_filter.c',
   'vl/vl_bicubic_filter.h',
+  'vl/vl_codec.c',
+  'vl/vl_codec.h',
   'vl/vl_compositor.c',
   'vl/vl_compositor.h',
   'vl/vl_compositor_gfx.c',

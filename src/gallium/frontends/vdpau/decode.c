@@ -32,6 +32,7 @@
 
 #include "util/vl_vlc.h"
 
+#include "vl/vl_codec.h"
 #include "vdpau_private.h"
 
 /**
@@ -73,13 +74,7 @@ vlVdpDecoderCreate(VdpDevice device,
 
    mtx_lock(&dev->mutex);
 
-   supported = screen->get_video_param
-   (
-      screen,
-      templat.profile,
-      PIPE_VIDEO_ENTRYPOINT_BITSTREAM,
-      PIPE_VIDEO_CAP_SUPPORTED
-   );
+   supported = vl_codec_supported(screen, templat.profile, false);
    if (!supported) {
       mtx_unlock(&dev->mutex);
       return VDP_STATUS_INVALID_DECODER_PROFILE;

@@ -30,6 +30,8 @@
 #include "util/u_video.h"
 #include "vl/vl_video_buffer.h"
 
+#include "vl/vl_codec.h"
+
 #include "entrypoint.h"
 #include "vid_dec.h"
 #include "vid_dec_av1.h"
@@ -2133,8 +2135,7 @@ static struct dec_av1_task *dec_av1_BeginFrame(vid_dec_PrivateType *priv)
       pscreen = omx_screen->pscreen;
       assert(pscreen);
 
-      supported = pscreen->get_video_param(pscreen, priv->profile,
-            PIPE_VIDEO_ENTRYPOINT_BITSTREAM, PIPE_VIDEO_CAP_SUPPORTED);
+      supported = vl_codec_supported(pscreen, priv->profile, false);
       assert(supported && "AV1 is not supported");
 
       templat.profile = priv->profile;

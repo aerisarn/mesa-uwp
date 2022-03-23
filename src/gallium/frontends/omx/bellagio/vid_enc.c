@@ -50,6 +50,8 @@
 #include "pipe/p_video_codec.h"
 #include "util/u_memory.h"
 
+#include "vl/vl_codec.h"
+
 #include "entrypoint.h"
 #include "vid_enc.h"
 #include "vid_omx_common.h"
@@ -153,8 +155,7 @@ static OMX_ERRORTYPE vid_enc_Constructor(OMX_COMPONENTTYPE *comp, OMX_STRING nam
       return OMX_ErrorInsufficientResources;
 
    screen = priv->screen->pscreen;
-   if (!screen->get_video_param(screen, PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH,
-                                PIPE_VIDEO_ENTRYPOINT_ENCODE, PIPE_VIDEO_CAP_SUPPORTED))
+   if (!vl_codec_supported(screen, PIPE_VIDEO_PROFILE_MPEG4_AVC_HIGH, true))
       return OMX_ErrorBadParameter;
 
    priv->s_pipe = pipe_create_multimedia_context(screen);
