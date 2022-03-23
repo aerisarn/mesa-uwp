@@ -517,22 +517,15 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
          }
 
          /* Optimize the destination. */
-         bool is_f16_to_f32 = true;
          bool is_f32_to_f16 = true;
-         bool is_i16_to_i32 = true;
          bool is_i32_to_i16 = true; /* same behavior for int and uint */
-         bool is_u16_to_u32 = true;
 
          nir_foreach_use(use, &tex->dest.ssa) {
-            is_f16_to_f32 &= is_f16_to_f32_conversion(use->parent_instr);
             is_f32_to_f16 &= is_f32_to_f16_conversion(use->parent_instr);
-            is_i16_to_i32 &= is_i16_to_i32_conversion(use->parent_instr);
             is_i32_to_i16 &= is_i32_to_i16_conversion(use->parent_instr);
-            is_u16_to_u32 &= is_u16_to_u32_conversion(use->parent_instr);
          }
 
-         if (is_f16_to_f32 || is_f32_to_f16 || is_i16_to_i32 ||
-             is_i32_to_i16 || is_u16_to_u32) {
+         if (is_f32_to_f16 || is_i32_to_i16) {
             /* All uses are the same conversions. Replace them with mov. */
             nir_foreach_use(use, &tex->dest.ssa) {
                nir_alu_instr *conv = nir_instr_as_alu(use->parent_instr);
