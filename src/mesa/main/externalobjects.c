@@ -996,6 +996,14 @@ _mesa_ImportMemoryFdEXT(GLuint memory,
 }
 
 void GLAPIENTRY
+_mesa_ImportMemoryWin32HandleEXT(GLuint memory,
+                                 GLuint64 size,
+                                 GLenum handleType,
+                                 void *handle)
+{
+}
+
+void GLAPIENTRY
 _mesa_ImportSemaphoreFdEXT(GLuint semaphore,
                            GLenum handleType,
                            GLint fd)
@@ -1029,4 +1037,11 @@ _mesa_ImportSemaphoreFdEXT(GLuint semaphore,
    }
 
    import_semaphoreobj_fd(ctx, semObj, fd);
+}
+
+void GLAPIENTRY
+_mesa_ImportSemaphoreWin32HandleEXT(GLuint semaphore,
+                           GLenum handleType,
+                           void *handle)
+{
 }

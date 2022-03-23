@@ -115,6 +115,7 @@ api_xml_files = files(
   'EXT_draw_buffers2.xml',
   'EXT_external_objects.xml',
   'EXT_external_objects_fd.xml',
+  'EXT_external_objects_win32.xml',
   'EXT_framebuffer_object.xml',
   'EXT_gpu_shader4.xml',
   'EXT_multisampled_render_to_texture.xml',
