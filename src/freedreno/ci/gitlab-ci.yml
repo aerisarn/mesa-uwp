@@ -291,6 +291,8 @@ a630-traces-performance:
     PIGLIT_REPLAY_LOOP_TIMES: 150
     # We don't want for more than one workload to be submitted to the GPU at a time
     FDO_CI_CONCURRENT: 1
+    # Piglit is very sparse in its status output and downloads of big traces can take a while
+    LAVA_DEVICE_HANGING_TIMEOUT_SEC: 600
     # So we aren't capped by VSync by the X server
     EGL_PLATFORM: surfaceless
     GIT_STRATEGY: none
