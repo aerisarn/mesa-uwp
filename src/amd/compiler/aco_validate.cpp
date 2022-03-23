@@ -774,9 +774,13 @@ validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& instr, un
    if (instr->isSDWA())
       return byte + instr->sdwa().sel[index].offset() + instr->sdwa().sel[index].size() <= 4 &&
              byte % instr->sdwa().sel[index].size() == 0;
-   if (instr->isVOP3P())
+   if (instr->isVOP3P()) {
+      bool fma_mix = instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
+                     instr->opcode == aco_opcode::v_fma_mixhi_f16 ||
+                     instr->opcode == aco_opcode::v_fma_mix_f32;
       return ((instr->vop3p().opsel_lo >> index) & 1) == (byte >> 1) &&
-             ((instr->vop3p().opsel_hi >> index) & 1) == (byte >> 1);
+             ((instr->vop3p().opsel_hi >> index) & 1) == (fma_mix || (byte >> 1));
+   }
    if (byte == 2 && can_use_opsel(chip, instr->opcode, index))
       return true;
 
