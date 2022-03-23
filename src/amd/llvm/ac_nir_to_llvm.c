@@ -4074,36 +4074,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_patch_vertices_in:
       result = ctx->abi->load_patch_vertices_in(ctx->abi);
       break;
-   case nir_intrinsic_load_tess_rel_patch_id_amd:
-      if (ctx->stage == MESA_SHADER_TESS_CTRL)
-         result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->tcs_rel_ids), 0, 8);
-      else if (ctx->stage == MESA_SHADER_TESS_EVAL)
-         result = ctx->tes_rel_patch_id_replaced ? ctx->tes_rel_patch_id_replaced
-                                                 : ac_get_arg(&ctx->ac, ctx->args->tes_rel_patch_id);
-      else
-         unreachable("tess_rel_patch_id_amd is only supported by tessellation shaders");
-      break;
-   case nir_intrinsic_load_ring_tess_factors_amd:
-      result = ctx->abi->load_ring_tess_factors(ctx->abi);
-      break;
-   case nir_intrinsic_load_ring_tess_factors_offset_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->tcs_factor_offset);
-      break;
-   case nir_intrinsic_load_ring_tess_offchip_amd:
-      result = ctx->abi->load_ring_tess_offchip(ctx->abi);
-      break;
-   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->tess_offchip_offset);
-      break;
-   case nir_intrinsic_load_ring_esgs_amd:
-      result = ctx->abi->load_ring_esgs(ctx->abi);
-      break;
-   case nir_intrinsic_load_ring_es2gs_offset_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->es2gs_offset);
-      break;
-   case nir_intrinsic_load_gs_vertex_offset_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[nir_intrinsic_base(instr)]);
-      break;
    case nir_intrinsic_vote_all: {
       result = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
       break;
@@ -4300,15 +4270,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
                                   cache_policy);
       break;
    }
-   case nir_intrinsic_load_packed_passthrough_primitive_amd:
-      result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
-      break;
-   case nir_intrinsic_load_initial_edgeflags_amd:
-      if (ctx->stage == MESA_SHADER_VERTEX && !ctx->info->vs.blit_sgprs_amd)
-         result = ac_pack_edgeflags_for_export(&ctx->ac, ctx->args);
-      else
-         result = ctx->ac.i32_0;
-      break;
    case nir_intrinsic_has_input_vertex_amd: {
       LLVMValueRef num =
          ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 0, 8);
@@ -4321,12 +4282,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, ac_get_thread_id(&ctx->ac), num, "");
       break;
    }
-   case nir_intrinsic_load_workgroup_num_input_vertices_amd:
-      result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 12, 9);
-      break;
-   case nir_intrinsic_load_workgroup_num_input_primitives_amd:
-      result = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->gs_tg_info), 22, 9);
-      break;
    case nir_intrinsic_alloc_vertices_and_primitives_amd:
       /* The caller should only call this conditionally for wave 0, so assume that the current
        * wave is always wave 0.

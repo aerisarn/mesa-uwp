@@ -304,34 +304,6 @@ visit_end_primitive(struct ac_shader_abi *abi, unsigned stream)
 }
 
 static LLVMValueRef
-load_ring_tess_factors(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   assert(ctx->stage == MESA_SHADER_TESS_CTRL);
-
-   return ctx->hs_ring_tess_factor;
-}
-
-static LLVMValueRef
-load_ring_tess_offchip(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   assert(ctx->stage == MESA_SHADER_TESS_CTRL || ctx->stage == MESA_SHADER_TESS_EVAL);
-
-   return ctx->hs_ring_tess_offchip;
-}
-
-static LLVMValueRef
-load_ring_esgs(struct ac_shader_abi *abi)
-{
-   struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-   assert(ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL ||
-          ctx->stage == MESA_SHADER_GEOMETRY);
-
-   return ctx->esgs_ring;
-}
-
-static LLVMValueRef
 radv_load_base_vertex(struct ac_shader_abi *abi, bool non_indexed_is_zero)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
@@ -2072,9 +2044,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
    ctx.abi.load_ubo = radv_load_ubo;
    ctx.abi.load_ssbo = radv_load_ssbo;
    ctx.abi.load_sampler_desc = radv_get_sampler_desc;
-   ctx.abi.load_ring_tess_factors = load_ring_tess_factors;
-   ctx.abi.load_ring_tess_offchip = load_ring_tess_offchip;
-   ctx.abi.load_ring_esgs = load_ring_esgs;
    ctx.abi.clamp_shadow_reference = false;
    ctx.abi.robust_buffer_access = options->robust_buffer_access;
    ctx.abi.load_grid_size_from_user_sgpr = args->load_grid_size_from_user_sgpr;
