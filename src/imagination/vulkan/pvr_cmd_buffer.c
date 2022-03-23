@@ -4392,10 +4392,6 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
          struct pvr_buffer *buffer = state->index_buffer_binding.buffer;
 
          switch (state->index_buffer_binding.type) {
-         default:
-            unreachable("Invalid index type");
-            FALLTHROUGH;
-
          case VK_INDEX_TYPE_UINT32:
             list0.index_size = PVRX(VDMCTRL_INDEX_SIZE_B32);
             index_stride = 4;
@@ -4405,6 +4401,9 @@ static void pvr_emit_vdm_index_list(struct pvr_cmd_buffer *cmd_buffer,
             list0.index_size = PVRX(VDMCTRL_INDEX_SIZE_B16);
             index_stride = 2;
             break;
+
+         default:
+            unreachable("Invalid index type");
          }
 
          list0.index_addr_present = true;
