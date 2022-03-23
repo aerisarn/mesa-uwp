@@ -86,8 +86,8 @@ bi_count_staging_registers(const bi_instr *ins)
 unsigned
 bi_count_read_registers(const bi_instr *ins, unsigned s)
 {
-        /* PATOM_C reads 1 but writes 2 */
-        if (s == 0 && ins->op == BI_OPCODE_PATOM_C_I32)
+        /* ATOM reads 1 but writes 2 */
+        if (s == 0 && ins->op == BI_OPCODE_ATOM_RETURN_I32)
                 return 1;
         else if (s == 0 && bi_opcode_props[ins->op].sr_read)
                 return bi_count_staging_registers(ins);

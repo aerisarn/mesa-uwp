@@ -1094,14 +1094,14 @@ bi_emit_atomic_i32_to(bi_builder *b, bi_index dst,
         enum bi_atom_opc opc = bi_atom_opc_for_nir(intrinsic);
         enum bi_atom_opc post_opc = opc;
 
-        /* Generate either ATOM_C or ATOM_C1 as required */
+        /* Generate either ATOM or ATOM1 as required */
         if (bi_promote_atom_c1(opc, arg, &opc)) {
-                bi_patom_c1_i32_to(b, sr, bi_word(addr, 0),
-                                bi_word(addr, 1), opc, 2);
+                bi_atom1_return_i32_to(b, sr, bi_word(addr, 0),
+                                       bi_word(addr, 1), opc, 2);
         } else {
                 bi_mov_i32_to(b, sr, arg);
-                bi_patom_c_i32_to(b, sr, sr, bi_word(addr, 0),
-                                bi_word(addr, 1), opc, 2);
+                bi_atom_return_i32_to(b, sr, sr, bi_word(addr, 0),
+                                      bi_word(addr, 1), opc, 2);
         }
 
         /* Post-process it */

@@ -8233,11 +8233,11 @@
     <mod name="preserve_null" size="1" opt="preserve_null"/>
   </ins>
 
-  <!-- Scheduler lowered to *ATOM_C.i32/+ATOM_CX -->
-  <ins name="+PATOM_C.i32" pseudo="true" staging="rw=sr_count" message="atomic">
+  <!-- Scheduler lowered to *ATOM_C.i32/+ATOM_CX. Real Valhall instructions. -->
+  <ins name="+ATOM_RETURN.i32" pseudo="true" staging="rw=sr_count" message="atomic">
     <src start="0"/>
     <src start="3"/>
-    <mod name="atom_opc" start="9" size="4">
+    <mod name="atom_opc" start="9" size="5">
       <reserved/>
       <reserved/>
       <opt>aadd</opt>
@@ -8258,7 +8258,7 @@
     <immediate name="sr_count" size="4" pseudo="true"/>
   </ins>
 
-  <ins name="+PATOM_C1.i32" pseudo="true" staging="w=sr_count" message="atomic">
+  <ins name="+ATOM1_RETURN.i32" pseudo="true" staging="w=sr_count" message="atomic">
     <src start="0"/>
     <src start="3"/>
     <mod name="atom_opc" start="6" size="3">
