@@ -143,15 +143,15 @@ class Dest:
         self.name = name
 
 class Staging:
-    def __init__(self, read = False, write = False, count = 0, flags = True, name = ""):
+    def __init__(self, read = False, write = False, count = 0, flags = 'true', name = ""):
         self.name = name
         self.read = read
         self.write = write
         self.count = count
-        self.flags = flags
+        self.flags = (flags != 'false')
         self.start = 40
 
-        if write and not flags:
+        if write and not self.flags:
             self.start = 16
 
         # For compatibility
@@ -163,9 +163,12 @@ class Staging:
         self.lane = False
         self.size = 32
 
-        if not flags:
+        if not self.flags:
             self.encoded_flags = 0
+        elif flags == 'rw':
+            self.encoded_flags = 0xc0
         else:
+            assert(flags == 'true')
             self.encoded_flags = (0x80 if write else 0) | (0x40 if read else 0)
 
 class Immediate:
@@ -237,7 +240,7 @@ def build_staging(i, el):
     r = xmlbool(el.attrib.get('read', 'false'))
     w = xmlbool(el.attrib.get('write', 'false'))
     count = int(el.attrib.get('count', '0'))
-    flags = xmlbool(el.attrib.get('flags', 'true'))
+    flags = el.attrib.get('flags', 'true')
 
     return Staging(r, w, count, flags, el.text or '')
 
