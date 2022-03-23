@@ -39,6 +39,16 @@ struct u_transfer_helper {
    bool msaa_map;
 };
 
+static inline bool need_interleave_path(struct u_transfer_helper *helper,
+                                        enum pipe_format format)
+{
+   if (helper->separate_stencil && util_format_is_depth_and_stencil(format))
+      return true;
+   if (helper->separate_z32s8 && format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
+      return true;
+   return false;
+}
+
 static inline bool handle_transfer(struct pipe_resource *prsc)
 {
    struct u_transfer_helper *helper = prsc->screen->transfer_helper;
@@ -567,8 +577,7 @@ u_transfer_helper_deinterleave_transfer_map(struct pipe_context *pctx,
    unsigned width = box->width;
    unsigned height = box->height;
 
-   if (!((helper->separate_stencil && util_format_is_depth_and_stencil(format)) ||
-       (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT && helper->separate_z32s8)))
+   if (!need_interleave_path(helper, format))
       return helper->vtbl->transfer_map(pctx, prsc, level, usage, box, pptrans);
 
    debug_assert(box->depth == 1);
@@ -645,25 +654,25 @@ u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
    struct u_transfer_helper *helper = pctx->screen->transfer_helper;
    enum pipe_format format = ptrans->resource->format;
 
-   if ((helper->separate_stencil && util_format_is_depth_and_stencil(format)) ||
-       (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT && helper->separate_z32s8)) {
-      struct u_transfer *trans = (struct u_transfer *)ptrans;
-
-      if (!(ptrans->usage & PIPE_MAP_FLUSH_EXPLICIT)) {
-         struct pipe_box box;
-         u_box_2d(0, 0, ptrans->box.width, ptrans->box.height, &box);
-         flush_region(pctx, ptrans, &box);
-      }
-
-      helper->vtbl->transfer_unmap(pctx, trans->trans);
-      if (trans->trans2)
-         helper->vtbl->transfer_unmap(pctx, trans->trans2);
-
-      pipe_resource_reference(&ptrans->resource, NULL);
-
-      free(trans->staging);
-      free(trans);
-   } else {
+   if (!need_interleave_path(helper, format)) {
       helper->vtbl->transfer_unmap(pctx, ptrans);
+      return;
    }
+
+   struct u_transfer *trans = (struct u_transfer *)ptrans;
+
+   if (!(ptrans->usage & PIPE_MAP_FLUSH_EXPLICIT)) {
+      struct pipe_box box;
+      u_box_2d(0, 0, ptrans->box.width, ptrans->box.height, &box);
+      flush_region(pctx, ptrans, &box);
+   }
+
+   helper->vtbl->transfer_unmap(pctx, trans->trans);
+   if (trans->trans2)
+      helper->vtbl->transfer_unmap(pctx, trans->trans2);
+
+   pipe_resource_reference(&ptrans->resource, NULL);
+
+   free(trans->staging);
+   free(trans);
 }
