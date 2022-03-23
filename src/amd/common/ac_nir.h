@@ -86,17 +86,6 @@ ac_nir_lower_tes_inputs_to_mem(nir_shader *shader,
                                unsigned num_reserved_tcs_outputs,
                                unsigned num_reserved_tcs_patch_outputs);
 
-enum ac_nir_tess_to_const_options {
-    ac_nir_lower_patch_vtx_in = 1 << 0,
-    ac_nir_lower_num_patches = 1 << 1,
-};
-
-void
-ac_nir_lower_tess_to_const(nir_shader *shader,
-                           unsigned patch_vtx_in,
-                           unsigned tcs_num_patches,
-                           unsigned options);
-
 void
 ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
                                enum chip_class chip_class,
