@@ -75,9 +75,6 @@ rogue_get_isp_samples_per_tile_xy(const struct pvr_device_info *dev_info,
    *y_out = tile_size_y;
 
    switch (samples) {
-   default:
-      assert(!"Unsupported number of samples");
-      FALLTHROUGH;
    case 1:
       break;
    case 2:
@@ -96,6 +93,8 @@ rogue_get_isp_samples_per_tile_xy(const struct pvr_device_info *dev_info,
    case 8:
       *y_out *= 2;
       break;
+   default:
+      assert(!"Unsupported number of samples");
    }
 }
 
