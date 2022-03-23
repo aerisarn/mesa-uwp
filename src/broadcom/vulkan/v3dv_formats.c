@@ -291,10 +291,12 @@ v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
       switch ((unsigned)ext->sType) {
       case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT: {
          struct VkDrmFormatModifierPropertiesListEXT *list = (void *)ext;
-         VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
-                          &list->drmFormatModifierCount);
+         VK_OUTARRAY_MAKE_TYPED(VkDrmFormatModifierPropertiesEXT, out,
+                                list->pDrmFormatModifierProperties,
+                                &list->drmFormatModifierCount);
          if (pFormatProperties->formatProperties.linearTilingFeatures) {
-            vk_outarray_append(&out, mod_props) {
+            vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT,
+                                     &out, mod_props) {
                mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
                mod_props->drmFormatModifierPlaneCount = 1;
                mod_props->drmFormatModifierTilingFeatures =
@@ -302,7 +304,8 @@ v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
             }
          }
          if (pFormatProperties->formatProperties.optimalTilingFeatures) {
-            vk_outarray_append(&out, mod_props) {
+            vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT,
+                                     &out, mod_props) {
                mod_props->drmFormatModifier = DRM_FORMAT_MOD_BROADCOM_UIF;
                mod_props->drmFormatModifierPlaneCount = 1;
                mod_props->drmFormatModifierTilingFeatures =

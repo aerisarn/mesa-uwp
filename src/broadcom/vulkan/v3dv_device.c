@@ -965,7 +965,8 @@ v3dv_EnumeratePhysicalDevices(VkInstance _instance,
                               VkPhysicalDevice *pPhysicalDevices)
 {
    V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
-   VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out,
+                          pPhysicalDevices, pPhysicalDeviceCount);
  
    VkResult result = instance_ensure_physical_device(instance);
    if (result != VK_SUCCESS)
@@ -975,7 +976,7 @@ v3dv_EnumeratePhysicalDevices(VkInstance _instance,
       return VK_SUCCESS;
 
    assert(instance->physicalDeviceCount == 1);
-   vk_outarray_append(&out, i) {
+   vk_outarray_append_typed(VkPhysicalDevice, &out, i) {
       *i = v3dv_physical_device_to_handle(&instance->physicalDevice);
    }
 
@@ -989,8 +990,9 @@ v3dv_EnumeratePhysicalDeviceGroups(
     VkPhysicalDeviceGroupProperties *pPhysicalDeviceGroupProperties)
 {
    V3DV_FROM_HANDLE(v3dv_instance, instance, _instance);
-   VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
-                         pPhysicalDeviceGroupCount);
+   VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
+                          pPhysicalDeviceGroupProperties,
+                          pPhysicalDeviceGroupCount);
 
    VkResult result = instance_ensure_physical_device(instance);
    if (result != VK_SUCCESS)
@@ -998,7 +1000,7 @@ v3dv_EnumeratePhysicalDeviceGroups(
 
    assert(instance->physicalDeviceCount == 1);
 
-   vk_outarray_append(&out, p) {
+   vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p) {
       p->physicalDeviceCount = 1;
       memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
       p->physicalDevices[0] =
@@ -1697,9 +1699,10 @@ v3dv_GetPhysicalDeviceQueueFamilyProperties2(VkPhysicalDevice physicalDevice,
                                              uint32_t *pQueueFamilyPropertyCount,
                                              VkQueueFamilyProperties2 *pQueueFamilyProperties)
 {
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
+   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties2, out,
+                          pQueueFamilyProperties, pQueueFamilyPropertyCount);
 
-   vk_outarray_append(&out, p) {
+   vk_outarray_append_typed(VkQueueFamilyProperties2, &out, p) {
       p->queueFamilyProperties = v3dv_queue_family_properties;
 
       vk_foreach_struct(s, p->pNext) {
