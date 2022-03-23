@@ -346,7 +346,7 @@ VkResult pvr_CreateRenderPass2(VkDevice _device,
    if (!vk_multialloc_zalloc2(&ma,
                               &device->vk.alloc,
                               pAllocator,
-                              VK_OBJECT_TYPE_RENDER_PASS)) {
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT)) {
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 

@@ -1849,7 +1849,7 @@ VkResult pvr_CreateFramebuffer(VkDevice _device,
    if (!vk_multialloc_zalloc2(&ma,
                               &device->vk.alloc,
                               pAllocator,
-                              VK_OBJECT_TYPE_FRAMEBUFFER))
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk,
