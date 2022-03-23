@@ -4438,21 +4438,25 @@ static bool
 fixup_phi(struct ntd_context *ctx, nir_phi_instr *instr,
           struct phi_block *vphi)
 {
-   const struct dxil_value *values[128];
-   unsigned blocks[128];
+   const struct dxil_value *values[16];
+   unsigned blocks[16];
    for (unsigned i = 0; i < vphi->num_components; ++i) {
       size_t num_incoming = 0;
       nir_foreach_phi_src(src, instr) {
          assert(src->src.is_ssa);
          const struct dxil_value *val = get_src_ssa(ctx, src->src.ssa, i);
-         assert(num_incoming < ARRAY_SIZE(values));
          values[num_incoming] = val;
-         assert(num_incoming < ARRAY_SIZE(blocks));
          blocks[num_incoming] = src->pred->index;
          ++num_incoming;
+         if (num_incoming == ARRAY_SIZE(values)) {
+            if (!dxil_phi_add_incoming(vphi->comp[i], values, blocks,
+                                       num_incoming))
+               return false;
+            num_incoming = 0;
+         }
       }
-      if (!dxil_phi_set_incoming(vphi->comp[i], values, blocks,
-                                 num_incoming))
+      if (num_incoming > 0 && !dxil_phi_add_incoming(vphi->comp[i], values,
+                                                     blocks, num_incoming))
          return false;
    }
    return true;
