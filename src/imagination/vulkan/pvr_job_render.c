@@ -1413,7 +1413,7 @@ pvr_render_job_ws_fragment_state_init(struct pvr_render_ctx *ctx,
        * formats.
        */
       assert(job->depth_vk_format == VK_FORMAT_D32_SFLOAT);
-      value.zloadformat = PVRX(CR_ZSTOREFORMAT_TYPE_F32Z);
+      value.zloadformat = PVRX(CR_ZLOADFORMAT_TYPE_F32Z);
       value.zstoreformat = PVRX(CR_ZSTOREFORMAT_TYPE_F32Z);
    }
 
