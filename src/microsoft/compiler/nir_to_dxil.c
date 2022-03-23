@@ -4434,7 +4434,7 @@ emit_phi(struct ntd_context *ctx, nir_phi_instr *instr)
    return true;
 }
 
-static void
+static bool
 fixup_phi(struct ntd_context *ctx, nir_phi_instr *instr,
           struct phi_block *vphi)
 {
@@ -4451,8 +4451,11 @@ fixup_phi(struct ntd_context *ctx, nir_phi_instr *instr,
          blocks[num_incoming] = src->pred->index;
          ++num_incoming;
       }
-      dxil_phi_set_incoming(vphi->comp[i], values, blocks, num_incoming);
+      if (!dxil_phi_set_incoming(vphi->comp[i], values, blocks,
+                                 num_incoming))
+         return false;
    }
+   return true;
 }
 
 static unsigned
@@ -5207,8 +5210,9 @@ emit_function(struct ntd_context *ctx, nir_function *func)
       return false;
 
    hash_table_foreach(ctx->phis, entry) {
-      fixup_phi(ctx, (nir_phi_instr *)entry->key,
-         (struct phi_block *)entry->data);
+      if (!fixup_phi(ctx, (nir_phi_instr *)entry->key,
+                     (struct phi_block *)entry->data))
+         return false;
    }
 
    if (!dxil_emit_ret_void(&ctx->mod))

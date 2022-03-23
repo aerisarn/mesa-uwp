@@ -2736,13 +2736,14 @@ dxil_emit_phi(struct dxil_module *m, const struct dxil_type *type)
       return NULL;
 
    instr->phi.type = type;
+   instr->phi.incoming = NULL;
    instr->phi.num_incoming = 0;
    instr->has_value = true;
 
    return instr;
 }
 
-void
+bool
 dxil_phi_set_incoming(struct dxil_instr *instr,
                       const struct dxil_value *incoming_values[],
                       const unsigned incoming_blocks[],
@@ -2750,7 +2751,13 @@ dxil_phi_set_incoming(struct dxil_instr *instr,
 {
    assert(instr->type == INSTR_PHI);
    assert(num_incoming > 0);
-   assert(num_incoming < ARRAY_SIZE(instr->phi.incoming));
+   assert(instr->phi.incoming == NULL);
+
+   instr->phi.incoming = ralloc_array(instr, struct dxil_phi_src,
+                                      num_incoming);
+   if (!instr->phi.incoming)
+      return false;
+
    for (int i = 0; i < num_incoming; ++i) {
       assert(incoming_values[i]);
       assert(types_equal(incoming_values[i]->type, instr->phi.type));
@@ -2759,6 +2766,7 @@ dxil_phi_set_incoming(struct dxil_instr *instr,
       instr->phi.incoming[i].block = incoming_blocks[i];
    }
    instr->phi.num_incoming = num_incoming;
+   return true;
 }
 
 static struct dxil_instr *
