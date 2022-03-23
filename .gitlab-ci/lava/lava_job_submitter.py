@@ -26,6 +26,7 @@
 
 import argparse
 import pathlib
+import re
 import sys
 import time
 import traceback
@@ -117,6 +118,7 @@ def generate_lava_yaml(args):
 
     # skeleton test definition: only declaring each job as a single 'test'
     # since LAVA's test parsing is not useful to us
+    run_steps = []
     test = {
       'timeout': { 'minutes': args.job_timeout },
       'failure_retry': 1,
@@ -133,10 +135,8 @@ def generate_lava_yaml(args):
             'scope': [ 'functional' ],
             'format': 'Lava-Test Test Definition 1.0',
           },
-          'parse': {
-            'pattern': r'hwci: (?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
-          },
           'run': {
+            "steps": run_steps
           },
         },
       } ],
@@ -147,26 +147,25 @@ def generate_lava_yaml(args):
     #   - fetch and unpack per-pipeline build artifacts from build job
     #   - fetch and unpack per-job environment from lava-submit.sh
     #   - exec .gitlab-ci/common/init-stage2.sh 
-    init_lines = []
+    run_steps = []
 
     with open(args.first_stage_init, 'r') as init_sh:
-      init_lines += [ x.rstrip() for x in init_sh if not x.startswith('#') and x.rstrip() ]
+      run_steps += [ x.rstrip() for x in init_sh if not x.startswith('#') and x.rstrip() ]
 
     with open(args.jwt_file) as jwt_file:
-        init_lines += [
+        run_steps += [
             "set +x",
             f'echo -n "{jwt_file.read()}" > "{args.jwt_file}"  # HIDEME',
             "set -x",
         ]
 
-    init_lines += [
+    run_steps += [
       'mkdir -p {}'.format(args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
       f'echo "export CI_JOB_JWT_FILE={args.jwt_file}" >> /set-job-env-vars.sh',
       'exec /init-stage2.sh',
     ]
-    test['definitions'][0]['repository']['run']['steps'] = init_lines
 
     values['actions'] = [
       { 'deploy': deploy },
@@ -376,6 +375,11 @@ def retriable_follow_job(proxy, job_definition):
     )
 
 
+def treat_mesa_job_name(args):
+    # Remove mesa job names with spaces, which breaks the lava-test-case command
+    args.mesa_job_name = args.mesa_job_name.split(" ")[0]
+
+
 def main(args):
     proxy = setup_lava_proxy()
 
@@ -393,8 +397,9 @@ def main(args):
     if args.validate_only:
         return
 
-    ret = retriable_follow_job(proxy, job_definition)
-    sys.exit(ret)
+    has_job_passed = retriable_follow_job(proxy, job_definition)
+    exit_code = 0 if has_job_passed else 1
+    sys.exit(exit_code)
 
 
 def create_parser():
@@ -418,6 +423,7 @@ def create_parser():
     parser.add_argument("--validate-only", action='store_true')
     parser.add_argument("--dump-yaml", action='store_true')
     parser.add_argument("--visibility-group")
+    parser.add_argument("--mesa-job-name")
 
     return parser
 
@@ -432,4 +438,5 @@ if __name__ == "__main__":
 
     parser.set_defaults(func=main)
     args = parser.parse_args()
+    treat_mesa_job_name(args)
     args.func(args)
