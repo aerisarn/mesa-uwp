@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 for var in \
     ASAN_OPTIONS \
@@ -109,8 +109,8 @@ for var in \
     VK_CPU \
     VK_DRIVER \
     VK_ICD_FILENAMES \
-    ;
-do
-    eval val=\$${var}
-    [ -z "$val" ] || echo "export $var='$val'"
+    ; do
+  if [ -n "${!var+x}" ]; then
+    echo "export $var=${!var@Q}"
+  fi
 done
