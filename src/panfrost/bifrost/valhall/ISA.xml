@@ -866,6 +866,21 @@
     <imm name="index" start="16" size="8"/>
   </group>
 
+  <group name="LD_VAR_BUF" title="Load indirect varying" unit="V">
+    <desc>Interpolates a given varying from hardware buffer</desc>
+    <ins name="LD_VAR_BUF.f32" opcode="0x6C"/>
+    <ins name="LD_VAR_BUF.f16" opcode="0x6D"/>
+    <slot/>
+    <vecsize/>
+    <source_format/>
+    <sample/>
+    <update/>
+    <sr write="true"/>
+    <sr_count/>
+    <src/>
+    <src/>
+  </group>
+
   <ins name="LD_ATTR_IMM" title="Load immediate attribute" opcode="0x66" unit="LS">
     <desc>
       Load `vecsize` components from the attribute descriptor at entry `index`
