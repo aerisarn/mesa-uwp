@@ -36,6 +36,7 @@ INSTALL_CI_FAIRY_PACKAGES="git
 apt-get -y install --no-install-recommends \
     $ARCH_PACKAGES \
     $INSTALL_CI_FAIRY_PACKAGES \
+    bash \
     ca-certificates \
     firmware-realtek \
     initramfs-tools \
@@ -170,7 +171,6 @@ UNNEEDED_PACKAGES="apt libapt-pkg6.0 "\
 "insserv "\
 "udev "\
 "init-system-helpers "\
-"bash "\
 "cpio "\
 "passwd "\
 "libsemanage1 libsemanage-common "\
@@ -216,7 +216,7 @@ rm -rf var/* opt srv share
 # ca-certificates are in /etc drop the source
 rm -rf usr/share/ca-certificates
 
-# No bash, no need for completions
+# No need for completions
 rm -rf usr/share/bash-completion
 
 # No zsh, no need for comletions
