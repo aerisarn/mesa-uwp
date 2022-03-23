@@ -1233,6 +1233,22 @@
     <src>Conversion descriptor</src>
   </ins>
 
+  <ins name="ST_TILE" title="Store to tilebuffer" opcode="0x79" unit="NONE">
+    <desc>
+      Store to given render target, specified in the pixel indices descriptor, at
+      a given location and sample, and convert to the format specified in the
+      internal conversion descriptor. Used internally in blend shaders.
+    </desc>
+    <sr read="true"/>
+    <sr_count/>
+    <vecsize/>
+    <regfmt/>
+    <slot/>
+    <src>Pixel indices descriptor</src>
+    <src>Coverage mask</src>
+    <src>Conversion descriptor</src>
+  </ins>
+
   <ins name="BLEND" title="Blend render target" opcode="0x7F" unit="NONE">
     <desc>
       Blends a given render target. This loads the API-specified blend state for
