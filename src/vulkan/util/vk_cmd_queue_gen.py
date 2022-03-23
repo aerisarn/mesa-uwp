@@ -248,22 +248,25 @@ void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
    struct vk_cmd_queue_entry *cmd = vk_zalloc(queue->alloc,
                                               sizeof(*cmd), 8,
                                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!cmd) goto err;
+   if (!cmd) { queue->error = VK_ERROR_OUT_OF_HOST_MEMORY; return; }
 
    cmd->type = ${to_enum_name(c.name)};
-
+   \
+   <% need_error_handling = False %>
 % for p in c.params[1:]:
 % if p.len:
    if (${p.name}) {
       ${get_array_copy(c, p)}
-   }
+   }\
+   <% need_error_handling = True %>
 % elif '[' in p.decl:
    memcpy(cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)}, ${p.name},
           sizeof(*${p.name}) * ${get_array_len(p)});
 % elif p.type == "void":
    cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)} = (${remove_suffix(p.decl.replace("const", ""), p.name)}) ${p.name};
 % elif '*' in p.decl:
-   ${get_struct_copy("cmd->u.%s.%s" % (to_struct_field_name(c.name), to_field_name(p.name)), p.name, p.type, 'sizeof(%s)' % p.type, types)}
+   ${get_struct_copy("cmd->u.%s.%s" % (to_struct_field_name(c.name), to_field_name(p.name)), p.name, p.type, 'sizeof(%s)' % p.type, types)}\
+   <% need_error_handling = True %>
 % else:
    cmd->u.${to_struct_field_name(c.name)}.${to_field_name(p.name)} = ${p.name};
 % endif
@@ -272,10 +275,12 @@ void vk_enqueue_${to_underscore(c.name)}(struct vk_cmd_queue *queue
    list_addtail(&cmd->cmd_link, &queue->cmds);
    return;
 
+% if need_error_handling:
 err:
    queue->error = VK_ERROR_OUT_OF_HOST_MEMORY;
    if (cmd)
       vk_free_${to_underscore(c.name)}(queue, cmd);
+% endif
 }
 % endif
 % if c.guard is not None:
