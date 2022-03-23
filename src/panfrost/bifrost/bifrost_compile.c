@@ -779,7 +779,7 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
                                     bi_imm_u32(nir_intrinsic_base(instr)),
                                     false);
                 bi_index address = bi_lea_attr(b,
-                                      bi_register(61), bi_register(62),
+                                      bi_vertex_id(b), bi_instance_id(b),
                                       idx, regfmt);
 
                 bi_st_cvt(b, data, address, bi_word(address, 1),
