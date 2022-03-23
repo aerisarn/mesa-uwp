@@ -548,8 +548,6 @@ i915_create_fs_state(struct pipe_context *pipe,
    if (templ->type == PIPE_SHADER_IR_NIR) {
       nir_shader *s = templ->ir.nir;
 
-      NIR_PASS_V(s, i915_nir_lower_sincos);
-
       static const struct nir_to_tgsi_options ntt_options = {
          .lower_fabs = true,
       };

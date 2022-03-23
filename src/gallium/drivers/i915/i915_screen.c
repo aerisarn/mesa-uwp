@@ -116,6 +116,7 @@ static const nir_shader_compiler_options i915_compiler_options = {
    .lower_flrp32 = true,
    .lower_fmod = true,
    .lower_rotate = true,
+   .lower_sincos = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
    .use_interpolated_input_intrinsics = true,
