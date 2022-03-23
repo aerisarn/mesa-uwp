@@ -1742,14 +1742,28 @@ gl_nir_link_uniforms(const struct gl_constants *consts,
 
             STATIC_ASSERT(MAX_SHADER_STORAGE_BUFFERS <= 32);
 
+            /* Buffers from each stage are pointers to the one stored in the program. We need
+             * to account for this before computing the mask below otherwise the mask will be
+             * incorrect.
+             *    sh->Program->sh.SSBlocks: [a][b][c][d][e][f]
+             *    VS prog->data->SSBlocks : [a][b][c]
+             *    FS prog->data->SSBlocks : [d][e][f]
+             * eg for FS buffer 1, buffer_block_index will be 4 but sh_block_index will be 1.
+             */
+            int base = 0;
+            base = sh->Program->sh.ShaderStorageBlocks[0] - prog->data->ShaderStorageBlocks;
+
+            assert(base >= 0);
+
+            int sh_block_index = buffer_block_index - base;
             /* Shaders that use too many SSBOs will fail to compile, which
              * we don't care about.
              *
              * This is true for shaders that do not use too many SSBOs:
              */
-            if (buffer_block_index + array_size <= 32) {
+            if (sh_block_index + array_size <= 32) {
                state.shader_storage_blocks_write_access |=
-                  u_bit_consecutive(buffer_block_index, array_size);
+                  u_bit_consecutive(sh_block_index, array_size);
             }
          }
 
