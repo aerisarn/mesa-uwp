@@ -316,3 +316,10 @@ TEST_F(ValhallPacking, FauPage1) {
    CASE(bi_mov_i32_to(b, bi_register(1), bi_fau((enum bir_fau) (BIR_FAU_UNIFORM | 32), false)),
          0x0291c10000000080ULL);
 }
+
+TEST_F(ValhallPacking, LdTileV3F16) {
+   CASE(bi_ld_tile_to(b, bi_register(4), bi_discard(bi_register(0)),
+                         bi_register(60), bi_register(3),
+                         BI_REGISTER_FORMAT_F16, BI_VECSIZE_V3),
+        0x0078840423033c40);
+}
