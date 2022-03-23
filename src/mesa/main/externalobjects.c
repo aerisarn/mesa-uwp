@@ -84,6 +84,30 @@ import_memoryobj_fd(struct gl_context *ctx,
 #endif
 }
 
+static void
+import_memoryobj_win32(struct gl_context *ctx,
+                    struct gl_memory_object *obj,
+                    GLuint64 size,
+                    void *handle)
+{
+   struct pipe_screen *screen = ctx->pipe->screen;
+   struct winsys_handle whandle = {
+      .type = WINSYS_HANDLE_TYPE_WIN32_HANDLE,
+#ifdef _WIN32
+      .handle = handle,
+#else
+      .handle = 0,
+#endif
+#ifdef HAVE_LIBDRM
+      .modifier = DRM_FORMAT_MOD_INVALID,
+#endif
+   };
+
+   obj->memory = screen->memobj_create_from_handle(screen,
+                                                   &whandle,
+                                                   obj->Dedicated);
+}
+
 /**
  * Delete a memory object.
  * Not removed from hash table here.
@@ -617,6 +641,16 @@ import_semaphoreobj_fd(struct gl_context *ctx,
 }
 
 static void
+import_semaphoreobj_win32(struct gl_context *ctx,
+                          struct gl_semaphore_object *semObj,
+                          void *handle)
+{
+   struct pipe_context *pipe = ctx->pipe;
+
+   pipe->screen->create_fence_win32(pipe->screen, &semObj->fence, handle, PIPE_FD_TYPE_SYNCOBJ);
+}
+
+static void
 server_wait_semaphore(struct gl_context *ctx,
                       struct gl_semaphore_object *semObj,
                       GLuint numBufferBarriers,
@@ -1001,6 +1035,26 @@ _mesa_ImportMemoryWin32HandleEXT(GLuint memory,
                                  GLenum handleType,
                                  void *handle)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   const char *func = "glImportMemoryWin32HandleEXT";
+
+   if (!ctx->Extensions.EXT_memory_object_win32) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported)", func);
+      return;
+   }
+
+   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(handleType=%u)", func, handleType);
+      return;
+   }
+
+   struct gl_memory_object *memObj = _mesa_lookup_memory_object(ctx, memory);
+   if (!memObj)
+      return;
+
+   import_memoryobj_win32(ctx, memObj, size, handle);
+   memObj->Immutable = GL_TRUE;
 }
 
 void GLAPIENTRY
@@ -1044,4 +1098,33 @@ _mesa_ImportSemaphoreWin32HandleEXT(GLuint semaphore,
                            GLenum handleType,
                            void *handle)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   const char *func = "glImportSemaphoreWin32HandleEXT";
+
+   if (!ctx->Extensions.EXT_semaphore_win32) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(unsupported)", func);
+      return;
+   }
+
+   if (handleType != GL_HANDLE_TYPE_OPAQUE_WIN32_EXT) {
+      _mesa_error(ctx, GL_INVALID_ENUM, "%s(handleType=%u)", func, handleType);
+      return;
+   }
+
+   struct gl_semaphore_object *semObj = _mesa_lookup_semaphore_object(ctx,
+                                                                      semaphore);
+   if (!semObj)
+      return;
+
+   if (semObj == &DummySemaphoreObject) {
+      semObj = semaphoreobj_alloc(ctx, semaphore);
+      if (!semObj) {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
+         return;
+      }
+      _mesa_HashInsert(ctx->Shared->SemaphoreObjects, semaphore, semObj, true);
+   }
+
+   import_semaphoreobj_win32(ctx, semObj, handle);
 }
