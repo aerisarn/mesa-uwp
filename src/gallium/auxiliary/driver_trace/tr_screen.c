@@ -461,6 +461,37 @@ trace_screen_get_device_uuid(struct pipe_screen *_screen, char *uuid)
    trace_dump_call_end();
 }
 
+static void
+trace_screen_get_device_luid(struct pipe_screen *_screen, char *luid)
+{
+   struct pipe_screen *screen = trace_screen(_screen)->screen;
+
+   trace_dump_call_begin("pipe_screen", "get_device_luid");
+   trace_dump_arg(ptr, screen);
+
+   screen->get_device_luid(screen, luid);
+
+   trace_dump_ret(string, luid);
+   trace_dump_call_end();
+}
+
+static uint32_t
+trace_screen_get_device_node_mask(struct pipe_screen *_screen)
+{
+   struct pipe_screen *screen = trace_screen(_screen)->screen;
+   uint32_t result;
+
+   trace_dump_call_begin("pipe_screen", "get_device_node_mask");
+   trace_dump_arg(ptr, screen);
+
+   result = screen->get_device_node_mask(screen);
+
+   trace_dump_ret(uint, result);
+   trace_dump_call_end();
+
+   return result;
+}
+
 
 /********************************************************************
  * texture
@@ -1346,6 +1377,8 @@ trace_screen_create(struct pipe_screen *screen)
    tr_scr->base.get_timestamp = trace_screen_get_timestamp;
    SCR_INIT(get_driver_uuid);
    SCR_INIT(get_device_uuid);
+   SCR_INIT(get_device_luid);
+   SCR_INIT(get_device_node_mask);
    SCR_INIT(finalize_nir);
    SCR_INIT(create_vertex_state);
    SCR_INIT(vertex_state_destroy);
