@@ -1372,7 +1372,7 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
         pscreen->resource_get_param = panfrost_resource_get_param;
         pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
                                         true, false,
-                                        fake_rgtc, true);
+                                        fake_rgtc, true, false);
 }
 void
 panfrost_resource_screen_destroy(struct pipe_screen *pscreen)

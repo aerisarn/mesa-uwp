@@ -2009,7 +2009,7 @@ crocus_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->memobj_destroy = crocus_memobj_destroy;
    pscreen->transfer_helper =
       u_transfer_helper_create(&transfer_vtbl, screen->devinfo.ver >= 6,
-                               screen->devinfo.ver >= 6, false, true);
+                               screen->devinfo.ver >= 6, false, true, false);
 }
 
 void

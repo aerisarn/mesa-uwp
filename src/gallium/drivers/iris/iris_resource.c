@@ -2635,7 +2635,7 @@ iris_init_screen_resource_functions(struct pipe_screen *pscreen)
    pscreen->memobj_create_from_handle = iris_memobj_create_from_handle;
    pscreen->memobj_destroy = iris_memobj_destroy;
    pscreen->transfer_helper =
-      u_transfer_helper_create(&transfer_vtbl, true, true, false, true);
+      u_transfer_helper_create(&transfer_vtbl, true, true, false, true, false);
 }
 
 void

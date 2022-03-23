@@ -1177,7 +1177,7 @@ agx_screen_create(struct sw_winsys *winsys)
    screen->resource_create = u_transfer_helper_resource_create;
    screen->resource_destroy = u_transfer_helper_resource_destroy;
    screen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
-                                                      true, true, false, true);
+                                                      true, true, false, true, false);
 
    agx_internal_shaders(&agx_screen->dev);
 

@@ -1179,7 +1179,8 @@ v3d_resource_screen_init(struct pipe_screen *pscreen)
         pscreen->resource_destroy = u_transfer_helper_resource_destroy;
         pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
                                                             true, false,
-                                                            true, true);
+                                                            true, true,
+                                                            false);
 }
 
 void

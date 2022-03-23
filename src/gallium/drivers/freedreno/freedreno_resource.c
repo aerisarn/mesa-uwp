@@ -1627,7 +1627,7 @@ fd_resource_screen_init(struct pipe_screen *pscreen)
    pscreen->resource_destroy = u_transfer_helper_resource_destroy;
 
    pscreen->transfer_helper =
-      u_transfer_helper_create(&transfer_vtbl, true, false, fake_rgtc, true);
+      u_transfer_helper_create(&transfer_vtbl, true, false, fake_rgtc, true, false);
 
    if (!screen->layout_resource_for_modifier)
       screen->layout_resource_for_modifier = fd_layout_resource_for_modifier;
