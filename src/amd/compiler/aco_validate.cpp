@@ -777,7 +777,7 @@ validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& instr, un
    if (instr->isVOP3P())
       return ((instr->vop3p().opsel_lo >> index) & 1) == (byte >> 1) &&
              ((instr->vop3p().opsel_hi >> index) & 1) == (byte >> 1);
-   if (byte == 2 && can_use_opsel(chip, instr->opcode, index, 1))
+   if (byte == 2 && can_use_opsel(chip, instr->opcode, index))
       return true;
 
    switch (instr->opcode) {
@@ -830,7 +830,7 @@ validate_subdword_definition(chip_class chip, const aco_ptr<Instruction>& instr)
    if (instr->isSDWA())
       return byte + instr->sdwa().dst_sel.offset() + instr->sdwa().dst_sel.size() <= 4 &&
              byte % instr->sdwa().dst_sel.size() == 0;
-   if (byte == 2 && can_use_opsel(chip, instr->opcode, -1, 1))
+   if (byte == 2 && can_use_opsel(chip, instr->opcode, -1))
       return true;
 
    switch (instr->opcode) {

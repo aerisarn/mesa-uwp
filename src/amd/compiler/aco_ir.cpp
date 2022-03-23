@@ -388,10 +388,10 @@ convert_to_DPP(aco_ptr<Instruction>& instr, bool dpp8)
 }
 
 bool
-can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high)
+can_use_opsel(chip_class chip, aco_opcode op, int idx)
 {
    /* opsel is only GFX9+ */
-   if ((high || idx == -1) && chip < GFX9)
+   if (chip < GFX9)
       return false;
 
    switch (op) {
@@ -485,7 +485,7 @@ instr_is_16bit(chip_class chip, aco_opcode op)
    // case aco_opcode::v_cvt_norm_i16_f16:
    // case aco_opcode::v_cvt_norm_u16_f16:
    /* on GFX10, all opsel instructions preserve the high bits */
-   default: return chip >= GFX10 && can_use_opsel(chip, op, -1, false);
+   default: return chip >= GFX10 && can_use_opsel(chip, op, -1);
    }
 }
 

@@ -1025,7 +1025,7 @@ can_apply_extract(opt_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx, ssa_i
          return false;
       return true;
    } else if (instr->isVOP3() && sel.size() == 2 &&
-              can_use_opsel(ctx.program->chip_class, instr->opcode, idx, sel.offset()) &&
+              can_use_opsel(ctx.program->chip_class, instr->opcode, idx) &&
               !(instr->vop3().opsel & (1 << idx))) {
       return true;
    } else if (instr->opcode == aco_opcode::p_extract) {
@@ -3104,7 +3104,7 @@ apply_insert(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    assert(sel);
 
    if (instr->isVOP3() && sel.size() == 2 && !sel.sign_extend() &&
-       can_use_opsel(ctx.program->chip_class, instr->opcode, -1, sel.offset())) {
+       can_use_opsel(ctx.program->chip_class, instr->opcode, -1)) {
       if (instr->vop3().opsel & (1 << 3))
          return false;
       if (sel.offset())

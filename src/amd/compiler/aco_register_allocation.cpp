@@ -501,7 +501,7 @@ get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, 
    if (instr->isVALU()) {
       if (can_use_SDWA(chip, instr, false))
          return rc.bytes();
-      if (can_use_opsel(chip, instr->opcode, idx, true))
+      if (can_use_opsel(chip, instr->opcode, idx))
          return 2;
       if (instr->format == Format::VOP3P)
          return 2;
@@ -615,7 +615,7 @@ get_subdword_definition_info(Program* program, const aco_ptr<Instruction>& instr
 
       unsigned stride = 4u;
       if (instr->opcode == aco_opcode::v_fma_mixlo_f16 ||
-          can_use_opsel(chip, instr->opcode, -1, true))
+          can_use_opsel(chip, instr->opcode, -1))
          stride = 2u;
 
       return std::make_pair(stride, bytes_written);
@@ -681,7 +681,7 @@ add_subdword_definition(Program* program, aco_ptr<Instruction>& instr, PhysReg r
       /* check if we can use opsel */
       if (instr->format == Format::VOP3) {
          assert(reg.byte() == 2);
-         assert(can_use_opsel(chip, instr->opcode, -1, true));
+         assert(can_use_opsel(chip, instr->opcode, -1));
          instr->vop3().opsel |= (1 << 3); /* dst in high half */
          return;
       }
