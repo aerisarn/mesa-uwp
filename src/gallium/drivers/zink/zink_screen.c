@@ -143,6 +143,28 @@ zink_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
    }
 }
 
+static void
+zink_get_device_luid(struct pipe_screen *pscreen, char *luid)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   if (screen->info.have_vulkan12) {
+      memcpy(luid, screen->info.props11.deviceLUID, VK_LUID_SIZE);
+   } else {
+      memcpy(luid, screen->info.deviceid_props.deviceLUID, VK_LUID_SIZE);
+   }
+}
+
+static uint32_t
+zink_get_device_node_mask(struct pipe_screen *pscreen)
+{
+   struct zink_screen *screen = zink_screen(pscreen);
+   if (screen->info.have_vulkan12) {
+      return screen->info.props11.deviceNodeMask;
+   } else {
+      return screen->info.deviceid_props.deviceNodeMask;
+   }
+}
+
 static VkDeviceSize
 get_video_mem(struct zink_screen *screen)
 {
@@ -2166,6 +2188,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (screen->instance_info.have_KHR_external_memory_capabilities) {
       screen->base.get_device_uuid = zink_get_device_uuid;
       screen->base.get_driver_uuid = zink_get_driver_uuid;
+   }
+   if (screen->info.have_KHR_external_memory_win32) {
+      screen->base.get_device_luid = zink_get_device_luid;
+      screen->base.get_device_node_mask = zink_get_device_node_mask;
    }
    screen->base.get_vendor = zink_get_vendor;
    screen->base.get_device_vendor = zink_get_device_vendor;
