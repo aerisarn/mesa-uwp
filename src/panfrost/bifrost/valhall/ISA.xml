@@ -709,6 +709,39 @@
     <value desc="Interpolated 16-bit floats">src_f16</value>
   </enum>
 
+  <enum name="Atomic operation">
+    <desc>
+      Operation performed in a general computational atomic instruction.
+    </desc>
+    <reserved/>
+    <reserved/>
+    <value desc="Add">aadd</value>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <reserved/>
+    <value desc="Signed minimum">asmin</value>
+    <value desc="Signed maximum">asmax</value>
+    <value desc="Unsigned minimum">aumin</value>
+    <value desc="Unsigned maximum">aumax</value>
+    <value desc="Bitwise and">aand</value>
+    <value desc="Bitwise or">aor</value>
+    <value desc="Bitwise exclusive-or">axor</value>
+    <value desc="Exchange (must return the value)">axchg</value>
+  </enum>
+
+  <enum name="Atomic operation with 1">
+    <desc>
+      Operation performed in a computational atomic-with-1 instruction.
+    </desc>
+    <value desc="Increment">ainc</value>
+    <value desc="Decrement">adec</value>
+    <value desc="Unsigned maximum with 1">aumax1</value>
+    <value desc="Signed maximum with 1">asmax1</value>
+    <value desc="Set bottom bit">aor1</value>
+  </enum>
+
   <ins name="NOP" title="No operation" dests="0" opcode="0x00" unit="CVT">
     <desc>
       Do nothing. Useful at the start of a block for waiting on slots required
@@ -2035,26 +2068,81 @@
     <imm name="constant" start="8" size="32"/>
   </ins>
 
-  <ins name="TODO.ATOM_C1" title="Atomic operations on memory with 1" opcode="0x69" unit="LS">
-    <!-- TODO -->
-    <mod name="i32" start="17" size="1"/>
-    <mod name="unk" start="23" size="1"/>
-    <sr write="true"/>
-    <src/>
-    <imm name="operation" start="24" size="6"/>
-    <sr_count/>
+  <ins name="ATOM1_RETURN.i32" title="Atomic operations on memory with 1" opcode="0x69" opcode2="3" unit="LS">
     <slot/>
+    <sr_count/>
+    <atom_opc_1/>
+    <mod name="memory_width" start="128" size="1" implied="true"/>
+
+    <!-- Optional for ATOM1.i32, in which sr_count must be 0 -->
+    <sr write="true"/>
+    <src size="64">64-bit address to operate on</src>
+    <imm name="offset" start="8" size="8"/>
   </ins>
 
-  <ins name="TODO.ATOM_C" title="Atomic operations on memory" opcode="0x120" unit="LS">
-    <!-- TODO -->
-    <mod name="i32" start="17" size="1"/>
-    <mod name="unk" start="23" size="1"/>
-    <sr read="true" write="true"/>
-    <src/>
-    <imm name="operation" start="24" size="6"/>
-    <sr_count/>
+  <ins name="ATOM1_RETURN.i64" title="Atomic operations on memory with 1" opcode="0x69" opcode2="5" unit="LS">
     <slot/>
+    <sr_count/>
+    <atom_opc_1/>
+    <mod name="memory_width" start="128" size="1" implied="true"/>
+
+    <!-- Optional for ATOM1.i64, in which sr_count must be 0 -->
+    <sr write="true"/>
+    <src size="64">64-bit address to operate on</src>
+    <imm name="offset" start="8" size="8"/>
+  </ins>
+
+  <ins name="ATOM.i32" title="Atomic operations on memory" opcode="0x68" opcode2="3" unit="LS">
+    <slot/>
+    <sr_count/>
+    <atom_opc/>
+    <mod name="memory_width" start="128" size="1" implied="true"/>
+
+    <sr read="true"/>
+    <src size="64">64-bit address to operate on</src>
+    <imm name="offset" start="8" size="8"/>
+  </ins>
+
+  <ins name="ATOM.i64" title="Atomic operations on memory" opcode="0x68" opcode2="5" unit="LS">
+    <slot/>
+    <sr_count/>
+    <atom_opc/>
+    <mod name="memory_width" start="128" size="1" implied="true"/>
+
+    <sr read="true"/>
+    <src size="64">64-bit address to operate on</src>
+    <imm name="offset" start="8" size="8"/>
+  </ins>
+
+  <ins name="ATOM_RETURN.i32" title="Atomic operations on memory" opcode="0x120" opcode2="3" unit="LS">
+    <slot/>
+    <sr_count/>
+    <sr_write_count/>
+
+    <!-- Only valid with .xchg to implement ACMPXCHG -->
+    <mod name="compare" start="26" size="1"/>
+
+    <atom_opc/>
+    <mod name="memory_width" start="128" size="1" implied="true"/>
+
+    <sr write="true" flags="false"/>
+    <sr read="true" flags="rw"/>
+    <src size="64">64-bit address to operate on</src>
+    <imm name="offset" start="8" size="8"/>
+  </ins>
+
+  <ins name="ATOM_RETURN.i64" title="Atomic operations on memory" opcode="0x120" opcode2="5" unit="LS">
+    <slot/>
+    <sr_count/>
+    <sr_write_count/>
+    <mod name="compare" start="26" size="1"/>
+    <atom_opc/>
+    <mod name="memory_width" start="128" size="1" implied="true"/>
+
+    <sr write="true" flags="false"/>
+    <sr read="true" flags="rw"/>
+    <src size="64">64-bit address to operate on</src>
+    <imm name="offset" start="8" size="8"/>
   </ins>
 
   <ins name="TEX_FETCH" title="Texel fetch" opcode="0x125" unit="T">

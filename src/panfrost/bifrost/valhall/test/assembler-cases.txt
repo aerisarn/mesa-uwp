@@ -216,3 +216,7 @@ c0 f1 00 00 10 c1 2f 08    BRANCHZI.eq.absolute.wait0 0x0, blend_descriptor_0.w1
 80 00 c0 17 34 7c 25 01    TEX_FETCH.slot0.f.32.2d @r0:r1:r2:r3, @r60:r61, u0
 80 00 00 00 00 c1 91 02    MOV.i32 r1, u64
 81 00 00 00 00 c1 91 02    MOV.i32 r1, u65
+30 00 f7 1b 02 cc 20 09    ATOM_RETURN.i32.slot0.axchg.wait0 @r55, @r12, r48, offset:0x0
+32 00 80 18 02 4c 68 08    ATOM.i32.slot0.aadd.wait0 @r12, r50, offset:0x0
+32 00 00 18 02 8c 69 08    ATOM1_RETURN.i32.slot0.ainc.wait0 @r12, r50, offset:0x0
+32 00 00 18 00 80 69 08    ATOM1_RETURN.i32.slot0.ainc.wait0 @, r50, offset:0x0

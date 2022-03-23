@@ -205,6 +205,9 @@ class Instruction:
         if "descriptor_type" in [x.name for x in self.modifiers]:
             self.secondary_mask = 0x3
             self.secondary_shift = 37
+        elif "memory_width" in [x.name for x in self.modifiers]:
+            self.secondary_mask = 0x7
+            self.secondary_shift = 27
 
         assert(len(dests) == 0 or not staging)
         assert(not opcode2 or (opcode2 & self.secondary_mask) == opcode2)
@@ -379,6 +382,8 @@ MODIFIERS = {
     "register_width": Modifier("register_width", 46, 1, force_enum = "register_width"),
     "secondary_register_width": Modifier("secondary_register_width", 47, 1, force_enum = "register_width"),
 
+    "atom_opc": Modifier("atomic_operation", 22, 4),
+    "atom_opc_1": Modifier("atomic_operation_with_1", 22, 4),
     "inactive_result": Modifier("inactive_result", 22, 4),
     "memory_access": Modifier("memory_access", 24, 2),
     "regfmt": Modifier("register_format", 24, 3),
