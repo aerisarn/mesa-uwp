@@ -470,6 +470,9 @@ nir_lower_io_to_scalar_early_instr(nir_builder *b, nir_instr *instr, void *data)
    if (var->data.always_active_io)
       return false;
 
+   if (var->data.must_be_shader_input)
+      return false;
+
    /* Skip types we cannot split */
    if (glsl_type_is_matrix(glsl_without_array(var->type)) ||
        glsl_type_is_struct_or_ifc(glsl_without_array(var->type)))
