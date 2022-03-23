@@ -178,6 +178,9 @@ def parse_asm(line):
         die_if(op[0] != '@', f'Expected staging register, got {op}')
         parts = op[1:].split(':')
 
+        if op == '@':
+            parts = []
+
         die_if(any([x[0] != 'r' for x in parts]), f'Expected registers, got {op}')
         regs = [parse_int(x[1:], 0, 63) for x in parts]
 
@@ -185,10 +188,9 @@ def parse_asm(line):
         max_sr_count = 8 if extended_write else 7
 
         sr_count = len(regs)
-        die_if(sr_count < 1, f'Expected staging register, got {op}')
         die_if(sr_count > max_sr_count, f'Too many staging registers {sr_count}')
 
-        base = regs[0]
+        base = regs[0] if len(regs) > 0 else 0
         die_if(any([reg != (base + i) for i, reg in enumerate(regs)]),
                 'Expected consecutive staging registers, got {op}')
         die_if(sr_count > 1 and (base % 2) != 0,

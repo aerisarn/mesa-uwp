@@ -176,8 +176,9 @@ va_disasm_instr(FILE *fp, uint64_t instr)
         assert(0)
 %>
 //            assert(((instr >> ${sr.start}) & 0xC0) == ${sr.encoded_flags});
+            fprintf(fp, "@");
             for (unsigned i = 0; i < ${sr_count}; ++i) {
-                fprintf(fp, "%sr%u", (i == 0) ? "@" : ":",
+                fprintf(fp, "%sr%u", (i == 0) ? "" : ":",
                         (uint32_t) (((instr >> ${sr.start}) & 0x3F) + i));
             }
 % endfor
