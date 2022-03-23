@@ -4937,20 +4937,6 @@ thread_id_in_threadgroup(isel_context* ctx)
    return bld.vadd32(bld.def(v1), Operand(num_pre_threads), Operand(tid_in_wave));
 }
 
-Temp
-get_tess_rel_patch_id(isel_context* ctx)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   switch (ctx->shader->info.stage) {
-   case MESA_SHADER_TESS_CTRL:
-      return bld.pseudo(aco_opcode::p_extract, bld.def(v1), get_arg(ctx, ctx->args->ac.tcs_rel_ids),
-                        Operand::zero(), Operand::c32(8u), Operand::zero());
-   case MESA_SHADER_TESS_EVAL: return get_arg(ctx, ctx->args->ac.tes_rel_patch_id);
-   default: unreachable("Unsupported stage in get_tess_rel_patch_id");
-   }
-}
-
 bool
 store_output_to_temps(isel_context* ctx, nir_intrinsic_instr* instr)
 {
@@ -8837,14 +8823,6 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
 
       break;
    }
-   case nir_intrinsic_load_patch_vertices_in: {
-      assert(ctx->shader->info.stage == MESA_SHADER_TESS_CTRL ||
-             ctx->shader->info.stage == MESA_SHADER_TESS_EVAL);
-
-      Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand::c32(ctx->options->key.tcs.tess_input_vertices));
-      break;
-   }
    case nir_intrinsic_emit_vertex_with_counter: {
       assert(ctx->stage.hw == HWStage::GS);
       visit_emit_vertex_with_counter(ctx, instr);
@@ -8863,83 +8841,11 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       /* unused in the legacy pipeline, the HW keeps track of this for us */
       break;
    }
-   case nir_intrinsic_load_tess_rel_patch_id_amd: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), get_tess_rel_patch_id(ctx));
-      break;
-   }
-   case nir_intrinsic_load_ring_tess_factors_amd: {
-      bld.smem(aco_opcode::s_load_dwordx4, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               ctx->program->private_segment_buffer, Operand::c32(RING_HS_TESS_FACTOR * 16u));
-      break;
-   }
-   case nir_intrinsic_load_ring_tess_factors_offset_amd: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ac.tcs_factor_offset));
-      break;
-   }
-   case nir_intrinsic_load_ring_tess_offchip_amd: {
-      bld.smem(aco_opcode::s_load_dwordx4, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               ctx->program->private_segment_buffer, Operand::c32(RING_HS_TESS_OFFCHIP * 16u));
-      break;
-   }
-   case nir_intrinsic_load_ring_tess_offchip_offset_amd: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ac.tess_offchip_offset));
-      break;
-   }
-   case nir_intrinsic_load_ring_esgs_amd: {
-      unsigned ring = ctx->stage.hw == HWStage::ES ? RING_ESGS_VS : RING_ESGS_GS;
-      bld.smem(aco_opcode::s_load_dwordx4, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               ctx->program->private_segment_buffer, Operand::c32(ring * 16u));
-      break;
-   }
-   case nir_intrinsic_load_ring_es2gs_offset_amd: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ac.es2gs_offset));
-      break;
-   }
-   case nir_intrinsic_load_gs_vertex_offset_amd: {
-      /* GFX6-8 uses 6 separate args, while GFX9+ packs these into only 3 args. */
-      unsigned b = nir_intrinsic_base(instr);
-      assert(b <= (ctx->program->chip_class >= GFX9 ? 2 : 5));
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ac.gs_vtx_offset[b]));
-      break;
-   }
    case nir_intrinsic_has_input_vertex_amd:
    case nir_intrinsic_has_input_primitive_amd: {
       assert(ctx->stage.hw == HWStage::NGG);
       unsigned i = instr->intrinsic == nir_intrinsic_has_input_vertex_amd ? 0 : 1;
       bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), merged_wave_info_to_mask(ctx, i));
-      break;
-   }
-   case nir_intrinsic_load_workgroup_num_input_vertices_amd:
-   case nir_intrinsic_load_workgroup_num_input_primitives_amd: {
-      assert(ctx->stage.hw == HWStage::NGG);
-      unsigned pos =
-         instr->intrinsic == nir_intrinsic_load_workgroup_num_input_vertices_amd ? 12 : 22;
-      bld.sop2(aco_opcode::s_bfe_u32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               bld.def(s1, scc), get_arg(ctx, ctx->args->ac.gs_tg_info),
-               Operand::c32(pos | (9u << 16u)));
-      break;
-   }
-   case nir_intrinsic_load_initial_edgeflags_amd: {
-      assert(ctx->stage.hw == HWStage::NGG);
-
-      Temp gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
-      /* Get initial edgeflags for each vertex at bits 8, 9, 10 of gs_invocation_id. */
-      Temp flags =
-         bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand::c32(0x700u), gs_invocation_id);
-      /* Move the bits to their desired position: 8->9, 9->19, 10->29. */
-      flags = bld.vop2(aco_opcode::v_mul_u32_u24, bld.def(v1), Operand::c32(0x80402u), flags);
-      /* Remove garbage bits that are a byproduct of the multiplication. */
-      bld.vop2(aco_opcode::v_and_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               Operand::c32(0x20080200), flags);
-      break;
-   }
-   case nir_intrinsic_load_packed_passthrough_primitive_amd: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ac.gs_vtx_offset[0]));
       break;
    }
    case nir_intrinsic_export_vertex_amd: {
@@ -8968,79 +8874,8 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
              true);
       break;
    }
-   case nir_intrinsic_load_shader_query_enabled_amd: {
-      unsigned cmp_bit = 0;
-      Temp shader_query_enabled =
-         bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc),
-                  get_arg(ctx, ctx->args->ngg_gs_state), Operand::c32(cmp_bit));
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               bool_to_vector_condition(ctx, shader_query_enabled));
-      break;
-   }
-   case nir_intrinsic_load_cull_front_face_enabled_amd:
-   case nir_intrinsic_load_cull_back_face_enabled_amd:
-   case nir_intrinsic_load_cull_ccw_amd:
-   case nir_intrinsic_load_cull_small_primitives_enabled_amd: {
-      unsigned cmp_bit;
-      if (instr->intrinsic == nir_intrinsic_load_cull_front_face_enabled_amd)
-         cmp_bit = 0;
-      else if (instr->intrinsic == nir_intrinsic_load_cull_back_face_enabled_amd)
-         cmp_bit = 1;
-      else if (instr->intrinsic == nir_intrinsic_load_cull_ccw_amd)
-         cmp_bit = 2;
-      else if (instr->intrinsic == nir_intrinsic_load_cull_small_primitives_enabled_amd)
-         cmp_bit = 3;
-      else
-         unreachable("unimplemented culling intrinsic");
-
-      Builder::Result enabled =
-         bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc),
-                  get_arg(ctx, ctx->args->ngg_culling_settings), Operand::c32(cmp_bit));
-      enabled.instr->definitions[0].setNoCSE(true);
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               bool_to_vector_condition(ctx, enabled));
-      break;
-   }
    case nir_intrinsic_load_sbt_amd: visit_load_sbt_amd(ctx, instr); break;
    case nir_intrinsic_bvh64_intersect_ray_amd: visit_bvh64_intersect_ray_amd(ctx, instr); break;
-   case nir_intrinsic_load_cull_any_enabled_amd: {
-      Builder::Result cull_any_enabled =
-         bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc),
-                  get_arg(ctx, ctx->args->ngg_culling_settings), Operand::c32(0xbu));
-      cull_any_enabled.instr->definitions[1].setNoCSE(true);
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               bool_to_vector_condition(ctx, cull_any_enabled.def(1).getTemp()));
-      break;
-   }
-   case nir_intrinsic_load_cull_small_prim_precision_amd: {
-      /* Exponent is 8-bit signed int, move that into a signed 32-bit int. */
-      Temp exponent = bld.sop2(aco_opcode::s_ashr_i32, bld.def(s1), bld.def(s1, scc),
-                               get_arg(ctx, ctx->args->ngg_culling_settings), Operand::c32(24u));
-      /* small_prim_precision = 1.0 * 2^X */
-      bld.vop3(aco_opcode::v_ldexp_f32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               Operand::c32(0x3f800000u), Operand(exponent));
-      break;
-   }
-   case nir_intrinsic_load_viewport_x_scale: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ngg_viewport_scale[0]));
-      break;
-   }
-   case nir_intrinsic_load_viewport_y_scale: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ngg_viewport_scale[1]));
-      break;
-   }
-   case nir_intrinsic_load_viewport_x_offset: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ngg_viewport_translate[0]));
-      break;
-   }
-   case nir_intrinsic_load_viewport_y_offset: {
-      bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               get_arg(ctx, ctx->args->ngg_viewport_translate[1]));
-      break;
-   }
    case nir_intrinsic_overwrite_vs_arguments_amd: {
       ctx->arg_temps[ctx->args->ac.vertex_id.arg_index] = get_ssa_temp(ctx, instr->src[0].ssa);
       ctx->arg_temps[ctx->args->ac.instance_id.arg_index] = get_ssa_temp(ctx, instr->src[1].ssa);
