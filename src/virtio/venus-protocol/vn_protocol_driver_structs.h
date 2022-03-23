@@ -394,40 +394,6 @@ vn_encode_VkImageFormatListCreateInfo(struct vn_cs_encoder *enc, const VkImageFo
     vn_encode_VkImageFormatListCreateInfo_self(enc, val);
 }
 
-static inline void
-vn_decode_VkImageFormatListCreateInfo_pnext(struct vn_cs_decoder *dec, const void *val)
-{
-    /* no known/supported struct */
-    if (vn_decode_simple_pointer(dec))
-        assert(false);
-}
-
-static inline void
-vn_decode_VkImageFormatListCreateInfo_self(struct vn_cs_decoder *dec, VkImageFormatListCreateInfo *val)
-{
-    /* skip val->{sType,pNext} */
-    vn_decode_uint32_t(dec, &val->viewFormatCount);
-    if (vn_peek_array_size(dec)) {
-        const size_t array_size = vn_decode_array_size(dec, val->viewFormatCount);
-        vn_decode_VkFormat_array(dec, (VkFormat *)val->pViewFormats, array_size);
-    } else {
-        vn_decode_array_size_unchecked(dec);
-        val->pViewFormats = NULL;
-    }
-}
-
-static inline void
-vn_decode_VkImageFormatListCreateInfo(struct vn_cs_decoder *dec, VkImageFormatListCreateInfo *val)
-{
-    VkStructureType stype;
-    vn_decode_VkStructureType(dec, &stype);
-    assert(stype == VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO);
-
-    assert(val->sType == stype);
-    vn_decode_VkImageFormatListCreateInfo_pnext(dec, val->pNext);
-    vn_decode_VkImageFormatListCreateInfo_self(dec, val);
-}
-
 /* struct VkImageStencilUsageCreateInfo chain */
 
 static inline size_t
@@ -479,33 +445,6 @@ vn_encode_VkImageStencilUsageCreateInfo(struct vn_cs_encoder *enc, const VkImage
     vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO });
     vn_encode_VkImageStencilUsageCreateInfo_pnext(enc, val->pNext);
     vn_encode_VkImageStencilUsageCreateInfo_self(enc, val);
-}
-
-static inline void
-vn_decode_VkImageStencilUsageCreateInfo_pnext(struct vn_cs_decoder *dec, const void *val)
-{
-    /* no known/supported struct */
-    if (vn_decode_simple_pointer(dec))
-        assert(false);
-}
-
-static inline void
-vn_decode_VkImageStencilUsageCreateInfo_self(struct vn_cs_decoder *dec, VkImageStencilUsageCreateInfo *val)
-{
-    /* skip val->{sType,pNext} */
-    vn_decode_VkFlags(dec, &val->stencilUsage);
-}
-
-static inline void
-vn_decode_VkImageStencilUsageCreateInfo(struct vn_cs_decoder *dec, VkImageStencilUsageCreateInfo *val)
-{
-    VkStructureType stype;
-    vn_decode_VkStructureType(dec, &stype);
-    assert(stype == VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO);
-
-    assert(val->sType == stype);
-    vn_decode_VkImageStencilUsageCreateInfo_pnext(dec, val->pNext);
-    vn_decode_VkImageStencilUsageCreateInfo_self(dec, val);
 }
 
 /* struct VkComponentMapping */
@@ -660,17 +599,6 @@ vn_encode_VkViewport(struct vn_cs_encoder *enc, const VkViewport *val)
     vn_encode_float(enc, &val->height);
     vn_encode_float(enc, &val->minDepth);
     vn_encode_float(enc, &val->maxDepth);
-}
-
-static inline void
-vn_decode_VkViewport(struct vn_cs_decoder *dec, VkViewport *val)
-{
-    vn_decode_float(dec, &val->x);
-    vn_decode_float(dec, &val->y);
-    vn_decode_float(dec, &val->width);
-    vn_decode_float(dec, &val->height);
-    vn_decode_float(dec, &val->minDepth);
-    vn_decode_float(dec, &val->maxDepth);
 }
 
 /* struct VkOffset2D */

@@ -143,45 +143,6 @@ vn_encode_VkCommandBufferInheritanceRenderingInfo(struct vn_cs_encoder *enc, con
     vn_encode_VkCommandBufferInheritanceRenderingInfo_self(enc, val);
 }
 
-static inline void
-vn_decode_VkCommandBufferInheritanceRenderingInfo_pnext(struct vn_cs_decoder *dec, const void *val)
-{
-    /* no known/supported struct */
-    if (vn_decode_simple_pointer(dec))
-        assert(false);
-}
-
-static inline void
-vn_decode_VkCommandBufferInheritanceRenderingInfo_self(struct vn_cs_decoder *dec, VkCommandBufferInheritanceRenderingInfo *val)
-{
-    /* skip val->{sType,pNext} */
-    vn_decode_VkFlags(dec, &val->flags);
-    vn_decode_uint32_t(dec, &val->viewMask);
-    vn_decode_uint32_t(dec, &val->colorAttachmentCount);
-    if (vn_peek_array_size(dec)) {
-        const size_t array_size = vn_decode_array_size(dec, val->colorAttachmentCount);
-        vn_decode_VkFormat_array(dec, (VkFormat *)val->pColorAttachmentFormats, array_size);
-    } else {
-        vn_decode_array_size_unchecked(dec);
-        val->pColorAttachmentFormats = NULL;
-    }
-    vn_decode_VkFormat(dec, &val->depthAttachmentFormat);
-    vn_decode_VkFormat(dec, &val->stencilAttachmentFormat);
-    vn_decode_VkSampleCountFlagBits(dec, &val->rasterizationSamples);
-}
-
-static inline void
-vn_decode_VkCommandBufferInheritanceRenderingInfo(struct vn_cs_decoder *dec, VkCommandBufferInheritanceRenderingInfo *val)
-{
-    VkStructureType stype;
-    vn_decode_VkStructureType(dec, &stype);
-    assert(stype == VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO);
-
-    assert(val->sType == stype);
-    vn_decode_VkCommandBufferInheritanceRenderingInfo_pnext(dec, val->pNext);
-    vn_decode_VkCommandBufferInheritanceRenderingInfo_self(dec, val);
-}
-
 /* struct VkCommandBufferInheritanceInfo chain */
 
 static inline size_t
@@ -278,57 +239,6 @@ vn_encode_VkCommandBufferInheritanceInfo(struct vn_cs_encoder *enc, const VkComm
     vn_encode_VkCommandBufferInheritanceInfo_self(enc, val);
 }
 
-static inline void
-vn_decode_VkCommandBufferInheritanceInfo_pnext(struct vn_cs_decoder *dec, const void *val)
-{
-    VkBaseOutStructure *pnext = (VkBaseOutStructure *)val;
-    VkStructureType stype;
-
-    if (!vn_decode_simple_pointer(dec))
-        return;
-
-    vn_decode_VkStructureType(dec, &stype);
-    while (true) {
-        assert(pnext);
-        if (pnext->sType == stype)
-            break;
-    }
-
-    switch ((int32_t)pnext->sType) {
-    case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
-        vn_decode_VkCommandBufferInheritanceInfo_pnext(dec, pnext->pNext);
-        vn_decode_VkCommandBufferInheritanceRenderingInfo_self(dec, (VkCommandBufferInheritanceRenderingInfo *)pnext);
-        break;
-    default:
-        assert(false);
-        break;
-    }
-}
-
-static inline void
-vn_decode_VkCommandBufferInheritanceInfo_self(struct vn_cs_decoder *dec, VkCommandBufferInheritanceInfo *val)
-{
-    /* skip val->{sType,pNext} */
-    vn_decode_VkRenderPass(dec, &val->renderPass);
-    vn_decode_uint32_t(dec, &val->subpass);
-    vn_decode_VkFramebuffer(dec, &val->framebuffer);
-    vn_decode_VkBool32(dec, &val->occlusionQueryEnable);
-    vn_decode_VkFlags(dec, &val->queryFlags);
-    vn_decode_VkFlags(dec, &val->pipelineStatistics);
-}
-
-static inline void
-vn_decode_VkCommandBufferInheritanceInfo(struct vn_cs_decoder *dec, VkCommandBufferInheritanceInfo *val)
-{
-    VkStructureType stype;
-    vn_decode_VkStructureType(dec, &stype);
-    assert(stype == VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO);
-
-    assert(val->sType == stype);
-    vn_decode_VkCommandBufferInheritanceInfo_pnext(dec, val->pNext);
-    vn_decode_VkCommandBufferInheritanceInfo_self(dec, val);
-}
-
 /* struct VkDeviceGroupCommandBufferBeginInfo chain */
 
 static inline size_t
@@ -380,33 +290,6 @@ vn_encode_VkDeviceGroupCommandBufferBeginInfo(struct vn_cs_encoder *enc, const V
     vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO });
     vn_encode_VkDeviceGroupCommandBufferBeginInfo_pnext(enc, val->pNext);
     vn_encode_VkDeviceGroupCommandBufferBeginInfo_self(enc, val);
-}
-
-static inline void
-vn_decode_VkDeviceGroupCommandBufferBeginInfo_pnext(struct vn_cs_decoder *dec, const void *val)
-{
-    /* no known/supported struct */
-    if (vn_decode_simple_pointer(dec))
-        assert(false);
-}
-
-static inline void
-vn_decode_VkDeviceGroupCommandBufferBeginInfo_self(struct vn_cs_decoder *dec, VkDeviceGroupCommandBufferBeginInfo *val)
-{
-    /* skip val->{sType,pNext} */
-    vn_decode_uint32_t(dec, &val->deviceMask);
-}
-
-static inline void
-vn_decode_VkDeviceGroupCommandBufferBeginInfo(struct vn_cs_decoder *dec, VkDeviceGroupCommandBufferBeginInfo *val)
-{
-    VkStructureType stype;
-    vn_decode_VkStructureType(dec, &stype);
-    assert(stype == VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO);
-
-    assert(val->sType == stype);
-    vn_decode_VkDeviceGroupCommandBufferBeginInfo_pnext(dec, val->pNext);
-    vn_decode_VkDeviceGroupCommandBufferBeginInfo_self(dec, val);
 }
 
 /* struct VkCommandBufferBeginInfo chain */
@@ -498,57 +381,6 @@ vn_encode_VkCommandBufferBeginInfo(struct vn_cs_encoder *enc, const VkCommandBuf
     vn_encode_VkStructureType(enc, &(VkStructureType){ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO });
     vn_encode_VkCommandBufferBeginInfo_pnext(enc, val->pNext);
     vn_encode_VkCommandBufferBeginInfo_self(enc, val);
-}
-
-static inline void
-vn_decode_VkCommandBufferBeginInfo_pnext(struct vn_cs_decoder *dec, const void *val)
-{
-    VkBaseOutStructure *pnext = (VkBaseOutStructure *)val;
-    VkStructureType stype;
-
-    if (!vn_decode_simple_pointer(dec))
-        return;
-
-    vn_decode_VkStructureType(dec, &stype);
-    while (true) {
-        assert(pnext);
-        if (pnext->sType == stype)
-            break;
-    }
-
-    switch ((int32_t)pnext->sType) {
-    case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO:
-        vn_decode_VkCommandBufferBeginInfo_pnext(dec, pnext->pNext);
-        vn_decode_VkDeviceGroupCommandBufferBeginInfo_self(dec, (VkDeviceGroupCommandBufferBeginInfo *)pnext);
-        break;
-    default:
-        assert(false);
-        break;
-    }
-}
-
-static inline void
-vn_decode_VkCommandBufferBeginInfo_self(struct vn_cs_decoder *dec, VkCommandBufferBeginInfo *val)
-{
-    /* skip val->{sType,pNext} */
-    vn_decode_VkFlags(dec, &val->flags);
-    if (vn_decode_simple_pointer(dec)) {
-        vn_decode_VkCommandBufferInheritanceInfo(dec, (VkCommandBufferInheritanceInfo *)val->pInheritanceInfo);
-    } else {
-        val->pInheritanceInfo = NULL;
-    }
-}
-
-static inline void
-vn_decode_VkCommandBufferBeginInfo(struct vn_cs_decoder *dec, VkCommandBufferBeginInfo *val)
-{
-    VkStructureType stype;
-    vn_decode_VkStructureType(dec, &stype);
-    assert(stype == VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO);
-
-    assert(val->sType == stype);
-    vn_decode_VkCommandBufferBeginInfo_pnext(dec, val->pNext);
-    vn_decode_VkCommandBufferBeginInfo_self(dec, val);
 }
 
 /* struct VkBufferCopy */
