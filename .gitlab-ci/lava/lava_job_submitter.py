@@ -384,13 +384,13 @@ def main(args):
     if args.dump_yaml:
         print("LAVA job definition (YAML):")
         print(hide_sensitive_data(job_definition))
+    job = LAVAJob(proxy, job_definition)
+
+    if errors := job.validate():
+        fatal_err(f"Error in LAVA job definition: {errors}")
+    print_log("LAVA job definition validated successfully")
 
     if args.validate_only:
-        job = LAVAJob(proxy, job_definition)
-        ret = job.validate()
-        if ret:
-            fatal_err("Error in LAVA job definition")
-        print("LAVA job definition validated successfully")
         return
 
     ret = retriable_follow_job(proxy, job_definition)
