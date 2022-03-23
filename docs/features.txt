@@ -320,12 +320,12 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_EXT_depth_bounds_test                              DONE (i965/gen12+, nv50, nvc0, radeonsi, softpipe, zink)
   GL_EXT_memory_object                                  DONE (radeonsi, i965/gen7+, llvmpipe, zink)
   GL_EXT_memory_object_fd                               DONE (radeonsi, i965/gen7+, llvmpipe, zink)
-  GL_EXT_memory_object_win32                            not started
+  GL_EXT_memory_object_win32                            DONE (zink)
   GL_EXT_multisampled_render_to_texture                 DONE (freedreno/a6xx, panfrost, zink)
   GL_EXT_render_snorm                                   DONE (i965, r600, radeonsi, softpipe, zink)
   GL_EXT_semaphore                                      DONE (radeonsi, i965/gen7+, zink)
   GL_EXT_semaphore_fd                                   DONE (radeonsi, i965/gen7+, zink)
-  GL_EXT_semaphore_win32                                not started
+  GL_EXT_semaphore_win32                                DONE (zink)
   GL_EXT_shader_group_vote                              DONE (all drivers that support GL_ARB_shader_group_vote)
   GL_EXT_sRGB_write_control                             DONE (all drivers that support GLES 3.0+)
   GL_EXT_texture_norm16                                 DONE (freedreno, i965, r600, radeonsi, nvc0i, softpipe, zink)
