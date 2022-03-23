@@ -2979,6 +2979,12 @@ pvr_ppp_state_get_ispa_objtype_from_vk(const VkPrimitiveTopology topology)
    }
 }
 
+static inline enum PVRX(TA_CMPMODE) pvr_cmpmode(VkCompareOp op)
+{
+   /* enum values are identical, so we can just cast the input directly. */
+   return (enum PVRX(TA_CMPMODE))op;
+}
+
 static void pvr_setup_isp_faces_and_control(
    struct pvr_cmd_buffer *const cmd_buffer,
    struct pvr_cmd_struct(TA_STATE_ISPA) *const ispa_out)
@@ -3047,7 +3053,7 @@ static void pvr_setup_isp_faces_and_control(
       if (disable_depth_test)
          ispa.dcmpmode = PVRX(TA_CMPMODE_ALWAYS);
       else
-         ispa.dcmpmode = gfx_pipeline->depth_compare_op;
+         ispa.dcmpmode = pvr_cmpmode(gfx_pipeline->depth_compare_op);
 
       /* FIXME: Can we just have this and remove the assignment above?
        * The user provides a depthTestEnable at vkCreateGraphicsPipelines()
@@ -3107,7 +3113,7 @@ static void pvr_setup_isp_faces_and_control(
          ispb.sop2 = gfx_pipeline->stencil_front.depth_fail_op;
          ispb.sop1 = gfx_pipeline->stencil_front.fail_op;
 
-         ispb.scmpmode = gfx_pipeline->stencil_front.compare_op;
+         ispb.scmpmode = pvr_cmpmode(gfx_pipeline->stencil_front.compare_op);
       }
 
       pvr_csb_pack (&back_b, TA_STATE_ISPB, ispb) {
@@ -3119,7 +3125,7 @@ static void pvr_setup_isp_faces_and_control(
          ispb.sop2 = gfx_pipeline->stencil_back.depth_fail_op;
          ispb.sop1 = gfx_pipeline->stencil_back.fail_op;
 
-         ispb.scmpmode = gfx_pipeline->stencil_back.compare_op;
+         ispb.scmpmode = pvr_cmpmode(gfx_pipeline->stencil_back.compare_op);
       }
    }
 
