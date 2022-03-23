@@ -1585,6 +1585,11 @@ struct tu_image_view
 
    struct fdl6_view view;
 
+   /* for d32s8 separate depth */
+   uint64_t depth_base_addr;
+   uint32_t depth_layer_size;
+   uint32_t depth_PITCH;
+
    /* for d32s8 separate stencil */
    uint64_t stencil_base_addr;
    uint32_t stencil_layer_size;
@@ -1621,8 +1626,14 @@ tu_cs_image_flag_ref(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t l
 void
 tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
 
+void
+tu_cs_image_depth_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer);
+
 #define tu_image_view_stencil(iview, x) \
    ((iview->view.x & ~A6XX_##x##_COLOR_FORMAT__MASK) | A6XX_##x##_COLOR_FORMAT(FMT6_8_UINT))
+
+#define tu_image_view_depth(iview, x) \
+   ((iview->view.x & ~A6XX_##x##_COLOR_FORMAT__MASK) | A6XX_##x##_COLOR_FORMAT(FMT6_32_FLOAT))
 
 VkResult
 tu_gralloc_info(struct tu_device *device,

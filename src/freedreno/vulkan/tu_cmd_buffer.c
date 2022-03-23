@@ -233,7 +233,10 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_BUFFER_INFO, 6);
    tu_cs_emit(cs, A6XX_RB_DEPTH_BUFFER_INFO(.depth_format = fmt).value);
-   tu_cs_image_ref(cs, &iview->view, 0);
+   if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+      tu_cs_image_depth_ref(cs, iview, 0);
+   else
+      tu_cs_image_ref(cs, &iview->view, 0);
    tu_cs_emit(cs, attachment->gmem_offset);
 
    tu_cs_emit_regs(cs,

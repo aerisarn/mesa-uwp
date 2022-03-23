@@ -136,6 +136,14 @@ tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uin
 }
 
 void
+tu_cs_image_depth_ref(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
+{
+   tu_cs_emit(cs, iview->depth_PITCH);
+   tu_cs_emit(cs, iview->depth_layer_size >> 6);
+   tu_cs_emit_qw(cs, iview->depth_base_addr + iview->depth_layer_size * layer);
+}
+
+void
 tu_cs_image_ref_2d(struct tu_cs *cs, const struct fdl6_view *iview, uint32_t layer, bool src)
 {
    tu_cs_emit_qw(cs, iview->base_addr + iview->layer_size * layer);
@@ -243,7 +251,13 @@ tu_image_view_init(struct tu_image_view *iview,
    fdl6_view_init(&iview->view, layouts, &args, has_z24uint_s8uint);
 
    if (image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
-      struct fdl_layout *layout = &image->layout[1];
+      struct fdl_layout *layout = &image->layout[0];
+      iview->depth_base_addr = image->iova +
+         fdl_surface_offset(layout, range->baseMipLevel, range->baseArrayLayer);
+      iview->depth_layer_size = fdl_layer_stride(layout, range->baseMipLevel);
+      iview->depth_PITCH = A6XX_RB_DEPTH_BUFFER_PITCH(fdl_pitch(layout, range->baseMipLevel)).value;
+
+      layout = &image->layout[1];
       iview->stencil_base_addr = image->iova +
          fdl_surface_offset(layout, range->baseMipLevel, range->baseArrayLayer);
       iview->stencil_layer_size = fdl_layer_stride(layout, range->baseMipLevel);
