@@ -952,7 +952,7 @@ bi_handle_segment(bi_builder *b, bi_index *addr, bi_index *addr_hi, enum bi_seg 
 
         bi_index base = bi_fau(wls ? BIR_FAU_WLS_PTR : BIR_FAU_TLS_PTR, false);
 
-        if (addr->type == BI_INDEX_CONSTANT) {
+        if (offset && addr->type == BI_INDEX_CONSTANT) {
                 int value = addr->value;
 
                 if (value == (int16_t) value) {
@@ -1303,25 +1303,36 @@ static void
 bi_emit_atomic_i32_to(bi_builder *b, bi_index dst,
                 bi_index addr, bi_index arg, nir_intrinsic_op intrinsic)
 {
-        /* ATOM_C.i32 takes a vector with {arg, coalesced}, ATOM_C1.i32 doesn't
-         * take any vector but can still output in RETURN mode */
-        bi_index sr = bi_temp_reg(b->shader);
-
         enum bi_atom_opc opc = bi_atom_opc_for_nir(intrinsic);
         enum bi_atom_opc post_opc = opc;
+        bool bifrost = b->shader->arch <= 8;
+
+        /* ATOM_C.i32 takes a vector with {arg, coalesced}, ATOM_C1.i32 doesn't
+         * take any vector but can still output in RETURN mode */
+        bi_index sr = bifrost ? bi_temp_reg(b->shader) : bi_null();
+        bi_index tmp_dest = bifrost ? sr : dst;
+        unsigned sr_count = bifrost ? 2 : 1;
 
         /* Generate either ATOM or ATOM1 as required */
         if (bi_promote_atom_c1(opc, arg, &opc)) {
-                bi_atom1_return_i32_to(b, sr, bi_word(addr, 0),
-                                       bi_word(addr, 1), opc, 2);
+                bi_atom1_return_i32_to(b, tmp_dest, bi_word(addr, 0),
+                                       bi_word(addr, 1), opc, sr_count);
         } else {
-                bi_mov_i32_to(b, sr, arg);
-                bi_atom_return_i32_to(b, sr, sr, bi_word(addr, 0),
-                                      bi_word(addr, 1), opc, 2);
+                bi_index src = arg;
+
+                if (bifrost) {
+                        bi_mov_i32_to(b, sr, arg);
+                        src = sr;
+                }
+
+                bi_atom_return_i32_to(b, tmp_dest, src, bi_word(addr, 0),
+                                      bi_word(addr, 1), opc, sr_count);
         }
 
-        /* Post-process it */
-        bi_atom_post_i32_to(b, dst, bi_word(sr, 0), bi_word(sr, 1), post_opc);
+        if (bifrost) {
+                /* Post-process it */
+                bi_atom_post_i32_to(b, dst, bi_word(sr, 0), bi_word(sr, 1), post_opc);
+        }
 }
 
 /* gl_FragCoord.xy = u16_to_f32(R59.xy) + 0.5
@@ -1481,8 +1492,14 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_shared_atomic_xor: {
                 assert(nir_src_bit_size(instr->src[1]) == 32);
 
-                bi_index addr = bi_seg_add_i64(b, bi_src_index(&instr->src[0]),
-                                bi_zero(), false, BI_SEG_WLS);
+                bi_index addr = bi_src_index(&instr->src[0]);
+                bi_index addr_hi;
+
+                if (b->shader->arch >= 9) {
+                        bi_handle_segment(b, &addr, &addr_hi, BI_SEG_WLS, NULL);
+                } else {
+                        addr = bi_seg_add_i64(b, addr, bi_zero(), false, BI_SEG_WLS);
+                }
 
                 bi_emit_atomic_i32_to(b, dst, addr, bi_src_index(&instr->src[1]),
                                 instr->intrinsic);
