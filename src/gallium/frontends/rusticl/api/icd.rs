@@ -1111,22 +1111,35 @@ extern "C" fn cl_enqueue_map_buffer(
 }
 
 extern "C" fn cl_enqueue_map_image(
-    _command_queue: cl_command_queue,
-    _image: cl_mem,
-    _blocking_map: cl_bool,
-    _map_flags: cl_map_flags,
-    _origin: *const usize,
-    _region: *const usize,
-    _image_row_pitch: *mut usize,
-    _image_slice_pitch: *mut usize,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    blocking_map: cl_bool,
+    map_flags: cl_map_flags,
+    origin: *const usize,
+    region: *const usize,
+    image_row_pitch: *mut usize,
+    image_slice_pitch: *mut usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
     errcode_ret: *mut cl_int,
 ) -> *mut ::std::os::raw::c_void {
-    println!("cl_enqueue_map_image not implemented");
-    errcode_ret.write_checked(CL_OUT_OF_HOST_MEMORY);
-    ptr::null_mut()
+    match_obj!(
+        enqueue_map_image(
+            command_queue,
+            image,
+            blocking_map,
+            map_flags,
+            origin,
+            region,
+            image_row_pitch,
+            image_slice_pitch,
+            num_events_in_wait_list,
+            event_wait_list,
+            event,
+        ),
+        errcode_ret
+    )
 }
 
 extern "C" fn cl_enqueue_unmap_mem_object(

@@ -59,6 +59,34 @@ fn validate_mem_flags(flags: cl_mem_flags, images: bool) -> CLResult<()> {
     Ok(())
 }
 
+fn validate_map_flags(m: &Mem, map_flags: cl_mem_flags) -> CLResult<()> {
+    // CL_INVALID_VALUE ... if values specified in map_flags are not valid.
+    let valid_flags =
+        cl_bitfield::from(CL_MAP_READ | CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION);
+    let read_write_group = cl_bitfield::from(CL_MAP_READ | CL_MAP_WRITE);
+    let invalidate_group = cl_bitfield::from(CL_MAP_WRITE_INVALIDATE_REGION);
+
+    if (map_flags & !valid_flags != 0)
+        || ((map_flags & read_write_group != 0) && (map_flags & invalidate_group != 0))
+    {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_OPERATION if buffer has been created with CL_MEM_HOST_WRITE_ONLY or
+    // CL_MEM_HOST_NO_ACCESS and CL_MAP_READ is set in map_flags
+    if bit_check(m.flags, CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS) &&
+      bit_check(map_flags, CL_MAP_READ) ||
+      // or if buffer has been created with CL_MEM_HOST_READ_ONLY or CL_MEM_HOST_NO_ACCESS and
+      // CL_MAP_WRITE or CL_MAP_WRITE_INVALIDATE_REGION is set in map_flags.
+      bit_check(m.flags, CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS) &&
+      bit_check(map_flags, CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)
+    {
+        return Err(CL_INVALID_OPERATION);
+    }
+
+    Ok(())
+}
+
 fn filter_image_access_flags(flags: cl_mem_flags) -> cl_mem_flags {
     flags
         & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY | CL_MEM_KERNEL_READ_AND_WRITE)
@@ -1421,38 +1449,16 @@ pub fn enqueue_map_buffer(
     event: *mut cl_event,
 ) -> CLResult<*mut c_void> {
     let q = command_queue.get_arc()?;
-    let b = buffer.get_arc()?;
+    let b = buffer.get_ref()?;
     let block = check_cl_bool(blocking_map).ok_or(CL_INVALID_VALUE)?;
     let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    validate_map_flags(b, map_flags)?;
 
     // CL_INVALID_VALUE if region being mapped given by (offset, size) is out of bounds or if size
     // is 0
     if offset + size > b.size || size == 0 {
         return Err(CL_INVALID_VALUE);
-    }
-
-    // CL_INVALID_VALUE ... if values specified in map_flags are not valid.
-    let valid_flags =
-        cl_bitfield::from(CL_MAP_READ | CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION);
-    let read_write_group = cl_bitfield::from(CL_MAP_READ | CL_MAP_WRITE);
-    let invalidate_group = cl_bitfield::from(CL_MAP_WRITE_INVALIDATE_REGION);
-
-    if (map_flags & !valid_flags != 0)
-        || ((map_flags & read_write_group != 0) && (map_flags & invalidate_group != 0))
-    {
-        return Err(CL_INVALID_VALUE);
-    }
-
-    // CL_INVALID_OPERATION if buffer has been created with CL_MEM_HOST_WRITE_ONLY or
-    // CL_MEM_HOST_NO_ACCESS and CL_MAP_READ is set in map_flags
-    if bit_check(b.flags, CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS) &&
-      bit_check(map_flags, CL_MAP_READ) ||
-      // or if buffer has been created with CL_MEM_HOST_READ_ONLY or CL_MEM_HOST_NO_ACCESS and
-      // CL_MAP_WRITE or CL_MAP_WRITE_INVALIDATE_REGION is set in map_flags.
-      bit_check(b.flags, CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS) &&
-      bit_check(map_flags, CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)
-    {
-        return Err(CL_INVALID_OPERATION);
     }
 
     // CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the map operation is blocking and the
@@ -1668,6 +1674,80 @@ pub fn enqueue_copy_image(
 ) -> CLResult<()> {
     println!("enqueue_copy_image not implemented");
     Err(CL_OUT_OF_HOST_MEMORY)
+}
+
+pub fn enqueue_map_image(
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    blocking_map: cl_bool,
+    map_flags: cl_map_flags,
+    origin: *const usize,
+    region: *const usize,
+    image_row_pitch: *mut usize,
+    image_slice_pitch: *mut usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<*mut ::std::os::raw::c_void> {
+    let q = command_queue.get_arc()?;
+    let i = image.get_ref()?;
+    let block = check_cl_bool(blocking_map).ok_or(CL_INVALID_VALUE)?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    validate_map_flags(i, map_flags)?;
+
+    // CL_INVALID_CONTEXT if context associated with command_queue and image are not the same
+    if i.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_INVALID_VALUE if origin or region is NULL.
+    // CL_INVALID_VALUE if image_row_pitch is NULL.
+    if origin.is_null() || region.is_null() || image_row_pitch.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let region = unsafe { CLVec::from_raw(region) };
+    let origin = unsafe { CLVec::from_raw(origin) };
+
+    create_and_queue(
+        q.clone(),
+        CL_COMMAND_MAP_IMAGE,
+        evs,
+        event,
+        block,
+        // we don't really have anything to do here?
+        Box::new(|_, _| Ok(())),
+    )?;
+
+    let mut dummy_slice_pitch: usize = 0;
+    let image_slice_pitch = if image_slice_pitch.is_null() {
+        // CL_INVALID_VALUE if image is a 3D image, 1D or 2D image array object and
+        // image_slice_pitch is NULL.
+        if i.image_desc.is_array() || i.image_desc.image_type == CL_MEM_OBJECT_IMAGE3D {
+            return Err(CL_INVALID_VALUE);
+        }
+        &mut dummy_slice_pitch
+    } else {
+        unsafe { image_slice_pitch.as_mut().unwrap() }
+    };
+
+    i.map_image(
+        &q,
+        &origin,
+        &region,
+        unsafe { image_row_pitch.as_mut().unwrap() },
+        image_slice_pitch,
+        block,
+    )
+    //• CL_INVALID_VALUE if region being mapped given by (origin, origin + region) is out of bounds or if values specified in map_flags are not valid.
+    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
+    //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
+    //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for image are not supported by device associated with queue.
+    //• CL_MAP_FAILURE if there is a failure to map the requested region into the host address space. This error cannot occur for image objects created with CL_MEM_USE_HOST_PTR or CL_MEM_ALLOC_HOST_PTR.
+    //• CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST if the map operation is blocking and the execution status of any of the events in event_wait_list is a negative integer value.
+    //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
+    //• CL_INVALID_OPERATION if mapping would lead to overlapping regions being mapped for writing.
 }
 
 pub fn enqueue_unmap_mem_object(

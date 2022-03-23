@@ -649,7 +649,13 @@ impl Mem {
         block: bool,
     ) -> CLResult<&'a PipeTransfer> {
         if !lock.tx.contains_key(&q.device) {
-            let tx = self.tx(q, ctx, 0, self.size, block)?;
+            let tx = if self.is_buffer() {
+                self.tx(q, ctx, 0, self.size, block)?
+            } else {
+                let bx = self.image_desc.bx()?;
+                self.tx_image(q, ctx, &bx, block)?
+            };
+
             lock.tx.insert(q.device.clone(), (tx, 0));
         }
 
@@ -671,6 +677,42 @@ impl Mem {
         let mut lock = self.maps.lock().unwrap();
         let tx = self.map(q, &q.device.helper_ctx(), &mut lock, block)?;
         let ptr = unsafe { tx.ptr().add(offset) };
+
+        if let Some(e) = lock.maps.get_mut(&ptr) {
+            *e += 1;
+        } else {
+            lock.maps.insert(ptr, 1);
+        }
+
+        Ok(ptr)
+    }
+
+    pub fn map_image(
+        &self,
+        q: &Arc<Queue>,
+        origin: &CLVec<usize>,
+        _region: &CLVec<usize>,
+        row_pitch: &mut usize,
+        slice_pitch: &mut usize,
+        block: bool,
+    ) -> CLResult<*mut c_void> {
+        assert!(!self.is_buffer());
+
+        let mut lock = self.maps.lock().unwrap();
+        let tx = self.map(q, &q.device.helper_ctx(), &mut lock, block)?;
+
+        *row_pitch = tx.row_pitch() as usize;
+        *slice_pitch = tx.slice_pitch() as usize;
+        let ptr = unsafe {
+            tx.ptr().add(
+                *origin
+                    * [
+                        self.image_format.pixel_size().unwrap() as usize,
+                        *row_pitch,
+                        *slice_pitch,
+                    ],
+            )
+        };
 
         if let Some(e) = lock.maps.get_mut(&ptr) {
             *e += 1;
