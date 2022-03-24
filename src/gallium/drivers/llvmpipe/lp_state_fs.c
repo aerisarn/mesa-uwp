@@ -1961,7 +1961,7 @@ convert_to_blend_type(struct gallivm_state *gallivm,
 #if UTIL_ARCH_LITTLE_ENDIAN
          unsigned from_lsb = j;
 #else
-         unsigned from_lsb = src_fmt->nr_channels - j - 1;
+         unsigned from_lsb = (blend_type.length / pixels) - j - 1;
 #endif
 
          mask = (1 << src_fmt->channel[j].size) - 1;
@@ -2144,7 +2144,7 @@ convert_from_blend_type(struct gallivm_state *gallivm,
 #if UTIL_ARCH_LITTLE_ENDIAN
          unsigned from_lsb = j;
 #else
-         unsigned from_lsb = src_fmt->nr_channels - j - 1;
+         unsigned from_lsb = blend_type.length - j - 1;
 #endif
 
          assert(blend_type.width > src_fmt->channel[j].size);
