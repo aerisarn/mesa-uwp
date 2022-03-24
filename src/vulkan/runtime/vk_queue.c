@@ -997,7 +997,7 @@ vk_queue_wait_before_present(struct vk_queue *queue,
     * semaphores, however, we need to do a wait.  Thanks to the above bit of
     * spec text, that wait should never block for long.
     */
-   if (queue->base.device->timeline_mode != VK_DEVICE_TIMELINE_MODE_ASSISTED)
+   if (!vk_device_supports_threaded_submit(queue->base.device))
       return VK_SUCCESS;
 
    const uint32_t wait_count = pPresentInfo->waitSemaphoreCount;

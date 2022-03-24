@@ -189,7 +189,7 @@ vk_device_finish(UNUSED struct vk_device *device)
 VkResult
 vk_device_flush(struct vk_device *device)
 {
-   if (device->timeline_mode != VK_DEVICE_TIMELINE_MODE_EMULATED)
+   if (device->submit_mode != VK_QUEUE_SUBMIT_MODE_DEFERRED)
       return VK_SUCCESS;
 
    bool progress;
