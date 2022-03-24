@@ -64,11 +64,6 @@ Configuration macro:
 #error EMULATED_THREADS_USE_NATIVE_CALL_ONCE requires _WIN32_WINNT>=0x0600
 #endif
 
-/* Visual Studio 2015 and later */
-#ifdef _MSC_VER
-#define HAVE_TIMESPEC_GET
-#endif
-
 /*---------------------------- macros ----------------------------*/
 #ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 #define ONCE_FLAG_INIT INIT_ONCE_STATIC_INIT
