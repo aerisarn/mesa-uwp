@@ -267,6 +267,7 @@ enum tu_debug_flags
    TU_DEBUG_DONT_CARE_AS_LOAD = 1 << 12,
    TU_DEBUG_GMEM = 1 << 13,
    TU_DEBUG_RAST_ORDER = 1 << 14,
+   TU_DEBUG_UNALIGNED_STORE = 1 << 15,
 };
 
 struct tu_instance

@@ -2947,6 +2947,10 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       (x2 % phys_dev->info->gmem_align_w && x2 != iview->view.width) ||
       y1 % phys_dev->info->gmem_align_h || (y2 % phys_dev->info->gmem_align_h && need_y2_align);
 
+   /* Unaligned store is incredibly rare in CTS, we have to force it to test. */
+   if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_UNALIGNED_STORE))
+      unaligned = true;
+
    /* D32_SFLOAT_S8_UINT is quite special format: it has two planes,
     * one for depth and other for stencil. When resolving a MSAA
     * D32_SFLOAT_S8_UINT to S8_UINT, we need to take that into account.
