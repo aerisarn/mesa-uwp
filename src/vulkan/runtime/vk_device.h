@@ -255,6 +255,13 @@ vk_device_set_drm_fd(struct vk_device *device, int drm_fd)
 void
 vk_device_finish(struct vk_device *device);
 
+static inline bool
+vk_device_supports_threaded_submit(const struct vk_device *device)
+{
+   return device->submit_mode == VK_QUEUE_SUBMIT_MODE_THREADED ||
+          device->submit_mode == VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND;
+}
+
 VkResult vk_device_flush(struct vk_device *device);
 
 VkResult PRINTFLIKE(4, 5)

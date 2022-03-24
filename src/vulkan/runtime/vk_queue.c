@@ -646,8 +646,7 @@ vk_queue_submit(struct vk_queue *queue,
          semaphore->temporary = NULL;
       } else {
          if (semaphore->type == VK_SEMAPHORE_TYPE_BINARY) {
-            if (queue->base.device->timeline_mode ==
-                VK_DEVICE_TIMELINE_MODE_ASSISTED)
+            if (vk_device_supports_threaded_submit(device))
                assert(semaphore->permanent.type->move);
             has_binary_permanent_semaphore_wait = true;
          }
@@ -810,164 +809,164 @@ vk_queue_submit(struct vk_queue *queue,
          goto fail;
    }
 
-   switch (queue->base.device->timeline_mode) {
-   case VK_DEVICE_TIMELINE_MODE_ASSISTED:
-      if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED) {
-         if (has_binary_permanent_semaphore_wait) {
-            for (uint32_t i = 0; i < info->wait_count; i++) {
-               VK_FROM_HANDLE(vk_semaphore, semaphore,
-                              info->waits[i].semaphore);
+   switch (queue->submit.mode) {
+   case VK_QUEUE_SUBMIT_MODE_IMMEDIATE:
+      result = vk_queue_submit_final(queue, submit);
+      if (unlikely(result != VK_SUCCESS))
+         goto fail;
 
-               if (semaphore->type != VK_SEMAPHORE_TYPE_BINARY)
-                  continue;
+      /* If threaded submit is possible on this device, we need to ensure that
+       * binary semaphore payloads get reset so that any other threads can
+       * properly wait on them for dependency checking.  Because we don't
+       * currently have a submit thread, we can directly reset that binary
+       * semaphore payloads.
+       *
+       * If we the vk_sync is in our signal et, we can consider it to have
+       * been both reset and signaled by queue_submit_final().  A reset in
+       * this case would be wrong because it would throw away our signal
+       * operation.  If we don't signal the vk_sync, then we need to reset it.
+       */
+      if (vk_device_supports_threaded_submit(device) &&
+          has_binary_permanent_semaphore_wait) {
+         for (uint32_t i = 0; i < submit->wait_count; i++) {
+            if ((submit->waits[i].sync->flags & VK_SYNC_IS_TIMELINE) ||
+                submit->_wait_temps[i] != NULL)
+               continue;
 
-               /* From the Vulkan 1.2.194 spec:
-                *
-                *    "When a batch is submitted to a queue via a queue
-                *    submission, and it includes semaphores to be waited on,
-                *    it defines a memory dependency between prior semaphore
-                *    signal operations and the batch, and defines semaphore
-                *    wait operations.
-                *
-                *    Such semaphore wait operations set the semaphores
-                *    created with a VkSemaphoreType of
-                *    VK_SEMAPHORE_TYPE_BINARY to the unsignaled state."
-                *
-                * For threaded submit, we depend on tracking the unsignaled
-                * state of binary semaphores to determine when we can safely
-                * submit.  The VK_SYNC_WAIT_PENDING check above as well as the
-                * one in the sumbit thread depend on all binary semaphores
-                * being reset when they're not in active use from the point
-                * of view of the client's CPU timeline.  This means we need to
-                * reset them inside vkQueueSubmit and cannot wait until the
-                * actual submit which happens later in the thread.
-                *
-                * We've already stolen temporary semaphore payloads above as
-                * part of basic semaphore processing.  We steal permanent
-                * semaphore payloads here by way of vk_sync_move.  For shared
-                * semaphores, this can be a bit expensive (sync file import
-                * and export) but, for non-shared semaphores, it can be made
-                * fairly cheap.  Also, we only do this semaphore swapping in
-                * the case where you have real timelines AND the client is
-                * using timeline semaphores with wait-before-signal (that's
-                * the only way to get a submit thread) AND mixing those with
-                * waits on binary semaphores AND said binary semaphore is
-                * using its permanent payload.  In other words, this code
-                * should basically only ever get executed in CTS tests.
-                */
-               if (submit->_wait_temps[i] != NULL)
-                  continue;
-
-               assert(submit->waits[i].sync == &semaphore->permanent);
-
-               /* From the Vulkan 1.2.194 spec:
-                *
-                *    VUID-vkQueueSubmit-pWaitSemaphores-03238
-                *
-                *    "All elements of the pWaitSemaphores member of all
-                *    elements of pSubmits created with a VkSemaphoreType of
-                *    VK_SEMAPHORE_TYPE_BINARY must reference a semaphore
-                *    signal operation that has been submitted for execution
-                *    and any semaphore signal operations on which it depends
-                *    (if any) must have also been submitted for execution."
-                *
-                * Therefore, we can safely do a blocking wait here and it
-                * won't actually block for long.  This ensures that the
-                * vk_sync_move below will succeed.
-                */
-               result = vk_sync_wait(queue->base.device,
-                                     submit->waits[i].sync, 0,
-                                     VK_SYNC_WAIT_PENDING, UINT64_MAX);
-               if (unlikely(result != VK_SUCCESS))
-                  goto fail;
-
-               result = vk_sync_create(queue->base.device,
-                                       semaphore->permanent.type,
-                                       0 /* flags */,
-                                       0 /* initial value */,
-                                       &submit->_wait_temps[i]);
-               if (unlikely(result != VK_SUCCESS))
-                  goto fail;
-
-               result = vk_sync_move(queue->base.device,
-                                     submit->_wait_temps[i],
-                                     &semaphore->permanent);
-               if (unlikely(result != VK_SUCCESS))
-                  goto fail;
-
-               submit->waits[i].sync = submit->_wait_temps[i];
-            }
-         }
-
-         vk_queue_push_submit(queue, submit);
-
-         if (signal_mem_sync) {
-            /* If we're signaling a memory object, we have to ensure that
-             * vkQueueSubmit does not return until the kernel submission has
-             * happened.  Otherwise, we may get a race between this process
-             * and whatever is going to wait on the object where the other
-             * process may wait before we've submitted our work.  Drain the
-             * queue now to avoid this.  It's the responsibility of the caller
-             * to ensure that any vkQueueSubmit which signals a memory object
-             * has fully resolved dependencies.
-             */
-            result = vk_queue_drain(queue);
-            if (unlikely(result != VK_SUCCESS))
-               return result;
-         }
-
-         return VK_SUCCESS;
-      } else {
-         result = vk_queue_submit_final(queue, submit);
-         if (unlikely(result != VK_SUCCESS))
-            goto fail;
-
-         /* If we don't have a submit thread, we can more directly ensure
-          * that binary semaphore payloads get reset.  If we also signal the
-          * vk_sync, then we can consider it to have been both reset and
-          * signaled.  A reset in this case would be wrong because it would
-          * throw away our signal operation.  If we don't signal the vk_sync,
-          * then we need to reset it.
-          */
-         if (has_binary_permanent_semaphore_wait) {
-            for (uint32_t i = 0; i < submit->wait_count; i++) {
-               if ((submit->waits[i].sync->flags & VK_SYNC_IS_TIMELINE) ||
-                   submit->_wait_temps[i] != NULL)
-                  continue;
-
-               bool was_signaled = false;
-               for (uint32_t j = 0; j < submit->signal_count; j++) {
-                  if (submit->signals[j].sync == submit->waits[i].sync) {
-                     was_signaled = true;
-                     break;
-                  }
-               }
-
-               if (!was_signaled) {
-                  result = vk_sync_reset(queue->base.device,
-                                         submit->waits[i].sync);
-                  if (unlikely(result != VK_SUCCESS))
-                     goto fail;
+            bool was_signaled = false;
+            for (uint32_t j = 0; j < submit->signal_count; j++) {
+               if (submit->signals[j].sync == submit->waits[i].sync) {
+                  was_signaled = true;
+                  break;
                }
             }
-         }
 
-         vk_queue_submit_destroy(queue, submit);
-         return VK_SUCCESS;
+            if (!was_signaled) {
+               result = vk_sync_reset(queue->base.device,
+                                      submit->waits[i].sync);
+               if (unlikely(result != VK_SUCCESS))
+                  goto fail;
+            }
+         }
       }
-      unreachable("Should have returned");
 
-   case VK_DEVICE_TIMELINE_MODE_EMULATED:
+      vk_queue_submit_destroy(queue, submit);
+      return result;
+
+   case VK_QUEUE_SUBMIT_MODE_DEFERRED:
       vk_queue_push_submit(queue, submit);
       return vk_device_flush(queue->base.device);
 
-   case VK_DEVICE_TIMELINE_MODE_NONE:
-   case VK_DEVICE_TIMELINE_MODE_NATIVE:
-      result = vk_queue_submit_final(queue, submit);
-      vk_queue_submit_destroy(queue, submit);
-      return result;
+   case VK_QUEUE_SUBMIT_MODE_THREADED:
+      if (has_binary_permanent_semaphore_wait) {
+         for (uint32_t i = 0; i < info->wait_count; i++) {
+            VK_FROM_HANDLE(vk_semaphore, semaphore,
+                           info->waits[i].semaphore);
+
+            if (semaphore->type != VK_SEMAPHORE_TYPE_BINARY)
+               continue;
+
+            /* From the Vulkan 1.2.194 spec:
+             *
+             *    "When a batch is submitted to a queue via a queue
+             *    submission, and it includes semaphores to be waited on,
+             *    it defines a memory dependency between prior semaphore
+             *    signal operations and the batch, and defines semaphore
+             *    wait operations.
+             *
+             *    Such semaphore wait operations set the semaphores
+             *    created with a VkSemaphoreType of
+             *    VK_SEMAPHORE_TYPE_BINARY to the unsignaled state."
+             *
+             * For threaded submit, we depend on tracking the unsignaled
+             * state of binary semaphores to determine when we can safely
+             * submit.  The VK_SYNC_WAIT_PENDING check above as well as the
+             * one in the sumbit thread depend on all binary semaphores
+             * being reset when they're not in active use from the point
+             * of view of the client's CPU timeline.  This means we need to
+             * reset them inside vkQueueSubmit and cannot wait until the
+             * actual submit which happens later in the thread.
+             *
+             * We've already stolen temporary semaphore payloads above as
+             * part of basic semaphore processing.  We steal permanent
+             * semaphore payloads here by way of vk_sync_move.  For shared
+             * semaphores, this can be a bit expensive (sync file import
+             * and export) but, for non-shared semaphores, it can be made
+             * fairly cheap.  Also, we only do this semaphore swapping in
+             * the case where you have real timelines AND the client is
+             * using timeline semaphores with wait-before-signal (that's
+             * the only way to get a submit thread) AND mixing those with
+             * waits on binary semaphores AND said binary semaphore is
+             * using its permanent payload.  In other words, this code
+             * should basically only ever get executed in CTS tests.
+             */
+            if (submit->_wait_temps[i] != NULL)
+               continue;
+
+            assert(submit->waits[i].sync == &semaphore->permanent);
+
+            /* From the Vulkan 1.2.194 spec:
+             *
+             *    VUID-vkQueueSubmit-pWaitSemaphores-03238
+             *
+             *    "All elements of the pWaitSemaphores member of all
+             *    elements of pSubmits created with a VkSemaphoreType of
+             *    VK_SEMAPHORE_TYPE_BINARY must reference a semaphore
+             *    signal operation that has been submitted for execution
+             *    and any semaphore signal operations on which it depends
+             *    (if any) must have also been submitted for execution."
+             *
+             * Therefore, we can safely do a blocking wait here and it
+             * won't actually block for long.  This ensures that the
+             * vk_sync_move below will succeed.
+             */
+            result = vk_sync_wait(queue->base.device,
+                                  submit->waits[i].sync, 0,
+                                  VK_SYNC_WAIT_PENDING, UINT64_MAX);
+            if (unlikely(result != VK_SUCCESS))
+               goto fail;
+
+            result = vk_sync_create(queue->base.device,
+                                    semaphore->permanent.type,
+                                    0 /* flags */,
+                                    0 /* initial value */,
+                                    &submit->_wait_temps[i]);
+            if (unlikely(result != VK_SUCCESS))
+               goto fail;
+
+            result = vk_sync_move(queue->base.device,
+                                  submit->_wait_temps[i],
+                                  &semaphore->permanent);
+            if (unlikely(result != VK_SUCCESS))
+               goto fail;
+
+            submit->waits[i].sync = submit->_wait_temps[i];
+         }
+      }
+
+      vk_queue_push_submit(queue, submit);
+
+      if (signal_mem_sync) {
+         /* If we're signaling a memory object, we have to ensure that
+          * vkQueueSubmit does not return until the kernel submission has
+          * happened.  Otherwise, we may get a race between this process
+          * and whatever is going to wait on the object where the other
+          * process may wait before we've submitted our work.  Drain the
+          * queue now to avoid this.  It's the responsibility of the caller
+          * to ensure that any vkQueueSubmit which signals a memory object
+          * has fully resolved dependencies.
+          */
+         result = vk_queue_drain(queue);
+         if (unlikely(result != VK_SUCCESS))
+            return result;
+      }
+
+      return VK_SUCCESS;
+
+   case VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND:
+      unreachable("Invalid vk_queue::submit.mode");
    }
-   unreachable("Invalid timeline mode");
+   unreachable("Invalid submit mode");
 
 fail:
    vk_queue_submit_destroy(queue, submit);
