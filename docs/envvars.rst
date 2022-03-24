@@ -763,13 +763,24 @@ RADV driver environment variables
 radeonsi driver environment variables
 -------------------------------------
 
+:envvar:`radeonsi_no_infinite_interp`
+   Kill PS with infinite interp coeff (might fix hangs)
+
+:envvar:`radeonsi_clamp_div_by_zero`
+   Clamp div by zero (x / 0 becomes FLT_MAX instead of NaN) (might fix rendering corruptions)
+
+:envvar:`radeonsi_zerovram`
+   Clear all allocated memory to 0 before usage (might fix rendering corruptions)
+
 :envvar:`AMD_DEBUG`
    a comma-separated list of named flags, which do various things:
 
    ``nodcc``
       Disable DCC.
    ``nodccclear``
-      Disable DCC fast clear.
+      Disable DCC fast clear
+   ``nodisplaydcc``
+      disable Delta Color Compression (DCC) on displayable images
    ``nodccmsaa``
       Disable DCC for MSAA
    ``nodpbb``
