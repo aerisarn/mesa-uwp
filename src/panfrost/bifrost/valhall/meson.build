@@ -28,6 +28,20 @@ valhall_c = custom_target(
   depend_files : files('valhall.py'),
 )
 
+valhall_enums_h = custom_target(
+  'valhall_enums.h',
+  input : ['valhall_enums.h.py', 'ISA.xml'],
+  output : 'valhall_enums.h',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+  depend_files : files('valhall.py'),
+)
+
+idep_valhall_enums_h = declare_dependency(
+  sources : [valhall_enums_h],
+  include_directories : include_directories('.'),
+)
+
 valhall_disasm_c = custom_target(
   'valhall_disasm_c',
   input : ['disasm.py', 'ISA.xml'],
