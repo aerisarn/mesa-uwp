@@ -64,34 +64,41 @@
     <constant desc="Half-float $\pi$">0x42480000</constant>
   </lut>
 
-  <enum name="Action">
+  <enum name="Flow">
     <desc>
-      Every Valhall instruction can perform an action, like wait on dependency
-      slots. A few special actions are available, specified in the instruction
-      metadata from this enum. The `wait0126` action is required to wait on
+      Every Valhall instruction can wait on dependency
+      slots. A few special flows are available, specified in the instruction
+      metadata from this enum. The `wait0126` flow is required to wait on
       dependency slot #6 and should be set on the instruction immediately
-      preceding `ATEST`. The `barrier` action may be set on any instruction for
-      subgroup barriers, and should particularly be set with the `BARRIER`
-      instruction for global barriers. The `td` action only applies to fragment
-      shaders and is used to terminate helper invocations, it should be set as
-      early as possible after helper invocations are no longer needed as
-      determined by data flow analysis. The `return` action is used to terminate
-      the shader, although it may be overloaded by the `BLEND` instruction.
+      preceding `ATEST`. The `wait` flow should be set for barriers.
+      The `discard` flow only applies to fragment shaders and is used to
+      terminate helper invocations, it should be set as early as possible after
+      helper invocations are no longer needed as determined by data flow
+      analysis. The `end` flow is used to terminate the shader, although it
+      may be overloaded by the `BLEND` instruction.
 
-      The `reconverge` action is required on any instruction immediately
+      The `reconverge` flow is required on any instruction immediately
       preceding a possible change to the mask of active threads in a subgroup.
       This includes all divergent branches, but it also includes the final
       instruction at the end of any basic block where the immediate successor
       (fallthrough) is the target of a divergent branch.
     </desc>
-    <value name="Wait on all dependency slots">wait0126</value>
-    <value name="Subgroup barrier">barrier</value>
+    <value name="None" default="true">none</value>
+    <value name="Wait on slot 0">wait0</value>
+    <value name="Wait on slot 1">wait1</value>
+    <value name="Wait on slots 0, 1">wait01</value>
+    <value name="Wait on slot 2">wait2</value>
+    <value name="Wait on slots 0, 2">wait02</value>
+    <value name="Wait on slots 1, 2">wait12</value>
+    <value name="Wait on slots 0, 1, 2">wait012</value>
+    <value name="Wait on slots 0, 1, 2, 6">wait0126</value>
+    <value name="Wait on slots 0, 1, 2, 6, 7">wait</value>
     <value name="Perform branch reconverge">reconverge</value>
     <reserved/>
     <reserved/>
-    <value name="Terminate discarded threads">td</value>
+    <value name="Terminate discarded threads">discard</value>
     <reserved/>
-    <value name="Return from shader">return</value>
+    <value name="Return from shader">end</value>
   </enum>
 
   <enum name="FAU special page 0">
@@ -799,7 +806,7 @@
   <ins name="BARRIER" title="Execution and memory barrier" opcode="0x45" unit="NONE">
     <desc>
       General-purpose barrier. Must use slot #7. Must be paired with a
-      `.barrier` action on the instruction.
+      `.wait` flow on the instruction.
     </desc>
     <slot/>
   </ins>

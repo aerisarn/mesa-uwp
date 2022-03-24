@@ -42,34 +42,6 @@ static const uint32_t va_immediates[32] = {
 % endfor
 };
 
-/* Byte 7 has instruction metadata, analogous to Bifrost's clause header */
-struct va_metadata {
-	bool opcode_high : 1;
-    unsigned immediate_mode : 2;
-    unsigned action : 3;
-	bool do_action : 1;
-	bool unk3 : 1;
-} __attribute__((packed));
-
-static inline void
-va_print_metadata(FILE *fp, uint8_t meta)
-{
-	struct va_metadata m;
-	memcpy(&m, &meta, 1);
-
-	if (m.do_action) {
-        fputs(valhall_action[m.action], fp);
-	} else if (m.action) {
-		fprintf(fp, ".wait%s%s%s",
-				m.action & (1 << 0) ? "0" : "",
-				m.action & (1 << 1) ? "1" : "",
-				m.action & (1 << 2) ? "2" : "");
-	}
-
-	if (m.unk3)
-		fprintf(fp, ".unk3");
-}
-
 static inline void
 va_print_src(FILE *fp, uint8_t src, unsigned fau_page)
 {
@@ -153,8 +125,8 @@ va_disasm_instr(FILE *fp, uint64_t instr)
 % endif
 % endif
 % endfor
-            va_print_metadata(fp, instr >> 56);
-            fputs(" ", fp);
+            assert((instr & (1ull << 63)) == 0 /* reserved */);
+            fprintf(fp, "%s ", valhall_flow[instr >> 59]);
 % if len(op.dests) > 0:
 <% no_comma = False %>
             va_print_dest(fp, (instr >> 40), true);

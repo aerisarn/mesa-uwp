@@ -339,35 +339,15 @@ def parse_asm(line):
         encoded |= (fau.page << 57)
 
     # Encode modifiers
-    has_action = False
+    has_flow = False
     for mod in mods:
         if len(mod) == 0:
             continue
 
-        if mod in enums['action'].bare_values:
-            die_if(has_action, "Multiple actions specified")
-            has_action = True
-            encoded |= (enums['action'].bare_values.index(mod) << 59)
-            encoded |= (1 << 62) # Action, not wait
-        elif mod.startswith('wait'):
-            die_if(has_action, "Multiple actions specified")
-            has_action = True
-
-            slots = mod[len('wait'):]
-            try:
-                slots = set([int(x) for x in slots])
-            except ValueError:
-                die(f"Expected slots in {mod}")
-
-            known_slots = set([0, 1, 2])
-            die_if(not slots.issubset(known_slots), f"Unknown slots in {mod}")
-
-            if 0 in slots:
-                encoded |= (1 << 59)
-            if 1 in slots:
-                encoded |= (1 << 60)
-            if 2 in slots:
-                encoded |= (1 << 61)
+        if mod in enums['flow'].bare_values:
+            die_if(has_flow, "Multiple flow control modifiers specified")
+            has_flow = True
+            encoded |= (enums['flow'].bare_values.index(mod) << 59)
         else:
             candidates = [c for c in ins.modifiers if mod in c.bare_values]
 
