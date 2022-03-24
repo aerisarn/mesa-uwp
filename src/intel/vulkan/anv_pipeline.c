@@ -2445,8 +2445,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    const VkPipelineRasterizationDepthClipStateCreateInfoEXT *clip_info =
       vk_find_struct_const(pCreateInfo->pRasterizationState->pNext,
                            PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
-   pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable :
-      !(pipeline->depth_clamp_enable || pipeline->negative_one_to_one);
+   pipeline->depth_clip_enable = clip_info ? clip_info->depthClipEnable : !pipeline->depth_clamp_enable;
 
    result = anv_pipeline_compile_graphics(pipeline, cache, pCreateInfo,
                                           rendering_info);

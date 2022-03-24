@@ -1554,7 +1554,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
    clip.ClipEnable               = true;
    clip.StatisticsEnable         = true;
    clip.EarlyCullEnable          = true;
-   clip.APIMode                  = APIMODE_D3D;
+   clip.APIMode                  = pipeline->negative_one_to_one ? APIMODE_OGL : APIMODE_D3D;
    clip.GuardbandClipTestEnable  = true;
 
    /* Only enable the XY clip test when the final polygon rasterization
