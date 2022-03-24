@@ -738,6 +738,50 @@ pub fn create_image(
     )
 }
 
+pub fn create_image_2d(
+    context: cl_context,
+    flags: cl_mem_flags,
+    image_format: *const cl_image_format,
+    image_width: usize,
+    image_height: usize,
+    image_row_pitch: usize,
+    host_ptr: *mut ::std::os::raw::c_void,
+) -> CLResult<cl_mem> {
+    let image_desc = cl_image_desc {
+        image_type: CL_MEM_OBJECT_IMAGE2D,
+        image_width: image_width,
+        image_height: image_height,
+        image_row_pitch: image_row_pitch,
+        ..Default::default()
+    };
+
+    create_image(context, flags, image_format, &image_desc, host_ptr)
+}
+
+pub fn create_image_3d(
+    context: cl_context,
+    flags: cl_mem_flags,
+    image_format: *const cl_image_format,
+    image_width: usize,
+    image_height: usize,
+    image_depth: usize,
+    image_row_pitch: usize,
+    image_slice_pitch: usize,
+    host_ptr: *mut ::std::os::raw::c_void,
+) -> CLResult<cl_mem> {
+    let image_desc = cl_image_desc {
+        image_type: CL_MEM_OBJECT_IMAGE3D,
+        image_width: image_width,
+        image_height: image_height,
+        image_depth: image_depth,
+        image_row_pitch: image_row_pitch,
+        image_slice_pitch: image_slice_pitch,
+        ..Default::default()
+    };
+
+    create_image(context, flags, image_format, &image_desc, host_ptr)
+}
+
 pub fn get_supported_image_formats(
     context: cl_context,
     flags: cl_mem_flags,

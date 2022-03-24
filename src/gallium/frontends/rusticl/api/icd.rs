@@ -563,35 +563,55 @@ extern "C" fn cl_create_buffer(
 }
 
 extern "C" fn cl_create_image_2d(
-    _context: cl_context,
-    _flags: cl_mem_flags,
-    _image_format: *const cl_image_format,
-    _image_width: usize,
-    _image_height: usize,
-    _image_row_pitch: usize,
-    _host_ptr: *mut ::std::os::raw::c_void,
+    context: cl_context,
+    flags: cl_mem_flags,
+    image_format: *const cl_image_format,
+    image_width: usize,
+    image_height: usize,
+    image_row_pitch: usize,
+    host_ptr: *mut ::std::os::raw::c_void,
     errcode_ret: *mut cl_int,
 ) -> cl_mem {
-    println!("cl_create_image_2d not implemented");
-    errcode_ret.write_checked(CL_OUT_OF_HOST_MEMORY);
-    ptr::null_mut()
+    match_obj!(
+        create_image_2d(
+            context,
+            flags,
+            image_format,
+            image_width,
+            image_height,
+            image_row_pitch,
+            host_ptr,
+        ),
+        errcode_ret
+    )
 }
 
 extern "C" fn cl_create_image_3d(
-    _context: cl_context,
-    _flags: cl_mem_flags,
-    _image_format: *const cl_image_format,
-    _image_width: usize,
-    _image_height: usize,
-    _image_depth: usize,
-    _image_row_pitch: usize,
-    _image_slice_pitch: usize,
-    _host_ptr: *mut ::std::os::raw::c_void,
+    context: cl_context,
+    flags: cl_mem_flags,
+    image_format: *const cl_image_format,
+    image_width: usize,
+    image_height: usize,
+    image_depth: usize,
+    image_row_pitch: usize,
+    image_slice_pitch: usize,
+    host_ptr: *mut ::std::os::raw::c_void,
     errcode_ret: *mut cl_int,
 ) -> cl_mem {
-    println!("cl_create_image_3d not implemented");
-    errcode_ret.write_checked(CL_OUT_OF_HOST_MEMORY);
-    ptr::null_mut()
+    match_obj!(
+        create_image_3d(
+            context,
+            flags,
+            image_format,
+            image_width,
+            image_height,
+            image_depth,
+            image_row_pitch,
+            image_slice_pitch,
+            host_ptr,
+        ),
+        errcode_ret
+    )
 }
 
 extern "C" fn cl_retain_mem_object(mem: cl_mem) -> cl_int {
