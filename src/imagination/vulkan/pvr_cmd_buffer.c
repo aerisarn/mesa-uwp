@@ -73,8 +73,8 @@ struct pvr_compute_kernel_info {
    uint32_t pds_code_offset;
    enum PVRX(CDMCTRL_SD_TYPE) sd_type;
    bool usc_common_shared;
-   uint32_t local_size[3];
-   uint32_t global_size[3];
+   uint32_t local_size[PVR_WORKGROUP_DIMENSIONS];
+   uint32_t global_size[PVR_WORKGROUP_DIMENSIONS];
    uint32_t max_instances;
 };
 

@@ -50,8 +50,6 @@
 #include "vk_object.h"
 #include "vk_util.h"
 
-#define WORKGROUP_DIMENSIONS 3U
-
 /* FIXME: Remove this when the compiler is hooked up. */
 /******************************************************************************
    Hard coding
@@ -68,7 +66,7 @@ struct pvr_explicit_constant_usage {
 static const struct {
    uint32_t local_invocation_regs[2];
 
-   uint32_t work_group_regs[WORKGROUP_DIMENSIONS];
+   uint32_t work_group_regs[PVR_WORKGROUP_DIMENSIONS];
 
    uint32_t barrier_reg;
 
@@ -784,8 +782,8 @@ static void pvr_pds_uniform_program_destroy(
 static VkResult pvr_pds_compute_program_create_and_upload(
    struct pvr_device *const device,
    const VkAllocationCallbacks *const allocator,
-   const uint32_t local_input_regs[static const WORKGROUP_DIMENSIONS],
-   const uint32_t work_group_input_regs[static const WORKGROUP_DIMENSIONS],
+   const uint32_t local_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
+   const uint32_t work_group_input_regs[static const PVR_WORKGROUP_DIMENSIONS],
    uint32_t barrier_coefficient,
    bool add_base_workgroup,
    uint32_t usc_temps,
@@ -807,7 +805,7 @@ static VkResult pvr_pds_compute_program_create_and_upload(
          work_group_input_regs[2]
       },
       .global_input_regs = {
-         [0 ... (WORKGROUP_DIMENSIONS - 1)] =
+         [0 ... (PVR_WORKGROUP_DIMENSIONS - 1)] =
             PVR_PDS_COMPUTE_INPUT_REG_UNUSED
       },
       /* clang-format on */
@@ -822,10 +820,12 @@ static VkResult pvr_pds_compute_program_create_and_upload(
    uint32_t *staging_buffer;
    VkResult result;
 
-   STATIC_ASSERT(ARRAY_SIZE(program.local_input_regs) == WORKGROUP_DIMENSIONS);
+   STATIC_ASSERT(ARRAY_SIZE(program.local_input_regs) ==
+                 PVR_WORKGROUP_DIMENSIONS);
    STATIC_ASSERT(ARRAY_SIZE(program.work_group_input_regs) ==
-                 WORKGROUP_DIMENSIONS);
-   STATIC_ASSERT(ARRAY_SIZE(program.global_input_regs) == WORKGROUP_DIMENSIONS);
+                 PVR_WORKGROUP_DIMENSIONS);
+   STATIC_ASSERT(ARRAY_SIZE(program.global_input_regs) ==
+                 PVR_WORKGROUP_DIMENSIONS);
 
    assert(!add_base_workgroup || base_workgroup_data_patching_offset_out);
 
@@ -950,8 +950,8 @@ static VkResult pvr_compute_pipeline_compile(
 
    const uint32_t cache_line_size =
       rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
-   uint32_t work_group_input_regs[WORKGROUP_DIMENSIONS];
-   uint32_t local_input_regs[WORKGROUP_DIMENSIONS];
+   uint32_t work_group_input_regs[PVR_WORKGROUP_DIMENSIONS];
+   uint32_t local_input_regs[PVR_WORKGROUP_DIMENSIONS];
    uint32_t barrier_coefficient;
    VkResult result;
 
@@ -997,7 +997,7 @@ static VkResult pvr_compute_pipeline_compile(
                              pvr_pds_compute_program_params.work_group_regs));
    typed_memcpy(work_group_input_regs,
                 pvr_pds_compute_program_params.work_group_regs,
-                WORKGROUP_DIMENSIONS);
+                PVR_WORKGROUP_DIMENSIONS);
 
    result = pvr_pds_compute_program_create_and_upload(
       device,
