@@ -162,6 +162,7 @@ libvulkan_runtime = static_library(
 )
 
 idep_vulkan_runtime_headers = declare_dependency(
+  sources : [vk_cmd_queue[1]],
   include_directories : include_directories('.')
 )
 
