@@ -338,6 +338,14 @@ enum quniform_contents {
          * Current value of gl_ViewIndex for Multiview rendering.
          */
         QUNIFORM_VIEW_INDEX,
+
+        /**
+         * Inline uniform buffers
+         */
+         QUNIFORM_INLINE_UBO_0,
+         QUNIFORM_INLINE_UBO_1,
+         QUNIFORM_INLINE_UBO_2,
+         QUNIFORM_INLINE_UBO_3,
 };
 
 static inline uint32_t v3d_unit_data_create(uint32_t unit, uint32_t value)
@@ -574,6 +582,7 @@ enum v3d_compilation_result {
  */
 struct v3d_compiler {
         const struct v3d_device_info *devinfo;
+        uint32_t max_inline_uniform_buffers;
         struct ra_regs *regs;
         struct ra_class *reg_class_any[3];
         struct ra_class *reg_class_r5[3];
@@ -1045,7 +1054,8 @@ vir_has_uniform(struct qinst *inst)
         return inst->uniform != ~0;
 }
 
-const struct v3d_compiler *v3d_compiler_init(const struct v3d_device_info *devinfo);
+const struct v3d_compiler *v3d_compiler_init(const struct v3d_device_info *devinfo,
+                                             uint32_t max_inline_uniform_buffers);
 void v3d_compiler_free(const struct v3d_compiler *compiler);
 void v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s);
 

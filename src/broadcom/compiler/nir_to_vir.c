@@ -2638,46 +2638,94 @@ vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
                        vir_MOV(c, color_reads_for_sample[component]));
 }
 
+static bool
+try_emit_uniform(struct v3d_compile *c,
+                 int offset,
+                 int num_components,
+                 nir_dest *dest,
+                 enum quniform_contents contents)
+{
+        /* Even though ldunif is strictly 32-bit we can still use it
+         * to load scalar 8-bit/16-bit uniforms so long as their offset
+         * is 32-bit aligned. In this case, ldunif would still load
+         * 32-bit into the destination with the 8-bit/16-bit uniform
+         * data in the LSB and garbage in the MSB, but that is fine
+         * because we should only be accessing the valid bits of the
+         * destination.
+         *
+         * FIXME: if in the future we improve our register allocator to
+         * pack 2 16-bit variables in the MSB and LSB of the same
+         * register then this optimization would not be valid as is,
+         * since the load clobbers the MSB.
+         */
+        if (offset % 4 != 0)
+                return false;
+
+        /* We need dwords */
+        offset = offset / 4;
+
+        for (int i = 0; i < num_components; i++) {
+                ntq_store_dest(c, dest, i,
+                               vir_uniform(c, contents, offset + i));
+        }
+
+        return true;
+}
+
 static void
 ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
+        /* We scalarize general TMU access for anything that is not 32-bit. */
+        assert(nir_dest_bit_size(instr->dest) == 32 ||
+               instr->num_components == 1);
+
+        /* Try to emit ldunif if possible, otherwise fallback to general TMU */
         if (nir_src_is_const(instr->src[0])) {
                 int offset = (nir_intrinsic_base(instr) +
                              nir_src_as_uint(instr->src[0]));
 
-                /* Even though ldunif is strictly 32-bit we can still use it
-                 * to load scalar 8-bit/16-bit uniforms so long as their offset
-                 * is * 32-bit aligned. In this case, ldunif would still load
-                 * 32-bit into the destination with the 8-bit/16-bit uniform
-                 * data in the LSB and garbage in the MSB, but that is fine
-                 * because we should only be accessing the valid bits of the
-                 * destination.
-                 *
-                 * FIXME: if in the future we improve our register allocator to
-                 * pack 2 16-bit variables in the MSB and LSB of the same
-                 * register then this optimization would not be valid as is,
-                 * since the load clobbers the MSB.
-                 */
-                if (offset % 4 == 0) {
-                        /* We need dwords */
-                        offset = offset / 4;
-
-                        /* We scalarize general TMU access for anything that
-                         * is not 32-bit.
-                         */
-                        assert(nir_dest_bit_size(instr->dest) == 32 ||
-                               instr->num_components == 1);
-
-                        for (int i = 0; i < instr->num_components; i++) {
-                                ntq_store_dest(c, &instr->dest, i,
-                                               vir_uniform(c, QUNIFORM_UNIFORM,
-                                                           offset + i));
-                        }
+                if (try_emit_uniform(c, offset, instr->num_components,
+                                     &instr->dest, QUNIFORM_UNIFORM)) {
                         return;
                 }
         }
 
         ntq_emit_tmu_general(c, instr, false);
+}
+
+static bool
+ntq_emit_inline_ubo_load(struct v3d_compile *c, nir_intrinsic_instr *instr)
+{
+        if (c->compiler->max_inline_uniform_buffers <= 0)
+                return false;
+
+        /* On Vulkan we use indices 1..MAX_INLINE_UNIFORM_BUFFERS for inline
+         * uniform buffers which we want to handle more like push constants
+         * than regular UBO. OpenGL doesn't implement this feature.
+         */
+        assert(c->key->environment == V3D_ENVIRONMENT_VULKAN);
+        uint32_t index = nir_src_as_uint(instr->src[0]);
+        if (index == 0 || index > c->compiler->max_inline_uniform_buffers)
+                return false;
+
+        /* We scalarize general TMU access for anything that is not 32-bit */
+        assert(nir_dest_bit_size(instr->dest) == 32 ||
+               instr->num_components == 1);
+
+        if (nir_src_is_const(instr->src[1])) {
+                /* Index 0 is reserved for push constants */
+                assert(index > 0);
+                uint32_t inline_index = index - 1;
+                int offset = nir_src_as_uint(instr->src[1]);
+                if (try_emit_uniform(c, offset, instr->num_components,
+                                     &instr->dest,
+                                     QUNIFORM_INLINE_UBO_0 + inline_index)) {
+                        return true;
+                }
+        }
+
+        /* Fallback to regular UBO load */
+        return false;
 }
 
 static void
@@ -3199,6 +3247,9 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_ubo:
+           if (ntq_emit_inline_ubo_load(c, instr))
+                   break;
+           FALLTHROUGH;
         case nir_intrinsic_load_ssbo:
                 if (!ntq_emit_load_unifa(c, instr)) {
                         ntq_emit_tmu_general(c, instr, false);

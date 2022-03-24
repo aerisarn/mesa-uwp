@@ -184,7 +184,7 @@ v3d_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
                 return screen->devinfo.ver >= 40;
 
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
-                return 256;
+                return V3D_NON_COHERENT_ATOM_SIZE;
 
         case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
                 if (screen->devinfo.ver < 40)
@@ -872,7 +872,7 @@ v3d_screen_create(int fd, const struct pipe_screen_config *config,
 
         v3d_resource_screen_init(pscreen);
 
-        screen->compiler = v3d_compiler_init(&screen->devinfo);
+        screen->compiler = v3d_compiler_init(&screen->devinfo, 0);
 
 #ifdef ENABLE_SHADER_CACHE
         v3d_disk_cache_init(screen);
