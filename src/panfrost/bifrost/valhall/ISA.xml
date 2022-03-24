@@ -881,6 +881,54 @@
     <src/>
   </group>
 
+  <ins name="LD_VAR" title="Load indirect varying" unit="V" opcode="0x64">
+    <desc>Interpolates a given varying from a software buffer</desc>
+    <slot/>
+    <vecsize/>
+    <regfmt/>
+    <sample/>
+    <update/>
+    <sr write="true"/>
+    <sr_count/>
+    <src/>
+    <src>Varying index and table</src>
+  </ins>
+
+  <ins name="LD_VAR_IMM" title="Load immediate varying" unit="V" opcode="0x54">
+    <desc>Interpolates a given varying from a software buffer</desc>
+    <slot/>
+    <vecsize/>
+    <regfmt/>
+    <sample/>
+    <update/>
+    <sr write="true"/>
+    <sr_count/>
+    <src/>
+    <imm name="table" start="8" size="4"/>
+    <imm name="index" start="12" size="8"/>
+  </ins>
+
+  <ins name="LD_VAR_FLAT" title="Load indirect varying" unit="V" opcode="0x55">
+    <desc>Fetches a given varying from a software buffer</desc>
+    <slot/>
+    <vecsize/>
+    <regfmt/>
+    <sr write="true"/>
+    <sr_count/>
+    <src>Varying index and table</src>
+  </ins>
+
+  <ins name="LD_VAR_FLAT_IMM" title="Load immediate varying" unit="V" opcode="0x41">
+    <desc>Fetches a given varying from a software buffer</desc>
+    <slot/>
+    <vecsize/>
+    <regfmt/>
+    <sr write="true"/>
+    <sr_count/>
+    <imm name="table" start="8" size="4"/>
+    <imm name="index" start="12" size="8"/>
+  </ins>
+
   <ins name="LD_ATTR_IMM" title="Load immediate attribute" opcode="0x66" unit="LS">
     <desc>
       Load `vecsize` components from the attribute descriptor at entry `index`
