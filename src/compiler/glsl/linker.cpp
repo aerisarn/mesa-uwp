@@ -2677,97 +2677,6 @@ link_intrastage_shaders(void *mem_ctx,
 }
 
 /**
- * Update the sizes of linked shader uniform arrays to the maximum
- * array index used.
- *
- * From page 81 (page 95 of the PDF) of the OpenGL 2.1 spec:
- *
- *     If one or more elements of an array are active,
- *     GetActiveUniform will return the name of the array in name,
- *     subject to the restrictions listed above. The type of the array
- *     is returned in type. The size parameter contains the highest
- *     array element index used, plus one. The compiler or linker
- *     determines the highest index used.  There will be only one
- *     active uniform reported by the GL per uniform array.
-
- */
-static void
-update_array_sizes(struct gl_shader_program *prog)
-{
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-         if (prog->_LinkedShaders[i] == NULL)
-            continue;
-
-      bool types_were_updated = false;
-
-      foreach_in_list(ir_instruction, node, prog->_LinkedShaders[i]->ir) {
-         ir_variable *const var = node->as_variable();
-
-         if ((var == NULL) || (var->data.mode != ir_var_uniform) ||
-             !var->type->is_array())
-            continue;
-
-         /* GL_ARB_uniform_buffer_object says that std140 uniforms
-          * will not be eliminated.  Since we always do std140, just
-          * don't resize arrays in UBOs.
-          *
-          * Atomic counters are supposed to get deterministic
-          * locations assigned based on the declaration ordering and
-          * sizes, array compaction would mess that up.
-          *
-          * Subroutine uniforms are not removed.
-          */
-         if (var->is_in_buffer_block() || var->type->contains_atomic() ||
-             var->type->contains_subroutine() || var->constant_initializer)
-            continue;
-
-         int size = var->data.max_array_access;
-         for (unsigned j = 0; j < MESA_SHADER_STAGES; j++) {
-               if (prog->_LinkedShaders[j] == NULL)
-                  continue;
-
-            foreach_in_list(ir_instruction, node2, prog->_LinkedShaders[j]->ir) {
-               ir_variable *other_var = node2->as_variable();
-               if (!other_var)
-                  continue;
-
-               if (strcmp(var->name, other_var->name) == 0 &&
-                   other_var->data.max_array_access > size) {
-                  size = other_var->data.max_array_access;
-               }
-            }
-         }
-
-         if (size + 1 != (int)var->type->length) {
-            /* If this is a built-in uniform (i.e., it's backed by some
-             * fixed-function state), adjust the number of state slots to
-             * match the new array size.  The number of slots per array entry
-             * is not known.  It seems safe to assume that the total number of
-             * slots is an integer multiple of the number of array elements.
-             * Determine the number of slots per array element by dividing by
-             * the old (total) size.
-             */
-            const unsigned num_slots = var->get_num_state_slots();
-            if (num_slots > 0) {
-               var->set_num_state_slots((size + 1)
-                                        * (num_slots / var->type->length));
-            }
-
-            var->type = glsl_type::get_array_instance(var->type->fields.array,
-                                                      size + 1);
-            types_were_updated = true;
-         }
-      }
-
-      /* Update the types of dereferences in case we changed any. */
-      if (types_were_updated) {
-         deref_type_updater v;
-         v.run(prog->_LinkedShaders[i]->ir);
-      }
-   }
-}
-
-/**
  * Resize tessellation evaluation per-vertex inputs to the size of
  * tessellation control per-vertex outputs.
  */
@@ -3419,49 +3328,6 @@ store_fragdepth_layout(struct gl_shader_program *prog)
          }
       }
    }
-}
-
-/**
- * Validate shader image resources.
- */
-static void
-check_image_resources(const struct gl_constants *consts,
-                      const struct gl_extensions *exts,
-                      struct gl_shader_program *prog)
-{
-   unsigned total_image_units = 0;
-   unsigned fragment_outputs = 0;
-   unsigned total_shader_storage_blocks = 0;
-
-   if (!consts->MaxCombinedImageUniforms &&
-       !consts->MaxCombinedShaderStorageBlocks)
-      return;
-
-   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-      struct gl_linked_shader *sh = prog->_LinkedShaders[i];
-
-      if (sh) {
-         total_image_units += sh->Program->info.num_images;
-         total_shader_storage_blocks += sh->Program->info.num_ssbos;
-
-         if (i == MESA_SHADER_FRAGMENT) {
-            foreach_in_list(ir_instruction, node, sh->ir) {
-               ir_variable *var = node->as_variable();
-               if (var && var->data.mode == ir_var_shader_out)
-                  /* since there are no double fs outputs - pass false */
-                  fragment_outputs += var->type->count_attribute_slots(false);
-            }
-         }
-      }
-   }
-
-   if (total_image_units > consts->MaxCombinedImageUniforms)
-      linker_error(prog, "Too many combined image uniforms\n");
-
-   if (total_image_units + fragment_outputs + total_shader_storage_blocks >
-       consts->MaxCombinedShaderOutputResources)
-      linker_error(prog, "Too many combined image uniforms, shader storage "
-                         " buffers and fragment outputs\n");
 }
 
 
@@ -4498,27 +4364,6 @@ disable_varying_optimizations_for_sso(struct gl_shader_program *prog)
    }
 }
 
-static void
-link_and_validate_uniforms(const struct gl_constants *consts,
-                           const struct gl_extensions *exts,
-                           struct gl_shader_program *prog)
-{
-   assert(!consts->UseNIRGLSLLinker);
-
-   update_array_sizes(prog);
-   link_assign_uniform_locations(prog, consts);
-
-   if (prog->data->LinkStatus == LINKING_FAILURE)
-      return;
-
-   link_util_calculate_subroutine_compat(prog);
-   link_util_check_uniform_resources(consts, prog);
-   link_util_check_subroutine_resources(prog);
-   check_image_resources(consts, exts, prog);
-   link_assign_atomic_counter_resources(consts, prog);
-   link_check_atomic_counter_resources(consts, prog);
-}
-
 static bool
 link_varyings_and_uniforms(unsigned first, unsigned last,
                            const struct gl_constants *consts,
@@ -4565,9 +4410,6 @@ link_varyings_and_uniforms(unsigned first, unsigned last,
    if (!link_varyings(prog, first, last, consts, exts,
                       api, mem_ctx))
       return false;
-
-   if (!consts->UseNIRGLSLLinker)
-     link_and_validate_uniforms(consts, exts, prog);
 
    if (!prog->data->LinkStatus)
       return false;

@@ -37,23 +37,6 @@ test(
 )
 
 test(
-  'uniform_initializer_test',
-  executable(
-    'uniform_initializer_test',
-    ['copy_constant_to_storage_tests.cpp', 'set_uniform_initializer_tests.cpp',
-     'uniform_initializer_utils.cpp', 'uniform_initializer_utils.h',
-     ir_expression_operation_h],
-    cpp_args : [cpp_msvc_compat_args],
-    gnu_symbol_visibility : 'hidden',
-    include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_glsl],
-    link_with : [libglsl, libglsl_util],
-    dependencies : [dep_thread, idep_gtest, idep_mesautil],
-  ),
-  suite : ['compiler', 'glsl'],
-  protocol : gtest_test_protocol,
-)
-
-test(
   'sampler_types_test',
   executable(
     'sampler_types_test',
