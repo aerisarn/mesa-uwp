@@ -91,6 +91,7 @@ static const struct vk_instance_extension_table tu_instance_extensions_supported
    .KHR_surface                         = TU_HAS_SURFACE,
    .KHR_get_surface_capabilities2       = TU_HAS_SURFACE,
    .EXT_debug_report                    = true,
+   .EXT_debug_utils                     = true,
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
    .KHR_wayland_surface                 = true,
 #endif
