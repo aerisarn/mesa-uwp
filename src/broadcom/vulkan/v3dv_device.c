@@ -109,6 +109,7 @@ static const struct vk_instance_extension_table instance_extensions = {
    .KHR_xlib_surface                    = true,
 #endif
    .EXT_debug_report                    = true,
+   .EXT_debug_utils                     = true,
 };
 
 static void
