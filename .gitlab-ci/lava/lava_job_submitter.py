@@ -46,6 +46,7 @@ from lava.exceptions import (
     MesaCIRetryError,
     MesaCITimeoutError,
 )
+from lava.utils.lava_log import GitlabSection
 from lavacli.utils import loader
 
 # Timeout in seconds to decide if the device from the dispatched LAVA job has
@@ -140,7 +141,10 @@ def generate_lava_yaml(args):
 
     # skeleton test definition: only declaring each job as a single 'test'
     # since LAVA's test parsing is not useful to us
-    run_steps = []
+    setup_section = GitlabSection(
+        id="lava_setup", header="LAVA setup log", start_collapsed=True
+    )
+    run_steps = [f"printf '{setup_section.start()}'"]
     test = {
       'timeout': { 'minutes': args.job_timeout },
       'failure_retry': 1,
@@ -191,6 +195,8 @@ def generate_lava_yaml(args):
       'mkdir -p {}'.format(args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
+      f"printf '{setup_section.end()}'",
+
       # Putting CI_JOB name as the testcase name, it may help LAVA farm
       # maintainers with monitoring
       f"lava-test-case 'mesa-ci_{args.mesa_job_name}' --shell /init-stage2.sh",
