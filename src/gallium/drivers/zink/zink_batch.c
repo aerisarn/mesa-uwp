@@ -524,6 +524,7 @@ copy_scanout(struct zink_batch_state *bs, struct zink_resource *res)
       0, NULL,
       1, &imb1
    );
+   res->layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
    VkImageSubresourceRange isr = {
       res->aspect,
