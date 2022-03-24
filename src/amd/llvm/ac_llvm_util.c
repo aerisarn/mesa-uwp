@@ -59,14 +59,10 @@ static void ac_init_llvm_target(void)
     *
     * "mesa" is the prefix for error messages.
     *
-    * -global-isel-abort=2 is a no-op unless global isel has been enabled.
-    * This option tells the backend to fall-back to SelectionDAG and print
-    * a diagnostic message if global isel fails.
     */
    const char *argv[] = {
       "mesa",
       "-simplifycfg-sink-common=false",
-      "-global-isel-abort=2",
       "-amdgpu-atomic-optimizations=true",
 #if LLVM_VERSION_MAJOR == 11
       /* This fixes variable indexing on LLVM 11. It also breaks atomic.cmpswap on LLVM >= 12. */
@@ -207,8 +203,7 @@ static LLVMTargetMachineRef ac_create_target_machine(enum radeon_family family,
 
    if (out_triple)
       *out_triple = triple;
-   if (tm_options & AC_TM_ENABLE_GLOBAL_ISEL)
-      ac_enable_global_isel(tm);
+
    return tm;
 }
 

@@ -63,7 +63,6 @@ static const struct debug_named_value radeonsi_debug_options[] = {
    {"preoptir", DBG(PREOPT_IR), "Print the LLVM IR before initial optimizations"},
 
    /* Shader compiler options the shader cache should be aware of: */
-   {"gisel", DBG(GISEL), "Enable LLVM global instruction selector."},
    {"w32ge", DBG(W32_GE), "Use Wave32 for vertex, tessellation, and geometry shaders."},
    {"w32ps", DBG(W32_PS), "Use Wave32 for pixel shaders."},
    {"w32psdiscard", DBG(W32_PS_DISCARD), "Use Wave32 for pixel shaders even if they contain discard and LLVM is buggy."},
@@ -145,7 +144,6 @@ void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
       !sscreen->info.has_dedicated_vram && sscreen->info.chip_class <= GFX8;
 
    enum ac_target_machine_options tm_options =
-      (sscreen->debug_flags & DBG(GISEL) ? AC_TM_ENABLE_GLOBAL_ISEL : 0) |
       (sscreen->debug_flags & DBG(CHECK_IR) ? AC_TM_CHECK_IR : 0) |
       (create_low_opt_compiler ? AC_TM_CREATE_LOW_OPT : 0);
 

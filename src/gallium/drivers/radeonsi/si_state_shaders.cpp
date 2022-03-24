@@ -190,8 +190,6 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 7;
    if (sel->screen->options.clamp_div_by_zero)
       shader_variant_flags |= 1 << 8;
-   if (sel->screen->debug_flags & DBG(GISEL))
-      shader_variant_flags |= 1 << 9;
    if ((sel->info.stage == MESA_SHADER_VERTEX ||
         sel->info.stage == MESA_SHADER_TESS_EVAL ||
         sel->info.stage == MESA_SHADER_GEOMETRY) &&

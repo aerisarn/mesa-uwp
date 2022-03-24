@@ -823,8 +823,6 @@ radeonsi driver environment variables
       Don't print disassembled shaders
    ``preoptir``
       Print the LLVM IR before initial optimizations
-   ``gisel``
-      Enable LLVM global instruction selector.
    ``w32ge``
       Use Wave32 for vertex, tessellation, and geometry shaders.
    ``w32ps``
