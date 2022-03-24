@@ -1950,7 +1950,7 @@ get_render_pass(struct zink_context *ctx)
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
       struct pipe_surface *surf = fb->cbufs[i];
-      if (surf) {
+      if (surf && !zink_use_dummy_attachments(ctx)) {
          struct zink_surface *transient = zink_transient_surface(surf);
          state.rts[i].format = zink_get_format(screen, surf->format);
          state.rts[i].samples = MAX3(transient ? transient->base.nr_samples : 0, surf->texture->nr_samples, 1);
@@ -2092,7 +2092,7 @@ setup_framebuffer(struct zink_context *ctx)
 static VkImageView
 prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned i)
 {
-   if (!surf)
+   if (!surf || (i < ctx->fb_state.nr_cbufs && zink_use_dummy_attachments(ctx)))
       return zink_csurface(ctx->dummy_surface[util_logbase2_ceil(ctx->fb_state.samples)])->image_view;
 
    zink_batch_resource_usage_set(&ctx->batch, zink_resource(surf->base.texture), true);
@@ -2581,6 +2581,7 @@ zink_set_color_write_enables(struct zink_context *ctx)
    if (zink_screen(ctx->base.screen)->driver_workarounds.color_write_missing) {
       /* use dummy color buffers instead of the more sane option */
       zink_end_render_pass(ctx);
+      ctx->rp_changed = true;
       update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
    } else {
       VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, disable_color_writes ? disables : enables);

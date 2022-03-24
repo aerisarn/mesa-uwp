@@ -137,6 +137,12 @@ fail:
    return NULL;
 }
 
+bool
+zink_use_dummy_attachments(const struct zink_context *ctx)
+{
+   return ctx->disable_color_writes && zink_screen(ctx->base.screen)->driver_workarounds.color_write_missing;
+}
+
 struct zink_framebuffer *
 zink_get_framebuffer_imageless(struct zink_context *ctx)
 {
@@ -149,7 +155,7 @@ zink_get_framebuffer_imageless(struct zink_context *ctx)
    unsigned num_resolves = 0;
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
-      if (!psurf || ctx->disable_color_writes)
+      if (!psurf || zink_use_dummy_attachments(ctx))
          psurf = ctx->dummy_surface[util_logbase2_ceil(ctx->gfx_pipeline_state.rast_samples+1)];
       struct zink_surface *surface = zink_csurface(psurf);
       struct zink_surface *transient = zink_transient_surface(psurf);
@@ -300,7 +306,7 @@ zink_get_framebuffer(struct zink_context *ctx)
    unsigned num_resolves = 0;
 
    struct zink_framebuffer_state state = {0};
-   if (!ctx->disable_color_writes) {
+   if (!zink_use_dummy_attachments(ctx)) {
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
          if (psurf) {
