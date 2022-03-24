@@ -443,25 +443,43 @@ tu_get_image_format_properties(
        */
    }
 
-   if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+   /* From the Vulkan 1.3.206 spec:
+    *
+    * "VK_IMAGE_CREATE_EXTENDED_USAGE_BIT specifies that the image can be
+    * created with usage flags that are not supported for the format the image
+    * is created with but are supported for at least one format a VkImageView
+    * created from the image can have."
+    *
+    * This means we should relax checks that only depend on the
+    * format_feature_flags, to allow the user to create images that may be
+    * e.g. reinterpreted as storage when the original format doesn't allow it.
+    * The user will have to check against the format features anyway.
+    * Otherwise we'd unnecessarily disallow it.
+    */
+
+   VkImageUsageFlags image_usage = info->usage;
+   if (info->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
+      image_usage = 0;
+
+   if (image_usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+   if (image_usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       if (!(format_feature_flags &
             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
          goto unsupported;
