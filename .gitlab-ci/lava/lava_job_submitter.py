@@ -146,17 +146,23 @@ def generate_lava_yaml(args):
     #   - inline .gitlab-ci/common/init-stage1.sh
     #   - fetch and unpack per-pipeline build artifacts from build job
     #   - fetch and unpack per-job environment from lava-submit.sh
-    #   - exec .gitlab-ci/common/init-stage2.sh 
-    run_steps = []
+    #   - exec .gitlab-ci/common/init-stage2.sh
 
     with open(args.first_stage_init, 'r') as init_sh:
       run_steps += [ x.rstrip() for x in init_sh if not x.startswith('#') and x.rstrip() ]
 
-    with open(args.jwt_file) as jwt_file:
+    if args.jwt_file:
+        with open(args.jwt_file) as jwt_file:
+            run_steps += [
+                "set +x",
+                f'echo -n "{jwt_file.read()}" > "{args.jwt_file}"  # HIDEME',
+                "set -x",
+                f'echo "export CI_JOB_JWT_FILE={args.jwt_file}" >> /set-job-env-vars.sh',
+            ]
+    else:
         run_steps += [
-            "set +x",
-            f'echo -n "{jwt_file.read()}" > "{args.jwt_file}"  # HIDEME',
-            "set -x",
+            "echo Could not find jwt file, disabling MINIO requests...",
+            "unset MINIO_RESULTS_UPLOAD",
         ]
 
     run_steps += [
@@ -164,7 +170,9 @@ def generate_lava_yaml(args):
       'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
       f'echo "export CI_JOB_JWT_FILE={args.jwt_file}" >> /set-job-env-vars.sh',
-      'exec /init-stage2.sh',
+      # Putting CI_JOB name as the testcase name, it may help LAVA farm
+      # maintainers with monitoring
+      f"lava-test-case 'mesa-ci_{args.mesa_job_name}' --shell /init-stage2.sh",
     ]
 
     values['actions'] = [
