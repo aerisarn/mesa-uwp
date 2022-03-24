@@ -267,7 +267,7 @@ class LAVAJob():
             fatal_err(f"Could not get LAVA job logs. Reason: {mesa_exception}")
 
 
-def get_job_results(proxy, job_id, test_suite, test_case):
+def get_job_results(proxy, job_id, test_suite):
     # Look for infrastructure errors and retry if we see them.
     results_yaml = _call_proxy(proxy.results.get_testjob_results_yaml, job_id)
     results = yaml.load(results_yaml, Loader=loader(False))
@@ -275,19 +275,33 @@ def get_job_results(proxy, job_id, test_suite, test_case):
         metadata = res["metadata"]
         if "result" not in metadata or metadata["result"] != "fail":
             continue
-        if 'error_type' in metadata and metadata['error_type'] == "Infrastructure":
-            raise MesaCIException("LAVA job {} failed with Infrastructure Error. Retry.".format(job_id))
-        if 'case' in metadata and metadata['case'] == "validate":
-            raise MesaCIException("LAVA job {} failed validation (possible download error). Retry.".format(job_id))
+        if "error_type" in metadata and metadata["error_type"] == "Infrastructure":
+            raise MesaCIException(
+                f"LAVA job {job_id} failed with Infrastructure Error. Retry."
+            )
+        if "case" in metadata and metadata["case"] == "validate":
+            raise MesaCIException(
+                f"LAVA job {job_id} failed validation (possible download error). Retry."
+            )
 
-    results_yaml = _call_proxy(proxy.results.get_testcase_results_yaml, job_id, test_suite, test_case)
-    results = yaml.load(results_yaml, Loader=loader(False))
+    results_yaml = _call_proxy(
+        proxy.results.get_testsuite_results_yaml, job_id, test_suite
+    )
+    results: list = yaml.load(results_yaml, Loader=loader(False))
     if not results:
-        raise MesaCIException("LAVA: no result for test_suite '{}', test_case '{}'".format(test_suite, test_case))
+        raise MesaCIException(
+            f"LAVA: no result for test_suite '{test_suite}'"
+        )
 
-    print_log("LAVA: result for test_suite '{}', test_case '{}': {}".format(test_suite, test_case, results[0]['result']))
-    if results[0]['result'] != 'pass':
-        return False
+    for metadata in results:
+        test_case = metadata["name"]
+        result = metadata["metadata"]["result"]
+        print_log(
+            f"LAVA: result for test_suite '{test_suite}', "
+            f"test_case '{test_case}': {result}"
+        )
+        if result != "pass":
+            return False
 
     return True
 
@@ -353,7 +367,7 @@ def follow_job_execution(job):
             print(line)
 
     show_job_data(job)
-    return get_job_results(job.proxy, job.job_id, "0_mesa", "mesa")
+    return get_job_results(job.proxy, job.job_id, "0_mesa")
 
 
 def retriable_follow_job(proxy, job_definition):

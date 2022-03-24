@@ -26,19 +26,20 @@ import xmlrpc.client
 from contextlib import nullcontext as does_not_raise
 from datetime import datetime
 from itertools import cycle, repeat
-from typing import Iterable, Union, Generator, Tuple
+from typing import Generator, Iterable, Tuple, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 from freezegun import freeze_time
 from lava.lava_job_submitter import (
-    NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
     DEVICE_HANGING_TIMEOUT_SEC,
+    NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
+    LAVAJob,
     follow_job_execution,
+    get_job_results,
     hide_sensitive_data,
     retriable_follow_job,
-    LAVAJob
 )
 
 NUMBER_OF_MAX_ATTEMPTS = NUMBER_OF_RETRIES_TIMEOUT_DETECTION + 1
@@ -51,35 +52,37 @@ def jobs_logs_response(finished=False, msg=None, lvl="target") -> Tuple[bool, st
     return finished, yaml.safe_dump(logs)
 
 
-def result_get_testjob_results_response() -> str:
-    result = {"result": "test"}
-    results = [{"metadata": result}]
-
-    return yaml.safe_dump(results)
+RESULT_GET_TESTJOB_RESULTS = [{"metadata": {"result": "test"}}]
 
 
-def result_get_testcase_results_response() -> str:
-    result = {"result": "pass"}
-    test_cases = [result]
-
-    return yaml.safe_dump(test_cases)
+def generate_testsuite_result(name="test-mesa-ci", result="pass", metadata_extra = None, extra = None):
+    if metadata_extra is None:
+        metadata_extra = {}
+    if extra is None:
+        extra = {}
+    return {"metadata": {"result": result, **metadata_extra}, "name": name}
 
 
 @pytest.fixture
 def mock_proxy():
-    def create_proxy_mock(**kwargs):
+    def create_proxy_mock(
+        job_results=RESULT_GET_TESTJOB_RESULTS,
+        testsuite_results=[generate_testsuite_result()],
+        **kwargs
+    ):
         proxy_mock = MagicMock()
         proxy_submit_mock = proxy_mock.scheduler.jobs.submit
         proxy_submit_mock.return_value = "1234"
 
         proxy_results_mock = proxy_mock.results.get_testjob_results_yaml
-        proxy_results_mock.return_value = result_get_testjob_results_response()
+        proxy_results_mock.return_value = yaml.safe_dump(job_results)
 
-        proxy_test_cases_mock = proxy_mock.results.get_testcase_results_yaml
-        proxy_test_cases_mock.return_value = result_get_testcase_results_response()
+        proxy_test_suites_mock = proxy_mock.results.get_testsuite_results_yaml
+        proxy_test_suites_mock.return_value = yaml.safe_dump(testsuite_results)
 
         proxy_logs_mock = proxy_mock.scheduler.jobs.logs
         proxy_logs_mock.return_value = jobs_logs_response()
+
         for key, value in kwargs.items():
             setattr(proxy_logs_mock, key, value)
 
@@ -156,56 +159,93 @@ NETWORK_EXCEPTION = xmlrpc.client.ProtocolError("", 0, "test", {})
 XMLRPC_FAULT = xmlrpc.client.Fault(0, "test")
 
 PROXY_SCENARIOS = {
-    "finish case": (generate_n_logs(1), does_not_raise(), True),
+    "finish case": (generate_n_logs(1), does_not_raise(), True, {}),
     "works at last retry": (
         generate_n_logs(n=NUMBER_OF_MAX_ATTEMPTS, tick_fn=[ DEVICE_HANGING_TIMEOUT_SEC + 1 ] * NUMBER_OF_RETRIES_TIMEOUT_DETECTION + [1]),
         does_not_raise(),
         True,
+        {},
     ),
     "timed out more times than retry attempts": (
         generate_n_logs(n=4, tick_fn=DEVICE_HANGING_TIMEOUT_SEC + 1),
         pytest.raises(SystemExit),
         False,
+        {},
     ),
     "long log case, no silence": (
         generate_n_logs(n=1000, tick_fn=0),
         does_not_raise(),
         True,
+        {},
+    ),
+    "no retries, testsuite succeed": (
+        generate_n_logs(n=1, tick_fn=0),
+        does_not_raise(),
+        True,
+        {
+            "testsuite_results": [
+                generate_testsuite_result(result="pass")
+            ]
+        },
+    ),
+    "no retries, but testsuite fails": (
+        generate_n_logs(n=1, tick_fn=0),
+        does_not_raise(),
+        False,
+        {
+            "testsuite_results": [
+                generate_testsuite_result(result="fail")
+            ]
+        },
+    ),
+    "no retries, one testsuite fails": (
+        generate_n_logs(n=1, tick_fn=0),
+        does_not_raise(),
+        False,
+        {
+            "testsuite_results": [
+                generate_testsuite_result(result="fail"),
+                generate_testsuite_result(result="pass")
+            ]
+        },
     ),
     "very long silence": (
         generate_n_logs(n=NUMBER_OF_MAX_ATTEMPTS + 1, tick_fn=100000),
         pytest.raises(SystemExit),
         False,
+        {},
     ),
     # If a protocol error happens, _call_proxy will retry without affecting timeouts
     "unstable connection, ProtocolError followed by final message": (
         (NETWORK_EXCEPTION, jobs_logs_response(finished=True)),
         does_not_raise(),
         True,
+        {},
     ),
     # After an arbitrary number of retries, _call_proxy should call sys.exit
     "unreachable case, subsequent ProtocolErrors": (
         repeat(NETWORK_EXCEPTION),
         pytest.raises(SystemExit),
         False,
+        {},
     ),
-    "XMLRPC Fault": ([XMLRPC_FAULT], pytest.raises(SystemExit, match="1"), False),
+    "XMLRPC Fault": ([XMLRPC_FAULT], pytest.raises(SystemExit, match="1"), False, {}),
 }
 
 
 @patch("time.sleep", return_value=None)  # mock sleep to make test faster
 @pytest.mark.parametrize(
-    "side_effect, expectation, has_finished",
+    "side_effect, expectation, job_result, proxy_args",
     PROXY_SCENARIOS.values(),
     ids=PROXY_SCENARIOS.keys(),
 )
 def test_retriable_follow_job(
-    mock_sleep, side_effect, expectation, has_finished, mock_proxy
+    mock_sleep, side_effect, expectation, job_result, proxy_args, mock_proxy
 ):
     with expectation:
-        proxy = mock_proxy(side_effect=side_effect)
+        proxy = mock_proxy(side_effect=side_effect, **proxy_args)
         result = retriable_follow_job(proxy, "")
-        assert has_finished == result
+        assert job_result == result
 
 
 WAIT_FOR_JOB_SCENARIOS = {
@@ -271,3 +311,8 @@ def test_hide_sensitive_data(input, expectation, tag):
     result = yaml.safe_load(yaml_result)
 
     assert result == expectation
+
+
+def test_get_job_results(mock_proxy):
+    proxy = mock_proxy()
+    get_job_results(proxy, 1, "0_mesa")
