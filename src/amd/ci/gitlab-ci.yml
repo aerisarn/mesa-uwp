@@ -152,6 +152,20 @@ deqp-navi21-valve:
   tags:
     - amdgpu:codename:NAVI21
 
+deqp-vangogh-valve:
+  extends:
+    - .deqp-test-valve
+  timeout: 7h 10m
+  variables:
+    GPU_VERSION: radv-vangogh-aco
+    FDO_CI_CONCURRENT: 8
+    B2C_TIMEOUT_BOOT_MINUTES: 420     # 7 hours
+    B2C_TIMEOUT_OVERALL_MINUTES: 420  # 7 hours
+    B2C_TIMEOUT_MINUTES: 3
+    B2C_KERNEL_CMDLINE_EXTRAS: 'b2c.swap=16g'
+  tags:
+    - amdgpu:codename:VANGOGH
+
 ############### Fossilize
 .radv-fossils:
   extends:
