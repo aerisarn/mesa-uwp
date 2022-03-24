@@ -150,7 +150,11 @@ vk_device_init(struct vk_device *device,
       break;
 
    case VK_DEVICE_TIMELINE_MODE_ASSISTED:
-      device->submit_mode = VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND;
+      if (env_var_as_boolean("MESA_VK_ENABLE_SUBMIT_THREAD", false)) {
+         device->submit_mode = VK_QUEUE_SUBMIT_MODE_THREADED;
+      } else {
+         device->submit_mode = VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND;
+      }
       break;
 
    default:

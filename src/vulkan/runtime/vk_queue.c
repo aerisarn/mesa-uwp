@@ -43,6 +43,9 @@
 
 #include "vulkan/wsi/wsi_common.h"
 
+static VkResult
+vk_queue_enable_submit_thread(struct vk_queue *queue);
+
 VkResult
 vk_queue_init(struct vk_queue *queue, struct vk_device *device,
               const VkDeviceQueueCreateInfo *pCreateInfo,
@@ -86,11 +89,19 @@ vk_queue_init(struct vk_queue *queue, struct vk_device *device,
       goto fail_pop;
    }
 
+   if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED) {
+      result = vk_queue_enable_submit_thread(queue);
+      if (result != VK_SUCCESS)
+         goto fail_thread;
+   }
+
    util_dynarray_init(&queue->labels, NULL);
    queue->region_begin = true;
 
    return VK_SUCCESS;
 
+fail_thread:
+   cnd_destroy(&queue->submit.pop);
 fail_pop:
    cnd_destroy(&queue->submit.push);
 fail_push:
@@ -559,6 +570,7 @@ static VkResult
 vk_queue_submit(struct vk_queue *queue,
                 const struct vulkan_submit_info *info)
 {
+   struct vk_device *device = queue->base.device;
    VkResult result;
    uint32_t sparse_memory_bind_entry_count = 0;
    uint32_t sparse_memory_image_bind_entry_count = 0;
@@ -778,31 +790,28 @@ vk_queue_submit(struct vk_queue *queue,
 
    assert(signal_count == submit->signal_count);
 
+   /* If this device supports threaded submit, we can't rely on the client
+    * ordering requirements to ensure submits happen in the right order.  Even
+    * if this queue doesn't have a submit thread, another queue (possibly in a
+    * different process) may and that means we our dependencies may not have
+    * been submitted to the kernel yet.  Do a quick zero-timeout WAIT_PENDING
+    * on all the wait semaphores to see if we need to start up our own thread.
+    */
+   if (device->submit_mode == VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND &&
+       queue->submit.mode != VK_QUEUE_SUBMIT_MODE_THREADED) {
+      assert(queue->submit.mode == VK_QUEUE_SUBMIT_MODE_IMMEDIATE);
+
+      result = vk_sync_wait_many(queue->base.device,
+                                 submit->wait_count, submit->waits,
+                                 VK_SYNC_WAIT_PENDING, 0);
+      if (result == VK_TIMEOUT)
+         result = vk_queue_enable_submit_thread(queue);
+      if (unlikely(result != VK_SUCCESS))
+         goto fail;
+   }
+
    switch (queue->base.device->timeline_mode) {
    case VK_DEVICE_TIMELINE_MODE_ASSISTED:
-      if (queue->submit.mode != VK_QUEUE_SUBMIT_MODE_THREADED) {
-         static int force_submit_thread = -1;
-         if (unlikely(force_submit_thread < 0)) {
-            force_submit_thread =
-               env_var_as_boolean("MESA_VK_ENABLE_SUBMIT_THREAD", false);
-         }
-
-         if (unlikely(force_submit_thread)) {
-            result = vk_queue_enable_submit_thread(queue);
-         } else {
-            /* Otherwise, only enable the submit thread if we need it in order
-             * to resolve timeline semaphore wait-before-signal issues.
-             */
-            result = vk_sync_wait_many(queue->base.device,
-                                       submit->wait_count, submit->waits,
-                                       VK_SYNC_WAIT_PENDING, 0);
-            if (result == VK_TIMEOUT)
-               result = vk_queue_enable_submit_thread(queue);
-         }
-         if (unlikely(result != VK_SUCCESS))
-            goto fail;
-      }
-
       if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED) {
          if (has_binary_permanent_semaphore_wait) {
             for (uint32_t i = 0; i < info->wait_count; i++) {
