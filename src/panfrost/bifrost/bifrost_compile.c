@@ -4336,6 +4336,7 @@ bi_compile_variant_nir(nir_shader *nir,
         ctx->arch = inputs->gpu_id >> 12;
         ctx->info = info;
         ctx->idvs = idvs;
+        ctx->malloc_idvs = (ctx->arch >= 9) && !inputs->no_idvs;
 
         if (idvs != BI_IDVS_NONE) {
                 /* Specializing shaders for IDVS is destructive, so we need to

@@ -728,6 +728,12 @@ typedef struct {
        unsigned arch;
        enum bi_idvs_mode idvs;
 
+       /* In any graphics shader, whether the "IDVS with memory
+        * allocation" flow is used. This affects how varyings are loaded and
+        * stored. Ignore for compute.
+        */
+       bool malloc_idvs;
+
        /* During NIR->BIR */
        bi_block *current_block;
        bi_block *after_block;
