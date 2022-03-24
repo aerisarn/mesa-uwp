@@ -78,6 +78,10 @@ pub struct CLVec<T> {
 }
 
 impl<T: Copy> CLVec<T> {
+    pub fn new(vals: [T; 3]) -> Self {
+        Self { vals: vals }
+    }
+
     /// # Safety
     ///
     /// This function is intended for use around OpenCL vectors of size 3.
@@ -109,6 +113,12 @@ impl<T> std::ops::Deref for CLVec<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.vals
+    }
+}
+
+impl<T> std::ops::DerefMut for CLVec<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.vals
     }
 }
 
@@ -159,5 +169,23 @@ where
 
     fn mul(self, other: [T; 3]) -> T {
         self[0] * other[0] + self[1] * other[1] + self[2] * other[2]
+    }
+}
+
+impl<S, T> TryInto<[T; 3]> for CLVec<S>
+where
+    S: Copy,
+    T: TryFrom<S>,
+    [T; 3]: TryFrom<Vec<T>>,
+{
+    type Error = cl_int;
+
+    fn try_into(self) -> Result<[T; 3], cl_int> {
+        let vec: Result<Vec<T>, _> = self
+            .vals
+            .iter()
+            .map(|v| T::try_from(*v).map_err(|_| CL_OUT_OF_HOST_MEMORY))
+            .collect();
+        vec?.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)
     }
 }

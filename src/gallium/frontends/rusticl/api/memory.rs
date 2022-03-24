@@ -983,7 +983,16 @@ pub fn enqueue_copy_buffer(
         evs,
         event,
         false,
-        Box::new(move |q, ctx| src.copy_to(q, ctx, &dst, src_offset, dst_offset, size)),
+        Box::new(move |q, ctx| {
+            src.copy_to(
+                q,
+                ctx,
+                &dst,
+                CLVec::new([src_offset, 0, 0]),
+                CLVec::new([dst_offset, 0, 0]),
+                &CLVec::new([size, 1, 1]),
+            )
+        }),
     )
 
     // TODO
@@ -1662,18 +1671,57 @@ pub fn enqueue_write_image(
 }
 
 pub fn enqueue_copy_image(
-    _command_queue: cl_command_queue,
-    _src_image: cl_mem,
-    _dst_image: cl_mem,
-    _src_origin: *const usize,
-    _dst_origin: *const usize,
-    _region: *const usize,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    src_image: cl_mem,
+    dst_image: cl_mem,
+    src_origin: *const usize,
+    dst_origin: *const usize,
+    region: *const usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> CLResult<()> {
-    println!("enqueue_copy_image not implemented");
-    Err(CL_OUT_OF_HOST_MEMORY)
+    let q = command_queue.get_arc()?;
+    let src_image = src_image.get_arc()?;
+    let dst_image = dst_image.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue, src_image and dst_image are not the same
+    if src_image.context != q.context || dst_image.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_IMAGE_FORMAT_MISMATCH if src_image and dst_image do not use the same image format.
+    if src_image.image_format != dst_image.image_format {
+        return Err(CL_IMAGE_FORMAT_MISMATCH);
+    }
+
+    // CL_INVALID_VALUE if src_origin, dst_origin, or region is NULL.
+    if src_origin.is_null() || dst_origin.is_null() || region.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let region = unsafe { CLVec::from_raw(region) };
+    let dst_origin = unsafe { CLVec::from_raw(dst_origin) };
+    let src_origin = unsafe { CLVec::from_raw(src_origin) };
+
+    create_and_queue(
+        q,
+        CL_COMMAND_COPY_IMAGE,
+        evs,
+        event,
+        false,
+        Box::new(move |q, ctx| {
+            src_image.copy_to(q, ctx, &dst_image, src_origin, dst_origin, &region)
+        }),
+    )
+
+    //• CL_INVALID_VALUE if the 2D or 3D rectangular region specified by src_origin and src_origin + region refers to a region outside src_image, or if the 2D or 3D rectangular region specified by dst_origin and dst_origin + region refers to a region outside dst_image.
+    //• CL_INVALID_VALUE if values in src_origin, dst_origin and region do not follow rules described in the argument description for src_origin, dst_origin and region.
+    //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for src_image or dst_image are not supported by device associated with queue.
+    //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for src_image or dst_image are not supported by device associated with queue.
+    //• CL_INVALID_OPERATION if the device associated with command_queue does not support images (i.e. CL_DEVICE_IMAGE_SUPPORT specified in the Device Queries table is CL_FALSE).
+    //• CL_MEM_COPY_OVERLAP if src_image and dst_image are the same image object and the source and destination regions overlap.
 }
 
 pub fn enqueue_fill_image(

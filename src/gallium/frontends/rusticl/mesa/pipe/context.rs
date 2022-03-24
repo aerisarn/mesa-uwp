@@ -105,30 +105,21 @@ impl PipeContext {
     pub fn resource_copy_region(
         &self,
         src: &PipeResource,
-        src_offset: i32,
         dst: &PipeResource,
-        dst_offset: u32,
-        size: i32,
+        dst_offset: &[u32; 3],
+        bx: &pipe_box,
     ) {
-        let b = pipe_box {
-            width: size,
-            height: 1,
-            depth: 1,
-            x: src_offset,
-            ..Default::default()
-        };
-
         unsafe {
             self.pipe.as_ref().resource_copy_region.unwrap()(
                 self.pipe.as_ptr(),
                 dst.pipe(),
                 0,
-                dst_offset,
-                0,
-                0,
+                dst_offset[0],
+                dst_offset[1],
+                dst_offset[2],
                 src.pipe(),
                 0,
-                &b,
+                bx,
             )
         }
     }
