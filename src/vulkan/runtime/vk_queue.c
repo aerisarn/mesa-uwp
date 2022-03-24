@@ -44,7 +44,7 @@
 #include "vulkan/wsi/wsi_common.h"
 
 static VkResult
-vk_queue_enable_submit_thread(struct vk_queue *queue);
+vk_queue_start_submit_thread(struct vk_queue *queue);
 
 VkResult
 vk_queue_init(struct vk_queue *queue, struct vk_device *device,
@@ -90,7 +90,7 @@ vk_queue_init(struct vk_queue *queue, struct vk_device *device,
    }
 
    if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED) {
-      result = vk_queue_enable_submit_thread(queue);
+      result = vk_queue_start_submit_thread(queue);
       if (result != VK_SUCCESS)
          goto fail_thread;
    }
@@ -508,7 +508,7 @@ vk_queue_submit_thread_func(void *_data)
 }
 
 static VkResult
-vk_queue_enable_submit_thread(struct vk_queue *queue)
+vk_queue_start_submit_thread(struct vk_queue *queue)
 {
    int ret;
 
@@ -520,13 +520,11 @@ vk_queue_enable_submit_thread(struct vk_queue *queue)
    if (ret == thrd_error)
       return vk_errorf(queue, VK_ERROR_UNKNOWN, "thrd_create failed");
 
-   queue->submit.mode = VK_QUEUE_SUBMIT_MODE_THREADED;
-
    return VK_SUCCESS;
 }
 
 static void
-vk_queue_disable_submit_thread(struct vk_queue *queue)
+vk_queue_stop_submit_thread(struct vk_queue *queue)
 {
    vk_queue_drain(queue);
 
@@ -540,6 +538,23 @@ vk_queue_disable_submit_thread(struct vk_queue *queue)
 
    assert(list_is_empty(&queue->submit.submits));
    queue->submit.mode = VK_QUEUE_SUBMIT_MODE_IMMEDIATE;
+}
+
+VkResult
+vk_queue_enable_submit_thread(struct vk_queue *queue)
+{
+   assert(vk_device_supports_threaded_submit(queue->base.device));
+
+   if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED)
+      return VK_SUCCESS;
+
+   VkResult result = vk_queue_start_submit_thread(queue);
+   if (result != VK_SUCCESS)
+      return result;
+
+   queue->submit.mode = VK_QUEUE_SUBMIT_MODE_THREADED;
+
+   return VK_SUCCESS;
 }
 
 struct vulkan_submit_info {
@@ -1075,7 +1090,7 @@ void
 vk_queue_finish(struct vk_queue *queue)
 {
    if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED)
-      vk_queue_disable_submit_thread(queue);
+      vk_queue_stop_submit_thread(queue);
 
    while (!list_is_empty(&queue->submit.submits)) {
       assert(vk_device_is_lost_no_report(queue->base.device));

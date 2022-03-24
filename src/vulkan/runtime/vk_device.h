@@ -255,6 +255,17 @@ vk_device_set_drm_fd(struct vk_device *device, int drm_fd)
 void
 vk_device_finish(struct vk_device *device);
 
+/** Enables threaded submit on this device
+ *
+ * This doesn't ensure that threaded submit will be used.  It just disables
+ * the deferred submit option for emulated timeline semaphores and forces them
+ * to always use the threaded path.  It also does some checks that the vk_sync
+ * types used by the driver work for threaded submit.
+ *
+ * This must be called before any queues are created.
+ */
+void vk_device_enable_threaded_submit(struct vk_device *device);
+
 static inline bool
 vk_device_supports_threaded_submit(const struct vk_device *device)
 {

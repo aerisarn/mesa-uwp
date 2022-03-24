@@ -163,6 +163,15 @@ vk_queue_is_empty(struct vk_queue *queue)
    return list_is_empty(&queue->submit.submits);
 }
 
+/** Enables threaded submit on this queue
+ *
+ * This should be called by the driver if it wants to be able to block inside
+ * `vk_queue::driver_submit`.  Once this function has been called, the queue
+ * will always use a submit thread for all submissions.  You must have called
+ * vk_device_enabled_threaded_submit() before calling this function.
+ */
+VkResult vk_queue_enable_submit_thread(struct vk_queue *queue);
+
 VkResult vk_queue_flush(struct vk_queue *queue, uint32_t *submit_count_out);
 
 VkResult vk_queue_wait_before_present(struct vk_queue *queue,
