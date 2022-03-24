@@ -36,6 +36,56 @@ extern "C" {
 
 struct vk_sync;
 
+enum vk_queue_submit_mode {
+   /** Submits happen immediately
+    *
+    * `vkQueueSubmit()` and `vkQueueBindSparse()` call
+    * `vk_queue::driver_submit` directly for all submits and the last call to
+    * `vk_queue::driver_submit` will have completed by the time
+    * `vkQueueSubmit()` or `vkQueueBindSparse()` return.
+    */
+   VK_QUEUE_SUBMIT_MODE_IMMEDIATE,
+
+   /** Submits may be deferred until a future `vk_queue_flush()`
+    *
+    * Submits are added to the queue and `vk_queue_flush()` is called.
+    * However, any submits with unsatisfied dependencies will be left on the
+    * queue until a future `vk_queue_flush()` call.  This is used for
+    * implementing emulated timeline semaphores without threading.
+    */
+   VK_QUEUE_SUBMIT_MODE_DEFERRED,
+
+   /** Submits will be added to the queue and handled later by a thread
+    *
+    * This places additional requirements on the vk_sync types used by the
+    * driver:
+    *
+    *    1. All `vk_sync` types which support `VK_SYNC_FEATURE_GPU_WAIT` also
+    *       support `VK_SYNC_FEATURE_WAIT_PENDING` so that the threads can
+    *       sort out when a given submit has all its dependencies resolved.
+    *
+    *    2. All binary `vk_sync` types which support `VK_SYNC_FEATURE_GPU_WAIT`
+    *       also support `VK_SYNC_FEATURE_CPU_RESET` so we can reset
+    *       semaphores after waiting on them.
+    *
+    *    3. All vk_sync types used as permanent payloads of semaphores support
+    *       `vk_sync_type::move` so that it can move the pending signal into a
+    *       temporary vk_sync and reset the semaphore.
+    *
+    * This is requied for shared timeline semaphores where we need to handle
+    * wait-before-signal by threading in the driver if we ever see an
+    * unresolve dependency.
+    */
+   VK_QUEUE_SUBMIT_MODE_THREADED,
+
+   /** Threaded but only if we need it to resolve dependencies
+    *
+    * This imposes all the same requirements on `vk_sync` types as
+    * `VK_QUEUE_SUBMIT_MODE_THREADED`.
+    */
+   VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND,
+};
+
 struct vk_device {
    struct vk_object_base base;
    VkAllocationCallbacks alloc;
@@ -177,6 +227,8 @@ struct vk_device {
        */
       VK_DEVICE_TIMELINE_MODE_NATIVE,
    } timeline_mode;
+
+   enum vk_queue_submit_mode submit_mode;
 
 #ifdef ANDROID
    mtx_t swapchain_private_mtx;

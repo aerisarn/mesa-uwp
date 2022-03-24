@@ -62,6 +62,10 @@ vk_queue_init(struct vk_queue *queue, struct vk_device *device,
    assert(index_in_family < pCreateInfo->queueCount);
    queue->index_in_family = index_in_family;
 
+   queue->submit.mode = device->submit_mode;
+   if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND)
+      queue->submit.mode = VK_QUEUE_SUBMIT_MODE_IMMEDIATE;
+
    list_inithead(&queue->submit.submits);
 
    ret = mtx_init(&queue->submit.mutex, mtx_plain);
@@ -93,12 +97,6 @@ fail_push:
    mtx_destroy(&queue->submit.mutex);
 fail_mutex:
    return result;
-}
-
-static bool
-vk_queue_has_submit_thread(struct vk_queue *queue)
-{
-   return queue->submit.has_thread;
 }
 
 VkResult
@@ -380,8 +378,7 @@ vk_queue_flush(struct vk_queue *queue, uint32_t *submit_count_out)
 {
    VkResult result = VK_SUCCESS;
 
-   assert(queue->base.device->timeline_mode ==
-          VK_DEVICE_TIMELINE_MODE_EMULATED);
+   assert(queue->submit.mode == VK_QUEUE_SUBMIT_MODE_DEFERRED);
 
    mtx_lock(&queue->submit.mutex);
 
@@ -442,9 +439,6 @@ vk_queue_submit_thread_func(void *_data)
 {
    struct vk_queue *queue = _data;
    VkResult result;
-
-   assert(queue->base.device->timeline_mode ==
-          VK_DEVICE_TIMELINE_MODE_ASSISTED);
 
    mtx_lock(&queue->submit.mutex);
 
@@ -515,7 +509,7 @@ vk_queue_enable_submit_thread(struct vk_queue *queue)
    if (ret == thrd_error)
       return vk_errorf(queue, VK_ERROR_UNKNOWN, "thrd_create failed");
 
-   queue->submit.has_thread = true;
+   queue->submit.mode = VK_QUEUE_SUBMIT_MODE_THREADED;
 
    return VK_SUCCESS;
 }
@@ -533,7 +527,8 @@ vk_queue_disable_submit_thread(struct vk_queue *queue)
 
    thrd_join(queue->submit.thread, NULL);
 
-   queue->submit.has_thread = false;
+   assert(list_is_empty(&queue->submit.submits));
+   queue->submit.mode = VK_QUEUE_SUBMIT_MODE_IMMEDIATE;
 }
 
 struct vulkan_submit_info {
@@ -785,7 +780,7 @@ vk_queue_submit(struct vk_queue *queue,
 
    switch (queue->base.device->timeline_mode) {
    case VK_DEVICE_TIMELINE_MODE_ASSISTED:
-      if (!vk_queue_has_submit_thread(queue)) {
+      if (queue->submit.mode != VK_QUEUE_SUBMIT_MODE_THREADED) {
          static int force_submit_thread = -1;
          if (unlikely(force_submit_thread < 0)) {
             force_submit_thread =
@@ -808,7 +803,7 @@ vk_queue_submit(struct vk_queue *queue,
             goto fail;
       }
 
-      if (vk_queue_has_submit_thread(queue)) {
+      if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED) {
          if (has_binary_permanent_semaphore_wait) {
             for (uint32_t i = 0; i < info->wait_count; i++) {
                VK_FROM_HANDLE(vk_semaphore, semaphore,
@@ -1048,26 +1043,22 @@ vk_queue_signal_sync(struct vk_queue *queue,
    };
 
    VkResult result;
-   switch (queue->base.device->timeline_mode) {
-   case VK_DEVICE_TIMELINE_MODE_ASSISTED:
-      if (vk_queue_has_submit_thread(queue)) {
-         vk_queue_push_submit(queue, submit);
-         return VK_SUCCESS;
-      } else {
-         result = vk_queue_submit_final(queue, submit);
-         vk_queue_submit_destroy(queue, submit);
-         return result;
-      }
-
-   case VK_DEVICE_TIMELINE_MODE_EMULATED:
-      vk_queue_push_submit(queue, submit);
-      return vk_device_flush(queue->base.device);
-
-   case VK_DEVICE_TIMELINE_MODE_NONE:
-   case VK_DEVICE_TIMELINE_MODE_NATIVE:
+   switch (queue->submit.mode) {
+   case VK_QUEUE_SUBMIT_MODE_IMMEDIATE:
       result = vk_queue_submit_final(queue, submit);
       vk_queue_submit_destroy(queue, submit);
       return result;
+
+   case VK_QUEUE_SUBMIT_MODE_DEFERRED:
+      vk_queue_push_submit(queue, submit);
+      return vk_device_flush(queue->base.device);
+
+   case VK_QUEUE_SUBMIT_MODE_THREADED:
+      vk_queue_push_submit(queue, submit);
+      return VK_SUCCESS;
+
+   case VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND:
+      unreachable("Invalid vk_queue::submit.mode");
    }
    unreachable("Invalid timeline mode");
 }
@@ -1075,7 +1066,7 @@ vk_queue_signal_sync(struct vk_queue *queue,
 void
 vk_queue_finish(struct vk_queue *queue)
 {
-   if (vk_queue_has_submit_thread(queue))
+   if (queue->submit.mode == VK_QUEUE_SUBMIT_MODE_THREADED)
       vk_queue_disable_submit_thread(queue);
 
    while (!list_is_empty(&queue->submit.submits)) {

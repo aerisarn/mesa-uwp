@@ -139,6 +139,24 @@ vk_device_init(struct vk_device *device,
 
    device->timeline_mode = get_timeline_mode(physical_device);
 
+   switch (device->timeline_mode) {
+   case VK_DEVICE_TIMELINE_MODE_NONE:
+   case VK_DEVICE_TIMELINE_MODE_NATIVE:
+      device->submit_mode = VK_QUEUE_SUBMIT_MODE_IMMEDIATE;
+      break;
+
+   case VK_DEVICE_TIMELINE_MODE_EMULATED:
+      device->submit_mode = VK_QUEUE_SUBMIT_MODE_DEFERRED;
+      break;
+
+   case VK_DEVICE_TIMELINE_MODE_ASSISTED:
+      device->submit_mode = VK_QUEUE_SUBMIT_MODE_THREADED_ON_DEMAND;
+      break;
+
+   default:
+      unreachable("Invalid timeline mode");
+   }
+
 #ifdef ANDROID
    mtx_init(&device->swapchain_private_mtx, mtx_plain);
    device->swapchain_private = NULL;
