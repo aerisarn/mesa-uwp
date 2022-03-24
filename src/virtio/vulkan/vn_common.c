@@ -86,7 +86,7 @@ vn_relax(uint32_t *iter, const char *reason)
     * keep doubling both sleep length and count.
     */
    const uint32_t busy_wait_order = 4;
-   const uint32_t base_sleep_us = 10;
+   const uint32_t base_sleep_us = 120;
    const uint32_t warn_order = 12;
    const uint32_t abort_order = 14;
 
