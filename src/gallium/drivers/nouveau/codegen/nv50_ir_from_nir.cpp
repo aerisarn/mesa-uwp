@@ -3173,6 +3173,14 @@ Converter::run()
       NIR_PASS(progress, nir, nir_lower_64bit_phis);
    } while (progress);
 
+   nir_move_options move_options =
+      (nir_move_options)(nir_move_const_undef |
+                         nir_move_load_ubo |
+                         nir_move_load_uniform |
+                         nir_move_load_input);
+   NIR_PASS_V(nir, nir_opt_sink, move_options);
+   NIR_PASS_V(nir, nir_opt_move, move_options);
+
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
