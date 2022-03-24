@@ -2639,6 +2639,9 @@ vir_emit_tlb_color_read(struct v3d_compile *c, nir_intrinsic_instr *instr)
 }
 
 static bool
+ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr);
+
+static bool
 try_emit_uniform(struct v3d_compile *c,
                  int offset,
                  int num_components,
@@ -2690,7 +2693,10 @@ ntq_emit_load_uniform(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 }
         }
 
-        ntq_emit_tmu_general(c, instr, false);
+        if (!ntq_emit_load_unifa(c, instr)) {
+                ntq_emit_tmu_general(c, instr, false);
+                c->has_general_tmu_load = true;
+        }
 }
 
 static bool
@@ -3052,7 +3058,12 @@ static bool
 ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         assert(instr->intrinsic == nir_intrinsic_load_ubo ||
-               instr->intrinsic == nir_intrinsic_load_ssbo);
+               instr->intrinsic == nir_intrinsic_load_ssbo ||
+               instr->intrinsic == nir_intrinsic_load_uniform);
+
+        bool is_uniform = instr->intrinsic == nir_intrinsic_load_uniform;
+        bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
+        bool is_ssbo = instr->intrinsic == nir_intrinsic_load_ssbo;
 
         /* Every ldunifa auto-increments the unifa address by 4 bytes, so our
          * current unifa offset is 4 bytes ahead of the offset of the last load.
@@ -3061,13 +3072,27 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 MAX_UNIFA_SKIP_DISTANCE - 4;
 
         /* We can only use unifa if the offset is uniform */
-        if (nir_src_is_divergent(instr->src[1]))
+        nir_src offset = is_uniform ? instr->src[0] : instr->src[1];
+        if (nir_src_is_divergent(offset))
                 return false;
 
-        /* We can only use unifa with SSBOs if they are read-only */
-        bool is_ubo = instr->intrinsic == nir_intrinsic_load_ubo;
-        if (!is_ubo && !(nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE))
+        /* We can only use unifa with SSBOs if they are read-only. Otherwise
+         * ldunifa won't see the shader writes to that address (possibly
+         * because ldunifa doesn't read from the L2T cache).
+         */
+        if (is_ssbo && !(nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE))
                 return false;
+
+        /* Just as with SSBOs, we can't use ldunifa to read indirect uniforms
+         * that we may have been written to scratch using the TMU.
+         */
+        bool dynamic_src = !nir_src_is_const(offset);
+        if (is_uniform && dynamic_src && c->s->scratch_size > 0)
+                return false;
+
+        uint32_t const_offset = dynamic_src ? 0 : nir_src_as_uint(offset);
+        if (is_uniform)
+                const_offset += nir_intrinsic_base(instr);
 
         /* ldunifa is a 32-bit load instruction so we can only use it with
          * 32-bit aligned addresses. We always produce 32-bit aligned addresses
@@ -3076,9 +3101,6 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
          * loads with a constant offset.
          */
         uint32_t bit_size = nir_dest_bit_size(instr->dest);
-        bool dynamic_src = !nir_src_is_const(instr->src[1]);
-        uint32_t const_offset =
-                dynamic_src ? 0 : nir_src_as_uint(instr->src[1]);
         uint32_t value_skips = 0;
         if (bit_size < 32) {
                 if (dynamic_src) {
@@ -3096,10 +3118,14 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                (bit_size == 16 && value_skips <= 1) ||
                (bit_size == 8  && value_skips <= 3));
 
+        /* Both Vulkan and OpenGL reserve index 0 for uniforms / push
+         * constants.
+         */
+        uint32_t index = is_uniform ? 0 : nir_src_as_uint(instr->src[0]);
+
         /* On OpenGL QUNIFORM_UBO_ADDR takes a UBO index
          * shifted up by 1 (0 is gallium's constant buffer 0).
          */
-        uint32_t index = nir_src_as_uint(instr->src[0]);
         if (is_ubo && c->key->environment == V3D_ENVIRONMENT_OPENGL)
                 index++;
 
@@ -3114,7 +3140,7 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         if (dynamic_src) {
                 c->current_unifa_block = NULL;
         } else if (c->cur_block == c->current_unifa_block &&
-                   c->current_unifa_is_ubo == is_ubo &&
+                   c->current_unifa_is_ubo == !is_ssbo &&
                    c->current_unifa_index == index &&
                    c->current_unifa_offset <= const_offset &&
                    c->current_unifa_offset + max_unifa_skip_dist >= const_offset) {
@@ -3122,20 +3148,20 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ldunifa_skips = (const_offset - c->current_unifa_offset) / 4;
         } else {
                 c->current_unifa_block = c->cur_block;
-                c->current_unifa_is_ubo = is_ubo;
+                c->current_unifa_is_ubo = !is_ssbo;
                 c->current_unifa_index = index;
                 c->current_unifa_offset = const_offset;
         }
 
         if (!skip_unifa) {
-                struct qreg base_offset = is_ubo ?
+                struct qreg base_offset = !is_ssbo ?
                         vir_uniform(c, QUNIFORM_UBO_ADDR,
                                     v3d_unit_data_create(index, const_offset)) :
                         vir_uniform(c, QUNIFORM_SSBO_OFFSET, index);
 
                 struct qreg unifa = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_UNIFA);
                 if (!dynamic_src) {
-                        if (is_ubo) {
+                        if (!is_ssbo) {
                                 vir_MOV_dest(c, unifa, base_offset);
                         } else {
                                 vir_ADD_dest(c, unifa, base_offset,
@@ -3143,7 +3169,7 @@ ntq_emit_load_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                         }
                 } else {
                         vir_ADD_dest(c, unifa, base_offset,
-                                     ntq_get_src(c, instr->src[1], 0));
+                                     ntq_get_src(c, offset, 0));
                 }
         } else {
                 for (int i = 0; i < ldunifa_skips; i++)
