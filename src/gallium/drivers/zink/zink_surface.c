@@ -455,6 +455,8 @@ zink_surface_swapchain_update(struct zink_context *ctx, struct zink_surface *sur
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_resource *res = zink_resource(surface->base.texture);
    struct kopper_displaytarget *cdt = res->obj->dt;
+   if (!cdt)
+      return; //dead swapchain
    if (res->obj->dt != surface->dt) {
       /* new swapchain: clear out previous old_swapchain and move current swapchain there */
       for (unsigned i = 0; i < surface->old_swapchain_size; i++)
