@@ -1676,6 +1676,53 @@ pub fn enqueue_copy_image(
     Err(CL_OUT_OF_HOST_MEMORY)
 }
 
+pub fn enqueue_fill_image(
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    fill_color: *const ::std::os::raw::c_void,
+    origin: *const [usize; 3],
+    region: *const [usize; 3],
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let i = image.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue and image are not the same
+    if i.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // CL_INVALID_VALUE if fill_color is NULL.
+    // CL_INVALID_VALUE if origin or region is NULL.
+    if fill_color.is_null() || origin.is_null() || region.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    let region = unsafe { CLVec::from_raw(region.cast()) };
+    let origin = unsafe { CLVec::from_raw(origin.cast()) };
+
+    // we have to copy memory and it's always a 4 component int value
+    // TODO but not for CL_DEPTH
+    let fill_color = unsafe { slice::from_raw_parts(fill_color.cast(), 4).to_vec() };
+    create_and_queue(
+        q,
+        CL_COMMAND_FILL_BUFFER,
+        evs,
+        event,
+        false,
+        Box::new(move |q, ctx| i.fill_image(q, ctx, &fill_color, &origin, &region)),
+    )
+
+    //• CL_INVALID_VALUE if the region being filled as specified by origin and region is out of bounds.
+    //• CL_INVALID_VALUE if values in origin and region do not follow rules described in the argument description for origin and region.
+    //• CL_INVALID_IMAGE_SIZE if image dimensions (image width, height, specified or compute row and/or slice pitch) for image are not supported by device associated with queue.
+    //• CL_IMAGE_FORMAT_NOT_SUPPORTED if image format (image channel order and data type) for
+    //image are not supported by device associated with queue.
+}
+
 pub fn enqueue_map_image(
     command_queue: cl_command_queue,
     image: cl_mem,

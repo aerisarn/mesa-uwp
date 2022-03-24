@@ -506,6 +506,34 @@ impl Mem {
         Ok(())
     }
 
+    pub fn fill_image(
+        &self,
+        q: &Arc<Queue>,
+        ctx: &Arc<PipeContext>,
+        pattern: &[u32],
+        origin: &CLVec<usize>,
+        region: &CLVec<usize>,
+    ) -> CLResult<()> {
+        assert!(!self.is_buffer());
+
+        let res = self.get_res()?.get(&q.device).unwrap();
+        let bx = create_box(origin, region, self.mem_type)?;
+        let mut new_pattern = vec![0; self.image_format.pixel_size().unwrap() as usize];
+
+        unsafe {
+            util_format_pack_rgba(
+                self.image_format.to_pipe_format().unwrap(),
+                new_pattern.as_mut_ptr().cast(),
+                pattern.as_ptr().cast(),
+                1,
+            );
+        }
+
+        ctx.clear_texture(res, &new_pattern, &bx);
+
+        Ok(())
+    }
+
     pub fn write_from_user_rect(
         &self,
         src: *const c_void,

@@ -1476,17 +1476,25 @@ extern "C" fn cl_enqueue_fill_buffer(
 }
 
 extern "C" fn cl_enqueue_fill_image(
-    _command_queue: cl_command_queue,
-    _image: cl_mem,
-    _fill_color: *const ::std::os::raw::c_void,
-    _origin: *const [usize; 3usize],
-    _region: *const [usize; 3usize],
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    image: cl_mem,
+    fill_color: *const ::std::os::raw::c_void,
+    origin: *const [usize; 3usize],
+    region: *const [usize; 3usize],
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_fill_image not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_fill_image(
+        command_queue,
+        image,
+        fill_color,
+        origin,
+        region,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
+    ))
 }
 
 extern "C" fn cl_enqueue_migrate_mem_objects(
