@@ -1106,7 +1106,7 @@ x11_acquire_next_image_poll_x11(struct x11_swapchain *chain,
       if (timeout == UINT64_MAX) {
          event = xcb_wait_for_special_event(chain->conn, chain->special_event);
          if (!event)
-            return x11_swapchain_result(chain, VK_ERROR_OUT_OF_DATE_KHR);
+            return x11_swapchain_result(chain, VK_ERROR_SURFACE_LOST_KHR);
       } else {
          event = xcb_poll_for_special_event(chain->conn, chain->special_event);
          if (!event) {
@@ -1465,7 +1465,7 @@ x11_manage_fifo_queues(void *state)
             xcb_generic_event_t *event =
                xcb_wait_for_special_event(chain->conn, chain->special_event);
             if (!event) {
-               result = VK_ERROR_OUT_OF_DATE_KHR;
+               result = VK_ERROR_SURFACE_LOST_KHR;
                goto fail;
             }
 
