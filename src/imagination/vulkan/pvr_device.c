@@ -76,6 +76,30 @@
 
 #define PVR_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 
+#define DEF_DRIVER(str_name)                        \
+   {                                                \
+      .name = str_name, .len = sizeof(str_name) - 1 \
+   }
+
+struct pvr_drm_device_info {
+   const char *name;
+   size_t len;
+};
+
+/* This is the list of supported DRM display drivers. */
+static const struct pvr_drm_device_info pvr_display_devices[] = {
+   DEF_DRIVER("mediatek-drm"),
+   DEF_DRIVER("ti,am65x-dss"),
+};
+
+/* This is the list of supported DRM render drivers. */
+static const struct pvr_drm_device_info pvr_render_devices[] = {
+   DEF_DRIVER("mediatek,mt8173-gpu"),
+   DEF_DRIVER("ti,am62-gpu"),
+};
+
+#undef DEF_DRIVER
+
 static const struct vk_instance_extension_table pvr_instance_extensions = {
 #if defined(VK_USE_PLATFORM_DISPLAY_KHR)
    .KHR_display = true,
@@ -439,6 +463,48 @@ err_vk_physical_device_finish:
    return result;
 }
 
+static bool pvr_drm_device_is_supported(drmDevicePtr drm_dev, int node_type)
+{
+   char **compat = drm_dev->deviceinfo.platform->compatible;
+
+   if (!(drm_dev->available_nodes & BITFIELD_BIT(node_type))) {
+      assert(node_type == DRM_NODE_RENDER || node_type == DRM_NODE_PRIMARY);
+      return false;
+   }
+
+   if (node_type == DRM_NODE_RENDER) {
+      while (*compat) {
+         for (size_t i = 0U; i < ARRAY_SIZE(pvr_render_devices); i++) {
+            const char *const name = pvr_render_devices[i].name;
+            const size_t len = pvr_render_devices[i].len;
+
+            if (strncmp(*compat, name, len) == 0)
+               return true;
+         }
+
+         compat++;
+      }
+
+      return false;
+   } else if (node_type == DRM_NODE_PRIMARY) {
+      while (*compat) {
+         for (size_t i = 0U; i < ARRAY_SIZE(pvr_display_devices); i++) {
+            const char *const name = pvr_display_devices[i].name;
+            const size_t len = pvr_display_devices[i].len;
+
+            if (strncmp(*compat, name, len) == 0)
+               return true;
+         }
+
+         compat++;
+      }
+
+      return false;
+   }
+
+   unreachable("Incorrect node_type.");
+}
+
 static VkResult pvr_enumerate_devices(struct pvr_instance *instance)
 {
    /* FIXME: It should be possible to query the number of devices via
@@ -463,34 +529,17 @@ static VkResult pvr_enumerate_devices(struct pvr_instance *instance)
       if (drm_devices[i]->bustype != DRM_BUS_PLATFORM)
          continue;
 
-      if (drm_devices[i]->available_nodes & (1 << DRM_NODE_RENDER)) {
-         char **compat;
+      if (pvr_drm_device_is_supported(drm_devices[i], DRM_NODE_RENDER)) {
+         drm_render_device = drm_devices[i];
 
-         compat = drm_devices[i]->deviceinfo.platform->compatible;
-         while (*compat) {
-            if (strncmp(*compat, "mediatek,mt8173-gpu", 19) == 0) {
-               drm_render_device = drm_devices[i];
+         mesa_logd("Found compatible render device '%s'.",
+                   drm_render_device->nodes[DRM_NODE_RENDER]);
+      } else if (pvr_drm_device_is_supported(drm_devices[i],
+                                             DRM_NODE_PRIMARY)) {
+         drm_primary_device = drm_devices[i];
 
-               mesa_logd("Found compatible render device '%s'.",
-                         drm_render_device->nodes[DRM_NODE_RENDER]);
-               break;
-            }
-            compat++;
-         }
-      } else if (drm_devices[i]->available_nodes & 1 << DRM_NODE_PRIMARY) {
-         char **compat;
-
-         compat = drm_devices[i]->deviceinfo.platform->compatible;
-         while (*compat) {
-            if (strncmp(*compat, "mediatek-drm", 12) == 0) {
-               drm_primary_device = drm_devices[i];
-
-               mesa_logd("Found compatible primary device '%s'.",
-                         drm_primary_device->nodes[DRM_NODE_PRIMARY]);
-               break;
-            }
-            compat++;
-         }
+         mesa_logd("Found compatible primary device '%s'.",
+                   drm_primary_device->nodes[DRM_NODE_PRIMARY]);
       }
    }
 
