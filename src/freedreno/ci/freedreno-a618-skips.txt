@@ -38,7 +38,7 @@ spill-dEQP-VK.graphicsfuzz.cov-nested-loop-undefined-smoothstep-never-executed
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-dead-code
 spill-dEQP-VK.graphicsfuzz.spv-stable-maze-O-memory-accesses
 
-# Hangs the GPU, fixed to be a skip in VK-GL-CTS 736eec57dc0c ("Fix checkSupport in compressed texture sampling tests")
+# causes a hangcheck timeout due to https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3582
 dEQP-VK.image.sample_texture.128_bit_compressed_format_cubemap
 dEQP-VK.image.sample_texture.64_bit_compressed_format_cubemap
 
