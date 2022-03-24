@@ -2577,6 +2577,9 @@ zink_set_color_write_enables(struct zink_context *ctx)
    bool disable_color_writes = ctx->rast_state && ctx->rast_state->base.rasterizer_discard && ctx->primitives_generated_active;
    if (ctx->disable_color_writes == disable_color_writes)
       return;
+   /* flush all pending clears: these have already occurred */
+   if (disable_color_writes && ctx->clears_enabled)
+      zink_batch_rp(ctx);
    ctx->disable_color_writes = disable_color_writes;
    if (zink_screen(ctx->base.screen)->driver_workarounds.color_write_missing) {
       /* use dummy color buffers instead of the more sane option */
