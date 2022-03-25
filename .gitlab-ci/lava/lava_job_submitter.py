@@ -54,6 +54,9 @@ LOG_POLLING_TIME_SEC = int(getenv("LAVA_LOG_POLLING_TIME_SEC", 5))
 # How many retries should be made when a timeout happen.
 NUMBER_OF_RETRIES_TIMEOUT_DETECTION = int(getenv("LAVA_NUMBER_OF_RETRIES_TIMEOUT_DETECTION", 2))
 
+# How many attempts should be made when a timeout happen during LAVA device boot.
+NUMBER_OF_ATTEMPTS_LAVA_BOOT = int(getenv("LAVA_NUMBER_OF_ATTEMPTS_LAVA_BOOT", 3))
+
 
 def print_log(msg):
     print("{}: {}".format(datetime.now(), msg))
@@ -77,9 +80,13 @@ def generate_lava_yaml(args):
         'context': {
             'extra_nfsroot_args': ' init=/init rootwait usbcore.quirks=0bda:8153:k'
         },
-        'timeouts': {
-            'job': {
-                'minutes': args.job_timeout
+        "timeouts": {
+            "job": {"minutes": args.job_timeout},
+            "action": {"minutes": 3},
+            "actions": {
+                "depthcharge-action": {
+                    "minutes": 3 * NUMBER_OF_ATTEMPTS_LAVA_BOOT,
+                }
             }
         },
     }
@@ -110,10 +117,10 @@ def generate_lava_yaml(args):
 
     # always boot over NFS
     boot = {
-      'timeout': { 'minutes': 25 },
-      'method': args.boot_method,
-      'commands': 'nfs',
-      'prompts': ['lava-shell:'],
+        "failure_retry": NUMBER_OF_ATTEMPTS_LAVA_BOOT,
+        "method": args.boot_method,
+        "commands": "nfs",
+        "prompts": ["lava-shell:"],
     }
 
     # skeleton test definition: only declaring each job as a single 'test'
