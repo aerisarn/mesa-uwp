@@ -2612,8 +2612,12 @@ reapply_color_write(struct zink_context *ctx)
 static void
 stall(struct zink_context *ctx)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    sync_flush(ctx, zink_batch_state(ctx->last_fence));
-   zink_vkfence_wait(zink_screen(ctx->base.screen), ctx->last_fence, PIPE_TIMEOUT_INFINITE);
+   if (ctx->have_timelines)
+      zink_screen_timeline_wait(screen, ctx->last_fence->batch_id, PIPE_TIMEOUT_INFINITE);
+   else
+      zink_vkfence_wait(screen, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
    zink_batch_reset_all(ctx);
 }
 
@@ -3326,7 +3330,9 @@ zink_flush(struct pipe_context *pctx,
          * in some cases in order to correctly draw the first frame, though it's
          * unknown at this time why this is the case
          */
-         if (!ctx->first_frame_done)
+         if (screen->info.have_KHR_timeline_semaphore)
+            zink_screen_timeline_wait(screen, fence->batch_id, PIPE_TIMEOUT_INFINITE);
+         else
             zink_vkfence_wait(screen, fence, PIPE_TIMEOUT_INFINITE);
          ctx->first_frame_done = true;
       }
