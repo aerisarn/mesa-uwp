@@ -73,7 +73,7 @@ struct zink_query {
    struct list_head stats_list; /* when active, statistics queries are added to ctx->primitives_generated_queries */
    bool has_draws; /* have_gs and have_xfb are valid for idx=curr_query */
 
-   struct zink_batch_usage *batch_id; //batch that the query was started in
+   struct zink_batch_usage *batch_uses; //batch that the query was started in
 
    struct list_head buffers;
    union {
@@ -353,7 +353,7 @@ fail:
 static void
 destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
-   assert(zink_screen_usage_check_completion(screen, query->batch_id));
+   assert(zink_screen_usage_check_completion(screen, query->batch_uses));
    struct zink_query_buffer *qbo, *next;
 
    util_dynarray_foreach(&query->starts, struct zink_query_start, start) {
@@ -496,7 +496,7 @@ zink_destroy_query(struct pipe_context *pctx,
    /* only destroy if this query isn't active on any batches,
     * otherwise just mark dead and wait
     */
-   if (query->batch_id) {
+   if (query->batch_uses) {
       p_atomic_set(&query->dead, true);
       return;
    }
@@ -507,9 +507,9 @@ zink_destroy_query(struct pipe_context *pctx,
 void
 zink_prune_query(struct zink_screen *screen, struct zink_batch_state *bs, struct zink_query *query)
 {
-   if (!zink_batch_usage_matches(query->batch_id, bs))
+   if (!zink_batch_usage_matches(query->batch_uses, bs))
       return;
-   query->batch_id = NULL;
+   query->batch_uses = NULL;
    if (p_atomic_read(&query->dead))
       destroy_query(screen, query);
 }
@@ -795,7 +795,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (q->type == PIPE_QUERY_TIME_ELAPSED) {
       VKCTX(CmdWriteTimestamp)(batch->state->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
       update_qbo(ctx, q);
-      zink_batch_usage_set(&q->batch_id, batch->state);
+      zink_batch_usage_set(&q->batch_uses, batch->state);
       _mesa_set_add(batch->state->active_queries, q);
    }
    /* ignore the rest of begin_query for timestamps */
@@ -828,7 +828,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    }
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
-   zink_batch_usage_set(&q->batch_id, batch->state);
+   zink_batch_usage_set(&q->batch_uses, batch->state);
    _mesa_set_add(batch->state->active_queries, q);
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       ctx->primitives_generated_active = true;
@@ -940,7 +940,7 @@ zink_end_query(struct pipe_context *pctx,
       struct zink_query_start *start = util_dynarray_top_ptr(&query->starts, struct zink_query_start);
       VKCTX(CmdWriteTimestamp)(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                                start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
-      zink_batch_usage_set(&query->batch_id, batch->state);
+      zink_batch_usage_set(&query->batch_uses, batch->state);
       _mesa_set_add(batch->state->active_queries, query);
       check_update(ctx, query);
    } else if (query->active)
@@ -969,7 +969,7 @@ zink_get_query_result(struct pipe_context *pctx,
    if (query->needs_update)
       update_qbo(ctx, query);
 
-   if (zink_batch_usage_is_unflushed(query->batch_id)) {
+   if (zink_batch_usage_is_unflushed(query->batch_uses)) {
       if (!threaded_query(q)->flushed)
          pctx->flush(pctx, NULL, 0);
       if (!wait)
@@ -1210,7 +1210,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
 
       VkQueryResultFlags flag = is_time_query(query) ? 0 : VK_QUERY_RESULT_PARTIAL_BIT;
       unsigned src_offset = result_size * get_num_results(query->type);
-      if (zink_batch_usage_check_completion(ctx, query->batch_id)) {
+      if (zink_batch_usage_check_completion(ctx, query->batch_uses)) {
          uint64_t u64[4] = {0};
          if (VKCTX(GetQueryPoolResults)(screen->dev, start->vkq[0]->pool->query_pool, query_id, 1, sizeof(u64), u64,
                                    0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag) == VK_SUCCESS) {
