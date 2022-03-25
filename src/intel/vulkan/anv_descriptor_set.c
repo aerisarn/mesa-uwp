@@ -66,7 +66,8 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       break;
 
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-      data = ANV_DESCRIPTOR_SURFACE_STATE;
+      data = ANV_DESCRIPTOR_SURFACE_STATE |
+             ANV_DESCRIPTOR_SAMPLED_IMAGE;
       break;
 
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
