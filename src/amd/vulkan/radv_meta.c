@@ -780,8 +780,8 @@ radv_meta_build_resolve_shader_core(nir_builder *b, bool is_integer, int samples
       nir_ssa_dest_init(&tex_all_same->instr, &tex_all_same->dest, 1, 1, "tex");
       nir_builder_instr_insert(b, &tex_all_same->instr);
 
-      nir_ssa_def *all_same = nir_ieq(b, &tex_all_same->dest.ssa, nir_imm_bool(b, false));
-      nir_push_if(b, all_same);
+      nir_ssa_def *not_all_same = nir_inot(b, &tex_all_same->dest.ssa);
+      nir_push_if(b, not_all_same);
       for (int i = 1; i < samples; i++) {
          nir_tex_instr *tex_add = nir_tex_instr_create(b->shader, 3);
          tex_add->sampler_dim = GLSL_SAMPLER_DIM_MS;

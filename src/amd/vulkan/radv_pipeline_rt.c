@@ -1151,7 +1151,7 @@ insert_traversal_triangle_case(struct radv_device *device,
 
          nir_store_var(b, vars->ahit_status, nir_imm_int(b, 0), 1);
 
-         nir_push_if(b, nir_ine(b, is_opaque, nir_imm_bool(b, true)));
+         nir_push_if(b, nir_inot(b, is_opaque));
          {
             struct rt_variables inner_vars = create_inner_vars(b, vars);
 
@@ -1666,8 +1666,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_loop *loop = nir_push_loop(&b);
 
    nir_push_if(&b, nir_ior(&b, nir_ieq_imm(&b, nir_load_var(&b, vars.idx), 0),
-                           nir_ine(&b, nir_load_var(&b, vars.main_loop_case_visited),
-                                   nir_imm_bool(&b, true))));
+                           nir_inot(&b, nir_load_var(&b, vars.main_loop_case_visited))));
    nir_jump(&b, nir_jump_break);
    nir_pop_if(&b, NULL);
 
