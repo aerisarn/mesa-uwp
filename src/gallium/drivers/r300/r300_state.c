@@ -1976,7 +1976,6 @@ static void* r300_create_vs_state(struct pipe_context* pipe,
     if (!vs->first)
         vs->first = vs->shader = CALLOC_STRUCT(r300_vertex_shader_code);
     if (r300->screen->caps.has_tcl) {
-        r300_init_vs_outputs(r300, vs);
         r300_translate_vertex_shader(r300, vs);
     } else {
         r300_draw_init_vertex_shader(r300, vs);

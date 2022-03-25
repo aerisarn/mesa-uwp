@@ -198,7 +198,6 @@ static void r300_dummy_vertex_shader(
     ureg_destroy(ureg);
 
     vs->shader->dummy = TRUE;
-    r300_init_vs_outputs(r300, vs);
     r300_translate_vertex_shader(r300, vs);
 }
 
@@ -209,6 +208,8 @@ void r300_translate_vertex_shader(struct r300_context *r300,
     struct tgsi_to_rc ttr;
     unsigned i;
     struct r300_vertex_shader_code *vs = shader->shader;
+
+    r300_init_vs_outputs(r300, shader);
 
     /* Setup the compiler */
     memset(&compiler, 0, sizeof(compiler));
