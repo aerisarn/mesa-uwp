@@ -125,7 +125,6 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    bool scale = false;
    bool grab = false;
    unsigned i;
-   struct pipe_screen *pscreen = drv->vscreen->pscreen;
 
    if ((src->buffer_format == PIPE_FORMAT_B8G8R8X8_UNORM ||
         src->buffer_format == PIPE_FORMAT_B8G8R8A8_UNORM ||
@@ -169,9 +168,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
    dst_rect.x1 = dst_region->x + dst_region->width;
    dst_rect.y1 = dst_region->y + dst_region->height;
 
-   if (grab && !pscreen->get_video_param(pscreen, PIPE_VIDEO_PROFILE_UNKNOWN,
-                                         PIPE_VIDEO_ENTRYPOINT_ENCODE,
-                                         PIPE_VIDEO_CAP_EFC_SUPPORTED)) {
+   if (grab) {
       vl_compositor_convert_rgb_to_yuv(&drv->cstate, &drv->compositor, 0,
                                        ((struct vl_video_buffer *)src)->resources[0],
                                        dst, &src_rect, &dst_rect);
@@ -226,7 +223,7 @@ static VAStatus vlVaPostProcBlit(vlVaDriver *drv, vlVaContext *context,
       blit.mask = PIPE_MASK_RGBA;
       blit.filter = PIPE_TEX_MIPFILTER_LINEAR;
 
-      if (!grab && drv->pipe->screen->get_param(drv->pipe->screen,
+      if (drv->pipe->screen->get_param(drv->pipe->screen,
                                        PIPE_CAP_PREFER_COMPUTE_FOR_MULTIMEDIA))
          util_compute_blit(drv->pipe, &blit, &context->blit_cs, !drv->compositor.deinterlace);
       else
@@ -313,7 +310,14 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
    pscreen = drv->vscreen->pscreen;
 
    if (src_surface->buffer->buffer_format != dst_surface->buffer->buffer_format &&
-       pscreen->get_video_param(pscreen, PIPE_VIDEO_PROFILE_UNKNOWN, PIPE_VIDEO_ENTRYPOINT_ENCODE, PIPE_VIDEO_CAP_EFC_SUPPORTED)) {
+       !src_surface->buffer->interlaced &&
+       (dst_surface->buffer->buffer_format == PIPE_FORMAT_NV12 ||
+        dst_surface->buffer->buffer_format == PIPE_FORMAT_P010 ||
+        dst_surface->buffer->buffer_format == PIPE_FORMAT_P016) &&
+       pscreen->get_video_param(pscreen,
+                                PIPE_VIDEO_PROFILE_UNKNOWN,
+                                PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                PIPE_VIDEO_CAP_EFC_SUPPORTED)) {
 
       // EFC will convert the buffer to a format the encoder accepts
       dst_surface->encoder_format = dst_surface->buffer->buffer_format;
@@ -400,11 +404,7 @@ vlVaHandleVAProcPipelineParameterBufferType(vlVaDriver *drv, vlVaContext *contex
 
    if (context->target->buffer_format != PIPE_FORMAT_NV12 &&
        context->target->buffer_format != PIPE_FORMAT_P010 &&
-       context->target->buffer_format != PIPE_FORMAT_P016 &&
-       context->target->buffer_format != PIPE_FORMAT_B8G8R8X8_UNORM &&
-       context->target->buffer_format != PIPE_FORMAT_B8G8R8A8_UNORM &&
-       context->target->buffer_format != PIPE_FORMAT_R8G8B8X8_UNORM &&
-       context->target->buffer_format != PIPE_FORMAT_R8G8B8A8_UNORM)
+       context->target->buffer_format != PIPE_FORMAT_P016)
       return vlVaPostProcCompositor(drv, context, src_region, dst_region,
                                     src, context->target, deinterlace);
    else
