@@ -1903,7 +1903,6 @@ dzn_cmd_buffer_blit_region(dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
-   ID3D12Device *dev = device->dev;
    const VkImageBlit2 *region = &info->pRegions[r];
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
