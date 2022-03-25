@@ -52,7 +52,7 @@ radv_get_pipeline_statistics_index(const VkQueryPipelineStatisticFlagBits flag)
 static nir_ssa_def *
 nir_test_flag(nir_builder *b, nir_ssa_def *flags, uint32_t flag)
 {
-   return nir_i2b(b, nir_iand(b, flags, nir_imm_int(b, flag)));
+   return nir_i2b(b, nir_iand_imm(b, flags, flag));
 }
 
 static void
@@ -149,12 +149,12 @@ build_occlusion_query_shader(struct radv_device *device)
    nir_ssa_def *current_outer_count = nir_load_var(&b, outer_counter);
    radv_break_on_count(&b, outer_counter, nir_imm_int(&b, db_count));
 
-   nir_ssa_def *enabled_cond = nir_iand(&b, nir_imm_int(&b, enabled_rb_mask),
-                                        nir_ishl(&b, nir_imm_int(&b, 1), current_outer_count));
+   nir_ssa_def *enabled_cond =
+      nir_iand_imm(&b, nir_ishl(&b, nir_imm_int(&b, 1), current_outer_count), enabled_rb_mask);
 
    nir_push_if(&b, nir_i2b(&b, enabled_cond));
 
-   nir_ssa_def *load_offset = nir_imul(&b, current_outer_count, nir_imm_int(&b, 16));
+   nir_ssa_def *load_offset = nir_imul_imm(&b, current_outer_count, 16);
    load_offset = nir_iadd(&b, input_base, load_offset);
 
    nir_ssa_def *load = nir_load_ssbo(&b, 2, 64, src_buf, load_offset, .align_mul = 16);
@@ -271,13 +271,13 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
    nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 16);
    nir_ssa_def *output_base = nir_imul(&b, output_stride, global_id);
 
-   avail_offset = nir_iadd(&b, avail_offset, nir_imul(&b, global_id, nir_imm_int(&b, 4)));
+   avail_offset = nir_iadd(&b, avail_offset, nir_imul_imm(&b, global_id, 4));
 
    nir_ssa_def *available32 = nir_load_ssbo(&b, 1, 32, src_buf, avail_offset);
 
    nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
    nir_ssa_def *elem_size = nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 8), nir_imm_int(&b, 4));
-   nir_ssa_def *elem_count = nir_ushr(&b, stats_mask, nir_imm_int(&b, 16));
+   nir_ssa_def *elem_count = nir_ushr_imm(&b, stats_mask, 16);
 
    radv_store_availability(&b, flags, dst_buf,
                            nir_iadd(&b, output_base, nir_imul(&b, elem_count, elem_size)),
@@ -289,13 +289,11 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
    for (int i = 0; i < ARRAY_SIZE(pipeline_statistics_indices); ++i) {
       nir_push_if(&b, nir_test_flag(&b, stats_mask, 1u << i));
 
-      nir_ssa_def *start_offset =
-         nir_iadd(&b, input_base, nir_imm_int(&b, pipeline_statistics_indices[i] * 8));
+      nir_ssa_def *start_offset = nir_iadd_imm(&b, input_base, pipeline_statistics_indices[i] * 8);
       nir_ssa_def *start = nir_load_ssbo(&b, 1, 64, src_buf, start_offset);
 
       nir_ssa_def *end_offset =
-         nir_iadd(&b, input_base,
-                  nir_imm_int(&b, pipeline_statistics_indices[i] * 8 + pipelinestat_block_size));
+         nir_iadd_imm(&b, input_base, pipeline_statistics_indices[i] * 8 + pipelinestat_block_size);
       nir_ssa_def *end = nir_load_ssbo(&b, 1, 64, src_buf, end_offset);
 
       nir_ssa_def *result = nir_isub(&b, end, start);
@@ -414,15 +412,15 @@ build_tfb_query_shader(struct radv_device *device)
 
    /* Load data from the query pool. */
    nir_ssa_def *load1 = nir_load_ssbo(&b, 4, 32, src_buf, input_base, .align_mul = 32);
-   nir_ssa_def *load2 = nir_load_ssbo(
-      &b, 4, 32, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 16)), .align_mul = 16);
+   nir_ssa_def *load2 =
+      nir_load_ssbo(&b, 4, 32, src_buf, nir_iadd_imm(&b, input_base, 16), .align_mul = 16);
 
    /* Check if result is available. */
    nir_ssa_def *avails[2];
    avails[0] = nir_iand(&b, nir_channel(&b, load1, 1), nir_channel(&b, load1, 3));
    avails[1] = nir_iand(&b, nir_channel(&b, load2, 1), nir_channel(&b, load2, 3));
    nir_ssa_def *result_is_available =
-      nir_i2b(&b, nir_iand(&b, nir_iand(&b, avails[0], avails[1]), nir_imm_int(&b, 0x80000000)));
+      nir_i2b(&b, nir_iand_imm(&b, nir_iand(&b, avails[0], avails[1]), 0x80000000));
 
    /* Only compute result if available. */
    nir_push_if(&b, result_is_available);
@@ -541,8 +539,7 @@ build_timestamp_query_shader(struct radv_device *device)
       nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load, 0), nir_channel(&b, load, 1)));
 
    /* Check if result is available. */
-   nir_ssa_def *result_is_available =
-      nir_i2b(&b, nir_ine(&b, timestamp, nir_imm_int64(&b, TIMESTAMP_NOT_READY)));
+   nir_ssa_def *result_is_available = nir_i2b(&b, nir_ine_imm(&b, timestamp, TIMESTAMP_NOT_READY));
 
    /* Only store result if available. */
    nir_push_if(&b, result_is_available);

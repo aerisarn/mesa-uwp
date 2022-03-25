@@ -314,8 +314,7 @@ const uint32_t RADV_HIT_ATTRIB_OFFSET = -(16 + RADV_MAX_HIT_ATTRIB_SIZE);
 static void
 insert_rt_return(nir_builder *b, const struct rt_variables *vars)
 {
-   nir_store_var(b, vars->stack_ptr,
-                 nir_iadd(b, nir_load_var(b, vars->stack_ptr), nir_imm_int(b, -16)), 1);
+   nir_store_var(b, vars->stack_ptr, nir_iadd_imm(b, nir_load_var(b, vars->stack_ptr), -16), 1);
    nir_store_var(b, vars->idx,
                  nir_load_scratch(b, 1, 32, nir_load_var(b, vars->stack_ptr), .align_mul = 16), 1);
 }
@@ -346,14 +345,12 @@ load_sbt_entry(nir_builder *b, const struct rt_variables *vars, nir_ssa_def *idx
 {
    nir_ssa_def *addr = get_sbt_ptr(b, idx, binding);
 
-   nir_ssa_def *load_addr = addr;
-   if (offset)
-      load_addr = nir_iadd(b, load_addr, nir_imm_int64(b, offset));
+   nir_ssa_def *load_addr = nir_iadd_imm(b, addr, offset);
    nir_ssa_def *v_idx = nir_build_load_global(b, 1, 32, load_addr);
 
    nir_store_var(b, vars->idx, v_idx, 1);
 
-   nir_ssa_def *record_addr = nir_iadd(b, addr, nir_imm_int64(b, RADV_RT_HANDLE_SIZE));
+   nir_ssa_def *record_addr = nir_iadd_imm(b, addr, RADV_RT_HANDLE_SIZE);
    nir_store_var(b, vars->shader_record_ptr, record_addr, 1);
 }
 
@@ -376,22 +373,19 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                uint32_t ret = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
                b_shader.cursor = nir_instr_remove(instr);
 
-               nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
-                                      nir_imm_int(&b_shader, size)),
-                             1);
+               nir_store_var(
+                  &b_shader, vars->stack_ptr,
+                  nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
                nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret),
                                  nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
                nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
-                                      nir_imm_int(&b_shader, 16)),
+                             nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16),
                              1);
                load_sbt_entry(&b_shader, vars, intr->src[0].ssa, SBT_CALLABLE, 0);
 
-               nir_store_var(
-                  &b_shader, vars->arg,
-                  nir_isub(&b_shader, intr->src[1].ssa, nir_imm_int(&b_shader, size + 16)), 1);
+               nir_store_var(&b_shader, vars->arg,
+                             nir_iadd_imm(&b_shader, intr->src[1].ssa, -size - 16), 1);
 
                vars->stack_sizes[vars->group_idx].recursive_size =
                   MAX2(vars->stack_sizes[vars->group_idx].recursive_size, size + 16);
@@ -402,22 +396,19 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                uint32_t ret = call_idx_base + nir_intrinsic_call_idx(intr) + 1;
                b_shader.cursor = nir_instr_remove(instr);
 
-               nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
-                                      nir_imm_int(&b_shader, size)),
-                             1);
+               nir_store_var(
+                  &b_shader, vars->stack_ptr,
+                  nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), size), 1);
                nir_store_scratch(&b_shader, nir_imm_int(&b_shader, ret),
                                  nir_load_var(&b_shader, vars->stack_ptr), .align_mul = 16);
 
                nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
-                                      nir_imm_int(&b_shader, 16)),
+                             nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), 16),
                              1);
 
                nir_store_var(&b_shader, vars->idx, nir_imm_int(&b_shader, 1), 1);
-               nir_store_var(
-                  &b_shader, vars->arg,
-                  nir_isub(&b_shader, intr->src[10].ssa, nir_imm_int(&b_shader, size + 16)), 1);
+               nir_store_var(&b_shader, vars->arg,
+                             nir_iadd_imm(&b_shader, intr->src[10].ssa, -size - 16), 1);
 
                vars->stack_sizes[vars->group_idx].recursive_size =
                   MAX2(vars->stack_sizes[vars->group_idx].recursive_size, size + 16);
@@ -426,17 +417,13 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_store_var(&b_shader, vars->accel_struct, intr->src[0].ssa, 0x1);
                nir_store_var(&b_shader, vars->flags, intr->src[1].ssa, 0x1);
                nir_store_var(&b_shader, vars->cull_mask,
-                             nir_iand(&b_shader, intr->src[2].ssa, nir_imm_int(&b_shader, 0xff)),
-                             0x1);
+                             nir_iand_imm(&b_shader, intr->src[2].ssa, 0xff), 0x1);
                nir_store_var(&b_shader, vars->sbt_offset,
-                             nir_iand(&b_shader, intr->src[3].ssa, nir_imm_int(&b_shader, 0xf)),
-                             0x1);
+                             nir_iand_imm(&b_shader, intr->src[3].ssa, 0xf), 0x1);
                nir_store_var(&b_shader, vars->sbt_stride,
-                             nir_iand(&b_shader, intr->src[4].ssa, nir_imm_int(&b_shader, 0xf)),
-                             0x1);
+                             nir_iand_imm(&b_shader, intr->src[4].ssa, 0xf), 0x1);
                nir_store_var(&b_shader, vars->miss_index,
-                             nir_iand(&b_shader, intr->src[5].ssa, nir_imm_int(&b_shader, 0xffff)),
-                             0x1);
+                             nir_iand_imm(&b_shader, intr->src[5].ssa, 0xffff), 0x1);
                nir_store_var(&b_shader, vars->origin, intr->src[6].ssa, 0x7);
                nir_store_var(&b_shader, vars->tmin, intr->src[7].ssa, 0x1);
                nir_store_var(&b_shader, vars->direction, intr->src[8].ssa, 0x7);
@@ -447,10 +434,9 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                uint32_t size = align(nir_intrinsic_stack_size(intr), 16) + RADV_MAX_HIT_ATTRIB_SIZE;
                b_shader.cursor = nir_instr_remove(instr);
 
-               nir_store_var(&b_shader, vars->stack_ptr,
-                             nir_iadd(&b_shader, nir_load_var(&b_shader, vars->stack_ptr),
-                                      nir_imm_int(&b_shader, -size)),
-                             1);
+               nir_store_var(
+                  &b_shader, vars->stack_ptr,
+                  nir_iadd_imm(&b_shader, nir_load_var(&b_shader, vars->stack_ptr), -size), 1);
                break;
             }
             case nir_intrinsic_rt_return_amd: {
@@ -522,7 +508,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             case nir_intrinsic_load_ray_instance_custom_index: {
                b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *ret = nir_load_var(&b_shader, vars->custom_instance_and_mask);
-               ret = nir_iand(&b_shader, ret, nir_imm_int(&b_shader, 0xFFFFFF));
+               ret = nir_iand_imm(&b_shader, ret, 0xFFFFFF);
                nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
                break;
             }
@@ -535,7 +521,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             case nir_intrinsic_load_ray_geometry_index: {
                b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def *ret = nir_load_var(&b_shader, vars->geometry_id_and_flags);
-               ret = nir_iand(&b_shader, ret, nir_imm_int(&b_shader, 0xFFFFFFF));
+               ret = nir_iand_imm(&b_shader, ret, 0xFFFFFFF);
                nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
                break;
             }
@@ -589,9 +575,8 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
 
                   val = nir_vec(&b_shader, vals, 3);
                } else {
-                  val = nir_build_load_global(&b_shader, 3, 32,
-                                              nir_iadd(&b_shader, instance_node_addr,
-                                                       nir_imm_int64(&b_shader, 92 + c * 12)));
+                  val = nir_build_load_global(
+                     &b_shader, 3, 32, nir_iadd_imm(&b_shader, instance_node_addr, 92 + c * 12));
                }
                b_shader.cursor = nir_instr_remove(instr);
                nir_ssa_def_rewrite_uses(&intr->dest.ssa, val);
@@ -600,18 +585,15 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
             case nir_intrinsic_load_ray_object_origin: {
                nir_ssa_def *instance_node_addr = nir_load_var(&b_shader, vars->instance_addr);
                nir_ssa_def *wto_matrix[] = {
-                  nir_build_load_global(
-                     &b_shader, 4, 32,
-                     nir_iadd(&b_shader, instance_node_addr, nir_imm_int64(&b_shader, 16)),
-                     .align_mul = 64, .align_offset = 16),
-                  nir_build_load_global(
-                     &b_shader, 4, 32,
-                     nir_iadd(&b_shader, instance_node_addr, nir_imm_int64(&b_shader, 32)),
-                     .align_mul = 64, .align_offset = 32),
-                  nir_build_load_global(
-                     &b_shader, 4, 32,
-                     nir_iadd(&b_shader, instance_node_addr, nir_imm_int64(&b_shader, 48)),
-                     .align_mul = 64, .align_offset = 48)};
+                  nir_build_load_global(&b_shader, 4, 32,
+                                        nir_iadd_imm(&b_shader, instance_node_addr, 16),
+                                        .align_mul = 64, .align_offset = 16),
+                  nir_build_load_global(&b_shader, 4, 32,
+                                        nir_iadd_imm(&b_shader, instance_node_addr, 32),
+                                        .align_mul = 64, .align_offset = 32),
+                  nir_build_load_global(&b_shader, 4, 32,
+                                        nir_iadd_imm(&b_shader, instance_node_addr, 48),
+                                        .align_mul = 64, .align_offset = 48)};
                nir_ssa_def *val = nir_build_vec3_mat_mult_pre(
                   &b_shader, nir_load_var(&b_shader, vars->origin), wto_matrix);
                b_shader.cursor = nir_instr_remove(instr);
@@ -718,7 +700,7 @@ insert_rt_case(nir_builder *b, nir_shader *shader, const struct rt_variables *va
          MAX2(src_vars.stack_sizes[src_vars.group_idx].recursive_size, shader->scratch_size);
    }
 
-   nir_push_if(b, nir_ieq(b, idx, nir_imm_int(b, call_idx)));
+   nir_push_if(b, nir_ieq_imm(b, idx, call_idx));
    nir_store_var(b, vars->main_loop_case_visited, nir_imm_bool(b, true), 1);
    nir_inline_function_impl(b, nir_shader_get_entrypoint(shader), NULL, var_remap);
    nir_pop_if(b, NULL);
@@ -1070,7 +1052,7 @@ visit_any_hit_shaders(struct radv_device *device,
 {
    nir_ssa_def *sbt_idx = nir_load_var(b, vars->idx);
 
-   nir_push_if(b, nir_ine(b, sbt_idx, nir_imm_int(b, 0)));
+   nir_push_if(b, nir_ine_imm(b, sbt_idx, 0));
    for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
       const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
       uint32_t shader_id = VK_SHADER_UNUSED_KHR;
@@ -1104,34 +1086,30 @@ insert_traversal_triangle_case(struct radv_device *device,
    nir_ssa_def *div = nir_vector_extract(b, result, nir_imm_int(b, 1));
    dist = nir_fdiv(b, dist, div);
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
-   nir_ssa_def *switch_ccw = nir_ine(
-      b,
-      nir_iand(
-         b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
-         nir_imm_int(b, VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24)),
-      nir_imm_int(b, 0));
+   nir_ssa_def *switch_ccw =
+      nir_ine_imm(b,
+                  nir_iand_imm(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
+                               VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24),
+                  0);
    frontface = nir_ixor(b, frontface, switch_ccw);
 
-   nir_ssa_def *not_cull = nir_ieq(
-      b, nir_iand(b, nir_load_var(b, vars->flags), nir_imm_int(b, SpvRayFlagsSkipTrianglesKHRMask)),
-      nir_imm_int(b, 0));
-   nir_ssa_def *not_facing_cull = nir_ieq(
+   nir_ssa_def *not_cull = nir_ieq_imm(
+      b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsSkipTrianglesKHRMask), 0);
+   nir_ssa_def *not_facing_cull = nir_ieq_imm(
       b,
       nir_iand(b, nir_load_var(b, vars->flags),
                nir_bcsel(b, frontface, nir_imm_int(b, SpvRayFlagsCullFrontFacingTrianglesKHRMask),
                          nir_imm_int(b, SpvRayFlagsCullBackFacingTrianglesKHRMask))),
-      nir_imm_int(b, 0));
+      0);
 
    not_cull = nir_iand(
       b, not_cull,
       nir_ior(
          b, not_facing_cull,
-         nir_ine(
-            b,
-            nir_iand(
-               b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
-               nir_imm_int(b, VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)),
-            nir_imm_int(b, 0))));
+         nir_ine_imm(b,
+                     nir_iand_imm(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
+                                  VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24),
+                     0)));
 
    nir_push_if(b, nir_iand(b,
                            nir_iand(b, nir_flt(b, dist, nir_load_var(b, vars->tmax)),
@@ -1139,38 +1117,36 @@ insert_traversal_triangle_case(struct radv_device *device,
                            not_cull));
    {
 
-      nir_ssa_def *triangle_info = nir_build_load_global(
-         b, 2, 32,
-         nir_iadd(b, build_node_to_addr(device, b, bvh_node),
-                  nir_imm_int64(b, offsetof(struct radv_bvh_triangle_node, triangle_id))));
+      nir_ssa_def *triangle_info =
+         nir_build_load_global(b, 2, 32,
+                               nir_iadd_imm(b, build_node_to_addr(device, b, bvh_node),
+                                            offsetof(struct radv_bvh_triangle_node, triangle_id)));
       nir_ssa_def *primitive_id = nir_channel(b, triangle_info, 0);
       nir_ssa_def *geometry_id_and_flags = nir_channel(b, triangle_info, 1);
-      nir_ssa_def *geometry_id = nir_iand(b, geometry_id_and_flags, nir_imm_int(b, 0xfffffff));
+      nir_ssa_def *geometry_id = nir_iand_imm(b, geometry_id_and_flags, 0xfffffff);
       nir_ssa_def *is_opaque = hit_is_opaque(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
                                              nir_load_var(b, vars->flags), geometry_id_and_flags);
 
       not_cull =
-         nir_ieq(b,
-                 nir_iand(b, nir_load_var(b, vars->flags),
-                          nir_bcsel(b, is_opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
-                                    nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
-                 nir_imm_int(b, 0));
+         nir_ieq_imm(b,
+                     nir_iand(b, nir_load_var(b, vars->flags),
+                              nir_bcsel(b, is_opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
+                                        nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
+                     0);
       nir_push_if(b, not_cull);
       {
-         nir_ssa_def *sbt_idx =
-            nir_iadd(b,
-                     nir_iadd(b, nir_load_var(b, vars->sbt_offset),
-                              nir_iand(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
-                                       nir_imm_int(b, 0xffffff))),
-                     nir_imul(b, nir_load_var(b, vars->sbt_stride), geometry_id));
+         nir_ssa_def *sbt_idx = nir_iadd(
+            b,
+            nir_iadd(b, nir_load_var(b, vars->sbt_offset),
+                     nir_iand_imm(b, nir_load_var(b, trav_vars->sbt_offset_and_flags), 0xffffff)),
+            nir_imul(b, nir_load_var(b, vars->sbt_stride), geometry_id));
          nir_ssa_def *divs[2] = {div, div};
          nir_ssa_def *ij = nir_fdiv(b, nir_channels(b, result, 0xc), nir_vec(b, divs, 2));
          nir_ssa_def *hit_kind =
             nir_bcsel(b, frontface, nir_imm_int(b, 0xFE), nir_imm_int(b, 0xFF));
 
          nir_store_scratch(
-            b, ij,
-            nir_iadd(b, nir_load_var(b, vars->stack_ptr), nir_imm_int(b, RADV_HIT_ATTRIB_OFFSET)),
+            b, ij, nir_iadd_imm(b, nir_load_var(b, vars->stack_ptr), RADV_HIT_ATTRIB_OFFSET),
             .align_mul = 16);
 
          nir_store_var(b, vars->ahit_status, nir_imm_int(b, 0), 1);
@@ -1193,7 +1169,7 @@ insert_traversal_triangle_case(struct radv_device *device,
 
             visit_any_hit_shaders(device, pCreateInfo, b, &inner_vars);
 
-            nir_push_if(b, nir_ieq(b, nir_load_var(b, vars->ahit_status), nir_imm_int(b, 1)));
+            nir_push_if(b, nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), 1));
             {
                nir_jump(b, nir_jump_continue);
             }
@@ -1214,20 +1190,17 @@ insert_traversal_triangle_case(struct radv_device *device,
 
          nir_store_var(b, trav_vars->should_return,
                        nir_ior(b,
-                               nir_ine(b,
-                                       nir_iand(b, nir_load_var(b, vars->flags),
-                                                nir_imm_int(b, SpvRayFlagsSkipClosestHitShaderKHRMask)),
-                                       nir_imm_int(b, 0)),
-                               nir_ieq(b, nir_load_var(b, vars->idx), nir_imm_int(b, 0))),
+                               nir_ine_imm(b,
+                                           nir_iand_imm(b, nir_load_var(b, vars->flags),
+                                                        SpvRayFlagsSkipClosestHitShaderKHRMask),
+                                           0),
+                               nir_ieq_imm(b, nir_load_var(b, vars->idx), 0)),
                        1);
 
-         nir_ssa_def *terminate_on_first_hit =
-            nir_ine(b,
-                    nir_iand(b, nir_load_var(b, vars->flags),
-                             nir_imm_int(b, SpvRayFlagsTerminateOnFirstHitKHRMask)),
-                    nir_imm_int(b, 0));
-         nir_ssa_def *ray_terminated =
-            nir_ieq(b, nir_load_var(b, vars->ahit_status), nir_imm_int(b, 2));
+         nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
+            b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
+            0);
+         nir_ssa_def *ray_terminated = nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), 2);
          nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
          {
             nir_jump(b, nir_jump_break);
@@ -1246,31 +1219,29 @@ insert_traversal_aabb_case(struct radv_device *device,
                            const struct rt_traversal_vars *trav_vars, nir_ssa_def *bvh_node)
 {
    nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node);
-   nir_ssa_def *triangle_info =
-      nir_build_load_global(b, 2, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 24)));
+   nir_ssa_def *triangle_info = nir_build_load_global(b, 2, 32, nir_iadd_imm(b, node_addr, 24));
    nir_ssa_def *primitive_id = nir_channel(b, triangle_info, 0);
    nir_ssa_def *geometry_id_and_flags = nir_channel(b, triangle_info, 1);
-   nir_ssa_def *geometry_id = nir_iand(b, geometry_id_and_flags, nir_imm_int(b, 0xfffffff));
+   nir_ssa_def *geometry_id = nir_iand_imm(b, geometry_id_and_flags, 0xfffffff);
    nir_ssa_def *is_opaque = hit_is_opaque(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
                                           nir_load_var(b, vars->flags), geometry_id_and_flags);
 
-   nir_ssa_def *not_skip_aabb = nir_ieq(
-      b, nir_iand(b, nir_load_var(b, vars->flags), nir_imm_int(b, SpvRayFlagsSkipAABBsKHRMask)),
-      nir_imm_int(b, 0));
-   nir_ssa_def *not_cull =
-      nir_iand(b, not_skip_aabb, nir_ieq(b,
-              nir_iand(b, nir_load_var(b, vars->flags),
-                       nir_bcsel(b, is_opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
-                                 nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
-              nir_imm_int(b, 0)));
+   nir_ssa_def *not_skip_aabb =
+      nir_ieq_imm(b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsSkipAABBsKHRMask), 0);
+   nir_ssa_def *not_cull = nir_iand(
+      b, not_skip_aabb,
+      nir_ieq_imm(b,
+                  nir_iand(b, nir_load_var(b, vars->flags),
+                           nir_bcsel(b, is_opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
+                                     nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
+                  0));
    nir_push_if(b, not_cull);
    {
-      nir_ssa_def *sbt_idx =
-         nir_iadd(b,
-                  nir_iadd(b, nir_load_var(b, vars->sbt_offset),
-                           nir_iand(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
-                                    nir_imm_int(b, 0xffffff))),
-                  nir_imul(b, nir_load_var(b, vars->sbt_stride), geometry_id));
+      nir_ssa_def *sbt_idx = nir_iadd(
+         b,
+         nir_iadd(b, nir_load_var(b, vars->sbt_offset),
+                  nir_iand_imm(b, nir_load_var(b, trav_vars->sbt_offset_and_flags), 0xffffff)),
+         nir_imul(b, nir_load_var(b, vars->sbt_stride), geometry_id));
 
       struct rt_variables inner_vars = create_inner_vars(b, vars);
 
@@ -1291,7 +1262,7 @@ insert_traversal_aabb_case(struct radv_device *device,
 
       nir_store_var(b, vars->ahit_status, nir_imm_int(b, 1), 1);
 
-      nir_push_if(b, nir_ine(b, nir_load_var(b, inner_vars.idx), nir_imm_int(b, 0)));
+      nir_push_if(b, nir_ine_imm(b, nir_load_var(b, inner_vars.idx), 0));
       for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
          const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
          uint32_t shader_id = VK_SHADER_UNUSED_KHR;
@@ -1329,10 +1300,8 @@ insert_traversal_aabb_case(struct radv_device *device,
          nir_ssa_def *vec3_inf =
             nir_channels(b, nir_imm_vec4(b, INFINITY, INFINITY, INFINITY, 0), 0x7);
 
-         nir_ssa_def *bvh_lo =
-            nir_build_load_global(b, 3, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 0)));
-         nir_ssa_def *bvh_hi =
-            nir_build_load_global(b, 3, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 12)));
+         nir_ssa_def *bvh_lo = nir_build_load_global(b, 3, 32, nir_iadd_imm(b, node_addr, 0));
+         nir_ssa_def *bvh_hi = nir_build_load_global(b, 3, 32, nir_iadd_imm(b, node_addr, 12));
 
          bvh_lo = nir_fsub(b, bvh_lo, nir_load_var(b, trav_vars->origin));
          bvh_hi = nir_fsub(b, bvh_hi, nir_load_var(b, trav_vars->origin));
@@ -1360,7 +1329,7 @@ insert_traversal_aabb_case(struct radv_device *device,
       }
       nir_pop_if(b, NULL);
 
-      nir_push_if(b, nir_ine(b, nir_load_var(b, vars->ahit_status), nir_imm_int(b, 1)));
+      nir_push_if(b, nir_ine_imm(b, nir_load_var(b, vars->ahit_status), 1));
       {
          nir_store_var(b, vars->primitive_id, primitive_id, 1);
          nir_store_var(b, vars->geometry_id_and_flags, geometry_id_and_flags, 1);
@@ -1374,20 +1343,17 @@ insert_traversal_aabb_case(struct radv_device *device,
 
          nir_store_var(b, trav_vars->should_return,
                        nir_ior(b,
-                               nir_ine(b,
-                                       nir_iand(b, nir_load_var(b, vars->flags),
-                                                nir_imm_int(b, SpvRayFlagsSkipClosestHitShaderKHRMask)),
-                                       nir_imm_int(b, 0)),
-                               nir_ieq(b, nir_load_var(b, vars->idx), nir_imm_int(b, 0))),
+                               nir_ine_imm(b,
+                                           nir_iand_imm(b, nir_load_var(b, vars->flags),
+                                                        SpvRayFlagsSkipClosestHitShaderKHRMask),
+                                           0),
+                               nir_ieq_imm(b, nir_load_var(b, vars->idx), 0)),
                        1);
 
-         nir_ssa_def *terminate_on_first_hit =
-            nir_ine(b,
-                    nir_iand(b, nir_load_var(b, vars->flags),
-                             nir_imm_int(b, SpvRayFlagsTerminateOnFirstHitKHRMask)),
-                    nir_imm_int(b, 0));
-         nir_ssa_def *ray_terminated =
-            nir_ieq(b, nir_load_var(b, vars->ahit_status), nir_imm_int(b, 2));
+         nir_ssa_def *terminate_on_first_hit = nir_ine_imm(
+            b, nir_iand_imm(b, nir_load_var(b, vars->flags), SpvRayFlagsTerminateOnFirstHitKHRMask),
+            0);
+         nir_ssa_def *ray_terminated = nir_ieq_imm(b, nir_load_var(b, vars->ahit_status), 2);
          nir_push_if(b, nir_ior(b, terminate_on_first_hit, ray_terminated));
          {
             nir_jump(b, nir_jump_break);
@@ -1409,8 +1375,8 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
    unsigned stack_entry_stride = stack_entry_size * lanes;
    nir_ssa_def *stack_entry_stride_def = nir_imm_int(b, stack_entry_stride);
    nir_ssa_def *stack_base =
-      nir_iadd(b, nir_imm_int(b, b->shader->info.shared_size),
-               nir_imul(b, nir_load_local_invocation_index(b), nir_imm_int(b, stack_entry_size)));
+      nir_iadd_imm(b, nir_imul_imm(b, nir_load_local_invocation_index(b), stack_entry_size),
+                   b->shader->info.shared_size);
 
    b->shader->info.shared_size += stack_entry_stride * MAX_STACK_ENTRY_COUNT;
    assert(b->shader->info.shared_size <= 32768);
@@ -1425,7 +1391,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    nir_store_var(b, trav_vars.should_return, nir_imm_bool(b, false), 1);
 
-   nir_push_if(b, nir_ine(b, accel_struct, nir_imm_int64(b, 0)));
+   nir_push_if(b, nir_ine_imm(b, accel_struct, 0));
    {
       nir_store_var(b, trav_vars.bvh_base, build_addr_to_node(b, accel_struct), 1);
 
@@ -1469,7 +1435,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
       nir_ssa_def *bvh_node = nir_load_shared(b, 1, 32, nir_load_var(b, trav_vars.stack), .base = 0,
                                               .align_mul = stack_entry_size);
-      nir_ssa_def *bvh_node_type = nir_iand(b, bvh_node, nir_imm_int(b, 7));
+      nir_ssa_def *bvh_node_type = nir_iand_imm(b, bvh_node, 7);
 
       bvh_node = nir_iadd(b, nir_load_var(b, trav_vars.bvh_base), nir_u2u(b, bvh_node, 64));
       nir_ssa_def *intrinsic_result = NULL;
@@ -1480,14 +1446,12 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
             nir_load_var(b, trav_vars.inv_dir));
       }
 
-      nir_push_if(b, nir_ine(b, nir_iand(b, bvh_node_type, nir_imm_int(b, 4)), nir_imm_int(b, 0)));
+      nir_push_if(b, nir_ine_imm(b, nir_iand_imm(b, bvh_node_type, 4), 0));
       {
-         nir_push_if(b,
-                     nir_ine(b, nir_iand(b, bvh_node_type, nir_imm_int(b, 2)), nir_imm_int(b, 0)));
+         nir_push_if(b, nir_ine_imm(b, nir_iand_imm(b, bvh_node_type, 2), 0));
          {
             /* custom */
-            nir_push_if(
-               b, nir_ine(b, nir_iand(b, bvh_node_type, nir_imm_int(b, 1)), nir_imm_int(b, 0)));
+            nir_push_if(b, nir_ine_imm(b, nir_iand_imm(b, bvh_node_type, 1), 0));
             if (!(pCreateInfo->flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR)) {
                insert_traversal_aabb_case(device, pCreateInfo, b, vars, &trav_vars, bvh_node);
             }
@@ -1498,23 +1462,20 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
                nir_ssa_def *instance_data =
                   nir_build_load_global(b, 4, 32, instance_node_addr, .align_mul = 64);
                nir_ssa_def *wto_matrix[] = {
-                  nir_build_load_global(b, 4, 32,
-                                        nir_iadd(b, instance_node_addr, nir_imm_int64(b, 16)),
+                  nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 16),
                                         .align_mul = 64, .align_offset = 16),
-                  nir_build_load_global(b, 4, 32,
-                                        nir_iadd(b, instance_node_addr, nir_imm_int64(b, 32)),
+                  nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 32),
                                         .align_mul = 64, .align_offset = 32),
-                  nir_build_load_global(b, 4, 32,
-                                        nir_iadd(b, instance_node_addr, nir_imm_int64(b, 48)),
+                  nir_build_load_global(b, 4, 32, nir_iadd_imm(b, instance_node_addr, 48),
                                         .align_mul = 64, .align_offset = 48)};
-               nir_ssa_def *instance_id = nir_build_load_global(
-                  b, 1, 32, nir_iadd(b, instance_node_addr, nir_imm_int64(b, 88)));
+               nir_ssa_def *instance_id =
+                  nir_build_load_global(b, 1, 32, nir_iadd_imm(b, instance_node_addr, 88));
                nir_ssa_def *instance_and_mask = nir_channel(b, instance_data, 2);
-               nir_ssa_def *instance_mask = nir_ushr(b, instance_and_mask, nir_imm_int(b, 24));
+               nir_ssa_def *instance_mask = nir_ushr_imm(b, instance_and_mask, 24);
 
-               nir_push_if(b,
-                           nir_ieq(b, nir_iand(b, instance_mask, nir_load_var(b, vars->cull_mask)),
-                                   nir_imm_int(b, 0)));
+               nir_push_if(
+                  b,
+                  nir_ieq_imm(b, nir_iand(b, instance_mask, nir_load_var(b, vars->cull_mask)), 0));
                nir_jump(b, nir_jump_continue);
                nir_pop_if(b, NULL);
 
@@ -1523,9 +1484,9 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
                              build_addr_to_node(
                                 b, nir_pack_64_2x32(b, nir_channels(b, instance_data, 0x3))),
                              1);
-               nir_store_shared(
-                  b, nir_iand(b, nir_channel(b, instance_data, 0), nir_imm_int(b, 63)),
-                  nir_load_var(b, trav_vars.stack), .base = 0, .align_mul = stack_entry_size);
+               nir_store_shared(b, nir_iand_imm(b, nir_channel(b, instance_data, 0), 63),
+                                nir_load_var(b, trav_vars.stack), .base = 0,
+                                .align_mul = stack_entry_size);
                nir_store_var(b, trav_vars.stack,
                              nir_iadd(b, nir_load_var(b, trav_vars.stack), stack_entry_stride_def),
                              1);
@@ -1561,7 +1522,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
             for (unsigned i = 4; i-- > 0; ) {
                nir_ssa_def *new_node = nir_vector_extract(b, result, nir_imm_int(b, i));
-               nir_push_if(b, nir_ine(b, new_node, nir_imm_int(b, 0xffffffff)));
+               nir_push_if(b, nir_ine_imm(b, new_node, 0xffffffff));
                {
                   nir_store_shared(b, new_node, nir_load_var(b, trav_vars.stack), .base = 0,
                                    .align_mul = stack_entry_size);
@@ -1603,7 +1564,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
       /* Only load the miss shader if we actually miss, which we determining by not having set
        * a closest hit shader. It is valid to not specify an SBT pointer for miss shaders if none
        * of the rays miss. */
-      nir_push_if(b, nir_ieq(b, nir_load_var(b, vars->idx), nir_imm_int(b, 0)));
+      nir_push_if(b, nir_ieq_imm(b, nir_load_var(b, vars->idx), 0));
       {
          load_sbt_entry(b, vars, nir_load_var(b, vars->miss_index), SBT_MISS, 0);
       }
@@ -1704,7 +1665,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    nir_loop *loop = nir_push_loop(&b);
 
-   nir_push_if(&b, nir_ior(&b, nir_ieq(&b, nir_load_var(&b, vars.idx), nir_imm_int(&b, 0)),
+   nir_push_if(&b, nir_ior(&b, nir_ieq_imm(&b, nir_load_var(&b, vars.idx), 0),
                            nir_ine(&b, nir_load_var(&b, vars.main_loop_case_visited),
                                    nir_imm_bool(&b, true))));
    nir_jump(&b, nir_jump_break);
@@ -1712,7 +1673,7 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
    nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, false), 1);
 
-   nir_push_if(&b, nir_ieq(&b, nir_load_var(&b, vars.idx), nir_imm_int(&b, 1)));
+   nir_push_if(&b, nir_ieq_imm(&b, nir_load_var(&b, vars.idx), 1));
    nir_store_var(&b, vars.main_loop_case_visited, nir_imm_bool(&b, true), 1);
    insert_traversal(device, pCreateInfo, &b, &vars);
    nir_pop_if(&b, NULL);

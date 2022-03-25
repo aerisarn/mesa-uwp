@@ -64,8 +64,8 @@ build_nir_vertex_shader(struct radv_device *dev)
    /* so channel 0 is vertex_id != 2 ? src_x : src_x + w
       channel 1 is vertex id != 1 ? src_y : src_y + w */
 
-   nir_ssa_def *c0cmp = nir_ine(&b, vertex_id, nir_imm_int(&b, 2));
-   nir_ssa_def *c1cmp = nir_ine(&b, vertex_id, nir_imm_int(&b, 1));
+   nir_ssa_def *c0cmp = nir_ine_imm(&b, vertex_id, 2);
+   nir_ssa_def *c1cmp = nir_ine_imm(&b, vertex_id, 1);
 
    nir_ssa_def *comp[4];
    comp[0] = nir_bcsel(&b, c0cmp, nir_channel(&b, src_box, 0), nir_channel(&b, src_box, 2));

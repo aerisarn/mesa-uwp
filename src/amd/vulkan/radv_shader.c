@@ -365,12 +365,12 @@ radv_lower_primitive_shading_rate(nir_shader *nir)
          nir_ssa_def *val = nir_ssa_for_src(&b, intr->src[1], 1);
 
          /* x_rate = (shadingRate & (Horizontal2Pixels | Horizontal4Pixels)) ? 0x1 : 0x0; */
-         nir_ssa_def *x_rate = nir_iand(&b, val, nir_imm_int(&b, 12));
-         x_rate = nir_b2i32(&b, nir_ine(&b, x_rate, nir_imm_int(&b, 0)));
+         nir_ssa_def *x_rate = nir_iand_imm(&b, val, 12);
+         x_rate = nir_b2i32(&b, nir_ine_imm(&b, x_rate, 0));
 
          /* y_rate = (shadingRate & (Vertical2Pixels | Vertical4Pixels)) ? 0x1 : 0x0; */
-         nir_ssa_def *y_rate = nir_iand(&b, val, nir_imm_int(&b, 3));
-         y_rate = nir_b2i32(&b, nir_ine(&b, y_rate, nir_imm_int(&b, 0)));
+         nir_ssa_def *y_rate = nir_iand_imm(&b, val, 3);
+         y_rate = nir_b2i32(&b, nir_ine_imm(&b, y_rate, 0));
 
          nir_ssa_def *out = NULL;
 
@@ -383,8 +383,7 @@ radv_lower_primitive_shading_rate(nir_shader *nir)
              * Bits [30:31] = VRS rate Y
              * This will be added to the other bits of that channel in the backend.
              */
-            out = nir_ior(&b, nir_ishl(&b, x_rate, nir_imm_int(&b, 28)),
-                              nir_ishl(&b, y_rate, nir_imm_int(&b, 30)));
+            out = nir_ior(&b, nir_ishl_imm(&b, x_rate, 28), nir_ishl_imm(&b, y_rate, 30));
          } else {
             /* VS, TES, GS:
              * Primitive shading rate is a per-vertex output pos export.
@@ -393,8 +392,7 @@ radv_lower_primitive_shading_rate(nir_shader *nir)
              * Bits [4:5] = VRS rate Y
              * HW shading rate = (xRate << 2) | (yRate << 4)
              */
-            out = nir_ior(&b, nir_ishl(&b, x_rate, nir_imm_int(&b, 2)),
-                              nir_ishl(&b, y_rate, nir_imm_int(&b, 4)));
+            out = nir_ior(&b, nir_ishl_imm(&b, x_rate, 2), nir_ishl_imm(&b, y_rate, 4));
          }
 
          nir_instr_rewrite_src(&intr->instr, &intr->src[1], nir_src_for_ssa(out));
@@ -531,10 +529,10 @@ radv_lower_fs_intrinsics(nir_shader *nir, const struct radv_pipeline_stage *fs_s
             /* VRS Rate X = Ancillary[2:3] */
             nir_ssa_def *ancillary =
                nir_load_vector_arg_amd(&b, 1, .base = args->ac.ancillary.arg_index);
-            nir_ssa_def *x_rate = nir_ubfe(&b, ancillary, nir_imm_int(&b, 2), nir_imm_int(&b, 2));
+            nir_ssa_def *x_rate = nir_ubfe_imm(&b, ancillary, 2, 2);
 
             /* xRate = xRate == 0x1 ? adjusted_frag_z : frag_z. */
-            nir_ssa_def *cond = nir_ieq(&b, x_rate, nir_imm_int(&b, 1));
+            nir_ssa_def *cond = nir_ieq_imm(&b, x_rate, 1);
             frag_z = nir_bcsel(&b, cond, adjusted_frag_z, frag_z);
 
             nir_ssa_def *new_dest = nir_vector_insert_imm(&b, &intrin->dest.ssa, frag_z, 2);

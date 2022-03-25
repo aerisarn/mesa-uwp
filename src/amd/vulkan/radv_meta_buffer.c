@@ -12,7 +12,7 @@ build_buffer_fill_shader(struct radv_device *dev)
 
    nir_ssa_def *global_id = get_global_ids(&b, 1);
 
-   nir_ssa_def *offset = nir_imul(&b, global_id, nir_imm_int(&b, 16));
+   nir_ssa_def *offset = nir_imul_imm(&b, global_id, 16);
    offset = nir_channel(&b, offset, 0);
 
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
@@ -34,7 +34,7 @@ build_buffer_copy_shader(struct radv_device *dev)
 
    nir_ssa_def *global_id = get_global_ids(&b, 1);
 
-   nir_ssa_def *offset = nir_imul(&b, global_id, nir_imm_int(&b, 16));
+   nir_ssa_def *offset = nir_imul_imm(&b, global_id, 16);
    offset = nir_channel(&b, offset, 0);
 
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);

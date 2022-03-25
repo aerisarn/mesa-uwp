@@ -690,8 +690,8 @@ radv_meta_gen_rect_vertices_comp2(nir_builder *vs_b, nir_ssa_def *comp2)
    /* so channel 0 is vertex_id != 2 ? -1.0 : 1.0
       channel 1 is vertex id != 1 ? -1.0 : 1.0 */
 
-   nir_ssa_def *c0cmp = nir_ine(vs_b, vertex_id, nir_imm_int(vs_b, 2));
-   nir_ssa_def *c1cmp = nir_ine(vs_b, vertex_id, nir_imm_int(vs_b, 1));
+   nir_ssa_def *c0cmp = nir_ine_imm(vs_b, vertex_id, 2);
+   nir_ssa_def *c1cmp = nir_ine_imm(vs_b, vertex_id, 1);
 
    nir_ssa_def *comp[4];
    comp[0] = nir_bcsel(vs_b, c0cmp, nir_imm_float(vs_b, -1.0), nir_imm_float(vs_b, 1.0));
@@ -846,6 +846,6 @@ radv_break_on_count(nir_builder *b, nir_variable *var, nir_ssa_def *count)
    nir_jump(b, nir_jump_break);
    nir_pop_if(b, NULL);
 
-   counter = nir_iadd(b, counter, nir_imm_int(b, 1));
+   counter = nir_iadd_imm(b, counter, 1);
    nir_store_var(b, var, counter, 0x1);
 }

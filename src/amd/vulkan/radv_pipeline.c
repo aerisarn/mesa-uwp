@@ -3824,7 +3824,7 @@ radv_adjust_vertex_fetch_alpha(nir_builder *b,
     */
    unsigned offset = alpha_adjust == ALPHA_ADJUST_SNORM ? 23u : 0u;
 
-   alpha = nir_ibfe(b, alpha, nir_imm_int(b, offset), nir_imm_int(b, 2u));
+   alpha = nir_ibfe_imm(b, alpha, offset, 2u);
 
    /* Convert back to the right type. */
    if (alpha_adjust == ALPHA_ADJUST_SNORM) {
