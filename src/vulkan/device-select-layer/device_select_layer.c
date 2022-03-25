@@ -528,6 +528,11 @@ static VkResult device_select_EnumeratePhysicalDevices(VkInstance instance,
 
    assert(result == VK_SUCCESS);
 
+   /* do not give multiple device option to app if force default device */
+   const char *force_default_device = getenv("MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE");
+   if (force_default_device && !strcmp(force_default_device, "1") && selected_physical_device_count != 0)
+      selected_physical_device_count = 1;
+
    for (unsigned i = 0; i < selected_physical_device_count; i++) {
       vk_outarray_append_typed(VkPhysicalDevice, &out, ent) {
          *ent = selected_physical_devices[i];

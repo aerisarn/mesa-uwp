@@ -437,6 +437,19 @@ DRI environment variables
    disable MSAA for GLX/EGL MSAA visuals
 
 
+Vulkan mesa device select layer environment variables
+-----------------------------------------------------
+
+:envvar:`MESA_VK_DEVICE_SELECT`
+   when set to "list" prints the list of devices.
+   when set to "vid:did" number from pci device. That pci device is
+   selected as default. The default device is returned as the first
+   device in vkEnumeratePhysicalDevices api.
+:envvar:`MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE`
+   when set to 1, the device identified as default will be the only
+   one returned in vkEnumeratePhysicalDevices api.
+
+
 EGL environment variables
 -------------------------
 
