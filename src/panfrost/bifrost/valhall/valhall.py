@@ -386,6 +386,7 @@ MODIFIERS = {
     "skip": Flag("skip", 39),
     "register_width": Modifier("register_width", 46, 1, force_enum = "register_width"),
     "secondary_register_width": Modifier("secondary_register_width", 47, 1, force_enum = "register_width"),
+    "vartex_register_width": Modifier("varying_texture_register_width", 24, 2),
 
     "atom_opc": Modifier("atomic_operation", 22, 4),
     "atom_opc_1": Modifier("atomic_operation_with_1", 22, 4),
@@ -405,6 +406,7 @@ MODIFIERS = {
     "cmp": Modifier("condition", 32, 3),
     "clamp": Modifier("clamp", 32, 2),
     "sr_count": Modifier("staging_register_count", 33, 3, implied = True),
+    "sample_and_update": Modifier("sample_and_update_mode", 33, 3),
     "sr_write_count": Modifier("staging_register_write_count", 36, 3, implied = True),
 
     "conservative": Flag("conservative", 35),

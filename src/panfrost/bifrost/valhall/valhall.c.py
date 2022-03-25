@@ -65,6 +65,11 @@ SKIP = set([
         "CLPER.v2u16",
         "CLPER.v4u8",
 
+        # VAR_TEX
+        "VAR_TEX_BUF_SINGLE",
+        "VAR_TEX_BUF_GATHER",
+        "VAR_TEX_BUF_DUAL",
+
         # Special cased
         "FMA_RSCALE_N.f32",
         "FMA_RSCALE_LEFT.f32",
@@ -80,7 +85,6 @@ SKIP = set([
         "FATAN_ASSIST.f32",
         "SEG_ADD.u64",
         "TEX_DUAL",
-        "TODO.VAR_TEX",
     ])
 
 template = """

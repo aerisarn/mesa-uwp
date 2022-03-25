@@ -586,6 +586,17 @@
     <value>32</value>
   </enum>
 
+  <enum name="Varying texture register width">
+    <desc>
+      Size of results for varying texture instructions. For dual 16-bit results
+      use "16-bit".
+    </desc>
+    <value desc="16-bit">16</value>
+    <value desc="32-bit">32</value>
+    <value desc="16-bit, 32-bit">16.32</value>
+    <value desc="32-bit, 32-bit">32.32</value>
+  </enum>
+
   <enum name="Vector size">
     <desc>Number of channels loaded/stored for general memory access.</desc>
     <value default="true" desc="Scalar">none</value>
@@ -704,6 +715,21 @@
     <value desc="Retrieve interpolation position">retrieve</value>
     <reserved/>
     <value desc="Clobber saved position">clobber</value>
+  </enum>
+
+  <enum name="Sample and update mode">
+    <desc>
+      For fused varying/texture instructions, only the following specific
+      combinations of sample and update modes are permitted.
+    </desc>
+    <value desc="Center, store">center_store</value>
+    <value desc="Centroid, store">centroid_store</value>
+    <value desc="Sample, store">sample_store</value>
+    <value desc="Explicit, store">explicit_store</value>
+    <value desc="Center, clobber">center_clobber</value>
+    <reserved/>
+    <value desc="Sample, clobber">sample_clobber</value>
+    <value desc="Retrieve previous state">retrieve</value>
   </enum>
 
   <enum name="Source format">
@@ -2401,6 +2427,7 @@
     <texel_offset/>
     <integer_coordinates/>
     <fetch_component/>
+    <shadow/>
 
     <!-- Leave secondary_register_width as 0 -->
     <sr_count/>
@@ -2423,6 +2450,8 @@
     <wide_indices/>
     <array_enable/>
     <texel_offset/>
+    <shadow/>
+    <lod_mode/>
 
     <sr_count/>
     <sr_write_count/>
@@ -2432,17 +2461,71 @@
     <src>Image to read from</src>
   </ins>
 
-  <ins name="TODO.VAR_TEX" title="Fused varying-texturing" opcode="0x130" unit="VT">
+  <ins name="VAR_TEX_BUF_SINGLE" title="Fused varying-texturing" opcode="0x130" unit="VT">
     <desc>
       Only works for FP32 varyings. Performance characteristics are similar
-      to LD_VAR_IMM_F32.v2.f32 followed by TEX, using both V and T units.
+      to LD_VAR_BUF_IMM_F32.v2.f32 followed by TEX, using both V and T units.
     </desc>
-    <sr write="true" count="4"/>
-    <mod name="dimension" start="28" size="2"/>
-    <mod name="skip" start="39" size="1"/>
     <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <shadow/>
+    <lod_mode/>
+
     <sr_write_count/>
-    <src>Image to read from</src>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
+  <ins name="VAR_TEX_BUF_GATHER" title="Fused varying-texturing" opcode="0x131" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_BUF_IMM_F32.v2.f32 followed by TEX, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <integer_coordinates/>
+    <fetch_component/>
+    <shadow/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
+  <ins name="VAR_TEX_BUF_DUAL" title="Fused varying-texturing" opcode="0x137" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_BUF_IMM_F32.v2.f32 followed by TEX_DUAL, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <shadow/>
+    <lod_mode/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
   </ins>
 
   <ins name="FMA_RSCALE.f32" title="Fused floating-point multiply add with exponent bias" dests="1" opcode="0x160" unit="FMA">
