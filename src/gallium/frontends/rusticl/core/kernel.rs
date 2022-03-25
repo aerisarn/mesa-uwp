@@ -467,12 +467,12 @@ impl Kernel {
                             .resource_create_buffer(buf.len() as u32)
                             .unwrap(),
                     );
-                    q.device.helper_ctx().buffer_subdata(
-                        &res,
-                        0,
-                        buf.as_ptr().cast(),
-                        buf.len() as u32,
-                    );
+                    q.device
+                        .helper_ctx()
+                        .exec(|ctx| {
+                            ctx.buffer_subdata(&res, 0, buf.as_ptr().cast(), buf.len() as u32)
+                        })
+                        .wait();
                     resource_info.push((Some(res), arg.offset));
                 }
                 InternalKernelArgType::GlobalWorkOffsets => {

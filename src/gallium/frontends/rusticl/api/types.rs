@@ -2,6 +2,8 @@ extern crate rusticl_opencl_gen;
 
 use self::rusticl_opencl_gen::*;
 
+use std::iter::Product;
+
 #[macro_export]
 macro_rules! cl_closure {
     (|$obj:ident| $cb:ident($($arg:ident$(,)?)*)) => {
@@ -90,6 +92,13 @@ impl<T: Copy> CLVec<T> {
     /// Using it for anything else is undefined.
     pub unsafe fn from_raw(v: *const T) -> Self {
         Self { vals: *v.cast() }
+    }
+
+    pub fn pixels<'a>(&'a self) -> T
+    where
+        T: Product<&'a T>,
+    {
+        self.vals.iter().product()
     }
 }
 

@@ -14,7 +14,10 @@ use self::mesa_rust::compiler::clc::*;
 use self::mesa_rust::compiler::nir::*;
 use self::mesa_rust::pipe::context::*;
 use self::mesa_rust::pipe::device::load_screens;
+use self::mesa_rust::pipe::fence::*;
+use self::mesa_rust::pipe::resource::*;
 use self::mesa_rust::pipe::screen::*;
+use self::mesa_rust::pipe::transfer::*;
 use self::mesa_rust_gen::*;
 use self::rusticl_opencl_gen::*;
 
@@ -23,6 +26,7 @@ use std::cmp::min;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
+use std::os::raw::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
@@ -40,6 +44,67 @@ pub struct Device {
     pub formats: HashMap<cl_image_format, HashMap<cl_mem_object_type, cl_mem_flags>>,
     pub lib_clc: NirShader,
     helper_ctx: Mutex<Arc<PipeContext>>,
+}
+
+pub trait HelperContextWrapper {
+    #[must_use]
+    fn exec<F>(&self, func: F) -> PipeFence
+    where
+        F: Fn(&HelperContext);
+
+    fn buffer_map_async(&self, res: &PipeResource, offset: i32, size: i32) -> PipeTransfer;
+    fn texture_map_async(&self, res: &PipeResource, bx: &pipe_box) -> PipeTransfer;
+    fn unmap(&self, tx: PipeTransfer);
+}
+
+pub struct HelperContext<'a> {
+    lock: MutexGuard<'a, Arc<PipeContext>>,
+}
+
+impl<'a> HelperContext<'a> {
+    pub fn buffer_subdata(
+        &self,
+        res: &PipeResource,
+        offset: c_uint,
+        data: *const c_void,
+        size: c_uint,
+    ) {
+        self.lock.buffer_subdata(res, offset, data, size)
+    }
+
+    pub fn texture_subdata(
+        &self,
+        res: &PipeResource,
+        bx: &pipe_box,
+        data: *const c_void,
+        stride: u32,
+        layer_stride: u32,
+    ) {
+        self.lock
+            .texture_subdata(res, bx, data, stride, layer_stride)
+    }
+}
+
+impl<'a> HelperContextWrapper for HelperContext<'a> {
+    fn exec<F>(&self, func: F) -> PipeFence
+    where
+        F: Fn(&HelperContext),
+    {
+        func(self);
+        self.lock.flush()
+    }
+
+    fn buffer_map_async(&self, res: &PipeResource, offset: i32, size: i32) -> PipeTransfer {
+        self.lock.buffer_map(res, offset, size, false)
+    }
+
+    fn texture_map_async(&self, res: &PipeResource, bx: &pipe_box) -> PipeTransfer {
+        self.lock.texture_map(res, bx, false)
+    }
+
+    fn unmap(&self, tx: PipeTransfer) {
+        tx.with_ctx(&self.lock);
+    }
 }
 
 impl_cl_type_trait!(cl_device_id, Device, CL_INVALID_DEVICE);
@@ -534,8 +599,10 @@ impl Device {
         id as u32
     }
 
-    pub fn helper_ctx(&self) -> MutexGuard<Arc<PipeContext>> {
-        self.helper_ctx.lock().unwrap()
+    pub fn helper_ctx(&self) -> impl HelperContextWrapper + '_ {
+        HelperContext {
+            lock: self.helper_ctx.lock().unwrap(),
+        }
     }
 
     pub fn cl_features(&self) -> clc_optional_features {
