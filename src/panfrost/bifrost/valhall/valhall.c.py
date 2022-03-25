@@ -77,6 +77,7 @@ SKIP = set([
         # TODO
         "IDP.v4s8",
         "IDP.v4u8",
+        "FATAN_ASSIST.f32",
         "TEX_DUAL",
         "TODO.VAR_TEX",
     ])

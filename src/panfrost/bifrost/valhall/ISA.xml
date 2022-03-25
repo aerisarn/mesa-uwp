@@ -1677,8 +1677,10 @@
     <desc>
       Performs a given special function. The floating-point reciprocal (`FRCP`)
       and reciprocal square root (`FRSQ`) instructions may be freely used as-is.
-      The logarithm instruction (`FLOGD.f32`) requires an argument reduction. See the
-      transcendentals section for more information.
+      The logarithm instruction (`FLOGD.f32`) requires an argument
+      reduction. See the transcendentals section for more information. Like the
+      Bifrost op, `FRSQ_APPROX.f32` does an implicit `FREXPM.f32.sqrt` on the
+      source.
     </desc>
     <src float="true" swizzle="true" absneg="true"/>
   </group>
@@ -1689,8 +1691,9 @@
     <ins name="FSINCOS_OFFSET.u6" opcode2="6"/>
     <ins name="FEXP_TABLE.u4" opcode2="13"/>
     <desc>
-      Performs a given special function.The trigonometric tables (`FSIN_TABLE.u6` and `FCOS_TABLE.u6`) are crude,
-      requiring both an argument reduction and postprocessing.
+      Performs a given special function. The trigonometric tables
+      (`FSIN_TABLE.u6` and `FCOS_TABLE.u6`) are crude, requiring both an
+      argument reduction and postprocessing.
     </desc>
     <src/>
   </group>
@@ -1765,6 +1768,17 @@
     <clamp/>
     <src absneg="true">A</src>
     <src absneg="true">B</src>
+  </ins>
+
+  <ins name="FATAN_ASSIST.f32" title="ATAN calculation helper" dests="1" opcode="0xA4" opcode2="14" unit="SFU">
+    <desc>
+      Used for `atan2()` implementation. Destination is two 16-bit
+      values (int and float) for the first form, and a single 32-bit float when
+      `.second` is set (indicating the FATAN_TABLE.f32 instruction).
+    </desc>
+    <mod name="second" start="24" size="1"/>
+    <src>A</src>
+    <src>B</src>
   </ins>
 
   <group name="IADD" title="Integer addition" dests="1" opcode2="0" unit="CVT">
