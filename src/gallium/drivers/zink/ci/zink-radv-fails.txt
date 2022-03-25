@@ -5,7 +5,6 @@ KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_
 KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule4,Fail
 KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule5,Fail
 KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule7,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_tessellation.TCS_TES,Fail
 
 #4562
 dEQP-GLES31.functional.image_load_store.3d.load_store.r32f_single_layer,Fail
@@ -55,169 +54,6 @@ dEQP-GLES2.functional.fragment_ops.stencil.incr_wrap_stencil_fail,Fail
 dEQP-GLES2.functional.fragment_ops.stencil.invert_stencil_fail,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_loop_wide,Fail
 dEQP-GLES2.functional.rasterization.primitives.line_strip_wide,Fail
-dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_center,Fail
-dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
-dEQP-GLES3.functional.clipping.point.wide_point_clip,Fail
-dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_center,Fail
-dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_corner,Fail
-dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth24_stencil8,Fail
-dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth32f_stencil8,Fail
-dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth_component24,Fail
-dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth_component32f,Fail
-dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth24_stencil8,Fail
-dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth32f_stencil8,Fail
-dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth_component24,Fail
-dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth_component32f,Fail
-dEQP-GLES3.functional.occlusion_query.depth_clear,Fail
-dEQP-GLES3.functional.occlusion_query.depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.depth_write_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_write_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.stencil_clear,Fail
-dEQP-GLES3.functional.polygon_offset.fixed16_render_with_units,Fail
-dEQP-GLES3.functional.rasterization.primitives.line_loop_wide,Fail
-dEQP-GLES3.functional.rasterization.primitives.line_strip_wide,Fail
-dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_1,Fail
-dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_2,Fail
-dEQP-GLES3.functional.shaders.texture_functions.textureprojlodoffset.sampler2dshadow_vertex,Fail
-dEQP-GLES3.functional.shaders.texture_functions.textureprojoffset.sampler2dshadow_vertex,Fail
-dEQP-GLES3.functional.texture.format.sized.2d.depth24_stencil8_npot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d.depth24_stencil8_pot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d.depth_component24_npot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d.depth_component24_pot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d_array.depth24_stencil8_npot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d_array.depth24_stencil8_pot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d_array.depth_component24_npot,Fail
-dEQP-GLES3.functional.texture.format.sized.2d_array.depth_component24_pot,Fail
-dEQP-GLES3.functional.texture.format.sized.cube.depth24_stencil8_npot,Fail
-dEQP-GLES3.functional.texture.format.sized.cube.depth24_stencil8_pot,Fail
-dEQP-GLES3.functional.texture.format.sized.cube.depth_component24_npot,Fail
-dEQP-GLES3.functional.texture.format.sized.cube.depth_component24_pot,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear.equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear.not_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.not_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.not_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest.equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest.not_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.not_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.greater_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.less_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.not_equal_depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.specification.teximage2d_depth.depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.specification.teximage2d_depth.depth_component24,Fail
-dEQP-GLES3.functional.texture.specification.teximage2d_depth_pbo.depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.specification.teximage2d_depth_pbo.depth_component24,Fail
-dEQP-GLES3.functional.texture.specification.teximage3d_depth.depth24_stencil8_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.teximage3d_depth.depth_component24_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.teximage3d_depth_pbo.depth24_stencil8_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.teximage3d_depth_pbo.depth_component24_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth24_stencil8_2d,Fail
-dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth24_stencil8_cube,Fail
-dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth_component24_2d,Fail
-dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth_component24_cube,Fail
-dEQP-GLES3.functional.texture.specification.texstorage3d.format.depth24_stencil8_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.texstorage3d.format.depth_component24_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.texsubimage2d_depth.depth24_stencil8,Fail
-dEQP-GLES3.functional.texture.specification.texsubimage2d_depth.depth_component24,Fail
-dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth24_stencil8_2d_array,Fail
-dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth_component24_2d_array,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.7,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.lines.6,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.points.6,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.6,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.triangles.7,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.lines.6,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.3,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.6,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_equal,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_greater_or_equal,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_greater_than,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_less_or_equal,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_less_than,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_mask_equal,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.cmp_not_equal,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.decr_stencil_fail,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.decr_wrap_stencil_fail,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.incr_stencil_fail,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.incr_wrap_stencil_fail,Fail
-dEQP-GLES3.functional.fragment_ops.stencil.invert_stencil_fail,Fail
 dEQP-GLES31.functional.blend_equation_advanced.barrier.colorburn,Fail
 dEQP-GLES31.functional.blend_equation_advanced.barrier.colordodge,Fail
 dEQP-GLES31.functional.blend_equation_advanced.barrier.darken,Fail
@@ -354,6 +190,222 @@ dEQP-GLES31.functional.texture.specification.texstorage3d.format.depth24_stencil
 dEQP-GLES31.functional.texture.specification.texstorage3d.format.depth_component24_cube_array,Fail
 dEQP-GLES31.functional.texture.specification.texsubimage3d_depth.depth24_stencil8_cube_array,Fail
 dEQP-GLES31.functional.texture.specification.texsubimage3d_depth.depth_component24_cube_array,Fail
+dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_center,Fail
+dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
+dEQP-GLES3.functional.clipping.point.wide_point_clip,Fail
+dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_center,Fail
+dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_corner,Fail
+dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth24_stencil8,Fail
+dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth32f_stencil8,Fail
+dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth_component24,Fail
+dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth_component32f,Fail
+dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth24_stencil8,Fail
+dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth32f_stencil8,Fail
+dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth_component24,Fail
+dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth_component32f,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_equal,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_greater_or_equal,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_greater_than,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_less_or_equal,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_less_than,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_mask_equal,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.cmp_not_equal,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.decr_stencil_fail,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.decr_wrap_stencil_fail,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.incr_stencil_fail,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.incr_wrap_stencil_fail,Fail
+dEQP-GLES3.functional.fragment_ops.stencil.invert_stencil_fail,Fail
+dEQP-GLES3.functional.occlusion_query.depth_clear,Fail
+dEQP-GLES3.functional.occlusion_query.depth_clear_stencil_clear,Fail
+dEQP-GLES3.functional.occlusion_query.depth_write_depth_clear_stencil_clear,Fail
+dEQP-GLES3.functional.occlusion_query.scissor_depth_clear,Fail
+dEQP-GLES3.functional.occlusion_query.scissor_depth_clear_stencil_clear,Fail
+dEQP-GLES3.functional.occlusion_query.scissor_depth_write_depth_clear_stencil_clear,Fail
+dEQP-GLES3.functional.occlusion_query.scissor,Fail
+dEQP-GLES3.functional.occlusion_query.scissor_stencil_clear,Fail
+dEQP-GLES3.functional.occlusion_query.stencil_clear,Fail
+dEQP-GLES3.functional.polygon_offset.fixed16_render_with_units,Fail
+dEQP-GLES3.functional.rasterization.primitives.line_loop_wide,Fail
+dEQP-GLES3.functional.rasterization.primitives.line_strip_wide,Fail
+dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_1,Fail
+dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_2,Fail
+dEQP-GLES3.functional.shaders.texture_functions.textureprojlodoffset.sampler2dshadow_vertex,Fail
+dEQP-GLES3.functional.shaders.texture_functions.textureprojoffset.sampler2dshadow_vertex,Fail
+dEQP-GLES3.functional.texture.format.sized.2d_array.depth24_stencil8_npot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d_array.depth24_stencil8_pot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d_array.depth_component24_npot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d_array.depth_component24_pot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d.depth24_stencil8_npot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d.depth24_stencil8_pot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d.depth_component24_npot,Fail
+dEQP-GLES3.functional.texture.format.sized.2d.depth_component24_pot,Fail
+dEQP-GLES3.functional.texture.format.sized.cube.depth24_stencil8_npot,Fail
+dEQP-GLES3.functional.texture.format.sized.cube.depth24_stencil8_pot,Fail
+dEQP-GLES3.functional.texture.format.sized.cube.depth_component24_npot,Fail
+dEQP-GLES3.functional.texture.format.sized.cube.depth_component24_pot,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.linear_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d_array.nearest_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.linear_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.2d.nearest_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear.equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_linear.not_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear_mipmap_nearest.not_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.linear.not_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest.equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_linear.not_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.greater_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.greater_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.less_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.less_or_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest_mipmap_nearest.not_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.shadow.cube.nearest.not_equal_depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.specification.teximage2d_depth.depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.specification.teximage2d_depth.depth_component24,Fail
+dEQP-GLES3.functional.texture.specification.teximage2d_depth_pbo.depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.specification.teximage2d_depth_pbo.depth_component24,Fail
+dEQP-GLES3.functional.texture.specification.teximage3d_depth.depth24_stencil8_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.teximage3d_depth.depth_component24_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.teximage3d_depth_pbo.depth24_stencil8_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.teximage3d_depth_pbo.depth_component24_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth24_stencil8_2d,Fail
+dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth24_stencil8_cube,Fail
+dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth_component24_2d,Fail
+dEQP-GLES3.functional.texture.specification.texstorage2d.format.depth_component24_cube,Fail
+dEQP-GLES3.functional.texture.specification.texstorage3d.format.depth24_stencil8_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.texstorage3d.format.depth_component24_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.texsubimage2d_depth.depth24_stencil8,Fail
+dEQP-GLES3.functional.texture.specification.texsubimage2d_depth.depth_component24,Fail
+dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth24_stencil8_2d_array,Fail
+dEQP-GLES3.functional.texture.specification.texsubimage3d_depth.depth_component24_2d_array,Fail
+dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.lines.6,Fail
+dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.3,Fail
+dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.6,Fail
+dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.7,Fail
+dEQP-GLES3.functional.transform_feedback.random.separate.lines.6,Fail
+dEQP-GLES3.functional.transform_feedback.random.separate.points.6,Fail
+dEQP-GLES3.functional.transform_feedback.random.separate.triangles.6,Fail
+glx@extension string sanity,Fail
+glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
+glx@glx_arb_create_context_no_error@no error,Fail
+glx@glx-copy-sub-buffer,Fail
+glx@glx-copy-sub-buffer samples=2,Fail
+glx@glx-copy-sub-buffer samples=4,Fail
+glx@glx-copy-sub-buffer samples=6,Fail
+glx@glx-copy-sub-buffer samples=8,Fail
+glx@glx_ext_import_context@free context,Fail
+glx@glx_ext_import_context@get context id,Fail
+glx@glx_ext_import_context@get current display,Fail
+glx@glx_ext_import_context@import context- multi process,Fail
+glx@glx_ext_import_context@import context- single process,Fail
+glx@glx_ext_import_context@imported context has same context id,Fail
+glx@glx_ext_import_context@make current- multi process,Fail
+glx@glx_ext_import_context@make current- single process,Fail
+glx@glx_ext_import_context@query context info,Fail
+glx@glx-make-current,Crash
+glx@glx-multi-window-single-context,Fail
+glx@glx-swap-copy,Fail
+glx@glx-swap-pixmap-bad,Fail
+glx@glx-visuals-depth,Crash
+glx@glx-visuals-depth -pixmap,Crash
+glx@glx-visuals-stencil,Crash
+glx@glx-visuals-stencil -pixmap,Crash
+
+GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvary,Fail
+GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvaryyvary,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test1,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test2,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test3,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test4,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test5,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test7,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test8,Fail
+GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test9,Fail
+GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_copyteximage,Fail
+GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_mipmap,Fail
+GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_readpixels,Fail
+GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_teximage,Fail
+GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_texsubimage,Fail
+GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_blit,Fail
+GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_clearbuffer,Fail
+GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_copyteximage,Fail
+GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_getteximage,Fail
+GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_readpixels,Fail
+GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_builtins,Fail
+GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_query_objects,Fail
+GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_pause_resume,Fail
+GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_states,Fail
+GTF-GL46.gtf42.GL3Tests.transform_feedback_instanced.transform_feedback_instanced_conditional_render,Fail
+GTF-GL46.gtf43.GL3Tests.multi_draw_indirect.multi_draw_indirect_conditional_render,Fail
+GTF-GL46.gtf43.GL3Tests.packed_depth_stencil.packed_depth_stencil_stenciltexturing,Fail
+
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORBURN_KHR_all_qualifier,Fail
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORDODGE_KHR_all_qualifier,Fail
 KHR-GL46.blend_equation_advanced.blend_all.GL_DARKEN_KHR_all_qualifier,Fail
@@ -386,8 +438,7 @@ KHR-GL46.blend_equation_advanced.blend_specific.GL_SCREEN_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SOFTLIGHT_KHR,Fail
 KHR-GL46.compute_shader.conditional-dispatching,Fail
 KHR-GL46.conditional_render_inverted.functional,Fail
-KHR-GL46.copy_image.functional,Timeout
-KHR-GL46.geometry_shader.adjacency.adjacency_indiced_triangle_strip,Fail
+KHR-GL46.direct_state_access.queries_functional,Fail
 KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
 KHR-GL46.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GL46.packed_depth_stencil.blit.depth32f_stencil8,Fail
@@ -406,13 +457,21 @@ KHR-GL46.shader_image_load_store.non-layered_binding,Fail
 KHR-GL46.shader_storage_buffer_object.advanced-readWrite-case1-cs,Fail
 KHR-GL46.shader_storage_buffer_object.basic-operations-case1-cs,Fail
 KHR-GL46.shader_storage_buffer_object.basic-operations-case1-vs,Fail
+KHR-GL46.sparse_buffer_tests.BufferStorageTest,Fail
 
 # 3D isn't supported by radv yet
 KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
-
 KHR-GL46.stencil_texturing.functional,Fail
+KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.data_pass_through,Fail
+KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule3,Fail
+KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule6,Fail
+KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.degenerate_case,Fail
+KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.inner_tessellation_level_rounding,Fail
+KHR-GL46.tessellation_shader.tessellation_shader_tessellation.gl_InvocationID_PatchVerticesIn_PrimitiveID,Fail
+KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.identical_triangles,Fail
+KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.inner_tessellation_level_rounding,Fail
 KHR-GL46.texture_filter_minmax_tests.TextureFilterMinmaxMagnificationFiltering,Fail
 KHR-GL46.texture_filter_minmax_tests.TextureFilterMinmaxMinificationFiltering,Fail
 KHR-GL46.texture_filter_minmax_tests.TextureFilterMinmaxMipmapMinificationFiltering,Fail
@@ -435,92 +494,21 @@ KHR-GL46.texture_repeat_mode.depth24_stencil8_49x23_2_clamp_to_edge,Fail
 KHR-GL46.texture_repeat_mode.depth24_stencil8_49x23_2_mirrored_repeat,Fail
 KHR-GL46.texture_repeat_mode.depth24_stencil8_49x23_2_repeat,Fail
 KHR-GL46.texture_size_promotion.functional,Fail
-KHR-GL46.texture_swizzle.smoke,Timeout
+KHR-GL46.texture_swizzle.functional,Fail
 KHR-GL46.texture_view.view_sampling,Fail
-KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.data_pass_through,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule3,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule6,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_point_mode.points_verification,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.degenerate_case,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.inner_tessellation_level_rounding,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_tessellation.gl_InvocationID_PatchVerticesIn_PrimitiveID,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.identical_triangles,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.inner_tessellation_level_rounding,Fail
-KHR-GL46.tessellation_shader.vertex.vertex_spacing,Fail
-KHR-GL46.geometry_shader.adjacency.adjacency_non_indiced_triangle_strip,Fail
-KHR-GL46.direct_state_access.queries_functional,Fail
-KHR-GL46.sparse_buffer_tests.BufferStorageTest,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.basic-single-stream-interleaved-attribs,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.basic-single-stream-separate-attribs,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers-per-stream,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream,Fail
-KHR-Single-GL46.enhanced_layouts.varying_array_components,Crash
+KHR-Single-GL46.enhanced_layouts.varying_array_components,Fail
 KHR-Single-GL46.enhanced_layouts.varying_array_locations,Fail
-KHR-Single-GL46.enhanced_layouts.varying_components,Crash
+KHR-Single-GL46.enhanced_layouts.varying_components,Fail
 KHR-Single-GL46.enhanced_layouts.varying_locations,Fail
 KHR-Single-GL46.enhanced_layouts.varying_structure_locations,Fail
 KHR-Single-GL46.enhanced_layouts.xfb_override_qualifiers_with_api,Fail
 
-#these 4 tests are broken
-GTF-GL46.gtf21.GL.atan.atan_vec2_frag_xvary,Fail
-GTF-GL46.gtf21.GL.atan.atan_vec2_frag_xvaryyvary,Fail
-GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvary,Fail
-GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvaryyvary,Fail
-
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test1,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test2,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test3,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test4,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test5,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test7,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test8,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test9,Fail
-GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_copyteximage,Fail
-GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_mipmap,Fail
-GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_readpixels,Fail
-GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_teximage,Fail
-GTF-GL46.gtf30.GL3Tests.depth_texture.depth_texture_texsubimage,Fail
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_blit,Fail
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_clearbuffer,Fail
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_copyteximage,Fail
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_getteximage,Fail
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_readpixels,Fail
-GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_geometry,Fail
-GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_misc,Fail
-GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_query_objects,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_pause_resume,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_states,Fail
-GTF-GL46.gtf42.GL3Tests.transform_feedback_instanced.transform_feedback_instanced_conditional_render,Fail
-GTF-GL46.gtf43.GL3Tests.multi_draw_indirect.multi_draw_indirect_conditional_render,Fail
-GTF-GL46.gtf43.GL3Tests.packed_depth_stencil.packed_depth_stencil_stenciltexturing,Fail
-
-glx@extension string sanity,Fail
-glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
-glx@glx_arb_create_context_no_error@no error,Fail
-glx@glx-copy-sub-buffer,Fail
-glx@glx-copy-sub-buffer samples=2,Fail
-glx@glx-copy-sub-buffer samples=4,Fail
-glx@glx-copy-sub-buffer samples=6,Fail
-glx@glx-copy-sub-buffer samples=8,Fail
-glx@glx_ext_import_context@free context,Fail
-glx@glx_ext_import_context@get context id,Fail
-glx@glx_ext_import_context@get current display,Fail
-glx@glx_ext_import_context@import context- multi process,Fail
-glx@glx_ext_import_context@import context- single process,Fail
-glx@glx_ext_import_context@imported context has same context id,Fail
-glx@glx_ext_import_context@make current- multi process,Fail
-glx@glx_ext_import_context@make current- single process,Fail
-glx@glx_ext_import_context@query context info,Fail
-glx@glx-make-current,Crash
-glx@glx-multi-window-single-context,Fail
-glx@glx-swap-copy,Fail
-glx@glx-swap-pixmap-bad,Fail
-glx@glx-visuals-depth,Crash
-glx@glx-visuals-depth -pixmap,Crash
-glx@glx-visuals-stencil,Crash
-glx@glx-visuals-stencil -pixmap,Crash
 shaders@glsl-fs-pointcoord,Fail
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
@@ -1339,6 +1327,8 @@ spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec4-u64
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
 spec@arb_indirect_parameters@conditional-render,Fail
+spec@arb_indirect_parameters@conditional-render@Query result: Fail. Inverted mode: No.  Points drawn: 4,Fail
+spec@arb_indirect_parameters@conditional-render@Query result: Fail. Inverted mode: Yes.  Points drawn: 0,Fail
 spec@arb_indirect_parameters@conditional-render@Query result: Pass. Inverted mode: No.  Points drawn: 0,Fail
 spec@arb_indirect_parameters@conditional-render@Query result: Pass. Inverted mode: Yes.  Points drawn: 4,Fail
 spec@arb_occlusion_query@occlusion_query_meta_fragments,Fail
@@ -1904,12 +1894,10 @@ spec@!opengl 3.0@clearbuffer-depth-cs-probe,Fail
 spec@!opengl 3.0@depth-cube-map,Fail
 spec@!opengl 3.0@sampler-cube-shadow,Fail
 spec@!opengl 3.2@depth-tex-sampling,Fail
-spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
-spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
-spec@arb_indirect_parameters@conditional-render@Query result: Fail. Inverted mode: No.  Points drawn: 4,Fail
-spec@arb_indirect_parameters@conditional-render@Query result: Fail. Inverted mode: Yes.  Points drawn: 0,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
+spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
+spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
