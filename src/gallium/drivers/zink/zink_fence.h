@@ -50,7 +50,6 @@ struct zink_tc_fence {
 };
 
 struct zink_fence {
-   VkFence fence;
    uint32_t batch_id;
    bool submitted;
    bool completed;
@@ -88,9 +87,6 @@ zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfen
 
 void
 zink_screen_fence_init(struct pipe_screen *pscreen);
-
-bool
-zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t timeout_ns);
 
 void
 zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence);

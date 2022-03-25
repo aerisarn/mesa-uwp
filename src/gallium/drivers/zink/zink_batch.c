@@ -166,9 +166,6 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    cnd_destroy(&bs->usage.flush);
    mtx_destroy(&bs->usage.mtx);
 
-   if (bs->fence.fence)
-      VKSCR(DestroyFence)(screen->dev, bs->fence.fence, NULL);
-
    if (bs->cmdbuf)
       VKSCR(FreeCommandBuffers)(screen->dev, bs->cmdpool, 1, &bs->cmdbuf);
    if (bs->barrier_cmdbuf)
@@ -196,7 +193,6 @@ create_batch_state(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = rzalloc(NULL, struct zink_batch_state);
-   bs->have_timelines = ctx->have_timelines;
    VkCommandPoolCreateInfo cpci = {0};
    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cpci.queueFamilyIndex = screen->gfx_queue;
@@ -244,14 +240,6 @@ create_batch_state(struct zink_context *ctx)
    if (!screen->batch_descriptor_init(screen, bs))
       goto fail;
 
-   if (!screen->info.have_KHR_timeline_semaphore) {
-      VkFenceCreateInfo fci = {0};
-      fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-      if (VKSCR(CreateFence)(screen->dev, &fci, NULL, &bs->fence.fence) != VK_SUCCESS)
-         goto fail;
-   }
-
    util_queue_fence_init(&bs->flush_completed);
    bs->queue = screen->threaded ? screen->thread_queue : screen->queue;
 
@@ -290,9 +278,6 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
    }
    simple_mtx_unlock(&ctx->batch_mtx);
    if (bs) {
-      if (bs->fence.submitted && !bs->fence.completed && bs->fence.fence)
-         /* this fence is already done, so we need vulkan to release the cmdbuf */
-         zink_vkfence_wait(screen, &bs->fence, PIPE_TIMEOUT_INFINITE);
       zink_reset_batch_state(ctx, bs);
    } else {
       if (!batch->state) {
@@ -352,7 +337,7 @@ post_submit(void *data, void *gdata, int thread_index)
          bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
       screen->device_lost = true;
    } else if (bs->ctx->batch_states_count > screen->max_fences) {
-      zink_screen_batch_id_wait(screen, bs->fence.batch_id - (screen->max_fences / 2), PIPE_TIMEOUT_INFINITE);
+      zink_screen_timeline_wait(screen, bs->fence.batch_id - (screen->max_fences / 2), PIPE_TIMEOUT_INFINITE);
    }
 }
 
@@ -369,15 +354,10 @@ submit_queue(void *data, void *gdata, int thread_index)
    bs->usage.usage = bs->fence.batch_id;
    bs->usage.unflushed = false;
 
-   if (ctx->have_timelines && screen->last_finished > bs->fence.batch_id && bs->fence.batch_id == 1) {
+   if (screen->last_finished > bs->fence.batch_id && bs->fence.batch_id == 1) {
       if (!zink_screen_init_semaphore(screen)) {
          debug_printf("timeline init failed, things are about to go dramatically wrong.");
-         ctx->have_timelines = false;
       }
-   }
-
-   if (bs->fence.fence && VKSCR(ResetFences)(screen->dev, 1, &bs->fence.fence) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkResetFences failed");
    }
 
    uint64_t batch_id = bs->fence.batch_id;
@@ -408,14 +388,12 @@ submit_queue(void *data, void *gdata, int thread_index)
    si[1].pSignalSemaphores = signals;
    VkTimelineSemaphoreSubmitInfo tsi = {0};
    uint64_t signal_values[2] = {0};
-   if (bs->have_timelines) {
-      tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
-      si[1].pNext = &tsi;
-      tsi.pSignalSemaphoreValues = signal_values;
-      signal_values[si[1].signalSemaphoreCount] = batch_id;
-      signals[si[1].signalSemaphoreCount++] = screen->sem;
-      tsi.signalSemaphoreValueCount = si[1].signalSemaphoreCount;
-   }
+   tsi.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+   si[1].pNext = &tsi;
+   tsi.pSignalSemaphoreValues = signal_values;
+   signal_values[si[1].signalSemaphoreCount] = batch_id;
+   signals[si[1].signalSemaphoreCount++] = screen->sem;
+   tsi.signalSemaphoreValueCount = si[1].signalSemaphoreCount;
 
    if (bs->present)
       signals[si[1].signalSemaphoreCount++] = bs->present;
@@ -441,7 +419,7 @@ submit_queue(void *data, void *gdata, int thread_index)
    }
 
    simple_mtx_lock(&screen->queue_lock);
-   if (VKSCR(QueueSubmit)(bs->queue, 2, si, bs->fence.fence) != VK_SUCCESS) {
+   if (VKSCR(QueueSubmit)(bs->queue, 2, si, VK_NULL_HANDLE) != VK_SUCCESS) {
       mesa_loge("ZINK: vkQueueSubmit failed");
       bs->is_device_lost = true;
    }
@@ -475,9 +453,6 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
          if (!zink_check_batch_completion(ctx, fence->batch_id, true))
             break;
 
-         if (bs->fence.submitted && !bs->fence.completed && bs->fence.fence)
-            /* this fence is already done, so we need vulkan to release the cmdbuf */
-            zink_vkfence_wait(screen, &bs->fence, PIPE_TIMEOUT_INFINITE);
          pop_batch_state(ctx);
          zink_reset_batch_state(ctx, bs);
          util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
@@ -649,7 +624,7 @@ zink_screen_usage_check_completion(struct zink_screen *screen, const struct zink
    if (zink_batch_usage_is_unflushed(u))
       return false;
 
-   return zink_screen_batch_id_wait(screen, u->usage, 0);
+   return zink_screen_timeline_wait(screen, u->usage, 0);
 }
 
 bool

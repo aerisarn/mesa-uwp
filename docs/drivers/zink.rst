@@ -37,6 +37,7 @@ Here's a list of those requirements:
 * Device extensions:
 
   * `VK_KHR_maintenance1`_
+  * ``VK_KHR_timeline_semaphore``
   * `VK_EXT_custom_border_color`_
   * `VK_EXT_provoking_vertex`_
   * `VK_EXT_line_rasterization`_, with the following ``VkPhysicalDeviceLineRasterizationFeaturesEXT``:
