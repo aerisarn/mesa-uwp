@@ -29,8 +29,6 @@
 #include "vk_descriptors.h"
 #include "vk_util.h"
 
-using Microsoft::WRL::ComPtr;
-
 static D3D12_SHADER_VISIBILITY
 translate_desc_visibility(VkShaderStageFlags in)
 {
