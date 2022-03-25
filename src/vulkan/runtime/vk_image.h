@@ -213,10 +213,12 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vk_image_view, base, VkImageView,
 
 void vk_image_view_init(struct vk_device *device,
                         struct vk_image_view *image_view,
+                        bool driver_internal,
                         const VkImageViewCreateInfo *pCreateInfo);
 void vk_image_view_finish(struct vk_image_view *image_view);
 
 void *vk_image_view_create(struct vk_device *device,
+                           bool driver_internal,
                            const VkImageViewCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *alloc,
                            size_t size);

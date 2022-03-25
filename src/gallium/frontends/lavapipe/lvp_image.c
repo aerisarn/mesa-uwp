@@ -178,7 +178,8 @@ lvp_CreateImageView(VkDevice _device,
    LVP_FROM_HANDLE(lvp_image, image, pCreateInfo->image);
    struct lvp_image_view *view;
 
-   view = vk_image_view_create(&device->vk, pCreateInfo, pAllocator, sizeof(*view));
+   view = vk_image_view_create(&device->vk, false, pCreateInfo,
+                               pAllocator, sizeof(*view));
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 

@@ -264,6 +264,7 @@ VkResult pvr_CreateImageView(VkDevice _device,
    VkResult result;
 
    iview = vk_image_view_create(&device->vk,
+                                false /* driver_internal */,
                                 pCreateInfo,
                                 pAllocator,
                                 sizeof(*iview));

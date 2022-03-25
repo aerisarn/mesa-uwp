@@ -259,6 +259,7 @@ remap_swizzle(VkComponentSwizzle swizzle, VkComponentSwizzle component)
 void
 vk_image_view_init(struct vk_device *device,
                    struct vk_image_view *image_view,
+                   bool driver_internal,
                    const VkImageViewCreateInfo *pCreateInfo)
 {
    vk_object_base_init(device, &image_view->base, VK_OBJECT_TYPE_IMAGE_VIEW);
@@ -271,42 +272,47 @@ vk_image_view_init(struct vk_device *device,
    image_view->view_type = pCreateInfo->viewType;
    image_view->format = pCreateInfo->format;
 
-   switch (image_view->view_type) {
-   case VK_IMAGE_VIEW_TYPE_1D:
-   case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
-      assert(image->image_type == VK_IMAGE_TYPE_1D);
-      break;
-   case VK_IMAGE_VIEW_TYPE_2D:
-   case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-      if (image->create_flags & (VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT | VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT))
+   if (!driver_internal) {
+      switch (image_view->view_type) {
+      case VK_IMAGE_VIEW_TYPE_1D:
+      case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+         assert(image->image_type == VK_IMAGE_TYPE_1D);
+         break;
+      case VK_IMAGE_VIEW_TYPE_2D:
+      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+         if (image->create_flags & (VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT |
+                                    VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT))
+            assert(image->image_type == VK_IMAGE_TYPE_3D);
+         else
+            assert(image->image_type == VK_IMAGE_TYPE_2D);
+         break;
+      case VK_IMAGE_VIEW_TYPE_3D:
          assert(image->image_type == VK_IMAGE_TYPE_3D);
-      else
+         break;
+      case VK_IMAGE_VIEW_TYPE_CUBE:
+      case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
          assert(image->image_type == VK_IMAGE_TYPE_2D);
-      break;
-   case VK_IMAGE_VIEW_TYPE_3D:
-      assert(image->image_type == VK_IMAGE_TYPE_3D);
-      break;
-   case VK_IMAGE_VIEW_TYPE_CUBE:
-   case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
-      assert(image->image_type == VK_IMAGE_TYPE_2D);
-      assert(image->create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-      break;
-   default:
-      unreachable("Invalid image view type");
+         assert(image->create_flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+         break;
+      default:
+         unreachable("Invalid image view type");
+      }
    }
 
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
 
-   /* Some drivers may want to create color views of depth/stencil images
-    * to implement certain operations, which is not strictly allowed by the
-    * Vulkan spec, so handle this case separately.
-    */
-   bool is_color_view_of_depth_stencil =
-      vk_format_is_depth_or_stencil(image->format) &&
-      vk_format_is_color(pCreateInfo->format);
-   if (is_color_view_of_depth_stencil) {
-      assert(util_format_get_blocksize(vk_format_to_pipe_format(image->format)) ==
-             util_format_get_blocksize(vk_format_to_pipe_format(pCreateInfo->format)));
+   if (driver_internal) {
+      /* For driver internal images, all we require is that the block sizes
+       * match.  Otherwise, we trust the driver to use a format it knows what
+       * to do with.  Combined depth/stencil images might not match if the
+       * driver only cares about one of the two aspects.
+       */
+      if (image->aspects == VK_IMAGE_ASPECT_COLOR_BIT ||
+          image->aspects == VK_IMAGE_ASPECT_DEPTH_BIT ||
+          image->aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         assert(vk_format_get_blocksize(image->format) ==
+                vk_format_get_blocksize(image_view->format));
+      }
       image_view->aspects = range->aspectMask;
       image_view->view_format = pCreateInfo->format;
    } else {
@@ -411,13 +417,12 @@ vk_image_view_init(struct vk_device *device,
    /* If we are creating a color view from a depth/stencil image we compute
     * usage from the underlying depth/stencil aspects.
     */
-   const VkImageUsageFlags image_usage = is_color_view_of_depth_stencil ?
-      vk_image_usage(image, image->aspects) :
+   const VkImageUsageFlags image_usage =
       vk_image_usage(image, image_view->aspects);
    const VkImageViewUsageCreateInfo *usage_info =
       vk_find_struct_const(pCreateInfo, IMAGE_VIEW_USAGE_CREATE_INFO);
    image_view->usage = usage_info ? usage_info->usage : image_usage;
-   assert(!(image_view->usage & ~image_usage));
+   assert(driver_internal || !(image_view->usage & ~image_usage));
 }
 
 void
@@ -428,6 +433,7 @@ vk_image_view_finish(struct vk_image_view *image_view)
 
 void *
 vk_image_view_create(struct vk_device *device,
+                     bool driver_internal,
                      const VkImageViewCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *alloc,
                      size_t size)
@@ -438,7 +444,7 @@ vk_image_view_create(struct vk_device *device,
    if (image_view == NULL)
       return NULL;
 
-   vk_image_view_init(device, image_view, pCreateInfo);
+   vk_image_view_init(device, image_view, driver_internal, pCreateInfo);
 
    return image_view;
 }

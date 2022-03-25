@@ -97,7 +97,7 @@ panvk_per_arch(CreateImageView)(VkDevice _device,
    VK_FROM_HANDLE(panvk_image, image, pCreateInfo->image);
    struct panvk_image_view *view;
 
-   view = vk_image_view_create(&device->vk, pCreateInfo,
+   view = vk_image_view_create(&device->vk, false, pCreateInfo,
                                pAllocator, sizeof(*view));
    if (view == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
