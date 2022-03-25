@@ -1,4 +1,5 @@
 extern crate mesa_rust;
+extern crate mesa_rust_util;
 extern crate rusticl_opencl_gen;
 
 use crate::api::icd::*;
@@ -9,6 +10,7 @@ use crate::core::util::*;
 use crate::impl_cl_type_trait;
 
 use self::mesa_rust::pipe::resource::*;
+use self::mesa_rust_util::properties::Properties;
 use self::rusticl_opencl_gen::*;
 
 use std::collections::HashMap;
@@ -20,14 +22,17 @@ use std::sync::Mutex;
 pub struct Context {
     pub base: CLObjectBase<CL_INVALID_CONTEXT>,
     pub devs: Vec<Arc<Device>>,
-    pub properties: Vec<cl_context_properties>,
+    pub properties: Properties<cl_context_properties>,
     pub dtors: Mutex<Vec<Box<dyn Fn(cl_context)>>>,
 }
 
 impl_cl_type_trait!(cl_context, Context, CL_INVALID_CONTEXT);
 
 impl Context {
-    pub fn new(devs: Vec<Arc<Device>>, properties: Vec<cl_context_properties>) -> Arc<Context> {
+    pub fn new(
+        devs: Vec<Arc<Device>>,
+        properties: Properties<cl_context_properties>,
+    ) -> Arc<Context> {
         Arc::new(Self {
             base: CLObjectBase::new(),
             devs: devs,

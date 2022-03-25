@@ -33,7 +33,7 @@ impl CLInfo<cl_context_info> for cl_context {
                 )
             }
             CL_CONTEXT_NUM_DEVICES => cl_prop::<cl_uint>(ctx.devs.len() as u32),
-            CL_CONTEXT_PROPERTIES => cl_prop::<&Vec<cl_context_properties>>(&ctx.properties),
+            CL_CONTEXT_PROPERTIES => cl_prop::<&Properties<cl_context_properties>>(&ctx.properties),
             CL_CONTEXT_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
@@ -62,7 +62,7 @@ pub fn create_context(
 
     // CL_INVALID_PROPERTY [...] if the same property name is specified more than once.
     let props = Properties::from_ptr(properties).ok_or(CL_INVALID_PROPERTY)?;
-    for p in props.props {
+    for p in &props.props {
         match p.0 as u32 {
             // CL_INVALID_PLATFORM [...] if platform value specified in properties is not a valid platform.
             CL_CONTEXT_PLATFORM => {
@@ -81,10 +81,7 @@ pub fn create_context(
         HashSet::from_iter(unsafe { slice::from_raw_parts(devices, num_devices as usize) }.iter());
     let devs: Result<_, _> = set.into_iter().map(cl_device_id::get_arc).collect();
 
-    Ok(cl_context::from_arc(Context::new(
-        devs?,
-        Properties::from_ptr_raw(properties),
-    )))
+    Ok(cl_context::from_arc(Context::new(devs?, props)))
 }
 
 pub fn create_context_from_type(

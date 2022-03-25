@@ -840,17 +840,21 @@ impl CLInfo<cl_sampler_info> for cl_sampler {
             CL_SAMPLER_FILTER_MODE => cl_prop::<cl_filter_mode>(sampler.filter_mode),
             CL_SAMPLER_NORMALIZED_COORDS => cl_prop::<bool>(sampler.normalized_coords),
             CL_SAMPLER_REFERENCE_COUNT => cl_prop::<cl_uint>(self.refcnt()?),
+            CL_SAMPLER_PROPERTIES => {
+                cl_prop::<&Option<Properties<cl_sampler_properties>>>(&sampler.props)
+            }
             // CL_INVALID_VALUE if param_name is not one of the supported values
             _ => return Err(CL_INVALID_VALUE),
         })
     }
 }
 
-pub fn create_sampler(
+fn create_sampler_impl(
     context: cl_context,
     normalized_coords: cl_bool,
     addressing_mode: cl_addressing_mode,
     filter_mode: cl_filter_mode,
+    props: Option<Properties<cl_sampler_properties>>,
 ) -> CLResult<cl_sampler> {
     let c = context.get_arc()?;
 
@@ -871,8 +875,60 @@ pub fn create_sampler(
         check_cl_bool(normalized_coords).ok_or(CL_INVALID_VALUE)?,
         addressing_mode,
         filter_mode,
+        props,
     );
     Ok(cl_sampler::from_arc(sampler))
+}
+
+pub fn create_sampler(
+    context: cl_context,
+    normalized_coords: cl_bool,
+    addressing_mode: cl_addressing_mode,
+    filter_mode: cl_filter_mode,
+) -> CLResult<cl_sampler> {
+    create_sampler_impl(
+        context,
+        normalized_coords,
+        addressing_mode,
+        filter_mode,
+        None,
+    )
+}
+
+pub fn create_sampler_with_properties(
+    context: cl_context,
+    sampler_properties: *const cl_sampler_properties,
+) -> CLResult<cl_sampler> {
+    let mut normalized_coords = CL_TRUE;
+    let mut addressing_mode = CL_ADDRESS_CLAMP;
+    let mut filter_mode = CL_FILTER_NEAREST;
+
+    // CL_INVALID_VALUE if the same property name is specified more than once.
+    let sampler_properties = if sampler_properties.is_null() {
+        None
+    } else {
+        let sampler_properties =
+            Properties::from_ptr(sampler_properties).ok_or(CL_INVALID_VALUE)?;
+        for p in &sampler_properties.props {
+            match p.0 as u32 {
+                CL_SAMPLER_ADDRESSING_MODE => addressing_mode = p.1 as u32,
+                CL_SAMPLER_FILTER_MODE => filter_mode = p.1 as u32,
+                CL_SAMPLER_NORMALIZED_COORDS => normalized_coords = p.1 as u32,
+                // CL_INVALID_VALUE if the property name in sampler_properties is not a supported
+                // property name
+                _ => return Err(CL_INVALID_VALUE),
+            }
+        }
+        Some(sampler_properties)
+    };
+
+    create_sampler_impl(
+        context,
+        normalized_coords,
+        addressing_mode,
+        filter_mode,
+        sampler_properties,
+    )
 }
 
 pub fn enqueue_read_buffer(

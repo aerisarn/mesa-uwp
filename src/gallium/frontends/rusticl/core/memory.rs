@@ -1,5 +1,6 @@
 extern crate mesa_rust;
 extern crate mesa_rust_gen;
+extern crate mesa_rust_util;
 extern crate rusticl_opencl_gen;
 
 use crate::api::icd::*;
@@ -15,6 +16,7 @@ use self::mesa_rust::pipe::context::*;
 use self::mesa_rust::pipe::resource::*;
 use self::mesa_rust::pipe::transfer::*;
 use self::mesa_rust_gen::*;
+use self::mesa_rust_util::properties::Properties;
 use self::rusticl_opencl_gen::*;
 
 use std::cmp;
@@ -853,6 +855,7 @@ pub struct Sampler {
     pub normalized_coords: bool,
     pub addressing_mode: cl_addressing_mode,
     pub filter_mode: cl_filter_mode,
+    pub props: Option<Properties<cl_sampler_properties>>,
 }
 
 impl_cl_type_trait!(cl_sampler, Sampler, CL_INVALID_SAMPLER);
@@ -863,6 +866,7 @@ impl Sampler {
         normalized_coords: bool,
         addressing_mode: cl_addressing_mode,
         filter_mode: cl_filter_mode,
+        props: Option<Properties<cl_sampler_properties>>,
     ) -> Arc<Sampler> {
         Arc::new(Self {
             base: CLObjectBase::new(),
@@ -870,6 +874,7 @@ impl Sampler {
             normalized_coords: normalized_coords,
             addressing_mode: addressing_mode,
             filter_mode: filter_mode,
+            props: props,
         })
     }
 }

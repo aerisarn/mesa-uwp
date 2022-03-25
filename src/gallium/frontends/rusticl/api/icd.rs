@@ -155,7 +155,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clEnqueueSVMMemFill: Some(cl_enqueue_svm_mem_fill),
     clEnqueueSVMMap: Some(cl_enqueue_svm_map),
     clEnqueueSVMUnmap: Some(cl_enqueue_svm_unmap),
-    clCreateSamplerWithProperties: None,
+    clCreateSamplerWithProperties: Some(cl_create_sampler_with_properties),
     clSetKernelArgSVMPointer: Some(cl_set_kernel_arg_svm_pointer),
     clSetKernelExecInfo: Some(cl_set_kernel_exec_info),
     clGetKernelSubGroupInfoKHR: Some(cl_get_kernel_sub_group_info),
@@ -1691,6 +1691,17 @@ extern "C" fn cl_enqueue_svm_unmap(
     _event: *mut cl_event,
 ) -> cl_int {
     CL_INVALID_OPERATION
+}
+
+extern "C" fn cl_create_sampler_with_properties(
+    context: cl_context,
+    sampler_properties: *const cl_sampler_properties,
+    errcode_ret: *mut cl_int,
+) -> cl_sampler {
+    match_obj!(
+        create_sampler_with_properties(context, sampler_properties),
+        errcode_ret
+    )
 }
 
 extern "C" fn cl_set_kernel_arg_svm_pointer(

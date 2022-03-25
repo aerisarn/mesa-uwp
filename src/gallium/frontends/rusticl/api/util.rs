@@ -6,6 +6,7 @@ use crate::api::types::*;
 use crate::core::event::*;
 use crate::core::queue::*;
 
+use self::mesa_rust_util::properties::Properties;
 use self::mesa_rust_util::ptr::CheckedPtr;
 use self::rusticl_opencl_gen::*;
 
@@ -168,16 +169,12 @@ where
     }
 }
 
-impl<T> CLProp for &Vec<T>
+impl<T> CLProp for &T
 where
     T: CLProp,
 {
     fn cl_vec(&self) -> Vec<u8> {
-        let mut res: Vec<u8> = Vec::new();
-        for i in *self {
-            res.append(&mut i.cl_vec())
-        }
-        res
+        T::cl_vec(self)
     }
 }
 
@@ -203,6 +200,30 @@ impl<T> CLProp for *const T {
 impl<T> CLProp for *mut T {
     fn cl_vec(&self) -> Vec<u8> {
         (*self as usize).cl_vec()
+    }
+}
+
+impl<T> CLProp for Properties<T>
+where
+    T: CLProp + Default,
+{
+    fn cl_vec(&self) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::new();
+        for (k, v) in &self.props {
+            res.append(&mut k.cl_vec());
+            res.append(&mut v.cl_vec());
+        }
+        res.append(&mut T::default().cl_vec());
+        res
+    }
+}
+
+impl<T> CLProp for Option<T>
+where
+    T: CLProp,
+{
+    fn cl_vec(&self) -> Vec<u8> {
+        self.as_ref().map_or(Vec::new(), |v| v.cl_vec())
     }
 }
 
