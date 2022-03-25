@@ -31,8 +31,6 @@
 #include "vk_util.h"
 #include "vk_format.h"
 
-#include <dxguids/dxguids.h>
-
 #include "util/u_debug.h"
 
 static dxil_spirv_shader_stage
