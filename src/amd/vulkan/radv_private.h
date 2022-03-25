@@ -2113,16 +2113,9 @@ struct radv_image_plane {
 };
 
 struct radv_image {
-   struct vk_object_base base;
-   VkImageType type;
-   /* The original VkFormat provided by the client.  This may not match any
-    * of the actual surface formats.
-    */
-   VkFormat vk_format;
-   VkImageUsageFlags usage; /**< Superset of VkImageCreateInfo::usage. */
+   struct vk_image vk;
+
    struct ac_surf_info info;
-   VkImageTiling tiling;     /** VkImageCreateInfo::tiling */
-   VkImageCreateFlags flags; /** VkImageCreateInfo::flags */
 
    VkDeviceSize size;
    uint32_t alignment;
@@ -2252,7 +2245,7 @@ radv_image_has_vrs_htile(const struct radv_device *device, const struct radv_ima
 {
    /* Any depth buffer can potentially use VRS. */
    return device->attachment_vrs_enabled && radv_image_has_htile(image) &&
-          (image->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+          (image->vk.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 /**
@@ -2282,12 +2275,12 @@ static inline bool
 radv_image_tile_stencil_disabled(const struct radv_device *device, const struct radv_image *image)
 {
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
-      return !vk_format_has_stencil(image->vk_format) && !radv_image_has_vrs_htile(device, image);
+      return !vk_format_has_stencil(image->vk.format) && !radv_image_has_vrs_htile(device, image);
    } else {
       /* Due to a hw bug, TILE_STENCIL_DISABLE must be set to 0 for
        * the TC-compat ZRANGE issue even if no stencil is used.
        */
-      return !vk_format_has_stencil(image->vk_format) && !radv_image_is_tc_compat_htile(image);
+      return !vk_format_has_stencil(image->vk.format) && !radv_image_is_tc_compat_htile(image);
    }
 }
 
@@ -2391,7 +2384,7 @@ radv_image_get_iterate256(struct radv_device *device, struct radv_image *image)
 {
    /* ITERATE_256 is required for depth or stencil MSAA images that are TC-compatible HTILE. */
    return device->physical_device->rad_info.gfx_level >= GFX10 &&
-          (image->usage &
+          (image->vk.usage &
            (VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
           radv_image_is_tc_compat_htile(image) && image->info.samples > 1;
 }
@@ -3025,7 +3018,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_descriptor_update_template, base,
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_device_memory, base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image, base, VkImage, VK_OBJECT_TYPE_IMAGE)
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image_view, base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_cache, base, VkPipelineCache,

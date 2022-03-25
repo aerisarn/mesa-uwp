@@ -705,7 +705,7 @@ decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_iview
                         pipeline);
 
    unsigned push_constants[5] = {
-      offset->x, offset->y, offset->z, src_iview->image->vk_format, src_iview->image->type,
+      offset->x, offset->y, offset->z, src_iview->image->vk.format, src_iview->image->vk.image_type,
    };
 
    radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
@@ -728,12 +728,12 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
    cmd_buffer->state.predicating = false;
 
    uint32_t base_slice = radv_meta_get_iview_layer(image, subresource, &offset);
-   uint32_t slice_count = image->type == VK_IMAGE_TYPE_3D ? extent.depth : subresource->layerCount;
+   uint32_t slice_count = image->vk.image_type == VK_IMAGE_TYPE_3D ? extent.depth : subresource->layerCount;
 
-   extent = radv_sanitize_image_extent(image->type, extent);
-   offset = radv_sanitize_image_offset(image->type, offset);
+   extent = radv_sanitize_image_extent(image->vk.image_type, extent);
+   offset = radv_sanitize_image_offset(image->vk.image_type, offset);
 
-   VkFormat load_format = vk_format_get_blocksize(image->vk_format) == 16
+   VkFormat load_format = vk_format_get_blocksize(image->vk.format) == 16
                              ? VK_FORMAT_R32G32B32A32_UINT
                              : VK_FORMAT_R32G32_UINT;
    struct radv_image_view src_iview;
@@ -756,7 +756,7 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
       0, NULL);
 
    VkFormat store_format;
-   switch (image->vk_format) {
+   switch (image->vk.format) {
    case VK_FORMAT_EAC_R11_UNORM_BLOCK:
       store_format = VK_FORMAT_R16_UNORM;
       break;

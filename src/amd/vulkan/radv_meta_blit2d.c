@@ -210,9 +210,9 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
          unsigned src_aspect_mask = aspect_mask;
          VkFormat depth_format = 0;
          if (aspect_mask == VK_IMAGE_ASPECT_STENCIL_BIT)
-            depth_format = vk_format_stencil_only(dst->image->vk_format);
+            depth_format = vk_format_stencil_only(dst->image->vk.format);
          else if (aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT)
-            depth_format = vk_format_depth_only(dst->image->vk_format);
+            depth_format = vk_format_depth_only(dst->image->vk.format);
          else if (src_img)
             src_aspect_mask = src_img->aspect_mask;
 
@@ -373,7 +373,7 @@ radv_meta_blit2d(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_sur
                  struct radv_meta_blit2d_buffer *src_buf, struct radv_meta_blit2d_surf *dst,
                  unsigned num_rects, struct radv_meta_blit2d_rect *rects)
 {
-   bool use_3d = (src_img && src_img->image->type == VK_IMAGE_TYPE_3D);
+   bool use_3d = (src_img && src_img->image->vk.image_type == VK_IMAGE_TYPE_3D);
    enum blit2d_src_type src_type = src_buf  ? BLIT2D_SRC_TYPE_BUFFER
                                    : use_3d ? BLIT2D_SRC_TYPE_IMAGE_3D
                                             : BLIT2D_SRC_TYPE_IMAGE;

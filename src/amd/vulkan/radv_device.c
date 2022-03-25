@@ -4383,7 +4383,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 {
    RADV_FROM_HANDLE(radv_image, image, bind->image);
    struct radeon_surf *surface = &image->planes[0].surface;
-   uint32_t bs = vk_format_get_blocksize(image->vk_format);
+   uint32_t bs = vk_format_get_blocksize(image->vk.format);
    VkResult result;
 
    for (uint32_t i = 0; i < bind->bindCount; ++i) {
@@ -4395,13 +4395,13 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 
       VkExtent3D bind_extent = bind->pBinds[i].extent;
       bind_extent.width =
-         DIV_ROUND_UP(bind_extent.width, vk_format_get_blockwidth(image->vk_format));
+         DIV_ROUND_UP(bind_extent.width, vk_format_get_blockwidth(image->vk.format));
       bind_extent.height =
-         DIV_ROUND_UP(bind_extent.height, vk_format_get_blockheight(image->vk_format));
+         DIV_ROUND_UP(bind_extent.height, vk_format_get_blockheight(image->vk.format));
 
       VkOffset3D bind_offset = bind->pBinds[i].offset;
-      bind_offset.x /= vk_format_get_blockwidth(image->vk_format);
-      bind_offset.y /= vk_format_get_blockheight(image->vk_format);
+      bind_offset.x /= vk_format_get_blockwidth(image->vk.format);
+      bind_offset.y /= vk_format_get_blockheight(image->vk.format);
 
       if (bind->pBinds[i].memory != VK_NULL_HANDLE)
          mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
@@ -4926,8 +4926,8 @@ radv_alloc_memory(struct radv_device *device, const VkMemoryAllocateInfo *pAlloc
       }
 
       if (mem->image && mem->image->plane_count == 1 &&
-          !vk_format_is_depth_or_stencil(mem->image->vk_format) && mem->image->info.samples == 1 &&
-          mem->image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+          !vk_format_is_depth_or_stencil(mem->image->vk.format) && mem->image->info.samples == 1 &&
+          mem->image->vk.tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
          struct radeon_bo_metadata metadata;
          device->ws->buffer_get_metadata(device->ws, mem->bo, &metadata);
 
@@ -5158,7 +5158,7 @@ radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequiremen
       case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
          VkMemoryDedicatedRequirements *req = (VkMemoryDedicatedRequirements *)ext;
          req->requiresDedicatedAllocation =
-            image->shareable && image->tiling != VK_IMAGE_TILING_LINEAR;
+            image->shareable && image->vk.tiling != VK_IMAGE_TILING_LINEAR;
          req->prefersDedicatedAllocation = req->requiresDedicatedAllocation;
          break;
       }
@@ -5544,8 +5544,8 @@ radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iv
    } else {
       independent_128b_blocks = 0;
 
-      if (iview->image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                                 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+      if (iview->image->vk.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                                    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
          /* If this DCC image is potentially going to be used in texture
           * fetches, we need some special settings.
           */
@@ -5778,13 +5778,13 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    }
 
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
-      unsigned mip0_depth = iview->image->type == VK_IMAGE_TYPE_3D
+      unsigned mip0_depth = iview->image->vk.image_type == VK_IMAGE_TYPE_3D
                                ? (iview->extent.depth - 1)
                                : (iview->image->info.array_size - 1);
       unsigned width =
-         vk_format_get_plane_width(iview->image->vk_format, iview->plane_id, iview->extent.width);
+         vk_format_get_plane_width(iview->image->vk.format, iview->plane_id, iview->extent.width);
       unsigned height =
-         vk_format_get_plane_height(iview->image->vk_format, iview->plane_id, iview->extent.height);
+         vk_format_get_plane_height(iview->image->vk.format, iview->plane_id, iview->extent.height);
 
       if (device->physical_device->rad_info.gfx_level >= GFX10) {
          cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(iview->base_mip);
@@ -5854,7 +5854,7 @@ radv_initialise_vrs_surface(struct radv_image *image, struct radv_buffer *htile_
 {
    const struct radeon_surf *surf = &image->planes[0].surface;
 
-   assert(image->vk_format == VK_FORMAT_D16_UNORM);
+   assert(image->vk.format == VK_FORMAT_D16_UNORM);
    memset(ds, 0, sizeof(*ds));
 
    ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
@@ -5880,15 +5880,15 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    unsigned level = iview->base_mip;
    unsigned format, stencil_format;
    uint64_t va, s_offs, z_offs;
-   bool stencil_only = iview->image->vk_format == VK_FORMAT_S8_UINT;
+   bool stencil_only = iview->image->vk.format == VK_FORMAT_S8_UINT;
    const struct radv_image_plane *plane = &iview->image->planes[0];
    const struct radeon_surf *surf = &plane->surface;
 
-   assert(vk_format_get_plane_count(iview->image->vk_format) == 1);
+   assert(vk_format_get_plane_count(iview->image->vk.format) == 1);
 
    memset(ds, 0, sizeof(*ds));
    if (!device->instance->absolute_depth_bias) {
-      switch (iview->image->vk_format) {
+      switch (iview->image->vk.format) {
       case VK_FORMAT_D24_UNORM_S8_UINT:
       case VK_FORMAT_X8_D24_UNORM_PACK32:
          ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
@@ -5907,7 +5907,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
       }
    }
 
-   format = radv_translate_dbformat(iview->image->vk_format);
+   format = radv_translate_dbformat(iview->image->vk.format);
    stencil_format = surf->has_stencil ? V_028044_STENCIL_8 : V_028044_STENCIL_INVALID;
 
    uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;

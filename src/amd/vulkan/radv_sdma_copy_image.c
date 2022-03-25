@@ -163,14 +163,14 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
          unsigned hw_fmt, hw_type;
          uint64_t md_address = tiled_address + image->planes[0].surface.meta_offset;
 
-         radv_translate_format_to_hw(&device->physical_device->rad_info, image->vk_format, &hw_fmt,
+         radv_translate_format_to_hw(&device->physical_device->rad_info, image->vk.format, &hw_fmt,
                                      &hw_type);
 
          /* Add metadata */
          radeon_emit(cmd_buffer->cs, (uint32_t)md_address);
          radeon_emit(cmd_buffer->cs, (uint32_t)(md_address >> 32));
          radeon_emit(cmd_buffer->cs,
-                     hw_fmt | vi_alpha_is_on_msb(device, image->vk_format) << 8 | hw_type << 9 |
+                     hw_fmt | vi_alpha_is_on_msb(device, image->vk.format) << 8 | hw_type << 9 |
                         image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size << 24 |
                         V_028C78_MAX_BLOCK_SIZE_256B << 26 | tmz << 29 |
                         image->planes[0].surface.u.gfx9.color.dcc.pipe_aligned << 31);

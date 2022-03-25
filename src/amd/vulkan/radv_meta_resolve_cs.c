@@ -700,11 +700,11 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
    const uint32_t dest_base_layer =
       radv_meta_get_iview_layer(dest_image, &region->dstSubresource, &region->dstOffset);
 
-   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->type, region->extent);
+   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->vk.image_type, region->extent);
    const struct VkOffset3D srcOffset =
-      radv_sanitize_image_offset(src_image->type, region->srcOffset);
+      radv_sanitize_image_offset(src_image->vk.image_type, region->srcOffset);
    const struct VkOffset3D dstOffset =
-      radv_sanitize_image_offset(dest_image->type, region->dstOffset);
+      radv_sanitize_image_offset(dest_image->vk.image_type, region->dstOffset);
 
    for (uint32_t layer = 0; layer < region->srcSubresource.layerCount; ++layer) {
 

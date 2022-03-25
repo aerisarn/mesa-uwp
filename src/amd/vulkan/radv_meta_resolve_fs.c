@@ -815,11 +815,11 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    const uint32_t dest_base_layer =
       radv_meta_get_iview_layer(dest_image, &region->dstSubresource, &region->dstOffset);
 
-   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->type, region->extent);
+   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->vk.image_type, region->extent);
    const struct VkOffset3D srcOffset =
-      radv_sanitize_image_offset(src_image->type, region->srcOffset);
+      radv_sanitize_image_offset(src_image->vk.image_type, region->srcOffset);
    const struct VkOffset3D dstOffset =
-      radv_sanitize_image_offset(dest_image->type, region->dstOffset);
+      radv_sanitize_image_offset(dest_image->vk.image_type, region->dstOffset);
 
    for (uint32_t layer = 0; layer < region->srcSubresource.layerCount; ++layer) {
 
@@ -829,7 +829,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(src_image),
                               .viewType = radv_meta_get_view_type(src_image),
-                              .format = src_image->vk_format,
+                              .format = src_image->vk.format,
                               .subresourceRange =
                                  {
                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -847,7 +847,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(dest_image),
                               .viewType = radv_meta_get_view_type(dest_image),
-                              .format = dest_image->vk_format,
+                              .format = dest_image->vk.format,
                               .subresourceRange =
                                  {
                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,

@@ -27,7 +27,7 @@
 static VkExtent3D
 meta_image_block_size(const struct radv_image *image)
 {
-   const struct util_format_description *desc = vk_format_description(image->vk_format);
+   const struct util_format_description *desc = vk_format_description(image->vk.format);
    return (VkExtent3D){desc->block.width, desc->block.height, 1};
 }
 
@@ -56,11 +56,12 @@ static struct VkOffset3D
 meta_region_offset_el(const struct radv_image *image, const struct VkOffset3D *offset)
 {
    const VkExtent3D block = meta_image_block_size(image);
-   return radv_sanitize_image_offset(image->type, (VkOffset3D){
-                                                     .x = offset->x / block.width,
-                                                     .y = offset->y / block.height,
-                                                     .z = offset->z / block.depth,
-                                                  });
+   return radv_sanitize_image_offset(image->vk.image_type,
+                                     (VkOffset3D){
+                                        .x = offset->x / block.width,
+                                        .y = offset->y / block.height,
+                                        .z = offset->z / block.depth,
+                                     });
 }
 
 static VkFormat
@@ -110,14 +111,15 @@ blit_surf_for_image_level_layer(struct radv_image *image, VkImageLayout layout,
 bool
 radv_image_is_renderable(struct radv_device *device, struct radv_image *image)
 {
-   if (image->vk_format == VK_FORMAT_R32G32B32_UINT ||
-       image->vk_format == VK_FORMAT_R32G32B32_SINT ||
-       image->vk_format == VK_FORMAT_R32G32B32_SFLOAT)
+   if (image->vk.format == VK_FORMAT_R32G32B32_UINT ||
+       image->vk.format == VK_FORMAT_R32G32B32_SINT ||
+       image->vk.format == VK_FORMAT_R32G32B32_SFLOAT)
       return false;
 
-   if (device->physical_device->rad_info.gfx_level >= GFX9 && image->type == VK_IMAGE_TYPE_3D &&
-       vk_format_get_blocksizebits(image->vk_format) == 128 &&
-       vk_format_is_compressed(image->vk_format))
+   if (device->physical_device->rad_info.gfx_level >= GFX9 &&
+       image->vk.image_type == VK_IMAGE_TYPE_3D &&
+       vk_format_get_blocksizebits(image->vk.format) == 128 &&
+       vk_format_is_compressed(image->vk.format))
       return false;
    return true;
 }
@@ -164,10 +166,10 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
       .width = region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width,
       .height = region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height,
    };
-   const VkExtent3D buf_extent_el = meta_region_extent_el(image, image->type, &bufferExtent);
+   const VkExtent3D buf_extent_el = meta_region_extent_el(image, image->vk.image_type, &bufferExtent);
 
    /* Start creating blit rect */
-   const VkExtent3D img_extent_el = meta_region_extent_el(image, image->type, &region->imageExtent);
+   const VkExtent3D img_extent_el = meta_region_extent_el(image, image->vk.image_type, &region->imageExtent);
    struct radv_meta_blit2d_rect rect = {
       .width = img_extent_el.width,
       .height = img_extent_el.height,
@@ -205,7 +207,7 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
       .pitch = buf_extent_el.width,
    };
 
-   if (image->type == VK_IMAGE_TYPE_3D)
+   if (image->vk.image_type == VK_IMAGE_TYPE_3D)
       img_bsurf.layer = img_offset_el.z;
    /* Loop through each 3D or array slice */
    unsigned num_slices_3d = img_extent_el.depth;
@@ -231,7 +233,7 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
        */
       buf_bsurf.offset += buf_extent_el.width * buf_extent_el.height * buf_bsurf.bs;
       img_bsurf.layer++;
-      if (image->type == VK_IMAGE_TYPE_3D)
+      if (image->vk.image_type == VK_IMAGE_TYPE_3D)
          slice_3d++;
       else
          slice_array++;
@@ -258,7 +260,7 @@ radv_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
    }
 
    if (cmd_buffer->device->physical_device->emulate_etc2 &&
-       vk_format_description(dst_image->vk_format)->layout == UTIL_FORMAT_LAYOUT_ETC) {
+       vk_format_description(dst_image->vk.format)->layout == UTIL_FORMAT_LAYOUT_ETC) {
       cmd_buffer->state.flush_bits |=
          RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
          radv_src_access_flush(cmd_buffer, VK_ACCESS_TRANSFER_WRITE_BIT, dst_image) |
@@ -281,7 +283,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
    if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
       /* RADV_QUEUE_TRANSFER should only be used for the prime blit */
       assert(!region->imageOffset.x && !region->imageOffset.y && !region->imageOffset.z);
-      assert(image->type == VK_IMAGE_TYPE_2D);
+      assert(image->vk.image_type == VK_IMAGE_TYPE_2D);
       assert(image->info.width == region->imageExtent.width);
       assert(image->info.height == region->imageExtent.height);
       ASSERTED bool res = radv_sdma_copy_image(cmd_buffer, image, buffer, region);
@@ -319,10 +321,10 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
       .width = region->bufferRowLength ? region->bufferRowLength : region->imageExtent.width,
       .height = region->bufferImageHeight ? region->bufferImageHeight : region->imageExtent.height,
    };
-   const VkExtent3D buf_extent_el = meta_region_extent_el(image, image->type, &bufferExtent);
+   const VkExtent3D buf_extent_el = meta_region_extent_el(image, image->vk.image_type, &bufferExtent);
 
    /* Start creating blit rect */
-   const VkExtent3D img_extent_el = meta_region_extent_el(image, image->type, &region->imageExtent);
+   const VkExtent3D img_extent_el = meta_region_extent_el(image, image->vk.image_type, &region->imageExtent);
    struct radv_meta_blit2d_rect rect = {
       .width = img_extent_el.width,
       .height = img_extent_el.height,
@@ -360,7 +362,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
       .pitch = buf_extent_el.width,
    };
 
-   if (image->type == VK_IMAGE_TYPE_3D)
+   if (image->vk.image_type == VK_IMAGE_TYPE_3D)
       img_info.layer = img_offset_el.z;
    /* Loop through each 3D or array slice */
    unsigned num_slices_3d = img_extent_el.depth;
@@ -377,7 +379,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
 
       buf_info.offset += buf_extent_el.width * buf_extent_el.height * buf_info.bs;
       img_info.layer++;
-      if (image->type == VK_IMAGE_TYPE_3D)
+      if (image->vk.image_type == VK_IMAGE_TYPE_3D)
          slice_3d++;
       else
          slice_array++;
@@ -541,7 +543,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
        * a 3D image.
        */
       const VkExtent3D img_extent_el =
-         meta_region_extent_el(src_image, dst_image->type, &region->extent);
+         meta_region_extent_el(src_image, dst_image->vk.image_type, &region->extent);
 
       /* Start creating blit rect */
       struct radv_meta_blit2d_rect rect = {
@@ -549,10 +551,10 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
          .height = img_extent_el.height,
       };
 
-      if (src_image->type == VK_IMAGE_TYPE_3D)
+      if (src_image->vk.image_type == VK_IMAGE_TYPE_3D)
          b_src.layer = src_offset_el.z;
 
-      if (dst_image->type == VK_IMAGE_TYPE_3D)
+      if (dst_image->vk.image_type == VK_IMAGE_TYPE_3D)
          b_dst.layer = dst_offset_el.z;
 
       /* Loop through each 3D or array slice */
@@ -581,7 +583,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 
          b_src.layer++;
          b_dst.layer++;
-         if (dst_image->type == VK_IMAGE_TYPE_3D)
+         if (dst_image->vk.image_type == VK_IMAGE_TYPE_3D)
             slice_3d++;
          else
             slice_array++;
@@ -631,7 +633,7 @@ radv_CmdCopyImage2(VkCommandBuffer commandBuffer, const VkCopyImageInfo2 *pCopyI
    }
 
    if (cmd_buffer->device->physical_device->emulate_etc2 &&
-       vk_format_description(dst_image->vk_format)->layout == UTIL_FORMAT_LAYOUT_ETC) {
+       vk_format_description(dst_image->vk.format)->layout == UTIL_FORMAT_LAYOUT_ETC) {
       cmd_buffer->state.flush_bits |=
          RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
          radv_src_access_flush(cmd_buffer, VK_ACCESS_TRANSFER_WRITE_BIT, dst_image) |

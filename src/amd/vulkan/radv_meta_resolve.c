@@ -369,7 +369,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
    assert(src_image->info.samples > 1);
    assert(dst_image->info.samples == 1);
 
-   unsigned fs_key = radv_format_meta_fs_key(device, dst_image->vk_format);
+   unsigned fs_key = radv_format_meta_fs_key(device, dst_image->vk.format);
 
    /* From the Vulkan 1.0 spec:
     *
@@ -402,9 +402,9 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
     *    height and depth. 1D images use only x and width. 2D images use x, y,
     *    width and height. 3D images use x, y, z, width, height and depth.
     */
-   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->type, region->extent);
+   const struct VkExtent3D extent = radv_sanitize_image_extent(src_image->vk.image_type, region->extent);
    const struct VkOffset3D dstOffset =
-      radv_sanitize_image_offset(dst_image->type, region->dstOffset);
+      radv_sanitize_image_offset(dst_image->vk.image_type, region->dstOffset);
 
    uint32_t queue_mask = radv_image_queue_family_mask(dst_image, cmd_buffer->qf,
                                                       cmd_buffer->qf);
@@ -436,7 +436,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(src_image),
                               .viewType = radv_meta_get_view_type(src_image),
-                              .format = src_image->vk_format,
+                              .format = src_image->vk.format,
                               .subresourceRange =
                                  {
                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -454,7 +454,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(dst_image),
                               .viewType = radv_meta_get_view_type(dst_image),
-                              .format = dst_image->vk_format,
+                              .format = dst_image->vk.format,
                               .subresourceRange =
                                  {
                                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -531,8 +531,8 @@ resolve_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                                        dst_image_layout, region);
       break;
    case RESOLVE_COMPUTE:
-      radv_meta_resolve_compute_image(cmd_buffer, src_image, src_image->vk_format, src_image_layout,
-                                      dst_image, dst_image->vk_format, dst_image_layout, region);
+      radv_meta_resolve_compute_image(cmd_buffer, src_image, src_image->vk.format, src_image_layout,
+                                      dst_image, dst_image->vk.format, dst_image_layout, region);
       break;
    default:
       assert(!"Invalid resolve method selected");
@@ -568,7 +568,7 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer,
    for (uint32_t r = 0; r < pResolveImageInfo->regionCount; r++) {
       const VkImageResolve2 *region = &pResolveImageInfo->pRegions[r];
 
-      radv_pick_resolve_method_images(cmd_buffer->device, src_image, src_image->vk_format, dst_image,
+      radv_pick_resolve_method_images(cmd_buffer->device, src_image, src_image->vk.format, dst_image,
                                       region->dstSubresource.mipLevel, dst_image_layout, false,
                                       cmd_buffer, &resolve_method);
 
@@ -836,7 +836,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
       }
    };
 
-   if (src_image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT) {
+   if (src_image->vk.create_flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT) {
       /* If the depth/stencil image uses different sample
        * locations, we need them during HTILE decompressions.
        */

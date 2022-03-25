@@ -245,7 +245,7 @@ radv_copy_vrs_htile(struct radv_cmd_buffer *cmd_buffer, struct radv_image *vrs_i
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(vrs_image),
                            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                           .format = vrs_image->vk_format,
+                           .format = vrs_image->vk.format,
                            .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                                                 .baseMipLevel = 0,
                                                 .levelCount = 1,

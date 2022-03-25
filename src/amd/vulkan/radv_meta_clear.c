@@ -1358,7 +1358,7 @@ radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer,
                               uint32_t color_values[2])
 {
    struct radv_device *device = cmd_buffer->device;
-   unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk_format);
+   unsigned bytes_per_pixel = vk_format_get_blocksize(image->vk.format);
    unsigned layer_count = radv_get_layerCount(image, range);
    struct radv_meta_saved_state saved_state;
    bool is_msaa = image->info.samples > 1;
@@ -2160,7 +2160,7 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(image),
                            .viewType = radv_meta_get_view_type(image),
-                           .format = image->vk_format,
+                           .format = image->vk.format,
                            .subresourceRange =
                               {
                                  .aspectMask = range->aspectMask,
@@ -2217,7 +2217,7 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
                      VkImageLayout image_layout, const VkClearValue *clear_value,
                      uint32_t range_count, const VkImageSubresourceRange *ranges, bool cs)
 {
-   VkFormat format = image->vk_format;
+   VkFormat format = image->vk.format;
    VkClearValue internal_clear_value;
 
    if (ranges->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -2271,7 +2271,7 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
       }
 
       for (uint32_t l = 0; l < radv_get_levelCount(image, range); ++l) {
-         const uint32_t layer_count = image->type == VK_IMAGE_TYPE_3D
+         const uint32_t layer_count = image->vk.image_type == VK_IMAGE_TYPE_3D
                                          ? radv_minify(image->info.depth, range->baseMipLevel + l)
                                          : radv_get_layerCount(image, range);
 

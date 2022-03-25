@@ -419,7 +419,7 @@ radv_process_depth_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(image),
                            .viewType = radv_meta_get_view_type(image),
-                           .format = image->vk_format,
+                           .format = image->vk.format,
                            .subresourceRange =
                               {
                                  .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -486,7 +486,7 @@ radv_process_depth_stencil(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                         *pipeline);
 
    if (sample_locs) {
-      assert(image->flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
+      assert(image->vk.create_flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
 
       /* Set the sample locations specified during explicit or
        * automatic layout transitions, otherwise the depth decompress
@@ -569,7 +569,7 @@ radv_expand_depth_stencil_compute(struct radv_cmd_buffer *cmd_buffer, struct rad
                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                .image = radv_image_to_handle(image),
                .viewType = VK_IMAGE_VIEW_TYPE_2D,
-               .format = image->vk_format,
+               .format = image->vk.format,
                .subresourceRange = {.aspectMask = subresourceRange->aspectMask,
                                     .baseMipLevel = subresourceRange->baseMipLevel + l,
                                     .levelCount = 1,
@@ -583,7 +583,7 @@ radv_expand_depth_stencil_compute(struct radv_cmd_buffer *cmd_buffer, struct rad
                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                .image = radv_image_to_handle(image),
                .viewType = VK_IMAGE_VIEW_TYPE_2D,
-               .format = image->vk_format,
+               .format = image->vk.format,
                .subresourceRange = {.aspectMask = subresourceRange->aspectMask,
                                     .baseMipLevel = subresourceRange->baseMipLevel + l,
                                     .levelCount = 1,

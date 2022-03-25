@@ -778,8 +778,8 @@ radv_create_ahb_memory(struct radv_device *device, struct radv_device_memory *me
       w = image->info.width;
       h = image->info.height;
       layers = image->info.array_size;
-      format = android_format_from_vk(image->vk_format);
-      usage = radv_ahb_usage_from_vk_usage(image->flags, image->usage);
+      format = android_format_from_vk(image->vk.format);
+      usage = radv_ahb_usage_from_vk_usage(image->vk.create_flags, image->vk.usage);
    } else if (dedicated_info && dedicated_info->buffer) {
       RADV_FROM_HANDLE(radv_buffer, buffer, dedicated_info->buffer);
       w = buffer->size;

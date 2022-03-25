@@ -1941,7 +1941,7 @@ radv_GetImageSparseMemoryRequirements2(VkDevice _device,
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_image, image, pInfo->image);
 
-   if (!(image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
+   if (!(image->vk.create_flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
       *pSparseMemoryRequirementCount = 0;
       return;
    }
@@ -1951,7 +1951,7 @@ radv_GetImageSparseMemoryRequirements2(VkDevice _device,
 
    vk_outarray_append_typed(VkSparseImageMemoryRequirements2, &out, req)
    {
-      fill_sparse_image_format_properties(device->physical_device, image->vk_format,
+      fill_sparse_image_format_properties(device->physical_device, image->vk.format,
                                           &req->memoryRequirements.formatProperties);
       req->memoryRequirements.imageMipTailFirstLod = image->planes[0].surface.first_mip_tail_level;
 

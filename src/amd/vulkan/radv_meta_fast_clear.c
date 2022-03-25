@@ -496,7 +496,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(image),
                            .viewType = radv_meta_get_view_type(image),
-                           .format = image->vk_format,
+                           .format = image->vk.format,
                            .subresourceRange =
                               {
                                  .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -760,7 +760,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                .image = radv_image_to_handle(image),
                .viewType = VK_IMAGE_VIEW_TYPE_2D,
-               .format = image->vk_format,
+               .format = image->vk.format,
                .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                                     .baseMipLevel = subresourceRange->baseMipLevel + l,
                                     .levelCount = 1,
@@ -774,7 +774,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                .image = radv_image_to_handle(image),
                .viewType = VK_IMAGE_VIEW_TYPE_2D,
-               .format = image->vk_format,
+               .format = image->vk.format,
                .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                                     .baseMipLevel = subresourceRange->baseMipLevel + l,
                                     .levelCount = 1,

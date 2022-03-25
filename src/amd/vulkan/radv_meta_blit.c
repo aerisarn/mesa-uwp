@@ -273,7 +273,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    case VK_IMAGE_ASPECT_COLOR_BIT: {
       unsigned dst_layout = radv_meta_dst_layout_from_layout(dest_image_layout);
       VkImageLayout layout = radv_meta_dst_layout_to_layout(dst_layout);
-      fs_key = radv_format_meta_fs_key(device, dest_image->vk_format);
+      fs_key = radv_format_meta_fs_key(device, dest_image->vk.format);
       format = radv_fs_key_format_exemplars[fs_key];
 
       color_att.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -282,7 +282,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       color_att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       color_att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-      switch (src_image->type) {
+      switch (src_image->vk.image_type) {
       case VK_IMAGE_TYPE_1D:
          pipeline = &device->meta_state.blit.pipeline_1d_src[fs_key];
          break;
@@ -308,7 +308,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       depth_att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       depth_att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-      switch (src_image->type) {
+      switch (src_image->vk.image_type) {
       case VK_IMAGE_TYPE_1D:
          pipeline = &device->meta_state.blit.depth_only_1d_pipeline;
          break;
@@ -334,7 +334,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       stencil_att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       stencil_att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-      switch (src_image->type) {
+      switch (src_image->vk.image_type) {
       case VK_IMAGE_TYPE_1D:
          pipeline = &device->meta_state.blit.stencil_only_1d_pipeline;
          break;
@@ -355,7 +355,8 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 
    if (!*pipeline) {
       VkResult ret = build_pipeline(device, src_iview->aspect_mask,
-                                    translate_sampler_dim(src_image->type), format, pipeline);
+                                    translate_sampler_dim(src_image->vk.image_type),
+                                    format, pipeline);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return;
@@ -489,7 +490,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    cmd_buffer->state.predicating = false;
 
    unsigned dst_start, dst_end;
-   if (dst_image->type == VK_IMAGE_TYPE_3D) {
+   if (dst_image->vk.image_type == VK_IMAGE_TYPE_3D) {
       assert(dst_res->baseArrayLayer == 0);
       dst_start = region->dstOffsets[0].z;
       dst_end = region->dstOffsets[1].z;
@@ -499,7 +500,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    }
 
    unsigned src_start, src_end;
-   if (src_image->type == VK_IMAGE_TYPE_3D) {
+   if (src_image->vk.image_type == VK_IMAGE_TYPE_3D) {
       assert(src_res->baseArrayLayer == 0);
       src_start = region->srcOffsets[0].z;
       src_end = region->srcOffsets[1].z;
@@ -514,7 +515,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    /* There is no interpolation to the pixel center during
     * rendering, so add the 0.5 offset ourselves here. */
    float depth_center_offset = 0;
-   if (src_image->type == VK_IMAGE_TYPE_3D)
+   if (src_image->vk.image_type == VK_IMAGE_TYPE_3D)
       depth_center_offset = 0.5 / (dst_end - dst_start) * (src_end - src_start);
 
    if (flip_z) {
@@ -565,14 +566,14 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       const uint32_t dst_array_slice = dst_start + i;
 
       /* 3D images have just 1 layer */
-      const uint32_t src_array_slice = src_image->type == VK_IMAGE_TYPE_3D ? 0 : src_start + i;
+      const uint32_t src_array_slice = src_image->vk.image_type == VK_IMAGE_TYPE_3D ? 0 : src_start + i;
 
       radv_image_view_init(&dst_iview, cmd_buffer->device,
                            &(VkImageViewCreateInfo){
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(dst_image),
                               .viewType = radv_meta_get_view_type(dst_image),
-                              .format = dst_image->vk_format,
+                              .format = dst_image->vk.format,
                               .subresourceRange = {.aspectMask = dst_res->aspectMask,
                                                    .baseMipLevel = dst_res->mipLevel,
                                                    .levelCount = 1,
@@ -585,7 +586,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                               .image = radv_image_to_handle(src_image),
                               .viewType = radv_meta_get_view_type(src_image),
-                              .format = src_image->vk_format,
+                              .format = src_image->vk.format,
                               .subresourceRange = {.aspectMask = src_res->aspectMask,
                                                    .baseMipLevel = src_res->mipLevel,
                                                    .levelCount = 1,

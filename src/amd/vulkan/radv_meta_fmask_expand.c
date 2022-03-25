@@ -114,7 +114,7 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer, struct radv_
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(image),
                            .viewType = radv_meta_get_view_type(image),
-                           .format = vk_format_no_srgb(image->vk_format),
+                           .format = vk_format_no_srgb(image->vk.format),
                            .subresourceRange =
                               {
                                  .aspectMask = subresourceRange->aspectMask,

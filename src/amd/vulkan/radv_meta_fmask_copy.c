@@ -304,7 +304,7 @@ radv_fmask_copy(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(src->image),
                            .viewType = radv_meta_get_view_type(src->image),
-                           .format = vk_format_no_srgb(src->image->vk_format),
+                           .format = vk_format_no_srgb(src->image->vk.format),
                            .subresourceRange =
                               {
                                  .aspectMask = src->aspect_mask,
@@ -321,7 +321,7 @@ radv_fmask_copy(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(dst->image),
                            .viewType = radv_meta_get_view_type(dst->image),
-                           .format = vk_format_no_srgb(dst->image->vk_format),
+                           .format = vk_format_no_srgb(dst->image->vk.format),
                            .subresourceRange =
                               {
                                  .aspectMask = dst->aspect_mask,

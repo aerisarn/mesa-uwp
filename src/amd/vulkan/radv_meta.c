@@ -349,7 +349,7 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
 VkImageViewType
 radv_meta_get_view_type(const struct radv_image *image)
 {
-   switch (image->type) {
+   switch (image->vk.image_type) {
    case VK_IMAGE_TYPE_1D:
       return VK_IMAGE_VIEW_TYPE_1D;
    case VK_IMAGE_TYPE_2D:
@@ -370,7 +370,7 @@ radv_meta_get_iview_layer(const struct radv_image *dest_image,
                           const VkImageSubresourceLayers *dest_subresource,
                           const VkOffset3D *dest_offset)
 {
-   switch (dest_image->type) {
+   switch (dest_image->vk.image_type) {
    case VK_IMAGE_TYPE_1D:
    case VK_IMAGE_TYPE_2D:
       return dest_subresource->baseArrayLayer;
