@@ -21,8 +21,6 @@
  * IN THE SOFTWARE.
  */
 
-#include <directx/d3d12.h>
-
 #include "spirv_to_dxil.h"
 #include "nir_to_dxil.h"
 #include "nir_builder.h"

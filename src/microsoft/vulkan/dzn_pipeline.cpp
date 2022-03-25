@@ -31,7 +31,6 @@
 #include "vk_util.h"
 #include "vk_format.h"
 
-#include <directx/d3d12.h>
 #include <dxguids/dxguids.h>
 
 #include "util/u_debug.h"
