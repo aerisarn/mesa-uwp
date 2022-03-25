@@ -1732,8 +1732,8 @@
       a 32-bit destination.
     </desc>
     <clamp/>
-    <src>A</src>
-    <src>B</src>
+    <src absneg="true">A</src>
+    <src absneg="true">B</src>
   </group>
 
   <group name="FRSCALE" title="Floating-point rescaling" dests="1" opcode2="6" unit="FMA">
