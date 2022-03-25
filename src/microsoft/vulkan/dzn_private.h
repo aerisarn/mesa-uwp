@@ -361,7 +361,7 @@ struct dzn_buffer_desc {
 };
 
 struct dzn_descriptor_heap {
-   ID3D12Device *dev;
+   ID3D12Device1 *dev;
    ID3D12DescriptorHeap *heap;
    D3D12_DESCRIPTOR_HEAP_TYPE type;
    SIZE_T cpu_base;
