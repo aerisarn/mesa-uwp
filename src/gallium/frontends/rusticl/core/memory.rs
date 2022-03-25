@@ -877,4 +877,32 @@ impl Sampler {
             props: props,
         })
     }
+
+    pub fn pipe(&self) -> pipe_sampler_state {
+        let mut res = pipe_sampler_state::default();
+
+        let wrap = match self.addressing_mode {
+            CL_ADDRESS_CLAMP_TO_EDGE => pipe_tex_wrap::PIPE_TEX_WRAP_CLAMP_TO_EDGE,
+            CL_ADDRESS_CLAMP => pipe_tex_wrap::PIPE_TEX_WRAP_CLAMP_TO_BORDER,
+            CL_ADDRESS_REPEAT => pipe_tex_wrap::PIPE_TEX_WRAP_REPEAT,
+            CL_ADDRESS_MIRRORED_REPEAT => pipe_tex_wrap::PIPE_TEX_WRAP_MIRROR_REPEAT,
+            // TODO: what's a reasonable default?
+            _ => pipe_tex_wrap::PIPE_TEX_WRAP_CLAMP_TO_EDGE,
+        };
+
+        let img_filter = match self.filter_mode {
+            CL_FILTER_NEAREST => pipe_tex_filter::PIPE_TEX_FILTER_NEAREST,
+            CL_FILTER_LINEAR => pipe_tex_filter::PIPE_TEX_FILTER_LINEAR,
+            _ => panic!("unkown filter_mode"),
+        };
+
+        res.set_min_img_filter(img_filter);
+        res.set_mag_img_filter(img_filter);
+        res.set_normalized_coords(self.normalized_coords.into());
+        res.set_wrap_r(wrap);
+        res.set_wrap_s(wrap);
+        res.set_wrap_t(wrap);
+
+        res
+    }
 }

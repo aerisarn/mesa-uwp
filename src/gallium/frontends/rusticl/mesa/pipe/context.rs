@@ -222,6 +222,39 @@ impl PipeContext {
         unsafe { self.pipe.as_ref().delete_compute_state.unwrap()(self.pipe.as_ptr(), state) }
     }
 
+    pub fn create_sampler_state(&self, state: &pipe_sampler_state) -> *mut c_void {
+        unsafe { self.pipe.as_ref().create_sampler_state.unwrap()(self.pipe.as_ptr(), state) }
+    }
+
+    pub fn bind_sampler_states(&self, samplers: &[*mut c_void]) {
+        let mut samplers = samplers.to_owned();
+        unsafe {
+            self.pipe.as_ref().bind_sampler_states.unwrap()(
+                self.pipe.as_ptr(),
+                pipe_shader_type::PIPE_SHADER_COMPUTE,
+                0,
+                samplers.len() as u32,
+                samplers.as_mut_ptr(),
+            )
+        }
+    }
+
+    pub fn clear_sampler_states(&self, count: u32) {
+        unsafe {
+            self.pipe.as_ref().bind_sampler_states.unwrap()(
+                self.pipe.as_ptr(),
+                pipe_shader_type::PIPE_SHADER_COMPUTE,
+                0,
+                count,
+                ptr::null_mut(),
+            )
+        }
+    }
+
+    pub fn delete_sampler_state(&self, ptr: *mut c_void) {
+        unsafe { self.pipe.as_ref().delete_sampler_state.unwrap()(self.pipe.as_ptr(), ptr) }
+    }
+
     pub fn launch_grid(&self, work_dim: u32, block: [u32; 3], grid: [u32; 3], input: &[u8]) {
         let info = pipe_grid_info {
             pc: 0,
@@ -253,6 +286,17 @@ impl PipeContext {
         }
     }
 
+    pub fn create_sampler_view(&self, res: &PipeResource) -> *mut pipe_sampler_view {
+        let template = res.pipe_sampler_view_template();
+        unsafe {
+            self.pipe.as_ref().create_sampler_view.unwrap()(
+                self.pipe.as_ptr(),
+                res.pipe(),
+                &template,
+            )
+        }
+    }
+
     pub fn clear_global_binding(&self, count: u32) {
         unsafe {
             self.pipe.as_ref().set_global_binding.unwrap()(
@@ -260,6 +304,64 @@ impl PipeContext {
                 0,
                 count,
                 ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        }
+    }
+
+    pub fn set_sampler_views(&self, views: &mut [*mut pipe_sampler_view]) {
+        unsafe {
+            self.pipe.as_ref().set_sampler_views.unwrap()(
+                self.pipe.as_ptr(),
+                pipe_shader_type::PIPE_SHADER_COMPUTE,
+                0,
+                views.len() as u32,
+                0,
+                false,
+                views.as_mut_ptr(),
+            )
+        }
+    }
+
+    pub fn clear_sampler_views(&self, count: u32) {
+        unsafe {
+            self.pipe.as_ref().set_sampler_views.unwrap()(
+                self.pipe.as_ptr(),
+                pipe_shader_type::PIPE_SHADER_COMPUTE,
+                0,
+                count,
+                0,
+                false,
+                ptr::null_mut(),
+            )
+        }
+    }
+
+    pub fn sampler_view_destroy(&self, view: *mut pipe_sampler_view) {
+        unsafe { self.pipe.as_ref().sampler_view_destroy.unwrap()(self.pipe.as_ptr(), view) }
+    }
+
+    pub fn set_shader_images(&self, images: &[pipe_image_view]) {
+        unsafe {
+            self.pipe.as_ref().set_shader_images.unwrap()(
+                self.pipe.as_ptr(),
+                pipe_shader_type::PIPE_SHADER_COMPUTE,
+                0,
+                images.len() as u32,
+                0,
+                images.as_ptr(),
+            )
+        }
+    }
+
+    pub fn clear_shader_images(&self, count: u32) {
+        unsafe {
+            self.pipe.as_ref().set_shader_images.unwrap()(
+                self.pipe.as_ptr(),
+                pipe_shader_type::PIPE_SHADER_COMPUTE,
+                0,
+                count,
+                0,
                 ptr::null_mut(),
             )
         }
@@ -289,6 +391,7 @@ impl Drop for PipeContext {
 fn has_required_cbs(c: &pipe_context) -> bool {
     c.destroy.is_some()
         && c.bind_compute_state.is_some()
+        && c.bind_sampler_states.is_some()
         && c.blit.is_some()
         && c.buffer_map.is_some()
         && c.buffer_subdata.is_some()
@@ -297,11 +400,15 @@ fn has_required_cbs(c: &pipe_context) -> bool {
         && c.clear_texture.is_some()
         && c.create_compute_state.is_some()
         && c.delete_compute_state.is_some()
+        && c.delete_sampler_state.is_some()
         && c.flush.is_some()
         && c.launch_grid.is_some()
         && c.memory_barrier.is_some()
         && c.resource_copy_region.is_some()
+        && c.sampler_view_destroy.is_some()
         && c.set_global_binding.is_some()
+        && c.set_sampler_views.is_some()
+        && c.set_shader_images.is_some()
         && c.texture_map.is_some()
         && c.texture_subdata.is_some()
         && c.texture_unmap.is_some()

@@ -20,6 +20,50 @@ impl PipeResource {
     pub(super) fn pipe(&self) -> *mut pipe_resource {
         self.pipe
     }
+
+    fn as_ref(&self) -> &pipe_resource {
+        unsafe { self.pipe.as_ref().unwrap() }
+    }
+
+    pub fn pipe_image_view(&self) -> pipe_image_view {
+        let u = if self.as_ref().target() == pipe_texture_target::PIPE_BUFFER {
+            pipe_image_view__bindgen_ty_1 {
+                buf: pipe_image_view__bindgen_ty_1__bindgen_ty_2 {
+                    offset: 0,
+                    size: self.as_ref().width0,
+                },
+            }
+        } else {
+            let mut tex = pipe_image_view__bindgen_ty_1__bindgen_ty_1::default();
+            tex.set_level(0);
+            tex.set_first_layer(0);
+            if self.as_ref().target() == pipe_texture_target::PIPE_TEXTURE_3D {
+                tex.set_last_layer((self.as_ref().depth0 - 1).into());
+            } else if self.as_ref().array_size > 0 {
+                tex.set_last_layer((self.as_ref().array_size - 1).into());
+            } else {
+                tex.set_last_layer(0);
+            }
+
+            pipe_image_view__bindgen_ty_1 { tex: tex }
+        };
+
+        pipe_image_view {
+            resource: self.pipe(),
+            format: self.as_ref().format(),
+            access: 0,
+            shader_access: PIPE_IMAGE_ACCESS_WRITE as u16,
+            u: u,
+        }
+    }
+
+    pub fn pipe_sampler_view_template(&self) -> pipe_sampler_view {
+        let mut res = pipe_sampler_view::default();
+        unsafe {
+            u_sampler_view_default_template(&mut res, self.pipe, self.as_ref().format());
+        }
+        res
+    }
 }
 
 impl Drop for PipeResource {

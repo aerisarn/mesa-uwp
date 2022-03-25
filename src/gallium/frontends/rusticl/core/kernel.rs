@@ -20,6 +20,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::convert::TryInto;
+use std::os::raw::c_void;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
@@ -37,7 +38,9 @@ pub enum KernelArgValue {
 #[derive(PartialEq, Eq, Clone)]
 pub enum KernelArgType {
     Constant, // for anything passed by value
+    Image,
     Sampler,
+    Texture,
     MemGlobal,
     MemConstant,
     MemLocal,
@@ -93,7 +96,15 @@ impl KernelArg {
                     KernelArgType::MemLocal
                 }
                 clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_GLOBAL => {
-                    KernelArgType::MemGlobal
+                    if unsafe { glsl_type_is_image(nir.type_) } {
+                        if nir.data.access() == gl_access_qualifier::ACCESS_NON_WRITEABLE.0 {
+                            KernelArgType::Texture
+                        } else {
+                            KernelArgType::Image
+                        }
+                    } else {
+                        KernelArgType::MemGlobal
+                    }
                 }
             };
 
@@ -229,6 +240,13 @@ fn lower_and_optimize_nir_pre_inputs(dev: &Device, nir: &mut NirShader, lib_clc:
     nir.pass0(nir_opt_deref);
 }
 
+extern "C" fn can_remove_var(var: *mut nir_variable, _: *mut c_void) -> bool {
+    unsafe {
+        let var = var.as_ref().unwrap();
+        !glsl_type_is_image(var.type_)
+    }
+}
+
 fn lower_and_optimize_nir_late(
     dev: &Device,
     nir: &mut NirShader,
@@ -242,19 +260,24 @@ fn lower_and_optimize_nir_late(
     };
     let mut lower_state = rusticl_lower_state::default();
 
+    let dv_opts = nir_remove_dead_variables_options {
+        can_remove_var: Some(can_remove_var),
+        can_remove_var_data: ptr::null_mut(),
+    };
     nir.pass2(
         nir_remove_dead_variables,
         nir_variable_mode::nir_var_uniform
+            | nir_variable_mode::nir_var_image
             | nir_variable_mode::nir_var_mem_constant
+            | nir_variable_mode::nir_var_mem_shared
             | nir_variable_mode::nir_var_function_temp,
-        ptr::null(),
+        &dv_opts,
     );
+
+    // TODO inline samplers
     nir.pass1(nir_lower_readonly_images_to_tex, false);
-    nir.pass2(
-        nir_remove_dead_variables,
-        nir_variable_mode::nir_var_mem_shared | nir_variable_mode::nir_var_function_temp,
-        ptr::null(),
-    );
+    nir.pass0(nir_lower_cl_images);
+
     nir.reset_scratch_size();
     nir.pass2(
         nir_lower_vars_to_explicit_types,
@@ -418,6 +441,9 @@ impl Kernel {
         let mut resource_info = Vec::new();
         let mut local_size: u32 = nir.shared_size();
         let printf_size = q.device.printf_buffer_size() as u32;
+        let mut samplers = Vec::new();
+        let mut iviews = Vec::new();
+        let mut sviews = Vec::new();
 
         for i in 0..3 {
             if block[i] == 0 {
@@ -431,17 +457,33 @@ impl Kernel {
             if arg.dead {
                 continue;
             }
-            input.append(&mut vec![0; arg.offset - input.len()]);
+
+            if arg.kind != KernelArgType::Image
+                && arg.kind != KernelArgType::Texture
+                && arg.kind != KernelArgType::Sampler
+            {
+                input.resize(arg.offset, 0);
+            }
             match val.borrow().as_ref().unwrap() {
                 KernelArgValue::Constant(c) => input.extend_from_slice(c),
                 KernelArgValue::MemObject(mem) => {
-                    input.extend_from_slice(&mem.offset.to_ne_bytes());
-                    resource_info.push((Some(mem.get_res_of_dev(&q.device)?.clone()), arg.offset));
+                    let res = mem.get_res_of_dev(&q.device)?;
+                    if mem.is_buffer() {
+                        input.extend_from_slice(&mem.offset.to_ne_bytes());
+                        resource_info.push((Some(res.clone()), arg.offset));
+                    } else if arg.kind == KernelArgType::Image {
+                        iviews.push(res.pipe_image_view())
+                    } else {
+                        sviews.push(res.clone())
+                    }
                 }
                 KernelArgValue::LocalMem(size) => {
                     // TODO 32 bit
                     input.extend_from_slice(&[0; 8]);
                     local_size += *size as u32;
+                }
+                KernelArgValue::Sampler(sampler) => {
+                    samplers.push(sampler.pipe());
                 }
                 KernelArgValue::None => {
                     assert!(
@@ -450,7 +492,6 @@ impl Kernel {
                     );
                     input.extend_from_slice(&[0; 8]);
                 }
-                _ => panic!("unhandled arg type"),
             }
         }
 
@@ -498,6 +539,13 @@ impl Kernel {
             let mut globals: Vec<*mut u32> = Vec::new();
             let printf_format = nir.printf_format();
             let printf_buf = printf_buf.clone();
+            let iviews = iviews.clone();
+
+            let mut sviews: Vec<_> = sviews.iter().map(|s| ctx.create_sampler_view(s)).collect();
+            let samplers: Vec<_> = samplers
+                .iter()
+                .map(|s| ctx.create_sampler_state(s))
+                .collect();
 
             for (res, offset) in resource_info.clone() {
                 resources.push(res);
@@ -516,11 +564,22 @@ impl Kernel {
             let cso = ctx.create_compute_state(nir, input.len() as u32, local_size);
 
             ctx.bind_compute_state(cso);
+            ctx.bind_sampler_states(&samplers);
+            ctx.set_sampler_views(&mut sviews);
+            ctx.set_shader_images(&iviews);
             ctx.set_global_binding(resources.as_slice(), &mut globals);
+
             ctx.launch_grid(work_dim, block, grid, &input);
+
             ctx.clear_global_binding(globals.len() as u32);
+            ctx.clear_shader_images(iviews.len() as u32);
+            ctx.clear_sampler_views(sviews.len() as u32);
+            ctx.clear_sampler_states(samplers.len() as u32);
             ctx.delete_compute_state(cso);
             ctx.memory_barrier(PIPE_BARRIER_GLOBAL_BUFFER);
+
+            samplers.iter().for_each(|s| ctx.delete_sampler_state(*s));
+            sviews.iter().for_each(|v| ctx.sampler_view_destroy(*v));
 
             if let Some(printf_buf) = &printf_buf {
                 let tx = ctx

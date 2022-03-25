@@ -290,6 +290,10 @@ pub fn set_kernel_arg(
                         }
                     }
                     KernelArgType::MemLocal => KernelArgValue::LocalMem(arg_size),
+                    KernelArgType::Image | KernelArgType::Texture => {
+                        let img: *const cl_mem = arg_value.cast();
+                        KernelArgValue::MemObject((*img).get_ref()?)
+                    }
                     KernelArgType::Sampler => {
                         let ptr: *const cl_sampler = arg_value.cast();
                         KernelArgValue::Sampler((*ptr).get_ref()?)

@@ -214,6 +214,12 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--allowlist-var', 'stderr',
     '--allowlist-var', 'stdout',
     '--bitfield-enum', 'nir_lower_int64_options',
+    '--allowlist-type', 'pipe_tex_wrap',
+    '--constified-enum-module', 'pipe_tex_wrap',
+    '--allowlist-type', 'pipe_tex_filter',
+    '--constified-enum-module', 'pipe_tex_filter',
+    '--allowlist-type', 'gl_access_qualifier',
+    '--bitfield-enum', 'gl_access_qualifier',
   ],
 )
 
