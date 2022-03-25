@@ -350,6 +350,9 @@ cleanup_fences(struct fd_bo *bo, bool expired)
 void
 bo_del(struct fd_bo *bo)
 {
+   struct fd_device *dev = bo->dev;
+   uint32_t handle = bo->handle;
+
    VG_BO_FREE(bo);
 
    simple_mtx_assert_locked(&table_lock);
@@ -361,21 +364,20 @@ bo_del(struct fd_bo *bo)
    if (bo->map)
       os_munmap(bo->map, bo->size);
 
-   /* TODO probably bo's in bucket list get removed from
-    * handle table??
-    */
-
-   if (bo->handle) {
-      struct drm_gem_close req = {
-         .handle = bo->handle,
-      };
-      _mesa_hash_table_remove_key(bo->dev->handle_table, &bo->handle);
+   if (handle) {
+      _mesa_hash_table_remove_key(dev->handle_table, &handle);
       if (bo->name)
-         _mesa_hash_table_remove_key(bo->dev->name_table, &bo->name);
-      drmIoctl(bo->dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
+         _mesa_hash_table_remove_key(dev->name_table, &bo->name);
    }
 
    bo->funcs->destroy(bo);
+
+   if (handle) {
+      struct drm_gem_close req = {
+         .handle = handle,
+      };
+      drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
+   }
 }
 
 static void
