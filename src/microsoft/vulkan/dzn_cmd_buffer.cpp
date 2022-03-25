@@ -828,7 +828,7 @@ dzn_cmd_buffer_alloc_internal_buf(dzn_cmd_buffer *cmdbuf,
                                   ID3D12Resource **out)
 {
    dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
-   ComPtr<ID3D12Resource> res;
+   ID3D12Resource *res;
    *out = NULL;
 
    /* Align size on 64k (the default alignment) */
@@ -863,10 +863,11 @@ dzn_cmd_buffer_alloc_internal_buf(dzn_cmd_buffer *cmdbuf,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!entry) {
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      res->Release();
       return cmdbuf->error;
    }
 
-   entry->res = res.Detach();
+   entry->res = res;
    list_addtail(&entry->link, &cmdbuf->internal_bufs);
    *out = entry->res;
    return VK_SUCCESS;

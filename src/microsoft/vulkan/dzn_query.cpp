@@ -264,16 +264,19 @@ dzn_GetQueryPoolResults(VkDevice device,
       uint64_t available = 0;
 
       if (flags & VK_QUERY_RESULT_WAIT_BIT) {
-         ComPtr<ID3D12Fence> query_fence(NULL);
+         ID3D12Fence *query_fence = NULL;
          uint64_t query_fence_val = 0;
 
          while (true) {
             mtx_lock(&qpool->queries_lock);
-            query_fence = ComPtr<ID3D12Fence>(query->fence);
+            if (query->fence) {
+               query_fence = query->fence;
+               query_fence->AddRef();
+            }
             query_fence_val = query->fence_value;
             mtx_unlock(&qpool->queries_lock);
 
-            if (query_fence.Get())
+            if (query_fence)
                break;
 
             /* Check again in 10ms.
@@ -283,16 +286,23 @@ dzn_GetQueryPoolResults(VkDevice device,
          }
 
          query_fence->SetEventOnCompletion(query_fence_val, NULL);
+         query_fence->Release();
          available = UINT64_MAX;
       } else {
+         ID3D12Fence *query_fence = NULL;
          mtx_lock(&qpool->queries_lock);
-         ComPtr<ID3D12Fence> query_fence(query->fence);
+         if (query->fence) {
+            query_fence = query->fence;
+            query_fence->AddRef();
+         }
          uint64_t query_fence_val = query->fence_value;
          mtx_unlock(&qpool->queries_lock);
 
-         if (query_fence.Get() &&
-             query_fence->GetCompletedValue() >= query_fence_val)
-            available = UINT64_MAX;
+         if (query_fence) {
+            if (query_fence->GetCompletedValue() >= query_fence_val)
+               available = UINT64_MAX;
+            query_fence->Release();
+         }
       }
 
       if (qpool->heap_type != D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS) {

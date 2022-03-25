@@ -55,11 +55,8 @@
 
 #define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
-#include <wrl/client.h>
 
 #include "spirv_to_dxil.h"
-
-using Microsoft::WRL::ComPtr;
 
 #define DZN_SWAP(a, b) \
    do { \

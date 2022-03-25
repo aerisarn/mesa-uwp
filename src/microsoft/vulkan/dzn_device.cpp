@@ -336,14 +336,14 @@ dzn_physical_device_cache_caps(dzn_physical_device *pdev)
       .NodeMask = 0,
    };
 
-   ComPtr<ID3D12CommandQueue> cmdqueue;
-
+   ID3D12CommandQueue *cmdqueue;
    pdev->dev->CreateCommandQueue(&queue_desc,
                                  IID_PPV_ARGS(&cmdqueue));
 
    uint64_t ts_freq;
    cmdqueue->GetTimestampFrequency(&ts_freq);
    pdev->timestamp_period = 1000000000.0f / ts_freq;
+   cmdqueue->Release();
 }
 
 static void
@@ -901,21 +901,28 @@ dzn_EnumeratePhysicalDevices(VkInstance inst,
    VK_FROM_HANDLE(dzn_instance, instance, inst);
 
    if (!instance->physical_devices_enumerated) {
-      ComPtr<IDXGIFactory4> factory = dxgi_get_factory(false);
-      ComPtr<IDXGIAdapter1> adapter(NULL);
+      IDXGIFactory4 *factory = dxgi_get_factory(false);
+      IDXGIAdapter1 *adapter = NULL;
       for (UINT i = 0; SUCCEEDED(factory->EnumAdapters1(i, &adapter)); ++i) {
          DXGI_ADAPTER_DESC1 desc;
          adapter->GetDesc1(&desc);
          if (instance->debug_flags & DZN_DEBUG_WARP) {
-            if ((desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0)
+            if ((desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0) {
+               adapter->Release();
                continue;
+            }
          }
 
          VkResult result =
-            dzn_physical_device_create(instance, adapter.Get(), &desc);
-         if (result != VK_SUCCESS)
+            dzn_physical_device_create(instance, adapter, &desc);
+
+         adapter->Release();
+         if (result != VK_SUCCESS) {
+            factory->Release();
             return result;
+         }
       }
+      factory->Release();
    }
 
    VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,
@@ -1788,7 +1795,7 @@ dzn_device_create_root_sig(dzn_device *device,
 {
    dzn_instance *instance =
       container_of(device->vk.physical->instance, dzn_instance, vk);
-   ComPtr<ID3DBlob> sig, error;
+   ID3DBlob *sig, *error;
 
    if (FAILED(instance->d3d12.serialize_root_sig(desc,
                                                  &sig, &error))) {
@@ -1801,6 +1808,7 @@ dzn_device_create_root_sig(dzn_device *device,
                  error_msg);
       }
 
+      error->Release();
       return NULL;
    }
 
@@ -1808,9 +1816,12 @@ dzn_device_create_root_sig(dzn_device *device,
    if (FAILED(device->dev->CreateRootSignature(0,
                                                sig->GetBufferPointer(),
                                                sig->GetBufferSize(),
-                                               IID_PPV_ARGS(&root_sig))))
+                                               IID_PPV_ARGS(&root_sig)))) {
+      sig->Release();
       return NULL;
+   }
 
+   sig->Release();
    return root_sig;
 }
 
