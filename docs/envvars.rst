@@ -575,30 +575,16 @@ VC4 driver environment variables
 --------------------------------
 
 :envvar:`VC4_DEBUG`
-   a comma-separated list of named flags, which do various things:
+   a comma-separated list of named flags, which do various things. Use
+   `VC4_DEBUG=help` to print a list of available options.
 
-   ``cl``
-      dump command list during creation
-   ``qpu``
-      dump generated QPU instructions
-   ``qir``
-      dump QPU IR during program compile
-   ``nir``
-      dump NIR during program compile
-   ``tgsi``
-      dump TGSI during program compile
-   ``shaderdb``
-      dump program compile information for shader-db analysis
-   ``perf``
-      print during performance-related events
-   ``norast``
-      skip actual hardware execution of commands
-   ``always_flush``
-      flush after each draw call
-   ``always_sync``
-      wait for finish after each flush
-   ``dump``
-      write a GPU command stream trace file (VC4 simulator only)
+
+V3D/V3DV driver environment variables
+-------------------------------------
+
+:envvar:`V3D_DEBUG`
+    a comma-separated list of debug options. Use `V3D_DEBUG=help` to
+    print a list of available options.
 
 
 .. _radv env-vars:
