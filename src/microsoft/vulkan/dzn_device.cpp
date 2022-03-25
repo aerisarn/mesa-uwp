@@ -1795,7 +1795,7 @@ dzn_device_create_root_sig(dzn_device *device,
 {
    dzn_instance *instance =
       container_of(device->vk.physical->instance, dzn_instance, vk);
-   ID3DBlob *sig, *error;
+   ID3D10Blob *sig, *error;
 
    if (FAILED(instance->d3d12.serialize_root_sig(desc,
                                                  &sig, &error))) {
