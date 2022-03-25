@@ -2114,8 +2114,8 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
       },
    };
    VkImageView image_view;
-   result = v3dv_CreateImageView(_device, &image_view_info,
-                                 &cmd_buffer->device->vk.alloc, &image_view);
+   result = v3dv_create_image_view(cmd_buffer->device,
+                                   &image_view_info, &image_view);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -4071,8 +4071,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          },
       };
       VkImageView dst_image_view;
-      result = v3dv_CreateImageView(_device, &dst_image_view_info,
-                                    &device->vk.alloc, &dst_image_view);
+      result = v3dv_create_image_view(device, &dst_image_view_info,
+                                      &dst_image_view);
       if (result != VK_SUCCESS)
          goto fail;
 
@@ -4131,8 +4131,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          },
       };
       VkImageView src_image_view;
-      result = v3dv_CreateImageView(_device, &src_image_view_info,
-                                    &device->vk.alloc, &src_image_view);
+      result = v3dv_create_image_view(device, &src_image_view_info,
+                                      &src_image_view);
       if (result != VK_SUCCESS)
          goto fail;
 

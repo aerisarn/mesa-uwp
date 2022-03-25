@@ -491,13 +491,12 @@ v3dv_image_type_to_view_type(VkImageType type)
    }
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-v3dv_CreateImageView(VkDevice _device,
-                     const VkImageViewCreateInfo *pCreateInfo,
-                     const VkAllocationCallbacks *pAllocator,
-                     VkImageView *pView)
+static VkResult
+create_image_view(struct v3dv_device *device,
+                  const VkImageViewCreateInfo *pCreateInfo,
+                  const VkAllocationCallbacks *pAllocator,
+                  VkImageView *pView)
 {
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_image, image, pCreateInfo->image);
    struct v3dv_image_view *iview;
 
@@ -560,6 +559,25 @@ v3dv_CreateImageView(VkDevice _device,
    *pView = v3dv_image_view_to_handle(iview);
 
    return VK_SUCCESS;
+}
+
+VkResult
+v3dv_create_image_view(struct v3dv_device *device,
+                       const VkImageViewCreateInfo *pCreateInfo,
+                       VkImageView *pView)
+{
+   return create_image_view(device, pCreateInfo, NULL, pView);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_CreateImageView(VkDevice _device,
+                     const VkImageViewCreateInfo *pCreateInfo,
+                     const VkAllocationCallbacks *pAllocator,
+                     VkImageView *pView)
+{
+   V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   return create_image_view(device, pCreateInfo, pAllocator, pView);
 }
 
 VKAPI_ATTR void VKAPI_CALL

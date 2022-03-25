@@ -633,6 +633,10 @@ struct v3dv_image_view {
    uint8_t texture_shader_state[2][V3DV_TEXTURE_SHADER_STATE_LENGTH];
 };
 
+VkResult v3dv_create_image_view(struct v3dv_device *device,
+                                const VkImageViewCreateInfo *pCreateInfo,
+                                VkImageView *pView);
+
 uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer);
 
 struct v3dv_buffer {
