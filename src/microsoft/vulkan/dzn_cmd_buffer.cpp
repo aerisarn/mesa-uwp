@@ -1421,7 +1421,7 @@ dzn_cmd_buffer_copy_buf2img_region(dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, dst_image, info->dstImage);
 
    ID3D12Device1 *dev = device->dev;
-   ID3D12GraphicsCommandList *cmdlist = cmdbuf->cmdlist;
+   ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    const VkBufferImageCopy2 *region = &info->pRegions[r];
    enum pipe_format pfmt = vk_format_to_pipe_format(dst_image->vk.format);
@@ -1492,7 +1492,7 @@ dzn_cmd_buffer_copy_img2buf_region(dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_buffer, dst_buffer, info->dstBuffer);
 
    ID3D12Device1 *dev = device->dev;
-   ID3D12GraphicsCommandList *cmdlist = cmdbuf->cmdlist;
+   ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    const VkBufferImageCopy2 *region = &info->pRegions[r];
    enum pipe_format pfmt = vk_format_to_pipe_format(src_image->vk.format);
@@ -1563,7 +1563,7 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
    ID3D12Device1 *dev = device->dev;
-   ID3D12GraphicsCommandList *cmdlist = cmdbuf->cmdlist;
+   ID3D12GraphicsCommandList1 *cmdlist = cmdbuf->cmdlist;
 
    const VkImageCopy2 *region = &info->pRegions[r];
    const VkImageSubresourceLayers *src_subres = &region->srcSubresource;
