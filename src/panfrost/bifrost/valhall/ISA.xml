@@ -1823,6 +1823,21 @@
     <saturate/>
   </group>
 
+  <group name="SEG_ADD" title="Segment addition" dests="1" opcode2="6" unit="CVT">
+    <desc>
+      Similar to SHADDX, but especially used for loading offsets into
+      WLS. Usually this is only required for atomic operations, which cannot
+      directly use wls_pointer as an address.
+
+      .neg indicates SEG_SUB instead.
+    </desc>
+    <ins name="SEG_ADD.u64" opcode="0x1A3"/>
+    <mod name="neg" start="38" size="1"/>
+    <mod name="preserve_null" start="39" size="1"/>
+    <src>A</src>
+    <src widen="true">B</src>
+  </group>
+
   <group name="SHADDX" title="Shift, extend, and 64-bit add" dests="1" opcode2="7" unit="CVT">
     <desc>
       Sign or zero extend B to 64-bits, left-shift by `shift`, and add the

@@ -78,6 +78,7 @@ SKIP = set([
         "IDP.v4s8",
         "IDP.v4u8",
         "FATAN_ASSIST.f32",
+        "SEG_ADD.u64",
         "TEX_DUAL",
         "TODO.VAR_TEX",
     ])
