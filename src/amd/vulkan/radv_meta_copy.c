@@ -460,16 +460,24 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       }
    }
 
-   VkImageAspectFlags src_aspects[3] = {VK_IMAGE_ASPECT_PLANE_0_BIT, VK_IMAGE_ASPECT_PLANE_1_BIT,
-                                        VK_IMAGE_ASPECT_PLANE_2_BIT};
-   VkImageAspectFlags dst_aspects[3] = {VK_IMAGE_ASPECT_PLANE_0_BIT, VK_IMAGE_ASPECT_PLANE_1_BIT,
-                                        VK_IMAGE_ASPECT_PLANE_2_BIT};
-   unsigned aspect_count =
-      region->srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT ? src_image->plane_count : 1;
-   if (region->srcSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
-      src_aspects[0] = region->srcSubresource.aspectMask;
-   if (region->dstSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
-      dst_aspects[0] = region->dstSubresource.aspectMask;
+   VkImageAspectFlags src_aspects[3] = { region->srcSubresource.aspectMask };
+   VkImageAspectFlags dst_aspects[3] = { region->dstSubresource.aspectMask };
+   unsigned aspect_count = 1;
+
+   if (region->srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT &&
+       src_image->plane_count > 1) {
+      static const VkImageAspectFlags all_planes[3] = {
+         VK_IMAGE_ASPECT_PLANE_0_BIT,
+         VK_IMAGE_ASPECT_PLANE_1_BIT,
+         VK_IMAGE_ASPECT_PLANE_2_BIT
+      };
+
+      aspect_count = src_image->plane_count;
+      for (unsigned i = 0; i < aspect_count; i++) {
+         src_aspects[i] = all_planes[i];
+         dst_aspects[i] = all_planes[i];
+      }
+   }
 
    for (unsigned a = 0; a < aspect_count; ++a) {
       /* Create blit surfaces */

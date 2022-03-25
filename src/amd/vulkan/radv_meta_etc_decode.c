@@ -746,7 +746,7 @@ radv_meta_decode_etc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
          .format = load_format,
          .subresourceRange =
             {
-               .aspectMask = VK_IMAGE_ASPECT_PLANE_0_BIT,
+               .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                .baseMipLevel = subresource->mipLevel,
                .levelCount = 1,
                .baseArrayLayer = 0,
