@@ -5621,6 +5621,7 @@ visit_load_sbt_amd(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp desc_base = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.sbt_descriptors));
    Operand desc_off = bld.copy(bld.def(s1), Operand::c32(binding * 16u));
    bld.smem(aco_opcode::s_load_dwordx4, Definition(dst), desc_base, desc_off);
+   emit_split_vector(ctx, dst, 4);
 }
 
 void
