@@ -481,13 +481,13 @@ dzn_cmd_buffer_get_query_pool_state(dzn_cmd_buffer *cmdbuf,
    if (!he) {
       state = dzn_cmd_buffer_create_query_pool_state(cmdbuf);
       if (!state)
-	 return NULL;
+         return NULL;
 
       he = _mesa_hash_table_insert(cmdbuf->queries.ht, qpool, state);
       if (!he) {
          dzn_cmd_buffer_destroy_query_pool_state(cmdbuf, state);
          cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-	 return NULL;
+         return NULL;
       }
    } else {
       state = (dzn_cmd_buffer_query_pool_state *)he->data;
@@ -519,7 +519,7 @@ dzn_cmd_buffer_collect_queries(dzn_cmd_buffer *cmdbuf,
       util_dynarray_element(&state->collect, BITSET_WORD, 0);
    for (start = first_query, end = first_query,
         __bitset_next_range(&start, &end, collect, nbits);
-	start < nbits;
+        start < nbits;
         __bitset_next_range(&start, &end, collect, nbits)) {
       cmdbuf->cmdlist->ResolveQueryData(qpool->heap, qpool->queries[start].type,
                                         start, end - start,
@@ -547,7 +547,7 @@ dzn_cmd_buffer_collect_queries(dzn_cmd_buffer *cmdbuf,
 
    for (start = first_query, end = first_query,
         __bitset_next_range(&start, &end, collect, nbits);
-	start < nbits;
+        start < nbits;
         __bitset_next_range(&start, &end, collect, nbits)) {
       uint32_t step = DZN_QUERY_REFS_SECTION_SIZE / sizeof(uint64_t);
       uint32_t count = end - start;
@@ -974,7 +974,7 @@ dzn_cmd_buffer_clear_rects_with_copy(dzn_cmd_buffer *cmdbuf,
             dst_loc.PlacedFootprint.Footprint.Format :
             image->desc.Format;
 
-	 for (uint32_t r = 0; r < rect_count; r++) {
+         for (uint32_t r = 0; r < rect_count; r++) {
             D3D12_BOX src_box = {
                .left = 0,
                .top = 0,
@@ -2296,7 +2296,7 @@ dzn_cmd_buffer_update_heaps(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
          if (type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
             uint32_t dynamic_buffer_count = pipeline->sets[s].dynamic_buffer_count;
             for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
-	       uint32_t desc_heap_offset =
+               uint32_t desc_heap_offset =
                   pipeline->sets[s].dynamic_buffer_heap_offsets[o].srv;
                dzn_buffer_desc bdesc = set->dynamic_buffers[o];
                bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
@@ -3735,13 +3735,13 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
          _mesa_hash_table_search(cmdbuf->events.ht, event);
       if (he) {
          enum dzn_event_state state = (enum dzn_event_state)(uintptr_t)he->data;
-	 assert(state != DZN_EVENT_STATE_RESET);
+         assert(state != DZN_EVENT_STATE_RESET);
          flush_pipeline = state == DZN_EVENT_STATE_SET;
       } else {
          if (!_mesa_hash_table_insert(cmdbuf->events.ht, event,
                                       (void *)(uintptr_t)DZN_EVENT_STATE_EXTERNAL_WAIT)) {
             cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-	    return;
+            return;
          }
 
          dzn_event **entry = (dzn_event **)
@@ -3749,8 +3749,8 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
 
          if (!entry) {
             cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-	    return;
-	 }
+            return;
+         }
 
          *entry = event;
       }

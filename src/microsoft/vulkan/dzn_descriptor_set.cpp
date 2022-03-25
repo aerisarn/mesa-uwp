@@ -1648,7 +1648,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset
-	 };
+         };
 
          if (desc.buffer)
             dzn_descriptor_set_write_buffer_desc(set, &ptr, &desc);
