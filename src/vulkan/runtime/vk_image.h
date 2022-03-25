@@ -227,13 +227,15 @@ void vk_image_view_destroy(struct vk_device *device,
 static inline VkImageSubresourceRange
 vk_image_view_subresource_range(const struct vk_image_view *view)
 {
-   return (VkImageSubresourceRange) {
+   VkImageSubresourceRange range = {
       .aspectMask = view->aspects,
       .baseMipLevel = view->base_mip_level,
       .levelCount = view->level_count,
       .baseArrayLayer = view->base_array_layer,
       .layerCount = view->layer_count,
    };
+
+   return range;
 }
 
 bool vk_image_layout_is_read_only(VkImageLayout layout,
