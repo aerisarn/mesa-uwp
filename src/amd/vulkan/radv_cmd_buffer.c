@@ -7607,6 +7607,17 @@ radv_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
    radv_rt_dispatch(cmd_buffer, &info);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+radv_CmdTraceRaysIndirectKHR(VkCommandBuffer commandBuffer,
+                             const VkStridedDeviceAddressRegionKHR *pRaygenShaderBindingTable,
+                             const VkStridedDeviceAddressRegionKHR *pMissShaderBindingTable,
+                             const VkStridedDeviceAddressRegionKHR *pHitShaderBindingTable,
+                             const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable,
+                             VkDeviceAddress indirectDeviceAddress)
+{
+   unreachable("Unimplemented");
+}
+
 static void
 radv_set_rt_stack_size(struct radv_cmd_buffer *cmd_buffer, uint32_t size)
 {
