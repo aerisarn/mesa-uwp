@@ -40,8 +40,10 @@ dzn_sync_init(struct vk_device *device,
 
    assert(!(sync->flags & VK_SYNC_IS_SHAREABLE));
 
-   if (FAILED(ddev->dev->CreateFence(initial_value, D3D12_FENCE_FLAG_NONE,
-                                     IID_PPV_ARGS(&dsync->fence))))
+   if (FAILED(ID3D12Device1_CreateFence(ddev->dev, initial_value,
+                                        D3D12_FENCE_FLAG_NONE,
+                                        IID_ID3D12Fence,
+                                        (void **)&dsync->fence)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    return VK_SUCCESS;
@@ -53,7 +55,7 @@ dzn_sync_finish(struct vk_device *device,
 {
    dzn_sync *dsync = container_of(sync, dzn_sync, vk);
 
-   dsync->fence->Release();
+   ID3D12Fence_Release(dsync->fence);
 }
 
 static VkResult
@@ -66,7 +68,7 @@ dzn_sync_signal(struct vk_device *device,
    if (!(sync->flags & VK_SYNC_IS_TIMELINE))
       value = 1;
 
-   if (FAILED(dsync->fence->Signal(value)))
+   if (FAILED(ID3D12Fence_Signal(dsync->fence, value)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    return VK_SUCCESS;
@@ -79,7 +81,7 @@ dzn_sync_get_value(struct vk_device *device,
 {
    dzn_sync *dsync = container_of(sync, dzn_sync, vk);
 
-   *value = dsync->fence->GetCompletedValue();
+   *value = ID3D12Fence_GetCompletedValue(dsync->fence);
    return VK_SUCCESS;
 }
 
@@ -89,7 +91,7 @@ dzn_sync_reset(struct vk_device *device,
 {
    dzn_sync *dsync = container_of(sync, dzn_sync, vk);
 
-   if (FAILED(dsync->fence->Signal(0)))
+   if (FAILED(ID3D12Fence_Signal(dsync->fence, 0)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    return VK_SUCCESS;
@@ -105,11 +107,13 @@ dzn_sync_move(struct vk_device *device,
    dzn_sync *dsrc = container_of(src, dzn_sync, vk);
    ID3D12Fence *new_fence;
 
-   if (FAILED(ddev->dev->CreateFence(0, D3D12_FENCE_FLAG_NONE,
-                                     IID_PPV_ARGS(&new_fence))))
+   if (FAILED(ID3D12Device1_CreateFence(ddev->dev, 0,
+                                        D3D12_FENCE_FLAG_NONE,
+                                        IID_ID3D12Fence,
+                                        (void **)&new_fence)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
-   ddst->fence->Release();
+   ID3D12Fence_Release(ddst->fence);
    ddst->fence = dsrc->fence;
    dsrc->fence = new_fence;
    return VK_SUCCESS;
@@ -143,9 +147,12 @@ dzn_sync_wait(struct vk_device *device,
       D3D12_MULTIPLE_FENCE_WAIT_FLAG_ANY :
       D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL;
 
-   if (FAILED(ddev->dev->SetEventOnMultipleFenceCompletion(fences, values,
-                                                           wait_count, flags,
-                                                           event))) {
+   if (FAILED(ID3D12Device1_SetEventOnMultipleFenceCompletion(ddev->dev,
+                                                              fences,
+                                                              values,
+                                                              wait_count,
+                                                              flags,
+                                                              event))) {
       STACK_ARRAY_FINISH(fences);
       STACK_ARRAY_FINISH(values);
       CloseHandle(event);

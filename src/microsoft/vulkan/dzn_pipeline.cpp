@@ -716,7 +716,7 @@ dzn_pipeline_init(dzn_pipeline *pipeline,
    STATIC_ASSERT(sizeof(pipeline->root.type) == sizeof(layout->root.type));
    memcpy(pipeline->root.type, layout->root.type, sizeof(pipeline->root.type));
    pipeline->root.sig = layout->root.sig;
-   pipeline->root.sig->AddRef();
+   ID3D12RootSignature_AddRef(pipeline->root.sig);
 
    STATIC_ASSERT(sizeof(layout->desc_count) == sizeof(pipeline->desc_count));
    memcpy(pipeline->desc_count, layout->desc_count, sizeof(pipeline->desc_count));
@@ -730,9 +730,9 @@ static void
 dzn_pipeline_finish(dzn_pipeline *pipeline)
 {
    if (pipeline->state)
-      pipeline->state->Release();
+      ID3D12PipelineState_Release(pipeline->state);
    if (pipeline->root.sig)
-      pipeline->root.sig->Release();
+      ID3D12RootSignature_Release(pipeline->root.sig);
 
    vk_object_base_finish(&pipeline->base);
 }
@@ -746,7 +746,7 @@ dzn_graphics_pipeline_destroy(dzn_graphics_pipeline *pipeline,
 
    for (uint32_t i = 0; i < ARRAY_SIZE(pipeline->indirect_cmd_sigs); i++) {
       if (pipeline->indirect_cmd_sigs[i])
-         pipeline->indirect_cmd_sigs[i]->Release();
+         ID3D12CommandSignature_Release(pipeline->indirect_cmd_sigs[i]);
    }
 
    dzn_pipeline_finish(&pipeline->base);
@@ -904,8 +904,9 @@ dzn_graphics_pipeline_create(dzn_device *device,
    }
 
 
-   hres = device->dev->CreateGraphicsPipelineState(&desc,
-                                                   IID_PPV_ARGS(&pipeline->base.state));
+   hres = ID3D12Device1_CreateGraphicsPipelineState(device->dev, &desc,
+                                                    IID_ID3D12PipelineState,
+                                                    (void **)&pipeline->base.state);
    if (FAILED(hres)) {
       ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
@@ -983,9 +984,10 @@ dzn_graphics_pipeline_get_indirect_cmd_sig(dzn_graphics_pipeline *pipeline,
       .pArgumentDescs = cmd_args,
    };
    HRESULT hres =
-      device->dev->CreateCommandSignature(&cmd_sig_desc,
-                                          pipeline->base.root.sig,
-                                          IID_PPV_ARGS(&cmdsig));
+      ID3D12Device1_CreateCommandSignature(device->dev, &cmd_sig_desc,
+                                           pipeline->base.root.sig,
+                                           IID_ID3D12CommandSignature,
+                                           (void **)&cmdsig);
    if (FAILED(hres))
       return NULL;
 
@@ -1039,7 +1041,7 @@ dzn_compute_pipeline_destroy(dzn_compute_pipeline *pipeline,
       return;
 
    if (pipeline->indirect_cmd_sig)
-      pipeline->indirect_cmd_sig->Release();
+      ID3D12CommandSignature_Release(pipeline->indirect_cmd_sig);
 
    dzn_pipeline_finish(&pipeline->base);
    vk_free2(&pipeline->base.base.device->alloc, alloc, pipeline);
@@ -1077,8 +1079,9 @@ dzn_compute_pipeline_create(dzn_device *device,
    if (ret != VK_SUCCESS)
       goto out;
 
-   if (FAILED(device->dev->CreateComputePipelineState(&desc,
-                                                      IID_PPV_ARGS(&pipeline->base.state)))) {
+   if (FAILED(ID3D12Device1_CreateComputePipelineState(device->dev, &desc,
+                                                       IID_ID3D12PipelineState,
+                                                       (void **)&pipeline->base.state))) {
       ret = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
@@ -1123,9 +1126,10 @@ dzn_compute_pipeline_get_indirect_cmd_sig(dzn_compute_pipeline *pipeline)
    };
 
    HRESULT hres =
-      device->dev->CreateCommandSignature(&indirect_dispatch_desc,
-                                          pipeline->base.root.sig,
-                                          IID_PPV_ARGS(&pipeline->indirect_cmd_sig));
+      ID3D12Device1_CreateCommandSignature(device->dev, &indirect_dispatch_desc,
+                                           pipeline->base.root.sig,
+                                           IID_ID3D12CommandSignature,
+                                           (void **)&pipeline->indirect_cmd_sig);
    if (FAILED(hres))
       return NULL;
 

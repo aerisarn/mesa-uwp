@@ -62,20 +62,20 @@ dzn_query_pool_destroy(dzn_query_pool *qpool,
    dzn_device *device = container_of(qpool->base.device, dzn_device, vk);
 
    if (qpool->collect_map)
-      qpool->collect_buffer->Unmap(0, NULL);
+      ID3D12Resource_Unmap(qpool->collect_buffer, 0, NULL);
 
    if (qpool->collect_buffer)
-      qpool->collect_buffer->Release();
+      ID3D12Resource_Release(qpool->collect_buffer);
 
    if (qpool->resolve_buffer)
-      qpool->resolve_buffer->Release();
+      ID3D12Resource_Release(qpool->resolve_buffer);
 
    if (qpool->heap)
-      qpool->heap->Release();
+      ID3D12QueryHeap_Release(qpool->heap);
 
    for (uint32_t q = 0; q < qpool->query_count; q++) {
       if (qpool->queries[q].fence)
-         qpool->queries[q].fence->Release();
+         ID3D12Fence_Release(qpool->queries[q].fence);
    }
 
    mtx_destroy(&qpool->queries_lock);
@@ -109,7 +109,9 @@ dzn_query_pool_create(dzn_device *device,
    desc.NodeMask = 0;
 
    HRESULT hres =
-      device->dev->CreateQueryHeap(&desc, IID_PPV_ARGS(&qpool->heap));
+      ID3D12Device1_CreateQueryHeap(device->dev, &desc,
+                                    IID_ID3D12QueryHeap,
+                                    (void **)&qpool->heap);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -127,8 +129,9 @@ dzn_query_pool_create(dzn_device *device,
    default: unreachable("Unsupported query type");
    }
 
-   D3D12_HEAP_PROPERTIES hprops =
-      device->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_DEFAULT);
+   D3D12_HEAP_PROPERTIES hprops;
+   ID3D12Device1_GetCustomHeapProperties(device->dev, &hprops, 0,
+                                         D3D12_HEAP_TYPE_DEFAULT);
    D3D12_RESOURCE_DESC rdesc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
@@ -142,29 +145,34 @@ dzn_query_pool_create(dzn_device *device,
       .Flags = D3D12_RESOURCE_FLAG_NONE,
    };
 
-   hres = device->dev->CreateCommittedResource(&hprops,
-                                               D3D12_HEAP_FLAG_NONE,
-                                               &rdesc,
-                                               D3D12_RESOURCE_STATE_COPY_DEST,
-                                               NULL, IID_PPV_ARGS(&qpool->resolve_buffer));
+   hres = ID3D12Device1_CreateCommittedResource(device->dev, &hprops,
+                                                D3D12_HEAP_FLAG_NONE,
+                                                &rdesc,
+                                                D3D12_RESOURCE_STATE_COPY_DEST,
+                                                NULL,
+                                                IID_ID3D12Resource,
+                                                (void **)&qpool->resolve_buffer);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
-   hprops = device->dev->GetCustomHeapProperties(0, D3D12_HEAP_TYPE_READBACK);
+   ID3D12Device1_GetCustomHeapProperties(device->dev, &hprops, 0,
+                                         D3D12_HEAP_TYPE_READBACK);
    rdesc.Width = info->queryCount * (qpool->query_size + sizeof(uint64_t));
-   hres = device->dev->CreateCommittedResource(&hprops,
-                                               D3D12_HEAP_FLAG_NONE,
-                                               &rdesc,
-                                               D3D12_RESOURCE_STATE_COPY_DEST,
-                                               NULL, IID_PPV_ARGS(&qpool->collect_buffer));
+   hres = ID3D12Device1_CreateCommittedResource(device->dev, &hprops,
+                                                D3D12_HEAP_FLAG_NONE,
+                                                &rdesc,
+                                                D3D12_RESOURCE_STATE_COPY_DEST,
+                                                NULL,
+                                                IID_ID3D12Resource,
+                                                (void **)&qpool->collect_buffer);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
-   hres = qpool->collect_buffer->Map(0, NULL, (void **)&qpool->collect_map);
+   hres = ID3D12Resource_Map(qpool->collect_buffer, 0, NULL, (void **)&qpool->collect_map);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -226,7 +234,7 @@ dzn_ResetQueryPool(VkDevice device,
 
       query->fence_value = 0;
       if (query->fence) {
-         query->fence->Release();
+         ID3D12Fence_Release(query->fence);
          query->fence = NULL;
       }
    }
@@ -271,7 +279,7 @@ dzn_GetQueryPoolResults(VkDevice device,
             mtx_lock(&qpool->queries_lock);
             if (query->fence) {
                query_fence = query->fence;
-               query_fence->AddRef();
+               ID3D12Fence_AddRef(query_fence);
             }
             query_fence_val = query->fence_value;
             mtx_unlock(&qpool->queries_lock);
@@ -285,23 +293,23 @@ dzn_GetQueryPoolResults(VkDevice device,
             Sleep(10);
          }
 
-         query_fence->SetEventOnCompletion(query_fence_val, NULL);
-         query_fence->Release();
+         ID3D12Fence_SetEventOnCompletion(query_fence, query_fence_val, NULL);
+         ID3D12Fence_Release(query_fence);
          available = UINT64_MAX;
       } else {
          ID3D12Fence *query_fence = NULL;
          mtx_lock(&qpool->queries_lock);
          if (query->fence) {
             query_fence = query->fence;
-            query_fence->AddRef();
+            ID3D12Fence_AddRef(query_fence);
          }
          uint64_t query_fence_val = query->fence_value;
          mtx_unlock(&qpool->queries_lock);
 
          if (query_fence) {
-            if (query_fence->GetCompletedValue() >= query_fence_val)
+            if (ID3D12Fence_GetCompletedValue(query_fence) >= query_fence_val)
                available = UINT64_MAX;
-            query_fence->Release();
+            ID3D12Fence_Release(query_fence);
          }
       }
 

@@ -28,7 +28,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#define CINTERFACE
 #include <directx/d3d12sdklayers.h>
+#undef CINTERFACE
 
 IDXGIFactory4 *
 dxgi_get_factory(bool debug)
@@ -86,7 +88,7 @@ get_debug_interface()
    }
 
    ID3D12Debug *debug;
-   if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debug)))) {
+   if (FAILED(D3D12GetDebugInterface(IID_ID3D12Debug, (void **)&debug))) {
       mesa_loge("D3D12GetDebugInterface failed\n");
       return NULL;
    }
@@ -99,8 +101,8 @@ d3d12_enable_debug_layer()
 {
    ID3D12Debug *debug = get_debug_interface();
    if (debug) {
-      debug->EnableDebugLayer();
-      debug->Release();
+      ID3D12Debug_EnableDebugLayer(debug);
+      ID3D12Debug_Release(debug);
    }
 }
 
@@ -110,18 +112,20 @@ d3d12_enable_gpu_validation()
    ID3D12Debug *debug = get_debug_interface();
    if (debug) {
       ID3D12Debug3 *debug3;
-      if (SUCCEEDED(debug->QueryInterface(IID_PPV_ARGS(&debug3)))) {
-         debug3->SetEnableGPUBasedValidation(true);
-         debug3->Release();
+      if (SUCCEEDED(ID3D12Debug_QueryInterface(debug,
+                                               IID_ID3D12Debug3,
+                                               (void **)&debug3))) {
+         ID3D12Debug3_SetEnableGPUBasedValidation(debug3, true);
+         ID3D12Debug3_Release(debug3);
       }
-      debug->Release();
+      ID3D12Debug_Release(debug);
    }
 }
 
 ID3D12Device1 *
 d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
 {
-   typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IUnknown*, D3D_FEATURE_LEVEL, REFIID, void**);
+   typedef HRESULT(WINAPI *PFN_D3D12CREATEDEVICE)(IDXGIAdapter1*, D3D_FEATURE_LEVEL, REFIID, void**);
    PFN_D3D12CREATEDEVICE D3D12CreateDevice;
 
    HMODULE d3d12_mod = LoadLibraryA("D3D12.DLL");
@@ -151,7 +155,8 @@ d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
 
    ID3D12Device1 *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
-                 IID_PPV_ARGS(&dev))))
+                 IID_ID3D12Device1,
+                 (void **)&dev)))
       return dev;
 
    mesa_loge("D3D12CreateDevice failed\n");

@@ -95,10 +95,10 @@ dzn_meta_indirect_draw_finish(dzn_device *device, enum dzn_indirect_draw_type ty
    dzn_meta_indirect_draw *meta = &device->indirect_draws[type];
 
    if (meta->root_sig)
-      meta->root_sig->Release();
+      ID3D12RootSignature_Release(meta->root_sig);
 
    if (meta->pipeline_state)
-      meta->pipeline_state->Release();
+      ID3D12PipelineState_Release(meta->pipeline_state);
 }
 
 static VkResult
@@ -192,8 +192,9 @@ dzn_meta_indirect_draw_init(dzn_device *device,
    dzn_meta_compile_shader(device, nir, &desc.CS);
    assert(desc.CS.pShaderBytecode);
 
-   if (FAILED(device->dev->CreateComputePipelineState(&desc,
-                                                      IID_PPV_ARGS(&meta->pipeline_state))))
+   if (FAILED(ID3D12Device1_CreateComputePipelineState(device->dev, &desc,
+                                                       IID_ID3D12PipelineState,
+                                                       (void **)&meta->pipeline_state)))
       ret = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
 
 out:
@@ -217,11 +218,11 @@ dzn_meta_triangle_fan_rewrite_index_finish(dzn_device *device,
       &device->triangle_fan[old_index_type];
 
    if (meta->root_sig)
-      meta->root_sig->Release();
+      ID3D12RootSignature_Release(meta->root_sig);
    if (meta->pipeline_state)
-      meta->pipeline_state->Release();
+      ID3D12PipelineState_Release(meta->pipeline_state);
    if (meta->cmd_sig)
-      meta->cmd_sig->Release();
+      ID3D12CommandSignature_Release(meta->cmd_sig);
 }
 
 static VkResult
@@ -328,15 +329,17 @@ dzn_meta_triangle_fan_rewrite_index_init(dzn_device *device,
    desc.pRootSignature = meta->root_sig;
    dzn_meta_compile_shader(device, nir, &desc.CS);
 
-   if (FAILED(device->dev->CreateComputePipelineState(&desc,
-                                                      IID_PPV_ARGS(&meta->pipeline_state)))) {
+   if (FAILED(ID3D12Device1_CreateComputePipelineState(device->dev, &desc,
+                                                       IID_ID3D12PipelineState,
+                                                       (void **)&meta->pipeline_state))) {
       ret = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
       goto out;
    }
 
-   if (FAILED(device->dev->CreateCommandSignature(&cmd_sig_desc,
-                                                  meta->root_sig,
-                                                  IID_PPV_ARGS(&meta->cmd_sig))))
+   if (FAILED(ID3D12Device1_CreateCommandSignature(device->dev, &cmd_sig_desc,
+                                                   meta->root_sig,
+                                                   IID_ID3D12CommandSignature,
+                                                   (void **)&meta->cmd_sig)))
       ret = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
 
 out:
@@ -451,9 +454,9 @@ dzn_meta_blit_destroy(dzn_device *device, dzn_meta_blit *blit)
       return;
 
    if (blit->root_sig)
-      blit->root_sig->Release();
+      ID3D12RootSignature_Release(blit->root_sig);
    if (blit->pipeline_state)
-      blit->pipeline_state->Release();
+      ID3D12PipelineState_Release(blit->pipeline_state);
 
    vk_free(&device->vk.alloc, blit);
 }
@@ -608,8 +611,9 @@ dzn_meta_blit_create(dzn_device *device, const dzn_meta_blit_key *key)
       }
    }
 
-   if (FAILED(device->dev->CreateGraphicsPipelineState(&desc,
-                                                       IID_PPV_ARGS(&blit->pipeline_state)))) {
+   if (FAILED(ID3D12Device1_CreateGraphicsPipelineState(device->dev, &desc,
+                                                        IID_ID3D12PipelineState,
+                                                        (void **)&blit->pipeline_state))) {
       dzn_meta_blit_destroy(device, blit);
       return NULL;
    }

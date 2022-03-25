@@ -38,7 +38,7 @@ dzn_image_destroy(dzn_image *image,
    dzn_device *device = container_of(image->vk.base.device, dzn_device, vk);
 
    if (image->res)
-      image->res->Release();
+      ID3D12Resource_Release(image->res);
 
    vk_image_finish(&image->vk);
    vk_free2(&device->vk.alloc, pAllocator, image);
@@ -126,7 +126,7 @@ dzn_image_create(dzn_device *device,
       };
       D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
       uint64_t size = 0;
-      device->dev->GetCopyableFootprints(&tmp_desc, 0, 1, 0, &footprint, NULL, NULL, &size);
+      ID3D12Device1_GetCopyableFootprints(device->dev, &tmp_desc, 0, 1, 0, &footprint, NULL, NULL, &size);
 
       image->linear.row_stride = footprint.Footprint.RowPitch;
       image->linear.size = size;
@@ -630,11 +630,13 @@ dzn_BindImageMemory2(VkDevice dev,
       if (!did_bind) {
          image->mem = mem;
          image->mem_offset = bind_info->memoryOffset;
-         if (FAILED(device->dev->CreatePlacedResource(mem->heap,
+         if (FAILED(ID3D12Device1_CreatePlacedResource(device->dev, mem->heap,
                                                       bind_info->memoryOffset,
                                                       &image->desc,
                                                       mem->initial_state,
-                                                      NULL, IID_PPV_ARGS(&image->res))))
+                                                      NULL,
+                                                      IID_ID3D12Resource,
+                                                      (void **)&image->res)))
             return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          did_bind = true;
       }
@@ -674,7 +676,8 @@ dzn_GetImageMemoryRequirements2(VkDevice _device,
       }
    }
 
-   D3D12_RESOURCE_ALLOCATION_INFO info = device->dev->GetResourceAllocationInfo(0, 1, &image->desc);
+   D3D12_RESOURCE_ALLOCATION_INFO info;
+   ID3D12Device1_GetResourceAllocationInfo(device->dev, &info, 0, 1, &image->desc);
 
    pMemoryRequirements->memoryRequirements = VkMemoryRequirements {
       .size = info.SizeInBytes,
@@ -720,7 +723,7 @@ dzn_GetImageSubresourceLayout(VkDevice _device,
       D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
       UINT num_rows;
       UINT64 row_size, total_size;
-      device->dev->GetCopyableFootprints(&image->desc,
+      ID3D12Device1_GetCopyableFootprints(device->dev, &image->desc,
                                          subres_index, 1,
                                          0, // base-offset?
                                          &footprint,

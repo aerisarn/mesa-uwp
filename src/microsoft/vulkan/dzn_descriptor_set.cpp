@@ -467,7 +467,7 @@ dzn_pipeline_layout_destroy(dzn_pipeline_layout *layout)
    dzn_device *device = container_of(layout->base.device, dzn_device, vk);
 
    if (layout->root.sig)
-      layout->root.sig->Release();
+      ID3D12RootSignature_Release(layout->root.sig);
 
    vk_free(&device->vk.alloc, layout);
 }
@@ -760,10 +760,10 @@ static void
 dzn_descriptor_heap_finish(dzn_descriptor_heap *heap)
 {
    if (heap->heap)
-      heap->heap->Release();
+      ID3D12DescriptorHeap_Release(heap->heap);
 
    if (heap->dev)
-      heap->dev->Release();
+      ID3D12Device_Release(heap->dev);
 }
 
 static VkResult
@@ -776,8 +776,8 @@ dzn_descriptor_heap_init(dzn_descriptor_heap *heap,
    heap->desc_count = desc_count;
    heap->type = type;
    heap->dev = device->dev;
-   heap->dev->AddRef();
-   heap->desc_sz = device->dev->GetDescriptorHandleIncrementSize(type);
+   ID3D12Device1_AddRef(heap->dev);
+   heap->desc_sz = ID3D12Device1_GetDescriptorHandleIncrementSize(device->dev, type);
 
    D3D12_DESCRIPTOR_HEAP_DESC desc = {
       .Type = type,
@@ -787,16 +787,22 @@ dzn_descriptor_heap_init(dzn_descriptor_heap *heap,
                D3D12_DESCRIPTOR_HEAP_FLAG_NONE,
    };
 
-   if (FAILED(device->dev->CreateDescriptorHeap(&desc,
-                                                IID_PPV_ARGS(&heap->heap)))) {
+   if (FAILED(ID3D12Device1_CreateDescriptorHeap(device->dev, &desc,
+                                                 IID_ID3D12DescriptorHeap,
+                                                 (void **)&heap->heap))) {
       return vk_error(device,
                       shader_visible ?
                       VK_ERROR_OUT_OF_DEVICE_MEMORY : VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   heap->cpu_base = heap->heap->GetCPUDescriptorHandleForHeapStart().ptr;
-   if (shader_visible)
-      heap->gpu_base = heap->heap->GetGPUDescriptorHandleForHeapStart().ptr;
+   D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle;
+   ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap->heap, &cpu_handle);
+   heap->cpu_base = cpu_handle.ptr;
+   if (shader_visible) {
+      D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle;
+      ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(heap->heap, &gpu_handle);
+      heap->gpu_base = gpu_handle.ptr;
+   }
 
    return VK_SUCCESS;
 }
@@ -822,8 +828,8 @@ dzn_descriptor_heap_write_sampler_desc(dzn_descriptor_heap *heap,
                                        uint32_t desc_offset,
                                        const dzn_sampler *sampler)
 {
-   heap->dev->CreateSampler(&sampler->desc,
-                            dzn_descriptor_heap_get_cpu_handle(heap, desc_offset));
+   ID3D12Device1_CreateSampler(heap->dev, &sampler->desc,
+                               dzn_descriptor_heap_get_cpu_handle(heap, desc_offset));
 }
 
 void
@@ -837,7 +843,7 @@ dzn_descriptor_heap_write_image_view_desc(dzn_descriptor_heap *heap,
    dzn_image *image = container_of(iview->vk.image, dzn_image, vk);
 
    if (writeable) {
-      heap->dev->CreateUnorderedAccessView(image->res, NULL, &iview->uav_desc, view_handle);
+      ID3D12Device1_CreateUnorderedAccessView(heap->dev, image->res, NULL, &iview->uav_desc, view_handle);
    } else if (cube_as_2darray &&
               (iview->srv_desc.ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBEARRAY ||
                iview->srv_desc.ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBE)) {
@@ -862,9 +868,9 @@ dzn_descriptor_heap_write_image_view_desc(dzn_descriptor_heap *heap,
          srv_desc.Texture2DArray.ArraySize = 6;
       }
 
-      heap->dev->CreateShaderResourceView(image->res, &srv_desc, view_handle);
+      ID3D12Device1_CreateShaderResourceView(heap->dev, image->res, &srv_desc, view_handle);
    } else {
-      heap->dev->CreateShaderResourceView(image->res, &iview->srv_desc, view_handle);
+      ID3D12Device1_CreateShaderResourceView(heap->dev, image->res, &iview->srv_desc, view_handle);
    }
 }
 
@@ -878,9 +884,9 @@ dzn_descriptor_heap_write_buffer_view_desc(dzn_descriptor_heap *heap,
       dzn_descriptor_heap_get_cpu_handle(heap, desc_offset);
 
    if (writeable)
-      heap->dev->CreateUnorderedAccessView(bview->buffer->res, NULL, &bview->uav_desc, view_handle);
+      ID3D12Device1_CreateUnorderedAccessView(heap->dev, bview->buffer->res, NULL, &bview->uav_desc, view_handle);
    else
-      heap->dev->CreateShaderResourceView(bview->buffer->res, &bview->srv_desc, view_handle);
+      ID3D12Device1_CreateShaderResourceView(heap->dev, bview->buffer->res, &bview->srv_desc, view_handle);
 }
 
 void
@@ -901,10 +907,10 @@ dzn_descriptor_heap_write_buffer_desc(dzn_descriptor_heap *heap,
        info->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
       assert(!writeable);
       D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {
-         .BufferLocation = info->buffer->res->GetGPUVirtualAddress() + info->offset,
+         .BufferLocation = ID3D12Resource_GetGPUVirtualAddress(info->buffer->res) + info->offset,
          .SizeInBytes = ALIGN_POT(size, 256),
       };
-      heap->dev->CreateConstantBufferView(&cbv_desc, view_handle);
+      ID3D12Device1_CreateConstantBufferView(heap->dev, &cbv_desc, view_handle);
    } else if (writeable) {
       D3D12_UNORDERED_ACCESS_VIEW_DESC uav_desc = {
          .Format = DXGI_FORMAT_R32_TYPELESS,
@@ -915,7 +921,7 @@ dzn_descriptor_heap_write_buffer_desc(dzn_descriptor_heap *heap,
             .Flags = D3D12_BUFFER_UAV_FLAG_RAW,
          },
       };
-      heap->dev->CreateUnorderedAccessView(info->buffer->res, NULL, &uav_desc, view_handle);
+      ID3D12Device1_CreateUnorderedAccessView(heap->dev, info->buffer->res, NULL, &uav_desc, view_handle);
    } else {
       D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {
          .Format = DXGI_FORMAT_R32_TYPELESS,
@@ -927,7 +933,7 @@ dzn_descriptor_heap_write_buffer_desc(dzn_descriptor_heap *heap,
             .Flags = D3D12_BUFFER_SRV_FLAG_RAW,
          },
       };
-      heap->dev->CreateShaderResourceView(info->buffer->res, &srv_desc, view_handle);
+      ID3D12Device1_CreateShaderResourceView(heap->dev, info->buffer->res, &srv_desc, view_handle);
    }
 }
 
@@ -943,10 +949,10 @@ dzn_descriptor_heap_copy(dzn_descriptor_heap *dst_heap,
    D3D12_CPU_DESCRIPTOR_HANDLE src_handle =
       dzn_descriptor_heap_get_cpu_handle(src_heap, src_offset);
 
-   dst_heap->dev->CopyDescriptorsSimple(desc_count,
-                                        dst_handle,
-                                        src_handle,
-                                        dst_heap->type);
+   ID3D12Device1_CopyDescriptorsSimple(dst_heap->dev, desc_count,
+                                       dst_handle,
+                                       src_handle,
+                                       dst_heap->type);
 }
 
 struct dzn_descriptor_set_ptr {
@@ -1423,7 +1429,7 @@ dzn_descriptor_heap_pool_init(dzn_descriptor_heap_pool *pool,
    list_inithead(&pool->active_heaps);
    list_inithead(&pool->free_heaps);
    pool->offset = 0;
-   pool->desc_sz = device->dev->GetDescriptorHandleIncrementSize(type);
+   pool->desc_sz = ID3D12Device1_GetDescriptorHandleIncrementSize(device->dev, type);
 }
 
 VkResult

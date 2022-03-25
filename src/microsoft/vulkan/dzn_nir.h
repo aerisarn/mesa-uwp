@@ -25,7 +25,10 @@
 #define DZN_NIR_H
 
 #define D3D12_IGNORE_SDK_LAYERS
+#define CINTERFACE
+#define COBJMACROS
 #include <directx/d3d12.h>
+#undef CINTERFACE
 
 #include "nir.h"
 
