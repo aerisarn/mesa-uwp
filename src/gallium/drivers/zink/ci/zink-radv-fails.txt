@@ -1,9 +1,3 @@
-#6207
-KHR-GL46.texture_cube_map_array.image_op_fragment_sh,Fail
-KHR-GL46.texture_cube_map_array.sampling,Fail
-KHR-GL46.texture_cube_map_array.texture_size_fragment_sh,Fail
-
-
 #6185
 KHR-GL46.tessellation_shader.single.isolines_tessellation,Crash
 KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize,Fail
