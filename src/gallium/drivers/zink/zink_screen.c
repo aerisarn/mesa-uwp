@@ -1259,8 +1259,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
 
    if (screen->sem)
       VKSCR(DestroySemaphore)(screen->dev, screen->sem, NULL);
-   if (screen->prev_sem)
-      VKSCR(DestroySemaphore)(screen->dev, screen->prev_sem, NULL);
 
    if (screen->fence)
       VKSCR(DestroyFence)(screen->dev, screen->fence, NULL);
@@ -1741,29 +1739,16 @@ zink_screen_init_semaphore(struct zink_screen *screen)
 {
    VkSemaphoreCreateInfo sci = {0};
    VkSemaphoreTypeCreateInfo tci = {0};
-   VkSemaphore sem;
    sci.pNext = &tci;
    sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
    tci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
    tci.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
 
-   if (VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &sem) == VK_SUCCESS) {
-      /* semaphore signal values can never decrease,
-       * so we need a new semaphore anytime we overflow
-       */
-      if (screen->prev_sem)
-         VKSCR(DestroySemaphore)(screen->dev, screen->prev_sem, NULL);
-      screen->prev_sem = screen->sem;
-      screen->sem = sem;
-      return true;
-   } else {
-      mesa_loge("ZINK: vkCreateSemaphore failed");
-   }
-   return false;
+   return VKSCR(CreateSemaphore)(screen->dev, &sci, NULL, &screen->sem) == VK_SUCCESS;
 }
 
 bool
-zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_t timeout)
+zink_screen_timeline_wait(struct zink_screen *screen, uint64_t batch_id, uint64_t timeout)
 {
    VkSemaphoreWaitInfo wi = {0};
 
@@ -1772,10 +1757,8 @@ zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_
 
    wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
    wi.semaphoreCount = 1;
-   /* handle batch_id overflow */
-   wi.pSemaphores = batch_id > screen->curr_batch ? &screen->prev_sem : &screen->sem;
-   uint64_t batch_id64 = batch_id;
-   wi.pValues = &batch_id64;
+   wi.pSemaphores = &screen->sem;
+   wi.pValues = &batch_id;
    bool success = false;
    if (screen->device_lost)
       return true;

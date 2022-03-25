@@ -50,7 +50,7 @@ struct zink_tc_fence {
 };
 
 struct zink_fence {
-   uint32_t batch_id;
+   uint64_t batch_id;
    bool submitted;
    bool completed;
 };

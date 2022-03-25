@@ -99,10 +99,9 @@ struct zink_screen {
 
    bool threaded;
    bool is_cpu;
-   uint32_t curr_batch; //the current batch id
-   uint32_t last_finished; //this is racy but ultimately doesn't matter
+   uint64_t curr_batch; //the current batch id
+   uint32_t last_finished;
    VkSemaphore sem;
-   VkSemaphore prev_sem;
    VkFence fence;
    struct util_queue flush_queue;
    struct zink_context *copy_context;
@@ -208,36 +207,38 @@ struct zink_screen {
 
 /* update last_finished to account for batch_id wrapping */
 static inline void
-zink_screen_update_last_finished(struct zink_screen *screen, uint32_t batch_id)
+zink_screen_update_last_finished(struct zink_screen *screen, uint64_t batch_id)
 {
+   const uint32_t check_id = (uint32_t)batch_id;
    /* last_finished may have wrapped */
    if (screen->last_finished < UINT_MAX / 2) {
       /* last_finished has wrapped, batch_id has not */
-      if (batch_id > UINT_MAX / 2)
+      if (check_id > UINT_MAX / 2)
          return;
-   } else if (batch_id < UINT_MAX / 2) {
+   } else if (check_id < UINT_MAX / 2) {
       /* batch_id has wrapped, last_finished has not */
-      screen->last_finished = batch_id;
+      screen->last_finished = check_id;
       return;
    }
    /* neither have wrapped */
-   screen->last_finished = MAX2(batch_id, screen->last_finished);
+   screen->last_finished = MAX2(check_id, screen->last_finished);
 }
 
 /* check a batch_id against last_finished while accounting for wrapping */
 static inline bool
 zink_screen_check_last_finished(struct zink_screen *screen, uint32_t batch_id)
 {
+   const uint32_t check_id = (uint32_t)batch_id;
    /* last_finished may have wrapped */
    if (screen->last_finished < UINT_MAX / 2) {
       /* last_finished has wrapped, batch_id has not */
-      if (batch_id > UINT_MAX / 2)
+      if (check_id > UINT_MAX / 2)
          return true;
-   } else if (batch_id < UINT_MAX / 2) {
+   } else if (check_id < UINT_MAX / 2) {
       /* batch_id has wrapped, last_finished has not */
       return false;
    }
-   return screen->last_finished >= batch_id;
+   return screen->last_finished >= check_id;
 }
 
 bool
@@ -281,7 +282,7 @@ VkFormat
 zink_get_format(struct zink_screen *screen, enum pipe_format format);
 
 bool
-zink_screen_timeline_wait(struct zink_screen *screen, uint32_t batch_id, uint64_t timeout);
+zink_screen_timeline_wait(struct zink_screen *screen, uint64_t batch_id, uint64_t timeout);
 
 bool
 zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);

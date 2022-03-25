@@ -346,15 +346,9 @@ submit_queue(void *data, void *gdata, int thread_index)
    VkSubmitInfo si[2] = {0};
    int num_si = 2;
    while (!bs->fence.batch_id)
-      bs->fence.batch_id = p_atomic_inc_return(&screen->curr_batch);
+      bs->fence.batch_id = (uint32_t)p_atomic_inc_return(&screen->curr_batch);
    bs->usage.usage = bs->fence.batch_id;
    bs->usage.unflushed = false;
-
-   if (screen->last_finished > bs->fence.batch_id && bs->fence.batch_id == 1) {
-      if (!zink_screen_init_semaphore(screen)) {
-         debug_printf("timeline init failed, things are about to go dramatically wrong.");
-      }
-   }
 
    uint64_t batch_id = bs->fence.batch_id;
    /* first submit is just for acquire waits since they have a separate array */
