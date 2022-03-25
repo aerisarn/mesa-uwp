@@ -245,11 +245,11 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                VkSampler sampler)
 {
    struct radv_device *device = cmd_buffer->device;
-   uint32_t src_width = radv_minify(src_iview->image->info.width, src_iview->base_mip);
-   uint32_t src_height = radv_minify(src_iview->image->info.height, src_iview->base_mip);
-   uint32_t src_depth = radv_minify(src_iview->image->info.depth, src_iview->base_mip);
-   uint32_t dst_width = radv_minify(dest_iview->image->info.width, dest_iview->base_mip);
-   uint32_t dst_height = radv_minify(dest_iview->image->info.height, dest_iview->base_mip);
+   uint32_t src_width = radv_minify(src_iview->image->info.width, src_iview->vk.base_mip_level);
+   uint32_t src_height = radv_minify(src_iview->image->info.height, src_iview->vk.base_mip_level);
+   uint32_t src_depth = radv_minify(src_iview->image->info.depth, src_iview->vk.base_mip_level);
+   uint32_t dst_width = radv_minify(dest_iview->image->info.width, dest_iview->vk.base_mip_level);
+   uint32_t dst_height = radv_minify(dest_iview->image->info.height, dest_iview->vk.base_mip_level);
 
    assert(src_image->info.samples == dest_image->info.samples);
 
@@ -269,7 +269,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 
    VkRenderingAttachmentInfo color_att = {0}, depth_att = {0}, stencil_att = {0};
 
-   switch (src_iview->aspect_mask) {
+   switch (src_iview->vk.aspects) {
    case VK_IMAGE_ASPECT_COLOR_BIT: {
       unsigned dst_layout = radv_meta_dst_layout_from_layout(dest_image_layout);
       VkImageLayout layout = radv_meta_dst_layout_to_layout(dst_layout);
@@ -354,7 +354,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
    }
 
    if (!*pipeline) {
-      VkResult ret = build_pipeline(device, src_iview->aspect_mask,
+      VkResult ret = build_pipeline(device, src_iview->vk.aspects,
                                     translate_sampler_dim(src_image->vk.image_type),
                                     format, pipeline);
       if (ret != VK_SUCCESS) {
@@ -408,7 +408,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
       .layerCount = 1,
    };
 
-   switch (src_iview->aspect_mask) {
+   switch (src_iview->image->vk.aspects) {
    case VK_IMAGE_ASPECT_COLOR_BIT:
       rendering_info.colorAttachmentCount = 1;
       rendering_info.pColorAttachments = &color_att;

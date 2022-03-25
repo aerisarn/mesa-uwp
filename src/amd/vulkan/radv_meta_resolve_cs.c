@@ -496,9 +496,9 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image_
    uint32_t samples_log2 = ffs(samples) - 1;
    VkPipeline *pipeline;
 
-   if (vk_format_is_int(src_iview->vk_format))
+   if (vk_format_is_int(src_iview->vk.format))
       pipeline = &state->resolve_compute.rc[samples_log2].i_pipeline;
-   else if (vk_format_is_srgb(src_iview->vk_format))
+   else if (vk_format_is_srgb(src_iview->vk.format))
       pipeline = &state->resolve_compute.rc[samples_log2].srgb_pipeline;
    else
       pipeline = &state->resolve_compute.rc[samples_log2].pipeline;
@@ -506,8 +506,8 @@ radv_get_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_image_
    if (!*pipeline) {
       VkResult ret;
 
-      ret = create_resolve_pipeline(device, samples, vk_format_is_int(src_iview->vk_format),
-                                    vk_format_is_srgb(src_iview->vk_format), pipeline);
+      ret = create_resolve_pipeline(device, samples, vk_format_is_int(src_iview->vk.format),
+                                    vk_format_is_srgb(src_iview->vk.format), pipeline);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return NULL;
@@ -810,23 +810,23 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
          .srcSubresource =
             (VkImageSubresourceLayers){
                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-               .mipLevel = src_iview->base_mip,
-               .baseArrayLayer = src_iview->base_layer,
+               .mipLevel = src_iview->vk.base_mip_level,
+               .baseArrayLayer = src_iview->vk.base_array_layer,
                .layerCount = layer_count,
             },
          .dstSubresource =
             (VkImageSubresourceLayers){
                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-               .mipLevel = dst_iview->base_mip,
-               .baseArrayLayer = dst_iview->base_layer,
+               .mipLevel = dst_iview->vk.base_mip_level,
+               .baseArrayLayer = dst_iview->vk.base_array_layer,
                .layerCount = layer_count,
             },
          .srcOffset = (VkOffset3D){0, 0, 0},
          .dstOffset = (VkOffset3D){0, 0, 0},
       };
 
-      radv_meta_resolve_compute_image(cmd_buffer, src_iview->image, src_iview->vk_format,
-                                      src_att.layout, dst_iview->image, dst_iview->vk_format,
+      radv_meta_resolve_compute_image(cmd_buffer, src_iview->image, src_iview->vk.format,
+                                      src_att.layout, dst_iview->image, dst_iview->vk.format,
                                       dst_att.layout, &region);
    }
 
@@ -864,7 +864,7 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
    region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2;
    region.srcSubresource.aspectMask = aspects;
    region.srcSubresource.mipLevel = 0;
-   region.srcSubresource.baseArrayLayer = src_iview->base_layer;
+   region.srcSubresource.baseArrayLayer = src_iview->vk.base_array_layer;
    region.srcSubresource.layerCount = layer_count;
 
    radv_decompress_resolve_src(cmd_buffer, src_image, src_att.layout, &region);
@@ -882,13 +882,13 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(src_image),
                            .viewType = radv_meta_get_view_type(src_image),
-                           .format = src_iview->vk_format,
+                           .format = src_iview->vk.format,
                            .subresourceRange =
                               {
                                  .aspectMask = aspects,
-                                 .baseMipLevel = src_iview->base_mip,
+                                 .baseMipLevel = src_iview->vk.base_mip_level,
                                  .levelCount = 1,
-                                 .baseArrayLayer = src_iview->base_layer,
+                                 .baseArrayLayer = src_iview->vk.base_array_layer,
                                  .layerCount = layer_count,
                               },
                         },
@@ -900,13 +900,13 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(dst_image),
                            .viewType = radv_meta_get_view_type(dst_image),
-                           .format = dst_iview->vk_format,
+                           .format = dst_iview->vk.format,
                            .subresourceRange =
                               {
                                  .aspectMask = aspects,
-                                 .baseMipLevel = dst_iview->base_mip,
+                                 .baseMipLevel = dst_iview->vk.base_mip_level,
                                  .levelCount = 1,
-                                 .baseArrayLayer = dst_iview->base_layer,
+                                 .baseArrayLayer = dst_iview->vk.base_array_layer,
                                  .layerCount = layer_count,
                               },
                         },
@@ -927,9 +927,9 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
    if (radv_layout_is_htile_compressed(cmd_buffer->device, dst_image, layout, false, queue_mask)) {
       VkImageSubresourceRange range = {0};
       range.aspectMask = aspects;
-      range.baseMipLevel = dst_iview->base_mip;
+      range.baseMipLevel = dst_iview->vk.base_mip_level;
       range.levelCount = 1;
-      range.baseArrayLayer = dst_iview->base_layer;
+      range.baseArrayLayer = dst_iview->vk.base_array_layer;
       range.layerCount = layer_count;
 
       uint32_t htile_value = radv_get_htile_initial_value(cmd_buffer->device, dst_image);

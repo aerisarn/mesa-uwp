@@ -5489,8 +5489,8 @@ si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool st
 static uint32_t
 radv_surface_max_layer_count(struct radv_image_view *iview)
 {
-   return iview->type == VK_IMAGE_VIEW_TYPE_3D ? iview->extent.depth
-                                               : (iview->base_layer + iview->layer_count);
+   return iview->vk.view_type == VK_IMAGE_VIEW_TYPE_3D ? iview->extent.depth
+                                                       : (iview->vk.base_array_layer + iview->vk.layer_count);
 }
 
 static unsigned
@@ -5531,7 +5531,7 @@ radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iv
    unsigned independent_128b_blocks;
    unsigned independent_64b_blocks;
 
-   if (!radv_dcc_enabled(iview->image, iview->base_mip))
+   if (!radv_dcc_enabled(iview->image, iview->vk.base_mip_level))
       return 0;
 
    /* For GFX9+ ac_surface computes values for us (except min_compressed
@@ -5584,7 +5584,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    const struct radv_image_plane *plane = &iview->image->planes[iview->plane_id];
    const struct radeon_surf *surf = &plane->surface;
 
-   desc = vk_format_description(iview->vk_format);
+   desc = vk_format_description(iview->vk.format);
 
    memset(cb, 0, sizeof(*cb));
 
@@ -5623,7 +5623,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       cb->cb_color_base += surf->u.gfx9.surf_offset >> 8;
       cb->cb_color_base |= surf->tile_swizzle;
    } else {
-      const struct legacy_surf_level *level_info = &surf->u.legacy.level[iview->base_mip];
+      const struct legacy_surf_level *level_info = &surf->u.legacy.level[iview->vk.base_mip_level];
       unsigned pitch_tile_max, slice_tile_max, tile_mode_index;
 
       cb->cb_color_base += level_info->offset_256B;
@@ -5632,7 +5632,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 
       pitch_tile_max = level_info->nblk_x / 8 - 1;
       slice_tile_max = (level_info->nblk_x * level_info->nblk_y) / 64 - 1;
-      tile_mode_index = si_tile_mode_index(plane, iview->base_mip, false);
+      tile_mode_index = si_tile_mode_index(plane, iview->vk.base_mip_level, false);
 
       cb->cb_color_pitch = S_028C64_TILE_MAX(pitch_tile_max);
       cb->cb_color_slice = S_028C68_TILE_MAX(slice_tile_max);
@@ -5663,9 +5663,9 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
    va += surf->meta_offset;
 
-   if (radv_dcc_enabled(iview->image, iview->base_mip) &&
+   if (radv_dcc_enabled(iview->image, iview->vk.base_mip_level) &&
        device->physical_device->rad_info.gfx_level <= GFX8)
-      va += plane->surface.u.legacy.color.dcc_level[iview->base_mip].dcc_offset;
+      va += plane->surface.u.legacy.color.dcc_level[iview->vk.base_mip_level].dcc_offset;
 
    unsigned dcc_tile_swizzle = surf->tile_swizzle;
    dcc_tile_swizzle &= ((1 << surf->meta_alignment_log2) - 1) >> 8;
@@ -5676,7 +5676,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    /* GFX10 field has the same base shift as the GFX6 field. */
    uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
    cb->cb_color_view =
-      S_028C6C_SLICE_START(iview->base_layer) | S_028C6C_SLICE_MAX_GFX10(max_slice);
+      S_028C6C_SLICE_START(iview->vk.base_array_layer) | S_028C6C_SLICE_MAX_GFX10(max_slice);
 
    if (iview->image->info.samples > 1) {
       unsigned log_samples = util_logbase2(iview->image->info.samples);
@@ -5696,12 +5696,12 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       cb->cb_color_fmask = cb->cb_color_base;
    }
 
-   ntype = radv_translate_color_numformat(iview->vk_format, desc,
-                                          vk_format_get_first_non_void_channel(iview->vk_format));
-   format = radv_translate_colorformat(iview->vk_format);
+   ntype = radv_translate_color_numformat(iview->vk.format, desc,
+                                          vk_format_get_first_non_void_channel(iview->vk.format));
+   format = radv_translate_colorformat(iview->vk.format);
    assert(format != V_028C70_COLOR_INVALID);
 
-   swap = radv_translate_colorswap(iview->vk_format, false);
+   swap = radv_translate_colorswap(iview->vk.format, false);
    endian = radv_colorformat_endian_swap(format);
 
    /* blend clamp should be set for all NORM/SRGB types */
@@ -5765,7 +5765,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
        !(device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS))
       cb->cb_color_info |= S_028C70_FAST_CLEAR(1);
 
-   if (radv_dcc_enabled(iview->image, iview->base_mip) && !iview->disable_dcc_mrt &&
+   if (radv_dcc_enabled(iview->image, iview->vk.base_mip_level) && !iview->disable_dcc_mrt &&
        device->physical_device->rad_info.gfx_level < GFX11)
       cb->cb_color_info |= S_028C70_DCC_ENABLE(1);
 
@@ -5787,13 +5787,13 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
          vk_format_get_plane_height(iview->image->vk.format, iview->plane_id, iview->extent.height);
 
       if (device->physical_device->rad_info.gfx_level >= GFX10) {
-         cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(iview->base_mip);
+         cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(iview->vk.base_mip_level);
 
          cb->cb_color_attrib3 |=
             S_028EE0_MIP0_DEPTH(mip0_depth) | S_028EE0_RESOURCE_TYPE(surf->u.gfx9.resource_type) |
             S_028EE0_RESOURCE_LEVEL(device->physical_device->rad_info.gfx_level >= GFX11 ? 0 : 1);
       } else {
-         cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(iview->base_mip);
+         cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(iview->vk.base_mip_level);
          cb->cb_color_attrib |=
             S_028C74_MIP0_DEPTH(mip0_depth) | S_028C74_RESOURCE_TYPE(surf->u.gfx9.resource_type);
       }
@@ -5814,7 +5814,7 @@ radv_calc_decompress_on_z_planes(struct radv_device *device, struct radv_image_v
       /* Default value for 32-bit depth surfaces. */
       max_zplanes = 4;
 
-      if (iview->vk_format == VK_FORMAT_D16_UNORM && iview->image->info.samples > 1)
+      if (iview->vk.format == VK_FORMAT_D16_UNORM && iview->image->info.samples > 1)
          max_zplanes = 2;
 
       /* Workaround for a DB hang when ITERATE_256 is set to 1. Only affects 4X MSAA D/S images. */
@@ -5827,7 +5827,7 @@ radv_calc_decompress_on_z_planes(struct radv_device *device, struct radv_image_v
 
       max_zplanes = max_zplanes + 1;
    } else {
-      if (iview->vk_format == VK_FORMAT_D16_UNORM) {
+      if (iview->vk.format == VK_FORMAT_D16_UNORM) {
          /* Do not enable Z plane compression for 16-bit depth
           * surfaces because isn't supported on GFX8. Only
           * 32-bit depth surfaces are supported by the hardware.
@@ -5877,7 +5877,7 @@ void
 radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_info *ds,
                            struct radv_image_view *iview)
 {
-   unsigned level = iview->base_mip;
+   unsigned level = iview->vk.base_mip_level;
    unsigned format, stencil_format;
    uint64_t va, s_offs, z_offs;
    bool stencil_only = iview->image->vk.format == VK_FORMAT_S8_UINT;
@@ -5911,10 +5911,11 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    stencil_format = surf->has_stencil ? V_028044_STENCIL_8 : V_028044_STENCIL_INVALID;
 
    uint32_t max_slice = radv_surface_max_layer_count(iview) - 1;
-   ds->db_depth_view = S_028008_SLICE_START(iview->base_layer) | S_028008_SLICE_MAX(max_slice);
+   ds->db_depth_view = S_028008_SLICE_START(iview->vk.base_array_layer) |
+                       S_028008_SLICE_MAX(max_slice);
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
-      ds->db_depth_view |=
-         S_028008_SLICE_START_HI(iview->base_layer >> 11) | S_028008_SLICE_MAX_HI(max_slice >> 11);
+      ds->db_depth_view |= S_028008_SLICE_START_HI(iview->vk.base_array_layer >> 11) |
+                           S_028008_SLICE_MAX_HI(max_slice >> 11);
    }
 
    ds->db_htile_data_base = 0;

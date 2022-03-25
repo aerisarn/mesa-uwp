@@ -2428,17 +2428,10 @@ union radv_descriptor {
 };
 
 struct radv_image_view {
-   struct vk_object_base base;
+   struct vk_image_view vk;
    struct radv_image *image; /**< VkImageViewCreateInfo::image */
 
-   VkImageViewType type;
-   VkImageAspectFlags aspect_mask;
-   VkFormat vk_format;
    unsigned plane_id;
-   uint32_t base_layer;
-   uint32_t layer_count;
-   uint32_t base_mip;
-   uint32_t level_count;
    VkExtent3D extent; /**< Extent of VkImageViewCreateInfo::baseMipLevel. */
 
    /* Whether the image iview supports fast clear. */
@@ -2495,6 +2488,7 @@ struct radv_image_view_extra_create_info {
    bool disable_compression;
    bool enable_compression;
    bool disable_dcc_mrt;
+   bool from_client; /**< Set only if this came from vkCreateImage */
 };
 
 void radv_image_view_init(struct radv_image_view *view, struct radv_device *device,
@@ -3019,7 +3013,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(radv_device_memory, base, VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image_view, base, VkImageView,
+VK_DEFINE_NONDISP_HANDLE_CASTS(radv_image_view, vk.base, VkImageView,
                                VK_OBJECT_TYPE_IMAGE_VIEW);
 VK_DEFINE_NONDISP_HANDLE_CASTS(radv_pipeline_cache, base, VkPipelineCache,
                                VK_OBJECT_TYPE_PIPELINE_CACHE)

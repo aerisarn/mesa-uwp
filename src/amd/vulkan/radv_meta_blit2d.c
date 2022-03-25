@@ -238,7 +238,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
              aspect_mask == VK_IMAGE_ASPECT_PLANE_0_BIT ||
              aspect_mask == VK_IMAGE_ASPECT_PLANE_1_BIT ||
              aspect_mask == VK_IMAGE_ASPECT_PLANE_2_BIT) {
-            unsigned fs_key = radv_format_meta_fs_key(device, dst_temps.iview.vk_format);
+            unsigned fs_key = radv_format_meta_fs_key(device, dst_temps.iview.vk.format);
 
             if (device->meta_state.blit2d[log2_samples].pipelines[src_type][fs_key] ==
                 VK_NULL_HANDLE) {
