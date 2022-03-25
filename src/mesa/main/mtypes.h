@@ -3539,6 +3539,8 @@ struct gl_context
 
    GLuint TextureStateTimestamp; /**< detect changes to shared state */
 
+   GLboolean LastVertexStageDirty; /**< the last vertex stage has changed */
+
    /** \name For debugging/development only */
    /*@{*/
    GLboolean FirstTimeCurrent;

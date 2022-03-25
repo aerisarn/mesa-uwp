@@ -148,6 +148,17 @@ static void check_program_state( struct st_context *st )
          dirty |= ST_NEW_SCISSOR;
    }
 
+   if (st->lower_point_size && st->ctx->LastVertexStageDirty && !st->ctx->VertexProgram.PointSizeEnabled) {
+      if (new_gp) {
+         st->dirty |= ST_NEW_GS_CONSTANTS;
+      } else if (new_tep) {
+         st->dirty |= ST_NEW_TES_CONSTANTS;
+      } else {
+         st->dirty |= ST_NEW_VS_CONSTANTS;
+      }
+   }
+   st->ctx->LastVertexStageDirty = false;
+
    st->dirty |= dirty;
 }
 
@@ -178,19 +189,6 @@ static void check_attrib_edgeflag(struct st_context *st)
    st_update_edgeflags(st, _mesa_draw_edge_flag_array_enabled(st->ctx));
 }
 
-static void check_pointsize(struct st_context *st)
-{
-   if (st->ctx->VertexProgram.PointSizeEnabled)
-      return;
-   if (st->ctx->GeometryProgram._Current)
-      st->dirty |= ST_NEW_GS_CONSTANTS;
-   else if (st->ctx->TessEvalProgram._Current)
-      st->dirty |= ST_NEW_TES_CONSTANTS;
-   else
-      st->dirty |= ST_NEW_VS_CONSTANTS;
-}
-
-
 /***********************************************************************
  * Update all derived state:
  */
@@ -219,9 +217,6 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
          check_program_state(st);
          st->gfx_shaders_may_be_dirty = false;
       }
-      if (st->lower_point_size &&
-          (st->ctx->API == API_OPENGL_COMPAT || st->ctx->API == API_OPENGL_CORE))
-         check_pointsize(st);
 
       st_manager_validate_framebuffers(st);
 
@@ -232,9 +227,6 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
       break;
 
    case ST_PIPELINE_CLEAR:
-      if (st->lower_point_size &&
-          (st->ctx->API == API_OPENGL_COMPAT || st->ctx->API == API_OPENGL_CORE))
-         check_pointsize(st);
       st_manager_validate_framebuffers(st);
       pipeline_mask = ST_PIPELINE_CLEAR_STATE_MASK;
       break;
@@ -244,18 +236,12 @@ void st_validate_state( struct st_context *st, enum st_pipeline pipeline )
          check_program_state(st);
          st->gfx_shaders_may_be_dirty = false;
       }
-      if (st->lower_point_size &&
-          (st->ctx->API == API_OPENGL_COMPAT || st->ctx->API == API_OPENGL_CORE))
-         check_pointsize(st);
 
       st_manager_validate_framebuffers(st);
       pipeline_mask = ST_PIPELINE_META_STATE_MASK;
       break;
 
    case ST_PIPELINE_UPDATE_FRAMEBUFFER:
-      if (st->lower_point_size &&
-          (st->ctx->API == API_OPENGL_COMPAT || st->ctx->API == API_OPENGL_CORE))
-         check_pointsize(st);
       st_manager_validate_framebuffers(st);
       pipeline_mask = ST_PIPELINE_UPDATE_FB_STATE_MASK;
       break;
