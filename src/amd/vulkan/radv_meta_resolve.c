@@ -563,34 +563,30 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer,
 }
 
 static void
-radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
+radv_cmd_buffer_resolve_rendering_hw(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_subpass *subpass = cmd_buffer->state.subpass;
-   VkRect2D resolve_area = cmd_buffer->state.render_area;
-   uint32_t layer_count = cmd_buffer->state.framebuffer->layers;
    struct radv_meta_saved_state saved_state;
 
-   radv_meta_save(&saved_state, cmd_buffer, RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_PASS);
+   radv_meta_save(&saved_state, cmd_buffer,
+                  RADV_META_SAVE_GRAPHICS_PIPELINE | RADV_META_SAVE_RENDER);
 
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      struct radv_subpass_attachment src_att = subpass->color_attachments[i];
-      struct radv_subpass_attachment dst_att = subpass->resolve_attachments[i];
-
-      if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
+   for (uint32_t i = 0; i < saved_state.render.color_att_count; ++i) {
+      if (saved_state.render.color_att[i].resolve_iview == NULL)
          continue;
 
-      struct radv_image_view *src_iview = saved_state.attachments[src_att.attachment].iview;
+      struct radv_image_view *src_iview = saved_state.render.color_att[i].iview;
+      VkImageLayout src_layout = saved_state.render.color_att[i].layout;
       struct radv_image *src_img = src_iview->image;
 
-      struct radv_image_view *dst_iview = saved_state.attachments[dst_att.attachment].iview;
+      struct radv_image_view *dst_iview = saved_state.render.color_att[i].resolve_iview;
+      VkImageLayout dst_layout = saved_state.render.color_att[i].resolve_layout;
       struct radv_image *dst_img = dst_iview->image;
-      VkImageLayout dst_image_layout = saved_state.attachments[dst_att.attachment].current_layout;
 
       uint32_t queue_mask = radv_image_queue_family_mask(dst_img, cmd_buffer->qf,
                                                          cmd_buffer->qf);
 
       if (radv_layout_dcc_compressed(cmd_buffer->device, dst_img, dst_iview->vk.base_mip_level,
-                                     dst_image_layout, queue_mask)) {
+                                     dst_layout, queue_mask)) {
          VkImageSubresourceRange range = {
             .aspectMask = dst_iview->vk.aspects,
             .baseMipLevel = dst_iview->vk.base_mip_level,
@@ -606,14 +602,14 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
          {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = radv_image_view_to_handle(src_iview),
-            .imageLayout = saved_state.attachments[src_att.attachment].current_layout,
+            .imageLayout = src_layout,
             .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
          },
          {
             .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
             .imageView = radv_image_view_to_handle(dst_iview),
-            .imageLayout = saved_state.attachments[dst_att.attachment].current_layout,
+            .imageLayout = dst_layout,
             .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
          },
@@ -621,9 +617,9 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
 
       const VkRenderingInfo rendering_info = {
          .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-         .renderArea = resolve_area,
-         .layerCount = layer_count,
-         .viewMask = subpass->view_mask,
+         .renderArea = saved_state.render.area,
+         .layerCount = saved_state.render.layer_count,
+         .viewMask = saved_state.render.view_mask,
          .colorAttachmentCount = 2,
          .pColorAttachments = color_atts,
       };
@@ -637,7 +633,7 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
          continue;
       }
 
-      emit_resolve(cmd_buffer, src_img, dst_img, dst_iview->vk.format, &resolve_area);
+      emit_resolve(cmd_buffer, src_img, dst_img, dst_iview->vk.format, &saved_state.render.area);
 
       radv_CmdEndRendering(radv_cmd_buffer_to_handle(cmd_buffer));
    }
@@ -649,52 +645,55 @@ radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
  * Emit any needed resolves for the current subpass.
  */
 void
-radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
+radv_cmd_buffer_resolve_rendering(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_physical_device *pdevice = cmd_buffer->device->physical_device;
-   const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
    enum radv_resolve_method resolve_method =
       pdevice->rad_info.gfx_level >= GFX11 ? RESOLVE_FRAGMENT : RESOLVE_HW;
 
-   if (!subpass->has_color_resolve && !subpass->ds_resolve_attachment)
+   bool has_color_resolve = false;
+   for (uint32_t i = 0; i < render->color_att_count; ++i) {
+      if (render->color_att[i].resolve_iview != NULL)
+         has_color_resolve = true;
+   }
+   bool has_ds_resolve = render->ds_att.resolve_iview != NULL;
+
+   if (!has_color_resolve && !has_ds_resolve)
       return;
 
    radv_describe_begin_render_pass_resolve(cmd_buffer);
 
-   if (subpass->ds_resolve_attachment) {
-      struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
-      struct radv_subpass_attachment dst_att = *subpass->ds_resolve_attachment;
-      struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
-      struct radv_image_view *dst_iview = cmd_buffer->state.attachments[dst_att.attachment].iview;
-
-      /* Make sure to not clear the depth/stencil attachment after resolves. */
-      cmd_buffer->state.attachments[dst_att.attachment].pending_clear_aspects = 0;
+   if (render->ds_att.resolve_iview != NULL) {
+      struct radv_image_view *src_iview = render->ds_att.iview;
+      struct radv_image_view *dst_iview = render->ds_att.resolve_iview;
+      VkImageLayout dst_layout = render->ds_att.resolve_layout;
 
       radv_pick_resolve_method_images(cmd_buffer->device, src_iview->image, src_iview->vk.format,
-                                      dst_iview->image, dst_iview->vk.base_mip_level, dst_att.layout,
+                                      dst_iview->image, dst_iview->vk.base_mip_level, dst_layout,
                                       cmd_buffer, &resolve_method);
 
       if ((src_iview->vk.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
-          subpass->depth_resolve_mode != VK_RESOLVE_MODE_NONE) {
+          render->ds_att.resolve_mode != VK_RESOLVE_MODE_NONE) {
          if (resolve_method == RESOLVE_FRAGMENT) {
-            radv_depth_stencil_resolve_subpass_fs(cmd_buffer, VK_IMAGE_ASPECT_DEPTH_BIT,
-                                                  subpass->depth_resolve_mode);
+            radv_depth_stencil_resolve_rendering_fs(cmd_buffer, VK_IMAGE_ASPECT_DEPTH_BIT,
+                                                    render->ds_att.resolve_mode);
          } else {
             assert(resolve_method == RESOLVE_COMPUTE);
-            radv_depth_stencil_resolve_subpass_cs(cmd_buffer, VK_IMAGE_ASPECT_DEPTH_BIT,
-                                                  subpass->depth_resolve_mode);
+            radv_depth_stencil_resolve_rendering_cs(cmd_buffer, VK_IMAGE_ASPECT_DEPTH_BIT,
+                                                    render->ds_att.resolve_mode);
          }
       }
 
       if ((src_iview->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
-          subpass->stencil_resolve_mode != VK_RESOLVE_MODE_NONE) {
+          render->ds_att.stencil_resolve_mode != VK_RESOLVE_MODE_NONE) {
          if (resolve_method == RESOLVE_FRAGMENT) {
-            radv_depth_stencil_resolve_subpass_fs(cmd_buffer, VK_IMAGE_ASPECT_STENCIL_BIT,
-                                                  subpass->stencil_resolve_mode);
+            radv_depth_stencil_resolve_rendering_fs(cmd_buffer, VK_IMAGE_ASPECT_STENCIL_BIT,
+                                                    render->ds_att.stencil_resolve_mode);
          } else {
             assert(resolve_method == RESOLVE_COMPUTE);
-            radv_depth_stencil_resolve_subpass_cs(cmd_buffer, VK_IMAGE_ASPECT_STENCIL_BIT,
-                                                  subpass->stencil_resolve_mode);
+            radv_depth_stencil_resolve_rendering_cs(cmd_buffer, VK_IMAGE_ASPECT_STENCIL_BIT,
+                                                    render->ds_att.stencil_resolve_mode);
          }
       }
 
@@ -719,26 +718,19 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
          cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
    }
 
-   if (subpass->has_color_resolve) {
-      for (uint32_t i = 0; i < subpass->color_count; ++i) {
-         struct radv_subpass_attachment src_att = subpass->color_attachments[i];
-         struct radv_subpass_attachment dst_att = subpass->resolve_attachments[i];
-
-         if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
+   if (has_color_resolve) {
+      for (uint32_t i = 0; i < render->color_att_count; ++i) {
+         if (render->color_att[i].resolve_iview == NULL)
             continue;
 
-         /* Make sure to not clear color attachments after resolves. */
-         cmd_buffer->state.attachments[dst_att.attachment].pending_clear_aspects = 0;
-
-         struct radv_image_view *dst_iview =
-            cmd_buffer->state.attachments[dst_att.attachment].iview;
-         struct radv_image *dst_img = dst_iview->image;
-         struct radv_image_view *src_iview =
-            cmd_buffer->state.attachments[src_att.attachment].iview;
+         struct radv_image_view *src_iview = render->color_att[i].iview;
          struct radv_image *src_img = src_iview->image;
+         struct radv_image_view *dst_iview = render->color_att[i].resolve_iview;
+         VkImageLayout dst_layout = render->color_att[i].resolve_layout;
+         struct radv_image *dst_img = dst_iview->image;
 
          radv_pick_resolve_method_images(cmd_buffer->device, src_img, src_iview->vk.format, dst_img,
-                                         dst_iview->vk.base_mip_level, dst_att.layout,
+                                         dst_iview->vk.base_mip_level, dst_layout,
                                          cmd_buffer, &resolve_method);
 
          if (resolve_method == RESOLVE_FRAGMENT) {
@@ -748,13 +740,13 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 
       switch (resolve_method) {
       case RESOLVE_HW:
-         radv_cmd_buffer_resolve_subpass_hw(cmd_buffer);
+         radv_cmd_buffer_resolve_rendering_hw(cmd_buffer);
          break;
       case RESOLVE_COMPUTE:
-         radv_cmd_buffer_resolve_subpass_cs(cmd_buffer);
+         radv_cmd_buffer_resolve_rendering_cs(cmd_buffer);
          break;
       case RESOLVE_FRAGMENT:
-         radv_cmd_buffer_resolve_subpass_fs(cmd_buffer);
+         radv_cmd_buffer_resolve_rendering_fs(cmd_buffer);
          break;
       default:
          unreachable("Invalid resolve method");
@@ -769,23 +761,20 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
  * subpass.
  */
 void
-radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
+radv_decompress_resolve_rendering_src(struct radv_cmd_buffer *cmd_buffer)
 {
-   const struct radv_subpass *subpass = cmd_buffer->state.subpass;
-   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
-   uint32_t layer_count = fb->layers;
+   const struct radv_rendering_state *render = &cmd_buffer->state.render;
 
-   if (subpass->view_mask)
-      layer_count = util_last_bit(subpass->view_mask);
+   uint32_t layer_count = render->layer_count;
+   if (render->view_mask)
+      layer_count = util_last_bit(render->view_mask);
 
-   for (uint32_t i = 0; i < subpass->color_count; ++i) {
-      struct radv_subpass_attachment src_att = subpass->color_attachments[i];
-      struct radv_subpass_attachment dst_att = subpass->resolve_attachments[i];
-
-      if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
+   for (uint32_t i = 0; i < render->color_att_count; ++i) {
+      if (render->color_att[i].resolve_iview == NULL)
          continue;
 
-      struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
+      struct radv_image_view *src_iview = render->color_att[i].iview;
+      VkImageLayout src_layout = render->color_att[i].layout;
       struct radv_image *src_image = src_iview->image;
 
       VkImageResolve2 region = {0};
@@ -795,22 +784,8 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
       region.srcSubresource.baseArrayLayer = src_iview->vk.base_array_layer;
       region.srcSubresource.layerCount = layer_count;
 
-      radv_decompress_resolve_src(cmd_buffer, src_image, src_att.layout, &region);
+      radv_decompress_resolve_src(cmd_buffer, src_image, src_layout, &region);
    }
-}
-
-static struct radv_sample_locations_state *
-radv_get_resolve_sample_locations(struct radv_cmd_buffer *cmd_buffer)
-{
-   struct radv_cmd_state *state = &cmd_buffer->state;
-   uint32_t subpass_id = radv_get_subpass_id(cmd_buffer);
-
-   for (uint32_t i = 0; i < state->num_subpass_sample_locs; i++) {
-      if (state->subpass_sample_locs[i].subpass_idx == subpass_id)
-         return &state->subpass_sample_locs[i].sample_location;
-   }
-
-   return NULL;
 }
 
 /**
@@ -847,7 +822,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
        * locations, we need them during HTILE decompressions.
        */
       struct radv_sample_locations_state *sample_locs =
-         radv_get_resolve_sample_locations(cmd_buffer);
+         &cmd_buffer->state.render.sample_locations;
 
       sample_loc_info = (VkSampleLocationsInfoEXT){
          .sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT,

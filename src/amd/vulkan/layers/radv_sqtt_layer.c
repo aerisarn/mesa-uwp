@@ -757,25 +757,16 @@ sqtt_CmdPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout layout,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-sqtt_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
-                         const VkRenderPassBeginInfo *pRenderPassBeginInfo,
-                         const VkSubpassBeginInfo *pSubpassBeginInfo)
+sqtt_CmdBeginRendering(VkCommandBuffer commandBuffer,
+                       const VkRenderingInfo *pRenderingInfo)
 {
-   API_MARKER_ALIAS(BeginRenderPass2, BeginRenderPass, commandBuffer, pRenderPassBeginInfo,
-                    pSubpassBeginInfo);
+   API_MARKER_ALIAS(BeginRendering, BeginRenderPass, commandBuffer, pRenderingInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-sqtt_CmdNextSubpass2(VkCommandBuffer commandBuffer, const VkSubpassBeginInfo *pSubpassBeginInfo,
-                     const VkSubpassEndInfo *pSubpassEndInfo)
+sqtt_CmdEndRendering(VkCommandBuffer commandBuffer)
 {
-   API_MARKER_ALIAS(NextSubpass2, NextSubpass, commandBuffer, pSubpassBeginInfo, pSubpassEndInfo);
-}
-
-VKAPI_ATTR void VKAPI_CALL
-sqtt_CmdEndRenderPass2(VkCommandBuffer commandBuffer, const VkSubpassEndInfo *pSubpassEndInfo)
-{
-   API_MARKER_ALIAS(EndRenderPass2, EndRenderPass, commandBuffer, pSubpassEndInfo);
+   API_MARKER_ALIAS(EndRendering, EndRenderPass, commandBuffer);
 }
 
 VKAPI_ATTR void VKAPI_CALL

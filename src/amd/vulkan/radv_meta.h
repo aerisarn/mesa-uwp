@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 enum radv_meta_save_flags {
-   RADV_META_SAVE_PASS = (1 << 0),
+   RADV_META_SAVE_RENDER = (1 << 0),
    RADV_META_SAVE_CONSTANTS = (1 << 1),
    RADV_META_SAVE_DESCRIPTORS = (1 << 2),
    RADV_META_SAVE_GRAPHICS_PIPELINE = (1 << 3),
@@ -52,11 +52,7 @@ struct radv_meta_saved_state {
 
    char push_constants[MAX_PUSH_CONSTANTS_SIZE];
 
-   struct radv_render_pass *pass;
-   const struct radv_subpass *subpass;
-   struct radv_attachment_state *attachments;
-   struct vk_framebuffer *framebuffer;
-   VkRect2D render_area;
+   struct radv_rendering_state render;
 
    unsigned active_pipeline_gds_queries;
 
@@ -213,7 +209,7 @@ void radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer,
                                       VkImageLayout dest_image_layout,
                                       const VkImageResolve2 *region);
 
-void radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer);
+void radv_decompress_resolve_rendering_src(struct radv_cmd_buffer *cmd_buffer);
 
 void radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                                  VkImageLayout src_image_layout, const VkImageResolve2 *region);

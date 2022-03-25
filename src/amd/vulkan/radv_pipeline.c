@@ -6148,12 +6148,12 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    return result;
 }
 
-static VkResult
-radv_graphics_pipeline_create_nonlegacy(VkDevice _device, VkPipelineCache _cache,
-                                        const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                        const struct radv_graphics_pipeline_create_info *extra,
-                                        const VkAllocationCallbacks *pAllocator,
-                                        VkPipeline *pPipeline)
+VkResult
+radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
+                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                              const struct radv_graphics_pipeline_create_info *extra,
+                              const VkAllocationCallbacks *pAllocator,
+                              VkPipeline *pPipeline)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
@@ -6311,77 +6311,6 @@ radv_graphics_lib_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    return VK_SUCCESS;
 }
 
-/* This is a wrapper for radv_graphics_pipeline_create_nonlegacy that does all legacy conversions
- * for the VkGraphicsPipelineCreateInfo data. */
-VkResult
-radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
-                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                              const struct radv_graphics_pipeline_create_info *extra,
-                              const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
-{
-   VkGraphicsPipelineCreateInfo create_info = *pCreateInfo;
-   VkResult result;
-
-   VkPipelineRenderingCreateInfo rendering_create_info;
-   VkFormat color_formats[MAX_RTS];
-   VkAttachmentSampleCountInfoAMD sample_info;
-   VkSampleCountFlagBits samples[MAX_RTS];
-   if (pCreateInfo->renderPass != VK_NULL_HANDLE) {
-      RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-      struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-
-      rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-      rendering_create_info.pNext = create_info.pNext;
-      create_info.pNext = &rendering_create_info;
-
-      rendering_create_info.viewMask = subpass->view_mask;
-
-      VkFormat ds_format =
-         subpass->depth_stencil_attachment
-            ? pass->attachments[subpass->depth_stencil_attachment->attachment].format
-            : VK_FORMAT_UNDEFINED;
-
-      rendering_create_info.depthAttachmentFormat =
-         vk_format_has_depth(ds_format) ? ds_format : VK_FORMAT_UNDEFINED;
-      rendering_create_info.stencilAttachmentFormat =
-         vk_format_has_stencil(ds_format) ? ds_format : VK_FORMAT_UNDEFINED;
-
-      rendering_create_info.colorAttachmentCount = subpass->color_count;
-      rendering_create_info.pColorAttachmentFormats = color_formats;
-      for (unsigned i = 0; i < rendering_create_info.colorAttachmentCount; ++i) {
-         if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED)
-            color_formats[i] = pass->attachments[subpass->color_attachments[i].attachment].format;
-         else
-            color_formats[i] = VK_FORMAT_UNDEFINED;
-      }
-
-      create_info.renderPass = VK_NULL_HANDLE;
-
-      sample_info.sType = VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD;
-      sample_info.pNext = create_info.pNext;
-      create_info.pNext = &sample_info;
-
-      sample_info.colorAttachmentCount = rendering_create_info.colorAttachmentCount;
-      sample_info.pColorAttachmentSamples = samples;
-      for (unsigned i = 0; i < sample_info.colorAttachmentCount; ++i) {
-         if (subpass->color_attachments[i].attachment != VK_ATTACHMENT_UNUSED) {
-            samples[i] = pass->attachments[subpass->color_attachments[i].attachment].samples;
-         } else
-            samples[i] = 1;
-      }
-      sample_info.depthStencilAttachmentSamples = subpass->depth_sample_count;
-   }
-
-   if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
-      result = radv_graphics_lib_pipeline_create(_device, _cache, &create_info, pAllocator, pPipeline);
-   } else {
-      result = radv_graphics_pipeline_create_nonlegacy(_device, _cache, &create_info, extra, pAllocator,
-                                                       pPipeline);
-   }
-
-   return result;
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t count,
                              const VkGraphicsPipelineCreateInfo *pCreateInfos,
@@ -6392,8 +6321,13 @@ radv_CreateGraphicsPipelines(VkDevice _device, VkPipelineCache pipelineCache, ui
 
    for (; i < count; i++) {
       VkResult r;
-      r = radv_graphics_pipeline_create(_device, pipelineCache, &pCreateInfos[i], NULL, pAllocator,
-                                        &pPipelines[i]);
+      if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
+         r = radv_graphics_lib_pipeline_create(_device, pipelineCache, &pCreateInfos[i],
+                                               pAllocator, &pPipelines[i]);
+      } else {
+         r = radv_graphics_pipeline_create(_device, pipelineCache, &pCreateInfos[i], NULL,
+                                           pAllocator, &pPipelines[i]);
+      }
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;

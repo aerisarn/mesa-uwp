@@ -124,12 +124,9 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       memcpy(state->push_constants, cmd_buffer->push_constants, MAX_PUSH_CONSTANTS_SIZE);
    }
 
-   if (state->flags & RADV_META_SAVE_PASS) {
-      state->pass = cmd_buffer->state.pass;
-      state->subpass = cmd_buffer->state.subpass;
-      state->framebuffer = cmd_buffer->state.framebuffer;
-      state->attachments = cmd_buffer->state.attachments;
-      state->render_area = cmd_buffer->state.render_area;
+   if (state->flags & RADV_META_SAVE_RENDER) {
+      state->render = cmd_buffer->state.render;
+      radv_cmd_buffer_reset_rendering(cmd_buffer);
    }
 
    if (state->flags & RADV_META_SUSPEND_PREDICATING) {
@@ -179,14 +176,9 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
                             MAX_PUSH_CONSTANTS_SIZE, state->push_constants);
    }
 
-   if (state->flags & RADV_META_SAVE_PASS) {
-      cmd_buffer->state.pass = state->pass;
-      cmd_buffer->state.subpass = state->subpass;
-      cmd_buffer->state.framebuffer = state->framebuffer;
-      cmd_buffer->state.attachments = state->attachments;
-      cmd_buffer->state.render_area = state->render_area;
-      if (state->subpass)
-         cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
+   if (state->flags & RADV_META_SAVE_RENDER) {
+      cmd_buffer->state.render = state->render;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
    }
 
    if (state->flags & RADV_META_SUSPEND_PREDICATING)
