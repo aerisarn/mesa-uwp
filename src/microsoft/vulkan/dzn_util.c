@@ -21,7 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
+
 #include <vulkan/vulkan.h>
 
 #include "util/format/u_format.h"
