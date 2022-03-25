@@ -144,7 +144,6 @@ pop_batch_state(struct zink_context *ctx)
 void
 zink_batch_reset_all(struct zink_context *ctx)
 {
-   simple_mtx_lock(&ctx->batch_mtx);
    while (ctx->batch_states) {
       struct zink_batch_state *bs = ctx->batch_states;
       bs->fence.completed = true;
@@ -152,7 +151,6 @@ zink_batch_reset_all(struct zink_context *ctx)
       zink_reset_batch_state(ctx, bs);
       util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
    }
-   simple_mtx_unlock(&ctx->batch_mtx);
 }
 
 void
@@ -265,7 +263,6 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = NULL;
 
-   simple_mtx_lock(&ctx->batch_mtx);
    if (util_dynarray_num_elements(&ctx->free_batch_states, struct zink_batch_state*))
       bs = util_dynarray_pop(&ctx->free_batch_states, struct zink_batch_state*);
    if (!bs && ctx->batch_states) {
@@ -276,7 +273,6 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
          pop_batch_state(ctx);
       }
    }
-   simple_mtx_unlock(&ctx->batch_mtx);
    if (bs) {
       zink_reset_batch_state(ctx, bs);
    } else {
@@ -443,14 +439,13 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs;
 
-   simple_mtx_lock(&ctx->batch_mtx);
    if (ctx->oom_flush || ctx->batch_states_count > 10) {
       assert(!ctx->batch_states_count || ctx->batch_states);
       while (ctx->batch_states) {
          bs = ctx->batch_states;
          struct zink_fence *fence = &bs->fence;
          /* once an incomplete state is reached, no more will be complete */
-         if (!zink_check_batch_completion(ctx, fence->batch_id, true))
+         if (!zink_check_batch_completion(ctx, fence->batch_id))
             break;
 
          pop_batch_state(ctx);
@@ -470,7 +465,6 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
    ctx->last_fence = &bs->fence;
    ctx->batch_states_count++;
-   simple_mtx_unlock(&ctx->batch_mtx);
    batch->work_count = 0;
 
    if (batch->swapchain) {
@@ -634,7 +628,7 @@ zink_batch_usage_check_completion(struct zink_context *ctx, const struct zink_ba
       return true;
    if (zink_batch_usage_is_unflushed(u))
       return false;
-   return zink_check_batch_completion(ctx, u->usage, false);
+   return zink_check_batch_completion(ctx, u->usage);
 }
 
 void

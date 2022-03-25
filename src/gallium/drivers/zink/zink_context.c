@@ -114,7 +114,6 @@ zink_context_destroy(struct pipe_context *pctx)
    if (ctx->dd)
       zink_descriptors_deinit_bindless(ctx);
 
-   simple_mtx_destroy(&ctx->batch_mtx);
    if (ctx->batch.state) {
       zink_clear_batch_state(ctx, ctx->batch.state);
       zink_batch_state_destroy(screen, ctx->batch.state);
@@ -3361,7 +3360,7 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
 }
 
 bool
-zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id, bool have_lock)
+zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
 {
    assert(ctx->batch.state);
    if (!batch_id)
@@ -4413,7 +4412,6 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       util_dynarray_init(&ctx->di.bindless[i].resident, NULL);
    }
 
-   simple_mtx_init(&ctx->batch_mtx, mtx_plain);
    zink_start_batch(ctx, &ctx->batch);
    if (!ctx->batch.state)
       goto fail;

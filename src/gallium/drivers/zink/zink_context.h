@@ -197,7 +197,6 @@ struct zink_context {
 
    struct pipe_device_reset_callback reset;
 
-   simple_mtx_t batch_mtx;
    struct zink_fence *deferred_fence;
    struct zink_fence *last_fence; //the last command buffer submitted
    struct zink_batch_state *batch_states; //list of submitted batch states: ordered by increasing timeline id
@@ -399,7 +398,7 @@ void
 zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id);
 
 bool
-zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id, bool have_lock);
+zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id);
 
 void
 zink_flush_queue(struct zink_context *ctx);
