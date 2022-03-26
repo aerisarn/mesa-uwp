@@ -1434,9 +1434,21 @@ foreach h : ['xlocale.h', 'linux/futex.h', 'endian.h', 'dlfcn.h', 'sys/shm.h', '
   endif
 endforeach
 
-foreach f : ['strtof', 'mkostemp', 'timespec_get', 'memfd_create', 'random_r',
-             'flock', 'strtok_r', 'getrandom', 'qsort_r', 'qsort_s']
-  if cc.has_function(f)
+functions_to_detect = {
+  'strtof': '',
+  'mkostemp': '',
+  'timespec_get': '#include <time.h>',
+  'memfd_create': '',
+  'random_r': '',
+  'flock': '',
+  'strtok_r': '',
+  'getrandom': '',
+  'qsort_r': '',
+  'qsort_s': '',
+}
+
+foreach f, prefix: functions_to_detect
+  if cc.has_function(f, prefix: prefix)
     pre_args += '-DHAVE_@0@'.format(f.to_upper())
   endif
 endforeach
