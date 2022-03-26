@@ -33,6 +33,7 @@
 #include <ctype.h>
 #include "decode.h"
 
+#include "util/set.h"
 #include "midgard/disassemble.h"
 #include "bifrost/disassemble.h"
 #include "bifrost/valhall/disassemble.h"
@@ -1138,9 +1139,21 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
 {
         pandecode_dump_file_open();
 
+        struct set *va_set = _mesa_pointer_set_create(NULL);
+        struct set_entry *entry = NULL;
+
         mali_ptr next_job = 0;
 
         do {
+                struct pandecode_mapped_memory *mem =
+                        pandecode_find_mapped_gpu_mem_containing(jc_gpu_va);
+
+                entry = _mesa_set_search(va_set, mem->addr);
+                if (entry !=  NULL) {
+                        fprintf(stdout, "Job list has a cycle\n");
+                        break;
+                }
+
                 pan_unpack(PANDECODE_PTR(jc_gpu_va, struct mali_job_header_packed),
                            JOB_HEADER, h);
                 next_job = h.next;
@@ -1189,7 +1202,13 @@ GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
                 default:
                         break;
                 }
+
+                /* Add the latest visited job GPU VA to avoid cycles */
+                _mesa_set_add(va_set, mem->addr);
+
         } while ((jc_gpu_va = next_job));
+
+        _mesa_set_destroy(va_set, NULL);
 
         fflush(pandecode_dump_stream);
         pandecode_map_read_write();
