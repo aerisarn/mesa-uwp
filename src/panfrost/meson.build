@@ -27,6 +27,10 @@ inc_panfrost = include_directories([
    '.', 'include', 'shared', 'midgard', 'bifrost', 'lib'
 ])
 
+compile_args_panfrost = [
+  '-Wno-pointer-arith'
+]
+
 subdir('shared')
 subdir('util')
 subdir('midgard')
