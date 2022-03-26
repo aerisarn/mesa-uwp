@@ -433,6 +433,9 @@ Converter::getOperation(nir_op op)
    case nir_op_ffloor:
       return OP_FLOOR;
    case nir_op_ffma:
+      /* No FMA op pre-nvc0 */
+      if (info->target < 0xc0)
+         return OP_MAD;
       return OP_FMA;
    case nir_op_flog2:
       return OP_LG2;
