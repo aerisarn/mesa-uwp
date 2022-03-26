@@ -309,6 +309,7 @@ vk_image_view_init(struct vk_device *device,
       assert(util_format_get_blocksize(vk_format_to_pipe_format(image->format)) ==
              util_format_get_blocksize(vk_format_to_pipe_format(pCreateInfo->format)));
       image_view->aspects = range->aspectMask;
+      image_view->view_format = pCreateInfo->format;
    } else {
       image_view->aspects =
          vk_image_expand_aspect_mask(image, range->aspectMask);
@@ -344,34 +345,34 @@ vk_image_view_init(struct vk_device *device,
 
       if (!(image->create_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
          assert(pCreateInfo->format == image->format);
-   }
 
-   /* Restrict the format to only the planes chosen.
-    *
-    * For combined depth and stencil images, this means the depth-only or
-    * stencil-only format if only one aspect is chosen and the full combined
-    * format if both aspects are chosen.
-    *
-    * For single-plane color images, we just take the format as-is.  For
-    * multi-plane views of multi-plane images, this means we want the full
-    * multi-plane format.  For single-plane views of multi-plane images, we
-    * want a format compatible with the one plane.  Fortunately, this is
-    * already what the client gives us.  The Vulkan 1.2.184 spec says:
-    *
-    *    "If image was created with the VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT and
-    *    the image has a multi-planar format, and if
-    *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_PLANE_0_BIT,
-    *    VK_IMAGE_ASPECT_PLANE_1_BIT, or VK_IMAGE_ASPECT_PLANE_2_BIT, format
-    *    must be compatible with the corresponding plane of the image, and the
-    *    sampler to be used with the image view must not enable sampler Y′CBCR
-    *    conversion."
-    */
-   if (image_view->aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      image_view->view_format = vk_format_stencil_only(pCreateInfo->format);
-   } else if (image_view->aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
-      image_view->view_format = vk_format_depth_only(pCreateInfo->format);
-   } else {
-      image_view->view_format = pCreateInfo->format;
+      /* Restrict the format to only the planes chosen.
+       *
+       * For combined depth and stencil images, this means the depth-only or
+       * stencil-only format if only one aspect is chosen and the full
+       * combined format if both aspects are chosen.
+       *
+       * For single-plane color images, we just take the format as-is.  For
+       * multi-plane views of multi-plane images, this means we want the full
+       * multi-plane format.  For single-plane views of multi-plane images, we
+       * want a format compatible with the one plane.  Fortunately, this is
+       * already what the client gives us.  The Vulkan 1.2.184 spec says:
+       *
+       *    "If image was created with the VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
+       *    and the image has a multi-planar format, and if
+       *    subresourceRange.aspectMask is VK_IMAGE_ASPECT_PLANE_0_BIT,
+       *    VK_IMAGE_ASPECT_PLANE_1_BIT, or VK_IMAGE_ASPECT_PLANE_2_BIT,
+       *    format must be compatible with the corresponding plane of the
+       *    image, and the sampler to be used with the image view must not
+       *    enable sampler Y′CBCR conversion."
+       */
+      if (image_view->aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         image_view->view_format = vk_format_stencil_only(pCreateInfo->format);
+      } else if (image_view->aspects == VK_IMAGE_ASPECT_DEPTH_BIT) {
+         image_view->view_format = vk_format_depth_only(pCreateInfo->format);
+      } else {
+         image_view->view_format = pCreateInfo->format;
+      }
    }
 
    image_view->swizzle = (VkComponentMapping) {
