@@ -10,6 +10,8 @@
 
 #include "vn_protocol_driver_defines.h"
 
+#define VN_INFO_EXTENSION_MAX_NUMBER (414)
+
 struct vn_info_extension {
    const char *name;
    uint32_t number;
@@ -142,6 +144,12 @@ vn_info_extension_get(int32_t index)
 {
    assert(index >= 0 && (uint32_t)index < _vn_info_extension_count);
    return &_vn_info_extensions[index];
+}
+
+static inline bool
+vn_info_extension_mask_test(const uint32_t *mask, uint32_t ext_number)
+{
+   return mask[ext_number / 32] & (1 << (ext_number % 32));
 }
 
 #endif /* VN_PROTOCOL_DRIVER_INFO_H */

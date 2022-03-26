@@ -323,12 +323,16 @@ vn_sizeof_VkImageCreateInfo_pnext(const void *val)
             size += vn_sizeof_VkImageFormatListCreateInfo_self((const VkImageFormatListCreateInfo *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(159 /* VK_EXT_image_drm_format_modifier */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkImageCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkImageDrmFormatModifierListCreateInfoEXT_self((const VkImageDrmFormatModifierListCreateInfoEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(159 /* VK_EXT_image_drm_format_modifier */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkImageCreateInfo_pnext(pnext->pNext);
@@ -408,12 +412,16 @@ vn_encode_VkImageCreateInfo_pnext(struct vn_cs_encoder *enc, const void *val)
             vn_encode_VkImageFormatListCreateInfo_self(enc, (const VkImageFormatListCreateInfo *)pnext);
             return;
         case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(159 /* VK_EXT_image_drm_format_modifier */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkImageCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkImageDrmFormatModifierListCreateInfoEXT_self(enc, (const VkImageDrmFormatModifierListCreateInfoEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(159 /* VK_EXT_image_drm_format_modifier */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkImageCreateInfo_pnext(enc, pnext->pNext);

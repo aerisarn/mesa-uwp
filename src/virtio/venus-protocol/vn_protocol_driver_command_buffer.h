@@ -207,12 +207,16 @@ vn_sizeof_VkCommandBufferInheritanceInfo_pnext(const void *val)
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(82 /* VK_EXT_conditional_rendering */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkCommandBufferInheritanceInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkCommandBufferInheritanceConditionalRenderingInfoEXT_self((const VkCommandBufferInheritanceConditionalRenderingInfoEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(45 /* VK_KHR_dynamic_rendering */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkCommandBufferInheritanceInfo_pnext(pnext->pNext);
@@ -262,12 +266,16 @@ vn_encode_VkCommandBufferInheritanceInfo_pnext(struct vn_cs_encoder *enc, const 
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(82 /* VK_EXT_conditional_rendering */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkCommandBufferInheritanceInfo_pnext(enc, pnext->pNext);
             vn_encode_VkCommandBufferInheritanceConditionalRenderingInfoEXT_self(enc, (const VkCommandBufferInheritanceConditionalRenderingInfoEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(45 /* VK_KHR_dynamic_rendering */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkCommandBufferInheritanceInfo_pnext(enc, pnext->pNext);

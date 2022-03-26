@@ -12,8 +12,6 @@
 #include <string.h>
 #include <vulkan/vulkan.h>
 
-#include "vn_protocol_driver_cs.h"
-
 #define VN_SUBMIT_LOCAL_CMD_SIZE 256
 
 /* VkStructureType */

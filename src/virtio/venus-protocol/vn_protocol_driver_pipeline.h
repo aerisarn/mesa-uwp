@@ -139,6 +139,8 @@ vn_sizeof_VkPipelineShaderStageCreateInfo_pnext(const void *val)
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(226 /* VK_EXT_subgroup_size_control */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineShaderStageCreateInfo_pnext(pnext->pNext);
@@ -195,6 +197,8 @@ vn_encode_VkPipelineShaderStageCreateInfo_pnext(struct vn_cs_encoder *enc, const
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(226 /* VK_EXT_subgroup_size_control */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineShaderStageCreateInfo_pnext(enc, pnext->pNext);
@@ -375,6 +379,8 @@ vn_sizeof_VkPipelineVertexInputStateCreateInfo_pnext(const void *val)
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(191 /* VK_EXT_vertex_attribute_divisor */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineVertexInputStateCreateInfo_pnext(pnext->pNext);
@@ -435,6 +441,8 @@ vn_encode_VkPipelineVertexInputStateCreateInfo_pnext(struct vn_cs_encoder *enc, 
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(191 /* VK_EXT_vertex_attribute_divisor */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineVertexInputStateCreateInfo_pnext(enc, pnext->pNext);
@@ -1055,30 +1063,40 @@ vn_sizeof_VkPipelineRasterizationStateCreateInfo_pnext(const void *val)
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(102 /* VK_EXT_conservative_rasterization */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineRasterizationStateCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkPipelineRasterizationConservativeStateCreateInfoEXT_self((const VkPipelineRasterizationConservativeStateCreateInfoEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(29 /* VK_EXT_transform_feedback */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineRasterizationStateCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkPipelineRasterizationStateStreamCreateInfoEXT_self((const VkPipelineRasterizationStateStreamCreateInfoEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(103 /* VK_EXT_depth_clip_enable */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineRasterizationStateCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkPipelineRasterizationDepthClipStateCreateInfoEXT_self((const VkPipelineRasterizationDepthClipStateCreateInfoEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(260 /* VK_EXT_line_rasterization */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineRasterizationStateCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkPipelineRasterizationLineStateCreateInfoEXT_self((const VkPipelineRasterizationLineStateCreateInfoEXT *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(255 /* VK_EXT_provoking_vertex */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkPipelineRasterizationStateCreateInfo_pnext(pnext->pNext);
@@ -1133,30 +1151,40 @@ vn_encode_VkPipelineRasterizationStateCreateInfo_pnext(struct vn_cs_encoder *enc
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(102 /* VK_EXT_conservative_rasterization */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineRasterizationStateCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkPipelineRasterizationConservativeStateCreateInfoEXT_self(enc, (const VkPipelineRasterizationConservativeStateCreateInfoEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(29 /* VK_EXT_transform_feedback */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineRasterizationStateCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkPipelineRasterizationStateStreamCreateInfoEXT_self(enc, (const VkPipelineRasterizationStateStreamCreateInfoEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(103 /* VK_EXT_depth_clip_enable */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineRasterizationStateCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkPipelineRasterizationDepthClipStateCreateInfoEXT_self(enc, (const VkPipelineRasterizationDepthClipStateCreateInfoEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(260 /* VK_EXT_line_rasterization */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineRasterizationStateCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkPipelineRasterizationLineStateCreateInfoEXT_self(enc, (const VkPipelineRasterizationLineStateCreateInfoEXT *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT:
+            if (!vn_cs_renderer_protocol_has_extension(255 /* VK_EXT_provoking_vertex */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkPipelineRasterizationStateCreateInfo_pnext(enc, pnext->pNext);
@@ -1718,12 +1746,16 @@ vn_sizeof_VkGraphicsPipelineCreateInfo_pnext(const void *val)
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(193 /* VK_EXT_pipeline_creation_feedback */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkGraphicsPipelineCreateInfo_pnext(pnext->pNext);
             size += vn_sizeof_VkPipelineCreationFeedbackCreateInfo_self((const VkPipelineCreationFeedbackCreateInfo *)pnext);
             return size;
         case VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(45 /* VK_KHR_dynamic_rendering */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkGraphicsPipelineCreateInfo_pnext(pnext->pNext);
@@ -1808,12 +1840,16 @@ vn_encode_VkGraphicsPipelineCreateInfo_pnext(struct vn_cs_encoder *enc, const vo
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(193 /* VK_EXT_pipeline_creation_feedback */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkGraphicsPipelineCreateInfo_pnext(enc, pnext->pNext);
             vn_encode_VkPipelineCreationFeedbackCreateInfo_self(enc, (const VkPipelineCreationFeedbackCreateInfo *)pnext);
             return;
         case VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(45 /* VK_KHR_dynamic_rendering */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkGraphicsPipelineCreateInfo_pnext(enc, pnext->pNext);
@@ -1887,6 +1923,8 @@ vn_sizeof_VkComputePipelineCreateInfo_pnext(const void *val)
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(193 /* VK_EXT_pipeline_creation_feedback */))
+                break;
             size += vn_sizeof_simple_pointer(pnext);
             size += vn_sizeof_VkStructureType(&pnext->sType);
             size += vn_sizeof_VkComputePipelineCreateInfo_pnext(pnext->pNext);
@@ -1935,6 +1973,8 @@ vn_encode_VkComputePipelineCreateInfo_pnext(struct vn_cs_encoder *enc, const voi
     while (pnext) {
         switch ((int32_t)pnext->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO:
+            if (!vn_cs_renderer_protocol_has_extension(193 /* VK_EXT_pipeline_creation_feedback */))
+                break;
             vn_encode_simple_pointer(enc, pnext);
             vn_encode_VkStructureType(enc, &pnext->sType);
             vn_encode_VkComputePipelineCreateInfo_pnext(enc, pnext->pNext);
