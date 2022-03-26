@@ -2337,7 +2337,7 @@ v3dX(cmd_buffer_render_pass_setup_render_target)(struct v3dv_cmd_buffer *cmd_buf
    assert(attachment_idx < state->framebuffer->attachment_count &&
           attachment_idx < state->attachment_alloc_count);
    struct v3dv_image_view *iview = state->attachments[attachment_idx].image_view;
-   assert(iview->vk.aspects & VK_IMAGE_ASPECT_COLOR_BIT);
+   assert(vk_format_is_color(iview->vk.format));
 
    *rt_bpp = iview->internal_bpp;
    *rt_type = iview->internal_type;

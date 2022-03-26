@@ -305,7 +305,6 @@ vk_image_view_init(struct vk_device *device,
       vk_format_is_depth_or_stencil(image->format) &&
       vk_format_is_color(pCreateInfo->format);
    if (is_color_view_of_depth_stencil) {
-      assert(range->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
       assert(util_format_get_blocksize(vk_format_to_pipe_format(image->format)) ==
              util_format_get_blocksize(vk_format_to_pipe_format(pCreateInfo->format)));
       image_view->aspects = range->aspectMask;

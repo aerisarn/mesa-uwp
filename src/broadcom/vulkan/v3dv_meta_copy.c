@@ -1968,7 +1968,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    /* We only handle color copies. Callers can copy D/S aspects by using
     * a compatible color format and maybe a cmask/cswizzle for D24 formats.
     */
-   if (aspect != VK_IMAGE_ASPECT_COLOR_BIT)
+   if (!vk_format_is_color(dst_format) || !vk_format_is_color(src_format))
       return handled;
 
    /* FIXME: we only handle uncompressed images for now. */
@@ -2568,7 +2568,6 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
                 image->vk.format == VK_FORMAT_X8_D24_UNORM_PACK32);
          src_format = VK_FORMAT_R8G8B8A8_UINT;
          dst_format = src_format;
-         aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 
          /* For D24 formats, the Vulkan spec states that the depth component
           * in the buffer is stored in the 24-LSB, but V3D wants it in the
@@ -2598,7 +2597,6 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
          src_format = VK_FORMAT_R8_UINT;
          dst_format = VK_FORMAT_R8G8B8A8_UINT;
          cmask = VK_COLOR_COMPONENT_R_BIT;
-         aspect = VK_IMAGE_ASPECT_COLOR_BIT;
          break;
       default:
          unreachable("unsupported aspect");
@@ -2606,7 +2604,7 @@ copy_buffer_to_image_shader(struct v3dv_cmd_buffer *cmd_buffer,
       };
       break;
    case 2:
-      aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+      assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
       src_format = VK_FORMAT_R16_UINT;
       dst_format = src_format;
       break;
@@ -3862,8 +3860,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          unreachable("Unsupported depth/stencil format");
       };
       src_format = dst_format;
-      region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-      region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
    }
 
    const VkColorComponentFlags full_cmask = VK_COLOR_COMPONENT_R_BIT |
