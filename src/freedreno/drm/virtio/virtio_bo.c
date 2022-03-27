@@ -230,6 +230,8 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
    bo->funcs = &funcs;
    bo->handle = handle;
 
+   fd_bo_init_common(bo, dev);
+
    return bo;
 }
 
