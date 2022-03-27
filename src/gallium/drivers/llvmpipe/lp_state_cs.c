@@ -610,6 +610,8 @@ make_variant_key(struct llvmpipe_context *lp,
     */
    key->nr_samplers = shader->info.base.file_max[TGSI_FILE_SAMPLER] + 1;
 
+   if (shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] != -1)
+      key->nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
    struct lp_sampler_static_state *cs_sampler;
 
    cs_sampler = lp_cs_variant_key_samplers(key);
@@ -628,7 +630,6 @@ make_variant_key(struct llvmpipe_context *lp,
     * if we want to skip the holes here (without rescanning tgsi).
     */
    if (shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] != -1) {
-      key->nr_sampler_views = shader->info.base.file_max[TGSI_FILE_SAMPLER_VIEW] + 1;
       for(i = 0; i < key->nr_sampler_views; ++i) {
          /*
           * Note sview may exceed what's representable by file_mask.
