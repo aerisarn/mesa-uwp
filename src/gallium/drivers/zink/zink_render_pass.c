@@ -118,7 +118,7 @@ create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *st
 
    VkRenderPass render_pass;
    if (VKSCR(CreateRenderPass)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
-      debug_printf("vkCreateRenderPass failed\n");
+      mesa_loge("ZINK: vkCreateRenderPass failed");
       return VK_NULL_HANDLE;
    }
 
@@ -273,7 +273,7 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
 
    VkRenderPass render_pass;
    if (VKSCR(CreateRenderPass2)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
-      debug_printf("vkCreateRenderPass2 failed\n");
+      mesa_loge("ZINK: vkCreateRenderPass2 failed");
       return VK_NULL_HANDLE;
    }
 

@@ -31,7 +31,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
    if (VKSCR(ResetCommandPool)(screen->dev, bs->cmdpool, 0) != VK_SUCCESS)
-      debug_printf("vkResetCommandPool failed\n");
+      mesa_loge("ZINK: vkResetCommandPool failed");
 
    /* unref all used resources */
    set_foreach_remove(bs->resources, entry) {
@@ -315,9 +315,9 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
    cbbi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
    if (VKCTX(BeginCommandBuffer)(batch->state->cmdbuf, &cbbi) != VK_SUCCESS)
-      debug_printf("vkBeginCommandBuffer failed\n");
+      mesa_loge("ZINK: vkBeginCommandBuffer failed");
    if (VKCTX(BeginCommandBuffer)(batch->state->barrier_cmdbuf, &cbbi) != VK_SUCCESS)
-      debug_printf("vkBeginCommandBuffer failed\n");
+      mesa_loge("ZINK: vkBeginCommandBuffer failed");
 
    batch->state->fence.completed = false;
    if (ctx->last_fence) {
@@ -364,7 +364,9 @@ submit_queue(void *data, void *gdata, int thread_index)
       }
    }
 
-   VKSCR(ResetFences)(screen->dev, 1, &bs->fence.fence);
+   if (VKSCR(ResetFences)(screen->dev, 1, &bs->fence.fence) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkResetFences failed");
+   }
 
    uint64_t batch_id = bs->fence.batch_id;
    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -405,12 +407,12 @@ submit_queue(void *data, void *gdata, int thread_index)
    }
 
    if (VKSCR(EndCommandBuffer)(bs->cmdbuf) != VK_SUCCESS) {
-      debug_printf("vkEndCommandBuffer failed\n");
+      mesa_loge("ZINK: vkEndCommandBuffer failed");
       bs->is_device_lost = true;
       goto end;
    }
    if (VKSCR(EndCommandBuffer)(bs->barrier_cmdbuf) != VK_SUCCESS) {
-      debug_printf("vkEndCommandBuffer failed\n");
+      mesa_loge("ZINK: vkEndCommandBuffer failed");
       bs->is_device_lost = true;
       goto end;
    }
@@ -418,12 +420,14 @@ submit_queue(void *data, void *gdata, int thread_index)
    while (util_dynarray_contains(&bs->persistent_resources, struct zink_resource_object*)) {
       struct zink_resource_object *obj = util_dynarray_pop(&bs->persistent_resources, struct zink_resource_object*);
        VkMappedMemoryRange range = zink_resource_init_mem_range(screen, obj, 0, obj->size);
-       VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
+       if (VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range) != VK_SUCCESS) {
+          mesa_loge("ZINK: vkFlushMappedMemoryRanges failed");
+       }
    }
 
    simple_mtx_lock(&screen->queue_lock);
    if (VKSCR(QueueSubmit)(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
-      debug_printf("ZINK: vkQueueSubmit() failed\n");
+      mesa_loge("ZINK: vkQueueSubmit failed");
       bs->is_device_lost = true;
    }
    simple_mtx_unlock(&screen->queue_lock);

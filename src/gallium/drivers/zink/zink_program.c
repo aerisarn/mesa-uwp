@@ -369,7 +369,7 @@ zink_pipeline_layout_create(struct zink_screen *screen, struct zink_program *pg,
 
    VkPipelineLayout layout;
    if (VKSCR(CreatePipelineLayout)(screen->dev, &plci, NULL, &layout) != VK_SUCCESS) {
-      debug_printf("vkCreatePipelineLayout failed!\n");
+      mesa_loge("vkCreatePipelineLayout failed");
       return VK_NULL_HANDLE;
    }
 

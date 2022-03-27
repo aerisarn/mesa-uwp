@@ -293,8 +293,10 @@ zink_create_query(struct pipe_context *pctx,
       pool_create.pipelineStatistics = pipeline_statistic_convert(index);
 
    VkResult status = VKSCR(CreateQueryPool)(screen->dev, &pool_create, NULL, &query->query_pool);
-   if (status != VK_SUCCESS)
+   if (status != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateQueryPool failed");
       goto fail;
+   }
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
       pool_create.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -302,14 +304,18 @@ zink_create_query(struct pipe_context *pctx,
       pool_create.queryCount = NUM_QUERIES;
 
       status = VKSCR(CreateQueryPool)(screen->dev, &pool_create, NULL, &query->xfb_query_pool[0]);
-      if (status != VK_SUCCESS)
+      if (status != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateQueryPool failed");
          goto fail;
+      }
    } else if (query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
       /* need to monitor all xfb streams */
       for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++) {
          status = VKSCR(CreateQueryPool)(screen->dev, &pool_create, NULL, &query->xfb_query_pool[i]);
-         if (status != VK_SUCCESS)
+         if (status != VK_SUCCESS) {
+            mesa_loge("ZINK: vkCreateQueryPool failed");
             goto fail;
+         }
       }
    }
    if (!qbo_append(pctx->screen, query))
@@ -1070,6 +1076,8 @@ zink_get_query_result_resource(struct pipe_context *pctx,
                                    0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag) == VK_SUCCESS) {
             tc_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + src_offset);
             return;
+         } else {
+            mesa_loge("ZINK: vkGetQueryPoolResults failed");
          }
       }
       struct pipe_resource *staging = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, src_offset + result_size);
@@ -1114,7 +1122,9 @@ zink_get_timestamp(struct pipe_context *pctx)
    VkCalibratedTimestampInfoEXT cti = {0};
    cti.sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
    cti.timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
-   VKSCR(GetCalibratedTimestampsEXT)(screen->dev, 1, &cti, &timestamp, &deviation);
+   if (VKSCR(GetCalibratedTimestampsEXT)(screen->dev, 1, &cti, &timestamp, &deviation) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetCalibratedTimestampsEXT failed");
+   }
    timestamp_to_nanoseconds(screen, &timestamp);
    return timestamp;
 }

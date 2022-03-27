@@ -96,7 +96,7 @@ zink_context_destroy(struct pipe_context *pctx)
    if (util_queue_is_initialized(&screen->flush_queue))
       util_queue_finish(&screen->flush_queue);
    if (ctx->batch.state && !screen->device_lost && VKSCR(QueueWaitIdle)(ctx->batch.state->queue) != VK_SUCCESS)
-      debug_printf("vkQueueWaitIdle failed\n");
+      mesa_loge("ZINK: vkQueueWaitIdle failed");
 
    util_blitter_destroy(ctx->blitter);
    for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++)
@@ -401,6 +401,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
       return NULL;
 
    if (VKSCR(CreateSampler)(screen->dev, &sci, NULL, &sampler->sampler) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateSampler failed");
       FREE(sampler);
       return NULL;
    }
@@ -687,8 +688,10 @@ get_buffer_view(struct zink_context *ctx, struct zink_resource *res, VkBufferVie
       p_atomic_inc(&buffer_view->reference.count);
    } else {
       VkBufferView view;
-      if (VKSCR(CreateBufferView)(screen->dev, bvci, NULL, &view) != VK_SUCCESS)
+      if (VKSCR(CreateBufferView)(screen->dev, bvci, NULL, &view) != VK_SUCCESS) {
+         mesa_loge("ZINK: vkCreateBufferView failed");
          goto out;
+      }
       buffer_view = CALLOC_STRUCT(zink_buffer_view);
       if (!buffer_view) {
          VKSCR(DestroyBufferView)(screen->dev, view, NULL);

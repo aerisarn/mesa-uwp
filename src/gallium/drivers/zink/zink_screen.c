@@ -183,8 +183,10 @@ cache_put_job(void *data, void *gdata, int thread_index)
    struct zink_program *pg = data;
    struct zink_screen *screen = gdata;
    size_t size = 0;
-   if (VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, NULL) != VK_SUCCESS)
+   if (VKSCR(GetPipelineCacheData)(screen->dev, pg->pipeline_cache, &size, NULL) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPipelineCacheData failed");
       return;
+   }
    if (pg->pipeline_cache_size == size)
       return;
    void *pipeline_data = malloc(size);
@@ -196,6 +198,8 @@ cache_put_job(void *data, void *gdata, int thread_index)
       cache_key key;
       disk_cache_compute_key(screen->disk_cache, pg->sha1, sizeof(pg->sha1), key);
       disk_cache_put_nocopy(screen->disk_cache, key, pipeline_data, size, NULL);
+   } else {
+      mesa_loge("ZINK: vkGetPipelineCacheData failed");
    }
 }
 
@@ -226,7 +230,9 @@ cache_get_job(void *data, void *gdata, int thread_index)
    disk_cache_compute_key(screen->disk_cache, pg->sha1, sizeof(pg->sha1), key);
    pcci.pInitialData = disk_cache_get(screen->disk_cache, key, &pg->pipeline_cache_size);
    pcci.initialDataSize = pg->pipeline_cache_size;
-   VKSCR(CreatePipelineCache)(screen->dev, &pcci, NULL, &pg->pipeline_cache);
+   if (VKSCR(CreatePipelineCache)(screen->dev, &pcci, NULL, &pg->pipeline_cache) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreatePipelineCache failed");
+   }
    free((void*)pcci.pInitialData);
 }
 
@@ -1252,8 +1258,10 @@ choose_pdev(struct zink_screen *screen)
    VkPhysicalDevice *pdevs;
    bool is_cpu = false;
    VkResult result = vkEnumeratePhysicalDevices(screen->instance, &pdev_count, NULL);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      mesa_loge("ZINK: vkEnumeratePhysicalDevices failed");
       return is_cpu;
+   }
 
    assert(pdev_count > 0);
 
@@ -1480,11 +1488,15 @@ check_have_device_time(struct zink_screen *screen)
 {
    uint32_t num_domains = 0;
    VkTimeDomainEXT domains[8]; //current max is 4
-   VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, NULL);
+   if (VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, NULL) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPhysicalDeviceCalibrateableTimeDomainsEXT failed");
+   }
    assert(num_domains > 0);
    assert(num_domains < ARRAY_SIZE(domains));
 
-   VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, domains);
+   if (VKSCR(GetPhysicalDeviceCalibrateableTimeDomainsEXT)(screen->pdev, &num_domains, domains) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPhysicalDeviceCalibrateableTimeDomainsEXT failed");
+   }
 
    /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
    for (unsigned i = 0; i < num_domains; i++) {
@@ -1557,12 +1569,13 @@ create_debug(struct zink_screen *screen)
 
    VkDebugUtilsMessengerEXT vkDebugUtilsCallbackEXT = VK_NULL_HANDLE;
 
-   VKSCR(CreateDebugUtilsMessengerEXT)(
-       screen->instance,
-       &vkDebugUtilsMessengerCreateInfoEXT,
-       NULL,
-       &vkDebugUtilsCallbackEXT
-   );
+   if (VKSCR(CreateDebugUtilsMessengerEXT)(
+           screen->instance,
+           &vkDebugUtilsMessengerCreateInfoEXT,
+           NULL,
+           &vkDebugUtilsCallbackEXT) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateDebugUtilsMessengerEXT failed");
+   }
 
    screen->debugUtilsCallbackHandle = vkDebugUtilsCallbackEXT;
 
@@ -1662,6 +1675,9 @@ populate_format_props(struct zink_screen *screen)
                                                                 VK_IMAGE_TILING_OPTIMAL,
                                                                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                                                                 0, &image_props);
+   if (ret != VK_SUCCESS) {
+      mesa_loge("ZINK: vkGetPhysicalDeviceImageFormatProperties failed");
+   }
    screen->need_2D_zs = ret != VK_SUCCESS;
 }
 
@@ -1685,6 +1701,8 @@ zink_screen_init_semaphore(struct zink_screen *screen)
       screen->prev_sem = screen->sem;
       screen->sem = sem;
       return true;
+   } else {
+      mesa_loge("ZINK: vkCreateSemaphore failed");
    }
    screen->info.have_KHR_timeline_semaphore = false;
    return false;
@@ -1730,7 +1748,7 @@ noop_submit(void *data, void *gdata, int thread_index)
    simple_mtx_lock(&n->screen->queue_lock);
    if (n->VKSCR(QueueSubmit)(n->screen->threaded ? n->screen->thread_queue : n->screen->queue,
                      1, &si, n->fence) != VK_SUCCESS) {
-      debug_printf("ZINK: vkQueueSubmit() failed\n");
+      mesa_loge("ZINK: vkQueueSubmit failed");
       n->screen->device_lost = true;
    }
    simple_mtx_unlock(&n->screen->queue_lock);
@@ -1760,8 +1778,10 @@ zink_screen_batch_id_wait(struct zink_screen *screen, uint32_t batch_id, uint64_
    util_queue_fence_init(&fence);
    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-   if (VKSCR(CreateFence)(screen->dev, &fci, NULL, &n.fence) != VK_SUCCESS)
+   if (VKSCR(CreateFence)(screen->dev, &fci, NULL, &n.fence) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateFence failed");
       return false;
+   }
 
    n.screen = screen;
    if (screen->threaded) {
@@ -1801,6 +1821,8 @@ zink_get_loader_version(void)
       uint32_t loader_version_temp = VK_API_VERSION_1_0;
       if (VK_SUCCESS == (*vk_EnumerateInstanceVersion)(&loader_version_temp)) {
          loader_version = loader_version_temp;
+      } else {
+         mesa_loge("ZINK: vkEnumerateInstanceVersion failed");
       }
    }
 
@@ -1999,7 +2021,9 @@ zink_create_logical_device(struct zink_screen *screen)
    dci.ppEnabledExtensionNames = screen->info.extensions;
    dci.enabledExtensionCount = screen->info.num_extensions;
 
-   vkCreateDevice(screen->pdev, &dci, NULL, &dev);
+   if (vkCreateDevice(screen->pdev, &dci, NULL, &dev) != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateDevice failed");
+   }
    return dev;
 }
 

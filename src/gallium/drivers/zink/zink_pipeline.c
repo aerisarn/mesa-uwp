@@ -301,7 +301,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    VkPipeline pipeline;
    if (vkCreateGraphicsPipelines(screen->dev, prog->base.pipeline_cache, 1, &pci,
                                  NULL, &pipeline) != VK_SUCCESS) {
-      debug_printf("vkCreateGraphicsPipelines failed\n");
+      mesa_loge("ZINK: vkCreateGraphicsPipelines failed");
       return VK_NULL_HANDLE;
    }
 
@@ -342,7 +342,7 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
    VkPipeline pipeline;
    if (vkCreateComputePipelines(screen->dev, comp->base.pipeline_cache, 1, &pci,
                                  NULL, &pipeline) != VK_SUCCESS) {
-      debug_printf("vkCreateComputePipelines failed\n");
+      mesa_loge("ZINK: vkCreateComputePipelines failed");
       return VK_NULL_HANDLE;
    }
    zink_screen_update_pipeline_cache(screen, &comp->base);

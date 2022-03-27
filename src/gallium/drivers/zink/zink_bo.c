@@ -668,6 +668,7 @@ zink_bo_map(struct zink_screen *screen, struct zink_bo *bo)
       if (!cpu) {
          VkResult result = VKSCR(MapMemory)(screen->dev, real->mem, 0, real->base.size, 0, &cpu);
          if (result != VK_SUCCESS) {
+            mesa_loge("ZINK: vkMapMemory failed");
             simple_mtx_unlock(&real->lock);
             return NULL;
          }

@@ -516,14 +516,14 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       VkBufferCreateInfo bci = create_bci(screen, templ, templ->bind);
 
       if (VKSCR(CreateBuffer)(screen->dev, &bci, NULL, &obj->buffer) != VK_SUCCESS) {
-         debug_printf("vkCreateBuffer failed\n");
+         mesa_loge("ZINK: vkCreateBuffer failed");
          goto fail1;
       }
 
       if (!(templ->bind & PIPE_BIND_SHADER_IMAGE)) {
          bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
          if (VKSCR(CreateBuffer)(screen->dev, &bci, NULL, &obj->storage_buffer) != VK_SUCCESS) {
-            debug_printf("vkCreateBuffer failed\n");
+            mesa_loge("ZINK: vkCreateBuffer failed");
             goto fail2;
          }
       }
@@ -661,13 +661,15 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          sycci.chromaFilter = VK_FILTER_LINEAR;
          sycci.forceExplicitReconstruction = VK_FALSE;
          VkResult res = VKSCR(CreateSamplerYcbcrConversion)(screen->dev, &sycci, NULL, &obj->sampler_conversion);
-         if (res != VK_SUCCESS)
+         if (res != VK_SUCCESS) {
+            mesa_loge("ZINK: vkCreateSamplerYcbcrConversion failed");
             goto fail1;
+         }
       }
 
       VkResult result = VKSCR(CreateImage)(screen->dev, &ici, NULL, &obj->image);
       if (result != VK_SUCCESS) {
-         debug_printf("vkCreateImage failed\n");
+         mesa_loge("ZINK: vkCreateImage failed");
          goto fail1;
       }
 
@@ -676,7 +678,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          modprops.sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
          result = VKSCR(GetImageDrmFormatModifierPropertiesEXT)(screen->dev, obj->image, &modprops);
          if (result != VK_SUCCESS) {
-            debug_printf("GetImageDrmFormatModifierPropertiesEXT failed\n");
+            mesa_loge("ZINK: vkGetImageDrmFormatModifierPropertiesEXT failed");
             goto fail1;
          }
          obj->modifier = modprops.drmFormatModifier;
@@ -837,10 +839,14 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    if (templ->target == PIPE_BUFFER) {
       if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE)) {
-         if (VKSCR(BindBufferMemory)(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+         if (VKSCR(BindBufferMemory)(screen->dev, obj->buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS) {
+            mesa_loge("ZINK: vkBindBufferMemory failed");
             goto fail3;
-         if (obj->storage_buffer && VKSCR(BindBufferMemory)(screen->dev, obj->storage_buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+         }
+         if (obj->storage_buffer && VKSCR(BindBufferMemory)(screen->dev, obj->storage_buffer, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS) {
+            mesa_loge("ZINK: vkBindBufferMemory failed");
             goto fail3;
+         }
       }
    } else {
       if (num_planes > 1) {
@@ -858,12 +864,16 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
             planes[i].planeAspect = plane_aspects[i];
             offset += obj->plane_sizes[i];
          }
-         if (VKSCR(BindImageMemory2)(screen->dev, num_planes, infos) != VK_SUCCESS)
+         if (VKSCR(BindImageMemory2)(screen->dev, num_planes, infos) != VK_SUCCESS) {
+            mesa_loge("ZINK: vkBindImageMemory2 failed");
             goto fail3;
+         }
       } else {
          if (!(templ->flags & PIPE_RESOURCE_FLAG_SPARSE))
-            if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS)
+            if (VKSCR(BindImageMemory)(screen->dev, obj->image, zink_bo_get_mem(obj->bo), obj->offset) != VK_SUCCESS) {
+               mesa_loge("ZINK: vkBindImageMemory failed");
                goto fail3;
+            }
       }
    }
    return obj;
@@ -1141,8 +1151,10 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       else
          fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       VkResult result = VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
-      if (result != VK_SUCCESS)
+      if (result != VK_SUCCESS) {
+         mesa_loge("ZINK: vkGetMemoryFdKHR failed");
          return false;
+      }
       if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
          uint32_t h;
          bool success = drmPrimeFDToHandle(screen->drm_fd, fd, &h) == 0;
@@ -1530,6 +1542,7 @@ zink_buffer_map(struct pipe_context *pctx,
       VkDeviceSize offset = res->obj->offset + trans->offset;
       VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, offset, size);
       if (VKSCR(InvalidateMappedMemoryRanges)(screen->dev, 1, &range) != VK_SUCCESS) {
+         mesa_loge("ZINK: vkInvalidateMappedMemoryRanges failed");
          zink_bo_unmap(screen, res->obj->bo);
          goto fail;
       }
@@ -1644,7 +1657,9 @@ zink_image_map(struct pipe_context *pctx,
       if (!res->obj->coherent) {
          VkDeviceSize size = (VkDeviceSize)box->width * box->height * desc->block.bits / 8;
          VkMappedMemoryRange range = zink_resource_init_mem_range(screen, res->obj, res->obj->offset + offset, size);
-         VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
+         if (VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range) != VK_SUCCESS) {
+            mesa_loge("ZINK: vkFlushMappedMemoryRanges failed");
+         }
       }
       ptr = ((uint8_t *)ptr) + offset;
    }
@@ -1691,7 +1706,9 @@ zink_transfer_flush_region(struct pipe_context *pctx,
       }
       if (!m->obj->coherent) {
          VkMappedMemoryRange range = zink_resource_init_mem_range(screen, m->obj, m->obj->offset, m->obj->size);
-         VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range);
+         if (VKSCR(FlushMappedMemoryRanges)(screen->dev, 1, &range) != VK_SUCCESS) {
+            mesa_loge("ZINK: vkFlushMappedMemoryRanges failed");
+         }
       }
       if (trans->staging_res) {
          struct zink_resource *staging_res = zink_resource(trans->staging_res);

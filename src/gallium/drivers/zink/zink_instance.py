@@ -138,10 +138,14 @@ zink_create_instance(struct zink_instance_info *instance_info)
 
    // Build up the extensions from the reported ones but only for the unnamed layer
    uint32_t extension_count = 0;
-   if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL) == VK_SUCCESS) {
+   if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, NULL) != VK_SUCCESS) {
+       mesa_loge("ZINK: vkEnumerateInstanceExtensionProperties failed");
+   } else {
        VkExtensionProperties *extension_props = malloc(extension_count * sizeof(VkExtensionProperties));
        if (extension_props) {
-           if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props) == VK_SUCCESS) {
+           if (vkEnumerateInstanceExtensionProperties(NULL, &extension_count, extension_props) != VK_SUCCESS) {
+              mesa_loge("ZINK: vkEnumerateInstanceExtensionProperties failed");
+           } else {
               for (uint32_t i = 0; i < extension_count; i++) {
         %for ext in extensions:
                 if (!strcmp(extension_props[i].extensionName, ${ext.extension_name_literal()})) {
@@ -157,10 +161,14 @@ zink_create_instance(struct zink_instance_info *instance_info)
     // Build up the layers from the reported ones
     uint32_t layer_count = 0;
 
-    if (vkEnumerateInstanceLayerProperties(&layer_count, NULL) == VK_SUCCESS) {
+    if (vkEnumerateInstanceLayerProperties(&layer_count, NULL) != VK_SUCCESS) {
+        mesa_loge("ZINK: vkEnumerateInstanceLayerProperties failed");
+    } else {
         VkLayerProperties *layer_props = malloc(layer_count * sizeof(VkLayerProperties));
         if (layer_props) {
-            if (vkEnumerateInstanceLayerProperties(&layer_count, layer_props) == VK_SUCCESS) {
+            if (vkEnumerateInstanceLayerProperties(&layer_count, layer_props) != VK_SUCCESS) {
+                mesa_loge("ZINK: vkEnumerateInstanceLayerProperties failed");
+            } else {
                for (uint32_t i = 0; i < layer_count; i++) {
 %for layer in layers:
                   if (!strcmp(layer_props[i].layerName, ${layer.extension_name_literal()})) {
@@ -229,8 +237,10 @@ zink_create_instance(struct zink_instance_info *instance_info)
 
    VkInstance instance = VK_NULL_HANDLE;
    VkResult err = vkCreateInstance(&ici, NULL, &instance);
-   if (err != VK_SUCCESS)
+   if (err != VK_SUCCESS) {
+      mesa_loge("ZINK: vkCreateInstance failed");
       return VK_NULL_HANDLE;
+   }
 
    return instance;
 }

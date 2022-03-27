@@ -356,7 +356,7 @@ create_pool(struct zink_screen *screen, unsigned num_type_sizes, const VkDescrip
    dpci.flags = flags;
    dpci.maxSets = MAX_LAZY_DESCRIPTORS;
    if (VKSCR(CreateDescriptorPool)(screen->dev, &dpci, 0, &pool) != VK_SUCCESS) {
-      debug_printf("vkCreateDescriptorPool failed\n");
+      mesa_loge("ZINK: vkCreateDescriptorPool failed");
       return VK_NULL_HANDLE;
    }
    return pool;
