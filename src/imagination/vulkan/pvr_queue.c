@@ -102,7 +102,7 @@ VkResult pvr_queues_create(struct pvr_device *device,
    assert(pCreateInfo->pQueueCreateInfos[0].queueFamilyIndex == 0);
    assert(pCreateInfo->pQueueCreateInfos[0].queueCount <= PVR_MAX_QUEUES);
 
-   const VkDeviceQueueCreateInfo *queue_create = queue_create =
+   const VkDeviceQueueCreateInfo *queue_create =
       &pCreateInfo->pQueueCreateInfos[0];
 
    device->queues = vk_alloc(&device->vk.alloc,
