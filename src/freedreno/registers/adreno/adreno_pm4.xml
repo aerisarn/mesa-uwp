@@ -65,6 +65,22 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 	<!-- a6xx events -->
 	<value name="CACHE_INVALIDATE" value="49" varset="chip" variants="A6XX"/>
+
+	<!-- note, some of these are the same as a6xx, just named differently -->
+	<value name="CCU_INVALIDATE_DEPTH" value="24" variants="A7XX"/>
+	<value name="CCU_INVALIDATE_COLOR" value="25" variants="A7XX"/>
+	<value name="CCU_RESOLVE_CLEAN" value="26" variants="A7XX"/>
+	<value name="CCU_FLUSH_DEPTH" value="28" variants="A7XX"/>
+	<value name="CCU_FLUSH_COLOR" value="29" variants="A7XX"/>
+	<value name="CCU_RESOLVE" value="30" variants="A7XX"/>
+	<value name="CCU_END_RESOLVE_GROUP" value="31" variants="A7XX"/>
+	<value name="CCU_CLEAN_DEPTH" value="32" variants="A7XX"/>
+	<value name="CCU_CLEAN_COLOR" value="33" variants="A7XX"/>
+	<value name="CACHE_RESET" value="48" variants="A7XX"/>
+	<value name="CACHE_CLEAN" value="49" variants="A7XX"/>
+	<!-- TODO: deal with name conflicts with other gens -->
+	<value name="CACHE_FLUSH7" value="50" variants="A7XX"/>
+	<value name="CACHE_INVALIDATE7" value="51" variants="A7XX"/>
 </enum>
 
 <enum name="pc_di_primtype">
@@ -504,6 +520,9 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	</doc>
 	<value name="CP_START_BIN" value="0x50" varset="chip" variants="A6XX"/>
 	<value name="CP_END_BIN" value="0x51" varset="chip" variants="A6XX"/>
+
+	<value name="CP_WAIT_TIMESTAMP" value="0x14" varset="chip" variants="A7XX-"/>
+	<value name="CP_THREAD_CONTROL" value="0x17" varset="chip" variants="A7XX-"/>
 </enum>
 
 
@@ -1829,6 +1848,19 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	</reg32>
 	<reg32 offset="4" name="BODY_DWORDS">
 		<doc>Number of dwords after this packet until CP_END_BIN</doc>
+	</reg32>
+</domain>
+
+<domain name="CP_THREAD_CONTROL" width="32">
+	<enum name="cp_thread">
+		<value name="CP_SET_THREAD_BR" value="1"/>
+		<value name="CP_SET_THREAD_BV" value="2"/>
+		<value name="CP_SET_THREAD_BOTH" value="3"/>
+	</enum>
+	<reg32 offset="0" name="0">
+		<bitfield low="0" high="1" name="THREAD" type="cp_thread"/>
+		<bitfield pos="27" name="CONCURRENT_BIN_DISABLE" type="boolean"/>
+		<bitfield pos="31" name="SYNC_THREADS" type="boolean"/>
 	</reg32>
 </domain>
 
