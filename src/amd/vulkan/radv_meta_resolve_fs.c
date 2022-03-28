@@ -910,7 +910,7 @@ radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv
 void
 radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    struct radv_meta_saved_state saved_state;
    struct radv_subpass_barrier barrier;
@@ -963,7 +963,7 @@ radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
                                       VkImageAspectFlags aspects,
                                       VkResolveModeFlagBits resolve_mode)
 {
-   struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    struct radv_meta_saved_state saved_state;
    struct radv_subpass_barrier barrier;

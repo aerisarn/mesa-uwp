@@ -6005,57 +6005,6 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    ds->db_stencil_read_base = ds->db_stencil_write_base = s_offs >> 8;
 }
 
-VKAPI_ATTR VkResult VKAPI_CALL
-radv_CreateFramebuffer(VkDevice _device, const VkFramebufferCreateInfo *pCreateInfo,
-                       const VkAllocationCallbacks *pAllocator, VkFramebuffer *pFramebuffer)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   struct radv_framebuffer *framebuffer;
-   const VkFramebufferAttachmentsCreateInfo *imageless_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, FRAMEBUFFER_ATTACHMENTS_CREATE_INFO);
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
-
-   size_t size = sizeof(*framebuffer);
-   if (!imageless_create_info)
-      size += sizeof(struct radv_image_view *) * pCreateInfo->attachmentCount;
-   framebuffer =
-      vk_alloc2(&device->vk.alloc, pAllocator, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (framebuffer == NULL)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &framebuffer->base, VK_OBJECT_TYPE_FRAMEBUFFER);
-
-   framebuffer->attachment_count = pCreateInfo->attachmentCount;
-   framebuffer->width = pCreateInfo->width;
-   framebuffer->height = pCreateInfo->height;
-   framebuffer->layers = pCreateInfo->layers;
-
-   if (!imageless_create_info) {
-      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-         VkImageView _iview = pCreateInfo->pAttachments[i];
-         struct radv_image_view *iview = radv_image_view_from_handle(_iview);
-         framebuffer->attachments[i] = iview;
-      }
-   }
-
-   *pFramebuffer = radv_framebuffer_to_handle(framebuffer);
-   return VK_SUCCESS;
-}
-
-VKAPI_ATTR void VKAPI_CALL
-radv_DestroyFramebuffer(VkDevice _device, VkFramebuffer _fb,
-                        const VkAllocationCallbacks *pAllocator)
-{
-   RADV_FROM_HANDLE(radv_device, device, _device);
-   RADV_FROM_HANDLE(radv_framebuffer, fb, _fb);
-
-   if (!fb)
-      return;
-   vk_object_base_finish(&fb->base);
-   vk_free2(&device->vk.alloc, pAllocator, fb);
-}
-
 static unsigned
 radv_tex_wrap(VkSamplerAddressMode address_mode)
 {

@@ -35,6 +35,7 @@
 #include "vk_format.h"
 #include "vk_util.h"
 #include "vk_enum_defines.h"
+#include "vk_common_entrypoints.h"
 
 #include "ac_debug.h"
 
@@ -2418,7 +2419,7 @@ radv_load_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_i
 static void
 radv_emit_fb_mip_change_flush(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    bool color_mip_changed = false;
 
@@ -2501,7 +2502,7 @@ static void
 radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 {
    int i;
-   struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    bool disable_constant_encode_ac01 = false;
 
@@ -4377,7 +4378,7 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
       if (attachment_info && attachment_info->attachmentCount > i) {
          iview = radv_image_view_from_handle(attachment_info->pAttachments[i]);
       } else {
-         iview = state->framebuffer->attachments[i];
+         iview = radv_image_view_from_handle(state->framebuffer->attachments[i]);
       }
 
       state->attachments[i].iview = iview;
@@ -4604,7 +4605,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
       assert(pBeginInfo->pInheritanceInfo);
 
       cmd_buffer->state.framebuffer =
-         radv_framebuffer_from_handle(pBeginInfo->pInheritanceInfo->framebuffer);
+         vk_framebuffer_from_handle(pBeginInfo->pInheritanceInfo->framebuffer);
 
       if (pBeginInfo->pInheritanceInfo->renderPass) {
          cmd_buffer->state.pass =
@@ -5888,7 +5889,7 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
          /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have
           * to copy the VRS rates to our internal HTILE buffer.
           */
-         struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+         struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
          struct radv_image *ds_image = radv_cmd_buffer_get_vrs_image(cmd_buffer);
 
          if (ds_image) {
@@ -5978,7 +5979,7 @@ radv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_render_pass, pass, pRenderPassBeginInfo->renderPass);
-   RADV_FROM_HANDLE(radv_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
+   RADV_FROM_HANDLE(vk_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
    VkResult result;
 
    cmd_buffer->state.framebuffer = framebuffer;
@@ -7951,7 +7952,7 @@ radv_CmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRe
 
    VkFramebuffer fb;
    result =
-      radv_CreateFramebuffer(radv_device_to_handle(cmd_buffer->device), &fb_create_info, NULL, &fb);
+      vk_common_CreateFramebuffer(radv_device_to_handle(cmd_buffer->device), &fb_create_info, NULL, &fb);
    if (result != VK_SUCCESS) {
       radv_DestroyRenderPass(radv_device_to_handle(cmd_buffer->device), rp, NULL);
       cmd_buffer->record_result = result;
@@ -7980,12 +7981,12 @@ radv_CmdEndRendering(VkCommandBuffer commandBuffer)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_render_pass *pass = cmd_buffer->state.pass;
-   struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 
    radv_CmdEndRenderPass2(commandBuffer, NULL);
 
-   radv_DestroyFramebuffer(radv_device_to_handle(cmd_buffer->device),
-                           radv_framebuffer_to_handle(framebuffer), NULL);
+   vk_common_DestroyFramebuffer(radv_device_to_handle(cmd_buffer->device),
+                                vk_framebuffer_to_handle(framebuffer), NULL);
    radv_DestroyRenderPass(radv_device_to_handle(cmd_buffer->device),
                           radv_render_pass_to_handle(pass), NULL);
 }

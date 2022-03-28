@@ -1768,7 +1768,7 @@ emit_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *clear_at
            const VkClearRect *clear_rect, enum radv_cmd_flush_bits *pre_flush,
            enum radv_cmd_flush_bits *post_flush, uint32_t view_mask, bool ds_resolve_clear)
 {
-   const struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   const struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    VkImageAspectFlags aspects = clear_att->aspectMask;
 

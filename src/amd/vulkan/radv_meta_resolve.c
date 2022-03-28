@@ -580,7 +580,7 @@ radv_CmdResolveImage2(VkCommandBuffer commandBuffer,
 static void
 radv_cmd_buffer_resolve_subpass_hw(struct radv_cmd_buffer *cmd_buffer)
 {
-   struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    struct radv_meta_saved_state saved_state;
 
@@ -767,7 +767,7 @@ void
 radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 {
    const struct radv_subpass *subpass = cmd_buffer->state.subpass;
-   struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
+   struct vk_framebuffer *fb = cmd_buffer->state.framebuffer;
    uint32_t layer_count = fb->layers;
 
    if (subpass->view_mask)
