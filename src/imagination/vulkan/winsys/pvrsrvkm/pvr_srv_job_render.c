@@ -39,8 +39,9 @@
 #include "pvr_srv_bridge.h"
 #include "pvr_srv_job_common.h"
 #include "pvr_srv_job_render.h"
-#include "pvr_srv_syncobj.h"
+#include "pvr_srv_sync.h"
 #include "pvr_winsys.h"
+#include "util/libsync.h"
 #include "util/log.h"
 #include "util/macros.h"
 #include "vk_alloc.h"
@@ -526,8 +527,8 @@ static void pvr_srv_fragment_cmd_init(
 VkResult pvr_srv_winsys_render_submit(
    const struct pvr_winsys_render_ctx *ctx,
    const struct pvr_winsys_render_submit_info *submit_info,
-   struct pvr_winsys_syncobj **const syncobj_geom_out,
-   struct pvr_winsys_syncobj **const syncobj_frag_out)
+   struct vk_sync *signal_sync_geom,
+   struct vk_sync *signal_sync_frag)
 {
    const struct pvr_srv_winsys_rt_dataset *srv_rt_dataset =
       to_pvr_srv_winsys_rt_dataset(submit_info->rt_dataset);
@@ -543,16 +544,14 @@ VkResult pvr_srv_winsys_render_submit(
    void *sync_pmrs[PVR_SRV_SYNC_MAX] = { NULL };
    uint32_t sync_pmr_count;
 
-   struct pvr_winsys_syncobj *geom_signal_syncobj = NULL;
-   struct pvr_winsys_syncobj *frag_signal_syncobj = NULL;
-   struct pvr_winsys_syncobj *geom_wait_syncobj = NULL;
-   struct pvr_winsys_syncobj *frag_wait_syncobj = NULL;
-   struct pvr_srv_winsys_syncobj *srv_geom_syncobj;
-   struct pvr_srv_winsys_syncobj *srv_frag_syncobj;
+   struct pvr_srv_sync *srv_signal_sync_geom;
+   struct pvr_srv_sync *srv_signal_sync_frag;
 
    struct rogue_fwif_cmd_ta geom_cmd;
    struct rogue_fwif_cmd_3d frag_cmd;
 
+   int in_frag_fd = -1;
+   int in_geom_fd = -1;
    int fence_frag;
    int fence_geom;
 
@@ -561,40 +560,33 @@ VkResult pvr_srv_winsys_render_submit(
    pvr_srv_geometry_cmd_init(submit_info, sync_prim, &geom_cmd);
    pvr_srv_fragment_cmd_init(submit_info, &frag_cmd);
 
-   for (uint32_t i = 0U; i < submit_info->semaphore_count; i++) {
-      PVR_FROM_HANDLE(pvr_semaphore, sem, submit_info->semaphores[i]);
+   for (uint32_t i = 0U; i < submit_info->wait_count; i++) {
+      struct pvr_srv_sync *srv_wait_sync = to_srv_sync(submit_info->waits[i]);
+      int ret;
 
-      if (!sem->syncobj)
+      if (!submit_info->waits[i] || srv_wait_sync->fd < 0)
          continue;
 
       if (submit_info->stage_flags[i] & PVR_PIPELINE_STAGE_GEOM_BIT) {
-         result = pvr_srv_winsys_syncobjs_merge(sem->syncobj,
-                                                geom_wait_syncobj,
-                                                &geom_wait_syncobj);
-         if (result != VK_SUCCESS)
-            goto err_destroy_wait_syncobjs;
+         ret = sync_accumulate("", &in_geom_fd, srv_wait_sync->fd);
+         if (ret) {
+            result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+            goto err_close_in_fds;
+         }
 
          submit_info->stage_flags[i] &= ~PVR_PIPELINE_STAGE_GEOM_BIT;
       }
 
       if (submit_info->stage_flags[i] & PVR_PIPELINE_STAGE_FRAG_BIT) {
-         result = pvr_srv_winsys_syncobjs_merge(sem->syncobj,
-                                                frag_wait_syncobj,
-                                                &frag_wait_syncobj);
-         if (result != VK_SUCCESS)
-            goto err_destroy_wait_syncobjs;
+         ret = sync_accumulate("", &in_frag_fd, srv_wait_sync->fd);
+         if (ret) {
+            result = vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+            goto err_close_in_fds;
+         }
 
          submit_info->stage_flags[i] &= ~PVR_PIPELINE_STAGE_FRAG_BIT;
       }
-
-      if (submit_info->stage_flags[i] == 0U) {
-         pvr_srv_winsys_syncobj_destroy(sem->syncobj);
-         sem->syncobj = NULL;
-      }
    }
-
-   srv_geom_syncobj = to_pvr_srv_winsys_syncobj(geom_wait_syncobj);
-   srv_frag_syncobj = to_pvr_srv_winsys_syncobj(frag_wait_syncobj);
 
    if (submit_info->bo_count <= ARRAY_SIZE(sync_pmrs)) {
       sync_pmr_count = submit_info->bo_count;
@@ -629,105 +621,76 @@ VkResult pvr_srv_winsys_render_submit(
    sync_prim->value++;
 
    do {
-      result =
-         pvr_srv_rgx_kick_render2(srv_ws->render_fd,
-                                  srv_ctx->handle,
-                                  /* Currently no support for cache operations.
-                                   */
-                                  0,
-                                  NULL,
-                                  NULL,
-                                  NULL,
-                                  1,
-                                  &sync_prim->srv_ws->sync_block_handle,
-                                  &sync_prim->offset,
-                                  &sync_prim->value,
-                                  0,
-                                  NULL,
-                                  NULL,
-                                  NULL,
-                                  sync_prim->srv_ws->sync_block_handle,
-                                  sync_prim->offset,
-                                  sync_prim->value,
-                                  geom_wait_syncobj ? srv_geom_syncobj->fd : -1,
-                                  srv_ctx->timeline_geom,
-                                  &fence_geom,
-                                  "GEOM",
-                                  frag_wait_syncobj ? srv_frag_syncobj->fd : -1,
-                                  srv_ctx->timeline_frag,
-                                  &fence_frag,
-                                  "FRAG",
-                                  sizeof(geom_cmd),
-                                  (uint8_t *)&geom_cmd,
-                                  /* Currently no support for PRs. */
-                                  0,
-                                  /* Currently no support for PRs. */
-                                  NULL,
-                                  sizeof(frag_cmd),
-                                  (uint8_t *)&frag_cmd,
-                                  submit_info->job_num,
-                                  true, /* Always kick the TA. */
-                                  true, /* Always kick a PR. */
-                                  submit_info->run_frag,
-                                  false,
-                                  0,
-                                  rt_data_handle,
-                                  /* Currently no support for PRs. */
-                                  NULL,
-                                  /* Currently no support for PRs. */
-                                  NULL,
-                                  sync_pmr_count,
-                                  sync_pmr_count ? sync_pmr_flags : NULL,
-                                  sync_pmr_count ? sync_pmrs : NULL,
-                                  0,
-                                  0,
-                                  0,
-                                  0,
-                                  0);
+      result = pvr_srv_rgx_kick_render2(srv_ws->render_fd,
+                                        srv_ctx->handle,
+                                        0,
+                                        NULL,
+                                        NULL,
+                                        NULL,
+                                        1,
+                                        &sync_prim->srv_ws->sync_block_handle,
+                                        &sync_prim->offset,
+                                        &sync_prim->value,
+                                        0,
+                                        NULL,
+                                        NULL,
+                                        NULL,
+                                        sync_prim->srv_ws->sync_block_handle,
+                                        sync_prim->offset,
+                                        sync_prim->value,
+                                        in_geom_fd,
+                                        srv_ctx->timeline_geom,
+                                        &fence_geom,
+                                        "GEOM",
+                                        in_frag_fd,
+                                        srv_ctx->timeline_frag,
+                                        &fence_frag,
+                                        "FRAG",
+                                        sizeof(geom_cmd),
+                                        (uint8_t *)&geom_cmd,
+                                        /* Currently no support for PRs. */
+                                        0,
+                                        /* Currently no support for PRs. */
+                                        NULL,
+                                        sizeof(frag_cmd),
+                                        (uint8_t *)&frag_cmd,
+                                        submit_info->job_num,
+                                        true, /* Always kick the TA. */
+                                        true, /* Always kick a PR. */
+                                        submit_info->run_frag,
+                                        false,
+                                        0,
+                                        rt_data_handle,
+                                        /* Currently no support for PRs. */
+                                        NULL,
+                                        /* Currently no support for PRs. */
+                                        NULL,
+                                        sync_pmr_count,
+                                        sync_pmr_count ? sync_pmr_flags : NULL,
+                                        sync_pmr_count ? sync_pmrs : NULL,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0);
    } while (result == VK_NOT_READY);
 
    if (result != VK_SUCCESS)
-      goto err_destroy_wait_syncobjs;
+      goto err_close_in_fds;
 
-   /* Given job submission succeeded, we don't need to close wait fences, these
-    * should be consumed by the render job itself.
-    */
-   if (geom_wait_syncobj)
-      srv_geom_syncobj->fd = -1;
+   srv_signal_sync_geom = to_srv_sync(signal_sync_geom);
+   srv_signal_sync_frag = to_srv_sync(signal_sync_frag);
+   pvr_srv_set_sync_payload(srv_signal_sync_geom, fence_geom);
+   pvr_srv_set_sync_payload(srv_signal_sync_frag, fence_frag);
 
-   if (frag_wait_syncobj)
-      srv_frag_syncobj->fd = -1;
+   return VK_SUCCESS;
 
-   if (fence_geom != -1) {
-      result =
-         pvr_srv_winsys_syncobj_create(ctx->ws, false, &geom_signal_syncobj);
-      if (result != VK_SUCCESS)
-         goto err_destroy_wait_syncobjs;
+err_close_in_fds:
+   if (in_geom_fd >= 0)
+      close(in_geom_fd);
 
-      pvr_srv_set_syncobj_payload(geom_signal_syncobj, fence_geom);
-   }
-
-   if (fence_frag != -1) {
-      result =
-         pvr_srv_winsys_syncobj_create(ctx->ws, false, &frag_signal_syncobj);
-      if (result != VK_SUCCESS) {
-         if (geom_signal_syncobj)
-            pvr_srv_winsys_syncobj_destroy(geom_signal_syncobj);
-         goto err_destroy_wait_syncobjs;
-      }
-
-      pvr_srv_set_syncobj_payload(frag_signal_syncobj, fence_frag);
-   }
-
-   *syncobj_geom_out = geom_signal_syncobj;
-   *syncobj_frag_out = frag_signal_syncobj;
-
-err_destroy_wait_syncobjs:
-   if (geom_wait_syncobj)
-      pvr_srv_winsys_syncobj_destroy(geom_wait_syncobj);
-
-   if (frag_wait_syncobj)
-      pvr_srv_winsys_syncobj_destroy(frag_wait_syncobj);
+   if (in_frag_fd >= 0)
+      close(in_frag_fd);
 
    return result;
 }

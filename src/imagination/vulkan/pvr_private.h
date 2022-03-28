@@ -59,6 +59,7 @@
 #include "vk_log.h"
 #include "vk_physical_device.h"
 #include "vk_queue.h"
+#include "vk_sync.h"
 #include "wsi_common.h"
 
 #ifdef HAVE_VALGRIND
@@ -232,19 +233,7 @@ struct pvr_queue {
    struct pvr_compute_ctx *compute_ctx;
    struct pvr_transfer_ctx *transfer_ctx;
 
-   struct pvr_winsys_syncobj *completion[PVR_JOB_TYPE_MAX];
-};
-
-struct pvr_semaphore {
-   struct vk_object_base base;
-
-   struct pvr_winsys_syncobj *syncobj;
-};
-
-struct pvr_fence {
-   struct vk_object_base base;
-
-   struct pvr_winsys_syncobj *syncobj;
+   struct vk_sync *completion[PVR_JOB_TYPE_MAX];
 };
 
 struct pvr_vertex_binding {
@@ -1391,11 +1380,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_sampler,
                                base,
                                VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_semaphore,
-                               base,
-                               VkSemaphore,
-                               VK_OBJECT_TYPE_SEMAPHORE)
-VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_fence, base, VkFence, VK_OBJECT_TYPE_FENCE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(pvr_pipeline_layout,
                                base,
                                VkPipelineLayout,

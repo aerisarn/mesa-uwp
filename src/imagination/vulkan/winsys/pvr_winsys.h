@@ -38,6 +38,7 @@
 #include "pvr_limits.h"
 #include "util/macros.h"
 #include "util/vma.h"
+#include "vk_sync.h"
 
 struct pvr_device_info;
 struct pvr_device_runtime_info;
@@ -139,10 +140,6 @@ struct pvr_winsys_vma {
    pvr_dev_addr_t dev_addr;
    uint64_t size;
    uint64_t mapped_size;
-};
-
-struct pvr_winsys_syncobj {
-   struct pvr_winsys *ws;
 };
 
 struct pvr_winsys_free_list {
@@ -262,10 +259,10 @@ struct pvr_winsys_compute_submit_info {
    uint32_t frame_num;
    uint32_t job_num;
 
-   /* semaphores and stage_flags are arrays of length semaphore_count. */
-   const VkSemaphore *semaphores;
+   /* waits and stage_flags are arrays of length wait_count. */
+   struct vk_sync **waits;
+   uint32_t wait_count;
    uint32_t *stage_flags;
-   uint32_t semaphore_count;
 
    struct {
       uint64_t tpu_border_colour_table;
@@ -311,10 +308,10 @@ struct pvr_winsys_render_submit_info {
    /* FIXME: should this be flags instead? */
    bool run_frag;
 
-   /* semaphores and stage_flags are arrays of length semaphore_count. */
-   const VkSemaphore *semaphores;
+   /* waits and stage_flags are arrays of length wait_count. */
+   struct vk_sync **waits;
+   uint32_t wait_count;
    uint32_t *stage_flags;
-   uint32_t semaphore_count;
 
    struct pvr_winsys_geometry_state {
       struct {
@@ -398,25 +395,6 @@ struct pvr_winsys_ops {
                              uint64_t size);
    void (*vma_unmap)(struct pvr_winsys_vma *vma);
 
-   VkResult (*syncobj_create)(struct pvr_winsys *ws,
-                              bool signaled,
-                              struct pvr_winsys_syncobj **const syncobj_out);
-   void (*syncobj_destroy)(struct pvr_winsys_syncobj *syncobj);
-   VkResult (*syncobjs_reset)(struct pvr_winsys *ws,
-                              struct pvr_winsys_syncobj **const syncobjs,
-                              uint32_t count);
-   VkResult (*syncobjs_signal)(struct pvr_winsys *ws,
-                               struct pvr_winsys_syncobj **const syncobjs,
-                               uint32_t count);
-   VkResult (*syncobjs_wait)(struct pvr_winsys *ws,
-                             struct pvr_winsys_syncobj **const syncobjs,
-                             uint32_t count,
-                             bool wait_all,
-                             uint64_t timeout);
-   VkResult (*syncobjs_merge)(struct pvr_winsys_syncobj *src,
-                              struct pvr_winsys_syncobj *target,
-                              struct pvr_winsys_syncobj **out);
-
    VkResult (*free_list_create)(
       struct pvr_winsys *ws,
       struct pvr_winsys_vma *free_list_vma,
@@ -443,8 +421,8 @@ struct pvr_winsys_ops {
    VkResult (*render_submit)(
       const struct pvr_winsys_render_ctx *ctx,
       const struct pvr_winsys_render_submit_info *submit_info,
-      struct pvr_winsys_syncobj **const syncobj_geom_out,
-      struct pvr_winsys_syncobj **const syncobj_frag_out);
+      struct vk_sync *signal_sync_geom,
+      struct vk_sync *signal_sync_frag);
 
    VkResult (*compute_ctx_create)(
       struct pvr_winsys *ws,
@@ -454,18 +432,26 @@ struct pvr_winsys_ops {
    VkResult (*compute_submit)(
       const struct pvr_winsys_compute_ctx *ctx,
       const struct pvr_winsys_compute_submit_info *submit_info,
-      struct pvr_winsys_syncobj **const syncobj_out);
+      struct vk_sync *signal_sync);
 
    VkResult (*transfer_ctx_create)(
       struct pvr_winsys *ws,
       const struct pvr_winsys_transfer_ctx_create_info *create_info,
       struct pvr_winsys_transfer_ctx **const ctx_out);
    void (*transfer_ctx_destroy)(struct pvr_winsys_transfer_ctx *ctx);
+
+   VkResult (*null_job_submit)(struct pvr_winsys *ws,
+                               struct vk_sync **waits,
+                               uint32_t wait_count,
+                               struct vk_sync *signal_sync);
 };
 
 struct pvr_winsys {
    uint64_t page_size;
    uint32_t log2_page_size;
+
+   const struct vk_sync_type *sync_types[2];
+   struct vk_sync_type syncobj_type;
 
    const struct pvr_winsys_ops *ops;
 };

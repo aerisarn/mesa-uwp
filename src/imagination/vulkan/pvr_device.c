@@ -356,6 +356,8 @@ static VkResult pvr_physical_device_init(struct pvr_physical_device *pdevice,
       goto err_vk_free_master_path;
    }
 
+   pdevice->vk.supported_sync_types = pdevice->ws->sync_types;
+
    ret = pdevice->ws->ops->device_info_init(pdevice->ws,
                                             &pdevice->dev_info,
                                             &pdevice->dev_runtime_info);
@@ -1127,6 +1129,8 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
       device->master_fd = open(pdevice->master_path, O_RDWR | O_CLOEXEC);
    else
       device->master_fd = -1;
+
+   vk_device_set_drm_fd(&device->vk, device->render_fd);
 
    device->instance = instance;
    device->pdevice = pdevice;

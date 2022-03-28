@@ -21,21 +21,18 @@
  * SOFTWARE.
  */
 
-#ifndef PVR_JOB_COMPUTE_H
-#define PVR_JOB_COMPUTE_H
+#ifndef PVR_SRV_JOB_NULL_H
+#define PVR_SRV_JOB_NULL_H
 
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 
-struct pvr_compute_ctx;
-struct pvr_sub_cmd;
+struct pvr_winsys;
 struct vk_sync;
 
-VkResult pvr_compute_job_submit(struct pvr_compute_ctx *ctx,
-                                struct pvr_sub_cmd *sub_cmd,
-                                struct vk_sync **waits,
-                                uint32_t wait_count,
-                                uint32_t *stage_flags,
-                                struct vk_sync *signal_sync);
+VkResult pvr_srv_winsys_null_job_submit(struct pvr_winsys *ws,
+                                        struct vk_sync **waits,
+                                        uint32_t wait_count,
+                                        struct vk_sync *signal_sync);
 
-#endif /* PVR_JOB_COMPUTE_H */
+#endif /* PVR_SRV_JOB_NULL_H */

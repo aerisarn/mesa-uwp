@@ -1515,8 +1515,8 @@ static void pvr_render_job_ws_submit_info_init(
    struct pvr_render_job *job,
    const struct pvr_winsys_job_bo *bos,
    uint32_t bo_count,
-   const VkSemaphore *semaphores,
-   uint32_t semaphore_count,
+   struct vk_sync **waits,
+   uint32_t wait_count,
    uint32_t *stage_flags,
    struct pvr_winsys_render_submit_info *submit_info)
 {
@@ -1533,8 +1533,8 @@ static void pvr_render_job_ws_submit_info_init(
    submit_info->bos = bos;
    submit_info->bo_count = bo_count;
 
-   submit_info->semaphores = semaphores;
-   submit_info->semaphore_count = semaphore_count;
+   submit_info->waits = waits;
+   submit_info->wait_count = wait_count;
    submit_info->stage_flags = stage_flags;
 
    /* FIXME: add WSI image bos. */
@@ -1546,16 +1546,15 @@ static void pvr_render_job_ws_submit_info_init(
    assert(submit_info->geometry.regs.tpu == submit_info->fragment.regs.tpu);
 }
 
-VkResult
-pvr_render_job_submit(struct pvr_render_ctx *ctx,
-                      struct pvr_render_job *job,
-                      const struct pvr_winsys_job_bo *bos,
-                      uint32_t bo_count,
-                      const VkSemaphore *semaphores,
-                      uint32_t semaphore_count,
-                      uint32_t *stage_flags,
-                      struct pvr_winsys_syncobj **const syncobj_geom_out,
-                      struct pvr_winsys_syncobj **const syncobj_frag_out)
+VkResult pvr_render_job_submit(struct pvr_render_ctx *ctx,
+                               struct pvr_render_job *job,
+                               const struct pvr_winsys_job_bo *bos,
+                               uint32_t bo_count,
+                               struct vk_sync **waits,
+                               uint32_t wait_count,
+                               uint32_t *stage_flags,
+                               struct vk_sync *signal_sync_geom,
+                               struct vk_sync *signal_sync_frag)
 {
    struct pvr_rt_dataset *rt_dataset = job->rt_dataset;
    struct pvr_winsys_render_submit_info submit_info;
@@ -1566,15 +1565,15 @@ pvr_render_job_submit(struct pvr_render_ctx *ctx,
                                       job,
                                       bos,
                                       bo_count,
-                                      semaphores,
-                                      semaphore_count,
+                                      waits,
+                                      wait_count,
                                       stage_flags,
                                       &submit_info);
 
    result = device->ws->ops->render_submit(ctx->ws_ctx,
                                            &submit_info,
-                                           syncobj_geom_out,
-                                           syncobj_frag_out);
+                                           signal_sync_geom,
+                                           signal_sync_frag);
    if (result != VK_SUCCESS)
       return result;
 

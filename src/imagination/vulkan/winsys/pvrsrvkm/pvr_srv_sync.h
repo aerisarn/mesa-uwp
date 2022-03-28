@@ -21,21 +21,41 @@
  * SOFTWARE.
  */
 
-#ifndef PVR_JOB_COMPUTE_H
-#define PVR_JOB_COMPUTE_H
+#ifndef PVR_SRV_SYNC_H
+#define PVR_SRV_SYNC_H
 
-#include <stdint.h>
-#include <vulkan/vulkan.h>
+#include <stdbool.h>
+#include <stddef.h>
 
-struct pvr_compute_ctx;
-struct pvr_sub_cmd;
-struct vk_sync;
+#include "pvr_winsys.h"
+#include "util/macros.h"
+#include "vk_sync.h"
 
-VkResult pvr_compute_job_submit(struct pvr_compute_ctx *ctx,
-                                struct pvr_sub_cmd *sub_cmd,
-                                struct vk_sync **waits,
-                                uint32_t wait_count,
-                                uint32_t *stage_flags,
-                                struct vk_sync *signal_sync);
+struct vk_device;
 
-#endif /* PVR_JOB_COMPUTE_H */
+struct pvr_srv_sync {
+   struct vk_sync base;
+
+   /* Cached version of completion. */
+   bool signaled;
+
+   int fd;
+};
+
+extern const struct vk_sync_type pvr_srv_sync_type;
+
+void pvr_srv_sync_finish(struct vk_device *device, struct vk_sync *sync);
+void pvr_srv_set_sync_payload(struct pvr_srv_sync *srv_sync, int payload);
+
+static inline bool pvr_sync_type_is_srv_sync(const struct vk_sync_type *type)
+{
+   return type->finish == pvr_srv_sync_finish;
+}
+
+static inline struct pvr_srv_sync *to_srv_sync(struct vk_sync *sync)
+{
+   assert(!sync || pvr_sync_type_is_srv_sync(sync->type));
+   return container_of(sync, struct pvr_srv_sync, base);
+}
+
+#endif /* PVR_SRV_SYNC_H */

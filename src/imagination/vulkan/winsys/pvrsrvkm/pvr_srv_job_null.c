@@ -21,21 +21,46 @@
  * SOFTWARE.
  */
 
-#ifndef PVR_JOB_COMPUTE_H
-#define PVR_JOB_COMPUTE_H
-
+#include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <vulkan/vulkan.h>
 
-struct pvr_compute_ctx;
-struct pvr_sub_cmd;
-struct vk_sync;
+#include "pvr_srv_job_null.h"
+#include "pvr_srv_sync.h"
+#include "pvr_winsys.h"
+#include "util/libsync.h"
+#include "vk_log.h"
+#include "vk_sync.h"
 
-VkResult pvr_compute_job_submit(struct pvr_compute_ctx *ctx,
-                                struct pvr_sub_cmd *sub_cmd,
-                                struct vk_sync **waits,
-                                uint32_t wait_count,
-                                uint32_t *stage_flags,
-                                struct vk_sync *signal_sync);
+VkResult pvr_srv_winsys_null_job_submit(struct pvr_winsys *ws,
+                                        struct vk_sync **waits,
+                                        uint32_t wait_count,
+                                        struct vk_sync *signal_sync)
+{
+   struct pvr_srv_sync *srv_signal_sync = to_srv_sync(signal_sync);
+   int fd = -1;
 
-#endif /* PVR_JOB_COMPUTE_H */
+   assert(signal_sync);
+
+   for (uint32_t i = 0; i < wait_count; i++) {
+      struct pvr_srv_sync *srv_wait_sync = to_srv_sync(waits[i]);
+      int ret;
+
+      if (!waits[i] || srv_wait_sync->fd < 0)
+         continue;
+
+      ret = sync_accumulate("", &fd, srv_wait_sync->fd);
+      if (ret) {
+         if (fd >= 0)
+            close(fd);
+
+         return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
+      }
+   }
+
+   pvr_srv_set_sync_payload(srv_signal_sync, fd);
+
+   return VK_SUCCESS;
+}
