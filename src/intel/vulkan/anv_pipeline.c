@@ -242,33 +242,6 @@ anv_shader_stage_to_nir(struct anv_device *device,
    NIR_PASS_V(nir, nir_lower_io_to_temporaries,
               nir_shader_get_entrypoint(nir), true, false);
 
-   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
-      .point_coord = true,
-   };
-   NIR_PASS(_, nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
-
-   const nir_opt_access_options opt_access_options = {
-      .is_vulkan = true,
-   };
-   NIR_PASS(_, nir, nir_opt_access, &opt_access_options);
-
-   /* Vulkan uses the separate-shader linking model */
-   nir->info.separate_shader = true;
-
-   struct brw_nir_compiler_opts opts = {
-      .softfp64 = device->fp64_nir,
-      .robust_image_access =
-         device->vk.enabled_features.robustImageAccess ||
-         device->vk.enabled_features.robustImageAccess2,
-   };
-   brw_preprocess_nir(compiler, nir, &opts);
-
-   if (nir->info.stage == MESA_SHADER_MESH && !nir->info.mesh.nv) {
-      NIR_PASS(_, nir, anv_nir_lower_set_vtx_and_prim_count);
-      NIR_PASS(_, nir, nir_opt_dce);
-      NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
-   }
-
    return nir;
 }
 
@@ -1673,6 +1646,40 @@ anv_fixup_subgroup_size(struct anv_device *device, struct shader_info *info)
       info->subgroup_size = BRW_SUBGROUP_SIZE;
 }
 
+static void
+anv_pipeline_nir_preprocess(struct anv_pipeline *pipeline, nir_shader *nir)
+{
+   struct anv_device *device = pipeline->device;
+   const struct brw_compiler *compiler = device->physical->compiler;
+
+   const struct nir_lower_sysvals_to_varyings_options sysvals_to_varyings = {
+      .point_coord = true,
+   };
+   NIR_PASS(_, nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
+
+   const nir_opt_access_options opt_access_options = {
+      .is_vulkan = true,
+   };
+   NIR_PASS(_, nir, nir_opt_access, &opt_access_options);
+
+   /* Vulkan uses the separate-shader linking model */
+   nir->info.separate_shader = true;
+
+   struct brw_nir_compiler_opts opts = {
+      .softfp64 = device->fp64_nir,
+      .robust_image_access =
+         device->vk.enabled_features.robustImageAccess ||
+         device->vk.enabled_features.robustImageAccess2,
+   };
+   brw_preprocess_nir(compiler, nir, &opts);
+
+   if (nir->info.stage == MESA_SHADER_MESH && !nir->info.mesh.nv) {
+      NIR_PASS(_, nir, anv_nir_lower_set_vtx_and_prim_count);
+      NIR_PASS(_, nir, nir_opt_dce);
+      NIR_PASS(_, nir, nir_remove_dead_variables, nir_var_shader_out, NULL);
+   }
+}
+
 static VkResult
 anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
                               struct vk_pipeline_cache *cache,
@@ -1729,6 +1736,13 @@ anv_graphics_pipeline_compile(struct anv_graphics_base_pipeline *pipeline,
                                            pipeline_ctx);
    if (result != VK_SUCCESS)
       goto fail;
+
+   for (int s = 0; s < ARRAY_SIZE(pipeline->shaders); s++) {
+      if (stages[s].nir == NULL)
+         continue;
+
+      anv_pipeline_nir_preprocess(&pipeline->base, stages[s].nir);
+   }
 
    if (stages[MESA_SHADER_MESH].info && stages[MESA_SHADER_FRAGMENT].info) {
       anv_apply_per_prim_attr_wa(stages[MESA_SHADER_MESH].nir,
@@ -2051,6 +2065,8 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          ralloc_free(mem_ctx);
          return vk_error(pipeline, VK_ERROR_UNKNOWN);
       }
+
+      anv_pipeline_nir_preprocess(&pipeline->base, stage.nir);
 
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout,
                              0 /* view_mask */,
@@ -2745,6 +2761,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          ralloc_free(pipeline_ctx);
          return vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
+
+      anv_pipeline_nir_preprocess(&pipeline->base, stages[i].nir);
 
       anv_pipeline_lower_nir(&pipeline->base, pipeline_ctx, &stages[i],
                              layout, 0 /* view_mask */,
