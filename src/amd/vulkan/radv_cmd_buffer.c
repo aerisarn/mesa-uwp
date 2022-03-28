@@ -8629,7 +8629,7 @@ radv_CmdBeginConditionalRenderingEXT(
    bool draw_visible = true;
    uint64_t va;
 
-   va = radv_buffer_get_va(buffer->bo) + pConditionalRenderingBegin->offset;
+   va = radv_buffer_get_va(buffer->bo) + buffer->offset + pConditionalRenderingBegin->offset;
 
    /* By default, if the 32-bit value at offset in buffer memory is zero,
     * then the rendering commands are discarded, otherwise they are

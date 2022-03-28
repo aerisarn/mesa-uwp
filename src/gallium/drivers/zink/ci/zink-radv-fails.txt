@@ -233,22 +233,12 @@ glx@glx-visuals-stencil -pixmap,Crash
 
 GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvary,Fail
 GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvaryyvary,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test1,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test2,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test3,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test4,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test5,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test7,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test8,Fail
-GTF-GL46.gtf30.GL3Tests.conditional_render.conditional_render_test9,Fail
 GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_blit,Fail
 GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_clearbuffer,Fail
 GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_builtins,Fail
 GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_query_objects,Fail
 GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_pause_resume,Fail
 GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_states,Fail
-GTF-GL46.gtf42.GL3Tests.transform_feedback_instanced.transform_feedback_instanced_conditional_render,Fail
-GTF-GL46.gtf43.GL3Tests.multi_draw_indirect.multi_draw_indirect_conditional_render,Fail
 
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORBURN_KHR_all_qualifier,Fail
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORDODGE_KHR_all_qualifier,Fail
@@ -280,7 +270,6 @@ KHR-GL46.blend_equation_advanced.blend_specific.GL_MULTIPLY_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_OVERLAY_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SCREEN_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SOFTLIGHT_KHR,Fail
-KHR-GL46.compute_shader.conditional-dispatching,Fail
 KHR-GL46.conditional_render_inverted.functional,Fail
 KHR-GL46.direct_state_access.queries_functional,Fail
 KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
@@ -312,10 +301,6 @@ KHR-GL46.tessellation_shader.tessellation_shader_tessellation.gl_InvocationID_Pa
 KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.identical_triangles,Fail
 KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.inner_tessellation_level_rounding,Fail
 KHR-GL46.texture_view.view_sampling,Fail
-KHR-GL46.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs,Fail
-KHR-GL46.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs,Fail
-KHR-GL46.transform_feedback_overflow_query_ARB.basic-single-stream-interleaved-attribs,Fail
-KHR-GL46.transform_feedback_overflow_query_ARB.basic-single-stream-separate-attribs,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers-per-stream,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream,Fail
 KHR-Single-GL46.enhanced_layouts.varying_array_components,Fail
