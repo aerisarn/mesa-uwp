@@ -211,6 +211,7 @@ struct lvp_device {
    struct lvp_instance *                       instance;
    struct lvp_physical_device *physical_device;
    struct pipe_screen *pscreen;
+   bool poison_mem;
 };
 
 void lvp_device_get_cache_uuid(void *uuid);

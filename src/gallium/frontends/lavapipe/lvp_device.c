@@ -1675,6 +1675,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    device->queue.state = device + 1;
+   device->poison_mem = debug_get_bool_option("LVP_POISON_MEMORY", false);
 
    struct vk_device_dispatch_table dispatch_table;
    vk_device_dispatch_table_from_entrypoints(&dispatch_table,
@@ -1988,6 +1989,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
       if (!mem->pmem) {
          goto fail;
       }
+      if (device->poison_mem)
+         /* this is a value that will definitely break things */
+         memset(mem->pmem, UINT8_MAX / 2 + 1, pAllocateInfo->allocationSize);
    }
 
    mem->type_index = pAllocateInfo->memoryTypeIndex;
