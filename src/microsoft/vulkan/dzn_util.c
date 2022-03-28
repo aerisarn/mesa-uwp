@@ -169,6 +169,7 @@ static const struct dzn_sampler_filter_info filter_table[] = {
    [D3D12_FILTER_MIN_MAG_MIP_LINEAR] = FILTER(LINEAR, LINEAR, LINEAR),
 };
 
+D3D12_FILTER
 dzn_translate_sampler_filter(const VkSamplerCreateInfo *create_info)
 {
    D3D12_FILTER filter;
