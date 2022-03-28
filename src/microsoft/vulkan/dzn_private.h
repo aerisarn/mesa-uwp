@@ -307,6 +307,7 @@ enum dzn_cmd_dirty {
    DZN_CMD_DIRTY_STENCIL_REF = 1 << 3,
    DZN_CMD_DIRTY_STENCIL_COMPARE_MASK = 1 << 4,
    DZN_CMD_DIRTY_STENCIL_WRITE_MASK = 1 << 5,
+   DZN_CMD_DIRTY_BLEND_CONSTANTS = 1 << 6,
 };
 
 #define MAX_VBS 16
@@ -485,6 +486,9 @@ struct dzn_cmd_buffer_state {
          } front, back;
       } stencil_test;
    } zsa;
+   struct {
+      float constants[4];
+   } blend;
    D3D12_VIEWPORT viewports[MAX_VP];
    D3D12_RECT scissors[MAX_SCISSOR];
    struct {
@@ -758,6 +762,11 @@ struct dzn_graphics_pipeline {
         } front, back;
       } stencil_test;
    } zsa;
+
+   struct {
+      bool dynamic_constants;
+      float constants[4];
+   } blend;
 
    ID3D12CommandSignature *indirect_cmd_sigs[DZN_NUM_INDIRECT_DRAW_CMD_SIGS];
 };

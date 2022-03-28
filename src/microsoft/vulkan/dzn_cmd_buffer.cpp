@@ -2473,6 +2473,13 @@ dzn_cmd_buffer_update_zsa(dzn_cmd_buffer *cmdbuf)
    }
 }
 
+static void
+dzn_cmd_buffer_update_blend_constants(dzn_cmd_buffer *cmdbuf)
+{
+   if (cmdbuf->state.dirty & DZN_CMD_DIRTY_BLEND_CONSTANTS)
+      cmdbuf->cmdlist->OMSetBlendFactor(cmdbuf->state.blend.constants);
+}
+
 static VkResult
 dzn_cmd_buffer_triangle_fan_create_index(dzn_cmd_buffer *cmdbuf, uint32_t *vertex_count)
 {
@@ -2614,6 +2621,7 @@ dzn_cmd_buffer_prepare_draw(dzn_cmd_buffer *cmdbuf, bool indexed)
    dzn_cmd_buffer_update_vbviews(cmdbuf);
    dzn_cmd_buffer_update_push_constants(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
    dzn_cmd_buffer_update_zsa(cmdbuf);
+   dzn_cmd_buffer_update_blend_constants(cmdbuf);
 
    if (indexed)
       dzn_cmd_buffer_update_ibview(cmdbuf);
@@ -3366,6 +3374,12 @@ dzn_CmdBindPipeline(VkCommandBuffer commandBuffer,
          cmdbuf->state.dirty |= DZN_CMD_DIRTY_STENCIL_REF;
       }
 
+      if (!gfx->blend.dynamic_constants) {
+         memcpy(cmdbuf->state.blend.constants, gfx->blend.constants,
+                sizeof(cmdbuf->state.blend.constants));
+         cmdbuf->state.dirty |= DZN_CMD_DIRTY_BLEND_CONSTANTS;
+      }
+
       for (uint32_t vb = 0; vb < gfx->vb.count; vb++)
          cmdbuf->state.vb.views[vb].StrideInBytes = gfx->vb.strides[vb];
 
@@ -4057,7 +4071,9 @@ dzn_CmdSetBlendConstants(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   cmdbuf->cmdlist->OMSetBlendFactor(blendConstants);
+   memcpy(cmdbuf->state.blend.constants, blendConstants,
+          sizeof(cmdbuf->state.blend.constants));
+   cmdbuf->state.dirty |= DZN_CMD_DIRTY_BLEND_CONSTANTS;
 }
 
 VKAPI_ATTR void VKAPI_CALL

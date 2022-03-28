@@ -681,6 +681,9 @@ dzn_graphics_pipeline_translate_blend(dzn_graphics_pipeline *pipeline,
       in_blend->logicOpEnable ?
       translate_logic_op(in_blend->logicOp) : D3D12_LOGIC_OP_NOOP;
    out->BlendState.AlphaToCoverageEnable = in_ms->alphaToCoverageEnable;
+   memcpy(pipeline->blend.constants, in_blend->blendConstants,
+          sizeof(pipeline->blend.constants));
+
    for (uint32_t i = 0; i < in_blend->attachmentCount; i++) {
       if (i > 0 &&
           !memcmp(&in_blend->pAttachments[i - 1], &in_blend->pAttachments[i],
@@ -692,6 +695,7 @@ dzn_graphics_pipeline_translate_blend(dzn_graphics_pipeline *pipeline,
          in_blend->logicOpEnable;
       out->BlendState.RenderTarget[i].RenderTargetWriteMask =
          in_blend->pAttachments[i].colorWriteMask;
+
       if (in_blend->logicOpEnable) {
          out->BlendState.RenderTarget[i].LogicOpEnable = true;
          out->BlendState.RenderTarget[i].LogicOp = logicop;
@@ -813,6 +817,9 @@ dzn_graphics_pipeline_create(dzn_device *device,
             break;
          case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK:
             pipeline->zsa.stencil_test.dynamic_write_mask = true;
+            break;
+         case VK_DYNAMIC_STATE_BLEND_CONSTANTS:
+            pipeline->blend.dynamic_constants = true;
             break;
          default: unreachable("Unsupported dynamic state");
          }
