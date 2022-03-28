@@ -280,7 +280,7 @@ with_microsoft_vk = _vulkan_drivers.contains('microsoft-experimental')
 with_any_vk = _vulkan_drivers.length() != 0
 
 with_any_broadcom = with_gallium_vc4 or with_gallium_v3d or with_broadcom_vk
-with_any_intel = with_intel_vk or with_gallium_iris or with_gallium_crocus
+with_any_intel = with_intel_vk or with_gallium_iris or with_gallium_crocus or with_intel_tools
 
 if with_swrast_vk and not with_gallium_softpipe
   error('swrast vulkan requires gallium swrast')
