@@ -153,6 +153,7 @@ zink_context_destroy(struct pipe_context *pctx)
    hash_table_foreach(ctx->render_pass_cache, he)
       zink_destroy_render_pass(screen, he->data);
 
+   zink_context_destroy_query_pools(ctx);
    u_upload_destroy(pctx->stream_uploader);
    u_upload_destroy(pctx->const_uploader);
    slab_destroy_child(&ctx->transfer_pool);
@@ -4222,6 +4223,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    zink_context_resource_init(&ctx->base);
    zink_context_query_init(&ctx->base);
 
+   list_inithead(&ctx->query_pools);
    _mesa_set_init(&ctx->update_barriers[0][0], ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
    _mesa_set_init(&ctx->update_barriers[1][0], ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
    _mesa_set_init(&ctx->update_barriers[0][1], ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);

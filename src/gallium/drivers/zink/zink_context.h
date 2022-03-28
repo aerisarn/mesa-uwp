@@ -287,6 +287,7 @@ struct zink_context {
       float tess_levels[6];
    };
 
+   struct list_head query_pools;
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;
    struct zink_query *vertices_query;
