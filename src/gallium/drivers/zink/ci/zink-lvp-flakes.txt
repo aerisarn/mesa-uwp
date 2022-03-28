@@ -9,3 +9,8 @@ glx@glx-copy-sub-buffer samples=2
 # "free(): invalid next size (fast)"
 # since it's heap corruption, it may or may not appear in a particular run
 spec@arb_compute_variable_group_size@local-size
+
+# ???
+spec@arb_query_buffer_object@qbo
+spec@arb_query_buffer_object@qbo@query-GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN-ASYNC-GL_UNSIGNED_INT
+spec@arb_query_buffer_object@qbo@query-GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN-ASYNC-GL_UNSIGNED_INT64_ARB
