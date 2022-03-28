@@ -276,10 +276,11 @@ def verify_results(baseline1, baseline2):
     #  - if no baseline, baseline2 will contain the list of failures
     #  - if there's a baseline, baseline2 will contain the diff
     # So in both cases, an empty baseline2 files means a successful run
-    if len(open(baseline2, "r").readlines()) != 0:
-        print_red("New errors. Check {}".format(baseline2))
-        return False
-    return True
+    with open(baseline2) as file:
+        if len(file.readlines()) == 0:
+            return True
+    print_red("New errors. Check {}".format(baseline2))
+    return False
 
 
 def parse_test_filters(include_tests):
@@ -300,10 +301,8 @@ filters_args = parse_test_filters(args.include_tests)
 if args.piglit:
     out = os.path.join(output_folder, "piglit")
     baseline = os.path.join(base, "{}-piglit-quick-fail.csv".format(gpu_name))
-    new_baseline = os.path.join(
-        new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name)
-    )
-    print_yellow("Running piglit tests", args.verbose > 0)
+    new_baseline = os.path.join(new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name))
+    print_yellow("Running piglit tests\n", args.verbose > 0)
     cmd = [
         "piglit-runner",
         "run",
