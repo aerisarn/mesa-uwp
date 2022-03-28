@@ -1496,46 +1496,6 @@ vn_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
 }
 
 void
-vn_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
-                             VkPhysicalDeviceFeatures *pFeatures)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-
-   *pFeatures = physical_dev->features.vulkan_1_0;
-}
-
-void
-vn_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
-                               VkPhysicalDeviceProperties *pProperties)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-
-   *pProperties = physical_dev->properties.vulkan_1_0;
-}
-
-void
-vn_GetPhysicalDeviceQueueFamilyProperties(
-   VkPhysicalDevice physicalDevice,
-   uint32_t *pQueueFamilyPropertyCount,
-   VkQueueFamilyProperties *pQueueFamilyProperties)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-
-   VK_OUTARRAY_MAKE_TYPED(VkQueueFamilyProperties, out,
-                          pQueueFamilyProperties,
-                          pQueueFamilyPropertyCount);
-   for (uint32_t i = 0; i < physical_dev->queue_family_count; i++) {
-      vk_outarray_append_typed(VkQueueFamilyProperties, &out, props) {
-         *props =
-            physical_dev->queue_family_properties[i].queueFamilyProperties;
-      }
-   }
-}
-
-void
 vn_GetPhysicalDeviceMemoryProperties(
    VkPhysicalDevice physicalDevice,
    VkPhysicalDeviceMemoryProperties *pMemoryProperties)
@@ -1565,69 +1525,6 @@ vn_physical_device_add_format_properties(
       entry->valid = true;
    }
    simple_mtx_unlock(&physical_dev->format_update_mutex);
-}
-
-void
-vn_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
-                                     VkFormat format,
-                                     VkFormatProperties *pFormatProperties)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-   struct vn_format_properties_entry *entry =
-      vn_physical_device_get_format_properties(physical_dev, format);
-
-   if (entry->valid) {
-      *pFormatProperties = entry->properties;
-      return;
-   }
-
-   vn_call_vkGetPhysicalDeviceFormatProperties(
-      physical_dev->instance, physicalDevice, format, pFormatProperties);
-
-   vn_physical_device_add_format_properties(physical_dev, entry,
-                                            pFormatProperties);
-}
-
-VkResult
-vn_GetPhysicalDeviceImageFormatProperties(
-   VkPhysicalDevice physicalDevice,
-   VkFormat format,
-   VkImageType type,
-   VkImageTiling tiling,
-   VkImageUsageFlags usage,
-   VkImageCreateFlags flags,
-   VkImageFormatProperties *pImageFormatProperties)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-
-   /* TODO per-device cache */
-   VkResult result = vn_call_vkGetPhysicalDeviceImageFormatProperties(
-      physical_dev->instance, physicalDevice, format, type, tiling, usage,
-      flags, pImageFormatProperties);
-
-   return vn_result(physical_dev->instance, result);
-}
-
-void
-vn_GetPhysicalDeviceSparseImageFormatProperties(
-   VkPhysicalDevice physicalDevice,
-   VkFormat format,
-   VkImageType type,
-   uint32_t samples,
-   VkImageUsageFlags usage,
-   VkImageTiling tiling,
-   uint32_t *pPropertyCount,
-   VkSparseImageFormatProperties *pProperties)
-{
-   struct vn_physical_device *physical_dev =
-      vn_physical_device_from_handle(physicalDevice);
-
-   /* TODO per-device cache */
-   vn_call_vkGetPhysicalDeviceSparseImageFormatProperties(
-      physical_dev->instance, physicalDevice, format, type, samples, usage,
-      tiling, pPropertyCount, pProperties);
 }
 
 void

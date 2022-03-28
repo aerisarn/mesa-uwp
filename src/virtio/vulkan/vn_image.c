@@ -360,31 +360,6 @@ vn_DestroyImage(VkDevice device,
 }
 
 void
-vn_GetImageMemoryRequirements(VkDevice device,
-                              VkImage image,
-                              VkMemoryRequirements *pMemoryRequirements)
-{
-   const struct vn_image *img = vn_image_from_handle(image);
-
-   *pMemoryRequirements = img->requirements[0].memory.memoryRequirements;
-}
-
-void
-vn_GetImageSparseMemoryRequirements(
-   VkDevice device,
-   VkImage image,
-   uint32_t *pSparseMemoryRequirementCount,
-   VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
-{
-   struct vn_device *dev = vn_device_from_handle(device);
-
-   /* TODO per-device cache */
-   vn_call_vkGetImageSparseMemoryRequirements(dev->instance, device, image,
-                                              pSparseMemoryRequirementCount,
-                                              pSparseMemoryRequirements);
-}
-
-void
 vn_GetImageMemoryRequirements2(VkDevice device,
                                const VkImageMemoryRequirementsInfo2 *pInfo,
                                VkMemoryRequirements2 *pMemoryRequirements)
@@ -453,30 +428,6 @@ vn_image_bind_wsi_memory(struct vn_image *img, struct vn_device_memory *mem)
 {
    assert(img->wsi.is_wsi && !img->wsi.memory);
    img->wsi.memory = mem;
-}
-
-VkResult
-vn_BindImageMemory(VkDevice device,
-                   VkImage image,
-                   VkDeviceMemory memory,
-                   VkDeviceSize memoryOffset)
-{
-   struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_image *img = vn_image_from_handle(image);
-   struct vn_device_memory *mem = vn_device_memory_from_handle(memory);
-
-   if (img->wsi.is_wsi)
-      vn_image_bind_wsi_memory(img, mem);
-
-   if (mem->base_memory) {
-      memory = vn_device_memory_to_handle(mem->base_memory);
-      memoryOffset += mem->base_offset;
-   }
-
-   vn_async_vkBindImageMemory(dev->instance, device, image, memory,
-                              memoryOffset);
-
-   return VK_SUCCESS;
 }
 
 VkResult
