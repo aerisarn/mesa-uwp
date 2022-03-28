@@ -1497,7 +1497,8 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
          wm_prog_data->uses_kill;
 
       wm.BarycentricInterpolationMode =
-         wm_prog_data_barycentric_modes(wm_prog_data, 0);
+         wm_prog_data_barycentric_modes(wm_prog_data,
+                                        pipeline->fs_msaa_flags);
    }
 
    GENX(3DSTATE_WM_pack)(NULL, pipeline->gfx8.wm, &wm);
@@ -1525,7 +1526,10 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
    anv_batch_emit(batch, GENX(3DSTATE_PS), ps) {
       intel_set_ps_dispatch_state(&ps, devinfo, wm_prog_data,
                                   ms != NULL ? ms->rasterization_samples : 1,
-                                  0 /* msaa_flags */);
+                                  pipeline->fs_msaa_flags);
+
+      const bool persample =
+         brw_wm_prog_data_is_persample(wm_prog_data, pipeline->fs_msaa_flags);
 
       ps.KernelStartPointer0 = fs_bin->kernel.offset +
                                brw_wm_prog_data_prog_offset(wm_prog_data, ps, 0);
@@ -1541,8 +1545,9 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       ps.BindingTableEntryCount     = fs_bin->bind_map.surface_count;
       ps.PushConstantEnable         = wm_prog_data->base.nr_params > 0 ||
                                       wm_prog_data->base.ubo_ranges[0].length;
-      ps.PositionXYOffsetSelect     = wm_prog_data->uses_pos_offset ?
-                                      POSOFFSET_SAMPLE: POSOFFSET_NONE;
+      ps.PositionXYOffsetSelect     =
+           !wm_prog_data->uses_pos_offset ? POSOFFSET_NONE :
+           persample ? POSOFFSET_SAMPLE : POSOFFSET_CENTROID;
 
       ps.MaximumNumberofThreadsPerPSD = devinfo->max_threads_per_psd - 1;
 
@@ -1582,7 +1587,7 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
       ps.AttributeEnable               = wm_prog_data->num_varying_inputs > 0;
       ps.oMaskPresenttoRenderTarget    = wm_prog_data->uses_omask;
       ps.PixelShaderIsPerSample        =
-         brw_wm_prog_data_is_persample(wm_prog_data, 0);
+         brw_wm_prog_data_is_persample(wm_prog_data, pipeline->fs_msaa_flags);
       ps.PixelShaderComputedDepthMode  = wm_prog_data->computed_depth_mode;
       ps.PixelShaderUsesSourceDepth    = wm_prog_data->uses_src_depth;
       ps.PixelShaderUsesSourceW        = wm_prog_data->uses_src_w;
@@ -1614,14 +1619,14 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
       ps.PixelShaderRequiresSourceDepthandorWPlaneCoefficients =
          wm_prog_data->uses_depth_w_coefficients;
       ps.PixelShaderIsPerCoarsePixel =
-         brw_wm_prog_data_is_coarse(wm_prog_data, 0);
+         brw_wm_prog_data_is_coarse(wm_prog_data, pipeline->fs_msaa_flags);
 #endif
 #if GFX_VERx10 >= 125
       /* TODO: We should only require this when the last geometry shader uses
        *       a fragment shading rate that is not constant.
        */
       ps.EnablePSDependencyOnCPsizeChange =
-         brw_wm_prog_data_is_coarse(wm_prog_data, 0);
+         brw_wm_prog_data_is_coarse(wm_prog_data, pipeline->fs_msaa_flags);
 #endif
    }
 }

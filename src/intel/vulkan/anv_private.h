@@ -2437,20 +2437,30 @@ struct anv_push_constants {
     */
    uint64_t desc_sets[MAX_SETS];
 
-   struct {
-      /** Base workgroup ID
-       *
-       * Used for vkCmdDispatchBase.
-       */
-      uint32_t base_work_group_id[3];
+   union {
+      struct {
+         /** Dynamic MSAA value */
+         uint32_t msaa_flags;
 
-      /** Subgroup ID
-       *
-       * This is never set by software but is implicitly filled out when
-       * uploading the push constants for compute shaders.
-       */
-      uint32_t subgroup_id;
-   } cs;
+         /** Pad out to a multiple of 32 bytes */
+         uint32_t pad[1];
+      } fs;
+
+      struct {
+         /** Base workgroup ID
+          *
+          * Used for vkCmdDispatchBase.
+          */
+         uint32_t base_work_group_id[3];
+
+         /** Subgroup ID
+          *
+          * This is never set by software but is implicitly filled out when
+          * uploading the push constants for compute shaders.
+          */
+         uint32_t subgroup_id;
+      } cs;
+   };
 };
 
 struct anv_surface_state {
@@ -3121,10 +3131,12 @@ anv_shader_bin_create(struct anv_device *device,
                       const struct anv_pipeline_bind_map *bind_map,
                       const struct anv_push_descriptor_info *push_desc_info);
 
-static inline void
+static inline struct anv_shader_bin *
 anv_shader_bin_ref(struct anv_shader_bin *shader)
 {
    vk_pipeline_cache_object_ref(&shader->base);
+
+   return shader;
 }
 
 static inline void
@@ -3144,9 +3156,16 @@ struct anv_pipeline_executable {
 
 enum anv_pipeline_type {
    ANV_PIPELINE_GRAPHICS,
+   ANV_PIPELINE_GRAPHICS_LIB,
    ANV_PIPELINE_COMPUTE,
    ANV_PIPELINE_RAY_TRACING,
 };
+
+#define ALL_GRAPHICS_LIB_FLAGS \
+   (VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT | \
+    VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT | \
+    VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT | \
+    VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)
 
 struct anv_pipeline {
    struct vk_object_base                        base;
@@ -3185,10 +3204,48 @@ struct anv_pipeline {
 struct anv_graphics_base_pipeline {
    struct anv_pipeline                          base;
 
+   struct vk_sample_locations_state             sample_locations;
+
    /* Shaders */
    struct anv_shader_bin *                      shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT];
 
    VkShaderStageFlags                           active_stages;
+
+   /* True if at the time the fragment shader was compiled, it didn't have all
+    * the information to avoid BRW_WM_MSAA_FLAG_ENABLE_DYNAMIC.
+    */
+   bool                                         fragment_dynamic;
+};
+
+/* The library graphics pipeline object has a partial graphic state and
+ * possibly some shaders. If requested, shaders are also present in NIR early
+ * form.
+ */
+struct anv_graphics_lib_pipeline {
+   struct anv_graphics_base_pipeline            base;
+
+   VkGraphicsPipelineLibraryFlagsEXT            lib_flags;
+
+   struct vk_graphics_pipeline_all_state        all_state;
+   struct vk_graphics_pipeline_state            state;
+
+   /* Retained shaders for link optimization. */
+   struct {
+      /* This hash is the same as computed in
+       * anv_graphics_pipeline_gather_shaders().
+       */
+      unsigned char                             shader_sha1[20];
+
+      enum gl_subgroup_size                     subgroup_size_type;
+
+      /* NIR captured in anv_pipeline_stage_get_nir(), includes specialization
+       * constants.
+       */
+      nir_shader *                              nir;
+   }                                            retained_shaders[ANV_GRAPHICS_SHADER_STAGE_COUNT];
+
+   /* Whether the shaders have been retained */
+   bool                                         retain_shaders;
 };
 
 /* The final graphics pipeline object has all the graphics state ready to be
@@ -3237,6 +3294,8 @@ struct anv_graphics_pipeline {
     */
    uint32_t                                     vertex_input_elems;
    uint32_t                                     vertex_input_data[96];
+
+   enum brw_wm_msaa_flags                       fs_msaa_flags;
 
    /* Pre computed CS instructions that can directly be copied into
     * anv_cmd_buffer.
@@ -3305,6 +3364,7 @@ struct anv_ray_tracing_pipeline {
 
 ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_PIPELINE_GRAPHICS)
 ANV_DECL_PIPELINE_DOWNCAST(graphics_base, ANV_PIPELINE_GRAPHICS)
+ANV_DECL_PIPELINE_DOWNCAST(graphics_lib, ANV_PIPELINE_GRAPHICS_LIB)
 ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_PIPELINE_COMPUTE)
 ANV_DECL_PIPELINE_DOWNCAST(ray_tracing, ANV_PIPELINE_RAY_TRACING)
 
@@ -3313,6 +3373,13 @@ anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
                        gl_shader_stage stage)
 {
    return (pipeline->base.active_stages & mesa_to_vk_shader_stage(stage)) != 0;
+}
+
+static inline bool
+anv_pipeline_base_has_stage(const struct anv_graphics_base_pipeline *pipeline,
+                            gl_shader_stage stage)
+{
+   return (pipeline->active_stages & mesa_to_vk_shader_stage(stage)) != 0;
 }
 
 static inline bool

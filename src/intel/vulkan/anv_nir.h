@@ -74,6 +74,7 @@ void anv_nir_apply_pipeline_layout(nir_shader *shader,
 void anv_nir_compute_push_layout(nir_shader *nir,
                                  const struct anv_physical_device *pdevice,
                                  bool robust_buffer_access,
+                                 bool fragment_dynamic,
                                  struct brw_stage_prog_data *prog_data,
                                  struct anv_pipeline_bind_map *map,
                                  void *mem_ctx);
