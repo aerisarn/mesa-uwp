@@ -592,15 +592,19 @@ dzn_graphics_pipeline_translate_zsa(dzn_graphics_pipeline *pipeline,
 }
 
 static D3D12_BLEND
-translate_blend_factor(VkBlendFactor in)
+translate_blend_factor(VkBlendFactor in, bool is_alpha)
 {
    switch (in) {
    case VK_BLEND_FACTOR_ZERO: return D3D12_BLEND_ZERO;
    case VK_BLEND_FACTOR_ONE: return D3D12_BLEND_ONE;
-   case VK_BLEND_FACTOR_SRC_COLOR: return D3D12_BLEND_SRC_COLOR;
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR: return D3D12_BLEND_INV_SRC_COLOR;
-   case VK_BLEND_FACTOR_DST_COLOR: return D3D12_BLEND_DEST_COLOR;
-   case VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR: return D3D12_BLEND_INV_DEST_COLOR;
+   case VK_BLEND_FACTOR_SRC_COLOR:
+      return is_alpha ? D3D12_BLEND_SRC_ALPHA : D3D12_BLEND_SRC_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+      return is_alpha ? D3D12_BLEND_INV_SRC_ALPHA : D3D12_BLEND_INV_SRC_COLOR;
+   case VK_BLEND_FACTOR_DST_COLOR:
+      return is_alpha ? D3D12_BLEND_DEST_ALPHA : D3D12_BLEND_DEST_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+      return is_alpha ? D3D12_BLEND_INV_DEST_ALPHA : D3D12_BLEND_INV_DEST_COLOR;
    case VK_BLEND_FACTOR_SRC_ALPHA: return D3D12_BLEND_SRC_ALPHA;
    case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA: return D3D12_BLEND_INV_SRC_ALPHA;
    case VK_BLEND_FACTOR_DST_ALPHA: return D3D12_BLEND_DEST_ALPHA;
@@ -612,8 +616,10 @@ translate_blend_factor(VkBlendFactor in)
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
       return D3D12_BLEND_INV_BLEND_FACTOR;
-   case VK_BLEND_FACTOR_SRC1_COLOR: return D3D12_BLEND_SRC1_COLOR;
-   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR: return D3D12_BLEND_INV_SRC1_COLOR;
+   case VK_BLEND_FACTOR_SRC1_COLOR:
+      return is_alpha ? D3D12_BLEND_SRC1_ALPHA : D3D12_BLEND_SRC1_COLOR;
+   case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+      return is_alpha ? D3D12_BLEND_INV_SRC1_ALPHA : D3D12_BLEND_INV_SRC1_COLOR;
    case VK_BLEND_FACTOR_SRC1_ALPHA: return D3D12_BLEND_SRC1_ALPHA;
    case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA: return D3D12_BLEND_INV_SRC1_ALPHA;
    case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE: return D3D12_BLEND_SRC_ALPHA_SAT;
@@ -691,15 +697,15 @@ dzn_graphics_pipeline_translate_blend(dzn_graphics_pipeline *pipeline,
          out->BlendState.RenderTarget[i].LogicOp = logicop;
       } else {
          out->BlendState.RenderTarget[i].SrcBlend =
-            translate_blend_factor(in_blend->pAttachments[i].srcColorBlendFactor);
+            translate_blend_factor(in_blend->pAttachments[i].srcColorBlendFactor, false);
          out->BlendState.RenderTarget[i].DestBlend =
-            translate_blend_factor(in_blend->pAttachments[i].dstColorBlendFactor);
+            translate_blend_factor(in_blend->pAttachments[i].dstColorBlendFactor, false);
          out->BlendState.RenderTarget[i].BlendOp =
             translate_blend_op(in_blend->pAttachments[i].colorBlendOp);
          out->BlendState.RenderTarget[i].SrcBlendAlpha =
-            translate_blend_factor(in_blend->pAttachments[i].srcAlphaBlendFactor);
+            translate_blend_factor(in_blend->pAttachments[i].srcAlphaBlendFactor, true);
          out->BlendState.RenderTarget[i].DestBlendAlpha =
-            translate_blend_factor(in_blend->pAttachments[i].dstAlphaBlendFactor);
+            translate_blend_factor(in_blend->pAttachments[i].dstAlphaBlendFactor, true);
          out->BlendState.RenderTarget[i].BlendOpAlpha =
             translate_blend_op(in_blend->pAttachments[i].alphaBlendOp);
       }
