@@ -3257,14 +3257,14 @@ nvir_nir_shader_compiler_options(int chipset)
    op.lower_sincos = false;
    op.lower_fmod = true;
    op.lower_bitfield_extract = false;
-   op.lower_bitfield_extract_to_shifts = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_bitfield_extract_to_shifts = (chipset >= NVISA_GV100_CHIPSET || chipset < NVISA_GF100_CHIPSET);
    op.lower_bitfield_insert = false;
-   op.lower_bitfield_insert_to_shifts = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_bitfield_insert_to_shifts = (chipset >= NVISA_GV100_CHIPSET || chipset < NVISA_GF100_CHIPSET);
    op.lower_bitfield_insert_to_bitfield_select = false;
-   op.lower_bitfield_reverse = false;
-   op.lower_bit_count = false;
-   op.lower_ifind_msb = false;
-   op.lower_find_lsb = false;
+   op.lower_bitfield_reverse = (chipset < NVISA_GF100_CHIPSET);
+   op.lower_bit_count = (chipset < NVISA_GF100_CHIPSET);
+   op.lower_ifind_msb = (chipset < NVISA_GF100_CHIPSET);
+   op.lower_find_lsb = (chipset < NVISA_GF100_CHIPSET);
    op.lower_uadd_carry = true; // TODO
    op.lower_usub_borrow = true; // TODO
    op.lower_mul_high = false;
