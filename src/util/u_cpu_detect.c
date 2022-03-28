@@ -860,6 +860,9 @@ util_cpu_detect_once(void)
       printf("util_cpu_caps.num_L3_caches = %u\n", util_cpu_caps.num_L3_caches);
       printf("util_cpu_caps.num_cpu_mask_bits = %u\n", util_cpu_caps.num_cpu_mask_bits);
    }
+
+   /* This must happen at the end as it's used to guard everything else */
+   p_atomic_set(&util_cpu_caps.detect_done, 1);
 }
 
 static once_flag cpu_once_flag = ONCE_FLAG_INIT;

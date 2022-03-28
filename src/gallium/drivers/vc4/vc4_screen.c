@@ -27,7 +27,6 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_state.h"
 
-#include "util/u_cpu_detect.h"
 #include "util/u_debug.h"
 #include "util/u_memory.h"
 #include "util/format/u_format.h"
@@ -590,8 +589,6 @@ vc4_screen_create(int fd, struct renderonly *ro)
 
         if (!vc4_get_chip_info(screen))
                 goto fail;
-
-        util_cpu_detect();
 
         slab_create_parent(&screen->transfer_pool, sizeof(struct vc4_transfer), 16);
 

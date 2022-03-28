@@ -2035,7 +2035,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen)
       return NULL;
 
-   util_cpu_detect();
    screen->threaded = util_get_cpu_caps()->nr_cpus > 1 && debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1);
 
    zink_debug = debug_get_option_zink_debug();

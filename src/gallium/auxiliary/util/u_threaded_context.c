@@ -4299,8 +4299,6 @@ threaded_context_create(struct pipe_context *pipe,
    if (!pipe)
       return NULL;
 
-   util_cpu_detect();
-
    if (!debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1))
       return pipe;
 

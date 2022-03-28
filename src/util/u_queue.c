@@ -263,9 +263,6 @@ util_queue_thread_func(void *input)
 
       memset(mask, 0xff, sizeof(mask));
 
-      /* Ensure util_cpu_caps.num_cpu_mask_bits is initialized: */
-      util_cpu_detect();
-
       util_set_current_thread_affinity(mask, NULL,
                                        util_get_cpu_caps()->num_cpu_mask_bits);
    }

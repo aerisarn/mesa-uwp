@@ -480,8 +480,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    uint i;
    struct st_context *st = CALLOC_STRUCT( st_context);
 
-   util_cpu_detect();
-
    st->options = *options;
 
    ctx->st_opts = &st->options;
@@ -861,8 +859,6 @@ st_create_context(gl_api api, struct pipe_context *pipe,
    struct gl_context *shareCtx = share ? share->ctx : NULL;
    struct dd_function_table funcs;
    struct st_context *st;
-
-   util_cpu_detect();
 
    memset(&funcs, 0, sizeof(funcs));
    st_init_driver_functions(pipe->screen, &funcs, has_egl_image_validate);

@@ -51,7 +51,6 @@
 
 #include "util/build_id.h"
 #include "util/debug.h"
-#include "util/u_cpu_detect.h"
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
@@ -252,8 +251,6 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                 "Performance can be affected negatively\n");
       }
    }
-
-   util_cpu_detect();
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 

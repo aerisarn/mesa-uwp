@@ -34,7 +34,6 @@
 #include "pipe/p_context.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
-#include "util/u_cpu_detect.h"
 #include "util/u_inlines.h"
 #include "util/u_helpers.h"
 #include "util/u_prim.h"
@@ -84,9 +83,6 @@ draw_create_context(struct pipe_context *pipe, void *context,
    struct draw_context *draw = CALLOC_STRUCT( draw_context );
    if (!draw)
       goto err_out;
-
-   /* we need correct cpu caps for disabling denorms in draw_vbo() */
-   util_cpu_detect();
 
 #ifdef DRAW_LLVM_AVAILABLE
    if (try_llvm && draw_get_option_use_llvm()) {

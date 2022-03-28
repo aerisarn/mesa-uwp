@@ -701,8 +701,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Add some margin of error, though this shouldn't be needed in theory. */
    info->all_vram_visible = info->vram_size * 0.9 < info->vram_vis_size;
 
-   util_cpu_detect();
-
    /* Set chip identification. */
    info->pci_id = amdinfo->asic_id; /* TODO: is this correct? */
    info->pci_rev_id = amdinfo->pci_rev_id;

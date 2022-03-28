@@ -69,8 +69,6 @@ int main(int argc, char** argv)
 
    create_fn = 0;
 
-   util_cpu_detect();
-
    if (argc <= 1 ||
        !strcmp(argv[1], "default") )
       create_fn = translate_create;

@@ -994,8 +994,6 @@ static void si_init_renderer_string(struct si_screen *sscreen)
 
 void si_init_screen_get_functions(struct si_screen *sscreen)
 {
-   util_cpu_detect();
-
    sscreen->b.get_name = si_get_name;
    sscreen->b.get_vendor = si_get_vendor;
    sscreen->b.get_device_vendor = si_get_device_vendor;

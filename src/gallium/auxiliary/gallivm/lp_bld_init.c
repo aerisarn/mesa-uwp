@@ -430,8 +430,6 @@ lp_build_init(void)
 
    lp_set_target_options();
 
-   util_cpu_detect();
-
    /* For simulating less capable machines */
 #ifdef DEBUG
    if (debug_get_bool_option("LP_FORCE_SSE2", FALSE)) {
