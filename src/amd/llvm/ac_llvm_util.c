@@ -53,16 +53,9 @@ static void ac_init_llvm_target(void)
    /* For ACO disassembly. */
    LLVMInitializeAMDGPUDisassembler();
 
-   /* Workaround for bug in llvm 4.0 that causes image intrinsics
-    * to disappear.
-    * https://reviews.llvm.org/D26348
-    *
-    * "mesa" is the prefix for error messages.
-    *
-    */
    const char *argv[] = {
+      /* error messages prefix */
       "mesa",
-      "-simplifycfg-sink-common=false",
       "-amdgpu-atomic-optimizations=true",
 #if LLVM_VERSION_MAJOR == 11
       /* This fixes variable indexing on LLVM 11. It also breaks atomic.cmpswap on LLVM >= 12. */
