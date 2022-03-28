@@ -543,11 +543,12 @@ vn_android_image_from_anb(struct vn_device *dev,
    }
 
    image = vn_image_to_handle(img);
-   VkMemoryRequirements mem_req;
-   vn_GetImageMemoryRequirements(device, image, &mem_req);
-   if (!mem_req.memoryTypeBits) {
+
+   const VkMemoryRequirements *mem_req =
+      &img->requirements[0].memory.memoryRequirements;
+   if (!mem_req->memoryTypeBits) {
       if (VN_DEBUG(WSI))
-         vn_log(dev->instance, "mem_req.memoryTypeBits cannot be zero");
+         vn_log(dev->instance, "mem_req->memoryTypeBits cannot be zero");
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
@@ -561,20 +562,21 @@ vn_android_image_from_anb(struct vn_device *dev,
       vn_log(dev->instance,
              "size = img(%" PRIu64 ") fd(%" PRIu64 "), "
              "memoryTypeBits = img(0x%X) & fd(0x%X)",
-             mem_req.size, alloc_size, mem_req.memoryTypeBits, mem_type_bits);
+             mem_req->size, alloc_size, mem_req->memoryTypeBits,
+             mem_type_bits);
    }
 
-   if (alloc_size < mem_req.size) {
+   if (alloc_size < mem_req->size) {
       if (VN_DEBUG(WSI)) {
          vn_log(dev->instance,
-                "alloc_size(%" PRIu64 ") mem_req.size(%" PRIu64 ")",
-                alloc_size, mem_req.size);
+                "alloc_size(%" PRIu64 ") mem_req->size(%" PRIu64 ")",
+                alloc_size, mem_req->size);
       }
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
 
-   mem_type_bits &= mem_req.memoryTypeBits;
+   mem_type_bits &= mem_req->memoryTypeBits;
    if (!mem_type_bits) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
@@ -596,7 +598,7 @@ vn_android_image_from_anb(struct vn_device *dev,
    const VkMemoryAllocateInfo memory_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .pNext = &import_fd_info,
-      .allocationSize = mem_req.size,
+      .allocationSize = mem_req->size,
       .memoryTypeIndex = ffs(mem_type_bits) - 1,
    };
    result = vn_AllocateMemory(device, &memory_info, alloc, &memory);
@@ -606,7 +608,14 @@ vn_android_image_from_anb(struct vn_device *dev,
       goto fail;
    }
 
-   result = vn_BindImageMemory(device, image, memory, 0);
+   const VkBindImageMemoryInfo bind_info = {
+      .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+      .pNext = NULL,
+      .image = image,
+      .memory = memory,
+      .memoryOffset = 0,
+   };
+   result = vn_BindImageMemory2(device, 1, &bind_info);
    if (result != VK_SUCCESS)
       goto fail;
 
@@ -1045,7 +1054,6 @@ vn_android_device_import_ahb(struct vn_device *dev,
                              struct AHardwareBuffer *ahb,
                              bool internal_ahb)
 {
-   VkDevice device = vn_device_to_handle(dev);
    const VkMemoryDedicatedAllocateInfo *dedicated_info =
       vk_find_struct_const(alloc_info->pNext, MEMORY_DEDICATED_ALLOCATE_INFO);
    const native_handle_t *handle = NULL;
@@ -1081,16 +1089,16 @@ vn_android_device_import_ahb(struct vn_device *dev,
       if (result != VK_SUCCESS)
          return result;
 
-      VkMemoryRequirements mem_req;
-      vn_GetImageMemoryRequirements(device, dedicated_info->image, &mem_req);
-      if (alloc_size < mem_req.size) {
+      const VkMemoryRequirements *mem_req =
+         &img->requirements[0].memory.memoryRequirements;
+      if (alloc_size < mem_req->size) {
          vn_log(dev->instance,
-                "alloc_size(%" PRIu64 ") mem_req.size(%" PRIu64 ")",
-                alloc_size, mem_req.size);
+                "alloc_size(%" PRIu64 ") mem_req->size(%" PRIu64 ")",
+                alloc_size, mem_req->size);
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
       }
 
-      alloc_size = mem_req.size;
+      alloc_size = mem_req->size;
 
       /* XXX Workaround before spec issue #2762 gets resolved. If importing an
        * internally allocated AHB from the exportable path, memoryTypeIndex is
@@ -1100,13 +1108,13 @@ vn_android_device_import_ahb(struct vn_device *dev,
        * to an applicable one if existed.
        */
       if (internal_ahb) {
-         if ((mem_type_bits & mem_req.memoryTypeBits) == 0) {
+         if ((mem_type_bits & mem_req->memoryTypeBits) == 0) {
             vn_log(dev->instance, "memoryTypeBits: img(0x%X) fd(0x%X)",
-                   mem_req.memoryTypeBits, mem_type_bits);
+                   mem_req->memoryTypeBits, mem_type_bits);
             return VK_ERROR_INVALID_EXTERNAL_HANDLE;
          }
 
-         mem_type_index = ffs(mem_type_bits & mem_req.memoryTypeBits) - 1;
+         mem_type_index = ffs(mem_type_bits & mem_req->memoryTypeBits) - 1;
       }
 
       /* XXX Workaround before we use cross-domain backend in minigbm. The
@@ -1118,19 +1126,19 @@ vn_android_device_import_ahb(struct vn_device *dev,
    }
 
    if (dedicated_info && dedicated_info->buffer != VK_NULL_HANDLE) {
-      VkMemoryRequirements mem_req;
-      vn_GetBufferMemoryRequirements(device, dedicated_info->buffer,
-                                     &mem_req);
-      if (alloc_size < mem_req.size) {
+      struct vn_buffer *buf = vn_buffer_from_handle(dedicated_info->buffer);
+      const VkMemoryRequirements *mem_req =
+         &buf->requirements.memory.memoryRequirements;
+      if (alloc_size < mem_req->size) {
          vn_log(dev->instance,
-                "alloc_size(%" PRIu64 ") mem_req.size(%" PRIu64 ")",
-                alloc_size, mem_req.size);
+                "alloc_size(%" PRIu64 ") mem_req->size(%" PRIu64 ")",
+                alloc_size, mem_req->size);
          return VK_ERROR_INVALID_EXTERNAL_HANDLE;
       }
 
-      alloc_size = mem_req.size;
+      alloc_size = mem_req->size;
 
-      assert((1 << mem_type_index) & mem_req.memoryTypeBits);
+      assert((1 << mem_type_index) & mem_req->memoryTypeBits);
    }
 
    assert((1 << mem_type_index) & mem_type_bits);
