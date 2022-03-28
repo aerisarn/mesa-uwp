@@ -2474,6 +2474,20 @@ zink_update_descriptor_refs(struct zink_context *ctx, bool compute)
 }
 
 static void
+reapply_color_write(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   if (!screen->driver_workarounds.color_write_missing) {
+      const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
+      const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
+      const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, screen->info.props.limits.maxColorAttachments);
+      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, ctx->disable_color_writes ? disables : enables);
+   }
+   if (screen->info.have_EXT_extended_dynamic_state && ctx->dsa_state)
+      VKCTX(CmdSetDepthWriteEnableEXT)(ctx->batch.state->cmdbuf, ctx->disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
+}
+
+static void
 stall(struct zink_context *ctx)
 {
    sync_flush(ctx, zink_batch_state(ctx->last_fence));
@@ -2516,7 +2530,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       ctx->sample_locations_changed = ctx->gfx_pipeline_state.sample_locations_enabled;
       if (conditional_render_active)
          zink_start_conditional_render(ctx);
-      zink_set_color_write_enables(ctx);
+      reapply_color_write(ctx);
    }
 }
 
@@ -2574,9 +2588,6 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, bool chan
 void
 zink_set_color_write_enables(struct zink_context *ctx)
 {
-   const VkBool32 enables[PIPE_MAX_COLOR_BUFS] = {1, 1, 1, 1, 1, 1, 1, 1};
-   const VkBool32 disables[PIPE_MAX_COLOR_BUFS] = {0};
-   const unsigned max_att = MIN2(PIPE_MAX_COLOR_BUFS, zink_screen(ctx->base.screen)->info.props.limits.maxColorAttachments);
    bool disable_color_writes = ctx->rast_state && ctx->rast_state->base.rasterizer_discard && ctx->primitives_generated_active;
    if (ctx->disable_color_writes == disable_color_writes)
       return;
@@ -2590,14 +2601,8 @@ zink_set_color_write_enables(struct zink_context *ctx)
       ctx->rp_changed = true;
       update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
    } else {
-      VKCTX(CmdSetColorWriteEnableEXT)(ctx->batch.state->cmdbuf, max_att, disable_color_writes ? disables : enables);
+      reapply_color_write(ctx);
    }
-   if (!zink_screen(ctx->base.screen)->info.have_EXT_extended_dynamic_state) {
-      /* TODO: maybe pipeline variants for this */
-      return;
-   }
-   if (ctx->dsa_state)
-      VKCTX(CmdSetDepthWriteEnableEXT)(ctx->batch.state->cmdbuf, disable_color_writes ? VK_FALSE : ctx->dsa_state->hw_state.depth_write);
 }
 
 static void
@@ -4333,7 +4338,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    zink_select_draw_vbo(ctx);
    zink_select_launch_grid(ctx);
 
-   zink_set_color_write_enables(ctx);
+   reapply_color_write(ctx);
 
    if (!(flags & PIPE_CONTEXT_PREFER_THREADED) || flags & PIPE_CONTEXT_COMPUTE_ONLY) {
       return &ctx->base;
