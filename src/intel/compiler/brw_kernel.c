@@ -380,6 +380,7 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
    /* No bindings */
    struct brw_kernel_arg_desc *args =
       rzalloc_array(mem_ctx, struct brw_kernel_arg_desc, kernel->arg_count);
+   kernel->args = args;
 
    nir_foreach_uniform_variable(var, nir) {
       struct brw_kernel_arg_desc arg_desc = {
