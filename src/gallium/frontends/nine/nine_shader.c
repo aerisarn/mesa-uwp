@@ -3893,9 +3893,13 @@ nine_ureg_create_shader(struct ureg_program                  *ureg,
     assert(((struct tgsi_header *) &tgsi_tokens[0])->HeaderSize >= 2);
     enum pipe_shader_type shader_type = ((struct tgsi_processor *) &tgsi_tokens[1])->Processor;
 
+    /* NIR doesn't have mul_zero_wins */
+    bool ttn_supported = !GET_CAP(TGSI_MUL_ZERO_WINS);
     int preferred_ir = screen->get_shader_param(screen, shader_type, PIPE_SHADER_CAP_PREFERRED_IR);
+    int supported_irs = screen->get_shader_param(screen, shader_type, PIPE_SHADER_CAP_SUPPORTED_IRS);
     bool prefer_nir = (preferred_ir == PIPE_SHADER_IR_NIR);
-    bool use_nir = prefer_nir ||
+    bool use_nir = (prefer_nir && ttn_supported) ||
+        !(supported_irs & (1 << PIPE_SHADER_IR_TGSI)) ||
         ((shader_type == PIPE_SHADER_VERTEX) && nine_shader_get_debug_flag(NINE_SHADER_DEBUG_OPTION_NIR_VS)) ||
         ((shader_type == PIPE_SHADER_FRAGMENT) && nine_shader_get_debug_flag(NINE_SHADER_DEBUG_OPTION_NIR_PS));
 
