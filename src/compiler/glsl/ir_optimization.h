@@ -37,7 +37,6 @@ struct gl_shader_program;
 #define SUB_TO_ADD_NEG     0x01
 #define FDIV_TO_MUL_RCP    0x02
 #define EXP_TO_EXP2        0x04
-#define POW_TO_EXP2        0x08
 #define LOG_TO_LOG2        0x10
 #define MOD_TO_FLOOR       0x20
 #define INT_DIV_TO_MUL_RCP 0x40
