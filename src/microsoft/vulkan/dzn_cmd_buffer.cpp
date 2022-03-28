@@ -203,7 +203,7 @@ out:
    return result;
 }
 
-VkResult
+static VkResult
 dzn_cmd_buffer_reset(dzn_cmd_buffer *cmdbuf)
 {
    dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
@@ -754,7 +754,7 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
    }
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE
+static D3D12_CPU_DESCRIPTOR_HANDLE
 dzn_cmd_buffer_get_dsv(dzn_cmd_buffer *cmdbuf,
                        const dzn_image *image,
                        const D3D12_DEPTH_STENCIL_VIEW_DESC *desc)
@@ -784,7 +784,7 @@ dzn_cmd_buffer_get_dsv(dzn_cmd_buffer *cmdbuf,
    return dsve->handle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE
+static D3D12_CPU_DESCRIPTOR_HANDLE
 dzn_cmd_buffer_get_rtv(dzn_cmd_buffer *cmdbuf,
                        const dzn_image *image,
                        const D3D12_RENDER_TARGET_VIEW_DESC *desc)
@@ -2090,7 +2090,7 @@ dzn_cmd_buffer_attachment_ref_transition(dzn_cmd_buffer *cmdbuf,
    cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
 }
 
-void
+static void
 dzn_cmd_buffer_attachment_transition(dzn_cmd_buffer *cmdbuf,
                                      const dzn_attachment *att)
 {
@@ -2459,7 +2459,7 @@ dzn_cmd_buffer_update_push_constants(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
    state->end = 0;
 }
 
-void
+static void
 dzn_cmd_buffer_update_zsa(dzn_cmd_buffer *cmdbuf)
 {
    if (cmdbuf->state.dirty & DZN_CMD_DIRTY_STENCIL_REF) {

@@ -545,7 +545,7 @@ dzn_physical_device_get_format_support(dzn_physical_device *pdev,
    return dfmt_info;
 }
 
-void
+static void
 dzn_physical_device_get_format_properties(dzn_physical_device *pdev,
                                           VkFormat format,
                                           VkFormatProperties2 *properties)
@@ -645,7 +645,7 @@ dzn_physical_device_get_format_properties(dzn_physical_device *pdev,
    }
 }
 
-VkResult
+static VkResult
 dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
                                                 const VkPhysicalDeviceImageFormatInfo2 *info,
                                                 VkImageFormatProperties2 *properties)
@@ -939,7 +939,7 @@ dzn_EnumerateInstanceVersion(uint32_t *pApiVersion)
     return VK_SUCCESS;
 }
 
-bool
+static bool
 dzn_physical_device_supports_compressed_format(dzn_physical_device *pdev,
                                                const VkFormat *formats,
                                                uint32_t format_count)
@@ -958,7 +958,7 @@ dzn_physical_device_supports_compressed_format(dzn_physical_device *pdev,
    return true;
 }
 
-bool
+static bool
 dzn_physical_device_supports_bc(dzn_physical_device *pdev)
 {
    static const VkFormat formats[] = {

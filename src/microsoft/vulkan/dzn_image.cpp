@@ -315,7 +315,7 @@ dzn_image_range_get_subresource_index(const dzn_image *image,
           (planeSlice * image->desc.MipLevels * image->desc.DepthOrArraySize);
 }
 
-uint32_t
+static uint32_t
 dzn_image_get_subresource_index(const dzn_image *image,
                                 const VkImageSubresource *subres,
                                 VkImageAspectFlagBits aspect)

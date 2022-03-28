@@ -77,6 +77,15 @@ is_dynamic_desc_type(VkDescriptorType desc_type)
            desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
 }
 
+static bool
+dzn_descriptor_type_depends_on_shader_usage(VkDescriptorType type)
+{
+   return type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ||
+          type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
+          type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+          type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+}
+
 static uint32_t
 num_descs_for_type(VkDescriptorType type, bool static_sampler)
 {
@@ -386,7 +395,7 @@ dzn_descriptor_set_layout_create(dzn_device *device,
    return VK_SUCCESS;
 }
 
-uint32_t
+static uint32_t
 dzn_descriptor_set_layout_get_heap_offset(const dzn_descriptor_set_layout *layout,
                                           uint32_t b,
                                           D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -413,7 +422,7 @@ dzn_descriptor_set_layout_get_heap_offset(const dzn_descriptor_set_layout *layou
    return layout->ranges[visibility][type][range_idx].OffsetInDescriptorsFromTableStart;
 }
 
-uint32_t
+static uint32_t
 dzn_descriptor_set_layout_get_desc_count(const dzn_descriptor_set_layout *layout,
                                          uint32_t b)
 {
@@ -745,16 +754,7 @@ desc_type_to_heap_type(VkDescriptorType in)
    }
 }
 
-bool
-dzn_descriptor_type_depends_on_shader_usage(VkDescriptorType type)
-{
-   return type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ||
-          type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
-          type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-          type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-}
-
-void
+static void
 dzn_descriptor_heap_finish(dzn_descriptor_heap *heap)
 {
    if (heap->heap)
@@ -764,7 +764,7 @@ dzn_descriptor_heap_finish(dzn_descriptor_heap *heap)
       heap->dev->Release();
 }
 
-VkResult
+static VkResult
 dzn_descriptor_heap_init(dzn_descriptor_heap *heap,
                          dzn_device *device,
                          D3D12_DESCRIPTOR_HEAP_TYPE type,
@@ -815,7 +815,7 @@ dzn_descriptor_heap_get_gpu_handle(const dzn_descriptor_heap *heap, uint32_t des
    };
 }
 
-void
+static void
 dzn_descriptor_heap_write_sampler_desc(dzn_descriptor_heap *heap,
                                        uint32_t desc_offset,
                                        const dzn_sampler *sampler)
@@ -866,7 +866,7 @@ dzn_descriptor_heap_write_image_view_desc(dzn_descriptor_heap *heap,
    }
 }
 
-void
+static void
 dzn_descriptor_heap_write_buffer_view_desc(dzn_descriptor_heap *heap,
                                            uint32_t desc_offset,
                                            bool writeable,
@@ -1005,13 +1005,13 @@ dzn_descriptor_set_ptr_move(const dzn_descriptor_set *set,
    dzn_descriptor_set_ptr_validate(set, ptr);
 }
 
-bool
+static bool
 dzn_descriptor_set_ptr_is_valid(const dzn_descriptor_set_ptr *ptr)
 {
    return ptr->binding != ~0 && ptr->elem != ~0;
 }
 
-uint32_t
+static uint32_t
 dzn_descriptor_set_remaining_descs_in_binding(const dzn_descriptor_set *set,
                                               const dzn_descriptor_set_ptr *ptr)
 {
@@ -1025,7 +1025,7 @@ dzn_descriptor_set_remaining_descs_in_binding(const dzn_descriptor_set *set,
 }
 
 
-uint32_t
+static uint32_t
 dzn_descriptor_set_get_heap_offset(const dzn_descriptor_set *set,
                                    D3D12_DESCRIPTOR_HEAP_TYPE type,
                                    const dzn_descriptor_set_ptr *ptr,
@@ -1042,7 +1042,7 @@ dzn_descriptor_set_get_heap_offset(const dzn_descriptor_set *set,
    return base + ptr->elem;
 }
 
-void
+static void
 dzn_descriptor_set_write_sampler_desc(dzn_descriptor_set *set,
                                       const dzn_descriptor_set_ptr *ptr,
                                       const dzn_sampler *sampler)
@@ -1060,7 +1060,7 @@ dzn_descriptor_set_write_sampler_desc(dzn_descriptor_set *set,
    }
 }
 
-uint32_t
+static uint32_t
 dzn_descriptor_set_get_dynamic_buffer_idx(const dzn_descriptor_set *set,
                                           const dzn_descriptor_set_ptr *ptr)
 {
@@ -1075,7 +1075,7 @@ dzn_descriptor_set_get_dynamic_buffer_idx(const dzn_descriptor_set *set,
    return base + ptr->elem;
 }
 
-void
+static void
 dzn_descriptor_set_write_dynamic_buffer_desc(dzn_descriptor_set *set,
                                              const dzn_descriptor_set_ptr *ptr,
                                              const dzn_buffer_desc *info)
@@ -1089,7 +1089,7 @@ dzn_descriptor_set_write_dynamic_buffer_desc(dzn_descriptor_set *set,
    set->dynamic_buffers[dynamic_buffer_idx] = *info;
 }
 
-VkDescriptorType
+static VkDescriptorType
 dzn_descriptor_set_get_desc_vk_type(const dzn_descriptor_set *set,
                                     const dzn_descriptor_set_ptr *ptr)
 {
@@ -1099,7 +1099,7 @@ dzn_descriptor_set_get_desc_vk_type(const dzn_descriptor_set *set,
    return set->layout->bindings[ptr->binding].type;
 }
 
-void
+static void
 dzn_descriptor_set_write_image_view_desc(dzn_descriptor_set *set,
                                          const dzn_descriptor_set_ptr *ptr,
                                          bool cube_as_2darray,
@@ -1130,7 +1130,7 @@ dzn_descriptor_set_write_image_view_desc(dzn_descriptor_set *set,
    mtx_unlock(&set->pool->defragment_lock);
 }
 
-void
+static void
 dzn_descriptor_set_write_buffer_view_desc(dzn_descriptor_set *set,
                                          const dzn_descriptor_set_ptr *ptr,
                                          const dzn_buffer_view *bview)
@@ -1158,7 +1158,7 @@ dzn_descriptor_set_write_buffer_view_desc(dzn_descriptor_set *set,
    mtx_unlock(&set->pool->defragment_lock);
 }
 
-void
+static void
 dzn_descriptor_set_write_buffer_desc(dzn_descriptor_set *set,
                                      const dzn_descriptor_set_ptr *ptr,
                                      const dzn_buffer_desc *bdesc)
@@ -1323,7 +1323,7 @@ dzn_descriptor_pool_create(dzn_device *device,
    return VK_SUCCESS;
 }
 
-VkResult
+static VkResult
 dzn_descriptor_pool_defragment_heap(dzn_descriptor_pool *pool,
                                     D3D12_DESCRIPTOR_HEAP_TYPE type)
 {

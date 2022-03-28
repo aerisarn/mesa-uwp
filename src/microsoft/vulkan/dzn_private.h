@@ -381,9 +381,6 @@ struct dzn_descriptor_heap {
    uint32_t desc_sz;
 };
 
-bool
-dzn_descriptor_type_depends_on_shader_usage(VkDescriptorType type);
-
 D3D12_CPU_DESCRIPTOR_HANDLE
 dzn_descriptor_heap_get_cpu_handle(const dzn_descriptor_heap *heap, uint32_t slot);
 
@@ -407,14 +404,6 @@ void
 dzn_descriptor_heap_copy(dzn_descriptor_heap *dst_heap, uint32_t dst_heap_offset,
                          const dzn_descriptor_heap *src_heap, uint32_t src_heap_offset,
                          uint32_t desc_count);
-
-VkResult
-dzn_descriptor_heap_init(dzn_descriptor_heap *heap, dzn_device *device,
-                         D3D12_DESCRIPTOR_HEAP_TYPE type, uint32_t count,
-	                 bool shader_visible);
-
-void
-dzn_descriptor_heap_finish(dzn_descriptor_heap *heap);
 
 struct dzn_descriptor_heap_pool_entry {
    struct list_head link;
@@ -838,11 +827,6 @@ dzn_image_range_get_subresource_index(const dzn_image *image,
                                       const VkImageSubresourceRange *range,
                                       VkImageAspectFlagBits aspect,
                                       uint32_t level, uint32_t layer);
-
-uint32_t
-dzn_image_get_subresource_index(const dzn_image *image,
-                                const VkImageSubresource *subres,
-                                VkImageAspectFlagBits aspect);
 
 D3D12_TEXTURE_COPY_LOCATION
 dzn_image_get_copy_loc(const dzn_image *image,
