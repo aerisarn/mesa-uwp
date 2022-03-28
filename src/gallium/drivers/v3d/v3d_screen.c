@@ -431,7 +431,6 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
         case PIPE_SHADER_CAP_DROUND_SUPPORTED:
         case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
         case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
-        case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
         case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
         case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
@@ -468,9 +467,6 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                 return 1 << PIPE_SHADER_IR_NIR;
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
                 /* We use NIR's loop unrolling */
-                return 0;
-        case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
-        case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
                 return 0;
         default:
                 fprintf(stderr, "unknown shader param %d\n", param);

@@ -552,10 +552,6 @@ The integer capabilities:
 * ``PIPE_CAP_COMPUTE_GRID_INFO_LAST_BLOCK``: Whether pipe_grid_info::last_block
   is implemented by the driver. See struct pipe_grid_info for more details.
 * ``PIPE_CAP_COMPUTE_SHADER_DERIVATIVE``: True if the driver supports derivatives (and texture lookups with implicit derivatives) in compute shaders.
-* ``PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS``:  Whether the TGSI pass to shrink IO
-  arrays should be skipped and enforce keeping the declared array sizes instead.
-  A driver might rely on the input mapping that was defined with the original
-  GLSL code.
 * ``PIPE_CAP_IMAGE_LOAD_FORMATTED``: True if a format for image loads does not need to be specified in the shader IR
 * ``PIPE_CAP_IMAGE_STORE_FORMATTED``: True if a format for image stores does not need to be specified in the shader IR
 * ``PIPE_CAP_THROTTLE``: Whether or not gallium frontends should throttle pipe_context
@@ -740,8 +736,6 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
 * ``PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED``: Whether DFRACEXP and
   DLDEXP are supported.
 * ``PIPE_SHADER_CAP_LDEXP_SUPPORTED``: Whether LDEXP is supported.
-* ``PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED``: Whether FMA and DFMA (doubles only)
-  are supported.
 * ``PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE``: Whether the driver doesn't
   ignore tgsi_declaration_range::Last for shader inputs and outputs.
 * ``PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT``: This is the maximum number
@@ -755,13 +749,6 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
 * ``PIPE_SHADER_CAP_SUPPORTED_IRS``: Supported representations of the
   program.  It should be a mask of ``pipe_shader_ir`` bits.
 * ``PIPE_SHADER_CAP_MAX_SHADER_IMAGES``: Maximum number of image units.
-* ``PIPE_SHADER_CAP_LOWER_IF_THRESHOLD``: IF and ELSE branches with a lower
-  cost than this value should be lowered by gallium frontends for better
-  performance. This is a tunable for the GLSL compiler and the behavior is
-  specific to the compiler.
-* ``PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS``: Whether the merge registers
-  TGSI pass is skipped. This might reduce code size and register pressure if
-  the underlying driver has a real backend compiler.
 * ``PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS``: If atomic counters are separate,
   how many HW counters are available for this stage. (0 uses SSBO atomics).
 * ``PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS``: If atomic counters are

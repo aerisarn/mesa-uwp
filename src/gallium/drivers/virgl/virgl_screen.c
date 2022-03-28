@@ -342,8 +342,6 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_DEST_SURFACE_SRGB_CONTROL:
       return (vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_SRGB_WRITE_CONTROL) ||
             (vscreen->caps.caps.v2.host_feature_check_version < 1);
-   case PIPE_CAP_TGSI_SKIP_SHRINK_IO_ARRAYS:
-      return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_INDIRECT_INPUT_ADDR;
    case PIPE_CAP_SHAREABLE_SHADERS:
       /* Shader creation emits the shader through the context's command buffer
        * in virgl_encode_shader_state().
@@ -444,8 +442,6 @@ virgl_get_shader_param(struct pipe_screen *screen,
          return vscreen->caps.caps.v2.max_atomic_counters[shader];
       case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
          return vscreen->caps.caps.v2.max_atomic_counter_buffers[shader];
-      case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
-      case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
       case PIPE_SHADER_CAP_INT64_ATOMICS:
       case PIPE_SHADER_CAP_FP16:
       case PIPE_SHADER_CAP_FP16_DERIVATIVES:

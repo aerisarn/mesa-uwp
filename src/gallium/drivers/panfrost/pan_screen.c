@@ -424,7 +424,6 @@ panfrost_get_shader_param(struct pipe_screen *screen,
         case PIPE_SHADER_CAP_DROUND_SUPPORTED:
         case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
         case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
-        case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
         case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
                 return 0;
 
@@ -451,8 +450,6 @@ panfrost_get_shader_param(struct pipe_screen *screen,
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
-        case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
-        case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
                 return 0;
 
         default:

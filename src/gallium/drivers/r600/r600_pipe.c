@@ -645,18 +645,9 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		}
 		return ir;
 	}
-	case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
-		if (rscreen->b.family == CHIP_ARUBA ||
-		    rscreen->b.family == CHIP_CAYMAN ||
-		    rscreen->b.family == CHIP_CYPRESS ||
-		    rscreen->b.family == CHIP_HEMLOCK)
-			return 1;
-		return 0;
 	case PIPE_SHADER_CAP_DROUND_SUPPORTED:
 	case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
 	case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
-	case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
-	case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
 		return 0;
 	case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
 	case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:

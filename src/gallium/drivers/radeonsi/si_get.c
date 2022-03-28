@@ -437,8 +437,6 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
       return 0;
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return PIPE_SHADER_IR_NIR;
-   case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
-      return 4;
 
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       if (shader == PIPE_SHADER_COMPUTE) {
@@ -457,9 +455,7 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
    case PIPE_SHADER_CAP_INTEGERS:
    case PIPE_SHADER_CAP_INT64_ATOMICS:
-   case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
-   case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
