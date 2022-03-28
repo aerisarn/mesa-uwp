@@ -68,6 +68,16 @@ static void
 reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q);
 
 static inline unsigned
+get_num_queries(enum pipe_query_type query_type)
+{
+   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      return 2;
+   if (query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+      return PIPE_MAX_VERTEX_STREAMS;
+   return 1;
+}
+
+static inline unsigned
 get_num_results(enum pipe_query_type query_type)
 {
    switch (query_type) {
@@ -192,11 +202,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
    struct zink_query_buffer *qbo = CALLOC_STRUCT(zink_query_buffer);
    if (!qbo)
       return false;
-   int num_buffers = 1;
-   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
-      num_buffers = 2;
-   else if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
-      num_buffers = PIPE_MAX_VERTEX_STREAMS;
+   int num_buffers = get_num_queries(query->type);
 
    for (unsigned i = 0; i < num_buffers; i++) {
       qbo->buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
@@ -274,11 +280,7 @@ zink_create_query(struct pipe_context *pctx,
    else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
       pool_create.pipelineStatistics = pipeline_statistic_convert(index);
 
-   int num_pools = 1;
-   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
-      num_pools = 2;
-   else if (query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
-      num_pools = PIPE_MAX_VERTEX_STREAMS;
+   int num_pools = get_num_queries(query_type);
 
    for (unsigned i = 0; i < num_pools; i++) {
       /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
@@ -558,11 +560,7 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
    if (q->needs_update)
       update_qbo(ctx, q);
 
-   unsigned num_queries = 1;
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
-      num_queries = 2;
-   else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
-      num_queries = PIPE_MAX_VERTEX_STREAMS;
+   unsigned num_queries = get_num_queries(q->type);
 
    for (unsigned i = 0; i < num_queries; i++)
       VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, q->query_pool[i], 0, NUM_QUERIES);
@@ -596,11 +594,7 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
    uint32_t query_id = q->curr_query - 1;
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP || q->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
    /* timestamp queries just write to offset 0 always */
-   int num_queries = 1;
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-      num_queries = 2;
-   } else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
-      num_queries = PIPE_MAX_VERTEX_STREAMS;
+   int num_queries = get_num_queries(q->type);
 
    for (unsigned i = 0; i < num_queries; i++) {
       unsigned offset = is_timestamp ? 0 : get_buffer_offset(q, qbo->buffers[i], query_id);
