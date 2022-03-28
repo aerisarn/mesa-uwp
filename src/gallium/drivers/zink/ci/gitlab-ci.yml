@@ -4,6 +4,7 @@
   variables:
     ZINK_USE_LAVAPIPE: "true"
     LIBGL_ALWAYS_SOFTWARE: "1"
+    LVP_POISON_MEMORY: "1"
     GPU_VERSION: zink-lvp
     FLAKES_CHANNEL: "#zink-ci"
     # Fix non-conformant llvmpipe filter defaults

@@ -1,3 +1,6 @@
+#this will naturally be fixed on the next ci piglit uprev
+spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
+
 KHR-GL46.texture_view.view_sampling,Fail
 
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
