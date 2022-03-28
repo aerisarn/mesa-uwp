@@ -1900,7 +1900,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       unreachable("not reached: should be lowered by DIV_TO_MUL_RCP in the compiler");
 
    case nir_op_fmod:
-      unreachable("not reached: should be lowered by MOD_TO_FLOOR in the compiler");
+      unreachable("not reached: should be lowered by lower_fmod in the compiler");
 
    case nir_op_fsub:
    case nir_op_isub:

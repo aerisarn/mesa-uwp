@@ -38,7 +38,6 @@ struct gl_shader_program;
 #define FDIV_TO_MUL_RCP    0x02
 #define EXP_TO_EXP2        0x04
 #define LOG_TO_LOG2        0x10
-#define MOD_TO_FLOOR       0x20
 #define INT_DIV_TO_MUL_RCP 0x40
 #define LDEXP_TO_ARITH     0x80
 #define CARRY_TO_ARITH     0x100
