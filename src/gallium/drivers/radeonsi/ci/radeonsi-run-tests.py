@@ -323,7 +323,13 @@ if args.piglit:
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
-        print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
+        print_yellow("[baseline {}]\n".format(baseline), args.verbose > 0)
+
+    flakes = os.path.join(base, "{}-piglit-quick-flakes.csv".format(gpu_name))
+    if os.path.exists(flakes):
+        cmd += ["--flakes", flakes]
+        print_yellow("[flakes {}]\n".format(flakes), args.verbose > 0)
+
     run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
     verify_results(baseline, new_baseline)
