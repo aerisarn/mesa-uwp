@@ -1755,7 +1755,7 @@ radv_emit_color_write_enable(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
                          struct radv_color_buffer_info *cb, struct radv_image_view *iview,
-                         VkImageLayout layout, bool in_render_loop, bool disable_dcc)
+                         VkImageLayout layout, bool in_render_loop)
 {
    bool is_vi = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX8;
    uint32_t cb_color_info = cb->cb_color_info;
@@ -1764,8 +1764,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
    if (!radv_layout_dcc_compressed(
           cmd_buffer->device, image, iview->base_mip, layout, in_render_loop,
           radv_image_queue_family_mask(image, cmd_buffer->qf,
-                                       cmd_buffer->qf)) ||
-       disable_dcc) {
+                                       cmd_buffer->qf))) {
       cb_color_info &= C_028C70_DCC_ENABLE;
    }
 
@@ -2524,7 +2523,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       assert(iview->aspect_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
                                    VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
       radv_emit_fb_color_state(cmd_buffer, i, &cmd_buffer->state.attachments[idx].cb, iview, layout,
-                               in_render_loop, cmd_buffer->state.attachments[idx].disable_dcc);
+                               in_render_loop);
 
       radv_load_color_clear_metadata(cmd_buffer, iview, i);
 
@@ -4315,8 +4314,7 @@ radv_cmd_state_setup_sample_locations(struct radv_cmd_buffer *cmd_buffer,
 
 static VkResult
 radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv_render_pass *pass,
-                                 const VkRenderPassBeginInfo *info,
-                                 const struct radv_extra_render_pass_begin_info *extra)
+                                 const VkRenderPassBeginInfo *info)
 {
    struct radv_cmd_state *state = &cmd_buffer->state;
    const struct VkRenderPassAttachmentBeginInfo *attachment_info = NULL;
@@ -4373,7 +4371,6 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer, struct radv
       state->attachments[i].current_layout = att->initial_layout;
       state->attachments[i].current_in_render_loop = false;
       state->attachments[i].current_stencil_layout = att->stencil_initial_layout;
-      state->attachments[i].disable_dcc = extra && extra->disable_dcc;
       state->attachments[i].sample_location.count = 0;
 
       struct radv_image_view *iview;
@@ -4625,7 +4622,7 @@ radv_BeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBegi
       }
 
       if (cmd_buffer->state.framebuffer) {
-         result = radv_cmd_state_setup_attachments(cmd_buffer, cmd_buffer->state.pass, NULL, NULL);
+         result = radv_cmd_state_setup_attachments(cmd_buffer, cmd_buffer->state.pass, NULL);
          if (result != VK_SUCCESS)
             return result;
       }
@@ -5976,8 +5973,7 @@ radv_cmd_buffer_end_subpass(struct radv_cmd_buffer *cmd_buffer)
 
 void
 radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
-                                  const VkRenderPassBeginInfo *pRenderPassBegin,
-                                  const struct radv_extra_render_pass_begin_info *extra_info)
+                                  const VkRenderPassBeginInfo *pRenderPassBegin)
 {
    RADV_FROM_HANDLE(radv_render_pass, pass, pRenderPassBegin->renderPass);
    RADV_FROM_HANDLE(radv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
@@ -5987,7 +5983,7 @@ radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pass = pass;
    cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
 
-   result = radv_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBegin, extra_info);
+   result = radv_cmd_state_setup_attachments(cmd_buffer, pass, pRenderPassBegin);
    if (result != VK_SUCCESS)
       return;
 
@@ -6003,7 +5999,7 @@ radv_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   radv_cmd_buffer_begin_render_pass(cmd_buffer, pRenderPassBeginInfo, NULL);
+   radv_cmd_buffer_begin_render_pass(cmd_buffer, pRenderPassBeginInfo);
 
    radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }

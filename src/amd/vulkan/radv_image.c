@@ -2168,6 +2168,7 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    }
 
    iview->support_fast_clear = radv_image_view_can_fast_clear(device, iview);
+   iview->disable_dcc_mrt = extra_create_info ? extra_create_info->disable_dcc_mrt : false;
 
    bool disable_compression = extra_create_info ? extra_create_info->disable_compression : false;
    bool enable_compression = extra_create_info ? extra_create_info->enable_compression : false;

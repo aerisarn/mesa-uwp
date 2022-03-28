@@ -73,7 +73,9 @@ create_iview(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf *s
                                                 .baseArrayLayer = surf->layer,
                                                 .layerCount = 1},
                         },
-                        NULL);
+                        &(struct radv_image_view_extra_create_info){
+                           .disable_dcc_mrt = surf->disable_compression
+                        });
 }
 
 static void
@@ -291,9 +293,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                      },
                   .clearValueCount = 0,
                   .pClearValues = NULL,
-               },
-               &(struct radv_extra_render_pass_begin_info){.disable_dcc =
-                                                              dst->disable_compression});
+               });
 
             radv_cmd_buffer_set_subpass(cmd_buffer, &cmd_buffer->state.pass->subpasses[0]);
 
@@ -327,8 +327,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                      },
                   .clearValueCount = 0,
                   .pClearValues = NULL,
-               },
-               NULL);
+               });
 
             radv_cmd_buffer_set_subpass(cmd_buffer, &cmd_buffer->state.pass->subpasses[0]);
 
@@ -363,8 +362,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
                      },
                   .clearValueCount = 0,
                   .pClearValues = NULL,
-               },
-               NULL);
+               });
 
             radv_cmd_buffer_set_subpass(cmd_buffer, &cmd_buffer->state.pass->subpasses[0]);
 

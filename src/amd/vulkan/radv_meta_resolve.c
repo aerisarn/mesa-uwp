@@ -583,8 +583,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer, struct radv
                                                              }},
                                            .clearValueCount = 0,
                                            .pClearValues = NULL,
-                                        },
-                                        NULL);
+                                        });
 
       radv_cmd_buffer_set_subpass(cmd_buffer, &cmd_buffer->state.pass->subpasses[0]);
 

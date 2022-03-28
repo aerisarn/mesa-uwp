@@ -601,8 +601,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
                                                           }},
                                         .clearValueCount = 0,
                                         .pClearValues = NULL,
-                                     },
-                                     NULL);
+                                     });
 
    radv_cmd_buffer_set_subpass(cmd_buffer, &cmd_buffer->state.pass->subpasses[0]);
 

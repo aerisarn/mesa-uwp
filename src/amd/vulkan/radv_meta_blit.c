@@ -295,8 +295,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                },
             .clearValueCount = 0,
             .pClearValues = NULL,
-         },
-         NULL);
+         });
       switch (src_image->type) {
       case VK_IMAGE_TYPE_1D:
          pipeline = &device->meta_state.blit.pipeline_1d_src[fs_key];
@@ -327,8 +326,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                },
             .clearValueCount = 0,
             .pClearValues = NULL,
-         },
-         NULL);
+         });
       switch (src_image->type) {
       case VK_IMAGE_TYPE_1D:
          pipeline = &device->meta_state.blit.depth_only_1d_pipeline;
@@ -359,8 +357,7 @@ meta_emit_blit(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                },
             .clearValueCount = 0,
             .pClearValues = NULL,
-         },
-         NULL);
+         });
       switch (src_image->type) {
       case VK_IMAGE_TYPE_1D:
          pipeline = &device->meta_state.blit.stencil_only_1d_pipeline;
