@@ -21,8 +21,7 @@
 struct zink_query_buffer {
    struct list_head list;
    unsigned num_results;
-   struct pipe_resource *buffer;
-   struct pipe_resource *xfb_buffers[PIPE_MAX_VERTEX_STREAMS - 1];
+   struct pipe_resource *buffers[PIPE_MAX_VERTEX_STREAMS];
 };
 
 struct zink_query {
@@ -194,39 +193,26 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
    struct zink_query_buffer *qbo = CALLOC_STRUCT(zink_query_buffer);
    if (!qbo)
       return false;
-   qbo->buffer = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
-                                  PIPE_USAGE_STAGING,
-                                  /* this is the maximum possible size of the results in a given buffer */
-                                  NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
-   if (!qbo->buffer)
-      goto fail;
-   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-      /* need separate xfb buffer */
-      qbo->xfb_buffers[0] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
-                                     PIPE_USAGE_STAGING,
-                                     /* this is the maximum possible size of the results in a given buffer */
-                                     NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
-      if (!qbo->xfb_buffers[0])
+   int num_buffers = 1;
+   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      num_buffers = 2;
+   else if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+      num_buffers = PIPE_MAX_VERTEX_STREAMS;
+
+   for (unsigned i = 0; i < num_buffers; i++) {
+      qbo->buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
+                                           PIPE_USAGE_STAGING,
+                                           /* this is the maximum possible size of the results in a given buffer */
+                                           NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
+      if (!qbo->buffers[i])
          goto fail;
-   } else if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-      /* need to monitor all xfb streams */
-      for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++) {
-         /* need separate xfb buffer */
-         qbo->xfb_buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
-                                        PIPE_USAGE_STAGING,
-                                        /* this is the maximum possible size of the results in a given buffer */
-                                        NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
-         if (!qbo->xfb_buffers[i])
-            goto fail;
-      }
    }
    list_addtail(&qbo->list, &query->buffers);
 
    return true;
 fail:
-   pipe_resource_reference(&qbo->buffer, NULL);
-   for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++)
-      pipe_resource_reference(&qbo->xfb_buffers[i], NULL);
+   for (unsigned i = 0; i < num_buffers; i++)
+      pipe_resource_reference(&qbo->buffers[i], NULL);
    FREE(qbo);
    return false;
 }
@@ -239,9 +225,8 @@ destroy_query(struct zink_screen *screen, struct zink_query *query)
       VKSCR(DestroyQueryPool)(screen->dev, query->query_pool, NULL);
    struct zink_query_buffer *qbo, *next;
    LIST_FOR_EACH_ENTRY_SAFE(qbo, next, &query->buffers, list) {
-      pipe_resource_reference(&qbo->buffer, NULL);
-      for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers); i++)
-         pipe_resource_reference(&qbo->xfb_buffers[i], NULL);
+      for (unsigned i = 0; i < ARRAY_SIZE(qbo->buffers); i++)
+         pipe_resource_reference(&qbo->buffers[i], NULL);
       FREE(qbo);
    }
    for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool); i++) {
@@ -461,7 +446,7 @@ get_query_result(struct pipe_context *pctx,
       bool is_timestamp = query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
       if (!qbo->num_results)
          continue;
-      results = pipe_buffer_map_range(pctx, qbo->buffer, 0,
+      results = pipe_buffer_map_range(pctx, qbo->buffers[0], 0,
                                       (is_timestamp ? 1 : qbo->num_results) * result_size, flags, &xfer);
       if (!results) {
          if (wait)
@@ -470,7 +455,7 @@ get_query_result(struct pipe_context *pctx,
       }
       struct pipe_transfer *xfb_xfer = NULL;
       if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-         xfb_results = pipe_buffer_map_range(pctx, qbo->xfb_buffers[0], 0,
+         xfb_results = pipe_buffer_map_range(pctx, qbo->buffers[1], 0,
                                          qbo->num_results * result_size, flags, &xfb_xfer);
          if (!xfb_results) {
             if (wait)
@@ -484,8 +469,8 @@ get_query_result(struct pipe_context *pctx,
       if (xfb_xfer)
          pipe_buffer_unmap(pctx, xfb_xfer);
       if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-         for (unsigned i = 0; i < ARRAY_SIZE(qbo->xfb_buffers) && !result->b; i++) {
-            uint64_t *results = pipe_buffer_map_range(pctx, qbo->xfb_buffers[i],
+         for (unsigned i = 1; i < ARRAY_SIZE(qbo->buffers) && !result->b; i++) {
+            uint64_t *results = pipe_buffer_map_range(pctx, qbo->buffers[i],
                                               0,
                                               qbo->num_results * result_size, flags, &xfer);
             if (!results) {
@@ -618,33 +603,21 @@ static void
 update_qbo(struct zink_context *ctx, struct zink_query *q)
 {
    struct zink_query_buffer *qbo = q->curr_qbo;
-   unsigned offset = 0;
    uint32_t query_id = q->curr_query - 1;
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP || q->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
    /* timestamp queries just write to offset 0 always */
-   if (!is_timestamp)
-      offset = get_buffer_offset(q, qbo->buffer, query_id);
-   copy_pool_results_to_buffer(ctx, q, q->query_pool, query_id, zink_resource(qbo->buffer),
-                          offset,
-                          1, VK_QUERY_RESULT_64_BIT);
+   int num_queries = 1;
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+      num_queries = 2;
+   } else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+      num_queries = PIPE_MAX_VERTEX_STREAMS;
 
-   if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
-       q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
-       q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
-      copy_pool_results_to_buffer(ctx, q,
-                                  q->xfb_query_pool[0] ? q->xfb_query_pool[0] : q->query_pool,
-                                  query_id,
-                                  zink_resource(qbo->xfb_buffers[0] ? qbo->xfb_buffers[0] : qbo->buffer),
-                             get_buffer_offset(q, qbo->xfb_buffers[0] ? qbo->xfb_buffers[0] : qbo->buffer, query_id),
-                             1, VK_QUERY_RESULT_64_BIT);
-   }
-
-   else if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-      for (unsigned i = 0; i < ARRAY_SIZE(q->xfb_query_pool); i++) {
-         copy_pool_results_to_buffer(ctx, q, q->xfb_query_pool[i], query_id, zink_resource(qbo->xfb_buffers[i]),
-                                get_buffer_offset(q, qbo->xfb_buffers[i], query_id),
-                                1, VK_QUERY_RESULT_64_BIT);
-      }
+   for (unsigned i = 0; i < num_queries; i++) {
+      unsigned offset = is_timestamp ? 0 : get_buffer_offset(q, qbo->buffers[i], query_id);
+      VkQueryPool query_pool = i != 0 ? q->xfb_query_pool[i - 1] : q->query_pool;
+      copy_pool_results_to_buffer(ctx, q, query_pool, query_id, zink_resource(qbo->buffers[i]),
+                                  offset,
+                                  1, VK_QUERY_RESULT_64_BIT);
    }
 
    if (!is_timestamp)
@@ -1095,8 +1068,8 @@ zink_get_query_result_resource(struct pipe_context *pctx,
             if (query->needs_update)
                update_qbo(ctx, query);
             /* internal qbo always writes 64bit value so we can just direct copy */
-            zink_copy_buffer(ctx, res, zink_resource(query->curr_qbo->buffer), offset,
-                             get_buffer_offset(query, query->curr_qbo->buffer, query->last_start),
+            zink_copy_buffer(ctx, res, zink_resource(query->curr_qbo->buffers[0]), offset,
+                             get_buffer_offset(query, query->curr_qbo->buffers[0], query->last_start),
                              result_size);
          } else
             /* have to do a new copy for 32bit */
