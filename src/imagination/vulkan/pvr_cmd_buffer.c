@@ -5063,6 +5063,114 @@ static void pvr_insert_transparent_obj(struct pvr_cmd_buffer *const cmd_buffer,
    pvr_reset_graphics_dirty_state(&cmd_buffer->state, false);
 }
 
+static inline struct pvr_render_subpass *
+pvr_get_current_subpass(const struct pvr_cmd_buffer_state *const state)
+{
+   const uint32_t subpass_idx = state->render_pass_info.subpass_idx;
+
+   return &state->render_pass_info.pass->subpasses[subpass_idx];
+}
+
+static bool
+pvr_stencil_has_self_dependency(const struct pvr_cmd_buffer_state *const state)
+{
+   const struct pvr_render_subpass *const current_subpass =
+      pvr_get_current_subpass(state);
+   const uint32_t *const input_attachments = current_subpass->input_attachments;
+
+   /* We only need to check the current software subpass as we don't support
+    * merging to/from a subpass with self-dep stencil.
+    */
+
+   for (uint32_t i = 0; i < current_subpass->input_count; i++) {
+      if (input_attachments[i] == *current_subpass->depth_stencil_attachment)
+         return true;
+   }
+
+   return false;
+}
+
+static bool pvr_is_stencil_store_load_needed(
+   const struct pvr_cmd_buffer_state *const state,
+   VkPipelineStageFlags2 vk_src_stage_mask,
+   VkPipelineStageFlags2 vk_dst_stage_mask,
+   uint32_t memory_barrier_count,
+   const VkMemoryBarrier2 *const memory_barriers,
+   uint32_t image_barrier_count,
+   const VkImageMemoryBarrier2 *const image_barriers)
+{
+   const uint32_t fragment_test_stages =
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+   const struct pvr_render_pass *const pass = state->render_pass_info.pass;
+   const struct pvr_renderpass_hwsetup_render *hw_render;
+   struct pvr_image_view **const attachments =
+      state->render_pass_info.attachments;
+   const struct pvr_image_view *attachment;
+   uint32_t hw_render_idx;
+
+   if (!pass)
+      return false;
+
+   hw_render_idx = state->current_sub_cmd->gfx.hw_render_idx;
+   hw_render = &pass->hw_setup->renders[hw_render_idx];
+   attachment = attachments[hw_render->ds_surface_id];
+
+   if (!(vk_src_stage_mask & fragment_test_stages) &&
+       vk_dst_stage_mask & VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT)
+      return false;
+
+   if (hw_render->ds_surface_id == -1)
+      return false;
+
+   for (uint32_t i = 0; i < memory_barrier_count; i++) {
+      const uint32_t stencil_write_bit =
+         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      const uint32_t input_attachment_read_bit =
+         VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+
+      if (!(memory_barriers[i].srcAccessMask & stencil_write_bit))
+         continue;
+
+      if (!(memory_barriers[i].dstAccessMask & input_attachment_read_bit))
+         continue;
+
+      return pvr_stencil_has_self_dependency(state);
+   }
+
+   for (uint32_t i = 0; i < image_barrier_count; i++) {
+      PVR_FROM_HANDLE(pvr_image, image, image_barriers[i].image);
+      const uint32_t stencil_bit = VK_IMAGE_ASPECT_STENCIL_BIT;
+
+      if (!(image_barriers[i].subresourceRange.aspectMask & stencil_bit))
+         continue;
+
+      if (attachment && image != vk_to_pvr_image(attachment->vk.image))
+         continue;
+
+      if (!vk_format_has_stencil(image->vk.format))
+         continue;
+
+      return pvr_stencil_has_self_dependency(state);
+   }
+
+   return false;
+}
+
+static void pvr_insert_mid_frag_barrier(struct pvr_cmd_buffer *cmd_buffer)
+{
+   struct pvr_sub_cmd *const curr_sub_cmd = cmd_buffer->state.current_sub_cmd;
+
+   assert(curr_sub_cmd->type == PVR_SUB_CMD_TYPE_GRAPHICS);
+
+   pvr_finishme("Handle mid frag barrier stencil store.");
+
+   pvr_cmd_buffer_end_sub_cmd(cmd_buffer);
+   pvr_cmd_buffer_start_sub_cmd(cmd_buffer, PVR_SUB_CMD_TYPE_GRAPHICS);
+
+   pvr_finishme("Handle mid frag barrier color attachment load.");
+}
+
 /* This is just enough to handle vkCmdPipelineBarrier().
  * TODO: Complete?
  */
@@ -5075,6 +5183,7 @@ void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       state->render_pass_info.pass;
    VkPipelineStageFlags vk_src_stage_mask = 0U;
    VkPipelineStageFlags vk_dst_stage_mask = 0U;
+   bool is_stencil_store_load_needed;
    uint32_t required_stage_mask = 0U;
    uint32_t src_stage_mask;
    uint32_t dst_stage_mask;
@@ -5177,8 +5286,17 @@ void pvr_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
       is_barrier_needed = true;
    }
 
-   if (render_pass) {
-      pvr_finishme("Insert mid fragment stage barrier if needed.");
+   is_stencil_store_load_needed =
+      pvr_is_stencil_store_load_needed(state,
+                                       vk_src_stage_mask,
+                                       vk_dst_stage_mask,
+                                       pDependencyInfo->memoryBarrierCount,
+                                       pDependencyInfo->pMemoryBarriers,
+                                       pDependencyInfo->imageMemoryBarrierCount,
+                                       pDependencyInfo->pImageMemoryBarriers);
+
+   if (is_stencil_store_load_needed) {
+      pvr_insert_mid_frag_barrier(cmd_buffer);
    } else {
       if (is_barrier_needed)
          pvr_finishme("Insert barrier if needed.");
