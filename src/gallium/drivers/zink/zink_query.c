@@ -435,60 +435,49 @@ get_query_result(struct pipe_context *pctx,
 
    int num_results = query->curr_query - query->last_start;
    int result_size = get_num_results(query->type) * sizeof(uint64_t);
+   int num_maps = get_num_queries(query->type);
 
    struct zink_query_buffer *qbo;
-   struct pipe_transfer *xfer;
+   struct pipe_transfer *xfer[PIPE_MAX_VERTEX_STREAMS] = { 0 };
    LIST_FOR_EACH_ENTRY(qbo, &query->buffers, list) {
-      uint64_t *xfb_results = NULL;
-      uint64_t *results;
+      uint64_t *results[PIPE_MAX_VERTEX_STREAMS];
       bool is_timestamp = query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
       if (!qbo->num_results)
          continue;
-      results = pipe_buffer_map_range(pctx, qbo->buffers[0], 0,
-                                      (is_timestamp ? 1 : qbo->num_results) * result_size, flags, &xfer);
-      if (!results) {
-         if (wait)
-            debug_printf("zink: qbo read failed!");
-         return false;
-      }
-      struct pipe_transfer *xfb_xfer = NULL;
-      if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-         xfb_results = pipe_buffer_map_range(pctx, qbo->buffers[1], 0,
-                                         qbo->num_results * result_size, flags, &xfb_xfer);
-         if (!xfb_results) {
+
+      for (unsigned i = 0; i < num_maps; i++) {
+         results[i] = pipe_buffer_map_range(pctx, qbo->buffers[i], 0,
+                                            (is_timestamp ? 1 : qbo->num_results) * result_size, flags, &xfer[i]);
+         if (!results[i]) {
             if (wait)
-               debug_printf("zink: xfb qbo read failed!");
-            pipe_buffer_unmap(pctx, xfer);
-            return false;
+               debug_printf("zink: qbo read failed!");
+            goto fail;
          }
       }
-      check_query_results(query, result, is_timestamp ? 1 : qbo->num_results, results, xfb_results);
-      pipe_buffer_unmap(pctx, xfer);
-      if (xfb_xfer)
-         pipe_buffer_unmap(pctx, xfb_xfer);
       if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE) {
-         for (unsigned i = 1; i < ARRAY_SIZE(qbo->buffers) && !result->b; i++) {
-            uint64_t *results = pipe_buffer_map_range(pctx, qbo->buffers[i],
-                                              0,
-                                              qbo->num_results * result_size, flags, &xfer);
-            if (!results) {
-               if (wait)
-                  debug_printf("zink: qbo read failed!");
-               return false;
-            }
-            check_query_results(query, result, num_results, results, xfb_results);
-            pipe_buffer_unmap(pctx, xfer);
+         for (unsigned i = 0; i < PIPE_MAX_VERTEX_STREAMS && !result->b; i++) {
+            check_query_results(query, result, num_results, results[i], NULL);
          }
-         /* if overflow is detected we can stop */
-         if (result->b)
-            break;
-      }
+      } else
+         check_query_results(query, result, is_timestamp ? 1 : qbo->num_results, results[0], results[1]);
+
+      for (unsigned i = 0 ; i < num_maps; i++)
+         pipe_buffer_unmap(pctx, xfer[i]);
+
+      /* if overflow is detected we can stop */
+      if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE && result->b)
+         break;
    }
 
    if (is_time_query(query))
       timestamp_to_nanoseconds(screen, &result->u64);
 
    return true;
+fail:
+   for (unsigned i = 0 ; i < num_maps; i++)
+      if (xfer[i])
+         pipe_buffer_unmap(pctx, xfer[i]);
+   return false;
 }
 
 static void
