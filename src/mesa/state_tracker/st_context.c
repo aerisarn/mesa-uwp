@@ -176,8 +176,14 @@ st_invalidate_state(struct gl_context *ctx)
    }
 
    /* Update the vertex shader if ctx->Point was changed. */
-   if (st->lower_point_size && new_state & _NEW_POINT)
-      st->dirty |= ST_NEW_VS_STATE | ST_NEW_TES_STATE | ST_NEW_GS_STATE;
+   if (st->lower_point_size && new_state & _NEW_POINT) {
+      if (ctx->GeometryProgram._Current)
+         st->dirty |= ST_NEW_GS_STATE;
+      else if (ctx->TessEvalProgram._Current)
+         st->dirty |= ST_NEW_TES_STATE;
+      else
+         st->dirty |= ST_NEW_VS_STATE;
+   }
 
    /* Which shaders are dirty will be determined manually. */
    if (new_state & _NEW_PROGRAM) {
