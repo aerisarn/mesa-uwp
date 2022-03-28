@@ -638,6 +638,30 @@ dzn_pipeline_layout_ref(struct dzn_pipeline_layout *layout);
 void
 dzn_pipeline_layout_unref(struct dzn_pipeline_layout *layout);
 
+struct dzn_descriptor_update_template_entry {
+   VkDescriptorType type;
+   uint32_t desc_count;
+   union {
+      struct {
+         uint32_t cbv_srv_uav;
+         union {
+            uint32_t sampler, extra_uav;
+         };
+      } heap_offsets;
+      uint32_t dynamic_buffer_idx;
+   };
+   struct {
+      size_t offset;
+      size_t stride;
+   } user_data;
+};
+
+struct dzn_descriptor_update_template {
+   struct vk_object_base base;
+   uint32_t entry_count;
+   const struct dzn_descriptor_update_template_entry *entries;
+};
+
 #define MAX_RTS 8
 #define MAX_INPUT_ATTACHMENTS 4
 
@@ -1002,6 +1026,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_device_memory, base, VkDeviceMemory, VK_OBJEC
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_descriptor_pool, base, VkDescriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_descriptor_set, base, VkDescriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_descriptor_set_layout, base, VkDescriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT)
+VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_descriptor_update_template, base, VkDescriptorUpdateTemplate, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_event, base, VkEvent, VK_OBJECT_TYPE_EVENT)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_framebuffer, base, VkFramebuffer, VK_OBJECT_TYPE_FRAMEBUFFER)
 VK_DEFINE_NONDISP_HANDLE_CASTS(dzn_image, vk.base, VkImage, VK_OBJECT_TYPE_IMAGE)

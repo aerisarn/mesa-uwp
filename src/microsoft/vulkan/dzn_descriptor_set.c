@@ -1870,3 +1870,268 @@ dzn_UpdateDescriptorSets(VkDevice _device,
    for (unsigned i = 0; i < descriptorCopyCount; i++)
       dzn_descriptor_set_copy(&pDescriptorCopies[i]);
 }
+
+static void
+dzn_descriptor_update_template_destroy(struct dzn_descriptor_update_template *templ,
+                                       const VkAllocationCallbacks *alloc)
+{
+   if (!templ)
+      return;
+
+   struct dzn_device *device =
+      container_of(templ->base.device, struct dzn_device, vk);
+
+   vk_object_base_finish(&templ->base);
+   vk_free2(&device->vk.alloc, alloc, templ);
+}
+
+static VkResult
+dzn_descriptor_update_template_create(struct dzn_device *device,
+                                      const VkDescriptorUpdateTemplateCreateInfo *info,
+                                      const VkAllocationCallbacks *alloc,
+                                      VkDescriptorUpdateTemplate *out)
+{
+   assert(info->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET);
+
+   VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, info->descriptorSetLayout);
+
+   uint32_t entry_count = 0;
+   for (uint32_t e = 0; e < info->descriptorUpdateEntryCount; e++) {
+      struct dzn_descriptor_set_ptr ptr;
+      dzn_descriptor_set_ptr_init(set_layout, &ptr,
+                                  info->pDescriptorUpdateEntries[e].dstBinding,
+                                  info->pDescriptorUpdateEntries[e].dstArrayElement);
+      uint32_t desc_count = info->pDescriptorUpdateEntries[e].descriptorCount;
+      VkDescriptorType type = info->pDescriptorUpdateEntries[e].descriptorType;
+      uint32_t d = 0;
+
+      while (dzn_descriptor_set_ptr_is_valid(&ptr) && d < desc_count) {
+         uint32_t ndescs = dzn_descriptor_set_remaining_descs_in_binding(set_layout, &ptr);
+
+         assert(dzn_descriptor_set_ptr_get_vk_type(set_layout, &ptr) == type);
+         d += ndescs;
+         dzn_descriptor_set_ptr_move(set_layout, &ptr, ndescs);
+         entry_count++;
+      }
+
+      assert(d >= desc_count);
+   }
+
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_descriptor_update_template, templ, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_descriptor_update_template_entry, entries, entry_count);
+
+   if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, alloc,
+                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_object_base_init(&device->vk, &templ->base, VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
+   templ->entry_count = entry_count;
+   templ->entries = entries;
+
+   struct dzn_descriptor_update_template_entry *entry = entries;
+
+   for (uint32_t e = 0; e < info->descriptorUpdateEntryCount; e++) {
+      struct dzn_descriptor_set_ptr ptr;
+      dzn_descriptor_set_ptr_init(set_layout, &ptr,
+                                  info->pDescriptorUpdateEntries[e].dstBinding,
+                                  info->pDescriptorUpdateEntries[e].dstArrayElement);
+      uint32_t desc_count = info->pDescriptorUpdateEntries[e].descriptorCount;
+      VkDescriptorType type = info->pDescriptorUpdateEntries[e].descriptorType;
+      size_t user_data_offset = info->pDescriptorUpdateEntries[e].offset;
+      size_t user_data_stride = info->pDescriptorUpdateEntries[e].stride;
+      uint32_t d = 0;
+
+      while (dzn_descriptor_set_ptr_is_valid(&ptr) && d < desc_count) {
+         uint32_t ndescs = dzn_descriptor_set_remaining_descs_in_binding(set_layout, &ptr);
+
+         entry->type = type;
+         entry->desc_count = MIN2(desc_count - d, ndescs);
+	 entry->user_data.stride = user_data_stride;
+         entry->user_data.offset = user_data_offset;
+         memset(&entry->heap_offsets, ~0, sizeof(entry->heap_offsets));
+
+         assert(dzn_descriptor_set_ptr_get_vk_type(set_layout, &ptr) == type);
+         if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+             type == VK_DESCRIPTOR_TYPE_SAMPLER) {
+            entry->heap_offsets.sampler =
+               dzn_descriptor_set_ptr_get_heap_offset(set_layout,
+                                                      D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER,
+                                                      &ptr, false);
+         }
+
+         if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+             type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+            entry->dynamic_buffer_idx =
+               dzn_descriptor_set_ptr_get_dynamic_buffer_idx(set_layout, &ptr);
+         } else if (type != VK_DESCRIPTOR_TYPE_SAMPLER) {
+            entry->heap_offsets.cbv_srv_uav =
+               dzn_descriptor_set_ptr_get_heap_offset(set_layout,
+                                                      D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                                                      &ptr, false);
+            if (dzn_descriptor_type_depends_on_shader_usage(type)) {
+               entry->heap_offsets.extra_uav =
+                  dzn_descriptor_set_ptr_get_heap_offset(set_layout,
+                                                         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV,
+                                                         &ptr, true);
+            }
+         }
+
+         d += ndescs;
+         dzn_descriptor_set_ptr_move(set_layout, &ptr, ndescs);
+         user_data_offset += user_data_stride * ndescs;
+         ++entry;
+      }
+   }
+
+   *out = dzn_descriptor_update_template_to_handle(templ);
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_CreateDescriptorUpdateTemplate(VkDevice device,
+                                   const VkDescriptorUpdateTemplateCreateInfo *pCreateInfo,
+                                   const VkAllocationCallbacks *pAllocator,
+                                   VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
+{
+   return dzn_descriptor_update_template_create(dzn_device_from_handle(device),
+                                                pCreateInfo, pAllocator,
+                                                pDescriptorUpdateTemplate);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_DestroyDescriptorUpdateTemplate(VkDevice device,
+                                    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+                                    const VkAllocationCallbacks *pAllocator)
+{
+   dzn_descriptor_update_template_destroy(dzn_descriptor_update_template_from_handle(descriptorUpdateTemplate),
+                                          pAllocator);
+}
+
+static const void *
+dzn_descriptor_update_template_get_desc_data(const struct dzn_descriptor_update_template *templ,
+                                             uint32_t e, uint32_t d,
+                                             const void *user_data)
+{
+   return (const void *)((const uint8_t *)user_data +
+                         templ->entries[e].user_data.offset +
+                         (d * templ->entries[e].user_data.stride));
+}
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_UpdateDescriptorSetWithTemplate(VkDevice device,
+                                    VkDescriptorSet descriptorSet,
+                                    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+                                    const void *pData)
+{
+   VK_FROM_HANDLE(dzn_descriptor_set, set, descriptorSet);
+   VK_FROM_HANDLE(dzn_descriptor_update_template, templ, descriptorUpdateTemplate);
+
+   for (uint32_t e = 0; e < templ->entry_count; e++) {
+      const struct dzn_descriptor_update_template_entry *entry = &templ->entries[e];
+      bool cube_as_2darray =
+         entry->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+      switch (entry->type) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+         for (uint32_t d = 0; d < entry->desc_count; d++) {
+            const VkDescriptorImageInfo *info = (const VkDescriptorImageInfo *)
+               dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
+            VK_FROM_HANDLE(dzn_sampler, sampler, info->sampler);
+
+            if (sampler)
+               dzn_descriptor_set_write_sampler_desc(set, entry->heap_offsets.sampler + d, sampler);
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         for (uint32_t d = 0; d < entry->desc_count; d++) {
+            const VkDescriptorImageInfo *info = (const VkDescriptorImageInfo *)
+               dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
+            VK_FROM_HANDLE(dzn_sampler, sampler, info->sampler);
+            VK_FROM_HANDLE(dzn_image_view, iview, info->imageView);
+
+            if (sampler)
+               dzn_descriptor_set_write_sampler_desc(set, entry->heap_offsets.sampler + d, sampler);
+
+            if (iview)
+               dzn_descriptor_set_write_image_view_desc(set, entry->heap_offsets.cbv_srv_uav + d, ~0, cube_as_2darray, iview);
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         for (uint32_t d = 0; d < entry->desc_count; d++) {
+            const VkDescriptorImageInfo *info = (const VkDescriptorImageInfo *)
+               dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
+            uint32_t srv_heap_offset = entry->heap_offsets.cbv_srv_uav + d;
+            uint32_t uav_heap_offset =
+               entry->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ?
+               entry->heap_offsets.extra_uav + d : ~0;
+            VK_FROM_HANDLE(dzn_image_view, iview, info->imageView);
+
+            if (iview)
+               dzn_descriptor_set_write_image_view_desc(set, srv_heap_offset, uav_heap_offset, cube_as_2darray, iview);
+         }
+         break;
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         for (uint32_t d = 0; d < entry->desc_count; d++) {
+            const VkDescriptorBufferInfo *info = (const VkDescriptorBufferInfo *)
+               dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
+            uint32_t cbv_srv_heap_offset = entry->heap_offsets.cbv_srv_uav + d;
+            uint32_t uav_heap_offset =
+               entry->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ?
+               entry->heap_offsets.extra_uav + d : ~0;
+
+            struct dzn_buffer_desc desc = {
+               entry->type,
+               dzn_buffer_from_handle(info->buffer),
+               info->range, info->offset
+            };
+
+            if (desc.buffer)
+               dzn_descriptor_set_write_buffer_desc(set, cbv_srv_heap_offset, uav_heap_offset, &desc);
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         for (uint32_t d = 0; d < entry->desc_count; d++) {
+            const VkDescriptorBufferInfo *info = (const VkDescriptorBufferInfo *)
+               dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
+            uint32_t dyn_buf_idx = entry->dynamic_buffer_idx + d;
+
+            struct dzn_buffer_desc desc = {
+               entry->type,
+               dzn_buffer_from_handle(info->buffer),
+               info->range, info->offset
+            };
+
+            if (desc.buffer)
+               dzn_descriptor_set_write_dynamic_buffer_desc(set, dyn_buf_idx, &desc);
+         }
+         break;
+
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         for (uint32_t d = 0; d < entry->desc_count; d++) {
+            VkBufferView *info = (VkBufferView *)
+               dzn_descriptor_update_template_get_desc_data(templ, e, d, pData);
+            VK_FROM_HANDLE(dzn_buffer_view, bview, *info);
+            uint32_t srv_heap_offset = entry->heap_offsets.cbv_srv_uav + d;
+            uint32_t uav_heap_offset =
+               entry->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ?
+               entry->heap_offsets.extra_uav + d : ~0;
+
+            if (bview)
+               dzn_descriptor_set_write_buffer_view_desc(set, srv_heap_offset, uav_heap_offset, bview);
+         }
+         break;
+
+      default:
+         unreachable("invalid descriptor type");
+      }
+   }
+}
