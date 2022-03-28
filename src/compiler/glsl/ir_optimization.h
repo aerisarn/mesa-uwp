@@ -118,8 +118,6 @@ bool do_function_inlining(exec_list *instructions);
 bool do_lower_jumps(exec_list *instructions, bool pull_out_jumps = true, bool lower_sub_return = true, bool lower_main_return = false, bool lower_continue = false, bool lower_break = false);
 bool do_if_simplification(exec_list *instructions);
 bool opt_flatten_nested_if_blocks(exec_list *instructions);
-bool lower_if_to_cond_assign(gl_shader_stage stage, exec_list *instructions,
-                             unsigned max_depth = 0, unsigned min_branch_cost = 0);
 bool do_mat_op_to_vec(exec_list *instructions);
 bool do_minmax_prune(exec_list *instructions);
 bool do_structure_splitting(exec_list *instructions);

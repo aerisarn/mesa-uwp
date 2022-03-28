@@ -94,9 +94,6 @@ do_optimization(struct exec_list *ir, const char *optimization,
                             int_3 != 0, int_4 != 0);
    } else if (strcmp(optimization, "do_if_simplification") == 0) {
       return do_if_simplification(ir);
-   } else if (sscanf(optimization, "lower_if_to_cond_assign ( %d ) ",
-                     &int_0) == 1) {
-      return lower_if_to_cond_assign(MESA_SHADER_VERTEX, ir, int_0);
    } else if (strcmp(optimization, "do_mat_op_to_vec") == 0) {
       return do_mat_op_to_vec(ir);
    } else if (strcmp(optimization, "optimize_swizzles") == 0) {

@@ -161,7 +161,6 @@ files_libglsl = files(
   'lower_discard.cpp',
   'lower_discard_flow.cpp',
   'lower_distance.cpp',
-  'lower_if_to_cond_assign.cpp',
   'lower_instructions.cpp',
   'lower_int64.cpp',
   'lower_jumps.cpp',
