@@ -39,6 +39,7 @@ struct zink_query {
 
    bool active; /* query is considered active by vk */
    bool needs_reset; /* query is considered active by vk and cannot be destroyed */
+   bool range_needs_reset; /* last range in query needs reset. */
    bool dead; /* query should be destroyed when its fence finishes */
    bool needs_update; /* query needs to update its qbos */
 
@@ -546,6 +547,22 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    copy_pool_results_to_buffer(ctx, query, query->query_pool[0], query->last_start, res, offset, num_results, flags);
 }
 
+
+static void
+reset_query_range(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
+{
+   unsigned num_query_pools = get_num_query_pools(q->type);
+   bool is_so_overflow_any = q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE;
+   unsigned num_query = is_so_overflow_any ? PIPE_MAX_VERTEX_STREAMS : 1;
+
+   for (unsigned i = 0; i < num_query_pools; i++)
+      VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, q->query_pool[i], q->curr_query, num_query);
+   memset(&q->have_gs[q->curr_query], 0, sizeof(bool) * num_query);
+   memset(&q->have_xfb[q->curr_query], 0, sizeof(bool) * num_query);
+   memset(&q->was_line_loop[q->curr_query], 0, sizeof(bool) * num_query);
+   q->range_needs_reset = false;
+}
+
 static void
 reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
@@ -557,16 +574,9 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
    if (q->needs_update)
       update_qbo(ctx, q);
 
-   unsigned num_query_pools = get_num_query_pools(q->type);
-
-   for (unsigned i = 0; i < num_query_pools; i++)
-      VKCTX(CmdResetQueryPool)(batch->state->cmdbuf, q->query_pool[i], 0, NUM_QUERIES);
-
-   memset(q->have_gs, 0, sizeof(q->have_gs));
-   memset(q->have_xfb, 0, sizeof(q->have_xfb));
-   memset(q->was_line_loop, 0, sizeof(q->was_line_loop));
    q->last_start = q->curr_query = 0;
    q->needs_reset = false;
+   q->range_needs_reset = true;
    /* create new qbo for non-timestamp queries:
     * timestamp queries should never need more than 2 entries in the qbo
     */
@@ -619,6 +629,8 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    q->predicate_dirty = true;
    if (q->needs_reset)
       reset_pool(ctx, batch, q);
+   if (q->range_needs_reset)
+      reset_query_range(ctx, batch, q);
    assert(q->curr_query < NUM_QUERIES);
    q->active = true;
    batch->has_work = true;
@@ -692,6 +704,8 @@ update_query_id(struct zink_context *ctx, struct zink_query *q)
 {
    bool is_so_overflow_any = q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE;
    q->curr_query += is_so_overflow_any ? PIPE_MAX_VERTEX_STREAMS : 1;
+
+   q->range_needs_reset = true;
    if (q->curr_query == NUM_QUERIES) {
       /* always reset on start; this ensures we can actually submit the batch that the current query is on */
       q->needs_reset = true;
@@ -765,6 +779,8 @@ zink_end_query(struct pipe_context *pctx,
    if (is_time_query(query)) {
       if (query->needs_reset)
          reset_pool(ctx, batch, query);
+      if (query->range_needs_reset)
+         reset_query_range(ctx, batch, query);
       VKCTX(CmdWriteTimestamp)(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           query->query_pool[0], query->curr_query);
       zink_batch_usage_set(&query->batch_id, batch->state);
