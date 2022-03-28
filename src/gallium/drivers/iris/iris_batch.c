@@ -525,6 +525,8 @@ iris_batch_reset(struct iris_batch *batch)
    batch->contains_fence_signal = false;
    if (devinfo->ver < 11)
       batch->decoder.surface_base = batch->last_binder_address;
+   else
+      batch->decoder.bt_pool_base = batch->last_binder_address;
 
    create_batch(batch);
    assert(batch->bo->index == 0);
