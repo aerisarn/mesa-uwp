@@ -263,7 +263,7 @@ handle_binding_table_pool_alloc(struct intel_batch_decode_ctx *ctx,
       }
    }
 
-   if (bt_pool_enable) {
+   if (bt_pool_enable || ctx->devinfo.verx10 >= 125) {
       ctx->bt_pool_base = bt_pool_base;
    } else {
       ctx->bt_pool_base = 0;
