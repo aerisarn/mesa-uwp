@@ -6975,7 +6975,7 @@ radv_after_draw(struct radv_cmd_buffer *cmd_buffer)
    /* Workaround for a VGT hang when streamout is enabled.
     * It must be done after drawing.
     */
-   if (cmd_buffer->state.streamout.streamout_enabled &&
+   if (radv_is_streamout_enabled(cmd_buffer) &&
        (rad_info->family == CHIP_HAWAII || rad_info->family == CHIP_TONGA ||
         rad_info->family == CHIP_FIJI)) {
       cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_VGT_STREAMOUT_SYNC;
@@ -8995,20 +8995,33 @@ radv_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer, uint32_t 
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_STREAMOUT_BUFFER;
 }
 
-static void
+bool
+radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_streamout_state *so = &cmd_buffer->state.streamout;
+
+   return so->streamout_enabled;
+}
+
+void
 radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
-   struct radv_shader_info *info = &pipeline->streamout_shader->info;
+   bool streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
+   uint32_t enabled_stream_buffers_mask = 0;
+
+   if (pipeline && pipeline->streamout_shader) {
+      enabled_stream_buffers_mask = pipeline->streamout_shader->info.so.enabled_stream_buffers_mask;
+   }
 
    radeon_set_context_reg_seq(cs, R_028B94_VGT_STRMOUT_CONFIG, 2);
-   radeon_emit(cs, S_028B94_STREAMOUT_0_EN(so->streamout_enabled) | S_028B94_RAST_STREAM(0) |
-                      S_028B94_STREAMOUT_1_EN(so->streamout_enabled) |
-                      S_028B94_STREAMOUT_2_EN(so->streamout_enabled) |
-                      S_028B94_STREAMOUT_3_EN(so->streamout_enabled));
-   radeon_emit(cs, so->hw_enabled_mask & info->so.enabled_stream_buffers_mask);
+   radeon_emit(cs, S_028B94_STREAMOUT_0_EN(streamout_enabled) | S_028B94_RAST_STREAM(0) |
+                      S_028B94_STREAMOUT_1_EN(streamout_enabled) |
+                      S_028B94_STREAMOUT_2_EN(streamout_enabled) |
+                      S_028B94_STREAMOUT_3_EN(streamout_enabled));
+   radeon_emit(cs, so->hw_enabled_mask & enabled_stream_buffers_mask);
 
    cmd_buffer->state.context_roll_without_scissor_emitted = true;
 }
@@ -9017,7 +9030,7 @@ static void
 radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
 {
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
-   bool old_streamout_enabled = so->streamout_enabled;
+   bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
    uint32_t old_hw_enabled_mask = so->hw_enabled_mask;
 
    so->streamout_enabled = enable;
@@ -9026,7 +9039,7 @@ radv_set_streamout_enable(struct radv_cmd_buffer *cmd_buffer, bool enable)
                          (so->enabled_mask << 12);
 
    if (!cmd_buffer->device->physical_device->use_ngg_streamout &&
-       ((old_streamout_enabled != so->streamout_enabled) ||
+       ((old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) ||
         (old_hw_enabled_mask != so->hw_enabled_mask)))
       radv_emit_streamout_enable(cmd_buffer);
 

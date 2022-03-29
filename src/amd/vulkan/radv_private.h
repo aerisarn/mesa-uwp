@@ -1600,6 +1600,9 @@ struct radv_image_view;
 
 bool radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer);
 
+bool radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer);
+void radv_emit_streamout_enable(struct radv_cmd_buffer *cmd_buffer);
+
 void si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs);
 void si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs);
 

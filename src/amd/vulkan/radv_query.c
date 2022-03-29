@@ -1427,6 +1427,21 @@ event_type_for_stream(unsigned stream)
 }
 
 static void
+emit_sample_streamout(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint32_t index)
+{
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+   radeon_check_space(cmd_buffer->device->ws, cs, 4);
+
+   assert(index < MAX_SO_STREAMS);
+
+   radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
+   radeon_emit(cs, EVENT_TYPE(event_type_for_stream(index)) | EVENT_INDEX(3));
+   radeon_emit(cs, va);
+   radeon_emit(cs, va >> 32);
+}
+
+static void
 emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool, uint64_t va,
                  VkQueryType query_type, VkQueryControlFlags flags, uint32_t index)
 {
@@ -1517,14 +1532,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       }
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      radeon_check_space(cmd_buffer->device->ws, cs, 4);
-
-      assert(index < MAX_SO_STREAMS);
-
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
-      radeon_emit(cs, EVENT_TYPE(event_type_for_stream(index)) | EVENT_INDEX(3));
-      radeon_emit(cs, va);
-      radeon_emit(cs, va >> 32);
+      emit_sample_streamout(cmd_buffer, va, index);
       break;
    default:
       unreachable("beginning unhandled query type");
@@ -1599,14 +1607,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       }
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
-      radeon_check_space(cmd_buffer->device->ws, cs, 4);
-
-      assert(index < MAX_SO_STREAMS);
-
-      radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 2, 0));
-      radeon_emit(cs, EVENT_TYPE(event_type_for_stream(index)) | EVENT_INDEX(3));
-      radeon_emit(cs, (va + 16));
-      radeon_emit(cs, (va + 16) >> 32);
+      emit_sample_streamout(cmd_buffer, va + 16, index);
       break;
    default:
       unreachable("ending unhandled query type");
