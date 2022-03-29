@@ -144,7 +144,7 @@ files_mesa_util = files(
   'u_debug_memory.c',
   'u_cpu_detect.c',
   'u_cpu_detect.h',
-  'u_printf.cpp',
+  'u_printf.c',
   'u_printf.h',
   'vl_vlc.h',
   'vl_rbsp.h',

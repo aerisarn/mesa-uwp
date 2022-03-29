@@ -23,8 +23,10 @@
 
 #include <assert.h>
 #include <stdarg.h>
+#include <string.h>
+
+#include "macros.h"
 #include "u_printf.h"
-#include "util/macros.h"
 
 /* Some versions of MinGW are missing _vscprintf's declaration, although they
  * still provide the symbol in the import library. */
@@ -40,37 +42,35 @@ _CRTIMP int _vscprintf(const char *format, va_list argptr);
 #endif
 #endif
 
-size_t util_printf_next_spec_pos(const std::string &s, size_t pos)
+size_t util_printf_next_spec_pos(const char *str, size_t pos)
 {
-   size_t next_tok, spec_pos;
-   do {
-      pos = s.find_first_of('%', pos);
+   if (str == NULL)
+      return -1;
 
-      if (pos == std::string::npos)
+   const char *str_found = str + pos;
+   do {
+      str_found = strchr(str_found, '%');
+      if (str_found == NULL)
          return -1;
 
-      if (s[pos + 1] == '%') {
-         pos += 2;
+      ++str_found;
+      if (*str_found == '%') {
+         ++str_found;
          continue;
       }
 
-      next_tok = s.find_first_of('%', pos + 1);
-      spec_pos = s.find_first_of("cdieEfFgGaAosuxXp", pos + 1);
-      if (spec_pos != std::string::npos)
-         if (spec_pos < next_tok)
-            return spec_pos;
-
-      pos++;
+      char *spec_pos = strpbrk(str_found, "cdieEfFgGaAosuxXp%");
+      if (spec_pos == NULL) {
+         return -1;
+      } else if (*spec_pos == '%') {
+         str_found = spec_pos;
+      } else {
+         return spec_pos - str;
+      }
    } while (1);
 }
 
-size_t util_printf_next_spec_pos(const char *str, size_t pos)
-{
-   return util_printf_next_spec_pos(std::string(str), pos);
-}
-
-size_t
-u_printf_length(const char *fmt, va_list untouched_args)
+size_t u_printf_length(const char *fmt, va_list untouched_args)
 {
    int size;
    char junk;
