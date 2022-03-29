@@ -4563,8 +4563,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
           */
          const bool render_fence = tgm_fence && devinfo->verx10 == 70;
 
+         /* Simulation also complains on Gfx9 if we do not enable commit.
+          */
          const bool commit_enable = render_fence ||
-            instr->intrinsic == nir_intrinsic_end_invocation_interlock;
+            instr->intrinsic == nir_intrinsic_end_invocation_interlock ||
+            devinfo->ver == 9;
 
          if (tgm_fence || ugm_fence || slm_fence || urb_fence) {
             fence_regs[fence_regs_count++] =
