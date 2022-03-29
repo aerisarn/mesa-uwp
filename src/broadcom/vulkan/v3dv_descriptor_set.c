@@ -606,9 +606,6 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       return vk_error(device, result);
    }
 
-   memset(set_layout->binding, 0,
-          size - sizeof(struct v3dv_descriptor_set_layout));
-
    set_layout->binding_count = num_bindings;
    set_layout->flags = pCreateInfo->flags;
    set_layout->shader_stages = 0;
