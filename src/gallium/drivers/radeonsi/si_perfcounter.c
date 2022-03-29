@@ -713,6 +713,26 @@ void si_init_perfcounters(struct si_screen *screen)
    }
 }
 
+static bool
+si_spm_init_bo(struct si_context *sctx)
+{
+   struct radeon_winsys *ws = sctx->ws;
+   uint64_t size = 32 * 1024 * 1024; /* Default to 32MB. */
+
+   sctx->spm_trace.buffer_size = size;
+   sctx->spm_trace.sample_interval = 4096; /* Default to 4096 clk. */
+
+   sctx->spm_trace.bo = ws->buffer_create(
+      ws, size, 4096,
+      RADEON_DOMAIN_VRAM,
+      RADEON_FLAG_NO_INTERPROCESS_SHARING |
+         RADEON_FLAG_GTT_WC |
+         RADEON_FLAG_NO_SUBALLOC);
+
+   return sctx->spm_trace.bo != NULL;
+}
+
+
 static void
 si_emit_spm_counters(struct si_context *sctx, struct radeon_cmdbuf *cs)
 {
@@ -886,11 +906,17 @@ si_spm_init(struct si_context *sctx)
    if (!ac_init_spm(info, pc, ARRAY_SIZE(spm_counters), spm_counters, &sctx->spm_trace))
       return false;
 
+   if (!si_spm_init_bo(sctx))
+      return false;
+
    return true;
 }
 
 void
 si_spm_finish(struct si_context *sctx)
 {
+   struct pb_buffer *bo = sctx->spm_trace.bo;
+   radeon_bo_reference(sctx->screen->ws, &bo, NULL);
+
    ac_destroy_spm(&sctx->spm_trace);
 }

@@ -389,6 +389,10 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
                      sctx->thread_trace->bo,
                      RADEON_USAGE_READWRITE,
                      RADEON_DOMAIN_VRAM);
+   ws->cs_add_buffer(cs,
+                     sctx->spm_trace.bo,
+                     RADEON_USAGE_READWRITE,
+                     RADEON_DOMAIN_VRAM);
 
    si_cp_dma_wait_for_idle(sctx, cs);
 
@@ -429,6 +433,11 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
 
    ws->cs_add_buffer(cs,
                      sctx->thread_trace->bo,
+                     RADEON_USAGE_READWRITE,
+                     RADEON_DOMAIN_VRAM);
+
+   ws->cs_add_buffer(cs,
+                     sctx->spm_trace.bo,
                      RADEON_USAGE_READWRITE,
                      RADEON_DOMAIN_VRAM);
 
@@ -711,7 +720,7 @@ si_handle_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
       /* Wait for SQTT to finish and read back the bo */
       if (sctx->ws->fence_wait(sctx->ws, sctx->last_sqtt_fence, PIPE_TIMEOUT_INFINITE) &&
           si_get_thread_trace(sctx, &thread_trace)) {
-         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, NULL);
+         ac_dump_rgp_capture(&sctx->screen->info, &thread_trace, &sctx->spm_trace);
       } else {
          fprintf(stderr, "Failed to read the trace\n");
       }
