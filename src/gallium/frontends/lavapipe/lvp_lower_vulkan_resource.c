@@ -200,6 +200,8 @@ lower_vri_instr_tex_deref(nir_tex_instr *tex,
    if (deref_instr->deref_type == nir_deref_type_array) {
       assert(glsl_type_is_array(var->type));
       assert(value >= 0);
+      if (nir_src_is_const(deref_instr->arr.index))
+         return BITFIELD_BIT(value);
       unsigned size = glsl_get_aoa_size(var->type);
       return u_bit_consecutive(value, size);
    } else
