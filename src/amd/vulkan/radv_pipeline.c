@@ -217,6 +217,17 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       free(library_pipeline->stages);
       free(library_pipeline->identifiers);
       free(library_pipeline->hashes);
+   } else if (pipeline->type == RADV_PIPELINE_GRAPHICS_LIB) {
+      struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
+         radv_pipeline_to_graphics_lib(pipeline);
+
+      radv_pipeline_layout_finish(device, &gfx_pipeline_lib->layout);
+
+      for (unsigned i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+         ralloc_free(pipeline->retained_shaders[i].nir);
+      }
+
+      vk_free(&device->vk.alloc, gfx_pipeline_lib->base.state_data);
    }
 
    if (pipeline->slab)
@@ -1478,12 +1489,22 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *vi, uint32_t 
    return 0;
 }
 
+#define ALL_GRAPHICS_LIB_FLAGS \
+   (VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT | \
+    VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT | \
+    VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT | \
+    VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT)
+
 static VkResult
 radv_pipeline_import_graphics_info(struct radv_graphics_pipeline *pipeline,
                                    struct vk_graphics_pipeline_state *state,
-                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
+                                   struct radv_pipeline_layout *layout,
+                                   const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                   VkGraphicsPipelineLibraryFlagBitsEXT lib_flags)
 {
+   RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    struct radv_device *device = pipeline->base.device;
+   VkResult result;
 
    /* Mark all states declared dynamic at pipeline creation. */
    if (pCreateInfo->pDynamicState) {
@@ -1501,9 +1522,92 @@ radv_pipeline_import_graphics_info(struct radv_graphics_pipeline *pipeline,
       pipeline->active_stages |= sinfo->stage;
    }
 
-   return vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, NULL, NULL,
-                                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT,
-                                          &pipeline->state_data);
+   result = vk_graphics_pipeline_state_fill(&device->vk, state, pCreateInfo, NULL, NULL, NULL,
+                                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT,
+                                            &pipeline->state_data);
+   if (result != VK_SUCCESS)
+      return result;
+
+   if (lib_flags == ALL_GRAPHICS_LIB_FLAGS) {
+      radv_pipeline_layout_finish(device, layout);
+      radv_pipeline_layout_init(device, layout, false /* independent_sets */);
+   }
+
+   if (pipeline_layout) {
+      /* As explained in the specification, the application can provide a non
+       * compatible pipeline layout when doing optimized linking :
+       *
+       *    "However, in the specific case that a final link is being
+       *     performed between stages and
+       *     `VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT` is specified,
+       *     the application can override the pipeline layout with one that is
+       *     compatible with that union but does not have the
+       *     `VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT` flag set,
+       *     allowing a more optimal pipeline layout to be used when
+       *     generating the final pipeline."
+       *
+       * In that case discard whatever was imported before.
+       */
+      if (pCreateInfo->flags & VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT &&
+          !pipeline_layout->independent_sets) {
+         radv_pipeline_layout_finish(device, layout);
+         radv_pipeline_layout_init(device, layout, false /* independent_sets */);
+      } else {
+         /* Otherwise if we include a layout that had independent_sets,
+          * propagate that property.
+          */
+         layout->independent_sets |= pipeline_layout->independent_sets;
+      }
+
+      for (uint32_t s = 0; s < pipeline_layout->num_sets; s++) {
+         if (pipeline_layout->set[s].layout == NULL)
+            continue;
+
+         radv_pipeline_layout_add_set(layout, s, pipeline_layout->set[s].layout);
+      }
+
+      layout->push_constant_size = pipeline_layout->push_constant_size;
+   }
+
+   return result;
+}
+
+static void
+radv_graphics_pipeline_import_lib(struct radv_graphics_pipeline *pipeline,
+                                  struct vk_graphics_pipeline_state *state,
+                                  struct radv_pipeline_layout *layout,
+                                  struct radv_graphics_lib_pipeline *lib)
+{
+   /* There should be no common blocks between a lib we import and the current
+    * pipeline we're building.
+    */
+   assert((pipeline->active_stages & lib->base.active_stages) == 0);
+
+   pipeline->dynamic_states |= lib->base.dynamic_states;
+   pipeline->active_stages |= lib->base.active_stages;
+
+   vk_graphics_pipeline_state_merge(state, &lib->graphics_state);
+
+   /* Import the NIR shaders (after SPIRV->NIR). */
+   for (uint32_t s = 0; s < ARRAY_SIZE(lib->base.base.shaders); s++) {
+      if (!lib->base.base.retained_shaders[s].nir)
+         continue;
+
+      pipeline->base.retained_shaders[s] = lib->base.base.retained_shaders[s];
+   }
+
+   /* Import the pipeline layout. */
+   struct radv_pipeline_layout *lib_layout = &lib->layout;
+   for (uint32_t s = 0; s < lib_layout->num_sets; s++) {
+      if (!lib_layout->set[s].layout)
+         continue;
+
+      radv_pipeline_layout_add_set(layout, s, lib_layout->set[s].layout);
+   }
+
+   assert(layout->independent_sets == lib_layout->independent_sets);
+   layout->independent_sets = lib_layout->independent_sets;
+   layout->push_constant_size = MAX2(layout->push_constant_size, lib_layout->push_constant_size);
 }
 
 static void
@@ -4143,6 +4247,62 @@ radv_pipeline_nir_to_asm(struct radv_pipeline *pipeline, struct radv_pipeline_st
    }
 }
 
+static void
+radv_pipeline_stage_retain_shader(struct radv_pipeline *pipeline, struct radv_pipeline_stage *stage)
+{
+   gl_shader_stage s = stage->stage;
+
+   pipeline->retained_shaders[s].nir = nir_shader_clone(NULL, stage->nir);
+}
+
+static void
+radv_pipeline_get_nir(struct radv_pipeline *pipeline, struct radv_pipeline_stage *stages,
+                      const struct radv_pipeline_key *pipeline_key, bool retain_shaders)
+{
+   struct radv_device *device = pipeline->device;
+
+   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
+      if (!stages[s].entrypoint)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      assert(retain_shaders || pipeline->shaders[s] == NULL);
+
+      if (pipeline->retained_shaders[s].nir) {
+         stages[s].nir = nir_shader_clone(NULL, pipeline->retained_shaders[s].nir);
+      } else {
+         stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key);
+      }
+
+      if (retain_shaders)
+         radv_pipeline_stage_retain_shader(pipeline, &stages[s]);
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+   }
+}
+
+static void
+radv_pipeline_load_retained_shaders(struct radv_pipeline *pipeline,
+                                    struct radv_pipeline_stage *stages)
+{
+   for (uint32_t s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
+      if (!pipeline->retained_shaders[s].nir)
+         continue;
+
+      int64_t stage_start = os_time_get_nano();
+
+      assert(pipeline->shaders[s] == NULL);
+
+      stages[s].stage = s;
+      stages[s].entrypoint =
+         nir_shader_get_entrypoint(pipeline->retained_shaders[s].nir)->function->name;
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+      stages[s].feedback.flags |= VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+   }
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4171,6 +4331,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    };
    bool noop_fs = false;
    VkResult result = VK_SUCCESS;
+   const bool retain_shaders =
+      !!(flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT);
 
    int64_t pipeline_start = os_time_get_nano();
 
@@ -4180,6 +4342,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
 
       radv_pipeline_stage_init(sinfo, &stages[stage], stage);
    }
+
+   radv_pipeline_load_retained_shaders(pipeline, stages);
 
    for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
       if (!stages[s].entrypoint)
@@ -4229,7 +4393,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       goto done;
    }
 
-   if (pipeline->type == RADV_PIPELINE_GRAPHICS && !stages[MESA_SHADER_FRAGMENT].entrypoint) {
+   if (!(flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) &&
+       pipeline->type == RADV_PIPELINE_GRAPHICS && !stages[MESA_SHADER_FRAGMENT].entrypoint) {
       nir_builder fs_b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "noop_fs");
 
       stages[MESA_SHADER_FRAGMENT] = (struct radv_pipeline_stage) {
@@ -4244,15 +4409,11 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       noop_fs = true;
    }
 
-   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
-      if (!stages[s].entrypoint)
-         continue;
+   radv_pipeline_get_nir(pipeline, stages, pipeline_key, retain_shaders);
 
-      int64_t stage_start = os_time_get_nano();
-
-      stages[s].nir = radv_shader_spirv_to_nir(device, &stages[s], pipeline_key);
-
-      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+   if (retain_shaders) {
+      result = VK_SUCCESS;
+      goto done;
    }
 
    /* Force per-vertex VRS. */
@@ -6521,15 +6682,50 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
                             const VkGraphicsPipelineCreateInfo *pCreateInfo,
                             const struct radv_graphics_pipeline_create_info *extra)
 {
-   RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
+   struct radv_pipeline_layout pipeline_layout = {0};
    struct vk_graphics_pipeline_state state = {0};
    VkResult result;
 
    pipeline->last_vgt_api_stage = MESA_SHADER_NONE;
 
-   result = radv_pipeline_import_graphics_info(pipeline, &state, pCreateInfo);
-   if (result != VK_SUCCESS)
+   const VkPipelineLibraryCreateInfoKHR *libs_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
+   VkGraphicsPipelineLibraryFlagBitsEXT imported_flags = 0;
+
+   radv_pipeline_layout_init(device, &pipeline_layout, false);
+
+   /* If we have libraries, import them first. */
+   if (libs_info) {
+      ASSERTED const bool link_optimize =
+         (pCreateInfo->flags & VK_PIPELINE_CREATE_LINK_TIME_OPTIMIZATION_BIT_EXT) != 0;
+
+      for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
+         RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
+         struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
+            radv_pipeline_to_graphics_lib(pipeline_lib);
+
+         assert(pipeline_lib->type == RADV_PIPELINE_GRAPHICS_LIB);
+
+         /* If we have link time optimization, all libraries must be created with
+          * VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT.
+          */
+         assert(!link_optimize || gfx_pipeline_lib->base.base.retain_shaders);
+
+         radv_graphics_pipeline_import_lib(pipeline, &state, &pipeline_layout, gfx_pipeline_lib);
+
+         imported_flags |= gfx_pipeline_lib->lib_flags;
+      }
+   }
+
+   /* Import graphics pipeline info that was not included in the libraries. */
+   result = radv_pipeline_import_graphics_info(pipeline, &state, &pipeline_layout, pCreateInfo,
+                                               (~imported_flags) & ALL_GRAPHICS_LIB_FLAGS);
+   if (result != VK_SUCCESS) {
+      radv_pipeline_layout_finish(device, &pipeline_layout);
       return result;
+   }
+
+   radv_pipeline_layout_hash(&pipeline_layout);
 
    struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, &state);
 
@@ -6539,11 +6735,13 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    struct radv_pipeline_key key =
       radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &state, &blend);
 
-   result = radv_create_shaders(&pipeline->base, pipeline_layout, device, cache, &key, pCreateInfo->pStages,
+   result = radv_create_shaders(&pipeline->base, &pipeline_layout, device, cache, &key, pCreateInfo->pStages,
                                 pCreateInfo->stageCount, pCreateInfo->flags, NULL,
                                 creation_feedback, NULL, NULL, &pipeline->last_vgt_api_stage);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      radv_pipeline_layout_finish(device, &pipeline_layout);
       return result;
+   }
 
    pipeline->spi_baryc_cntl = S_0286E0_FRONT_FACE_ALL_BITS(1);
 
@@ -6621,8 +6819,8 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
    pipeline->rast_prim = vgt_gs_out_prim_type;
    pipeline->line_width = state.rs->line.width;
 
-   pipeline->base.push_constant_size = pipeline_layout->push_constant_size;
-   pipeline->base.dynamic_offset_count = pipeline_layout->dynamic_offset_count;
+   pipeline->base.push_constant_size = pipeline_layout.push_constant_size;
+   pipeline->base.dynamic_offset_count = pipeline_layout.dynamic_offset_count;
 
    if (extra) {
       radv_pipeline_init_extra(pipeline, extra, &blend, &ds_state, &state, &vgt_gs_out_prim_type);
@@ -6630,6 +6828,7 @@ radv_graphics_pipeline_init(struct radv_graphics_pipeline *pipeline, struct radv
 
    radv_pipeline_emit_pm4(pipeline, &blend, &ds_state, vgt_gs_out_prim_type, &state);
 
+   radv_pipeline_layout_finish(device, &pipeline_layout);
    return result;
 }
 
@@ -6663,6 +6862,107 @@ radv_graphics_pipeline_create_nonlegacy(VkDevice _device, VkPipelineCache _cache
    return VK_SUCCESS;
 }
 
+static VkResult
+radv_graphics_lib_pipeline_init(struct radv_graphics_lib_pipeline *pipeline,
+                                struct radv_device *device, struct radv_pipeline_cache *cache,
+                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   VkResult result;
+
+   const VkGraphicsPipelineLibraryCreateInfoEXT *lib_info =
+      vk_find_struct_const(pCreateInfo->pNext, GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT);
+   const VkGraphicsPipelineLibraryFlagBitsEXT lib_flags = lib_info ? lib_info->flags : 0;
+   const VkPipelineLibraryCreateInfoKHR *libs_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_LIBRARY_CREATE_INFO_KHR);
+   VkGraphicsPipelineLibraryFlagBitsEXT imported_flags = lib_flags;
+
+   struct vk_graphics_pipeline_state *state = &pipeline->graphics_state;
+   struct radv_pipeline_layout *pipeline_layout = &pipeline->layout;
+
+   pipeline->base.last_vgt_api_stage = MESA_SHADER_NONE;
+   pipeline->base.base.retain_shaders =
+      (pCreateInfo->flags & VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT) != 0;
+   pipeline->lib_flags = lib_flags;
+
+   /* If we have libraries, import them first. */
+   if (libs_info) {
+      for (uint32_t i = 0; i < libs_info->libraryCount; i++) {
+         RADV_FROM_HANDLE(radv_pipeline, pipeline_lib, libs_info->pLibraries[i]);
+         struct radv_graphics_lib_pipeline *gfx_pipeline_lib =
+            radv_pipeline_to_graphics_lib(pipeline_lib);
+
+         radv_graphics_pipeline_import_lib(&pipeline->base, state, pipeline_layout,
+                                           gfx_pipeline_lib);
+
+         pipeline->lib_flags |= gfx_pipeline_lib->lib_flags;
+
+         imported_flags &= ~gfx_pipeline_lib->lib_flags;
+      }
+   }
+
+   result = radv_pipeline_import_graphics_info(&pipeline->base, state, pipeline_layout, pCreateInfo,
+                                               imported_flags);
+   if (result != VK_SUCCESS)
+      return result;
+
+   radv_pipeline_layout_hash(pipeline_layout);
+
+   if (pipeline->base.active_stages != 0) {
+      const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
+         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+
+      struct radv_blend_state blend =
+         radv_pipeline_init_blend_state(&pipeline->base, state);
+
+      struct radv_pipeline_key key =
+         radv_generate_graphics_pipeline_key(&pipeline->base, pCreateInfo, state, &blend);
+
+      /* FIXME: Force the driver to always retain the NIR shaders (after SPIRV->NIR) because it
+       * doesn't yet support VS prologs and PS epilogs. This is very suboptimal, slow but for good
+       * enough for a start.
+       */
+      VkPipelineCreateFlags flags =
+         pCreateInfo->flags | VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
+
+      result = radv_create_shaders(&pipeline->base.base, pipeline_layout, device, cache, &key,
+                                   pCreateInfo->pStages, pCreateInfo->stageCount, flags, NULL,
+                                   creation_feedback, NULL, NULL,
+                                   &pipeline->base.last_vgt_api_stage);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+radv_graphics_lib_pipeline_create(VkDevice _device, VkPipelineCache _cache,
+                                  const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                  const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
+{
+   RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   struct radv_graphics_lib_pipeline *pipeline;
+   VkResult result;
+
+   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
+                         VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (pipeline == NULL)
+      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   radv_pipeline_init(device, &pipeline->base.base, RADV_PIPELINE_GRAPHICS_LIB);
+
+   result = radv_graphics_lib_pipeline_init(pipeline, device, cache, pCreateInfo);
+   if (result != VK_SUCCESS) {
+      radv_pipeline_destroy(device, &pipeline->base.base, pAllocator);
+      return result;
+   }
+
+   *pPipeline = radv_pipeline_to_handle(&pipeline->base.base);
+
+   return VK_SUCCESS;
+}
+
 /* This is a wrapper for radv_graphics_pipeline_create_nonlegacy that does all legacy conversions
  * for the VkGraphicsPipelineCreateInfo data. */
 VkResult
@@ -6672,6 +6972,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
                               const VkAllocationCallbacks *pAllocator, VkPipeline *pPipeline)
 {
    VkGraphicsPipelineCreateInfo create_info = *pCreateInfo;
+   VkResult result;
 
    VkPipelineRenderingCreateInfo rendering_create_info;
    VkFormat color_formats[MAX_RTS];
@@ -6723,8 +7024,14 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       sample_info.depthStencilAttachmentSamples = subpass->depth_sample_count;
    }
 
-   return radv_graphics_pipeline_create_nonlegacy(_device, _cache, &create_info, extra, pAllocator,
-                                                  pPipeline);
+   if (pCreateInfo->flags & VK_PIPELINE_CREATE_LIBRARY_BIT_KHR) {
+      result = radv_graphics_lib_pipeline_create(_device, _cache, &create_info, pAllocator, pPipeline);
+   } else {
+      result = radv_graphics_pipeline_create_nonlegacy(_device, _cache, &create_info, extra, pAllocator,
+                                                       pPipeline);
+   }
+
+   return result;
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
