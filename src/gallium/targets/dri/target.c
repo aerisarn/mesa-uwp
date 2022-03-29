@@ -28,7 +28,7 @@ const __DRIextension **__driDriverGetExtensions_kms_swrast(void);
 PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
 {
    globalDriverAPI = &dri_kms_driver_api;
-   return galliumdrm_driver_extensions;
+   return dri_kms_driver_extensions;
 }
 
 #endif

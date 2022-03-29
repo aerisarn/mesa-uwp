@@ -162,7 +162,7 @@ void
 dri_destroy_screen(__DRIscreen * sPriv);
 
 extern const struct __DriverAPIRec dri_kms_driver_api;
-
+extern const __DRIextension *dri_kms_driver_extensions[];
 extern const struct __DriverAPIRec galliumdrm_driver_api;
 extern const __DRIextension *galliumdrm_driver_extensions[];
 extern const struct __DriverAPIRec galliumsw_driver_api;

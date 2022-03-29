@@ -609,12 +609,18 @@ const struct __DriverAPIRec galliumsw_driver_api = {
    .CopySubBuffer = drisw_copy_sub_buffer,
 };
 
+static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
+   .base = { __DRI_DRIVER_VTABLE, 1 },
+   .vtable = &galliumsw_driver_api,
+};
+
 /* This is the table of extensions that the loader will dlsym() for. */
 const __DRIextension *galliumsw_driver_extensions[] = {
     &driCoreExtension.base,
     &driSWRastExtension.base,
     &driCopySubBufferExtension.base,
     &gallium_config_options.base,
+    &galliumsw_vtable.base,
     NULL
 };
 

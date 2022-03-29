@@ -2544,6 +2544,11 @@ const struct __DriverAPIRec galliumdrm_driver_api = {
    .ReleaseBuffer  = dri2_release_buffer,
 };
 
+static const struct __DRIDriverVtableExtensionRec galliumdrm_vtable = {
+   .base = { __DRI_DRIVER_VTABLE, 1 },
+   .vtable = &galliumdrm_driver_api,
+};
+
 /**
  * DRI driver virtual function table.
  *
@@ -2567,6 +2572,21 @@ const __DRIextension *galliumdrm_driver_extensions[] = {
     &driImageDriverExtension.base,
     &driDRI2Extension.base,
     &gallium_config_options.base,
+    &galliumdrm_vtable.base,
+    NULL
+};
+
+static const struct __DRIDriverVtableExtensionRec dri_kms_vtable = {
+   .base = { __DRI_DRIVER_VTABLE, 1 },
+   .vtable = &dri_kms_driver_api,
+};
+
+const __DRIextension *dri_kms_driver_extensions[] = {
+    &driCoreExtension.base,
+    &driImageDriverExtension.base,
+    &driDRI2Extension.base,
+    &gallium_config_options.base,
+    &dri_kms_vtable.base,
     NULL
 };
 
