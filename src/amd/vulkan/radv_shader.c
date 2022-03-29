@@ -2037,7 +2037,6 @@ radv_shader_compile(struct radv_device *device, struct vk_shader_module *module,
    gl_shader_stage stage = shaders[shader_count - 1]->info.stage;
    struct radv_nir_compiler_options options = {0};
 
-   options.layout = layout;
    if (key)
       options.key = *key;
 

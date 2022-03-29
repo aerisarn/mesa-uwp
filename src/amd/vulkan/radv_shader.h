@@ -112,7 +112,6 @@ enum radv_compiler_debug_level {
 };
 
 struct radv_nir_compiler_options {
-   struct radv_pipeline_layout *layout;
    struct radv_pipeline_key key;
    bool robust_buffer_access;
    bool dump_shader;
@@ -500,6 +499,8 @@ struct radv_shader_prolog {
    /* debug only */
    char *disasm_string;
 };
+
+struct radv_pipeline_layout;
 
 void radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively, bool allow_copies);
 void radv_optimize_nir_algebraic(nir_shader *shader, bool opt_offsets);
