@@ -464,8 +464,7 @@ lower_rq_load(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars,
       }
 
       return nir_build_load_global(
-         b, 3, 32, nir_iadd(b, instance_node_addr, nir_imm_int64(b, 92 + column * 12)),
-         .align_mul = 4, .align_offset = 0);
+         b, 3, 32, nir_iadd(b, instance_node_addr, nir_imm_int64(b, 92 + column * 12)));
    }
    case nir_ray_query_value_intersection_primitive_index:
       return nir_bcsel(b, committed, rq_load_var(b, index, vars->closest.primitive_id),
@@ -553,8 +552,7 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
       nir_ssa_def *triangle_info = nir_build_load_global(
          b, 2, 32,
          nir_iadd(b, build_node_to_addr(device, b, bvh_node),
-                  nir_imm_int64(b, offsetof(struct radv_bvh_triangle_node, triangle_id))),
-         .align_mul = 4, .align_offset = 0);
+                  nir_imm_int64(b, offsetof(struct radv_bvh_triangle_node, triangle_id))));
       nir_ssa_def *primitive_id = nir_channel(b, triangle_info, 0);
       nir_ssa_def *geometry_id_and_flags = nir_channel(b, triangle_info, 1);
       nir_ssa_def *is_opaque =
@@ -601,8 +599,8 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b, nir_ssa_d
                            struct ray_query_vars *vars, nir_ssa_def *bvh_node)
 {
    nir_ssa_def *node_addr = build_node_to_addr(device, b, bvh_node);
-   nir_ssa_def *triangle_info = nir_build_load_global(
-      b, 2, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 24)), .align_mul = 4, .align_offset = 0);
+   nir_ssa_def *triangle_info =
+      nir_build_load_global(b, 2, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 24)));
    nir_ssa_def *primitive_id = nir_channel(b, triangle_info, 0);
    nir_ssa_def *geometry_id_and_flags = nir_channel(b, triangle_info, 1);
    nir_ssa_def *is_opaque =
@@ -626,10 +624,10 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b, nir_ssa_d
       nir_ssa_def *vec3_inf =
          nir_channels(b, nir_imm_vec4(b, INFINITY, INFINITY, INFINITY, 0), 0x7);
 
-      nir_ssa_def *bvh_lo = nir_build_load_global(
-         b, 3, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 0)), .align_mul = 4, .align_offset = 0);
-      nir_ssa_def *bvh_hi = nir_build_load_global(
-         b, 3, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 12)), .align_mul = 4, .align_offset = 0);
+      nir_ssa_def *bvh_lo =
+         nir_build_load_global(b, 3, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 0)));
+      nir_ssa_def *bvh_hi =
+         nir_build_load_global(b, 3, 32, nir_iadd(b, node_addr, nir_imm_int64(b, 12)));
 
       bvh_lo = nir_fsub(b, bvh_lo, rq_load_var(b, index, vars->trav.origin));
       bvh_hi = nir_fsub(b, bvh_hi, rq_load_var(b, index, vars->trav.origin));
