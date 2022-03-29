@@ -33,6 +33,7 @@
 #include "util/u_threaded_context.h"
 #include "util/u_vertex_state_cache.h"
 #include "ac_sqtt.h"
+#include "ac_spm.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1284,6 +1285,7 @@ struct si_context {
 
    /* SQTT */
    struct ac_thread_trace_data *thread_trace;
+   struct ac_spm_trace_data spm_trace;
    struct pipe_fence_handle *last_sqtt_fence;
    enum rgp_sqtt_marker_event_type sqtt_next_event;
    bool thread_trace_enabled;
@@ -1512,6 +1514,9 @@ void si_pc_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
 void si_pc_emit_spm_start(struct radeon_cmdbuf *cs);
 void si_pc_emit_spm_stop(struct radeon_cmdbuf *cs, bool never_stop_sq_perf_counters);
 void si_pc_emit_spm_reset(struct radeon_cmdbuf *cs);
+void si_emit_spm_setup(struct si_context *sctx, struct radeon_cmdbuf *cs);
+bool si_spm_init(struct si_context *sctx);
+void si_spm_finish(struct si_context *sctx);
 
 /* si_query.c */
 void si_init_screen_query_functions(struct si_screen *sscreen);
