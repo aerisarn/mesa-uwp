@@ -9000,7 +9000,9 @@ radv_is_streamout_enabled(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_streamout_state *so = &cmd_buffer->state.streamout;
 
-   return so->streamout_enabled;
+   /* Streamout must be enabled for the PRIMITIVES_GENERATED query to work. */
+   return (so->streamout_enabled || cmd_buffer->state.prims_gen_query_enabled) &&
+          !cmd_buffer->state.suspend_streamout;
 }
 
 void

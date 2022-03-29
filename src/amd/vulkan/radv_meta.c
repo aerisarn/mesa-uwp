@@ -35,7 +35,7 @@
 #include <sys/stat.h>
 
 static void
-radv_suspend_queries(struct radv_cmd_buffer *cmd_buffer)
+radv_suspend_queries(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_buffer)
 {
    /* Pipeline statistics queries. */
    if (cmd_buffer->state.active_pipeline_queries > 0) {
@@ -47,10 +47,22 @@ radv_suspend_queries(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.active_occlusion_queries > 0) {
       radv_set_db_count_control(cmd_buffer, false);
    }
+
+   /* Primitives generated queries. */
+   if (cmd_buffer->state.prims_gen_query_enabled) {
+      cmd_buffer->state.suspend_streamout = true;
+      radv_emit_streamout_enable(cmd_buffer);
+
+      /* Save the number of active GDS queries and reset it to make sure internal operations won't
+       * increment the counters via GDS.
+       */
+      state->active_pipeline_gds_queries = cmd_buffer->state.active_pipeline_gds_queries;
+      cmd_buffer->state.active_pipeline_gds_queries = 0;
+   }
 }
 
 static void
-radv_resume_queries(struct radv_cmd_buffer *cmd_buffer)
+radv_resume_queries(const struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_buffer)
 {
    /* Pipeline statistics queries. */
    if (cmd_buffer->state.active_pipeline_queries > 0) {
@@ -61,6 +73,15 @@ radv_resume_queries(struct radv_cmd_buffer *cmd_buffer)
    /* Occlusion queries. */
    if (cmd_buffer->state.active_occlusion_queries > 0) {
       radv_set_db_count_control(cmd_buffer, true);
+   }
+
+   /* Primitives generated queries. */
+   if (cmd_buffer->state.prims_gen_query_enabled) {
+      cmd_buffer->state.suspend_streamout = false;
+      radv_emit_streamout_enable(cmd_buffer);
+
+      /* Restore the number of active GDS queries to resume counting. */
+      cmd_buffer->state.active_pipeline_gds_queries = state->active_pipeline_gds_queries;
    }
 }
 
@@ -192,7 +213,7 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       state->render_area = cmd_buffer->state.render_area;
    }
 
-   radv_suspend_queries(cmd_buffer);
+   radv_suspend_queries(state, cmd_buffer);
 }
 
 void
@@ -343,7 +364,7 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
    }
 
-   radv_resume_queries(cmd_buffer);
+   radv_resume_queries(state, cmd_buffer);
 }
 
 VkImageViewType

@@ -601,6 +601,154 @@ build_timestamp_query_shader(struct radv_device *device)
    return b.shader;
 }
 
+static nir_shader *
+build_pg_query_shader(struct radv_device *device)
+{
+   /* the shader this builds is roughly
+    *
+    * uint32_t src_stride = 32;
+    *
+    * location(binding = 0) buffer dst_buf;
+    * location(binding = 1) buffer src_buf;
+    *
+    * void main() {
+    *	uint64_t result = {};
+    *	bool available = false;
+    *	uint64_t src_offset = src_stride * global_id.x;
+    * 	uint64_t dst_offset = dst_stride * global_id.x;
+    * 	uint64_t *src_data = src_buf[src_offset];
+    *	uint32_t avail = (src_data[0] >> 32) &
+    *			 (src_data[2] >> 32);
+    *	if (avail & 0x80000000) {
+    *		result = src_data[2] - src_data[0];
+    *	        if (use_gds) {
+    *			uint64_t ngg_gds_result = 0;
+    *			ngg_gds_result += src_data[5] - src_data[4];
+    *			ngg_gds_result += src_data[7] - src_data[6];
+    *			result += ngg_gds_result;
+    *	        }
+    *		available = true;
+    *	}
+    * 	uint32_t result_size = flags & VK_QUERY_RESULT_64_BIT ? 16 : 8;
+    * 	if ((flags & VK_QUERY_RESULT_PARTIAL_BIT) || available) {
+    *		if (flags & VK_QUERY_RESULT_64_BIT) {
+    *			dst_buf[dst_offset] = result;
+    *		} else {
+    *			dst_buf[dst_offset] = (uint32_t)result;
+    *		}
+    *	}
+    *	if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
+    *		dst_buf[dst_offset + result_size] = available;
+    * 	}
+    * }
+    */
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "pg_query");
+   b.shader->info.workgroup_size[0] = 64;
+
+   /* Create and initialize local variables. */
+   nir_variable *result =
+      nir_local_variable_create(b.impl, glsl_uint64_t_type(), "result");
+   nir_variable *available = nir_local_variable_create(b.impl, glsl_bool_type(), "available");
+
+   nir_store_var(&b, result, nir_imm_int64(&b, 0), 0x1);
+   nir_store_var(&b, available, nir_imm_false(&b), 0x1);
+
+   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 16);
+
+   /* Load resources. */
+   nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
+   nir_ssa_def *src_buf = radv_meta_load_descriptor(&b, 0, 1);
+
+   /* Compute global ID. */
+   nir_ssa_def *global_id = get_global_ids(&b, 1);
+
+   /* Compute src/dst strides. */
+   nir_ssa_def *input_stride = nir_imm_int(&b, 32);
+   nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
+   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 16);
+   nir_ssa_def *output_base = nir_imul(&b, output_stride, global_id);
+
+   /* Load data from the query pool. */
+   nir_ssa_def *load1 = nir_load_ssbo(&b, 2, 32, src_buf, input_base, .align_mul = 32);
+   nir_ssa_def *load2 = nir_load_ssbo(
+      &b, 2, 32, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 16)), .align_mul = 16);
+
+   /* Check if result is available. */
+   nir_ssa_def *avails[2];
+   avails[0] = nir_channel(&b, load1, 1);
+   avails[1] = nir_channel(&b, load2, 1);
+   nir_ssa_def *result_is_available =
+      nir_i2b(&b, nir_iand(&b, nir_iand(&b, avails[0], avails[1]), nir_imm_int(&b, 0x80000000)));
+
+   /* Only compute result if available. */
+   nir_push_if(&b, result_is_available);
+
+   /* Pack values. */
+   nir_ssa_def *packed64[2];
+   packed64[0] =
+      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load1, 0), nir_channel(&b, load1, 1)));
+   packed64[1] =
+      nir_pack_64_2x32(&b, nir_vec2(&b, nir_channel(&b, load2, 0), nir_channel(&b, load2, 1)));
+
+   /* Compute result. */
+   nir_ssa_def *primitive_storage_needed = nir_isub(&b, packed64[1], packed64[0]);
+
+   nir_store_var(&b, result, primitive_storage_needed, 0x1);
+
+   nir_ssa_def *uses_gds = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 16), .range = 20);
+   nir_push_if(&b, nir_i2b(&b, uses_gds));
+   {
+      /* NGG GS result */
+      nir_ssa_def *gds_start =
+         nir_load_ssbo(&b, 1, 64, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 32)), .align_mul = 8);
+      nir_ssa_def *gds_end =
+         nir_load_ssbo(&b, 1, 64, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 40)), .align_mul = 8);
+
+      nir_ssa_def *ngg_gds_result = nir_isub(&b, gds_end, gds_start);
+
+      /* NGG VS/TES result */
+      gds_start =
+         nir_load_ssbo(&b, 1, 64, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 48)), .align_mul = 8);
+      gds_end =
+         nir_load_ssbo(&b, 1, 64, src_buf, nir_iadd(&b, input_base, nir_imm_int(&b, 56)), .align_mul = 8);
+
+      ngg_gds_result = nir_iadd(&b, ngg_gds_result, nir_isub(&b, gds_end, gds_start));
+
+      nir_store_var(&b, result, nir_iadd(&b, nir_load_var(&b, result), ngg_gds_result), 0x1);
+   }
+   nir_pop_if(&b, NULL);
+
+   nir_store_var(&b, available, nir_imm_true(&b), 0x1);
+
+   nir_pop_if(&b, NULL);
+
+   /* Determine if result is 64 or 32 bit. */
+   nir_ssa_def *result_is_64bit = nir_test_flag(&b, flags, VK_QUERY_RESULT_64_BIT);
+   nir_ssa_def *result_size =
+      nir_bcsel(&b, result_is_64bit, nir_imm_int(&b, 16), nir_imm_int(&b, 8));
+
+   /* Store the result if complete or partial results have been requested. */
+   nir_push_if(&b, nir_ior(&b, nir_test_flag(&b, flags, VK_QUERY_RESULT_PARTIAL_BIT),
+                           nir_load_var(&b, available)));
+
+   /* Store result. */
+   nir_push_if(&b, result_is_64bit);
+
+   nir_store_ssbo(&b, nir_load_var(&b, result), dst_buf, output_base);
+
+   nir_push_else(&b, NULL);
+
+   nir_store_ssbo(&b, nir_u2u32(&b, nir_load_var(&b, result)), dst_buf, output_base);
+
+   nir_pop_if(&b, NULL);
+   nir_pop_if(&b, NULL);
+
+   radv_store_availability(&b, flags, dst_buf, nir_iadd(&b, result_size, output_base),
+                           nir_b2i32(&b, nir_load_var(&b, available)));
+
+   return b.shader;
+}
+
 static VkResult
 radv_device_init_meta_query_state_internal(struct radv_device *device)
 {
@@ -609,6 +757,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    nir_shader *pipeline_statistics_cs = NULL;
    nir_shader *tfb_cs = NULL;
    nir_shader *timestamp_cs = NULL;
+   nir_shader *pg_cs = NULL;
 
    mtx_lock(&device->meta_state.mtx);
    if (device->meta_state.query.pipeline_statistics_query_pipeline) {
@@ -619,6 +768,7 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    pipeline_statistics_cs = build_pipeline_statistics_query_shader(device);
    tfb_cs = build_tfb_query_shader(device);
    timestamp_cs = build_timestamp_query_shader(device);
+   pg_cs = build_pg_query_shader(device);
 
    VkDescriptorSetLayoutCreateInfo occlusion_ds_create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -739,6 +889,27 @@ radv_device_init_meta_query_state_internal(struct radv_device *device)
    result = radv_CreateComputePipelines(
       radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
       &timestamp_pipeline_info, NULL, &device->meta_state.query.timestamp_query_pipeline);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   VkPipelineShaderStageCreateInfo pg_pipeline_shader_stage = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+      .module = vk_shader_module_handle_from_nir(pg_cs),
+      .pName = "main",
+      .pSpecializationInfo = NULL,
+   };
+
+   VkComputePipelineCreateInfo pg_pipeline_info = {
+      .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+      .stage = pg_pipeline_shader_stage,
+      .flags = 0,
+      .layout = device->meta_state.query.p_layout,
+   };
+
+   result = radv_CreateComputePipelines(
+      radv_device_to_handle(device), radv_pipeline_cache_to_handle(&device->meta_state.cache), 1,
+      &pg_pipeline_info, NULL, &device->meta_state.query.pg_query_pipeline);
 
 fail:
    if (result != VK_SUCCESS)
@@ -746,6 +917,7 @@ fail:
    ralloc_free(occlusion_cs);
    ralloc_free(pipeline_statistics_cs);
    ralloc_free(tfb_cs);
+   ralloc_free(pg_cs);
    ralloc_free(timestamp_cs);
    mtx_unlock(&device->meta_state.mtx);
    return result;
@@ -781,6 +953,10 @@ radv_device_finish_meta_query_state(struct radv_device *device)
       radv_DestroyPipeline(radv_device_to_handle(device),
                            device->meta_state.query.timestamp_query_pipeline,
                            &device->meta_state.alloc);
+
+   if (device->meta_state.query.pg_query_pipeline)
+      radv_DestroyPipeline(radv_device_to_handle(device),
+                           device->meta_state.query.pg_query_pipeline, &device->meta_state.alloc);
 
    if (device->meta_state.query.p_layout)
       radv_DestroyPipelineLayout(radv_device_to_handle(device), device->meta_state.query.p_layout,
@@ -916,7 +1092,8 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
     * of generated primitives and we have to increment it from the shader using a plain GDS atomic.
     */
    pool->uses_gds = device->physical_device->use_ngg &&
-                    (pool->pipeline_stats_mask & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT);
+                    ((pool->pipeline_stats_mask & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT) ||
+                     pCreateInfo->queryType == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT);
 
    switch (pCreateInfo->queryType) {
    case VK_QUERY_TYPE_OCCLUSION:
@@ -939,7 +1116,14 @@ radv_CreateQueryPool(VkDevice _device, const VkQueryPoolCreateInfo *pCreateInfo,
       pool->stride = 8;
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
       pool->stride = 32;
+      if (pool->uses_gds) {
+         /* When the query pool needs GDS, allocate 4x64-bit values for begin/end of NGG GS and
+          * NGG VS/TES because they use a different offset.
+          */
+         pool->stride += 8 * 4;
+      }
       break;
    default:
       unreachable("creating unhandled query type");
@@ -1168,6 +1352,46 @@ radv_GetQueryPoolResults(VkDevice _device, VkQueryPool queryPool, uint32_t first
          }
          break;
       }
+      case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
+         uint64_t const *src64 = (uint64_t const *)src;
+         uint64_t primitive_storage_needed;
+
+         /* SAMPLE_STREAMOUTSTATS stores this structure:
+          * {
+          *	u64 NumPrimitivesWritten;
+          *	u64 PrimitiveStorageNeeded;
+          * }
+          */
+         available = 1;
+         if (!(p_atomic_read(src64 + 0) & 0x8000000000000000UL) ||
+             !(p_atomic_read(src64 + 2) & 0x8000000000000000UL)) {
+            available = 0;
+         }
+
+         if (!available && !(flags & VK_QUERY_RESULT_PARTIAL_BIT))
+            result = VK_NOT_READY;
+
+         primitive_storage_needed = src64[2] - src64[0];
+
+         if (pool->uses_gds) {
+            /* Accumulate the result that was copied from GDS in case NGG GS or NGG VS/TES have been
+             * used.
+             */
+            primitive_storage_needed += src64[5] - src64[4]; /* NGG GS */
+            primitive_storage_needed += src64[7] - src64[6]; /* NGG VS/TES */
+         }
+
+         if (flags & VK_QUERY_RESULT_64_BIT) {
+            if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+               *(uint64_t *)dest = primitive_storage_needed;
+            dest += 8;
+         } else {
+            if (available || (flags & VK_QUERY_RESULT_PARTIAL_BIT))
+               *(uint32_t *)dest = primitive_storage_needed;
+            dest += 4;
+         }
+         break;
+      }
       default:
          unreachable("trying to get results of unhandled query type");
       }
@@ -1217,6 +1441,9 @@ radv_query_result_size(const struct radv_query_pool *pool, VkQueryResultFlags fl
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       values += 2;
+      break;
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      values += 1;
       break;
    default:
       unreachable("trying to get size of unhandled query type");
@@ -1339,6 +1566,25 @@ radv_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer, VkQueryPool queryPoo
                         dst_buffer->offset + dstOffset, pool->stride, stride, dst_size, queryCount,
                         flags, 0, 0, false);
       break;
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT:
+      if (flags & VK_QUERY_RESULT_WAIT_BIT) {
+         for (unsigned i = 0; i < queryCount; i++) {
+            unsigned query = firstQuery + i;
+            uint64_t src_va = va + query * pool->stride;
+
+            radeon_check_space(cmd_buffer->device->ws, cs, 7 * 2);
+
+            /* Wait on the upper word of the PrimitiveStorageNeeded result. */
+            radv_cp_wait_mem(cs, WAIT_REG_MEM_GREATER_OR_EQUAL, src_va + 4, 0x80000000, 0xffffffff);
+            radv_cp_wait_mem(cs, WAIT_REG_MEM_GREATER_OR_EQUAL, src_va + 20, 0x80000000, 0xffffffff);
+         }
+      }
+
+      radv_query_shader(cmd_buffer, &cmd_buffer->device->meta_state.query.pg_query_pipeline,
+                        pool->bo, dst_buffer->bo, firstQuery * pool->stride,
+                        dst_buffer->offset + dstOffset, pool->stride, stride, dst_size, queryCount,
+                        flags, 0, 0, pool->uses_gds);
+      break;
    default:
       unreachable("trying to get results of unhandled query type");
    }
@@ -1442,6 +1688,24 @@ emit_sample_streamout(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint32_t 
 }
 
 static void
+gfx10_copy_gds_query(struct radv_cmd_buffer *cmd_buffer, uint32_t gds_offset, uint64_t va)
+{
+   struct radeon_cmdbuf *cs = cmd_buffer->cs;
+
+   /* Make sure GDS is idle before copying the value. */
+   cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
+   si_emit_cache_flush(cmd_buffer);
+
+   radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
+   radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_GDS) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
+                   COPY_DATA_WR_CONFIRM);
+   radeon_emit(cs, gds_offset);
+   radeon_emit(cs, 0);
+   radeon_emit(cs, va);
+   radeon_emit(cs, va >> 32);
+}
+
+static void
 emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool, uint64_t va,
                  VkQueryType query_type, VkQueryControlFlags flags, uint32_t index)
 {
@@ -1513,17 +1777,7 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
       if (pool->uses_gds) {
          va += pipelinestat_block_size * 2;
 
-         /* Make sure GDS is idle before copying the value. */
-         cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
-         si_emit_cache_flush(cmd_buffer);
-
-         radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-         radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_GDS) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
-                            COPY_DATA_WR_CONFIRM);
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0);
-         radeon_emit(cs, va);
-         radeon_emit(cs, va >> 32);
+         gfx10_copy_gds_query(cmd_buffer, 0, va); /* NGG GS */
 
          /* Record that the command buffer needs GDS. */
          cmd_buffer->gds_needed = true;
@@ -1534,6 +1788,30 @@ emit_begin_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *poo
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       emit_sample_streamout(cmd_buffer, va, index);
       break;
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
+      if (!cmd_buffer->state.prims_gen_query_enabled) {
+         bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
+
+         cmd_buffer->state.prims_gen_query_enabled = true;
+
+         if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
+            radv_emit_streamout_enable(cmd_buffer);
+         }
+      }
+
+      emit_sample_streamout(cmd_buffer, va, index);
+
+      if (pool->uses_gds) {
+         gfx10_copy_gds_query(cmd_buffer, 0, va + 32); /* NGG GS */
+         gfx10_copy_gds_query(cmd_buffer, 4, va + 48); /* NGG VS/TES */
+
+         /* Record that the command buffer needs GDS. */
+         cmd_buffer->gds_needed = true;
+
+         cmd_buffer->state.active_pipeline_gds_queries++;
+      }
+      break;
+   }
    default:
       unreachable("beginning unhandled query type");
    }
@@ -1591,17 +1869,7 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
       if (pool->uses_gds) {
          va += pipelinestat_block_size + 8;
 
-         /* Make sure GDS is idle before copying the value. */
-         cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_L2;
-         si_emit_cache_flush(cmd_buffer);
-
-         radeon_emit(cs, PKT3(PKT3_COPY_DATA, 4, 0));
-         radeon_emit(cs, COPY_DATA_SRC_SEL(COPY_DATA_GDS) | COPY_DATA_DST_SEL(COPY_DATA_DST_MEM) |
-                            COPY_DATA_WR_CONFIRM);
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0);
-         radeon_emit(cs, va);
-         radeon_emit(cs, va >> 32);
+         gfx10_copy_gds_query(cmd_buffer, 0, va); /* NGG GS */
 
          cmd_buffer->state.active_pipeline_gds_queries--;
       }
@@ -1609,6 +1877,27 @@ emit_end_query(struct radv_cmd_buffer *cmd_buffer, struct radv_query_pool *pool,
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       emit_sample_streamout(cmd_buffer, va + 16, index);
       break;
+   case VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT: {
+      if (cmd_buffer->state.prims_gen_query_enabled) {
+         bool old_streamout_enabled = radv_is_streamout_enabled(cmd_buffer);
+
+         cmd_buffer->state.prims_gen_query_enabled = false;
+
+         if (old_streamout_enabled != radv_is_streamout_enabled(cmd_buffer)) {
+            radv_emit_streamout_enable(cmd_buffer);
+         }
+      }
+
+      emit_sample_streamout(cmd_buffer, va + 16, index);
+
+      if (pool->uses_gds) {
+         gfx10_copy_gds_query(cmd_buffer, 0, va + 40); /* NGG GS */
+         gfx10_copy_gds_query(cmd_buffer, 4, va + 56); /* NGG VS/TES */
+
+         cmd_buffer->state.active_pipeline_gds_queries--;
+      }
+      break;
+   }
    default:
       unreachable("ending unhandled query type");
    }
