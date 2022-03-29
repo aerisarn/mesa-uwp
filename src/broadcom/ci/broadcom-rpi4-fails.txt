@@ -352,7 +352,6 @@ spec@oes_texture_view@rendering-formats@clear GL_RGB10_A2 as GL_RGBA8I,Fail
 
 # https://gitlab.khronos.org/Tracker/vk-gl-cts/-/issues/3510
 dEQP-VK.api.external.semaphore.opaque_fd.info_timeline,Fail
-dEQP-VK.api.external.semaphore.sync_fd.info_timeline,Fail
 
 dEQP-VK.draw.renderpass.inverted_depth_ranges.nodepthclamp_deltazero,Fail
 

@@ -45,6 +45,7 @@
 
 #include "drm-uapi/v3d_drm.h"
 #include "format/u_format.h"
+#include "vk_drm_syncobj.h"
 #include "vk_util.h"
 #include "git_sha1.h"
 
@@ -843,6 +844,44 @@ physical_device_init(struct v3dv_physical_device *device,
    util_sparse_array_init(&device->bo_map, sizeof(struct v3dv_bo), 512);
 
    device->options.merge_jobs = getenv("V3DV_NO_MERGE_JOBS") == NULL;
+
+   device->drm_syncobj_type = vk_drm_syncobj_get_type(device->render_fd);
+
+   /* We don't support timelines in the uAPI yet and we don't want it getting
+    * suddenly turned on by vk_drm_syncobj_get_type() without us adding v3dv
+    * code for it first.
+    */
+   device->drm_syncobj_type.features &= ~VK_SYNC_FEATURE_TIMELINE;
+
+   /* Sync file export is incompatible with the current model of execution
+    * where some jobs may run on the CPU.  There are CTS tests which do the
+    * following:
+    *
+    *  1. Create a command buffer with a vkCmdWaitEvents()
+    *  2. Submit the command buffer
+    *  3. vkGetSemaphoreFdKHR() to try to get a sync_file
+    *  4. vkSetEvent()
+    *
+    * This deadlocks because we have to wait for the syncobj to get a real
+    * fence in vkGetSemaphoreFdKHR() which only happens after all the work
+    * from the command buffer is complete which only happens after
+    * vkSetEvent().  No amount of CPU threading in userspace will ever fix
+    * this.  Sadly, this is pretty explicitly allowed by the Vulkan spec:
+    *
+    *    VUID-vkCmdWaitEvents-pEvents-01163
+    *
+    *    "If pEvents includes one or more events that will be signaled by
+    *    vkSetEvent after commandBuffer has been submitted to a queue, then
+    *    vkCmdWaitEvents must not be called inside a render pass instance"
+    *
+    * Disable sync file support for now.
+    */
+   device->drm_syncobj_type.import_sync_file = NULL;
+   device->drm_syncobj_type.export_sync_file = NULL;
+
+   device->sync_types[0] = &device->drm_syncobj_type;
+   device->sync_types[1] = NULL;
+   device->vk.supported_sync_types = device->sync_types;
 
    result = v3dv_wsi_init(device);
    if (result != VK_SUCCESS) {
@@ -1845,6 +1884,17 @@ v3dv_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
    return vk_error(physical_device, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
+static void
+destroy_queue_syncs(struct v3dv_queue *queue)
+{
+   for (int i = 0; i < V3DV_QUEUE_COUNT; i++) {
+      if (queue->last_job_syncs.syncs[i]) {
+         drmSyncobjDestroy(queue->device->pdevice->render_fd,
+                           queue->last_job_syncs.syncs[i]);
+      }
+   }
+}
+
 static VkResult
 queue_init(struct v3dv_device *device, struct v3dv_queue *queue,
            const VkDeviceQueueCreateInfo *create_info,
@@ -1854,23 +1904,43 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue,
                                    index_in_family);
    if (result != VK_SUCCESS)
       return result;
+
+   result = vk_queue_enable_submit_thread(&queue->vk);
+   if (result != VK_SUCCESS)
+      goto fail_submit_thread;
+
    queue->device = device;
+   queue->vk.driver_submit = v3dv_queue_driver_submit;
+
+   for (int i = 0; i < V3DV_QUEUE_COUNT; i++) {
+      queue->last_job_syncs.first[i] = true;
+      int ret = drmSyncobjCreate(device->pdevice->render_fd,
+                                 DRM_SYNCOBJ_CREATE_SIGNALED,
+                                 &queue->last_job_syncs.syncs[i]);
+      if (ret) {
+         result = vk_errorf(device, VK_ERROR_INITIALIZATION_FAILED,
+                            "syncobj create failed: %m");
+         goto fail_last_job_syncs;
+      }
+   }
+
    queue->noop_job = NULL;
-   list_inithead(&queue->submit_wait_list);
-   mtx_init(&queue->mutex, mtx_plain);
-   mtx_init(&queue->noop_mutex, mtx_plain);
    return VK_SUCCESS;
+
+fail_last_job_syncs:
+   destroy_queue_syncs(queue);
+fail_submit_thread:
+   vk_queue_finish(&queue->vk);
+   return result;
 }
 
 static void
 queue_finish(struct v3dv_queue *queue)
 {
-   vk_queue_finish(&queue->vk);
-   assert(list_is_empty(&queue->submit_wait_list));
    if (queue->noop_job)
       v3dv_job_destroy(queue->noop_job);
-   mtx_destroy(&queue->mutex);
-   mtx_destroy(&queue->noop_mutex);
+   destroy_queue_syncs(queue);
+   vk_queue_finish(&queue->vk);
 }
 
 static void
@@ -1880,16 +1950,6 @@ init_device_meta(struct v3dv_device *device)
    v3dv_meta_clear_init(device);
    v3dv_meta_blit_init(device);
    v3dv_meta_texel_buffer_copy_init(device);
-}
-
-static void
-destroy_device_syncs(struct v3dv_device *device,
-                       int render_fd)
-{
-   for (int i = 0; i < V3DV_QUEUE_COUNT; i++) {
-      if (device->last_job_syncs.syncs[i])
-         drmSyncobjDestroy(render_fd, device->last_job_syncs.syncs[i]);
-   }
 }
 
 static void
@@ -1944,9 +2004,11 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->instance = instance;
    device->pdevice = physical_device;
 
-   mtx_init(&device->mutex, mtx_plain);
    mtx_init(&device->query_mutex, mtx_plain);
    cnd_init(&device->query_ended);
+
+   vk_device_set_drm_fd(&device->vk, physical_device->render_fd);
+   vk_device_enable_threaded_submit(&device->vk);
 
    result = queue_init(device, &device->queue,
                        pCreateInfo->pQueueCreateInfos, 0);
@@ -1973,17 +2035,6 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    if (device->features.robustBufferAccess)
       perf_debug("Device created with Robust Buffer Access enabled.\n");
 
-   for (int i = 0; i < V3DV_QUEUE_COUNT; i++) {
-      device->last_job_syncs.first[i] = true;
-      int ret = drmSyncobjCreate(physical_device->render_fd,
-                                 DRM_SYNCOBJ_CREATE_SIGNALED,
-                                 &device->last_job_syncs.syncs[i]);
-      if (ret) {
-         result = VK_ERROR_INITIALIZATION_FAILED;
-         goto fail;
-      }
-   }
-
 #ifdef DEBUG
    v3dv_X(device, device_check_prepacked_sizes)();
 #endif
@@ -1999,10 +2050,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 
 fail:
-   destroy_device_syncs(device, physical_device->render_fd);
    cnd_destroy(&device->query_ended);
    mtx_destroy(&device->query_mutex);
-   mtx_destroy(&device->mutex);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
 
@@ -2015,10 +2064,8 @@ v3dv_DestroyDevice(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
-   v3dv_DeviceWaitIdle(_device);
+   device->vk.dispatch_table.DeviceWaitIdle(_device);
    queue_finish(&device->queue);
-   mtx_destroy(&device->mutex);
-   destroy_device_syncs(device, device->pdevice->render_fd);
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);
 
@@ -2037,17 +2084,6 @@ v3dv_DestroyDevice(VkDevice _device,
 
    vk_device_finish(&device->vk);
    vk_free2(&device->vk.alloc, pAllocator, device);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-v3dv_DeviceWaitIdle(VkDevice _device)
-{
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-
-   if (vk_device_is_lost(&device->vk))
-      return VK_ERROR_DEVICE_LOST;
-
-   return v3dv_QueueWaitIdle(v3dv_queue_to_handle(&device->queue));
 }
 
 static VkResult
