@@ -820,7 +820,12 @@ static struct pipe_context *si_pipe_create_context(struct pipe_screen *screen, v
    ctx = si_create_context(screen, flags);
 
    if (ctx && sscreen->info.chip_class >= GFX9 && sscreen->debug_flags & DBG(SQTT)) {
-      if (!si_init_thread_trace((struct si_context *)ctx)) {
+      if (ac_check_profile_state(&sscreen->info)) {
+         fprintf(stderr, "radeonsi: Canceling RGP trace request as a hang condition has been "
+                         "detected. Force the GPU into a profiling mode with e.g. "
+                         "\"echo profile_peak  > "
+                         "/sys/class/drm/card0/device/power_dpm_force_performance_level\"\n");
+      } else if (!si_init_thread_trace((struct si_context *)ctx)) {
          FREE(ctx);
          return NULL;
       }
