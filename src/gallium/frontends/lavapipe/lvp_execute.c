@@ -1420,7 +1420,11 @@ static void handle_descriptor_sets(struct vk_cmd_queue_entry *cmd,
    }
 
    for (i = 0; i < bds->descriptor_set_count; i++) {
+      if (!layout->set[bds->first_set + i].layout)
+         continue;
       const struct lvp_descriptor_set *set = lvp_descriptor_set_from_handle(bds->descriptor_sets[i]);
+      if (!set)
+         continue;
       /* verify that there's enough total offsets */
       assert(set->layout->dynamic_offset_count <= dyn_info.dynamic_offset_count);
       /* verify there's either no offsets... */

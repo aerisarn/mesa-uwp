@@ -106,6 +106,8 @@ static nir_ssa_def *lower_vri_intrin_vri(struct nir_builder *b,
       return nir_imm_ivec2(b, 0, 0);
 
    for (unsigned s = 0; s < desc_set_idx; s++) {
+     if (!layout->set[s].layout)
+        continue;
      if (is_ubo)
        value += layout->set[s].layout->stage[b->shader->info.stage].const_buffer_count;
      else
@@ -165,6 +167,8 @@ lower_vri_instr_tex_deref(nir_tex_instr *tex,
    struct lvp_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
    nir_tex_instr_remove_src(tex, deref_src_idx);
    for (unsigned s = 0; s < desc_set_idx; s++) {
+      if (!layout->set[s].layout)
+         continue;
       if (deref_src_type == nir_tex_src_sampler_deref)
          value += layout->set[s].layout->stage[stage].sampler_count;
       else
@@ -269,20 +273,29 @@ void lvp_lower_pipeline_layout(const struct lvp_device *device,
       var->data.descriptor_set = 0;
       if (base_type == GLSL_TYPE_SAMPLER || base_type == GLSL_TYPE_TEXTURE) {
          if (binding->type == VK_DESCRIPTOR_TYPE_SAMPLER) {
-            for (unsigned s = 0; s < desc_set_idx; s++)
+            for (unsigned s = 0; s < desc_set_idx; s++) {
+               if (!layout->set[s].layout)
+                  continue;
                value += layout->set[s].layout->stage[shader->info.stage].sampler_count;
+            }
             value += binding->stage[shader->info.stage].sampler_index;
          } else {
-            for (unsigned s = 0; s < desc_set_idx; s++)
+            for (unsigned s = 0; s < desc_set_idx; s++) {
+               if (!layout->set[s].layout)
+                  continue;
                value += layout->set[s].layout->stage[shader->info.stage].sampler_view_count;
+            }
             value += binding->stage[shader->info.stage].sampler_view_index;
          }
          var->data.binding = value;
       }
       if (base_type == GLSL_TYPE_IMAGE) {
          var->data.descriptor_set = 0;
-         for (unsigned s = 0; s < desc_set_idx; s++)
+         for (unsigned s = 0; s < desc_set_idx; s++) {
+           if (!layout->set[s].layout)
+              continue;
            value += layout->set[s].layout->stage[shader->info.stage].image_count;
+         }
          value += binding->stage[shader->info.stage].image_index;
          var->data.binding = value;
       }

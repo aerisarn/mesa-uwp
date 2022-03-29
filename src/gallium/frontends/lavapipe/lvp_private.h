@@ -284,6 +284,7 @@ struct lvp_descriptor_set_layout {
 
    /* Descriptor set layouts can be destroyed at almost any time */
    uint32_t ref_cnt;
+   /* add new members after this */
 
    uint32_t immutable_sampler_count;
 
@@ -328,7 +329,9 @@ static inline void
 lvp_descriptor_set_layout_unref(struct lvp_device *device,
                                 struct lvp_descriptor_set_layout *layout)
 {
-   assert(layout && layout->ref_cnt >= 1);
+   if (!layout)
+      return;
+   assert(layout->ref_cnt >= 1);
    if (p_atomic_dec_zero(&layout->ref_cnt))
       lvp_descriptor_set_layout_destroy(device, layout);
 }
@@ -406,6 +409,7 @@ struct lvp_pipeline_layout {
       uint16_t uniform_block_count;
       uint16_t uniform_block_sizes[MAX_PER_STAGE_DESCRIPTOR_UNIFORM_BLOCKS * MAX_SETS];
    } stage[MESA_SHADER_STAGES];
+   bool independent_sets;
 };
 
 void lvp_pipeline_layout_destroy(struct lvp_device *device,
@@ -447,6 +451,7 @@ struct lvp_pipeline {
    void *shader_cso[PIPE_SHADER_TYPES];
    VkGraphicsPipelineCreateInfo graphics_create_info;
    VkComputePipelineCreateInfo compute_create_info;
+   VkGraphicsPipelineLibraryFlagsEXT stages;
    uint32_t line_stipple_factor;
    uint16_t line_stipple_pattern;
    bool line_stipple_enable;

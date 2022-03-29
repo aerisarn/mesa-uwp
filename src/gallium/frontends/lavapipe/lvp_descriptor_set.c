@@ -267,10 +267,16 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
                        VK_OBJECT_TYPE_PIPELINE_LAYOUT);
    layout->ref_cnt = 1;
    layout->num_sets = pCreateInfo->setLayoutCount;
+   if (pCreateInfo->flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT)
+      layout->independent_sets = true;
 
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       LVP_FROM_HANDLE(lvp_descriptor_set_layout, set_layout,
                       pCreateInfo->pSetLayouts[set]);
+      if (layout->independent_sets && (!layout->num_sets || !set_layout)) {
+         layout->set[set].layout = NULL;
+         continue;
+      }
       layout->set[set].layout = set_layout;
       for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
          layout->stage[i].uniform_block_size += set_layout->stage[i].uniform_block_size;
@@ -300,7 +306,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
       uint16_t sampler_view_count = 0;
       uint16_t image_count = 0;
       for (unsigned j = 0; j < layout->num_sets; j++) {
-         if (layout->set[j].layout->shader_stages & array[i]) {
+         if (layout->set[j].layout && layout->set[j].layout->shader_stages & array[i]) {
             const_buffer_count += layout->set[j].layout->stage[i].const_buffer_count;
             shader_buffer_count += layout->set[j].layout->stage[i].shader_buffer_count;
             sampler_count += layout->set[j].layout->stage[i].sampler_count;
