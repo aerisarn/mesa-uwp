@@ -404,11 +404,6 @@ spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec3-u64
 spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec4-u64vec4,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
-spec@arb_indirect_parameters@conditional-render,Fail
-spec@arb_indirect_parameters@conditional-render@Query result: Fail. Inverted mode: No.  Points drawn: 4,Fail
-spec@arb_indirect_parameters@conditional-render@Query result: Fail. Inverted mode: Yes.  Points drawn: 0,Fail
-spec@arb_indirect_parameters@conditional-render@Query result: Pass. Inverted mode: No.  Points drawn: 0,Fail
-spec@arb_indirect_parameters@conditional-render@Query result: Pass. Inverted mode: Yes.  Points drawn: 4,Fail
 spec@arb_occlusion_query@occlusion_query_meta_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_no_fragments,Fail
 spec@arb_occlusion_query@occlusion_query_meta_save,Fail
@@ -496,7 +491,6 @@ spec@arb_shader_image_load_store@early-z@occlusion query test/early-z pass,Fail
 spec@arb_shader_image_load_store@early-z@occlusion query test/late-z fail,Fail
 spec@arb_shader_image_load_store@early-z@occlusion query test/late-z pass,Fail
 spec@arb_shader_image_load_store@layer,Fail
-spec@arb_shader_image_load_store@layer@image3D/layered binding test,Fail
 spec@arb_shader_image_load_store@layer@image3D/non-layered binding test,Fail
 spec@arb_shader_image_load_store@level@3D level binding test,Fail
 spec@arb_shader_image_load_store@level,Fail
@@ -572,10 +566,6 @@ spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32I- swizzled-
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG32UI- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8I- swizzled- border color only,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8UI- swizzled- border color only,Fail
-spec@arb_transform_feedback_overflow_query@arb_transform_feedback_overflow_query-basic@arb_transform_feedback_overflow_query-conditional_render_1,Fail
-spec@arb_transform_feedback_overflow_query@arb_transform_feedback_overflow_query-basic@arb_transform_feedback_overflow_query-conditional_render_no_overflow,Fail
-spec@arb_transform_feedback_overflow_query@arb_transform_feedback_overflow_query-basic@arb_transform_feedback_overflow_query-conditional_render_no_overflow_single,Fail
-spec@arb_transform_feedback_overflow_query@arb_transform_feedback_overflow_query-basic,Fail
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance,Fail
@@ -798,7 +788,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp@sRGB decode full precision,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gl srgb-fp@sRGB decode full precision,Fail
-spec@nv_conditional_render@copypixels,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageLoad,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_external_essl3_imageStore,Fail
