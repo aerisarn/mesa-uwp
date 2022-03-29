@@ -140,8 +140,6 @@ spec@arb_depth_texture@texwrap formats@GL_DEPTH_COMPONENT16- NPOT,Fail
 spec@arb_depth_texture@texwrap formats@GL_DEPTH_COMPONENT24- NPOT,Fail
 spec@arb_depth_texture@texwrap formats@GL_DEPTH_COMPONENT32- NPOT,Fail
 spec@arb_framebuffer_object@fbo-drawbuffers-none use_frag_out,Fail
-spec@arb_pixel_buffer_object@pbo-getteximage,Fail
-spec@arb_pixel_buffer_object@texsubimage array pbo,Fail
 spec@arb_point_sprite@arb_point_sprite-checkerboard,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_shader_storage_buffer_object@compiler@atomicmin-swizzle.vert,Fail
@@ -238,10 +236,8 @@ spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled@GL_DEPTH24_ST
 spec@ext_packed_depth_stencil@texwrap formats,Fail
 spec@ext_packed_depth_stencil@texwrap formats@GL_DEPTH24_STENCIL8- NPOT,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
-spec@ext_texture_array@array-texture,Fail
 spec@ext_texture_array@fbo-generatemipmap-array rgb9_e5,Fail
 spec@ext_texture_array@fbo-generatemipmap-array,Fail
-spec@ext_texture_array@texsubimage array,Fail
 spec@ext_texture_integer@getteximage-clamping gl_arb_texture_rg,Fail
 spec@ext_texture_integer@getteximage-clamping,Fail
 spec@ext_texture_lod_bias@lodbias,Fail

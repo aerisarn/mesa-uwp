@@ -69,7 +69,9 @@ v3d_render_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
         if (!info->mask)
                 return;
 
-        if (!src->tiled) {
+        if (!src->tiled &&
+            info->src.resource->target != PIPE_TEXTURE_1D &&
+            info->src.resource->target != PIPE_TEXTURE_1D_ARRAY) {
                 struct pipe_box box = {
                         .x = 0,
                         .y = 0,
