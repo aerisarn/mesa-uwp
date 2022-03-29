@@ -2816,7 +2816,7 @@ static void handle_copy_query_pool_results(struct vk_cmd_queue_entry *cmd,
             if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
                num_results = util_bitcount(pool->pipeline_stats);
             } else
-               num_results = 1;
+               num_results = pool-> type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT ? 2 : 1;
             state->pctx->get_query_result_resource(state->pctx,
                                                    pool->queries[i],
                                                    flags,
