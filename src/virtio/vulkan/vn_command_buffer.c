@@ -1564,3 +1564,18 @@ vn_CmdSetRasterizerDiscardEnable(VkCommandBuffer commandBuffer,
    VN_CMD_ENQUEUE(vkCmdSetRasterizerDiscardEnable, commandBuffer,
                   rasterizerDiscardEnable);
 }
+
+void
+vn_CmdBeginConditionalRenderingEXT(
+   VkCommandBuffer commandBuffer,
+   const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
+{
+   VN_CMD_ENQUEUE(vkCmdBeginConditionalRenderingEXT, commandBuffer,
+                  pConditionalRenderingBegin);
+}
+
+void
+vn_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
+{
+   VN_CMD_ENQUEUE(vkCmdEndConditionalRenderingEXT, commandBuffer);
+}
