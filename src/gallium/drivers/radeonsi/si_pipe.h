@@ -1508,6 +1508,7 @@ void si_init_aux_async_compute_ctx(struct si_screen *sscreen);
 void si_init_perfcounters(struct si_screen *screen);
 void si_destroy_perfcounters(struct si_screen *screen);
 void si_inhibit_clockgating(struct si_context *sctx, struct radeon_cmdbuf *cs, bool inhibit);
+void si_pc_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
 
 /* si_query.c */
 void si_init_screen_query_functions(struct si_screen *sscreen);

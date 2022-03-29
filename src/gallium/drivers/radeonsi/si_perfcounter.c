@@ -85,10 +85,8 @@ static void si_pc_emit_instance(struct si_context *sctx, int se, int instance)
    radeon_end();
 }
 
-static void si_pc_emit_shaders(struct si_context *sctx, unsigned shaders)
+void si_pc_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders)
 {
-   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-
    radeon_begin(cs);
    radeon_set_uconfig_reg_seq(R_036780_SQ_PERFCOUNTER_CTRL, 2, false);
    radeon_emit(shaders & 0x7f);
@@ -251,7 +249,7 @@ static void si_pc_query_resume(struct si_context *sctx, struct si_query *squery)
    si_need_gfx_cs_space(sctx, 0);
 
    if (query->shaders)
-      si_pc_emit_shaders(sctx, query->shaders);
+      si_pc_emit_shaders(&sctx->gfx_cs, query->shaders);
 
    si_inhibit_clockgating(sctx, &sctx->gfx_cs, true);
 
