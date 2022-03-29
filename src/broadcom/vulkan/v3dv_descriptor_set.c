@@ -578,8 +578,13 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       }
    }
 
-   uint32_t samplers_offset = sizeof(struct v3dv_descriptor_set_layout) +
-      num_bindings * sizeof(set_layout->binding[0]);
+   /* We place immutable samplers after the binding data. We want to use
+    * offsetof instead of any sizeof(struct v3dv_descriptor_set_layout)
+    * because the latter may include padding at the end of the struct.
+    */
+   uint32_t samplers_offset =
+      offsetof(struct v3dv_descriptor_set_layout, binding[num_bindings]);
+
    uint32_t size = samplers_offset +
       immutable_sampler_count * sizeof(struct v3dv_sampler);
 
@@ -589,7 +594,6 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    if (!set_layout)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   /* We just allocate all the immutable samplers at the end of the struct */
    struct v3dv_sampler *samplers = (void*) &set_layout->binding[num_bindings];
 
    assert(pCreateInfo->bindingCount == 0 || num_bindings > 0);
