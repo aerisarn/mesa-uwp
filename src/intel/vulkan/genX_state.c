@@ -937,21 +937,30 @@ VkResult genX(CreateSampler)(
             (VkSamplerCustomBorderColorCreateInfoEXT *) ext;
          if (sampler->custom_border_color.map == NULL)
             break;
-         struct gfx8_border_color *cbc = sampler->custom_border_color.map;
-         if (custom_border_color->format == VK_FORMAT_B4G4R4A4_UNORM_PACK16) {
-            /* B4G4R4A4_UNORM_PACK16 is treated as R4G4B4A4_UNORM_PACK16 with
-             * a swizzle, but this does not carry over to the sampler for
-             * border colors, so we need to do the swizzle ourselves here.
-             */
-            cbc->uint32[0] = custom_border_color->customBorderColor.uint32[2];
-            cbc->uint32[1] = custom_border_color->customBorderColor.uint32[1];
-            cbc->uint32[2] = custom_border_color->customBorderColor.uint32[0];
-            cbc->uint32[3] = custom_border_color->customBorderColor.uint32[3];
-         } else {
-            /* Both structs share the same layout, so just copy them over. */
-            memcpy(cbc, &custom_border_color->customBorderColor,
-                   sizeof(VkClearColorValue));
+
+         union isl_color_value color = { .u32 = {
+            custom_border_color->customBorderColor.uint32[0],
+            custom_border_color->customBorderColor.uint32[1],
+            custom_border_color->customBorderColor.uint32[2],
+            custom_border_color->customBorderColor.uint32[3],
+         } };
+
+         const struct anv_format *format_desc =
+            custom_border_color->format != VK_FORMAT_UNDEFINED ?
+            anv_get_format(custom_border_color->format) : NULL;
+
+         /* For formats with a swizzle, it does not carry over to the sampler
+          * for border colors, so we need to do the swizzle ourselves here.
+          */
+         if (format_desc && format_desc->n_planes == 1 &&
+             !isl_swizzle_is_identity(format_desc->planes[0].swizzle)) {
+            const struct anv_format_plane *fmt_plane = &format_desc->planes[0];
+
+            assert(!isl_format_has_int_channel(fmt_plane->isl_format));
+            color = isl_color_value_swizzle(color, fmt_plane->swizzle, true);
          }
+
+         memcpy(sampler->custom_border_color.map, color.u32, sizeof(color));
          has_custom_color = true;
          break;
       }
