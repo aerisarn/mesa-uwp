@@ -317,6 +317,14 @@ os_get_available_system_memory(uint64_t *size)
 
    *size = MIN2(mem_available, rl.rlim_cur);
    return true;
+#elif DETECT_OS_WINDOWS
+   MEMORYSTATUSEX status;
+   BOOL ret;
+
+   status.dwLength = sizeof(status);
+   ret = GlobalMemoryStatusEx(&status);
+   *size = status.ullAvailPhys;
+   return (ret == TRUE);
 #else
    return false;
 #endif
