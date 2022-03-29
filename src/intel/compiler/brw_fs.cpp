@@ -5813,11 +5813,11 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->sfid = sfid;
    setup_surface_descriptors(bld, inst, desc, surface, surface_handle);
 
+   inst->resize_sources(4);
+
    /* Finally, the payload */
    inst->src[2] = payload;
    inst->src[3] = payload2;
-
-   inst->resize_sources(4);
 }
 
 static enum lsc_opcode
@@ -6040,11 +6040,11 @@ lower_lsc_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
 
+   inst->resize_sources(4);
+
    /* Finally, the payload */
    inst->src[2] = payload;
    inst->src[3] = payload2;
-
-   inst->resize_sources(4);
 }
 
 static void
@@ -6110,10 +6110,10 @@ lower_surface_block_logical_send(const fs_builder &bld, fs_inst *inst)
                                                     arg.ud, write);
    setup_surface_descriptors(bld, inst, desc, surface, surface_handle);
 
+   inst->resize_sources(4);
+
    inst->src[2] = header;
    inst->src[3] = data;
-
-   inst->resize_sources(4);
 }
 
 static fs_reg
