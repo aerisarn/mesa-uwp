@@ -27,11 +27,7 @@
  **************************************************************************/
 
 
-#include "pipe/p_config.h"
-
 #include "util/u_debug.h"
-#include "pipe/p_format.h"
-#include "pipe/p_state.h"
 #include "util/u_string.h"
 #include "util/u_math.h"
 #include <inttypes.h>

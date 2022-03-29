@@ -27,6 +27,7 @@
 
 #include "util/list.h"
 #include "util/slab.h"
+#include "util/u_debug.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"

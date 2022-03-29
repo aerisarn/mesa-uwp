@@ -58,6 +58,47 @@
 extern "C" {
 #endif
 
+enum util_debug_type
+{
+   UTIL_DEBUG_TYPE_OUT_OF_MEMORY = 1,
+   UTIL_DEBUG_TYPE_ERROR,
+   UTIL_DEBUG_TYPE_SHADER_INFO,
+   UTIL_DEBUG_TYPE_PERF_INFO,
+   UTIL_DEBUG_TYPE_INFO,
+   UTIL_DEBUG_TYPE_FALLBACK,
+   UTIL_DEBUG_TYPE_CONFORMANCE,
+};
+
+/**
+ * Structure that contains a callback for debug messages from the driver back
+ * to the gallium frontend.
+ */
+struct util_debug_callback
+{
+   /**
+    * When set to \c true, the callback may be called asynchronously from a
+    * driver-created thread.
+    */
+   bool async;
+
+   /**
+    * Callback for the driver to report debug/performance/etc information back
+    * to the gallium frontend.
+    *
+    * \param data       user-supplied data pointer
+    * \param id         message type identifier, if pointed value is 0, then a
+    *                   new id is assigned
+    * \param type       UTIL_DEBUG_TYPE_*
+    * \param format     printf-style format string
+    * \param args       args for format string
+    */
+   void (*debug_message)(void *data,
+                         unsigned *id,
+                         enum util_debug_type type,
+                         const char *fmt,
+                         va_list args);
+   void *data;
+};
 
 #define _util_printf_format(fmt, list) PRINTFLIKE(fmt, list)
 
@@ -274,8 +315,6 @@ void _debug_assert_fail(const char *expr,
                           fmt, ##__VA_ARGS__); \
    } \
 } while (0)
-
-struct util_debug_callback;
 
 void
 _util_debug_message(

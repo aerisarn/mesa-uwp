@@ -425,20 +425,6 @@ u_uintN_max(unsigned bit_size)
    return UINT64_MAX >> (64 - bit_size);
 }
 
-/* TODO: In future we should try to move this to u_debug.h once header
- * dependencies are reorganised to allow this.
- */
-enum util_debug_type
-{
-   UTIL_DEBUG_TYPE_OUT_OF_MEMORY = 1,
-   UTIL_DEBUG_TYPE_ERROR,
-   UTIL_DEBUG_TYPE_SHADER_INFO,
-   UTIL_DEBUG_TYPE_PERF_INFO,
-   UTIL_DEBUG_TYPE_INFO,
-   UTIL_DEBUG_TYPE_FALLBACK,
-   UTIL_DEBUG_TYPE_CONFORMANCE,
-};
-
 #if !defined(alignof) && !defined(__cplusplus)
 #if __STDC_VERSION__ >= 201112L
 #define alignof(t) _Alignof(t)
