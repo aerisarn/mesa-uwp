@@ -355,6 +355,8 @@ ntt_live_reg_setup_def_use(struct ntt_compile *c, nir_function_impl *impl, struc
 static void
 ntt_live_regs(struct ntt_compile *c, nir_function_impl *impl)
 {
+   nir_metadata_require(impl, nir_metadata_block_index);
+
    c->liveness = rzalloc_array(c, struct ntt_reg_interval, c->num_temps);
 
    struct ntt_live_reg_state state = {
