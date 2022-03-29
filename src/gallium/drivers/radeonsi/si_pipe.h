@@ -1509,6 +1509,9 @@ void si_init_perfcounters(struct si_screen *screen);
 void si_destroy_perfcounters(struct si_screen *screen);
 void si_inhibit_clockgating(struct si_context *sctx, struct radeon_cmdbuf *cs, bool inhibit);
 void si_pc_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
+void si_pc_emit_spm_start(struct radeon_cmdbuf *cs);
+void si_pc_emit_spm_stop(struct radeon_cmdbuf *cs, bool never_stop_sq_perf_counters);
+void si_pc_emit_spm_reset(struct radeon_cmdbuf *cs);
 
 /* si_query.c */
 void si_init_screen_query_functions(struct si_screen *sscreen);
