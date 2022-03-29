@@ -601,7 +601,7 @@ void pvr_pds_setup_doutu(struct pvr_pds_usc_task_control *usc_task_control,
                          uint64_t execution_address,
                          uint32_t usc_temps,
                          uint32_t sample_rate,
-                         uint32_t phase_rate_change);
+                         bool phase_rate_change);
 
 /* Pixel */
 #define pvr_pds_set_sizes_pixel_shader(X) \
