@@ -7791,11 +7791,6 @@
     <field name="VMEM L3REQARB1 Done" start="31" end="31" type="bool"/>
   </register>
 
-  <register name="SAMPLER_MODE" length="1" num="0x0e18c">
-    <field name="Headerless Message for Pre-emptable Contexts" start="5" end="5" type="bool"/>
-    <field name="Headerless Message for Pre-emptable Contexts Mask" start="21" end="21" type="bool"/>
-  </register>
-
   <register name="SC_INSTDONE" length="1" num="0x7100">
     <field name="SVL Done" start="0" end="0" type="bool"/>
     <field name="WMFE Done" start="1" end="1" type="bool"/>
