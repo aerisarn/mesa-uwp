@@ -1645,7 +1645,7 @@ struct v3dv_descriptor_set {
 
    struct v3dv_descriptor_pool *pool;
 
-   const struct v3dv_descriptor_set_layout *layout;
+   struct v3dv_descriptor_set_layout *layout;
 
    /* Offset relative to the descriptor pool bo for this set */
    uint32_t base_offset;
@@ -1699,9 +1699,34 @@ struct v3dv_descriptor_set_layout {
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
 
+   /* Descriptor set layouts can be destroyed even if they are still being
+    * used.
+    */
+   uint32_t ref_cnt;
+
    /* Bindings in this descriptor set */
    struct v3dv_descriptor_set_binding_layout binding[0];
 };
+
+void
+v3dv_descriptor_set_layout_destroy(struct v3dv_device *device,
+                                   struct v3dv_descriptor_set_layout *set_layout);
+
+static inline void
+v3dv_descriptor_set_layout_ref(struct v3dv_descriptor_set_layout *set_layout)
+{
+   assert(set_layout && set_layout->ref_cnt >= 1);
+   p_atomic_inc(&set_layout->ref_cnt);
+}
+
+static inline void
+v3dv_descriptor_set_layout_unref(struct v3dv_device *device,
+                                 struct v3dv_descriptor_set_layout *set_layout)
+{
+   assert(set_layout && set_layout->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&set_layout->ref_cnt))
+      v3dv_descriptor_set_layout_destroy(device, set_layout);
+}
 
 struct v3dv_pipeline_layout {
    struct vk_object_base base;

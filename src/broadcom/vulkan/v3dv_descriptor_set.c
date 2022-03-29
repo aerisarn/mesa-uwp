@@ -314,8 +314,8 @@ v3dv_CreatePipelineLayout(VkDevice _device,
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       V3DV_FROM_HANDLE(v3dv_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
+      v3dv_descriptor_set_layout_ref(set_layout);
       layout->set[set].layout = set_layout;
-
       layout->set[set].dynamic_offset_start = dynamic_offset_count;
       for (uint32_t b = 0; b < set_layout->binding_count; b++) {
          dynamic_offset_count += set_layout->binding[b].array_size *
@@ -351,6 +351,10 @@ v3dv_DestroyPipelineLayout(VkDevice _device,
 
    if (!pipeline_layout)
       return;
+
+   for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
+      v3dv_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
+
    vk_object_free(&device->vk, pAllocator, pipeline_layout);
 }
 
@@ -478,6 +482,8 @@ descriptor_set_destroy(struct v3dv_device *device,
 {
    assert(!pool->host_memory_base);
 
+   v3dv_descriptor_set_layout_unref(device, set->layout);
+
    if (free_bo && !pool->host_memory_base) {
       for (uint32_t i = 0; i < pool->entry_count; i++) {
          if (pool->entries[i].set == set) {
@@ -543,6 +549,15 @@ v3dv_ResetDescriptorPool(VkDevice _device,
    return VK_SUCCESS;
 }
 
+void
+v3dv_descriptor_set_layout_destroy(struct v3dv_device *device,
+                                   struct v3dv_descriptor_set_layout *set_layout)
+{
+   assert(set_layout->ref_cnt == 0);
+   vk_object_base_finish(&set_layout->base);
+   vk_free2(&device->vk.alloc, NULL, set_layout);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_CreateDescriptorSetLayout(VkDevice _device,
                                const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
@@ -588,11 +603,17 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    uint32_t size = samplers_offset +
       immutable_sampler_count * sizeof(struct v3dv_sampler);
 
-   set_layout = vk_object_zalloc(&device->vk, pAllocator, size,
-                                 VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
-
+   /* Descriptor set layouts are reference counted and therefore can survive
+    * vkDestroyPipelineSetLayout, so they need to be allocated with a device
+    * scope.
+    */
+   set_layout =
+      vk_zalloc(&device->vk.alloc, size, 8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
    if (!set_layout)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   vk_object_base_init(&device->vk, &set_layout->base,
+                       VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
 
    struct v3dv_sampler *samplers = (void*) &set_layout->binding[num_bindings];
 
@@ -602,7 +623,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    VkResult result = vk_create_sorted_bindings(pCreateInfo->pBindings,
                                                pCreateInfo->bindingCount, &bindings);
    if (result != VK_SUCCESS) {
-      vk_object_free(&device->vk, pAllocator, set_layout);
+      v3dv_descriptor_set_layout_destroy(device, set_layout);
       return vk_error(device, result);
    }
 
@@ -610,6 +631,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    set_layout->flags = pCreateInfo->flags;
    set_layout->shader_stages = 0;
    set_layout->bo_size = 0;
+   set_layout->ref_cnt = 1;
 
    uint32_t descriptor_count = 0;
    uint32_t dynamic_offset_count = 0;
@@ -712,7 +734,7 @@ v3dv_DestroyDescriptorSetLayout(VkDevice _device,
    if (!set_layout)
       return;
 
-   vk_object_free(&device->vk, pAllocator, set_layout);
+   v3dv_descriptor_set_layout_unref(device, set_layout);
 }
 
 static inline VkResult
@@ -731,7 +753,7 @@ out_of_pool_memory(const struct v3dv_device *device,
 static VkResult
 descriptor_set_create(struct v3dv_device *device,
                       struct v3dv_descriptor_pool *pool,
-                      const struct v3dv_descriptor_set_layout *layout,
+                      struct v3dv_descriptor_set_layout *layout,
                       struct v3dv_descriptor_set **out_set)
 {
    struct v3dv_descriptor_set *set;
@@ -836,6 +858,7 @@ descriptor_set_create(struct v3dv_device *device,
       }
    }
 
+   v3dv_descriptor_set_layout_ref(layout);
    *out_set = set;
 
    return VK_SUCCESS;
