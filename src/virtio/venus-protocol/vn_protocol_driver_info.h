@@ -17,11 +17,12 @@ struct vn_info_extension {
 };
 
 /* sorted by extension names for bsearch */
-static const uint32_t _vn_info_extension_count = 87;
-static const struct vn_info_extension _vn_info_extensions[87] = {
+static const uint32_t _vn_info_extension_count = 89;
+static const struct vn_info_extension _vn_info_extensions[89] = {
    { "VK_EXT_4444_formats", 341, 1 },
    { "VK_EXT_calibrated_timestamps", 185, 2 },
    { "VK_EXT_command_serialization", 384, 0 },
+   { "VK_EXT_conditional_rendering", 82, 2 },
    { "VK_EXT_conservative_rasterization", 102, 1 },
    { "VK_EXT_custom_border_color", 288, 12 },
    { "VK_EXT_depth_clip_enable", 103, 1 },
@@ -32,6 +33,7 @@ static const struct vn_info_extension _vn_info_extensions[87] = {
    { "VK_EXT_host_query_reset", 262, 1 },
    { "VK_EXT_image_drm_format_modifier", 159, 2 },
    { "VK_EXT_image_robustness", 336, 1 },
+   { "VK_EXT_index_type_uint8", 266, 1 },
    { "VK_EXT_inline_uniform_block", 139, 1 },
    { "VK_EXT_line_rasterization", 260, 1 },
    { "VK_EXT_pipeline_creation_cache_control", 298, 3 },
