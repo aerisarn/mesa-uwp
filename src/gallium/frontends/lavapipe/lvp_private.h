@@ -66,6 +66,8 @@ typedef uint32_t xcb_window_t;
 #include "vk_command_buffer.h"
 #include "vk_command_pool.h"
 #include "vk_queue.h"
+#include "vk_sync.h"
+#include "vk_sync_timeline.h"
 
 #include "wsi_common.h"
 
@@ -137,6 +139,9 @@ struct lvp_physical_device {
    struct pipe_screen *pscreen;
    uint32_t max_images;
 
+   struct vk_sync_timeline_type sync_timeline_type;
+   const struct vk_sync_type *sync_types[3];
+
    VkPhysicalDeviceLimits device_limits;
 
    struct wsi_device                       wsi_device;
@@ -167,35 +172,8 @@ struct lvp_queue {
    struct pipe_context *ctx;
    struct cso_context *cso;
    struct u_upload_mgr *uploader;
-   bool shutdown;
-   uint64_t timeline;
-   struct util_queue queue;
-   simple_mtx_t last_lock;
-   uint64_t last_finished;
-   uint64_t last_fence_timeline;
    struct pipe_fence_handle *last_fence;
-   volatile int count;
    void *state;
-};
-
-struct lvp_semaphore_wait {
-   struct lvp_semaphore *sema;
-   uint64_t wait;
-};
-
-struct lvp_queue_work {
-   struct list_head list;
-   uint32_t cmd_buffer_count;
-   uint32_t timeline_count;
-   uint32_t wait_count;
-   uint32_t signal_count;
-   uint64_t timeline;
-   struct lvp_fence *fence;
-   struct lvp_cmd_buffer **cmd_buffers;
-   struct lvp_semaphore_timeline **timelines;
-   struct lvp_semaphore **signals;
-   VkSemaphore *waits;
-   uint64_t *wait_vals;
 };
 
 struct lvp_pipeline_cache {
@@ -231,6 +209,29 @@ struct lvp_device_memory {
    enum lvp_device_memory_type memory_type;
    int                                          backed_fd;
 };
+
+struct lvp_pipe_sync {
+   struct vk_sync base;
+
+   mtx_t lock;
+   cnd_t changed;
+
+   bool signaled;
+   struct pipe_fence_handle *fence;
+};
+
+extern const struct vk_sync_type lvp_pipe_sync_type;
+
+void lvp_pipe_sync_signal_with_fence(struct lvp_device *device,
+                                     struct lvp_pipe_sync *sync,
+                                     struct pipe_fence_handle *fence);
+
+static inline struct lvp_pipe_sync *
+vk_sync_as_lvp_pipe_sync(struct vk_sync *sync)
+{
+   assert(sync->type == &lvp_pipe_sync_type);
+   return container_of(sync, struct lvp_pipe_sync, base);
+}
 
 struct lvp_image {
    struct vk_image vk;
@@ -470,40 +471,6 @@ struct lvp_event {
    volatile uint64_t event_storage;
 };
 
-struct lvp_fence {
-   struct vk_object_base base;
-   uint64_t timeline;
-   struct util_queue_fence fence;
-   struct pipe_fence_handle *handle;
-   bool signalled;
-};
-
-struct lvp_semaphore_timeline {
-   struct lvp_semaphore_timeline *next;
-   uint64_t signal; //api
-   uint64_t timeline; //queue
-   struct pipe_fence_handle *fence;
-};
-
-struct lvp_semaphore {
-   struct vk_object_base base;
-   bool is_timeline;
-   uint64_t current;
-   simple_mtx_t lock;
-   mtx_t submit_lock;
-   cnd_t submit;
-   void *mem;
-   struct util_dynarray links;
-   struct lvp_semaphore_timeline *timeline;
-   struct lvp_semaphore_timeline *latest;
-   struct pipe_fence_handle *handle;
-};
-
-struct lvp_queue_noop {
-   struct lvp_fence *fence;
-   struct lvp_semaphore *sema;
-};
-
 struct lvp_buffer {
    struct vk_object_base base;
 
@@ -604,9 +571,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_query_pool, base, VkQueryPool,
                                VK_OBJECT_TYPE_QUERY_POOL)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_fence, base, VkFence, VK_OBJECT_TYPE_FENCE);
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_semaphore, base, VkSemaphore,
-                               VK_OBJECT_TYPE_SEMAPHORE);
 
 struct lvp_write_descriptor {
    uint32_t dst_binding;

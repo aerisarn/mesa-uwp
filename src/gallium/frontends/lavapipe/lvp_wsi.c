@@ -55,32 +55,3 @@ lvp_finish_wsi(struct lvp_physical_device *physical_device)
    wsi_device_finish(&physical_device->wsi_device,
                      &physical_device->vk.instance->alloc);
 }
-
-VKAPI_ATTR VkResult VKAPI_CALL lvp_AcquireNextImage2KHR(
-   VkDevice                                     _device,
-   const VkAcquireNextImageInfoKHR*             pAcquireInfo,
-   uint32_t*                                    pImageIndex)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   struct lvp_physical_device *pdevice = device->physical_device;
-
-   VkResult result = wsi_common_acquire_next_image2(&pdevice->wsi_device,
-                                                    _device,
-                                                    pAcquireInfo,
-                                                    pImageIndex);
-
-   LVP_FROM_HANDLE(lvp_fence, fence, pAcquireInfo->fence);
-   LVP_FROM_HANDLE(lvp_semaphore, semaphore, pAcquireInfo->semaphore);
-   if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
-      struct lvp_queue_noop *noop = malloc(sizeof(struct lvp_queue_noop));
-      if (!noop) {
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
-      }
-      noop->fence = fence;
-      noop->sema = semaphore;
-      if (fence)
-         fence->timeline = p_atomic_inc_return(&device->queue.timeline);
-      util_queue_add_job(&device->queue.queue, noop, fence ? &fence->fence : NULL, queue_thread_noop, NULL, 0);
-   }
-   return result;
-}

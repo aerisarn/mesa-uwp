@@ -104,7 +104,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetQueryPoolResults(
    LVP_FROM_HANDLE(lvp_query_pool, pool, queryPool);
    VkResult vk_result = VK_SUCCESS;
 
-   lvp_DeviceWaitIdle(_device);
+   device->vk.dispatch_table.DeviceWaitIdle(_device);
 
    for (unsigned i = firstQuery; i < firstQuery + queryCount; i++) {
       uint8_t *dptr = (uint8_t *)((char *)pData + (stride * (i - firstQuery)));

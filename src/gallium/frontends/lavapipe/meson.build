@@ -21,6 +21,7 @@ liblvp_files = files(
     'lvp_lower_vulkan_resource.c',
     'lvp_lower_vulkan_resource.h',
     'lvp_lower_input_attachments.c',
+    'lvp_pipe_sync.c',
     'lvp_pipeline.c',
     'lvp_pipeline_cache.c',
     'lvp_query.c',
