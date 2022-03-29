@@ -34,6 +34,36 @@
 #endif
 #include <sys/stat.h>
 
+static void
+radv_suspend_queries(struct radv_cmd_buffer *cmd_buffer)
+{
+   /* Pipeline statistics queries. */
+   if (cmd_buffer->state.active_pipeline_queries > 0) {
+      cmd_buffer->state.flush_bits &= ~RADV_CMD_FLAG_START_PIPELINE_STATS;
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_STOP_PIPELINE_STATS;
+   }
+
+   /* Occlusion queries. */
+   if (cmd_buffer->state.active_occlusion_queries > 0) {
+      radv_set_db_count_control(cmd_buffer, false);
+   }
+}
+
+static void
+radv_resume_queries(struct radv_cmd_buffer *cmd_buffer)
+{
+   /* Pipeline statistics queries. */
+   if (cmd_buffer->state.active_pipeline_queries > 0) {
+      cmd_buffer->state.flush_bits &= ~RADV_CMD_FLAG_STOP_PIPELINE_STATS;
+      cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_START_PIPELINE_STATS;
+   }
+
+   /* Occlusion queries. */
+   if (cmd_buffer->state.active_occlusion_queries > 0) {
+      radv_set_db_count_control(cmd_buffer, true);
+   }
+}
+
 void
 radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_buffer,
                uint32_t flags)
@@ -135,6 +165,8 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       state->attachments = cmd_buffer->state.attachments;
       state->render_area = cmd_buffer->state.render_area;
    }
+
+   radv_suspend_queries(cmd_buffer);
 }
 
 void
@@ -255,6 +287,8 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
       if (state->subpass)
          cmd_buffer->state.dirty |= RADV_CMD_DIRTY_FRAMEBUFFER;
    }
+
+   radv_resume_queries(cmd_buffer);
 }
 
 VkImageViewType

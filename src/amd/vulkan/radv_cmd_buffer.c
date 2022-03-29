@@ -2653,14 +2653,14 @@ radv_emit_index_buffer(struct radv_cmd_buffer *cmd_buffer, bool indirect)
 }
 
 void
-radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer)
+radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer, bool enable_occlusion_queries)
 {
    bool has_perfect_queries = cmd_buffer->state.perfect_occlusion_queries_enabled;
    struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t pa_sc_mode_cntl_1 = pipeline ? pipeline->graphics.ms.pa_sc_mode_cntl_1 : 0;
    uint32_t db_count_control;
 
-   if (!cmd_buffer->state.active_occlusion_queries) {
+   if (!enable_occlusion_queries) {
       if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
          if (G_028A4C_OUT_OF_ORDER_PRIMITIVE_ENABLE(pa_sc_mode_cntl_1) &&
              pipeline->graphics.disable_out_of_order_rast_for_occlusion && has_perfect_queries) {

@@ -2,14 +2,6 @@
 spec@arb_gl_spirv@execution@ssbo@unsized-array,Fail
 spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
 
-#6185
-KHR-GL46.tessellation_shader.single.isolines_tessellation,Crash
-KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize,Fail
-KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_tessLevel,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule4,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule5,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule7,Fail
-
 #4562
 dEQP-GLES31.functional.image_load_store.3d.load_store.r32f_single_layer,Fail
 dEQP-GLES31.functional.image_load_store.3d.load_store.r32i_single_layer,Fail
@@ -168,15 +160,6 @@ dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth24_stencil8,Fail
 dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth32f_stencil8,Fail
 dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth_component24,Fail
 dEQP-GLES3.functional.fbo.depth.depth_write_clamp.depth_component32f,Fail
-dEQP-GLES3.functional.occlusion_query.depth_clear,Fail
-dEQP-GLES3.functional.occlusion_query.depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.depth_write_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_depth_write_depth_clear_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.scissor,Fail
-dEQP-GLES3.functional.occlusion_query.scissor_stencil_clear,Fail
-dEQP-GLES3.functional.occlusion_query.stencil_clear,Fail
 dEQP-GLES3.functional.polygon_offset.fixed16_render_with_units,Fail
 dEQP-GLES3.functional.rasterization.primitives.line_loop_wide,Fail
 dEQP-GLES3.functional.rasterization.primitives.line_strip_wide,Fail
@@ -220,9 +203,6 @@ glx@glx-visuals-stencil -pixmap,Crash
 GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_blit,Fail
 GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_clearbuffer,Fail
 GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_builtins,Fail
-GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_query_objects,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_pause_resume,Fail
-GTF-GL46.gtf40.GL3Tests.transform_feedback2.transform_feedback2_states,Fail
 
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORBURN_KHR_all_qualifier,Fail
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORDODGE_KHR_all_qualifier,Fail
@@ -254,8 +234,6 @@ KHR-GL46.blend_equation_advanced.blend_specific.GL_MULTIPLY_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_OVERLAY_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SCREEN_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SOFTLIGHT_KHR,Fail
-KHR-GL46.conditional_render_inverted.functional,Fail
-KHR-GL46.direct_state_access.queries_functional,Fail
 KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
 KHR-GL46.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GL46.packed_depth_stencil.blit.depth32f_stencil8,Fail
@@ -276,14 +254,6 @@ KHR-GL46.sparse_buffer_tests.BufferStorageTest,Fail
 KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
-KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.data_pass_through,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule3,Fail
-KHR-GL46.tessellation_shader.tessellation_invariance.invariance_rule6,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.degenerate_case,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_quads_tessellation.inner_tessellation_level_rounding,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_tessellation.gl_InvocationID_PatchVerticesIn_PrimitiveID,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.identical_triangles,Fail
-KHR-GL46.tessellation_shader.tessellation_shader_triangles_tessellation.inner_tessellation_level_rounding,Fail
 KHR-GL46.texture_view.view_sampling,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-multiple-buffers-per-stream,Fail
 KHR-GL46.transform_feedback_overflow_query_ARB.multiple-streams-one-buffer-per-stream,Fail
@@ -384,10 +354,6 @@ spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec3-u64
 spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec4-u64vec4,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
-spec@arb_occlusion_query@occlusion_query_meta_fragments,Fail
-spec@arb_occlusion_query@occlusion_query_meta_no_fragments,Fail
-spec@arb_occlusion_query@occlusion_query_meta_save,Fail
-spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-clip,Fail
 spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combinations,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Antialiased combinations,Fail
@@ -397,33 +363,11 @@ spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
 spec@arb_query_buffer_object@coherency,Fail
-spec@arb_query_buffer_object@coherency@index-buffer-GL_COMPUTE_SHADER_INVOCATIONS,Fail
 spec@arb_query_buffer_object@coherency@index-buffer-GL_GEOMETRY_SHADER_INVOCATIONS,Fail
-spec@arb_query_buffer_object@coherency@index-buffer-GL_SAMPLES_PASSED,Fail
-spec@arb_query_buffer_object@coherency@indirect-dispatch-GL_COMPUTE_SHADER_INVOCATIONS,Fail
 spec@arb_query_buffer_object@coherency@indirect-dispatch-GL_GEOMETRY_SHADER_INVOCATIONS,Fail
-spec@arb_query_buffer_object@coherency@indirect-dispatch-GL_SAMPLES_PASSED,Fail
-spec@arb_query_buffer_object@coherency@indirect-draw-count-GL_COMPUTE_SHADER_INVOCATIONS,Fail
 spec@arb_query_buffer_object@coherency@indirect-draw-count-GL_GEOMETRY_SHADER_INVOCATIONS,Fail
-spec@arb_query_buffer_object@coherency@indirect-draw-GL_COMPUTE_SHADER_INVOCATIONS,Fail
 spec@arb_query_buffer_object@coherency@indirect-draw-GL_GEOMETRY_SHADER_INVOCATIONS,Fail
-spec@arb_query_buffer_object@coherency@indirect-draw-GL_SAMPLES_PASSED,Fail
 spec@arb_query_buffer_object@qbo,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC_CPU_READ_AFTER-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC_CPU_READ_BEFORE-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-ASYNC-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-SYNC-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-SYNC-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_COMPUTE_SHADER_INVOCATIONS-SYNC-GL_UNSIGNED_INT,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-ASYNC_CPU_READ_AFTER-GL_INT,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT64_ARB,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT,Fail
@@ -439,21 +383,6 @@ spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC_CPU_R
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC-GL_INT,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC-GL_UNSIGNED_INT64_ARB,Fail
 spec@arb_query_buffer_object@qbo@query-GL_GEOMETRY_SHADER_INVOCATIONS-SYNC-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_AFTER-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_AFTER-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_BEFORE-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC_CPU_READ_BEFORE-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-ASYNC-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-SYNC_CPU_READ_AFTER_CACHE_TEST-GL_UNSIGNED_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-SYNC-GL_INT,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-SYNC-GL_UNSIGNED_INT64_ARB,Fail
-spec@arb_query_buffer_object@qbo@query-GL_SAMPLES_PASSED-SYNC-GL_UNSIGNED_INT,Fail
 spec@arb_sample_shading@ignore-centroid-qualifier 2,Fail
 spec@arb_sample_shading@ignore-centroid-qualifier 4,Fail
 spec@arb_sample_shading@ignore-centroid-qualifier 6,Fail
@@ -465,11 +394,6 @@ spec@arb_sample_shading@interpolate-at-sample-position 8,Fail
 spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
 spec@arb_shader_clock@execution@clock2x32,Fail
 spec@arb_shader_clock@execution@clock,Fail
-spec@arb_shader_image_load_store@early-z,Fail
-spec@arb_shader_image_load_store@early-z@occlusion query test/early-z fail,Fail
-spec@arb_shader_image_load_store@early-z@occlusion query test/early-z pass,Fail
-spec@arb_shader_image_load_store@early-z@occlusion query test/late-z fail,Fail
-spec@arb_shader_image_load_store@early-z@occlusion query test/late-z pass,Fail
 spec@arb_shader_image_load_store@layer,Fail
 spec@arb_shader_image_load_store@layer@image3D/non-layered binding test,Fail
 spec@arb_shader_image_load_store@level@3D level binding test,Fail
@@ -693,8 +617,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SR
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SRGB_S3TC_DXT1_EXT- swizzled- border color only,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled@GL_COMPRESSED_SRGB- swizzled- border color only,Fail
 spec@ext_texture_swizzle@depth_texture_mode_and_swizzle,Fail
-spec@ext_transform_feedback@generatemipmap prims_generated,Fail
-spec@ext_transform_feedback@primgen-query transform-feedback-disabled,Fail
 spec@glsl-1.10@execution@glsl-fs-inline-explosion,Crash
 spec@glsl-1.10@execution@glsl-vs-inline-explosion,Crash
 spec@glsl-1.10@execution@loops@glsl-fs-unroll-explosion,Crash
