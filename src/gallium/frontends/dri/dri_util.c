@@ -41,6 +41,7 @@
 
 #include <stdbool.h>
 #include "dri_util.h"
+#include "dri_context.h"
 #include "utils.h"
 #include "util/u_endian.h"
 #include "util/driconf.h"
@@ -484,8 +485,8 @@ driCreateContextAttribs(__DRIscreen *screen, int api,
     context->driDrawablePriv = NULL;
     context->driReadablePriv = NULL;
 
-    if (!screen->driver->CreateContext(mesa_api, modes, context,
-                                       &ctx_config, error, shareCtx)) {
+    if (!dri_create_context(mesa_api, modes, context, &ctx_config, error,
+                            shareCtx)) {
         free(context);
         return NULL;
     }
@@ -524,7 +525,7 @@ static void
 driDestroyContext(__DRIcontext *pcp)
 {
     if (pcp) {
-	pcp->driScreenPriv->driver->DestroyContext(pcp);
+	dri_destroy_context(pcp);
 	free(pcp);
     }
 }
@@ -577,7 +578,7 @@ static int driBindContext(__DRIcontext *pcp,
 	dri_get_drawable(prp);
     }
 
-    return pcp->driScreenPriv->driver->MakeCurrent(pcp, pdp, prp);
+    return dri_make_current(pcp, pdp, prp);
 }
 
 /**
@@ -610,10 +611,10 @@ static int driUnbindContext(__DRIcontext *pcp)
 	return GL_FALSE;
 
     /*
-    ** Call driUnbindContext before checking for valid drawables
+    ** Call dri_unbind_context before checking for valid drawables
     ** to handle surfaceless contexts properly.
     */
-    pcp->driScreenPriv->driver->UnbindContext(pcp);
+    dri_unbind_context(pcp);
 
     pdp = pcp->driDrawablePriv;
     prp = pcp->driReadablePriv;

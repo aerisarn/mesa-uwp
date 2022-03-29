@@ -603,13 +603,9 @@ drisw_create_buffer(__DRIscreen * sPriv,
 const struct __DriverAPIRec galliumsw_driver_api = {
    .InitScreen = drisw_init_screen,
    .DestroyScreen = dri_destroy_screen,
-   .CreateContext = dri_create_context,
-   .DestroyContext = dri_destroy_context,
    .CreateBuffer = drisw_create_buffer,
    .DestroyBuffer = dri_destroy_buffer,
    .SwapBuffers = drisw_swap_buffers,
-   .MakeCurrent = dri_make_current,
-   .UnbindContext = dri_unbind_context,
    .CopySubBuffer = drisw_copy_sub_buffer,
 };
 
