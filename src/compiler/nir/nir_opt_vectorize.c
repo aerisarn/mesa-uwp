@@ -257,17 +257,7 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
 
    nir_builder_instr_insert(&b, &new_alu->instr);
 
-   unsigned swiz[NIR_MAX_VEC_COMPONENTS];
-   for (unsigned i = 0; i < NIR_MAX_VEC_COMPONENTS; i++)
-      swiz[i] = i;
-   nir_ssa_def *new_alu1 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
-                                       alu1_components);
-
-   for (unsigned i = 0; i < alu2_components; i++)
-      swiz[i] += alu1_components;
-   nir_ssa_def *new_alu2 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
-                                       alu2_components);
-
+   /* update all ALU uses */
    nir_foreach_use_safe(src, &alu1->dest.dest.ssa) {
       nir_instr *user_instr = src->parent_instr;
       if (user_instr->type == nir_instr_type_alu) {
@@ -283,54 +273,45 @@ instr_try_combine(struct set *instr_set, nir_instr *instr1, nir_instr *instr2)
          /* Rehash user if it was found in the hashset */
          if (entry && entry->key == user_instr) {
             _mesa_set_remove(instr_set, entry);
-            _mesa_set_add(instr_set, src->parent_instr);
+            _mesa_set_add(instr_set, user_instr);
          }
-      } else {
-         nir_instr_rewrite_src(user_instr, src, nir_src_for_ssa(new_alu1));
       }
    }
-
-   nir_foreach_if_use_safe(src, &alu1->dest.dest.ssa) {
-      nir_if_rewrite_condition(src->parent_if, nir_src_for_ssa(new_alu1));
-   }
-
-   assert(nir_ssa_def_is_unused(&alu1->dest.dest.ssa));
 
    nir_foreach_use_safe(src, &alu2->dest.dest.ssa) {
       if (src->parent_instr->type == nir_instr_type_alu) {
          /* For ALU instructions, rewrite the source directly to avoid a
           * round-trip through copy propagation.
           */
-
-         nir_alu_instr *use = nir_instr_as_alu(src->parent_instr);
-
-         unsigned src_index = 5;
-         for (unsigned i = 0; i < nir_op_infos[use->op].num_inputs; i++) {
-            if (&use->src[i].src == src) {
-               src_index = i;
-               break;
-            }
-         }
-         assert(src_index != 5);
-
          nir_instr_rewrite_src(src->parent_instr, src,
                                nir_src_for_ssa(&new_alu->dest.dest.ssa));
 
-         for (unsigned i = 0;
-              i < nir_ssa_alu_instr_src_components(use, src_index); i++) {
-            use->src[src_index].swizzle[i] += alu1_components;
-         }
-      } else {
-         nir_instr_rewrite_src(src->parent_instr, src,
-                               nir_src_for_ssa(new_alu2));
+         nir_alu_src *alu_src = container_of(src, nir_alu_src, src);
+         nir_alu_instr *use = nir_instr_as_alu(src->parent_instr);
+         unsigned components = nir_ssa_alu_instr_src_components(use, alu_src - use->src);
+         for (unsigned i = 0; i < components; i++)
+            alu_src->swizzle[i] += alu1_components;
       }
    }
 
-   nir_foreach_if_use_safe(src, &alu2->dest.dest.ssa) {
-      nir_if_rewrite_condition(src->parent_if, nir_src_for_ssa(new_alu2));
+   /* update all other uses if there are any */
+   unsigned swiz[NIR_MAX_VEC_COMPONENTS];
+
+   if (!nir_ssa_def_is_unused(&alu1->dest.dest.ssa)) {
+      for (unsigned i = 0; i < alu1_components; i++)
+         swiz[i] = i;
+      nir_ssa_def *new_alu1 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
+                                          alu1_components);
+      nir_ssa_def_rewrite_uses(&alu1->dest.dest.ssa, new_alu1);
    }
 
-   assert(nir_ssa_def_is_unused(&alu2->dest.dest.ssa));
+   if (!nir_ssa_def_is_unused(&alu2->dest.dest.ssa)) {
+      for (unsigned i = 0; i < alu2_components; i++)
+         swiz[i] = i + alu1_components;
+      nir_ssa_def *new_alu2 = nir_swizzle(&b, &new_alu->dest.dest.ssa, swiz,
+                                          alu2_components);
+      nir_ssa_def_rewrite_uses(&alu2->dest.dest.ssa, new_alu2);
+   }
 
    nir_instr_remove(instr1);
    nir_instr_remove(instr2);
