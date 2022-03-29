@@ -236,7 +236,7 @@ util_set_current_thread_affinity(const uint32_t *mask,
 
 /* Return the time of a thread's CPU time clock. */
 static inline int64_t
-util_thread_get_time_nano(ASSERTED thrd_t thread)
+util_thread_get_time_nano(thrd_t thread)
 {
 #if defined(HAVE_PTHREAD) && !defined(__APPLE__) && !defined(__HAIKU__)
    struct timespec ts;
@@ -246,6 +246,7 @@ util_thread_get_time_nano(ASSERTED thrd_t thread)
    clock_gettime(cid, &ts);
    return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
 #else
+   (void)thread;
    return 0;
 #endif
 }
