@@ -1,3 +1,7 @@
+#6231
+spec@arb_gl_spirv@execution@ssbo@unsized-array,Fail
+spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
+
 #6185
 KHR-GL46.tessellation_shader.single.isolines_tessellation,Crash
 KHR-GL46.tessellation_shader.tessellation_control_to_tessellation_evaluation.gl_MaxPatchVertices_Position_PointSize,Fail
