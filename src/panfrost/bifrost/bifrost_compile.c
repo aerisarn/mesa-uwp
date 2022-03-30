@@ -1176,15 +1176,27 @@ bi_emit_image_load(bi_builder *b, nir_intrinsic_instr *instr)
         ASSERTED unsigned nr_dim = glsl_get_sampler_dim_coordinate_components(dim);
 
         bi_index coords = bi_src_index(&instr->src[1]);
+        bi_index xy = bi_emit_image_coord(b, coords, 0, coord_comps, array);
+        bi_index zw = bi_emit_image_coord(b, coords, 1, coord_comps, array);
+        bi_index dest = bi_dest_index(&instr->dest);
+        enum bi_register_format regfmt = bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr));
+        enum bi_vecsize vecsize = instr->num_components - 1;
+
         /* TODO: MSAA */
         assert(nr_dim != GLSL_SAMPLER_DIM_MS && "MSAA'd images not supported");
 
-        bi_ld_attr_tex_to(b, bi_dest_index(&instr->dest),
-                          bi_emit_image_coord(b, coords, 0, coord_comps, array),
-                          bi_emit_image_coord(b, coords, 1, coord_comps, array),
-                          bi_emit_image_index(b, instr),
-                          bi_reg_fmt_for_nir(nir_intrinsic_dest_type(instr)),
-                          instr->num_components - 1);
+        if (b->shader->arch >= 9 && nir_src_is_const(instr->src[0])) {
+                bi_instr *I = bi_ld_tex_imm_to(b, dest, xy, zw, regfmt, vecsize,
+                                                nir_src_as_uint(instr->src[0]));
+
+                I->table = PAN_TABLE_IMAGE;
+        } else if (b->shader->arch >= 9) {
+                unreachable("Indirect images on Valhall not yet supported");
+        } else {
+                bi_ld_attr_tex_to(b, dest, xy, zw,
+                                  bi_emit_image_index(b, instr), regfmt,
+                                  vecsize);
+        }
 }
 
 static bi_index
