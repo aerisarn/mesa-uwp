@@ -714,6 +714,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
    NIR_PASS_V(nir, dxil_nir_split_typed_samplers);
    NIR_PASS_V(nir, dxil_nir_lower_bool_input);
+   NIR_PASS_V(nir, dxil_nir_lower_ubo_array_one_to_static);
    NIR_PASS_V(nir, nir_opt_dce);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform, NULL);
 
