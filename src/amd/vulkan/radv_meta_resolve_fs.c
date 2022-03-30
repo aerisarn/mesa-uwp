@@ -31,21 +31,6 @@
 #include "vk_format.h"
 
 static nir_shader *
-build_nir_vertex_shader(struct radv_device *dev)
-{
-   const struct glsl_type *vec4 = glsl_vec4_type();
-   nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_VERTEX, "meta_resolve_vs");
-
-   nir_variable *pos_out = nir_variable_create(b.shader, nir_var_shader_out, vec4, "gl_Position");
-   pos_out->data.location = VARYING_SLOT_POS;
-
-   nir_ssa_def *outvec = radv_meta_gen_rect_vertices(&b);
-
-   nir_store_var(&b, pos_out, outvec, 0xf);
-   return b.shader;
-}
-
-static nir_shader *
 build_resolve_fragment_shader(struct radv_device *dev, bool is_integer, int samples)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
@@ -147,7 +132,7 @@ create_resolve_pipeline(struct radv_device *device, int samples_log2, VkFormat f
       is_integer = true;
 
    nir_shader *fs = build_resolve_fragment_shader(device, is_integer, samples);
-   nir_shader *vs = build_nir_vertex_shader(device);
+   nir_shader *vs = radv_meta_build_nir_vs_generate_vertices(device);
 
    VkPipelineShaderStageCreateInfo pipeline_shader_stages[] = {
       {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -401,7 +386,7 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
    uint32_t samples = 1 << samples_log2;
    nir_shader *fs =
       build_depth_stencil_resolve_fragment_shader(device, samples, index, resolve_mode);
-   nir_shader *vs = build_nir_vertex_shader(device);
+   nir_shader *vs = radv_meta_build_nir_vs_generate_vertices(device);
 
    VkPipelineShaderStageCreateInfo pipeline_shader_stages[] = {
       {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
