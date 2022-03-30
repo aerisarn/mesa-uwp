@@ -514,6 +514,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_sample_locations = device->rad_info.chip_class < GFX10,
       .EXT_sampler_filter_minmax = true,
       .EXT_scalar_block_layout = device->rad_info.chip_class >= GFX7,
+      .EXT_separate_stencil_usage = true,
       .EXT_shader_atomic_float = true,
 #ifdef LLVM_AVAILABLE
       .EXT_shader_atomic_float2 = !device->use_llvm || LLVM_VERSION_MAJOR >= 14,
