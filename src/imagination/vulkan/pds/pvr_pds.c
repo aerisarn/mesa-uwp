@@ -227,18 +227,6 @@ static ALWAYS_INLINE uint32_t pvr_pds_encode_douti(uint32_t cc,
                                    PVR_ROGUE_PDSINST_DSTDOUT_DOUTI);
 }
 
-static ALWAYS_INLINE uint32_t pvr_pds_encode_doutv(uint32_t cc,
-                                                   uint32_t end,
-                                                   uint32_t src1,
-                                                   uint32_t src0)
-{
-   return pvr_pds_inst_encode_dout(cc,
-                                   end,
-                                   src1,
-                                   src0,
-                                   PVR_ROGUE_PDSINST_DSTDOUT_DOUTV);
-}
-
 static ALWAYS_INLINE uint32_t pvr_pds_encode_bra(uint32_t srcc,
                                                  uint32_t neg,
                                                  uint32_t setc,
