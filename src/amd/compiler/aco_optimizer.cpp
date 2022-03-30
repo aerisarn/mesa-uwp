@@ -1150,6 +1150,27 @@ can_eliminate_fcanonicalize(opt_ctx& ctx, aco_ptr<Instruction>& instr, Temp tmp)
 }
 
 bool
+can_eliminate_and_exec(opt_ctx& ctx, Temp tmp, unsigned pass_flags)
+{
+   if (ctx.info[tmp.id()].is_vopc()) {
+      Instruction* vopc_instr = ctx.info[tmp.id()].instr;
+      /* Remove superfluous s_and when the VOPC instruction uses the same exec and thus
+       * already produces the same result */
+      return vopc_instr->pass_flags == pass_flags;
+   }
+   if (ctx.info[tmp.id()].is_bitwise()) {
+      Instruction* instr = ctx.info[tmp.id()].instr;
+      if (instr->pass_flags != pass_flags)
+         return false;
+      return std::all_of(
+         instr->operands.begin(), instr->operands.end(),
+         [&](const Operand& op)
+         { return op.isTemp() && can_eliminate_and_exec(ctx, op.getTemp(), pass_flags); });
+   }
+   return false;
+}
+
+bool
 is_copy_label(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& info)
 {
    return info.is_temp() ||
@@ -1802,16 +1823,9 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
              * s_and is unnecessary. */
             ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
             break;
-         } else if (ctx.info[instr->operands[0].tempId()].is_vopc()) {
-            Instruction* vopc_instr = ctx.info[instr->operands[0].tempId()].instr;
-            /* Remove superfluous s_and when the VOPC instruction uses the same exec and thus
-             * already produces the same result */
-            if (vopc_instr->pass_flags == instr->pass_flags) {
-               assert(instr->pass_flags > 0);
-               ctx.info[instr->definitions[0].tempId()].set_temp(
-                  vopc_instr->definitions[0].getTemp());
-               break;
-            }
+         } else if (can_eliminate_and_exec(ctx, instr->operands[0].getTemp(), instr->pass_flags)) {
+            ctx.info[instr->definitions[0].tempId()].set_temp(instr->operands[0].getTemp());
+            break;
          }
       }
       FALLTHROUGH;
@@ -1827,14 +1841,15 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
                       })) {
          ctx.info[instr->definitions[0].tempId()].set_uniform_bitwise();
       }
-      FALLTHROUGH;
+      ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
+      break;
    case aco_opcode::s_lshl_b32:
    case aco_opcode::v_or_b32:
    case aco_opcode::v_lshlrev_b32:
    case aco_opcode::v_bcnt_u32_b32:
    case aco_opcode::v_and_b32:
    case aco_opcode::v_xor_b32:
-      ctx.info[instr->definitions[0].tempId()].set_bitwise(instr.get());
+      ctx.info[instr->definitions[0].tempId()].set_usedef(instr.get());
       break;
    case aco_opcode::v_min_f32:
    case aco_opcode::v_min_f16:
