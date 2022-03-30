@@ -60,6 +60,10 @@ if [ "$HWCI_FREQ_MAX" = "true" ]; then
   # Disable GPU runtime power management
   GPU_AUTOSUSPEND=`find /sys/devices -name autosuspend_delay_ms | grep gpu | head -1`
   test -z "$GPU_AUTOSUSPEND" || echo -1 > $GPU_AUTOSUSPEND || true
+
+  # Lock Intel GPU frequency to 70% of the maximum allowed by hardware
+  # and enable throttling detection & reporting.
+  ./intel-gpu-freq.sh -s 70% -g all -d
 fi
 
 # Increase freedreno hangcheck timer because it's right at the edge of the
