@@ -340,6 +340,7 @@ if with_tests
     'tests/roundeven_test.cpp',
     'tests/set_test.cpp',
     'tests/sparse_array_test.cpp',
+    'tests/timespec_test.cpp',
     'tests/u_atomic_test.cpp',
     'tests/u_debug_stack_test.cpp',
     'tests/u_printf_test.cpp',
@@ -351,12 +352,6 @@ if with_tests
     # FIXME: These tests fail with mingw, but not with msvc.
     files_util_tests += files(
       'tests/string_buffer_test.cpp',
-    )
-  endif
-
-  if cc.has_header('sys/time.h')  # MinGW has this, but Vanilla windows doesn't
-    files_util_tests += files(
-      'tests/timespec_test.cpp'
     )
   endif
 

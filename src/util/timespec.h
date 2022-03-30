@@ -34,9 +34,9 @@
 
 #include <stdint.h>
 #include <assert.h>
-#include <time.h>
 #include <stdbool.h>
 
+#include "c11/time.h"
 #include "macros.h"
 
 #define NSEC_PER_SEC 1000000000
