@@ -139,7 +139,7 @@ radv_WriteAccelerationStructuresPropertiesKHR(
    size_t dataSize, void *pData, size_t stride)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   char *data_out = (char*)pData;
+   char *data_out = (char *)pData;
 
    for (uint32_t i = 0; i < accelerationStructureCount; ++i) {
       RADV_FROM_HANDLE(radv_acceleration_structure, accel, pAccelerationStructures[i]);
@@ -147,7 +147,7 @@ radv_WriteAccelerationStructuresPropertiesKHR(
       if (!base_ptr)
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-      const struct radv_accel_struct_header *header = (const void*)(base_ptr + accel->mem_offset);
+      const struct radv_accel_struct_header *header = (const void *)(base_ptr + accel->mem_offset);
       if (stride * i + sizeof(VkDeviceSize) <= dataSize) {
          uint64_t value;
          switch (queryType) {
@@ -190,7 +190,7 @@ build_triangles(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeo
    }
 
    for (uint32_t p = 0; p < range->primitiveCount; ++p, ctx->curr_ptr += 64) {
-      struct radv_bvh_triangle_node *node = (void*)ctx->curr_ptr;
+      struct radv_bvh_triangle_node *node = (void *)ctx->curr_ptr;
       uint32_t node_offset = ctx->curr_ptr - ctx->base;
       uint32_t node_id = node_offset >> 3;
       *ctx->write_scratch++ = node_id;
@@ -218,7 +218,8 @@ build_triangles(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeo
             break;
          }
 
-         const char *v_data = (const char *)tri_data->vertexData.hostAddress + v_index * tri_data->vertexStride;
+         const char *v_data =
+            (const char *)tri_data->vertexData.hostAddress + v_index * tri_data->vertexStride;
          float coords[4];
          switch (tri_data->vertexFormat) {
          case VK_FORMAT_R32G32_SFLOAT:
@@ -348,7 +349,7 @@ build_instances(struct radv_device *device, struct radv_bvh_build_ctx *ctx,
          continue;
       }
 
-      struct radv_bvh_instance_node *node = (void*)ctx->curr_ptr;
+      struct radv_bvh_instance_node *node = (void *)ctx->curr_ptr;
       uint32_t node_offset = ctx->curr_ptr - ctx->base;
       uint32_t node_id = (node_offset >> 3) | 6;
       *ctx->write_scratch++ = node_id;
@@ -404,7 +405,7 @@ build_aabbs(struct radv_bvh_build_ctx *ctx, const VkAccelerationStructureGeometr
    const VkAccelerationStructureGeometryAabbsDataKHR *aabb_data = &geom->geometry.aabbs;
 
    for (uint32_t p = 0; p < range->primitiveCount; ++p, ctx->curr_ptr += 64) {
-      struct radv_bvh_aabb_node *node = (void*)ctx->curr_ptr;
+      struct radv_bvh_aabb_node *node = (void *)ctx->curr_ptr;
       uint32_t node_offset = ctx->curr_ptr - ctx->base;
       uint32_t node_id = (node_offset >> 3) | 7;
       *ctx->write_scratch++ = node_id;
@@ -445,7 +446,7 @@ compute_bounds(const char *base_ptr, uint32_t node_id, float *bounds)
 
    switch (node_id & 7) {
    case 0: {
-      const struct radv_bvh_triangle_node *node = (const void*)(base_ptr + (node_id / 8 * 64));
+      const struct radv_bvh_triangle_node *node = (const void *)(base_ptr + (node_id / 8 * 64));
       for (unsigned v = 0; v < 3; ++v) {
          for (unsigned j = 0; j < 3; ++j) {
             bounds[j] = MIN2(bounds[j], node->coords[v][j]);
@@ -455,7 +456,7 @@ compute_bounds(const char *base_ptr, uint32_t node_id, float *bounds)
       break;
    }
    case 5: {
-      const struct radv_bvh_box32_node *node = (const void*)(base_ptr + (node_id / 8 * 64));
+      const struct radv_bvh_box32_node *node = (const void *)(base_ptr + (node_id / 8 * 64));
       for (unsigned c2 = 0; c2 < 4; ++c2) {
          if (isnan(node->coords[c2][0][0]))
             continue;
@@ -467,7 +468,7 @@ compute_bounds(const char *base_ptr, uint32_t node_id, float *bounds)
       break;
    }
    case 6: {
-      const struct radv_bvh_instance_node *node = (const void*)(base_ptr + (node_id / 8 * 64));
+      const struct radv_bvh_instance_node *node = (const void *)(base_ptr + (node_id / 8 * 64));
       for (unsigned j = 0; j < 3; ++j) {
          bounds[j] = MIN2(bounds[j], node->aabb[0][j]);
          bounds[3 + j] = MAX2(bounds[3 + j], node->aabb[1][j]);
@@ -475,7 +476,7 @@ compute_bounds(const char *base_ptr, uint32_t node_id, float *bounds)
       break;
    }
    case 7: {
-      const struct radv_bvh_aabb_node *node = (const void*)(base_ptr + (node_id / 8 * 64));
+      const struct radv_bvh_aabb_node *node = (const void *)(base_ptr + (node_id / 8 * 64));
       for (unsigned j = 0; j < 3; ++j) {
          bounds[j] = MIN2(bounds[j], node->aabb[0][j]);
          bounds[3 + j] = MAX2(bounds[3 + j], node->aabb[1][j]);
@@ -570,12 +571,12 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
    scratch[0] = info->scratchData.hostAddress;
    scratch[1] = scratch[0] + leaf_node_count(info, ranges);
 
-   char *base_ptr = (char*)device->ws->buffer_map(accel->bo);
+   char *base_ptr = (char *)device->ws->buffer_map(accel->bo);
    if (!base_ptr)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    base_ptr = base_ptr + accel->mem_offset;
-   struct radv_accel_struct_header *header = (void*)base_ptr;
+   struct radv_accel_struct_header *header = (void *)base_ptr;
    void *first_node_ptr = (char *)base_ptr + ALIGN(sizeof(*header), 64);
 
    struct radv_bvh_build_ctx ctx = {.write_scratch = scratch[0],
@@ -657,7 +658,7 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
             uint32_t dst_id = (ctx.curr_ptr - base_ptr) / 64;
             dst_ids[dst_count] = dst_id * 8 + 5;
 
-            node = (void*)ctx.curr_ptr;
+            node = (void *)ctx.curr_ptr;
             ctx.curr_ptr += 128;
          }
 
