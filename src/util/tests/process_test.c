@@ -97,7 +97,7 @@ test_util_get_process_exec_path (void)
    if ((i > 0) && (strcmp(&build_path[i], ".exe") == 0))
       build_path[i] = 0;
 #endif
-   expect_equal_str(build_path, path, "util_get_process_name");
+   expect_equal_str(build_path, path, "test_util_get_process_exec_path");
    free(build_path);
 }
 
