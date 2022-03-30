@@ -28,7 +28,7 @@
 #include <gtest/gtest.h>
 
 #define CASE(instr, expected) do { \
-   uint64_t _value = va_pack_instr(instr, 0); \
+   uint64_t _value = va_pack_instr(instr); \
    if (_value != expected) { \
       fprintf(stderr, "Got %" PRIx64 ", expected %" PRIx64 "\n", _value, (uint64_t) expected); \
       bi_print_instr(instr, stderr); \

@@ -40,7 +40,7 @@ void va_repair_fau(bi_builder *b, bi_instr *I);
 void va_fuse_add_imm(bi_instr *I);
 void va_lower_constants(bi_context *ctx, bi_instr *I);
 void va_lower_isel(bi_instr *I);
-uint64_t va_pack_instr(const bi_instr *I, unsigned flow);
+uint64_t va_pack_instr(const bi_instr *I);
 
 static inline unsigned
 va_fau_page(enum bir_fau value)
