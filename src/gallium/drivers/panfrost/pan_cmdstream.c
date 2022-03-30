@@ -233,8 +233,10 @@ panfrost_fs_required(
                 return true;
 
         /* Using an empty FS requires early-z to be enabled, but alpha test
-         * needs it disabled */
-        if ((enum mali_func) zsa->base.alpha_func != MALI_FUNC_ALWAYS)
+         * needs it disabled. Alpha test is only native on Midgard, so only
+         * check there.
+         */
+        if (PAN_ARCH <= 5 && zsa->base.alpha_func != PIPE_FUNC_ALWAYS)
                 return true;
 
         /* If colour is written we need to execute */
