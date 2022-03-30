@@ -165,6 +165,7 @@ gl_varying_slot_name_for_stage(gl_varying_slot slot, gl_shader_stage stage)
       switch (slot) {
       case VARYING_SLOT_PRIMITIVE_COUNT: return "VARYING_SLOT_PRIMITIVE_COUNT";
       case VARYING_SLOT_PRIMITIVE_INDICES: return "VARYING_SLOT_PRIMITIVE_INDICES";
+      case VARYING_SLOT_CULL_PRIMITIVE: return "VARYING_SLOT_CULL_PRIMITIVE";
       default:
          /* Not an overlapping value. */
          break;
