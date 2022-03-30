@@ -1812,12 +1812,6 @@ void anv_UpdateDescriptorSets(
          &src->descriptors[src_layout->descriptor_index];
       src_desc += copy->srcArrayElement;
 
-      const struct anv_descriptor_set_binding_layout *dst_layout =
-         &dst->layout->binding[copy->dstBinding];
-      struct anv_descriptor *dst_desc =
-         &dst->descriptors[dst_layout->descriptor_index];
-      dst_desc += copy->dstArrayElement;
-
       if (src_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          anv_descriptor_set_write_inline_uniform_data(device, dst,
                                                       copy->dstBinding,
