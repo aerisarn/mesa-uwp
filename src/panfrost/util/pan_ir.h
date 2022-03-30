@@ -309,6 +309,15 @@ struct pan_shader_info {
                          */
                         uint64_t secondary_preload;
                 } vs;
+
+                struct {
+                        /* Is it legal to merge workgroups? This is true if the
+                         * shader uses neither barriers nor shared memory.
+                         *
+                         * Used by the Valhall hardware.
+                         */
+                        bool allow_merging_workgroups;
+                } cs;
         };
 
         /* Does the shader contains a barrier? or (for fragment shaders) does it

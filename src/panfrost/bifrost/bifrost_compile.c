@@ -4798,6 +4798,18 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_compile_variant(nir, inputs, binary, sysval_to_id, info, BI_IDVS_NONE);
         }
 
+        if (gl_shader_stage_is_compute(nir->info.stage)) {
+                /* Workgroups may be merged if the structure of the workgroup is
+                 * not software visible. This is true if neither shared memory
+                 * nor barriers are used. The hardware may be able to optimize
+                 * compute shaders that set this flag.
+                 */
+                info->cs.allow_merging_workgroups =
+                        (nir->info.shared_size == 0) &&
+                        !nir->info.uses_control_barrier &&
+                        !nir->info.uses_memory_barrier;
+        }
+
         info->ubo_mask &= (1 << nir->info.num_ubos) - 1;
 
         _mesa_hash_table_u64_destroy(sysval_to_id);
