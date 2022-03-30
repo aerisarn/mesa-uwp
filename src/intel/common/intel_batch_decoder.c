@@ -711,7 +711,7 @@ decode_3dstate_constant_all(struct intel_batch_decode_ctx *ctx, const uint32_t *
    struct intel_group *body =
       intel_spec_find_struct(ctx->spec, "3DSTATE_CONSTANT_ALL_DATA");
 
-   uint32_t read_length[4];
+   uint32_t read_length[4] = {0};
    struct intel_batch_decode_bo buffer[4];
    memset(buffer, 0, sizeof(buffer));
 
@@ -754,7 +754,7 @@ decode_3dstate_constant(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
       intel_spec_find_struct(ctx->spec, "3DSTATE_CONSTANT_BODY");
 
    uint32_t read_length[4] = {0};
-   uint64_t read_addr[4];
+   uint64_t read_addr[4] = {0};
 
    struct intel_field_iterator outer;
    intel_field_iterator_init(&outer, inst, p, 0, false);
