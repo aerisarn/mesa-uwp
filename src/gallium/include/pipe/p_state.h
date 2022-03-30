@@ -1019,7 +1019,7 @@ struct util_debug_callback
     * \param data       user-supplied data pointer
     * \param id         message type identifier, if pointed value is 0, then a
     *                   new id is assigned
-    * \param type       PIPE_DEBUG_TYPE_*
+    * \param type       UTIL_DEBUG_TYPE_*
     * \param format     printf-style format string
     * \param args       args for format string
     */

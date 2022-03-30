@@ -695,7 +695,7 @@ iris_shader_debug_log(void *data, unsigned *id, const char *fmt, ...)
       return;
 
    va_start(args, fmt);
-   dbg->debug_message(dbg->data, id, PIPE_DEBUG_TYPE_SHADER_INFO, fmt, args);
+   dbg->debug_message(dbg->data, id, UTIL_DEBUG_TYPE_SHADER_INFO, fmt, args);
    va_end(args);
 }
 
@@ -714,7 +714,7 @@ iris_shader_perf_log(void *data, unsigned *id, const char *fmt, ...)
    }
 
    if (dbg->debug_message) {
-      dbg->debug_message(dbg->data, id, PIPE_DEBUG_TYPE_PERF_INFO, fmt, args);
+      dbg->debug_message(dbg->data, id, UTIL_DEBUG_TYPE_PERF_INFO, fmt, args);
    }
 
    va_end(args);

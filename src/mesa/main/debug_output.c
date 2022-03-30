@@ -697,37 +697,37 @@ _debug_message(void *data,
    enum mesa_debug_severity severity;
 
    switch (ptype) {
-   case PIPE_DEBUG_TYPE_OUT_OF_MEMORY:
+   case UTIL_DEBUG_TYPE_OUT_OF_MEMORY:
       source = MESA_DEBUG_SOURCE_API;
       type = MESA_DEBUG_TYPE_ERROR;
       severity = MESA_DEBUG_SEVERITY_MEDIUM;
       break;
-   case PIPE_DEBUG_TYPE_ERROR:
+   case UTIL_DEBUG_TYPE_ERROR:
       source = MESA_DEBUG_SOURCE_API;
       type = MESA_DEBUG_TYPE_ERROR;
       severity = MESA_DEBUG_SEVERITY_MEDIUM;
       break;
-   case PIPE_DEBUG_TYPE_SHADER_INFO:
+   case UTIL_DEBUG_TYPE_SHADER_INFO:
       source = MESA_DEBUG_SOURCE_SHADER_COMPILER;
       type = MESA_DEBUG_TYPE_OTHER;
       severity = MESA_DEBUG_SEVERITY_NOTIFICATION;
       break;
-   case PIPE_DEBUG_TYPE_PERF_INFO:
+   case UTIL_DEBUG_TYPE_PERF_INFO:
       source = MESA_DEBUG_SOURCE_API;
       type = MESA_DEBUG_TYPE_PERFORMANCE;
       severity = MESA_DEBUG_SEVERITY_NOTIFICATION;
       break;
-   case PIPE_DEBUG_TYPE_INFO:
+   case UTIL_DEBUG_TYPE_INFO:
       source = MESA_DEBUG_SOURCE_API;
       type = MESA_DEBUG_TYPE_OTHER;
       severity = MESA_DEBUG_SEVERITY_NOTIFICATION;
       break;
-   case PIPE_DEBUG_TYPE_FALLBACK:
+   case UTIL_DEBUG_TYPE_FALLBACK:
       source = MESA_DEBUG_SOURCE_API;
       type = MESA_DEBUG_TYPE_PERFORMANCE;
       severity = MESA_DEBUG_SEVERITY_NOTIFICATION;
       break;
-   case PIPE_DEBUG_TYPE_CONFORMANCE:
+   case UTIL_DEBUG_TYPE_CONFORMANCE:
       source = MESA_DEBUG_SOURCE_API;
       type = MESA_DEBUG_TYPE_OTHER;
       severity = MESA_DEBUG_SEVERITY_NOTIFICATION;
