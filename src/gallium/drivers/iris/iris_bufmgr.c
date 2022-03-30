@@ -1488,7 +1488,7 @@ iris_bo_unreference(struct iris_bo *bo)
 }
 
 static void
-bo_wait_with_stall_warning(struct pipe_debug_callback *dbg,
+bo_wait_with_stall_warning(struct util_debug_callback *dbg,
                            struct iris_bo *bo,
                            const char *action)
 {
@@ -1525,7 +1525,7 @@ print_flags(unsigned flags)
 }
 
 static void *
-iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg, struct iris_bo *bo)
+iris_bo_gem_mmap_legacy(struct util_debug_callback *dbg, struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
@@ -1552,7 +1552,7 @@ iris_bo_gem_mmap_legacy(struct pipe_debug_callback *dbg, struct iris_bo *bo)
 }
 
 static void *
-iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
+iris_bo_gem_mmap_offset(struct util_debug_callback *dbg, struct iris_bo *bo)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;
 
@@ -1612,7 +1612,7 @@ iris_bo_gem_mmap_offset(struct pipe_debug_callback *dbg, struct iris_bo *bo)
 }
 
 void *
-iris_bo_map(struct pipe_debug_callback *dbg,
+iris_bo_map(struct util_debug_callback *dbg,
             struct iris_bo *bo, unsigned flags)
 {
    struct iris_bufmgr *bufmgr = bo->bufmgr;

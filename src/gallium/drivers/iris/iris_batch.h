@@ -63,7 +63,7 @@ enum iris_batch_name {
 struct iris_batch {
    struct iris_context *ice;
    struct iris_screen *screen;
-   struct pipe_debug_callback *dbg;
+   struct util_debug_callback *dbg;
    struct pipe_device_reset_callback *reset;
 
    /** What batch is this? (e.g. IRIS_BATCH_RENDER/COMPUTE) */

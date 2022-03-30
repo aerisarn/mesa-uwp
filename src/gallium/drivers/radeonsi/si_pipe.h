@@ -978,7 +978,7 @@ struct si_context {
    void *cs_dcc_retile[32];
    void *cs_fmask_expand[3][2]; /* [log2(samples)-1][is_array] */
    struct si_screen *screen;
-   struct pipe_debug_callback debug;
+   struct util_debug_callback debug;
    struct ac_llvm_compiler compiler; /* only non-threaded compilation */
    struct si_shader_ctx_state fixed_func_tcs_shader;
    /* Offset 0: EOP flush number; Offset 4: GDS prim restart counter */

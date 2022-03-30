@@ -565,7 +565,7 @@ struct r600_common_context {
 	float				sample_locations_8x[8][2];
 	float				sample_locations_16x[16][2];
 
-	struct pipe_debug_callback	debug;
+	struct util_debug_callback	debug;
 	struct pipe_device_reset_callback device_reset_callback;
 	struct u_log_context		*log;
 

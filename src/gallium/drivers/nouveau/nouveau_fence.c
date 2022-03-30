@@ -204,7 +204,7 @@ nouveau_fence_kick(struct nouveau_fence *fence)
 }
 
 bool
-nouveau_fence_wait(struct nouveau_fence *fence, struct pipe_debug_callback *debug)
+nouveau_fence_wait(struct nouveau_fence *fence, struct util_debug_callback *debug)
 {
    struct nouveau_screen *screen = fence->screen;
    uint32_t spins = 0;

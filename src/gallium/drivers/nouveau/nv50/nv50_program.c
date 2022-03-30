@@ -323,7 +323,7 @@ nv50_program_create_strmout_state(const struct nv50_ir_prog_info_out *info,
 
 bool
 nv50_program_translate(struct nv50_program *prog, uint16_t chipset,
-                       struct pipe_debug_callback *debug)
+                       struct util_debug_callback *debug)
 {
    struct nv50_ir_prog_info *info;
    struct nv50_ir_prog_info_out info_out = {};

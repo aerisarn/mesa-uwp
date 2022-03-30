@@ -492,7 +492,7 @@ static enum pipe_reset_status r600_get_reset_status(struct pipe_context *ctx)
 }
 
 static void r600_set_debug_callback(struct pipe_context *ctx,
-				    const struct pipe_debug_callback *cb)
+				    const struct util_debug_callback *cb)
 {
 	struct r600_common_context *rctx = (struct r600_common_context *)ctx;
 

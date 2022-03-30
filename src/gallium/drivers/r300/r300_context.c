@@ -370,7 +370,7 @@ static void r300_init_states(struct pipe_context *pipe)
 
 static void
 r300_set_debug_callback(struct pipe_context *context,
-                        const struct pipe_debug_callback *cb)
+                        const struct util_debug_callback *cb)
 {
     struct r300_context *r300 = r300_context(context);
 

@@ -275,7 +275,7 @@ struct lima_context {
 
    int id;
 
-   struct pipe_debug_callback debug;
+   struct util_debug_callback debug;
 
    unsigned index_offset;
    struct lima_resource *index_res;

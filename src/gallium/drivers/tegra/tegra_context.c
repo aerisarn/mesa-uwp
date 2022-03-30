@@ -602,7 +602,7 @@ tegra_set_tess_state(struct pipe_context *pcontext,
 
 static void
 tegra_set_debug_callback(struct pipe_context *pcontext,
-                         const struct pipe_debug_callback *callback)
+                         const struct util_debug_callback *callback)
 {
    struct tegra_context *context = to_tegra_context(pcontext);
 

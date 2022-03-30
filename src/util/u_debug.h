@@ -275,11 +275,11 @@ void _debug_assert_fail(const char *expr,
    } \
 } while (0)
 
-struct pipe_debug_callback;
+struct util_debug_callback;
 
 void
 _util_debug_message(
-   struct pipe_debug_callback *cb,
+   struct util_debug_callback *cb,
    unsigned *id,
    enum pipe_debug_type type,
    const char *fmt, ...) _util_printf_format(4, 5);

@@ -50,7 +50,7 @@ command_queue::command_queue(clover::context &ctx, clover::device &dev,
       throw error(CL_INVALID_DEVICE);
 
    if (ctx.notify) {
-      struct pipe_debug_callback cb;
+      struct util_debug_callback cb;
       memset(&cb, 0, sizeof(cb));
       cb.debug_message = &debug_notify_callback;
       cb.data = this;
@@ -76,7 +76,7 @@ command_queue::command_queue(clover::context &ctx, clover::device &dev,
       throw error(CL_INVALID_DEVICE);
 
    if (ctx.notify) {
-      struct pipe_debug_callback cb;
+      struct util_debug_callback cb;
       memset(&cb, 0, sizeof(cb));
       cb.debug_message = &debug_notify_callback;
       cb.data = this;

@@ -582,7 +582,7 @@ struct iris_context {
    struct threaded_context *thrctx;
 
    /** A debug callback for KHR_debug output. */
-   struct pipe_debug_callback dbg;
+   struct util_debug_callback dbg;
 
    /** A device reset status callback for notifying that the GPU is hosed. */
    struct pipe_device_reset_callback reset;

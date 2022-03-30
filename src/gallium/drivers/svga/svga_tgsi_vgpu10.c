@@ -479,7 +479,7 @@ struct svga_shader_emitter_v10
    bool register_overflow;  /**< Set if we exceed a VGPU10 register limit */
 
    /* For util_debug_message */
-   struct pipe_debug_callback svga_debug_callback;
+   struct util_debug_callback svga_debug_callback;
 
    /* current loop depth in shader */
    unsigned current_loop_depth;

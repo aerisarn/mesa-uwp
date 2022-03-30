@@ -860,7 +860,7 @@ static void ppir_add_ordering_deps(ppir_compiler *comp)
 }
 
 static void ppir_print_shader_db(struct nir_shader *nir, ppir_compiler *comp,
-                                 struct pipe_debug_callback *debug)
+                                 struct util_debug_callback *debug)
 {
    const struct shader_info *info = &nir->info;
    char *shaderdb;
@@ -906,7 +906,7 @@ static void ppir_add_write_after_read_deps(ppir_compiler *comp)
 
 bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *nir,
                       struct ra_regs *ra,
-                      struct pipe_debug_callback *debug)
+                      struct util_debug_callback *debug)
 {
    nir_function_impl *func = nir_shader_get_entrypoint(nir);
    ppir_compiler *comp = ppir_compiler_create(prog, func->reg_alloc, func->ssa_alloc);

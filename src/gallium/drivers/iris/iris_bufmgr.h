@@ -38,7 +38,7 @@
 #include "pipebuffer/pb_slab.h"
 
 struct intel_device_info;
-struct pipe_debug_callback;
+struct util_debug_callback;
 struct isl_surf;
 struct iris_syncobj;
 
@@ -331,7 +331,7 @@ void iris_bo_unreference(struct iris_bo *bo);
  * This function will block waiting for any existing execution on the
  * buffer to complete, first.  The resulting mapping is returned.
  */
-MUST_CHECK void *iris_bo_map(struct pipe_debug_callback *dbg,
+MUST_CHECK void *iris_bo_map(struct util_debug_callback *dbg,
                              struct iris_bo *bo, unsigned flags);
 
 /**

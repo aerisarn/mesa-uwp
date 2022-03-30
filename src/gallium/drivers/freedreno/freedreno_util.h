@@ -120,7 +120,7 @@ extern bool fd_binning_enabled;
    do {                                                                        \
       if (FD_DBG(PERF))                                                        \
          mesa_logw(__VA_ARGS__);                                               \
-      struct pipe_debug_callback *__d = (debug);                               \
+      struct util_debug_callback *__d = (debug);                               \
       if (__d)                                                                 \
          util_debug_message(__d, type, __VA_ARGS__);                           \
    } while (0)

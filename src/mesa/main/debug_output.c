@@ -682,7 +682,7 @@ debug_pop_group(struct gl_debug_state *debug)
 
 
 /**
- * Installed as pipe_debug_callback when GL_DEBUG_OUTPUT is enabled.
+ * Installed as util_debug_callback when GL_DEBUG_OUTPUT is enabled.
  */
 static void
 _debug_message(void *data,
@@ -747,7 +747,7 @@ _mesa_update_debug_callback(struct gl_context *ctx)
       return;
 
    if (_mesa_get_debug_state_int(ctx, GL_DEBUG_OUTPUT)) {
-      struct pipe_debug_callback cb;
+      struct util_debug_callback cb;
       memset(&cb, 0, sizeof(cb));
       cb.async = !_mesa_get_debug_state_int(ctx, GL_DEBUG_OUTPUT_SYNCHRONOUS);
       cb.debug_message = _debug_message;

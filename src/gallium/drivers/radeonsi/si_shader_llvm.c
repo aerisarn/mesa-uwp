@@ -32,7 +32,7 @@
 #include "util/u_memory.h"
 
 struct si_llvm_diagnostics {
-   struct pipe_debug_callback *debug;
+   struct util_debug_callback *debug;
    unsigned retval;
 };
 
@@ -70,7 +70,7 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 
 bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                      struct ac_shader_config *conf, struct ac_llvm_compiler *compiler,
-                     struct ac_llvm_context *ac, struct pipe_debug_callback *debug,
+                     struct ac_llvm_context *ac, struct util_debug_callback *debug,
                      gl_shader_stage stage, const char *name, bool less_optimized)
 {
    unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
@@ -1087,7 +1087,7 @@ static void si_optimize_vs_outputs(struct si_shader_context *ctx)
 }
 
 bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
-                            struct si_shader *shader, struct pipe_debug_callback *debug,
+                            struct si_shader *shader, struct util_debug_callback *debug,
                             struct nir_shader *nir, bool free_nir)
 {
    struct si_shader_selector *sel = shader->selector;

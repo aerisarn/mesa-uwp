@@ -572,7 +572,7 @@ nvc0_program_dump(struct nvc0_program *prog)
 bool
 nvc0_program_translate(struct nvc0_program *prog, uint16_t chipset,
                        struct disk_cache *disk_shader_cache,
-                       struct pipe_debug_callback *debug)
+                       struct util_debug_callback *debug)
 {
    struct blob blob;
    size_t cache_size;

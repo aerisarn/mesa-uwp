@@ -600,7 +600,7 @@ struct v3d_context {
         struct v3d_bo *current_oq;
         struct pipe_resource *prim_counts;
         uint32_t prim_counts_offset;
-        struct pipe_debug_callback debug;
+        struct util_debug_callback debug;
         struct v3d_perfmon_state *active_perfmon;
         struct v3d_perfmon_state *last_perfmon;
         /** @} */

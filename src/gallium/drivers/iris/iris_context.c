@@ -42,7 +42,7 @@
  */
 static void
 iris_set_debug_callback(struct pipe_context *ctx,
-                        const struct pipe_debug_callback *cb)
+                        const struct util_debug_callback *cb)
 {
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;

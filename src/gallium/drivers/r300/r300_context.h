@@ -547,7 +547,7 @@ struct r300_context {
     /* Occlusion query. */
     struct r300_atom query_start;
 
-    struct pipe_debug_callback debug;
+    struct util_debug_callback debug;
 
     /* The pointers to the first and the last atom. */
     struct r300_atom *first_dirty, *last_dirty;

@@ -1004,7 +1004,7 @@ struct pipe_compute_state
  * Structure that contains a callback for debug messages from the driver back
  * to the gallium frontend.
  */
-struct pipe_debug_callback
+struct util_debug_callback
 {
    /**
     * When set to \c true, the callback may be called asynchronously from a

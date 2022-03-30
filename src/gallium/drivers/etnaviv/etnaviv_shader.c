@@ -375,7 +375,7 @@ etna_shader_stage(struct etna_shader_variant *shader)
 }
 
 static void
-dump_shader_info(struct etna_shader_variant *v, struct pipe_debug_callback *debug)
+dump_shader_info(struct etna_shader_variant *v, struct util_debug_callback *debug)
 {
    if (!unlikely(etna_mesa_debug & ETNA_DBG_SHADERDB))
       return;
@@ -430,7 +430,7 @@ fail:
 
 struct etna_shader_variant *
 etna_shader_variant(struct etna_shader *shader, struct etna_shader_key key,
-                   struct pipe_debug_callback *debug)
+                   struct util_debug_callback *debug)
 {
    struct etna_shader_variant *v;
 

@@ -97,7 +97,7 @@ u_async_debug_cleanup(struct util_async_debug_callback *adbg)
 
 void
 _u_async_debug_drain(struct util_async_debug_callback *adbg,
-                     struct pipe_debug_callback *dst)
+                     struct util_debug_callback *dst)
 {
    simple_mtx_lock(&adbg->lock);
    for (unsigned i = 0; i < adbg->count; ++i) {

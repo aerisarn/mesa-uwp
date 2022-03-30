@@ -272,7 +272,7 @@ struct iris_surface {
  */
 struct iris_transfer {
    struct threaded_transfer base;
-   struct pipe_debug_callback *dbg;
+   struct util_debug_callback *dbg;
    void *buffer;
    void *ptr;
 

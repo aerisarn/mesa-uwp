@@ -404,7 +404,7 @@ static void si_emit_string_marker(struct pipe_context *ctx, const char *string, 
       u_log_printf(sctx->log, "\nString marker: %*s\n", len, string);
 }
 
-static void si_set_debug_callback(struct pipe_context *ctx, const struct pipe_debug_callback *cb)
+static void si_set_debug_callback(struct pipe_context *ctx, const struct util_debug_callback *cb)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_screen *screen = sctx->screen;

@@ -43,7 +43,7 @@ struct radeon_compiler {
 	struct memory_pool Pool;
 	struct rc_program Program;
 	const struct rc_regalloc_state *regalloc_state;
-	struct pipe_debug_callback *debug;
+	struct util_debug_callback *debug;
 	enum rc_program_type type;
 	unsigned Debug:2;
 	unsigned Error:1;

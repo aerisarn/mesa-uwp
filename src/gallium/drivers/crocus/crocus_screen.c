@@ -680,7 +680,7 @@ crocus_get_default_l3_config(const struct intel_device_info *devinfo,
 static void
 crocus_shader_debug_log(void *data, unsigned *id, const char *fmt, ...)
 {
-   struct pipe_debug_callback *dbg = data;
+   struct util_debug_callback *dbg = data;
    va_list args;
 
    if (!dbg->debug_message)
@@ -694,7 +694,7 @@ crocus_shader_debug_log(void *data, unsigned *id, const char *fmt, ...)
 static void
 crocus_shader_perf_log(void *data, unsigned *id, const char *fmt, ...)
 {
-   struct pipe_debug_callback *dbg = data;
+   struct util_debug_callback *dbg = data;
    va_list args;
    va_start(args, fmt);
 

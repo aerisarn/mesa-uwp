@@ -2769,7 +2769,7 @@ tc_dump_debug_state(struct pipe_context *_pipe, FILE *stream,
 
 static void
 tc_set_debug_callback(struct pipe_context *_pipe,
-                      const struct pipe_debug_callback *cb)
+                      const struct util_debug_callback *cb)
 {
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;

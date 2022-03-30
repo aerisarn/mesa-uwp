@@ -75,7 +75,7 @@ initial_variants_synchronous(struct fd_context *ctx)
 
 static void
 dump_shader_info(struct ir3_shader_variant *v,
-                 struct pipe_debug_callback *debug)
+                 struct util_debug_callback *debug)
 {
    if (!FD_DBG(SHADERDB))
       return;
@@ -119,7 +119,7 @@ upload_shader_variant(struct ir3_shader_variant *v)
 
 struct ir3_shader_variant *
 ir3_shader_variant(struct ir3_shader *shader, struct ir3_shader_key key,
-                   bool binning_pass, struct pipe_debug_callback *debug)
+                   bool binning_pass, struct util_debug_callback *debug)
 {
    struct ir3_shader_variant *v;
    bool created = false;
@@ -176,7 +176,7 @@ copy_stream_out(struct ir3_stream_output_info *i,
 
 static void
 create_initial_variants(struct ir3_shader_state *hwcso,
-                        struct pipe_debug_callback *debug)
+                        struct util_debug_callback *debug)
 {
    struct ir3_shader *shader = hwcso->shader;
    struct ir3_compiler *compiler = shader->compiler;
@@ -246,7 +246,7 @@ static void
 create_initial_variants_async(void *job, void *gdata, int thread_index)
 {
    struct ir3_shader_state *hwcso = job;
-   struct pipe_debug_callback debug = {};
+   struct util_debug_callback debug = {};
 
    create_initial_variants(hwcso, &debug);
 }
@@ -256,7 +256,7 @@ create_initial_compute_variants_async(void *job, void *gdata, int thread_index)
 {
    struct ir3_shader_state *hwcso = job;
    struct ir3_shader *shader = hwcso->shader;
-   struct pipe_debug_callback debug = {};
+   struct util_debug_callback debug = {};
    static struct ir3_shader_key key; /* static is implicitly zeroed */
 
    ir3_shader_variant(shader, key, false, &debug);
