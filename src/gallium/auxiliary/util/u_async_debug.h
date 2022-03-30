@@ -43,7 +43,7 @@ extern "C" {
 
 struct util_debug_message {
    unsigned *id;
-   enum pipe_debug_type type;
+   enum util_debug_type type;
    char *msg;
 };
 

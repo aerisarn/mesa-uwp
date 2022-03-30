@@ -281,7 +281,7 @@ void
 _util_debug_message(
    struct util_debug_callback *cb,
    unsigned *id,
-   enum pipe_debug_type type,
+   enum util_debug_type type,
    const char *fmt, ...) _util_printf_format(4, 5);
 
 

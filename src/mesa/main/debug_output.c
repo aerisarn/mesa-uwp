@@ -687,7 +687,7 @@ debug_pop_group(struct gl_debug_state *debug)
 static void
 _debug_message(void *data,
                unsigned *id,
-               enum pipe_debug_type ptype,
+               enum util_debug_type ptype,
                const char *fmt,
                va_list args)
 {

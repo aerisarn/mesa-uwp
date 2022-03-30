@@ -1025,7 +1025,7 @@ struct util_debug_callback
     */
    void (*debug_message)(void *data,
                          unsigned *id,
-                         enum pipe_debug_type type,
+                         enum util_debug_type type,
                          const char *fmt,
                          va_list args);
    void *data;

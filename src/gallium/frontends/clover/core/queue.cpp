@@ -32,7 +32,7 @@ namespace {
    void
    debug_notify_callback(void *data,
                          unsigned *id,
-                         enum pipe_debug_type type,
+                         enum util_debug_type type,
                          const char *fmt,
                          va_list args) {
       const command_queue *queue = (const command_queue *)data;

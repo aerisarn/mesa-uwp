@@ -428,7 +428,7 @@ u_uintN_max(unsigned bit_size)
 /* TODO: In future we should try to move this to u_debug.h once header
  * dependencies are reorganised to allow this.
  */
-enum pipe_debug_type
+enum util_debug_type
 {
    PIPE_DEBUG_TYPE_OUT_OF_MEMORY = 1,
    PIPE_DEBUG_TYPE_ERROR,
