@@ -337,27 +337,10 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
    }
 
    prog->skip_pointsize_xfb = !(nir->info.outputs_written & VARYING_BIT_PSIZ);
-   if (st->lower_point_size && _mesa_is_gles(st->ctx) && prog->skip_pointsize_xfb &&
-       (stage == MESA_SHADER_TESS_EVAL || stage == MESA_SHADER_GEOMETRY) &&
+   if (st->lower_point_size && prog->skip_pointsize_xfb &&
+       stage < MESA_SHADER_FRAGMENT && stage != MESA_SHADER_TESS_CTRL &&
        st_can_add_pointsize_to_program(st, prog)) {
-      struct gl_shader *sh = NULL;
-      for (unsigned i = 0; i < shader_program->NumShaders; i++) {
-         if (shader_program->Shaders[i]->Stage == nir->info.stage) {
-            sh = shader_program->Shaders[i];
-            break;
-         }
-      }
-      assert(sh);
-      bool add_point_size = false;
-      if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-         if (!sh->OES_tessellation_point_size_enable)
-            add_point_size = true;
-      } else {
-         if (!sh->OES_geometry_point_size_enable)
-            add_point_size = true;
-      }
-      if (add_point_size)
-         NIR_PASS_V(nir, st_nir_add_point_size);
+      NIR_PASS_V(nir, st_nir_add_point_size);
    }
 
    /* ES has strict SSO validation rules for shader IO matching so we can't
