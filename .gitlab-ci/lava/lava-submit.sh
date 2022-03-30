@@ -16,6 +16,7 @@ mkdir -p results/job-rootfs-overlay/
 
 cp artifacts/ci-common/capture-devcoredump.sh results/job-rootfs-overlay/
 cp artifacts/ci-common/init-*.sh results/job-rootfs-overlay/
+cp artifacts/ci-common/intel-gpu-freq.sh results/job-rootfs-overlay/
 
 # Prepare env vars for upload.
 KERNEL_IMAGE_BASE_URL="https://${BASE_SYSTEM_HOST_PATH}" \
