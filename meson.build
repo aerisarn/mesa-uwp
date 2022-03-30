@@ -1491,7 +1491,7 @@ if not cc.has_function('dlopen')
   dep_dl = cc.find_library('dl', required : host_machine.system() != 'windows')
 endif
 if cc.has_function('dladdr', dependencies : dep_dl)
-  # This is really only required for megadrivers
+  # This is really only required for util/disk_cache.h
   pre_args += '-DHAVE_DLADDR'
 endif
 
