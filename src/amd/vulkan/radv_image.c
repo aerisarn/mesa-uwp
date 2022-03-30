@@ -2196,7 +2196,7 @@ radv_layout_is_htile_compressed(const struct radv_device *device, const struct r
    case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
    case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
    case VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL:
-   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL:
       return radv_image_has_htile(image);
    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
       return radv_image_is_tc_compat_htile(image) ||
@@ -2249,7 +2249,7 @@ radv_layout_can_fast_clear(const struct radv_device *device, const struct radv_i
       return false;
 
    if (layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
-       layout != VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR)
+       layout != VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL)
       return false;
 
    /* Exclusive images with CMASK or DCC can always be fast-cleared on the gfx queue. Concurrent

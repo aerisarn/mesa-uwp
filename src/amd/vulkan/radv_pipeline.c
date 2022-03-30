@@ -105,7 +105,7 @@ static const VkPipelineMultisampleStateCreateInfo *
 radv_pipeline_get_multisample_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
-       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
+       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE))
       return pCreateInfo->pMultisampleState;
    return NULL;
 }
@@ -125,8 +125,8 @@ radv_pipeline_get_tessellation_state(const VkGraphicsPipelineCreateInfo *pCreate
 static bool
 radv_pipeline_has_ds_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    return render_create_info &&
           (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
            render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED);
@@ -138,7 +138,7 @@ radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreat
    bool has_ds_att = radv_pipeline_has_ds_attachments(pCreateInfo);
 
    if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && has_ds_att) ||
-       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
+       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE))
       return pCreateInfo->pDepthStencilState;
    return NULL;
 }
@@ -146,8 +146,8 @@ radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreat
 static bool
 radv_pipeline_has_color_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
 
    if (render_create_info) {
       for (uint32_t i = 0; i < render_create_info->colorAttachmentCount; ++i) {
@@ -165,7 +165,7 @@ radv_pipeline_get_color_blend_state(const VkGraphicsPipelineCreateInfo *pCreateI
    bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
 
    if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && has_color_att) ||
-       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
+       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE))
       return pCreateInfo->pColorBlendState;
    return NULL;
 }
@@ -535,8 +535,8 @@ radv_pipeline_compute_spi_color_formats(const struct radv_pipeline *pipeline,
                                         const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                         struct radv_blend_state *blend)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0;
    unsigned num_targets;
 
@@ -867,8 +867,8 @@ radv_pipeline_color_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkAttachmentSampleCountInfoAMD *sample_info =
       vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    if (sample_info && render_create_info && sample_info->colorAttachmentCount > 0) {
       unsigned samples = 1;
       for (uint32_t i = 0; i < sample_info->colorAttachmentCount; ++i) {
@@ -887,8 +887,8 @@ radv_pipeline_depth_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkAttachmentSampleCountInfoAMD *sample_info =
       vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    if (sample_info && render_create_info) {
       if (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
           render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED) {
@@ -973,9 +973,9 @@ static bool
 radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    VkDynamicState ds_states[] = {
-      VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT, VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT,
-      VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT,  VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT,
-      VK_DYNAMIC_STATE_STENCIL_OP_EXT,
+      VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE, VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
+      VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,  VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
+      VK_DYNAMIC_STATE_STENCIL_OP,
    };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(ds_states); i++) {
@@ -991,8 +991,8 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
                                 const struct radv_blend_state *blend,
                                 const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    const VkPipelineDepthStencilStateCreateInfo *vkds =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
    const VkPipelineColorBlendStateCreateInfo *vkblend =
@@ -1324,10 +1324,10 @@ radv_dynamic_state_mask(VkDynamicState state)
 {
    switch (state) {
    case VK_DYNAMIC_STATE_VIEWPORT:
-   case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT:
+   case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
       return RADV_DYNAMIC_VIEWPORT;
    case VK_DYNAMIC_STATE_SCISSOR:
-   case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT:
+   case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
       return RADV_DYNAMIC_SCISSOR;
    case VK_DYNAMIC_STATE_LINE_WIDTH:
       return RADV_DYNAMIC_LINE_WIDTH;
@@ -1349,37 +1349,37 @@ radv_dynamic_state_mask(VkDynamicState state)
       return RADV_DYNAMIC_SAMPLE_LOCATIONS;
    case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
       return RADV_DYNAMIC_LINE_STIPPLE;
-   case VK_DYNAMIC_STATE_CULL_MODE_EXT:
+   case VK_DYNAMIC_STATE_CULL_MODE:
       return RADV_DYNAMIC_CULL_MODE;
-   case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
+   case VK_DYNAMIC_STATE_FRONT_FACE:
       return RADV_DYNAMIC_FRONT_FACE;
-   case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
+   case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
       return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY;
-   case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
       return RADV_DYNAMIC_DEPTH_TEST_ENABLE;
-   case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:
       return RADV_DYNAMIC_DEPTH_WRITE_ENABLE;
-   case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:
       return RADV_DYNAMIC_DEPTH_COMPARE_OP;
-   case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:
       return RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
-   case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:
       return RADV_DYNAMIC_STENCIL_TEST_ENABLE;
-   case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
+   case VK_DYNAMIC_STATE_STENCIL_OP:
       return RADV_DYNAMIC_STENCIL_OP;
-   case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
+   case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE:
       return RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
    case VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR:
       return RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
    case VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT:
       return RADV_DYNAMIC_PATCH_CONTROL_POINTS;
-   case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
       return RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
-   case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
       return RADV_DYNAMIC_DEPTH_BIAS_ENABLE;
    case VK_DYNAMIC_STATE_LOGIC_OP_EXT:
       return RADV_DYNAMIC_LOGIC_OP;
-   case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
       return RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
    case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
       return RADV_DYNAMIC_COLOR_WRITE_ENABLE;
@@ -1413,7 +1413,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
    bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
    bool has_static_rasterizer_discard =
       pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
-      !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT);
+      !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE);
    uint64_t states = RADV_DYNAMIC_ALL;
 
    /* Disable dynamic states that are useless to mesh shading. */
@@ -1437,17 +1437,17 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
    }
 
    if (!pCreateInfo->pRasterizationState->depthBiasEnable &&
-       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT))
+       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE))
       states &= ~RADV_DYNAMIC_DEPTH_BIAS;
 
    if (!pCreateInfo->pDepthStencilState ||
        (!pCreateInfo->pDepthStencilState->depthBoundsTestEnable &&
-        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT)))
+        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE)))
       states &= ~RADV_DYNAMIC_DEPTH_BOUNDS;
 
    if (!pCreateInfo->pDepthStencilState ||
        (!pCreateInfo->pDepthStencilState->stencilTestEnable &&
-        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT)))
+        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE)))
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
                   RADV_DYNAMIC_STENCIL_REFERENCE);
 
@@ -1891,8 +1891,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
 {
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
       radv_pipeline_get_depth_stencil_state(pCreateInfo);
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
    struct radv_depth_stencil_state ds_state = {0};
    uint32_t db_depth_control = 0;
@@ -2869,8 +2869,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_blend_state *blend)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    bool uses_dynamic_stride = false;
 
    struct radv_pipeline_key key;
@@ -2889,7 +2889,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
             /* we don't care about use_dynamic_stride in this case */
             break;
          } else if (pCreateInfo->pDynamicState->pDynamicStates[i] ==
-                    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT) {
+                    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE) {
             uses_dynamic_stride = true;
          }
       }
@@ -2955,7 +2955,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
              *
              * "If the bound pipeline state object was created
              *  with the
-             *  VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT
+             *  VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE
              *  dynamic state enabled then pStrides[i] specifies
              *  the distance in bytes between two consecutive
              *  elements within the corresponding buffer. In this
@@ -3484,7 +3484,7 @@ gather_tess_info(struct radv_device *device, nir_shader **nir, struct radv_shade
 }
 
 static void
-radv_init_feedback(const VkPipelineCreationFeedbackCreateInfoEXT *ext)
+radv_init_feedback(const VkPipelineCreationFeedbackCreateInfo *ext)
 {
    if (!ext)
       return;
@@ -4758,8 +4758,8 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline,
       },
    };
 
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    VkExtent2D extent = {512, 512};
 
    unsigned log_num_rb_per_se =
@@ -4821,8 +4821,8 @@ static VkExtent2D
 radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline,
                             const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    VkExtent2D extent = {512, 512};
 
    const unsigned db_tag_size = 64;
@@ -4919,8 +4919,8 @@ radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
                                   S_028C44_DISABLE_START_OF_PRIM(1);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
-      const VkPipelineRenderingCreateInfoKHR *render_create_info =
-         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+      const VkPipelineRenderingCreateInfo *render_create_info =
+         vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
       const VkPipelineColorBlendStateCreateInfo *vkblend =
          radv_pipeline_get_color_blend_state(pCreateInfo);
       unsigned min_bytes_per_pixel = 0;
@@ -6325,8 +6325,8 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
                          struct radv_depth_stencil_state *ds_state,
                          uint32_t *vgt_gs_out_prim_type)
 {
-   const VkPipelineRenderingCreateInfoKHR *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO_KHR);
+   const VkPipelineRenderingCreateInfo *render_create_info =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
 
    bool has_depth_attachment =
       render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
@@ -6383,8 +6383,8 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
 
    struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo);
 
-   const VkPipelineCreationFeedbackCreateInfoEXT *creation_feedback =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
    radv_init_feedback(creation_feedback);
 
    VkPipelineCreationFeedback *pipeline_feedback =
@@ -6532,7 +6532,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 {
    VkGraphicsPipelineCreateInfo create_info = *pCreateInfo;
 
-   VkPipelineRenderingCreateInfoKHR rendering_create_info;
+   VkPipelineRenderingCreateInfo rendering_create_info;
    VkFormat color_formats[MAX_RTS];
    VkAttachmentSampleCountInfoAMD sample_info;
    VkSampleCountFlagBits samples[MAX_RTS];
@@ -6540,7 +6540,7 @@ radv_graphics_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
       struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 
-      rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+      rendering_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
       rendering_create_info.pNext = create_info.pNext;
       create_info.pNext = &rendering_create_info;
 
@@ -6735,8 +6735,8 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    pipeline->compute.rt_stack_sizes = rt_stack_sizes;
    pipeline->compute.group_count = rt_group_count;
 
-   const VkPipelineCreationFeedbackCreateInfoEXT *creation_feedback =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT);
+   const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
+      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
    radv_init_feedback(creation_feedback);
 
    VkPipelineCreationFeedback *pipeline_feedback =

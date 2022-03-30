@@ -125,7 +125,7 @@ radv_image_is_renderable(struct radv_device *device, struct radv_image *image)
 static void
 copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buffer,
                      struct radv_image *image, VkImageLayout layout,
-                     const VkBufferImageCopy2KHR *region)
+                     const VkBufferImageCopy2 *region)
 {
    struct radv_meta_saved_state saved_state;
    bool old_predicating;
@@ -244,8 +244,8 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
-                              const VkCopyBufferToImageInfo2KHR *pCopyBufferToImageInfo)
+radv_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
+                           const VkCopyBufferToImageInfo2 *pCopyBufferToImageInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_buffer, src_buffer, pCopyBufferToImageInfo->srcBuffer);
@@ -276,7 +276,7 @@ radv_CmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer,
 static void
 copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buffer,
                      struct radv_image *image, VkImageLayout layout,
-                     const VkBufferImageCopy2KHR *region)
+                     const VkBufferImageCopy2 *region)
 {
    if (cmd_buffer->qf == RADV_QUEUE_TRANSFER) {
       /* RADV_QUEUE_TRANSFER should only be used for the prime blit */
@@ -390,8 +390,8 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
-                              const VkCopyImageToBufferInfo2KHR *pCopyImageToBufferInfo)
+radv_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
+                           const VkCopyImageToBufferInfo2 *pCopyImageToBufferInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_image, src_image, pCopyImageToBufferInfo->srcImage);
@@ -407,7 +407,7 @@ radv_CmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer,
 static void
 copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
            VkImageLayout src_image_layout, struct radv_image *dst_image,
-           VkImageLayout dst_image_layout, const VkImageCopy2KHR *region)
+           VkImageLayout dst_image_layout, const VkImageCopy2 *region)
 {
    struct radv_meta_saved_state saved_state;
    bool old_predicating;
@@ -610,7 +610,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdCopyImage2KHR(VkCommandBuffer commandBuffer, const VkCopyImageInfo2KHR *pCopyImageInfo)
+radv_CmdCopyImage2(VkCommandBuffer commandBuffer, const VkCopyImageInfo2 *pCopyImageInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_image, src_image, pCopyImageInfo->srcImage);

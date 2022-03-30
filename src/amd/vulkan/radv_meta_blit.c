@@ -464,7 +464,7 @@ flip_coords(unsigned *src0, unsigned *src1, unsigned *dst0, unsigned *dst1)
 static void
 blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
            VkImageLayout src_image_layout, struct radv_image *dst_image,
-           VkImageLayout dst_image_layout, const VkImageBlit2KHR *region, VkFilter filter)
+           VkImageLayout dst_image_layout, const VkImageBlit2 *region, VkFilter filter)
 {
    const VkImageSubresourceLayers *src_res = &region->srcSubresource;
    const VkImageSubresourceLayers *dst_res = &region->dstSubresource;
@@ -624,7 +624,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_CmdBlitImage2KHR(VkCommandBuffer commandBuffer, const VkBlitImageInfo2KHR *pBlitImageInfo)
+radv_CmdBlitImage2(VkCommandBuffer commandBuffer, const VkBlitImageInfo2 *pBlitImageInfo)
 {
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    RADV_FROM_HANDLE(radv_image, src_image, pBlitImageInfo->srcImage);

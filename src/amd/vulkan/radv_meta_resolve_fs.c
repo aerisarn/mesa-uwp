@@ -308,13 +308,13 @@ static const char *
 get_resolve_mode_str(VkResolveModeFlagBits resolve_mode)
 {
    switch (resolve_mode) {
-   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR:
+   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT:
       return "zero";
-   case VK_RESOLVE_MODE_AVERAGE_BIT_KHR:
+   case VK_RESOLVE_MODE_AVERAGE_BIT:
       return "average";
-   case VK_RESOLVE_MODE_MIN_BIT_KHR:
+   case VK_RESOLVE_MODE_MIN_BIT:
       return "min";
-   case VK_RESOLVE_MODE_MAX_BIT_KHR:
+   case VK_RESOLVE_MODE_MAX_BIT:
       return "max";
    default:
       unreachable("invalid resolve mode");
@@ -368,7 +368,7 @@ build_depth_stencil_resolve_fragment_shader(struct radv_device *dev, int samples
 
    nir_ssa_def *outval = &tex->dest.ssa;
 
-   if (resolve_mode != VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR) {
+   if (resolve_mode != VK_RESOLVE_MODE_SAMPLE_ZERO_BIT) {
       for (int i = 1; i < samples; i++) {
          nir_tex_instr *tex_add = nir_tex_instr_create(b.shader, 3);
          tex_add->sampler_dim = GLSL_SAMPLER_DIM_MS;
@@ -387,17 +387,17 @@ build_depth_stencil_resolve_fragment_shader(struct radv_device *dev, int samples
          nir_builder_instr_insert(&b, &tex_add->instr);
 
          switch (resolve_mode) {
-         case VK_RESOLVE_MODE_AVERAGE_BIT_KHR:
+         case VK_RESOLVE_MODE_AVERAGE_BIT:
             assert(index == DEPTH_RESOLVE);
             outval = nir_fadd(&b, outval, &tex_add->dest.ssa);
             break;
-         case VK_RESOLVE_MODE_MIN_BIT_KHR:
+         case VK_RESOLVE_MODE_MIN_BIT:
             if (index == DEPTH_RESOLVE)
                outval = nir_fmin(&b, outval, &tex_add->dest.ssa);
             else
                outval = nir_umin(&b, outval, &tex_add->dest.ssa);
             break;
-         case VK_RESOLVE_MODE_MAX_BIT_KHR:
+         case VK_RESOLVE_MODE_MAX_BIT:
             if (index == DEPTH_RESOLVE)
                outval = nir_fmax(&b, outval, &tex_add->dest.ssa);
             else
@@ -408,7 +408,7 @@ build_depth_stencil_resolve_fragment_shader(struct radv_device *dev, int samples
          }
       }
 
-      if (resolve_mode == VK_RESOLVE_MODE_AVERAGE_BIT_KHR)
+      if (resolve_mode == VK_RESOLVE_MODE_AVERAGE_BIT)
          outval = nir_fdiv(&b, outval, nir_imm_float(&b, samples));
    }
 
@@ -429,23 +429,23 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
    mtx_lock(&device->meta_state.mtx);
 
    switch (resolve_mode) {
-   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR:
+   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT:
       if (index == DEPTH_RESOLVE)
          pipeline = &device->meta_state.resolve_fragment.depth_zero_pipeline;
       else
          pipeline = &device->meta_state.resolve_fragment.stencil_zero_pipeline;
       break;
-   case VK_RESOLVE_MODE_AVERAGE_BIT_KHR:
+   case VK_RESOLVE_MODE_AVERAGE_BIT:
       assert(index == DEPTH_RESOLVE);
       pipeline = &device->meta_state.resolve_fragment.depth[samples_log2].average_pipeline;
       break;
-   case VK_RESOLVE_MODE_MIN_BIT_KHR:
+   case VK_RESOLVE_MODE_MIN_BIT:
       if (index == DEPTH_RESOLVE)
          pipeline = &device->meta_state.resolve_fragment.depth[samples_log2].min_pipeline;
       else
          pipeline = &device->meta_state.resolve_fragment.stencil[samples_log2].min_pipeline;
       break;
-   case VK_RESOLVE_MODE_MAX_BIT_KHR:
+   case VK_RESOLVE_MODE_MAX_BIT:
       if (index == DEPTH_RESOLVE)
          pipeline = &device->meta_state.resolve_fragment.depth[samples_log2].max_pipeline;
       else
@@ -665,38 +665,38 @@ radv_device_init_meta_resolve_fragment_state(struct radv_device *device, bool on
       }
 
       res = create_depth_stencil_resolve_pipeline(device, i, DEPTH_RESOLVE,
-                                                  VK_RESOLVE_MODE_AVERAGE_BIT_KHR);
+                                                  VK_RESOLVE_MODE_AVERAGE_BIT);
       if (res != VK_SUCCESS)
          goto fail;
 
       res = create_depth_stencil_resolve_pipeline(device, i, DEPTH_RESOLVE,
-                                                  VK_RESOLVE_MODE_MIN_BIT_KHR);
+                                                  VK_RESOLVE_MODE_MIN_BIT);
       if (res != VK_SUCCESS)
          goto fail;
 
       res = create_depth_stencil_resolve_pipeline(device, i, DEPTH_RESOLVE,
-                                                  VK_RESOLVE_MODE_MAX_BIT_KHR);
+                                                  VK_RESOLVE_MODE_MAX_BIT);
       if (res != VK_SUCCESS)
          goto fail;
 
       res = create_depth_stencil_resolve_pipeline(device, i, STENCIL_RESOLVE,
-                                                  VK_RESOLVE_MODE_MIN_BIT_KHR);
+                                                  VK_RESOLVE_MODE_MIN_BIT);
       if (res != VK_SUCCESS)
          goto fail;
 
       res = create_depth_stencil_resolve_pipeline(device, i, STENCIL_RESOLVE,
-                                                  VK_RESOLVE_MODE_MAX_BIT_KHR);
+                                                  VK_RESOLVE_MODE_MAX_BIT);
       if (res != VK_SUCCESS)
          goto fail;
    }
 
    res = create_depth_stencil_resolve_pipeline(device, 0, DEPTH_RESOLVE,
-                                               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+                                               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
    if (res != VK_SUCCESS)
       goto fail;
 
    res = create_depth_stencil_resolve_pipeline(device, 0, STENCIL_RESOLVE,
-                                               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+                                               VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
    if (res != VK_SUCCESS)
       goto fail;
 
@@ -806,8 +806,8 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_ivi
                                  });
 
    cmd_buffer->state.flush_bits |=
-      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT_KHR, src_iview->image) |
-      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR, dest_iview->image);
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_READ_BIT, src_iview->image) |
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, dest_iview->image);
 
    unsigned push_constants[2] = {
       src_offset->x - dest_offset->x,
@@ -837,7 +837,7 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image_view *src_ivi
 
    radv_CmdDraw(cmd_buffer_h, 3, 1, 0, 0);
    cmd_buffer->state.flush_bits |=
-      radv_src_access_flush(cmd_buffer, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR, dest_iview->image);
+      radv_src_access_flush(cmd_buffer, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, dest_iview->image);
 }
 
 static void
@@ -871,23 +871,23 @@ emit_depth_stencil_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image
                                  });
 
    switch (resolve_mode) {
-   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR:
+   case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT:
       if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
          pipeline = &device->meta_state.resolve_fragment.depth_zero_pipeline;
       else
          pipeline = &device->meta_state.resolve_fragment.stencil_zero_pipeline;
       break;
-   case VK_RESOLVE_MODE_AVERAGE_BIT_KHR:
+   case VK_RESOLVE_MODE_AVERAGE_BIT:
       assert(aspects == VK_IMAGE_ASPECT_DEPTH_BIT);
       pipeline = &device->meta_state.resolve_fragment.depth[samples_log2].average_pipeline;
       break;
-   case VK_RESOLVE_MODE_MIN_BIT_KHR:
+   case VK_RESOLVE_MODE_MIN_BIT:
       if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
          pipeline = &device->meta_state.resolve_fragment.depth[samples_log2].min_pipeline;
       else
          pipeline = &device->meta_state.resolve_fragment.stencil[samples_log2].min_pipeline;
       break;
-   case VK_RESOLVE_MODE_MAX_BIT_KHR:
+   case VK_RESOLVE_MODE_MAX_BIT:
       if (aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
          pipeline = &device->meta_state.resolve_fragment.depth[samples_log2].max_pipeline;
       else
@@ -931,7 +931,7 @@ emit_depth_stencil_resolve(struct radv_cmd_buffer *cmd_buffer, struct radv_image
 void
 radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                                  VkImageLayout src_image_layout, struct radv_image *dest_image,
-                                 VkImageLayout dest_image_layout, const VkImageResolve2KHR *region)
+                                 VkImageLayout dest_image_layout, const VkImageResolve2 *region)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_saved_state saved_state;
@@ -1075,9 +1075,9 @@ radv_cmd_buffer_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer)
 
    /* Resolves happen before the end-of-subpass barriers get executed,
     * so we have to make the attachment shader-readable */
-   barrier.src_stage_mask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR;
-   barrier.src_access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR;
-   barrier.dst_access_mask = VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT_KHR;
+   barrier.src_stage_mask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+   barrier.src_access_mask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+   barrier.dst_access_mask = VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT;
    radv_emit_subpass_barrier(cmd_buffer, &barrier);
 
    radv_decompress_resolve_subpass_src(cmd_buffer);
@@ -1128,17 +1128,17 @@ radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
 
    /* Resolves happen before the end-of-subpass barriers get executed,
     * so we have to make the attachment shader-readable */
-   barrier.src_stage_mask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR;
-   barrier.src_access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR;
-   barrier.dst_access_mask = VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT_KHR;
+   barrier.src_stage_mask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+   barrier.src_access_mask = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+   barrier.dst_access_mask = VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT;
    radv_emit_subpass_barrier(cmd_buffer, &barrier);
 
    struct radv_subpass_attachment src_att = *subpass->depth_stencil_attachment;
    struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
    struct radv_image *src_image = src_iview->image;
 
-   VkImageResolve2KHR region = {0};
-   region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR;
+   VkImageResolve2 region = {0};
+   region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2;
    region.srcSubresource.aspectMask = aspects;
    region.srcSubresource.mipLevel = 0;
    region.srcSubresource.baseArrayLayer = 0;

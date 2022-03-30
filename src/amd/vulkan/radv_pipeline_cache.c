@@ -46,7 +46,7 @@ struct cache_entry {
 static void
 radv_pipeline_cache_lock(struct radv_pipeline_cache *cache)
 {
-   if (cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT)
+   if (cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)
       return;
 
    mtx_lock(&cache->mutex);
@@ -55,7 +55,7 @@ radv_pipeline_cache_lock(struct radv_pipeline_cache *cache)
 static void
 radv_pipeline_cache_unlock(struct radv_pipeline_cache *cache)
 {
-   if (cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT)
+   if (cache->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT)
       return;
 
    mtx_unlock(&cache->mutex);

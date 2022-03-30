@@ -1663,10 +1663,10 @@ void radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_im
 void radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                               const VkImageSubresourceRange *range, bool value);
 enum radv_cmd_flush_bits radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
-                                               VkAccessFlags2KHR src_flags,
+                                               VkAccessFlags2 src_flags,
                                                const struct radv_image *image);
 enum radv_cmd_flush_bits radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
-                                               VkAccessFlags2KHR dst_flags,
+                                               VkAccessFlags2 dst_flags,
                                                const struct radv_image *image);
 uint32_t radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *image,
                           struct radeon_winsys_bo *bo, uint64_t offset, uint64_t size,
@@ -2514,9 +2514,9 @@ struct radv_framebuffer {
 };
 
 struct radv_subpass_barrier {
-   VkPipelineStageFlags2KHR src_stage_mask;
-   VkAccessFlags2KHR src_access_mask;
-   VkAccessFlags2KHR dst_access_mask;
+   VkPipelineStageFlags2 src_stage_mask;
+   VkAccessFlags2 src_access_mask;
+   VkAccessFlags2 dst_access_mask;
 };
 
 void radv_emit_subpass_barrier(struct radv_cmd_buffer *cmd_buffer,
@@ -2663,7 +2663,7 @@ void radv_emit_thread_trace_userdata(const struct radv_device *device, struct ra
 bool radv_is_instruction_timing_enabled(void);
 
 bool radv_sdma_copy_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
-                          struct radv_buffer *buffer, const VkBufferImageCopy2KHR *region);
+                          struct radv_buffer *buffer, const VkBufferImageCopy2 *region);
 
 /* radv_sqtt_layer_.c */
 struct radv_barrier_data {

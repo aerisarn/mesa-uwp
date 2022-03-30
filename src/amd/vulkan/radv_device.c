@@ -1665,9 +1665,9 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->rayTraversalPrimitiveCulling = false;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR: {
-         VkPhysicalDeviceMaintenance4FeaturesKHR *features =
-            (VkPhysicalDeviceMaintenance4FeaturesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES: {
+         VkPhysicalDeviceMaintenance4Features *features =
+            (VkPhysicalDeviceMaintenance4Features *)ext;
          features->maintenance4 = true;
          break;
       }
@@ -1683,15 +1683,15 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->minLod = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR: {
-         VkPhysicalDeviceSynchronization2FeaturesKHR *features =
-            (VkPhysicalDeviceSynchronization2FeaturesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES: {
+         VkPhysicalDeviceSynchronization2Features *features =
+            (VkPhysicalDeviceSynchronization2Features *)ext;
          features->synchronization2 = true;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR: {
-         VkPhysicalDeviceDynamicRenderingFeaturesKHR *features =
-            (VkPhysicalDeviceDynamicRenderingFeaturesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES: {
+         VkPhysicalDeviceDynamicRenderingFeatures *features =
+            (VkPhysicalDeviceDynamicRenderingFeatures *)ext;
          features->dynamicRendering = true;
          break;
       }
@@ -1974,11 +1974,11 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
     * controlled by the same config register.
     */
    if (pdevice->rad_info.has_packed_math_16bit) {
-      p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
-      p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY_KHR;
+      p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;
+      p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_32_BIT_ONLY;
    } else {
-      p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
-      p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
+      p->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
+      p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
    }
 
    /* With LLVM, do not allow both preserving and flushing denorms because
@@ -2040,13 +2040,13 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
    p->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
 
    /* We support all of the depth resolve modes */
-   p->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
-                                   VK_RESOLVE_MODE_AVERAGE_BIT_KHR | VK_RESOLVE_MODE_MIN_BIT_KHR |
-                                   VK_RESOLVE_MODE_MAX_BIT_KHR;
+   p->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                   VK_RESOLVE_MODE_AVERAGE_BIT | VK_RESOLVE_MODE_MIN_BIT |
+                                   VK_RESOLVE_MODE_MAX_BIT;
 
    /* Average doesn't make sense for stencil so we don't support that */
-   p->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR |
-                                     VK_RESOLVE_MODE_MIN_BIT_KHR | VK_RESOLVE_MODE_MAX_BIT_KHR;
+   p->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT |
+                                     VK_RESOLVE_MODE_MIN_BIT | VK_RESOLVE_MODE_MAX_BIT;
 
    p->independentResolveNone = true;
    p->independentResolve = true;
@@ -2367,9 +2367,9 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->maxRayHitAttributeSize = RADV_MAX_HIT_ATTRIB_SIZE;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES_KHR: {
-         VkPhysicalDeviceMaintenance4PropertiesKHR *properties =
-            (VkPhysicalDeviceMaintenance4PropertiesKHR *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_PROPERTIES: {
+         VkPhysicalDeviceMaintenance4Properties *properties =
+            (VkPhysicalDeviceMaintenance4Properties *)ext;
          properties->maxBufferSize = RADV_MAX_MEMORY_ALLOCATION_SIZE;
          break;
       }
@@ -4495,7 +4495,7 @@ struct radv_deferred_queue_submission {
    uint32_t image_bind_count;
 
    bool flush_caches;
-   VkPipelineStageFlags2KHR wait_dst_stage_mask;
+   VkPipelineStageFlags2 wait_dst_stage_mask;
    struct radv_semaphore_part **wait_semaphores;
    uint32_t wait_semaphore_count;
    struct radv_semaphore_part **signal_semaphores;
@@ -5089,9 +5089,9 @@ radv_GetBufferMemoryRequirements2(VkDevice _device, const VkBufferMemoryRequirem
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_GetDeviceBufferMemoryRequirementsKHR(VkDevice _device,
-                                          const VkDeviceBufferMemoryRequirementsKHR *pInfo,
-                                          VkMemoryRequirements2 *pMemoryRequirements)
+radv_GetDeviceBufferMemoryRequirements(VkDevice _device,
+                                       const VkDeviceBufferMemoryRequirements *pInfo,
+                                       VkMemoryRequirements2 *pMemoryRequirements)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
 
@@ -5129,9 +5129,9 @@ radv_GetImageMemoryRequirements2(VkDevice _device, const VkImageMemoryRequiremen
 }
 
 VKAPI_ATTR void VKAPI_CALL
-radv_GetDeviceImageMemoryRequirementsKHR(VkDevice device,
-                                         const VkDeviceImageMemoryRequirementsKHR *pInfo,
-                                         VkMemoryRequirements2 *pMemoryRequirements)
+radv_GetDeviceImageMemoryRequirements(VkDevice device,
+                                      const VkDeviceImageMemoryRequirements *pInfo,
+                                      VkMemoryRequirements2 *pMemoryRequirements)
 {
    UNUSED VkResult result;
    VkImage image;
@@ -5254,7 +5254,7 @@ radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
 
    vk_object_base_init(&device->vk, &event->base, VK_OBJECT_TYPE_EVENT);
 
-   if (pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT_KHR) {
+   if (pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT) {
       bo_domain = RADEON_DOMAIN_VRAM;
       bo_flags = RADEON_FLAG_NO_CPU_ACCESS;
    } else {
@@ -5271,7 +5271,7 @@ radv_CreateEvent(VkDevice _device, const VkEventCreateInfo *pCreateInfo,
       return vk_error(device, result);
    }
 
-   if (!(pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT_KHR)) {
+   if (!(pCreateInfo->flags & VK_EVENT_CREATE_DEVICE_ONLY_BIT)) {
       event->map = (uint64_t *)device->ws->buffer_map(event->bo);
       if (!event->map) {
          radv_destroy_event(device, pAllocator, event);

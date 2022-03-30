@@ -1824,8 +1824,8 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    radv_hash_rt_shaders(hash, &local_create_info, radv_get_hash_flags(device, keep_statistic_info));
    struct vk_shader_module module = {.base.type = VK_OBJECT_TYPE_SHADER_MODULE};
 
-   VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT subgroup_size = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT,
+   VkPipelineShaderStageRequiredSubgroupSizeCreateInfo subgroup_size = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO,
       .pNext = NULL,
       .requiredSubgroupSize = device->physical_device->rt_wave_size,
    };
@@ -1833,7 +1833,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
    VkComputePipelineCreateInfo compute_info = {
       .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
       .pNext = NULL,
-      .flags = pCreateInfo->flags | VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT,
+      .flags = pCreateInfo->flags | VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT,
       .stage =
          {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -1849,7 +1849,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
     * generating the nir. */
    result = radv_compute_pipeline_create(_device, _cache, &compute_info, pAllocator, hash,
                                          stack_sizes, local_create_info.groupCount, pPipeline);
-   if (result == VK_PIPELINE_COMPILE_REQUIRED_EXT) {
+   if (result == VK_PIPELINE_COMPILE_REQUIRED) {
       stack_sizes = calloc(sizeof(*stack_sizes), local_create_info.groupCount);
       if (!stack_sizes) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1927,7 +1927,7 @@ radv_CreateRayTracingPipelinesKHR(VkDevice _device, VkDeferredOperationKHR defer
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
 
-         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+         if (pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT)
             break;
       }
    }

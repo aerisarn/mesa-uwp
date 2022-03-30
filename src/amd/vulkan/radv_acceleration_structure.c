@@ -1817,9 +1817,9 @@ radv_CmdBuildAccelerationStructuresKHR(
          if (!progress) {
             cmd_buffer->state.flush_bits |=
                RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-               radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT_KHR, NULL) |
+               radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT, NULL) |
                radv_dst_access_flush(cmd_buffer,
-                                     VK_ACCESS_2_SHADER_READ_BIT_KHR | VK_ACCESS_2_SHADER_WRITE_BIT_KHR, NULL);
+                                     VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT, NULL);
          }
          progress = true;
          uint32_t dst_node_count = MAX2(1, DIV_ROUND_UP(bvh_states[i].node_count, 4));
@@ -1907,7 +1907,7 @@ radv_CmdCopyAccelerationStructureKHR(VkCommandBuffer commandBuffer,
                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
 
    cmd_buffer->state.flush_bits |=
-      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR, NULL);
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, NULL);
 
    radv_indirect_dispatch(cmd_buffer, src->bo,
                           src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));
@@ -2056,7 +2056,7 @@ radv_CmdCopyAccelerationStructureToMemoryKHR(
                          VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(consts), &consts);
 
    cmd_buffer->state.flush_bits |=
-      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR, NULL);
+      radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT, NULL);
 
    radv_indirect_dispatch(cmd_buffer, src->bo,
                           src_addr + offsetof(struct radv_accel_struct_header, copy_dispatch_size));

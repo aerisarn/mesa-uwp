@@ -267,7 +267,7 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
          alignment = mutable_align;
          break;
       }
-      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
          alignment = 16;
          set_layout->binding[b].size = descriptor_count;
          descriptor_count = 1;
@@ -427,7 +427,7 @@ radv_GetDescriptorSetLayoutSupport(VkDevice device,
             descriptor_alignment = 16;
          }
          break;
-      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
          descriptor_alignment = 16;
          descriptor_size = descriptor_count;
          descriptor_count = 1;
@@ -453,7 +453,7 @@ radv_GetDescriptorSetLayoutSupport(VkDevice device,
       size = align_u64(size, descriptor_alignment);
 
       uint64_t max_count = INT32_MAX;
-      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
+      if (binding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
          max_count = INT32_MAX - size;
       else if (descriptor_size)
          max_count = (INT32_MAX - size) / descriptor_size;
@@ -568,7 +568,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
       unsigned stride = 1;
       if (layout->binding[layout->binding_count - 1].type == VK_DESCRIPTOR_TYPE_SAMPLER ||
           layout->binding[layout->binding_count - 1].type ==
-             VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
+             VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
          stride = 0;
       buffer_count =
          layout->binding[layout->binding_count - 1].buffer_offset + *variable_count * stride;
@@ -608,7 +608,7 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
    if (variable_count) {
       uint32_t stride = layout->binding[layout->binding_count - 1].size;
       if (layout->binding[layout->binding_count - 1].type ==
-          VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
+          VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
          stride = 1;
 
       layout_size = layout->binding[layout->binding_count - 1].offset + *variable_count * stride;
@@ -800,7 +800,7 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
          bo_size += 96 * pCreateInfo->pPoolSizes[i].descriptorCount;
          break;
-      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+      case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
          bo_size += pCreateInfo->pPoolSizes[i].descriptorCount;
          break;
       default:
@@ -1172,7 +1172,7 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
 
       ptr += binding_layout->offset / 4;
 
-      if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+      if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          write_block_descriptor(device, cmd_buffer, (uint8_t *)ptr + writeset->dstArrayElement,
                                 writeset);
          continue;
@@ -1261,7 +1261,7 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
       src_ptr += src_binding_layout->offset / 4;
       dst_ptr += dst_binding_layout->offset / 4;
 
-      if (src_binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+      if (src_binding_layout->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          src_ptr += copyset->srcArrayElement / 4;
          dst_ptr += copyset->dstArrayElement / 4;
 
@@ -1411,7 +1411,7 @@ radv_CreateDescriptorUpdateTemplate(VkDevice _device,
             break;
          }
          dst_offset = binding_layout->offset / 4;
-         if (entry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT)
+         if (entry->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK)
             dst_offset += entry->dstArrayElement / 4;
          else
             dst_offset += binding_layout->size * entry->dstArrayElement / 4;
@@ -1468,7 +1468,7 @@ radv_update_descriptor_set_with_template_impl(struct radv_device *device,
       const uint8_t *pSrc = ((const uint8_t *)pData) + templ->entry[i].src_offset;
       uint32_t j;
 
-      if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+      if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          memcpy((uint8_t *)pDst, pSrc, templ->entry[i].descriptor_count);
          continue;
       }

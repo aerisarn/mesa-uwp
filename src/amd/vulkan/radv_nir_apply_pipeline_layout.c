@@ -179,12 +179,12 @@ load_buffer_descriptor(nir_builder *b, apply_layout_state *state, nir_ssa_def *r
    nir_binding binding = nir_chase_binding(nir_src_for_ssa(rsrc));
 
    /* If binding.success=false, then this is a variable pointer, which we don't support with
-    * VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT.
+    * VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK.
     */
    if (binding.success) {
       struct radv_descriptor_set_layout *layout =
          state->pipeline_layout->set[binding.desc_set].layout;
-      if (layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+      if (layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK) {
          rsrc = nir_iadd(b, nir_channel(b, rsrc, 0), nir_channel(b, rsrc, 1));
          return load_inline_buffer_descriptor(b, state, rsrc);
       }
