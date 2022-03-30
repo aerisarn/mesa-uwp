@@ -1671,6 +1671,11 @@
     <ins name="FRSQ.f32" opcode2="2"/>
     <ins name="FRSQ.f16" opcode2="3"/>
     <ins name="FLOGD.f32" opcode2="8"/>
+    <ins name="FPCLASS.f32" opcode2="10"/>
+    <ins name="FPCLASS.f16" opcode2="11"/>
+    <ins name="FLOG_TABLE.f32" opcode2="12"/>
+    <ins name="FRCP_APPROX.f32" opcode2="14"/>
+    <ins name="FRSQ_APPROX.f32" opcode2="15"/>
     <desc>
       Performs a given special function. The floating-point reciprocal (`FRCP`)
       and reciprocal square root (`FRSQ`) instructions may be freely used as-is.
@@ -1683,6 +1688,8 @@
   <group name="SFU" title="Special function unit" dests="1" opcode="0x9C" unit="SFU">
     <ins name="FSIN_TABLE.u6" opcode2="4"/>
     <ins name="FCOS_TABLE.u6" opcode2="5"/>
+    <ins name="FSINCOS_OFFSET.u6" opcode2="6"/>
+    <ins name="FEXP_TABLE.u4" opcode2="13"/>
     <desc>
       Performs a given special function.The trigonometric tables (`FSIN_TABLE.u6` and `FCOS_TABLE.u6`) are crude,
       requiring both an argument reduction and postprocessing.
