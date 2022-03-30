@@ -82,6 +82,8 @@
 #include "radv_shader_args.h"
 #include "sid.h"
 
+#include "radix_sort/radix_sort_vk_devaddr.h"
+
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
 struct wl_display;
@@ -661,10 +663,15 @@ struct radv_meta_state {
    struct {
       VkPipelineLayout leaf_p_layout;
       VkPipeline leaf_pipeline;
+      VkPipelineLayout morton_p_layout;
+      VkPipeline morton_pipeline;
       VkPipelineLayout internal_p_layout;
       VkPipeline internal_pipeline;
       VkPipelineLayout copy_p_layout;
       VkPipeline copy_pipeline;
+
+      struct radix_sort_vk *radix_sort;
+      struct radix_sort_vk_sort_devaddr_info radix_sort_info;
    } accel_struct_build;
 
    struct {
