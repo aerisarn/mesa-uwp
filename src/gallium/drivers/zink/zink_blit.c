@@ -259,6 +259,25 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    return true;
 }
 
+static bool
+try_copy_region(struct pipe_context *pctx, const struct pipe_blit_info *info)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *src = zink_resource(info->src.resource);
+   struct zink_resource *dst = zink_resource(info->dst.resource);
+   /* if we're copying between resources with matching aspects then we can probably just copy_region */
+   if (src->aspect != dst->aspect)
+      return false;
+   struct pipe_blit_info new_info = *info;
+
+   if (src->aspect & VK_IMAGE_ASPECT_STENCIL_BIT &&
+       new_info.render_condition_enable &&
+       !ctx->render_condition_active)
+      new_info.render_condition_enable = false;
+
+   return util_try_blit_via_copy_region(pctx, &new_info, ctx->render_condition_active);
+}
+
 void
 zink_blit(struct pipe_context *pctx,
           const struct pipe_blit_info *info)
@@ -293,18 +312,8 @@ zink_blit(struct pipe_context *pctx,
       }
    }
 
-   /* if we're copying between resources with matching aspects then we can probably just copy_region */
-   if (src->aspect == dst->aspect) {
-      struct pipe_blit_info new_info = *info;
-
-      if (src->aspect & VK_IMAGE_ASPECT_STENCIL_BIT &&
-          new_info.render_condition_enable &&
-          !ctx->render_condition_active)
-         new_info.render_condition_enable = false;
-
-      if (util_try_blit_via_copy_region(pctx, &new_info, ctx->render_condition_active))
-         goto end;
-   }
+   if (try_copy_region(pctx, info))
+      goto end;
 
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
       debug_printf("blit unsupported %s -> %s\n",
