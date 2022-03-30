@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include "c11/time.h"
 #include "util/timespec.h"
 
 #include <limits>
@@ -316,4 +317,17 @@ TEST(timespec_test, timespec_eq)
 
    EXPECT_FALSE(timespec_eq(&a, &b));
    EXPECT_FALSE(timespec_eq(&b, &a));
+}
+
+TEST(timespec_test, timespec_get)
+{
+   struct timespec a;
+   struct timespec b;
+   time_t t;
+   timespec_get(&a, TIME_UTC);
+   time(&t);
+   timespec_get(&b, TIME_UTC);
+   /* `t + 1` and `t - 1` are used intentionally for avoid flakes */
+   EXPECT_LE(a.tv_sec, t + 1);
+   EXPECT_LE(t - 1, b.tv_sec);
 }
