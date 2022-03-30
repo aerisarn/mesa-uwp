@@ -1160,7 +1160,12 @@ ntt_get_alu_src(struct ntt_compile *c, nir_alu_instr *instr, int i)
    nir_alu_src src = instr->src[i];
    struct ureg_src usrc = ntt_get_src(c, src.src);
 
-   if (nir_src_bit_size(src.src) == 64) {
+   /* Expand double/dvec2 src references to TGSI swizzles using a pair of 32-bit
+    * channels.  We skip this for undefs, as those don't get split to vec2s (but
+    * the specific swizzles from an undef don't matter)
+    */
+   if (nir_src_bit_size(src.src) == 64 &&
+      !(src.src.is_ssa && src.src.ssa->parent_instr->type == nir_instr_type_ssa_undef)) {
       int chan0 = 0, chan1 = 1;
       if (nir_op_infos[instr->op].input_sizes[i] == 0) {
          chan0 = ffs(instr->dest.write_mask) - 1;
