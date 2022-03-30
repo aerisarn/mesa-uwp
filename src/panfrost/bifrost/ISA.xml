@@ -8774,4 +8774,50 @@
     </mod>
   </ins>
 
+  <ins name="+LD_TEX" pseudo="true" staging="w=format" message="attribute">
+    <src start="0"/>
+    <src start="3"/>
+    <src start="6"/>
+    <mod name="register_format" size="4">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+      <opt>f64</opt>
+      <opt>i64</opt>
+      <opt>auto</opt>
+    </mod>
+    <mod name="vecsize" start="11" size="2">
+      <opt>none</opt>
+      <opt>v2</opt>
+      <opt>v3</opt>
+      <opt>v4</opt>
+    </mod>
+  </ins>
+
+  <ins name="+LD_TEX_IMM" pseudo="true" staging="w=format" message="attribute">
+    <src start="0"/>
+    <src start="3"/>
+    <immediate name="texture_index" start="6" size="4"/>
+    <mod name="register_format" size="4">
+      <opt>f16</opt>
+      <opt>f32</opt>
+      <opt>s32</opt>
+      <opt>u32</opt>
+      <opt>s16</opt>
+      <opt>u16</opt>
+      <opt>f64</opt>
+      <opt>i64</opt>
+      <opt>auto</opt>
+    </mod>
+    <mod name="vecsize" start="11" size="2">
+      <opt>none</opt>
+      <opt>v2</opt>
+      <opt>v3</opt>
+      <opt>v4</opt>
+    </mod>
+  </ins>
+
 </bifrost>
