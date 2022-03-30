@@ -166,6 +166,12 @@ dEQP-GLES3.functional.clipping.line.wide_line_clip_viewport_corner,Fail
 dEQP-GLES3.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_corner,Fail
+dEQP-GLES3.functional.draw_buffers_indexed.overwrite_common.common_advanced_blend_eq_buffer_advanced_blend_eq,Fail
+dEQP-GLES3.functional.draw_buffers_indexed.overwrite_common.common_blend_eq_buffer_advanced_blend_eq,Fail
+dEQP-GLES3.functional.draw_buffers_indexed.overwrite_common.common_separate_blend_eq_buffer_advanced_blend_eq,Fail
+dEQP-GLES3.functional.draw_buffers_indexed.overwrite_indexed.common_advanced_blend_eq_buffer_advanced_blend_eq,Fail
+dEQP-GLES3.functional.draw_buffers_indexed.overwrite_indexed.common_advanced_blend_eq_buffer_blend_eq,Fail
+dEQP-GLES3.functional.draw_buffers_indexed.overwrite_indexed.common_advanced_blend_eq_buffer_separate_blend_eq,Fail
 dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth24_stencil8,Fail
 dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth32f_stencil8,Fail
 dEQP-GLES3.functional.fbo.depth.depth_test_clamp.depth_component24,Fail
@@ -235,8 +241,6 @@ glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
-GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvary,Fail
-GTF-GL46.gtf21.GL.atan.atan_vec3_frag_xvaryyvary,Fail
 GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_blit,Fail
 GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_clearbuffer,Fail
 GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_builtins,Fail
