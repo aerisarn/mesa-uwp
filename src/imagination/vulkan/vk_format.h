@@ -55,21 +55,9 @@ vk_format_is_alpha_on_msb(VkFormat vk_format)
 }
 
 static inline boolean
-vk_format_has_alpha(VkFormat vk_format)
-{
-   return util_format_has_alpha(vk_format_to_pipe_format(vk_format));
-}
-
-static inline boolean
 vk_format_is_pure_integer(VkFormat vk_format)
 {
    return util_format_is_pure_integer(vk_format_to_pipe_format(vk_format));
-}
-
-static inline uint
-vk_format_get_blocksizebits(VkFormat vk_format)
-{
-   return util_format_get_blocksizebits(vk_format_to_pipe_format(vk_format));
 }
 
 static inline uint
@@ -96,9 +84,9 @@ vk_format_has_32bit_component(VkFormat vk_format)
 }
 
 static inline uint
-vk_format_get_component_size_in_bits(VkFormat vk_format,
-                                     enum util_format_colorspace colorspace,
-                                     uint32_t component)
+vk_format_get_component_bits(VkFormat vk_format,
+                             enum util_format_colorspace colorspace,
+                             uint32_t component)
 {
    return util_format_get_component_bits(vk_format_to_pipe_format(vk_format),
                                          colorspace,

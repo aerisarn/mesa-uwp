@@ -33,15 +33,6 @@
 #include <vulkan/vulkan.h>
 
 /**
- * Return total bits needed for the pixel format per block.
- */
-static inline unsigned
-vk_format_get_blocksizebits(VkFormat format)
-{
-   return util_format_get_blocksizebits(vk_format_to_pipe_format(format));
-}
-
-/**
  * Return the index of the first non-void channel
  * -1 if no non-void channels
  */

@@ -84,14 +84,14 @@ void pvr_pbe_get_src_format_and_gamma(VkFormat vk_format,
       /* F16 source for gamma'd formats. */
       *src_format_out = PVRX(PBESTATE_SOURCE_FORMAT_F16_PER_CHANNEL);
    } else if (vk_format_has_depth(vk_format) &&
-              vk_format_get_component_size_in_bits(vk_format,
-                                                   UTIL_FORMAT_COLORSPACE_ZS,
-                                                   0) > 16) {
+              vk_format_get_component_bits(vk_format,
+                                           UTIL_FORMAT_COLORSPACE_ZS,
+                                           0) > 16) {
       *src_format_out = PVRX(PBESTATE_SOURCE_FORMAT_8_PER_CHANNEL);
    } else if (vk_format_has_stencil(vk_format) &&
-              vk_format_get_component_size_in_bits(vk_format,
-                                                   UTIL_FORMAT_COLORSPACE_ZS,
-                                                   1) > 0) {
+              vk_format_get_component_bits(vk_format,
+                                           UTIL_FORMAT_COLORSPACE_ZS,
+                                           1) > 0) {
       *src_format_out = PVRX(PBESTATE_SOURCE_FORMAT_8_PER_CHANNEL);
    } else if (chan_0_width > 16) {
       *src_format_out = PVRX(PBESTATE_SOURCE_FORMAT_8_PER_CHANNEL);
