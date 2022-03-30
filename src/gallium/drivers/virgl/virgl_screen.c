@@ -968,6 +968,29 @@ static void virgl_disk_cache_create(struct virgl_screen *screen)
    screen->disk_cache = disk_cache_create("virgl", timestamp, 0);
 }
 
+static bool
+virgl_is_dmabuf_modifier_supported(UNUSED struct pipe_screen *pscreen,
+                                   UNUSED uint64_t modifier,
+                                   UNUSED enum pipe_format format,
+                                   UNUSED bool *external_only)
+{
+   /* Always advertise support until virgl starts checking against host
+    * virglrenderer or consuming valid non-linear modifiers here.
+    */
+   return true;
+}
+
+static unsigned int
+virgl_get_dmabuf_modifier_planes(UNUSED struct pipe_screen *pscreen,
+                                 UNUSED uint64_t modifier,
+                                 enum pipe_format format)
+{
+   /* Return the format plane count queried from pipe_format. For virgl,
+    * additional aux planes are entirely resolved on the host side.
+    */
+   return util_format_get_num_planes(format);
+}
+
 static void
 fixup_renderer(union virgl_caps *caps)
 {
@@ -1036,6 +1059,8 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    screen->base.fence_get_fd = virgl_fence_get_fd;
    screen->base.query_memory_info = virgl_query_memory_info;
    screen->base.get_disk_shader_cache = virgl_get_disk_shader_cache;
+   screen->base.is_dmabuf_modifier_supported = virgl_is_dmabuf_modifier_supported;
+   screen->base.get_dmabuf_modifier_planes = virgl_get_dmabuf_modifier_planes;
 
    virgl_init_screen_resource_functions(&screen->base);
 
