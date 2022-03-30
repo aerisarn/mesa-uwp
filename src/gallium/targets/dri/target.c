@@ -7,7 +7,6 @@
 const __DRIextension **__driDriverGetExtensions_##drivername(void);       \
 PUBLIC const __DRIextension **__driDriverGetExtensions_##drivername(void) \
 {                                                                         \
-   globalDriverAPI = &galliumdrm_driver_api;                              \
    return galliumdrm_driver_extensions;                                   \
 }
 
@@ -17,7 +16,6 @@ const __DRIextension **__driDriverGetExtensions_swrast(void);
 
 PUBLIC const __DRIextension **__driDriverGetExtensions_swrast(void)
 {
-   globalDriverAPI = &galliumsw_driver_api;
    return galliumsw_driver_extensions;
 }
 
@@ -27,7 +25,6 @@ const __DRIextension **__driDriverGetExtensions_kms_swrast(void);
 
 PUBLIC const __DRIextension **__driDriverGetExtensions_kms_swrast(void)
 {
-   globalDriverAPI = &dri_kms_driver_api;
    return dri_kms_driver_extensions;
 }
 
