@@ -266,10 +266,10 @@ void _debug_assert_fail(const char *expr,
 /**
  * Output a debug log message to the debug info callback.
  */
-#define pipe_debug_message(cb, type, fmt, ...) do { \
+#define util_debug_message(cb, type, fmt, ...) do { \
    static unsigned id = 0; \
    if ((cb) && (cb)->debug_message) { \
-      _pipe_debug_message(cb, &id, \
+      _util_debug_message(cb, &id, \
                           PIPE_DEBUG_TYPE_ ## type, \
                           fmt, ##__VA_ARGS__); \
    } \
@@ -278,7 +278,7 @@ void _debug_assert_fail(const char *expr,
 struct pipe_debug_callback;
 
 void
-_pipe_debug_message(
+_util_debug_message(
    struct pipe_debug_callback *cb,
    unsigned *id,
    enum pipe_debug_type type,

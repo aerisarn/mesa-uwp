@@ -440,7 +440,7 @@ static void gpir_print_shader_db(struct nir_shader *nir, gpir_compiler *comp,
    if (lima_debug & LIMA_DEBUG_SHADERDB)
       fprintf(stderr, "SHADER-DB: %s\n", shaderdb);
 
-   pipe_debug_message(debug, SHADER_INFO, "%s", shaderdb);
+   util_debug_message(debug, SHADER_INFO, "%s", shaderdb);
    free(shaderdb);
 }
 

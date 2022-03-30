@@ -66,7 +66,7 @@ _debug_vprintf(const char *format, va_list ap)
 
 
 void
-_pipe_debug_message(struct pipe_debug_callback *cb,
+_util_debug_message(struct pipe_debug_callback *cb,
                     unsigned *id,
                     enum pipe_debug_type type,
                     const char *fmt, ...)

@@ -103,7 +103,7 @@ _u_async_debug_drain(struct util_async_debug_callback *adbg,
    for (unsigned i = 0; i < adbg->count; ++i) {
       const struct util_debug_message *msg = &adbg->messages[i];
 
-      _pipe_debug_message(dst, msg->id, msg->type, "%s", msg->msg);
+      _util_debug_message(dst, msg->id, msg->type, "%s", msg->msg);
 
       free(msg->msg);
    }

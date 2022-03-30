@@ -635,7 +635,7 @@ struct v3d_blend_state {
         if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))       \
                 fprintf(stderr, __VA_ARGS__);           \
         if (unlikely(v3d->debug.debug_message))         \
-                pipe_debug_message(&v3d->debug, PERF_INFO, __VA_ARGS__);    \
+                util_debug_message(&v3d->debug, PERF_INFO, __VA_ARGS__);    \
 } while (0)
 
 static inline struct v3d_context *

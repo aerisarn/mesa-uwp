@@ -941,7 +941,7 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
        * overhead, but on the plus side it simplifies
        * parsing of resulting logs.
        */
-      pipe_debug_message(debug, SHADER_INFO, "Shader Disassembly Begin");
+      util_debug_message(debug, SHADER_INFO, "Shader Disassembly Begin");
 
       uint64_t line = 0;
       while (line < nbytes) {
@@ -951,13 +951,13 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
             count = nl - (disasm + line);
 
          if (count) {
-            pipe_debug_message(debug, SHADER_INFO, "%.*s", count, disasm + line);
+            util_debug_message(debug, SHADER_INFO, "%.*s", count, disasm + line);
          }
 
          line += count + 1;
       }
 
-      pipe_debug_message(debug, SHADER_INFO, "Shader Disassembly End");
+      util_debug_message(debug, SHADER_INFO, "Shader Disassembly End");
    }
 
    if (file) {
@@ -1034,7 +1034,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
       si_shader_dump_disassembly(screen, &shader->binary, shader->selector->info.stage,
                                  shader->wave_size, debug, "main", NULL);
 
-   pipe_debug_message(debug, SHADER_INFO,
+   util_debug_message(debug, SHADER_INFO,
                       "Shader Stats: SGPRS: %d VGPRS: %d Code Size: %d "
                       "LDS: %d Scratch: %d Max Waves: %d Spilled SGPRs: %d "
                       "Spilled VGPRs: %d PrivMem VGPRs: %d DivergentLoop: %d, InlineUniforms: %d, "

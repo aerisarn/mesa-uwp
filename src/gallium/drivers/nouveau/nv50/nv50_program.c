@@ -452,7 +452,7 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset,
       prog->so = nv50_program_create_strmout_state(&info_out,
                                                    &prog->pipe.stream_output);
 
-   pipe_debug_message(debug, SHADER_INFO,
+   util_debug_message(debug, SHADER_INFO,
                       "type: %d, local: %d, shared: %d, gpr: %d, inst: %d, bytes: %d",
                       prog->type, info_out.bin.tlsSpace, info_out.bin.smemSize,
                       prog->max_gpr, info_out.bin.instructions,

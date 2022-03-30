@@ -348,7 +348,7 @@ v3d_shader_debug_output(const char *message, void *data)
 {
         struct v3d_context *v3d = data;
 
-        pipe_debug_message(&v3d->debug, SHADER_INFO, "%s", message);
+        util_debug_message(&v3d->debug, SHADER_INFO, "%s", message);
 }
 
 static void *

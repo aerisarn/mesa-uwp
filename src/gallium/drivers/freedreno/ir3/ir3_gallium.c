@@ -61,7 +61,7 @@ struct ir3_shader_state {
 /**
  * Should initial variants be compiled synchronously?
  *
- * The only case where pipe_debug_message() is used in the initial-variants
+ * The only case where util_debug_message() is used in the initial-variants
  * path is with FD_MESA_DEBUG=shaderdb.  So if either debug is disabled (ie.
  * debug.debug_message==NULL), or shaderdb stats are not enabled, we can
  * compile the initial shader variant asynchronously.
@@ -80,7 +80,7 @@ dump_shader_info(struct ir3_shader_variant *v,
    if (!FD_DBG(SHADERDB))
       return;
 
-   pipe_debug_message(
+   util_debug_message(
       debug, SHADER_INFO,
       "%s shader: %u inst, %u nops, %u non-nops, %u mov, %u cov, "
       "%u dwords, %u last-baryf, %u half, %u full, %u constlen, "

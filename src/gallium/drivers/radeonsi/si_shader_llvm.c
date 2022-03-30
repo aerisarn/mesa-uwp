@@ -57,7 +57,7 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 
    char *description = LLVMGetDiagInfoDescription(di);
 
-   pipe_debug_message(diag->debug, SHADER_INFO, "LLVM diagnostic (%s): %s", severity_str,
+   util_debug_message(diag->debug, SHADER_INFO, "LLVM diagnostic (%s): %s", severity_str,
                       description);
 
    if (severity == LLVMDSError) {
@@ -105,7 +105,7 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
          diag.retval = 1;
 
       if (diag.retval != 0) {
-         pipe_debug_message(debug, SHADER_INFO, "LLVM compilation failed");
+         util_debug_message(debug, SHADER_INFO, "LLVM compilation failed");
          return false;
       }
    }
