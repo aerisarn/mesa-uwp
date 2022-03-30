@@ -49,6 +49,13 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                         bi_foreach_dest(ins, d) {
                                 unsigned index = bi_get_node(ins->dest[d]);
 
+                                /* Destination required */
+                                if (ins->op == BI_OPCODE_AXCHG_I32 ||
+                                    ins->op == BI_OPCODE_ACMPXCHG_I32 ||
+                                    ins->op == BI_OPCODE_ATOM_RETURN_I32 ||
+                                    ins->op == BI_OPCODE_ATOM1_RETURN_I32)
+                                        continue;
+
                                 if (index < temp_count && !(live[index] & bi_writemask(ins, d)))
                                         ins->dest[d] = bi_null();
 
