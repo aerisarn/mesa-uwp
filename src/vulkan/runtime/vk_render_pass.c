@@ -1755,6 +1755,16 @@ vk_common_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 
       /* From the Vulkan 1.3.204 spec:
        *
+       *    VUID-VkFramebufferCreateInfo-pAttachments-00880
+       *
+       *    "If renderpass is not VK_NULL_HANDLE and flags does not include
+       *    VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT, each element of pAttachments
+       *    must have been created with a VkFormat value that matches the
+       *    VkFormat specified by the corresponding VkAttachmentDescription in
+       *    renderPass"
+       *
+       * and
+       *
        *    VUID-VkRenderPassBeginInfo-framebuffer-03216
        *
        *    "If framebuffer was created with a VkFramebufferCreateInfo::flags
@@ -1768,6 +1778,16 @@ vk_common_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
       assert(image_view->format == pass_att->format);
 
       /* From the Vulkan 1.3.204 spec:
+       *
+       *    VUID-VkFramebufferCreateInfo-pAttachments-00881
+       *
+       *    "If renderpass is not VK_NULL_HANDLE and flags does not include
+       *    VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT, each element of pAttachments
+       *    must have been created with a samples value that matches the
+       *    samples value specified by the corresponding
+       *    VkAttachmentDescription in renderPass"
+       *
+       * and
        *
        *    UID-VkRenderPassBeginInfo-framebuffer-03217
        *
