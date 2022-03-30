@@ -3239,6 +3239,7 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_interpolated_input:
    case nir_intrinsic_load_per_vertex_input:
    case nir_intrinsic_store_output:
+   case nir_intrinsic_store_per_vertex_output:
    case nir_intrinsic_store_ssbo:
       break;
    default:
