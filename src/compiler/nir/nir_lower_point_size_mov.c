@@ -55,7 +55,7 @@ lower_impl(nir_function_impl *impl,
     * drivers must check var->data.explicit_location to find the original output
     * and only emit that one for xfb
     */
-   if (!out || shader->info.has_transform_feedback_varyings) {
+   if (!out || out->data.explicit_location) {
       new_out = nir_variable_create(shader, nir_var_shader_out,
                                     glsl_float_type(), "gl_PointSizeMESA");
       new_out->data.location = VARYING_SLOT_PSIZ;
