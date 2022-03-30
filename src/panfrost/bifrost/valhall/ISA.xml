@@ -936,7 +936,7 @@
     <imm name="index" start="12" size="8"/>
   </ins>
 
-  <ins name="LD_ATTR_IMM" title="Load immediate attribute" opcode="0x66" unit="LS">
+  <ins name="LD_ATTR_IMM" title="Load immediate attribute" opcode="0x66" opcode2="0" unit="LS">
     <desc>
       Load `vecsize` components from the attribute descriptor at entry `index`
       of resource table `table` at index (vertex ID, instance ID), converting
@@ -946,11 +946,66 @@
     <vecsize/>
     <regfmt/>
     <slot/>
+    <mod name="descriptor_type" start="128" size="1" implied="true"/>
     <sr write="true"/>
     <src>Vertex ID</src>
     <src>Instance ID</src>
     <imm name="index" start="20" size="4"/>
     <imm name="table" start="16" size="4"/>
+  </ins>
+
+  <ins name="LD_ATTR" title="Load indirect attribute" opcode="0x76" opcode2="0" unit="LS">
+    <desc>
+      Load `vecsize` components from the attribute descriptor at the specified
+      location at index (vertex ID, instance ID), converting
+      to the specified register format.
+
+      The index must not diverge within a warp.
+    </desc>
+    <sr_count/>
+    <vecsize/>
+    <regfmt/>
+    <slot/>
+    <mod name="descriptor_type" start="128" size="1" implied="true"/>
+    <sr write="true"/>
+    <src>Vertex ID</src>
+    <src>Instance ID</src>
+    <src>Index and table</src>
+  </ins>
+
+  <ins name="LD_TEX_IMM" title="Load immediate texture" opcode="0x66" opcode2="1" unit="LS">
+    <desc>
+      Load `vecsize` components from the texture descriptor at entry `index`
+      of resource table `table`, converting
+      to the specified register format.
+    </desc>
+    <sr_count/>
+    <vecsize/>
+    <regfmt/>
+    <slot/>
+    <mod name="descriptor_type" start="128" size="1" implied="true"/>
+    <sr write="true"/>
+    <src>X/Y coordinates (16:16)</src>
+    <src>Z/W coordinates (16:16)</src>
+    <imm name="index" start="20" size="4"/>
+    <imm name="table" start="16" size="4"/>
+  </ins>
+
+  <ins name="LD_TEX" title="Load indirect texture" opcode="0x76" opcode2="1" unit="LS">
+    <desc>
+      Load `vecsize` components from the texture descriptor at the specified
+      location at index, converting
+      to the specified register format.
+    </desc>
+    <sr_count/>
+    <vecsize/>
+    <regfmt/>
+    <slot/>
+    <mod name="descriptor_type" start="128" size="1" implied="true"/>
+    <sr write="true"/>
+    <src>X/Y coordinates (16:16)</src>
+    <src>Z/W coordinates (16:16)</src>
+    <src>Index and table</src>
   </ins>
 
   <ins name="LEA_ATTR_IMM" title="Load effective address of image texel" opcode="0x67" opcode2="0" unit="LS">
@@ -1163,19 +1218,6 @@
     <slot/>
     <src>Byte offset</src>
     <src>Mode descriptor</src>
-  </ins>
-
-  <ins name="LD_ATTR" title="Load indirect attribute" opcode="0x76" unit="LS">
-    <!-- TODO: for some reason, blob is using index (1<<24)|x for [x] -->
-    <desc>The index must not diverge within a warp.</desc>
-    <sr_count/>
-    <vecsize/>
-    <regfmt/>
-    <slot/>
-    <sr write="true"/>
-    <src>Vertex ID</src>
-    <src>Instance ID</src>
-    <src>Index</src>
   </ins>
 
   <ins name="LEA_BUF_IMM" title="Load buffer effective address" opcode="0x5E" unit="LS">
