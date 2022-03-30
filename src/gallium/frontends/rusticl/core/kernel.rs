@@ -51,6 +51,7 @@ pub enum InternalKernelArgType {
     ConstantBuffer,
     GlobalWorkOffsets,
     PrintfBuffer,
+    InlineSampler((cl_addressing_mode, cl_filter_mode, bool)),
 }
 
 #[derive(Clone)]
@@ -274,7 +275,34 @@ fn lower_and_optimize_nir_late(
         &dv_opts,
     );
 
-    // TODO inline samplers
+    // asign locations for inline samplers
+    let mut last_loc = -1;
+    for v in nir
+        .variables_with_mode(nir_variable_mode::nir_var_uniform | nir_variable_mode::nir_var_image)
+    {
+        if unsafe { !glsl_type_is_sampler(v.type_) } {
+            last_loc = v.data.location;
+            continue;
+        }
+        let s = unsafe { v.data.anon_1.sampler };
+        if s.is_inline_sampler() != 0 {
+            last_loc += 1;
+            v.data.location = last_loc;
+
+            res.push(InternalKernelArg {
+                kind: InternalKernelArgType::InlineSampler(Sampler::nir_to_cl(
+                    s.addressing_mode(),
+                    s.filter_mode(),
+                    s.normalized_coordinates(),
+                )),
+                offset: 0,
+                size: 0,
+            });
+        } else {
+            last_loc = v.data.location;
+        }
+    }
+
     nir.pass1(nir_lower_readonly_images_to_tex, false);
     nir.pass0(nir_lower_cl_images);
 
@@ -497,7 +525,9 @@ impl Kernel {
 
         let mut printf_buf = None;
         for arg in &self.internal_args {
-            input.append(&mut vec![0; arg.offset - input.len()]);
+            if arg.offset > input.len() {
+                input.resize(arg.offset, 0);
+            }
             match arg.kind {
                 InternalKernelArgType::ConstantBuffer => {
                     input.extend_from_slice(&[0; 8]);
@@ -527,6 +557,9 @@ impl Kernel {
                     resource_info.push((Some(buf.clone()), arg.offset));
 
                     printf_buf = Some(buf);
+                }
+                InternalKernelArgType::InlineSampler(cl) => {
+                    samplers.push(Sampler::cl_to_pipe(cl));
                 }
             }
         }

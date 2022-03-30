@@ -220,6 +220,8 @@ rusticl_mesa_bindings_rs = rust.bindgen(
     '--constified-enum-module', 'pipe_tex_filter',
     '--allowlist-type', 'gl_access_qualifier',
     '--bitfield-enum', 'gl_access_qualifier',
+    '--allowlist-type', 'cl_sampler_.*_mode',
+    '--constified-enum-module', 'cl_sampler_.*_mode',
   ],
 )
 

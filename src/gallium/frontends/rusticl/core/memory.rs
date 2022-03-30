@@ -878,10 +878,43 @@ impl Sampler {
         })
     }
 
-    pub fn pipe(&self) -> pipe_sampler_state {
+    pub fn nir_to_cl(
+        addressing_mode: u32,
+        filter_mode: u32,
+        normalized_coords: u32,
+    ) -> (cl_addressing_mode, cl_filter_mode, bool) {
+        let addr_mode = match addressing_mode {
+            cl_sampler_addressing_mode::SAMPLER_ADDRESSING_MODE_NONE => CL_ADDRESS_NONE,
+            cl_sampler_addressing_mode::SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE => {
+                CL_ADDRESS_CLAMP_TO_EDGE
+            }
+            cl_sampler_addressing_mode::SAMPLER_ADDRESSING_MODE_CLAMP => CL_ADDRESS_CLAMP,
+            cl_sampler_addressing_mode::SAMPLER_ADDRESSING_MODE_REPEAT => CL_ADDRESS_REPEAT,
+            cl_sampler_addressing_mode::SAMPLER_ADDRESSING_MODE_REPEAT_MIRRORED => {
+                CL_ADDRESS_MIRRORED_REPEAT
+            }
+            _ => panic!("unkown addressing_mode"),
+        };
+
+        let filter = match filter_mode {
+            cl_sampler_filter_mode::SAMPLER_FILTER_MODE_NEAREST => CL_FILTER_NEAREST,
+            cl_sampler_filter_mode::SAMPLER_FILTER_MODE_LINEAR => CL_FILTER_LINEAR,
+            _ => panic!("unkown filter_mode"),
+        };
+
+        (addr_mode, filter, normalized_coords != 0)
+    }
+
+    pub fn cl_to_pipe(
+        (addressing_mode, filter_mode, normalized_coords): (
+            cl_addressing_mode,
+            cl_filter_mode,
+            bool,
+        ),
+    ) -> pipe_sampler_state {
         let mut res = pipe_sampler_state::default();
 
-        let wrap = match self.addressing_mode {
+        let wrap = match addressing_mode {
             CL_ADDRESS_CLAMP_TO_EDGE => pipe_tex_wrap::PIPE_TEX_WRAP_CLAMP_TO_EDGE,
             CL_ADDRESS_CLAMP => pipe_tex_wrap::PIPE_TEX_WRAP_CLAMP_TO_BORDER,
             CL_ADDRESS_REPEAT => pipe_tex_wrap::PIPE_TEX_WRAP_REPEAT,
@@ -890,7 +923,7 @@ impl Sampler {
             _ => pipe_tex_wrap::PIPE_TEX_WRAP_CLAMP_TO_EDGE,
         };
 
-        let img_filter = match self.filter_mode {
+        let img_filter = match filter_mode {
             CL_FILTER_NEAREST => pipe_tex_filter::PIPE_TEX_FILTER_NEAREST,
             CL_FILTER_LINEAR => pipe_tex_filter::PIPE_TEX_FILTER_LINEAR,
             _ => panic!("unkown filter_mode"),
@@ -898,11 +931,19 @@ impl Sampler {
 
         res.set_min_img_filter(img_filter);
         res.set_mag_img_filter(img_filter);
-        res.set_normalized_coords(self.normalized_coords.into());
+        res.set_normalized_coords(normalized_coords.into());
         res.set_wrap_r(wrap);
         res.set_wrap_s(wrap);
         res.set_wrap_t(wrap);
 
         res
+    }
+
+    pub fn pipe(&self) -> pipe_sampler_state {
+        Self::cl_to_pipe((
+            self.addressing_mode,
+            self.filter_mode,
+            self.normalized_coords,
+        ))
     }
 }
