@@ -617,7 +617,7 @@ va_pack_instr(const bi_instr *I, unsigned flow)
    hex |= ((uint64_t) va_select_fau_page(I)) << 57;
 
    if (info.slot) {
-      unsigned slot = (I->op == BI_OPCODE_BARRIER) ? 7 : 0;
+      uint64_t slot = (I->op == BI_OPCODE_BARRIER) ? 7 : 0;
       hex |= (slot << 30);
    }
 
