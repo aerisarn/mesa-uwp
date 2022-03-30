@@ -978,10 +978,14 @@ bi_emit_axchg_to(bi_builder *b, bi_index dst, bi_index addr, nir_src *arg, enum 
         bi_index inout = bi_temp_reg(b->shader);
         bi_make_vec_to(b, inout, data_words, NULL, sz / 32, 32);
 
-        bi_axchg_to(b, sz, inout, inout,
-                        bi_word(addr, 0),
-                        (seg == BI_SEG_NONE) ? bi_word(addr, 1) : bi_zero(),
-                        seg);
+        bi_index addr_hi = bi_word(addr, 1);
+
+        if (b->shader->arch >= 9)
+                bi_handle_segment(b, &addr, &addr_hi, seg, NULL);
+        else if (seg == BI_SEG_WLS)
+                addr_hi = bi_zero();
+
+        bi_axchg_to(b, sz, inout, inout, addr, addr_hi, seg);
 
         bi_index inout_words[] = {
                 bi_word(inout, 0),
@@ -1018,10 +1022,14 @@ bi_emit_acmpxchg_to(bi_builder *b, bi_index dst, bi_index addr, nir_src *arg_1, 
         bi_index inout = bi_temp_reg(b->shader);
         bi_make_vec_to(b, inout, data_words, NULL, 2 * (sz / 32), 32);
 
-        bi_acmpxchg_to(b, sz, inout, inout,
-                        bi_word(addr, 0),
-                        (seg == BI_SEG_NONE) ? bi_word(addr, 1) : bi_zero(),
-                        seg);
+        bi_index addr_hi = bi_word(addr, 1);
+
+        if (b->shader->arch >= 9)
+                bi_handle_segment(b, &addr, &addr_hi, seg, NULL);
+        else if (seg == BI_SEG_WLS)
+                addr_hi = bi_zero();
+
+        bi_acmpxchg_to(b, sz, inout, inout, addr, addr_hi, seg);
 
         bi_index inout_words[] = {
                 bi_word(inout, 0),
