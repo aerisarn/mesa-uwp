@@ -377,6 +377,12 @@ va_pack_alu(const bi_instr *I)
       hex |= ((uint64_t) I->attribute_index) << 20;
       break;
 
+   case BI_OPCODE_LD_TEX_IMM:
+   case BI_OPCODE_LEA_TEX_IMM:
+      hex |= ((uint64_t) I->table) << 16;
+      hex |= ((uint64_t) I->texture_index) << 20;
+      break;
+
    case BI_OPCODE_ZS_EMIT:
       if (I->stencil) hex |= (1 << 24);
       if (I->z) hex |= (1 << 25);
