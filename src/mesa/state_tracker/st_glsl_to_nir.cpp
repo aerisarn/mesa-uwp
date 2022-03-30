@@ -260,6 +260,7 @@ st_nir_add_point_size(nir_shader *nir)
 {
    nir_variable *psiz = nir_variable_create(nir, nir_var_shader_out, glsl_float_type(), "gl_PointSizeMESA");
    psiz->data.location = VARYING_SLOT_PSIZ;
+   psiz->data.how_declared = nir_var_hidden;
 
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
