@@ -38,7 +38,6 @@ SKIP = set([
         "IMUL.v4s8",
 
         # 64-bit support
-        "NOT.i64",
         "IADD.u64",
         "IADD.s64",
         "ISUB.u64",
@@ -72,7 +71,8 @@ SKIP = set([
         "FMA_RSCALE_SCALE16.f32",
 
         # Deprecated instruction
-        "NOT.i32",
+        "NOT_OLD.i32",
+        "NOT_OLD.i64",
 
         # TODO
         "IDP.v4s8",

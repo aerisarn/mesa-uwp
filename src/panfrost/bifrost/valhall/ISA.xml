@@ -1618,14 +1618,14 @@
     <src/>
   </ins>
 
-  <ins name="NOT.i32" title="Bitwise complement" dests="1" opcode="0x91" opcode2="0xE" unit="SFU">
+  <ins name="NOT_OLD.i32" title="Bitwise complement" dests="1" opcode="0x91" opcode2="0xE" unit="SFU">
     <desc>
       For fully featured bitwise operation, see the shift opcodes.
     </desc>
     <src/>
   </ins>
 
-  <ins name="NOT.i64" title="Bitwise complement" dests="1" opcode="0x191" opcode2="0xE" unit="SFU">
+  <ins name="NOT_OLD.i64" title="Bitwise complement" dests="1" opcode="0x191" opcode2="0xE" unit="SFU">
     <desc>
       For fully featured bitwise operation, see the shift opcodes.
     </desc>
