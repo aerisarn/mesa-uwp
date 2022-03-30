@@ -261,6 +261,8 @@ fn lower_and_optimize_nir_late(
     };
     let mut lower_state = rusticl_lower_state::default();
 
+    nir.pass0(nir_lower_memcpy);
+
     let dv_opts = nir_remove_dead_variables_options {
         can_remove_var: Some(can_remove_var),
         can_remove_var_data: ptr::null_mut(),
