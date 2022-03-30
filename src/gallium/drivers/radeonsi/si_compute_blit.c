@@ -396,6 +396,7 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
          compute_min_size = 4 * 1024;
       }
 
+      /* TODO: use compute for unaligned big sizes */
       if (method == SI_AUTO_SELECT_CLEAR_METHOD && (
            clear_value_size > 4 ||
            (clear_value_size == 4 && offset % 4 == 0 && size > compute_min_size))) {
@@ -464,6 +465,7 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
    si_improve_sync_flags(sctx, dst, src, &flags);
 
    /* Only use compute for VRAM copies on dGPUs. */
+   /* TODO: use compute for unaligned big sizes */
    if (sctx->screen->info.has_dedicated_vram && si_resource(dst)->domains & RADEON_DOMAIN_VRAM &&
        si_resource(src)->domains & RADEON_DOMAIN_VRAM && size > compute_min_size &&
        dst_offset % 4 == 0 && src_offset % 4 == 0 && size % 4 == 0) {

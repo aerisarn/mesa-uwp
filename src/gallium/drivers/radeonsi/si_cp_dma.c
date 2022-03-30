@@ -43,6 +43,7 @@
 static inline unsigned cp_dma_max_byte_count(struct si_context *sctx)
 {
    unsigned max =
+      sctx->chip_class >= GFX11 ? 32767 :
       sctx->chip_class >= GFX9 ? S_415_BYTE_COUNT_GFX9(~0u) : S_415_BYTE_COUNT_GFX6(~0u);
 
    /* make it aligned for optimal performance */
@@ -401,6 +402,9 @@ void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
    uint64_t address = si_resource(buf)->gpu_address + offset;
 
    assert(sctx->chip_class >= GFX7);
+
+   if (sctx->chip_class >= GFX11)
+      size = MIN2(size, 32768 - SI_CPDMA_ALIGNMENT);
 
    /* The prefetch address and size must be aligned, so that we don't have to apply
     * the complicated hw bug workaround.
