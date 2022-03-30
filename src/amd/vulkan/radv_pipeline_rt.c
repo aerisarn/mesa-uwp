@@ -23,6 +23,7 @@
 
 #include "radv_acceleration_structure.h"
 #include "radv_debug.h"
+#include "radv_meta.h"
 #include "radv_private.h"
 #include "radv_rt_common.h"
 #include "radv_shader.h"
@@ -1690,12 +1691,10 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    struct radv_pipeline_key key;
    memset(&key, 0, sizeof(key));
 
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "rt_combined");
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "rt_combined");
    b.shader->info.internal = false;
-
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = device->physical_device->rt_wave_size == 64 ? 8 : 4;
-   b.shader->info.workgroup_size[2] = 1;
 
    struct rt_variables vars = create_rt_variables(b.shader, stack_sizes);
    load_sbt_entry(&b, &vars, nir_imm_int(&b, 0), SBT_RAYGEN, 0);
@@ -1744,8 +1743,6 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
 
       const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[shader_id];
       nir_shader *nir_stage = parse_rt_stage(device, stage);
-
-      b.shader->options = nir_stage->options;
 
       uint32_t num_resume_shaders = 0;
       nir_shader **resume_shaders = NULL;

@@ -172,10 +172,9 @@ build_shader(struct radv_device *dev)
       glsl_image_type(GLSL_SAMPLER_DIM_2D, true, GLSL_TYPE_FLOAT);
    const struct glsl_type *img_type_3d =
       glsl_image_type(GLSL_SAMPLER_DIM_3D, false, GLSL_TYPE_FLOAT);
-   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "meta_decode_etc");
+   nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_COMPUTE, "meta_decode_etc");
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
-   b.shader->info.workgroup_size[2] = 1;
 
    nir_variable *input_img_2d =
       nir_variable_create(b.shader, nir_var_uniform, sampler_type_2d, "s_tex_2d");

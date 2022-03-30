@@ -29,7 +29,8 @@ build_fmask_copy_compute_shader(struct radv_device *dev, int samples)
    const struct glsl_type *sampler_type = glsl_sampler_type(GLSL_SAMPLER_DIM_MS, false, false, GLSL_TYPE_FLOAT);
    const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_MS, false, GLSL_TYPE_FLOAT);
 
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_fmask_copy_cs_-%d", samples);
+   nir_builder b =
+      radv_meta_init_shader(dev, MESA_SHADER_COMPUTE, "meta_fmask_copy_cs_-%d", samples);
 
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;

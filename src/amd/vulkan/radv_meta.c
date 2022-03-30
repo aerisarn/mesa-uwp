@@ -659,7 +659,8 @@ radv_device_finish_meta(struct radv_device *device)
    mtx_destroy(&device->meta_state.mtx);
 }
 
-nir_builder PRINTFLIKE(2, 3) radv_meta_init_shader(gl_shader_stage stage, const char *name, ...)
+nir_builder PRINTFLIKE(3, 4)
+   radv_meta_init_shader(struct radv_device *dev, gl_shader_stage stage, const char *name, ...)
 {
    nir_builder b = nir_builder_init_simple_shader(stage, NULL, NULL);
    if (name) {
@@ -669,6 +670,7 @@ nir_builder PRINTFLIKE(2, 3) radv_meta_init_shader(gl_shader_stage stage, const 
       va_end(args);
    }
 
+   b.shader->options = &dev->physical_device->nir_options[stage];
    b.shader->info.workgroup_size[0] = 1;
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
@@ -710,13 +712,13 @@ radv_meta_gen_rect_vertices(nir_builder *vs_b)
 
 /* vertex shader that generates vertices */
 nir_shader *
-radv_meta_build_nir_vs_generate_vertices(void)
+radv_meta_build_nir_vs_generate_vertices(struct radv_device *dev)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
 
    nir_variable *v_position;
 
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_VERTEX, "meta_vs_gen_verts");
+   nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_VERTEX, "meta_vs_gen_verts");
 
    nir_ssa_def *outvec = radv_meta_gen_rect_vertices(&b);
 
@@ -729,9 +731,9 @@ radv_meta_build_nir_vs_generate_vertices(void)
 }
 
 nir_shader *
-radv_meta_build_nir_fs_noop(void)
+radv_meta_build_nir_fs_noop(struct radv_device *dev)
 {
-   return radv_meta_init_shader(MESA_SHADER_FRAGMENT, "meta_noop_fs").shader;
+   return radv_meta_init_shader(dev, MESA_SHADER_FRAGMENT, "meta_noop_fs").shader;
 }
 
 void

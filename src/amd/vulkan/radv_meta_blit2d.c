@@ -386,11 +386,11 @@ radv_meta_blit2d(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_sur
 }
 
 static nir_shader *
-build_nir_vertex_shader(void)
+build_nir_vertex_shader(struct radv_device *device)
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
    const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_VERTEX, "meta_blit2d_vs");
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_VERTEX, "meta_blit2d_vs");
 
    nir_variable *pos_out = nir_variable_create(b.shader, nir_var_shader_out, vec4, "gl_Position");
    pos_out->data.location = VARYING_SLOT_POS;
@@ -527,7 +527,7 @@ build_nir_copy_fragment_shader(struct radv_device *device, texel_fetch_build_fun
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
    const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "%s", name);
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "%s", name);
 
    nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in, vec2, "v_tex_pos");
    tex_pos_in->data.location = VARYING_SLOT_VAR0;
@@ -550,7 +550,7 @@ build_nir_copy_fragment_shader_depth(struct radv_device *device, texel_fetch_bui
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
    const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "%s", name);
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "%s", name);
 
    nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in, vec2, "v_tex_pos");
    tex_pos_in->data.location = VARYING_SLOT_VAR0;
@@ -573,7 +573,7 @@ build_nir_copy_fragment_shader_stencil(struct radv_device *device, texel_fetch_b
 {
    const struct glsl_type *vec4 = glsl_vec4_type();
    const struct glsl_type *vec2 = glsl_vector_type(GLSL_TYPE_FLOAT, 2);
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "%s", name);
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_FRAGMENT, "%s", name);
 
    nir_variable *tex_pos_in = nir_variable_create(b.shader, nir_var_shader_in, vec2, "v_tex_pos");
    tex_pos_in->data.location = VARYING_SLOT_VAR0;
@@ -653,7 +653,7 @@ blit2d_init_color_pipeline(struct radv_device *device, enum blit2d_src_type src_
    const VkPipelineVertexInputStateCreateInfo *vi_create_info;
    nir_shader *fs = build_nir_copy_fragment_shader(
       device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
-   nir_shader *vs = build_nir_vertex_shader();
+   nir_shader *vs = build_nir_vertex_shader(device);
 
    vi_create_info = &normal_vi_create_info;
 
@@ -788,7 +788,7 @@ blit2d_init_depth_only_pipeline(struct radv_device *device, enum blit2d_src_type
    const VkPipelineVertexInputStateCreateInfo *vi_create_info;
    nir_shader *fs = build_nir_copy_fragment_shader_depth(
       device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
-   nir_shader *vs = build_nir_vertex_shader();
+   nir_shader *vs = build_nir_vertex_shader(device);
 
    vi_create_info = &normal_vi_create_info;
 
@@ -945,7 +945,7 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device, enum blit2d_src_ty
    const VkPipelineVertexInputStateCreateInfo *vi_create_info;
    nir_shader *fs = build_nir_copy_fragment_shader_stencil(
       device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
-   nir_shader *vs = build_nir_vertex_shader();
+   nir_shader *vs = build_nir_vertex_shader(device);
 
    vi_create_info = &normal_vi_create_info;
 

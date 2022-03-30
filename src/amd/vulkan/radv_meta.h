@@ -254,11 +254,12 @@ radv_is_dcc_decompress_pipeline(struct radv_cmd_buffer *cmd_buffer)
 /* common nir builder helpers */
 #include "nir/nir_builder.h"
 
-nir_builder PRINTFLIKE(2, 3) radv_meta_init_shader(gl_shader_stage stage, const char *name, ...);
+nir_builder PRINTFLIKE(3, 4)
+   radv_meta_init_shader(struct radv_device *dev, gl_shader_stage stage, const char *name, ...);
 nir_ssa_def *radv_meta_gen_rect_vertices(nir_builder *vs_b);
 nir_ssa_def *radv_meta_gen_rect_vertices_comp2(nir_builder *vs_b, nir_ssa_def *comp2);
-nir_shader *radv_meta_build_nir_vs_generate_vertices(void);
-nir_shader *radv_meta_build_nir_fs_noop(void);
+nir_shader *radv_meta_build_nir_vs_generate_vertices(struct radv_device *dev);
+nir_shader *radv_meta_build_nir_fs_noop(struct radv_device *dev);
 
 void radv_meta_build_resolve_shader_core(nir_builder *b, bool is_integer, int samples,
                                          nir_variable *input_img, nir_variable *color,

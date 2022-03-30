@@ -38,7 +38,7 @@ build_expand_depth_stencil_compute_shader(struct radv_device *dev)
 {
    const struct glsl_type *img_type = glsl_image_type(GLSL_SAMPLER_DIM_2D, false, GLSL_TYPE_FLOAT);
 
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "expand_depth_stencil_compute");
+   nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_COMPUTE, "expand_depth_stencil_compute");
 
    /* We need at least 8/8/1 to cover an entire HTILE block in a single workgroup. */
    b.shader->info.workgroup_size[0] = 8;
@@ -176,8 +176,8 @@ create_pipeline(struct radv_device *device, uint32_t samples, VkPipelineLayout l
       return VK_SUCCESS;
    }
 
-   nir_shader *vs_module = radv_meta_build_nir_vs_generate_vertices();
-   nir_shader *fs_module = radv_meta_build_nir_fs_noop();
+   nir_shader *vs_module = radv_meta_build_nir_vs_generate_vertices(device);
+   nir_shader *fs_module = radv_meta_build_nir_fs_noop(device);
 
    if (!vs_module || !fs_module) {
       /* XXX: Need more accurate error */

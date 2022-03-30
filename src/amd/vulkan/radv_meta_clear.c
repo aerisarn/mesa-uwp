@@ -32,11 +32,12 @@
 enum { DEPTH_CLEAR_SLOW, DEPTH_CLEAR_FAST };
 
 static void
-build_color_shaders(struct nir_shader **out_vs, struct nir_shader **out_fs, uint32_t frag_output)
+build_color_shaders(struct radv_device *dev, struct nir_shader **out_vs, struct nir_shader **out_fs,
+                    uint32_t frag_output)
 {
-   nir_builder vs_b = radv_meta_init_shader(MESA_SHADER_VERTEX, "meta_clear_color_vs");
+   nir_builder vs_b = radv_meta_init_shader(dev, MESA_SHADER_VERTEX, "meta_clear_color_vs");
    nir_builder fs_b =
-      radv_meta_init_shader(MESA_SHADER_FRAGMENT, "meta_clear_color_fs-%d", frag_output);
+      radv_meta_init_shader(dev, MESA_SHADER_FRAGMENT, "meta_clear_color_fs-%d", frag_output);
 
    const struct glsl_type *position_type = glsl_vec4_type();
    const struct glsl_type *color_type = glsl_vec4_type();
@@ -182,7 +183,7 @@ create_color_pipeline(struct radv_device *device, uint32_t samples, uint32_t fra
       return VK_SUCCESS;
    }
 
-   build_color_shaders(&vs_nir, &fs_nir, frag_output);
+   build_color_shaders(device, &vs_nir, &fs_nir, frag_output);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -384,13 +385,14 @@ emit_color_clear(struct radv_cmd_buffer *cmd_buffer, const VkClearAttachment *cl
 }
 
 static void
-build_depthstencil_shader(struct nir_shader **out_vs, struct nir_shader **out_fs, bool unrestricted)
+build_depthstencil_shader(struct radv_device *dev, struct nir_shader **out_vs,
+                          struct nir_shader **out_fs, bool unrestricted)
 {
    nir_builder vs_b = radv_meta_init_shader(
-      MESA_SHADER_VERTEX,
+      dev, MESA_SHADER_VERTEX,
       unrestricted ? "meta_clear_depthstencil_unrestricted_vs" : "meta_clear_depthstencil_vs");
    nir_builder fs_b = radv_meta_init_shader(
-      MESA_SHADER_FRAGMENT,
+      dev, MESA_SHADER_FRAGMENT,
       unrestricted ? "meta_clear_depthstencil_unrestricted_fs" : "meta_clear_depthstencil_fs");
 
    const struct glsl_type *position_out_type = glsl_vec4_type();
@@ -445,7 +447,7 @@ create_depthstencil_pipeline(struct radv_device *device, VkImageAspectFlags aspe
       return VK_SUCCESS;
    }
 
-   build_depthstencil_shader(&vs_nir, &fs_nir, unrestricted);
+   build_depthstencil_shader(device, &vs_nir, &fs_nir, unrestricted);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -903,9 +905,9 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
 }
 
 static nir_shader *
-build_clear_htile_mask_shader()
+build_clear_htile_mask_shader(struct radv_device *dev)
 {
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_clear_htile_mask");
+   nir_builder b = radv_meta_init_shader(dev, MESA_SHADER_COMPUTE, "meta_clear_htile_mask");
    b.shader->info.workgroup_size[0] = 64;
 
    nir_ssa_def *global_id = get_global_ids(&b, 1);
@@ -933,7 +935,7 @@ init_meta_clear_htile_mask_state(struct radv_device *device)
 {
    struct radv_meta_state *state = &device->meta_state;
    VkResult result;
-   nir_shader *cs = build_clear_htile_mask_shader();
+   nir_shader *cs = build_clear_htile_mask_shader(device);
 
    VkDescriptorSetLayoutCreateInfo ds_layout_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -1000,13 +1002,14 @@ fail:
  * For MSAA images, clearing the first sample should be enough as long as CMASK is also cleared.
  */
 static nir_shader *
-build_clear_dcc_comp_to_single_shader(bool is_msaa)
+build_clear_dcc_comp_to_single_shader(struct radv_device *dev, bool is_msaa)
 {
    enum glsl_sampler_dim dim = is_msaa ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
    const struct glsl_type *img_type = glsl_image_type(dim, true, GLSL_TYPE_FLOAT);
 
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_clear_dcc_comp_to_single-%s",
-                                         is_msaa ? "multisampled" : "singlesampled");
+   nir_builder b =
+      radv_meta_init_shader(dev, MESA_SHADER_COMPUTE, "meta_clear_dcc_comp_to_single-%s",
+                            is_msaa ? "multisampled" : "singlesampled");
    b.shader->info.workgroup_size[0] = 8;
    b.shader->info.workgroup_size[1] = 8;
 
@@ -1049,7 +1052,7 @@ create_dcc_comp_to_single_pipeline(struct radv_device *device, bool is_msaa, VkP
 {
    struct radv_meta_state *state = &device->meta_state;
    VkResult result;
-   nir_shader *cs = build_clear_dcc_comp_to_single_shader(is_msaa);
+   nir_shader *cs = build_clear_dcc_comp_to_single_shader(device, is_msaa);
 
    VkPipelineShaderStageCreateInfo shader_stage = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,

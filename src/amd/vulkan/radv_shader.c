@@ -574,7 +574,6 @@ radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipelin
        * and just use the NIR shader.  We don't want to alter meta and RT
        * shaders IR directly, so clone it first. */
       nir = nir_shader_clone(NULL, stage->internal_nir);
-      nir->options = &device->physical_device->nir_options[stage->stage];
       nir_validate_shader(nir, "in internal shader");
 
       assert(exec_list_length(&nir->functions) == 1);
@@ -2072,7 +2071,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
    if (!trap)
       return NULL;
 
-   nir_builder b = radv_meta_init_shader(MESA_SHADER_COMPUTE, "meta_trap_handler");
+   nir_builder b = radv_meta_init_shader(device, MESA_SHADER_COMPUTE, "meta_trap_handler");
 
    options.wgp_mode = radv_should_use_wgp_mode(device, MESA_SHADER_COMPUTE, &info);
    info.wave_size = 64;
