@@ -1113,8 +1113,15 @@ bi_promote_atom_c1(enum bi_atom_opc op, bi_index arg, enum bi_atom_opc *out)
         }
 }
 
-/* Coordinates are 16-bit integers in Bifrost but 32-bit in NIR */
-
+/*
+ * Coordinates are 16-bit integers in Bifrost but 32-bit in NIR. We need to
+ * translate between these forms (with MKVEC.v2i16).
+ *
+ * Aditionally on Valhall, cube maps in the attribute pipe are treated as 2D
+ * arrays.  For uniform handling, we also treat 3D textures like 2D arrays.
+ *
+ * Our indexing needs to reflects this.
+ */
 static bi_index
 bi_emit_image_coord(bi_builder *b, bi_index coord, unsigned src_idx,
                     unsigned coord_comps, bool is_array)
@@ -1129,7 +1136,10 @@ bi_emit_image_coord(bi_builder *b, bi_index coord, unsigned src_idx,
                                               bi_half(bi_word(coord, 0), false),
                                               bi_half(bi_word(coord, 1), false));
         } else {
-                if (coord_comps == 3)
+                if (coord_comps == 3 && b->shader->arch >= 9)
+                        return bi_mkvec_v2i16(b, bi_imm_u16(0),
+                                              bi_half(bi_word(coord, 2), false));
+                else if (coord_comps == 3)
                         return bi_word(coord, 2);
                 else if (coord_comps == 2 && is_array)
                         return bi_word(coord, 1);
@@ -1195,15 +1205,26 @@ bi_emit_lea_image(bi_builder *b, nir_intrinsic_instr *instr)
         bi_index coords = bi_src_index(&instr->src[1]);
         bi_index xy = bi_emit_image_coord(b, coords, 0, coord_comps, array);
         bi_index zw = bi_emit_image_coord(b, coords, 1, coord_comps, array);
+        bi_index dest = bi_temp(b->shader);
 
-        bi_instr *I = bi_lea_attr_tex_to(b, bi_temp(b->shader), xy, zw,
-                        bi_emit_image_index(b, instr), type);
+        if (b->shader->arch >= 9 && nir_src_is_const(instr->src[0])) {
+                bi_instr *I = bi_lea_tex_imm_to(b, dest, xy, zw, false,
+                                                nir_src_as_uint(instr->src[0]));
 
-        /* LEA_ATTR_TEX defaults to the secondary attribute table, but our ABI
-         * has all images in the primary attribute table */
-        I->table = BI_TABLE_ATTRIBUTE_1;
+                I->table = PAN_TABLE_IMAGE;
+        } else if (b->shader->arch >= 9) {
+                unreachable("Indirect images on Valhall not yet supported");
+        } else {
+                bi_instr *I = bi_lea_attr_tex_to(b, dest, xy, zw,
+                                bi_emit_image_index(b, instr), type);
 
-        return I->dest[0];
+                /* LEA_ATTR_TEX defaults to the secondary attribute table, but
+                 * our ABI has all images in the primary attribute table
+                 */
+                I->table = BI_TABLE_ATTRIBUTE_1;
+        }
+
+        return dest;
 }
 
 static void
