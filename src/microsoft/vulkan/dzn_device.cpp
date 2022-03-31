@@ -740,7 +740,7 @@ dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
    else
       properties->imageFormatProperties.maxMipLevels = 1;
 
-   if (info->tiling == VK_IMAGE_TILING_OPTIMAL)
+   if (info->tiling == VK_IMAGE_TILING_OPTIMAL && info->type != VK_IMAGE_TYPE_3D)
       properties->imageFormatProperties.maxArrayLayers = dzn_physical_device_get_max_array_layers();
    else
       properties->imageFormatProperties.maxArrayLayers = 1;
