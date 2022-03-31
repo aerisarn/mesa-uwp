@@ -270,6 +270,8 @@ a630-traces:
     # missing.
     MESA_GLSL_VERSION_OVERRIDE: "460"
     MESA_GL_VERSION_OVERRIDE: "4.6"
+    # Reduce concurrency to avoid OOM
+    FDO_CI_CONCURRENT: 6
 
 a630-traces-restricted:
   extends:
