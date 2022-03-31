@@ -1023,7 +1023,7 @@ dzn_image_view_prepare_dsv_desc(dzn_image_view *iview)
       }
       break;
 
-      default: unreachable("Invalid view type");
+   default: unreachable("Invalid view type");
    }
 }
 
