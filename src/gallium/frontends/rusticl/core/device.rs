@@ -403,6 +403,16 @@ impl Device {
             add_ext(1, 0, 0, "cl_khr_fp64");
         }
 
+        if !FORMATS
+            .iter()
+            .filter(|f| f.req_for_3d_image_write_ext)
+            .map(|f| self.formats.get(&f.cl_image_format).unwrap())
+            .map(|f| f.get(&CL_MEM_OBJECT_IMAGE3D).unwrap())
+            .any(|f| *f & cl_mem_flags::from(CL_MEM_WRITE_ONLY) == 0)
+        {
+            add_ext(1, 0, 0, "cl_khr_3d_image_writes");
+        }
+
         if self.embedded {
             if self.long_supported() {
                 add_ext(1, 0, 0, "cles_khr_int64");
