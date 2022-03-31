@@ -560,14 +560,13 @@ const struct panfrost_format GENX(panfrost_pipe_format)[PIPE_FORMAT_COUNT] = {
          * determined by the plane descriptor on Valhall.
          *
          * On Valhall, S8 logically acts like "X8S8", so "S8 RGBA" is logically
-         * "0s00" and "S8 GRBA" is logically "s000". For backwards compatibility
-         * we want stencil in the green channel, so we use the RGBA swizzles on
-         * Valhall despite the GRBA swizzles on Bifrost.
+         * "0s00" and "S8 GRBA" is logically "s000". For Bifrost compatibility
+         * we want stencil in the red channel, so we use the GRBA swizzles.
          */
-        FMT(Z32_FLOAT_S8X24_UINT,    R32F,            RGBA, L, _T_Z),
-        FMT(X32_S8X24_UINT,          S8,              RGBA, L, _T__),
-        FMT(X24S8_UINT,              S8,              RGBA, L, _T_Z),
-        FMT(S8_UINT,                 S8,              RGBA, L, _T__),
+        FMT(Z32_FLOAT_S8X24_UINT,    R32F,            GRBA, L, _T_Z),
+        FMT(X32_S8X24_UINT,          S8,              GRBA, L, _T__),
+        FMT(X24S8_UINT,              S8,              GRBA, L, _T_Z),
+        FMT(S8_UINT,                 S8,              GRBA, L, _T__),
 
 #else
         /* Specify real formats on Bifrost */
