@@ -381,38 +381,36 @@ update_barriers(struct zink_context *ctx, bool is_compute)
    ctx->need_barriers[is_compute] = &ctx->update_barriers[is_compute][ctx->barrier_set_idx[is_compute]];
    set_foreach(need_barriers, he) {
       struct zink_resource *res = (struct zink_resource *)he->key;
+      bool is_buffer = res->obj->is_buffer;
       VkPipelineStageFlags pipeline = 0;
       VkAccessFlags access = 0;
       if (res->bind_count[is_compute]) {
          if (res->write_bind_count[is_compute])
             access |= VK_ACCESS_SHADER_WRITE_BIT;
-         if (res->write_bind_count[is_compute] != res->bind_count[is_compute]) {
-            unsigned bind_count = res->bind_count[is_compute] - res->write_bind_count[is_compute];
-            if (res->obj->is_buffer) {
-               if (res->ubo_bind_count[is_compute]) {
-                  access |= VK_ACCESS_UNIFORM_READ_BIT;
-                  bind_count -= res->ubo_bind_count[is_compute];
-               }
-               if (!is_compute && res->vbo_bind_mask) {
-                  access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-                  pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-                  bind_count -= util_bitcount(res->vbo_bind_mask);
-                  if (res->write_bind_count[is_compute])
-                     pipeline |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-               }
-               bind_count -= res->so_bind_count;
+         if (is_buffer) {
+            if (res->ubo_bind_count[is_compute])
+               access |= VK_ACCESS_UNIFORM_READ_BIT;
+            if (!is_compute && res->vbo_bind_mask) {
+               access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+               pipeline |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+               if (res->write_bind_count[is_compute])
+                  pipeline |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
             }
-            if (bind_count)
+            if (res->write_bind_count[is_compute])
+               access |= VK_ACCESS_SHADER_READ_BIT;
+            /* TODO: there are no other write-only buffer descriptors without deeper shader analysis */
+            if (res->image_bind_count[is_compute] != res->bind_count[is_compute] ||
+                res->write_bind_count[is_compute] != res->image_bind_count[is_compute])
                access |= VK_ACCESS_SHADER_READ_BIT;
          }
          if (is_compute)
             pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
          else if (!pipeline) {
-            if (res->obj->is_buffer) {
+            if (is_buffer) {
+               pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
+
                if (res->ubo_bind_count[0])
                   pipeline |= find_pipeline_bits(res->ubo_bind_mask);
-               if (!pipeline)
-                  pipeline |= find_pipeline_bits(res->ssbo_bind_mask);
             }
             if (!pipeline)
                pipeline |= find_pipeline_bits(res->sampler_binds);
