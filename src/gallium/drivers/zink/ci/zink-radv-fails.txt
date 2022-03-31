@@ -239,7 +239,6 @@ KHR-GL46.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GL46.packed_depth_stencil.blit.depth32f_stencil8,Fail
 KHR-GL46.packed_depth_stencil.clear_buffer.depth24_stencil8,Fail
 KHR-GL46.packed_depth_stencil.clear_buffer.depth32f_stencil8,Fail
-KHR-GL46.pipeline_statistics_query_tests_ARB.functional_primitives_vertices_submitted_and_clipping_input_output_primitives,Fail
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail
@@ -354,7 +353,6 @@ spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec3-u64
 spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec4-u64vec4,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
-spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combinations,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Antialiased combinations,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation,Fail
