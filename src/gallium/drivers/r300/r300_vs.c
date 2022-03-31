@@ -259,7 +259,7 @@ void r300_translate_vertex_shader(struct r300_context *r300,
 
     /* Insert the WPOS output. */
     if (vs->wpos)
-        rc_copy_output(&compiler.Base, 0, vs->outputs.wpos);
+        rc_copy_output(&compiler.Base, vs->outputs.pos, vs->outputs.wpos);
 
     /* Invoke the compiler */
     r3xx_compile_vertex_program(&compiler);
