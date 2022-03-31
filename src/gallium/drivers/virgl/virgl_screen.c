@@ -133,6 +133,10 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
    case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
       return 16*4;
+   case PIPE_CAP_SUPPORTED_PRIM_MODES:
+      return BITFIELD_MASK(PIPE_PRIM_MAX) &
+            ~BITFIELD_BIT(PIPE_PRIM_QUADS) &
+            ~BITFIELD_BIT(PIPE_PRIM_QUAD_STRIP);
    case PIPE_CAP_PRIMITIVE_RESTART:
    case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
       return vscreen->caps.caps.v1.bset.primitive_restart;
