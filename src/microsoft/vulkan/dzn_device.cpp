@@ -444,7 +444,7 @@ dzn_physical_device_get_mem_type_mask_for_resource(const dzn_physical_device *pd
 }
 
 static uint32_t
-dzn_physical_device_get_max_mip_levels(bool is_3d)
+dzn_physical_device_get_max_mip_level(bool is_3d)
 {
    return is_3d ? 11 : 14;
 }
@@ -452,7 +452,7 @@ dzn_physical_device_get_max_mip_levels(bool is_3d)
 static uint32_t
 dzn_physical_device_get_max_extent(bool is_3d)
 {
-   uint32_t max_mip = dzn_physical_device_get_max_mip_levels(is_3d);
+   uint32_t max_mip = dzn_physical_device_get_max_mip_level(is_3d);
 
    return 1 << max_mip;
 }
@@ -729,7 +729,7 @@ dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
 
    if (info->tiling == VK_IMAGE_TILING_OPTIMAL &&
        dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_MIP)
-      properties->imageFormatProperties.maxMipLevels = dzn_physical_device_get_max_mip_levels(is_3d);
+      properties->imageFormatProperties.maxMipLevels = dzn_physical_device_get_max_mip_level(is_3d) + 1;
    else
       properties->imageFormatProperties.maxMipLevels = 1;
 
