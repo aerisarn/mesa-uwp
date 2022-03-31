@@ -867,6 +867,15 @@ GENX(pan_emit_tiler_ctx)(const struct panfrost_device *dev,
         pan_pack(out, TILER_CONTEXT, tiler) {
                 /* TODO: Select hierarchy mask more effectively */
                 tiler.hierarchy_mask = (max_levels >= 8) ? 0xFF : 0x28;
+
+                /* For large framebuffers, disable the smallest bin size to
+                 * avoid pathological tiler memory usage. Required to avoid OOM
+                 * on dEQP-GLES31.functional.fbo.no_attachments.maximums.all on
+                 * Mali-G57.
+                 */
+                if (MAX2(fb_width, fb_height) >= 4096)
+                        tiler.hierarchy_mask &= ~1;
+
                 tiler.fb_width = fb_width;
                 tiler.fb_height = fb_height;
                 tiler.heap = heap;
