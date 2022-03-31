@@ -641,7 +641,6 @@ dzn_EndCommandBuffer(VkCommandBuffer commandBuffer)
       cmdbuf->error = cmdbuf->vk.cmd_queue.error;
    }
 
-   assert(cmdbuf->error == VK_SUCCESS);
    return cmdbuf->error;
 }
 
