@@ -148,7 +148,8 @@ static void check_program_state( struct st_context *st )
          dirty |= ST_NEW_SCISSOR;
    }
 
-   if (st->lower_point_size && st->ctx->LastVertexStageDirty && !st->ctx->VertexProgram.PointSizeEnabled) {
+   if (st->lower_point_size && st->ctx->LastVertexStageDirty &&
+       !st->ctx->VertexProgram.PointSizeEnabled && !st->ctx->PointSizeIsOne) {
       if (new_gp) {
          st->dirty |= ST_NEW_GS_CONSTANTS;
       } else if (new_tep) {
