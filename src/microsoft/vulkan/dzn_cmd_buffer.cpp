@@ -1528,8 +1528,8 @@ dzn_cmd_buffer_copy_img2buf_region(dzn_cmd_buffer *cmdbuf,
 static void
 dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
                               const VkCopyImageInfo2 *info,
-                              D3D12_RESOURCE_DESC &tmp_desc,
-                              D3D12_TEXTURE_COPY_LOCATION &tmp_loc,
+                              D3D12_RESOURCE_DESC *tmp_desc,
+                              D3D12_TEXTURE_COPY_LOCATION *tmp_loc,
                               uint32_t r,
                               VkImageAspectFlagBits aspect,
                               uint32_t l)
@@ -1573,30 +1573,30 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
       .back = (UINT)region->srcOffset.z + region->extent.depth,
    };
 
-   if (!tmp_loc.pResource) {
+   if (!tmp_loc->pResource) {
       cmdlist->CopyTextureRegion(&dst_loc, region->dstOffset.x,
                                  region->dstOffset.y, region->dstOffset.z,
                                  &src_loc, &src_box);
       return;
    }
 
-   tmp_desc.Format =
+   tmp_desc->Format =
       dzn_image_get_placed_footprint_format(src->vk.format, aspect);
-   tmp_desc.Width = region->extent.width;
-   tmp_desc.Height = region->extent.height;
+   tmp_desc->Width = region->extent.width;
+   tmp_desc->Height = region->extent.height;
 
-   dev->GetCopyableFootprints(&tmp_desc,
+   dev->GetCopyableFootprints(tmp_desc,
                               0, 1, 0,
-                              &tmp_loc.PlacedFootprint,
+                              &tmp_loc->PlacedFootprint,
                               NULL, NULL, NULL);
 
-   tmp_loc.PlacedFootprint.Footprint.Depth = region->extent.depth;
+   tmp_loc->PlacedFootprint.Footprint.Depth = region->extent.depth;
 
    D3D12_RESOURCE_BARRIER barrier = {
       .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
       .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
       .Transition = {
-         .pResource = tmp_loc.pResource,
+         .pResource = tmp_loc->pResource,
          .Subresource = 0,
          .StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE,
          .StateAfter = D3D12_RESOURCE_STATE_COPY_DEST,
@@ -1606,44 +1606,44 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
    if (r > 0 || l > 0)
       cmdlist->ResourceBarrier(1, &barrier);
 
-   cmdlist->CopyTextureRegion(&tmp_loc, 0, 0, 0, &src_loc, &src_box);
+   cmdlist->CopyTextureRegion(tmp_loc, 0, 0, 0, &src_loc, &src_box);
 
    DZN_SWAP(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
    cmdlist->ResourceBarrier(1, &barrier);
 
-   tmp_desc.Format =
+   tmp_desc->Format =
       dzn_image_get_placed_footprint_format(dst->vk.format, aspect);
    if (src_blkw != dst_blkw)
-      tmp_desc.Width = DIV_ROUND_UP(region->extent.width, src_blkw) * dst_blkw;
+      tmp_desc->Width = DIV_ROUND_UP(region->extent.width, src_blkw) * dst_blkw;
    if (src_blkh != dst_blkh)
-      tmp_desc.Height = DIV_ROUND_UP(region->extent.height, src_blkh) * dst_blkh;
+      tmp_desc->Height = DIV_ROUND_UP(region->extent.height, src_blkh) * dst_blkh;
 
-   device->dev->GetCopyableFootprints(&tmp_desc,
+   device->dev->GetCopyableFootprints(tmp_desc,
                                       0, 1, 0,
-                                      &tmp_loc.PlacedFootprint,
+                                      &tmp_loc->PlacedFootprint,
                                       NULL, NULL, NULL);
 
    if (src_blkd != dst_blkd) {
-      tmp_loc.PlacedFootprint.Footprint.Depth =
-      DIV_ROUND_UP(region->extent.depth, src_blkd) * dst_blkd;
+      tmp_loc->PlacedFootprint.Footprint.Depth =
+         DIV_ROUND_UP(region->extent.depth, src_blkd) * dst_blkd;
    } else {
-      tmp_loc.PlacedFootprint.Footprint.Depth = region->extent.depth;
+      tmp_loc->PlacedFootprint.Footprint.Depth = region->extent.depth;
    }
 
    D3D12_BOX tmp_box = {
       .left = 0,
       .top = 0,
       .front = 0,
-      .right = tmp_loc.PlacedFootprint.Footprint.Width,
-      .bottom = tmp_loc.PlacedFootprint.Footprint.Height,
-      .back = tmp_loc.PlacedFootprint.Footprint.Depth,
+      .right = tmp_loc->PlacedFootprint.Footprint.Width,
+      .bottom = tmp_loc->PlacedFootprint.Footprint.Height,
+      .back = tmp_loc->PlacedFootprint.Footprint.Depth,
    };
 
    cmdlist->CopyTextureRegion(&dst_loc,
                               region->dstOffset.x,
                               region->dstOffset.y,
                               region->dstOffset.z,
-                              &tmp_loc, &tmp_box);
+                              tmp_loc, &tmp_box);
 }
 
 static void
@@ -3009,21 +3009,21 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
          aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 
       for (uint32_t i = 0; i < info->regionCount; i++) {
-         const VkImageCopy2 &region = info->pRegions[i];
+         const VkImageCopy2 *region = &info->pRegions[i];
          uint64_t region_size = 0;
 
          tmp_desc.Format =
             dzn_image_get_dxgi_format(src->vk.format,
                                       VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                                       aspect);
-         tmp_desc.Width = region.extent.width;
-         tmp_desc.Height = region.extent.height;
+         tmp_desc.Width = region->extent.width;
+         tmp_desc.Height = region->extent.height;
 
          dev->GetCopyableFootprints(&src->desc,
                                     0, 1, 0,
                                     NULL, NULL, NULL,
                                     &region_size);
-         max_size = MAX2(max_size, region_size * region.extent.depth);
+         max_size = MAX2(max_size, region_size * region->extent.depth);
       }
 
 
@@ -3039,11 +3039,11 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
    }
 
    for (int i = 0; i < info->regionCount; i++) {
-      const VkImageCopy2 &region = info->pRegions[i];
+      const VkImageCopy2 *region = &info->pRegions[i];
 
-      dzn_foreach_aspect(aspect, region.srcSubresource.aspectMask) {
-         for (uint32_t l = 0; l < region.srcSubresource.layerCount; l++)
-            dzn_cmd_buffer_copy_img_chunk(cmdbuf, info, tmp_desc, tmp_loc, i, aspect, l);
+      dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
+         for (uint32_t l = 0; l < region->srcSubresource.layerCount; l++)
+            dzn_cmd_buffer_copy_img_chunk(cmdbuf, info, &tmp_desc, &tmp_loc, i, aspect, l);
       }
    }
 }
