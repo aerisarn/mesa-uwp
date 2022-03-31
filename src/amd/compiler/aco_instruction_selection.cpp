@@ -6129,7 +6129,7 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    /* remove zero/undef elements from data, components which aren't in dmask
     * are zeroed anyway
     */
-   if (instr->src[3].ssa->bit_size == 32) {
+   if (instr->src[3].ssa->bit_size == 32 || instr->src[3].ssa->bit_size == 16) {
       for (uint32_t i = 0; i < instr->num_components; i++) {
          nir_ssa_scalar comp = nir_ssa_scalar_resolved(instr->src[3].ssa, i);
          if (comp.def->parent_instr->type == nir_instr_type_ssa_undef ||
@@ -6141,18 +6141,19 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
       if (dmask == 0)
          dmask = 1;
 
-      if (dmask != BITFIELD_MASK(data.size())) {
+      if (dmask != BITFIELD_MASK(num_components)) {
          uint32_t dmask_count = util_bitcount(dmask);
+         RegClass rc = d16 ? v2b : v1;
          if (dmask_count == 1) {
-            data = emit_extract_vector(ctx, data, ffs(dmask) - 1, v1);
+            data = emit_extract_vector(ctx, data, ffs(dmask) - 1, rc);
          } else {
             aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
                aco_opcode::p_create_vector, Format::PSEUDO, dmask_count, 1)};
             uint32_t index = 0;
             u_foreach_bit(bit, dmask) {
-               vec->operands[index++] = Operand(emit_extract_vector(ctx, data, bit, v1));
+               vec->operands[index++] = Operand(emit_extract_vector(ctx, data, bit, rc));
             }
-            data = bld.tmp(RegType::vgpr, dmask_count);
+            data = bld.tmp(RegClass::get(RegType::vgpr, dmask_count * rc.bytes()));
             vec->definitions[0] = Definition(data);
             bld.insert(std::move(vec));
          }
