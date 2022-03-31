@@ -30,7 +30,7 @@
 
 #include "util/u_queue.h"
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -294,7 +294,7 @@ u_trace_context_instrumenting(struct u_trace_context *utctx)
    return !!utctx->out || ut_trace_instrument || (ut_perfetto_enabled > 0);
 }
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 

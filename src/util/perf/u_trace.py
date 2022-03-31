@@ -189,7 +189,7 @@ struct trace_${trace_name} {
    ${arg.type} ${arg.name};
 %    endfor
 %    if len(trace.args) == 0:
-#ifdef  __cplusplus
+#ifdef __cplusplus
    /* avoid warnings about empty struct size mis-match in C vs C++..
     * the size mis-match is harmless because (a) nothing will deref
     * the empty struct, and (b) the code that cares about allocating
