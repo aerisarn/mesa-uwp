@@ -121,6 +121,9 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       state->stencil_write_mask.front = cmd_buffer->state.dynamic.stencil_write_mask.front;
       state->stencil_write_mask.back = cmd_buffer->state.dynamic.stencil_write_mask.back;
 
+      state->stencil_reference.front = cmd_buffer->state.dynamic.stencil_reference.front;
+      state->stencil_reference.back = cmd_buffer->state.dynamic.stencil_reference.back;
+
       state->fragment_shading_rate.size = cmd_buffer->state.dynamic.fragment_shading_rate.size;
       state->fragment_shading_rate.combiner_ops[0] =
          cmd_buffer->state.dynamic.fragment_shading_rate.combiner_ops[0];
@@ -220,6 +223,9 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
       cmd_buffer->state.dynamic.stencil_write_mask.front = state->stencil_write_mask.front;
       cmd_buffer->state.dynamic.stencil_write_mask.back = state->stencil_write_mask.back;
 
+      cmd_buffer->state.dynamic.stencil_reference.front = state->stencil_reference.front;
+      cmd_buffer->state.dynamic.stencil_reference.back = state->stencil_reference.back;
+
       cmd_buffer->state.dynamic.fragment_shading_rate.size = state->fragment_shading_rate.size;
       cmd_buffer->state.dynamic.fragment_shading_rate.combiner_ops[0] =
          state->fragment_shading_rate.combiner_ops[0];
@@ -243,7 +249,7 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
          RADV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE | RADV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP |
          RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE | RADV_CMD_DIRTY_DYNAMIC_STENCIL_OP |
-         RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK |
+         RADV_CMD_DIRTY_DYNAMIC_STENCIL_WRITE_MASK | RADV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE |
          RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |

@@ -200,8 +200,6 @@ glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_blit,Fail
-GTF-GL46.gtf30.GL3Tests.packed_depth_stencil.packed_depth_stencil_clearbuffer,Fail
 GTF-GL46.gtf30.GL3Tests.transform_feedback.transform_feedback_builtins,Fail
 
 KHR-GL46.blend_equation_advanced.blend_all.GL_COLORBURN_KHR_all_qualifier,Fail
@@ -235,10 +233,6 @@ KHR-GL46.blend_equation_advanced.blend_specific.GL_OVERLAY_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SCREEN_KHR,Fail
 KHR-GL46.blend_equation_advanced.blend_specific.GL_SOFTLIGHT_KHR,Fail
 KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
-KHR-GL46.packed_depth_stencil.blit.depth24_stencil8,Fail
-KHR-GL46.packed_depth_stencil.blit.depth32f_stencil8,Fail
-KHR-GL46.packed_depth_stencil.clear_buffer.depth24_stencil8,Fail
-KHR-GL46.packed_depth_stencil.clear_buffer.depth32f_stencil8,Fail
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail

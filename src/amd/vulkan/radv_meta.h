@@ -92,6 +92,11 @@ struct radv_meta_saved_state {
    } stencil_op;
 
    struct {
+      uint32_t front;
+      uint32_t back;
+   } stencil_reference;
+
+   struct {
       VkExtent2D size;
       VkFragmentShadingRateCombinerOpKHR combiner_ops[2];
    } fragment_shading_rate;
