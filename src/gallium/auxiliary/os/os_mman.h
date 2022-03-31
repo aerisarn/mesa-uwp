@@ -77,7 +77,7 @@ static inline int os_munmap(void *addr, size_t length)
 #endif
 
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 

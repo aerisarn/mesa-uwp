@@ -108,7 +108,7 @@ bool
 os_get_page_size(uint64_t *size);
 
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 

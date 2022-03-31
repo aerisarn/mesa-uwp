@@ -54,7 +54,7 @@
 #include <OS.h>
 #endif
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -531,7 +531,7 @@ debug_get_option_ ## sufix (void) \
 }
 
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 

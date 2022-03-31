@@ -42,7 +42,7 @@
 #include "util/u_thread.h"
 
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -170,7 +170,7 @@ util_get_cpu_caps(void)
    return &util_cpu_caps;
 }
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 

@@ -32,7 +32,7 @@
 
 #include "pipe/p_config.h"
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -82,7 +82,7 @@ util_dl_close(struct util_dl_library *library);
 const char *
 util_dl_error(void);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 
