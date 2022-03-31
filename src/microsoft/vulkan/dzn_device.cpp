@@ -724,6 +724,9 @@ dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
        (!(dfmt_info.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW) || is_bgra4))
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
+   if (info->type == VK_IMAGE_TYPE_3D && info->tiling != VK_IMAGE_TILING_OPTIMAL)
+      return VK_ERROR_FORMAT_NOT_SUPPORTED;
+
    bool is_3d = info->type == VK_IMAGE_TYPE_3D;
    uint32_t max_extent = dzn_physical_device_get_max_extent(is_3d);
 
@@ -750,9 +753,6 @@ dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
       properties->imageFormatProperties.maxExtent.depth = 1;
       break;
    case VK_IMAGE_TYPE_3D:
-      if (info->tiling != VK_IMAGE_TILING_OPTIMAL)
-         return VK_ERROR_FORMAT_NOT_SUPPORTED;
-
       properties->imageFormatProperties.maxExtent.width = max_extent;
       properties->imageFormatProperties.maxExtent.height = max_extent;
       properties->imageFormatProperties.maxExtent.depth = max_extent;
