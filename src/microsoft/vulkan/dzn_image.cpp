@@ -914,6 +914,7 @@ static void
 dzn_image_view_prepare_rtv_desc(dzn_image_view *iview)
 {
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
+   bool from_3d_image = iview->vk.image->image_type == VK_IMAGE_TYPE_3D;
    bool ms = iview->vk.image->samples > 1;
    uint32_t plane_slice =
       (iview->vk.aspects & VK_IMAGE_ASPECT_PLANE_2_BIT) ? 2 :
@@ -946,7 +947,12 @@ dzn_image_view_prepare_rtv_desc(dzn_image_view *iview)
    case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
    case VK_IMAGE_VIEW_TYPE_CUBE:
    case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:
-      if (use_array && ms) {
+      if (from_3d_image) {
+         iview->rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE3D;
+         iview->rtv_desc.Texture3D.MipSlice = iview->vk.base_mip_level;
+         iview->rtv_desc.Texture3D.FirstWSlice = iview->vk.base_array_layer;
+         iview->rtv_desc.Texture3D.WSize = iview->vk.layer_count;
+      } else if (use_array && ms) {
          iview->rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY;
          iview->rtv_desc.Texture2DMSArray.FirstArraySlice = iview->vk.base_array_layer;
          iview->rtv_desc.Texture2DMSArray.ArraySize = iview->vk.layer_count;
