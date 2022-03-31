@@ -500,7 +500,8 @@ dzn_image_get_rtv_desc(const dzn_image *image,
    case D3D12_RTV_DIMENSION_TEXTURE3D:
       rtv_desc.Texture3D.MipSlice = range->baseMipLevel + level;
       rtv_desc.Texture3D.FirstWSlice = range->baseArrayLayer;
-      rtv_desc.Texture3D.WSize = layer_count;
+      rtv_desc.Texture3D.WSize =
+         range->layerCount == VK_REMAINING_ARRAY_LAYERS ? -1 : layer_count;
       break;
    }
 
