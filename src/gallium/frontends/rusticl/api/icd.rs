@@ -116,8 +116,8 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clReleaseDeviceEXT: None,
     clCreateEventFromGLsyncKHR: None,
     clCreateSubDevices: None,
-    clRetainDevice: None,
-    clReleaseDevice: None,
+    clRetainDevice: Some(cl_retain_device),
+    clReleaseDevice: Some(cl_release_device),
     clCreateImage: Some(cl_create_image),
     clCreateProgramWithBuiltInKernels: None,
     clCompileProgram: Some(cl_compile_program),
@@ -560,6 +560,14 @@ extern "C" fn cl_create_buffer(
     errcode_ret: *mut cl_int,
 ) -> cl_mem {
     match_obj!(create_buffer(context, flags, size, host_ptr,), errcode_ret)
+}
+
+extern "C" fn cl_retain_device(_device: cl_device_id) -> cl_int {
+    CL_SUCCESS as cl_int
+}
+
+extern "C" fn cl_release_device(_device: cl_device_id) -> cl_int {
+    CL_SUCCESS as cl_int
 }
 
 extern "C" fn cl_create_image_2d(
