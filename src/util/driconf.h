@@ -576,4 +576,12 @@
   DRI_CONF_OPT_B(radv_disable_aniso_single_level, def, \
                  "Disable anisotropic filtering for single level images")
 
+/**
+ * \brief ANV specific configuration options
+ */
+
+#define DRI_CONF_ANV_ASSUME_FULL_SUBGROUPS(def) \
+   DRI_CONF_OPT_B(anv_assume_full_subgroups, def, \
+                  "Allow assuming full subgroups requirement even when it's not specified explicitly")
+
 #endif

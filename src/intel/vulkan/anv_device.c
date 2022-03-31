@@ -68,6 +68,7 @@ static const driOptionDescription anv_dri_options[] = {
       DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
       DRI_CONF_VK_X11_STRICT_IMAGE_COUNT(false)
       DRI_CONF_VK_XWAYLAND_WAIT_READY(true)
+      DRI_CONF_ANV_ASSUME_FULL_SUBGROUPS(false)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
@@ -1100,6 +1101,9 @@ anv_init_dri_options(struct anv_instance *instance)
                        instance->vk.app_info.app_version,
                        instance->vk.app_info.engine_name,
                        instance->vk.app_info.engine_version);
+
+    instance->assume_full_subgroups =
+            driQueryOptionb(&instance->dri_options, "anv_assume_full_subgroups");
 }
 
 VkResult anv_CreateInstance(

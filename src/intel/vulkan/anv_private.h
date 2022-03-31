@@ -1079,6 +1079,11 @@ struct anv_instance {
 
     struct driOptionCache                       dri_options;
     struct driOptionCache                       available_dri_options;
+
+    /**
+     * Workarounds for game bugs.
+     */
+    bool                                        assume_full_subgroups;
 };
 
 VkResult anv_init_wsi(struct anv_physical_device *physical_device);

@@ -640,8 +640,13 @@ anv_pipeline_hash_compute(struct anv_compute_pipeline *pipeline,
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
 
-   const bool rba = pipeline->base.device->robust_buffer_access;
+   const struct anv_device *device = pipeline->base.device;
+
+   const bool rba = device->robust_buffer_access;
    _mesa_sha1_update(&ctx, &rba, sizeof(rba));
+
+   const bool afs = device->physical->instance->assume_full_subgroups;
+   _mesa_sha1_update(&ctx, &afs, sizeof(afs));
 
    _mesa_sha1_update(&ctx, stage->shader_sha1,
                      sizeof(stage->shader_sha1));
@@ -1915,7 +1920,8 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    };
    int64_t pipeline_start = os_time_get_nano();
 
-   const struct brw_compiler *compiler = pipeline->base.device->physical->compiler;
+   struct anv_device *device = pipeline->base.device;
+   const struct brw_compiler *compiler = device->physical->compiler;
 
    struct anv_pipeline_stage stage = {
       .stage = MESA_SHADER_COMPUTE,
@@ -1944,8 +1950,8 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    const enum brw_subgroup_size_type subgroup_size_type =
       anv_subgroup_size_type(MESA_SHADER_COMPUTE, stage.module, info->stage.flags, rss_info);
 
-   populate_cs_prog_key(&pipeline->base.device->info, subgroup_size_type,
-                        pipeline->base.device->robust_buffer_access,
+   populate_cs_prog_key(&device->info, subgroup_size_type,
+                        device->robust_buffer_access,
                         &stage.key.cs);
 
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);
@@ -1957,7 +1963,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
    bool cache_hit = false;
    if (!skip_cache_lookup) {
-      bin = anv_device_search_for_kernel(pipeline->base.device, cache,
+      bin = anv_device_search_for_kernel(device, cache,
                                          &stage.cache_key,
                                          sizeof(stage.cache_key),
                                          &cache_hit);
@@ -1992,6 +1998,21 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout);
 
+      unsigned local_size = stage.nir->info.workgroup_size[0] *
+                            stage.nir->info.workgroup_size[1] *
+                            stage.nir->info.workgroup_size[2];
+
+      /* Games don't always request full subgroups when they should,
+       * which can cause bugs, as they may expect bigger size of the
+       * subgroup than we choose for the execution.
+       */
+      if (device->physical->instance->assume_full_subgroups &&
+          stage.nir->info.cs.uses_wide_subgroup_intrinsics &&
+          subgroup_size_type == BRW_SUBGROUP_SIZE_API_CONSTANT &&
+          local_size &&
+          local_size % BRW_SUBGROUP_SIZE == 0)
+         stage.key.base.subgroup_size_type = BRW_SUBGROUP_SIZE_REQUIRE_32;
+
       stage.num_stats = 1;
 
       struct brw_compile_cs_params params = {
@@ -1999,7 +2020,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          .key = &stage.key.cs,
          .prog_data = &stage.prog_data.cs,
          .stats = stage.stats,
-         .log_data = pipeline->base.device,
+         .log_data = device,
       };
 
       stage.code = brw_compile_cs(compiler, mem_ctx, &params);
@@ -2017,7 +2038,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       }
 
       const unsigned code_size = stage.prog_data.base.program_size;
-      bin = anv_device_upload_kernel(pipeline->base.device, cache,
+      bin = anv_device_upload_kernel(device, cache,
                                      MESA_SHADER_COMPUTE,
                                      &stage.cache_key, sizeof(stage.cache_key),
                                      stage.code, code_size,
