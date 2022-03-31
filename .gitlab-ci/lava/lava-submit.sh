@@ -28,7 +28,7 @@ ci-fairy minio cp job-rootfs-overlay.tar.gz "minio://${JOB_ROOTFS_OVERLAY_PATH}"
 
 touch results/lava.log
 tail -f results/lava.log &
-artifacts/lava/lava_job_submitter.py \
+PYTHONPATH=artifacts/ artifacts/lava/lava_job_submitter.py \
 	--dump-yaml \
 	--pipeline-info "$CI_JOB_NAME: $CI_PIPELINE_URL on $CI_COMMIT_REF_NAME ${CI_NODE_INDEX}/${CI_NODE_TOTAL}" \
 	--rootfs-url-prefix "https://${BASE_SYSTEM_HOST_PATH}" \

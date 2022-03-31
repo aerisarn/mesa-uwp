@@ -32,6 +32,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 from freezegun import freeze_time
+from lava.exceptions import MesaCIException, MesaCIRetryError, MesaCITimeoutError
 from lava.lava_job_submitter import (
     DEVICE_HANGING_TIMEOUT_SEC,
     NUMBER_OF_RETRIES_TIMEOUT_DETECTION,
@@ -120,7 +121,7 @@ def frozen_time(mock_sleep):
 
 @pytest.mark.parametrize("exception", [RuntimeError, SystemError, KeyError])
 def test_submit_and_follow_respects_exceptions(mock_sleep, mock_proxy, exception):
-    with pytest.raises(exception):
+    with pytest.raises(MesaCIException):
         proxy = mock_proxy(side_effect=exception)
         job = LAVAJob(proxy, '')
         follow_job_execution(job)
@@ -168,7 +169,7 @@ PROXY_SCENARIOS = {
     ),
     "timed out more times than retry attempts": (
         generate_n_logs(n=4, tick_fn=DEVICE_HANGING_TIMEOUT_SEC + 1),
-        pytest.raises(SystemExit),
+        pytest.raises(MesaCIRetryError),
         False,
         {},
     ),
@@ -211,7 +212,7 @@ PROXY_SCENARIOS = {
     ),
     "very long silence": (
         generate_n_logs(n=NUMBER_OF_MAX_ATTEMPTS + 1, tick_fn=100000),
-        pytest.raises(SystemExit),
+        pytest.raises(MesaCIRetryError),
         False,
         {},
     ),
