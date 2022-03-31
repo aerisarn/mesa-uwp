@@ -789,7 +789,7 @@ dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
    if (info->tiling != VK_IMAGE_TILING_LINEAR &&
        info->type == VK_IMAGE_TYPE_2D &&
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
-       rt_or_ds_cap &&
+       rt_or_ds_cap && !is_bgra4 &&
        !(info->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
       for (uint32_t s = VK_SAMPLE_COUNT_2_BIT; s < VK_SAMPLE_COUNT_64_BIT; s <<= 1) {
          D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS ms_info = {
