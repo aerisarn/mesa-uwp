@@ -1944,36 +1944,6 @@ st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog)
    return num_components + needed_components <= max_components;
 }
 
-static bool
-is_last_vertex_stage(struct gl_context *ctx, struct gl_program *prog)
-{
-   struct gl_program *last = NULL;
-   /* fixedfunc */
-   if (prog->Id == 0)
-      return true;
-
-   /* shader info accurately set */
-   if (prog->info.next_stage == MESA_SHADER_FRAGMENT)
-      return true;
-   if (prog->info.next_stage != MESA_SHADER_VERTEX)
-      return false;
-
-   /* check bound programs */
-   if (ctx->GeometryProgram._Current)
-      last = ctx->GeometryProgram._Current;
-   else if (ctx->TessEvalProgram._Current)
-      last = ctx->TessEvalProgram._Current;
-   else
-      last = ctx->VertexProgram._Current;
-   if (last)
-      return prog == last;
-
-   /* assume this will be the last vertex stage;
-    * at worst, another variant without psiz is created later
-    */
-   return true;
-}
-
 /**
  * Compile one shader variant.
  */
@@ -2000,15 +1970,6 @@ st_precompile_shader_variant(struct st_context *st,
          key.clamp_color = true;
       }
 
-      if (prog->Target == GL_VERTEX_PROGRAM_ARB ||
-          prog->Target == GL_TESS_EVALUATION_PROGRAM_NV ||
-          prog->Target == GL_GEOMETRY_PROGRAM_NV) {
-         if (st->lower_point_size &&
-             !st->ctx->VertexProgram.PointSizeEnabled &&
-             st_can_add_pointsize_to_program(st, prog))
-            key.export_point_size = is_last_vertex_stage(st->ctx, prog) &&
-                                    (!prog->nir || !nir_find_variable_with_location(prog->nir, nir_var_shader_out, VARYING_SLOT_PSIZ));
-      }
       key.st = st->has_shareable_shaders ? NULL : st;
       st_get_common_variant(st, prog, &key);
       break;
