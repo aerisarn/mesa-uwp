@@ -1557,25 +1557,43 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
    uint32_t dst_blkw = util_format_get_blockwidth(dst_pfmt);
    uint32_t dst_blkh = util_format_get_blockheight(dst_pfmt);
    uint32_t dst_blkd = util_format_get_blockdepth(dst_pfmt);
+   uint32_t dst_z = region->dstOffset.z, src_z = region->srcOffset.z;
+   uint32_t depth = region->extent.depth;
+   uint32_t dst_l = l, src_l = l;
 
-   assert(src_subres->layerCount == dst_subres->layerCount);
    assert(src_subres->aspectMask == dst_subres->aspectMask);
 
-   auto dst_loc = dzn_image_get_copy_loc(dst, dst_subres, aspect, l);
-   auto src_loc = dzn_image_get_copy_loc(src, src_subres, aspect, l);
+   if (src->vk.image_type == VK_IMAGE_TYPE_3D &&
+       dst->vk.image_type == VK_IMAGE_TYPE_2D) {
+      assert(src_subres->layerCount == 1);
+      src_l = 0;
+      src_z += l;
+      depth = 1;
+   } else if (src->vk.image_type == VK_IMAGE_TYPE_2D &&
+              dst->vk.image_type == VK_IMAGE_TYPE_3D) {
+      assert(dst_subres->layerCount == 1);
+      dst_l = 0;
+      dst_z += l;
+      depth = 1;
+   } else {
+      assert(src_subres->layerCount == dst_subres->layerCount);
+   }
+
+   auto dst_loc = dzn_image_get_copy_loc(dst, dst_subres, aspect, dst_l);
+   auto src_loc = dzn_image_get_copy_loc(src, src_subres, aspect, src_l);
 
    D3D12_BOX src_box = {
       .left = (UINT)MAX2(region->srcOffset.x, 0),
       .top = (UINT)MAX2(region->srcOffset.y, 0),
-      .front = (UINT)MAX2(region->srcOffset.z, 0),
+      .front = (UINT)MAX2(src_z, 0),
       .right = (UINT)region->srcOffset.x + region->extent.width,
       .bottom = (UINT)region->srcOffset.y + region->extent.height,
-      .back = (UINT)region->srcOffset.z + region->extent.depth,
+      .back = (UINT)src_z + depth,
    };
 
    if (!tmp_loc->pResource) {
       cmdlist->CopyTextureRegion(&dst_loc, region->dstOffset.x,
-                                 region->dstOffset.y, region->dstOffset.z,
+                                 region->dstOffset.y, dst_z,
                                  &src_loc, &src_box);
       return;
    }
@@ -1590,7 +1608,7 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
                               &tmp_loc->PlacedFootprint,
                               NULL, NULL, NULL);
 
-   tmp_loc->PlacedFootprint.Footprint.Depth = region->extent.depth;
+   tmp_loc->PlacedFootprint.Footprint.Depth = depth;
 
    D3D12_RESOURCE_BARRIER barrier = {
       .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
@@ -1625,7 +1643,7 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
 
    if (src_blkd != dst_blkd) {
       tmp_loc->PlacedFootprint.Footprint.Depth =
-         DIV_ROUND_UP(region->extent.depth, src_blkd) * dst_blkd;
+         DIV_ROUND_UP(depth, src_blkd) * dst_blkd;
    } else {
       tmp_loc->PlacedFootprint.Footprint.Depth = region->extent.depth;
    }
@@ -1642,7 +1660,7 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
    cmdlist->CopyTextureRegion(&dst_loc,
                               region->dstOffset.x,
                               region->dstOffset.y,
-                              region->dstOffset.z,
+                              dst_z,
                               tmp_loc, &tmp_box);
 }
 
