@@ -219,7 +219,7 @@ dzn_translate_viewport(D3D12_VIEWPORT *out,
                        const VkViewport *in)
 {
    out->TopLeftX = in->x;
-   out->TopLeftY = in->y;
+   out->TopLeftY = in->height < 0 ? in->height + in->y : in->y;
    out->Width = in->width;
    out->Height = abs(in->height);
    out->MinDepth = MIN2(in->minDepth, in->maxDepth);
