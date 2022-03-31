@@ -45,6 +45,9 @@ va_validate_register_pair(const bi_instr *I, unsigned s)
    if (lo.type == BI_INDEX_REGISTER) {
       assert(hi.value & 1);
       assert(hi.value == lo.value + 1);
+   } else if (lo.type == BI_INDEX_FAU && lo.value & BIR_FAU_IMMEDIATE) {
+      /* Small constants are zero extended, so the top word encode zero */
+      assert(hi.value == (BIR_FAU_IMMEDIATE | 0));
    } else {
       assert(hi.offset & 1);
       assert(hi.offset == lo.offset + 1);
