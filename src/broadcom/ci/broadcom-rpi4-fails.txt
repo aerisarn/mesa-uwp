@@ -418,7 +418,5 @@ dEQP-VK.api.external.semaphore.sync_fd.info_timeline,Fail
 
 dEQP-VK.draw.renderpass.inverted_depth_ranges.nodepthclamp_deltazero,Fail
 
-dEQP-VK.graphicsfuzz.cov-dfdx-dfdy-after-nested-loops,Fail
-
 # Works if using V3D_DEBUG=noloopunroll
 dEQP-VK.graphicsfuzz.cov-loop-condition-clamp-vec-of-ones,Crash

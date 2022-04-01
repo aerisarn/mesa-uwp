@@ -343,10 +343,14 @@ v3d_emit_spill_tmua(struct v3d_compile *c,
         struct qreg offset = vir_uniform_ui(c, spill_offset);
         add_node(c, offset.index, CLASS_BITS_ANY);
 
-        struct qinst *inst =
-                vir_ADD_dest(c, vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUA),
-                             c->spill_base, offset);
+        /* We always enable per-quad on spills/fills to ensure we spill
+         * any channels involved with helper invocations.
+         */
+        struct qreg tmua = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_TMUAU);
+        struct qinst *inst = vir_ADD_dest(c, tmua, c->spill_base, offset);
         inst->qpu.flags.ac = cond;
+        inst->uniform = vir_get_uniform_index(c, QUNIFORM_CONSTANT,
+                                              0xffffff7f); /* per-quad */
 
         vir_emit_thrsw(c);
 
