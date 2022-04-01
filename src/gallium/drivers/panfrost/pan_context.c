@@ -1047,6 +1047,7 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
                 pipe_so_target_reference(&so->targets[i], NULL);
 
         so->num_targets = num_targets;
+        ctx->dirty |= PAN_DIRTY_SO;
 }
 
 struct pipe_context *

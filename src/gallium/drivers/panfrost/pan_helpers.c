@@ -45,6 +45,10 @@ panfrost_analyze_sysvals(struct panfrost_shader_state *ss)
                         dirty_shader |= PAN_DIRTY_STAGE_SSBO;
                         break;
 
+                case PAN_SYSVAL_XFB:
+                        dirty |= PAN_DIRTY_SO;
+                        break;
+
                 case PAN_SYSVAL_SAMPLER:
                         dirty_shader |= PAN_DIRTY_STAGE_SAMPLER;
                         break;
@@ -57,6 +61,7 @@ panfrost_analyze_sysvals(struct panfrost_shader_state *ss)
                 case PAN_SYSVAL_LOCAL_GROUP_SIZE:
                 case PAN_SYSVAL_WORK_DIM:
                 case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
+                case PAN_SYSVAL_NUM_VERTICES:
                         dirty |= PAN_DIRTY_PARAMS;
                         break;
 

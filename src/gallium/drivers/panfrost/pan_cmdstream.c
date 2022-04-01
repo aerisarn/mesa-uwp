@@ -1253,6 +1253,12 @@ panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch,
 }
 #endif
 
+static unsigned
+panfrost_xfb_offset(unsigned stride, struct pipe_stream_output_target *target)
+{
+        return target->buffer_offset + (pan_so_target(target)->offset * stride);
+}
+
 static void
 panfrost_upload_sysvals(struct panfrost_batch *batch,
                         const struct panfrost_ptr *ptr,
@@ -1283,6 +1289,40 @@ panfrost_upload_sysvals(struct panfrost_batch *batch,
                                                     PAN_SYSVAL_ID(sysval),
                                                     &uniforms[i]);
                         break;
+
+                case PAN_SYSVAL_XFB:
+                {
+                        unsigned buf = PAN_SYSVAL_ID(sysval);
+                        struct panfrost_shader_state *vs =
+                                panfrost_get_shader_state(batch->ctx, PIPE_SHADER_VERTEX);
+                        struct pipe_stream_output_info *so = &vs->stream_output;
+                        unsigned stride = so->stride[buf] * 4;
+
+                        if (buf >= batch->ctx->streamout.num_targets) {
+                                /* Memory sink */
+                                uniforms[i].du[0] = 0x8ull << 60;
+                                break;
+                        }
+
+                        struct pipe_stream_output_target *target = batch->ctx->streamout.targets[buf];
+                        assert(target != NULL);
+
+                        struct panfrost_resource *rsrc = pan_resource(target->buffer);
+                        unsigned offset = panfrost_xfb_offset(stride, target);
+
+                        util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
+                                offset, target->buffer_size - offset);
+
+                        panfrost_batch_write_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
+
+                        uniforms[i].du[0] = rsrc->image.data.bo->ptr.gpu + offset;
+                        break;
+                }
+
+                case PAN_SYSVAL_NUM_VERTICES:
+                        uniforms[i].u[0] = batch->ctx->vertex_count;
+                        break;
+
                 case PAN_SYSVAL_NUM_WORK_GROUPS:
                         for (unsigned j = 0; j < 3; j++) {
                                 batch->num_wg_sysval[j] =
@@ -2175,12 +2215,6 @@ panfrost_emit_varyings(struct panfrost_batch *batch,
         return ptr;
 }
 
-static unsigned
-panfrost_xfb_offset(unsigned stride, struct pipe_stream_output_target *target)
-{
-        return target->buffer_offset + (pan_so_target(target)->offset * stride);
-}
-
 static void
 panfrost_emit_streamout(struct panfrost_batch *batch,
                         struct mali_attribute_buffer_packed *slot,
@@ -2828,6 +2862,7 @@ panfrost_statistics_record(
                 return;
 
         ctx->tf_prims_generated += prims;
+        ctx->dirty |= PAN_DIRTY_SO;
 }
 
 static void

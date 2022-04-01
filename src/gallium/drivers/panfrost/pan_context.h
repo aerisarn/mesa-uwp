@@ -71,6 +71,7 @@ enum pan_dirty_3d {
         PAN_DIRTY_OQ             = BITFIELD_BIT(9),
         PAN_DIRTY_RASTERIZER     = BITFIELD_BIT(10),
         PAN_DIRTY_POINTS         = BITFIELD_BIT(11),
+        PAN_DIRTY_SO             = BITFIELD_BIT(12),
 };
 
 enum pan_dirty_shader {
