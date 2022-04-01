@@ -689,8 +689,6 @@ zink_draw(struct pipe_context *pctx,
                                        dsa_state->hw_state.stencil_back.passOp,
                                        dsa_state->hw_state.stencil_back.depthFailOp,
                                        dsa_state->hw_state.stencil_back.compareOp);
-      }
-      if (dsa_state->base.stencil[0].enabled) {
          if (dsa_state->base.stencil[1].enabled) {
             VKCTX(CmdSetStencilWriteMask)(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.writeMask);
             VKCTX(CmdSetStencilWriteMask)(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.writeMask);
