@@ -961,7 +961,8 @@ ntt_setup_uniforms(struct ntt_compile *c)
 
       int array_size = 1;
       if (glsl_type_is_interface(glsl_without_array(var->type)))
-         array_size = MAX2(1, glsl_array_size(var->type));
+         array_size = MAX2(1, glsl_get_aoa_size(var->type));
+
       for (int i = 0; i < array_size; i++) {
          /* Even if multiple NIR variables are in the same uniform block, their
           * explicit size is the size of the block.
