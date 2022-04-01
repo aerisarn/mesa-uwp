@@ -3473,6 +3473,10 @@ can_use_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    if (ctx.program->chip_class < GFX9)
       return false;
 
+   /* v_mad_mix* on GFX9 always flushes denormals for 16-bit inputs/outputs */
+   if (ctx.program->chip_class == GFX9 && ctx.fp_mode.denorm16_64)
+      return false;
+
    switch (instr->opcode) {
    case aco_opcode::v_add_f32:
    case aco_opcode::v_sub_f32:
