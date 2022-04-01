@@ -576,11 +576,6 @@ handle_timestamp_query_cpu_job(struct v3dv_job *job)
 }
 
 static VkResult
-handle_csd_job(struct v3dv_queue *queue,
-               struct v3dv_job *job,
-               struct v3dv_submit_info_semaphores *sems_info);
-
-static VkResult
 handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
                             struct v3dv_job *job,
                             struct v3dv_submit_info_semaphores *sems_info)
@@ -609,8 +604,6 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
               sizeof(info->csd_job->csd.wg_count)) != 0) {
       v3dv_cmd_buffer_rewrite_indirect_csd_job(info, group_counts);
    }
-
-   handle_csd_job(queue, info->csd_job, sems_info);
 
    return VK_SUCCESS;
 }

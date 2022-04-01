@@ -168,14 +168,6 @@ job_destroy_cpu_wait_events_resources(struct v3dv_job *job)
    vk_free(&job->cmd_buffer->device->vk.alloc, job->cpu.event_wait.events);
 }
 
-static void
-job_destroy_cpu_csd_indirect_resources(struct v3dv_job *job)
-{
-   assert(job->type == V3DV_JOB_TYPE_CPU_CSD_INDIRECT);
-   assert(job->cmd_buffer);
-   v3dv_job_destroy(job->cpu.csd_indirect.csd_job);
-}
-
 void
 v3dv_job_destroy(struct v3dv_job *job)
 {
@@ -198,9 +190,6 @@ v3dv_job_destroy(struct v3dv_job *job)
          break;
       case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
          job_destroy_cpu_wait_events_resources(job);
-         break;
-      case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
-         job_destroy_cpu_csd_indirect_resources(job);
          break;
       default:
          break;
@@ -3571,6 +3560,7 @@ cmd_buffer_dispatch_indirect(struct v3dv_cmd_buffer *cmd_buffer,
       job->cpu.csd_indirect.wg_uniform_offsets[2];
 
    list_addtail(&job->list_link, &cmd_buffer->jobs);
+   list_addtail(&csd_job->list_link, &cmd_buffer->jobs);
    cmd_buffer->state.job = NULL;
 }
 
