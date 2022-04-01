@@ -1112,6 +1112,23 @@ tu_emit_input_attachments(struct tu_cmd_buffer *cmd,
 
       memcpy(dst, iview->view.descriptor, A6XX_TEX_CONST_DWORDS * 4);
 
+      /* Cube descriptors require a different sampling instruction in shader,
+       * however we don't know whether image is a cube or not until the start
+       * of a renderpass. We have to patch the descriptor to make it compatible
+       * with how it is sampled in shader.
+       */
+      enum a6xx_tex_type tex_type = (dst[2] & A6XX_TEX_CONST_2_TYPE__MASK) >>
+                                    A6XX_TEX_CONST_2_TYPE__SHIFT;
+      if (tex_type == A6XX_TEX_CUBE) {
+         dst[2] &= ~A6XX_TEX_CONST_2_TYPE__MASK;
+         dst[2] |= A6XX_TEX_CONST_2_TYPE(A6XX_TEX_2D);
+
+         uint32_t depth = (dst[5] & A6XX_TEX_CONST_5_DEPTH__MASK) >>
+                          A6XX_TEX_CONST_5_DEPTH__SHIFT;
+         dst[5] &= ~A6XX_TEX_CONST_5_DEPTH__MASK;
+         dst[5] |= A6XX_TEX_CONST_5_DEPTH(depth * 6);
+      }
+
       if (i % 2 == 1 && att->format == VK_FORMAT_D24_UNORM_S8_UINT) {
          /* note this works because spec says fb and input attachments
           * must use identity swizzle
