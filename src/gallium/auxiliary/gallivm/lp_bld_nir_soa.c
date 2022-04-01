@@ -34,6 +34,8 @@
 #include "lp_bld_bitarit.h"
 #include "lp_bld_coro.h"
 #include "lp_bld_printf.h"
+#include "lp_bld_intr.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_math.h"
 
 static int bit_size_to_shift_size(int bit_size)
@@ -2119,6 +2121,7 @@ static void emit_shuffle(struct lp_build_nir_context *bld_base, LLVMValueRef src
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    uint32_t bit_size = nir_src_bit_size(instr->src[0]);
+   uint32_t index_bit_size = nir_src_bit_size(instr->src[1]);
    struct lp_build_context *int_bld = get_int_bld(bld_base, true, bit_size);
 
    bool index_is_constant_data = LLVMIsAConstantAggregateZero(index) || LLVMIsAConstantDataSequential(index) || LLVMIsAUndefValue(index);
@@ -2127,6 +2130,10 @@ static void emit_shuffle(struct lp_build_nir_context *bld_base, LLVMValueRef src
       /* freeze `src` in case inactive invocations contain poison */
       src = LLVMBuildFreeze(builder, src, "");
       result[0] = LLVMBuildShuffleVector(builder, src, LLVMGetUndef(LLVMTypeOf(src)), index, "");
+   } else if (util_get_cpu_caps()->has_avx2 && bit_size == 32 && index_bit_size == 32 && int_bld->type.length == 8) {
+      /* freeze `src` in case inactive invocations contain poison */
+      src = LLVMBuildFreeze(builder, src, "");
+      result[0] = lp_build_intrinsic_binary(builder, "llvm.x86.avx2.permd", int_bld->vec_type, src, index);
    } else {
       LLVMValueRef res_store = lp_build_alloca(gallivm, int_bld->vec_type, "");
       struct lp_build_loop_state loop_state;
