@@ -1660,7 +1660,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->rayTracingPipeline = true;
          features->rayTracingPipelineShaderGroupHandleCaptureReplay = false;
          features->rayTracingPipelineShaderGroupHandleCaptureReplayMixed = false;
-         features->rayTracingPipelineTraceRaysIndirect = false;
+         features->rayTracingPipelineTraceRaysIndirect = true;
          features->rayTraversalPrimitiveCulling = true;
          break;
       }
