@@ -7315,8 +7315,9 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, struct radv_pipel
       dispatch_initiator |= S_00B800_CS_W32_EN(1);
    }
 
-   if (info->indirect) {
-      radv_cs_add_buffer(ws, cs, info->indirect);
+   if (info->va) {
+      if (info->indirect)
+         radv_cs_add_buffer(ws, cs, info->indirect);
 
       if (loc->sgpr_idx != -1) {
          unsigned reg = R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4;
