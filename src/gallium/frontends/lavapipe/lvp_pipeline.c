@@ -849,6 +849,9 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
          .subgroup_basic = true,
          .subgroup_ballot = true,
          .subgroup_quad = true,
+#if LLVM_VERSION_MAJOR >= 10
+         .subgroup_shuffle = true,
+#endif
          .subgroup_vote = true,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,

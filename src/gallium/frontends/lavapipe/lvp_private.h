@@ -29,6 +29,8 @@
 #include <assert.h>
 #include <stdint.h>
 
+#include <llvm/Config/llvm-config.h>
+
 #include "util/macros.h"
 #include "util/list.h"
 #include "util/u_dynarray.h"
