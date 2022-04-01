@@ -2121,26 +2121,34 @@ static void emit_shuffle(struct lp_build_nir_context *bld_base, LLVMValueRef src
    uint32_t bit_size = nir_src_bit_size(instr->src[0]);
    struct lp_build_context *int_bld = get_int_bld(bld_base, true, bit_size);
 
-   LLVMValueRef res_store = lp_build_alloca(gallivm, int_bld->vec_type, "");
-   struct lp_build_loop_state loop_state;
-   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+   bool index_is_constant_data = LLVMIsAConstantAggregateZero(index) || LLVMIsAConstantDataSequential(index) || LLVMIsAUndefValue(index);
 
-   LLVMValueRef index_value = LLVMBuildExtractElement(builder, index, loop_state.counter, "");
+   if (index_is_constant_data) {
+      /* freeze `src` in case inactive invocations contain poison */
+      src = LLVMBuildFreeze(builder, src, "");
+      result[0] = LLVMBuildShuffleVector(builder, src, LLVMGetUndef(LLVMTypeOf(src)), index, "");
+   } else {
+      LLVMValueRef res_store = lp_build_alloca(gallivm, int_bld->vec_type, "");
+      struct lp_build_loop_state loop_state;
+      lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
 
-   LLVMValueRef src_value = LLVMBuildExtractElement(builder, src, index_value, "");
-   /* freeze `src_value` in case an out-of-bounds index or an index into an
-    * inactive invocation results in poison
-    */
-   src_value = LLVMBuildFreeze(builder, src_value, "");
+      LLVMValueRef index_value = LLVMBuildExtractElement(builder, index, loop_state.counter, "");
 
-   LLVMValueRef res = LLVMBuildLoad(builder, res_store, "");
-   res = LLVMBuildInsertElement(builder, res, src_value, loop_state.counter, "");
-   LLVMBuildStore(builder, res, res_store);
+      LLVMValueRef src_value = LLVMBuildExtractElement(builder, src, index_value, "");
+      /* freeze `src_value` in case an out-of-bounds index or an index into an
+       * inactive invocation results in poison
+       */
+      src_value = LLVMBuildFreeze(builder, src_value, "");
 
-   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
-                          NULL, LLVMIntUGE);
+      LLVMValueRef res = LLVMBuildLoad(builder, res_store, "");
+      res = LLVMBuildInsertElement(builder, res, src_value, loop_state.counter, "");
+      LLVMBuildStore(builder, res, res_store);
 
-   result[0] = LLVMBuildLoad(builder, res_store, "");
+      lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
+                             NULL, LLVMIntUGE);
+
+      result[0] = LLVMBuildLoad(builder, res_store, "");
+   }
 }
 #endif
 
