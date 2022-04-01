@@ -128,6 +128,10 @@ create_pipeline(struct radv_device *device, uint32_t samples,
                .cullMode = VK_CULL_MODE_NONE,
                .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
                .depthBiasEnable = false,
+               .depthBiasConstantFactor = 0.0f,
+               .depthBiasClamp = 0.0f,
+               .depthBiasSlopeFactor = 0.0f,
+               .lineWidth = 1.0f,
             },
          .pMultisampleState =
             &(VkPipelineMultisampleStateCreateInfo){
@@ -142,23 +146,12 @@ create_pipeline(struct radv_device *device, uint32_t samples,
          .pColorBlendState = cb_state,
          .pDynamicState =
             &(VkPipelineDynamicStateCreateInfo){
-               /* The meta clear pipeline declares all state as dynamic.
-                * As a consequence, vkCmdBindPipeline writes no dynamic state
-                * to the cmd buffer. Therefore, at the end of the meta clear,
-                * we need only restore dynamic state was vkCmdSet.
-                */
                .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-               .dynamicStateCount = 8,
+               .dynamicStateCount = 3,
                .pDynamicStates =
                   (VkDynamicState[]){
-                     /* Everything except stencil write mask */
                      VK_DYNAMIC_STATE_VIEWPORT,
                      VK_DYNAMIC_STATE_SCISSOR,
-                     VK_DYNAMIC_STATE_LINE_WIDTH,
-                     VK_DYNAMIC_STATE_DEPTH_BIAS,
-                     VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                     VK_DYNAMIC_STATE_DEPTH_BOUNDS,
-                     VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
                      VK_DYNAMIC_STATE_STENCIL_REFERENCE,
                   },
             },
@@ -203,6 +196,8 @@ create_color_pipeline(struct radv_device *device, uint32_t samples, uint32_t fra
       .depthWriteEnable = false,
       .depthBoundsTestEnable = false,
       .stencilTestEnable = false,
+      .minDepthBounds = 0.0f,
+      .maxDepthBounds = 1.0f,
    };
 
    VkPipelineColorBlendAttachmentState blend_attachment_state[MAX_RTS] = {0};
@@ -216,7 +211,8 @@ create_color_pipeline(struct radv_device *device, uint32_t samples, uint32_t fra
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
       .logicOpEnable = false,
       .attachmentCount = MAX_RTS,
-      .pAttachments = blend_attachment_state};
+      .pAttachments = blend_attachment_state,
+      .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }};
 
    VkFormat att_formats[MAX_RTS] = { 0 };
    att_formats[frag_output] = format;
@@ -472,6 +468,8 @@ create_depthstencil_pipeline(struct radv_device *device, VkImageAspectFlags aspe
             .reference = 0, /* dynamic */
          },
       .back = {0 /* dont care */},
+      .minDepthBounds = 0.0f,
+      .maxDepthBounds = 1.0f,
    };
 
    const VkPipelineColorBlendStateCreateInfo cb_state = {
@@ -479,6 +477,7 @@ create_depthstencil_pipeline(struct radv_device *device, VkImageAspectFlags aspe
       .logicOpEnable = false,
       .attachmentCount = 0,
       .pAttachments = NULL,
+      .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f },
    };
 
    const VkPipelineRenderingCreateInfo rendering_create_info = {

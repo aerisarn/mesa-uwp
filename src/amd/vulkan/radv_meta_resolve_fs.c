@@ -192,7 +192,11 @@ create_resolve_pipeline(struct radv_device *device, int samples_log2, VkFormat f
             .rasterizerDiscardEnable = false,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE},
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
+            .lineWidth = 1.0f},
       .pMultisampleState =
          &(VkPipelineMultisampleStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -208,22 +212,16 @@ create_resolve_pipeline(struct radv_device *device, int samples_log2, VkFormat f
                (VkPipelineColorBlendAttachmentState[]){
                   {.colorWriteMask = VK_COLOR_COMPONENT_A_BIT | VK_COLOR_COMPONENT_R_BIT |
                                      VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT},
-               }},
+               },
+            .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }},
       .pDynamicState =
          &(VkPipelineDynamicStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 9,
+            .dynamicStateCount = 2,
             .pDynamicStates =
                (VkDynamicState[]){
                   VK_DYNAMIC_STATE_VIEWPORT,
                   VK_DYNAMIC_STATE_SCISSOR,
-                  VK_DYNAMIC_STATE_LINE_WIDTH,
-                  VK_DYNAMIC_STATE_DEPTH_BIAS,
-                  VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                  VK_DYNAMIC_STATE_DEPTH_BOUNDS,
-                  VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_REFERENCE,
                },
          },
       .flags = 0,
@@ -432,13 +430,21 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
             .passOp = stencil_op,
             .depthFailOp = stencil_op,
             .compareOp = VK_COMPARE_OP_ALWAYS,
+            .compareMask = UINT32_MAX,
+            .writeMask = UINT32_MAX,
+            .reference = 0u,
          },
       .back = {
          .failOp = stencil_op,
          .passOp = stencil_op,
          .depthFailOp = stencil_op,
          .compareOp = VK_COMPARE_OP_ALWAYS,
-      }};
+         .compareMask = UINT32_MAX,
+         .writeMask = UINT32_MAX,
+         .reference = 0u,
+      },
+      .minDepthBounds = 0.0f,
+      .maxDepthBounds = 1.0f};
 
    const VkPipelineVertexInputStateCreateInfo *vi_create_info;
    vi_create_info = &normal_vi_create_info;
@@ -474,7 +480,11 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
             .rasterizerDiscardEnable = false,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE},
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
+            .lineWidth = 1.0f},
       .pMultisampleState =
          &(VkPipelineMultisampleStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -490,22 +500,16 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device, int samples_lo
                (VkPipelineColorBlendAttachmentState[]){
                   {.colorWriteMask = VK_COLOR_COMPONENT_A_BIT | VK_COLOR_COMPONENT_R_BIT |
                                      VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT},
-               }},
+               },
+            .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }},
       .pDynamicState =
          &(VkPipelineDynamicStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 9,
+            .dynamicStateCount = 2,
             .pDynamicStates =
                (VkDynamicState[]){
                   VK_DYNAMIC_STATE_VIEWPORT,
                   VK_DYNAMIC_STATE_SCISSOR,
-                  VK_DYNAMIC_STATE_LINE_WIDTH,
-                  VK_DYNAMIC_STATE_DEPTH_BIAS,
-                  VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                  VK_DYNAMIC_STATE_DEPTH_BOUNDS,
-                  VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_REFERENCE,
                },
          },
       .flags = 0,

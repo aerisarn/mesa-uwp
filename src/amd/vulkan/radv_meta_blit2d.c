@@ -700,7 +700,11 @@ blit2d_init_color_pipeline(struct radv_device *device, enum blit2d_src_type src_
             .rasterizerDiscardEnable = false,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE},
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
+            .lineWidth = 1.0f},
       .pMultisampleState =
          &(VkPipelineMultisampleStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -717,22 +721,16 @@ blit2d_init_color_pipeline(struct radv_device *device, enum blit2d_src_type src_
                (VkPipelineColorBlendAttachmentState[]){
                   {.colorWriteMask = VK_COLOR_COMPONENT_A_BIT | VK_COLOR_COMPONENT_R_BIT |
                                      VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT},
-               }},
+               },
+            .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }},
       .pDynamicState =
          &(VkPipelineDynamicStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 9,
+            .dynamicStateCount = 2,
             .pDynamicStates =
                (VkDynamicState[]){
                   VK_DYNAMIC_STATE_VIEWPORT,
                   VK_DYNAMIC_STATE_SCISSOR,
-                  VK_DYNAMIC_STATE_LINE_WIDTH,
-                  VK_DYNAMIC_STATE_DEPTH_BIAS,
-                  VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                  VK_DYNAMIC_STATE_DEPTH_BOUNDS,
-                  VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_REFERENCE,
                },
          },
       .flags = 0,
@@ -836,7 +834,11 @@ blit2d_init_depth_only_pipeline(struct radv_device *device, enum blit2d_src_type
             .rasterizerDiscardEnable = false,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE},
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
+            .lineWidth = 1.0f},
       .pMultisampleState =
          &(VkPipelineMultisampleStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -849,6 +851,7 @@ blit2d_init_depth_only_pipeline(struct radv_device *device, enum blit2d_src_type
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .attachmentCount = 0,
             .pAttachments = NULL,
+            .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f },
          },
       .pDepthStencilState =
          &(VkPipelineDepthStencilStateCreateInfo){
@@ -856,22 +859,35 @@ blit2d_init_depth_only_pipeline(struct radv_device *device, enum blit2d_src_type
             .depthTestEnable = true,
             .depthWriteEnable = true,
             .depthCompareOp = VK_COMPARE_OP_ALWAYS,
+            .front = {
+               .failOp = VK_STENCIL_OP_KEEP,
+               .passOp = VK_STENCIL_OP_KEEP,
+               .depthFailOp = VK_STENCIL_OP_KEEP,
+               .compareOp = VK_COMPARE_OP_NEVER,
+               .compareMask = UINT32_MAX,
+               .writeMask = UINT32_MAX,
+               .reference = 0u,
+            },
+            .back = {
+               .failOp = VK_STENCIL_OP_KEEP,
+               .passOp = VK_STENCIL_OP_KEEP,
+               .depthFailOp = VK_STENCIL_OP_KEEP,
+               .compareOp = VK_COMPARE_OP_NEVER,
+               .compareMask = UINT32_MAX,
+               .writeMask = UINT32_MAX,
+               .reference = 0u,
+            },
+            .minDepthBounds = 0.0f,
+            .maxDepthBounds = 1.0f,
          },
       .pDynamicState =
          &(VkPipelineDynamicStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 9,
+            .dynamicStateCount = 2,
             .pDynamicStates =
                (VkDynamicState[]){
                   VK_DYNAMIC_STATE_VIEWPORT,
                   VK_DYNAMIC_STATE_SCISSOR,
-                  VK_DYNAMIC_STATE_LINE_WIDTH,
-                  VK_DYNAMIC_STATE_DEPTH_BIAS,
-                  VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                  VK_DYNAMIC_STATE_DEPTH_BOUNDS,
-                  VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-                  VK_DYNAMIC_STATE_STENCIL_REFERENCE,
                },
          },
       .flags = 0,
@@ -975,7 +991,11 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device, enum blit2d_src_ty
             .rasterizerDiscardEnable = false,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE},
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .depthBiasConstantFactor = 0.0f,
+            .depthBiasClamp = 0.0f,
+            .depthBiasSlopeFactor = 0.0f,
+            .lineWidth = 1.0f},
       .pMultisampleState =
          &(VkPipelineMultisampleStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -988,6 +1008,7 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device, enum blit2d_src_ty
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .attachmentCount = 0,
             .pAttachments = NULL,
+            .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f },
          },
       .pDepthStencilState =
          &(VkPipelineDepthStencilStateCreateInfo){
@@ -1010,19 +1031,17 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device, enum blit2d_src_ty
                      .writeMask = 0xff,
                      .reference = 0},
             .depthCompareOp = VK_COMPARE_OP_ALWAYS,
+            .minDepthBounds = 0.0f,
+            .maxDepthBounds = 1.0f,
          },
       .pDynamicState =
          &(VkPipelineDynamicStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 6,
+            .dynamicStateCount = 2,
             .pDynamicStates =
                (VkDynamicState[]){
                   VK_DYNAMIC_STATE_VIEWPORT,
                   VK_DYNAMIC_STATE_SCISSOR,
-                  VK_DYNAMIC_STATE_LINE_WIDTH,
-                  VK_DYNAMIC_STATE_DEPTH_BIAS,
-                  VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-                  VK_DYNAMIC_STATE_DEPTH_BOUNDS,
                },
          },
       .flags = 0,

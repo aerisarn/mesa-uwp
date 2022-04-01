@@ -735,7 +735,8 @@ build_pipeline(struct radv_device *device, VkImageAspectFlagBits aspect,
             .rasterizerDiscardEnable = false,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_NONE,
-            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE},
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+            .lineWidth = 1.0f},
       .pMultisampleState =
          &(VkPipelineMultisampleStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -746,13 +747,11 @@ build_pipeline(struct radv_device *device, VkImageAspectFlagBits aspect,
       .pDynamicState =
          &(VkPipelineDynamicStateCreateInfo){
             .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-            .dynamicStateCount = 4,
+            .dynamicStateCount = 2,
             .pDynamicStates =
                (VkDynamicState[]){
                   VK_DYNAMIC_STATE_VIEWPORT,
                   VK_DYNAMIC_STATE_SCISSOR,
-                  VK_DYNAMIC_STATE_LINE_WIDTH,
-                  VK_DYNAMIC_STATE_BLEND_CONSTANTS,
                },
          },
       .flags = 0,
@@ -767,7 +766,8 @@ build_pipeline(struct radv_device *device, VkImageAspectFlagBits aspect,
       .pAttachments = (VkPipelineColorBlendAttachmentState[]){
          {.colorWriteMask = VK_COLOR_COMPONENT_A_BIT | VK_COLOR_COMPONENT_R_BIT |
                             VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT},
-      }};
+      },
+      .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }};
 
    VkPipelineDepthStencilStateCreateInfo depth_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
