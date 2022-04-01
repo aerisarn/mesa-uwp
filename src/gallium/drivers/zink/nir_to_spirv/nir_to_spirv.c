@@ -3919,6 +3919,13 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
             spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShaderViewportIndexLayerEXT);
          }
       }
+   } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
+      /* incredibly, this is legal and intended.
+       * https://github.com/KhronosGroup/SPIRV-Registry/issues/95
+       */
+      if (s->info.inputs_read & (BITFIELD64_BIT(VARYING_SLOT_LAYER) |
+                                 BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_ID)))
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityGeometry);
    }
 
    if (s->info.num_ssbos)
