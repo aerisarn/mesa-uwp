@@ -1355,6 +1355,9 @@ system_value("rt_arg_scratch_offset_amd", 1)
 # Whether to call the anyhit shader for an intersection in an intersection shader.
 system_value("intersection_opaque_amd", 1, bit_sizes=[1])
 
+# Used for indirect ray tracing.
+system_value("ray_launch_size_addr_amd", 1, bit_sizes=[64])
+
 # Load forced VRS rates.
 intrinsic("load_force_vrs_rates_amd", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE, CAN_REORDER])
 
