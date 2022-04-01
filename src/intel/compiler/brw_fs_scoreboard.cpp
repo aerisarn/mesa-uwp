@@ -1003,6 +1003,11 @@ namespace {
       const ordered_address jp = p ? ordered_address(p, jps[ip].jp[IDX(p)]) :
                                      ordered_address();
       const bool is_ordered = ordered_unit(devinfo, inst, IDX(TGL_PIPE_ALL));
+      const bool uses_math_pipe =
+         inst->is_math() ||
+         (intel_device_info_is_mtl(devinfo) &&
+          (get_exec_type(inst) == BRW_REGISTER_TYPE_DF ||
+           inst->dst.type == BRW_REGISTER_TYPE_DF));
 
       /* Track any source registers that may be fetched asynchronously by this
        * instruction, otherwise clear the dependency in order to avoid
@@ -1011,7 +1016,7 @@ namespace {
       for (unsigned i = 0; i < inst->sources; i++) {
          const dependency rd_dep =
             (inst->is_payload(i) ||
-             inst->is_math()) ? dependency(TGL_SBID_SRC, ip, exec_all) :
+             uses_math_pipe) ? dependency(TGL_SBID_SRC, ip, exec_all) :
             is_ordered ? dependency(TGL_REGDIST_SRC, jp, exec_all) :
             dependency::done;
 
