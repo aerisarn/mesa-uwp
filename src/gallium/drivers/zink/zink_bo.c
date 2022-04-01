@@ -785,13 +785,8 @@ buffer_bo_commit(struct zink_screen *screen, struct zink_resource *res, uint32_t
          }
       }
    } else {
-      if (!buffer_commit_single(screen, res, NULL,
-                                (uint64_t)va_page * ZINK_SPARSE_BUFFER_PAGE_SIZE,
-                                (uint64_t)(end_va_page - va_page) * ZINK_SPARSE_BUFFER_PAGE_SIZE, false)) {
-         ok = false;
-         goto out;
-      }
-
+      bool done = false;
+      uint32_t base_page = va_page;
       while (va_page < end_va_page) {
          struct zink_sparse_backing *backing;
          uint32_t backing_start;
@@ -802,6 +797,14 @@ buffer_bo_commit(struct zink_screen *screen, struct zink_resource *res, uint32_t
             va_page++;
             continue;
          }
+
+         if (!done && !buffer_commit_single(screen, res, NULL,
+                                            (uint64_t)base_page * ZINK_SPARSE_BUFFER_PAGE_SIZE,
+                                            (uint64_t)(end_va_page - base_page) * ZINK_SPARSE_BUFFER_PAGE_SIZE, false)) {
+            ok = false;
+            goto out;
+         }
+         done = true;
 
          /* Group contiguous spans of pages. */
          backing = comm[va_page].backing;
