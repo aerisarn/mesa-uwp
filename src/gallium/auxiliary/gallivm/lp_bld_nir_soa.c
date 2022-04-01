@@ -2110,6 +2110,40 @@ static void emit_elect(struct lp_build_nir_context *bld_base, LLVMValueRef resul
                                       "");
 }
 
+#if LLVM_VERSION_MAJOR >= 10
+static void emit_shuffle(struct lp_build_nir_context *bld_base, LLVMValueRef src, LLVMValueRef index,
+                        nir_intrinsic_instr *instr, LLVMValueRef result[4])
+{
+   assert(instr->intrinsic == nir_intrinsic_shuffle);
+
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   uint32_t bit_size = nir_src_bit_size(instr->src[0]);
+   struct lp_build_context *int_bld = get_int_bld(bld_base, true, bit_size);
+
+   LLVMValueRef res_store = lp_build_alloca(gallivm, int_bld->vec_type, "");
+   struct lp_build_loop_state loop_state;
+   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+
+   LLVMValueRef index_value = LLVMBuildExtractElement(builder, index, loop_state.counter, "");
+
+   LLVMValueRef src_value = LLVMBuildExtractElement(builder, src, index_value, "");
+   /* freeze `src_value` in case an out-of-bounds index or an index into an
+    * inactive invocation results in poison
+    */
+   src_value = LLVMBuildFreeze(builder, src_value, "");
+
+   LLVMValueRef res = LLVMBuildLoad(builder, res_store, "");
+   res = LLVMBuildInsertElement(builder, res, src_value, loop_state.counter, "");
+   LLVMBuildStore(builder, res, res_store);
+
+   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
+                          NULL, LLVMIntUGE);
+
+   result[0] = LLVMBuildLoad(builder, res_store, "");
+}
+#endif
+
 static void emit_reduce(struct lp_build_nir_context *bld_base, LLVMValueRef src,
                         nir_intrinsic_instr *instr, LLVMValueRef result[4])
 {
@@ -2613,6 +2647,9 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.elect = emit_elect;
    bld.bld_base.reduce = emit_reduce;
    bld.bld_base.ballot = emit_ballot;
+#if LLVM_VERSION_MAJOR >= 10
+   bld.bld_base.shuffle = emit_shuffle;
+#endif
    bld.bld_base.read_invocation = emit_read_invocation;
    bld.bld_base.helper_invocation = emit_helper_invocation;
    bld.bld_base.interp_at = emit_interp_at;
