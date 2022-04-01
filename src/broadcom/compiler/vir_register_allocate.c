@@ -132,6 +132,97 @@ vir_is_mov_uniform(struct v3d_compile *c, int temp)
         return def && def->qpu.sig.ldunif;
 }
 
+static bool
+can_reconstruct_inst(struct qinst *inst)
+{
+        assert(inst);
+
+        if (vir_is_add(inst)) {
+                switch (inst->qpu.alu.add.op) {
+                case V3D_QPU_A_FXCD:
+                case V3D_QPU_A_FYCD:
+                case V3D_QPU_A_XCD:
+                case V3D_QPU_A_YCD:
+                case V3D_QPU_A_IID:
+                case V3D_QPU_A_EIDX:
+                case V3D_QPU_A_TIDX:
+                case V3D_QPU_A_SAMPID:
+                        /* No need to check input unpacks because none of these
+                         * opcodes read sources. FXCD,FYCD have pack variants.
+                         */
+                        return inst->qpu.flags.ac == V3D_QPU_COND_NONE &&
+                               inst->qpu.flags.auf == V3D_QPU_UF_NONE &&
+                               inst->qpu.flags.apf == V3D_QPU_PF_NONE &&
+                               inst->qpu.alu.add.output_pack == V3D_QPU_PACK_NONE;
+                default:
+                        return false;
+                }
+        }
+
+        return false;
+}
+
+static bool
+can_reconstruct_temp(struct v3d_compile *c, int temp)
+{
+        struct qinst *def = c->defs[temp];
+        return def && can_reconstruct_inst(def);
+}
+
+static struct qreg
+reconstruct_temp(struct v3d_compile *c, enum v3d_qpu_add_op op)
+{
+        struct qreg dest;
+        switch (op) {
+        case V3D_QPU_A_FXCD:
+                dest = vir_FXCD(c);
+                break;
+        case V3D_QPU_A_FYCD:
+                dest = vir_FYCD(c);
+                break;
+        case V3D_QPU_A_XCD:
+                dest = vir_XCD(c);
+                break;
+        case V3D_QPU_A_YCD:
+                dest = vir_YCD(c);
+                break;
+        case V3D_QPU_A_IID:
+                dest = vir_IID(c);
+                break;
+        case V3D_QPU_A_EIDX:
+                dest = vir_EIDX(c);
+                break;
+        case V3D_QPU_A_TIDX:
+                dest = vir_TIDX(c);
+                break;
+        case V3D_QPU_A_SAMPID:
+                dest = vir_SAMPID(c);
+                break;
+        default:
+            unreachable("Unexpected opcode for reconstruction");
+        }
+
+        return dest;
+}
+
+enum temp_spill_type {
+        SPILL_TYPE_UNIFORM,
+        SPILL_TYPE_RECONSTRUCT,
+        SPILL_TYPE_TMU
+};
+
+static enum temp_spill_type
+get_spill_type_for_temp(struct v3d_compile *c, int temp)
+{
+   if (vir_is_mov_uniform(c, temp))
+      return SPILL_TYPE_UNIFORM;
+
+   if (can_reconstruct_temp(c, temp))
+      return SPILL_TYPE_RECONSTRUCT;
+
+   return SPILL_TYPE_TMU;
+}
+
 static int
 v3d_choose_spill_node(struct v3d_compile *c)
 {
@@ -160,7 +251,10 @@ v3d_choose_spill_node(struct v3d_compile *c)
                                         continue;
 
                                 int temp = inst->src[i].index;
-                                if (vir_is_mov_uniform(c, temp)) {
+                                enum temp_spill_type spill_type =
+                                        get_spill_type_for_temp(c, temp);
+
+                                if (spill_type != SPILL_TYPE_TMU) {
                                         spill_costs[temp] += block_scale;
                                 } else if (!no_spilling) {
                                         float tmu_op_scale = in_tmu_operation ?
@@ -175,11 +269,11 @@ v3d_choose_spill_node(struct v3d_compile *c)
 
                         if (inst->dst.file == QFILE_TEMP) {
                                 int temp = inst->dst.index;
+                                enum temp_spill_type spill_type =
+                                        get_spill_type_for_temp(c, temp);
 
-                                if (vir_is_mov_uniform(c, temp)) {
-                                        /* We just rematerialize the unform
-                                         * later.
-                                         */
+                                if (spill_type != SPILL_TYPE_TMU) {
+                                        /* We just rematerialize it later */
                                 } else if (!no_spilling) {
                                         spill_costs[temp] += (block_scale *
                                                               tmu_scale);
@@ -443,11 +537,10 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
         c->spill_start_num_temps = c->num_temps;
         c->spilling = true;
 
-        bool is_uniform = vir_is_mov_uniform(c, spill_temp);
+        enum temp_spill_type spill_type = get_spill_type_for_temp(c, spill_temp);
 
         uint32_t spill_offset = 0;
-
-        if (!is_uniform) {
+        if (spill_type == SPILL_TYPE_TMU) {
                 spill_offset = c->spill_size;
                 c->spill_size += V3D_CHANNELS * sizeof(uint32_t);
 
@@ -459,9 +552,16 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
         assert(last_thrsw && last_thrsw->is_last_thrsw);
 
         int uniform_index = ~0;
-        if (is_uniform) {
+        if (spill_type == SPILL_TYPE_UNIFORM) {
                 struct qinst *orig_unif = c->defs[spill_temp];
                 uniform_index = orig_unif->uniform;
+        }
+
+        enum v3d_qpu_add_op reconstruct_op = V3D_QPU_A_NOP;
+        if (spill_type == SPILL_TYPE_RECONSTRUCT) {
+                struct qinst *orig_def = c->defs[spill_temp];
+                assert(vir_is_add(orig_def));
+                reconstruct_op = orig_def->qpu.alu.add.op;
         }
 
         uint32_t spill_node = temp_to_node(spill_temp);
@@ -515,7 +615,7 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
 
                                 c->cursor = vir_before_inst(inst);
 
-                                if (is_uniform) {
+                                if (spill_type == SPILL_TYPE_UNIFORM) {
                                         struct qreg unif =
                                                 vir_uniform(c,
                                                             c->uniform_contents[uniform_index],
@@ -526,6 +626,16 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
                                          * we can use any register class for it.
                                          */
                                         add_node(c, unif.index, CLASS_BITS_ANY);
+                                } else if (spill_type == SPILL_TYPE_RECONSTRUCT) {
+                                        struct qreg temp =
+                                                reconstruct_temp(c, reconstruct_op);
+                                        inst->src[i] = temp;
+                                        /* We are using the temp in the
+                                         * instruction immediately after so we
+                                         * can use ACC.
+                                         */
+                                        add_node(c, temp.index, CLASS_BITS_PHYS |
+                                                                CLASS_BITS_ACC);
                                 } else {
                                         /* If we have a postponed spill, we
                                          * don't need a fill as the temp would
@@ -555,7 +665,7 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
                         /* spills */
                         if (inst->dst.file == QFILE_TEMP &&
                             inst->dst.index == spill_temp) {
-                                if (is_uniform) {
+                                if (spill_type != SPILL_TYPE_TMU) {
                                         c->cursor.link = NULL;
                                         vir_remove_instruction(c, inst);
                                 } else {
@@ -630,7 +740,7 @@ v3d_spill_reg(struct v3d_compile *c, int *acc_nodes, int spill_temp)
                         }
                 }
 
-                if (!is_uniform) {
+                if (spill_type == SPILL_TYPE_TMU) {
                         if (i != sb_temp &&
                             interferes(c->temp_start[i], c->temp_end[i],
                                        c->temp_start[sb_temp], c->temp_end[sb_temp])) {
@@ -1060,9 +1170,9 @@ v3d_register_allocate(struct v3d_compile *c)
                         goto spill_fail;
 
                 uint32_t temp = node_to_temp(node);
-
-                bool is_uniform = vir_is_mov_uniform(c, temp);
-                if (is_uniform || tmu_spilling_allowed(c)) {
+                enum temp_spill_type spill_type =
+                        get_spill_type_for_temp(c, temp);
+                if (spill_type != SPILL_TYPE_TMU || tmu_spilling_allowed(c)) {
                         v3d_spill_reg(c, acc_nodes, temp);
                         if (c->spills + c->fills > c->max_tmu_spills)
                                 goto spill_fail;
