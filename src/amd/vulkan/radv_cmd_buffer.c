@@ -7681,7 +7681,22 @@ radv_CmdTraceRaysIndirectKHR(VkCommandBuffer commandBuffer,
                              const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable,
                              VkDeviceAddress indirectDeviceAddress)
 {
-   unreachable("Unimplemented");
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   assert(cmd_buffer->device->use_global_bo_list);
+
+   const VkStridedDeviceAddressRegionKHR tables[] = {
+      *pRaygenShaderBindingTable,
+      *pMissShaderBindingTable,
+      *pHitShaderBindingTable,
+      *pCallableShaderBindingTable,
+   };
+
+   struct radv_dispatch_info info = {0};
+   if (!radv_rt_set_args(cmd_buffer, tables, indirectDeviceAddress, &info))
+      return;
+
+   radv_rt_dispatch(cmd_buffer, &info);
 }
 
 static void
