@@ -7595,35 +7595,53 @@ radv_rt_dispatch(struct radv_cmd_buffer *cmd_buffer, const struct radv_dispatch_
 }
 
 static bool
-radv_rt_bind_tables(struct radv_cmd_buffer *cmd_buffer,
-                    const VkStridedDeviceAddressRegionKHR *tables)
+radv_rt_set_args(struct radv_cmd_buffer *cmd_buffer,
+                 const VkStridedDeviceAddressRegionKHR *tables, uint64_t launch_size_va,
+                 struct radv_dispatch_info *info)
 {
    struct radv_pipeline *pipeline = cmd_buffer->state.rt_pipeline;
-   uint32_t base_reg;
+   uint32_t base_reg = pipeline->user_data_0[MESA_SHADER_COMPUTE];
    void *ptr;
-   uint32_t *desc_ptr;
+   uint32_t *write_ptr;
    uint32_t offset;
 
-   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, 64, &offset, &ptr))
+   info->unaligned = true;
+
+   if (!radv_cmd_buffer_upload_alloc(cmd_buffer, 64 + (launch_size_va ? 0 : 12), &offset, &ptr))
       return false;
 
-   desc_ptr = ptr;
-   for (unsigned i = 0; i < 4; ++i, desc_ptr += 4) {
-      desc_ptr[0] = tables[i].deviceAddress;
-      desc_ptr[1] = tables[i].deviceAddress >> 32;
-      desc_ptr[2] = tables[i].stride;
-      desc_ptr[3] = 0;
+   write_ptr = ptr;
+   for (unsigned i = 0; i < 4; ++i, write_ptr += 4) {
+      write_ptr[0] = tables[i].deviceAddress;
+      write_ptr[1] = tables[i].deviceAddress >> 32;
+      write_ptr[2] = tables[i].stride;
+      write_ptr[3] = 0;
+   }
+
+   if (!launch_size_va) {
+      write_ptr[0] = info->blocks[0];
+      write_ptr[1] = info->blocks[1];
+      write_ptr[2] = info->blocks[2];
+   } else {
+      info->va = launch_size_va;
    }
 
    uint64_t va = radv_buffer_get_va(cmd_buffer->upload.upload_bo) + offset;
-   struct radv_userdata_info *loc =
-      radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE, AC_UD_CS_SBT_DESCRIPTORS);
-   if (loc->sgpr_idx == -1)
-      return true;
 
-   base_reg = pipeline->user_data_0[MESA_SHADER_COMPUTE];
-   radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, va,
-                            false);
+   struct radv_userdata_info *desc_loc =
+      radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE, AC_UD_CS_SBT_DESCRIPTORS);
+   if (desc_loc->sgpr_idx != -1) {
+      radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
+         base_reg + desc_loc->sgpr_idx * 4, va, false);
+   }
+
+   struct radv_userdata_info *size_loc =
+      radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE, AC_UD_CS_RAY_LAUNCH_SIZE_ADDR);
+   if (size_loc->sgpr_idx != -1) {
+      radv_emit_shader_pointer(cmd_buffer->device, cmd_buffer->cs,
+         base_reg + size_loc->sgpr_idx * 4, launch_size_va ? launch_size_va : (va + 64), false);
+   }
+   
    return true;
 }
 
@@ -7641,7 +7659,6 @@ radv_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
    info.blocks[0] = width;
    info.blocks[1] = height;
    info.blocks[2] = depth;
-   info.unaligned = 1;
 
    const VkStridedDeviceAddressRegionKHR tables[] = {
       *pRaygenShaderBindingTable,
@@ -7650,21 +7667,8 @@ radv_CmdTraceRaysKHR(VkCommandBuffer commandBuffer,
       *pCallableShaderBindingTable,
    };
 
-   if (!radv_rt_bind_tables(cmd_buffer, tables)) {
+   if (!radv_rt_set_args(cmd_buffer, tables, 0, &info))
       return;
-   }
-
-   struct radv_userdata_info *loc = radv_lookup_user_sgpr(
-      cmd_buffer->state.rt_pipeline, MESA_SHADER_COMPUTE, AC_UD_CS_RAY_LAUNCH_SIZE);
-
-   if (loc->sgpr_idx != -1) {
-      assert(loc->num_sgprs == 3);
-
-      radeon_set_sh_reg_seq(cmd_buffer->cs, R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4, 3);
-      radeon_emit(cmd_buffer->cs, width);
-      radeon_emit(cmd_buffer->cs, height);
-      radeon_emit(cmd_buffer->cs, depth);
-   }
 
    radv_rt_dispatch(cmd_buffer, &info);
 }

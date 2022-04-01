@@ -8170,10 +8170,10 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
       emit_split_vector(ctx, dst, 3);
       break;
    }
-   case nir_intrinsic_load_ray_launch_size: {
+   case nir_intrinsic_load_ray_launch_size_addr_amd: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.ray_launch_size)));
-      emit_split_vector(ctx, dst, 3);
+      Temp addr = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->ac.ray_launch_size_addr));
+      bld.copy(Definition(dst), Operand(addr));
       break;
    }
    case nir_intrinsic_load_local_invocation_id: {

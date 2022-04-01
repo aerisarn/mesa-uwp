@@ -150,7 +150,7 @@ struct ac_shader_args {
    uint64_t inline_push_const_mask;
    struct ac_arg view_index;
    struct ac_arg sbt_descriptors;
-   struct ac_arg ray_launch_size;
+   struct ac_arg ray_launch_size_addr;
    struct ac_arg force_vrs_rates;
 };
 
