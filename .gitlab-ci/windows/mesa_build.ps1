@@ -31,7 +31,7 @@ Enter-VsDevShell -VsInstallPath $installPath -SkipAutomaticLocation -DevCmdArgum
 Push-Location $builddir
 
 meson --default-library=shared -Dzlib:default_library=static --buildtype=release -Db_ndebug=false `
--Dc_std=c17 -Dcpp_std=vc++latest -Db_vscrt=mt --cmake-prefix-path="C:\llvm-10" `
+-Db_vscrt=mt --cmake-prefix-path="C:\llvm-10" `
 --pkg-config-path="C:\llvm-10\lib\pkgconfig;C:\llvm-10\share\pkgconfig;C:\spirv-tools\lib\pkgconfig" `
 --prefix="$installdir" `
 -Dllvm=enabled -Dshared-llvm=disabled `
