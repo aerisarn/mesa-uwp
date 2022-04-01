@@ -1212,7 +1212,7 @@ static int load_ar_r6xx(struct r600_bytecode *bc)
 }
 
 /* load AR register from gpr (bc->ar_reg) with MOVA_INT */
-static int load_ar(struct r600_bytecode *bc)
+int r600_load_ar(struct r600_bytecode *bc)
 {
 	struct r600_bytecode_alu alu;
 	int r;
@@ -1293,10 +1293,10 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 	/* Check AR usage and load it if required */
 	for (i = 0; i < 3; i++)
 		if (nalu->src[i].rel && !bc->ar_loaded)
-			load_ar(bc);
+			r600_load_ar(bc);
 
 	if (nalu->dst.rel && !bc->ar_loaded)
-		load_ar(bc);
+		r600_load_ar(bc);
 
 	/* Setup the kcache for this ALU instruction. This will start a new
 	 * ALU clause if needed. */
