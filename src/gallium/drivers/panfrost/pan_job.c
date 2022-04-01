@@ -901,6 +901,9 @@ panfrost_batch_union_scissor(struct panfrost_batch *batch,
 /**
  * Checks if rasterization should be skipped. If not, a TILER job must be
  * created for each draw, or the IDVS flow must be used.
+ *
+ * As a special case, if there is no vertex shader, no primitives are generated,
+ * meaning the whole pipeline (including rasterization) should be skipped.
  */
 bool
 panfrost_batch_skip_rasterization(struct panfrost_batch *batch)
@@ -909,5 +912,6 @@ panfrost_batch_skip_rasterization(struct panfrost_batch *batch)
         struct pipe_rasterizer_state *rast = (void *) ctx->rasterizer;
 
         return (rast->rasterizer_discard ||
-                batch->scissor_culls_everything);
+                batch->scissor_culls_everything ||
+                !batch->rsd[PIPE_SHADER_VERTEX]);
 }

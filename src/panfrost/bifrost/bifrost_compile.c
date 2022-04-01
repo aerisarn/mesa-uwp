@@ -5133,6 +5133,14 @@ bi_compile_variant(nir_shader *nir,
 
         unsigned offset = binary->size;
 
+        /* If there is no position shader (gl_Position is not written), then
+         * there is no need to build a varying shader either. This case is hit
+         * for transform feedback only vertex shaders which only make sense with
+         * rasterizer discard.
+         */
+        if ((offset == 0) && (idvs == BI_IDVS_VARYING))
+                return;
+
         /* Software invariant: Only a secondary shader can appear at a nonzero
          * offset, to keep the ABI simple. */
         assert((offset == 0) ^ (idvs == BI_IDVS_VARYING));
@@ -5211,22 +5219,6 @@ bi_should_idvs(nir_shader *nir, const struct panfrost_compile_inputs *inputs)
 
         /* IDVS splits up vertex shaders, not defined on other shader stages */
         if (nir->info.stage != MESA_SHADER_VERTEX)
-                return false;
-
-        /* Transform feedback requires running all varying shaders regardless
-         * of clipping, but IDVS does clipping before running varying shaders.
-         * So shaders destined for transform feedback must not use IDVS.
-         *
-         * The issue with general memory stores is more subtle: these shaders
-         * have side effects and only make sense if vertex shaders run exactly
-         * once per vertex. IDVS requires the hardware to rerun position or
-         * varying shaders in certain circumstances. So if there is any memory
-         * write, disable IDVS.
-         *
-         * NIR considers transform feedback to be a memory write, so we only
-         * need to check writes_memory to handle both cases.
-         */
-        if (nir->info.writes_memory)
                 return false;
 
         /* Bifrost cannot write gl_PointSize during IDVS */

@@ -86,6 +86,10 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 .fixed_varying_mask = state->key.fixed_varying_mask
         };
 
+        /* No IDVS for internal XFB shaders */
+        if (s->info.stage == MESA_SHADER_VERTEX && s->info.has_transform_feedback_varyings)
+                inputs.no_idvs = true;
+
         memcpy(inputs.rt_formats, state->key.fs.rt_formats, sizeof(inputs.rt_formats));
 
         struct util_dynarray binary;
