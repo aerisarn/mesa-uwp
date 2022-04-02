@@ -885,6 +885,13 @@ vn_android_get_ahb_format_properties(
       vn_android_drm_format_is_yuv(buf_props.drm_fourcc)
          ? VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601
          : VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
+
+   /* ANGLE expects VK_FORMAT_UNDEFINED with externalFormat resolved from
+    * AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED.
+    */
+   if (desc.format == AHARDWAREBUFFER_FORMAT_IMPLEMENTATION_DEFINED)
+      format = VK_FORMAT_UNDEFINED;
+
    *out_props = (VkAndroidHardwareBufferFormatPropertiesANDROID) {
       .sType = out_props->sType,
       .pNext = out_props->pNext,
