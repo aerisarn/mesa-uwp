@@ -627,11 +627,25 @@ dri2_allocate_textures(struct dri_context *ctx,
             continue;
 
          if (drawable->textures[statt]) {
+            struct pipe_screen *screen = ctx->st->pipe->screen;
+
             templ.format = drawable->textures[statt]->format;
             templ.bind = drawable->textures[statt]->bind &
                          ~(PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
             templ.nr_samples = drawable->stvis.samples;
             templ.nr_storage_samples = drawable->stvis.samples;
+
+            /* The MSAA component order doesn't have to match the single-sample
+             * one. Allow the DRI frontend to swap channels for MSAA.
+             */
+            if (!screen->is_format_supported(screen, templ.format,
+                                             PIPE_TEXTURE_2D,
+                                             templ.nr_samples,
+                                             templ.nr_storage_samples,
+                                             templ.bind)) {
+               templ.format = util_format_rgb_to_bgr(templ.format);
+               assert(templ.format);
+            }
 
             /* Try to reuse the resource.
              * (the other resource parameters should be constant)
@@ -643,8 +657,7 @@ dri2_allocate_textures(struct dri_context *ctx,
                pipe_resource_reference(&drawable->msaa_textures[statt], NULL);
 
                drawable->msaa_textures[statt] =
-                  screen->base.screen->resource_create(screen->base.screen,
-                                                       &templ);
+                  screen->resource_create(screen, &templ);
                assert(drawable->msaa_textures[statt]);
 
                /* If there are any MSAA resources, we should initialize them
