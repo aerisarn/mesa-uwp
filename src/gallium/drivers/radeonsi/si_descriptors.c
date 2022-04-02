@@ -2698,6 +2698,15 @@ void si_init_all_descriptors(struct si_context *sctx)
 {
    int i;
    unsigned first_shader = sctx->has_graphics ? 0 : PIPE_SHADER_COMPUTE;
+   unsigned hs_sgpr0, gs_sgpr0;
+
+   if (sctx->chip_class >= GFX11) {
+      hs_sgpr0 = R_00B420_SPI_SHADER_PGM_LO_HS;
+      gs_sgpr0 = R_00B220_SPI_SHADER_PGM_LO_GS;
+   } else {
+      hs_sgpr0 = R_00B408_SPI_SHADER_USER_DATA_ADDR_LO_HS;
+      gs_sgpr0 = R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS;
+   }
 
    for (i = first_shader; i < SI_NUM_SHADERS; i++) {
       bool is_2nd =
@@ -2710,13 +2719,13 @@ void si_init_all_descriptors(struct si_context *sctx)
       if (is_2nd) {
          if (i == PIPE_SHADER_TESS_CTRL) {
             rel_dw_offset =
-               (R_00B408_SPI_SHADER_USER_DATA_ADDR_LO_HS - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
+               (hs_sgpr0 - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
          } else if (sctx->chip_class >= GFX10) { /* PIPE_SHADER_GEOMETRY */
             rel_dw_offset =
-               (R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
+               (gs_sgpr0 - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
          } else {
             rel_dw_offset =
-               (R_00B208_SPI_SHADER_USER_DATA_ADDR_LO_GS - R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
+               (gs_sgpr0 - R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
          }
       } else {
          rel_dw_offset = SI_SGPR_CONST_AND_SHADER_BUFFERS;
@@ -2730,13 +2739,13 @@ void si_init_all_descriptors(struct si_context *sctx)
       if (is_2nd) {
          if (i == PIPE_SHADER_TESS_CTRL) {
             rel_dw_offset =
-               (R_00B40C_SPI_SHADER_USER_DATA_ADDR_HI_HS - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
+               (hs_sgpr0 + 4 - R_00B430_SPI_SHADER_USER_DATA_LS_0) / 4;
          } else if (sctx->chip_class >= GFX10) { /* PIPE_SHADER_GEOMETRY */
             rel_dw_offset =
-               (R_00B20C_SPI_SHADER_USER_DATA_ADDR_HI_GS - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
+               (gs_sgpr0 + 4 - R_00B230_SPI_SHADER_USER_DATA_GS_0) / 4;
          } else {
             rel_dw_offset =
-               (R_00B20C_SPI_SHADER_USER_DATA_ADDR_HI_GS - R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
+               (gs_sgpr0 + 4 - R_00B330_SPI_SHADER_USER_DATA_ES_0) / 4;
          }
       } else {
          rel_dw_offset = SI_SGPR_SAMPLERS_AND_IMAGES;

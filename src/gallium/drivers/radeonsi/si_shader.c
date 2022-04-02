@@ -465,7 +465,8 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
    case SI_SHADER_MERGED_VERTEX_TESSCTRL:
       /* Merged stages have 8 system SGPRs at the beginning. */
-      /* SPI_SHADER_USER_DATA_ADDR_LO/HI_HS */
+      /* Gfx9-10: SPI_SHADER_USER_DATA_ADDR_LO/HI_HS */
+      /* Gfx11+:  SPI_SHADER_PGM_LO/HI_HS */
       declare_per_stage_desc_pointers(ctx, ctx->stage == MESA_SHADER_TESS_CTRL);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.tess_offchip_offset);
       ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, &ctx->args.merged_wave_info);
@@ -532,7 +533,8 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 
    case SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY:
       /* Merged stages have 8 system SGPRs at the beginning. */
-      /* SPI_SHADER_USER_DATA_ADDR_LO/HI_GS */
+      /* Gfx9-10: SPI_SHADER_USER_DATA_ADDR_LO/HI_GS */
+      /* Gfx11+:  SPI_SHADER_PGM_LO/HI_GS */
       declare_per_stage_desc_pointers(ctx, ctx->stage == MESA_SHADER_GEOMETRY);
 
       if (ctx->shader->key.ge.as_ngg)
