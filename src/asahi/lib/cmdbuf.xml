@@ -591,7 +591,7 @@
     <field name="Stencil acceleration buffer 2" start="64:0" size="64" type="address"/>
   </struct>
 
-  <struct name="IOGPU Aux Framebuffer" size="32">
+  <struct name="IOGPU Aux Framebuffer" size="256">
     <field name="Unk 0" start="0:0" size="32" default="0x4" type="hex"/>
     <field name="Unk 1" start="2:0" size="16" default="0xc000" type="hex"/>
     <field name="Z16 Unorm attachment" start="2:18" size="1" type="bool"/>
@@ -600,7 +600,7 @@
     <field name="Pointer" start="6:0" size="64" type="address"/>
   </struct>
 
-  <struct name="IOGPU Clear Z/S" size="48">
+  <struct name="IOGPU Clear Z/S" size="256">
     <!-- Encoded like the depth attachment -->
     <field name="Depth clear value" start="0:0" size="32" type="hex"/>
     <field name="Stencil clear value" start="1:0" size="8" type="uint"/>
@@ -611,6 +611,10 @@
     <field name="Unk 3" start="6:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 4" start="7:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 5" start="8:0" size="32" type="hex" default="0xffffffff"/>
+    <field name="Unk 20" start="20:0" size="32" type="hex" default="0xffff8212"/>
+    <field name="Unk pipeline" start="22:0" size="32" type="address"/>
+    <field name="Unk 28" start="28:0" size="32" type="hex" default="0x12"/>
+    <field name="Unk pipeline 2" start="30:0" size="32" type="hex" default="0x12"/>
   </struct>
 
   <struct name="IOGPU Misc" size="288">
@@ -637,6 +641,10 @@
     <field name="Unk 52:0" start="64:0" size="32" default="1" type="uint"/>
     <field name="Unk 56:0" start="68:0" size="32" default="0" type="uint"/>
     <field name="Unk 70:0" start="70:0" size="32" default="1" type="uint"/>
+  </struct>
+
+  <struct name="IOGPU Attachment Count" size="16">
+    <field name="Count" start="3:0" size="32" type="uint"/>
   </struct>
 
 </agxml>

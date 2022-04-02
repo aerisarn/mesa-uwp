@@ -431,7 +431,7 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    assert(map != NULL && "nonexistant mapping");
 
    if (verbose) {
-      agxdecode_dump_bo(cmdbuf, "Command buffer");
+      //agxdecode_dump_bo(cmdbuf, "Command buffer");
       agxdecode_dump_bo(map, "Mapping");
    }
 
@@ -452,6 +452,14 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
 
    DUMP_CL(IOGPU_MISC, ((uint32_t *) cmdbuf->ptr.cpu) + 356, "Misc");
 
+   /* Should be unused, we think */
+   for (unsigned i = (0x6B0 / 4); i < (cmd.attachment_offset / 4); ++i) {
+      assert(((uint32_t *) cmdbuf->ptr.cpu)[i] == 0);
+   }
+
+   DUMP_CL(IOGPU_ATTACHMENT_COUNT, ((uint8_t *) cmdbuf->ptr.cpu +
+            cmd.attachment_offset), "Attachment count");
+
    uint32_t *attachments = (uint32_t *) ((uint8_t *) cmdbuf->ptr.cpu + cmd.attachment_offset);
    unsigned attachment_count = attachments[3];
    for (unsigned i = 0; i < attachment_count; ++i) {
@@ -459,7 +467,6 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
       DUMP_CL(IOGPU_ATTACHMENT, ptr, "Attachment");
    }
 
-   /* TODO: What else is in here? */
    uint64_t *encoder = ((uint64_t *) cmdbuf->ptr.cpu) + 7;
    agxdecode_stateful(*encoder, "Encoder", agxdecode_cmd, verbose);
 
