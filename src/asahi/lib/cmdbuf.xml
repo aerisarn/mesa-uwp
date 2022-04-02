@@ -520,7 +520,7 @@
     <value name="Stencil" value="0x11"/>
   </enum>
 
-  <struct name="IOGPU Header" size="192">
+  <struct name="IOGPU Header" size="640">
     <field name="Unk 0" start="0:0" size="32" default="0x10000" type="hex"/>
     <field name="Total size" start="1:0" size="32" type="uint"/>
     <!-- 0x7 in 11.x -->
@@ -535,6 +535,15 @@
          geometry counts -->
     <field name="Deflake 1" start="38:0" size="64" type="address"/>
     <field name="Deflake 2" start="40:0" size="64" type="address"/>
+    <field name="Unk 54" start="54:0" size="32" default="0x6b0003" type="hex"/>
+    <field name="Unk 55" start="55:0" size="32" default="0x3a0012" type="hex"/>
+    <field name="Unk 56" start="56:0" size="32" default="0x1" type="hex"/>
+    <field name="Deflake 3" start="110:0" size="64" type="address"/>
+    <field name="Unk 112" start="112:0" size="32" default="0x1" type="hex"/>
+    <field name="Unk 114" start="114:0" size="32" default="0x1c" type="hex"/>
+    <field name="Unk 118" start="118:0" size="32" default="0xffffffff" type="hex"/>
+    <field name="Unk 119" start="119:0" size="32" default="0xffffffff" type="hex"/>
+    <field name="Unk 120" start="120:0" size="32" default="0xffffffff" type="hex"/>
   </struct>
 
   <struct name="IOGPU Attachment" size="24">

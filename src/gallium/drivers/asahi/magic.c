@@ -172,17 +172,9 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    uint32_t *map = (uint32_t *) buf;
    memset(map, 0, 518 * 4);
 
-   map[54] = 0x6b0003;
-   map[55] = 0x3a0012;
-   map[56] = 1;
-
-   /* Unknown address at word 110 */
-
-   map[112] = 1;
-   map[114] = 0x1c;
-   map[118] = 0xffffffff;
-   map[119] = 0xffffffff;
-   map[120] = 0xffffffff;
+   uint64_t deflake_buffer = demo_zero(pool, 0x7e0);
+   uint64_t deflake_1 = deflake_buffer + 0x2a0;
+   uint64_t deflake_2 = deflake_buffer + 0x20;
 
    uint64_t unk_buffer = demo_zero(pool, 0x1000);
    uint64_t unk_buffer_2 = demo_zero(pool, 0x8000);
@@ -271,8 +263,9 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.unknown_offset = offset_unk;
       cfg.encoder = encoder_ptr;
 
-      cfg.deflake_1 = demo_zero(pool, 0x540);
-      cfg.deflake_2 = demo_zero(pool, 0x280);
+      cfg.deflake_1 = deflake_1;
+      cfg.deflake_2 = deflake_2;
+      cfg.deflake_3 = deflake_buffer;
    }
 
    return total_size;
