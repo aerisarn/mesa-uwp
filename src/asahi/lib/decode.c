@@ -347,6 +347,9 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    } else if (tag == 0x0C020000) {
       assert(size == AGX_LINKAGE_LENGTH);
       DUMP_CL(LINKAGE, map, "Linkage");
+   } else if (tag == 0x200004a) {
+      assert(size == AGX_UNKNOWN_4A_LENGTH);
+      DUMP_CL(UNKNOWN_4A, map, "Unknown 4a");
    } else if (tag == 0x10000b5) {
       assert(size == AGX_RASTERIZER_LENGTH);
       DUMP_CL(RASTERIZER, map, "Rasterizer");
