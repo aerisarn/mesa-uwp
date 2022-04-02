@@ -363,10 +363,11 @@
     <field name="Varying count" size="32" start="3:0" type="uint"/>
   </struct>
 
-  <!-- Indexes into the array of scissor descriptors -->
-  <struct name="Set scissor" size="8">
+  <!-- Indexes into the scissor and depth bias arrays -->
+  <struct name="Set index" size="8">
     <field name="Tag" size="32" start="0:0" type="hex" default="0x100"/>
-    <field name="Index" size="32" start="1:0" type="uint"/>
+    <field name="Scissor" size="16" start="1:0" type="uint"/>
+    <field name="Depth bias" size="16" start="1:16" type="uint"/>
   </struct>
 
   <!--- Commands valid within a pipeline -->

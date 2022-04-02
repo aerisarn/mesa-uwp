@@ -1450,12 +1450,12 @@ demo_unk12(struct agx_pool *pool)
 }
 
 static uint64_t
-agx_set_scissor_index(struct agx_pool *pool, unsigned index)
+agx_set_index(struct agx_pool *pool, unsigned scissor)
 {
-   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_SET_SCISSOR_LENGTH, 64);
+   struct agx_ptr T = agx_pool_alloc_aligned(pool, AGX_SET_INDEX_LENGTH, 64);
 
-   agx_pack(T.cpu, SET_SCISSOR, cfg) {
-      cfg.index = index;
+   agx_pack(T.cpu, SET_INDEX, cfg) {
+      cfg.scissor = scissor;
    };
 
    return T.gpu;
@@ -1508,7 +1508,7 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
             ctx->rast->base.scissor ? &ctx->scissor : NULL);
 
       agx_push_record(&out, 10, vps.viewport);
-      agx_push_record(&out, 2, agx_set_scissor_index(pool, vps.scissor));
+      agx_push_record(&out, 2, agx_set_index(pool, vps.scissor));
    }
 
    agx_push_record(&out, 3, demo_unk12(pool));

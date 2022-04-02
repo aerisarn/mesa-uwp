@@ -356,6 +356,9 @@ agxdecode_record(uint64_t va, size_t size, bool verbose)
    } else if (tag == 0x200000) {
       assert(size == AGX_CULL_LENGTH);
       DUMP_CL(CULL, map, "Cull");
+   } else if (tag == 0x000100) {
+      assert(size == AGX_SET_INDEX_LENGTH);
+      DUMP_CL(SET_INDEX, map, "Set index");
    } else if (tag == 0x800000) {
       assert(size == (AGX_BIND_PIPELINE_LENGTH - 4));
 
