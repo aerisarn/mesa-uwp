@@ -64,6 +64,7 @@
 #include "util/u_upload_mgr.h"
 #include "util/u_vbuf.h"
 #include "util/u_memory.h"
+#include "util/hash_table.h"
 #include "cso_cache/cso_context.h"
 #include "compiler/glsl/glsl_parser_extras.h"
 #include "nir/nir_to_tgsi.h"
@@ -957,6 +958,12 @@ st_destroy_context(struct st_context *st)
    st_release_program(st, &st->tcp);
    st_release_program(st, &st->tep);
    st_release_program(st, &st->cp);
+
+   if (st->hw_select_shaders) {
+      hash_table_foreach(st->hw_select_shaders, entry)
+         st->pipe->delete_gs_state(st->pipe, entry->data);
+      _mesa_hash_table_destroy(st->hw_select_shaders, NULL);
+   }
 
    /* release framebuffer in the winsys buffers list */
    LIST_FOR_EACH_ENTRY_SAFE_REV(stfb, next, &st->winsys_buffers, head) {

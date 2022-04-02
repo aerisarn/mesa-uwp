@@ -637,8 +637,10 @@ _mesa_RenderMode( GLenum mode )
 	 return 0;
    }
 
-   ctx->RenderMode = mode;
    st_RenderMode( ctx, mode );
+
+   /* finally update render mode to new one */
+   ctx->RenderMode = mode;
 
    return result;
 }
