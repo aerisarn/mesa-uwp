@@ -1276,11 +1276,14 @@ insert_traversal_aabb_case(struct radv_device *device,
    nir_ssa_def *is_opaque = hit_is_opaque(b, nir_load_var(b, trav_vars->sbt_offset_and_flags),
                                           nir_load_var(b, vars->flags), geometry_id_and_flags);
 
+   nir_ssa_def *not_skip_aabb = nir_ieq(
+      b, nir_iand(b, nir_load_var(b, vars->flags), nir_imm_int(b, SpvRayFlagsSkipAABBsKHRMask)),
+      nir_imm_int(b, 0));
    nir_ssa_def *not_cull =
-      nir_ieq(b,
+      nir_iand(b, not_skip_aabb, nir_ieq(b,
               nir_iand(b, nir_load_var(b, vars->flags),
                        nir_bcsel(b, is_opaque, nir_imm_int(b, 0x40), nir_imm_int(b, 0x80))),
-              nir_imm_int(b, 0));
+              nir_imm_int(b, 0)));
    nir_push_if(b, not_cull);
    {
       nir_ssa_def *sbt_idx =
@@ -1507,7 +1510,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
             /* custom */
             nir_push_if(
                b, nir_ine(b, nir_iand(b, bvh_node_type, nir_imm_int(b, 1)), nir_imm_int(b, 0)));
-            {
+            if (!(pCreateInfo->flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_AABBS_BIT_KHR)) {
                insert_traversal_aabb_case(device, pCreateInfo, b, vars, &trav_vars, bvh_node);
             }
             nir_push_else(b, NULL);
@@ -1594,7 +1597,7 @@ insert_traversal(struct radv_device *device, const VkRayTracingPipelineCreateInf
          nir_pop_if(b, NULL);
       }
       nir_push_else(b, NULL);
-      {
+      if (!(pCreateInfo->flags & VK_PIPELINE_CREATE_RAY_TRACING_SKIP_TRIANGLES_BIT_KHR)) {
          nir_ssa_def *result = intrinsic_result;
          if (!result) {
             /* If we didn't run the intrinsic cause the hardware didn't support it,
