@@ -444,7 +444,10 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
 
    DUMP_CL(IOGPU_INTERNAL_PIPELINES, ((uint32_t *) cmdbuf->ptr.cpu) + 160, "Internal pipelines");
    DUMP_CL(IOGPU_AUX_FRAMEBUFFER, ((uint32_t *) cmdbuf->ptr.cpu) + 228, "Aux Framebuffer");
-   DUMP_CL(IOGPU_CLEAR_Z_S, ((uint32_t *) cmdbuf->ptr.cpu) + 292, "Clear Z/S");
+
+   agx_unpack(agxdecode_dump_stream, ((uint32_t *) cmdbuf->ptr.cpu) + 292,
+         IOGPU_CLEAR_Z_S, clearzs);
+   DUMP_UNPACKED(IOGPU_CLEAR_Z_S, clearzs, "Clear Z/S");
 
    /* Guard against changes */
    uint32_t zeroes[356 - 344] = { 0 };
@@ -482,6 +485,17 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
       assert(((*store_pipeline) & 0xF) == 0x4);
       agxdecode_stateful((*store_pipeline) & ~0xF, "Store pipeline",
             agxdecode_pipeline, verbose);
+   }
+
+   assert((clearzs.depth_clear_pipeline_unk & 0xF) == 0x4);
+   if (clearzs.depth_clear_pipeline) {
+      agxdecode_stateful(clearzs.depth_clear_pipeline,
+            "Depth clear pipeline", agxdecode_pipeline, verbose);
+   }
+
+   if (clearzs.depth_store_pipeline) {
+      agxdecode_stateful(clearzs.depth_store_pipeline,
+            "Depth store pipeline", agxdecode_pipeline, verbose);
    }
 
    agxdecode_map_read_write();
