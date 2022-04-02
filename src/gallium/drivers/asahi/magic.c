@@ -162,6 +162,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             uint64_t encoder_ptr,
             uint64_t encoder_id,
             uint64_t scissor_ptr,
+            uint64_t depth_bias_ptr,
             uint32_t pipeline_null,
             uint32_t pipeline_clear,
             uint32_t pipeline_store,
@@ -187,7 +188,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.store_pipeline_bind = 0x12;
       cfg.store_pipeline = pipeline_store;
       cfg.scissor_array = scissor_ptr;
-      cfg.depth_bias_array = demo_zero(pool, 0x1000);
+      cfg.depth_bias_array = depth_bias_ptr;
 
       if (framebuffer->zsbuf) {
          struct pipe_surface *zsbuf = framebuffer->zsbuf;

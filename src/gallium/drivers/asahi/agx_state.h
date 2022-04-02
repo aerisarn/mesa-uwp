@@ -88,8 +88,8 @@ struct agx_stage {
    unsigned sampler_count, texture_count;
 };
 
-/* Uploaded scissor descriptors */
-struct agx_scissors {
+/* Uploaded scissor or depth bias descriptors */
+struct agx_array {
       struct agx_bo *bo;
       unsigned count;
 };
@@ -114,7 +114,7 @@ struct agx_batch {
    struct agx_bo *encoder;
    uint8_t *encoder_current;
 
-   struct agx_scissors scissor;
+   struct agx_array scissor, depth_bias;
 };
 
 struct agx_zsa {
@@ -141,7 +141,7 @@ struct asahi_shader_key {
 enum agx_dirty {
    AGX_DIRTY_VERTEX   = BITFIELD_BIT(0),
    AGX_DIRTY_VIEWPORT = BITFIELD_BIT(1),
-   AGX_DIRTY_SCISSOR  = BITFIELD_BIT(2),
+   AGX_DIRTY_SCISSOR_ZBIAS  = BITFIELD_BIT(2),
 };
 
 struct agx_context {
