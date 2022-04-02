@@ -41,6 +41,12 @@
     <value name="Decr Wrap" value="7"/>
   </enum>
 
+  <enum name="Visibility Mode">
+    <value name="None" value="0"/>
+    <value name="Counting" value="2"/>
+    <value name="Boolean" value="3"/>
+  </enum>
+
   <enum name="Polygon Mode">
     <value name="Fill" value="0"/>
     <value name="Line" value="1"/>
@@ -305,12 +311,14 @@
   <struct name="Rasterizer" size="28">
     <field name="Tag" size="32" start="0:0" type="hex" default="0x10000b5"/>
     <field name="Unk 1" size="1" start="1:9" type="hex" default="0x1"/>
+    <field name="Visibility mode" size="2" start="1:14" type="Visibility Mode"/>
     <field name="Scissor enable" size="1" start="1:16" type="bool"/>
     <field name="Unk ZS" size="1" start="1:18" type="hex" default="0x1"/>
     <field name="Unk 2" size="2" start="1:19" type="hex" default="0x0"/>
     <field name="Unk fill lines" size="1" start="1:26" type="hex" default="0x0"/> <!-- set when drawing LINES -->
     <field name="Front" size="64" start="2:0" type="Rasterizer face"/>
     <field name="Back" size="64" start="4:0" type="Rasterizer face"/>
+    <field name="Visibility buffer offset" size="18" start="6:14" type="uint"/>
   </struct>
 
   <struct name="Unknown face" size="4">
@@ -518,6 +526,7 @@
     <value name="Colour" value="0xE"/>
     <value name="Depth" value="0x10"/>
     <value name="Stencil" value="0x11"/>
+    <value name="Visibility" value="0x12"/>
   </enum>
 
   <struct name="IOGPU Header" size="640">
@@ -611,6 +620,7 @@
     <field name="Unk 3" start="6:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 4" start="7:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 5" start="8:0" size="32" type="hex" default="0xffffffff"/>
+    <field name="Visibility result buffer" start="10:0" size="64" type="address"/>
     <field name="Depth clear pipeline bind" start="20:0" size="32" type="hex"/>
     <field name="Depth clear pipeline unk" start="22:0" size="4" default="4" type="hex"/>
     <field name="Depth clear pipeline" start="22:4" size="28" type="address" modifier="shr(4)"/>
