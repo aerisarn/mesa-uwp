@@ -176,7 +176,6 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    uint64_t deflake_1 = deflake_buffer + 0x2a0;
    uint64_t deflake_2 = deflake_buffer + 0x20;
 
-   uint64_t unk_buffer = demo_zero(pool, 0x1000);
    uint64_t unk_buffer_2 = demo_zero(pool, 0x8000);
 
    uint64_t depth_buffer = 0;
@@ -188,7 +187,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.store_pipeline_bind = 0x12;
       cfg.store_pipeline = pipeline_store;
       cfg.scissor_array = scissor_ptr;
-      cfg.unknown_buffer = unk_buffer;
+      cfg.depth_bias_array = demo_zero(pool, 0x1000);
 
       if (framebuffer->zsbuf) {
          struct pipe_surface *zsbuf = framebuffer->zsbuf;
