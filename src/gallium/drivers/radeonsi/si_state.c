@@ -2432,6 +2432,16 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
          if (sample_count > max_eqaa_samples || storage_sample_count > max_samples)
             return false;
       }
+
+      /* Gfx11: BGRA doesn't work with samples >= 4. Only allow R/0/1 to be the first
+       * component for simplicity.
+       */
+      if (sscreen->info.chip_class >= GFX11 &&
+          !util_format_is_depth_or_stencil(format) &&
+          util_format_description(format)->swizzle[0] != PIPE_SWIZZLE_X &&
+          util_format_description(format)->swizzle[0] != PIPE_SWIZZLE_0 &&
+          util_format_description(format)->swizzle[0] != PIPE_SWIZZLE_1)
+         return false;
    }
 
    if (usage & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_SHADER_IMAGE)) {
