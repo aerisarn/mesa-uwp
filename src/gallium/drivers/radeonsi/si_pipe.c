@@ -682,21 +682,6 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
       si_set_internal_const_buffer(sctx, SI_PS_CONST_SAMPLE_POSITIONS, &sctx->null_const_buf);
    }
 
-   uint64_t max_threads_per_block;
-   screen->get_compute_param(screen, PIPE_SHADER_IR_NIR, PIPE_COMPUTE_CAP_MAX_THREADS_PER_BLOCK,
-                             &max_threads_per_block);
-
-   /* The maximum number of scratch waves. Scratch space isn't divided
-    * evenly between CUs. The number is only a function of the number of CUs.
-    * We can decrease the constant to decrease the scratch buffer size.
-    *
-    * sctx->scratch_waves must be >= the maximum possible size of
-    * 1 threadgroup, so that the hw doesn't hang from being unable
-    * to start any.
-    */
-   sctx->scratch_waves =
-      MAX2(32 * sscreen->info.num_good_compute_units, max_threads_per_block / 64);
-
    /* Bindless handles. */
    sctx->tex_handles = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
    sctx->img_handles = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);

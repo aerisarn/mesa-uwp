@@ -455,7 +455,7 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx, struct si_s
 {
    uint64_t scratch_bo_size, scratch_needed;
    scratch_bo_size = 0;
-   scratch_needed = sctx->max_seen_compute_scratch_bytes_per_wave * sctx->scratch_waves;
+   scratch_needed = sctx->max_seen_compute_scratch_bytes_per_wave * sctx->screen->info.max_scratch_waves;
    if (sctx->compute_scratch_buffer)
       scratch_bo_size = sctx->compute_scratch_buffer->b.b.width0;
 
@@ -526,7 +526,7 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
    }
 
    unsigned tmpring_size;
-   ac_get_scratch_tmpring_size(&sctx->screen->info, sctx->scratch_waves,
+   ac_get_scratch_tmpring_size(&sctx->screen->info, true,
                                config->scratch_bytes_per_wave,
                                &sctx->max_seen_compute_scratch_bytes_per_wave, &tmpring_size);
 
@@ -534,12 +534,6 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
       return false;
 
    if (shader->scratch_bo) {
-      COMPUTE_DBG(sctx->screen,
-                  "Waves: %u; Scratch per wave: %u bytes; "
-                  "Total Scratch: %u bytes\n",
-                  sctx->scratch_waves, config->scratch_bytes_per_wave,
-                  config->scratch_bytes_per_wave * sctx->scratch_waves);
-
       radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, shader->scratch_bo,
                                 RADEON_USAGE_READWRITE | RADEON_PRIO_SCRATCH_BUFFER);
    }
