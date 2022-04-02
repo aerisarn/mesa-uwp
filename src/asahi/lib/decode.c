@@ -398,7 +398,7 @@ agxdecode_cmd(const uint8_t *map, bool verbose)
       agxdecode_stateful(cmd.pipeline, "Pipeline", agxdecode_pipeline, verbose);
       DUMP_UNPACKED(BIND_PIPELINE, cmd, "Bind vertex pipeline\n");
       return AGX_BIND_PIPELINE_LENGTH;
-   } else if (map[2] == 0xc0 && map[3] == 0x61) {
+   } else if (map[3] == 0x61) {
       DUMP_CL(DRAW, map, "Draw");
       return AGX_DRAW_LENGTH;
    } else if (map[2] == 0x00 && map[3] == 0x00) {
