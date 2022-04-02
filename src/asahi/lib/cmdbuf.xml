@@ -314,6 +314,7 @@
     <field name="Unk 1" size="1" start="1:9" type="hex" default="0x1"/>
     <field name="Visibility mode" size="2" start="1:14" type="Visibility Mode"/>
     <field name="Scissor enable" size="1" start="1:16" type="bool"/>
+    <field name="Depth bias enable" size="1" start="1:17" type="bool"/>
     <field name="Unk ZS" size="1" start="1:18" type="hex" default="0x1"/>
     <field name="Unk 2" size="2" start="1:19" type="hex" default="0x0"/>
     <field name="Unk fill lines" size="1" start="1:26" type="hex" default="0x0"/> <!-- set when drawing LINES -->
