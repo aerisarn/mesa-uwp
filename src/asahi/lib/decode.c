@@ -115,7 +115,7 @@ agxdecode_mark_mapped(unsigned handle)
 }
 
 static void
-agxdecode_validate_map(void *map)
+agxdecode_decode_segment_list(void *segment_list)
 {
    unsigned nr_handles = 0;
 
@@ -124,29 +124,70 @@ agxdecode_validate_map(void *map)
       mmap_array[i].mapped = false;
 
    /* Check the header */
-   struct agx_map_header *hdr = map;
+   struct agx_map_header *hdr = segment_list;
    if (hdr->resource_group_count == 0) {
-      fprintf(stderr, "ERROR - empty map\n");
+      fprintf(agxdecode_dump_stream, "ERROR - empty map\n");
       return;
    }
 
+   if (hdr->segment_count != 1) {
+      fprintf(agxdecode_dump_stream, "ERROR - can't handle segment count %u\n",
+            hdr->segment_count);
+   }
+
+   fprintf(agxdecode_dump_stream, "Segment list:\n");
+   fprintf(agxdecode_dump_stream, "  Length: %u\n", hdr->length);
+   fprintf(agxdecode_dump_stream, "  Command buffer shmem ID: %" PRIx64 "\n", hdr->cmdbuf_id);
+   fprintf(agxdecode_dump_stream, "  Encoder ID: %" PRIx64 "\n", hdr->encoder_id);
+   fprintf(agxdecode_dump_stream, "  Kernel commands start offset: %u\n",
+         hdr->kernel_commands_start_offset);
+   fprintf(agxdecode_dump_stream, "  Kernel commands end offset: %u\n",
+         hdr->kernel_commands_end_offset);
+
+   if (hdr->padding[0] || hdr->padding[1])
+      fprintf(agxdecode_dump_stream, "ERROR - padding tripped\n");
+
    /* Check the entries */
-   struct agx_map_entry *entries = ((void *) hdr) + sizeof(*hdr);
+   struct agx_map_entry *groups = ((void *) hdr) + sizeof(*hdr);
    for (unsigned i = 0; i < hdr->resource_group_count; ++i) {
-      struct agx_map_entry entry = entries[i];
-      
-      for (unsigned j = 0; j < ARRAY_SIZE(entry.resource_id); ++j) {
-         unsigned handle = entry.resource_id[j];
-         if (handle) {
-            agxdecode_mark_mapped(handle);
-            nr_handles++;
-         }
+      struct agx_map_entry group = groups[i];
+      unsigned count = group.resource_count;
+
+      STATIC_ASSERT(ARRAY_SIZE(group.resource_id) == 6);
+      STATIC_ASSERT(ARRAY_SIZE(group.resource_unk) == 6);
+      STATIC_ASSERT(ARRAY_SIZE(group.resource_flags) == 6);
+
+      if ((count < 1) || (count > 6)) {
+         fprintf(agxdecode_dump_stream, "ERROR - invalid count %u\n", count);
+         continue;
       }
+      
+      for (unsigned j = 0; j < count; ++j) {
+         unsigned handle = group.resource_id[j];
+         unsigned unk = group.resource_unk[j];
+         unsigned flags = group.resource_flags[j];
+
+         if (!handle) {
+            fprintf(agxdecode_dump_stream, "ERROR - invalid handle %u\n", handle);
+            continue;
+         }
+
+         agxdecode_mark_mapped(handle);
+         nr_handles++;
+
+         fprintf(agxdecode_dump_stream, "%u (0x%X, 0x%X)\n", handle, unk, flags);
+      }
+
+      if (group.unka)
+         fprintf(agxdecode_dump_stream, "ERROR - unknown 0x%X\n", group.unka);
+
+      /* Visual separator for resource groups */
+      fprintf(agxdecode_dump_stream, "\n");
    }
 
    /* Check the handle count */
    if (nr_handles != hdr->total_resources) {
-      fprintf(stderr, "ERROR - wrong handle count, got %u, expected %u (%u entries)\n",
+      fprintf(agxdecode_dump_stream, "ERROR - wrong handle count, got %u, expected %u (%u entries)\n",
             nr_handles, hdr->total_resources, hdr->resource_group_count);
    }
 }
@@ -436,13 +477,8 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    assert(cmdbuf != NULL && "nonexistant command buffer");
    assert(map != NULL && "nonexistant mapping");
 
-   if (verbose) {
-      //agxdecode_dump_bo(cmdbuf, "Command buffer");
-      agxdecode_dump_bo(map, "Mapping");
-   }
-
    /* Before decoding anything, validate the map. Set bo->mapped fields */
-   agxdecode_validate_map(map->ptr.cpu);
+   agxdecode_decode_segment_list(map->ptr.cpu);
 
    /* Print the IOGPU stuff */
    agx_unpack(agxdecode_dump_stream, cmdbuf->ptr.cpu, IOGPU_HEADER, cmd);
@@ -514,7 +550,7 @@ agxdecode_dump_mappings(unsigned map_handle)
 
    struct agx_bo *map = agxdecode_find_handle(map_handle, AGX_ALLOC_MEMMAP);
    assert(map != NULL && "nonexistant mapping");
-   agxdecode_validate_map(map->ptr.cpu);
+   agxdecode_decode_segment_list(map->ptr.cpu);
 
    for (unsigned i = 0; i < mmap_count; ++i) {
       if (!mmap_array[i].ptr.cpu || !mmap_array[i].size || !mmap_array[i].mapped)
