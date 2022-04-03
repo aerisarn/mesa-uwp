@@ -293,6 +293,13 @@
     <field name="Max Z" size="32" start="3:0" type="float"/>
   </struct>
 
+  <!-- Note: this structure is not padded. It really is 12 bytes -->
+  <struct name="Depth bias" size="12">
+    <field name="Depth bias" size="32" start="0:0" type="float"/>
+    <field name="Slope scale" size="32" start="1:0" type="float"/>
+    <field name="Clamp" size="32" start="2:0" type="float"/>
+  </struct>
+
   <struct name="Rasterizer face" size="8">
     <field name="Stencil reference" size="8" start="0:0" type="hex"/>
     <!-- line width is 4:4 fixed point with off-by-one applied -->
