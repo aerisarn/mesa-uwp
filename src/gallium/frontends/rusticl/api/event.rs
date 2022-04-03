@@ -149,7 +149,7 @@ pub fn create_and_queue(
 ) -> CLResult<()> {
     let e = Event::new(&q, cmd_type, deps, work);
     cl_event::leak_ref(event, &e);
-    q.queue(&e);
+    q.queue(e);
     if block {
         q.flush(true)?;
     }

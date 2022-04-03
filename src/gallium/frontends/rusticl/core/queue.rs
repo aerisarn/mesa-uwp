@@ -74,8 +74,8 @@ impl Queue {
         }))
     }
 
-    pub fn queue(&self, e: &Arc<Event>) {
-        self.pending.lock().unwrap().push(e.clone());
+    pub fn queue(&self, e: Arc<Event>) {
+        self.pending.lock().unwrap().push(e);
     }
 
     pub fn flush(&self, wait: bool) -> CLResult<()> {

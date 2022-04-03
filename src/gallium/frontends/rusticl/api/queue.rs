@@ -111,7 +111,7 @@ pub fn enqueue_barrier(command_queue: cl_command_queue) -> CLResult<()> {
 
     // TODO barriers make sure previous commands did complete and other commands didn't start
     let e = Event::new(&q, CL_COMMAND_BARRIER, Vec::new(), Box::new(|_, _| Ok(())));
-    q.queue(&e);
+    q.queue(e);
     Ok(())
 }
 

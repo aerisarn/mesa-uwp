@@ -585,15 +585,13 @@ impl Kernel {
             }
         }
 
-        let k = self.clone();
+        let k = Arc::clone(self);
         Ok(Box::new(move |q, ctx| {
             let nir = k.nirs.get(&q.device).unwrap();
             let mut input = input.clone();
             let mut resources = Vec::with_capacity(resource_info.len());
             let mut globals: Vec<*mut u32> = Vec::new();
             let printf_format = nir.printf_format();
-            let printf_buf = printf_buf.clone();
-            let iviews = iviews.clone();
 
             let mut sviews: Vec<_> = sviews.iter().map(|s| ctx.create_sampler_view(s)).collect();
             let samplers: Vec<_> = samplers
