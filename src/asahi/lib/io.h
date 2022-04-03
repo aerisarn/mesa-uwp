@@ -220,13 +220,23 @@ struct agx_allocate_resource_resp {
    /* Handle used to identify the resource in the segment list */
    uint32_t handle;
 
-   /* Size of the allocated resource */
-   uint64_t size;
+   /* Size of the root resource from which we are allocated. If this is not a
+    * suballocation, this is equal to the size.
+    */
+   uint64_t root_size;
 
    /* Globally unique identifier for the resource, shown in Instruments */
    uint32_t guid;
 
-   uint32_t unk11[10];
+   uint32_t unk11[7];
+
+   /* Maximum size of the suballocation. For a suballocation, this equals:
+    *
+    *    sub_size = root_size - (sub_cpu - root_cpu)
+    *
+    * For root allocations, this equals the size.
+    */
+   uint64_t sub_size;
 } __attribute__((packed));
 
 struct agx_notification_queue {
