@@ -633,7 +633,7 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
       drmFreeVersion(version);
 
       if (instance->debug_flags & RADV_DEBUG_STARTUP)
-         radv_logi("Found compatible device '%s'.", path);
+         fprintf(stderr, "radv: info: Found compatible device '%s'.\n", path);
    }
 #endif
 
@@ -1046,7 +1046,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"), radv_perftest_options);
 
    if (instance->debug_flags & RADV_DEBUG_STARTUP)
-      radv_logi("Created an instance");
+      fprintf(stderr, "radv: info: Created an instance.\n");
 
    instance->physical_devices_enumerated = false;
    list_inithead(&instance->physical_devices);
@@ -1113,7 +1113,7 @@ radv_enumerate_physical_devices(struct radv_instance *instance)
    int max_devices = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
 
    if (instance->debug_flags & RADV_DEBUG_STARTUP)
-      radv_logi("Found %d drm nodes", max_devices);
+      fprintf(stderr, "radv: info: Found %d drm nodes.\n", max_devices);
 
    if (max_devices < 1)
       return vk_error(instance, VK_SUCCESS);

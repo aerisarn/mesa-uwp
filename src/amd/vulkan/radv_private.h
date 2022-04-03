@@ -226,11 +226,6 @@ radv_float_to_ufixed(float value, unsigned frac_bits)
 struct radv_image_view;
 struct radv_instance;
 
-void radv_loge(const char *format, ...) radv_printflike(1, 2);
-void radv_loge_v(const char *format, va_list va);
-void radv_logi(const char *format, ...) radv_printflike(1, 2);
-void radv_logi_v(const char *format, va_list va);
-
 /* A non-fatal assert.  Useful for debugging. */
 #ifdef NDEBUG
 #define radv_assert(x)                                                                             \
