@@ -125,18 +125,18 @@ agxdecode_validate_map(void *map)
 
    /* Check the header */
    struct agx_map_header *hdr = map;
-   if (hdr->nr_entries == 0) {
+   if (hdr->resource_group_count == 0) {
       fprintf(stderr, "ERROR - empty map\n");
       return;
    }
 
    /* Check the entries */
    struct agx_map_entry *entries = ((void *) hdr) + sizeof(*hdr);
-   for (unsigned i = 0; i < hdr->nr_entries; ++i) {
+   for (unsigned i = 0; i < hdr->resource_group_count; ++i) {
       struct agx_map_entry entry = entries[i];
       
-      for (unsigned j = 0; j < ARRAY_SIZE(entry.indices); ++j) {
-         unsigned handle = entry.indices[j];
+      for (unsigned j = 0; j < ARRAY_SIZE(entry.resource_id); ++j) {
+         unsigned handle = entry.resource_id[j];
          if (handle) {
             agxdecode_mark_mapped(handle);
             nr_handles++;
@@ -145,9 +145,9 @@ agxdecode_validate_map(void *map)
    }
 
    /* Check the handle count */
-   if (nr_handles != hdr->nr_handles) {
+   if (nr_handles != hdr->total_resources) {
       fprintf(stderr, "ERROR - wrong handle count, got %u, expected %u (%u entries)\n",
-            nr_handles, hdr->nr_handles, hdr->nr_entries);
+            nr_handles, hdr->total_resources, hdr->resource_group_count);
    }
 }
 

@@ -279,15 +279,13 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, u
 {
    return (struct agx_map_header) {
       .cmdbuf_id = cmdbuf_id,
-      .unk2 = 0x1,
-      .unk3 = 0x528, // 1320
+      .segment_count = 1,
+      .length = 0x130,
       .encoder_id = encoder_id,
-      .unk6 = 0x0,
-      .cmdbuf_size = cmdbuf_size,
-
-      /* +1 for the sentinel ending */
-      .nr_entries = count,
-      .nr_handles = count,
+      .kernel_commands_start_offset = 0,
+      .kernel_commands_end_offset = cmdbuf_size,
+      .total_resources = count,
+      .resource_group_count = count,
    };
 }
 
@@ -306,10 +304,11 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
    for (unsigned i = 0; i < count; ++i) {
 	   assert((entries + i) < end);
       entries[i] = (struct agx_map_entry) {
-         .indices = {handles[i]},
-         .unkAAA = 0x20,
-         .unkBBB = 0x1,
-         .unka = 0x1ffff,
+         .resource_id = { handles[i] },
+         .resource_unk = { 0x20 },
+         .resource_flags = { 0x1 },
+         .resource_count = 1,
+         .unka = 0xffff,
       };
    }
 }

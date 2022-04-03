@@ -446,11 +446,11 @@ agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf, unsigned mappings, ui
 #if __APPLE__
    struct agx_submit_cmdbuf_req req = {
       .unk0 = 0x10,
-      .unk1 = 0x1,
-      .cmdbuf = cmdbuf,
-      .mappings = mappings,
-      .user_0 = (void *) ((uintptr_t) 0xABCD), // Passed in the notif queue
-      .user_1 = (void *) ((uintptr_t) 0x1234), // Maybe pick better
+      .count = 1,
+      .command_buffer_shmem_id = cmdbuf,
+      .segment_list_shmem_id = mappings,
+      .notify_1 = 0xABCD,
+      .notify_2 = 0x1234,
       .unk2 = 0x0,
       .unk3 = 0x1,
    };

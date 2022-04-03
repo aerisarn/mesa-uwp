@@ -32,6 +32,19 @@
 #include <IOKit/IODataQueueClient.h>
 #endif
 
+/*
+ * This file contains necessary defines for the macOS (IOKit) interface to the
+ * AGX accelerator, required to build a userspace graphics driver on macOS.
+ *
+ * They are not used under Linux.
+ *
+ * Information is this file was originally determined independently. More
+ * recently, names have been augmented via the oob_timestamp code sample from
+ * Project Zero [1]
+ *
+ * [1] https://bugs.chromium.org/p/project-zero/issues/detail?id=1986
+ */
+
 #define AGX_SERVICE_TYPE 0x100005
 
 enum agx_selector {
@@ -116,9 +129,10 @@ struct agx_create_command_queue_resp {
 } __attribute__((packed));
 
 struct agx_create_shmem_resp {
-	void *map;
-	uint32_t size;
-	uint32_t id;
+   /* IOAccelDeviceShmemData */
+   void *map;
+   uint32_t size;
+   uint32_t id;
 } __attribute__((packed));
 
 struct agx_create_notification_queue_resp {
@@ -132,15 +146,18 @@ struct agx_create_notification_queue_resp {
 } __attribute__((packed));
 
 struct agx_submit_cmdbuf_req {
-	uint32_t unk0;
-	uint32_t unk1;
-	uint32_t cmdbuf;
-	uint32_t mappings;
+   /* IOAccelCommandQueueSubmitArgs_Header */
+   uint32_t unk0;
+   uint32_t count;
+
+   /* IOAccelCommandQueueSubmitArgs_Command */
+   uint32_t command_buffer_shmem_id;
+   uint32_t segment_list_shmem_id;
    uint64_t unk1B; // 0, new in 12.x
-	void *user_0;
-	void *user_1;
-	uint32_t unk2;
-	uint32_t unk3;
+   uint64_t notify_1;
+   uint64_t notify_2;
+   uint32_t unk2;
+   uint32_t unk3;
 } __attribute__((packed));
 
 /* Memory allocation isn't really understood yet. By comparing SHADER/CMDBUF_32
@@ -186,32 +203,28 @@ struct agx_command_queue {
    struct agx_notification_queue notif;
 };
 
-/* Not sure if this is hardware or software defined */
-
 struct agx_map_header {
-	uint64_t cmdbuf_id; // GUID
-	uint32_t unk2; // 01 00 00 00
-	uint32_t unk3; // 28 05 00 80, 12.x: 30 01 00 80
-	uint64_t encoder_id; // GUID
-	uint32_t unk6; // 00 00 00 00
-	uint32_t cmdbuf_size;
+   /* IOAccelSegmentListHeader */
+   uint64_t cmdbuf_id; // GUID
+   uint32_t segment_count;
+   uint32_t length;
+   uint64_t encoder_id; // GUID
+
+   /* IOAccelSegmentResourceListHeader */
+   uint32_t kernel_commands_start_offset;
+   uint32_t kernel_commands_end_offset;
    uint32_t padding[2];
-	uint32_t nr_handles;
-	uint32_t nr_entries;
+   uint32_t total_resources;
+   uint32_t resource_group_count;
 } __attribute__((packed));
 
+/* IOAccelSegmentResourceList_ResourceGroup */
 struct agx_map_entry {
-	uint32_t indices[6];
-	uint32_t unkAAA; // 20 00 00 00
-	uint32_t unk2; // 00 00 00 00 
-	uint32_t unk3; // 00 00 00 00
-	uint32_t unk4; // 00 00 00 00
-	uint32_t unk5; // 00 00 00 00
-	uint32_t unk6; // 00 00 00 00 
-	uint32_t unkBBB; // 01 00 00 00
-	uint32_t unk8; // 00 00 00 00
-	uint32_t unk9; // 00 00 00 00
-	uint32_t unka; // ff ff 01 00 
+   uint32_t resource_id[6];
+   uint32_t resource_unk[6];
+   uint16_t resource_flags[6];
+   uint16_t unka; // ff ff
+   uint16_t resource_count;
 } __attribute__((packed));
 
 uint64_t
