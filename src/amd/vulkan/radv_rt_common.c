@@ -386,17 +386,17 @@ hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags, nir_ssa_def *fl
               nir_ssa_def *geometry_id_and_flags)
 {
    nir_ssa_def *geom_force_opaque = nir_ine(
-      b, nir_iand(b, geometry_id_and_flags, nir_imm_int(b, 1u << 28 /* VK_GEOMETRY_OPAQUE_BIT */)),
+      b, nir_iand(b, geometry_id_and_flags, nir_imm_int(b, VK_GEOMETRY_OPAQUE_BIT_KHR << 28)),
       nir_imm_int(b, 0));
    nir_ssa_def *instance_force_opaque =
       nir_ine(b,
               nir_iand(b, sbt_offset_and_flags,
-                       nir_imm_int(b, 4 << 24 /* VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT */)),
+                       nir_imm_int(b, VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR << 24)),
               nir_imm_int(b, 0));
    nir_ssa_def *instance_force_non_opaque =
       nir_ine(b,
               nir_iand(b, sbt_offset_and_flags,
-                       nir_imm_int(b, 8 << 24 /* VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT */)),
+                       nir_imm_int(b, VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR << 24)),
               nir_imm_int(b, 0));
 
    nir_ssa_def *opaque = geom_force_opaque;
@@ -404,9 +404,9 @@ hit_is_opaque(nir_builder *b, nir_ssa_def *sbt_offset_and_flags, nir_ssa_def *fl
    opaque = nir_bcsel(b, instance_force_non_opaque, nir_imm_bool(b, false), opaque);
 
    nir_ssa_def *ray_force_opaque =
-      nir_ine(b, nir_iand(b, flags, nir_imm_int(b, 1 /* RayFlagsOpaque */)), nir_imm_int(b, 0));
+      nir_ine(b, nir_iand(b, flags, nir_imm_int(b, SpvRayFlagsOpaqueKHRMask)), nir_imm_int(b, 0));
    nir_ssa_def *ray_force_non_opaque =
-      nir_ine(b, nir_iand(b, flags, nir_imm_int(b, 2 /* RayFlagsNoOpaque */)), nir_imm_int(b, 0));
+      nir_ine(b, nir_iand(b, flags, nir_imm_int(b, SpvRayFlagsNoOpaqueKHRMask)), nir_imm_int(b, 0));
 
    opaque = nir_bcsel(b, ray_force_opaque, nir_imm_bool(b, true), opaque);
    opaque = nir_bcsel(b, ray_force_non_opaque, nir_imm_bool(b, false), opaque);

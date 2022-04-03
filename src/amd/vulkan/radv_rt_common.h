@@ -28,6 +28,8 @@
 #include "nir/nir_builder.h"
 #include "nir/nir_vulkan.h"
 
+#include "compiler/spirv/spirv.h"
+
 #include "radv_private.h"
 
 void nir_sort_hit_pair(nir_builder *b, nir_variable *var_distances, nir_variable *var_indices,

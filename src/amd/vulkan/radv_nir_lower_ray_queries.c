@@ -302,7 +302,7 @@ insert_terminate_on_first_hit(nir_builder *b, nir_ssa_def *index, struct ray_que
    nir_ssa_def *terminate_on_first_hit =
       nir_ine(b,
               nir_iand(b, rq_load_var(b, index, vars->flags),
-                       nir_imm_int(b, 4 /* TerminateOnFirstHitKHR */)),
+                       nir_imm_int(b, SpvRayFlagsTerminateOnFirstHitKHRMask)),
               nir_imm_int(b, 0));
    nir_push_if(b, terminate_on_first_hit);
    {
@@ -519,34 +519,32 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
    nir_ssa_def *frontface = nir_flt(b, nir_imm_float(b, 0), div);
    nir_ssa_def *switch_ccw = nir_ine(
       b,
-      nir_iand(
-         b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
-         nir_imm_int(b, 2 << 24 /* VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT */)),
+      nir_iand(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
+               nir_imm_int(b, VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR << 24)),
       nir_imm_int(b, 0));
    frontface = nir_ixor(b, frontface, switch_ccw);
    rq_store_var(b, index, vars->candidate.frontface, frontface, 0x1);
 
    nir_ssa_def *not_cull = nir_ieq(b,
                                    nir_iand(b, rq_load_var(b, index, vars->flags),
-                                            nir_imm_int(b, 256 /* RayFlagsSkipTriangles */)),
+                                            nir_imm_int(b, SpvRayFlagsSkipTrianglesKHRMask)),
                                    nir_imm_int(b, 0));
    nir_ssa_def *not_facing_cull = nir_ieq(
       b,
       nir_iand(b, rq_load_var(b, index, vars->flags),
-               nir_bcsel(b, frontface, nir_imm_int(b, 32 /* RayFlagsCullFrontFacingTriangles */),
-                         nir_imm_int(b, 16 /* RayFlagsCullBackFacingTriangles */))),
+               nir_bcsel(b, frontface, nir_imm_int(b, SpvRayFlagsCullFrontFacingTrianglesKHRMask),
+                         nir_imm_int(b, SpvRayFlagsCullBackFacingTrianglesKHRMask))),
       nir_imm_int(b, 0));
 
    not_cull = nir_iand(
       b, not_cull,
       nir_ior(
          b, not_facing_cull,
-         nir_ine(
-            b,
-            nir_iand(
-               b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
-               nir_imm_int(b, 1 << 24 /* VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT */)),
-            nir_imm_int(b, 0))));
+         nir_ine(b,
+                 nir_iand(b, rq_load_var(b, index, vars->candidate.sbt_offset_and_flags),
+                          nir_imm_int(
+                             b, VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR << 24)),
+                 nir_imm_int(b, 0))));
 
    nir_push_if(b, nir_iand(b,
                            nir_iand(b, nir_flt(b, dist, rq_load_var(b, index, vars->closest.t)),
@@ -567,7 +565,8 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
       not_cull =
          nir_ieq(b,
                  nir_iand(b, rq_load_var(b, index, vars->flags),
-                          nir_bcsel(b, is_opaque, nir_imm_int(b, 0x40), nir_imm_int(b, 0x80))),
+                          nir_bcsel(b, is_opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
+                                    nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
                  nir_imm_int(b, 0));
       nir_push_if(b, not_cull);
       {
@@ -613,13 +612,14 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b, nir_ssa_d
 
    nir_ssa_def *not_skip_aabb = nir_ieq(
       b,
-      nir_iand(b, rq_load_var(b, index, vars->flags), nir_imm_int(b, 512 /* RayFlagsSkipAABB */)),
+      nir_iand(b, rq_load_var(b, index, vars->flags), nir_imm_int(b, SpvRayFlagsSkipAABBsKHRMask)),
       nir_imm_int(b, 0));
    nir_ssa_def *not_cull = nir_iand(
       b, not_skip_aabb,
       nir_ieq(b,
               nir_iand(b, rq_load_var(b, index, vars->flags),
-                       nir_bcsel(b, is_opaque, nir_imm_int(b, 0x40), nir_imm_int(b, 0x80))),
+                       nir_bcsel(b, is_opaque, nir_imm_int(b, SpvRayFlagsCullOpaqueKHRMask),
+                                 nir_imm_int(b, SpvRayFlagsCullNoOpaqueKHRMask))),
               nir_imm_int(b, 0)));
    nir_push_if(b, not_cull);
    {
