@@ -192,9 +192,18 @@ struct agx_allocate_resource_req {
    uint32_t mode;
    uint32_t unk6[6];
    uint64_t cpu_fixed;
-   uint64_t cpu_fixed_2;
+   uint64_t cpu_fixed_parent;
    uint32_t size;
-   uint32_t unk17[3];
+   uint32_t unk17;
+
+   /* Handle of the parent resource when a suballocation is requested.
+    * Based on an assertion failure, this corresponds to:
+    *
+    * -[IOGPUMetalBuffer initWithPrimaryBuffer:heapIndex:bufferIndex:bufferOffset:length:args:argsSize:]
+    */
+   uint32_t parent;
+
+   uint32_t unk19;
    uint32_t flags;
    uint32_t unk21[3];
 } __attribute__((packed));
