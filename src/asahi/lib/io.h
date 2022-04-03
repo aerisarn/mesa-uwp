@@ -207,7 +207,8 @@ struct agx_map_header {
    /* IOAccelSegmentListHeader */
    uint64_t cmdbuf_id; // GUID
    uint32_t segment_count;
-   uint32_t length;
+   uint16_t length;
+   uint16_t unk; // 0x8000
    uint64_t encoder_id; // GUID
 
    /* IOAccelSegmentResourceListHeader */

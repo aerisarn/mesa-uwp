@@ -143,6 +143,7 @@ agxdecode_decode_segment_list(void *segment_list)
          hdr->kernel_commands_start_offset);
    fprintf(agxdecode_dump_stream, "  Kernel commands end offset: %u\n",
          hdr->kernel_commands_end_offset);
+   fprintf(agxdecode_dump_stream, "  Unknown: 0x%X\n", hdr->unk);
 
    if (hdr->padding[0] || hdr->padding[1])
       fprintf(agxdecode_dump_stream, "ERROR - padding tripped\n");
