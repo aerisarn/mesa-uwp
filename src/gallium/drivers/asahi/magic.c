@@ -277,10 +277,17 @@ demo_cmdbuf(uint64_t *buf, size_t size,
 static struct agx_map_header
 demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, unsigned count)
 {
+   /* Structure: header followed by resource groups. For now, we use a single
+    * resource group for every resource. This could be optimized.
+    */
+   unsigned length = sizeof(struct agx_map_header);
+   length += count * sizeof(struct agx_map_entry);
+   assert(length < 0x10000);
+
    return (struct agx_map_header) {
       .cmdbuf_id = cmdbuf_id,
       .segment_count = 1,
-      .length = 0x130,
+      .length = length,
       .encoder_id = encoder_id,
       .kernel_commands_start_offset = 0,
       .kernel_commands_end_offset = cmdbuf_size,
