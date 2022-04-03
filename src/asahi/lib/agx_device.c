@@ -120,18 +120,13 @@ agx_bo_alloc(struct agx_device *dev, size_t size,
    unsigned handle = 0;
 
 #if __APPLE__
-   bool write_combine = false;
    uint32_t mode = 0x430; // shared, ?
 
    uint32_t args_in[24] = { 0 };
-   args_in[1] = write_combine ? 0x400 : 0x0;
-   args_in[2] = 0x2580320; //0x18000; // unk
-   args_in[3] = 0x1; // unk;
    args_in[4] = 0x4000101; //0x1000101; // unk
    args_in[5] = mode;
    args_in[16] = size;
    args_in[20] = flags;
-   args_in[21] = 0x3;
 
    uint64_t out[10] = { 0 };
    size_t out_sz = sizeof(out);
@@ -445,14 +440,11 @@ agx_submit_cmdbuf(struct agx_device *dev, unsigned cmdbuf, unsigned mappings, ui
 {
 #if __APPLE__
    struct agx_submit_cmdbuf_req req = {
-      .unk0 = 0x10,
       .count = 1,
       .command_buffer_shmem_id = cmdbuf,
       .segment_list_shmem_id = mappings,
       .notify_1 = 0xABCD,
       .notify_2 = 0x1234,
-      .unk2 = 0x0,
-      .unk3 = 0x1,
    };
 
    ASSERTED kern_return_t ret = IOConnectCallMethod(dev->fd,
