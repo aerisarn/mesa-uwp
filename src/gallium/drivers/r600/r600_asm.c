@@ -148,6 +148,17 @@ void r600_bytecode_init(struct r600_bytecode *bc,
 	if ((chip_class == R600) &&
 	    (family != CHIP_RV670 && family != CHIP_RS780 && family != CHIP_RS880)) {
 		bc->ar_handling = AR_HANDLE_RV6XX;
+
+		/* Insert a nop after a relative temp write so that a read in
+		 * the following instruction group gets the right value.  The
+		 * r600 and EG ISA specs both say that read-after-rel-write of a
+		 * register in the next instr group is illegal, but apparently
+		 * that's not true on all chips (see commit
+		 * c96b9834032952492efbd2d1f5511fe225704918).
+		 */
+		bc->r6xx_nop_after_rel_dst = 1;
+	} else if (family == CHIP_RV770) {
+		bc->ar_handling = AR_HANDLE_NORMAL;
 		bc->r6xx_nop_after_rel_dst = 1;
 	} else {
 		bc->ar_handling = AR_HANDLE_NORMAL;
