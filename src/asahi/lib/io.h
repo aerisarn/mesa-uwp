@@ -187,6 +187,27 @@ agx_memory_type_name(uint32_t type)
 	}
 }
 
+struct agx_allocate_resource_resp {
+   /* Returned GPU virtual address */
+   uint64_t gpu_va;
+
+   /* Returned CPU virtual address */
+   uint64_t cpu;
+
+   uint32_t unk4[3];
+
+   /* Handle used to identify the resource in the segment list */
+   uint32_t handle;
+
+   /* Size of the allocated resource */
+   uint64_t size;
+
+   /* Globally unique identifier for the resource, shown in Instruments */
+   uint32_t guid;
+
+   uint32_t unk11[10];
+} __attribute__((packed));
+
 struct agx_notification_queue {
 #ifdef __APPLE__
    mach_port_t port;
