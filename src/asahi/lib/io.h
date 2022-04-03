@@ -187,6 +187,18 @@ agx_memory_type_name(uint32_t type)
 	}
 }
 
+struct agx_allocate_resource_req {
+   uint32_t unk0[5];
+   uint32_t mode;
+   uint32_t unk6[6];
+   uint64_t cpu_fixed;
+   uint64_t cpu_fixed_2;
+   uint32_t size;
+   uint32_t unk17[3];
+   uint32_t flags;
+   uint32_t unk21[3];
+} __attribute__((packed));
+
 struct agx_allocate_resource_resp {
    /* Returned GPU virtual address */
    uint64_t gpu_va;
