@@ -136,7 +136,6 @@ agxdecode_decode_segment_list(void *segment_list)
    }
 
    fprintf(agxdecode_dump_stream, "Segment list:\n");
-   fprintf(agxdecode_dump_stream, "  Length: %u\n", hdr->length);
    fprintf(agxdecode_dump_stream, "  Command buffer shmem ID: %" PRIx64 "\n", hdr->cmdbuf_id);
    fprintf(agxdecode_dump_stream, "  Encoder ID: %" PRIx64 "\n", hdr->encoder_id);
    fprintf(agxdecode_dump_stream, "  Kernel commands start offset: %u\n",
@@ -144,6 +143,15 @@ agxdecode_decode_segment_list(void *segment_list)
    fprintf(agxdecode_dump_stream, "  Kernel commands end offset: %u\n",
          hdr->kernel_commands_end_offset);
    fprintf(agxdecode_dump_stream, "  Unknown: 0x%X\n", hdr->unk);
+
+   /* Expected structure: header followed by resource groups */
+   size_t length = sizeof(struct agx_map_header);
+   length += sizeof(struct agx_map_entry) * hdr->resource_group_count;
+
+   if (length != hdr->length) {
+      fprintf(agxdecode_dump_stream, "ERROR: expected length %zu, got %u\n",
+              length, hdr->length);
+   }
 
    if (hdr->padding[0] || hdr->padding[1])
       fprintf(agxdecode_dump_stream, "ERROR - padding tripped\n");
