@@ -293,6 +293,7 @@ demo_map_header(uint64_t cmdbuf_id, uint64_t encoder_id, unsigned cmdbuf_size, u
       .kernel_commands_end_offset = cmdbuf_size,
       .total_resources = count,
       .resource_group_count = count,
+      .unk = 0x8000,
    };
 }
 
@@ -314,8 +315,7 @@ demo_mem_map(void *map, size_t size, unsigned *handles, unsigned count,
          .resource_id = { handles[i] },
          .resource_unk = { 0x20 },
          .resource_flags = { 0x1 },
-         .resource_count = 1,
-         .unka = 0xffff,
+         .resource_count = 1
       };
    }
 }
