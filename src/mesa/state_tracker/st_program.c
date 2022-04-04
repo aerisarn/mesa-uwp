@@ -1929,12 +1929,7 @@ st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog)
                              st->ctx->Const.Program[nir->info.stage].MaxOutputComponents * 4;
    unsigned num_components = 0;
    unsigned needed_components = nir->info.stage == MESA_SHADER_GEOMETRY ? nir->info.gs.vertices_out : 1;
-   u_foreach_bit64(loc, nir->info.outputs_written) {
-      nir_variable *var = NULL;
-      unsigned location = loc; //can't modify bit iterator
-      while (!var)
-         var = nir_find_variable_with_location(nir, nir_var_shader_out, location--);
-      assert(var);
+   nir_foreach_shader_out_variable(var, nir) {
       num_components += glsl_count_dword_slots(var->type, false);
    }
    /* Ensure that there is enough attribute space to emit at least one primitive */
