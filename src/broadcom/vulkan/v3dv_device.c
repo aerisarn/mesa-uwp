@@ -1945,6 +1945,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->pdevice = physical_device;
 
    mtx_init(&device->mutex, mtx_plain);
+   mtx_init(&device->query_mutex, mtx_plain);
+   cnd_init(&device->query_ended);
 
    result = queue_init(device, &device->queue,
                        pCreateInfo->pQueueCreateInfos, 0);
@@ -1998,6 +2000,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
 
 fail:
    destroy_device_syncs(device, physical_device->render_fd);
+   cnd_destroy(&device->query_ended);
+   mtx_destroy(&device->query_mutex);
    mtx_destroy(&device->mutex);
    vk_device_finish(&device->vk);
    vk_free(&device->vk.alloc, device);
@@ -2027,6 +2031,9 @@ v3dv_DestroyDevice(VkDevice _device,
     * freeing their private bos
     */
    v3dv_bo_cache_destroy(device);
+
+   cnd_destroy(&device->query_ended);
+   mtx_destroy(&device->query_mutex);
 
    vk_device_finish(&device->vk);
    vk_free2(&device->vk.alloc, pAllocator, device);

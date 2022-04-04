@@ -180,12 +180,17 @@ handle_reset_query_cpu_job(struct v3dv_job *job)
 static VkResult
 handle_end_query_cpu_job(struct v3dv_job *job)
 {
+   mtx_lock(&job->device->query_mutex);
+
    struct v3dv_end_query_cpu_job_info *info = &job->cpu.query_end;
    for (uint32_t i = 0; i < info->count; i++) {
       assert(info->query + i < info->pool->query_count);
       struct v3dv_query *query = &info->pool->queries[info->query + i];
       query->maybe_available = true;
    }
+
+   cnd_broadcast(&job->device->query_ended);
+   mtx_unlock(&job->device->query_mutex);
 
    return VK_SUCCESS;
 }
@@ -546,6 +551,8 @@ handle_timestamp_query_cpu_job(struct v3dv_job *job)
    /* Wait for completion of all work queued before the timestamp query */
    v3dv_QueueWaitIdle(v3dv_queue_to_handle(&job->device->queue));
 
+   mtx_lock(&job->device->query_mutex);
+
    /* Compute timestamp */
    struct timespec t;
    clock_gettime(CLOCK_MONOTONIC, &t);
@@ -557,6 +564,9 @@ handle_timestamp_query_cpu_job(struct v3dv_job *job)
       if (i == 0)
          query->value = t.tv_sec * 1000000000ull + t.tv_nsec;
    }
+
+   cnd_broadcast(&job->device->query_ended);
+   mtx_unlock(&job->device->query_mutex);
 
    return VK_SUCCESS;
 }

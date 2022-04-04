@@ -479,6 +479,12 @@ struct v3dv_device {
    /* A mutex to prevent concurrent access to last_job_sync from the queue */
    mtx_t mutex;
 
+   /* Guards query->maybe_available and value for timestamps */
+   mtx_t query_mutex;
+
+   /* Signaled whenever a query is ended */
+   cnd_t query_ended;
+
    /* Resources used for meta operations */
    struct {
       mtx_t mtx;
