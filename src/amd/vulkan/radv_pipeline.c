@@ -6412,16 +6412,25 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
    }
 }
 
+void
+radv_pipeline_init(struct radv_device *device, struct radv_pipeline *pipeline,
+                    enum radv_pipeline_type type)
+{
+   vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
+
+   pipeline->device = device;
+   pipeline->type = type;
+}
+
 static VkResult
-radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
-                   struct radv_pipeline_cache *cache,
-                   const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                   const struct radv_graphics_pipeline_create_info *extra)
+radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
+                            struct radv_pipeline_cache *cache,
+                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                            const struct radv_graphics_pipeline_create_info *extra)
 {
    RADV_FROM_HANDLE(radv_pipeline_layout, pipeline_layout, pCreateInfo->layout);
    VkResult result;
 
-   pipeline->device = device;
    pipeline->graphics.last_vgt_api_stage = MESA_SHADER_NONE;
 
    /* Mark all states declared dynamic at pipeline creation. */
@@ -6560,10 +6569,9 @@ radv_graphics_pipeline_create_nonlegacy(VkDevice _device, VkPipelineCache _cache
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
-   pipeline->type = RADV_PIPELINE_GRAPHICS;
+   radv_pipeline_init(device, pipeline, RADV_PIPELINE_GRAPHICS);
 
-   result = radv_pipeline_init(pipeline, device, cache, pCreateInfo, extra);
+   result = radv_graphics_pipeline_init(pipeline, device, cache, pCreateInfo, extra);
    if (result != VK_SUCCESS) {
       radv_pipeline_destroy(device, pipeline, pAllocator);
       return result;
@@ -6772,10 +6780,8 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
-   pipeline->type = RADV_PIPELINE_COMPUTE;
+   radv_pipeline_init(device, pipeline, RADV_PIPELINE_COMPUTE);
 
-   pipeline->device = device;
    pipeline->graphics.last_vgt_api_stage = MESA_SHADER_NONE;
    pipeline->compute.rt_stack_sizes = rt_stack_sizes;
    pipeline->compute.group_count = rt_group_count;

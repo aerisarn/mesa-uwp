@@ -100,8 +100,7 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &pipeline->base, VK_OBJECT_TYPE_PIPELINE);
-   pipeline->type = RADV_PIPELINE_LIBRARY;
+   radv_pipeline_init(device, pipeline, RADV_PIPELINE_LIBRARY);
 
    VkRayTracingPipelineCreateInfoKHR local_create_info =
       radv_create_merged_rt_create_info(pCreateInfo);
