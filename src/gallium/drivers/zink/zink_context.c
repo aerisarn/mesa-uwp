@@ -2096,13 +2096,16 @@ setup_framebuffer(struct zink_context *ctx)
 static VkImageView
 prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned i)
 {
-   if (!surf || (i < ctx->fb_state.nr_cbufs && zink_use_dummy_attachments(ctx)))
-      return zink_csurface(ctx->dummy_surface[util_logbase2_ceil(ctx->fb_state.samples)])->image_view;
+   struct zink_resource *res;
+   if (!surf || (i < ctx->fb_state.nr_cbufs && zink_use_dummy_attachments(ctx))) {
+      surf = zink_csurface(ctx->dummy_surface[util_logbase2_ceil(ctx->fb_state.samples)]);
+      res = zink_resource(surf->base.texture);
+   } else {
+      res = zink_resource(surf->base.texture);
+      zink_batch_resource_usage_set(&ctx->batch, res, true);
+      zink_batch_usage_set(&surf->batch_uses, ctx->batch.state);
+   }
 
-   zink_batch_resource_usage_set(&ctx->batch, zink_resource(surf->base.texture), true);
-   zink_batch_usage_set(&surf->batch_uses, ctx->batch.state);
-
-   struct zink_resource *res = zink_resource(surf->base.texture);
    VkAccessFlags access;
    VkPipelineStageFlags pipeline;
    VkImageLayout layout = zink_render_pass_attachment_get_barrier_info(ctx->gfx_pipeline_state.render_pass,
