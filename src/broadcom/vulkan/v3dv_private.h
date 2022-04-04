@@ -44,6 +44,7 @@
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
 #include "vk_sync.h"
+#include "vk_sync_timeline.h"
 #include "vk_util.h"
 
 #include "vk_command_buffer.h"
@@ -142,7 +143,8 @@ struct v3dv_physical_device {
    uint8_t driver_uuid[VK_UUID_SIZE];
 
    struct vk_sync_type drm_syncobj_type;
-   const struct vk_sync_type *sync_types[2];
+   struct vk_sync_timeline_type sync_timeline_type;
+   const struct vk_sync_type *sync_types[3];
 
    struct disk_cache *disk_cache;
 
