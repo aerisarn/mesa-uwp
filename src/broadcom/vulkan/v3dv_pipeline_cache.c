@@ -67,14 +67,14 @@ static void
 pipeline_cache_lock(struct v3dv_pipeline_cache *cache)
 {
    if (!cache->externally_synchronized)
-      pthread_mutex_lock(&cache->mutex);
+      mtx_lock(&cache->mutex);
 }
 
 static void
 pipeline_cache_unlock(struct v3dv_pipeline_cache *cache)
 {
    if (!cache->externally_synchronized)
-      pthread_mutex_unlock(&cache->mutex);
+      mtx_unlock(&cache->mutex);
 }
 
 void
@@ -203,7 +203,7 @@ v3dv_pipeline_cache_init(struct v3dv_pipeline_cache *cache,
                          bool cache_enabled)
 {
    cache->device = device;
-   pthread_mutex_init(&cache->mutex, NULL);
+   mtx_init(&cache->mutex, mtx_plain);
 
    if (cache_enabled) {
       cache->nir_cache = _mesa_hash_table_create(NULL, sha1_hash_func,
@@ -714,7 +714,7 @@ v3dv_CreatePipelineCache(VkDevice _device,
 void
 v3dv_pipeline_cache_finish(struct v3dv_pipeline_cache *cache)
 {
-   pthread_mutex_destroy(&cache->mutex);
+   mtx_destroy(&cache->mutex);
 
    if (dump_stats_on_destroy)
       cache_dump_stats(cache);

@@ -852,7 +852,7 @@ physical_device_init(struct v3dv_physical_device *device,
 
    get_device_extensions(device, &device->vk.supported_extensions);
 
-   pthread_mutex_init(&device->mutex, NULL);
+   mtx_init(&device->mutex, mtx_plain);
 
    return VK_SUCCESS;
 
@@ -1857,8 +1857,8 @@ queue_init(struct v3dv_device *device, struct v3dv_queue *queue,
    queue->device = device;
    queue->noop_job = NULL;
    list_inithead(&queue->submit_wait_list);
-   pthread_mutex_init(&queue->mutex, NULL);
-   pthread_mutex_init(&queue->noop_mutex, NULL);
+   mtx_init(&queue->mutex, mtx_plain);
+   mtx_init(&queue->noop_mutex, mtx_plain);
    return VK_SUCCESS;
 }
 
@@ -1869,8 +1869,8 @@ queue_finish(struct v3dv_queue *queue)
    assert(list_is_empty(&queue->submit_wait_list));
    if (queue->noop_job)
       v3dv_job_destroy(queue->noop_job);
-   pthread_mutex_destroy(&queue->mutex);
-   pthread_mutex_destroy(&queue->noop_mutex);
+   mtx_destroy(&queue->mutex);
+   mtx_destroy(&queue->noop_mutex);
 }
 
 static void
@@ -1944,7 +1944,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->instance = instance;
    device->pdevice = physical_device;
 
-   pthread_mutex_init(&device->mutex, NULL);
+   mtx_init(&device->mutex, mtx_plain);
 
    result = queue_init(device, &device->queue,
                        pCreateInfo->pQueueCreateInfos, 0);
@@ -2012,7 +2012,7 @@ v3dv_DestroyDevice(VkDevice _device,
 
    v3dv_DeviceWaitIdle(_device);
    queue_finish(&device->queue);
-   pthread_mutex_destroy(&device->mutex);
+   mtx_destroy(&device->mutex);
    destroy_device_syncs(device, device->pdevice->render_fd);
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);
