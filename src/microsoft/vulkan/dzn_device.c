@@ -1065,8 +1065,100 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .inheritedQueries = false,
    };
 
+   VkPhysicalDeviceVulkan11Features core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
+      .storageBuffer16BitAccess           = false,
+      .uniformAndStorageBuffer16BitAccess = false,
+      .storagePushConstant16              = false,
+      .storageInputOutput16               = false,
+      .multiview                          = false,
+      .multiviewGeometryShader            = false,
+      .multiviewTessellationShader        = false,
+      .variablePointersStorageBuffer      = true,
+      .variablePointers                   = true,
+      .protectedMemory                    = false,
+      .samplerYcbcrConversion             = false,
+      .shaderDrawParameters               = false,
+   };
+
+   const VkPhysicalDeviceVulkan12Features core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+      .samplerMirrorClampToEdge           = false,
+      .drawIndirectCount                  = false,
+      .storageBuffer8BitAccess            = false,
+      .uniformAndStorageBuffer8BitAccess  = false,
+      .storagePushConstant8               = false,
+      .shaderBufferInt64Atomics           = false,
+      .shaderSharedInt64Atomics           = false,
+      .shaderFloat16                      = false,
+      .shaderInt8                         = false,
+
+      .descriptorIndexing                                   = false,
+      .shaderInputAttachmentArrayDynamicIndexing            = false,
+      .shaderUniformTexelBufferArrayDynamicIndexing         = false,
+      .shaderStorageTexelBufferArrayDynamicIndexing         = false,
+      .shaderUniformBufferArrayNonUniformIndexing           = false,
+      .shaderSampledImageArrayNonUniformIndexing            = false,
+      .shaderStorageBufferArrayNonUniformIndexing           = false,
+      .shaderStorageImageArrayNonUniformIndexing            = false,
+      .shaderInputAttachmentArrayNonUniformIndexing         = false,
+      .shaderUniformTexelBufferArrayNonUniformIndexing      = false,
+      .shaderStorageTexelBufferArrayNonUniformIndexing      = false,
+      .descriptorBindingUniformBufferUpdateAfterBind        = false,
+      .descriptorBindingSampledImageUpdateAfterBind         = false,
+      .descriptorBindingStorageImageUpdateAfterBind         = false,
+      .descriptorBindingStorageBufferUpdateAfterBind        = false,
+      .descriptorBindingUniformTexelBufferUpdateAfterBind   = false,
+      .descriptorBindingStorageTexelBufferUpdateAfterBind   = false,
+      .descriptorBindingUpdateUnusedWhilePending            = false,
+      .descriptorBindingPartiallyBound                      = false,
+      .descriptorBindingVariableDescriptorCount             = false,
+      .runtimeDescriptorArray                               = false,
+
+      .samplerFilterMinmax                = false,
+      .scalarBlockLayout                  = false,
+      .imagelessFramebuffer               = false,
+      .uniformBufferStandardLayout        = false,
+      .shaderSubgroupExtendedTypes        = false,
+      .separateDepthStencilLayouts        = false,
+      .hostQueryReset                     = false,
+      .timelineSemaphore                  = false,
+      .bufferDeviceAddress                = false,
+      .bufferDeviceAddressCaptureReplay   = false,
+      .bufferDeviceAddressMultiDevice     = false,
+      .vulkanMemoryModel                  = false,
+      .vulkanMemoryModelDeviceScope       = false,
+      .vulkanMemoryModelAvailabilityVisibilityChains = false,
+      .shaderOutputViewportIndex          = false,
+      .shaderOutputLayer                  = false,
+      .subgroupBroadcastDynamicId         = false,
+   };
+
+   const VkPhysicalDeviceVulkan13Features core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+      .robustImageAccess                  = false,
+      .inlineUniformBlock                 = false,
+      .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
+      .pipelineCreationCacheControl       = false,
+      .privateData                        = true,
+      .shaderDemoteToHelperInvocation     = false,
+      .shaderTerminateInvocation          = false,
+      .subgroupSizeControl                = false,
+      .computeFullSubgroups               = false,
+      .synchronization2                   = true,
+      .textureCompressionASTC_HDR         = false,
+      .shaderZeroInitializeWorkgroupMemory = false,
+      .dynamicRendering                   = false,
+      .shaderIntegerDotProduct            = false,
+      .maintenance4                       = false,
+   };
 
    vk_foreach_struct(ext, pFeatures->pNext) {
+      if (vk_get_physical_device_core_1_1_feature_ext(ext, &core_1_1) ||
+          vk_get_physical_device_core_1_2_feature_ext(ext, &core_1_2) ||
+          vk_get_physical_device_core_1_3_feature_ext(ext, &core_1_3))
+         continue;
+
       dzn_debug_ignored_stype(ext->sType);
    }
 }
@@ -1318,25 +1410,55 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
    snprintf(pProperties->properties.deviceName,
             sizeof(pProperties->properties.deviceName),
             "Microsoft Direct3D12 (%S)", desc->Description);
-
    memcpy(pProperties->properties.pipelineCacheUUID,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
 
+   VkPhysicalDeviceVulkan11Properties core_1_1 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES,
+      .deviceLUIDValid                       = true,
+      .pointClippingBehavior                 = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES,
+      .maxMultiviewViewCount                 = 0,
+      .maxMultiviewInstanceIndex             = 0,
+      .protectedNoFault                      = false,
+      /* Maximum number of descriptors in a GPU-visible sampler heap is 2048,
+       * and 1000000 in a CBV/SRV/UAV heap, so let's pick the smallest
+       * limitation factor here. All descriptor sets are merged in a single
+       * heap when descriptor sets are bound to the command buffer, hence the
+       * division by MAX_SETS.
+       */
+      .maxPerSetDescriptors                  = 2048 / MAX_SETS,
+      /* According to the spec, the maximum D3D12 resource size is
+       * min(max(128MB, 0.25f * (amount of dedicated VRAM)), 2GB),
+       * but the limit actually depends on the max(system_ram, VRAM) not
+       * just the VRAM.
+       */
+      .maxMemoryAllocationSize               =
+         CLAMP(MAX2(pdevice->adapter_desc.DedicatedVideoMemory,
+                    pdevice->adapter_desc.DedicatedSystemMemory +
+                    pdevice->adapter_desc.SharedSystemMemory) / 4,
+               128ull * 1024 * 1024, 2ull * 1024 * 1024 * 1024),
+   };
+   memcpy(core_1_1.driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
+   memcpy(core_1_1.deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+   memcpy(core_1_1.deviceLUID, &pdevice->adapter_desc.AdapterLuid, VK_LUID_SIZE);
+
+   STATIC_ASSERT(sizeof(pdevice->adapter_desc.AdapterLuid) == sizeof(core_1_1.deviceLUID));
+
+   const VkPhysicalDeviceVulkan12Properties core_1_2 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES,
+   };
+
+   const VkPhysicalDeviceVulkan13Properties core_1_3 = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES,
+   };
+
    vk_foreach_struct(ext, pProperties->pNext) {
-      switch (ext->sType) {
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-         VkPhysicalDeviceIDProperties *id_props =
-            (VkPhysicalDeviceIDProperties *)ext;
-         memcpy(id_props->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
-         memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
-         /* The LUID is for Windows. */
-         id_props->deviceLUIDValid = false;
-         break;
-      }
-      default:
-         dzn_debug_ignored_stype(ext->sType);
-         break;
-      }
+      if (vk_get_physical_device_core_1_1_property_ext(ext, &core_1_1) ||
+          vk_get_physical_device_core_1_2_property_ext(ext, &core_1_2) ||
+          vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
+         continue;
+
+      dzn_debug_ignored_stype(ext->sType);
    }
 }
 
