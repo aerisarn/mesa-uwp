@@ -1054,11 +1054,6 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    device->instance = instance;
    device->pdevice = pdevice;
 
-   if (pAllocator)
-      device->vk.alloc = *pAllocator;
-   else
-      device->vk.alloc = pdevice->vk.instance->alloc;
-
    device->ws = pvr_winsys_create(device->master_fd,
                                   device->render_fd,
                                   &device->vk.alloc);
