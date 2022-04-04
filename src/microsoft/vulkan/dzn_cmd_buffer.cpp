@@ -2980,26 +2980,67 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
    bool requires_temp_res = src->vk.format != dst->vk.format &&
                             src->vk.tiling != VK_IMAGE_TILING_LINEAR &&
                             dst->vk.tiling != VK_IMAGE_TILING_LINEAR;
-
-   /* FIXME: multisample copies only work if we copy the entire subresource
-    * and if the the copy doesn't require a temporary linear resource. When
-    * these conditions are not met we should use a blit shader.
-    */
+   bool use_blit = false;
    if (src->vk.samples > 1) {
-      assert(requires_temp_res == false);
+      use_blit = requires_temp_res;
 
-      for (uint32_t i = 0; i < info->regionCount; i++) {
+      for (int i = 0; i < info->regionCount; i++) {
          const VkImageCopy2 &region = info->pRegions[i];
-         uint32_t src_w = u_minify(src->vk.extent.width, region.srcSubresource.mipLevel);
-         uint32_t src_h = u_minify(src->vk.extent.width, region.srcSubresource.mipLevel);
-
-         assert(region.srcOffset.x == 0 && region.srcOffset.y == 0);
-         assert(region.extent.width == u_minify(src->vk.extent.width, region.srcSubresource.mipLevel));
-         assert(region.extent.height == u_minify(src->vk.extent.height, region.srcSubresource.mipLevel));
-         assert(region.dstOffset.x == 0 && region.dstOffset.y == 0);
-         assert(region.extent.width == u_minify(dst->vk.extent.width, region.dstSubresource.mipLevel));
-         assert(region.extent.height == u_minify(dst->vk.extent.height, region.dstSubresource.mipLevel));
+         if (region.srcOffset.x != 0 || region.srcOffset.y != 0 ||
+             region.extent.width != u_minify(src->vk.extent.width, region.srcSubresource.mipLevel) ||
+             region.extent.height != u_minify(src->vk.extent.height, region.srcSubresource.mipLevel) ||
+             region.dstOffset.x != 0 || region.dstOffset.y != 0 ||
+             region.extent.width != u_minify(dst->vk.extent.width, region.dstSubresource.mipLevel) ||
+             region.extent.height != u_minify(dst->vk.extent.height, region.dstSubresource.mipLevel))
+            use_blit = true;
       }
+   }
+
+   if (use_blit) {
+      /* This copy -> blit lowering doesn't work if the vkCmdCopyImage[2]() is
+       * is issued on a transfer queue, but we don't have any better option
+       * right now...
+       */
+      STACK_ARRAY(VkImageBlit2, blit_regions, info->regionCount);
+
+      VkBlitImageInfo2 blit_info = {
+         .sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+         .srcImage = info->srcImage,
+         .srcImageLayout = info->srcImageLayout,
+         .dstImage = info->dstImage,
+         .dstImageLayout = info->dstImageLayout,
+         .regionCount = info->regionCount,
+         .pRegions = blit_regions,
+         .filter = VK_FILTER_NEAREST,
+      };
+
+      for (uint32_t r = 0; r < info->regionCount; r++) {
+         blit_regions[r] = VkImageBlit2 {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+            .srcSubresource = info->pRegions[r].srcSubresource,
+            .srcOffsets = {
+                info->pRegions[r].srcOffset,
+                info->pRegions[r].srcOffset,
+            },
+            .dstSubresource = info->pRegions[r].dstSubresource,
+            .dstOffsets = {
+                info->pRegions[r].dstOffset,
+                info->pRegions[r].dstOffset,
+            },
+         };
+
+         blit_regions[r].srcOffsets[1].x += info->pRegions[r].extent.width;
+         blit_regions[r].srcOffsets[1].y += info->pRegions[r].extent.height;
+         blit_regions[r].srcOffsets[1].z += info->pRegions[r].extent.depth;
+         blit_regions[r].dstOffsets[1].x += info->pRegions[r].extent.width;
+         blit_regions[r].dstOffsets[1].y += info->pRegions[r].extent.height;
+         blit_regions[r].dstOffsets[1].z += info->pRegions[r].extent.depth;
+      }
+
+      dzn_CmdBlitImage2(commandBuffer, &blit_info);
+
+      STACK_ARRAY_FINISH(blit_regions);
+      return;
    }
 
    D3D12_TEXTURE_COPY_LOCATION tmp_loc = {};
