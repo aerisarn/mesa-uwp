@@ -155,13 +155,16 @@ static inline bool pvr_has_output_register_writes(
    return false;
 }
 
-static VkResult pvr_pds_texture_state_program_create_and_upload(
+VkResult pvr_pds_unitex_state_program_create_and_upload(
    struct pvr_device *device,
    const VkAllocationCallbacks *allocator,
+   uint32_t texture_kicks,
+   uint32_t uniform_kicks,
    struct pvr_pds_upload *const pds_upload_out)
 {
    struct pvr_pds_pixel_shader_sa_program program = {
-      .num_texture_dma_kicks = 1,
+      .num_texture_dma_kicks = texture_kicks,
+      .num_uniform_dma_kicks = uniform_kicks,
    };
    uint32_t staging_buffer_size;
    uint32_t *staging_buffer;
@@ -174,7 +177,7 @@ static VkResult pvr_pds_texture_state_program_create_and_upload(
    staging_buffer = vk_alloc2(&device->vk.alloc,
                               allocator,
                               staging_buffer_size,
-                              8,
+                              8U,
                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!staging_buffer)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -184,12 +187,12 @@ static VkResult pvr_pds_texture_state_program_create_and_upload(
    /* FIXME: Figure out the define for alignment of 16. */
    result = pvr_gpu_upload_pds(device,
                                NULL,
-                               0,
-                               0,
-                               &staging_buffer[program.data_size],
+                               0U,
+                               0U,
+                               staging_buffer,
                                program.code_size,
-                               16,
-                               16,
+                               16U,
+                               16U,
                                pds_upload_out);
    if (result != VK_SUCCESS) {
       vk_free2(&device->vk.alloc, allocator, staging_buffer);
@@ -248,9 +251,11 @@ pvr_load_op_create(struct pvr_device *device,
    if (result != VK_SUCCESS)
       goto err_free_usc_frag_prog_bo;
 
-   result = pvr_pds_texture_state_program_create_and_upload(
+   result = pvr_pds_unitex_state_program_create_and_upload(
       device,
       allocator,
+      1U,
+      0U,
       &load_op->pds_tex_state_prog);
    if (result != VK_SUCCESS)
       goto err_free_pds_frag_prog;

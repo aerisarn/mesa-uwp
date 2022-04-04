@@ -230,6 +230,7 @@ struct pvr_queue {
 
    struct pvr_render_ctx *gfx_ctx;
    struct pvr_compute_ctx *compute_ctx;
+   struct pvr_transfer_ctx *transfer_ctx;
 
    struct pvr_winsys_syncobj *completion[PVR_JOB_TYPE_MAX];
 };
@@ -1333,6 +1334,13 @@ VkResult pvr_pds_fragment_program_create_and_upload(
    uint32_t fragment_temp_count,
    enum rogue_msaa_mode msaa_mode,
    bool has_phase_rate_change,
+   struct pvr_pds_upload *const pds_upload_out);
+
+VkResult pvr_pds_unitex_state_program_create_and_upload(
+   struct pvr_device *device,
+   const VkAllocationCallbacks *allocator,
+   uint32_t texture_kicks,
+   uint32_t uniform_kicks,
    struct pvr_pds_upload *const pds_upload_out);
 
 #define PVR_FROM_HANDLE(__pvr_type, __name, __handle) \
