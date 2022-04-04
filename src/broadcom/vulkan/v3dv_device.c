@@ -1143,6 +1143,8 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
        * buffer.
        */
       .descriptorBindingInlineUniformBlockUpdateAfterBind = false,
+      .pipelineCreationCacheControl = true,
+      .privateData = true,
    };
 
    VkPhysicalDeviceVulkan12Features vk12 = {
@@ -1160,6 +1162,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .scalarBlockLayout = false,
       .storageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
+      .imagelessFramebuffer = true,
    };
 
    VkPhysicalDeviceVulkan11Features vk11 = {
@@ -1179,6 +1182,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    };
 
    vk_foreach_struct(ext, pFeatures->pNext) {
+      if (vk_get_physical_device_core_1_1_feature_ext(ext, &vk11))
+         continue;
+      if (vk_get_physical_device_core_1_2_feature_ext(ext, &vk12))
+         continue;
+      if (vk_get_physical_device_core_1_3_feature_ext(ext, &vk13))
+         continue;
+
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
          VkPhysicalDevice4444FormatsFeaturesEXT *features =
@@ -1193,20 +1203,6 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
          features->customBorderColors = true;
          features->customBorderColorWithoutFormat = false;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES_KHR: {
-         VkPhysicalDeviceImagelessFramebufferFeatures *features =
-            (VkPhysicalDeviceImagelessFramebufferFeatures *)ext;
-         features->imagelessFramebuffer = true;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
-         VkPhysicalDevicePrivateDataFeaturesEXT *features =
-            (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
-         features->privateData = true;
          break;
       }
 
@@ -1229,26 +1225,11 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
-         VkPhysicalDeviceInlineUniformBlockFeaturesEXT *features =
-            (VkPhysicalDeviceInlineUniformBlockFeaturesEXT *)ext;
-         features->inlineUniformBlock = vk13.inlineUniformBlock;
-         features->descriptorBindingInlineUniformBlockUpdateAfterBind =
-            vk13.descriptorBindingInlineUniformBlockUpdateAfterBind;
-         break;
-      }
-
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
           VkPhysicalDeviceColorWriteEnableFeaturesEXT *features = (void *) ext;
           features->colorWriteEnable = true;
           break;
       }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
-         VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *features = (void *) ext;
-         features->pipelineCreationCacheControl = true;
-         break;
-      }         
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
          VkPhysicalDeviceProvokingVertexFeaturesEXT *features = (void *) ext;
@@ -1263,82 +1244,6 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
             (void *) ext;
          features->vertexAttributeInstanceRateDivisor = true;
          features->vertexAttributeInstanceRateZeroDivisor = false;
-         break;
-      }
-
-      /* Vulkan 1.2 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
-         VkPhysicalDevice8BitStorageFeatures *features = (void *) ext;
-         features->storageBuffer8BitAccess = vk12.storageBuffer8BitAccess;
-         features->uniformAndStorageBuffer8BitAccess =
-            vk12.uniformAndStorageBuffer8BitAccess;
-         features->storagePushConstant8 = vk12.storagePushConstant8;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
-         VkPhysicalDeviceHostQueryResetFeatures *features = (void *) ext;
-         features->hostQueryReset = vk12.hostQueryReset;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
-         VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
-            (void *) ext;
-         features->scalarBlockLayout = vk12.scalarBlockLayout;
-         break;
-      }
-
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
-         VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
-            (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
-         features->uniformBufferStandardLayout = vk12.uniformBufferStandardLayout;
-         break;
-      }
-
-      /* Vulkan 1.1 */
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
-         VkPhysicalDeviceVulkan11Features *features =
-            (VkPhysicalDeviceVulkan11Features *)ext;
-         memcpy(features, &vk11, sizeof(VkPhysicalDeviceVulkan11Features));
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
-         VkPhysicalDevice16BitStorageFeatures *features = (void *) ext;
-         features->storageBuffer16BitAccess = vk11.storageBuffer16BitAccess;
-         features->uniformAndStorageBuffer16BitAccess =
-            vk11.uniformAndStorageBuffer16BitAccess;
-         features->storagePushConstant16 = vk11.storagePushConstant16;
-         features->storageInputOutput16 = vk11.storageInputOutput16;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
-         VkPhysicalDeviceMultiviewFeatures *features = (void *) ext;
-         features->multiview = vk11.multiview;
-         features->multiviewGeometryShader = vk11.multiviewGeometryShader;
-         features->multiviewTessellationShader = vk11.multiviewTessellationShader;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
-         VkPhysicalDeviceProtectedMemoryFeatures *features = (void *) ext;
-         features->protectedMemory = vk11.protectedMemory;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
-         VkPhysicalDeviceSamplerYcbcrConversionFeatures *features = (void *) ext;
-         features->samplerYcbcrConversion = vk11.samplerYcbcrConversion;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
-         VkPhysicalDeviceShaderDrawParametersFeatures *features = (void *) ext;
-         features->shaderDrawParameters = vk11.shaderDrawParameters;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
-         VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
-         features->variablePointersStorageBuffer =
-            vk11.variablePointersStorageBuffer;
-         features->variablePointers = vk11.variablePointers;
          break;
       }
 
