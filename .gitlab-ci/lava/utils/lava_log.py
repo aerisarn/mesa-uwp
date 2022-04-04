@@ -31,8 +31,11 @@ import logging
 import re
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
+from enum import Enum, auto
 from typing import Optional, Pattern, Union
+
+from lava.exceptions import MesaCITimeoutError
 
 # Helper constants to colorize the job output
 CONSOLE_LOG = {
@@ -45,38 +48,98 @@ CONSOLE_LOG = {
 }
 
 
+class LogSectionType(Enum):
+    LAVA_BOOT = auto()
+    TEST_SUITE = auto()
+    TEST_CASE = auto()
+    LAVA_POST_PROCESSING = auto()
+
+
+FALLBACK_GITLAB_SECTION_TIMEOUT = timedelta(minutes=10)
+DEFAULT_GITLAB_SECTION_TIMEOUTS = {
+    # Empirically, the devices boot time takes 3 minutes on average.
+    LogSectionType.LAVA_BOOT: timedelta(minutes=5),
+    # Test suite phase is where the initialization happens.
+    LogSectionType.TEST_SUITE: timedelta(minutes=5),
+    # Test cases may take a long time, this script has no right to interrupt
+    # them. But if the test case takes almost 1h, it will never succeed due to
+    # Gitlab job timeout.
+    LogSectionType.TEST_CASE: timedelta(minutes=60),
+    # LAVA post processing may refer to a test suite teardown, or the
+    # adjustments to start the next test_case
+    LogSectionType.LAVA_POST_PROCESSING: timedelta(minutes=5),
+}
 @dataclass
 class GitlabSection:
     id: str
     header: str
+    type: LogSectionType
     start_collapsed: bool = False
     escape: str = "\x1b[0K"
     colour: str = f"{CONSOLE_LOG['BOLD']}{CONSOLE_LOG['COLOR_GREEN']}"
+    __start_time: Optional[datetime] = field(default=None, init=False)
+    __end_time: Optional[datetime] = field(default=None, init=False)
 
-    def get_timestamp(self) -> str:
-        unix_ts = datetime.timestamp(datetime.now())
+    @classmethod
+    def section_id_filter(cls, value) -> str:
+        return str(re.sub(r"[^\w_-]+", "-", value))
+
+    def __post_init__(self):
+        self.id = self.section_id_filter(self.id)
+
+    @property
+    def has_started(self) -> bool:
+        return self.__start_time is not None
+
+    @property
+    def has_finished(self) -> bool:
+        return self.__end_time is not None
+
+    def get_timestamp(self, time: datetime) -> str:
+        unix_ts = datetime.timestamp(time)
         return str(int(unix_ts))
 
-    def section(self, marker: str, header: str) -> str:
+    def section(self, marker: str, header: str, time: datetime) -> str:
         preamble = f"{self.escape}section_{marker}"
         collapse = marker == "start" and self.start_collapsed
         collapsed = "[collapsed=true]" if collapse else ""
         section_id = f"{self.id}{collapsed}"
 
-        timestamp = self.get_timestamp()
+        timestamp = self.get_timestamp(time)
         before_header = ":".join([preamble, timestamp, section_id])
-        colored_header = (
-            f"{self.colour}{header}{CONSOLE_LOG['RESET']}" if header else ""
-        )
+        colored_header = f"{self.colour}{header}\x1b[0m" if header else ""
         header_wrapper = "\r" + f"{self.escape}{colored_header}"
 
         return f"{before_header}{header_wrapper}"
 
+    def __enter__(self):
+        print(self.start())
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print(self.end())
+
     def start(self) -> str:
-        return self.section(marker="start", header=self.header)
+        assert not self.has_finished, "Starting an already finished section"
+        self.__start_time = datetime.now()
+        return self.section(marker="start", header=self.header, time=self.__start_time)
 
     def end(self) -> str:
-        return self.section(marker="end", header="")
+        assert self.has_started, "Ending an uninitalized section"
+        self.__end_time = datetime.now()
+        assert (
+            self.__end_time >= self.__start_time
+        ), "Section execution time will be negative"
+        return self.section(marker="end", header="", time=self.__end_time)
+
+    def delta_time(self) -> Optional[timedelta]:
+        if self.__start_time and self.__end_time:
+            return self.__end_time - self.__start_time
+
+        if self.has_started:
+            return datetime.now() - self.__start_time
+
+        return None
 
 
 @dataclass(frozen=True)
@@ -85,6 +148,7 @@ class LogSection:
     level: str
     section_id: str
     section_header: str
+    section_type: LogSectionType
     collapsed: bool = False
 
     def from_log_line_to_section(
@@ -97,6 +161,7 @@ class LogSection:
                 return GitlabSection(
                     id=section_id,
                     header=section_header,
+                    type=self.section_type,
                     start_collapsed=self.collapsed,
                 )
 
@@ -107,12 +172,14 @@ LOG_SECTIONS = (
         level="debug",
         section_id="{}",
         section_header="test_case {}",
+        section_type=LogSectionType.TEST_CASE,
     ),
     LogSection(
         regex=re.compile(r".*<STARTRUN> (\S*)"),
         level="debug",
         section_id="{}",
         section_header="test_suite {}",
+        section_type=LogSectionType.TEST_SUITE,
     ),
     LogSection(
         regex=re.compile(r"^<LAVA_SIGNAL_ENDTC ([^>]+)"),
@@ -120,6 +187,7 @@ LOG_SECTIONS = (
         section_id="post-{}",
         section_header="Post test_case {}",
         collapsed=True,
+        section_type=LogSectionType.LAVA_POST_PROCESSING,
     ),
 )
 
@@ -127,9 +195,20 @@ LOG_SECTIONS = (
 @dataclass
 class LogFollower:
     current_section: Optional[GitlabSection] = None
-    sections: list[str] = field(default_factory=list)
-    collapsed_sections: tuple[str] = ("setup",)
+    timeout_durations: dict[LogSectionType, timedelta] = field(
+        default_factory=lambda: DEFAULT_GITLAB_SECTION_TIMEOUTS,
+    )
+    fallback_timeout: timedelta = FALLBACK_GITLAB_SECTION_TIMEOUT
     _buffer: list[str] = field(default_factory=list, init=False)
+
+    def __post_init__(self):
+        section_is_created = bool(self.current_section)
+        section_has_started = bool(
+            self.current_section and self.current_section.has_started
+        )
+        assert (
+            section_is_created == section_has_started
+        ), "Can't follow logs beginning from uninitalized GitLab sections."
 
     def __enter__(self):
         return self
@@ -141,8 +220,22 @@ class LogFollower:
         for line in last_lines:
             print(line)
 
+    def watchdog(self):
+        if not self.current_section:
+            return
+
+        timeout_duration = self.timeout_durations.get(
+            self.current_section.type, self.fallback_timeout
+        )
+
+        if self.current_section.delta_time() > timeout_duration:
+            raise MesaCITimeoutError(
+                f"Gitlab Section {self.current_section} has timed out",
+                timeout_duration=timeout_duration,
+            )
+
     def clear_current_section(self):
-        if self.current_section:
+        if self.current_section and not self.current_section.has_finished:
             self._buffer.append(self.current_section.end())
             self.current_section = None
 
@@ -161,9 +254,11 @@ class LogFollower:
                 self.update_section(new_section)
 
     def feed(self, new_lines: list[dict[str, str]]) -> None:
+        self.watchdog()
         for line in new_lines:
             self.manage_gl_sections(line)
-            self._buffer.append(line)
+            if parsed_line := parse_lava_line(line):
+                self._buffer.append(parsed_line)
 
     def flush(self) -> list[str]:
         buffer = self._buffer
@@ -221,30 +316,25 @@ def filter_debug_messages(line: dict[str, str]) -> bool:
     return False
 
 
-def parse_lava_lines(new_lines) -> list[str]:
-    parsed_lines: list[str] = []
-    for line in new_lines:
-        prefix = ""
+def parse_lava_line(line) -> Optional[str]:
+    prefix = ""
+    suffix = ""
+
+    if line["lvl"] in ["results", "feedback"]:
+        return
+    elif line["lvl"] in ["warning", "error"]:
+        prefix = CONSOLE_LOG["COLOR_RED"]
+        suffix = CONSOLE_LOG["RESET"]
+    elif filter_debug_messages(line):
+        return
+    elif line["lvl"] == "input":
+        prefix = "$ "
         suffix = ""
+    elif line["lvl"] == "target":
+        fix_lava_color_log(line)
+        fix_lava_gitlab_section_log(line)
 
-        if line["lvl"] in ["results", "feedback"]:
-            continue
-        elif line["lvl"] in ["warning", "error"]:
-            prefix = CONSOLE_LOG["COLOR_RED"]
-            suffix = CONSOLE_LOG["RESET"]
-        elif filter_debug_messages(line):
-            continue
-        elif line["lvl"] == "input":
-            prefix = "$ "
-            suffix = ""
-        elif line["lvl"] == "target":
-            fix_lava_color_log(line)
-            fix_lava_gitlab_section_log(line)
-
-        line = f'{prefix}{line["msg"]}{suffix}'
-        parsed_lines.append(line)
-
-    return parsed_lines
+    return f'{prefix}{line["msg"]}{suffix}'
 
 
 def print_log(msg):

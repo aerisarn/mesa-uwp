@@ -49,9 +49,10 @@ from lava.exceptions import (
 from lava.utils.lava_log import (
     CONSOLE_LOG,
     GitlabSection,
+    LogFollower,
+    LogSectionType,
     fatal_err,
     hide_sensitive_data,
-    parse_lava_lines,
     print_log,
 )
 from lavacli.utils import loader
@@ -72,6 +73,7 @@ NUMBER_OF_RETRIES_TIMEOUT_DETECTION = int(getenv("LAVA_NUMBER_OF_RETRIES_TIMEOUT
 
 # How many attempts should be made when a timeout happen during LAVA device boot.
 NUMBER_OF_ATTEMPTS_LAVA_BOOT = int(getenv("LAVA_NUMBER_OF_ATTEMPTS_LAVA_BOOT", 3))
+
 
 def generate_lava_yaml(args):
     # General metadata and permissions, plus also inexplicably kernel arguments
@@ -128,10 +130,7 @@ def generate_lava_yaml(args):
 
     # skeleton test definition: only declaring each job as a single 'test'
     # since LAVA's test parsing is not useful to us
-    setup_section = GitlabSection(
-        id="lava_setup", header="LAVA setup log", start_collapsed=True
-    )
-    run_steps = [f"printf '{setup_section.start()}'"]
+    run_steps = []
     test = {
       'timeout': { 'minutes': args.job_timeout },
       'failure_retry': 1,
@@ -182,7 +181,6 @@ def generate_lava_yaml(args):
       'mkdir -p {}'.format(args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C {}'.format(args.build_url, args.ci_project_dir),
       'wget -S --progress=dot:giga -O- {} | tar -xz -C /'.format(args.job_rootfs_overlay_url),
-      f"printf '{setup_section.end()}'",
 
       # Putting CI_JOB name as the testcase name, it may help LAVA farm
       # maintainers with monitoring
@@ -366,7 +364,7 @@ def show_job_data(job):
         print("{}\t: {}".format(field, value))
 
 
-def fetch_logs(job, max_idle_time) -> None:
+def fetch_logs(job, max_idle_time, log_follower) -> None:
     # Poll to check for new logs, assuming that a prolonged period of
     # silence means that the device has died and we should try it again
     if datetime.now() - job.last_log_time > max_idle_time:
@@ -393,7 +391,8 @@ def fetch_logs(job, max_idle_time) -> None:
     else:
         raise MesaCIParseException
 
-    parsed_lines = parse_lava_lines(new_log_lines)
+    log_follower.feed(new_log_lines)
+    parsed_lines = log_follower.flush()
 
     for line in parsed_lines:
         print_log(line)
@@ -414,11 +413,21 @@ def follow_job_execution(job):
         time.sleep(WAIT_FOR_DEVICE_POLLING_TIME_SEC)
     print_log(f"Job {job.job_id} started.")
 
+    gl = GitlabSection(
+        id="lava_boot",
+        header="LAVA boot",
+        type=LogSectionType.LAVA_BOOT,
+        start_collapsed=True,
+    )
+    print(gl.start())
     max_idle_time = timedelta(seconds=DEVICE_HANGING_TIMEOUT_SEC)
-    # Start to check job's health
-    job.heartbeat()
-    while not job.is_finished:
-        fetch_logs(job, max_idle_time)
+    with LogFollower(current_section=gl) as lf:
+
+        max_idle_time = timedelta(seconds=DEVICE_HANGING_TIMEOUT_SEC)
+        # Start to check job's health
+        job.heartbeat()
+        while not job.is_finished:
+            fetch_logs(job, max_idle_time, lf)
 
     show_job_data(job)
 
@@ -504,6 +513,7 @@ def create_parser():
     parser.add_argument("--mesa-job-name")
 
     return parser
+
 
 if __name__ == "__main__":
     # given that we proxy from DUT -> LAVA dispatcher -> LAVA primary -> us ->

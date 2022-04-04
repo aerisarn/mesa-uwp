@@ -1,10 +1,23 @@
 from contextlib import nullcontext as does_not_raise
-from datetime import datetime, timedelta
+from datetime import datetime
 from itertools import cycle
 from typing import Callable, Generator, Iterable, Tuple, Union
 
 import yaml
 from freezegun import freeze_time
+from lava.utils.lava_log import (
+    DEFAULT_GITLAB_SECTION_TIMEOUTS,
+    FALLBACK_GITLAB_SECTION_TIMEOUT,
+    LogSectionType,
+)
+
+
+def section_timeout(section_type: LogSectionType) -> int:
+    return int(
+        DEFAULT_GITLAB_SECTION_TIMEOUTS.get(
+            section_type, FALLBACK_GITLAB_SECTION_TIMEOUT
+        ).total_seconds()
+    )
 
 
 def create_lava_yaml_msg(
@@ -21,8 +34,6 @@ def generate_testsuite_result(
     if extra is None:
         extra = {}
     return {"metadata": {"result": result, **metadata_extra}, "name": name}
-
-
 def jobs_logs_response(
     finished=False, msg=None, lvl="target", result=None
 ) -> Tuple[bool, str]:
@@ -35,6 +46,19 @@ def jobs_logs_response(
 
     return finished, yaml.safe_dump(logs)
 
+
+def section_aware_message_generator(
+    messages: dict[LogSectionType, Iterable[int]]
+) -> Iterable[tuple[dict, Iterable[int]]]:
+    default = [1]
+    for section_type in LogSectionType:
+        delay = messages.get(section_type, default)
+        yield mock_lava_signal(section_type), delay
+
+
+def message_generator():
+    for section_type in LogSectionType:
+        yield mock_lava_signal(section_type)
 
 
 def level_generator():
@@ -80,3 +104,28 @@ def to_iterable(tick_fn):
     else:
         tick_gen = cycle((tick_fn,))
     return tick_gen
+
+
+def mock_logs(messages={}, result="pass"):
+    with freeze_time(datetime.now()) as time_travel:
+        # Simulate a complete run given by message_fn
+        for msg, tick_list in section_aware_message_generator(messages):
+            for tick_sec in tick_list:
+                yield jobs_logs_response(finished=False, msg=[msg])
+                time_travel.tick(tick_sec)
+
+        yield jobs_logs_response(finished=True, result="pass")
+
+
+def mock_lava_signal(type: LogSectionType) -> dict[str, str]:
+    return {
+        LogSectionType.TEST_CASE: create_lava_yaml_msg(
+            msg="<STARTTC> case", lvl="debug"
+        ),
+        LogSectionType.TEST_SUITE: create_lava_yaml_msg(
+            msg="<STARTRUN> suite", lvl="debug"
+        ),
+        LogSectionType.LAVA_POST_PROCESSING: create_lava_yaml_msg(
+            msg="<LAVA_SIGNAL_ENDTC case>", lvl="target"
+        ),
+    }.get(type, create_lava_yaml_msg())

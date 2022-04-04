@@ -36,12 +36,15 @@ from lava.lava_job_submitter import (
     follow_job_execution,
     retriable_follow_job,
 )
+from lava.utils.lava_log import LogSectionType
 
 from .lava.helpers import (
     create_lava_yaml_msg,
     generate_n_logs,
     generate_testsuite_result,
     jobs_logs_response,
+    mock_logs,
+    section_timeout,
 )
 
 NUMBER_OF_MAX_ATTEMPTS = NUMBER_OF_RETRIES_TIMEOUT_DETECTION + 1
@@ -74,16 +77,42 @@ XMLRPC_FAULT = xmlrpc.client.Fault(0, "test")
 
 PROXY_SCENARIOS = {
     "finish case": (generate_n_logs(1), does_not_raise(), True, {}),
-    "works at last retry": (
-        generate_n_logs(n=NUMBER_OF_MAX_ATTEMPTS, tick_fn=[ DEVICE_HANGING_TIMEOUT_SEC + 1 ] * NUMBER_OF_RETRIES_TIMEOUT_DETECTION + [1]),
+    "boot works at last retry": (
+        mock_logs(
+            {
+                LogSectionType.LAVA_BOOT: [
+                    section_timeout(LogSectionType.LAVA_BOOT) + 1
+                ]
+                * NUMBER_OF_RETRIES_TIMEOUT_DETECTION
+                + [1]
+            },
+        ),
         does_not_raise(),
         True,
         {},
     ),
-    "timed out more times than retry attempts": (
-        generate_n_logs(
-            n=NUMBER_OF_MAX_ATTEMPTS + 1, tick_fn=DEVICE_HANGING_TIMEOUT_SEC + 1
+    "post process test case took too long": pytest.param(
+        mock_logs(
+            {
+                LogSectionType.LAVA_POST_PROCESSING: [
+                    section_timeout(LogSectionType.LAVA_POST_PROCESSING) + 1
+                ]
+                * (NUMBER_OF_MAX_ATTEMPTS + 1)
+            },
         ),
+        pytest.raises(MesaCIRetryError),
+        True,
+        {},
+        marks=pytest.mark.xfail(
+            reason=(
+                "The time travel mock is not behaving as expected. "
+                "It makes a gitlab section end in the past when an "
+                "exception happens."
+            )
+        ),
+    ),
+    "timed out more times than retry attempts": (
+        generate_n_logs(n=4, tick_fn=9999999),
         pytest.raises(MesaCIRetryError),
         False,
         {},
@@ -150,15 +179,20 @@ PROXY_SCENARIOS = {
 
 
 @pytest.mark.parametrize(
-    "side_effect, expectation, job_result, proxy_args",
+    "test_log, expectation, job_result, proxy_args",
     PROXY_SCENARIOS.values(),
     ids=PROXY_SCENARIOS.keys(),
 )
 def test_retriable_follow_job(
-    mock_sleep, side_effect, expectation, job_result, proxy_args, mock_proxy
+    mock_sleep,
+    test_log,
+    expectation,
+    job_result,
+    proxy_args,
+    mock_proxy,
 ):
     with expectation:
-        proxy = mock_proxy(side_effect=side_effect, **proxy_args)
+        proxy = mock_proxy(side_effect=test_log, **proxy_args)
         job: LAVAJob = retriable_follow_job(proxy, "")
         assert job_result == (job.status == "pass")
 
@@ -194,6 +228,7 @@ def test_simulate_a_long_wait_to_start_a_job(
 
     assert has_finished == (job.status == "pass")
     assert delta_time.total_seconds() >= wait_time
+
 
 
 CORRUPTED_LOG_SCENARIOS = {

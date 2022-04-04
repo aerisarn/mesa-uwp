@@ -22,13 +22,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 import yaml
+from lava.exceptions import MesaCITimeoutError
 from lava.utils.lava_log import (
     GitlabSection,
     LogFollower,
+    LogSectionType,
     filter_debug_messages,
     fix_lava_color_log,
     fix_lava_gitlab_section_log,
@@ -66,8 +68,14 @@ GITLAB_SECTION_SCENARIOS = {
     ids=GITLAB_SECTION_SCENARIOS.keys(),
 )
 def test_gitlab_section(method, collapsed, expectation):
-    gs = GitlabSection(id="my_first_section", header="my_header", start_collapsed=collapsed)
-    gs.get_timestamp = lambda: "mock_date"
+    gs = GitlabSection(
+        id="my_first_section",
+        header="my_header",
+        type=LogSectionType.TEST_CASE,
+        start_collapsed=collapsed,
+    )
+    gs.get_timestamp = lambda x: "mock_date"
+    gs.start()
     result = getattr(gs, method)()
     assert result == expectation
 
@@ -274,3 +282,49 @@ LAVA_DEBUG_SPAM_MESSAGES = {
 )
 def test_filter_debug_messages(message, expectation):
     assert filter_debug_messages(message) == expectation
+
+
+WATCHDOG_SCENARIOS = {
+    "1 second before timeout": ({"seconds": -1}, does_not_raise()),
+    "1 second after timeout": ({"seconds": 1}, pytest.raises(MesaCITimeoutError)),
+}
+
+
+@pytest.mark.parametrize(
+    "timedelta_kwargs, exception",
+    WATCHDOG_SCENARIOS.values(),
+    ids=WATCHDOG_SCENARIOS.keys(),
+)
+def test_log_follower_watchdog(frozen_time, timedelta_kwargs, exception):
+    lines = [
+        {
+            "dt": datetime.now(),
+            "lvl": "debug",
+            "msg": "Received signal: <STARTTC> mesa-ci_iris-kbl-traces",
+        },
+    ]
+    td = {LogSectionType.TEST_CASE: timedelta(minutes=1)}
+    lf = LogFollower(timeout_durations=td)
+    lf.feed(lines)
+    frozen_time.tick(
+        lf.timeout_durations[LogSectionType.TEST_CASE] + timedelta(**timedelta_kwargs)
+    )
+    lines = [create_lava_yaml_msg()]
+    with exception:
+        lf.feed(lines)
+
+
+GITLAB_SECTION_ID_SCENARIOS = [
+    ("a-good_name", "a-good_name"),
+    ("spaces are not welcome", "spaces-are-not-welcome"),
+    ("abc:amd64 1/3", "abc-amd64-1-3"),
+]
+
+
+@pytest.mark.parametrize("case_name, expected_id", GITLAB_SECTION_ID_SCENARIOS)
+def test_gitlab_section_id(case_name, expected_id):
+    gl = GitlabSection(
+        id=case_name, header=case_name, type=LogSectionType.LAVA_POST_PROCESSING
+    )
+
+    assert gl.id == expected_id
