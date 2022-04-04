@@ -47,9 +47,7 @@ struct radv_meta_saved_state {
 
    struct radv_descriptor_set *old_descriptor_set0;
    struct radv_pipeline *old_pipeline;
-   struct radv_viewport_state viewport;
-   struct radv_scissor_state scissor;
-   struct radv_sample_locations_state sample_location;
+   struct radv_dynamic_state dynamic;
 
    char push_constants[MAX_PUSH_CONSTANTS_SIZE];
 
@@ -58,83 +56,6 @@ struct radv_meta_saved_state {
    struct radv_attachment_state *attachments;
    struct vk_framebuffer *framebuffer;
    VkRect2D render_area;
-
-   VkCullModeFlags cull_mode;
-   VkFrontFace front_face;
-
-   unsigned primitive_topology;
-
-   bool depth_test_enable;
-   bool depth_write_enable;
-   unsigned depth_compare_op;
-   bool depth_bounds_test_enable;
-   bool stencil_test_enable;
-
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } stencil_write_mask;
-
-   struct {
-      struct {
-         VkStencilOp fail_op;
-         VkStencilOp pass_op;
-         VkStencilOp depth_fail_op;
-         VkCompareOp compare_op;
-      } front;
-
-      struct {
-         VkStencilOp fail_op;
-         VkStencilOp pass_op;
-         VkStencilOp depth_fail_op;
-         VkCompareOp compare_op;
-      } back;
-   } stencil_op;
-
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } stencil_reference;
-
-   struct {
-      VkExtent2D size;
-      VkFragmentShadingRateCombinerOpKHR combiner_ops[2];
-   } fragment_shading_rate;
-
-   bool depth_bias_enable;
-   bool primitive_restart_enable;
-   bool rasterizer_discard_enable;
-
-   unsigned logic_op;
-
-   uint32_t color_write_enable;
-
-   float line_width;
-
-   struct {
-      float bias;
-      float clamp;
-      float slope;
-   } depth_bias;
-
-   float blend_constants[4];
-
-   struct {
-      float min;
-      float max;
-   } depth_bounds;
-
-   struct {
-      uint32_t front;
-      uint32_t back;
-   } stencil_compare_mask;
-
-   struct radv_discard_rectangle_state discard_rectangle;
-
-   struct {
-      uint32_t factor;
-      uint16_t pattern;
-   } line_stipple;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);
