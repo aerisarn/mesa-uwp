@@ -108,6 +108,33 @@ struct radv_meta_saved_state {
    unsigned logic_op;
 
    uint32_t color_write_enable;
+
+   float line_width;
+
+   struct {
+      float bias;
+      float clamp;
+      float slope;
+   } depth_bias;
+
+   float blend_constants[4];
+
+   struct {
+      float min;
+      float max;
+   } depth_bounds;
+
+   struct {
+      uint32_t front;
+      uint32_t back;
+   } stencil_compare_mask;
+
+   struct radv_discard_rectangle_state discard_rectangle;
+
+   struct {
+      uint32_t factor;
+      uint16_t pattern;
+   } line_stipple;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);

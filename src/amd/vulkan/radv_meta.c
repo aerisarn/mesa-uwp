@@ -95,6 +95,9 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       typed_memcpy(state->scissor.scissors, cmd_buffer->state.dynamic.scissor.scissors,
                    MAX_SCISSORS);
 
+      state->line_stipple.factor = cmd_buffer->state.dynamic.line_stipple.factor;
+      state->line_stipple.pattern = cmd_buffer->state.dynamic.line_stipple.pattern;
+
       state->cull_mode = cmd_buffer->state.dynamic.cull_mode;
       state->front_face = cmd_buffer->state.dynamic.front_face;
 
@@ -118,6 +121,21 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       state->stencil_op.back.depth_fail_op =
          cmd_buffer->state.dynamic.stencil_op.back.depth_fail_op;
 
+      state->line_width = cmd_buffer->state.dynamic.line_width;
+
+      state->depth_bias.bias = cmd_buffer->state.dynamic.depth_bias.bias;
+      state->depth_bias.clamp = cmd_buffer->state.dynamic.depth_bias.clamp;
+      state->depth_bias.slope = cmd_buffer->state.dynamic.depth_bias.slope;
+
+      memcpy(state->blend_constants, cmd_buffer->state.dynamic.blend_constants,
+             sizeof(state->blend_constants));
+
+      state->depth_bounds.min = cmd_buffer->state.dynamic.depth_bounds.min;
+      state->depth_bounds.max = cmd_buffer->state.dynamic.depth_bounds.max;
+
+      state->stencil_compare_mask.front = cmd_buffer->state.dynamic.stencil_compare_mask.front;
+      state->stencil_compare_mask.back = cmd_buffer->state.dynamic.stencil_compare_mask.back;
+
       state->stencil_write_mask.front = cmd_buffer->state.dynamic.stencil_write_mask.front;
       state->stencil_write_mask.back = cmd_buffer->state.dynamic.stencil_write_mask.back;
 
@@ -139,6 +157,11 @@ radv_meta_save(struct radv_meta_saved_state *state, struct radv_cmd_buffer *cmd_
       state->logic_op = cmd_buffer->state.dynamic.logic_op;
 
       state->color_write_enable = cmd_buffer->state.dynamic.color_write_enable;
+
+      state->discard_rectangle.count = cmd_buffer->state.dynamic.discard_rectangle.count;
+      typed_memcpy(state->discard_rectangle.rectangles,
+                   cmd_buffer->state.dynamic.discard_rectangle.rectangles,
+                   MAX_DISCARD_RECTANGLES);
    }
 
    if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
@@ -197,6 +220,9 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
       typed_memcpy(cmd_buffer->state.dynamic.scissor.scissors, state->scissor.scissors,
                    MAX_SCISSORS);
 
+      cmd_buffer->state.dynamic.line_stipple.factor = state->line_stipple.factor;
+      cmd_buffer->state.dynamic.line_stipple.pattern = state->line_stipple.pattern;
+
       cmd_buffer->state.dynamic.cull_mode = state->cull_mode;
       cmd_buffer->state.dynamic.front_face = state->front_face;
 
@@ -220,6 +246,21 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
       cmd_buffer->state.dynamic.stencil_op.back.depth_fail_op =
          state->stencil_op.back.depth_fail_op;
 
+      cmd_buffer->state.dynamic.line_width = state->line_width;
+
+      cmd_buffer->state.dynamic.depth_bias.bias = state->depth_bias.bias;
+      cmd_buffer->state.dynamic.depth_bias.clamp = state->depth_bias.clamp;
+      cmd_buffer->state.dynamic.depth_bias.slope = state->depth_bias.slope;
+
+      memcpy(cmd_buffer->state.dynamic.blend_constants, state->blend_constants,
+             sizeof(state->blend_constants));
+
+      cmd_buffer->state.dynamic.depth_bounds.min = state->depth_bounds.min;
+      cmd_buffer->state.dynamic.depth_bounds.max = state->depth_bounds.max;
+
+      cmd_buffer->state.dynamic.stencil_compare_mask.front = state->stencil_compare_mask.front;
+      cmd_buffer->state.dynamic.stencil_compare_mask.back = state->stencil_compare_mask.back;
+
       cmd_buffer->state.dynamic.stencil_write_mask.front = state->stencil_write_mask.front;
       cmd_buffer->state.dynamic.stencil_write_mask.back = state->stencil_write_mask.back;
 
@@ -242,6 +283,11 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
 
       cmd_buffer->state.dynamic.color_write_enable = state->color_write_enable;
 
+      cmd_buffer->state.dynamic.discard_rectangle.count = state->discard_rectangle.count;
+      typed_memcpy(cmd_buffer->state.dynamic.discard_rectangle.rectangles,
+                   state->discard_rectangle.rectangles,
+                   MAX_DISCARD_RECTANGLES);
+
       cmd_buffer->state.dirty |=
          RADV_CMD_DIRTY_DYNAMIC_VIEWPORT | RADV_CMD_DIRTY_DYNAMIC_SCISSOR |
          RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
@@ -253,7 +299,10 @@ radv_meta_restore(const struct radv_meta_saved_state *state, struct radv_cmd_buf
          RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE |
          RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LOGIC_OP |
-         RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE;
+         RADV_CMD_DIRTY_DYNAMIC_COLOR_WRITE_ENABLE | RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE |
+         RADV_CMD_DIRTY_DYNAMIC_STENCIL_COMPARE_MASK | RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
+         RADV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS | RADV_CMD_DIRTY_DYNAMIC_LINE_WIDTH |
+         RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS | RADV_CMD_DIRTY_DYNAMIC_DISCARD_RECTANGLE;
    }
 
    if (state->flags & RADV_META_SAVE_SAMPLE_LOCATIONS) {
