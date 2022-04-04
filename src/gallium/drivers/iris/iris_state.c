@@ -5195,21 +5195,18 @@ pin_depth_and_stencil_buffers(struct iris_batch *batch,
    iris_get_depth_stencil_resources(zsbuf->texture, &zres, &sres);
 
    if (zres) {
-      const enum iris_domain access = cso_zsa->depth_writes_enabled ?
-         IRIS_DOMAIN_DEPTH_WRITE : IRIS_DOMAIN_OTHER_READ;
       iris_use_pinned_bo(batch, zres->bo, cso_zsa->depth_writes_enabled,
-                         access);
+                         IRIS_DOMAIN_DEPTH_WRITE);
       if (zres->aux.bo) {
          iris_use_pinned_bo(batch, zres->aux.bo,
-                            cso_zsa->depth_writes_enabled, access);
+                            cso_zsa->depth_writes_enabled,
+                            IRIS_DOMAIN_DEPTH_WRITE);
       }
    }
 
    if (sres) {
-      const enum iris_domain access = cso_zsa->stencil_writes_enabled ?
-         IRIS_DOMAIN_DEPTH_WRITE : IRIS_DOMAIN_OTHER_READ;
       iris_use_pinned_bo(batch, sres->bo, cso_zsa->stencil_writes_enabled,
-                         access);
+                         IRIS_DOMAIN_DEPTH_WRITE);
    }
 }
 
