@@ -2009,7 +2009,6 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP(nir_op_ishl, SpvOpShiftLeftLogical)
    BINOP(nir_op_ishr, SpvOpShiftRightArithmetic)
    BINOP(nir_op_ushr, SpvOpShiftRightLogical)
-   BINOP(nir_op_ixor, SpvOpBitwiseXor)
    BINOP(nir_op_frem, SpvOpFRem)
 #undef BINOP
 
@@ -2026,6 +2025,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BINOP_LOG(nir_op_ior, SpvOpBitwiseOr, SpvOpLogicalOr)
    BINOP_LOG(nir_op_ieq, SpvOpIEqual, SpvOpLogicalEqual)
    BINOP_LOG(nir_op_ine, SpvOpINotEqual, SpvOpLogicalNotEqual)
+   BINOP_LOG(nir_op_ixor, SpvOpBitwiseXor, SpvOpLogicalNotEqual)
 #undef BINOP_LOG
 
 #define BUILTIN_BINOP(nir_op, spirv_op) \
