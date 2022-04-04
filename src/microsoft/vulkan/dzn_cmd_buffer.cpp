@@ -720,30 +720,32 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
 
       cmdbuf->cmdlist->ResourceBarrier(1, &aliasing_barrier);
 
-      D3D12_RESOURCE_BARRIER transition_barrier = {
-         .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-         .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-         .Transition = {
-            .pResource = image->res,
-            .StateAfter = dzn_image_layout_to_state(ibarrier->newLayout),
-         },
-      };
+      dzn_foreach_aspect(aspect, range->aspectMask) {
+         D3D12_RESOURCE_BARRIER transition_barrier = {
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            .Transition = {
+               .pResource = image->res,
+               .StateAfter = dzn_image_layout_to_state(ibarrier->newLayout, aspect),
+            },
+         };
 
-      if (ibarrier->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED ||
-          ibarrier->oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-         transition_barrier.Transition.StateBefore = image->mem->initial_state;
-      else
-         transition_barrier.Transition.StateBefore = dzn_image_layout_to_state(ibarrier->oldLayout);
+         if (ibarrier->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED ||
+             ibarrier->oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+            transition_barrier.Transition.StateBefore = image->mem->initial_state;
+         } else {
+            transition_barrier.Transition.StateBefore =
+               dzn_image_layout_to_state(ibarrier->oldLayout, aspect);
+         }
 
-      if (transition_barrier.Transition.StateBefore == transition_barrier.Transition.StateAfter)
-         continue;
+         if (transition_barrier.Transition.StateBefore == transition_barrier.Transition.StateAfter)
+            continue;
 
-      /* some layouts map to the same states, and NOP-barriers are illegal */
-      uint32_t layer_count = dzn_get_layer_count(image, range);
-      uint32_t level_count = dzn_get_level_count(image, range);
-      for (uint32_t layer = 0; layer < layer_count; layer++) {
-         for (uint32_t lvl = 0; lvl < level_count; lvl++) {
-            dzn_foreach_aspect(aspect, range->aspectMask) {
+         /* some layouts map to the same states, and NOP-barriers are illegal */
+         uint32_t layer_count = dzn_get_layer_count(image, range);
+         uint32_t level_count = dzn_get_level_count(image, range);
+         for (uint32_t layer = 0; layer < layer_count; layer++) {
+            for (uint32_t lvl = 0; lvl < level_count; lvl++) {
                transition_barrier.Transition.Subresource =
                   dzn_image_range_get_subresource_index(image, range, aspect, lvl, layer);
                cmdbuf->cmdlist->ResourceBarrier(1, &transition_barrier);
@@ -930,7 +932,8 @@ dzn_cmd_buffer_clear_rects_with_copy(dzn_cmd_buffer *cmdbuf,
       },
    };
 
-   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(layout);
+   D3D12_RESOURCE_STATES dst_state =
+      dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT);
    D3D12_RESOURCE_BARRIER barrier = {
       .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
       .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
@@ -1076,7 +1079,8 @@ dzn_cmd_buffer_clear_ranges_with_copy(dzn_cmd_buffer *cmdbuf,
       },
    };
 
-   D3D12_RESOURCE_STATES dst_state = dzn_image_layout_to_state(layout);
+   D3D12_RESOURCE_STATES dst_state =
+      dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT);
    D3D12_RESOURCE_BARRIER barrier = {
       .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
       .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
@@ -1282,7 +1286,8 @@ dzn_cmd_buffer_clear_color(dzn_cmd_buffer *cmdbuf,
             .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
             .Transition = {
                .pResource = image->res,
-               .StateBefore = dzn_image_layout_to_state(layout),
+               .StateBefore =
+                  dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT),
                .StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
             },
          };
@@ -1344,23 +1349,34 @@ dzn_cmd_buffer_clear_zs(dzn_cmd_buffer *cmdbuf,
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
       for (uint32_t lvl = 0; lvl < level_count; lvl++) {
-         D3D12_RESOURCE_BARRIER barrier = {
-            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-            .Transition = {
-               .pResource = image->res,
-               .StateBefore = dzn_image_layout_to_state(layout),
-               .StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE,
-            },
-         };
+         uint32_t barrier_count = 0;
+         D3D12_RESOURCE_BARRIER barriers[2];
+         VkImageAspectFlagBits barrier_aspects[2];
 
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
+         dzn_foreach_aspect(aspect, range->aspectMask) {
+            barrier_aspects[barrier_count] = aspect;
+            barriers[barrier_count] = D3D12_RESOURCE_BARRIER {
+               .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+               .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+               .Transition = {
+                  .pResource = image->res,
+                  .StateBefore = dzn_image_layout_to_state(layout, aspect),
+                  .StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE,
+               },
+            };
+
+            if (barriers[barrier_count].Transition.StateBefore != barriers[barrier_count].Transition.StateAfter)
+               barrier_count++;
+         }
+
+         if (barrier_count > 0) {
             for (uint32_t layer = 0; layer < layer_count; layer++) {
-               dzn_foreach_aspect(aspect, range->aspectMask) {
-                  barrier.Transition.Subresource =
-                     dzn_image_range_get_subresource_index(image, range, aspect, lvl, layer);
-                  cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
+               for (uint32_t b = 0; b < barrier_count; b++) {
+                  barriers[b].Transition.Subresource =
+                     dzn_image_range_get_subresource_index(image, range, barrier_aspects[b], lvl, layer);
                }
+
+               cmdbuf->cmdlist->ResourceBarrier(barrier_count, barriers);
             }
          }
 
@@ -1370,15 +1386,17 @@ dzn_cmd_buffer_clear_zs(dzn_cmd_buffer *cmdbuf,
                                                 zs->depth, zs->stencil,
                                                 0, NULL);
 
-         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
-            DZN_SWAP(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
+         if (barrier_count > 0) {
+            for (uint32_t b = 0; b < barrier_count; b++)
+               DZN_SWAP(barriers[b].Transition.StateBefore, barriers[b].Transition.StateAfter);
 
             for (uint32_t layer = 0; layer < layer_count; layer++) {
-               dzn_foreach_aspect(aspect, range->aspectMask) {
-                  barrier.Transition.Subresource =
-                     dzn_image_range_get_subresource_index(image, range, aspect, lvl, layer);
-                  cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
+               for (uint32_t b = 0; b < barrier_count; b++) {
+                  barriers[b].Transition.Subresource =
+                     dzn_image_range_get_subresource_index(image, range, barrier_aspects[b], lvl, layer);
                }
+
+               cmdbuf->cmdlist->ResourceBarrier(barrier_count, barriers);
             }
          }
       }
@@ -1870,7 +1888,7 @@ dzn_cmd_buffer_blit_issue_barriers(dzn_cmd_buffer *cmdbuf,
          .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
          .Transition = {
             .pResource = src->res,
-            .StateBefore = dzn_image_layout_to_state(src_layout),
+            .StateBefore = dzn_image_layout_to_state(src_layout, aspect),
             .StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
          },
       },
@@ -1879,7 +1897,7 @@ dzn_cmd_buffer_blit_issue_barriers(dzn_cmd_buffer *cmdbuf,
          .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
          .Transition = {
             .pResource = dst->res,
-            .StateBefore = dzn_image_layout_to_state(dst_layout),
+            .StateBefore = dzn_image_layout_to_state(dst_layout, aspect),
             .StateAfter = ds ?
                           D3D12_RESOURCE_STATE_DEPTH_WRITE :
                           D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -2094,17 +2112,34 @@ dzn_cmd_buffer_attachment_ref_transition(dzn_cmd_buffer *cmdbuf,
    if (att->before == att->during)
       return;
 
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = image->res,
-         .Subresource = 0, // YOLO
-         .StateBefore = att->before,
-         .StateAfter = att->during,
-      },
+   VkImageSubresourceRange subres {
+      .aspectMask = att->aspects,
+      .baseMipLevel = iview->vk.base_mip_level,
+      .levelCount = iview->vk.level_count,
+      .baseArrayLayer = iview->vk.base_array_layer,
+      .layerCount = iview->vk.layer_count,
    };
-   cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
+
+   dzn_foreach_aspect(aspect, att->aspects) {
+      for (uint32_t lvl = 0; lvl < iview->vk.level_count; lvl++) {
+         for (uint32_t layer = 0; layer < iview->vk.layer_count; layer++) {
+            D3D12_RESOURCE_BARRIER barrier = {
+               .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+               .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+               .Transition = {
+                  .pResource = image->res,
+                  .Subresource =
+                     dzn_image_range_get_subresource_index(image, &subres, aspect, lvl, layer),
+                  .StateBefore = (aspect & VK_IMAGE_ASPECT_STENCIL_BIT) ? att->stencil.before : att->before,
+                  .StateAfter = (aspect & VK_IMAGE_ASPECT_STENCIL_BIT) ? att->stencil.during : att->during,
+               },
+            };
+
+            if (barrier.Transition.StateBefore != barrier.Transition.StateAfter)
+               cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
+         }
+      }
+   }
 }
 
 static void
@@ -2117,17 +2152,34 @@ dzn_cmd_buffer_attachment_transition(dzn_cmd_buffer *cmdbuf,
    if (att->last == att->after)
       return;
 
-   D3D12_RESOURCE_BARRIER barrier = {
-      .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
-      .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
-      .Transition = {
-         .pResource = image->res,
-         .Subresource = 0, // YOLO
-         .StateBefore = att->last,
-         .StateAfter = att->after,
-      },
+   VkImageSubresourceRange subres {
+      .aspectMask = att->aspects,
+      .baseMipLevel = iview->vk.base_mip_level,
+      .levelCount = iview->vk.level_count,
+      .baseArrayLayer = iview->vk.base_array_layer,
+      .layerCount = iview->vk.layer_count,
    };
-   cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
+
+   dzn_foreach_aspect(aspect, att->aspects) {
+      for (uint32_t lvl = 0; lvl < iview->vk.level_count; lvl++) {
+         for (uint32_t layer = 0; layer < iview->vk.layer_count; layer++) {
+            D3D12_RESOURCE_BARRIER barrier = {
+               .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+               .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+               .Transition = {
+                  .pResource = image->res,
+                  .Subresource =
+                     dzn_image_range_get_subresource_index(image, &subres, aspect, lvl, layer),
+                  .StateBefore = (aspect & VK_IMAGE_ASPECT_STENCIL_BIT) ? att->stencil.last : att->last,
+                  .StateAfter = (aspect & VK_IMAGE_ASPECT_STENCIL_BIT) ? att->stencil.after : att->after,
+               },
+            };
+
+            if (barrier.Transition.StateBefore != barrier.Transition.StateAfter)
+               cmdbuf->cmdlist->ResourceBarrier(1, &barrier);
+         }
+      }
+   }
 }
 
 static void

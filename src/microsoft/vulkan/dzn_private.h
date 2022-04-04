@@ -329,12 +329,20 @@ struct dzn_attachment {
          bool stencil;
       };
    } clear;
+   VkImageAspectFlags aspects;
    D3D12_RESOURCE_STATES before, last, after;
+   struct {
+      D3D12_RESOURCE_STATES before, last, after;
+   } stencil;
 };
 
 struct dzn_attachment_ref {
    uint32_t idx;
    D3D12_RESOURCE_STATES before, during;
+   struct {
+      D3D12_RESOURCE_STATES before, during;
+   } stencil;
+   VkImageAspectFlags aspects;
 };
 
 struct dzn_descriptor_state {
@@ -789,7 +797,7 @@ dzn_image_get_rtv_desc(const dzn_image *image,
                        uint32_t level);
 
 D3D12_RESOURCE_STATES
-dzn_image_layout_to_state(VkImageLayout layout);
+dzn_image_layout_to_state(VkImageLayout layout, VkImageAspectFlagBits aspect);
 
 uint32_t
 dzn_image_layers_get_subresource_index(const dzn_image *image,

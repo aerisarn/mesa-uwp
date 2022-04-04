@@ -68,9 +68,28 @@ dzn_CreateRenderPass2(VkDevice dev,
             attachment->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
       }
       attachments[i].samples = attachment->samples;
-      attachments[i].before = dzn_image_layout_to_state(attachment->initialLayout);
-      attachments[i].after = dzn_image_layout_to_state(attachment->finalLayout);
-      attachments[i].last = attachments[i].before;
+      if (vk_format_has_stencil(attachment->format)) {
+         attachments[i].stencil.before =
+            dzn_image_layout_to_state(attachment->initialLayout, VK_IMAGE_ASPECT_STENCIL_BIT);
+         attachments[i].stencil.after =
+            dzn_image_layout_to_state(attachment->finalLayout, VK_IMAGE_ASPECT_STENCIL_BIT);
+         attachments[i].stencil.last = attachments[i].stencil.before;
+      }
+
+      if (vk_format_has_depth(attachment->format)) {
+         attachments[i].before =
+            dzn_image_layout_to_state(attachment->initialLayout, VK_IMAGE_ASPECT_STENCIL_BIT);
+         attachments[i].after =
+            dzn_image_layout_to_state(attachment->finalLayout, VK_IMAGE_ASPECT_STENCIL_BIT);
+         attachments[i].last = attachments[i].before;
+      } else {
+         assert(vk_format_is_color(attachment->format));
+         attachments[i].before =
+            dzn_image_layout_to_state(attachment->initialLayout, VK_IMAGE_ASPECT_COLOR_BIT);
+         attachments[i].after =
+            dzn_image_layout_to_state(attachment->finalLayout, VK_IMAGE_ASPECT_COLOR_BIT);
+         attachments[i].last = attachments[i].before;
+      }
    }
 
    assert(subpasses);
@@ -85,10 +104,13 @@ dzn_CreateRenderPass2(VkDevice dev,
          uint32_t idx = subpass->pColorAttachments[j].attachment;
          subpasses[i].colors[j].idx = idx;
          if (idx != VK_ATTACHMENT_UNUSED) {
+            subpasses[i].colors[j].aspects = VK_IMAGE_ASPECT_COLOR_BIT;
             subpasses[i].colors[j].before = attachments[idx].last;
             subpasses[i].colors[j].during =
-               dzn_image_layout_to_state(subpass->pColorAttachments[j].layout);
+               dzn_image_layout_to_state(subpass->pColorAttachments[j].layout,
+                                         VK_IMAGE_ASPECT_COLOR_BIT);
             attachments[idx].last = subpasses[i].colors[j].during;
+            attachments[idx].aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
             subpasses[i].color_count = j + 1;
          }
 
@@ -97,10 +119,13 @@ dzn_CreateRenderPass2(VkDevice dev,
                VK_ATTACHMENT_UNUSED;
          subpasses[i].resolve[j].idx = idx;
          if (idx != VK_ATTACHMENT_UNUSED) {
+            subpasses[i].resolve[j].aspects = VK_IMAGE_ASPECT_COLOR_BIT;
             subpasses[i].resolve[j].before = attachments[idx].last;
             subpasses[i].resolve[j].during =
-               dzn_image_layout_to_state(subpass->pResolveAttachments[j].layout);
+               dzn_image_layout_to_state(subpass->pResolveAttachments[j].layout,
+                                         VK_IMAGE_ASPECT_COLOR_BIT);
             attachments[idx].last = subpasses[i].resolve[j].during;
+            attachments[idx].aspects |= VK_IMAGE_ASPECT_COLOR_BIT;
          }
       }
 
@@ -109,10 +134,27 @@ dzn_CreateRenderPass2(VkDevice dev,
          uint32_t idx = subpass->pDepthStencilAttachment->attachment;
          subpasses[i].zs.idx = idx;
          if (idx != VK_ATTACHMENT_UNUSED) {
+            subpasses[i].zs.aspects = vk_format_aspects(attachments[idx].format);
             subpasses[i].zs.before = attachments[idx].last;
-            subpasses[i].zs.during =
-               dzn_image_layout_to_state(subpass->pDepthStencilAttachment->layout);
+            subpasses[i].zs.during = attachments[idx].last;
+            subpasses[i].zs.stencil.before = attachments[idx].stencil.last;
+            subpasses[i].zs.stencil.during = attachments[idx].stencil.last;
+
+            if (subpasses[i].zs.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+               subpasses[i].zs.stencil.during =
+                  dzn_image_layout_to_state(subpass->pDepthStencilAttachment->layout,
+                                            VK_IMAGE_ASPECT_STENCIL_BIT);
+            }
+
+            if (subpasses[i].zs.aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+               subpasses[i].zs.during =
+                  dzn_image_layout_to_state(subpass->pDepthStencilAttachment->layout,
+                                            VK_IMAGE_ASPECT_DEPTH_BIT);
+            }
+
             attachments[idx].last = subpasses[i].zs.during;
+            attachments[idx].stencil.last = subpasses[i].zs.stencil.during;
+            attachments[idx].aspects |= subpasses[i].zs.aspects;
          }
       }
 
@@ -121,10 +163,32 @@ dzn_CreateRenderPass2(VkDevice dev,
          uint32_t idx = subpass->pInputAttachments[j].attachment;
          subpasses[i].inputs[j].idx = idx;
          if (idx != VK_ATTACHMENT_UNUSED) {
+            subpasses[i].inputs[j].aspects = subpass->pInputAttachments[j].aspectMask;
             subpasses[i].inputs[j].before = attachments[idx].last;
-            subpasses[i].inputs[j].during =
-               dzn_image_layout_to_state(subpass->pInputAttachments[j].layout);
+            subpasses[i].inputs[j].during = attachments[idx].last;
+            subpasses[i].inputs[j].stencil.before = attachments[idx].stencil.last;
+            subpasses[i].inputs[j].stencil.during = attachments[idx].stencil.last;
+
+            if (subpasses[i].inputs[j].aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+               subpasses[i].inputs[j].stencil.during =
+                  dzn_image_layout_to_state(subpass->pInputAttachments[j].layout,
+                                            VK_IMAGE_ASPECT_STENCIL_BIT);
+            }
+
+            if (subpasses[i].inputs[j].aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+               subpasses[i].inputs[j].during =
+                  dzn_image_layout_to_state(subpass->pInputAttachments[j].layout,
+                                            VK_IMAGE_ASPECT_DEPTH_BIT);
+               attachments[idx].last = subpasses[i].inputs[j].during;
+            } else if (subpasses[i].inputs[j].aspects == VK_IMAGE_ASPECT_COLOR_BIT) {
+               subpasses[i].inputs[j].during =
+                  dzn_image_layout_to_state(subpass->pInputAttachments[j].layout,
+                                            VK_IMAGE_ASPECT_COLOR_BIT);
+            }
+
             attachments[idx].last = subpasses[i].inputs[j].during;
+            attachments[idx].stencil.last = subpasses[i].inputs[j].stencil.during;
+            attachments[idx].aspects |= subpass->pInputAttachments[j].aspectMask;
          }
       }
    }
