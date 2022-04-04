@@ -1496,67 +1496,96 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    v3dv_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
 
+   /* We don't really have special restrictions for the maximum
+    * descriptors per set, other than maybe not exceeding the limits
+    * of addressable memory in a single allocation on either the host
+    * or the GPU. This will be a much larger limit than any of the
+    * per-stage limits already available in Vulkan though, so in practice,
+    * it is not expected to limit anything beyond what is already
+    * constrained through per-stage limits.
+    */
+   const uint32_t max_host_descriptors =
+      (UINT32_MAX - sizeof(struct v3dv_descriptor_set)) /
+      sizeof(struct v3dv_descriptor);
+   const uint32_t max_gpu_descriptors =
+      (UINT32_MAX / v3dv_X(pdevice, max_descriptor_bo_size)());
+
+   VkPhysicalDeviceVulkan13Properties vk13 = {
+      .maxInlineUniformBlockSize = 4096,
+      .maxPerStageDescriptorInlineUniformBlocks = MAX_INLINE_UNIFORM_BUFFERS,
+      .maxDescriptorSetInlineUniformBlocks = MAX_INLINE_UNIFORM_BUFFERS,
+      .maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks =
+         MAX_INLINE_UNIFORM_BUFFERS,
+      .maxDescriptorSetUpdateAfterBindInlineUniformBlocks =
+         MAX_INLINE_UNIFORM_BUFFERS,
+   };
+
+   VkPhysicalDeviceVulkan12Properties vk12 = {
+      .driverID = VK_DRIVER_ID_MESA_V3DV,
+      .conformanceVersion = {
+         .major = 1,
+         .minor = 2,
+         .subminor = 7,
+         .patch = 1,
+      },
+
+      .supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
+      .supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
+      /* FIXME: if we want to support independentResolveNone then we would
+       * need to honor attachment load operations on resolve attachments,
+       * which we currently ignore because the resolve makes them irrelevant,
+       * as it unconditionally writes all pixels in the render area. However,
+       * with independentResolveNone, it is possible to have one aspect of a
+       * D/S resolve attachment stay unresolved, in which case the attachment
+       * load operation is relevant.
+       *
+       * NOTE: implementing attachment load for resolve attachments isn't
+       * immediately trivial because these attachments are not part of the
+       * framebuffer and therefore we can't use the same mechanism we use
+       * for framebuffer attachments. Instead, we should probably have to
+       * emit a meta operation for that right at the start of the render
+       * pass (or subpass).
+       */
+      .independentResolveNone = false,
+      .independentResolve = false,
+   };
+   memset(vk12.driverName, 0, VK_MAX_DRIVER_NAME_SIZE_KHR);
+   snprintf(vk12.driverName, VK_MAX_DRIVER_NAME_SIZE_KHR, "V3DV Mesa");
+   memset(vk12.driverInfo, 0, VK_MAX_DRIVER_INFO_SIZE_KHR);
+   snprintf(vk12.driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
+            "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
+
+   VkPhysicalDeviceVulkan11Properties vk11 = {
+      .deviceLUIDValid = false,
+      .subgroupSize = V3D_CHANNELS,
+      .subgroupSupportedStages = VK_SHADER_STAGE_COMPUTE_BIT,
+      .subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT,
+      .subgroupQuadOperationsInAllStages = false,
+      .pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES,
+      .maxMultiviewViewCount = MAX_MULTIVIEW_VIEW_COUNT,
+      .maxMultiviewInstanceIndex = UINT32_MAX - 1,
+      .protectedNoFault = false,
+      .maxPerSetDescriptors = MIN2(max_host_descriptors, max_gpu_descriptors),
+      /* Minimum required by the spec */
+      .maxMemoryAllocationSize = MAX_MEMORY_ALLOCATION_SIZE,
+   };
+   memcpy(vk11.deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+   memcpy(vk11.driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
+
+
    vk_foreach_struct(ext, pProperties->pNext) {
+      if (vk_get_physical_device_core_1_1_property_ext(ext, &vk11))
+         continue;
+      if (vk_get_physical_device_core_1_2_property_ext(ext, &vk12))
+         continue;
+      if (vk_get_physical_device_core_1_3_property_ext(ext, &vk13))
+         continue;
+
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *props =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
          props->maxCustomBorderColorSamplers = V3D_MAX_TEXTURE_SAMPLERS;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
-         VkPhysicalDeviceDepthStencilResolveProperties *props =
-            (VkPhysicalDeviceDepthStencilResolveProperties *)ext;
-         props->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-         props->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-         /* FIXME: if we want to support independentResolveNone then we would
-          * need to honor attachment load operations on resolve attachments,
-          * which we currently ignore because the resolve makes them irrelevant,
-          * as it unconditionally writes all pixels in the render area. However,
-          * with independentResolveNone, it is possible to have one aspect of a
-          * D/S resolve attachment stay unresolved, in which case the attachment
-          * load operation is relevant.
-          *
-          * NOTE: implementing attachment load for resolve attachments isn't
-          * immediately trivial because these attachments are not part of the
-          * framebuffer and therefore we can't use the same mechanism we use
-          * for framebuffer attachments. Instead, we should probably have to
-          * emit a meta operation for that right at the start of the render
-          * pass (or subpass).
-          */
-         props->independentResolveNone = false;
-         props->independentResolve = false;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
-         VkPhysicalDeviceDriverPropertiesKHR *props =
-            (VkPhysicalDeviceDriverPropertiesKHR *)ext;
-         props->driverID = VK_DRIVER_ID_MESA_V3DV;
-         memset(props->driverName, 0, VK_MAX_DRIVER_NAME_SIZE_KHR);
-         snprintf(props->driverName, VK_MAX_DRIVER_NAME_SIZE_KHR, "V3DV Mesa");
-         memset(props->driverInfo, 0, VK_MAX_DRIVER_INFO_SIZE_KHR);
-         snprintf(props->driverInfo, VK_MAX_DRIVER_INFO_SIZE_KHR,
-                  "Mesa " PACKAGE_VERSION MESA_GIT_SHA1);
-         props->conformanceVersion = (VkConformanceVersionKHR) {
-            .major = 1,
-            .minor = 2,
-            .subminor = 7,
-            .patch = 1,
-         };
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
-         VkPhysicalDeviceInlineUniformBlockProperties *props =
-            (VkPhysicalDeviceInlineUniformBlockProperties *)ext;
-         props->maxInlineUniformBlockSize = 4096;
-         props->maxPerStageDescriptorInlineUniformBlocks =
-            MAX_INLINE_UNIFORM_BUFFERS;
-         props->maxDescriptorSetInlineUniformBlocks =
-            MAX_INLINE_UNIFORM_BUFFERS;
-         props->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks =
-            MAX_INLINE_UNIFORM_BUFFERS;
-         props->maxDescriptorSetUpdateAfterBindInlineUniformBlocks =
-            MAX_INLINE_UNIFORM_BUFFERS;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
@@ -1571,15 +1600,6 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *props =
             (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
          props->maxVertexAttribDivisor = 0xffff;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-         VkPhysicalDeviceIDProperties *id_props =
-            (VkPhysicalDeviceIDProperties *)ext;
-         memcpy(id_props->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
-         memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
-         /* The LUID is for Windows. */
-         id_props->deviceLUIDValid = false;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
@@ -1603,63 +1623,11 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->lineSubPixelPrecisionBits = V3D_COORD_SHIFT;
          break;
       }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
-         VkPhysicalDeviceMaintenance3Properties *props =
-            (VkPhysicalDeviceMaintenance3Properties *)ext;
-         /* We don't really have special restrictions for the maximum
-          * descriptors per set, other than maybe not exceeding the limits
-          * of addressable memory in a single allocation on either the host
-          * or the GPU. This will be a much larger limit than any of the
-          * per-stage limits already available in Vulkan though, so in practice,
-          * it is not expected to limit anything beyond what is already
-          * constrained through per-stage limits.
-          */
-         uint32_t max_host_descriptors =
-            (UINT32_MAX - sizeof(struct v3dv_descriptor_set)) /
-            sizeof(struct v3dv_descriptor);
-         uint32_t max_gpu_descriptors =
-            (UINT32_MAX / v3dv_X(pdevice, max_descriptor_bo_size)());
-         props->maxPerSetDescriptors =
-            MIN2(max_host_descriptors, max_gpu_descriptors);
-
-         /* Minimum required by the spec */
-         props->maxMemoryAllocationSize = MAX_MEMORY_ALLOCATION_SIZE;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
-         VkPhysicalDeviceMultiviewProperties *props =
-            (VkPhysicalDeviceMultiviewProperties *)ext;
-         props->maxMultiviewViewCount = MAX_MULTIVIEW_VIEW_COUNT;
-         props->maxMultiviewInstanceIndex = UINT32_MAX - 1;
-         break;
-      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT:
          /* Do nothing, not even logging. This is a non-PCI device, so we will
           * never provide this extension.
           */
          break;
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-         VkPhysicalDevicePointClippingProperties *props =
-            (VkPhysicalDevicePointClippingProperties *)ext;
-         props->pointClippingBehavior =
-            VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
-         VkPhysicalDeviceProtectedMemoryProperties *props =
-            (VkPhysicalDeviceProtectedMemoryProperties *)ext;
-         props->protectedNoFault = false;
-         break;
-      }
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
-         VkPhysicalDeviceSubgroupProperties *props =
-            (VkPhysicalDeviceSubgroupProperties *)ext;
-         props->subgroupSize = V3D_CHANNELS;
-         props->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
-         props->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
-         props->quadOperationsInAllStages = false;
-         break;
-      }
       default:
          v3dv_debug_ignored_stype(ext->sType);
          break;
