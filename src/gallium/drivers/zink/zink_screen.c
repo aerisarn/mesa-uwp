@@ -864,7 +864,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
          max = screen->info.props.limits.maxTessellationEvaluationInputComponents / 4;
          break;
       case PIPE_SHADER_GEOMETRY:
-         max = screen->info.props.limits.maxGeometryInputComponents;
+         max = screen->info.props.limits.maxGeometryInputComponents / 4;
          break;
       case PIPE_SHADER_FRAGMENT:
          /* intel drivers report fewer components, but it's a value that's compatible
