@@ -44,6 +44,7 @@
 #include "pvr_device_info.h"
 #include "pvr_job_render.h"
 #include "pvr_limits.h"
+#include "pvr_nop_usc.h"
 #include "pvr_pds.h"
 #include "pvr_private.h"
 #include "pvr_winsys.h"
@@ -925,7 +926,7 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance _instance, const char *pName)
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
 }
 
-static VkResult pvr_device_init_compute_pds_program(struct pvr_device *device)
+static VkResult pvr_device_init_compute_fence_program(struct pvr_device *device)
 {
    const struct pvr_device_info *dev_info = &device->pdevice->dev_info;
    const uint32_t cache_line_size = rogue_get_slc_cache_line_size(dev_info);
@@ -1010,6 +1011,72 @@ static void pvr_device_get_pixel_event_pds_program_data_size(
    *data_size_in_dwords_out = program.data_size;
 }
 
+static VkResult pvr_device_init_nop_program(struct pvr_device *device)
+{
+   const uint32_t cache_line_size =
+      rogue_get_slc_cache_line_size(&device->pdevice->dev_info);
+   struct pvr_pds_kickusc_program program = { 0 };
+   uint32_t staging_buffer_size;
+   uint32_t *staging_buffer;
+   VkResult result;
+
+   result = pvr_gpu_upload_usc(device,
+                               pvr_nop_usc_code,
+                               sizeof(pvr_nop_usc_code),
+                               cache_line_size,
+                               &device->nop_program.usc);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* Setup a PDS program that kicks the static USC program. */
+   pvr_pds_setup_doutu(&program.usc_task_control,
+                       device->nop_program.usc->vma->dev_addr.addr,
+                       0U,
+                       PVRX(PDSINST_DOUTU_SAMPLE_RATE_INSTANCE),
+                       false);
+
+   pvr_pds_set_sizes_pixel_shader(&program);
+
+   staging_buffer_size =
+      (program.code_size + program.data_size) * sizeof(*staging_buffer);
+
+   staging_buffer = vk_alloc(&device->vk.alloc,
+                             staging_buffer_size,
+                             8U,
+                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!staging_buffer) {
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+      goto err_free_nop_usc_bo;
+   }
+
+   pvr_pds_generate_pixel_shader_program(&program, staging_buffer);
+
+   /* FIXME: Figure out the define for alignment of 16. */
+   result = pvr_gpu_upload_pds(device,
+                               staging_buffer,
+                               program.data_size,
+                               16U,
+                               &staging_buffer[program.data_size],
+                               program.code_size,
+                               16U,
+                               16U,
+                               &device->nop_program.pds);
+   if (result != VK_SUCCESS)
+      goto err_free_staging_buffer;
+
+   vk_free(&device->vk.alloc, staging_buffer);
+
+   return VK_SUCCESS;
+
+err_free_staging_buffer:
+   vk_free(&device->vk.alloc, staging_buffer);
+
+err_free_nop_usc_bo:
+   pvr_bo_free(device, device->nop_program.usc);
+
+   return result;
+}
+
 VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
                           const VkDeviceCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator,
@@ -1084,13 +1151,17 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto err_pvr_winsys_destroy;
 
-   result = pvr_queues_create(device, pCreateInfo);
+   result = pvr_device_init_nop_program(device);
    if (result != VK_SUCCESS)
       goto err_pvr_free_list_destroy;
 
-   result = pvr_device_init_compute_pds_program(device);
+   result = pvr_device_init_compute_fence_program(device);
    if (result != VK_SUCCESS)
-      goto err_pvr_queues_destroy;
+      goto err_pvr_free_nop_program;
+
+   result = pvr_queues_create(device, pCreateInfo);
+   if (result != VK_SUCCESS)
+      goto err_pvr_free_compute_fence;
 
    if (pCreateInfo->pEnabledFeatures)
       memcpy(&device->features,
@@ -1111,8 +1182,12 @@ VkResult pvr_CreateDevice(VkPhysicalDevice physicalDevice,
 
    return VK_SUCCESS;
 
-err_pvr_queues_destroy:
-   pvr_queues_destroy(device);
+err_pvr_free_compute_fence:
+   pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
+
+err_pvr_free_nop_program:
+   pvr_bo_free(device, device->nop_program.pds.pvr_bo);
+   pvr_bo_free(device, device->nop_program.usc);
 
 err_pvr_free_list_destroy:
    pvr_free_list_destroy(device->global_free_list);
@@ -1140,8 +1215,10 @@ void pvr_DestroyDevice(VkDevice _device,
 {
    PVR_FROM_HANDLE(pvr_device, device, _device);
 
-   pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
    pvr_queues_destroy(device);
+   pvr_bo_free(device, device->pds_compute_fence_program.pvr_bo);
+   pvr_bo_free(device, device->nop_program.pds.pvr_bo);
+   pvr_bo_free(device, device->nop_program.usc);
    pvr_free_list_destroy(device->global_free_list);
    pvr_winsys_destroy(device->ws);
    close(device->render_fd);

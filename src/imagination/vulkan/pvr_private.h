@@ -289,6 +289,11 @@ struct pvr_device {
 
    struct pvr_pds_upload pds_compute_fence_program;
 
+   struct {
+      struct pvr_pds_upload pds;
+      struct pvr_bo *usc;
+   } nop_program;
+
    VkPhysicalDeviceFeatures features;
 };
 
