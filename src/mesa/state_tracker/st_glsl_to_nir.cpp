@@ -255,7 +255,7 @@ st_nir_assign_uniform_locations(struct gl_context *ctx,
  * - find every gl_Position write
  * - store 1.0 to gl_PointSizeMESA after every gl_Position write
  */
-static void
+void
 st_nir_add_point_size(nir_shader *nir)
 {
    nir_variable *psiz = nir_variable_create(nir, nir_var_shader_out, glsl_float_type(), "gl_PointSizeMESA");
