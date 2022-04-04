@@ -3044,7 +3044,6 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
          max_size = MAX2(max_size, region_size * region->extent.depth);
       }
 
-
       VkResult result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf, max_size,
                                            D3D12_HEAP_TYPE_DEFAULT,
