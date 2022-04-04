@@ -2490,6 +2490,48 @@ assign_initial_varying_locations(const struct gl_constants *consts,
       if (matched_candidate == NULL)
          return false;
 
+      /* There are two situations where a new output varying is needed:
+       *
+       *  - If varying packing is disabled for xfb and the current declaration
+       *    is subscripting an array, whether the subscript is aligned or not.
+       *    to preserve the rest of the array for the consumer.
+       *
+       *  - If a builtin variable needs to be copied to a new variable
+       *    before its content is modified by another lowering pass (e.g.
+       *    \c gl_Position is transformed by \c nir_lower_viewport_transform).
+       */
+      const bool lowered =
+         (vm->disable_xfb_packing && xfb_decls[i].is_subscripted) ||
+         (matched_candidate->toplevel_var->data.explicit_location &&
+          matched_candidate->toplevel_var->data.location < VARYING_SLOT_VAR0 &&
+          (!consumer || consumer->Stage == MESA_SHADER_FRAGMENT) &&
+          (consts->ShaderCompilerOptions[producer->Stage].LowerBuiltinVariablesXfb &
+              BITFIELD_BIT(matched_candidate->toplevel_var->data.location)));
+
+      if (lowered) {
+         nir_variable *new_var;
+         struct tfeedback_candidate *new_candidate = NULL;
+
+         new_var = gl_nir_lower_xfb_varying(producer->Program->nir,
+                                            xfb_decls[i].orig_name,
+                                            matched_candidate->toplevel_var);
+         if (new_var == NULL)
+            return false;
+
+         /* Create new candidate and replace matched_candidate */
+         new_candidate = rzalloc(mem_ctx, struct tfeedback_candidate);
+         new_candidate->toplevel_var = new_var;
+         new_candidate->type = new_var->type;
+         new_candidate->struct_offset_floats = 0;
+         new_candidate->xfb_offset_floats = 0;
+         _mesa_hash_table_insert(tfeedback_candidates,
+                                 ralloc_strdup(mem_ctx, new_var->name),
+                                 new_candidate);
+
+         xfb_decl_set_lowered_candidate(&xfb_decls[i], new_candidate);
+         matched_candidate = new_candidate;
+      }
+
       /* Mark as xfb varying */
       matched_candidate->toplevel_var->data.is_xfb = 1;
 
@@ -2514,9 +2556,9 @@ assign_initial_varying_locations(const struct gl_constants *consts,
       }
 
       /* Add the xfb varying to varying matches if it wasn't already added */
-      if (!should_add_varying_match_record(input_var, prog, producer,
-                                           consumer) &&
-          !matched_candidate->toplevel_var->data.is_xfb_only) {
+      if ((!should_add_varying_match_record(input_var, prog, producer,
+                                            consumer) &&
+           !matched_candidate->toplevel_var->data.is_xfb_only) || lowered) {
          matched_candidate->toplevel_var->data.is_xfb_only = 1;
          varying_matches_record(mem_ctx, vm, matched_candidate->toplevel_var,
                                 NULL);

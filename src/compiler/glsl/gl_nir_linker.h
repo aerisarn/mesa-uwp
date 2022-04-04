@@ -68,6 +68,10 @@ bool gl_nir_link_varyings(const struct gl_constants *consts,
                           const struct gl_extensions *exts,
                           gl_api api, struct gl_shader_program *prog);
 
+nir_variable * gl_nir_lower_xfb_varying(nir_shader *shader,
+                                        const char *old_var_name,
+                                        nir_variable *toplevel_var);
+
 void gl_nir_opt_dead_builtin_varyings(const struct gl_constants *consts,
                                       gl_api api,
                                       struct gl_shader_program *prog,
