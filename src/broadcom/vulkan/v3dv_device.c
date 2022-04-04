@@ -2036,6 +2036,10 @@ VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_DeviceWaitIdle(VkDevice _device)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
+
+   if (vk_device_is_lost(&device->vk))
+      return VK_ERROR_DEVICE_LOST;
+
    return v3dv_QueueWaitIdle(v3dv_queue_to_handle(&device->queue));
 }
 

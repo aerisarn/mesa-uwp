@@ -147,6 +147,9 @@ get_occlusion_query_result(struct v3dv_device *device,
 {
    assert(pool && pool->query_type == VK_QUERY_TYPE_OCCLUSION);
 
+   if (vk_device_is_lost(&device->vk))
+      return VK_ERROR_DEVICE_LOST;
+
    struct v3dv_query *q = &pool->queries[query];
    assert(q->bo && q->bo->map);
 
@@ -159,10 +162,10 @@ get_occlusion_query_result(struct v3dv_device *device,
        *     error may occur."
        */
       if (!q->maybe_available)
-         return vk_error(device, VK_ERROR_DEVICE_LOST);
+         return vk_device_set_lost(&device->vk, "Query unavailable");
 
       if (!v3dv_bo_wait(device, q->bo, 0xffffffffffffffffull))
-         return vk_error(device, VK_ERROR_DEVICE_LOST);
+         return vk_device_set_lost(&device->vk, "Query BO wait failed: %m");
 
       *available = true;
    } else {
@@ -195,7 +198,7 @@ get_timestamp_query_result(struct v3dv_device *device,
        *     error may occur."
        */
       if (!q->maybe_available)
-         return vk_error(device, VK_ERROR_DEVICE_LOST);
+         return vk_device_set_lost(&device->vk, "Query unavailable");
 
       *available = true;
    } else {

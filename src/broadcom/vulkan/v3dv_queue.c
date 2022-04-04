@@ -145,13 +145,13 @@ gpu_queue_wait_idle(struct v3dv_queue *queue)
                                3, INT64_MAX,
                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL, NULL);
       if (ret)
-         return VK_ERROR_DEVICE_LOST;
+         return vk_queue_set_lost(&queue->vk, "Syncobj wait failed: %m");
    } else {
       int ret =
          drmSyncobjWait(render_fd, &last_job_syncs.syncs[V3DV_QUEUE_ANY], 1,
                         INT64_MAX, 0, NULL);
       if (ret)
-         return VK_ERROR_DEVICE_LOST;
+         return vk_queue_set_lost(&queue->vk, "Syncobj wait failed: %m");
    }
 
    return VK_SUCCESS;
@@ -161,6 +161,9 @@ VKAPI_ATTR VkResult VKAPI_CALL
 v3dv_QueueWaitIdle(VkQueue _queue)
 {
    V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+
+   if (vk_device_is_lost(&queue->device->vk))
+      return VK_ERROR_DEVICE_LOST;
 
    /* Check that we don't have any wait threads running in the CPU first,
     * as these can spawn new GPU jobs.
@@ -457,7 +460,8 @@ spawn_event_wait_thread(struct v3dv_wait_thread_info *info, pthread_t *wait_thre
    assert(wait_thread != NULL);
 
    if (pthread_create(wait_thread, NULL, event_wait_thread_func, info))
-      return vk_error(info->job->device, VK_ERROR_DEVICE_LOST);
+      return vk_queue_set_lost(&info->job->device->queue.vk,
+                               "Thread create failed: %m");
 
    return VK_NOT_READY;
 }
@@ -1001,7 +1005,7 @@ handle_cl_job(struct v3dv_queue *queue,
    multisync_free(device, &ms);
 
    if (ret)
-      return vk_error(device, VK_ERROR_DEVICE_LOST);
+      return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_CL failed: %m");
 
    return VK_SUCCESS;
 }
@@ -1045,10 +1049,8 @@ handle_tfu_job(struct v3dv_queue *queue,
 
    multisync_free(device, &ms);
 
-   if (ret != 0) {
-      fprintf(stderr, "Failed to submit TFU job: %d\n", ret);
-      return vk_error(device, VK_ERROR_DEVICE_LOST);
-   }
+   if (ret != 0)
+      return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_TFU failed: %m");
 
    return VK_SUCCESS;
 }
@@ -1114,7 +1116,7 @@ handle_csd_job(struct v3dv_queue *queue,
    multisync_free(device, &ms);
 
    if (ret)
-      return vk_error(device, VK_ERROR_DEVICE_LOST);
+      return vk_queue_set_lost(&queue->vk, "V3D_SUBMIT_CSD failed: %m");
 
    return VK_SUCCESS;
 }
@@ -1517,7 +1519,7 @@ spawn_master_wait_thread(struct v3dv_queue *queue,
    mtx_lock(&queue->mutex);
    if (pthread_create(&wait_info->master_wait_thread, NULL,
                       master_wait_thread_func, wait_info)) {
-      result = vk_error(queue, VK_ERROR_DEVICE_LOST);
+      result = vk_queue_set_lost(&queue->vk, "Thread create failed: %m");
       goto done;
    }
 
@@ -1535,6 +1537,9 @@ v3dv_QueueSubmit(VkQueue _queue,
                  VkFence fence)
 {
    V3DV_FROM_HANDLE(v3dv_queue, queue, _queue);
+
+   if (vk_device_is_lost(&queue->device->vk))
+      return VK_ERROR_DEVICE_LOST;
 
    struct v3dv_queue_submit_wait_info *wait_info = NULL;
 
@@ -1949,13 +1954,16 @@ v3dv_GetFenceStatus(VkDevice _device, VkFence _fence)
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_fence, fence, _fence);
 
+   if (vk_device_is_lost(&device->vk))
+      return VK_ERROR_DEVICE_LOST;
+
    uint32_t sync = fence_get_sync(fence);
    int ret = drmSyncobjWait(device->pdevice->render_fd, &sync, 1,
                             0, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
    if (ret == -ETIME)
       return VK_NOT_READY;
    else if (ret)
-      return vk_error(device, VK_ERROR_DEVICE_LOST);
+      return vk_device_set_lost(&device->vk, "Syncobj wait failed: %m");
    return VK_SUCCESS;
 }
 
@@ -2045,6 +2053,9 @@ v3dv_WaitForFences(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
 
+   if (vk_device_is_lost(&device->vk))
+      return VK_ERROR_DEVICE_LOST;
+
    const uint64_t abs_timeout = get_absolute_timeout(timeout);
 
    uint32_t *syncobjs = vk_alloc(&device->vk.alloc,
@@ -2073,7 +2084,7 @@ v3dv_WaitForFences(VkDevice _device,
    if (ret == -ETIME)
       return VK_TIMEOUT;
    else if (ret)
-      return vk_error(device, VK_ERROR_DEVICE_LOST);
+      return vk_device_set_lost(&device->vk, "Syncobj wait failed: %m");
    return VK_SUCCESS;
 }
 
