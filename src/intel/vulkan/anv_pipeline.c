@@ -486,8 +486,8 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 
    assert(rendering_info->colorAttachmentCount <= MAX_RTS);
    /* Consider all inputs as valid until look at the NIR variables. */
-   key->color_outputs_valid = (1u << MAX_RTS) - 1;
-   key->nr_color_regions = MAX_RTS;
+   key->color_outputs_valid = (1u << rendering_info->colorAttachmentCount) - 1;
+   key->nr_color_regions = rendering_info->colorAttachmentCount;
 
    /* To reduce possible shader recompilations we would need to know if
     * there is a SampleMask output variable to compute if we should emit
@@ -1125,7 +1125,8 @@ anv_pipeline_compile_mesh(const struct brw_compiler *compiler,
 
 static void
 anv_pipeline_link_fs(const struct brw_compiler *compiler,
-                     struct anv_pipeline_stage *stage)
+                     struct anv_pipeline_stage *stage,
+                     const VkPipelineRenderingCreateInfo *rendering_info)
 {
    /* Initially the valid outputs value is set to all possible render targets
     * valid (see populate_wm_prog_key()), before we look at the shader
@@ -1144,6 +1145,8 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
 
       stage->key.wm.color_outputs_valid |= BITFIELD_RANGE(rt, array_len);
    }
+   stage->key.wm.color_outputs_valid &=
+      (1u << rendering_info->colorAttachmentCount) - 1;
    stage->key.wm.nr_color_regions =
       util_last_bit(stage->key.wm.color_outputs_valid);
 
@@ -1682,7 +1685,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          anv_pipeline_link_mesh(compiler, &stages[s], next_stage);
          break;
       case MESA_SHADER_FRAGMENT:
-         anv_pipeline_link_fs(compiler, &stages[s]);
+         anv_pipeline_link_fs(compiler, &stages[s], rendering_info);
          break;
       default:
          unreachable("Invalid graphics shader stage");
