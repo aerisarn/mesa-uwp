@@ -520,7 +520,9 @@ vk_queue_start_submit_thread(struct vk_queue *queue)
 {
    int ret;
 
+   mtx_lock(&queue->submit.mutex);
    queue->submit.thread_run = true;
+   mtx_unlock(&queue->submit.mutex);
 
    ret = thrd_create(&queue->submit.thread,
                      vk_queue_submit_thread_func,
