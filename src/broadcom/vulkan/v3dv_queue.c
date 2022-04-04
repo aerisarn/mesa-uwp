@@ -25,6 +25,7 @@
 #include "drm-uapi/v3d_drm.h"
 
 #include "broadcom/clif/clif_dump.h"
+#include "util/os_time.h"
 
 #include <errno.h>
 #include <time.h>
@@ -65,25 +66,6 @@ v3dv_clif_dump(struct v3dv_device *device,
 
  free_clif:
    clif_dump_destroy(clif);
-}
-
-static uint64_t
-gettime_ns()
-{
-   struct timespec current;
-   clock_gettime(CLOCK_MONOTONIC, &current);
-   return (uint64_t)current.tv_sec * NSEC_PER_SEC + current.tv_nsec;
-}
-
-static uint64_t
-get_absolute_timeout(uint64_t timeout)
-{
-   uint64_t current_time = gettime_ns();
-   uint64_t max_timeout = (uint64_t) INT64_MAX - current_time;
-
-   timeout = MIN2(max_timeout, timeout);
-
-   return (current_time + timeout);
 }
 
 static VkResult
@@ -2056,7 +2038,7 @@ v3dv_WaitForFences(VkDevice _device,
    if (vk_device_is_lost(&device->vk))
       return VK_ERROR_DEVICE_LOST;
 
-   const uint64_t abs_timeout = get_absolute_timeout(timeout);
+   const uint64_t abs_timeout = os_time_get_absolute_timeout(timeout);
 
    uint32_t *syncobjs = vk_alloc(&device->vk.alloc,
                                  sizeof(*syncobjs) * fenceCount, 8,
@@ -2077,7 +2059,7 @@ v3dv_WaitForFences(VkDevice _device,
    do {
       ret = drmSyncobjWait(device->pdevice->render_fd, syncobjs, fenceCount,
                            timeout, flags, NULL);
-   } while (ret == -ETIME && gettime_ns() < abs_timeout);
+   } while (ret == -ETIME && os_time_get_nano() < abs_timeout);
 
    vk_free(&device->vk.alloc, syncobjs);
 
