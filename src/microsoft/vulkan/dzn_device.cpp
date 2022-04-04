@@ -101,6 +101,7 @@ static const struct debug_control dzn_debug_options[] = {
    { "internal", DZN_DEBUG_INTERNAL },
    { "signature", DZN_DEBUG_SIG },
    { "gbv", DZN_DEBUG_GBV },
+   { "d3d12", DZN_DEBUG_D3D12 },
    { NULL, 0 }
 };
 
@@ -179,7 +180,8 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
       return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
    }
 
-   d3d12_enable_debug_layer();
+   if (instance->debug_flags & DZN_DEBUG_D3D12)
+      d3d12_enable_debug_layer();
    if (instance->debug_flags & DZN_DEBUG_GBV)
       d3d12_enable_gpu_validation();
 
