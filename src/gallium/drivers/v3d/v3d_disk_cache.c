@@ -71,6 +71,8 @@ void v3d_disk_cache_init(struct v3d_screen *screen)
         _mesa_sha1_format(timestamp, id_sha1);
 
         screen->disk_cache = disk_cache_create(renderer, timestamp, 0);
+
+        free(renderer);
 }
 
 static void
@@ -226,6 +228,8 @@ v3d_disk_cache_store(struct v3d_context *v3d,
         blob_write_bytes(&blob, qpu_insts, qpu_size);
 
         disk_cache_put(cache, cache_key, blob.data, blob.size, NULL);
+
+        blob_finish(&blob);
 }
 
 #endif /* ENABLE_SHADER_CACHE */
