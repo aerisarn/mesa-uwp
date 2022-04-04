@@ -620,7 +620,7 @@ zink_draw(struct pipe_context *pctx,
          VkViewport viewport = {
             ctx->vp_state.viewport_states[i].translate[0] - ctx->vp_state.viewport_states[i].scale[0],
             ctx->vp_state.viewport_states[i].translate[1] - ctx->vp_state.viewport_states[i].scale[1],
-            ctx->vp_state.viewport_states[i].scale[0] * 2,
+            MAX2(ctx->vp_state.viewport_states[i].scale[0] * 2, 1),
             ctx->vp_state.viewport_states[i].scale[1] * 2,
             ctx->rast_state->base.clip_halfz ?
                ctx->vp_state.viewport_states[i].translate[2] :
