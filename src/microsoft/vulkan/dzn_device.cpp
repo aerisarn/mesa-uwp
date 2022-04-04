@@ -1143,8 +1143,8 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
 }
 
 VKAPI_ATTR void VKAPI_CALL
-dzn_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
-                                VkPhysicalDeviceProperties *pProperties)
+dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
+                                 VkPhysicalDeviceProperties2 *pProperties)
 {
    VK_FROM_HANDLE(dzn_physical_device, pdevice, physicalDevice);
 
@@ -1281,7 +1281,7 @@ dzn_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       devtype = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
    }
 
-   *pProperties = VkPhysicalDeviceProperties {
+   pProperties->properties = VkPhysicalDeviceProperties {
       .apiVersion = DZN_API_VERSION,
       .driverVersion = vk_get_driver_version(),
 
@@ -1293,20 +1293,12 @@ dzn_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .sparseProperties = { 0 },
    };
 
-   snprintf(pProperties->deviceName, sizeof(pProperties->deviceName),
+   snprintf(pProperties->properties.deviceName,
+            sizeof(pProperties->properties.deviceName),
             "Microsoft Direct3D12 (%S)", desc.Description);
 
-   memcpy(pProperties->pipelineCacheUUID,
+   memcpy(pProperties->properties.pipelineCacheUUID,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
-}
-
-VKAPI_ATTR void VKAPI_CALL
-dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                 VkPhysicalDeviceProperties2 *pProperties)
-{
-   VK_FROM_HANDLE(dzn_physical_device, pdevice, physicalDevice);
-
-   dzn_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
 
    vk_foreach_struct(ext, pProperties->pNext) {
       switch (ext->sType) {
