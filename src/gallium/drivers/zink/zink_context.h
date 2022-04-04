@@ -291,6 +291,8 @@ struct zink_context {
       float tess_levels[6];
    };
 
+   struct zink_vk_query *curr_xfb_queries[PIPE_MAX_VERTEX_STREAMS];
+
    struct list_head query_pools;
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;
