@@ -69,6 +69,11 @@
 #define PVR_SRV_BRIDGE_DMABUF_PHYSMEMIMPORTDMABUF 0UL
 #define PVR_SRV_BRIDGE_DMABUF_PHYSMEMEXPORTDMABUF 2UL
 
+#define PVR_SRV_BRIDGE_RGXTQ 128UL
+
+#define PVR_SRV_BRIDGE_RGXTQ_RGXCREATETRANSFERCONTEXT 0UL
+#define PVR_SRV_BRIDGE_RGXTQ_RGXDESTROYTRANSFERCONTEXT 1UL
+
 #define PVR_SRV_BRIDGE_RGXCMP 129UL
 
 #define PVR_SRV_BRIDGE_RGXCMP_RGXCREATECOMPUTECONTEXT 0UL
@@ -131,6 +136,12 @@
 
 #define PVR_BUFFER_FLAG_READ BITFIELD_BIT(0U)
 #define PVR_BUFFER_FLAG_WRITE BITFIELD_BIT(1U)
+
+/* clang-format off */
+#define PVR_U8888_TO_U32(v1, v2, v3, v4)                                \
+   (((v1) & 0xFFU) | (((v2) & 0xFFU) << 8U) | (((v3) & 0xFFU) << 16U) | \
+    (((v4) & 0xFFU) << 24U))
+/* clang-format on */
 
 /******************************************************************************
    Services Boolean
@@ -458,6 +469,39 @@ struct pvr_srv_phys_mem_export_dmabuf_cmd {
 struct pvr_srv_phys_mem_export_dmabuf_ret {
    enum pvr_srv_error error;
    int fd;
+} PACKED;
+
+/******************************************************************************
+   PVR_SRV_BRIDGE_RGXTQ_RGXCREATETRANSFERCONTEXT structs
+ ******************************************************************************/
+
+struct pvr_srv_rgx_create_transfer_context_cmd {
+   uint64_t robustness_address;
+   void *priv_data;
+   uint8_t *reset_framework_cmd;
+   uint32_t context_flags;
+   uint32_t reset_framework_cmd_size;
+   uint32_t packed_ccb_size_u8888;
+   uint32_t priority;
+} PACKED;
+
+struct pvr_srv_rgx_create_transfer_context_ret {
+   void *cli_pmr_mem;
+   void *transfer_context;
+   void *usc_pmr_mem;
+   enum pvr_srv_error error;
+} PACKED;
+
+/******************************************************************************
+   PVR_SRV_BRIDGE_RGXTQ_RGXDESTROYTRANSFERCONTEXT structs
+ ******************************************************************************/
+
+struct pvr_srv_rgx_destroy_transfer_context_cmd {
+   void *transfer_context;
+} PACKED;
+
+struct pvr_srv_rgx_destroy_transfer_context_ret {
+   enum pvr_srv_error error;
 } PACKED;
 
 /******************************************************************************
@@ -878,6 +922,19 @@ VkResult pvr_srv_rgx_kick_compute2(int fd,
                                    uint64_t max_deadline_us,
                                    char *update_fence_name,
                                    int32_t *const update_fence_out);
+
+VkResult pvr_srv_rgx_create_transfer_context(int fd,
+                                             uint32_t priority,
+                                             uint32_t reset_framework_cmd_size,
+                                             uint8_t *reset_framework_cmd,
+                                             void *priv_data,
+                                             uint32_t packed_ccb_size_u8888,
+                                             uint32_t context_flags,
+                                             uint64_t robustness_address,
+                                             void **const cli_pmr_out,
+                                             void **const usc_pmr_out,
+                                             void **const transfer_context_out);
+void pvr_srv_rgx_destroy_transfer_context(int fd, void *transfer_context);
 
 VkResult
 pvr_srv_rgx_create_hwrt_dataset(int fd,

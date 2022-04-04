@@ -90,6 +90,9 @@ VkResult pvr_srv_winsys_compute_ctx_create(
    if (result != VK_SUCCESS)
       goto err_free_srv_ctx;
 
+   /* TODO: Add support for reset framework. Currently we subtract
+    * reset_cmd.regs size from reset_cmd size to only pass empty flags field.
+    */
    result = pvr_srv_rgx_create_compute_context(
       srv_ws->render_fd,
       pvr_srv_from_winsys_priority(create_info->priority),

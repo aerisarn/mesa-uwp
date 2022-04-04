@@ -793,6 +793,84 @@ VkResult pvr_srv_physmem_export_dmabuf(int fd, void *pmr, int *const fd_out)
    return VK_SUCCESS;
 }
 
+VkResult pvr_srv_rgx_create_transfer_context(int fd,
+                                             uint32_t priority,
+                                             uint32_t reset_framework_cmd_size,
+                                             uint8_t *reset_framework_cmd,
+                                             void *priv_data,
+                                             uint32_t packed_ccb_size_u8888,
+                                             uint32_t context_flags,
+                                             uint64_t robustness_address,
+                                             void **const cli_pmr_out,
+                                             void **const usc_pmr_out,
+                                             void **const transfer_context_out)
+{
+   struct pvr_srv_rgx_create_transfer_context_cmd cmd = {
+      .robustness_address = robustness_address,
+      .priority = priority,
+      .reset_framework_cmd_size = reset_framework_cmd_size,
+      .reset_framework_cmd = reset_framework_cmd,
+      .priv_data = priv_data,
+      .packed_ccb_size_u8888 = packed_ccb_size_u8888,
+      .context_flags = context_flags,
+   };
+
+   struct pvr_srv_rgx_create_transfer_context_ret ret = {
+      .error = PVR_SRV_ERROR_BRIDGE_CALL_FAILED,
+   };
+
+   int result;
+
+   result = pvr_srv_bridge_call(fd,
+                                PVR_SRV_BRIDGE_RGXTQ,
+                                PVR_SRV_BRIDGE_RGXTQ_RGXCREATETRANSFERCONTEXT,
+                                &cmd,
+                                sizeof(cmd),
+                                &ret,
+                                sizeof(ret));
+   if (result || ret.error != PVR_SRV_OK) {
+      return vk_bridge_err(VK_ERROR_INITIALIZATION_FAILED,
+                           "PVR_SRV_BRIDGE_RGXTQ_RGXCREATETRANSFERCONTEXT",
+                           ret);
+   }
+
+   if (cli_pmr_out)
+      *cli_pmr_out = ret.cli_pmr_mem;
+
+   if (usc_pmr_out)
+      *usc_pmr_out = ret.usc_pmr_mem;
+
+   *transfer_context_out = ret.transfer_context;
+
+   return VK_SUCCESS;
+}
+
+void pvr_srv_rgx_destroy_transfer_context(int fd, void *transfer_context)
+{
+   struct pvr_srv_rgx_destroy_transfer_context_cmd cmd = {
+      .transfer_context = transfer_context,
+   };
+
+   struct pvr_srv_rgx_destroy_transfer_context_ret ret = {
+      .error = PVR_SRV_ERROR_BRIDGE_CALL_FAILED,
+   };
+
+   int result;
+
+   result = pvr_srv_bridge_call(fd,
+                                PVR_SRV_BRIDGE_RGXTQ,
+                                PVR_SRV_BRIDGE_RGXTQ_RGXDESTROYTRANSFERCONTEXT,
+                                &cmd,
+                                sizeof(cmd),
+                                &ret,
+                                sizeof(ret));
+   if (result || ret.error != PVR_SRV_OK) {
+      vk_bridge_err(VK_ERROR_UNKNOWN,
+                    "PVR_SRV_BRIDGE_RGXTQ_RGXDESTROYTRANSFERCONTEXT",
+                    ret);
+   }
+}
+
 VkResult
 pvr_srv_rgx_create_compute_context(int fd,
                                    uint32_t priority,

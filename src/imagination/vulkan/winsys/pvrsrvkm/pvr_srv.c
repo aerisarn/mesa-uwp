@@ -34,6 +34,7 @@
 #include "pvr_srv_bridge.h"
 #include "pvr_srv_job_compute.h"
 #include "pvr_srv_job_render.h"
+#include "pvr_srv_job_transfer.h"
 #include "pvr_srv_public.h"
 #include "pvr_srv_syncobj.h"
 #include "pvr_winsys.h"
@@ -429,6 +430,8 @@ static const struct pvr_winsys_ops srv_winsys_ops = {
    .compute_ctx_create = pvr_srv_winsys_compute_ctx_create,
    .compute_ctx_destroy = pvr_srv_winsys_compute_ctx_destroy,
    .compute_submit = pvr_srv_winsys_compute_submit,
+   .transfer_ctx_create = pvr_srv_winsys_transfer_ctx_create,
+   .transfer_ctx_destroy = pvr_srv_winsys_transfer_ctx_destroy,
 };
 
 static bool pvr_is_driver_compatible(int render_fd)
