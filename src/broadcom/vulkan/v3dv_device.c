@@ -1608,8 +1608,10 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             MAX_INLINE_UNIFORM_BUFFERS;
          props->maxDescriptorSetInlineUniformBlocks =
             MAX_INLINE_UNIFORM_BUFFERS;
-         props->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = 0;
-         props->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = 0;
+         props->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks =
+            MAX_INLINE_UNIFORM_BUFFERS;
+         props->maxDescriptorSetUpdateAfterBindInlineUniformBlocks =
+            MAX_INLINE_UNIFORM_BUFFERS;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
