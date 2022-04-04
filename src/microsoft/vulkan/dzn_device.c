@@ -1262,9 +1262,12 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 {
    VK_FROM_HANDLE(dzn_physical_device, pdevice, physicalDevice);
 
+   (void)dzn_physical_device_get_d3d12_dev(pdevice);
+
    /* minimum from the spec */
    const VkSampleCountFlags supported_sample_counts =
-      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_4_BIT;
+      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT |
+      VK_SAMPLE_COUNT_8_BIT | VK_SAMPLE_COUNT_16_BIT;
 
    /* FIXME: this is mostly bunk for now */
    VkPhysicalDeviceLimits limits = {
@@ -1286,23 +1289,35 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .bufferImageGranularity                   = 131072,
       .sparseAddressSpaceSize                   = 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
-      .maxPerStageDescriptorSamplers            = 16,
-      .maxPerStageDescriptorUniformBuffers      = 12,
-      .maxPerStageDescriptorStorageBuffers      = 4,
-      .maxPerStageDescriptorSampledImages       = 16,
-      .maxPerStageDescriptorStorageImages       = 4,
-      .maxPerStageDescriptorInputAttachments    = 4,
-      .maxPerStageResources                     = 128,
-      .maxDescriptorSetSamplers                 = 96,
-      .maxDescriptorSetUniformBuffers           = 72,
+      .maxPerStageDescriptorSamplers            =
+         pdevice->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1 ?
+         16u : MAX_DESCS_PER_SAMPLER_HEAP,
+      .maxPerStageDescriptorUniformBuffers      =
+         pdevice->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_2 ?
+         14u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxPerStageDescriptorStorageBuffers      =
+         pdevice->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_2 ?
+         64u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxPerStageDescriptorSampledImages       =
+         pdevice->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1 ?
+         128u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxPerStageDescriptorStorageImages       =
+         pdevice->options.ResourceHeapTier <= D3D12_RESOURCE_HEAP_TIER_2 ?
+         64u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxPerStageDescriptorInputAttachments    =
+         pdevice->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1 ?
+         128u : MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxPerStageResources                     = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxDescriptorSetSamplers                 = MAX_DESCS_PER_SAMPLER_HEAP,
+      .maxDescriptorSetUniformBuffers           = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxDescriptorSetUniformBuffersDynamic    = MAX_DYNAMIC_UNIFORM_BUFFERS,
-      .maxDescriptorSetStorageBuffers           = 24,
+      .maxDescriptorSetStorageBuffers           = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
       .maxDescriptorSetStorageBuffersDynamic    = MAX_DYNAMIC_STORAGE_BUFFERS,
-      .maxDescriptorSetSampledImages            = 96,
-      .maxDescriptorSetStorageImages            = 24,
-      .maxDescriptorSetInputAttachments         = 4,
-      .maxVertexInputAttributes                 = 16,
-      .maxVertexInputBindings                   = 16,
+      .maxDescriptorSetSampledImages            = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxDescriptorSetStorageImages            = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxDescriptorSetInputAttachments         = MAX_DESCS_PER_CBV_SRV_UAV_HEAP,
+      .maxVertexInputAttributes                 = D3D12_STANDARD_VERTEX_ELEMENT_COUNT,
+      .maxVertexInputBindings                   = MAX_VBS,
       .maxVertexInputAttributeOffset            = 2047,
       .maxVertexInputBindingStride              = 2048,
       .maxVertexOutputComponents                = 64,
@@ -1356,7 +1371,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .framebufferDepthSampleCounts             = supported_sample_counts,
       .framebufferStencilSampleCounts           = supported_sample_counts,
       .framebufferNoAttachmentsSampleCounts     = supported_sample_counts,
-      .maxColorAttachments                      = 4,
+      .maxColorAttachments                      = MAX_RTS,
       .sampledImageColorSampleCounts            = supported_sample_counts,
       .sampledImageIntegerSampleCounts          = VK_SAMPLE_COUNT_1_BIT,
       .sampledImageDepthSampleCounts            = supported_sample_counts,
@@ -1426,7 +1441,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
        * heap when descriptor sets are bound to the command buffer, hence the
        * division by MAX_SETS.
        */
-      .maxPerSetDescriptors                  = 2048 / MAX_SETS,
+      .maxPerSetDescriptors                  =
+         MAX_DESCS_PER_SAMPLER_HEAP / MAX_SETS,
       /* According to the spec, the maximum D3D12 resource size is
        * min(max(128MB, 0.25f * (amount of dedicated VRAM)), 2GB),
        * but the limit actually depends on the max(system_ram, VRAM) not

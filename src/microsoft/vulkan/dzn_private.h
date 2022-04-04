@@ -361,6 +361,9 @@ struct dzn_buffer_desc {
    VkDeviceSize offset;
 };
 
+#define MAX_DESCS_PER_SAMPLER_HEAP 2048u
+#define MAX_DESCS_PER_CBV_SRV_UAV_HEAP 1000000u
+
 struct dzn_descriptor_heap {
    ID3D12Device1 *dev;
    ID3D12DescriptorHeap *heap;

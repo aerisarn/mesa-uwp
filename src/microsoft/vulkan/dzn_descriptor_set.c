@@ -1456,8 +1456,8 @@ dzn_descriptor_heap_pool_alloc_slots(struct dzn_descriptor_heap_pool *pool,
       /* Maximum of 2048 samplers per heap when shader_visible is true. */
       if (pool->shader_visible &&
           pool->type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
-         assert(desc_count <= 2048);
-         heap_desc_count = MIN2(heap_desc_count, 2048);
+         assert(desc_count <= MAX_DESCS_PER_SAMPLER_HEAP);
+         heap_desc_count = MIN2(heap_desc_count, MAX_DESCS_PER_SAMPLER_HEAP);
       }
 
       struct dzn_descriptor_heap_pool_entry *new_heap = NULL;
