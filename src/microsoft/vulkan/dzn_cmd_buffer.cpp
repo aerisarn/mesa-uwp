@@ -1921,6 +1921,8 @@ dzn_cmd_buffer_blit_region(dzn_cmd_buffer *cmdbuf,
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
    const VkImageBlit2 *region = &info->pRegions[r];
+   bool src_is_3d = src->vk.image_type == VK_IMAGE_TYPE_3D;
+   bool dst_is_3d = dst->vk.image_type == VK_IMAGE_TYPE_3D;
 
    dzn_foreach_aspect(aspect, region->srcSubresource.aspectMask) {
       dzn_cmd_buffer_blit_set_pipeline(cmdbuf, src, dst, aspect, info->filter, false);
@@ -1948,15 +1950,14 @@ dzn_cmd_buffer_blit_region(dzn_cmd_buffer *cmdbuf,
       uint32_t layer_count = dzn_get_layer_count(src, &region->srcSubresource);
       uint32_t dst_level = region->dstSubresource.mipLevel;
 
-      float src_slice_step = layer_count > 1 ? 1 : (float)src_depth / dst_depth;
+      float src_slice_step = src_is_3d ? (float)src_depth / dst_depth : 1;
       if (region->srcOffsets[0].z > region->srcOffsets[1].z)
          src_slice_step = -src_slice_step;
-      float src_z_coord = layer_count > 1 ?
-                          0 : (float)region->srcOffsets[0].z + (src_slice_step * 0.5f);
-      uint32_t slice_count = layer_count > 1 ? layer_count : dst_depth;
-      uint32_t dst_z_coord = layer_count > 1 ?
-                             region->dstSubresource.baseArrayLayer :
-                             region->dstOffsets[0].z;
+      float src_z_coord =
+         src_is_3d ? (float)region->srcOffsets[0].z + (src_slice_step * 0.5f) : 0;
+      uint32_t slice_count = dst_is_3d ? dst_depth : layer_count;
+      uint32_t dst_z_coord =
+         dst_is_3d ? region->dstOffsets[0].z : region->dstSubresource.baseArrayLayer;
       if (region->dstOffsets[0].z > region->dstOffsets[1].z)
          dst_z_coord--;
 
@@ -1964,7 +1965,7 @@ dzn_cmd_buffer_blit_region(dzn_cmd_buffer *cmdbuf,
                                 1 : -1;
 
       /* Normalize the src coordinates/step */
-      if (layer_count == 1 && src->vk.samples == 1) {
+      if (src_is_3d) {
          src_z_coord /= src->vk.extent.depth;
          src_slice_step /= src->vk.extent.depth;
       }
