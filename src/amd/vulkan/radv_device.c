@@ -433,8 +433,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_maintenance4 = true,
       .KHR_multiview = true,
       .KHR_pipeline_executable_properties = true,
-      .KHR_pipeline_library =
-         (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
+      .KHR_pipeline_library = !device->use_llvm,
       .KHR_push_descriptor = true,
       .KHR_ray_query =
          (device->instance->perftest_flags & RADV_PERFTEST_RT) && !device->use_llvm,
