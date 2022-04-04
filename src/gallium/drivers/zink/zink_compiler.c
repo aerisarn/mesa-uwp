@@ -179,11 +179,25 @@ lower_64bit_uint_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(intr->src[0].ssa->parent_instr));
    if (var->data.mode != nir_var_shader_in)
       return false;
-   if (glsl_get_bit_size(var->type) != 64)
+   if (glsl_get_bit_size(var->type) != 64 || glsl_get_base_type(var->type) >= GLSL_TYPE_SAMPLER)
       return false;
 
    unsigned num_components = glsl_get_vector_elements(var->type);
-   var->type = glsl_vector_type(GLSL_TYPE_UINT, num_components * 2);
+   enum glsl_base_type base_type;
+   switch (glsl_get_base_type(var->type)) {
+   case GLSL_TYPE_UINT64:
+      base_type = GLSL_TYPE_UINT;
+      break;
+   case GLSL_TYPE_INT64:
+      base_type = GLSL_TYPE_INT;
+      break;
+   case GLSL_TYPE_DOUBLE:
+      base_type = GLSL_TYPE_FLOAT;
+      break;
+   default:
+      unreachable("unknown 64-bit vertex attribute format!");
+   }
+   var->type = glsl_vector_type(base_type, num_components * 2);
 
    b->cursor = nir_after_instr(instr);
 
@@ -215,8 +229,7 @@ lower_64bit_vertex_attribs(nir_shader *shader)
       return false;
 
    bool progress = nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
-   if (progress)
-      nir_shader_instructions_pass(shader, lower_64bit_uint_attribs_instr, nir_metadata_dominance, NULL);
+   progress |= nir_shader_instructions_pass(shader, lower_64bit_uint_attribs_instr, nir_metadata_dominance, NULL);
    return progress;
 }
 
