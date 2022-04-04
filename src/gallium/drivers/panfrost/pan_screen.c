@@ -355,6 +355,16 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
         }
 
+        /* We only allow observable side effects (memory writes) in compute and
+         * fragment shaders. Side effects in the geometry pipeline cause
+         * trouble with IDVS.
+         *
+         * This restriction doesn't apply to Midgard, which does not implement
+         * IDVS and therefore executes vertex shaders exactly once.
+         */
+        bool allow_side_effects = (shader != PIPE_SHADER_VERTEX) ||
+                                  (dev->arch <= 5);
+
         switch (param) {
         case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
         case PIPE_SHADER_CAP_MAX_ALU_INSTRUCTIONS:
@@ -442,10 +452,10 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
-                return 16;
+                return allow_side_effects ? 16 : 0;
 
         case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-                return PIPE_MAX_SHADER_IMAGES;
+                return allow_side_effects ? PIPE_MAX_SHADER_IMAGES : 0;
 
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
         case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
