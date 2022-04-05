@@ -231,4 +231,19 @@ panfrost_get_z_internal_format(enum pipe_format fmt)
 
 #endif /* PAN_ARCH */
 
+#if PAN_ARCH >= 9
+static inline void
+panfrost_make_resource_table(struct panfrost_ptr base, unsigned index,
+                             mali_ptr address, unsigned resource_count)
+{
+        if (resource_count == 0)
+                return;
+
+        pan_pack(base.cpu + index * pan_size(RESOURCE), RESOURCE, cfg) {
+                cfg.address = address;
+                cfg.size = resource_count * pan_size(BUFFER);
+        }
+}
+#endif
+
 #endif
