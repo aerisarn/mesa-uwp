@@ -635,6 +635,10 @@ dzn_physical_device_get_format_properties(dzn_physical_device *pdev,
       base_props->bufferFeatures =
          VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
    }
+
+   /* depth/stencil format shouldn't advertise buffer features */
+   if (vk_format_is_depth_or_stencil(format))
+      base_props->bufferFeatures = 0;
 }
 
 static VkResult
