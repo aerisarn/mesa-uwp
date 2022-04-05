@@ -25,6 +25,8 @@
 
 #include "spirv_to_dxil.h"
 
+#include "dxil_validator.h"
+
 #include "vk_alloc.h"
 #include "vk_util.h"
 #include "vk_format.h"
@@ -32,12 +34,7 @@
 #include <directx/d3d12.h>
 #include <dxguids/dxguids.h>
 
-#include <dxcapi.h>
-#include <wrl/client.h>
-
 #include "util/u_debug.h"
-
-using Microsoft::WRL::ComPtr;
 
 static dxil_spirv_shader_stage
 to_dxil_shader_stage(VkShaderStageFlagBits in)
@@ -64,9 +61,6 @@ dzn_pipeline_compile_shader(dzn_device *device,
 {
    dzn_instance *instance =
       container_of(device->vk.physical->instance, dzn_instance, vk);
-   IDxcValidator *validator = instance->dxc.validator;
-   IDxcLibrary *library = instance->dxc.library;
-   IDxcCompiler *compiler = instance->dxc.compiler;
    const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
    VK_FROM_HANDLE(vk_shader_module, module, stage_info->module);
    struct dxil_spirv_object dxil_object;
@@ -148,45 +142,34 @@ dzn_pipeline_compile_shader(dzn_device *device,
    if (!success)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   dzn_shader_blob blob(dxil_object.binary.buffer, dxil_object.binary.size);
-   ComPtr<IDxcOperationResult> result;
-   validator->Validate(&blob, DxcValidatorFlags_InPlaceEdit, &result);
+   char *err;
+   bool res = dxil_validate_module(instance->dxil_validator,
+                                   dxil_object.binary.buffer,
+                                   dxil_object.binary.size, &err);
 
    if (instance->debug_flags & DZN_DEBUG_DXIL) {
-      IDxcBlobEncoding *disassembly;
-      compiler->Disassemble(&blob, &disassembly);
-      ComPtr<IDxcBlobEncoding> blobUtf8;
-      library->GetBlobAsUtf8(disassembly, blobUtf8.GetAddressOf());
-      char *disasm = reinterpret_cast<char*>(blobUtf8->GetBufferPointer());
-      disasm[blobUtf8->GetBufferSize() - 1] = 0;
-      fprintf(stderr, "== BEGIN SHADER ============================================\n"
-              "%s\n"
-              "== END SHADER ==============================================\n",
-              disasm);
-      disassembly->Release();
+      char *disasm = dxil_disasm_module(instance->dxil_validator,
+                                        dxil_object.binary.buffer,
+                                        dxil_object.binary.size);
+      if (disasm) {
+         fprintf(stderr,
+                 "== BEGIN SHADER ============================================\n"
+                 "%s\n"
+                 "== END SHADER ==============================================\n",
+                  disasm);
+         ralloc_free(disasm);
+      }
    }
 
-   HRESULT validationStatus;
-   result->GetStatus(&validationStatus);
-   if (FAILED(validationStatus)) {
-      if (instance->debug_flags & DZN_DEBUG_DXIL) {
-         ComPtr<IDxcBlobEncoding> printBlob, printBlobUtf8;
-         result->GetErrorBuffer(&printBlob);
-         library->GetBlobAsUtf8(printBlob.Get(), printBlobUtf8.GetAddressOf());
-
-         char *errorString;
-         if (printBlobUtf8) {
-            errorString = reinterpret_cast<char*>(printBlobUtf8->GetBufferPointer());
-
-            errorString[printBlobUtf8->GetBufferSize() - 1] = 0;
-            fprintf(stderr,
-                    "== VALIDATION ERROR =============================================\n"
-		    "%s\n"
-                    "== END ==========================================================\n",
-                    errorString);
-         }
+   if (!res) {
+      if (err) {
+         fprintf(stderr,
+               "== VALIDATION ERROR =============================================\n"
+               "%s\n"
+               "== END ==========================================================\n",
+               err);
+         ralloc_free(err);
       }
-
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 

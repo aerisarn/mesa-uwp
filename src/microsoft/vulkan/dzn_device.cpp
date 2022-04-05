@@ -36,6 +36,8 @@
 
 #include "glsl_types.h"
 
+#include "dxil_validator.h"
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -126,14 +128,8 @@ dzn_instance_destroy(dzn_instance *instance, const VkAllocationCallbacks *alloc)
    if (!instance)
       return;
 
-   if (instance->dxc.validator)
-      instance->dxc.validator->Release();
-
-   if (instance->dxc.library)
-      instance->dxc.library->Release();
-
-   if (instance->dxc.compiler)
-      instance->dxc.compiler->Release();
+   if (instance->dxil_validator)
+      dxil_destroy_validator(instance->dxil_validator);
 
    list_for_each_entry_safe(dzn_physical_device, pdev,
                             &instance->physical_devices, link) {
@@ -174,14 +170,10 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    instance->debug_flags =
       parse_debug_string(getenv("DZN_DEBUG"), dzn_debug_options);
 
-   instance->dxc.validator = dxil_get_validator();
-   instance->dxc.library = dxc_get_library();
-   instance->dxc.compiler = dxc_get_compiler();
+   instance->dxil_validator = dxil_create_validator(instance);
    instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig();
 
-   if (!instance->dxc.validator ||
-       !instance->dxc.library ||
-       !instance->dxc.compiler ||
+   if (!instance->dxil_validator ||
        !instance->d3d12.serialize_root_sig) {
       dzn_instance_destroy(instance, pAllocator);
       return vk_error(NULL, VK_ERROR_INITIALIZATION_FAILED);
@@ -478,7 +470,7 @@ dzn_physical_device_get_d3d12_dev(dzn_physical_device *pdev)
 
    mtx_lock(&pdev->dev_lock);
    if (!pdev->dev) {
-      pdev->dev = d3d12_create_device(pdev->adapter, instance->dxc.validator == nullptr);
+      pdev->dev = d3d12_create_device(pdev->adapter, !instance->dxil_validator);
 
       dzn_physical_device_cache_caps(pdev);
       dzn_physical_device_init_memory(pdev);

@@ -28,6 +28,7 @@
 
 #include "dxil_nir.h"
 #include "dxil_nir_lower_int_samplers.h"
+#include "dxil_validator.h"
 
 static void
 dzn_meta_compile_shader(dzn_device *device, nir_shader *nir,
@@ -35,9 +36,6 @@ dzn_meta_compile_shader(dzn_device *device, nir_shader *nir,
 {
    dzn_instance *instance =
       container_of(device->vk.physical->instance, dzn_instance, vk);
-   IDxcValidator *validator = instance->dxc.validator;
-   IDxcLibrary *library = instance->dxc.library;
-   IDxcCompiler *compiler = instance->dxc.compiler;
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
@@ -50,47 +48,37 @@ dzn_meta_compile_shader(dzn_device *device, nir_shader *nir,
    bool ret = nir_to_dxil(nir, &opts, &dxil_blob);
    assert(ret);
 
-   dzn_shader_blob blob(dxil_blob.data, dxil_blob.size);
-   ComPtr<IDxcOperationResult> result;
-   validator->Validate(&blob, DxcValidatorFlags_InPlaceEdit, &result);
+   char *err;
+   bool res = dxil_validate_module(instance->dxil_validator,
+                                   dxil_blob.data,
+                                   dxil_blob.size, &err);
+
    if ((instance->debug_flags & DZN_DEBUG_DXIL) &&
        (instance->debug_flags & DZN_DEBUG_INTERNAL)) {
-      IDxcBlobEncoding *disassembly;
-      compiler->Disassemble(&blob, &disassembly);
-      ComPtr<IDxcBlobEncoding> blobUtf8;
-      library->GetBlobAsUtf8(disassembly, blobUtf8.GetAddressOf());
-      char *disasm = reinterpret_cast<char*>(blobUtf8->GetBufferPointer());
-      disasm[blobUtf8->GetBufferSize() - 1] = 0;
-      fprintf(stderr,
-              "== BEGIN SHADER ============================================\n"
-              "%s\n"
-              "== END SHADER ==============================================\n",
-              disasm);
-      disassembly->Release();
-   }
-
-   HRESULT validationStatus;
-   result->GetStatus(&validationStatus);
-   if (FAILED(validationStatus)) {
-      if ((instance->debug_flags & DZN_DEBUG_DXIL) &&
-          (instance->debug_flags & DZN_DEBUG_INTERNAL)) {
-         ComPtr<IDxcBlobEncoding> printBlob, printBlobUtf8;
-         result->GetErrorBuffer(&printBlob);
-         library->GetBlobAsUtf8(printBlob.Get(), printBlobUtf8.GetAddressOf());
-
-         char *errorString;
-         if (printBlobUtf8) {
-            errorString = reinterpret_cast<char*>(printBlobUtf8->GetBufferPointer());
-            errorString[printBlobUtf8->GetBufferSize() - 1] = 0;
-            fprintf(stderr,
-                    "== VALIDATION ERROR =============================================\n"
-                    "%s\n"
-                    "== END ==========================================================\n",
-                    errorString);
-         }
+      char *disasm = dxil_disasm_module(instance->dxil_validator,
+                                        dxil_blob.data,
+                                        dxil_blob.size);
+      if (disasm) {
+         fprintf(stderr,
+                 "== BEGIN SHADER ============================================\n"
+                 "%s\n"
+                 "== END SHADER ==============================================\n",
+                  disasm);
+         ralloc_free(disasm);
       }
    }
-   assert(!FAILED(validationStatus));
+
+   if ((instance->debug_flags & DZN_DEBUG_DXIL) &&
+       (instance->debug_flags & DZN_DEBUG_INTERNAL) &&
+       err) {
+      fprintf(stderr,
+            "== VALIDATION ERROR =============================================\n"
+            "%s\n"
+            "== END ==========================================================\n",
+            err);
+      ralloc_free(err);
+   }
+   assert(res);
 
    void *data;
    size_t size;

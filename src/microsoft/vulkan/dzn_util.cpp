@@ -152,26 +152,6 @@ d3d12_create_device(IUnknown *adapter, bool experimental_features)
    return NULL;
 }
 
-IDxcValidator *
-dxil_get_validator(void)
-{
-   IDxcValidator *ret = NULL;
-
-   HMODULE dxil_mod = LoadLibraryA("dxil.dll");
-   if (!dxil_mod) {
-      mesa_loge("failed to load dxil.dll\n");
-      return ret;
-   }
-
-   DxcCreateInstanceProc CreateInstance = (DxcCreateInstanceProc)
-      GetProcAddress(dxil_mod, "DxcCreateInstance");
-   HRESULT hr = CreateInstance(CLSID_DxcValidator,  IID_PPV_ARGS(&ret));
-   if (FAILED(hr))
-      mesa_loge("DxcCreateInstance failed: %08x\n", hr);
-
-   return ret;
-}
-
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE
 d3d12_get_serialize_root_sig(void)
 {
@@ -183,44 +163,4 @@ d3d12_get_serialize_root_sig(void)
 
    return (PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE)
       GetProcAddress(d3d12_mod, "D3D12SerializeVersionedRootSignature");
-}
-
-IDxcLibrary *
-dxc_get_library(void)
-{
-   IDxcLibrary *ret = NULL;
-
-   HMODULE dxil_mod = LoadLibraryA("dxcompiler.dll");
-   if (!dxil_mod) {
-      mesa_loge("failed to load dxcompiler.dll\n");
-      return ret;
-   }
-
-   DxcCreateInstanceProc CreateInstance = (DxcCreateInstanceProc)
-      GetProcAddress(dxil_mod, "DxcCreateInstance");
-   HRESULT hr = CreateInstance(CLSID_DxcLibrary,  IID_PPV_ARGS(&ret));
-   if (FAILED(hr))
-      mesa_loge("DxcCreateInstance failed: %08x\n", hr);
-
-   return ret;
-}
-
-IDxcCompiler *
-dxc_get_compiler(void)
-{
-   IDxcCompiler *ret = NULL;
-
-   HMODULE dxil_mod = LoadLibraryA("dxcompiler.dll");
-   if (!dxil_mod) {
-      mesa_loge("failed to load dxcompiler.dll\n");
-      return ret;
-   }
-
-   DxcCreateInstanceProc CreateInstance = (DxcCreateInstanceProc)
-      GetProcAddress(dxil_mod, "DxcCreateInstance");
-   HRESULT hr = CreateInstance(CLSID_DxcCompiler,  IID_PPV_ARGS(&ret));
-   if (FAILED(hr))
-      mesa_loge("DxcCreateInstance failed: %08x\n", hr);
-
-   return ret;
 }

@@ -55,7 +55,6 @@
 
 #define D3D12_IGNORE_SDK_LAYERS
 #include <directx/d3d12.h>
-#include <dxcapi.h>
 #include <wrl/client.h>
 
 #include "spirv_to_dxil.h"
@@ -70,6 +69,8 @@ using Microsoft::WRL::ComPtr;
    } while (0)
 
 #define dzn_stub() unreachable("Unsupported feature")
+
+struct dxil_validator;
 
 struct dzn_instance;
 struct dzn_device;
@@ -216,15 +217,6 @@ dzn_physical_device_get_mem_type_mask_for_resource(const dzn_physical_device *pd
 
 IDXGIFactory4 *
 dxgi_get_factory(bool debug);
-
-IDxcValidator *
-dxil_get_validator(void);
-
-IDxcLibrary *
-dxc_get_library(void);
-
-IDxcCompiler *
-dxc_get_compiler(void);
 
 PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE
 d3d12_get_serialize_root_sig(void);
@@ -675,24 +667,6 @@ enum dzn_register_space {
    DZN_REGISTER_SPACE_PUSH_CONSTANT,
 };
 
-class dzn_shader_blob : public IDxcBlob {
-public:
-   dzn_shader_blob(void *buf, size_t sz) : data(buf), size(sz) {}
-
-   LPVOID STDMETHODCALLTYPE GetBufferPointer(void) override { return data; }
-
-   SIZE_T STDMETHODCALLTYPE GetBufferSize() override { return size; }
-
-   HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void**) override { return E_NOINTERFACE; }
-
-   ULONG STDMETHODCALLTYPE AddRef() override { return 1; }
-
-   ULONG STDMETHODCALLTYPE Release() override { return 0; }
-
-   void *data;
-   size_t size;
-};
-
 struct dzn_pipeline {
    struct vk_object_base base;
    VkPipelineBindPoint type;
@@ -966,11 +940,7 @@ enum dzn_debug_flags {
 struct dzn_instance {
    struct vk_instance vk;
 
-   struct {
-      IDxcValidator *validator;
-      IDxcLibrary *library;
-      IDxcCompiler *compiler;
-   } dxc;
+   struct dxil_validator *dxil_validator;
    struct {
       PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE serialize_root_sig;
    } d3d12;
