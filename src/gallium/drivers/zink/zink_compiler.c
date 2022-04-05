@@ -1075,20 +1075,18 @@ assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
    default:
       if (var->data.patch) {
          assert(slot >= VARYING_SLOT_PATCH0);
-         slot = slot - VARYING_SLOT_PATCH0;
-      } else if (slot >= VARYING_SLOT_VAR0 &&
-                 var->data.mode == nir_var_shader_in &&
-                  stage == MESA_SHADER_TESS_EVAL) {
-         slot = slot - VARYING_SLOT_VAR0;
-      } else {
-         if (slot_map[slot] == 0xff) {
-            assert(*reserved < MAX_VARYING);
-            slot_map[slot] = *reserved;
-            *reserved += glsl_count_vec4_slots(var->type, false, false);
-         }
-         slot = slot_map[slot];
-         assert(slot < MAX_VARYING);
+         slot -= VARYING_SLOT_PATCH0;
       }
+      if (slot_map[slot] == 0xff) {
+         assert(*reserved < MAX_VARYING);
+         slot_map[slot] = *reserved;
+         if (stage == MESA_SHADER_TESS_EVAL && var->data.mode == nir_var_shader_in && !var->data.patch)
+            *reserved += glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
+         else
+            *reserved += glsl_count_vec4_slots(var->type, false, false);
+      }
+      slot = slot_map[slot];
+      assert(slot < MAX_VARYING);
       var->data.driver_location = slot;
    }
 }
@@ -1124,21 +1122,18 @@ assign_consumer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
    default:
       if (var->data.patch) {
          assert(slot >= VARYING_SLOT_PATCH0);
-         var->data.driver_location = slot - VARYING_SLOT_PATCH0;
-      } else if (slot >= VARYING_SLOT_VAR0 &&
-          stage == MESA_SHADER_TESS_CTRL &&
-          var->data.mode == nir_var_shader_out)
-         var->data.driver_location = slot - VARYING_SLOT_VAR0;
-      else {
-         if (slot_map[slot] == (unsigned char)-1) {
-            if (!is_texcoord(stage, var))
-               /* dead io */
-               return false;
-            /* texcoords can't be eliminated in fs due to GL_COORD_REPLACE */
-            slot_map[slot] = (*reserved)++;
-         }
-         var->data.driver_location = slot_map[slot];
+         slot -= VARYING_SLOT_PATCH0;
       }
+      if (slot_map[slot] == (unsigned char)-1) {
+         if (stage != MESA_SHADER_TESS_CTRL && !is_texcoord(stage, var))
+            /* dead io */
+            return false;
+         /* - texcoords can't be eliminated in fs due to GL_COORD_REPLACE
+          * - patch variables may be read in the workgroup
+          */
+         slot_map[slot] = (*reserved)++;
+      }
+      var->data.driver_location = slot_map[slot];
    }
    return true;
 }
@@ -1165,17 +1160,23 @@ rewrite_and_discard_read(nir_builder *b, nir_instr *instr, void *data)
 void
 zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
 {
-   unsigned reserved = 0;
+   unsigned reserved = 0, patch_reserved = 0;
    unsigned char slot_map[VARYING_SLOT_MAX];
    memset(slot_map, -1, sizeof(slot_map));
+   unsigned char patch_slot_map[VARYING_SLOT_MAX];
+   memset(patch_slot_map, -1, sizeof(patch_slot_map));
    bool do_fixup = false;
    nir_shader *nir = producer->info.stage == MESA_SHADER_TESS_CTRL ? producer : consumer;
    if (producer->info.stage == MESA_SHADER_TESS_CTRL) {
       /* never assign from tcs -> tes, always invert */
       nir_foreach_variable_with_modes(var, consumer, nir_var_shader_in)
-         assign_producer_var_io(consumer->info.stage, var, &reserved, slot_map);
+         assign_producer_var_io(consumer->info.stage, var,
+                                var->data.patch ? &patch_reserved : &reserved,
+                                var->data.patch ? patch_slot_map : slot_map);
       nir_foreach_variable_with_modes_safe(var, producer, nir_var_shader_out) {
-         if (!assign_consumer_var_io(producer->info.stage, var, &reserved, slot_map))
+         if (!assign_consumer_var_io(producer->info.stage, var,
+                                     var->data.patch ? &patch_reserved : &reserved,
+                                     var->data.patch ? patch_slot_map : slot_map))
             /* this is an output, nothing more needs to be done for it to be dropped */
             do_fixup = true;
       }
