@@ -1828,6 +1828,10 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       }
       struct zink_resource staging = *res;
       staging.obj = old_obj;
+      staging.all_binds = 0;
+      res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
+      res->obj->access = 0;
+      res->obj->access_stage = 0;
       bool needs_unref = true;
       if (zink_resource_has_usage(res)) {
          zink_batch_reference_resource_move(&ctx->batch, res);
