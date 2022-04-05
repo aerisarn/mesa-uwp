@@ -810,14 +810,22 @@ convert_rt_stage(VkShaderStageFlagBits vk_stage)
 }
 
 static nir_shader *
-parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *stage)
+parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo)
 {
    struct radv_pipeline_key key;
    memset(&key, 0, sizeof(key));
 
-   nir_shader *shader = radv_shader_compile_to_nir(
-      device, vk_shader_module_from_handle(stage->module), stage->pName,
-      convert_rt_stage(stage->stage), stage->pSpecializationInfo, &key);
+   struct radv_pipeline_stage rt_stage = {
+      .stage = convert_rt_stage(sinfo->stage),
+      .module = vk_shader_module_from_handle(sinfo->module),
+      .entrypoint = sinfo->pName,
+      .spec_info = sinfo->pSpecializationInfo,
+      .feedback = {
+         .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
+      },
+   };
+
+   nir_shader *shader = radv_shader_compile_to_nir(device, &rt_stage, &key);
 
    if (shader->info.stage == MESA_SHADER_RAYGEN || shader->info.stage == MESA_SHADER_CLOSEST_HIT ||
        shader->info.stage == MESA_SHADER_CALLABLE || shader->info.stage == MESA_SHADER_MISS) {

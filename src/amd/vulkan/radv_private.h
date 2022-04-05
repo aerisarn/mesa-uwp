@@ -79,6 +79,7 @@
 #include "radv_descriptor_set.h"
 #include "radv_radeon_winsys.h"
 #include "radv_shader.h"
+#include "radv_shader_args.h"
 #include "sid.h"
 
 /* Pre-declarations needed for WSI entrypoints */
@@ -1922,6 +1923,21 @@ struct radv_pipeline {
    /* Pipeline layout info. */
    uint32_t push_constant_size;
    uint32_t dynamic_offset_count;
+};
+
+struct radv_pipeline_stage {
+   gl_shader_stage stage;
+
+   struct vk_shader_module *module;
+   const char *entrypoint;
+   const VkSpecializationInfo *spec_info;
+
+   nir_shader *nir;
+
+   struct radv_shader_info info;
+   struct radv_shader_args args;
+
+   VkPipelineCreationFeedbackEXT feedback;
 };
 
 static inline bool
