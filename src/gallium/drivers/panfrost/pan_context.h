@@ -297,6 +297,9 @@ struct panfrost_shader_variants {
         unsigned active_variant;
 };
 
+/** (Vertex buffer index, divisor) tuple that will become an Attribute Buffer
+ * Descriptor at draw-time on Midgard
+ */
 struct pan_vertex_buffer {
         unsigned vbi;
         unsigned divisor;
@@ -314,6 +317,12 @@ struct panfrost_vertex_state {
         struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
         unsigned formats[PIPE_MAX_ATTRIBS];
 };
+
+unsigned
+pan_assign_vertex_buffer(struct pan_vertex_buffer *buffers,
+                         unsigned *nr_bufs,
+                         unsigned vbi,
+                         unsigned divisor);
 
 struct panfrost_zsa_state;
 struct panfrost_sampler_state;

@@ -3366,31 +3366,6 @@ panfrost_create_rasterizer_state(
         return so;
 }
 
-/* Assigns a vertex buffer for a given (index, divisor) tuple */
-
-static unsigned
-pan_assign_vertex_buffer(struct pan_vertex_buffer *buffers,
-                         unsigned *nr_bufs,
-                         unsigned vbi,
-                         unsigned divisor)
-{
-        /* Look up the buffer */
-        for (unsigned i = 0; i < (*nr_bufs); ++i) {
-                if (buffers[i].vbi == vbi && buffers[i].divisor == divisor)
-                        return i;
-        }
-
-        /* Else, create a new buffer */
-        unsigned idx = (*nr_bufs)++;
-
-        buffers[idx] = (struct pan_vertex_buffer) {
-                .vbi = vbi,
-                .divisor = divisor
-        };
-
-        return idx;
-}
-
 static void *
 panfrost_create_vertex_elements_state(
         struct pipe_context *pctx,

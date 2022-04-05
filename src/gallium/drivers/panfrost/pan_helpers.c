@@ -140,4 +140,32 @@ panfrost_get_index_buffer_bounded(struct panfrost_batch *batch,
         return out;
 }
 
+/**
+ * Given an (index, divisor) tuple, assign a vertex buffer. Midgard and
+ * Bifrost put divisor information on the attribute buffer descriptor, so this
+ * is the most we can compact in general. Crucially, this runs at vertex
+ * elements CSO create time, not at draw time.
+ */
+unsigned
+pan_assign_vertex_buffer(struct pan_vertex_buffer *buffers,
+                         unsigned *nr_bufs,
+                         unsigned vbi,
+                         unsigned divisor)
+{
+        /* Look up the buffer */
+        for (unsigned i = 0; i < (*nr_bufs); ++i) {
+                if (buffers[i].vbi == vbi && buffers[i].divisor == divisor)
+                        return i;
+        }
+
+        /* Else, create a new buffer */
+        unsigned idx = (*nr_bufs)++;
+
+        buffers[idx] = (struct pan_vertex_buffer) {
+                .vbi = vbi,
+                .divisor = divisor
+        };
+
+        return idx;
+}
 
