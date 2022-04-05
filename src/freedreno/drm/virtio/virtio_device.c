@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "util/libsync.h"
 #include "util/u_process.h"
 
 #include "virtio_priv.h"
@@ -63,6 +64,7 @@ set_context(int fd)
 {
    struct drm_virtgpu_context_set_param params[] = {
          { VIRTGPU_CONTEXT_PARAM_CAPSET_ID, VIRGL_RENDERER_CAPSET_DRM },
+         { VIRTGPU_CONTEXT_PARAM_NUM_RINGS, 64 },
    };
    struct drm_virtgpu_context_init args = {
       .num_params = ARRAY_SIZE(params),
@@ -219,10 +221,13 @@ virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
  * Helper for "execbuf" ioctl.. note that in virtgpu execbuf is just
  * a generic "send commands to host", not necessarily specific to
  * cmdstream execution.
+ *
+ * Note that ring_idx 0 is the "CPU ring", ie. for synchronizing btwn
+ * guest and host CPU.
  */
 int
 virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
-                      int in_fence_fd, int *out_fence_fd)
+                      int in_fence_fd, int *out_fence_fd, int ring_idx)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
 
@@ -232,10 +237,12 @@ virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
 #define COND(bool, val) ((bool) ? (val) : 0)
    struct drm_virtgpu_execbuffer eb = {
          .flags = COND(out_fence_fd, VIRTGPU_EXECBUF_FENCE_FD_OUT) |
-                  COND(in_fence_fd != -1, VIRTGPU_EXECBUF_FENCE_FD_IN),
+                  COND(in_fence_fd != -1, VIRTGPU_EXECBUF_FENCE_FD_IN) |
+                  VIRTGPU_EXECBUF_RING_IDX,
          .fence_fd = in_fence_fd,
          .size  = req->len,
          .command = VOID2U64(req),
+         .ring_idx = ring_idx,
    };
 
    int ret = drmIoctl(dev->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
@@ -254,13 +261,17 @@ virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
 int
 virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync)
 {
-   int ret = virtio_execbuf_fenced(dev, req, -1, NULL);
+   int fence_fd;
+   int ret = virtio_execbuf_fenced(dev, req, -1, sync ? &fence_fd : NULL, 0);
 
    if (ret)
       return ret;
 
-   if (sync)
+   if (sync) {
+      sync_wait(fence_fd, -1);
+      close(fence_fd);
       virtio_host_sync(dev, req);
+   }
 
    return 0;
 }

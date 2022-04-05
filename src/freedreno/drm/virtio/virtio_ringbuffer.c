@@ -166,7 +166,8 @@ flush_submit_list(struct list_head *submit_list)
       req->flags |= MSM_SUBMIT_NO_IMPLICIT;
    }
 
-   virtio_execbuf_fenced(dev, &req->hdr, fd_submit->in_fence_fd, out_fence_fd);
+   virtio_execbuf_fenced(dev, &req->hdr, fd_submit->in_fence_fd, out_fence_fd,
+                         virtio_pipe->ring_idx);
 
    free(req);
 

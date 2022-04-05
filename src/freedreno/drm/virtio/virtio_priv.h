@@ -66,6 +66,7 @@ struct virtio_pipe {
    uint64_t gmem_base;
    uint32_t gmem;
    uint32_t queue_id;
+   uint32_t ring_idx;
    struct slab_parent_pool ring_pool;
 
    /**
@@ -113,7 +114,7 @@ struct fd_bo *virtio_bo_from_handle(struct fd_device *dev, uint32_t size,
  */
 void *virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *hdr, uint32_t sz);
 int virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
-                          int in_fence_fd, int *out_fence_fd);
+                          int in_fence_fd, int *out_fence_fd, int ring_idx);
 int virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync);
 void virtio_host_sync(struct fd_device *dev, const struct msm_ccmd_req *req);
 int virtio_simple_ioctl(struct fd_device *dev, unsigned cmd, void *req);

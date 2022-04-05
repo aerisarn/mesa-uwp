@@ -95,11 +95,7 @@ virtio_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
    case FD_TIMESTAMP:
       return query_param(pipe, MSM_PARAM_TIMESTAMP, value);
    case FD_NR_RINGS:
-      /* TODO need to not rely on host egl ctx for fence if
-       * we want to support multiple priority levels
-       */
-      return 1;
-//      return query_param(pipe, MSM_PARAM_NR_RINGS, value);
+      return query_param(pipe, MSM_PARAM_NR_RINGS, value);
    case FD_CTX_FAULTS:
       return query_queue_param(pipe, MSM_SUBMITQUEUE_PARAM_FAULTS, value);
    case FD_GLOBAL_FAULTS:
@@ -138,6 +134,8 @@ out:
 static int
 open_submitqueue(struct fd_pipe *pipe, uint32_t prio)
 {
+   struct virtio_pipe *virtio_pipe = to_virtio_pipe(pipe);
+
    struct drm_msm_submitqueue req = {
       .flags = 0,
       .prio = prio,
@@ -155,7 +153,8 @@ open_submitqueue(struct fd_pipe *pipe, uint32_t prio)
       return ret;
    }
 
-   to_virtio_pipe(pipe)->queue_id = req.id;
+   virtio_pipe->queue_id = req.id;
+   virtio_pipe->ring_idx = req.prio + 1;
 
    return 0;
 }
