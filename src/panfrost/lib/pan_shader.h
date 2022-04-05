@@ -43,6 +43,21 @@ GENX(pan_shader_compile)(nir_shader *nir,
                          struct util_dynarray *binary,
                          struct pan_shader_info *info);
 
+#if PAN_ARCH >= 9
+static inline enum mali_shader_stage
+pan_shader_stage(const struct pan_shader_info *info)
+{
+        switch (info->stage) {
+        case MESA_SHADER_VERTEX:
+                return MALI_SHADER_STAGE_VERTEX;
+        case MESA_SHADER_FRAGMENT:
+                return MALI_SHADER_STAGE_FRAGMENT;
+        default:
+                return MALI_SHADER_STAGE_COMPUTE;
+        }
+}
+#endif
+
 #if PAN_ARCH <= 5
 static inline void
 pan_shader_prepare_midgard_rsd(const struct pan_shader_info *info,
