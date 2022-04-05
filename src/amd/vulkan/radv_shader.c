@@ -844,10 +844,6 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    if (!key->optimisations_disabled)
       radv_optimize_nir(nir, false, true);
 
-   /* call radv_nir_lower_ycbcr_textures() late as there might still be
-    * tex with undef texture/sampler before first optimization */
-   NIR_PASS_V(nir, radv_nir_lower_ycbcr_textures, layout);
-
    /* We call nir_lower_var_copies() after the first radv_optimize_nir()
     * to remove any copies introduced by nir_opt_find_array_copies().
     */

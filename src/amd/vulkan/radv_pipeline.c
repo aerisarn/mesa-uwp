@@ -4344,6 +4344,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
             else if (i == MESA_SHADER_TESS_EVAL && nir[MESA_SHADER_GEOMETRY])
                info = &infos[MESA_SHADER_GEOMETRY];
          }
+         NIR_PASS_V(nir[i], radv_nir_lower_ycbcr_textures, pipeline_layout);
          NIR_PASS_V(nir[i], radv_nir_apply_pipeline_layout, device, pipeline_layout, info,
                     &args[i]);
 
