@@ -523,6 +523,59 @@ ntt_allocate_regs(struct ntt_compile *c, nir_function_impl *impl)
    }
 }
 
+/**
+ * Try to find an iadd of a constant value with a non-constant value in the
+ * nir_src's first component, returning the constant offset and replacing *src
+ * with the non-constant component.
+ */
+static const uint32_t
+ntt_extract_const_src_offset(nir_src *src)
+{
+   if (!src->is_ssa)
+      return 0;
+
+   nir_ssa_scalar s = nir_get_ssa_scalar(src->ssa, 0);
+
+   while (nir_ssa_scalar_is_alu(s)) {
+      nir_alu_instr *alu = nir_instr_as_alu(s.def->parent_instr);
+
+      for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         if (!alu->src[i].src.is_ssa)
+            return 0;
+      }
+
+      if (alu->op == nir_op_iadd) {
+         for (int i = 0; i < 2; i++) {
+            nir_const_value *v = nir_src_as_const_value(alu->src[i].src);
+            if (v && !alu->src[i].negate && !alu->src[i].abs) {
+               *src = alu->src[1 - i].src;
+               return v[alu->src[i].swizzle[s.comp]].u32;
+            }
+         }
+
+         return 0;
+      }
+
+      /* We'd like to reuse nir_ssa_scalar_chase_movs(), but it assumes SSA and that
+       * seems reasonable for something used in inner loops of the compiler.
+       */
+      if (!nir_alu_instr_is_copy(alu))
+         return 0;
+
+      if (alu->op == nir_op_mov) {
+         s.def = alu->src[0].src.ssa;
+         s.comp = alu->src[0].swizzle[s.comp];
+      } else if (nir_op_is_vec(alu->op)) {
+         s.def = alu->src[s.comp].src.ssa;
+         s.comp = alu->src[s.comp].swizzle[0];
+      } else {
+         return 0;
+      }
+   }
+
+   return 0;
+}
+
 static const struct glsl_type *
 ntt_shader_input_type(struct ntt_compile *c,
                       struct nir_variable *var)
@@ -1839,7 +1892,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    unsigned opcode;
    struct ureg_src src[4];
    int num_src = 0;
-   int nir_src;
+   int next_src;
    struct ureg_dst addr_temp = ureg_dst_undef();
 
    struct ureg_src memory;
@@ -1847,24 +1900,26 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    case nir_var_mem_ssbo:
       memory = ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_BUFFER, 0),
                                      instr->src[is_store ? 1 : 0]);
-      nir_src = 1;
+      next_src = 1;
       break;
    case nir_var_mem_shared:
       memory = ureg_src_register(TGSI_FILE_MEMORY, 0);
-      nir_src = 0;
+      next_src = 0;
       break;
    case nir_var_uniform: { /* HW atomic buffers */
-      memory = ureg_src_register(TGSI_FILE_HW_ATOMIC, 0);
+      nir_src src = instr->src[0];
+      uint32_t offset = ntt_extract_const_src_offset(&src) / 4;
+      memory = ureg_src_register(TGSI_FILE_HW_ATOMIC, offset);
       /* ntt_ureg_src_indirect, except dividing by 4 */
-      if (nir_src_is_const(instr->src[0])) {
-         memory.Index += nir_src_as_uint(instr->src[0]) / 4;
+      if (nir_src_is_const(src)) {
+         memory.Index += nir_src_as_uint(src) / 4;
       } else {
          addr_temp = ntt_temp(c);
-         ntt_USHR(c, addr_temp, ntt_get_src(c, instr->src[0]), ureg_imm1i(c->ureg, 2));
+         ntt_USHR(c, addr_temp, ntt_get_src(c, src), ureg_imm1i(c->ureg, 2));
          memory = ureg_src_indirect(memory, ntt_reladdr(c, ureg_src(addr_temp), 2));
       }
       memory = ureg_src_dimension(memory, nir_intrinsic_base(instr));
-      nir_src = 0;
+      next_src = 0;
       break;
    }
 
@@ -1873,12 +1928,12 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    }
 
    if (is_store) {
-      src[num_src++] = ntt_get_src(c, instr->src[nir_src + 1]); /* offset */
+      src[num_src++] = ntt_get_src(c, instr->src[next_src + 1]); /* offset */
       src[num_src++] = ntt_get_src(c, instr->src[0]); /* value */
    } else {
       src[num_src++] = memory;
       if (instr->intrinsic != nir_intrinsic_get_ssbo_size) {
-         src[num_src++] = ntt_get_src(c, instr->src[nir_src++]); /* offset */
+         src[num_src++] = ntt_get_src(c, instr->src[next_src++]); /* offset */
          switch (instr->intrinsic) {
          case nir_intrinsic_atomic_counter_inc:
             src[num_src++] = ureg_imm1i(c->ureg, 1);
@@ -1888,7 +1943,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
             break;
          default:
             if (!is_load)
-               src[num_src++] = ntt_get_src(c, instr->src[nir_src++]); /* value */
+               src[num_src++] = ntt_get_src(c, instr->src[next_src++]); /* value */
             break;
          }
       }
@@ -1949,7 +2004,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    case nir_intrinsic_ssbo_atomic_comp_swap:
    case nir_intrinsic_shared_atomic_comp_swap:
       opcode = TGSI_OPCODE_ATOMCAS;
-      src[num_src++] = ntt_get_src(c, instr->src[nir_src++]);
+      src[num_src++] = ntt_get_src(c, instr->src[next_src++]);
       break;
    case nir_intrinsic_atomic_counter_read:
    case nir_intrinsic_load_ssbo:
