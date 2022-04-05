@@ -4229,7 +4229,8 @@ increment_a64_address(const fs_builder &bld, fs_reg address, uint32_t v)
 
 static fs_reg
 emit_fence(const fs_builder &bld, enum opcode opcode,
-           uint8_t sfid, bool commit_enable, uint8_t bti)
+           uint8_t sfid, uint32_t desc,
+           bool commit_enable, uint8_t bti)
 {
    assert(opcode == SHADER_OPCODE_INTERLOCK ||
           opcode == SHADER_OPCODE_MEMORY_FENCE);
@@ -4239,7 +4240,43 @@ emit_fence(const fs_builder &bld, enum opcode opcode,
                              brw_imm_ud(commit_enable),
                              brw_imm_ud(bti));
    fence->sfid = sfid;
+   fence->desc = desc;
+
    return dst;
+}
+
+static uint32_t
+lsc_fence_descriptor_for_intrinsic(const struct intel_device_info *devinfo,
+                                   nir_intrinsic_instr *instr)
+{
+   assert(devinfo->has_lsc);
+
+   enum lsc_fence_scope scope = LSC_FENCE_LOCAL;
+   enum lsc_flush_type flush_type = LSC_FLUSH_TYPE_NONE;
+
+   if (nir_intrinsic_has_memory_scope(instr)) {
+      switch (nir_intrinsic_memory_scope(instr)) {
+      case NIR_SCOPE_DEVICE:
+      case NIR_SCOPE_QUEUE_FAMILY:
+         scope = LSC_FENCE_TILE;
+         flush_type = LSC_FLUSH_TYPE_EVICT;
+         break;
+      case NIR_SCOPE_WORKGROUP:
+         scope = LSC_FENCE_THREADGROUP;
+         flush_type = LSC_FLUSH_TYPE_EVICT;
+         break;
+      case NIR_SCOPE_SHADER_CALL:
+      case NIR_SCOPE_INVOCATION:
+      case NIR_SCOPE_SUBGROUP:
+      case NIR_SCOPE_NONE:
+         break;
+      }
+   } else {
+      /* No scope defined. */
+      scope = LSC_FENCE_TILE;
+      flush_type = LSC_FLUSH_TYPE_EVICT;
+   }
+   return lsc_fence_msg_desc(devinfo, scope, flush_type, true);
 }
 
 void
@@ -4511,16 +4548,18 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       if (devinfo->has_lsc) {
          assert(devinfo->verx10 >= 125);
+         uint32_t desc =
+            lsc_fence_descriptor_for_intrinsic(devinfo, instr);
          if (ugm_fence) {
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX12_SFID_UGM,
+               emit_fence(ubld, opcode, GFX12_SFID_UGM, desc,
                           true /* commit_enable */,
                           0 /* bti; ignored for LSC */);
          }
 
          if (tgm_fence) {
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX12_SFID_TGM,
+               emit_fence(ubld, opcode, GFX12_SFID_TGM, desc,
                           true /* commit_enable */,
                           0 /* bti; ignored for LSC */);
          }
@@ -4528,7 +4567,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          if (slm_fence) {
             assert(opcode == SHADER_OPCODE_MEMORY_FENCE);
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX12_SFID_SLM,
+               emit_fence(ubld, opcode, GFX12_SFID_SLM, desc,
                           true /* commit_enable */,
                           0 /* BTI; ignored for LSC */);
          }
@@ -4536,14 +4575,14 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          if (urb_fence) {
             assert(opcode == SHADER_OPCODE_MEMORY_FENCE);
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, BRW_SFID_URB,
+               emit_fence(ubld, opcode, BRW_SFID_URB, desc,
                           true /* commit_enable */,
                           0 /* BTI; ignored for LSC */);
          }
       } else if (devinfo->ver >= 11) {
          if (tgm_fence || ugm_fence || urb_fence) {
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX7_SFID_DATAPORT_DATA_CACHE,
+               emit_fence(ubld, opcode, GFX7_SFID_DATAPORT_DATA_CACHE, 0,
                           true /* commit_enable HSD ES # 1404612949 */,
                           0 /* BTI = 0 means data cache */);
          }
@@ -4551,7 +4590,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          if (slm_fence) {
             assert(opcode == SHADER_OPCODE_MEMORY_FENCE);
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX7_SFID_DATAPORT_DATA_CACHE,
+               emit_fence(ubld, opcode, GFX7_SFID_DATAPORT_DATA_CACHE, 0,
                           true /* commit_enable HSD ES # 1404612949 */,
                           GFX7_BTI_SLM);
          }
@@ -4571,13 +4610,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
          if (tgm_fence || ugm_fence || slm_fence || urb_fence) {
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX7_SFID_DATAPORT_DATA_CACHE,
+               emit_fence(ubld, opcode, GFX7_SFID_DATAPORT_DATA_CACHE, 0,
                           commit_enable, 0 /* BTI */);
          }
 
          if (render_fence) {
             fence_regs[fence_regs_count++] =
-               emit_fence(ubld, opcode, GFX6_SFID_DATAPORT_RENDER_CACHE,
+               emit_fence(ubld, opcode, GFX6_SFID_DATAPORT_RENDER_CACHE, 0,
                           commit_enable, /* bti */ 0);
          }
       }
