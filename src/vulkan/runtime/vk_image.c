@@ -278,7 +278,7 @@ vk_image_view_init(struct vk_device *device,
       break;
    case VK_IMAGE_VIEW_TYPE_2D:
    case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-      if (image->create_flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
+      if (image->create_flags & (VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT | VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT))
          assert(image->image_type == VK_IMAGE_TYPE_3D);
       else
          assert(image->image_type == VK_IMAGE_TYPE_2D);
