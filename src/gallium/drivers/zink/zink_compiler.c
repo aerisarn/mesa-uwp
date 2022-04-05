@@ -1233,6 +1233,39 @@ zink_shader_spirv_compile(struct zink_screen *screen, struct zink_shader *zs, st
    return success ? mod : VK_NULL_HANDLE;
 }
 
+static bool
+find_var_deref(nir_shader *nir, nir_variable *var)
+{
+   nir_foreach_function(function, nir) {
+      if (!function->impl)
+         continue;
+
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_deref)
+               continue;
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            if (deref->deref_type == nir_deref_type_var && deref->var == var)
+               return true;
+         }
+      }
+   }
+   return false;
+}
+
+static void
+prune_io(nir_shader *nir)
+{
+   nir_foreach_shader_in_variable_safe(var, nir) {
+      if (!find_var_deref(nir, var))
+         var->data.mode = nir_var_shader_temp;
+   }
+   nir_foreach_shader_out_variable_safe(var, nir) {
+      if (!find_var_deref(nir, var))
+         var->data.mode = nir_var_shader_temp;
+   }
+}
+
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shader *base_nir, const struct zink_shader_key *key)
 {
@@ -1333,6 +1366,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access);
+      prune_io(nir);
    }
    if (inlined_uniforms) {
       optimize_nir(nir);
@@ -2006,6 +2040,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_io_to_scalar, nir_var_mem_ubo | nir_var_mem_ssbo | nir_var_mem_shared);
       NIR_PASS_V(nir, rewrite_bo_access, screen);
       NIR_PASS_V(nir, remove_bo_access);
+      prune_io(nir);
    }
 
    if (zink_debug & ZINK_DEBUG_NIR) {
