@@ -29,13 +29,13 @@
 #include "vk_util.h"
 
 static void
-dzn_image_destroy(dzn_image *image,
+dzn_image_destroy(struct dzn_image *image,
                   const VkAllocationCallbacks *pAllocator)
 {
    if (!image)
       return;
 
-   dzn_device *device = container_of(image->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(image->vk.base.device, struct dzn_device, vk);
 
    if (image->res)
       ID3D12Resource_Release(image->res);
@@ -45,16 +45,16 @@ dzn_image_destroy(dzn_image *image,
 }
 
 static VkResult
-dzn_image_create(dzn_device *device,
+dzn_image_create(struct dzn_device *device,
                  const VkImageCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
                  VkImage *out)
 {
-   dzn_image *image = (dzn_image *)
+   struct dzn_image *image = (struct dzn_image *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*image), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   dzn_physical_device *pdev =
-      container_of(device->vk.physical, dzn_physical_device, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
    if (!image)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -288,7 +288,7 @@ dzn_image_get_plane_format(VkFormat format,
 }
 
 uint32_t
-dzn_image_layers_get_subresource_index(const dzn_image *image,
+dzn_image_layers_get_subresource_index(const struct dzn_image *image,
                                        const VkImageSubresourceLayers *subres,
                                        VkImageAspectFlagBits aspect,
                                        uint32_t layer)
@@ -302,7 +302,7 @@ dzn_image_layers_get_subresource_index(const dzn_image *image,
 }
 
 uint32_t
-dzn_image_range_get_subresource_index(const dzn_image *image,
+dzn_image_range_get_subresource_index(const struct dzn_image *image,
                                       const VkImageSubresourceRange *subres,
                                       VkImageAspectFlagBits aspect,
                                       uint32_t level, uint32_t layer)
@@ -316,7 +316,7 @@ dzn_image_range_get_subresource_index(const dzn_image *image,
 }
 
 static uint32_t
-dzn_image_get_subresource_index(const dzn_image *image,
+dzn_image_get_subresource_index(const struct dzn_image *image,
                                 const VkImageSubresource *subres,
                                 VkImageAspectFlagBits aspect)
 {
@@ -329,7 +329,7 @@ dzn_image_get_subresource_index(const dzn_image *image,
 }
 
 D3D12_TEXTURE_COPY_LOCATION
-dzn_image_get_copy_loc(const dzn_image *image,
+dzn_image_get_copy_loc(const struct dzn_image *image,
                        const VkImageSubresourceLayers *subres,
                        VkImageAspectFlagBits aspect,
                        uint32_t layer)
@@ -364,7 +364,7 @@ dzn_image_get_copy_loc(const dzn_image *image,
 }
 
 D3D12_DEPTH_STENCIL_VIEW_DESC
-dzn_image_get_dsv_desc(const dzn_image *image,
+dzn_image_get_dsv_desc(const struct dzn_image *image,
                        const VkImageSubresourceRange *range,
                        uint32_t level)
 {
@@ -425,7 +425,7 @@ dzn_image_get_dsv_desc(const dzn_image *image,
 }
 
 D3D12_RENDER_TARGET_VIEW_DESC
-dzn_image_get_rtv_desc(const dzn_image *image,
+dzn_image_get_rtv_desc(const struct dzn_image *image,
                        const VkImageSubresourceRange *range,
                        uint32_t level)
 {
@@ -571,14 +571,14 @@ dzn_DestroyImage(VkDevice device, VkImage image,
    dzn_image_destroy(dzn_image_from_handle(image), pAllocator);
 }
 
-static dzn_image *
-dzn_swapchain_get_image(dzn_device *device,
+static struct dzn_image *
+dzn_swapchain_get_image(struct dzn_device *device,
                         VkSwapchainKHR swapchain,
                         uint32_t index)
 {
    uint32_t n_images = index + 1;
    STACK_ARRAY(VkImage, images, n_images);
-   dzn_image *image = NULL;
+   struct dzn_image *image = NULL;
 
    VkResult result = wsi_common_get_images(swapchain, &n_images, images);
 
@@ -607,7 +607,7 @@ dzn_BindImageMemory2(VkDevice dev,
          case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
             const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
                (const VkBindImageMemorySwapchainInfoKHR *) s;
-            dzn_image *swapchain_image =
+            struct dzn_image *swapchain_image =
                dzn_swapchain_get_image(device,
                                        swapchain_info->swapchain,
                                        swapchain_info->imageIndex);
@@ -652,8 +652,8 @@ dzn_GetImageMemoryRequirements2(VkDevice _device,
 {
    VK_FROM_HANDLE(dzn_device, device, _device);
    VK_FROM_HANDLE(dzn_image, image, pInfo->image);
-   dzn_physical_device *pdev =
-      container_of(device->vk.physical, dzn_physical_device, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
    vk_foreach_struct_const(ext, pInfo->pNext) {
       dzn_debug_ignored_stype(ext->sType);
@@ -762,7 +762,7 @@ translate_swizzle(VkComponentSwizzle in, uint32_t comp)
 }
 
 static void
-dzn_image_view_prepare_srv_desc(dzn_image_view *iview)
+dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
 {
    uint32_t plane_slice = (iview->vk.aspects & VK_IMAGE_ASPECT_STENCIL_BIT) ? 1 : 0;
    bool ms = iview->vk.image->samples > 1;
@@ -870,7 +870,7 @@ dzn_image_view_prepare_srv_desc(dzn_image_view *iview)
 }
 
 static void
-dzn_image_view_prepare_uav_desc(dzn_image_view *iview)
+dzn_image_view_prepare_uav_desc(struct dzn_image_view *iview)
 {
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
 
@@ -924,7 +924,7 @@ dzn_image_view_prepare_uav_desc(dzn_image_view *iview)
 }
 
 static void
-dzn_image_view_prepare_rtv_desc(dzn_image_view *iview)
+dzn_image_view_prepare_rtv_desc(struct dzn_image_view *iview)
 {
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
    bool from_3d_image = iview->vk.image->image_type == VK_IMAGE_TYPE_3D;
@@ -996,7 +996,7 @@ dzn_image_view_prepare_rtv_desc(dzn_image_view *iview)
 }
 
 static void
-dzn_image_view_prepare_dsv_desc(dzn_image_view *iview)
+dzn_image_view_prepare_dsv_desc(struct dzn_image_view *iview)
 {
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
    bool ms = iview->vk.image->samples > 1;
@@ -1048,14 +1048,14 @@ dzn_image_view_prepare_dsv_desc(dzn_image_view *iview)
 }
 
 void
-dzn_image_view_finish(dzn_image_view *iview)
+dzn_image_view_finish(struct dzn_image_view *iview)
 {
    vk_image_view_finish(&iview->vk);
 }
 
 void
-dzn_image_view_init(dzn_device *device,
-                    dzn_image_view *iview,
+dzn_image_view_init(struct dzn_device *device,
+                    struct dzn_image_view *iview,
                     const VkImageViewCreateInfo *pCreateInfo)
 {
    VK_FROM_HANDLE(dzn_image, image, pCreateInfo->image);
@@ -1105,25 +1105,25 @@ dzn_image_view_init(dzn_device *device,
 }
 
 static void
-dzn_image_view_destroy(dzn_image_view *iview,
+dzn_image_view_destroy(struct dzn_image_view *iview,
                       const VkAllocationCallbacks *pAllocator)
 {
    if (!iview)
       return;
 
-   dzn_device *device = container_of(iview->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(iview->vk.base.device, struct dzn_device, vk);
 
    vk_image_view_finish(&iview->vk);
    vk_free2(&device->vk.alloc, pAllocator, iview);
 }
 
 static VkResult
-dzn_image_view_create(dzn_device *device,
+dzn_image_view_create(struct dzn_device *device,
                       const VkImageViewCreateInfo *pCreateInfo,
                       const VkAllocationCallbacks *pAllocator,
                       VkImageView *out)
 {
-   dzn_image_view *iview = (dzn_image_view *)
+   struct dzn_image_view *iview = (struct dzn_image_view *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*iview), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!iview)
@@ -1154,27 +1154,27 @@ dzn_DestroyImageView(VkDevice device,
 }
 
 static void
-dzn_buffer_view_destroy(dzn_buffer_view *bview,
+dzn_buffer_view_destroy(struct dzn_buffer_view *bview,
                         const VkAllocationCallbacks *pAllocator)
 {
    if (!bview)
       return;
 
-   dzn_device *device = container_of(bview->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(bview->base.device, struct dzn_device, vk);
 
    vk_object_base_finish(&bview->base);
    vk_free2(&device->vk.alloc, pAllocator, bview);
 }
 
 static VkResult
-dzn_buffer_view_create(dzn_device *device,
+dzn_buffer_view_create(struct dzn_device *device,
                        const VkBufferViewCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator,
                        VkBufferView *out)
 {
    VK_FROM_HANDLE(dzn_buffer, buf, pCreateInfo->buffer);
 
-   dzn_buffer_view *bview = (dzn_buffer_view *)
+   struct dzn_buffer_view *bview = (struct dzn_buffer_view *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*bview), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!bview)

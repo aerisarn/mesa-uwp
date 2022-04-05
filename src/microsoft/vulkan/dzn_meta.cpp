@@ -31,11 +31,11 @@
 #include "dxil_validator.h"
 
 static void
-dzn_meta_compile_shader(dzn_device *device, nir_shader *nir,
+dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
                         D3D12_SHADER_BYTECODE *slot)
 {
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
@@ -90,9 +90,9 @@ dzn_meta_compile_shader(dzn_device *device, nir_shader *nir,
 #define DZN_META_INDIRECT_DRAW_MAX_PARAM_COUNT 4
 
 static void
-dzn_meta_indirect_draw_finish(dzn_device *device, enum dzn_indirect_draw_type type)
+dzn_meta_indirect_draw_finish(struct dzn_device *device, enum dzn_indirect_draw_type type)
 {
-   dzn_meta_indirect_draw *meta = &device->indirect_draws[type];
+   struct dzn_meta_indirect_draw *meta = &device->indirect_draws[type];
 
    if (meta->root_sig)
       ID3D12RootSignature_Release(meta->root_sig);
@@ -102,12 +102,12 @@ dzn_meta_indirect_draw_finish(dzn_device *device, enum dzn_indirect_draw_type ty
 }
 
 static VkResult
-dzn_meta_indirect_draw_init(dzn_device *device,
+dzn_meta_indirect_draw_init(struct dzn_device *device,
                             enum dzn_indirect_draw_type type)
 {
-   dzn_meta_indirect_draw *meta = &device->indirect_draws[type];
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
+   struct dzn_meta_indirect_draw *meta = &device->indirect_draws[type];
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
    VkResult ret = VK_SUCCESS;
 
    glsl_type_singleton_init_or_ref();
@@ -211,10 +211,10 @@ out:
 #define DZN_META_TRIANGLE_FAN_REWRITE_IDX_MAX_PARAM_COUNT 3
 
 static void
-dzn_meta_triangle_fan_rewrite_index_finish(dzn_device *device,
+dzn_meta_triangle_fan_rewrite_index_finish(struct dzn_device *device,
                                            enum dzn_index_type old_index_type)
 {
-   dzn_meta_triangle_fan_rewrite_index *meta =
+   struct dzn_meta_triangle_fan_rewrite_index *meta =
       &device->triangle_fan[old_index_type];
 
    if (meta->root_sig)
@@ -226,13 +226,13 @@ dzn_meta_triangle_fan_rewrite_index_finish(dzn_device *device,
 }
 
 static VkResult
-dzn_meta_triangle_fan_rewrite_index_init(dzn_device *device,
+dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
                                          enum dzn_index_type old_index_type)
 {
-   dzn_meta_triangle_fan_rewrite_index *meta =
+   struct dzn_meta_triangle_fan_rewrite_index *meta =
       &device->triangle_fan[old_index_type];
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
    VkResult ret = VK_SUCCESS;
 
    glsl_type_singleton_init_or_ref();
@@ -354,9 +354,9 @@ out:
 }
 
 static const D3D12_SHADER_BYTECODE *
-dzn_meta_blits_get_vs(dzn_device *device)
+dzn_meta_blits_get_vs(struct dzn_device *device)
 {
-   dzn_meta_blits *meta = &device->blits;
+   struct dzn_meta_blits *meta = &device->blits;
    D3D12_SHADER_BYTECODE *out;
 
    mtx_lock(&meta->shaders_lock);
@@ -397,10 +397,10 @@ dzn_meta_blits_get_vs(dzn_device *device)
 }
 
 static const D3D12_SHADER_BYTECODE *
-dzn_meta_blits_get_fs(dzn_device *device,
+dzn_meta_blits_get_fs(struct dzn_device *device,
                       const struct dzn_nir_blit_info *info)
 {
-   dzn_meta_blits *meta = &device->blits;
+   struct dzn_meta_blits *meta = &device->blits;
    D3D12_SHADER_BYTECODE *out = NULL;
 
    mtx_lock(&meta->shaders_lock);
@@ -448,7 +448,7 @@ dzn_meta_blits_get_fs(dzn_device *device,
 }
 
 static void
-dzn_meta_blit_destroy(dzn_device *device, dzn_meta_blit *blit)
+dzn_meta_blit_destroy(struct dzn_device *device, struct dzn_meta_blit *blit)
 {
    if (!blit)
       return;
@@ -461,11 +461,11 @@ dzn_meta_blit_destroy(dzn_device *device, dzn_meta_blit *blit)
    vk_free(&device->vk.alloc, blit);
 }
 
-static dzn_meta_blit *
-dzn_meta_blit_create(dzn_device *device, const dzn_meta_blit_key *key)
+static struct dzn_meta_blit *
+dzn_meta_blit_create(struct dzn_device *device, const struct dzn_meta_blit_key *key)
 {
-   dzn_meta_blits *blits = &device->blits;
-   dzn_meta_blit *blit = (dzn_meta_blit *)
+   struct dzn_meta_blits *blits = &device->blits;
+   struct dzn_meta_blit *blit = (struct dzn_meta_blit *)
       vk_zalloc(&device->vk.alloc, sizeof(*blit), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
@@ -621,17 +621,17 @@ dzn_meta_blit_create(dzn_device *device, const dzn_meta_blit_key *key)
    return blit;
 }
 
-const dzn_meta_blit *
-dzn_meta_blits_get_context(dzn_device *device,
-                           const dzn_meta_blit_key *key)
+const struct dzn_meta_blit *
+dzn_meta_blits_get_context(struct dzn_device *device,
+                           const struct dzn_meta_blit_key *key)
 {
-   dzn_meta_blit *out = NULL;
+   struct dzn_meta_blit *out = NULL;
 
    STATIC_ASSERT(sizeof(key) == sizeof(uint64_t));
 
    mtx_lock(&device->blits.contexts_lock);
 
-   out = (dzn_meta_blit *)
+   out = (struct dzn_meta_blit *)
       _mesa_hash_table_u64_search(device->blits.contexts, key->u64);
    if (!out) {
       out = dzn_meta_blit_create(device, key);
@@ -646,9 +646,9 @@ dzn_meta_blits_get_context(dzn_device *device,
 }
 
 static void
-dzn_meta_blits_finish(dzn_device *device)
+dzn_meta_blits_finish(struct dzn_device *device)
 {
-   dzn_meta_blits *meta = &device->blits;
+   struct dzn_meta_blits *meta = &device->blits;
 
    vk_free(&device->vk.alloc, (void *)meta->vs.pShaderBytecode);
 
@@ -660,7 +660,7 @@ dzn_meta_blits_finish(dzn_device *device)
 
    if (meta->contexts) {
       hash_table_foreach(meta->contexts->table, he)
-         dzn_meta_blit_destroy(device, (dzn_meta_blit *)he->data);
+         dzn_meta_blit_destroy(device, (struct dzn_meta_blit *)he->data);
       _mesa_hash_table_u64_destroy(meta->contexts);
    }
 
@@ -669,11 +669,11 @@ dzn_meta_blits_finish(dzn_device *device)
 }
 
 static VkResult
-dzn_meta_blits_init(dzn_device *device)
+dzn_meta_blits_init(struct dzn_device *device)
 {
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
-   dzn_meta_blits *meta = &device->blits;
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
+   struct dzn_meta_blits *meta = &device->blits;
 
    mtx_init(&meta->shaders_lock, mtx_plain);
    mtx_init(&meta->contexts_lock, mtx_plain);
@@ -694,7 +694,7 @@ dzn_meta_blits_init(dzn_device *device)
 }
 
 void
-dzn_meta_finish(dzn_device *device)
+dzn_meta_finish(struct dzn_device *device)
 {
    for (uint32_t i = 0; i < ARRAY_SIZE(device->triangle_fan); i++)
       dzn_meta_triangle_fan_rewrite_index_finish(device, (enum dzn_index_type)i);
@@ -706,7 +706,7 @@ dzn_meta_finish(dzn_device *device)
 }
 
 VkResult
-dzn_meta_init(dzn_device *device)
+dzn_meta_init(struct dzn_device *device)
 {
    VkResult result = dzn_meta_blits_init(device);
    if (result != VK_SUCCESS)

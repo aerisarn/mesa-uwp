@@ -48,17 +48,17 @@ to_dxil_shader_stage(VkShaderStageFlagBits in)
 }
 
 static VkResult
-dzn_pipeline_compile_shader(dzn_device *device,
+dzn_pipeline_compile_shader(struct dzn_device *device,
                             const VkAllocationCallbacks *alloc,
-                            dzn_pipeline_layout *layout,
+                            struct dzn_pipeline_layout *layout,
                             const VkPipelineShaderStageCreateInfo *stage_info,
                             enum dxil_spirv_yz_flip_mode yz_flip_mode,
                             uint16_t y_flip_mask, uint16_t z_flip_mask,
                             bool force_sample_rate_shading,
                             D3D12_SHADER_BYTECODE *slot)
 {
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
    const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
    VK_FROM_HANDLE(vk_shader_module, module, stage_info->module);
    struct dxil_spirv_object dxil_object;
@@ -192,14 +192,14 @@ dzn_pipeline_get_gfx_shader_slot(D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
 }
 
 static VkResult
-dzn_graphics_pipeline_translate_vi(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
                                    const VkAllocationCallbacks *alloc,
                                    D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                    const VkGraphicsPipelineCreateInfo *in,
                                    D3D12_INPUT_ELEMENT_DESC **input_elems)
 {
-   dzn_device *device =
-      container_of(pipeline->base.base.device, dzn_device, vk);
+   struct dzn_device *device =
+      container_of(pipeline->base.base.device, struct dzn_device, vk);
    const VkPipelineVertexInputStateCreateInfo *in_vi =
       in->pVertexInputState;
 
@@ -301,7 +301,7 @@ to_prim_topology(VkPrimitiveTopology in, unsigned patch_control_points)
 }
 
 static void
-dzn_graphics_pipeline_translate_ia(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_ia(struct dzn_graphics_pipeline *pipeline,
                                    D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                    const VkGraphicsPipelineCreateInfo *in)
 {
@@ -347,7 +347,7 @@ translate_cull_mode(VkCullModeFlags in)
 }
 
 static void
-dzn_graphics_pipeline_translate_rast(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_rast(struct dzn_graphics_pipeline *pipeline,
                                      D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                      const VkGraphicsPipelineCreateInfo *in)
 {
@@ -385,7 +385,7 @@ dzn_graphics_pipeline_translate_rast(dzn_graphics_pipeline *pipeline,
 }
 
 static void
-dzn_graphics_pipeline_translate_ms(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_ms(struct dzn_graphics_pipeline *pipeline,
                                    D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                    const VkGraphicsPipelineCreateInfo *in)
 {
@@ -419,7 +419,7 @@ translate_stencil_op(VkStencilOp in)
 }
 
 static void
-translate_stencil_test(dzn_graphics_pipeline *pipeline,
+translate_stencil_test(struct dzn_graphics_pipeline *pipeline,
                        D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                        const VkGraphicsPipelineCreateInfo *in)
 {
@@ -530,7 +530,7 @@ translate_stencil_test(dzn_graphics_pipeline *pipeline,
 }
 
 static void
-dzn_graphics_pipeline_translate_zsa(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_zsa(struct dzn_graphics_pipeline *pipeline,
                                     D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                     const VkGraphicsPipelineCreateInfo *in)
 {
@@ -649,7 +649,7 @@ translate_logic_op(VkLogicOp in)
 }
 
 static void
-dzn_graphics_pipeline_translate_blend(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_translate_blend(struct dzn_graphics_pipeline *pipeline,
                                       D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                       const VkGraphicsPipelineCreateInfo *in)
 {
@@ -704,10 +704,10 @@ dzn_graphics_pipeline_translate_blend(dzn_graphics_pipeline *pipeline,
 
 
 static void
-dzn_pipeline_init(dzn_pipeline *pipeline,
-                  dzn_device *device,
+dzn_pipeline_init(struct dzn_pipeline *pipeline,
+                  struct dzn_device *device,
                   VkPipelineBindPoint type,
-                  dzn_pipeline_layout *layout)
+                  struct dzn_pipeline_layout *layout)
 {
    pipeline->type = type;
    pipeline->root.sets_param_count = layout->root.sets_param_count;
@@ -727,7 +727,7 @@ dzn_pipeline_init(dzn_pipeline *pipeline,
 }
 
 static void
-dzn_pipeline_finish(dzn_pipeline *pipeline)
+dzn_pipeline_finish(struct dzn_pipeline *pipeline)
 {
    if (pipeline->state)
       ID3D12PipelineState_Release(pipeline->state);
@@ -738,7 +738,7 @@ dzn_pipeline_finish(dzn_pipeline *pipeline)
 }
 
 static void
-dzn_graphics_pipeline_destroy(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_destroy(struct dzn_graphics_pipeline *pipeline,
                               const VkAllocationCallbacks *alloc)
 {
    if (!pipeline)
@@ -754,7 +754,7 @@ dzn_graphics_pipeline_destroy(dzn_graphics_pipeline *pipeline,
 }
 
 static VkResult
-dzn_graphics_pipeline_create(dzn_device *device,
+dzn_graphics_pipeline_create(struct dzn_device *device,
                              VkPipelineCache cache,
                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
                              const VkAllocationCallbacks *pAllocator,
@@ -762,12 +762,12 @@ dzn_graphics_pipeline_create(dzn_device *device,
 {
    VK_FROM_HANDLE(dzn_render_pass, pass, pCreateInfo->renderPass);
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
-   const dzn_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
+   const struct dzn_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
    uint32_t stage_mask = 0;
    VkResult ret;
    HRESULT hres = 0;
 
-   dzn_graphics_pipeline *pipeline = (dzn_graphics_pipeline *)
+   struct dzn_graphics_pipeline *pipeline = (struct dzn_graphics_pipeline *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pipeline)
@@ -933,13 +933,13 @@ out:
 #define DZN_INDIRECT_CMD_SIG_MAX_ARGS 3
 
 ID3D12CommandSignature *
-dzn_graphics_pipeline_get_indirect_cmd_sig(dzn_graphics_pipeline *pipeline,
+dzn_graphics_pipeline_get_indirect_cmd_sig(struct dzn_graphics_pipeline *pipeline,
                                            enum dzn_indirect_draw_cmd_sig_type type)
 {
    assert(type < DZN_NUM_INDIRECT_DRAW_CMD_SIGS);
 
-   dzn_device *device =
-      container_of(pipeline->base.base.device, dzn_device, vk);
+   struct dzn_device *device =
+      container_of(pipeline->base.base.device, struct dzn_device, vk);
    ID3D12CommandSignature *cmdsig = pipeline->indirect_cmd_sigs[type];
 
    if (cmdsig)
@@ -1034,7 +1034,7 @@ dzn_CreateGraphicsPipelines(VkDevice dev,
 }
 
 static void
-dzn_compute_pipeline_destroy(dzn_compute_pipeline *pipeline,
+dzn_compute_pipeline_destroy(struct dzn_compute_pipeline *pipeline,
                              const VkAllocationCallbacks *alloc)
 {
    if (!pipeline)
@@ -1048,7 +1048,7 @@ dzn_compute_pipeline_destroy(dzn_compute_pipeline *pipeline,
 }
 
 static VkResult
-dzn_compute_pipeline_create(dzn_device *device,
+dzn_compute_pipeline_create(struct dzn_device *device,
                             VkPipelineCache cache,
                             const VkComputePipelineCreateInfo *pCreateInfo,
                             const VkAllocationCallbacks *pAllocator,
@@ -1056,7 +1056,7 @@ dzn_compute_pipeline_create(dzn_device *device,
 {
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
 
-   dzn_compute_pipeline *pipeline = (dzn_compute_pipeline *)
+   struct dzn_compute_pipeline *pipeline = (struct dzn_compute_pipeline *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pipeline)
@@ -1097,13 +1097,13 @@ out:
 }
 
 ID3D12CommandSignature *
-dzn_compute_pipeline_get_indirect_cmd_sig(dzn_compute_pipeline *pipeline)
+dzn_compute_pipeline_get_indirect_cmd_sig(struct dzn_compute_pipeline *pipeline)
 {
    if (pipeline->indirect_cmd_sig)
       return pipeline->indirect_cmd_sig;
 
-   dzn_device *device =
-      container_of(pipeline->base.base.device, dzn_device, vk);
+   struct dzn_device *device =
+      container_of(pipeline->base.base.device, struct dzn_device, vk);
 
    D3D12_INDIRECT_ARGUMENT_DESC indirect_dispatch_args[] = {
       {
@@ -1185,11 +1185,11 @@ dzn_DestroyPipeline(VkDevice device,
       return;
 
    if (pipe->type == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-      dzn_graphics_pipeline *gfx = container_of(pipe, dzn_graphics_pipeline, base);
+      struct dzn_graphics_pipeline *gfx = container_of(pipe, struct dzn_graphics_pipeline, base);
       dzn_graphics_pipeline_destroy(gfx, pAllocator);
    } else {
       assert(pipe->type == VK_PIPELINE_BIND_POINT_COMPUTE);
-      dzn_compute_pipeline *compute = container_of(pipe, dzn_compute_pipeline, base);
+      struct dzn_compute_pipeline *compute = container_of(pipe, struct dzn_compute_pipeline, base);
       dzn_compute_pipeline_destroy(compute, pAllocator);
    }
 }

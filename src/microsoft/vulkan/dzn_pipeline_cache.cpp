@@ -26,25 +26,25 @@
 #include "vk_alloc.h"
 
 static void
-dzn_pipeline_cache_destroy(dzn_pipeline_cache *pcache,
+dzn_pipeline_cache_destroy(struct dzn_pipeline_cache *pcache,
                            const VkAllocationCallbacks *pAllocator)
 {
    if (!pcache)
       return;
 
-   dzn_device *device = container_of(pcache->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(pcache->base.device, struct dzn_device, vk);
 
    vk_object_base_finish(&pcache->base);
    vk_free2(&device->vk.alloc, pAllocator, pcache);
 }
 
 static VkResult
-dzn_pipeline_cache_create(dzn_device *device,
+dzn_pipeline_cache_create(struct dzn_device *device,
                           const VkPipelineCacheCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator,
                           VkPipelineCache *out)
 {
-   dzn_pipeline_cache *pcache = (dzn_pipeline_cache *)
+   struct dzn_pipeline_cache *pcache = (struct dzn_pipeline_cache *)
       vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pcache), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pcache)

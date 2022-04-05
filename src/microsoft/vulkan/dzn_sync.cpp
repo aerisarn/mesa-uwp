@@ -35,8 +35,8 @@ dzn_sync_init(struct vk_device *device,
               struct vk_sync *sync,
               uint64_t initial_value)
 {
-   dzn_sync *dsync = container_of(sync, dzn_sync, vk);
-   dzn_device *ddev = container_of(device, dzn_device, vk);
+   struct dzn_sync *dsync = container_of(sync, struct dzn_sync, vk);
+   struct dzn_device *ddev = container_of(device, struct dzn_device, vk);
 
    assert(!(sync->flags & VK_SYNC_IS_SHAREABLE));
 
@@ -53,7 +53,7 @@ static void
 dzn_sync_finish(struct vk_device *device,
                 struct vk_sync *sync)
 {
-   dzn_sync *dsync = container_of(sync, dzn_sync, vk);
+   struct dzn_sync *dsync = container_of(sync, struct dzn_sync, vk);
 
    ID3D12Fence_Release(dsync->fence);
 }
@@ -63,7 +63,7 @@ dzn_sync_signal(struct vk_device *device,
                 struct vk_sync *sync,
                 uint64_t value)
 {
-   dzn_sync *dsync = container_of(sync, dzn_sync, vk);
+   struct dzn_sync *dsync = container_of(sync, struct dzn_sync, vk);
 
    if (!(sync->flags & VK_SYNC_IS_TIMELINE))
       value = 1;
@@ -79,7 +79,7 @@ dzn_sync_get_value(struct vk_device *device,
                    struct vk_sync *sync,
                    uint64_t *value)
 {
-   dzn_sync *dsync = container_of(sync, dzn_sync, vk);
+   struct dzn_sync *dsync = container_of(sync, struct dzn_sync, vk);
 
    *value = ID3D12Fence_GetCompletedValue(dsync->fence);
    return VK_SUCCESS;
@@ -89,7 +89,7 @@ static VkResult
 dzn_sync_reset(struct vk_device *device,
                struct vk_sync *sync)
 {
-   dzn_sync *dsync = container_of(sync, dzn_sync, vk);
+   struct dzn_sync *dsync = container_of(sync, struct dzn_sync, vk);
 
    if (FAILED(ID3D12Fence_Signal(dsync->fence, 0)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -102,9 +102,9 @@ dzn_sync_move(struct vk_device *device,
               struct vk_sync *dst,
               struct vk_sync *src)
 {
-   dzn_device *ddev = container_of(device, dzn_device, vk);
-   dzn_sync *ddst = container_of(dst, dzn_sync, vk);
-   dzn_sync *dsrc = container_of(src, dzn_sync, vk);
+   struct dzn_device *ddev = container_of(device, struct dzn_device, vk);
+   struct dzn_sync *ddst = container_of(dst, struct dzn_sync, vk);
+   struct dzn_sync *dsrc = container_of(src, struct dzn_sync, vk);
    ID3D12Fence *new_fence;
 
    if (FAILED(ID3D12Device1_CreateFence(ddev->dev, 0,
@@ -126,7 +126,7 @@ dzn_sync_wait(struct vk_device *device,
               enum vk_sync_wait_flags wait_flags,
               uint64_t abs_timeout_ns)
 {
-   dzn_device *ddev = container_of(device, dzn_device, vk);
+   struct dzn_device *ddev = container_of(device, struct dzn_device, vk);
 
    HANDLE event = CreateEventA(NULL, FALSE, FALSE, NULL);
    if (event == NULL)
@@ -136,7 +136,7 @@ dzn_sync_wait(struct vk_device *device,
    STACK_ARRAY(uint64_t, values, wait_count);
 
    for (uint32_t i = 0; i < wait_count; i++) {
-      dzn_sync *sync = container_of(waits[i].sync, dzn_sync, vk);
+      struct dzn_sync *sync = container_of(waits[i].sync, struct dzn_sync, vk);
 
       fences[i] = sync->fence;
       values[i] = (sync->vk.flags & VK_SYNC_IS_TIMELINE) ? waits[i].wait_value : 1;
@@ -188,7 +188,7 @@ dzn_sync_wait(struct vk_device *device,
 }
 
 const struct vk_sync_type dzn_sync_type = {
-   .size = sizeof(dzn_sync),
+   .size = sizeof(struct dzn_sync),
    .features = (enum vk_sync_features)
       (VK_SYNC_FEATURE_BINARY |
        VK_SYNC_FEATURE_TIMELINE |

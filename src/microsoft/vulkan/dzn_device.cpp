@@ -55,7 +55,7 @@
 
 #define DZN_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 
-static const vk_instance_extension_table instance_extensions = {
+static const struct vk_instance_extension_table instance_extensions = {
    .KHR_get_physical_device_properties2      = true,
 #ifdef DZN_USE_WSI_PLATFORM
    .KHR_surface                              = true,
@@ -74,7 +74,7 @@ static const vk_instance_extension_table instance_extensions = {
 };
 
 static void
-dzn_physical_device_get_extensions(dzn_physical_device *pdev)
+dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 {
    pdev->vk.supported_extensions = vk_device_extension_table {
 #ifdef DZN_USE_WSI_PLATFORM
@@ -109,9 +109,9 @@ static const struct debug_control dzn_debug_options[] = {
 };
 
 static void
-dzn_physical_device_destroy(dzn_physical_device *pdev)
+dzn_physical_device_destroy(struct dzn_physical_device *pdev)
 {
-   dzn_instance *instance = container_of(pdev->vk.instance, dzn_instance, vk);
+   struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
 
    list_del(&pdev->link);
 
@@ -127,7 +127,7 @@ dzn_physical_device_destroy(dzn_physical_device *pdev)
 }
 
 static void
-dzn_instance_destroy(dzn_instance *instance, const VkAllocationCallbacks *alloc)
+dzn_instance_destroy(struct dzn_instance *instance, const VkAllocationCallbacks *alloc)
 {
    if (!instance)
       return;
@@ -135,7 +135,7 @@ dzn_instance_destroy(dzn_instance *instance, const VkAllocationCallbacks *alloc)
    if (instance->dxil_validator)
       dxil_destroy_validator(instance->dxil_validator);
 
-   list_for_each_entry_safe(dzn_physical_device, pdev,
+   list_for_each_entry_safe(struct dzn_physical_device, pdev,
                             &instance->physical_devices, link) {
       dzn_physical_device_destroy(pdev);
    }
@@ -149,13 +149,13 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator,
                     VkInstance *out)
 {
-   dzn_instance *instance = (dzn_instance *)
+   struct dzn_instance *instance = (struct dzn_instance *)
       vk_zalloc2(vk_default_allocator(), pAllocator, sizeof(*instance), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_instance_dispatch_table dispatch_table;
+   struct vk_instance_dispatch_table dispatch_table;
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
                                                &dzn_instance_entrypoints,
                                                true);
@@ -208,18 +208,18 @@ dzn_DestroyInstance(VkInstance instance,
 }
 
 static VkResult
-dzn_physical_device_create(dzn_instance *instance,
+dzn_physical_device_create(struct dzn_instance *instance,
                            IDXGIAdapter1 *adapter,
                            const DXGI_ADAPTER_DESC1 *adapter_desc)
 {
-   dzn_physical_device *pdev = (dzn_physical_device *)
+   struct dzn_physical_device *pdev = (struct dzn_physical_device *)
       vk_zalloc(&instance->vk.alloc, sizeof(*pdev), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
 
    if (!pdev)
       return vk_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_physical_device_dispatch_table dispatch_table;
+   struct vk_physical_device_dispatch_table dispatch_table;
    vk_physical_device_dispatch_table_from_entrypoints(&dispatch_table,
                                                       &dzn_physical_device_entrypoints,
                                                       true);
@@ -270,7 +270,7 @@ dzn_physical_device_create(dzn_instance *instance,
 }
 
 static void
-dzn_physical_device_cache_caps(dzn_physical_device *pdev)
+dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
 {
    D3D_FEATURE_LEVEL checklist[] = {
       D3D_FEATURE_LEVEL_11_0,
@@ -351,7 +351,7 @@ dzn_physical_device_cache_caps(dzn_physical_device *pdev)
 }
 
 static void
-dzn_physical_device_init_memory(dzn_physical_device *pdev)
+dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
 {
    VkPhysicalDeviceMemoryProperties *mem = &pdev->memory;
    const DXGI_ADAPTER_DESC1 *desc = &pdev->adapter_desc;
@@ -420,14 +420,14 @@ dzn_physical_device_init_memory(dzn_physical_device *pdev)
 }
 
 static D3D12_HEAP_FLAGS
-dzn_physical_device_get_heap_flags_for_mem_type(const dzn_physical_device *pdev,
+dzn_physical_device_get_heap_flags_for_mem_type(const struct dzn_physical_device *pdev,
                                                 uint32_t mem_type)
 {
    return pdev->heap_flags_for_mem_type[mem_type];
 }
 
 uint32_t
-dzn_physical_device_get_mem_type_mask_for_resource(const dzn_physical_device *pdev,
+dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_device *pdev,
                                                    const D3D12_RESOURCE_DESC *desc)
 {
    if (pdev->options.ResourceHeapTier > D3D12_RESOURCE_HEAP_TIER_1)
@@ -470,9 +470,9 @@ dzn_physical_device_get_max_array_layers()
 }
 
 static ID3D12Device1 *
-dzn_physical_device_get_d3d12_dev(dzn_physical_device *pdev)
+dzn_physical_device_get_d3d12_dev(struct dzn_physical_device *pdev)
 {
-   dzn_instance *instance = container_of(pdev->vk.instance, dzn_instance, vk);
+   struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
 
    mtx_lock(&pdev->dev_lock);
    if (!pdev->dev) {
@@ -487,7 +487,7 @@ dzn_physical_device_get_d3d12_dev(dzn_physical_device *pdev)
 }
 
 D3D12_FEATURE_DATA_FORMAT_SUPPORT
-dzn_physical_device_get_format_support(dzn_physical_device *pdev,
+dzn_physical_device_get_format_support(struct dzn_physical_device *pdev,
                                        VkFormat format)
 {
    VkImageUsageFlags usage =
@@ -544,7 +544,7 @@ dzn_physical_device_get_format_support(dzn_physical_device *pdev,
 }
 
 static void
-dzn_physical_device_get_format_properties(dzn_physical_device *pdev,
+dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
                                           VkFormat format,
                                           VkFormatProperties2 *properties)
 {
@@ -648,7 +648,7 @@ dzn_physical_device_get_format_properties(dzn_physical_device *pdev,
 }
 
 static VkResult
-dzn_physical_device_get_image_format_properties(dzn_physical_device *pdev,
+dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev,
                                                 const VkPhysicalDeviceImageFormatInfo2 *info,
                                                 VkImageFormatProperties2 *properties)
 {
@@ -932,7 +932,7 @@ dzn_EnumeratePhysicalDevices(VkInstance inst,
    VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,
                           pPhysicalDeviceCount);
 
-   list_for_each_entry(dzn_physical_device, pdev, &instance->physical_devices, link) {
+   list_for_each_entry(struct dzn_physical_device, pdev, &instance->physical_devices, link) {
       vk_outarray_append_typed(VkPhysicalDevice, &out, i)
          *i = dzn_physical_device_to_handle(pdev);
    }
@@ -949,7 +949,7 @@ dzn_EnumerateInstanceVersion(uint32_t *pApiVersion)
 }
 
 static bool
-dzn_physical_device_supports_compressed_format(dzn_physical_device *pdev,
+dzn_physical_device_supports_compressed_format(struct dzn_physical_device *pdev,
                                                const VkFormat *formats,
                                                uint32_t format_count)
 {
@@ -968,7 +968,7 @@ dzn_physical_device_supports_compressed_format(dzn_physical_device *pdev,
 }
 
 static bool
-dzn_physical_device_supports_bc(dzn_physical_device *pdev)
+dzn_physical_device_supports_bc(struct dzn_physical_device *pdev)
 {
    static const VkFormat formats[] = {
       VK_FORMAT_BC1_RGB_UNORM_BLOCK,
@@ -1389,14 +1389,14 @@ dzn_EnumerateInstanceLayerProperties(uint32_t *pPropertyCount,
 }
 
 static VkResult
-dzn_queue_sync_wait(dzn_queue *queue, const struct vk_sync_wait *wait)
+dzn_queue_sync_wait(struct dzn_queue *queue, const struct vk_sync_wait *wait)
 {
    if (wait->sync->type == &vk_sync_dummy_type)
       return VK_SUCCESS;
 
-   dzn_device *device = container_of(queue->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(queue->vk.base.device, struct dzn_device, vk);
    assert(wait->sync->type == &dzn_sync_type);
-   dzn_sync *sync = container_of(wait->sync, dzn_sync, vk);
+   struct dzn_sync *sync = container_of(wait->sync, struct dzn_sync, vk);
    uint64_t value =
       (sync->vk.flags & VK_SYNC_IS_TIMELINE) ? wait->wait_value : 1;
 
@@ -1409,14 +1409,14 @@ dzn_queue_sync_wait(dzn_queue *queue, const struct vk_sync_wait *wait)
 }
 
 static VkResult
-dzn_queue_sync_signal(dzn_queue *queue, const struct vk_sync_signal *signal)
+dzn_queue_sync_signal(struct dzn_queue *queue, const struct vk_sync_signal *signal)
 {
    if (signal->sync->type == &vk_sync_dummy_type)
       return VK_SUCCESS;
 
-   dzn_device *device = container_of(queue->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(queue->vk.base.device, struct dzn_device, vk);
    assert(signal->sync->type == &dzn_sync_type);
-   dzn_sync *sync = container_of(signal->sync, dzn_sync, vk);
+   struct dzn_sync *sync = container_of(signal->sync, struct dzn_sync, vk);
    uint64_t value =
       (sync->vk.flags & VK_SYNC_IS_TIMELINE) ? signal->signal_value : 1;
    assert(value > 0);
@@ -1433,8 +1433,8 @@ static VkResult
 dzn_queue_submit(struct vk_queue *q,
                  struct vk_queue_submit *info)
 {
-   dzn_queue *queue = container_of(q, dzn_queue, vk);
-   dzn_device *device = container_of(q->base.device, dzn_device, vk);
+   struct dzn_queue *queue = container_of(q, struct dzn_queue, vk);
+   struct dzn_device *device = container_of(q->base.device, struct dzn_device, vk);
    VkResult result = VK_SUCCESS;
 
    for (uint32_t i = 0; i < info->wait_count; i++) {
@@ -1444,17 +1444,17 @@ dzn_queue_submit(struct vk_queue *q,
    }
 
    for (uint32_t i = 0; i < info->command_buffer_count; i++) {
-      dzn_cmd_buffer *cmd_buffer =
-         container_of(info->command_buffers[i], dzn_cmd_buffer, vk);
+      struct dzn_cmd_buffer *cmd_buffer =
+         container_of(info->command_buffers[i], struct dzn_cmd_buffer, vk);
 
       ID3D12CommandList *cmdlists[] = { (ID3D12CommandList *)cmd_buffer->cmdlist };
 
-      util_dynarray_foreach(&cmd_buffer->events.wait, dzn_event *, evt) {
+      util_dynarray_foreach(&cmd_buffer->events.wait, struct dzn_event *, evt) {
          if (FAILED(ID3D12CommandQueue_Wait(queue->cmdqueue, (*evt)->fence, 1)))
             return vk_error(device, VK_ERROR_UNKNOWN);
       }
 
-      util_dynarray_foreach(&cmd_buffer->queries.wait, dzn_cmd_buffer_query_range, range) {
+      util_dynarray_foreach(&cmd_buffer->queries.wait, struct dzn_cmd_buffer_query_range, range) {
          mtx_lock(&range->qpool->queries_lock);
          for (uint32_t q = range->start; q < range->start + range->count; q++) {
             struct dzn_query *query = &range->qpool->queries[q];
@@ -1466,7 +1466,7 @@ dzn_queue_submit(struct vk_queue *q,
          mtx_unlock(&range->qpool->queries_lock);
       }
 
-      util_dynarray_foreach(&cmd_buffer->queries.reset, dzn_cmd_buffer_query_range, range) {
+      util_dynarray_foreach(&cmd_buffer->queries.reset, struct dzn_cmd_buffer_query_range, range) {
          mtx_lock(&range->qpool->queries_lock);
          for (uint32_t q = range->start; q < range->start + range->count; q++) {
             struct dzn_query *query = &range->qpool->queries[q];
@@ -1481,12 +1481,12 @@ dzn_queue_submit(struct vk_queue *q,
 
       ID3D12CommandQueue_ExecuteCommandLists(queue->cmdqueue, 1, cmdlists);
 
-      util_dynarray_foreach(&cmd_buffer->events.signal, dzn_cmd_event_signal, evt) {
+      util_dynarray_foreach(&cmd_buffer->events.signal, struct dzn_cmd_event_signal, evt) {
          if (FAILED(ID3D12CommandQueue_Signal(queue->cmdqueue, evt->event->fence, evt->value ? 1 : 0)))
             return vk_error(device, VK_ERROR_UNKNOWN);
       }
 
-      util_dynarray_foreach(&cmd_buffer->queries.signal, dzn_cmd_buffer_query_range, range) {
+      util_dynarray_foreach(&cmd_buffer->queries.signal, struct dzn_cmd_buffer_query_range, range) {
          mtx_lock(&range->qpool->queries_lock);
          for (uint32_t q = range->start; q < range->start + range->count; q++) {
             struct dzn_query *query = &range->qpool->queries[q];
@@ -1511,7 +1511,7 @@ dzn_queue_submit(struct vk_queue *q,
 }
 
 static void
-dzn_queue_finish(dzn_queue *queue)
+dzn_queue_finish(struct dzn_queue *queue)
 {
    if (queue->cmdqueue)
       ID3D12CommandQueue_Release(queue->cmdqueue);
@@ -1523,12 +1523,12 @@ dzn_queue_finish(dzn_queue *queue)
 }
 
 static VkResult
-dzn_queue_init(dzn_queue *queue,
-               dzn_device *device,
+dzn_queue_init(struct dzn_queue *queue,
+               struct dzn_device *device,
                const VkDeviceQueueCreateInfo *pCreateInfo,
                uint32_t index_in_family)
 {
-   dzn_physical_device *pdev = container_of(device->vk.physical, dzn_physical_device, vk);
+   struct dzn_physical_device *pdev = container_of(device->vk.physical, struct dzn_physical_device, vk);
 
    VkResult result = vk_queue_init(&queue->vk, &device->vk, pCreateInfo, index_in_family);
    if (result != VK_SUCCESS)
@@ -1610,7 +1610,7 @@ dzn_device_unref_pipeline_layout(struct vk_device *dev, VkPipelineLayout layout)
 }
 
 static VkResult
-dzn_device_query_init(dzn_device *device)
+dzn_device_query_init(struct dzn_device *device)
 {
    /* FIXME: create the resource in the default heap */
    D3D12_HEAP_PROPERTIES hprops;
@@ -1649,23 +1649,23 @@ dzn_device_query_init(dzn_device *device)
 }
 
 static void
-dzn_device_query_finish(dzn_device *device)
+dzn_device_query_finish(struct dzn_device *device)
 {
    if (device->queries.refs)
       ID3D12Resource_Release(device->queries.refs);
 }
 
 static void
-dzn_device_destroy(dzn_device *device, const VkAllocationCallbacks *pAllocator)
+dzn_device_destroy(struct dzn_device *device, const VkAllocationCallbacks *pAllocator)
 {
    if (!device)
       return;
 
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
 
    vk_foreach_queue_safe(q, &device->vk) {
-      dzn_queue *queue = container_of(q, dzn_queue, vk);
+      struct dzn_queue *queue = container_of(q, struct dzn_queue, vk);
 
       dzn_queue_finish(queue);
    }
@@ -1681,12 +1681,12 @@ dzn_device_destroy(dzn_device *device, const VkAllocationCallbacks *pAllocator)
 }
 
 static VkResult
-dzn_device_create(dzn_physical_device *pdev,
+dzn_device_create(struct dzn_physical_device *pdev,
                   const VkDeviceCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
                   VkDevice *out)
 {
-   dzn_instance *instance = container_of(pdev->vk.instance, dzn_instance, vk);
+   struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
 
    uint32_t queue_count = 0;
    for (uint32_t qf = 0; qf < pCreateInfo->queueCreateInfoCount; qf++) {
@@ -1695,14 +1695,14 @@ dzn_device_create(dzn_physical_device *pdev,
    }
 
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, dzn_device, device, 1);
-   VK_MULTIALLOC_DECL(&ma, dzn_queue, queues, queue_count);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_device, device, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_queue, queues, queue_count);
 
    if (!vk_multialloc_zalloc2(&ma, &instance->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
       return vk_error(pdev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_device_dispatch_table dispatch_table;
+   struct vk_device_dispatch_table dispatch_table;
 
    /* For secondary command buffer support, overwrite any command entrypoints
     * in the main device-level dispatch table with
@@ -1798,11 +1798,11 @@ dzn_device_create(dzn_physical_device *pdev,
 }
 
 ID3D12RootSignature *
-dzn_device_create_root_sig(dzn_device *device,
+dzn_device_create_root_sig(struct dzn_device *device,
                            const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *desc)
 {
-   dzn_instance *instance =
-      container_of(device->vk.physical->instance, dzn_instance, vk);
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
    ID3D10Blob *sig, *error;
 
    if (FAILED(instance->d3d12.serialize_root_sig(desc,
@@ -1841,8 +1841,8 @@ dzn_CreateDevice(VkPhysicalDevice physicalDevice,
                  VkDevice *pDevice)
 {
    VK_FROM_HANDLE(dzn_physical_device, physical_device, physicalDevice);
-   dzn_instance *instance =
-      container_of(physical_device->vk.instance, dzn_instance, vk);
+   struct dzn_instance *instance =
+      container_of(physical_device->vk.instance, struct dzn_instance, vk);
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO);
@@ -1879,13 +1879,13 @@ dzn_DestroyDevice(VkDevice dev,
 }
 
 static void
-dzn_device_memory_destroy(dzn_device_memory *mem,
+dzn_device_memory_destroy(struct dzn_device_memory *mem,
                           const VkAllocationCallbacks *pAllocator)
 {
    if (!mem)
       return;
 
-   dzn_device *device = container_of(mem->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(mem->base.device, struct dzn_device, vk);
 
    if (mem->map)
       ID3D12Resource_Unmap(mem->map_res, 0, NULL);
@@ -1901,15 +1901,15 @@ dzn_device_memory_destroy(dzn_device_memory *mem,
 }
 
 static VkResult
-dzn_device_memory_create(dzn_device *device,
+dzn_device_memory_create(struct dzn_device *device,
                          const VkMemoryAllocateInfo *pAllocateInfo,
                          const VkAllocationCallbacks *pAllocator,
                          VkDeviceMemory *out)
 {
-   dzn_physical_device *pdevice =
-      container_of(device->vk.physical, dzn_physical_device, vk);
+   struct dzn_physical_device *pdevice =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
-   dzn_device_memory *mem = (dzn_device_memory *)
+   struct dzn_device_memory *mem = (struct dzn_device_memory *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*mem), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!mem)
@@ -2093,12 +2093,12 @@ dzn_InvalidateMappedMemoryRanges(VkDevice _device,
 }
 
 static void
-dzn_buffer_destroy(dzn_buffer *buf, const VkAllocationCallbacks *pAllocator)
+dzn_buffer_destroy(struct dzn_buffer *buf, const VkAllocationCallbacks *pAllocator)
 {
    if (!buf)
       return;
 
-   dzn_device *device = container_of(buf->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(buf->base.device, struct dzn_device, vk);
 
    if (buf->res)
       ID3D12Resource_Release(buf->res);
@@ -2108,12 +2108,12 @@ dzn_buffer_destroy(dzn_buffer *buf, const VkAllocationCallbacks *pAllocator)
 }
 
 static VkResult
-dzn_buffer_create(dzn_device *device,
+dzn_buffer_create(struct dzn_device *device,
                   const VkBufferCreateInfo *pCreateInfo,
                   const VkAllocationCallbacks *pAllocator,
                   VkBuffer *out)
 {
-   dzn_buffer *buf = (dzn_buffer *)
+   struct dzn_buffer *buf = (struct dzn_buffer *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*buf), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!buf)
@@ -2157,7 +2157,7 @@ dzn_buffer_get_dxgi_format(VkFormat format)
 }
 
 D3D12_TEXTURE_COPY_LOCATION
-dzn_buffer_get_copy_loc(const dzn_buffer *buf,
+dzn_buffer_get_copy_loc(const struct dzn_buffer *buf,
                         VkFormat format,
                         const VkBufferImageCopy2KHR *region,
                         VkImageAspectFlagBits aspect,
@@ -2201,7 +2201,7 @@ dzn_buffer_get_copy_loc(const dzn_buffer *buf,
 }
 
 D3D12_TEXTURE_COPY_LOCATION
-dzn_buffer_get_line_copy_loc(const dzn_buffer *buf, VkFormat format,
+dzn_buffer_get_line_copy_loc(const struct dzn_buffer *buf, VkFormat format,
                              const VkBufferImageCopy2KHR *region,
                              const D3D12_TEXTURE_COPY_LOCATION *loc,
                              uint32_t y, uint32_t z, uint32_t *start_x)
@@ -2277,8 +2277,8 @@ dzn_GetBufferMemoryRequirements2(VkDevice dev,
 {
    VK_FROM_HANDLE(dzn_device, device, dev);
    VK_FROM_HANDLE(dzn_buffer, buffer, pInfo->buffer);
-   dzn_physical_device *pdev =
-      container_of(device->vk.physical, dzn_physical_device, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
    /* uh, this is grossly over-estimating things */
    uint32_t alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
@@ -2346,14 +2346,14 @@ dzn_BindBufferMemory2(VkDevice _device,
 }
 
 static VkResult
-dzn_framebuffer_create(dzn_device *device,
+dzn_framebuffer_create(struct dzn_device *device,
                        const VkFramebufferCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator,
                        VkFramebuffer *out)
 {
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, dzn_framebuffer, framebuffer, 1);
-   VK_MULTIALLOC_DECL(&ma, dzn_image_view *, attachments, pCreateInfo->attachmentCount);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_framebuffer, framebuffer, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_image_view *, attachments, pCreateInfo->attachmentCount);
 
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
@@ -2376,14 +2376,14 @@ dzn_framebuffer_create(dzn_device *device,
 }
 
 static void
-dzn_framebuffer_destroy(dzn_framebuffer *framebuffer,
+dzn_framebuffer_destroy(struct dzn_framebuffer *framebuffer,
                         const VkAllocationCallbacks *pAllocator)
 {
    if (!framebuffer)
       return;
 
-   dzn_device *device =
-      container_of(framebuffer->base.device, dzn_device, vk);
+   struct dzn_device *device =
+      container_of(framebuffer->base.device, struct dzn_device, vk);
 
    vk_object_base_finish(&framebuffer->base);
    vk_free2(&device->vk.alloc, pAllocator, framebuffer);
@@ -2408,14 +2408,14 @@ dzn_DestroyFramebuffer(VkDevice device,
 }
 
 static void
-dzn_event_destroy(dzn_event *event,
+dzn_event_destroy(struct dzn_event *event,
                   const VkAllocationCallbacks *pAllocator)
 {
    if (!event)
       return;
 
-   dzn_device *device =
-      container_of(event->base.device, dzn_device, vk);
+   struct dzn_device *device =
+      container_of(event->base.device, struct dzn_device, vk);
 
    if (event->fence)
       ID3D12Fence_Release(event->fence);
@@ -2425,12 +2425,12 @@ dzn_event_destroy(dzn_event *event,
 }
 
 static VkResult
-dzn_event_create(dzn_device *device,
+dzn_event_create(struct dzn_device *device,
                  const VkEventCreateInfo *pCreateInfo,
                  const VkAllocationCallbacks *pAllocator,
                  VkEvent *out)
 {
-   dzn_event *event = (dzn_event *)
+   struct dzn_event *event = (struct dzn_event *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*event), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!event)
@@ -2538,26 +2538,26 @@ dzn_sampler_translate_addr_mode(VkSamplerAddressMode in)
 }
 
 static void
-dzn_sampler_destroy(dzn_sampler *sampler,
+dzn_sampler_destroy(struct dzn_sampler *sampler,
                     const VkAllocationCallbacks *pAllocator)
 {
    if (!sampler)
       return;
 
-   dzn_device *device =
-      container_of(sampler->base.device, dzn_device, vk);
+   struct dzn_device *device =
+      container_of(sampler->base.device, struct dzn_device, vk);
 
    vk_object_base_finish(&sampler->base);
    vk_free2(&device->vk.alloc, pAllocator, sampler);
 }
 
 static VkResult
-dzn_sampler_create(dzn_device *device,
+dzn_sampler_create(struct dzn_device *device,
                    const VkSamplerCreateInfo *pCreateInfo,
                    const VkAllocationCallbacks *pAllocator,
                    VkSampler *out)
 {
-   dzn_sampler *sampler = (dzn_sampler *)
+   struct dzn_sampler *sampler = (struct dzn_sampler *)
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*sampler), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!sampler)

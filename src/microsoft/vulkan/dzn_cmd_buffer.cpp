@@ -34,8 +34,8 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    if (!cbuf)
       return;
 
-   dzn_cmd_buffer *cmdbuf = container_of(cbuf, dzn_cmd_buffer, vk);
-   dzn_device *device = container_of(cbuf->base.device, dzn_device, vk);
+   struct dzn_cmd_buffer *cmdbuf = container_of(cbuf, struct dzn_cmd_buffer, vk);
+   struct dzn_device *device = container_of(cbuf->base.device, struct dzn_device, vk);
 
    if (cmdbuf->cmdlist)
       ID3D12GraphicsCommandList1_Release(cmdbuf->cmdlist);
@@ -43,7 +43,7 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
    if (cmdbuf->cmdalloc)
       ID3D12CommandAllocator_Release(cmdbuf->cmdalloc);
 
-   list_for_each_entry_safe(dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
+   list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
       list_del(&res->link);
       ID3D12Resource_Release(res->res);
       vk_free(&cbuf->pool->alloc, res);
@@ -76,8 +76,8 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
 
    if (cmdbuf->queries.ht) {
       hash_table_foreach(cmdbuf->queries.ht, he) {
-         dzn_cmd_buffer_query_pool_state *qpstate =
-            (dzn_cmd_buffer_query_pool_state *)he->data;
+         struct dzn_cmd_buffer_query_pool_state *qpstate =
+            (struct dzn_cmd_buffer_query_pool_state *)he->data;
          util_dynarray_fini(&qpstate->reset);
          util_dynarray_fini(&qpstate->collect);
          util_dynarray_fini(&qpstate->wait);
@@ -94,25 +94,25 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
 static uint32_t
 dzn_cmd_buffer_rtv_key_hash_function(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(dzn_cmd_buffer_rtv_key));
+   return _mesa_hash_data(key, sizeof(struct dzn_cmd_buffer_rtv_key));
 }
 
 static bool
 dzn_cmd_buffer_rtv_key_equals_function(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(dzn_cmd_buffer_rtv_key)) == 0;
+   return memcmp(a, b, sizeof(struct dzn_cmd_buffer_rtv_key)) == 0;
 }
 
 static uint32_t
 dzn_cmd_buffer_dsv_key_hash_function(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(dzn_cmd_buffer_dsv_key));
+   return _mesa_hash_data(key, sizeof(struct dzn_cmd_buffer_dsv_key));
 }
 
 static bool
 dzn_cmd_buffer_dsv_key_equals_function(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(dzn_cmd_buffer_dsv_key)) == 0;
+   return memcmp(a, b, sizeof(struct dzn_cmd_buffer_dsv_key)) == 0;
 }
 
 static VkResult
@@ -120,16 +120,16 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
                       VkCommandBuffer *out)
 {
    VK_FROM_HANDLE(vk_command_pool, pool, info->commandPool);
-   dzn_device *device = container_of(pool->base.device, dzn_device, vk);
-   dzn_physical_device *pdev =
-      container_of(device->vk.physical, dzn_physical_device, vk);
+   struct dzn_device *device = container_of(pool->base.device, struct dzn_device, vk);
+   struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
 
    assert(pool->queue_family_index < pdev->queue_family_count);
 
    D3D12_COMMAND_LIST_TYPE type =
       pdev->queue_families[pool->queue_family_index].desc.Type;
 
-   dzn_cmd_buffer *cmdbuf = (dzn_cmd_buffer *)
+   struct dzn_cmd_buffer *cmdbuf = (struct dzn_cmd_buffer *)
       vk_zalloc(&pool->alloc, sizeof(*cmdbuf), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmdbuf)
       return vk_error(pool->base.device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -206,18 +206,18 @@ out:
 }
 
 static VkResult
-dzn_cmd_buffer_reset(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    const struct dzn_physical_device *pdev =
-      container_of(device->vk.physical, dzn_physical_device, vk);
+      container_of(device->vk.physical, struct dzn_physical_device, vk);
    const struct vk_command_pool *pool = cmdbuf->vk.pool;
 
    /* Reset the state */
    memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
 
    /* TODO: Return resources to the pool */
-   list_for_each_entry_safe(dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
+   list_for_each_entry_safe(struct dzn_internal_resource, res, &cmdbuf->internal_bufs, link) {
       list_del(&res->link);
       ID3D12Resource_Release(res->res);
       vk_free(&cmdbuf->vk.pool->alloc, res);
@@ -237,8 +237,8 @@ dzn_cmd_buffer_reset(dzn_cmd_buffer *cmdbuf)
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
    _mesa_hash_table_clear(cmdbuf->dsvs.ht, NULL);
    hash_table_foreach(cmdbuf->queries.ht, he) {
-      dzn_cmd_buffer_query_pool_state *qpstate =
-         (dzn_cmd_buffer_query_pool_state *)he->data;
+      struct dzn_cmd_buffer_query_pool_state *qpstate =
+         (struct dzn_cmd_buffer_query_pool_state *)he->data;
       util_dynarray_fini(&qpstate->reset);
       util_dynarray_fini(&qpstate->collect);
       util_dynarray_fini(&qpstate->wait);
@@ -333,9 +333,9 @@ dzn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
 }
 
 static void
-dzn_cmd_buffer_gather_events(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_gather_events(struct dzn_cmd_buffer *cmdbuf)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    if (cmdbuf->error != VK_SUCCESS)
       goto out;
@@ -344,9 +344,9 @@ dzn_cmd_buffer_gather_events(dzn_cmd_buffer *cmdbuf)
       enum dzn_event_state state = (enum dzn_event_state)(uintptr_t)he->data;
 
       if (state != DZN_EVENT_STATE_EXTERNAL_WAIT) {
-         dzn_cmd_event_signal signal = { (dzn_event *)he->key, state  == DZN_EVENT_STATE_SET };
-         dzn_cmd_event_signal *entry = (dzn_cmd_event_signal *)
-            util_dynarray_grow(&cmdbuf->events.signal, dzn_cmd_event_signal, 1);
+         struct dzn_cmd_event_signal signal = { (struct dzn_event *)he->key, state  == DZN_EVENT_STATE_SET };
+         struct dzn_cmd_event_signal *entry = (struct dzn_cmd_event_signal *)
+            util_dynarray_grow(&cmdbuf->events.signal, struct dzn_cmd_event_signal, 1);
 
          if (!entry) {
             cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -362,9 +362,9 @@ out:
 }
 
 static VkResult
-dzn_cmd_buffer_dynbitset_reserve(dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
+dzn_cmd_buffer_dynbitset_reserve(struct dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    if (bit < util_dynarray_num_elements(array, BITSET_WORD) * BITSET_WORDBITS)
       return VK_SUCCESS;
@@ -392,9 +392,9 @@ dzn_cmd_buffer_dynbitset_test(struct util_dynarray *array, uint32_t bit)
 }
 
 static VkResult
-dzn_cmd_buffer_dynbitset_set(dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
+dzn_cmd_buffer_dynbitset_set(struct dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    VkResult result = dzn_cmd_buffer_dynbitset_reserve(cmdbuf, array, bit);
    if (result != VK_SUCCESS)
@@ -405,9 +405,9 @@ dzn_cmd_buffer_dynbitset_set(dzn_cmd_buffer *cmdbuf, struct util_dynarray *array
 }
 
 static void
-dzn_cmd_buffer_dynbitset_clear(dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
+dzn_cmd_buffer_dynbitset_clear(struct dzn_cmd_buffer *cmdbuf, struct util_dynarray *array, uint32_t bit)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    if (bit >= util_dynarray_num_elements(array, BITSET_WORD) * BITSET_WORDBITS)
       return;
@@ -416,10 +416,11 @@ dzn_cmd_buffer_dynbitset_clear(dzn_cmd_buffer *cmdbuf, struct util_dynarray *arr
 }
 
 static VkResult
-dzn_cmd_buffer_dynbitset_set_range(dzn_cmd_buffer *cmdbuf, struct util_dynarray *array,
+dzn_cmd_buffer_dynbitset_set_range(struct dzn_cmd_buffer *cmdbuf,
+                                   struct util_dynarray *array,
                                    uint32_t bit, uint32_t count)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    VkResult result = dzn_cmd_buffer_dynbitset_reserve(cmdbuf, array, bit + count - 1);
    if (result != VK_SUCCESS)
@@ -430,10 +431,11 @@ dzn_cmd_buffer_dynbitset_set_range(dzn_cmd_buffer *cmdbuf, struct util_dynarray 
 }
 
 static void
-dzn_cmd_buffer_dynbitset_clear_range(dzn_cmd_buffer *cmdbuf, struct util_dynarray *array,
+dzn_cmd_buffer_dynbitset_clear_range(struct dzn_cmd_buffer *cmdbuf,
+                                     struct util_dynarray *array,
                                      uint32_t bit, uint32_t count)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    uint32_t nbits = util_dynarray_num_elements(array, BITSET_WORD) * BITSET_WORDBITS;
 
    if (!nbits)
@@ -448,11 +450,11 @@ dzn_cmd_buffer_dynbitset_clear_range(dzn_cmd_buffer *cmdbuf, struct util_dynarra
    }
 }
 
-static dzn_cmd_buffer_query_pool_state *
-dzn_cmd_buffer_create_query_pool_state(dzn_cmd_buffer *cmdbuf)
+static struct dzn_cmd_buffer_query_pool_state *
+dzn_cmd_buffer_create_query_pool_state(struct dzn_cmd_buffer *cmdbuf)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
-   dzn_cmd_buffer_query_pool_state *state = (dzn_cmd_buffer_query_pool_state *)
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_cmd_buffer_query_pool_state *state = (struct dzn_cmd_buffer_query_pool_state *)
       vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*state),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!state) {
@@ -468,8 +470,8 @@ dzn_cmd_buffer_create_query_pool_state(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_destroy_query_pool_state(dzn_cmd_buffer *cmdbuf,
-                                        dzn_cmd_buffer_query_pool_state *state)
+dzn_cmd_buffer_destroy_query_pool_state(struct dzn_cmd_buffer *cmdbuf,
+                                        struct dzn_cmd_buffer_query_pool_state *state)
 {
    util_dynarray_fini(&state->reset);
    util_dynarray_fini(&state->collect);
@@ -478,12 +480,12 @@ dzn_cmd_buffer_destroy_query_pool_state(dzn_cmd_buffer *cmdbuf,
    vk_free(&cmdbuf->vk.pool->alloc, state);
 }
 
-static dzn_cmd_buffer_query_pool_state *
-dzn_cmd_buffer_get_query_pool_state(dzn_cmd_buffer *cmdbuf,
-                                    dzn_query_pool *qpool)
+static struct dzn_cmd_buffer_query_pool_state *
+dzn_cmd_buffer_get_query_pool_state(struct dzn_cmd_buffer *cmdbuf,
+                                    struct dzn_query_pool *qpool)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
-   dzn_cmd_buffer_query_pool_state *state = NULL;
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_cmd_buffer_query_pool_state *state = NULL;
    struct hash_entry *he =
       _mesa_hash_table_search(cmdbuf->queries.ht, qpool);
 
@@ -499,20 +501,20 @@ dzn_cmd_buffer_get_query_pool_state(dzn_cmd_buffer *cmdbuf,
          return NULL;
       }
    } else {
-      state = (dzn_cmd_buffer_query_pool_state *)he->data;
+      state = (struct dzn_cmd_buffer_query_pool_state *)he->data;
    }
 
    return state;
 }
 
 static VkResult
-dzn_cmd_buffer_collect_queries(dzn_cmd_buffer *cmdbuf,
-                               const dzn_query_pool *qpool,
-                               dzn_cmd_buffer_query_pool_state *state,
+dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
+                               const struct dzn_query_pool *qpool,
+                               struct dzn_cmd_buffer_query_pool_state *state,
                                uint32_t first_query,
                                uint32_t query_count)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    uint32_t nbits = util_dynarray_num_elements(&state->collect, BITSET_WORD) * BITSET_WORDBITS;
    uint32_t start, end;
 
@@ -585,20 +587,20 @@ dzn_cmd_buffer_collect_queries(dzn_cmd_buffer *cmdbuf,
 }
 
 static VkResult
-dzn_cmd_buffer_collect_query_ops(dzn_cmd_buffer *cmdbuf,
-                                 dzn_query_pool *qpool,
+dzn_cmd_buffer_collect_query_ops(struct dzn_cmd_buffer *cmdbuf,
+                                 struct dzn_query_pool *qpool,
                                  struct util_dynarray *bitset_array,
                                  struct util_dynarray *ops_array)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    BITSET_WORD *bitset = util_dynarray_element(bitset_array, BITSET_WORD, 0);
    uint32_t nbits = util_dynarray_num_elements(bitset_array, BITSET_WORD) * BITSET_WORDBITS;
    uint32_t start, end;
 
    BITSET_FOREACH_RANGE(start, end, bitset, nbits) {
-      dzn_cmd_buffer_query_range range { qpool, start, end - start };
-      dzn_cmd_buffer_query_range *entry = (dzn_cmd_buffer_query_range *)
-         util_dynarray_grow(ops_array, dzn_cmd_buffer_query_range, 1);
+      struct dzn_cmd_buffer_query_range range { qpool, start, end - start };
+      struct dzn_cmd_buffer_query_range *entry = (struct dzn_cmd_buffer_query_range *)
+         util_dynarray_grow(ops_array, struct dzn_cmd_buffer_query_range, 1);
 
       if (!entry) {
          cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -612,12 +614,12 @@ dzn_cmd_buffer_collect_query_ops(dzn_cmd_buffer *cmdbuf,
 }
 
 static VkResult
-dzn_cmd_buffer_gather_queries(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_gather_queries(struct dzn_cmd_buffer *cmdbuf)
 {
    hash_table_foreach(cmdbuf->queries.ht, he) {
-      dzn_query_pool *qpool = (dzn_query_pool *)he->key;
-      dzn_cmd_buffer_query_pool_state *state =
-         (dzn_cmd_buffer_query_pool_state *)he->data;
+      struct dzn_query_pool *qpool = (struct dzn_query_pool *)he->key;
+      struct dzn_cmd_buffer_query_pool_state *state =
+         (struct dzn_cmd_buffer_query_pool_state *)he->data;
       VkResult result =
          dzn_cmd_buffer_collect_queries(cmdbuf, qpool, state, 0, qpool->query_count);
       if (result != VK_SUCCESS)
@@ -769,21 +771,21 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE
-dzn_cmd_buffer_get_dsv(dzn_cmd_buffer *cmdbuf,
-                       const dzn_image *image,
+dzn_cmd_buffer_get_dsv(struct dzn_cmd_buffer *cmdbuf,
+                       const struct dzn_image *image,
                        const D3D12_DEPTH_STENCIL_VIEW_DESC *desc)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
-   dzn_cmd_buffer_dsv_key key { image, *desc };
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_cmd_buffer_dsv_key key { image, *desc };
    struct hash_entry *he = _mesa_hash_table_search(cmdbuf->dsvs.ht, &key);
    struct dzn_cmd_buffer_dsv_entry *dsve;
 
    if (!he) {
-      dzn_descriptor_heap *heap;
+      struct dzn_descriptor_heap *heap;
       uint32_t slot;
 
       // TODO: error handling
-      dsve = (dzn_cmd_buffer_dsv_entry *)
+      dsve = (struct dzn_cmd_buffer_dsv_entry *)
          vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*dsve), 8,
                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       dsve->key = key;
@@ -792,19 +794,19 @@ dzn_cmd_buffer_get_dsv(dzn_cmd_buffer *cmdbuf,
       ID3D12Device1_CreateDepthStencilView(device->dev, image->res, desc, dsve->handle);
       _mesa_hash_table_insert(cmdbuf->dsvs.ht, &dsve->key, dsve);
    } else {
-      dsve = (dzn_cmd_buffer_dsv_entry *)he->data;
+      dsve = (struct dzn_cmd_buffer_dsv_entry *)he->data;
    }
 
    return dsve->handle;
 }
 
 static D3D12_CPU_DESCRIPTOR_HANDLE
-dzn_cmd_buffer_get_rtv(dzn_cmd_buffer *cmdbuf,
-                       const dzn_image *image,
+dzn_cmd_buffer_get_rtv(struct dzn_cmd_buffer *cmdbuf,
+                       const struct dzn_image *image,
                        const D3D12_RENDER_TARGET_VIEW_DESC *desc)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
-   dzn_cmd_buffer_rtv_key key { image, *desc };
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_cmd_buffer_rtv_key key { image, *desc };
    struct hash_entry *he = _mesa_hash_table_search(cmdbuf->rtvs.ht, &key);
    struct dzn_cmd_buffer_rtv_entry *rtve;
 
@@ -813,7 +815,7 @@ dzn_cmd_buffer_get_rtv(dzn_cmd_buffer *cmdbuf,
       uint32_t slot;
 
       // TODO: error handling
-      rtve = (dzn_cmd_buffer_rtv_entry *)
+      rtve = (struct dzn_cmd_buffer_rtv_entry *)
          vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*rtve), 8,
                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       rtve->key = key;
@@ -822,20 +824,20 @@ dzn_cmd_buffer_get_rtv(dzn_cmd_buffer *cmdbuf,
       ID3D12Device1_CreateRenderTargetView(device->dev, image->res, desc, rtve->handle);
       he = _mesa_hash_table_insert(cmdbuf->rtvs.ht, &rtve->key, rtve);
    } else {
-      rtve = (dzn_cmd_buffer_rtv_entry *)he->data;
+      rtve = (struct dzn_cmd_buffer_rtv_entry *)he->data;
    }
 
    return rtve->handle;
 }
 
 static VkResult
-dzn_cmd_buffer_alloc_internal_buf(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
                                   uint32_t size,
                                   D3D12_HEAP_TYPE heap_type,
                                   D3D12_RESOURCE_STATES init_state,
                                   ID3D12Resource **out)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    ID3D12Resource *res;
    *out = NULL;
 
@@ -868,7 +870,7 @@ dzn_cmd_buffer_alloc_internal_buf(dzn_cmd_buffer *cmdbuf,
       return cmdbuf->error;
    }
 
-   dzn_internal_resource *entry = (dzn_internal_resource *)
+   struct dzn_internal_resource *entry = (struct dzn_internal_resource *)
       vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*entry), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!entry) {
@@ -884,8 +886,8 @@ dzn_cmd_buffer_alloc_internal_buf(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_clear_rects_with_copy(dzn_cmd_buffer *cmdbuf,
-                                     const dzn_image *image,
+dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
+                                     const struct dzn_image *image,
                                      VkImageLayout layout,
                                      const VkClearColorValue *color,
                                      const VkImageSubresourceRange *range,
@@ -1035,8 +1037,8 @@ adjust_clear_color(VkFormat format, const VkClearColorValue &col)
 }
 
 static void
-dzn_cmd_buffer_clear_ranges_with_copy(dzn_cmd_buffer *cmdbuf,
-                                      const dzn_image *image,
+dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
+                                      const struct dzn_image *image,
                                       VkImageLayout layout,
                                       const VkClearColorValue *color,
                                       uint32_t range_count,
@@ -1174,7 +1176,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_clear_attachment(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                 uint32_t idx,
                                 const VkClearValue *value,
                                 VkImageAspectFlags aspects,
@@ -1186,8 +1188,8 @@ dzn_cmd_buffer_clear_attachment(dzn_cmd_buffer *cmdbuf,
    if (idx == VK_ATTACHMENT_UNUSED)
       return;
 
-   dzn_image_view *view = cmdbuf->state.framebuffer->attachments[idx];
-   dzn_image *image = container_of(view->vk.image, dzn_image, vk);
+   struct dzn_image_view *view = cmdbuf->state.framebuffer->attachments[idx];
+   struct dzn_image *image = container_of(view->vk.image, struct dzn_image, vk);
 
    VkImageSubresourceRange range = {
       .aspectMask = aspects,
@@ -1257,8 +1259,8 @@ dzn_cmd_buffer_clear_attachment(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_clear_color(dzn_cmd_buffer *cmdbuf,
-                           const dzn_image *image,
+dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
+                           const struct dzn_image *image,
                            VkImageLayout layout,
                            const VkClearColorValue *col,
                            uint32_t range_count,
@@ -1346,8 +1348,8 @@ dzn_cmd_buffer_clear_color(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_clear_zs(dzn_cmd_buffer *cmdbuf,
-                        const dzn_image *image,
+dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
+                        const struct dzn_image *image,
                         VkImageLayout layout,
                         const VkClearDepthStencilValue *zs,
                         uint32_t range_count,
@@ -1429,13 +1431,13 @@ dzn_cmd_buffer_clear_zs(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_copy_buf2img_region(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_copy_buf2img_region(struct dzn_cmd_buffer *cmdbuf,
                                    const VkCopyBufferToImageInfo2 *info,
                                    uint32_t r,
                                    VkImageAspectFlagBits aspect,
                                    uint32_t l)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_buffer, src_buffer, info->srcBuffer);
    VK_FROM_HANDLE(dzn_image, dst_image, info->dstImage);
 
@@ -1504,13 +1506,13 @@ dzn_cmd_buffer_copy_buf2img_region(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_copy_img2buf_region(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_copy_img2buf_region(struct dzn_cmd_buffer *cmdbuf,
                                    const VkCopyImageToBufferInfo2 *info,
                                    uint32_t r,
                                    VkImageAspectFlagBits aspect,
                                    uint32_t l)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src_image, info->srcImage);
    VK_FROM_HANDLE(dzn_buffer, dst_buffer, info->dstBuffer);
 
@@ -1577,7 +1579,7 @@ dzn_cmd_buffer_copy_img2buf_region(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_copy_img_chunk(struct dzn_cmd_buffer *cmdbuf,
                               const VkCopyImageInfo2 *info,
                               D3D12_RESOURCE_DESC *tmp_desc,
                               D3D12_TEXTURE_COPY_LOCATION *tmp_loc,
@@ -1585,7 +1587,7 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
                               VkImageAspectFlagBits aspect,
                               uint32_t l)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -1718,14 +1720,14 @@ dzn_cmd_buffer_copy_img_chunk(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_blit_prepare_src_view(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_blit_prepare_src_view(struct dzn_cmd_buffer *cmdbuf,
                                      VkImage image,
                                      VkImageAspectFlagBits aspect,
                                      const VkImageSubresourceLayers *subres,
-                                     dzn_descriptor_heap *heap,
+                                     struct dzn_descriptor_heap *heap,
                                      uint32_t heap_slot)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, img, image);
    VkImageViewCreateInfo iview_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -1768,7 +1770,7 @@ dzn_cmd_buffer_blit_prepare_src_view(dzn_cmd_buffer *cmdbuf,
       unreachable("Invalid type");
    }
 
-   dzn_image_view iview;
+   struct dzn_image_view iview;
    dzn_image_view_init(device, &iview, &iview_info);
    dzn_descriptor_heap_write_image_view_desc(heap, heap_slot, false, false, &iview);
    dzn_image_view_finish(&iview);
@@ -1779,8 +1781,8 @@ dzn_cmd_buffer_blit_prepare_src_view(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_blit_prepare_dst_view(dzn_cmd_buffer *cmdbuf,
-                                     dzn_image *img,
+dzn_cmd_buffer_blit_prepare_dst_view(struct dzn_cmd_buffer *cmdbuf,
+                                     struct dzn_image *img,
                                      VkImageAspectFlagBits aspect,
                                      uint32_t level, uint32_t layer)
 {
@@ -1805,13 +1807,13 @@ dzn_cmd_buffer_blit_prepare_dst_view(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_blit_set_pipeline(dzn_cmd_buffer *cmdbuf,
-                                 const dzn_image *src,
-                                 const dzn_image *dst,
+dzn_cmd_buffer_blit_set_pipeline(struct dzn_cmd_buffer *cmdbuf,
+                                 const struct dzn_image *src,
+                                 const struct dzn_image *dst,
                                  VkImageAspectFlagBits aspect,
                                  VkFilter filter, bool resolve)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    enum pipe_format pfmt = vk_format_to_pipe_format(dst->vk.format);
    VkImageUsageFlags usage =
       vk_format_is_depth_or_stencil(dst->vk.format) ?
@@ -1839,7 +1841,7 @@ dzn_cmd_buffer_blit_set_pipeline(dzn_cmd_buffer *cmdbuf,
       .padding = 0,
    };
 
-   const dzn_meta_blit *ctx =
+   const struct dzn_meta_blit *ctx =
       dzn_meta_blits_get_context(device, &ctx_key);
    assert(ctx);
 
@@ -1848,11 +1850,11 @@ dzn_cmd_buffer_blit_set_pipeline(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_blit_set_2d_region(dzn_cmd_buffer *cmdbuf,
-                                  const dzn_image *src,
+dzn_cmd_buffer_blit_set_2d_region(struct dzn_cmd_buffer *cmdbuf,
+                                  const struct dzn_image *src,
                                   const VkImageSubresourceLayers *src_subres,
                                   const VkOffset3D *src_offsets,
-                                  const dzn_image *dst,
+                                  const struct dzn_image *dst,
                                   const VkImageSubresourceLayers *dst_subres,
                                   const VkOffset3D *dst_offsets,
                                   bool normalize_src_coords)
@@ -1908,10 +1910,10 @@ dzn_cmd_buffer_blit_set_2d_region(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_blit_issue_barriers(dzn_cmd_buffer *cmdbuf,
-                                   dzn_image *src, VkImageLayout src_layout,
+dzn_cmd_buffer_blit_issue_barriers(struct dzn_cmd_buffer *cmdbuf,
+                                   struct dzn_image *src, VkImageLayout src_layout,
                                    const VkImageSubresourceLayers *src_subres,
-                                   dzn_image *dst, VkImageLayout dst_layout,
+                                   struct dzn_image *dst, VkImageLayout dst_layout,
                                    const VkImageSubresourceLayers *dst_subres,
                                    VkImageAspectFlagBits aspect,
                                    bool post)
@@ -1963,13 +1965,13 @@ dzn_cmd_buffer_blit_issue_barriers(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_blit_region(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_blit_region(struct dzn_cmd_buffer *cmdbuf,
                            const VkBlitImageInfo2 *info,
-                           dzn_descriptor_heap *heap,
+                           struct dzn_descriptor_heap *heap,
                            uint32_t *heap_slot,
                            uint32_t r)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -2039,13 +2041,13 @@ dzn_cmd_buffer_blit_region(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_resolve_region(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
                               const VkResolveImageInfo2 *info,
-                              dzn_descriptor_heap *heap,
+                              struct dzn_descriptor_heap *heap,
                               uint32_t *heap_slot,
                               uint32_t r)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -2107,7 +2109,7 @@ dzn_cmd_buffer_resolve_region(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_clear_attachments(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_clear_attachments(struct dzn_cmd_buffer *cmdbuf,
                                  uint32_t attachment_count,
                                  const VkClearAttachment *attachments,
                                  uint32_t rect_count,
@@ -2138,11 +2140,11 @@ dzn_cmd_buffer_clear_attachments(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_attachment_ref_transition(dzn_cmd_buffer *cmdbuf,
-                                         const dzn_attachment_ref *att)
+dzn_cmd_buffer_attachment_ref_transition(struct dzn_cmd_buffer *cmdbuf,
+                                         const struct dzn_attachment_ref *att)
 {
-   const dzn_image_view *iview = cmdbuf->state.framebuffer->attachments[att->idx];
-   const dzn_image *image = container_of(iview->vk.image, dzn_image, vk);
+   const struct dzn_image_view *iview = cmdbuf->state.framebuffer->attachments[att->idx];
+   const struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
 
    if (att->before == att->during)
       return;
@@ -2178,11 +2180,11 @@ dzn_cmd_buffer_attachment_ref_transition(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_attachment_transition(dzn_cmd_buffer *cmdbuf,
-                                     const dzn_attachment *att)
+dzn_cmd_buffer_attachment_transition(struct dzn_cmd_buffer *cmdbuf,
+                                     const struct dzn_attachment *att)
 {
-   const dzn_image_view *iview = cmdbuf->state.framebuffer->attachments[att->idx];
-   const dzn_image *image = container_of(iview->vk.image, dzn_image, vk);
+   const struct dzn_image_view *iview = cmdbuf->state.framebuffer->attachments[att->idx];
+   const struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
 
    if (att->last == att->after)
       return;
@@ -2218,7 +2220,7 @@ dzn_cmd_buffer_attachment_transition(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_resolve_attachment(dzn_cmd_buffer *cmdbuf, uint32_t i)
+dzn_cmd_buffer_resolve_attachment(struct dzn_cmd_buffer *cmdbuf, uint32_t i)
 {
    const struct dzn_subpass *subpass =
       &cmdbuf->state.pass->subpasses[cmdbuf->state.subpass];
@@ -2226,11 +2228,11 @@ dzn_cmd_buffer_resolve_attachment(dzn_cmd_buffer *cmdbuf, uint32_t i)
    if (subpass->resolve[i].idx == VK_ATTACHMENT_UNUSED)
       return;
 
-   const dzn_framebuffer *framebuffer = cmdbuf->state.framebuffer;
+   const struct dzn_framebuffer *framebuffer = cmdbuf->state.framebuffer;
    struct dzn_image_view *src = framebuffer->attachments[subpass->colors[i].idx];
-   struct dzn_image *src_img = container_of(src->vk.image, dzn_image, vk);
+   struct dzn_image *src_img = container_of(src->vk.image, struct dzn_image, vk);
    struct dzn_image_view *dst = framebuffer->attachments[subpass->resolve[i].idx];
-   struct dzn_image *dst_img = container_of(dst->vk.image, dzn_image, vk);
+   struct dzn_image *dst_img = container_of(dst->vk.image, struct dzn_image, vk);
    D3D12_RESOURCE_BARRIER barriers[2];
    uint32_t barrier_count = 0;
 
@@ -2276,7 +2278,7 @@ dzn_cmd_buffer_resolve_attachment(dzn_cmd_buffer *cmdbuf, uint32_t i)
 }
 
 static void
-dzn_cmd_buffer_begin_subpass(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_begin_subpass(struct dzn_cmd_buffer *cmdbuf)
 {
    struct dzn_framebuffer *framebuffer = cmdbuf->state.framebuffer;
    struct dzn_render_pass *pass = cmdbuf->state.pass;
@@ -2288,15 +2290,15 @@ dzn_cmd_buffer_begin_subpass(dzn_cmd_buffer *cmdbuf)
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       if (subpass->colors[i].idx == VK_ATTACHMENT_UNUSED) continue;
 
-      dzn_image_view *iview = framebuffer->attachments[subpass->colors[i].idx];
-      dzn_image *img = container_of(iview->vk.image, dzn_image, vk);
+      struct dzn_image_view *iview = framebuffer->attachments[subpass->colors[i].idx];
+      struct dzn_image *img = container_of(iview->vk.image, struct dzn_image, vk);
 
       rt_handles[i] = dzn_cmd_buffer_get_rtv(cmdbuf, img, &iview->rtv_desc);
    }
 
    if (subpass->zs.idx != VK_ATTACHMENT_UNUSED) {
-      dzn_image_view *iview = framebuffer->attachments[subpass->zs.idx];
-      dzn_image *img = container_of(iview->vk.image, dzn_image, vk);
+      struct dzn_image_view *iview = framebuffer->attachments[subpass->zs.idx];
+      struct dzn_image *img = container_of(iview->vk.image, struct dzn_image, vk);
 
       zs_handle = dzn_cmd_buffer_get_dsv(cmdbuf, img, &iview->dsv_desc);
    }
@@ -2315,26 +2317,26 @@ dzn_cmd_buffer_begin_subpass(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_end_subpass(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_end_subpass(struct dzn_cmd_buffer *cmdbuf)
 {
-   const dzn_subpass *subpass = &cmdbuf->state.pass->subpasses[cmdbuf->state.subpass];
+   const struct dzn_subpass *subpass = &cmdbuf->state.pass->subpasses[cmdbuf->state.subpass];
 
    for (uint32_t i = 0; i < subpass->color_count; i++)
       dzn_cmd_buffer_resolve_attachment(cmdbuf, i);
 }
 
 static void
-dzn_cmd_buffer_update_pipeline(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
+dzn_cmd_buffer_update_pipeline(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 {
-   const dzn_pipeline *pipeline = cmdbuf->state.bindpoint[bindpoint].pipeline;
+   const struct dzn_pipeline *pipeline = cmdbuf->state.bindpoint[bindpoint].pipeline;
 
    if (!pipeline)
       return;
 
    if (cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_PIPELINE) {
       if (bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-         const dzn_graphics_pipeline *gfx =
-            reinterpret_cast<const dzn_graphics_pipeline *>(pipeline);
+         const struct dzn_graphics_pipeline *gfx =
+            reinterpret_cast<const struct dzn_graphics_pipeline *>(pipeline);
          ID3D12GraphicsCommandList1_SetGraphicsRootSignature(cmdbuf->cmdlist, pipeline->root.sig);
          ID3D12GraphicsCommandList1_IASetPrimitiveTopology(cmdbuf->cmdlist, gfx->ia.topology);
       } else {
@@ -2349,12 +2351,12 @@ dzn_cmd_buffer_update_pipeline(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 }
 
 static void
-dzn_cmd_buffer_update_heaps(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
+dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    struct dzn_descriptor_state *desc_state =
       &cmdbuf->state.bindpoint[bindpoint].desc_state;
-   dzn_descriptor_heap *new_heaps[NUM_POOL_TYPES] = {
+   struct dzn_descriptor_heap *new_heaps[NUM_POOL_TYPES] = {
       desc_state->heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
       desc_state->heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]
    };
@@ -2371,11 +2373,11 @@ dzn_cmd_buffer_update_heaps(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
       if (!desc_count)
          continue;
 
-      dzn_descriptor_heap_pool *pool =
+      struct dzn_descriptor_heap_pool *pool =
          type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ?
          &cmdbuf->cbv_srv_uav_pool : &cmdbuf->sampler_pool;
       uint32_t dst_offset = 0;
-      dzn_descriptor_heap *dst_heap = NULL;
+      struct dzn_descriptor_heap *dst_heap = NULL;
       uint32_t dst_heap_offset = 0;
 
       dzn_descriptor_heap_pool_alloc_slots(pool, device, desc_count,
@@ -2402,7 +2404,7 @@ dzn_cmd_buffer_update_heaps(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
             for (uint32_t o = 0; o < dynamic_buffer_count; o++) {
                uint32_t desc_heap_offset =
                   pipeline->sets[s].dynamic_buffer_heap_offsets[o].srv;
-               dzn_buffer_desc bdesc = set->dynamic_buffers[o];
+               struct dzn_buffer_desc bdesc = set->dynamic_buffers[o];
                bdesc.offset += desc_state->sets[s].dynamic_offsets[o];
 
                dzn_descriptor_heap_write_buffer_desc(dst_heap,
@@ -2454,7 +2456,7 @@ set_heaps:
 }
 
 static void
-dzn_cmd_buffer_update_sysvals(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
+dzn_cmd_buffer_update_sysvals(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 {
    if (!(cmdbuf->state.bindpoint[bindpoint].dirty & DZN_CMD_BINDPOINT_DIRTY_SYSVALS))
       return;
@@ -2474,10 +2476,10 @@ dzn_cmd_buffer_update_sysvals(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 }
 
 static void
-dzn_cmd_buffer_update_viewports(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_update_viewports(struct dzn_cmd_buffer *cmdbuf)
 {
-   const dzn_graphics_pipeline *pipeline =
-      reinterpret_cast<const dzn_graphics_pipeline *>(cmdbuf->state.pipeline);
+   const struct dzn_graphics_pipeline *pipeline =
+      reinterpret_cast<const struct dzn_graphics_pipeline *>(cmdbuf->state.pipeline);
 
    if (!(cmdbuf->state.dirty & DZN_CMD_DIRTY_VIEWPORTS) ||
        !pipeline->vp.count)
@@ -2487,10 +2489,10 @@ dzn_cmd_buffer_update_viewports(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_update_scissors(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_update_scissors(struct dzn_cmd_buffer *cmdbuf)
 {
-   const dzn_graphics_pipeline *pipeline =
-      reinterpret_cast<const dzn_graphics_pipeline *>(cmdbuf->state.pipeline);
+   const struct dzn_graphics_pipeline *pipeline =
+      reinterpret_cast<const struct dzn_graphics_pipeline *>(cmdbuf->state.pipeline);
 
    if (!(cmdbuf->state.dirty & DZN_CMD_DIRTY_SCISSORS))
       return;
@@ -2516,10 +2518,10 @@ dzn_cmd_buffer_update_scissors(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_update_vbviews(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_update_vbviews(struct dzn_cmd_buffer *cmdbuf)
 {
-   const dzn_graphics_pipeline *pipeline =
-      reinterpret_cast<const dzn_graphics_pipeline *>(cmdbuf->state.pipeline);
+   const struct dzn_graphics_pipeline *pipeline =
+      reinterpret_cast<const struct dzn_graphics_pipeline *>(cmdbuf->state.pipeline);
    unsigned start, end;
 
    BITSET_FOREACH_RANGE(start, end, cmdbuf->state.vb.dirty, MAX_VBS)
@@ -2529,7 +2531,7 @@ dzn_cmd_buffer_update_vbviews(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_update_ibview(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_update_ibview(struct dzn_cmd_buffer *cmdbuf)
 {
    if (!(cmdbuf->state.dirty & DZN_CMD_DIRTY_IB))
       return;
@@ -2538,7 +2540,7 @@ dzn_cmd_buffer_update_ibview(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_update_push_constants(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
+dzn_cmd_buffer_update_push_constants(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 {
    struct dzn_cmd_buffer_push_constant_state *state =
       bindpoint == VK_PIPELINE_BIND_POINT_GRAPHICS ?
@@ -2564,10 +2566,10 @@ dzn_cmd_buffer_update_push_constants(dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
 }
 
 static void
-dzn_cmd_buffer_update_zsa(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_update_zsa(struct dzn_cmd_buffer *cmdbuf)
 {
    if (cmdbuf->state.dirty & DZN_CMD_DIRTY_STENCIL_REF) {
-      const dzn_graphics_pipeline *gfx = (const dzn_graphics_pipeline *)
+      const struct dzn_graphics_pipeline *gfx = (const struct dzn_graphics_pipeline *)
          cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
       uint32_t ref =
          gfx->zsa.stencil_test.front.uses_ref ?
@@ -2578,7 +2580,7 @@ dzn_cmd_buffer_update_zsa(dzn_cmd_buffer *cmdbuf)
 }
 
 static void
-dzn_cmd_buffer_update_blend_constants(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_update_blend_constants(struct dzn_cmd_buffer *cmdbuf)
 {
    if (cmdbuf->state.dirty & DZN_CMD_DIRTY_BLEND_CONSTANTS)
       ID3D12GraphicsCommandList1_OMSetBlendFactor(cmdbuf->cmdlist,
@@ -2586,9 +2588,9 @@ dzn_cmd_buffer_update_blend_constants(dzn_cmd_buffer *cmdbuf)
 }
 
 static VkResult
-dzn_cmd_buffer_triangle_fan_create_index(dzn_cmd_buffer *cmdbuf, uint32_t *vertex_count)
+dzn_cmd_buffer_triangle_fan_create_index(struct dzn_cmd_buffer *cmdbuf, uint32_t *vertex_count)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    uint8_t index_size = *vertex_count <= 0xffff ? 2 : 4;
    uint32_t triangle_count = MAX2(*vertex_count, 2) - 2;
 
@@ -2634,11 +2636,11 @@ dzn_cmd_buffer_triangle_fan_create_index(dzn_cmd_buffer *cmdbuf, uint32_t *verte
 }
 
 static VkResult
-dzn_cmd_buffer_triangle_fan_rewrite_index(dzn_cmd_buffer *cmdbuf,
+dzn_cmd_buffer_triangle_fan_rewrite_index(struct dzn_cmd_buffer *cmdbuf,
                                           uint32_t *index_count,
                                           uint32_t *first_index)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    uint32_t triangle_count = MAX2(*index_count, 2) - 2;
 
    *index_count = triangle_count * 3;
@@ -2661,10 +2663,10 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(dzn_cmd_buffer *cmdbuf,
 
    enum dzn_index_type index_type =
       dzn_index_type_from_dxgi_format(cmdbuf->state.ib.view.Format);
-   const dzn_meta_triangle_fan_rewrite_index *rewrite_index =
+   const struct dzn_meta_triangle_fan_rewrite_index *rewrite_index =
       &device->triangle_fan[index_type];
 
-   const dzn_pipeline *compute_pipeline =
+   const struct dzn_pipeline *compute_pipeline =
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].pipeline;
 
    struct dzn_triangle_fan_rewrite_index_params params = {
@@ -2716,7 +2718,7 @@ dzn_cmd_buffer_triangle_fan_rewrite_index(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_prepare_draw(dzn_cmd_buffer *cmdbuf, bool indexed)
+dzn_cmd_buffer_prepare_draw(struct dzn_cmd_buffer *cmdbuf, bool indexed)
 {
    dzn_cmd_buffer_update_pipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
    dzn_cmd_buffer_update_heaps(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -2737,9 +2739,9 @@ dzn_cmd_buffer_prepare_draw(dzn_cmd_buffer *cmdbuf, bool indexed)
 }
 
 static uint32_t
-dzn_cmd_buffer_triangle_fan_get_max_index_buf_size(dzn_cmd_buffer *cmdbuf, bool indexed)
+dzn_cmd_buffer_triangle_fan_get_max_index_buf_size(struct dzn_cmd_buffer *cmdbuf, bool indexed)
 {
-   dzn_graphics_pipeline *pipeline = (dzn_graphics_pipeline *)
+   struct dzn_graphics_pipeline *pipeline = (struct dzn_graphics_pipeline *)
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
 
    if (!pipeline->ia.triangle_fan)
@@ -2767,15 +2769,15 @@ dzn_cmd_buffer_triangle_fan_get_max_index_buf_size(dzn_cmd_buffer *cmdbuf, bool 
 }
 
 static void
-dzn_cmd_buffer_indirect_draw(dzn_cmd_buffer *cmdbuf,
-                             dzn_buffer *draw_buf,
+dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
+                             struct dzn_buffer *draw_buf,
                              size_t draw_buf_offset,
                              uint32_t draw_count,
                              uint32_t draw_buf_stride,
                              bool indexed)
 {
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
-   dzn_graphics_pipeline *pipeline = (dzn_graphics_pipeline *)
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
+   struct dzn_graphics_pipeline *pipeline = (struct dzn_graphics_pipeline *)
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
    bool triangle_fan = pipeline->ia.triangle_fan;
    uint32_t min_draw_buf_stride =
@@ -2851,9 +2853,9 @@ dzn_cmd_buffer_indirect_draw(dzn_cmd_buffer *cmdbuf,
    else
       draw_type = DZN_INDIRECT_DRAW;
 
-   dzn_meta_indirect_draw *indirect_draw = &device->indirect_draws[draw_type];
+   struct dzn_meta_indirect_draw *indirect_draw = &device->indirect_draws[draw_type];
 
-   const dzn_pipeline *compute_pipeline =
+   const struct dzn_pipeline *compute_pipeline =
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].pipeline;
 
    ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, indirect_draw->root_sig);
@@ -2906,7 +2908,7 @@ dzn_cmd_buffer_indirect_draw(dzn_cmd_buffer *cmdbuf,
          indexed ?
          dzn_index_type_from_dxgi_format(cmdbuf->state.ib.view.Format) :
          DZN_NO_INDEX;
-      dzn_meta_triangle_fan_rewrite_index *rewrite_index =
+      struct dzn_meta_triangle_fan_rewrite_index *rewrite_index =
          &device->triangle_fan[index_type];
 
       struct dzn_triangle_fan_rewrite_index_params rewrite_index_params = {};
@@ -2995,7 +2997,7 @@ dzn_cmd_buffer_indirect_draw(dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_prepare_dispatch(dzn_cmd_buffer *cmdbuf)
+dzn_cmd_buffer_prepare_dispatch(struct dzn_cmd_buffer *cmdbuf)
 {
    dzn_cmd_buffer_update_pipeline(cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE);
    dzn_cmd_buffer_update_heaps(cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE);
@@ -3060,7 +3062,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
                   const VkCopyImageInfo2 *info)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_image, src, info->srcImage);
    VK_FROM_HANDLE(dzn_image, dst, info->dstImage);
 
@@ -3200,7 +3202,7 @@ dzn_CmdBlitImage2(VkCommandBuffer commandBuffer,
                   const VkBlitImageInfo2 *info)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    if (info->regionCount == 0)
       return;
@@ -3209,7 +3211,7 @@ dzn_CmdBlitImage2(VkCommandBuffer commandBuffer,
    for (uint32_t r = 0; r < info->regionCount; r++)
       desc_count += util_bitcount(info->pRegions[r].srcSubresource.aspectMask);
 
-   dzn_descriptor_heap *heap;
+   struct dzn_descriptor_heap *heap;
    uint32_t heap_slot;
    VkResult result =
       dzn_descriptor_heap_pool_alloc_slots(&cmdbuf->cbv_srv_uav_pool, device,
@@ -3245,7 +3247,7 @@ dzn_CmdResolveImage2(VkCommandBuffer commandBuffer,
                      const VkResolveImageInfo2 *info)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    if (info->regionCount == 0)
       return;
@@ -3254,7 +3256,7 @@ dzn_CmdResolveImage2(VkCommandBuffer commandBuffer,
    for (uint32_t r = 0; r < info->regionCount; r++)
       desc_count += util_bitcount(info->pRegions[r].srcSubresource.aspectMask);
 
-   dzn_descriptor_heap *heap;
+   struct dzn_descriptor_heap *heap;
    uint32_t heap_slot;
    VkResult result =
       dzn_descriptor_heap_pool_alloc_slots(&cmdbuf->cbv_srv_uav_pool, device,
@@ -3498,7 +3500,7 @@ dzn_CmdBindPipeline(VkCommandBuffer commandBuffer,
    cmdbuf->state.bindpoint[pipelineBindPoint].pipeline = pipeline;
    cmdbuf->state.bindpoint[pipelineBindPoint].dirty |= DZN_CMD_BINDPOINT_DIRTY_PIPELINE;
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-      const dzn_graphics_pipeline *gfx = (const dzn_graphics_pipeline *)pipeline;
+      const struct dzn_graphics_pipeline *gfx = (const struct dzn_graphics_pipeline *)pipeline;
 
       if (!gfx->vp.dynamic) {
          memcpy(cmdbuf->state.viewports, gfx->vp.desc,
@@ -3661,7 +3663,7 @@ dzn_CmdDraw(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   const dzn_graphics_pipeline *pipeline = (const dzn_graphics_pipeline *)
+   const struct dzn_graphics_pipeline *pipeline = (const struct dzn_graphics_pipeline *)
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
 
    cmdbuf->state.sysvals.gfx.first_vertex = firstVertex;
@@ -3705,7 +3707,7 @@ dzn_CmdDrawIndexed(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   const dzn_graphics_pipeline *pipeline = (const dzn_graphics_pipeline *)
+   const struct dzn_graphics_pipeline *pipeline = (const struct dzn_graphics_pipeline *)
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_GRAPHICS].pipeline;
 
    cmdbuf->state.sysvals.gfx.first_vertex = vertexOffset;
@@ -3815,7 +3817,7 @@ dzn_CmdResetEvent(VkCommandBuffer commandBuffer,
                   VkPipelineStageFlags stageMask)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_event, evt, event);
 
    if (!_mesa_hash_table_insert(cmdbuf->events.ht, event, (void *)(uintptr_t)DZN_EVENT_STATE_RESET))
@@ -3828,7 +3830,7 @@ dzn_CmdSetEvent(VkCommandBuffer commandBuffer,
                 VkPipelineStageFlags stageMask)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_event, evt, event);
 
    if (!_mesa_hash_table_insert(cmdbuf->events.ht, event, (void *)(uintptr_t)DZN_EVENT_STATE_SET))
@@ -3849,7 +3851,7 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
                   const VkImageMemoryBarrier *pImageMemoryBarriers)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
 
    /* Intra-command list wait is handle by this pipeline flush, which is
     * overkill, but that's the best we can do with the standard D3D12 barrier
@@ -3888,8 +3890,8 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
             return;
          }
 
-         dzn_event **entry = (dzn_event **)
-            util_dynarray_grow(&cmdbuf->events.wait, dzn_event *, 1);
+         struct dzn_event **entry = (struct dzn_event **)
+            util_dynarray_grow(&cmdbuf->events.wait, struct dzn_event *, 1);
 
          if (!entry) {
             cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -3918,10 +3920,10 @@ dzn_CmdBeginQuery(VkCommandBuffer commandBuffer,
                   VkQueryControlFlags flags)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_query_pool, qpool, queryPool);
 
-   dzn_cmd_buffer_query_pool_state *state =
+   struct dzn_cmd_buffer_query_pool_state *state =
       dzn_cmd_buffer_get_query_pool_state(cmdbuf, qpool);
    if (!state)
       return;
@@ -3939,7 +3941,7 @@ dzn_CmdEndQuery(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(dzn_query_pool, qpool, queryPool);
 
-   dzn_cmd_buffer_query_pool_state *state =
+   struct dzn_cmd_buffer_query_pool_state *state =
       dzn_cmd_buffer_get_query_pool_state(cmdbuf, qpool);
    if (!state)
       return;
@@ -3957,7 +3959,7 @@ dzn_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(dzn_query_pool, qpool, queryPool);
 
-   dzn_cmd_buffer_query_pool_state *state =
+   struct dzn_cmd_buffer_query_pool_state *state =
       dzn_cmd_buffer_get_query_pool_state(cmdbuf, qpool);
    if (!state)
       return;
@@ -3984,10 +3986,10 @@ dzn_CmdResetQueryPool(VkCommandBuffer commandBuffer,
                       uint32_t queryCount)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_query_pool, qpool, queryPool);
 
-   dzn_cmd_buffer_query_pool_state *state =
+   struct dzn_cmd_buffer_query_pool_state *state =
       dzn_cmd_buffer_get_query_pool_state(cmdbuf, qpool);
 
    if (!state)
@@ -4033,7 +4035,7 @@ dzn_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_query_pool, qpool, queryPool);
    VK_FROM_HANDLE(dzn_buffer, buf, dstBuffer);
 
-   dzn_cmd_buffer_query_pool_state *qpstate =
+   struct dzn_cmd_buffer_query_pool_state *qpstate =
       dzn_cmd_buffer_get_query_pool_state(cmdbuf, qpool);
    if (!qpstate)
       return;
@@ -4134,7 +4136,7 @@ dzn_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
                         VkDeviceSize offset)
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
-   dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_buffer, buf, buffer);
 
    cmdbuf->state.sysvals.compute.group_count_x = 0;
@@ -4145,7 +4147,7 @@ dzn_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
 
    dzn_cmd_buffer_prepare_dispatch(cmdbuf);
 
-   dzn_compute_pipeline *pipeline = (dzn_compute_pipeline *)
+   struct dzn_compute_pipeline *pipeline = (struct dzn_compute_pipeline *)
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].pipeline;
    ID3D12CommandSignature *cmdsig =
       dzn_compute_pipeline_get_indirect_cmd_sig(pipeline);

@@ -110,20 +110,20 @@ num_descs_for_type(VkDescriptorType type, bool static_sampler)
 }
 
 static void
-dzn_descriptor_set_layout_destroy(dzn_descriptor_set_layout *set_layout,
+dzn_descriptor_set_layout_destroy(struct dzn_descriptor_set_layout *set_layout,
                                   const VkAllocationCallbacks *pAllocator)
 {
    if (!set_layout)
       return;
 
-   dzn_device *device = container_of(set_layout->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(set_layout->base.device, struct dzn_device, vk);
 
    vk_object_base_finish(&set_layout->base);
    vk_free2(&device->vk.alloc, pAllocator, set_layout);
 }
 
 static VkResult
-dzn_descriptor_set_layout_create(dzn_device *device,
+dzn_descriptor_set_layout_create(struct dzn_device *device,
                                  const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
                                  const VkAllocationCallbacks *pAllocator,
                                  VkDescriptorSetLayout *out)
@@ -206,9 +206,9 @@ dzn_descriptor_set_layout_create(dzn_device *device,
                       ranges, total_ranges);
    VK_MULTIALLOC_DECL(&ma, D3D12_STATIC_SAMPLER_DESC, static_samplers,
                       static_sampler_count);
-   VK_MULTIALLOC_DECL(&ma, const dzn_sampler *, immutable_samplers,
+   VK_MULTIALLOC_DECL(&ma, const struct dzn_sampler *, immutable_samplers,
                       immutable_sampler_count);
-   VK_MULTIALLOC_DECL(&ma, dzn_descriptor_set_layout_binding, binfos,
+   VK_MULTIALLOC_DECL(&ma, struct dzn_descriptor_set_layout_binding, binfos,
                       binding_count);
 
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
@@ -398,7 +398,7 @@ dzn_descriptor_set_layout_create(dzn_device *device,
 }
 
 static uint32_t
-dzn_descriptor_set_layout_get_heap_offset(const dzn_descriptor_set_layout *layout,
+dzn_descriptor_set_layout_get_heap_offset(const struct dzn_descriptor_set_layout *layout,
                                           uint32_t b,
                                           D3D12_DESCRIPTOR_HEAP_TYPE type,
                                           bool writeable)
@@ -425,7 +425,7 @@ dzn_descriptor_set_layout_get_heap_offset(const dzn_descriptor_set_layout *layou
 }
 
 static uint32_t
-dzn_descriptor_set_layout_get_desc_count(const dzn_descriptor_set_layout *layout,
+dzn_descriptor_set_layout_get_desc_count(const struct dzn_descriptor_set_layout *layout,
                                          uint32_t b)
 {
    D3D12_SHADER_VISIBILITY visibility = layout->bindings[b].visibility;
@@ -462,9 +462,9 @@ dzn_DestroyDescriptorSetLayout(VkDevice device,
 }
 
 static void
-dzn_pipeline_layout_destroy(dzn_pipeline_layout *layout)
+dzn_pipeline_layout_destroy(struct dzn_pipeline_layout *layout)
 {
-   dzn_device *device = container_of(layout->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(layout->base.device, struct dzn_device, vk);
 
    if (layout->root.sig)
       ID3D12RootSignature_Release(layout->root.sig);
@@ -483,7 +483,7 @@ dzn_pipeline_layout_destroy(dzn_pipeline_layout *layout)
 #define MAX_ROOT_DWORDS 64
 
 static VkResult
-dzn_pipeline_layout_create(dzn_device *device,
+dzn_pipeline_layout_create(struct dzn_device *device,
                            const VkPipelineLayoutCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *pAllocator,
                            VkPipelineLayout *out)
@@ -500,8 +500,8 @@ dzn_pipeline_layout_create(dzn_device *device,
    }
 
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, dzn_pipeline_layout, layout, 1);
-   VK_MULTIALLOC_DECL(&ma, dxil_spirv_vulkan_binding,
+   VK_MULTIALLOC_DECL(&ma, struct dzn_pipeline_layout, layout, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dxil_spirv_vulkan_binding,
                       bindings, binding_count);
 
    if (!vk_multialloc_zalloc(&ma, &device->vk.alloc,
@@ -531,7 +531,7 @@ dzn_pipeline_layout_create(dzn_device *device,
    layout->set_count = pCreateInfo->setLayoutCount;
    for (uint32_t j = 0; j < layout->set_count; j++) {
       VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[j]);
-      dxil_spirv_vulkan_binding *bindings = layout->binding_translation[j].bindings;
+      struct dxil_spirv_vulkan_binding *bindings = layout->binding_translation[j].bindings;
 
       layout->sets[j].dynamic_buffer_count = set_layout->dynamic_buffers.count;
       memcpy(layout->sets[j].range_desc_count, set_layout->range_desc_count,
@@ -696,8 +696,8 @@ dzn_pipeline_layout_create(dzn_device *device,
    return VK_SUCCESS;
 }
 
-dzn_pipeline_layout *
-dzn_pipeline_layout_ref(dzn_pipeline_layout *layout)
+struct dzn_pipeline_layout *
+dzn_pipeline_layout_ref(struct dzn_pipeline_layout *layout)
 {
    if (layout)
       p_atomic_inc(&layout->refcount);
@@ -706,7 +706,7 @@ dzn_pipeline_layout_ref(dzn_pipeline_layout *layout)
 }
 
 void
-dzn_pipeline_layout_unref(dzn_pipeline_layout *layout)
+dzn_pipeline_layout_unref(struct dzn_pipeline_layout *layout)
 {
    if (layout) {
       if (p_atomic_dec_zero(&layout->refcount))
@@ -757,7 +757,7 @@ desc_type_to_heap_type(VkDescriptorType in)
 }
 
 static void
-dzn_descriptor_heap_finish(dzn_descriptor_heap *heap)
+dzn_descriptor_heap_finish(struct dzn_descriptor_heap *heap)
 {
    if (heap->heap)
       ID3D12DescriptorHeap_Release(heap->heap);
@@ -767,8 +767,8 @@ dzn_descriptor_heap_finish(dzn_descriptor_heap *heap)
 }
 
 static VkResult
-dzn_descriptor_heap_init(dzn_descriptor_heap *heap,
-                         dzn_device *device,
+dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
+                         struct dzn_device *device,
                          D3D12_DESCRIPTOR_HEAP_TYPE type,
                          uint32_t desc_count,
                          bool shader_visible)
@@ -808,7 +808,7 @@ dzn_descriptor_heap_init(dzn_descriptor_heap *heap,
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE
-dzn_descriptor_heap_get_cpu_handle(const dzn_descriptor_heap *heap, uint32_t desc_offset)
+dzn_descriptor_heap_get_cpu_handle(const struct dzn_descriptor_heap *heap, uint32_t desc_offset)
 {
    return D3D12_CPU_DESCRIPTOR_HANDLE {
       .ptr = heap->cpu_base + (desc_offset * heap->desc_sz),
@@ -816,7 +816,7 @@ dzn_descriptor_heap_get_cpu_handle(const dzn_descriptor_heap *heap, uint32_t des
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE
-dzn_descriptor_heap_get_gpu_handle(const dzn_descriptor_heap *heap, uint32_t desc_offset)
+dzn_descriptor_heap_get_gpu_handle(const struct dzn_descriptor_heap *heap, uint32_t desc_offset)
 {
    return D3D12_GPU_DESCRIPTOR_HANDLE {
       .ptr = heap->gpu_base ? heap->gpu_base + (desc_offset * heap->desc_sz) : 0,
@@ -824,23 +824,23 @@ dzn_descriptor_heap_get_gpu_handle(const dzn_descriptor_heap *heap, uint32_t des
 }
 
 static void
-dzn_descriptor_heap_write_sampler_desc(dzn_descriptor_heap *heap,
+dzn_descriptor_heap_write_sampler_desc(struct dzn_descriptor_heap *heap,
                                        uint32_t desc_offset,
-                                       const dzn_sampler *sampler)
+                                       const struct dzn_sampler *sampler)
 {
    ID3D12Device1_CreateSampler(heap->dev, &sampler->desc,
                                dzn_descriptor_heap_get_cpu_handle(heap, desc_offset));
 }
 
 void
-dzn_descriptor_heap_write_image_view_desc(dzn_descriptor_heap *heap,
+dzn_descriptor_heap_write_image_view_desc(struct dzn_descriptor_heap *heap,
                                           uint32_t desc_offset,
                                           bool writeable, bool cube_as_2darray,
-                                          const dzn_image_view *iview)
+                                          const struct dzn_image_view *iview)
 {
    D3D12_CPU_DESCRIPTOR_HANDLE view_handle =
       dzn_descriptor_heap_get_cpu_handle(heap, desc_offset);
-   dzn_image *image = container_of(iview->vk.image, dzn_image, vk);
+   struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
 
    if (writeable) {
       ID3D12Device1_CreateUnorderedAccessView(heap->dev, image->res, NULL, &iview->uav_desc, view_handle);
@@ -875,10 +875,10 @@ dzn_descriptor_heap_write_image_view_desc(dzn_descriptor_heap *heap,
 }
 
 static void
-dzn_descriptor_heap_write_buffer_view_desc(dzn_descriptor_heap *heap,
+dzn_descriptor_heap_write_buffer_view_desc(struct dzn_descriptor_heap *heap,
                                            uint32_t desc_offset,
                                            bool writeable,
-                                           const dzn_buffer_view *bview)
+                                           const struct dzn_buffer_view *bview)
 {
    D3D12_CPU_DESCRIPTOR_HANDLE view_handle =
       dzn_descriptor_heap_get_cpu_handle(heap, desc_offset);
@@ -890,10 +890,10 @@ dzn_descriptor_heap_write_buffer_view_desc(dzn_descriptor_heap *heap,
 }
 
 void
-dzn_descriptor_heap_write_buffer_desc(dzn_descriptor_heap *heap,
+dzn_descriptor_heap_write_buffer_desc(struct dzn_descriptor_heap *heap,
                                       uint32_t desc_offset,
                                       bool writeable,
-                                      const dzn_buffer_desc *info)
+                                      const struct dzn_buffer_desc *info)
 {
    D3D12_CPU_DESCRIPTOR_HANDLE view_handle =
       dzn_descriptor_heap_get_cpu_handle(heap, desc_offset);
@@ -938,9 +938,9 @@ dzn_descriptor_heap_write_buffer_desc(dzn_descriptor_heap *heap,
 }
 
 void
-dzn_descriptor_heap_copy(dzn_descriptor_heap *dst_heap,
+dzn_descriptor_heap_copy(struct dzn_descriptor_heap *dst_heap,
                          uint32_t dst_offset,
-                         const dzn_descriptor_heap *src_heap,
+                         const struct dzn_descriptor_heap *src_heap,
                          uint32_t src_offset,
                          uint32_t desc_count)
 {
@@ -960,8 +960,8 @@ struct dzn_descriptor_set_ptr {
 };
 
 static void
-dzn_descriptor_set_ptr_validate(const dzn_descriptor_set *set,
-                                dzn_descriptor_set_ptr *ptr)
+dzn_descriptor_set_ptr_validate(const struct dzn_descriptor_set *set,
+                                struct dzn_descriptor_set_ptr *ptr)
 {
 
    if (ptr->binding >= set->layout->binding_count) {
@@ -979,8 +979,8 @@ dzn_descriptor_set_ptr_validate(const dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_ptr_init(const dzn_descriptor_set *set,
-                            dzn_descriptor_set_ptr *ptr,
+dzn_descriptor_set_ptr_init(const struct dzn_descriptor_set *set,
+                            struct dzn_descriptor_set_ptr *ptr,
                             uint32_t binding, uint32_t elem)
 {
    ptr->binding = binding;
@@ -989,8 +989,8 @@ dzn_descriptor_set_ptr_init(const dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_ptr_move(const dzn_descriptor_set *set,
-                            dzn_descriptor_set_ptr *ptr,
+dzn_descriptor_set_ptr_move(const struct dzn_descriptor_set *set,
+                            struct dzn_descriptor_set_ptr *ptr,
                             uint32_t count)
 {
    if (ptr->binding == ~0)
@@ -1014,14 +1014,14 @@ dzn_descriptor_set_ptr_move(const dzn_descriptor_set *set,
 }
 
 static bool
-dzn_descriptor_set_ptr_is_valid(const dzn_descriptor_set_ptr *ptr)
+dzn_descriptor_set_ptr_is_valid(const struct dzn_descriptor_set_ptr *ptr)
 {
    return ptr->binding != ~0 && ptr->elem != ~0;
 }
 
 static uint32_t
-dzn_descriptor_set_remaining_descs_in_binding(const dzn_descriptor_set *set,
-                                              const dzn_descriptor_set_ptr *ptr)
+dzn_descriptor_set_remaining_descs_in_binding(const struct dzn_descriptor_set *set,
+                                              const struct dzn_descriptor_set_ptr *ptr)
 {
    if (ptr->binding >= set->layout->binding_count)
       return 0;
@@ -1034,9 +1034,9 @@ dzn_descriptor_set_remaining_descs_in_binding(const dzn_descriptor_set *set,
 
 
 static uint32_t
-dzn_descriptor_set_get_heap_offset(const dzn_descriptor_set *set,
+dzn_descriptor_set_get_heap_offset(const struct dzn_descriptor_set *set,
                                    D3D12_DESCRIPTOR_HEAP_TYPE type,
-                                   const dzn_descriptor_set_ptr *ptr,
+                                   const struct dzn_descriptor_set_ptr *ptr,
                                    bool writeable)
 {
    if (ptr->binding == ~0)
@@ -1051,9 +1051,9 @@ dzn_descriptor_set_get_heap_offset(const dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_write_sampler_desc(dzn_descriptor_set *set,
-                                      const dzn_descriptor_set_ptr *ptr,
-                                      const dzn_sampler *sampler)
+dzn_descriptor_set_write_sampler_desc(struct dzn_descriptor_set *set,
+                                      const struct dzn_descriptor_set_ptr *ptr,
+                                      const struct dzn_sampler *sampler)
 {
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
    uint32_t heap_offset =
@@ -1069,8 +1069,8 @@ dzn_descriptor_set_write_sampler_desc(dzn_descriptor_set *set,
 }
 
 static uint32_t
-dzn_descriptor_set_get_dynamic_buffer_idx(const dzn_descriptor_set *set,
-                                          const dzn_descriptor_set_ptr *ptr)
+dzn_descriptor_set_get_dynamic_buffer_idx(const struct dzn_descriptor_set *set,
+                                          const struct dzn_descriptor_set_ptr *ptr)
 {
    if (ptr->binding == ~0)
       return ~0;
@@ -1084,9 +1084,9 @@ dzn_descriptor_set_get_dynamic_buffer_idx(const dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_write_dynamic_buffer_desc(dzn_descriptor_set *set,
-                                             const dzn_descriptor_set_ptr *ptr,
-                                             const dzn_buffer_desc *info)
+dzn_descriptor_set_write_dynamic_buffer_desc(struct dzn_descriptor_set *set,
+                                             const struct dzn_descriptor_set_ptr *ptr,
+                                             const struct dzn_buffer_desc *info)
 {
    uint32_t dynamic_buffer_idx =
       dzn_descriptor_set_get_dynamic_buffer_idx(set, ptr);
@@ -1098,8 +1098,8 @@ dzn_descriptor_set_write_dynamic_buffer_desc(dzn_descriptor_set *set,
 }
 
 static VkDescriptorType
-dzn_descriptor_set_get_desc_vk_type(const dzn_descriptor_set *set,
-                                    const dzn_descriptor_set_ptr *ptr)
+dzn_descriptor_set_get_desc_vk_type(const struct dzn_descriptor_set *set,
+                                    const struct dzn_descriptor_set_ptr *ptr)
 {
    if (ptr->binding >= set->layout->binding_count)
       return (VkDescriptorType)~0;
@@ -1108,10 +1108,10 @@ dzn_descriptor_set_get_desc_vk_type(const dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_write_image_view_desc(dzn_descriptor_set *set,
-                                         const dzn_descriptor_set_ptr *ptr,
+dzn_descriptor_set_write_image_view_desc(struct dzn_descriptor_set *set,
+                                         const struct dzn_descriptor_set_ptr *ptr,
                                          bool cube_as_2darray,
-                                         const dzn_image_view *iview)
+                                         const struct dzn_image_view *iview)
 {
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    uint32_t heap_offset =
@@ -1139,9 +1139,9 @@ dzn_descriptor_set_write_image_view_desc(dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_write_buffer_view_desc(dzn_descriptor_set *set,
-                                         const dzn_descriptor_set_ptr *ptr,
-                                         const dzn_buffer_view *bview)
+dzn_descriptor_set_write_buffer_view_desc(struct dzn_descriptor_set *set,
+                                         const struct dzn_descriptor_set_ptr *ptr,
+                                         const struct dzn_buffer_view *bview)
 {
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    uint32_t heap_offset =
@@ -1167,9 +1167,9 @@ dzn_descriptor_set_write_buffer_view_desc(dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_write_buffer_desc(dzn_descriptor_set *set,
-                                     const dzn_descriptor_set_ptr *ptr,
-                                     const dzn_buffer_desc *bdesc)
+dzn_descriptor_set_write_buffer_desc(struct dzn_descriptor_set *set,
+                                     const struct dzn_descriptor_set_ptr *ptr,
+                                     const struct dzn_buffer_desc *bdesc)
 {
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    uint32_t heap_offset =
@@ -1195,10 +1195,10 @@ dzn_descriptor_set_write_buffer_desc(dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_init(dzn_descriptor_set *set,
-                        dzn_device *device,
-                        dzn_descriptor_pool *pool,
-                        dzn_descriptor_set_layout *layout)
+dzn_descriptor_set_init(struct dzn_descriptor_set *set,
+                        struct dzn_device *device,
+                        struct dzn_descriptor_pool *pool,
+                        struct dzn_descriptor_set_layout *layout)
 {
    vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
@@ -1223,8 +1223,8 @@ dzn_descriptor_set_init(dzn_descriptor_set *set,
          if (!has_samplers || layout->bindings[b].immutable_sampler_idx == ~0)
             continue;
 
-         dzn_descriptor_set_ptr ptr;
-         const dzn_sampler **sampler =
+         struct dzn_descriptor_set_ptr ptr;
+         const struct dzn_sampler **sampler =
             &layout->immutable_samplers[layout->bindings[b].immutable_sampler_idx];
          for (dzn_descriptor_set_ptr_init(set, &ptr, b, 0);
               dzn_descriptor_set_ptr_is_valid(&ptr);
@@ -1237,7 +1237,7 @@ dzn_descriptor_set_init(dzn_descriptor_set *set,
 }
 
 static void
-dzn_descriptor_set_finish(dzn_descriptor_set *set)
+dzn_descriptor_set_finish(struct dzn_descriptor_set *set)
 {
    vk_object_base_finish(&set->base);
    set->pool = NULL;
@@ -1245,13 +1245,13 @@ dzn_descriptor_set_finish(dzn_descriptor_set *set)
 }
 
 static void
-dzn_descriptor_pool_destroy(dzn_descriptor_pool *pool,
+dzn_descriptor_pool_destroy(struct dzn_descriptor_pool *pool,
                             const VkAllocationCallbacks *pAllocator)
 {
    if (!pool)
       return;
 
-   dzn_device *device = container_of(pool->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(pool->base.device, struct dzn_device, vk);
 
    dzn_foreach_pool_type (type) {
       if (pool->desc_count[type])
@@ -1263,14 +1263,14 @@ dzn_descriptor_pool_destroy(dzn_descriptor_pool *pool,
 }
 
 static VkResult
-dzn_descriptor_pool_create(dzn_device *device,
+dzn_descriptor_pool_create(struct dzn_device *device,
                            const VkDescriptorPoolCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *pAllocator,
                            VkDescriptorPool *out)
 {
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, dzn_descriptor_pool, pool, 1);
-   VK_MULTIALLOC_DECL(&ma, dzn_descriptor_set, sets, pCreateInfo->maxSets);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_descriptor_pool, pool, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_descriptor_set, sets, pCreateInfo->maxSets);
 
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
@@ -1332,11 +1332,11 @@ dzn_descriptor_pool_create(dzn_device *device,
 }
 
 static VkResult
-dzn_descriptor_pool_defragment_heap(dzn_descriptor_pool *pool,
+dzn_descriptor_pool_defragment_heap(struct dzn_descriptor_pool *pool,
                                     D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-   dzn_device *device = container_of(pool->base.device, dzn_device, vk);
-   dzn_descriptor_heap new_heap;
+   struct dzn_device *device = container_of(pool->base.device, struct dzn_device, vk);
+   struct dzn_descriptor_heap new_heap;
 
    VkResult result =
       dzn_descriptor_heap_init(&new_heap, device, type,
@@ -1402,10 +1402,10 @@ dzn_ResetDescriptorPool(VkDevice device,
 }
 
 void
-dzn_descriptor_heap_pool_finish(dzn_descriptor_heap_pool *pool)
+dzn_descriptor_heap_pool_finish(struct dzn_descriptor_heap_pool *pool)
 {
    list_splicetail(&pool->active_heaps, &pool->free_heaps);
-   list_for_each_entry_safe(dzn_descriptor_heap_pool_entry, entry, &pool->free_heaps, link) {
+   list_for_each_entry_safe(struct dzn_descriptor_heap_pool_entry, entry, &pool->free_heaps, link) {
       list_del(&entry->link);
       dzn_descriptor_heap_finish(&entry->heap);
       vk_free(pool->alloc, entry);
@@ -1413,8 +1413,8 @@ dzn_descriptor_heap_pool_finish(dzn_descriptor_heap_pool *pool)
 }
 
 void
-dzn_descriptor_heap_pool_init(dzn_descriptor_heap_pool *pool,
-                              dzn_device *device,
+dzn_descriptor_heap_pool_init(struct dzn_descriptor_heap_pool *pool,
+                              struct dzn_device *device,
                               D3D12_DESCRIPTOR_HEAP_TYPE type,
                               bool shader_visible,
                               const VkAllocationCallbacks *alloc)
@@ -1433,15 +1433,15 @@ dzn_descriptor_heap_pool_init(dzn_descriptor_heap_pool *pool,
 }
 
 VkResult
-dzn_descriptor_heap_pool_alloc_slots(dzn_descriptor_heap_pool *pool,
-                                     dzn_device *device, uint32_t desc_count,
-                                     dzn_descriptor_heap **heap,
+dzn_descriptor_heap_pool_alloc_slots(struct dzn_descriptor_heap_pool *pool,
+                                     struct dzn_device *device, uint32_t desc_count,
+                                     struct dzn_descriptor_heap **heap,
                                      uint32_t *first_slot)
 {
-   dzn_descriptor_heap *last_heap =
+   struct dzn_descriptor_heap *last_heap =
       list_is_empty(&pool->active_heaps) ?
       NULL :
-      &(list_last_entry(&pool->active_heaps, dzn_descriptor_heap_pool_entry, link)->heap);
+      &(list_last_entry(&pool->active_heaps, struct dzn_descriptor_heap_pool_entry, link)->heap);
    uint32_t last_heap_desc_count =
       last_heap ? last_heap->desc_count : 0;
 
@@ -1460,9 +1460,9 @@ dzn_descriptor_heap_pool_alloc_slots(dzn_descriptor_heap_pool *pool,
          heap_desc_count = MIN2(heap_desc_count, 2048);
       }
 
-      dzn_descriptor_heap_pool_entry *new_heap = NULL;
+      struct dzn_descriptor_heap_pool_entry *new_heap = NULL;
 
-      list_for_each_entry_safe(dzn_descriptor_heap_pool_entry, entry, &pool->free_heaps, link) {
+      list_for_each_entry_safe(struct dzn_descriptor_heap_pool_entry, entry, &pool->free_heaps, link) {
          if (entry->heap.desc_count >= heap_desc_count) {
             new_heap = entry;
             list_del(&entry->link);
@@ -1471,7 +1471,7 @@ dzn_descriptor_heap_pool_alloc_slots(dzn_descriptor_heap_pool *pool,
       }
 
       if (!new_heap) {
-         new_heap = (dzn_descriptor_heap_pool_entry *)
+         new_heap = (struct dzn_descriptor_heap_pool_entry *)
             vk_zalloc(pool->alloc, sizeof(*new_heap), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
          if (!new_heap)
@@ -1498,7 +1498,7 @@ dzn_descriptor_heap_pool_alloc_slots(dzn_descriptor_heap_pool *pool,
 }
 
 void
-dzn_descriptor_heap_pool_reset(dzn_descriptor_heap_pool *pool)
+dzn_descriptor_heap_pool_reset(struct dzn_descriptor_heap_pool *pool)
 {
    pool->offset = 0;
    list_splicetail(&pool->active_heaps, &pool->free_heaps);
@@ -1537,7 +1537,7 @@ dzn_AllocateDescriptorSets(VkDevice dev,
          }
       }
 
-      dzn_descriptor_set *set = NULL;
+      struct dzn_descriptor_set *set = NULL;
       for (; set_idx < pool->set_count; set_idx++) {
          if (!pool->sets[set_idx].layout) {
             set = &pool->sets[set_idx];
@@ -1577,7 +1577,7 @@ dzn_FreeDescriptorSets(VkDevice dev,
       pool->free_offset[type] = 0;
 
    for (uint32_t s = 0; s < pool->set_count; s++) {
-      const dzn_descriptor_set *set = &pool->sets[s];
+      const struct dzn_descriptor_set *set = &pool->sets[s];
 
       if (set->layout) {
          dzn_foreach_pool_type (type) {
@@ -1598,7 +1598,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
 {
    VK_FROM_HANDLE(dzn_descriptor_set, set, pDescriptorWrite->dstSet);
 
-   dzn_descriptor_set_ptr ptr;
+   struct dzn_descriptor_set_ptr ptr;
 
    dzn_descriptor_set_ptr_init(set, &ptr,
                                pDescriptorWrite->dstBinding,
@@ -1662,7 +1662,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
            dzn_descriptor_set_ptr_move(set, &ptr, 1)) {
          assert(dzn_descriptor_set_get_desc_vk_type(set, &ptr) == pDescriptorWrite->descriptorType);
          const VkDescriptorBufferInfo *binfo = &pDescriptorWrite->pBufferInfo[d];
-         dzn_buffer_desc desc {
+         struct dzn_buffer_desc desc {
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset
@@ -1681,7 +1681,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
            dzn_descriptor_set_ptr_move(set, &ptr, 1)) {
          assert(dzn_descriptor_set_get_desc_vk_type(set, &ptr) == pDescriptorWrite->descriptorType);
          const VkDescriptorBufferInfo *binfo = &pDescriptorWrite->pBufferInfo[d];
-         dzn_buffer_desc desc {
+         struct dzn_buffer_desc desc {
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset
@@ -1721,7 +1721,7 @@ dzn_descriptor_set_copy(const VkCopyDescriptorSet *pDescriptorCopy)
 {
    VK_FROM_HANDLE(dzn_descriptor_set, src_set, pDescriptorCopy->srcSet);
    VK_FROM_HANDLE(dzn_descriptor_set, dst_set, pDescriptorCopy->dstSet);
-   dzn_descriptor_set_ptr src_ptr, dst_ptr;
+   struct dzn_descriptor_set_ptr src_ptr, dst_ptr;
 
    dzn_descriptor_set_ptr_init(src_set, &src_ptr,
                                pDescriptorCopy->srcBinding,

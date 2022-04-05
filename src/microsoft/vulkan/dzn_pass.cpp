@@ -35,10 +35,10 @@ dzn_CreateRenderPass2(VkDevice dev,
    VK_FROM_HANDLE(dzn_device, device, dev);
 
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, dzn_render_pass, pass, 1);
-   VK_MULTIALLOC_DECL(&ma, dzn_subpass, subpasses,
+   VK_MULTIALLOC_DECL(&ma, struct dzn_render_pass, pass, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_subpass, subpasses,
                       pCreateInfo->subpassCount);
-   VK_MULTIALLOC_DECL(&ma, dzn_attachment, attachments,
+   VK_MULTIALLOC_DECL(&ma, struct dzn_attachment, attachments,
                       pCreateInfo->attachmentCount);
 
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,

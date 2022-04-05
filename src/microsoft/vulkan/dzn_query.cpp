@@ -39,7 +39,7 @@ dzn_query_pool_get_heap_type(VkQueryType in)
 }
 
 D3D12_QUERY_TYPE
-dzn_query_pool_get_query_type(const dzn_query_pool *qpool,
+dzn_query_pool_get_query_type(const struct dzn_query_pool *qpool,
                               VkQueryControlFlags flags)
 {
    switch (qpool->heap_type) {
@@ -53,13 +53,13 @@ dzn_query_pool_get_query_type(const dzn_query_pool *qpool,
 }
 
 static void
-dzn_query_pool_destroy(dzn_query_pool *qpool,
+dzn_query_pool_destroy(struct dzn_query_pool *qpool,
                        const VkAllocationCallbacks *alloc)
 {
    if (!qpool)
       return;
 
-   dzn_device *device = container_of(qpool->base.device, dzn_device, vk);
+   struct dzn_device *device = container_of(qpool->base.device, struct dzn_device, vk);
 
    if (qpool->collect_map)
       ID3D12Resource_Unmap(qpool->collect_buffer, 0, NULL);
@@ -84,14 +84,14 @@ dzn_query_pool_destroy(dzn_query_pool *qpool,
 }
 
 static VkResult
-dzn_query_pool_create(dzn_device *device,
+dzn_query_pool_create(struct dzn_device *device,
                       const VkQueryPoolCreateInfo *info,
                       const VkAllocationCallbacks *alloc,
                       VkQueryPool *out)
 {
    VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, dzn_query_pool, qpool, 1);
-   VK_MULTIALLOC_DECL(&ma, dzn_query, queries, info->queryCount);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_query_pool, qpool, 1);
+   VK_MULTIALLOC_DECL(&ma, struct dzn_query, queries, info->queryCount);
 
    if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, alloc,
                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
@@ -185,19 +185,19 @@ dzn_query_pool_create(dzn_device *device,
 }
 
 uint32_t
-dzn_query_pool_get_result_offset(const dzn_query_pool *qpool, uint32_t query)
+dzn_query_pool_get_result_offset(const struct dzn_query_pool *qpool, uint32_t query)
 {
    return query * qpool->query_size;
 }
 
 uint32_t
-dzn_query_pool_get_result_size(const dzn_query_pool *qpool, uint32_t query_count)
+dzn_query_pool_get_result_size(const struct dzn_query_pool *qpool, uint32_t query_count)
 {
    return query_count * qpool->query_size;
 }
 
 uint32_t
-dzn_query_pool_get_availability_offset(const dzn_query_pool *qpool, uint32_t query)
+dzn_query_pool_get_availability_offset(const struct dzn_query_pool *qpool, uint32_t query)
 {
    return (qpool->query_count * qpool->query_size) + (sizeof(uint64_t) * query);
 }
@@ -230,7 +230,7 @@ dzn_ResetQueryPool(VkDevice device,
 
    mtx_lock(&qpool->queries_lock);
    for (uint32_t q = 0; q < queryCount; q++) {
-      dzn_query *query = &qpool->queries[firstQuery + q];
+      struct dzn_query *query = &qpool->queries[firstQuery + q];
 
       query->fence_value = 0;
       if (query->fence) {
@@ -263,7 +263,7 @@ dzn_GetQueryPoolResults(VkDevice device,
    VkResult result = VK_SUCCESS;
 
    for (uint32_t q = 0; q < queryCount; q++) {
-      dzn_query *query = &qpool->queries[q + firstQuery];
+      struct dzn_query *query = &qpool->queries[q + firstQuery];
 
       uint8_t *dst_ptr = (uint8_t *)pData + (stride * q);
       uint8_t *src_ptr =
