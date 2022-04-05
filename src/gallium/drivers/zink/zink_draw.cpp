@@ -420,7 +420,7 @@ update_barriers(struct zink_context *ctx, bool is_compute)
          if (res->base.b.target == PIPE_BUFFER)
             zink_resource_buffer_barrier(ctx, res, access, pipeline);
          else {
-            VkImageLayout layout = zink_descriptor_util_image_layout_eval(res, is_compute);
+            VkImageLayout layout = zink_descriptor_util_image_layout_eval(ctx, res, is_compute);
             if (layout != res->layout)
                zink_resource_image_barrier(ctx, res, layout, access, pipeline);
          }

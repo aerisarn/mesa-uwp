@@ -559,7 +559,7 @@ zink_descriptor_util_push_layouts_get(struct zink_context *ctx, struct zink_desc
 }
 
 VkImageLayout
-zink_descriptor_util_image_layout_eval(const struct zink_resource *res, bool is_compute)
+zink_descriptor_util_image_layout_eval(const struct zink_context *ctx, const struct zink_resource *res, bool is_compute)
 {
    if (res->bindless[0] || res->bindless[1]) {
       /* bindless needs most permissive layout */

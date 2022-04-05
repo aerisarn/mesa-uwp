@@ -1291,8 +1291,8 @@ unbind_shader_image_counts(struct zink_context *ctx, struct zink_resource *res, 
 ALWAYS_INLINE static void
 check_for_layout_update(struct zink_context *ctx, struct zink_resource *res, bool is_compute)
 {
-   VkImageLayout layout = res->bind_count[is_compute] ? zink_descriptor_util_image_layout_eval(res, is_compute) : VK_IMAGE_LAYOUT_UNDEFINED;
-   VkImageLayout other_layout = res->bind_count[!is_compute] ? zink_descriptor_util_image_layout_eval(res, !is_compute) : VK_IMAGE_LAYOUT_UNDEFINED;
+   VkImageLayout layout = res->bind_count[is_compute] ? zink_descriptor_util_image_layout_eval(ctx, res, is_compute) : VK_IMAGE_LAYOUT_UNDEFINED;
+   VkImageLayout other_layout = res->bind_count[!is_compute] ? zink_descriptor_util_image_layout_eval(ctx, res, !is_compute) : VK_IMAGE_LAYOUT_UNDEFINED;
    if (res->bind_count[is_compute] && layout && res->layout != layout)
       _mesa_set_add(ctx->need_barriers[is_compute], res);
    if (res->bind_count[!is_compute] && other_layout && (layout != other_layout || res->layout != other_layout))
@@ -1695,7 +1695,7 @@ zink_make_texture_handle_resident(struct pipe_context *pctx, uint64_t handle, bo
          VkDescriptorImageInfo *ii = &ctx->di.bindless[0].img_infos[handle];
          ii->sampler = bd->sampler->sampler;
          ii->imageView = ds->surface->image_view;
-         ii->imageLayout = zink_descriptor_util_image_layout_eval(res, false);
+         ii->imageLayout = zink_descriptor_util_image_layout_eval(ctx, res, false);
          flush_pending_clears(ctx, res);
          check_for_layout_update(ctx, res, false);
          check_for_layout_update(ctx, res, true);
@@ -2940,7 +2940,7 @@ resource_check_defer_image_barrier(struct zink_context *ctx, struct zink_resourc
 
    if (res->bind_count[!is_compute] && is_shader) {
       /* if the layout is the same between gfx and compute, do nothing */
-      if (layout == zink_descriptor_util_image_layout_eval(res, !is_compute))
+      if (layout == zink_descriptor_util_image_layout_eval(ctx, res, !is_compute))
          return;
    }
    /* queue a layout change if a layout change will be needed */
