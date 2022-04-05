@@ -75,7 +75,10 @@ create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *st
       pstate->attachments[num_attachments].format = attachments[num_attachments].format = rt->format;
       pstate->attachments[num_attachments].samples = attachments[num_attachments].samples = rt->samples;
       attachments[num_attachments].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      if (rt->mixed_zs)
+         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+      else
+         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
       /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
@@ -203,7 +206,10 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       /* TODO: need replicate EXT */
       //attachments[num_attachments].storeOp = rt->resolve ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
       //attachments[num_attachments].stencilStoreOp = rt->resolve ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
-      attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      if (rt->mixed_zs)
+         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+      else
+         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
       /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
       attachments[num_attachments].initialLayout = layout;
