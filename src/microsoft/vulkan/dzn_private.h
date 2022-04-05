@@ -75,15 +75,6 @@ struct dxil_validator;
 struct dzn_instance;
 struct dzn_device;
 
-struct dzn_meta {
-   static void
-   compile_shader(struct dzn_device *pdev,
-                  nir_shader *nir,
-                  D3D12_SHADER_BYTECODE *slot);
-
-   struct dzn_device *device;
-};
-
 struct dzn_meta_indirect_draw {
    ID3D12RootSignature *root_sig;
    ID3D12PipelineState *pipeline_state;
