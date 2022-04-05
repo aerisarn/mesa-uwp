@@ -2315,10 +2315,24 @@ ntt_emit_load_output(struct ntt_compile *c, nir_intrinsic_instr *instr)
       out = ntt_ureg_dst_indirect(c, out, instr->src[0]);
    }
 
+   struct ureg_dst dst = ntt_get_dest(c, &instr->dest);
+   struct ureg_src out_src = ureg_src(out);
+
+   /* Don't swizzling unavailable channels of the output in the writemasked-out
+    * components. Avoids compile failures in virglrenderer with
+    * TESS_LEVEL_INNER.
+    */
+   int fill_channel = ffs(dst.WriteMask) - 1;
+   uint8_t swizzles[4] = { 0, 1, 2, 3 };
+   for (int i = 0; i < 4; i++)
+      if (!(dst.WriteMask & (1 << i)))
+         swizzles[i] = fill_channel;
+   out_src = ureg_swizzle(out_src, swizzles[0], swizzles[1], swizzles[2], swizzles[3]);
+
    if (semantics.fb_fetch_output)
-      ntt_FBFETCH(c, ntt_get_dest(c, &instr->dest), ureg_src(out));
+      ntt_FBFETCH(c, dst, out_src);
    else
-      ntt_MOV(c, ntt_get_dest(c, &instr->dest), ureg_src(out));
+      ntt_MOV(c, dst, out_src);
 }
 
 static void
