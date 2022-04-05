@@ -57,12 +57,19 @@ extern "C" {
 
 #include <string.h>
 
+#ifdef _WIN32
+#include "dxil_validator.h"
+#endif
+
 static void
 d3d12_context_destroy(struct pipe_context *pctx)
 {
    struct d3d12_context *ctx = d3d12_context(pctx);
-   if (ctx->validation_tools)
-      d3d12_validator_destroy(ctx->validation_tools);
+
+#ifdef _WIN32
+   if (ctx->dxil_validator)
+      dxil_destroy_validator(ctx->dxil_validator);
+#endif
 
    if (ctx->timestamp_query)
       pctx->destroy_query(pctx, ctx->timestamp_query);
@@ -2511,7 +2518,11 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    }
    d3d12_init_null_sampler(ctx);
 
-   ctx->validation_tools = d3d12_validator_create();
+#ifdef _WIN32
+   if (!(d3d12_debug & D3D12_DEBUG_EXPERIMENTAL) ||
+       (d3d12_debug & D3D12_DEBUG_DISASS))
+      ctx->dxil_validator = dxil_create_validator(NULL);
+#endif
 
    ctx->blitter = util_blitter_create(&ctx->base);
    if (!ctx->blitter)
