@@ -145,6 +145,7 @@ panfrost_flip_compare_func(enum mali_func f)
 
 }
 
+#if PAN_ARCH <= 7
 /* Compute shaders are invoked with a gl_NumWorkGroups X/Y/Z triplet. Vertex
  * shaders are invoked as (1, vertex_count, instance_count). Compute shaders
  * also have a gl_WorkGroupSize X/Y/Z triplet. These 6 values are packed
@@ -205,6 +206,7 @@ panfrost_pack_work_groups_compute(
                         MALI_SPLIT_MIN_EFFICIENT : cfg.workgroups_x_shift;
         }
 }
+#endif
 
 #if PAN_ARCH >= 5
 /* Format conversion */
