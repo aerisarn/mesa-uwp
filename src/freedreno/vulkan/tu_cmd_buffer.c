@@ -2890,6 +2890,298 @@ tu_flush_for_access(struct tu_cache_state *cache,
    cache->pending_flush_bits &= ~flush_bits;
 }
 
+/* When translating Vulkan access flags to which cache is accessed
+ * (CCU/UCHE/sysmem), we should take into account both the access flags and
+ * the stage so that accesses with MEMORY_READ_BIT/MEMORY_WRITE_BIT + a
+ * specific stage return something sensible. The specification for
+ * VK_KHR_synchronization2 says that we should do this:
+ *
+ *    Additionally, scoping the pipeline stages into the barrier structs
+ *    allows the use of the MEMORY_READ and MEMORY_WRITE flags without
+ *    sacrificing precision. The per-stage access flags should be used to
+ *    disambiguate specific accesses in a given stage or set of stages - for
+ *    instance, between uniform reads and sampling operations.
+ *
+ * Note that while in all known cases the stage is actually enough, we should
+ * still narrow things down based on the access flags to handle "old-style"
+ * barriers that may specify a wider range of stages but more precise access
+ * flags. These helpers allow us to do both.
+ */
+
+static bool
+filter_read_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages,
+                   VkAccessFlags2 tu_flags, VkPipelineStageFlags2 tu_stages)
+{
+   return (flags & (tu_flags | VK_ACCESS_2_MEMORY_READ_BIT)) &&
+      (stages & (tu_stages | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+}
+
+static bool
+filter_write_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages,
+                    VkAccessFlags2 tu_flags, VkPipelineStageFlags2 tu_stages)
+{
+   return (flags & (tu_flags | VK_ACCESS_2_MEMORY_WRITE_BIT)) &&
+      (stages & (tu_stages | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT));
+}
+
+static bool
+gfx_read_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages,
+                VkAccessFlags2 tu_flags, VkPipelineStageFlags2 tu_stages)
+{
+   return filter_read_access(flags, stages, tu_flags,
+                             tu_stages | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+}
+
+static bool
+gfx_write_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages,
+                 VkAccessFlags2 tu_flags, VkPipelineStageFlags2 tu_stages)
+{
+   return filter_write_access(flags, stages, tu_flags,
+                              tu_stages | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+}
+static enum tu_cmd_access_mask
+vk2tu_access(VkAccessFlags2 flags, VkPipelineStageFlags2 stages, bool gmem)
+{
+   enum tu_cmd_access_mask mask = 0;
+
+   if (gfx_read_access(flags, stages,
+                       VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT |
+                       VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT |
+                       VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
+                       VK_ACCESS_2_HOST_READ_BIT,
+                       VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT |
+                       VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT |
+                       VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
+                       VK_PIPELINE_STAGE_2_HOST_BIT))
+      mask |= TU_ACCESS_SYSMEM_READ;
+
+   if (gfx_write_access(flags, stages,
+                        VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
+                        VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT))
+      mask |= TU_ACCESS_CP_WRITE;
+
+   if (gfx_write_access(flags, stages,
+                        VK_ACCESS_2_HOST_WRITE_BIT,
+                        VK_PIPELINE_STAGE_2_HOST_BIT))
+      mask |= TU_ACCESS_SYSMEM_WRITE;
+
+#define SHADER_STAGES \
+   (VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | \
+    VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT | \
+    VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT | \
+    VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT | \
+    VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT | \
+    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | \
+    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+
+
+   if (gfx_read_access(flags, stages,
+                       VK_ACCESS_2_INDEX_READ_BIT |
+                       VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT |
+                       VK_ACCESS_2_UNIFORM_READ_BIT |
+                       VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT |
+                       VK_ACCESS_2_SHADER_READ_BIT,
+                       VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT |
+                       VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT |
+                       VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT |
+                       SHADER_STAGES))
+       mask |= TU_ACCESS_UCHE_READ;
+
+   if (gfx_write_access(flags, stages,
+                        VK_ACCESS_2_SHADER_WRITE_BIT |
+                        VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT,
+                        VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT |
+                        SHADER_STAGES))
+       mask |= TU_ACCESS_UCHE_WRITE;
+
+   /* When using GMEM, the CCU is always flushed automatically to GMEM, and
+    * then GMEM is flushed to sysmem. Furthermore, we already had to flush any
+    * previous writes in sysmem mode when transitioning to GMEM. Therefore we
+    * can ignore CCU and pretend that color attachments and transfers use
+    * sysmem directly.
+    */
+
+   if (gfx_read_access(flags, stages,
+                       VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+                       VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT,
+                       VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)) {
+      if (gmem)
+         mask |= TU_ACCESS_SYSMEM_READ;
+      else
+         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_READ;
+   }
+
+   if (gfx_read_access(flags, stages,
+                       VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+                       VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                       VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT)) {
+      if (gmem)
+         mask |= TU_ACCESS_SYSMEM_READ;
+      else
+         mask |= TU_ACCESS_CCU_DEPTH_INCOHERENT_READ;
+   }
+
+   if (gfx_write_access(flags, stages,
+                        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)) {
+      if (gmem) {
+         mask |= TU_ACCESS_SYSMEM_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
+      }
+   }
+
+   if (gfx_write_access(flags, stages,
+                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT)) {
+      if (gmem) {
+         mask |= TU_ACCESS_SYSMEM_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE;
+      }
+   }
+
+   if (filter_write_access(flags, stages,
+                           VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_2_COPY_BIT |
+                           VK_PIPELINE_STAGE_2_BLIT_BIT |
+                           VK_PIPELINE_STAGE_2_CLEAR_BIT |
+                           VK_PIPELINE_STAGE_2_RESOLVE_BIT |
+                           VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)) {
+      if (gmem) {
+         mask |= TU_ACCESS_SYSMEM_WRITE;
+      } else {
+         mask |= TU_ACCESS_CCU_COLOR_WRITE;
+      }
+   }
+
+   if (filter_read_access(flags, stages,
+                          VK_ACCESS_2_TRANSFER_READ_BIT,
+                          VK_PIPELINE_STAGE_2_COPY_BIT |
+                          VK_PIPELINE_STAGE_2_BLIT_BIT |
+                          VK_PIPELINE_STAGE_2_RESOLVE_BIT |
+                          VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)) {
+      mask |= TU_ACCESS_UCHE_READ;
+   }
+
+   return mask;
+}
+
+/* These helpers deal with legacy BOTTOM_OF_PIPE/TOP_OF_PIPE stages.
+ */
+
+static VkPipelineStageFlags2
+sanitize_src_stage(VkPipelineStageFlags2 stage_mask)
+{
+   /* From the Vulkan spec: 
+    *
+    *    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT is ...  equivalent to
+    *    VK_PIPELINE_STAGE_2_NONE in the first scope.
+    *
+    *    VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT is equivalent to
+    *    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT with VkAccessFlags2 set to 0
+    *    when specified in the first synchronization scope, ...
+    */
+   if (stage_mask & VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT)
+      return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+   return stage_mask & ~VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+}
+
+static VkPipelineStageFlags2
+sanitize_dst_stage(VkPipelineStageFlags2 stage_mask)
+{
+   /* From the Vulkan spec: 
+    *
+    *    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT is equivalent to
+    *    VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT with VkAccessFlags2 set to 0
+    *    when specified in the second synchronization scope, ...
+    *
+    *    VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT is ... equivalent to
+    *    VK_PIPELINE_STAGE_2_NONE in the second scope.
+    *
+    */
+   if (stage_mask & VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT)
+      return VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+   return stage_mask & ~VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+}
+
+static enum tu_stage
+vk2tu_single_stage(VkPipelineStageFlags2 vk_stage, bool dst)
+{
+   if (vk_stage == VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT)
+      return TU_STAGE_CP;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_VERTEX_INPUT_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT)
+      return TU_STAGE_FE;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_TESSELLATION_CONTROL_SHADER_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_TESSELLATION_EVALUATION_SHADER_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_GEOMETRY_SHADER_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT)
+      return TU_STAGE_SP_VS;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT)
+      return TU_STAGE_SP_PS;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT || /* Yes, really */
+   /* See comment in TU_STAGE_GRAS about early fragment tests */
+       vk_stage == VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
+
+      return TU_STAGE_PS;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_COPY_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_BLIT_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_RESOLVE_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_CLEAR_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
+      /* Blits read in SP_PS and write in PS, in both 2d and 3d cases */
+      return dst ? TU_STAGE_SP_PS : TU_STAGE_PS;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT ||
+       vk_stage == VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
+      /* Be conservative */
+      return dst ? TU_STAGE_CP : TU_STAGE_PS;
+
+   if (vk_stage == VK_PIPELINE_STAGE_2_HOST_BIT)
+      return dst ? TU_STAGE_PS : TU_STAGE_CP;
+
+   unreachable("unknown pipeline stage");
+}
+
+static enum tu_stage
+vk2tu_src_stage(VkPipelineStageFlags vk_stages)
+{
+   enum tu_stage stage = TU_STAGE_CP;
+   u_foreach_bit (bit, vk_stages) {
+      enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, false);
+      stage = MAX2(stage, new_stage);
+   }
+
+   return stage;
+}
+
+static enum tu_stage
+vk2tu_dst_stage(VkPipelineStageFlags vk_stages)
+{
+   enum tu_stage stage = TU_STAGE_PS;
+   u_foreach_bit (bit, vk_stages) {
+      enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, true);
+      stage = MIN2(stage, new_stage);
+   }
+
+   return stage;
+}
+
 static void
 tu_flush_for_stage(struct tu_cache_state *cache,
                    enum tu_stage src_stage, enum tu_stage dst_stage)
@@ -2926,188 +3218,6 @@ tu_flush_for_stage(struct tu_cache_state *cache,
       if (dst_stage == TU_STAGE_CP)
          cache->pending_flush_bits |= TU_CMD_FLAG_WAIT_FOR_ME;
    }
-}
-
-static enum tu_cmd_access_mask
-vk2tu_access(VkAccessFlags flags, bool gmem)
-{
-   enum tu_cmd_access_mask mask = 0;
-
-   if (flags &
-       (VK_ACCESS_INDIRECT_COMMAND_READ_BIT | /* Read performed by CP */
-        VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT | /* Read performed by CP */
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT | /* Read performed by CP */
-        VK_ACCESS_MEMORY_READ_BIT)) {
-      mask |= TU_ACCESS_SYSMEM_READ;
-   }
-
-   if (flags &
-       (VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_CP_WRITE;
-   }
-
-   if (flags &
-       (VK_ACCESS_HOST_READ_BIT |
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_SYSMEM_READ;
-   }
-
-   if (flags &
-       (VK_ACCESS_HOST_WRITE_BIT |
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_SYSMEM_WRITE;
-   }
-
-   if (flags &
-       (VK_ACCESS_INDEX_READ_BIT | /* Read performed by PC, I think */
-        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | /* Read performed by VFD */
-        VK_ACCESS_UNIFORM_READ_BIT | /* Read performed by SP */
-        /* TODO: Is there a no-cache bit for textures so that we can ignore
-         * these?
-         */
-        VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | /* Read performed by TP */
-        VK_ACCESS_SHADER_READ_BIT | /* Read perfomed by SP/TP */
-        VK_ACCESS_MEMORY_READ_BIT)) {
-      mask |= TU_ACCESS_UCHE_READ;
-   }
-
-   if (flags &
-       (VK_ACCESS_SHADER_WRITE_BIT | /* Write performed by SP */
-        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT | /* Write performed by VPC */
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_UCHE_WRITE;
-   }
-
-   /* When using GMEM, the CCU is always flushed automatically to GMEM, and
-    * then GMEM is flushed to sysmem. Furthermore, we already had to flush any
-    * previous writes in sysmem mode when transitioning to GMEM. Therefore we
-    * can ignore CCU and pretend that color attachments and transfers use
-    * sysmem directly.
-    */
-
-   if (flags &
-       (VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-        VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT |
-        VK_ACCESS_MEMORY_READ_BIT)) {
-      if (gmem)
-         mask |= TU_ACCESS_SYSMEM_READ;
-      else
-         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_READ;
-   }
-
-   if (flags &
-       (VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-        VK_ACCESS_MEMORY_READ_BIT)) {
-      if (gmem)
-         mask |= TU_ACCESS_SYSMEM_READ;
-      else
-         mask |= TU_ACCESS_CCU_DEPTH_INCOHERENT_READ;
-   }
-
-   if (flags &
-       (VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      if (gmem) {
-         mask |= TU_ACCESS_SYSMEM_WRITE;
-      } else {
-         mask |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
-      }
-   }
-
-   if (flags &
-       (VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      if (gmem) {
-         mask |= TU_ACCESS_SYSMEM_WRITE;
-      } else {
-         mask |= TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE;
-      }
-   }
-
-   if (flags &
-       (VK_ACCESS_TRANSFER_WRITE_BIT |
-        VK_ACCESS_MEMORY_WRITE_BIT)) {
-      if (gmem) {
-         mask |= TU_ACCESS_SYSMEM_WRITE;
-      } else {
-         mask |= TU_ACCESS_CCU_COLOR_WRITE;
-      }
-   }
-
-   if (flags &
-       (VK_ACCESS_TRANSFER_READ_BIT | /* Access performed by TP */
-        VK_ACCESS_MEMORY_READ_BIT)) {
-      mask |= TU_ACCESS_UCHE_READ;
-   }
-
-   return mask;
-}
-
-static enum tu_stage
-vk2tu_single_stage(VkPipelineStageFlags vk_stage, bool dst)
-{
-   switch (vk_stage) {
-   case VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT:
-   case VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT:
-   case VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT:
-      return TU_STAGE_CP;
-   case VK_PIPELINE_STAGE_VERTEX_INPUT_BIT:
-      return TU_STAGE_FE;
-   case VK_PIPELINE_STAGE_VERTEX_SHADER_BIT:
-   case VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT:
-   case VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT:
-   case VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT:
-      return TU_STAGE_SP_VS;
-   case VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT:
-   case VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT:
-      return TU_STAGE_SP_PS;
-   case VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT: /* Yes, really */
-   /* See comment in TU_STAGE_GRAS about early fragment tests */
-   case VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT:
-   case VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT:
-   case VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT:
-   case VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT:
-      return TU_STAGE_PS;
-
-   case VK_PIPELINE_STAGE_TRANSFER_BIT:
-      /* Blits read in SP_PS and write in PS, in both 2d and 3d cases */
-      return dst ? TU_STAGE_SP_PS : TU_STAGE_PS;
-
-   case VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT:
-   case VK_PIPELINE_STAGE_ALL_COMMANDS_BIT:
-      /* Be conservative */
-      return dst ? TU_STAGE_CP : TU_STAGE_PS;
-
-   case VK_PIPELINE_STAGE_HOST_BIT:
-      return dst ? TU_STAGE_PS : TU_STAGE_CP;
-   }
-
-   unreachable("unknown pipeline stage");
-}
-
-static enum tu_stage
-vk2tu_src_stage(VkPipelineStageFlags vk_stages)
-{
-   enum tu_stage stage = TU_STAGE_CP;
-   u_foreach_bit (bit, vk_stages) {
-      enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, false);
-      stage = MAX2(stage, new_stage);
-   }
-
-   return stage;
-}
-
-static enum tu_stage
-vk2tu_dst_stage(VkPipelineStageFlags vk_stages)
-{
-   enum tu_stage stage = TU_STAGE_PS;
-   u_foreach_bit (bit, vk_stages) {
-      enum tu_stage new_stage = vk2tu_single_stage(1ull << bit, true);
-      stage = MIN2(stage, new_stage);
-   }
-
-   return stage;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3300,10 +3410,14 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
     */
    struct tu_cache_state *cache =
       external ? &cmd_buffer->state.cache : &cmd_buffer->state.renderpass_cache;
+   VkPipelineStageFlags2 src_stage_vk =
+      sanitize_src_stage(barrier->src_stage_mask);
+   VkPipelineStageFlags2 dst_stage_vk =
+      sanitize_dst_stage(barrier->dst_stage_mask);
    enum tu_cmd_access_mask src_flags =
-      vk2tu_access(barrier->src_access_mask, false);
+      vk2tu_access(barrier->src_access_mask, src_stage_vk, false);
    enum tu_cmd_access_mask dst_flags =
-      vk2tu_access(barrier->dst_access_mask, false);
+      vk2tu_access(barrier->dst_access_mask, dst_stage_vk, false);
 
    if (barrier->incoherent_ccu_color)
       src_flags |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
@@ -3312,8 +3426,8 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
 
    tu_flush_for_access(cache, src_flags, dst_flags);
 
-   enum tu_stage src_stage = vk2tu_src_stage(barrier->src_stage_mask);
-   enum tu_stage dst_stage = vk2tu_dst_stage(barrier->dst_stage_mask);
+   enum tu_stage src_stage = vk2tu_src_stage(src_stage_vk);
+   enum tu_stage dst_stage = vk2tu_dst_stage(dst_stage_vk);
    tu_flush_for_stage(cache, src_stage, dst_stage);
 }
 
@@ -4741,27 +4855,71 @@ tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
    cmd_buffer->state.dirty |= TU_CMD_DIRTY_LRZ;
 }
 
-struct tu_barrier_info
-{
-   uint32_t eventCount;
-   const VkEvent *pEvents;
-   VkPipelineStageFlags srcStageMask;
-   VkPipelineStageFlags dstStageMask;
-};
-
 static void
 tu_barrier(struct tu_cmd_buffer *cmd,
-           uint32_t memoryBarrierCount,
-           const VkMemoryBarrier *pMemoryBarriers,
-           uint32_t bufferMemoryBarrierCount,
-           const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-           uint32_t imageMemoryBarrierCount,
-           const VkImageMemoryBarrier *pImageMemoryBarriers,
-           const struct tu_barrier_info *info)
+           const VkDependencyInfoKHR *dep_info)
 {
-   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
-   VkAccessFlags srcAccessMask = 0;
-   VkAccessFlags dstAccessMask = 0;
+   VkPipelineStageFlags2 srcStage = 0;
+   VkPipelineStageFlags2 dstStage = 0;
+   enum tu_cmd_access_mask src_flags = 0;
+   enum tu_cmd_access_mask dst_flags = 0;
+
+   /* Inside a renderpass, we don't know yet whether we'll be using sysmem
+    * so we have to use the sysmem flushes.
+    */
+   bool gmem = cmd->state.ccu_state == TU_CMD_CCU_GMEM &&
+      !cmd->state.pass;
+
+
+   for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++) {
+      VkPipelineStageFlags2 sanitized_src_stage =
+         sanitize_src_stage(dep_info->pMemoryBarriers[i].srcStageMask);
+      VkPipelineStageFlags2 sanitized_dst_stage =
+         sanitize_dst_stage(dep_info->pMemoryBarriers[i].dstStageMask);
+      src_flags |= vk2tu_access(dep_info->pMemoryBarriers[i].srcAccessMask,
+                                sanitized_src_stage, gmem);
+      dst_flags |= vk2tu_access(dep_info->pMemoryBarriers[i].dstAccessMask,
+                                sanitized_dst_stage, gmem);
+      srcStage |= sanitized_src_stage;
+      dstStage |= sanitized_dst_stage;
+   }
+
+   for (uint32_t i = 0; i < dep_info->bufferMemoryBarrierCount; i++) {
+      VkPipelineStageFlags2 sanitized_src_stage =
+         sanitize_src_stage(dep_info->pBufferMemoryBarriers[i].srcStageMask);
+      VkPipelineStageFlags2 sanitized_dst_stage =
+         sanitize_dst_stage(dep_info->pBufferMemoryBarriers[i].dstStageMask);
+      src_flags |= vk2tu_access(dep_info->pBufferMemoryBarriers[i].srcAccessMask,
+                                sanitized_src_stage, gmem);
+      dst_flags |= vk2tu_access(dep_info->pBufferMemoryBarriers[i].dstAccessMask,
+                                sanitized_dst_stage, gmem);
+      srcStage |= sanitized_src_stage;
+      dstStage |= sanitized_dst_stage;
+   }
+
+   for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++) {
+      VkImageLayout old_layout = dep_info->pImageMemoryBarriers[i].oldLayout;
+      if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
+         /* The underlying memory for this image may have been used earlier
+          * within the same queue submission for a different image, which
+          * means that there may be old, stale cache entries which are in the
+          * "wrong" location, which could cause problems later after writing
+          * to the image. We don't want these entries being flushed later and
+          * overwriting the actual image, so we need to flush the CCU.
+          */
+         src_flags |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
+      }
+      VkPipelineStageFlags2 sanitized_src_stage =
+         sanitize_src_stage(dep_info->pImageMemoryBarriers[i].srcStageMask);
+      VkPipelineStageFlags2 sanitized_dst_stage =
+         sanitize_dst_stage(dep_info->pImageMemoryBarriers[i].dstStageMask);
+      src_flags |= vk2tu_access(dep_info->pImageMemoryBarriers[i].srcAccessMask,
+                                sanitized_src_stage, gmem);
+      dst_flags |= vk2tu_access(dep_info->pImageMemoryBarriers[i].dstAccessMask,
+                                sanitized_dst_stage, gmem);
+      srcStage |= sanitized_src_stage;
+      dstStage |= sanitized_dst_stage;
+   }
 
    if (cmd->state.pass) {
       const VkPipelineStageFlags framebuffer_space_stages =
@@ -4790,98 +4948,33 @@ tu_barrier(struct tu_cmd_buffer *cmd,
        * vtx stages which are NOT ok for gmem rendering.
        * See dep_invalid_for_gmem().
        */
-      if ((info->srcStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)) ||
-          (info->dstStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT))) {
+      if ((srcStage & ~framebuffer_space_stages) ||
+          (dstStage & ~framebuffer_space_stages)) {
          cmd->state.disable_gmem = true;
       }
    }
-
-   for (uint32_t i = 0; i < memoryBarrierCount; i++) {
-      srcAccessMask |= pMemoryBarriers[i].srcAccessMask;
-      dstAccessMask |= pMemoryBarriers[i].dstAccessMask;
-   }
-
-   for (uint32_t i = 0; i < bufferMemoryBarrierCount; i++) {
-      srcAccessMask |= pBufferMemoryBarriers[i].srcAccessMask;
-      dstAccessMask |= pBufferMemoryBarriers[i].dstAccessMask;
-   }
-
-   enum tu_cmd_access_mask src_flags = 0;
-   enum tu_cmd_access_mask dst_flags = 0;
-
-   for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
-      VkImageLayout old_layout = pImageMemoryBarriers[i].oldLayout;
-      if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
-         /* The underlying memory for this image may have been used earlier
-          * within the same queue submission for a different image, which
-          * means that there may be old, stale cache entries which are in the
-          * "wrong" location, which could cause problems later after writing
-          * to the image. We don't want these entries being flushed later and
-          * overwriting the actual image, so we need to flush the CCU.
-          */
-         src_flags |= TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE;
-      }
-      srcAccessMask |= pImageMemoryBarriers[i].srcAccessMask;
-      dstAccessMask |= pImageMemoryBarriers[i].dstAccessMask;
-   }
-
-   /* Inside a renderpass, we don't know yet whether we'll be using sysmem
-    * so we have to use the sysmem flushes.
-    */
-   bool gmem = cmd->state.ccu_state == TU_CMD_CCU_GMEM &&
-      !cmd->state.pass;
-   src_flags |= vk2tu_access(srcAccessMask, gmem);
-   dst_flags |= vk2tu_access(dstAccessMask, gmem);
 
    struct tu_cache_state *cache =
       cmd->state.pass  ? &cmd->state.renderpass_cache : &cmd->state.cache;
    tu_flush_for_access(cache, src_flags, dst_flags);
 
-   enum tu_stage src_stage = vk2tu_src_stage(info->srcStageMask);
-   enum tu_stage dst_stage = vk2tu_dst_stage(info->dstStageMask);
+   enum tu_stage src_stage = vk2tu_src_stage(srcStage);
+   enum tu_stage dst_stage = vk2tu_dst_stage(dstStage);
    tu_flush_for_stage(cache, src_stage, dst_stage);
-
-   for (uint32_t i = 0; i < info->eventCount; i++) {
-      TU_FROM_HANDLE(tu_event, event, info->pEvents[i]);
-
-      tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
-                     CP_WAIT_REG_MEM_0_POLL_MEMORY);
-      tu_cs_emit_qw(cs, event->bo->iova); /* POLL_ADDR_LO/HI */
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(1));
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0u));
-      tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(20));
-   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
-                      VkPipelineStageFlags srcStageMask,
-                      VkPipelineStageFlags dstStageMask,
-                      VkDependencyFlags dependencyFlags,
-                      uint32_t memoryBarrierCount,
-                      const VkMemoryBarrier *pMemoryBarriers,
-                      uint32_t bufferMemoryBarrierCount,
-                      const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                      uint32_t imageMemoryBarrierCount,
-                      const VkImageMemoryBarrier *pImageMemoryBarriers)
+tu_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
+                       const VkDependencyInfoKHR *pDependencyInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
-   struct tu_barrier_info info;
 
-   info.eventCount = 0;
-   info.pEvents = NULL;
-   info.srcStageMask = srcStageMask;
-   info.dstStageMask = dstStageMask;
-
-   tu_barrier(cmd_buffer, memoryBarrierCount, pMemoryBarriers,
-              bufferMemoryBarrierCount, pBufferMemoryBarriers,
-              imageMemoryBarrierCount, pImageMemoryBarriers, &info);
+   tu_barrier(cmd_buffer, pDependencyInfo);
 }
 
 static void
 write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
-            VkPipelineStageFlags stageMask, unsigned value)
+            VkPipelineStageFlags2 stageMask, unsigned value)
 {
    struct tu_cs *cs = &cmd->cs;
 
@@ -4893,9 +4986,9 @@ write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
    /* Flags that only require a top-of-pipe event. DrawIndirect parameters are
     * read by the CP, so the draw indirect stage counts as top-of-pipe too.
     */
-   VkPipelineStageFlags top_of_pipe_flags =
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
-      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+   VkPipelineStageFlags2 top_of_pipe_flags =
+      VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+      VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 
    if (!(stageMask & ~top_of_pipe_flags)) {
       tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 3);
@@ -4911,20 +5004,28 @@ write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdSetEvent(VkCommandBuffer commandBuffer,
-               VkEvent _event,
-               VkPipelineStageFlags stageMask)
+tu_CmdSetEvent2(VkCommandBuffer commandBuffer,
+                VkEvent _event,
+                const VkDependencyInfoKHR *pDependencyInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
+   VkPipelineStageFlags2KHR src_stage_mask = 0;
 
-   write_event(cmd, event, stageMask, 1);
+   for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
+      src_stage_mask |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
+   for (uint32_t i = 0; i < pDependencyInfo->bufferMemoryBarrierCount; i++)
+      src_stage_mask |= pDependencyInfo->pBufferMemoryBarriers[i].srcStageMask;
+   for (uint32_t i = 0; i < pDependencyInfo->imageMemoryBarrierCount; i++)
+      src_stage_mask |= pDependencyInfo->pImageMemoryBarriers[i].srcStageMask;
+
+   write_event(cmd, event, src_stage_mask, 1);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdResetEvent(VkCommandBuffer commandBuffer,
-                 VkEvent _event,
-                 VkPipelineStageFlags stageMask)
+tu_CmdResetEvent2(VkCommandBuffer commandBuffer,
+                  VkEvent _event,
+                  VkPipelineStageFlags2 stageMask)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_event, event, _event);
@@ -4933,29 +5034,27 @@ tu_CmdResetEvent(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdWaitEvents(VkCommandBuffer commandBuffer,
-                 uint32_t eventCount,
-                 const VkEvent *pEvents,
-                 VkPipelineStageFlags srcStageMask,
-                 VkPipelineStageFlags dstStageMask,
-                 uint32_t memoryBarrierCount,
-                 const VkMemoryBarrier *pMemoryBarriers,
-                 uint32_t bufferMemoryBarrierCount,
-                 const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                 uint32_t imageMemoryBarrierCount,
-                 const VkImageMemoryBarrier *pImageMemoryBarriers)
+tu_CmdWaitEvents2(VkCommandBuffer commandBuffer,
+                  uint32_t eventCount,
+                  const VkEvent *pEvents,
+                  const VkDependencyInfoKHR* pDependencyInfos)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_barrier_info info;
+   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
 
-   info.eventCount = eventCount;
-   info.pEvents = pEvents;
-   info.srcStageMask = srcStageMask;
-   info.dstStageMask = dstStageMask;
+   for (uint32_t i = 0; i < eventCount; i++) {
+      TU_FROM_HANDLE(tu_event, event, pEvents[i]);
 
-   tu_barrier(cmd, memoryBarrierCount, pMemoryBarriers,
-              bufferMemoryBarrierCount, pBufferMemoryBarriers,
-              imageMemoryBarrierCount, pImageMemoryBarriers, &info);
+      tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
+                     CP_WAIT_REG_MEM_0_POLL_MEMORY);
+      tu_cs_emit_qw(cs, event->bo->iova); /* POLL_ADDR_LO/HI */
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_3_REF(1));
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_4_MASK(~0u));
+      tu_cs_emit(cs, CP_WAIT_REG_MEM_5_DELAY_LOOP_CYCLES(20));
+   }
+
+   tu_barrier(cmd, pDependencyInfos);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -5023,11 +5122,11 @@ tu_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
 }
 
 void
-tu_CmdWriteBufferMarkerAMD(VkCommandBuffer commandBuffer,
-                           VkPipelineStageFlagBits pipelineStage,
-                           VkBuffer dstBuffer,
-                           VkDeviceSize dstOffset,
-                           uint32_t marker)
+tu_CmdWriteBufferMarker2AMD(VkCommandBuffer commandBuffer,
+                            VkPipelineStageFlagBits2 pipelineStage,
+                            VkBuffer dstBuffer,
+                            VkDeviceSize dstOffset,
+                            uint32_t marker)
 {
    /* Almost the same as write_event, but also allowed in renderpass */
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
@@ -5055,9 +5154,9 @@ tu_CmdWriteBufferMarkerAMD(VkCommandBuffer commandBuffer,
    /* Flags that only require a top-of-pipe event. DrawIndirect parameters are
     * read by the CP, so the draw indirect stage counts as top-of-pipe too.
     */
-   VkPipelineStageFlags top_of_pipe_flags =
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
-      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+   VkPipelineStageFlags2 top_of_pipe_flags =
+      VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+      VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 
    bool is_top_of_pipe = !(pipelineStage & ~top_of_pipe_flags);
 

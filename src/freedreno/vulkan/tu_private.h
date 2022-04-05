@@ -1830,10 +1830,10 @@ tu_framebuffer_tiling_config(struct tu_framebuffer *fb,
                              const struct tu_render_pass *pass);
 
 struct tu_subpass_barrier {
-   VkPipelineStageFlags src_stage_mask;
-   VkPipelineStageFlags dst_stage_mask;
-   VkAccessFlags src_access_mask;
-   VkAccessFlags dst_access_mask;
+   VkPipelineStageFlags2 src_stage_mask;
+   VkPipelineStageFlags2 dst_stage_mask;
+   VkAccessFlags2 src_access_mask;
+   VkAccessFlags2 dst_access_mask;
    bool incoherent_ccu_color, incoherent_ccu_depth;
 };
 

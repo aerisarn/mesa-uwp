@@ -1429,10 +1429,10 @@ tu_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer,
 }
 
 VKAPI_ATTR void VKAPI_CALL
-tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
-                     VkPipelineStageFlagBits pipelineStage,
-                     VkQueryPool queryPool,
-                     uint32_t query)
+tu_CmdWriteTimestamp2(VkCommandBuffer commandBuffer,
+                      VkPipelineStageFlagBits2 pipelineStage,
+                      VkQueryPool queryPool,
+                      uint32_t query)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
@@ -1447,9 +1447,9 @@ tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
     * the REG_TO_MEM. DrawIndirect parameters are read by the CP, so the draw
     * indirect stage counts as top-of-pipe too.
     */
-   VkPipelineStageFlags top_of_pipe_flags =
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
-      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+   VkPipelineStageFlags2 top_of_pipe_flags =
+      VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT |
+      VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
 
    if (pipelineStage & ~top_of_pipe_flags) {
       /* Execute a WFI so that all commands complete. Note that CP_REG_TO_MEM

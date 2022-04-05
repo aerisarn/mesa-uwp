@@ -34,7 +34,9 @@
  */
 
 static bool
-dep_invalid_for_gmem(const VkSubpassDependency2 *dep)
+dep_invalid_for_gmem(const VkSubpassDependency2 *dep,
+                     VkPipelineStageFlags2 src_stage_mask,
+                     VkPipelineStageFlags2 dst_stage_mask)
 {
    /* External dependencies don't matter here. */
    if (dep->srcSubpass == VK_SUBPASS_EXTERNAL ||
@@ -67,15 +69,15 @@ dep_invalid_for_gmem(const VkSubpassDependency2 *dep)
    /* This is straight from the Vulkan 1.2 spec, section 6.1.4 "Framebuffer
     * Region Dependencies":
     */
-   const VkPipelineStageFlags framebuffer_space_stages =
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+   const VkPipelineStageFlags2 framebuffer_space_stages =
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
    return
-      (dep->srcStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)) ||
-      (dep->dstStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)) ||
+      (src_stage_mask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT)) ||
+      (dst_stage_mask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT)) ||
       !(dep->dependencyFlags & VK_DEPENDENCY_BY_REGION_BIT);
 }
 
@@ -96,7 +98,20 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
    if (src == dst)
       return;
 
-   if (dep_invalid_for_gmem(dep)) {
+   /* From the Vulkan 1.2.195 spec:
+    *
+    * "If an instance of VkMemoryBarrier2 is included in the pNext chain, srcStageMask,
+    *  dstStageMask, srcAccessMask, and dstAccessMask parameters are ignored. The synchronization
+    *  and access scopes instead are defined by the parameters of VkMemoryBarrier2."
+    */
+   const VkMemoryBarrier2 *barrier =
+      vk_find_struct_const(dep->pNext, MEMORY_BARRIER_2);
+   VkPipelineStageFlags2 src_stage_mask = barrier ? barrier->srcStageMask : dep->srcStageMask;
+   VkAccessFlags2 src_access_mask = barrier ? barrier->srcAccessMask : dep->srcAccessMask;
+   VkPipelineStageFlags2 dst_stage_mask = barrier ? barrier->dstStageMask : dep->dstStageMask;
+   VkAccessFlags2 dst_access_mask = barrier ? barrier->dstAccessMask : dep->dstAccessMask;
+
+   if (dep_invalid_for_gmem(dep, src_stage_mask, dst_stage_mask)) {
       perf_debug((struct tu_device *)pass->base.device, "Disabling gmem rendering due to invalid subpass dependency");
       pass->gmem_pixels = 0;
    }
@@ -108,10 +123,10 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
       dst_barrier = &pass->subpasses[dst].start_barrier;
    }
 
-   dst_barrier->src_stage_mask |= dep->srcStageMask;
-   dst_barrier->dst_stage_mask |= dep->dstStageMask;
-   dst_barrier->src_access_mask |= dep->srcAccessMask;
-   dst_barrier->dst_access_mask |= dep->dstAccessMask;
+   dst_barrier->src_stage_mask |= src_stage_mask;
+   dst_barrier->dst_stage_mask |= dst_stage_mask;
+   dst_barrier->src_access_mask |= src_access_mask;
+   dst_barrier->dst_access_mask |= dst_access_mask;
 }
 
 /* We currently only care about undefined layouts, because we have to

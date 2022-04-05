@@ -353,10 +353,10 @@ sync_merge(const VkSemaphore *syncobjs, uint32_t count, bool wait_all, bool rese
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-tu_QueueSubmit(VkQueue _queue,
-               uint32_t submitCount,
-               const VkSubmitInfo *pSubmits,
-               VkFence _fence)
+tu_QueueSubmit2(VkQueue _queue,
+                uint32_t submitCount,
+                const VkSubmitInfo2 *pSubmits,
+                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
    TU_FROM_HANDLE(tu_syncobj, fence, _fence);
@@ -369,22 +369,23 @@ tu_QueueSubmit(VkQueue _queue,
 
    uint32_t max_entry_count = 0;
    for (uint32_t i = 0; i < submitCount; ++i) {
-      const VkSubmitInfo *submit = pSubmits + i;
+      const VkSubmitInfo2 *submit = pSubmits + i;
 
       const VkPerformanceQuerySubmitInfoKHR *perf_info =
          vk_find_struct_const(pSubmits[i].pNext,
                               PERFORMANCE_QUERY_SUBMIT_INFO_KHR);
 
       uint32_t entry_count = 0;
-      for (uint32_t j = 0; j < submit->commandBufferCount; ++j) {
-         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
+      struct tu_cmd_buffer *cmd_buffers[submit->commandBufferInfoCount];
+      for (uint32_t j = 0; j < submit->commandBufferInfoCount; ++j) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBufferInfos[j].commandBuffer);
+         cmd_buffers[j] = cmdbuf;
          entry_count += cmdbuf->cs.entry_count;
          if (perf_info)
             entry_count++;
       }
 
-      struct tu_cmd_buffer **cmd_buffers = (void *)submit->pCommandBuffers;
-      if (tu_autotune_submit_requires_fence(cmd_buffers, submit->commandBufferCount))
+      if (tu_autotune_submit_requires_fence(cmd_buffers, submit->commandBufferInfoCount))
          entry_count++;
 
       max_entry_count = MAX2(max_entry_count, entry_count);
@@ -398,15 +399,17 @@ tu_QueueSubmit(VkQueue _queue,
       return vk_error(queue, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    for (uint32_t i = 0; i < submitCount; ++i) {
-      const VkSubmitInfo *submit = pSubmits + i;
+      const VkSubmitInfo2 *submit = pSubmits + i;
       uint32_t entry_idx = 0;
       const VkPerformanceQuerySubmitInfoKHR *perf_info =
          vk_find_struct_const(pSubmits[i].pNext,
                               PERFORMANCE_QUERY_SUBMIT_INFO_KHR);
 
 
-      for (uint32_t j = 0; j < submit->commandBufferCount; j++) {
-         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBuffers[j]);
+      struct tu_cmd_buffer *cmd_buffers[submit->commandBufferInfoCount];
+      for (uint32_t j = 0; j < submit->commandBufferInfoCount; j++) {
+         TU_FROM_HANDLE(tu_cmd_buffer, cmdbuf, submit->pCommandBufferInfos[j].commandBuffer);
+         cmd_buffers[j] = cmdbuf;
          struct tu_cs *cs = &cmdbuf->cs;
 
          if (perf_info) {
@@ -433,13 +436,12 @@ tu_QueueSubmit(VkQueue _queue,
          }
       }
 
-      struct tu_cmd_buffer **cmd_buffers = (void *)submit->pCommandBuffers;
-      if (tu_autotune_submit_requires_fence(cmd_buffers, submit->commandBufferCount)) {
+      if (tu_autotune_submit_requires_fence(cmd_buffers, submit->commandBufferInfoCount)) {
          struct tu_cs *autotune_cs =
             tu_autotune_on_submit(queue->device,
                                   &queue->device->autotune,
                                   cmd_buffers,
-                                  submit->commandBufferCount);
+                                  submit->commandBufferInfoCount);
          cmds[entry_idx++] = (struct kgsl_command_object) {
             .offset = autotune_cs->entries[0].offset,
             .gpuaddr = autotune_cs->entries[0].bo->iova,
@@ -449,8 +451,13 @@ tu_QueueSubmit(VkQueue _queue,
          };
       }
 
-      struct tu_syncobj s = sync_merge(submit->pWaitSemaphores,
-                                       submit->waitSemaphoreCount,
+      VkSemaphore wait_semaphores[submit->waitSemaphoreInfoCount];
+      for (uint32_t j = 0; j < submit->waitSemaphoreInfoCount; j++) {
+         wait_semaphores[j] = submit->pWaitSemaphoreInfos[j].semaphore;
+      }
+
+      struct tu_syncobj s = sync_merge(wait_semaphores,
+                                       submit->waitSemaphoreInfoCount,
                                        true, true);
 
       struct kgsl_cmd_syncpoint_timestamp ts = {
@@ -482,8 +489,8 @@ tu_QueueSubmit(VkQueue _queue,
          goto fail;
       }
 
-      for (uint32_t i = 0; i < submit->signalSemaphoreCount; i++) {
-         TU_FROM_HANDLE(tu_syncobj, sem, submit->pSignalSemaphores[i]);
+      for (uint32_t i = 0; i < submit->signalSemaphoreInfoCount; i++) {
+         TU_FROM_HANDLE(tu_syncobj, sem, submit->pSignalSemaphoreInfos[i].semaphore);
          sem->timestamp = req.timestamp;
          sem->timestamp_valid = true;
       }
