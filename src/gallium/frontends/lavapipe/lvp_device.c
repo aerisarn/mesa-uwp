@@ -147,6 +147,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_external_memory_host              = true,
    .EXT_graphics_pipeline_library         = true,
    .EXT_host_query_reset                  = true,
+   .EXT_image_2d_view_of_3d               = true,
    .EXT_image_robustness                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_inline_uniform_block              = true,
@@ -883,6 +884,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceColorWriteEnableFeaturesEXT *features =
             (VkPhysicalDeviceColorWriteEnableFeaturesEXT *)ext;
          features->colorWriteEnable = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
+         VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *features =
+            (VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *)ext;
+         features->image2DViewOf3D = true;
+         features->sampler2DViewOf3D = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
