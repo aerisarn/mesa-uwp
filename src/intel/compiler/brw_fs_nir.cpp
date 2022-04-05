@@ -3992,7 +3992,9 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 }
 
 static void
-emit_rt_lsc_fence(const fs_builder &bld, enum lsc_flush_type flush_type)
+emit_rt_lsc_fence(const fs_builder &bld,
+                  enum lsc_fence_scope scope,
+                  enum lsc_flush_type flush_type)
 {
    const intel_device_info *devinfo = bld.shader->devinfo;
 
@@ -4003,8 +4005,7 @@ emit_rt_lsc_fence(const fs_builder &bld, enum lsc_flush_type flush_type)
                              brw_imm_ud(0) /* ex_desc */,
                              brw_vec8_grf(0, 0) /* payload */);
    send->sfid = GFX12_SFID_UGM;
-   send->desc = lsc_fence_msg_desc(devinfo, LSC_FENCE_TILE,
-                                   flush_type, true);
+   send->desc = lsc_fence_msg_desc(devinfo, scope, flush_type, true);
    send->mlen = 1; /* g0 header */
    send->ex_mlen = 0;
    send->size_written = REG_SIZE; /* Temp write for scheduling */
@@ -5913,6 +5914,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       } else {
          assert(brw_shader_stage_is_bindless(stage));
       }
+      /* Make sure all the pointers to resume shaders have landed where other
+       * threads can see them.
+       */
+      emit_rt_lsc_fence(bld, LSC_FENCE_LOCAL, LSC_FLUSH_TYPE_NONE);
+
       bld.emit(SHADER_OPCODE_BTD_SPAWN_LOGICAL, bld.null_reg_ud(),
                bld.emit_uniformize(get_nir_src(instr->src[0])),
                get_nir_src(instr->src[1]));
@@ -5924,14 +5930,23 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       } else {
          assert(brw_shader_stage_is_bindless(stage));
       }
+      /* Make sure all the pointers to resume shaders have landed where other
+       * threads can see them.
+       */
+      emit_rt_lsc_fence(bld, LSC_FENCE_LOCAL, LSC_FLUSH_TYPE_NONE);
       bld.emit(SHADER_OPCODE_BTD_RETIRE_LOGICAL);
       break;
 
    case nir_intrinsic_trace_ray_intel: {
       const bool synchronous = nir_intrinsic_synchronous(instr);
       assert(brw_shader_stage_is_bindless(stage) || synchronous);
-      if (synchronous)
-         emit_rt_lsc_fence(bld, LSC_FLUSH_TYPE_EVICT);
+
+      /* Make sure all the previous RT structure writes are visible to the RT
+       * fixed function within the DSS, as well as stack pointers to resume
+       * shaders.
+       */
+      emit_rt_lsc_fence(bld, LSC_FENCE_LOCAL, LSC_FLUSH_TYPE_NONE);
+
       fs_reg srcs[RT_LOGICAL_NUM_SRCS];
       srcs[RT_LOGICAL_SRC_GLOBALS] = get_nir_src(instr->src[0]);
       srcs[RT_LOGICAL_SRC_BVH_LEVEL] = get_nir_src(instr->src[1]);
@@ -5948,7 +5963,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        */
       if (synchronous) {
          bld.emit(BRW_OPCODE_SYNC, bld.null_reg_ud(), brw_imm_ud(TGL_SYNC_ALLWR));
-         emit_rt_lsc_fence(bld, LSC_FLUSH_TYPE_INVALIDATE);
+         emit_rt_lsc_fence(bld, LSC_FENCE_LOCAL, LSC_FLUSH_TYPE_INVALIDATE);
       }
       break;
    }
