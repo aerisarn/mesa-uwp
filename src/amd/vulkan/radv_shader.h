@@ -516,7 +516,6 @@ void radv_nir_apply_pipeline_layout(nir_shader *shader, struct radv_device *devi
 nir_shader *radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *module,
                                        const char *entrypoint_name, gl_shader_stage stage,
                                        const VkSpecializationInfo *spec_info,
-                                       const struct radv_pipeline_layout *layout,
                                        const struct radv_pipeline_key *key);
 
 void radv_init_shader_arenas(struct radv_device *device);
@@ -539,9 +538,9 @@ struct radv_shader *radv_shader_create(struct radv_device *device,
                                        const struct radv_shader_args *args);
 struct radv_shader *radv_shader_compile(
    struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
-   int shader_count, struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
-   struct radv_shader_info *info, const struct radv_shader_args *args, bool keep_shader_info,
-   bool keep_statistic_info, struct radv_shader_binary **binary_out);
+   int shader_count, const struct radv_pipeline_key *key, struct radv_shader_info *info,
+   const struct radv_shader_args *args, bool keep_shader_info, bool keep_statistic_info,
+   struct radv_shader_binary **binary_out);
 
 bool radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                                struct radv_shader *shader, void *dest_ptr);

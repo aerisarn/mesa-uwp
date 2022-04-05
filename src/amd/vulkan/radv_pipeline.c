@@ -4206,8 +4206,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       radv_start_feedback(stage_feedbacks[i]);
 
       nir[i] = radv_shader_compile_to_nir(device, modules[i], stage ? stage->pName : "main", i,
-                                          stage ? stage->pSpecializationInfo : NULL,
-                                          pipeline_layout, pipeline_key);
+                                          stage ? stage->pSpecializationInfo : NULL, pipeline_key);
 
       radv_stop_feedback(stage_feedbacks[i], false);
    }
@@ -4444,7 +4443,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          radv_start_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT]);
 
          pipeline->shaders[MESA_SHADER_FRAGMENT] = radv_shader_compile(
-            device, modules[MESA_SHADER_FRAGMENT], &nir[MESA_SHADER_FRAGMENT], 1, pipeline_layout,
+            device, modules[MESA_SHADER_FRAGMENT], &nir[MESA_SHADER_FRAGMENT], 1,
             pipeline_key, infos + MESA_SHADER_FRAGMENT, &args[MESA_SHADER_FRAGMENT],
             keep_executable_info, keep_statistic_info, &binaries[MESA_SHADER_FRAGMENT]);
 
@@ -4459,7 +4458,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          radv_start_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL]);
 
          pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_compile(
-            device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline_layout, pipeline_key,
+            device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline_key,
             &infos[MESA_SHADER_TESS_CTRL], &args[MESA_SHADER_TESS_CTRL], keep_executable_info,
             keep_statistic_info, &binaries[MESA_SHADER_TESS_CTRL]);
 
@@ -4477,7 +4476,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          radv_start_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY]);
 
          pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_compile(
-            device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline_layout, pipeline_key,
+            device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline_key,
             &infos[MESA_SHADER_GEOMETRY], &args[MESA_SHADER_GEOMETRY], keep_executable_info,
             keep_statistic_info, &binaries[MESA_SHADER_GEOMETRY]);
 
@@ -4491,7 +4490,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          radv_start_feedback(stage_feedbacks[i]);
 
          pipeline->shaders[i] = radv_shader_compile(
-            device, modules[i], &nir[i], 1, pipeline_layout, pipeline_key, infos + i, &args[i],
+            device, modules[i], &nir[i], 1, pipeline_key, infos + i, &args[i],
             keep_executable_info, keep_statistic_info, &binaries[i]);
 
          radv_stop_feedback(stage_feedbacks[i], false);
