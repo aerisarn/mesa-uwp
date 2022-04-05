@@ -21,6 +21,9 @@
  * IN THE SOFTWARE.
  */
 
+#ifndef RADV_SHADER_ARGS_H
+#define RADV_SHADER_ARGS_H
+
 #include "compiler/shader_enums.h"
 #include "util/list.h"
 #include "util/macros.h"
@@ -70,3 +73,5 @@ void radv_declare_shader_args(enum chip_class chip_class, const struct radv_pipe
                               const struct radv_shader_info *info, gl_shader_stage stage,
                               bool has_previous_stage, gl_shader_stage previous_stage,
                               struct radv_shader_args *args);
+
+#endif
