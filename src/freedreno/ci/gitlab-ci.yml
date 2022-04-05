@@ -141,7 +141,6 @@ a618_vk:
   extends:
     - .lava-test:arm64
     - .freedreno-rules
-    - .test-manual-mr
   parallel: 7
   variables:
     VK_DRIVER: freedreno
