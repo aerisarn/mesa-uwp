@@ -1682,6 +1682,9 @@ struct iris_depth_stencil_alpha_state {
 
    /** Outbound to Gfx8-9 PMA stall equations */
    bool depth_test_enabled;
+
+   /** Tracking state of DS writes for Wa_18019816803. */
+   bool ds_write_state;
 };
 
 /**
@@ -1698,6 +1701,46 @@ iris_create_zsa_state(struct pipe_context *ctx,
       malloc(sizeof(struct iris_depth_stencil_alpha_state));
 
    bool two_sided_stencil = state->stencil[1].enabled;
+
+   bool depth_write_enabled = false;
+   bool stencil_write_enabled = false;
+
+   /* Depth writes enabled? */
+   if (state->depth_writemask &&
+      ((!state->depth_enabled) ||
+      ((state->depth_func != PIPE_FUNC_NEVER) &&
+        (state->depth_func != PIPE_FUNC_EQUAL))))
+      depth_write_enabled = true;
+
+   bool stencil_all_keep =
+      state->stencil[0].fail_op == PIPE_STENCIL_OP_KEEP &&
+      state->stencil[0].zfail_op == PIPE_STENCIL_OP_KEEP &&
+      state->stencil[0].zpass_op == PIPE_STENCIL_OP_KEEP &&
+      (!two_sided_stencil ||
+       (state->stencil[1].fail_op == PIPE_STENCIL_OP_KEEP &&
+        state->stencil[1].zfail_op == PIPE_STENCIL_OP_KEEP &&
+        state->stencil[1].zpass_op == PIPE_STENCIL_OP_KEEP));
+
+   bool stencil_mask_zero =
+      state->stencil[0].writemask == 0 ||
+      (!two_sided_stencil || state->stencil[1].writemask  == 0);
+
+   bool stencil_func_never =
+      state->stencil[0].func == PIPE_FUNC_NEVER &&
+      state->stencil[0].fail_op == PIPE_STENCIL_OP_KEEP &&
+      (!two_sided_stencil ||
+       (state->stencil[1].func == PIPE_FUNC_NEVER &&
+        state->stencil[1].fail_op == PIPE_STENCIL_OP_KEEP));
+
+   /* Stencil writes enabled? */
+   if (state->stencil[0].writemask != 0 ||
+      ((two_sided_stencil && state->stencil[1].writemask != 0) &&
+       (!stencil_all_keep &&
+        !stencil_mask_zero &&
+        !stencil_func_never)))
+      stencil_write_enabled = true;
+
+   cso->ds_write_state = depth_write_enabled || stencil_write_enabled;
 
    cso->alpha_enabled = state->alpha_enabled;
    cso->alpha_func = state->alpha_func;
@@ -1780,6 +1823,12 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
 
       ice->state.depth_writes_enabled = new_cso->depth_writes_enabled;
       ice->state.stencil_writes_enabled = new_cso->stencil_writes_enabled;
+
+      /* State ds_write_enable changed, need to flag dirty DS. */
+      if (!old_cso || (ice->state.ds_write_state != new_cso->ds_write_state)) {
+         ice->state.dirty |= IRIS_DIRTY_DS_WRITE_ENABLE;
+         ice->state.ds_write_state = new_cso->ds_write_state;
+      }
 
 #if GFX_VER >= 12
       if (cso_changed(depth_bounds))
@@ -7084,6 +7133,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
        */
       iris_batch_emit(batch, cso->wmds, sizeof(cso->wmds));
 #endif
+
+   /* Depth or stencil write changed in cso. */
+   if (intel_needs_workaround(batch->screen->devinfo, 18019816803) &&
+       (dirty & IRIS_DIRTY_DS_WRITE_ENABLE)) {
+      iris_emit_pipe_control_flush(
+         batch, "workaround: PSS stall after DS write enable change",
+         PIPE_CONTROL_PSS_STALL_SYNC);
+   }
 
 #if GFX_VER >= 12
       iris_batch_emit(batch, cso->depth_bounds, sizeof(cso->depth_bounds));
