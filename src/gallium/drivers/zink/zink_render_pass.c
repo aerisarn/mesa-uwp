@@ -70,7 +70,11 @@ create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *st
    if (state->have_zsbuf)  {
       struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
       bool has_clear = rt->clear_color || rt->clear_stencil;
-      VkImageLayout layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      VkImageLayout layout;
+      if (rt->mixed_zs)
+         layout = VK_IMAGE_LAYOUT_GENERAL;
+      else
+         layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
       attachments[num_attachments].flags = 0;
       pstate->attachments[num_attachments].format = attachments[num_attachments].format = rt->format;
       pstate->attachments[num_attachments].samples = attachments[num_attachments].samples = rt->samples;
@@ -195,7 +199,11 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    if (state->have_zsbuf)  {
       struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
       bool has_clear = rt->clear_color || rt->clear_stencil;
-      VkImageLayout layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      VkImageLayout layout;
+      if (rt->mixed_zs)
+         layout = VK_IMAGE_LAYOUT_GENERAL;
+      else
+         layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
       attachments[num_attachments].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
       attachments[num_attachments].pNext = NULL;
       attachments[num_attachments].flags = 0;
@@ -333,6 +341,10 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
 
    assert(rp->state.have_zsbuf);
    *pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+   if (rp->state.rts[idx].mixed_zs) {
+      *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      return VK_IMAGE_LAYOUT_GENERAL;
+   }
    if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil)
       *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
    if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil && !rp->state.rts[idx].needs_write)

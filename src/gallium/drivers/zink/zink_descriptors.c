@@ -31,6 +31,7 @@
 #include "zink_context.h"
 #include "zink_descriptors.h"
 #include "zink_program.h"
+#include "zink_render_pass.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 
@@ -570,6 +571,9 @@ zink_descriptor_util_image_layout_eval(const struct zink_context *ctx, const str
    if (res->image_bind_count[is_compute])
       return VK_IMAGE_LAYOUT_GENERAL;
    if (res->aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      if (!is_compute && res->fb_binds &&
+          ctx->gfx_pipeline_state.render_pass && ctx->gfx_pipeline_state.render_pass->state.rts[ctx->fb_state.nr_cbufs].mixed_zs)
+         return VK_IMAGE_LAYOUT_GENERAL;
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
    }
    return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
