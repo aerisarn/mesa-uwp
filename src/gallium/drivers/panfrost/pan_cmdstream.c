@@ -52,9 +52,11 @@
 struct panfrost_rasterizer {
         struct pipe_rasterizer_state base;
 
+#if PAN_ARCH <= 7
         /* Partially packed RSD words */
         struct mali_multisample_misc_packed multisample;
         struct mali_stencil_mask_misc_packed stencil_misc;
+#endif
 };
 
 struct panfrost_zsa_state {
