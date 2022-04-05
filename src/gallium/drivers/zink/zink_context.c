@@ -1998,9 +1998,14 @@ get_render_pass(struct zink_context *ctx)
          clears |= PIPE_CLEAR_STENCIL;
       const uint64_t outputs_written = ctx->gfx_stages[PIPE_SHADER_FRAGMENT] ?
                                        ctx->gfx_stages[PIPE_SHADER_FRAGMENT]->nir->info.outputs_written : 0;
-      bool needs_write = (ctx->dsa_state && ctx->dsa_state->hw_state.depth_write) ||
-                                            outputs_written & (BITFIELD64_BIT(FRAG_RESULT_DEPTH) | BITFIELD64_BIT(FRAG_RESULT_STENCIL));
-      state.rts[fb->nr_cbufs].needs_write = needs_write || state.num_zsresolves || state.rts[fb->nr_cbufs].clear_color || state.rts[fb->nr_cbufs].clear_stencil;
+      bool needs_write_z = (ctx->dsa_state && ctx->dsa_state->hw_state.depth_write) ||
+                          outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+      needs_write_z |= state.num_zsresolves || state.rts[fb->nr_cbufs].clear_color;
+
+      bool needs_write_s = state.rts[fb->nr_cbufs].clear_stencil || outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+      if (!needs_write_z && (!ctx->dsa_state || !ctx->dsa_state->base.depth_enabled))
+         state.rts[fb->nr_cbufs].mixed_zs = needs_write_s && zsbuf->bind_count[0];
+      state.rts[fb->nr_cbufs].needs_write = needs_write_z | needs_write_s;
       state.num_rts++;
    }
    state.have_zsbuf = fb->zsbuf != NULL;
