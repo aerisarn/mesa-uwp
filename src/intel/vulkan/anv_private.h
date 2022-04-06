@@ -1675,7 +1675,9 @@ struct anv_descriptor_set_binding_layout {
    /* Index into the flattened descriptor set */
    uint32_t descriptor_index;
 
-   /* Index into the dynamic state array for a dynamic buffer */
+   /* Index into the dynamic state array for a dynamic buffer, relative to the
+    * set.
+    */
    int16_t dynamic_offset_index;
 
    /* Index into the descriptor set buffer views */
@@ -1737,11 +1739,13 @@ struct anv_descriptor_set_layout {
 void anv_descriptor_set_layout_destroy(struct anv_device *device,
                                        struct anv_descriptor_set_layout *layout);
 
-static inline void
+static inline struct anv_descriptor_set_layout *
 anv_descriptor_set_layout_ref(struct anv_descriptor_set_layout *layout)
 {
    assert(layout && layout->ref_cnt >= 1);
    p_atomic_inc(&layout->ref_cnt);
+
+   return layout;
 }
 
 static inline void
@@ -1982,7 +1986,13 @@ struct anv_pipeline_binding {
       /** Plane in the binding index for images */
       uint8_t plane;
 
-      /** Dynamic offset index (for dynamic UBOs and SSBOs) */
+      /** Input attachment index (relative to the subpass) */
+      uint8_t input_attachment_index;
+
+      /** Dynamic offset index
+       *
+       * For dynamic UBOs and SSBOs, relative to set.
+       */
       uint8_t dynamic_offset_index;
    };
 
@@ -1997,7 +2007,7 @@ struct anv_push_range {
    /** Descriptor set index */
    uint8_t set;
 
-   /** Dynamic offset index (for dynamic UBOs) */
+   /** Dynamic offset index (for dynamic UBOs), relative to set. */
    uint8_t dynamic_offset_index;
 
    /** Start offset in units of 32B */
@@ -2007,8 +2017,8 @@ struct anv_push_range {
    uint8_t length;
 };
 
-struct anv_pipeline_layout {
-   struct vk_object_base base;
+struct anv_pipeline_sets_layout {
+   struct anv_device *device;
 
    struct {
       struct anv_descriptor_set_layout *layout;
@@ -2016,12 +2026,35 @@ struct anv_pipeline_layout {
    } set[MAX_SETS];
 
    uint32_t num_sets;
+   uint32_t num_dynamic_buffers;
+
+   bool independent_sets;
 
    unsigned char sha1[20];
 };
 
+void anv_pipeline_sets_layout_init(struct anv_pipeline_sets_layout *layout,
+                                   struct anv_device *device,
+                                   bool independent_sets);
+
+void anv_pipeline_sets_layout_fini(struct anv_pipeline_sets_layout *layout);
+
+void anv_pipeline_sets_layout_add(struct anv_pipeline_sets_layout *layout,
+                                  uint32_t set_idx,
+                                  struct anv_descriptor_set_layout *set_layout);
+
+void anv_pipeline_sets_layout_hash(struct anv_pipeline_sets_layout *layout);
+
+void anv_pipeline_sets_layout_print(const struct anv_pipeline_sets_layout *layout);
+
+struct anv_pipeline_layout {
+   struct vk_object_base base;
+
+   struct anv_pipeline_sets_layout sets_layout;
+};
+
 const struct anv_descriptor_set_layout *
-anv_pipeline_layout_get_push_set(const struct anv_pipeline_layout *layout,
+anv_pipeline_layout_get_push_set(const struct anv_pipeline_sets_layout *layout,
                                  uint8_t *desc_idx);
 
 struct anv_buffer {
@@ -2394,7 +2427,14 @@ struct anv_push_constants {
    /** Ray query globals (RT_DISPATCH_GLOBALS) */
    uint64_t ray_query_globals;
 
-   /* Base addresses for descriptor sets */
+#define ANV_DESCRIPTOR_SET_DYNAMIC_INDEX_MASK ((uint64_t)ANV_UBO_ALIGNMENT - 1)
+#define ANV_DESCRIPTOR_SET_ADDRESS_MASK       (~(uint64_t)(ANV_UBO_ALIGNMENT - 1))
+
+   /**
+    * In bits [0:5] : dynamic offset index in dynamic_offsets[] for the set
+    *
+    * In bits [6:63] : descriptor set address
+    */
    uint64_t desc_sets[MAX_SETS];
 
    struct {
@@ -2524,6 +2564,21 @@ struct anv_cmd_pipeline_state {
 
    /* Push constant state allocated when flushing push constants. */
    struct anv_state          push_constants_state;
+
+   /**
+    * Dynamic buffer offsets.
+    *
+    * We have a maximum of MAX_DYNAMIC_BUFFERS per pipeline, but with
+    * independent sets we cannot know which how much in total is going to be
+    * used. As a result we need to store the maximum possible number per set.
+    *
+    * Those values are written into anv_push_constants::dynamic_offsets at
+    * flush time when have the pipeline with the final
+    * anv_pipeline_sets_layout.
+    */
+   struct {
+      uint32_t                                  offsets[MAX_DYNAMIC_BUFFERS];
+   }                                            dynamic_offsets[MAX_SETS];
 };
 
 /** State tracking for graphics pipeline
@@ -3117,6 +3172,9 @@ struct anv_pipeline {
     * Mask of stages that are accessing the push descriptors buffer.
     */
    VkShaderStageFlags                           use_push_descriptor_buffer;
+
+   /* Layout of the sets used by the pipeline. */
+   struct anv_pipeline_sets_layout              layout;
 
    struct util_dynarray                         executables;
 

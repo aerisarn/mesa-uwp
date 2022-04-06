@@ -2041,10 +2041,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
    if (bt_state->map == NULL)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
-   /* Note that we always keep all user-allocated memory objects resident. */
-
-   struct anv_push_constants *push = &pipe_state->push_constants;
-
    for (uint32_t s = 0; s < map->surface_count; s++) {
       struct anv_pipeline_binding *binding = &map->surface_to_descriptor[s];
 
@@ -2239,7 +2235,8 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             if (desc->buffer) {
                /* Compute the offset within the buffer */
                uint32_t dynamic_offset =
-                  push->dynamic_offsets[binding->dynamic_offset_index];
+                  pipe_state->dynamic_offsets[
+                     binding->set].offsets[binding->dynamic_offset_index];
                uint64_t offset = desc->offset + dynamic_offset;
                /* Clamp to the buffer size */
                offset = MIN2(offset, desc->buffer->vk.size);
@@ -2547,10 +2544,10 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
       } else {
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          if (desc->buffer) {
-            const struct anv_push_constants *push =
-               &gfx_state->base.push_constants;
+            const struct anv_cmd_pipeline_state *pipe_state = &gfx_state->base;
             uint32_t dynamic_offset =
-               push->dynamic_offsets[range->dynamic_offset_index];
+               pipe_state->dynamic_offsets[
+                  range->set].offsets[range->dynamic_offset_index];
             return anv_address_add(desc->buffer->address,
                                    desc->offset + dynamic_offset);
          }
@@ -2620,10 +2617,10 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
 
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          /* Compute the offset within the buffer */
-         const struct anv_push_constants *push =
-            &gfx_state->base.push_constants;
+         const struct anv_cmd_pipeline_state *pipe_state = &gfx_state->base;
          uint32_t dynamic_offset =
-            push->dynamic_offsets[range->dynamic_offset_index];
+            pipe_state->dynamic_offsets[
+               range->set].offsets[range->dynamic_offset_index];
          uint64_t offset = desc->offset + dynamic_offset;
          /* Clamp to the buffer size */
          offset = MIN2(offset, desc->buffer->vk.size);
