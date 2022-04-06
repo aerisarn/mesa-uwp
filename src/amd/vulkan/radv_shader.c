@@ -1964,7 +1964,7 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
    options->address32_hi = device->physical_device->rad_info.address32_hi;
    options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
    options->enable_mrt_output_nan_fixup =
-      module && !is_meta_shader(module->nir) && options->key.ps.enable_mrt_output_nan_fixup;
+      !is_meta_shader(shaders[0]) && options->key.ps.enable_mrt_output_nan_fixup;
    options->debug.func = radv_compiler_debug;
    options->debug.private_data = &debug_data;
 
