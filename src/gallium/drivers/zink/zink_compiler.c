@@ -2060,6 +2060,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    if (has_bindless_io)
       NIR_PASS_V(nir, lower_bindless_io);
 
+   optimize_nir(nir);
+
    scan_nir(screen, nir, ret);
 
    foreach_list_typed_reverse_safe(nir_variable, var, node, &nir->variables) {
