@@ -1279,10 +1279,10 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize                      = 256,
    };
 
-   const DXGI_ADAPTER_DESC1& desc = pdevice->adapter_desc;
+   const DXGI_ADAPTER_DESC1 *desc = &pdevice->adapter_desc;
 
    VkPhysicalDeviceType devtype = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-   if (desc.Flags == DXGI_ADAPTER_FLAG_SOFTWARE)
+   if (desc->Flags == DXGI_ADAPTER_FLAG_SOFTWARE)
       devtype = VK_PHYSICAL_DEVICE_TYPE_CPU;
    else if (false) { // TODO: detect discreete GPUs
       /* This is a tad tricky to get right, because we need to have the
@@ -1298,8 +1298,8 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .apiVersion = DZN_API_VERSION,
       .driverVersion = vk_get_driver_version(),
 
-      .vendorID = desc.VendorId,
-      .deviceID = desc.DeviceId,
+      .vendorID = desc->VendorId,
+      .deviceID = desc->DeviceId,
       .deviceType = devtype,
 
       .limits = limits,
@@ -1308,7 +1308,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
    snprintf(pProperties->properties.deviceName,
             sizeof(pProperties->properties.deviceName),
-            "Microsoft Direct3D12 (%S)", desc.Description);
+            "Microsoft Direct3D12 (%S)", desc->Description);
 
    memcpy(pProperties->properties.pipelineCacheUUID,
           pdevice->pipeline_cache_uuid, VK_UUID_SIZE);

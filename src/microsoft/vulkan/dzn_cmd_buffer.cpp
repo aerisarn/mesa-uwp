@@ -1022,9 +1022,9 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
 }
 
 static VkClearColorValue
-adjust_clear_color(VkFormat format, const VkClearColorValue &col)
+adjust_clear_color(VkFormat format, const VkClearColorValue *col)
 {
-   VkClearColorValue out = col;
+   VkClearColorValue out = *col;
 
    // D3D12 doesn't support bgra4, so we map it to rgba4 and swizzle things
    // manually where it matters, like here, in the clear path.
@@ -1220,7 +1220,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                                 rect_count, rects);
       }
    } else if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-      VkClearColorValue color = adjust_clear_color(view->vk.format, value->color);
+      VkClearColorValue color = adjust_clear_color(view->vk.format, &value->color);
       bool clear_with_cpy = false;
       float vals[4];
 
@@ -1271,7 +1271,7 @@ dzn_cmd_buffer_clear_color(struct dzn_cmd_buffer *cmdbuf,
       return;
    }
 
-   VkClearColorValue color = adjust_clear_color(image->vk.format, *col);
+   VkClearColorValue color = adjust_clear_color(image->vk.format, col);
    float clear_vals[4];
 
    enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);
@@ -3017,11 +3017,11 @@ dzn_CmdCopyBuffer2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_buffer, dst_buffer, info->dstBuffer);
 
    for (int i = 0; i < info->regionCount; i++) {
-      const VkBufferCopy2 &region = info->pRegions[i];
+      const VkBufferCopy2 *region = info->pRegions + i;
 
-      ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, dst_buffer->res, region.dstOffset,
-                                        src_buffer->res, region.srcOffset,
-                                        region.size);
+      ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist, dst_buffer->res, region->dstOffset,
+                                        src_buffer->res, region->srcOffset,
+                                        region->size);
    }
 }
 
@@ -3032,10 +3032,10 @@ dzn_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
    for (int i = 0; i < info->regionCount; i++) {
-      const VkBufferImageCopy2 &region = info->pRegions[i];
+      const VkBufferImageCopy2 *region = info->pRegions + i;
 
-      dzn_foreach_aspect(aspect, region.imageSubresource.aspectMask) {
-         for (uint32_t l = 0; l < region.imageSubresource.layerCount; l++)
+      dzn_foreach_aspect(aspect, region->imageSubresource.aspectMask) {
+         for (uint32_t l = 0; l < region->imageSubresource.layerCount; l++)
             dzn_cmd_buffer_copy_buf2img_region(cmdbuf, info, i, aspect, l);
       }
    }
@@ -3048,10 +3048,10 @@ dzn_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
    for (int i = 0; i < info->regionCount; i++) {
-      const VkBufferImageCopy2 &region = info->pRegions[i];
+      const VkBufferImageCopy2 *region = info->pRegions + i;
 
-      dzn_foreach_aspect(aspect, region.imageSubresource.aspectMask) {
-         for (uint32_t l = 0; l < region.imageSubresource.layerCount; l++)
+      dzn_foreach_aspect(aspect, region->imageSubresource.aspectMask) {
+         for (uint32_t l = 0; l < region->imageSubresource.layerCount; l++)
             dzn_cmd_buffer_copy_img2buf_region(cmdbuf, info, i, aspect, l);
       }
    }
@@ -3076,13 +3076,13 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
       use_blit = requires_temp_res;
 
       for (int i = 0; i < info->regionCount; i++) {
-         const VkImageCopy2 &region = info->pRegions[i];
-         if (region.srcOffset.x != 0 || region.srcOffset.y != 0 ||
-             region.extent.width != u_minify(src->vk.extent.width, region.srcSubresource.mipLevel) ||
-             region.extent.height != u_minify(src->vk.extent.height, region.srcSubresource.mipLevel) ||
-             region.dstOffset.x != 0 || region.dstOffset.y != 0 ||
-             region.extent.width != u_minify(dst->vk.extent.width, region.dstSubresource.mipLevel) ||
-             region.extent.height != u_minify(dst->vk.extent.height, region.dstSubresource.mipLevel))
+         const VkImageCopy2 *region = info->pRegions + i;
+         if (region->srcOffset.x != 0 || region->srcOffset.y != 0 ||
+             region->extent.width != u_minify(src->vk.extent.width, region->srcSubresource.mipLevel) ||
+             region->extent.height != u_minify(src->vk.extent.height, region->srcSubresource.mipLevel) ||
+             region->dstOffset.x != 0 || region->dstOffset.y != 0 ||
+             region->extent.width != u_minify(dst->vk.extent.width, region->dstSubresource.mipLevel) ||
+             region->extent.height != u_minify(dst->vk.extent.height, region->dstSubresource.mipLevel))
             use_blit = true;
       }
    }
