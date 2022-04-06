@@ -568,8 +568,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                           ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
                                           ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_DEPTH_BOUNDS), db) {
-         db.DepthBoundsTestValueModifyDisable = false;
-         db.DepthBoundsTestEnableModifyDisable = false;
          db.DepthBoundsTestEnable = d->depth_bounds_test_enable;
          db.DepthBoundsTestMinValue = d->depth_bounds.min;
          db.DepthBoundsTestMaxValue = d->depth_bounds.max;
