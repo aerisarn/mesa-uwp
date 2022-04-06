@@ -26,7 +26,6 @@
 #include "pipe-loader/pipe_loader.h"
 #include "git_sha1.h"
 #include "vk_cmd_enqueue_entrypoints.h"
-#include "vk_sync_dummy.h"
 #include "vk_util.h"
 #include "pipe/p_config.h"
 #include "pipe/p_defines.h"
@@ -1463,15 +1462,6 @@ unref_pipeline_layout(struct vk_device *vk_device, VkPipelineLayout _layout)
    lvp_pipeline_layout_unref(device, layout);
 }
 
-static VkResult
-lvp_create_sync_for_memory(struct vk_device *device,
-                           VkDeviceMemory memory,
-                           bool signal_memory,
-                           struct vk_sync **sync_out)
-{
-   return vk_sync_create(device, &vk_sync_dummy_type, 0, 1, sync_out);
-}
-
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    VkPhysicalDevice                            physicalDevice,
    const VkDeviceCreateInfo*                   pCreateInfo,
@@ -1516,7 +1506,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    device->instance = (struct lvp_instance *)physical_device->vk.instance;
    device->physical_device = physical_device;
 
-   device->vk.create_sync_for_memory = lvp_create_sync_for_memory;
    device->vk.ref_pipeline_layout = ref_pipeline_layout;
    device->vk.unref_pipeline_layout = unref_pipeline_layout;
 
