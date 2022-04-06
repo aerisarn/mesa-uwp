@@ -3207,6 +3207,19 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
          infos[MESA_SHADER_TESS_EVAL].is_ngg = false;
       }
 
+      if (nir[MESA_SHADER_GEOMETRY] &&
+          nir[MESA_SHADER_GEOMETRY]->info.gs.vertices_out >= 9) {
+         /* GS has suboptimal number of output vertices. In this case,
+          * the occupancy of NGG GS is very low, and API GS invocations
+          * can't even occupy a single Wave32 wave.
+          * Therefore the legacy pipeline performs better here.
+          */
+         if (nir[MESA_SHADER_TESS_EVAL])
+            infos[MESA_SHADER_TESS_EVAL].is_ngg = false;
+         else
+            infos[MESA_SHADER_VERTEX].is_ngg = false;
+      }
+
       gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
 
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
