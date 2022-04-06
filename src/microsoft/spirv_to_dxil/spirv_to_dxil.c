@@ -103,6 +103,9 @@ lower_shader_system_values(struct nir_builder *builder, nir_instr *instr,
    case nir_intrinsic_load_base_instance:
       offset = offsetof(struct dxil_spirv_vertex_runtime_data, base_instance);
       break;
+   case nir_intrinsic_load_draw_id:
+      offset = offsetof(struct dxil_spirv_vertex_runtime_data, draw_id);
+      break;
    default:
       return false;
    }
@@ -527,6 +530,9 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       return false;
 
    struct spirv_to_nir_options spirv_opts = {
+      .caps = {
+         .draw_parameters = true,
+      },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
       .ssbo_addr_format = nir_address_format_32bit_index_offset,
       .shared_addr_format = nir_address_format_32bit_offset_as_64bit,
