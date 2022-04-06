@@ -2944,7 +2944,7 @@ dzn_CmdCopyImageToBuffer2(VkCommandBuffer commandBuffer,
 
       dzn_foreach_aspect(aspect, region.imageSubresource.aspectMask) {
          for (uint32_t l = 0; l < region.imageSubresource.layerCount; l++)
-            dzn_cmd_buffer_copy_img2buf_region(cmdbuf,info, i, aspect, l);
+            dzn_cmd_buffer_copy_img2buf_region(cmdbuf, info, i, aspect, l);
       }
    }
 }
