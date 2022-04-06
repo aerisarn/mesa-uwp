@@ -1662,7 +1662,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
            dzn_descriptor_set_ptr_move(set, &ptr, 1)) {
          assert(dzn_descriptor_set_get_desc_vk_type(set, &ptr) == pDescriptorWrite->descriptorType);
          const VkDescriptorBufferInfo *binfo = &pDescriptorWrite->pBufferInfo[d];
-         struct dzn_buffer_desc desc {
+         struct dzn_buffer_desc desc = {
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset
@@ -1681,7 +1681,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
            dzn_descriptor_set_ptr_move(set, &ptr, 1)) {
          assert(dzn_descriptor_set_get_desc_vk_type(set, &ptr) == pDescriptorWrite->descriptorType);
          const VkDescriptorBufferInfo *binfo = &pDescriptorWrite->pBufferInfo[d];
-         struct dzn_buffer_desc desc {
+         struct dzn_buffer_desc desc = {
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset
