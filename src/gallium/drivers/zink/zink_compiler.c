@@ -1105,7 +1105,8 @@ is_texcoord(gl_shader_stage stage, const nir_variable *var)
 static bool
 assign_consumer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
 {
-   switch (var->data.location) {
+   unsigned slot = var->data.location;
+   switch (slot) {
    case VARYING_SLOT_POS:
    case VARYING_SLOT_PNTC:
    case VARYING_SLOT_PSIZ:
@@ -1122,21 +1123,21 @@ assign_consumer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
       break;
    default:
       if (var->data.patch) {
-         assert(var->data.location >= VARYING_SLOT_PATCH0);
-         var->data.driver_location = var->data.location - VARYING_SLOT_PATCH0;
-      } else if (var->data.location >= VARYING_SLOT_VAR0 &&
+         assert(slot >= VARYING_SLOT_PATCH0);
+         var->data.driver_location = slot - VARYING_SLOT_PATCH0;
+      } else if (slot >= VARYING_SLOT_VAR0 &&
           stage == MESA_SHADER_TESS_CTRL &&
           var->data.mode == nir_var_shader_out)
-         var->data.driver_location = var->data.location - VARYING_SLOT_VAR0;
+         var->data.driver_location = slot - VARYING_SLOT_VAR0;
       else {
-         if (slot_map[var->data.location] == (unsigned char)-1) {
+         if (slot_map[slot] == (unsigned char)-1) {
             if (!is_texcoord(stage, var))
                /* dead io */
                return false;
             /* texcoords can't be eliminated in fs due to GL_COORD_REPLACE */
-            slot_map[var->data.location] = (*reserved)++;
+            slot_map[slot] = (*reserved)++;
          }
-         var->data.driver_location = slot_map[var->data.location];
+         var->data.driver_location = slot_map[slot];
       }
    }
    return true;
