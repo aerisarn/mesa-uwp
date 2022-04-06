@@ -1055,7 +1055,7 @@ static void
 assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reserved, unsigned char *slot_map)
 {
    unsigned slot = var->data.location;
-   switch (var->data.location) {
+   switch (slot) {
    case -1:
    case VARYING_SLOT_POS:
    case VARYING_SLOT_PNTC:
@@ -1074,19 +1074,19 @@ assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
 
    default:
       if (var->data.patch) {
-         assert(var->data.location >= VARYING_SLOT_PATCH0);
-         slot = var->data.location - VARYING_SLOT_PATCH0;
-      } else if (var->data.location >= VARYING_SLOT_VAR0 &&
+         assert(slot >= VARYING_SLOT_PATCH0);
+         slot = slot - VARYING_SLOT_PATCH0;
+      } else if (slot >= VARYING_SLOT_VAR0 &&
                  var->data.mode == nir_var_shader_in &&
                   stage == MESA_SHADER_TESS_EVAL) {
-         slot = var->data.location - VARYING_SLOT_VAR0;
+         slot = slot - VARYING_SLOT_VAR0;
       } else {
-         if (slot_map[var->data.location] == 0xff) {
+         if (slot_map[slot] == 0xff) {
             assert(*reserved < MAX_VARYING);
-            slot_map[var->data.location] = *reserved;
+            slot_map[slot] = *reserved;
             *reserved += glsl_count_vec4_slots(var->type, false, false);
          }
-         slot = slot_map[var->data.location];
+         slot = slot_map[slot];
          assert(slot < MAX_VARYING);
       }
       var->data.driver_location = slot;
