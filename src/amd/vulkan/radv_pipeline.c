@@ -1874,7 +1874,8 @@ static void
 radv_pipeline_init_viewport_state(struct radv_pipeline *pipeline,
                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
+   if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
+       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE))
       return;
 
    const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
