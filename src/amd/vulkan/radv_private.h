@@ -1857,6 +1857,7 @@ struct radv_pipeline {
    uint32_t user_data_0[MESA_VULKAN_SHADER_STAGES];
    union {
       struct {
+         uint64_t dynamic_states;
          struct radv_multisample_state ms;
          struct radv_binning_state binning;
          struct radv_vrs_state vrs;

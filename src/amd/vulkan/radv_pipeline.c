@@ -88,30 +88,18 @@ struct radv_dsa_order_invariance {
 };
 
 static bool
-radv_is_state_dynamic(const VkGraphicsPipelineCreateInfo *pCreateInfo, VkDynamicState state)
-{
-   if (pCreateInfo->pDynamicState) {
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t i = 0; i < count; i++) {
-         if (pCreateInfo->pDynamicState->pDynamicStates[i] == state)
-            return true;
-      }
-   }
-
-   return false;
-}
-
-static bool
-radv_is_raster_enabled(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_is_raster_enabled(const struct radv_pipeline *pipeline,
+                       const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    return !pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
-          radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE);
+          (pipeline->graphics.dynamic_states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
 }
 
 static const VkPipelineMultisampleStateCreateInfo *
-radv_pipeline_get_multisample_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_get_multisample_state(const struct radv_pipeline *pipeline,
+                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   if (radv_is_raster_enabled(pCreateInfo))
+   if (radv_is_raster_enabled(pipeline, pCreateInfo))
       return pCreateInfo->pMultisampleState;
    return NULL;
 }
@@ -139,11 +127,12 @@ radv_pipeline_has_ds_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo
 }
 
 static const VkPipelineDepthStencilStateCreateInfo *
-radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_get_depth_stencil_state(const struct radv_pipeline *pipeline,
+                                      const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    bool has_ds_att = radv_pipeline_has_ds_attachments(pCreateInfo);
 
-   if (radv_is_raster_enabled(pCreateInfo) && has_ds_att)
+   if (radv_is_raster_enabled(pipeline, pCreateInfo) && has_ds_att)
       return pCreateInfo->pDepthStencilState;
    return NULL;
 }
@@ -165,11 +154,12 @@ radv_pipeline_has_color_attachments(const VkGraphicsPipelineCreateInfo *pCreateI
 }
 
 static const VkPipelineColorBlendStateCreateInfo *
-radv_pipeline_get_color_blend_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_get_color_blend_state(const struct radv_pipeline *pipeline,
+                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
 
-   if (radv_is_raster_enabled(pCreateInfo) && has_color_att)
+   if (radv_is_raster_enabled(pipeline, pCreateInfo) && has_color_att)
       return pCreateInfo->pColorBlendState;
    return NULL;
 }
@@ -675,9 +665,9 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pCreateInfo);
+      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
    const VkPipelineMultisampleStateCreateInfo *vkms =
-      radv_pipeline_get_multisample_state(pCreateInfo);
+      radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
    struct radv_blend_state blend = {0};
    unsigned cb_color_control = 0;
    int i;
@@ -974,20 +964,13 @@ radv_order_invariant_stencil_state(const VkStencilOpState *state)
 }
 
 static bool
-radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_has_dynamic_ds_states(const struct radv_pipeline *pipeline)
 {
-   VkDynamicState ds_states[] = {
-      VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE, VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
-      VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,  VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE,
-      VK_DYNAMIC_STATE_STENCIL_OP,
-   };
-
-   for (uint32_t i = 0; i < ARRAY_SIZE(ds_states); i++) {
-      if (radv_is_state_dynamic(pCreateInfo, ds_states[i]))
-         return true;
-   }
-
-   return false;
+   return !!(pipeline->graphics.dynamic_states & (RADV_DYNAMIC_DEPTH_TEST_ENABLE |
+                                                  RADV_DYNAMIC_DEPTH_WRITE_ENABLE |
+                                                  RADV_DYNAMIC_DEPTH_COMPARE_OP |
+                                                  RADV_DYNAMIC_STENCIL_TEST_ENABLE |
+                                                  RADV_DYNAMIC_STENCIL_OP));
 }
 
 static bool
@@ -998,9 +981,9 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    const VkPipelineDepthStencilStateCreateInfo *vkds =
-      radv_pipeline_get_depth_stencil_state(pCreateInfo);
+      radv_pipeline_get_depth_stencil_state(pipeline, pCreateInfo);
    const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pCreateInfo);
+      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
    unsigned colormask = blend->cb_target_enabled_4bit;
 
    if (!pipeline->device->physical_device->out_of_order_rast_allowed)
@@ -1014,7 +997,7 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
     * enabled because the driver can't update out-of-order rasterization
     * dynamically.
     */
-   if (radv_pipeline_has_dynamic_ds_states(pCreateInfo))
+   if (radv_pipeline_has_dynamic_ds_states(pipeline))
       return false;
 
    /* Default depth/stencil invariance when no attachment is bound. */
@@ -1108,7 +1091,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
                                      const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineMultisampleStateCreateInfo *vkms =
-      radv_pipeline_get_multisample_state(pCreateInfo);
+      radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
    struct radv_multisample_state *ms = &pipeline->graphics.ms;
    unsigned num_tile_pipes = pipeline->device->physical_device->rad_info.num_tile_pipes;
    const VkConservativeRasterizationModeEXT mode =
@@ -1235,7 +1218,7 @@ gfx103_pipeline_init_vrs_state(struct radv_pipeline *pipeline,
                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineMultisampleStateCreateInfo *vkms =
-      radv_pipeline_get_multisample_state(pCreateInfo);
+      radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
    struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
    struct radv_multisample_state *ms = &pipeline->graphics.ms;
    struct radv_vrs_state *vrs = &pipeline->graphics.vrs;
@@ -1395,10 +1378,11 @@ radv_dynamic_state_mask(VkDynamicState state)
 }
 
 static bool
-radv_pipeline_is_blend_enabled(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_is_blend_enabled(const struct radv_pipeline *pipeline,
+                               const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pCreateInfo);
+      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
 
    assert(vkblend);
 
@@ -1415,7 +1399,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
                                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    bool has_color_att = radv_pipeline_has_color_attachments(pCreateInfo);
-   bool raster_enabled = radv_is_raster_enabled(pCreateInfo);
+   bool raster_enabled = radv_is_raster_enabled(pipeline, pCreateInfo);
    uint64_t states = RADV_DYNAMIC_ALL;
 
    /* Disable dynamic states that are useless to mesh shading. */
@@ -1439,17 +1423,17 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
    }
 
    if (!pCreateInfo->pRasterizationState->depthBiasEnable &&
-       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE))
+       !(pipeline->graphics.dynamic_states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE))
       states &= ~RADV_DYNAMIC_DEPTH_BIAS;
 
    if (!pCreateInfo->pDepthStencilState ||
        (!pCreateInfo->pDepthStencilState->depthBoundsTestEnable &&
-        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE)))
+        !(pipeline->graphics.dynamic_states & RADV_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE)))
       states &= ~RADV_DYNAMIC_DEPTH_BOUNDS;
 
    if (!pCreateInfo->pDepthStencilState ||
        (!pCreateInfo->pDepthStencilState->stencilTestEnable &&
-        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE)))
+        !(pipeline->graphics.dynamic_states & RADV_DYNAMIC_STENCIL_TEST_ENABLE)))
       states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK | RADV_DYNAMIC_STENCIL_WRITE_MASK |
                   RADV_DYNAMIC_STENCIL_REFERENCE);
 
@@ -1472,10 +1456,10 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
 
    if (!vk_find_struct_const(pCreateInfo->pNext,
                              PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
-       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR))
+       !(pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
-   if (!has_color_att || !radv_pipeline_is_blend_enabled(pCreateInfo))
+   if (!has_color_att || !radv_pipeline_is_blend_enabled(pipeline, pCreateInfo))
       states &= ~RADV_DYNAMIC_BLEND_CONSTANTS;
 
    if (!has_color_att)
@@ -1597,12 +1581,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
    pipeline->dynamic_state = default_dynamic_state;
    pipeline->graphics.needed_dynamic_state = needed_states;
 
-   if (pCreateInfo->pDynamicState) {
-      /* Remove all of the states that are marked as dynamic */
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t s = 0; s < count; s++)
-         states &= ~radv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
-   }
+   states &= ~pipeline->graphics.dynamic_states;
 
    struct radv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
@@ -1876,7 +1855,7 @@ static void
 radv_pipeline_init_viewport_state(struct radv_pipeline *pipeline,
                                   const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   if (!radv_is_raster_enabled(pCreateInfo))
+   if (!radv_is_raster_enabled(pipeline, pCreateInfo))
       return;
 
    const VkPipelineViewportDepthClipControlCreateInfoEXT *depth_clip_control =
@@ -1892,7 +1871,7 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
                                        const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
-      radv_pipeline_get_depth_stencil_state(pCreateInfo);
+      radv_pipeline_get_depth_stencil_state(pipeline, pCreateInfo);
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
@@ -2962,18 +2941,11 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 
    key.has_multiview_view_index = render_create_info && !!render_create_info->viewMask;
 
-   if (pCreateInfo->pDynamicState) {
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t i = 0; i < count; i++) {
-         if (pCreateInfo->pDynamicState->pDynamicStates[i] == VK_DYNAMIC_STATE_VERTEX_INPUT_EXT) {
-            key.vs.dynamic_input_state = true;
-            /* we don't care about use_dynamic_stride in this case */
-            break;
-         } else if (pCreateInfo->pDynamicState->pDynamicStates[i] ==
-                    VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE) {
-            uses_dynamic_stride = true;
-         }
-      }
+   if (pipeline->graphics.dynamic_states & RADV_DYNAMIC_VERTEX_INPUT) {
+      /* we don't care about use_dynamic_stride in this case */
+      key.vs.dynamic_input_state = true;
+   } else if (pipeline->graphics.dynamic_states & RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE) {
+      uses_dynamic_stride = true;
    }
 
    if (!key.vs.dynamic_input_state && pCreateInfo->pVertexInputState) {
@@ -3062,7 +3034,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       key.tcs.tess_input_vertices = tess->patchControlPoints;
 
    const VkPipelineMultisampleStateCreateInfo *vkms =
-      radv_pipeline_get_multisample_state(pCreateInfo);
+      radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
    if (vkms && vkms->rasterizationSamples > 1) {
       uint32_t num_samples = vkms->rasterizationSamples;
       uint32_t ps_iter_samples = radv_pipeline_get_ps_iter_samples(pCreateInfo);
@@ -4853,7 +4825,7 @@ radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline,
    unsigned color_bytes_per_pixel = 0;
 
    const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pCreateInfo);
+      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
    if (vkblend) {
       for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
          if (!vkblend->pAttachments[i].colorWriteMask)
@@ -4930,7 +4902,7 @@ radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline,
    unsigned fmask_bytes_per_pixel = 0;
 
    const VkPipelineColorBlendStateCreateInfo *vkblend =
-      radv_pipeline_get_color_blend_state(pCreateInfo);
+      radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
    if (vkblend && render_create_info) {
       for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
          if (!vkblend->pAttachments[i].colorWriteMask)
@@ -5002,7 +4974,7 @@ radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
       const VkPipelineRenderingCreateInfo *render_create_info =
          vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
       const VkPipelineColorBlendStateCreateInfo *vkblend =
-         radv_pipeline_get_color_blend_state(pCreateInfo);
+         radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
       unsigned min_bytes_per_pixel = 0;
 
       if (vkblend && render_create_info) {
@@ -6139,7 +6111,7 @@ gfx103_pipeline_generate_vgt_draw_payload_cntl(struct radeon_cmdbuf *ctx_cs,
 
    bool enable_vrs =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
-      radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+      (pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
 
    /* Enables the second channel of the primitive export instruction.
     * This channel contains: VRS rate x, y, viewport and layer.
@@ -6179,7 +6151,7 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
    uint8_t rate_x = 0, rate_y = 0;
    bool enable_vrs =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
-      radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR);
+      (pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
 
    if (!enable_vrs && gfx103_pipeline_vrs_coarse_shading(pipeline)) {
       /* When per-draw VRS is not enabled at all, try enabling VRS coarse shading 2x2 if the driver
@@ -6460,6 +6432,15 @@ radv_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *device,
 
    pipeline->device = device;
    pipeline->graphics.last_vgt_api_stage = MESA_SHADER_NONE;
+
+   /* Mark all states declared dynamic at pipeline creation. */
+   if (pCreateInfo->pDynamicState) {
+      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+      for (uint32_t s = 0; s < count; s++) {
+         pipeline->graphics.dynamic_states |=
+            radv_dynamic_state_mask(pCreateInfo->pDynamicState->pDynamicStates[s]);
+      }
+   }
 
    struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo);
 
