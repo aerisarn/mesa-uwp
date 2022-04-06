@@ -60,9 +60,9 @@
 
 #include "spirv_to_dxil.h"
 
-#define DZN_SWAP(a, b) \
+#define DZN_SWAP(t, a, b) \
    do { \
-      auto __tmp = a; \
+      t __tmp = a; \
       a = b; \
       b = __tmp; \
    } while (0)
