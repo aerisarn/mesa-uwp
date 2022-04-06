@@ -64,7 +64,7 @@ download_skia_source
 pushd "${SKIA_DIR}"
 
 # Apply all skqp patches for Mesa CI
-cat "${SKQP_PATCH_DIR}"/*.patch |
+cat "${SKQP_PATCH_DIR}"/build-skqp_*.patch |
     patch -p1
 
 # Fetch some needed build tools needed to build skia/skqp.
