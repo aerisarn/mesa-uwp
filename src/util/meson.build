@@ -387,7 +387,8 @@ if with_tests
     # https://gitlab.freedesktop.org/mesa/mesa/-/issues/2788
     prog_winepath = find_program('winepath')
     process_test_exe_full_path = run_command(
-      prog_winepath, '-w', process_test_exe.full_path()
+      prog_winepath, '-w', process_test_exe.full_path(),
+      check : true
     ).stdout().strip()
   else
     process_test_exe_full_path = process_test_exe.full_path()
