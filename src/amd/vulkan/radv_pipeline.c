@@ -4539,11 +4539,11 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
       free(binaries[i]);
       if (nir[i]) {
-         ralloc_free(nir[i]);
-
-         if (radv_can_dump_shader_stats(device, modules[i])) {
+         if (radv_can_dump_shader_stats(device, nir[i]) && pipeline->shaders[i]) {
             radv_dump_shader_stats(device, pipeline, i, stderr);
          }
+
+         ralloc_free(nir[i]);
       }
    }
 

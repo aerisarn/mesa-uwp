@@ -581,7 +581,7 @@ unsigned radv_compute_spi_ps_input(const struct radv_device *device,
 
 bool radv_can_dump_shader(struct radv_device *device, nir_shader *nir, bool meta_shader);
 
-bool radv_can_dump_shader_stats(struct radv_device *device, struct vk_shader_module *module);
+bool radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir);
 
 VkResult radv_dump_shader_stats(struct radv_device *device, struct radv_pipeline *pipeline,
                                 gl_shader_stage stage, FILE *output);

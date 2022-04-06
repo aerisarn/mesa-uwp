@@ -136,11 +136,10 @@ radv_can_dump_shader(struct radv_device *device, nir_shader *nir, bool meta_shad
 }
 
 bool
-radv_can_dump_shader_stats(struct radv_device *device, struct vk_shader_module *module)
+radv_can_dump_shader_stats(struct radv_device *device, nir_shader *nir)
 {
    /* Only dump non-meta shader stats. */
-   return device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS && module &&
-          !is_meta_shader(module->nir);
+   return device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS && !is_meta_shader(nir);
 }
 
 void
