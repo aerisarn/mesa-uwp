@@ -370,9 +370,9 @@ struct tu_bo
    uint64_t size;
    uint64_t iova;
    void *map;
+   int32_t refcnt;
 
 #ifndef TU_USE_KGSL
-   int32_t refcnt;
    uint32_t bo_list_idx;
 #endif
 

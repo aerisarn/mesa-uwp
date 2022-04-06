@@ -109,6 +109,7 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo **out_bo, uint64_t size,
       .gem_handle = req.id,
       .size = req.mmapsize,
       .iova = req.gpuaddr,
+      .refcnt = 1,
    };
 
    *out_bo = bo;
@@ -156,6 +157,7 @@ tu_bo_init_dmabuf(struct tu_device *dev,
       .gem_handle = req.id,
       .size = info_req.size,
       .iova = info_req.gpuaddr,
+      .refcnt = 1,
    };
 
    *out_bo = bo;
@@ -192,6 +194,9 @@ void
 tu_bo_finish(struct tu_device *dev, struct tu_bo *bo)
 {
    assert(bo->gem_handle);
+
+   if (!p_atomic_dec_zero(&bo->refcnt))
+      return;
 
    if (bo->map)
       munmap(bo->map, bo->size);
