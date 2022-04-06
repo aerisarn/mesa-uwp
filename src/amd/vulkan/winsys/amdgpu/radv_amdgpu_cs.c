@@ -386,7 +386,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
          /* Re-compute the number of dwords to allocate. */
          ib_dws = MAX2(cs->base.cdw + min_size, MIN2(cs->base.max_dw * 2, limit_dws));
          if (ib_dws > limit_dws) {
-            fprintf(stderr, "amdgpu: Too high number of "
+            fprintf(stderr, "radv/amdgpu: Too high number of "
                             "dwords to allocate\n");
             cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
             return;
@@ -1552,7 +1552,7 @@ radv_amdgpu_ctx_create(struct radeon_winsys *_ws, enum radeon_ctx_priority prior
       result = VK_ERROR_NOT_PERMITTED_EXT;
       goto fail_create;
    } else if (r) {
-      fprintf(stderr, "amdgpu: radv_amdgpu_cs_ctx_create2 failed. (%i)\n", r);
+      fprintf(stderr, "radv/amdgpu: radv_amdgpu_cs_ctx_create2 failed. (%i)\n", r);
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail_create;
    }
@@ -1832,10 +1832,10 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
                                     request->handles, &bo_list);
       if (r) {
          if (r == -ENOMEM) {
-            fprintf(stderr, "amdgpu: Not enough memory for buffer list creation.\n");
+            fprintf(stderr, "radv/amdgpu: Not enough memory for buffer list creation.\n");
             result = VK_ERROR_OUT_OF_HOST_MEMORY;
          } else {
-            fprintf(stderr, "amdgpu: buffer list creation failed (%d).\n", r);
+            fprintf(stderr, "radv/amdgpu: buffer list creation failed (%d).\n", r);
             result = VK_ERROR_UNKNOWN;
          }
          goto error_out;
@@ -1858,10 +1858,10 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
 
    if (r) {
       if (r == -ENOMEM) {
-         fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
+         fprintf(stderr, "radv/amdgpu: Not enough memory for command submission.\n");
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
       } else if (r == -ECANCELED) {
-         fprintf(stderr, "amdgpu: The CS has been cancelled because the context is lost.\n");
+         fprintf(stderr, "radv/amdgpu: The CS has been cancelled because the context is lost.\n");
          result = VK_ERROR_DEVICE_LOST;
       } else {
          fprintf(stderr,
