@@ -287,7 +287,7 @@ radv_compiler_debug(void *private_data, enum radv_compiler_debug_level level, co
     * from the implementation and layers.
     */
    vk_debug_report(&instance->vk, vk_flags[level] | VK_DEBUG_REPORT_DEBUG_BIT_EXT,
-                   &debug_data->module->base, 0, 0, "radv", message);
+                   NULL, 0, 0, "radv", message);
 }
 
 static bool
@@ -1949,7 +1949,7 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
 
    struct radv_shader_debug_data debug_data = {
       .device = device,
-      .module = module,
+      .module = NULL,
    };
 
    options->family = chip_family;
