@@ -242,12 +242,62 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       rast_line_state.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT;
       rast_line_state.pNext = rast_state.pNext;
       rast_line_state.stippledLineEnable = VK_FALSE;
-      rast_line_state.lineRasterizationMode = hw_rast_state->line_mode;
+      rast_line_state.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+
+      bool check_warn = false;
+      switch (primitive_topology) {
+      case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+      case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+      case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+      case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+         check_warn = true;
+         break;
+      default: break;
+      }
+      if (prog->nir[PIPE_SHADER_TESS_EVAL]) {
+         check_warn |= !prog->nir[PIPE_SHADER_TESS_EVAL]->info.tess.point_mode &&
+                       prog->nir[PIPE_SHADER_TESS_EVAL]->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES;
+      }
+      if (prog->nir[PIPE_SHADER_GEOMETRY]) {
+         switch (prog->nir[PIPE_SHADER_GEOMETRY]->info.gs.output_primitive) {
+         case SHADER_PRIM_LINES:
+         case SHADER_PRIM_LINE_LOOP:
+         case SHADER_PRIM_LINE_STRIP:
+         case SHADER_PRIM_LINES_ADJACENCY:
+         case SHADER_PRIM_LINE_STRIP_ADJACENCY:
+            check_warn = true;
+            break;
+         default: break;
+         }
+      }
+
+      if (check_warn) {
+         const char *features[4][2] = {
+            [VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT] = {"",""},
+            [VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT] = {"rectangularLines", "stippledRectangularLines"},
+            [VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT] = {"bresenhamLines", "stippledBresenhamLines"},
+            [VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT] = {"smoothLines", "stippledSmoothLines"},
+         };
+         static bool warned[6] = {0};
+         const VkPhysicalDeviceLineRasterizationFeaturesEXT *line_feats = &screen->info.line_rast_feats;
+         /* line features can be represented as an array VkBool32[6],
+          * with the 3 base features preceding the 3 (matching) stippled features
+          */
+         const VkBool32 *feat = &line_feats->rectangularLines;
+         unsigned mode_idx = hw_rast_state->line_mode - VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+         /* add base mode index, add 3 if stippling is enabled */
+         mode_idx += hw_rast_state->line_stipple_enable * 3;
+         if (*(feat + mode_idx))
+            rast_line_state.lineRasterizationMode = hw_rast_state->line_mode;
+         else
+            warn_missing_feature(warned[mode_idx], features[hw_rast_state->line_mode][hw_rast_state->line_stipple_enable]);
+      }
 
       if (hw_rast_state->line_stipple_enable) {
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_LINE_STIPPLE_EXT;
          rast_line_state.stippledLineEnable = VK_TRUE;
       }
+
       rast_state.pNext = &rast_line_state;
    }
    assert(state_count < ARRAY_SIZE(dynamicStateEnables));
