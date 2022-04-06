@@ -3020,7 +3020,12 @@ iris_set_global_binding(struct pipe_context *ctx,
       if (resources && resources[i]) {
          pipe_resource_reference(&ice->state.global_bindings[start_slot + i],
                                  resources[i]);
+
          struct iris_resource *res = (void *) resources[i];
+         assert(res->base.b.target == PIPE_BUFFER);
+         util_range_add(&res->base.b, &res->valid_buffer_range,
+                        0, res->base.b.width0);
+
          uint64_t addr = res->bo->address + res->offset;
          memcpy(handles[i], &addr, sizeof(addr));
       } else {
