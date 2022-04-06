@@ -2193,15 +2193,15 @@ static void
 iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
 {
    struct iris_screen *screen = (struct iris_screen *) ice->ctx.screen;
+   struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    struct iris_shader_state *shs = &ice->state.shaders[stage];
-   const struct shader_info *info = iris_get_shader_info(ice, stage);
    struct iris_border_color_pool *border_color_pool =
       iris_bufmgr_get_border_color_pool(screen->bufmgr);
 
    /* We assume gallium frontends will call pipe->bind_sampler_states()
     * if the program's number of textures changes.
     */
-   unsigned count = info ? BITSET_LAST_BIT(info->samplers_used) : 0;
+   unsigned count = util_last_bit64(shader->bt.samplers_used_mask);
 
    if (!count)
       return;
@@ -4443,9 +4443,23 @@ KSP(const struct iris_compiled_shader *shader)
    return iris_bo_offset_from_base_address(res->bo) + shader->assembly.offset;
 }
 
+static uint32_t
+encode_sampler_count(const struct iris_compiled_shader *shader)
+{
+   uint32_t count = util_last_bit64(shader->bt.samplers_used_mask);
+   uint32_t count_by_4 = DIV_ROUND_UP(count, 4);
+
+   /* We can potentially have way more than 32 samplers and that's ok.
+    * However, the 3DSTATE_XS packets only have 3 bits to specify how
+    * many to pre-fetch and all values above 4 are marked reserved.
+    */
+   return MIN2(count_by_4, 4);
+}
+
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix, stage)                   \
    pkt.KernelStartPointer = KSP(shader);                                  \
    pkt.BindingTableEntryCount = shader->bt.size_bytes / 4;                \
+   pkt.SamplerCount = encode_sampler_count(shader);                       \
    pkt.FloatingPointMode = prog_data->use_alt_mode;                       \
                                                                           \
    pkt.DispatchGRFStartRegisterForURBData =                               \
@@ -4660,6 +4674,7 @@ iris_store_fs_state(const struct intel_device_info *devinfo,
    iris_pack_command(GENX(3DSTATE_PS), ps_state, ps) {
       ps.VectorMaskEnable = wm_prog_data->uses_vmask;
       ps.BindingTableEntryCount = shader->bt.size_bytes / 4;
+      ps.SamplerCount = encode_sampler_count(shader);
       ps.FloatingPointMode = prog_data->use_alt_mode;
       ps.MaximumNumberofThreadsPerPSD =
          devinfo->max_threads_per_psd - (GFX_VER == 8 ? 2 : 1);
@@ -4727,6 +4742,7 @@ iris_store_cs_state(const struct intel_device_info *devinfo,
 #endif
       desc.BarrierEnable = cs_prog_data->uses_barrier;
       desc.BindingTableEntryCount = MIN2(shader->bt.size_bytes / 4, 31);
+      desc.SamplerCount = encode_sampler_count(shader);
 #if GFX_VER >= 12
       /* TODO: Check if we are missing workarounds and enable mid-thread
        * preemption.
@@ -7193,6 +7209,7 @@ iris_upload_compute_walker(struct iris_context *ice,
             encode_slm_size(GFX_VER, prog_data->total_shared),
          .NumberOfBarriers = cs_prog_data->uses_barrier,
          .SamplerStatePointer = shs->sampler_table.offset,
+         .SamplerCount = encode_sampler_count(shader),
          .BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE],
          .BindingTableEntryCount = MIN2(shader->bt.size_bytes / 4, 31),
       };

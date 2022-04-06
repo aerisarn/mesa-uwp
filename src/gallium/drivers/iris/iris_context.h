@@ -477,6 +477,8 @@ struct iris_binding_table {
 
    /** Mask of surfaces used in each group. */
    uint64_t used_mask[IRIS_SURFACE_GROUP_COUNT];
+
+   uint64_t samplers_used_mask;
 };
 
 /**
