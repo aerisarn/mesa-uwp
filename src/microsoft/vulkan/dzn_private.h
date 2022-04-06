@@ -226,7 +226,7 @@ struct dzn_queue {
 
    ID3D12CommandQueue *cmdqueue;
    ID3D12Fence *fence;
-   uint64_t fence_point = 0;
+   uint64_t fence_point;
 };
 
 struct dzn_device {
@@ -766,8 +766,8 @@ struct dzn_image {
    struct vk_image vk;
 
    struct {
-      uint32_t row_stride = 0;
-      uint32_t size = 0;
+      uint32_t row_stride;
+      uint32_t size;
    } linear;
    D3D12_RESOURCE_DESC desc;
    ID3D12Resource *res;
@@ -883,7 +883,7 @@ struct dzn_framebuffer {
 struct dzn_sampler {
    struct vk_object_base base;
    D3D12_SAMPLER_DESC desc;
-   D3D12_STATIC_BORDER_COLOR static_border_color = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+   D3D12_STATIC_BORDER_COLOR static_border_color;
 };
 
 /* This is defined as a macro so that it works for both
