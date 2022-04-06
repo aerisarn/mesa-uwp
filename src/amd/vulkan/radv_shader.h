@@ -537,10 +537,10 @@ struct radv_shader *radv_shader_create(struct radv_device *device,
                                        bool keep_shader_info, bool from_cache,
                                        const struct radv_shader_args *args);
 struct radv_shader *radv_shader_compile(
-   struct radv_device *device, struct vk_shader_module *module, struct nir_shader *const *shaders,
-   int shader_count, const struct radv_pipeline_key *key, struct radv_shader_info *info,
-   const struct radv_shader_args *args, bool keep_shader_info, bool keep_statistic_info,
-   struct radv_shader_binary **binary_out);
+   struct radv_device *device, struct nir_shader *const *shaders, int shader_count,
+   const struct radv_pipeline_key *key,
+   struct radv_shader_info *info, const struct radv_shader_args *args, bool keep_shader_info,
+   bool keep_statistic_info, struct radv_shader_binary **binary_out);
 
 bool radv_shader_binary_upload(struct radv_device *device, const struct radv_shader_binary *binary,
                                struct radv_shader *shader, void *dest_ptr);

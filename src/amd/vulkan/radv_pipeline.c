@@ -4416,7 +4416,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
-   if (modules[MESA_SHADER_GEOMETRY] && !pipeline_has_ngg) {
+   if (nir[MESA_SHADER_GEOMETRY] && !pipeline_has_ngg) {
       struct radv_shader_info info = {0};
 
       if (infos[MESA_SHADER_GEOMETRY].vs.outinfo.export_clip_dists)
@@ -4440,59 +4440,71 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          keep_executable_info, keep_statistic_info, pipeline_key->optimisations_disabled);
    }
 
+   unsigned active_stages = 0;
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (nir[i])
+         active_stages |= (1 << i);
+   }
+
    if (nir[MESA_SHADER_FRAGMENT]) {
       if (!pipeline->shaders[MESA_SHADER_FRAGMENT]) {
          radv_start_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT]);
 
          pipeline->shaders[MESA_SHADER_FRAGMENT] = radv_shader_compile(
-            device, modules[MESA_SHADER_FRAGMENT], &nir[MESA_SHADER_FRAGMENT], 1,
+            device, &nir[MESA_SHADER_FRAGMENT], 1,
             pipeline_key, infos + MESA_SHADER_FRAGMENT, &args[MESA_SHADER_FRAGMENT],
             keep_executable_info, keep_statistic_info, &binaries[MESA_SHADER_FRAGMENT]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT], false);
       }
+
+      active_stages &= ~(1 << MESA_SHADER_FRAGMENT);
    }
 
-   if (device->physical_device->rad_info.chip_class >= GFX9 && modules[MESA_SHADER_TESS_CTRL]) {
+   if (device->physical_device->rad_info.chip_class >= GFX9 && nir[MESA_SHADER_TESS_CTRL]) {
       if (!pipeline->shaders[MESA_SHADER_TESS_CTRL]) {
          struct nir_shader *combined_nir[] = {nir[MESA_SHADER_VERTEX], nir[MESA_SHADER_TESS_CTRL]};
 
          radv_start_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL]);
 
          pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_compile(
-            device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline_key,
+            device, combined_nir, 2, pipeline_key,
             &infos[MESA_SHADER_TESS_CTRL], &args[MESA_SHADER_TESS_CTRL], keep_executable_info,
             keep_statistic_info, &binaries[MESA_SHADER_TESS_CTRL]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL], false);
       }
-      modules[MESA_SHADER_VERTEX] = NULL;
+
+      active_stages &= ~(1 << MESA_SHADER_VERTEX);
+      active_stages &= ~(1 << MESA_SHADER_TESS_CTRL);
    }
 
-   if (device->physical_device->rad_info.chip_class >= GFX9 && modules[MESA_SHADER_GEOMETRY]) {
+   if (device->physical_device->rad_info.chip_class >= GFX9 && nir[MESA_SHADER_GEOMETRY]) {
       gl_shader_stage pre_stage =
-         modules[MESA_SHADER_TESS_EVAL] ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
+         nir[MESA_SHADER_TESS_EVAL] ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
       if (!pipeline->shaders[MESA_SHADER_GEOMETRY]) {
          struct nir_shader *combined_nir[] = {nir[pre_stage], nir[MESA_SHADER_GEOMETRY]};
 
          radv_start_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY]);
 
          pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_compile(
-            device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline_key,
+            device, combined_nir, 2, pipeline_key,
             &infos[MESA_SHADER_GEOMETRY], &args[MESA_SHADER_GEOMETRY], keep_executable_info,
             keep_statistic_info, &binaries[MESA_SHADER_GEOMETRY]);
 
          radv_stop_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY], false);
       }
-      modules[pre_stage] = NULL;
+
+      active_stages &= ~(1 << pre_stage);
+      active_stages &= ~(1 << MESA_SHADER_GEOMETRY);
    }
 
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (modules[i] && !pipeline->shaders[i]) {
+   u_foreach_bit(i, active_stages) {
+      if (!pipeline->shaders[i]) {
          radv_start_feedback(stage_feedbacks[i]);
 
          pipeline->shaders[i] = radv_shader_compile(
-            device, modules[i], &nir[i], 1, pipeline_key, infos + i, &args[i],
+            device, &nir[i], 1, pipeline_key, infos + i, &args[i],
             keep_executable_info, keep_statistic_info, &binaries[i]);
 
          radv_stop_feedback(stage_feedbacks[i], false);
