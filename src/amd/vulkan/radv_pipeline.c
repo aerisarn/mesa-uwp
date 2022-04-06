@@ -121,8 +121,7 @@ radv_pipeline_has_ds_attachments(const VkGraphicsPipelineCreateInfo *pCreateInfo
 {
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
-   return render_create_info &&
-          (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
+   return (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
            render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED);
 }
 
@@ -143,11 +142,9 @@ radv_pipeline_has_color_attachments(const VkGraphicsPipelineCreateInfo *pCreateI
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
 
-   if (render_create_info) {
-      for (uint32_t i = 0; i < render_create_info->colorAttachmentCount; ++i) {
-         if (render_create_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED)
-            return true;
-      }
+   for (uint32_t i = 0; i < render_create_info->colorAttachmentCount; ++i) {
+      if (render_create_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED)
+         return true;
    }
 
    return false;
@@ -534,27 +531,25 @@ radv_pipeline_compute_spi_color_formats(const struct radv_pipeline *pipeline,
    unsigned col_format = 0, is_int8 = 0, is_int10 = 0;
    unsigned num_targets;
 
-   if (render_create_info) {
-      for (unsigned i = 0; i < render_create_info->colorAttachmentCount; ++i) {
-         unsigned cf;
-         VkFormat fmt = render_create_info->pColorAttachmentFormats[i];
+   for (unsigned i = 0; i < render_create_info->colorAttachmentCount; ++i) {
+      unsigned cf;
+      VkFormat fmt = render_create_info->pColorAttachmentFormats[i];
 
-         if (fmt == VK_FORMAT_UNDEFINED || !(blend->cb_target_mask & (0xfu << (i * 4)))) {
-            cf = V_028714_SPI_SHADER_ZERO;
-         } else {
-            bool blend_enable = blend->blend_enable_4bit & (0xfu << (i * 4));
+      if (fmt == VK_FORMAT_UNDEFINED || !(blend->cb_target_mask & (0xfu << (i * 4)))) {
+         cf = V_028714_SPI_SHADER_ZERO;
+      } else {
+         bool blend_enable = blend->blend_enable_4bit & (0xfu << (i * 4));
 
-            cf = radv_choose_spi_color_format(pipeline->device, fmt, blend_enable,
-                                              blend->need_src_alpha & (1 << i));
+         cf = radv_choose_spi_color_format(pipeline->device, fmt, blend_enable,
+                                           blend->need_src_alpha & (1 << i));
 
-            if (format_is_int8(fmt))
-               is_int8 |= 1 << i;
-            if (format_is_int10(fmt))
-               is_int10 |= 1 << i;
-         }
-
-         col_format |= cf << (4 * i);
+         if (format_is_int8(fmt))
+            is_int8 |= 1 << i;
+         if (format_is_int10(fmt))
+            is_int10 |= 1 << i;
       }
+
+      col_format |= cf << (4 * i);
    }
 
    if (!(col_format & 0xf) && blend->need_src_alpha & (1 << 0)) {
@@ -863,7 +858,7 @@ radv_pipeline_color_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
       vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
-   if (sample_info && render_create_info && sample_info->colorAttachmentCount > 0) {
+   if (sample_info && sample_info->colorAttachmentCount > 0) {
       unsigned samples = 1;
       for (uint32_t i = 0; i < sample_info->colorAttachmentCount; ++i) {
          if (render_create_info->pColorAttachmentFormats[i] != VK_FORMAT_UNDEFINED) {
@@ -883,7 +878,7 @@ radv_pipeline_depth_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
       vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
-   if (sample_info && render_create_info) {
+   if (sample_info) {
       if (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
           render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED) {
          return sample_info->depthStencilAttachmentSamples;
@@ -1004,8 +999,7 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
    struct radv_dsa_order_invariance dsa_order_invariant = {.zs = true, .pass_set = true};
 
    if (vkds) {
-      bool has_stencil =
-         render_create_info && render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
+      bool has_stencil = render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
       struct radv_dsa_order_invariance order_invariance[2];
       struct radv_shader *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 
@@ -1878,10 +1872,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
    struct radv_depth_stencil_state ds_state = {0};
    uint32_t db_depth_control = 0;
 
-   bool has_depth_attachment =
-      render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
-   bool has_stencil_attachment =
-      render_create_info && render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
+   bool has_depth_attachment = render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
+   bool has_stencil_attachment = render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
 
    if (ds_info) {
       if (has_depth_attachment) {
@@ -2939,7 +2931,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
       key.optimisations_disabled = 1;
 
-   key.has_multiview_view_index = render_create_info && !!render_create_info->viewMask;
+   key.has_multiview_view_index = !!render_create_info->viewMask;
 
    if (pipeline->graphics.dynamic_states & RADV_DYNAMIC_VERTEX_INPUT) {
       /* we don't care about use_dynamic_stride in this case */
@@ -4903,7 +4895,7 @@ radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline,
 
    const VkPipelineColorBlendStateCreateInfo *vkblend =
       radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
-   if (vkblend && render_create_info) {
+   if (vkblend) {
       for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
          if (!vkblend->pAttachments[i].colorWriteMask)
             continue;
@@ -4977,7 +4969,7 @@ radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
          radv_pipeline_get_color_blend_state(pipeline, pCreateInfo);
       unsigned min_bytes_per_pixel = 0;
 
-      if (vkblend && render_create_info) {
+      if (vkblend) {
          for (unsigned i = 0; i < render_create_info->colorAttachmentCount; i++) {
             if (!vkblend->pAttachments[i].colorWriteMask)
                continue;
@@ -6380,10 +6372,8 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
    const VkPipelineRenderingCreateInfo *render_create_info =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
 
-   bool has_depth_attachment =
-      render_create_info && render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
-   bool has_stencil_attachment =
-      render_create_info && render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
+   bool has_depth_attachment = render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
+   bool has_stencil_attachment = render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
 
    if (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
        extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
@@ -6412,7 +6402,7 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
          *vgt_gs_out_prim_type = V_028A6C_RECTLIST;
    }
 
-   if (render_create_info && (has_depth_attachment || has_stencil_attachment)) {
+   if (has_depth_attachment || has_stencil_attachment) {
       ds_state->db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
       ds_state->db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
       ds_state->db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
