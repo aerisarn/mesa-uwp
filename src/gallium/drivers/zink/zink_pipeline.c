@@ -128,8 +128,10 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    ms_state.rasterizationSamples = state->rast_samples + 1;
    if (state->blend_state) {
       ms_state.alphaToCoverageEnable = state->blend_state->alpha_to_coverage;
-      if (state->blend_state->alpha_to_one && !screen->info.feats.features.alphaToOne)
-         warn_missing_feature("alphaToOne");
+      if (state->blend_state->alpha_to_one && !screen->info.feats.features.alphaToOne) {
+         static bool warned = false;
+         warn_missing_feature(warned, "alphaToOne");
+      }
       ms_state.alphaToOneEnable = state->blend_state->alpha_to_one;
    }
    /* "If pSampleMask is NULL, it is treated as if the mask has all bits set to 1."

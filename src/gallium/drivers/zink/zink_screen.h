@@ -282,9 +282,8 @@ zink_screen_init_descriptor_funcs(struct zink_screen *screen, bool fallback);
 void
 zink_stub_function_not_loaded(void);
 
-#define warn_missing_feature(feat) \
+#define warn_missing_feature(warned, feat) \
    do { \
-      static bool warned = false; \
       if (!warned) { \
          mesa_logw("WARNING: Incorrect rendering will happen, " \
                          "because the Vulkan device doesn't support " \
