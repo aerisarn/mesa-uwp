@@ -2000,17 +2000,6 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
 
    if (keep_shader_info) {
       shader->nir_string = radv_dump_nir_shaders(shaders, shader_count);
-      if (!gs_copy_shader && !trap_handler_shader && !module->nir) {
-         shader->spirv = malloc(module->size);
-         if (!shader->spirv) {
-            free(shader);
-            free(binary);
-            return NULL;
-         }
-
-         memcpy(shader->spirv, module->data, module->size);
-         shader->spirv_size = module->size;
-      }
    }
 
    /* Copy the shader binary configuration to store it in the cache. */

@@ -4497,6 +4497,21 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
+   if (keep_executable_info) {
+      for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
+         struct radv_shader *shader = pipeline->shaders[i];
+         if (!shader)
+            continue;
+
+         if (!modules[i] || modules[i]->nir)
+            continue;
+
+         shader->spirv = malloc(modules[i]->size);
+         memcpy(shader->spirv, modules[i]->data, modules[i]->size);
+         shader->spirv_size = modules[i]->size;
+      }
+   }
+
    /* Upload shader binaries. */
    radv_upload_shaders(device, pipeline, binaries, gs_copy_binary);
 
