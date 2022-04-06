@@ -876,11 +876,8 @@ radv_pipeline_depth_samples(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkAttachmentSampleCountInfoAMD *sample_info =
       vk_find_struct_const(pCreateInfo->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
-   const VkPipelineRenderingCreateInfo *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    if (sample_info) {
-      if (render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED ||
-          render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED) {
+      if (radv_pipeline_has_ds_attachments(pCreateInfo)) {
          return sample_info->depthStencilAttachmentSamples;
       }
    }
@@ -6369,12 +6366,6 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
                          struct radv_depth_stencil_state *ds_state,
                          uint32_t *vgt_gs_out_prim_type)
 {
-   const VkPipelineRenderingCreateInfo *render_create_info =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
-
-   bool has_depth_attachment = render_create_info->depthAttachmentFormat != VK_FORMAT_UNDEFINED;
-   bool has_stencil_attachment = render_create_info->stencilAttachmentFormat != VK_FORMAT_UNDEFINED;
-
    if (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
        extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
        extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS ||
@@ -6402,7 +6393,7 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
          *vgt_gs_out_prim_type = V_028A6C_RECTLIST;
    }
 
-   if (has_depth_attachment || has_stencil_attachment) {
+   if (radv_pipeline_has_ds_attachments(pCreateInfo)) {
       ds_state->db_render_control |= S_028000_DEPTH_CLEAR_ENABLE(extra->db_depth_clear);
       ds_state->db_render_control |= S_028000_STENCIL_CLEAR_ENABLE(extra->db_stencil_clear);
       ds_state->db_render_control |= S_028000_RESUMMARIZE_ENABLE(extra->resummarize_enable);
