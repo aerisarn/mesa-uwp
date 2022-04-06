@@ -65,7 +65,7 @@ struct tgsi_transform_context
 
    /**
     * Called at end of input program to allow caller to append extra
-    * instructions.  Return number of tokens emitted.
+    * instructions.
     */
    void (*epilog)(struct tgsi_transform_context *ctx);
 
