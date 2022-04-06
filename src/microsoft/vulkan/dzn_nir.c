@@ -151,20 +151,21 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
    nir_ssa_def *base_instance =
       indexed ? draw_info2 : nir_channel(&b, draw_info1, 3);
 
-   nir_ssa_def *exec_vals[7] = {
+   nir_ssa_def *exec_vals[8] = {
       first_vertex,
       base_instance,
+      index,
    };
 
    if (triangle_fan) {
       /* Patch {vertex,index}_count and first_index */
       nir_ssa_def *triangle_count =
          nir_usub_sat(&b, nir_channel(&b, draw_info1, 0), nir_imm_int(&b, 2));
-      exec_vals[2] = nir_imul_imm(&b, triangle_count, 3);
-      exec_vals[3] = nir_channel(&b, draw_info1, 1);
-      exec_vals[4] = nir_imm_int(&b, 0);
-      exec_vals[5] = first_vertex;
-      exec_vals[6] = base_instance;
+      exec_vals[3] = nir_imul_imm(&b, triangle_count, 3);
+      exec_vals[4] = nir_channel(&b, draw_info1, 1);
+      exec_vals[5] = nir_imm_int(&b, 0);
+      exec_vals[6] = first_vertex;
+      exec_vals[7] = base_instance;
 
       nir_ssa_def *triangle_fan_exec_buf_desc =
          dzn_nir_create_bo_desc(&b, nir_var_mem_ssbo, 0, 3,
@@ -174,6 +175,7 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
       nir_ssa_def *triangle_fan_index_buf_addr_lo =
          nir_iadd(&b, nir_channel(&b, params, 2),
                   nir_imul(&b, triangle_fan_index_buf_stride, index));
+
       nir_ssa_def *addr_lo_overflow =
          nir_ult(&b, triangle_fan_index_buf_addr_lo, nir_channel(&b, params, 2));
       nir_ssa_def *triangle_fan_index_buf_addr_hi =
@@ -213,22 +215,22 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
 
       nir_store_ssbo(&b, nir_vec(&b, ibview_vals, ARRAY_SIZE(ibview_vals)),
                      exec_buf_desc, exec_offset,
-                     .write_mask = 0x3, .access = ACCESS_NON_READABLE, .align_mul = 4);
+                     .write_mask = 0xf, .access = ACCESS_NON_READABLE, .align_mul = 16);
       exec_offset = nir_iadd_imm(&b, exec_offset, ARRAY_SIZE(ibview_vals) * 4);
    } else {
-      exec_vals[2] = nir_channel(&b, draw_info1, 0);
-      exec_vals[3] = nir_channel(&b, draw_info1, 1);
-      exec_vals[4] = nir_channel(&b, draw_info1, 2);
-      exec_vals[5] = nir_channel(&b, draw_info1, 3);
-      exec_vals[6] = draw_info2;
+      exec_vals[3] = nir_channel(&b, draw_info1, 0);
+      exec_vals[4] = nir_channel(&b, draw_info1, 1);
+      exec_vals[5] = nir_channel(&b, draw_info1, 2);
+      exec_vals[6] = nir_channel(&b, draw_info1, 3);
+      exec_vals[7] = draw_info2;
    }
 
    nir_store_ssbo(&b, nir_vec(&b, exec_vals, 4),
                   exec_buf_desc, exec_offset,
-                  .write_mask = 0xf, .access = ACCESS_NON_READABLE, .align_mul = 4);
-   nir_store_ssbo(&b, nir_vec(&b, &exec_vals[4], 3),
+                  .write_mask = 0xf, .access = ACCESS_NON_READABLE, .align_mul = 16);
+   nir_store_ssbo(&b, nir_vec(&b, &exec_vals[4], 4),
                   exec_buf_desc, nir_iadd_imm(&b, exec_offset, 16),
-                  .write_mask = 7, .access = ACCESS_NON_READABLE, .align_mul = 4);
+                  .write_mask = 0xf, .access = ACCESS_NON_READABLE, .align_mul = 16);
 
 
    return b.shader;

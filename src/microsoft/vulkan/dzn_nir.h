@@ -59,6 +59,7 @@ struct dzn_indirect_draw_exec_params {
    struct {
       uint32_t first_vertex;
       uint32_t base_instance;
+      uint32_t draw_id;
    } sysvals;
    union {
       struct dzn_indirect_draw_params draw;
@@ -71,6 +72,7 @@ struct dzn_indirect_triangle_fan_draw_exec_params {
    struct {
       uint32_t first_vertex;
       uint32_t base_instance;
+      uint32_t draw_id;
    } sysvals;
    union {
       struct dzn_indirect_draw_params draw;
