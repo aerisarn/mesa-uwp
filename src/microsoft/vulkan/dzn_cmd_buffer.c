@@ -2785,10 +2785,13 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    assert((draw_buf_stride & 3) == 0);
 
    uint32_t sysvals_stride = ALIGN_POT(sizeof(cmdbuf->state.sysvals.gfx), 256);
-   uint32_t exec_buf_stride = 32;
    uint32_t triangle_fan_index_buf_stride =
       dzn_cmd_buffer_triangle_fan_get_max_index_buf_size(cmdbuf, indexed) *
       sizeof(uint32_t);
+   uint32_t exec_buf_stride =
+      triangle_fan_index_buf_stride > 0 ?
+      sizeof(struct dzn_indirect_triangle_fan_draw_exec_params) :
+      sizeof(struct dzn_indirect_draw_exec_params);
    uint32_t triangle_fan_exec_buf_stride =
       sizeof(struct dzn_indirect_triangle_fan_rewrite_index_exec_params);
    ID3D12Resource *exec_buf;

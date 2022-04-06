@@ -129,7 +129,10 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
                    .align_mul = 4, .align_offset = 0, .range_base = 0, .range = ~0);
 
    nir_ssa_def *draw_stride = nir_channel(&b, params, 0);
-   nir_ssa_def *exec_stride = nir_imm_int(&b, sizeof(struct dzn_indirect_draw_exec_params));
+   nir_ssa_def *exec_stride =
+      triangle_fan ?
+      nir_imm_int(&b, sizeof(struct dzn_indirect_triangle_fan_draw_exec_params)) :
+      nir_imm_int(&b, sizeof(struct dzn_indirect_draw_exec_params));
    nir_ssa_def *index =
       nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
 
