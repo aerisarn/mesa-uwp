@@ -1179,7 +1179,6 @@ spec@arb_transform_feedback2@change objects while paused,Crash
 spec@arb_transform_feedback3@arb_transform_feedback3-ext_interleaved_two_bufs_gs,Crash
 spec@arb_transform_feedback3@arb_transform_feedback3-ext_interleaved_two_bufs_gs_max,Crash
 spec@arb_transform_feedback3@arb_transform_feedback3-ext_interleaved_two_bufs_vs,Crash
-spec@egl 1.4@egl-copy-buffers,Fail
 
 # error: main:90: eglChooseConfig() returned no configs
 spec@egl 1.4@eglterminate then unbind context,Fail

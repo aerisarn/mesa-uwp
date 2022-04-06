@@ -115,7 +115,6 @@ spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
 
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 
-spec@egl 1.4@egl-copy-buffers,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
 
 # No such file or directory (os error 2)

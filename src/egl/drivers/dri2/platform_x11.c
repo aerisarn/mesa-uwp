@@ -860,7 +860,10 @@ dri2_copy_region(_EGLDisplay *disp,
    if (draw->Type == EGL_PIXMAP_BIT || draw->Type == EGL_PBUFFER_BIT)
       return EGL_TRUE;
 
-   dri2_dpy->flush->flush(dri2_surf->dri_drawable);
+   if (dri2_dpy->flush)
+      dri2_dpy->flush->flush(dri2_surf->dri_drawable);
+   else
+      dri2_dpy->core->swapBuffers(dri2_surf->dri_drawable);
 
    if (dri2_surf->have_fake_front)
       render_attachment = XCB_DRI2_ATTACHMENT_BUFFER_FAKE_FRONT_LEFT;
@@ -1008,7 +1011,10 @@ dri2_x11_copy_buffers(_EGLDisplay *disp, _EGLSurface *surf, void *native_pixmap_
    STATIC_ASSERT(sizeof(uintptr_t) == sizeof(native_pixmap_target));
    target = (uintptr_t) native_pixmap_target;
 
-   dri2_dpy->flush->flush(dri2_surf->dri_drawable);
+   if (dri2_dpy->flush)
+      dri2_dpy->flush->flush(dri2_surf->dri_drawable);
+   else
+      dri2_dpy->core->swapBuffers(dri2_surf->dri_drawable);
 
    gc = xcb_generate_id(dri2_dpy->conn);
    xcb_create_gc(dri2_dpy->conn, gc, target, 0, NULL);
@@ -1171,6 +1177,9 @@ static const struct dri2_egl_display_vtbl dri2_x11_swrast_display_vtbl = {
    .destroy_surface = dri2_x11_destroy_surface,
    .create_image = dri2_create_image_khr,
    .swap_buffers = dri2_x11_swap_buffers,
+   .swap_buffers_region = dri2_x11_swap_buffers_region,
+   .post_sub_buffer = dri2_x11_post_sub_buffer,
+   .copy_buffers = dri2_x11_copy_buffers,
    /* XXX: should really implement this since X11 has pixmaps */
    .query_surface = dri2_query_surface,
    .get_dri_drawable = dri2_surface_get_dri_drawable,
