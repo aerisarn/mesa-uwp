@@ -285,9 +285,9 @@ zink_stub_function_not_loaded(void);
 #define warn_missing_feature(warned, feat) \
    do { \
       if (!warned) { \
-         mesa_logw("WARNING: Incorrect rendering will happen, " \
+         mesa_logw("WARNING: Incorrect rendering will happen " \
                          "because the Vulkan device doesn't support " \
-                         "the %s feature\n", feat); \
+                         "the '%s' feature\n", feat); \
          warned = true; \
       } \
    } while (0)
