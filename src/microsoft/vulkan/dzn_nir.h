@@ -79,10 +79,7 @@ struct dzn_indirect_triangle_fan_draw_exec_params {
 };
 
 struct dzn_triangle_fan_rewrite_index_params {
-   union {
-      uint32_t first_index;
-      uint32_t first_vertex;
-   };
+   uint32_t first_index;
 };
 
 struct dzn_indirect_triangle_fan_rewrite_index_exec_params {
