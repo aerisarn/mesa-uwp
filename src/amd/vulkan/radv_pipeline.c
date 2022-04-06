@@ -4410,8 +4410,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
-      if (radv_can_dump_shader(device, modules[i], false))
-         nir_print_shader(nir[i], stderr);
+      if (nir[i]) {
+         if (radv_can_dump_shader(device, nir[i], false))
+            nir_print_shader(nir[i], stderr);
+      }
    }
 
    if (modules[MESA_SHADER_GEOMETRY] && !pipeline_has_ngg) {

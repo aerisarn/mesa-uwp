@@ -579,8 +579,7 @@ const char *radv_get_shader_name(const struct radv_shader_info *info, gl_shader_
 unsigned radv_compute_spi_ps_input(const struct radv_device *device,
                                    const struct radv_shader_info *info);
 
-bool radv_can_dump_shader(struct radv_device *device, struct vk_shader_module *module,
-                          bool meta_shader);
+bool radv_can_dump_shader(struct radv_device *device, nir_shader *nir, bool meta_shader);
 
 bool radv_can_dump_shader_stats(struct radv_device *device, struct vk_shader_module *module);
 

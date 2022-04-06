@@ -123,16 +123,16 @@ is_meta_shader(nir_shader *nir)
 }
 
 bool
-radv_can_dump_shader(struct radv_device *device, struct vk_shader_module *module,
-                     bool meta_shader)
+radv_can_dump_shader(struct radv_device *device, nir_shader *nir, bool meta_shader)
 {
    if (!(device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS))
       return false;
-   if (module)
-      return !is_meta_shader(module->nir) ||
-             (device->instance->debug_flags & RADV_DEBUG_DUMP_META_SHADERS);
 
-   return meta_shader;
+   if ((is_meta_shader(nir) || meta_shader) &&
+       !(device->instance->debug_flags & RADV_DEBUG_DUMP_META_SHADERS))
+      return false;
+
+   return true;
 }
 
 bool
@@ -1956,7 +1956,7 @@ shader_compile(struct radv_device *device, struct vk_shader_module *module,
    options->family = chip_family;
    options->chip_class = device->physical_device->rad_info.chip_class;
    options->info = &device->physical_device->rad_info;
-   options->dump_shader = radv_can_dump_shader(device, module, gs_copy_shader || trap_handler_shader);
+   options->dump_shader = radv_can_dump_shader(device, shaders[0], gs_copy_shader || trap_handler_shader);
    options->dump_preoptir =
       options->dump_shader && device->instance->debug_flags & RADV_DEBUG_PREOPTIR;
    options->record_ir = keep_shader_info;
