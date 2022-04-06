@@ -2,13 +2,18 @@
 
 set -ex
 
-CROSVM_VERSION=f904b0ee258554bca9fed1b633b79e6d96003cf0
-git clone --single-branch -b for-mesa-ci --no-checkout https://gitlab.freedesktop.org/tintou/crosvm.git /platform/crosvm
+SCRIPT_DIR="$(pwd)"
+
+CROSVM_VERSION=c7cd0e0114c8363b884ba56d8e12adee718dcc93
+git clone --single-branch -b main --no-checkout https://chromium.googlesource.com/chromiumos/platform/crosvm /platform/crosvm
 pushd /platform/crosvm
 git checkout "$CROSVM_VERSION"
 git submodule update --init
+# Apply all crosvm patches for Mesa CI
+cat "$SCRIPT_DIR"/.gitlab-ci/container/build-crosvm_*.patch |
+    patch -p1
 
-VIRGLRENDERER_VERSION=45070fae92d25a726d9ce10fc22c1f92270ecd35
+VIRGLRENDERER_VERSION=0564c9a0c2f584e004a7d4864aee3b8ec9692105
 rm -rf third_party/virglrenderer
 git clone --single-branch -b master --no-checkout https://gitlab.freedesktop.org/virgl/virglrenderer.git third_party/virglrenderer
 pushd third_party/virglrenderer
