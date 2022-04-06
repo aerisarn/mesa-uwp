@@ -1175,7 +1175,24 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   assert(templ->target == PIPE_BUFFER);
+   assert(templ->target == PIPE_BUFFER ||
+          templ->target == PIPE_TEXTURE_1D ||
+          templ->target == PIPE_TEXTURE_2D);
+
+   size_t res_size = templ->width0;
+   if (templ->target != PIPE_BUFFER) {
+      const uint32_t row_pitch_B =
+         templ->width0 * util_format_get_blocksize(templ->format);
+      res_size = templ->height0 * row_pitch_B;
+
+      if (!iris_resource_configure_main(screen, res, templ,
+                                        DRM_FORMAT_MOD_LINEAR,
+                                        row_pitch_B)) {
+         iris_resource_destroy(pscreen, &res->base.b);
+         return NULL;
+      }
+      assert(res->surf.size_B <= res_size);
+   }
 
    /* The userptr ioctl only works on whole pages.  Because we know that
     * things will exist in memory at a page granularity, we can expand the
@@ -1187,7 +1204,7 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    assert(util_is_power_of_two_nonzero(page_size));
    size_t offset = (uintptr_t)user_memory & (page_size - 1);
    void *mem_start = (char *)user_memory - offset;
-   size_t mem_size = offset + templ->width0;
+   size_t mem_size = offset + res_size;
    mem_size = ALIGN_NPOT(mem_size, page_size);
 
    res->internal_format = templ->format;
