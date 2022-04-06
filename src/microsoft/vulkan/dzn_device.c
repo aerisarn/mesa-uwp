@@ -78,7 +78,7 @@ static const struct vk_instance_extension_table instance_extensions = {
 static void
 dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 {
-   pdev->vk.supported_extensions = vk_device_extension_table {
+   pdev->vk.supported_extensions = (struct vk_device_extension_table) {
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
 #endif
@@ -293,7 +293,7 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_ARCHITECTURE1, &pdev->architecture, sizeof(pdev->architecture));
    ID3D12Device1_CheckFeatureSupport(pdev->dev, D3D12_FEATURE_D3D12_OPTIONS, &pdev->options, sizeof(pdev->options));
 
-   pdev->queue_families[pdev->queue_family_count++] = {
+   pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
       .props = {
          .queueFlags = VK_QUEUE_GRAPHICS_BIT |
                        VK_QUEUE_COMPUTE_BIT |
@@ -307,7 +307,7 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
       },
    };
 
-   pdev->queue_families[pdev->queue_family_count++] = {
+   pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
       .props = {
          .queueFlags = VK_QUEUE_COMPUTE_BIT |
                        VK_QUEUE_TRANSFER_BIT,
@@ -320,7 +320,7 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
       },
    };
 
-   pdev->queue_families[pdev->queue_family_count++] = {
+   pdev->queue_families[pdev->queue_family_count++] = (struct dzn_queue_family) {
       .props = {
          .queueFlags = VK_QUEUE_TRANSFER_BIT,
          .queueCount = 1,
@@ -343,8 +343,8 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
 
    ID3D12CommandQueue *cmdqueue;
    ID3D12Device1_CreateCommandQueue(pdev->dev, &queue_desc,
-                                    IID_ID3D12CommandQueue,
-                                    (void **)&cmdqueue);
+                                    &IID_ID3D12CommandQueue,
+                                    &cmdqueue);
 
    uint64_t ts_freq;
    ID3D12CommandQueue_GetTimestampFrequency(cmdqueue, &ts_freq);
@@ -359,17 +359,17 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
    const DXGI_ADAPTER_DESC1 *desc = &pdev->adapter_desc;
 
    mem->memoryHeapCount = 1;
-   mem->memoryHeaps[0] = VkMemoryHeap {
+   mem->memoryHeaps[0] = (VkMemoryHeap) {
       .size = desc->SharedSystemMemory,
       .flags = 0,
    };
 
-   mem->memoryTypes[mem->memoryTypeCount++] = VkMemoryType {
+   mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
       .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
       .heapIndex = 0,
    };
-   mem->memoryTypes[mem->memoryTypeCount++] = VkMemoryType {
+   mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
       .propertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                        VK_MEMORY_PROPERTY_HOST_CACHED_BIT |
                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -377,11 +377,11 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
    };
 
    if (!pdev->architecture.UMA) {
-      mem->memoryHeaps[mem->memoryHeapCount++] = VkMemoryHeap {
+      mem->memoryHeaps[mem->memoryHeapCount++] = (VkMemoryHeap) {
          .size = desc->DedicatedVideoMemory,
          .flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT,
       };
-      mem->memoryTypes[mem->memoryTypeCount++] = VkMemoryType {
+      mem->memoryTypes[mem->memoryTypeCount++] = (VkMemoryType) {
          .propertyFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
          .heapIndex = mem->memoryHeapCount - 1,
       };
@@ -559,13 +559,13 @@ dzn_physical_device_get_format_properties(struct dzn_physical_device *pdev,
    }
 
    if (dfmt_info.Format == DXGI_FORMAT_UNKNOWN) {
-      *base_props = VkFormatProperties { };
+      *base_props = (VkFormatProperties) { 0 };
       return;
    }
 
    ID3D12Device1 *dev = dzn_physical_device_get_d3d12_dev(pdev);
 
-   *base_props = VkFormatProperties {
+   *base_props = (VkFormatProperties) {
       .linearTilingFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT,
       .optimalTilingFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT,
       .bufferFeatures = VK_FORMAT_FEATURE_TRANSFER_SRC_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT,
@@ -657,7 +657,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
    VkExternalImageFormatProperties *external_props = NULL;
 
-   *properties = VkImageFormatProperties2 {
+   *properties = (VkImageFormatProperties2) {
       .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
    };
 
@@ -857,7 +857,7 @@ dzn_GetPhysicalDeviceImageFormatProperties(VkPhysicalDevice physicalDevice,
       .flags = createFlags,
    };
 
-   VkImageFormatProperties2 props = {};
+   VkImageFormatProperties2 props = { 0 };
 
    VkResult result =
       dzn_GetPhysicalDeviceImageFormatProperties2(physicalDevice, &info, &props);
@@ -894,7 +894,7 @@ dzn_GetPhysicalDeviceExternalBufferProperties(VkPhysicalDevice physicalDevice,
                                               VkExternalBufferProperties *pExternalBufferProperties)
 {
    pExternalBufferProperties->externalMemoryProperties =
-      VkExternalMemoryProperties {
+      (VkExternalMemoryProperties) {
          .compatibleHandleTypes = (VkExternalMemoryHandleTypeFlags)pExternalBufferInfo->handleType,
       };
 }
@@ -960,7 +960,7 @@ dzn_physical_device_supports_compressed_format(struct dzn_physical_device *pdev,
          VK_FORMAT_FEATURE_BLIT_SRC_BIT | \
          VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)
    for (uint32_t i = 0; i < format_count; i++) {
-      VkFormatProperties2 props = {};
+      VkFormatProperties2 props = { 0 };
       dzn_physical_device_get_format_properties(pdev, formats[i], &props);
       if ((props.formatProperties.optimalTilingFeatures & REQUIRED_COMPRESSED_CAPS) != REQUIRED_COMPRESSED_CAPS)
          return false;
@@ -1000,7 +1000,7 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 {
    VK_FROM_HANDLE(dzn_physical_device, pdev, physicalDevice);
 
-   pFeatures->features = VkPhysicalDeviceFeatures {
+   pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true, /* This feature is mandatory */
       .fullDrawIndexUint32 = false,
       .imageCubeArray = true,
@@ -1296,7 +1296,7 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       devtype = VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
    }
 
-   pProperties->properties = VkPhysicalDeviceProperties {
+   pProperties->properties = (VkPhysicalDeviceProperties) {
       .apiVersion = DZN_API_VERSION,
       .driverVersion = vk_get_driver_version(),
 
@@ -1548,15 +1548,15 @@ dzn_queue_init(struct dzn_queue *queue,
    queue_desc.NodeMask = 0;
 
    if (FAILED(ID3D12Device1_CreateCommandQueue(device->dev, &queue_desc,
-                                               IID_ID3D12CommandQueue,
-                                               (void **)&queue->cmdqueue))) {
+                                               &IID_ID3D12CommandQueue,
+                                               &queue->cmdqueue))) {
       dzn_queue_finish(queue);
       return vk_error(device->vk.physical->instance, VK_ERROR_INITIALIZATION_FAILED);
    }
 
    if (FAILED(ID3D12Device1_CreateFence(device->dev, 0, D3D12_FENCE_FLAG_NONE,
-                                        IID_ID3D12Fence,
-                                        (void **)&queue->fence))) {
+                                        &IID_ID3D12Fence,
+                                        &queue->fence))) {
       dzn_queue_finish(queue);
       return vk_error(device->vk.physical->instance, VK_ERROR_INITIALIZATION_FAILED);
    }
@@ -1635,12 +1635,12 @@ dzn_device_query_init(struct dzn_device *device)
                                                    &rdesc,
                                                    D3D12_RESOURCE_STATE_GENERIC_READ,
                                                    NULL,
-                                                   IID_ID3D12Resource,
-                                                   (void **)&device->queries.refs)))
+                                                   &IID_ID3D12Resource,
+                                                   &device->queries.refs)))
       return vk_error(device->vk.physical, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    uint8_t *queries_ref;
-   if (FAILED(ID3D12Resource_Map(device->queries.refs, 0, NULL, (void **)&queries_ref)))
+   if (FAILED(ID3D12Resource_Map(device->queries.refs, 0, NULL, &queries_ref)))
       return vk_error(device->vk.physical, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    memset(queries_ref + DZN_QUERY_REFS_ALL_ONES_OFFSET, 0xff, DZN_QUERY_REFS_SECTION_SIZE);
@@ -1748,8 +1748,9 @@ dzn_device_create(struct dzn_physical_device *pdev,
    ID3D12Device1_AddRef(device->dev);
 
    ID3D12InfoQueue *info_queue;
-   if (SUCCEEDED(ID3D12Device1_QueryInterface(device->dev, IID_ID3D12InfoQueue,
-                                              (void **)&info_queue))) {
+   if (SUCCEEDED(ID3D12Device1_QueryInterface(device->dev,
+                                              &IID_ID3D12InfoQueue,
+                                              &info_queue))) {
       D3D12_MESSAGE_SEVERITY severities[] = {
          D3D12_MESSAGE_SEVERITY_INFO,
          D3D12_MESSAGE_SEVERITY_WARNING,
@@ -1759,7 +1760,7 @@ dzn_device_create(struct dzn_physical_device *pdev,
          D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
       };
 
-      D3D12_INFO_QUEUE_FILTER NewFilter = {};
+      D3D12_INFO_QUEUE_FILTER NewFilter = { 0 };
       NewFilter.DenyList.NumSeverities = ARRAY_SIZE(severities);
       NewFilter.DenyList.pSeverityList = severities;
       NewFilter.DenyList.NumIDs = ARRAY_SIZE(msg_ids);
@@ -1826,8 +1827,8 @@ dzn_device_create_root_sig(struct dzn_device *device,
    if (FAILED(ID3D12Device1_CreateRootSignature(device->dev, 0,
                                                 ID3D10Blob_GetBufferPointer(sig),
                                                 ID3D10Blob_GetBufferSize(sig),
-                                                IID_ID3D12RootSignature,
-                                                (void **)&root_sig))) {
+                                                &IID_ID3D12RootSignature,
+                                                &root_sig))) {
       ID3D10Blob_Release(sig);
       return NULL;
    }
@@ -1936,7 +1937,7 @@ dzn_device_memory_create(struct dzn_device *device,
    const VkMemoryType *mem_type =
       &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
 
-   D3D12_HEAP_DESC heap_desc = {};
+   D3D12_HEAP_DESC heap_desc = { 0 };
    // TODO: fix all of these:
    heap_desc.SizeInBytes = pAllocateInfo->allocationSize;
    heap_desc.Alignment =
@@ -1963,15 +1964,15 @@ dzn_device_memory_create(struct dzn_device *device,
    }
 
    if (FAILED(ID3D12Device1_CreateHeap(device->dev, &heap_desc,
-                                       IID_ID3D12Heap,
-                                       (void **)&mem->heap))) {
+                                       &IID_ID3D12Heap,
+                                       &mem->heap))) {
       dzn_device_memory_destroy(mem, pAllocator);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
    if ((mem_type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) &&
        !(heap_desc.Flags & D3D12_HEAP_FLAG_DENY_BUFFERS)){
-      D3D12_RESOURCE_DESC res_desc = {};
+      D3D12_RESOURCE_DESC res_desc = { 0 };
       res_desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
       res_desc.Format = DXGI_FORMAT_UNKNOWN;
       res_desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
@@ -1986,8 +1987,8 @@ dzn_device_memory_create(struct dzn_device *device,
       HRESULT hr = ID3D12Device1_CreatePlacedResource(device->dev, mem->heap, 0, &res_desc,
                                                       mem->initial_state,
                                                       NULL,
-                                                      IID_ID3D12Resource,
-                                                      (void **)&mem->map_res);
+                                                      &IID_ID3D12Resource,
+                                                      &mem->map_res);
       if (FAILED(hr)) {
          dzn_device_memory_destroy(mem, pAllocator);
          return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -2046,7 +2047,7 @@ dzn_MapMemory(VkDevice _device,
    assert(offset + size <= mem->size);
 
    assert(mem->map_res);
-   D3D12_RANGE range = {};
+   D3D12_RANGE range = { 0 };
    range.Begin = offset;
    range.End = offset + size;
    void *map = NULL;
@@ -2339,8 +2340,8 @@ dzn_BindBufferMemory2(VkDevice _device,
                                                    &buffer->desc,
                                                    mem->initial_state,
                                                    NULL,
-                                                   IID_ID3D12Resource,
-                                                   (void **)&buffer->res)))
+                                                   &IID_ID3D12Resource,
+                                                   &buffer->res)))
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -2441,8 +2442,8 @@ dzn_event_create(struct dzn_device *device,
    vk_object_base_init(&device->vk, &event->base, VK_OBJECT_TYPE_EVENT);
 
    if (FAILED(ID3D12Device1_CreateFence(device->dev, 0, D3D12_FENCE_FLAG_NONE,
-                                        IID_ID3D12Fence,
-                                        (void **)&event->fence))) {
+                                        &IID_ID3D12Fence,
+                                        &event->fence))) {
       dzn_event_destroy(event, pAllocator);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }

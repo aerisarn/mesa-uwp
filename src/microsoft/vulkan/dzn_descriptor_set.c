@@ -131,7 +131,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
    const VkDescriptorSetLayoutBinding *bindings = pCreateInfo->pBindings;
    uint32_t binding_count = 0, static_sampler_count = 0, total_ranges = 0;
    uint32_t dynamic_ranges_offset = 0, immutable_sampler_count = 0;
-   uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = {};
+   uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = { 0 };
 
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
       binding_count = MAX2(binding_count, bindings[i].binding + 1);
@@ -246,7 +246,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
           (pCreateInfo->bindingCount ?
            (ordered_bindings[pCreateInfo->bindingCount - 1].binding + 1) : 0));
 
-   uint32_t range_idx[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = {};
+   uint32_t range_idx[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = { 0 };
    uint32_t static_sampler_idx = 0, immutable_sampler_idx = 0;
    uint32_t dynamic_buffer_idx = 0;
    uint32_t base_register = 0;
@@ -333,7 +333,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
 
       assert(visibility < ARRAY_SIZE(set_layout->ranges));
 
-      bool has_range[NUM_POOL_TYPES] = {};
+      bool has_range[NUM_POOL_TYPES] = { 0 };
       has_range[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER] =
          has_sampler && !has_static_sampler;
       has_range[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV] =
@@ -585,7 +585,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    }
 
 
-   D3D12_ROOT_PARAMETER1 root_params[MAX_ROOT_PARAMS] = {};
+   D3D12_ROOT_PARAMETER1 root_params[MAX_ROOT_PARAMS] = { 0 };
    D3D12_DESCRIPTOR_RANGE1 *range_ptr = ranges;
    D3D12_ROOT_PARAMETER1 *root_param;
    uint32_t root_dwords = 0;
@@ -788,8 +788,8 @@ dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
    };
 
    if (FAILED(ID3D12Device1_CreateDescriptorHeap(device->dev, &desc,
-                                                 IID_ID3D12DescriptorHeap,
-                                                 (void **)&heap->heap))) {
+                                                 &IID_ID3D12DescriptorHeap,
+                                                 &heap->heap))) {
       return vk_error(device,
                       shader_visible ?
                       VK_ERROR_OUT_OF_DEVICE_MEMORY : VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -810,7 +810,7 @@ dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
 D3D12_CPU_DESCRIPTOR_HANDLE
 dzn_descriptor_heap_get_cpu_handle(const struct dzn_descriptor_heap *heap, uint32_t desc_offset)
 {
-   return D3D12_CPU_DESCRIPTOR_HANDLE {
+   return (D3D12_CPU_DESCRIPTOR_HANDLE) {
       .ptr = heap->cpu_base + (desc_offset * heap->desc_sz),
    };
 }
@@ -818,7 +818,7 @@ dzn_descriptor_heap_get_cpu_handle(const struct dzn_descriptor_heap *heap, uint3
 D3D12_GPU_DESCRIPTOR_HANDLE
 dzn_descriptor_heap_get_gpu_handle(const struct dzn_descriptor_heap *heap, uint32_t desc_offset)
 {
-   return D3D12_GPU_DESCRIPTOR_HANDLE {
+   return (D3D12_GPU_DESCRIPTOR_HANDLE) {
       .ptr = heap->gpu_base ? heap->gpu_base + (desc_offset * heap->desc_sz) : 0,
    };
 }

@@ -123,7 +123,7 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
    uint32_t root_param_count = 0;
    D3D12_ROOT_PARAMETER1 root_params[DZN_META_INDIRECT_DRAW_MAX_PARAM_COUNT];
 
-   root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+   root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
       .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
       .Constants = {
          .ShaderRegister = 0,
@@ -133,7 +133,7 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
    };
 
-   root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+   root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
       .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
       .Descriptor = {
          .ShaderRegister = 1,
@@ -143,7 +143,7 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
    };
 
-   root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+   root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
       .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
       .Descriptor = {
          .ShaderRegister = 2,
@@ -155,7 +155,7 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
 
 
    if (triangle_fan) {
-      root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+      root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
          .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
          .Descriptor = {
             .ShaderRegister = 3,
@@ -193,8 +193,8 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
    assert(desc.CS.pShaderBytecode);
 
    if (FAILED(ID3D12Device1_CreateComputePipelineState(device->dev, &desc,
-                                                       IID_ID3D12PipelineState,
-                                                       (void **)&meta->pipeline_state)))
+                                                       &IID_ID3D12PipelineState,
+                                                       &meta->pipeline_state)))
       ret = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
 
 out:
@@ -244,7 +244,7 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
    uint32_t root_param_count = 0;
    D3D12_ROOT_PARAMETER1 root_params[DZN_META_TRIANGLE_FAN_REWRITE_IDX_MAX_PARAM_COUNT];
 
-   root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+   root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
       .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
       .Descriptor = {
          .ShaderRegister = 1,
@@ -254,7 +254,7 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
    };
 
-   root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+   root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
       .ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS,
       .Constants = {
          .ShaderRegister = 0,
@@ -265,7 +265,7 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
    };
 
    if (old_index_type != DZN_NO_INDEX) {
-      root_params[root_param_count++] = D3D12_ROOT_PARAMETER1 {
+      root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
          .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
          .Descriptor = {
             .ShaderRegister = 2,
@@ -330,16 +330,16 @@ dzn_meta_triangle_fan_rewrite_index_init(struct dzn_device *device,
    dzn_meta_compile_shader(device, nir, &desc.CS);
 
    if (FAILED(ID3D12Device1_CreateComputePipelineState(device->dev, &desc,
-                                                       IID_ID3D12PipelineState,
-                                                       (void **)&meta->pipeline_state))) {
+                                                       &IID_ID3D12PipelineState,
+                                                       &meta->pipeline_state))) {
       ret = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
       goto out;
    }
 
    if (FAILED(ID3D12Device1_CreateCommandSignature(device->dev, &cmd_sig_desc,
                                                    meta->root_sig,
-                                                   IID_ID3D12CommandSignature,
-                                                   (void **)&meta->cmd_sig)))
+                                                   &IID_ID3D12CommandSignature,
+                                                   &meta->cmd_sig)))
       ret = vk_error(instance, VK_ERROR_INITIALIZATION_FAILED);
 
 out:
@@ -612,8 +612,8 @@ dzn_meta_blit_create(struct dzn_device *device, const struct dzn_meta_blit_key *
    }
 
    if (FAILED(ID3D12Device1_CreateGraphicsPipelineState(device->dev, &desc,
-                                                        IID_ID3D12PipelineState,
-                                                        (void **)&blit->pipeline_state))) {
+                                                        &IID_ID3D12PipelineState,
+                                                        &blit->pipeline_state))) {
       dzn_meta_blit_destroy(device, blit);
       return NULL;
    }

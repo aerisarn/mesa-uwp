@@ -110,8 +110,8 @@ dzn_query_pool_create(struct dzn_device *device,
 
    HRESULT hres =
       ID3D12Device1_CreateQueryHeap(device->dev, &desc,
-                                    IID_ID3D12QueryHeap,
-                                    (void **)&qpool->heap);
+                                    &IID_ID3D12QueryHeap,
+                                    &qpool->heap);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -150,8 +150,8 @@ dzn_query_pool_create(struct dzn_device *device,
                                                 &rdesc,
                                                 D3D12_RESOURCE_STATE_COPY_DEST,
                                                 NULL,
-                                                IID_ID3D12Resource,
-                                                (void **)&qpool->resolve_buffer);
+                                                &IID_ID3D12Resource,
+                                                &qpool->resolve_buffer);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -165,8 +165,8 @@ dzn_query_pool_create(struct dzn_device *device,
                                                 &rdesc,
                                                 D3D12_RESOURCE_STATE_COPY_DEST,
                                                 NULL,
-                                                IID_ID3D12Resource,
-                                                (void **)&qpool->collect_buffer);
+                                                &IID_ID3D12Resource,
+                                                &qpool->collect_buffer);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);

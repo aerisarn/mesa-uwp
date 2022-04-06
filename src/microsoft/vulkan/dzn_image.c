@@ -635,8 +635,8 @@ dzn_BindImageMemory2(VkDevice dev,
                                                       &image->desc,
                                                       mem->initial_state,
                                                       NULL,
-                                                      IID_ID3D12Resource,
-                                                      (void **)&image->res)))
+                                                      &IID_ID3D12Resource,
+                                                      &image->res)))
             return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          did_bind = true;
       }
@@ -679,7 +679,7 @@ dzn_GetImageMemoryRequirements2(VkDevice _device,
    D3D12_RESOURCE_ALLOCATION_INFO info;
    ID3D12Device1_GetResourceAllocationInfo(device->dev, &info, 0, 1, &image->desc);
 
-   pMemoryRequirements->memoryRequirements = VkMemoryRequirements {
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
       .size = info.SizeInBytes,
       .alignment = info.Alignment,
       .memoryTypeBits =
@@ -773,7 +773,7 @@ dzn_image_view_prepare_srv_desc(struct dzn_image_view *iview)
    bool use_array = (iview->vk.base_array_layer / layers_per_elem) > 0 ||
                     (iview->vk.layer_count / layers_per_elem) > 1;
 
-   iview->srv_desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
+   iview->srv_desc = (D3D12_SHADER_RESOURCE_VIEW_DESC) {
       .Format =
          dzn_image_get_dxgi_format(iview->vk.format,
                                    iview->vk.image->usage & ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -876,7 +876,7 @@ dzn_image_view_prepare_uav_desc(struct dzn_image_view *iview)
 
    assert(iview->vk.image->samples == 1);
 
-   iview->uav_desc = D3D12_UNORDERED_ACCESS_VIEW_DESC {
+   iview->uav_desc = (D3D12_UNORDERED_ACCESS_VIEW_DESC) {
       .Format =
          dzn_image_get_dxgi_format(iview->vk.format,
                                    VK_IMAGE_USAGE_STORAGE_BIT,
@@ -935,7 +935,7 @@ dzn_image_view_prepare_rtv_desc(struct dzn_image_view *iview)
 
    assert(iview->vk.level_count == 1);
 
-   iview->rtv_desc = D3D12_RENDER_TARGET_VIEW_DESC {
+   iview->rtv_desc = (D3D12_RENDER_TARGET_VIEW_DESC) {
       .Format =
          dzn_image_get_dxgi_format(iview->vk.format,
                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -1001,7 +1001,7 @@ dzn_image_view_prepare_dsv_desc(struct dzn_image_view *iview)
    bool use_array = iview->vk.base_array_layer > 0 || iview->vk.layer_count > 1;
    bool ms = iview->vk.image->samples > 1;
 
-   iview->dsv_desc = D3D12_DEPTH_STENCIL_VIEW_DESC {
+   iview->dsv_desc = (D3D12_DEPTH_STENCIL_VIEW_DESC) {
       .Format =
          dzn_image_get_dxgi_format(iview->vk.format,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -1192,7 +1192,7 @@ dzn_buffer_view_create(struct dzn_device *device,
    if (buf->usage &
        (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
         VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
-      bview->srv_desc = D3D12_SHADER_RESOURCE_VIEW_DESC {
+      bview->srv_desc = (D3D12_SHADER_RESOURCE_VIEW_DESC) {
          .Format = dzn_buffer_get_dxgi_format(pCreateInfo->format),
          .ViewDimension = D3D12_SRV_DIMENSION_BUFFER,
          .Shader4ComponentMapping =
@@ -1206,7 +1206,7 @@ dzn_buffer_view_create(struct dzn_device *device,
    }
 
    if (buf->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
-      bview->uav_desc = D3D12_UNORDERED_ACCESS_VIEW_DESC {
+      bview->uav_desc = (D3D12_UNORDERED_ACCESS_VIEW_DESC) {
          .Format = dzn_buffer_get_dxgi_format(pCreateInfo->format),
          .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
          .Buffer = {

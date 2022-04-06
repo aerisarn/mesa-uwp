@@ -173,7 +173,7 @@ struct dzn_physical_device {
    DXGI_ADAPTER_DESC1 adapter_desc;
 
    uint32_t queue_family_count;
-   struct {
+   struct dzn_queue_family {
       VkQueueFamilyProperties props;
       D3D12_COMMAND_QUEUE_DESC desc;
    } queue_families[MAX_QUEUE_FAMILIES];
@@ -206,6 +206,10 @@ dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_dev
 #define dzn_debug_ignored_stype(sType) \
    mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 IDXGIFactory4 *
 dxgi_get_factory(bool debug);
 
@@ -220,6 +224,10 @@ d3d12_enable_gpu_validation();
 
 ID3D12Device1 *
 d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features);
+
+#ifdef __cplusplus
+}
+#endif
 
 struct dzn_queue {
    struct vk_queue vk;

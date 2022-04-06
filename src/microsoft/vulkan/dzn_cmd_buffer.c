@@ -182,16 +182,16 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    cmdbuf->vk.destroy = dzn_cmd_buffer_destroy;
 
    if (FAILED(ID3D12Device1_CreateCommandAllocator(device->dev, type,
-                                                   IID_ID3D12CommandAllocator,
-                                                   (void **)&cmdbuf->cmdalloc))) {
+                                                   &IID_ID3D12CommandAllocator,
+                                                   &cmdbuf->cmdalloc))) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
 
    if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0, type,
                                               cmdbuf->cmdalloc, NULL,
-                                              IID_ID3D12GraphicsCommandList1,
-                                              (void **)&cmdbuf->cmdlist))) {
+                                              &IID_ID3D12GraphicsCommandList1,
+                                              &cmdbuf->cmdlist))) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
@@ -265,8 +265,8 @@ dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
    if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0,
                                               type,
                                               cmdbuf->cmdalloc, NULL,
-                                              IID_ID3D12GraphicsCommandList1,
-                                              (void **)&cmdbuf->cmdlist))) {
+                                              &IID_ID3D12GraphicsCommandList1,
+                                              &cmdbuf->cmdlist))) {
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -689,7 +689,7 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
     * D3D12 barrier API.
     */
    if (info->memoryBarrierCount) {
-      D3D12_RESOURCE_BARRIER barriers[2] = {};
+      D3D12_RESOURCE_BARRIER barriers[2] = { 0 };
 
       barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
       barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -703,7 +703,7 @@ dzn_CmdPipelineBarrier2(VkCommandBuffer commandBuffer,
 
    for (uint32_t i = 0; i < info->bufferMemoryBarrierCount; i++) {
       VK_FROM_HANDLE(dzn_buffer, buf, info->pBufferMemoryBarriers[i].buffer);
-      D3D12_RESOURCE_BARRIER barrier = {};
+      D3D12_RESOURCE_BARRIER barrier = { 0 };
 
       /* UAV are used only for storage buffers, skip all other buffers. */
       if (!(buf->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
@@ -863,8 +863,8 @@ dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
       ID3D12Device1_CreateCommittedResource(device->dev, &hprops,
                                             D3D12_HEAP_FLAG_NONE, &rdesc,
                                             init_state, NULL,
-                                            IID_ID3D12Resource,
-                                            (void **)&res);
+                                            &IID_ID3D12Resource,
+                                            &res);
    if (FAILED(hres)) {
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return cmdbuf->error;
@@ -895,8 +895,8 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
 {
    enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);
    uint32_t blksize = util_format_get_blocksize(pfmt);
-   uint8_t buf[D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * 3] = {};
-   uint32_t raw[4] = {};
+   uint8_t buf[D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * 3] = { 0 };
+   uint32_t raw[4] = { 0 };
 
    assert(blksize <= sizeof(raw));
    assert(!(sizeof(buf) % blksize));
@@ -1046,8 +1046,8 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
 {
    enum pipe_format pfmt = vk_format_to_pipe_format(image->vk.format);
    uint32_t blksize = util_format_get_blocksize(pfmt);
-   uint8_t buf[D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * 3] = {};
-   uint32_t raw[4] = {};
+   uint8_t buf[D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * 3] = { 0 };
+   uint32_t raw[4] = { 0 };
 
    assert(blksize <= sizeof(raw));
    assert(!(sizeof(buf) % blksize));
@@ -1376,7 +1376,7 @@ dzn_cmd_buffer_clear_zs(struct dzn_cmd_buffer *cmdbuf,
 
          dzn_foreach_aspect(aspect, range->aspectMask) {
             barrier_aspects[barrier_count] = aspect;
-            barriers[barrier_count] = D3D12_RESOURCE_BARRIER {
+            barriers[barrier_count] = (D3D12_RESOURCE_BARRIER) {
                .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
                .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
                .Transition = {
@@ -2238,7 +2238,7 @@ dzn_cmd_buffer_resolve_attachment(struct dzn_cmd_buffer *cmdbuf, uint32_t i)
 
    /* TODO: 2DArrays/3D */
    if (subpass->colors[i].during != D3D12_RESOURCE_STATE_RESOLVE_SOURCE) {
-      barriers[barrier_count++] = D3D12_RESOURCE_BARRIER {
+      barriers[barrier_count++] = (D3D12_RESOURCE_BARRIER) {
          .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
          .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
          .Transition = {
@@ -2251,7 +2251,7 @@ dzn_cmd_buffer_resolve_attachment(struct dzn_cmd_buffer *cmdbuf, uint32_t i)
    }
 
    if (subpass->resolve[i].during != D3D12_RESOURCE_STATE_RESOLVE_DEST) {
-      barriers[barrier_count++] = D3D12_RESOURCE_BARRIER {
+      barriers[barrier_count++] = (D3D12_RESOURCE_BARRIER) {
          .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
          .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
          .Transition = {
@@ -2284,7 +2284,7 @@ dzn_cmd_buffer_begin_subpass(struct dzn_cmd_buffer *cmdbuf)
    struct dzn_render_pass *pass = cmdbuf->state.pass;
    const struct dzn_subpass *subpass = &pass->subpasses[cmdbuf->state.subpass];
 
-   D3D12_CPU_DESCRIPTOR_HANDLE rt_handles[MAX_RTS] = { };
+   D3D12_CPU_DESCRIPTOR_HANDLE rt_handles[MAX_RTS] = { 0 };
    D3D12_CPU_DESCRIPTOR_HANDLE zs_handle = { 0 };
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
@@ -2360,8 +2360,8 @@ dzn_cmd_buffer_update_heaps(struct dzn_cmd_buffer *cmdbuf, uint32_t bindpoint)
       desc_state->heaps[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV],
       desc_state->heaps[D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER]
    };
-   uint32_t new_heap_offsets[NUM_POOL_TYPES] = {};
-   bool update_root_desc_table[NUM_POOL_TYPES] = {};
+   uint32_t new_heap_offsets[NUM_POOL_TYPES] = { 0 };
+   bool update_root_desc_table[NUM_POOL_TYPES] = { 0 };
    const struct dzn_pipeline *pipeline =
       cmdbuf->state.bindpoint[bindpoint].pipeline;
 
@@ -2901,7 +2901,7 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
 
    ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, post_barrier_count, post_barriers);
 
-   D3D12_INDEX_BUFFER_VIEW ib_view = {};
+   D3D12_INDEX_BUFFER_VIEW ib_view = { 0 };
 
    if (triangle_fan_exec_buf) {
       enum dzn_index_type index_type =
@@ -2911,7 +2911,7 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       struct dzn_meta_triangle_fan_rewrite_index *rewrite_index =
          &device->triangle_fan[index_type];
 
-      struct dzn_triangle_fan_rewrite_index_params rewrite_index_params = {};
+      struct dzn_triangle_fan_rewrite_index_params rewrite_index_params = { 0 };
 
       assert(rewrite_index->root_sig);
       assert(rewrite_index->pipeline_state);
@@ -3106,7 +3106,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
       };
 
       for (uint32_t r = 0; r < info->regionCount; r++) {
-         blit_regions[r] = VkImageBlit2 {
+         blit_regions[r] = (VkImageBlit2) {
             .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
             .srcSubresource = info->pRegions[r].srcSubresource,
             .srcOffsets = {
@@ -3134,7 +3134,7 @@ dzn_CmdCopyImage2(VkCommandBuffer commandBuffer,
       return;
    }
 
-   D3D12_TEXTURE_COPY_LOCATION tmp_loc = {};
+   D3D12_TEXTURE_COPY_LOCATION tmp_loc = { 0 };
    D3D12_RESOURCE_DESC tmp_desc = {
       .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
       .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
@@ -3428,7 +3428,7 @@ dzn_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
    assert(pass->attachment_count == framebuffer->attachment_count);
 
    cmdbuf->state.framebuffer = framebuffer;
-   cmdbuf->state.render_area = D3D12_RECT {
+   cmdbuf->state.render_area = (D3D12_RECT) {
       .left = pRenderPassBeginInfo->renderArea.offset.x,
       .top = pRenderPassBeginInfo->renderArea.offset.y,
       .right = (LONG)(pRenderPassBeginInfo->renderArea.offset.x + pRenderPassBeginInfo->renderArea.extent.width),

@@ -31,20 +31,20 @@ dzn_entrypoints = custom_target(
 )
 
 libdzn_files = files(
-  'dzn_cmd_buffer.cpp',
-  'dzn_descriptor_set.cpp',
-  'dzn_device.cpp',
-  'dzn_image.cpp',
-  'dzn_meta.cpp',
+  'dzn_cmd_buffer.c',
+  'dzn_descriptor_set.c',
+  'dzn_device.c',
+  'dzn_image.c',
+  'dzn_meta.c',
   'dzn_nir.c',
-  'dzn_pass.cpp',
-  'dzn_pipeline_cache.cpp',
-  'dzn_pipeline.cpp',
-  'dzn_query.cpp',
-  'dzn_sync.cpp',
+  'dzn_pass.c',
+  'dzn_pipeline_cache.c',
+  'dzn_pipeline.c',
+  'dzn_query.c',
+  'dzn_sync.c',
   'dzn_util.cpp',
   'dzn_util.c',
-  'dzn_wsi.cpp',
+  'dzn_wsi.c',
 )
 
 dzn_deps = [
