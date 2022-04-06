@@ -2932,7 +2932,7 @@ anv_device_init_trivial_batch(struct anv_device *device)
    anv_batch_emit(&batch, GFX7_MI_BATCH_BUFFER_END, bbe);
    anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
 
-   if (!device->info.has_llc)
+   if (device->physical->memory.need_clflush)
       intel_clflush_range(batch.start, batch.next - batch.start);
 
    return VK_SUCCESS;

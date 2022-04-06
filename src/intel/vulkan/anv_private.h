@@ -1593,7 +1593,7 @@ write_reloc(const struct anv_device *device, void *p, uint64_t v, bool flush)
       *(uint32_t *)p = v;
    }
 
-   if (flush && !device->info.has_llc)
+   if (flush && device->physical->memory.need_clflush)
       intel_flush_range(p, reloc_size);
 }
 
