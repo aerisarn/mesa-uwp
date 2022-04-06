@@ -360,12 +360,7 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
 struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const struct tgsi_token *tokens_in)
 {
    struct virgl_transform_context transform;
-   const uint newLen = tgsi_num_tokens(tokens_in) * 2 /* XXX: how many to allocate? */;
-   struct tgsi_token *new_tokens;
-
-   new_tokens = tgsi_alloc_tokens(newLen);
-   if (!new_tokens)
-      return NULL;
+   const uint newLen = tgsi_num_tokens(tokens_in);
 
    memset(&transform, 0, sizeof(transform));
    transform.base.transform_declaration = virgl_tgsi_transform_declaration;
@@ -382,7 +377,5 @@ struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const stru
 
    tgsi_scan_shader(tokens_in, &transform.info);
 
-   tgsi_transform_shader(tokens_in, new_tokens, newLen, &transform.base);
-
-   return new_tokens;
+   return tgsi_transform_shader(tokens_in, newLen, &transform.base);
 }
