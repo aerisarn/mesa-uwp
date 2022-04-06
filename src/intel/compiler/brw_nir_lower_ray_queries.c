@@ -572,6 +572,7 @@ brw_nir_lower_ray_queries(nir_shader *shader,
       }
    }
 
+   bool progress = false;
    if (_mesa_hash_table_num_entries(state.queries) > 0) {
       nir_foreach_function(function, shader) {
          if (function->impl)
@@ -582,9 +583,11 @@ brw_nir_lower_ray_queries(nir_shader *shader,
       nir_remove_dead_variables(shader,
                                 nir_var_shader_temp | nir_var_function_temp,
                                 NULL);
+
+      progress = true;
    }
 
    ralloc_free(state.queries);
 
-   return true;
+   return progress;
 }
