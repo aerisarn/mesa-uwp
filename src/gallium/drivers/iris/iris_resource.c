@@ -1177,11 +1177,24 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
 
    assert(templ->target == PIPE_BUFFER);
 
+   /* The userptr ioctl only works on whole pages.  Because we know that
+    * things will exist in memory at a page granularity, we can expand the
+    * range given by the client into the whole number of pages and use an
+    * offset on the resource to make it looks like it starts at the user's
+    * pointer.
+    */
+   size_t page_size = getpagesize();
+   assert(util_is_power_of_two_nonzero(page_size));
+   size_t offset = (uintptr_t)user_memory & (page_size - 1);
+   void *mem_start = (char *)user_memory - offset;
+   size_t mem_size = offset + templ->width0;
+   mem_size = ALIGN_NPOT(mem_size, page_size);
+
    res->internal_format = templ->format;
    res->base.is_user_ptr = true;
-   res->bo = iris_bo_create_userptr(bufmgr, "user",
-                                    user_memory, templ->width0,
+   res->bo = iris_bo_create_userptr(bufmgr, "user", mem_start, mem_size,
                                     IRIS_MEMZONE_OTHER);
+   res->offset = offset;
    if (!res->bo) {
       iris_resource_destroy(pscreen, &res->base.b);
       return NULL;
