@@ -1902,6 +1902,7 @@ iris_map_copy_region(struct iris_transfer *map)
    if (iris_batch_references(map->batch, staging_bo))
       iris_batch_flush(map->batch);
 
+   assert(((struct iris_resource *)map->staging)->offset == 0);
    map->ptr =
       iris_bo_map(map->dbg, staging_bo, xfer->usage & MAP_FLAGS) + extra;
 
@@ -1978,7 +1979,7 @@ iris_unmap_s8(struct iris_transfer *map)
 
    if (xfer->usage & PIPE_MAP_WRITE) {
       uint8_t *untiled_s8_map = map->ptr;
-      uint8_t *tiled_s8_map =
+      uint8_t *tiled_s8_map = res->offset +
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
@@ -2025,7 +2026,7 @@ iris_map_s8(struct iris_transfer *map)
     */
    if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
       uint8_t *untiled_s8_map = map->ptr;
-      uint8_t *tiled_s8_map =
+      uint8_t *tiled_s8_map = res->offset +
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
@@ -2083,7 +2084,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
    const bool has_swizzling = false;
 
    if (xfer->usage & PIPE_MAP_WRITE) {
-      char *dst =
+      char *dst = res->offset +
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
@@ -2127,7 +2128,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
    const bool has_swizzling = false;
 
    if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
-      char *src =
+      char *src = res->offset +
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
       for (int s = 0; s < box->depth; s++) {
@@ -2153,7 +2154,8 @@ iris_map_direct(struct iris_transfer *map)
    struct pipe_box *box = &xfer->box;
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
 
-   void *ptr = iris_bo_map(map->dbg, res->bo, xfer->usage & MAP_FLAGS);
+   void *ptr = res->offset +
+      iris_bo_map(map->dbg, res->bo, xfer->usage & MAP_FLAGS);
 
    if (res->base.b.target == PIPE_BUFFER) {
       xfer->stride = 0;
