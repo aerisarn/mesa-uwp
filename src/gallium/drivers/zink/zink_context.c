@@ -3544,7 +3544,7 @@ zink_flush_resource(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_resource *res = zink_resource(pres);
-   if (pres->bind & PIPE_BIND_DISPLAY_TARGET) {
+   if (res->obj->dt) {
       if (res->obj->acquire) {
          zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
          zink_batch_reference_resource_rw(&ctx->batch, res, true);
