@@ -1371,8 +1371,8 @@ dzn_DestroyDescriptorPool(VkDevice device,
                           VkDescriptorPool descriptorPool,
                           const VkAllocationCallbacks *pAllocator)
 {
-   return dzn_descriptor_pool_destroy(dzn_descriptor_pool_from_handle(descriptorPool),
-                                      pAllocator);
+   dzn_descriptor_pool_destroy(dzn_descriptor_pool_from_handle(descriptorPool),
+                               pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL

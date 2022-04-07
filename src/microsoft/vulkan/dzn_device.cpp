@@ -2441,7 +2441,7 @@ dzn_DestroyEvent(VkDevice device,
                  VkEvent event,
                  const VkAllocationCallbacks *pAllocator)
 {
-   return dzn_event_destroy(dzn_event_from_handle(event), pAllocator);
+   dzn_event_destroy(dzn_event_from_handle(event), pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -2620,5 +2620,5 @@ dzn_DestroySampler(VkDevice device,
                    VkSampler sampler,
                    const VkAllocationCallbacks *pAllocator)
 {
-   return dzn_sampler_destroy(dzn_sampler_from_handle(sampler), pAllocator);
+   dzn_sampler_destroy(dzn_sampler_from_handle(sampler), pAllocator);
 }

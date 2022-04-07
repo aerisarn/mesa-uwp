@@ -73,8 +73,8 @@ dzn_DestroyPipelineCache(VkDevice device,
                          VkPipelineCache pipelineCache,
                          const VkAllocationCallbacks *pAllocator)
 {
-   return dzn_pipeline_cache_destroy(dzn_pipeline_cache_from_handle(pipelineCache),
-                                     pAllocator);
+   dzn_pipeline_cache_destroy(dzn_pipeline_cache_from_handle(pipelineCache),
+                              pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
