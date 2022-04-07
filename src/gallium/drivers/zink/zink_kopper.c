@@ -661,7 +661,7 @@ zink_kopper_present_readback(struct zink_context *ctx, struct zink_resource *res
    VkPipelineStageFlags mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
    si.pWaitDstStageMask = &mask;
    VkSemaphore acquire = zink_kopper_acquire_submit(screen, res);
-   VkSemaphore present = zink_kopper_present(screen, res);
+   VkSemaphore present = res->obj->present ? res->obj->present : zink_kopper_present(screen, res);
    if (screen->threaded)
       util_queue_finish(&screen->flush_queue);
    si.waitSemaphoreCount = !!acquire;
