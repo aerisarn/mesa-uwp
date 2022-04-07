@@ -1363,7 +1363,9 @@ panfrost_emit_ubo(void *base, unsigned index, mali_ptr address, size_t size)
 static mali_ptr
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
-                        mali_ptr *push_constants)
+                        unsigned *buffer_count,
+                        mali_ptr *push_constants,
+                        unsigned *pushed_words)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_shader_variants *all = ctx->shader[stage];
@@ -1386,43 +1388,42 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, stage);
         unsigned ubo_count = shader->info.ubo_count - (sys_size ? 1 : 0);
         unsigned sysval_ubo = sys_size ? ubo_count : ~0;
+        struct panfrost_ptr ubos = { 0 };
 
-        struct panfrost_ptr ubos =
-                pan_pool_alloc_desc_array(&batch->pool.base,
-                                          ubo_count + 1,
-                                          UNIFORM_BUFFER);
+#if PAN_ARCH >= 9
+        ubos = pan_pool_alloc_desc_array(&batch->pool.base,
+                                         ubo_count + 1,
+                                         BUFFER);
+#else
+        ubos = pan_pool_alloc_desc_array(&batch->pool.base,
+                                         ubo_count + 1,
+                                         UNIFORM_BUFFER);
+#endif
 
-        uint64_t *ubo_ptr = (uint64_t *) ubos.cpu;
+        if (buffer_count)
+                *buffer_count = ubo_count + (sys_size ? 1 : 0);
 
         /* Upload sysval as a final UBO */
 
-        if (sys_size) {
-                pan_pack(ubo_ptr + ubo_count, UNIFORM_BUFFER, cfg) {
-                        cfg.entries = DIV_ROUND_UP(sys_size, 16);
-                        cfg.pointer = transfer.gpu;
-                }
-        }
+        if (sys_size)
+                panfrost_emit_ubo(ubos.cpu, ubo_count, transfer.gpu, sys_size);
 
         /* The rest are honest-to-goodness UBOs */
 
         u_foreach_bit(ubo, ss->info.ubo_mask & buf->enabled_mask) {
                 size_t usz = buf->cb[ubo].buffer_size;
+                mali_ptr address = 0;
 
-                if (usz == 0) {
-                        ubo_ptr[ubo] = 0;
-                        continue;
-                }
-
-                /* Issue (57) for the ARB_uniform_buffer_object spec says that
-                 * the buffer can be larger than the uniform data inside it,
-                 * so clamp ubo size to what hardware supports. */
-
-                pan_pack(ubo_ptr + ubo, UNIFORM_BUFFER, cfg) {
-                        cfg.entries = MIN2(DIV_ROUND_UP(usz, 16), 1 << 12);
-                        cfg.pointer = panfrost_map_constant_buffer_gpu(batch,
+                if (usz > 0) {
+                        address = panfrost_map_constant_buffer_gpu(batch,
                                         stage, buf, ubo);
                 }
+
+                panfrost_emit_ubo(ubos.cpu, ubo, address, usz);
         }
+
+        if (pushed_words)
+                *pushed_words = ss->info.push.count;
 
         if (ss->info.push.count == 0)
                 return ubos.gpu;
@@ -2952,7 +2953,7 @@ panfrost_update_shader_state(struct panfrost_batch *batch,
 
         if ((dirty & ss->dirty_shader) || (dirty_3d & ss->dirty_3d)) {
                 batch->uniform_buffers[st] = panfrost_emit_const_buf(batch, st,
-                                &batch->push_uniforms[st]);
+                                NULL, &batch->push_uniforms[st], NULL);
         }
 
 #if PAN_ARCH <= 7
