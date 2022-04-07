@@ -603,9 +603,16 @@ handle_core(struct vtn_builder *b, uint32_t opcode,
       break;
    }
    case SpvOpGroupWaitEvents: {
-      src_types[0] = get_vtn_type_for_glsl_type(b, glsl_int_type());
-      if (!call_mangled_function(b, "wait_group_events", 0, num_srcs, src_types, dest_type, srcs, &ret_deref))
-         return NULL;
+      /* libclc and clang don't agree on the mangling of this function.
+       * The libclc we have uses a __local pointer but clang gives us generic
+       * pointers.  Fortunately, the whole function is just a barrier.
+       */
+      nir_scoped_barrier(&b->nb, .execution_scope = NIR_SCOPE_WORKGROUP,
+                                 .memory_scope = NIR_SCOPE_WORKGROUP,
+                                 .memory_semantics = NIR_MEMORY_ACQUIRE |
+                                                     NIR_MEMORY_RELEASE,
+                                 .memory_modes = nir_var_mem_shared |
+                                                 nir_var_mem_global);
       break;
    }
    default:
