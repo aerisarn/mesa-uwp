@@ -139,24 +139,15 @@ static nir_function *mangle_and_find(struct vtn_builder *b,
                                      struct vtn_type **src_types)
 {
    char *mname;
-   nir_function *found = NULL;
 
    vtn_opencl_mangle(name, const_mask, num_srcs, src_types, &mname);
+
    /* try and find in current shader first. */
-   nir_foreach_function(funcs, b->shader) {
-      if (!strcmp(funcs->name, mname)) {
-         found = funcs;
-         break;
-      }
-   }
+   nir_function *found = nir_shader_get_function_for_name(b->shader, mname);
+
    /* if not found here find in clc shader and create a decl mirroring it */
    if (!found && b->options->clc_shader && b->options->clc_shader != b->shader) {
-      nir_foreach_function(funcs, b->options->clc_shader) {
-         if (!strcmp(funcs->name, mname)) {
-            found = funcs;
-            break;
-         }
-      }
+      found = nir_shader_get_function_for_name(b->options->clc_shader, mname);
       if (found) {
          nir_function *decl = nir_function_create(b->shader, mname);
          decl->num_params = found->num_params;

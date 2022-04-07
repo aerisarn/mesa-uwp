@@ -3761,6 +3761,17 @@ nir_shader_get_entrypoint(const nir_shader *shader)
    return func->impl;
 }
 
+static inline nir_function *
+nir_shader_get_function_for_name(const nir_shader *shader, const char *name)
+{
+   nir_foreach_function(func, shader) {
+      if (strcmp(func->name, name) == 0)
+         return func;
+   }
+
+   return NULL;
+}
+
 void nir_remove_non_entrypoints(nir_shader *shader);
 
 nir_shader *nir_shader_create(void *mem_ctx,
