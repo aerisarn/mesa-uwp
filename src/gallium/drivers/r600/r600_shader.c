@@ -8851,6 +8851,20 @@ static int load_buffer_coord(struct r600_shader_ctx *ctx, int src_idx,
 	return 0;
 }
 
+/* ADDR[1,2] are stored in index_reg[0,1] on EG, and can be used for indexing
+ * images and ssbos.  We assume that indirects are indexed by ADDR[2], as that's
+ * what GLSL-to-TGSI emitted.
+ */
+static unsigned tgsi_indirect_to_rat_index_mode(struct tgsi_ind_register ind)
+{
+	if (ind.File == TGSI_FILE_NULL)
+		return 0; /* CF_INDEX_NONE */
+	else {
+		assert(ind.Index == 2);
+		return 2; /* CF_INDEX_1 */
+	}
+}
+
 static int tgsi_load_buffer(struct r600_shader_ctx *ctx)
 {
 	struct tgsi_full_instruction *inst = &ctx->parse.FullToken.FullInstruction;
@@ -8859,10 +8873,9 @@ static int tgsi_load_buffer(struct r600_shader_ctx *ctx)
 	struct r600_bytecode_cf *cf;
 	int r;
 	int temp_reg = r600_get_temp(ctx);
-	unsigned rat_index_mode;
+	unsigned rat_index_mode = tgsi_indirect_to_rat_index_mode(inst->Src[0].Indirect);
 	unsigned base;
 
-	rat_index_mode = inst->Src[0].Indirect.Index == 2 ? 2 : 0; // CF_INDEX_1 : CF_INDEX_NONE
 	base = R600_IMAGE_REAL_RESOURCE_OFFSET + ctx->info.file_count[TGSI_FILE_IMAGE];
 
 	r = load_buffer_coord(ctx, 1, temp_reg);
@@ -8917,10 +8930,8 @@ static int tgsi_load_rat(struct r600_shader_ctx *ctx)
 	int idx_gpr;
 	unsigned format, num_format, format_comp, endian;
 	const struct util_format_description *desc;
-	unsigned rat_index_mode;
+	unsigned rat_index_mode = tgsi_indirect_to_rat_index_mode(inst->Src[0].Indirect);
 	unsigned immed_base;
-
-	rat_index_mode = inst->Src[0].Indirect.Index == 2 ? 2 : 0; // CF_INDEX_1 : CF_INDEX_NONE
 
 	immed_base = R600_IMAGE_IMMED_RESOURCE_OFFSET;
 	r = load_index_src(ctx, 1, &idx_gpr);
@@ -9022,7 +9033,7 @@ static int tgsi_store_buffer_rat(struct r600_shader_ctx *ctx)
 	struct tgsi_full_instruction *inst = &ctx->parse.FullToken.FullInstruction;
 	struct r600_bytecode_cf *cf;
 	int r, i;
-	unsigned rat_index_mode;
+	unsigned rat_index_mode = tgsi_indirect_to_rat_index_mode(inst->Dst[0].Indirect);
 	int lasti;
 	int temp_reg = r600_get_temp(ctx), treg2 = r600_get_temp(ctx);
 
@@ -9030,7 +9041,6 @@ static int tgsi_store_buffer_rat(struct r600_shader_ctx *ctx)
 	if (r)
 		return r;
 
-	rat_index_mode = inst->Dst[0].Indirect.Index == 2 ? 2 : 0; // CF_INDEX_1 : CF_INDEX_NONE
 	if (rat_index_mode)
 		egcm_load_index_reg(ctx->bc, 1, false);
 
@@ -9107,9 +9117,7 @@ static int tgsi_store_rat(struct r600_shader_ctx *ctx)
 	bool src_requires_loading = false;
 	int val_gpr, idx_gpr;
 	int r, i;
-	unsigned rat_index_mode;
-
-	rat_index_mode = inst->Dst[0].Indirect.Index == 2 ? 2 : 0; // CF_INDEX_1 : CF_INDEX_NONE
+	unsigned rat_index_mode = tgsi_indirect_to_rat_index_mode(inst->Dst[0].Indirect);
 
 	r = load_index_src(ctx, 0, &idx_gpr);
 	if (r)
@@ -9252,7 +9260,7 @@ static int tgsi_atomic_op_rat(struct r600_shader_ctx *ctx)
 	int idx_gpr;
 	unsigned format, num_format, format_comp, endian;
 	const struct util_format_description *desc;
-	unsigned rat_index_mode;
+	unsigned rat_index_mode = tgsi_indirect_to_rat_index_mode(inst->Src[0].Indirect);
 	unsigned immed_base;
 	unsigned rat_base;
 
@@ -9272,8 +9280,6 @@ static int tgsi_atomic_op_rat(struct r600_shader_ctx *ctx)
 		if (r)
 			return r;
 	}
-
-	rat_index_mode = inst->Src[0].Indirect.Index == 2 ? 2 : 0; // CF_INDEX_1 : CF_INDEX_NONE
 
 	if (ctx->inst_info->op == V_RAT_INST_CMPXCHG_INT_RTN) {
 		memset(&alu, 0, sizeof(struct r600_bytecode_alu));
