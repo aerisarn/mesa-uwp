@@ -2721,20 +2721,20 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    unsigned samples = state->nr_cbufs || state->zsbuf ? 0 : state->samples;
 
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-      struct pipe_surface *surf = ctx->fb_state.cbufs[i];
+      struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
       if (i < state->nr_cbufs)
-         ctx->rp_changed |= !!zink_transient_surface(surf) != !!zink_transient_surface(state->cbufs[i]);
-      unbind_fb_surface(ctx, surf, i, i >= state->nr_cbufs || surf != state->cbufs[i]);
-      if (surf && ctx->needs_present == zink_resource(surf->texture))
+         ctx->rp_changed |= !!zink_transient_surface(psurf) != !!zink_transient_surface(state->cbufs[i]);
+      unbind_fb_surface(ctx, psurf, i, i >= state->nr_cbufs || psurf != state->cbufs[i]);
+      if (psurf && ctx->needs_present == zink_resource(psurf->texture))
          ctx->needs_present = NULL;
    }
    if (ctx->fb_state.zsbuf) {
-      struct pipe_surface *surf = ctx->fb_state.zsbuf;
-      struct zink_resource *res = zink_resource(surf->texture);
-      bool changed = surf != state->zsbuf;
-      unbind_fb_surface(ctx, surf, PIPE_MAX_COLOR_BUFS, changed);
+      struct pipe_surface *psurf = ctx->fb_state.zsbuf;
+      struct zink_resource *res = zink_resource(psurf->texture);
+      bool changed = psurf != state->zsbuf;
+      unbind_fb_surface(ctx, psurf, PIPE_MAX_COLOR_BUFS, changed);
       if (!changed)
-         ctx->rp_changed |= !!zink_transient_surface(surf) != !!zink_transient_surface(state->zsbuf);
+         ctx->rp_changed |= !!zink_transient_surface(psurf) != !!zink_transient_surface(state->zsbuf);
       if (changed && unlikely(res->obj->needs_zs_evaluate))
          /* have to flush zs eval while the sample location data still exists,
           * so just throw some random barrier */
@@ -2753,12 +2753,12 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    unsigned prev_void_alpha_attachments = ctx->gfx_pipeline_state.void_alpha_attachments;
    ctx->gfx_pipeline_state.void_alpha_attachments = 0;
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-      struct pipe_surface *surf = ctx->fb_state.cbufs[i];
-      if (surf) {
-         struct zink_surface *transient = zink_transient_surface(surf);
+      struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
+      if (psurf) {
+         struct zink_surface *transient = zink_transient_surface(psurf);
          if (!samples)
-            samples = MAX3(transient ? transient->base.nr_samples : 1, surf->texture->nr_samples, 1);
-         struct zink_resource *res = zink_resource(surf->texture);
+            samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
+         struct zink_resource *res = zink_resource(psurf->texture);
          if (res->modifiers) {
             assert(!ctx->needs_present || ctx->needs_present == res);
             ctx->needs_present = res;
@@ -2766,21 +2766,21 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
          if (res->obj->dt) {
             /* #6274 */
             if (!zink_screen(ctx->base.screen)->info.have_KHR_swapchain_mutable_format &&
-                surf->format != res->base.b.format)
+                psurf->format != res->base.b.format)
                mesa_loge("zink: SRGB framebuffer unsupported without KHR_swapchain_mutable_format");
          }
          res->fb_binds++;
-         ctx->gfx_pipeline_state.void_alpha_attachments |= util_format_has_alpha1(surf->format) ? BITFIELD_BIT(i) : 0;
+         ctx->gfx_pipeline_state.void_alpha_attachments |= util_format_has_alpha1(psurf->format) ? BITFIELD_BIT(i) : 0;
       }
    }
    if (ctx->gfx_pipeline_state.void_alpha_attachments != prev_void_alpha_attachments)
       ctx->gfx_pipeline_state.dirty = true;
    if (ctx->fb_state.zsbuf) {
-      struct pipe_surface *surf = ctx->fb_state.zsbuf;
-      struct zink_surface *transient = zink_transient_surface(surf);
+      struct pipe_surface *psurf = ctx->fb_state.zsbuf;
+      struct zink_surface *transient = zink_transient_surface(psurf);
       if (!samples)
-         samples = MAX3(transient ? transient->base.nr_samples : 1, surf->texture->nr_samples, 1);
-      zink_resource(surf->texture)->fb_binds++;
+         samples = MAX3(transient ? transient->base.nr_samples : 1, psurf->texture->nr_samples, 1);
+      zink_resource(psurf->texture)->fb_binds++;
    }
    rebind_fb_state(ctx, NULL, true);
    ctx->fb_state.samples = MAX2(samples, 1);
