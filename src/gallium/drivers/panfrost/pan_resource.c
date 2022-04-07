@@ -427,7 +427,7 @@ panfrost_should_tile(struct panfrost_device *dev,
         if (MIN2(pres->base.width0, pres->base.height0) < 2)
                 return false;
 
-        bool can_tile = panfrost_is_2d(pres)
+        bool can_tile = (pres->base.target != PIPE_BUFFER)
                 && ((pres->base.bind & ~valid_binding) == 0);
 
         return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
