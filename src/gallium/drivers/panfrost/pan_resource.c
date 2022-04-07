@@ -1125,18 +1125,18 @@ panfrost_should_linear_convert(struct panfrost_device *dev,
          *
          * For now we just switch to linear after a number of complete
          * overwrites to keep things simple, but we could do better.
+         *
+         * This mechanism is only implemented for 2D resources. This suffices
+         * for video players, its intended use case.
          */
 
-        unsigned depth = prsrc->base.target == PIPE_TEXTURE_3D ?
-                         prsrc->base.depth0 : prsrc->base.array_size;
         bool entire_overwrite =
+                panfrost_is_2d(prsrc) &&
                 prsrc->base.last_level == 0 &&
                 transfer->box.width == prsrc->base.width0 &&
                 transfer->box.height == prsrc->base.height0 &&
-                transfer->box.depth == depth &&
                 transfer->box.x == 0 &&
-                transfer->box.y == 0 &&
-                transfer->box.z == 0;
+                transfer->box.y == 0;
 
         if (entire_overwrite)
                 ++prsrc->modifier_updates;
