@@ -83,15 +83,14 @@ panfrost_compression_tag(const struct util_format_description *desc,
 
                 if (panfrost_afbc_is_wide(modifier))
                         flags |= MALI_AFBC_SURFACE_FLAG_WIDE_BLOCK;
+#endif
 
+#if PAN_ARCH >= 7
                 /* Used to make sure AFBC headers don't point outside the AFBC
                  * body. HW is using the AFBC surface stride to do this check,
                  * which doesn't work for 3D textures because the surface
                  * stride does not cover the body. Only supported on v7+.
                  */
-#endif
-
-#if PAN_ARCH >= 7
                 if (dim != MALI_TEXTURE_DIMENSION_3D)
                         flags |= MALI_AFBC_SURFACE_FLAG_CHECK_PAYLOAD_RANGE;
 #endif
