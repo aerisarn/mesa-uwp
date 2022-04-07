@@ -758,6 +758,228 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
 #endif
 }
 
+#if PAN_ARCH >= 9
+/**
+ * Emit a Valhall depth/stencil descriptor at draw-time. The bulk of the
+ * descriptor corresponds to a pipe_depth_stencil_alpha CSO and is packed at
+ * CSO create time. However, the stencil reference values and shader
+ * interactions are dynamic state. Pack only the dynamic state here and OR
+ * together.
+ */
+static mali_ptr
+panfrost_emit_depth_stencil(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
+        struct panfrost_rasterizer *rast = ctx->rasterizer;
+        struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+        bool back_enab = zsa->base.stencil[1].enabled;
+
+        struct panfrost_ptr T = pan_pool_alloc_desc(&batch->pool.base, DEPTH_STENCIL);
+        struct mali_depth_stencil_packed dynamic;
+
+        pan_pack(&dynamic, DEPTH_STENCIL, cfg) {
+                cfg.front_reference_value = ctx->stencil_ref.ref_value[0];
+                cfg.back_reference_value = ctx->stencil_ref.ref_value[back_enab ? 1 : 0];
+
+                cfg.stencil_from_shader = fs->info.fs.writes_stencil;
+                cfg.depth_source = pan_depth_source(&fs->info);
+
+                cfg.depth_bias_enable = rast->base.offset_tri;
+                cfg.depth_units = rast->base.offset_units * 2.0f;
+                cfg.depth_factor = rast->base.offset_scale;
+                cfg.depth_bias_clamp = rast->base.offset_clamp;
+        }
+
+        pan_merge(dynamic, zsa->desc, DEPTH_STENCIL);
+        memcpy(T.cpu, &dynamic, pan_size(DEPTH_STENCIL));
+
+        return T.gpu;
+}
+
+/**
+ * Emit Valhall blend descriptor at draw-time. The descriptor itself is shared
+ * with Bifrost, but the container data structure is simplified.
+ */
+static mali_ptr
+panfrost_emit_blend_valhall(struct panfrost_batch *batch)
+{
+        unsigned rt_count = MAX2(batch->key.nr_cbufs, 1);
+
+        struct panfrost_ptr T = pan_pool_alloc_desc_array(&batch->pool.base, rt_count, BLEND);
+
+        mali_ptr blend_shaders[PIPE_MAX_COLOR_BUFS] = { 0 };
+        panfrost_get_blend_shaders(batch, blend_shaders);
+
+        panfrost_emit_blend(batch, T.cpu, blend_shaders);
+
+        /* Precalculate for the per-draw path */
+        bool has_blend_shader = false;
+
+        for (unsigned i = 0; i < rt_count; ++i)
+                has_blend_shader |= !!blend_shaders[i];
+
+        batch->ctx->valhall_has_blend_shader = has_blend_shader;
+
+        return T.gpu;
+}
+
+/**
+ * Emit Valhall buffer descriptors for bound vertex buffers at draw-time.
+ */
+static mali_ptr
+panfrost_emit_vertex_buffers(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        unsigned buffer_count = util_last_bit(ctx->vb_mask);
+        struct panfrost_ptr T = pan_pool_alloc_desc_array(&batch->pool.base,
+                                                          buffer_count, BUFFER);
+        struct mali_buffer_packed *buffers = T.cpu;
+
+        u_foreach_bit(i, ctx->vb_mask) {
+                struct pipe_vertex_buffer vb = ctx->vertex_buffers[i];
+                struct pipe_resource *prsrc = vb.buffer.resource;
+                struct panfrost_resource *rsrc = pan_resource(prsrc);
+                assert(!vb.is_user_buffer);
+
+                panfrost_batch_read_rsrc(batch, rsrc, PIPE_SHADER_VERTEX);
+
+                pan_pack(buffers + i, BUFFER, cfg) {
+                        cfg.address = rsrc->image.data.bo->ptr.gpu +
+                                      vb.buffer_offset;
+
+                        cfg.size = prsrc->width0 - vb.buffer_offset;
+                }
+        }
+
+        return T.gpu;
+}
+
+/**
+ * Emit Valhall attribute descriptors and associated (vertex) buffer
+ * descriptors at draw-time. The attribute descriptors are packed at draw time
+ * except for the stride field. The buffer descriptors are packed here, though
+ * that could be moved into panfrost_set_vertex_buffers if needed.
+ */
+static mali_ptr
+panfrost_emit_vertex_data(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_vertex_state *vtx = ctx->vertex;
+        struct panfrost_ptr T = pan_pool_alloc_desc_array(&batch->pool.base,
+                                                          vtx->num_elements,
+                                                          ATTRIBUTE);
+        struct mali_attribute_packed *attributes = T.cpu;
+
+        for (unsigned i = 0; i < vtx->num_elements; ++i) {
+                struct mali_attribute_packed packed;
+                unsigned vbi = vtx->pipe[i].vertex_buffer_index;
+
+                pan_pack(&packed, ATTRIBUTE, cfg) {
+                        cfg.stride = ctx->vertex_buffers[vbi].stride;
+                }
+
+                pan_merge(packed, vtx->attributes[i], ATTRIBUTE);
+                attributes[i] = packed;
+        }
+
+        return T.gpu;
+}
+
+/*
+ * Emit Valhall descriptors for shader images. Unlike previous generations,
+ * Valhall does not have a special descriptor for images. Standard texture
+ * descriptors are used. The binding is different in Gallium, however, so we
+ * translate.
+ */
+static struct pipe_sampler_view
+panfrost_pipe_image_to_sampler_view(struct pipe_image_view *v)
+{
+        struct pipe_sampler_view out = {
+                .format = v->format,
+                .texture = v->resource,
+                .target = v->resource->target,
+                .swizzle_r = PIPE_SWIZZLE_X,
+                .swizzle_g = PIPE_SWIZZLE_Y,
+                .swizzle_b = PIPE_SWIZZLE_Z,
+                .swizzle_a = PIPE_SWIZZLE_W
+        };
+
+        if (out.target == PIPE_BUFFER) {
+                out.u.buf.offset = v->u.buf.offset;
+                out.u.buf.size = v->u.buf.size;
+        } else {
+                out.u.tex.first_layer = v->u.tex.first_layer;
+                out.u.tex.last_layer = v->u.tex.last_layer;
+
+                /* Single level only */
+                out.u.tex.first_level = v->u.tex.level;
+                out.u.tex.last_level = v->u.tex.level;
+        }
+
+        return out;
+}
+
+static void
+panfrost_update_sampler_view(struct panfrost_sampler_view *view,
+                             struct pipe_context *pctx);
+
+static mali_ptr
+panfrost_emit_images(struct panfrost_batch *batch, enum pipe_shader_type stage)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        unsigned last_bit = util_last_bit(ctx->image_mask[stage]);
+
+        struct panfrost_ptr T =
+                pan_pool_alloc_desc_array(&batch->pool.base, last_bit, TEXTURE);
+
+        struct mali_texture_packed *out = (struct mali_texture_packed *) T.cpu;
+
+        for (int i = 0; i < last_bit; ++i) {
+                struct pipe_image_view *image = &ctx->images[stage][i];
+
+                if (!(ctx->image_mask[stage] & BITFIELD_BIT(i))) {
+                        memset(&out[i], 0, sizeof(out[i]));
+                        continue;
+                }
+
+                /* Construct a synthetic sampler view so we can use our usual
+                 * sampler view code for the actual descriptor packing.
+                 *
+                 * Use the batch pool for a transient allocation, rather than
+                 * allocating a long-lived descriptor.
+                 */
+                struct panfrost_sampler_view view = {
+                        .base = panfrost_pipe_image_to_sampler_view(image),
+                        .pool = &batch->pool
+                };
+
+                /* If we specify a cube map, the hardware internally treat it as
+                 * a 2D array. Since cube maps as images can confuse our common
+                 * texturing code, explicitly use a 2D array.
+                 *
+                 * Similar concerns apply to 3D textures.
+                 */
+                if (view.base.target == PIPE_BUFFER) {
+                        view.base.target = PIPE_BUFFER;
+                } else {
+                        view.base.target = PIPE_TEXTURE_2D_ARRAY;
+
+                        /* Hardware limitation */
+                        if (view.base.u.tex.first_level != 0)
+                                unreachable("TODO: mipmaps special handling");
+                }
+
+                panfrost_update_sampler_view(&view, &ctx->base);
+                out[i] = view.bifrost_descriptor;
+
+                panfrost_track_image_access(batch, stage, image);
+        }
+
+        return T.gpu;
+}
+#endif
+
 static mali_ptr
 panfrost_map_constant_buffer_gpu(struct panfrost_batch *batch,
                                  enum pipe_shader_type st,
