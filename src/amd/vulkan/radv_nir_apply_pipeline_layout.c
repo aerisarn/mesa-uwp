@@ -42,6 +42,7 @@ typedef struct {
 static nir_ssa_def *
 get_scalar_arg(nir_builder *b, unsigned size, struct ac_arg arg)
 {
+   assert(arg.used);
    return nir_load_scalar_arg_amd(b, size, .base = arg.arg_index);
 }
 
