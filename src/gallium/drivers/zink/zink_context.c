@@ -2766,6 +2766,12 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
             assert(!ctx->needs_present || ctx->needs_present == res);
             ctx->needs_present = res;
          }
+         if (res->obj->dt) {
+            /* #6274 */
+            if (!zink_screen(ctx->base.screen)->info.have_KHR_swapchain_mutable_format &&
+                surf->format != res->base.b.format)
+               mesa_loge("zink: SRGB framebuffer unsupported without KHR_swapchain_mutable_format");
+         }
          res->fb_binds++;
          ctx->gfx_pipeline_state.void_alpha_attachments |= util_format_has_alpha1(surf->format) ? BITFIELD_BIT(i) : 0;
       }
