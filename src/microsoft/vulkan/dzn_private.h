@@ -216,7 +216,7 @@ void
 d3d12_enable_gpu_validation();
 
 ID3D12Device1 *
-d3d12_create_device(IUnknown *adapter, bool experimental_features);
+d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features);
 
 struct dzn_queue {
    struct vk_queue vk;
