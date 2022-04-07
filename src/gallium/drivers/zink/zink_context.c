@@ -2194,16 +2194,18 @@ setup_framebuffer(struct zink_context *ctx)
    }
 
    ctx->rp_changed = false;
+   bool has_swapchain = false;
    for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       if (!ctx->fb_state.cbufs[i])
          continue;
       struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[i]->texture);
       if (res->obj->dt) {
+         has_swapchain = true;
          zink_kopper_acquire(ctx, res, UINT64_MAX);
          zink_surface_swapchain_update(ctx, zink_csurface(ctx->fb_state.cbufs[i]));
       }
    }
-   if (ctx->swapchain_size.width || ctx->swapchain_size.height) {
+   if (has_swapchain && (ctx->swapchain_size.width || ctx->swapchain_size.height)) {
       unsigned old_w = ctx->fb_state.width;
       unsigned old_h = ctx->fb_state.height;
       ctx->fb_state.width = ctx->swapchain_size.width;
