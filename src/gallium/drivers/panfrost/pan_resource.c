@@ -419,14 +419,7 @@ panfrost_should_tile(struct panfrost_device *dev,
                 PIPE_BIND_SCANOUT |
                 PIPE_BIND_SHARED;
 
-        unsigned bpp = util_format_get_blocksizebits(fmt);
-
-        bool is_sane_bpp =
-                bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 ||
-                bpp == 64 || bpp == 128;
-
         bool can_tile = panfrost_is_2d(pres)
-                && is_sane_bpp
                 && ((pres->base.bind & ~valid_binding) == 0);
 
         return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
