@@ -3379,7 +3379,8 @@ zink_flush_resource(struct pipe_context *pctx,
          ctx->needs_present = res;
       }
       ctx->batch.swapchain = res;
-   }
+   } else if (res->dmabuf)
+      res->dmabuf_acquire = true;
 }
 
 void
