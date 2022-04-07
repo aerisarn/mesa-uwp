@@ -722,24 +722,40 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
         if (maxx == 0 || maxy == 0)
                 maxx = maxy = minx = miny = 1;
 
-        struct panfrost_ptr T = pan_pool_alloc_desc(&batch->pool.base, VIEWPORT);
-
-        pan_pack(T.cpu, VIEWPORT, cfg) {
-                /* [minx, maxx) and [miny, maxy) are exclusive ranges, but
-                 * these are inclusive */
-                cfg.scissor_minimum_x = minx;
-                cfg.scissor_minimum_y = miny;
-                cfg.scissor_maximum_x = maxx - 1;
-                cfg.scissor_maximum_y = maxy - 1;
-
-                cfg.minimum_z = rast->depth_clip_near ? minz : -INFINITY;
-                cfg.maximum_z = rast->depth_clip_far ? maxz : INFINITY;
-        }
-
         panfrost_batch_union_scissor(batch, minx, miny, maxx, maxy);
         batch->scissor_culls_everything = (minx >= maxx || miny >= maxy);
 
+        /* [minx, maxx) and [miny, maxy) are exclusive ranges in the hardware */
+        maxx--;
+        maxy--;
+
+        batch->minimum_z = rast->depth_clip_near ? minz : -INFINITY;
+        batch->maximum_z = rast->depth_clip_far  ? maxz : +INFINITY;
+
+#if PAN_ARCH <= 7
+        struct panfrost_ptr T = pan_pool_alloc_desc(&batch->pool.base, VIEWPORT);
+
+        pan_pack(T.cpu, VIEWPORT, cfg) {
+                cfg.scissor_minimum_x = minx;
+                cfg.scissor_minimum_y = miny;
+                cfg.scissor_maximum_x = maxx;
+                cfg.scissor_maximum_y = maxy;
+
+                cfg.minimum_z = batch->minimum_z;
+                cfg.maximum_z = batch->maximum_z;
+        }
+
         return T.gpu;
+#else
+        pan_pack(&batch->scissor, SCISSOR, cfg) {
+                cfg.scissor_minimum_x = minx;
+                cfg.scissor_minimum_y = miny;
+                cfg.scissor_maximum_x = maxx;
+                cfg.scissor_maximum_y = maxy;
+        }
+
+        return 0;
+#endif
 }
 
 static mali_ptr
