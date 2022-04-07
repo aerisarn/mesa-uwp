@@ -55,6 +55,8 @@
 
 #define DZN_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
 
+#define MAX_TIER2_MEMORY_TYPES 3
+
 static const struct vk_instance_extension_table instance_extensions = {
    .KHR_get_physical_device_properties2      = true,
 #ifdef DZN_USE_WSI_PLATFORM
@@ -389,12 +391,11 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
       mem->memoryTypes[1].propertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    }
 
-   constexpr unsigned MaxTier2MemoryTypes = 3;
-   assert(mem->memoryTypeCount <= MaxTier2MemoryTypes);
+   assert(mem->memoryTypeCount <= MAX_TIER2_MEMORY_TYPES);
 
    if (pdev->options.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1) {
       unsigned oldMemoryTypeCount = mem->memoryTypeCount;
-      VkMemoryType oldMemoryTypes[MaxTier2MemoryTypes];
+      VkMemoryType oldMemoryTypes[MAX_TIER2_MEMORY_TYPES];
 
       memcpy(oldMemoryTypes, mem->memoryTypes, oldMemoryTypeCount * sizeof(VkMemoryType));
 
