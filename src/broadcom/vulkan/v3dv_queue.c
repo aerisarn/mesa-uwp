@@ -744,11 +744,10 @@ set_in_syncs(struct v3dv_device *device,
    if (device->last_job_syncs.first[queue])
       n_sems = sems_info->wait_sem_count;
 
-   /* If we don't need to wait on wait semaphores but the serialize flag is
-    * set, this job waits for completion of all GPU jobs submitted in any
-    * queue V3DV_QUEUE_(CL/TFU/CSD) before running.
+   /* If the serialize flag is set, this job waits for completion of all GPU
+    * jobs submitted in any queue V3DV_QUEUE_(CL/TFU/CSD) before running.
     */
-   *count = n_sems == 0 && job->serialize ? 3 : n_sems;
+   *count = n_sems + (job->serialize ? 3 : 0);
 
    if (!*count)
       return NULL;
@@ -760,30 +759,30 @@ set_in_syncs(struct v3dv_device *device,
    if (!syncs)
       return NULL;
 
-   if (n_sems) {
-      for (int i = 0; i < *count; i++) {
-         struct v3dv_semaphore *sem =
-            v3dv_semaphore_from_handle(sems_info->wait_sems[i]);
-         syncs[i].handle = semaphore_get_sync(sem);
+   for (int i = 0; i < n_sems; i++) {
+      struct v3dv_semaphore *sem =
+         v3dv_semaphore_from_handle(sems_info->wait_sems[i]);
+      syncs[i].handle = semaphore_get_sync(sem);
 
-         /* From the Vulkan 1.0 spec:
-          *
-          *    "If the import is temporary, the implementation must restore
-          *     the semaphore to its prior permanent state after submitting
-          *     the next semaphore wait operation."
-          *
-          * We can't destroy the temporary sync until the kernel is done
-          * with it, this is why we need to have this 'has_temp' flag instead
-          * of checking temp_sync for 0 to know if we have a temporary
-          * payload. The temporary sync will be destroyed if we import into
-          * the semaphore again or if the semaphore is destroyed by the
-          * client.
-          */
-         sem->has_temp = false;
-      }
-   } else {
-      for (int i = 0; i < *count; i++)
-         syncs[i].handle = device->last_job_syncs.syncs[i];
+      /* From the Vulkan 1.0 spec:
+       *
+       *    "If the import is temporary, the implementation must restore
+       *     the semaphore to its prior permanent state after submitting
+       *     the next semaphore wait operation."
+       *
+       * We can't destroy the temporary sync until the kernel is done
+       * with it, this is why we need to have this 'has_temp' flag instead
+       * of checking temp_sync for 0 to know if we have a temporary
+       * payload. The temporary sync will be destroyed if we import into
+       * the semaphore again or if the semaphore is destroyed by the
+       * client.
+       */
+      sem->has_temp = false;
+   }
+
+   if (job->serialize) {
+      for (int i = 0; i < 3; i++)
+         syncs[n_sems + i].handle = device->last_job_syncs.syncs[i];
    }
 
    return syncs;
