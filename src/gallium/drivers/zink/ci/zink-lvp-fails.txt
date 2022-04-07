@@ -14,7 +14,6 @@ spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fai
 spec@egl_khr_gl_colorspace@srgb,Crash
 spec@ext_framebuffer_blit@fbo-sys-blit,Fail
 spec@ext_framebuffer_blit@fbo-sys-sub-blit,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Crash
 
 dEQP-GLES2.functional.clipping.point.wide_point_clip,Fail
 dEQP-GLES2.functional.clipping.point.wide_point_clip_viewport_center,Fail

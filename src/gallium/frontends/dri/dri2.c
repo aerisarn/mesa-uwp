@@ -1899,6 +1899,28 @@ const __DRIimageExtension driVkImageExtension = {
     .createImageWithModifiers2    = dri2_create_image_with_modifiers2,
 };
 
+const __DRIimageExtension driVkImageExtensionSw = {
+    .base = { __DRI_IMAGE, 20 },
+
+    .createImageFromName          = dri2_create_image_from_name,
+    .createImageFromRenderbuffer  = dri2_create_image_from_renderbuffer,
+    .destroyImage                 = dri2_destroy_image,
+    .createImage                  = dri2_create_image,
+    .queryImage                   = dri2_query_image,
+    .dupImage                     = dri2_dup_image,
+    .validateUsage                = dri2_validate_usage,
+    .createImageFromNames         = dri2_from_names,
+    .fromPlanar                   = dri2_from_planar,
+    .createImageFromTexture       = dri2_create_from_texture,
+    .createImageFromFds           = dri2_from_fds,
+    .createImageFromFds2          = dri2_from_fds2,
+    .blitImage                    = dri2_blit_image,
+    .getCapabilities              = dri2_get_capabilities,
+    .mapImage                     = dri2_map_image,
+    .unmapImage                   = dri2_unmap_image,
+    .createImageFromRenderbuffer2 = dri2_create_image_from_renderbuffer2,
+};
+
 static const __DRIrobustnessExtension dri2Robustness = {
    .base = { __DRI2_ROBUSTNESS, 1 }
 };

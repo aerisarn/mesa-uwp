@@ -54,6 +54,7 @@ struct kopper_screen {
 };
 
 extern const __DRIimageExtension driVkImageExtension;
+extern const __DRIimageExtension driVkImageExtensionSw;
 
 static void
 kopper_flush_drawable(__DRIdrawable *dPriv)
@@ -90,6 +91,18 @@ static const __DRIextension *drivk_screen_extensions[] = {
    &dri2FenceExtension.base,
    &dri2Robustness.base,
    &driVkImageExtension.base,
+   &dri2FlushControlExtension.base,
+   &driVkFlushExtension.base,
+   NULL
+};
+
+static const __DRIextension *drivk_sw_screen_extensions[] = {
+   &driTexBufferExtension.base,
+   &dri2RendererQueryExtension.base,
+   &dri2ConfigQueryExtension.base,
+   &dri2FenceExtension.base,
+   &dri2Robustness.base,
+   &driVkImageExtensionSw.base,
    &dri2FlushControlExtension.base,
    &driVkFlushExtension.base,
    NULL
@@ -137,7 +150,10 @@ kopper_init_screen(__DRIscreen * sPriv)
    assert(pscreen->get_param(pscreen, PIPE_CAP_DEVICE_RESET_STATUS_QUERY));
    screen->has_reset_status_query = true;
    screen->lookup_egl_image = dri2_lookup_egl_image;
-   sPriv->extensions = drivk_screen_extensions;
+   if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF))
+      sPriv->extensions = drivk_screen_extensions;
+   else
+      sPriv->extensions = drivk_sw_screen_extensions;
 
    const __DRIimageLookupExtension *image = sPriv->dri2.image;
    if (image &&
