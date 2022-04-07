@@ -202,6 +202,12 @@ struct panfrost_context {
 
         struct panfrost_blend_state *blend;
 
+        /* On Valhall, does the current blend state use a blend shader for any
+         * output? We need this information in a hot path to decide if
+         * per-sample shading should be enabled.
+         */
+        bool valhall_has_blend_shader;
+
         struct pipe_viewport_state pipe_viewport;
         struct pipe_scissor_state scissor;
         struct pipe_blend_color blend_color;
