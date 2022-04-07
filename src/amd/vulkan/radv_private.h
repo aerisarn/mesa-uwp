@@ -1745,8 +1745,8 @@ struct radv_event {
 
 struct radv_pipeline_key;
 
-void radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInfo **stages,
-                       const struct radv_pipeline_layout *layout,
+void radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInfo *stages,
+                       uint32_t stageCount, const struct radv_pipeline_layout *layout,
                        const struct radv_pipeline_key *key, uint32_t flags);
 
 void radv_hash_rt_shaders(unsigned char *hash, const VkRayTracingPipelineCreateInfoKHR *pCreateInfo,
