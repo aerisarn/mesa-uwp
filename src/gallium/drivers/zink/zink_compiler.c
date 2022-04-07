@@ -355,6 +355,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_uniforms_to_ubo = true,
       .has_fsub = true,
       .has_isub = true,
+      .has_txs = true,
       .lower_mul_2x32_64 = true,
       .support_16bit_alu = true, /* not quite what it sounds like */
    };
