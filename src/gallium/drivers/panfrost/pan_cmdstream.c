@@ -1808,19 +1808,7 @@ emit_image_bufs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                                                 is_3d ? 0 : image->u.tex.first_layer,
                                                 is_3d ? image->u.tex.first_layer : 0);
 
-                if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
-                        panfrost_batch_write_rsrc(batch, rsrc, shader);
-
-                        unsigned level = is_buffer ? 0 : image->u.tex.level;
-                        BITSET_SET(rsrc->valid.data, level);
-
-                        if (is_buffer) {
-                                util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
-                                                0, rsrc->base.width0);
-                        }
-                } else {
-                        panfrost_batch_read_rsrc(batch, rsrc, shader);
-                }
+                panfrost_track_image_access(batch, shader, image);
 
                 pan_pack(bufs + (i * 2), ATTRIBUTE_BUFFER, cfg) {
                         cfg.type = pan_modifier_to_attr_type(rsrc->image.layout.modifier);
