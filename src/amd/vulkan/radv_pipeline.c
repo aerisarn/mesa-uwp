@@ -95,6 +95,14 @@ radv_is_raster_enabled(const struct radv_pipeline *pipeline,
           (pipeline->graphics.dynamic_states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE);
 }
 
+static bool
+radv_is_vrs_enabled(const struct radv_pipeline *pipeline,
+                    const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+   return vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
+          (pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+}
+
 static const VkPipelineMultisampleStateCreateInfo *
 radv_pipeline_get_multisample_state(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -1445,9 +1453,7 @@ radv_pipeline_needed_dynamic_state(const struct radv_pipeline *pipeline,
          states &= ~RADV_DYNAMIC_LINE_STIPPLE;
    }
 
-   if (!vk_find_struct_const(pCreateInfo->pNext,
-                             PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
-       !(pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE))
+   if (!radv_is_vrs_enabled(pipeline, pCreateInfo))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
    if (!has_color_att || !radv_pipeline_is_blend_enabled(pipeline, pCreateInfo))
@@ -6108,9 +6114,7 @@ gfx103_pipeline_generate_vgt_draw_payload_cntl(struct radeon_cmdbuf *ctx_cs,
 {
    const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
 
-   bool enable_vrs =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
-      (pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+   bool enable_vrs = radv_is_vrs_enabled(pipeline, pCreateInfo);
 
    /* Enables the second channel of the primitive export instruction.
     * This channel contains: VRS rate x, y, viewport and layer.
@@ -6148,9 +6152,7 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
 {
    uint32_t mode = V_028064_VRS_COMB_MODE_PASSTHRU;
    uint8_t rate_x = 0, rate_y = 0;
-   bool enable_vrs =
-      vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
-      (pipeline->graphics.dynamic_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE);
+   bool enable_vrs = radv_is_vrs_enabled(pipeline, pCreateInfo);
 
    if (!enable_vrs && gfx103_pipeline_vrs_coarse_shading(pipeline)) {
       /* When per-draw VRS is not enabled at all, try enabling VRS coarse shading 2x2 if the driver
