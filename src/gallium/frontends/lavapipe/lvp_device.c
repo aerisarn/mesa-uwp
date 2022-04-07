@@ -130,6 +130,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_storage_buffer_storage_class      = true,
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_swapchain                         = true,
+   .KHR_swapchain_mutable_format          = true,
 #endif
    .KHR_synchronization2                  = true,
    .KHR_timeline_semaphore                = true,
