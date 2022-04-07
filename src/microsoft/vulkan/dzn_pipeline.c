@@ -202,6 +202,9 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
       container_of(pipeline->base.base.device, struct dzn_device, vk);
    const VkPipelineVertexInputStateCreateInfo *in_vi =
       in->pVertexInputState;
+   const VkPipelineVertexInputDivisorStateCreateInfoEXT *divisors =
+      (const VkPipelineVertexInputDivisorStateCreateInfoEXT *)
+      vk_find_struct_const(in_vi, PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
 
    if (!in_vi->vertexAttributeDescriptionCount) {
       out->InputLayout.pInputElementDescs = NULL;
@@ -238,6 +241,17 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
    for (uint32_t i = 0; i < in_vi->vertexAttributeDescriptionCount; i++) {
       const VkVertexInputAttributeDescription *attr =
          &in_vi->pVertexAttributeDescriptions[i];
+      const VkVertexInputBindingDivisorDescriptionEXT *divisor = NULL;
+
+      if (slot_class[attr->binding] == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA &&
+          divisors) {
+         for (uint32_t d = 0; d < divisors->vertexBindingDivisorCount; d++) {
+            if (attr->binding == divisors->pVertexBindingDivisors[d].binding) {
+               divisor = &divisors->pVertexBindingDivisors[d];
+               break;
+            }
+         }
+      }
 
       /* nir_to_dxil() name all vertex inputs as TEXCOORDx */
       inputs[i].SemanticName = "TEXCOORD";
@@ -245,8 +259,13 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
       inputs[i].Format = dzn_buffer_get_dxgi_format(attr->format);
       inputs[i].InputSlot = attr->binding;
       inputs[i].InputSlotClass = slot_class[attr->binding];
-      inputs[i].InstanceDataStepRate =
-         inputs[i].InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA ? 1 : 0;
+      if (divisor) {
+         assert(inputs[i].InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA);
+         inputs[i].InstanceDataStepRate = divisor->divisor;
+      } else {
+         inputs[i].InstanceDataStepRate =
+            inputs[i].InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA ? 1 : 0;
+      }
       inputs[i].AlignedByteOffset = attr->offset;
    }
 

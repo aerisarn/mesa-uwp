@@ -80,6 +80,7 @@ dzn_physical_device_get_extensions(struct dzn_physical_device *pdev)
 #ifdef DZN_USE_WSI_PLATFORM
       .KHR_swapchain                         = true,
 #endif
+      .EXT_vertex_attribute_divisor          = true,
    };
 }
 
@@ -1159,7 +1160,18 @@ dzn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
           vk_get_physical_device_core_1_3_feature_ext(ext, &core_1_3))
          continue;
 
-      dzn_debug_ignored_stype(ext->sType);
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *features =
+            (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT *)ext;
+         features->vertexAttributeInstanceRateDivisor = true;
+         features->vertexAttributeInstanceRateZeroDivisor = true;
+         break;
+      }
+      default:
+         dzn_debug_ignored_stype(ext->sType);
+	 break;
+      }
    }
 }
 
@@ -1474,7 +1486,17 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
           vk_get_physical_device_core_1_3_property_ext(ext, &core_1_3))
          continue;
 
-      dzn_debug_ignored_stype(ext->sType);
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *attr_div =
+            (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT *)ext;
+         attr_div->maxVertexAttribDivisor = UINT32_MAX;
+         break;
+      }
+      default:
+         dzn_debug_ignored_stype(ext->sType);
+         break;
+      }
    }
 }
 
