@@ -3124,7 +3124,9 @@ tex_instr_is_lod_allowed(nir_tex_instr *tex)
    return (tex->sampler_dim == GLSL_SAMPLER_DIM_1D ||
            tex->sampler_dim == GLSL_SAMPLER_DIM_2D ||
            tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
-           tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE);
+           tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE ||
+           /* RECT will always become 2D, so this is fine */
+           tex->sampler_dim == GLSL_SAMPLER_DIM_RECT);
 }
 
 static void
