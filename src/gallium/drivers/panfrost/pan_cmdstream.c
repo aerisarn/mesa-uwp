@@ -87,6 +87,12 @@ struct panfrost_sampler_view {
         struct mali_texture_packed bifrost_descriptor;
         mali_ptr texture_bo;
         uint64_t modifier;
+
+        /* Pool used to allocate the descriptor. If NULL, defaults to the global
+         * descriptor pool. Can be set for short lived descriptors, useful for
+         * shader images on Valhall.
+         */
+        struct panfrost_pool *pool;
 };
 
 /* Statically assert that PIPE_* enums match the hardware enums.
@@ -1345,7 +1351,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 (PAN_ARCH <= 5 ? pan_size(TEXTURE) : 0) +
                 GENX(panfrost_estimate_texture_payload_size)(&iview);
 
-        struct panfrost_ptr payload = pan_pool_alloc_aligned(&ctx->descs.base, size, 64);
+        struct panfrost_pool *pool = so->pool ?: &ctx->descs;
+        struct panfrost_ptr payload = pan_pool_alloc_aligned(&pool->base, size, 64);
         so->state = panfrost_pool_take_ref(&ctx->descs, payload.gpu);
 
         void *tex = (PAN_ARCH >= 6) ? &so->bifrost_descriptor : payload.cpu;
