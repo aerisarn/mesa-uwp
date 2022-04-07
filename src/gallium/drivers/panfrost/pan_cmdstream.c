@@ -430,6 +430,23 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
 }
 #endif
 
+static inline bool
+pan_allow_forward_pixel_to_kill(struct panfrost_context *ctx, struct panfrost_shader_state *fs)
+{
+        /* Track if any colour buffer is reused across draws, either
+         * from reading it directly, or from failing to write it
+         */
+        unsigned rt_mask = ctx->fb_rt_mask;
+        uint64_t rt_written = (fs->info.outputs_written >> FRAG_RESULT_DATA0);
+        bool blend_reads_dest = (ctx->blend->load_dest_mask & rt_mask);
+        bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
+
+        return fs->info.fs.can_fpk &&
+                !(rt_mask & ~rt_written) &&
+                !alpha_to_coverage &&
+                !blend_reads_dest;
+}
+
 /* Construct a partial RSD corresponding to no executed fragment shader, and
  * merge with the existing partial RSD. */
 
@@ -477,17 +494,8 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         pan_pack(rsd, RENDERER_STATE, cfg) {
                 if (panfrost_fs_required(fs, so, &ctx->pipe_framebuffer, zsa)) {
 #if PAN_ARCH >= 6
-                        /* Track if any colour buffer is reused across draws, either
-                         * from reading it directly, or from failing to write it */
-                        unsigned rt_mask = ctx->fb_rt_mask;
-                        uint64_t rt_written = (fs->info.outputs_written >> FRAG_RESULT_DATA0);
-                        bool blend_reads_dest = (so->load_dest_mask & rt_mask);
-
                         cfg.properties.allow_forward_pixel_to_kill =
-                                fs->info.fs.can_fpk &&
-                                !(rt_mask & ~rt_written) &&
-                                !alpha_to_coverage &&
-                                !blend_reads_dest;
+                                pan_allow_forward_pixel_to_kill(ctx, fs);
 #else
                         cfg.properties.force_early_z =
                                 fs->info.fs.can_early_z && !alpha_to_coverage &&
