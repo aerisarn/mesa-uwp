@@ -1199,7 +1199,7 @@ dzn_buffer_view_create(struct dzn_device *device,
             D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
          .Buffer = {
             .FirstElement = pCreateInfo->offset / blksz,
-            .NumElements = UINT(size / blksz),
+            .NumElements = (UINT)(size / blksz),
             .Flags = D3D12_BUFFER_SRV_FLAG_NONE,
          },
       };
@@ -1211,7 +1211,7 @@ dzn_buffer_view_create(struct dzn_device *device,
          .ViewDimension = D3D12_UAV_DIMENSION_BUFFER,
          .Buffer = {
             .FirstElement = pCreateInfo->offset / blksz,
-            .NumElements = UINT(size / blksz),
+            .NumElements = (UINT)(size / blksz),
             .Flags = D3D12_BUFFER_UAV_FLAG_NONE,
          },
       };
