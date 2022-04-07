@@ -2882,6 +2882,10 @@ to upconvert to 32b float internally?
 	</bitset>
 
 	<reg32 offset="0xa800" name="SP_VS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
+		<!--
+		This field actually controls all geometry stages. TCS, TES, and
+		GS must have the same mergedregs setting as VS.
+		-->
 		<bitfield name="MERGEDREGS" pos="20" type="boolean"/>
 		<!-- ??? (blob has it set) -->
 		<bitfield name="UNK21" pos="21" type="boolean"/>
@@ -2998,7 +3002,7 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xa830" name="SP_HS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
 		<!--
-		There is no mergedregs bit, that comes from the previous stage (VS).
+		There is no mergedregs bit, that comes from the VS.
 		No idea what this bit does here.
 		-->
 		<bitfield name="UNK20" pos="20" type="boolean"/>
@@ -3024,7 +3028,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa83d" name="SP_HS_PVT_MEM_HW_STACK_OFFSET" type="a6xx_sp_xs_pvt_mem_hw_stack_offset"/>
 
 	<reg32 offset="0xa840" name="SP_DS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
-		<bitfield name="MERGEDREGS" pos="20" type="boolean"/>
+		<!-- There is no mergedregs bit, that comes from the VS. -->
+		<bitfield name="UNK20" pos="20" type="boolean"/> <!-- something preamble-related -->
 	</reg32>
 	<reg32 offset="0xa841" name="SP_DS_BRANCH_COND" type="hex"/>
 
@@ -3060,7 +3065,7 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xa870" name="SP_GS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0">
 		<!--
-		There is no mergedregs bit, that comes from the previous stage (VS/DS).
+		There is no mergedregs bit, that comes from the VS.
 		No idea what this bit does here.
 		-->
 		<bitfield name="UNK20" pos="20" type="boolean"/>

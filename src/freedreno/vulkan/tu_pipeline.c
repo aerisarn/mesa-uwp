@@ -494,7 +494,6 @@ tu6_emit_xs(struct tu_cs *cs,
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
                .branchstack = ir3_shader_branchstack_hw(xs),
-               .mergedregs = xs->mergedregs,
       ));
       break;
    case MESA_SHADER_GEOMETRY:
