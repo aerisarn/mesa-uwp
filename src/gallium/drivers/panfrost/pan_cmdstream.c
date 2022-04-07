@@ -361,10 +361,12 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts, mali_ptr *blend_sha
                                         fs->info.bifrost.blend[i].format;
                                 cfg.fixed_function.rt = i;
 
+#if PAN_ARCH <= 7
                                 if (!info.opaque) {
                                         cfg.fixed_function.alpha_zero_nop = info.alpha_zero_nop;
                                         cfg.fixed_function.alpha_one_store = info.alpha_one_store;
                                 }
+#endif
                         }
                 }
 #endif
