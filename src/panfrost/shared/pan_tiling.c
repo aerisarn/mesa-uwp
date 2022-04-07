@@ -28,6 +28,7 @@
 #include "pan_tiling.h"
 #include <stdbool.h>
 #include "util/macros.h"
+#include "util/bitscan.h"
 
 /* This file implements software encode/decode of the tiling format used for
  * textures and framebuffers primarily on Utgard GPUs. Names for this format
@@ -148,6 +149,16 @@ typedef struct {
   uint8_t hi;
 } __attribute__((packed)) pan_uint24_t;
 
+typedef struct {
+  uint32_t lo;
+  uint16_t hi;
+} __attribute__((packed)) pan_uint48_t;
+
+typedef struct {
+  uint64_t lo;
+  uint32_t hi;
+} __attribute__((packed)) pan_uint96_t;
+
 /* Optimized routine to tile an aligned (w & 0xF == 0) texture. Explanation:
  *
  * dest_start precomputes the offset to the beginning of the first horizontal
@@ -244,8 +255,12 @@ TILED_ACCESS_TYPE(pan_uint128_t, 4);
       TILED_UNALIGNED_TYPE(pan_uint24_t, store, shift) \
    else if (bpp == 32) \
       TILED_UNALIGNED_TYPE(uint32_t, store, shift) \
+   else if (bpp == 48) \
+      TILED_UNALIGNED_TYPE(pan_uint48_t, store, shift) \
    else if (bpp == 64) \
       TILED_UNALIGNED_TYPE(uint64_t, store, shift) \
+   else if (bpp == 96) \
+      TILED_UNALIGNED_TYPE(pan_uint96_t, store, shift) \
    else if (bpp == 128) \
       TILED_UNALIGNED_TYPE(pan_uint128_t, store, shift) \
 }
@@ -299,7 +314,7 @@ panfrost_access_tiled_image(void *dst, void *src,
 {
    const struct util_format_description *desc = util_format_description(format);
 
-   if (desc->block.width > 1 || desc->block.bits == 24) {
+   if (desc->block.width > 1 || !util_is_power_of_two_nonzero(desc->block.bits)) {
       panfrost_access_tiled_image_generic(dst, (void *) src,
             x, y, w, h,
             dst_stride, src_stride, desc, is_store);
