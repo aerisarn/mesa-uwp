@@ -169,3 +169,53 @@ pan_assign_vertex_buffer(struct pan_vertex_buffer *buffers,
         return idx;
 }
 
+/*
+ * Helper to add a PIPE_CLEAR_* to batch->draws and batch->resolve together,
+ * meaning that we draw to a given target. Adding to only one mask does not
+ * generally make sense, except for clears which add to batch->clear and
+ * batch->resolve together.
+ */
+static void
+panfrost_draw_target(struct panfrost_batch *batch, unsigned target)
+{
+        batch->draws |= target;
+        batch->resolve |= target;
+}
+
+/*
+ * Draw time helper to set batch->{read, draws, resolve} based on current blend
+ * and depth-stencil state. To be called when blend or depth/stencil dirty state
+ * respectively changes.
+ */
+void
+panfrost_set_batch_masks_blend(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_blend_state *blend = ctx->blend;
+
+        for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+                if (!blend->info[i].no_colour && batch->key.cbufs[i])
+                        panfrost_draw_target(batch, PIPE_CLEAR_COLOR0 << i);
+        }
+}
+
+void
+panfrost_set_batch_masks_zs(struct panfrost_batch *batch)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct pipe_depth_stencil_alpha_state *zsa = (void *) ctx->depth_stencil;
+
+        /* Assume depth is read (TODO: perf) */
+        if (zsa->depth_enabled)
+                batch->read |= PIPE_CLEAR_DEPTH;
+
+        if (zsa->depth_writemask)
+                panfrost_draw_target(batch, PIPE_CLEAR_DEPTH);
+
+        if (zsa->stencil[0].enabled) {
+                panfrost_draw_target(batch, PIPE_CLEAR_STENCIL);
+
+                /* Assume stencil is read (TODO: perf) */
+                batch->read |= PIPE_CLEAR_STENCIL;
+        }
+}

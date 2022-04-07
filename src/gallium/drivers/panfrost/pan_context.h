@@ -418,4 +418,10 @@ panfrost_clean_state_3d(struct panfrost_context *ctx)
         }
 }
 
+void
+panfrost_set_batch_masks_blend(struct panfrost_batch *batch);
+
+void
+panfrost_set_batch_masks_zs(struct panfrost_batch *batch);
+
 #endif
