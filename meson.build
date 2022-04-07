@@ -680,7 +680,7 @@ if with_gallium_d3d12 or with_microsoft_clc or with_microsoft_vk
   endif
 endif
 
-if with_vulkan_overlay_layer or with_aco_tests
+if with_vulkan_overlay_layer or with_aco_tests or with_amd_vk
   prog_glslang = find_program('glslangValidator')
 endif
 
