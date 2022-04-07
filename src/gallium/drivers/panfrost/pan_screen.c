@@ -907,6 +907,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 panfrost_cmdstream_screen_init_v6(screen);
         else if (dev->arch == 7)
                 panfrost_cmdstream_screen_init_v7(screen);
+        else if (dev->arch == 9)
+                panfrost_cmdstream_screen_init_v9(screen);
         else
                 unreachable("Unhandled architecture major");
 
