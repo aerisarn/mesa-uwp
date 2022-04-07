@@ -1016,7 +1016,7 @@ unsigned bi_count_write_registers(const bi_instr *ins, unsigned dest);
 bool bi_is_regfmt_16(enum bi_register_format fmt);
 unsigned bi_writemask(const bi_instr *ins, unsigned dest);
 bi_clause * bi_next_clause(bi_context *ctx, bi_block *block, bi_clause *clause);
-bool bi_side_effects(enum bi_opcode op);
+bool bi_side_effects(const bi_instr *I);
 bool bi_reconverge_branches(bi_block *block);
 
 void bi_print_instr(const bi_instr *I, FILE *fp);

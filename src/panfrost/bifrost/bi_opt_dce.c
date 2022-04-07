@@ -55,7 +55,7 @@ bi_opt_dead_code_eliminate(bi_context *ctx)
                                 all_null &= bi_is_null(ins->dest[d]);
                         }
 
-                        if (all_null && !bi_side_effects(ins->op))
+                        if (all_null && !bi_side_effects(ins))
                                 bi_remove_instruction(ins);
                         else
                                 bi_liveness_ins_update(live, ins, temp_count);
