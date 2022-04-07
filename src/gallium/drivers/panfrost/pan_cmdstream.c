@@ -95,6 +95,26 @@ struct panfrost_sampler_view {
         struct panfrost_pool *pool;
 };
 
+struct panfrost_vertex_state {
+        unsigned num_elements;
+        struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
+
+#if PAN_ARCH >= 9
+        /* Packed attribute descriptor. All fields are set at CSO create time
+         * except for stride, which must be ORed in at draw time
+         */
+        struct mali_attribute_packed attributes[PIPE_MAX_ATTRIBS];
+#else
+        /* buffers corresponds to attribute buffer, element_buffers corresponds
+         * to an index in buffers for each vertex element */
+        struct pan_vertex_buffer buffers[PIPE_MAX_ATTRIBS];
+        unsigned element_buffer[PIPE_MAX_ATTRIBS];
+        unsigned nr_bufs;
+
+        unsigned formats[PIPE_MAX_ATTRIBS];
+#endif
+};
+
 /* Statically assert that PIPE_* enums match the hardware enums.
  * (As long as they match, we don't need to translate them.)
  */
