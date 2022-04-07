@@ -828,6 +828,65 @@ pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_transfer *trans)
         panfrost_blit(pctx, &blit);
 }
 
+static void
+panfrost_load_tiled_images(struct panfrost_transfer *transfer,
+                           struct panfrost_resource *rsrc)
+{
+        struct pipe_transfer *ptrans = &transfer->base;
+        unsigned level = ptrans->level;
+
+        /* If the requested level of the image is uninitialized, it's not
+         * necessary to copy it. Leave the result unintiialized too.
+         */
+        if (!BITSET_TEST(rsrc->valid.data, level))
+                return;
+
+        struct panfrost_bo *bo = rsrc->image.data.bo;
+        unsigned stride = panfrost_get_layer_stride(&rsrc->image.layout, level);
+
+        /* Otherwise, load each layer separately, required to load from 3D and
+         * array textures.
+         */
+        for (unsigned z = 0; z < ptrans->box.depth; ++z) {
+                void *dst = transfer->map + (ptrans->layer_stride * z);
+                uint8_t *map = bo->ptr.cpu +
+                               rsrc->image.layout.slices[level].offset +
+                               (z + ptrans->box.z) * stride;
+
+                panfrost_load_tiled_image(dst, map, ptrans->box.x,
+                                          ptrans->box.y, ptrans->box.width,
+                                          ptrans->box.height, ptrans->stride,
+                                          rsrc->image.layout.slices[level].line_stride,
+                                          rsrc->image.layout.format);
+        }
+}
+
+static void
+panfrost_store_tiled_images(struct panfrost_transfer *transfer,
+                            struct panfrost_resource *rsrc)
+{
+        struct panfrost_bo *bo = rsrc->image.data.bo;
+        struct pipe_transfer *ptrans = &transfer->base;
+        unsigned level = ptrans->level;
+        unsigned stride = panfrost_get_layer_stride(&rsrc->image.layout, level);
+
+        /* Otherwise, store each layer separately, required to store to 3D and
+         * array textures.
+         */
+        for (unsigned z = 0; z < ptrans->box.depth; ++z) {
+                void *src = transfer->map + (ptrans->layer_stride * z);
+                uint8_t *map = bo->ptr.cpu +
+                               rsrc->image.layout.slices[level].offset +
+                               (z + ptrans->box.z) * stride;
+
+                panfrost_store_tiled_image(map, src,
+                                ptrans->box.x, ptrans->box.y,
+                                ptrans->box.width, ptrans->box.height,
+                                rsrc->image.layout.slices[level].line_stride,
+                                ptrans->stride, rsrc->image.layout.format);
+        }
+}
+
 static void *
 panfrost_ptr_map(struct pipe_context *pctx,
                       struct pipe_resource *resource,
@@ -992,17 +1051,9 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 transfer->base.stride = box_blocks.width * bytes_per_block;
                 transfer->base.layer_stride = transfer->base.stride * box_blocks.height;
                 transfer->map = ralloc_size(transfer, transfer->base.layer_stride * box->depth);
-                assert(box->depth == 1);
 
-                if ((usage & PIPE_MAP_READ) && BITSET_TEST(rsrc->valid.data, level)) {
-                        panfrost_load_tiled_image(
-                                        transfer->map,
-                                        bo->ptr.cpu + rsrc->image.layout.slices[level].offset,
-                                        box->x, box->y, box->width, box->height,
-                                        transfer->base.stride,
-                                        rsrc->image.layout.slices[level].line_stride,
-                                        rsrc->image.layout.format);
-                }
+                if (usage & PIPE_MAP_READ)
+                        panfrost_load_tiled_images(transfer, rsrc);
 
                 return transfer->map;
         } else {
@@ -1199,8 +1250,6 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                         BITSET_SET(prsrc->valid.data, transfer->level);
 
                         if (prsrc->image.layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
-                                assert(transfer->box.depth == 1);
-
                                 if (panfrost_should_linear_convert(dev, prsrc, transfer)) {
                                         panfrost_resource_setup(dev, prsrc, DRM_FORMAT_MOD_LINEAR,
                                                                 prsrc->image.layout.format);
@@ -1223,14 +1272,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                                                 transfer->stride,
                                                 0, 0);
                                 } else {
-                                        panfrost_store_tiled_image(
-                                                bo->ptr.cpu + prsrc->image.layout.slices[transfer->level].offset,
-                                                trans->map,
-                                                transfer->box.x, transfer->box.y,
-                                                transfer->box.width, transfer->box.height,
-                                                prsrc->image.layout.slices[transfer->level].line_stride,
-                                                transfer->stride,
-                                                prsrc->image.layout.format);
+                                        panfrost_store_tiled_images(trans, prsrc);
                                 }
                         }
                 }
