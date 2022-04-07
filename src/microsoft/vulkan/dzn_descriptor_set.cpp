@@ -23,8 +23,6 @@
 
 #include "dzn_private.h"
 
-#include <wrl/client.h>
-
 #include "vk_alloc.h"
 #include "vk_descriptors.h"
 #include "vk_util.h"
