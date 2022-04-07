@@ -1396,11 +1396,14 @@ assign_producer_var_io(gl_shader_stage stage, nir_variable *var, unsigned *reser
       }
       if (slot_map[slot] == 0xff) {
          assert(*reserved < MAX_VARYING);
-         slot_map[slot] = *reserved;
-         if (stage == MESA_SHADER_TESS_EVAL && var->data.mode == nir_var_shader_in && !var->data.patch)
-            *reserved += glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
+         unsigned num_slots;
+         if (nir_is_arrayed_io(var, stage))
+            num_slots = glsl_count_vec4_slots(glsl_get_array_element(var->type), false, false);
          else
-            *reserved += glsl_count_vec4_slots(var->type, false, false);
+            num_slots = glsl_count_vec4_slots(var->type, false, false);
+         assert(*reserved + num_slots <= MAX_VARYING);
+         for (unsigned i = 0; i < num_slots; i++)
+            slot_map[slot + i] = (*reserved)++;
       }
       slot = slot_map[slot];
       assert(slot < MAX_VARYING);
