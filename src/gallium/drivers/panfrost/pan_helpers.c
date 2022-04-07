@@ -219,3 +219,27 @@ panfrost_set_batch_masks_zs(struct panfrost_batch *batch)
                 batch->read |= PIPE_CLEAR_STENCIL;
         }
 }
+
+void
+panfrost_track_image_access(struct panfrost_batch *batch,
+                            enum pipe_shader_type stage,
+                            struct pipe_image_view *image)
+{
+        struct panfrost_resource *rsrc = pan_resource(image->resource);
+
+        if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
+                panfrost_batch_write_rsrc(batch, rsrc, stage);
+
+                bool is_buffer = rsrc->base.target == PIPE_BUFFER;
+                unsigned level = is_buffer ? 0 : image->u.tex.level;
+                BITSET_SET(rsrc->valid.data, level);
+
+                if (is_buffer) {
+                        util_range_add(&rsrc->base, &rsrc->valid_buffer_range,
+                                        0, rsrc->base.width0);
+                }
+        } else {
+                panfrost_batch_read_rsrc(batch, rsrc, stage);
+        }
+}
+

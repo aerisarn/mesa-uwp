@@ -424,4 +424,9 @@ panfrost_set_batch_masks_blend(struct panfrost_batch *batch);
 void
 panfrost_set_batch_masks_zs(struct panfrost_batch *batch);
 
+void
+panfrost_track_image_access(struct panfrost_batch *batch,
+                            enum pipe_shader_type stage,
+                            struct pipe_image_view *image);
+
 #endif
