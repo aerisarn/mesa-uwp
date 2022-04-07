@@ -411,7 +411,8 @@ dzn_physical_device_init_memory(struct dzn_physical_device *pdev)
              */
             D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES
          };
-         for (D3D12_HEAP_FLAGS flag : flags) {
+         for (int i = 0; i < ARRAY_SIZE(flags); ++i) {
+            D3D12_HEAP_FLAGS flag = flags[i];
             pdev->heap_flags_for_mem_type[mem->memoryTypeCount] = flag;
             mem->memoryTypes[mem->memoryTypeCount] = oldMemoryTypes[oldMemoryTypeIdx];
             mem->memoryTypeCount++;
