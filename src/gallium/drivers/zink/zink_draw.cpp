@@ -531,7 +531,11 @@ zink_draw(struct pipe_context *pctx,
             debug_printf("util_upload_index_buffer() failed\n");
             return;
          }
-         zink_batch_reference_resource_move(batch, zink_resource(index_buffer));
+         /* this will have extra refs from tc */
+         if (screen->threaded)
+            zink_batch_reference_resource_move(batch, zink_resource(index_buffer));
+         else
+            zink_batch_reference_resource(batch, zink_resource(index_buffer));
       } else {
          index_buffer = dinfo->index.resource;
          zink_batch_reference_resource_rw(batch, zink_resource(index_buffer), false);
