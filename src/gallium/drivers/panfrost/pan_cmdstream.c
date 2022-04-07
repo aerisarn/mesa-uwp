@@ -1331,6 +1331,35 @@ panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
                 unreachable("No constant buffer");
 }
 
+/* Emit a single UBO record. On Valhall, UBOs are dumb buffers and are
+ * implemented with buffer descriptors in the resource table, sized in terms of
+ * bytes. On Bifrost and older, UBOs have special uniform buffer data
+ * structure, sized in terms of entries.
+ */
+static void
+panfrost_emit_ubo(void *base, unsigned index, mali_ptr address, size_t size)
+{
+#if PAN_ARCH >= 9
+        struct mali_buffer_packed *out = base;
+
+        pan_pack(out + index, BUFFER, cfg) {
+                cfg.size = size;
+                cfg.address = address;
+        }
+#else
+        struct mali_uniform_buffer_packed *out = base;
+
+        /* Issue (57) for the ARB_uniform_buffer_object spec says that
+         * the buffer can be larger than the uniform data inside it,
+         * so clamp ubo size to what hardware supports. */
+
+        pan_pack(out + index, UNIFORM_BUFFER, cfg) {
+                cfg.entries = MIN2(DIV_ROUND_UP(size, 16), 1 << 12);
+                cfg.pointer = address;
+        }
+#endif
+}
+
 static mali_ptr
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
