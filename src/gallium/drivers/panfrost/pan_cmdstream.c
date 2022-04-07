@@ -278,6 +278,25 @@ panfrost_fs_required(
         return (fs->info.fs.writes_depth || fs->info.fs.writes_stencil);
 }
 
+/* Get pointers to the blend shaders bound to each active render target. Used
+ * to emit the blend descriptors, as well as the fragment renderer state
+ * descriptor.
+ */
+static void
+panfrost_get_blend_shaders(struct panfrost_batch *batch,
+                           mali_ptr *blend_shaders)
+{
+        unsigned shader_offset = 0;
+        struct panfrost_bo *shader_bo = NULL;
+
+        for (unsigned c = 0; c < batch->key.nr_cbufs; ++c) {
+                if (batch->key.cbufs[c]) {
+                        blend_shaders[c] = panfrost_get_blend(batch,
+                                        c, &shader_bo, &shader_offset);
+                }
+        }
+}
+
 #if PAN_ARCH >= 5
 UNUSED static uint16_t
 pack_blend_constant(enum pipe_format format, float cons)
@@ -636,15 +655,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 #endif
 
         mali_ptr blend_shaders[PIPE_MAX_COLOR_BUFS] = { 0 };
-        unsigned shader_offset = 0;
-        struct panfrost_bo *shader_bo = NULL;
-
-        for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c) {
-                if (ctx->pipe_framebuffer.cbufs[c]) {
-                        blend_shaders[c] = panfrost_get_blend(batch,
-                                        c, &shader_bo, &shader_offset);
-                }
-        }
+        panfrost_get_blend_shaders(batch, blend_shaders);
 
         panfrost_emit_frag_shader(ctx, (struct mali_renderer_state_packed *) xfer.cpu, blend_shaders);
 
