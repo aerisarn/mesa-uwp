@@ -2547,7 +2547,9 @@ static void
 dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
                              struct dzn_buffer *draw_buf,
                              size_t draw_buf_offset,
-                             uint32_t draw_count,
+                             struct dzn_buffer *count_buf,
+                             size_t count_buf_offset,
+                             uint32_t max_draw_count,
                              uint32_t draw_buf_stride,
                              bool indexed)
 {
@@ -2574,9 +2576,19 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
       sizeof(struct dzn_indirect_draw_exec_params);
    uint32_t triangle_fan_exec_buf_stride =
       sizeof(struct dzn_indirect_triangle_fan_rewrite_index_exec_params);
+   uint32_t exec_buf_size = max_draw_count * exec_buf_stride;
+   uint32_t exec_buf_draw_offset = 0;
+
+   // We reserve the first slot for the draw_count value when indirect count is
+   // involved.
+   if (count_buf != NULL) {
+      exec_buf_size += exec_buf_stride;
+      exec_buf_draw_offset = exec_buf_stride;
+   }
+
    ID3D12Resource *exec_buf;
    VkResult result =
-      dzn_cmd_buffer_alloc_internal_buf(cmdbuf, draw_count * exec_buf_stride,
+      dzn_cmd_buffer_alloc_internal_buf(cmdbuf, exec_buf_size,
                                         D3D12_HEAP_TYPE_DEFAULT,
                                         D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                                         &exec_buf);
@@ -2591,7 +2603,7 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    if (triangle_fan_index_buf_stride) {
       result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf,
-                                           draw_count * triangle_fan_index_buf_stride,
+                                           max_draw_count * triangle_fan_index_buf_stride,
                                            D3D12_HEAP_TYPE_DEFAULT,
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                                            &triangle_fan_index_buf);
@@ -2600,7 +2612,7 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
 
       result =
          dzn_cmd_buffer_alloc_internal_buf(cmdbuf,
-                                           draw_count * triangle_fan_exec_buf_stride,
+                                           max_draw_count * triangle_fan_exec_buf_stride,
                                            D3D12_HEAP_TYPE_DEFAULT,
                                            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                                            &triangle_fan_exec_buf);
@@ -2622,29 +2634,50 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
 
    enum dzn_indirect_draw_type draw_type;
 
-   if (indexed && triangle_fan_index_buf_stride > 0)
-      draw_type = DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN;
-   else if (!indexed && triangle_fan_index_buf_stride > 0)
-      draw_type = DZN_INDIRECT_DRAW_TRIANGLE_FAN;
-   else if (indexed)
-      draw_type = DZN_INDIRECT_INDEXED_DRAW;
-   else
-      draw_type = DZN_INDIRECT_DRAW;
+   if (indexed && triangle_fan_index_buf_stride > 0) {
+      draw_type = count_buf ?
+                  DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN :
+                  DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN;
+   } else if (!indexed && triangle_fan_index_buf_stride > 0) {
+      draw_type = count_buf ?
+                  DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN :
+                  DZN_INDIRECT_DRAW_TRIANGLE_FAN;
+   } else if (indexed) {
+      draw_type = count_buf ?
+                  DZN_INDIRECT_INDEXED_DRAW_COUNT :
+                  DZN_INDIRECT_INDEXED_DRAW;
+   } else {
+      draw_type = count_buf ? DZN_INDIRECT_DRAW_COUNT : DZN_INDIRECT_DRAW;
+   }
 
    struct dzn_meta_indirect_draw *indirect_draw = &device->indirect_draws[draw_type];
 
    const struct dzn_pipeline *compute_pipeline =
       cmdbuf->state.bindpoint[VK_PIPELINE_BIND_POINT_COMPUTE].pipeline;
+   uint32_t root_param_idx = 0;
 
    ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, indirect_draw->root_sig);
    ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, indirect_draw->pipeline_state);
-   ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, 0, params_size / 4, &params, 0);
-   ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, 1, draw_buf_gpu);
-   ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, 2, ID3D12Resource_GetGPUVirtualAddress(exec_buf));
-   if (triangle_fan_exec_buf)
-      ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, 3, ID3D12Resource_GetGPUVirtualAddress(triangle_fan_exec_buf));
+   ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, root_param_idx++,
+                                                           params_size / 4, (const void *)&params, 0);
+   ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, root_param_idx++,
+                                                               draw_buf_gpu);
+   ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, root_param_idx++,
+                                                                ID3D12Resource_GetGPUVirtualAddress(exec_buf));
+   if (count_buf) {
+      ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist,
+                                                                  root_param_idx++,
+                                                                  ID3D12Resource_GetGPUVirtualAddress(count_buf->res) +
+                                                                  count_buf_offset);
+   }
 
-   ID3D12GraphicsCommandList1_Dispatch(cmdbuf->cmdlist, draw_count, 1, 1);
+   if (triangle_fan_exec_buf) {
+      ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist,
+                                                                   root_param_idx++,
+                                                                   ID3D12Resource_GetGPUVirtualAddress(triangle_fan_exec_buf));
+   }
+
+   ID3D12GraphicsCommandList1_Dispatch(cmdbuf->cmdlist, max_draw_count, 1, 1);
 
    D3D12_RESOURCE_BARRIER post_barriers[] = {
       {
@@ -2697,16 +2730,22 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
 
       ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, rewrite_index->root_sig);
       ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, rewrite_index->pipeline_state);
-      ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, 0, ID3D12Resource_GetGPUVirtualAddress(triangle_fan_index_buf));
-      ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, 1, sizeof(rewrite_index_params) / 4,
+      root_param_idx = 0;
+      ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, root_param_idx++,
+                                                                   ID3D12Resource_GetGPUVirtualAddress(triangle_fan_index_buf));
+      ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, root_param_idx++,
+                                                              sizeof(rewrite_index_params) / 4,
                                                               (const void *)&rewrite_index_params, 0);
 
-      if (indexed)
-         ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, 2, cmdbuf->state.ib.view.BufferLocation);
+      if (indexed) {
+         ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist,
+                                                                     root_param_idx++,
+                                                                     cmdbuf->state.ib.view.BufferLocation);
+      }
 
       ID3D12GraphicsCommandList1_ExecuteIndirect(cmdbuf->cmdlist, rewrite_index->cmd_sig,
-                                       draw_count, triangle_fan_exec_buf,
-                                       0, NULL, 0);
+                                                 max_draw_count, triangle_fan_exec_buf, 0,
+                                                 count_buf ? exec_buf : NULL, 0);
 
       D3D12_RESOURCE_BARRIER index_buf_barriers[] = {
          {
@@ -2771,7 +2810,9 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
    }
 
    ID3D12GraphicsCommandList1_ExecuteIndirect(cmdbuf->cmdlist, cmdsig,
-                                    draw_count, exec_buf, 0, NULL, 0);
+                                              max_draw_count,
+                                              exec_buf, exec_buf_draw_offset,
+                                              count_buf ? exec_buf : NULL, 0);
 }
 
 static void
@@ -3729,7 +3770,7 @@ dzn_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(dzn_buffer, buf, buffer);
 
-   dzn_cmd_buffer_indirect_draw(cmdbuf, buf, offset, drawCount, stride, false);
+   dzn_cmd_buffer_indirect_draw(cmdbuf, buf, offset, NULL, 0, drawCount, stride, false);
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3742,7 +3783,43 @@ dzn_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
    VK_FROM_HANDLE(dzn_buffer, buf, buffer);
 
-   dzn_cmd_buffer_indirect_draw(cmdbuf, buf, offset, drawCount, stride, true);
+   dzn_cmd_buffer_indirect_draw(cmdbuf, buf, offset, NULL, 0, drawCount, stride, true);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
+                         VkBuffer buffer,
+                         VkDeviceSize offset,
+                         VkBuffer countBuffer,
+                         VkDeviceSize countBufferOffset,
+                         uint32_t maxDrawCount,
+                         uint32_t stride)
+{
+   VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
+   VK_FROM_HANDLE(dzn_buffer, buf, buffer);
+   VK_FROM_HANDLE(dzn_buffer, count_buf, countBuffer);
+
+   dzn_cmd_buffer_indirect_draw(cmdbuf, buf, offset,
+                                count_buf, countBufferOffset,
+                                maxDrawCount, stride, false);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
+                                VkBuffer buffer,
+                                VkDeviceSize offset,
+                                VkBuffer countBuffer,
+                                VkDeviceSize countBufferOffset,
+                                uint32_t maxDrawCount,
+                                uint32_t stride)
+{
+   VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
+   VK_FROM_HANDLE(dzn_buffer, buf, buffer);
+   VK_FROM_HANDLE(dzn_buffer, count_buf, countBuffer);
+
+   dzn_cmd_buffer_indirect_draw(cmdbuf, buf, offset,
+                                count_buf, countBufferOffset,
+                                maxDrawCount, stride, true);
 }
 
 VKAPI_ATTR void VKAPI_CALL

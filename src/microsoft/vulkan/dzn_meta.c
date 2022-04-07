@@ -87,7 +87,7 @@ dzn_meta_compile_shader(struct dzn_device *device, nir_shader *nir,
    slot->BytecodeLength = size;
 }
 
-#define DZN_META_INDIRECT_DRAW_MAX_PARAM_COUNT 4
+#define DZN_META_INDIRECT_DRAW_MAX_PARAM_COUNT 5
 
 static void
 dzn_meta_indirect_draw_finish(struct dzn_device *device, enum dzn_indirect_draw_type type)
@@ -114,7 +114,13 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
 
    nir_shader *nir = dzn_nir_indirect_draw_shader(type);
    bool triangle_fan = type == DZN_INDIRECT_DRAW_TRIANGLE_FAN ||
-                       type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN;
+                       type == DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
+   bool indirect_count = type == DZN_INDIRECT_DRAW_COUNT ||
+                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT ||
+                         type == DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN ||
+                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
    uint32_t shader_params_size =
       triangle_fan ?
       sizeof(struct dzn_indirect_draw_triangle_fan_rewrite_params) :
@@ -153,12 +159,24 @@ dzn_meta_indirect_draw_init(struct dzn_device *device,
       .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
    };
 
+   if (indirect_count) {
+      root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
+         .ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV,
+         .Descriptor = {
+            .ShaderRegister = 3,
+            .RegisterSpace = 0,
+            .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE,
+         },
+         .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+      };
+   }
+
 
    if (triangle_fan) {
       root_params[root_param_count++] = (D3D12_ROOT_PARAMETER1) {
          .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
          .Descriptor = {
-            .ShaderRegister = 3,
+            .ShaderRegister = 4,
             .RegisterSpace = 0,
             .Flags = D3D12_ROOT_DESCRIPTOR_FLAG_NONE,
          },

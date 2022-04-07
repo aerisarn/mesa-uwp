@@ -86,17 +86,29 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
 {
    const char *type_str[] = {
       "draw",
+      "draw_count",
       "indexed_draw",
+      "indexed_draw_count",
       "draw_triangle_fan",
+      "draw_count_triangle_fan",
       "indexed_draw_triangle_fan",
+      "indexed_draw_count_triangle_fan",
    };
 
    assert(type < ARRAY_SIZE(type_str));
 
    bool indexed = type == DZN_INDIRECT_INDEXED_DRAW ||
-                  type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN;
+                  type == DZN_INDIRECT_INDEXED_DRAW_COUNT ||
+                  type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN ||
+                  type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
    bool triangle_fan = type == DZN_INDIRECT_DRAW_TRIANGLE_FAN ||
-                       type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN;
+                       type == DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_TRIANGLE_FAN ||
+                       type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
+   bool indirect_count = type == DZN_INDIRECT_DRAW_COUNT ||
+                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT ||
+                         type == DZN_INDIRECT_DRAW_COUNT_TRIANGLE_FAN ||
+                         type == DZN_INDIRECT_INDEXED_DRAW_COUNT_TRIANGLE_FAN;
    nir_builder b =
       nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
                                      dxil_get_nir_compiler_options(),
@@ -136,8 +148,29 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
    nir_ssa_def *index =
       nir_channel(&b, nir_load_global_invocation_id(&b, 32), 0);
 
+   if (indirect_count) {
+      nir_ssa_def *count_buf_desc =
+         dzn_nir_create_bo_desc(&b, nir_var_mem_ssbo, 0, 3, "count_buf", ACCESS_NON_WRITEABLE);
+
+      nir_ssa_def *draw_count =
+         nir_load_ssbo(&b, 1, 32, count_buf_desc, nir_imm_int(&b, 0), .align_mul = 4);
+
+      nir_push_if(&b, nir_ieq(&b, index, nir_imm_int(&b, 0)));
+      nir_store_ssbo(&b, draw_count, exec_buf_desc, nir_imm_int(&b, 0),
+                    .write_mask = 0x1, .access = ACCESS_NON_READABLE,
+                    .align_mul = 16);
+      nir_pop_if(&b, NULL);
+
+      nir_push_if(&b, nir_ult(&b, index, draw_count));
+   }
+
    nir_ssa_def *draw_offset = nir_imul(&b, draw_stride, index);
-   nir_ssa_def *exec_offset = nir_imul(&b, exec_stride, index);
+
+   /* The first entry contains the indirect count */
+   nir_ssa_def *exec_offset =
+      indirect_count ?
+      nir_imul(&b, exec_stride, nir_iadd_imm(&b, index, 1)) : 
+      nir_imul(&b, exec_stride, index);
 
    nir_ssa_def *draw_info1 =
       nir_load_ssbo(&b, 4, 32, draw_buf_desc, draw_offset, .align_mul = 4);
@@ -168,7 +201,7 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
       exec_vals[7] = base_instance;
 
       nir_ssa_def *triangle_fan_exec_buf_desc =
-         dzn_nir_create_bo_desc(&b, nir_var_mem_ssbo, 0, 3,
+         dzn_nir_create_bo_desc(&b, nir_var_mem_ssbo, 0, 4,
                                 "triangle_fan_exec_buf",
                                 ACCESS_NON_READABLE);
       nir_ssa_def *triangle_fan_index_buf_stride = nir_channel(&b, params, 1);
@@ -232,6 +265,8 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
                   exec_buf_desc, nir_iadd_imm(&b, exec_offset, 16),
                   .write_mask = 0xf, .access = ACCESS_NON_READABLE, .align_mul = 16);
 
+   if (indirect_count)
+      nir_pop_if(&b, NULL);
 
    return b.shader;
 }
