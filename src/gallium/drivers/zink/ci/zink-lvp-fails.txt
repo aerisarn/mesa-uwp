@@ -7,11 +7,9 @@ glx@extension string sanity,Fail
 glx@glx-tfp,Fail
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
 spec@!opengl 1.0@gl-1.0-front-invalidate-back,Fail
-spec@arb_framebuffer_srgb@framebuffer-srgb,Crash
 spec@egl_chromium_sync_control@conformance,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fail
-spec@egl_khr_gl_colorspace@srgb,Crash
 spec@ext_framebuffer_blit@fbo-sys-blit,Fail
 spec@ext_framebuffer_blit@fbo-sys-sub-blit,Fail
 
