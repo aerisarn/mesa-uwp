@@ -61,7 +61,6 @@ struct r600_shader_atomic {
 	unsigned start, end;
 	unsigned buffer_id;
 	unsigned hw_idx;
-	unsigned array_id;
 };
 
 struct r600_shader {

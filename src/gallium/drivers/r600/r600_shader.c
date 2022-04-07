@@ -1206,7 +1206,6 @@ static int tgsi_declaration(struct r600_shader_ctx *ctx)
 		ctx->shader->atomics[i].start = d->Range.First;
 		ctx->shader->atomics[i].end = d->Range.Last;
 		ctx->shader->atomics[i].hw_idx = ctx->shader->atomic_base + ctx->shader->nhwatomic;
-		ctx->shader->atomics[i].array_id = d->Array.ArrayID;
 		ctx->shader->atomics[i].buffer_id = d->Dim.Index2D;
 		ctx->shader->nhwatomic_ranges++;
 		ctx->shader->nhwatomic += count;
@@ -8665,23 +8664,16 @@ static int find_hw_atomic_counter(struct r600_shader_ctx *ctx,
 {
 	unsigned i;
 
-	if (src->Register.Indirect) {
-		for (i = 0; i < ctx->shader->nhwatomic_ranges; i++) {
-			if (src->Indirect.ArrayID == ctx->shader->atomics[i].array_id)
-				return ctx->shader->atomics[i].hw_idx;
-		}
-	} else {
-		uint32_t index = src->Register.Index;
-		for (i = 0; i < ctx->shader->nhwatomic_ranges; i++) {
-			if (ctx->shader->atomics[i].buffer_id != (unsigned)src->Dimension.Index)
-				continue;
-			if (index > ctx->shader->atomics[i].end)
-				continue;
-			if (index < ctx->shader->atomics[i].start)
-				continue;
-			uint32_t offset = (index - ctx->shader->atomics[i].start);
-			return ctx->shader->atomics[i].hw_idx + offset;
-		}
+	uint32_t index = src->Register.Index;
+	for (i = 0; i < ctx->shader->nhwatomic_ranges; i++) {
+		if (ctx->shader->atomics[i].buffer_id != (unsigned)src->Dimension.Index)
+			continue;
+		if (index > ctx->shader->atomics[i].end)
+			continue;
+		if (index < ctx->shader->atomics[i].start)
+			continue;
+		uint32_t offset = (index - ctx->shader->atomics[i].start);
+		return ctx->shader->atomics[i].hw_idx + offset;
 	}
 	assert(0);
 	return -1;

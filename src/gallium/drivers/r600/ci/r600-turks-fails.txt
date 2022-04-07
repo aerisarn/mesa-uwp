@@ -36,7 +36,6 @@ KHR-GLES31.core.layout_binding.image2D_layout_binding_imageLoad_FragmentShader,F
 KHR-GLES31.core.shader_atomic_counters.advanced-usage-many-dispatches,Fail
 KHR-GLES31.core.shader_atomic_counters.advanced-usage-many-draw-calls2,Fail
 KHR-GLES31.core.shader_atomic_counters.advanced-usage-multi-stage,Fail
-KHR-GLES31.core.shader_atomic_counters.advanced-usage-multidim-array-small,Fail
 
 KHR-GLES31.core.shader_image_load_store.basic-allFormats-loadStoreComputeStage,Fail
 KHR-GLES31.core.shader_image_load_store.basic-allTargets-loadStoreCS,Fail
