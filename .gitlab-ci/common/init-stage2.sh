@@ -1,5 +1,31 @@
 #!/bin/sh
 
+# Make sure to kill itself and all the children process from this script on
+# exiting, since any console output may interfere with LAVA signals handling,
+# which based on the log console.
+cleanup() {
+  set +x
+  echo "Killing all child processes"
+  for pid in $BACKGROUND_PIDS
+  do
+    kill "$pid"
+  done
+
+  # Sleep just a little to give enough time for subprocesses to be gracefully
+  # killed. Then apply a SIGKILL if necessary.
+  sleep 5
+  for pid in $BACKGROUND_PIDS
+  do
+    kill -9 "$pid" 2>/dev/null || true
+  done
+}
+trap cleanup INT TERM EXIT
+
+# Space separated values with the PIDS of the processes started in the
+# background by this script
+BACKGROUND_PIDS=
+
+
 # Second-stage init, used to set up devices and our job environment before
 # running tests.
 
@@ -75,7 +101,8 @@ fi
 
 # Start a little daemon to capture the first devcoredump we encounter.  (They
 # expire after 5 minutes, so we poll for them).
-./capture-devcoredump.sh &
+/capture-devcoredump.sh &
+BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
 
 # If we want Xorg to be running for the test, then we start it up before the
 # HWCI_TEST_SCRIPT because we need to use xinit to start X (otherwise
@@ -85,6 +112,7 @@ if [ -n "$HWCI_START_XORG" ]; then
   echo "touch /xorg-started; sleep 100000" > /xorg-script
   env \
     xinit /bin/sh /xorg-script -- /usr/bin/Xorg -noreset -s 0 -dpms -logfile /Xorg.0.log &
+  BACKGROUND_PIDS="$! $BACKGROUND_PIDS"
 
   # Wait for xorg to be ready for connections.
   for i in 1 2 3 4 5; do
