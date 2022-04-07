@@ -1737,13 +1737,13 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
 
 static struct ureg_src
 ntt_ureg_src_indirect(struct ntt_compile *c, struct ureg_src usrc,
-                      nir_src src)
+                      nir_src src, int addr_reg)
 {
    if (nir_src_is_const(src)) {
       usrc.Index += ntt_src_as_uint(c, src);
       return usrc;
    } else {
-      return ureg_src_indirect(usrc, ntt_reladdr(c, ntt_get_src(c, src), 0));
+      return ureg_src_indirect(usrc, ntt_reladdr(c, ntt_get_src(c, src), addr_reg));
    }
 }
 
@@ -1899,7 +1899,7 @@ ntt_emit_mem(struct ntt_compile *c, nir_intrinsic_instr *instr,
    switch (mode) {
    case nir_var_mem_ssbo:
       memory = ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_BUFFER, 0),
-                                     instr->src[is_store ? 1 : 0]);
+                                     instr->src[is_store ? 1 : 0], 2);
       next_src = 1;
       break;
    case nir_var_mem_shared:
@@ -2062,7 +2062,7 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
 
    struct ureg_src resource =
       ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
-                            instr->src[0]);
+                            instr->src[0], 2);
 
    struct ureg_dst dst;
    if (instr->intrinsic == nir_intrinsic_image_store) {
@@ -2195,18 +2195,18 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_input:
-      input = ntt_ureg_src_indirect(c, input, instr->src[0]);
+      input = ntt_ureg_src_indirect(c, input, instr->src[0], 0);
       ntt_store(c, &instr->dest, input);
       break;
 
    case nir_intrinsic_load_per_vertex_input:
-      input = ntt_ureg_src_indirect(c, input, instr->src[1]);
+      input = ntt_ureg_src_indirect(c, input, instr->src[1], 0);
       input = ntt_ureg_src_dimension_indirect(c, input, instr->src[0]);
       ntt_store(c, &instr->dest, input);
       break;
 
    case nir_intrinsic_load_interpolated_input: {
-      input = ntt_ureg_src_indirect(c, input, instr->src[1]);
+      input = ntt_ureg_src_indirect(c, input, instr->src[1], 0);
 
       nir_intrinsic_instr *bary_instr =
          nir_instr_as_intrinsic(instr->src[0].ssa->parent_instr);
