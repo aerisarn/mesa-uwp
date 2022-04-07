@@ -86,6 +86,10 @@ panfrost_compression_tag(const struct util_format_description *desc,
 #endif
 
 #if PAN_ARCH >= 7
+                /* Tiled headers */
+                if (modifier & AFBC_FORMAT_MOD_TILED)
+                        flags |= MALI_AFBC_SURFACE_FLAG_TILED_HEADER;
+
                 /* Used to make sure AFBC headers don't point outside the AFBC
                  * body. HW is using the AFBC surface stride to do this check,
                  * which doesn't work for 3D textures because the surface

@@ -42,8 +42,12 @@ mod_to_block_fmt(uint64_t mod)
                 return MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
         default:
 #if PAN_ARCH >= 5
-                if (drm_is_afbc(mod))
+                if (drm_is_afbc(mod) && !(mod & AFBC_FORMAT_MOD_TILED))
                         return MALI_BLOCK_FORMAT_AFBC;
+#endif
+#if PAN_ARCH >= 7
+                if (drm_is_afbc(mod) && (mod & AFBC_FORMAT_MOD_TILED))
+                        return MALI_BLOCK_FORMAT_AFBC_TILED;
 #endif
 
                 unreachable("Unsupported modifer");
