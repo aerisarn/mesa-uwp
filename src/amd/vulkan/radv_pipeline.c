@@ -2914,6 +2914,23 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *input_state,
 }
 
 static struct radv_pipeline_key
+radv_generate_pipeline_key(const struct radv_pipeline *pipeline, VkPipelineCreateFlags flags)
+{
+   struct radv_device *device = pipeline->device;
+   struct radv_pipeline_key key;
+
+   memset(&key, 0, sizeof(key));
+
+   if (flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
+      key.optimisations_disabled = 1;
+
+   key.disable_aniso_single_level = device->instance->disable_aniso_single_level &&
+                                    device->physical_device->rad_info.chip_class < GFX8;
+
+   return key;
+}
+
+static struct radv_pipeline_key
 radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_blend_state *blend)
@@ -2922,11 +2939,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RENDERING_CREATE_INFO);
    bool uses_dynamic_stride = false;
 
-   struct radv_pipeline_key key;
-   memset(&key, 0, sizeof(key));
-
-   if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
-      key.optimisations_disabled = 1;
+   struct radv_pipeline_key key = radv_generate_pipeline_key(pipeline, pCreateInfo->flags);
 
    key.has_multiview_view_index = !!render_create_info->viewMask;
 
@@ -3066,8 +3079,6 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 
    key.use_ngg = pipeline->device->physical_device->use_ngg;
    key.adjust_frag_coord_z = pipeline->device->adjust_frag_coord_z;
-   key.disable_aniso_single_level = pipeline->device->instance->disable_aniso_single_level &&
-                                    pipeline->device->physical_device->rad_info.chip_class < GFX8;
 
    return key;
 }
@@ -6720,11 +6731,7 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
                                    const VkComputePipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->stage;
-   struct radv_pipeline_key key;
-   memset(&key, 0, sizeof(key));
-
-   if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
-      key.optimisations_disabled = 1;
+   struct radv_pipeline_key key = radv_generate_pipeline_key(pipeline, pCreateInfo->flags);
 
    const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo *subgroup_size =
       vk_find_struct_const(stage->pNext,
@@ -6737,9 +6744,6 @@ radv_generate_compute_pipeline_key(struct radv_pipeline *pipeline,
    } else if (stage->flags & VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT) {
       key.cs.require_full_subgroups = true;
    }
-
-   key.disable_aniso_single_level = pipeline->device->instance->disable_aniso_single_level &&
-                                    pipeline->device->physical_device->rad_info.chip_class < GFX8;
 
    return key;
 }
