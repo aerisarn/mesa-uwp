@@ -3073,8 +3073,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 }
 
 static uint8_t
-radv_get_wave_size(struct radv_device *device, const VkPipelineShaderStageCreateInfo *pStage,
-                   gl_shader_stage stage, const struct radv_shader_info *info)
+radv_get_wave_size(struct radv_device *device,  gl_shader_stage stage,
+                   const struct radv_shader_info *info)
 {
    if (stage == MESA_SHADER_GEOMETRY && !info->is_ngg)
       return 64;
@@ -3087,8 +3087,8 @@ radv_get_wave_size(struct radv_device *device, const VkPipelineShaderStageCreate
 }
 
 static uint8_t
-radv_get_ballot_bit_size(struct radv_device *device, const VkPipelineShaderStageCreateInfo *pStage,
-                         gl_shader_stage stage, const struct radv_shader_info *info)
+radv_get_ballot_bit_size(struct radv_device *device, gl_shader_stage stage,
+                         const struct radv_shader_info *info)
 {
    if (stage == MESA_SHADER_COMPUTE && info->cs.subgroup_size)
       return info->cs.subgroup_size;
@@ -3146,7 +3146,6 @@ radv_determine_ngg_settings(struct radv_pipeline *pipeline,
 static void
 radv_fill_shader_info(struct radv_pipeline *pipeline,
                       struct radv_pipeline_layout *pipeline_layout,
-                      const VkPipelineShaderStageCreateInfo **pStages,
                       const struct radv_pipeline_key *pipeline_key,
                       struct radv_shader_info *infos, nir_shader **nir)
 {
@@ -3335,9 +3334,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
    for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
       if (nir[i]) {
-         infos[i].wave_size = radv_get_wave_size(pipeline->device, pStages[i], i, &infos[i]);
+         infos[i].wave_size = radv_get_wave_size(pipeline->device, i, &infos[i]);
          infos[i].ballot_bit_size =
-            radv_get_ballot_bit_size(pipeline->device, pStages[i], i, &infos[i]);
+            radv_get_ballot_bit_size(pipeline->device, i, &infos[i]);
       }
    }
 
@@ -4237,7 +4236,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       NIR_PASS_V(nir[MESA_SHADER_FRAGMENT], radv_lower_fs_output, pipeline_key);
    }
 
-   radv_fill_shader_info(pipeline, pipeline_layout, pStages, pipeline_key, infos, nir);
+   radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, infos, nir);
 
    bool pipeline_has_ngg = (nir[MESA_SHADER_VERTEX] && infos[MESA_SHADER_VERTEX].is_ngg) ||
                            (nir[MESA_SHADER_TESS_EVAL] && infos[MESA_SHADER_TESS_EVAL].is_ngg) ||
