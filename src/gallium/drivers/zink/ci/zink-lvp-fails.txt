@@ -1,4 +1,5 @@
-KHR-GL46.texture_view.view_sampling,Fail
+# #6270
+spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 
 #kopper regressions/changes
 fast_color_clear@fcc-front-buffer-distraction,Fail
@@ -171,7 +172,6 @@ spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
-spec@!opengl 3.0@sampler-cube-shadow,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-first,Fail
@@ -223,9 +223,7 @@ spec@arb_sample_shading@samplemask 4 all@1.000000 mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4 all@noms mask_in_one,Fail
 spec@arb_sample_shading@samplemask 4 all@noms partition,Fail
 spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
-spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
-spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-shadow,Fail
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY16F_ARB,Fail
 spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY32F_ARB,Fail
