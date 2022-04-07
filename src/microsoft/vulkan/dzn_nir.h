@@ -32,10 +32,6 @@
 
 #include "nir.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct dzn_indirect_draw_params {
    uint32_t vertex_count;
    uint32_t instance_count;
@@ -133,9 +129,5 @@ dzn_nir_blit_vs(void);
 
 nir_shader *
 dzn_nir_blit_fs(const struct dzn_nir_blit_info *info);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

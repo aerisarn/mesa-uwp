@@ -206,10 +206,6 @@ dzn_physical_device_get_mem_type_mask_for_resource(const struct dzn_physical_dev
 #define dzn_debug_ignored_stype(sType) \
    mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 IDXGIFactory4 *
 dxgi_get_factory(bool debug);
 
@@ -224,10 +220,6 @@ d3d12_enable_gpu_validation();
 
 ID3D12Device1 *
 d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features);
-
-#ifdef __cplusplus
-}
-#endif
 
 struct dzn_queue {
    struct vk_queue vk;
@@ -905,17 +897,11 @@ struct dzn_sampler {
    ((_range)->levelCount == VK_REMAINING_MIP_LEVELS ? \
     (_image)->vk.mip_levels - (_range)->baseMipLevel : (_range)->levelCount)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 DXGI_FORMAT dzn_pipe_to_dxgi_format(enum pipe_format in);
 D3D12_FILTER dzn_translate_sampler_filter(const VkSamplerCreateInfo *create_info);
 D3D12_COMPARISON_FUNC dzn_translate_compare_op(VkCompareOp in);
 void dzn_translate_viewport(D3D12_VIEWPORT *out, const VkViewport *in);
 void dzn_translate_rect(D3D12_RECT *out, const VkRect2D *in);
-#ifdef __cplusplus
-}
-#endif
 
 #define dzn_foreach_aspect(aspect, mask) \
         for (VkImageAspectFlagBits aspect = VK_IMAGE_ASPECT_COLOR_BIT; \
