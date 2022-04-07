@@ -170,7 +170,7 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    instance->debug_flags =
       parse_debug_string(getenv("DZN_DEBUG"), dzn_debug_options);
 
-   instance->dxil_validator = dxil_create_validator(instance);
+   instance->dxil_validator = dxil_create_validator(NULL);
    instance->d3d12.serialize_root_sig = d3d12_get_serialize_root_sig();
 
    if (!instance->dxil_validator ||
