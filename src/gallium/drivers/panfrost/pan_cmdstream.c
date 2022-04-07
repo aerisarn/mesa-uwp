@@ -447,6 +447,18 @@ pan_allow_forward_pixel_to_kill(struct panfrost_context *ctx, struct panfrost_sh
                 !blend_reads_dest;
 }
 
+static mali_ptr
+panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage)
+{
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
+
+        panfrost_batch_add_bo(batch, ss->bin.bo, PIPE_SHADER_VERTEX);
+        panfrost_batch_add_bo(batch, ss->state.bo, PIPE_SHADER_VERTEX);
+
+        return ss->state.gpu;
+}
+
+#if PAN_ARCH <= 7
 /* Construct a partial RSD corresponding to no executed fragment shader, and
  * merge with the existing partial RSD. */
 
@@ -632,17 +644,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 }
 
 static mali_ptr
-panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage)
-{
-        struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
-
-        panfrost_batch_add_bo(batch, ss->bin.bo, PIPE_SHADER_VERTEX);
-        panfrost_batch_add_bo(batch, ss->state.bo, PIPE_SHADER_VERTEX);
-
-        return ss->state.gpu;
-}
-
-static mali_ptr
 panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -682,6 +683,7 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 
         return xfer.gpu;
 }
+#endif
 
 static mali_ptr
 panfrost_emit_viewport(struct panfrost_batch *batch)
@@ -1499,6 +1501,7 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         return T.gpu;
 }
 
+#if PAN_ARCH <= 7
 /* Packs all image attribute descs and attribute buffer descs.
  * `first_image_buf_index` must be the index of the first image attribute buffer descriptor.
  */
@@ -2407,6 +2410,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                          MALI_JOB_TYPE_TILER, false, false,
                          vertex, 0, tiler_job, false);
 }
+#endif
 
 static void
 emit_tls(struct panfrost_batch *batch)
@@ -2574,6 +2578,17 @@ panfrost_update_streamout_offsets(struct panfrost_context *ctx)
         }
 }
 
+static inline enum mali_index_type
+panfrost_translate_index_size(unsigned size)
+{
+        STATIC_ASSERT(MALI_INDEX_TYPE_NONE  == 0);
+        STATIC_ASSERT(MALI_INDEX_TYPE_UINT8  == 1);
+        STATIC_ASSERT(MALI_INDEX_TYPE_UINT16 == 2);
+
+        return (size == 4) ? MALI_INDEX_TYPE_UINT32 : size;
+}
+
+#if PAN_ARCH <= 7
 static inline void
 pan_emit_draw_descs(struct panfrost_batch *batch,
                 struct MALI_DRAW *d, enum pipe_shader_type st)
@@ -2586,16 +2601,6 @@ pan_emit_draw_descs(struct panfrost_batch *batch,
         d->push_uniforms = batch->push_uniforms[st];
         d->textures = batch->textures[st];
         d->samplers = batch->samplers[st];
-}
-
-static inline enum mali_index_type
-panfrost_translate_index_size(unsigned size)
-{
-        STATIC_ASSERT(MALI_INDEX_TYPE_NONE  == 0);
-        STATIC_ASSERT(MALI_INDEX_TYPE_UINT8  == 1);
-        STATIC_ASSERT(MALI_INDEX_TYPE_UINT16 == 2);
-
-        return (size == 4) ? MALI_INDEX_TYPE_UINT32 : size;
 }
 
 static void
@@ -2636,6 +2641,7 @@ panfrost_draw_emit_vertex(struct panfrost_batch *batch,
         panfrost_draw_emit_vertex_section(batch, vs_vary, varyings,
                                           attribs, attrib_bufs, section);
 }
+#endif
 
 static void
 panfrost_emit_primitive_size(struct panfrost_context *ctx,
