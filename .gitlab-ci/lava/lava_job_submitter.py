@@ -395,6 +395,10 @@ def retriable_follow_job(proxy, job_definition):
         except MesaCIException as mesa_exception:
             print_log(mesa_exception)
             job.cancel()
+        except KeyboardInterrupt as e:
+            print_log("LAVA job submitter was interrupted. Cancelling the job.")
+            job.cancel()
+            raise e
         finally:
             print_log(f"Finished executing LAVA job in the attempt #{attempt_no}")
 
