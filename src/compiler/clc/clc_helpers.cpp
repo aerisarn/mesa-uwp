@@ -24,6 +24,7 @@
 // OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sstream>
+#include <mutex>
 
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/DiagnosticPrinter.h>
@@ -1148,11 +1149,20 @@ clc_free_spirv_binary(struct clc_binary *spvbin)
 }
 
 void
-clc_initialize_llvm(void)
+initialize_llvm_once(void)
 {
    LLVMInitializeAllTargets();
    LLVMInitializeAllTargetInfos();
    LLVMInitializeAllTargetMCs();
    LLVMInitializeAllAsmParsers();
    LLVMInitializeAllAsmPrinters();
+}
+
+std::once_flag initialize_llvm_once_flag;
+
+void
+clc_initialize_llvm(void)
+{
+   std::call_once(initialize_llvm_once_flag,
+                  []() { initialize_llvm_once(); });
 }
