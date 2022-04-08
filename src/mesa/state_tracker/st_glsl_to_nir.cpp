@@ -269,7 +269,8 @@ st_nir_add_point_size(nir_shader *nir)
       nir_foreach_instr_safe(instr, block) {
          if (instr->type == nir_instr_type_intrinsic) {
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic == nir_intrinsic_store_deref) {
+            if (intr->intrinsic == nir_intrinsic_store_deref ||
+                intr->intrinsic == nir_intrinsic_copy_deref) {
                nir_variable *var = nir_intrinsic_get_var(intr, 0);
                if (var->data.location == VARYING_SLOT_POS) {
                   b.cursor = nir_after_instr(instr);
