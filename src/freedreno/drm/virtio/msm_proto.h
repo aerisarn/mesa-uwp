@@ -184,22 +184,15 @@ struct msm_ccmd_gem_info_rsp {
  *
  * Maps to DRM_MSM_GEM_CPU_PREP
  *
- * Note: currently this uses a relative timeout mapped to absolute timeout
- * on the host, because I don't think we can rely on monotonic time being
- * aligned between host and guest.  This has the slight drawback of not
- * handling interrupted syscalls on the guest side, but since the actual
- * waiting happens on the host side (after guest execbuf ioctl returns)
- * this shouldn't be *that* much of a problem.
- *
- * If we could rely on host and guest times being aligned, we could use
- * MSM_CCMD_IOCTL_SIMPLE instead
+ * Note: Since we don't want to block the single threaded host, this returns
+ * immediately with -EBUSY if the fence is not yet signaled.  The guest
+ * should poll if needed.
  */
 struct msm_ccmd_gem_cpu_prep_req {
    struct msm_ccmd_req hdr;
 
    uint32_t host_handle;
    uint32_t op;
-   uint64_t timeout;
 };
 DEFINE_CAST(msm_ccmd_req, msm_ccmd_gem_cpu_prep_req)
 
@@ -326,22 +319,15 @@ struct msm_ccmd_submitqueue_query_rsp {
  *
  * Maps to DRM_MSM_WAIT_FENCE
  *
- * Note: currently this uses a relative timeout mapped to absolute timeout
- * on the host, because I don't think we can rely on monotonic time being
- * aligned between host and guest.  This has the slight drawback of not
- * handling interrupted syscalls on the guest side, but since the actual
- * waiting happens on the host side (after guest execbuf ioctl returns)
- * this shouldn't be *that* much of a problem.
- *
- * If we could rely on host and guest times being aligned, we could use
- * MSM_CCMD_IOCTL_SIMPLE instead
+ * Note: Since we don't want to block the single threaded host, this returns
+ * immediately with -ETIMEDOUT if the fence is not yet signaled.  The guest
+ * should poll if needed.
  */
 struct msm_ccmd_wait_fence_req {
    struct msm_ccmd_req hdr;
 
    uint32_t queue_id;
    uint32_t fence;
-   uint64_t timeout;
 };
 DEFINE_CAST(msm_ccmd_req, msm_ccmd_wait_fence_req)
 

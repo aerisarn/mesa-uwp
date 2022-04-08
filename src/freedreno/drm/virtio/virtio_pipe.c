@@ -115,17 +115,24 @@ virtio_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence, uint64_t ti
          .hdr = MSM_CCMD(WAIT_FENCE, sizeof(req)),
          .queue_id = to_virtio_pipe(pipe)->queue_id,
          .fence = fence->kfence,
-         .timeout = timeout,
    };
    struct msm_ccmd_submitqueue_query_rsp *rsp;
+   int64_t end_time = os_time_get_nano() + timeout;
+   int ret;
 
-   rsp = virtio_alloc_rsp(pipe->dev, &req.hdr, sizeof(*rsp));
+   do {
+      rsp = virtio_alloc_rsp(pipe->dev, &req.hdr, sizeof(*rsp));
 
-   int ret = virtio_execbuf(pipe->dev, &req.hdr, true);
-   if (ret)
-      goto out;
+      ret = virtio_execbuf(pipe->dev, &req.hdr, true);
+      if (ret)
+         goto out;
 
-   ret = rsp->ret;
+      if ((timeout != PIPE_TIMEOUT_INFINITE) &&
+          (os_time_get_nano() >= end_time))
+         break;
+
+      ret = rsp->ret;
+   } while (ret == -ETIMEDOUT);
 
 out:
    return ret;

@@ -106,17 +106,19 @@ virtio_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
          .hdr = MSM_CCMD(GEM_CPU_PREP, sizeof(req)),
          .host_handle = virtio_bo_host_handle(bo),
          .op = op,
-         .timeout = 5000000000,
    };
    struct msm_ccmd_gem_cpu_prep_rsp *rsp;
 
-   rsp = virtio_alloc_rsp(bo->dev, &req.hdr, sizeof(*rsp));
+   /* We can't do a blocking wait in the host, so we have to poll: */
+   do {
+      rsp = virtio_alloc_rsp(bo->dev, &req.hdr, sizeof(*rsp));
 
-   ret = virtio_execbuf(bo->dev, &req.hdr, true);
-   if (ret)
-      goto out;
+      ret = virtio_execbuf(bo->dev, &req.hdr, true);
+      if (ret)
+         goto out;
 
-   ret = rsp->ret;
+      ret = rsp->ret;
+   } while (ret == -EBUSY);
 
 out:
    return ret;
