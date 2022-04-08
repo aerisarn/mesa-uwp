@@ -497,8 +497,10 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    batch->work_count = 0;
 
    if (batch->swapchain) {
-      batch->state->present = zink_kopper_present(screen, batch->swapchain);
-      batch->state->swapchain = batch->swapchain;
+      if (batch->swapchain->obj->acquired) {
+         batch->state->present = zink_kopper_present(screen, batch->swapchain);
+         batch->state->swapchain = batch->swapchain;
+      }
       batch->swapchain = NULL;
    }
 
