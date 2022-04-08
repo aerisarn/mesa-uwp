@@ -120,6 +120,19 @@ clear_in_rp(struct pipe_context *pctx,
    struct zink_batch *batch = &ctx->batch;
    zink_batch_rp(ctx);
    VKCTX(CmdClearAttachments)(batch->state->cmdbuf, num_attachments, attachments, 1, &cr);
+   /*
+       Rendering within a subpass containing a feedback loop creates a data race, except in the following
+       cases:
+       • If a memory dependency is inserted between when the attachment is written and when it is
+       subsequently read by later fragments. Pipeline barriers expressing a subpass self-dependency
+       are the only way to achieve this, and one must be inserted every time a fragment will read
+       values at a particular sample (x, y, layer, sample) coordinate, if those values have been written
+       since the most recent pipeline barrier
+
+       VK 1.3.211, Chapter 8: Render Pass
+    */
+   if (ctx->fbfetch_outputs)
+      ctx->base.texture_barrier(&ctx->base, PIPE_TEXTURE_BARRIER_FRAMEBUFFER);
 }
 
 static void
