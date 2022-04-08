@@ -5,3 +5,6 @@ glx@glx-multithread-texture
 
 # Sometimes crashes, less so since moving to the google runners
 spec@arb_sync@sync_api
+
+spec@!opengl 1.1@read-front clear-front-first
+spec@ext_framebuffer_blit@fbo-sys-sub-blit
