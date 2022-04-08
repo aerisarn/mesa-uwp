@@ -76,8 +76,7 @@ dzn_cmd_buffer_destroy(struct vk_command_buffer *cbuf)
 
    if (cmdbuf->queries.ht) {
       hash_table_foreach(cmdbuf->queries.ht, he) {
-         struct dzn_cmd_buffer_query_pool_state *qpstate =
-            (struct dzn_cmd_buffer_query_pool_state *)he->data;
+         struct dzn_cmd_buffer_query_pool_state *qpstate = he->data;
          util_dynarray_fini(&qpstate->reset);
          util_dynarray_fini(&qpstate->collect);
          util_dynarray_fini(&qpstate->wait);
@@ -129,7 +128,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    D3D12_COMMAND_LIST_TYPE type =
       pdev->queue_families[pool->queue_family_index].desc.Type;
 
-   struct dzn_cmd_buffer *cmdbuf = (struct dzn_cmd_buffer *)
+   struct dzn_cmd_buffer *cmdbuf =
       vk_zalloc(&pool->alloc, sizeof(*cmdbuf), 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!cmdbuf)
       return vk_error(pool->base.device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -237,8 +236,7 @@ dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
       vk_free(&cmdbuf->vk.pool->alloc, he->data);
    _mesa_hash_table_clear(cmdbuf->dsvs.ht, NULL);
    hash_table_foreach(cmdbuf->queries.ht, he) {
-      struct dzn_cmd_buffer_query_pool_state *qpstate =
-         (struct dzn_cmd_buffer_query_pool_state *)he->data;
+      struct dzn_cmd_buffer_query_pool_state *qpstate = he->data;
       util_dynarray_fini(&qpstate->reset);
       util_dynarray_fini(&qpstate->collect);
       util_dynarray_fini(&qpstate->wait);
@@ -345,7 +343,7 @@ dzn_cmd_buffer_gather_events(struct dzn_cmd_buffer *cmdbuf)
 
       if (state != DZN_EVENT_STATE_EXTERNAL_WAIT) {
          struct dzn_cmd_event_signal signal = { (struct dzn_event *)he->key, state  == DZN_EVENT_STATE_SET };
-         struct dzn_cmd_event_signal *entry = (struct dzn_cmd_event_signal *)
+         struct dzn_cmd_event_signal *entry =
             util_dynarray_grow(&cmdbuf->events.signal, struct dzn_cmd_event_signal, 1);
 
          if (!entry) {
@@ -454,7 +452,7 @@ static struct dzn_cmd_buffer_query_pool_state *
 dzn_cmd_buffer_create_query_pool_state(struct dzn_cmd_buffer *cmdbuf)
 {
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
-   struct dzn_cmd_buffer_query_pool_state *state = (struct dzn_cmd_buffer_query_pool_state *)
+   struct dzn_cmd_buffer_query_pool_state *state =
       vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*state),
                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!state) {
@@ -501,7 +499,7 @@ dzn_cmd_buffer_get_query_pool_state(struct dzn_cmd_buffer *cmdbuf,
          return NULL;
       }
    } else {
-      state = (struct dzn_cmd_buffer_query_pool_state *)he->data;
+      state = he->data;
    }
 
    return state;
@@ -599,7 +597,7 @@ dzn_cmd_buffer_collect_query_ops(struct dzn_cmd_buffer *cmdbuf,
 
    BITSET_FOREACH_RANGE(start, end, bitset, nbits) {
       struct dzn_cmd_buffer_query_range range = { qpool, start, end - start };
-      struct dzn_cmd_buffer_query_range *entry = (struct dzn_cmd_buffer_query_range *)
+      struct dzn_cmd_buffer_query_range *entry =
          util_dynarray_grow(ops_array, struct dzn_cmd_buffer_query_range, 1);
 
       if (!entry) {
@@ -618,8 +616,7 @@ dzn_cmd_buffer_gather_queries(struct dzn_cmd_buffer *cmdbuf)
 {
    hash_table_foreach(cmdbuf->queries.ht, he) {
       struct dzn_query_pool *qpool = (struct dzn_query_pool *)he->key;
-      struct dzn_cmd_buffer_query_pool_state *state =
-         (struct dzn_cmd_buffer_query_pool_state *)he->data;
+      struct dzn_cmd_buffer_query_pool_state *state = he->data;
       VkResult result =
          dzn_cmd_buffer_collect_queries(cmdbuf, qpool, state, 0, qpool->query_count);
       if (result != VK_SUCCESS)
@@ -785,16 +782,15 @@ dzn_cmd_buffer_get_dsv(struct dzn_cmd_buffer *cmdbuf,
       uint32_t slot;
 
       // TODO: error handling
-      dsve = (struct dzn_cmd_buffer_dsv_entry *)
-         vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*dsve), 8,
-                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      dsve = vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*dsve), 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       dsve->key = key;
       dzn_descriptor_heap_pool_alloc_slots(&cmdbuf->dsvs.pool, device, 1, &heap, &slot);
       dsve->handle = dzn_descriptor_heap_get_cpu_handle(heap, slot);
       ID3D12Device1_CreateDepthStencilView(device->dev, image->res, desc, dsve->handle);
       _mesa_hash_table_insert(cmdbuf->dsvs.ht, &dsve->key, dsve);
    } else {
-      dsve = (struct dzn_cmd_buffer_dsv_entry *)he->data;
+      dsve = he->data;
    }
 
    return dsve->handle;
@@ -815,16 +811,15 @@ dzn_cmd_buffer_get_rtv(struct dzn_cmd_buffer *cmdbuf,
       uint32_t slot;
 
       // TODO: error handling
-      rtve = (struct dzn_cmd_buffer_rtv_entry *)
-         vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*rtve), 8,
-                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      rtve = vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*rtve), 8,
+                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       rtve->key = key;
       dzn_descriptor_heap_pool_alloc_slots(&cmdbuf->rtvs.pool, device, 1, &heap, &slot);
       rtve->handle = dzn_descriptor_heap_get_cpu_handle(heap, slot);
       ID3D12Device1_CreateRenderTargetView(device->dev, image->res, desc, rtve->handle);
       he = _mesa_hash_table_insert(cmdbuf->rtvs.ht, &rtve->key, rtve);
    } else {
-      rtve = (struct dzn_cmd_buffer_rtv_entry *)he->data;
+      rtve = he->data;
    }
 
    return rtve->handle;
@@ -870,7 +865,7 @@ dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
       return cmdbuf->error;
    }
 
-   struct dzn_internal_resource *entry = (struct dzn_internal_resource *)
+   struct dzn_internal_resource *entry =
       vk_alloc(&cmdbuf->vk.pool->alloc, sizeof(*entry), 8,
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!entry) {
@@ -901,7 +896,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
    assert(blksize <= sizeof(raw));
    assert(!(sizeof(buf) % blksize));
 
-   util_format_write_4(pfmt, (void *)color, 0, (void *)raw, 0, 0, 0, 1, 1);
+   util_format_write_4(pfmt, color, 0, raw, 0, 0, 0, 1, 1);
 
    uint32_t fill_step = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
    while (fill_step % blksize)
@@ -930,7 +925,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
    assert(!(res_size % fill_step));
 
    uint8_t *cpu_ptr;
-   ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
+   ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
    for (uint32_t i = 0; i < res_size; i += fill_step)
       memcpy(&cpu_ptr[i], buf, fill_step);
 
@@ -1052,7 +1047,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
    assert(blksize <= sizeof(raw));
    assert(!(sizeof(buf) % blksize));
 
-   util_format_write_4(pfmt, (void *)color, 0, (void *)raw, 0, 0, 0, 1, 1);
+   util_format_write_4(pfmt, color, 0, raw, 0, 0, 0, 1, 1);
 
    uint32_t fill_step = D3D12_TEXTURE_DATA_PITCH_ALIGNMENT;
    while (fill_step % blksize)
@@ -1086,7 +1081,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
    assert(!(res_size % fill_step));
 
    uint8_t *cpu_ptr;
-   ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
+   ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
    for (uint32_t i = 0; i < res_size; i += fill_step)
       memcpy(&cpu_ptr[i], buf, fill_step);
 
@@ -2860,7 +2855,7 @@ dzn_cmd_buffer_indirect_draw(struct dzn_cmd_buffer *cmdbuf,
 
    ID3D12GraphicsCommandList1_SetComputeRootSignature(cmdbuf->cmdlist, indirect_draw->root_sig);
    ID3D12GraphicsCommandList1_SetPipelineState(cmdbuf->cmdlist, indirect_draw->pipeline_state);
-   ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, 0, params_size / 4, (const void *)&params, 0);
+   ID3D12GraphicsCommandList1_SetComputeRoot32BitConstants(cmdbuf->cmdlist, 0, params_size / 4, &params, 0);
    ID3D12GraphicsCommandList1_SetComputeRootShaderResourceView(cmdbuf->cmdlist, 1, draw_buf_gpu);
    ID3D12GraphicsCommandList1_SetComputeRootUnorderedAccessView(cmdbuf->cmdlist, 2, ID3D12Resource_GetGPUVirtualAddress(exec_buf));
    if (triangle_fan_exec_buf)
@@ -3357,7 +3352,7 @@ dzn_CmdFillBuffer(VkCommandBuffer commandBuffer,
       return;
 
    uint32_t *cpu_ptr;
-   ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
+   ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
    for (uint32_t i = 0; i < size / 4; i++)
       cpu_ptr[i] = data;
 
@@ -3890,7 +3885,7 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
             return;
          }
 
-         struct dzn_event **entry = (struct dzn_event **)
+         struct dzn_event **entry =
             util_dynarray_grow(&cmdbuf->events.wait, struct dzn_event *, 1);
 
          if (!entry) {

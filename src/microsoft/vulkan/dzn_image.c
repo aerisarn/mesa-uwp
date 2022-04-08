@@ -50,7 +50,7 @@ dzn_image_create(struct dzn_device *device,
                  const VkAllocationCallbacks *pAllocator,
                  VkImage *out)
 {
-   struct dzn_image *image = (struct dzn_image *)
+   struct dzn_image *image =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*image), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    struct dzn_physical_device *pdev =
@@ -1123,7 +1123,7 @@ dzn_image_view_create(struct dzn_device *device,
                       const VkAllocationCallbacks *pAllocator,
                       VkImageView *out)
 {
-   struct dzn_image_view *iview = (struct dzn_image_view *)
+   struct dzn_image_view *iview =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*iview), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!iview)
@@ -1174,7 +1174,7 @@ dzn_buffer_view_create(struct dzn_device *device,
 {
    VK_FROM_HANDLE(dzn_buffer, buf, pCreateInfo->buffer);
 
-   struct dzn_buffer_view *bview = (struct dzn_buffer_view *)
+   struct dzn_buffer_view *bview =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*bview), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!bview)

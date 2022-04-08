@@ -426,12 +426,11 @@ dzn_meta_blits_get_fs(struct dzn_device *device,
 
       dzn_meta_compile_shader(device, nir, &bc);
 
-      out = (D3D12_SHADER_BYTECODE *)
-         vk_alloc(&device->vk.alloc,
-                  sizeof(D3D12_SHADER_BYTECODE) + bc.BytecodeLength, 8,
-                  VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+      out = vk_alloc(&device->vk.alloc,
+                     sizeof(D3D12_SHADER_BYTECODE) + bc.BytecodeLength, 8,
+                     VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (out) {
-         out->pShaderBytecode = (void *)(out + 1);
+         out->pShaderBytecode = out + 1;
          memcpy((void *)out->pShaderBytecode, bc.pShaderBytecode, bc.BytecodeLength);
          out->BytecodeLength = bc.BytecodeLength;
          _mesa_hash_table_insert(meta->fs, &info->hash_key, out);
@@ -439,7 +438,7 @@ dzn_meta_blits_get_fs(struct dzn_device *device,
       free((void *)bc.pShaderBytecode);
       ralloc_free(nir);
    } else {
-      out = (D3D12_SHADER_BYTECODE *)he->data;
+      out = he->data;
    }
 
    mtx_unlock(&meta->shaders_lock);
@@ -465,7 +464,7 @@ static struct dzn_meta_blit *
 dzn_meta_blit_create(struct dzn_device *device, const struct dzn_meta_blit_key *key)
 {
    struct dzn_meta_blits *blits = &device->blits;
-   struct dzn_meta_blit *blit = (struct dzn_meta_blit *)
+   struct dzn_meta_blit *blit =
       vk_zalloc(&device->vk.alloc, sizeof(*blit), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
 
@@ -631,7 +630,7 @@ dzn_meta_blits_get_context(struct dzn_device *device,
 
    mtx_lock(&device->blits.contexts_lock);
 
-   out = (struct dzn_meta_blit *)
+   out =
       _mesa_hash_table_u64_search(device->blits.contexts, key->u64);
    if (!out) {
       out = dzn_meta_blit_create(device, key);
@@ -660,7 +659,7 @@ dzn_meta_blits_finish(struct dzn_device *device)
 
    if (meta->contexts) {
       hash_table_foreach(meta->contexts->table, he)
-         dzn_meta_blit_destroy(device, (struct dzn_meta_blit *)he->data);
+         dzn_meta_blit_destroy(device, he->data);
       _mesa_hash_table_u64_destroy(meta->contexts);
    }
 

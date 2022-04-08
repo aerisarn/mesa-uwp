@@ -44,7 +44,7 @@ dzn_pipeline_cache_create(struct dzn_device *device,
                           const VkAllocationCallbacks *pAllocator,
                           VkPipelineCache *out)
 {
-   struct dzn_pipeline_cache *pcache = (struct dzn_pipeline_cache *)
+   struct dzn_pipeline_cache *pcache =
       vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*pcache), 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pcache)

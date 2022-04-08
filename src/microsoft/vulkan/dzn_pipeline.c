@@ -68,10 +68,9 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
    uint32_t num_spec = 0;
 
    if (spec_info && spec_info->mapEntryCount) {
-      spec = (struct dxil_spirv_specialization *)
-         vk_alloc2(&device->vk.alloc, alloc,
-                   spec_info->mapEntryCount * sizeof(*spec), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+      spec = vk_alloc2(&device->vk.alloc, alloc,
+                       spec_info->mapEntryCount * sizeof(*spec), 8,
+                       VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       if (!spec)
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -213,7 +212,7 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
       return VK_SUCCESS;
    }
 
-   *input_elems = (D3D12_INPUT_ELEMENT_DESC *)
+   *input_elems =
       vk_alloc2(&device->vk.alloc, alloc,
                 sizeof(**input_elems) * in_vi->vertexAttributeDescriptionCount, 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -786,7 +785,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    VkResult ret;
    HRESULT hres = 0;
 
-   struct dzn_graphics_pipeline *pipeline = (struct dzn_graphics_pipeline *)
+   struct dzn_graphics_pipeline *pipeline =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pipeline)
@@ -1075,7 +1074,7 @@ dzn_compute_pipeline_create(struct dzn_device *device,
 {
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
 
-   struct dzn_compute_pipeline *pipeline = (struct dzn_compute_pipeline *)
+   struct dzn_compute_pipeline *pipeline =
       vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!pipeline)

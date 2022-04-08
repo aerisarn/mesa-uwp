@@ -566,7 +566,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       }
    }
 
-   D3D12_DESCRIPTOR_RANGE1 *ranges = (D3D12_DESCRIPTOR_RANGE1 *)
+   D3D12_DESCRIPTOR_RANGE1 *ranges =
       vk_alloc2(&device->vk.alloc, pAllocator, sizeof(*ranges) * range_count, 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (range_count && !ranges) {
@@ -574,7 +574,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   D3D12_STATIC_SAMPLER_DESC *static_sampler_descs = (D3D12_STATIC_SAMPLER_DESC *)
+   D3D12_STATIC_SAMPLER_DESC *static_sampler_descs =
       vk_alloc2(&device->vk.alloc, pAllocator,
                 sizeof(*static_sampler_descs) * static_sampler_count, 8,
                 VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
@@ -1525,7 +1525,7 @@ dzn_descriptor_heap_pool_alloc_slots(struct dzn_descriptor_heap_pool *pool,
       }
 
       if (!new_heap) {
-         new_heap = (struct dzn_descriptor_heap_pool_entry *)
+         new_heap =
             vk_zalloc(pool->alloc, sizeof(*new_heap), 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
          if (!new_heap)

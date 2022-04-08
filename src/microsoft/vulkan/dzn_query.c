@@ -172,7 +172,7 @@ dzn_query_pool_create(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
-   hres = ID3D12Resource_Map(qpool->collect_buffer, 0, NULL, (void **)&qpool->collect_map);
+   hres = ID3D12Resource_Map(qpool->collect_buffer, 0, NULL, &qpool->collect_map);
    if (FAILED(hres)) {
       dzn_query_pool_destroy(qpool, alloc);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
