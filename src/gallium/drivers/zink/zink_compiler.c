@@ -447,16 +447,17 @@ optimize_nir(struct nir_shader *s)
 static bool
 lower_fbfetch_instr(nir_builder *b, nir_instr *instr, void *data)
 {
+   bool ms = data != NULL;
    if (instr->type != nir_instr_type_intrinsic)
       return false;
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
    if (intr->intrinsic != nir_intrinsic_load_deref)
       return false;
    nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
-   if (var != data)
+   if (!var->data.fb_fetch_output)
       return false;
    b->cursor = nir_after_instr(instr);
-   nir_variable *fbfetch = nir_variable_clone(data, b->shader);
+   nir_variable *fbfetch = nir_variable_clone(var, b->shader);
    /* If Dim is SubpassData, ... Image Format must be Unknown
     * - SPIRV OpTypeImage specification
     */
@@ -464,10 +465,14 @@ lower_fbfetch_instr(nir_builder *b, nir_instr *instr, void *data)
    fbfetch->data.index = 0; /* fix this if more than 1 fbfetch target is supported */
    fbfetch->data.mode = nir_var_uniform;
    fbfetch->data.binding = ZINK_FBFETCH_BINDING;
-   fbfetch->type = glsl_image_type(GLSL_SAMPLER_DIM_SUBPASS, false, GLSL_TYPE_FLOAT);
+   fbfetch->data.binding = ZINK_FBFETCH_BINDING;
+   fbfetch->data.sample = ms;
+   enum glsl_sampler_dim dim = ms ? GLSL_SAMPLER_DIM_SUBPASS_MS : GLSL_SAMPLER_DIM_SUBPASS;
+   fbfetch->type = glsl_image_type(dim, false, GLSL_TYPE_FLOAT);
    nir_shader_add_variable(b->shader, fbfetch);
    nir_ssa_def *deref = &nir_build_deref_var(b, fbfetch)->dest.ssa;
-   nir_ssa_def *load = nir_image_deref_load(b, 4, 32, deref, nir_imm_vec4(b, 0, 0, 0, 1), nir_ssa_undef(b, 1, 32), nir_imm_int(b, 0));
+   nir_ssa_def *sample = ms ? nir_load_sample_id(b) : nir_ssa_undef(b, 1, 32);
+   nir_ssa_def *load = nir_image_deref_load(b, 4, 32, deref, nir_imm_vec4(b, 0, 0, 0, 1), sample, nir_imm_int(b, 0));
    unsigned swiz[4] = {2, 1, 0, 3};
    nir_ssa_def *swizzle = nir_swizzle(b, load, swiz, 4);
    nir_ssa_def_rewrite_uses(&intr->dest.ssa, swizzle);
@@ -475,7 +480,7 @@ lower_fbfetch_instr(nir_builder *b, nir_instr *instr, void *data)
 }
 
 static bool
-lower_fbfetch(nir_shader *shader, nir_variable **fbfetch)
+lower_fbfetch(nir_shader *shader, nir_variable **fbfetch, bool ms)
 {
    nir_foreach_shader_out_variable(var, shader) {
       if (var->data.fb_fetch_output) {
@@ -486,7 +491,7 @@ lower_fbfetch(nir_shader *shader, nir_variable **fbfetch)
    assert(*fbfetch);
    if (!*fbfetch)
       return false;
-   return nir_shader_instructions_pass(shader, lower_fbfetch_instr, nir_metadata_dominance, *fbfetch);
+   return nir_shader_instructions_pass(shader, lower_fbfetch_instr, nir_metadata_dominance, (void*)ms);
 }
 
 /* check for a genuine gl_PointSize output vs one from nir_lower_point_size_mov */
@@ -1350,14 +1355,15 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, nir_shad
             NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
                      false, zink_fs_key(key)->coord_replace_yinvert);
          }
-         if (zink_fs_key(key)->force_persample_interp) {
+         if (zink_fs_key(key)->force_persample_interp || zink_fs_key(key)->fbfetch_ms) {
             nir_foreach_shader_in_variable(var, nir)
                var->data.sample = true;
             nir->info.fs.uses_sample_qualifier = true;
+            nir->info.fs.uses_sample_shading = true;
          }
          if (nir->info.fs.uses_fbfetch_output) {
             nir_variable *fbfetch = NULL;
-            NIR_PASS_V(nir, lower_fbfetch, &fbfetch);
+            NIR_PASS_V(nir, lower_fbfetch, &fbfetch, zink_fs_key(key)->fbfetch_ms);
             /* old variable must be deleted to avoid spirv errors */
             fbfetch->data.mode = nir_var_shader_temp;
             nir_fixup_deref_modes(nir);

@@ -61,6 +61,7 @@ struct zink_fs_key {
    bool samples;
    bool force_dual_color_blend;
    bool force_persample_interp;
+   bool fbfetch_ms;
 };
 
 struct zink_tcs_key {
