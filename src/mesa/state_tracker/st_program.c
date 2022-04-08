@@ -425,20 +425,11 @@ st_prepare_vertex_program(struct gl_program *prog)
 {
    struct gl_vertex_program *stvp = (struct gl_vertex_program *)prog;
 
-   stvp->num_inputs = 0;
-   stvp->vert_attrib_mask = 0;
-   memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
-
-   /* Determine number of inputs and input attrib semantic info.
-    */
-   for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
-      if ((prog->info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
-         stvp->vert_attrib_mask |= BITFIELD_BIT(attr);
-         stvp->num_inputs++;
-      }
-   }
+   stvp->num_inputs = util_bitcount64(prog->info.inputs_read);
+   stvp->vert_attrib_mask = prog->info.inputs_read;
 
    /* Compute mapping of vertex program outputs to slots. */
+   memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
    unsigned num_outputs = 0;
    for (unsigned attr = 0; attr < VARYING_SLOT_MAX; attr++) {
       if (prog->info.outputs_written & BITFIELD64_BIT(attr))
