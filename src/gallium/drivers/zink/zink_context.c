@@ -3439,45 +3439,52 @@ static void
 zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
 {
    struct zink_context *ctx = zink_context(pctx);
+   VkAccessFlags dst = flags == PIPE_TEXTURE_BARRIER_FRAMEBUFFER ?
+                       VK_ACCESS_INPUT_ATTACHMENT_READ_BIT :
+                       VK_ACCESS_SHADER_READ_BIT;
+
    if (!ctx->framebuffer || !ctx->framebuffer->state.num_attachments)
       return;
 
-   zink_batch_no_rp(ctx);
-   if (ctx->fb_state.zsbuf) {
-      VkMemoryBarrier dmb;
-      dmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   if (zink_screen(ctx->base.screen)->info.have_KHR_synchronization2) {
+      VkDependencyInfo dep = {0};
+      dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+      dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+      dep.memoryBarrierCount = 1;
+
+      VkMemoryBarrier2 dmb = {0};
+      dmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
       dmb.pNext = NULL;
-      dmb.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-      dmb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+      dmb.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      dmb.dstAccessMask = dst;
+      dmb.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dmb.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+      dep.pMemoryBarriers = &dmb;
+
+      /* if zs fbfetch is a thing?
+      if (ctx->fb_state.zsbuf) {
+         const VkPipelineStageFlagBits2 depth_flags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+         dmb.dstAccessMask |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+         dmb.srcStageMask |= depth_flags;
+         dmb.dstStageMask |= depth_flags;
+      }
+      */
+      VKCTX(CmdPipelineBarrier2)(ctx->batch.state->cmdbuf, &dep);
+   } else {
+      VkMemoryBarrier bmb = {0};
+      bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+      bmb.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      bmb.dstAccessMask = dst;
       VKCTX(CmdPipelineBarrier)(
          ctx->batch.state->cmdbuf,
-         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
          0,
-         1, &dmb,
+         1, &bmb,
          0, NULL,
          0, NULL
       );
    }
-   if (!ctx->fb_state.nr_cbufs)
-      return;
-
-   VkMemoryBarrier bmb;
-   bmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-   bmb.pNext = NULL;
-   bmb.srcAccessMask = 0;
-   bmb.dstAccessMask = 0;
-   bmb.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-   bmb.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
-   VKCTX(CmdPipelineBarrier)(
-      ctx->batch.state->cmdbuf,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      0,
-      1, &bmb,
-      0, NULL,
-      0, NULL
-   );
 }
 
 static inline void
