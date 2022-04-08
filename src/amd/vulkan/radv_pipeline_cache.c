@@ -118,9 +118,9 @@ entry_size(struct cache_entry *entry)
 }
 
 void
-radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInfo *stages,
-                  uint32_t stageCount, const struct radv_pipeline_layout *layout,
-                  const struct radv_pipeline_key *key, uint32_t flags)
+radv_hash_shaders(unsigned char *hash, const struct radv_pipeline_stage *stages,
+                  const struct radv_pipeline_layout *layout, const struct radv_pipeline_key *key,
+                  uint32_t flags)
 {
    struct mesa_sha1 ctx;
 
@@ -130,17 +130,11 @@ radv_hash_shaders(unsigned char *hash, const VkPipelineShaderStageCreateInfo *st
    if (layout)
       _mesa_sha1_update(&ctx, layout->sha1, sizeof(layout->sha1));
 
-   for (uint32_t i = 0; i < stageCount; i++) {
-      RADV_FROM_HANDLE(vk_shader_module, module, stages[i].module);
-      const VkSpecializationInfo *spec_info = stages[i].pSpecializationInfo;
+   for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
+      if (!stages[s].entrypoint)
+         continue;
 
-      _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
-      _mesa_sha1_update(&ctx, stages[i].pName, strlen(stages[i].pName));
-      if (spec_info && spec_info->mapEntryCount) {
-         _mesa_sha1_update(&ctx, spec_info->pMapEntries,
-                           spec_info->mapEntryCount * sizeof spec_info->pMapEntries[0]);
-         _mesa_sha1_update(&ctx, spec_info->pData, spec_info->dataSize);
-      }
+      _mesa_sha1_update(&ctx, stages[s].shader_sha1, sizeof(stages[s].shader_sha1));
    }
    _mesa_sha1_update(&ctx, &flags, 4);
    _mesa_sha1_final(&ctx, hash);

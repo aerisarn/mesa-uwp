@@ -4086,6 +4086,25 @@ radv_lower_fs_output(nir_shader *nir, const struct radv_pipeline_key *pipeline_k
    return progress;
 }
 
+static void
+radv_pipeline_hash_shader(const unsigned char *spirv_sha1, const uint32_t spirv_sha1_size,
+                          const char *entrypoint, gl_shader_stage stage,
+                          const VkSpecializationInfo *spec_info, unsigned char *sha1_out)
+{
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+
+   _mesa_sha1_update(&ctx, spirv_sha1, spirv_sha1_size);
+   _mesa_sha1_update(&ctx, entrypoint, strlen(entrypoint));
+   if (spec_info) {
+      _mesa_sha1_update(&ctx, spec_info->pMapEntries,
+                        spec_info->mapEntryCount * sizeof(*spec_info->pMapEntries));
+      _mesa_sha1_update(&ctx, spec_info->pData, spec_info->dataSize);
+   }
+
+   _mesa_sha1_final(&ctx, sha1_out);
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4134,6 +4153,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
                             stages[stage].module->sha1);
       }
 
+      radv_pipeline_hash_shader(stages[stage].module->sha1, sizeof(stages[stage].module->sha1),
+                                stages[stage].entrypoint, stage, stages[stage].spec_info,
+                                stages[stage].shader_sha1);
+
       pipeline->active_stages |= sinfo->stage;
    }
 
@@ -4161,7 +4184,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    if (custom_hash)
       memcpy(hash, custom_hash, 20);
    else {
-      radv_hash_shaders(hash, pStages, stageCount, pipeline_layout, pipeline_key,
+      radv_hash_shaders(hash, stages, pipeline_layout, pipeline_key,
                         radv_get_hash_flags(device, keep_statistic_info));
    }
 
