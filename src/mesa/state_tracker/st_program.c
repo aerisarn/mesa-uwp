@@ -51,7 +51,6 @@
 #include "pipe/p_shader_tokens.h"
 #include "draw/draw_context.h"
 #include "tgsi/tgsi_dump.h"
-#include "tgsi/tgsi_emulate.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_ureg.h"
 #include "nir/nir_to_tgsi.h"
@@ -62,7 +61,6 @@
 #include "st_cb_bitmap.h"
 #include "st_cb_drawpixels.h"
 #include "st_context.h"
-#include "st_tgsi_lower_yuv.h"
 #include "st_program.h"
 #include "st_atifs_to_nir.h"
 #include "st_nir.h"
@@ -691,7 +689,6 @@ st_create_common_variant(struct st_context *st,
                          const struct st_common_variant_key *key)
 {
    struct st_common_variant *v = CALLOC_STRUCT(st_common_variant);
-   struct pipe_context *pipe = st->pipe;
    struct pipe_shader_state state = {0};
 
    static const gl_state_index16 point_size_state[STATE_LENGTH] =
@@ -702,134 +699,68 @@ st_create_common_variant(struct st_context *st,
 
    state.stream_output = prog->state.stream_output;
 
-   if (prog->state.type == PIPE_SHADER_IR_NIR) {
-      bool finalize = false;
+   bool finalize = false;
 
-      state.type = PIPE_SHADER_IR_NIR;
-      state.ir.nir = get_nir_shader(st, prog);
-      const nir_shader_compiler_options *options = ((nir_shader *)state.ir.nir)->options;
+   state.type = PIPE_SHADER_IR_NIR;
+   state.ir.nir = get_nir_shader(st, prog);
+   const nir_shader_compiler_options *options = ((nir_shader *)state.ir.nir)->options;
 
-      if (key->clamp_color) {
-         NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
-         finalize = true;
-      }
-      if (key->passthrough_edgeflags) {
-         NIR_PASS_V(state.ir.nir, nir_lower_passthrough_edgeflags);
-         finalize = true;
-      }
-
-      if (key->export_point_size) {
-         /* if flag is set, shader must export psiz */
-         _mesa_add_state_reference(params, point_size_state);
-         NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
-                    point_size_state);
-
-         finalize = true;
-      }
-
-      if (key->lower_ucp) {
-         assert(!options->unify_interfaces);
-         lower_ucp(st, state.ir.nir, key->lower_ucp, params);
-         finalize = true;
-      }
-
-      if (st->emulate_gl_clamp &&
-          (key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2])) {
-         nir_lower_tex_options tex_opts = {0};
-         tex_opts.saturate_s = key->gl_clamp[0];
-         tex_opts.saturate_t = key->gl_clamp[1];
-         tex_opts.saturate_r = key->gl_clamp[2];
-         NIR_PASS_V(state.ir.nir, nir_lower_tex, &tex_opts);
-      }
-
-      if (finalize || !st->allow_st_finalize_nir_twice) {
-         char *msg = st_finalize_nir(st, prog, prog->shader_program, state.ir.nir,
-                                     true, false);
-         free(msg);
-
-         /* Clip lowering and edgeflags may have introduced new varyings, so
-          * update the inputs_read/outputs_written. However, with
-          * unify_interfaces set (aka iris) the non-SSO varyings layout is
-          * decided at link time with outputs_written updated so the two line
-          * up.  A driver with this flag set may not use any of the lowering
-          * passes that would change the varyings, so skip to make sure we don't
-          * break its linkage.
-          */
-         if (!options->unify_interfaces) {
-            nir_shader_gather_info(state.ir.nir,
-                                   nir_shader_get_entrypoint(state.ir.nir));
-         }
-      }
-
-      if (key->is_draw_shader)
-         v->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
-      else
-         v->base.driver_shader = st_create_nir_shader(st, &state);
-
-      return v;
+   if (key->clamp_color) {
+      NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
+      finalize = true;
+   }
+   if (key->passthrough_edgeflags) {
+      NIR_PASS_V(state.ir.nir, nir_lower_passthrough_edgeflags);
+      finalize = true;
    }
 
-   state.type = PIPE_SHADER_IR_TGSI;
-   state.tokens = tgsi_dup_tokens(prog->state.tokens);
+   if (key->export_point_size) {
+      /* if flag is set, shader must export psiz */
+      _mesa_add_state_reference(params, point_size_state);
+      NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
+                  point_size_state);
 
-   /* Emulate features. */
-   if (key->clamp_color || key->passthrough_edgeflags) {
-      const struct tgsi_token *tokens;
-      unsigned flags =
-         (key->clamp_color ? TGSI_EMU_CLAMP_COLOR_OUTPUTS : 0) |
-         (key->passthrough_edgeflags ? TGSI_EMU_PASSTHROUGH_EDGEFLAG : 0);
+      finalize = true;
+   }
 
-      tokens = tgsi_emulate(state.tokens, flags);
+   if (key->lower_ucp) {
+      assert(!options->unify_interfaces);
+      lower_ucp(st, state.ir.nir, key->lower_ucp, params);
+      finalize = true;
+   }
 
-      if (tokens) {
-         tgsi_free_tokens(state.tokens);
-         state.tokens = tokens;
-      } else {
-         fprintf(stderr, "mesa: cannot emulate deprecated features\n");
+   if (st->emulate_gl_clamp &&
+         (key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2])) {
+      nir_lower_tex_options tex_opts = {0};
+      tex_opts.saturate_s = key->gl_clamp[0];
+      tex_opts.saturate_t = key->gl_clamp[1];
+      tex_opts.saturate_r = key->gl_clamp[2];
+      NIR_PASS_V(state.ir.nir, nir_lower_tex, &tex_opts);
+   }
+
+   if (finalize || !st->allow_st_finalize_nir_twice) {
+      char *msg = st_finalize_nir(st, prog, prog->shader_program, state.ir.nir,
+                                    true, false);
+      free(msg);
+
+      /* Clip lowering and edgeflags may have introduced new varyings, so
+       * update the inputs_read/outputs_written. However, with
+       * unify_interfaces set (aka iris) the non-SSO varyings layout is
+       * decided at link time with outputs_written updated so the two line
+       * up.  A driver with this flag set may not use any of the lowering
+       * passes that would change the varyings, so skip to make sure we don't
+       * break its linkage.
+       */
+      if (!options->unify_interfaces) {
+         nir_shader_gather_info(state.ir.nir,
+                                 nir_shader_get_entrypoint(state.ir.nir));
       }
    }
 
-   if (ST_DEBUG & DEBUG_PRINT_IR)
-      tgsi_dump(state.tokens, 0);
-
-   switch (prog->info.stage) {
-   case MESA_SHADER_VERTEX:
-      if (key->is_draw_shader)
-         v->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
-      else
-         v->base.driver_shader = pipe->create_vs_state(pipe, &state);
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      v->base.driver_shader = pipe->create_tcs_state(pipe, &state);
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      v->base.driver_shader = pipe->create_tes_state(pipe, &state);
-      break;
-   case MESA_SHADER_GEOMETRY:
-      v->base.driver_shader = pipe->create_gs_state(pipe, &state);
-      break;
-   case MESA_SHADER_COMPUTE: {
-      struct pipe_compute_state cs = {0};
-      cs.ir_type = state.type;
-      cs.req_local_mem = prog->info.shared_size;
-
-      if (state.type == PIPE_SHADER_IR_NIR)
-         cs.prog = state.ir.nir;
-      else
-         cs.prog = state.tokens;
-
-      v->base.driver_shader = pipe->create_compute_state(pipe, &cs);
-      break;
-   }
-   default:
-      assert(!"unhandled shader type");
-      FREE(v);
-      return NULL;
-   }
-
-   if (state.tokens) {
-      tgsi_free_tokens(state.tokens);
-   }
+   if (key->is_draw_shader)
+      v->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
+   else
+      v->base.driver_shader = st_create_nir_shader(st, &state);
 
    return v;
 }
@@ -957,7 +888,6 @@ st_create_fp_variant(struct st_context *st,
                      struct gl_program *fp,
                      const struct st_fp_variant_key *key)
 {
-   struct pipe_context *pipe = st->pipe;
    struct st_fp_variant *variant = CALLOC_STRUCT(st_fp_variant);
    struct pipe_shader_state state = {0};
    struct gl_program_parameter_list *params = fp->Parameters;
@@ -984,283 +914,166 @@ st_create_fp_variant(struct st_context *st,
 
       st_prog_to_nir_postprocess(st, s, fp);
 
-      state.type = PIPE_SHADER_IR_NIR;
       state.ir.nir = s;
-   } else if (fp->state.type == PIPE_SHADER_IR_NIR) {
-      state.type = PIPE_SHADER_IR_NIR;
+   } else {
       state.ir.nir = get_nir_shader(st, fp);
    }
+   state.type = PIPE_SHADER_IR_NIR;
 
-   if (state.type == PIPE_SHADER_IR_NIR) {
-      bool finalize = false;
+   bool finalize = false;
 
-      if (key->clamp_color) {
-         NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
-         finalize = true;
-      }
-
-      if (key->lower_flatshade) {
-         NIR_PASS_V(state.ir.nir, nir_lower_flatshade);
-         finalize = true;
-      }
-
-      if (key->lower_alpha_func != COMPARE_FUNC_ALWAYS) {
-         _mesa_add_state_reference(params, alpha_ref_state);
-         NIR_PASS_V(state.ir.nir, nir_lower_alpha_test, key->lower_alpha_func,
-                    false, alpha_ref_state);
-         finalize = true;
-      }
-
-      if (key->lower_two_sided_color) {
-         bool face_sysval = st->ctx->Const.GLSLFrontFacingIsSysVal;
-         NIR_PASS_V(state.ir.nir, nir_lower_two_sided_color, face_sysval);
-         finalize = true;
-      }
-
-      if (key->persample_shading) {
-          nir_shader *shader = state.ir.nir;
-          nir_foreach_shader_in_variable(var, shader)
-             var->data.sample = true;
-          finalize = true;
-      }
-
-      if (key->lower_texcoord_replace) {
-         bool point_coord_is_sysval = st->ctx->Const.GLSLPointCoordIsSysVal;
-         NIR_PASS_V(state.ir.nir, nir_lower_texcoord_replace,
-                    key->lower_texcoord_replace, point_coord_is_sysval, false);
-         finalize = true;
-      }
-
-      if (st->emulate_gl_clamp &&
-          (key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2])) {
-         nir_lower_tex_options tex_opts = {0};
-         tex_opts.saturate_s = key->gl_clamp[0];
-         tex_opts.saturate_t = key->gl_clamp[1];
-         tex_opts.saturate_r = key->gl_clamp[2];
-         NIR_PASS_V(state.ir.nir, nir_lower_tex, &tex_opts);
-         finalize = true;
-      }
-
-      assert(!(key->bitmap && key->drawpixels));
-
-      /* glBitmap */
-      if (key->bitmap) {
-         nir_lower_bitmap_options options = {0};
-
-         variant->bitmap_sampler = ffs(~fp->SamplersUsed) - 1;
-         options.sampler = variant->bitmap_sampler;
-         options.swizzle_xxxx = st->bitmap.tex_format == PIPE_FORMAT_R8_UNORM;
-
-         NIR_PASS_V(state.ir.nir, nir_lower_bitmap, &options);
-         finalize = true;
-      }
-
-      /* glDrawPixels (color only) */
-      if (key->drawpixels) {
-         nir_lower_drawpixels_options options = {{0}};
-         unsigned samplers_used = fp->SamplersUsed;
-
-         /* Find the first unused slot. */
-         variant->drawpix_sampler = ffs(~samplers_used) - 1;
-         options.drawpix_sampler = variant->drawpix_sampler;
-         samplers_used |= (1 << variant->drawpix_sampler);
-
-         options.pixel_maps = key->pixelMaps;
-         if (key->pixelMaps) {
-            variant->pixelmap_sampler = ffs(~samplers_used) - 1;
-            options.pixelmap_sampler = variant->pixelmap_sampler;
-         }
-
-         options.scale_and_bias = key->scaleAndBias;
-         if (key->scaleAndBias) {
-            _mesa_add_state_reference(params, scale_state);
-            memcpy(options.scale_state_tokens, scale_state,
-                   sizeof(options.scale_state_tokens));
-            _mesa_add_state_reference(params, bias_state);
-            memcpy(options.bias_state_tokens, bias_state,
-                   sizeof(options.bias_state_tokens));
-         }
-
-         _mesa_add_state_reference(params, texcoord_state);
-         memcpy(options.texcoord_state_tokens, texcoord_state,
-                sizeof(options.texcoord_state_tokens));
-
-         NIR_PASS_V(state.ir.nir, nir_lower_drawpixels, &options);
-         finalize = true;
-      }
-
-      bool need_lower_tex_src_plane = false;
-
-      if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
-                   key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
-                   key->external.lower_ayuv || key->external.lower_xyuv ||
-                   key->external.lower_yuv || key->external.lower_yu_yv ||
-                   key->external.lower_y41x)) {
-
-         st_nir_lower_samplers(st->screen, state.ir.nir,
-                               fp->shader_program, fp);
-
-         nir_lower_tex_options options = {0};
-         options.lower_y_uv_external = key->external.lower_nv12;
-         options.lower_y_u_v_external = key->external.lower_iyuv;
-         options.lower_xy_uxvx_external = key->external.lower_xy_uxvx;
-         options.lower_yx_xuxv_external = key->external.lower_yx_xuxv;
-         options.lower_ayuv_external = key->external.lower_ayuv;
-         options.lower_xyuv_external = key->external.lower_xyuv;
-         options.lower_yuv_external = key->external.lower_yuv;
-         options.lower_yu_yv_external = key->external.lower_yu_yv;
-         options.lower_y41x_external = key->external.lower_y41x;
-         NIR_PASS_V(state.ir.nir, nir_lower_tex, &options);
-         finalize = true;
-         need_lower_tex_src_plane = true;
-      }
-
-      if (finalize || !st->allow_st_finalize_nir_twice) {
-         char *msg = st_finalize_nir(st, fp, fp->shader_program, state.ir.nir,
-                                     false, false);
-         free(msg);
-      }
-
-      /* This pass needs to happen *after* nir_lower_sampler */
-      if (unlikely(need_lower_tex_src_plane)) {
-         NIR_PASS_V(state.ir.nir, st_nir_lower_tex_src_plane,
-                    ~fp->SamplersUsed,
-                    key->external.lower_nv12 | key->external.lower_xy_uxvx |
-                       key->external.lower_yx_xuxv,
-                    key->external.lower_iyuv);
-         finalize = true;
-      }
-
-      if (finalize || !st->allow_st_finalize_nir_twice) {
-         /* Some of the lowering above may have introduced new varyings */
-         nir_shader_gather_info(state.ir.nir,
-                                nir_shader_get_entrypoint(state.ir.nir));
-
-         struct pipe_screen *screen = st->screen;
-         if (screen->finalize_nir) {
-            char *msg = screen->finalize_nir(screen, state.ir.nir);
-            free(msg);
-         }
-      }
-
-      variant->base.driver_shader = st_create_nir_shader(st, &state);
-      variant->key = *key;
-
-      return variant;
+   if (key->clamp_color) {
+      NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
+      finalize = true;
    }
 
-   state.tokens = fp->state.tokens;
+   if (key->lower_flatshade) {
+      NIR_PASS_V(state.ir.nir, nir_lower_flatshade);
+      finalize = true;
+   }
+
+   if (key->lower_alpha_func != COMPARE_FUNC_ALWAYS) {
+      _mesa_add_state_reference(params, alpha_ref_state);
+      NIR_PASS_V(state.ir.nir, nir_lower_alpha_test, key->lower_alpha_func,
+                  false, alpha_ref_state);
+      finalize = true;
+   }
+
+   if (key->lower_two_sided_color) {
+      bool face_sysval = st->ctx->Const.GLSLFrontFacingIsSysVal;
+      NIR_PASS_V(state.ir.nir, nir_lower_two_sided_color, face_sysval);
+      finalize = true;
+   }
+
+   if (key->persample_shading) {
+      nir_shader *shader = state.ir.nir;
+      nir_foreach_shader_in_variable(var, shader)
+         var->data.sample = true;
+      finalize = true;
+   }
+
+   if (key->lower_texcoord_replace) {
+      bool point_coord_is_sysval = st->ctx->Const.GLSLPointCoordIsSysVal;
+      NIR_PASS_V(state.ir.nir, nir_lower_texcoord_replace,
+                  key->lower_texcoord_replace, point_coord_is_sysval, false);
+      finalize = true;
+   }
+
+   if (st->emulate_gl_clamp &&
+         (key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2])) {
+      nir_lower_tex_options tex_opts = {0};
+      tex_opts.saturate_s = key->gl_clamp[0];
+      tex_opts.saturate_t = key->gl_clamp[1];
+      tex_opts.saturate_r = key->gl_clamp[2];
+      NIR_PASS_V(state.ir.nir, nir_lower_tex, &tex_opts);
+      finalize = true;
+   }
 
    assert(!(key->bitmap && key->drawpixels));
 
-   /* Emulate features. */
-   if (key->clamp_color || key->persample_shading) {
-      const struct tgsi_token *tokens;
-      unsigned flags =
-         (key->clamp_color ? TGSI_EMU_CLAMP_COLOR_OUTPUTS : 0) |
-         (key->persample_shading ? TGSI_EMU_FORCE_PERSAMPLE_INTERP : 0);
-
-      tokens = tgsi_emulate(state.tokens, flags);
-
-      if (tokens) {
-         if (state.tokens != fp->state.tokens)
-            tgsi_free_tokens(state.tokens);
-         state.tokens = tokens;
-      } else
-         fprintf(stderr, "mesa: cannot emulate deprecated features\n");
-   }
-
    /* glBitmap */
    if (key->bitmap) {
-      const struct tgsi_token *tokens;
+      nir_lower_bitmap_options options = {0};
 
       variant->bitmap_sampler = ffs(~fp->SamplersUsed) - 1;
+      options.sampler = variant->bitmap_sampler;
+      options.swizzle_xxxx = st->bitmap.tex_format == PIPE_FORMAT_R8_UNORM;
 
-      tokens = st_get_bitmap_shader(state.tokens,
-                                    st->internal_target,
-                                    variant->bitmap_sampler,
-                                    st->needs_texcoord_semantic,
-                                    st->bitmap.tex_format ==
-                                    PIPE_FORMAT_R8_UNORM);
-
-      if (tokens) {
-         if (state.tokens != fp->state.tokens)
-            tgsi_free_tokens(state.tokens);
-         state.tokens = tokens;
-      } else
-         fprintf(stderr, "mesa: cannot create a shader for glBitmap\n");
+      NIR_PASS_V(state.ir.nir, nir_lower_bitmap, &options);
+      finalize = true;
    }
 
    /* glDrawPixels (color only) */
    if (key->drawpixels) {
-      const struct tgsi_token *tokens;
-      unsigned scale_const = 0, bias_const = 0, texcoord_const = 0;
+      nir_lower_drawpixels_options options = {{0}};
+      unsigned samplers_used = fp->SamplersUsed;
 
       /* Find the first unused slot. */
-      variant->drawpix_sampler = ffs(~fp->SamplersUsed) - 1;
+      variant->drawpix_sampler = ffs(~samplers_used) - 1;
+      options.drawpix_sampler = variant->drawpix_sampler;
+      samplers_used |= (1 << variant->drawpix_sampler);
 
+      options.pixel_maps = key->pixelMaps;
       if (key->pixelMaps) {
-         unsigned samplers_used = fp->SamplersUsed |
-                                  (1 << variant->drawpix_sampler);
-
          variant->pixelmap_sampler = ffs(~samplers_used) - 1;
+         options.pixelmap_sampler = variant->pixelmap_sampler;
       }
 
+      options.scale_and_bias = key->scaleAndBias;
       if (key->scaleAndBias) {
-         scale_const = _mesa_add_state_reference(params, scale_state);
-         bias_const = _mesa_add_state_reference(params, bias_state);
+         _mesa_add_state_reference(params, scale_state);
+         memcpy(options.scale_state_tokens, scale_state,
+                  sizeof(options.scale_state_tokens));
+         _mesa_add_state_reference(params, bias_state);
+         memcpy(options.bias_state_tokens, bias_state,
+                  sizeof(options.bias_state_tokens));
       }
 
-      texcoord_const = _mesa_add_state_reference(params, texcoord_state);
+      _mesa_add_state_reference(params, texcoord_state);
+      memcpy(options.texcoord_state_tokens, texcoord_state,
+               sizeof(options.texcoord_state_tokens));
 
-      tokens = st_get_drawpix_shader(state.tokens,
-                                     st->needs_texcoord_semantic,
-                                     key->scaleAndBias, scale_const,
-                                     bias_const, key->pixelMaps,
-                                     variant->drawpix_sampler,
-                                     variant->pixelmap_sampler,
-                                     texcoord_const, st->internal_target);
-
-      if (tokens) {
-         if (state.tokens != fp->state.tokens)
-            tgsi_free_tokens(state.tokens);
-         state.tokens = tokens;
-      } else
-         fprintf(stderr, "mesa: cannot create a shader for glDrawPixels\n");
+      NIR_PASS_V(state.ir.nir, nir_lower_drawpixels, &options);
+      finalize = true;
    }
+
+   bool need_lower_tex_src_plane = false;
 
    if (unlikely(key->external.lower_nv12 || key->external.lower_iyuv ||
-                key->external.lower_xy_uxvx || key->external.lower_yx_xuxv)) {
-      const struct tgsi_token *tokens;
+                  key->external.lower_xy_uxvx || key->external.lower_yx_xuxv ||
+                  key->external.lower_ayuv || key->external.lower_xyuv ||
+                  key->external.lower_yuv || key->external.lower_yu_yv ||
+                  key->external.lower_y41x)) {
 
-      /* samplers inserted would conflict, but this should be unpossible: */
-      assert(!(key->bitmap || key->drawpixels));
+      st_nir_lower_samplers(st->screen, state.ir.nir,
+                              fp->shader_program, fp);
 
-      tokens = st_tgsi_lower_yuv(state.tokens,
-                                 ~fp->SamplersUsed,
-                                 key->external.lower_nv12 ||
-                                    key->external.lower_xy_uxvx ||
-                                    key->external.lower_yx_xuxv,
-                                 key->external.lower_iyuv);
-      if (tokens) {
-         if (state.tokens != fp->state.tokens)
-            tgsi_free_tokens(state.tokens);
-         state.tokens = tokens;
-      } else {
-         fprintf(stderr, "mesa: cannot create a shader for samplerExternalOES\n");
+      nir_lower_tex_options options = {0};
+      options.lower_y_uv_external = key->external.lower_nv12;
+      options.lower_y_u_v_external = key->external.lower_iyuv;
+      options.lower_xy_uxvx_external = key->external.lower_xy_uxvx;
+      options.lower_yx_xuxv_external = key->external.lower_yx_xuxv;
+      options.lower_ayuv_external = key->external.lower_ayuv;
+      options.lower_xyuv_external = key->external.lower_xyuv;
+      options.lower_yuv_external = key->external.lower_yuv;
+      options.lower_yu_yv_external = key->external.lower_yu_yv;
+      options.lower_y41x_external = key->external.lower_y41x;
+      NIR_PASS_V(state.ir.nir, nir_lower_tex, &options);
+      finalize = true;
+      need_lower_tex_src_plane = true;
+   }
+
+   if (finalize || !st->allow_st_finalize_nir_twice) {
+      char *msg = st_finalize_nir(st, fp, fp->shader_program, state.ir.nir,
+                                    false, false);
+      free(msg);
+   }
+
+   /* This pass needs to happen *after* nir_lower_sampler */
+   if (unlikely(need_lower_tex_src_plane)) {
+      NIR_PASS_V(state.ir.nir, st_nir_lower_tex_src_plane,
+                  ~fp->SamplersUsed,
+                  key->external.lower_nv12 | key->external.lower_xy_uxvx |
+                     key->external.lower_yx_xuxv,
+                  key->external.lower_iyuv);
+      finalize = true;
+   }
+
+   if (finalize || !st->allow_st_finalize_nir_twice) {
+      /* Some of the lowering above may have introduced new varyings */
+      nir_shader_gather_info(state.ir.nir,
+                              nir_shader_get_entrypoint(state.ir.nir));
+
+      struct pipe_screen *screen = st->screen;
+      if (screen->finalize_nir) {
+         char *msg = screen->finalize_nir(screen, state.ir.nir);
+         free(msg);
       }
    }
 
-
-   if (ST_DEBUG & DEBUG_PRINT_IR)
-      tgsi_dump(state.tokens, 0);
-
-   /* fill in variant */
-   variant->base.driver_shader = pipe->create_fs_state(pipe, &state);
+   variant->base.driver_shader = st_create_nir_shader(st, &state);
    variant->key = *key;
 
-   if (state.tokens != fp->state.tokens)
-      tgsi_free_tokens(state.tokens);
    return variant;
 }
 
