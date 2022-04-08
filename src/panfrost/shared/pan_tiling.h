@@ -30,6 +30,10 @@
 #include <stdint.h>
 #include <util/format/u_format.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Load a rectangular region from a tiled image to a linear staging image.
  *
@@ -69,5 +73,10 @@ void panfrost_store_tiled_image(void *dst, const void *src,
                                 uint32_t dst_stride,
                                 uint32_t src_stride,
                                 enum pipe_format format);
+
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
 
 #endif
