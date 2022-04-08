@@ -5115,10 +5115,12 @@ emit_indirect_3dmesh_1d(struct anv_batch *batch,
                         bool uses_drawid)
 {
    uint32_t len = GENX(3DMESH_1D_length) + uses_drawid;
-   anv_batch_emitn(batch, len, GENX(3DMESH_1D),
+   uint32_t *dw = anv_batch_emitn(batch, len, GENX(3DMESH_1D),
                    .PredicateEnable           = predicate_enable,
                    .IndirectParameterEnable   = true,
                    .ExtendedParameter0Present = uses_drawid);
+   if (uses_drawid)
+      dw[len - 1] = 0;
 }
 
 void
