@@ -28,6 +28,121 @@
 #include "vn_physical_device.h"
 #include "vn_queue.h"
 
+/* perform options supported by CrOS Gralloc */
+#define CROS_GRALLOC_DRM_GET_BUFFER_INFO 4
+
+struct vn_android_gralloc {
+   const gralloc_module_t *module;
+};
+
+static struct vn_android_gralloc _vn_android_gralloc;
+
+static int
+vn_android_gralloc_init()
+{
+   static const char CROS_GRALLOC_MODULE_NAME[] = "CrOS Gralloc";
+   const gralloc_module_t *gralloc = NULL;
+   int ret;
+
+   /* get gralloc module for gralloc buffer info query */
+   ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
+                       (const hw_module_t **)&gralloc);
+   if (ret) {
+      vn_log(NULL, "failed to open gralloc module(ret=%d)", ret);
+      return ret;
+   }
+
+   if (strcmp(gralloc->common.name, CROS_GRALLOC_MODULE_NAME) != 0) {
+      dlclose(gralloc->common.dso);
+      vn_log(NULL, "unexpected gralloc (name: %s)", gralloc->common.name);
+      return -1;
+   }
+
+   if (!gralloc->perform) {
+      dlclose(gralloc->common.dso);
+      vn_log(NULL, "missing required gralloc helper: perform");
+      return -1;
+   }
+
+   _vn_android_gralloc.module = gralloc;
+
+   return 0;
+}
+
+static inline void
+vn_android_gralloc_fini()
+{
+   dlclose(_vn_android_gralloc.module->common.dso);
+}
+
+struct cros_gralloc0_buffer_info {
+   uint32_t drm_fourcc;
+   int num_fds; /* ignored */
+   int fds[4];  /* ignored */
+   uint64_t modifier;
+   uint32_t offset[4];
+   uint32_t stride[4];
+};
+
+struct vn_android_gralloc_buffer_properties {
+   uint32_t drm_fourcc;
+   uint64_t modifier;
+   uint32_t offset[4];
+   uint32_t stride[4];
+};
+
+static bool
+vn_android_gralloc_get_buffer_properties(
+   buffer_handle_t handle,
+   struct vn_android_gralloc_buffer_properties *out_props)
+{
+   const gralloc_module_t *gralloc = _vn_android_gralloc.module;
+   struct cros_gralloc0_buffer_info info;
+   if (gralloc->perform(gralloc, CROS_GRALLOC_DRM_GET_BUFFER_INFO, handle,
+                        &info) != 0) {
+      vn_log(NULL, "CROS_GRALLOC_DRM_GET_BUFFER_INFO failed");
+      return false;
+   }
+
+   if (info.modifier == DRM_FORMAT_MOD_INVALID) {
+      vn_log(NULL, "Unexpected DRM_FORMAT_MOD_INVALID");
+      return false;
+   }
+
+   out_props->drm_fourcc = info.drm_fourcc;
+   for (uint32_t i = 0; i < 4; i++) {
+      out_props->stride[i] = info.stride[i];
+      out_props->offset[i] = info.offset[i];
+   }
+   out_props->modifier = info.modifier;
+
+   return true;
+}
+
+static int
+vn_android_gralloc_get_dma_buf_fd(const native_handle_t *handle)
+{
+   /* There can be multiple fds wrapped inside a native_handle_t, but we
+    * expect the 1st one pointing to the dma_buf. For multi-planar format,
+    * there should only exist one undelying dma_buf. The other fd(s) could be
+    * dups to the same dma_buf or point to the shared memory used to store
+    * gralloc buffer metadata.
+    */
+   assert(handle);
+
+   if (handle->numFds < 1) {
+      vn_log(NULL, "handle->numFds is %d, expected >= 1", handle->numFds);
+      return -1;
+   }
+
+   if (handle->data[0] < 0) {
+      vn_log(NULL, "handle->data[0] < 0");
+      return -1;
+   }
+
+   return handle->data[0];
+}
+
 static int
 vn_hal_open(const struct hw_module_t *mod,
             const char *id,
@@ -53,12 +168,10 @@ PUBLIC struct hwvulkan_module_t HAL_MODULE_INFO_SYM = {
    },
 };
 
-static const gralloc_module_t *gralloc = NULL;
-
 static int
 vn_hal_close(UNUSED struct hw_device_t *dev)
 {
-   dlclose(gralloc->common.dso);
+   vn_android_gralloc_fini();
    return 0;
 }
 
@@ -79,28 +192,14 @@ vn_hal_open(const struct hw_module_t *mod,
             const char *id,
             struct hw_device_t **dev)
 {
-   static const char CROS_GRALLOC_MODULE_NAME[] = "CrOS Gralloc";
+   int ret;
 
    assert(mod == &HAL_MODULE_INFO_SYM.common);
    assert(strcmp(id, HWVULKAN_DEVICE_0) == 0);
 
-   /* get gralloc module for gralloc buffer info query */
-   int ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
-                           (const hw_module_t **)&gralloc);
-   if (ret) {
-      if (VN_DEBUG(WSI))
-         vn_log(NULL, "failed to open gralloc module(ret=%d)", ret);
+   ret = vn_android_gralloc_init();
+   if (ret)
       return ret;
-   }
-
-   if (VN_DEBUG(WSI))
-      vn_log(NULL, "opened gralloc module name: %s", gralloc->common.name);
-
-   if (strcmp(gralloc->common.name, CROS_GRALLOC_MODULE_NAME) != 0 ||
-       !gralloc->perform) {
-      dlclose(gralloc->common.dso);
-      return -1;
-   }
 
    *dev = &vn_hal_dev.common;
 
@@ -257,74 +356,6 @@ vn_GetSwapchainGrallocUsage2ANDROID(
    return VK_SUCCESS;
 }
 
-struct cros_gralloc0_buffer_info {
-   uint32_t drm_fourcc;
-   int num_fds; /* ignored */
-   int fds[4];  /* ignored */
-   uint64_t modifier;
-   uint32_t offset[4];
-   uint32_t stride[4];
-};
-
-struct vn_android_gralloc_buffer_properties {
-   uint32_t drm_fourcc;
-   uint64_t modifier;
-   uint32_t offset[4];
-   uint32_t stride[4];
-};
-
-static VkResult
-vn_android_get_dma_buf_from_native_handle(const native_handle_t *handle,
-                                          int *out_dma_buf)
-{
-   /* There can be multiple fds wrapped inside a native_handle_t, but we
-    * expect only the 1st one points to the dma_buf. For multi-planar format,
-    * there should only exist one dma_buf as well. The other fd(s) may point
-    * to shared memory used to store buffer metadata or other vendor specific
-    * bits.
-    */
-   if (handle->numFds < 1) {
-      vn_log(NULL, "handle->numFds is %d, expected >= 1", handle->numFds);
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-   }
-
-   if (handle->data[0] < 0) {
-      vn_log(NULL, "handle->data[0] < 0");
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-   }
-
-   *out_dma_buf = handle->data[0];
-   return VK_SUCCESS;
-}
-
-static bool
-vn_android_get_gralloc_buffer_properties(
-   buffer_handle_t handle,
-   struct vn_android_gralloc_buffer_properties *out_props)
-{
-   static const int32_t CROS_GRALLOC_DRM_GET_BUFFER_INFO = 4;
-   struct cros_gralloc0_buffer_info info;
-   if (gralloc->perform(gralloc, CROS_GRALLOC_DRM_GET_BUFFER_INFO, handle,
-                        &info) != 0) {
-      vn_log(NULL, "CROS_GRALLOC_DRM_GET_BUFFER_INFO failed");
-      return false;
-   }
-
-   if (info.modifier == DRM_FORMAT_MOD_INVALID) {
-      vn_log(NULL, "Unexpected DRM_FORMAT_MOD_INVALID");
-      return false;
-   }
-
-   out_props->drm_fourcc = info.drm_fourcc;
-   for (uint32_t i = 0; i < 4; i++) {
-      out_props->stride[i] = info.stride[i];
-      out_props->offset[i] = info.offset[i];
-   }
-   out_props->modifier = info.modifier;
-
-   return true;
-}
-
 static VkResult
 vn_android_get_modifier_properties(struct vn_device *dev,
                                    VkFormat format,
@@ -417,7 +448,7 @@ vn_android_get_image_builder(struct vn_device *dev,
    assert(!vk_find_struct_const(create_info->pNext,
                                 EXTERNAL_MEMORY_IMAGE_CREATE_INFO));
 
-   if (!vn_android_get_gralloc_buffer_properties(handle, &buf_props))
+   if (!vn_android_gralloc_get_buffer_properties(handle, &buf_props))
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    result = vn_android_get_modifier_properties(
@@ -515,10 +546,11 @@ vn_android_image_from_anb(struct vn_device *dev,
    VkImageCreateInfo local_create_info;
    struct vn_android_image_builder builder;
 
-   result = vn_android_get_dma_buf_from_native_handle(anb_info->handle,
-                                                      &dma_buf_fd);
-   if (result != VK_SUCCESS)
+   dma_buf_fd = vn_android_gralloc_get_dma_buf_fd(anb_info->handle);
+   if (dma_buf_fd < 0) {
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
+   }
 
    assert(!(create_info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT));
    assert(!vk_find_struct_const(create_info->pNext,
@@ -846,7 +878,7 @@ vn_android_get_ahb_format_properties(
       return VK_SUCCESS;
    }
 
-   if (!vn_android_get_gralloc_buffer_properties(
+   if (!vn_android_gralloc_get_buffer_properties(
           AHardwareBuffer_getNativeHandle(ahb), &buf_props))
       return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
@@ -937,10 +969,10 @@ vn_GetAndroidHardwareBufferPropertiesANDROID(
          return vn_error(dev->instance, result);
    }
 
-   const native_handle_t *handle = AHardwareBuffer_getNativeHandle(buffer);
-   result = vn_android_get_dma_buf_from_native_handle(handle, &dma_buf_fd);
-   if (result != VK_SUCCESS)
-      return vn_error(dev->instance, result);
+   dma_buf_fd = vn_android_gralloc_get_dma_buf_fd(
+      AHardwareBuffer_getNativeHandle(buffer));
+   if (dma_buf_fd < 0)
+      return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
    result = vn_get_memory_dma_buf_properties(dev, dma_buf_fd, &alloc_size,
                                              &mem_type_bits);
@@ -1009,7 +1041,7 @@ vn_android_get_drm_format_modifier_info(
    if (!ahb)
       return false;
 
-   if (!vn_android_get_gralloc_buffer_properties(
+   if (!vn_android_gralloc_get_buffer_properties(
           AHardwareBuffer_getNativeHandle(ahb), &buf_props)) {
       AHardwareBuffer_release(ahb);
       return false;
@@ -1075,9 +1107,9 @@ vn_android_device_import_ahb(struct vn_device *dev,
    VkResult result = VK_SUCCESS;
 
    handle = AHardwareBuffer_getNativeHandle(ahb);
-   result = vn_android_get_dma_buf_from_native_handle(handle, &dma_buf_fd);
-   if (result != VK_SUCCESS)
-      return result;
+   dma_buf_fd = vn_android_gralloc_get_dma_buf_fd(handle);
+   if (dma_buf_fd < 0)
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    result = vn_get_memory_dma_buf_properties(dev, dma_buf_fd, &alloc_size,
                                              &mem_type_bits);
@@ -1324,11 +1356,11 @@ vn_android_get_ahb_buffer_memory_type_bits(struct vn_device *dev,
    if (!ahb)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   result = vn_android_get_dma_buf_from_native_handle(
-      AHardwareBuffer_getNativeHandle(ahb), &dma_buf_fd);
-   if (result != VK_SUCCESS) {
+   dma_buf_fd =
+      vn_android_gralloc_get_dma_buf_fd(AHardwareBuffer_getNativeHandle(ahb));
+   if (dma_buf_fd < 0) {
       AHardwareBuffer_release(ahb);
-      return result;
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
    }
 
    result = vn_get_memory_dma_buf_properties(dev, dma_buf_fd, &alloc_size,
