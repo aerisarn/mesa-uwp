@@ -402,6 +402,11 @@ update_barriers(struct zink_context *ctx, bool is_compute)
             if (res->image_bind_count[is_compute] != res->bind_count[is_compute] ||
                 res->write_bind_count[is_compute] != res->image_bind_count[is_compute])
                access |= VK_ACCESS_SHADER_READ_BIT;
+         } else {
+            if (res->bind_count[is_compute] != res->write_bind_count[is_compute])
+               access |= VK_ACCESS_SHADER_READ_BIT;
+            if (res->write_bind_count[is_compute])
+               access |= VK_ACCESS_SHADER_WRITE_BIT;
          }
          if (is_compute)
             pipeline = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
