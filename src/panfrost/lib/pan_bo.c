@@ -494,8 +494,6 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                 bo->flags = PAN_BO_SHARED;
                 bo->gem_handle = gem_handle;
                 p_atomic_set(&bo->refcnt, 1);
-                // TODO map and unmap on demand?
-                panfrost_bo_mmap(bo);
         } else {
                 /* bo->refcnt == 0 can happen if the BO
                  * was being released but panfrost_bo_import() acquired the
@@ -511,7 +509,6 @@ panfrost_bo_import(struct panfrost_device *dev, int fd)
                         p_atomic_set(&bo->refcnt, 1);
                 else
                         panfrost_bo_reference(bo);
-                assert(bo->ptr.cpu);
         }
         pthread_mutex_unlock(&dev->bo_map_lock);
 
