@@ -648,6 +648,21 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
    switch (instr->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
+      switch (alu->op) {
+      case nir_op_bit_count:
+      case nir_op_ufind_msb:
+      case nir_op_ifind_msb:
+      case nir_op_find_lsb:
+         /* These are handled specially because the destination is always
+          * 32-bit and so the bit size of the instruction is given by the
+          * source.
+          */
+         assert(alu->src[0].src.is_ssa);
+         return alu->src[0].src.ssa->bit_size == 32 ? 0 : 32;
+      default:
+         break;
+      }
+
       assert(alu->dest.dest.is_ssa);
       if (alu->dest.dest.ssa.bit_size >= 32)
          return 0;
