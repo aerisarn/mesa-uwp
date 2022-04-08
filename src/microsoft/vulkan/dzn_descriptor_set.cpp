@@ -1713,13 +1713,13 @@ dzn_descriptor_set_copy(const VkCopyDescriptorSet *pDescriptorCopy)
    uint32_t copied_count = 0;
 
    while (dzn_descriptor_set_ptr_is_valid(&src_ptr) &&
-          dzn_descriptor_set_ptr_is_valid(&dst_ptr)) {
+          dzn_descriptor_set_ptr_is_valid(&dst_ptr) &&
+          copied_count < pDescriptorCopy->descriptorCount) {
       VkDescriptorType src_type =
          dzn_descriptor_set_get_desc_vk_type(src_set, &src_ptr);
       VkDescriptorType dst_type =
          dzn_descriptor_set_get_desc_vk_type(dst_set, &dst_ptr);
 
-      assert(copied_count < pDescriptorCopy->descriptorCount);
       assert(src_type == dst_type);
       uint32_t count =
          MIN2(dzn_descriptor_set_remaining_descs_in_binding(src_set, &src_ptr),
