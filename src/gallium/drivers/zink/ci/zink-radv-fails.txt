@@ -1,5 +1,4 @@
 # probable ACO bug: #6276
-KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicVS,Fail
