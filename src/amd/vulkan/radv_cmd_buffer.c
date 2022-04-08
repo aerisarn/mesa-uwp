@@ -8779,7 +8779,14 @@ radv_flush_vgt_streamout(struct radv_cmd_buffer *cmd_buffer)
    unsigned reg_strmout_cntl;
 
    /* The register is at different places on different ASICs. */
-   if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
+   if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+      reg_strmout_cntl = R_0300FC_CP_STRMOUT_CNTL;
+      radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 3, 0));
+      radeon_emit(cs, S_370_DST_SEL(V_370_MEM_MAPPED_REGISTER) | S_370_ENGINE_SEL(V_370_ME));
+      radeon_emit(cs, R_0300FC_CP_STRMOUT_CNTL >> 2);
+      radeon_emit(cs, 0);
+      radeon_emit(cs, 0);
+   } else if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
       reg_strmout_cntl = R_0300FC_CP_STRMOUT_CNTL;
       radeon_set_uconfig_reg(cs, reg_strmout_cntl, 0);
    } else {
