@@ -3247,7 +3247,8 @@ zink_flush(struct pipe_context *pctx,
       zink_begin_render_pass(ctx);
 
    if (ctx->needs_present && (flags & PIPE_FLUSH_END_OF_FRAME)) {
-      zink_resource_image_barrier(ctx, ctx->needs_present, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+      if (ctx->needs_present->obj->image)
+         zink_resource_image_barrier(ctx, ctx->needs_present, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
    }
 
    if (!batch->has_work) {
