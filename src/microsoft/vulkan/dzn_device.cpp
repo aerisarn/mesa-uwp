@@ -1770,7 +1770,7 @@ dzn_device_create(dzn_physical_device *pdev,
       for (uint32_t q = 0; q < qinfo->queueCount; q++) {
          result =
             dzn_queue_init(&queues[qindex++], device, qinfo, q);
-	 if (result != VK_SUCCESS) {
+         if (result != VK_SUCCESS) {
             dzn_device_destroy(device, pAllocator);
             return result;
          }

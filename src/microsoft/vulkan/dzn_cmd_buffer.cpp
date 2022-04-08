@@ -346,7 +346,7 @@ dzn_cmd_buffer_gather_events(dzn_cmd_buffer *cmdbuf)
 
          if (!entry) {
             cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-	    break;
+            break;
          }
 
          *entry = signal;
