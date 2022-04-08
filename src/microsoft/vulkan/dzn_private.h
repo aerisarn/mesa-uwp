@@ -52,11 +52,9 @@
 #include <vulkan/vk_icd.h>
 
 #define D3D12_IGNORE_SDK_LAYERS
-#define CINTERFACE
 #define COBJMACROS
 #include <dxgi1_4.h>
 #include <directx/d3d12.h>
-#undef CINTERFACE
 
 #include "spirv_to_dxil.h"
 

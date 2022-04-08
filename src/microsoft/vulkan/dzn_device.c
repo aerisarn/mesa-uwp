@@ -44,9 +44,7 @@
 
 #include <windows.h>
 
-#define CINTERFACE
 #include <directx/d3d12sdklayers.h>
-#undef CINTERFACE
 
 #if defined(VK_USE_PLATFORM_WIN32_KHR) || \
     defined(VK_USE_PLATFORM_DISPLAY_KHR)
