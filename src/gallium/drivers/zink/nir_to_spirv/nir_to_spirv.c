@@ -725,6 +725,9 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
    case GLSL_SAMPLER_DIM_MS:
       *is_ms = true;
       return SpvDim2D;
+   case GLSL_SAMPLER_DIM_SUBPASS_MS:
+      *is_ms = true;
+      return SpvDimSubpassData;
    case GLSL_SAMPLER_DIM_SUBPASS:
       return SpvDimSubpassData;
    default:
@@ -2603,7 +2606,9 @@ emit_image_deref_store(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
    SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
    SpvId texel = get_src(ctx, &intr->src[3]);
-   SpvId sample = glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS ? get_src(ctx, &intr->src[2]) : 0;
+   bool use_sample = glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS ||
+                     glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_SUBPASS_MS;
+   SpvId sample = use_sample ? get_src(ctx, &intr->src[2]) : 0;
    assert(nir_src_bit_size(intr->src[3]) == glsl_base_type_bit_size(glsl_get_sampler_result_type(type)));
    /* texel type must match image type */
    texel = emit_bitcast(ctx,
@@ -2642,7 +2647,9 @@ emit_image_deref_load(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId base_type = get_glsl_basetype(ctx, glsl_get_sampler_result_type(type));
    SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
    SpvId coord = get_image_coords(ctx, type, &intr->src[1]);
-   SpvId sample = glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS ? get_src(ctx, &intr->src[2]) : 0;
+   bool use_sample = glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_MS ||
+                     glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_SUBPASS_MS;
+   SpvId sample = use_sample ? get_src(ctx, &intr->src[2]) : 0;
    SpvId dest_type = spirv_builder_type_vector(&ctx->builder, base_type, nir_dest_num_components(intr->dest));
    SpvId result = spirv_builder_emit_image_read(&ctx->builder,
                                  dest_type,
