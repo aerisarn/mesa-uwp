@@ -40,7 +40,6 @@
 #include "tgsi/tgsi_from_mesa.h"
 #include "st_context.h"
 #include "st_texture.h"
-#include "st_glsl_to_tgsi.h"
 
 #ifdef __cplusplus
 extern "C" {

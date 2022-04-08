@@ -588,115 +588,37 @@ static bool
 st_translate_vertex_program(struct st_context *st,
                             struct gl_program *prog)
 {
-   struct ureg_program *ureg;
-   enum pipe_error error;
-   unsigned num_outputs = 0;
-   unsigned attr;
-   ubyte output_semantic_name[VARYING_SLOT_MAX] = {0};
-   ubyte output_semantic_index[VARYING_SLOT_MAX] = {0};
-
    /* ARB_vp: */
-   if (!prog->glsl_to_tgsi) {
-      if (prog->arb.IsPositionInvariant)
-         _mesa_insert_mvp_code(st->ctx, prog);
+   if (prog->arb.IsPositionInvariant)
+      _mesa_insert_mvp_code(st->ctx, prog);
 
-      _mesa_remove_output_reads(prog, PROGRAM_OUTPUT);
+   _mesa_remove_output_reads(prog, PROGRAM_OUTPUT);
 
-      /* This determines which states will be updated when the assembly
-       * shader is bound.
-       */
-      prog->affected_states = ST_NEW_VS_STATE |
-                              ST_NEW_RASTERIZER |
-                              ST_NEW_VERTEX_ARRAYS;
+   /* This determines which states will be updated when the assembly
+      * shader is bound.
+      */
+   prog->affected_states = ST_NEW_VS_STATE |
+                           ST_NEW_RASTERIZER |
+                           ST_NEW_VERTEX_ARRAYS;
 
-      if (prog->Parameters->NumParameters)
-         prog->affected_states |= ST_NEW_VS_CONSTANTS;
+   if (prog->Parameters->NumParameters)
+      prog->affected_states |= ST_NEW_VS_CONSTANTS;
 
-      if (prog->nir)
-         ralloc_free(prog->nir);
+   if (prog->nir)
+      ralloc_free(prog->nir);
 
-      if (prog->serialized_nir) {
-         free(prog->serialized_nir);
-         prog->serialized_nir = NULL;
-      }
-
-      prog->state.type = PIPE_SHADER_IR_NIR;
-      prog->nir = st_translate_prog_to_nir(st, prog,
-                                           MESA_SHADER_VERTEX);
-      prog->info = prog->nir->info;
-
-      st_prepare_vertex_program(prog, NULL);
-      return true;
+   if (prog->serialized_nir) {
+      free(prog->serialized_nir);
+      prog->serialized_nir = NULL;
    }
 
-   uint8_t input_to_index[VERT_ATTRIB_MAX];
-   st_prepare_vertex_program(prog, input_to_index);
+   prog->state.type = PIPE_SHADER_IR_NIR;
+   prog->nir = st_translate_prog_to_nir(st, prog,
+                                          MESA_SHADER_VERTEX);
+   prog->info = prog->nir->info;
 
-   /* Get semantic names and indices. */
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (prog->info.outputs_written & BITFIELD64_BIT(attr)) {
-         unsigned slot = num_outputs++;
-         unsigned semantic_name, semantic_index;
-         tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
-                                      &semantic_name, &semantic_index);
-         output_semantic_name[slot] = semantic_name;
-         output_semantic_index[slot] = semantic_index;
-      }
-   }
-   /* pre-setup potentially unused edgeflag output */
-   output_semantic_name[num_outputs] = TGSI_SEMANTIC_EDGEFLAG;
-   output_semantic_index[num_outputs] = 0;
-
-   ureg = ureg_create_with_screen(PIPE_SHADER_VERTEX, st->screen);
-   if (ureg == NULL)
-      return false;
-
-   ureg_setup_shader_info(ureg, &prog->info);
-
-   if (ST_DEBUG & DEBUG_MESA) {
-      _mesa_print_program(prog);
-      _mesa_print_program_parameters(st->ctx, prog);
-      debug_printf("\n");
-   }
-
-   struct gl_vertex_program *vp = (struct gl_vertex_program *)prog;
-
-   error = st_translate_program(st->ctx,
-                                PIPE_SHADER_VERTEX,
-                                ureg,
-                                prog->glsl_to_tgsi,
-                                prog,
-                                /* inputs */
-                                vp->num_inputs,
-                                input_to_index,
-                                NULL, /* inputSlotToAttr */
-                                NULL, /* input semantic name */
-                                NULL, /* input semantic index */
-                                NULL, /* interp mode */
-                                /* outputs */
-                                num_outputs,
-                                vp->result_to_output,
-                                output_semantic_name,
-                                output_semantic_index);
-
-   st_translate_stream_output_info(prog);
-
-   free_glsl_to_tgsi_visitor(prog->glsl_to_tgsi);
-
-   if (error) {
-      debug_printf("%s: failed to translate GLSL IR program:\n", __func__);
-      _mesa_print_program(prog);
-      debug_assert(0);
-      return false;
-   }
-
-   prog->state.tokens = ureg_get_tokens(ureg, NULL);
-   ureg_destroy(ureg);
-
-   prog->glsl_to_tgsi = NULL;
-   st_store_ir_in_disk_cache(st, prog, false);
-
-   return prog->state.tokens != NULL;
+   st_prepare_vertex_program(prog, NULL);
+   return true;
 }
 
 static struct nir_shader *
@@ -981,330 +903,53 @@ st_get_common_variant(struct st_context *st,
 
 
 /**
- * Translate a Mesa fragment shader into a TGSI shader.
+ * Translate a non-GLSL Mesa fragment shader into a NIR shader.
  */
 static bool
 st_translate_fragment_program(struct st_context *st,
                               struct gl_program *fp)
 {
    /* Non-GLSL programs: */
-   if (!fp->glsl_to_tgsi) {
-      _mesa_remove_output_reads(fp, PROGRAM_OUTPUT);
-      if (st->ctx->Const.GLSLFragCoordIsSysVal)
-         _mesa_program_fragment_position_to_sysval(fp);
+   _mesa_remove_output_reads(fp, PROGRAM_OUTPUT);
+   if (st->ctx->Const.GLSLFragCoordIsSysVal)
+      _mesa_program_fragment_position_to_sysval(fp);
 
-      /* This determines which states will be updated when the assembly
-       * shader is bound.
-       *
-       * fragment.position and glDrawPixels always use constants.
-       */
-      fp->affected_states = ST_NEW_FS_STATE |
-                              ST_NEW_SAMPLE_SHADING |
-                              ST_NEW_FS_CONSTANTS;
+   /* This determines which states will be updated when the assembly
+    * shader is bound.
+    *
+    * fragment.position and glDrawPixels always use constants.
+    */
+   fp->affected_states = ST_NEW_FS_STATE |
+                           ST_NEW_SAMPLE_SHADING |
+                           ST_NEW_FS_CONSTANTS;
 
-      if (fp->ati_fs) {
-         /* Just set them for ATI_fs unconditionally. */
+   if (fp->ati_fs) {
+      /* Just set them for ATI_fs unconditionally. */
+      fp->affected_states |= ST_NEW_FS_SAMPLER_VIEWS |
+                                 ST_NEW_FS_SAMPLERS;
+   } else {
+      /* ARB_fp */
+      if (fp->SamplersUsed)
          fp->affected_states |= ST_NEW_FS_SAMPLER_VIEWS |
-                                  ST_NEW_FS_SAMPLERS;
-      } else {
-         /* ARB_fp */
-         if (fp->SamplersUsed)
-            fp->affected_states |= ST_NEW_FS_SAMPLER_VIEWS |
-                                     ST_NEW_FS_SAMPLERS;
+                                    ST_NEW_FS_SAMPLERS;
+   }
+
+   /* Translate to NIR.  ATI_fs translates at variant time. */
+   if (!fp->ati_fs) {
+      nir_shader *nir =
+         st_translate_prog_to_nir(st, fp, MESA_SHADER_FRAGMENT);
+
+      if (fp->nir)
+         ralloc_free(fp->nir);
+      if (fp->serialized_nir) {
+         free(fp->serialized_nir);
+         fp->serialized_nir = NULL;
       }
-
-      /* Translate to NIR.  ATI_fs translates at variant time. */
-      if (!fp->ati_fs) {
-         nir_shader *nir =
-            st_translate_prog_to_nir(st, fp, MESA_SHADER_FRAGMENT);
-
-         if (fp->nir)
-            ralloc_free(fp->nir);
-         if (fp->serialized_nir) {
-            free(fp->serialized_nir);
-            fp->serialized_nir = NULL;
-         }
-         fp->state.type = PIPE_SHADER_IR_NIR;
-         fp->nir = nir;
-      }
-
-      return true;
+      fp->state.type = PIPE_SHADER_IR_NIR;
+      fp->nir = nir;
    }
 
-   ubyte outputMapping[2 * FRAG_RESULT_MAX];
-   ubyte inputMapping[VARYING_SLOT_MAX];
-   ubyte inputSlotToAttr[VARYING_SLOT_MAX];
-   ubyte interpMode[PIPE_MAX_SHADER_INPUTS];  /* XXX size? */
-   GLuint attr;
-   GLbitfield64 inputsRead;
-   struct ureg_program *ureg;
-
-   GLboolean write_all = GL_FALSE;
-
-   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
-   uint fs_num_inputs = 0;
-
-   ubyte fs_output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte fs_output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
-   uint fs_num_outputs = 0;
-
-   memset(inputSlotToAttr, ~0, sizeof(inputSlotToAttr));
-
-   /*
-    * Convert Mesa program inputs to TGSI input register semantics.
-    */
-   inputsRead = fp->info.inputs_read;
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if ((inputsRead & BITFIELD64_BIT(attr)) != 0) {
-         const GLuint slot = fs_num_inputs++;
-
-         inputMapping[attr] = slot;
-         inputSlotToAttr[slot] = attr;
-
-         switch (attr) {
-         case VARYING_SLOT_POS:
-            input_semantic_name[slot] = TGSI_SEMANTIC_POSITION;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_LINEAR;
-            break;
-         case VARYING_SLOT_COL0:
-            input_semantic_name[slot] = TGSI_SEMANTIC_COLOR;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = fp->glsl_to_tgsi ?
-               TGSI_INTERPOLATE_COUNT : TGSI_INTERPOLATE_COLOR;
-            break;
-         case VARYING_SLOT_COL1:
-            input_semantic_name[slot] = TGSI_SEMANTIC_COLOR;
-            input_semantic_index[slot] = 1;
-            interpMode[slot] = fp->glsl_to_tgsi ?
-               TGSI_INTERPOLATE_COUNT : TGSI_INTERPOLATE_COLOR;
-            break;
-         case VARYING_SLOT_FOGC:
-            input_semantic_name[slot] = TGSI_SEMANTIC_FOG;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_PERSPECTIVE;
-            break;
-         case VARYING_SLOT_FACE:
-            input_semantic_name[slot] = TGSI_SEMANTIC_FACE;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_CONSTANT;
-            break;
-         case VARYING_SLOT_PRIMITIVE_ID:
-            input_semantic_name[slot] = TGSI_SEMANTIC_PRIMID;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_CONSTANT;
-            break;
-         case VARYING_SLOT_LAYER:
-            input_semantic_name[slot] = TGSI_SEMANTIC_LAYER;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_CONSTANT;
-            break;
-         case VARYING_SLOT_VIEWPORT:
-            input_semantic_name[slot] = TGSI_SEMANTIC_VIEWPORT_INDEX;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_CONSTANT;
-            break;
-         case VARYING_SLOT_CLIP_DIST0:
-            input_semantic_name[slot] = TGSI_SEMANTIC_CLIPDIST;
-            input_semantic_index[slot] = 0;
-            interpMode[slot] = TGSI_INTERPOLATE_PERSPECTIVE;
-            break;
-         case VARYING_SLOT_CLIP_DIST1:
-            input_semantic_name[slot] = TGSI_SEMANTIC_CLIPDIST;
-            input_semantic_index[slot] = 1;
-            interpMode[slot] = TGSI_INTERPOLATE_PERSPECTIVE;
-            break;
-         case VARYING_SLOT_CULL_DIST0:
-         case VARYING_SLOT_CULL_DIST1:
-            /* these should have been lowered by GLSL */
-            assert(0);
-            break;
-            /* In most cases, there is nothing special about these
-             * inputs, so adopt a convention to use the generic
-             * semantic name and the mesa VARYING_SLOT_ number as the
-             * index.
-             *
-             * All that is required is that the vertex shader labels
-             * its own outputs similarly, and that the vertex shader
-             * generates at least every output required by the
-             * fragment shader plus fixed-function hardware (such as
-             * BFC).
-             *
-             * However, some drivers may need us to identify the PNTC and TEXi
-             * varyings if, for example, their capability to replace them with
-             * sprite coordinates is limited.
-             */
-         case VARYING_SLOT_PNTC:
-            if (st->needs_texcoord_semantic) {
-               input_semantic_name[slot] = TGSI_SEMANTIC_PCOORD;
-               input_semantic_index[slot] = 0;
-               interpMode[slot] = TGSI_INTERPOLATE_LINEAR;
-               break;
-            }
-            FALLTHROUGH;
-         case VARYING_SLOT_TEX0:
-         case VARYING_SLOT_TEX1:
-         case VARYING_SLOT_TEX2:
-         case VARYING_SLOT_TEX3:
-         case VARYING_SLOT_TEX4:
-         case VARYING_SLOT_TEX5:
-         case VARYING_SLOT_TEX6:
-         case VARYING_SLOT_TEX7:
-            if (st->needs_texcoord_semantic) {
-               input_semantic_name[slot] = TGSI_SEMANTIC_TEXCOORD;
-               input_semantic_index[slot] = attr - VARYING_SLOT_TEX0;
-               interpMode[slot] = fp->glsl_to_tgsi ?
-                  TGSI_INTERPOLATE_COUNT : TGSI_INTERPOLATE_PERSPECTIVE;
-               break;
-            }
-            FALLTHROUGH;
-         case VARYING_SLOT_VAR0:
-         default:
-            /* Semantic indices should be zero-based because drivers may choose
-             * to assign a fixed slot determined by that index.
-             * This is useful because ARB_separate_shader_objects uses location
-             * qualifiers for linkage, and if the semantic index corresponds to
-             * these locations, linkage passes in the driver become unecessary.
-             *
-             * If needs_texcoord_semantic is true, no semantic indices will be
-             * consumed for the TEXi varyings, and we can base the locations of
-             * the user varyings on VAR0.  Otherwise, we use TEX0 as base index.
-             */
-            assert(attr >= VARYING_SLOT_VAR0 || attr == VARYING_SLOT_PNTC ||
-                   (attr >= VARYING_SLOT_TEX0 && attr <= VARYING_SLOT_TEX7));
-            input_semantic_name[slot] = TGSI_SEMANTIC_GENERIC;
-            input_semantic_index[slot] = st_get_generic_varying_index(st, attr);
-            if (attr == VARYING_SLOT_PNTC)
-               interpMode[slot] = TGSI_INTERPOLATE_LINEAR;
-            else {
-               interpMode[slot] = fp->glsl_to_tgsi ?
-                  TGSI_INTERPOLATE_COUNT : TGSI_INTERPOLATE_PERSPECTIVE;
-            }
-            break;
-         }
-      }
-      else {
-         inputMapping[attr] = -1;
-      }
-   }
-
-   /*
-    * Semantics and mapping for outputs
-    */
-   GLbitfield64 outputsWritten = fp->info.outputs_written;
-
-   /* if z is written, emit that first */
-   if (outputsWritten & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
-      fs_output_semantic_name[fs_num_outputs] = TGSI_SEMANTIC_POSITION;
-      fs_output_semantic_index[fs_num_outputs] = 0;
-      outputMapping[FRAG_RESULT_DEPTH] = fs_num_outputs;
-      fs_num_outputs++;
-      outputsWritten &= ~(1 << FRAG_RESULT_DEPTH);
-   }
-
-   if (outputsWritten & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
-      fs_output_semantic_name[fs_num_outputs] = TGSI_SEMANTIC_STENCIL;
-      fs_output_semantic_index[fs_num_outputs] = 0;
-      outputMapping[FRAG_RESULT_STENCIL] = fs_num_outputs;
-      fs_num_outputs++;
-      outputsWritten &= ~(1 << FRAG_RESULT_STENCIL);
-   }
-
-   if (outputsWritten & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
-      fs_output_semantic_name[fs_num_outputs] = TGSI_SEMANTIC_SAMPLEMASK;
-      fs_output_semantic_index[fs_num_outputs] = 0;
-      outputMapping[FRAG_RESULT_SAMPLE_MASK] = fs_num_outputs;
-      fs_num_outputs++;
-      outputsWritten &= ~(1 << FRAG_RESULT_SAMPLE_MASK);
-   }
-
-   /* handle remaining outputs (color) */
-   for (attr = 0; attr < ARRAY_SIZE(outputMapping); attr++) {
-      const GLbitfield64 written = attr < FRAG_RESULT_MAX ? outputsWritten :
-         fp->SecondaryOutputsWritten;
-      const unsigned loc = attr % FRAG_RESULT_MAX;
-
-      if (written & BITFIELD64_BIT(loc)) {
-         switch (loc) {
-         case FRAG_RESULT_DEPTH:
-         case FRAG_RESULT_STENCIL:
-         case FRAG_RESULT_SAMPLE_MASK:
-            /* handled above */
-            assert(0);
-            break;
-         case FRAG_RESULT_COLOR:
-            write_all = GL_TRUE;
-            FALLTHROUGH;
-         default: {
-            int index;
-            assert(loc == FRAG_RESULT_COLOR ||
-                   (FRAG_RESULT_DATA0 <= loc && loc < FRAG_RESULT_MAX));
-
-            index = (loc == FRAG_RESULT_COLOR) ? 0 : (loc - FRAG_RESULT_DATA0);
-
-            if (attr >= FRAG_RESULT_MAX) {
-               /* Secondary color for dual source blending. */
-               assert(index == 0);
-               index++;
-            }
-
-            fs_output_semantic_name[fs_num_outputs] = TGSI_SEMANTIC_COLOR;
-            fs_output_semantic_index[fs_num_outputs] = index;
-            outputMapping[attr] = fs_num_outputs;
-            break;
-         }
-         }
-
-         fs_num_outputs++;
-      }
-   }
-
-   ureg = ureg_create_with_screen(PIPE_SHADER_FRAGMENT, st->screen);
-   if (ureg == NULL)
-      return false;
-
-   ureg_setup_shader_info(ureg, &fp->info);
-
-   if (ST_DEBUG & DEBUG_MESA) {
-      _mesa_print_program(fp);
-      _mesa_print_program_parameters(st->ctx, fp);
-      debug_printf("\n");
-   }
-   if (write_all == GL_TRUE)
-      ureg_property(ureg, TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS, 1);
-
-   if (fp->glsl_to_tgsi) {
-      st_translate_program(st->ctx,
-                           PIPE_SHADER_FRAGMENT,
-                           ureg,
-                           fp->glsl_to_tgsi,
-                           fp,
-                           /* inputs */
-                           fs_num_inputs,
-                           inputMapping,
-                           inputSlotToAttr,
-                           input_semantic_name,
-                           input_semantic_index,
-                           interpMode,
-                           /* outputs */
-                           fs_num_outputs,
-                           outputMapping,
-                           fs_output_semantic_name,
-                           fs_output_semantic_index);
-
-      free_glsl_to_tgsi_visitor(fp->glsl_to_tgsi);
-   }
-
-   fp->state.tokens = ureg_get_tokens(ureg, NULL);
-   ureg_destroy(ureg);
-
-   if (fp->glsl_to_tgsi) {
-      fp->glsl_to_tgsi = NULL;
-      st_store_ir_in_disk_cache(st, fp, false);
-   }
-
-   return fp->state.tokens != NULL;
+   return true;
 }
 
 static struct st_fp_variant *
@@ -1671,146 +1316,6 @@ st_get_fp_variant(struct st_context *st,
 }
 
 /**
- * Translate a program. This is common code for geometry and tessellation
- * shaders.
- */
-static bool
-st_translate_common_program(struct st_context *st,
-                            struct gl_program *prog)
-{
-   enum pipe_shader_type stage =
-      pipe_shader_type_from_mesa(prog->info.stage);
-   struct ureg_program *ureg = ureg_create_with_screen(stage, st->screen);
-
-   if (ureg == NULL)
-      return false;
-
-   ureg_setup_shader_info(ureg, &prog->info);
-
-   ubyte inputSlotToAttr[VARYING_SLOT_TESS_MAX];
-   ubyte inputMapping[VARYING_SLOT_TESS_MAX];
-   ubyte outputMapping[VARYING_SLOT_TESS_MAX];
-   GLuint attr;
-
-   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS];
-   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
-   uint num_inputs = 0;
-
-   ubyte output_semantic_name[PIPE_MAX_SHADER_OUTPUTS];
-   ubyte output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
-   uint num_outputs = 0;
-
-   GLint i;
-
-   memset(inputSlotToAttr, 0, sizeof(inputSlotToAttr));
-   memset(inputMapping, 0, sizeof(inputMapping));
-   memset(outputMapping, 0, sizeof(outputMapping));
-   memset(&prog->state, 0, sizeof(prog->state));
-
-   /*
-    * Convert Mesa program inputs to TGSI input register semantics.
-    */
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if ((prog->info.inputs_read & BITFIELD64_BIT(attr)) == 0)
-         continue;
-
-      unsigned slot = num_inputs++;
-
-      inputMapping[attr] = slot;
-      inputSlotToAttr[slot] = attr;
-
-      unsigned semantic_name, semantic_index;
-      tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
-                                   &semantic_name, &semantic_index);
-      input_semantic_name[slot] = semantic_name;
-      input_semantic_index[slot] = semantic_index;
-   }
-
-   /* Also add patch inputs. */
-   for (attr = 0; attr < 32; attr++) {
-      if (prog->info.patch_inputs_read & (1u << attr)) {
-         GLuint slot = num_inputs++;
-         GLuint patch_attr = VARYING_SLOT_PATCH0 + attr;
-
-         inputMapping[patch_attr] = slot;
-         inputSlotToAttr[slot] = patch_attr;
-         input_semantic_name[slot] = TGSI_SEMANTIC_PATCH;
-         input_semantic_index[slot] = attr;
-      }
-   }
-
-   /* initialize output semantics to defaults */
-   for (i = 0; i < PIPE_MAX_SHADER_OUTPUTS; i++) {
-      output_semantic_name[i] = TGSI_SEMANTIC_GENERIC;
-      output_semantic_index[i] = 0;
-   }
-
-   /*
-    * Determine number of outputs, the (default) output register
-    * mapping and the semantic information for each output.
-    */
-   for (attr = 0; attr < VARYING_SLOT_MAX; attr++) {
-      if (prog->info.outputs_written & BITFIELD64_BIT(attr)) {
-         GLuint slot = num_outputs++;
-
-         outputMapping[attr] = slot;
-
-         unsigned semantic_name, semantic_index;
-         tgsi_get_gl_varying_semantic(attr, st->needs_texcoord_semantic,
-                                      &semantic_name, &semantic_index);
-         output_semantic_name[slot] = semantic_name;
-         output_semantic_index[slot] = semantic_index;
-      }
-   }
-
-   /* Also add patch outputs. */
-   for (attr = 0; attr < 32; attr++) {
-      if (prog->info.patch_outputs_written & (1u << attr)) {
-         GLuint slot = num_outputs++;
-         GLuint patch_attr = VARYING_SLOT_PATCH0 + attr;
-
-         outputMapping[patch_attr] = slot;
-         output_semantic_name[slot] = TGSI_SEMANTIC_PATCH;
-         output_semantic_index[slot] = attr;
-      }
-   }
-
-   st_translate_program(st->ctx,
-                        stage,
-                        ureg,
-                        prog->glsl_to_tgsi,
-                        prog,
-                        /* inputs */
-                        num_inputs,
-                        inputMapping,
-                        inputSlotToAttr,
-                        input_semantic_name,
-                        input_semantic_index,
-                        NULL,
-                        /* outputs */
-                        num_outputs,
-                        outputMapping,
-                        output_semantic_name,
-                        output_semantic_index);
-
-   prog->state.tokens = ureg_get_tokens(ureg, NULL);
-
-   ureg_destroy(ureg);
-
-   st_translate_stream_output_info(prog);
-
-   st_store_ir_in_disk_cache(st, prog, false);
-
-   if (ST_DEBUG & DEBUG_PRINT_IR && ST_DEBUG & DEBUG_MESA)
-      _mesa_print_program(prog);
-
-   free_glsl_to_tgsi_visitor(prog->glsl_to_tgsi);
-   prog->glsl_to_tgsi = NULL;
-   return true;
-}
-
-
-/**
  * Vert/Geom/Frag programs have per-context variants.  Free all the
  * variants attached to the given program which match the given context.
  */
@@ -2067,9 +1572,6 @@ st_program_string_notify( struct gl_context *ctx,
          prog->skip_pointsize_xfb = true;
          NIR_PASS_V(prog->nir, st_nir_add_point_size);
       }
-   } else {
-      if (!st_translate_common_program(st, prog))
-         return false;
    }
 
    st_finalize_program(st, prog);

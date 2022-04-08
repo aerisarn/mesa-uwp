@@ -173,15 +173,6 @@ st_nir_lookup_parameter_index(struct gl_program *prog, nir_variable *var)
     * fails.  In this case just find the first matching "color.*"..
     *
     * Note for arrays you could end up w/ color[n].f, for example.
-    *
-    * glsl_to_tgsi works slightly differently in this regard.  It is
-    * emitting something more low level, so it just translates the
-    * params list 1:1 to CONST[] regs.  Going from GLSL IR to TGSI,
-    * it just calculates the additional offset of struct field members
-    * in glsl_to_tgsi_visitor::visit(ir_dereference_record *ir) or
-    * glsl_to_tgsi_visitor::visit(ir_dereference_array *ir).  It never
-    * needs to work backwards to get base var loc from the param-list
-    * which already has them separated out.
     */
    if (!prog->sh.data->spirv) {
       int namelen = strlen(var->name);
