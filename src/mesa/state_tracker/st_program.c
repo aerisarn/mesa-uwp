@@ -1926,15 +1926,18 @@ st_can_add_pointsize_to_program(struct st_context *st, struct gl_program *prog)
           nir->info.stage == MESA_SHADER_GEOMETRY);
    unsigned max_components = nir->info.stage == MESA_SHADER_GEOMETRY ?
                              st->ctx->Const.MaxGeometryTotalOutputComponents :
-                             st->ctx->Const.Program[nir->info.stage].MaxOutputComponents * 4;
+                             st->ctx->Const.Program[nir->info.stage].MaxOutputComponents;
    unsigned num_components = 0;
    unsigned needed_components = nir->info.stage == MESA_SHADER_GEOMETRY ? nir->info.gs.vertices_out : 1;
    nir_foreach_shader_out_variable(var, nir) {
       num_components += glsl_count_dword_slots(var->type, false);
    }
    /* Ensure that there is enough attribute space to emit at least one primitive */
-   if (nir->info.stage == MESA_SHADER_GEOMETRY)
+   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      if (num_components + needed_components > st->ctx->Const.Program[nir->info.stage].MaxOutputComponents)
+         return false;
       num_components *= nir->info.gs.vertices_out;
+   }
 
    return num_components + needed_components <= max_components;
 }
