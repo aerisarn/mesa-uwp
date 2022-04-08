@@ -1176,6 +1176,16 @@ zink_compiler_assign_io(nir_shader *producer, nir_shader *consumer)
    memset(patch_slot_map, -1, sizeof(patch_slot_map));
    bool do_fixup = false;
    nir_shader *nir = producer->info.stage == MESA_SHADER_TESS_CTRL ? producer : consumer;
+   if (consumer->info.stage != MESA_SHADER_FRAGMENT) {
+      /* remove injected pointsize from all but the last vertex stage */
+      nir_variable *var = nir_find_variable_with_location(producer, nir_var_shader_out, VARYING_SLOT_PSIZ);
+      if (var && !var->data.explicit_location) {
+         var->data.mode = nir_var_shader_temp;
+         nir_fixup_deref_modes(producer);
+         NIR_PASS_V(producer, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+         optimize_nir(producer);
+      }
+   }
    if (producer->info.stage == MESA_SHADER_TESS_CTRL) {
       /* never assign from tcs -> tes, always invert */
       nir_foreach_variable_with_modes(var, consumer, nir_var_shader_in)
