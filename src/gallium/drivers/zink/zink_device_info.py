@@ -66,6 +66,9 @@ EXTENSIONS = [
     Extension("VK_KHR_external_memory"),
     Extension("VK_KHR_external_memory_fd"),
     Extension("VK_KHR_external_semaphore_fd"),
+    Extension("VK_KHR_synchronization2",
+              alias="sync2",
+              features=True),
     Extension("VK_EXT_external_memory_dma_buf"),
     Extension("VK_EXT_queue_family_foreign"),
     Extension("VK_KHR_swapchain_mutable_format"),
@@ -238,6 +241,7 @@ REPLACEMENTS = {
     "ROBUSTNESS2": "ROBUSTNESS_2",
     "PROPERTIES_PROPERTIES": "PROPERTIES",
     "EXTENDED_DYNAMIC_STATE2": "EXTENDED_DYNAMIC_STATE_2",
+    "SYNCHRONIZATION2": "SYNCHRONIZATION_2",
 }
 
 
