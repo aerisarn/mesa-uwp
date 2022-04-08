@@ -59,8 +59,11 @@ create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *st
       color_refs[i].attachment = i;
       color_refs[i].layout = layout;
       dep_pipeline |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      if (rt->fbfetch)
+      if (rt->fbfetch) {
          memcpy(&input_attachments[input_count++], &color_refs[i], sizeof(VkAttachmentReference));
+         dep_pipeline |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+         dep_access |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+      }
       dep_access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       if (attachments[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
          dep_access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
@@ -104,8 +107,17 @@ create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *st
    if (!screen->info.have_KHR_synchronization2)
       dep_pipeline = MAX2(dep_pipeline, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
    VkSubpassDependency deps[] = {
-      [0] = {VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT},
-      [1] = {0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT}
+      {VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT},
+      {0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT}
+   };
+   VkPipelineStageFlags input_dep = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+   //if (zs_fbfetch) input_dep |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+   VkAccessFlags input_access = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+   //if (zs_fbfetch) input_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+   VkSubpassDependency fbfetch_deps[] = {
+      {VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT},
+      {0, 0, dep_pipeline, input_dep, dep_access, input_access, VK_DEPENDENCY_BY_REGION_BIT},
+      {0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT}
    };
 
    VkSubpassDescription subpass = {0};
@@ -122,8 +134,8 @@ create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *st
    rpci.pAttachments = attachments;
    rpci.subpassCount = 1;
    rpci.pSubpasses = &subpass;
-   rpci.dependencyCount = 2;
-   rpci.pDependencies = deps;
+   rpci.dependencyCount = input_count ? 3 : 2;
+   rpci.pDependencies = input_count ? fbfetch_deps : deps;
 
    VkRenderPass render_pass;
    if (VKSCR(CreateRenderPass)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
@@ -179,8 +191,11 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       color_refs[i].layout = layout;
       color_refs[i].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       dep_pipeline |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      if (rt->fbfetch)
+      if (rt->fbfetch) {
          memcpy(&input_attachments[input_count++], &color_refs[i], sizeof(VkAttachmentReference2));
+         dep_pipeline |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+         dep_access |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+      }
       dep_access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       if (attachments[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
          dep_access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
@@ -254,9 +269,19 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
 
    if (!screen->info.have_KHR_synchronization2)
       dep_pipeline = MAX2(dep_pipeline, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
    VkSubpassDependency2 deps[] = {
-      [0] = {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
-      [1] = {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT, 0}
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT, 0}
+   };
+   VkPipelineStageFlags input_dep = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+   //if (zs_fbfetch) input_dep |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+   VkAccessFlags input_access = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+   //if (zs_fbfetch) input_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+   VkSubpassDependency2 fbfetch_deps[] = {
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, 0, dep_pipeline, input_dep, dep_access, input_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT, 0}
    };
 
    VkSubpassDescription2 subpass = {0};
@@ -286,8 +311,8 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    rpci.pAttachments = attachments;
    rpci.subpassCount = 1;
    rpci.pSubpasses = &subpass;
-   rpci.dependencyCount = 2;
-   rpci.pDependencies = deps;
+   rpci.dependencyCount = input_count ? 3 : 2;
+   rpci.pDependencies = input_count ? fbfetch_deps : deps;
 
    VkRenderPass render_pass;
    if (VKSCR(CreateRenderPass2)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
