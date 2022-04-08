@@ -304,7 +304,7 @@ v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
             }
          }
          if (pFormatProperties->formatProperties.optimalTilingFeatures) {
-            vk_outarray_append_typed(VkDrmFormatModifierProperties2EXT,
+            vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT,
                                      &out, mod_props) {
                mod_props->drmFormatModifier = DRM_FORMAT_MOD_BROADCOM_UIF;
                mod_props->drmFormatModifierPlaneCount = 1;
