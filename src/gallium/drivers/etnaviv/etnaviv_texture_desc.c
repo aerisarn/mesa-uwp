@@ -301,7 +301,8 @@ etna_emit_texture_desc(struct etna_context *ctx)
                COND(sv->ts.enable, VIVS_NTE_DESCRIPTOR_TX_CTRL_TS_ENABLE) |
                VIVS_NTE_DESCRIPTOR_TX_CTRL_TS_MODE(sv->ts.mode) |
                VIVS_NTE_DESCRIPTOR_TX_CTRL_TS_INDEX(x)|
-               COND(sv->ts.comp, VIVS_NTE_DESCRIPTOR_TX_CTRL_COMPRESSION));
+               COND(sv->ts.comp, VIVS_NTE_DESCRIPTOR_TX_CTRL_COMPRESSION) |
+               COND(!sv->ts.mode, VIVS_NTE_DESCRIPTOR_TX_CTRL_128B_TILE));
             etna_set_state(stream, VIVS_NTE_DESCRIPTOR_SAMP_CTRL0(x), SAMP_CTRL0);
             etna_set_state(stream, VIVS_NTE_DESCRIPTOR_SAMP_CTRL1(x), ss->SAMP_CTRL1 | sv->SAMP_CTRL1);
             etna_set_state(stream, VIVS_NTE_DESCRIPTOR_SAMP_LOD_MINMAX(x), ss->SAMP_LOD_MINMAX);
