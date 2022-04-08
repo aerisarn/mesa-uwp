@@ -83,6 +83,7 @@ if with_imagination_srv
     'winsys/pvrsrvkm/pvr_srv.c',
     'winsys/pvrsrvkm/pvr_srv_bo.c',
     'winsys/pvrsrvkm/pvr_srv_bridge.c',
+    'winsys/pvrsrvkm/pvr_srv_job_common.c',
     'winsys/pvrsrvkm/pvr_srv_job_compute.c',
     'winsys/pvrsrvkm/pvr_srv_job_render.c',
     'winsys/pvrsrvkm/pvr_srv_syncobj.c',

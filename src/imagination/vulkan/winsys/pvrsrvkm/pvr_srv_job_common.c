@@ -21,32 +21,47 @@
  * SOFTWARE.
  */
 
-#ifndef PVR_SRV_JOB_COMMON_H
-#define PVR_SRV_JOB_COMMON_H
-
-#include <stdint.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stddef.h>
+#include <string.h>
+#include <unistd.h>
+#include <vulkan/vulkan.h>
+#include <xf86drm.h>
 
 #include "pvr_srv_bridge.h"
-#include "pvr_winsys.h"
-#include "util/macros.h"
+#include "pvr_srv_job_common.h"
+#include "vk_log.h"
 
-#include <vulkan/vulkan_core.h>
-
-static inline uint32_t
-pvr_srv_from_winsys_priority(enum pvr_winsys_ctx_priority priority)
+VkResult pvr_srv_create_timeline(int render_fd, int *const fd_out)
 {
-   switch (priority) {
-   case PVR_WINSYS_CTX_PRIORITY_HIGH:
-      return RGX_CONTEXT_PRIORITY_HIGH;
-   case PVR_WINSYS_CTX_PRIORITY_MEDIUM:
-      return RGX_CONTEXT_PRIORITY_MEDIUM;
-   case PVR_WINSYS_CTX_PRIORITY_LOW:
-      return RGX_CONTEXT_PRIORITY_LOW;
-   default:
-      unreachable("Invalid winsys context priority.");
+   const char *render_path;
+   VkResult result;
+   int fd;
+
+   render_path = drmGetRenderDeviceNameFromFd(render_fd);
+   if (!render_path) {
+      return vk_errorf(NULL,
+                       VK_ERROR_UNKNOWN,
+                       "Could not get render path from fd.");
    }
+
+   fd = open(render_path, O_CLOEXEC | O_RDWR);
+   drmFree((void *)render_path);
+   if (fd == -1) {
+      return vk_errorf(NULL,
+                       VK_ERROR_UNKNOWN,
+                       "Could not create timeline fd, errno: %s",
+                       strerror(errno));
+   }
+
+   result = pvr_srv_init_module(fd, PVR_SRVKM_MODULE_TYPE_SYNC);
+   if (result != VK_SUCCESS) {
+      close(fd);
+      return result;
+   }
+
+   *fd_out = fd;
+
+   return VK_SUCCESS;
 }
-
-VkResult pvr_srv_create_timeline(int render_fd, int *const fd_out);
-
-#endif /* PVR_SRV_JOB_COMMON_H */

@@ -231,8 +231,6 @@ struct pvr_winsys_compute_ctx_create_info {
    enum pvr_winsys_ctx_priority priority;
 
    struct pvr_winsys_compute_ctx_static_state {
-      uint64_t cdm_ctx_state_base_addr;
-
       uint64_t cdm_ctx_store_pds0;
       uint64_t cdm_ctx_store_pds0_b;
       uint32_t cdm_ctx_store_pds1;
@@ -266,6 +264,7 @@ struct pvr_winsys_compute_submit_info {
       uint64_t cdm_item;
       uint32_t compute_cluster;
       uint64_t cdm_ctrl_stream_base;
+      uint64_t cdm_ctx_state_base_addr;
       uint32_t tpu;
       uint32_t cdm_resume_pds1;
    } regs;

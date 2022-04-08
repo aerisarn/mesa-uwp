@@ -29,6 +29,7 @@
 #include <sys/ioctl.h>
 #include <xf86drm.h>
 
+#include "fw-api/pvr_rogue_fwif_shared.h"
 #include "pvr_private.h"
 #include "pvr_srv.h"
 #include "pvr_srv_bridge.h"
@@ -68,6 +69,21 @@ static int pvr_srv_bridge_call(int fd,
    VG(VALGRIND_MAKE_MEM_DEFINED(output, output_buffer_size));
 
    return 0U;
+}
+
+VkResult pvr_srv_init_module(int fd, enum pvr_srvkm_module_type module)
+{
+   struct drm_srvkm_init_data init_data = { .init_module = module };
+
+   int ret = drmIoctl(fd, DRM_IOCTL_SRVKM_INIT, &init_data);
+   if (unlikely(ret)) {
+      return vk_errorf(NULL,
+                       VK_ERROR_INITIALIZATION_FAILED,
+                       "DRM_IOCTL_SRVKM_INIT failed, Errno: %s",
+                       strerror(errno));
+   }
+
+   return VK_SUCCESS;
 }
 
 VkResult pvr_srv_connection_create(int fd, uint64_t *const bvnc_out)
@@ -856,7 +872,6 @@ void pvr_srv_rgx_destroy_compute_context(int fd, void *compute_context)
 
 VkResult pvr_srv_rgx_kick_compute2(int fd,
                                    void *compute_context,
-                                   uint32_t client_cache_op_seq_num,
                                    uint32_t client_update_count,
                                    void **client_update_ufo_sync_prim_block,
                                    uint32_t *client_update_offset,
@@ -866,6 +881,9 @@ VkResult pvr_srv_rgx_kick_compute2(int fd,
                                    uint32_t cmd_size,
                                    uint8_t *cdm_cmd,
                                    uint32_t ext_job_ref,
+                                   uint32_t sync_pmr_count,
+                                   uint32_t *sync_pmr_flags,
+                                   void **sync_pmrs,
                                    uint32_t num_work_groups,
                                    uint32_t num_work_items,
                                    uint32_t pdump_flags,
@@ -878,18 +896,20 @@ VkResult pvr_srv_rgx_kick_compute2(int fd,
       .compute_context = compute_context,
       .client_update_offset = client_update_offset,
       .client_update_value = client_update_value,
+      .sync_pmr_flags = sync_pmr_flags,
       .cdm_cmd = cdm_cmd,
       .update_fence_name = update_fence_name,
       .client_update_ufo_sync_prim_block = client_update_ufo_sync_prim_block,
+      .sync_pmrs = sync_pmrs,
       .check_fence = check_fence,
       .update_timeline = update_timeline,
-      .client_cache_op_seq_num = client_cache_op_seq_num,
       .client_update_count = client_update_count,
       .cmd_size = cmd_size,
       .ext_job_ref = ext_job_ref,
       .num_work_groups = num_work_groups,
       .num_work_items = num_work_items,
       .pdump_flags = pdump_flags,
+      .sync_pmr_count = sync_pmr_count,
    };
 
    struct pvr_srv_rgx_kick_cdm2_ret ret = {
@@ -918,27 +938,15 @@ VkResult pvr_srv_rgx_kick_compute2(int fd,
 
 VkResult
 pvr_srv_rgx_create_hwrt_dataset(int fd,
-                                pvr_dev_addr_t pm_mlist_dev_addr0,
-                                pvr_dev_addr_t pm_mlist_dev_addr1,
-                                pvr_dev_addr_t tail_ptrs_dev_addr,
-                                pvr_dev_addr_t macrotile_array_dev_addr0,
-                                pvr_dev_addr_t macrotile_array_dev_addr1,
-                                pvr_dev_addr_t rtc_dev_addr,
-                                pvr_dev_addr_t rgn_header_dev_addr0,
-                                pvr_dev_addr_t rgn_header_dev_addr1,
-                                pvr_dev_addr_t vheap_table_dev_add,
                                 uint64_t flipped_multi_sample_ctl,
                                 uint64_t multi_sample_ctl,
-                                uint64_t rgn_header_size,
+                                const pvr_dev_addr_t *macrotile_array_dev_addrs,
+                                const pvr_dev_addr_t *pm_mlist_dev_addrs,
+                                const pvr_dev_addr_t *rtc_dev_addrs,
+                                const pvr_dev_addr_t *rgn_header_dev_addrs,
+                                const pvr_dev_addr_t *tail_ptrs_dev_addrs,
+                                const pvr_dev_addr_t *vheap_table_dev_adds,
                                 void **free_lists,
-                                uint32_t mtile_stride,
-                                uint32_t ppp_screen,
-                                uint32_t te_aa,
-                                uint32_t te_mtile1,
-                                uint32_t te_mtile2,
-                                uint32_t te_screen,
-                                uint32_t tpc_size,
-                                uint32_t tpc_stride,
                                 uint32_t isp_merge_lower_x,
                                 uint32_t isp_merge_lower_y,
                                 uint32_t isp_merge_scale_x,
@@ -946,32 +954,33 @@ pvr_srv_rgx_create_hwrt_dataset(int fd,
                                 uint32_t isp_merge_upper_x,
                                 uint32_t isp_merge_upper_y,
                                 uint32_t isp_mtile_size,
+                                uint32_t mtile_stride,
+                                uint32_t ppp_screen,
+                                uint32_t rgn_header_size,
+                                uint32_t te_aa,
+                                uint32_t te_mtile1,
+                                uint32_t te_mtile2,
+                                uint32_t te_screen,
+                                uint32_t tpc_size,
+                                uint32_t tpc_stride,
                                 uint16_t max_rts,
-                                void **const hwrt_dataset0_out,
-                                void **const hwrt_dataset1_out)
+                                void **hwrt_dataset_out)
 {
+   /* Note that hwrt_dataset_out is passed in the cmd struct which the kernel
+    * writes to. There's also a hwrt_dataset in the ret struct but we're not
+    * going to use it since it's the same.
+    */
    struct pvr_srv_rgx_create_hwrt_dataset_cmd cmd = {
-      .pm_mlist_dev_addr0 = pm_mlist_dev_addr0,
-      .pm_mlist_dev_addr1 = pm_mlist_dev_addr1,
-      .tail_ptrs_dev_addr = tail_ptrs_dev_addr,
-      .macrotile_array_dev_addr0 = macrotile_array_dev_addr0,
-      .macrotile_array_dev_addr1 = macrotile_array_dev_addr1,
-      .rtc_dev_addr = rtc_dev_addr,
-      .rgn_header_dev_addr0 = rgn_header_dev_addr0,
-      .rgn_header_dev_addr1 = rgn_header_dev_addr1,
-      .vheap_table_dev_add = vheap_table_dev_add,
       .flipped_multi_sample_ctl = flipped_multi_sample_ctl,
       .multi_sample_ctl = multi_sample_ctl,
-      .rgn_header_size = rgn_header_size,
+      .macrotile_array_dev_addrs = macrotile_array_dev_addrs,
+      .pm_mlist_dev_addrs = pm_mlist_dev_addrs,
+      .rtc_dev_addrs = rtc_dev_addrs,
+      .rgn_header_dev_addrs = rgn_header_dev_addrs,
+      .tail_ptrs_dev_addrs = tail_ptrs_dev_addrs,
+      .vheap_table_dev_adds = vheap_table_dev_adds,
+      .hwrt_dataset = hwrt_dataset_out,
       .free_lists = free_lists,
-      .mtile_stride = mtile_stride,
-      .ppp_screen = ppp_screen,
-      .te_aa = te_aa,
-      .te_mtile1 = te_mtile1,
-      .te_mtile2 = te_mtile2,
-      .te_screen = te_screen,
-      .tpc_size = tpc_size,
-      .tpc_stride = tpc_stride,
       .isp_merge_lower_x = isp_merge_lower_x,
       .isp_merge_lower_y = isp_merge_lower_y,
       .isp_merge_scale_x = isp_merge_scale_x,
@@ -979,6 +988,15 @@ pvr_srv_rgx_create_hwrt_dataset(int fd,
       .isp_merge_upper_x = isp_merge_upper_x,
       .isp_merge_upper_y = isp_merge_upper_y,
       .isp_mtile_size = isp_mtile_size,
+      .mtile_stride = mtile_stride,
+      .ppp_screen = ppp_screen,
+      .rgn_header_size = rgn_header_size,
+      .te_aa = te_aa,
+      .te_mtile1 = te_mtile1,
+      .te_mtile2 = te_mtile2,
+      .te_screen = te_screen,
+      .tpc_size = tpc_size,
+      .tpc_stride = tpc_stride,
       .max_rts = max_rts,
    };
 
@@ -1001,8 +1019,9 @@ pvr_srv_rgx_create_hwrt_dataset(int fd,
                            ret);
    }
 
-   *hwrt_dataset0_out = ret.hwrt_dataset0;
-   *hwrt_dataset1_out = ret.hwrt_dataset1;
+   VG(VALGRIND_MAKE_MEM_DEFINED(cmd.hwrt_dataset,
+                                sizeof(*cmd.hwrt_dataset) *
+                                   ROGUE_FWIF_NUM_RTDATAS));
 
    return VK_SUCCESS;
 }
@@ -1121,6 +1140,7 @@ VkResult
 pvr_srv_rgx_create_render_context(int fd,
                                   uint32_t priority,
                                   pvr_dev_addr_t vdm_callstack_addr,
+                                  uint32_t call_stack_depth,
                                   uint32_t reset_framework_cmd_size,
                                   uint8_t *reset_framework_cmd,
                                   void *priv_data,
@@ -1136,6 +1156,7 @@ pvr_srv_rgx_create_render_context(int fd,
    struct pvr_srv_rgx_create_render_context_cmd cmd = {
       .priority = priority,
       .vdm_callstack_addr = vdm_callstack_addr,
+      .call_stack_depth = call_stack_depth,
       .reset_framework_cmd_size = reset_framework_cmd_size,
       .reset_framework_cmd = reset_framework_cmd,
       .priv_data = priv_data,
@@ -1200,7 +1221,6 @@ void pvr_srv_rgx_destroy_render_context(int fd, void *render_context)
 
 VkResult pvr_srv_rgx_kick_render2(int fd,
                                   void *render_ctx,
-                                  uint32_t client_cache_op_seq_num,
                                   uint32_t client_geom_fence_count,
                                   void **client_geom_fence_sync_prim_block,
                                   uint32_t *client_geom_fence_sync_offset,
@@ -1282,7 +1302,6 @@ VkResult pvr_srv_rgx_kick_render2(int fd,
       .cmd_3d_size = cmd_frag_size,
       .cmd_3d_pr_size = cmd_frag_pr_size,
       .client_3d_update_count = client_frag_update_count,
-      .client_cache_op_seq_num = client_cache_op_seq_num,
       .client_ta_fence_count = client_geom_fence_count,
       .client_ta_update_count = client_geom_update_count,
       .ext_job_ref = ext_job_ref,

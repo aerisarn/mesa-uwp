@@ -59,9 +59,6 @@ VkResult pvr_srv_winsys_compute_ctx_create(
 {
    struct rogue_fwif_static_computecontext_state static_state = {
 		.ctx_switch_regs = {
-			.cdm_context_state_base_addr =
-				create_info->static_state.cdm_ctx_state_base_addr,
-
 			.cdm_context_pds0 = create_info->static_state.cdm_ctx_store_pds0,
 			.cdm_context_pds0_b =
 				create_info->static_state.cdm_ctx_store_pds0_b,
@@ -76,9 +73,7 @@ VkResult pvr_srv_winsys_compute_ctx_create(
 		},
 	};
 
-   struct rogue_fwif_rf_cmd reset_cmd = {
-      .flags = 0U,
-   };
+   struct rogue_fwif_rf_cmd reset_cmd = { 0 };
 
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
    struct pvr_srv_winsys_compute_ctx *srv_ctx;
@@ -91,8 +86,8 @@ VkResult pvr_srv_winsys_compute_ctx_create(
    if (!srv_ctx)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   srv_ctx->timeline = open(PVR_SRV_SYNC_DEV_PATH, O_CLOEXEC | O_RDWR);
-   if (srv_ctx->timeline < 0)
+   result = pvr_srv_create_timeline(srv_ws->render_fd, &srv_ctx->timeline);
+   if (result != VK_SUCCESS)
       goto err_free_srv_ctx;
 
    result = pvr_srv_rgx_create_compute_context(
@@ -151,6 +146,8 @@ static void pvr_srv_compute_cmd_init(
    fw_regs->cdm_item = submit_info->regs.cdm_item;
    fw_regs->compute_cluster = submit_info->regs.compute_cluster;
    fw_regs->cdm_ctrl_stream_base = submit_info->regs.cdm_ctrl_stream_base;
+   fw_regs->cdm_contex_state_base_addr =
+      submit_info->regs.cdm_ctx_state_base_addr;
    fw_regs->tpu = submit_info->regs.tpu;
    fw_regs->cdm_resume_pds1 = submit_info->regs.cdm_resume_pds1;
 
@@ -207,8 +204,6 @@ VkResult pvr_srv_winsys_compute_submit(
    do {
       result = pvr_srv_rgx_kick_compute2(srv_ws->render_fd,
                                          srv_ctx->handle,
-                                         /* No support cache operations. */
-                                         0U,
                                          0U,
                                          NULL,
                                          NULL,
@@ -218,6 +213,9 @@ VkResult pvr_srv_winsys_compute_submit(
                                          sizeof(compute_cmd),
                                          (uint8_t *)&compute_cmd,
                                          submit_info->job_num,
+                                         0,
+                                         NULL,
+                                         NULL,
                                          0U,
                                          0U,
                                          0U,

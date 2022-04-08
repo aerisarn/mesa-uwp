@@ -52,6 +52,12 @@ static void pvr_compute_job_ws_submit_info_init(
    submit_info->semaphore_count = semaphore_count;
    submit_info->stage_flags = stage_flags;
 
+   pvr_csb_pack (&submit_info->regs.cdm_ctx_state_base_addr,
+                 CR_CDM_CONTEXT_STATE_BASE,
+                 state) {
+      state.addr = ctx_switch->compute_state_bo->vma->dev_addr;
+   }
+
    /* Other registers are initialized in pvr_sub_cmd_compute_job_init(). */
    pvr_csb_pack (&submit_info->regs.cdm_resume_pds1,
                  CR_CDM_CONTEXT_PDS1,

@@ -30,9 +30,11 @@
 
 #include "pvr_rogue_fwif_shared.h"
 
-/** Indicates the number of RTDATAs per RTDATASET. */
-#define ROGUE_FWIF_NUM_RTDATAS 2U
-
+/**
+ * \name Frag DM command flags.
+ * Flags supported by the Frag DM command i.e. /ref rogue_fwif_cmd_3d .
+ */
+/**@{*/
 /** Render needs flipped sample positions. */
 #define ROGUE_FWIF_RENDERFLAGS_FLIP_SAMPLE_POSITIONS 0x00000001UL
 /**
@@ -76,10 +78,19 @@
 
 /** Disallow compute overlapped with this render. */
 #define ROGUE_FWIF_RENDERFLAGS_PREVENT_CDM_OVERLAP 0x04000000UL
+/**@}*/
+/* End of \name Frag DM command flags. */
+
 /**
  * The host must indicate if this is the first and/or last command to be issued
  * for the specified task.
  */
+
+/**
+ * \name Geom DM command flags.
+ * Flags supported by the Geom DM command i.e. \ref rogue_fwif_cmd_ta .
+ */
+/**@{*/
 #define ROGUE_FWIF_TAFLAGS_FIRSTKICK 0x00000001UL
 #define ROGUE_FWIF_TAFLAGS_LASTKICK 0x00000002UL
 #define ROGUE_FWIF_TAFLAGS_FLIP_SAMPLE_POSITIONS 0x00000004UL
@@ -89,7 +100,10 @@
 /** Enable Tile Region Protection for this TA. */
 #define ROGUE_FWIF_TAFLAGS_TRP 0x00000010UL
 
-/** Indicates the particular TA needs to be aborted. */
+/**
+ * Indicates the particular TA needs to be aborted.
+ * The scene has been aborted, discard this TA command.
+ */
 #define ROGUE_FWIF_TAFLAGS_TA_ABORT 0x00000100UL
 #define ROGUE_FWIF_TAFLAGS_SECURE 0x00080000UL
 
@@ -100,11 +114,14 @@
 #define ROGUE_FWIF_TAFLAGS_CSRM_MAX_COEFFS 0x00200000UL
 
 #define ROGUE_FWIF_TAFLAGS_PHR_TRIGGER 0x02000000UL
+/**@}/
+ * End of \name Geom DM command flags. */
 
 /* Flags for transfer queue commands. */
 #define ROGUE_FWIF_CMDTRANSFER_FLAG_SECURE 0x00000001U
 /** Use single core in a multi core setup. */
 #define ROGUE_FWIF_CMDTRANSFER_SINGLE_CORE 0x00000002U
+#define ROGUE_FWIF_CMDTRANSFER_TRP 0x00000004U
 
 /* Flags for 2D commands. */
 #define ROGUE_FWIF_CMD2D_FLAG_SECURE 0x00000001U
@@ -128,8 +145,8 @@
  ***********************************************/
 
 /**
- * Configuration registers which need to be loaded by the firmware before a TA
- * job can be started.
+ * \brief Configuration registers which need to be loaded by the firmware before
+ * a TA job can be started.
  */
 struct rogue_fwif_ta_regs {
    uint64_t vdm_ctrl_stream_base;
@@ -137,6 +154,11 @@ struct rogue_fwif_ta_regs {
 
    uint32_t ppp_ctrl;
    uint32_t te_psg;
+   /* FIXME: HIGH: FIX_HW_BRN_49927 changes the structure's layout, given we
+    * are supporting Features/ERNs/BRNs at runtime, we need to look into this
+    * and find a solution to keep layout intact.
+    */
+   /* Available if FIX_HW_BRN_49927 is present. */
    uint32_t tpu;
 
    uint32_t vdm_context_resume_task0_size;
@@ -152,8 +174,12 @@ struct rogue_fwif_ta_regs {
 };
 
 /**
- * Represents a TA command that can be used to tile a whole scene's objects as
- * per TA behavior.
+ * \brief DM command for geometry processing phase of a render/3D operation.
+ * Represents the command data for a ROGUE_FWIF_CCB_CMD_TYPE_GEOM type client
+ * CCB command.
+ *
+ * The Rogue TA can be used to tile a whole scene's objects as per TA behavior
+ * on ROGUE.
  */
 struct rogue_fwif_cmd_ta {
    /**
@@ -186,8 +212,8 @@ static_assert(
    "kernel expects command size be increased to match current TA command size");
 
 /**
- * Configuration registers which need to be loaded by the firmware before ISP
- * can be started.
+ * \brief Configuration registers which need to be loaded by the firmware before
+ * ISP can be started.
  */
 struct rogue_fwif_3d_regs {
    /**
@@ -207,6 +233,11 @@ struct rogue_fwif_3d_regs {
    uint32_t isp_aa;
    uint32_t isp_ctl;
 
+   /* FIXME: HIGH: FIX_HW_BRN_49927 changes the structure's layout, given we
+    * are supporting Features/ERNs/BRNs at runtime, we need to look into this
+    * and find a solution to keep layout intact.
+    */
+   /* Available if FIX_HW_BRN_49927 is present. */
    uint32_t tpu;
 
    uint32_t event_pixel_pds_info;
@@ -249,6 +280,11 @@ struct rogue_fwif_3d_regs {
    uint64_t pds_pr_bgnd[3U];
 };
 
+/**
+ * \brief DM command for fragment processing phase of a render/3D operation.
+ * Represents the command data for a ROGUE_FWIF_CCB_CMD_TYPE_FRAG type client
+ * CCB command.
+ */
 struct rogue_fwif_cmd_3d {
    /**
     * This struct is shared between Client and Firmware.
@@ -266,6 +302,12 @@ struct rogue_fwif_cmd_3d {
    uint32_t zls_stride;
    /** Stride IN BYTES for S-Buffer in case of RTAs. */
    uint32_t sls_stride;
+
+   /* FIXME: HIGH: RGX_FEATURE_GPU_MULTICORE_SUPPORT changes the structure's
+    * layout. Commenting out for now as it's not supported by 4.V.2.51.
+    */
+   /* Number of tiles to submit to GPU<N> before moving to GPU<N+1>. */
+   /* uint32_t execute_count; */
 };
 
 static_assert(
@@ -318,9 +360,13 @@ struct rogue_fwif_transfer_regs {
     */
 #define ROGUE_PBE_WORDS_REQUIRED_FOR_TRANSFER 3
    /* TQ_MAX_RENDER_TARGETS * PBE_STATE_SIZE */
-   uint64_t pbe_wordx_mrty[3 * ROGUE_PBE_WORDS_REQUIRED_FOR_TRANSFER];
+   uint64_t pbe_wordx_mrty[3U * ROGUE_PBE_WORDS_REQUIRED_FOR_TRANSFER];
 };
 
+/**
+ * \brief DM command for TQ/2D operation. Represents the command data for a
+ * ROGUE_FWIF_CCB_CMD_TYPE_TQ_3D type client CCB command.
+ */
 struct rogue_fwif_cmd_transfer {
    struct rogue_fwif_cmd_common ALIGN(8) cmn;
    struct rogue_fwif_transfer_regs ALIGN(8) regs;
@@ -362,6 +408,11 @@ static_assert(
    sizeof(struct rogue_fwif_cmd_2d) <= ROGUE_FWIF_DM_INDEPENDENT_KICK_CMD_SIZE,
    "kernel expects command size be increased to match current 2D command size");
 
+/** Command to handle aborts. */
+struct rogue_fwif_cmd_abort {
+   struct rogue_fwif_cmd_ta_3d_shared ALIGN(8) cmd_shared;
+};
+
 /***********************************************
    Host interface structures.
  ***********************************************/
@@ -386,16 +437,34 @@ struct rogue_fwif_cdm_regs {
     */
    /* uint64_t tpu_tag_cdm_ctrl; */
    uint64_t cdm_ctrl_stream_base;
+   uint64_t cdm_contex_state_base_addr;
 
+   /* FIXME: HIGH: FIX_HW_BRN_49927 changes the structure's layout, given we
+    * are supporting Features/ERNs/BRNs at runtime, we need to look into this
+    * and find a solution to keep layout intact.
+    */
+   /* Available if FIX_HW_BRN_49927 is present. */
    uint32_t tpu;
 
    uint32_t cdm_resume_pds1;
 };
 
+/**
+ * \brief DM command for Compute operation. Represents the command data for a
+ * ROGUE_FWIF_CCB_CMD_TYPE_CDM type client CCB command.
+ *
+ * Rouge Compute command.
+ */
 struct rogue_fwif_cmd_compute {
    struct rogue_fwif_cmd_common ALIGN(8) cmn;
    struct rogue_fwif_cdm_regs ALIGN(8) regs;
    uint32_t ALIGN(8) flags;
+
+   /* FIXME: HIGH: RGX_FEATURE_GPU_MULTICORE_SUPPORT changes the structure's
+    * layout. Commenting out for now as it's not supported by 4.V.2.51.
+    */
+   /* Number of tiles to submit to GPU<N> before moving to GPU<N+1>. */
+   /* uint32_t execute_count; */
 };
 
 static_assert(

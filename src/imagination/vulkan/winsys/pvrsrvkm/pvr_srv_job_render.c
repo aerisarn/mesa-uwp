@@ -161,11 +161,25 @@ VkResult pvr_srv_render_target_dataset_create(
    const struct pvr_winsys_rt_dataset_create_info *create_info,
    struct pvr_winsys_rt_dataset **const rt_dataset_out)
 {
+   const pvr_dev_addr_t macrotile_addrs[ROGUE_FWIF_NUM_RTDATAS] = {
+      [0] = create_info->rt_datas[0].macrotile_array_dev_addr,
+      [1] = create_info->rt_datas[1].macrotile_array_dev_addr,
+   };
+   const pvr_dev_addr_t pm_mlist_addrs[ROGUE_FWIF_NUM_RTDATAS] = {
+      [0] = create_info->rt_datas[0].pm_mlist_dev_addr,
+      [1] = create_info->rt_datas[1].pm_mlist_dev_addr,
+   };
+   const pvr_dev_addr_t rgn_header_addrs[ROGUE_FWIF_NUM_RTDATAS] = {
+      [0] = create_info->rt_datas[0].rgn_header_dev_addr,
+      [1] = create_info->rt_datas[1].rgn_header_dev_addr,
+   };
+
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
    struct pvr_srv_winsys_free_list *srv_local_free_list =
       to_pvr_srv_winsys_free_list(create_info->local_free_list);
    void *free_lists[ROGUE_FW_MAX_FREELISTS] = { NULL };
    struct pvr_srv_winsys_rt_dataset *srv_rt_dataset;
+   void *handles[ROGUE_FWIF_NUM_RTDATAS];
    VkResult result;
 
    free_lists[ROGUE_FW_LOCAL_FREELIST] = srv_local_free_list->handle;
@@ -182,29 +196,24 @@ VkResult pvr_srv_render_target_dataset_create(
    if (!srv_rt_dataset)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   /* If greater than 1 we'll have to pass in an array. For now just passing in
+    * the reference.
+    */
+   STATIC_ASSERT(ROGUE_FWIF_NUM_GEOMDATAS == 1);
+   /* If not 2 the arrays used in the bridge call will require updating. */
+   STATIC_ASSERT(ROGUE_FWIF_NUM_RTDATAS == 2);
+
    result = pvr_srv_rgx_create_hwrt_dataset(
       srv_ws->render_fd,
-      create_info->rt_datas[0].pm_mlist_dev_addr,
-      create_info->rt_datas[1].pm_mlist_dev_addr,
-      create_info->tpc_dev_addr,
-      create_info->rt_datas[0].macrotile_array_dev_addr,
-      create_info->rt_datas[1].macrotile_array_dev_addr,
-      create_info->rtc_dev_addr,
-      create_info->rt_datas[0].rgn_header_dev_addr,
-      create_info->rt_datas[1].rgn_header_dev_addr,
-      create_info->vheap_table_dev_addr,
       create_info->ppp_multi_sample_ctl_y_flipped,
       create_info->ppp_multi_sample_ctl,
-      create_info->rgn_header_size,
+      macrotile_addrs,
+      pm_mlist_addrs,
+      &create_info->rtc_dev_addr,
+      rgn_header_addrs,
+      &create_info->tpc_dev_addr,
+      &create_info->vheap_table_dev_addr,
       free_lists,
-      create_info->mtile_stride,
-      create_info->ppp_screen,
-      create_info->te_aa,
-      create_info->te_mtile1,
-      create_info->te_mtile2,
-      create_info->te_screen,
-      create_info->tpc_size,
-      create_info->tpc_stride,
       create_info->isp_merge_lower_x,
       create_info->isp_merge_lower_y,
       create_info->isp_merge_scale_x,
@@ -212,11 +221,22 @@ VkResult pvr_srv_render_target_dataset_create(
       create_info->isp_merge_upper_x,
       create_info->isp_merge_upper_y,
       create_info->isp_mtile_size,
+      create_info->mtile_stride,
+      create_info->ppp_screen,
+      create_info->rgn_header_size,
+      create_info->te_aa,
+      create_info->te_mtile1,
+      create_info->te_mtile2,
+      create_info->te_screen,
+      create_info->tpc_size,
+      create_info->tpc_stride,
       create_info->max_rts,
-      &srv_rt_dataset->rt_datas[0].handle,
-      &srv_rt_dataset->rt_datas[1].handle);
+      handles);
    if (result != VK_SUCCESS)
       goto err_vk_free_srv_rt_dataset;
+
+   srv_rt_dataset->rt_datas[0].handle = handles[0];
+   srv_rt_dataset->rt_datas[1].handle = handles[1];
 
    for (uint32_t i = 0; i < ARRAY_SIZE(srv_rt_dataset->rt_datas); i++) {
       srv_rt_dataset->rt_datas[i].sync_prim = pvr_srv_sync_prim_alloc(srv_ws);
@@ -271,7 +291,10 @@ static void pvr_srv_render_ctx_fw_static_state_init(
 {
    struct pvr_winsys_render_ctx_static_state *ws_static_state =
       &create_info->static_state;
-   struct rogue_fwif_ta_regs_cswitch *regs = &static_state->ctx_switch_regs;
+   struct rogue_fwif_ta_regs_cswitch *regs =
+      &static_state->ctx_switch_geom_regs[0];
+
+   STATIC_ASSERT(ARRAY_SIZE(static_state->ctx_switch_geom_regs) == 1);
 
    memset(static_state, 0, sizeof(*static_state));
 
@@ -303,12 +326,11 @@ VkResult pvr_srv_winsys_render_ctx_create(
    struct pvr_winsys_render_ctx **const ctx_out)
 {
    struct pvr_srv_winsys *srv_ws = to_pvr_srv_winsys(ws);
-   struct rogue_fwif_rf_cmd reset_cmd = {
-      .flags = 0,
-   };
+   struct rogue_fwif_rf_cmd reset_cmd = { 0 };
 
    struct rogue_fwif_static_rendercontext_state static_state;
    struct pvr_srv_winsys_render_ctx *srv_ctx;
+   const uint32_t call_stack_depth = 1U;
    VkResult result;
 
    srv_ctx = vk_zalloc(srv_ws->alloc,
@@ -318,12 +340,12 @@ VkResult pvr_srv_winsys_render_ctx_create(
    if (!srv_ctx)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   srv_ctx->timeline_geom = open(PVR_SRV_SYNC_DEV_PATH, O_CLOEXEC | O_RDWR);
-   if (srv_ctx->timeline_geom < 0)
+   result = pvr_srv_create_timeline(srv_ws->render_fd, &srv_ctx->timeline_geom);
+   if (result != VK_SUCCESS)
       goto err_free_srv_ctx;
 
-   srv_ctx->timeline_frag = open(PVR_SRV_SYNC_DEV_PATH, O_CLOEXEC | O_RDWR);
-   if (srv_ctx->timeline_frag < 0)
+   result = pvr_srv_create_timeline(srv_ws->render_fd, &srv_ctx->timeline_frag);
+   if (result != VK_SUCCESS)
       goto err_close_timeline_geom;
 
    pvr_srv_render_ctx_fw_static_state_init(create_info, &static_state);
@@ -332,6 +354,7 @@ VkResult pvr_srv_winsys_render_ctx_create(
       srv_ws->render_fd,
       pvr_srv_from_winsys_priority(create_info->priority),
       create_info->vdm_callstack_addr,
+      call_stack_depth,
       sizeof(reset_cmd) - sizeof(reset_cmd.regs),
       (uint8_t *)&reset_cmd,
       srv_ws->server_memctx_data,
@@ -608,7 +631,6 @@ VkResult pvr_srv_winsys_render_submit(
                                   srv_ctx->handle,
                                   /* Currently no support for cache operations.
                                    */
-                                  0,
                                   0,
                                   NULL,
                                   NULL,

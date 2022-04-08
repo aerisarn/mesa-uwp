@@ -441,7 +441,7 @@ static bool pvr_is_driver_compatible(int render_fd)
 
    assert(strcmp(version->name, "pvr") == 0);
 
-   /* Only the 1.14 driver is supported for now. */
+   /* Only the 1.17 driver is supported for now. */
    if (version->version_major != PVR_SRV_VERSION_MAJ ||
        version->version_minor != PVR_SRV_VERSION_MIN) {
       vk_errorf(NULL,
@@ -468,6 +468,10 @@ struct pvr_winsys *pvr_srv_winsys_create(int master_fd,
    uint64_t bvnc;
 
    if (!pvr_is_driver_compatible(render_fd))
+      return NULL;
+
+   result = pvr_srv_init_module(render_fd, PVR_SRVKM_MODULE_TYPE_SERVICES);
+   if (result != VK_SUCCESS)
       return NULL;
 
    result = pvr_srv_connection_create(render_fd, &bvnc);

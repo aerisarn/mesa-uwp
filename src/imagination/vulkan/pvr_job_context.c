@@ -973,12 +973,6 @@ static void pvr_compute_ctx_ws_static_state_init(
 {
    const struct pvr_compute_ctx_switch *const ctx_switch = &ctx->ctx_switch;
 
-   pvr_csb_pack (&static_state->cdm_ctx_state_base_addr,
-                 CR_CDM_CONTEXT_STATE_BASE,
-                 state) {
-      state.addr = ctx_switch->compute_state_bo->vma->dev_addr;
-   }
-
    /* CR_CDM_CONTEXT_... use state store program info. */
 
    pvr_csb_pack (&static_state->cdm_ctx_store_pds0,

@@ -102,6 +102,7 @@ const struct pvr_device_quirks pvr_device_quirks_4_40_2_51 = {
    .has_brn48492 = true,
    .has_brn48545 = true,
    .has_brn49032 = true,
+   .has_brn49927 = true,
    .has_brn51025 = true,
    .has_brn51210 = true,
    .has_brn51764 = true,
