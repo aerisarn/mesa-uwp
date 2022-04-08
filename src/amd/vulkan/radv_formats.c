@@ -751,7 +751,9 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
          if (!scaled)
             buffer |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
       }
-      buffer |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
+      buffer |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
+                VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT |
+                VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT;
    }
 
    if (vk_format_is_depth_or_stencil(format)) {
