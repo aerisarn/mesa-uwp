@@ -250,7 +250,7 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 
 struct radv_shader_debug_data {
    struct radv_device *device;
-   const struct vk_shader_module *module;
+   const struct vk_object_base *object;
 };
 
 static void
@@ -269,7 +269,7 @@ radv_spirv_nir_debug(void *private_data, enum nir_spirv_debug_level level, size_
 
    snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s", (unsigned long)spirv_offset, message);
 
-   vk_debug_report(&instance->vk, vk_flags[level], &debug_data->module->base, 0, 0, "radv", buffer);
+   vk_debug_report(&instance->vk, vk_flags[level], debug_data->object, 0, 0, "radv", buffer);
 }
 
 static void
@@ -556,8 +556,6 @@ nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipeline_stage *stage,
                            const struct radv_pipeline_key *key)
 {
-   struct vk_shader_module *module = stage->module;
-
    unsigned subgroup_size = 64, ballot_bit_size = 64;
    if (key->cs.compute_subgroup_size) {
       /* Only compute shaders currently support requiring a
@@ -570,29 +568,29 @@ radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipelin
 
    nir_shader *nir;
 
-   if (module->nir) {
+   if (stage->internal_nir) {
       /* Some things such as our meta clear/blit code will give us a NIR
        * shader directly.  In that case, we just ignore the SPIR-V entirely
        * and just use the NIR shader.  We don't want to alter meta and RT
        * shaders IR directly, so clone it first. */
-      nir = nir_shader_clone(NULL, module->nir);
+      nir = nir_shader_clone(NULL, stage->internal_nir);
       nir->options = &device->physical_device->nir_options[stage->stage];
       nir_validate_shader(nir, "in internal shader");
 
       assert(exec_list_length(&nir->functions) == 1);
    } else {
-      uint32_t *spirv = (uint32_t *)module->data;
-      assert(module->size % 4 == 0);
+      uint32_t *spirv = (uint32_t *)stage->spirv.data;
+      assert(stage->spirv.size % 4 == 0);
 
       if (device->instance->debug_flags & RADV_DEBUG_DUMP_SPIRV)
-         radv_print_spirv(module->data, module->size, stderr);
+         radv_print_spirv(stage->spirv.data, stage->spirv.size, stderr);
 
       uint32_t num_spec_entries = 0;
       struct nir_spirv_specialization *spec_entries =
          vk_spec_info_to_nir_spirv(stage->spec_info, &num_spec_entries);
       struct radv_shader_debug_data spirv_debug_data = {
          .device = device,
-         .module = module,
+         .object = stage->spirv.object,
       };
       const struct spirv_to_nir_options spirv_options = {
          .caps =
@@ -670,7 +668,7 @@ radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipelin
                .private_data = &spirv_debug_data,
             },
       };
-      nir = spirv_to_nir(spirv, module->size / 4, spec_entries, num_spec_entries, stage->stage,
+      nir = spirv_to_nir(spirv, stage->spirv.size / 4, spec_entries, num_spec_entries, stage->stage,
                          stage->entrypoint, &spirv_options,
                          &device->physical_device->nir_options[stage->stage]);
       assert(nir->info.stage == stage->stage);
@@ -1955,7 +1953,7 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
 
    struct radv_shader_debug_data debug_data = {
       .device = device,
-      .module = NULL,
+      .object = NULL,
    };
 
    options->family = chip_family;

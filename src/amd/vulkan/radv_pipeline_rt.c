@@ -794,15 +794,9 @@ parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo
    struct radv_pipeline_key key;
    memset(&key, 0, sizeof(key));
 
-   struct radv_pipeline_stage rt_stage = {
-      .stage = vk_to_mesa_shader_stage(sinfo->stage),
-      .module = vk_shader_module_from_handle(sinfo->module),
-      .entrypoint = sinfo->pName,
-      .spec_info = sinfo->pSpecializationInfo,
-      .feedback = {
-         .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
-      },
-   };
+   struct radv_pipeline_stage rt_stage;
+
+   radv_pipeline_stage_init(sinfo, &rt_stage, vk_to_mesa_shader_stage(sinfo->stage));
 
    nir_shader *shader = radv_shader_compile_to_nir(device, &rt_stage, &key);
 

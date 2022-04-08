@@ -4105,6 +4105,37 @@ radv_pipeline_hash_shader(const unsigned char *spirv_sha1, const uint32_t spirv_
    _mesa_sha1_final(&ctx, sha1_out);
 }
 
+void
+radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
+                         struct radv_pipeline_stage *out_stage, gl_shader_stage stage)
+{
+   struct vk_shader_module *module = vk_shader_module_from_handle(sinfo->module);
+
+   memset(out_stage, 0, sizeof(*out_stage));
+
+   out_stage->stage = stage;
+   out_stage->entrypoint = sinfo->pName;
+   out_stage->spec_info = sinfo->pSpecializationInfo;
+   out_stage->feedback.flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
+
+   out_stage->spirv.data = module->data;
+   out_stage->spirv.size = module->size;
+   out_stage->spirv.object = &module->base;
+
+   if (module->nir) {
+      out_stage->internal_nir = module->nir;
+      _mesa_sha1_compute(module->nir->info.name, strlen(module->nir->info.name),
+                         out_stage->spirv.sha1);
+   } else {
+      assert(sizeof(out_stage->spirv.sha1) == sizeof(module->sha1));
+      memcpy(out_stage->spirv.sha1, module->sha1, sizeof(out_stage->spirv.sha1));
+   }
+
+   radv_pipeline_hash_shader(out_stage->spirv.sha1, sizeof(out_stage->spirv.sha1),
+                             out_stage->entrypoint, stage, out_stage->spec_info,
+                             out_stage->shader_sha1);
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4141,21 +4172,7 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       const VkPipelineShaderStageCreateInfo *sinfo = &pStages[i];
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
-      stages[stage].stage = stage;
-      stages[stage].module = vk_shader_module_from_handle(sinfo->module);
-      stages[stage].entrypoint = sinfo->pName;
-      stages[stage].spec_info = sinfo->pSpecializationInfo;
-      stages[stage].feedback.flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
-
-      if (stages[stage].module->nir) {
-         _mesa_sha1_compute(stages[stage].module->nir->info.name,
-                            strlen(stages[stage].module->nir->info.name),
-                            stages[stage].module->sha1);
-      }
-
-      radv_pipeline_hash_shader(stages[stage].module->sha1, sizeof(stages[stage].module->sha1),
-                                stages[stage].entrypoint, stage, stages[stage].spec_info,
-                                stages[stage].shader_sha1);
+      radv_pipeline_stage_init(sinfo, &stages[stage], stage);
 
       pipeline->active_stages |= sinfo->stage;
    }
@@ -4169,15 +4186,15 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    ASSERTED bool primitive_shading =
-      stages[MESA_SHADER_VERTEX].module || stages[MESA_SHADER_TESS_CTRL].module ||
-      stages[MESA_SHADER_TESS_EVAL].module || stages[MESA_SHADER_GEOMETRY].module;
+      stages[MESA_SHADER_VERTEX].entrypoint || stages[MESA_SHADER_TESS_CTRL].entrypoint ||
+      stages[MESA_SHADER_TESS_EVAL].entrypoint || stages[MESA_SHADER_GEOMETRY].entrypoint;
    ASSERTED bool mesh_shading =
-      stages[MESA_SHADER_MESH].module;
+      stages[MESA_SHADER_MESH].entrypoint;
 
    /* Primitive and mesh shading must not be mixed in the same pipeline. */
    assert(!primitive_shading || !mesh_shading);
    /* Mesh shaders are mandatory in mesh shading pipelines. */
-   assert(mesh_shading == !!stages[MESA_SHADER_MESH].module);
+   assert(mesh_shading == !!stages[MESA_SHADER_MESH].entrypoint);
    /* Mesh shaders always need NGG. */
    assert(!mesh_shading || pipeline_key->use_ngg);
 
@@ -4208,13 +4225,12 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       goto done;
    }
 
-   if (!stages[MESA_SHADER_FRAGMENT].module && !stages[MESA_SHADER_COMPUTE].module) {
+   if (!stages[MESA_SHADER_FRAGMENT].entrypoint && !stages[MESA_SHADER_COMPUTE].entrypoint) {
       nir_builder fs_b = radv_meta_init_shader(MESA_SHADER_FRAGMENT, "noop_fs");
-      fs_m = vk_shader_module_from_nir(fs_b.shader);
 
       stages[MESA_SHADER_FRAGMENT] = (struct radv_pipeline_stage) {
          .stage = MESA_SHADER_FRAGMENT,
-         .module = &fs_m,
+         .internal_nir = fs_b.shader,
          .entrypoint = noop_fs_entrypoint,
          .feedback = {
             .flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT,
@@ -4537,14 +4553,12 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          if (!shader)
             continue;
 
-         struct vk_shader_module *module = stages[i].module;
-
-         if (!module || module->nir)
+         if (!stages[i].spirv.size)
             continue;
 
-         shader->spirv = malloc(module->size);
-         memcpy(shader->spirv, module->data, module->size);
-         shader->spirv_size = module->size;
+         shader->spirv = malloc(stages[i].spirv.size);
+         memcpy(shader->spirv, stages[i].spirv.data, stages[i].spirv.size);
+         shader->spirv_size = stages[i].spirv.size;
       }
    }
 
