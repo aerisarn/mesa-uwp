@@ -30,7 +30,7 @@
 #include "state_tracker/st_context.h"
 #include "os/os_process.h"
 #include "zink/zink_public.h"
-#include "zink/zink_instance.h"
+#include "zink/zink_kopper.h"
 #include "driver_trace/tr_screen.h"
 
 #include "dri_screen.h"

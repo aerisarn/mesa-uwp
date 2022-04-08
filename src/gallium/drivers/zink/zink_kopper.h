@@ -68,6 +68,7 @@ struct kopper_displaytarget
    enum kopper_type type;
 };
 
+struct zink_context;
 struct zink_screen;
 struct zink_resource;
 
@@ -106,4 +107,6 @@ bool
 zink_kopper_present_readback(struct zink_context *ctx, struct zink_resource *res);
 void
 zink_kopper_deinit_displaytarget(struct zink_screen *screen, struct kopper_displaytarget *cdt);
+bool
+zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int *w, int *h);
 #endif
