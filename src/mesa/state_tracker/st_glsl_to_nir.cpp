@@ -925,7 +925,7 @@ st_link_nir(struct gl_context *ctx,
 
       /* Initialize st_vertex_program members. */
       if (shader->Stage == MESA_SHADER_VERTEX)
-         st_prepare_vertex_program(prog, NULL);
+         st_prepare_vertex_program(prog);
 
       /* Get pipe_stream_output_info. */
       if (shader->Stage == MESA_SHADER_VERTEX ||

@@ -421,28 +421,22 @@ st_translate_prog_to_nir(struct st_context *st, struct gl_program *prog,
  * input index.
  */
 void
-st_prepare_vertex_program(struct gl_program *prog, uint8_t *out_attrib_to_index)
+st_prepare_vertex_program(struct gl_program *prog)
 {
    struct gl_vertex_program *stvp = (struct gl_vertex_program *)prog;
-   uint8_t attrib_to_index[VERT_ATTRIB_MAX] = {0};
 
    stvp->num_inputs = 0;
    stvp->vert_attrib_mask = 0;
    memset(stvp->result_to_output, ~0, sizeof(stvp->result_to_output));
 
-   /* Determine number of inputs, the mappings between VERT_ATTRIB_x
-    * and TGSI generic input indexes, plus input attrib semantic info.
+   /* Determine number of inputs and input attrib semantic info.
     */
    for (unsigned attr = 0; attr < VERT_ATTRIB_MAX; attr++) {
       if ((prog->info.inputs_read & BITFIELD64_BIT(attr)) != 0) {
-         attrib_to_index[attr] = stvp->num_inputs;
          stvp->vert_attrib_mask |= BITFIELD_BIT(attr);
          stvp->num_inputs++;
       }
    }
-
-   /* pre-setup potentially unused edgeflag input */
-   attrib_to_index[VERT_ATTRIB_EDGEFLAG] = stvp->num_inputs;
 
    /* Compute mapping of vertex program outputs to slots. */
    unsigned num_outputs = 0;
@@ -452,9 +446,6 @@ st_prepare_vertex_program(struct gl_program *prog, uint8_t *out_attrib_to_index)
    }
    /* pre-setup potentially unused edgeflag output */
    stvp->result_to_output[VARYING_SLOT_EDGE] = num_outputs;
-
-   if (out_attrib_to_index)
-      memcpy(out_attrib_to_index, attrib_to_index, sizeof(attrib_to_index));
 }
 
 void
@@ -615,7 +606,7 @@ st_translate_vertex_program(struct st_context *st,
                                           MESA_SHADER_VERTEX);
    prog->info = prog->nir->info;
 
-   st_prepare_vertex_program(prog, NULL);
+   st_prepare_vertex_program(prog);
    return true;
 }
 
