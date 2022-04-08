@@ -3743,6 +3743,18 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
 
    ntt_fix_nir_options(screen, s, options);
 
+   /* Lower array indexing on FS inputs.  Since we don't set
+    * ureg->supports_any_inout_decl_range, the TGSI input decls will be split to
+    * elements by ureg, and so dynamically indexing them would be invalid.
+    * Ideally we would set that ureg flag based on
+    * PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE, but can't due to mesa/st
+    * splitting NIR VS outputs to elements even if the FS doesn't get the
+    * corresponding splitting, and virgl depends on TGSI across link boundaries
+    * having matching declarations.
+    */
+   if (s->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(s, nir_lower_indirect_derefs, nir_var_shader_in, UINT32_MAX);
+
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
