@@ -265,6 +265,7 @@ st_nir_add_point_size(nir_shader *nir)
    nir_builder b;
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
    nir_builder_init(&b, impl);
+   bool found = false;
    nir_foreach_block_safe(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type == nir_instr_type_intrinsic) {
@@ -276,10 +277,16 @@ st_nir_add_point_size(nir_shader *nir)
                   b.cursor = nir_after_instr(instr);
                   nir_deref_instr *deref = nir_build_deref_var(&b, psiz);
                   nir_store_deref(&b, deref, nir_imm_float(&b, 1.0), BITFIELD_BIT(0));
+                  found = true;
                }
             }
          }
       }
+   }
+   if (!found) {
+      b.cursor = nir_before_cf_list(&impl->body);
+      nir_deref_instr *deref = nir_build_deref_var(&b, psiz);
+      nir_store_deref(&b, deref, nir_imm_float(&b, 1.0), BITFIELD_BIT(0));
    }
 }
 
