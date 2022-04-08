@@ -788,27 +788,6 @@ lower_rt_derefs(nir_shader *shader)
    return progress;
 }
 
-static gl_shader_stage
-convert_rt_stage(VkShaderStageFlagBits vk_stage)
-{
-   switch (vk_stage) {
-   case VK_SHADER_STAGE_RAYGEN_BIT_KHR:
-      return MESA_SHADER_RAYGEN;
-   case VK_SHADER_STAGE_ANY_HIT_BIT_KHR:
-      return MESA_SHADER_ANY_HIT;
-   case VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR:
-      return MESA_SHADER_CLOSEST_HIT;
-   case VK_SHADER_STAGE_MISS_BIT_KHR:
-      return MESA_SHADER_MISS;
-   case VK_SHADER_STAGE_INTERSECTION_BIT_KHR:
-      return MESA_SHADER_INTERSECTION;
-   case VK_SHADER_STAGE_CALLABLE_BIT_KHR:
-      return MESA_SHADER_CALLABLE;
-   default:
-      unreachable("Unhandled RT stage");
-   }
-}
-
 static nir_shader *
 parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo *sinfo)
 {
@@ -816,7 +795,7 @@ parse_rt_stage(struct radv_device *device, const VkPipelineShaderStageCreateInfo
    memset(&key, 0, sizeof(key));
 
    struct radv_pipeline_stage rt_stage = {
-      .stage = convert_rt_stage(sinfo->stage),
+      .stage = vk_to_mesa_shader_stage(sinfo->stage),
       .module = vk_shader_module_from_handle(sinfo->module),
       .entrypoint = sinfo->pName,
       .spec_info = sinfo->pSpecializationInfo,
