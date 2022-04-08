@@ -528,8 +528,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              const VkPipelineShaderStageCreateInfo *pStages,
                              uint32_t stageCount,
                              const VkPipelineCreateFlags flags, const uint8_t *custom_hash,
-                             VkPipelineCreationFeedback *pipeline_feedback,
-                             VkPipelineCreationFeedback **stage_feedbacks);
+                             const VkPipelineCreationFeedbackCreateInfo *creation_feedback);
 
 struct radv_shader_args;
 
