@@ -65,6 +65,7 @@ lower_impl(nir_function_impl *impl,
       b.cursor = nir_before_cf_list(&impl->body);
       nir_copy_var(&b, new_out, in);
    } else {
+      bool found = false;
       nir_foreach_block_safe(block, impl) {
          nir_foreach_instr_safe(instr, block) {
             if (instr->type == nir_instr_type_intrinsic) {
@@ -74,10 +75,15 @@ lower_impl(nir_function_impl *impl,
                   if (var == out) {
                      b.cursor = nir_after_instr(instr);
                      nir_copy_var(&b, new_out ? new_out : out, in);
+                     found = true;
                   }
                }
             }
          }
+      }
+      if (!found) {
+         b.cursor = nir_before_cf_list(&impl->body);
+         nir_copy_var(&b, new_out, in);
       }
    }
 
