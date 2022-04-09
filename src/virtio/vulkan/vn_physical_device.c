@@ -2067,7 +2067,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          }
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID:
-         u.presentation_properties->sharedImage = VK_FALSE;
+         u.presentation_properties->sharedImage =
+            vn_android_gralloc_get_shared_present_usage() ? VK_TRUE
+                                                          : VK_FALSE;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT:
          *u.provoking_vertex = props->provoking_vertex;
