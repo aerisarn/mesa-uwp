@@ -63,6 +63,7 @@ typedef void *drmDevicePtr;
 #include "util/debug.h"
 #include "util/driconf.h"
 #include "util/mesa-sha1.h"
+#include "util/os_time.h"
 #include "util/timespec.h"
 #include "util/u_atomic.h"
 #include "winsys/null/radv_null_winsys_public.h"

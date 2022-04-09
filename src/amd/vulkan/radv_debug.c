@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 
 #include "util/mesa-sha1.h"
+#include "util/os_time.h"
 #include "ac_debug.h"
 #include "radv_debug.h"
 #include "radv_shader.h"

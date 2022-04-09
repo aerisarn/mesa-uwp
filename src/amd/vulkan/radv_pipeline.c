@@ -30,6 +30,7 @@
 #include "spirv/nir_spirv.h"
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
+#include "util/os_time.h"
 #include "util/u_atomic.h"
 #include "radv_cs.h"
 #include "radv_debug.h"
