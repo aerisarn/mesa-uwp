@@ -7741,6 +7741,18 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
    }
 #endif
 
+   /* The "L3 Read Only Cache Invalidation Bit" docs say it "controls the
+    * invalidation of the Geometry streams cached in L3 cache at the top
+    * of the pipe".  In other words, index & vertex data that gets cached
+    * in L3 when VERTEX_BUFFER_STATE::L3BypassDisable is set.
+    *
+    * Normally, invalidating L1/L2 read-only caches also invalidate their
+    * related L3 cachelines, but this isn't the case for the VF cache.
+    * Emulate it by setting the L3 Read Only bit when doing a VF invalidate.
+    */
+   if (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE)
+      flags |= PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE;
+
    /* Recursive PIPE_CONTROL workarounds --------------------------------
     * (http://knowyourmeme.com/memes/xzibit-yo-dawg)
     *
@@ -8125,11 +8137,8 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
       pc.StateCacheInvalidationEnable =
          flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE;
 #if GFX_VER >= 12
-      /* Invalidates the L3 cache part in which index & vertex data is loaded
-       * when VERTEX_BUFFER_STATE::L3BypassDisable is set.
-       */
       pc.L3ReadOnlyCacheInvalidationEnable =
-         flags & PIPE_CONTROL_VF_CACHE_INVALIDATE;
+         flags & PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE;
 #endif
       pc.VFCacheInvalidationEnable = flags & PIPE_CONTROL_VF_CACHE_INVALIDATE;
       pc.ConstantCacheInvalidationEnable =

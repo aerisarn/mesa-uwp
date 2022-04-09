@@ -342,6 +342,7 @@ enum pipe_control_flags
    PIPE_CONTROL_TILE_CACHE_FLUSH                = (1 << 25),
    PIPE_CONTROL_FLUSH_HDC                       = (1 << 26),
    PIPE_CONTROL_PSS_STALL_SYNC                  = (1 << 27),
+   PIPE_CONTROL_L3_READ_ONLY_CACHE_INVALIDATE   = (1 << 28),
 };
 
 #define PIPE_CONTROL_CACHE_FLUSH_BITS \
