@@ -70,6 +70,8 @@ struct virgl_transform_context {
    unsigned num_writemask_fixups;
 
    struct virgl_input_temp input_temp[INPUT_TEMP_COUNT];
+
+   uint32_t *precise_flags;
 };
 
 static void
@@ -245,6 +247,8 @@ virgl_tgsi_transform_prolog(struct tgsi_transform_context * ctx)
    }
 
    virgl_mov_input_temp_uint(ctx, &vtctx->input_temp[INPUT_TEMP_HELPER_INVOCATION]);
+
+   vtctx->precise_flags = calloc((vtctx->next_temp + 7)/8, sizeof(uint32_t));
 }
 
 static void
@@ -270,6 +274,45 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
 
    if (!vtctx->has_precise && inst->Instruction.Precise)
       inst->Instruction.Precise = 0;
+
+   /* For outputs NTT adds a final mov op but NIR doesn't propagate precise with moves,
+    * so that we don't see whether the assignment is from a precise instruction, but
+    * we need to know this to set the output decoration correctly, so propagate the
+    * precise flag with TGSI */
+   for (int i = 0; i < inst->Instruction.NumDstRegs; ++i) {
+      if (inst->Dst[i].Register.File == TGSI_FILE_TEMPORARY) {
+         uint32_t index = inst->Dst[i].Register.Index / 8;
+         uint32_t bits = inst->Dst[i].Register.WriteMask << (inst->Dst[i].Register.Index % 8);
+
+         /* Since we re-use temps set and clear the precise flag according to the last use
+          * for the register index and written components. Since moves are not marked
+          * as precise originally, and we may end up with an if/else clause that assignes
+          * a precise result in the if branche, but does a simple move from a constant
+          * on the else branche, we don't clear the flag when we hit a mov.
+          * We do the conservatiove approach here, because virglrenderer emits different temp
+          * ranges, and we don't want to mark all temps as precise only because we have
+          * one precise output */
+         if (inst->Instruction.Precise)
+            vtctx->precise_flags[index] |= bits;
+         else if (inst->Instruction.Opcode != TGSI_OPCODE_MOV)
+            vtctx->precise_flags[index] &= ~bits;
+      } else if (inst->Instruction.Opcode == TGSI_OPCODE_MOV) {
+         for (int i = 0; i < inst->Instruction.NumSrcRegs; ++i) {
+            if (inst->Src[i].Register.File == TGSI_FILE_TEMPORARY) {
+               uint32_t index = inst->Src[i].Register.Index / 8;
+               uint32_t read_mask = (1 << inst->Src[i].Register.SwizzleX) |
+                                    (1 << inst->Src[i].Register.SwizzleY) |
+                                    (1 << inst->Src[i].Register.SwizzleZ) |
+                                    (1 << inst->Src[i].Register.SwizzleW);
+               uint32_t bits = read_mask << (inst->Dst[i].Register.Index % 8);
+               if (vtctx->precise_flags[index] & bits) {
+                  inst->Instruction.Precise = 1;
+                  break;
+               }
+            }
+         }
+      }
+   }
 
    /* virglrenderer can run out of space in internal buffers for immediates as
     * tex operands.  Move the first immediate tex arg to a temp to save space in
@@ -377,5 +420,8 @@ struct tgsi_token *virgl_tgsi_transform(struct virgl_screen *vscreen, const stru
 
    tgsi_scan_shader(tokens_in, &transform.info);
 
-   return tgsi_transform_shader(tokens_in, newLen, &transform.base);
+   struct tgsi_token *new_tokens = tgsi_transform_shader(tokens_in, newLen, &transform.base);
+   free(transform.precise_flags);
+   return new_tokens;
+
 }
