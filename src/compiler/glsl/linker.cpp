@@ -3830,68 +3830,6 @@ inout_has_same_location(const ir_variable *var, unsigned stage)
 }
 
 static bool
-add_interface_variables(struct gl_shader_program *shProg,
-                        struct set *resource_set,
-                        unsigned stage, GLenum programInterface)
-{
-   exec_list *ir = shProg->_LinkedShaders[stage]->ir;
-
-   foreach_in_list(ir_instruction, node, ir) {
-      ir_variable *var = node->as_variable();
-
-      if (!var || var->data.how_declared == ir_var_hidden)
-         continue;
-
-      int loc_bias;
-
-      switch (var->data.mode) {
-      case ir_var_system_value:
-      case ir_var_shader_in:
-         if (programInterface != GL_PROGRAM_INPUT)
-            continue;
-         loc_bias = (stage == MESA_SHADER_VERTEX) ? int(VERT_ATTRIB_GENERIC0)
-                                                  : int(VARYING_SLOT_VAR0);
-         break;
-      case ir_var_shader_out:
-         if (programInterface != GL_PROGRAM_OUTPUT)
-            continue;
-         loc_bias = (stage == MESA_SHADER_FRAGMENT) ? int(FRAG_RESULT_DATA0)
-                                                    : int(VARYING_SLOT_VAR0);
-         break;
-      default:
-         continue;
-      };
-
-      if (var->data.patch)
-         loc_bias = int(VARYING_SLOT_PATCH0);
-
-      /* Skip packed varyings, packed varyings are handled separately
-       * by add_packed_varyings.
-       */
-      if (strncmp(var->name, "packed:", 7) == 0)
-         continue;
-
-      /* Skip fragdata arrays, these are handled separately
-       * by add_fragdata_arrays.
-       */
-      if (strncmp(var->name, "gl_out_FragData", 15) == 0)
-         continue;
-
-      const bool vs_input_or_fs_output =
-         (stage == MESA_SHADER_VERTEX && var->data.mode == ir_var_shader_in) ||
-         (stage == MESA_SHADER_FRAGMENT && var->data.mode == ir_var_shader_out);
-
-      if (!add_shader_variable(shProg, resource_set,
-                               1 << stage, programInterface,
-                               var, var->name, var->type, vs_input_or_fs_output,
-                               var->data.location - loc_bias,
-                               inout_has_same_location(var, stage)))
-         return false;
-   }
-   return true;
-}
-
-static bool
 add_packed_varyings(struct gl_shader_program *shProg,
                     struct set *resource_set,
                     int stage, GLenum type)
@@ -3931,39 +3869,13 @@ add_packed_varyings(struct gl_shader_program *shProg,
    return true;
 }
 
-static bool
-add_fragdata_arrays(struct gl_shader_program *shProg,
-                    struct set *resource_set)
-{
-   struct gl_linked_shader *sh = shProg->_LinkedShaders[MESA_SHADER_FRAGMENT];
-
-   if (!sh || !sh->fragdata_arrays)
-      return true;
-
-   foreach_in_list(ir_instruction, node, sh->fragdata_arrays) {
-      ir_variable *var = node->as_variable();
-      if (var) {
-         assert(var->data.mode == ir_var_shader_out);
-
-         if (!add_shader_variable(shProg, resource_set,
-                                  1 << MESA_SHADER_FRAGMENT,
-                                  GL_PROGRAM_OUTPUT, var, var->name, var->type,
-                                  true, var->data.location - FRAG_RESULT_DATA0,
-                                  false))
-            return false;
-      }
-   }
-   return true;
-}
-
 /**
  * Builds up a list of program resources that point to existing
  * resource data.
  */
 void
 build_program_resource_list(const struct gl_constants *consts,
-                            struct gl_shader_program *shProg,
-                            bool add_packed_varyings_only)
+                            struct gl_shader_program *shProg)
 {
    /* Rebuild resource list. */
    if (shProg->data->ProgramResourceList) {
@@ -4001,162 +3913,6 @@ build_program_resource_list(const struct gl_constants *consts,
       if (!add_packed_varyings(shProg, resource_set,
                                output_stage, GL_PROGRAM_OUTPUT))
          return;
-   }
-
-   if (add_packed_varyings_only) {
-      _mesa_set_destroy(resource_set, NULL);
-      return;
-   }
-
-   if (!add_fragdata_arrays(shProg, resource_set))
-      return;
-
-   /* Add inputs and outputs to the resource list. */
-   if (!add_interface_variables(shProg, resource_set,
-                                input_stage, GL_PROGRAM_INPUT))
-      return;
-
-   if (!add_interface_variables(shProg, resource_set,
-                                output_stage, GL_PROGRAM_OUTPUT))
-      return;
-
-   if (shProg->last_vert_prog) {
-      struct gl_transform_feedback_info *linked_xfb =
-         shProg->last_vert_prog->sh.LinkedTransformFeedback;
-
-      /* Add transform feedback varyings. */
-      if (linked_xfb->NumVarying > 0) {
-         for (int i = 0; i < linked_xfb->NumVarying; i++) {
-            if (!link_util_add_program_resource(shProg, resource_set,
-                                                GL_TRANSFORM_FEEDBACK_VARYING,
-                                                &linked_xfb->Varyings[i], 0))
-            return;
-         }
-      }
-
-      /* Add transform feedback buffers. */
-      for (unsigned i = 0; i < consts->MaxTransformFeedbackBuffers; i++) {
-         if ((linked_xfb->ActiveBuffers >> i) & 1) {
-            linked_xfb->Buffers[i].Binding = i;
-            if (!link_util_add_program_resource(shProg, resource_set,
-                                                GL_TRANSFORM_FEEDBACK_BUFFER,
-                                                &linked_xfb->Buffers[i], 0))
-            return;
-         }
-      }
-   }
-
-   int top_level_array_base_offset = -1;
-   int top_level_array_size_in_bytes = -1;
-   int second_element_offset = -1;
-   int buffer_block_index = -1;
-
-   /* Add uniforms from uniform storage. */
-   for (unsigned i = 0; i < shProg->data->NumUniformStorage; i++) {
-      /* Do not add uniforms internally used by Mesa. */
-      if (shProg->data->UniformStorage[i].hidden)
-         continue;
-
-      bool is_shader_storage =
-        shProg->data->UniformStorage[i].is_shader_storage;
-      GLenum type = is_shader_storage ? GL_BUFFER_VARIABLE : GL_UNIFORM;
-      if (!link_util_should_add_buffer_variable(shProg,
-                                                &shProg->data->UniformStorage[i],
-                                                top_level_array_base_offset,
-                                                top_level_array_size_in_bytes,
-                                                second_element_offset,
-                                                buffer_block_index))
-         continue;
-
-      if (is_shader_storage) {
-         /* From the OpenGL 4.6 specification, 7.3.1.1 Naming Active Resources:
-          *
-          *    "For an active shader storage block member declared as an array
-          *    of an aggregate type, an entry will be generated only for the
-          *    first array element, regardless of its type. Such block members
-          *    are referred to as top-level arrays. If the block member is an
-          *    aggregate type, the enumeration rules are then applied
-          *    recursively."
-          *
-          * Below we update our tracking values used by
-          * link_util_should_add_buffer_variable(). We only want to reset the
-          * offsets once we have moved past the first element.
-          */
-         if (shProg->data->UniformStorage[i].offset >= second_element_offset) {
-            top_level_array_base_offset =
-               shProg->data->UniformStorage[i].offset;
-
-            top_level_array_size_in_bytes =
-               shProg->data->UniformStorage[i].top_level_array_size *
-               shProg->data->UniformStorage[i].top_level_array_stride;
-
-            /* Set or reset the second element offset. For non arrays this
-             * will be set to -1.
-             */
-            second_element_offset = top_level_array_size_in_bytes ?
-               top_level_array_base_offset +
-               shProg->data->UniformStorage[i].top_level_array_stride : -1;
-         }
-
-         buffer_block_index = shProg->data->UniformStorage[i].block_index;
-      }
-
-      uint8_t stageref = shProg->data->UniformStorage[i].active_shader_mask;
-      if (!link_util_add_program_resource(shProg, resource_set, type,
-                                          &shProg->data->UniformStorage[i], stageref))
-         return;
-   }
-
-   /* Add program uniform blocks. */
-   for (unsigned i = 0; i < shProg->data->NumUniformBlocks; i++) {
-      if (!link_util_add_program_resource(shProg, resource_set, GL_UNIFORM_BLOCK,
-                                          &shProg->data->UniformBlocks[i], 0))
-         return;
-   }
-
-   /* Add program shader storage blocks. */
-   for (unsigned i = 0; i < shProg->data->NumShaderStorageBlocks; i++) {
-      if (!link_util_add_program_resource(shProg, resource_set, GL_SHADER_STORAGE_BLOCK,
-                                          &shProg->data->ShaderStorageBlocks[i], 0))
-         return;
-   }
-
-   /* Add atomic counter buffers. */
-   for (unsigned i = 0; i < shProg->data->NumAtomicBuffers; i++) {
-      if (!link_util_add_program_resource(shProg, resource_set, GL_ATOMIC_COUNTER_BUFFER,
-                                          &shProg->data->AtomicBuffers[i], 0))
-         return;
-   }
-
-   for (unsigned i = 0; i < shProg->data->NumUniformStorage; i++) {
-      GLenum type;
-      if (!shProg->data->UniformStorage[i].hidden)
-         continue;
-
-      for (int j = MESA_SHADER_VERTEX; j < MESA_SHADER_STAGES; j++) {
-         if (!shProg->data->UniformStorage[i].opaque[j].active ||
-             !shProg->data->UniformStorage[i].type->is_subroutine())
-            continue;
-
-         type = _mesa_shader_stage_to_subroutine_uniform((gl_shader_stage)j);
-         /* add shader subroutines */
-         if (!link_util_add_program_resource(shProg, resource_set,
-                                             type, &shProg->data->UniformStorage[i], 0))
-            return;
-      }
-   }
-
-   unsigned mask = shProg->data->linked_stages;
-   while (mask) {
-      const int i = u_bit_scan(&mask);
-      struct gl_program *p = shProg->_LinkedShaders[i]->Program;
-
-      GLuint type = _mesa_shader_stage_to_subroutine((gl_shader_stage)i);
-      for (unsigned j = 0; j < p->sh.NumSubroutineFunctions; j++) {
-         if (!link_util_add_program_resource(shProg, resource_set,
-                                             type, &p->sh.SubroutineFunctions[j], 0))
-            return;
-      }
    }
 
    _mesa_set_destroy(resource_set, NULL);
