@@ -86,6 +86,12 @@ vn_android_gralloc_fini()
    dlclose(_vn_android_gralloc.module->common.dso);
 }
 
+uint32_t
+vn_android_gralloc_get_shared_present_usage()
+{
+   return _vn_android_gralloc.front_rendering_usage;
+}
+
 struct cros_gralloc0_buffer_info {
    uint32_t drm_fourcc;
    int num_fds; /* ignored */
@@ -346,15 +352,15 @@ vn_GetSwapchainGrallocUsage2ANDROID(
    uint64_t *grallocProducerUsage)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+
+   if (VN_DEBUG(WSI)) {
+      vn_log(dev->instance,
+             "format=%d, imageUsage=0x%x, swapchainImageUsage=0x%x", format,
+             imageUsage, swapchainImageUsage);
+   }
+
    *grallocConsumerUsage = 0;
    *grallocProducerUsage = 0;
-
-   if (swapchainImageUsage & VK_SWAPCHAIN_IMAGE_USAGE_SHARED_BIT_ANDROID)
-      return vn_error(dev->instance, VK_ERROR_INITIALIZATION_FAILED);
-
-   if (VN_DEBUG(WSI))
-      vn_log(dev->instance, "format=%d, imageUsage=0x%x", format, imageUsage);
-
    if (imageUsage & (VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))
       *grallocProducerUsage |= AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER;
@@ -362,7 +368,10 @@ vn_GetSwapchainGrallocUsage2ANDROID(
    if (imageUsage &
        (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
-      *grallocConsumerUsage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+      *grallocProducerUsage |= AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+
+   if (swapchainImageUsage & VK_SWAPCHAIN_IMAGE_USAGE_SHARED_BIT_ANDROID)
+      *grallocProducerUsage |= vn_android_gralloc_get_shared_present_usage();
 
    return VK_SUCCESS;
 }
