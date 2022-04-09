@@ -79,13 +79,11 @@
  * expensive pthread_getspecific() or its equivalent).
  */
 #ifdef USE_ELF_TLS
-#ifdef _MSC_VER
-#define __THREAD_INITIAL_EXEC __declspec(thread)
-#elif defined(__GLIBC__)
-#define __THREAD_INITIAL_EXEC __thread __attribute__((tls_model("initial-exec")))
+#if defined(__GLIBC__)
+#define __THREAD_INITIAL_EXEC thread_local __attribute__((tls_model("initial-exec")))
 #define REALLY_INITIAL_EXEC
 #else
-#define __THREAD_INITIAL_EXEC __thread
+#define __THREAD_INITIAL_EXEC thread_local
 #endif
 #endif
 

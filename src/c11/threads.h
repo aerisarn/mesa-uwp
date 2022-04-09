@@ -26,6 +26,32 @@
 
 /*---------------------------- macros ---------------------------*/
 
+#ifndef _Thread_local
+#  if defined(__cplusplus)
+     /* C++11 doesn't need `_Thread_local` keyword or macro */
+#  elif !defined(__STDC_NO_THREADS__)
+     /* threads are optional in C11, _Thread_local present in this condition */
+#  elif defined(_MSC_VER)
+#    define _Thread_local __declspec(thread)
+#  elif defined(__GNUC__)
+#    define _Thread_local __thread
+#  else
+     /* Leave _Thread_local undefined so that use of _Thread_local would not promote
+      * to a non-thread-local global variable
+      */
+#  endif
+#endif
+
+#if !defined(__cplusplus)
+   /*
+    * C11 thread_local() macro
+    * C++11 and above already have thread_local keyword
+    */
+#  ifndef thread_local
+#    define thread_local _Thread_local
+#  endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
