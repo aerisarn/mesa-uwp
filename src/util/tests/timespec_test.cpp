@@ -298,8 +298,8 @@ TEST(timespec_test, timespec_from_proto)
 TEST(timespec_test, timespec_is_zero)
 {
    struct timespec zero = { 0 };
-   struct timespec non_zero_sec = { .tv_sec = 1, .tv_nsec = 0 };
-   struct timespec non_zero_nsec = { .tv_sec = 0, .tv_nsec = 1 };
+   struct timespec non_zero_sec = { 1, 0 };
+   struct timespec non_zero_nsec = { 0, 1 };
 
    EXPECT_TRUE(timespec_is_zero(&zero));
    EXPECT_FALSE(timespec_is_zero(&non_zero_nsec));
@@ -308,8 +308,8 @@ TEST(timespec_test, timespec_is_zero)
 
 TEST(timespec_test, timespec_eq)
 {
-   struct timespec a = { .tv_sec = 2, .tv_nsec = 1 };
-   struct timespec b = { .tv_sec = -1, .tv_nsec = 2 };
+   struct timespec a = { 2, 1 };
+   struct timespec b = { -1, 2 };
 
    EXPECT_TRUE(timespec_eq(&a, &a));
    EXPECT_TRUE(timespec_eq(&b, &b));
