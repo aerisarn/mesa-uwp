@@ -30,9 +30,12 @@
 
 /* perform options supported by CrOS Gralloc */
 #define CROS_GRALLOC_DRM_GET_BUFFER_INFO 4
+#define CROS_GRALLOC_DRM_GET_USAGE 5
+#define CROS_GRALLOC_DRM_GET_USAGE_FRONT_RENDERING_BIT 0x1
 
 struct vn_android_gralloc {
    const gralloc_module_t *module;
+   uint32_t front_rendering_usage;
 };
 
 static struct vn_android_gralloc _vn_android_gralloc;
@@ -42,6 +45,7 @@ vn_android_gralloc_init()
 {
    static const char CROS_GRALLOC_MODULE_NAME[] = "CrOS Gralloc";
    const gralloc_module_t *gralloc = NULL;
+   uint32_t front_rendering_usage = 0;
    int ret;
 
    /* get gralloc module for gralloc buffer info query */
@@ -62,6 +66,13 @@ vn_android_gralloc_init()
       dlclose(gralloc->common.dso);
       vn_log(NULL, "missing required gralloc helper: perform");
       return -1;
+   }
+
+   if (gralloc->perform(gralloc, CROS_GRALLOC_DRM_GET_USAGE,
+                        CROS_GRALLOC_DRM_GET_USAGE_FRONT_RENDERING_BIT,
+                        &front_rendering_usage) == 0) {
+      assert(front_rendering_usage);
+      _vn_android_gralloc.front_rendering_usage = front_rendering_usage;
    }
 
    _vn_android_gralloc.module = gralloc;
