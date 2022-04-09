@@ -419,6 +419,14 @@ panfrost_should_tile(struct panfrost_device *dev,
                 PIPE_BIND_SCANOUT |
                 PIPE_BIND_SHARED;
 
+        /* The purpose of tiling is improving locality in both X- and
+         * Y-directions. If there is only a single pixel in either direction,
+         * tiling does not make sense; using a linear layout instead is optimal
+         * for both memory usage and performance.
+         */
+        if (MIN2(pres->base.width0, pres->base.height0) < 2)
+                return false;
+
         bool can_tile = panfrost_is_2d(pres)
                 && ((pres->base.bind & ~valid_binding) == 0);
 
