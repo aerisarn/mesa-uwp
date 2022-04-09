@@ -189,11 +189,9 @@ virgl_tgsi_transform_prolog(struct tgsi_transform_context * ctx)
 {
    struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
 
-   if (vtctx->info.uses_doubles || vtctx->info.file_count[TGSI_FILE_SAMPLER_VIEW]) {
-      vtctx->src_temp = vtctx->next_temp;
-      vtctx->next_temp += 4;
-      tgsi_transform_temps_decl(ctx, vtctx->src_temp, vtctx->src_temp + 3);
-   }
+   vtctx->src_temp = vtctx->next_temp;
+   vtctx->next_temp += 4;
+   tgsi_transform_temps_decl(ctx, vtctx->src_temp, vtctx->src_temp + 3);
 
    if (vtctx->num_writemask_fixups) {
       vtctx->writemask_fixup_temps = vtctx->next_temp;
