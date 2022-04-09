@@ -414,7 +414,6 @@ spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-03,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-07,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-08,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
-spec@arb_tessellation_shader@execution@fs-primitiveid-instanced,Crash
 spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect,Fail
 spec@arb_texture_rectangle@glsl-fs-shadow2drect-01,Fail
