@@ -732,7 +732,7 @@ insert_vec_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
  * -insert movs (nir_lower_vec_to_movs equivalent)
  * for non-vecN instructions:
  * -try to merge constants as single constant
- * -insert movs for multiple constants (pre-HALTI5)
+ * -insert movs for multiple constants if required
  */
 static void
 lower_alu(struct etna_compile *c, nir_alu_instr *alu)
@@ -749,8 +749,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
    case nir_op_vec4:
       break;
    default:
-      /* pre-GC7000L can only have 1 uniform src per instruction */
-      if (c->specs->halti >= 5)
+      if (c->specs->has_no_oneconst_limit)
          return;
 
       nir_const_value value[4] = {};
@@ -1195,7 +1194,7 @@ etna_compile_shader(struct etna_shader_variant *v)
       if (inst->opcode == INST_OPCODE_BRANCH)
          inst->imm = block_ptr[inst->imm];
 
-      inst->halti5 = specs->halti >= 5;
+      inst->no_oneconst_limit = specs->has_no_oneconst_limit;
       etna_assemble(&code[i * 4], inst);
    }
 
