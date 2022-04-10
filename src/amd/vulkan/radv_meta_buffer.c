@@ -167,8 +167,9 @@ radv_device_finish_meta_buffer_state(struct radv_device *device)
                               &state->alloc);
 }
 
-static void
-fill_buffer_shader(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size, uint32_t data)
+void
+radv_fill_buffer_shader(struct radv_cmd_buffer *cmd_buffer, uint64_t va, uint64_t size,
+                        uint32_t data)
 {
    struct radv_device *device = cmd_buffer->device;
    struct radv_meta_saved_state saved_state;
@@ -264,7 +265,7 @@ radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
       cmd_buffer->state.flush_bits |=
          radv_dst_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT, image);
 
-      fill_buffer_shader(cmd_buffer, va, size, value);
+      radv_fill_buffer_shader(cmd_buffer, va, size, value);
 
       flush_bits = RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_INV_VCACHE |
                    radv_src_access_flush(cmd_buffer, VK_ACCESS_2_SHADER_WRITE_BIT, image);
