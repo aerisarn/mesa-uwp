@@ -111,7 +111,7 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                case nir_tex_src_comparator:
                   break;
                default:
-                  assert(0);
+                  //assert(0);
                   break;
                }
             }
