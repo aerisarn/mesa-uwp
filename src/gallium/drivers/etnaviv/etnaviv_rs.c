@@ -106,6 +106,10 @@ etna_compile_rs_state(struct etna_context *ctx, struct compiled_rs_state *cs,
                           COND(src_super, VIVS_RS_SOURCE_STRIDE_TILING) |
                           COND(src_multi, VIVS_RS_SOURCE_STRIDE_MULTI);
 
+   if (VIV_FEATURE(ctx->screen, chipMinorFeatures6, CACHE128B256BPERLINE))
+      cs->RS_SOURCE_STRIDE |= VIVS_RS_SOURCE_STRIDE_TS_MODE(rs->source_ts_mode) |
+                              COND(src_super, VIVS_RS_SOURCE_STRIDE_SUPER_TILED_NEW);
+
    /* Initially all pipes are set to the base address of the source and
     * destination buffer respectively. This will be overridden below as
     * necessary for the multi-pipe, multi-tiled case.
@@ -126,6 +130,8 @@ etna_compile_rs_state(struct etna_context *ctx, struct compiled_rs_state *cs,
                         COND(dst_super, VIVS_RS_DEST_STRIDE_TILING) |
                         COND(dst_multi, VIVS_RS_DEST_STRIDE_MULTI);
 
+   if (VIV_FEATURE(ctx->screen, chipMinorFeatures6, CACHE128B256BPERLINE))
+      cs->RS_DEST_STRIDE |= COND(dst_super, VIVS_RS_DEST_STRIDE_SUPER_TILED_NEW);
 
    if (src_multi)
       cs->source[1].offset = rs->source_offset + rs->source_stride * rs->source_padded_height / 2;
@@ -768,6 +774,7 @@ etna_try_rs_blit(struct pipe_context *pctx,
       .source_padded_width = src_lev->padded_width,
       .source_padded_height = src_lev->padded_height,
       .source_ts_valid = source_ts_valid,
+      .source_ts_mode = src_lev->ts_mode,
       .source_ts_compressed = src_lev->ts_compress_fmt >= 0,
       .dest_format = format,
       .dest_tiling = dst->layout,
