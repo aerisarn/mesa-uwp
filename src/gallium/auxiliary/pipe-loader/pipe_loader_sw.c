@@ -58,7 +58,7 @@ struct pipe_loader_sw_device {
 #define pipe_loader_sw_device(dev) ((struct pipe_loader_sw_device *)dev)
 
 static const struct pipe_loader_ops pipe_loader_sw_ops;
-#ifdef HAVE_ZINK
+#if defined(HAVE_PIPE_LOADER_DRI) && defined(HAVE_ZINK)
 static const struct pipe_loader_ops pipe_loader_vk_ops;
 #endif
 
@@ -93,16 +93,14 @@ static const struct sw_driver_descriptor driver_descriptors = {
 };
 #endif
 
-#if defined(GALLIUM_STATIC_TARGETS) && defined(HAVE_ZINK)
+#if defined(GALLIUM_STATIC_TARGETS) && defined(HAVE_ZINK) && defined(HAVE_PIPE_LOADER_DRI)
 static const struct sw_driver_descriptor kopper_driver_descriptors = {
    .create_screen = sw_screen_create_zink,
    .winsys = {
-#ifdef HAVE_PIPE_LOADER_DRI
       {
          .name = "dri",
          .create_winsys = dri_create_sw_winsys,
       },
-#endif
 #ifdef HAVE_PIPE_LOADER_KMS
       {
          .name = "kms_dri",
@@ -158,7 +156,7 @@ pipe_loader_sw_probe_init_common(struct pipe_loader_sw_device *sdev)
    return true;
 }
 
-#ifdef HAVE_ZINK
+#if defined(HAVE_PIPE_LOADER_DRI) && defined(HAVE_ZINK)
 static bool
 pipe_loader_vk_probe_init_common(struct pipe_loader_sw_device *sdev)
 {
@@ -404,7 +402,7 @@ pipe_loader_sw_get_driconf(struct pipe_loader_device *dev, unsigned *count)
    return NULL;
 }
 
-#ifdef HAVE_ZINK
+#if defined(HAVE_PIPE_LOADER_DRI) && defined(HAVE_ZINK)
 static const driOptionDescription zink_driconf[] = {
       #include "zink/driinfo_zink.h"
 };
@@ -437,7 +435,7 @@ static const struct pipe_loader_ops pipe_loader_sw_ops = {
    .release = pipe_loader_sw_release
 };
 
-#ifdef HAVE_ZINK
+#if defined(HAVE_PIPE_LOADER_DRI) && defined(HAVE_ZINK)
 static const struct pipe_loader_ops pipe_loader_vk_ops = {
    .create_screen = pipe_loader_sw_create_screen,
    .get_driconf = pipe_loader_vk_get_driconf,
