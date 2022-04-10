@@ -67,9 +67,11 @@ debug_describe_zink_compute_program(char *buf, const struct zink_compute_program
 }
 
 static bool
-shader_key_matches(const struct zink_shader_module *zm, const struct zink_shader_key *key, unsigned num_uniforms)
+shader_key_matches(const struct zink_shader_module *zm, bool ignore_size,
+                   const struct zink_shader_key *key, unsigned num_uniforms)
 {
-   if (zm->key_size != key->size || zm->num_uniforms != num_uniforms || zm->has_nonseamless != !!key->base.nonseamless_cube_mask)
+   bool key_size_differs = ignore_size ? false : zm->key_size != key->size;
+   if (key_size_differs || zm->num_uniforms != num_uniforms || zm->has_nonseamless != !!key->base.nonseamless_cube_mask)
       return false;
    const uint32_t nonseamless_size = zm->has_nonseamless ? sizeof(uint32_t) : 0;
    return !memcmp(zm->key, key, zm->key_size) &&
@@ -97,7 +99,11 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
    struct zink_shader_module *zm = NULL;
    unsigned inline_size = 0, nonseamless_size = 0;
    struct zink_shader_key *key = &state->shader_keys.key[pstage];
-
+   bool ignore_key_size = false;
+   if (pstage == PIPE_SHADER_TESS_CTRL && !zs->is_generated) {
+      /* non-generated tcs won't use the shader key */
+      ignore_key_size = true;
+   }
    if (ctx && zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
       if (screen->is_cpu || prog->inlined_variant_count[pstage] < ZINK_MAX_INLINED_VARIANTS)
@@ -110,7 +116,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
 
    struct zink_shader_module *iter, *next;
    LIST_FOR_EACH_ENTRY_SAFE(iter, next, &prog->shader_cache[pstage][!!nonseamless_size][!!inline_size], list) {
-      if (!shader_key_matches(iter, key, inline_size))
+      if (!shader_key_matches(iter, ignore_key_size, key, inline_size))
          continue;
       list_delinit(&iter->list);
       zm = iter;
@@ -135,8 +141,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_screen *screen
       zm->shader = mod;
       list_inithead(&zm->list);
       zm->num_uniforms = inline_size;
-      if (pstage != PIPE_SHADER_TESS_CTRL || zs->is_generated) {
-         /* non-generated tcs won't use the shader key */
+      if (!ignore_key_size) {
          zm->key_size = key->size;
          memcpy(zm->key, key, key->size);
       } else {
@@ -292,7 +297,7 @@ update_cs_shader_module(struct zink_context *ctx, struct zink_compute_program *c
    if (inline_size || nonseamless_size) {
       struct zink_shader_module *iter, *next;
       LIST_FOR_EACH_ENTRY_SAFE(iter, next, &comp->shader_cache[!!nonseamless_size], list) {
-         if (!shader_key_matches(iter, key, inline_size))
+         if (!shader_key_matches(iter, false, key, inline_size))
             continue;
          list_delinit(&iter->list);
          zm = iter;
