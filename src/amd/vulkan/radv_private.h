@@ -633,8 +633,6 @@ struct radv_meta_state {
    struct {
       VkPipelineLayout fill_p_layout;
       VkPipelineLayout copy_p_layout;
-      VkDescriptorSetLayout fill_ds_layout;
-      VkDescriptorSetLayout copy_ds_layout;
       VkPipeline fill_pipeline;
       VkPipeline copy_pipeline;
    } buffer;
