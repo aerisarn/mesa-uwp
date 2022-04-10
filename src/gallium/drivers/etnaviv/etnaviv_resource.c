@@ -85,7 +85,6 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
 {
    struct etna_screen *screen = etna_screen(pscreen);
    size_t rt_ts_size, ts_layer_stride;
-   size_t bytes_per_tile;
    uint8_t ts_mode = TS_MODE_128B;
    int8_t ts_compress_fmt;
 
@@ -98,20 +97,15 @@ etna_screen_resource_alloc_ts(struct pipe_screen *pscreen,
    ts_compress_fmt = (screen->specs.v4_compression || rsc->base.nr_samples > 1) ?
                       translate_ts_format(rsc->base.format) : -1;
 
-   if (VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE)) {
-      /* enable 256B ts mode with compression, as it improves performance
-       * the size of the resource might also determine if we want to use it or not
-       */
-      if (ts_compress_fmt >= 0)
+   /* enable 256B ts mode with compression, as it improves performance
+    * the size of the resource might also determine if we want to use it or not
+    */
+   if (VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE) &&
+       ts_compress_fmt >= 0)
          ts_mode = TS_MODE_256B;
 
-      bytes_per_tile = ts_mode == TS_MODE_256B ? 256 : 128;
-   } else {
-      bytes_per_tile = 64;
-   }
-
    ts_layer_stride = align(DIV_ROUND_UP(rsc->levels[0].layer_stride,
-                                        bytes_per_tile *
+                                        etna_screen_get_tile_size(screen, ts_mode) *
                                         8 / screen->specs.bits_per_tile),
                            0x100 * screen->specs.pixel_pipes);
    rt_ts_size = ts_layer_stride * rsc->base.array_size;

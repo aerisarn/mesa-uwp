@@ -789,7 +789,8 @@ etna_try_rs_blit(struct pipe_context *pctx,
       .clear_mode = VIVS_RS_CLEAR_CONTROL_MODE_DISABLED,
       .width = width,
       .height = height,
-      .tile_count = src_lev->layer_stride / 64
+      .tile_count = src_lev->layer_stride /
+                    etna_screen_get_tile_size(ctx->screen, src_lev->ts_mode),
    });
 
    etna_submit_rs_state(ctx, &copy_to_screen);

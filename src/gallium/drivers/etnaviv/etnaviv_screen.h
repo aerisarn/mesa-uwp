@@ -109,4 +109,16 @@ struct pipe_screen *
 etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
                    struct renderonly *ro);
 
+static inline size_t
+etna_screen_get_tile_size(struct etna_screen *screen, uint8_t ts_mode)
+{
+   if (!VIV_FEATURE(screen, chipMinorFeatures6, CACHE128B256BPERLINE))
+      return 64;
+
+   if (ts_mode == TS_MODE_256B)
+      return 256;
+   else
+      return 128;
+}
+
 #endif

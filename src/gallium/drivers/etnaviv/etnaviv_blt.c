@@ -450,7 +450,8 @@ etna_try_blt_blit(struct pipe_context *pctx,
       op.ts_clear_value[0] = src_lev->clear_value;
       op.ts_clear_value[1] = src_lev->clear_value;
       op.ts_mode = src_lev->ts_mode;
-      op.num_tiles = DIV_ROUND_UP(src_lev->size, src_lev->ts_mode ? 256 : 128);
+      op.num_tiles = DIV_ROUND_UP(src_lev->size,
+                                  etna_screen_get_tile_size(ctx->screen, src_lev->ts_mode));
       op.bpp = util_format_get_blocksize(src->base.format);
 
       etna_set_state(ctx->stream, VIVS_GL_FLUSH_CACHE, 0x00000c23);
