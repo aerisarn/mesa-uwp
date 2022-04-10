@@ -2087,7 +2087,7 @@ static void r300_set_constant_buffer(struct pipe_context *pipe,
 
     if (shader == PIPE_SHADER_VERTEX) {
         if (r300->screen->caps.has_tcl) {
-            struct r300_vertex_shader_code *vs = r300_vs(r300)->shader;
+            struct r300_vertex_shader *vs = r300_vs(r300);
 
             if (!vs) {
                 cbuf->buffer_base = 0;
@@ -2095,9 +2095,9 @@ static void r300_set_constant_buffer(struct pipe_context *pipe,
             }
 
             cbuf->buffer_base = r300->vs_const_base;
-            r300->vs_const_base += vs->code.constants.Count;
+            r300->vs_const_base += vs->shader->code.constants.Count;
             if (r300->vs_const_base > R500_MAX_PVS_CONST_VECS) {
-                r300->vs_const_base = vs->code.constants.Count;
+                r300->vs_const_base = vs->shader->code.constants.Count;
                 cbuf->buffer_base = 0;
                 r300_mark_atom_dirty(r300, &r300->pvs_flush);
             }
