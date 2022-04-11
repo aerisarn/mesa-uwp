@@ -46,8 +46,10 @@ dEQP-GLES31.functional.image_load_store.3d.store.rgba8ui_single_layer,Fail
 # probably fixed by EXT_2d_view_of_3d support
 KHR-GL46.shader_image_load_store.non-layered_binding,Fail
 
-# ???
+# amd issue #6305
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
+
+# radv issue #6301
 KHR-Single-GL46.enhanced_layouts.varying_array_components,Fail
 KHR-Single-GL46.enhanced_layouts.varying_array_locations,Fail
 KHR-Single-GL46.enhanced_layouts.varying_components,Fail
