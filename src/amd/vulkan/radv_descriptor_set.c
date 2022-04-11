@@ -478,6 +478,64 @@ radv_GetDescriptorSetLayoutSupport(VkDevice device,
  * Pipeline layouts.  These have nothing to do with the pipeline.  They are
  * just multiple descriptor set layouts pasted together.
  */
+void
+radv_pipeline_layout_init(struct radv_device *device, struct radv_pipeline_layout *layout)
+{
+   memset(layout, 0, sizeof(*layout));
+
+   vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+}
+
+void
+radv_pipeline_layout_add_set(struct radv_pipeline_layout *layout, uint32_t set_idx,
+                             struct radv_descriptor_set_layout *set_layout)
+{
+   unsigned dynamic_offset_count = 0;
+
+   layout->num_sets = MAX2(set_idx + 1, layout->num_sets);
+
+   layout->set[set_idx].layout = set_layout;
+   radv_descriptor_set_layout_ref(set_layout);
+
+   for (uint32_t b = 0; b < set_layout->binding_count; b++) {
+      dynamic_offset_count += set_layout->binding[b].array_size * set_layout->binding[b].dynamic_offset_count;
+   }
+
+   layout->set[set_idx].dynamic_offset_start = layout->dynamic_offset_count;
+
+   layout->dynamic_offset_count += dynamic_offset_count;
+   layout->dynamic_shader_stages |= set_layout->dynamic_shader_stages;
+}
+
+void
+radv_pipeline_layout_hash(struct radv_pipeline_layout *layout)
+{
+   struct mesa_sha1 ctx;
+
+   _mesa_sha1_init(&ctx);
+   for (uint32_t i = 0; i < layout->num_sets; i++) {
+      struct radv_descriptor_set_layout *set_layout = layout->set[i].layout;
+
+      /* Hash the entire set layout except for the vk_object_base and the reference counter. The
+       * rest of the set layout is carefully constructed to not have pointers so a full hash instead
+       * of a per-field hash should be ok.
+       */
+      uint32_t hash_offset = sizeof(struct vk_object_base) + sizeof(uint32_t);
+      _mesa_sha1_update(&ctx, (const char *)set_layout + hash_offset,
+                        set_layout->layout_size - hash_offset);
+   }
+   _mesa_sha1_update(&ctx, &layout->push_constant_size, sizeof(layout->push_constant_size));
+   _mesa_sha1_final(&ctx, layout->sha1);
+}
+
+void
+radv_pipeline_layout_finish(struct radv_device *device, struct radv_pipeline_layout *layout)
+{
+   for (uint32_t i = 0; i < layout->num_sets; i++)
+      radv_descriptor_set_layout_unref(device, layout->set[i].layout);
+
+   vk_object_base_finish(&layout->base);
+}
 
 VKAPI_ATTR VkResult VKAPI_CALL
 radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
@@ -486,7 +544,6 @@ radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pC
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
    struct radv_pipeline_layout *layout;
-   struct mesa_sha1 ctx;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
 
@@ -495,36 +552,16 @@ radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pC
    if (layout == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+   radv_pipeline_layout_init(device, layout);
 
    layout->num_sets = pCreateInfo->setLayoutCount;
 
-   unsigned dynamic_offset_count = 0;
-   uint16_t dynamic_shader_stages = 0;
-
-   _mesa_sha1_init(&ctx);
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       RADV_FROM_HANDLE(radv_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[set]);
-      layout->set[set].layout = set_layout;
-      radv_descriptor_set_layout_ref(set_layout);
 
-      layout->set[set].dynamic_offset_start = dynamic_offset_count;
-
-      for (uint32_t b = 0; b < set_layout->binding_count; b++) {
-         dynamic_offset_count += set_layout->binding[b].array_size * set_layout->binding[b].dynamic_offset_count;
-         dynamic_shader_stages |= set_layout->dynamic_shader_stages;
-      }
-
-      /* Hash the entire set layout except for the vk_object_base and the reference counter. The
-       * rest of the set layout is carefully constructed to not have pointers so a full hash instead
-       * of a per-field hash should be ok. */
-      uint32_t hash_offset = sizeof(struct vk_object_base) + sizeof(uint32_t);
-      _mesa_sha1_update(&ctx, (const char *)set_layout + hash_offset,
-                        set_layout->layout_size - hash_offset);
+      radv_pipeline_layout_add_set(layout, set, set_layout);
    }
 
-   layout->dynamic_offset_count = dynamic_offset_count;
-   layout->dynamic_shader_stages = dynamic_shader_stages;
    layout->push_constant_size = 0;
 
    for (unsigned i = 0; i < pCreateInfo->pushConstantRangeCount; ++i) {
@@ -533,8 +570,9 @@ radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pC
    }
 
    layout->push_constant_size = align(layout->push_constant_size, 16);
-   _mesa_sha1_update(&ctx, &layout->push_constant_size, sizeof(layout->push_constant_size));
-   _mesa_sha1_final(&ctx, layout->sha1);
+
+   radv_pipeline_layout_hash(layout);
+
    *pPipelineLayout = radv_pipeline_layout_to_handle(layout);
 
    return VK_SUCCESS;
@@ -550,10 +588,8 @@ radv_DestroyPipelineLayout(VkDevice _device, VkPipelineLayout _pipelineLayout,
    if (!pipeline_layout)
       return;
 
-   for (uint32_t i = 0; i < pipeline_layout->num_sets; i++)
-      radv_descriptor_set_layout_unref(device, pipeline_layout->set[i].layout);
+   radv_pipeline_layout_finish(device, pipeline_layout);
 
-   vk_object_base_finish(&pipeline_layout->base);
    vk_free2(&device->vk.alloc, pAllocator, pipeline_layout);
 }
 
