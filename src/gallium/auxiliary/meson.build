@@ -515,9 +515,6 @@ idep_u_tracepoints = declare_dependency(
 )
 
 libgallium_extra_c_args = []
-if with_swrast_vk and with_gallium_zink
-  libgallium_extra_c_args += '-DZINK_WITH_SWRAST_VK'
-endif
 libgallium = static_library(
   'gallium',
   [files_libgallium],
