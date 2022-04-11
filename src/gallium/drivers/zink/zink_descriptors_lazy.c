@@ -132,12 +132,12 @@ descriptor_program_num_sizes(VkDescriptorPoolSize *sizes, enum zink_descriptor_t
 {
    switch (type) {
    case ZINK_DESCRIPTOR_TYPE_UBO:
-      return 1;
+      return !!sizes[ZDS_INDEX_UBO].descriptorCount;
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
       return !!sizes[ZDS_INDEX_COMBINED_SAMPLER].descriptorCount +
              !!sizes[ZDS_INDEX_UNIFORM_TEXELS].descriptorCount;
    case ZINK_DESCRIPTOR_TYPE_SSBO:
-      return 1;
+      return !!sizes[ZDS_INDEX_STORAGE_BUFFER].descriptorCount;
    case ZINK_DESCRIPTOR_TYPE_IMAGE:
       return !!sizes[ZDS_INDEX_STORAGE_IMAGE].descriptorCount +
              !!sizes[ZDS_INDEX_STORAGE_TEXELS].descriptorCount;
