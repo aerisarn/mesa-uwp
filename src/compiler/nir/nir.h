@@ -3286,6 +3286,14 @@ typedef struct nir_shader_compiler_options {
 
    bool lower_ftrunc;
 
+   /** Lowers fround_even to ffract+feq+csel.
+    *
+    * Not correct in that it doesn't correctly handle the "_even" part of the
+    * rounding, but good enough for DX9 array indexing handling on DX9-class
+    * hardware.
+    */
+   bool lower_fround_even;
+
    bool lower_ldexp;
 
    bool lower_pack_half_2x16;
