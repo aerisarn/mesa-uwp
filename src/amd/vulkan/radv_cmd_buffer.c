@@ -401,6 +401,8 @@ radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 {
    list_del(&cmd_buffer->pool_link);
 
+   util_dynarray_fini(&cmd_buffer->cached_vertex_formats);
+
    list_for_each_entry_safe(struct radv_cmd_buffer_upload, up, &cmd_buffer->upload.list, list)
    {
       cmd_buffer->device->ws->buffer_destroy(cmd_buffer->device->ws, up->upload_bo);
@@ -468,6 +470,8 @@ radv_create_cmd_buffer(struct radv_device *device, struct radv_cmd_pool *pool,
 
    vk_object_base_init(&device->vk, &cmd_buffer->meta_push_descriptors.base,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET);
+
+   util_dynarray_init(&cmd_buffer->cached_vertex_formats, NULL);
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
       vk_object_base_init(&device->vk, &cmd_buffer->descriptors[i].push_set.set.base,
@@ -5738,10 +5742,6 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       const VkVertexInputAttributeDescription2EXT *attrib = &pVertexAttributeDescriptions[i];
       const VkVertexInputBindingDescription2EXT *binding = bindings[attrib->binding];
       unsigned loc = attrib->location;
-      const struct util_format_description *format_desc = vk_format_description(attrib->format);
-      unsigned nfmt, dfmt;
-      bool post_shuffle;
-      enum radv_vs_input_alpha_adjust alpha_adjust;
 
       state->attribute_mask |= 1u << loc;
       state->bindings[loc] = attrib->binding;
@@ -5757,37 +5757,58 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       cmd_buffer->vertex_bindings[attrib->binding].stride = binding->stride;
       state->offsets[loc] = attrib->offset;
 
-      radv_translate_vertex_format(cmd_buffer->device->physical_device, attrib->format, format_desc,
-                                   &dfmt, &nfmt, &post_shuffle, &alpha_adjust);
+      struct dynamic_vertex_format_cache *found = NULL;
+      util_dynarray_foreach(&cmd_buffer->cached_vertex_formats,
+                            struct dynamic_vertex_format_cache,
+                            vf) {
+         if (vf->format == attrib->format) {
+            found = vf;
+            break;
+         }
+      }
+      if (!found) {
+         unsigned nfmt, dfmt;
+         bool post_shuffle;
+         enum radv_vs_input_alpha_adjust alpha_adjust;
+         const struct util_format_description *format_desc = vk_format_description(attrib->format);
 
-      state->formats[loc] = dfmt | (nfmt << 4);
-      const uint8_t format_align_req_minus_1 = format_desc->channel[0].size >= 32 ? 3 :
-                                               (format_desc->block.bits / 8u - 1);
-      state->format_align_req_minus_1[loc] = format_align_req_minus_1;
-      state->format_sizes[loc] = format_desc->block.bits / 8u;
+         found = util_dynarray_grow(&cmd_buffer->cached_vertex_formats,
+                                    struct dynamic_vertex_format_cache, 1);
+         radv_translate_vertex_format(cmd_buffer->device->physical_device, attrib->format, format_desc,
+                                      &dfmt, &nfmt, &post_shuffle, &alpha_adjust);
+         found->format = attrib->format;
+         found->hw_fmt = dfmt | (nfmt << 4);
+         const uint8_t format_align_req_minus_1 = format_desc->channel[0].size >= 32 ? 3 :
+            (format_desc->block.bits / 8u - 1);
+         found->fmt_align_req_minus_1 = format_align_req_minus_1;
+         found->fmt_size = format_desc->block.bits / 8u;
+         found->post_shuffle = post_shuffle;
+         found->alpha_adjust_lo = alpha_adjust & 0x1;
+         found->alpha_adjust_hi = (alpha_adjust >> 1) & 0x1;
+      }
+
+      state->formats[loc] = found->hw_fmt;
+      state->format_align_req_minus_1[loc] = found->fmt_align_req_minus_1;
+      state->format_sizes[loc] = found->fmt_size;
+      state->alpha_adjust_lo |= found->alpha_adjust_lo << loc;
+      state->alpha_adjust_hi |= found->alpha_adjust_hi << loc;
+      if (found->post_shuffle)
+         state->post_shuffle |= 1u << loc;
 
       if (chip == GFX6 || chip >= GFX10) {
          const struct radv_vertex_binding *vb = cmd_buffer->vertex_bindings;
          unsigned bit = 1u << loc;
-         if (binding->stride & format_align_req_minus_1) {
+         if (binding->stride & found->fmt_align_req_minus_1) {
             state->misaligned_mask |= bit;
             if (cmd_buffer->state.vbo_bound_mask & bit)
                cmd_buffer->state.vbo_misaligned_mask |= bit;
          } else {
             state->possibly_misaligned_mask |= bit;
             if (cmd_buffer->state.vbo_bound_mask & bit &&
-                ((vb[attrib->binding].offset + state->offsets[loc]) & format_align_req_minus_1))
+                ((vb[attrib->binding].offset + state->offsets[loc]) & found->fmt_align_req_minus_1))
                cmd_buffer->state.vbo_misaligned_mask |= bit;
          }
       }
-
-      if (alpha_adjust) {
-         state->alpha_adjust_lo |= (alpha_adjust & 0x1) << loc;
-         state->alpha_adjust_hi |= (alpha_adjust >> 1) << loc;
-      }
-
-      if (post_shuffle)
-         state->post_shuffle |= 1u << loc;
    }
 
    cmd_buffer->state.dirty |= RADV_CMD_DIRTY_VERTEX_BUFFER |
