@@ -479,11 +479,14 @@ radv_GetDescriptorSetLayoutSupport(VkDevice device,
  * just multiple descriptor set layouts pasted together.
  */
 void
-radv_pipeline_layout_init(struct radv_device *device, struct radv_pipeline_layout *layout)
+radv_pipeline_layout_init(struct radv_device *device, struct radv_pipeline_layout *layout,
+                          bool independent_sets)
 {
    memset(layout, 0, sizeof(*layout));
 
    vk_object_base_init(&device->vk, &layout->base, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+
+   layout->independent_sets = independent_sets;
 }
 
 void
@@ -491,6 +494,9 @@ radv_pipeline_layout_add_set(struct radv_pipeline_layout *layout, uint32_t set_i
                              struct radv_descriptor_set_layout *set_layout)
 {
    unsigned dynamic_offset_count = 0;
+
+   if (layout->set[set_idx].layout)
+      return;
 
    layout->num_sets = MAX2(set_idx + 1, layout->num_sets);
 
@@ -516,6 +522,9 @@ radv_pipeline_layout_hash(struct radv_pipeline_layout *layout)
    for (uint32_t i = 0; i < layout->num_sets; i++) {
       struct radv_descriptor_set_layout *set_layout = layout->set[i].layout;
 
+      if (!set_layout)
+         continue;
+
       /* Hash the entire set layout except for the vk_object_base and the reference counter. The
        * rest of the set layout is carefully constructed to not have pointers so a full hash instead
        * of a per-field hash should be ok.
@@ -531,8 +540,12 @@ radv_pipeline_layout_hash(struct radv_pipeline_layout *layout)
 void
 radv_pipeline_layout_finish(struct radv_device *device, struct radv_pipeline_layout *layout)
 {
-   for (uint32_t i = 0; i < layout->num_sets; i++)
+   for (uint32_t i = 0; i < layout->num_sets; i++) {
+      if (!layout->set[i].layout)
+         continue;
+
       radv_descriptor_set_layout_unref(device, layout->set[i].layout);
+   }
 
    vk_object_base_finish(&layout->base);
 }
@@ -552,12 +565,24 @@ radv_CreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pC
    if (layout == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   radv_pipeline_layout_init(device, layout);
+   radv_pipeline_layout_init(device, layout,
+                             pCreateInfo->flags & VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT);
 
    layout->num_sets = pCreateInfo->setLayoutCount;
 
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       RADV_FROM_HANDLE(radv_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[set]);
+
+      /* From the Vulkan spec 1.3.211:
+       *
+       * "VUID-VkPipelineLayoutCreateInfo-flags-06562
+       *  If flags: does not include VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT, elements of
+       *  pSetLayouts must be valid VkDescriptorSetLayout objects"
+       */
+      if (set_layout == NULL) {
+         assert(layout->independent_sets);
+         continue;
+      }
 
       radv_pipeline_layout_add_set(layout, set, set_layout);
    }

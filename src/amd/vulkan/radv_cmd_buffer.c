@@ -4819,6 +4819,17 @@ radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pi
       unsigned set_idx = i + firstSet;
       RADV_FROM_HANDLE(radv_descriptor_set, set, pDescriptorSets[i]);
 
+      if (!set) {
+         /* From the Vulkan spec 1.3.211:
+          *
+          * "VUID-vkCmdBindDescriptorSets-layout-06564
+          *  If layout was not created with VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT, each
+          *  element of pDescriptorSets must be a valid VkDescriptorSet"
+          */
+         assert(layout->independent_sets);
+         continue;
+      }
+
       /* If the set is already bound we only need to update the
        * (potentially changed) dynamic offsets. */
       if (descriptors_state->sets[set_idx] != set ||
