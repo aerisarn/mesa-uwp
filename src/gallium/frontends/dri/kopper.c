@@ -116,7 +116,12 @@ kopper_init_screen(__DRIscreen * sPriv)
    struct kopper_screen *kscreen;
    struct pipe_screen *pscreen = NULL;
 
-   assert(sPriv->kopper_loader);
+   if (!sPriv->kopper_loader) {
+      fprintf(stderr, "mesa: Kopper interface not found!\n"
+                      "      Ensure the versions of %s built with this version of Zink are\n"
+                      "      in your library path!\n", KOPPER_LIB_NAMES);
+      return NULL;
+   }
    kscreen = CALLOC_STRUCT(kopper_screen);
    if (!kscreen)
       return NULL;
