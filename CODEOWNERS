@@ -98,6 +98,14 @@ meson.build @dbaker @eric
 /src/*/vulkan/*_wsi_display.c @keithp
 
 
+######
+# CI #
+######
+
+# Broadcom
+/src/broadcom/ci/ @jasuarez @chema
+
+
 ###########
 # Drivers #
 ###########
