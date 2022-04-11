@@ -518,7 +518,8 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 
    cmd_buffer->record_result = VK_SUCCESS;
 
-   memset(cmd_buffer->vertex_bindings, 0, sizeof(cmd_buffer->vertex_bindings));
+   memset(cmd_buffer->vertex_binding_buffers, 0, sizeof(struct radv_buffer *) * cmd_buffer->used_vertex_bindings);
+   cmd_buffer->used_vertex_bindings = 0;
 
    for (unsigned i = 0; i < MAX_BIND_POINTS; i++) {
       cmd_buffer->descriptors[i].dirty = 0;
@@ -3390,7 +3391,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
          unsigned binding =
             vs_state ? cmd_buffer->state.dynamic_vs_input.bindings[i]
                      : (pipeline->use_per_attribute_vb_descs ? pipeline->attrib_bindings[i] : i);
-         struct radv_buffer *buffer = cmd_buffer->vertex_bindings[binding].buffer;
+         struct radv_buffer *buffer = cmd_buffer->vertex_binding_buffers[binding];
          unsigned num_records;
          unsigned stride;
 
@@ -4713,13 +4714,17 @@ radv_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer, uint32_t firstBinding,
    assert(firstBinding + bindingCount <= MAX_VBS);
    cmd_buffer->state.vbo_misaligned_mask = state->misaligned_mask;
    enum chip_class chip = cmd_buffer->device->physical_device->rad_info.chip_class;
+
+   if (firstBinding + bindingCount > cmd_buffer->used_vertex_bindings)
+      cmd_buffer->used_vertex_bindings = firstBinding + bindingCount;
+
    for (uint32_t i = 0; i < bindingCount; i++) {
       RADV_FROM_HANDLE(radv_buffer, buffer, pBuffers[i]);
       uint32_t idx = firstBinding + i;
       VkDeviceSize size = pSizes ? pSizes[i] : 0;
       VkDeviceSize stride = pStrides ? pStrides[i] : 0;
 
-      vb[idx].buffer = buffer;
+      cmd_buffer->vertex_binding_buffers[idx] = buffer;
       vb[idx].offset = pOffsets[i];
       vb[idx].size = size;
 
@@ -4747,7 +4752,7 @@ radv_CmdBindVertexBuffers2(VkCommandBuffer commandBuffer, uint32_t firstBinding,
          vb[idx].stride = stride;
 
       if (buffer) {
-         radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, vb[idx].buffer->bo);
+         radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, cmd_buffer->vertex_binding_buffers[idx]->bo);
       }
    }
 
