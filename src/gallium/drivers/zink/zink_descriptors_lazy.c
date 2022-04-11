@@ -232,7 +232,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
    if (pg->dd->bindless)
       zink_descriptors_init_bindless(ctx);
    pg->dd->binding_usage = has_bindings;
-   if (!has_bindings && !push_count) {
+   if (!has_bindings && !push_count && !pg->dd->bindless) {
       ralloc_free(pg->dd);
       pg->dd = NULL;
 
