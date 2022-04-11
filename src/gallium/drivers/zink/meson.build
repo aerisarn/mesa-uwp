@@ -79,10 +79,6 @@ zink_nir_algebraic_c = custom_target(
 zink_c_args = []
 inc_zink_vk = []
 
-if with_swrast_vk
-  zink_c_args += '-DZINK_WITH_SWRAST_VK'
-endif
-
 # MoltenVK options
 if with_moltenvk_dir != ''
   inc_zink_vk  = [inc_zink_vk, include_directories( join_paths(with_moltenvk_dir, 'include') )]

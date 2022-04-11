@@ -1283,7 +1283,6 @@ choose_pdev(struct zink_screen *screen)
    for (i = 0; i < pdev_count; ++i) {
       vkGetPhysicalDeviceProperties(pdevs[i], props);
 
-#ifdef ZINK_WITH_SWRAST_VK
       char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE");
       if (use_lavapipe) {
          if (props->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
@@ -1294,7 +1293,7 @@ choose_pdev(struct zink_screen *screen)
          }
          continue;
       }
-#endif
+
       if (props->deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU) {
          screen->pdev = pdevs[i];
          screen->info.device_version = props->apiVersion;
