@@ -179,10 +179,11 @@ void genX(cmd_emit_timestamp)(struct anv_batch *batch,
                               enum anv_timestamp_capture_type type,
                               void *data);
 
-void genX(batch_emit_dummy_post_sync_op)(struct anv_batch *batch,
-                                         struct anv_device *device,
-                                         uint32_t primitive_topology,
-                                         uint32_t vertex_count);
+void
+genX(batch_emit_post_3dprimitive_was)(struct anv_batch *batch,
+                                      const struct anv_device *device,
+                                      uint32_t primitive_topology,
+                                      uint32_t vertex_count);
 
 VkPolygonMode
 genX(raster_polygon_mode)(struct anv_graphics_pipeline *pipeline,
