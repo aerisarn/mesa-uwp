@@ -1,3 +1,20 @@
+# probable ACO bug: #6276
+KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
+KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
+KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail
+KHR-GL46.shader_image_load_store.basic-allTargets-atomicVS,Fail
+KHR-GL46.shader_storage_buffer_object.advanced-readWrite-case1-cs,Fail
+KHR-GL46.shader_storage_buffer_object.basic-operations-case1-cs,Fail
+KHR-GL46.shader_storage_buffer_object.basic-operations-case1-vs,Fail
+
+# probable sparse binding bug: #6245
+KHR-GL46.sparse_buffer_tests.BufferStorageTest,Fail
+
+# 3D isn't supported by radv yet: #5822
+KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
+KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
+KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
+
 #6231
 spec@arb_gl_spirv@execution@ssbo@unsized-array,Fail
 spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
@@ -29,6 +46,18 @@ dEQP-GLES31.functional.image_load_store.3d.store.rgba8_single_layer,Fail
 dEQP-GLES31.functional.image_load_store.3d.store.rgba8_snorm_single_layer,Fail
 dEQP-GLES31.functional.image_load_store.3d.store.rgba8i_single_layer,Fail
 dEQP-GLES31.functional.image_load_store.3d.store.rgba8ui_single_layer,Fail
+
+# probably fixed by EXT_2d_view_of_3d support
+KHR-GL46.shader_image_load_store.non-layered_binding,Fail
+
+# ???
+KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
+KHR-Single-GL46.enhanced_layouts.varying_array_components,Fail
+KHR-Single-GL46.enhanced_layouts.varying_array_locations,Fail
+KHR-Single-GL46.enhanced_layouts.varying_components,Fail
+KHR-Single-GL46.enhanced_layouts.varying_locations,Fail
+KHR-Single-GL46.enhanced_layouts.varying_structure_locations,Fail
+KHR-Single-GL46.enhanced_layouts.xfb_override_qualifiers_with_api,Fail
 
 
 
@@ -199,28 +228,6 @@ glx@glx-visuals-depth,Crash
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
-
-KHR-GL46.gpu_shader_fp64.fp64.varyings,Fail
-KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
-KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
-KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail
-KHR-GL46.shader_image_load_store.basic-allTargets-atomicVS,Fail
-KHR-GL46.shader_image_load_store.non-layered_binding,Fail
-KHR-GL46.shader_storage_buffer_object.advanced-readWrite-case1-cs,Fail
-KHR-GL46.shader_storage_buffer_object.basic-operations-case1-cs,Fail
-KHR-GL46.shader_storage_buffer_object.basic-operations-case1-vs,Fail
-KHR-GL46.sparse_buffer_tests.BufferStorageTest,Fail
-
-# 3D isn't supported by radv yet
-KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
-KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
-KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
-KHR-Single-GL46.enhanced_layouts.varying_array_components,Fail
-KHR-Single-GL46.enhanced_layouts.varying_array_locations,Fail
-KHR-Single-GL46.enhanced_layouts.varying_components,Fail
-KHR-Single-GL46.enhanced_layouts.varying_locations,Fail
-KHR-Single-GL46.enhanced_layouts.varying_structure_locations,Fail
-KHR-Single-GL46.enhanced_layouts.xfb_override_qualifiers_with_api,Fail
 
 shaders@glsl-fs-pointcoord,Fail
 shaders@point-vertex-id divisor,Fail
