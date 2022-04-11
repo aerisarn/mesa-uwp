@@ -50,11 +50,6 @@ KHR-GL46.shader_image_load_store.non-layered_binding,Fail
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 
 # radv issue #6301
-KHR-Single-GL46.enhanced_layouts.varying_array_components,Fail
-KHR-Single-GL46.enhanced_layouts.varying_array_locations,Fail
-KHR-Single-GL46.enhanced_layouts.varying_components,Fail
-KHR-Single-GL46.enhanced_layouts.varying_locations,Fail
-KHR-Single-GL46.enhanced_layouts.varying_structure_locations,Fail
 KHR-Single-GL46.enhanced_layouts.xfb_override_qualifiers_with_api,Fail
 
 

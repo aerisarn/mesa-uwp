@@ -1562,7 +1562,7 @@ lower_ngg_gs_store_output(nir_builder *b, nir_intrinsic_instr *intrin, lower_ngg
       /* Small bitsize components consume the same amount of space as 32-bit components,
        * but 64-bit ones consume twice as many. (Vulkan spec 15.1.5)
        */
-      unsigned num_consumed_components = MIN2(1, DIV_ROUND_UP(store_val->bit_size, 32));
+      unsigned num_consumed_components = DIV_ROUND_UP(store_val->bit_size, 32);
       nir_ssa_def *element = nir_channel(b, store_val, comp);
       if (num_consumed_components > 1)
          element = nir_extract_bits(b, &element, 1, 0, num_consumed_components, 32);
