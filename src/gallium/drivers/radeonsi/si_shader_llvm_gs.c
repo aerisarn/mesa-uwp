@@ -533,13 +533,13 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    bool ok = false;
    if (si_compile_llvm(sscreen, &ctx.shader->binary, &ctx.shader->config, ctx.compiler, &ctx.ac,
                        debug, MESA_SHADER_GEOMETRY, "GS Copy Shader", false)) {
-      if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY))
-         fprintf(stderr, "GS Copy Shader:\n");
-      si_shader_dump(sscreen, ctx.shader, debug, stderr, true);
-
       assert(!ctx.shader->config.scratch_bytes_per_wave);
       if (!ctx.shader->config.scratch_bytes_per_wave)
          ok = si_shader_binary_upload(sscreen, ctx.shader, 0);
+
+      if (si_can_dump_shader(sscreen, MESA_SHADER_GEOMETRY))
+         fprintf(stderr, "GS Copy Shader:\n");
+      si_shader_dump(sscreen, ctx.shader, debug, stderr, true);
    }
 
    si_llvm_dispose(&ctx);

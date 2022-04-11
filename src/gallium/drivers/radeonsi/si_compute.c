@@ -177,11 +177,11 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    if (si_shader_cache_load_shader(sscreen, ir_sha1_cache_key, shader)) {
       simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
-      si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
-      si_shader_dump(sscreen, shader, debug, stderr, true);
-
       if (!si_shader_binary_upload(sscreen, shader, 0))
          program->shader.compilation_failed = true;
+
+      si_shader_dump_stats_for_shader_db(sscreen, shader, debug);
+      si_shader_dump(sscreen, shader, debug, stderr, true);
    } else {
       simple_mtx_unlock(&sscreen->shader_cache_mutex);
 
@@ -274,8 +274,10 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       const amd_kernel_code_t *code_object = si_compute_get_code_object(program, 0);
       code_object_to_config(code_object, &program->shader.config);
 
+      bool ok = si_shader_binary_upload(sctx->screen, &program->shader, 0);
       si_shader_dump(sctx->screen, &program->shader, &sctx->debug, stderr, true);
-      if (!si_shader_binary_upload(sctx->screen, &program->shader, 0)) {
+
+      if (!ok) {
          fprintf(stderr, "LLVM failed to upload shader\n");
          free((void *)program->shader.binary.elf_buffer);
          FREE(program);

@@ -2246,15 +2246,14 @@ bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler
    }
 
    si_fix_resource_usage(sscreen, shader);
-   si_shader_dump(sscreen, shader, debug, stderr, true);
 
    /* Upload. */
-   if (!si_shader_binary_upload(sscreen, shader, 0)) {
-      fprintf(stderr, "LLVM failed to upload shader\n");
-      return false;
-   }
+   bool ok = si_shader_binary_upload(sscreen, shader, 0);
+   si_shader_dump(sscreen, shader, debug, stderr, true);
 
-   return true;
+   if (!ok)
+      fprintf(stderr, "LLVM failed to upload shader\n");
+   return ok;
 }
 
 void si_shader_binary_clean(struct si_shader_binary *binary)
