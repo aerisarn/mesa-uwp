@@ -3643,6 +3643,33 @@ combine_mad_mix(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 // TODO: we could possibly move the whole label_instruction pass to combine_instruction:
 // this would mean that we'd have to fix the instruction uses while value propagation
 
+/* also returns true for inf */
+bool
+is_pow_of_two(opt_ctx& ctx, Operand op)
+{
+   if (op.isTemp() && ctx.info[op.tempId()].is_constant_or_literal(op.bytes() * 8))
+      return is_pow_of_two(ctx, get_constant_op(ctx, ctx.info[op.tempId()], op.bytes() * 8));
+   else if (!op.isConstant())
+      return false;
+
+   uint64_t val = op.constantValue64();
+
+   if (op.bytes() == 4) {
+      uint32_t exponent = (val & 0x7f800000) >> 23;
+      uint32_t fraction = val & 0x007fffff;
+      return (exponent >= 127) && (fraction == 0);
+   } else if (op.bytes() == 2) {
+      uint32_t exponent = (val & 0x7c00) >> 10;
+      uint32_t fraction = val & 0x03ff;
+      return (exponent >= 15) && (fraction == 0);
+   } else {
+      assert(op.bytes() == 8);
+      uint64_t exponent = (val & UINT64_C(0x7ff0000000000000)) >> 52;
+      uint64_t fraction = val & UINT64_C(0x000fffffffffffff);
+      return (exponent >= 1023) && (fraction == 0);
+   }
+}
+
 void
 combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -3808,14 +3835,22 @@ combine_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          bool legacy = info.instr->opcode == aco_opcode::v_mul_legacy_f32;
          bool mad_mix = is_add_mix || info.instr->isVOP3P();
 
+         /* Multiplication by power-of-two should never need rounding. 1/power-of-two also works,
+          * but using fma removes denormal flushing (0xfffffe * 0.5 + 0x810001a2).
+          */
+         bool is_fma_precise = is_pow_of_two(ctx, info.instr->operands[0]) ||
+                               is_pow_of_two(ctx, info.instr->operands[1]);
+
          bool has_fma = mad16 || mad64 || (legacy && ctx.program->gfx_level >= GFX10_3) ||
                         (mad32 && !legacy && !mad_mix && ctx.program->dev.has_fast_fma32) ||
                         (mad_mix && ctx.program->dev.fused_mad_mix);
          bool has_mad = mad_mix ? !ctx.program->dev.fused_mad_mix
                                 : ((mad32 && ctx.program->gfx_level < GFX10_3) ||
                                    (mad16 && ctx.program->gfx_level <= GFX9));
-         bool can_use_fma = has_fma && !info.instr->definitions[0].isPrecise() &&
-                            !instr->definitions[0].isPrecise();
+         bool can_use_fma =
+            has_fma &&
+            (!(info.instr->definitions[0].isPrecise() || instr->definitions[0].isPrecise()) ||
+             is_fma_precise);
          bool can_use_mad =
             has_mad && (mad_mix || mad32 ? ctx.fp_mode.denorm32 : ctx.fp_mode.denorm16_64) == 0;
          if (mad_mix && legacy)
