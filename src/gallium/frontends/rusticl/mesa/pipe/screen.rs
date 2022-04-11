@@ -70,7 +70,7 @@ impl PipeScreen {
         Some(Arc::new(Self { ldev, screen }))
     }
 
-    pub fn create_context(self: &Arc<Self>) -> Option<Arc<PipeContext>> {
+    pub fn create_context(self: &Arc<Self>) -> Option<PipeContext> {
         PipeContext::new(
             unsafe {
                 (*self.screen).context_create.unwrap()(
