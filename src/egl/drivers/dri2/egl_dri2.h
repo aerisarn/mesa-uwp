@@ -284,6 +284,7 @@ struct dri2_egl_display
    struct zwp_linux_dmabuf_feedback_v1 *wl_dmabuf_feedback;
    struct dmabuf_feedback_format_table format_table;
    bool authenticated;
+   uint32_t capabilities;
    char *device_name;
 #endif
 
