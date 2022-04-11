@@ -1760,6 +1760,10 @@ uint32_t radv_get_hash_flags(const struct radv_device *device, bool stats);
 
 bool radv_rt_pipeline_has_dynamic_stack_size(const VkRayTracingPipelineCreateInfoKHR *pCreateInfo);
 
+bool radv_enable_rt(const struct radv_physical_device *pdevice);
+
+bool radv_emulate_rt(const struct radv_physical_device *pdevice);
+
 #define RADV_STAGE_MASK ((1 << MESA_VULKAN_SHADER_STAGES) - 1)
 
 #define radv_foreach_stage(stage, stage_bits)                                                      \

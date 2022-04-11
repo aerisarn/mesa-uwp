@@ -27,7 +27,6 @@
 #include "util/hash_table.h"
 
 #include "radv_acceleration_structure.h"
-#include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_rt_common.h"
 #include "radv_shader.h"
@@ -715,8 +714,7 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
          bvh_node =
             nir_iadd(b, rq_load_var(b, index, vars->trav.bvh_base), nir_u2u(b, bvh_node, 64));
          nir_ssa_def *intrinsic_result = NULL;
-         if (device->physical_device->rad_info.chip_class >= GFX10_3 &&
-             !(device->instance->perftest_flags & RADV_PERFTEST_FORCE_EMULATE_RT)) {
+         if (!radv_emulate_rt(device->physical_device)) {
             intrinsic_result = nir_bvh64_intersect_ray_amd(
                b, 32, desc, nir_unpack_64_2x32(b, bvh_node), rq_load_var(b, index, vars->closest.t),
                rq_load_var(b, index, vars->trav.origin),
