@@ -134,6 +134,11 @@ dzn_descriptor_set_layout_create(dzn_device *device,
    uint32_t range_count[MAX_SHADER_VISIBILITIES][NUM_POOL_TYPES] = {};
 
    for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+      binding_count = MAX2(binding_count, bindings[i].binding + 1);
+
+      if (!bindings[i].descriptorCount)
+         continue;
+
       D3D12_SHADER_VISIBILITY visibility =
          translate_desc_visibility(bindings[i].stageFlags);
       VkDescriptorType desc_type = bindings[i].descriptorType;
@@ -189,8 +194,6 @@ dzn_descriptor_set_layout_create(dzn_device *device,
             dynamic_ranges_offset += bindings[i].descriptorCount * factor;
          }
       }
-
-      binding_count = MAX2(binding_count, bindings[i].binding + 1);
    }
 
    /* We need to allocate decriptor set layouts off the device allocator
@@ -320,6 +323,9 @@ dzn_descriptor_set_layout_create(dzn_device *device,
          dynamic_buffer_idx += desc_count;
          assert(dynamic_buffer_idx <= MAX_DYNAMIC_BUFFERS);
       }
+
+      if (!ordered_bindings[i].descriptorCount)
+         continue;
 
       unsigned num_descs =
          num_descs_for_type(desc_type, has_static_sampler);
