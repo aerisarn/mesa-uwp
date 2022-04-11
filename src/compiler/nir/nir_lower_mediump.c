@@ -422,7 +422,8 @@ replace_with_mov(nir_builder *b, nir_instr *instr, nir_src *src,
  */
 bool
 nir_fold_16bit_sampler_conversions(nir_shader *nir,
-                                   unsigned tex_src_types)
+                                   unsigned tex_src_types,
+                                   uint32_t sampler_dims)
 {
    bool changed = false;
    nir_function_impl *impl = nir_shader_get_entrypoint(nir);
@@ -444,10 +445,9 @@ nir_fold_16bit_sampler_conversions(nir_shader *nir,
          if (tex->is_sparse)
             continue;
 
-         /* Skip because AMD doesn't support 16-bit types with these. */
          if ((tex->op == nir_texop_txs ||
               tex->op == nir_texop_query_levels) ||
-             tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE)
+             !(sampler_dims & BITFIELD_BIT(tex->sampler_dim)))
             continue;
 
          /* Optimize source operands. */

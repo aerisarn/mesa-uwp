@@ -166,9 +166,13 @@ static void si_late_optimize_16bit_samplers(struct si_screen *sscreen, nir_shade
    };
    bool changed = false;
 
+   uint32_t sampler_dims = UINT32_MAX;
+   /* Skip because AMD doesn't support 16-bit types with these. */
+   sampler_dims &= ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE);
    NIR_PASS(changed, nir, nir_fold_16bit_sampler_conversions,
             (1 << nir_tex_src_coord) |
-            (has_g16 ? 1 << nir_tex_src_ddx : 0));
+            (has_g16 ? 1 << nir_tex_src_ddx : 0),
+            sampler_dims);
    NIR_PASS(changed, nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    if (changed) {

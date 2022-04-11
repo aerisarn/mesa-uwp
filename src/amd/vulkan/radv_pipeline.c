@@ -4485,10 +4485,13 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
          }
          if (((stages[i].nir->info.bit_sizes_int | stages[i].nir->info.bit_sizes_float) & 16) &&
              device->physical_device->rad_info.chip_class >= GFX9) {
+            uint32_t sampler_dims = UINT32_MAX;
+            /* Skip because AMD doesn't support 16-bit types with these. */
+            sampler_dims &= ~BITFIELD_BIT(GLSL_SAMPLER_DIM_CUBE);
             // TODO: also optimize the tex srcs. see radeonSI for reference */
             /* Skip if there are potentially conflicting rounding modes */
             if (!nir_has_any_rounding_mode_enabled(stages[i].nir->info.float_controls_execution_mode))
-               NIR_PASS_V(stages[i].nir, nir_fold_16bit_sampler_conversions, 0);
+               NIR_PASS_V(stages[i].nir, nir_fold_16bit_sampler_conversions, 0, sampler_dims);
 
             NIR_PASS_V(stages[i].nir, nir_opt_vectorize, opt_vectorize_callback, NULL);
           }
