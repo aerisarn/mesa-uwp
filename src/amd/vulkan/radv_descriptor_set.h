@@ -95,7 +95,6 @@ struct radv_pipeline_layout {
    struct vk_object_base base;
    struct {
       struct radv_descriptor_set_layout *layout;
-      uint32_t size;
       uint32_t dynamic_offset_start;
    } set[MAX_SETS];
 
