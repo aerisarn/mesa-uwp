@@ -1280,11 +1280,11 @@ choose_pdev(struct zink_screen *screen)
    assert(pdev_count > 0);
 
    VkPhysicalDeviceProperties *props = &screen->info.props;
+   bool cpu = debug_get_bool_option("LIBGL_ALWAYS_SOFTWARE", false);
    for (i = 0; i < pdev_count; ++i) {
       vkGetPhysicalDeviceProperties(pdevs[i], props);
 
-      char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE");
-      if (use_lavapipe) {
+      if (cpu) {
          if (props->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
             screen->pdev = pdevs[i];
             screen->info.device_version = props->apiVersion;
@@ -1301,6 +1301,8 @@ choose_pdev(struct zink_screen *screen)
       }
    }
    free(pdevs);
+   if (cpu && !screen->pdev)
+      return true;
 
    /* runtime version is the lesser of the instance version and device version */
    screen->vk_version = MIN2(screen->info.device_version, screen->instance_info.loader_version);
@@ -2092,6 +2094,11 @@ init_driver_workarounds(struct zink_screen *screen)
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
+   if (getenv("ZINK_USE_LAVAPIPE")) {
+      mesa_loge("ZINK_USE_LAVAPIPE is obsolete. Use LIBGL_ALWAYS_SOFTWARE\n");
+      return NULL;
+   }
+
    struct zink_screen *screen = rzalloc(NULL, struct zink_screen);
    if (!screen)
       return NULL;

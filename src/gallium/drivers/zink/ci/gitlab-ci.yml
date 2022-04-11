@@ -3,7 +3,7 @@
     - .zink-rules
   variables:
     MESA_LOADER_DRIVER_OVERRIDE: "zink"
-    ZINK_USE_LAVAPIPE: "true"
+    LIBGL_ALWAYS_SOFTWARE: "true"
     LVP_POISON_MEMORY: "1"
     GPU_VERSION: zink-lvp
     FLAKES_CHANNEL: "#zink-ci"
