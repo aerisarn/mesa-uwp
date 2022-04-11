@@ -15,10 +15,6 @@ KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
 
-#6231
-spec@arb_gl_spirv@execution@ssbo@unsized-array,Fail
-spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
-
 #4562
 dEQP-GLES31.functional.image_load_store.3d.load_store.r32f_single_layer,Fail
 dEQP-GLES31.functional.image_load_store.3d.load_store.r32i_single_layer,Fail
@@ -203,9 +199,23 @@ dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.7,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.6,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.points.6,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.triangles.6,Fail
+
+# cubes are hard #6270
+spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() cube,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture() cube,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture() cubearray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture() cubearrayshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture() cubeshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) cubeshadow,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cube,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubearray,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubeshadow,Fail
+spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb cube,Fail
+
 glx@extension string sanity,Fail
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_no_error@no error,Fail
+glx@glx_arb_create_context_robustness@invalid reset notification strategy,Fail
 glx@glx-copy-sub-buffer,Fail
 glx@glx-copy-sub-buffer samples=2,Fail
 glx@glx-copy-sub-buffer samples=4,Fail
@@ -229,6 +239,7 @@ glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
+spec@arb_viewport_array@display-list,Fail
 shaders@glsl-fs-pointcoord,Fail
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
@@ -355,7 +366,67 @@ spec@arb_sample_shading@interpolate-at-sample-position 2,Fail
 spec@arb_sample_shading@interpolate-at-sample-position 4,Fail
 spec@arb_sample_shading@interpolate-at-sample-position 6,Fail
 spec@arb_sample_shading@interpolate-at-sample-position 8,Fail
-spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
+
+# broken multisampling state handling: #6302
+spec@arb_sample_shading@samplemask 2,Fail
+spec@arb_sample_shading@samplemask 2 all,Fail
+spec@arb_sample_shading@samplemask 2 all@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2 all@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2 all@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2 all@noms partition,Fail
+spec@arb_sample_shading@samplemask 2 all@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 2@noms partition,Fail
+spec@arb_sample_shading@samplemask 2@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4,Fail
+spec@arb_sample_shading@samplemask 4 all,Fail
+spec@arb_sample_shading@samplemask 4 all@0.250000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4 all@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4 all@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4 all@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4 all@noms partition,Fail
+spec@arb_sample_shading@samplemask 4 all@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4@0.250000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 4@noms partition,Fail
+spec@arb_sample_shading@samplemask 4@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6,Fail
+spec@arb_sample_shading@samplemask 6 all,Fail
+spec@arb_sample_shading@samplemask 6 all@0.125000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6 all@0.250000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6 all@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6 all@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6 all@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6 all@noms partition,Fail
+spec@arb_sample_shading@samplemask 6 all@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6@0.125000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6@0.250000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 6@noms partition,Fail
+spec@arb_sample_shading@samplemask 6@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8,Fail
+spec@arb_sample_shading@samplemask 8 all,Fail
+spec@arb_sample_shading@samplemask 8 all@0.125000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8 all@0.250000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8 all@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8 all@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8 all@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8 all@noms partition,Fail
+spec@arb_sample_shading@samplemask 8 all@sample mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8@0.125000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8@0.250000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8@0.500000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8@1.000000 mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8@noms mask_in_one,Fail
+spec@arb_sample_shading@samplemask 8@noms partition,Fail
+spec@arb_sample_shading@samplemask 8@sample mask_in_one,Fail
+
 spec@arb_shader_clock@execution@clock2x32,Fail
 spec@arb_shader_clock@execution@clock,Fail
 spec@arb_shader_image_load_store@layer,Fail
@@ -384,7 +455,6 @@ spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled@GL_COMPRE
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGBA- swizzled- border color only,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled@GL_COMPRESSED_RGB- swizzled- border color only,Fail
-spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-shadow,Fail
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY16F_ARB,Fail
 spec@arb_texture_float@fbo-blending-formats@GL_INTENSITY32F_ARB,Fail
@@ -437,10 +507,6 @@ spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled@GL_RG8UI- swizzled-
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance,Fail
-spec@egl_ext_device_base@conformance@configless_tests,Fail
-spec@egl_ext_device_base@conformance,Fail
-spec@egl_ext_device_base@conformance@pbuffer_tests,Fail
-spec@egl_ext_device_base@conformance@surfaceless_tests,Fail
 spec@egl_ext_protected_content@conformance,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
@@ -459,42 +525,23 @@ spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 2,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 4,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 6,Fail
 spec@ext_framebuffer_multisample@draw-buffers-alpha-to-one 8,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 color linear,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 stencil,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 color linear,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 stencil,Fail
-spec@ext_framebuffer_multisample@multisample-blit 6 color linear,Fail
-spec@ext_framebuffer_multisample@multisample-blit 6 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 6 stencil,Fail
-spec@ext_framebuffer_multisample@multisample-blit 8 color linear,Fail
-spec@ext_framebuffer_multisample@multisample-blit 8 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 8 stencil,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth-computed combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 2 depth single,Fail
-spec@ext_framebuffer_multisample@no-color 2 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 2 stencil single,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth-computed combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 4 depth single,Fail
-spec@ext_framebuffer_multisample@no-color 4 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 4 stencil single,Fail
-spec@ext_framebuffer_multisample@no-color 6 depth combined,Fail
-spec@ext_framebuffer_multisample@no-color 6 depth-computed combined,Fail
-spec@ext_framebuffer_multisample@no-color 6 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 6 depth single,Fail
-spec@ext_framebuffer_multisample@no-color 6 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 6 stencil single,Fail
-spec@ext_framebuffer_multisample@no-color 8 depth combined,Fail
-spec@ext_framebuffer_multisample@no-color 8 depth-computed combined,Fail
-spec@ext_framebuffer_multisample@no-color 8 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 8 depth single,Fail
-spec@ext_framebuffer_multisample@no-color 8 stencil combined,Fail
-spec@ext_framebuffer_multisample@no-color 8 stencil single,Fail
+spec@ext_framebuffer_multisample@enable-flag,Fail
+spec@ext_framebuffer_multisample@interpolation 2 centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 2 centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 2 non-centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 2 non-centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 4 centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 4 centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 4 non-centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 4 non-centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 6 centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 6 centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 6 non-centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 6 non-centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 8 centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 8 centroid-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 8 non-centroid-deriv-disabled,Fail
+spec@ext_framebuffer_multisample@interpolation 8 non-centroid-disabled,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 2,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 4,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-one 6,Fail
@@ -714,7 +761,6 @@ spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@pbo@test_polygon_stip,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl 3.0@clearbuffer-depth-cs-probe,Fail
-spec@!opengl 3.0@sampler-cube-shadow,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-first,Fail
@@ -722,663 +768,3 @@ spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
-
-## radv? hello?
-spec@arb_copy_image@arb_copy_image-formats --samples=2,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16I/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16UI/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R16_SNORM/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R32F/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8I/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8I/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8I/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8UI/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8UI/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8UI/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8_SNORM/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8_SNORM/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_R8_SNORM/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16I/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16UI/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG16_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32F/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32I/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG32UI/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8I/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8UI/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RG8_SNORM/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16I/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16I/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16I/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16UI/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16UI/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16UI/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16_SNORM/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16_SNORM/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB16_SNORM/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB32F/Destination: GL_RGB32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB32F/Destination: GL_RGB32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB32I/Destination: GL_RGB32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB32I/Destination: GL_RGB32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB32UI/Destination: GL_RGB32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB32UI/Destination: GL_RGB32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8I/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8I/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8I/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8UI/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8UI/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8UI/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8_SNORM/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8_SNORM/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGB8_SNORM/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16I/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16UI/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA32F/Destination: GL_RGBA32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA32F/Destination: GL_RGBA32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA32I/Destination: GL_RGBA32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA32I/Destination: GL_RGBA32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA32UI/Destination: GL_RGBA32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA32UI/Destination: GL_RGBA32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8I/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8UI/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=2@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16I/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16UI/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R16_SNORM/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R32F/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8I/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8I/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8I/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8UI/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8UI/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8UI/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8_SNORM/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8_SNORM/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_R8_SNORM/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16I/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16UI/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG16_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32F/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32I/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG32UI/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8I/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8UI/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RG8_SNORM/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16I/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16I/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16I/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16UI/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16UI/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16UI/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16_SNORM/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16_SNORM/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB16_SNORM/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB32F/Destination: GL_RGB32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB32F/Destination: GL_RGB32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB32I/Destination: GL_RGB32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB32I/Destination: GL_RGB32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB32UI/Destination: GL_RGB32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB32UI/Destination: GL_RGB32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8I/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8I/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8I/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8UI/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8UI/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8UI/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8_SNORM/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8_SNORM/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGB8_SNORM/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16I/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16UI/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA32F/Destination: GL_RGBA32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA32F/Destination: GL_RGBA32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA32I/Destination: GL_RGBA32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA32I/Destination: GL_RGBA32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA32UI/Destination: GL_RGBA32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA32UI/Destination: GL_RGBA32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8I/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8UI/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=4@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16I/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16UI/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R16_SNORM/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R32F/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8I/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8I/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8I/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8UI/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8UI/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8UI/Destination: GL_R8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8_SNORM/Destination: GL_R8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8_SNORM/Destination: GL_R8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_R8_SNORM/Destination: GL_R8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16I/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16UI/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG16_SNORM/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32F/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32F/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32F/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32F/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32F/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32F/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32I/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32I/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32I/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32I/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32I/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32I/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32UI/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32UI/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32UI/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32UI/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32UI/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG32UI/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8I/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8UI/Destination: GL_RG8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_R16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_R16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_R16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_R16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_RG8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_RG8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RG8_SNORM/Destination: GL_RG8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16I/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16I/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16I/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16UI/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16UI/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16UI/Destination: GL_RGB16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16_SNORM/Destination: GL_RGB16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16_SNORM/Destination: GL_RGB16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB16_SNORM/Destination: GL_RGB16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB32F/Destination: GL_RGB32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB32F/Destination: GL_RGB32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB32I/Destination: GL_RGB32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB32I/Destination: GL_RGB32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB32UI/Destination: GL_RGB32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB32UI/Destination: GL_RGB32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8I/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8I/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8I/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8UI/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8UI/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8UI/Destination: GL_RGB8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8_SNORM/Destination: GL_RGB8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8_SNORM/Destination: GL_RGB8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGB8_SNORM/Destination: GL_RGB8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16I/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16I/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16I/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16I/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16I/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16I/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16UI/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16UI/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16UI/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16UI/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16UI/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16UI/Destination: GL_RGBA16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16_SNORM/Destination: GL_RG32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16_SNORM/Destination: GL_RG32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16_SNORM/Destination: GL_RG32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA16_SNORM/Destination: GL_RGBA16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA32F/Destination: GL_RGBA32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA32F/Destination: GL_RGBA32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA32I/Destination: GL_RGBA32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA32I/Destination: GL_RGBA32UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA32UI/Destination: GL_RGBA32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA32UI/Destination: GL_RGBA32I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RGBA8UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8I/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8UI/Destination: GL_RGBA8_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_R32F,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RG16,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RG16I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RG16UI,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RG16_SNORM,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8I,Fail
-spec@arb_copy_image@arb_copy_image-formats --samples=8@Source: GL_RGBA8_SNORM/Destination: GL_RGBA8UI,Fail
-
