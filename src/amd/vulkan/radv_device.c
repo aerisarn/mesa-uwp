@@ -6106,15 +6106,7 @@ radv_tex_bordercolor(VkBorderColor bcolor)
 static unsigned
 radv_tex_aniso_filter(unsigned filter)
 {
-   if (filter < 2)
-      return 0;
-   if (filter < 4)
-      return 1;
-   if (filter < 8)
-      return 2;
-   if (filter < 16)
-      return 3;
-   return 4;
+   return MIN2(util_logbase2(filter), 4);
 }
 
 static unsigned
