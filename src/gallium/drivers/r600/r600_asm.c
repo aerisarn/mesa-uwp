@@ -1152,17 +1152,17 @@ static int r600_bytecode_alloc_kcache_lines(struct r600_bytecode *bc,
 	return 0;
 }
 
-static int insert_nop_r6xx(struct r600_bytecode *bc)
+static int insert_nop_r6xx(struct r600_bytecode *bc, int max_slots)
 {
 	struct r600_bytecode_alu alu;
 	int r, i;
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < max_slots; i++) {
 		memset(&alu, 0, sizeof(alu));
 		alu.op = ALU_OP0_NOP;
-		alu.src[0].chan = i;
-		alu.dst.chan = i;
-		alu.last = (i == 3);
+		alu.src[0].chan = i & 3;
+		alu.dst.chan = i & 3;
+		alu.last = (i == max_slots - 1);
 		r = r600_bytecode_add_alu(bc, &alu);
 		if (r)
 			return r;
@@ -1354,10 +1354,16 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 		bc->cf_last->prev2_bs_head = bc->cf_last->prev_bs_head;
 		bc->cf_last->prev_bs_head = bc->cf_last->curr_bs_head;
 		bc->cf_last->curr_bs_head = NULL;
-	}
 
-	if (nalu->dst.rel && bc->r6xx_nop_after_rel_dst)
-		insert_nop_r6xx(bc);
+		if (bc->r6xx_nop_after_rel_dst) {
+			for (int i = 0; i < max_slots; ++i) {
+				if (slots[i] && slots[i]->dst.rel) {
+					insert_nop_r6xx(bc, max_slots);
+					break;
+				}
+			}
+		}
+	}
 
 	/* Might need to insert spill write ops after current clause */
 	if (nalu->last && bc->n_pending_outputs) {
