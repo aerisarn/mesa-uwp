@@ -6,15 +6,19 @@ use std::ptr;
 
 pub struct PipeResource {
     pipe: *mut pipe_resource,
+    pub is_user: bool,
 }
 
 impl PipeResource {
-    pub fn new(res: *mut pipe_resource) -> Option<Self> {
+    pub fn new(res: *mut pipe_resource, is_user: bool) -> Option<Self> {
         if res.is_null() {
             return None;
         }
 
-        Some(Self { pipe: res })
+        Some(Self {
+            pipe: res,
+            is_user: is_user,
+        })
     }
 
     pub(super) fn pipe(&self) -> *mut pipe_resource {

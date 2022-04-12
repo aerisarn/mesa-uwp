@@ -1591,7 +1591,6 @@ pub fn enqueue_map_buffer(
             evs,
             event,
             block,
-            // we don't really have anything to do here?
             Box::new(move |q, ctx| {
                 cloned.set(b.map_buffer(q, Some(ctx), offset, size));
                 Ok(())
@@ -1600,17 +1599,17 @@ pub fn enqueue_map_buffer(
 
         ptr.get()
     } else {
+        let ptr = b.map_buffer(&q, None, offset, size);
         create_and_queue(
-            q.clone(),
+            q,
             CL_COMMAND_MAP_BUFFER,
             evs,
             event,
             block,
-            // we don't really have anything to do here?
-            Box::new(|_, _| Ok(())),
+            Box::new(move |q, ctx| b.sync_shadow_buffer(q, ctx, true)),
         )?;
 
-        b.map_buffer(&q, None, offset, size)
+        ptr
     }
 
     // TODO
@@ -2072,24 +2071,25 @@ pub fn enqueue_map_image(
         *image_slice_pitch = res.2;
         res.0
     } else {
-        create_and_queue(
-            q.clone(),
-            CL_COMMAND_MAP_IMAGE,
-            evs,
-            event,
-            block,
-            // we don't really have anything to do here?
-            Box::new(|_, _| Ok(())),
-        )?;
-
-        i.map_image(
+        let ptr = i.map_image(
             &q,
             None,
             &origin,
             &region,
             unsafe { image_row_pitch.as_mut().unwrap() },
             image_slice_pitch,
-        )
+        );
+
+        create_and_queue(
+            q.clone(),
+            CL_COMMAND_MAP_IMAGE,
+            evs,
+            event,
+            block,
+            Box::new(move |q, ctx| i.sync_shadow_image(q, ctx, true)),
+        )?;
+
+        ptr
     }
 
     //• CL_INVALID_VALUE if region being mapped given by (origin, origin + region) is out of bounds or if values specified in map_flags are not valid.
@@ -2131,10 +2131,7 @@ pub fn enqueue_unmap_mem_object(
         evs,
         event,
         false,
-        Box::new(move |q, ctx| {
-            m.unmap(q, ctx, mapped_ptr);
-            Ok(())
-        }),
+        Box::new(move |q, ctx| m.unmap(q, ctx, mapped_ptr)),
     )
 }
 

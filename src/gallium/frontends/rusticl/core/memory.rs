@@ -70,6 +70,7 @@ pub trait CLImageDescInfo {
     fn bx(&self) -> CLResult<pipe_box>;
     fn row_pitch(&self) -> CLResult<u32>;
     fn slice_pitch(&self) -> CLResult<u32>;
+    fn size(&self) -> CLVec<usize>;
 
     fn dims(&self) -> u8 {
         self.type_info().0
@@ -115,30 +116,29 @@ impl CLImageDescInfo for cl_image_desc {
         res
     }
 
-    fn bx(&self) -> CLResult<pipe_box> {
+    fn size(&self) -> CLVec<usize> {
         let mut depth = if self.is_array() {
             self.image_array_size
-                .try_into()
-                .map_err(|_| CL_OUT_OF_HOST_MEMORY)?
         } else {
             self.image_depth
-                .try_into()
-                .map_err(|_| CL_OUT_OF_HOST_MEMORY)?
         };
 
         let height = cmp::max(self.image_height, 1);
         depth = cmp::max(depth, 1);
 
+        CLVec::new([self.image_width, height, depth])
+    }
+
+    fn bx(&self) -> CLResult<pipe_box> {
+        let size = self.size();
+
         Ok(pipe_box {
             x: 0,
             y: 0,
             z: 0,
-            width: self
-                .image_width
-                .try_into()
-                .map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
-            height: height.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
-            depth: depth,
+            width: size[0].try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
+            height: size[1].try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
+            depth: size[2].try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
         })
     }
 
@@ -225,12 +225,8 @@ impl Mem {
             println!("host ptr semantics not implemented!");
         }
 
-        let buffer = if bit_check(flags, CL_MEM_USE_HOST_PTR) {
-            context.create_buffer_from_user(size, host_ptr)
-        } else {
-            assert_eq!(bit_check(flags, CL_MEM_COPY_HOST_PTR), !host_ptr.is_null());
-            context.create_buffer(size, host_ptr)
-        }?;
+        let buffer =
+            context.create_buffer(size, host_ptr, bit_check(flags, CL_MEM_COPY_HOST_PTR))?;
 
         let host_ptr = if bit_check(flags, CL_MEM_USE_HOST_PTR) {
             host_ptr
@@ -316,12 +312,12 @@ impl Mem {
             image_desc.image_array_size = 1;
         }
 
-        let texture = if bit_check(flags, CL_MEM_USE_HOST_PTR) {
-            context.create_texture_from_user(&image_desc, image_format, host_ptr)
-        } else {
-            assert_eq!(bit_check(flags, CL_MEM_COPY_HOST_PTR), !host_ptr.is_null());
-            context.create_texture(&image_desc, image_format, host_ptr)
-        }?;
+        let texture = context.create_texture(
+            &image_desc,
+            image_format,
+            host_ptr,
+            bit_check(flags, CL_MEM_COPY_HOST_PTR),
+        )?;
 
         let host_ptr = if bit_check(flags, CL_MEM_USE_HOST_PTR) {
             host_ptr
@@ -441,6 +437,11 @@ impl Mem {
         } else {
             self
         }
+    }
+
+    fn has_user_shadow_buffer(&self, d: &Device) -> CLResult<bool> {
+        let r = self.get_res()?.get(d).unwrap();
+        Ok(!r.is_user && bit_check(self.flags, CL_MEM_USE_HOST_PTR))
     }
 
     pub fn read_to_user(
@@ -743,6 +744,54 @@ impl Mem {
         Ok(())
     }
 
+    // TODO: only sync on unmap when memory is mapped for writing
+    pub fn sync_shadow_buffer(&self, q: &Arc<Queue>, ctx: &PipeContext, map: bool) -> CLResult<()> {
+        if self.has_user_shadow_buffer(&q.device)? {
+            if map {
+                self.read_to_user(q, ctx, 0, self.host_ptr, self.size)
+            } else {
+                self.write_from_user(q, ctx, 0, self.host_ptr, self.size)
+            }
+        } else {
+            Ok(())
+        }
+    }
+
+    // TODO: only sync on unmap when memory is mapped for writing
+    pub fn sync_shadow_image(&self, q: &Arc<Queue>, ctx: &PipeContext, map: bool) -> CLResult<()> {
+        if self.has_user_shadow_buffer(&q.device)? {
+            if map {
+                self.read_to_user_rect(
+                    self.host_ptr,
+                    q,
+                    ctx,
+                    &self.image_desc.size(),
+                    &CLVec::default(),
+                    0,
+                    0,
+                    &CLVec::default(),
+                    self.image_desc.image_row_pitch,
+                    self.image_desc.image_slice_pitch,
+                )
+            } else {
+                self.write_from_user_rect(
+                    self.host_ptr,
+                    q,
+                    ctx,
+                    &self.image_desc.size(),
+                    &CLVec::default(),
+                    self.image_desc.image_row_pitch,
+                    self.image_desc.image_slice_pitch,
+                    &CLVec::default(),
+                    self.image_desc.image_row_pitch,
+                    self.image_desc.image_slice_pitch,
+                )
+            }
+        } else {
+            Ok(())
+        }
+    }
+
     fn map<'a>(
         &self,
         q: &Arc<Queue>,
@@ -776,8 +825,19 @@ impl Mem {
         assert!(self.is_buffer());
 
         let mut lock = self.maps.lock().unwrap();
-        let tx = self.map(q, ctx, &mut lock)?;
-        let ptr = unsafe { tx.ptr().add(offset) };
+        let ptr = if self.has_user_shadow_buffer(&q.device)? {
+            // copy to the host_ptr if we are blocking
+            if let Some(ctx) = ctx {
+                self.sync_shadow_buffer(q, ctx, true)?;
+            }
+
+            self.host_ptr
+        } else {
+            let tx = self.map(q, ctx, &mut lock)?;
+            tx.ptr()
+        };
+
+        let ptr = unsafe { ptr.add(offset) };
 
         if let Some(e) = lock.maps.get_mut(&ptr) {
             *e += 1;
@@ -800,12 +860,29 @@ impl Mem {
         assert!(!self.is_buffer());
 
         let mut lock = self.maps.lock().unwrap();
-        let tx = self.map(q, ctx, &mut lock)?;
 
-        *row_pitch = tx.row_pitch() as usize;
-        *slice_pitch = tx.slice_pitch() as usize;
+        // we might have a host_ptr shadow buffer
+        let ptr = if self.has_user_shadow_buffer(&q.device)? {
+            *row_pitch = self.image_desc.image_row_pitch;
+            *slice_pitch = self.image_desc.image_slice_pitch;
+
+            // copy to the host_ptr if we are blocking
+            if let Some(ctx) = ctx {
+                self.sync_shadow_image(q, ctx, true)?;
+            }
+
+            self.host_ptr
+        } else {
+            let tx = self.map(q, ctx, &mut lock)?;
+
+            *row_pitch = tx.row_pitch() as usize;
+            *slice_pitch = tx.slice_pitch() as usize;
+
+            tx.ptr()
+        };
+
         let ptr = unsafe {
-            tx.ptr().add(
+            ptr.add(
                 *origin
                     * [
                         self.image_format.pixel_size().unwrap() as usize,
@@ -828,12 +905,12 @@ impl Mem {
         self.maps.lock().unwrap().maps.contains_key(&ptr)
     }
 
-    pub fn unmap(&self, q: &Arc<Queue>, ctx: &PipeContext, ptr: *mut c_void) {
+    pub fn unmap(&self, q: &Arc<Queue>, ctx: &PipeContext, ptr: *mut c_void) -> CLResult<()> {
         let mut lock = self.maps.lock().unwrap();
         let e = lock.maps.get_mut(&ptr).unwrap();
 
         if *e == 0 {
-            return;
+            return Ok(());
         }
 
         *e -= 1;
@@ -841,12 +918,25 @@ impl Mem {
             lock.maps.remove(&ptr);
         }
 
-        let tx = lock.tx.get_mut(&q.device).unwrap();
-        tx.1 -= 1;
-
-        if tx.1 == 0 {
-            lock.tx.remove(&q.device).unwrap().0.with_ctx(ctx);
+        // TODO: only sync on last unmap and only mapped ranges
+        if self.has_user_shadow_buffer(&q.device)? {
+            if self.is_buffer() {
+                self.sync_shadow_buffer(q, ctx, false)?;
+            } else {
+                self.sync_shadow_image(q, ctx, false)?;
+            }
         }
+
+        // shadow buffers don't get a tx option bound
+        if let Some(tx) = lock.tx.get_mut(&q.device) {
+            tx.1 -= 1;
+
+            if tx.1 == 0 {
+                lock.tx.remove(&q.device).unwrap().0.with_ctx(ctx);
+            }
+        }
+
+        Ok(())
     }
 }
 
