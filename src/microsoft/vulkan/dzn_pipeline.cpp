@@ -54,6 +54,7 @@ dzn_pipeline_compile_shader(dzn_device *device,
                             const VkPipelineShaderStageCreateInfo *stage_info,
                             enum dxil_spirv_yz_flip_mode yz_flip_mode,
                             uint16_t y_flip_mask, uint16_t z_flip_mask,
+                            bool force_sample_rate_shading,
                             D3D12_SHADER_BYTECODE *slot)
 {
    dzn_instance *instance =
@@ -121,6 +122,7 @@ dzn_pipeline_compile_shader(dzn_device *device,
          .z_mask = z_flip_mask,
       },
       .read_only_images_as_srvs = true,
+      .force_sample_rate_shading = force_sample_rate_shading,
    };
 
    struct dxil_spirv_debug_options dbg_opts = {
@@ -392,9 +394,7 @@ dzn_graphics_pipeline_translate_ms(dzn_graphics_pipeline *pipeline,
    const VkPipelineMultisampleStateCreateInfo *in_ms =
       in_rast->rasterizerDiscardEnable ? NULL : in->pMultisampleState;
 
-   /* TODO: sampleShadingEnable, minSampleShading,
-    *       alphaToOneEnable
-    */
+   /* TODO: minSampleShading (use VRS), alphaToOneEnable */
    out->SampleDesc.Count = in_ms ? in_ms->rasterizationSamples : 1;
    out->SampleDesc.Quality = 0;
    out->SampleMask = in_ms && in_ms->pSampleMask ?
@@ -890,9 +890,15 @@ dzn_graphics_pipeline_create(dzn_device *device,
          }
       }
 
+      bool force_sample_rate_shading =
+         pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_FRAGMENT_BIT &&
+         pCreateInfo->pMultisampleState &&
+         pCreateInfo->pMultisampleState->sampleShadingEnable;
+
       ret = dzn_pipeline_compile_shader(device, pAllocator,
                                         layout, &pCreateInfo->pStages[i],
-                                        yz_flip_mode, y_flip_mask, z_flip_mask, slot);
+                                        yz_flip_mode, y_flip_mask, z_flip_mask,
+                                        force_sample_rate_shading, slot);
       if (ret != VK_SUCCESS)
          goto out;
    }
@@ -1067,7 +1073,7 @@ dzn_compute_pipeline_create(dzn_device *device,
       dzn_pipeline_compile_shader(device, pAllocator, layout,
                                   &pCreateInfo->stage,
                                   DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
-                                  &desc.CS);
+                                  false, &desc.CS);
    if (ret != VK_SUCCESS)
       goto out;
 
