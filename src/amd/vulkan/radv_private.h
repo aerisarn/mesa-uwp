@@ -2636,6 +2636,7 @@ struct radv_query_pool {
    char *ptr;
    VkQueryType type;
    uint32_t pipeline_stats_mask;
+   bool uses_gds; /* For NGG GS on GFX10+ */
 };
 
 bool radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs);
