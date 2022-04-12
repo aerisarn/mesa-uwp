@@ -144,7 +144,7 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_PRINTF_BUFFER_SIZE => cl_prop::<usize>(dev.printf_buffer_size()),
             // TODO
             CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(0),
-            CL_DEVICE_OPENCL_C_FEATURES => cl_prop::<Vec<cl_name_version>>(Vec::new()),
+            CL_DEVICE_OPENCL_C_FEATURES => cl_prop::<&Vec<cl_name_version>>(&dev.clc_features),
             CL_DEVICE_OPENCL_C_VERSION => {
                 cl_prop::<String>(format!("OpenCL C {} ", dev.clc_version.api_str()))
             }
