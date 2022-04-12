@@ -28,123 +28,6 @@
 #include "util/u_memory.h"
 #include "util/u_string.h"
 
-static VkRenderPass
-create_render_pass(struct zink_screen *screen, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
-{
-
-   VkAttachmentReference color_refs[PIPE_MAX_COLOR_BUFS], zs_ref;
-   VkAttachmentReference input_attachments[PIPE_MAX_COLOR_BUFS];
-   VkAttachmentDescription attachments[PIPE_MAX_COLOR_BUFS + 1];
-   VkPipelineStageFlags dep_pipeline = 0;
-   VkAccessFlags dep_access = 0;
-   unsigned input_count = 0;
-
-   pstate->num_attachments = state->num_cbufs;
-   for (int i = 0; i < state->num_cbufs; i++) {
-      struct zink_rt_attrib *rt = state->rts + i;
-      attachments[i].flags = 0;
-      pstate->attachments[i].format = attachments[i].format = rt->format;
-      pstate->attachments[i].samples = attachments[i].samples = rt->samples;
-      attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR :
-                                                state->swapchain_init && rt->swapchain ?
-                                                VK_ATTACHMENT_LOAD_OP_DONT_CARE :
-                                                VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
-      VkImageLayout layout = rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      attachments[i].initialLayout = layout;
-      attachments[i].finalLayout = layout;
-      color_refs[i].attachment = i;
-      color_refs[i].layout = layout;
-      dep_pipeline |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      if (rt->fbfetch) {
-         memcpy(&input_attachments[input_count++], &color_refs[i], sizeof(VkAttachmentReference));
-         dep_pipeline |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-         dep_access |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-      }
-      dep_access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      if (attachments[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
-         dep_access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-   }
-
-   int num_attachments = state->num_cbufs;
-   if (state->have_zsbuf)  {
-      struct zink_rt_attrib *rt = state->rts + state->num_cbufs;
-      bool has_clear = rt->clear_color || rt->clear_stencil;
-      VkImageLayout layout;
-      if (rt->mixed_zs)
-         layout = VK_IMAGE_LAYOUT_GENERAL;
-      else
-         layout = rt->needs_write || has_clear ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-      attachments[num_attachments].flags = 0;
-      pstate->attachments[num_attachments].format = attachments[num_attachments].format = rt->format;
-      pstate->attachments[num_attachments].samples = attachments[num_attachments].samples = rt->samples;
-      attachments[num_attachments].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-      if (rt->mixed_zs)
-         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_NONE;
-      else
-         attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
-      attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-      /* if layout changes are ever handled here, need VkAttachmentSampleLocationsEXT */
-      attachments[num_attachments].initialLayout = layout;
-      attachments[num_attachments].finalLayout = layout;
-
-      dep_pipeline |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      if (layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-         dep_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-      if (attachments[num_attachments].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
-          attachments[num_attachments].stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
-         dep_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-
-      zs_ref.attachment = num_attachments++;
-      zs_ref.layout = layout;
-      pstate->num_attachments++;
-   }
-
-   if (!screen->info.have_KHR_synchronization2)
-      dep_pipeline = MAX2(dep_pipeline, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-   VkSubpassDependency deps[] = {
-      {VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT},
-      {0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT}
-   };
-   VkPipelineStageFlags input_dep = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-   //if (zs_fbfetch) input_dep |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-   VkAccessFlags input_access = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-   //if (zs_fbfetch) input_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-   VkSubpassDependency fbfetch_deps[] = {
-      {VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT},
-      {0, 0, dep_pipeline, input_dep, dep_access, input_access, VK_DEPENDENCY_BY_REGION_BIT},
-      {0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT}
-   };
-
-   VkSubpassDescription subpass = {0};
-   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-   subpass.colorAttachmentCount = state->num_cbufs;
-   subpass.pColorAttachments = color_refs;
-   subpass.pDepthStencilAttachment = state->have_zsbuf ? &zs_ref : NULL;
-   subpass.inputAttachmentCount = input_count;
-   subpass.pInputAttachments = input_attachments;
-
-   VkRenderPassCreateInfo rpci = {0};
-   rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-   rpci.attachmentCount = num_attachments;
-   rpci.pAttachments = attachments;
-   rpci.subpassCount = 1;
-   rpci.pSubpasses = &subpass;
-   rpci.dependencyCount = input_count ? 3 : 2;
-   rpci.pDependencies = input_count ? fbfetch_deps : deps;
-
-   VkRenderPass render_pass;
-   if (VKSCR(CreateRenderPass)(screen->dev, &rpci, NULL, &render_pass) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkCreateRenderPass failed");
-      return VK_NULL_HANDLE;
-   }
-
-   return render_pass;
-}
 
 static VkRenderPass
 create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *state, struct zink_render_pass_pipeline_state *pstate)
@@ -333,8 +216,7 @@ zink_create_render_pass(struct zink_screen *screen,
    if (!rp)
       goto fail;
 
-   rp->render_pass = screen->vk_version >= VK_MAKE_VERSION(1,2,0) ?
-                     create_render_pass2(screen, state, pstate) : create_render_pass(screen, state, pstate);
+   rp->render_pass = create_render_pass2(screen, state, pstate);
    if (!rp->render_pass)
       goto fail;
    memcpy(&rp->state, state, sizeof(struct zink_render_pass_state));
