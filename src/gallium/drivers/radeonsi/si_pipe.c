@@ -26,8 +26,6 @@
 #include "si_pipe.h"
 
 #include "driver_ddebug/dd_util.h"
-#include "gallium/winsys/amdgpu/drm/amdgpu_public.h"
-#include "gallium/winsys/radeon/drm/radeon_drm_public.h"
 #include "radeon_uvd.h"
 #include "si_compute.h"
 #include "si_public.h"

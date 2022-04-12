@@ -27,7 +27,6 @@
 
 #include "radeon_drm_bo.h"
 #include "radeon_drm_cs.h"
-#include "radeon_drm_public.h"
 
 #include "util/os_file.h"
 #include "util/u_cpu_detect.h"

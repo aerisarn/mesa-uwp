@@ -28,7 +28,6 @@
  */
 
 #include "amdgpu_cs.h"
-#include "amdgpu_public.h"
 
 #include "util/os_file.h"
 #include "util/os_misc.h"
