@@ -3026,7 +3026,9 @@ iris_set_global_binding(struct pipe_context *ctx,
          util_range_add(&res->base.b, &res->valid_buffer_range,
                         0, res->base.b.width0);
 
-         uint64_t addr = res->bo->address + res->offset;
+         uint64_t addr = 0;
+         memcpy(&addr, handles[i], sizeof(addr));
+         addr += res->bo->address + res->offset;
          memcpy(handles[i], &addr, sizeof(addr));
       } else {
          pipe_resource_reference(&ice->state.global_bindings[start_slot + i],
