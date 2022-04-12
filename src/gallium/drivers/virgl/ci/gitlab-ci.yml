@@ -3,8 +3,10 @@
     - .test-gl
     - .virgl-rules
   variables:
-    GALLIUM_DRIVER: virpipe
     GALLIVM_PERF: nopt
+    FLAKES_CHANNEL: "#virgl-ci"
+  script:
+    - xvfb-run --server-args='-noreset' sh -c "GALLIUM_DRIVER=virpipe install/deqp-runner.sh"
 
 virpipe-on-gl:
   extends:
