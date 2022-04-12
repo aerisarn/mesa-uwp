@@ -1540,12 +1540,13 @@ unbreak_bos(nir_shader *shader)
       u_foreach_bit(slot, ssbo_used) {
          char buf[64];
          snprintf(buf, sizeof(buf), "ssbo_slot_%u", slot);
-         if (ssbo_sizes[slot])
+         bool use_runtime = ssbo_sizes[slot] && max_ssbo_size;
+         if (use_runtime)
             fields[1].type = unsized;
          else
             fields[1].type = NULL;
          nir_variable *var = nir_variable_create(shader, nir_var_mem_ssbo,
-                                                 glsl_struct_type(fields, 1 + !!ssbo_sizes[slot], "struct", false), buf);
+                                                 glsl_struct_type(fields, 1 + use_runtime, "struct", false), buf);
          var->interface_type = var->type;
          var->data.driver_location = slot;
       }
