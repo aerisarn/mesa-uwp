@@ -33,6 +33,10 @@
 #include "agx_opcodes.h"
 #include "agx_minifloat.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum agx_dbg {
    AGX_DBG_MSGS        = BITFIELD_BIT(0),
    AGX_DBG_SHADERS     = BITFIELD_BIT(1),
@@ -665,5 +669,9 @@ unsigned agx_write_registers(agx_instr *I, unsigned d);
 
 void agx_compute_liveness(agx_context *ctx);
 void agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I);
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
 
 #endif
