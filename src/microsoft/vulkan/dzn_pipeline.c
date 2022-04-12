@@ -778,9 +778,13 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                              const VkAllocationCallbacks *pAllocator,
                              VkPipeline *out)
 {
+   const VkPipelineRenderingCreateInfo *ri = (const VkPipelineRenderingCreateInfo *)
+      vk_find_struct_const(pCreateInfo, PIPELINE_RENDERING_CREATE_INFO);
    VK_FROM_HANDLE(dzn_render_pass, pass, pCreateInfo->renderPass);
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
-   const struct dzn_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
+   uint32_t color_count = 0;
+   VkFormat color_fmts[MAX_RTS] = { 0 };
+   VkFormat zs_fmt = VK_FORMAT_UNDEFINED;
    uint32_t stage_mask = 0;
    VkResult ret;
    HRESULT hres = 0;
@@ -841,26 +845,46 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    dzn_graphics_pipeline_translate_zsa(pipeline, &desc, pCreateInfo);
    dzn_graphics_pipeline_translate_blend(pipeline, &desc, pCreateInfo);
 
-   desc.NumRenderTargets = subpass->color_count;
-   for (uint32_t i = 0; i < subpass->color_count; i++) {
-      uint32_t idx = subpass->colors[i].idx;
+   if (pass) {
+      const struct dzn_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
+      color_count = subpass->color_count;
+      for (uint32_t i = 0; i < subpass->color_count; i++) {
+         uint32_t idx = subpass->colors[i].idx;
 
-      if (idx == VK_ATTACHMENT_UNUSED) continue;
+         if (idx == VK_ATTACHMENT_UNUSED) continue;
 
-      const struct dzn_attachment *attachment = &pass->attachments[idx];
+         const struct dzn_attachment *attachment = &pass->attachments[idx];
 
+         color_fmts[i] = attachment->format;
+      }
+
+      if (subpass->zs.idx != VK_ATTACHMENT_UNUSED) {
+         const struct dzn_attachment *attachment =
+            &pass->attachments[subpass->zs.idx];
+
+	 zs_fmt = attachment->format;
+      }
+   } else if (ri) {
+      color_count = ri->colorAttachmentCount;
+      memcpy(color_fmts, ri->pColorAttachmentFormats,
+             sizeof(color_fmts[0]) * color_count);
+      if (ri->depthAttachmentFormat != VK_FORMAT_UNDEFINED)
+         zs_fmt = ri->depthAttachmentFormat;
+      else if (ri->stencilAttachmentFormat != VK_FORMAT_UNDEFINED)
+         zs_fmt = ri->stencilAttachmentFormat;
+   }
+
+   desc.NumRenderTargets = color_count;
+   for (uint32_t i = 0; i < color_count; i++) {
       desc.RTVFormats[i] =
-         dzn_image_get_dxgi_format(attachment->format,
+         dzn_image_get_dxgi_format(color_fmts[i],
                                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_COLOR_BIT);
    }
 
-   if (subpass->zs.idx != VK_ATTACHMENT_UNUSED) {
-      const struct dzn_attachment *attachment =
-         &pass->attachments[subpass->zs.idx];
-
+   if (zs_fmt != VK_FORMAT_UNDEFINED) {
       desc.DSVFormat =
-         dzn_image_get_dxgi_format(attachment->format,
+         dzn_image_get_dxgi_format(zs_fmt,
                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_DEPTH_BIT |
                                    VK_IMAGE_ASPECT_STENCIL_BIT);

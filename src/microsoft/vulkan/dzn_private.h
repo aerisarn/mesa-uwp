@@ -458,11 +458,32 @@ struct dzn_cmd_buffer_push_constant_state {
    uint32_t values[MAX_PUSH_CONSTANT_DWORDS];
 };
 
+struct dzn_rendering_attachment {
+   struct dzn_image_view *iview;
+   VkImageLayout layout;
+   struct {
+      VkResolveModeFlagBits mode;
+      struct dzn_image_view *iview;
+      VkImageLayout layout;
+   } resolve;
+   VkAttachmentStoreOp store_op;
+};
+
+#define MAX_RTS D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT
+
 struct dzn_cmd_buffer_state {
    const struct dzn_pipeline *pipeline;
    struct dzn_descriptor_heap *heaps[NUM_POOL_TYPES];
    struct {
+      VkRenderingFlags flags;
       D3D12_RECT area;
+      uint32_t layer_count;
+      uint32_t view_mask;
+      struct {
+         uint32_t color_count;
+         struct dzn_rendering_attachment colors[MAX_RTS];
+         struct dzn_rendering_attachment depth, stencil;
+      } attachments;
       struct dzn_render_pass *pass;
       uint32_t subpass;
       struct dzn_framebuffer *framebuffer;
@@ -664,7 +685,6 @@ struct dzn_descriptor_update_template {
    const struct dzn_descriptor_update_template_entry *entries;
 };
 
-#define MAX_RTS D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT
 #define MAX_INPUT_ATTACHMENTS 4
 
 struct dzn_subpass {
