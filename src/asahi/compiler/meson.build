@@ -76,3 +76,22 @@ libasahi_compiler = static_library(
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )
+
+if with_tests
+  test(
+    'agx_tests',
+    executable(
+      'agx_tests',
+      files(
+         'test/test-optimizer.cpp',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src, inc_mesa],
+      dependencies: [idep_gtest, idep_nir, idep_agx_opcodes_h, idep_agx_builder_h],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+    protocol : gtest_test_protocol,
+  )
+endif
