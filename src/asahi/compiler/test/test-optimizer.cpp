@@ -72,3 +72,41 @@ TEST_F(Optimizer, FusedFABSNEG)
    CASE(agx_fmul_to(b, wz, wx, agx_fmov(b, agx_neg(agx_abs(wx)))),
         agx_fmul_to(b, wz, wx, agx_neg(agx_abs(wx))));
 }
+
+TEST_F(Optimizer, Copyprop)
+{
+   CASE(agx_fmul_to(b, wz, wx, agx_mov(b, wy)), agx_fmul_to(b, wz, wx, wy));
+   CASE(agx_fmul_to(b, wz, agx_mov(b, wx), agx_mov(b, wy)), agx_fmul_to(b, wz, wx, wy));
+}
+
+TEST_F(Optimizer, InlineHazards)
+{
+   NEGCASE(agx_p_combine_to(b, wx, agx_mov_imm(b, AGX_SIZE_32, 0), wy, wz, wz));
+}
+
+TEST_F(Optimizer, CopypropRespectsAbsNeg)
+{
+   CASE(agx_fadd_to(b, wz, agx_abs(agx_mov(b, wx)), wy),
+        agx_fadd_to(b, wz, agx_abs(wx), wy));
+
+   CASE(agx_fadd_to(b, wz, agx_neg(agx_mov(b, wx)), wy),
+        agx_fadd_to(b, wz, agx_neg(wx), wy));
+
+   CASE(agx_fadd_to(b, wz, agx_neg(agx_abs(agx_mov(b, wx))), wy),
+        agx_fadd_to(b, wz, agx_neg(agx_abs(wx)), wy));
+}
+
+TEST_F(Optimizer, IntCopyprop)
+{
+   CASE(agx_xor_to(b, wz, agx_mov(b, wx), wy),
+        agx_xor_to(b, wz, wx, wy));
+}
+
+TEST_F(Optimizer, IntCopypropDoesntConvert)
+{
+   NEGCASE({
+         agx_index cvt = agx_temp(b->shader, AGX_SIZE_32);
+         agx_mov_to(b, cvt, hx);
+         agx_xor_to(b, wz, cvt, wy);
+   });
+}

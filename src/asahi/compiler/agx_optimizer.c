@@ -152,6 +152,29 @@ agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
 }
 
 static void
+agx_optimizer_copyprop(agx_instr **defs, agx_instr *I, unsigned srcs)
+{
+   for (unsigned s = 0; s < srcs; ++s) {
+      agx_index src = I->src[s];
+      if (src.type != AGX_INDEX_NORMAL) continue;
+
+      agx_instr *def = defs[src.value];
+      if (def->op != AGX_OPCODE_MOV) continue;
+
+      /* At the moment, not all instructions support size conversions. Notably
+       * RA pseudo instructions don't handle size conversions. This should be
+       * refined in the future.
+       */
+      if (def->src[0].size != src.size) continue;
+
+      /* Immediate inlining happens elsewhere */
+      if (def->src[0].type == AGX_INDEX_IMMEDIATE) continue;
+
+      I->src[s] = agx_replace_index(src, def->src[0]);
+   }
+}
+
+static void
 agx_optimizer_forward(agx_context *ctx)
 {
    agx_instr **defs = calloc(ctx->alloc, sizeof(*defs));
@@ -163,6 +186,9 @@ agx_optimizer_forward(agx_context *ctx)
          if (I->dest[d].type == AGX_INDEX_NORMAL)
             defs[I->dest[d].value] = I;
       }
+
+      /* Optimize moves */
+      agx_optimizer_copyprop(defs, I, info.nr_srcs);
 
       /* Propagate fmov down */
       if (info.is_float)
