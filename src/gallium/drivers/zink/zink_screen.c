@@ -2202,15 +2202,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!os_get_total_physical_memory(&screen->total_mem))
       goto fail;
 
-   switch (screen->info.driver_props.driverID) {
-   case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
-      screen->max_fences = 500;
-      break;
-   default:
-      screen->max_fences = 5000;
-      break;
-   }
-
    if (!zink_screen_init_semaphore(screen)) {
       mesa_loge("zink: failed to create timeline semaphore");
       goto fail;

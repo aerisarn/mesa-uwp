@@ -332,8 +332,8 @@ post_submit(void *data, void *gdata, int thread_index)
       if (bs->ctx->reset.reset)
          bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
       screen->device_lost = true;
-   } else if (bs->ctx->batch_states_count > screen->max_fences) {
-      zink_screen_timeline_wait(screen, bs->fence.batch_id - (screen->max_fences / 2), PIPE_TIMEOUT_INFINITE);
+   } else if (bs->ctx->batch_states_count > 5000) {
+      zink_screen_timeline_wait(screen, bs->fence.batch_id - 2500, PIPE_TIMEOUT_INFINITE);
    }
 }
 
