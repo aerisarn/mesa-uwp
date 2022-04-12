@@ -153,6 +153,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
                A6XX_SP_CS_CTRL_REG0_FULLREGFOOTPRINT(i->max_reg + 1) |
                A6XX_SP_CS_CTRL_REG0_HALFREGFOOTPRINT(i->max_half_reg + 1) |
                COND(v->mergedregs, A6XX_SP_CS_CTRL_REG0_MERGEDREGS) |
+               COND(ir3_kernel->info.early_preamble, A6XX_SP_CS_CTRL_REG0_EARLYPREAMBLE) |
                A6XX_SP_CS_CTRL_REG0_BRANCHSTACK(ir3_shader_branchstack_hw(v)));
 
    OUT_PKT4(ring, REG_A6XX_SP_CS_UNKNOWN_A9B1, 1);
