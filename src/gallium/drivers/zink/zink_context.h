@@ -215,8 +215,6 @@ struct zink_context {
    struct zink_image_view image_views[PIPE_SHADER_TYPES][ZINK_MAX_SHADER_IMAGES];
 
    struct pipe_framebuffer_state fb_state;
-   struct zink_framebuffer *(*get_framebuffer)(struct zink_context*);
-   void (*init_framebuffer)(struct zink_screen *screen, struct zink_framebuffer *fb, struct zink_render_pass *rp);
    struct hash_table framebuffer_cache;
 
    struct zink_vertex_elements_state *element_state;
