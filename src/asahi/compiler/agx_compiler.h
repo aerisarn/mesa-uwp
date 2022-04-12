@@ -98,9 +98,9 @@ static inline agx_index
 agx_get_index(unsigned value, enum agx_size size)
 {
    return (agx_index) {
-      .type = AGX_INDEX_NORMAL,
       .value = value,
-      .size = size
+      .size = size,
+      .type = AGX_INDEX_NORMAL,
    };
 }
 
@@ -108,9 +108,9 @@ static inline agx_index
 agx_immediate(uint16_t imm)
 {
    return (agx_index) {
-      .type = AGX_INDEX_IMMEDIATE,
       .value = imm,
-      .size = AGX_SIZE_32
+      .size = AGX_SIZE_32,
+      .type = AGX_INDEX_IMMEDIATE,
    };
 }
 
@@ -126,9 +126,9 @@ static inline agx_index
 agx_register(uint8_t imm, enum agx_size size)
 {
    return (agx_index) {
-      .type = AGX_INDEX_REGISTER,
       .value = imm,
-      .size = size
+      .size = size,
+      .type = AGX_INDEX_REGISTER,
    };
 }
 
@@ -136,9 +136,9 @@ static inline agx_index
 agx_nir_register(unsigned imm, enum agx_size size)
 {
    return (agx_index) {
-      .type = AGX_INDEX_NIR_REGISTER,
       .value = imm,
-      .size = size
+      .size = size,
+      .type = AGX_INDEX_NIR_REGISTER,
    };
 }
 
@@ -147,9 +147,9 @@ static inline agx_index
 agx_uniform(uint8_t imm, enum agx_size size)
 {
    return (agx_index) {
-      .type = AGX_INDEX_UNIFORM,
       .value = imm,
-      .size = size
+      .size = size,
+      .type = AGX_INDEX_UNIFORM,
    };
 }
 
