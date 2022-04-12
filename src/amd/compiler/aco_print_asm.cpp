@@ -305,6 +305,23 @@ disasm_instr(chip_class chip, LLVMDisasmContextRef disasm, uint32_t* binary, uns
       size = l / 4;
    }
 
+   /* See: https://github.com/GPUOpen-Tools/radeon_gpu_profiler/issues/65 and
+    * https://github.com/llvm/llvm-project/issues/38652
+    */
+   if (chip == GFX9 && (binary[pos] & 0xfc024000) == 0xc0024000) {
+      /* SMEM with IMM=1 and SOE=1: LLVM ignores SOFFSET */
+      size_t len = strlen(outline);
+      snprintf(outline + len, outline_size - len, ", s%u", binary[pos + 1] >> 25);
+   } else if (chip >= GFX10 && (binary[pos] & 0xfc000000) == 0xf4000000 &&
+              (binary[pos + 1] & 0xfe000000) != 0xfa000000) {
+      /* SMEM non-NULL SOFFSET: LLVM ignores OFFSET */
+      uint32_t offset = binary[pos + 1] & 0x1fffff;
+      if (offset) {
+         size_t len = strlen(outline);
+         snprintf(outline + len, outline_size - len, ", 0x%x", offset);
+      }
+   }
+
    return std::make_pair(invalid, size);
 }
 

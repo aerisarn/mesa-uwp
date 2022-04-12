@@ -266,3 +266,28 @@ BEGIN_TEST(assembler.v_add3_clamp)
       finish_assembler_test();
    }
 END_TEST
+
+BEGIN_TEST(assembler.smem_offset)
+   for (unsigned i = GFX9; i <= GFX10; i++) {
+      if (!setup_cs(NULL, (chip_class)i))
+         continue;
+
+      Definition dst(PhysReg(7), s1);
+      Operand sbase(PhysReg(6), s2);
+      Operand offset(PhysReg(5), s1);
+
+      //~gfx9>> s_load_dword s7, s[6:7], s5 ; c00001c3 00000005
+      //~gfx10>> s_load_dword s7, s[6:7], s5 ; f40001c3 0a000000
+      bld.smem(aco_opcode::s_load_dword, dst, sbase, offset);
+      //~gfx9! s_load_dword s7, s[6:7], 0x42 ; c00201c3 00000042
+      //~gfx10! s_load_dword s7, s[6:7], 0x42 ; f40001c3 fa000042
+      bld.smem(aco_opcode::s_load_dword, dst, sbase, Operand::c32(0x42));
+      if (i >= GFX9) {
+         //~gfx9! s_load_dword s7, s[6:7], 0x42, s5 ; c00241c3 0a000042
+         //~gfx10! s_load_dword s7, s[6:7], s5, 0x42 ; f40001c3 0a000042
+         bld.smem(aco_opcode::s_load_dword, dst, sbase, Operand::c32(0x42), offset);
+      }
+
+      finish_assembler_test();
+   }
+END_TEST
