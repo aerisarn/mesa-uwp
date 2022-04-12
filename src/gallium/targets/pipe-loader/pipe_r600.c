@@ -2,5 +2,5 @@
 #include "target-helpers/drm_helper.h"
 #include "target-helpers/inline_debug_helper.h"
 #include "radeon/drm/radeon_drm_public.h"
-#include "radeonsi/radeon_winsys.h"
+#include "winsys/radeon_winsys.h"
 #include "r600/r600_public.h"

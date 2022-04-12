@@ -34,7 +34,7 @@
 
 #include <stdio.h>
 
-#include "radeonsi/radeon_winsys.h"
+#include "winsys/radeon_winsys.h"
 
 #include "util/disk_cache.h"
 #include "util/u_blitter.h"

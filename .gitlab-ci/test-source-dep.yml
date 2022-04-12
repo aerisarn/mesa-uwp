@@ -443,6 +443,7 @@
       when: on_success
     - changes: &radeonsi_file_list
       - src/gallium/drivers/radeonsi/**/*
+      - src/gallium/include/winsys/**/*
       - src/gallium/winsys/amdgpu/**/*
       - src/amd/*
       - src/amd/addrlib/**/*
