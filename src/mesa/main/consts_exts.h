@@ -309,7 +309,6 @@ struct gl_extensions
 struct gl_shader_compiler_options
 {
    /** Driver-selectable options: */
-   GLboolean EmitNoLoops;
    GLboolean EmitNoCont;                  /**< Emit CONT opcode? */
    GLboolean EmitNoMainReturn;            /**< Emit CONT/RET opcodes? */
    GLboolean EmitNoSat;                   /**< Emit SAT opcodes? */

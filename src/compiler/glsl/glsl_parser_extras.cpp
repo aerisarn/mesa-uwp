@@ -2420,7 +2420,7 @@ do_common_optimization(exec_list *ir, bool linked,
    OPT(do_rebalance_tree, ir);
    OPT(do_algebraic, ir, native_integers, options);
    OPT(do_lower_jumps, ir, true, true, options->EmitNoMainReturn,
-       options->EmitNoCont, options->EmitNoLoops);
+       options->EmitNoCont);
    OPT(do_vec_index_to_swizzle, ir);
    OPT(lower_vector_insert, ir, false);
    OPT(optimize_swizzles, ir);
@@ -2463,8 +2463,7 @@ do_common_optimization(exec_list *ir, bool linked,
              */
             loop_progress |= do_lower_jumps(ir, true, true,
                                             options->EmitNoMainReturn,
-                                            options->EmitNoCont,
-                                            options->EmitNoLoops);
+                                            options->EmitNoCont);
          }
          progress |= loop_progress;
       }
