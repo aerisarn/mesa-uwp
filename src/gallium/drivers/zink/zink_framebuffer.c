@@ -49,7 +49,7 @@ zink_destroy_framebuffer(struct zink_screen *screen,
 }
 
 void
-zink_init_framebuffer_imageless(struct zink_screen *screen, struct zink_framebuffer *fb, struct zink_render_pass *rp)
+zink_init_framebuffer(struct zink_screen *screen, struct zink_framebuffer *fb, struct zink_render_pass *rp)
 {
    VkFramebuffer ret;
 
@@ -144,7 +144,7 @@ zink_use_dummy_attachments(const struct zink_context *ctx)
 }
 
 struct zink_framebuffer *
-zink_get_framebuffer_imageless(struct zink_context *ctx)
+zink_get_framebuffer(struct zink_context *ctx)
 {
    assert(zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer);
 

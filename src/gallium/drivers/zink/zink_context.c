@@ -2128,7 +2128,7 @@ update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h)
     * always do get_framebuffer first to avoid deleting the same fb
     * we're about to use
     */
-   struct zink_framebuffer *fb = zink_get_framebuffer_imageless(ctx);
+   struct zink_framebuffer *fb = zink_get_framebuffer(ctx);
    ctx->fb_changed |= ctx->framebuffer != fb;
    ctx->framebuffer = fb;
 }
@@ -2192,7 +2192,7 @@ setup_framebuffer(struct zink_context *ctx)
    if (!ctx->fb_changed)
       return;
 
-   zink_init_framebuffer_imageless(screen, ctx->framebuffer, rp);
+   zink_init_framebuffer(screen, ctx->framebuffer, rp);
    ctx->fb_changed = false;
    ctx->gfx_pipeline_state.render_pass = rp;
 }
@@ -3857,7 +3857,7 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
       return;
 
    zink_batch_no_rp(ctx);
-   struct zink_framebuffer *fb = zink_get_framebuffer_imageless(ctx);
+   struct zink_framebuffer *fb = zink_get_framebuffer(ctx);
    ctx->fb_changed |= ctx->framebuffer != fb;
    ctx->framebuffer = fb;
 }
