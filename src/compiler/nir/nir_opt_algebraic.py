@@ -357,13 +357,6 @@ optimizations.extend([
    (('~flrp', a, 0.0, c), ('fadd', ('fmul', ('fneg', a), c), a)),
    (('ftrunc', a), ('bcsel', ('flt', a, 0.0), ('fneg', ('ffloor', ('fabs', a))), ('ffloor', ('fabs', a))), 'options->lower_ftrunc'),
 
-   # Approximate handling of fround_even for DX9 addressing from gallium nine on
-   # DX9-class hardware with no proper fround support.
-   (('fround_even', a), ('bcsel',
-                         ('feq', ('ffract', a), 0.5),
-                         ('fadd', ('ffloor', ('fadd', a, 0.5)), 1.0),
-                         ('ffloor', ('fadd', a, 0.5))), 'options->lower_fround_even'),
-
    (('ffloor', a), ('fsub', a, ('ffract', a)), 'options->lower_ffloor'),
    (('fadd', a, ('fneg', ('ffract', a))), ('ffloor', a), '!options->lower_ffloor'),
    (('ffract', a), ('fsub', a, ('ffloor', a)), 'options->lower_ffract'),
@@ -1385,6 +1378,8 @@ optimizations.extend([
    (('ffloor', 'a(is_integral)'), a),
    (('fceil', 'a(is_integral)'), a),
    (('ftrunc', 'a(is_integral)'), a),
+   (('fround_even', 'a(is_integral)'), a),
+
    # fract(x) = x - floor(x), so fract(NaN) = NaN
    (('~ffract', 'a(is_integral)'), 0.0),
    (('fabs', 'a(is_not_negative)'), a),
@@ -2611,6 +2606,15 @@ late_optimizations = [
    (('fdph', a, b), ('fdph_replicated', a, b), 'options->fdot_replicates'),
 
    (('~flrp', ('fadd(is_used_once)', a, b), ('fadd(is_used_once)', a, c), d), ('fadd', ('flrp', b, c, d), a)),
+
+   # Approximate handling of fround_even for DX9 addressing from gallium nine on
+   # DX9-class hardware with no proper fround support.  This is in
+   # late_optimizations so that the is_integral() opts in the main pass get a
+   # chance to eliminate the fround_even first.
+   (('fround_even', a), ('bcsel',
+                         ('feq', ('ffract', a), 0.5),
+                         ('fadd', ('ffloor', ('fadd', a, 0.5)), 1.0),
+                         ('ffloor', ('fadd', a, 0.5))), 'options->lower_fround_even'),
 
    # A similar operation could apply to any ffma(#a, b, #(-a/2)), but this
    # particular operation is common for expanding values stored in a texture
