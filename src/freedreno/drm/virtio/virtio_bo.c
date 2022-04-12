@@ -422,9 +422,12 @@ virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
       if (flags & (FD_BO_SHARED | FD_BO_SCANOUT)) {
          args.blob_flags = VIRTGPU_BLOB_FLAG_USE_CROSS_DEVICE |
                VIRTGPU_BLOB_FLAG_USE_SHAREABLE;
-      } else if (!(flags & FD_BO_NOMAP)) {
-         args.blob_flags = VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
       }
+
+      if (!(flags & FD_BO_NOMAP)) {
+         args.blob_flags |= VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
+      }
+
       args.blob_id = p_atomic_inc_return(&virtio_dev->next_blob_id);
       args.cmd = VOID2U64(&req);
       args.cmd_size = sizeof(req);
