@@ -110,7 +110,7 @@ public:
        * Unrolling the loop may convert that access into constant-indexing.
        *
        * Many drivers don't support particular kinds of variable indexing,
-       * and have to resort to using lower_variable_index_to_cond_assign to
+       * and have to resort to using nir_lower_indirect_derefs to
        * handle it.  This results in huge amounts of horrible code, so we'd
        * like to avoid that if possible.  Here, we just note that it will
        * happen.
