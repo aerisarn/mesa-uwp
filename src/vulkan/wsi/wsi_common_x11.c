@@ -29,6 +29,7 @@
 #include <xcb/shm.h>
 
 #include "util/macros.h"
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -914,7 +915,7 @@ struct x11_swapchain {
    uint64_t                                     send_sbc;
    uint64_t                                     last_present_msc;
    uint32_t                                     stamp;
-   int                                          sent_image_count;
+   atomic_int                                   sent_image_count;
 
    bool                                         has_present_queue;
    bool                                         has_acquire_queue;
