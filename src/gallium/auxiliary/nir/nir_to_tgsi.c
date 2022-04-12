@@ -3153,6 +3153,9 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
       NIR_PASS(progress, s, nir_opt_dead_cf);
       NIR_PASS(progress, s, nir_opt_cse);
       NIR_PASS(progress, s, nir_opt_find_array_copies);
+      NIR_PASS(progress, s, nir_opt_copy_prop_vars);
+      NIR_PASS(progress, s, nir_opt_dead_write_vars);
+
       NIR_PASS(progress, s, nir_opt_if, true);
       NIR_PASS(progress, s, nir_opt_peephole_select,
                control_flow_depth == 0 ? ~0 : 8, true, true);
@@ -3185,8 +3188,9 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
          .buffer_max = 0,
       };
       NIR_PASS(progress, s, nir_opt_offsets, &offset_options);
-
    } while (progress);
+
+   NIR_PASS_V(s, nir_lower_var_copies);
 }
 
 /* Scalarizes all 64-bit ALU ops.  Note that we only actually need to
