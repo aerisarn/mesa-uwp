@@ -165,7 +165,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clGetDeviceAndHostTimer: Some(cl_get_device_and_host_timer),
     clGetHostTimer: Some(cl_get_host_timer),
     clGetKernelSubGroupInfo: Some(cl_get_kernel_sub_group_info),
-    clSetDefaultDeviceCommandQueue: None,
+    clSetDefaultDeviceCommandQueue: Some(cl_set_default_device_command_queue),
     clSetProgramReleaseCallback: Some(cl_set_program_release_callback),
     clSetProgramSpecializationConstant: Some(cl_set_program_specialization_constant),
     clCreateBufferWithProperties: Some(cl_create_buffer_with_properties),
@@ -1594,11 +1594,13 @@ extern "C" fn cl_enqueue_barrier_with_wait_list(
 extern "C" fn cl_create_command_queue_with_properties(
     context: cl_context,
     device: cl_device_id,
-    _arg3: *const cl_queue_properties,
+    properties: *const cl_queue_properties,
     errcode_ret: *mut cl_int,
 ) -> cl_command_queue {
-    // TODO use own impl, this is enough to run the CL 3.0 CTS
-    match_obj!(create_command_queue(context, device, 0), errcode_ret)
+    match_obj!(
+        create_command_queue_with_properties(context, device, properties),
+        errcode_ret
+    )
 }
 
 extern "C" fn cl_create_pipe(
@@ -1787,6 +1789,18 @@ extern "C" fn cl_get_kernel_sub_group_info(
         param_value_size,
         param_value,
         param_value_size_ret,
+    ))
+}
+
+extern "C" fn cl_set_default_device_command_queue(
+    context: cl_context,
+    device: cl_device_id,
+    command_queue: cl_command_queue,
+) -> cl_int {
+    match_err!(set_default_device_command_queue(
+        context,
+        device,
+        command_queue,
     ))
 }
 

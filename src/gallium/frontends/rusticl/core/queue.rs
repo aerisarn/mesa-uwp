@@ -1,4 +1,4 @@
-extern crate mesa_rust;
+extern crate mesa_rust_util;
 extern crate rusticl_opencl_gen;
 
 use crate::api::icd::*;
@@ -7,6 +7,7 @@ use crate::core::device::*;
 use crate::core::event::*;
 use crate::impl_cl_type_trait;
 
+use self::mesa_rust_util::properties::*;
 use self::rusticl_opencl_gen::*;
 
 use std::sync::mpsc;
@@ -21,6 +22,7 @@ pub struct Queue {
     pub context: Arc<Context>,
     pub device: Arc<Device>,
     pub props: cl_command_queue_properties,
+    pub props_v2: Option<Properties<cl_queue_properties>>,
     pending: Mutex<Vec<Arc<Event>>>,
     _thrd: Option<JoinHandle<()>>,
     chan_in: mpsc::Sender<Vec<Arc<Event>>>,
@@ -33,6 +35,7 @@ impl Queue {
         context: Arc<Context>,
         device: Arc<Device>,
         props: cl_command_queue_properties,
+        props_v2: Option<Properties<cl_queue_properties>>,
     ) -> CLResult<Arc<Queue>> {
         // we assume that memory allocation is the only possible failure. Any other failure reason
         // should be detected earlier (e.g.: checking for CAPs).
@@ -43,6 +46,7 @@ impl Queue {
             context: context,
             device: device,
             props: props,
+            props_v2: props_v2,
             pending: Mutex::new(Vec::new()),
             _thrd: Some(
                 thread::Builder::new()

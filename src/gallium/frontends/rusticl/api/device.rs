@@ -262,3 +262,11 @@ pub fn get_host_timer(_device: cl_device_id, _host_timestamp: *mut cl_ulong) -> 
     // TODO: we could support it
     Err(CL_INVALID_OPERATION)
 }
+
+pub fn set_default_device_command_queue(
+    _context: cl_context,
+    _device: cl_device_id,
+    _command_queue: cl_command_queue,
+) -> CLResult<()> {
+    Err(CL_INVALID_OPERATION)
+}
