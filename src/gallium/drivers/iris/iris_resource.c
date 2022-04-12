@@ -1175,9 +1175,13 @@ iris_resource_from_user_memory(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   assert(templ->target == PIPE_BUFFER ||
-          templ->target == PIPE_TEXTURE_1D ||
-          templ->target == PIPE_TEXTURE_2D);
+   if (templ->target != PIPE_BUFFER &&
+       templ->target != PIPE_TEXTURE_1D &&
+       templ->target != PIPE_TEXTURE_2D)
+      return NULL;
+
+   if (templ->array_size > 1)
+      return NULL;
 
    size_t res_size = templ->width0;
    if (templ->target != PIPE_BUFFER) {
