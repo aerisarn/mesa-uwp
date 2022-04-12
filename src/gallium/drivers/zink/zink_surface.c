@@ -165,7 +165,6 @@ create_surface(struct pipe_context *pctx,
    surface->base.u.tex.first_layer = templ->u.tex.first_layer;
    surface->base.u.tex.last_layer = templ->u.tex.last_layer;
    surface->obj = zink_resource(pres)->obj;
-   util_dynarray_init(&surface->framebuffer_refs, NULL);
    util_dynarray_init(&surface->desc_set_refs.refs, NULL);
 
    init_surface_info(surface, res, ivci);
@@ -291,33 +290,6 @@ zink_create_surface(struct pipe_context *pctx,
    return &csurf->base;
 }
 
-/* framebuffers are owned by their surfaces, so each time a surface that's part of a cached fb
- * is destroyed, it has to unref all the framebuffers it's attached to in order to avoid leaking
- * all the framebuffers
- *
- * surfaces are always batch-tracked, so it is impossible for a framebuffer to be destroyed
- * while it is in use
- */
-static void
-surface_clear_fb_refs(struct zink_screen *screen, struct pipe_surface *psurface)
-{
-   struct zink_surface *surface = zink_surface(psurface);
-   util_dynarray_foreach(&surface->framebuffer_refs, struct zink_framebuffer*, fb_ref) {
-      struct zink_framebuffer *fb = *fb_ref;
-      for (unsigned i = 0; i < fb->state.num_attachments; i++) {
-         if (fb->surfaces[i] == psurface) {
-            simple_mtx_lock(&screen->framebuffer_mtx);
-            fb->surfaces[i] = NULL;
-            _mesa_hash_table_remove_key(&screen->framebuffer_cache, &fb->state);
-            zink_framebuffer_reference(screen, &fb, NULL);
-            simple_mtx_unlock(&screen->framebuffer_mtx);
-            break;
-         }
-      }
-   }
-   util_dynarray_fini(&surface->framebuffer_refs);
-}
-
 void
 zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
 {
@@ -337,7 +309,6 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
       simple_mtx_unlock(&res->surface_mtx);
    }
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
-   util_dynarray_fini(&surface->framebuffer_refs);
    if (surface->simage_view)
       VKSCR(DestroyImageView)(screen->dev, surface->simage_view, NULL);
    if (surface->is_swapchain) {
@@ -379,7 +350,6 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    struct hash_entry *new_entry = _mesa_hash_table_search_pre_hashed(&res->surface_cache, hash, &ivci);
    if (zink_batch_usage_exists(surface->batch_uses))
       zink_batch_reference_surface(&ctx->batch, surface);
-   surface_clear_fb_refs(screen, *psurface);
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
    if (new_entry) {
       /* reuse existing surface; old one will be cleaned up naturally */
