@@ -153,8 +153,12 @@ agx_ra(agx_context *ctx)
       }
    }
 
-   agx_foreach_block(ctx, block)
+   /* Assign registers in dominance-order. This coincides with source-order due
+    * to a NIR invariant, so we do not need special handling for this.
+    */
+   agx_foreach_block(ctx, block) {
       agx_ra_assign_local(block, ssa_to_reg, ncomps, ctx->max_register);
+   }
 
    /* TODO: Coalesce combines */
 
