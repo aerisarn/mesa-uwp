@@ -1115,8 +1115,16 @@ nir_lower_shader_calls(nir_shader *shader,
 
    /* Make N copies of our shader */
    nir_shader **resume_shaders = ralloc_array(mem_ctx, nir_shader *, num_calls);
-   for (unsigned i = 0; i < num_calls; i++)
+   for (unsigned i = 0; i < num_calls; i++) {
       resume_shaders[i] = nir_shader_clone(mem_ctx, shader);
+
+      /* Give them a recognizable name */
+      resume_shaders[i]->info.name =
+         ralloc_asprintf(mem_ctx, "%s%sresume_%u",
+                         shader->info.name ? shader->info.name : "",
+                         shader->info.name ? "-" : "",
+                         i);
+   }
 
    replace_resume_with_halt(shader, NULL);
    for (unsigned i = 0; i < num_calls; i++) {
