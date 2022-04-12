@@ -65,7 +65,29 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_b2i32: alu->op = nir_op_b2f32; break;
    case nir_op_i2f32: alu->op = nir_op_mov; break;
    case nir_op_u2f32: alu->op = nir_op_mov; break;
-   case nir_op_f2i32: alu->op = nir_op_ftrunc; break;
+
+   case nir_op_f2i32: {
+      alu->op = nir_op_ftrunc;
+
+      /* If the source was already integer, then we did't need to truncate and
+       * can switch it to a mov that can be copy-propagated away.
+       */
+      nir_alu_instr *src_alu = nir_src_as_alu_instr(alu->src[0].src);
+      if (src_alu) {
+         switch (src_alu->op) {
+         case nir_op_fround_even:
+         case nir_op_fceil:
+         case nir_op_ftrunc:
+         case nir_op_ffloor:
+            alu->op = nir_op_mov;
+            break;
+         default:
+            break;
+         }
+      }
+      break;
+   }
+
    case nir_op_f2u32: alu->op = nir_op_ffloor; break;
    case nir_op_i2b1: alu->op = nir_op_f2b1; break;
 
