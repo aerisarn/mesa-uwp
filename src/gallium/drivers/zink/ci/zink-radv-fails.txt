@@ -214,6 +214,19 @@ spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubearray,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubeshadow,Fail
 spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb cube,Fail
 
+# kopper
+glx@glx-multi-window-single-context,Crash
+glx@glx-tfp,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Crash
+spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fail
+
+# #6264
+spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-read,Crash
+spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
+
+# maybe color_write_enable related?
+spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag
+
 glx@extension string sanity,Fail
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
 glx@glx_arb_create_context_no_error@no error,Fail
@@ -332,6 +345,7 @@ spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec3-u64
 spec@arb_gpu_shader_int64@execution@conversion@vert-conversion-explicit-vec4-u64vec4,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr,Fail
 spec@arb_gpu_shader_int64@execution@fs-ishl-then-ishr-loop,Fail
+spec@arb_gl_spirv@execution@xfb@vs_block_array,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Aliased combinations,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation@Antialiased combinations,Fail
 spec@arb_point_parameters@arb_point_parameters-point-attenuation,Fail
