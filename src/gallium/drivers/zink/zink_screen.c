@@ -138,20 +138,6 @@ zink_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
    }
 }
 
-static uint32_t
-hash_framebuffer_state(const void *key)
-{
-   struct zink_framebuffer_state* s = (struct zink_framebuffer_state*)key;
-   return _mesa_hash_data(key, offsetof(struct zink_framebuffer_state, attachments) + sizeof(s->attachments[0]) * s->num_attachments);
-}
-
-static bool
-equals_framebuffer_state(const void *a, const void *b)
-{
-   struct zink_framebuffer_state *s = (struct zink_framebuffer_state*)a;
-   return memcmp(a, b, offsetof(struct zink_framebuffer_state, attachments) + sizeof(s->attachments[0]) * s->num_attachments) == 0;
-}
-
 static VkDeviceSize
 get_video_mem(struct zink_screen *screen)
 {
@@ -1220,14 +1206,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       VKSCR(DestroyDebugUtilsMessengerEXT)(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
 
-   if (!screen->info.have_KHR_imageless_framebuffer) {
-      hash_table_foreach(&screen->framebuffer_cache, entry) {
-         struct zink_framebuffer* fb = (struct zink_framebuffer*)entry->data;
-         zink_destroy_framebuffer(screen, fb);
-      }
-      simple_mtx_destroy(&screen->framebuffer_mtx);
-   }
-
    u_transfer_helper_destroy(pscreen->transfer_helper);
 #ifdef ENABLE_SHADER_CACHE
    if (screen->disk_cache) {
@@ -2236,11 +2214,6 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       if (screen->info.mem_props.memoryHeaps[screen->info.mem_props.memoryTypes[vis_vram].heapIndex].size >
           screen->info.mem_props.memoryHeaps[screen->info.mem_props.memoryTypes[vram].heapIndex].size * 0.9)
          screen->resizable_bar = true;
-   }
-
-   if (!screen->info.have_KHR_imageless_framebuffer) {
-      simple_mtx_init(&screen->framebuffer_mtx, mtx_plain);
-      _mesa_hash_table_init(&screen->framebuffer_cache, screen, hash_framebuffer_state, equals_framebuffer_state);
    }
 
    simple_mtx_init(&screen->dt_lock, mtx_plain);

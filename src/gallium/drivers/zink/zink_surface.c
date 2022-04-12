@@ -336,8 +336,6 @@ zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
       _mesa_hash_table_remove(&res->surface_cache, he);
       simple_mtx_unlock(&res->surface_mtx);
    }
-   if (!screen->info.have_KHR_imageless_framebuffer)
-      surface_clear_fb_refs(screen, psurface);
    zink_descriptor_set_refs_clear(&surface->desc_set_refs, surface);
    util_dynarray_fini(&surface->framebuffer_refs);
    if (surface->simage_view)

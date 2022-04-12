@@ -139,16 +139,8 @@ zink_context_destroy(struct pipe_context *pctx)
       util_dynarray_fini(&ctx->di.bindless[i].resident);
    }
 
-   if (screen->info.have_KHR_imageless_framebuffer) {
-      hash_table_foreach(&ctx->framebuffer_cache, he)
-         zink_destroy_framebuffer(screen, he->data);
-   } else if (ctx->framebuffer) {
-      simple_mtx_lock(&screen->framebuffer_mtx);
-      struct hash_entry *entry = _mesa_hash_table_search(&screen->framebuffer_cache, &ctx->framebuffer->state);
-      if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL))
-         _mesa_hash_table_remove(&screen->framebuffer_cache, entry);
-      simple_mtx_unlock(&screen->framebuffer_mtx);
-   }
+   hash_table_foreach(&ctx->framebuffer_cache, he)
+      zink_destroy_framebuffer(screen, he->data);
 
    hash_table_foreach(ctx->render_pass_cache, he)
       zink_destroy_render_pass(screen, he->data);
@@ -2137,26 +2129,6 @@ update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h)
     * we're about to use
     */
    struct zink_framebuffer *fb = ctx->get_framebuffer(ctx);
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   if (ctx->framebuffer && !screen->info.have_KHR_imageless_framebuffer) {
-      simple_mtx_lock(&screen->framebuffer_mtx);
-      struct hash_entry *he = _mesa_hash_table_search(&screen->framebuffer_cache, &ctx->framebuffer->state);
-      if (ctx->framebuffer && !ctx->framebuffer->state.num_attachments) {
-         /* if this has no attachments then its lifetime has ended */
-         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
-         he = NULL;
-         /* ensure an unflushed fb doesn't get destroyed by deferring it */
-         util_dynarray_append(&ctx->batch.state->dead_framebuffers, struct zink_framebuffer*, ctx->framebuffer);
-         ctx->framebuffer = NULL;
-      }
-      /* a framebuffer loses 1 ref every time we unset it;
-       * we do NOT add refs here, as the ref has already been added in
-       * get_framebuffer()
-       */
-      if (zink_framebuffer_reference(screen, &ctx->framebuffer, NULL) && he)
-         _mesa_hash_table_remove(&screen->framebuffer_cache, he);
-      simple_mtx_unlock(&screen->framebuffer_mtx);
-   }
    ctx->fb_changed |= ctx->framebuffer != fb;
    ctx->framebuffer = fb;
 }
@@ -2355,36 +2327,34 @@ begin_render_pass(struct zink_context *ctx)
    infos.attachmentCount = ctx->framebuffer->state.num_attachments;
    infos.pAttachments = att;
    prep_fb_attachments(ctx, att);
-   if (zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer) {
 #ifndef NDEBUG
-      const unsigned cresolve_offset = ctx->fb_state.nr_cbufs + !!ctx->fb_state.zsbuf;
-      for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
-         if (ctx->fb_state.cbufs[i]) {
-            struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
-            struct zink_surface *transient = zink_transient_surface(ctx->fb_state.cbufs[i]);
-            if (surf->base.format == ctx->fb_state.cbufs[i]->format) {
-               if (transient) {
-                  assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
-                  assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[cresolve_offset].usage);
-               } else {
-                  assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
-               }
+   const unsigned cresolve_offset = ctx->fb_state.nr_cbufs + !!ctx->fb_state.zsbuf;
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      if (ctx->fb_state.cbufs[i]) {
+         struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
+         struct zink_surface *transient = zink_transient_surface(ctx->fb_state.cbufs[i]);
+         if (surf->base.format == ctx->fb_state.cbufs[i]->format) {
+            if (transient) {
+               assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
+               assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[cresolve_offset].usage);
+            } else {
+               assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[i].usage);
             }
          }
       }
-      if (ctx->fb_state.zsbuf) {
-         struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
-         struct zink_surface *transient = zink_transient_surface(ctx->fb_state.zsbuf);
-         if (transient) {
-            assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[ctx->fb_state.nr_cbufs].usage);
-            assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[cresolve_offset].usage);
-         } else {
-            assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[ctx->fb_state.nr_cbufs].usage);
-         }
-      }
-#endif
-      rpbi.pNext = &infos;
    }
+   if (ctx->fb_state.zsbuf) {
+      struct zink_surface *surf = zink_csurface(ctx->fb_state.zsbuf);
+      struct zink_surface *transient = zink_transient_surface(ctx->fb_state.zsbuf);
+      if (transient) {
+         assert(zink_resource(transient->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[ctx->fb_state.nr_cbufs].usage);
+         assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[cresolve_offset].usage);
+      } else {
+         assert(zink_resource(surf->base.texture)->obj->vkusage == ctx->framebuffer->state.infos[ctx->fb_state.nr_cbufs].usage);
+      }
+   }
+#endif
+   rpbi.pNext = &infos;
 
    VKCTX(CmdBeginRenderPass)(batch->state->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
@@ -3887,11 +3857,9 @@ zink_rebind_framebuffer(struct zink_context *ctx, struct zink_resource *res)
       return;
 
    zink_batch_no_rp(ctx);
-   if (zink_screen(ctx->base.screen)->info.have_KHR_imageless_framebuffer) {
-      struct zink_framebuffer *fb = ctx->get_framebuffer(ctx);
-      ctx->fb_changed |= ctx->framebuffer != fb;
-      ctx->framebuffer = fb;
-   }
+   struct zink_framebuffer *fb = ctx->get_framebuffer(ctx);
+   ctx->fb_changed |= ctx->framebuffer != fb;
+   ctx->framebuffer = fb;
 }
 
 ALWAYS_INLINE static struct zink_resource *
@@ -4247,13 +4215,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.screen = pscreen;
    ctx->base.priv = priv;
 
-   if (screen->info.have_KHR_imageless_framebuffer) {
-      ctx->get_framebuffer = zink_get_framebuffer_imageless;
-      ctx->init_framebuffer = zink_init_framebuffer_imageless;
-   } else {
-      ctx->get_framebuffer = zink_get_framebuffer;
-      ctx->init_framebuffer = zink_init_framebuffer;
-   }
+   ctx->get_framebuffer = zink_get_framebuffer_imageless;
+   ctx->init_framebuffer = zink_init_framebuffer_imageless;
 
    ctx->base.destroy = zink_context_destroy;
    ctx->base.get_device_reset_status = zink_get_device_reset_status;
