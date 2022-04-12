@@ -50,6 +50,38 @@ int agx_debug = 0;
       fprintf(stderr, "%s:%d: "fmt, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
+/* Builds a 64-bit hash table key for an index */
+static uint64_t
+agx_index_to_key(agx_index idx)
+{
+   STATIC_ASSERT(sizeof(idx) <= sizeof(uint64_t));
+
+   uint64_t key = 0;
+   memcpy(&key, &idx, sizeof(idx));
+   return key;
+}
+
+/*
+ * Extract a single channel out of a vector source. This corresponds to the
+ * pseduo-instruction p_extract, which gets lowered to a move after
+ * register-allocation.
+ *
+ * However, if the vector was split (with p_split), we can use the split
+ * components directly, without emitting a machine instruction. This has
+ * advantages of RA, as the split can be optimized away.
+ */
+static agx_index
+agx_emit_extract(agx_builder *b, agx_index vec, unsigned channel)
+{
+   agx_index *components = _mesa_hash_table_u64_search(b->shader->allocated_vec,
+                                                       agx_index_to_key(vec));
+
+   if (components)
+      return components[channel];
+   else
+      return agx_p_extract(b, vec, channel);
+}
+
 static void
 agx_block_add_successor(agx_block *block, agx_block *successor)
 {
@@ -489,9 +521,9 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
 
    agx_index idx = agx_src_index(&src.src);
 
-   /* We only deal with scalars, emit p_extract if needed */
+   /* We only deal with scalars, extract a single scalar if needed */
    if (comps > 1)
-      return agx_p_extract(b, idx, channel);
+      return agx_emit_extract(b, idx, channel);
    else
       return idx;
 }
@@ -1566,6 +1598,8 @@ agx_compile_shader_nir(nir_shader *nir,
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal) {
       nir_print_shader(nir, stdout);
    }
+
+   ctx->allocated_vec = _mesa_hash_table_u64_create(ctx);
 
    nir_foreach_function(func, nir) {
       if (!func->impl)

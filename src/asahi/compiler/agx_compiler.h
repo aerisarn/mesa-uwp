@@ -411,6 +411,10 @@ typedef struct {
    agx_block *break_block;
    agx_block *after_block;
 
+   /* During instruction selection, map from vector agx_index to its scalar
+    * components, populated by a split. */
+   struct hash_table_u64 *allocated_vec;
+
    /* Stats for shader-db */
    unsigned loop_count;
    unsigned spills;
