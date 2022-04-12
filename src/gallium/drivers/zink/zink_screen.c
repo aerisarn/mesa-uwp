@@ -333,6 +333,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    struct zink_screen *screen = zink_screen(pscreen);
 
    switch (param) {
+   case PIPE_CAP_TEXRECT:
+      return 0;
    case PIPE_CAP_ANISOTROPIC_FILTER:
       return screen->info.feats.features.samplerAnisotropy;
    case PIPE_CAP_EMULATE_NONFIXED_PRIMITIVE_RESTART:
