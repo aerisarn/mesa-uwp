@@ -38,6 +38,7 @@ Here's a list of those requirements:
 
   * `VK_KHR_maintenance1`_
   * ``VK_KHR_create_renderpass2``
+  * ``VK_KHR_imageless_framebuffer``
   * ``VK_KHR_timeline_semaphore``
   * `VK_EXT_custom_border_color`_
   * `VK_EXT_provoking_vertex`_

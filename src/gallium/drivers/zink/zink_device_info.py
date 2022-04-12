@@ -131,7 +131,7 @@ EXTENSIONS = [
     Extension("VK_KHR_imageless_framebuffer",
         alias="imgless",
         features=True,
-        conditions=["$feats.imagelessFramebuffer"]),
+        required=True),
     Extension("VK_EXT_robustness2",
         alias="rb2",
         properties=True,
