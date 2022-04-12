@@ -480,12 +480,12 @@ for (bit = bit_size - 1; bit >= 0; bit--) {
    if ((src0 & (1u << bit)) != 0)
       break;
 }
-dst = (unsigned)(31 - bit);
+dst = (unsigned)(bit_size - bit - 1);
 """)
 
 unop("ifind_msb", tint32, """
 dst = -1;
-for (int bit = 31; bit >= 0; bit--) {
+for (int bit = bit_size - 1; bit >= 0; bit--) {
    /* If src0 < 0, we're looking for the first 0 bit.
     * if src0 >= 0, we're looking for the first 1 bit.
     */
