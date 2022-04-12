@@ -4748,6 +4748,23 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    /* Determine if shaders uses NGG before linking because it's needed for some NIR pass. */
    radv_fill_shader_info_ngg(pipeline, pipeline_key, stages);
 
+   bool pipeline_has_ngg = (stages[MESA_SHADER_VERTEX].nir && stages[MESA_SHADER_VERTEX].info.is_ngg) ||
+                           (stages[MESA_SHADER_TESS_EVAL].nir && stages[MESA_SHADER_TESS_EVAL].info.is_ngg) ||
+                           (stages[MESA_SHADER_MESH].nir && stages[MESA_SHADER_MESH].info.is_ngg);
+
+   if (stages[MESA_SHADER_GEOMETRY].nir) {
+      unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
+
+      if (pipeline_has_ngg && !radv_use_llvm_for_stage(device, MESA_SHADER_GEOMETRY)) {
+         /* ACO needs NIR to do some of the hard lifting */
+         nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
+                         nir_lower_gs_intrinsics_count_vertices_per_primitive |
+                         nir_lower_gs_intrinsics_overwrite_incomplete;
+      }
+
+      NIR_PASS(_, stages[MESA_SHADER_GEOMETRY].nir, nir_lower_gs_intrinsics, nir_gs_flags);
+   }
+
    radv_link_shaders(pipeline, pipeline_key, stages, optimize_conservatively, *last_vgt_api_stage);
    radv_set_driver_locations(pipeline, stages, *last_vgt_api_stage);
 
@@ -4781,10 +4798,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
    }
 
    radv_fill_shader_info(pipeline, pipeline_layout, pipeline_key, stages, *last_vgt_api_stage);
-
-   bool pipeline_has_ngg = (stages[MESA_SHADER_VERTEX].nir && stages[MESA_SHADER_VERTEX].info.is_ngg) ||
-                           (stages[MESA_SHADER_TESS_EVAL].nir && stages[MESA_SHADER_TESS_EVAL].info.is_ngg) ||
-                           (stages[MESA_SHADER_MESH].nir && stages[MESA_SHADER_MESH].info.is_ngg);
 
    if (pipeline_has_ngg) {
       struct gfx10_ngg_info *ngg_info;

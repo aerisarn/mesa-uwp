@@ -818,19 +818,6 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
       NIR_PASS(_, nir, radv_nir_lower_ray_queries, device);
    }
 
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
-
-      if (key->use_ngg && !radv_use_llvm_for_stage(device, stage->stage)) {
-         /* ACO needs NIR to do some of the hard lifting */
-         nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
-                         nir_lower_gs_intrinsics_count_vertices_per_primitive |
-                         nir_lower_gs_intrinsics_overwrite_incomplete;
-      }
-
-      NIR_PASS(_, nir, nir_lower_gs_intrinsics, nir_gs_flags);
-   }
-
    static const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
       .lower_tg4_offsets = true,
