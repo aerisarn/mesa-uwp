@@ -31,7 +31,7 @@
  */
 
 /** Returns number of registers written by an instruction */
-static unsigned
+unsigned
 agx_write_registers(agx_instr *I, unsigned d)
 {
    unsigned size = I->dest[d].size == AGX_SIZE_32 ? 2 : 1;

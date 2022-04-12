@@ -1152,13 +1152,29 @@ agx_set_st_vary_final(agx_context *ctx)
 static void
 agx_print_stats(agx_context *ctx, unsigned size, FILE *fp)
 {
-   unsigned nr_ins = 0, nr_bytes = 0, nr_threads = 1;
+   unsigned nr_ins = 0, max_reg = 0;
 
-   /* TODO */
-   fprintf(stderr, "%s shader: %u inst, %u bytes, %u threads, %u loops,"
-           "%u:%u spills:fills\n",
+   agx_foreach_instr_global(ctx, I) {
+      /* Count instructions */
+      nr_ins++;
+
+      /* Count registers */
+      agx_foreach_dest(I, d) {
+         if (I->dest[d].type == AGX_INDEX_REGISTER) {
+            max_reg = MAX2(max_reg,
+                           I->dest[d].value + agx_write_registers(I, d) - 1);
+         }
+      }
+   }
+
+   /* TODO: Pipe through occupancy */
+   unsigned nr_threads = 1;
+
+   fprintf(stderr, "%s - %s shader: %u inst, %u bytes, %u halfregs, %u threads, "
+           "%u loops, %u:%u spills:fills\n",
            ctx->nir->info.label ?: "",
-           nr_ins, nr_bytes, nr_threads, ctx->loop_count,
+           gl_shader_stage_name(ctx->stage),
+           nr_ins, size, max_reg, nr_threads, ctx->loop_count,
            ctx->spills, ctx->fills);
 }
 
