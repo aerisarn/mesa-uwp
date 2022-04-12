@@ -28,7 +28,7 @@
 #ifndef RADEON_VIDEO_H
 #define RADEON_VIDEO_H
 
-#include "radeon/radeon_winsys.h"
+#include "radeonsi/radeon_winsys.h"
 #include "vl/vl_video_buffer.h"
 
 #define RVID_ERR(fmt, args...)                                                                     \

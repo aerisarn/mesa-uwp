@@ -177,7 +177,7 @@ DRM_DRIVER_DESCRIPTOR_STUB(kmsro)
 #endif
 
 #ifdef GALLIUM_R300
-#include "radeon/radeon_winsys.h"
+#include "radeonsi/radeon_winsys.h"
 #include "radeon/drm/radeon_drm_public.h"
 #include "r300/r300_public.h"
 
@@ -196,7 +196,7 @@ DRM_DRIVER_DESCRIPTOR_STUB(r300)
 #endif
 
 #ifdef GALLIUM_R600
-#include "radeon/radeon_winsys.h"
+#include "radeonsi/radeon_winsys.h"
 #include "radeon/drm/radeon_drm_public.h"
 #include "r600/r600_public.h"
 

@@ -25,7 +25,7 @@
 #ifndef SI_PM4_H
 #define SI_PM4_H
 
-#include "radeon/radeon_winsys.h"
+#include "radeonsi/radeon_winsys.h"
 
 #ifdef __cplusplus
 extern "C" {

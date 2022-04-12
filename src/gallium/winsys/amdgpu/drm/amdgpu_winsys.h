@@ -30,7 +30,7 @@
 
 #include "pipebuffer/pb_cache.h"
 #include "pipebuffer/pb_slab.h"
-#include "gallium/drivers/radeon/radeon_winsys.h"
+#include "gallium/drivers/radeonsi/radeon_winsys.h"
 #include "util/simple_mtx.h"
 #include "util/u_queue.h"
 #include <amdgpu.h>

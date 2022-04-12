@@ -28,7 +28,7 @@
 #ifndef RADEON_UVD_H
 #define RADEON_UVD_H
 
-#include "radeon/radeon_winsys.h"
+#include "radeonsi/radeon_winsys.h"
 #include "vl/vl_video_buffer.h"
 
 #include "ac_uvd_dec.h"
