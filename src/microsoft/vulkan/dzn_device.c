@@ -1212,11 +1212,11 @@ vk_icdGetInstanceProcAddr(VkInstance instance,
  */
 PUBLIC VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
-                                const char* pName);
+                                const char *pName);
 
 VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
-                                const char* pName)
+                                const char *pName)
 {
    VK_FROM_HANDLE(dzn_instance, instance, _instance);
    return vk_instance_get_physical_device_proc_addr(&instance->vk, pName);
@@ -1226,10 +1226,10 @@ vk_icdGetPhysicalDeviceProcAddr(VkInstance  _instance,
  * suppress Wmissing-prototypes.
  */
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion);
 
 PUBLIC VKAPI_ATTR VkResult VKAPI_CALL
-vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
+vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
 {
    /* For the full details on loader interface versioning, see
     * <https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers/blob/master/loader/LoaderAndLayerInterface.md>.
@@ -1980,7 +1980,7 @@ dzn_device_create_root_sig(struct dzn_device *device,
    if (FAILED(instance->d3d12.serialize_root_sig(desc,
                                                  &sig, &error))) {
       if (instance->debug_flags & DZN_DEBUG_SIG) {
-         const char* error_msg = (const char*)ID3D10Blob_GetBufferPointer(error);
+         const char *error_msg = (const char *)ID3D10Blob_GetBufferPointer(error);
          fprintf(stderr,
                  "== SERIALIZE ROOT SIG ERROR =============================================\n"
                  "%s\n"
@@ -2227,7 +2227,7 @@ dzn_MapMemory(VkDevice _device,
    mem->map = map;
    mem->map_size = size;
 
-   *ppData = ((uint8_t*) map) + offset;
+   *ppData = ((uint8_t *) map) + offset;
 
    return VK_SUCCESS;
 }

@@ -651,7 +651,7 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    uint32_t push_constant_size = 0;
    uint32_t push_constant_flags = 0;
    for (uint32_t j = 0; j < pCreateInfo->pushConstantRangeCount; j++) {
-      const VkPushConstantRange* range = pCreateInfo->pPushConstantRanges + j;
+      const VkPushConstantRange *range = pCreateInfo->pPushConstantRanges + j;
       push_constant_size = MAX2(push_constant_size, range->offset + range->size);
       push_constant_flags |= range->stageFlags;
    }
