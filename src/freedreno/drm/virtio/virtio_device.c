@@ -248,6 +248,7 @@ virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
  */
 int
 virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
+                      uint32_t *handles, uint32_t num_handles,
                       int in_fence_fd, int *out_fence_fd, int ring_idx)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
@@ -264,6 +265,8 @@ virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
          .size  = req->len,
          .command = VOID2U64(req),
          .ring_idx = ring_idx,
+         .bo_handles = VOID2U64(handles),
+         .num_bo_handles = num_handles,
    };
 
    int ret = drmIoctl(dev->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
@@ -283,7 +286,8 @@ int
 virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync)
 {
    int fence_fd;
-   int ret = virtio_execbuf_fenced(dev, req, -1, sync ? &fence_fd : NULL, 0);
+   int ret = virtio_execbuf_fenced(dev, req, NULL, 0, -1,
+                                   sync ? &fence_fd : NULL, 0);
 
    if (ret)
       return ret;

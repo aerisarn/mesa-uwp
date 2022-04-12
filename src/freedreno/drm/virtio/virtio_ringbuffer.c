@@ -126,14 +126,20 @@ flush_submit_list(struct list_head *submit_list)
    struct drm_msm_gem_submit_bo
       _submit_bos[bos_on_stack ? fd_submit->nr_bos : 0];
    struct drm_msm_gem_submit_bo *submit_bos;
+   uint32_t _guest_handles[bos_on_stack ? fd_submit->nr_bos : 0];
+   uint32_t *guest_handles;
    if (bos_on_stack) {
       submit_bos = _submit_bos;
+      guest_handles = _guest_handles;
    } else {
       submit_bos = malloc(fd_submit->nr_bos * sizeof(submit_bos[0]));
+      guest_handles = malloc(fd_submit->nr_bos * sizeof(guest_handles[0]));
    }
 
    for (unsigned i = 0; i < fd_submit->nr_bos; i++) {
       struct virtio_bo *virtio_bo = to_virtio_bo(fd_submit->bos[i]);
+
+      guest_handles[i] = virtio_bo->base.handle;
 
       submit_bos[i].flags = fd_submit->bos[i]->reloc_flags;
       submit_bos[i].handle = virtio_bo->res_id;
@@ -191,13 +197,16 @@ flush_submit_list(struct list_head *submit_list)
       req->flags |= MSM_SUBMIT_NO_IMPLICIT;
    }
 
-   virtio_execbuf_fenced(dev, &req->hdr, fd_submit->in_fence_fd, out_fence_fd,
+   virtio_execbuf_fenced(dev, &req->hdr, guest_handles, req->nr_bos,
+                         fd_submit->in_fence_fd, out_fence_fd,
                          virtio_pipe->ring_idx);
 
    free(req);
 
-   if (!bos_on_stack)
+   if (!bos_on_stack) {
       free(submit_bos);
+      free(guest_handles);
+   }
 
    if (fd_submit->in_fence_fd != -1)
       close(fd_submit->in_fence_fd);
