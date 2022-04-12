@@ -1484,8 +1484,6 @@ lower_baseinstance(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_baseinstance_instr, nir_metadata_dominance, NULL);
 }
 
-bool nir_lower_dynamic_bo_access(nir_shader *shader);
-
 /* gl_nir_lower_buffers makes variables unusable for all UBO/SSBO access
  * so instead we delete all those broken variables and just make new ones
  */
