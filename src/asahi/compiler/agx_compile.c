@@ -137,6 +137,32 @@ agx_block_add_successor(agx_block *block, agx_block *successor)
    unreachable("Too many successors");
 }
 
+/*
+ * Splits an n-component vector (vec) into n scalar destinations (dests) using a
+ * split pseudo-instruction.
+ *
+ * Pre-condition: dests is filled with agx_null().
+ */
+static void
+agx_emit_split(agx_builder *b, agx_index *dests, agx_index vec, unsigned n)
+{
+   /* Setup the destinations */
+   for (unsigned i = 0; i < n; ++i) {
+      dests[i] = agx_temp(b->shader, vec.size);
+   }
+
+   /* Emit the split */
+   agx_p_split_to(b, dests[0], dests[1], dests[2], dests[3], vec);
+}
+
+static void
+agx_emit_cached_split(agx_builder *b, agx_index vec, unsigned n)
+{
+   agx_index dests[4] = { agx_null(), agx_null(), agx_null(), agx_null() };
+   agx_emit_split(b, dests, vec, n);
+   agx_cache_combine(b, vec, dests[0], dests[1], dests[2], dests[3]);
+}
+
 static void
 agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
 {
