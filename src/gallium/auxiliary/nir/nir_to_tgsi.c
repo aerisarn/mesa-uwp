@@ -160,7 +160,7 @@ static inline void ntt_##op(struct ntt_compile *c,                              
 
 #define OP10( op )                                                                     \
 static inline void ntt_##op(struct ntt_compile *c,                                     \
-                     struct ureg_dst tgsi_dst_register)                                \
+                     struct ureg_dst dst)                                              \
 {                                                                                      \
    ntt_insn(c, TGSI_OPCODE_##op, dst, ureg_src_undef(), ureg_src_undef(), ureg_src_undef(), ureg_src_undef()); \
 }
@@ -2551,6 +2551,10 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_barycentric_at_sample:
    case nir_intrinsic_load_barycentric_at_offset:
       ntt_store(c, &instr->dest, ntt_get_src(c, instr->src[0]));
+      break;
+
+   case nir_intrinsic_shader_clock:
+      ntt_CLOCK(c, ntt_get_dest(c, &instr->dest));
       break;
 
    default:

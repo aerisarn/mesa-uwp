@@ -206,6 +206,8 @@ OP12(INTERP_OFFSET)
 
 OP11(FBFETCH)
 
+OP10(CLOCK)
+
 #undef OP00
 #undef OP01
 #undef OP10
