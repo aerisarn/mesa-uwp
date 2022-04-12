@@ -163,7 +163,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clCreateProgramWithIL: Some(cl_create_program_with_il),
     clEnqueueSVMMigrateMem: Some(cl_enqueue_svm_migrate_mem),
     clGetDeviceAndHostTimer: Some(cl_get_device_and_host_timer),
-    clGetHostTimer: None,
+    clGetHostTimer: Some(cl_get_host_timer),
     clGetKernelSubGroupInfo: Some(cl_get_kernel_sub_group_info),
     clSetDefaultDeviceCommandQueue: None,
     clSetProgramReleaseCallback: Some(cl_set_program_release_callback),
@@ -1756,12 +1756,19 @@ extern "C" fn cl_enqueue_svm_migrate_mem(
 }
 
 extern "C" fn cl_get_device_and_host_timer(
-    _device: cl_device_id,
-    _device_timestamp: *mut cl_ulong,
-    _host_timestamp: *mut cl_ulong,
+    device: cl_device_id,
+    device_timestamp: *mut cl_ulong,
+    host_timestamp: *mut cl_ulong,
 ) -> cl_int {
-    println!("cl_get_device_and_host_timer not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(get_device_and_host_timer(
+        device,
+        device_timestamp,
+        host_timestamp,
+    ))
+}
+
+extern "C" fn cl_get_host_timer(device: cl_device_id, host_timestamp: *mut cl_ulong) -> cl_int {
+    match_err!(get_host_timer(device, host_timestamp,))
 }
 
 extern "C" fn cl_get_kernel_sub_group_info(

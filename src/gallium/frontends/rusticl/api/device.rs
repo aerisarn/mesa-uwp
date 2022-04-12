@@ -248,3 +248,17 @@ pub fn get_device_ids(
 
     Ok(())
 }
+
+pub fn get_device_and_host_timer(
+    _device: cl_device_id,
+    _device_timestamp: *mut cl_ulong,
+    _host_timestamp: *mut cl_ulong,
+) -> CLResult<()> {
+    // TODO: we could support it
+    Err(CL_INVALID_OPERATION)
+}
+
+pub fn get_host_timer(_device: cl_device_id, _host_timestamp: *mut cl_ulong) -> CLResult<()> {
+    // TODO: we could support it
+    Err(CL_INVALID_OPERATION)
+}
