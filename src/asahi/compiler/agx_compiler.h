@@ -469,6 +469,18 @@ agx_dest_index(nir_dest *dst)
          agx_size_for_bits(nir_dest_bit_size(*dst)));
 }
 
+static inline agx_index
+agx_vec_for_dest(agx_context *ctx, nir_dest *dest)
+{
+   return agx_temp(ctx, agx_size_for_bits(nir_dest_bit_size(*dest)));
+}
+
+static inline agx_index
+agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
+{
+   return agx_vec_for_dest(ctx, &instr->dest);
+}
+
 /* Iterators for AGX IR */
 
 #define agx_foreach_block(ctx, v) \
