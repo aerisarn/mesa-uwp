@@ -38,10 +38,15 @@ agx_write_registers(agx_instr *I, unsigned d)
 
    switch (I->op) {
    case AGX_OPCODE_LD_VARY:
+      assert(1 <= I->channels && I->channels <= 4);
+      return I->channels * size;
+
    case AGX_OPCODE_DEVICE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
    case AGX_OPCODE_LD_TILE:
-      return 8;
+      /* TODO: mask */
+      return 4 * size;
+
    case AGX_OPCODE_LD_VARY_FLAT:
       return 6;
    case AGX_OPCODE_P_COMBINE:
