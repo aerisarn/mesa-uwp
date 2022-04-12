@@ -270,18 +270,19 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
    if (!screen->info.have_KHR_synchronization2)
       dep_pipeline = MAX2(dep_pipeline, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
+   VkDependencyFlags flag = screen->info.have_KHR_synchronization2 ? VK_DEPENDENCY_BY_REGION_BIT : 0;
    VkSubpassDependency2 deps[] = {
-      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
-      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT, 0}
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, flag, 0},
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, flag, 0}
    };
    VkPipelineStageFlags input_dep = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
    //if (zs_fbfetch) input_dep |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
    VkAccessFlags input_access = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
    //if (zs_fbfetch) input_access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
    VkSubpassDependency2 fbfetch_deps[] = {
-      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
-      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, 0, dep_pipeline, input_dep, dep_access, input_access, VK_DEPENDENCY_BY_REGION_BIT, 0},
-      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, VK_DEPENDENCY_BY_REGION_BIT, 0}
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, VK_SUBPASS_EXTERNAL, 0, dep_pipeline, dep_pipeline, 0, dep_access, flag, 0},
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, 0, dep_pipeline, input_dep, dep_access, input_access, flag, 0},
+      {VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2, NULL, 0, VK_SUBPASS_EXTERNAL, dep_pipeline, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, dep_access, 0, flag, 0}
    };
 
    VkSubpassDescription2 subpass = {0};
