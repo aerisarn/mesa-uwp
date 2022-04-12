@@ -1799,16 +1799,22 @@ calculate_urb_setup(const struct intel_device_info *devinfo,
          uint64_t per_prim_inputs_read =
                nir->info.inputs_read & nir->info.per_primitive_inputs;
 
-         /* In Mesh, VIEWPORT and LAYER slots are always at the beginning,
-          * because they come from MUE Primitive Header, not Per-Primitive Attributes.
+         /* In Mesh, PRIMITIVE_SHADING_RATE, VIEWPORT and LAYER slots
+          * are always at the beginning, because they come from MUE
+          * Primitive Header, not Per-Primitive Attributes.
           */
          const uint64_t primitive_header_bits = VARYING_BIT_VIEWPORT |
-                                                VARYING_BIT_LAYER;
+                                                VARYING_BIT_LAYER |
+                                                VARYING_BIT_PRIMITIVE_SHADING_RATE;
 
          if (per_prim_inputs_read & primitive_header_bits) {
-            /* Layer and Viewport live in the same 4-dwords slot (layer
-             * is dword 1, and viewport is dword 2).
+            /* Primitive Shading Rate, Layer and Viewport live in the same
+             * 4-dwords slot (psr is dword 0, layer is dword 1, and viewport
+             * is dword 2).
              */
+            if (per_prim_inputs_read & VARYING_BIT_PRIMITIVE_SHADING_RATE)
+               prog_data->urb_setup[VARYING_SLOT_PRIMITIVE_SHADING_RATE] = 0;
+
             if (per_prim_inputs_read & VARYING_BIT_LAYER)
                prog_data->urb_setup[VARYING_SLOT_LAYER] = 0;
 

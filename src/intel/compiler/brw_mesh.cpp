@@ -362,6 +362,7 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
    map->per_primitive_header_size_dw =
          (nir->info.outputs_written & (BITFIELD64_BIT(VARYING_SLOT_VIEWPORT) |
                                        BITFIELD64_BIT(VARYING_SLOT_CULL_PRIMITIVE) |
+                                       BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_SHADING_RATE) |
                                        BITFIELD64_BIT(VARYING_SLOT_LAYER))) ? 8 : 0;
 
    map->per_primitive_start_dw = ALIGN(primitive_list_size_dw, 8);
@@ -372,6 +373,9 @@ brw_compute_mue_map(struct nir_shader *nir, struct brw_mue_map *map)
 
       unsigned start;
       switch (location) {
+      case VARYING_SLOT_PRIMITIVE_SHADING_RATE:
+         start = map->per_primitive_start_dw + 0;
+         break;
       case VARYING_SLOT_LAYER:
          start = map->per_primitive_start_dw + 1; /* RTAIndex */
          break;
@@ -508,6 +512,8 @@ brw_nir_lower_mue_outputs(nir_shader *nir, const struct brw_mue_map *map)
 
    nir_lower_io(nir, nir_var_shader_out, type_size_scalar_dwords,
                 nir_lower_io_lower_64bit_to_32);
+
+   brw_nir_lower_shading_rate_output(nir);
 }
 
 static void
