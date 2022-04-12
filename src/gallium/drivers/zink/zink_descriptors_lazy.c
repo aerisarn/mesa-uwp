@@ -78,12 +78,13 @@ bdd_lazy(struct zink_batch_state *bs)
 
 static void
 init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
-                    unsigned idx, unsigned offset, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx, bool flatten_dynamic)
+                    unsigned idx, VkDescriptorUpdateTemplateEntry *entry, unsigned *entry_idx, bool flatten_dynamic)
 {
     int index = shader->bindings[type][idx].index;
     enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
     entry->dstArrayElement = 0;
     entry->dstBinding = shader->bindings[type][idx].binding;
+    entry->descriptorCount = shader->bindings[type][idx].size;
     if (shader->bindings[type][idx].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC && flatten_dynamic)
        /* filter out DYNAMIC type here */
        entry->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -92,33 +93,27 @@ init_template_entry(struct zink_shader *shader, enum zink_descriptor_type type,
     switch (shader->bindings[type][idx].type) {
     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
     case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-       entry->descriptorCount = 1;
-       entry->offset = offsetof(struct zink_context, di.ubos[stage][index + offset]);
+       entry->offset = offsetof(struct zink_context, di.ubos[stage][index]);
        entry->stride = sizeof(VkDescriptorBufferInfo);
        break;
     case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-       entry->descriptorCount = shader->bindings[type][idx].size;
-       entry->offset = offsetof(struct zink_context, di.textures[stage][index + offset]);
+       entry->offset = offsetof(struct zink_context, di.textures[stage][index]);
        entry->stride = sizeof(VkDescriptorImageInfo);
        break;
     case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-       entry->descriptorCount = shader->bindings[type][idx].size;
-       entry->offset = offsetof(struct zink_context, di.tbos[stage][index + offset]);
+       entry->offset = offsetof(struct zink_context, di.tbos[stage][index]);
        entry->stride = sizeof(VkBufferView);
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-       entry->descriptorCount = 1;
-       entry->offset = offsetof(struct zink_context, di.ssbos[stage][index + offset]);
+       entry->offset = offsetof(struct zink_context, di.ssbos[stage][index]);
        entry->stride = sizeof(VkDescriptorBufferInfo);
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-       entry->descriptorCount = shader->bindings[type][idx].size;
-       entry->offset = offsetof(struct zink_context, di.images[stage][index + offset]);
+       entry->offset = offsetof(struct zink_context, di.images[stage][index]);
        entry->stride = sizeof(VkDescriptorImageInfo);
        break;
     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-       entry->descriptorCount = shader->bindings[type][idx].size;
-       entry->offset = offsetof(struct zink_context, di.texel_images[stage][index + offset]);
+       entry->offset = offsetof(struct zink_context, di.texel_images[stage][index]);
        entry->stride = sizeof(VkBufferView);
        break;
     default:
@@ -207,21 +202,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
             enum zink_descriptor_size_index idx = zink_vktype_to_size_idx(shader->bindings[j][k].type);
             sizes[idx].descriptorCount += shader->bindings[j][k].size;
             sizes[idx].type = shader->bindings[j][k].type;
-            switch (shader->bindings[j][k].type) {
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-               init_template_entry(shader, j, k, 0, &entries[j][entry_idx[j]], &entry_idx[j], screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY);
-               break;
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-               for (unsigned l = 0; l < shader->bindings[j][k].size; l++)
-                  init_template_entry(shader, j, k, l, &entries[j][entry_idx[j]], &entry_idx[j], screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY);
-               break;
-            default:
-               break;
-            }
+            init_template_entry(shader, j, k, &entries[j][entry_idx[j]], &entry_idx[j], screen->descriptor_mode == ZINK_DESCRIPTOR_MODE_LAZY);
             num_bindings[j]++;
             has_bindings |= BITFIELD_BIT(j);
          }
