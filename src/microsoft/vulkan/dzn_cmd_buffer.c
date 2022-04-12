@@ -564,7 +564,7 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
       uint32_t step = DZN_QUERY_REFS_SECTION_SIZE / sizeof(uint64_t);
       uint32_t count = end - start;
 
-      for (unsigned i = 0; i < count; i+= step) {
+      for (unsigned i = 0; i < count; i += step) {
          uint32_t sub_count = MIN2(step, count - i);
 
          ID3D12GraphicsCommandList1_CopyBufferRegion(cmdbuf->cmdlist,
