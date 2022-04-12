@@ -82,8 +82,9 @@ st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       /* If there are forms of indirect addressing that the driver
        * cannot handle, perform the lowering pass.
        */
-      if (options->EmitNoIndirectInput || options->EmitNoIndirectOutput ||
-          options->EmitNoIndirectTemp || options->EmitNoIndirectUniform) {
+      if (!use_nir &&
+          (options->EmitNoIndirectInput || options->EmitNoIndirectOutput ||
+           options->EmitNoIndirectTemp || options->EmitNoIndirectUniform)) {
          lower_variable_index_to_cond_assign(stage, ir,
                                              options->EmitNoIndirectInput,
                                              options->EmitNoIndirectOutput,

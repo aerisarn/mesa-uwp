@@ -1,4 +1,3 @@
-shaders/glsl-predication-on-large-array: fail
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-max3-float-float-float: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-max3-int-int-int: skip
 spec/amd_shader_trinary_minmax/execution/built-in-functions/cs-max3-ivec2-ivec2-ivec2: skip
@@ -274,14 +273,9 @@ spec/arb_gl_spirv/execution/xfb/vs_two_sets_struct: skip
 spec/arb_gl_spirv/linker/uniform/multisampler: skip
 spec/arb_gl_spirv/linker/uniform/multisampler-array: skip
 spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-array-of-structs: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-block-array: crash
 spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-struct: crash
 spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatcentroid-struct2: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatoffset-block-array: crash
 spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatoffset-struct: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatsample-array-nonuniform: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatsample-array-of-array: crash
-spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatsample-block-array: crash
 spec/arb_gpu_shader5/execution/built-in-functions/fs-interpolateatsample-struct: crash
 spec/arb_gpu_shader5/execution/sampler_array_indexing/fs-nested-struct-arrays-nonconst: fail
 spec/arb_gpu_shader5/execution/sampler_array_indexing/fs-struct-nonconst-multiple-samplers: fail
@@ -320,7 +314,6 @@ spec/arb_gpu_shader_fp64/execution/conversion/vert-conversion-explicit-double-ui
 spec/arb_gpu_shader_fp64/execution/conversion/vert-conversion-explicit-dvec2-uvec2: fail
 spec/arb_gpu_shader_fp64/execution/conversion/vert-conversion-explicit-dvec3-uvec3: fail
 spec/arb_gpu_shader_fp64/execution/conversion/vert-conversion-explicit-dvec4-uvec4: fail
-spec/arb_gpu_shader_fp64/execution/fs-indirect-temp-double-dst: fail
 spec/arb_gpu_shader_fp64/execution/inout/vs-out-fs-in-s1/2-s2/2-s3/2-double-location-0: crash
 spec/arb_gpu_shader_fp64/execution/vs-fs-explicit-locations: crash
 spec/arb_gpu_shader_int64/execution/built-in-functions/cs-abs-i64vec2: skip
@@ -611,10 +604,6 @@ spec/arb_tessellation_shader/execution/tcs-output-unmatched: crash
 spec/arb_tessellation_shader/execution/tcs-tes-max-in-out-patch-components: crash
 spec/arb_tessellation_shader/execution/tes-primitiveid: fail
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-input-array-dvec4-index-rd: crash
-spec/arb_tessellation_shader/execution/variable-indexing/tcs-input-array-float-index-rd: crash
-spec/arb_tessellation_shader/execution/variable-indexing/tcs-input-array-vec2-index-rd: crash
-spec/arb_tessellation_shader/execution/variable-indexing/tcs-input-array-vec3-index-rd: crash
-spec/arb_tessellation_shader/execution/variable-indexing/tcs-input-array-vec4-index-rd: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-output-array-dvec4-index-wr: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-output-array-float-index-rd-after-barrier: crash
 spec/arb_tessellation_shader/execution/variable-indexing/tcs-output-array-float-index-wr-before-barrier: crash
@@ -4107,9 +4096,9 @@ spec/oes_viewport_array/viewport-gs-writes-out-of-range: skip
 summary:
        name:  results
        ----  --------
-       pass:    16135
-       fail:     1053
-      crash:      103
+       pass:    16146
+       fail:     1051
+      crash:       94
        skip:     2925
     timeout:        0
        warn:       25

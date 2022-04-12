@@ -788,6 +788,27 @@ st_link_nir(struct gl_context *ctx,
    for (unsigned i = 0; i < num_shaders; i++) {
       struct gl_linked_shader *shader = linked_shader[i];
       nir_shader *nir = shader->Program->nir;
+      gl_shader_stage stage = shader->Stage;
+      const struct gl_shader_compiler_options *options =
+            &ctx->Const.ShaderCompilerOptions[stage];
+
+      /* If there are forms of indirect addressing that the driver
+       * cannot handle, perform the lowering pass.
+       */
+      if (options->EmitNoIndirectInput || options->EmitNoIndirectOutput ||
+          options->EmitNoIndirectTemp || options->EmitNoIndirectUniform) {
+         nir_variable_mode mode = options->EmitNoIndirectInput ?
+            nir_var_shader_in : (nir_variable_mode)0;
+         mode |= options->EmitNoIndirectOutput ?
+            nir_var_shader_out : (nir_variable_mode)0;
+         mode |= options->EmitNoIndirectTemp ?
+            nir_var_function_temp : (nir_variable_mode)0;
+         mode |= options->EmitNoIndirectUniform ?
+            nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo :
+            (nir_variable_mode)0;
+
+         nir_lower_indirect_derefs(nir, mode, UINT32_MAX);
+      }
 
       /* don't infer ACCESS_NON_READABLE so that Program->sh.ImageAccess is
        * correct: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3278

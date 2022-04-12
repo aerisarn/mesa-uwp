@@ -164,8 +164,6 @@ shaders@glsl-uniform-interstage-limits@520 vs- 1 fs,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5,Fail
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Fail
 
-shaders@glsl-predication-on-large-array,Fail
-
 shaders@ssa@fs-if-def-else-break,Fail
 shaders@ssa@fs-lost-copy-problem,Fail
 shaders@ssa@fs-swap-problem,Fail
@@ -894,6 +892,7 @@ spec@glsl-1.10@execution@variable-indexing@fs-input-array-vec2-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-input-array-vec3-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-input-array-vec4-index-rd,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,Fail
+spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
@@ -1057,8 +1056,6 @@ spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec3-vec4,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec4-vec2,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec4-vec3,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-outerproduct-vec4-vec4,Fail
-spec@glsl-1.20@execution@fs-const-array-of-struct,Fail
-spec@glsl-1.20@execution@fs-const-array-of-struct-of-array,Fail
 spec@glsl-1.20@execution@fs-function-inout-array-of-structs,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-min,Fail
@@ -1110,7 +1107,6 @@ spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-row-wr,F
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat3-index-col-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-wr,Fail
-spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-uniform-array-mat4-index-col-row-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-varying-array-mat3-index-col-rd,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-varying-array-mat3-index-col-row-rd,Fail
