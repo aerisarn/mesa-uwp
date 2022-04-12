@@ -846,12 +846,16 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 
             layer = agx_convert(b, agx_immediate(AGX_CONVERT_F_TO_U32), layer,
                                    AGX_ROUND_RTZ);
-            layer = agx_mov(b, AGX_SIZE_16, layer);
 
-            layer = agx_icmpsel(b, layer, d1, layer, d1, AGX_ICOND_ULT);
-            layer = agx_mov(b, AGX_SIZE_32, layer);
+            agx_index layer16 = agx_temp(b->shader, AGX_SIZE_16);
+            agx_mov_to(b, layer16, layer);
 
-            channels[nr - 1] = layer;
+            layer = agx_icmpsel(b, layer16, d1, layer16, d1, AGX_ICOND_ULT);
+
+            agx_index layer32 = agx_temp(b->shader, AGX_SIZE_32);
+            agx_mov_to(b, layer32, layer);
+
+            channels[nr - 1] = layer32;
             coords = agx_p_combine(b, channels[0], channels[1], channels[2], channels[3]);
          } else {
             coords = index;
@@ -1640,6 +1644,8 @@ agx_compile_shader_nir(nir_shader *nir,
 
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
       agx_print_shader(ctx, stdout);
+
+   agx_lower_pseudo(ctx);
 
    agx_pack_binary(ctx, binary);
 

@@ -245,5 +245,12 @@ op("stop", (0x88, 0xFFFF, 2, _), dests = 0, can_eliminate = False)
 op("trap", (0x08, 0xFFFF, 2, _), dests = 0, can_eliminate = False)
 op("writeout", (0x48, 0xFF, 4, _), dests = 0, imms = [WRITEOUT], can_eliminate = False)
 
+# Convenient aliases.
+op("mov", _, srcs = 1)
+op("not", _, srcs = 1)
+op("xor", _, srcs = 2)
+op("and", _, srcs = 2)
+op("or", _, srcs = 2)
+
 op("p_combine", _, srcs = 4)
 op("p_extract", _, srcs = 1, imms = [COMPONENT])

@@ -23,6 +23,7 @@ libasahi_agx_files = files(
   'agx_compile.c',
   'agx_dce.c',
   'agx_liveness.c',
+  'agx_lower_pseudo.c',
   'agx_pack.c',
   'agx_print.c',
   'agx_optimizer.c',
@@ -84,6 +85,7 @@ if with_tests
       'agx_tests',
       files(
          'test/test-optimizer.cpp',
+         'test/test-lower-pseudo.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
