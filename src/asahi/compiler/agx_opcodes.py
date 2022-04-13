@@ -253,4 +253,5 @@ op("and", _, srcs = 2)
 op("or", _, srcs = 2)
 
 op("p_combine", _, srcs = 4)
+op("p_split", _, srcs = 1, dests = 4)
 op("p_extract", _, srcs = 1, imms = [COMPONENT])

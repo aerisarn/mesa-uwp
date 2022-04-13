@@ -217,7 +217,7 @@ agx_is_equiv(agx_index left, agx_index right)
    return (left.type == right.type) && (left.value == right.value);
 }
 
-#define AGX_MAX_DESTS 1
+#define AGX_MAX_DESTS 4
 #define AGX_MAX_SRCS 5
 
 enum agx_icond {
