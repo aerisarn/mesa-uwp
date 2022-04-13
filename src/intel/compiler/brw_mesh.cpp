@@ -584,6 +584,13 @@ brw_nir_initialize_mue(nir_shader *nir,
       nir_scoped_barrier(&b, NIR_SCOPE_WORKGROUP, NIR_SCOPE_WORKGROUP,
                          NIR_MEMORY_ACQ_REL, nir_var_shader_out);
    }
+
+   if (remaining) {
+      nir_metadata_preserve(entrypoint, nir_metadata_none);
+   } else {
+      nir_metadata_preserve(entrypoint, nir_metadata_block_index |
+                                        nir_metadata_dominance);
+   }
 }
 
 static bool
