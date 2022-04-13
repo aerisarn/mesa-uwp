@@ -2399,6 +2399,7 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_subgroup_ge_mask:
    case nir_intrinsic_load_subgroup_gt_mask:
    case nir_intrinsic_load_subgroup_lt_mask:
+   case nir_intrinsic_load_subgroup_le_mask:
       ntt_emit_load_sysval(c, instr);
       break;
 
@@ -2418,6 +2419,10 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       ntt_emit_load_output(c, instr);
       break;
 
+   case nir_intrinsic_demote:
+      ntt_DEMOTE(c);
+      break;
+
    case nir_intrinsic_discard:
       ntt_KILL(c);
       break;
@@ -2435,6 +2440,29 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
       }
       break;
    }
+
+   case nir_intrinsic_is_helper_invocation:
+      ntt_READ_HELPER(c, ntt_get_dest(c, &instr->dest));
+      break;
+
+   case nir_intrinsic_vote_all:
+      ntt_VOTE_ALL(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c,instr->src[0]));
+      return;
+   case nir_intrinsic_vote_any:
+      ntt_VOTE_ANY(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      return;
+   case nir_intrinsic_vote_ieq:
+      ntt_VOTE_EQ(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      return;
+   case nir_intrinsic_ballot:
+      ntt_BALLOT(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      return;
+   case nir_intrinsic_read_first_invocation:
+      ntt_READ_FIRST(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]));
+      return;
+   case nir_intrinsic_read_invocation:
+      ntt_READ_INVOC(c, ntt_get_dest(c, &instr->dest), ntt_get_src(c, instr->src[0]), ntt_get_src(c, instr->src[1]));
+      return;
 
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_store_ssbo:
