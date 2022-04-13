@@ -103,8 +103,8 @@ v3d_render_blit(struct pipe_context *ctx, struct pipe_blit_info *info)
 
         if (!util_blitter_is_blit_supported(v3d->blitter, info)) {
                 fprintf(stderr, "blit unsupported %s -> %s\n",
-                    util_format_short_name(info->src.resource->format),
-                    util_format_short_name(info->dst.resource->format));
+                    util_format_short_name(info->src.format),
+                    util_format_short_name(info->dst.format));
                 return;
         }
 
