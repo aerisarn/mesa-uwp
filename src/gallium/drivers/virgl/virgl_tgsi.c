@@ -151,7 +151,7 @@ virgl_tgsi_transform_property(struct tgsi_transform_context *ctx,
    case TGSI_PROPERTY_NUM_CLIPDIST_ENABLED:
    case TGSI_PROPERTY_NUM_CULLDIST_ENABLED:
       if (vtctx->cull_enabled)
-	 ctx->emit_property(ctx, prop);
+    ctx->emit_property(ctx, prop);
       break;
    case TGSI_PROPERTY_NEXT_SHADER:
       break;
@@ -260,7 +260,7 @@ virgl_tgsi_rewrite_src_for_input_temp(struct virgl_input_temp *temp, struct tgsi
 
 static void
 virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
-				 struct tgsi_full_instruction *inst)
+             struct tgsi_full_instruction *inst)
 {
    struct virgl_transform_context *vtctx = (struct virgl_transform_context *)ctx;
    if (vtctx->fake_fp64 &&
@@ -382,7 +382,6 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
          inst->Src[i].Register.SwizzleW = TGSI_SWIZZLE_W;
       }
    }
-   ctx->emit_instruction(ctx, inst);
 
    /* virglrenderer doesn't resolve non-float output write properly,
     * so we have to first write to a temporary */
@@ -407,6 +406,8 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
       inst->Src[0].Register.SwizzleZ = 2;
       inst->Src[0].Register.SwizzleW = 3;
    }
+
+   ctx->emit_instruction(ctx, inst);
 
    for (unsigned i = 0; i < inst->Instruction.NumDstRegs; i++) {
       if (vtctx->num_writemask_fixups &&
