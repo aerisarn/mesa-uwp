@@ -208,11 +208,11 @@ agx_print_block(agx_block *block, FILE *fp)
          fprintf(fp, "block%u ", succ->name);
    }
 
-   if (block->predecessors->entries) {
+   if (block->predecessors.size) {
       fprintf(fp, " from");
 
       agx_foreach_predecessor(block, pred)
-         fprintf(fp, " block%u", pred->name);
+         fprintf(fp, " block%u", (*pred)->name);
    }
 
    fprintf(fp, "\n\n");

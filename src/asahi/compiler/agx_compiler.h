@@ -351,7 +351,7 @@ typedef struct agx_block {
 
    /* Control flow graph */
    struct agx_block *successors[2];
-   struct set *predecessors;
+   struct util_dynarray predecessors;
    bool unconditional_jumps;
 
    /* Liveness analysis results */
@@ -540,13 +540,7 @@ agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
          _v++, v = *_v) \
 
 #define agx_foreach_predecessor(blk, v) \
-   struct set_entry *_entry_##v; \
-   agx_block *v; \
-   for (_entry_##v = _mesa_set_next_entry(blk->predecessors, NULL), \
-         v = (agx_block *) (_entry_##v ? _entry_##v->key : NULL);  \
-         _entry_##v != NULL; \
-         _entry_##v = _mesa_set_next_entry(blk->predecessors, _entry_##v), \
-         v = (agx_block *) (_entry_##v ? _entry_##v->key : NULL))
+   util_dynarray_foreach(&blk->predecessors, agx_block *, v)
 
 #define agx_foreach_src(ins, v) \
    for (unsigned v = 0; v < ins->nr_srcs; ++v)

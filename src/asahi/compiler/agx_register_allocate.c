@@ -102,7 +102,7 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsi
 
    agx_foreach_predecessor(block, pred) {
       for (unsigned i = 0; i < BITSET_WORDS(AGX_NUM_REGS); ++i)
-         used_regs[i] |= pred->regs_out[i];
+         used_regs[i] |= (*pred)->regs_out[i];
    }
 
    BITSET_SET(used_regs, 0); // control flow writes r0l

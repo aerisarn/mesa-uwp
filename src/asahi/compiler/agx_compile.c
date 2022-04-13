@@ -130,7 +130,7 @@ agx_block_add_successor(agx_block *block, agx_block *successor)
       }
 
       block->successors[i] = successor;
-      _mesa_set_add(successor->predecessors, block);
+      util_dynarray_append(&successor->predecessors, agx_block *, block);
       return;
    }
 
@@ -1053,8 +1053,7 @@ agx_create_block(agx_context *ctx)
 {
    agx_block *blk = rzalloc(ctx, agx_block);
 
-   blk->predecessors = _mesa_set_create(blk,
-         _mesa_hash_pointer, _mesa_key_pointer_equal);
+   util_dynarray_init(&blk->predecessors, blk);
 
    return blk;
 }

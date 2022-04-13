@@ -40,10 +40,7 @@ agx_test_builder(void *memctx)
    list_inithead(&ctx->blocks);
 
    agx_block *blk = rzalloc(ctx, agx_block);
-
-   blk->predecessors = _mesa_set_create(blk,
-         _mesa_hash_pointer,
-         _mesa_key_pointer_equal);
+   util_dynarray_init(&blk->predecessors, NULL);
 
    list_addtail(&blk->link, &ctx->blocks);
    list_inithead(&blk->instructions);

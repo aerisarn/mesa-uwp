@@ -123,10 +123,9 @@ agx_compute_liveness(agx_context *ctx)
       bool progress = liveness_block_update(blk, words);
 
       /* If we made progress, we need to process the predecessors */
-
-      if (progress || !blk->pass_flags) {
+      if (progress) {
          agx_foreach_predecessor(blk, pred)
-            _mesa_set_add(work_list, pred);
+            _mesa_set_add(work_list, *pred);
       }
 
       /* Use pass flags to communicate that we've visited this block */
