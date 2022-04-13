@@ -407,7 +407,7 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen,
       return shader == PIPE_SHADER_FRAGMENT
                 ? screen->specs.max_ps_uniforms * sizeof(float[4])
                 : screen->specs.max_vs_uniforms * sizeof(float[4]);
-   case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
+   case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:

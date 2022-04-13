@@ -651,7 +651,7 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		    rscreen->b.family == CHIP_HEMLOCK)
 			return 1;
 		return 0;
-	case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
+	case PIPE_SHADER_CAP_DROUND_SUPPORTED:
 	case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
 	case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
 	case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:

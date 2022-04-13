@@ -540,7 +540,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          return PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return 1 << PIPE_SHADER_IR_TGSI;
-      case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
+      case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
@@ -611,7 +611,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
          return PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return 1 << PIPE_SHADER_IR_TGSI;
-      case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
+      case PIPE_SHADER_CAP_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
@@ -727,7 +727,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
          return 1 << PIPE_SHADER_IR_TGSI;
       else
          return 0;
-   case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
+   case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
       /* For the above cases, we rely on the GLSL compiler to translate/lower

@@ -495,7 +495,7 @@ iris_get_shader_param(struct pipe_screen *pscreen,
          irs |= 1 << PIPE_SHADER_IR_NIR_SERIALIZED;
       return irs;
    }
-   case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
+   case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
       return 1;
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:

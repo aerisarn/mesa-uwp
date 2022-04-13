@@ -732,7 +732,7 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
   program.  It should be one of the ``pipe_shader_ir`` enum values.
 * ``PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS``: The maximum number of texture
   sampler views. Must not be lower than PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS.
-* ``PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED``: Whether double precision rounding
+* ``PIPE_SHADER_CAP_DROUND_SUPPORTED``: Whether double precision rounding
   is supported. If it is, DTRUNC/DCEIL/DFLR/DROUND opcodes may be used.
 * ``PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED``: Whether DFRACEXP and
   DLDEXP are supported.
