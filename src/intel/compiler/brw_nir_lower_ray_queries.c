@@ -548,6 +548,8 @@ brw_nir_lower_ray_queries(nir_shader *shader,
       nir_remove_dead_variables(shader,
                                 nir_var_shader_temp | nir_var_function_temp,
                                 NULL);
+
+      nir_metadata_preserve(impl, nir_metadata_none);
    }
 
    ralloc_free(state.queries);
