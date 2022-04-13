@@ -1093,18 +1093,14 @@ emit_cf_list(agx_context *ctx, struct exec_list *list);
  *       ...
  *    pop_exec
  *
- * If the else is empty, we can omit the else_icmp. This is not usually
- * optimal, but it's a start.
+ * If the else is empty, we can omit the else_icmp. This happens elsewhere, as
+ * an empty else block can become nonempty after RA due to phi lowering. This is
+ * not usually optimal, but it's a start.
  */
 
 static void
 emit_if(agx_context *ctx, nir_if *nif)
 {
-   nir_block *nir_else_block = nir_if_first_else_block(nif);
-   bool empty_else_block =
-      (nir_else_block == nir_if_last_else_block(nif) &&
-       exec_list_is_empty(&nir_else_block->instr_list));
-
    agx_block *first_block = ctx->current_block;
    agx_builder _b = agx_init_builder(ctx, agx_after_block(first_block));
    agx_index cond = agx_src_index(&nif->condition);
@@ -1116,10 +1112,8 @@ emit_if(agx_context *ctx, nir_if *nif)
    agx_block *if_block = emit_cf_list(ctx, &nif->then_list);
    agx_block *end_then = ctx->current_block;
 
-   if (!empty_else_block) {
-      _b.cursor = agx_after_block(ctx->current_block);
-      agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
-   }
+   _b.cursor = agx_after_block(ctx->current_block);
+   agx_else_icmp(&_b, cond, agx_zero(), 1, AGX_ICOND_UEQ, false);
 
    agx_block *else_block = emit_cf_list(ctx, &nif->else_list);
    agx_block *end_else = ctx->current_block;
