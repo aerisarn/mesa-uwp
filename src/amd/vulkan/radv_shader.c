@@ -1684,8 +1684,10 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
        */
       bool need_gs_vtx_offset2 = !info->is_ngg_passthrough || info->gs.vertices_in >= 3;
 
+      /* TES only needs vertex offset 2 for triangles or quads. */
       if (stage == MESA_SHADER_TESS_EVAL)
-         need_gs_vtx_offset2 &= info->tes._primitive_mode != TESS_PRIMITIVE_ISOLINES;
+         need_gs_vtx_offset2 &= info->tes._primitive_mode == TESS_PRIMITIVE_TRIANGLES ||
+                                info->tes._primitive_mode == TESS_PRIMITIVE_QUADS;
 
       if (info->uses_invocation_id) {
          gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID. */
