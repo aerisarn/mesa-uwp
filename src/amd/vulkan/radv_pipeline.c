@@ -4268,6 +4268,102 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                              out_stage->shader_sha1);
 }
 
+static struct radv_shader *
+radv_pipeline_create_gs_copy_shader(struct radv_pipeline *pipeline,
+                                    struct radv_pipeline_stage *stages,
+                                    const struct radv_pipeline_key *pipeline_key,
+                                    const struct radv_pipeline_layout *pipeline_layout,
+                                    bool keep_executable_info, bool keep_statistic_info,
+                                    struct radv_shader_binary **gs_copy_binary)
+{
+   struct radv_device *device = pipeline->device;
+   struct radv_shader_info info = {0};
+
+   if (stages[MESA_SHADER_GEOMETRY].info.vs.outinfo.export_clip_dists)
+      info.vs.outinfo.export_clip_dists = true;
+
+   radv_nir_shader_info_pass(device, stages[MESA_SHADER_GEOMETRY].nir, pipeline_layout, pipeline_key,
+                             &info);
+   info.wave_size = 64; /* Wave32 not supported. */
+   info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
+   info.ballot_bit_size = 64;
+
+   struct radv_shader_args gs_copy_args = {0};
+   gs_copy_args.is_gs_copy_shader = true;
+   gs_copy_args.explicit_scratch_args = !radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX);
+   radv_declare_shader_args(device->physical_device->rad_info.gfx_level, pipeline_key, &info,
+                            MESA_SHADER_VERTEX, false, MESA_SHADER_VERTEX, &gs_copy_args);
+   info.user_sgprs_locs = gs_copy_args.user_sgprs_locs;
+   info.inline_push_constant_mask = gs_copy_args.ac.inline_push_const_mask;
+
+   return radv_create_gs_copy_shader(device, stages[MESA_SHADER_GEOMETRY].nir, &info, &gs_copy_args,
+                                     gs_copy_binary, keep_executable_info, keep_statistic_info,
+                                     pipeline_key->optimisations_disabled);
+}
+
+static void
+radv_pipeline_nir_to_asm(struct radv_pipeline *pipeline, struct radv_pipeline_stage *stages,
+                         const struct radv_pipeline_key *pipeline_key,
+                         const struct radv_pipeline_layout *pipeline_layout,
+                         bool keep_executable_info, bool keep_statistic_info,
+                         struct radv_shader_binary **binaries,
+                         struct radv_shader_binary **gs_copy_binary)
+{
+   struct radv_device *device = pipeline->device;
+   unsigned active_stages = 0;
+
+   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
+      if (stages[i].nir)
+         active_stages |= (1 << i);
+   }
+
+   bool pipeline_has_ngg = pipeline->graphics.last_vgt_api_stage != MESA_SHADER_NONE &&
+                           stages[pipeline->graphics.last_vgt_api_stage].info.is_ngg;
+
+   if (stages[MESA_SHADER_GEOMETRY].nir && !pipeline_has_ngg) {
+      pipeline->gs_copy_shader =
+         radv_pipeline_create_gs_copy_shader(pipeline, stages, pipeline_key, pipeline_layout,
+                                             keep_executable_info, keep_statistic_info,
+                                             gs_copy_binary);
+   }
+
+   for (int s = MESA_VULKAN_SHADER_STAGES - 1; s >= 0; s--) {
+      if (!(active_stages & (1 << s)) || pipeline->shaders[s])
+         continue;
+
+      nir_shader *shaders[2] = { stages[s].nir, NULL };
+      unsigned shader_count = 1;
+
+      /* On GFX9+, TES is merged with GS and VS is merged with TCS or GS. */
+      if (device->physical_device->rad_info.gfx_level >= GFX9 &&
+          (s == MESA_SHADER_TESS_CTRL || s == MESA_SHADER_GEOMETRY)) {
+         gl_shader_stage pre_stage;
+
+         if (s == MESA_SHADER_GEOMETRY && stages[MESA_SHADER_TESS_EVAL].nir) {
+            pre_stage = MESA_SHADER_TESS_EVAL;
+         } else {
+            pre_stage = MESA_SHADER_VERTEX;
+         }
+
+         shaders[0] = stages[pre_stage].nir;
+         shaders[1] = stages[s].nir;
+         shader_count = 2;
+      }
+
+      int64_t stage_start = os_time_get_nano();
+
+      pipeline->shaders[s] = radv_shader_nir_to_asm(device, &stages[s], shaders, shader_count,
+                                                    pipeline_key, keep_executable_info,
+                                                    keep_statistic_info, &binaries[s]);
+
+      stages[s].feedback.duration += os_time_get_nano() - stage_start;
+
+      active_stages &= ~(1 << shaders[0]->info.stage);
+      if (shaders[1])
+         active_stages &= ~(1 << shaders[1]->info.stage);
+   }
+}
+
 VkResult
 radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout *pipeline_layout,
                     struct radv_device *device, struct radv_pipeline_cache *cache,
@@ -4613,97 +4709,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       }
    }
 
-   if (stages[MESA_SHADER_GEOMETRY].nir && !pipeline_has_ngg) {
-      struct radv_shader_info info = {0};
-
-      if (stages[MESA_SHADER_GEOMETRY].info.vs.outinfo.export_clip_dists)
-         info.vs.outinfo.export_clip_dists = true;
-
-      radv_nir_shader_info_pass(device, stages[MESA_SHADER_GEOMETRY].nir, pipeline_layout, pipeline_key,
-                                &info);
-      info.wave_size = 64; /* Wave32 not supported. */
-      info.workgroup_size = 64; /* HW VS: separate waves, no workgroups */
-      info.ballot_bit_size = 64;
-
-      struct radv_shader_args gs_copy_args = {0};
-      gs_copy_args.is_gs_copy_shader = true;
-      gs_copy_args.explicit_scratch_args = !radv_use_llvm_for_stage(device, MESA_SHADER_VERTEX);
-      radv_declare_shader_args(device->physical_device->rad_info.gfx_level, pipeline_key, &info,
-                               MESA_SHADER_VERTEX, false, MESA_SHADER_VERTEX, &gs_copy_args);
-      info.user_sgprs_locs = gs_copy_args.user_sgprs_locs;
-      info.inline_push_constant_mask = gs_copy_args.ac.inline_push_const_mask;
-
-      pipeline->gs_copy_shader = radv_create_gs_copy_shader(
-         device, stages[MESA_SHADER_GEOMETRY].nir, &info, &gs_copy_args, &gs_copy_binary,
-         keep_executable_info, keep_statistic_info, pipeline_key->optimisations_disabled);
-   }
-
-   unsigned active_stages = 0;
-   for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; i++) {
-      if (stages[i].nir)
-         active_stages |= (1 << i);
-   }
-
-   if (stages[MESA_SHADER_FRAGMENT].nir) {
-      if (!pipeline->shaders[MESA_SHADER_FRAGMENT]) {
-         int64_t stage_start = os_time_get_nano();
-
-         pipeline->shaders[MESA_SHADER_FRAGMENT] = radv_shader_nir_to_asm(
-            device, &stages[MESA_SHADER_FRAGMENT], &stages[MESA_SHADER_FRAGMENT].nir, 1,
-            pipeline_key, keep_executable_info, keep_statistic_info, &binaries[MESA_SHADER_FRAGMENT]);
-
-         stages[MESA_SHADER_FRAGMENT].feedback.duration += os_time_get_nano() - stage_start;
-      }
-
-      active_stages &= ~(1 << MESA_SHADER_FRAGMENT);
-   }
-
-   if (device->physical_device->rad_info.gfx_level >= GFX9 && stages[MESA_SHADER_TESS_CTRL].nir) {
-      if (!pipeline->shaders[MESA_SHADER_TESS_CTRL]) {
-         struct nir_shader *combined_nir[] = {stages[MESA_SHADER_VERTEX].nir, stages[MESA_SHADER_TESS_CTRL].nir};
-         int64_t stage_start = os_time_get_nano();
-
-         pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_nir_to_asm(
-            device, &stages[MESA_SHADER_TESS_CTRL], combined_nir, 2, pipeline_key, keep_executable_info,
-            keep_statistic_info, &binaries[MESA_SHADER_TESS_CTRL]);
-
-         stages[MESA_SHADER_TESS_CTRL].feedback.duration += os_time_get_nano() - stage_start;
-      }
-
-      active_stages &= ~(1 << MESA_SHADER_VERTEX);
-      active_stages &= ~(1 << MESA_SHADER_TESS_CTRL);
-   }
-
-   if (device->physical_device->rad_info.gfx_level >= GFX9 && stages[MESA_SHADER_GEOMETRY].nir) {
-      gl_shader_stage pre_stage =
-         stages[MESA_SHADER_TESS_EVAL].nir ? MESA_SHADER_TESS_EVAL : MESA_SHADER_VERTEX;
-      if (!pipeline->shaders[MESA_SHADER_GEOMETRY]) {
-         struct nir_shader *combined_nir[] = {stages[pre_stage].nir, stages[MESA_SHADER_GEOMETRY].nir};
-
-         int64_t stage_start = os_time_get_nano();
-
-         pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_nir_to_asm(
-            device, &stages[MESA_SHADER_GEOMETRY], combined_nir, 2, pipeline_key, keep_executable_info,
-            keep_statistic_info, &binaries[MESA_SHADER_GEOMETRY]);
-
-         stages[MESA_SHADER_GEOMETRY].feedback.duration += os_time_get_nano() - stage_start;
-      }
-
-      active_stages &= ~(1 << pre_stage);
-      active_stages &= ~(1 << MESA_SHADER_GEOMETRY);
-   }
-
-   u_foreach_bit(i, active_stages) {
-      if (!pipeline->shaders[i]) {
-         int64_t stage_start = os_time_get_nano();
-
-         pipeline->shaders[i] = radv_shader_nir_to_asm(
-            device, &stages[i], &stages[i].nir, 1, pipeline_key,
-            keep_executable_info, keep_statistic_info, &binaries[i]);
-
-         stages[i].feedback.duration += os_time_get_nano() - stage_start;
-      }
-   }
+   /* Compile NIR shaders to AMD assembly. */
+   radv_pipeline_nir_to_asm(pipeline, stages, pipeline_key, pipeline_layout, keep_executable_info,
+                            keep_statistic_info, binaries, &gs_copy_binary);
 
    if (keep_executable_info) {
       for (int i = 0; i < MESA_VULKAN_SHADER_STAGES; ++i) {
