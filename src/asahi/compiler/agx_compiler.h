@@ -548,6 +548,23 @@ agx_vec_for_intr(agx_context *ctx, nir_intrinsic_instr *instr)
 #define agx_foreach_dest(ins, v) \
    for (unsigned v = 0; v < ARRAY_SIZE(ins->dest); ++v)
 
+/*
+ * Find the index of a predecessor, used as the implicit order of phi sources.
+ */
+static inline unsigned
+agx_predecessor_index(agx_block *succ, agx_block *pred)
+{
+   unsigned index = 0;
+
+   agx_foreach_predecessor(succ, x) {
+      if (*x == pred) return index;
+
+      index++;
+   }
+
+   unreachable("Invalid predecessor");
+}
+
 static inline agx_instr *
 agx_prev_op(agx_instr *ins)
 {
