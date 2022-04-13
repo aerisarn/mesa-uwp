@@ -267,10 +267,9 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       if (ctx.uses[instr->operands[0].tempId()] > 1)
          return;
 
-      /* Make sure both SCC and Operand 0 are written by the same instruction. */
+      /* Find the writer instruction of Operand 0. */
       Idx wr_idx = last_writer_idx(ctx, instr->operands[0]);
-      Idx sccwr_idx = last_writer_idx(ctx, scc, s1);
-      if (!wr_idx.found() || wr_idx != sccwr_idx)
+      if (!wr_idx.found())
          return;
 
       Instruction* wr_instr = ctx.get(wr_idx);
@@ -311,6 +310,49 @@ try_optimize_scc_nocompare(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
       case aco_opcode::s_abs_i32:
       case aco_opcode::s_absdiff_i32: break;
       default: return;
+      }
+
+      /* Check whether both SCC and Operand 0 are written by the same instruction. */
+      Idx sccwr_idx = last_writer_idx(ctx, scc, s1);
+      if (wr_idx != sccwr_idx) {
+         /* Check whether the current instruction is the only user of its first operand. */
+         if (ctx.uses[wr_instr->definitions[1].tempId()] ||
+             ctx.uses[wr_instr->definitions[0].tempId()] > 1)
+            return;
+
+         /* Check whether the operands of the writer are clobbered. */
+         for (const Operand& op : wr_instr->operands) {
+            if (!op.isConstant() && is_clobbered_since(ctx, op, wr_idx))
+               return;
+         }
+
+         aco_opcode pulled_opcode = wr_instr->opcode;
+         if (instr->opcode == aco_opcode::s_cmp_eq_u32 ||
+             instr->opcode == aco_opcode::s_cmp_eq_i32 ||
+             instr->opcode == aco_opcode::s_cmp_eq_u64) {
+            /* When s_cmp_eq is used, it effectively inverts the SCC def.
+             * However, we can't simply invert the opcodes here because that
+             * would change the meaning of the program.
+             */
+            return;
+         }
+
+         Definition scc_def = instr->definitions[0];
+         ctx.uses[wr_instr->definitions[0].tempId()]--;
+
+         /* Copy the writer instruction, but use SCC from the current instr.
+          * This means that the original instruction will be eliminated.
+          */
+         if (wr_instr->format == Format::SOP2) {
+            instr.reset(create_instruction<SOP2_instruction>(pulled_opcode, Format::SOP2, 2, 2));
+            instr->operands[1] = wr_instr->operands[1];
+         } else if (wr_instr->format == Format::SOP1) {
+            instr.reset(create_instruction<SOP1_instruction>(pulled_opcode, Format::SOP1, 1, 2));
+         }
+         instr->definitions[0] = wr_instr->definitions[0];
+         instr->definitions[1] = scc_def;
+         instr->operands[0] = wr_instr->operands[0];
+         return;
       }
 
       /* Use the SCC def from wr_instr */
