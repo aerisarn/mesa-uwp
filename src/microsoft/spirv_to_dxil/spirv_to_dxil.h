@@ -165,6 +165,9 @@ struct dxil_spirv_runtime_conf {
    // The caller supports read-only images to be turned into SRV accesses,
    // which allows us to run the nir_opt_access() pass
    bool read_only_images_as_srvs;
+
+   // Force sample rate shading on a fragment shader
+   bool force_sample_rate_shading;
 };
 
 struct dxil_spirv_debug_options {
