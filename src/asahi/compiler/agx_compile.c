@@ -1717,7 +1717,9 @@ agx_compile_shader_nir(nir_shader *nir,
    agx_optimize_nir(nir);
 
    /* Implement conditional discard with real control flow like Metal */
-   NIR_PASS_V(nir, nir_lower_discard_if);
+   NIR_PASS_V(nir, nir_lower_discard_if, (nir_lower_discard_if_to_cf |
+                                          nir_lower_demote_if_to_cf |
+                                          nir_lower_terminate_if_to_cf));
 
    /* Must be last since NIR passes can remap driver_location freely */
    if (ctx->stage == MESA_SHADER_VERTEX)
