@@ -95,10 +95,13 @@ impl PipeScreen {
         tmpl: &pipe_resource,
         mem: *mut c_void,
     ) -> Option<PipeResource> {
-        PipeResource::new(
-            unsafe { (*self.screen).resource_from_user_memory.unwrap()(self.screen, tmpl, mem) },
-            true,
-        )
+        unsafe {
+            if let Some(func) = (*self.screen).resource_from_user_memory {
+                PipeResource::new(func(self.screen, tmpl, mem), true)
+            } else {
+                None
+            }
+        }
     }
 
     pub fn resource_create_buffer(&self, size: u32) -> Option<PipeResource> {
@@ -288,5 +291,4 @@ fn has_required_cbs(screen: *mut pipe_screen) -> bool {
         && s.get_shader_param.is_some()
         && s.is_format_supported.is_some()
         && s.resource_create.is_some()
-        && s.resource_from_user_memory.is_some()
 }
