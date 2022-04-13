@@ -307,7 +307,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       /* no need for empty templates */
       if (pg->dsl[i] == ctx->dd->dummy_dsl->layout ||
           pg->dsl[i] == ctx->dd->bindless_layout ||
-          (!is_push && pg->dd->layouts[i]->desc_template))
+          (!is_push && pg->dd->templates[i]))
          continue;
       template[i].sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
       assert(wd_count[i]);
@@ -327,7 +327,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       if (is_push)
          pg->dd->push_template = t;
       else
-         pg->dd->layouts[i]->desc_template = t;
+         pg->dd->templates[i] = t;
    }
    return true;
 }
@@ -339,6 +339,10 @@ zink_descriptor_program_deinit_lazy(struct zink_context *ctx, struct zink_progra
    for (unsigned i = 0; pg->num_dsl && i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (pg->dd->pool_key[i])
          pg->dd->pool_key[i]->use_count--;
+   }
+   for (unsigned i = 0; i < pg->num_dsl; i++) {
+      if (pg->dd->templates[i])
+         VKSCR(DestroyDescriptorUpdateTemplate)(screen->dev, pg->dd->templates[i], NULL);
    }
    if (pg->dd && pg->dd->push_template)
       VKSCR(DestroyDescriptorUpdateTemplate)(screen->dev, pg->dd->push_template, NULL);
@@ -480,7 +484,7 @@ void
 zink_descriptor_set_update_lazy(struct zink_context *ctx, struct zink_program *pg, enum zink_descriptor_type type, VkDescriptorSet set)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, set, pg->dd->layouts[type + 1]->desc_template, ctx);
+   VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, set, pg->dd->templates[type + 1], ctx);
 }
 
 void
@@ -504,7 +508,7 @@ zink_descriptors_update_lazy_masked(struct zink_context *ctx, bool is_compute, u
    u_foreach_bit(type, changed_sets) {
       assert(type + 1 < pg->num_dsl);
       if (pg->dd->pool_key[type]) {
-         VKSCR(UpdateDescriptorSetWithTemplate)(screen->dev, desc_sets[type], pg->dd->layouts[type + 1]->desc_template, ctx);
+         VKSCR(UpdateDescriptorSetWithTemplate)(screen->dev, desc_sets[type], pg->dd->templates[type + 1], ctx);
          VKSCR(CmdBindDescriptorSets)(bs->cmdbuf,
                                  is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
                                  /* set index incremented by 1 to account for push set */
