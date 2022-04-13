@@ -1082,10 +1082,7 @@ get_vec_from_bit_size(struct ntv_context *ctx, uint32_t bit_size, uint32_t num_c
 {
    if (bit_size == 1)
       return get_bvec_type(ctx, num_components);
-   if (bit_size == 8 || bit_size == 16 || bit_size == 32 || bit_size == 64)
-      return get_uvec_type(ctx, bit_size, num_components);
-   unreachable("unhandled register bit size");
-   return 0;
+   return get_uvec_type(ctx, bit_size, num_components);
 }
 
 static SpvId
