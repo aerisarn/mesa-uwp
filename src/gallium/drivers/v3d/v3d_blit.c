@@ -391,12 +391,13 @@ v3d_tfu_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
 static struct pipe_surface *
 v3d_get_blit_surface(struct pipe_context *pctx,
                      struct pipe_resource *prsc,
+                     enum pipe_format format,
                      unsigned level,
                      int16_t layer)
 {
         struct pipe_surface tmpl;
 
-        tmpl.format = prsc->format;
+        tmpl.format = format;
         tmpl.u.tex.level = level;
         tmpl.u.tex.first_layer = layer;
         tmpl.u.tex.last_layer = layer;
@@ -439,14 +440,14 @@ v3d_tlb_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
                 return;
 
         if (is_color_blit &&
-            util_format_is_depth_or_stencil(info->dst.resource->format))
+            util_format_is_depth_or_stencil(info->dst.format))
                 return;
 
-        if (!v3d_rt_format_supported(&screen->devinfo, info->src.resource->format))
+        if (!v3d_rt_format_supported(&screen->devinfo, info->src.format))
                 return;
 
-        if (v3d_get_rt_format(&screen->devinfo, info->src.resource->format) !=
-            v3d_get_rt_format(&screen->devinfo, info->dst.resource->format))
+        if (v3d_get_rt_format(&screen->devinfo, info->src.format) !=
+            v3d_get_rt_format(&screen->devinfo, info->dst.format))
                 return;
 
         bool msaa = (info->src.resource->nr_samples > 1 ||
@@ -455,15 +456,15 @@ v3d_tlb_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
                                 info->dst.resource->nr_samples < 2);
 
         if (is_msaa_resolve &&
-            !v3d_format_supports_tlb_msaa_resolve(&screen->devinfo, info->src.resource->format))
+            !v3d_format_supports_tlb_msaa_resolve(&screen->devinfo, info->src.format))
                 return;
 
         v3d_flush_jobs_writing_resource(v3d, info->src.resource, V3D_FLUSH_DEFAULT, false);
 
         struct pipe_surface *dst_surf =
-           v3d_get_blit_surface(pctx, info->dst.resource, info->dst.level, info->dst.box.z);
+           v3d_get_blit_surface(pctx, info->dst.resource, info->dst.format, info->dst.level, info->dst.box.z);
         struct pipe_surface *src_surf =
-           v3d_get_blit_surface(pctx, info->src.resource, info->src.level, info->src.box.z);
+           v3d_get_blit_surface(pctx, info->src.resource, info->src.format, info->src.level, info->src.box.z);
 
         struct pipe_surface *surfaces[V3D_MAX_DRAW_BUFFERS] = { 0 };
         if (is_color_blit)
