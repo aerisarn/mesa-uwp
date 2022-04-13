@@ -1151,8 +1151,6 @@ get_alu_src_raw(struct ntv_context *ctx, nir_alu_instr *alu, unsigned src)
       return def;
 
    int bit_size = nir_src_bit_size(alu->src[src].src);
-   assert(bit_size == 1 || bit_size == 8 || bit_size == 16 || bit_size == 32 || bit_size == 64);
-
    SpvId raw_type = bit_size == 1 ? spirv_builder_type_bool(&ctx->builder) :
                                     spirv_builder_type_uint(&ctx->builder, bit_size);
 
