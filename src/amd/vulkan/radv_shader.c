@@ -2106,7 +2106,7 @@ radv_create_trap_handler_shader(struct radv_device *device)
                             MESA_SHADER_COMPUTE, false, MESA_SHADER_VERTEX, &args);
 
    shader = shader_compile(device, &b.shader, 1, MESA_SHADER_COMPUTE, &info, &args, &options,
-                           false, true, true, false, &binary);
+                           false, true, false, false, &binary);
 
    trap->alloc = radv_alloc_shader_memory(device, shader->code_size, NULL);
 
