@@ -1409,8 +1409,8 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
 
       [nir_op_iabs] = { TGSI_OPCODE_IABS, TGSI_OPCODE_I64ABS },
       [nir_op_ineg] = { TGSI_OPCODE_INEG, TGSI_OPCODE_I64NEG },
-      [nir_op_fsign] = { TGSI_OPCODE_SSG },
-      [nir_op_isign] = { TGSI_OPCODE_ISSG },
+      [nir_op_fsign] = { TGSI_OPCODE_SSG, TGSI_OPCODE_DSSG },
+      [nir_op_isign] = { TGSI_OPCODE_ISSG, TGSI_OPCODE_I64SSG },
       [nir_op_ftrunc] = { TGSI_OPCODE_TRUNC, TGSI_OPCODE_DTRUNC },
       [nir_op_fddx] = { TGSI_OPCODE_DDX },
       [nir_op_fddy] = { TGSI_OPCODE_DDY },
