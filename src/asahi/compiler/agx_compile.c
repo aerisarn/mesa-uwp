@@ -83,6 +83,36 @@ agx_emit_extract(agx_builder *b, agx_index vec, unsigned channel)
 }
 
 static void
+agx_cache_combine(agx_builder *b, agx_index dst,
+                  agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+{
+   /* Lifetime of a hash table entry has to be at least as long as the table */
+   agx_index *channels = ralloc_array(b->shader, agx_index, 4);
+
+   channels[0] = s0;
+   channels[1] = s1;
+   channels[2] = s2;
+   channels[3] = s3;
+
+   _mesa_hash_table_u64_insert(b->shader->allocated_vec, agx_index_to_key(dst),
+                               channels);
+}
+
+/*
+ * Combine multiple scalars into a vector destination. This corresponds to
+ * p_combine, lowered to moves (a shuffle in general) after register allocation.
+ *
+ * To optimize vector extractions, we record the individual channels
+ */
+static agx_instr *
+agx_emit_combine_to(agx_builder *b, agx_index dst,
+                    agx_index s0, agx_index s1, agx_index s2, agx_index s3)
+{
+   agx_cache_combine(b, dst, s0, s1, s2, s3);
+   return agx_p_combine_to(b, dst, s0, s1, s2, s3);
+}
+
+static void
 agx_block_add_successor(agx_block *block, agx_block *successor)
 {
    assert(block != NULL && successor != NULL);
