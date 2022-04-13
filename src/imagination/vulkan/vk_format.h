@@ -32,6 +32,7 @@
 #ifndef VK_FORMAT_H
 #define VK_FORMAT_H
 
+#include <stdbool.h>
 #include <util/format/u_format.h>
 #include <vulkan/util/vk_format.h>
 
@@ -54,7 +55,7 @@ vk_format_is_alpha_on_msb(VkFormat vk_format)
 #endif
 }
 
-static inline boolean
+static inline bool
 vk_format_is_pure_integer(VkFormat vk_format)
 {
    return util_format_is_pure_integer(vk_format_to_pipe_format(vk_format));
@@ -69,7 +70,7 @@ vk_format_get_channel_width(VkFormat vk_format, uint32_t channel)
    return desc->channel[channel].size;
 }
 
-static inline boolean
+static inline bool
 vk_format_has_32bit_component(VkFormat vk_format)
 {
    const struct util_format_description *desc =
@@ -93,7 +94,7 @@ vk_format_get_component_bits(VkFormat vk_format,
                                          component);
 }
 
-static inline boolean
+static inline bool
 vk_format_is_normalized(VkFormat vk_format)
 {
    const struct util_format_description *desc =
