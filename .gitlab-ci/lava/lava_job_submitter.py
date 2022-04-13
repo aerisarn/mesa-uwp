@@ -123,6 +123,7 @@ def generate_lava_yaml(args):
       'definitions': [ {
         'name': 'mesa',
         'from': 'inline',
+        'lava-signal': 'kmsg',
         'path': 'inline/mesa.yaml',
         'repository': {
           'metadata': {
