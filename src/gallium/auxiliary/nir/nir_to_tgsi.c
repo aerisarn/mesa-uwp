@@ -44,7 +44,7 @@ struct ntt_insn {
    struct ureg_src src[4];
    enum tgsi_texture_type tex_target;
    enum tgsi_return_type tex_return_type;
-   struct tgsi_texture_offset tex_offset;
+   struct tgsi_texture_offset tex_offset[4];
 
    unsigned mem_qualifier;
    enum pipe_format mem_format;
@@ -325,8 +325,12 @@ ntt_live_reg_setup_def_use(struct ntt_compile *c, nir_function_impl *impl, struc
             ntt_live_reg_mark_use(c, bs, ip, index, used_mask);
          }
 
-         if (insn->is_tex && insn->tex_offset.File == TGSI_FILE_TEMPORARY)
-            ntt_live_reg_mark_use(c, bs, ip, insn->tex_offset.Index, 0xf);
+         if (insn->is_tex) {
+            for (int i = 0; i < ARRAY_SIZE(insn->tex_offset); i++) {
+               if (insn->tex_offset[i].File == TGSI_FILE_TEMPORARY)
+                  ntt_live_reg_mark_use(c, bs, ip, insn->tex_offset[i].Index, 0xf);
+            }
+         }
 
          /* Set up def[] for the srcs.
           *
@@ -505,9 +509,13 @@ ntt_allocate_regs(struct ntt_compile *c, nir_function_impl *impl)
             }
          }
 
-         if (insn->is_tex && insn->tex_offset.File == TGSI_FILE_TEMPORARY) {
-            ntt_ra_check(c, ra_map, released, ip, insn->tex_offset.Index);
-            insn->tex_offset.Index = ra_map[insn->tex_offset.Index];
+         if (insn->is_tex) {
+            for (int i = 0; i < ARRAY_SIZE(insn->tex_offset); i++) {
+               if (insn->tex_offset[i].File == TGSI_FILE_TEMPORARY) {
+                  ntt_ra_check(c, ra_map, released, ip, insn->tex_offset[i].Index);
+                  insn->tex_offset[i].Index = ra_map[insn->tex_offset[i].Index];
+               }
+            }
          }
 
          for (int i = 0; i < opcode_info->num_dst; i++) {
@@ -2721,21 +2729,6 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
       unreachable("unknown texture type");
    }
 
-   struct tgsi_texture_offset tex_offset = {
-      .File = TGSI_FILE_NULL
-   };
-   int tex_offset_src = nir_tex_instr_src_index(instr, nir_tex_src_offset);
-   if (tex_offset_src >= 0) {
-      struct ureg_src offset = ntt_get_src(c, instr->src[tex_offset_src].src);
-
-      tex_offset.File = offset.File;
-      tex_offset.Index = offset.Index;
-      tex_offset.SwizzleX = offset.SwizzleX;
-      tex_offset.SwizzleY = offset.SwizzleY;
-      tex_offset.SwizzleZ = offset.SwizzleZ;
-      tex_offset.Padding = 0;
-   }
-
    struct ureg_dst tex_dst;
    if (instr->op == nir_texop_query_levels)
       tex_dst = ureg_writemask(ntt_temp(c), TGSI_WRITEMASK_W);
@@ -2748,8 +2741,30 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    struct ntt_insn *insn = ntt_insn(c, tex_opcode, tex_dst, s.srcs[0], s.srcs[1], s.srcs[2], s.srcs[3]);
    insn->tex_target = target;
    insn->tex_return_type = tex_type;
-   insn->tex_offset = tex_offset;
    insn->is_tex = true;
+
+   int tex_offset_src = nir_tex_instr_src_index(instr, nir_tex_src_offset);
+   if (tex_offset_src >= 0) {
+      struct ureg_src offset = ntt_get_src(c, instr->src[tex_offset_src].src);
+
+      insn->tex_offset[0].File = offset.File;
+      insn->tex_offset[0].Index = offset.Index;
+      insn->tex_offset[0].SwizzleX = offset.SwizzleX;
+      insn->tex_offset[0].SwizzleY = offset.SwizzleY;
+      insn->tex_offset[0].SwizzleZ = offset.SwizzleZ;
+      insn->tex_offset[0].Padding = 0;
+   }
+
+   if (nir_tex_instr_has_explicit_tg4_offsets(instr)) {
+      for (uint8_t i = 0; i < 4; ++i) {
+         struct ureg_src imm = ureg_imm2i(c->ureg, instr->tg4_offsets[i][0], instr->tg4_offsets[i][1]);
+         insn->tex_offset[i].File = imm.File;
+         insn->tex_offset[i].Index = imm.Index;
+         insn->tex_offset[i].SwizzleX = imm.SwizzleX;
+         insn->tex_offset[i].SwizzleY = imm.SwizzleY;
+         insn->tex_offset[i].SwizzleZ = imm.SwizzleZ;
+      }
+   }
 
    if (instr->op == nir_texop_query_levels)
       ntt_MOV(c, dst, ureg_scalar(ureg_src(tex_dst), 3));
@@ -2948,11 +2963,16 @@ ntt_emit_block_ureg(struct ntt_compile *c, struct nir_block *block)
 
       default:
          if (insn->is_tex) {
+            int num_offsets = 0;
+            for (int i = 0; i < ARRAY_SIZE(insn->tex_offset); i++) {
+               if (insn->tex_offset[i].File != TGSI_FILE_NULL)
+                  num_offsets = i + 1;
+            }
             ureg_tex_insn(c->ureg, insn->opcode,
                           insn->dst, opcode_info->num_dst,
                           insn->tex_target, insn->tex_return_type,
-                          &insn->tex_offset,
-                          insn->tex_offset.File != TGSI_FILE_NULL ? 1 : 0,
+                          insn->tex_offset,
+                          num_offsets,
                           insn->src, opcode_info->num_src);
          } else if (insn->is_mem) {
             ureg_memory_insn(c->ureg, insn->opcode,
