@@ -2650,6 +2650,9 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   if (memoryBarrierCount + bufferBarrierCount + imageBarrierCount == 0)
+      return;
+
    /* We only care about barriers between GPU jobs */
    if (srcStageMask == VK_PIPELINE_STAGE_HOST_BIT ||
        dstStageMask == VK_PIPELINE_STAGE_HOST_BIT) {
