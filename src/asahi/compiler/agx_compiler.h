@@ -286,7 +286,16 @@ struct agx_block;
 typedef struct {
    /* Must be first */
    struct list_head link;
-   agx_index *src;
+
+   /* The sources list.
+    *
+    * As a special case to workaround ordering issues when translating phis, if
+    * nr_srcs == 0 and the opcode is PHI, holds a pointer to the NIR phi node.
+    */
+   union {
+      agx_index *src;
+      nir_phi_instr *phi;
+   };
 
    enum agx_opcode op;
 
@@ -414,6 +423,7 @@ typedef struct {
    agx_block *continue_block;
    agx_block *break_block;
    agx_block *after_block;
+   agx_block **indexed_nir_blocks;
 
    /* During instruction selection, map from vector agx_index to its scalar
     * components, populated by a split. */

@@ -1037,6 +1037,55 @@ agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
 }
 
 static void
+agx_emit_phi(agx_builder *b, nir_phi_instr *instr)
+{
+   agx_instr *I = agx_phi_to(b, agx_dest_index(&instr->dest));
+
+   /* Deferred */
+   I->phi = instr;
+}
+
+/* Look up the AGX block corresponding to a given NIR block. Used when
+ * translating phi nodes after emitting all blocks.
+ */
+static agx_block *
+agx_from_nir_block(agx_context *ctx, nir_block *block)
+{
+   return ctx->indexed_nir_blocks[block->index];
+}
+
+static void
+agx_emit_phi_deferred(agx_context *ctx, agx_block *block, agx_instr *I)
+{
+   nir_phi_instr *phi = I->phi;
+
+   /* Guaranteed by lower_phis_to_scalar */
+   assert(phi->dest.ssa.num_components == 1);
+
+   I->nr_srcs = exec_list_length(&phi->srcs);
+   I->src = rzalloc_array(I, agx_index, I->nr_srcs);
+
+   nir_foreach_phi_src(src, phi) {
+      agx_block *pred = agx_from_nir_block(ctx, src->pred);
+      unsigned i = agx_predecessor_index(block, pred);
+      assert(i < I->nr_srcs);
+
+      I->src[i] = agx_src_index(&src->src);
+   }
+}
+
+static void
+agx_emit_phis_deferred(agx_context *ctx)
+{
+   agx_foreach_block(ctx, block) {
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op == AGX_OPCODE_PHI)
+            agx_emit_phi_deferred(ctx, block, I);
+      }
+   }
+}
+
+static void
 agx_emit_instr(agx_builder *b, struct nir_instr *instr)
 {
    switch (instr->type) {
@@ -1058,6 +1107,10 @@ agx_emit_instr(agx_builder *b, struct nir_instr *instr)
 
    case nir_instr_type_jump:
       agx_emit_jump(b, nir_instr_as_jump(instr));
+      break;
+
+   case nir_instr_type_phi:
+      agx_emit_phi(b, nir_instr_as_phi(instr));
       break;
 
    default:
@@ -1088,6 +1141,8 @@ emit_block(agx_context *ctx, nir_block *block)
    agx_block *blk = ctx->current_block;
    list_addtail(&blk->link, &ctx->blocks);
    list_inithead(&blk->instructions);
+
+   ctx->indexed_nir_blocks[block->index] = blk;
 
    agx_builder _b = agx_init_builder(ctx, agx_after_block(blk));
 
@@ -1677,6 +1732,11 @@ agx_compile_shader_nir(nir_shader *nir,
       if (!func->impl)
          continue;
 
+      nir_index_blocks(func->impl);
+
+      ctx->indexed_nir_blocks =
+         rzalloc_array(ctx, agx_block *, func->impl->num_blocks);
+
       /* TODO: Handle phi nodes instead of just convert_from_ssa and yolo'ing
        * the mapping of nir_register to hardware registers and guaranteeing bad
        * performance and breaking spilling... */
@@ -1699,6 +1759,7 @@ agx_compile_shader_nir(nir_shader *nir,
       ctx->max_register = nir_regalloc;
       ctx->alloc += func->impl->ssa_alloc;
       emit_cf_list(ctx, &func->impl->body);
+      agx_emit_phis_deferred(ctx);
       break; /* TODO: Multi-function shaders */
    }
 
