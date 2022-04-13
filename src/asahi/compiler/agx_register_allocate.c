@@ -112,6 +112,44 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsi
    BITSET_SET(used_regs, (6*2 + 1));
 
    agx_foreach_instr_in_block(block, I) {
+      /* Optimization: if a split contains the last use of a vector, the split
+       * can be removed by assigning the destinations overlapping the source.
+       */
+      if (I->op == AGX_OPCODE_P_SPLIT && I->src[0].kill) {
+         unsigned reg = ssa_to_reg[I->src[0].value];
+         unsigned length = ncomps[I->src[0].value];
+         unsigned width = agx_size_align_16(I->src[0].size);
+         unsigned count = length / width;
+
+         agx_foreach_dest(I, d) {
+            /* Skip excess components */
+            if (d >= count) {
+               assert(agx_is_null(I->dest[d]));
+               continue;
+            }
+
+            /* The source of the split is killed. If a destination of the split
+             * is null, that channel is killed. Free it.
+             */
+            if (agx_is_null(I->dest[d])) {
+               for (unsigned i = 0; i < width; ++i)
+                  BITSET_CLEAR(used_regs, reg + (width * d) + i);
+
+               continue;
+            }
+
+            /* Otherwise, transfer the liveness */
+            unsigned offset = d * width;
+
+            assert(I->dest[d].type == AGX_INDEX_NORMAL);
+            assert(offset < length);
+
+            ssa_to_reg[I->dest[d].value] = reg + offset;
+         }
+
+         continue;
+      }
+
       /* First, free killed sources */
       agx_foreach_src(I, s) {
          if (I->src[s].type == AGX_INDEX_NORMAL && I->src[s].kill) {
@@ -123,7 +161,9 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsi
          }
       }
 
-      /* Next, assign destinations. Always legal in SSA form. */
+      /* Next, assign destinations one at a time. This is always legal
+       * because of the SSA form.
+       */
       agx_foreach_dest(I, d) {
          if (I->dest[d].type == AGX_INDEX_NORMAL) {
             unsigned count = agx_write_registers(I, d);
