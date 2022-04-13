@@ -149,7 +149,6 @@ struct zink_program_descriptor_data {
    struct zink_descriptor_pool_key *pool_key[ZINK_DESCRIPTOR_TYPES]; //push set doesn't need one
    struct zink_descriptor_layout *layouts[ZINK_DESCRIPTOR_TYPES + 1];
    VkDescriptorUpdateTemplateKHR templates[ZINK_DESCRIPTOR_TYPES + 1];
-   VkDescriptorUpdateTemplateKHR push_template;
 };
 
 struct zink_batch_descriptor_data {

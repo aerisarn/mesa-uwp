@@ -324,10 +324,7 @@ zink_descriptor_program_init_lazy(struct zink_context *ctx, struct zink_program 
       VkDescriptorUpdateTemplateKHR t;
       if (VKSCR(CreateDescriptorUpdateTemplate)(screen->dev, &template[i], NULL, &t) != VK_SUCCESS)
          return false;
-      if (is_push)
-         pg->dd->push_template = t;
-      else
-         pg->dd->templates[i] = t;
+      pg->dd->templates[i] = t;
    }
    return true;
 }
@@ -344,8 +341,6 @@ zink_descriptor_program_deinit_lazy(struct zink_context *ctx, struct zink_progra
       if (pg->dd->templates[i])
          VKSCR(DestroyDescriptorUpdateTemplate)(screen->dev, pg->dd->templates[i], NULL);
    }
-   if (pg->dd && pg->dd->push_template)
-      VKSCR(DestroyDescriptorUpdateTemplate)(screen->dev, pg->dd->push_template, NULL);
    ralloc_free(pg->dd);
 }
 
@@ -602,11 +597,11 @@ zink_descriptors_update_lazy(struct zink_context *ctx, bool is_compute)
    if (pg->dd->push_usage && (dd_lazy(ctx)->push_state_changed[is_compute] || bind_sets)) {
       if (have_KHR_push_descriptor) {
          if (dd_lazy(ctx)->push_state_changed[is_compute])
-            VKCTX(CmdPushDescriptorSetWithTemplateKHR)(bs->cmdbuf, pg->dd->push_template,
+            VKCTX(CmdPushDescriptorSetWithTemplateKHR)(bs->cmdbuf, pg->dd->templates[0],
                                                         pg->layout, 0, ctx);
       } else {
          if (dd_lazy(ctx)->push_state_changed[is_compute]) {
-            VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, push_set, pg->dd->push_template, ctx);
+            VKCTX(UpdateDescriptorSetWithTemplate)(screen->dev, push_set, pg->dd->templates[0], ctx);
             bdd->sets[is_compute][0] = push_set;
          }
          assert(push_set || bdd->sets[is_compute][0]);
