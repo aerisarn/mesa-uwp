@@ -1022,7 +1022,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
       return 0; /* unsure */
 
-   case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
+   case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
       return 0; /* not implemented */

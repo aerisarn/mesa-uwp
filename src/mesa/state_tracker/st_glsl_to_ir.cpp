@@ -98,7 +98,7 @@ st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       bool have_dfrexp = pscreen->get_shader_param(pscreen, ptarget,
                                                    PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED);
       bool have_ldexp = pscreen->get_shader_param(pscreen, ptarget,
-                                                  PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED);
+                                                  PIPE_SHADER_CAP_LDEXP_SUPPORTED);
 
       if (!pscreen->get_param(pscreen, PIPE_CAP_INT64_DIVMOD))
          lower_64bit_integer_instructions(ir, DIV64 | MOD64);
