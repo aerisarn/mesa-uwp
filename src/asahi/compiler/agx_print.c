@@ -124,7 +124,7 @@ agx_print_instr(agx_instr *I, FILE *fp)
       agx_print_index(I->dest[d], fp);
    }
 
-   for (unsigned s = 0; s < info.nr_srcs; ++s) {
+   for (unsigned s = 0; s < I->nr_srcs; ++s) {
       if (print_comma)
          fprintf(fp, ", ");
       else

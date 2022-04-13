@@ -30,8 +30,11 @@ static void
 agx_lower_to_unary_bitop(agx_instr *I, enum agx_bitop_table table)
 {
    I->op = AGX_OPCODE_BITOP;
-   I->src[1] = agx_zero();
    I->truth_table = table;
+
+   /* Allocate extra source */
+   I->src = reralloc_array_size(I, I->src, sizeof(agx_index), I->nr_srcs++);
+   I->src[1] = agx_zero();
 }
 
 static void

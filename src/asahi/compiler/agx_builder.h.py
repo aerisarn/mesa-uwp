@@ -65,9 +65,14 @@ agx_${opcode}${suffix}(agx_builder *b
    I->dest[${dest}] = dst${dest};
 % endfor
 
+% if srcs > 0:
+   I->src = ralloc_array(I, agx_index, ${srcs});
+   I->nr_srcs = ${srcs};
+
 % for src in range(srcs):
    I->src[${src}] = src${src};
 % endfor
+% endif
 
 % for imm in imms:
    I->${imm.name} = ${imm.name};

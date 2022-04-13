@@ -55,14 +55,23 @@ agx_test_builder(void *memctx)
    return b;
 }
 
-/* Helper to compare for logical equality of instructions. Need to skip over
- * the link, guaranteed to be first. After that we can compare raw data. */
+/* Helper to compare for logical equality of instructions. Need to compare the
+ * pointers, then compare raw data.
+ */
 static inline bool
 agx_instr_equal(agx_instr *A, agx_instr *B)
 {
-   return memcmp((uint8_t *) A    + sizeof(struct list_head),
-                 (uint8_t *) B    + sizeof(struct list_head),
-                 sizeof(agx_instr) - sizeof(struct list_head)) == 0;
+   unsigned pointers = sizeof(struct list_head) + sizeof(agx_index *);
+
+   if (A->nr_srcs != B->nr_srcs)
+      return false;
+
+   if (memcmp(A->src, B->src, A->nr_srcs * sizeof(agx_index)))
+      return false;
+
+   return memcmp((uint8_t *) A    + pointers,
+                 (uint8_t *) B    + pointers,
+                 sizeof(agx_instr) - pointers) == 0;
 }
 
 static inline bool

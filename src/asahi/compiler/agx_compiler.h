@@ -285,12 +285,14 @@ struct agx_block;
 typedef struct {
    /* Must be first */
    struct list_head link;
+   agx_index *src;
 
    enum agx_opcode op;
 
    /* Data flow */
    agx_index dest[AGX_MAX_DESTS];
-   agx_index src[AGX_MAX_SRCS];
+
+   unsigned nr_srcs;
 
    union {
       uint32_t imm;
@@ -531,7 +533,7 @@ agx_dest_index(nir_dest *dst)
          v = (agx_block *) (_entry_##v ? _entry_##v->key : NULL))
 
 #define agx_foreach_src(ins, v) \
-   for (unsigned v = 0; v < ARRAY_SIZE(ins->src); ++v)
+   for (unsigned v = 0; v < ins->nr_srcs; ++v)
 
 #define agx_foreach_dest(ins, v) \
    for (unsigned v = 0; v < ARRAY_SIZE(ins->dest); ++v)
