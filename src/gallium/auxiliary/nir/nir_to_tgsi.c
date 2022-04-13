@@ -1449,25 +1449,18 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
       [nir_op_ldexp] = { TGSI_OPCODE_LDEXP, 0 },
    };
 
-   /* TGSI's 64 bit compares storing to 32-bit are weird and write .xz instead
-    * of .xy.  Store to a temp and move it to the real dst.
-    */
-   bool tgsi_64bit_compare = src_64 && !dst_64 &&
-      (num_srcs == 2 ||
-        nir_op_infos[instr->op].output_type == nir_type_bool32) &&
-      (dst.WriteMask != TGSI_WRITEMASK_X);
-
-   /* TGSI 64bit-to-32-bit conversions only generate results in the .xy
-    * channels and will need to get fixed up.
-    */
-   bool tgsi_64bit_downconvert = (src_64 && !dst_64 &&
-                                  num_srcs == 1 && !tgsi_64bit_compare &&
-                                  (dst.WriteMask & ~TGSI_WRITEMASK_XY));
-
-   struct ureg_dst real_dst = ureg_dst_undef();
-   if (tgsi_64bit_compare || tgsi_64bit_downconvert) {
-      real_dst = dst;
-      dst = ntt_temp(c);
+   if (src_64 && !dst_64) {
+      if (num_srcs == 2 || nir_op_infos[instr->op].output_type == nir_type_bool32) {
+         /* TGSI's 64 bit compares storing to 32-bit are weird and write .xz instead
+         * of .xy.
+         */
+         assert(!(dst.WriteMask & TGSI_WRITEMASK_YW));
+      } else {
+         /* TGSI 64bit-to-32-bit conversions only generate results in the .xy
+         * channels and will need to get fixed up.
+         */
+        assert(!(dst.WriteMask & TGSI_WRITEMASK_ZW));
+      }
    }
 
    bool table_op64 = src_64;
@@ -1723,25 +1716,6 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
       default:
          fprintf(stderr, "Unknown NIR opcode: %s\n", nir_op_infos[instr->op].name);
          unreachable("Unknown NIR opcode");
-      }
-   }
-
-   /* 64-bit op fixup movs */
-   if (!ureg_dst_is_undef(real_dst)) {
-      if (tgsi_64bit_compare) {
-         ntt_MOV(c, real_dst,
-                  ureg_swizzle(ureg_src(dst), 0, 2, 0, 2));
-      } else {
-         assert(tgsi_64bit_downconvert);
-         uint8_t swizzle[] = {0, 0, 0, 0};
-         uint32_t second_bit = real_dst.WriteMask & ~(1 << (ffs(real_dst.WriteMask) - 1));
-         if (second_bit)
-            swizzle[ffs(second_bit) - 1] = 1;
-         ntt_MOV(c, real_dst, ureg_swizzle(ureg_src(dst),
-                                                  swizzle[0],
-                                                  swizzle[1],
-                                                  swizzle[2],
-                                                  swizzle[3]));
       }
    }
 
@@ -3711,6 +3685,42 @@ nir_to_tgsi(struct nir_shader *s,
    return nir_to_tgsi_options(s, screen, &default_ntt_options);
 }
 
+/* Prevent lower_vec_to_mov from coalescing 64-to-32 conversions and comparisons
+ * into unsupported channels of registers.
+ */
+static bool
+ntt_vec_to_mov_writemask_cb(const nir_instr *instr, unsigned writemask, UNUSED const void *_data)
+{
+   if (instr->type != nir_instr_type_alu)
+      return false;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   int dst_32 = nir_dest_bit_size(alu->dest.dest) == 32;
+   int src_64 = nir_src_bit_size(alu->src[0].src) == 64;
+
+   if (src_64 && dst_32) {
+      int num_srcs = nir_op_infos[alu->op].num_inputs;
+
+      if (num_srcs == 2 || nir_op_infos[alu->op].output_type == nir_type_bool32) {
+         /* TGSI's 64 bit compares storing to 32-bit are weird and write .xz
+          * instead of .xy.  Just support scalar compares storing to .x,
+          * GLSL-to-TGSI only ever emitted scalar ops anyway.
+          */
+        if (writemask != TGSI_WRITEMASK_X)
+           return false;
+      } else {
+         /* TGSI's 64-to-32-bit conversions can only store to .xy (since a TGSI
+          * register can only store a dvec2).  Don't try to coalesce to write to
+          * .zw.
+          */
+         if (writemask & ~(TGSI_WRITEMASK_XY))
+            return false;
+      }
+   }
+
+   return true;
+}
+
 /**
  * Translates the NIR shader to TGSI.
  *
@@ -3811,7 +3821,7 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
    NIR_PASS_V(s, nir_lower_to_source_mods, source_mods);
 
    NIR_PASS_V(s, nir_convert_from_ssa, true);
-   NIR_PASS_V(s, nir_lower_vec_to_movs, NULL, NULL);
+   NIR_PASS_V(s, nir_lower_vec_to_movs, ntt_vec_to_mov_writemask_cb, NULL);
 
    /* locals_to_regs will leave dead derefs that are good to clean up. */
    NIR_PASS_V(s, nir_lower_locals_to_regs);
