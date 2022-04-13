@@ -3838,6 +3838,9 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
 
    NIR_PASS_V(s, nir_lower_indirect_derefs, no_indirects_mask, UINT32_MAX);
 
+   /* Lower demote_if to if (cond) { demote } because TGSI doesn't have a DEMOTE_IF. */
+   NIR_PASS_V(s, nir_lower_discard_if, nir_lower_demote_if_to_cf);
+
    bool progress;
    do {
       progress = false;
