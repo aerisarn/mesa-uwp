@@ -298,7 +298,7 @@ anv_batch_emit_dwords(struct anv_batch *batch, int num_dwords)
 struct anv_address
 anv_batch_address(struct anv_batch *batch, void *batch_location)
 {
-   assert(batch->start < batch_location);
+   assert(batch->start <= batch_location);
 
    /* Allow a jump at the current location of the batch. */
    assert(batch->next >= batch_location);
