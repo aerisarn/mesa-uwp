@@ -253,6 +253,8 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_FS_POINT_IS_SYSVAL:
    case PIPE_CAP_FS_FACE_IS_INTEGER_SYSVAL:
       return 0;
+   case PIPE_CAP_MULTI_DRAW_INDIRECT_PARTIAL_STRIDE:
+      return 1;
 
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
       /* Enables GL_ARB_shader_storage_buffer_object */
