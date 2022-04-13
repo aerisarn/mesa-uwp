@@ -302,6 +302,11 @@ agx_ra(agx_context *ctx)
       }
    }
 
+   agx_foreach_instr_global_safe(ctx, I) {
+      if (I->op == AGX_OPCODE_P_LOGICAL_END)
+         agx_remove_instruction(I);
+   }
+
    free(ssa_to_reg);
    free(ncomps);
    free(alloc);
