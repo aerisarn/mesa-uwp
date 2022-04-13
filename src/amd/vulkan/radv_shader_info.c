@@ -688,11 +688,12 @@ radv_nir_shader_info_pass(struct radv_device *device, const struct nir_shader *n
       memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
              sizeof(outinfo->vs_output_param_offset));
 
+      uint64_t special_mask = BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT) |
+                              BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
       uint64_t per_prim_mask =
-         nir->info.outputs_written & nir->info.per_primitive_outputs &
-         ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES) & ~BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_COUNT);
+         nir->info.outputs_written & nir->info.per_primitive_outputs & ~special_mask;
       uint64_t per_vtx_mask =
-         nir->info.outputs_written & ~per_prim_mask;
+         nir->info.outputs_written & ~nir->info.per_primitive_outputs & ~special_mask;
 
       unsigned total_param_exports = 0;
 
