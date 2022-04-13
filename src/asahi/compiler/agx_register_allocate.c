@@ -194,6 +194,72 @@ agx_index_to_reg(uint8_t *ssa_to_reg, agx_index idx)
    }
 }
 
+/*
+ * Lower phis to parallel copies at the logical end of a given block. If a block
+ * needs parallel copies inserted, a successor of the block has a phi node. To
+ * have a (nontrivial) phi node, a block must have multiple predecessors. So the
+ * edge from the block to the successor (with phi) is not the only edge entering
+ * the successor. Because the control flow graph has no critical edges, this
+ * edge must therefore be the only edge leaving the block, so the block must
+ * have only a single successor.
+ */
+static void
+agx_insert_parallel_copies(agx_context *ctx, agx_block *block)
+{
+   bool any_succ = false;
+   unsigned nr_phi = 0;
+
+   /* Phi nodes logically happen on the control flow edge, so parallel copies
+    * are added at the end of the predecessor */
+   agx_builder b = agx_init_builder(ctx, agx_after_block_logical(block));
+
+   agx_foreach_successor(block, succ) {
+      assert(nr_phi == 0 && "control flow graph has a critical edge");
+
+      /* Phi nodes can only come at the start of the block */
+      agx_foreach_instr_in_block(succ, phi) {
+         if (phi->op != AGX_OPCODE_PHI) break;
+
+         assert(!any_succ && "control flow graph has a critical edge");
+         nr_phi++;
+      }
+
+      any_succ = true;
+
+      /* Nothing to do if there are no phi nodes */
+      if (nr_phi == 0)
+         continue;
+
+      unsigned pred_index = agx_predecessor_index(succ, block);
+
+      /* Create a parallel copy lowering all the phi nodes */
+      struct agx_copy *copies = calloc(sizeof(*copies), nr_phi);
+
+      unsigned i = 0;
+
+      agx_foreach_instr_in_block(succ, phi) {
+         if (phi->op != AGX_OPCODE_PHI) break;
+
+         agx_index dest = phi->dest[0];
+         agx_index src = phi->src[pred_index];
+
+         assert(dest.type == AGX_INDEX_REGISTER);
+         assert(src.type == AGX_INDEX_REGISTER);
+         assert(dest.size == src.size);
+
+         copies[i++] = (struct agx_copy) {
+            .dest = dest.value,
+            .src = src.value,
+            .size = src.size
+         };
+      }
+
+      agx_emit_parallel_copies(&b, copies, nr_phi);
+
+      free(copies);
+   }
+}
+
 void
 agx_ra(agx_context *ctx)
 {
@@ -302,8 +368,14 @@ agx_ra(agx_context *ctx)
       }
    }
 
+   /* Insert parallel copies lowering phi nodes */
+   agx_foreach_block(ctx, block) {
+      agx_insert_parallel_copies(ctx, block);
+   }
+
+   /* Phi nodes can be removed now */
    agx_foreach_instr_global_safe(ctx, I) {
-      if (I->op == AGX_OPCODE_P_LOGICAL_END)
+      if (I->op == AGX_OPCODE_PHI || I->op == AGX_OPCODE_P_LOGICAL_END)
          agx_remove_instruction(I);
    }
 
