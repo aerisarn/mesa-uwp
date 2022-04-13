@@ -96,7 +96,7 @@ st_link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
       bool have_dround = pscreen->get_shader_param(pscreen, ptarget,
                                                    PIPE_SHADER_CAP_DROUND_SUPPORTED);
       bool have_dfrexp = pscreen->get_shader_param(pscreen, ptarget,
-                                                   PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED);
+                                                   PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED);
       bool have_ldexp = pscreen->get_shader_param(pscreen, ptarget,
                                                   PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED);
 
