@@ -4107,7 +4107,11 @@ void
 radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
                          struct radv_pipeline_stage *out_stage, gl_shader_stage stage)
 {
-   struct vk_shader_module *module = vk_shader_module_from_handle(sinfo->module);
+   const VkShaderModuleCreateInfo *minfo =
+      vk_find_struct_const(sinfo->pNext, SHADER_MODULE_CREATE_INFO);
+
+   if (sinfo->module == VK_NULL_HANDLE && !minfo)
+      return;
 
    memset(out_stage, 0, sizeof(*out_stage));
 
@@ -4116,17 +4120,25 @@ radv_pipeline_stage_init(const VkPipelineShaderStageCreateInfo *sinfo,
    out_stage->spec_info = sinfo->pSpecializationInfo;
    out_stage->feedback.flags = VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT;
 
-   out_stage->spirv.data = module->data;
-   out_stage->spirv.size = module->size;
-   out_stage->spirv.object = &module->base;
+   if (sinfo->module != VK_NULL_HANDLE) {
+      struct vk_shader_module *module = vk_shader_module_from_handle(sinfo->module);
 
-   if (module->nir) {
-      out_stage->internal_nir = module->nir;
-      _mesa_sha1_compute(module->nir->info.name, strlen(module->nir->info.name),
-                         out_stage->spirv.sha1);
+      out_stage->spirv.data = module->data;
+      out_stage->spirv.size = module->size;
+      out_stage->spirv.object = &module->base;
+
+      if (module->nir) {
+         out_stage->internal_nir = module->nir;
+         _mesa_sha1_compute(module->nir->info.name, strlen(module->nir->info.name),
+                            out_stage->spirv.sha1);
+      } else {
+         assert(sizeof(out_stage->spirv.sha1) == sizeof(module->sha1));
+         memcpy(out_stage->spirv.sha1, module->sha1, sizeof(out_stage->spirv.sha1));
+      }
    } else {
-      assert(sizeof(out_stage->spirv.sha1) == sizeof(module->sha1));
-      memcpy(out_stage->spirv.sha1, module->sha1, sizeof(out_stage->spirv.sha1));
+      out_stage->spirv.data = (const char *) minfo->pCode;
+      out_stage->spirv.size = minfo->codeSize;
+      _mesa_sha1_compute(out_stage->spirv.data, out_stage->spirv.size, out_stage->spirv.sha1);
    }
 
    radv_pipeline_hash_shader(out_stage->spirv.sha1, sizeof(out_stage->spirv.sha1),
