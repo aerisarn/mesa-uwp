@@ -764,6 +764,8 @@ enum tu_cs_mode
    TU_CS_MODE_SUB_STREAM,
 };
 
+#define TU_COND_EXEC_STACK_SIZE 4
+
 struct tu_cs
 {
    uint32_t *start;
@@ -787,8 +789,9 @@ struct tu_cs
    struct tu_bo *refcount_bo;
 
    /* state for cond_exec_start/cond_exec_end */
-   uint32_t cond_flags;
-   uint32_t *cond_dwords;
+   uint32_t cond_stack_depth;
+   uint32_t cond_flags[TU_COND_EXEC_STACK_SIZE];
+   uint32_t *cond_dwords[TU_COND_EXEC_STACK_SIZE];
 };
 
 struct tu_device_memory
