@@ -2056,12 +2056,33 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
 
    enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(dim, is_array, false);
 
-   struct ureg_src resource =
-      ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
-                            instr->src[0], 2);
+   struct ureg_src resource;
+   switch (instr->intrinsic) {
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_bindless_image_size:
+   case nir_intrinsic_bindless_image_samples:
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_fadd:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
+      resource = ntt_get_src(c, instr->src[0]);
+      break;
+   default:
+      resource = ntt_ureg_src_indirect(c, ureg_src_register(TGSI_FILE_IMAGE, 0),
+                                       instr->src[0], 2);
+   }
 
    struct ureg_dst dst;
-   if (instr->intrinsic == nir_intrinsic_image_store) {
+   if (instr->intrinsic == nir_intrinsic_image_store ||
+       instr->intrinsic == nir_intrinsic_bindless_image_store) {
       dst = ureg_dst(resource);
    } else {
       srcs[num_src++] = resource;
@@ -2069,7 +2090,10 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
    }
    struct ureg_dst opcode_dst = dst;
 
-   if (instr->intrinsic != nir_intrinsic_image_size && instr->intrinsic != nir_intrinsic_image_samples) {
+   if (instr->intrinsic != nir_intrinsic_image_size &&
+       instr->intrinsic != nir_intrinsic_image_samples &&
+       instr->intrinsic != nir_intrinsic_bindless_image_size &&
+       instr->intrinsic != nir_intrinsic_bindless_image_samples) {
       struct ureg_src coord = ntt_get_src(c, instr->src[1]);
 
       if (dim == GLSL_SAMPLER_DIM_MS) {
@@ -2081,58 +2105,75 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
       }
       srcs[num_src++] = coord;
 
-      if (instr->intrinsic != nir_intrinsic_image_load) {
+      if (instr->intrinsic != nir_intrinsic_image_load &&
+          instr->intrinsic != nir_intrinsic_bindless_image_load) {
          srcs[num_src++] = ntt_get_src(c, instr->src[3]); /* data */
-         if (instr->intrinsic == nir_intrinsic_image_atomic_comp_swap)
+         if (instr->intrinsic == nir_intrinsic_image_atomic_comp_swap ||
+             instr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap)
             srcs[num_src++] = ntt_get_src(c, instr->src[4]); /* data2 */
       }
    }
 
    switch (instr->intrinsic) {
    case nir_intrinsic_image_load:
+   case nir_intrinsic_bindless_image_load:
       op = TGSI_OPCODE_LOAD;
       break;
    case nir_intrinsic_image_store:
+   case nir_intrinsic_bindless_image_store:
       op = TGSI_OPCODE_STORE;
       break;
    case nir_intrinsic_image_size:
+   case nir_intrinsic_bindless_image_size:
       op = TGSI_OPCODE_RESQ;
       break;
    case nir_intrinsic_image_samples:
+   case nir_intrinsic_bindless_image_samples:
       op = TGSI_OPCODE_RESQ;
       opcode_dst = ureg_writemask(ntt_temp(c), TGSI_WRITEMASK_W);
       break;
    case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_add:
       op = TGSI_OPCODE_ATOMUADD;
       break;
    case nir_intrinsic_image_atomic_fadd:
+   case nir_intrinsic_bindless_image_atomic_fadd:
       op = TGSI_OPCODE_ATOMFADD;
       break;
    case nir_intrinsic_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_imin:
       op = TGSI_OPCODE_ATOMIMIN;
       break;
    case nir_intrinsic_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_umin:
       op = TGSI_OPCODE_ATOMUMIN;
       break;
    case nir_intrinsic_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_imax:
       op = TGSI_OPCODE_ATOMIMAX;
       break;
    case nir_intrinsic_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_umax:
       op = TGSI_OPCODE_ATOMUMAX;
       break;
    case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_and:
       op = TGSI_OPCODE_ATOMAND;
       break;
    case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_or:
       op = TGSI_OPCODE_ATOMOR;
       break;
    case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_xor:
       op = TGSI_OPCODE_ATOMXOR;
       break;
    case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_exchange:
       op = TGSI_OPCODE_ATOMXCHG;
       break;
    case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
       op = TGSI_OPCODE_ATOMCAS;
       break;
    default:
@@ -2145,7 +2186,8 @@ ntt_emit_image_load_store(struct ntt_compile *c, nir_intrinsic_instr *instr)
    insn->mem_format = nir_intrinsic_format(instr);
    insn->is_mem = true;
 
-   if (instr->intrinsic == nir_intrinsic_image_samples)
+   if (instr->intrinsic == nir_intrinsic_image_samples ||
+       instr->intrinsic == nir_intrinsic_bindless_image_samples)
       ntt_MOV(c, dst, ureg_scalar(ureg_src(opcode_dst), 3));
 }
 
@@ -2529,6 +2571,21 @@ ntt_emit_intrinsic(struct ntt_compile *c, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_atomic_xor:
    case nir_intrinsic_image_atomic_exchange:
    case nir_intrinsic_image_atomic_comp_swap:
+   case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_store:
+   case nir_intrinsic_bindless_image_size:
+   case nir_intrinsic_bindless_image_samples:
+   case nir_intrinsic_bindless_image_atomic_add:
+   case nir_intrinsic_bindless_image_atomic_fadd:
+   case nir_intrinsic_bindless_image_atomic_imin:
+   case nir_intrinsic_bindless_image_atomic_umin:
+   case nir_intrinsic_bindless_image_atomic_imax:
+   case nir_intrinsic_bindless_image_atomic_umax:
+   case nir_intrinsic_bindless_image_atomic_and:
+   case nir_intrinsic_bindless_image_atomic_or:
+   case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_exchange:
+   case nir_intrinsic_bindless_image_atomic_comp_swap:
       ntt_emit_image_load_store(c, instr);
       break;
 
@@ -2644,11 +2701,22 @@ ntt_emit_texture(struct ntt_compile *c, nir_tex_instr *instr)
    enum tgsi_texture_type target = tgsi_texture_type_from_sampler_dim(instr->sampler_dim, instr->is_array, instr->is_shadow);
    unsigned tex_opcode;
 
-   struct ureg_src sampler = ureg_DECL_sampler(c->ureg, instr->sampler_index);
-   int sampler_src = nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset);
-   if (sampler_src >= 0) {
-      struct ureg_src reladdr = ntt_get_src(c, instr->src[sampler_src].src);
-      sampler = ureg_src_indirect(sampler, ntt_reladdr(c, reladdr, 2));
+   int tex_handle_src = nir_tex_instr_src_index(instr, nir_tex_src_texture_handle);
+   int sampler_handle_src = nir_tex_instr_src_index(instr, nir_tex_src_sampler_handle);
+
+   struct ureg_src sampler;
+   if (tex_handle_src >= 0 && sampler_handle_src >= 0) {
+      /* It seems we can't get separate tex/sampler on GL, just use one of the handles */
+      sampler = ntt_get_src(c, instr->src[tex_handle_src].src);
+      assert(nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset) == -1);
+   } else {
+      assert(tex_handle_src == -1 && sampler_handle_src == -1);
+      sampler = ureg_DECL_sampler(c->ureg, instr->sampler_index);
+      int sampler_src = nir_tex_instr_src_index(instr, nir_tex_src_sampler_offset);
+      if (sampler_src >= 0) {
+         struct ureg_src reladdr = ntt_get_src(c, instr->src[sampler_src].src);
+         sampler = ureg_src_indirect(sampler, ntt_reladdr(c, reladdr, 2));
+      }
    }
 
    switch (instr->op) {
