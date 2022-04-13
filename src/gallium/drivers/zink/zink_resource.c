@@ -260,7 +260,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
          usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
          if ((bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
             usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-      } else if (templ->nr_samples)
+      } else if (templ->nr_samples || !(feats & VK_FORMAT_FEATURE_BLIT_DST_BIT))
          /* this can't be populated, so we can't do it */
          return 0;
    }
