@@ -635,6 +635,24 @@ agx_after_instr(agx_instr *instr)
    };
 }
 
+/*
+ * Get a cursor inserting at the logical end of the block. In particular, this
+ * is before branches or control flow instructions, which occur after the
+ * logical end but before the physical end.
+ */
+static inline agx_cursor
+agx_after_block_logical(agx_block *block)
+{
+   /* Search for a p_logical_end */
+   agx_foreach_instr_in_block_rev(block, I) {
+      if (I->op == AGX_OPCODE_P_LOGICAL_END)
+         return agx_before_instr(I);
+   }
+
+   /* If there's no p_logical_end, use the physical end */
+   return agx_after_block(block);
+}
+
 /* IR builder in terms of cursor infrastructure */
 
 typedef struct {
