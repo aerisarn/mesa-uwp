@@ -382,7 +382,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 STATIC_ASSERT(PAN_MAX_CONST_BUFFERS < 0x100);
                 return PAN_MAX_CONST_BUFFERS;
 
-        case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
+        case PIPE_SHADER_CAP_CONT_SUPPORTED:
                 return 0;
 
         case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:

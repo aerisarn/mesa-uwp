@@ -606,7 +606,7 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		}
 	case PIPE_SHADER_CAP_MAX_CONST_BUFFERS:
 		return R600_MAX_USER_CONST_BUFFERS;
-	case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
+	case PIPE_SHADER_CAP_CONT_SUPPORTED:
 		return 1;
 	case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
 		return 1;

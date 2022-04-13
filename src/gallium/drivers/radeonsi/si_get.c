@@ -450,7 +450,7 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
              (1 << PIPE_SHADER_IR_NIR);
 
    /* Supported boolean features. */
-   case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
+   case PIPE_SHADER_CAP_CONT_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:

@@ -339,7 +339,7 @@ void st_init_limits(struct pipe_screen *screen,
 
       options->EmitNoCont =
          !screen->get_shader_param(screen, sh,
-                                   PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED);
+                                   PIPE_SHADER_CAP_CONT_SUPPORTED);
 
       options->EmitNoIndirectInput =
          !screen->get_shader_param(screen, sh,

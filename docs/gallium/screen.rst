@@ -699,7 +699,7 @@ DCL CONST[3][0]          # declare first vector of constbuf 3
 MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
 
 * ``PIPE_SHADER_CAP_MAX_TEMPS``: The maximum number of temporary registers.
-* ``PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED``: Whether the continue opcode is supported.
+* ``PIPE_SHADER_CAP_CONT_SUPPORTED``: Whether continue is supported.
 * ``PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR``: Whether indirect addressing
   of the input file is supported.
 * ``PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR``: Whether indirect addressing

@@ -514,7 +514,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
           * does it is better to defer loop unrolling to the gallium frontend.
           */
          return 0;
-      case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
+      case PIPE_SHADER_CAP_CONT_SUPPORTED:
          return 0;
       case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
          return 0;
@@ -582,7 +582,7 @@ vgpu9_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_MAX_TEMPS:
          val = get_uint_cap(sws, SVGA3D_DEVCAP_MAX_VERTEX_SHADER_TEMPS, 32);
          return MIN2(val, SVGA3D_TEMPREG_MAX);
-      case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
+      case PIPE_SHADER_CAP_CONT_SUPPORTED:
          return 0;
       case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
          return 0;
@@ -706,7 +706,7 @@ vgpu10_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
    case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       return TRUE; /* XXX verify */
-   case PIPE_SHADER_CAP_TGSI_CONT_SUPPORTED:
+   case PIPE_SHADER_CAP_CONT_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED:
    case PIPE_SHADER_CAP_SUBROUTINES:
    case PIPE_SHADER_CAP_INTEGERS:
