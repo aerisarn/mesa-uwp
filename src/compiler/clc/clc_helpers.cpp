@@ -73,9 +73,14 @@ using ::llvm::raw_string_ostream;
 
 static void
 llvm_log_handler(const ::llvm::DiagnosticInfo &di, void *data) {
-   raw_string_ostream os { *reinterpret_cast<std::string *>(data) };
+   const clc_logger *logger = static_cast<clc_logger *>(data);
+
+   std::string log;
+   raw_string_ostream os { log };
    ::llvm::DiagnosticPrinterRawOStream printer { os };
    di.print(printer);
+
+   clc_error(logger, "%s", log.c_str());
 }
 
 class SPIRVKernelArg {
@@ -748,15 +753,21 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
 {
    clc_initialize_llvm();
 
-   std::string log;
    std::unique_ptr<LLVMContext> llvm_ctx { new LLVMContext };
-   llvm_ctx->setDiagnosticHandlerCallBack(llvm_log_handler, &log);
+   llvm_ctx->setDiagnosticHandlerCallBack(llvm_log_handler,
+                                          const_cast<clc_logger *>(logger));
+
+   std::string diag_log_str;
+   raw_string_ostream diag_log_stream { diag_log_str };
 
    std::unique_ptr<clang::CompilerInstance> c { new clang::CompilerInstance };
-   clang::DiagnosticsEngine diag { new clang::DiagnosticIDs,
-         new clang::DiagnosticOptions,
-         new clang::TextDiagnosticPrinter(*new raw_string_ostream(log),
-                                          &c->getDiagnosticOpts(), true)};
+
+   clang::DiagnosticsEngine diag {
+      new clang::DiagnosticIDs,
+      new clang::DiagnosticOptions,
+      new clang::TextDiagnosticPrinter(diag_log_stream,
+                                       &c->getDiagnosticOpts())
+   };
 
    std::vector<const char *> clang_opts = {
       args->source.name,
@@ -786,13 +797,13 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
                                                   clang_opts.data() + clang_opts.size(),
 #endif
                                                   diag)) {
-      clc_error(logger, "%sCouldn't create Clang invocation.\n", log.c_str());
+      clc_error(logger, "Couldn't create Clang invocation.\n");
       return {};
    }
 
    if (diag.hasErrorOccurred()) {
       clc_error(logger, "%sErrors occurred during Clang invocation.\n",
-                log.c_str());
+                diag_log_str.c_str());
       return {};
    }
 
@@ -802,8 +813,8 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
    c->getDiagnosticOpts().ShowCarets = false;
 
    c->createDiagnostics(new clang::TextDiagnosticPrinter(
-                           *new raw_string_ostream(log),
-                           &c->getDiagnosticOpts(), true));
+                           diag_log_stream,
+                           &c->getDiagnosticOpts()));
 
    c->setTarget(clang::TargetInfo::CreateTargetInfo(
                    c->getDiagnostics(), c->getInvocation().TargetOpts));
@@ -870,7 +881,7 @@ clc_compile_to_llvm_module(const struct clc_compile_args *args,
    clang::EmitLLVMOnlyAction act(llvm_ctx.get());
    if (!c->ExecuteAction(act)) {
       clc_error(logger, "%sError executing LLVM compilation action.\n",
-                log.c_str());
+                diag_log_str.c_str());
       return {};
    }
 
