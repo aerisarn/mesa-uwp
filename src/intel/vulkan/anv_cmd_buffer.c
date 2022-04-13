@@ -623,7 +623,7 @@ void anv_CmdBindPipeline(
       anv_cmd_buffer_set_ray_query_buffer(cmd_buffer, state, pipeline, stages);
 }
 
-void anv_CmdSetRasterizerDiscardEnableEXT(
+void anv_CmdSetRasterizerDiscardEnable(
     VkCommandBuffer                             commandBuffer,
     VkBool32                                    rasterizerDiscardEnable)
 {
@@ -634,7 +634,7 @@ void anv_CmdSetRasterizerDiscardEnableEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
 }
 
-void anv_CmdSetDepthBiasEnableEXT(
+void anv_CmdSetDepthBiasEnable(
     VkCommandBuffer                             commandBuffer,
     VkBool32                                    depthBiasEnable)
 {
@@ -645,7 +645,7 @@ void anv_CmdSetDepthBiasEnableEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE;
 }
 
-void anv_CmdSetPrimitiveRestartEnableEXT(
+void anv_CmdSetPrimitiveRestartEnable(
     VkCommandBuffer                             commandBuffer,
     VkBool32                                    primitiveRestartEnable)
 {
@@ -693,7 +693,7 @@ void anv_CmdSetViewport(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_VIEWPORT;
 }
 
-void anv_CmdSetViewportWithCountEXT(
+void anv_CmdSetViewportWithCount(
    VkCommandBuffer                              commandBuffer,
    uint32_t                                     viewportCount,
    const VkViewport*                            pViewports)
@@ -726,7 +726,7 @@ void anv_CmdSetScissor(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
 }
 
-void anv_CmdSetScissorWithCountEXT(
+void anv_CmdSetScissorWithCount(
    VkCommandBuffer                              commandBuffer,
    uint32_t                                     scissorCount,
    const VkRect2D*                              pScissors)
@@ -741,7 +741,7 @@ void anv_CmdSetScissorWithCountEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
 }
 
-void anv_CmdSetPrimitiveTopologyEXT(
+void anv_CmdSetPrimitiveTopology(
    VkCommandBuffer                              commandBuffer,
    VkPrimitiveTopology                          primitiveTopology)
 {
@@ -875,7 +875,7 @@ void anv_CmdSetLineStippleEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
 }
 
-void anv_CmdSetCullModeEXT(
+void anv_CmdSetCullMode(
    VkCommandBuffer                              commandBuffer,
    VkCullModeFlags                              cullMode)
 {
@@ -886,7 +886,7 @@ void anv_CmdSetCullModeEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_CULL_MODE;
 }
 
-void anv_CmdSetFrontFaceEXT(
+void anv_CmdSetFrontFace(
    VkCommandBuffer                              commandBuffer,
    VkFrontFace                                  frontFace)
 {
@@ -897,7 +897,7 @@ void anv_CmdSetFrontFaceEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 }
 
-void anv_CmdSetDepthTestEnableEXT(
+void anv_CmdSetDepthTestEnable(
    VkCommandBuffer                              commandBuffer,
    VkBool32                                     depthTestEnable)
 
@@ -909,7 +909,7 @@ void anv_CmdSetDepthTestEnableEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE;
 }
 
-void anv_CmdSetDepthWriteEnableEXT(
+void anv_CmdSetDepthWriteEnable(
    VkCommandBuffer                              commandBuffer,
    VkBool32                                     depthWriteEnable)
 {
@@ -920,7 +920,7 @@ void anv_CmdSetDepthWriteEnableEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE;
 }
 
-void anv_CmdSetDepthCompareOpEXT(
+void anv_CmdSetDepthCompareOp(
    VkCommandBuffer                              commandBuffer,
    VkCompareOp                                  depthCompareOp)
 {
@@ -931,7 +931,7 @@ void anv_CmdSetDepthCompareOpEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP;
 }
 
-void anv_CmdSetDepthBoundsTestEnableEXT(
+void anv_CmdSetDepthBoundsTestEnable(
    VkCommandBuffer                              commandBuffer,
    VkBool32                                     depthBoundsTestEnable)
 {
@@ -942,7 +942,7 @@ void anv_CmdSetDepthBoundsTestEnableEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
 }
 
-void anv_CmdSetStencilTestEnableEXT(
+void anv_CmdSetStencilTestEnable(
    VkCommandBuffer                              commandBuffer,
    VkBool32                                     stencilTestEnable)
 {
@@ -953,7 +953,7 @@ void anv_CmdSetStencilTestEnableEXT(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE;
 }
 
-void anv_CmdSetStencilOpEXT(
+void anv_CmdSetStencilOp(
    VkCommandBuffer                              commandBuffer,
    VkStencilFaceFlags                           faceMask,
    VkStencilOp                                  failOp,
@@ -1129,7 +1129,7 @@ void anv_CmdBindDescriptorSets(
    }
 }
 
-void anv_CmdBindVertexBuffers2EXT(
+void anv_CmdBindVertexBuffers2(
    VkCommandBuffer                              commandBuffer,
    uint32_t                                     firstBinding,
    uint32_t                                     bindingCount,
@@ -1166,9 +1166,9 @@ void anv_CmdBindVertexBuffers(
     const VkBuffer*                             pBuffers,
     const VkDeviceSize*                         pOffsets)
 {
-   return anv_CmdBindVertexBuffers2EXT(commandBuffer, firstBinding,
-                                       bindingCount, pBuffers, pOffsets,
-                                       NULL, NULL);
+   return anv_CmdBindVertexBuffers2(commandBuffer, firstBinding,
+                                    bindingCount, pBuffers, pOffsets,
+                                    NULL, NULL);
 }
 
 void anv_CmdBindTransformFeedbackBuffersEXT(

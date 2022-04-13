@@ -1244,9 +1244,9 @@ void genX(CmdEndQueryIndexedEXT)(
 
 #define TIMESTAMP 0x2358
 
-void genX(CmdWriteTimestamp2KHR)(
+void genX(CmdWriteTimestamp2)(
     VkCommandBuffer                             commandBuffer,
-    VkPipelineStageFlags2KHR                    stage,
+    VkPipelineStageFlags2                       stage,
     VkQueryPool                                 queryPool,
     uint32_t                                    query)
 {

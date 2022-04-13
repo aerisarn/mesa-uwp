@@ -308,7 +308,7 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
            VkImageLayout src_image_layout,
            struct anv_image *dst_image,
            VkImageLayout dst_image_layout,
-           const VkImageCopy2KHR *region)
+           const VkImageCopy2 *region)
 {
    VkOffset3D srcOffset =
       anv_sanitize_image_offset(src_image->vk.image_type, region->srcOffset);
@@ -421,9 +421,9 @@ copy_image(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-void anv_CmdCopyImage2KHR(
+void anv_CmdCopyImage2(
     VkCommandBuffer                             commandBuffer,
-    const VkCopyImageInfo2KHR*                  pCopyImageInfo)
+    const VkCopyImageInfo2*                     pCopyImageInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, src_image, pCopyImageInfo->srcImage);
@@ -466,7 +466,7 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
                      struct anv_buffer *anv_buffer,
                      struct anv_image *anv_image,
                      VkImageLayout image_layout,
-                     const VkBufferImageCopy2KHR* region,
+                     const VkBufferImageCopy2* region,
                      bool buffer_to_image)
 {
    struct {
@@ -592,9 +592,9 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-void anv_CmdCopyBufferToImage2KHR(
+void anv_CmdCopyBufferToImage2(
     VkCommandBuffer                             commandBuffer,
-    const VkCopyBufferToImageInfo2KHR*          pCopyBufferToImageInfo)
+    const VkCopyBufferToImageInfo2*             pCopyBufferToImageInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_buffer, src_buffer, pCopyBufferToImageInfo->srcBuffer);
@@ -612,9 +612,9 @@ void anv_CmdCopyBufferToImage2KHR(
    anv_blorp_batch_finish(&batch);
 }
 
-void anv_CmdCopyImageToBuffer2KHR(
+void anv_CmdCopyImageToBuffer2(
     VkCommandBuffer                             commandBuffer,
-    const VkCopyImageToBufferInfo2KHR*          pCopyImageToBufferInfo)
+    const VkCopyImageToBufferInfo2*             pCopyImageToBufferInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, src_image, pCopyImageToBufferInfo->srcImage);
@@ -662,7 +662,7 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
            VkImageLayout src_image_layout,
            struct anv_image *dst_image,
            VkImageLayout dst_image_layout,
-           const VkImageBlit2KHR *region,
+           const VkImageBlit2 *region,
            VkFilter filter)
 {
    const VkImageSubresourceLayers *src_res = &region->srcSubresource;
@@ -773,9 +773,9 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-void anv_CmdBlitImage2KHR(
+void anv_CmdBlitImage2(
     VkCommandBuffer                             commandBuffer,
-    const VkBlitImageInfo2KHR*                  pBlitImageInfo)
+    const VkBlitImageInfo2*                     pBlitImageInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, src_image, pBlitImageInfo->srcImage);
@@ -820,7 +820,7 @@ copy_buffer(struct anv_device *device,
             struct blorp_batch *batch,
             struct anv_buffer *src_buffer,
             struct anv_buffer *dst_buffer,
-            const VkBufferCopy2KHR *region)
+            const VkBufferCopy2 *region)
 {
    struct blorp_address src = {
       .buffer = src_buffer->address.bo,
@@ -838,9 +838,9 @@ copy_buffer(struct anv_device *device,
    blorp_buffer_copy(batch, src, dst, region->size);
 }
 
-void anv_CmdCopyBuffer2KHR(
+void anv_CmdCopyBuffer2(
     VkCommandBuffer                             commandBuffer,
-    const VkCopyBufferInfo2KHR*                 pCopyBufferInfo)
+    const VkCopyBufferInfo2*                    pCopyBufferInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_buffer, src_buffer, pCopyBufferInfo->srcBuffer);
@@ -1452,7 +1452,7 @@ resolve_image(struct anv_cmd_buffer *cmd_buffer,
               VkImageLayout src_image_layout,
               struct anv_image *dst_image,
               VkImageLayout dst_image_layout,
-              const VkImageResolve2KHR *region)
+              const VkImageResolve2 *region)
 {
    assert(region->srcSubresource.aspectMask == region->dstSubresource.aspectMask);
    assert(vk_image_subresource_layer_count(&src_image->vk, &region->srcSubresource) ==
@@ -1492,9 +1492,9 @@ resolve_image(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-void anv_CmdResolveImage2KHR(
+void anv_CmdResolveImage2(
     VkCommandBuffer                             commandBuffer,
-    const VkResolveImageInfo2KHR*               pResolveImageInfo)
+    const VkResolveImageInfo2*                  pResolveImageInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, src_image, pResolveImageInfo->srcImage);

@@ -1832,7 +1832,7 @@ struct anv_descriptor_set_binding_layout {
    VkDescriptorType type;
 
    /* Flags provided when this binding was created */
-   VkDescriptorBindingFlagsEXT flags;
+   VkDescriptorBindingFlags flags;
 
    /* Bitfield representing the type of data this descriptor contains */
    enum anv_descriptor_data data;
@@ -2259,22 +2259,22 @@ enum anv_cmd_dirty_bits {
    ANV_CMD_DIRTY_XFB_ENABLE                          = 1 << 12,
    ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE                = 1 << 13, /* VK_DYNAMIC_STATE_LINE_STIPPLE_EXT */
    ANV_CMD_DIRTY_DYNAMIC_CULL_MODE                   = 1 << 14, /* VK_DYNAMIC_STATE_CULL_MODE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE                  = 1 << 15, /* VK_DYNAMIC_STATE_FRONT_FACE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY          = 1 << 16, /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE = 1 << 17, /* VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE           = 1 << 18, /* VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE          = 1 << 19, /* VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP            = 1 << 20, /* VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE    = 1 << 21, /* VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE         = 1 << 22, /* VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP                  = 1 << 23, /* VK_DYNAMIC_STATE_STENCIL_OP_EXT */
+   ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE                  = 1 << 15, /* VK_DYNAMIC_STATE_FRONT_FACE */
+   ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY          = 1 << 16, /* VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY */
+   ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE = 1 << 17, /* VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE */
+   ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE           = 1 << 18, /* VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE */
+   ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE          = 1 << 19, /* VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE */
+   ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP            = 1 << 20, /* VK_DYNAMIC_STATE_DEPTH_COMPARE_OP */
+   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE    = 1 << 21, /* VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE */
+   ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE         = 1 << 22, /* VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE */
+   ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP                  = 1 << 23, /* VK_DYNAMIC_STATE_STENCIL_OP */
    ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS            = 1 << 24, /* VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT */
    ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE           = 1 << 25, /* VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT */
    ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE                = 1 << 26, /* VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR */
-   ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE   = 1 << 27, /* VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE           = 1 << 28, /* VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT */
+   ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE   = 1 << 27, /* VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE */
+   ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE           = 1 << 28, /* VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE */
    ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP                    = 1 << 29, /* VK_DYNAMIC_STATE_LOGIC_OP_EXT */
-   ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE    = 1 << 30, /* VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT */
+   ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE    = 1 << 30, /* VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE */
 };
 typedef uint32_t anv_cmd_dirty_mask_t;
 
@@ -2312,10 +2312,10 @@ anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
 {
    switch (vk_state) {
    case VK_DYNAMIC_STATE_VIEWPORT:
-   case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT:
+   case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT:
       return ANV_CMD_DIRTY_DYNAMIC_VIEWPORT;
    case VK_DYNAMIC_STATE_SCISSOR:
-   case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT:
+   case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT:
       return ANV_CMD_DIRTY_DYNAMIC_SCISSOR;
    case VK_DYNAMIC_STATE_LINE_WIDTH:
       return ANV_CMD_DIRTY_DYNAMIC_LINE_WIDTH;
@@ -2333,25 +2333,25 @@ anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
       return ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
    case VK_DYNAMIC_STATE_LINE_STIPPLE_EXT:
       return ANV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
-   case VK_DYNAMIC_STATE_CULL_MODE_EXT:
+   case VK_DYNAMIC_STATE_CULL_MODE:
       return ANV_CMD_DIRTY_DYNAMIC_CULL_MODE;
-   case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
+   case VK_DYNAMIC_STATE_FRONT_FACE:
       return ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
-   case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
+   case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:
       return ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
-   case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
+   case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE:
       return ANV_CMD_DIRTY_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
-   case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_DEPTH_TEST_ENABLE;
-   case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_DEPTH_WRITE_ENABLE;
-   case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP:
       return ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP;
-   case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE;
-   case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE;
-   case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
+   case VK_DYNAMIC_STATE_STENCIL_OP:
       return ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
    case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
       return ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
@@ -2359,13 +2359,13 @@ anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
       return ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
    case VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR:
       return ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE;
-   case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
-   case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE;
    case VK_DYNAMIC_STATE_LOGIC_OP_EXT:
       return ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP;
-   case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT:
+   case VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE:
       return ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
    default:
       assert(!"Unsupported dynamic state");
@@ -2450,35 +2450,35 @@ anv_pipe_flush_bit_to_ds_stall_flag(enum anv_pipe_bits bits);
 
 static inline enum anv_pipe_bits
 anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
-                                     VkAccessFlags2KHR flags)
+                                     VkAccessFlags2 flags)
 {
    enum anv_pipe_bits pipe_bits = 0;
 
    u_foreach_bit64(b, flags) {
-      switch ((VkAccessFlags2KHR)BITFIELD64_BIT(b)) {
-      case VK_ACCESS_2_SHADER_WRITE_BIT_KHR:
-      case VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT_KHR:
+      switch ((VkAccessFlags2)BITFIELD64_BIT(b)) {
+      case VK_ACCESS_2_SHADER_WRITE_BIT:
+      case VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as write
           * destination through the data port. To make its content available
           * to future operations, flush the hdc pipeline.
           */
          pipe_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR:
+      case VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as render
           * target. To make its content available to future operations, flush
           * the render target cache.
           */
          pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT_KHR:
+      case VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as depth
           * buffer. To make its content available to future operations, flush
           * the depth cache.
           */
          pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR:
+      case VK_ACCESS_2_TRANSFER_WRITE_BIT:
          /* We're transitioning a buffer that was previously used as a
           * transfer write destination. Generic write operations include color
           * & depth operations as well as buffer operations like :
@@ -2495,13 +2495,13 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
          pipe_bits |= ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
          pipe_bits |= ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_MEMORY_WRITE_BIT_KHR:
+      case VK_ACCESS_2_MEMORY_WRITE_BIT:
          /* We're transitioning a buffer for generic write operations. Flush
           * all the caches.
           */
          pipe_bits |= ANV_PIPE_FLUSH_BITS;
          break;
-      case VK_ACCESS_2_HOST_WRITE_BIT_KHR:
+      case VK_ACCESS_2_HOST_WRITE_BIT:
          /* We're transitioning a buffer for access by CPU. Invalidate
           * all the caches. Since data and tile caches don't have invalidate,
           * we are forced to flush those as well.
@@ -2527,13 +2527,13 @@ anv_pipe_flush_bits_for_access_flags(struct anv_device *device,
 
 static inline enum anv_pipe_bits
 anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
-                                          VkAccessFlags2KHR flags)
+                                          VkAccessFlags2 flags)
 {
    enum anv_pipe_bits pipe_bits = 0;
 
    u_foreach_bit64(b, flags) {
-      switch ((VkAccessFlags2KHR)BITFIELD64_BIT(b)) {
-      case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR:
+      switch ((VkAccessFlags2)BITFIELD64_BIT(b)) {
+      case VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT:
          /* Indirect draw commands take a buffer as input that we're going to
           * read from the command streamer to load some of the HW registers
           * (see genX_cmd_buffer.c:load_indirect_parameters). This requires a
@@ -2555,15 +2555,15 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
           */
          pipe_bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_INDEX_READ_BIT_KHR:
-      case VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT_KHR:
+      case VK_ACCESS_2_INDEX_READ_BIT:
+      case VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT:
          /* We transitioning a buffer to be used for as input for vkCmdDraw*
           * commands, so we invalidate the VF cache to make sure there is no
           * stale data when we start rendering.
           */
          pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
          break;
-      case VK_ACCESS_2_UNIFORM_READ_BIT_KHR:
+      case VK_ACCESS_2_UNIFORM_READ_BIT:
          /* We transitioning a buffer to be used as uniform data. Because
           * uniform is accessed through the data port & sampler, we need to
           * invalidate the texture cache (sampler) & constant cache (data
@@ -2575,21 +2575,21 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
          else
             pipe_bits |= ANV_PIPE_HDC_PIPELINE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_SHADER_READ_BIT_KHR:
-      case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT_KHR:
-      case VK_ACCESS_2_TRANSFER_READ_BIT_KHR:
+      case VK_ACCESS_2_SHADER_READ_BIT:
+      case VK_ACCESS_2_INPUT_ATTACHMENT_READ_BIT:
+      case VK_ACCESS_2_TRANSFER_READ_BIT:
          /* Transitioning a buffer to be read through the sampler, so
           * invalidate the texture cache, we don't want any stale data.
           */
          pipe_bits |= ANV_PIPE_TEXTURE_CACHE_INVALIDATE_BIT;
          break;
-      case VK_ACCESS_2_MEMORY_READ_BIT_KHR:
+      case VK_ACCESS_2_MEMORY_READ_BIT:
          /* Transitioning a buffer for generic read, invalidate all the
           * caches.
           */
          pipe_bits |= ANV_PIPE_INVALIDATE_BITS;
          break;
-      case VK_ACCESS_2_MEMORY_WRITE_BIT_KHR:
+      case VK_ACCESS_2_MEMORY_WRITE_BIT:
          /* Generic write, make sure all previously written things land in
           * memory.
           */
@@ -2607,7 +2607,7 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
          pipe_bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
          pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
          break;
-      case VK_ACCESS_2_HOST_READ_BIT_KHR:
+      case VK_ACCESS_2_HOST_READ_BIT:
          /* We're transitioning a buffer that was written by CPU.  Flush
           * all the caches.
           */
@@ -3610,7 +3610,7 @@ VkResult
 anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline, struct anv_device *device,
                            struct anv_pipeline_cache *cache,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                           const VkPipelineRenderingCreateInfoKHR *rendering_info,
+                           const VkPipelineRenderingCreateInfo *rendering_info,
                            const VkAllocationCallbacks *alloc);
 
 VkResult
@@ -3731,7 +3731,7 @@ bool anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                                   VkImageCreateFlags create_flags,
                                   VkFormat vk_format, VkImageTiling vk_tiling,
                                   VkImageUsageFlags vk_usage,
-                                  const VkImageFormatListCreateInfoKHR *fmt_list);
+                                  const VkImageFormatListCreateInfo *fmt_list);
 
 extern VkFormat
 vk_format_from_android(unsigned android_format, unsigned android_usage);
@@ -4338,7 +4338,7 @@ anv_rasterization_aa_mode(VkPolygonMode raster_mode,
    return false;
 }
 
-VkFormatFeatureFlags2KHR
+VkFormatFeatureFlags2
 anv_get_image_format_features2(const struct intel_device_info *devinfo,
                                VkFormat vk_format,
                                const struct anv_format *anv_format,

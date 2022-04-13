@@ -683,7 +683,7 @@ vk_image_layout_stencil_write_optimal(VkImageLayout layout)
 {
    return layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL ||
           layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL ||
-          layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR;
+          layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL;
 }
 #endif
 
@@ -713,7 +713,7 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
     *  - VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-    *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR
+    *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
     *
     * For general, we have no nice opportunity to transition so we do the copy
     * to the shadow unconditionally at the end of the subpass. For transfer
@@ -1689,7 +1689,7 @@ genX(BeginCommandBuffer)(
        VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
       struct anv_cmd_graphics_state *gfx = &cmd_buffer->state.gfx;
 
-      const VkCommandBufferInheritanceRenderingInfoKHR *inheritance_info =
+      const VkCommandBufferInheritanceRenderingInfo *inheritance_info =
          vk_get_command_buffer_inheritance_rendering_info(cmd_buffer->vk.level,
                                                           pBeginInfo);
 
@@ -2381,15 +2381,15 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
 
 static void
 cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
-                   const VkDependencyInfoKHR *dep_info,
+                   const VkDependencyInfo *dep_info,
                    const char *reason)
 {
    /* XXX: Right now, we're really dumb and just flush whatever categories
     * the app asks for.  One of these days we may make this a bit better
     * but right now that's all the hardware allows for in most areas.
     */
-   VkAccessFlags2KHR src_flags = 0;
-   VkAccessFlags2KHR dst_flags = 0;
+   VkAccessFlags2 src_flags = 0;
+   VkAccessFlags2 dst_flags = 0;
 
    for (uint32_t i = 0; i < dep_info->memoryBarrierCount; i++) {
       src_flags |= dep_info->pMemoryBarriers[i].srcAccessMask;
@@ -2402,7 +2402,7 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
    }
 
    for (uint32_t i = 0; i < dep_info->imageMemoryBarrierCount; i++) {
-      const VkImageMemoryBarrier2KHR *img_barrier =
+      const VkImageMemoryBarrier2 *img_barrier =
          &dep_info->pImageMemoryBarriers[i];
 
       src_flags |= img_barrier->srcAccessMask;
@@ -2462,9 +2462,9 @@ cmd_buffer_barrier(struct anv_cmd_buffer *cmd_buffer,
    anv_add_pending_pipe_bits(cmd_buffer, bits, reason);
 }
 
-void genX(CmdPipelineBarrier2KHR)(
+void genX(CmdPipelineBarrier2)(
     VkCommandBuffer                             commandBuffer,
-    const VkDependencyInfoKHR*                  pDependencyInfo)
+    const VkDependencyInfo*                     pDependencyInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -7199,7 +7199,7 @@ void genX(CmdEndRendering)(
     *  - VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
     *  - VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-    *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL_KHR
+    *  - VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
     *
     * For general, we have no nice opportunity to transition so we do the copy
     * to the shadow unconditionally at the end of the subpass. For transfer
@@ -7302,20 +7302,20 @@ void genX(CmdEndConditionalRenderingEXT)(
  * by the command streamer for later execution.
  */
 #define ANV_PIPELINE_STAGE_PIPELINED_BITS \
-   ~(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT_KHR | \
-     VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR | \
-     VK_PIPELINE_STAGE_2_HOST_BIT_KHR | \
+   ~(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT | \
+     VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT | \
+     VK_PIPELINE_STAGE_2_HOST_BIT | \
      VK_PIPELINE_STAGE_2_CONDITIONAL_RENDERING_BIT_EXT)
 
-void genX(CmdSetEvent2KHR)(
+void genX(CmdSetEvent2)(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     _event,
-    const VkDependencyInfoKHR*                  pDependencyInfo)
+    const VkDependencyInfo*                     pDependencyInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_event, event, _event);
 
-   VkPipelineStageFlags2KHR src_stages = 0;
+   VkPipelineStageFlags2 src_stages = 0;
 
    for (uint32_t i = 0; i < pDependencyInfo->memoryBarrierCount; i++)
       src_stages |= pDependencyInfo->pMemoryBarriers[i].srcStageMask;
@@ -7344,10 +7344,10 @@ void genX(CmdSetEvent2KHR)(
    }
 }
 
-void genX(CmdResetEvent2KHR)(
+void genX(CmdResetEvent2)(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     _event,
-    VkPipelineStageFlags2KHR                    stageMask)
+    VkPipelineStageFlags2                       stageMask)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_event, event, _event);
@@ -7372,11 +7372,11 @@ void genX(CmdResetEvent2KHR)(
    }
 }
 
-void genX(CmdWaitEvents2KHR)(
+void genX(CmdWaitEvents2)(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    eventCount,
     const VkEvent*                              pEvents,
-    const VkDependencyInfoKHR*                  pDependencyInfos)
+    const VkDependencyInfo*                     pDependencyInfos)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
