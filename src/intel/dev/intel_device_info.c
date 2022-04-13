@@ -1053,6 +1053,7 @@ static const struct intel_device_info intel_device_info_sg1 = {
 
 #define XEHP_FEATURES(_gt, _slices, _l3)                        \
    GFX12_FEATURES(_gt, _slices, _l3),                           \
+   .num_thread_per_eu = 8 /* BSpec 44472 */,                    \
    .verx10 = 125,                                               \
    .has_llc = false,                                            \
    .has_local_mem = true,                                       \
