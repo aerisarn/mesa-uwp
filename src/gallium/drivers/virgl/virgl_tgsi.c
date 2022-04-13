@@ -385,8 +385,7 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
 
    /* virglrenderer doesn't resolve non-float output write properly,
     * so we have to first write to a temporary */
-   if ((inst->Src[0].Register.File == TGSI_FILE_CONSTANT ||
-        inst->Src[0].Register.File == TGSI_FILE_IMMEDIATE) &&
+   if (inst->Instruction.Opcode != TGSI_OPCODE_MOV &&
        !tgsi_get_opcode_info(inst->Instruction.Opcode)->is_tex &&
        !tgsi_get_opcode_info(inst->Instruction.Opcode)->is_store &&
        inst->Dst[0].Register.File == TGSI_FILE_OUTPUT &&
