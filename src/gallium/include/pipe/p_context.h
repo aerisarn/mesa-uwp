@@ -1000,6 +1000,16 @@ struct pipe_context {
    /*@}*/
 
    /**
+    * Return an equivalent canonical format which has the same component sizes
+    * and swizzles as the original, and it is supported by the driver. Gallium
+    * already does a first canonicalization step (see get_canonical_format()
+    * on st_cb_copyimage.c) and it calls this function (if defined) to get an
+    * alternative format if the picked is not supported by the driver.
+    */
+   enum pipe_format (*get_canonical_format)(struct pipe_context *context,
+                                            enum pipe_format format);
+
+   /**
     * Get the default sample position for an individual sample point.
     *
     * \param sample_count - total number of samples
