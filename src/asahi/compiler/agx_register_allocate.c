@@ -286,7 +286,21 @@ agx_ra(agx_context *ctx)
       agx_ra_assign_local(block, ssa_to_reg, ncomps, ctx->max_register);
    }
 
-   /* TODO: Coalesce combines */
+   agx_foreach_instr_global(ctx, ins) {
+      agx_foreach_src(ins, s) {
+         if (ins->src[s].type == AGX_INDEX_NORMAL) {
+            unsigned v = ssa_to_reg[ins->src[s].value];
+            ins->src[s] = agx_replace_index(ins->src[s], agx_register(v, ins->src[s].size));
+         }
+      }
+
+      agx_foreach_dest(ins, d) {
+         if (ins->dest[d].type == AGX_INDEX_NORMAL) {
+            unsigned v = ssa_to_reg[ins->dest[d].value];
+            ins->dest[d] = agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
+         }
+      }
+   }
 
    agx_foreach_instr_global_safe(ctx, ins) {
       /* Lower away RA pseudo-instructions */
@@ -353,19 +367,7 @@ agx_ra(agx_context *ctx)
          continue;
       }
 
-      agx_foreach_src(ins, s) {
-         if (ins->src[s].type == AGX_INDEX_NORMAL) {
-            unsigned v = ssa_to_reg[ins->src[s].value];
-            ins->src[s] = agx_replace_index(ins->src[s], agx_register(v, ins->src[s].size));
-         }
-      }
 
-      agx_foreach_dest(ins, d) {
-         if (ins->dest[d].type == AGX_INDEX_NORMAL) {
-            unsigned v = ssa_to_reg[ins->dest[d].value];
-            ins->dest[d] = agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
-         }
-      }
    }
 
    /* Insert parallel copies lowering phi nodes */
