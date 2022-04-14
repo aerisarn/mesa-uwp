@@ -2075,7 +2075,11 @@ get_render_pass(struct zink_context *ctx)
 
       bool needs_write_s = state.rts[fb->nr_cbufs].clear_stencil || outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
       if (!needs_write_z && (!ctx->dsa_state || !ctx->dsa_state->base.depth_enabled))
+         /* depth sample, stencil write */
          state.rts[fb->nr_cbufs].mixed_zs = needs_write_s && zsbuf->bind_count[0];
+      else
+         /* depth write + sample */
+         state.rts[fb->nr_cbufs].mixed_zs = needs_write_z && zsbuf->bind_count[0];
       state.rts[fb->nr_cbufs].needs_write = needs_write_z | needs_write_s;
       state.num_rts++;
    }
