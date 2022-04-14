@@ -8467,8 +8467,8 @@ radv_barrier(struct radv_cmd_buffer *cmd_buffer, const VkDependencyInfo *dep_inf
     */
    if (src_stage_mask &
        (VK_PIPELINE_STAGE_2_COPY_BIT | VK_PIPELINE_STAGE_2_CLEAR_BIT |
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT | VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT |
-        VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT | VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
+        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT | VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT))
       si_cp_dma_wait_for_idle(cmd_buffer);
 
    cmd_buffer->state.flush_bits |= dst_flush_bits;
