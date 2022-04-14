@@ -316,11 +316,23 @@ zink_blit(struct pipe_context *pctx,
 
 
 
+   bool stencil_blit = false;
    if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
-      mesa_loge("ZINK: blit unsupported %s -> %s",
-              util_format_short_name(info->src.resource->format),
-              util_format_short_name(info->dst.resource->format));
-      goto end;
+      if (util_format_is_depth_or_stencil(info->src.resource->format)) {
+         struct pipe_blit_info depth_blit = *info;
+         depth_blit.mask = PIPE_MASK_Z;
+         stencil_blit = util_blitter_is_blit_supported(ctx->blitter, &depth_blit);
+         if (stencil_blit) {
+            zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
+            util_blitter_blit(ctx->blitter, &depth_blit);
+         }
+      }
+      if (!stencil_blit) {
+         mesa_loge("ZINK: blit unsupported %s -> %s",
+                 util_format_short_name(info->src.resource->format),
+                 util_format_short_name(info->dst.resource->format));
+         goto end;
+      }
    }
 
    if (src->obj->dt)
@@ -335,7 +347,28 @@ zink_blit(struct pipe_context *pctx,
                      info->dst.box.x, info->dst.box.x + info->dst.box.width);
    zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
 
-   util_blitter_blit(ctx->blitter, info);
+   if (stencil_blit) {
+      struct pipe_surface *dst_view, dst_templ;
+      util_blitter_default_dst_texture(&dst_templ, info->dst.resource, info->dst.level, info->dst.box.z);
+      dst_view = pctx->create_surface(pctx, info->dst.resource, &dst_templ);
+
+      util_blitter_clear_depth_stencil(ctx->blitter, dst_view, PIPE_CLEAR_STENCIL,
+                                       0, 0, info->dst.box.x, info->dst.box.y,
+                                       info->dst.box.width, info->dst.box.height);
+      zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS | ZINK_BLIT_SAVE_TEXTURES);
+      util_blitter_stencil_fallback(ctx->blitter,
+                                    info->dst.resource,
+                                    info->dst.level,
+                                    &info->dst.box,
+                                    info->src.resource,
+                                    info->src.level,
+                                    &info->src.box,
+                                    info->scissor_enable ? &info->scissor : NULL);
+
+      pipe_surface_release(pctx, &dst_view);
+   } else {
+      util_blitter_blit(ctx->blitter, info);
+   }
 end:
    if (needs_present_readback)
       zink_kopper_present_readback(ctx, src);
