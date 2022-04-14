@@ -30,53 +30,26 @@
 #include "util/macros.h"
 #include "util/bitscan.h"
 
-/* This file implements software encode/decode of the tiling format used for
- * textures and framebuffers primarily on Utgard GPUs. Names for this format
- * include "Utgard-style tiling", "(Mali) swizzled textures", and
- * "U-interleaved" (the former two names being used in the community
- * Lima/Panfrost drivers; the latter name used internally at Arm).
- * Conceptually, like any tiling scheme, the pixel reordering attempts to 2D
- * spatial locality, to improve cache locality in both horizontal and vertical
- * directions.
+/*
+ * This file implements software encode/decode of u-interleaved textures.
+ * See docs/drivers/panfrost.rst for details on the format.
  *
- * This format is tiled: first, the image dimensions must be aligned to 16
- * pixels in each axis. Once aligned, the image is divided into 16x16 tiles.
- * This size harmonizes with other properties of the GPU; on Midgard,
- * framebuffer tiles are logically 16x16 (this is the tile size used in
- * Transaction Elimination and the minimum tile size used in Hierarchical
- * Tiling). Conversely, for a standard 4 bytes-per-pixel format (like
- * RGBA8888), 16 pixels * 4 bytes/pixel = 64 bytes, equal to the cache line
- * size.
+ * The tricky bit is ordering along the space-filling curve:
  *
- * Within each 16x16 block, the bits are reordered according to this pattern:
+ *    | y3 | (x3 ^ y3) | y2 | (y2 ^ x2) | y1 | (y1 ^ x1) | y0 | (y0 ^ x0) |
  *
- * | y3 | (x3 ^ y3) | y2 | (y2 ^ x2) | y1 | (y1 ^ x1) | y0 | (y0 ^ x0) |
- *
- * Basically, interleaving the X and Y bits, with XORs thrown in for every
- * adjacent bit pair.
- *
- * This is cheap to implement both encode/decode in both hardware and software.
- * In hardware, lines are simply rerouted to reorder and some XOR gates are
- * thrown in. Software has to be a bit more clever.
- *
- * In software, the trick is to divide the pattern into two lines:
+ * While interleaving bits is trivial in hardware, it is nontrivial in software.
+ * The trick is to divide the pattern up:
  *
  *    | y3 | y3 | y2 | y2 | y1 | y1 | y0 | y0 |
  *  ^ |  0 | x3 |  0 | x2 |  0 | x1 |  0 | x0 |
  *
- * That is, duplicate the bits of the Y and space out the bits of the X. The
- * top line is a function only of Y, so it can be calculated once per row and
- * stored in a register. The bottom line is simply X with the bits spaced out.
- * Spacing out the X is easy enough with a LUT, or by subtracting+ANDing the
- * mask pattern (abusing carry bits).
+ * That is, duplicate the bits of the Y and space out the bits of the X. The top
+ * line is a function only of Y, so it can be calculated once per row and stored
+ * in a register. The bottom line is simply X with the bits spaced out. Spacing
+ * out the X is easy enough with a LUT, or by subtracting+ANDing the mask
+ * pattern (abusing carry bits).
  *
- * This format is also supported on Midgard GPUs, where it *can* be used for
- * textures and framebuffers. That said, in practice it is usually as a
- * fallback layout; Midgard introduces Arm FrameBuffer Compression, which is
- * significantly more efficient than Utgard-style tiling and preferred for both
- * textures and framebuffers, where possible. For unsupported texture types,
- * for instance sRGB textures and framebuffers, this tiling scheme is used at a
- * performance penalty, as AFBC is not compatible.
  */
 
 /* Given the lower 4-bits of the Y coordinate, we would like to
