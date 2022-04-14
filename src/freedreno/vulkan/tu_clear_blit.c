@@ -2280,6 +2280,8 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
             s_clear_val = attachments[i].clearValue.depthStencil.stencil & 0xff;
          }
       }
+
+      cmd->state.attachment_cmd_clear[a] = true;
    }
 
    /* We may not know the multisample count if there are no attachments, so
@@ -2551,6 +2553,8 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
                continue;
 
+         cmd->state.attachment_cmd_clear[a] = true;
+
          tu_emit_clear_gmem_attachment(cmd, cs, a, attachments[j].aspectMask,
                                        &attachments[j].clearValue);
       }
@@ -2799,23 +2803,63 @@ blit_can_resolve(VkFormat format)
    return true;
 }
 
+static void
+tu_begin_load_store_cond_exec(struct tu_cmd_buffer *cmd,
+                              struct tu_cs *cs, bool load)
+{
+   tu_cond_exec_start(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+}
+
+static void
+tu_end_load_store_cond_exec(struct tu_cmd_buffer *cmd,
+                            struct tu_cs *cs, bool load)
+{
+   tu_cond_exec_end(cs);
+}
+
 void
 tu_load_gmem_attachment(struct tu_cmd_buffer *cmd,
                         struct tu_cs *cs,
                         uint32_t a,
+                        bool cond_exec_allowed,
                         bool force_load)
 {
    const struct tu_image_view *iview = cmd->state.attachments[a];
    const struct tu_render_pass_attachment *attachment =
       &cmd->state.pass->attachments[a];
 
+   bool load_common = attachment->load || force_load;
+   bool load_stencil =
+      attachment->load_stencil ||
+      (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT && force_load);
+
+   if (!load_common && !load_stencil)
+      return;
+
    trace_start_gmem_load(&cmd->trace, cs);
 
-   if (attachment->load || force_load)
+   /* If attachment will be cleared by vkCmdClearAttachments - it is likely
+    * that it would be partially cleared, and since it is done by 2d blit
+    * it doesn't produce geometry, so we have to unconditionally load.
+    *
+    * To simplify conditions treat partially cleared separate DS as fully
+    * cleared and don't emit cond_exec.
+    */
+   bool cond_exec = cond_exec_allowed &&
+                    !attachment->clear_mask &&
+                    !cmd->state.attachment_cmd_clear[a] &&
+                    !attachment->will_be_resolved;
+   if (cond_exec)
+      tu_begin_load_store_cond_exec(cmd, cs, true);
+
+   if (load_common)
       tu_emit_blit(cmd, cs, iview, attachment, false, false);
 
-   if (attachment->load_stencil || (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT && force_load))
+   if (load_stencil)
       tu_emit_blit(cmd, cs, iview, attachment, false, true);
+
+   if (cond_exec)
+      tu_end_load_store_cond_exec(cmd, cs, true);
 
    trace_end_gmem_load(&cmd->trace, cs, attachment->format, force_load);
 }
@@ -2919,7 +2963,8 @@ void
 tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
                          struct tu_cs *cs,
                          uint32_t a,
-                         uint32_t gmem_a)
+                         uint32_t gmem_a,
+                         bool cond_exec_allowed)
 {
    struct tu_physical_device *phys_dev = cmd->device->physical_device;
    const VkRect2D *render_area = &cmd->state.render_area;
@@ -2929,6 +2974,15 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
 
    if (!dst->store && !dst->store_stencil)
       return;
+
+   bool was_cleared = src->clear_mask || cmd->state.attachment_cmd_clear[a];
+   /* Unconditional store should happen only if attachment was cleared,
+    * which could have happened either by load_op or via vkCmdClearAttachments.
+    */
+   bool cond_exec = cond_exec_allowed && !was_cleared;
+   if (cond_exec) {
+      tu_begin_load_store_cond_exec(cmd, cs, false);
+   }
 
    uint32_t x1 = render_area->offset.x;
    uint32_t y1 = render_area->offset.y;
@@ -2971,6 +3025,10 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
       if (store_separate_stencil)
          tu_emit_blit(cmd, cs, iview, src, true, true);
 
+      if (cond_exec) {
+         tu_end_load_store_cond_exec(cmd, cs, false);
+      }
+
       trace_end_gmem_store(&cmd->trace, cs, dst->format, true, false);
       return;
    }
@@ -3009,6 +3067,10 @@ tu_store_gmem_attachment(struct tu_cmd_buffer *cmd,
          store_cp_blit(cmd, cs, iview, src->samples, true, PIPE_FORMAT_S8_UINT,
                        src->gmem_offset_stencil, src->samples);
       }
+   }
+
+   if (cond_exec) {
+      tu_end_load_store_cond_exec(cmd, cs, false);
    }
 
    trace_end_gmem_store(&cmd->trace, cs, dst->format, false, unaligned);

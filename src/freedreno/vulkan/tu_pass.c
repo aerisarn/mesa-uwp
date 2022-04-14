@@ -800,6 +800,12 @@ tu_CreateRenderPass2(VkDevice _device,
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
             subpass->resolve_attachments[j].attachment =
                   desc->pResolveAttachments[j].attachment;
+
+            uint32_t src_a = desc->pColorAttachments[j].attachment;
+            if (src_a != VK_ATTACHMENT_UNUSED) {
+               pass->attachments[src_a].will_be_resolved =
+                  desc->pResolveAttachments[j].attachment != VK_ATTACHMENT_UNUSED;
+            }
          }
       }
 
@@ -808,6 +814,11 @@ tu_CreateRenderPass2(VkDevice _device,
          subpass->resolve_count++;
          uint32_t a = ds_resolve->pDepthStencilResolveAttachment->attachment;
          subpass->resolve_attachments[subpass->resolve_count - 1].attachment = a;
+
+         uint32_t src_a = desc->pDepthStencilAttachment->attachment;
+         if (src_a != VK_ATTACHMENT_UNUSED) {
+            pass->attachments[src_a].will_be_resolved = a != VK_ATTACHMENT_UNUSED;
+         }
       }
 
       uint32_t a = desc->pDepthStencilAttachment ?

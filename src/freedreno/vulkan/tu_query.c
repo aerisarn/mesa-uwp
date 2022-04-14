@@ -874,6 +874,10 @@ emit_begin_perf_query(struct tu_cmd_buffer *cmdbuf,
    struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
    uint32_t last_pass = ~0;
 
+   if (cmdbuf->state.pass) {
+      cmdbuf->state.draw_cs_writes_to_cond_pred = true;
+   }
+
    /* Querying perf counters happens in these steps:
     *
     *  0) There's a scratch reg to set a pass index for perf counters query.
