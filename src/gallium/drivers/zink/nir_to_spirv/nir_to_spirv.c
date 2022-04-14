@@ -2944,7 +2944,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       if (ctx->stage == MESA_SHADER_COMPUTE)
          spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
                                             SpvScopeWorkgroup,
-                                            SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireMask);
+                                            SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireReleaseMask);
       else
          spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup, SpvScopeInvocation, 0);
       break;
