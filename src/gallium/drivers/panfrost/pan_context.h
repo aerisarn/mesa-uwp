@@ -68,10 +68,15 @@ enum pan_dirty_3d {
         PAN_DIRTY_PARAMS         = BITFIELD_BIT(3),
         PAN_DIRTY_DRAWID         = BITFIELD_BIT(4),
         PAN_DIRTY_TLS_SIZE       = BITFIELD_BIT(5),
+        PAN_DIRTY_ZS             = BITFIELD_BIT(6),
+        PAN_DIRTY_BLEND          = BITFIELD_BIT(7),
+        PAN_DIRTY_MSAA           = BITFIELD_BIT(8),
+        PAN_DIRTY_OQ             = BITFIELD_BIT(9),
+        PAN_DIRTY_RASTERIZER     = BITFIELD_BIT(10),
 };
 
 enum pan_dirty_shader {
-        PAN_DIRTY_STAGE_RENDERER = BITFIELD_BIT(0),
+        PAN_DIRTY_STAGE_SHADER   = BITFIELD_BIT(0),
         PAN_DIRTY_STAGE_TEXTURE  = BITFIELD_BIT(1),
         PAN_DIRTY_STAGE_SAMPLER  = BITFIELD_BIT(2),
         PAN_DIRTY_STAGE_IMAGE    = BITFIELD_BIT(3),

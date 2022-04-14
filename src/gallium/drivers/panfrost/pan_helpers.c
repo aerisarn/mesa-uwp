@@ -28,8 +28,7 @@ void
 panfrost_analyze_sysvals(struct panfrost_shader_state *ss)
 {
         unsigned dirty = 0;
-        unsigned dirty_shader =
-                PAN_DIRTY_STAGE_RENDERER | PAN_DIRTY_STAGE_CONST;
+        unsigned dirty_shader = PAN_DIRTY_STAGE_SHADER | PAN_DIRTY_STAGE_CONST;
 
         for (unsigned i = 0; i < ss->info.sysvals.sysval_count; ++i) {
                 switch (PAN_SYSVAL_TYPE(ss->info.sysvals.sysvals[i])) {

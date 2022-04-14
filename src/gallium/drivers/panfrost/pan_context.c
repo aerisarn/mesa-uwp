@@ -136,7 +136,7 @@ panfrost_bind_blend_state(struct pipe_context *pipe, void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->blend = cso;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_BLEND;
 }
 
 static void
@@ -144,7 +144,7 @@ panfrost_set_blend_color(struct pipe_context *pipe,
                          const struct pipe_blend_color *blend_color)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_BLEND;
 
         if (blend_color)
                 ctx->blend_color = *blend_color;
@@ -223,12 +223,11 @@ panfrost_bind_rasterizer_state(
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->rasterizer = hwcso;
 
-        /* We can assume the renderer state descriptor is always dirty, the
-         * dependencies are too intricate to bother tracking in detail. However
-         * we could probably diff the renderers for viewport dirty tracking,
-         * that just cares about the scissor enable and the depth clips. */
-        ctx->dirty |= PAN_DIRTY_SCISSOR;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        /* We can assume rasterizer is always dirty, the dependencies are
+         * too intricate to bother tracking in detail. However we could
+         * probably diff the renderers for viewport dirty tracking, that
+         * just cares about the scissor enable and the depth clips. */
+        ctx->dirty |= PAN_DIRTY_SCISSOR | PAN_DIRTY_RASTERIZER;
 }
 
 static void
@@ -287,6 +286,7 @@ panfrost_bind_vertex_elements_state(
 {
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->vertex = hwcso;
+        ctx->dirty |= PAN_DIRTY_VERTEX;
 }
 
 static void *
@@ -448,7 +448,7 @@ panfrost_bind_shader_state(
         ctx->shader[type] = hwcso;
 
         ctx->dirty |= PAN_DIRTY_TLS_SIZE;
-        ctx->dirty_shader[type] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty_shader[type] |= PAN_DIRTY_STAGE_SHADER;
 
         if (!hwcso) return;
 
@@ -581,6 +581,8 @@ panfrost_set_vertex_buffers(
         util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->vb_mask, buffers,
                                      start_slot, num_buffers, unbind_num_trailing_slots,
                                      take_ownership);
+
+        ctx->dirty |= PAN_DIRTY_VERTEX;
 }
 
 static void
@@ -612,7 +614,7 @@ panfrost_set_stencil_ref(
 {
         struct panfrost_context *ctx = pan_context(pctx);
         ctx->stencil_ref = ref;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_ZS;
 }
 
 static void
@@ -717,7 +719,7 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->depth_stencil = cso;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_ZS;
 }
 
 static void
@@ -726,7 +728,7 @@ panfrost_set_sample_mask(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->sample_mask = sample_mask;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_MSAA;
 }
 
 static void
@@ -735,7 +737,7 @@ panfrost_set_min_samples(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->min_samples = min_samples;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_MSAA;
 }
 
 static void
@@ -788,7 +790,7 @@ panfrost_set_active_query_state(struct pipe_context *pipe,
 {
         struct panfrost_context *ctx = pan_context(pipe);
         ctx->active_queries = enable;
-        ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+        ctx->dirty |= PAN_DIRTY_OQ;
 }
 
 static void
@@ -873,7 +875,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
 
                 query->msaa = (ctx->pipe_framebuffer.samples > 1);
                 ctx->occlusion_query = query;
-                ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+                ctx->dirty |= PAN_DIRTY_OQ;
                 break;
         }
 
@@ -906,7 +908,7 @@ panfrost_end_query(struct pipe_context *pipe, struct pipe_query *q)
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
                 ctx->occlusion_query = NULL;
-                ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= PAN_DIRTY_STAGE_RENDERER;
+                ctx->dirty |= PAN_DIRTY_OQ;
                 break;
         case PIPE_QUERY_PRIMITIVES_GENERATED:
                 query->end = ctx->prims_generated;

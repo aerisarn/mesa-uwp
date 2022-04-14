@@ -2895,13 +2895,29 @@ panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
         return info->primitive_restart && implicit;
 }
 
+/* On Bifrost and older, the Renderer State Descriptor aggregates many pieces of
+ * 3D state. In particular, it groups the fragment shader descriptor with
+ * depth/stencil, blend, polygon offset, and multisampling state. These pieces
+ * of state are dirty tracked independently for the benefit of newer GPUs that
+ * separate the descriptors. FRAGMENT_RSD_DIRTY_MASK contains the list of 3D
+ * dirty flags that trigger re-emits of the fragment RSD.
+ *
+ * Obscurely, occlusion queries are included. Occlusion query state is nominally
+ * specified in the draw call descriptor, but must be considered when determing
+ * early-Z state which is part of the RSD.
+ */
+#define FRAGMENT_RSD_DIRTY_MASK ( \
+        PAN_DIRTY_ZS | PAN_DIRTY_BLEND | PAN_DIRTY_MSAA | \
+        PAN_DIRTY_RASTERIZER | PAN_DIRTY_OQ)
+
 static inline void
-panfrost_update_state_tex(struct panfrost_batch *batch,
-                          enum pipe_shader_type st)
+panfrost_update_shader_state(struct panfrost_batch *batch,
+                             enum pipe_shader_type st)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
 
+        bool frag = (st == PIPE_SHADER_FRAGMENT);
         unsigned dirty_3d = ctx->dirty;
         unsigned dirty = ctx->dirty_shader[st];
 
@@ -2915,48 +2931,46 @@ panfrost_update_state_tex(struct panfrost_batch *batch,
                         panfrost_emit_sampler_descriptors(batch, st);
         }
 
+        /* On Bifrost and older, the fragment shader descriptor is fused
+         * together with the renderer state; the combined renderer state
+         * descriptor is emitted below. Otherwise, the shader descriptor is
+         * standalone and is emitted here.
+         */
+        if ((dirty & PAN_DIRTY_STAGE_SHADER) && !((PAN_ARCH <= 7) && frag)) {
+                batch->rsd[st] = panfrost_emit_compute_shader_meta(batch, st);
+        }
+
         if ((dirty & ss->dirty_shader) || (dirty_3d & ss->dirty_3d)) {
                 batch->uniform_buffers[st] = panfrost_emit_const_buf(batch, st,
                                 &batch->push_uniforms[st]);
         }
+
+#if PAN_ARCH <= 7
+        /* On Bifrost and older, if the fragment shader changes OR any renderer
+         * state specified with the fragment shader, the whole renderer state
+         * descriptor is dirtied and must be reemited.
+         */
+        if (frag && ((dirty & PAN_DIRTY_STAGE_SHADER) ||
+                     (dirty_3d & FRAGMENT_RSD_DIRTY_MASK))) {
+
+                batch->rsd[st] = panfrost_emit_frag_shader_meta(batch);
+        }
+
+        if (frag && (dirty & PAN_DIRTY_STAGE_IMAGE)) {
+                batch->attribs[st] = panfrost_emit_image_attribs(batch,
+                                &batch->attrib_bufs[st], st);
+        }
+#endif
 }
 
 static inline void
 panfrost_update_state_3d(struct panfrost_batch *batch)
 {
-        unsigned dirty = batch->ctx->dirty;
+        struct panfrost_context *ctx = batch->ctx;
+        unsigned dirty = ctx->dirty;
 
         if (dirty & PAN_DIRTY_TLS_SIZE)
                 panfrost_batch_adjust_stack_size(batch);
-}
-
-static void
-panfrost_update_state_vs(struct panfrost_batch *batch)
-{
-        enum pipe_shader_type st = PIPE_SHADER_VERTEX;
-        unsigned dirty = batch->ctx->dirty_shader[st];
-
-        if (dirty & PAN_DIRTY_STAGE_RENDERER)
-                batch->rsd[st] = panfrost_emit_compute_shader_meta(batch, st);
-
-        panfrost_update_state_tex(batch, st);
-}
-
-static void
-panfrost_update_state_fs(struct panfrost_batch *batch)
-{
-        enum pipe_shader_type st = PIPE_SHADER_FRAGMENT;
-        unsigned dirty = batch->ctx->dirty_shader[st];
-
-        if (dirty & PAN_DIRTY_STAGE_RENDERER)
-                batch->rsd[st] = panfrost_emit_frag_shader_meta(batch);
-
-        if (dirty & PAN_DIRTY_STAGE_IMAGE) {
-                batch->attribs[st] = panfrost_emit_image_attribs(batch,
-                                &batch->attrib_bufs[st], st);
-        }
-
-        panfrost_update_state_tex(batch, st);
 }
 
 #if PAN_ARCH >= 6
@@ -3207,8 +3221,8 @@ panfrost_direct_draw(struct panfrost_batch *batch,
         attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
 
         panfrost_update_state_3d(batch);
-        panfrost_update_state_vs(batch);
-        panfrost_update_state_fs(batch);
+        panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
+        panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
         panfrost_clean_state_3d(ctx);
 
         /* Fire off the draw itself */
@@ -3303,8 +3317,8 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
         ctx->base_instance_sysval_ptr = 0;
 
         panfrost_update_state_3d(batch);
-        panfrost_update_state_vs(batch);
-        panfrost_update_state_fs(batch);
+        panfrost_update_shader_state(batch, PIPE_SHADER_VERTEX);
+        panfrost_update_shader_state(batch, PIPE_SHADER_FRAGMENT);
         panfrost_clean_state_3d(ctx);
 
         bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
