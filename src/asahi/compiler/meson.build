@@ -87,6 +87,7 @@ if with_tests
       files(
          'test/test-optimizer.cpp',
          'test/test-lower-pseudo.cpp',
+         'test/test-lower-parallel-copy.cpp',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
