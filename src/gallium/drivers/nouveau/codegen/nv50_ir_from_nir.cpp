@@ -1056,7 +1056,7 @@ bool Converter::assignSlots() {
             info_out->numPatchConstants = MAX2(info_out->numPatchConstants, index + slots);
          break;
       case Program::TYPE_VERTEX:
-         if (slot >= VERT_ATTRIB_GENERIC0)
+         if (slot >= VERT_ATTRIB_GENERIC0 && slot < VERT_ATTRIB_GENERIC0 + VERT_ATTRIB_GENERIC_MAX)
             slot = VERT_ATTRIB_GENERIC0 + vary;
          vert_attrib_to_tgsi_semantic((gl_vert_attrib)slot, &name, &index);
          switch (name) {
