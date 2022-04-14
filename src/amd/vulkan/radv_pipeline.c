@@ -1247,21 +1247,21 @@ gfx103_pipeline_init_vrs_state(struct radv_pipeline *pipeline,
 }
 
 static bool
-radv_prim_can_use_guardband(enum VkPrimitiveTopology topology)
+radv_prim_can_use_guardband(uint32_t topology)
 {
    switch (topology) {
-   case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+   case V_008958_DI_PT_POINTLIST:
+   case V_008958_DI_PT_LINELIST:
+   case V_008958_DI_PT_LINESTRIP:
+   case V_008958_DI_PT_LINELIST_ADJ:
+   case V_008958_DI_PT_LINESTRIP_ADJ:
       return false;
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+   case V_008958_DI_PT_TRILIST:
+   case V_008958_DI_PT_TRISTRIP:
+   case V_008958_DI_PT_TRIFAN:
+   case V_008958_DI_PT_TRILIST_ADJ:
+   case V_008958_DI_PT_TRISTRIP_ADJ:
+   case V_008958_DI_PT_PATCH:
       return true;
    default:
       unreachable("unhandled primitive type");
@@ -1554,7 +1554,8 @@ radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
    struct radv_shader *tes = pipeline->shaders[MESA_SHADER_TESS_EVAL];
    struct radv_shader *gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
 
-   pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(ia_state->topology);
+   pipeline->graphics.can_use_guardband =
+      radv_prim_can_use_guardband(si_translate_prim(ia_state->topology));
 
    if (radv_pipeline_has_gs(pipeline)) {
       if (si_conv_gl_prim_to_gs_out(gs->info.gs.output_prim) == V_028A6C_TRISTRIP)
@@ -1939,10 +1940,10 @@ gfx9_get_gs_info(const struct radv_pipeline_key *key, const struct radv_pipeline
    unsigned gs_num_invocations = MAX2(gs_info->gs.invocations, 1);
    bool uses_adjacency;
    switch (key->vs.topology) {
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+   case V_008958_DI_PT_LINELIST_ADJ:
+   case V_008958_DI_PT_LINESTRIP_ADJ:
+   case V_008958_DI_PT_TRILIST_ADJ:
+   case V_008958_DI_PT_TRISTRIP_ADJ:
       uses_adjacency = true;
       break;
    default:
@@ -2151,10 +2152,10 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key, struct radv_pipeline *pi
    unsigned gs_num_invocations = stages[MESA_SHADER_GEOMETRY].nir ? MAX2(gs_info->gs.invocations, 1) : 1;
    bool uses_adjacency;
    switch (key->vs.topology) {
-   case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
-   case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+   case V_008958_DI_PT_LINELIST_ADJ:
+   case V_008958_DI_PT_LINESTRIP_ADJ:
+   case V_008958_DI_PT_TRILIST_ADJ:
+   case V_008958_DI_PT_TRISTRIP_ADJ:
       uses_adjacency = true;
       break;
    default:
@@ -2707,7 +2708,7 @@ radv_link_shaders(struct radv_pipeline *pipeline,
             ordered_shaders[i - 1]->info.inputs_read & VARYING_BIT_PSIZ;
          bool topology_uses_psiz =
             info->stage == pipeline->graphics.last_vgt_api_stage &&
-            ((info->stage == MESA_SHADER_VERTEX && pipeline_key->vs.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST) ||
+            ((info->stage == MESA_SHADER_VERTEX && pipeline_key->vs.topology == V_008958_DI_PT_POINTLIST) ||
              (info->stage == MESA_SHADER_TESS_EVAL && info->tess.point_mode) ||
              (info->stage == MESA_SHADER_GEOMETRY && info->gs.output_primitive == SHADER_PRIM_POINTS) ||
              (info->stage == MESA_SHADER_MESH && info->mesh.primitive_type == SHADER_PRIM_POINTS));
@@ -3058,7 +3059,8 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       key.ps.is_int10 = blend->col_format_is_int10;
    }
 
-   key.vs.topology = pCreateInfo->pInputAssemblyState ? pCreateInfo->pInputAssemblyState->topology : 0;
+   key.vs.topology =
+      pCreateInfo->pInputAssemblyState ? si_translate_prim(pCreateInfo->pInputAssemblyState->topology) : 0;
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
       const VkPipelineRasterizationStateCreateInfo *raster_info = pCreateInfo->pRasterizationState;
@@ -6456,7 +6458,7 @@ radv_pipeline_init_vgt_gs_out(struct radv_pipeline *pipeline,
       gs_out =
          si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_MESH]->info.ms.output_prim);
    } else {
-      gs_out = si_conv_prim_to_gs_out(pCreateInfo->pInputAssemblyState->topology);
+      gs_out = si_conv_prim_to_gs_out(si_translate_prim(pCreateInfo->pInputAssemblyState->topology));
    }
 
    return gs_out;
