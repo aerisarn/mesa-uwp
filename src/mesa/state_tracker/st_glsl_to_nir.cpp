@@ -562,9 +562,14 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
 static void
 st_nir_vectorize_io(nir_shader *producer, nir_shader *consumer)
 {
+   if (consumer)
+      NIR_PASS_V(consumer, nir_lower_io_to_vector, nir_var_shader_in);
+
+   if (!producer)
+      return;
+
    NIR_PASS_V(producer, nir_lower_io_to_vector, nir_var_shader_out);
    NIR_PASS_V(producer, nir_opt_combine_stores, nir_var_shader_out);
-   NIR_PASS_V(consumer, nir_lower_io_to_vector, nir_var_shader_in);
 
    if ((producer)->info.stage != MESA_SHADER_TESS_CTRL) {
       /* Calling lower_io_to_vector creates output variable writes with
@@ -865,6 +870,23 @@ st_link_nir(struct gl_context *ctx,
 
          if (ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions->vectorize_io)
             st_nir_vectorize_io(prev_shader->nir, nir);
+      }
+   }
+
+   /* If the program is a separate shader program check if we need to vectorise
+    * the first and last program interfaces too.
+    */
+   if (shader_program->SeparateShader && num_shaders > 0) {
+      struct gl_linked_shader *first_shader = linked_shader[0];
+      struct gl_linked_shader *last_shader = linked_shader[num_shaders - 1];
+      if (first_shader->Stage != MESA_SHADER_COMPUTE) {
+         if (ctx->Const.ShaderCompilerOptions[first_shader->Stage].NirOptions->vectorize_io &&
+             first_shader->Stage > MESA_SHADER_VERTEX)
+            st_nir_vectorize_io(NULL, first_shader->Program->nir);
+
+         if (ctx->Const.ShaderCompilerOptions[last_shader->Stage].NirOptions->vectorize_io &&
+             last_shader->Stage < MESA_SHADER_FRAGMENT)
+            st_nir_vectorize_io(last_shader->Program->nir, NULL);
       }
    }
 
