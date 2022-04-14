@@ -2006,6 +2006,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
    bool have_psiz = false;
 
+   ret->sinfo.have_vulkan_memory_model = screen->info.have_KHR_vulkan_memory_model;
+
    ret->hash = _mesa_hash_pointer(ret);
    ret->reduced_prim = get_shader_base_prim_type(nir);
 

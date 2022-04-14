@@ -2945,6 +2945,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
          spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
                                             SpvScopeWorkgroup,
                                             SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireReleaseMask);
+      else if (ctx->sinfo->have_vulkan_memory_model)
+         spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
+                                            SpvScopeWorkgroup,
+                                            SpvMemorySemanticsOutputMemoryMask | SpvMemorySemanticsAcquireReleaseMask);
       else
          spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup, SpvScopeInvocation, 0);
       break;
@@ -3989,9 +3993,16 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
          model = SpvAddressingModelLogical;
       spirv_builder_emit_mem_model(&ctx.builder, model,
                                    SpvMemoryModelGLSL450);
-   } else
-      spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
-                                   SpvMemoryModelGLSL450);
+   } else {
+      if (ctx.stage == MESA_SHADER_TESS_CTRL && ctx.sinfo->have_vulkan_memory_model) {
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModel);
+         spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
+                                      SpvMemoryModelVulkan);
+      } else {
+         spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
+                                      SpvMemoryModelGLSL450);
+      }
+   }
 
    if (s->info.stage == MESA_SHADER_FRAGMENT &&
        s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
