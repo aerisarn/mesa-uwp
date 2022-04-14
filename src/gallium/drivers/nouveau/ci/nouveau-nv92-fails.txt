@@ -85,14 +85,6 @@ KHR-GLES3.packed_pixels.varied_rectangle.rgba4,Fail
 KHR-GLES3.packed_pixels.varied_rectangle.rgba8,Fail
 dEQP-GLES2.functional.rasterization.limits.points,Fail
 
-# "../src/mesa/state_tracker/st_glsl_to_tgsi.cpp:1648: void glsl_to_tgsi_visitor::visit_expression(ir_expression*, st_src_reg*): Assertion `ir->operands[2]->type->vector_elements == 1' failed."
-dEQP-GLES2.functional.shaders.algorithm.hsl_to_rgb_fragment,Crash
-dEQP-GLES2.functional.shaders.algorithm.hsl_to_rgb_vertex,Crash
-
-# "../src/gallium/drivers/nouveau/codegen/nv50_ir_ra.cpp:1437: void nv50_ir::GCRA::checkInterference(const nv50_ir::GCRA::RIG_Node*, nv50_ir::Graph::EdgeIterator&): Assertion `vB->compound' failed."
-dEQP-GLES2.functional.shaders.random.all_features.fragment.93,Crash
-dEQP-GLES3.functional.shaders.random.all_features.fragment.93,Crash
-
 dEQP-GLES2.functional.shaders.texture_functions.vertex.texturecubelod,Fail
 dEQP-GLES2.functional.texture.mipmap.cube.basic.linear_linear,Fail
 dEQP-GLES2.functional.texture.mipmap.cube.basic.linear_nearest,Fail
@@ -111,6 +103,7 @@ dEQP-GLES2.functional.texture.vertex.cube.wrap.mirror_clamp,Fail
 dEQP-GLES2.functional.texture.vertex.cube.wrap.mirror_mirror,Fail
 dEQP-GLES2.functional.texture.vertex.cube.wrap.mirror_repeat,Fail
 dEQP-GLES3.functional.fbo.invalidate.sub.unbind_blit_stencil,Fail
+
 dEQP-GLES3.functional.shaders.texture_functions.texturelod.samplercube_fixed_fragment,Fail
 dEQP-GLES3.functional.shaders.texture_functions.texturelod.samplercube_fixed_vertex,Fail
 dEQP-GLES3.functional.texture.filtering.cube.combinations.linear_linear_clamp_clamp,Fail
@@ -431,7 +424,7 @@ dEQP-GLES3.functional.texture.vertex.cube.wrap.mirror_repeat,Fail
 
 shaders@glsl-bug-110796,Fail
 shaders@glsl-max-varyings >max_varying_components,Crash
-shaders@glsl-predication-on-large-array,Fail
+
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
@@ -505,6 +498,7 @@ spec@arb_color_buffer_float@gl_rgba8_snorm-render-fog,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity,Fail
 spec@arb_color_buffer_float@gl_rgba8_snorm-render-sanity-fog,Fail
 
+spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-interleave-range,Fail
 spec@arb_enhanced_layouts@linker@component-layout@intrastage-vs,Fail
 spec@arb_enhanced_layouts@linker@component-layout@vs-to-fs,Fail
 
@@ -617,19 +611,11 @@ spec@ext_framebuffer_object@fbo-blending-formats@GL_RGBA16,Fail
 spec@ext_framebuffer_object@fbo-blending-snorm,Fail
 
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p016,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xyuv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y210,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y212,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y216,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y410,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y412,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_y416,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Fail
@@ -751,9 +737,6 @@ spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontsecondarycolor
 
 spec@glsl-1.10@execution@samplers@glsl-fs-lots-of-tex,Fail
 
-# "void nv50_ir::GCRA::checkInterference(const nv50_ir::GCRA::RIG_Node*, nv50_ir::Graph::EdgeIterator&): Assertion `vB->compound' failed."
-spec@glsl-1.20@execution@fs-function-inout-array-of-structs,Crash
-
 spec@glsl-1.30@built-in constants,Fail
 spec@glsl-1.30@built-in constants@gl_MaxVaryingComponents,Fail
 spec@glsl-1.30@built-in constants@gl_MaxVaryingFloats,Fail
@@ -811,6 +794,10 @@ spec@glsl-1.30@execution@interpolation@interpolation-smooth-gl_frontsecondarycol
 spec@glsl-1.30@execution@interpolation@interpolation-smooth-gl_frontsecondarycolor-flat-none,Fail
 spec@glsl-1.30@execution@interpolation@interpolation-smooth-gl_frontsecondarycolor-flat-vertex,Fail
 
+spec@glsl-1.30@execution@isinf-and-isnan fs_fbo,Fail
+spec@glsl-1.30@execution@isinf-and-isnan vs_fbo,Fail
+spec@glsl-1.30@execution@isinf-and-isnan vs_xfb,Fail
+
 spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) cubeshadow,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cube,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubeshadow,Fail
@@ -818,10 +805,6 @@ spec@glsl-1.30@execution@tex-miplevel-selection texturegrad cubeshadow,Fail
 spec@glsl-1.40@built-in constants,Fail
 spec@glsl-1.40@built-in constants@gl_MaxVaryingComponents,Fail
 spec@glsl-1.40@built-in constants@gl_MaxVaryingFloats,Fail
-
-# "st_glsl_to_tgsi.cpp:1648: void glsl_to_tgsi_visitor::visit_expression(ir_expression*, st_src_reg*): Assertion `ir->operands[2]->type->vector_elements == 1' failed."
-spec@glsl-1.40@uniform_buffer@fs-struct-copy-complicated,Crash
-spec@glsl-1.40@uniform_buffer@vs-struct-copy-complicated,Crash
 
 spec@glsl-1.50@built-in constants,Fail
 spec@glsl-1.50@built-in constants@gl_MaxFragmentInputComponents,Fail
@@ -833,12 +816,6 @@ spec@glsl-1.50@execution@geometry@primitive-types gl_triangle_strip_adjacency,Fa
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec2-index-wr,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec3-index-wr,Fail
 spec@glsl-1.50@execution@variable-indexing@gs-output-array-vec4-index-wr,Fail
-
-# "../src/gallium/drivers/nouveau/codegen/nv50_ir_emit_nv50.cpp:407: void nv50_ir::CodeEmitterNV50::setSrcFileBits(const nv50_ir::Instruction*, int): Assertion `reg < 3' failed."
-spec@glsl-1.50@execution@vs-gs-arrays-within-blocks-pass,Crash
-
-# "st_glsl_to_tgsi.cpp:1648: void glsl_to_tgsi_visitor::visit_expression(ir_expression*, st_src_reg*): Assertion `ir->operands[2]->type->vector_elements == 1' failed."
-spec@glsl-1.50@uniform_buffer@gs-struct-copy-complicated,Crash
 
 spec@glsl-3.30@built-in constants,Fail
 spec@glsl-3.30@built-in constants@gl_MaxFragmentInputComponents,Fail
@@ -870,6 +847,8 @@ dEQP-GLES31.functional.image_load_store.2d.format_reinterpret.r32f_rgba8_snorm,F
 dEQP-GLES31.functional.image_load_store.2d_array.format_reinterpret.r32f_rgba8_snorm,Fail
 dEQP-GLES31.functional.image_load_store.3d.format_reinterpret.r32f_rgba8_snorm,Fail
 dEQP-GLES31.functional.image_load_store.cube.format_reinterpret.r32f_rgba8_snorm,Fail
+# Fails run with other tests, passes on its own.
+dEQP-GLES31.functional.image_load_store.cube.qualifiers.coherent_r32f,Fail
 
 dEQP-GLES31.functional.shaders.builtin_functions.texture_size.samples_1_texture_2d_array,Fail
 dEQP-GLES31.functional.shaders.builtin_functions.texture_size.samples_1_texture_int_2d_array,Fail
@@ -880,8 +859,17 @@ dEQP-GLES31.functional.shaders.builtin_functions.texture_size.samples_4_texture_
 
 dEQP-GLES31.functional.separate_shader.random.38,Fail
 
+# " ERROR: mismatch in Block.s[0].b[0], top-level ndx 0, bottom-level ndx 2: expected mat3(9.0, -3.0, -6.0, 6.0, -7.0, 4.0, 2.0, -7.0, -2.0) got mat3(9.0, -3.0, -6.0, 6.0, -7.0, 4.0, -7.0, 6.0, -2.0)
+#   ERROR: mismatch in Block.s[0].b[0], top-level ndx 0, bottom-level ndx 2: expected mat3(5.0, -5.0, 0.0, 1.0, 6.0, 4.0, -6.0, -7.0, -4.0) got mat3(5.0, -5.0, 0.0, 1.0, 6.0, 4.0, -7.0, -3.0, -4.0)
+#   ERROR: mismatch in Block.s[0].b[0], top-level ndx 0, bottom-level ndx 2: expected mat3(-3.0, -5.0, 6.0, -5.0, -8.0, -1.0, 9.0, -4.0, 6.0) got mat3(-3.0, -5.0, 6.0, -5.0, -8.0, -1.0, -4.0, 4.0, 6.0)"
+dEQP-GLES31.functional.ssbo.layout.single_struct_array.per_block_buffer.packed_instance_array,Fail
+dEQP-GLES31.functional.ssbo.layout.single_struct_array.per_block_buffer.shared_instance_array,Fail
 dEQP-GLES31.functional.ssbo.layout.single_struct_array.per_block_buffer.std140_instance_array,Fail
 dEQP-GLES31.functional.ssbo.layout.single_struct_array.per_block_buffer.std430_instance_array,Fail
+dEQP-GLES31.functional.ssbo.layout.single_struct_array.single_buffer.packed_instance_array,Fail
+dEQP-GLES31.functional.ssbo.layout.single_struct_array.single_buffer.shared_instance_array,Fail
+dEQP-GLES31.functional.ssbo.layout.single_struct_array.single_buffer.std140_instance_array,Fail
+dEQP-GLES31.functional.ssbo.layout.single_struct_array.single_buffer.std430_instance_array,Fail
 
 dEQP-GLES31.functional.state_query.integer.draw_indirect_buffer_binding_getboolean,Fail
 dEQP-GLES31.functional.state_query.integer.draw_indirect_buffer_binding_getfloat,Fail
@@ -1023,6 +1011,3 @@ dEQP-GLES31.functional.texture.border_clamp.unused_channels.depth24_stencil8_sam
 dEQP-GLES31.functional.texture.border_clamp.unused_channels.depth32f_stencil8_sample_stencil,Fail
 dEQP-GLES31.functional.texture.border_clamp.unused_channels.r16i,Fail
 dEQP-GLES31.functional.texture.border_clamp.unused_channels.stencil_index8,Fail
-
-dEQP-GLES31.functional.ubo.random.all_per_block_buffers.13,Fail
-dEQP-GLES31.functional.ubo.random.all_per_block_buffers.20,Fail
