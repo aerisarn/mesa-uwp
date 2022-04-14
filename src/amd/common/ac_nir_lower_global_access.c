@@ -144,8 +144,10 @@ process_instr(nir_builder *b, nir_instr *instr, void *_)
 
    b->cursor = nir_before_instr(&intrin->instr);
 
-   if (off_const > UINT32_MAX)
+   if (off_const > UINT32_MAX) {
       addr = nir_iadd_imm(b, addr, off_const);
+      off_const = 0;
+   }
 
    nir_intrinsic_instr *new_intrin = nir_intrinsic_instr_create(b->shader, op);
 
