@@ -6530,6 +6530,8 @@ void genX(CmdBeginRendering)(
    if (result != VK_SUCCESS)
       return;
 
+   genX(flush_pipeline_select_3d)(cmd_buffer);
+
    for (uint32_t i = 0; i < gfx->color_att_count; i++) {
       if (!(color_att_valid & BITFIELD_BIT(i)))
          continue;
