@@ -297,6 +297,26 @@ def show_job_data(job):
         print("{}\t: {}".format(field, value))
 
 
+def parse_lava_lines(new_lines) -> list[str]:
+    parsed_lines: list[str] = []
+    for line in new_lines:
+        if line["lvl"] in ["results", "feedback"]:
+            continue
+        elif line["lvl"] in ["warning", "error"]:
+            prefix = "\x1b[1;38;5;197m"
+            suffix = "\x1b[0m"
+        elif line["lvl"] == "input":
+            prefix = "$ "
+            suffix = ""
+        else:
+            prefix = ""
+            suffix = ""
+        line = f'{prefix}{line["msg"]}{suffix}'
+        parsed_lines.append(line)
+
+    return parsed_lines
+
+
 def follow_job_execution(job):
     try:
         job.submit()
@@ -326,8 +346,9 @@ def follow_job_execution(job):
         time.sleep(LOG_POLLING_TIME_SEC)
 
         new_lines = job.get_logs()
+        parsed_lines = parse_lava_lines(new_lines)
 
-        for line in new_lines:
+        for line in parsed_lines:
             print(line)
 
     show_job_data(job)
