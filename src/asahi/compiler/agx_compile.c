@@ -62,13 +62,10 @@ agx_index_to_key(agx_index idx)
 }
 
 /*
- * Extract a single channel out of a vector source. This corresponds to the
- * pseduo-instruction p_extract, which gets lowered to a move after
- * register-allocation.
- *
- * However, if the vector was split (with p_split), we can use the split
- * components directly, without emitting a machine instruction. This has
- * advantages of RA, as the split can be optimized away.
+ * Extract a single channel out of a vector source. We split vectors with
+ * p_split so we can use the split components directly, without emitting a
+ * machine instruction. This has advantages of RA, as the split can usually be
+ * optimized away.
  */
 static agx_index
 agx_emit_extract(agx_builder *b, agx_index vec, unsigned channel)
@@ -76,10 +73,9 @@ agx_emit_extract(agx_builder *b, agx_index vec, unsigned channel)
    agx_index *components = _mesa_hash_table_u64_search(b->shader->allocated_vec,
                                                        agx_index_to_key(vec));
 
-   if (components)
-      return components[channel];
-   else
-      return agx_p_extract(b, vec, channel);
+   assert(components != NULL && "missing agx_emit_combine_to");
+
+   return components[channel];
 }
 
 static void
