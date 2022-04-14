@@ -225,7 +225,7 @@ spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-read,Crash
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 
 # maybe color_write_enable related?
-spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag
+spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 
 glx@extension string sanity,Fail
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
@@ -246,7 +246,6 @@ glx@glx_ext_import_context@make current- multi process,Fail
 glx@glx_ext_import_context@make current- single process,Fail
 glx@glx_ext_import_context@query context info,Fail
 glx@glx-make-current,Crash
-glx@glx-multi-window-single-context,Fail
 glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth,Crash
@@ -572,7 +571,6 @@ spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE12,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_LUMINANCE16,Fail
 spec@ext_framebuffer_object@fbo-blending-formats@GL_RGB10,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
