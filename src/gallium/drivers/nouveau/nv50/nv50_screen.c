@@ -104,8 +104,9 @@ nv50_screen_is_format_supported(struct pipe_screen *pscreen,
 static int
 nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
-   const uint16_t class_3d = nouveau_screen(pscreen)->class_3d;
-   struct nouveau_device *dev = nouveau_screen(pscreen)->device;
+   struct nouveau_screen *screen = nouveau_screen(pscreen);
+   const uint16_t class_3d = screen->class_3d;
+   struct nouveau_device *dev = screen->device;
    static bool debug_cap_printed[PIPE_CAP_LAST] = {};
 
    switch (param) {
@@ -256,7 +257,6 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TGSI_DIV:
    case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
    case PIPE_CAP_FLATSHADE:
-   case PIPE_CAP_ALPHA_TEST:
    case PIPE_CAP_POINT_SIZE_FIXED:
    case PIPE_CAP_TWO_SIDED_COLOR:
    case PIPE_CAP_CLIP_PLANES:
@@ -270,6 +270,14 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SHAREABLE_SHADERS:
    case PIPE_CAP_PREFER_BACK_BUFFER_REUSE:
       return 1;
+
+   case PIPE_CAP_ALPHA_TEST:
+      /* nvc0 has fixed function alpha test support, but nv50 doesn't.  The TGSI
+       * backend emits the conditional discard code against a driver-uploaded
+       * uniform, but with NIR we can have the st emit it for us.
+       */
+      return class_3d >= NVC0_3D_CLASS || !screen->prefer_nir;
+
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
       return PIPE_TEXTURE_TRANSFER_BLIT;
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
