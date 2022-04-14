@@ -1460,13 +1460,30 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
    uint32_t index_max_size = 0;
    uint64_t index_va = 0;
+   bool disable_instance_packing = false;
 
    radeon_begin(cs);
+
+   if (GFX_VERSION == GFX10_3) {
+      /* Workaround for incorrect stats with adjacent primitive types
+       * (see PAL's waDisableInstancePacking).
+       */
+      if (sctx->num_pipeline_stat_queries &&
+          sctx->shader.gs.cso == NULL &&
+          (instance_count > 1 || indirect) &&
+          (1 << info->mode) & (1 << PIPE_PRIM_LINES_ADJACENCY |
+                               1 << PIPE_PRIM_LINE_STRIP_ADJACENCY |
+                               1 << PIPE_PRIM_TRIANGLES_ADJACENCY |
+                               1 << PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY)) {
+         disable_instance_packing = true;
+      }
+   }
 
    /* draw packet */
    if (index_size) {
       /* Register shadowing doesn't shadow INDEX_TYPE. */
-      if (index_size != sctx->last_index_size || sctx->shadowed_regs) {
+      if (index_size != sctx->last_index_size || sctx->shadowed_regs ||
+          (GFX_VERSION == GFX10_3 && disable_instance_packing != sctx->disable_instance_packing)) {
          unsigned index_type;
 
          /* Index type computation. When we look at how we need to translate index_size,
@@ -1476,7 +1493,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
           * 2 = 010b --> 00b = 0
           * 4 = 100b --> 01b = 1
           */
-         index_type = ((index_size >> 2) | (index_size << 1)) & 0x3;
+         index_type = (((index_size >> 2) | (index_size << 1)) & 0x3) |
+                      S_028A7C_DISABLE_INSTANCE_PACKING(disable_instance_packing);
 
          if (GFX_VERSION <= GFX7 && SI_BIG_ENDIAN) {
             /* GFX7 doesn't support ubyte indices. */
@@ -1493,6 +1511,8 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
          }
 
          sctx->last_index_size = index_size;
+         if (GFX_VERSION == GFX10_3)
+            sctx->disable_instance_packing = disable_instance_packing;
       }
 
       index_max_size = (indexbuf->width0 - index_offset) >> util_logbase2(index_size);
@@ -1514,6 +1534,12 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
        */
       if (GFX_VERSION >= GFX7)
          sctx->last_index_size = -1;
+      if (GFX_VERSION == GFX10_3 && disable_instance_packing != sctx->disable_instance_packing) {
+         radeon_set_uconfig_reg_idx(sctx->screen, GFX_VERSION,
+                                    R_03090C_VGT_INDEX_TYPE, 2,
+                                    S_028A7C_DISABLE_INSTANCE_PACKING(disable_instance_packing));
+         sctx->disable_instance_packing = disable_instance_packing;
+      }
    }
 
    unsigned sh_base_reg = sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX];
