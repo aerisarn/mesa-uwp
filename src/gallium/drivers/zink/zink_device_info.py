@@ -65,6 +65,7 @@ EXTENSIONS = [
     Extension("VK_KHR_maintenance3"),
     Extension("VK_KHR_external_memory"),
     Extension("VK_KHR_external_memory_fd"),
+    Extension("VK_KHR_vulkan_memory_model"),
     Extension("VK_KHR_external_semaphore_fd"),
     Extension("VK_KHR_create_renderpass2", required=True),
     Extension("VK_KHR_synchronization2",
