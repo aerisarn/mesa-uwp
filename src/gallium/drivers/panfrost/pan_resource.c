@@ -1487,4 +1487,5 @@ panfrost_resource_context_init(struct pipe_context *pctx)
         pctx->transfer_flush_region = u_transfer_helper_transfer_flush_region;
         pctx->buffer_subdata = u_default_buffer_subdata;
         pctx->texture_subdata = u_default_texture_subdata;
+        pctx->clear_buffer = u_default_clear_buffer;
 }
