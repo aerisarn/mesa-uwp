@@ -46,6 +46,7 @@ deployment:
         SALAD.machine_id={{ '{{' }} machine_id }}
         console={{ '{{' }} local_tty_device }},115200 earlyprintk=vga,keep
         loglevel={{ log_level }} amdgpu.gpu_recovery=0 no_hash_pointers
+        b2c.service="--privileged --tls-verify=false --pid=host docker://{{ '{{' }} fdo_proxy_registry }}/mupuf/valve-infra/telegraf-container:latest" b2c.hostname=dut-{{ '{{' }} machine.full_name }}
         b2c.container="-ti --tls-verify=false docker://{{ '{{' }} fdo_proxy_registry }}/mupuf/valve-infra/machine_registration:latest check"
         b2c.ntp_peer=10.42.0.1 b2c.pipefail b2c.cache_device=auto b2c.poweroff_delay={{ poweroff_delay }}
         b2c.minio="gateway,{{ '{{' }} minio_url }},{{ '{{' }} job_bucket_access_key }},{{ '{{' }} job_bucket_secret_key }}"
