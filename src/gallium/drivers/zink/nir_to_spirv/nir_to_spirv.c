@@ -2913,8 +2913,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_memory_barrier_tcs_patch:
-      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                        SpvMemorySemanticsOutputMemoryMask | SpvMemorySemanticsReleaseMask);
+      /* handled by subsequent nir_intrinsic_control_barrier */
       break;
 
    case nir_intrinsic_memory_barrier:
@@ -2942,9 +2941,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_control_barrier:
-      spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                         SpvScopeWorkgroup,
-                                         SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireMask);
+      if (ctx->stage == MESA_SHADER_COMPUTE)
+         spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
+                                            SpvScopeWorkgroup,
+                                            SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireMask);
+      else
+         spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup, SpvScopeInvocation, 0);
       break;
 
    case nir_intrinsic_interp_deref_at_centroid:
