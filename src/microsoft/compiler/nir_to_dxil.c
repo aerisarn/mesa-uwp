@@ -5608,6 +5608,28 @@ allocate_sysvalues(struct ntd_context *ctx)
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_system_value)
       driver_location++;
 
+   if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT &&
+       ctx->shader->info.inputs_read &&
+       !BITSET_TEST(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID)) {
+      bool need_sample_id = true;
+
+      /* "var->data.sample = true" sometimes just mean, "I want per-sample
+       * shading", which explains why we can end up with vars having flat
+       * interpolation with the per-sample bit set. If there's only such
+       * type of variables, we need to tell DXIL that we read SV_SampleIndex
+       * to make DXIL validation happy.
+       */
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in) {
+         if (!var->data.sample || var->data.interpolation != INTERP_MODE_FLAT) {
+            need_sample_id = false;
+            break;
+         }
+      }
+
+      if (need_sample_id)
+         BITSET_SET(ctx->shader->info.system_values_read, SYSTEM_VALUE_SAMPLE_ID);
+   }
+
    for (unsigned i = 0; i < ARRAY_SIZE(possible_sysvalues); ++i) {
       struct sysvalue_name *info = &possible_sysvalues[i];
       if (info->only_in_shader != MESA_SHADER_NONE &&
