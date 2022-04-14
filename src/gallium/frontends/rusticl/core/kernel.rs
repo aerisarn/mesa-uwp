@@ -52,6 +52,8 @@ pub enum InternalKernelArgType {
     GlobalWorkOffsets,
     PrintfBuffer,
     InlineSampler((cl_addressing_mode, cl_filter_mode, bool)),
+    FormatArray,
+    OrderArray,
 }
 
 #[derive(Clone)]
@@ -385,6 +387,35 @@ fn lower_and_optimize_nir_late(
         );
     }
 
+    nir.pass1(nir_shader_gather_info, nir.entrypoint());
+    if nir.num_images() > 0 {
+        res.push(InternalKernelArg {
+            kind: InternalKernelArgType::FormatArray,
+            offset: 0,
+            size: 2 * nir.num_images() as usize,
+        });
+
+        res.push(InternalKernelArg {
+            kind: InternalKernelArgType::OrderArray,
+            offset: 0,
+            size: 2 * nir.num_images() as usize,
+        });
+
+        lower_state.format_arr = nir.add_var(
+            nir_variable_mode::nir_var_uniform,
+            unsafe { glsl_array_type(glsl_int16_t_type(), nir.num_images() as u32, 2) },
+            args + res.len() - 2,
+            "image_formats",
+        );
+
+        lower_state.order_arr = nir.add_var(
+            nir_variable_mode::nir_var_uniform,
+            unsafe { glsl_array_type(glsl_int16_t_type(), nir.num_images() as u32, 2) },
+            args + res.len() - 1,
+            "image_orders",
+        );
+    }
+
     nir.pass2(
         nir_lower_vars_to_explicit_types,
         nir_variable_mode::nir_var_mem_shared
@@ -402,6 +433,7 @@ fn lower_and_optimize_nir_late(
     let mut compute_options = nir_lower_compute_system_values_options::default();
     compute_options.set_has_base_global_invocation_id(true);
     nir.pass1(nir_lower_compute_system_values, &compute_options);
+
     nir.pass1(rusticl_lower_intrinsics, &mut lower_state);
     nir.pass2(
         nir_lower_explicit_io,
@@ -493,6 +525,10 @@ impl Kernel {
         let mut samplers = Vec::new();
         let mut iviews = Vec::new();
         let mut sviews = Vec::new();
+        let mut tex_formats: Vec<u16> = Vec::new();
+        let mut tex_orders: Vec<u16> = Vec::new();
+        let mut img_formats: Vec<u16> = Vec::new();
+        let mut img_orders: Vec<u16> = Vec::new();
 
         for i in 0..3 {
             if block[i] == 0 {
@@ -520,10 +556,22 @@ impl Kernel {
                     if mem.is_buffer() {
                         input.extend_from_slice(&mem.offset.to_ne_bytes());
                         resource_info.push((Some(res.clone()), arg.offset));
-                    } else if arg.kind == KernelArgType::Image {
-                        iviews.push(res.pipe_image_view())
                     } else {
-                        sviews.push(res.clone())
+                        let (formats, orders) = if arg.kind == KernelArgType::Image {
+                            iviews.push(res.pipe_image_view());
+                            (&mut img_formats, &mut img_orders)
+                        } else {
+                            sviews.push(res.clone());
+                            (&mut tex_formats, &mut tex_orders)
+                        };
+
+                        assert!(arg.offset >= formats.len());
+
+                        formats.resize(arg.offset, 0);
+                        orders.resize(arg.offset, 0);
+
+                        formats.push(mem.image_format.image_channel_data_type as u16);
+                        orders.push(mem.image_format.image_channel_order as u16);
                     }
                 }
                 KernelArgValue::LocalMem(size) => {
@@ -581,6 +629,14 @@ impl Kernel {
                 }
                 InternalKernelArgType::InlineSampler(cl) => {
                     samplers.push(Sampler::cl_to_pipe(cl));
+                }
+                InternalKernelArgType::FormatArray => {
+                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&tex_formats));
+                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&img_formats));
+                }
+                InternalKernelArgType::OrderArray => {
+                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&tex_orders));
+                    input.extend_from_slice(&cl_prop::<&Vec<u16>>(&img_orders));
                 }
             }
         }

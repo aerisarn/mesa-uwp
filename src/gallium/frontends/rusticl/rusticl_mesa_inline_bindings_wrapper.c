@@ -1,5 +1,11 @@
 #include "rusticl_mesa_inline_bindings_wrapper.h"
 
+nir_function_impl *
+nir_shader_get_entrypoint(const nir_shader *shader)
+{
+   return __nir_shader_get_entrypoint_wraped(shader);
+}
+
 void
 pipe_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
 {

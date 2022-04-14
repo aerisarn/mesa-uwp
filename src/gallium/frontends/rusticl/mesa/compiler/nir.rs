@@ -116,6 +116,10 @@ impl NirShader {
         unsafe { pass(self.nir.as_ptr(), a, b, c) }
     }
 
+    pub fn entrypoint(&self) -> *mut nir_function_impl {
+        unsafe { nir_shader_get_entrypoint(self.nir.as_ptr()) }
+    }
+
     pub fn structurize(&mut self) {
         self.pass0(nir_lower_goto_ifs);
         self.pass0(nir_opt_dead_cf);
@@ -140,6 +144,10 @@ impl NirShader {
             &mut unsafe { self.nir.as_mut() }.variables,
             offset_of!(nir_variable, node),
         )
+    }
+
+    pub fn num_images(&self) -> u8 {
+        unsafe { (*self.nir.as_ptr()).info.num_images }
     }
 
     pub fn reset_scratch_size(&self) {

@@ -119,6 +119,7 @@ macro_rules! cl_prop_for_struct {
 }
 
 cl_prop_for_type!(cl_char);
+cl_prop_for_type!(cl_ushort);
 cl_prop_for_type!(cl_int);
 cl_prop_for_type!(cl_uint);
 cl_prop_for_type!(cl_ulong);

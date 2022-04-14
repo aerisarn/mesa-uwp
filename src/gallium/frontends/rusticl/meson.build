@@ -105,6 +105,16 @@ rusticl_bindgen_c_args = [
   '-fno-builtin-malloc',
 ]
 
+cl_c_args = [
+  '-DCL_USE_DEPRECATED_OPENCL_1_0_APIS',
+  '-DCL_USE_DEPRECATED_OPENCL_1_1_APIS',
+  '-DCL_USE_DEPRECATED_OPENCL_1_2_APIS',
+  '-DCL_USE_DEPRECATED_OPENCL_2_0_APIS',
+  '-DCL_USE_DEPRECATED_OPENCL_2_1_APIS',
+  '-DCL_USE_DEPRECATED_OPENCL_2_2_APIS',
+  '-DCL_TARGET_OPENCL_VERSION=300',
+]
+
 rusticl_opencl_bindings_rs = rust.bindgen(
   input : [
     'rusticl_opencl_bindings.h',
@@ -116,13 +126,7 @@ rusticl_opencl_bindings_rs = rust.bindgen(
   ],
   c_args : [
     rusticl_bindgen_c_args,
-    '-DCL_USE_DEPRECATED_OPENCL_1_0_APIS',
-    '-DCL_USE_DEPRECATED_OPENCL_1_1_APIS',
-    '-DCL_USE_DEPRECATED_OPENCL_1_2_APIS',
-    '-DCL_USE_DEPRECATED_OPENCL_2_0_APIS',
-    '-DCL_USE_DEPRECATED_OPENCL_2_1_APIS',
-    '-DCL_USE_DEPRECATED_OPENCL_2_2_APIS',
-    '-DCL_TARGET_OPENCL_VERSION=300',
+    cl_c_args,
   ],
   args : [
     rusticl_bindgen_args,
@@ -168,7 +172,10 @@ rusticl_mesa_bindings_inline_wrapper = static_library(
     inc_nir,
     inc_src,
   ],
-  c_args : pre_args,
+  c_args : [
+    pre_args,
+    cl_c_args,
+  ],
   dependencies: [
     idep_nir_headers,
   ],

@@ -1,3 +1,5 @@
+#include "CL/cl.h"
+
 #include "nir.h"
 #include "nir_builder.h"
 
@@ -15,10 +17,42 @@ rusticl_lower_intrinsics_instr(
     nir_instr *instr,
     void* _state
 ) {
-    nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
+    nir_intrinsic_instr *intrins = nir_instr_as_intrinsic(instr);
     struct rusticl_lower_state *state = _state;
 
-    switch (intrinsic->intrinsic) {
+    switch (intrins->intrinsic) {
+    case nir_intrinsic_image_deref_format:
+    case nir_intrinsic_image_deref_order: {
+        assert(intrins->src[0].is_ssa);
+
+        int32_t offset;
+        nir_deref_instr *deref;
+        nir_ssa_def *val;
+        nir_variable *var;
+
+        if (intrins->intrinsic == nir_intrinsic_image_deref_format) {
+            offset = CL_SNORM_INT8;
+            var = state->format_arr;
+        } else {
+            offset = CL_R;
+            var = state->order_arr;
+        }
+
+        val = intrins->src[0].ssa;
+        // we put write images after read images
+        if (nir_intrinsic_access(intrins) & ACCESS_NON_WRITEABLE) {
+            val = nir_iadd_imm(b, val, b->shader->info.num_textures);
+        }
+
+        deref = nir_build_deref_var(b, var);
+        deref = nir_build_deref_array(b, deref, val);
+        val = nir_u2u(b, nir_load_deref(b, deref), 32);
+
+        // we have to fix up the value base
+        val = nir_iadd_imm(b, val, -offset);
+
+        return val;
+    }
     case nir_intrinsic_load_base_global_invocation_id:
         return nir_load_var(b, state->base_global_invoc_id);
     case nir_intrinsic_load_constant_base_ptr:
