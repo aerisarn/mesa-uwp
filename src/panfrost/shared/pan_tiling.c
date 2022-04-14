@@ -313,6 +313,15 @@ panfrost_access_tiled_image(void *dst, void *src,
                            bool is_store)
 {
    const struct util_format_description *desc = util_format_description(format);
+   unsigned bpp = desc->block.bits;
+
+   /* Our optimized routines cannot handle unaligned blocks (without depending
+    * on platform-specific behaviour), and there is no good reason to do so. If
+    * these assertions fail, there is either a driver bug or a non-portable unit
+    * test.
+    */
+   assert((dst_stride % (bpp / 8)) == 0 && "unaligned destination stride");
+   assert((src_stride % (bpp / 8)) == 0 && "unaligned source stride");
 
    if (desc->block.width > 1 || !util_is_power_of_two_nonzero(desc->block.bits)) {
       panfrost_access_tiled_image_generic(dst, (void *) src,
@@ -322,7 +331,6 @@ panfrost_access_tiled_image(void *dst, void *src,
       return;
    }
 
-   unsigned bpp = desc->block.bits;
    unsigned first_full_tile_x = DIV_ROUND_UP(x, TILE_WIDTH) * TILE_WIDTH;
    unsigned first_full_tile_y = DIV_ROUND_UP(y, TILE_HEIGHT) * TILE_HEIGHT;
    unsigned last_full_tile_x = ((x + w) / TILE_WIDTH) * TILE_WIDTH;
