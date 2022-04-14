@@ -2956,6 +2956,11 @@ panfrost_update_shader_state(struct panfrost_batch *batch,
                 batch->rsd[st] = panfrost_emit_compute_shader_meta(batch, st);
         }
 
+#if PAN_ARCH >= 9
+        if (dirty & PAN_DIRTY_STAGE_IMAGE)
+                batch->images[st] = panfrost_emit_images(batch, st);
+#endif
+
         if ((dirty & ss->dirty_shader) || (dirty_3d & ss->dirty_3d)) {
                 batch->uniform_buffers[st] = panfrost_emit_const_buf(batch, st,
                                 NULL, &batch->push_uniforms[st], NULL);
@@ -2993,6 +2998,23 @@ panfrost_update_state_3d(struct panfrost_batch *batch)
 
         if (dirty & PAN_DIRTY_ZS)
                 panfrost_set_batch_masks_zs(batch);
+
+#if PAN_ARCH >= 9
+        if ((dirty & (PAN_DIRTY_ZS | PAN_DIRTY_RASTERIZER)) ||
+            (ctx->dirty_shader[PIPE_SHADER_FRAGMENT] & PAN_DIRTY_STAGE_SHADER))
+                batch->depth_stencil = panfrost_emit_depth_stencil(batch);
+
+        if (dirty & PAN_DIRTY_BLEND)
+                batch->blend = panfrost_emit_blend_valhall(batch);
+
+        if (dirty & PAN_DIRTY_VERTEX) {
+                batch->attribs[PIPE_SHADER_VERTEX] =
+                        panfrost_emit_vertex_data(batch);
+
+                batch->attrib_bufs[PIPE_SHADER_VERTEX] =
+                        panfrost_emit_vertex_buffers(batch);
+        }
+#endif
 }
 
 #if PAN_ARCH >= 6
