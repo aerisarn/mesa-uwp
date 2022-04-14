@@ -1051,6 +1051,23 @@ dzn_descriptor_set_ptr_get_heap_offset(const struct dzn_descriptor_set_layout *l
 }
 
 static void
+dzn_descriptor_set_write_sampler_desc(struct dzn_descriptor_set *set,
+                                      uint32_t heap_offset,
+                                      const struct dzn_sampler *sampler)
+{
+   if (heap_offset == ~0)
+      return;
+
+   D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER;
+
+   mtx_lock(&set->pool->defragment_lock);
+   dzn_descriptor_heap_write_sampler_desc(&set->pool->heaps[type],
+                                          set->heap_offsets[type] + heap_offset,
+                                          sampler);
+    mtx_unlock(&set->pool->defragment_lock);
+}
+
+static void
 dzn_descriptor_set_ptr_write_sampler_desc(struct dzn_descriptor_set *set,
                                           const struct dzn_descriptor_set_ptr *ptr,
                                           const struct dzn_sampler *sampler)
@@ -1059,13 +1076,7 @@ dzn_descriptor_set_ptr_write_sampler_desc(struct dzn_descriptor_set *set,
    uint32_t heap_offset =
       dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, false);
 
-   if (heap_offset != ~0) {
-      mtx_lock(&set->pool->defragment_lock);
-      dzn_descriptor_heap_write_sampler_desc(&set->pool->heaps[type],
-                                             set->heap_offsets[type] + heap_offset,
-                                             sampler);
-      mtx_unlock(&set->pool->defragment_lock);
-   }
+   dzn_descriptor_set_write_sampler_desc(set, heap_offset, sampler);
 }
 
 static uint32_t
@@ -1084,17 +1095,26 @@ dzn_descriptor_set_ptr_get_dynamic_buffer_idx(const struct dzn_descriptor_set_la
 }
 
 static void
+dzn_descriptor_set_write_dynamic_buffer_desc(struct dzn_descriptor_set *set,
+                                             uint32_t dynamic_buffer_idx,
+                                             const struct dzn_buffer_desc *info)
+{
+   if (dynamic_buffer_idx == ~0)
+      return;
+
+   assert(dynamic_buffer_idx < set->layout->dynamic_buffers.count);
+   set->dynamic_buffers[dynamic_buffer_idx] = *info;
+}
+
+static void
 dzn_descriptor_set_ptr_write_dynamic_buffer_desc(struct dzn_descriptor_set *set,
                                                  const struct dzn_descriptor_set_ptr *ptr,
                                                  const struct dzn_buffer_desc *info)
 {
    uint32_t dynamic_buffer_idx =
       dzn_descriptor_set_ptr_get_dynamic_buffer_idx(set->layout, ptr);
-   if (dynamic_buffer_idx == ~0)
-      return;
 
-   assert(dynamic_buffer_idx < set->layout->dynamic_buffers.count);
-   set->dynamic_buffers[dynamic_buffer_idx] = *info;
+   dzn_descriptor_set_write_dynamic_buffer_desc(set, dynamic_buffer_idx, info);
 }
 
 static VkDescriptorType
@@ -1108,14 +1128,14 @@ dzn_descriptor_set_ptr_get_vk_type(const struct dzn_descriptor_set_layout *layou
 }
 
 static void
-dzn_descriptor_set_ptr_write_image_view_desc(struct dzn_descriptor_set *set,
-                                             const struct dzn_descriptor_set_ptr *ptr,
-                                             bool cube_as_2darray,
-                                             const struct dzn_image_view *iview)
+dzn_descriptor_set_write_image_view_desc(struct dzn_descriptor_set *set,
+                                         uint32_t heap_offset,
+                                         uint32_t alt_heap_offset,
+                                         bool cube_as_2darray,
+                                         const struct dzn_image_view *iview)
 {
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-   uint32_t heap_offset =
-      dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, false);
+
    if (heap_offset == ~0)
       return;
 
@@ -1125,15 +1145,53 @@ dzn_descriptor_set_ptr_write_image_view_desc(struct dzn_descriptor_set *set,
                                              false, cube_as_2darray,
                                              iview);
 
-   VkDescriptorType vk_type = dzn_descriptor_set_ptr_get_vk_type(set->layout, ptr);
-   if (dzn_descriptor_type_depends_on_shader_usage(vk_type)) {
-      heap_offset =
-         dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, true);
-      assert(heap_offset != ~0);
+   if (alt_heap_offset != ~0) {
       dzn_descriptor_heap_write_image_view_desc(&set->pool->heaps[type],
-                                                set->heap_offsets[type] + heap_offset,
+                                                set->heap_offsets[type] + alt_heap_offset,
                                                 true, cube_as_2darray,
                                                 iview);
+   }
+   mtx_unlock(&set->pool->defragment_lock);
+}
+
+static void
+dzn_descriptor_set_ptr_write_image_view_desc(struct dzn_descriptor_set *set,
+                                             const struct dzn_descriptor_set_ptr *ptr,
+                                             bool cube_as_2darray,
+                                             const struct dzn_image_view *iview)
+{
+   D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+   uint32_t heap_offset =
+      dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, false);
+   uint32_t alt_heap_offset =
+      dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, true);
+
+   dzn_descriptor_set_write_image_view_desc(set, heap_offset, alt_heap_offset,
+                                            cube_as_2darray, iview);
+}
+
+static void
+dzn_descriptor_set_write_buffer_view_desc(struct dzn_descriptor_set *set,
+                                          uint32_t heap_offset,
+                                          uint32_t alt_heap_offset,
+                                          const struct dzn_buffer_view *bview)
+{
+   if (heap_offset == ~0)
+      return;
+
+   D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+   mtx_lock(&set->pool->defragment_lock);
+   dzn_descriptor_heap_write_buffer_view_desc(&set->pool->heaps[type],
+                                              set->heap_offsets[type] +
+                                              heap_offset,
+                                              false, bview);
+
+   if (alt_heap_offset != ~0) {
+      dzn_descriptor_heap_write_buffer_view_desc(&set->pool->heaps[type],
+                                                 set->heap_offsets[type] +
+                                                 alt_heap_offset,
+                                                 true, bview);
    }
    mtx_unlock(&set->pool->defragment_lock);
 }
@@ -1146,22 +1204,32 @@ dzn_descriptor_set_ptr_write_buffer_view_desc(struct dzn_descriptor_set *set,
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    uint32_t heap_offset =
       dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, false);
+   uint32_t alt_heap_offset =
+      dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, true);
+
+   dzn_descriptor_set_write_buffer_view_desc(set, heap_offset, alt_heap_offset, bview);
+}
+
+static void
+dzn_descriptor_set_write_buffer_desc(struct dzn_descriptor_set *set,
+                                     uint32_t heap_offset,
+                                     uint32_t alt_heap_offset,
+                                     const struct dzn_buffer_desc *bdesc)
+{
+   D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    if (heap_offset == ~0)
       return;
 
    mtx_lock(&set->pool->defragment_lock);
-   dzn_descriptor_heap_write_buffer_view_desc(&set->pool->heaps[type],
-                                              set->heap_offsets[type] + heap_offset,
-                                              false, bview);
+   dzn_descriptor_heap_write_buffer_desc(&set->pool->heaps[type],
+                                         set->heap_offsets[type] + heap_offset,
+                                         false, bdesc);
 
-   VkDescriptorType vk_type = dzn_descriptor_set_ptr_get_vk_type(set->layout, ptr);
-   if (dzn_descriptor_type_depends_on_shader_usage(vk_type)) {
-      heap_offset =
-         dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, true);
-      assert(heap_offset != ~0);
-      dzn_descriptor_heap_write_buffer_view_desc(&set->pool->heaps[type],
-                                                 set->heap_offsets[type] + heap_offset,
-                                                 true, bview);
+   if (alt_heap_offset != ~0) {
+      dzn_descriptor_heap_write_buffer_desc(&set->pool->heaps[type],
+                                            set->heap_offsets[type] +
+                                            alt_heap_offset,
+                                            true, bdesc);
    }
    mtx_unlock(&set->pool->defragment_lock);
 }
@@ -1174,24 +1242,10 @@ dzn_descriptor_set_ptr_write_buffer_desc(struct dzn_descriptor_set *set,
    D3D12_DESCRIPTOR_HEAP_TYPE type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
    uint32_t heap_offset =
       dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, false);
-   if (heap_offset == ~0)
-      return;
+   uint32_t alt_heap_offset =
+      dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, true);
 
-   mtx_lock(&set->pool->defragment_lock);
-   dzn_descriptor_heap_write_buffer_desc(&set->pool->heaps[type],
-                                         set->heap_offsets[type] + heap_offset,
-                                         false, bdesc);
-
-   VkDescriptorType vk_type = dzn_descriptor_set_ptr_get_vk_type(set->layout, ptr);
-   if (dzn_descriptor_type_depends_on_shader_usage(vk_type)) {
-      heap_offset =
-         dzn_descriptor_set_ptr_get_heap_offset(set->layout, type, ptr, true);
-      assert(heap_offset != ~0);
-      dzn_descriptor_heap_write_buffer_desc(&set->pool->heaps[type],
-                                            set->heap_offsets[type] + heap_offset,
-                                            true, bdesc);
-   }
-   mtx_unlock(&set->pool->defragment_lock);
+   dzn_descriptor_set_write_buffer_desc(set, heap_offset, alt_heap_offset, bdesc);
 }
 
 static void
