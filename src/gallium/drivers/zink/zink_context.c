@@ -2120,20 +2120,6 @@ equals_framebuffer_imageless(const void *a, const void *b)
 }
 
 static void
-update_framebuffer_state(struct zink_context *ctx, int old_w, int old_h)
-{
-   if (ctx->fb_state.width != old_w || ctx->fb_state.height != old_h)
-      ctx->scissor_changed = true;
-   /* get_framebuffer adds a ref if the fb is reused or created;
-    * always do get_framebuffer first to avoid deleting the same fb
-    * we're about to use
-    */
-   struct zink_framebuffer *fb = zink_get_framebuffer(ctx);
-   ctx->fb_changed |= ctx->framebuffer != fb;
-   ctx->framebuffer = fb;
-}
-
-static void
 setup_framebuffer(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -2185,7 +2171,7 @@ setup_framebuffer(struct zink_context *ctx)
       unsigned old_h = ctx->fb_state.height;
       ctx->fb_state.width = ctx->swapchain_size.width;
       ctx->fb_state.height = ctx->swapchain_size.height;
-      update_framebuffer_state(ctx, old_w, old_h);
+      zink_update_framebuffer_state(ctx, old_w, old_h);
       ctx->swapchain_size.width = ctx->swapchain_size.height = 0;
    }
 
@@ -2697,7 +2683,7 @@ zink_set_color_write_enables(struct zink_context *ctx)
       /* use dummy color buffers instead of the more sane option */
       zink_end_render_pass(ctx);
       ctx->rp_changed = true;
-      update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
+      zink_update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
    } else {
       reapply_color_write(ctx);
    }
@@ -2774,7 +2760,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
    }
    rebind_fb_state(ctx, NULL, true);
    ctx->fb_state.samples = MAX2(samples, 1);
-   update_framebuffer_state(ctx, w, h);
+   zink_update_framebuffer_state(ctx, w, h);
 
    uint8_t rast_samples = ctx->fb_state.samples - 1;
    if (rast_samples != ctx->gfx_pipeline_state.rast_samples)
