@@ -1004,18 +1004,20 @@ bool Converter::assignSlots() {
    BITSET_FOREACH_SET(i, nir->info.system_values_read, SYSTEM_VALUE_MAX) {
       info_out->sv[info_out->numSysVals].sn = tgsi_get_sysval_semantic(i);
       info_out->sv[info_out->numSysVals].si = 0;
-      info_out->sv[info_out->numSysVals].input = 0; // TODO inferSysValDirection(sn);
+      info_out->sv[info_out->numSysVals].input = 0;
 
       switch (i) {
+      case SYSTEM_VALUE_VERTEX_ID:
+         info_out->sv[info_out->numSysVals].input = 1;
+         info_out->io.vertexId = info_out->numSysVals;
+         break;
       case SYSTEM_VALUE_INSTANCE_ID:
+         info_out->sv[info_out->numSysVals].input = 1;
          info_out->io.instanceId = info_out->numSysVals;
          break;
       case SYSTEM_VALUE_TESS_LEVEL_INNER:
       case SYSTEM_VALUE_TESS_LEVEL_OUTER:
          info_out->sv[info_out->numSysVals].patch = 1;
-         break;
-      case SYSTEM_VALUE_VERTEX_ID:
-         info_out->io.vertexId = info_out->numSysVals;
          break;
       default:
          break;
