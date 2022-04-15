@@ -271,13 +271,13 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx, LLVMValueR
                                          unsigned num_channels, unsigned cache_policy,
                                          bool can_speculate, bool d16, bool tfe);
 
-LLVMValueRef ac_build_tbuffer_load_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                         LLVMValueRef voffset, LLVMValueRef soffset,
-                                         unsigned cache_policy);
-
-LLVMValueRef ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+LLVMValueRef ac_build_buffer_load_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                         LLVMValueRef voffset, LLVMValueRef soffset,
                                         unsigned cache_policy);
+
+LLVMValueRef ac_build_buffer_load_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+                                       LLVMValueRef voffset, LLVMValueRef soffset,
+                                       unsigned cache_policy);
 
 LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                           LLVMValueRef vindex, LLVMValueRef voffset,
@@ -292,12 +292,12 @@ LLVMValueRef ac_build_opencoded_load_format(struct ac_llvm_context *ctx, unsigne
                                             LLVMValueRef soffset, unsigned cache_policy,
                                             bool can_speculate);
 
-void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                  LLVMValueRef vdata, LLVMValueRef voffset, LLVMValueRef soffset,
-                                  unsigned cache_policy);
+void ac_build_buffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+                                 LLVMValueRef vdata, LLVMValueRef voffset, LLVMValueRef soffset,
+                                 unsigned cache_policy);
 
-void ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
-                                 LLVMValueRef voffset, LLVMValueRef soffset, unsigned cache_policy);
+void ac_build_buffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
+                                LLVMValueRef voffset, LLVMValueRef soffset, unsigned cache_policy);
 
 void ac_set_range_metadata(struct ac_llvm_context *ctx, LLVMValueRef value, unsigned lo,
                            unsigned hi);

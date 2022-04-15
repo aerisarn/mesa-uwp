@@ -1331,17 +1331,17 @@ LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
                                 nfmt, cache_policy, can_speculate, true);
 }
 
-LLVMValueRef ac_build_tbuffer_load_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                         LLVMValueRef voffset, LLVMValueRef soffset,
-                                         unsigned cache_policy)
+LLVMValueRef ac_build_buffer_load_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+                                        LLVMValueRef voffset, LLVMValueRef soffset,
+                                        unsigned cache_policy)
 {
    return ac_build_buffer_load_common(ctx, rsrc, NULL, voffset, soffset, 1, ctx->i16,
                                       cache_policy, false, false, false);
 }
 
-LLVMValueRef ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                        LLVMValueRef voffset, LLVMValueRef soffset,
-                                        unsigned cache_policy)
+LLVMValueRef ac_build_buffer_load_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+                                       LLVMValueRef voffset, LLVMValueRef soffset,
+                                       unsigned cache_policy)
 {
    return ac_build_buffer_load_common(ctx, rsrc, NULL, voffset, soffset, 1, ctx->i8, cache_policy,
                                       false, false, false);
@@ -1638,17 +1638,17 @@ LLVMValueRef ac_build_opencoded_load_format(struct ac_llvm_context *ctx, unsigne
    return ac_build_gather_values(ctx, loads, 4);
 }
 
-void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                  LLVMValueRef vdata, LLVMValueRef voffset, LLVMValueRef soffset,
-                                  unsigned cache_policy)
+void ac_build_buffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
+                                 LLVMValueRef vdata, LLVMValueRef voffset, LLVMValueRef soffset,
+                                 unsigned cache_policy)
 {
    vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i16, "");
 
    ac_build_buffer_store_common(ctx, rsrc, vdata, NULL, voffset, soffset, cache_policy, false);
 }
 
-void ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
-                                 LLVMValueRef voffset, LLVMValueRef soffset, unsigned cache_policy)
+void ac_build_buffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
+                                LLVMValueRef voffset, LLVMValueRef soffset, unsigned cache_policy)
 {
    vdata = LLVMBuildBitCast(ctx->builder, vdata, ctx->i8, "");
 

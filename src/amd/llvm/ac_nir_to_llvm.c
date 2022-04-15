@@ -1864,9 +1864,9 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
                             LLVMConstInt(ctx->ac.i32, start * elem_size_bytes, false), "");
 
       if (num_bytes == 1) {
-         ac_build_tbuffer_store_byte(&ctx->ac, rsrc, data, offset, ctx->ac.i32_0, cache_policy);
+         ac_build_buffer_store_byte(&ctx->ac, rsrc, data, offset, ctx->ac.i32_0, cache_policy);
       } else if (num_bytes == 2) {
-         ac_build_tbuffer_store_short(&ctx->ac, rsrc, data, offset, ctx->ac.i32_0, cache_policy);
+         ac_build_buffer_store_short(&ctx->ac, rsrc, data, offset, ctx->ac.i32_0, cache_policy);
       } else {
          switch (num_bytes) {
          case 16: /* v4f32 */
@@ -2085,10 +2085,10 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
       LLVMValueRef ret;
 
       if (load_bytes == 1) {
-         ret = ac_build_tbuffer_load_byte(&ctx->ac, rsrc, voffset, ctx->ac.i32_0,
+         ret = ac_build_buffer_load_byte(&ctx->ac, rsrc, voffset, ctx->ac.i32_0,
                                           cache_policy);
       } else if (load_bytes == 2) {
-         ret = ac_build_tbuffer_load_short(&ctx->ac, rsrc, voffset, ctx->ac.i32_0,
+         ret = ac_build_buffer_load_short(&ctx->ac, rsrc, voffset, ctx->ac.i32_0,
                                            cache_policy);
       } else {
          int num_channels = util_next_power_of_two(load_bytes) / 4;
