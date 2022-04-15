@@ -131,6 +131,13 @@ record_images_used(struct shader_info *info,
    unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
 
    info->images_used |= mask;
+
+   enum glsl_sampler_dim sampler_dim =
+      glsl_get_sampler_dim(glsl_without_array(var->type));
+   if (sampler_dim == GLSL_SAMPLER_DIM_BUF)
+      info->image_buffers |= mask;
+   if (sampler_dim == GLSL_SAMPLER_DIM_MS)
+      info->msaa_images |= mask;
 }
 
 
