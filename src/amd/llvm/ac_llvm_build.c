@@ -1239,14 +1239,15 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
    LLVMValueRef offset = LLVMConstInt(ctx->i32, inst_offset, 0);
    if (voffset)
       offset = LLVMBuildAdd(ctx->builder, offset, voffset, "");
-   if (soffset)
-      offset = LLVMBuildAdd(ctx->builder, offset, soffset, "");
 
    if (allow_smem && !(cache_policy & ac_slc) &&
        (!(cache_policy & ac_glc) || ctx->chip_class >= GFX8)) {
       assert(vindex == NULL);
 
       LLVMValueRef result[8];
+
+      if (soffset)
+         offset = LLVMBuildAdd(ctx->builder, offset, soffset, "");
 
       for (int i = 0; i < num_channels; i++) {
          if (i) {
@@ -1268,7 +1269,7 @@ LLVMValueRef ac_build_buffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc
       return ac_build_gather_values(ctx, result, num_channels);
    }
 
-   return ac_build_buffer_load_common(ctx, rsrc, vindex, offset, ctx->i32_0, num_channels,
+   return ac_build_buffer_load_common(ctx, rsrc, vindex, offset, soffset, num_channels,
                                       channel_type, cache_policy, can_speculate, false, false);
 }
 
