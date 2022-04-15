@@ -227,6 +227,7 @@ fn opt_nir(nir: &mut NirShader, dev: &Device) {
 }
 
 fn lower_and_optimize_nir_pre_inputs(dev: &Device, nir: &mut NirShader, lib_clc: &NirShader) {
+    nir.pass0(nir_scale_fdiv);
     nir.set_workgroup_size_variable_if_zero();
     nir.structurize();
     while {
