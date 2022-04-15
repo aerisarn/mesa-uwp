@@ -1103,7 +1103,8 @@ atomic_fminmax(struct radv_device *dev, nir_builder *b, nir_ssa_def *addr, bool 
 static nir_ssa_def *
 read_fminmax_atomic(struct radv_device *dev, nir_builder *b, unsigned channels, nir_ssa_def *addr)
 {
-   nir_ssa_def *val = nir_build_load_global(b, channels, 32, addr);
+   nir_ssa_def *val = nir_build_load_global(b, channels, 32, addr,
+                                            .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
 
    if (radv_has_shader_buffer_float_minmax(dev->physical_device))
       return val;
@@ -1189,11 +1190,17 @@ build_leaf_shader(struct radv_device *dev)
 
       nir_push_if(&b, nir_ine_imm(&b, transform_addr, 0));
       nir_store_var(&b, transform[0],
-                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 0)), 0xf);
+                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 0),
+                                          .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER),
+                    0xf);
       nir_store_var(&b, transform[1],
-                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 16)), 0xf);
+                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 16),
+                                          .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER),
+                    0xf);
       nir_store_var(&b, transform[2],
-                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 32)), 0xf);
+                    nir_build_load_global(&b, 4, 32, nir_iadd_imm(&b, transform_addr, 32),
+                                          .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER),
+                    0xf);
       nir_pop_if(&b, NULL);
 
       for (unsigned i = 0; i < 3; ++i)
@@ -1245,8 +1252,12 @@ build_leaf_shader(struct radv_device *dev)
 
       aabb_addr = nir_iadd(&b, aabb_addr, nir_u2u64(&b, nir_imul(&b, aabb_stride, global_id)));
 
-      nir_ssa_def *min_bound = nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, aabb_addr, 0));
-      nir_ssa_def *max_bound = nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, aabb_addr, 12));
+      nir_ssa_def *min_bound =
+         nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, aabb_addr, 0),
+                               .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
+      nir_ssa_def *max_bound =
+         nir_build_load_global(&b, 3, 32, nir_iadd_imm(&b, aabb_addr, 12),
+                               .access = ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER);
 
       nir_store_var(&b, bounds[0], min_bound, 7);
       nir_store_var(&b, bounds[1], max_bound, 7);
