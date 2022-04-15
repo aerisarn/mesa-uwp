@@ -3994,8 +3994,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_shader_info *sinfo, uint32_
       spirv_builder_emit_mem_model(&ctx.builder, model,
                                    SpvMemoryModelGLSL450);
    } else {
-      if (ctx.stage == MESA_SHADER_TESS_CTRL && ctx.sinfo->have_vulkan_memory_model) {
+      if (ctx.sinfo->have_vulkan_memory_model) {
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModel);
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityVulkanMemoryModelDeviceScope);
          spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
                                       SpvMemoryModelVulkan);
       } else {
