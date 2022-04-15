@@ -132,6 +132,8 @@ tu_spirv_to_nir(struct tu_device *dev,
 
    ir3_optimize_loop(dev->compiler, nir);
 
+   NIR_PASS_V(nir, nir_opt_conditional_discard);
+
    return nir;
 }
 
