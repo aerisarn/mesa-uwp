@@ -158,12 +158,11 @@ util_draw_indirect_read(struct pipe_context *pipe,
    if (!draws)
       return NULL;
 
-   if (indirect->stride)
-      num_params = MIN2(indirect->stride / 4, num_params);
+   unsigned map_size = (draw_count - 1) * indirect->stride + (num_params * sizeof(uint32_t));
    params = pipe_buffer_map_range(pipe,
                                   indirect->buffer,
                                   indirect->offset,
-                                  (num_params * indirect->draw_count) * sizeof(uint32_t),
+                                  map_size,
                                   PIPE_MAP_READ,
                                   &transfer);
    if (!transfer) {
