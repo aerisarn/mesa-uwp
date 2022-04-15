@@ -506,6 +506,9 @@ tu_image_init(struct tu_device *device, struct tu_image *image,
          return vk_error(device, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
       }
 
+      if (device->instance->debug_flags & TU_DEBUG_LAYOUT)
+         fdl_dump_layout(layout);
+
       /* fdl6_layout can't take explicit offset without explicit pitch
        * add offset manually for extra layouts for planes
        */
