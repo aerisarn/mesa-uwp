@@ -185,9 +185,12 @@ wgl@wgl-multi-window-single-context,Fail
 wgl@wgl-sanity,Fail
 
 # glcts failures
+## Test issue - https://github.com/KhronosGroup/VK-GL-CTS/issues/251
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
+## Fail because GFX10+ removed MS texture support (see si_get_sparse_texture_virtual_page_size)
 KHR-GL46.sparse_texture2_tests.SparseTexture2Allocation,Fail
 KHR-GL46.sparse_texture2_tests.SparseTexture2Commitment,Fail
+## https://gitlab.freedesktop.org/mesa/mesa/-/issues/636
 KHR-GL46.sparse_texture2_tests.SparseTexture2Lookup,Fail
 KHR-GL46.sparse_texture2_tests.StandardPageSizesTestCase,Fail
 KHR-GL46.sparse_texture2_tests.UncommittedRegionsAccess,Fail
