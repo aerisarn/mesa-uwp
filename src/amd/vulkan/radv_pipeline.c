@@ -113,14 +113,14 @@ radv_pipeline_get_multisample_state(const struct radv_pipeline *pipeline,
 }
 
 static const VkPipelineTessellationStateCreateInfo *
-radv_pipeline_get_tessellation_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_get_tessellation_state(const struct radv_pipeline *pipeline,
+                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      if (pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT ||
-          pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
-         return pCreateInfo->pTessellationState;
-      }
-   }
+   const VkShaderStageFlagBits tess_stages = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                             VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+
+   if ((pipeline->active_stages & tess_stages) == tess_stages)
+      return pCreateInfo->pTessellationState;
    return NULL;
 }
 
@@ -3037,7 +3037,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
    }
 
    const VkPipelineTessellationStateCreateInfo *tess =
-      radv_pipeline_get_tessellation_state(pCreateInfo);
+      radv_pipeline_get_tessellation_state(pipeline, pCreateInfo);
    if (tess)
       key.tcs.tess_input_vertices = tess->patchControlPoints;
 
@@ -4183,8 +4183,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_pipeline_layout 
       gl_shader_stage stage = vk_to_mesa_shader_stage(sinfo->stage);
 
       radv_pipeline_stage_init(sinfo, &stages[stage], stage);
-
-      pipeline->active_stages |= sinfo->stage;
    }
 
    for (unsigned s = 0; s < MESA_VULKAN_SHADER_STAGES; s++) {
@@ -6538,6 +6536,13 @@ radv_graphics_pipeline_init(struct radv_pipeline *pipeline, struct radv_device *
       }
    }
 
+   /* Mark all active stages at pipeline creation. */
+   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+      const VkPipelineShaderStageCreateInfo *sinfo = &pCreateInfo->pStages[i];
+
+      pipeline->active_stages |= sinfo->stage;
+   }
+
    struct radv_blend_state blend = radv_pipeline_init_blend_state(pipeline, pCreateInfo);
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
@@ -6866,6 +6871,8 @@ radv_compute_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    const VkPipelineCreationFeedbackCreateInfo *creation_feedback =
       vk_find_struct_const(pCreateInfo->pNext, PIPELINE_CREATION_FEEDBACK_CREATE_INFO);
+
+   pipeline->active_stages |= MESA_SHADER_COMPUTE;
 
    struct radv_pipeline_key key = radv_generate_compute_pipeline_key(pipeline, pCreateInfo);
 
