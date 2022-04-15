@@ -81,8 +81,6 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
       progress = false;
 
       OPT_V(s, nir_lower_vars_to_ssa);
-      progress |= OPT(s, nir_opt_copy_prop_vars);
-      progress |= OPT(s, nir_opt_dead_write_vars);
       progress |= OPT(s, nir_lower_alu_to_scalar, NULL, NULL);
       progress |= OPT(s, nir_lower_phis_to_scalar, false);
 
@@ -90,6 +88,11 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
       progress |= OPT(s, nir_opt_deref);
       progress |= OPT(s, nir_opt_dce);
       progress |= OPT(s, nir_opt_cse);
+
+      progress |= OPT(s, nir_opt_find_array_copies);
+      progress |= OPT(s, nir_opt_copy_prop_vars);
+      progress |= OPT(s, nir_opt_dead_write_vars);
+
       static int gcm = -1;
       if (gcm == -1)
          gcm = env_var_as_unsigned("GCM", 0);
@@ -165,6 +168,8 @@ ir3_optimize_loop(struct ir3_compiler *compiler, nir_shader *s)
       progress |= OPT(s, nir_opt_remove_phis);
       progress |= OPT(s, nir_opt_undef);
    } while (progress);
+
+   OPT(s, nir_lower_var_copies);
 }
 
 static bool
