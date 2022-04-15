@@ -90,8 +90,11 @@ target_to_index(const struct st_context *st, const struct gl_query_object *q)
        q->Target == GL_TRANSFORM_FEEDBACK_STREAM_OVERFLOW_ARB)
       return q->Stream;
 
-   if (st->has_single_pipe_stat) {
-      switch (q->Target) {
+   /* Drivers with PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE = 0 ignore the
+    * index param so it should be useless; but radeonsi needs it in some cases,
+    * so pass the correct value.
+    */
+   switch (q->Target) {
       case GL_VERTICES_SUBMITTED_ARB:
          return PIPE_STAT_QUERY_IA_VERTICES;
       case GL_PRIMITIVES_SUBMITTED_ARB:
@@ -116,7 +119,6 @@ target_to_index(const struct st_context *st, const struct gl_query_object *q)
          return PIPE_STAT_QUERY_CS_INVOCATIONS;
       default:
          break;
-      }
    }
 
    return 0;
