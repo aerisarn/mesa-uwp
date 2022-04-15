@@ -2093,7 +2093,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
          int num_channels = util_next_power_of_two(load_bytes) / 4;
          bool can_speculate = access & ACCESS_CAN_REORDER;
 
-         ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels, vindex, offset, immoffset, 0,
+         ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels, vindex, offset, immoffset,
                                     ctx->ac.f32, cache_policy, can_speculate, false);
       }
 
@@ -2310,7 +2310,7 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
       num_components = DIV_ROUND_UP(num_components, 4);
 
    ret =
-      ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL, 0,
+      ac_build_buffer_load(&ctx->ac, rsrc, num_components, NULL, offset, NULL,
                            ctx->ac.f32, 0, true, true);
 
    /* Convert to the original type. */
@@ -4267,9 +4267,10 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       else
          unreachable("Unsupported channel type for load_buffer_amd");
 
-      result = ac_build_buffer_load(&ctx->ac, descriptor, num_components, NULL,
-                                    addr_voffset, addr_soffset, const_offset,
-                                    channel_type, cache_policy, reorder, false);
+      LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr_voffset,
+                                          LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
+      result = ac_build_buffer_load(&ctx->ac, descriptor, num_components, NULL, voffset,
+                                    addr_soffset, channel_type, cache_policy, reorder, false);
       result = ac_to_integer(&ctx->ac, ac_trim_vector(&ctx->ac, result, num_components));
       break;
    }
@@ -4426,7 +4427,7 @@ static LLVMValueRef get_bindless_index_from_uniform(struct ac_nir_context *ctx, 
    LLVMValueRef ubo_index = ctx->abi->load_ubo(ctx->abi, ctx->ac.i32_0);
 
    LLVMValueRef ret =
-      ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset, NULL, 0, ctx->ac.f32, 0, true, true);
+      ac_build_buffer_load(&ctx->ac, ubo_index, 1, NULL, offset, NULL, ctx->ac.f32, 0, true, true);
 
    return LLVMBuildBitCast(ctx->ac.builder, ret, ctx->ac.i32, "");
 }

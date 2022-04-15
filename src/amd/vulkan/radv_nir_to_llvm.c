@@ -2396,7 +2396,7 @@ ac_gs_copy_shader_emit(struct radv_shader_context *ctx)
             offset++;
 
             value = ac_build_buffer_load(&ctx->ac, ctx->gsvs_ring[0], 1, ctx->ac.i32_0, vtx_offset,
-                                         soffset, 0, ctx->ac.f32, ac_glc | ac_slc, true, false);
+                                         soffset, ctx->ac.f32, ac_glc | ac_slc, true, false);
 
             LLVMTypeRef type = LLVMGetAllocatedType(ctx->abi.outputs[ac_llvm_reg_index_soa(i, j)]);
             if (ac_get_type_size(type) == 2) {

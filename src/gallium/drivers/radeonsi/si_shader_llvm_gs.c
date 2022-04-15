@@ -74,7 +74,7 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
 
    soffset = LLVMConstInt(ctx->ac.i32, (param * 4 + swizzle) * 256, 0);
 
-   value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->ac.i32_0, vtx_offset, soffset, 0,
+   value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->ac.i32_0, vtx_offset, soffset,
                                 ctx->ac.f32, ac_glc, true, false);
    return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
 }
@@ -531,7 +531,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
             offset++;
 
             outputs[i].values[chan] =
-               ac_build_buffer_load(&ctx.ac, ctx.gsvs_ring[0], 1, ctx.ac.i32_0, voffset, soffset, 0,
+               ac_build_buffer_load(&ctx.ac, ctx.gsvs_ring[0], 1, ctx.ac.i32_0, voffset, soffset,
                                     ctx.ac.f32, ac_glc | ac_slc, true, false);
          }
       }
