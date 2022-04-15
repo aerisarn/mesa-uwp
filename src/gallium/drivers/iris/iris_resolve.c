@@ -121,10 +121,15 @@ resolve_image_views(struct iris_context *ice,
                     bool *draw_aux_buffer_disabled,
                     bool consider_framebuffer)
 {
-   uint32_t views = info ? (shs->bound_image_views & info->images_used[0]) : 0;
+   if (info == NULL)
+      return;
+
+   const uint64_t images_used =
+      (info->images_used[0] | ((uint64_t)info->images_used[1]) << 32);
+   uint64_t views = shs->bound_image_views & images_used;
 
    while (views) {
-      const int i = u_bit_scan(&views);
+      const int i = u_bit_scan64(&views);
       struct pipe_image_view *pview = &shs->image[i].base;
       struct iris_resource *res = (void *) pview->resource;
 

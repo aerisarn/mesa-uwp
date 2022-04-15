@@ -52,7 +52,7 @@ struct u_trace;
 
 #define IRIS_MAX_TEXTURES 32
 #define IRIS_MAX_SAMPLERS 32
-#define IRIS_MAX_IMAGES 32
+#define IRIS_MAX_IMAGES 64
 #define IRIS_MAX_SOL_BUFFERS 4
 #define IRIS_MAP_BUFFER_ALIGNMENT 64
 

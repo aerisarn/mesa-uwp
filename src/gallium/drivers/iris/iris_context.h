@@ -566,7 +566,7 @@ struct iris_shader_state {
    uint32_t dirty_cbufs;
 
    /** Bitfield of which image views are bound (non-null). */
-   uint32_t bound_image_views;
+   uint64_t bound_image_views;
 
    /** Bitfield of which sampler views are bound (non-null). */
    uint32_t bound_sampler_views;

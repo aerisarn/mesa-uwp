@@ -2844,7 +2844,7 @@ iris_set_shader_images(struct pipe_context *ctx,
 #endif
 
    shs->bound_image_views &=
-      ~u_bit_consecutive(start_slot, count + unbind_num_trailing_slots);
+      ~u_bit_consecutive64(start_slot, count + unbind_num_trailing_slots);
 
    for (unsigned i = 0; i < count; i++) {
       struct iris_image_view *iv = &shs->image[start_slot + i];
@@ -2855,7 +2855,7 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          util_copy_image_view(&iv->base, img);
 
-         shs->bound_image_views |= 1 << (start_slot + i);
+         shs->bound_image_views |= BITFIELD64_BIT(start_slot + i);
 
          res->bind_history |= PIPE_BIND_SHADER_IMAGE;
          res->bind_stages |= 1 << stage;
@@ -7583,9 +7583,9 @@ iris_rebind_buffer(struct iris_context *ice,
       }
 
       if (res->bind_history & PIPE_BIND_SHADER_IMAGE) {
-         uint32_t bound_image_views = shs->bound_image_views;
+         uint64_t bound_image_views = shs->bound_image_views;
          while (bound_image_views) {
-            const int i = u_bit_scan(&bound_image_views);
+            const int i = u_bit_scan64(&bound_image_views);
             struct iris_image_view *iv = &shs->image[i];
             struct iris_bo *bo = iris_resource_bo(iv->base.resource);
 
