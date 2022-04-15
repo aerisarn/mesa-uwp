@@ -2917,8 +2917,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_memory_barrier:
-      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeWorkgroup,
-                                        SpvMemorySemanticsImageMemoryMask | SpvMemorySemanticsUniformMemoryMask |
+      spirv_builder_emit_memory_barrier(&ctx->builder,
+                                        ctx->sinfo->have_vulkan_memory_model ? SpvScopeQueueFamily : SpvScopeDevice,
+                                        SpvMemorySemanticsImageMemoryMask |
+                                        SpvMemorySemanticsUniformMemoryMask |
+                                        SpvMemorySemanticsWorkgroupMemoryMask |
+                                        SpvMemorySemanticsAtomicCounterMemoryMask |
                                         SpvMemorySemanticsAcquireReleaseMask);
       break;
 
