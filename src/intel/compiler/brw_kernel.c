@@ -454,7 +454,7 @@ brw_kernel_from_spirv(struct brw_compiler *compiler,
       .nir = nir,
       .key = &key,
       .prog_data = &kernel->prog_data,
-      .stats = &kernel->stats,
+      .stats = kernel->stats,
       .log_data = log_data,
    };
 
