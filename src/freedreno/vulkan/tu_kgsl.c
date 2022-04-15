@@ -362,6 +362,11 @@ tu_QueueSubmit(VkQueue _queue,
    TU_FROM_HANDLE(tu_syncobj, fence, _fence);
    VkResult result = VK_SUCCESS;
 
+   if (unlikely(queue->device->physical_device->instance->debug_flags &
+                 TU_DEBUG_LOG_SKIP_GMEM_OPS)) {
+      tu_dbg_log_gmem_load_store_skips(queue->device);
+   }
+
    uint32_t max_entry_count = 0;
    for (uint32_t i = 0; i < submitCount; ++i) {
       const VkSubmitInfo *submit = pSubmits + i;

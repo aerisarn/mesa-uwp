@@ -326,4 +326,7 @@ tu6_pack_border_color(struct bcolor_entry *bcolor, const VkClearColorValue *val,
 #undef PACK_F
 }
 
+void
+tu_dbg_log_gmem_load_store_skips(struct tu_device *device);
+
 #endif /* TU_UTIL_H */

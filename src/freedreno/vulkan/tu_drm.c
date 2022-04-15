@@ -1143,6 +1143,11 @@ tu_queue_submit(struct vk_queue *vk_queue, struct vk_queue_submit *submit)
                               submit->perf_pass_index : ~0;
    struct tu_queue_submit submit_req;
 
+   if (unlikely(queue->device->physical_device->instance->debug_flags &
+                 TU_DEBUG_LOG_SKIP_GMEM_OPS)) {
+      tu_dbg_log_gmem_load_store_skips(queue->device);
+   }
+
    pthread_mutex_lock(&queue->device->submit_mutex);
 
    VkResult ret = tu_queue_submit_create_locked(queue, submit,

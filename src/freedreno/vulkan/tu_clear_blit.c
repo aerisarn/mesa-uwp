@@ -2808,6 +2808,22 @@ tu_begin_load_store_cond_exec(struct tu_cmd_buffer *cmd,
                               struct tu_cs *cs, bool load)
 {
    tu_cond_exec_start(cs, CP_COND_REG_EXEC_0_MODE(PRED_TEST));
+
+   if (!unlikely(cmd->device->physical_device->instance->debug_flags &
+                 TU_DEBUG_LOG_SKIP_GMEM_OPS))
+      return;
+
+   uint64_t result_iova;
+   if (load)
+      result_iova = global_iova(cmd, dbg_gmem_taken_loads);
+   else
+      result_iova = global_iova(cmd, dbg_gmem_taken_stores);
+
+   tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 7);
+   tu_cs_emit(cs, CP_MEM_TO_MEM_0_NEG_B);
+   tu_cs_emit_qw(cs, result_iova);
+   tu_cs_emit_qw(cs, result_iova);
+   tu_cs_emit_qw(cs, global_iova(cmd, dbg_one));
 }
 
 static void
@@ -2815,6 +2831,22 @@ tu_end_load_store_cond_exec(struct tu_cmd_buffer *cmd,
                             struct tu_cs *cs, bool load)
 {
    tu_cond_exec_end(cs);
+
+   if (!unlikely(cmd->device->physical_device->instance->debug_flags &
+                 TU_DEBUG_LOG_SKIP_GMEM_OPS))
+      return;
+
+   uint64_t result_iova;
+   if (load)
+      result_iova = global_iova(cmd, dbg_gmem_total_loads);
+   else
+      result_iova = global_iova(cmd, dbg_gmem_total_stores);
+
+   tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 7);
+   tu_cs_emit(cs, CP_MEM_TO_MEM_0_NEG_B);
+   tu_cs_emit_qw(cs, result_iova);
+   tu_cs_emit_qw(cs, result_iova);
+   tu_cs_emit_qw(cs, global_iova(cmd, dbg_one));
 }
 
 void

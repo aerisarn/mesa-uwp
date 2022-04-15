@@ -340,6 +340,7 @@ static const struct debug_control tu_debug_options[] = {
    { "dontcare_as_load", TU_DEBUG_DONT_CARE_AS_LOAD },
    { "rast_order", TU_DEBUG_RAST_ORDER },
    { "unaligned_store", TU_DEBUG_UNALIGNED_STORE },
+   { "log_skip_gmem_ops", TU_DEBUG_LOG_SKIP_GMEM_OPS },
    { NULL, 0 }
 };
 
@@ -1810,6 +1811,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    struct tu6_global *global = device->global_bo->map;
    tu_init_clear_blit_shaders(device);
    global->predicate = 0;
+   global->dbg_one = (uint32_t)-1;
+   global->dbg_gmem_total_loads = 0;
+   global->dbg_gmem_taken_loads = 0;
+   global->dbg_gmem_total_stores = 0;
+   global->dbg_gmem_taken_stores = 0;
    tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK],
                          &(VkClearColorValue) {}, false);
    tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_TRANSPARENT_BLACK],

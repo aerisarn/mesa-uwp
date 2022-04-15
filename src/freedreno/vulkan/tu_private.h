@@ -269,6 +269,7 @@ enum tu_debug_flags
    TU_DEBUG_RAST_ORDER = 1 << 14,
    TU_DEBUG_UNALIGNED_STORE = 1 << 15,
    TU_DEBUG_LAYOUT = 1 << 16,
+   TU_DEBUG_LOG_SKIP_GMEM_OPS = 1 << 15,
 };
 
 struct tu_instance
@@ -489,6 +490,12 @@ struct tu6_global
 
    /* To know when renderpass stats for autotune are valid */
    volatile uint32_t autotune_fence;
+
+   volatile uint32_t dbg_one;
+   volatile uint32_t dbg_gmem_total_loads;
+   volatile uint32_t dbg_gmem_taken_loads;
+   volatile uint32_t dbg_gmem_total_stores;
+   volatile uint32_t dbg_gmem_taken_stores;
 
    /* note: larger global bo will be used for customBorderColors */
    struct bcolor_entry bcolor_builtin[TU_BORDER_COLOR_BUILTIN], bcolor[];
