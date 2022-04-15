@@ -21,12 +21,15 @@
 
 clang_resource_dir = join_paths(llvm_libdir, 'clang', dep_llvm.version(), 'include')
 
-opencl_c_h = custom_target(
-  'opencl-c.h',
-  input : [files_xxd, join_paths(clang_resource_dir, 'opencl-c.h')],
-  output : 'opencl-c.h.h',
-  command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'opencl_c_source'],
-)
+if dep_llvm.version().version_compare('< 15.0')
+  opencl_c_h = custom_target(
+    'opencl-c.h',
+    input : [files_xxd, join_paths(clang_resource_dir, 'opencl-c.h')],
+    output : 'opencl-c.h.h',
+    command : [prog_python, '@INPUT@', '@OUTPUT@', '-n', 'opencl_c_source'],
+  )
+endif
+
 opencl_c_base_h = custom_target(
   'opencl-c-base.h',
   input : [files_xxd, join_paths(clang_resource_dir, 'opencl-c-base.h')],

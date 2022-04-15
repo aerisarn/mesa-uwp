@@ -55,7 +55,9 @@
 #include "spirv.h"
 
 #ifdef USE_STATIC_OPENCL_C_H
+#if LLVM_VERSION_MAJOR < 15
 #include "opencl-c.h.h"
+#endif
 #include "opencl-c-base.h.h"
 #endif
 
@@ -767,7 +769,11 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
       "-triple", "spir64-unknown-unknown",
       // By default, clang prefers to use modules to pull in the default headers,
       // which doesn't work with our technique of embedding the headers in our binary
+#if LLVM_VERSION_MAJOR >= 15
+      "-fdeclare-opencl-builtins",
+#else
       "-finclude-default-header",
+#endif
       // Add a default CL compiler version. Clang will pick the last one specified
       // on the command line, so the app can override this one.
       "-cl-std=cl1.2",
@@ -827,9 +833,11 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
                                        clang::frontend::Angled,
                                        false, false);
 
+#if LLVM_VERSION_MAJOR < 15
       ::llvm::sys::path::append(system_header_path, "opencl-c.h");
       c->getPreprocessorOpts().addRemappedFile(system_header_path.str(),
          ::llvm::MemoryBuffer::getMemBuffer(llvm::StringRef(opencl_c_source, ARRAY_SIZE(opencl_c_source) - 1)).release());
+#endif
 
       ::llvm::sys::path::remove_filename(system_header_path);
       ::llvm::sys::path::append(system_header_path, "opencl-c-base.h");
@@ -846,7 +854,11 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
                                     clang::frontend::Angled,
                                     false, false);
    // Add opencl include
+#if LLVM_VERSION_MAJOR >= 15
+   c->getPreprocessorOpts().Includes.push_back("opencl-c-base.h");
+#else
    c->getPreprocessorOpts().Includes.push_back("opencl-c.h");
+#endif
 #endif
 
    if (args->num_headers) {
