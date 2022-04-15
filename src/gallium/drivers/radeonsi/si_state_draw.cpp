@@ -1229,15 +1229,31 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
       sctx->current_vs_state |= S_VS_STATE_INDEXED(!!index_size);
    }
 
-   if (sctx->current_vs_state != sctx->last_vs_state) {
+   bool gs_counters_emu = (GFX_VERSION >= GFX10 && GFX_VERSION <= GFX10_3) && HAS_GS;
+
+   if (sctx->current_vs_state != sctx->last_vs_state ||
+       (gs_counters_emu && sctx->current_gs_stats_counter_emul != sctx->last_gs_stats_counter_emul)) {
       struct radeon_cmdbuf *cs = &sctx->gfx_cs;
 
       /* For the API vertex shader (VS_STATE_INDEXED, LS_OUT_*). */
       unsigned vs_base = si_get_user_data_base(GFX_VERSION, HAS_TESS, HAS_GS, NGG,
                                                PIPE_SHADER_VERTEX);
+
+      unsigned vs_state = sctx->current_vs_state;
+      unsigned gs_state = vs_state;
+      if (gs_counters_emu) {
+         /* Remove HS/LS state and apply Add GS-specific state to control
+          * counters emulation.
+          */
+         gs_state = vs_state & C_VS_STATE_LS_OUT_PATCH_SIZE & C_VS_STATE_LS_OUT_VERTEX_SIZE;
+         gs_state |= S_VS_STATE_GS_PIPELINE_STATS_EMU(sctx->current_gs_stats_counter_emul);
+         sctx->last_gs_stats_counter_emul = sctx->current_gs_stats_counter_emul;
+      }
+
       radeon_begin(cs);
       radeon_set_sh_reg(vs_base + SI_SGPR_VS_STATE_BITS * 4,
-                        sctx->current_vs_state);
+                        (gs_counters_emu && vs_base == R_00B230_SPI_SHADER_USER_DATA_GS_0) ?
+                           gs_state : vs_state);
 
       /* Set CLAMP_VERTEX_COLOR and OUTPRIM in the last stage
        * before the rasterizer.
@@ -1246,14 +1262,13 @@ static void si_emit_vs_state(struct si_context *sctx, unsigned index_size)
        */
       if (GFX_VERSION <= GFX10_3 && vs_base != R_00B130_SPI_SHADER_USER_DATA_VS_0) {
          radeon_set_sh_reg(R_00B130_SPI_SHADER_USER_DATA_VS_0 + SI_SGPR_VS_STATE_BITS * 4,
-                           sctx->current_vs_state);
+                           vs_state);
       }
 
       /* For NGG: */
-      if (GFX_VERSION >= GFX10 && vs_base != R_00B230_SPI_SHADER_USER_DATA_GS_0) {
+      if (GFX_VERSION >= GFX10 && vs_base != R_00B230_SPI_SHADER_USER_DATA_GS_0)
          radeon_set_sh_reg(R_00B230_SPI_SHADER_USER_DATA_GS_0 + SI_SGPR_VS_STATE_BITS * 4,
-                           sctx->current_vs_state);
-      }
+                           gs_state);
       radeon_end();
 
       sctx->last_vs_state = sctx->current_vs_state;

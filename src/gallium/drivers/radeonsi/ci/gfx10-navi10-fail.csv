@@ -77,7 +77,6 @@ spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-double-fl
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec2-vec2,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec3-vec3,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec4-vec4,Fail
-spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-geom,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
 spec@arb_query_buffer_object@coherency,Fail
@@ -172,7 +171,6 @@ wgl@wgl-sanity,Fail
 
 # glcts failures
 KHR-GL46.gl_spirv.spirv_glsl_to_spirv_builtin_functions_test,Fail
-KHR-GL46.pipeline_statistics_query_tests_ARB.functional_geometry_shader_queries,Fail
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 KHR-GL46.shader_ballot_tests.ShaderBallotBitmasks,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail

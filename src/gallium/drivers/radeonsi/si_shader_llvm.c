@@ -919,6 +919,8 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
             ctx->ac.module, LLVMArrayType(ctx->ac.i32, 0), "ngg_emit", AC_ADDR_SPACE_LDS);
          LLVMSetLinkage(ctx->gs_ngg_emit, LLVMExternalLinkage);
          LLVMSetAlignment(ctx->gs_ngg_emit, 4);
+      } else {
+         ctx->gs_emitted_vertices = LLVMConstInt(ctx->ac.i32, 0, false);
       }
    }
 

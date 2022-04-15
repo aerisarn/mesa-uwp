@@ -152,6 +152,8 @@ struct si_shader_context {
    LLVMValueRef gs_ngg_emit;
    LLVMValueRef gs_ngg_scratch;
    LLVMValueRef return_value;
+
+   LLVMValueRef gs_emitted_vertices;
 };
 
 static inline struct si_shader_context *si_shader_context_from_abi(struct ac_shader_abi *abi)

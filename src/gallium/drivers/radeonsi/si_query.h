@@ -170,6 +170,10 @@ enum
    /* gap */
    /* whether begin_query doesn't clear the result */
    SI_QUERY_HW_FLAG_BEGIN_RESUMES = (1 << 2),
+   /* whether GS invocations and emitted primitives counters are emulated
+    * using atomic adds.
+    */
+   SI_QUERY_EMULATE_GS_COUNTERS = (1 << 3),
 };
 
 struct si_query_hw_ops {

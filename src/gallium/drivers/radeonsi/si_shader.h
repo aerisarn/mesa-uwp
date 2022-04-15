@@ -273,6 +273,8 @@ enum
 #define C_VS_STATE_LS_OUT_PATCH_SIZE          0xFF0007FF
 #define S_VS_STATE_LS_OUT_VERTEX_SIZE(x)      (((unsigned)(x)&0xFF) << 24)
 #define C_VS_STATE_LS_OUT_VERTEX_SIZE         0x00FFFFFF
+#define S_VS_STATE_GS_PIPELINE_STATS_EMU(x)   (((unsigned)(x)&0x1) << 31)
+#define C_VS_STATE_GS_PIPELINE_STATS_EMU      0x7FFFFFFF
 
 enum
 {

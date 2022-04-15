@@ -23,6 +23,7 @@
 
 #include "ac_llvm_cull.h"
 #include "si_pipe.h"
+#include "si_query.h"
 #include "si_shader_internal.h"
 #include "sid.h"
 #include "util/u_memory.h"
@@ -68,6 +69,14 @@ static LLVMValueRef ngg_get_query_buf(struct si_shader_context *ctx)
 
    return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
                                 LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_BUF, false));
+}
+
+static LLVMValueRef ngg_get_emulated_counters_buf(struct si_shader_context *ctx)
+{
+   LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+
+   return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
+                                LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
 }
 
 /**
@@ -2129,6 +2138,27 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
       }
 
       ac_build_export_prim(&ctx->ac, &prim);
+
+      tmp = si_unpack_param(ctx, ctx->vs_state_bits, 31, 1);
+      tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
+      ac_build_ifcc(&ctx->ac, tmp, 5229); /* if (GS_PIPELINE_STATS_EMU) */
+      ac_build_ifcc(&ctx->ac, LLVMBuildNot(builder, prim.isnull, ""), 5237);
+      {
+         LLVMValueRef args[] = {
+            ctx->ac.i32_1,
+            ngg_get_emulated_counters_buf(ctx),
+            LLVMConstInt(ctx->ac.i32,
+                         (si_hw_query_dw_offset(PIPE_STAT_QUERY_GS_PRIMITIVES) +
+                             SI_QUERY_STATS_END_OFFSET_DW) * 4,
+                         false),
+            ctx->ac.i32_0,                            /* soffset */
+            ctx->ac.i32_0,                            /* cachepolicy */
+         };
+
+         ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32", ctx->ac.i32, args, 5, 0);
+      }
+      ac_build_endif(&ctx->ac, 5237);
+      ac_build_endif(&ctx->ac, 5229);
    }
    ac_build_endif(&ctx->ac, 5140);
 

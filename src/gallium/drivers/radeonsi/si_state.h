@@ -369,6 +369,7 @@ enum
 
    SI_RING_ESGS,                       /* gfx6-8 */
    SI_RING_GSVS,                       /* gfx6-10 */
+   SI_GS_QUERY_EMULATED_COUNTERS_BUF,  /* gfx10+ */
 
    SI_NUM_INTERNAL_BINDINGS,
 

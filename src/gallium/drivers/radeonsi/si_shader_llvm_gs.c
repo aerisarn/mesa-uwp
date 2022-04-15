@@ -25,6 +25,7 @@
 #include "ac_nir.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
+#include "si_query.h"
 #include "sid.h"
 #include "util/u_memory.h"
 
@@ -200,6 +201,14 @@ static LLVMValueRef si_get_gs_wave_id(struct si_shader_context *ctx)
       return ac_get_arg(&ctx->ac, ctx->args.gs_wave_id);
 }
 
+static LLVMValueRef ngg_get_emulated_counters_buf(struct si_shader_context *ctx)
+{
+   LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+
+   return ac_build_load_to_sgpr(&ctx->ac, buf_ptr,
+                                LLVMConstInt(ctx->ac.i32, SI_GS_QUERY_EMULATED_COUNTERS_BUF, false));
+}
+
 static void emit_gs_epilogue(struct si_shader_context *ctx)
 {
    if (ctx->shader->key.ge.as_ngg) {
@@ -209,6 +218,46 @@ static void emit_gs_epilogue(struct si_shader_context *ctx)
 
    if (ctx->screen->info.chip_class >= GFX10)
       LLVMBuildFence(ctx->ac.builder, LLVMAtomicOrderingRelease, false, "");
+
+   if (ctx->screen->use_ngg) {
+      /* Implement PIPE_STAT_QUERY_GS_PRIMITIVES for non-ngg draws because we can't
+       * use pipeline statistics (they would be correct but when screen->use_ngg, we
+       * can't know when the query is started if the next draw(s) will use ngg or not).
+       */
+      LLVMValueRef tmp = si_unpack_param(ctx, ctx->vs_state_bits, 31, 1);
+      tmp = LLVMBuildTrunc(ctx->ac.builder, tmp, ctx->ac.i1, "");
+      ac_build_ifcc(&ctx->ac, tmp, 5229); /* if (GS_PIPELINE_STATS_EMU) */
+      {
+         LLVMValueRef prim = ctx->ac.i32_0;
+         switch (ctx->shader->selector->info.base.gs.output_primitive) {
+         case SHADER_PRIM_POINTS:
+            prim = ctx->gs_emitted_vertices;
+            break;
+         case SHADER_PRIM_LINE_STRIP:
+            prim = LLVMBuildSub(ctx->ac.builder, ctx->gs_emitted_vertices, ctx->ac.i32_1, "");
+            prim = ac_build_imax(&ctx->ac, prim, ctx->ac.i32_0);
+            break;
+         case SHADER_PRIM_TRIANGLE_STRIP:
+            prim = LLVMBuildSub(ctx->ac.builder, ctx->gs_emitted_vertices, LLVMConstInt(ctx->ac.i32, 2, 0), "");
+            prim = ac_build_imax(&ctx->ac, prim, ctx->ac.i32_0);
+            break;
+         }
+
+         LLVMValueRef args[] = {
+            prim,
+            ngg_get_emulated_counters_buf(ctx),
+            LLVMConstInt(ctx->ac.i32,
+                         (si_hw_query_dw_offset(PIPE_STAT_QUERY_GS_PRIMITIVES) +
+                             SI_QUERY_STATS_END_OFFSET_DW) * 4,
+                         false),
+            ctx->ac.i32_0,                            /* soffset */
+            ctx->ac.i32_0,                            /* cachepolicy */
+         };
+
+         ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32", ctx->ac.i32, args, 5, 0);
+      }
+      ac_build_endif(&ctx->ac, 5229);
+   }
 
    ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_NOP | AC_SENDMSG_GS_DONE, si_get_gs_wave_id(ctx));
 
@@ -295,6 +344,9 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
    if (offset) {
       ac_build_sendmsg(&ctx->ac, AC_SENDMSG_GS_OP_EMIT | AC_SENDMSG_GS | (stream << 8),
                        si_get_gs_wave_id(ctx));
+
+      ctx->gs_emitted_vertices = LLVMBuildAdd(ctx->ac.builder, ctx->gs_emitted_vertices,
+                                              ctx->ac.i32_1, "vert");
    }
 
    if (!use_kill)
