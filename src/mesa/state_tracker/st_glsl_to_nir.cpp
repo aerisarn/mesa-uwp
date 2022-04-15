@@ -990,6 +990,7 @@ st_nir_lower_samplers(struct pipe_screen *screen, nir_shader *nir,
    if (prog) {
       BITSET_COPY(prog->info.textures_used, nir->info.textures_used);
       BITSET_COPY(prog->info.textures_used_by_txf, nir->info.textures_used_by_txf);
+      BITSET_COPY(prog->info.samplers_used, nir->info.samplers_used);
       BITSET_COPY(prog->info.images_used, nir->info.images_used);
       BITSET_COPY(prog->info.image_buffers, nir->info.image_buffers);
       BITSET_COPY(prog->info.msaa_images, nir->info.msaa_images);

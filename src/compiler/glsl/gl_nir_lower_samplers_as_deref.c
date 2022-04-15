@@ -255,6 +255,21 @@ record_textures_used(struct shader_info *info,
    }
 }
 
+static void
+record_samplers_used(struct shader_info *info,
+                     nir_deref_instr *deref,
+                     nir_texop op)
+{
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+
+   /* Structs have been lowered already, so get_aoa_size is sufficient. */
+   const unsigned size =
+      glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
+
+   BITSET_SET_RANGE(info->samplers_used, var->data.binding,
+                    var->data.binding + (MAX2(size, 1) - 1));
+}
+
 static bool
 lower_sampler(nir_tex_instr *instr, struct lower_samplers_as_deref_state *state,
               nir_builder *b)
@@ -287,6 +302,7 @@ lower_sampler(nir_tex_instr *instr, struct lower_samplers_as_deref_state *state,
       if (sampler_deref) {
          nir_instr_rewrite_src(&instr->instr, &instr->src[sampler_idx].src,
                                nir_src_for_ssa(&sampler_deref->dest.ssa));
+         record_samplers_used(&b->shader->info, sampler_deref, instr->op);
       }
    }
 
