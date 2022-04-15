@@ -4202,7 +4202,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 nir->info.outputs_accessed_indirectly ||
                 nir->info.patch_inputs_read_indirectly ||
                 nir->info.patch_outputs_accessed_indirectly ||
-                nir->info.images_used;
+                nir->info.images_used[0];
 
         if (any_indirects) {
                 nir_convert_to_lcssa(nir, true, true);

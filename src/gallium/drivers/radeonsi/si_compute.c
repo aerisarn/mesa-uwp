@@ -152,12 +152,14 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
    /* Images in user SGPRs. */
    unsigned non_fmask_images = u_bit_consecutive(0, sel->info.base.num_images);
 
-   /* Remove images with FMASK from the bitmask. */
+   /* Remove images with FMASK from the bitmask.  We only care about the first
+    * 3 anyway, so we can take msaa_images[0] and ignore the rest.
+    */
    if (sscreen->info.chip_class < GFX11)
-      non_fmask_images &= ~sel->info.base.msaa_images;
+      non_fmask_images &= ~sel->info.base.msaa_images[0];
 
    for (unsigned i = 0; i < 3 && non_fmask_images & (1 << i); i++) {
-      unsigned num_sgprs = sel->info.base.image_buffers & (1 << i) ? 4 : 8;
+      unsigned num_sgprs = BITSET_TEST(sel->info.base.image_buffers, i) ? 4 : 8;
 
       if (align(user_sgprs, num_sgprs) + num_sgprs > 16)
          break;

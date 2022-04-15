@@ -3065,7 +3065,7 @@ void si_get_active_slot_masks(struct si_screen *sscreen, const struct si_shader_
    num_constbufs = info->base.num_ubos;
    /* two 8-byte images share one 16-byte slot */
    num_images = align(info->base.num_images, 2);
-   num_msaa_images = align(util_last_bit(info->base.msaa_images), 2);
+   num_msaa_images = align(BITSET_LAST_BIT(info->base.msaa_images), 2);
    num_samplers = BITSET_LAST_BIT(info->base.textures_used);
 
    /* The layout is: sb[last] ... sb[0], cb[0] ... cb[last] */

@@ -758,7 +758,7 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
       }
       /* Images in user SGPRs. */
       for (unsigned i = 0; i < shader->selector->cs_num_images_in_user_sgprs; i++) {
-         unsigned num_sgprs = shader->selector->info.base.image_buffers & (1 << i) ? 4 : 8;
+         unsigned num_sgprs = BITSET_TEST(shader->selector->info.base.image_buffers, i) ? 4 : 8;
 
          while (ctx->args.num_sgprs_used % num_sgprs != 0)
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);

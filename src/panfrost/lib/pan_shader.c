@@ -317,7 +317,7 @@ GENX(pan_shader_compile)(nir_shader *s,
         else
                 info->ubo_count = s->info.num_ubos;
 
-        info->attribute_count += util_last_bit(s->info.images_used);
+        info->attribute_count += BITSET_LAST_BIT(s->info.images_used);
         info->writes_global = s->info.writes_memory;
 
         info->sampler_count = info->texture_count = BITSET_LAST_BIT(s->info.textures_used);

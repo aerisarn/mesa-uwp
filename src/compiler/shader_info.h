@@ -203,11 +203,11 @@ typedef struct shader_info {
    BITSET_DECLARE(textures_used_by_txf, 32);
 
    /** Bitfield of which images are used */
-   uint32_t images_used;
+   BITSET_DECLARE(images_used, 32);
    /** Bitfield of which images are buffers. */
-   uint32_t image_buffers;
+   BITSET_DECLARE(image_buffers, 32);
    /** Bitfield of which images are MSAA. */
-   uint32_t msaa_images;
+   BITSET_DECLARE(msaa_images, 32);
 
    /* SPV_KHR_float_controls: execution mode for floating point ops */
    uint16_t float_controls_execution_mode;

@@ -2291,7 +2291,7 @@ void si_emit_compute_shader_pointers(struct si_context *sctx)
          unsigned num_sgprs = 8;
 
          /* Image buffers are in desc[4..7]. */
-         if (shader->info.base.image_buffers & (1 << i)) {
+         if (BITSET_TEST(shader->info.base.image_buffers, i)) {
             desc_offset += 4;
             num_sgprs = 4;
          }

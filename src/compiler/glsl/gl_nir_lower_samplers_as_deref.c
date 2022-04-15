@@ -128,16 +128,20 @@ record_images_used(struct shader_info *info,
    /* Structs have been lowered already, so get_aoa_size is sufficient. */
    const unsigned size =
       glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
-   unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
 
-   info->images_used |= mask;
+   BITSET_SET_RANGE(info->images_used, var->data.binding,
+                    var->data.binding + (MAX2(size, 1) - 1));
 
    enum glsl_sampler_dim sampler_dim =
       glsl_get_sampler_dim(glsl_without_array(var->type));
-   if (sampler_dim == GLSL_SAMPLER_DIM_BUF)
-      info->image_buffers |= mask;
-   if (sampler_dim == GLSL_SAMPLER_DIM_MS)
-      info->msaa_images |= mask;
+   if (sampler_dim == GLSL_SAMPLER_DIM_BUF) {
+      BITSET_SET_RANGE(info->image_buffers, var->data.binding,
+                       var->data.binding + (MAX2(size, 1) - 1));
+   }
+   if (sampler_dim == GLSL_SAMPLER_DIM_MS) {
+      BITSET_SET_RANGE(info->msaa_images, var->data.binding,
+                       var->data.binding + (MAX2(size, 1) - 1));
+   }
 }
 
 

@@ -597,7 +597,7 @@ zink_program_get_descriptor_usage(struct zink_context *ctx, enum pipe_shader_typ
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
       return BITSET_TEST_RANGE(zs->nir->info.textures_used, 0, PIPE_MAX_SAMPLERS - 1);
    case ZINK_DESCRIPTOR_TYPE_IMAGE:
-      return zs->nir->info.images_used;
+      return BITSET_TEST_RANGE(zs->nir->info.images_used, 0, PIPE_MAX_SAMPLERS - 1);
    default:
       unreachable("unknown descriptor type!");
    }

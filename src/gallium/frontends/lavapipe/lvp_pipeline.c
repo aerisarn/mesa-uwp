@@ -589,7 +589,7 @@ set_image_access(struct lvp_pipeline *pipeline, nir_shader *nir,
    const unsigned size = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
    unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
 
-   nir->info.images_used |= mask;
+   nir->info.images_used[0] |= mask;
    if (reads)
       pipeline->access[nir->info.stage].images_read |= mask;
    if (writes)

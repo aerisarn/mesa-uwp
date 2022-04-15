@@ -2020,9 +2020,8 @@ scan_nir(struct zink_screen *screen, nir_shader *shader, struct zink_shader *zs)
                 /* Structs have been lowered already, so get_aoa_size is sufficient. */
                 const unsigned size =
                    glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
-                unsigned mask = ((1ull << MAX2(size, 1)) - 1) << var->data.binding;
-
-                shader->info.images_used |= mask;
+                BITSET_SET_RANGE(shader->info.images_used, var->data.binding,
+                                 var->data.binding + (MAX2(size, 1) - 1));
             }
             if (intr->intrinsic == nir_intrinsic_is_sparse_texels_resident ||
                 intr->intrinsic == nir_intrinsic_image_deref_sparse_load)
