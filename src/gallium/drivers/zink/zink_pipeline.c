@@ -86,12 +86,17 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       switch (primitive_topology) {
       case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
       case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
-      case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
       case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+      case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
       case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+         if (screen->info.have_EXT_primitive_topology_list_restart) {
+            primitive_state.primitiveRestartEnable = state->dyn_state2.primitive_restart ? VK_TRUE : VK_FALSE;
+            break;
+         }
+         FALLTHROUGH;
       case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
          if (state->dyn_state2.primitive_restart)
-            debug_printf("restart_index set with unsupported primitive topology %u\n", primitive_topology);
+            mesa_loge("zink: restart_index set with unsupported primitive topology %u\n", primitive_topology);
          primitive_state.primitiveRestartEnable = VK_FALSE;
          break;
       default:
