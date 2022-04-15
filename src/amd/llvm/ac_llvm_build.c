@@ -1153,22 +1153,24 @@ void ac_build_buffer_store_format(struct ac_llvm_context *ctx, LLVMValueRef rsrc
 /* buffer_store_dword(,x2,x3,x4) <- the suffix is selected by the type of vdata. */
 void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
                                  LLVMValueRef vindex, LLVMValueRef voffset, LLVMValueRef soffset,
-                                 unsigned inst_offset, unsigned cache_policy)
+                                 unsigned cache_policy)
 {
    unsigned num_channels = ac_get_llvm_num_components(vdata);
 
    /* Split 3 channel stores if unsupported. */
    if (num_channels == 3 && !ac_has_vec3_support(ctx->chip_class, false)) {
-      LLVMValueRef v[3], v01;
+      LLVMValueRef v[3], v01, voffset2;
 
       for (int i = 0; i < 3; i++) {
          v[i] = LLVMBuildExtractElement(ctx->builder, vdata, LLVMConstInt(ctx->i32, i, 0), "");
       }
       v01 = ac_build_gather_values(ctx, v, 2);
 
-      ac_build_buffer_store_dword(ctx, rsrc, v01, vindex, voffset, soffset, inst_offset, cache_policy);
-      ac_build_buffer_store_dword(ctx, rsrc, v[2], vindex, voffset, soffset, inst_offset + 8,
-                                  cache_policy);
+      voffset2 = LLVMBuildAdd(ctx->builder, voffset ? voffset : ctx->i32_0,
+                              LLVMConstInt(ctx->i32, 8, 0), "");
+
+      ac_build_buffer_store_dword(ctx, rsrc, v01, vindex, voffset, soffset, cache_policy);
+      ac_build_buffer_store_dword(ctx, rsrc, v[2], vindex, voffset2, soffset, cache_policy);
       return;
    }
 
@@ -1177,12 +1179,7 @@ void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
     * llvm.amdgcn.buffer.store doesn't have a separate soffset parameter.
     */
    if (!(cache_policy & ac_swizzled)) {
-      LLVMValueRef offset = soffset;
-
-      if (inst_offset)
-         offset = LLVMBuildAdd(ctx->builder, offset, LLVMConstInt(ctx->i32, inst_offset, 0), "");
-
-      ac_build_buffer_store_common(ctx, rsrc, ac_to_float(ctx, vdata), vindex, voffset, offset,
+      ac_build_buffer_store_common(ctx, rsrc, ac_to_float(ctx, vdata), vindex, voffset, soffset,
                                    cache_policy, false);
       return;
    }
@@ -1192,8 +1189,6 @@ void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                     V_008F0C_BUF_DATA_FORMAT_32_32_32_32};
    unsigned dfmt = dfmts[num_channels - 1];
    unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
-   LLVMValueRef immoffset = LLVMConstInt(ctx->i32, inst_offset, 0);
-   voffset = LLVMBuildAdd(ctx->builder, voffset ? voffset : ctx->i32_0, immoffset, "");
 
    ac_build_tbuffer_store(ctx, rsrc, vdata, vindex, voffset, soffset, num_channels, dfmt,
                           nfmt, cache_policy);

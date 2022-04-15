@@ -1887,7 +1887,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
          data = LLVMBuildBitCast(ctx->ac.builder, data, data_type, "");
 
          ac_build_buffer_store_dword(&ctx->ac, rsrc, data, NULL, offset,
-                                     ctx->ac.i32_0, 0, cache_policy);
+                                     ctx->ac.i32_0, cache_policy);
       }
    }
 
@@ -4288,8 +4288,9 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       if (slc)
          cache_policy |= ac_slc;
 
-      ac_build_buffer_store_dword(&ctx->ac, descriptor, store_data,
-                                  NULL, addr_voffset, addr_soffset, const_offset,
+      LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, addr_voffset,
+                                          LLVMConstInt(ctx->ac.i32, const_offset, 0), "");
+      ac_build_buffer_store_dword(&ctx->ac, descriptor, store_data, NULL, voffset, addr_soffset,
                                   cache_policy);
       break;
    }

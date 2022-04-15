@@ -304,8 +304,9 @@ void si_llvm_streamout_store_output(struct si_shader_context *ctx, LLVMValueRef 
    }
 
    ac_build_buffer_store_dword(&ctx->ac, so_buffers[buf_idx], vdata, NULL,
-                               so_write_offsets[buf_idx], ctx->ac.i32_0, stream_out->dst_offset * 4,
-                               ac_glc | ac_slc);
+                               LLVMBuildAdd(ctx->ac.builder, so_write_offsets[buf_idx],
+                                            LLVMConstInt(ctx->ac.i32, stream_out->dst_offset * 4, 0), ""),
+                               ctx->ac.i32_0, ac_glc | ac_slc);
 }
 
 /**

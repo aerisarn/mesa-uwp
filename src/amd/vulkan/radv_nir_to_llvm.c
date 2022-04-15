@@ -280,7 +280,7 @@ visit_emit_vertex_with_counter(struct ac_shader_abi *abi, unsigned stream, LLVMV
          out_val = LLVMBuildZExtOrBitCast(ctx->ac.builder, out_val, ctx->ac.i32, "");
 
          ac_build_buffer_store_dword(&ctx->ac, ctx->gsvs_ring[stream], out_val, NULL, voffset,
-                                     ac_get_arg(&ctx->ac, ctx->args->ac.gs2vs_offset), 0,
+                                     ac_get_arg(&ctx->ac, ctx->args->ac.gs2vs_offset),
                                      ac_glc | ac_slc | ac_swizzled);
       }
    }
@@ -834,8 +834,10 @@ radv_emit_stream_output(struct radv_shader_context *ctx, LLVMValueRef const *so_
       break;
    }
 
-   ac_build_buffer_store_dword(&ctx->ac, so_buffers[buf], vdata, NULL,
-                               so_write_offsets[buf], ctx->ac.i32_0, offset, ac_glc | ac_slc);
+   LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, so_write_offsets[buf],
+                                       LLVMConstInt(ctx->ac.i32, offset, 0), "");
+   ac_build_buffer_store_dword(&ctx->ac, so_buffers[buf], vdata, NULL, voffset, ctx->ac.i32_0,
+                               ac_glc | ac_slc);
 }
 
 static void
