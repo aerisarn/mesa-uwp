@@ -197,20 +197,20 @@ typedef struct shader_info {
    uint64_t patch_outputs_accessed_indirectly;
 
    /** Bitfield of which textures are used */
-   BITSET_DECLARE(textures_used, 32);
+   BITSET_DECLARE(textures_used, 128);
 
    /** Bitfield of which textures are used by texelFetch() */
-   BITSET_DECLARE(textures_used_by_txf, 32);
+   BITSET_DECLARE(textures_used_by_txf, 128);
 
    /** Bitfield of which samplers are used */
    BITSET_DECLARE(samplers_used, 32);
 
    /** Bitfield of which images are used */
-   BITSET_DECLARE(images_used, 32);
+   BITSET_DECLARE(images_used, 64);
    /** Bitfield of which images are buffers. */
-   BITSET_DECLARE(image_buffers, 32);
+   BITSET_DECLARE(image_buffers, 64);
    /** Bitfield of which images are MSAA. */
-   BITSET_DECLARE(msaa_images, 32);
+   BITSET_DECLARE(msaa_images, 64);
 
    /* SPV_KHR_float_controls: execution mode for floating point ops */
    uint16_t float_controls_execution_mode;
