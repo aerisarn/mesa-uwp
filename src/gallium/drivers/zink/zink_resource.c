@@ -1506,6 +1506,15 @@ zink_buffer_map(struct pipe_context *pctx,
          ptr = map_resource(screen, res);
          ptr = ((uint8_t *)ptr) + trans->offset;
       }
+   } else if ((usage & PIPE_MAP_UNSYNCHRONIZED) && !res->obj->host_visible) {
+      trans->offset = box->x % screen->info.props.limits.minMemoryMapAlignment;
+      trans->staging_res = pipe_buffer_create(&screen->base, PIPE_BIND_LINEAR, PIPE_USAGE_STAGING, box->width + trans->offset);
+      if (!trans->staging_res)
+         goto fail;
+      struct zink_resource *staging_res = zink_resource(trans->staging_res);
+      res = staging_res;
+      ptr = map_resource(screen, res);
+      ptr = ((uint8_t *)ptr) + trans->offset;
    }
 
    if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
