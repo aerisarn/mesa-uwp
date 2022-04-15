@@ -286,8 +286,12 @@ impl PipeContext {
         }
     }
 
-    pub fn create_sampler_view(&self, res: &PipeResource) -> *mut pipe_sampler_view {
-        let template = res.pipe_sampler_view_template();
+    pub fn create_sampler_view(
+        &self,
+        res: &PipeResource,
+        format: pipe_format,
+    ) -> *mut pipe_sampler_view {
+        let template = res.pipe_sampler_view_template(format);
         unsafe {
             self.pipe.as_ref().create_sampler_view.unwrap()(
                 self.pipe.as_ptr(),

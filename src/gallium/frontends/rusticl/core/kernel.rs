@@ -6,6 +6,7 @@ use crate::api::icd::*;
 use crate::api::util::cl_prop;
 use crate::core::device::*;
 use crate::core::event::*;
+use crate::core::format::*;
 use crate::core::memory::*;
 use crate::core::program::*;
 use crate::core::queue::*;
@@ -557,11 +558,12 @@ impl Kernel {
                         input.extend_from_slice(&mem.offset.to_ne_bytes());
                         resource_info.push((Some(res.clone()), arg.offset));
                     } else {
+                        let format = mem.image_format.to_pipe_format().unwrap();
                         let (formats, orders) = if arg.kind == KernelArgType::Image {
-                            iviews.push(res.pipe_image_view());
+                            iviews.push(res.pipe_image_view(format));
                             (&mut img_formats, &mut img_orders)
                         } else {
-                            sviews.push(res.clone());
+                            sviews.push((res.clone(), format));
                             (&mut tex_formats, &mut tex_orders)
                         };
 
@@ -649,7 +651,10 @@ impl Kernel {
             let mut globals: Vec<*mut u32> = Vec::new();
             let printf_format = nir.printf_format();
 
-            let mut sviews: Vec<_> = sviews.iter().map(|s| ctx.create_sampler_view(s)).collect();
+            let mut sviews: Vec<_> = sviews
+                .iter()
+                .map(|(s, f)| ctx.create_sampler_view(s, *f))
+                .collect();
             let samplers: Vec<_> = samplers
                 .iter()
                 .map(|s| ctx.create_sampler_state(s))

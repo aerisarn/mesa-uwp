@@ -383,7 +383,7 @@ fn validate_image_desc(
     host_ptr: *mut ::std::os::raw::c_void,
     elem_size: usize,
     devs: &[Arc<Device>],
-) -> CLResult<cl_image_desc> {
+) -> CLResult<(cl_image_desc, Option<Arc<Mem>>)> {
     // CL_INVALID_IMAGE_DESCRIPTOR if values specified in image_desc are not valid
     const err: cl_int = CL_INVALID_IMAGE_DESCRIPTOR;
 
@@ -452,8 +452,8 @@ fn validate_image_desc(
     //
     // TODO: cl_khr_image2d_from_buffer is an optional feature
     let p = unsafe { &desc.anon_1.mem_object };
-    if !p.is_null() {
-        let p = p.get_ref()?;
+    let parent = if !p.is_null() {
+        let p = p.get_arc()?;
         if !match desc.image_type {
             CL_MEM_OBJECT_IMAGE1D_BUFFER => p.is_buffer(),
             CL_MEM_OBJECT_IMAGE2D => !p.is_buffer(),
@@ -461,7 +461,10 @@ fn validate_image_desc(
         } {
             return Err(CL_INVALID_OPERATION);
         }
-    }
+        Some(p)
+    } else {
+        None
+    };
 
     // image_row_pitch is the scan-line pitch in bytes. This must be 0 if host_ptr is NULL and can
     // be either 0 or ≥ image_width × size of element in bytes if host_ptr is not NULL. If host_ptr
@@ -505,7 +508,7 @@ fn validate_image_desc(
         }
     }
 
-    Ok(desc)
+    Ok((desc, parent))
 }
 
 fn desc_eq_no_buffer(a: &cl_image_desc, b: &cl_image_desc) -> bool {
@@ -680,7 +683,11 @@ pub fn create_image_with_properties(
         .ok_or(CL_INVALID_OPERATION)?;
 
     let (format, elem_size) = validate_image_format(image_format)?;
-    let desc = validate_image_desc(image_desc, host_ptr, elem_size.into(), &c.devs)?;
+    let (desc, parent) = validate_image_desc(image_desc, host_ptr, elem_size.into(), &c.devs)?;
+
+    // validate host_ptr before merging flags
+    validate_host_ptr(host_ptr, flags)?;
+
     flags = validate_buffer(&desc, flags, format, host_ptr, elem_size.into())?;
 
     // For all image types except CL_MEM_OBJECT_IMAGE1D_BUFFER, if the value specified for flags is 0, the
@@ -690,7 +697,6 @@ pub fn create_image_with_properties(
     }
 
     validate_mem_flags(flags, false)?;
-    validate_host_ptr(host_ptr, flags)?;
 
     let filtered_flags = filter_image_access_flags(flags);
     // CL_IMAGE_FORMAT_NOT_SUPPORTED if there are no devices in context that support image_format.
@@ -712,6 +718,7 @@ pub fn create_image_with_properties(
 
     Ok(cl_mem::from_arc(Mem::new_image(
         c,
+        parent,
         desc.image_type,
         flags,
         format,

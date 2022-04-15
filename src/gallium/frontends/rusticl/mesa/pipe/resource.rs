@@ -29,7 +29,7 @@ impl PipeResource {
         unsafe { self.pipe.as_ref().unwrap() }
     }
 
-    pub fn pipe_image_view(&self) -> pipe_image_view {
+    pub fn pipe_image_view(&self, format: pipe_format) -> pipe_image_view {
         let u = if self.as_ref().target() == pipe_texture_target::PIPE_BUFFER {
             pipe_image_view__bindgen_ty_1 {
                 buf: pipe_image_view__bindgen_ty_1__bindgen_ty_2 {
@@ -54,18 +54,23 @@ impl PipeResource {
 
         pipe_image_view {
             resource: self.pipe(),
-            format: self.as_ref().format(),
+            format: format,
             access: 0,
             shader_access: PIPE_IMAGE_ACCESS_WRITE as u16,
             u: u,
         }
     }
 
-    pub fn pipe_sampler_view_template(&self) -> pipe_sampler_view {
+    pub fn pipe_sampler_view_template(&self, format: pipe_format) -> pipe_sampler_view {
         let mut res = pipe_sampler_view::default();
         unsafe {
-            u_sampler_view_default_template(&mut res, self.pipe, self.as_ref().format());
+            u_sampler_view_default_template(&mut res, self.pipe, format);
         }
+
+        if res.target() == pipe_texture_target::PIPE_BUFFER {
+            res.u.buf.size = self.as_ref().width0;
+        }
+
         res
     }
 }
