@@ -285,12 +285,6 @@ LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
                                           unsigned dfmt, unsigned nfmt, unsigned cache_policy,
                                           bool can_speculate);
 
-LLVMValueRef ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                       LLVMValueRef voffset, LLVMValueRef soffset,
-                                       LLVMValueRef immoffset, unsigned num_channels, unsigned dfmt,
-                                       unsigned nfmt, unsigned cache_policy, bool can_speculate);
-
-
 LLVMValueRef ac_build_opencoded_load_format(struct ac_llvm_context *ctx, unsigned log_size,
                                             unsigned num_channels, unsigned format, bool reverse,
                                             bool known_aligned, LLVMValueRef rsrc,
@@ -304,17 +298,6 @@ void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc
 
 void ac_build_tbuffer_store_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
                                  LLVMValueRef voffset, LLVMValueRef soffset, unsigned cache_policy);
-
-void ac_build_struct_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                   LLVMValueRef vdata, LLVMValueRef vindex, LLVMValueRef voffset,
-                                   LLVMValueRef soffset, LLVMValueRef immoffset,
-                                   unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                   unsigned cache_policy);
-
-void ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
-                                LLVMValueRef voffset, LLVMValueRef soffset, LLVMValueRef immoffset,
-                                unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                unsigned cache_policy);
 
 void ac_set_range_metadata(struct ac_llvm_context *ctx, LLVMValueRef value, unsigned lo,
                            unsigned hi);

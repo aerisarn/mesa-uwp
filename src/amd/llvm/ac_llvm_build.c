@@ -1687,27 +1687,6 @@ static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsr
    ac_build_intrinsic(ctx, name, ctx->voidt, args, idx, AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY);
 }
 
-void ac_build_struct_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                   LLVMValueRef vdata, LLVMValueRef vindex, LLVMValueRef voffset,
-                                   LLVMValueRef soffset, LLVMValueRef immoffset,
-                                   unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                   unsigned cache_policy)
-{
-   voffset = LLVMBuildAdd(ctx->builder, voffset ? voffset : ctx->i32_0, immoffset, "");
-   ac_build_tbuffer_store(ctx, rsrc, vdata, vindex, voffset, soffset, num_channels, dfmt,
-                          nfmt, cache_policy);
-}
-
-void ac_build_raw_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc, LLVMValueRef vdata,
-                                LLVMValueRef voffset, LLVMValueRef soffset, LLVMValueRef immoffset,
-                                unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                unsigned cache_policy)
-{
-   voffset = LLVMBuildAdd(ctx->builder, voffset ? voffset : ctx->i32_0, immoffset, "");
-   ac_build_tbuffer_store(ctx, rsrc, vdata, NULL, voffset, soffset, num_channels, dfmt,
-                          nfmt, cache_policy);
-}
-
 void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                   LLVMValueRef vdata, LLVMValueRef voffset, LLVMValueRef soffset,
                                   unsigned cache_policy)
