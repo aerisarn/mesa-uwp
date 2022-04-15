@@ -515,7 +515,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
 
          values[chan] = ac_build_struct_tbuffer_load(
             &ctx->ac, t_list, chan_index, LLVMConstInt(ctx->ac.i32, chan_offset, false),
-            ctx->ac.i32_0, ctx->ac.i32_0, 1, chan_format, num_format, 0, true);
+            ctx->ac.i32_0, 1, chan_format, num_format, 0, true);
       }
 
       input = ac_build_gather_values(&ctx->ac, values, num_channels);
@@ -531,7 +531,7 @@ load_vs_input(struct radv_shader_context *ctx, unsigned driver_location, LLVMTyp
 
       input = ac_build_struct_tbuffer_load(
          &ctx->ac, t_list, buffer_index, LLVMConstInt(ctx->ac.i32, attrib_offset, false),
-         ctx->ac.i32_0, ctx->ac.i32_0, num_channels, data_format, num_format, 0, true);
+         ctx->ac.i32_0, num_channels, data_format, num_format, 0, true);
    }
 
    input = radv_fixup_vertex_input_fetches(ctx, input, num_channels, is_float);

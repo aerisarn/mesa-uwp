@@ -281,9 +281,9 @@ LLVMValueRef ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx, LLVMValueRe
 
 LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                           LLVMValueRef vindex, LLVMValueRef voffset,
-                                          LLVMValueRef soffset, LLVMValueRef immoffset,
-                                          unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                          unsigned cache_policy, bool can_speculate);
+                                          LLVMValueRef soffset, unsigned num_channels,
+                                          unsigned dfmt, unsigned nfmt, unsigned cache_policy,
+                                          bool can_speculate);
 
 LLVMValueRef ac_build_raw_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                        LLVMValueRef voffset, LLVMValueRef soffset,

@@ -1323,13 +1323,10 @@ LLVMValueRef ac_build_buffer_load_format(struct ac_llvm_context *ctx, LLVMValueR
 
 static LLVMValueRef ac_build_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                           LLVMValueRef vindex, LLVMValueRef voffset,
-                                          LLVMValueRef soffset, LLVMValueRef immoffset,
-                                          unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                          unsigned cache_policy, bool can_speculate,
-                                          bool structurized)
+                                          LLVMValueRef soffset, unsigned num_channels,
+                                          unsigned dfmt, unsigned nfmt, unsigned cache_policy,
+                                          bool can_speculate, bool structurized)
 {
-   voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
-
    LLVMValueRef args[6];
    int idx = 0;
    args[idx++] = LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "");
@@ -1354,11 +1351,11 @@ static LLVMValueRef ac_build_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
 
 LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                           LLVMValueRef vindex, LLVMValueRef voffset,
-                                          LLVMValueRef soffset, LLVMValueRef immoffset,
-                                          unsigned num_channels, unsigned dfmt, unsigned nfmt,
-                                          unsigned cache_policy, bool can_speculate)
+                                          LLVMValueRef soffset, unsigned num_channels,
+                                          unsigned dfmt, unsigned nfmt, unsigned cache_policy,
+                                          bool can_speculate)
 {
-   return ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset, immoffset, num_channels, dfmt,
+   return ac_build_tbuffer_load(ctx, rsrc, vindex, voffset, soffset, num_channels, dfmt,
                                 nfmt, cache_policy, can_speculate, true);
 }
 
