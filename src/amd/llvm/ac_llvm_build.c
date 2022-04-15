@@ -51,11 +51,6 @@ struct ac_llvm_flow {
    LLVMBasicBlockRef loop_entry_block;
 };
 
-static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                   LLVMValueRef vdata, LLVMValueRef vindex, LLVMValueRef voffset,
-                                   LLVMValueRef soffset, unsigned num_channels, unsigned dfmt,
-                                   unsigned nfmt, unsigned cache_policy);
-
 /* Initialize module-independent parts of the context.
  *
  * The caller is responsible for initializing ctx::module and ctx::builder.
@@ -1174,24 +1169,8 @@ void ac_build_buffer_store_dword(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
       return;
    }
 
-   /* SWIZZLE_ENABLE requires that soffset isn't folded into voffset
-    * (voffset is swizzled, but soffset isn't swizzled).
-    * llvm.amdgcn.buffer.store doesn't have a separate soffset parameter.
-    */
-   if (!(cache_policy & ac_swizzled)) {
-      ac_build_buffer_store_common(ctx, rsrc, ac_to_float(ctx, vdata), vindex, voffset, soffset,
-                                   cache_policy, false);
-      return;
-   }
-
-   static const unsigned dfmts[] = {V_008F0C_BUF_DATA_FORMAT_32, V_008F0C_BUF_DATA_FORMAT_32_32,
-                                    V_008F0C_BUF_DATA_FORMAT_32_32_32,
-                                    V_008F0C_BUF_DATA_FORMAT_32_32_32_32};
-   unsigned dfmt = dfmts[num_channels - 1];
-   unsigned nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
-
-   ac_build_tbuffer_store(ctx, rsrc, vdata, vindex, voffset, soffset, num_channels, dfmt,
-                          nfmt, cache_policy);
+   ac_build_buffer_store_common(ctx, rsrc, ac_to_float(ctx, vdata), vindex, voffset, soffset,
+                                cache_policy, false);
 }
 
 static LLVMValueRef ac_build_buffer_load_common(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
@@ -1657,34 +1636,6 @@ LLVMValueRef ac_build_opencoded_load_format(struct ac_llvm_context *ctx, unsigne
    }
 
    return ac_build_gather_values(ctx, loads, 4);
-}
-
-static void ac_build_tbuffer_store(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
-                                   LLVMValueRef vdata, LLVMValueRef vindex, LLVMValueRef voffset,
-                                   LLVMValueRef soffset, unsigned num_channels, unsigned dfmt,
-                                   unsigned nfmt, unsigned cache_policy)
-{
-   LLVMValueRef args[7];
-   int idx = 0;
-   args[idx++] = vdata;
-   args[idx++] = LLVMBuildBitCast(ctx->builder, rsrc, ctx->v4i32, "");
-   if (vindex)
-      args[idx++] = vindex ? vindex : ctx->i32_0;
-   args[idx++] = voffset ? voffset : ctx->i32_0;
-   args[idx++] = soffset ? soffset : ctx->i32_0;
-   args[idx++] = LLVMConstInt(ctx->i32, ac_get_tbuffer_format(ctx->chip_class, dfmt, nfmt), 0);
-   args[idx++] = LLVMConstInt(ctx->i32, cache_policy, 0);
-   unsigned func =
-      !ac_has_vec3_support(ctx->chip_class, true) && num_channels == 3 ? 4 : num_channels;
-   const char *indexing_kind = vindex ? "struct" : "raw";
-   char name[256], type_name[8];
-
-   LLVMTypeRef type = func > 1 ? LLVMVectorType(ctx->i32, func) : ctx->i32;
-   ac_build_type_name_for_intr(type, type_name, sizeof(type_name));
-
-   snprintf(name, sizeof(name), "llvm.amdgcn.%s.tbuffer.store.%s", indexing_kind, type_name);
-
-   ac_build_intrinsic(ctx, name, ctx->voidt, args, idx, AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY);
 }
 
 void ac_build_tbuffer_store_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,

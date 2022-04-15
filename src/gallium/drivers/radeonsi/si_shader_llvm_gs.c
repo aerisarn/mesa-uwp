@@ -332,6 +332,13 @@ void si_preload_esgs_ring(struct si_shader_context *ctx)
                                                           S_008F0C_ELEMENT_SIZE(1) |
                                                           S_008F0C_INDEX_STRIDE(3) |
                                                           S_008F0C_ADD_TID_ENABLE(1), 0), "");
+
+         /* If MUBUF && ADD_TID_ENABLE, DATA_FORMAT means STRIDE[14:17] on gfx8-9, so set 0. */
+         if (ctx->screen->info.chip_class == GFX8) {
+            desc3 = LLVMBuildAnd(builder, desc3,
+                                 LLVMConstInt(ctx->ac.i32, C_008F0C_DATA_FORMAT, 0), "");
+         }
+
          ctx->esgs_ring = LLVMBuildInsertElement(builder, ctx->esgs_ring, desc1, ctx->ac.i32_1, "");
          ctx->esgs_ring = LLVMBuildInsertElement(builder, ctx->esgs_ring, desc3,
                                                  LLVMConstInt(ctx->ac.i32, 3, 0), "");
@@ -408,8 +415,12 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
          rsrc3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
+         /* If MUBUF && ADD_TID_ENABLE, DATA_FORMAT means STRIDE[14:17] on gfx8-9, so set 0. */
+         unsigned data_format = ctx->ac.chip_class == GFX8 || ctx->ac.chip_class == GFX9 ?
+                                   0 : V_008F0C_BUF_DATA_FORMAT_32;
+
          rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-                  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32) |
+                  S_008F0C_DATA_FORMAT(data_format) |
                   S_008F0C_ELEMENT_SIZE(1); /* element_size = 4 (bytes) */
       }
 
