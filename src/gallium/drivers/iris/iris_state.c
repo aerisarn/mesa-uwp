@@ -2175,7 +2175,7 @@ iris_bind_sampler_states(struct pipe_context *ctx,
    gl_shader_stage stage = stage_from_pipe(p_stage);
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
-   assert(start + count <= IRIS_MAX_TEXTURE_SAMPLERS);
+   assert(start + count <= IRIS_MAX_SAMPLERS);
 
    bool dirty = false;
 
@@ -7432,7 +7432,7 @@ iris_destroy_state(struct iris_context *ice)
          pipe_resource_reference(&shs->ssbo[i].buffer, NULL);
          pipe_resource_reference(&shs->ssbo_surf_state[i].res, NULL);
       }
-      for (int i = 0; i < IRIS_MAX_TEXTURE_SAMPLERS; i++) {
+      for (int i = 0; i < IRIS_MAX_TEXTURES; i++) {
          pipe_sampler_view_reference((struct pipe_sampler_view **)
                                      &shs->textures[i], NULL);
       }

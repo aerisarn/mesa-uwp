@@ -48,7 +48,6 @@ struct blorp_batch;
 struct blorp_params;
 
 #define IRIS_MAX_TEXTURE_BUFFER_SIZE (1 << 27)
-#define IRIS_MAX_TEXTURE_SAMPLERS 32
 /* IRIS_MAX_ABOS and IRIS_MAX_SSBOS must be the same. */
 #define IRIS_MAX_ABOS 16
 #define IRIS_MAX_SSBOS 16
@@ -559,8 +558,8 @@ struct iris_shader_state {
    struct iris_image_view image[PIPE_MAX_SHADER_IMAGES];
 
    struct iris_state_ref sampler_table;
-   struct iris_sampler_state *samplers[IRIS_MAX_TEXTURE_SAMPLERS];
-   struct iris_sampler_view *textures[IRIS_MAX_TEXTURE_SAMPLERS];
+   struct iris_sampler_state *samplers[IRIS_MAX_SAMPLERS];
+   struct iris_sampler_view *textures[IRIS_MAX_TEXTURES];
 
    /** Bitfield of which constant buffers are bound (non-null). */
    uint32_t bound_cbufs;
