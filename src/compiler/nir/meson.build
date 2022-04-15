@@ -263,6 +263,7 @@ files_libnir = files(
   'nir_range_analysis.h',
   'nir_remove_dead_variables.c',
   'nir_repair_ssa.c',
+  'nir_scale_fdiv.c',
   'nir_schedule.c',
   'nir_schedule.h',
   'nir_search.c',

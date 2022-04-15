@@ -725,49 +725,6 @@ static bool shader_has_double(nir_shader *nir)
    return false;
 }
 
-static bool
-scale_fdiv(nir_shader *nir)
-{
-   bool progress = false;
-   nir_foreach_function(func, nir) {
-      if (!func->impl)
-         continue;
-      nir_builder b;
-      nir_builder_init(&b, func->impl);
-      nir_foreach_block(block, func->impl) {
-         nir_foreach_instr(instr, block) {
-            if (instr->type != nir_instr_type_alu)
-               continue;
-            nir_alu_instr *alu = nir_instr_as_alu(instr);
-            if (alu->op != nir_op_fdiv || alu->src[0].src.ssa->bit_size != 32)
-               continue;
-
-            b.cursor = nir_before_instr(instr);
-            nir_ssa_def *fabs = nir_fabs(&b, alu->src[1].src.ssa);
-            nir_ssa_def *big = nir_flt(&b, nir_imm_int(&b, 0x7e800000), fabs);
-            nir_ssa_def *small = nir_flt(&b, fabs, nir_imm_int(&b, 0x00800000));
-
-            nir_ssa_def *scaled_down_a = nir_fmul_imm(&b, alu->src[0].src.ssa, 0.25);
-            nir_ssa_def *scaled_down_b = nir_fmul_imm(&b, alu->src[1].src.ssa, 0.25);
-            nir_ssa_def *scaled_up_a = nir_fmul_imm(&b, alu->src[0].src.ssa, 16777216.0);
-            nir_ssa_def *scaled_up_b = nir_fmul_imm(&b, alu->src[1].src.ssa, 16777216.0);
-
-            nir_ssa_def *final_a =
-               nir_bcsel(&b, big, scaled_down_a,
-              (nir_bcsel(&b, small, scaled_up_a, alu->src[0].src.ssa)));
-            nir_ssa_def *final_b =
-               nir_bcsel(&b, big, scaled_down_b,
-              (nir_bcsel(&b, small, scaled_up_b, alu->src[1].src.ssa)));
-
-            nir_instr_rewrite_src(instr, &alu->src[0].src, nir_src_for_ssa(final_a));
-            nir_instr_rewrite_src(instr, &alu->src[1].src, nir_src_for_ssa(final_b));
-            progress = true;
-         }
-      }
-   }
-   return progress;
-}
-
 struct clc_libclc *
 clc_libclc_new_dxil(const struct clc_logger *logger,
                     const struct clc_libclc_dxil_options *options)
@@ -918,7 +875,7 @@ clc_spirv_to_dxil(struct clc_libclc *lib,
       } while (progress);
    }
 
-   NIR_PASS_V(nir, scale_fdiv);
+   NIR_PASS_V(nir, nir_scale_fdiv);
 
    dxil_wrap_sampler_state int_sampler_states[PIPE_MAX_SHADER_SAMPLER_VIEWS] = { {{0}} };
    unsigned sampler_id = 0;
