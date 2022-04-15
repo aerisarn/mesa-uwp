@@ -349,6 +349,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       if (screen->info.have_EXT_primitive_topology_list_restart) {
          modes |= BITFIELD_BIT(PIPE_PRIM_POINTS) |
                   BITFIELD_BIT(PIPE_PRIM_LINES) |
+                  BITFIELD_BIT(PIPE_PRIM_LINES_ADJACENCY) |
                   BITFIELD_BIT(PIPE_PRIM_TRIANGLES) |
                   BITFIELD_BIT(PIPE_PRIM_TRIANGLES_ADJACENCY);
          if (screen->info.list_restart_feats.primitiveTopologyPatchListRestart)
