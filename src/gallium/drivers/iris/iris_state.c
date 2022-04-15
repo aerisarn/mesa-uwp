@@ -2959,8 +2959,11 @@ iris_set_sampler_views(struct pipe_context *ctx,
    struct iris_shader_state *shs = &ice->state.shaders[stage];
    unsigned i;
 
-   shs->bound_sampler_views &=
-      ~u_bit_consecutive(start, count + unbind_num_trailing_slots);
+   if (count == 0 && unbind_num_trailing_slots == 0)
+      return;
+
+   BITSET_CLEAR_RANGE(shs->bound_sampler_views, start,
+                      start + count + unbind_num_trailing_slots - 1);
 
    for (i = 0; i < count; i++) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
@@ -2984,7 +2987,7 @@ iris_set_sampler_views(struct pipe_context *ctx,
          view->res->bind_history |= PIPE_BIND_SAMPLER_VIEW;
          view->res->bind_stages |= 1 << stage;
 
-         shs->bound_sampler_views |= 1 << (start + i);
+         BITSET_SET(shs->bound_sampler_views, start + i);
 
          update_surface_state_addrs(ice->state.surface_uploader,
                                     &view->surface_state, view->res->bo);
@@ -5150,8 +5153,15 @@ iris_populate_binding_table(struct iris_context *ice,
       }
    }
 
-   foreach_surface_used(i, IRIS_SURFACE_GROUP_TEXTURE) {
+   foreach_surface_used(i, IRIS_SURFACE_GROUP_TEXTURE_LOW64) {
       struct iris_sampler_view *view = shs->textures[i];
+      uint32_t addr = view ? use_sampler_view(ice, batch, view)
+                           : use_null_surface(batch, ice);
+      push_bt_entry(addr);
+   }
+
+   foreach_surface_used(i, IRIS_SURFACE_GROUP_TEXTURE_HIGH64) {
+      struct iris_sampler_view *view = shs->textures[64 + i];
       uint32_t addr = view ? use_sampler_view(ice, batch, view)
                            : use_null_surface(batch, ice);
       push_bt_entry(addr);
@@ -7569,9 +7579,8 @@ iris_rebind_buffer(struct iris_context *ice,
       }
 
       if (res->bind_history & PIPE_BIND_SAMPLER_VIEW) {
-         uint32_t bound_sampler_views = shs->bound_sampler_views;
-         while (bound_sampler_views) {
-            const int i = u_bit_scan(&bound_sampler_views);
+         int i;
+         BITSET_FOREACH_SET(i, shs->bound_sampler_views, IRIS_MAX_TEXTURES) {
             struct iris_sampler_view *isv = shs->textures[i];
             struct iris_bo *bo = isv->res->bo;
 

@@ -89,10 +89,14 @@ resolve_sampler_views(struct iris_context *ice,
                       bool *draw_aux_buffer_disabled,
                       bool consider_framebuffer)
 {
-   uint32_t views = info ? (shs->bound_sampler_views & info->textures_used[0]) : 0;
+   if (info == NULL)
+      return;
 
-   while (views) {
-      const int i = u_bit_scan(&views);
+   int i;
+   BITSET_FOREACH_SET(i, shs->bound_sampler_views, IRIS_MAX_TEXTURES) {
+      if (!BITSET_TEST(info->textures_used, i))
+         continue;
+
       struct iris_sampler_view *isv = shs->textures[i];
 
       if (isv->res->base.b.target != PIPE_BUFFER) {

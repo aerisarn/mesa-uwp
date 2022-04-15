@@ -737,7 +737,8 @@ static const char *surface_group_names[] = {
    [IRIS_SURFACE_GROUP_RENDER_TARGET]      = "render target",
    [IRIS_SURFACE_GROUP_RENDER_TARGET_READ] = "non-coherent render target read",
    [IRIS_SURFACE_GROUP_CS_WORK_GROUPS]     = "CS work groups",
-   [IRIS_SURFACE_GROUP_TEXTURE]            = "texture",
+   [IRIS_SURFACE_GROUP_TEXTURE_LOW64]      = "texture",
+   [IRIS_SURFACE_GROUP_TEXTURE_HIGH64]     = "texture",
    [IRIS_SURFACE_GROUP_UBO]                = "ubo",
    [IRIS_SURFACE_GROUP_SSBO]               = "ssbo",
    [IRIS_SURFACE_GROUP_IMAGE]              = "image",
@@ -914,8 +915,15 @@ iris_setup_binding_table(const struct intel_device_info *devinfo,
       bt->sizes[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
    }
 
-   bt->sizes[IRIS_SURFACE_GROUP_TEXTURE] = BITSET_LAST_BIT(info->textures_used);
-   bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE] = info->textures_used[0];
+   assert(ARRAY_SIZE(info->textures_used) >= 4);
+   int max_tex = BITSET_LAST_BIT(info->textures_used);
+   assert(max_tex <= 128);
+   bt->sizes[IRIS_SURFACE_GROUP_TEXTURE_LOW64] = MIN2(64, max_tex);
+   bt->sizes[IRIS_SURFACE_GROUP_TEXTURE_HIGH64] = MAX2(0, max_tex - 64);
+   bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE_LOW64] =
+      info->textures_used[0] | ((uint64_t)info->textures_used[1]) << 32;
+   bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE_HIGH64] =
+      info->textures_used[2] | ((uint64_t)info->textures_used[3]) << 32;
 
    bt->sizes[IRIS_SURFACE_GROUP_IMAGE] = info->num_images;
 
@@ -1039,9 +1047,15 @@ iris_setup_binding_table(const struct intel_device_info *devinfo,
       nir_foreach_instr (instr, block) {
          if (instr->type == nir_instr_type_tex) {
             nir_tex_instr *tex = nir_instr_as_tex(instr);
-            tex->texture_index =
-               iris_group_index_to_bti(bt, IRIS_SURFACE_GROUP_TEXTURE,
-                                       tex->texture_index);
+            if (tex->texture_index < 64) {
+               tex->texture_index =
+                  iris_group_index_to_bti(bt, IRIS_SURFACE_GROUP_TEXTURE_LOW64,
+                                          tex->texture_index);
+            } else {
+               tex->texture_index =
+                  iris_group_index_to_bti(bt, IRIS_SURFACE_GROUP_TEXTURE_HIGH64,
+                                          tex->texture_index - 64);
+            }
             continue;
          }
 

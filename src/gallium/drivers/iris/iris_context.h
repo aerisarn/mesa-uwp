@@ -452,7 +452,8 @@ enum iris_surface_group {
    IRIS_SURFACE_GROUP_RENDER_TARGET,
    IRIS_SURFACE_GROUP_RENDER_TARGET_READ,
    IRIS_SURFACE_GROUP_CS_WORK_GROUPS,
-   IRIS_SURFACE_GROUP_TEXTURE,
+   IRIS_SURFACE_GROUP_TEXTURE_LOW64,
+   IRIS_SURFACE_GROUP_TEXTURE_HIGH64,
    IRIS_SURFACE_GROUP_IMAGE,
    IRIS_SURFACE_GROUP_UBO,
    IRIS_SURFACE_GROUP_SSBO,
@@ -569,7 +570,7 @@ struct iris_shader_state {
    uint64_t bound_image_views;
 
    /** Bitfield of which sampler views are bound (non-null). */
-   uint32_t bound_sampler_views;
+   BITSET_DECLARE(bound_sampler_views, IRIS_MAX_TEXTURES);
 
    /** Bitfield of which shader storage buffers are bound (non-null). */
    uint32_t bound_ssbos;

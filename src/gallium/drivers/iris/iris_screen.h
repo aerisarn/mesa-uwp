@@ -50,7 +50,7 @@ struct u_trace;
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 #define WRITE_ONCE(x, v) *(volatile __typeof__(x) *)&(x) = (v)
 
-#define IRIS_MAX_TEXTURES 32
+#define IRIS_MAX_TEXTURES 128
 #define IRIS_MAX_SAMPLERS 32
 #define IRIS_MAX_IMAGES 64
 #define IRIS_MAX_SOL_BUFFERS 4
