@@ -1354,20 +1354,16 @@ LLVMValueRef ac_build_struct_tbuffer_load(struct ac_llvm_context *ctx, LLVMValue
 
 LLVMValueRef ac_build_tbuffer_load_short(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                          LLVMValueRef voffset, LLVMValueRef soffset,
-                                         LLVMValueRef immoffset, unsigned cache_policy)
+                                         unsigned cache_policy)
 {
-   voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
-
    return ac_build_buffer_load_common(ctx, rsrc, NULL, voffset, soffset, 1, ctx->i16,
                                       cache_policy, false, false, false);
 }
 
 LLVMValueRef ac_build_tbuffer_load_byte(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                         LLVMValueRef voffset, LLVMValueRef soffset,
-                                        LLVMValueRef immoffset, unsigned cache_policy)
+                                        unsigned cache_policy)
 {
-   voffset = LLVMBuildAdd(ctx->builder, voffset, immoffset, "");
-
    return ac_build_buffer_load_common(ctx, rsrc, NULL, voffset, soffset, 1, ctx->i8, cache_policy,
                                       false, false, false);
 }

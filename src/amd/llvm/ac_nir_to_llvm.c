@@ -2080,20 +2080,21 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
       int load_bytes = num_elems * elem_size_bytes;
 
       LLVMValueRef immoffset = LLVMConstInt(ctx->ac.i32, i * elem_size_bytes, false);
+      LLVMValueRef voffset = LLVMBuildAdd(ctx->ac.builder, offset, immoffset, "");
 
       LLVMValueRef ret;
 
       if (load_bytes == 1) {
-         ret = ac_build_tbuffer_load_byte(&ctx->ac, rsrc, offset, ctx->ac.i32_0, immoffset,
+         ret = ac_build_tbuffer_load_byte(&ctx->ac, rsrc, voffset, ctx->ac.i32_0,
                                           cache_policy);
       } else if (load_bytes == 2) {
-         ret = ac_build_tbuffer_load_short(&ctx->ac, rsrc, offset, ctx->ac.i32_0, immoffset,
+         ret = ac_build_tbuffer_load_short(&ctx->ac, rsrc, voffset, ctx->ac.i32_0,
                                            cache_policy);
       } else {
          int num_channels = util_next_power_of_two(load_bytes) / 4;
          bool can_speculate = access & ACCESS_CAN_REORDER;
 
-         ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels, vindex, offset, immoffset,
+         ret = ac_build_buffer_load(&ctx->ac, rsrc, num_channels, vindex, voffset, ctx->ac.i32_0,
                                     ctx->ac.f32, cache_policy, can_speculate, false);
       }
 
