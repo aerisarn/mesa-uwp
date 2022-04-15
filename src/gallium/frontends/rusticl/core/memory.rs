@@ -880,8 +880,12 @@ impl Mem {
         } else {
             let tx = self.map(q, ctx, &mut lock)?;
 
-            *row_pitch = tx.row_pitch() as usize;
-            *slice_pitch = tx.slice_pitch() as usize;
+            if self.image_desc.dims() > 1 {
+                *row_pitch = tx.row_pitch() as usize;
+            }
+            if self.image_desc.dims() > 2 || self.image_desc.is_array() {
+                *slice_pitch = tx.slice_pitch() as usize;
+            }
 
             tx.ptr()
         };
