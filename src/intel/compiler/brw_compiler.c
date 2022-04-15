@@ -39,6 +39,7 @@
    .lower_uadd_carry = true,                                                  \
    .lower_usub_borrow = true,                                                 \
    .lower_flrp64 = true,                                                      \
+   .lower_fisnormal = true,                                                   \
    .lower_isign = true,                                                       \
    .lower_ldexp = true,                                                       \
    .lower_device_index_to_zero = true,                                        \
