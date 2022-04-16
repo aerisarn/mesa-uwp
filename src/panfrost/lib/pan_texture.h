@@ -159,6 +159,24 @@ panfrost_afbc_header_size(unsigned width, unsigned height);
 bool
 panfrost_afbc_can_ytr(enum pipe_format format);
 
+/*
+ * Represents the block size of a single plane. For AFBC, this represents the
+ * superblock size. For u-interleaving, this represents the tile size.
+ */
+struct pan_block_size {
+        /** Width of block */
+        unsigned width;
+
+        /** Height of blocks */
+        unsigned height;
+};
+
+struct pan_block_size panfrost_afbc_superblock_size(uint64_t modifier);
+
+unsigned panfrost_afbc_superblock_width(uint64_t modifier);
+
+unsigned panfrost_afbc_superblock_height(uint64_t modifier);
+
 unsigned
 panfrost_block_dim(uint64_t modifier, bool width, unsigned plane);
 

@@ -45,6 +45,50 @@ uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT] = {
         DRM_FORMAT_MOD_LINEAR
 };
 
+/* Table of AFBC superblock sizes */
+static const struct pan_block_size
+afbc_superblock_sizes[] = {
+        [AFBC_FORMAT_MOD_BLOCK_SIZE_16x16]      = { 16, 16 },
+        [AFBC_FORMAT_MOD_BLOCK_SIZE_32x8]       = { 32,  8 },
+        [AFBC_FORMAT_MOD_BLOCK_SIZE_64x4]       = { 64,  4 },
+};
+
+/*
+ * Given an AFBC modifier, return the superblock size.
+ *
+ * We do not yet have any use cases for multiplanar YCBCr formats with different
+ * superblock sizes on the luma and chroma planes. These formats are unsupported
+ * for now.
+ */
+struct pan_block_size
+panfrost_afbc_superblock_size(uint64_t modifier)
+{
+        unsigned index = (modifier & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK);
+
+        assert(drm_is_afbc(modifier));
+        assert(index < ARRAY_SIZE(afbc_superblock_sizes));
+
+        return afbc_superblock_sizes[index];
+}
+
+/*
+ * Given an AFBC modifier, return the width of the superblock.
+ */
+unsigned
+panfrost_afbc_superblock_width(uint64_t modifier)
+{
+        return panfrost_afbc_superblock_size(modifier).width;
+}
+
+/*
+ * Given an AFBC modifier, return the height of the superblock.
+ */
+unsigned
+panfrost_afbc_superblock_height(uint64_t modifier)
+{
+        return panfrost_afbc_superblock_size(modifier).height;
+}
+
 /* If not explicitly, line stride is calculated for block-based formats as
  * (ceil(width / block_width) * block_size). As a special case, this is left
  * zero if there is only a single block vertically. So, we have a helper to
@@ -60,18 +104,12 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
                 return 16;
         }
 
-        switch (modifier & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK) {
-        case AFBC_FORMAT_MOD_BLOCK_SIZE_16x16:
-                return 16;
-        case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8:
-                return width ? 32 : 8;
-        case AFBC_FORMAT_MOD_BLOCK_SIZE_64x4:
-                return width ? 64 : 4;
-        case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8_64x4:
-                return plane ? (width ? 64 : 4) : (width ? 32 : 8);
-        default:
-                unreachable("Invalid AFBC block size");
-        }
+        assert(plane == 0 && "multiplanar formats not supported");
+
+        if (width)
+                return panfrost_afbc_superblock_width(modifier);
+        else
+                return panfrost_afbc_superblock_height(modifier);
 }
 
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
