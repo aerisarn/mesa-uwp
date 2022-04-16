@@ -95,8 +95,7 @@ panfrost_afbc_superblock_height(uint64_t modifier)
  * extract the dimensions of a block-based format and use that to calculate the
  * line stride as such.
  */
-
-unsigned
+static inline unsigned
 panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
 {
         if (!drm_is_afbc(modifier)) {
