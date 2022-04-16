@@ -100,21 +100,34 @@ panfrost_afbc_is_wide(uint64_t modifier)
         return panfrost_afbc_superblock_width(modifier) > 16;
 }
 
-/* If not explicitly, line stride is calculated for block-based formats as
- * (ceil(width / block_width) * block_size). As a special case, this is left
- * zero if there is only a single block vertically. So, we have a helper to
- * extract the dimensions of a block-based format and use that to calculate the
- * line stride as such.
+/*
+ * Given a format, determine the tile size used for u-interleaving. For formats
+ * that are already block compressed, this is 4x4. For all other formats, this
+ * is 16x16, hence the modifier name.
  */
 static inline struct pan_block_size
-panfrost_block_size(uint64_t modifier)
+panfrost_u_interleaved_tile_size(enum pipe_format format)
 {
-        if (!drm_is_afbc(modifier)) {
-                assert(modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED);
+        if (util_format_is_compressed(format))
+                return (struct pan_block_size) {  4,  4 };
+        else
                 return (struct pan_block_size) { 16, 16 };
-        }
+}
 
-        return panfrost_afbc_superblock_size(modifier);
+/*
+ * Determine the block size used for interleaving. For u-interleaving, this is
+ * the tile size. For AFBC, this is the superblock size. For linear textures,
+ * this is trivially 1x1.
+ */
+static inline struct pan_block_size
+panfrost_block_size(uint64_t modifier, enum pipe_format format)
+{
+        if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
+                return panfrost_u_interleaved_tile_size(format);
+        else if (drm_is_afbc(modifier))
+                return panfrost_afbc_superblock_size(modifier);
+        else
+                return (struct pan_block_size) { 1, 1 };
 }
 
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
@@ -214,15 +227,8 @@ pan_image_layout_init(const struct panfrost_device *dev,
 
         unsigned oob_crc_offset = 0;
         unsigned offset = explicit_layout ? explicit_layout->offset : 0;
-        struct pan_block_size block_size = { 1, 1 };
-        unsigned tile_shift = 0;
-
-        if (tiled || afbc) {
-                block_size = panfrost_block_size(layout->modifier);
-
-                if (util_format_is_compressed(format))
-                        tile_shift = 2;
-        }
+        struct pan_block_size block_size =
+                panfrost_block_size(layout->modifier, format);
 
         for (unsigned l = 0; l < nr_slices; ++l) {
                 struct pan_image_slice_layout *slice = &layout->slices[l];
@@ -232,8 +238,8 @@ pan_image_layout_init(const struct panfrost_device *dev,
                 unsigned effective_depth = depth;
 
                 if (should_align) {
-                        effective_width = ALIGN_POT(effective_width, block_size.width) >> tile_shift;
-                        effective_height = ALIGN_POT(effective_height, block_size.height) >> tile_shift;
+                        effective_width = ALIGN_POT(util_format_get_nblocksx(format, effective_width), block_size.width);
+                        effective_height = ALIGN_POT(util_format_get_nblocksy(format, effective_height), block_size.height);
 
                         /* We don't need to align depth */
                 }
@@ -260,7 +266,7 @@ pan_image_layout_init(const struct panfrost_device *dev,
                 }
 
                 slice->line_stride = stride;
-                slice->row_stride = stride * (block_size.height >> tile_shift);
+                slice->row_stride = stride * block_size.height;
 
                 unsigned slice_one_size = slice->line_stride * effective_height;
 
