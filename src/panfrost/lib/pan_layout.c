@@ -119,7 +119,7 @@ panfrost_u_interleaved_tile_size(enum pipe_format format)
  * the tile size. For AFBC, this is the superblock size. For linear textures,
  * this is trivially 1x1.
  */
-static inline struct pan_block_size
+struct pan_block_size
 panfrost_block_size(uint64_t modifier, enum pipe_format format)
 {
         if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)

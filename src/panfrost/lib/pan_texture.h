@@ -40,6 +40,10 @@
 #include "pan_util.h"
 #include "pan_format.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define PAN_MODIFIER_COUNT 4
 extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
 
@@ -179,6 +183,9 @@ unsigned panfrost_afbc_superblock_height(uint64_t modifier);
 
 unsigned panfrost_afbc_is_wide(uint64_t modifier);
 
+struct pan_block_size
+panfrost_block_size(uint64_t modifier, enum pipe_format format);
+
 #ifdef PAN_ARCH
 unsigned
 GENX(panfrost_estimate_texture_payload_size)(const struct pan_image_view *iview);
@@ -238,5 +245,9 @@ void
 pan_iview_get_surface(const struct pan_image_view *iview,
                       unsigned level, unsigned layer, unsigned sample,
                       struct pan_surface *surf);
+
+#ifdef __cplusplus
+} /* extern C */
+#endif
 
 #endif

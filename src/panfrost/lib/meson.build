@@ -129,4 +129,20 @@ if with_tests
     ),
     suite : ['panfrost'],
   )
+
+  test(
+    'panfrost_layout',
+    executable(
+      'panfrost_layout',
+      files(
+        'tests/test-layout.cpp',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src, inc_mesa, inc_panfrost, inc_gallium],
+      dependencies: [idep_gtest, libpanfrost_dep],
+    ),
+    suite : ['panfrost'],
+    protocol : gtest_test_protocol,
+  )
 endif
