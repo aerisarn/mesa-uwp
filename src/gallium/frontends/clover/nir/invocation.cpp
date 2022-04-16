@@ -588,7 +588,7 @@ binary clover::nir::spirv_to_nir(const binary &mod, const device &dev,
 
       void *mem_ctx = ralloc_context(NULL);
       unsigned printf_info_count = nir->printf_info_count;
-      nir_printf_info *printf_infos = nir->printf_info;
+      u_printf_info *printf_infos = nir->printf_info;
 
       ralloc_steal(mem_ctx, printf_infos);
 
