@@ -5,6 +5,7 @@ use crate::impl_cl_type_trait;
 
 use mesa_rust::compiler::clc::*;
 use mesa_rust::compiler::nir::*;
+use mesa_rust::util::disk_cache::*;
 use mesa_rust_gen::*;
 use rusticl_opencl_gen::*;
 
@@ -17,6 +18,7 @@ use std::slice;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::sync::Once;
 
 const BIN_HEADER_SIZE_V1: usize =
     // 1. format version
@@ -27,6 +29,19 @@ const BIN_HEADER_SIZE_V1: usize =
     size_of::<cl_program_binary_type>();
 
 const BIN_HEADER_SIZE: usize = BIN_HEADER_SIZE_V1;
+
+// kernel cache
+static mut DISK_CACHE: Option<DiskCache> = None;
+static DISK_CACHE_ONCE: Once = Once::new();
+
+fn get_disk_cache() -> &'static Option<DiskCache> {
+    unsafe {
+        DISK_CACHE_ONCE.call_once(|| {
+            DISK_CACHE = DiskCache::new("rusticl", "rusticl", 0);
+        });
+        &DISK_CACHE
+    }
+}
 
 #[repr(C)]
 pub struct Program {
@@ -287,8 +302,13 @@ impl Program {
         let lib = options.contains("-create-library");
 
         let args = prepare_options(&options, dev);
-        let (spirv, log) =
-            spirv::SPIRVBin::from_clc(&self.src, &args, &Vec::new(), dev.cl_features());
+        let (spirv, log) = spirv::SPIRVBin::from_clc(
+            &self.src,
+            &args,
+            &Vec::new(),
+            get_disk_cache(),
+            dev.cl_features(),
+        );
 
         d.log = log;
         d.options = options;
@@ -333,7 +353,13 @@ impl Program {
         let d = Self::dev_build_info(&mut info, dev);
         let args = prepare_options(&options, dev);
 
-        let (spirv, log) = spirv::SPIRVBin::from_clc(&self.src, &args, headers, dev.cl_features());
+        let (spirv, log) = spirv::SPIRVBin::from_clc(
+            &self.src,
+            &args,
+            headers,
+            get_disk_cache(),
+            dev.cl_features(),
+        );
 
         d.spirv = spirv;
         d.log = log;

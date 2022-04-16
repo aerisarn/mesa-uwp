@@ -2,6 +2,7 @@ use crate::compiler::nir::NirShader;
 use crate::pipe::context::*;
 use crate::pipe::device::*;
 use crate::pipe::resource::*;
+use crate::util::disk_cache::*;
 
 use mesa_rust_gen::*;
 use mesa_rust_util::string::*;
@@ -233,14 +234,16 @@ impl PipeScreen {
         }
     }
 
-    pub fn shader_cache(&self) -> *mut disk_cache {
+    pub fn shader_cache(&self) -> Option<DiskCacheBorrowed> {
         let s = &mut unsafe { *self.screen };
 
-        if let Some(func) = s.get_disk_shader_cache {
+        let ptr = if let Some(func) = s.get_disk_shader_cache {
             unsafe { func(self.screen) }
         } else {
             ptr::null_mut()
-        }
+        };
+
+        DiskCacheBorrowed::from_ptr(ptr)
     }
 
     pub fn finalize_nir(&self, nir: &NirShader) {

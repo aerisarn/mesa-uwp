@@ -12,6 +12,7 @@
 #include "pipe/p_state.h"
 #include "pipe-loader/pipe_loader.h"
 
+#include "util/disk_cache.h"
 #include "util/u_printf.h"
 #include "util/u_sampler.h"
 

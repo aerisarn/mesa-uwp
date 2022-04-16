@@ -199,6 +199,8 @@ rusticl_mesa_bindings_rs = rust.bindgen(
   args : [
     rusticl_bindgen_args,
     '--whitelist-function', 'clc_.*',
+    '--whitelist-function', 'disk_cache_.*',
+    '--whitelist-function', 'free',
     '--whitelist-function', 'glsl_.*',
     '--whitelist-function', 'malloc',
     '--whitelist-function', 'nir_.*',
