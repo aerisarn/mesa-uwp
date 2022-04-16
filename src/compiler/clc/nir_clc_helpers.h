@@ -21,7 +21,8 @@ nir_shader *
 nir_load_libclc_shader(unsigned ptr_bit_size,
                        struct disk_cache *disk_cache,
                        const struct spirv_to_nir_options *spirv_options,
-                       const nir_shader_compiler_options *nir_options);
+                       const nir_shader_compiler_options *nir_options,
+                       bool optimize);
 
 bool nir_lower_libclc(nir_shader *shader, const nir_shader *clc_shader);
 

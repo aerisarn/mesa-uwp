@@ -379,7 +379,13 @@ impl SPIRVBin {
         let shader_cache = DiskCacheBorrowed::as_ptr(&screen.shader_cache());
 
         NirShader::new(unsafe {
-            nir_load_libclc_shader(address_bits, shader_cache, &spirv_options, nir_options)
+            nir_load_libclc_shader(
+                address_bits,
+                shader_cache,
+                &spirv_options,
+                nir_options,
+                true,
+            )
         })
     }
 
