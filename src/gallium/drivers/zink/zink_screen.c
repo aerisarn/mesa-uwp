@@ -1015,7 +1015,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       if (screen->info.feats.features.shaderStorageImageExtendedFormats &&
           screen->info.feats.features.shaderStorageImageWriteWithoutFormat)
          return MIN2(screen->info.props.limits.maxPerStageDescriptorStorageImages,
-                     PIPE_MAX_SHADER_IMAGES);
+                     ZINK_MAX_SHADER_IMAGES);
       return 0;
 
    case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:

@@ -1749,8 +1749,8 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
 
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-         assert(index < PIPE_MAX_SHADER_IMAGES);
-         return (stage * PIPE_MAX_SHADER_IMAGES) + index;
+         assert(index < ZINK_MAX_SHADER_IMAGES);
+         return (stage * ZINK_MAX_SHADER_IMAGES) + index;
 
       default:
          unreachable("unexpected type");

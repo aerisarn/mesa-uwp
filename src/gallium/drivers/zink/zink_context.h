@@ -29,7 +29,7 @@
 
 #define ZINK_DEFAULT_MAX_DESCS 5000
 #define ZINK_DEFAULT_DESC_CLAMP (ZINK_DEFAULT_MAX_DESCS * 0.9)
-
+#define ZINK_MAX_SHADER_IMAGES 32
 #define ZINK_MAX_BINDLESS_HANDLES 1024
 
 #include "zink_clear.h"
@@ -213,7 +213,7 @@ struct zink_context {
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
    uint32_t writable_ssbos[PIPE_SHADER_TYPES];
-   struct zink_image_view image_views[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+   struct zink_image_view image_views[PIPE_SHADER_TYPES][ZINK_MAX_SHADER_IMAGES];
 
    struct pipe_framebuffer_state fb_state;
    struct zink_framebuffer *(*get_framebuffer)(struct zink_context*);
@@ -329,15 +329,15 @@ struct zink_context {
       uint8_t num_samplers[PIPE_SHADER_TYPES];
       uint8_t num_sampler_views[PIPE_SHADER_TYPES];
 
-      VkDescriptorImageInfo images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
-      VkBufferView texel_images[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+      VkDescriptorImageInfo images[PIPE_SHADER_TYPES][ZINK_MAX_SHADER_IMAGES];
+      VkBufferView texel_images[PIPE_SHADER_TYPES][ZINK_MAX_SHADER_IMAGES];
       uint8_t num_images[PIPE_SHADER_TYPES];
 
       VkDescriptorImageInfo fbfetch;
 
       struct zink_resource *descriptor_res[ZINK_DESCRIPTOR_TYPES][PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
       struct zink_descriptor_surface sampler_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
-      struct zink_descriptor_surface image_surfaces[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_IMAGES];
+      struct zink_descriptor_surface image_surfaces[PIPE_SHADER_TYPES][ZINK_MAX_SHADER_IMAGES];
 
       struct {
          struct util_idalloc tex_slots;
