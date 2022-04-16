@@ -96,14 +96,12 @@ panfrost_afbc_superblock_height(uint64_t modifier)
  * line stride as such.
  */
 static inline unsigned
-panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
+panfrost_block_dim(uint64_t modifier, bool width)
 {
         if (!drm_is_afbc(modifier)) {
                 assert(modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED);
                 return 16;
         }
-
-        assert(plane == 0 && "multiplanar formats not supported");
 
         if (width)
                 return panfrost_afbc_superblock_width(modifier);
@@ -211,8 +209,8 @@ pan_image_layout_init(const struct panfrost_device *dev,
         unsigned tile_h = 1, tile_w = 1, tile_shift = 0;
 
         if (tiled || afbc) {
-                tile_w = panfrost_block_dim(layout->modifier, true, 0);
-                tile_h = panfrost_block_dim(layout->modifier, false, 0);
+                tile_w = panfrost_block_dim(layout->modifier, true);
+                tile_h = panfrost_block_dim(layout->modifier, false);
                 if (util_format_is_compressed(format))
                         tile_shift = 2;
         }
