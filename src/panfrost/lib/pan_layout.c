@@ -89,6 +89,17 @@ panfrost_afbc_superblock_height(uint64_t modifier)
         return panfrost_afbc_superblock_size(modifier).height;
 }
 
+/*
+ * Given an AFBC modifier, return if "wide blocks" are used. Wide blocks are
+ * defined as superblocks wider than 16 pixels, the minimum (and default) super
+ * block width.
+ */
+unsigned
+panfrost_afbc_is_wide(uint64_t modifier)
+{
+        return panfrost_afbc_superblock_width(modifier) > 16;
+}
+
 /* If not explicitly, line stride is calculated for block-based formats as
  * (ceil(width / block_width) * block_size). As a special case, this is left
  * zero if there is only a single block vertically. So, we have a helper to

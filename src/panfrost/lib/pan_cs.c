@@ -451,7 +451,7 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
                 cfg->afbc.row_stride = slice->afbc.row_stride /
                                        AFBC_HEADER_BYTES_PER_TILE;
                 cfg->afbc.afbc_wide_block_enable =
-                        panfrost_afbc_superblock_width(rt->image->layout.modifier) > 16;
+                        panfrost_afbc_is_wide(rt->image->layout.modifier);
 #else
                 cfg->afbc.chunk_size = 9;
                 cfg->afbc.sparse = true;

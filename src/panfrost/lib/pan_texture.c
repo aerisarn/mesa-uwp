@@ -81,8 +81,7 @@ panfrost_compression_tag(const struct util_format_description *desc,
                 /* Prefetch enable */
                 flags |= MALI_AFBC_SURFACE_FLAG_PREFETCH;
 
-                /* Wide blocks (> 16x16) */
-                if (panfrost_afbc_superblock_width(modifier) > 16)
+                if (panfrost_afbc_is_wide(modifier))
                         flags |= MALI_AFBC_SURFACE_FLAG_WIDE_BLOCK;
 
                 /* Used to make sure AFBC headers don't point outside the AFBC

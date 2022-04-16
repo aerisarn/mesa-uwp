@@ -177,6 +177,8 @@ unsigned panfrost_afbc_superblock_width(uint64_t modifier);
 
 unsigned panfrost_afbc_superblock_height(uint64_t modifier);
 
+unsigned panfrost_afbc_is_wide(uint64_t modifier);
+
 #ifdef PAN_ARCH
 unsigned
 GENX(panfrost_estimate_texture_payload_size)(const struct pan_image_view *iview);
