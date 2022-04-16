@@ -104,7 +104,7 @@ virtio_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 
    struct msm_ccmd_gem_cpu_prep_req req = {
          .hdr = MSM_CCMD(GEM_CPU_PREP, sizeof(req)),
-         .host_handle = virtio_bo_host_handle(bo),
+         .res_id = to_virtio_bo(bo)->res_id,
          .op = op,
    };
    struct msm_ccmd_gem_cpu_prep_rsp *rsp;
@@ -174,7 +174,7 @@ virtio_bo_set_name(struct fd_bo *bo, const char *fmt, va_list ap)
    struct msm_ccmd_gem_set_name_req *req = (void *)buf;
 
    req->hdr = MSM_CCMD(GEM_SET_NAME, req_len);
-   req->host_handle = virtio_bo_host_handle(bo);
+   req->res_id = to_virtio_bo(bo)->res_id;
    req->len = sz;
 
    memcpy(req->payload, name, sz);
@@ -191,7 +191,7 @@ virtio_bo_upload(struct fd_bo *bo, void *src, unsigned len)
    struct msm_ccmd_gem_upload_req *req = (void *)buf;
 
    req->hdr = MSM_CCMD(GEM_UPLOAD, req_len);
-   req->host_handle = virtio_bo_host_handle(bo);
+   req->res_id = to_virtio_bo(bo)->res_id;
    req->pad = 0;
    req->off = 0;
    req->len = len;
@@ -202,22 +202,27 @@ virtio_bo_upload(struct fd_bo *bo, void *src, unsigned len)
 }
 
 static void
+set_iova(struct fd_bo *bo, uint64_t iova)
+{
+   struct msm_ccmd_gem_set_iova_req req = {
+         .hdr = MSM_CCMD(GEM_SET_IOVA, sizeof(req)),
+         .res_id = to_virtio_bo(bo)->res_id,
+         .iova = iova,
+   };
+
+   virtio_execbuf(bo->dev, &req.hdr, false);
+}
+
+static void
 virtio_bo_destroy(struct fd_bo *bo)
 {
    struct virtio_bo *virtio_bo = to_virtio_bo(bo);
-   struct virtio_device *virtio_dev = to_virtio_device(bo->dev);
 
-   if (virtio_dev->userspace_allocates_iova && bo->iova) {
-      struct msm_ccmd_gem_close_req req = {
-            .hdr = MSM_CCMD(GEM_CLOSE, sizeof(req)),
-            .host_handle = virtio_bo_host_handle(bo),
-      };
-
-      virtio_execbuf(bo->dev, &req.hdr, false);
-
+   /* Release iova by setting to zero: */
+   if (bo->iova) {
+      set_iova(bo, 0);
       virtio_dev_free_iova(bo->dev, bo->iova, bo->size);
    }
-
    free(virtio_bo);
 }
 
@@ -232,50 +237,6 @@ static const struct fd_bo_funcs funcs = {
    .destroy = virtio_bo_destroy,
 };
 
-struct allocation_wait {
-   struct fd_bo *bo;
-   int fence_fd;
-   struct msm_ccmd_gem_new_rsp *new_rsp;
-   struct msm_ccmd_gem_info_rsp *info_rsp;
-};
-
-static void
-allocation_wait_execute(void *job, void *gdata, int thread_index)
-{
-   struct allocation_wait *wait = job;
-   struct virtio_bo *virtio_bo = to_virtio_bo(wait->bo);
-
-   sync_wait(wait->fence_fd, -1);
-   close(wait->fence_fd);
-
-   if (wait->new_rsp) {
-      virtio_bo->host_handle = wait->new_rsp->host_handle;
-   } else {
-      virtio_bo->host_handle = wait->info_rsp->host_handle;
-      wait->bo->size = wait->info_rsp->size;
-   }
-   fd_bo_del(wait->bo);
-   free(wait);
-}
-
-static void
-enqueue_allocation_wait(struct fd_bo *bo, int fence_fd,
-                        struct msm_ccmd_gem_new_rsp *new_rsp,
-                        struct msm_ccmd_gem_info_rsp *info_rsp)
-{
-   struct allocation_wait *wait = malloc(sizeof(*wait));
-
-   wait->bo = fd_bo_ref(bo);
-   wait->fence_fd = fence_fd;
-   wait->new_rsp = new_rsp;
-   wait->info_rsp = info_rsp;
-
-   util_queue_add_job(&bo->dev->submit_queue,
-                      wait, &to_virtio_bo(bo)->fence,
-                      allocation_wait_execute,
-                      NULL, 0);
-}
-
 static struct fd_bo *
 bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
 {
@@ -285,8 +246,6 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
    virtio_bo = calloc(1, sizeof(*virtio_bo));
    if (!virtio_bo)
       return NULL;
-
-   util_queue_fence_init(&virtio_bo->fence);
 
    bo = &virtio_bo->base;
 
@@ -300,6 +259,20 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
    bo->funcs = &funcs;
    bo->handle = handle;
 
+   struct drm_virtgpu_resource_info args = {
+         .bo_handle = handle,
+   };
+   int ret;
+
+   ret = drmCommandWriteRead(dev->fd, DRM_VIRTGPU_RESOURCE_INFO, &args, sizeof(args));
+   if (ret) {
+      INFO_MSG("failed to get resource info: %s", strerror(errno));
+      free(virtio_bo);
+      return NULL;
+   }
+
+   virtio_bo->res_id = args.res_handle;
+
    fd_bo_init_common(bo, dev);
 
    return bo;
@@ -309,76 +282,16 @@ bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
 struct fd_bo *
 virtio_bo_from_handle(struct fd_device *dev, uint32_t size, uint32_t handle)
 {
-   struct virtio_device *virtio_dev = to_virtio_device(dev);
    struct fd_bo *bo = bo_from_handle(dev, size, handle);
-   struct drm_virtgpu_resource_info args = {
-         .bo_handle = handle,
-   };
-   int ret;
 
-   ret = drmCommandWriteRead(dev->fd, DRM_VIRTGPU_RESOURCE_INFO, &args, sizeof(args));
-   if (ret) {
-      INFO_MSG("failed to get resource info: %s", strerror(errno));
+   if (!bo)
+      return NULL;
+
+   bo->iova = virtio_dev_alloc_iova(dev, size);
+   if (!bo->iova)
       goto fail;
-   }
 
-   struct msm_ccmd_gem_info_req req = {
-         .hdr = MSM_CCMD(GEM_INFO, sizeof(req)),
-         .res_id = args.res_handle,
-         .blob_mem = args.blob_mem,
-         .blob_id = p_atomic_inc_return(&virtio_dev->next_blob_id),
-   };
-
-   if (virtio_dev->userspace_allocates_iova) {
-      req.iova = virtio_dev_alloc_iova(dev, size);
-      if (!req.iova) {
-         virtio_dev_free_iova(dev, req.iova, size);
-         ret = -ENOMEM;
-         goto fail;
-      }
-   }
-
-   struct msm_ccmd_gem_info_rsp *rsp =
-         virtio_alloc_rsp(dev, &req.hdr, sizeof(*rsp));
-
-   struct virtio_bo *virtio_bo = to_virtio_bo(bo);
-
-   virtio_bo->blob_id = req.blob_id;
-
-   if (virtio_dev->userspace_allocates_iova) {
-      int fence_fd;
-      ret = virtio_execbuf_fenced(dev, &req.hdr, -1, &fence_fd, 0);
-      if (ret) {
-         INFO_MSG("failed to get gem info: %s", strerror(errno));
-         goto fail;
-      }
-
-      bo->iova = req.iova;
-
-      enqueue_allocation_wait(bo, fence_fd, NULL, rsp);
-   } else {
-      ret = virtio_execbuf(dev, &req.hdr, true);
-      if (ret) {
-         INFO_MSG("failed to get gem info: %s", strerror(errno));
-         goto fail;
-      }
-      if (rsp->ret) {
-         INFO_MSG("failed (on host) to get gem info: %s", strerror(rsp->ret));
-         goto fail;
-      }
-
-      virtio_bo->host_handle = rsp->host_handle;
-      bo->iova = rsp->iova;
-
-      /* If the imported buffer is allocated via virgl context (for example
-       * minigbm/arc-cros-gralloc) then the guest gem object size is fake,
-       * potentially not accounting for UBWC meta data, required pitch
-       * alignment, etc.  But in the import path the gallium driver checks
-       * that the size matches the minimum size based on layout.  So replace
-       * the guest potentially-fake size with the real size from the host:
-       */
-      bo->size = rsp->size;
-   }
+   set_iova(bo, bo->iova);
 
    return bo;
 
@@ -400,7 +313,6 @@ virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
          .hdr = MSM_CCMD(GEM_NEW, sizeof(req)),
          .size = size,
    };
-   struct msm_ccmd_gem_new_rsp *rsp = NULL;
    int ret;
 
    if (flags & FD_BO_SCANOUT)
@@ -437,20 +349,15 @@ virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
        * is used to like the created bo to the get_blob() call
        */
       req.blob_id = args.blob_id;
-
-      rsp = virtio_alloc_rsp(dev, &req.hdr, sizeof(*rsp));
-
-      if (virtio_dev->userspace_allocates_iova) {
-         req.iova = virtio_dev_alloc_iova(dev, size);
-         if (!req.iova) {
-            ret = -ENOMEM;
-            goto fail;
-         }
+      req.iova = virtio_dev_alloc_iova(dev, size);
+      if (!req.iova) {
+         ret = -ENOMEM;
+         goto fail;
       }
    }
 
    simple_mtx_lock(&virtio_dev->eb_lock);
-   if (rsp)
+   if (args.cmd)
       req.hdr.seqno = ++virtio_dev->next_seqno;
    ret = drmIoctl(dev->fd, DRM_IOCTL_VIRTGPU_RESOURCE_CREATE_BLOB, &args);
    simple_mtx_unlock(&virtio_dev->eb_lock);
@@ -461,54 +368,13 @@ virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags)
    struct virtio_bo *virtio_bo = to_virtio_bo(bo);
 
    virtio_bo->blob_id = args.blob_id;
-
-   if (rsp) {
-      if (virtio_dev->userspace_allocates_iova) {
-         int fence_fd;
-
-         /* We can't get a fence fd from RESOURCE_CREATE_BLOB, so send
-          * a NOP packet just for that purpose:
-          */
-         struct msm_ccmd_nop_req nop = {
-               .hdr = MSM_CCMD(NOP, sizeof(nop)),
-         };
-
-         ret = virtio_execbuf_fenced(dev, &nop.hdr, -1, &fence_fd, 0);
-         if (ret) {
-            INFO_MSG("failed to get gem info: %s", strerror(errno));
-            goto fail;
-         }
-
-         bo->iova = req.iova;
-
-         enqueue_allocation_wait(bo, fence_fd, rsp, NULL);
-      } else {
-         /* RESOURCE_CREATE_BLOB is async, so we need to wait for host..
-          * which is a bit unfortunate, but better to sync here than
-          * add extra code to check if we need to wait each time we
-          * emit a reloc.
-          */
-         virtio_host_sync(dev, &req.hdr);
-
-         virtio_bo->host_handle = rsp->host_handle;
-         bo->iova = rsp->iova;
-      }
-   }
+   bo->iova = req.iova;
 
    return bo;
 
 fail:
    if (req.iova) {
-      assert(virtio_dev->userspace_allocates_iova);
       virtio_dev_free_iova(dev, req.iova, size);
    }
    return NULL;
-}
-
-uint32_t
-virtio_bo_host_handle(struct fd_bo *bo)
-{
-   struct virtio_bo *virtio_bo = to_virtio_bo(bo);
-   util_queue_fence_wait(&virtio_bo->fence);
-   return virtio_bo->host_handle;
 }

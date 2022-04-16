@@ -48,6 +48,8 @@ struct virtio_device {
 
    struct fd_bo *shmem_bo;
    struct msm_shmem *shmem;
+   uint8_t *rsp_mem;
+   uint32_t rsp_mem_len;
    uint32_t next_rsp_off;
    simple_mtx_t rsp_lock;
    simple_mtx_t eb_lock;
@@ -55,7 +57,7 @@ struct virtio_device {
    uint32_t next_blob_id;
    uint32_t next_seqno;
 
-   bool userspace_allocates_iova;
+   struct virgl_renderer_capset_drm caps;
 
    /*
     * Notes on address space allocation:
@@ -137,7 +139,7 @@ struct virtio_pipe {
    int32_t next_submit_fence;
 
    /**
-    * When userspace_allocates_iova, we need to defer deleting bo's (and
+    * When userspace allocates iova, we need to defer deleting bo's (and
     * therefore releasing their address) until submits referencing them
     * have completed.  This is accomplished by enqueueing a job, holding
     * a reference to the submit, that waits on the submit's out-fence
@@ -157,17 +159,7 @@ struct fd_submit *virtio_submit_new(struct fd_pipe *pipe);
 struct virtio_bo {
    struct fd_bo base;
    uint64_t offset;
-
-   struct util_queue_fence fence;
-
-   /*
-    * Note: all access to host_handle must wait on fence, *other* than
-    * access from the submit_queue thread (because async bo allocations
-    * are retired on the submit_queue, guaranteeing that the fence is
-    * signaled before host_handle is accessed).  All other access must
-    * use virtio_bo_host_handle().
-    */
-   uint32_t host_handle;
+   uint32_t res_id;
    uint32_t blob_id;
 };
 FD_DEFINE_CAST(fd_bo, virtio_bo);
@@ -175,8 +167,6 @@ FD_DEFINE_CAST(fd_bo, virtio_bo);
 struct fd_bo *virtio_bo_new(struct fd_device *dev, uint32_t size, uint32_t flags);
 struct fd_bo *virtio_bo_from_handle(struct fd_device *dev, uint32_t size,
                                     uint32_t handle);
-
-uint32_t virtio_bo_host_handle(struct fd_bo *bo);
 
 /*
  * Internal helpers:

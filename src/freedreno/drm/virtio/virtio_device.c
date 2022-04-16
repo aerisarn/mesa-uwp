@@ -36,10 +36,7 @@ virtio_device_destroy(struct fd_device *dev)
    struct virtio_device *virtio_dev = to_virtio_device(dev);
 
    fd_bo_del_locked(virtio_dev->shmem_bo);
-
-   if (virtio_dev->userspace_allocates_iova) {
-      util_vma_heap_finish(&virtio_dev->address_space);
-   }
+   util_vma_heap_finish(&virtio_dev->address_space);
 }
 
 static const struct fd_device_funcs funcs = {
@@ -156,8 +153,13 @@ virtio_device_new(int fd, drmVersionPtr version)
    INFO_MSG("has_cached_coherent: %u", caps.u.msm.has_cached_coherent);
    INFO_MSG("va_start:            0x%0"PRIx64, caps.u.msm.va_start);
    INFO_MSG("va_size:             0x%0"PRIx64, caps.u.msm.va_size);
+   INFO_MSG("gpu_id:              %u", caps.u.msm.gpu_id);
+   INFO_MSG("gmem_size:           %u", caps.u.msm.gmem_size);
+   INFO_MSG("gmem_base:           0x%0" PRIx64, caps.u.msm.gmem_base);
+   INFO_MSG("chip_id:             0x%0" PRIx64, caps.u.msm.chip_id);
+   INFO_MSG("max_freq:            %u", caps.u.msm.max_freq);
 
-   if (caps.wire_format_version != 1) {
+   if (caps.wire_format_version != 2) {
       ERROR_MSG("Unsupported protocol version: %u", caps.wire_format_version);
       return NULL;
    }
@@ -165,6 +167,11 @@ virtio_device_new(int fd, drmVersionPtr version)
    if ((caps.version_major != 1) || (caps.version_minor < FD_VERSION_SOFTPIN)) {
       ERROR_MSG("unsupported version: %u.%u.%u", caps.version_major,
                 caps.version_minor, caps.version_patchlevel);
+      return NULL;
+   }
+
+   if (!caps.u.msm.va_size) {
+      ERROR_MSG("No address space");
       return NULL;
    }
 
@@ -186,6 +193,8 @@ virtio_device_new(int fd, drmVersionPtr version)
 
    p_atomic_set(&virtio_dev->next_blob_id, 1);
 
+   virtio_dev->caps = caps;
+
    util_queue_init(&dev->submit_queue, "sq", 8, 1, 0, NULL);
 
    dev->bo_size = sizeof(struct virtio_bo);
@@ -195,14 +204,10 @@ virtio_device_new(int fd, drmVersionPtr version)
 
    set_debuginfo(dev);
 
-   if (caps.u.msm.va_start && caps.u.msm.va_size) {
-      virtio_dev->userspace_allocates_iova = true;
-
-      util_vma_heap_init(&virtio_dev->address_space,
-                         caps.u.msm.va_start,
-                         caps.u.msm.va_size);
-      simple_mtx_init(&virtio_dev->address_space_lock, mtx_plain);
-   }
+   util_vma_heap_init(&virtio_dev->address_space,
+                      caps.u.msm.va_start,
+                      caps.u.msm.va_size);
+   simple_mtx_init(&virtio_dev->address_space_lock, mtx_plain);
 
    return dev;
 }
@@ -217,7 +222,7 @@ virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
 
    sz = align(sz, 8);
 
-   if ((virtio_dev->next_rsp_off + sz) >= sizeof(virtio_dev->shmem->rsp_mem))
+   if ((virtio_dev->next_rsp_off + sz) >= virtio_dev->rsp_mem_len)
       virtio_dev->next_rsp_off = 0;
 
    off = virtio_dev->next_rsp_off;
@@ -227,7 +232,7 @@ virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
 
    req->rsp_off = off;
 
-   struct msm_ccmd_rsp *rsp = (void *)&virtio_dev->shmem->rsp_mem[off];
+   struct msm_ccmd_rsp *rsp = (void *)&virtio_dev->rsp_mem[off];
    rsp->len = sz;
 
    return rsp;
