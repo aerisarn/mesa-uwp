@@ -1,6 +1,3 @@
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::event::create_and_queue;
 use crate::api::icd::*;
 use crate::api::util::*;
@@ -9,9 +6,9 @@ use crate::core::event::*;
 use crate::core::kernel::*;
 use crate::core::program::*;
 
-use self::mesa_rust_util::ptr::*;
-use self::mesa_rust_util::string::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_util::ptr::*;
+use mesa_rust_util::string::*;
+use rusticl_opencl_gen::*;
 
 use std::collections::HashSet;
 use std::os::raw::c_void;

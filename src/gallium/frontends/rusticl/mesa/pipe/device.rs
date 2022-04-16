@@ -1,8 +1,6 @@
-extern crate mesa_rust_gen;
-
 use crate::pipe::screen::*;
 
-use self::mesa_rust_gen::*;
+use mesa_rust_gen::*;
 
 use std::ptr;
 use std::sync::Arc;

@@ -1,16 +1,12 @@
-extern crate mesa_rust;
-extern crate mesa_rust_gen;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::core::context::*;
 use crate::core::device::*;
 use crate::impl_cl_type_trait;
 
-use self::mesa_rust::compiler::clc::*;
-use self::mesa_rust::compiler::nir::*;
-use self::mesa_rust_gen::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust::compiler::clc::*;
+use mesa_rust::compiler::nir::*;
+use mesa_rust_gen::*;
+use rusticl_opencl_gen::*;
 
 use std::collections::HashMap;
 use std::collections::HashSet;

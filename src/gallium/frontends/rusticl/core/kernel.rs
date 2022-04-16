@@ -1,7 +1,3 @@
-extern crate mesa_rust;
-extern crate mesa_rust_gen;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::util::cl_prop;
 use crate::core::device::*;
@@ -12,10 +8,10 @@ use crate::core::program::*;
 use crate::core::queue::*;
 use crate::impl_cl_type_trait;
 
-use self::mesa_rust::compiler::clc::*;
-use self::mesa_rust::compiler::nir::*;
-use self::mesa_rust_gen::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust::compiler::clc::*;
+use mesa_rust::compiler::nir::*;
+use mesa_rust_gen::*;
+use rusticl_opencl_gen::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;

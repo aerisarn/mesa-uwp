@@ -1,17 +1,13 @@
-extern crate mesa_rust;
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::types::*;
 use crate::core::context::*;
 use crate::core::queue::*;
 use crate::impl_cl_type_trait;
 
-use self::mesa_rust::pipe::context::*;
-use self::mesa_rust::pipe::fence::*;
-use self::mesa_rust_util::static_assert;
-use self::rusticl_opencl_gen::*;
+use mesa_rust::pipe::context::*;
+use mesa_rust::pipe::fence::*;
+use mesa_rust_util::static_assert;
+use rusticl_opencl_gen::*;
 
 use std::os::raw::c_void;
 use std::slice;

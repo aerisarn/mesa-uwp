@@ -1,6 +1,4 @@
-extern crate mesa_rust_gen;
-
-use self::mesa_rust_gen::*;
+use mesa_rust_gen::*;
 
 use std::ptr;
 

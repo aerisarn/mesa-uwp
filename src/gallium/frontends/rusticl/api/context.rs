@@ -1,6 +1,3 @@
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::device::get_devs_for_type;
 use crate::api::icd::*;
 use crate::api::platform::*;
@@ -9,8 +6,8 @@ use crate::api::util::*;
 use crate::cl_closure;
 use crate::core::context::*;
 
-use self::mesa_rust_util::properties::Properties;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_util::properties::Properties;
+use rusticl_opencl_gen::*;
 
 use std::collections::HashSet;
 use std::iter::FromIterator;

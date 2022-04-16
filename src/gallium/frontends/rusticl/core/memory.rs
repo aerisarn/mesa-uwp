@@ -1,8 +1,3 @@
-extern crate mesa_rust;
-extern crate mesa_rust_gen;
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
@@ -12,12 +7,12 @@ use crate::core::format::*;
 use crate::core::queue::*;
 use crate::impl_cl_type_trait;
 
-use self::mesa_rust::pipe::context::*;
-use self::mesa_rust::pipe::resource::*;
-use self::mesa_rust::pipe::transfer::*;
-use self::mesa_rust_gen::*;
-use self::mesa_rust_util::properties::Properties;
-use self::rusticl_opencl_gen::*;
+use mesa_rust::pipe::context::*;
+use mesa_rust::pipe::resource::*;
+use mesa_rust::pipe::transfer::*;
+use mesa_rust_gen::*;
+use mesa_rust_util::properties::Properties;
+use rusticl_opencl_gen::*;
 
 use std::cmp;
 use std::collections::HashMap;

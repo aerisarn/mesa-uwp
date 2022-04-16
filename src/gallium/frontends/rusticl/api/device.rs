@@ -1,13 +1,10 @@
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::platform::*;
 use crate::api::util::*;
 use crate::core::device::*;
 
-use self::mesa_rust_util::ptr::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_util::ptr::*;
+use rusticl_opencl_gen::*;
 
 use std::cmp::min;
 use std::mem::size_of;

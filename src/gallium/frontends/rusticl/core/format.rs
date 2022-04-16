@@ -1,10 +1,7 @@
-extern crate mesa_rust_gen;
-extern crate rusticl_opencl_gen;
-
 use crate::api::util::*;
 
-use self::mesa_rust_gen::pipe_format;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_gen::pipe_format;
+use rusticl_opencl_gen::*;
 
 pub struct RusticlImageFormat {
     pub cl_image_format: cl_image_format,

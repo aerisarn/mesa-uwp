@@ -1,8 +1,5 @@
 #![allow(non_snake_case)]
 
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::context::*;
 use crate::api::device::*;
 use crate::api::event::*;
@@ -14,8 +11,8 @@ use crate::api::queue::*;
 use crate::api::types::*;
 use crate::api::util::*;
 
-use self::mesa_rust_util::ptr::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_util::ptr::*;
+use rusticl_opencl_gen::*;
 
 use std::ffi::CStr;
 use std::ptr;

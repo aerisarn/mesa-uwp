@@ -1,14 +1,11 @@
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::core::context::*;
 use crate::core::device::*;
 use crate::core::event::*;
 use crate::impl_cl_type_trait;
 
-use self::mesa_rust_util::properties::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_util::properties::*;
+use rusticl_opencl_gen::*;
 
 use std::sync::mpsc;
 use std::sync::Arc;

@@ -1,8 +1,5 @@
-extern crate mesa_rust_gen;
-extern crate rusticl_opencl_gen;
-
-use self::mesa_rust_gen::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_gen::*;
+use rusticl_opencl_gen::*;
 
 pub fn cl_mem_type_to_texture_target(mem_type: cl_mem_object_type) -> pipe_texture_target {
     match mem_type {

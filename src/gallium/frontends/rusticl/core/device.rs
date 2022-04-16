@@ -1,8 +1,3 @@
-extern crate mesa_rust;
-extern crate mesa_rust_gen;
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::util::*;
 use crate::core::format::*;
@@ -10,16 +5,16 @@ use crate::core::util::*;
 use crate::core::version::*;
 use crate::impl_cl_type_trait;
 
-use self::mesa_rust::compiler::clc::*;
-use self::mesa_rust::compiler::nir::*;
-use self::mesa_rust::pipe::context::*;
-use self::mesa_rust::pipe::device::load_screens;
-use self::mesa_rust::pipe::fence::*;
-use self::mesa_rust::pipe::resource::*;
-use self::mesa_rust::pipe::screen::*;
-use self::mesa_rust::pipe::transfer::*;
-use self::mesa_rust_gen::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust::compiler::clc::*;
+use mesa_rust::compiler::nir::*;
+use mesa_rust::pipe::context::*;
+use mesa_rust::pipe::device::load_screens;
+use mesa_rust::pipe::fence::*;
+use mesa_rust::pipe::resource::*;
+use mesa_rust::pipe::screen::*;
+use mesa_rust::pipe::transfer::*;
+use mesa_rust_gen::*;
+use rusticl_opencl_gen::*;
 
 use std::cmp::max;
 use std::cmp::min;

@@ -1,13 +1,10 @@
-extern crate mesa_rust_gen;
-extern crate mesa_rust_util;
-
 use crate::compiler::nir::NirShader;
 use crate::pipe::context::*;
 use crate::pipe::device::*;
 use crate::pipe::resource::*;
 
-use self::mesa_rust_gen::*;
-use self::mesa_rust_util::string::*;
+use mesa_rust_gen::*;
+use mesa_rust_util::string::*;
 
 use std::convert::TryInto;
 use std::mem::size_of;

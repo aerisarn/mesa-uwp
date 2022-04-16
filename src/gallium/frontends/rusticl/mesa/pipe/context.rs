@@ -1,12 +1,10 @@
-extern crate mesa_rust_gen;
-
 use crate::compiler::nir::*;
 use crate::pipe::fence::*;
 use crate::pipe::resource::*;
 use crate::pipe::screen::*;
 use crate::pipe::transfer::*;
 
-use self::mesa_rust_gen::*;
+use mesa_rust_gen::*;
 
 use std::os::raw::*;
 use std::ptr;

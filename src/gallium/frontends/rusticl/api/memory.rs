@@ -1,8 +1,5 @@
 #![allow(non_upper_case_globals)]
 
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::event::create_and_queue;
 use crate::api::icd::*;
 use crate::api::types::*;
@@ -12,9 +9,9 @@ use crate::core::format::*;
 use crate::core::memory::*;
 use crate::*;
 
-use self::mesa_rust_util::properties::Properties;
-use self::mesa_rust_util::ptr::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust_util::properties::Properties;
+use mesa_rust_util::ptr::*;
+use rusticl_opencl_gen::*;
 
 use std::cell::Cell;
 use std::cmp::Ordering;

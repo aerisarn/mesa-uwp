@@ -1,8 +1,6 @@
-extern crate mesa_rust_gen;
-
 use crate::pipe::context::*;
 
-use self::mesa_rust_gen::*;
+use mesa_rust_gen::*;
 
 use std::ops::Deref;
 use std::os::raw::c_void;

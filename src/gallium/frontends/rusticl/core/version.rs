@@ -1,6 +1,4 @@
-extern crate rusticl_opencl_gen;
-
-use self::rusticl_opencl_gen::*;
+use rusticl_opencl_gen::*;
 
 use std::convert::TryFrom;
 use std::os::raw::c_char;

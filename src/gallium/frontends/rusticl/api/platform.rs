@@ -1,14 +1,10 @@
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::CLResult;
 use crate::api::icd::DISPATCH;
 use crate::api::util::*;
 use crate::core::version::*;
 
-use self::rusticl_opencl_gen::*;
-
-use self::mesa_rust_util::ptr::*;
+use mesa_rust_util::ptr::*;
+use rusticl_opencl_gen::*;
 
 #[repr(C)]
 #[allow(non_camel_case_types)]
@@ -46,7 +42,7 @@ static PLATFORM: _cl_platform_id = _cl_platform_id {
 
 pub fn get_platform() -> cl_platform_id {
     &PLATFORM as *const crate::api::platform::_cl_platform_id
-        as *mut self::rusticl_opencl_gen::_cl_platform_id
+        as *mut ::rusticl_opencl_gen::_cl_platform_id
 }
 
 pub trait GetPlatformRef {

@@ -1,16 +1,12 @@
-extern crate mesa_rust;
-extern crate mesa_rust_util;
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::device::*;
 use crate::core::program::*;
 
-use self::mesa_rust::compiler::clc::*;
-use self::mesa_rust_util::string::*;
-use self::rusticl_opencl_gen::*;
+use mesa_rust::compiler::clc::*;
+use mesa_rust_util::string::*;
+use rusticl_opencl_gen::*;
 
 use std::ffi::CStr;
 use std::ffi::CString;

@@ -1,12 +1,10 @@
-extern crate rusticl_opencl_gen;
-
 use crate::api::icd::*;
 use crate::api::types::*;
 use crate::api::util::*;
 use crate::core::event::*;
 use crate::core::queue::*;
 
-use self::rusticl_opencl_gen::*;
+use rusticl_opencl_gen::*;
 
 use std::collections::HashSet;
 use std::ptr;

@@ -1,11 +1,8 @@
-extern crate mesa_rust_gen;
-extern crate mesa_rust_util;
-
 use crate::compiler::nir::*;
 use crate::pipe::screen::*;
 
-use self::mesa_rust_gen::*;
-use self::mesa_rust_util::string::*;
+use mesa_rust_gen::*;
+use mesa_rust_util::string::*;
 
 use std::ffi::CString;
 use std::os::raw::c_char;
