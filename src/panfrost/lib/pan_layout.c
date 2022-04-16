@@ -106,18 +106,15 @@ panfrost_afbc_is_wide(uint64_t modifier)
  * extract the dimensions of a block-based format and use that to calculate the
  * line stride as such.
  */
-static inline unsigned
-panfrost_block_dim(uint64_t modifier, bool width)
+static inline struct pan_block_size
+panfrost_block_size(uint64_t modifier)
 {
         if (!drm_is_afbc(modifier)) {
                 assert(modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED);
-                return 16;
+                return (struct pan_block_size) { 16, 16 };
         }
 
-        if (width)
-                return panfrost_afbc_superblock_width(modifier);
-        else
-                return panfrost_afbc_superblock_height(modifier);
+        return panfrost_afbc_superblock_size(modifier);
 }
 
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
@@ -217,11 +214,12 @@ pan_image_layout_init(const struct panfrost_device *dev,
 
         unsigned oob_crc_offset = 0;
         unsigned offset = explicit_layout ? explicit_layout->offset : 0;
-        unsigned tile_h = 1, tile_w = 1, tile_shift = 0;
+        struct pan_block_size block_size = { 1, 1 };
+        unsigned tile_shift = 0;
 
         if (tiled || afbc) {
-                tile_w = panfrost_block_dim(layout->modifier, true);
-                tile_h = panfrost_block_dim(layout->modifier, false);
+                block_size = panfrost_block_size(layout->modifier);
+
                 if (util_format_is_compressed(format))
                         tile_shift = 2;
         }
@@ -234,8 +232,8 @@ pan_image_layout_init(const struct panfrost_device *dev,
                 unsigned effective_depth = depth;
 
                 if (should_align) {
-                        effective_width = ALIGN_POT(effective_width, tile_w) >> tile_shift;
-                        effective_height = ALIGN_POT(effective_height, tile_h) >> tile_shift;
+                        effective_width = ALIGN_POT(effective_width, block_size.width) >> tile_shift;
+                        effective_height = ALIGN_POT(effective_height, block_size.height) >> tile_shift;
 
                         /* We don't need to align depth */
                 }
@@ -262,7 +260,7 @@ pan_image_layout_init(const struct panfrost_device *dev,
                 }
 
                 slice->line_stride = stride;
-                slice->row_stride = stride * (tile_h >> tile_shift);
+                slice->row_stride = stride * (block_size.height >> tile_shift);
 
                 unsigned slice_one_size = slice->line_stride * effective_height;
 
@@ -273,7 +271,7 @@ pan_image_layout_init(const struct panfrost_device *dev,
 
                         /* Stride between two rows of AFBC headers */
                         slice->afbc.row_stride =
-                                (effective_width / tile_w) *
+                                (effective_width / block_size.width) *
                                 AFBC_HEADER_BYTES_PER_TILE;
 
                         /* AFBC body size */
