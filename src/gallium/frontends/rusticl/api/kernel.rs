@@ -164,7 +164,6 @@ pub fn create_kernel(
     // kernel_name such as the number of arguments, the argument types are not the same for all
     // devices for which the program executable has been built.
     let devs = get_devices_with_valid_build(&p)?;
-    let nirs = p.nirs(&name);
     let kernel_args: HashSet<_> = devs.iter().map(|d| p.args(d, &name)).collect();
     if kernel_args.len() != 1 {
         return Err(CL_INVALID_KERNEL_DEFINITION);
@@ -173,7 +172,6 @@ pub fn create_kernel(
     Ok(cl_kernel::from_arc(Kernel::new(
         name,
         p,
-        nirs,
         kernel_args.into_iter().next().unwrap(),
     )))
 }
@@ -206,13 +204,11 @@ pub fn create_kernels_in_program(
         if !kernels.is_null() {
             // we just assume the client isn't stupid
             unsafe {
-                let nirs = p.nirs(&name);
                 kernels
                     .add(num_kernels as usize)
                     .write(cl_kernel::from_arc(Kernel::new(
                         name,
                         p.clone(),
-                        nirs,
                         kernel_args.into_iter().next().unwrap(),
                     )));
             }

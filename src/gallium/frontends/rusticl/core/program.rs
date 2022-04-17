@@ -436,27 +436,30 @@ impl Program {
         })
     }
 
-    pub fn nirs(&self, kernel: &str) -> HashMap<Arc<Device>, NirShader> {
+    pub fn devs_with_build(&self) -> Vec<&Arc<Device>> {
         let mut lock = self.build_info();
-        let mut res = HashMap::new();
-        for d in &self.devs {
-            let info = Self::dev_build_info(&mut lock, d);
-            if info.status != CL_BUILD_SUCCESS as cl_build_status {
-                continue;
-            }
-            let nir = info
-                .spirv
-                .as_ref()
-                .unwrap()
-                .to_nir(
-                    kernel,
-                    d.screen
-                        .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
-                    &d.lib_clc,
-                )
-                .unwrap();
-            res.insert(d.clone(), nir);
-        }
-        res
+        self.devs
+            .iter()
+            .filter(|d| {
+                let info = Self::dev_build_info(&mut lock, d);
+                info.status == CL_BUILD_SUCCESS as cl_build_status
+            })
+            .collect()
+    }
+
+    pub fn to_nir(&self, kernel: &str, d: &Arc<Device>) -> NirShader {
+        let mut lock = self.build_info();
+        let info = Self::dev_build_info(&mut lock, d);
+        assert_eq!(info.status, CL_BUILD_SUCCESS as cl_build_status);
+        info.spirv
+            .as_ref()
+            .unwrap()
+            .to_nir(
+                kernel,
+                d.screen
+                    .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
+                &d.lib_clc,
+            )
+            .unwrap()
     }
 }
