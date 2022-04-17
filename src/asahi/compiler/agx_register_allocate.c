@@ -139,6 +139,21 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsi
    memcpy(block->regs_out, used_regs, sizeof(used_regs));
 }
 
+/*
+ * Resolve an agx_index of type NORMAL or REGISTER to a physical register, once
+ * registers have been allocated for all SSA values.
+ */
+static unsigned
+agx_index_to_reg(uint8_t *ssa_to_reg, agx_index idx)
+{
+   if (idx.type == AGX_INDEX_NORMAL) {
+      return ssa_to_reg[idx.value];
+   } else {
+      assert(idx.type == AGX_INDEX_REGISTER);
+      return idx.value;
+   }
+}
+
 void
 agx_ra(agx_context *ctx)
 {
@@ -170,57 +185,33 @@ agx_ra(agx_context *ctx)
    agx_foreach_instr_global_safe(ctx, ins) {
       /* Lower away RA pseudo-instructions */
       if (ins->op == AGX_OPCODE_P_COMBINE) {
-         /* TODO: Optimize out the moves! */
-         assert(ins->dest[0].type == AGX_INDEX_NORMAL);
-         enum agx_size common_size = ins->dest[0].size;
-         unsigned base = ssa_to_reg[ins->dest[0].value];
-         unsigned size = common_size == AGX_SIZE_32 ? 2 : 1;
+         unsigned base = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
+         unsigned width = agx_size_align_16(ins->dest[0].size);
+
+         struct agx_copy copies[4];
+         unsigned n = 0;
 
          /* Move the sources */
+         for (unsigned i = 0; i < 4; ++i) {
+            if (agx_is_null(ins->src[i])) continue;
+            assert(ins->src[i].size == ins->dest[0].size);
+
+            copies[n++] = (struct agx_copy) {
+               .dest = base + (i * width),
+               .src = agx_index_to_reg(ssa_to_reg, ins->src[i]) ,
+               .size = ins->src[i].size
+            };
+         }
+
+         /* Lower away the copies pseudo-instruction */
          agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));
-
-         /* TODO: Eliminate the intermediate copy by handling parallel copies */
-         for (unsigned i = 0; i < 4; ++i) {
-            if (agx_is_null(ins->src[i])) continue;
-            unsigned base = ins->src[i].value;
-            if (ins->src[i].type == AGX_INDEX_NORMAL)
-               base = ssa_to_reg[base];
-            else
-               assert(ins->src[i].type == AGX_INDEX_REGISTER);
-
-            assert(ins->src[i].size == common_size);
-
-            agx_mov_to(&b, agx_register(124*2 + (i * size), common_size),
-                  agx_register(base, common_size));
-         }
-
-         for (unsigned i = 0; i < 4; ++i) {
-            if (agx_is_null(ins->src[i])) continue;
-            agx_index src = ins->src[i];
-
-            if (src.type == AGX_INDEX_NORMAL)
-               src = agx_register(alloc[src.value], src.size);
-
-            agx_mov_to(&b, agx_register(base + (i * size), common_size),
-                  agx_register(124*2 + (i * size), common_size));
-         }
-
-         /* We've lowered away, delete the old */
-         agx_remove_instruction(ins);
+         agx_emit_parallel_copies(&b, copies, n);
          continue;
       } else if (ins->op == AGX_OPCODE_P_EXTRACT) {
          /* Uses the destination size */
-         assert(ins->dest[0].type == AGX_INDEX_NORMAL);
-         unsigned base = ins->src[0].value;
-
-         if (ins->src[0].type != AGX_INDEX_REGISTER) {
-            assert(ins->src[0].type == AGX_INDEX_NORMAL);
-            base = alloc[base];
-         }
-
-         unsigned size = ins->dest[0].size == AGX_SIZE_64 ? 4 : ins->dest[0].size == AGX_SIZE_32 ? 2 : 1;
-         unsigned left = ssa_to_reg[ins->dest[0].value];
-         unsigned right = ssa_to_reg[ins->src[0].value] + (size * ins->imm);
+         unsigned size = agx_size_align_16(ins->dest[0].size);
+         unsigned left = agx_index_to_reg(ssa_to_reg, ins->dest[0]);
+         unsigned right = agx_index_to_reg(ssa_to_reg, ins->src[0]) + (size * ins->imm);
 
          if (left != right) {
             agx_builder b = agx_init_builder(ctx, agx_after_instr(ins));
