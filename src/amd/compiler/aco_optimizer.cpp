@@ -4546,6 +4546,113 @@ select_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
 }
 
+static aco_opcode
+sopk_opcode_for_sopc(aco_opcode opcode)
+{
+#define CTOK(op)                                                                                   \
+   case aco_opcode::s_cmp_##op##_i32: return aco_opcode::s_cmpk_##op##_i32;                        \
+   case aco_opcode::s_cmp_##op##_u32: return aco_opcode::s_cmpk_##op##_u32;
+   switch (opcode) {
+      CTOK(eq)
+      CTOK(lg)
+      CTOK(gt)
+      CTOK(ge)
+      CTOK(lt)
+      CTOK(le)
+   default: return aco_opcode::num_opcodes;
+   }
+#undef CTOK
+}
+
+static bool
+sopc_is_signed(aco_opcode opcode)
+{
+#define SOPC(op)                                                                                   \
+   case aco_opcode::s_cmp_##op##_i32: return true;                                                 \
+   case aco_opcode::s_cmp_##op##_u32: return false;
+   switch (opcode) {
+      SOPC(eq)
+      SOPC(lg)
+      SOPC(gt)
+      SOPC(ge)
+      SOPC(lt)
+      SOPC(le)
+   default: unreachable("Not a valid SOPC instruction.");
+   }
+#undef SOPC
+}
+
+static aco_opcode
+sopc_32_inverse(aco_opcode opcode)
+{
+#define SOPC(op1, op2)                                                                             \
+   case aco_opcode::s_cmp_##op1##_i32: return aco_opcode::s_cmp_##op2##_i32;                       \
+   case aco_opcode::s_cmp_##op1##_u32: return aco_opcode::s_cmp_##op2##_u32;
+   switch (opcode) {
+      SOPC(eq, eq)
+      SOPC(lg, lg)
+      SOPC(gt, le)
+      SOPC(ge, lt)
+      SOPC(lt, ge)
+      SOPC(le, gt)
+   default: return aco_opcode::num_opcodes;
+   }
+#undef SOPC
+}
+
+static void
+try_convert_sopc_to_sopk(aco_ptr<Instruction>& instr)
+{
+   if (sopk_opcode_for_sopc(instr->opcode) == aco_opcode::num_opcodes)
+      return;
+
+   if (instr->operands[0].isLiteral()) {
+      std::swap(instr->operands[0], instr->operands[1]);
+      instr->opcode = sopc_32_inverse(instr->opcode);
+   }
+
+   if (!instr->operands[1].isLiteral())
+      return;
+
+   if (instr->operands[0].isFixed() && instr->operands[0].physReg() >= 128)
+      return;
+
+   uint32_t value = instr->operands[1].constantValue();
+
+   const uint32_t i16_mask = 0xffff8000u;
+
+   bool value_is_i16 = (value & i16_mask) == 0 || (value & i16_mask) == i16_mask;
+   bool value_is_u16 = !(value & 0xffff0000u);
+
+   if (!value_is_i16 && !value_is_u16)
+      return;
+
+   if (!value_is_i16 && sopc_is_signed(instr->opcode)) {
+      if (instr->opcode == aco_opcode::s_cmp_lg_i32)
+         instr->opcode = aco_opcode::s_cmp_lg_u32;
+      else if (instr->opcode == aco_opcode::s_cmp_eq_i32)
+         instr->opcode = aco_opcode::s_cmp_eq_u32;
+      else
+         return;
+   } else if (!value_is_u16 && !sopc_is_signed(instr->opcode)) {
+      if (instr->opcode == aco_opcode::s_cmp_lg_u32)
+         instr->opcode = aco_opcode::s_cmp_lg_i32;
+      else if (instr->opcode == aco_opcode::s_cmp_eq_u32)
+         instr->opcode = aco_opcode::s_cmp_eq_i32;
+      else
+         return;
+   }
+
+   static_assert(sizeof(SOPK_instruction) <= sizeof(SOPC_instruction),
+                 "Invalid direct instruction cast.");
+   instr->format = Format::SOPK;
+   SOPK_instruction* instr_sopk = &instr->sopk();
+
+   instr_sopk->imm = instr_sopk->operands[1].constantValue() & 0xffff;
+   instr_sopk->opcode = sopk_opcode_for_sopc(instr_sopk->opcode);
+   instr_sopk->operands.pop_back();
+}
+
 void
 apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -4603,6 +4710,9 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          }
       }
    }
+
+   if (instr->isSOPC())
+      try_convert_sopc_to_sopk(instr);
 
    /* allow more s_addk_i32 optimizations if carry isn't used */
    if (instr->opcode == aco_opcode::s_add_u32 && ctx.uses[instr->definitions[1].tempId()] == 0 &&
