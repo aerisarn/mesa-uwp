@@ -681,7 +681,6 @@ spec@arb_tessellation_shader@execution@gs-primitiveid-instanced,Fail
 spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
 
 spec@arb_tessellation_shader@execution@variable-indexing@tcs-input-array-dvec4-index-rd,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tcs-tes-array-in-struct,Fail
 spec@arb_tessellation_shader@execution@variable-indexing@tcs-output-array-dvec4-index-wr,Fail
 spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-dvec4-index-rd,Fail
 spec@arb_tessellation_shader@execution@variable-indexing@vs-output-array-dvec4-index-wr-before-tcs,Fail

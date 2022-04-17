@@ -393,6 +393,8 @@ virgl_tgsi_transform_instruction(struct tgsi_transform_context *ctx,
       struct tgsi_full_instruction op_to_temp = *inst;
       op_to_temp.Dst[0].Register.File = TGSI_FILE_TEMPORARY;
       op_to_temp.Dst[0].Register.Index = vtctx->src_temp;
+      op_to_temp.Dst[0].Dimension.Indirect = 0;
+      op_to_temp.Dst[0].Register.Indirect = 0;
       ctx->emit_instruction(ctx, &op_to_temp);
 
       inst->Instruction.Opcode = TGSI_OPCODE_MOV;
