@@ -3,6 +3,7 @@ use crate::pipe::screen::*;
 use crate::util::disk_cache::*;
 
 use mesa_rust_gen::*;
+use mesa_rust_util::serialize::*;
 use mesa_rust_util::string::*;
 
 use std::ffi::CString;
@@ -314,5 +315,49 @@ impl Drop for SPIRVBin {
                 clc_free_parsed_spirv(info);
             }
         }
+    }
+}
+
+impl SPIRVKernelArg {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut res = Vec::new();
+
+        let name_arr = self.name.as_bytes();
+        let type_name_arr = self.type_name.as_bytes();
+
+        res.extend_from_slice(&name_arr.len().to_ne_bytes());
+        res.extend_from_slice(name_arr);
+        res.extend_from_slice(&type_name_arr.len().to_ne_bytes());
+        res.extend_from_slice(type_name_arr);
+        res.extend_from_slice(&u32::to_ne_bytes(self.access_qualifier.0));
+        res.extend_from_slice(&u32::to_ne_bytes(self.type_qualifier.0));
+        res.push(self.address_qualifier as u8);
+
+        res
+    }
+
+    pub fn deserialize(bin: &mut &[u8]) -> Option<Self> {
+        let name_len = read_ne_usize(bin);
+        let name = read_string(bin, name_len)?;
+        let type_len = read_ne_usize(bin);
+        let type_name = read_string(bin, type_len)?;
+        let access_qualifier = read_ne_u32(bin);
+        let type_qualifier = read_ne_u32(bin);
+
+        let address_qualifier = match read_ne_u8(bin) {
+            0 => clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_PRIVATE,
+            1 => clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_CONSTANT,
+            2 => clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_LOCAL,
+            3 => clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_GLOBAL,
+            _ => return None,
+        };
+
+        Some(Self {
+            name: name,
+            type_name: type_name,
+            access_qualifier: clc_kernel_arg_access_qualifier(access_qualifier),
+            address_qualifier: address_qualifier,
+            type_qualifier: clc_kernel_arg_type_qualifier(type_qualifier),
+        })
     }
 }

@@ -436,6 +436,21 @@ impl Program {
         })
     }
 
+    pub(super) fn hash_key(&self, dev: &Arc<Device>, name: &str) -> Option<cache_key> {
+        if let Some(cache) = dev.screen().shader_cache() {
+            let mut lock = self.build_info();
+            let info = Self::dev_build_info(&mut lock, dev);
+            assert_eq!(info.status, CL_BUILD_SUCCESS as cl_build_status);
+
+            let spirv = info.spirv.as_ref().unwrap();
+            let mut bin = spirv.to_bin().to_vec();
+            bin.extend_from_slice(name.as_bytes());
+            Some(cache.gen_key(&bin))
+        } else {
+            None
+        }
+    }
+
     pub fn devs_with_build(&self) -> Vec<&Arc<Device>> {
         let mut lock = self.build_info();
         self.devs

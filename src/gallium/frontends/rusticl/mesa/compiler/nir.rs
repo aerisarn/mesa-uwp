@@ -67,6 +67,31 @@ impl NirShader {
         NonNull::new(nir).map(|nir| Self { nir: nir })
     }
 
+    pub fn deserialize(
+        input: &mut &[u8],
+        len: usize,
+        options: *const nir_shader_compiler_options,
+    ) -> Option<Self> {
+        let mut reader = blob_reader::default();
+
+        let (bin, rest) = input.split_at(len);
+        *input = rest;
+
+        unsafe {
+            blob_reader_init(&mut reader, bin.as_ptr().cast(), len);
+            Self::new(nir_deserialize(ptr::null_mut(), options, &mut reader))
+        }
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut blob = blob::default();
+        unsafe {
+            blob_init(&mut blob);
+            nir_serialize(&mut blob, self.nir.as_ptr(), false);
+            slice::from_raw_parts(blob.data, blob.size).to_vec()
+        }
+    }
+
     pub fn print(&self) {
         unsafe { nir_print_shader(self.nir.as_ptr(), stderr) };
     }

@@ -11,6 +11,7 @@ use crate::impl_cl_type_trait;
 use mesa_rust::compiler::clc::*;
 use mesa_rust::compiler::nir::*;
 use mesa_rust_gen::*;
+use mesa_rust_util::serialize::*;
 use rusticl_opencl_gen::*;
 
 use std::cell::RefCell;
@@ -32,15 +33,15 @@ pub enum KernelArgValue {
     LocalMem(usize),
 }
 
-#[derive(Hash, PartialEq, Eq, Clone)]
+#[derive(Hash, PartialEq, Eq, Clone, Copy)]
 pub enum KernelArgType {
-    Constant, // for anything passed by value
-    Image,
-    Sampler,
-    Texture,
-    MemGlobal,
-    MemConstant,
-    MemLocal,
+    Constant = 0, // for anything passed by value
+    Image = 1,
+    Sampler = 2,
+    Texture = 3,
+    MemGlobal = 4,
+    MemConstant = 5,
+    MemLocal = 6,
 }
 
 #[derive(Hash, PartialEq, Eq, Clone)]
@@ -138,6 +139,95 @@ impl KernelArg {
                     .offset = var.data.driver_location as usize;
             }
         }
+    }
+
+    fn serialize(&self) -> Vec<u8> {
+        let mut bin = Vec::new();
+
+        bin.append(&mut self.spirv.serialize());
+        bin.extend_from_slice(&self.size.to_ne_bytes());
+        bin.extend_from_slice(&self.offset.to_ne_bytes());
+        bin.extend_from_slice(&(self.dead as u8).to_ne_bytes());
+        bin.extend_from_slice(&(self.kind as u8).to_ne_bytes());
+
+        bin
+    }
+
+    fn deserialize(bin: &mut &[u8]) -> Option<Self> {
+        let spirv = spirv::SPIRVKernelArg::deserialize(bin)?;
+        let size = read_ne_usize(bin);
+        let offset = read_ne_usize(bin);
+        let dead = read_ne_u8(bin) == 1;
+
+        let kind = match read_ne_u8(bin) {
+            0 => KernelArgType::Constant,
+            1 => KernelArgType::Image,
+            2 => KernelArgType::Sampler,
+            3 => KernelArgType::Texture,
+            4 => KernelArgType::MemGlobal,
+            5 => KernelArgType::MemConstant,
+            6 => KernelArgType::MemLocal,
+            _ => return None,
+        };
+
+        Some(Self {
+            spirv: spirv,
+            kind: kind,
+            size: size,
+            offset: offset,
+            dead: dead,
+        })
+    }
+}
+
+impl InternalKernelArg {
+    fn serialize(&self) -> Vec<u8> {
+        let mut bin = Vec::new();
+
+        bin.extend_from_slice(&self.size.to_ne_bytes());
+        bin.extend_from_slice(&self.offset.to_ne_bytes());
+
+        match self.kind {
+            InternalKernelArgType::ConstantBuffer => bin.push(0),
+            InternalKernelArgType::GlobalWorkOffsets => bin.push(1),
+            InternalKernelArgType::PrintfBuffer => bin.push(2),
+            InternalKernelArgType::InlineSampler((addr_mode, filter_mode, norm)) => {
+                bin.push(3);
+                bin.extend_from_slice(&addr_mode.to_ne_bytes());
+                bin.extend_from_slice(&filter_mode.to_ne_bytes());
+                bin.push(norm as u8);
+            }
+            InternalKernelArgType::FormatArray => bin.push(4),
+            InternalKernelArgType::OrderArray => bin.push(5),
+        }
+
+        bin
+    }
+
+    fn deserialize(bin: &mut &[u8]) -> Option<Self> {
+        let size = read_ne_usize(bin);
+        let offset = read_ne_usize(bin);
+
+        let kind = match read_ne_u8(bin) {
+            0 => InternalKernelArgType::ConstantBuffer,
+            1 => InternalKernelArgType::GlobalWorkOffsets,
+            2 => InternalKernelArgType::PrintfBuffer,
+            3 => {
+                let addr_mode = read_ne_u32(bin);
+                let filter_mode = read_ne_u32(bin);
+                let norm = read_ne_u8(bin) == 1;
+                InternalKernelArgType::InlineSampler((addr_mode, filter_mode, norm))
+            }
+            4 => InternalKernelArgType::FormatArray,
+            5 => InternalKernelArgType::OrderArray,
+            _ => return None,
+        };
+
+        Some(Self {
+            kind: kind,
+            size: size,
+            offset: offset,
+        })
     }
 }
 
@@ -454,6 +544,36 @@ fn lower_and_optimize_nir_late(
     res
 }
 
+fn deserialize_nir(
+    bin: &mut &[u8],
+    d: &Device,
+) -> Option<(NirShader, Vec<KernelArg>, Vec<InternalKernelArg>)> {
+    let nir_len = read_ne_usize(bin);
+
+    let nir = NirShader::deserialize(
+        bin,
+        nir_len,
+        d.screen()
+            .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
+    )?;
+
+    let arg_len = read_ne_usize(bin);
+    let mut args = Vec::with_capacity(arg_len);
+    for _ in 0..arg_len {
+        args.push(KernelArg::deserialize(bin)?);
+    }
+
+    let arg_len = read_ne_usize(bin);
+    let mut internal_args = Vec::with_capacity(arg_len);
+    for _ in 0..arg_len {
+        internal_args.push(InternalKernelArg::deserialize(bin)?);
+    }
+
+    assert!(bin.is_empty());
+
+    Some((nir, args, internal_args))
+}
+
 fn convert_spirv_to_nir(
     p: &Program,
     name: &str,
@@ -469,13 +589,50 @@ fn convert_spirv_to_nir(
 
     // TODO: we could run this in parallel?
     for d in p.devs_with_build() {
-        let mut nir = p.to_nir(name, d);
+        let cache = d.screen().shader_cache();
+        let key = p.hash_key(d, name);
 
-        lower_and_optimize_nir_pre_inputs(d, &mut nir, &d.lib_clc);
+        let res = if let Some(cache) = &cache {
+            cache.get(&mut key.unwrap()).and_then(|entry| {
+                let mut bin: &[u8] = &entry;
+                deserialize_nir(&mut bin, d)
+            })
+        } else {
+            None
+        };
 
-        let mut args = KernelArg::from_spirv_nir(&args, &mut nir);
-        let mut internal_args = lower_and_optimize_nir_late(d, &mut nir, args.len());
-        KernelArg::assign_locations(&mut args, &mut internal_args, &mut nir);
+        let (nir, args, internal_args) = if let Some(res) = res {
+            res
+        } else {
+            let mut nir = p.to_nir(name, d);
+
+            lower_and_optimize_nir_pre_inputs(d, &mut nir, &d.lib_clc);
+            let mut args = KernelArg::from_spirv_nir(&args, &mut nir);
+            let mut internal_args = lower_and_optimize_nir_late(d, &mut nir, args.len());
+            KernelArg::assign_locations(&mut args, &mut internal_args, &mut nir);
+
+            if let Some(cache) = cache {
+                let mut bin = Vec::new();
+                let mut nir = nir.serialize();
+
+                bin.extend_from_slice(&nir.len().to_ne_bytes());
+                bin.append(&mut nir);
+
+                bin.extend_from_slice(&args.len().to_ne_bytes());
+                for arg in &args {
+                    bin.append(&mut arg.serialize());
+                }
+
+                bin.extend_from_slice(&internal_args.len().to_ne_bytes());
+                for arg in &internal_args {
+                    bin.append(&mut arg.serialize());
+                }
+
+                cache.put(&bin, &mut key.unwrap());
+            }
+
+            (nir, args, internal_args)
+        };
 
         args_set.insert(args);
         internal_args_set.insert(internal_args);
