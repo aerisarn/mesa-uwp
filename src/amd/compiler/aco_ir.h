@@ -1365,14 +1365,18 @@ struct SOPP_instruction : public Instruction {
 };
 static_assert(sizeof(SOPP_instruction) == sizeof(Instruction) + 8, "Unexpected padding");
 
-struct SOPC_instruction : public Instruction {};
-static_assert(sizeof(SOPC_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
+struct SOPC_instruction : public Instruction {
+   uint32_t padding;
+};
+static_assert(sizeof(SOPC_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
 struct SOP1_instruction : public Instruction {};
 static_assert(sizeof(SOP1_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
 
-struct SOP2_instruction : public Instruction {};
-static_assert(sizeof(SOP2_instruction) == sizeof(Instruction) + 0, "Unexpected padding");
+struct SOP2_instruction : public Instruction {
+   uint32_t padding;
+};
+static_assert(sizeof(SOP2_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
 /**
  * Scalar Memory Format:
