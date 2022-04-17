@@ -2695,6 +2695,10 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
                   use_vop2 = false;
             }
             if (use_vop2) {
+               static_assert(sizeof(VOP2_instruction) <= sizeof(VOP3_instruction),
+                             "Invalid direct instruction cast.");
+               static_assert(sizeof(VOP2_instruction) <= sizeof(VOP3P_instruction),
+                             "Invalid direct instruction cast.");
                instr->format = Format::VOP2;
                switch (instr->opcode) {
                case aco_opcode::v_mad_f32: instr->opcode = aco_opcode::v_mac_f32; break;
