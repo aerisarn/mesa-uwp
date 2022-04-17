@@ -4604,6 +4604,11 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
       }
    }
 
+   /* allow more s_addk_i32 optimizations if carry isn't used */
+   if (instr->opcode == aco_opcode::s_add_u32 && ctx.uses[instr->definitions[1].tempId()] == 0 &&
+       (instr->operands[0].isLiteral() || instr->operands[1].isLiteral()))
+      instr->opcode = aco_opcode::s_add_i32;
+
    ctx.instructions.emplace_back(std::move(instr));
 }
 
