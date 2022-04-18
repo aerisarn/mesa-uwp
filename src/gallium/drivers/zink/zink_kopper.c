@@ -689,7 +689,7 @@ zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int 
       return true;
    }
    if (update_caps(screen, cdt) != VK_SUCCESS) {
-      debug_printf("zink: failed to update swapchain capabilities");
+      mesa_loge("zink: failed to update swapchain capabilities");
       return false;
    }
    *w = cdt->caps.currentExtent.width;
