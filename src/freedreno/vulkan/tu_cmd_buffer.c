@@ -3517,41 +3517,6 @@ tu6_emit_consts_geom(struct tu_cmd_buffer *cmd,
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
-static enum tu_lrz_direction
-tu6_lrz_depth_mode(struct A6XX_GRAS_LRZ_CNTL *gras_lrz_cntl,
-                   VkCompareOp depthCompareOp,
-                   bool *invalidate_lrz)
-{
-   enum tu_lrz_direction lrz_direction = TU_LRZ_UNKNOWN;
-
-   /* LRZ does not support some depth modes. */
-   switch (depthCompareOp) {
-   case VK_COMPARE_OP_ALWAYS:
-   case VK_COMPARE_OP_NOT_EQUAL:
-      *invalidate_lrz = true;
-      gras_lrz_cntl->lrz_write = false;
-      break;
-   case VK_COMPARE_OP_EQUAL:
-   case VK_COMPARE_OP_NEVER:
-      gras_lrz_cntl->lrz_write = false;
-      break;
-   case VK_COMPARE_OP_GREATER:
-   case VK_COMPARE_OP_GREATER_OR_EQUAL:
-      lrz_direction = TU_LRZ_GREATER;
-      gras_lrz_cntl->greater = true;
-      break;
-   case VK_COMPARE_OP_LESS:
-   case VK_COMPARE_OP_LESS_OR_EQUAL:
-      lrz_direction = TU_LRZ_LESS;
-      break;
-   default:
-      unreachable("bad VK_COMPARE_OP value or uninitialized");
-      break;
-   };
-
-   return lrz_direction;
-}
-
 /* update lrz state based on stencil-test func:
  *
  * Conceptually the order of the pipeline is:
@@ -3615,27 +3580,122 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
                         const uint32_t a)
 {
    struct tu_pipeline *pipeline = cmd->state.pipeline;
-   struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = { 0 };
-   bool invalidate_lrz = pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ;
-   bool force_disable_write = pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE;
-   enum tu_lrz_direction lrz_direction = TU_LRZ_UNKNOWN;
-
-   gras_lrz_cntl.enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
-   gras_lrz_cntl.lrz_write = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
-   gras_lrz_cntl.z_test_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE;
-   gras_lrz_cntl.z_bounds_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE;
-
+   bool z_test_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
+   bool z_write_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+   bool z_read_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_READ_ENABLE;
+   bool z_bounds_enable = cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE;
    VkCompareOp depth_compare_op = (cmd->state.rb_depth_cntl & A6XX_RB_DEPTH_CNTL_ZFUNC__MASK) >> A6XX_RB_DEPTH_CNTL_ZFUNC__SHIFT;
-   lrz_direction = tu6_lrz_depth_mode(&gras_lrz_cntl, depth_compare_op, &invalidate_lrz);
 
-   /* LRZ doesn't transition properly between GREATER* and LESS* depth compare ops */
+   struct A6XX_GRAS_LRZ_CNTL gras_lrz_cntl = { 0 };
+
+   /* What happens in FS could affect LRZ, e.g.: writes to gl_FragDepth
+    * or early fragment tests.
+    */
+   if (pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_LRZ) {
+      cmd->state.lrz.valid = false;
+      return gras_lrz_cntl;
+   }
+
+   /* If depth test is disabled we shouldn't touch LRZ.
+    * Same if there is no depth attachment.
+    */
+   if (a == VK_ATTACHMENT_UNUSED || !z_test_enable ||
+       (cmd->device->instance->debug_flags & TU_DEBUG_NOLRZ))
+      return gras_lrz_cntl;
+
+   if (!cmd->state.attachments) {
+      /* Secondary cmdbuf - there is nothing we could do. */
+      return gras_lrz_cntl;
+   }
+
+   gras_lrz_cntl.enable = z_test_enable;
+   gras_lrz_cntl.lrz_write =
+      z_write_enable &&
+      !(pipeline->lrz.force_disable_mask & TU_LRZ_FORCE_DISABLE_WRITE);
+   gras_lrz_cntl.z_test_enable = z_read_enable;
+   gras_lrz_cntl.z_bounds_enable = z_bounds_enable;
+
+   /* LRZ is disabled until it is cleared, which means that one "wrong"
+    * depth test or shader could disable LRZ until depth buffer is cleared.
+    */
+   bool disable_lrz = false;
+   bool temporary_disable_lrz = false;
+
+   /* If Z is not written - it doesn't affect LRZ buffer state.
+    * Which means two things:
+    * - Don't lock direction until Z is written for the first time;
+    * - If Z isn't written and direction IS locked it's possible to just
+    *   temporary disable LRZ instead of fully bailing out, when direction
+    *   is changed.
+    */
+
+   enum tu_lrz_direction lrz_direction = TU_LRZ_UNKNOWN;
+   switch (depth_compare_op) {
+   case VK_COMPARE_OP_ALWAYS:
+   case VK_COMPARE_OP_NOT_EQUAL:
+      /* OP_ALWAYS and OP_NOT_EQUAL could have depth value of any direction,
+       * so if there is a depth write - LRZ must be disabled.
+       */
+      if (z_write_enable) {
+         disable_lrz = true;
+      } else {
+         temporary_disable_lrz = true;
+      }
+      break;
+   case VK_COMPARE_OP_EQUAL:
+   case VK_COMPARE_OP_NEVER:
+      /* Blob disables LRZ for OP_EQUAL, and from our empirical
+       * evidence it is a right thing to do.
+       *
+       * Both OP_EQUAL and OP_NEVER don't change LRZ buffer so
+       * we could just temporary disable LRZ.
+       */
+      temporary_disable_lrz = true;
+      break;
+   case VK_COMPARE_OP_GREATER:
+   case VK_COMPARE_OP_GREATER_OR_EQUAL:
+      lrz_direction = TU_LRZ_GREATER;
+      gras_lrz_cntl.greater = true;
+      break;
+   case VK_COMPARE_OP_LESS:
+   case VK_COMPARE_OP_LESS_OR_EQUAL:
+      lrz_direction = TU_LRZ_LESS;
+      gras_lrz_cntl.greater = false;
+      break;
+   default:
+      unreachable("bad VK_COMPARE_OP value or uninitialized");
+      break;
+   };
+
+   /* If depthfunc direction is changed, bail out on using LRZ. The
+    * LRZ buffer encodes a min/max depth value per block, but if
+    * we switch from GT/GE <-> LT/LE, those values cannot be
+    * interpreted properly.
+    */
    if (cmd->state.lrz.prev_direction != TU_LRZ_UNKNOWN &&
        lrz_direction != TU_LRZ_UNKNOWN &&
        cmd->state.lrz.prev_direction != lrz_direction) {
-      invalidate_lrz = true;
+      if (z_write_enable) {
+         disable_lrz = true;
+      } else {
+         temporary_disable_lrz = true;
+      }
    }
 
-   cmd->state.lrz.prev_direction = lrz_direction;
+   /* Consider the following sequence of depthfunc changes:
+    *
+    * - COMPARE_OP_GREATER -> COMPARE_OP_EQUAL -> COMPARE_OP_GREATER
+    * LRZ is disabled during COMPARE_OP_EQUAL but could be enabled
+    * during second VK_COMPARE_OP_GREATER.
+    *
+    * - COMPARE_OP_GREATER -> COMPARE_OP_EQUAL -> COMPARE_OP_LESS
+    * Here, LRZ is disabled during COMPARE_OP_EQUAL and should become
+    * invalid during COMPARE_OP_LESS.
+    *
+    * This shows that we should keep last KNOWN direction.
+    */
+   if (z_write_enable && lrz_direction != TU_LRZ_UNKNOWN)
+      cmd->state.lrz.prev_direction = lrz_direction;
 
    /* Invalidate LRZ and disable write if stencil test is enabled */
    bool stencil_test_enable = cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE;
@@ -3657,21 +3717,20 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
          (cmd->state.rb_stencil_cntl & A6XX_RB_STENCIL_CONTROL_FUNC_BF__MASK) >> A6XX_RB_STENCIL_CONTROL_FUNC_BF__SHIFT;
 
       tu6_lrz_stencil_op(&gras_lrz_cntl, stencil_front_compare_op,
-                         stencil_front_writemask, &invalidate_lrz);
+                         stencil_front_writemask, &disable_lrz);
 
       tu6_lrz_stencil_op(&gras_lrz_cntl, stencil_back_compare_op,
-                         stencil_back_writemask, &invalidate_lrz);
+                         stencil_back_writemask, &disable_lrz);
    }
 
-   if (force_disable_write)
-      gras_lrz_cntl.lrz_write = false;
-
-   if (invalidate_lrz) {
+   if (disable_lrz)
       cmd->state.lrz.valid = false;
-   }
 
-   /* In case no depth attachment or invalid, we clear the gras_lrz_cntl register */
-   if (a == VK_ATTACHMENT_UNUSED || !cmd->state.lrz.valid)
+   if (temporary_disable_lrz)
+      gras_lrz_cntl.enable = false;
+
+   cmd->state.lrz.enabled = cmd->state.lrz.valid && gras_lrz_cntl.enable;
+   if (!cmd->state.lrz.enabled)
       memset(&gras_lrz_cntl, 0, sizeof(gras_lrz_cntl));
 
    return gras_lrz_cntl;
@@ -3761,7 +3820,9 @@ tu6_build_depth_plane_z_mode(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    if ((cmd->state.pipeline->lrz.fs_has_kill ||
         cmd->state.pipeline->subpass_feedback_loop_ds) &&
        (depth_write || stencil_write)) {
-      zmode = cmd->state.lrz.valid ? A6XX_EARLY_LRZ_LATE_Z : A6XX_LATE_Z;
+      zmode = (cmd->state.lrz.valid && cmd->state.lrz.enabled)
+                 ? A6XX_EARLY_LRZ_LATE_Z
+                 : A6XX_LATE_Z;
    }
 
    if (cmd->state.pipeline->lrz.force_late_z || !depth_test_enable)

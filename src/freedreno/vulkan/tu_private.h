@@ -1117,7 +1117,10 @@ struct tu_lrz_state
 {
    /* Depth/Stencil image currently on use to do LRZ */
    struct tu_image *image;
+   /* If LRZ is in invalid state we cannot use it until depth is cleared */
    bool valid : 1;
+   /* Allows to temporary disable LRZ */
+   bool enabled : 1;
    enum tu_lrz_direction prev_direction;
 };
 
