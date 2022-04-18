@@ -1661,8 +1661,14 @@ populate_format_props(struct zink_screen *screen)
             mod_props.pDrmFormatModifierProperties = mods;
             props.pNext = &mod_props;
          }
+         VkFormatProperties3 props3 = {0};
+         props3.sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3;
+         props3.pNext = props.pNext;
+         props.pNext = &props3;
          VKSCR(GetPhysicalDeviceFormatProperties2)(screen->pdev, format, &props);
          screen->format_props[i] = props.formatProperties;
+         if (props3.linearTilingFeatures & VK_FORMAT_FEATURE_2_LINEAR_COLOR_ATTACHMENT_BIT_NV)
+            screen->format_props[i].linearTilingFeatures |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
          if (screen->info.have_EXT_image_drm_format_modifier && mod_props.drmFormatModifierCount) {
             screen->modifier_props[i].drmFormatModifierCount = mod_props.drmFormatModifierCount;
             screen->modifier_props[i].pDrmFormatModifierProperties = ralloc_array(screen, VkDrmFormatModifierPropertiesEXT, mod_props.drmFormatModifierCount);
