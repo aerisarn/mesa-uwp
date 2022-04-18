@@ -1142,10 +1142,11 @@ sched_dag_init(struct ir3_sched_ctx *ctx)
 {
    ctx->dag = dag_create(ctx);
 
-   foreach_instr (instr, &ctx->unscheduled_list) {
+   foreach_instr (instr, &ctx->unscheduled_list)
       sched_node_init(ctx, instr);
+
+   foreach_instr (instr, &ctx->unscheduled_list)
       sched_node_add_deps(instr);
-   }
 
    dag_traverse_bottom_up(ctx->dag, sched_dag_max_delay_cb, NULL);
 }
