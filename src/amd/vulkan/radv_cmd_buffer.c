@@ -2753,8 +2753,9 @@ union vs_prolog_key_header {
       uint32_t misaligned_mask : 1;
       uint32_t post_shuffle : 1;
       uint32_t nontrivial_divisors : 1;
+      uint32_t zero_divisors : 1;
       /* We need this to ensure the padding is zero. It's useful even if it's unused. */
-      uint32_t padding0 : 6;
+      uint32_t padding0 : 5;
    };
    uint32_t v;
 };
@@ -2796,6 +2797,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
    uint32_t attribute_mask = BITFIELD_MASK(num_attributes);
 
    uint32_t instance_rate_inputs = state->instance_rate_inputs & attribute_mask;
+   uint32_t zero_divisors = state->zero_divisors & attribute_mask;
    *nontrivial_divisors = state->nontrivial_divisors & attribute_mask;
    enum chip_class chip = device->physical_device->rad_info.chip_class;
    const uint32_t misaligned_mask = chip == GFX6 || chip >= GFX10 ? cmd_buffer->state.vbo_misaligned_mask : 0;
@@ -2807,7 +2809,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
        !misaligned_mask && !state->alpha_adjust_lo && !state->alpha_adjust_hi) {
       if (!instance_rate_inputs) {
          prolog = device->simple_vs_prologs[num_attributes - 1];
-      } else if (num_attributes <= 16 && !*nontrivial_divisors &&
+      } else if (num_attributes <= 16 && !*nontrivial_divisors && !zero_divisors &&
                  util_bitcount(instance_rate_inputs) ==
                     (util_last_bit(instance_rate_inputs) - ffs(instance_rate_inputs) + 1)) {
          unsigned index = radv_instance_rate_prolog_index(num_attributes, instance_rate_inputs);
@@ -2818,7 +2820,7 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
       return prolog;
 
    /* if we couldn't use a pre-compiled prolog, find one in the cache or create one */
-   uint32_t key_words[16];
+   uint32_t key_words[17];
    unsigned key_size = 1;
 
    struct radv_vs_prolog_key key;
@@ -2846,6 +2848,10 @@ lookup_vs_prolog(struct radv_cmd_buffer *cmd_buffer, struct radv_shader *vs_shad
    if (*nontrivial_divisors) {
       header.nontrivial_divisors = true;
       key_words[key_size++] = *nontrivial_divisors;
+   }
+   if (zero_divisors) {
+      header.zero_divisors = true;
+      key_words[key_size++] = zero_divisors;
    }
    if (misaligned_mask) {
       header.misaligned_mask = true;
@@ -5614,8 +5620,11 @@ radv_CmdSetVertexInputEXT(VkCommandBuffer commandBuffer, uint32_t vertexBindingD
       if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) {
          state->instance_rate_inputs |= 1u << loc;
          state->divisors[loc] = binding->divisor;
-         if (binding->divisor != 1)
+         if (binding->divisor == 0) {
+            state->zero_divisors |= 1u << loc;
+         } else if (binding->divisor > 1) {
             state->nontrivial_divisors |= 1u << loc;
+         }
       }
       cmd_buffer->vertex_bindings[attrib->binding].stride = binding->stride;
       state->offsets[loc] = attrib->offset;
