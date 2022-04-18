@@ -681,7 +681,9 @@ zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int 
 {
    struct zink_resource *res = zink_resource(pres);
    struct zink_screen *screen = zink_screen(pscreen);
-   assert(res->obj->dt);
+   assert(pres->bind & PIPE_BIND_DISPLAY_TARGET);
+   if (!res->obj->dt)
+      return false;
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
    if (cdt->type != KOPPER_X11) {
       *w = res->base.b.width0;
