@@ -1794,6 +1794,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
       /* Both formats use UBWC and so neither can be reinterpreted.
        * TODO: We could do an in-place decompression of the dst instead.
        */
+      perf_debug(cmd->device, "TODO: Do in-place UBWC decompression for UBWC->UBWC blits");
       use_staging_blit = true;
    }
 
@@ -2534,7 +2535,9 @@ tu_clear_gmem_attachments(struct tu_cmd_buffer *cmd,
    const struct tu_subpass *subpass = cmd->state.subpass;
    struct tu_cs *cs = &cmd->draw_cs;
 
-   /* TODO: swap the loops for smaller cmdstream */
+   if (rect_count > 1)
+      perf_debug(cmd->device, "TODO: Swap tu_clear_gmem_attachments() loop for smaller command stream");
+
    for (unsigned i = 0; i < rect_count; i++) {
       unsigned x1 = rects[i].rect.offset.x;
       unsigned y1 = rects[i].rect.offset.y;

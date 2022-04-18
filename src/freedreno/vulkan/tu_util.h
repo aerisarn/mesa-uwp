@@ -329,4 +329,9 @@ tu6_pack_border_color(struct bcolor_entry *bcolor, const VkClearColorValue *val,
 void
 tu_dbg_log_gmem_load_store_skips(struct tu_device *device);
 
+#define perf_debug(device, fmt, ...) do {                               \
+   if (unlikely((device)->instance->debug_flags & TU_DEBUG_PERF))       \
+      mesa_log(MESA_LOG_WARN, (MESA_LOG_TAG), (fmt), ##__VA_ARGS__);    \
+} while(0)
+
 #endif /* TU_UTIL_H */

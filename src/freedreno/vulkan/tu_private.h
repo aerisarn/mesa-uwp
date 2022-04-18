@@ -270,6 +270,7 @@ enum tu_debug_flags
    TU_DEBUG_UNALIGNED_STORE = 1 << 15,
    TU_DEBUG_LAYOUT = 1 << 16,
    TU_DEBUG_LOG_SKIP_GMEM_OPS = 1 << 17,
+   TU_DEBUG_PERF = 1 << 18,
 };
 
 struct tu_instance

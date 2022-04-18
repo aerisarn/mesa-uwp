@@ -96,8 +96,10 @@ tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
    if (src == dst)
       return;
 
-   if (dep_invalid_for_gmem(dep))
+   if (dep_invalid_for_gmem(dep)) {
+      perf_debug((struct tu_device *)pass->base.device, "Disabling gmem rendering due to invalid subpass dependency");
       pass->gmem_pixels = 0;
+   }
 
    struct tu_subpass_barrier *dst_barrier;
    if (dst == VK_SUBPASS_EXTERNAL) {

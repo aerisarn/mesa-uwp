@@ -3476,11 +3476,10 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
          if (pass->attachments[a].gmem_offset < 0)
             continue;
 
-         /* TODO:
-          * check if the resolved attachment is needed by later subpasses,
+         /* check if the resolved attachment is needed by later subpasses,
           * if it is, should be doing a GMEM->GMEM resolve instead of GMEM->MEM->GMEM..
           */
-         tu_finishme("missing GMEM->GMEM resolve path\n");
+         perf_debug(cmd->device, "TODO: missing GMEM->GMEM resolve path\n");
          tu_load_gmem_attachment(cmd, cs, a, false, true);
       }
    }
@@ -3711,8 +3710,10 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
        * so if there is a depth write - LRZ must be disabled.
        */
       if (z_write_enable) {
+         perf_debug(cmd->device, "Invalidating LRZ due to ALWAYS/NOT_EQUAL");
          disable_lrz = true;
       } else {
+         perf_debug(cmd->device, "Skipping LRZ due to ALWAYS/NOT_EQUAL");
          temporary_disable_lrz = true;
       }
       break;
@@ -3750,8 +3751,10 @@ tu6_calculate_lrz_state(struct tu_cmd_buffer *cmd,
        lrz_direction != TU_LRZ_UNKNOWN &&
        cmd->state.lrz.prev_direction != lrz_direction) {
       if (z_write_enable) {
+         perf_debug(cmd->device, "Invalidating LRZ due to direction change");
          disable_lrz = true;
       } else {
+         perf_debug(cmd->device, "Skipping LRZ due to direction change");
          temporary_disable_lrz = true;
       }
    }
