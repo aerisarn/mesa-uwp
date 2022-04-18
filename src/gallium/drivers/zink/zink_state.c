@@ -32,6 +32,7 @@
 #include "util/u_dual_blend.h"
 #include "util/u_memory.h"
 #include "util/u_helpers.h"
+#include "vulkan/util/vk_format.h"
 
 #include <math.h>
 
@@ -118,6 +119,7 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
          ves->hw_state.attribs[i].format = format;
          assert(ves->hw_state.attribs[i].format != VK_FORMAT_UNDEFINED);
          ves->hw_state.attribs[i].offset = elem->src_offset;
+         ves->min_stride[binding] = MAX2(ves->min_stride[binding], elem->src_offset + vk_format_get_blocksize(format));
       }
    }
    assert(num_decomposed + num_elements <= PIPE_MAX_ATTRIBS);
