@@ -520,6 +520,9 @@ zink_verify_device_extensions(struct zink_screen *screen)
 %if registry.in_registry(ext.name):
    if (screen->info.have_${ext.name_with_vendor()}) {
 %for cmd in registry.get_registry_entry(ext.name).device_commands:
+%if cmd.find("win32"):
+#ifdef _WIN32
+%endif
       if (!screen->vk.${cmd.lstrip("vk")}) {
 #ifndef NDEBUG
          screen->vk.${cmd.lstrip("vk")} = (PFN_${cmd})zink_stub_${cmd.lstrip("vk")};
@@ -527,6 +530,9 @@ zink_verify_device_extensions(struct zink_screen *screen)
          screen->vk.${cmd.lstrip("vk")} = (PFN_${cmd})zink_stub_function_not_loaded;
 #endif
       }
+%if cmd.find("win32"):
+#endif
+%endif
 %endfor
    }
 %endif
