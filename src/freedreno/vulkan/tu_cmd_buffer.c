@@ -3374,6 +3374,7 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    const struct tu_render_pass *pass = cmd->state.pass;
    struct tu_cs *cs = &cmd->draw_cs;
+   const struct tu_subpass *last_subpass = cmd->state.subpass;
 
    const struct tu_subpass *subpass = cmd->state.subpass++;
 
@@ -3382,8 +3383,10 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
     * TODO: Improve this tracking for keeping the state of the past depth/stencil images,
     * so if they become active again, we reuse its old state.
     */
-   cmd->state.lrz.valid = false;
-   cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+   if (last_subpass->depth_stencil_attachment.attachment != subpass->depth_stencil_attachment.attachment) {
+      cmd->state.lrz.valid = false;
+      cmd->state.dirty |= TU_CMD_DIRTY_LRZ;
+   }
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
 
