@@ -691,7 +691,7 @@ lower_rq_proceed(nir_builder *b, nir_ssa_def *index, struct ray_query_vars *vars
          nir_pop_if(b, NULL);
 
          rq_store_var(b, index, vars->trav.stack,
-                      nir_iadd_imm(b, rq_load_var(b, index, vars->trav.stack), 1), 1);
+                      nir_iadd_imm(b, rq_load_var(b, index, vars->trav.stack), -1), 1);
 
          nir_ssa_def *bvh_node =
             rq_load_array(b, index, vars->stack, rq_load_var(b, index, vars->trav.stack));
