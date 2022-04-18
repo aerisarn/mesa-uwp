@@ -379,6 +379,14 @@ agx_ra(agx_context *ctx)
    agx_foreach_instr_global_safe(ctx, I) {
       if (I->op == AGX_OPCODE_PHI || I->op == AGX_OPCODE_P_LOGICAL_END)
          agx_remove_instruction(I);
+
+      /* Remove identity moves */
+      if (I->op == AGX_OPCODE_MOV && I->src[0].type == AGX_INDEX_REGISTER &&
+          I->dest[0].size == I->src[0].size && I->src[0].value == I->dest[0].value) {
+
+         assert(I->dest[0].type == AGX_INDEX_REGISTER);
+         agx_remove_instruction(I);
+      }
    }
 
    free(ssa_to_reg);
