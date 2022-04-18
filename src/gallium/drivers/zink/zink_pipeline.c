@@ -61,7 +61,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       vertex_input_state.vertexBindingDescriptionCount = state->element_state->num_bindings;
       vertex_input_state.pVertexAttributeDescriptions = state->element_state->attribs;
       vertex_input_state.vertexAttributeDescriptionCount = state->element_state->num_attribs;
-      if (!screen->info.have_EXT_extended_dynamic_state) {
+      if (!screen->info.have_EXT_extended_dynamic_state || !state->uses_dynamic_stride) {
          for (int i = 0; i < state->element_state->num_bindings; ++i) {
             const unsigned buffer_id = binding_map[i];
             VkVertexInputBindingDescription *binding = &state->element_state->b.bindings[i];
@@ -232,7 +232,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    if (state->element_state->num_attribs) {
       if (screen->info.have_EXT_vertex_input_dynamic_state)
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_EXT;
-      else if (screen->info.have_EXT_extended_dynamic_state)
+      else if (screen->info.have_EXT_extended_dynamic_state && state->uses_dynamic_stride)
          dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
    }
    if (screen->info.have_EXT_extended_dynamic_state2) {

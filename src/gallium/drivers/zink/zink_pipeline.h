@@ -76,6 +76,7 @@ struct zink_gfx_pipeline_state {
    uint32_t vertex_buffers_enabled_mask;
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
    bool sample_locations_enabled;
+   bool uses_dynamic_stride;
    bool have_EXT_extended_dynamic_state;
    bool have_EXT_extended_dynamic_state2;
    uint8_t has_points; //either gs outputs points or prim type is points

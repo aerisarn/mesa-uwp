@@ -749,8 +749,12 @@ zink_draw(struct pipe_context *pctx,
 
    if (DRAW_STATE)
       zink_bind_vertex_state(batch, ctx, vstate, partial_velem_mask);
-   else if (BATCH_CHANGED || ctx->vertex_buffers_dirty)
-      zink_bind_vertex_buffers<DYNAMIC_STATE>(batch, ctx);
+   else if (BATCH_CHANGED || ctx->vertex_buffers_dirty) {
+      if (DYNAMIC_STATE == ZINK_DYNAMIC_VERTEX_INPUT || ctx->gfx_pipeline_state.uses_dynamic_stride)
+         zink_bind_vertex_buffers<DYNAMIC_STATE>(batch, ctx);
+      else
+         zink_bind_vertex_buffers<ZINK_NO_DYNAMIC_STATE>(batch, ctx);
+   }
 
    if (BATCH_CHANGED) {
       ctx->pipeline_changed[0] = false;

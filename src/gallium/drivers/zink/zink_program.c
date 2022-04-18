@@ -240,7 +240,9 @@ equals_gfx_pipeline_state(const void *a, const void *b)
 {
    const struct zink_gfx_pipeline_state *sa = a;
    const struct zink_gfx_pipeline_state *sb = b;
-   if (!sa->have_EXT_extended_dynamic_state) {
+   if (sa->uses_dynamic_stride != sb->uses_dynamic_stride)
+      return false;
+   if (!sa->have_EXT_extended_dynamic_state || !sa->uses_dynamic_stride) {
       if (sa->vertex_buffers_enabled_mask != sb->vertex_buffers_enabled_mask)
          return false;
       /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
@@ -252,6 +254,8 @@ equals_gfx_pipeline_state(const void *a, const void *b)
          if (sa->vertex_strides[idx_a] != sb->vertex_strides[idx_b])
             return false;
       }
+   }
+   if (!sa->have_EXT_extended_dynamic_state) {
       if (sa->dyn_state1.front_face != sb->dyn_state1.front_face)
          return false;
       if (!!sa->dyn_state1.depth_stencil_alpha_state != !!sb->dyn_state1.depth_stencil_alpha_state ||
@@ -765,7 +769,29 @@ get_pipeline_idx(bool have_EXT_extended_dynamic_state, enum pipe_prim_type mode,
    }
    return vkmode;
 }
-                 
+
+/*
+   VUID-vkCmdBindVertexBuffers2-pStrides-06209
+   If pStrides is not NULL each element of pStrides must be either 0 or greater than or equal
+   to the maximum extent of all vertex input attributes fetched from the corresponding
+   binding, where the extent is calculated as the VkVertexInputAttributeDescription::offset
+   plus VkVertexInputAttributeDescription::format size
+
+   * thus, if the stride doesn't meet the minimum requirement for a binding,
+   * disable the dynamic state here and use a fully-baked pipeline
+ */
+static bool
+check_vertex_strides(struct zink_context *ctx)
+{
+   const struct zink_vertex_elements_state *ves = ctx->element_state;
+   for (unsigned i = 0; i < ves->hw_state.num_bindings; i++) {
+      const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ves->binding_map[i];
+      unsigned stride = vb->buffer.resource ? vb->stride : 0;
+      if (stride < ves->min_stride[i])
+         return false;
+   }
+   return true;
+}
 
 VkPipeline
 zink_get_gfx_pipeline(struct zink_context *ctx,
@@ -776,6 +802,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const bool have_EXT_vertex_input_dynamic_state = screen->info.have_EXT_vertex_input_dynamic_state;
    const bool have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
+   bool uses_dynamic_stride = state->uses_dynamic_stride;
 
    VkPrimitiveTopology vkmode = zink_primitive_topology(mode);
    const unsigned idx = get_pipeline_idx(screen->info.have_EXT_extended_dynamic_state, mode, vkmode);
@@ -797,7 +824,9 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
    if (!have_EXT_vertex_input_dynamic_state && ctx->vertex_state_changed) {
       if (state->pipeline)
          state->final_hash ^= state->vertex_hash;
-      if (!have_EXT_extended_dynamic_state) {
+      if (have_EXT_extended_dynamic_state)
+         uses_dynamic_stride = check_vertex_strides(ctx);
+      if (!uses_dynamic_stride) {
          uint32_t hash = 0;
          /* if we don't have dynamic states, we have to hash the enabled vertex buffer bindings */
          uint32_t vertex_buffers_enabled_mask = state->vertex_buffers_enabled_mask;
@@ -815,6 +844,7 @@ zink_get_gfx_pipeline(struct zink_context *ctx,
       state->final_hash ^= state->vertex_hash;
    }
    state->modules_changed = false;
+   state->uses_dynamic_stride = uses_dynamic_stride;
    ctx->vertex_state_changed = false;
 
    entry = _mesa_hash_table_search_pre_hashed(&prog->pipelines[idx], state->final_hash, state);
