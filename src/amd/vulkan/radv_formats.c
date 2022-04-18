@@ -748,7 +748,7 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
    if (radv_is_buffer_format_supported(format, &scaled)) {
       if (format != VK_FORMAT_R64_UINT && format != VK_FORMAT_R64_SINT) {
          buffer |= VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT;
-         if (!scaled)
+         if (!scaled && !vk_format_is_srgb(format))
             buffer |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
       }
       buffer |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT |
