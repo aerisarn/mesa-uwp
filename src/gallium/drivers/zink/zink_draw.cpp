@@ -601,9 +601,7 @@ zink_draw(struct pipe_context *pctx,
    if (have_streamout && ctx->dirty_so_targets)
       zink_emit_stream_output_targets(pctx);
 
-   bool pipeline_changed = false;
-   if (DYNAMIC_STATE == ZINK_NO_DYNAMIC_STATE)
-      pipeline_changed = update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
+   bool pipeline_changed = update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
 
    if (BATCH_CHANGED || ctx->vp_state_changed || (DYNAMIC_STATE == ZINK_NO_DYNAMIC_STATE && pipeline_changed)) {
       VkViewport viewports[PIPE_MAX_VIEWPORTS];
@@ -759,10 +757,8 @@ zink_draw(struct pipe_context *pctx,
       zink_select_draw_vbo(ctx);
    }
 
-   if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE) {
-      update_gfx_pipeline<BATCH_CHANGED>(ctx, batch->state, mode);
-      if (BATCH_CHANGED || mode_changed)
-         VKCTX(CmdSetPrimitiveTopologyEXT)(batch->state->cmdbuf, zink_primitive_topology(mode));
+   if (DYNAMIC_STATE != ZINK_NO_DYNAMIC_STATE && (BATCH_CHANGED || mode_changed)) {
+      VKCTX(CmdSetPrimitiveTopologyEXT)(batch->state->cmdbuf, zink_primitive_topology(mode));
    }
 
    if (DYNAMIC_STATE >= ZINK_DYNAMIC_STATE2 && (BATCH_CHANGED || ctx->primitive_restart != dinfo->primitive_restart)) {
