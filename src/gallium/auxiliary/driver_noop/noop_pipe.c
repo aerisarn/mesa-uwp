@@ -616,6 +616,14 @@ static bool noop_check_resource_capability(struct pipe_screen *screen,
    return true;
 }
 
+static void noop_create_fence_win32(struct pipe_screen *screen,
+                                    struct pipe_fence_handle **fence,
+                                    void *handle,
+                                    enum pipe_fd_type type)
+{
+   screen->create_fence_win32(screen, fence, handle, type);
+}
+
 static void noop_set_max_shader_compiler_threads(struct pipe_screen *screen,
                                                  unsigned max_threads)
 {
@@ -772,6 +780,8 @@ struct pipe_screen *noop_screen_create(struct pipe_screen *oscreen)
    screen->get_disk_shader_cache = noop_get_disk_shader_cache;
    screen->get_compiler_options = noop_get_compiler_options;
    screen->finalize_nir = noop_finalize_nir;
+   if (screen->create_fence_win32)
+      screen->create_fence_win32 = noop_create_fence_win32;
    screen->check_resource_capability = noop_check_resource_capability;
    screen->set_max_shader_compiler_threads = noop_set_max_shader_compiler_threads;
    screen->is_parallel_shader_compilation_finished = noop_is_parallel_shader_compilation_finished;
