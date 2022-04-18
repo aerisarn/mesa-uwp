@@ -238,6 +238,38 @@ virtio_alloc_rsp(struct fd_device *dev, struct msm_ccmd_req *req, uint32_t sz)
    return rsp;
 }
 
+static int execbuf_flush_locked(struct fd_device *dev, int *out_fence_fd);
+
+static int
+execbuf_locked(struct fd_device *dev, void *cmd, uint32_t cmd_size,
+               uint32_t *handles, uint32_t num_handles,
+               int in_fence_fd, int *out_fence_fd, int ring_idx)
+{
+#define COND(bool, val) ((bool) ? (val) : 0)
+   struct drm_virtgpu_execbuffer eb = {
+         .flags = COND(out_fence_fd, VIRTGPU_EXECBUF_FENCE_FD_OUT) |
+                  COND(in_fence_fd != -1, VIRTGPU_EXECBUF_FENCE_FD_IN) |
+                  VIRTGPU_EXECBUF_RING_IDX,
+         .fence_fd = in_fence_fd,
+         .size  = cmd_size,
+         .command = VOID2U64(cmd),
+         .ring_idx = ring_idx,
+         .bo_handles = VOID2U64(handles),
+         .num_bo_handles = num_handles,
+   };
+
+   int ret = drmIoctl(dev->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
+   if (ret) {
+      ERROR_MSG("EXECBUFFER failed: %s", strerror(errno));
+      return ret;
+   }
+
+   if (out_fence_fd)
+      *out_fence_fd = eb.fence_fd;
+
+   return 0;
+}
+
 /**
  * Helper for "execbuf" ioctl.. note that in virtgpu execbuf is just
  * a generic "send commands to host", not necessarily specific to
@@ -252,42 +284,76 @@ virtio_execbuf_fenced(struct fd_device *dev, struct msm_ccmd_req *req,
                       int in_fence_fd, int *out_fence_fd, int ring_idx)
 {
    struct virtio_device *virtio_dev = to_virtio_device(dev);
+   int ret;
 
    simple_mtx_lock(&virtio_dev->eb_lock);
+   execbuf_flush_locked(dev, NULL);
    req->seqno = ++virtio_dev->next_seqno;
 
-#define COND(bool, val) ((bool) ? (val) : 0)
-   struct drm_virtgpu_execbuffer eb = {
-         .flags = COND(out_fence_fd, VIRTGPU_EXECBUF_FENCE_FD_OUT) |
-                  COND(in_fence_fd != -1, VIRTGPU_EXECBUF_FENCE_FD_IN) |
-                  VIRTGPU_EXECBUF_RING_IDX,
-         .fence_fd = in_fence_fd,
-         .size  = req->len,
-         .command = VOID2U64(req),
-         .ring_idx = ring_idx,
-         .bo_handles = VOID2U64(handles),
-         .num_bo_handles = num_handles,
-   };
+   ret = execbuf_locked(dev, req, req->len, handles, num_handles,
+                        in_fence_fd, out_fence_fd, ring_idx);
 
-   int ret = drmIoctl(dev->fd, DRM_IOCTL_VIRTGPU_EXECBUFFER, &eb);
    simple_mtx_unlock(&virtio_dev->eb_lock);
-   if (ret) {
-      ERROR_MSG("EXECBUFFER failed: %s", strerror(errno));
-      return ret;
-   }
 
-   if (out_fence_fd)
-      *out_fence_fd = eb.fence_fd;
+   return ret;
+}
+
+static int
+execbuf_flush_locked(struct fd_device *dev, int *out_fence_fd)
+{
+   struct virtio_device *virtio_dev = to_virtio_device(dev);
+   int ret;
+
+   if (!virtio_dev->reqbuf_len)
+      return 0;
+
+   ret = execbuf_locked(dev, virtio_dev->reqbuf, virtio_dev->reqbuf_len,
+                        NULL, 0, -1, out_fence_fd, 0);
+   if (ret)
+      return ret;
+
+   virtio_dev->reqbuf_len = 0;
+   virtio_dev->reqbuf_cnt = 0;
 
    return 0;
 }
 
 int
+virtio_execbuf_flush(struct fd_device *dev)
+{
+   struct virtio_device *virtio_dev = to_virtio_device(dev);
+   simple_mtx_lock(&virtio_dev->eb_lock);
+   int ret = execbuf_flush_locked(dev, NULL);
+   simple_mtx_unlock(&virtio_dev->eb_lock);
+   return ret;
+}
+
+int
 virtio_execbuf(struct fd_device *dev, struct msm_ccmd_req *req, bool sync)
 {
-   int fence_fd;
-   int ret = virtio_execbuf_fenced(dev, req, NULL, 0, -1,
-                                   sync ? &fence_fd : NULL, 0);
+   struct virtio_device *virtio_dev = to_virtio_device(dev);
+   int fence_fd, ret = 0;
+
+   simple_mtx_lock(&virtio_dev->eb_lock);
+   req->seqno = ++virtio_dev->next_seqno;
+
+   if ((virtio_dev->reqbuf_len + req->len) > sizeof(virtio_dev->reqbuf)) {
+      ret = execbuf_flush_locked(dev, NULL);
+      if (ret)
+         goto out_unlock;
+   }
+
+   memcpy(&virtio_dev->reqbuf[virtio_dev->reqbuf_len], req, req->len);
+   virtio_dev->reqbuf_len += req->len;
+   virtio_dev->reqbuf_cnt++;
+
+   if (!sync)
+      goto out_unlock;
+
+   ret = execbuf_flush_locked(dev, &fence_fd);
+
+out_unlock:
+   simple_mtx_unlock(&virtio_dev->eb_lock);
 
    if (ret)
       return ret;
