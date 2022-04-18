@@ -567,6 +567,28 @@
       when: on_success
     - when: never
 
+.intel-rules:
+  stage: intel
+  rules:
+    - *ignore_scheduled_pipelines
+    - if: '$COLLABORA_FARM == "offline" && $RUNNER_TAG =~ /^mesa-ci-x86-64-lava-/'
+      when: never
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes: &iris_file_list
+      - src/gallium/drivers/iris/**/*
+      - src/gallium/winsys/iris/**/*
+      - src/intel/**/*
+      when: on_success
+    - changes:
+        *vulkan_file_list
+      when: on_success
+    - when: never
+
 .zink-rules:
   stage: layered-backends
   rules:

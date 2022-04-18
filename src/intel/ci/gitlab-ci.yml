@@ -22,8 +22,13 @@
   variables:
     DRIVER_NAME: iris
 
+.intel-test:
+  extends:
+    - .intel-common-test
+    - .intel-rules
+
 ## ANV only
-# 10 boards
+# 13 boards
 .anv-tgl-test:
   extends:
     - .anv-test
@@ -288,3 +293,37 @@ iris-whl-traces-performance:
     - .profile-traces
   variables:
     GPU_VERSION: intel-cml
+
+## Intel (anv + iris)
+.intel-tgl-test:
+  extends:
+    - .anv-tgl-test
+    - .intel-test
+  variables:
+    GPU_VERSION: intel-tgl
+
+.intel-whl-test:
+  extends:
+    - .iris-whl-test
+    - .intel-test
+  variables:
+    GPU_VERSION: intel-whl
+
+intel-tgl-skqp:
+  extends:
+    - .intel-tgl-test
+    - .skqp-test
+  variables:
+    # Possible skqp backends: gl, gles, unitTest and vk
+    SKQP_BACKENDS: gl gles vk unitTest  # space separated values
+    VK_DRIVER: intel
+
+intel-whl-skqp:
+  extends:
+    - .intel-whl-test
+    - .skqp-test
+    - .test-manual-mr
+  variables:
+    # Possible skqp backends: gl, gles, unitTest and vk
+    SKQP_BACKENDS: gl gles vk unitTest  # space separated values
+    VK_DRIVER: intel
