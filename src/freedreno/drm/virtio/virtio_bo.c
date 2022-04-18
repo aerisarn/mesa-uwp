@@ -183,7 +183,7 @@ virtio_bo_set_name(struct fd_bo *bo, const char *fmt, va_list ap)
 }
 
 static void
-virtio_bo_upload(struct fd_bo *bo, void *src, unsigned len)
+bo_upload(struct fd_bo *bo, unsigned off, void *src, unsigned len)
 {
    unsigned req_len = sizeof(struct msm_ccmd_gem_upload_req) + align(len, 4);
 
@@ -193,12 +193,25 @@ virtio_bo_upload(struct fd_bo *bo, void *src, unsigned len)
    req->hdr = MSM_CCMD(GEM_UPLOAD, req_len);
    req->res_id = to_virtio_bo(bo)->res_id;
    req->pad = 0;
-   req->off = 0;
+   req->off = off;
    req->len = len;
 
    memcpy(req->payload, src, len);
 
    virtio_execbuf(bo->dev, &req->hdr, false);
+}
+
+static void
+virtio_bo_upload(struct fd_bo *bo, void *src, unsigned len)
+{
+   unsigned off = 0;
+   while (len > 0) {
+      unsigned sz = MIN2(len, 0x1000);
+      bo_upload(bo, off, src, sz);
+      off += sz;
+      src += sz;
+      len -= sz;
+   }
 }
 
 static void
