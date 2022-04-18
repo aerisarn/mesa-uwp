@@ -784,10 +784,10 @@ omx_drivers_path = get_option('omx-libs-path')
 if with_gallium_omx != 'disabled'
   # Figure out where to put the omx driver.
   # FIXME: this could all be vastly simplified by adding a 'defined_variable'
-  # argument to meson's get_pkgconfig_variable method.
+  # argument to meson's get_variable method.
   if omx_drivers_path == ''
-    _omx_libdir = dep_omx.get_pkgconfig_variable('libdir')
-    _omx_drivers_dir = dep_omx.get_pkgconfig_variable('pluginsdir')
+    _omx_libdir = dep_omx.get_variable(pkgconfig : 'libdir')
+    _omx_drivers_dir = dep_omx.get_variable(pkgconfig : 'pluginsdir')
     if _omx_libdir == get_option('libdir')
       omx_drivers_path = _omx_drivers_dir
     else
@@ -1995,7 +1995,7 @@ endif
 
 if with_platform_wayland
   dep_wl_scanner = dependency('wayland-scanner', native: true)
-  prog_wl_scanner = find_program(dep_wl_scanner.get_pkgconfig_variable('wayland_scanner'))
+  prog_wl_scanner = find_program(dep_wl_scanner.get_variable(pkgconfig : 'wayland_scanner'))
   if dep_wl_scanner.version().version_compare('>= 1.15')
     wl_scanner_arg = 'private-code'
   else
@@ -2009,7 +2009,7 @@ if with_platform_wayland
     dep_wayland_egl_headers = dep_wayland_egl.partial_dependency(compile_args : true)
   endif
   wayland_dmabuf_xml = join_paths(
-    dep_wl_protocols.get_pkgconfig_variable('pkgdatadir'), 'unstable',
+    dep_wl_protocols.get_variable(pkgconfig : 'pkgdatadir'), 'unstable',
     'linux-dmabuf', 'linux-dmabuf-unstable-v1.xml'
   )
   pre_args += '-DWL_HIDE_DEPRECATED'
