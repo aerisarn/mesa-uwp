@@ -290,8 +290,10 @@ void st_init_limits(struct pipe_screen *screen,
          pc->MaxAtomicBuffers = pc->MaxShaderStorageBlocks / 2;
          pc->MaxShaderStorageBlocks -= pc->MaxAtomicBuffers;
       }
-      pc->MaxImageUniforms = screen->get_shader_param(
-            screen, sh, PIPE_SHADER_CAP_MAX_SHADER_IMAGES);
+      pc->MaxImageUniforms =
+         _min(screen->get_shader_param(screen, sh,
+                                       PIPE_SHADER_CAP_MAX_SHADER_IMAGES),
+              MAX_IMAGE_UNIFORMS);
 
       /* Gallium doesn't really care about local vs. env parameters so use the
        * same limits.
