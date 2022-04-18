@@ -74,8 +74,8 @@ dep_invalid_for_gmem(const VkSubpassDependency2 *dep)
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
    return
-      (dep->srcStageMask & ~framebuffer_space_stages) ||
-      (dep->dstStageMask & ~framebuffer_space_stages) ||
+      (dep->srcStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)) ||
+      (dep->dstStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)) ||
       !(dep->dependencyFlags & VK_DEPENDENCY_BY_REGION_BIT);
 }
 

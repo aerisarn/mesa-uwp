@@ -4723,8 +4723,8 @@ tu_barrier(struct tu_cmd_buffer *cmd,
        * vtx stages which are NOT ok for gmem rendering.
        * See dep_invalid_for_gmem().
        */
-      if ((info->srcStageMask & ~framebuffer_space_stages) ||
-          (info->dstStageMask & ~framebuffer_space_stages)) {
+      if ((info->srcStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)) ||
+          (info->dstStageMask & ~(framebuffer_space_stages | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT))) {
          cmd->state.disable_gmem = true;
       }
    }
