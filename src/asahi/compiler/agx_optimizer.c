@@ -91,13 +91,14 @@ agx_compose_float_src(agx_index to, agx_index from)
 }
 
 static void
-agx_optimizer_fmov(agx_instr **defs, agx_instr *ins, unsigned srcs)
+agx_optimizer_fmov(agx_instr **defs, agx_instr *ins)
 {
-   for (unsigned s = 0; s < srcs; ++s) {
+   agx_foreach_src(ins, s) {
       agx_index src = ins->src[s];
       if (src.type != AGX_INDEX_NORMAL) continue;
       
       agx_instr *def = defs[src.value];
+      if (def == NULL) continue; /* happens for phis in loops */
       if (!agx_is_fmov(def)) continue;
       if (def->saturate) continue;
 
@@ -152,13 +153,14 @@ agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
 }
 
 static void
-agx_optimizer_copyprop(agx_instr **defs, agx_instr *I, unsigned srcs)
+agx_optimizer_copyprop(agx_instr **defs, agx_instr *I)
 {
-   for (unsigned s = 0; s < srcs; ++s) {
+   agx_foreach_src(I, s) {
       agx_index src = I->src[s];
       if (src.type != AGX_INDEX_NORMAL) continue;
 
       agx_instr *def = defs[src.value];
+      if (def == NULL) continue; /* happens for phis in loops */
       if (def->op != AGX_OPCODE_MOV) continue;
 
       /* At the moment, not all instructions support size conversions. Notably
@@ -182,17 +184,17 @@ agx_optimizer_forward(agx_context *ctx)
    agx_foreach_instr_global(ctx, I) {
       struct agx_opcode_info info = agx_opcodes_info[I->op];
 
-      for (unsigned d = 0; d < info.nr_dests; ++d) {
+      agx_foreach_dest(I, d) {
          if (I->dest[d].type == AGX_INDEX_NORMAL)
             defs[I->dest[d].value] = I;
       }
 
       /* Optimize moves */
-      agx_optimizer_copyprop(defs, I, info.nr_srcs);
+      agx_optimizer_copyprop(defs, I);
 
       /* Propagate fmov down */
       if (info.is_float)
-         agx_optimizer_fmov(defs, I, info.nr_srcs);
+         agx_optimizer_fmov(defs, I);
 
       /* Inline immediates if we can. TODO: systematic */
       if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_ST_TILE && I->op != AGX_OPCODE_P_EXTRACT && I->op != AGX_OPCODE_P_COMBINE)
