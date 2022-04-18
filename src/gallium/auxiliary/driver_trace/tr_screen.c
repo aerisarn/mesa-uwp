@@ -983,6 +983,28 @@ trace_screen_fence_get_fd(struct pipe_screen *_screen,
    return result;
 }
 
+static void
+trace_screen_create_fence_win32(struct pipe_screen *_screen,
+                                struct pipe_fence_handle **fence,
+                                void *handle,
+                                enum pipe_fd_type type)
+{
+   struct trace_screen *tr_scr = trace_screen(_screen);
+   struct pipe_screen *screen = tr_scr->screen;
+
+   trace_dump_call_begin("pipe_screen", "create_fence_win32");
+
+   trace_dump_arg(ptr, screen);
+   if (fence)
+      trace_dump_arg(ptr, *fence);
+   trace_dump_arg(ptr, handle);
+   trace_dump_arg_enum(type, tr_util_pipe_fd_type_name(type));
+
+   trace_dump_call_end();
+
+   screen->create_fence_win32(screen, fence, handle, type);
+}
+
 
 static bool
 trace_screen_fence_finish(struct pipe_screen *_screen,
@@ -1370,6 +1392,7 @@ trace_screen_create(struct pipe_screen *screen)
    tr_scr->base.resource_destroy = trace_screen_resource_destroy;
    tr_scr->base.fence_reference = trace_screen_fence_reference;
    SCR_INIT(fence_get_fd);
+   SCR_INIT(create_fence_win32);
    tr_scr->base.fence_finish = trace_screen_fence_finish;
    SCR_INIT(memobj_create_from_handle);
    SCR_INIT(memobj_destroy);
