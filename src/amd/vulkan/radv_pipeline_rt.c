@@ -109,12 +109,21 @@ radv_rt_pipeline_library_create(VkDevice _device, VkPipelineCache _cache,
       goto fail;
 
    if (local_create_info.stageCount) {
-      size_t size = sizeof(VkPipelineShaderStageCreateInfo) * local_create_info.stageCount;
       pipeline->library.stage_count = local_create_info.stageCount;
+
+      size_t size = sizeof(VkPipelineShaderStageCreateInfo) * local_create_info.stageCount;
       pipeline->library.stages = malloc(size);
       if (!pipeline->library.stages)
          goto fail;
+
       memcpy(pipeline->library.stages, local_create_info.pStages, size);
+
+      for (uint32_t i = 0; i < local_create_info.stageCount; i++) {
+         RADV_FROM_HANDLE(vk_shader_module, module, pipeline->library.stages[i].module);
+
+         struct vk_shader_module *new_module = vk_shader_module_clone(NULL, module);
+         pipeline->library.stages[i].module = vk_shader_module_to_handle(new_module);
+      }
    }
 
    if (local_create_info.groupCount) {

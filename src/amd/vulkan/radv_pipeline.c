@@ -240,6 +240,11 @@ radv_pipeline_destroy(struct radv_device *device, struct radv_pipeline *pipeline
       free(pipeline->compute.rt_stack_sizes);
    } else if (pipeline->type == RADV_PIPELINE_LIBRARY) {
       free(pipeline->library.groups);
+      for (uint32_t i = 0; i < pipeline->library.stage_count; i++) {
+         RADV_FROM_HANDLE(vk_shader_module, module, pipeline->library.stages[i].module);
+         vk_object_base_finish(&module->base);
+         ralloc_free(module);
+      }
       free(pipeline->library.stages);
    }
 
