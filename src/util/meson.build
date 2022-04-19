@@ -145,6 +145,8 @@ files_mesa_util = files(
   'u_cpu_detect.h',
   'u_printf.c',
   'u_printf.h',
+  'u_worklist.c',
+  'u_worklist.h',
   'vl_vlc.h',
   'vl_rbsp.h',
   'vma.c',
