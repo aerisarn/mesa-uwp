@@ -3590,15 +3590,15 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* Invoke according to the grid info */
 
-        void *invocation =
-                pan_section_ptr(t.cpu, COMPUTE_JOB, INVOCATION);
         unsigned num_wg[3] = { info->grid[0], info->grid[1], info->grid[2] };
 
         if (info->indirect)
                 num_wg[0] = num_wg[1] = num_wg[2] = 1;
 
         panfrost_update_shader_state(batch, PIPE_SHADER_COMPUTE);
-        panfrost_pack_work_groups_compute(invocation,
+
+#if PAN_ARCH <= 7
+        panfrost_pack_work_groups_compute(pan_section_ptr(t.cpu, COMPUTE_JOB, INVOCATION),
                                           num_wg[0], num_wg[1], num_wg[2],
                                           info->block[0], info->block[1],
                                           info->block[2],
@@ -3621,6 +3621,25 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 cfg.textures = batch->textures[PIPE_SHADER_COMPUTE];
                 cfg.samplers = batch->samplers[PIPE_SHADER_COMPUTE];
         }
+#else
+        pan_section_pack(t.cpu, COMPUTE_JOB, PAYLOAD, cfg) {
+                cfg.workgroup_size_x = info->block[0];
+                cfg.workgroup_size_y = info->block[1];
+                cfg.workgroup_size_z = info->block[2];
+
+                cfg.workgroup_count_x = num_wg[0];
+                cfg.workgroup_count_y = num_wg[1];
+                cfg.workgroup_count_z = num_wg[2];
+
+                panfrost_emit_shader(batch, &cfg.compute, PIPE_SHADER_COMPUTE,
+                                     batch->rsd[PIPE_SHADER_COMPUTE],
+                                     panfrost_emit_shared_memory(batch, info));
+
+                cfg.allow_merging_workgroups = cs->info.cs.allow_merging_workgroups;
+                cfg.task_increment = 1;
+                cfg.task_axis = MALI_TASK_AXIS_Z;
+        }
+#endif
 
         unsigned indirect_dep = 0;
 #if PAN_GPU_INDIRECTS
