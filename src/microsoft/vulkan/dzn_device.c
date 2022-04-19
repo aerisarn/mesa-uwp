@@ -2813,3 +2813,12 @@ dzn_GetDeviceGroupPeerMemoryFeatures(VkDevice device,
 {
    *pPeerMemoryFeatures = 0;
 }
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_GetImageSparseMemoryRequirements2(VkDevice device,
+                                      const VkImageSparseMemoryRequirementsInfo2* pInfo,
+                                      uint32_t *pSparseMemoryRequirementCount,
+                                      VkSparseImageMemoryRequirements2 *pSparseMemoryRequirements)
+{
+   *pSparseMemoryRequirementCount = 0;
+}
