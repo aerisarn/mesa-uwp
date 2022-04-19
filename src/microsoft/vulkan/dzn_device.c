@@ -727,8 +727,6 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       }
    }
 
-   assert((external_props != NULL) == (external_info != NULL));
-
    /* TODO: support image import */
    if (external_info && external_info->handleType != 0)
       return VK_ERROR_FORMAT_NOT_SUPPORTED;
