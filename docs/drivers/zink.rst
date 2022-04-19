@@ -37,9 +37,9 @@ Here's a list of those requirements:
 * Device extensions:
 
   * `VK_KHR_maintenance1`_
-  * ``VK_KHR_create_renderpass2``
-  * ``VK_KHR_imageless_framebuffer``
-  * ``VK_KHR_timeline_semaphore``
+  * `VK_KHR_create_renderpass2`_
+  * `VK_KHR_imageless_framebuffer`_
+  * `VK_KHR_timeline_semaphore`_
   * `VK_EXT_custom_border_color`_
   * `VK_EXT_provoking_vertex`_
   * `VK_EXT_line_rasterization`_, with the following ``VkPhysicalDeviceLineRasterizationFeaturesEXT``:
@@ -292,6 +292,9 @@ questions, don't hesitate to visit `#zink on OFTC
 
 
 .. _VK_KHR_maintenance1: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_maintenance1.html
+.. _VK_KHR_create_renderpass2: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_create_renderpass2.html
+.. _VK_KHR_imageless_framebuffer: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_imageless_framebuffer.html
+.. _VK_KHR_timeline_semaphore: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_timeline_semaphore.html
 .. _VK_KHR_external_memory: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_external_memory.html
 .. _VK_EXT_scalar_block_layout: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_scalar_block_layout.html
 .. _VK_EXT_transform_feedback: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_transform_feedback.html
