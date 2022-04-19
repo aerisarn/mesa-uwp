@@ -2803,3 +2803,13 @@ dzn_DestroySampler(VkDevice device,
 {
    dzn_sampler_destroy(dzn_sampler_from_handle(sampler), pAllocator);
 }
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_GetDeviceGroupPeerMemoryFeatures(VkDevice device,
+                                     uint32_t heapIndex,
+                                     uint32_t localDeviceIndex,
+                                     uint32_t remoteDeviceIndex,
+                                     VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
+{
+   *pPeerMemoryFeatures = 0;
+}
