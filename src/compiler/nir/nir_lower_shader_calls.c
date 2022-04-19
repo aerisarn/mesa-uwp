@@ -697,9 +697,9 @@ duplicate_loop_bodies(nir_function_impl *impl, nir_instr *resume_instr)
 }
 
 static bool
-cf_node_contains_instr(nir_cf_node *node, nir_instr *instr)
+cf_node_contains_block(nir_cf_node *node, nir_block *block)
 {
-   for (nir_cf_node *n = &instr->block->cf_node; n != NULL; n = n->parent) {
+   for (nir_cf_node *n = &block->cf_node; n != NULL; n = n->parent) {
       if (n == node)
          return true;
    }
@@ -795,14 +795,13 @@ rewrite_phis_to_pred(nir_block *block, nir_block *pred)
  * instruction.
  */
 static bool
-flatten_resume_if_ladder(nir_function_impl *impl,
-                         nir_instr *cursor,
+flatten_resume_if_ladder(nir_builder *b,
+                         nir_cf_node *parent_node,
                          struct exec_list *child_list,
                          bool child_list_contains_cursor,
                          nir_instr *resume_instr,
                          struct brw_bitset *remat)
 {
-   nir_shader *shader = impl->function->shader;
    nir_cf_list cf_list;
 
    /* If our child list contains the cursor instruction then we start out
@@ -816,8 +815,15 @@ flatten_resume_if_ladder(nir_function_impl *impl,
       switch (child->type) {
       case nir_cf_node_block: {
          nir_block *block = nir_cf_node_as_block(child);
+         if (b->cursor.option == nir_cursor_before_block &&
+             b->cursor.block == block) {
+            assert(before_cursor);
+            before_cursor = false;
+         }
          nir_foreach_instr_safe(instr, block) {
-            if (instr == cursor) {
+            if ((b->cursor.option == nir_cursor_before_instr ||
+                 b->cursor.option == nir_cursor_after_instr) &&
+                b->cursor.instr == instr) {
                assert(nir_cf_node_is_first(&block->cf_node));
                assert(before_cursor);
                before_cursor = false;
@@ -829,11 +835,17 @@ flatten_resume_if_ladder(nir_function_impl *impl,
 
             if (!before_cursor && can_remat_instr(instr, remat)) {
                nir_instr_remove(instr);
-               nir_instr_insert(nir_before_instr(cursor), instr);
+               nir_instr_insert(b->cursor, instr);
+               b->cursor = nir_after_instr(instr);
 
                nir_ssa_def *def = nir_instr_ssa_def(instr);
                BITSET_SET(remat->set, def->index);
             }
+         }
+         if (b->cursor.option == nir_cursor_after_block &&
+             b->cursor.block == block) {
+            assert(before_cursor);
+            before_cursor = false;
          }
          break;
       }
@@ -841,7 +853,7 @@ flatten_resume_if_ladder(nir_function_impl *impl,
       case nir_cf_node_if: {
          assert(!before_cursor);
          nir_if *_if = nir_cf_node_as_if(child);
-         if (flatten_resume_if_ladder(impl, cursor, &_if->then_list,
+         if (flatten_resume_if_ladder(b, &_if->cf_node, &_if->then_list,
                                       false, resume_instr, remat)) {
             resume_node = child;
             rewrite_phis_to_pred(nir_cf_node_as_block(nir_cf_node_next(child)),
@@ -849,7 +861,7 @@ flatten_resume_if_ladder(nir_function_impl *impl,
             goto found_resume;
          }
 
-         if (flatten_resume_if_ladder(impl, cursor, &_if->else_list,
+         if (flatten_resume_if_ladder(b, &_if->cf_node, &_if->else_list,
                                       false, resume_instr, remat)) {
             resume_node = child;
             rewrite_phis_to_pred(nir_cf_node_as_block(nir_cf_node_next(child)),
@@ -863,7 +875,7 @@ flatten_resume_if_ladder(nir_function_impl *impl,
          assert(!before_cursor);
          nir_loop *loop = nir_cf_node_as_loop(child);
 
-         if (cf_node_contains_instr(&loop->cf_node, resume_instr)) {
+         if (cf_node_contains_block(&loop->cf_node, resume_instr->block)) {
             /* Thanks to our loop body duplication pass, every level of loop
              * containing the resume instruction contains exactly three nodes:
              * two blocks and an if.  We don't want to lower away this if
@@ -876,19 +888,19 @@ flatten_resume_if_ladder(nir_function_impl *impl,
             /* We want to place anything re-materialized from inside the loop
              * at the top of the resume half of the loop.
              */
-            nir_instr *loop_cursor =
-               &nir_intrinsic_instr_create(shader, nir_intrinsic_nop)->instr;
-            nir_instr_insert(nir_before_cf_list(&_if->then_list), loop_cursor);
+            nir_builder bl;
+            nir_builder_init(&bl, b->impl);
+            bl.cursor = nir_before_cf_list(&_if->then_list);
 
             ASSERTED bool found =
-               flatten_resume_if_ladder(impl, loop_cursor, &_if->then_list,
+               flatten_resume_if_ladder(&bl, &_if->cf_node, &_if->then_list,
                                         true, resume_instr, remat);
             assert(found);
             resume_node = child;
             goto found_resume;
          } else {
             ASSERTED bool found =
-               flatten_resume_if_ladder(impl, cursor, &loop->body,
+               flatten_resume_if_ladder(b, &loop->cf_node, &loop->body,
                                         false, resume_instr, remat);
             assert(!found);
          }
@@ -936,20 +948,19 @@ found_resume:
       nir_cf_extract(&cf_list, nir_after_instr(resume_instr),
                                nir_after_cf_list(child_list));
    }
-   nir_cf_reinsert(&cf_list, nir_before_instr(cursor));
+   b->cursor = nir_cf_reinsert(&cf_list, b->cursor);
 
    if (!resume_node) {
       /* We want the resume to be the first "interesting" instruction */
       nir_instr_remove(resume_instr);
-      nir_instr_insert(nir_before_cf_list(&impl->body), resume_instr);
+      nir_instr_insert(nir_before_cf_list(&b->impl->body), resume_instr);
    }
 
    /* We've copied everything interesting out of this CF list to before the
     * cursor.  Delete everything else.
     */
    if (child_list_contains_cursor) {
-      nir_cf_extract(&cf_list, nir_after_instr(cursor),
-                               nir_after_cf_list(child_list));
+      nir_cf_extract(&cf_list, b->cursor, nir_after_cf_list(child_list));
    } else {
       nir_cf_list_extract(&cf_list, child_list);
    }
@@ -992,12 +1003,11 @@ lower_resume(nir_shader *shader, int call_idx)
    /* Create a nop instruction to use as a cursor as we extract and re-insert
     * stuff into the CFG.
     */
-   nir_instr *cursor =
-      &nir_intrinsic_instr_create(shader, nir_intrinsic_nop)->instr;
-   nir_instr_insert(nir_before_cf_list(&impl->body), cursor);
-
+   nir_builder b;
+   nir_builder_init(&b, impl);
+   b.cursor = nir_before_cf_list(&impl->body);
    ASSERTED bool found =
-      flatten_resume_if_ladder(impl, cursor, &impl->body,
+      flatten_resume_if_ladder(&b, &impl->cf_node, &impl->body,
                                true, resume_instr, &remat);
    assert(found);
 
