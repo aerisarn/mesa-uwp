@@ -3697,6 +3697,50 @@ panfrost_create_rasterizer_state(
         return so;
 }
 
+#if PAN_ARCH >= 9
+/*
+ * Given a pipe_vertex_element, pack the corresponding Valhall attribute
+ * descriptor. This function is called at CSO create time. Since
+ * pipe_vertex_element lacks a stride, the packed attribute descriptor will not
+ * be uploaded until draw time.
+ */
+static void
+panfrost_pack_attribute(struct panfrost_device *dev,
+                        const struct pipe_vertex_element el,
+                        struct mali_attribute_packed *out)
+{
+        pan_pack(out, ATTRIBUTE, cfg) {
+                cfg.table = PAN_TABLE_ATTRIBUTE_BUFFER;
+                cfg.frequency = (el.instance_divisor > 0) ?
+                        MALI_ATTRIBUTE_FREQUENCY_INSTANCE :
+                        MALI_ATTRIBUTE_FREQUENCY_VERTEX;
+                cfg.format = dev->formats[el.src_format].hw;
+                cfg.offset = el.src_offset;
+                cfg.buffer_index = el.vertex_buffer_index;
+
+                if (el.instance_divisor == 0) {
+                        /* Per-vertex */
+                        cfg.attribute_type = MALI_ATTRIBUTE_TYPE_1D;
+                        cfg.frequency = MALI_ATTRIBUTE_FREQUENCY_VERTEX;
+                        cfg.offset_enable = true;
+                } else if (util_is_power_of_two_or_zero(el.instance_divisor)) {
+                        /* Per-instance, POT divisor */
+                        cfg.attribute_type = MALI_ATTRIBUTE_TYPE_1D_POT_DIVISOR;
+                        cfg.frequency = MALI_ATTRIBUTE_FREQUENCY_INSTANCE;
+                        cfg.divisor_r = __builtin_ctz(el.instance_divisor);
+                } else {
+                        /* Per-instance, NPOT divisor */
+                        cfg.attribute_type = MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR;
+                        cfg.frequency = MALI_ATTRIBUTE_FREQUENCY_INSTANCE;
+
+                        cfg.divisor_d =
+                                panfrost_compute_magic_divisor(el.instance_divisor,
+                                                &cfg.divisor_r, &cfg.divisor_e);
+                }
+        }
+}
+#endif
+
 static void *
 panfrost_create_vertex_elements_state(
         struct pipe_context *pctx,
@@ -3709,6 +3753,10 @@ panfrost_create_vertex_elements_state(
         so->num_elements = num_elements;
         memcpy(so->pipe, elements, sizeof(*elements) * num_elements);
 
+#if PAN_ARCH >= 9
+        for (unsigned i = 0; i < num_elements; ++i)
+                panfrost_pack_attribute(dev, elements[i], &so->attributes[i]);
+#else
         /* Assign attribute buffers corresponding to the vertex buffers, keyed
          * for a particular divisor since that's how instancing works on Mali */
         for (unsigned i = 0; i < num_elements; ++i) {
@@ -3726,6 +3774,7 @@ panfrost_create_vertex_elements_state(
         /* Let's also prepare vertex builtins */
         so->formats[PAN_VERTEX_ID] = dev->formats[PIPE_FORMAT_R32_UINT].hw;
         so->formats[PAN_INSTANCE_ID] = dev->formats[PIPE_FORMAT_R32_UINT].hw;
+#endif
 
         return so;
 }
