@@ -720,6 +720,7 @@ dzn_physical_device_get_image_format_properties(struct dzn_physical_device *pdev
       switch (s->sType) {
       case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES:
          external_props = (VkExternalImageFormatProperties *)s;
+         external_props->externalMemoryProperties = (VkExternalMemoryProperties) { 0 };
          break;
       default:
          dzn_debug_ignored_stype(s->sType);
