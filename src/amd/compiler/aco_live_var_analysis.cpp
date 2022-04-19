@@ -365,13 +365,46 @@ calc_min_waves(Program* program)
    program->min_waves = DIV_ROUND_UP(waves_per_workgroup, simd_per_cu_wgp);
 }
 
+uint16_t
+max_suitable_waves(Program* program, uint16_t waves)
+{
+   unsigned num_simd = program->dev.simd_per_cu * (program->wgp_mode ? 2 : 1);
+   unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
+   unsigned num_workgroups = waves * num_simd / waves_per_workgroup;
+
+   /* Adjust #workgroups for LDS */
+   unsigned lds_per_workgroup = align(program->config->lds_size * program->dev.lds_encoding_granule,
+                                      program->dev.lds_alloc_granule);
+
+   if (program->stage == fragment_fs) {
+      /* PS inputs are moved from PC (parameter cache) to LDS before PS waves are launched.
+       * Each PS input occupies 3x vec4 of LDS space. See Figure 10.3 in GCN3 ISA manual.
+       * These limit occupancy the same way as other stages' LDS usage does.
+       */
+      unsigned lds_bytes_per_interp = 3 * 16;
+      unsigned lds_param_bytes = lds_bytes_per_interp * program->info->ps.num_interp;
+      lds_per_workgroup += align(lds_param_bytes, program->dev.lds_alloc_granule);
+   }
+   unsigned lds_limit = program->wgp_mode ? program->dev.lds_limit * 2 : program->dev.lds_limit;
+   if (lds_per_workgroup)
+      num_workgroups = std::min(num_workgroups, lds_limit / lds_per_workgroup);
+
+   /* Hardware limitation */
+   if (waves_per_workgroup > 1)
+      num_workgroups = std::min(num_workgroups, program->wgp_mode ? 32u : 16u);
+
+   /* Adjust #waves for workgroup multiples:
+    * In cases like waves_per_workgroup=3 or lds=65536 and
+    * waves_per_workgroup=1, we want the maximum possible number of waves per
+    * SIMD and not the minimum. so DIV_ROUND_UP is used
+    */
+   unsigned workgroup_waves = num_workgroups * waves_per_workgroup;
+   return DIV_ROUND_UP(workgroup_waves, num_simd);
+}
+
 void
 update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 {
-   unsigned simd_per_cu_wgp = program->dev.simd_per_cu * (program->wgp_mode ? 2 : 1);
-   unsigned lds_limit = program->wgp_mode ? program->dev.lds_limit * 2 : program->dev.lds_limit;
-   unsigned max_workgroups_per_cu_wgp = program->wgp_mode ? 32 : 16;
-
    assert(program->min_waves >= 1);
    uint16_t sgpr_limit = get_addr_sgpr_from_waves(program, program->min_waves);
    uint16_t vgpr_limit = get_addr_vgpr_from_waves(program, program->min_waves);
@@ -389,37 +422,8 @@ update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       uint16_t max_waves = program->dev.max_wave64_per_simd * (64 / program->wave_size);
       program->num_waves = std::min(program->num_waves, max_waves);
 
-      /* adjust num_waves for workgroup and LDS limits */
-      unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
-      unsigned workgroups_per_cu_wgp = program->num_waves * simd_per_cu_wgp / waves_per_workgroup;
-
-      unsigned lds_per_workgroup =
-         align(program->config->lds_size * program->dev.lds_encoding_granule,
-               program->dev.lds_alloc_granule);
-
-      if (program->stage == fragment_fs) {
-         /* PS inputs are moved from PC (parameter cache) to LDS before PS waves are launched.
-          * Each PS input occupies 3x vec4 of LDS space. See Figure 10.3 in GCN3 ISA manual.
-          * These limit occupancy the same way as other stages' LDS usage does.
-          */
-         unsigned lds_bytes_per_interp = 3 * 16;
-         unsigned lds_param_bytes = lds_bytes_per_interp * program->info->ps.num_interp;
-         lds_per_workgroup += align(lds_param_bytes, program->dev.lds_alloc_granule);
-      }
-
-      if (lds_per_workgroup)
-         workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, lds_limit / lds_per_workgroup);
-
-      if (waves_per_workgroup > 1)
-         workgroups_per_cu_wgp = std::min(workgroups_per_cu_wgp, max_workgroups_per_cu_wgp);
-
-      /* in cases like waves_per_workgroup=3 or lds=65536 and
-       * waves_per_workgroup=1, we want the maximum possible number of waves per
-       * SIMD and not the minimum. so DIV_ROUND_UP is used */
-      program->num_waves =
-         DIV_ROUND_UP(workgroups_per_cu_wgp * waves_per_workgroup, simd_per_cu_wgp);
-
-      /* calculate max_reg_demand */
+      /* Adjust for LDS and workgroup multiples and calculate max_reg_demand */
+      program->num_waves = max_suitable_waves(program, program->num_waves);
       program->max_reg_demand.vgpr = get_addr_vgpr_from_waves(program, program->num_waves);
       program->max_reg_demand.sgpr = get_addr_sgpr_from_waves(program, program->num_waves);
    }

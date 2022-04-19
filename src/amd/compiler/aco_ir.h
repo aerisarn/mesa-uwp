@@ -2245,6 +2245,9 @@ RegisterDemand get_demand_before(RegisterDemand demand, aco_ptr<Instruction>& in
 /* number of sgprs that need to be allocated but might notbe addressable as s0-s105 */
 uint16_t get_extra_sgprs(Program* program);
 
+/* adjust num_waves for workgroup size and LDS limits */
+uint16_t max_suitable_waves(Program* program, uint16_t waves);
+
 /* get number of sgprs/vgprs allocated required to address a number of sgprs/vgprs */
 uint16_t get_sgpr_alloc(Program* program, uint16_t addressable_sgprs);
 uint16_t get_vgpr_alloc(Program* program, uint16_t addressable_vgprs);
