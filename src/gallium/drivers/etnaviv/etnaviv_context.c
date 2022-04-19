@@ -416,6 +416,23 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    /* First, sync state, then emit DRAW_PRIMITIVES or DRAW_INDEXED_PRIMITIVES */
    etna_emit_state(ctx);
 
+   if (!VIV_FEATURE(screen, chipMinorFeatures6, NEW_GPIPE)) {
+      switch (draw_mode) {
+      case PRIMITIVE_TYPE_LINE_LOOP:
+      case PRIMITIVE_TYPE_LINE_STRIP:
+      case PRIMITIVE_TYPE_TRIANGLE_STRIP:
+      case PRIMITIVE_TYPE_TRIANGLE_FAN:
+         etna_set_state(ctx->stream, VIVS_GL_VERTEX_ELEMENT_CONFIG,
+                        VIVS_GL_VERTEX_ELEMENT_CONFIG_UNK0 |
+                        VIVS_GL_VERTEX_ELEMENT_CONFIG_REUSE);
+         break;
+      default:
+         etna_set_state(ctx->stream, VIVS_GL_VERTEX_ELEMENT_CONFIG,
+                        VIVS_GL_VERTEX_ELEMENT_CONFIG_UNK0);
+         break;
+      }
+   }
+
    if (screen->specs.halti >= 2) {
       /* On HALTI2+ (GC3000 and higher) only use instanced drawing commands, as the blob does */
       etna_draw_instanced(ctx->stream, info->index_size, draw_mode, info->instance_count,
@@ -454,7 +471,6 @@ etna_reset_gpu_state(struct etna_context *ctx)
    uint32_t dummy_attribs[VIVS_NFE_GENERIC_ATTRIB__LEN] = { 0 };
 
    etna_set_state(stream, VIVS_GL_API_MODE, VIVS_GL_API_MODE_OPENGL);
-   etna_set_state(stream, VIVS_GL_VERTEX_ELEMENT_CONFIG, 0x00000001);
    etna_set_state(stream, VIVS_PA_W_CLIP_LIMIT, 0x34000001);
    etna_set_state(stream, VIVS_PA_FLAGS, 0x00000000); /* blob sets ZCONVERT_BYPASS on GC3000+, this messes up z for us */
    etna_set_state(stream, VIVS_PA_VIEWPORT_UNK00A80, 0x38a01404);
