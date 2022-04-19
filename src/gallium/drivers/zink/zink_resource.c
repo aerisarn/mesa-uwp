@@ -977,6 +977,7 @@ resource_create(struct pipe_screen *pscreen,
       res->obj->vkusage = cdt->swapchain->scci.imageUsage;
       res->base.b.bind |= PIPE_BIND_DISPLAY_TARGET;
       res->optimal_tiling = true;
+      res->swapchain = true;
    }
    if (res->obj->is_buffer) {
       res->base.buffer_id_unique = util_idalloc_mt_alloc(&screen->buffer_ids);
