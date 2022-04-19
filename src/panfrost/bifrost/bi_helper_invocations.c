@@ -133,6 +133,21 @@ bi_block_terminates_helpers(bi_block *block)
         return true;
 }
 
+/*
+ * Propagate the pass flag up the control flow graph by performing depth-first
+ * search on the directed control flow graph.
+ */
+static void
+bi_propagate_pass_flag(bi_block *block)
+{
+        block->pass_flags = 1;
+
+        bi_foreach_predecessor(block, pred) {
+                if (pred->pass_flags == 0)
+                        bi_propagate_pass_flag(pred);
+        }
+}
+
 void
 bi_analyze_helper_terminate(bi_context *ctx)
 {
@@ -142,50 +157,18 @@ bi_analyze_helper_terminate(bi_context *ctx)
         if (ctx->stage != MESA_SHADER_FRAGMENT || ctx->inputs->is_blend)
                 return;
 
-        /* Set blocks as directly requiring helpers, and if they do add them to
-         * the worklist to propagate to their predecessors */
+        /* Clear flags */
+        bi_foreach_block(ctx, block)
+                block->pass_flags = 0;
 
-        struct set *worklist = _mesa_set_create(NULL,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
-
-        struct set *visited = _mesa_set_create(NULL,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
-
-        bi_foreach_block(ctx, block) {
-                block->pass_flags = bi_block_uses_helpers(block) ? 1 : 0;
-
-                if (block->pass_flags & 1)
-                        _mesa_set_add(worklist, block);
+        /* For each block, check if it uses helpers and propagate that fact if
+         * so. We walk in reverse order to minimize the number of blocks tested:
+         * if the (unique) last block uses helpers, only that block is tested.
+         */
+        bi_foreach_block_rev(ctx, block) {
+                if (block->pass_flags == 0 && bi_block_uses_helpers(block))
+                        bi_propagate_pass_flag(block);
         }
-
-        /* Next, propagate back. Since there are a finite number of blocks, the
-         * worklist (a subset of all the blocks) is finite. Since a block can
-         * only be added to the worklist if it is not on the visited list and
-         * the visited list - also a subset of the blocks - grows every
-         * iteration, the algorithm must terminate. */
-
-        struct set_entry *cur;
-
-        while((cur = _mesa_set_next_entry(worklist, NULL)) != NULL) {
-                /* Pop off a block requiring helpers */
-                bi_block *blk = (struct bi_block *) cur->key;
-                _mesa_set_remove(worklist, cur);
-
-                /* Its predecessors also require helpers */
-                bi_foreach_predecessor(blk, pred) {
-                        if (!_mesa_set_search(visited, pred)) {
-                                pred->pass_flags |= 1;
-                                _mesa_set_add(worklist, pred);
-                        }
-                }
- 
-                _mesa_set_add(visited, blk);
-        }
-
-        _mesa_set_destroy(visited, NULL);
-        _mesa_set_destroy(worklist, NULL);
 
         /* Finally, mark clauses requiring helpers */
         bi_foreach_block(ctx, block) {
