@@ -88,7 +88,11 @@ typedef struct
 {
    void *Ptr;
 } cnd_t;
-typedef void *thrd_t;
+/* Define thrd_t as struct type intentionally for avoid use of thrd_t as pointer type */
+typedef struct
+{
+   void *handle;
+} thrd_t;
 typedef unsigned long tss_t;
 typedef struct
 {
