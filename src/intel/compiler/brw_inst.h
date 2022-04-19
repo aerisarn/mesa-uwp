@@ -1526,6 +1526,8 @@ typedef struct {
 static inline unsigned
 brw_compact_inst_bits(const brw_compact_inst *inst, unsigned high, unsigned low)
 {
+   assume(high < 64);
+   assume(high >= low);
    const uint64_t mask = (1ull << (high - low + 1)) - 1;
 
    return (inst->data >> low) & mask;
@@ -1540,6 +1542,8 @@ static inline void
 brw_compact_inst_set_bits(brw_compact_inst *inst, unsigned high, unsigned low,
                           uint64_t value)
 {
+   assume(high < 64);
+   assume(high >= low);
    const uint64_t mask = ((1ull << (high - low + 1)) - 1) << low;
 
    /* Make sure the supplied value actually fits in the given bitfield. */
