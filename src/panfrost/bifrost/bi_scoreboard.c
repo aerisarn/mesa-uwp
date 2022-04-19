@@ -279,6 +279,9 @@ scoreboard_block_update(bi_block *blk)
 void
 bi_assign_scoreboard(bi_context *ctx)
 {
+        u_worklist worklist;
+        bi_worklist_init(ctx, &worklist);
+
         /* First, assign slots. */
         bi_foreach_block(ctx, block) {
                 bi_foreach_clause_in_block(block, clause) {
@@ -287,38 +290,20 @@ bi_assign_scoreboard(bi_context *ctx)
                                 clause->scoreboard_id = slot;
                         }
                 }
+
+                bi_worklist_push_tail(&worklist, block);
         }
 
         /* Next, perform forward data flow analysis to calculate dependencies */
-        /* Set of bi_block */
-        struct set *work_list = _mesa_set_create(NULL,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
+        while (!u_worklist_is_empty(&worklist)) {
+                /* Pop from the front for forward analysis */
+                bi_block *blk = bi_worklist_pop_head(&worklist);
 
-        struct set *visited = _mesa_set_create(NULL,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
-
-        /* Initialize the work list with the first block */
-        struct set_entry *cur;
-
-        cur = _mesa_set_add(work_list, bi_start_block(&ctx->blocks));
-
-        /* Iterate the work list */
-        do {
-                bi_block *blk = (struct bi_block *) cur->key;
-                _mesa_set_remove(work_list, cur);
-
-                bool progress = scoreboard_block_update(blk);
-
-                if (progress || !_mesa_set_search(visited, blk)) {
-                        bi_foreach_successor(blk, pred)
-                                _mesa_set_add(work_list, pred);
+                if (scoreboard_block_update(blk)) {
+                        bi_foreach_successor(blk, succ)
+                                bi_worklist_push_tail(&worklist, succ);
                 }
+        }
 
-                _mesa_set_add(visited, blk);
-        } while((cur = _mesa_set_next_entry(work_list, NULL)) != NULL);
-
-        _mesa_set_destroy(visited, NULL);
-        _mesa_set_destroy(work_list, NULL);
+        u_worklist_fini(&worklist);
 }
