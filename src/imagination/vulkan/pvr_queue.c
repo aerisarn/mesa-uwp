@@ -39,6 +39,7 @@
 #include "pvr_job_compute.h"
 #include "pvr_job_context.h"
 #include "pvr_job_render.h"
+#include "pvr_job_transfer.h"
 #include "pvr_limits.h"
 #include "pvr_private.h"
 #include "util/macros.h"
@@ -358,83 +359,46 @@ pvr_process_compute_cmd(struct pvr_device *device,
    return result;
 }
 
-/* FIXME: Implement gpu based transfer support. */
 static VkResult
 pvr_process_transfer_cmds(struct pvr_device *device,
+                          struct pvr_queue *queue,
                           struct pvr_sub_cmd *sub_cmd,
                           struct vk_sync **waits,
                           uint32_t wait_count,
                           uint32_t *stage_flags,
                           struct vk_sync *completions[static PVR_JOB_TYPE_MAX])
 {
-   /* Wait for transfer semaphores here before doing any transfers. */
-   for (uint32_t i = 0U; i < wait_count; i++) {
-      if (stage_flags[i] & PVR_PIPELINE_STAGE_TRANSFER_BIT) {
-         VkResult result = vk_sync_wait(&device->vk,
-                                        waits[i],
-                                        0U,
-                                        VK_SYNC_WAIT_COMPLETE,
-                                        UINT64_MAX);
-         if (result != VK_SUCCESS)
-            return result;
+   struct vk_sync *sync;
+   VkResult result;
 
-         stage_flags[i] &= ~PVR_PIPELINE_STAGE_TRANSFER_BIT;
-      }
+   result = vk_sync_create(&device->vk,
+                           &device->pdevice->ws->syncobj_type,
+                           0U,
+                           0UL,
+                           &sync);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* This passes ownership of the wait fences to pvr_transfer_job_submit(). */
+   result = pvr_transfer_job_submit(device,
+                                    queue->transfer_ctx,
+                                    sub_cmd,
+                                    waits,
+                                    wait_count,
+                                    stage_flags,
+                                    sync);
+   if (result != VK_SUCCESS) {
+      vk_sync_destroy(&device->vk, sync);
+      return result;
    }
 
-   list_for_each_entry_safe (struct pvr_transfer_cmd,
-                             transfer_cmd,
-                             &sub_cmd->transfer.transfer_cmds,
-                             link) {
-      bool src_mapped = false;
-      bool dst_mapped = false;
-      void *src_addr;
-      void *dst_addr;
-      void *ret_ptr;
+   /* Replace the completion fences. */
+   if (completions[PVR_JOB_TYPE_TRANSFER])
+      vk_sync_destroy(&device->vk, completions[PVR_JOB_TYPE_TRANSFER]);
 
-      /* Map if bo is not mapped. */
-      if (!transfer_cmd->src->vma->bo->map) {
-         src_mapped = true;
-         ret_ptr = device->ws->ops->buffer_map(transfer_cmd->src->vma->bo);
-         if (!ret_ptr)
-            return vk_error(device, VK_ERROR_MEMORY_MAP_FAILED);
-      }
+   completions[PVR_JOB_TYPE_TRANSFER] = sync;
 
-      if (!transfer_cmd->dst->vma->bo->map) {
-         dst_mapped = true;
-         ret_ptr = device->ws->ops->buffer_map(transfer_cmd->dst->vma->bo);
-         if (!ret_ptr)
-            return vk_error(device, VK_ERROR_MEMORY_MAP_FAILED);
-      }
-
-      src_addr =
-         transfer_cmd->src->vma->bo->map + transfer_cmd->src->vma->bo_offset;
-      dst_addr =
-         transfer_cmd->dst->vma->bo->map + transfer_cmd->dst->vma->bo_offset;
-
-      for (uint32_t i = 0; i < transfer_cmd->region_count; i++) {
-         VkBufferCopy2 *region = &transfer_cmd->regions[i];
-
-         memcpy(dst_addr + region->dstOffset,
-                src_addr + region->srcOffset,
-                region->size);
-      }
-
-      if (src_mapped)
-         device->ws->ops->buffer_unmap(transfer_cmd->src->vma->bo);
-
-      if (dst_mapped)
-         device->ws->ops->buffer_unmap(transfer_cmd->dst->vma->bo);
-   }
-
-   /* Given we are doing CPU based copy, completion fence should always be
-    * signaled. This should be fixed when GPU based copy is implemented.
-    */
-   return vk_sync_create(&device->vk,
-                         &device->pdevice->ws->syncobj_type,
-                         0U,
-                         1UL,
-                         &completions[PVR_JOB_TYPE_TRANSFER]);
+   return result;
 }
 
 static VkResult
@@ -571,6 +535,7 @@ pvr_process_cmd_buffer(struct pvr_device *device,
 
       case PVR_SUB_CMD_TYPE_TRANSFER:
          result = pvr_process_transfer_cmds(device,
+                                            queue,
                                             sub_cmd,
                                             waits,
                                             wait_count,
