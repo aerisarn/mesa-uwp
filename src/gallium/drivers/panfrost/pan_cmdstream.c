@@ -3597,6 +3597,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         if (info->indirect)
                 num_wg[0] = num_wg[1] = num_wg[2] = 1;
 
+        panfrost_update_shader_state(batch, PIPE_SHADER_COMPUTE);
         panfrost_pack_work_groups_compute(invocation,
                                           num_wg[0], num_wg[1], num_wg[2],
                                           info->block[0], info->block[1],
@@ -3612,15 +3613,13 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.draw_descriptor_is_64b = true;
-                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
+                cfg.state = batch->rsd[PIPE_SHADER_COMPUTE];
                 cfg.attributes = panfrost_emit_image_attribs(batch, &cfg.attribute_buffers, PIPE_SHADER_COMPUTE);
                 cfg.thread_storage = panfrost_emit_shared_memory(batch, info);
-                cfg.uniform_buffers = panfrost_emit_const_buf(batch,
-                                PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
-                cfg.textures = panfrost_emit_texture_descriptors(batch,
-                                PIPE_SHADER_COMPUTE);
-                cfg.samplers = panfrost_emit_sampler_descriptors(batch,
-                                PIPE_SHADER_COMPUTE);
+                cfg.uniform_buffers = batch->uniform_buffers[PIPE_SHADER_COMPUTE];
+                cfg.push_uniforms = batch->push_uniforms[PIPE_SHADER_COMPUTE];
+                cfg.textures = batch->textures[PIPE_SHADER_COMPUTE];
+                cfg.samplers = batch->samplers[PIPE_SHADER_COMPUTE];
         }
 
         unsigned indirect_dep = 0;
