@@ -2142,13 +2142,20 @@ dzn_device_memory_create(struct dzn_device *device,
 
    mem->size = pAllocateInfo->allocationSize;
 
-#if 0
-   const VkExportMemoryAllocateInfo *export_info = NULL;
-   VkMemoryAllocateFlags vk_flags = 0;
-#endif
-
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
-      dzn_debug_ignored_stype(ext->sType);
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
+         const VkExportMemoryAllocateInfo *exp =
+            (const VkExportMemoryAllocateInfo *)ext;
+
+         // TODO: support export
+         assert(exp->handleTypes == 0);
+         break;
+      }
+      default:
+         dzn_debug_ignored_stype(ext->sType);
+         break;
+      }
    }
 
    const VkMemoryType *mem_type =
