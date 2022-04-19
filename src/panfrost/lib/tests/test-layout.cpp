@@ -161,3 +161,82 @@ TEST(BlockSize, AFBCSuperblock64x4)
 
    EXPECT_TRUE(panfrost_afbc_is_wide(modifier));
 }
+
+/* dEQP-GLES3.functional.texture.format.compressed.etc1_2d_pot */
+TEST(Layout, ImplicitLayoutInterleavedETC2)
+{
+   struct pan_image_layout l = {
+      .modifier = DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
+      .format = PIPE_FORMAT_ETC2_RGB8,
+      .width = 128,
+      .height = 128,
+      .depth = 1,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .nr_slices = 8
+   };
+
+   unsigned offsets[9] = {
+      0, 8192, 10240, 10752, 10880, 11008, 11136, 11264, 11392
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   for (unsigned i = 0; i < 8; ++i) {
+      unsigned size = (offsets[i + 1] - offsets[i]);
+      EXPECT_EQ(l.slices[i].offset, offsets[i]);
+
+      if (size == 64)
+         EXPECT_TRUE(l.slices[i].size < 64);
+      else
+         EXPECT_EQ(l.slices[i].size, size);
+   }
+}
+
+TEST(Layout, ImplicitLayoutInterleavedASTC5x5)
+{
+   struct pan_image_layout l = {
+      .modifier = DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
+      .format = PIPE_FORMAT_ASTC_5x5,
+      .width = 50,
+      .height = 50,
+      .depth = 1,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .nr_slices = 1
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   /* The image is 50x50 pixels, with 5x5 blocks. So it is a 10x10 grid of ASTC
+    * blocks. 4x4 tiles of ASTC blocks are u-interleaved, so we have to round up
+    * to a 12x12 grid. So we need space for 144 ASTC blocks. Each ASTC block is
+    * 16 bytes (128-bits), so we require 2304 bytes.
+    */
+   EXPECT_EQ(l.slices[0].offset, 0);
+   EXPECT_EQ(l.slices[0].size, 2304);
+}
+
+TEST(Layout, ImplicitLayoutLinearASTC5x5)
+{
+   struct pan_image_layout l = {
+      .modifier = DRM_FORMAT_MOD_LINEAR,
+      .format = PIPE_FORMAT_ASTC_5x5,
+      .width = 50,
+      .height = 50,
+      .depth = 1,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .nr_slices = 1
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   /* The image is 50x50 pixels, with 5x5 blocks. So it is a 10x10 grid of ASTC
+    * blocks. Each ASTC block is 16 bytes, so the row stride is 160 bytes.
+    * Rows are cache-line aligned to 192 bytes. There are 10 rows, so we have
+    * 1920 bytes total.
+    */
+   EXPECT_EQ(l.slices[0].offset, 0);
+   EXPECT_EQ(l.slices[0].size, 1920);
+}
