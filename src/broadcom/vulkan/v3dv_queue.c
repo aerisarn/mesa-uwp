@@ -203,9 +203,6 @@ handle_set_event_cpu_job(struct v3dv_queue *queue, struct v3dv_job *job,
     * So we should wait for all prior work to be completed before signaling
     * the event, this includes all active CPU wait threads spawned for any
     * command buffer submitted *before* this.
-    *
-    * FIXME: we could avoid blocking the main thread for this if we use a
-    *        submission thread.
     */
 
    VkResult result = queue_wait_idle(queue, sync_info);
