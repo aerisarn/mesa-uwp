@@ -3191,7 +3191,8 @@ ms_store_arrayed_output_intrin(nir_builder *b,
       nir_store_buffer_amd(b, store_val, ring, addr, off,
                            .base = const_off,
                            .write_mask = write_mask,
-                           .memory_modes = nir_var_shader_out);
+                           .memory_modes = nir_var_shader_out,
+                           .access = ACCESS_COHERENT);
    } else if (out_mode == ms_out_mode_var) {
       if (store_val->bit_size > 32) {
          /* Split 64-bit store values to 32-bit components. */
@@ -3243,7 +3244,8 @@ ms_load_arrayed_output(nir_builder *b,
       nir_ssa_def *off = nir_load_ring_mesh_scratch_offset_amd(b);
       return nir_load_buffer_amd(b, num_components, load_bit_size, ring, addr, off,
                                  .base = const_off,
-                                 .memory_modes = nir_var_shader_out);
+                                 .memory_modes = nir_var_shader_out,
+                                 .access = ACCESS_COHERENT);
    } else if (out_mode == ms_out_mode_var) {
       nir_ssa_def *arr[8] = {0};
       unsigned num_32bit_components = num_components * load_bit_size / 32;

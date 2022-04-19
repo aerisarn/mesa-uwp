@@ -4191,13 +4191,16 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       unsigned const_offset = nir_intrinsic_base(instr);
       bool swizzled = nir_intrinsic_is_swizzled(instr);
       bool reorder = nir_intrinsic_can_reorder(instr);
+      bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
       bool slc = nir_intrinsic_slc_amd(instr);
 
-      enum ac_image_cache_policy cache_policy = ac_glc;
+      enum ac_image_cache_policy cache_policy = 0;
       if (swizzled)
          cache_policy |= ac_swizzled;
       if (slc)
          cache_policy |= ac_slc;
+      if (coherent)
+         cache_policy |= ac_glc;
 
       LLVMTypeRef channel_type;
       if (instr->dest.ssa.bit_size == 8)
@@ -4227,11 +4230,14 @@ static bool visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       LLVMValueRef addr_soffset = get_src(ctx, instr->src[3]);
       unsigned const_offset = nir_intrinsic_base(instr);
       bool swizzled = nir_intrinsic_is_swizzled(instr);
+      bool coherent = nir_intrinsic_access(instr) & ACCESS_COHERENT;
       bool slc = nir_intrinsic_slc_amd(instr);
 
-      enum ac_image_cache_policy cache_policy = ac_glc;
+      enum ac_image_cache_policy cache_policy = 0;
       if (swizzled)
          cache_policy |= ac_swizzled;
+      if (coherent && ctx->ac.gfx_level < GFX11)
+         cache_policy |= ac_glc;
       if (slc)
          cache_policy |= ac_slc;
 

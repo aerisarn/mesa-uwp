@@ -442,7 +442,9 @@ lower_hs_output_store(nir_builder *b,
 
       nir_ssa_def *hs_ring_tess_offchip = nir_load_ring_tess_offchip_amd(b);
       nir_ssa_def *offchip_offset = nir_load_ring_tess_offchip_offset_amd(b);
-      nir_store_buffer_amd(b, store_val, hs_ring_tess_offchip, vmem_off, offchip_offset, .write_mask = write_mask, .memory_modes = nir_var_shader_out);
+      nir_store_buffer_amd(b, store_val, hs_ring_tess_offchip, vmem_off, offchip_offset,
+                           .write_mask = write_mask, .memory_modes = nir_var_shader_out,
+                           .access = ACCESS_COHERENT);
    }
 
    if (write_to_lds) {
@@ -594,7 +596,8 @@ hs_emit_write_tess_factors(nir_shader *shader,
       /* Store the dynamic HS control word. */
       nir_if *rel_patch_id_zero = nir_push_if(b, nir_ieq_imm(b, rel_patch_id, 0));
       nir_ssa_def *ctrlw = nir_imm_int(b, 0x80000000u);
-      nir_store_buffer_amd(b, ctrlw, tessfactor_ring, nir_imm_zero(b, 1, 32), tess_factors_base);
+      nir_store_buffer_amd(b, ctrlw, tessfactor_ring, nir_imm_zero(b, 1, 32), tess_factors_base,
+                           .access = ACCESS_COHERENT);
       tess_factors_const_offset += 4;
       nir_pop_if(b, rel_patch_id_zero);
    }
@@ -603,14 +606,18 @@ hs_emit_write_tess_factors(nir_shader *shader,
    if (shader->info.tess._primitive_mode == TESS_PRIMITIVE_ISOLINES) {
       /* LINES reversal */
       nir_ssa_def *t = nir_vec2(b, nir_channel(b, tessfactors_outer, 1), nir_channel(b, tessfactors_outer, 0));
-      nir_store_buffer_amd(b, t, tessfactor_ring, tess_factors_offset, tess_factors_base, .base = tess_factors_const_offset);
+      nir_store_buffer_amd(b, t, tessfactor_ring, tess_factors_offset, tess_factors_base,
+                           .base = tess_factors_const_offset, .access = ACCESS_COHERENT);
    } else if (shader->info.tess._primitive_mode == TESS_PRIMITIVE_TRIANGLES) {
       nir_ssa_def *t = nir_vec4(b, nir_channel(b, tessfactors_outer, 0), nir_channel(b, tessfactors_outer, 1),
                                 nir_channel(b, tessfactors_outer, 2), nir_channel(b, tessfactors_inner, 0));
-      nir_store_buffer_amd(b, t, tessfactor_ring, tess_factors_offset, tess_factors_base, .base = tess_factors_const_offset);
+      nir_store_buffer_amd(b, t, tessfactor_ring, tess_factors_offset, tess_factors_base,
+                           .base = tess_factors_const_offset, .access = ACCESS_COHERENT);
    } else {
-      nir_store_buffer_amd(b, tessfactors_outer, tessfactor_ring, tess_factors_offset, tess_factors_base, .base = tess_factors_const_offset);
-      nir_store_buffer_amd(b, tessfactors_inner, tessfactor_ring, tess_factors_offset, tess_factors_base, .base = tess_factors_const_offset + 4u * outer_comps);
+      nir_store_buffer_amd(b, tessfactors_outer, tessfactor_ring, tess_factors_offset, tess_factors_base,
+                           .base = tess_factors_const_offset, .access = ACCESS_COHERENT);
+      nir_store_buffer_amd(b, tessfactors_inner, tessfactor_ring, tess_factors_offset, tess_factors_base,
+                           .base = tess_factors_const_offset + 4u * outer_comps, .access = ACCESS_COHERENT);
    }
 
    if (st->tes_reads_tessfactors) {
@@ -619,11 +626,13 @@ hs_emit_write_tess_factors(nir_shader *shader,
       nir_ssa_def *offchip_offset = nir_load_ring_tess_offchip_offset_amd(b);
 
       nir_ssa_def *vmem_off_outer = hs_per_patch_output_vmem_offset(b, st, NULL, st->tcs_tess_lvl_out_loc);
-      nir_store_buffer_amd(b, tessfactors_outer, hs_ring_tess_offchip, vmem_off_outer, offchip_offset, .memory_modes = nir_var_shader_out);
+      nir_store_buffer_amd(b, tessfactors_outer, hs_ring_tess_offchip, vmem_off_outer, offchip_offset,
+                           .memory_modes = nir_var_shader_out, .access = ACCESS_COHERENT);
 
       if (inner_comps) {
          nir_ssa_def *vmem_off_inner = hs_per_patch_output_vmem_offset(b, st, NULL, st->tcs_tess_lvl_in_loc);
-         nir_store_buffer_amd(b, tessfactors_inner, hs_ring_tess_offchip, vmem_off_inner, offchip_offset, .memory_modes = nir_var_shader_out);
+         nir_store_buffer_amd(b, tessfactors_inner, hs_ring_tess_offchip, vmem_off_inner, offchip_offset,
+                              .memory_modes = nir_var_shader_out, .access = ACCESS_COHERENT);
       }
    }
 
@@ -646,7 +655,9 @@ lower_tes_input_load(nir_builder *b,
                     ? hs_per_vertex_output_vmem_offset(b, st, intrin)
                     : hs_per_patch_output_vmem_offset(b, st, intrin, 0);
 
-   return nir_load_buffer_amd(b, intrin->dest.ssa.num_components, intrin->dest.ssa.bit_size, offchip_ring, off, offchip_offset);
+   return nir_load_buffer_amd(b, intrin->dest.ssa.num_components,
+                              intrin->dest.ssa.bit_size, offchip_ring, off, offchip_offset,
+                              .access = ACCESS_COHERENT);
 }
 
 static bool
