@@ -2680,5 +2680,6 @@ iris_init_resource_functions(struct pipe_context *ctx)
    ctx->buffer_unmap = u_transfer_helper_transfer_unmap;
    ctx->texture_unmap = u_transfer_helper_transfer_unmap;
    ctx->buffer_subdata = u_default_buffer_subdata;
+   ctx->clear_buffer = u_default_clear_buffer;
    ctx->texture_subdata = iris_texture_subdata;
 }
