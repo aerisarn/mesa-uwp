@@ -2142,6 +2142,9 @@ dzn_device_memory_create(struct dzn_device *device,
 
    mem->size = pAllocateInfo->allocationSize;
 
+   const struct dzn_buffer *buffer = NULL;
+   const struct dzn_image *image = NULL;
+
    vk_foreach_struct_const(ext, pAllocateInfo->pNext) {
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
@@ -2151,6 +2154,15 @@ dzn_device_memory_create(struct dzn_device *device,
          // TODO: support export
          assert(exp->handleTypes == 0);
          break;
+      }
+      case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
+         const VkMemoryDedicatedAllocateInfo *dedicated =
+           (const VkMemoryDedicatedAllocateInfo *)ext;
+
+         buffer = dzn_buffer_from_handle(dedicated->buffer);
+         image = dzn_image_from_handle(dedicated->image);
+         assert(!buffer || !image);
+	 break;
       }
       default:
          dzn_debug_ignored_stype(ext->sType);
@@ -2162,12 +2174,22 @@ dzn_device_memory_create(struct dzn_device *device,
       &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
 
    D3D12_HEAP_DESC heap_desc = { 0 };
-   // TODO: fix all of these:
+
    heap_desc.SizeInBytes = pAllocateInfo->allocationSize;
-   heap_desc.Alignment =
-      heap_desc.SizeInBytes >= D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT ?
-      D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT :
-      D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   if (buffer) {
+      heap_desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   } else if (image) {
+      heap_desc.Alignment =
+         image->vk.samples > 1 ?
+         D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT :
+         D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   } else {
+      heap_desc.Alignment =
+         heap_desc.SizeInBytes >= D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT ?
+         D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT :
+         D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   }
+
    heap_desc.Flags =
       dzn_physical_device_get_heap_flags_for_mem_type(pdevice,
                                                       pAllocateInfo->memoryTypeIndex);
