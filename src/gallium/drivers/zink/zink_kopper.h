@@ -69,6 +69,7 @@ struct kopper_displaytarget
    VkSurfaceCapabilitiesKHR caps;
    VkImageFormatListCreateInfoKHR format_list;
    enum kopper_type type;
+   bool is_kill;
 };
 
 struct zink_context;

@@ -513,6 +513,10 @@ zink_kopper_acquire(struct zink_context *ctx, struct zink_resource *res, uint64_
 {
    assert(res->obj->dt);
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   if (cdt->is_kill) {
+      kill_swapchain(ctx, res);
+      return false;
+   }
    const struct kopper_swapchain *cswap = cdt->swapchain;
    res->obj->new_dt |= res->base.b.width0 != cswap->scci.imageExtent.width ||
                        res->base.b.height0 != cswap->scci.imageExtent.height;
@@ -738,6 +742,7 @@ zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int 
    }
    if (update_caps(screen, cdt) != VK_SUCCESS) {
       mesa_loge("zink: failed to update swapchain capabilities");
+      cdt->is_kill = true;
       return false;
    }
    *w = cdt->caps.currentExtent.width;
