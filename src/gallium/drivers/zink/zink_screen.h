@@ -100,7 +100,6 @@ struct zink_screen {
    __DRIkopperLoaderExtension *loader;
 
    struct hash_table framebuffer_cache;
-   simple_mtx_t framebuffer_mtx;
 
    struct slab_parent_pool transfer_pool;
    struct disk_cache *disk_cache;
