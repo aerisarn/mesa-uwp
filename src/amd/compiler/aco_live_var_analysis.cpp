@@ -368,7 +368,6 @@ calc_min_waves(Program* program)
 void
 update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
 {
-   unsigned max_waves_per_simd = program->dev.max_wave64_per_simd * (64 / program->wave_size);
    unsigned simd_per_cu_wgp = program->dev.simd_per_cu * (program->wgp_mode ? 2 : 1);
    unsigned lds_limit = program->wgp_mode ? program->dev.lds_limit * 2 : program->dev.lds_limit;
    unsigned max_workgroups_per_cu_wgp = program->wgp_mode ? 32 : 16;
@@ -387,11 +386,12 @@ update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
          get_vgpr_alloc(program, new_demand.vgpr) + program->config->num_shared_vgprs / 2;
       program->num_waves =
          std::min<uint16_t>(program->num_waves, program->dev.physical_vgprs / vgpr_demand);
-      program->max_waves = max_waves_per_simd;
+      uint16_t max_waves = program->dev.max_wave64_per_simd * (64 / program->wave_size);
+      program->num_waves = std::min(program->num_waves, max_waves);
 
-      /* adjust max_waves for workgroup and LDS limits */
+      /* adjust num_waves for workgroup and LDS limits */
       unsigned waves_per_workgroup = calc_waves_per_workgroup(program);
-      unsigned workgroups_per_cu_wgp = max_waves_per_simd * simd_per_cu_wgp / waves_per_workgroup;
+      unsigned workgroups_per_cu_wgp = program->num_waves * simd_per_cu_wgp / waves_per_workgroup;
 
       unsigned lds_per_workgroup =
          align(program->config->lds_size * program->dev.lds_encoding_granule,
@@ -416,12 +416,10 @@ update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
       /* in cases like waves_per_workgroup=3 or lds=65536 and
        * waves_per_workgroup=1, we want the maximum possible number of waves per
        * SIMD and not the minimum. so DIV_ROUND_UP is used */
-      program->max_waves = std::min<uint16_t>(
-         program->max_waves,
-         DIV_ROUND_UP(workgroups_per_cu_wgp * waves_per_workgroup, simd_per_cu_wgp));
+      program->num_waves =
+         DIV_ROUND_UP(workgroups_per_cu_wgp * waves_per_workgroup, simd_per_cu_wgp);
 
-      /* incorporate max_waves and calculate max_reg_demand */
-      program->num_waves = std::min<uint16_t>(program->num_waves, program->max_waves);
+      /* calculate max_reg_demand */
       program->max_reg_demand.vgpr = get_addr_vgpr_from_waves(program, program->num_waves);
       program->max_reg_demand.sgpr = get_addr_sgpr_from_waves(program, program->num_waves);
    }

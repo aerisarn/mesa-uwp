@@ -2052,8 +2052,6 @@ public:
    std::vector<Block> blocks;
    std::vector<RegClass> temp_rc = {s1};
    RegisterDemand max_reg_demand = RegisterDemand();
-   uint16_t num_waves = 0;
-   uint16_t max_waves = 0; /* maximum number of waves, regardless of register usage */
    ac_shader_config* config;
    const struct radv_shader_info* info;
    enum chip_class chip_class;
@@ -2069,6 +2067,7 @@ public:
    Temp private_segment_buffer;
    Temp scratch_offset;
 
+   uint16_t num_waves = 0;
    uint16_t min_waves = 0;
    unsigned workgroup_size; /* if known; otherwise UINT_MAX */
    bool wgp_mode;
