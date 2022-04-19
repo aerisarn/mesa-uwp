@@ -806,8 +806,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
          templ.u.tex.last_layer = state->u.tex.last_layer;
       }
 
-      if (zink_is_swapchain(res))
-         zink_kopper_acquire(ctx, res, UINT64_MAX);
+      if (zink_is_swapchain(res)) {
+         if (!zink_kopper_acquire(ctx, res, UINT64_MAX))
+            return NULL;
+      }
 
       ivci = create_ivci(screen, res, &templ, state->target);
       ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
@@ -2162,8 +2164,8 @@ setup_framebuffer(struct zink_context *ctx)
       struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[i]->texture);
       if (zink_is_swapchain(res)) {
          has_swapchain = true;
-         zink_kopper_acquire(ctx, res, UINT64_MAX);
-         zink_surface_swapchain_update(ctx, zink_csurface(ctx->fb_state.cbufs[i]));
+         if (zink_kopper_acquire(ctx, res, UINT64_MAX))
+            zink_surface_swapchain_update(ctx, zink_csurface(ctx->fb_state.cbufs[i]));
       }
    }
    if (has_swapchain && (ctx->swapchain_size.width || ctx->swapchain_size.height)) {
@@ -2200,7 +2202,8 @@ prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned
    VkAccessFlags access;
    VkPipelineStageFlags pipeline;
    if (zink_is_swapchain(res)) {
-      zink_kopper_acquire(ctx, res, UINT64_MAX);
+      if (!zink_kopper_acquire(ctx, res, UINT64_MAX))
+         return VK_NULL_HANDLE;
       zink_surface_swapchain_update(ctx, surf);
       if (!i)
          zink_update_fbfetch(ctx);
@@ -2221,7 +2224,7 @@ prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned
    return surf->image_view;
 }
 
-static void
+static bool
 prep_fb_attachments(struct zink_context *ctx, VkImageView *att)
 {
    const unsigned cresolve_offset = ctx->fb_state.nr_cbufs + !!ctx->fb_state.zsbuf;
@@ -2235,6 +2238,9 @@ prep_fb_attachments(struct zink_context *ctx, VkImageView *att)
          num_resolves++;
       } else {
          att[i] = prep_fb_attachment(ctx, surf, i);
+         if (!att[i])
+            /* dead swapchain */
+            return false;
       }
    }
    if (ctx->fb_state.zsbuf) {
@@ -2247,6 +2253,7 @@ prep_fb_attachments(struct zink_context *ctx, VkImageView *att)
          att[ctx->fb_state.nr_cbufs] = prep_fb_attachment(ctx, surf, ctx->fb_state.nr_cbufs);
       }
    }
+   return true;
 }
 
 static unsigned
@@ -2313,7 +2320,8 @@ begin_render_pass(struct zink_context *ctx)
    infos.pNext = NULL;
    infos.attachmentCount = ctx->framebuffer->state.num_attachments;
    infos.pAttachments = att;
-   prep_fb_attachments(ctx, att);
+   if (!prep_fb_attachments(ctx, att))
+      return 0;
 #ifndef NDEBUG
    const unsigned cresolve_offset = ctx->fb_state.nr_cbufs + !!ctx->fb_state.zsbuf;
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
@@ -2653,10 +2661,13 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    if (changed) {
       if (zink_fb_clear_enabled(ctx, idx)) {
          if (zink_is_swapchain(res)) {
-            zink_kopper_acquire(ctx, res, UINT64_MAX);
-            zink_surface_swapchain_update(ctx, zink_csurface(surf));
+            if (zink_kopper_acquire(ctx, res, UINT64_MAX)) {
+               zink_surface_swapchain_update(ctx, zink_csurface(surf));
+               zink_fb_clears_apply(ctx, surf->texture);
+            }
+         } else {
+            zink_fb_clears_apply(ctx, surf->texture);
          }
-         zink_fb_clears_apply(ctx, surf->texture);
       }
       if (zink_batch_usage_exists(zink_csurface(surf)->batch_uses)) {
          zink_batch_reference_surface(&ctx->batch, zink_csurface(surf));
@@ -3506,18 +3517,21 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    struct zink_resource *img = dst->base.b.target == PIPE_BUFFER ? src : dst;
    struct zink_resource *buf = dst->base.b.target == PIPE_BUFFER ? dst : src;
    struct zink_batch *batch = &ctx->batch;
+   bool needs_present_readback = false;
    zink_batch_no_rp(ctx);
 
    bool buf2img = buf == src;
 
    if (buf2img) {
-      if (zink_is_swapchain(img))
-         zink_kopper_acquire(ctx, img, UINT64_MAX);
+      if (zink_is_swapchain(img)) {
+         if (!zink_kopper_acquire(ctx, img, UINT64_MAX))
+            return;
+      }
       zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
       zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
       if (zink_is_swapchain(img))
-         zink_kopper_acquire_readback(ctx, img);
+         needs_present_readback = zink_kopper_acquire_readback(ctx, img);
       zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
       zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
       util_range_add(&dst->base.b, &dst->valid_buffer_range, dstx, dstx + src_box->width);
@@ -3596,7 +3610,7 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
       else
          VKCTX(CmdCopyImageToBuffer)(batch->state->cmdbuf, img->obj->image, img->layout, buf->obj->buffer, 1, &region);
    }
-   if (!buf2img && img->obj->dt)
+   if (needs_present_readback)
       zink_kopper_present_readback(ctx, img);
 }
 

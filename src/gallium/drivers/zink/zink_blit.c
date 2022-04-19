@@ -293,8 +293,10 @@ zink_blit(struct pipe_context *pctx,
    struct zink_resource *src = zink_resource(info->src.resource);
    struct zink_resource *dst = zink_resource(info->dst.resource);
    bool needs_present_readback = false;
-   if (zink_is_swapchain(dst))
-      zink_kopper_acquire(ctx, dst, UINT64_MAX);
+   if (zink_is_swapchain(dst)) {
+      if (!zink_kopper_acquire(ctx, dst, UINT64_MAX))
+         return;
+   }
 
    if (src_desc == dst_desc ||
        src_desc->nr_channels != 4 || src_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN ||
