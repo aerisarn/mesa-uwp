@@ -138,7 +138,7 @@ typedef struct {
 
 void nir_cf_extract(nir_cf_list *extracted, nir_cursor begin, nir_cursor end);
 
-void nir_cf_reinsert(nir_cf_list *cf_list, nir_cursor cursor);
+nir_cursor nir_cf_reinsert(nir_cf_list *cf_list, nir_cursor cursor);
 
 void nir_cf_delete(nir_cf_list *cf_list);
 
