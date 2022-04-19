@@ -342,8 +342,7 @@ panvk_physical_device_init(struct panvk_physical_device *device,
       goto fail_close_device;
    }
 
-   fprintf(stderr, "WARNING: panvk is not a conformant vulkan implementation, "
-                   "testing use only.\n");
+   vk_warn_non_conformant_implementation("panvk");
 
    panvk_get_driver_uuid(&device->device_uuid);
    panvk_get_device_uuid(&device->device_uuid);
