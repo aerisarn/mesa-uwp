@@ -607,11 +607,13 @@
       when: on_success
     - changes: &d3d12_file_list
       - src/gallium/drivers/d3d12/**/*
-      - src/microsoft/**/*
       - src/gallium/frontends/wgl/*
       - src/gallium/winsys/d3d12/wgl/*
       - src/gallium/targets/libgl-gdi/*
       - src/gallium/targets/libgl-d3d12/*
+      when: on_success
+    - changes:
+      - src/microsoft/**/*
       when: on_success
     - changes:
         *zink_file_list
@@ -621,7 +623,7 @@
       when: on_success
     - when: never
 
-.windows-test-rules:
+.glon12-test-rules:
   rules:
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
@@ -631,14 +633,44 @@
       when: on_success
     - changes:
         *gallium_core_file_list
+    - changes: *d3d12_file_list
       when: on_success
     - changes:
-        *lavapipe_file_list
+      - src/microsoft/compiler/*
+      when: on_success
+    - when: never
+
+.spirv2dxil-test-rules:
+  rules:
+    - if: '$MICROSOFT_FARM == "offline"'
+      when: never
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes: &spirv2dxil_file_list
+      - src/microsoft/ci/*
+      - src/microsoft/compiler/*
+      - src/microsoft/spirv_to_dxil/*
+      when: on_success
+    - when: never
+
+.dozen-test-rules:
+  rules:
+    - if: '$MICROSOFT_FARM == "offline"'
+      when: never
+    - *ignore_scheduled_pipelines
+    - changes:
+        *mesa_core_file_list
       when: on_success
     - changes:
         *vulkan_file_list
       when: on_success
-    - changes: *d3d12_file_list
+    - changes:
+        *spirv2dxil_file_list
+      when: on_success
+    - changes:
+      - src/microsoft/vulkan/*
       when: on_success
     - when: never
 

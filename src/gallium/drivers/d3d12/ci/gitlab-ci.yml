@@ -2,7 +2,7 @@
   extends:
     - .build-windows
     - .use-windows_test_vs2019
-    - .windows-test-rules
+    - .glon12-test-rules
   stage: layered-backends
   dependencies:
     - windows-vs2019
