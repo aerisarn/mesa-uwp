@@ -1469,7 +1469,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    const VkAllocationCallbacks*                pAllocator,
    VkDevice*                                   pDevice)
 {
-   fprintf(stderr, "WARNING: lavapipe is not a conformant vulkan implementation, testing use only.\n");
+   vk_warn_non_conformant_implementation("lavapipe");
 
    LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
    struct lvp_device *device;
