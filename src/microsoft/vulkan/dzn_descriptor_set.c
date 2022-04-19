@@ -462,6 +462,31 @@ dzn_DestroyDescriptorSetLayout(VkDevice device,
                                      pAllocator);
 }
 
+VKAPI_ATTR void VKAPI_CALL
+dzn_GetDescriptorSetLayoutSupport(VkDevice device,
+                                  const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
+                                  VkDescriptorSetLayoutSupport *pSupport)
+{
+   const VkDescriptorSetLayoutBinding *bindings = pCreateInfo->pBindings;
+   uint32_t sampler_count = 0, other_desc_count = 0;
+
+   for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+      VkDescriptorType desc_type = bindings[i].descriptorType;
+      bool has_sampler = dzn_desc_type_has_sampler(desc_type);
+
+      if (has_sampler)
+         sampler_count += bindings[i].descriptorCount;
+      if (desc_type != VK_DESCRIPTOR_TYPE_SAMPLER)
+         other_desc_count += bindings[i].descriptorCount;
+      if (dzn_descriptor_type_depends_on_shader_usage(desc_type))
+         other_desc_count += bindings[i].descriptorCount;
+   }
+
+   pSupport->supported =
+      sampler_count <= (MAX_DESCS_PER_SAMPLER_HEAP / MAX_SETS) &&
+      other_desc_count <= (MAX_DESCS_PER_CBV_SRV_UAV_HEAP / MAX_SETS);
+}
+
 static void
 dzn_pipeline_layout_destroy(struct dzn_pipeline_layout *layout)
 {
