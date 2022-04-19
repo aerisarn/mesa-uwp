@@ -3749,7 +3749,7 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
         so->base = *zsa;
 
         /* Normalize (there's no separate enable) */
-        if (!zsa->alpha_enabled)
+        if (PAN_ARCH <= 5 && !zsa->alpha_enabled)
                 so->base.alpha_func = MALI_FUNC_ALWAYS;
 
         /* Prepack relevant parts of the Renderer State Descriptor. They will
