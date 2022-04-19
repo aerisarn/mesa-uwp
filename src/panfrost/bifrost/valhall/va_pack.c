@@ -844,7 +844,7 @@ va_lower_branch_target(bi_context *ctx, bi_block *start, bi_instr *I)
    signed offset = 0;
 
    /* Determine if the target block is strictly greater in source order */
-   bool forwards = target->name > start->name;
+   bool forwards = target->index > start->index;
 
    if (forwards) {
       /* We have to jump through this block */

@@ -658,7 +658,7 @@ typedef struct bi_block {
         struct list_head instructions;
 
         /* Index of the block in source order */
-        unsigned name;
+        unsigned index;
 
         /* Control flow graph */
         struct bi_block *successors[2];

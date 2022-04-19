@@ -198,7 +198,7 @@ bi_print_instr(const bi_instr *I, FILE *fp)
     }
 
     if (I->branch_target)
-            fprintf(fp, " -> block%u", I->branch_target->name);
+            fprintf(fp, " -> block%u", I->branch_target->index);
 
     fputs("\\n", fp);
 
