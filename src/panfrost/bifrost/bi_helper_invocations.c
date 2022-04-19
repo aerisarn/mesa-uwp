@@ -231,33 +231,23 @@ bi_analyze_helper_requirements(bi_context *ctx)
         }
 
         /* Propagate that up */
+        u_worklist worklist;
+        bi_worklist_init(ctx, &worklist);
 
-        struct set *work_list = _mesa_set_create(NULL,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
+        bi_foreach_block(ctx, block) {
+                bi_worklist_push_tail(&worklist, block);
+        }
 
-        struct set *visited = _mesa_set_create(NULL,
-                        _mesa_hash_pointer,
-                        _mesa_key_pointer_equal);
+        while (!u_worklist_is_empty(&worklist)) {
+                bi_block *blk = bi_worklist_pop_tail(&worklist);
 
-        struct set_entry *cur = _mesa_set_add(work_list, pan_exit_block(&ctx->blocks));
-
-        do {
-                bi_block *blk = (struct bi_block *) cur->key;
-                _mesa_set_remove(work_list, cur);
-
-                bool progress = bi_helper_block_update(deps, blk);
-
-                if (progress || !_mesa_set_search(visited, blk)) {
+                if (bi_helper_block_update(deps, blk)) {
                         bi_foreach_predecessor(blk, pred)
-                                _mesa_set_add(work_list, pred);
+                                bi_worklist_push_head(&worklist, pred);
                 }
+        }
 
-                _mesa_set_add(visited, blk);
-        } while((cur = _mesa_set_next_entry(work_list, NULL)) != NULL);
-
-        _mesa_set_destroy(visited, NULL);
-        _mesa_set_destroy(work_list, NULL);
+        u_worklist_fini(&worklist);
 
         /* Set the execute bits */
 
