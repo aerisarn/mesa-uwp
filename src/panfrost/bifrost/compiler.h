@@ -33,6 +33,7 @@
 #include "panfrost/util/pan_ir.h"
 #include "util/u_math.h"
 #include "util/half_float.h"
+#include "util/u_worklist.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -1343,6 +1344,14 @@ bi_instance_id(bi_builder *b)
 {
         return bi_register((b->shader->arch >= 9) ? 61 : 62);
 }
+
+#define bi_worklist_init(ctx, w) u_worklist_init(w, ctx->num_blocks, ctx)
+#define bi_worklist_push_head(w, block) u_worklist_push_head(w, block, index)
+#define bi_worklist_push_tail(w, block) u_worklist_push_tail(w, block, index)
+#define bi_worklist_peek_head(w) u_worklist_peek_head(w, bi_block, index)
+#define bi_worklist_pop_head(w)  u_worklist_pop_head( w, bi_block, index)
+#define bi_worklist_peek_tail(w) u_worklist_peek_tail(w, bi_block, index)
+#define bi_worklist_pop_tail(w)  u_worklist_pop_tail( w, bi_block, index)
 
 /* NIR passes */
 
