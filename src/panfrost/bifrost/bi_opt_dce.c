@@ -133,7 +133,7 @@ bi_postra_liveness(bi_context *ctx)
                  */
                 if (bi_postra_liveness_block(blk)) {
                         bi_foreach_predecessor(blk, pred)
-                                bi_worklist_push_head(&worklist, pred);
+                                bi_worklist_push_head(&worklist, *pred);
                 }
         }
 

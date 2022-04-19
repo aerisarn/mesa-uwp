@@ -177,11 +177,11 @@ bi_print_block(bi_block *block, FILE *fp)
                         fprintf(fp, "block%u ", succ->index);
         }
 
-        if (block->predecessors->entries) {
+        if (bi_num_predecessors(block)) {
                 fprintf(fp, " from");
 
                 bi_foreach_predecessor(block, pred)
-                        fprintf(fp, " block%u", pred->index);
+                        fprintf(fp, " block%u", (*pred)->index);
         }
 
         if (block->scheduled) {

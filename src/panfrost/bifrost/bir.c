@@ -222,8 +222,7 @@ bi_reconverge_branches(bi_block *block)
 
         /* Must have at least one successor */
         struct bi_block *succ = block->successors[0];
-        assert(succ->predecessors);
 
         /* Reconverge if the successor has multiple predecessors */
-        return (succ->predecessors->entries > 1);
+        return bi_num_predecessors(succ) > 1;
 }

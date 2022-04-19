@@ -121,7 +121,7 @@ bi_compute_liveness(bi_context *ctx)
                  */
                 if (liveness_block_update(blk, temp_count)) {
                         bi_foreach_predecessor(blk, pred)
-                                bi_worklist_push_head(&worklist, pred);
+                                bi_worklist_push_head(&worklist, *pred);
                 }
         }
 

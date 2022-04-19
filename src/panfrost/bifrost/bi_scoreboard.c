@@ -252,8 +252,8 @@ scoreboard_block_update(bi_block *blk)
         /* pending_in[s] = sum { p in pred[s] } ( pending_out[p] ) */
         bi_foreach_predecessor(blk, pred) {
                 for (unsigned i = 0; i < BI_NUM_SLOTS; ++i) {
-                        blk->scoreboard_in.read[i] |= pred->scoreboard_out.read[i];
-                        blk->scoreboard_in.write[i] |= pred->scoreboard_out.write[i];
+                        blk->scoreboard_in.read[i] |= (*pred)->scoreboard_out.read[i];
+                        blk->scoreboard_in.write[i] |= (*pred)->scoreboard_out.write[i];
                 }
         }
 

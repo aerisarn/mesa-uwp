@@ -143,8 +143,8 @@ bi_propagate_pass_flag(bi_block *block)
         block->pass_flags = 1;
 
         bi_foreach_predecessor(block, pred) {
-                if (pred->pass_flags == 0)
-                        bi_propagate_pass_flag(pred);
+                if ((*pred)->pass_flags == 0)
+                        bi_propagate_pass_flag(*pred);
         }
 }
 
@@ -243,7 +243,7 @@ bi_analyze_helper_requirements(bi_context *ctx)
 
                 if (bi_helper_block_update(deps, blk)) {
                         bi_foreach_predecessor(blk, pred)
-                                bi_worklist_push_head(&worklist, pred);
+                                bi_worklist_push_head(&worklist, *pred);
                 }
         }
 
