@@ -207,6 +207,9 @@ static VkResult
 dzn_cmd_buffer_reset(dzn_cmd_buffer *cmdbuf)
 {
    dzn_device *device = container_of(cmdbuf->vk.base.device, dzn_device, vk);
+   const struct dzn_physical_device *pdev =
+      container_of(device->vk.physical, dzn_physical_device, vk);
+   const struct vk_command_pool *pool = cmdbuf->vk.pool;
 
    /* Reset the state */
    memset(&cmdbuf->state, 0, sizeof(cmdbuf->state));
@@ -255,7 +258,9 @@ dzn_cmd_buffer_reset(dzn_cmd_buffer *cmdbuf)
    cmdbuf->cmdlist->Release();
    cmdbuf->cmdlist = NULL;
    cmdbuf->cmdalloc->Reset();
-   if (FAILED(device->dev->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+   D3D12_COMMAND_LIST_TYPE type =
+      pdev->queue_families[pool->queue_family_index].desc.Type;
+   if (FAILED(device->dev->CreateCommandList(0, type,
                                              cmdbuf->cmdalloc, NULL,
                                              IID_PPV_ARGS(&cmdbuf->cmdlist)))) {
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
