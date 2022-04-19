@@ -1210,17 +1210,22 @@ struct pipe_query_data_timestamp_disjoint
  */
 struct pipe_query_data_pipeline_statistics
 {
-   uint64_t ia_vertices;    /**< Num vertices read by the vertex fetcher. */
-   uint64_t ia_primitives;  /**< Num primitives read by the vertex fetcher. */
-   uint64_t vs_invocations; /**< Num vertex shader invocations. */
-   uint64_t gs_invocations; /**< Num geometry shader invocations. */
-   uint64_t gs_primitives;  /**< Num primitives output by a geometry shader. */
-   uint64_t c_invocations;  /**< Num primitives sent to the rasterizer. */
-   uint64_t c_primitives;   /**< Num primitives that were rendered. */
-   uint64_t ps_invocations; /**< Num pixel shader invocations. */
-   uint64_t hs_invocations; /**< Num hull shader invocations. */
-   uint64_t ds_invocations; /**< Num domain shader invocations. */
-   uint64_t cs_invocations; /**< Num compute shader invocations. */
+   union {
+      struct {
+         uint64_t ia_vertices;    /**< Num vertices read by the vertex fetcher. */
+         uint64_t ia_primitives;  /**< Num primitives read by the vertex fetcher. */
+         uint64_t vs_invocations; /**< Num vertex shader invocations. */
+         uint64_t gs_invocations; /**< Num geometry shader invocations. */
+         uint64_t gs_primitives;  /**< Num primitives output by a geometry shader. */
+         uint64_t c_invocations;  /**< Num primitives sent to the rasterizer. */
+         uint64_t c_primitives;   /**< Num primitives that were rendered. */
+         uint64_t ps_invocations; /**< Num pixel shader invocations. */
+         uint64_t hs_invocations; /**< Num hull shader invocations. */
+         uint64_t ds_invocations; /**< Num domain shader invocations. */
+         uint64_t cs_invocations; /**< Num compute shader invocations. */
+      };
+      uint64_t counters[11];
+   };
 };
 
 /**
