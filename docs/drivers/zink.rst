@@ -156,7 +156,7 @@ supported:
   * ``shaderStorageImageWriteWithoutFormat``
 
 * For Vulkan 1.2 and above:
-  
+
   * ``VkPhysicalDeviceVulkan11Features``:
 
     * ``shaderDrawParameters``
