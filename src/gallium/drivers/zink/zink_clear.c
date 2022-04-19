@@ -154,7 +154,7 @@ clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const uni
    color.uint32[2] = pcolor->ui[2];
    color.uint32[3] = pcolor->ui[3];
 
-   if (res->obj->dt)
+   if (zink_is_swapchain(res))
       zink_kopper_acquire(ctx, res, UINT64_MAX);
    if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))

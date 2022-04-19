@@ -806,7 +806,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
          templ.u.tex.last_layer = state->u.tex.last_layer;
       }
 
-      if (res->obj->dt)
+      if (zink_is_swapchain(res))
          zink_kopper_acquire(ctx, res, UINT64_MAX);
 
       ivci = create_ivci(screen, res, &templ, state->target);
@@ -2160,7 +2160,7 @@ setup_framebuffer(struct zink_context *ctx)
       if (!ctx->fb_state.cbufs[i])
          continue;
       struct zink_resource *res = zink_resource(ctx->fb_state.cbufs[i]->texture);
-      if (res->obj->dt) {
+      if (zink_is_swapchain(res)) {
          has_swapchain = true;
          zink_kopper_acquire(ctx, res, UINT64_MAX);
          zink_surface_swapchain_update(ctx, zink_csurface(ctx->fb_state.cbufs[i]));
@@ -2199,7 +2199,7 @@ prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned
 
    VkAccessFlags access;
    VkPipelineStageFlags pipeline;
-   if (res->obj->dt) {
+   if (zink_is_swapchain(res)) {
       zink_kopper_acquire(ctx, res, UINT64_MAX);
       zink_surface_swapchain_update(ctx, surf);
       if (!i)
@@ -2652,7 +2652,7 @@ unbind_fb_surface(struct zink_context *ctx, struct pipe_surface *surf, unsigned 
    struct zink_resource *res = zink_resource(surf->texture);
    if (changed) {
       if (zink_fb_clear_enabled(ctx, idx)) {
-         if (res->obj->dt) {
+         if (zink_is_swapchain(res)) {
             zink_kopper_acquire(ctx, res, UINT64_MAX);
             zink_surface_swapchain_update(ctx, zink_csurface(surf));
          }
@@ -3511,12 +3511,12 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_resource *dst, stru
    bool buf2img = buf == src;
 
    if (buf2img) {
-      if (img->obj->dt)
+      if (zink_is_swapchain(img))
          zink_kopper_acquire(ctx, img, UINT64_MAX);
       zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
       zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
-      if (img->obj->dt)
+      if (zink_is_swapchain(img))
          zink_kopper_acquire_readback(ctx, img);
       zink_resource_image_barrier(ctx, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
       zink_resource_buffer_barrier(ctx, buf, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
