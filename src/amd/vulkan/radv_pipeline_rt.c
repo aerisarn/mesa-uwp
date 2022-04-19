@@ -642,7 +642,7 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                   &b_shader,
                   nir_iand(
                      &b_shader,
-                     nir_flt(&b_shader, intr->src[0].ssa, nir_load_var(&b_shader, vars->tmax)),
+                     nir_fge(&b_shader, nir_load_var(&b_shader, vars->tmax), intr->src[0].ssa),
                      nir_fge(&b_shader, intr->src[0].ssa, nir_load_var(&b_shader, vars->tmin))));
                {
                   nir_store_var(&b_shader, vars->ahit_status, nir_imm_int(&b_shader, 0), 1);
@@ -1112,7 +1112,7 @@ insert_traversal_triangle_case(struct radv_device *device,
                      0)));
 
    nir_push_if(b, nir_iand(b,
-                           nir_iand(b, nir_flt(b, dist, nir_load_var(b, vars->tmax)),
+                           nir_iand(b, nir_fge(b, nir_load_var(b, vars->tmax), dist),
                                     nir_fge(b, dist, nir_load_var(b, vars->tmin))),
                            not_cull));
    {
@@ -1319,7 +1319,7 @@ insert_traversal_aabb_case(struct radv_device *device,
          nir_ssa_def *t_max = nir_fmin(b, nir_channel(b, t2_vec, 0), nir_channel(b, t2_vec, 1));
          t_max = nir_fmin(b, t_max, nir_channel(b, t2_vec, 2));
 
-         nir_push_if(b, nir_iand(b, nir_flt(b, t_min, nir_load_var(b, vars->tmax)),
+         nir_push_if(b, nir_iand(b, nir_fge(b, nir_load_var(b, vars->tmax), t_min),
                                  nir_fge(b, t_max, nir_load_var(b, vars->tmin))));
          {
             nir_store_var(b, vars->ahit_status, nir_imm_int(b, 0), 1);

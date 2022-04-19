@@ -322,7 +322,7 @@ static void
 lower_rq_generate_intersection(nir_builder *b, nir_ssa_def *index, nir_intrinsic_instr *instr,
                                struct ray_query_vars *vars)
 {
-   nir_push_if(b, nir_iand(b, nir_flt(b, instr->src[1].ssa, rq_load_var(b, index, vars->closest.t)),
+   nir_push_if(b, nir_iand(b, nir_fge(b, rq_load_var(b, index, vars->closest.t), instr->src[1].ssa),
                            nir_fge(b, instr->src[1].ssa, rq_load_var(b, index, vars->tmin))));
    {
       copy_candidate_to_closest(b, index, vars);
@@ -538,7 +538,7 @@ insert_traversal_triangle_case(struct radv_device *device, nir_builder *b, nir_s
                      0)));
 
    nir_push_if(b, nir_iand(b,
-                           nir_iand(b, nir_flt(b, dist, rq_load_var(b, index, vars->closest.t)),
+                           nir_iand(b, nir_fge(b, rq_load_var(b, index, vars->closest.t), dist),
                                     nir_fge(b, dist, rq_load_var(b, index, vars->tmin))),
                            not_cull));
    {
@@ -635,7 +635,7 @@ insert_traversal_aabb_case(struct radv_device *device, nir_builder *b, nir_ssa_d
       nir_ssa_def *t_max = nir_fmin(b, nir_channel(b, t2_vec, 0), nir_channel(b, t2_vec, 1));
       t_max = nir_fmin(b, t_max, nir_channel(b, t2_vec, 2));
 
-      nir_push_if(b, nir_iand(b, nir_flt(b, t_min, rq_load_var(b, index, vars->closest.t)),
+      nir_push_if(b, nir_iand(b, nir_fge(b, rq_load_var(b, index, vars->closest.t), t_min),
                               nir_fge(b, t_max, rq_load_var(b, index, vars->tmin))));
       {
          rq_store_var(b, index, vars->candidate.t,
