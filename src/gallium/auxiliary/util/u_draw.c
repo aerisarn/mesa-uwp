@@ -154,6 +154,10 @@ util_draw_indirect_read(struct pipe_context *pipe,
          draw_count = dc_param[0];
       pipe_buffer_unmap(pipe, dc_transfer);
    }
+   if (!draw_count) {
+      *num_draws = draw_count;
+      return NULL;
+   }
    draws = malloc(sizeof(struct u_indirect_params) * draw_count);
    if (!draws)
       return NULL;
