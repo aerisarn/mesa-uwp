@@ -308,6 +308,8 @@ ureg_DECL_fs_input_centroid_layout(struct ureg_program *ureg,
          assert(ureg->input[i].interp_location == interp_location);
          if (ureg->input[i].array_id == array_id) {
             ureg->input[i].usage_mask |= usage_mask;
+            ureg->input[i].last = MAX2(ureg->input[i].last, ureg->input[i].first + array_size - 1);
+            ureg->nr_input_regs = MAX2(ureg->nr_input_regs, ureg->input[i].last + 1);
             goto out;
          }
          assert((ureg->input[i].usage_mask & usage_mask) == 0);
@@ -445,6 +447,8 @@ ureg_DECL_output_layout(struct ureg_program *ureg,
           ureg->output[i].semantic_index == semantic_index) {
          if (ureg->output[i].array_id == array_id) {
             ureg->output[i].usage_mask |= usage_mask;
+            ureg->output[i].last = MAX2(ureg->output[i].last, ureg->output[i].first + array_size - 1);
+            ureg->nr_output_regs = MAX2(ureg->nr_output_regs, ureg->output[i].last + 1);
             goto out;
          }
          assert((ureg->output[i].usage_mask & usage_mask) == 0);
