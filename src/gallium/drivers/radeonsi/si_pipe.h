@@ -1268,6 +1268,8 @@ struct si_context {
    int num_pipeline_stat_emulated_queries;
    struct list_head active_queries;
    unsigned num_cs_dw_queries_suspend;
+   /* Shared buffer for pipeline stats queries implemented with an atomic op */
+   struct si_resource *pipeline_stats_query_buf;
 
    /* Render condition. */
    struct pipe_query *render_cond;

@@ -890,8 +890,16 @@ static void si_query_hw_emit_start(struct si_context *sctx, struct si_query_hw *
 {
    uint64_t va;
 
-   if (!si_query_buffer_alloc(sctx, &query->buffer, query->ops->prepare_buffer, query->result_size))
+   if (!query->buffer.buf && query->flags & SI_QUERY_EMULATE_GS_COUNTERS)
+      si_resource_reference(&query->buffer.buf, sctx->pipeline_stats_query_buf);
+
+   /* Don't realloc pipeline_stats_query_buf */
+   if ((!(query->flags & SI_QUERY_EMULATE_GS_COUNTERS) || !sctx->pipeline_stats_query_buf) &&
+       !si_query_buffer_alloc(sctx, &query->buffer, query->ops->prepare_buffer, query->result_size))
       return;
+
+   if (query->flags & SI_QUERY_EMULATE_GS_COUNTERS)
+      si_resource_reference(&sctx->pipeline_stats_query_buf, query->buffer.buf);
 
    si_update_occlusion_query_state(sctx, query->b.type, 1);
    si_update_prims_generated_query_state(sctx, query->b.type, 1);
