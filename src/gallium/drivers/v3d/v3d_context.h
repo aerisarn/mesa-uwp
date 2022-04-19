@@ -471,6 +471,11 @@ struct v3d_job {
         enum v3d_ez_state first_ez_state;
 
         /**
+         * If this job has been configured to use early Z/S clear.
+         */
+        bool early_zs_clear;
+
+        /**
          * Number of draw calls (not counting full buffer clears) queued in
          * the current job.
          */
