@@ -24,8 +24,8 @@
 #ifndef PVR_JOB_CONTEXT_H
 #define PVR_JOB_CONTEXT_H
 
-#include "pvr_winsys.h"
 #include "pvr_private.h"
+#include "pvr_winsys.h"
 
 /* Support PDS code/data loading/storing to the 'B' shared register state
  * buffers.
@@ -131,8 +131,6 @@ struct pvr_compute_ctx {
 #   error \
       "Transfer queue can not support more DMA kicks than supported by PDS codegen."
 #endif
-
-#define PVR_TRANSFER_MAX_RENDER_TARGETS 3U
 
 struct pvr_transfer_ctx {
    struct pvr_device *device;

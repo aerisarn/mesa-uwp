@@ -253,6 +253,54 @@ struct pvr_winsys_transfer_ctx {
    struct pvr_winsys *ws;
 };
 
+#define PVR_WINSYS_TRANSFER_FLAG_START BITFIELD_BIT(0U)
+#define PVR_WINSYS_TRANSFER_FLAG_END BITFIELD_BIT(1U)
+
+#define PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT 16U
+#define PVR_TRANSFER_MAX_RENDER_TARGETS 3U
+
+struct pvr_winsys_transfer_regs {
+   uint32_t event_pixel_pds_code;
+   uint32_t event_pixel_pds_data;
+   uint32_t event_pixel_pds_info;
+   uint32_t isp_aa;
+   uint32_t isp_bgobjvals;
+   uint32_t isp_ctl;
+   uint64_t isp_mtile_base;
+   uint32_t isp_mtile_size;
+   uint32_t isp_render;
+   uint32_t isp_render_origin;
+   uint32_t isp_rgn;
+   uint64_t pbe_wordx_mrty[PVR_TRANSFER_MAX_RENDER_TARGETS *
+                           ROGUE_NUM_PBESTATE_REG_WORDS];
+   uint64_t pds_bgnd0_base;
+   uint64_t pds_bgnd1_base;
+   uint64_t pds_bgnd3_sizeinfo;
+   uint32_t usc_clear_register0;
+   uint32_t usc_clear_register1;
+   uint32_t usc_clear_register2;
+   uint32_t usc_clear_register3;
+   uint32_t usc_pixel_output_ctrl;
+};
+
+struct pvr_winsys_transfer_submit_info {
+   uint32_t frame_num;
+   uint32_t job_num;
+
+   /* waits and stage_flags are arrays of length wait_count. */
+   struct vk_sync **waits;
+   uint32_t wait_count;
+   uint32_t *stage_flags;
+
+   uint32_t cmd_count;
+   struct {
+      struct pvr_winsys_transfer_regs regs;
+
+      /* Must be 0 or a combination of PVR_WINSYS_TRANSFER_FLAG_* flags. */
+      uint32_t flags;
+   } cmds[PVR_TRANSFER_MAX_PREPARES_PER_SUBMIT];
+};
+
 #define PVR_WINSYS_COMPUTE_FLAG_PREVENT_ALL_OVERLAP BITFIELD_BIT(0U)
 #define PVR_WINSYS_COMPUTE_FLAG_SINGLE_CORE BITFIELD_BIT(1U)
 
@@ -440,6 +488,10 @@ struct pvr_winsys_ops {
       const struct pvr_winsys_transfer_ctx_create_info *create_info,
       struct pvr_winsys_transfer_ctx **const ctx_out);
    void (*transfer_ctx_destroy)(struct pvr_winsys_transfer_ctx *ctx);
+   VkResult (*transfer_submit)(
+      const struct pvr_winsys_transfer_ctx *ctx,
+      const struct pvr_winsys_transfer_submit_info *submit_info,
+      struct vk_sync *signal_sync);
 
    VkResult (*null_job_submit)(struct pvr_winsys *ws,
                                struct vk_sync **waits,

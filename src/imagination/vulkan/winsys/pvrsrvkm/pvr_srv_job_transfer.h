@@ -29,6 +29,8 @@
 struct pvr_winsys;
 struct pvr_winsys_transfer_ctx;
 struct pvr_winsys_transfer_ctx_create_info;
+struct pvr_winsys_transfer_submit_info;
+struct vk_sync;
 
 /*******************************************
    Function prototypes
@@ -39,5 +41,10 @@ VkResult pvr_srv_winsys_transfer_ctx_create(
    const struct pvr_winsys_transfer_ctx_create_info *create_info,
    struct pvr_winsys_transfer_ctx **const ctx_out);
 void pvr_srv_winsys_transfer_ctx_destroy(struct pvr_winsys_transfer_ctx *ctx);
+
+VkResult pvr_srv_winsys_transfer_submit(
+   const struct pvr_winsys_transfer_ctx *ctx,
+   const struct pvr_winsys_transfer_submit_info *submit_info,
+   struct vk_sync *signal_sync);
 
 #endif /* PVR_SRV_JOB_TRANSFER_H */

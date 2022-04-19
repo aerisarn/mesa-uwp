@@ -452,6 +452,7 @@ static const struct pvr_winsys_ops srv_winsys_ops = {
    .compute_submit = pvr_srv_winsys_compute_submit,
    .transfer_ctx_create = pvr_srv_winsys_transfer_ctx_create,
    .transfer_ctx_destroy = pvr_srv_winsys_transfer_ctx_destroy,
+   .transfer_submit = pvr_srv_winsys_transfer_submit,
    .null_job_submit = pvr_srv_winsys_null_job_submit,
 };
 

@@ -73,6 +73,7 @@
 
 #define PVR_SRV_BRIDGE_RGXTQ_RGXCREATETRANSFERCONTEXT 0UL
 #define PVR_SRV_BRIDGE_RGXTQ_RGXDESTROYTRANSFERCONTEXT 1UL
+#define PVR_SRV_BRIDGE_RGXTQ_RGXSUBMITTRANSFER2 3UL
 
 #define PVR_SRV_BRIDGE_RGXCMP 129UL
 
@@ -104,6 +105,14 @@
    DRM_IOWR(DRM_COMMAND_BASE + DRM_SRVKM_CMD, struct drm_srvkm_cmd)
 #define DRM_IOCTL_SRVKM_INIT \
    DRM_IOWR(DRM_COMMAND_BASE + DRM_SRVKM_INIT, struct drm_srvkm_init_data)
+
+/******************************************************************************
+   Bridge call specific defines
+ ******************************************************************************/
+
+/* Flags for PVR_SRV_BRIDGE_RGXTQ_RGXSUBMITTRANSFER2 bridge call. */
+#define PVR_TRANSFER_PREP_FLAGS_START BITFIELD_BIT(5U)
+#define PVR_TRANSFER_PREP_FLAGS_END BITFIELD_BIT(6U)
 
 /******************************************************************************
    Misc defines
@@ -502,6 +511,36 @@ struct pvr_srv_rgx_destroy_transfer_context_cmd {
 
 struct pvr_srv_rgx_destroy_transfer_context_ret {
    enum pvr_srv_error error;
+} PACKED;
+
+/******************************************************************************
+   PVR_SRV_BRIDGE_RGXTQ_RGXSUBMITTRANSFER2 structs
+ ******************************************************************************/
+
+struct pvr_srv_rgx_submit_transfer2_cmd {
+   void *transfer_context;
+   uint32_t *client_update_count;
+   uint32_t *cmd_size;
+   uint32_t *sync_pmr_flags;
+   uint32_t *tq_prepare_flags;
+   uint32_t **update_sync_offset;
+   uint32_t **update_value;
+   uint8_t **fw_command;
+   char *update_fence_name;
+   void **sync_pmrs;
+   void ***update_ufo_sync_prim_block;
+   int32_t update_timeline_2d;
+   int32_t update_timeline_3d;
+   int32_t check_fence;
+   uint32_t ext_job_ref;
+   uint32_t prepare_count;
+   uint32_t sync_pmr_count;
+} PACKED;
+
+struct pvr_srv_rgx_submit_transfer2_ret {
+   enum pvr_srv_error error;
+   int32_t update_fence_2d;
+   int32_t update_fence_3d;
 } PACKED;
 
 /******************************************************************************
@@ -935,6 +974,26 @@ VkResult pvr_srv_rgx_create_transfer_context(int fd,
                                              void **const usc_pmr_out,
                                              void **const transfer_context_out);
 void pvr_srv_rgx_destroy_transfer_context(int fd, void *transfer_context);
+VkResult pvr_srv_rgx_submit_transfer2(int fd,
+                                      void *transfer_context,
+                                      uint32_t prepare_count,
+                                      uint32_t *client_update_count,
+                                      void ***update_ufo_sync_prim_block,
+                                      uint32_t **update_sync_offset,
+                                      uint32_t **update_value,
+                                      int32_t check_fence,
+                                      int32_t update_timeline_2d,
+                                      int32_t update_timeline_3d,
+                                      char *update_fence_name,
+                                      uint32_t *cmd_size,
+                                      uint8_t **fw_command,
+                                      uint32_t *tq_prepare_flags,
+                                      uint32_t ext_job_ref,
+                                      uint32_t sync_pmr_count,
+                                      uint32_t *sync_pmr_flags,
+                                      void **sync_pmrs,
+                                      int32_t *update_fence_2d_out,
+                                      int32_t *update_fence_3d_out);
 
 VkResult
 pvr_srv_rgx_create_hwrt_dataset(int fd,

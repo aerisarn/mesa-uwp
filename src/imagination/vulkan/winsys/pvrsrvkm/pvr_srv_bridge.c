@@ -871,6 +871,75 @@ void pvr_srv_rgx_destroy_transfer_context(int fd, void *transfer_context)
    }
 }
 
+VkResult pvr_srv_rgx_submit_transfer2(int fd,
+                                      void *transfer_context,
+                                      uint32_t prepare_count,
+                                      uint32_t *client_update_count,
+                                      void ***update_ufo_sync_prim_block,
+                                      uint32_t **update_sync_offset,
+                                      uint32_t **update_value,
+                                      int32_t check_fence,
+                                      int32_t update_timeline_2d,
+                                      int32_t update_timeline_3d,
+                                      char *update_fence_name,
+                                      uint32_t *cmd_size,
+                                      uint8_t **fw_command,
+                                      uint32_t *tq_prepare_flags,
+                                      uint32_t ext_job_ref,
+                                      uint32_t sync_pmr_count,
+                                      uint32_t *sync_pmr_flags,
+                                      void **sync_pmrs,
+                                      int32_t *const update_fence_2d_out,
+                                      int32_t *const update_fence_3d_out)
+{
+   struct pvr_srv_rgx_submit_transfer2_cmd cmd = {
+      .transfer_context = transfer_context,
+      .client_update_count = client_update_count,
+      .cmd_size = cmd_size,
+      .sync_pmr_flags = sync_pmr_flags,
+      .tq_prepare_flags = tq_prepare_flags,
+      .update_sync_offset = update_sync_offset,
+      .update_value = update_value,
+      .fw_command = fw_command,
+      .update_fence_name = update_fence_name,
+      .sync_pmrs = sync_pmrs,
+      .update_ufo_sync_prim_block = update_ufo_sync_prim_block,
+      .update_timeline_2d = update_timeline_2d,
+      .update_timeline_3d = update_timeline_3d,
+      .check_fence = check_fence,
+      .ext_job_ref = ext_job_ref,
+      .prepare_count = prepare_count,
+      .sync_pmr_count = sync_pmr_count,
+   };
+
+   struct pvr_srv_rgx_submit_transfer2_ret ret = {
+      .error = PVR_SRV_ERROR_BRIDGE_CALL_FAILED,
+   };
+
+   int result;
+
+   result = pvr_srv_bridge_call(fd,
+                                PVR_SRV_BRIDGE_RGXTQ,
+                                PVR_SRV_BRIDGE_RGXTQ_RGXSUBMITTRANSFER2,
+                                &cmd,
+                                sizeof(cmd),
+                                &ret,
+                                sizeof(ret));
+   if (result || ret.error != PVR_SRV_OK) {
+      return vk_bridge_err(VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                           "PVR_SRV_BRIDGE_RGXTQ_RGXSUBMITTRANSFER2",
+                           ret);
+   }
+
+   if (update_fence_2d_out)
+      *update_fence_2d_out = ret.update_fence_2d;
+
+   if (update_fence_3d_out)
+      *update_fence_3d_out = ret.update_fence_3d;
+
+   return VK_SUCCESS;
+}
+
 VkResult
 pvr_srv_rgx_create_compute_context(int fd,
                                    uint32_t priority,

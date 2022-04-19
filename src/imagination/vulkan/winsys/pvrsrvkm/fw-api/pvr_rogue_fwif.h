@@ -28,7 +28,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "hwdef/rogue_hw_defs.h"
 #include "pvr_rogue_fwif_shared.h"
+#include "pvr_winsys.h"
 
 /**
  * \name Frag DM command flags.
@@ -358,9 +360,9 @@ struct rogue_fwif_transfer_regs {
    /* FIXME: HIGH: RGX_PBE_WORDS_REQUIRED_FOR_TQS changes the structure's
     * layout.
     */
-#define ROGUE_PBE_WORDS_REQUIRED_FOR_TRANSFER 3
    /* TQ_MAX_RENDER_TARGETS * PBE_STATE_SIZE */
-   uint64_t pbe_wordx_mrty[3U * ROGUE_PBE_WORDS_REQUIRED_FOR_TRANSFER];
+   uint64_t pbe_wordx_mrty[PVR_TRANSFER_MAX_RENDER_TARGETS *
+                           ROGUE_NUM_PBESTATE_REG_WORDS];
 };
 
 /**
