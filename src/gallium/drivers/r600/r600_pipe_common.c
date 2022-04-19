@@ -1300,7 +1300,6 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		printf("vce_fw_version = %u\n", rscreen->info.vce_fw_version);
 		printf("me_fw_version = %i\n", rscreen->info.me_fw_version);
 		printf("pfp_fw_version = %i\n", rscreen->info.pfp_fw_version);
-		printf("ce_fw_version = %i\n", rscreen->info.ce_fw_version);
 		printf("vce_harvest_config = %i\n", rscreen->info.vce_harvest_config);
 		printf("clock_crystal_freq = %i\n", rscreen->info.clock_crystal_freq);
 		printf("tcc_cache_line_size = %u\n", rscreen->info.tcc_cache_line_size);

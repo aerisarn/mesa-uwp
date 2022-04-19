@@ -107,8 +107,6 @@ struct radeon_info {
    uint64_t vram_vis_size;
    uint32_t vram_bit_width;
    uint32_t vram_type;
-   unsigned gds_size;
-   unsigned gds_gfx_partition_size;
    uint64_t max_alloc_size;
    uint32_t min_alloc_size;
    uint32_t address32_hi;
@@ -126,7 +124,6 @@ struct radeon_info {
    uint32_t lds_alloc_granularity;
    uint32_t lds_encode_granularity;
    uint32_t max_memory_clock;
-   uint32_t ce_ram_size;
    uint32_t l1_cache_size;
    uint32_t l2_cache_size;
 
@@ -139,8 +136,6 @@ struct radeon_info {
    uint32_t mec_fw_feature;
    uint32_t pfp_fw_version;
    uint32_t pfp_fw_feature;
-   uint32_t ce_fw_version;
-   uint32_t ce_fw_feature;
 
    /* Multimedia info. */
    struct {
@@ -189,7 +184,6 @@ struct radeon_info {
    bool has_sparse_vm_mappings;
    bool has_2d_tiling;
    bool has_read_registers_query;
-   bool has_gds_ordered_append;
    bool has_scheduled_fence_dependency;
    bool has_stable_pstate;
    /* Whether SR-IOV is enabled or amdgpu.mcbp=1 was set on the kernel command line. */

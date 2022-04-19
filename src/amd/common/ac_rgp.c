@@ -482,7 +482,7 @@ static void ac_sqtt_fill_asic_info(struct radeon_info *rad_info,
    chunk->gpu_index = 0;
 
    chunk->max_number_of_dedicated_cus = 0;
-   chunk->ce_ram_size = rad_info->ce_ram_size;
+   chunk->ce_ram_size = 0;
    chunk->ce_ram_size_graphics = 0;
    chunk->ce_ram_size_compute = 0;
 

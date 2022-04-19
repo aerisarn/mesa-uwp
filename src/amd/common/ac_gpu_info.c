@@ -606,13 +606,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       return false;
    }
 
-   r = amdgpu_query_firmware_version(dev, AMDGPU_INFO_FW_GFX_CE, 0, 0, &info->ce_fw_version,
-                                     &info->ce_fw_feature);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_firmware_version(ce) failed.\n");
-      return false;
-   }
-
    r = amdgpu_query_firmware_version(dev, AMDGPU_INFO_FW_UVD, 0, 0, &uvd_version, &uvd_feature);
    if (r) {
       fprintf(stderr, "amdgpu: amdgpu_query_firmware_version(uvd) failed.\n");
@@ -831,14 +824,11 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->vram_type = amdinfo->vram_type;
    info->vram_bit_width = amdinfo->vram_bit_width;
-   info->ce_ram_size = amdinfo->ce_ram_size;
 
    /* Set which chips have uncached device memory. */
    info->has_l2_uncached = info->chip_class >= GFX9;
 
    /* Set hardware information. */
-   info->gds_size = gds.gds_total_size;
-   info->gds_gfx_partition_size = gds.gds_gfx_partition_size;
    /* convert the shader/memory clocks from KHz to MHz */
    info->max_shader_clock = amdinfo->max_engine_clk / 1000;
    info->max_memory_clock = amdinfo->max_memory_clk / 1000;
@@ -1177,8 +1167,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          info->use_display_dcc_with_retile_blit = true;
    }
 
-   info->has_gds_ordered_append = info->chip_class >= GFX7 && info->drm_minor >= 29;
-
    info->has_stable_pstate = info->drm_minor >= 45;
 
    if (info->chip_class >= GFX9 && info->has_graphics) {
@@ -1391,8 +1379,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    vram_vis_size = %i MB\n", (int)DIV_ROUND_UP(info->vram_vis_size, 1024 * 1024));
    fprintf(f, "    vram_type = %i\n", info->vram_type);
    fprintf(f, "    vram_bit_width = %i\n", info->vram_bit_width);
-   fprintf(f, "    gds_size = %u kB\n", info->gds_size / 1024);
-   fprintf(f, "    gds_gfx_partition_size = %u kB\n", info->gds_gfx_partition_size / 1024);
    fprintf(f, "    max_alloc_size = %i MB\n", (int)DIV_ROUND_UP(info->max_alloc_size, 1024 * 1024));
    fprintf(f, "    min_alloc_size = %u\n", info->min_alloc_size);
    fprintf(f, "    address32_hi = 0x%x\n", info->address32_hi);
@@ -1408,7 +1394,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    lds_alloc_granularity = %i\n", info->lds_alloc_granularity);
    fprintf(f, "    lds_encode_granularity = %i\n", info->lds_encode_granularity);
    fprintf(f, "    max_memory_clock = %i MHz\n", info->max_memory_clock);
-   fprintf(f, "    ce_ram_size = %i\n", info->ce_ram_size);
    fprintf(f, "    l1_cache_size = %i\n", info->l1_cache_size);
    fprintf(f, "    l2_cache_size = %i\n", info->l2_cache_size);
 
@@ -1421,8 +1406,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    mec_fw_feature = %i\n", info->mec_fw_feature);
    fprintf(f, "    pfp_fw_version = %i\n", info->pfp_fw_version);
    fprintf(f, "    pfp_fw_feature = %i\n", info->pfp_fw_feature);
-   fprintf(f, "    ce_fw_version = %i\n", info->ce_fw_version);
-   fprintf(f, "    ce_fw_feature = %i\n", info->ce_fw_feature);
 
    fprintf(f, "Multimedia info:\n");
    fprintf(f, "    uvd_decode = %u\n", info->has_video_hw.uvd_decode);
@@ -1455,7 +1438,6 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    has_sparse_vm_mappings = %u\n", info->has_sparse_vm_mappings);
    fprintf(f, "    has_2d_tiling = %u\n", info->has_2d_tiling);
    fprintf(f, "    has_read_registers_query = %u\n", info->has_read_registers_query);
-   fprintf(f, "    has_gds_ordered_append = %u\n", info->has_gds_ordered_append);
    fprintf(f, "    has_stable_pstate = %u\n", info->has_stable_pstate);
    fprintf(f, "    has_scheduled_fence_dependency = %u\n", info->has_scheduled_fence_dependency);
    fprintf(f, "    mid_command_buffer_preemption_enabled = %u\n",
