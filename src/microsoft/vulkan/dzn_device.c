@@ -2822,3 +2822,21 @@ dzn_GetImageSparseMemoryRequirements2(VkDevice device,
 {
    *pSparseMemoryRequirementCount = 0;
 }
+
+VKAPI_ATTR VkResult VKAPI_CALL
+dzn_CreateSamplerYcbcrConversion(VkDevice device,
+                                 const VkSamplerYcbcrConversionCreateInfo *pCreateInfo,
+                                 const VkAllocationCallbacks *pAllocator,
+                                 VkSamplerYcbcrConversion *pYcbcrConversion)
+{
+   unreachable("Ycbcr sampler conversion is not supported");
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+dzn_DestroySamplerYcbcrConversion(VkDevice device,
+                                  VkSamplerYcbcrConversion YcbcrConversion,
+                                  const VkAllocationCallbacks *pAllocator)
+{
+   unreachable("Ycbcr sampler conversion is not supported");
+}
