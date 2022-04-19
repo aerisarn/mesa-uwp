@@ -150,8 +150,7 @@ util_draw_indirect_read(struct pipe_context *pipe,
          debug_printf("%s: failed to map indirect draw count buffer\n", __FUNCTION__);
          return NULL;
       }
-      if (dc_param[0] < draw_count)
-         draw_count = dc_param[0];
+      draw_count = dc_param[0];
       pipe_buffer_unmap(pipe, dc_transfer);
    }
    if (!draw_count) {
