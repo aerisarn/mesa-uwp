@@ -44,6 +44,7 @@ enum agx_dbg {
    AGX_DBG_SHADERDB    = BITFIELD_BIT(2),
    AGX_DBG_VERBOSE     = BITFIELD_BIT(3),
    AGX_DBG_INTERNAL    = BITFIELD_BIT(4),
+   AGX_DBG_NOVALIDATE  = BITFIELD_BIT(5),
 };
 
 extern int agx_debug;
@@ -734,6 +735,12 @@ void agx_lower_pseudo(agx_context *ctx);
 void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
 void agx_pack_binary(agx_context *ctx, struct util_dynarray *emission);
+
+#ifndef NDEBUG
+void agx_validate(agx_context *ctx, const char *after_str);
+#else
+static inline void agx_validate(UNUSED agx_context *ctx, UNUSED const char *after_str) { return; }
+#endif
 
 unsigned agx_write_registers(agx_instr *I, unsigned d);
 
