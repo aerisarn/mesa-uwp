@@ -534,7 +534,7 @@ zink_kopper_acquire(struct zink_context *ctx, struct zink_resource *res, uint64_
    } else if (is_swapchain_kill(ret)) {
       kill_swapchain(ctx, res);
    }
-   return ret;
+   return !is_swapchain_kill(ret);
 }
 
 VkSemaphore
