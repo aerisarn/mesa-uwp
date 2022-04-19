@@ -83,7 +83,7 @@ delete_query(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 static int
-target_to_index(const struct st_context *st, const struct gl_query_object *q)
+target_to_index(const struct gl_query_object *q)
 {
    if (q->Target == GL_PRIMITIVES_GENERATED ||
        q->Target == GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN ||
@@ -199,7 +199,7 @@ begin_query(struct gl_context *ctx, struct gl_query_object *q)
          ret = pipe->end_query(pipe, q->pq_begin);
    } else {
       if (!q->pq) {
-         q->pq = pipe->create_query(pipe, type, target_to_index(st, q));
+         q->pq = pipe->create_query(pipe, type, target_to_index(q));
          q->type = type;
       }
       if (q->pq)
@@ -426,43 +426,7 @@ store_query_result(struct gl_context *ctx, struct gl_query_object *q,
    if (pname == GL_QUERY_RESULT_AVAILABLE) {
       index = -1;
    } else if (q->type == PIPE_QUERY_PIPELINE_STATISTICS) {
-      switch (q->Target) {
-      case GL_VERTICES_SUBMITTED_ARB:
-         index = PIPE_STAT_QUERY_IA_VERTICES;
-         break;
-      case GL_PRIMITIVES_SUBMITTED_ARB:
-         index = PIPE_STAT_QUERY_IA_PRIMITIVES;
-         break;
-      case GL_VERTEX_SHADER_INVOCATIONS_ARB:
-         index = PIPE_STAT_QUERY_VS_INVOCATIONS;
-         break;
-      case GL_GEOMETRY_SHADER_INVOCATIONS:
-         index = PIPE_STAT_QUERY_GS_INVOCATIONS;
-         break;
-      case GL_GEOMETRY_SHADER_PRIMITIVES_EMITTED_ARB:
-         index = PIPE_STAT_QUERY_GS_PRIMITIVES;
-         break;
-      case GL_CLIPPING_INPUT_PRIMITIVES_ARB:
-         index = PIPE_STAT_QUERY_C_INVOCATIONS;
-         break;
-      case GL_CLIPPING_OUTPUT_PRIMITIVES_ARB:
-         index = PIPE_STAT_QUERY_C_PRIMITIVES;
-         break;
-      case GL_FRAGMENT_SHADER_INVOCATIONS_ARB:
-         index = PIPE_STAT_QUERY_PS_INVOCATIONS;
-         break;
-      case GL_TESS_CONTROL_SHADER_PATCHES_ARB:
-         index = PIPE_STAT_QUERY_HS_INVOCATIONS;
-         break;
-      case GL_TESS_EVALUATION_SHADER_INVOCATIONS_ARB:
-         index = PIPE_STAT_QUERY_DS_INVOCATIONS;
-         break;
-      case GL_COMPUTE_SHADER_INVOCATIONS_ARB:
-         index = PIPE_STAT_QUERY_CS_INVOCATIONS;
-         break;
-      default:
-         unreachable("Unexpected target");
-      }
+      index = target_to_index(q);
    } else {
       index = 0;
    }
