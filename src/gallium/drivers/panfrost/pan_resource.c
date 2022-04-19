@@ -89,7 +89,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 .line_stride = whandle->stride,
         };
 
-        bool valid = pan_image_layout_init(dev, &rsc->image.layout, mod,
+        bool valid = pan_image_layout_init(&rsc->image.layout, mod,
                                            templat->format, dim,
                                            prsc->width0, prsc->height0,
                                            prsc->depth0, prsc->array_size,
@@ -502,7 +502,7 @@ panfrost_resource_setup(struct panfrost_device *dev,
                 fmt = PIPE_FORMAT_Z32_FLOAT;
 
         ASSERTED bool valid =
-                pan_image_layout_init(dev, &pres->image.layout,
+                pan_image_layout_init(&pres->image.layout,
                                       chosen_mod, fmt, dim,
                                       pres->base.width0,
                                       pres->base.height0,

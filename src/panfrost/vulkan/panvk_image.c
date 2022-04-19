@@ -69,14 +69,13 @@ panvk_image_create(VkDevice _device,
                    const VkSubresourceLayout *plane_layouts)
 {
    VK_FROM_HANDLE(panvk_device, device, _device);
-   const struct panfrost_device *pdev = &device->physical_device->pdev;
    struct panvk_image *image = NULL;
 
    image = vk_image_create(&device->vk, pCreateInfo, alloc, sizeof(*image));
    if (!image)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   pan_image_layout_init(pdev, &image->pimage.layout, modifier,
+   pan_image_layout_init(&image->pimage.layout, modifier,
                          vk_format_to_pipe_format(image->vk.format),
                          panvk_image_type_to_mali_tex_dim(image->vk.image_type),
                          image->vk.extent.width, image->vk.extent.height,

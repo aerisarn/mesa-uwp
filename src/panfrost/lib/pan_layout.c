@@ -178,8 +178,7 @@ panfrost_texture_offset(const struct pan_image_layout *layout,
 }
 
 bool
-pan_image_layout_init(const struct panfrost_device *dev,
-                      struct pan_image_layout *layout,
+pan_image_layout_init(struct pan_image_layout *layout,
                       uint64_t modifier,
                       enum pipe_format format,
                       enum mali_texture_dimension dim,
