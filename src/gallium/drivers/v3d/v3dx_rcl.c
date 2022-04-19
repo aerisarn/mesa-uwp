@@ -726,6 +726,31 @@ v3dX(emit_rcl)(struct v3d_job *job)
                         struct v3d_surface *surf = v3d_surface(job->zsbuf);
                         config.internal_depth_type = surf->internal_type;
                 }
+#endif /* V3D_VERSION >= 40 */
+
+                if (job->decided_global_ez_enable) {
+                        switch (job->first_ez_state) {
+                        case V3D_EZ_UNDECIDED:
+                        case V3D_EZ_LT_LE:
+                                config.early_z_disable = false;
+                                config.early_z_test_and_update_direction =
+                                        EARLY_Z_DIRECTION_LT_LE;
+                                break;
+                        case V3D_EZ_GT_GE:
+                                config.early_z_disable = false;
+                                config.early_z_test_and_update_direction =
+                                        EARLY_Z_DIRECTION_GT_GE;
+                                break;
+                        case V3D_EZ_DISABLED:
+                                config.early_z_disable = true;
+                        }
+                } else {
+                        assert(job->draw_calls_queued == 0);
+                        config.early_z_disable = true;
+                }
+
+#if V3D_VERSION >= 40
+                assert(job->zsbuf || config.early_z_disable);
 
                 job->early_zs_clear = (job->clear & PIPE_CLEAR_DEPTHSTENCIL) &&
                         !(job->load & PIPE_CLEAR_DEPTHSTENCIL) &&
@@ -733,22 +758,6 @@ v3dX(emit_rcl)(struct v3d_job *job)
 
                 config.early_depth_stencil_clear = job->early_zs_clear;
 #endif /* V3D_VERSION >= 40 */
-
-                switch (job->first_ez_state) {
-                case V3D_EZ_UNDECIDED:
-                case V3D_EZ_LT_LE:
-                        config.early_z_disable = false;
-                        config.early_z_test_and_update_direction =
-                                EARLY_Z_DIRECTION_LT_LE;
-                        break;
-                case V3D_EZ_GT_GE:
-                        config.early_z_disable = false;
-                        config.early_z_test_and_update_direction =
-                                EARLY_Z_DIRECTION_GT_GE;
-                        break;
-                case V3D_EZ_DISABLED:
-                        config.early_z_disable = true;
-                }
 
                 config.image_width_pixels = job->draw_width;
                 config.image_height_pixels = job->draw_height;

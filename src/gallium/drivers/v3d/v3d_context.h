@@ -471,6 +471,12 @@ struct v3d_job {
         enum v3d_ez_state first_ez_state;
 
         /**
+         * If we have already decided if we need to disable early Z/S
+         * completely for this job.
+         */
+        bool decided_global_ez_enable;
+
+        /**
          * If this job has been configured to use early Z/S clear.
          */
         bool early_zs_clear;

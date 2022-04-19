@@ -852,6 +852,49 @@ v3d_update_primitives_generated_counter(struct v3d_context *v3d,
 static void
 v3d_update_job_ez(struct v3d_context *v3d, struct v3d_job *job)
 {
+        /* If first_ez_state is V3D_EZ_DISABLED it means that we have already
+         * determined that we should disable EZ completely for all draw calls
+         * in this job. This will cause us to disable EZ for the entire job in
+         * the Tile Rendering Mode RCL packet and when we do that we need to
+         * make sure we never emit a draw call in the job with EZ enabled in
+         * the CFG_BITS packet, so ez_state must also be V3D_EZ_DISABLED.
+         */
+        if (job->first_ez_state == V3D_EZ_DISABLED) {
+                assert(job->ez_state == V3D_EZ_DISABLED);
+                return;
+        }
+
+        /* If this is the first time we update EZ state for this job we first
+         * check if there is anything that requires disabling it completely
+         * for the entire job (based on state that is not related to the
+         * current draw call and pipeline state).
+         */
+        if (!job->decided_global_ez_enable) {
+                job->decided_global_ez_enable = true;
+
+                if (!job->zsbuf) {
+                        job->first_ez_state = V3D_EZ_DISABLED;
+                        job->ez_state = V3D_EZ_DISABLED;
+                        return;
+                }
+
+                /* GFXH-1918: the early-Z buffer may load incorrect depth
+                 * values if the frame has odd width or height. Disable early-Z
+                 * in this case.
+                 */
+                bool needs_depth_load = v3d->zsa && job->zsbuf &&
+                        v3d->zsa->base.depth_enabled &&
+                        (PIPE_CLEAR_DEPTH & ~job->clear);
+                if (needs_depth_load &&
+                     ((job->draw_width % 2 != 0) || (job->draw_height % 2 != 0))) {
+                        perf_debug("Loading depth buffer for framebuffer with odd width "
+                                   "or height disables early-Z tests\n");
+                        job->first_ez_state = V3D_EZ_DISABLED;
+                        job->ez_state = V3D_EZ_DISABLED;
+                        return;
+                }
+        }
+
         switch (v3d->zsa->ez_state) {
         case V3D_EZ_UNDECIDED:
                 /* If the Z/S state didn't pick a direction but didn't
