@@ -75,13 +75,20 @@ panvk_image_create(VkDevice _device,
    if (!image)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   pan_image_layout_init(&image->pimage.layout, modifier,
-                         vk_format_to_pipe_format(image->vk.format),
-                         panvk_image_type_to_mali_tex_dim(image->vk.image_type),
-                         image->vk.extent.width, image->vk.extent.height,
-                         image->vk.extent.depth, image->vk.array_layers,
-                         image->vk.samples, image->vk.mip_levels,
-                         PAN_IMAGE_CRC_NONE, NULL);
+   image->pimage.layout = (struct pan_image_layout) {
+      .modifier = modifier,
+      .format = vk_format_to_pipe_format(image->vk.format),
+      .dim = panvk_image_type_to_mali_tex_dim(image->vk.image_type),
+      .width = image->vk.extent.width,
+      .height = image->vk.extent.height,
+      .depth = image->vk.extent.depth,
+      .array_size = image->vk.array_layers,
+      .nr_samples = image->vk.samples,
+      .nr_slices = image->vk.mip_levels,
+      .crc_mode = PAN_IMAGE_CRC_NONE
+   };
+
+   pan_image_layout_init(&image->pimage.layout, NULL);
 
    *pImage = panvk_image_to_handle(image);
    return VK_SUCCESS;

@@ -179,44 +179,27 @@ panfrost_texture_offset(const struct pan_image_layout *layout,
 
 bool
 pan_image_layout_init(struct pan_image_layout *layout,
-                      uint64_t modifier,
-                      enum pipe_format format,
-                      enum mali_texture_dimension dim,
-                      unsigned width, unsigned height, unsigned depth,
-                      unsigned array_size, unsigned nr_samples,
-                      unsigned nr_slices, enum pan_image_crc_mode crc_mode,
                       const struct pan_image_explicit_layout *explicit_layout)
 {
         /* Explicit stride only work with non-mipmap, non-array; single-sample
          * 2D image, and in-band CRC can't be used.
          */
         if (explicit_layout &&
-	    (depth > 1 || nr_samples > 1 || array_size > 1 ||
-             dim != MALI_TEXTURE_DIMENSION_2D || nr_slices > 1 ||
-             crc_mode == PAN_IMAGE_CRC_INBAND))
+	    (layout->depth > 1 || layout->nr_samples > 1 ||
+             layout->array_size > 1 || layout->dim != MALI_TEXTURE_DIMENSION_2D ||
+             layout->nr_slices > 1 || layout->crc_mode == PAN_IMAGE_CRC_INBAND))
                 return false;
 
         /* Mandate 64 byte alignement */
         if (explicit_layout && (explicit_layout->offset & 63))
                 return false;
 
-        layout->crc_mode = crc_mode;
-        layout->modifier = modifier;
-        layout->format = format;
-        layout->dim = dim;
-        layout->width = width;
-        layout->height = height;
-        layout->depth = depth;
-        layout->array_size = array_size;
-        layout->nr_samples = nr_samples;
-        layout->nr_slices = nr_slices;
-
-        unsigned bytes_per_pixel = util_format_get_blocksize(format);
+        unsigned bytes_per_pixel = util_format_get_blocksize(layout->format);
 
         /* MSAA is implemented as a 3D texture with z corresponding to the
          * sample #, horrifyingly enough */
 
-        assert(depth == 1 || nr_samples == 1);
+        assert(layout->depth == 1 || layout->nr_samples == 1);
 
         bool afbc = drm_is_afbc(layout->modifier);
         bool linear = layout->modifier == DRM_FORMAT_MOD_LINEAR;
@@ -225,13 +208,17 @@ pan_image_layout_init(struct pan_image_layout *layout,
         unsigned oob_crc_offset = 0;
         unsigned offset = explicit_layout ? explicit_layout->offset : 0;
         struct pan_block_size block_size =
-                panfrost_block_size(layout->modifier, format);
+                panfrost_block_size(layout->modifier, layout->format);
 
-        for (unsigned l = 0; l < nr_slices; ++l) {
+        unsigned width = layout->width;
+        unsigned height = layout->height;
+        unsigned depth = layout->depth;
+
+        for (unsigned l = 0; l < layout->nr_slices; ++l) {
                 struct pan_image_slice_layout *slice = &layout->slices[l];
 
-                unsigned effective_width = ALIGN_POT(util_format_get_nblocksx(format, width), block_size.width);
-                unsigned effective_height = ALIGN_POT(util_format_get_nblocksy(format, height), block_size.height);
+                unsigned effective_width = ALIGN_POT(util_format_get_nblocksx(layout->format, width), block_size.width);
+                unsigned effective_height = ALIGN_POT(util_format_get_nblocksy(layout->format, height), block_size.height);
 
                 /* Align levels to cache-line as a performance improvement for
                  * linear/tiled and as a requirement for AFBC */
@@ -289,7 +276,7 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 }
 
                 unsigned slice_full_size =
-                        slice_one_size * depth * nr_samples;
+                        slice_one_size * depth * layout->nr_samples;
 
                 slice->surface_stride = slice_one_size;
 
@@ -299,11 +286,11 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 slice->size = slice_full_size;
 
                 /* Add a checksum region if necessary */
-                if (crc_mode != PAN_IMAGE_CRC_NONE) {
+                if (layout->crc_mode != PAN_IMAGE_CRC_NONE) {
                         slice->crc.size =
                                 panfrost_compute_checksum_size(slice, width, height);
 
-                        if (crc_mode == PAN_IMAGE_CRC_INBAND) {
+                        if (layout->crc_mode == PAN_IMAGE_CRC_INBAND) {
                                 slice->crc.offset = offset;
                                 offset += slice->crc.size;
                                 slice->size += slice->crc.size;
@@ -323,7 +310,7 @@ pan_image_layout_init(struct pan_image_layout *layout,
         if (explicit_layout)
                 layout->data_size = offset;
         else
-                layout->data_size = ALIGN_POT(layout->array_stride * array_size, 4096);
+                layout->data_size = ALIGN_POT(layout->array_stride * layout->array_size, 4096);
         layout->crc_size = oob_crc_offset;
 
         return true;

@@ -96,15 +96,20 @@ struct pan_image_layout {
         unsigned nr_samples;
         enum mali_texture_dimension dim;
         unsigned nr_slices;
-        struct pan_image_slice_layout slices[MAX_MIP_LEVELS];
         unsigned array_size;
-        unsigned array_stride;
-        unsigned data_size;
-
         enum pan_image_crc_mode crc_mode;
+
+        /* The remaining fields may be derived from the above by calling
+         * pan_image_layout_init
+         */
+
+        struct pan_image_slice_layout slices[MAX_MIP_LEVELS];
+
         /* crc_size != 0 only if crc_mode == OOB otherwise CRC words are
          * counted in data_size */
         unsigned crc_size;
+        unsigned data_size;
+        unsigned array_stride;
 };
 
 struct pan_image_mem {
@@ -222,13 +227,6 @@ struct pan_image_explicit_layout {
 
 bool
 pan_image_layout_init(struct pan_image_layout *layout,
-                      uint64_t modifier,
-                      enum pipe_format format,
-                      enum mali_texture_dimension dim,
-                      unsigned width, unsigned height, unsigned depth,
-                      unsigned array_size, unsigned nr_samples,
-                      unsigned nr_slices,
-                      enum pan_image_crc_mode crc_mode,
                       const struct pan_image_explicit_layout *explicit_layout);
 
 struct pan_surface {

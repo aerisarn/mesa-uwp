@@ -89,12 +89,20 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 .line_stride = whandle->stride,
         };
 
-        bool valid = pan_image_layout_init(&rsc->image.layout, mod,
-                                           templat->format, dim,
-                                           prsc->width0, prsc->height0,
-                                           prsc->depth0, prsc->array_size,
-                                           MAX2(prsc->nr_samples, 1), 1,
-                                           crc_mode, &explicit_layout);
+        rsc->image.layout = (struct pan_image_layout) {
+                .modifier = mod,
+                .format = templat->format,
+                .dim = dim,
+                .width = prsc->width0,
+                .height = prsc->height0,
+                .depth = prsc->depth0,
+                .array_size = prsc->array_size,
+                .nr_samples = MAX2(prsc->nr_samples, 1),
+                .nr_slices = 1,
+                .crc_mode = crc_mode
+        };
+
+        bool valid = pan_image_layout_init(&rsc->image.layout, &explicit_layout);
 
         if (!valid) {
                 FREE(rsc);
@@ -501,16 +509,20 @@ panfrost_resource_setup(struct panfrost_device *dev,
         if (fmt == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
                 fmt = PIPE_FORMAT_Z32_FLOAT;
 
-        ASSERTED bool valid =
-                pan_image_layout_init(&pres->image.layout,
-                                      chosen_mod, fmt, dim,
-                                      pres->base.width0,
-                                      pres->base.height0,
-                                      pres->base.depth0,
-                                      pres->base.array_size,
-                                      MAX2(pres->base.nr_samples, 1),
-                                      pres->base.last_level + 1,
-                                      crc_mode, NULL);
+        pres->image.layout = (struct pan_image_layout) {
+                .modifier = chosen_mod,
+                .format = fmt,
+                .dim = dim,
+                .width = pres->base.width0,
+                .height = pres->base.height0,
+                .depth = pres->base.depth0,
+                .array_size = pres->base.array_size,
+                .nr_samples = MAX2(pres->base.nr_samples, 1),
+                .nr_slices = pres->base.last_level + 1,
+                .crc_mode = crc_mode
+        };
+
+        ASSERTED bool valid = pan_image_layout_init(&pres->image.layout, NULL);
         assert(valid);
 }
 
