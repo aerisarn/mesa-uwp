@@ -127,6 +127,14 @@ enum
    SI_NUM_SW_QUERY_GROUPS
 };
 
+/* The counters are stored in a buffer, each with a start and end value,
+ * with this layout:
+ * [start1][start2][...][startN][end1][end2][...][endN]
+ * N is 11 and each value is a 64-bit int so we get:
+ */
+#define SI_QUERY_STATS_END_OFFSET_DW (11 * 2)
+int si_hw_query_dw_offset(int index);
+
 struct si_query_ops {
    void (*destroy)(struct si_context *, struct si_query *);
    bool (*begin)(struct si_context *, struct si_query *);

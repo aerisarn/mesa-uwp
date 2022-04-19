@@ -637,6 +637,29 @@ static bool si_query_hw_prepare_buffer(struct si_context *sctx, struct si_query_
    return true;
 }
 
+int si_hw_query_dw_offset(int index)
+{
+   /* Offset in dwords in the query buffer of the start value
+    * for the given counter.
+    */
+   switch (index) {
+      case PIPE_STAT_QUERY_IA_VERTICES: return 14;
+      case PIPE_STAT_QUERY_IA_PRIMITIVES: return 12;
+      case PIPE_STAT_QUERY_VS_INVOCATIONS: return 6;
+      case PIPE_STAT_QUERY_GS_INVOCATIONS: return 8;
+      case PIPE_STAT_QUERY_GS_PRIMITIVES: return 10;
+      case PIPE_STAT_QUERY_C_INVOCATIONS: return 4;
+      case PIPE_STAT_QUERY_C_PRIMITIVES: return 2;
+      case PIPE_STAT_QUERY_PS_INVOCATIONS: return 0;
+      case PIPE_STAT_QUERY_HS_INVOCATIONS: return 16;
+      case PIPE_STAT_QUERY_DS_INVOCATIONS: return 18;
+      case PIPE_STAT_QUERY_CS_INVOCATIONS: return 20;
+      default:
+         assert(false);
+      }
+   return -1;
+}
+
 static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_query *squery,
                                             enum pipe_query_flags flags,
                                             enum pipe_query_value_type result_type,
@@ -1244,9 +1267,8 @@ static void si_get_hw_query_params(struct si_context *sctx, struct si_query_hw *
       params->fence_offset = squery->result_size - 4;
       break;
    case PIPE_QUERY_PIPELINE_STATISTICS: {
-      static const unsigned offsets[] = {56, 48, 24, 32, 40, 16, 8, 0, 64, 72, 80};
-      params->start_offset = offsets[index];
-      params->end_offset = 88 + offsets[index];
+      params->start_offset = si_hw_query_dw_offset(index) * 4;
+      params->end_offset = SI_QUERY_STATS_END_OFFSET_DW * 4 + params->start_offset;
       params->fence_offset = 2 * 88;
       break;
    }
@@ -1326,17 +1348,12 @@ static void si_query_hw_add_result(struct si_screen *sscreen, struct si_query_hw
       }
       break;
    case PIPE_QUERY_PIPELINE_STATISTICS:
-      result->pipeline_statistics.ps_invocations += si_query_read_result(buffer, 0, 22, false);
-      result->pipeline_statistics.c_primitives += si_query_read_result(buffer, 2, 24, false);
-      result->pipeline_statistics.c_invocations += si_query_read_result(buffer, 4, 26, false);
-      result->pipeline_statistics.vs_invocations += si_query_read_result(buffer, 6, 28, false);
-      result->pipeline_statistics.gs_invocations += si_query_read_result(buffer, 8, 30, false);
-      result->pipeline_statistics.gs_primitives += si_query_read_result(buffer, 10, 32, false);
-      result->pipeline_statistics.ia_primitives += si_query_read_result(buffer, 12, 34, false);
-      result->pipeline_statistics.ia_vertices += si_query_read_result(buffer, 14, 36, false);
-      result->pipeline_statistics.hs_invocations += si_query_read_result(buffer, 16, 38, false);
-      result->pipeline_statistics.ds_invocations += si_query_read_result(buffer, 18, 40, false);
-      result->pipeline_statistics.cs_invocations += si_query_read_result(buffer, 20, 42, false);
+      for (int i = 0; i < 11; i++) {
+         int start_offset = si_hw_query_dw_offset(i);
+         result->pipeline_statistics.counters[i] +=
+            si_query_read_result(buffer, start_offset,
+                                 start_offset + SI_QUERY_STATS_END_OFFSET_DW, false);
+      }
 #if 0 /* for testing */
       printf("Pipeline stats: IA verts=%llu, IA prims=%llu, VS=%llu, HS=%llu, "
              "DS=%llu, GS=%llu, GS prims=%llu, Clipper=%llu, "
