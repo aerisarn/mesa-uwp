@@ -4555,12 +4555,9 @@ bi_compile_variant_nir(nir_shader *nir,
                 break; /* TODO: Multi-function shaders */
         }
 
-        unsigned block_source_count = 0;
-
+        /* Index blocks now that we're done emitting */
         bi_foreach_block(ctx, block) {
-                /* Name blocks now that we're done emitting so the order is
-                 * consistent */
-                block->index = block_source_count++;
+                block->index = ctx->num_blocks++;
         }
 
         bi_validate(ctx, "NIR -> BIR");

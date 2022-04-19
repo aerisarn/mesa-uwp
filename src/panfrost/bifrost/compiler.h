@@ -731,6 +731,7 @@ typedef struct {
        uint32_t quirks;
        unsigned arch;
        enum bi_idvs_mode idvs;
+       unsigned num_blocks;
 
        /* In any graphics shader, whether the "IDVS with memory
         * allocation" flow is used. This affects how varyings are loaded and
