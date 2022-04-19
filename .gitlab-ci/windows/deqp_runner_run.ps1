@@ -20,6 +20,7 @@ $baseline = ".\_install\warp-fails.txt"
 $includes = @("-t", "dEQP-VK.api.*", "-t", "dEQP-VK.info.*", "-t", "dEQP-VK.draw.*", "-t", "dEQP-VK.query_pool.*", "-t", "dEQP-VK.memory.*")
 
 $env:DZN_DEBUG = "warp"
+$env:MESA_VK_IGNORE_CONFORMANCE_WARNING = "true"
 deqp-runner run --deqp $($deqp_module) --output $($results) --caselist $($caselist) --baseline $($baseline) $($includes) --testlog-to-xml C:\deqp\executor\testlog-to-xml.exe --jobs 4 -- $($deqp_options)
 $deqpstatus = $?
 
