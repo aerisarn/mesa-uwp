@@ -3720,9 +3720,7 @@ panfrost_create_vertex_elements_state(
 
         for (int i = 0; i < num_elements; ++i) {
                 enum pipe_format fmt = elements[i].src_format;
-                const struct util_format_description *desc = util_format_description(fmt);
-                so->formats[i] = dev->formats[desc->format].hw;
-                assert(so->formats[i]);
+                so->formats[i] = dev->formats[fmt].hw;
         }
 
         /* Let's also prepare vertex builtins */
