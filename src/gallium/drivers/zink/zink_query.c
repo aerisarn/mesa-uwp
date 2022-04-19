@@ -768,7 +768,17 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
       copy_pool_results_to_buffer(ctx, q, start->vkq[i]->pool->query_pool, start->vkq[i]->query_id,
                                   zink_resource(qbo->buffers[i]),
                                   offset,
-                                  1, VK_QUERY_RESULT_64_BIT);
+                                  1,
+                                  /*
+                                     there is an implicit execution dependency from
+                                     each such query command to all query commands previously submitted to the same queue. There
+                                     is one significant exception to this; if the flags parameter of vkCmdCopyQueryPoolResults does not
+                                     include VK_QUERY_RESULT_WAIT_BIT, execution of vkCmdCopyQueryPoolResults may happen-before
+                                     the results of vkCmdEndQuery are available.
+
+                                   * - Chapter 18. Queries
+                                   */
+                                  VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
    }
 
    if (!is_timestamp)
@@ -1227,6 +1237,16 @@ zink_get_query_result_resource(struct pipe_context *pctx,
       return;
    }
 
+   /*
+      there is an implicit execution dependency from
+      each such query command to all query commands previously submitted to the same queue. There
+      is one significant exception to this; if the flags parameter of vkCmdCopyQueryPoolResults does not
+      include VK_QUERY_RESULT_WAIT_BIT, execution of vkCmdCopyQueryPoolResults may happen-before
+      the results of vkCmdEndQuery are available.
+
+    * - Chapter 18. Queries
+    */
+   size_flags |= VK_QUERY_RESULT_WAIT_BIT;
    if (!is_time_query(query) && !is_bool_query(query)) {
       if (num_queries == 1 && query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
                               query->type != PIPE_QUERY_PRIMITIVES_EMITTED &&
