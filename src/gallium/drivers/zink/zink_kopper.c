@@ -511,8 +511,11 @@ is_swapchain_kill(VkResult ret)
 bool
 zink_kopper_acquire(struct zink_context *ctx, struct zink_resource *res, uint64_t timeout)
 {
-   assert(res->obj->dt);
+   assert(zink_is_swapchain(res));
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   if (!cdt)
+      /* dead swapchain */
+      return false;
    if (cdt->is_kill) {
       kill_swapchain(ctx, res);
       return false;
