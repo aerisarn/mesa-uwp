@@ -54,7 +54,5 @@ spec@oes_viewport_array@viewport-gs-writes-in-range
 
 spec@arb_timer_query@timestamp-get
 
-spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-write
-
 spec@nv_primitive_restart@primitive-restart-draw-mode-polygon
 spec@nv_primitive_restart@primitive-restart-draw-mode-quad_strip

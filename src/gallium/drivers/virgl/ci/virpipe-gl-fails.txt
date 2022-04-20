@@ -867,11 +867,6 @@ spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-08,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-shadow2d-clamp-z,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 
-# "ERROR - Piglit error: NIR validation failed after nir_lower_locals_to_regs"
-# "ERROR - Piglit error: error: (src->reg.reg->num_array_elems == 0 || src->reg.base_offset < src->reg.reg->num_array_elems) && "definitely out-of-bounds array access" (../src/compiler/nir/nir_validate.c:174)"
-spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-read,Crash
-spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-write,Crash
-
 spec@glsl-1.30@execution@vs-isnan-and-more-comparison,Fail
 
 spec@glsl-1.50@execution@primitive-id-no-gs-quad-strip,Fail

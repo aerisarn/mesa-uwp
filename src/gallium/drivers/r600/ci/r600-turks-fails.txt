@@ -1453,10 +1453,6 @@ spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
 
 spec@glsl-1.30@execution@clipping@vs-clip-distance-primitives,Fail
 
-# "error: (src->reg.reg->num_array_elems == 0 || src->reg.base_offset < src->reg.reg->num_array_elems) && "definitely out-of-bounds array access" (../src/compiler/nir/nir_validate.c:174)"
-spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-read,Crash
-spec@glsl-1.30@execution@fs-large-local-array-out-of-bounds-write,Crash
-
 spec@glsl-1.30@execution@range_analysis_fsat_of_nan,Fail
 
 spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 1darrayshadow,Fail
