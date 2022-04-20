@@ -56,7 +56,7 @@
 #include "genX_cmd_draw_helpers.h"
 
 static void genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
-                                        uint32_t pipeline);
+                                        enum anv_hw_pipeline_state pipeline);
 
 static enum anv_pipe_bits
 convert_pc_to_bits(struct GENX(PIPE_CONTROL) *pc) {
@@ -156,7 +156,8 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
     *  mode by putting the pipeline temporarily in 3D mode.
     */
-   uint32_t gfx12_wa_pipeline = cmd_buffer->state.current_pipeline;
+   enum anv_hw_pipeline_state gfx12_wa_pipeline =
+      cmd_buffer->state.current_pipeline;
    genX(flush_pipeline_select_3d)(cmd_buffer);
 #endif
 
@@ -1517,7 +1518,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 ALWAYS_INLINE enum anv_pipe_bits
 genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                               struct anv_device *device,
-                              uint32_t current_pipeline,
+                              enum anv_hw_pipeline_state current_pipeline,
                               enum anv_pipe_bits bits)
 {
 #if GFX_VER >= 12
@@ -1618,7 +1619,7 @@ genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
     * The same text exists a few rows below for Post Sync Op.
     */
    if (bits & ANV_PIPE_POST_SYNC_BIT) {
-      if (GFX_VER == 9 && current_pipeline == GPGPU)
+      if (GFX_VER == 9 && current_pipeline == ANV_HW_PIPELINE_STATE_COMPUTE)
          bits |= ANV_PIPE_CS_STALL_BIT;
       bits &= ~ANV_PIPE_POST_SYNC_BIT;
    }
@@ -6145,9 +6146,23 @@ genX(CmdTraceRaysIndirect2KHR)(
 
 #endif /* GFX_VERx10 >= 125 */
 
+static uint32_t
+anv_pipeline_selection_from_type(enum anv_hw_pipeline_state pipeline)
+{
+   switch (pipeline) {
+   case ANV_HW_PIPELINE_STATE_GRAPHICS:
+      return _3D;
+   case ANV_HW_PIPELINE_STATE_COMPUTE:
+   case ANV_HW_PIPELINE_STATE_RAY_TRACING:
+      return GPGPU;
+   default:
+      unreachable("Unsupported pipeline");
+   }
+}
+
 static void
 genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
-                            uint32_t pipeline)
+                            enum anv_hw_pipeline_state pipeline)
 {
    UNUSED const struct intel_device_info *devinfo = cmd_buffer->device->info;
 
@@ -6164,10 +6179,10 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     * The internal hardware docs recommend the same workaround for Gfx9
     * hardware too.
     */
-   if (pipeline == GPGPU)
+   if (pipeline == ANV_HW_PIPELINE_STATE_COMPUTE)
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), t);
 
-   if (pipeline == _3D) {
+   if (pipeline == ANV_HW_PIPELINE_STATE_GRAPHICS) {
       /* There is a mid-object preemption workaround which requires you to
        * re-emit MEDIA_VFE_STATE after switching from GPGPU to 3D.  However,
        * even without preemption, we have issues with geometry flickering when
@@ -6219,7 +6234,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
       ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
       ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-      ps.PipelineSelection = pipeline;
+      ps.PipelineSelection = anv_pipeline_selection_from_type(pipeline);
    }
 
 #if GFX_VER == 9
@@ -6245,13 +6260,13 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
 void
 genX(flush_pipeline_select_3d)(struct anv_cmd_buffer *cmd_buffer)
 {
-   genX(flush_pipeline_select)(cmd_buffer, _3D);
+   genX(flush_pipeline_select)(cmd_buffer, ANV_HW_PIPELINE_STATE_GRAPHICS);
 }
 
 void
 genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer)
 {
-   genX(flush_pipeline_select)(cmd_buffer, GPGPU);
+   genX(flush_pipeline_select)(cmd_buffer, ANV_HW_PIPELINE_STATE_COMPUTE);
 }
 
 void

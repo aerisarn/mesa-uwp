@@ -2581,10 +2581,15 @@ struct anv_cmd_ray_tracing_state {
    } scratch;
 };
 
+enum anv_hw_pipeline_state {
+   ANV_HW_PIPELINE_STATE_GRAPHICS,
+   ANV_HW_PIPELINE_STATE_COMPUTE,
+   ANV_HW_PIPELINE_STATE_RAY_TRACING,
+};
+
 /** State required while building cmd buffer */
 struct anv_cmd_state {
-   /* PIPELINE_SELECT.PipelineSelection */
-   uint32_t                                     current_pipeline;
+   enum anv_hw_pipeline_state                   current_pipeline;
    const struct intel_l3_config *               current_l3_config;
    uint32_t                                     last_aux_map_state;
 
@@ -2984,12 +2989,6 @@ struct anv_pipeline_executable {
    char *disasm;
 };
 
-enum anv_pipeline_type {
-   ANV_PIPELINE_GRAPHICS,
-   ANV_PIPELINE_COMPUTE,
-   ANV_PIPELINE_RAY_TRACING,
-};
-
 struct anv_pipeline {
    struct vk_object_base                        base;
 
@@ -3000,7 +2999,7 @@ struct anv_pipeline {
 
    void *                                       mem_ctx;
 
-   enum anv_pipeline_type                       type;
+   enum anv_hw_pipeline_state                   type;
    VkPipelineCreateFlags                        flags;
 
    uint32_t                                     ray_queries;
@@ -3115,9 +3114,9 @@ struct anv_ray_tracing_pipeline {
       return (struct anv_##pipe_type##_pipeline *) pipeline;         \
    }
 
-ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_PIPELINE_GRAPHICS)
-ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_PIPELINE_COMPUTE)
-ANV_DECL_PIPELINE_DOWNCAST(ray_tracing, ANV_PIPELINE_RAY_TRACING)
+ANV_DECL_PIPELINE_DOWNCAST(graphics, ANV_HW_PIPELINE_STATE_GRAPHICS)
+ANV_DECL_PIPELINE_DOWNCAST(compute, ANV_HW_PIPELINE_STATE_COMPUTE)
+ANV_DECL_PIPELINE_DOWNCAST(ray_tracing, ANV_HW_PIPELINE_STATE_RAY_TRACING)
 
 static inline bool
 anv_pipeline_has_stage(const struct anv_graphics_pipeline *pipeline,
@@ -3206,7 +3205,7 @@ anv_device_finish_rt_shaders(struct anv_device *device);
 VkResult
 anv_pipeline_init(struct anv_pipeline *pipeline,
                   struct anv_device *device,
-                  enum anv_pipeline_type type,
+                  enum anv_hw_pipeline_state type,
                   VkPipelineCreateFlags flags,
                   const VkAllocationCallbacks *pAllocator);
 

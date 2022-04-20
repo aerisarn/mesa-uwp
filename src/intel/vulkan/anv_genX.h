@@ -85,7 +85,7 @@ void genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer);
 enum anv_pipe_bits
 genX(emit_apply_pipe_flushes)(struct anv_batch *batch,
                               struct anv_device *device,
-                              uint32_t current_pipeline,
+                              enum anv_hw_pipeline_state current_pipeline,
                               enum anv_pipe_bits bits);
 
 void genX(emit_so_memcpy_init)(struct anv_memcpy_state *state,
