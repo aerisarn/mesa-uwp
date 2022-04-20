@@ -24,7 +24,9 @@
 
 """Send a job to LAVA, track it and collect log back"""
 
+
 import argparse
+import contextlib
 import pathlib
 import re
 import sys
@@ -38,7 +40,12 @@ from typing import Any, Optional
 
 import lavacli
 import yaml
-from lava.exceptions import MesaCIException, MesaCIRetryError, MesaCITimeoutError
+from lava.exceptions import (
+    MesaCIException,
+    MesaCIParseException,
+    MesaCIRetryError,
+    MesaCITimeoutError,
+)
 from lavacli.utils import loader
 
 # Timeout in seconds to decide if the device from the dispatched LAVA job has
@@ -264,20 +271,26 @@ class LAVAJob:
         )
         return job_state["job_state"] not in waiting_states
 
+    def _load_log_from_data(self, data) -> list[str]:
+        lines = []
+        # When there is no new log data, the YAML is empty
+        if loaded_lines := yaml.load(str(data), Loader=loader(False)):
+            lines = loaded_lines
+            # If we had non-empty log data, we can assure that the device is alive.
+            self.heartbeat()
+            self.last_log_line += len(lines)
+        return lines
+
     def get_logs(self) -> list[str]:
         try:
             (finished, data) = _call_proxy(
                 self.proxy.scheduler.jobs.logs, self.job_id, self.last_log_line
             )
-            lines = yaml.load(str(data), Loader=loader(False))
             self.is_finished = finished
-            if not lines:
-                return []
-            self.heartbeat()
-            self.last_log_line += len(lines)
-            return lines
+            return self._load_log_from_data(data)
+
         except Exception as mesa_ci_err:
-            raise MesaCIException(
+            raise MesaCIParseException(
                 f"Could not get LAVA job logs. Reason: {mesa_ci_err}"
             ) from mesa_ci_err
 
@@ -381,7 +394,15 @@ def fetch_logs(job, max_idle_time):
 
     time.sleep(LOG_POLLING_TIME_SEC)
 
-    new_lines = job.get_logs()
+    # The XMLRPC binary packet may be corrupted, causing a YAML scanner error.
+    # Retry the log fetching several times before exposing the error.
+    for _ in range(5):
+        with contextlib.suppress(MesaCIParseException):
+            new_lines = job.get_logs()
+            break
+    else:
+        raise MesaCIParseException
+
     parsed_lines = parse_lava_lines(new_lines)
 
     for line in parsed_lines:

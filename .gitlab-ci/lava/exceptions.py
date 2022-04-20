@@ -15,3 +15,7 @@ class MesaCIRetryError(MesaCIException):
     def __init__(self, *args, retry_count: int) -> None:
         super().__init__(*args)
         self.retry_count = retry_count
+
+
+class MesaCIParseException(MesaCIException):
+    pass

@@ -168,7 +168,9 @@ PROXY_SCENARIOS = {
         {},
     ),
     "timed out more times than retry attempts": (
-        generate_n_logs(n=4, tick_fn=DEVICE_HANGING_TIMEOUT_SEC + 1),
+        generate_n_logs(
+            n=NUMBER_OF_MAX_ATTEMPTS + 1, tick_fn=DEVICE_HANGING_TIMEOUT_SEC + 1
+        ),
         pytest.raises(MesaCIRetryError),
         False,
         {},
@@ -317,3 +319,28 @@ def test_hide_sensitive_data(input, expectation, tag):
 def test_get_job_results(mock_proxy):
     proxy = mock_proxy()
     get_job_results(proxy, 1, "0_mesa")
+
+
+CORRUPTED_LOG_SCENARIOS = {
+    "too much subsequent corrupted data": (
+        [(False, "{'msg': 'Incomplete}")] * 100 + [jobs_logs_response(True)],
+        pytest.raises((MesaCIRetryError)),
+    ),
+    "one subsequent corrupted data": (
+        [(False, "{'msg': 'Incomplete}")] * 2 + [jobs_logs_response(True)],
+        does_not_raise(),
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    "data_sequence, expected_exception",
+    CORRUPTED_LOG_SCENARIOS.values(),
+    ids=CORRUPTED_LOG_SCENARIOS.keys(),
+)
+def test_log_corruption(mock_sleep, data_sequence, expected_exception, mock_proxy):
+    proxy_mock = mock_proxy()
+    proxy_logs_mock = proxy_mock.scheduler.jobs.logs
+    proxy_logs_mock.side_effect = data_sequence
+    with expected_exception:
+        retriable_follow_job(proxy_mock, "")
