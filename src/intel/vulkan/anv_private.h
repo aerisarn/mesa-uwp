@@ -2017,12 +2017,6 @@ struct anv_descriptor_pool {
    char data[0];
 };
 
-enum anv_descriptor_template_entry_type {
-   ANV_DESCRIPTOR_TEMPLATE_ENTRY_TYPE_IMAGE,
-   ANV_DESCRIPTOR_TEMPLATE_ENTRY_TYPE_BUFFER,
-   ANV_DESCRIPTOR_TEMPLATE_ENTRY_TYPE_BUFFER_VIEW
-};
-
 struct anv_descriptor_template_entry {
    /* The type of descriptor in this entry */
    VkDescriptorType type;
