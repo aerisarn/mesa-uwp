@@ -69,13 +69,19 @@
 static bool
 equals_ivci(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(VkImageViewCreateInfo)) == 0;
+   const uint8_t *pa = a;
+   const uint8_t *pb = b;
+   size_t offset = offsetof(VkImageViewCreateInfo, flags);
+   return memcmp(pa + offset, pb + offset, sizeof(VkImageViewCreateInfo) - offset) == 0;
 }
 
 static bool
 equals_bvci(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(VkBufferViewCreateInfo)) == 0;
+   const uint8_t *pa = a;
+   const uint8_t *pb = b;
+   size_t offset = offsetof(VkBufferViewCreateInfo, flags);
+   return memcmp(pa + offset, pb + offset, sizeof(VkBufferViewCreateInfo) - offset) == 0;
 }
 
 static void
