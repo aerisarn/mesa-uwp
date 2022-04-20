@@ -3167,6 +3167,7 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
       progress = false;
 
       NIR_PASS_V(s, nir_lower_vars_to_ssa);
+      NIR_PASS_V(s, nir_split_64bit_vec3_and_vec4);
 
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_algebraic);
