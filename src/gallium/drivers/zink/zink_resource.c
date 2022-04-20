@@ -268,8 +268,7 @@ get_image_usage_for_feats(struct zink_screen *screen, VkFormatFeatureFlags feats
          usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
          if ((bind & (PIPE_BIND_LINEAR | PIPE_BIND_SHARED)) != (PIPE_BIND_LINEAR | PIPE_BIND_SHARED))
             usage |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-      } else if (templ->nr_samples || (bind == PIPE_BIND_RENDER_TARGET && !(feats & VK_FORMAT_FEATURE_BLIT_DST_BIT)))
-         /* this can't be populated, so we can't do it */
+      } else
          return 0;
    }
 
@@ -346,6 +345,8 @@ get_image_usage(struct zink_screen *screen, VkImageCreateInfo *ici, const struct
    {
       VkFormatProperties props = screen->format_props[templ->format];
       VkFormatFeatureFlags feats = tiling == VK_IMAGE_TILING_LINEAR ? props.linearTilingFeatures : props.optimalTilingFeatures;
+      if (ici->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
+         feats = UINT32_MAX;
       VkImageUsageFlags usage = get_image_usage_for_feats(screen, feats, templ, bind);
       if (usage) {
          ici->usage = usage;
@@ -446,6 +447,7 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    bool first = true;
    bool tried[2] = {0};
    uint64_t mod = DRM_FORMAT_MOD_INVALID;
+retry:
    while (!ici->usage) {
       if (!first) {
          switch (ici->tiling) {
@@ -467,8 +469,15 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
             unreachable("unhandled tiling mode");
          }
          if (tried[ici->tiling]) {
-            *success = false;
+            if (ici->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) {
+               *success = false;
                return DRM_FORMAT_MOD_INVALID;
+            }
+            ici->flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+            tried[0] = false;
+            tried[1] = false;
+            first = true;
+            goto retry;
          }
       }
       ici->usage = get_image_usage(screen, ici, templ, bind, modifiers_count, modifiers, &mod);
