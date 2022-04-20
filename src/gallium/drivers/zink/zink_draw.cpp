@@ -44,24 +44,6 @@ zink_emit_xfb_counter_barrier(struct zink_context *ctx)
 }
 
 static void
-zink_emit_xfb_vertex_input_barrier(struct zink_context *ctx, struct zink_resource *res)
-{
-   /* A pipeline barrier is required between using the buffers as
-    * transform feedback buffers and vertex buffers to
-    * ensure all writes to the transform feedback buffers are visible
-    * when the data is read as vertex attributes.
-    * The source access is VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
-    * and the destination access is VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-    * for the pipeline stages VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT
-    * and VK_PIPELINE_STAGE_VERTEX_INPUT_BIT respectively.
-    *
-    * - 20.3.1. Drawing Transform Feedback
-    */
-   zink_resource_buffer_barrier(ctx, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-                                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
-}
-
-static void
 zink_emit_stream_output_targets(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -549,8 +531,13 @@ zink_draw(struct pipe_context *pctx,
       }
    }
 
-   if (so_target)
-      zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
+   /* ensure synchronization between doing streamout with counter buffer
+    * and using counter buffer for indirect draw
+    */
+   if (so_target && so_target->counter_buffer_valid)
+      zink_resource_buffer_barrier(ctx, zink_resource(so_target->counter_buffer),
+                                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
+                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
 
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
