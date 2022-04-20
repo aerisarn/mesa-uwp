@@ -790,6 +790,16 @@ resource_transfer_map_unsync(struct pipe_context *pctx,
    char *buf;
 
    buf = fd_bo_map(rsc->bo);
+
+   /* With imported bo's allocated by something outside of mesa, when
+    * running in a VM (using virtio_gpu kernel driver) we could end up in
+    * a situation where we have a linear bo, but are unable to mmap it
+    * because it was allocated without the VIRTGPU_BLOB_FLAG_USE_MAPPABLE
+    * flag.  So we need end up needing to do a staging blit instead:
+    */
+   if (!buf)
+      return resource_transfer_map_staging(pctx, prsc, level, usage, box, trans);
+
    offset = box->y / util_format_get_blockheight(format) * trans->b.b.stride +
             box->x / util_format_get_blockwidth(format) * rsc->layout.cpp +
             fd_resource_offset(rsc, level, box->z);
