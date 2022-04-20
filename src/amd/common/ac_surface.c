@@ -1702,9 +1702,11 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
    }
 
    if (in->swizzleMode == ADDR_SW_LINEAR) {
+      int alignment = 256 / surf->bpe;
       for (unsigned i = 0; i < in->numMipLevels; i++) {
          surf->u.gfx9.offset[i] = mip_info[i].offset;
-         surf->u.gfx9.pitch[i] = mip_info[i].pitch;
+         /* Adjust pitch like we did for surf_pitch */
+         surf->u.gfx9.pitch[i] = align(mip_info[i].pitch / surf->blk_w, alignment);
       }
    }
 
