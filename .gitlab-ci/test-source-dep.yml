@@ -587,6 +587,8 @@
 # rules duplication manually
 .windows-build-rules:
   rules:
+    - if: '$MICROSOFT_FARM == "offline"'
+      when: never
     - *ignore_scheduled_pipelines
     - changes: 
         *mesa_core_file_list
@@ -621,6 +623,8 @@
 
 .windows-test-rules:
   rules:
+    - if: '$MICROSOFT_FARM == "offline"'
+      when: never
     - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
