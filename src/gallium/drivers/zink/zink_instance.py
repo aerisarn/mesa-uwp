@@ -45,6 +45,7 @@ EXTENSIONS = [
     Extension("VK_KHR_wayland_surface"),
     Extension("VK_KHR_xcb_surface",
               conditions=["!instance_info->disable_xcb_surface"]),
+    Extension("VK_KHR_win32_surface"),
 ]
 
 # constructor: Layer(name, conditions=[])
