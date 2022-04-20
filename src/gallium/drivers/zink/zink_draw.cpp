@@ -20,25 +20,26 @@
 static void
 zink_emit_xfb_counter_barrier(struct zink_context *ctx)
 {
-   /* Between the pause and resume there needs to be a memory barrier for the counter buffers
-    * with a source access of VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
-    * at pipeline stage VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT
-    * to a destination access of VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
-    * at pipeline stage VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT.
-    *
-    * - from VK_EXT_transform_feedback spec
-    */
    for (unsigned i = 0; i < ctx->num_so_targets; i++) {
       struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
       if (!t)
          continue;
       struct zink_resource *res = zink_resource(t->counter_buffer);
-      if (t->counter_buffer_valid)
-          zink_resource_buffer_barrier(ctx, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
-                                       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-      else
-          zink_resource_buffer_barrier(ctx, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
-                                       VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+      VkAccessFlags access = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+      VkPipelineStageFlags stage = VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+      if (t->counter_buffer_valid) {
+         /* Between the pause and resume there needs to be a memory barrier for the counter buffers
+          * with a source access of VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
+          * at pipeline stage VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT
+          * to a destination access of VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+          * at pipeline stage VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT.
+          *
+          * - from VK_EXT_transform_feedback spec
+          */
+         access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
+         stage |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      }
+      zink_resource_buffer_barrier(ctx, res, access, stage);
    }
    ctx->xfb_barrier = false;
 }
