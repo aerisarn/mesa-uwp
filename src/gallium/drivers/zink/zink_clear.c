@@ -475,6 +475,7 @@ zink_clear_buffer(struct pipe_context *pctx,
       zink_batch_no_rp(ctx);
       zink_batch_reference_resource_rw(batch, res, true);
       util_range_add(&res->base.b, &res->valid_buffer_range, offset, offset + size);
+      zink_resource_buffer_barrier(ctx, res, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
       VKCTX(CmdFillBuffer)(batch->state->cmdbuf, res->obj->buffer, offset, size, *(uint32_t*)clear_value);
       return;
    }
