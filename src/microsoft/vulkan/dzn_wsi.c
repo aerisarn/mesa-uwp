@@ -35,7 +35,7 @@ void
 dzn_wsi_finish(struct dzn_physical_device *physical_device)
 {
    wsi_device_finish(&physical_device->wsi_device,
-		     &physical_device->vk.instance->alloc);
+                     &physical_device->vk.instance->alloc);
 }
 
 VkResult

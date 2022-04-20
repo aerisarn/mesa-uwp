@@ -386,9 +386,9 @@ dzn_image_get_dsv_desc(const struct dzn_image *image,
    case VK_IMAGE_TYPE_2D:
       if (image->vk.array_layers > 1) {
          dsv_desc.ViewDimension =
-	    image->vk.samples > 1 ?
-	    D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY :
-	    D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+            image->vk.samples > 1 ?
+            D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY :
+            D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
       } else {
          dsv_desc.ViewDimension =
             image->vk.samples > 1 ?

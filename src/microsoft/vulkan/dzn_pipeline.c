@@ -851,7 +851,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
 
       desc.RTVFormats[i] =
          dzn_image_get_dxgi_format(attachment->format,
-	                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                   VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                    VK_IMAGE_ASPECT_COLOR_BIT);
    }
 

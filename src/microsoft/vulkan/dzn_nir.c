@@ -66,10 +66,10 @@ dzn_nir_create_bo_desc(nir_builder *b,
       nir_vulkan_resource_index(b,
                                 nir_address_format_num_components(addr_format),
                                 nir_address_format_bit_size(addr_format),
-				nir_imm_int(b, 0),
-                               .desc_set = desc_set,
-                               .binding = binding,
-                               .desc_type = desc_type);
+                                nir_imm_int(b, 0),
+                                .desc_set = desc_set,
+                                .binding = binding,
+                                .desc_type = desc_type);
 
    nir_ssa_def *desc =
       nir_load_vulkan_descriptor(b,
@@ -182,8 +182,8 @@ dzn_nir_indirect_draw_shader(enum dzn_indirect_draw_type type)
          triangle_fan_index_buf_addr_hi,
          nir_channel(&b, draw_info1, 2),
          triangle_count,
-	 nir_imm_int(&b, 1),
-	 nir_imm_int(&b, 1),
+         nir_imm_int(&b, 1),
+         nir_imm_int(&b, 1),
       };
 
       assert(sizeof(struct dzn_indirect_triangle_fan_rewrite_index_exec_params) == (ARRAY_SIZE(triangle_fan_exec_vals) * 4));
@@ -429,11 +429,11 @@ dzn_nir_blit_fs(const struct dzn_nir_blit_info *info)
       for (unsigned s = 0; s < nsamples; s++) {
          nir_tex_instr *tex = nir_tex_instr_create(b.shader, 4);
 
-	 tex->op = nir_texop_txf_ms;
-	 tex->dest_type = nir_out_type;
-	 tex->texture_index = 0;
-	 tex->is_array = info->src_is_array;
-	 tex->sampler_dim = info->sampler_dim;
+         tex->op = nir_texop_txf_ms;
+         tex->dest_type = nir_out_type;
+         tex->texture_index = 0;
+         tex->is_array = info->src_is_array;
+         tex->sampler_dim = info->sampler_dim;
 
          tex->src[0].src_type = nir_tex_src_coord;
          tex->src[0].src = nir_src_for_ssa(nir_f2i32(&b, coord));

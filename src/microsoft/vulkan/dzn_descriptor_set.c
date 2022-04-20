@@ -302,7 +302,7 @@ dzn_descriptor_set_layout_create(struct dzn_device *device,
             desc->ShaderRegister = binfos[binding].base_shader_register;
             desc->ShaderVisibility = translate_desc_visibility(ordered_bindings[i].stageFlags);
             static_sampler_idx++;
-	 } else {
+         } else {
             has_static_sampler = false;
          }
       }
@@ -1739,7 +1739,7 @@ dzn_descriptor_set_write(const VkWriteDescriptorSet *pDescriptorWrite)
             pDescriptorWrite->descriptorType,
             dzn_buffer_from_handle(binfo->buffer),
             binfo->range, binfo->offset
-	 };
+         };
 
          if (desc.buffer)
             dzn_descriptor_set_ptr_write_dynamic_buffer_desc(set, &ptr, &desc);
@@ -1841,7 +1841,7 @@ dzn_descriptor_set_copy(const VkCopyDescriptorSet *pDescriptorCopy)
                                         &src_set->pool->heaps[type],
                                         src_set->heap_offsets[type] + src_heap_offset,
                                         count);
-	    }
+            }
             mtx_unlock(&dst_set->pool->defragment_lock);
             mtx_unlock(&src_set->pool->defragment_lock);
          }
