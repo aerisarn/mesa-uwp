@@ -91,7 +91,6 @@ struct zink_resource_object {
    bool new_dt;
    bool dt_has_data;
    bool indefinite_acquire;
-   struct util_queue_fence present_fence;
    // }
 
 

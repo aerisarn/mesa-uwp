@@ -62,6 +62,7 @@ struct kopper_displaytarget
    struct kopper_swapchain *old_swapchain;
 
    struct kopper_loader_info info;
+   struct util_queue_fence present_fence;
 
    VkSurfaceCapabilitiesKHR caps;
    VkImageFormatListCreateInfoKHR format_list;
