@@ -1651,29 +1651,19 @@ generate_clipmask(struct draw_llvm *llvm,
             indices[0] = lp_build_const_int32(gallivm, 0);
             indices[1] = lp_build_const_int32(gallivm, plane_idx);
 
-            indices[2] = lp_build_const_int32(gallivm, 0);
-            plane_ptr = LLVMBuildGEP(builder, planes_ptr, indices, 3, "");
-            plane1 = LLVMBuildLoad2(builder, vs_elem_type, plane_ptr, "plane_x");
-            planes = lp_build_broadcast(gallivm, vs_type_llvm, plane1);
-            sum = LLVMBuildFMul(builder, planes, cv_x, "");
-
-            indices[2] = lp_build_const_int32(gallivm, 1);
-            plane_ptr = LLVMBuildGEP(builder, planes_ptr, indices, 3, "");
-            plane1 = LLVMBuildLoad2(builder, vs_elem_type, plane_ptr, "plane_y");
-            planes = lp_build_broadcast(gallivm, vs_type_llvm, plane1);
-            sum = lp_build_fmuladd(builder, planes, cv_y, sum);
-
-            indices[2] = lp_build_const_int32(gallivm, 2);
-            plane_ptr = LLVMBuildGEP(builder, planes_ptr, indices, 3, "");
-            plane1 = LLVMBuildLoad2(builder, vs_elem_type, plane_ptr, "plane_z");
-            planes = lp_build_broadcast(gallivm, vs_type_llvm, plane1);
-            sum = lp_build_fmuladd(builder, planes, cv_z, sum);
-
-            indices[2] = lp_build_const_int32(gallivm, 3);
-            plane_ptr = LLVMBuildGEP(builder, planes_ptr, indices, 3, "");
-            plane1 = LLVMBuildLoad2(builder, vs_elem_type, plane_ptr, "plane_w");
-            planes = lp_build_broadcast(gallivm, vs_type_llvm, plane1);
-            sum = lp_build_fmuladd(builder, planes, cv_w, sum);
+            for (int i = 0; i < 4; ++i) {
+               indices[2] = lp_build_const_int32(gallivm, i);
+               plane_ptr = LLVMBuildGEP(builder, planes_ptr, indices, 3, "");
+               plane1 = LLVMBuildLoad2(builder, vs_elem_type, plane_ptr,
+                                       (const char *[]){"plane_x", "plane_y", "plane_z", "plane_w"}[i]);
+               planes = lp_build_broadcast(gallivm, vs_type_llvm, plane1);
+               if (i == 0) {
+                  sum = LLVMBuildFMul(builder, planes, cv_x, "");
+               } else {
+                  sum = lp_build_fmuladd(builder, planes,
+                                         (LLVMValueRef[]){cv_x, cv_y, cv_z, cv_w}[i], sum);
+               }
+            }
 
             test = lp_build_compare(gallivm, f32_type, PIPE_FUNC_GREATER, zero, sum);
             temp = lp_build_const_int_vec(gallivm, i32_type, 1LL << plane_idx);
