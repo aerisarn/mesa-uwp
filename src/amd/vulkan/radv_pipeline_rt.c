@@ -862,7 +862,7 @@ lower_any_hit_for_intersection(nir_shader *any_hit)
                 */
                nir_store_deref(b, commit, nir_imm_false(b), 0x1);
                nir_push_if(b, nir_imm_true(b));
-               nir_jump(b, nir_jump_halt);
+               nir_jump(b, nir_jump_return);
                nir_pop_if(b, NULL);
                break;
 
