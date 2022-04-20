@@ -174,7 +174,6 @@ files_libglsl = files(
   'lower_tess_level.cpp',
   'lower_vec_index_to_cond_assign.cpp',
   'lower_vec_index_to_swizzle.cpp',
-  'lower_vector.cpp',
   'lower_vector_derefs.cpp',
   'lower_vector_insert.cpp',
   'lower_vertex_id.cpp',

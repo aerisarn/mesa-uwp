@@ -132,7 +132,6 @@ link_shader(struct gl_context *ctx, struct gl_shader_program *prog)
 
       do_vec_index_to_cond_assign(ir);
       lower_vector_insert(ir, true);
-      lower_quadop_vector(ir);
       if (options->MaxIfDepth == 0) {
          lower_discard(ir);
       }

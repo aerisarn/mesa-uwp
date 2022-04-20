@@ -110,8 +110,6 @@ do_optimization(struct exec_list *ir, const char *optimization,
    } else if (sscanf(optimization, "lower_instructions ( %d ) ",
                      &int_0) == 1) {
       return lower_instructions(ir, int_0);
-   } else if (sscanf(optimization, "lower_quadop_vector") == 1) {
-      return lower_quadop_vector(ir);
    } else {
       printf("Unrecognized optimization %s\n", optimization);
       exit(EXIT_FAILURE);
