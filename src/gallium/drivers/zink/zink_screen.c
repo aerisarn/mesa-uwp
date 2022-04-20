@@ -104,7 +104,7 @@ enum zink_descriptor_mode zink_descriptor_mode;
 static const char *
 zink_get_vendor(struct pipe_screen *pscreen)
 {
-   return "Collabora Ltd";
+   return "Mesa";
 }
 
 static const char *

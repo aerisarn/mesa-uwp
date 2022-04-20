@@ -46,7 +46,7 @@
  * (Or egotistical. Yet.) */
 static const char* r300_get_vendor(struct pipe_screen* pscreen)
 {
-    return "X.Org R300 Project";
+    return "Mesa";
 }
 
 static const char* r300_get_device_vendor(struct pipe_screen* pscreen)
