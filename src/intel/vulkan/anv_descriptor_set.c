@@ -1956,6 +1956,19 @@ anv_descriptor_set_write_template(struct anv_device *device,
                                                       entry->array_count);
          break;
 
+      case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+         for (uint32_t j = 0; j < entry->array_count; j++) {
+            VkAccelerationStructureKHR *accel_obj =
+               (VkAccelerationStructureKHR *)(data + entry->offset + j * entry->stride);
+            ANV_FROM_HANDLE(anv_acceleration_structure, accel, *accel_obj);
+
+            anv_descriptor_set_write_acceleration_structure(device, set,
+                                                            accel,
+                                                            entry->binding,
+                                                            entry->array_element + j);
+         }
+         break;
+
       default:
          break;
       }
