@@ -1172,7 +1172,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
 
 static void
 dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
-                                uint32_t idx,
+                                struct dzn_image_view *view,
                                 const VkClearValue *value,
                                 VkImageAspectFlags aspects,
                                 uint32_t base_layer,
@@ -1180,11 +1180,8 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                 uint32_t rect_count,
                                 D3D12_RECT *rects)
 {
-   if (idx == VK_ATTACHMENT_UNUSED)
-      return;
-
-   struct dzn_image_view *view = cmdbuf->state.framebuffer->attachments[idx];
-   struct dzn_image *image = container_of(view->vk.image, struct dzn_image, vk);
+   struct dzn_image *image =
+      container_of(view->vk.image, struct dzn_image, vk);
 
    VkImageSubresourceRange range = {
       .aspectMask = aspects,
@@ -2120,12 +2117,17 @@ dzn_cmd_buffer_clear_attachments(struct dzn_cmd_buffer *cmdbuf,
       else
          idx = subpass->zs.idx;
 
+      if (idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      struct dzn_image_view *view = cmdbuf->state.framebuffer->attachments[idx];
+
       for (uint32_t j = 0; j < rect_count; j++) {
          D3D12_RECT rect;
 
          dzn_translate_rect(&rect, &rects[j].rect);
-         dzn_cmd_buffer_clear_attachment(cmdbuf,
-                                         idx, &attachments[i].clearValue,
+         dzn_cmd_buffer_clear_attachment(cmdbuf, view,
+                                         &attachments[i].clearValue,
                                          attachments[i].aspectMask,
                                          rects[j].baseArrayLayer,
                                          rects[j].layerCount,
@@ -3453,7 +3455,9 @@ dzn_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
          aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
       }
 
-      dzn_cmd_buffer_clear_attachment(cmdbuf, i, &pRenderPassBeginInfo->pClearValues[i],
+      struct dzn_image_view *view = cmdbuf->state.framebuffer->attachments[i];
+
+      dzn_cmd_buffer_clear_attachment(cmdbuf, view, &pRenderPassBeginInfo->pClearValues[i],
                                       aspectMask, 0, ~0, 1, &cmdbuf->state.render_area);
    }
 }
