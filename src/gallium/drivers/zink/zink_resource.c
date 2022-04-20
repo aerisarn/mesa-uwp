@@ -227,7 +227,17 @@ check_ici(struct zink_screen *screen, VkImageCreateInfo *ici, uint64_t modifier)
    } else
       ret = VKSCR(GetPhysicalDeviceImageFormatProperties)(screen->pdev, ici->format, ici->imageType,
                                                    ici->tiling, ici->usage, ici->flags, &image_props);
-   return ret == VK_SUCCESS;
+   if (ret != VK_SUCCESS)
+      return false;
+   if (ici->extent.depth > image_props.maxExtent.depth ||
+       ici->extent.height > image_props.maxExtent.height ||
+       ici->extent.width > image_props.maxExtent.width)
+      return false;
+   if (ici->mipLevels > image_props.maxMipLevels)
+      return false;
+   if (ici->arrayLayers > image_props.maxArrayLayers)
+      return false;
+   return true;
 }
 
 static VkImageUsageFlags
