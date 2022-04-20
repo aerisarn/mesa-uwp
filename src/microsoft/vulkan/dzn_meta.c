@@ -696,10 +696,10 @@ void
 dzn_meta_finish(struct dzn_device *device)
 {
    for (uint32_t i = 0; i < ARRAY_SIZE(device->triangle_fan); i++)
-      dzn_meta_triangle_fan_rewrite_index_finish(device, (enum dzn_index_type)i);
+      dzn_meta_triangle_fan_rewrite_index_finish(device, i);
 
    for (uint32_t i = 0; i < ARRAY_SIZE(device->indirect_draws); i++)
-      dzn_meta_indirect_draw_finish(device, (enum dzn_indirect_draw_type)i);
+      dzn_meta_indirect_draw_finish(device, i);
 
    dzn_meta_blits_finish(device);
 }
@@ -713,14 +713,14 @@ dzn_meta_init(struct dzn_device *device)
 
    for (uint32_t i = 0; i < ARRAY_SIZE(device->indirect_draws); i++) {
       VkResult result =
-         dzn_meta_indirect_draw_init(device, (enum dzn_indirect_draw_type)i);
+         dzn_meta_indirect_draw_init(device, i);
       if (result != VK_SUCCESS)
          goto out;
    }
 
    for (uint32_t i = 0; i < ARRAY_SIZE(device->triangle_fan); i++) {
       VkResult result =
-         dzn_meta_triangle_fan_rewrite_index_init(device, (enum dzn_index_type)i);
+         dzn_meta_triangle_fan_rewrite_index_init(device, i);
       if (result != VK_SUCCESS)
          goto out;
    }

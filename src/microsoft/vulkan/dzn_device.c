@@ -1760,7 +1760,7 @@ dzn_device_create_sync_for_memory(struct vk_device *device,
                                   struct vk_sync **sync_out)
 {
    return vk_sync_create(device, &vk_sync_dummy_type,
-                         (enum vk_sync_flags)0, 1, sync_out);
+                         0, 1, sync_out);
 }
 
 static void

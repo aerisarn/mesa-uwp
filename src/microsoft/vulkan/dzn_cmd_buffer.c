@@ -339,7 +339,7 @@ dzn_cmd_buffer_gather_events(struct dzn_cmd_buffer *cmdbuf)
       goto out;
 
    hash_table_foreach(cmdbuf->events.ht, he) {
-      enum dzn_event_state state = (enum dzn_event_state)(uintptr_t)he->data;
+      enum dzn_event_state state = (uintptr_t)he->data;
 
       if (state != DZN_EVENT_STATE_EXTERNAL_WAIT) {
          struct dzn_cmd_event_signal signal = { (struct dzn_event *)he->key, state  == DZN_EVENT_STATE_SET };
@@ -3875,7 +3875,7 @@ dzn_CmdWaitEvents(VkCommandBuffer commandBuffer,
       struct hash_entry *he =
          _mesa_hash_table_search(cmdbuf->events.ht, event);
       if (he) {
-         enum dzn_event_state state = (enum dzn_event_state)(uintptr_t)he->data;
+         enum dzn_event_state state = (uintptr_t)he->data;
          assert(state != DZN_EVENT_STATE_RESET);
          flush_pipeline = state == DZN_EVENT_STATE_SET;
       } else {
