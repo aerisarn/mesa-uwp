@@ -662,7 +662,7 @@ struct dzn_descriptor_update_template {
    const struct dzn_descriptor_update_template_entry *entries;
 };
 
-#define MAX_RTS 8
+#define MAX_RTS D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT
 #define MAX_INPUT_ATTACHMENTS 4
 
 struct dzn_subpass {
