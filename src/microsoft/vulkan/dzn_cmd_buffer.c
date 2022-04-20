@@ -2101,44 +2101,6 @@ dzn_cmd_buffer_resolve_region(struct dzn_cmd_buffer *cmdbuf,
 }
 
 static void
-dzn_cmd_buffer_clear_attachments(struct dzn_cmd_buffer *cmdbuf,
-                                 uint32_t attachment_count,
-                                 const VkClearAttachment *attachments,
-                                 uint32_t rect_count,
-                                 const VkClearRect *rects)
-{
-   struct dzn_render_pass *pass = cmdbuf->state.render.pass;
-   const struct dzn_subpass *subpass =
-      &pass->subpasses[cmdbuf->state.render.subpass];
-
-   for (unsigned i = 0; i < attachment_count; i++) {
-      uint32_t idx;
-      if (attachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
-         idx = subpass->colors[attachments[i].colorAttachment].idx;
-      else
-         idx = subpass->zs.idx;
-
-      if (idx == VK_ATTACHMENT_UNUSED)
-         continue;
-
-      struct dzn_image_view *view =
-         cmdbuf->state.render.framebuffer->attachments[idx];
-
-      for (uint32_t j = 0; j < rect_count; j++) {
-         D3D12_RECT rect;
-
-         dzn_translate_rect(&rect, &rects[j].rect);
-         dzn_cmd_buffer_clear_attachment(cmdbuf, view,
-                                         &attachments[i].clearValue,
-                                         attachments[i].aspectMask,
-                                         rects[j].baseArrayLayer,
-                                         rects[j].layerCount,
-                                         1, &rect);
-      }
-   }
-}
-
-static void
 dzn_cmd_buffer_attachment_ref_transition(struct dzn_cmd_buffer *cmdbuf,
                                          const struct dzn_attachment_ref *att)
 {
@@ -3419,7 +3381,35 @@ dzn_CmdClearAttachments(VkCommandBuffer commandBuffer,
 {
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
-   dzn_cmd_buffer_clear_attachments(cmdbuf, attachmentCount, pAttachments, rectCount, pRects);
+   struct dzn_render_pass *pass = cmdbuf->state.render.pass;
+   const struct dzn_subpass *subpass =
+      &pass->subpasses[cmdbuf->state.render.subpass];
+
+   for (unsigned i = 0; i < attachmentCount; i++) {
+      uint32_t idx;
+      if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+         idx = subpass->colors[pAttachments[i].colorAttachment].idx;
+      else
+         idx = subpass->zs.idx;
+
+      if (idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      struct dzn_image_view *view =
+         cmdbuf->state.render.framebuffer->attachments[idx];
+
+      for (uint32_t j = 0; j < rectCount; j++) {
+         D3D12_RECT rect;
+
+         dzn_translate_rect(&rect, &pRects[j].rect);
+         dzn_cmd_buffer_clear_attachment(cmdbuf, view,
+                                         &pAttachments[i].clearValue,
+                                         pAttachments[i].aspectMask,
+                                         pRects[j].baseArrayLayer,
+                                         pRects[j].layerCount,
+                                         1, &rect);
+      }
+   }
 }
 
 VKAPI_ATTR void VKAPI_CALL
