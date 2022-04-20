@@ -41,7 +41,6 @@ zink_emit_xfb_counter_barrier(struct zink_context *ctx)
       }
       zink_resource_buffer_barrier(ctx, res, access, stage);
    }
-   ctx->xfb_barrier = false;
 }
 
 static void
@@ -516,8 +515,7 @@ zink_draw(struct pipe_context *pctx,
 
    bool have_streamout = !!ctx->num_so_targets;
    if (have_streamout) {
-      if (ctx->xfb_barrier)
-         zink_emit_xfb_counter_barrier(ctx);
+      zink_emit_xfb_counter_barrier(ctx);
       if (ctx->dirty_so_targets) {
          /* have to loop here and below because barriers must be emitted out of renderpass,
           * but xfb buffers can't be bound before the renderpass is active to avoid

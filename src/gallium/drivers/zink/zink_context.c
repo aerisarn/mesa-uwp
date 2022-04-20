@@ -3796,17 +3796,8 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
          pipe_so_target_reference(&ctx->so_targets[i], targets[i]);
          if (!t)
             continue;
-         struct zink_resource *res = zink_resource(t->counter_buffer);
-         if (offsets[0] == (unsigned)-1) {
-            ctx->xfb_barrier |= zink_resource_buffer_needs_barrier(res,
-                                                                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
-                                                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
-         } else {
-            ctx->xfb_barrier |= zink_resource_buffer_needs_barrier(res,
-                                                                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
-                                                                   VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+         if (offsets[0] != (unsigned)-1)
             t->counter_buffer_valid = false;
-         }
          struct zink_resource *so = zink_resource(ctx->so_targets[i]->buffer);
          if (so) {
             so->so_bind_count++;
