@@ -780,7 +780,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
 {
    const VkPipelineRenderingCreateInfo *ri = (const VkPipelineRenderingCreateInfo *)
       vk_find_struct_const(pCreateInfo, PIPELINE_RENDERING_CREATE_INFO);
-   VK_FROM_HANDLE(dzn_render_pass, pass, pCreateInfo->renderPass);
+   VK_FROM_HANDLE(vk_render_pass, pass, pCreateInfo->renderPass);
    VK_FROM_HANDLE(dzn_pipeline_layout, layout, pCreateInfo->layout);
    uint32_t color_count = 0;
    VkFormat color_fmts[MAX_RTS] = { 0 };
@@ -846,21 +846,23 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    dzn_graphics_pipeline_translate_blend(pipeline, &desc, pCreateInfo);
 
    if (pass) {
-      const struct dzn_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
+      const struct vk_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
       color_count = subpass->color_count;
       for (uint32_t i = 0; i < subpass->color_count; i++) {
-         uint32_t idx = subpass->colors[i].idx;
+         uint32_t idx = subpass->color_attachments[i].attachment;
 
          if (idx == VK_ATTACHMENT_UNUSED) continue;
 
-         const struct dzn_attachment *attachment = &pass->attachments[idx];
+         const struct vk_render_pass_attachment *attachment =
+            &pass->attachments[idx];
 
          color_fmts[i] = attachment->format;
       }
 
-      if (subpass->zs.idx != VK_ATTACHMENT_UNUSED) {
-         const struct dzn_attachment *attachment =
-            &pass->attachments[subpass->zs.idx];
+      if (subpass->depth_stencil_attachment &&
+          subpass->depth_stencil_attachment->attachment != VK_ATTACHMENT_UNUSED) {
+         const struct vk_render_pass_attachment *attachment =
+            &pass->attachments[subpass->depth_stencil_attachment->attachment];
 
 	 zs_fmt = attachment->format;
       }

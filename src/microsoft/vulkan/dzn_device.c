@@ -2520,68 +2520,6 @@ dzn_BindBufferMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-static VkResult
-dzn_framebuffer_create(struct dzn_device *device,
-                       const VkFramebufferCreateInfo *pCreateInfo,
-                       const VkAllocationCallbacks *pAllocator,
-                       VkFramebuffer *out)
-{
-   VK_MULTIALLOC(ma);
-   VK_MULTIALLOC_DECL(&ma, struct dzn_framebuffer, framebuffer, 1);
-   VK_MULTIALLOC_DECL(&ma, struct dzn_image_view *, attachments, pCreateInfo->attachmentCount);
-
-   if (!vk_multialloc_zalloc2(&ma, &device->vk.alloc, pAllocator,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   framebuffer->width = pCreateInfo->width;
-   framebuffer->height = pCreateInfo->height;
-   framebuffer->layers = pCreateInfo->layers;
-
-   framebuffer->attachments = attachments;
-   framebuffer->attachment_count = pCreateInfo->attachmentCount;
-   for (uint32_t i = 0; i < framebuffer->attachment_count; i++) {
-      VK_FROM_HANDLE(dzn_image_view, iview, pCreateInfo->pAttachments[i]);
-      framebuffer->attachments[i] = iview;
-   }
-
-   vk_object_base_init(&device->vk, &framebuffer->base, VK_OBJECT_TYPE_FRAMEBUFFER);
-   *out = dzn_framebuffer_to_handle(framebuffer);
-   return VK_SUCCESS;
-}
-
-static void
-dzn_framebuffer_destroy(struct dzn_framebuffer *framebuffer,
-                        const VkAllocationCallbacks *pAllocator)
-{
-   if (!framebuffer)
-      return;
-
-   struct dzn_device *device =
-      container_of(framebuffer->base.device, struct dzn_device, vk);
-
-   vk_object_base_finish(&framebuffer->base);
-   vk_free2(&device->vk.alloc, pAllocator, framebuffer);
-}
-
-VKAPI_ATTR VkResult VKAPI_CALL
-dzn_CreateFramebuffer(VkDevice device,
-                      const VkFramebufferCreateInfo *pCreateInfo,
-                      const VkAllocationCallbacks *pAllocator,
-                      VkFramebuffer *pFramebuffer)
-{
-   return dzn_framebuffer_create(dzn_device_from_handle(device),
-                                 pCreateInfo, pAllocator, pFramebuffer);
-}
-
-VKAPI_ATTR void VKAPI_CALL
-dzn_DestroyFramebuffer(VkDevice device,
-                       VkFramebuffer fb,
-                       const VkAllocationCallbacks *pAllocator)
-{
-   dzn_framebuffer_destroy(dzn_framebuffer_from_handle(fb), pAllocator);
-}
-
 static void
 dzn_event_destroy(struct dzn_event *event,
                   const VkAllocationCallbacks *pAllocator)
