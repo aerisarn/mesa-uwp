@@ -66,6 +66,7 @@ enum zink_descriptor_type;
 #define ZINK_DEBUG_SPIRV 0x2
 #define ZINK_DEBUG_TGSI 0x4
 #define ZINK_DEBUG_VALIDATION 0x8
+#define ZINK_DEBUG_SYNC 0x10
 
 #define NUM_SLAB_ALLOCATORS 3
 #define MIN_SLAB_ORDER 8

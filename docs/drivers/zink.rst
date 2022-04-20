@@ -269,6 +269,8 @@ variable:
    Print the TGSI form of TGSI shaders to stderr.
 ``validation``
    Dump Validation layer output.
+``sync``
+   Emit full synchronization barriers before every draw and dispatch.
 
 Vulkan Validation Layers
 ^^^^^^^^^^^^^^^^^^^^^^^^

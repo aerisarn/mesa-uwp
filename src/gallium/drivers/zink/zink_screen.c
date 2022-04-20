@@ -78,6 +78,7 @@ zink_debug_options[] = {
    { "spirv", ZINK_DEBUG_SPIRV, "Dump SPIR-V during program compile" },
    { "tgsi", ZINK_DEBUG_TGSI, "Dump TGSI during program compile" },
    { "validation", ZINK_DEBUG_VALIDATION, "Dump Validation layer output" },
+   { "sync", ZINK_DEBUG_SYNC, "Force synchronization before draws/dispatches" },
    DEBUG_NAMED_VALUE_END
 };
 
