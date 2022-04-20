@@ -2276,11 +2276,12 @@ static void radeon_dec_destroy(struct pipe_video_codec *decoder)
 
    assert(decoder);
 
-   map_msg_fb_it_probs_buf(dec);
-   rvcn_dec_message_destroy(dec);
-   send_msg_buf(dec);
-
-   flush(dec, 0);
+   if (dec->stream_type != RDECODE_CODEC_JPEG) {
+      map_msg_fb_it_probs_buf(dec);
+      rvcn_dec_message_destroy(dec);
+      send_msg_buf(dec);
+      flush(dec, 0);
+   }
 
    dec->ws->cs_destroy(&dec->cs);
 
@@ -2638,12 +2639,14 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       goto error;
    }
 
-   map_msg_fb_it_probs_buf(dec);
-   rvcn_dec_message_create(dec);
-   send_msg_buf(dec);
-   r = flush(dec, 0);
-   if (r)
-      goto error;
+   if (dec->stream_type != RDECODE_CODEC_JPEG) {
+      map_msg_fb_it_probs_buf(dec);
+      rvcn_dec_message_create(dec);
+      send_msg_buf(dec);
+      r = flush(dec, 0);
+      if (r)
+         goto error;
+   }
 
    next_buffer(dec);
 
