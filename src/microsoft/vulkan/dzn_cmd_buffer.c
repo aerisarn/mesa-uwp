@@ -2107,8 +2107,9 @@ dzn_cmd_buffer_clear_attachments(struct dzn_cmd_buffer *cmdbuf,
                                  uint32_t rect_count,
                                  const VkClearRect *rects)
 {
-   struct dzn_render_pass *pass = cmdbuf->state.pass;
-   const struct dzn_subpass *subpass = &pass->subpasses[cmdbuf->state.subpass];
+   struct dzn_render_pass *pass = cmdbuf->state.render.pass;
+   const struct dzn_subpass *subpass =
+      &pass->subpasses[cmdbuf->state.render.subpass];
 
    for (unsigned i = 0; i < attachment_count; i++) {
       uint32_t idx;
@@ -2120,7 +2121,8 @@ dzn_cmd_buffer_clear_attachments(struct dzn_cmd_buffer *cmdbuf,
       if (idx == VK_ATTACHMENT_UNUSED)
          continue;
 
-      struct dzn_image_view *view = cmdbuf->state.framebuffer->attachments[idx];
+      struct dzn_image_view *view =
+         cmdbuf->state.render.framebuffer->attachments[idx];
 
       for (uint32_t j = 0; j < rect_count; j++) {
          D3D12_RECT rect;
@@ -2140,7 +2142,8 @@ static void
 dzn_cmd_buffer_attachment_ref_transition(struct dzn_cmd_buffer *cmdbuf,
                                          const struct dzn_attachment_ref *att)
 {
-   const struct dzn_image_view *iview = cmdbuf->state.framebuffer->attachments[att->idx];
+   const struct dzn_image_view *iview =
+      cmdbuf->state.render.framebuffer->attachments[att->idx];
    const struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
 
    if (att->before == att->during)
@@ -2180,7 +2183,8 @@ static void
 dzn_cmd_buffer_attachment_transition(struct dzn_cmd_buffer *cmdbuf,
                                      const struct dzn_attachment *att)
 {
-   const struct dzn_image_view *iview = cmdbuf->state.framebuffer->attachments[att->idx];
+   const struct dzn_image_view *iview =
+      cmdbuf->state.render.framebuffer->attachments[att->idx];
    const struct dzn_image *image = container_of(iview->vk.image, struct dzn_image, vk);
 
    if (att->last == att->after)
@@ -2220,12 +2224,12 @@ static void
 dzn_cmd_buffer_resolve_attachment(struct dzn_cmd_buffer *cmdbuf, uint32_t i)
 {
    const struct dzn_subpass *subpass =
-      &cmdbuf->state.pass->subpasses[cmdbuf->state.subpass];
+      &cmdbuf->state.render.pass->subpasses[cmdbuf->state.render.subpass];
 
    if (subpass->resolve[i].idx == VK_ATTACHMENT_UNUSED)
       return;
 
-   const struct dzn_framebuffer *framebuffer = cmdbuf->state.framebuffer;
+   const struct dzn_framebuffer *framebuffer = cmdbuf->state.render.framebuffer;
    struct dzn_image_view *src = framebuffer->attachments[subpass->colors[i].idx];
    struct dzn_image *src_img = container_of(src->vk.image, struct dzn_image, vk);
    struct dzn_image_view *dst = framebuffer->attachments[subpass->resolve[i].idx];
@@ -2277,9 +2281,10 @@ dzn_cmd_buffer_resolve_attachment(struct dzn_cmd_buffer *cmdbuf, uint32_t i)
 static void
 dzn_cmd_buffer_begin_subpass(struct dzn_cmd_buffer *cmdbuf)
 {
-   struct dzn_framebuffer *framebuffer = cmdbuf->state.framebuffer;
-   struct dzn_render_pass *pass = cmdbuf->state.pass;
-   const struct dzn_subpass *subpass = &pass->subpasses[cmdbuf->state.subpass];
+   struct dzn_framebuffer *framebuffer = cmdbuf->state.render.framebuffer;
+   struct dzn_render_pass *pass = cmdbuf->state.render.pass;
+   const struct dzn_subpass *subpass =
+      &pass->subpasses[cmdbuf->state.render.subpass];
 
    D3D12_CPU_DESCRIPTOR_HANDLE rt_handles[MAX_RTS] = { 0 };
    D3D12_CPU_DESCRIPTOR_HANDLE zs_handle = { 0 };
@@ -2316,7 +2321,8 @@ dzn_cmd_buffer_begin_subpass(struct dzn_cmd_buffer *cmdbuf)
 static void
 dzn_cmd_buffer_end_subpass(struct dzn_cmd_buffer *cmdbuf)
 {
-   const struct dzn_subpass *subpass = &cmdbuf->state.pass->subpasses[cmdbuf->state.subpass];
+   const struct dzn_subpass *subpass =
+      &cmdbuf->state.render.pass->subpasses[cmdbuf->state.render.subpass];
 
    for (uint32_t i = 0; i < subpass->color_count; i++)
       dzn_cmd_buffer_resolve_attachment(cmdbuf, i);
@@ -2496,7 +2502,7 @@ dzn_cmd_buffer_update_scissors(struct dzn_cmd_buffer *cmdbuf)
 
    if (!pipeline->scissor.count) {
       /* Apply a scissor delimiting the render area. */
-      ID3D12GraphicsCommandList1_RSSetScissorRects(cmdbuf->cmdlist, 1, &cmdbuf->state.render_area);
+      ID3D12GraphicsCommandList1_RSSetScissorRects(cmdbuf->cmdlist, 1, &cmdbuf->state.render.area);
       return;
    }
 
@@ -2505,10 +2511,10 @@ dzn_cmd_buffer_update_scissors(struct dzn_cmd_buffer *cmdbuf)
 
    memcpy(scissors, cmdbuf->state.scissors, sizeof(D3D12_RECT) * pipeline->scissor.count);
    for (uint32_t i = 0; i < pipeline->scissor.count; i++) {
-      scissors[i].left = MAX2(scissors[i].left, cmdbuf->state.render_area.left);
-      scissors[i].top = MAX2(scissors[i].top, cmdbuf->state.render_area.top);
-      scissors[i].right = MIN2(scissors[i].right, cmdbuf->state.render_area.right);
-      scissors[i].bottom = MIN2(scissors[i].bottom, cmdbuf->state.render_area.bottom);
+      scissors[i].left = MAX2(scissors[i].left, cmdbuf->state.render.area.left);
+      scissors[i].top = MAX2(scissors[i].top, cmdbuf->state.render.area.top);
+      scissors[i].right = MIN2(scissors[i].right, cmdbuf->state.render.area.right);
+      scissors[i].bottom = MIN2(scissors[i].bottom, cmdbuf->state.render.area.bottom);
    }
 
    ID3D12GraphicsCommandList1_RSSetScissorRects(cmdbuf->cmdlist, pipeline->scissor.count, scissors);
@@ -3427,8 +3433,8 @@ dzn_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 
    assert(pass->attachment_count == framebuffer->attachment_count);
 
-   cmdbuf->state.framebuffer = framebuffer;
-   cmdbuf->state.render_area = (D3D12_RECT) {
+   cmdbuf->state.render.framebuffer = framebuffer;
+   cmdbuf->state.render.area = (D3D12_RECT) {
       .left = pRenderPassBeginInfo->renderArea.offset.x,
       .top = pRenderPassBeginInfo->renderArea.offset.y,
       .right = (LONG)(pRenderPassBeginInfo->renderArea.offset.x + pRenderPassBeginInfo->renderArea.extent.width),
@@ -3437,8 +3443,8 @@ dzn_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 
    // The render area has an impact on the scissor state.
    cmdbuf->state.dirty |= DZN_CMD_DIRTY_SCISSORS;
-   cmdbuf->state.pass = pass;
-   cmdbuf->state.subpass = 0;
+   cmdbuf->state.render.pass = pass;
+   cmdbuf->state.render.subpass = 0;
    dzn_cmd_buffer_begin_subpass(cmdbuf);
 
    uint32_t clear_count =
@@ -3455,10 +3461,11 @@ dzn_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
          aspectMask |= VK_IMAGE_ASPECT_COLOR_BIT;
       }
 
-      struct dzn_image_view *view = cmdbuf->state.framebuffer->attachments[i];
+      struct dzn_image_view *view =
+         cmdbuf->state.render.framebuffer->attachments[i];
 
       dzn_cmd_buffer_clear_attachment(cmdbuf, view, &pRenderPassBeginInfo->pClearValues[i],
-                                      aspectMask, 0, ~0, 1, &cmdbuf->state.render_area);
+                                      aspectMask, 0, ~0, 1, &cmdbuf->state.render.area);
    }
 }
 
@@ -3470,12 +3477,12 @@ dzn_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
 
    dzn_cmd_buffer_end_subpass(cmdbuf);
 
-   for (uint32_t i = 0; i < cmdbuf->state.pass->attachment_count; i++)
-      dzn_cmd_buffer_attachment_transition(cmdbuf, &cmdbuf->state.pass->attachments[i]);
+   for (uint32_t i = 0; i < cmdbuf->state.render.pass->attachment_count; i++)
+      dzn_cmd_buffer_attachment_transition(cmdbuf, &cmdbuf->state.render.pass->attachments[i]);
 
-   cmdbuf->state.framebuffer = NULL;
-   cmdbuf->state.pass = NULL;
-   cmdbuf->state.subpass = 0;
+   cmdbuf->state.render.framebuffer = NULL;
+   cmdbuf->state.render.pass = NULL;
+   cmdbuf->state.render.subpass = 0;
 }
 
 VKAPI_ATTR void VKAPI_CALL
@@ -3486,8 +3493,8 @@ dzn_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
    dzn_cmd_buffer_end_subpass(cmdbuf);
-   assert(cmdbuf->state.subpass + 1 < cmdbuf->state.pass->subpass_count);
-   cmdbuf->state.subpass++;
+   assert(cmdbuf->state.render.subpass + 1 < cmdbuf->state.render.pass->subpass_count);
+   cmdbuf->state.render.subpass++;
    dzn_cmd_buffer_begin_subpass(cmdbuf);
 }
 

@@ -459,11 +459,14 @@ struct dzn_cmd_buffer_push_constant_state {
 };
 
 struct dzn_cmd_buffer_state {
-   struct dzn_framebuffer *framebuffer;
-   D3D12_RECT render_area;
    const struct dzn_pipeline *pipeline;
    struct dzn_descriptor_heap *heaps[NUM_POOL_TYPES];
-   struct dzn_render_pass *pass;
+   struct {
+      D3D12_RECT area;
+      struct dzn_render_pass *pass;
+      uint32_t subpass;
+      struct dzn_framebuffer *framebuffer;
+   } render;
    struct {
       BITSET_DECLARE(dirty, MAX_VBS);
       D3D12_VERTEX_BUFFER_VIEW views[MAX_VBS];
@@ -487,7 +490,6 @@ struct dzn_cmd_buffer_state {
       struct dzn_cmd_buffer_push_constant_state gfx, compute;
    } push_constant;
    uint32_t dirty;
-   uint32_t subpass;
    struct {
       struct dzn_pipeline *pipeline;
       struct dzn_descriptor_state desc_state;
