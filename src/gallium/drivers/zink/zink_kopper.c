@@ -46,6 +46,11 @@ init_dt_type(struct kopper_displaytarget *cdt)
        cdt->type = KOPPER_WAYLAND;
        break;
 #endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+    case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
+       cdt->type = KOPPER_WIN32;
+       break;
+#endif
     default:
        unreachable("unsupported!");
     }
@@ -68,6 +73,11 @@ kopper_CreateSurface(struct zink_screen *screen, struct kopper_displaytarget *cd
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
     case VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:
        error = VKSCR(CreateWaylandSurfaceKHR)(screen->instance, &cdt->info.wl, NULL, &surface);
+       break;
+#endif
+ #ifdef VK_USE_PLATFORM_WIN32_KHR
+    case VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:
+       error = VKSCR(CreateWin32SurfaceKHR)(screen->instance, &cdt->info.win32, NULL, &surface);
        break;
 #endif
     default:
@@ -123,6 +133,11 @@ find_dt_entry(struct zink_screen *screen, const struct kopper_displaytarget *cdt
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
    case KOPPER_WAYLAND:
       he = _mesa_hash_table_search(&screen->dts, cdt->info.wl.surface);
+      break;
+#endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+   case KOPPER_WIN32:
+      he = _mesa_hash_table_search(&screen->dts, cdt->info.win32.hwnd);
       break;
 #endif
    default:
@@ -182,7 +197,7 @@ kopper_CreateSwapchain(struct zink_screen *screen, struct kopper_displaytarget *
       cswap->scci.pQueueFamilyIndices = NULL;
       cswap->scci.compositeAlpha = has_alpha ? VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR : VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
       // TODO: This is where you'd hook up GLX_EXT_swap_interval and friends
-      cswap->scci.presentMode = cdt->type == KOPPER_X11 ? VK_PRESENT_MODE_IMMEDIATE_KHR : VK_PRESENT_MODE_FIFO_KHR;
+      cswap->scci.presentMode = cdt->type == KOPPER_WAYLAND ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
       cswap->scci.clipped = VK_TRUE;
    }
    cswap->scci.minImageCount = cdt->caps.minImageCount;
@@ -193,6 +208,7 @@ kopper_CreateSwapchain(struct zink_screen *screen, struct kopper_displaytarget *
    /* different display platforms have, by vulkan spec, different sizing methodologies */
    switch (cdt->type) {
    case KOPPER_X11:
+   case KOPPER_WIN32:
       /* With Xcb, minImageExtent, maxImageExtent, and currentExtent must always equal the window size.
        * ...
        * Due to above restrictions, it is only possible to create a new swapchain on this
@@ -299,6 +315,7 @@ zink_kopper_displaytarget_create(struct zink_screen *screen, unsigned tex_usage,
             _mesa_hash_table_init(&screen->dts, screen, NULL, _mesa_key_pointer_equal);
             break;
          case KOPPER_WAYLAND:
+         case KOPPER_WIN32:
             _mesa_hash_table_init(&screen->dts, screen, _mesa_hash_pointer, _mesa_key_pointer_equal);
             break;
          default:
@@ -359,6 +376,11 @@ zink_kopper_displaytarget_create(struct zink_screen *screen, unsigned tex_usage,
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
    case KOPPER_WAYLAND:
       _mesa_hash_table_insert(&screen->dts, cdt->info.wl.surface, cdt);
+      break;
+#endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+   case KOPPER_WIN32:
+      _mesa_hash_table_insert(&screen->dts, cdt->info.win32.hwnd, cdt);
       break;
 #endif
    default:
