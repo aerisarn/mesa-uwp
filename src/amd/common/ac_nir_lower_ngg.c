@@ -1700,9 +1700,10 @@ ngg_build_streamout_vertex(nir_builder *b, nir_xfb_info *info,
       nir_ssa_def *out_data =
          nir_load_shared(b, count, 32, vtx_lds_addr, .base = offset);
 
+      nir_ssa_def *zero = nir_imm_int(b, 0);
       nir_store_buffer_amd(b, out_data, so_buffer[out->buffer],
                            vtx_buffer_offsets[out->buffer],
-                           nir_imm_int(b, 0),
+                           zero, zero,
                            .base = out->offset,
                            .slc_amd = true);
    }
@@ -3188,7 +3189,8 @@ ms_store_arrayed_output_intrin(nir_builder *b,
    } else if (out_mode == ms_out_mode_vram) {
       nir_ssa_def *ring = nir_load_ring_mesh_scratch_amd(b);
       nir_ssa_def *off = nir_load_ring_mesh_scratch_offset_amd(b);
-      nir_store_buffer_amd(b, store_val, ring, addr, off,
+      nir_ssa_def *zero = nir_imm_int(b, 0);
+      nir_store_buffer_amd(b, store_val, ring, addr, off, zero,
                            .base = const_off,
                            .write_mask = write_mask,
                            .memory_modes = nir_var_shader_out,
@@ -3242,7 +3244,8 @@ ms_load_arrayed_output(nir_builder *b,
    } else if (out_mode == ms_out_mode_vram) {
       nir_ssa_def *ring = nir_load_ring_mesh_scratch_amd(b);
       nir_ssa_def *off = nir_load_ring_mesh_scratch_offset_amd(b);
-      return nir_load_buffer_amd(b, num_components, load_bit_size, ring, addr, off,
+      nir_ssa_def *zero = nir_imm_int(b, 0);
+      return nir_load_buffer_amd(b, num_components, load_bit_size, ring, addr, off, zero,
                                  .base = const_off,
                                  .memory_modes = nir_var_shader_out,
                                  .access = ACCESS_COHERENT);

@@ -1290,10 +1290,12 @@ store("tf_r600", [])
 
 # AMD GCN/RDNA specific intrinsics
 
-# src[] = { descriptor, base address, scalar offset }
-intrinsic("load_buffer_amd", src_comp=[4, 1, 1], dest_comp=0, indices=[BASE, IS_SWIZZLED, SLC_AMD, MEMORY_MODES, ACCESS], flags=[CAN_ELIMINATE])
-# src[] = { store value, descriptor, base address, scalar offset }
-intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, SLC_AMD, MEMORY_MODES, ACCESS])
+# src[] = { descriptor, vector byte offset, scalar byte offset, index offset }
+# The index offset is multiplied by the stride in the descriptor. The vertex/scalar byte offsets
+# are in bytes.
+intrinsic("load_buffer_amd", src_comp=[4, 1, 1, 1], dest_comp=0, indices=[BASE, IS_SWIZZLED, SLC_AMD, MEMORY_MODES, ACCESS], flags=[CAN_ELIMINATE])
+# src[] = { store value, descriptor, vector byte offset, scalar byte offset, index offset }
+intrinsic("store_buffer_amd", src_comp=[0, 4, 1, 1, 1], indices=[BASE, WRITE_MASK, IS_SWIZZLED, SLC_AMD, MEMORY_MODES, ACCESS])
 
 # src[] = { address, unsigned 32-bit offset }.
 load("global_amd", [1, 1], indices=[BASE, ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE])
