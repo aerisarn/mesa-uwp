@@ -289,6 +289,9 @@ def parse_test_filters(include_tests):
         if os.path.exists(t):
             with open(t, "r") as file:
                 for row in csv.reader(file, delimiter=","):
+                    if not row or row[0][0] == '#':
+                        continue
+                    print(row)
                     cmd += ["-t", row[0]]
         else:
             cmd += ["-t", t]
