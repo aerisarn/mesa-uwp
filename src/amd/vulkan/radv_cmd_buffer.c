@@ -7319,6 +7319,15 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer, struct radv_pipel
       if (info->indirect)
          radv_cs_add_buffer(ws, cs, info->indirect);
 
+      if (info->unaligned) {
+         radeon_set_sh_reg_seq(cs, R_00B81C_COMPUTE_NUM_THREAD_X, 3);
+         radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(compute_shader->info.cs.block_size[0]));
+         radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(compute_shader->info.cs.block_size[1]));
+         radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(compute_shader->info.cs.block_size[2]));
+
+         dispatch_initiator |= S_00B800_USE_THREAD_DIMENSIONS(1);
+      }
+
       if (loc->sgpr_idx != -1) {
          unsigned reg = R_00B900_COMPUTE_USER_DATA_0 + loc->sgpr_idx * 4;
 
