@@ -68,21 +68,18 @@ if with_tests
     dependencies : [idep_gtest, dep_dxheaders, extra_test_deps],
   )
 
-  # The CI pipeline for MinGW doesn't support creating a window, so don't run these tests there
-  if with_tests and cc.get_id() != 'gcc'
-    wgl_test_env = environment()
-    wgl_test_env.append('PATH', libgallium_wgl_build_dir)
-    if with_shared_glapi
-      wgl_test_env.append('PATH', libglapi_build_dir)
-    endif
-
-    test(
-      'wgl',
-      test_wgl,
-      suite : ['wgl'],
-      env : wgl_test_env,
-      depends : [libopengl32],
-      protocol : gtest_test_protocol,
-    )
+  wgl_test_env = environment()
+  wgl_test_env.append('PATH', libgallium_wgl_build_dir)
+  if with_shared_glapi
+    wgl_test_env.append('PATH', libglapi_build_dir)
   endif
+
+  test(
+    'wgl',
+    test_wgl,
+    suite : ['wgl'],
+    env : wgl_test_env,
+    depends : [libopengl32],
+    protocol : gtest_test_protocol,
+  )
 endif
