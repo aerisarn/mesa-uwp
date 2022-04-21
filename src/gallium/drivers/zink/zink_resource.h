@@ -128,7 +128,7 @@ struct zink_resource {
          VkImageLayout layout;
          VkImageAspectFlags aspect;
          bool optimal_tiling;
-         bool need_2D_zs;
+         bool need_2D;
          uint8_t fb_binds; //not counted in all_binds
       };
    };

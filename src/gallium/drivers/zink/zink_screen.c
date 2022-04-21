@@ -1680,6 +1680,9 @@ populate_format_props(struct zink_screen *screen)
       mesa_loge("ZINK: vkGetPhysicalDeviceImageFormatProperties failed");
    }
    screen->need_2D_zs = ret != VK_SUCCESS;
+
+   if (screen->info.feats.features.sparseResidencyImage2D)
+      screen->need_2D_sparse = !screen->base.get_sparse_texture_virtual_page_size(&screen->base, PIPE_TEXTURE_1D, false, PIPE_FORMAT_R32_FLOAT, 0, 16, NULL, NULL, NULL);
 }
 
 bool
@@ -1848,7 +1851,7 @@ zink_get_sparse_texture_virtual_page_size(struct pipe_screen *pscreen,
    VkImageType type;
    switch (target) {
    case PIPE_TEXTURE_1D:
-      type = screen->need_2D_zs && is_zs ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
+      type = (screen->need_2D_sparse || (screen->need_2D_zs && is_zs)) ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
       break;
 
    case PIPE_TEXTURE_2D:

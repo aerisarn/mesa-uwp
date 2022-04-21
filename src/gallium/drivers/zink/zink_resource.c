@@ -363,12 +363,15 @@ create_ici(struct zink_screen *screen, VkImageCreateInfo *ici, const struct pipe
    if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
       ici->flags |= VK_IMAGE_CREATE_SPARSE_BINDING_BIT | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
 
-   bool need_2D_zs = false;
+   bool need_2D = false;
    switch (templ->target) {
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_1D_ARRAY:
-      need_2D_zs = screen->need_2D_zs && util_format_is_depth_or_stencil(templ->format);
-      ici->imageType = need_2D_zs ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
+      if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE)
+         need_2D |= screen->need_2D_sparse;
+      if (util_format_is_depth_or_stencil(templ->format))
+         need_2D |= screen->need_2D_zs;
+      ici->imageType = need_2D ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
       break;
 
    case PIPE_TEXTURE_CUBE:
@@ -942,8 +945,10 @@ resource_create(struct pipe_screen *pscreen,
          res->base.b.nr_sparse_levels = res->sparse.imageMipTailFirstLod;
       }
       res->format = zink_get_format(screen, templ->format);
-      res->need_2D_zs = screen->need_2D_zs && util_format_is_depth_or_stencil(templ->format) &&
-                        (templ->target == PIPE_TEXTURE_1D || templ->target == PIPE_TEXTURE_1D_ARRAY);
+      if (templ->target == PIPE_TEXTURE_1D || templ->target == PIPE_TEXTURE_1D_ARRAY) {
+         res->need_2D = (screen->need_2D_zs && util_format_is_depth_or_stencil(templ->format)) ||
+                        (screen->need_2D_sparse && (templ->flags & PIPE_RESOURCE_FLAG_SPARSE));
+      }
       res->dmabuf_acquire = whandle && whandle->type == WINSYS_HANDLE_TYPE_FD;
       res->layout = res->dmabuf_acquire ? VK_IMAGE_LAYOUT_PREINITIALIZED : VK_IMAGE_LAYOUT_UNDEFINED;
       res->optimal_tiling = optimal_tiling;

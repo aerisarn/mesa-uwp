@@ -184,7 +184,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    region.srcOffsets[1].y = info->src.box.y + info->src.box.height;
 
    enum pipe_texture_target src_target = src->base.b.target;
-   if (src->need_2D_zs)
+   if (src->need_2D)
       src_target = src_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
    switch (src_target) {
    case PIPE_TEXTURE_CUBE:
@@ -222,7 +222,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info, bool *n
    assert(region.dstOffsets[0].y != region.dstOffsets[1].y);
 
    enum pipe_texture_target dst_target = dst->base.b.target;
-   if (dst->need_2D_zs)
+   if (dst->need_2D)
       dst_target = dst_target == PIPE_TEXTURE_1D ? PIPE_TEXTURE_2D : PIPE_TEXTURE_2D_ARRAY;
    switch (dst_target) {
    case PIPE_TEXTURE_CUBE:
