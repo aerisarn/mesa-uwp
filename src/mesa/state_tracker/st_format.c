@@ -1491,6 +1491,9 @@ st_QueryInternalFormat(struct gl_context *ctx, GLenum target,
    case GL_VIRTUAL_PAGE_SIZE_X_ARB:
    case GL_VIRTUAL_PAGE_SIZE_Y_ARB:
    case GL_VIRTUAL_PAGE_SIZE_Z_ARB: {
+      /* this is used only for passing CTS */
+      if (target == GL_RENDERBUFFER)
+         target = GL_TEXTURE_2D;
       mesa_format format = st_ChooseTextureFormat(ctx, target, internalFormat, GL_NONE, GL_NONE);
       enum pipe_format pformat = st_mesa_format_to_pipe_format(st, format);
 
