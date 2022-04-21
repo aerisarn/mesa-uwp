@@ -15,7 +15,6 @@ spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 #kopper regressions/changes
 fast_color_clear@fcc-front-buffer-distraction,Fail
 glx@extension string sanity,Fail
-glx@glx-tfp,Fail
 spec@!opengl 1.0@gl-1.0-drawbuffer-modes,Fail
 spec@!opengl 1.0@gl-1.0-front-invalidate-back,Fail
 spec@egl_chromium_sync_control@conformance,Fail

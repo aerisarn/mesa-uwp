@@ -210,7 +210,6 @@ spec@arb_shader_texture_lod@execution@tex-miplevel-selection *gradarb cube,Fail
 
 # kopper
 glx@glx-multi-window-single-context,Crash
-glx@glx-tfp,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Crash
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fail
 
