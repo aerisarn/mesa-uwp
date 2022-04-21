@@ -1156,18 +1156,6 @@ v3d_resource_get_stencil(struct pipe_resource *prsc)
         return &rsc->separate_stencil->base;
 }
 
-static enum pipe_format
-v3d_resource_get_compatible_tlb_format(struct pipe_context *pctx,
-                                       enum pipe_format format)
-{
-        switch (format) {
-        case PIPE_FORMAT_R16G16_UNORM:
-                return PIPE_FORMAT_R16G16_UINT;
-        default:
-                return format;
-        }
-}
-
 static const struct u_transfer_vtbl transfer_vtbl = {
         .resource_create          = v3d_resource_create,
         .resource_destroy         = v3d_resource_destroy,
@@ -1211,5 +1199,4 @@ v3d_resource_context_init(struct pipe_context *pctx)
         pctx->blit = v3d_blit;
         pctx->generate_mipmap = v3d_generate_mipmap;
         pctx->flush_resource = v3d_flush_resource;
-        pctx->get_canonical_format = v3d_resource_get_compatible_tlb_format;
 }
