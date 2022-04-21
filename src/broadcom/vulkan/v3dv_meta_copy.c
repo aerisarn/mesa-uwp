@@ -1885,7 +1885,7 @@ get_copy_texel_buffer_pipeline(
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.texel_buffer_copy.cache[image_type],
-                              &key);
+                              key);
    if (entry) {
       mtx_unlock(&device->meta.mtx);
       *pipeline = entry->data;
@@ -1914,8 +1914,10 @@ get_copy_texel_buffer_pipeline(
    if (!ok)
       goto fail;
 
+   uint8_t *dupkey = malloc(V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE);
+   memcpy(dupkey, key, V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE);
    _mesa_hash_table_insert(device->meta.texel_buffer_copy.cache[image_type],
-                           &key, *pipeline);
+                           dupkey, *pipeline);
 
    mtx_unlock(&device->meta.mtx);
    return true;
