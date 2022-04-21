@@ -1897,6 +1897,7 @@ zink_get_sparse_texture_virtual_page_size(struct pipe_screen *pscreen,
    VkImageType type;
    switch (target) {
    case PIPE_TEXTURE_1D:
+   case PIPE_TEXTURE_1D_ARRAY:
       type = (screen->need_2D_sparse || (screen->need_2D_zs && is_zs)) ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
       break;
 
