@@ -163,7 +163,7 @@ impl CLInfo<cl_device_info> for cl_device_id {
             ),
             CL_DEVICE_SUB_GROUP_INDEPENDENT_FORWARD_PROGRESS => cl_prop::<bool>(false),
             CL_DEVICE_SVM_CAPABILITIES => cl_prop::<cl_device_svm_capabilities>(0),
-            CL_DEVICE_TYPE => cl_prop::<cl_device_type>(dev.device_type()),
+            CL_DEVICE_TYPE => cl_prop::<cl_device_type>(dev.device_type(false)),
             CL_DEVICE_VENDOR => cl_prop(dev.screen().device_vendor()),
             CL_DEVICE_VENDOR_ID => cl_prop::<cl_uint>(dev.vendor_id()),
             CL_DEVICE_VERSION => cl_prop::<String>(format!("OpenCL {}", dev.cl_version.api_str())),
@@ -194,7 +194,7 @@ fn devs() -> &'static Vec<Arc<Device>> {
 pub fn get_devs_for_type(device_type: cl_device_type) -> Vec<&'static Arc<Device>> {
     devs()
         .iter()
-        .filter(|d| device_type & d.device_type() != 0)
+        .filter(|d| device_type & d.device_type(true) != 0)
         .collect()
 }
 
