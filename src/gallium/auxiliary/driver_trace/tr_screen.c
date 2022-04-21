@@ -1183,12 +1183,22 @@ trace_screen_get_sparse_texture_virtual_page_size(struct pipe_screen *_screen,
    trace_dump_arg(format, format);
    trace_dump_arg(uint, offset);
    trace_dump_arg(uint, size);
-   trace_dump_arg(ptr, x);
-   trace_dump_arg(ptr, y);
-   trace_dump_arg(ptr, z);
 
    int ret = screen->get_sparse_texture_virtual_page_size(screen, target, multi_sample,
                                                           format, offset, size, x, y, z);
+
+   if (x)
+      trace_dump_arg(uint, *x);
+   else
+      trace_dump_arg(ptr, x);
+   if (y)
+      trace_dump_arg(uint, *y);
+   else
+      trace_dump_arg(ptr, y);
+   if (z)
+      trace_dump_arg(uint, *z);
+   else
+      trace_dump_arg(ptr, z);
 
    trace_dump_ret(int, ret);
 
