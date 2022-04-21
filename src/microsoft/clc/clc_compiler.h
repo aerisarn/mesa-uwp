@@ -57,7 +57,7 @@ struct clc_dxil_metadata {
          } globconstptr;
          struct {
             unsigned sharedmem_offset;
-	 } localptr;
+         } localptr;
       };
    } *args;
    unsigned kernel_inputs_cbv_id;

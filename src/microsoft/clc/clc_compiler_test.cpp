@@ -104,7 +104,7 @@ TEST_F(ComputeTest, DISABLED_i64tof32)
                                   -0x4000003fffffffffLL,
                                   -0x4000004000000001LL,
                                   0,
-				  INT64_MIN },
+                                  INT64_MIN },
                                 SHADER_ARG_INPUT);
    auto out = ShaderArg<int64_t>(std::vector<int64_t>(12, 0xdeadbeed), SHADER_ARG_OUTPUT);
    const int64_t expected[] = {
