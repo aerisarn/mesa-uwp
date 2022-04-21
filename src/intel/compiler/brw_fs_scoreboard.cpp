@@ -75,6 +75,7 @@ namespace {
    {
       if (devinfo->verx10 >= 125) {
          bool has_int_src = false, has_long_src = false;
+         const bool has_long_pipe = !intel_device_info_is_mtl(devinfo);
 
          if (is_send(inst))
             return TGL_PIPE_NONE;
@@ -87,6 +88,16 @@ namespace {
                has_long_src |= type_sz(t) >= 8;
             }
          }
+
+         /* Avoid the emitting (RegDist, SWSB) annotations for long
+          * instructions on platforms where they are unordered. It's not clear
+          * what the inferred sync pipe is for them or if we are even allowed
+          * to use these annotations in this case. Return NONE, which should
+          * prevent baked_{un,}ordered_dependency_mode functions from even
+          * trying to emit these annotations.
+          */
+         if (!has_long_pipe && has_long_src)
+            return TGL_PIPE_NONE;
 
          return has_long_src ? TGL_PIPE_LONG :
                 has_int_src ? TGL_PIPE_INT :
