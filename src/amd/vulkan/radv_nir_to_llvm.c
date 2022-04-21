@@ -649,6 +649,7 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
       unsigned col_format = (ctx->options->key.ps.col_format >> (4 * index)) & 0xf;
       bool is_int8 = (ctx->options->key.ps.is_int8 >> index) & 1;
       bool is_int10 = (ctx->options->key.ps.is_int10 >> index) & 1;
+      bool enable_mrt_output_nan_fixup = (ctx->options->key.ps.enable_mrt_output_nan_fixup >> index) & 1;
 
       LLVMValueRef (*packf)(struct ac_llvm_context * ctx, LLVMValueRef args[2]) = NULL;
       LLVMValueRef (*packi)(struct ac_llvm_context * ctx, LLVMValueRef args[2], unsigned bits,
@@ -728,13 +729,8 @@ si_llvm_init_export_args(struct radv_shader_context *ctx, LLVMValueRef *values,
          break;
       }
 
-      /* Replace NaN by zero (only 32-bit) to fix game bugs if
-       * requested.
-       */
-      if (ctx->options->enable_mrt_output_nan_fixup && !is_16bit &&
-          (col_format == V_028714_SPI_SHADER_32_R || col_format == V_028714_SPI_SHADER_32_GR ||
-           col_format == V_028714_SPI_SHADER_32_AR || col_format == V_028714_SPI_SHADER_32_ABGR ||
-           col_format == V_028714_SPI_SHADER_FP16_ABGR)) {
+      /* Replace NaN by zero (for 32-bit float formats) to fix game bugs if requested. */
+      if (enable_mrt_output_nan_fixup && !is_16bit) {
          for (unsigned i = 0; i < 4; i++) {
             LLVMValueRef class_args[2] = {values[i],
                                           LLVMConstInt(ctx->ac.i32, S_NAN | Q_NAN, false)};

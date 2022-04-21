@@ -93,7 +93,7 @@ struct radv_pipeline_key {
       bool mrt0_is_dual_src;
 
       bool lower_discard_to_demote;
-      bool enable_mrt_output_nan_fixup;
+      uint8_t enable_mrt_output_nan_fixup;
       bool force_vrs_enabled;
    } ps;
 
@@ -120,7 +120,7 @@ struct radv_nir_compiler_options {
    bool record_stats;
    bool check_ir;
    bool has_ls_vgpr_init_bug;
-   bool enable_mrt_output_nan_fixup;
+   uint8_t enable_mrt_output_nan_fixup;
    bool wgp_mode;
    enum radeon_family family;
    enum chip_class chip_class;
