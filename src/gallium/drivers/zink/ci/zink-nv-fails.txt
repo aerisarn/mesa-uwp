@@ -3,7 +3,6 @@ GTF-GL46.gtf30.GL3Tests.framebuffer_blit.framebuffer_blit_functionality_scissor_
 GTF-GL46.gtf30.GL3Tests.framebuffer_blit.framebuffer_blit_functionality_stencil_blit,Fail
 KHR-GL46.copy_image.functional,Fail
 KHR-GL46.shader_image_load_store.non-layered_binding,Fail
-KHR-GL46.sparse_buffer_tests.BufferStorageTest,Crash
 KHR-GL46.sparse_texture2_tests.SparseTexture2Commitment,Fail
 KHR-GL46.sparse_texture2_tests.SparseTexture2Lookup,Fail
 KHR-GL46.sparse_texture2_tests.StandardPageSizesTestCase,Fail

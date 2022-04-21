@@ -695,7 +695,7 @@ zink_bo_unmap(struct zink_screen *screen, struct zink_bo *bo)
 }
 
 static bool
-buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t offset, uint32_t size, bool commit)
+buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, struct zink_bo *bo, uint32_t bo_offset, uint32_t offset, uint32_t size, bool commit)
 {
    VkBindSparseInfo sparse = {0};
    sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
@@ -712,7 +712,7 @@ buffer_commit_single(struct zink_screen *screen, struct zink_resource *res, stru
    mem_bind.resourceOffset = offset;
    mem_bind.size = MIN2(res->base.b.width0 - offset, size);
    mem_bind.memory = commit ? (bo->mem ? bo->mem : bo->u.slab.real->mem) : VK_NULL_HANDLE;
-   mem_bind.memoryOffset = commit ? (bo->mem ? 0 : bo->offset) : 0;
+   mem_bind.memoryOffset = bo_offset * ZINK_SPARSE_BUFFER_PAGE_SIZE + (commit ? (bo->mem ? 0 : bo->offset) : 0);
    mem_bind.flags = 0;
    sparse_bind[0].pBinds = &mem_bind;
    sparse_bind[1].pBinds = &mem_bind;
@@ -764,7 +764,7 @@ buffer_bo_commit(struct zink_screen *screen, struct zink_resource *res, uint32_t
                ok = false;
                goto out;
             }
-            if (!buffer_commit_single(screen, res, backing->bo,
+            if (!buffer_commit_single(screen, res, backing->bo, backing_start,
                                       (uint64_t)span_va_page * ZINK_SPARSE_BUFFER_PAGE_SIZE,
                                       (uint64_t)backing_size * ZINK_SPARSE_BUFFER_PAGE_SIZE, true)) {
 
@@ -798,7 +798,7 @@ buffer_bo_commit(struct zink_screen *screen, struct zink_resource *res, uint32_t
             continue;
          }
 
-         if (!done && !buffer_commit_single(screen, res, NULL,
+         if (!done && !buffer_commit_single(screen, res, NULL, 0,
                                             (uint64_t)base_page * ZINK_SPARSE_BUFFER_PAGE_SIZE,
                                             (uint64_t)(end_va_page - base_page) * ZINK_SPARSE_BUFFER_PAGE_SIZE, false)) {
             ok = false;
