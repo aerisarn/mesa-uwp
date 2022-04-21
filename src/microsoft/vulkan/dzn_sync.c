@@ -43,7 +43,7 @@ dzn_sync_init(struct vk_device *device,
    if (FAILED(ID3D12Device1_CreateFence(ddev->dev, initial_value,
                                         D3D12_FENCE_FLAG_NONE,
                                         &IID_ID3D12Fence,
-                                        &dsync->fence)))
+                                        (void **)&dsync->fence)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    return VK_SUCCESS;
@@ -110,7 +110,7 @@ dzn_sync_move(struct vk_device *device,
    if (FAILED(ID3D12Device1_CreateFence(ddev->dev, 0,
                                         D3D12_FENCE_FLAG_NONE,
                                         &IID_ID3D12Fence,
-                                        &new_fence)))
+                                        (void **)&new_fence)))
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    ID3D12Fence_Release(ddst->fence);

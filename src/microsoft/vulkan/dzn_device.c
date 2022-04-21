@@ -370,7 +370,7 @@ dzn_physical_device_cache_caps(struct dzn_physical_device *pdev)
    ID3D12CommandQueue *cmdqueue;
    ID3D12Device1_CreateCommandQueue(pdev->dev, &queue_desc,
                                     &IID_ID3D12CommandQueue,
-                                    &cmdqueue);
+                                    (void **)&cmdqueue);
 
    uint64_t ts_freq;
    ID3D12CommandQueue_GetTimestampFrequency(cmdqueue, &ts_freq);
@@ -1743,14 +1743,14 @@ dzn_queue_init(struct dzn_queue *queue,
 
    if (FAILED(ID3D12Device1_CreateCommandQueue(device->dev, &queue_desc,
                                                &IID_ID3D12CommandQueue,
-                                               &queue->cmdqueue))) {
+                                               (void **)&queue->cmdqueue))) {
       dzn_queue_finish(queue);
       return vk_error(device->vk.physical->instance, VK_ERROR_INITIALIZATION_FAILED);
    }
 
    if (FAILED(ID3D12Device1_CreateFence(device->dev, 0, D3D12_FENCE_FLAG_NONE,
                                         &IID_ID3D12Fence,
-                                        &queue->fence))) {
+                                        (void **)&queue->fence))) {
       dzn_queue_finish(queue);
       return vk_error(device->vk.physical->instance, VK_ERROR_INITIALIZATION_FAILED);
    }
@@ -1830,11 +1830,11 @@ dzn_device_query_init(struct dzn_device *device)
                                                    D3D12_RESOURCE_STATE_GENERIC_READ,
                                                    NULL,
                                                    &IID_ID3D12Resource,
-                                                   &device->queries.refs)))
+                                                   (void **)&device->queries.refs)))
       return vk_error(device->vk.physical, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 
    uint8_t *queries_ref;
-   if (FAILED(ID3D12Resource_Map(device->queries.refs, 0, NULL, &queries_ref)))
+   if (FAILED(ID3D12Resource_Map(device->queries.refs, 0, NULL, (void **)&queries_ref)))
       return vk_error(device->vk.physical, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    memset(queries_ref + DZN_QUERY_REFS_ALL_ONES_OFFSET, 0xff, DZN_QUERY_REFS_SECTION_SIZE);
@@ -1944,7 +1944,7 @@ dzn_device_create(struct dzn_physical_device *pdev,
    ID3D12InfoQueue *info_queue;
    if (SUCCEEDED(ID3D12Device1_QueryInterface(device->dev,
                                               &IID_ID3D12InfoQueue,
-                                              &info_queue))) {
+                                              (void **)&info_queue))) {
       D3D12_MESSAGE_SEVERITY severities[] = {
          D3D12_MESSAGE_SEVERITY_INFO,
          D3D12_MESSAGE_SEVERITY_WARNING,
@@ -2021,7 +2021,7 @@ dzn_device_create_root_sig(struct dzn_device *device,
                                      ID3D10Blob_GetBufferPointer(sig),
                                      ID3D10Blob_GetBufferSize(sig),
                                      &IID_ID3D12RootSignature,
-                                     &root_sig);
+                                     (void **)&root_sig);
 
 out:
    if (error)
@@ -2161,7 +2161,7 @@ dzn_device_memory_create(struct dzn_device *device,
 
    if (FAILED(ID3D12Device1_CreateHeap(device->dev, &heap_desc,
                                        &IID_ID3D12Heap,
-                                       &mem->heap))) {
+                                       (void **)&mem->heap))) {
       dzn_device_memory_destroy(mem, pAllocator);
       return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
@@ -2184,7 +2184,7 @@ dzn_device_memory_create(struct dzn_device *device,
                                                       mem->initial_state,
                                                       NULL,
                                                       &IID_ID3D12Resource,
-                                                      &mem->map_res);
+                                                      (void **)&mem->map_res);
       if (FAILED(hr)) {
          dzn_device_memory_destroy(mem, pAllocator);
          return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -2537,7 +2537,7 @@ dzn_BindBufferMemory2(VkDevice _device,
                                                    mem->initial_state,
                                                    NULL,
                                                    &IID_ID3D12Resource,
-                                                   &buffer->res)))
+                                                   (void **)&buffer->res)))
          return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -2577,7 +2577,7 @@ dzn_event_create(struct dzn_device *device,
 
    if (FAILED(ID3D12Device1_CreateFence(device->dev, 0, D3D12_FENCE_FLAG_NONE,
                                         &IID_ID3D12Fence,
-                                        &event->fence))) {
+                                        (void **)&event->fence))) {
       dzn_event_destroy(event, pAllocator);
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }

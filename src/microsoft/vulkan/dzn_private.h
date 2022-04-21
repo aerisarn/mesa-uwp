@@ -213,10 +213,10 @@ PFN_D3D12_SERIALIZE_VERSIONED_ROOT_SIGNATURE
 d3d12_get_serialize_root_sig(void);
 
 void
-d3d12_enable_debug_layer();
+d3d12_enable_debug_layer(void);
 
 void
-d3d12_enable_gpu_validation();
+d3d12_enable_gpu_validation(void);
 
 ID3D12Device1 *
 d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features);

@@ -636,7 +636,7 @@ dzn_BindImageMemory2(VkDevice dev,
                                                       mem->initial_state,
                                                       NULL,
                                                       &IID_ID3D12Resource,
-                                                      &image->res)))
+                                                      (void **)&image->res)))
             return vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
          did_bind = true;
       }

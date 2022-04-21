@@ -789,7 +789,7 @@ dzn_descriptor_heap_init(struct dzn_descriptor_heap *heap,
 
    if (FAILED(ID3D12Device1_CreateDescriptorHeap(device->dev, &desc,
                                                  &IID_ID3D12DescriptorHeap,
-                                                 &heap->heap))) {
+                                                 (void **)&heap->heap))) {
       return vk_error(device,
                       shader_visible ?
                       VK_ERROR_OUT_OF_DEVICE_MEMORY : VK_ERROR_OUT_OF_HOST_MEMORY);

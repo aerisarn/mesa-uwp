@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+#include "dzn_private.h"
+
 #define D3D12_IGNORE_SDK_LAYERS
 #define COBJMACROS
 #include <directx/d3d12.h>
@@ -269,7 +271,7 @@ dxgi_get_factory(bool debug)
       flags |= DXGI_CREATE_FACTORY_DEBUG;
 
    IDXGIFactory4 *factory;
-   HRESULT hr = CreateDXGIFactory2(flags, &IID_IDXGIFactory4, &factory);
+   HRESULT hr = CreateDXGIFactory2(flags, &IID_IDXGIFactory4, (void **)&factory);
    if (FAILED(hr)) {
       mesa_loge("CreateDXGIFactory2 failed: %08x\n", hr);
       return NULL;
@@ -297,7 +299,7 @@ get_debug_interface()
    }
 
    ID3D12Debug *debug;
-   if (FAILED(D3D12GetDebugInterface(&IID_ID3D12Debug, &debug))) {
+   if (FAILED(D3D12GetDebugInterface(&IID_ID3D12Debug, (void **)&debug))) {
       mesa_loge("D3D12GetDebugInterface failed\n");
       return NULL;
    }
@@ -306,7 +308,7 @@ get_debug_interface()
 }
 
 void
-d3d12_enable_debug_layer()
+d3d12_enable_debug_layer(void)
 {
    ID3D12Debug *debug = get_debug_interface();
    if (debug) {
@@ -316,14 +318,14 @@ d3d12_enable_debug_layer()
 }
 
 void
-d3d12_enable_gpu_validation()
+d3d12_enable_gpu_validation(void)
 {
    ID3D12Debug *debug = get_debug_interface();
    if (debug) {
       ID3D12Debug3 *debug3;
       if (SUCCEEDED(ID3D12Debug_QueryInterface(debug,
                                                &IID_ID3D12Debug3,
-                                               &debug3))) {
+                                               (void **)&debug3))) {
          ID3D12Debug3_SetEnableGPUBasedValidation(debug3, true);
          ID3D12Debug3_Release(debug3);
       }
@@ -365,7 +367,7 @@ d3d12_create_device(IDXGIAdapter1 *adapter, bool experimental_features)
    ID3D12Device1 *dev;
    if (SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0,
                  &IID_ID3D12Device1,
-                 &dev)))
+                 (void **)&dev)))
       return dev;
 
    mesa_loge("D3D12CreateDevice failed\n");

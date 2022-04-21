@@ -182,7 +182,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
 
    if (FAILED(ID3D12Device1_CreateCommandAllocator(device->dev, type,
                                                    &IID_ID3D12CommandAllocator,
-                                                   &cmdbuf->cmdalloc))) {
+                                                   (void **)&cmdbuf->cmdalloc))) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
@@ -190,7 +190,7 @@ dzn_cmd_buffer_create(const VkCommandBufferAllocateInfo *info,
    if (FAILED(ID3D12Device1_CreateCommandList(device->dev, 0, type,
                                               cmdbuf->cmdalloc, NULL,
                                               &IID_ID3D12GraphicsCommandList1,
-                                              &cmdbuf->cmdlist))) {
+                                              (void **)&cmdbuf->cmdlist))) {
       result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
       goto out;
    }
@@ -264,7 +264,7 @@ dzn_cmd_buffer_reset(struct dzn_cmd_buffer *cmdbuf)
                                               type,
                                               cmdbuf->cmdalloc, NULL,
                                               &IID_ID3D12GraphicsCommandList1,
-                                              &cmdbuf->cmdlist))) {
+                                              (void **)&cmdbuf->cmdlist))) {
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -862,7 +862,7 @@ dzn_cmd_buffer_alloc_internal_buf(struct dzn_cmd_buffer *cmdbuf,
                                             D3D12_HEAP_FLAG_NONE, &rdesc,
                                             init_state, NULL,
                                             &IID_ID3D12Resource,
-                                            &res);
+                                            (void **)&res);
    if (FAILED(hres)) {
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       return cmdbuf->error;
@@ -928,7 +928,7 @@ dzn_cmd_buffer_clear_rects_with_copy(struct dzn_cmd_buffer *cmdbuf,
    assert(!(res_size % fill_step));
 
    uint8_t *cpu_ptr;
-   ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
+   ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
    for (uint32_t i = 0; i < res_size; i += fill_step)
       memcpy(&cpu_ptr[i], buf, fill_step);
 
@@ -1084,7 +1084,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
    assert(!(res_size % fill_step));
 
    uint8_t *cpu_ptr;
-   ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
+   ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
    for (uint32_t i = 0; i < res_size; i += fill_step)
       memcpy(&cpu_ptr[i], buf, fill_step);
 
@@ -3179,7 +3179,7 @@ dzn_CmdFillBuffer(VkCommandBuffer commandBuffer,
       return;
 
    uint32_t *cpu_ptr;
-   ID3D12Resource_Map(src_res, 0, NULL, &cpu_ptr);
+   ID3D12Resource_Map(src_res, 0, NULL, (void **)&cpu_ptr);
    for (uint32_t i = 0; i < size / 4; i++)
       cpu_ptr[i] = data;
 
