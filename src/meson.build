@@ -58,7 +58,7 @@ sha1_h = custom_target(
 )
 
 subdir('gtest')
-if cc.get_id() == 'msvc'
+if cc.get_argument_syntax() == 'msvc'
   subdir('getopt')
 else
   idep_getopt = null_dep
