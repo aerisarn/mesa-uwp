@@ -913,14 +913,16 @@ v3dv_queue_driver_submit(struct vk_queue *vk_queue,
     * This will ensure that the signal semaphores don't get triggered until
     * all work on any queue completes.
     */
-   if (!queue->noop_job) {
-      result = queue_create_noop_job(queue);
+   if (submit->signal_count > 0) {
+      if (!queue->noop_job) {
+         result = queue_create_noop_job(queue);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+      result = queue_handle_job(queue, queue->noop_job, &sync_info, true);
       if (result != VK_SUCCESS)
          return result;
    }
-   result = queue_handle_job(queue, queue->noop_job, &sync_info, true);
-   if (result != VK_SUCCESS)
-      return result;
 
    process_signals(queue, sync_info.signal_count, sync_info.signals);
 
