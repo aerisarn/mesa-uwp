@@ -253,6 +253,43 @@ int compute_memory_finalize_pending(struct compute_memory_pool* pool,
 			return -1;
 	}
 	else if (pool->status & POOL_FRAGMENTED) {
+		/* Loop through all unallocated items marked for promoting to
+		 * insert them into an appropriate existing hole prior to defrag. */
+		LIST_FOR_EACH_ENTRY_SAFE(item, next, pool->unallocated_list, link) {
+			if (!(item->status & ITEM_FOR_PROMOTING))
+				continue;
+
+			int64_t hole_start = 0, hole_size = 0;
+			int64_t item_size = align(item->size_in_dw, ITEM_ALIGNMENT);
+			struct compute_memory_item *alloc_item, *alloc_next;
+			LIST_FOR_EACH_ENTRY_SAFE(alloc_item, alloc_next, pool->item_list, link) {
+				if (alloc_item->start_in_dw == hole_start) {
+					hole_start += align(alloc_item->size_in_dw, ITEM_ALIGNMENT);
+					hole_size = 0;
+				} else if (alloc_item->start_in_dw > hole_start) {
+					hole_size = alloc_item->start_in_dw - hole_start;
+				}
+			}
+
+			/* Space after all items is also a hole. */
+			if (hole_size == 0 && hole_start < pool->size_in_dw)
+				hole_size = pool->size_in_dw - hole_start;
+
+			if (hole_size >= item_size) {
+				if (compute_memory_promote_item(pool, item, pipe, hole_start) != -1) {
+					item->status &= ~ITEM_FOR_PROMOTING;
+					unallocated -= item_size;
+					allocated += item_size;
+				}
+			}
+		}
+
+		if (allocated == pool->size_in_dw)
+			pool->status &= ~POOL_FRAGMENTED;
+
+		if (unallocated == 0)
+			return 0;
+
 		struct pipe_resource *src = (struct pipe_resource *)pool->bo;
 		compute_memory_defrag(pool, src, src, pipe);
 	}
