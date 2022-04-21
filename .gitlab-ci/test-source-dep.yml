@@ -357,6 +357,8 @@
   stage: arm
   rules:
     - *ignore_scheduled_pipelines
+    - if: '$LIMA_FARM == "offline"'
+      when: never
     - changes:
         *mesa_core_file_list
       when: on_success
