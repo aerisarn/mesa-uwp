@@ -965,9 +965,9 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
    unsigned nheight = DIV_ROUND_UP(box->height, gheight);
    unsigned ndepth = DIV_ROUND_UP(box->depth, gdepth);
    VkExtent3D lastBlockExtent = {
-			   (box->width % gwidth) ? box->width % gwidth : gwidth,
-			   (box->height % gheight) ? box->height % gheight : gheight,
-			   (box->depth % gdepth) ? box->depth % gdepth : gdepth
+      (box->width % gwidth) ? box->width % gwidth : gwidth,
+      (box->height % gheight) ? box->height % gheight : gheight,
+      (box->depth % gdepth) ? box->depth % gdepth : gdepth
    };
 #define NUM_BATCHED_BINDS 50
    VkSparseImageMemoryBind ibind[NUM_BATCHED_BINDS];
