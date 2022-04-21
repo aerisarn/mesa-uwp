@@ -119,6 +119,7 @@ static const struct debug_control panvk_debug_options[] = {
    { "sync", PANVK_DEBUG_SYNC },
    { "afbc", PANVK_DEBUG_AFBC },
    { "linear", PANVK_DEBUG_LINEAR },
+   { "dump", PANVK_DEBUG_DUMP },
    { NULL, 0 }
 };
 
