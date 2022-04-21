@@ -164,6 +164,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_global_const_block_intel:
    case nir_intrinsic_load_reloc_const_intel:
    case nir_intrinsic_load_global_block_intel:
+   case nir_intrinsic_load_btd_global_arg_addr_intel:
+   case nir_intrinsic_load_btd_local_arg_addr_intel:
       is_divergent = false;
       break;
 
@@ -566,6 +568,8 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_rt_arg_scratch_offset_amd:
    case nir_intrinsic_load_intersection_opaque_amd:
    case nir_intrinsic_load_vector_arg_amd:
+   case nir_intrinsic_load_btd_stack_id_intel:
+   case nir_intrinsic_load_topology_id_intel:
       is_divergent = true;
       break;
 
