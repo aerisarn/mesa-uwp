@@ -53,6 +53,8 @@ get_capset(int fd, struct virgl_renderer_capset_drm *caps)
          .size = sizeof(*caps),
    };
 
+   memset(caps, 0, sizeof(*caps));
+
    return drmIoctl(fd, DRM_IOCTL_VIRTGPU_GET_CAPS, &args);
 }
 
