@@ -597,7 +597,7 @@ ubo_to_temp_patch_deref_mode(nir_deref_instr *deref)
    deref->modes = nir_var_shader_temp;
    nir_foreach_use(use_src, &deref->dest.ssa) {
       if (use_src->parent_instr->type != nir_instr_type_deref)
-	 continue;
+         continue;
 
       nir_deref_instr *parent = nir_instr_as_deref(use_src->parent_instr);
       ubo_to_temp_patch_deref_mode(parent);
