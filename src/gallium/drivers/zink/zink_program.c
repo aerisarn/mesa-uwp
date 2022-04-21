@@ -787,7 +787,7 @@ check_vertex_strides(struct zink_context *ctx)
    for (unsigned i = 0; i < ves->hw_state.num_bindings; i++) {
       const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ves->binding_map[i];
       unsigned stride = vb->buffer.resource ? vb->stride : 0;
-      if (stride < ves->min_stride[i])
+      if (stride && stride < ves->min_stride[i])
          return false;
    }
    return true;
