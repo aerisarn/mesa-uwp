@@ -32,7 +32,7 @@ vulkan_api_def = custom_target(
   output : 'vulkan_api.def',
   command : [prog_python, gen_vs_module_defs_py,
              '--in_file', '@INPUT@', '--out_file', '@OUTPUT@',
-             '--compiler_id', cc.get_id(), '--cpu_family', host_machine.cpu_family()]
+             '--compiler_id', cc.get_argument_syntax(), '--cpu_family', host_machine.cpu_family()]
 )
 
 if with_platform_x11
