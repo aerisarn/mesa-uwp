@@ -39,6 +39,19 @@
 #include "util/u_pack_color.h"
 #include "vk_format.h"
 
+static uint32_t
+panvk_debug_adjust_bo_flags(const struct panvk_device *device,
+                      uint32_t bo_flags)
+{
+   uint32_t debug_flags =
+      device->physical_device->instance->debug_flags;
+
+   if (debug_flags & PANVK_DEBUG_DUMP)
+      bo_flags &= ~PAN_BO_INVISIBLE;
+
+   return bo_flags;
+}
+
 static void
 panvk_cmd_prepare_fragment_job(struct panvk_cmd_buffer *cmdbuf)
 {
@@ -74,7 +87,9 @@ panvk_per_arch(cmd_get_polygon_list)(struct panvk_cmd_buffer *cmdbuf,
    bool init_polygon_list = !has_draws && pdev->model->quirks.no_hierarchical_tiling;
    batch->tiler.ctx.midgard.polygon_list =
       panfrost_bo_create(pdev, size,
-                         init_polygon_list ? 0 : PAN_BO_INVISIBLE,
+                         panvk_debug_adjust_bo_flags(cmdbuf->device,
+                                               init_polygon_list ?
+                                               PAN_BO_INVISIBLE: 0),
                          "Polygon list");
 
 
@@ -1333,10 +1348,12 @@ panvk_create_cmdbuf(struct panvk_device *device,
                    "Command buffer descriptor pool", true);
    panvk_pool_init(&cmdbuf->tls_pool, &device->physical_device->pdev,
                    pool ? &pool->tls_bo_pool : NULL,
-                   PAN_BO_INVISIBLE, 64 * 1024, "TLS pool", false);
+                   panvk_debug_adjust_bo_flags(device, PAN_BO_INVISIBLE),
+                   64 * 1024, "TLS pool", false);
    panvk_pool_init(&cmdbuf->varying_pool, &device->physical_device->pdev,
                    pool ? &pool->varying_bo_pool : NULL,
-                   PAN_BO_INVISIBLE, 64 * 1024, "Varyings pool", false);
+                   panvk_debug_adjust_bo_flags(device, PAN_BO_INVISIBLE),
+                   64 * 1024, "Varyings pool", false);
    list_inithead(&cmdbuf->batches);
    cmdbuf->status = PANVK_CMD_BUFFER_STATUS_INITIAL;
    *cmdbuf_out = cmdbuf;
