@@ -957,14 +957,14 @@ nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 void
 nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
 {
-   nir_variable *input_vars[MAX_VARYING] = { 0 };
+   nir_variable *input_vars[MAX_VARYING][4] = { 0 };
 
    nir_foreach_shader_in_variable(var, consumer) {
       if (var->data.location >= VARYING_SLOT_VAR0 &&
           var->data.location - VARYING_SLOT_VAR0 < MAX_VARYING) {
 
          unsigned location = var->data.location - VARYING_SLOT_VAR0;
-         input_vars[location] = var;
+         input_vars[location][var->data.location_frac] = var;
       }
    }
 
@@ -976,8 +976,8 @@ nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
             continue;
 
          unsigned location = var->data.location - VARYING_SLOT_VAR0;
-         if (input_vars[location]) {
-            input_vars[location]->data.always_active_io = true;
+         if (input_vars[location][var->data.location_frac]) {
+            input_vars[location][var->data.location_frac]->data.always_active_io = true;
          }
       }
    }
