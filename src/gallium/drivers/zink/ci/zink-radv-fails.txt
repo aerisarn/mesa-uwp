@@ -1,7 +1,4 @@
 # probable ACO bug: #6276
-KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
-KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail
-KHR-GL46.shader_image_load_store.basic-allTargets-atomicVS,Fail
 KHR-GL46.shader_storage_buffer_object.basic-operations-case1-cs,Fail
 KHR-GL46.shader_storage_buffer_object.basic-operations-case1-vs,Fail
 

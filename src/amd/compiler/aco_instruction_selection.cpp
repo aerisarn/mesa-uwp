@@ -6184,10 +6184,11 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
+   bool cmpswap = instr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap;
    bool is_64bit = data.bytes() == 8;
    assert((data.bytes() == 4 || data.bytes() == 8) && "only 32/64-bit image atomics implemented.");
 
-   if (instr->intrinsic == nir_intrinsic_bindless_image_atomic_comp_swap)
+   if (cmpswap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(is_64bit ? v4 : v2),
                         get_ssa_temp(ctx, instr->src[4].ssa), data);
 
@@ -6272,8 +6273,10 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       mubuf->operands[1] = Operand(vindex);
       mubuf->operands[2] = Operand::c32(0);
       mubuf->operands[3] = Operand(data);
+      Definition def =
+         return_previous ? (cmpswap ? bld.def(data.regClass()) : Definition(dst)) : Definition();
       if (return_previous)
-         mubuf->definitions[0] = Definition(dst);
+         mubuf->definitions[0] = def;
       mubuf->offset = 0;
       mubuf->idxen = true;
       mubuf->glc = return_previous;
@@ -6282,12 +6285,15 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       mubuf->sync = sync;
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(mubuf));
+      if (return_previous && cmpswap)
+         bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), def.getTemp(), Operand::zero());
       return;
    }
 
    std::vector<Temp> coords = get_image_coords(ctx, instr);
    Temp resource = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
-   Definition def = return_previous ? Definition(dst) : Definition();
+   Definition def =
+      return_previous ? (cmpswap ? bld.def(data.regClass()) : Definition(dst)) : Definition();
    MIMG_instruction* mimg =
       emit_mimg(bld, image_op, def, resource, Operand(s4), coords, 0, Operand(data));
    mimg->glc = return_previous;
@@ -6299,6 +6305,8 @@ visit_image_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    mimg->disable_wqm = true;
    mimg->sync = sync;
    ctx->program->needs_exact = true;
+   if (return_previous && cmpswap)
+      bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), def.getTemp(), Operand::zero());
    return;
 }
 
@@ -6481,8 +6489,9 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[2].ssa));
+   bool cmpswap = instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap;
 
-   if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap)
+   if (cmpswap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
                         get_ssa_temp(ctx, instr->src[3].ssa), data);
 
@@ -6552,8 +6561,10 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    mubuf->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
    mubuf->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand::c32(0);
    mubuf->operands[3] = Operand(data);
+   Definition def =
+      return_previous ? (cmpswap ? bld.def(data.regClass()) : Definition(dst)) : Definition();
    if (return_previous)
-      mubuf->definitions[0] = Definition(dst);
+      mubuf->definitions[0] = def;
    mubuf->offset = 0;
    mubuf->offen = (offset.type() == RegType::vgpr);
    mubuf->glc = return_previous;
@@ -6562,6 +6573,8 @@ visit_atomic_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
    mubuf->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
    ctx->program->needs_exact = true;
    ctx->block->instructions.emplace_back(std::move(mubuf));
+   if (return_previous && cmpswap)
+      bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), def.getTemp(), Operand::zero());
 }
 
 void

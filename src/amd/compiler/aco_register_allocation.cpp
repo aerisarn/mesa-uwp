@@ -2711,7 +2711,12 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
             }
          }
 
-         /* handle definitions which must have the same register as an operand */
+         /* Handle definitions which must have the same register as an operand.
+          * We expect that the definition has the same size as the operand, otherwise the new
+          * location for the operand (if it's not killed) might intersect with the old one.
+          * We can't read from the old location because it's corrupted, and we can't write the new
+          * location because that's used by a live-through operand.
+          */
          if (instr->opcode == aco_opcode::v_interp_p2_f32 ||
              instr->opcode == aco_opcode::v_mac_f32 || instr->opcode == aco_opcode::v_fmac_f32 ||
              instr->opcode == aco_opcode::v_mac_f16 || instr->opcode == aco_opcode::v_fmac_f16 ||
@@ -2721,15 +2726,20 @@ register_allocation(Program* program, std::vector<IDSet>& live_out_per_block, ra
              instr->opcode == aco_opcode::v_writelane_b32 ||
              instr->opcode == aco_opcode::v_writelane_b32_e64 ||
              instr->opcode == aco_opcode::v_dot4c_i32_i8) {
+            assert(instr->definitions[0].bytes() == instr->operands[2].bytes() ||
+                   instr->operands[2].regClass() == v1);
             instr->definitions[0].setFixed(instr->operands[2].physReg());
          } else if (instr->opcode == aco_opcode::s_addk_i32 ||
                     instr->opcode == aco_opcode::s_mulk_i32) {
+            assert(instr->definitions[0].bytes() == instr->operands[0].bytes());
             instr->definitions[0].setFixed(instr->operands[0].physReg());
          } else if (instr->isMUBUF() && instr->definitions.size() == 1 &&
                     instr->operands.size() == 4) {
+            assert(instr->definitions[0].bytes() == instr->operands[3].bytes());
             instr->definitions[0].setFixed(instr->operands[3].physReg());
          } else if (instr->isMIMG() && instr->definitions.size() == 1 &&
                     !instr->operands[2].isUndefined()) {
+            assert(instr->definitions[0].bytes() == instr->operands[2].bytes());
             instr->definitions[0].setFixed(instr->operands[2].physReg());
          }
 
