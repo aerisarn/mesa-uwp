@@ -799,6 +799,12 @@ void si_init_shader_args(struct si_shader_context *ctx, bool ngg_cull_shader)
 #define DEBUGGER_END_OF_CODE_MARKER 0xbf9f0000 /* invalid instruction */
 #define DEBUGGER_NUM_MARKERS        5
 
+static unsigned get_lds_granularity(struct si_screen *screen, gl_shader_stage stage)
+{
+   return screen->info.chip_class >= GFX11 && stage == MESA_SHADER_FRAGMENT ? 1024 :
+          screen->info.chip_class >= GFX7 ? 512 : 256;
+}
+
 static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *shader,
                                   struct ac_rtld_binary *rtld)
 {
@@ -855,8 +861,8 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
                                        .shared_lds_symbols = lds_symbols});
 
    if (rtld->lds_size > 0) {
-      unsigned alloc_granularity = screen->info.chip_class >= GFX7 ? 512 : 256;
-      shader->config.lds_size = align(rtld->lds_size, alloc_granularity) / alloc_granularity;
+      unsigned alloc_granularity = get_lds_granularity(screen, sel->stage);
+      shader->config.lds_size = DIV_ROUND_UP(rtld->lds_size, alloc_granularity);
    }
 
    return ok;
@@ -1002,7 +1008,7 @@ static void si_calculate_max_simd_waves(struct si_shader *shader)
    struct si_screen *sscreen = shader->selector->screen;
    struct ac_shader_config *conf = &shader->config;
    unsigned num_inputs = shader->selector->info.num_inputs;
-   unsigned lds_increment = sscreen->info.chip_class >= GFX7 ? 512 : 256;
+   unsigned lds_increment = get_lds_granularity(sscreen, shader->selector->stage);
    unsigned lds_per_wave = 0;
    unsigned max_simd_waves;
 
