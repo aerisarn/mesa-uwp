@@ -1804,28 +1804,16 @@ create_rt_shader(struct radv_device *device, const VkRayTracingPipelineCreateInf
    nir_ssa_def *idx = nir_load_var(&b, vars.idx);
 
    /* We do a trick with the indexing of the resume shaders so that the first
-    * shader of group x always gets id x and the resume shader ids then come after
-    * groupCount. This makes the shadergroup handles independent of compilation. */
-   unsigned call_idx_base = pCreateInfo->groupCount + 1;
-   for (unsigned i = 0; i < pCreateInfo->groupCount; ++i) {
-      const VkRayTracingShaderGroupCreateInfoKHR *group_info = &pCreateInfo->pGroups[i];
-      uint32_t shader_id = VK_SHADER_UNUSED_KHR;
-
-      switch (group_info->type) {
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
-         shader_id = group_info->generalShader;
-         break;
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
-      case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
-         shader_id = group_info->closestHitShader;
-         break;
-      default:
-         break;
-      }
-      if (shader_id == VK_SHADER_UNUSED_KHR)
+    * shader of stage x always gets id x and the resume shader ids then come after
+    * stageCount. This makes the shadergroup handles independent of compilation. */
+   unsigned call_idx_base = pCreateInfo->stageCount + 1;
+   for (unsigned i = 0; i < pCreateInfo->stageCount; ++i) {
+      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[i];
+      gl_shader_stage type = vk_to_mesa_shader_stage(stage->stage);
+      if (type != MESA_SHADER_RAYGEN && type != MESA_SHADER_CALLABLE &&
+          type != MESA_SHADER_CLOSEST_HIT && type != MESA_SHADER_MISS)
          continue;
 
-      const VkPipelineShaderStageCreateInfo *stage = &pCreateInfo->pStages[shader_id];
       nir_shader *nir_stage = parse_rt_stage(device, stage);
 
       /* Move ray tracing system values to the top that are set by rt_trace_ray
@@ -1948,12 +1936,16 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
 
    compute_pipeline->dynamic_stack_size = radv_rt_pipeline_has_dynamic_stack_size(pCreateInfo);
 
+   /* For General and ClosestHit shaders, we can use the shader ID directly as handle.
+    * As (potentially different) AnyHit shaders are inlined, for Intersection shaders
+    * we use the Group ID.
+    */
    for (unsigned i = 0; i < local_create_info.groupCount; ++i) {
       const VkRayTracingShaderGroupCreateInfoKHR *group_info = &local_create_info.pGroups[i];
       switch (group_info->type) {
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR:
          if (group_info->generalShader != VK_SHADER_UNUSED_KHR)
-            compute_pipeline->rt_group_handles[i].handles[0] = i + 2;
+            compute_pipeline->rt_group_handles[i].handles[0] = group_info->generalShader + 2;
          break;
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_KHR:
          if (group_info->intersectionShader != VK_SHADER_UNUSED_KHR)
@@ -1961,7 +1953,7 @@ radv_rt_pipeline_create(VkDevice _device, VkPipelineCache _cache,
          FALLTHROUGH;
       case VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR:
          if (group_info->closestHitShader != VK_SHADER_UNUSED_KHR)
-            compute_pipeline->rt_group_handles[i].handles[0] = i + 2;
+            compute_pipeline->rt_group_handles[i].handles[0] = group_info->closestHitShader + 2;
          if (group_info->anyHitShader != VK_SHADER_UNUSED_KHR)
             compute_pipeline->rt_group_handles[i].handles[1] = i + 2;
          break;
