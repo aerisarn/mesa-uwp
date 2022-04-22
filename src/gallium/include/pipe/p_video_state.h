@@ -391,6 +391,7 @@ struct pipe_h264_enc_motion_estimation
 struct pipe_h264_enc_pic_control
 {
    unsigned enc_cabac_enable;
+   unsigned enc_cabac_init_idc;
    unsigned enc_constraint_set_flags;
    unsigned enc_frame_cropping_flag;
    unsigned enc_frame_crop_left_offset;
