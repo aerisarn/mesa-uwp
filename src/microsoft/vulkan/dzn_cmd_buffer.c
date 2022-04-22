@@ -3880,7 +3880,7 @@ dzn_CmdResetEvent(VkCommandBuffer commandBuffer,
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_event, evt, event);
 
-   if (!_mesa_hash_table_insert(cmdbuf->events.ht, event, (void *)(uintptr_t)DZN_EVENT_STATE_RESET))
+   if (!_mesa_hash_table_insert(cmdbuf->events.ht, evt, (void *)(uintptr_t)DZN_EVENT_STATE_RESET))
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 }
 
@@ -3893,7 +3893,7 @@ dzn_CmdSetEvent(VkCommandBuffer commandBuffer,
    struct dzn_device *device = container_of(cmdbuf->vk.base.device, struct dzn_device, vk);
    VK_FROM_HANDLE(dzn_event, evt, event);
 
-   if (!_mesa_hash_table_insert(cmdbuf->events.ht, event, (void *)(uintptr_t)DZN_EVENT_STATE_SET))
+   if (!_mesa_hash_table_insert(cmdbuf->events.ht, evt, (void *)(uintptr_t)DZN_EVENT_STATE_SET))
       cmdbuf->error = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 }
 
