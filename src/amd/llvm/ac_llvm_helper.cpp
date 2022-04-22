@@ -63,16 +63,6 @@ bool ac_is_sgpr_param(LLVMValueRef arg)
    return AS.hasParamAttr(ArgNo, llvm::Attribute::InReg);
 }
 
-LLVMValueRef ac_llvm_get_called_value(LLVMValueRef call)
-{
-   return LLVMGetCalledValue(call);
-}
-
-bool ac_llvm_is_function(LLVMValueRef v)
-{
-   return LLVMGetValueKind(v) == LLVMFunctionValueKind;
-}
-
 LLVMModuleRef ac_create_module(LLVMTargetMachineRef tm, LLVMContextRef ctx)
 {
    llvm::TargetMachine *TM = reinterpret_cast<llvm::TargetMachine *>(tm);
