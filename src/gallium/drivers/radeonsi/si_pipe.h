@@ -1501,7 +1501,7 @@ void si_emit_initial_compute_regs(struct si_context *sctx, struct radeon_cmdbuf 
 void si_init_compute_functions(struct si_context *sctx);
 
 /* si_pipe.c */
-void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler);
+bool si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler);
 void si_init_aux_async_compute_ctx(struct si_screen *sscreen);
 
 /* si_perfcounters.c */

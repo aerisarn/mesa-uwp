@@ -134,7 +134,7 @@ static const struct debug_named_value test_options[] = {
    DEBUG_NAMED_VALUE_END /* must be last */
 };
 
-void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler)
+bool si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compiler)
 {
    /* Only create the less-optimizing version of the compiler on APUs
     * predating Ryzen (Raven). */
@@ -146,11 +146,15 @@ void si_init_compiler(struct si_screen *sscreen, struct ac_llvm_compiler *compil
       (create_low_opt_compiler ? AC_TM_CREATE_LOW_OPT : 0);
 
    ac_init_llvm_once();
-   ac_init_llvm_compiler(compiler, sscreen->info.family, tm_options);
-   compiler->passes = ac_create_llvm_passes(compiler->tm);
 
+   if (!ac_init_llvm_compiler(compiler, sscreen->info.family, tm_options))
+      return false;
+
+   compiler->passes = ac_create_llvm_passes(compiler->tm);
    if (compiler->low_opt_tm)
       compiler->low_opt_passes = ac_create_llvm_passes(compiler->low_opt_tm);
+
+   return true;
 }
 
 void si_init_aux_async_compute_ctx(struct si_screen *sscreen)
@@ -1073,6 +1077,15 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    if ((sscreen->debug_flags & DBG(TMZ)) &&
        !sscreen->info.has_tmz_support) {
       fprintf(stderr, "radeonsi: requesting TMZ features but TMZ is not supported\n");
+      FREE(sscreen);
+      return NULL;
+   }
+
+   /* Initialize just one compiler instance to check for errors. The other compiler instances are
+    * initialized on demand.
+    */
+   if (!si_init_compiler(sscreen, &sscreen->compiler[0])) {
+      /* The callee prints the error message. */
       FREE(sscreen);
       return NULL;
    }
