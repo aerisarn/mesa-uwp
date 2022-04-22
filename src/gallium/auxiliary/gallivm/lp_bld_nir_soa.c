@@ -1181,9 +1181,12 @@ static void emit_load_mem(struct lp_build_nir_context *bld_base,
             LLVMValueRef res_store = lp_build_alloca(gallivm, LLVMTypeOf(zero), "");
             LLVMBuildStore(builder, zero, res_store);
 
-            LLVMValueRef fetch_cond = LLVMBuildICmp(gallivm->builder, LLVMIntUGE, ssbo_limit, chan_offset, "");
+            LLVMValueRef fetch_extent = LLVMBuildAdd(builder, chan_offset, lp_build_const_int32(gallivm, 1), "");
+            LLVMValueRef fetch_cond = LLVMBuildICmp(gallivm->builder, LLVMIntUGE, ssbo_limit, fetch_extent, "");
+            LLVMValueRef fetch_cond2 = LLVMBuildICmp(gallivm->builder, LLVMIntSGE, chan_offset, lp_build_const_int32(gallivm, 0), "");
+            LLVMValueRef fetch_cond_final = LLVMBuildAnd(gallivm->builder, fetch_cond, fetch_cond2, "");
             struct lp_build_if_state ifthen;
-            lp_build_if(&ifthen, gallivm, fetch_cond);
+            lp_build_if(&ifthen, gallivm, fetch_cond_final);
             LLVMBuildStore(builder, lp_build_pointer_get(builder, mem_ptr, chan_offset), res_store);
             lp_build_endif(&ifthen);
 
