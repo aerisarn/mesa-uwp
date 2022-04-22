@@ -48,9 +48,6 @@ KHR-GL46.shader_image_load_store.non-layered_binding,Fail
 # amd issue #6305
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 
-# radv issue #6301
-KHR-Single-GL46.enhanced_layouts.xfb_override_qualifiers_with_api,Fail
-
 
 
 dEQP-GLES2.functional.clipping.line.wide_line_clip_viewport_center,Fail
@@ -188,13 +185,6 @@ dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_1,Fail
 dEQP-GLES3.functional.shaders.metamorphic.bubblesort_flag.variant_2,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojlodoffset.sampler2dshadow_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojoffset.sampler2dshadow_vertex,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.lines.6,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.3,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.6,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.7,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.lines.6,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.points.6,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.6,Fail
 
 # cubes are hard #6270
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() cube,Fail

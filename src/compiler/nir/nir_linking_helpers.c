@@ -310,7 +310,8 @@ get_unmoveable_components_masks(nir_shader *shader,
          /* If we can pack this varying then don't mark the components as
           * used.
           */
-         if (is_packing_supported_for_type(type))
+         if (is_packing_supported_for_type(type) &&
+             !var->data.always_active_io)
             continue;
 
          unsigned location = var->data.location - VARYING_SLOT_VAR0;
