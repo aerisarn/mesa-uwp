@@ -912,9 +912,10 @@ zink_bo_commit(struct zink_screen *screen, struct zink_resource *res, unsigned l
    };
    /* TODO: msaa needs miptail */
    //VkSparseImageOpaqueMemoryBindInfo sparse_obind;
-   VkSparseImageMemoryBind ibind[10];
-   uint32_t backing_start[10], backing_size[10];
-   struct zink_sparse_backing *backing[10];
+#define NUM_BATCHED_BINDS 50
+   VkSparseImageMemoryBind ibind[NUM_BATCHED_BINDS];
+   uint32_t backing_start[NUM_BATCHED_BINDS], backing_size[NUM_BATCHED_BINDS];
+   struct zink_sparse_backing *backing[NUM_BATCHED_BINDS];
    unsigned i = 0;
    bool commits_pending = false;
    uint32_t va_page_offset = 0;
