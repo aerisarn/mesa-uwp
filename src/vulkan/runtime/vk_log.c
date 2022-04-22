@@ -96,6 +96,12 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
             continue;
          }
 
+         if (unlikely(!objects[i]->client_visible)) {
+            mesa_logw("vk_log*() called with client-invisible object %p "
+                      "of type %s", objects[i],
+                      vk_ObjectType_to_str(objects[i]->type));
+         }
+
          if (!instance) {
             instance = vk_object_to_instance(objects[i]);
             assert(instance->base.client_visible);
@@ -175,10 +181,8 @@ __vk_log_impl(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
       ASSERTED int cmdbuf_n = 0, queue_n = 0, obj_n = 0;
       for (int i = 0; i < object_count; i++) {
          struct vk_object_base *base = objects[i];
-         if (base == NULL)
+         if (base == NULL || !base->client_visible)
             continue;
-
-         assert(base->client_visible);
 
          switch (base->type) {
          case VK_OBJECT_TYPE_COMMAND_BUFFER: {
