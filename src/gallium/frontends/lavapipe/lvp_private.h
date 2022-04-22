@@ -380,6 +380,7 @@ struct lvp_descriptor_pool {
 
 struct lvp_descriptor_update_template {
    struct vk_object_base base;
+   unsigned ref_cnt;
    uint32_t entry_count;
    uint32_t set;
    VkDescriptorUpdateTemplateType type;
@@ -387,6 +388,27 @@ struct lvp_descriptor_update_template {
    struct lvp_pipeline_layout *pipeline_layout;
    VkDescriptorUpdateTemplateEntry entry[0];
 };
+
+static inline void
+lvp_descriptor_template_templ_ref(struct lvp_descriptor_update_template *templ)
+{
+   assert(templ && templ->ref_cnt >= 1);
+   p_atomic_inc(&templ->ref_cnt);
+}
+
+void
+lvp_descriptor_template_destroy(struct lvp_device *device, struct lvp_descriptor_update_template *templ);
+
+static inline void
+lvp_descriptor_template_templ_unref(struct lvp_device *device,
+                                    struct lvp_descriptor_update_template *templ)
+{
+   if (!templ)
+      return;
+   assert(templ->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&templ->ref_cnt))
+      lvp_descriptor_template_destroy(device, templ);
+}
 
 VkResult
 lvp_descriptor_set_create(struct lvp_device *device,
