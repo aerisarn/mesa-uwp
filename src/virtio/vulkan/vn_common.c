@@ -30,6 +30,7 @@ static const struct debug_control vn_debug_options[] = {
 static const struct debug_control vn_perf_options[] = {
    { "no_async_set_alloc", VN_PERF_NO_ASYNC_SET_ALLOC },
    { "no_async_buffer_create", VN_PERF_NO_ASYNC_BUFFER_CREATE },
+   { "no_async_queue_submit", VN_PERF_NO_ASYNC_QUEUE_SUBMIT },
    { NULL, 0 },
 };
 

@@ -341,7 +341,7 @@ vn_QueueSubmit(VkQueue _queue,
    }
 
    /* TODO defer roundtrip for external fence until the next sync operation */
-   if (!wsi_mem && !is_fence_external) {
+   if (!wsi_mem && !is_fence_external && !VN_PERF(NO_ASYNC_QUEUE_SUBMIT)) {
       vn_async_vkQueueSubmit(dev->instance, submit.queue, submit.batch_count,
                              submit.submit_batches, submit.fence);
       vn_queue_submission_cleanup(&submit);
