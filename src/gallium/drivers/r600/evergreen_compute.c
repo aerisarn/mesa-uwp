@@ -1247,6 +1247,12 @@ void *r600_compute_global_transfer_map(struct pipe_context *ctx,
 	struct pipe_resource *dst = NULL;
 	unsigned offset = box->x;
 
+	if (usage & PIPE_MAP_READ)
+		buffer->chunk->status |= ITEM_MAPPED_FOR_READING;
+
+	if (usage & PIPE_MAP_WRITE)
+		buffer->chunk->status |= ITEM_MAPPED_FOR_WRITING;
+
 	if (is_item_in_pool(item)) {
 		compute_memory_demote_item(pool, item, ctx);
 	}
@@ -1258,9 +1264,6 @@ void *r600_compute_global_transfer_map(struct pipe_context *ctx,
 	}
 
 	dst = (struct pipe_resource*)item->real_buffer;
-
-	if (usage & PIPE_MAP_READ)
-		buffer->chunk->status |= ITEM_MAPPED_FOR_READING;
 
 	COMPUTE_DBG(rctx->screen, "* r600_compute_global_transfer_map()\n"
 			"level = %u, usage = %u, box(x = %u, y = %u, z = %u "
@@ -1282,7 +1285,7 @@ void *r600_compute_global_transfer_map(struct pipe_context *ctx,
 
 	///TODO: do it better, mapping is not possible if the pool is too big
 	return pipe_buffer_map_range(ctx, dst,
-			offset, box->width, usage, ptransfer);
+			offset, box->width, usage & ~PIPE_MAP_READ, ptransfer);
 }
 
 void r600_compute_global_transfer_unmap(struct pipe_context *ctx,

@@ -430,12 +430,18 @@ void compute_memory_demote_item(struct compute_memory_pool *pool,
 	dst = (struct pipe_resource *)item->real_buffer;
 
 	/* We transfer the memory from the item in the pool to the
-	 * temporary buffer */
-	u_box_1d(item->start_in_dw * 4, item->size_in_dw * 4, &box);
+	 * temporary buffer. Download is skipped for items:
+	 * - Not mapped for reading or writing (PIPE_MAP_DISCARD_RANGE).
+	 * - Not writable by the device. */
+	if ((item->status & (ITEM_MAPPED_FOR_READING|ITEM_MAPPED_FOR_WRITING)) &&
+		!(r600_resource(dst)->flags & RADEON_FLAG_READ_ONLY)) {
 
-	rctx->b.b.resource_copy_region(pipe,
-		dst, 0, 0, 0, 0,
-		src, 0, &box);
+		u_box_1d(item->start_in_dw * 4, item->size_in_dw * 4, &box);
+
+		rctx->b.b.resource_copy_region(pipe,
+			dst, 0, 0, 0, 0,
+			src, 0, &box);
+	}
 
 	/* Remember to mark the buffer as 'pending' by setting start_in_dw to -1 */
 	item->start_in_dw = -1;
