@@ -644,7 +644,7 @@ dzn_meta_blits_get_context(struct dzn_device *device,
 {
    struct dzn_meta_blit *out = NULL;
 
-   STATIC_ASSERT(sizeof(key) == sizeof(uint64_t));
+   STATIC_ASSERT(sizeof(*key) == sizeof(uint64_t));
 
    mtx_lock(&device->blits.contexts_lock);
 
