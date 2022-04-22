@@ -307,7 +307,7 @@ dzn_ResetCommandBuffer(VkCommandBuffer commandBuffer,
    return dzn_cmd_buffer_reset(cmdbuf);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 dzn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                        const VkCommandBufferBeginInfo *info)
 {
