@@ -1495,14 +1495,15 @@ dzn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       .maxMultiviewViewCount                 = 0,
       .maxMultiviewInstanceIndex             = 0,
       .protectedNoFault                      = false,
-      /* Maximum number of descriptors in a GPU-visible sampler heap is 2048,
-       * and 1000000 in a CBV/SRV/UAV heap, so let's pick the smallest
-       * limitation factor here. All descriptor sets are merged in a single
-       * heap when descriptor sets are bound to the command buffer, hence the
-       * division by MAX_SETS.
+      /* Vulkan 1.1 wants this value to be at least 1024. Let's stick to this
+       * minimum requirement for now, and hope the total number of samplers
+       * across all descriptor sets doesn't exceed 2048, otherwise we'd exceed
+       * the maximum number of samplers per heap. For any descriptor set
+       * containing more than 1024 descriptors,
+       * vkGetDescriptorSetLayoutSupport() can be called to determine if the
+       * layout is within D3D12 descriptor heap bounds.
        */
-      .maxPerSetDescriptors                  =
-         MAX_DESCS_PER_SAMPLER_HEAP / MAX_SETS,
+      .maxPerSetDescriptors                  = 1024,
       /* According to the spec, the maximum D3D12 resource size is
        * min(max(128MB, 0.25f * (amount of dedicated VRAM)), 2GB),
        * but the limit actually depends on the max(system_ram, VRAM) not
