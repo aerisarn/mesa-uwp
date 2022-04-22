@@ -27,6 +27,11 @@ static const struct debug_control vn_debug_options[] = {
    { NULL, 0 },
 };
 
+static const struct debug_control vn_perf_options[] = {
+   { "no_async_set_alloc", VN_PERF_NO_ASYNC_SET_ALLOC },
+   { NULL, 0 },
+};
+
 struct vn_env vn_env;
 
 static void
@@ -34,6 +39,8 @@ vn_env_init_once(void)
 {
    vn_env.debug =
       parse_debug_string(os_get_option("VN_DEBUG"), vn_debug_options);
+   vn_env.perf =
+      parse_debug_string(os_get_option("VN_PERF"), vn_perf_options);
 }
 
 void

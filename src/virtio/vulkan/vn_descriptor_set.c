@@ -259,8 +259,10 @@ vn_CreateDescriptorPool(VkDevice device,
     * allocation must not fail due to a fragmented pool per spec. In this
     * case, set allocation can be asynchronous with pool resource tracking.
     */
-   pool->async_set_allocation = !(
-      pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
+   pool->async_set_allocation =
+      !VN_PERF(NO_ASYNC_SET_ALLOC) &&
+      !(pCreateInfo->flags &
+        VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 
    pool->max.set_count = pCreateInfo->maxSets;
 
