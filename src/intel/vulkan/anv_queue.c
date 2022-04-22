@@ -45,8 +45,10 @@ anv_queue_init(struct anv_device *device, struct anv_queue *queue,
       result = vk_sync_create(&device->vk,
                               &device->physical->sync_syncobj_type,
                               0, 0, &queue->sync);
-      vk_queue_finish(&queue->vk);
-      return result;
+      if (result != VK_SUCCESS) {
+         vk_queue_finish(&queue->vk);
+         return result;
+      }
    }
 
    queue->vk.driver_submit = anv_queue_submit;
