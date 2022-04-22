@@ -197,6 +197,9 @@ vn_buffer_cache_get_memory_requirements(
    const VkBufferCreateInfo *create_info,
    struct vn_buffer_memory_requirements *out)
 {
+   if (VN_PERF(NO_ASYNC_BUFFER_CREATE))
+      return false;
+
    if (create_info->size > cache->max_buffer_size)
       return false;
 
