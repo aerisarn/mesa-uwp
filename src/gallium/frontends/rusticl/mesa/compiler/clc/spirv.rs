@@ -14,6 +14,10 @@ use std::slice;
 
 const INPUT_STR: *const c_char = b"input.cl\0" as *const u8 as *const c_char;
 
+pub enum SpecConstant {
+    None,
+}
+
 pub struct SPIRVBin {
     spirv: clc_binary,
     info: Option<clc_parsed_spirv>,
@@ -63,7 +67,7 @@ impl SPIRVBin {
 
                 let mut key = cache.gen_key(&key);
                 if let Some(data) = cache.get(&mut key) {
-                    return (Some(Self::from_bin(&data, false)), String::from(""));
+                    return (Some(Self::from_bin(&data)), String::from(""));
                 }
 
                 hash_key = Some(key);
@@ -285,15 +289,17 @@ impl SPIRVBin {
         entry_point: &str,
         nir_options: *const nir_shader_compiler_options,
         libclc: &NirShader,
+        spec_constants: &mut [nir_spirv_specialization],
     ) -> Option<NirShader> {
         let c_entry = CString::new(entry_point.as_bytes()).unwrap();
         let spirv_options = Self::get_spirv_options(false, libclc.get_nir());
+
         let nir = unsafe {
             spirv_to_nir(
                 self.spirv.data.cast(),
                 self.spirv.size / 4,
-                ptr::null_mut(), // spec
-                0,               // spec count
+                spec_constants.as_mut_ptr(),
+                spec_constants.len() as u32,
                 gl_shader_stage::MESA_SHADER_KERNEL,
                 c_entry.as_ptr(),
                 &spirv_options,
@@ -317,7 +323,7 @@ impl SPIRVBin {
         unsafe { slice::from_raw_parts(self.spirv.data.cast(), self.spirv.size) }
     }
 
-    pub fn from_bin(bin: &[u8], executable: bool) -> Self {
+    pub fn from_bin(bin: &[u8]) -> Self {
         unsafe {
             let ptr = malloc(bin.len());
             ptr::copy_nonoverlapping(bin.as_ptr(), ptr.cast(), bin.len());
@@ -325,9 +331,10 @@ impl SPIRVBin {
                 data: ptr,
                 size: bin.len(),
             };
-            let info = if executable {
-                let mut pspirv = clc_parsed_spirv::default();
-                clc_parse_spirv(&spirv, ptr::null(), &mut pspirv);
+
+            let mut pspirv = clc_parsed_spirv::default();
+
+            let info = if clc_parse_spirv(&spirv, ptr::null(), &mut pspirv) {
                 Some(pspirv)
             } else {
                 None

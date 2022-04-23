@@ -17,7 +17,9 @@ impl CLInfo<cl_platform_info> for cl_platform_id {
     fn query(&self, q: cl_platform_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let p = self.get_ref()?;
         Ok(match q {
+            // TODO spirv
             CL_PLATFORM_EXTENSIONS => cl_prop("cl_khr_icd"),
+            //            CL_PLATFORM_EXTENSIONS => cl_prop("cl_khr_icd cl_khr_il_program"),
             CL_PLATFORM_EXTENSIONS_WITH_VERSION => {
                 cl_prop::<Vec<cl_name_version>>(p.extensions.to_vec())
             }
@@ -37,7 +39,11 @@ impl CLInfo<cl_platform_info> for cl_platform_id {
 
 static PLATFORM: _cl_platform_id = _cl_platform_id {
     dispatch: &DISPATCH,
-    extensions: [mk_cl_version_ext(1, 0, 0, "cl_khr_icd")],
+    extensions: [
+        mk_cl_version_ext(1, 0, 0, "cl_khr_icd"),
+        // TODO spirv
+        //        mk_cl_version_ext(1, 0, 0, "cl_khr_il_program"),
+    ],
 };
 
 pub fn get_platform() -> cl_platform_id {

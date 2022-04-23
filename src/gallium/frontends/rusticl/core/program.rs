@@ -49,6 +49,8 @@ pub struct Program {
     pub context: Arc<Context>,
     pub devs: Vec<Arc<Device>>,
     pub src: CString,
+    pub il: Vec<u8>,
+    spec_constants: Mutex<Vec<spirv::SpecConstant>>,
     build: Mutex<ProgramBuild>,
 }
 
@@ -112,6 +114,8 @@ impl Program {
             context: context.clone(),
             devs: devs.to_vec(),
             src: src,
+            il: Vec::new(),
+            spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
                 kernels: Vec::new(),
@@ -150,10 +154,10 @@ impl Program {
                         // 4. the spirv
                         assert!(b.as_ptr().add(BIN_HEADER_SIZE_V1) == ptr);
                         assert!(b.len() == BIN_HEADER_SIZE_V1 + spirv_size as usize);
-                        spirv = Some(spirv::SPIRVBin::from_bin(
-                            slice::from_raw_parts(ptr, spirv_size as usize),
-                            bin_type == CL_PROGRAM_BINARY_TYPE_EXECUTABLE,
-                        ));
+                        spirv = Some(spirv::SPIRVBin::from_bin(slice::from_raw_parts(
+                            ptr,
+                            spirv_size as usize,
+                        )));
                     }
                     _ => panic!("unknown version"),
                 }
@@ -182,9 +186,43 @@ impl Program {
             context: context,
             devs: devs,
             src: CString::new("").unwrap(),
+            il: Vec::new(),
+            spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
                 kernels: kernels.into_iter().collect(),
+            }),
+        })
+    }
+
+    pub fn from_spirv(context: Arc<Context>, spirv: &[u8]) -> Arc<Program> {
+        let mut builds = HashMap::new();
+
+        for d in &context.devs {
+            let spirv = Some(spirv::SPIRVBin::from_bin(spirv));
+
+            builds.insert(
+                d.clone(),
+                ProgramDevBuild {
+                    spirv: spirv,
+                    status: CL_BUILD_SUCCESS as cl_build_status,
+                    log: String::from(""),
+                    options: String::from(""),
+                    bin_type: CL_PROGRAM_BINARY_TYPE_INTERMEDIATE,
+                },
+            );
+        }
+
+        Arc::new(Self {
+            base: CLObjectBase::new(),
+            devs: context.devs.clone(),
+            context: context,
+            src: CString::new("").unwrap(),
+            il: spirv.to_vec(),
+            spec_constants: Mutex::new(Vec::new()),
+            build: Mutex::new(ProgramBuild {
+                builds: builds,
+                kernels: Vec::new(),
             }),
         })
     }
@@ -293,31 +331,36 @@ impl Program {
 
     pub fn build(&self, dev: &Arc<Device>, options: String) -> bool {
         // program binary
-        if self.src.as_bytes().is_empty() {
+        let is_il = !self.il.is_empty();
+        if self.src.as_bytes().is_empty() && !is_il {
             return true;
         }
 
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
         let lib = options.contains("-create-library");
-
         let args = prepare_options(&options, dev);
-        let (spirv, log) = spirv::SPIRVBin::from_clc(
-            &self.src,
-            &args,
-            &Vec::new(),
-            get_disk_cache(),
-            dev.cl_features(),
-        );
 
-        d.log = log;
-        d.options = options;
-        if spirv.is_none() {
-            d.status = CL_BUILD_ERROR;
-            return false;
+        if !is_il {
+            let (spirv, log) = spirv::SPIRVBin::from_clc(
+                &self.src,
+                &args,
+                &Vec::new(),
+                get_disk_cache(),
+                dev.cl_features(),
+            );
+
+            d.log = log;
+            if spirv.is_none() {
+                d.status = CL_BUILD_ERROR;
+                return false;
+            }
+            d.spirv = spirv;
         }
 
-        let spirvs = vec![spirv.as_ref().unwrap()];
+        d.options = options;
+
+        let spirvs = [d.spirv.as_ref().unwrap()];
         let (spirv, log) = spirv::SPIRVBin::link(&spirvs, lib);
 
         d.log.push_str(&log);
@@ -345,12 +388,19 @@ impl Program {
         headers: &[spirv::CLCHeader],
     ) -> bool {
         // program binary
-        if self.src.as_bytes().is_empty() {
+        let is_il = !self.il.is_empty();
+        if self.src.as_bytes().is_empty() && !is_il {
             return true;
         }
 
         let mut info = self.build_info();
         let d = Self::dev_build_info(&mut info, dev);
+
+        if is_il {
+            d.bin_type = CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT;
+            return true;
+        }
+
         let args = prepare_options(&options, dev);
 
         let (spirv, log) = spirv::SPIRVBin::from_clc(
@@ -429,6 +479,8 @@ impl Program {
             context: context,
             devs: devs,
             src: CString::new("").unwrap(),
+            il: Vec::new(),
+            spec_constants: Mutex::new(Vec::new()),
             build: Mutex::new(ProgramBuild {
                 builds: builds,
                 kernels: kernels.into_iter().collect(),
@@ -492,6 +544,7 @@ impl Program {
                 d.screen
                     .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
                 &d.lib_clc,
+                &mut [],
             )
             .unwrap()
     }

@@ -116,6 +116,7 @@ macro_rules! cl_prop_for_struct {
 }
 
 cl_prop_for_type!(cl_char);
+cl_prop_for_type!(cl_uchar);
 cl_prop_for_type!(cl_ushort);
 cl_prop_for_type!(cl_int);
 cl_prop_for_type!(cl_uint);
@@ -176,6 +177,19 @@ where
     }
 }
 
+impl<T> CLProp for [T]
+where
+    T: CLProp,
+{
+    fn cl_vec(&self) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::new();
+        for i in self {
+            res.append(&mut i.cl_vec())
+        }
+        res
+    }
+}
+
 impl<T, const I: usize> CLProp for [T; I]
 where
     T: CLProp,
@@ -225,7 +239,10 @@ where
     }
 }
 
-pub fn cl_prop<T: CLProp>(v: T) -> Vec<u8> {
+pub fn cl_prop<T: CLProp>(v: T) -> Vec<u8>
+where
+    T: Sized,
+{
     v.cl_vec()
 }
 

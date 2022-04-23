@@ -12,6 +12,18 @@ use std::ptr;
 use std::sync::Arc;
 use std::sync::Once;
 
+// TODO spec constants need to be implemented
+const SPIRV_SUPPORT_STRING: &str = "";
+//    "SPIR-V_1.0 SPIR-V_1.1 SPIR-V_1.2 SPIR-V_1.3 SPIR-V_1.4 SPIR-V_1.5";
+const SPIRV_SUPPORT: [cl_name_version; 0] = [
+/*    mk_cl_version_ext(1, 0, 0, b"SPIR-V"),
+    mk_cl_version_ext(1, 1, 0, b"SPIR-V"),
+    mk_cl_version_ext(1, 2, 0, b"SPIR-V"),
+    mk_cl_version_ext(1, 3, 0, b"SPIR-V"),
+    mk_cl_version_ext(1, 4, 0, b"SPIR-V"),
+    mk_cl_version_ext(1, 5, 0, b"SPIR-V"),*/
+];
+
 impl CLInfo<cl_device_info> for cl_device_id {
     fn query(&self, q: cl_device_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let dev = self.get_ref()?;
@@ -61,8 +73,8 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_GLOBAL_VARIABLE_PREFERRED_TOTAL_SIZE => cl_prop::<usize>(0),
             CL_DEVICE_HALF_FP_CONFIG => cl_prop::<cl_device_fp_config>(0),
             CL_DEVICE_HOST_UNIFIED_MEMORY => cl_prop::<bool>(dev.unified_memory()),
-            CL_DEVICE_IL_VERSION => cl_prop::<&str>(""),
-            CL_DEVICE_ILS_WITH_VERSION => cl_prop::<Vec<cl_name_version>>(Vec::new()),
+            CL_DEVICE_IL_VERSION => cl_prop::<&str>(SPIRV_SUPPORT_STRING),
+            CL_DEVICE_ILS_WITH_VERSION => cl_prop::<Vec<cl_name_version>>(SPIRV_SUPPORT.to_vec()),
             CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT => {
                 cl_prop::<cl_uint>(dev.image_base_address_alignment())
             }

@@ -38,7 +38,7 @@ impl CLInfo<cl_program_info> for cl_program {
                         .collect(),
                 )
             }
-            CL_PROGRAM_IL => Vec::new(),
+            CL_PROGRAM_IL => prog.il.clone(),
             CL_PROGRAM_KERNEL_NAMES => cl_prop::<String>(prog.kernels().join(";")),
             CL_PROGRAM_NUM_DEVICES => cl_prop::<cl_uint>(prog.devs.len() as cl_uint),
             CL_PROGRAM_NUM_KERNELS => cl_prop::<usize>(prog.kernels().len()),
@@ -195,17 +195,20 @@ pub fn create_program_with_binary(
 
 pub fn create_program_with_il(
     context: cl_context,
-    _il: *const ::std::os::raw::c_void,
-    _length: usize,
+    il: *const ::std::os::raw::c_void,
+    length: usize,
 ) -> CLResult<cl_program> {
-    let _c = context.get_ref()?;
+    let _c = context.get_arc()?;
 
-    println!("create_program_with_il not implemented");
+    // CL_INVALID_VALUE if il is NULL or if length is zero.
+    if il.is_null() || length == 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    //    let spirv = unsafe { slice::from_raw_parts(il.cast(), length) };
+    // TODO SPIR-V
+    //    Ok(cl_program::from_arc(Program::from_spirv(c, spirv)))
     Err(CL_INVALID_OPERATION)
-    //• CL_INVALID_CONTEXT if context is not a valid context.
-    //• CL_INVALID_OPERATION if no devices in context support intermediate language programs.
-    //• CL_INVALID_VALUE if il is NULL or if length is zero.
-    //• CL_INVALID_VALUE if the length-byte memory pointed to by il does not contain well-formed intermediate language input that can be consumed by the OpenCL runtime.
 }
 
 pub fn build_program(
@@ -361,13 +364,30 @@ pub fn link_program(
 }
 
 pub fn set_program_specialization_constant(
-    _program: cl_program,
+    program: cl_program,
     _spec_id: cl_uint,
     _spec_size: usize,
-    _spec_value: *const ::std::os::raw::c_void,
+    spec_value: *const ::std::os::raw::c_void,
 ) -> CLResult<()> {
-    println!("set_program_specialization_constantnot implemented");
+    let _program = program.get_ref()?;
+
+    // CL_INVALID_PROGRAM if program is not a valid program object created from an intermediate
+    // language (e.g. SPIR-V)
+    // TODO: or if the intermediate language does not support specialization constants.
+    //    if program.il.is_empty() {
+    //        Err(CL_INVALID_PROGRAM)?
+    //    }
+
+    // TODO: CL_INVALID_VALUE if spec_size does not match the size of the specialization constant in the module,
+
+    // or if spec_value is NULL.
+    if spec_value.is_null() {
+        return Err(CL_INVALID_VALUE);
+    }
+
     Err(CL_INVALID_OPERATION)
+
+    //• CL_INVALID_SPEC_ID if spec_id is not a valid specialization constant identifier.
 }
 
 pub fn set_program_release_callback(

@@ -1258,8 +1258,9 @@ extern "C" fn cl_get_extension_function_address(
         return ptr::null_mut();
     }
     match unsafe { CStr::from_ptr(function_name) }.to_str().unwrap() {
-        "clGetPlatformInfo" => cl_get_platform_info as *mut std::ffi::c_void,
-        "clIcdGetPlatformIDsKHR" => cl_icd_get_platform_ids_khr as *mut std::ffi::c_void,
+        "clCreateProgramWithILKHR" => cl_create_program_with_il as *mut ::std::ffi::c_void,
+        "clGetPlatformInfo" => cl_get_platform_info as *mut ::std::ffi::c_void,
+        "clIcdGetPlatformIDsKHR" => cl_icd_get_platform_ids_khr as *mut ::std::ffi::c_void,
         _ => ptr::null_mut(),
     }
 }
