@@ -1258,10 +1258,9 @@ update_csctx_ssbo(struct llvmpipe_context *llvmpipe)
       struct pipe_resource *buffer = csctx->ssbos[i].current.buffer;
       const ubyte *current_data = NULL;
 
-      if (!buffer)
-         continue;
       /* resource buffer */
-      current_data = (ubyte *) llvmpipe_resource_data(buffer);
+      if (buffer)
+         current_data = (ubyte *) llvmpipe_resource_data(buffer);
       if (current_data) {
          current_data += csctx->ssbos[i].current.buffer_offset;
 
