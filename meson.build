@@ -1207,6 +1207,14 @@ else
     _trial_cpp += ['-ffunction-sections', '-fdata-sections']
   endif
 
+  # Variables that are only used for assertions are considered unused in release
+  # builds. Don't treat this as an error, since we build with -Werror even for
+  # release in CI.
+  if get_option('buildtype') == 'release'
+    _trial_c += ['-Wno-unused-variable', '-Wno-unused-but-set-variable']
+    _trial_cpp += ['-Wno-unused-variable', '-Wno-unused-but-set-variable']
+  endif
+
   c_args += cc.get_supported_arguments(_trial_c)
   cpp_args += cpp.get_supported_arguments(_trial_cpp)
 
