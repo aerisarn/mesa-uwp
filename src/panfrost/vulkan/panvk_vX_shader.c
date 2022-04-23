@@ -4,6 +4,9 @@
  * Derived from tu_shader.c which is:
  * Copyright © 2019 Google LLC
  *
+ * Also derived from anv_pipeline.c which is
+ * Copyright © 2015 Intel Corporation
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
@@ -493,6 +496,18 @@ panvk_lower_load_push_constant(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
+static void
+shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   uint32_t comp_size = glsl_type_is_boolean(type)
+      ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+   *size = comp_size * length,
+   *align = comp_size * (length == 3 ? 4 : length);
+}
+
 struct panvk_shader *
 panvk_per_arch(shader_create)(struct panvk_device *dev,
                               gl_shader_stage stage,
@@ -567,6 +582,19 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_push_const,
               nir_address_format_32bit_offset);
+
+   if (gl_shader_stage_uses_workgroup(stage)) {
+      if (!nir->info.shared_memory_explicit_layout) {
+         NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+                    nir_var_mem_shared,
+                    shared_type_info);
+      }
+
+      NIR_PASS_V(nir, nir_lower_explicit_io,
+                 nir_var_mem_shared,
+                 nir_address_format_32bit_offset);
+   }
+
    NIR_PASS_V(nir, nir_shader_instructions_pass,
               panvk_lower_load_push_constant,
               nir_metadata_block_index |
