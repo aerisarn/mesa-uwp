@@ -162,6 +162,12 @@ static VkResult
 panvk_pipeline_builder_upload_shaders(struct panvk_pipeline_builder *builder,
                                       struct panvk_pipeline *pipeline)
 {
+   /* In some cases, the optimized shader is empty. Don't bother allocating
+    * anything in this case.
+    */
+   if (builder->shader_total_size == 0)
+      return VK_SUCCESS;
+
    struct panfrost_bo *bin_bo =
       panfrost_bo_create(&builder->device->physical_device->pdev,
                          builder->shader_total_size, PAN_BO_EXECUTE,
@@ -335,8 +341,13 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
       if (i == MESA_SHADER_VERTEX && shader->info.vs.writes_point_size)
          pipeline->ia.writes_point_size = true;
 
-      mali_ptr shader_ptr = pipeline->binary_bo->ptr.gpu +
-                            builder->stages[i].shader_offset;
+      mali_ptr shader_ptr = 0;
+
+      /* Handle empty shaders gracefully */
+      if (util_dynarray_num_elements(&builder->shaders[i]->binary, uint8_t)) {
+         shader_ptr = pipeline->binary_bo->ptr.gpu +
+                      builder->stages[i].shader_offset;
+      }
 
       void *rsd = pipeline->state_bo->ptr.cpu + builder->stages[i].rsd_offset;
       mali_ptr gpu_rsd = pipeline->state_bo->ptr.gpu + builder->stages[i].rsd_offset;
