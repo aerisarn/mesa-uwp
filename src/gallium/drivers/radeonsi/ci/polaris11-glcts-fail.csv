@@ -1,0 +1,3 @@
+KHR-GL46.geometry_shader.layered_rendering_fbo_no_attachment.layered_rendering_fbo_no_attachment,Fail
+KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
+KHR-GL46.shader_image_load_store.advanced-sso-subroutine,Fail

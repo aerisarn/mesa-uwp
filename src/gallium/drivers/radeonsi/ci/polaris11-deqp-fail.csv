@@ -1,0 +1,5 @@
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_2_invocations,Fail
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_32_invocations,Fail
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_8_invocations,Fail
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_max_invocations,Fail
+dEQP-GLES31.functional.srgb_texture_decode.skip_decode.srgba8.texel_fetch,Crash
