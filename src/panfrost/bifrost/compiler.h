@@ -465,6 +465,7 @@ typedef struct {
                 struct {
                         enum bi_special special; /* FADD_RSCALE, FMA_RSCALE */
                         enum bi_round round; /* FMA, converts, FADD, _RSCALE, etc */
+                        bool ftz; /* Flush-to-zero for F16_TO_F32 */
                 };
 
                 struct {
@@ -635,6 +636,9 @@ typedef struct {
 
         /* Discard helper threads */
         bool td;
+
+        /* Should flush-to-zero mode be enabled for this clause? */
+        bool ftz;
 } bi_clause;
 
 #define BI_NUM_SLOTS 8

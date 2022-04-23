@@ -107,6 +107,17 @@ struct bi_const_state {
         unsigned word_idx;
 };
 
+enum bi_ftz_state {
+        /* No flush-to-zero state assigned yet */
+        BI_FTZ_STATE_NONE,
+
+        /* Never flush-to-zero */
+        BI_FTZ_STATE_DISABLE,
+
+        /* Always flush-to-zero */
+        BI_FTZ_STATE_ENABLE,
+};
+
 struct bi_clause_state {
         /* Has a message-passing instruction already been assigned? */
         bool message;
@@ -118,6 +129,9 @@ struct bi_clause_state {
 
         unsigned tuple_count;
         struct bi_const_state consts[8];
+
+        /* Numerical state of the clause */
+        enum bi_ftz_state ftz;
 };
 
 /* Determines messsage type by checking the table and a few special cases. Only
@@ -1027,6 +1041,28 @@ bi_write_count(bi_instr *instr, uint64_t live_after_temp)
         return count;
 }
 
+/*
+ * Test if an instruction required flush-to-zero mode. Currently only supported
+ * for f16<-->f32 conversions to implement fquantize16
+ */
+static bool
+bi_needs_ftz(bi_instr *I)
+{
+        return (I->op == BI_OPCODE_F16_TO_F32 ||
+                I->op == BI_OPCODE_V2F32_TO_V2F16) && I->ftz;
+}
+
+/*
+ * Test if an instruction would be numerically incompatible with the clause. At
+ * present we only consider flush-to-zero modes.
+ */
+static bool
+bi_numerically_incompatible(struct bi_clause_state *clause, bi_instr *instr)
+{
+        return (clause->ftz != BI_FTZ_STATE_NONE) &&
+               ((clause->ftz == BI_FTZ_STATE_ENABLE) != bi_needs_ftz(instr));
+}
+
 /* Instruction placement entails two questions: what subset of instructions in
  * the block can legally be scheduled? and of those which is the best? That is,
  * we seek to maximize a cost function on a subset of the worklist satisfying a
@@ -1054,6 +1090,10 @@ bi_instr_schedulable(bi_instr *instr,
                 return false;
 
         if (bi_must_not_last(instr) && tuple->last)
+                return false;
+
+        /* Numerical properties must be compatible with the clause */
+        if (bi_numerically_incompatible(clause, instr))
                 return false;
 
         /* Message-passing instructions are not guaranteed write within the
@@ -1220,6 +1260,13 @@ bi_pop_instr(struct bi_clause_state *clause, struct bi_tuple_state *tuple,
                 if (bi_tuple_is_new_src(instr, &tuple->reg, s))
                         tuple->reg.reads[tuple->reg.nr_reads++] = instr->src[s];
         }
+
+        /* This could be optimized to allow pairing integer instructions with
+         * special flush-to-zero instructions, but punting on this until we have
+         * a workload that cares.
+         */
+        clause->ftz = bi_needs_ftz(instr) ? BI_FTZ_STATE_ENABLE :
+                                            BI_FTZ_STATE_DISABLE;
 }
 
 /* Choose the best instruction and pop it off the worklist. Returns NULL if no
@@ -1864,6 +1911,8 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st, uint
         bi_instr *last = clause->tuples[max_tuples - 1].add;
         clause->next_clause_prefetch = !last || (last->op != BI_OPCODE_JUMP);
         clause->block = block;
+
+        clause->ftz = (clause_state.ftz == BI_FTZ_STATE_ENABLE);
 
         /* We emit in reverse and emitted to the back of the tuples array, so
          * move it up front for easy indexing */

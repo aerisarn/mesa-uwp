@@ -2357,6 +2357,15 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_f16_to_f32_to(b, dst, s0);
                 break;
 
+        case nir_op_fquantize2f16:
+        {
+                bi_instr *f16 = bi_v2f32_to_v2f16_to(b, bi_temp(b->shader), s0, s0);
+                bi_instr *f32 = bi_f16_to_f32_to(b, dst, bi_half(f16->dest[0], false));
+
+                f16->ftz = f32->ftz = true;
+                break;
+        }
+
         case nir_op_f2i32:
                 if (src_sz == 32)
                         bi_f32_to_s32_to(b, dst, s0);

@@ -2429,6 +2429,7 @@
       <opt>rtz</opt>
       <opt>rtna</opt>
     </mod>
+    <mod name="ftz" start="9" size="1" opt="ftz" pseudo="true"/>
     <derived start="6" size="1">
       <and>
         <eq left="abs0" right="#none"/>
@@ -3870,6 +3871,7 @@
       <opt>h0</opt>
       <opt>h1</opt>
     </mod>
+    <mod name="ftz" start="9" size="1" opt="ftz" pseudo="true"/>
   </ins>
 
   <ins name="+F16_TO_S32">
@@ -7938,6 +7940,7 @@
       <opt>rtz</opt>
       <opt>rtna</opt>
     </mod>
+    <mod name="ftz" start="9" size="1" opt="ftz" pseudo="true"/>
     <derived start="6" size="1">
       <and>
         <eq left="abs0" right="#none"/>
