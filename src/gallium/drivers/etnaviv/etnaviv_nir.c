@@ -108,6 +108,8 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   src1 = &tex->src[i].src;
                   src1_idx = i;
                   break;
+               case nir_tex_src_ddx:
+               case nir_tex_src_ddy:
                case nir_tex_src_comparator:
                   break;
                default:

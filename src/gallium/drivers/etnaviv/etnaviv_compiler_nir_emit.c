@@ -212,6 +212,7 @@ etna_emit_tex(struct etna_compile *c, nir_texop op, unsigned texid, unsigned dst
    switch (op) {
    case nir_texop_tex: inst.opcode = INST_OPCODE_TEXLD; break;
    case nir_texop_txb: inst.opcode = INST_OPCODE_TEXLDB; break;
+   case nir_texop_txd: inst.opcode = INST_OPCODE_TEXLDD; break;
    case nir_texop_txl: inst.opcode = INST_OPCODE_TEXLDL; break;
    default:
       compile_error(c, "Unhandled NIR tex type: %d\n", op);
