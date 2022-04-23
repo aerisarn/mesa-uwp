@@ -1096,52 +1096,56 @@ static void fill_sampler_view_stage(struct rendering_state *state,
    sv_idx += array_idx;
    sv_idx += dyn_info->stage[stage].sampler_view_count;
    struct lvp_image_view *iv = descriptor->iview;
-   struct pipe_sampler_view templ;
 
-   enum pipe_format pformat;
-   if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
-      pformat = lvp_vk_format_to_pipe_format(iv->vk.format);
-   else if (iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
-      pformat = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->vk.format));
-   else
-      pformat = lvp_vk_format_to_pipe_format(iv->vk.format);
-   u_sampler_view_default_template(&templ,
-                                   iv->image->bo,
-                                   pformat);
-   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_1D)
-      templ.target = PIPE_TEXTURE_1D;
-   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_2D)
-      templ.target = PIPE_TEXTURE_2D;
-   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE)
-      templ.target = PIPE_TEXTURE_CUBE;
-   if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
-      templ.target = PIPE_TEXTURE_CUBE_ARRAY;
-   templ.u.tex.first_layer = iv->vk.base_array_layer;
-   templ.u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
-   templ.u.tex.first_level = iv->vk.base_mip_level;
-   templ.u.tex.last_level = iv->vk.base_mip_level + iv->vk.level_count - 1;
-   templ.swizzle_r = vk_conv_swizzle(iv->vk.swizzle.r);
-   templ.swizzle_g = vk_conv_swizzle(iv->vk.swizzle.g);
-   templ.swizzle_b = vk_conv_swizzle(iv->vk.swizzle.b);
-   templ.swizzle_a = vk_conv_swizzle(iv->vk.swizzle.a);
+   if (iv) {
+      struct pipe_sampler_view templ;
+      enum pipe_format pformat;
+      if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT)
+         pformat = lvp_vk_format_to_pipe_format(iv->vk.format);
+      else if (iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT)
+         pformat = util_format_stencil_only(lvp_vk_format_to_pipe_format(iv->vk.format));
+      else
+         pformat = lvp_vk_format_to_pipe_format(iv->vk.format);
+      u_sampler_view_default_template(&templ,
+                                      iv->image->bo,
+                                      pformat);
+      if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_1D)
+         templ.target = PIPE_TEXTURE_1D;
+      if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_2D)
+         templ.target = PIPE_TEXTURE_2D;
+      if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE)
+         templ.target = PIPE_TEXTURE_CUBE;
+      if (iv->vk.view_type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+         templ.target = PIPE_TEXTURE_CUBE_ARRAY;
+      templ.u.tex.first_layer = iv->vk.base_array_layer;
+      templ.u.tex.last_layer = iv->vk.base_array_layer + iv->vk.layer_count - 1;
+      templ.u.tex.first_level = iv->vk.base_mip_level;
+      templ.u.tex.last_level = iv->vk.base_mip_level + iv->vk.level_count - 1;
+      templ.swizzle_r = vk_conv_swizzle(iv->vk.swizzle.r);
+      templ.swizzle_g = vk_conv_swizzle(iv->vk.swizzle.g);
+      templ.swizzle_b = vk_conv_swizzle(iv->vk.swizzle.b);
+      templ.swizzle_a = vk_conv_swizzle(iv->vk.swizzle.a);
 
-   /* depth stencil swizzles need special handling to pass VK CTS
-    * but also for zink GL tests.
-    * piping A swizzle into R fixes GL_ALPHA depth texture mode
-    * only swizzling from R/0/1 (for alpha) fixes VK CTS tests
-    * and a bunch of zink tests.
-   */
-   if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT ||
-       iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      fix_depth_swizzle(templ.swizzle_r);
-      fix_depth_swizzle(templ.swizzle_g);
-      fix_depth_swizzle(templ.swizzle_b);
-      fix_depth_swizzle_a(templ.swizzle_a);
+      /* depth stencil swizzles need special handling to pass VK CTS
+       * but also for zink GL tests.
+       * piping A swizzle into R fixes GL_ALPHA depth texture mode
+       * only swizzling from R/0/1 (for alpha) fixes VK CTS tests
+       * and a bunch of zink tests.
+      */
+      if (iv->vk.aspects == VK_IMAGE_ASPECT_DEPTH_BIT ||
+          iv->vk.aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         fix_depth_swizzle(templ.swizzle_r);
+         fix_depth_swizzle(templ.swizzle_g);
+         fix_depth_swizzle(templ.swizzle_b);
+         fix_depth_swizzle_a(templ.swizzle_a);
+      }
+
+      if (state->sv[p_stage][sv_idx])
+         pipe_sampler_view_reference(&state->sv[p_stage][sv_idx], NULL);
+      state->sv[p_stage][sv_idx] = state->pctx->create_sampler_view(state->pctx, iv->image->bo, &templ);
+   } else {
+      state->sv[p_stage][sv_idx] = NULL;
    }
-
-   if (state->sv[p_stage][sv_idx])
-      pipe_sampler_view_reference(&state->sv[p_stage][sv_idx], NULL);
-   state->sv[p_stage][sv_idx] = state->pctx->create_sampler_view(state->pctx, iv->image->bo, &templ);
    if (state->num_sampler_views[p_stage] <= sv_idx)
       state->num_sampler_views[p_stage] = sv_idx + 1;
    state->sv_dirty[p_stage] = true;
