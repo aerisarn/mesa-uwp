@@ -41,11 +41,8 @@
 static void radeon_enc_spec_misc(struct radeon_encoder *enc)
 {
    enc->enc_pic.spec_misc.constrained_intra_pred_flag = 0;
-   enc->enc_pic.spec_misc.cabac_enable = 0;
-   enc->enc_pic.spec_misc.cabac_init_idc = 0;
    enc->enc_pic.spec_misc.half_pel_enabled = 1;
    enc->enc_pic.spec_misc.quarter_pel_enabled = 1;
-   enc->enc_pic.spec_misc.profile_idc = u_get_h264_profile_idc(enc->base.profile);
    enc->enc_pic.spec_misc.level_idc = enc->base.level;
    enc->enc_pic.spec_misc.b_picture_enabled = 0;
    enc->enc_pic.spec_misc.weighted_bipred_idc = 0;

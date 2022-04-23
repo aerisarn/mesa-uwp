@@ -168,11 +168,8 @@ static void radeon_enc_slice_control_hevc(struct radeon_encoder *enc)
 static void radeon_enc_spec_misc(struct radeon_encoder *enc)
 {
    enc->enc_pic.spec_misc.constrained_intra_pred_flag = 0;
-   enc->enc_pic.spec_misc.cabac_enable = 0;
-   enc->enc_pic.spec_misc.cabac_init_idc = 0;
    enc->enc_pic.spec_misc.half_pel_enabled = 1;
    enc->enc_pic.spec_misc.quarter_pel_enabled = 1;
-   enc->enc_pic.spec_misc.profile_idc = u_get_h264_profile_idc(enc->base.profile);
    enc->enc_pic.spec_misc.level_idc = enc->base.level;
 
    RADEON_ENC_BEGIN(enc->cmd.spec_misc_h264);
