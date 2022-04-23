@@ -628,21 +628,6 @@ public:
       return SPV_SUCCESS;
    }
 
-   bool parsingComplete()
-   {
-      for (auto &kernel : kernels) {
-         if (kernel.name.empty())
-            return false;
-
-         for (auto &arg : kernel.args) {
-            if (arg.name.empty() || arg.typeName.empty())
-               return false;
-         }
-      }
-
-      return true;
-   }
-
    bool parseBinary(const struct clc_binary &spvbin, const struct clc_logger *logger)
    {
       /* 3 passes should be enough to retrieve all kernel information:
@@ -661,13 +646,9 @@ public:
                logger->error(logger->priv, diagnostic->error);
             return false;
          }
-
-         if (parsingComplete())
-            return true;
       }
 
-      assert(0);
-      return false;
+      return true;
    }
 
    std::vector<SPIRVKernelInfo> kernels;
