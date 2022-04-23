@@ -2027,6 +2027,26 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_mov_i32_to(b, bi_word(dst, 1), bi_word(bi_src_index(&instr->src[0].src), 1));
                 return;
 
+        case nir_op_pack_uvec2_to_uint: {
+                bi_index src = bi_src_index(&instr->src[0].src);
+
+                assert(sz == 32 && src_sz == 32);
+                bi_mkvec_v2i16_to(b, dst, bi_half(bi_word(src, 0), false),
+                                          bi_half(bi_word(src, 1), false));
+                return;
+        }
+
+        case nir_op_pack_uvec4_to_uint: {
+                bi_index src = bi_src_index(&instr->src[0].src);
+
+                assert(sz == 32 && src_sz == 32);
+                bi_mkvec_v4i8_to(b, dst, bi_byte(bi_word(src, 0), 0),
+                                         bi_byte(bi_word(src, 1), 0),
+                                         bi_byte(bi_word(src, 2), 0),
+                                         bi_byte(bi_word(src, 3), 0));
+                return;
+        }
+
         case nir_op_mov: {
                 bi_index idx = bi_src_index(&instr->src[0].src);
                 bi_index unoffset_srcs[4] = { idx, idx, idx, idx };
@@ -3939,6 +3959,23 @@ bi_vectorize_filter(const nir_instr *instr, void *data)
         }
 }
 
+static bool
+bi_scalarize_filter(const nir_instr *instr, const void *data)
+{
+        if (instr->type != nir_instr_type_alu)
+                return false;
+
+        const nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+        switch (alu->op) {
+        case nir_op_pack_uvec2_to_uint:
+        case nir_op_pack_uvec4_to_uint:
+                return false;
+        default:
+                return true;
+        }
+}
+
 /* XXX: This is a kludge to workaround NIR's lack of divergence metadata. If we
  * keep divergence info around after we consume it for indirect lowering,
  * nir_convert_from_ssa will regress code quality since it will avoid
@@ -4041,7 +4078,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
         NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
-        NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+        NIR_PASS(progress, nir, nir_lower_alu_to_scalar, bi_scalarize_filter, NULL);
         NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
         do {
@@ -4105,7 +4142,7 @@ bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
                 NIR_PASS(progress, nir, nir_opt_cse);
         }
 
-        NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
+        NIR_PASS(progress, nir, nir_lower_alu_to_scalar, bi_scalarize_filter, NULL);
         NIR_PASS(progress, nir, nir_opt_vectorize, bi_vectorize_filter, NULL);
         NIR_PASS(progress, nir, nir_lower_bool_to_bitsize);
 
