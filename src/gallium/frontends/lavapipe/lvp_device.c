@@ -937,8 +937,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
          VkPhysicalDeviceRobustness2FeaturesEXT *features = (VkPhysicalDeviceRobustness2FeaturesEXT *)ext;
-         features->robustBufferAccess2 = false;
-         features->robustImageAccess2 = false;
+         features->robustBufferAccess2 = true;
+         features->robustImageAccess2 = true;
          features->nullDescriptor = true;
          break;
       }
