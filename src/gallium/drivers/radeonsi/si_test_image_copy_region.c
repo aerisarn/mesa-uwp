@@ -47,7 +47,7 @@ static void alloc_cpu_texture(struct cpu_texture *tex, struct pipe_resource *tem
 {
    tex->stride = align(util_format_get_stride(templ->format, templ->width0), RAND_NUM_SIZE);
    tex->layer_stride = (uint64_t)tex->stride * templ->height0;
-   tex->size = tex->layer_stride * templ->array_size;
+   tex->size = tex->layer_stride * util_num_layers(templ, 0);
    tex->ptr = malloc(tex->size);
    assert(tex->ptr);
 }
@@ -58,12 +58,13 @@ static void set_random_pixels(struct pipe_context *ctx, struct pipe_resource *te
    struct pipe_transfer *t;
    uint8_t *map;
    int x, y, z;
+   unsigned num_layers = util_num_layers(tex, 0);
 
    map = pipe_texture_map_3d(ctx, tex, 0, PIPE_MAP_WRITE, 0, 0, 0, tex->width0, tex->height0,
-                              tex->array_size, &t);
+                             num_layers, &t);
    assert(map);
 
-   for (z = 0; z < tex->array_size; z++) {
+   for (z = 0; z < num_layers; z++) {
       for (y = 0; y < tex->height0; y++) {
          uint64_t *ptr = (uint64_t *)(map + t->layer_stride * z + t->stride * y);
          uint64_t *ptr_cpu = (uint64_t *)(cpu->ptr + cpu->layer_stride * z + cpu->stride * y);
@@ -89,12 +90,13 @@ static bool compare_textures(struct pipe_context *ctx, struct pipe_resource *tex
    int y, z;
    bool pass = true;
    unsigned stride = util_format_get_stride(tex->format, tex->width0);
+   unsigned num_layers = util_num_layers(tex, 0);
 
    map = pipe_texture_map_3d(ctx, tex, 0, PIPE_MAP_READ, 0, 0, 0, tex->width0, tex->height0,
-                              tex->array_size, &t);
+                             num_layers, &t);
    assert(map);
 
-   for (z = 0; z < tex->array_size; z++) {
+   for (z = 0; z < num_layers; z++) {
       for (y = 0; y < tex->height0; y++) {
          uint8_t *ptr = map + t->layer_stride * z + t->stride * y;
          uint8_t *cpu_ptr = cpu->ptr + cpu->layer_stride * z + cpu->stride * y;
@@ -119,28 +121,74 @@ static enum pipe_format choose_format()
    return formats[rand() % ARRAY_SIZE(formats)];
 }
 
-#define MAX_ALLOC_SIZE (128 * 1024 * 1024)
+#define MAX_ALLOC_SIZE (64 * 1024 * 1024)
 
 static void set_random_image_attrs(struct pipe_resource *templ)
 {
-   templ->target = PIPE_TEXTURE_2D_ARRAY;
+   switch (rand() % 6) {
+   case 0:
+      templ->target = PIPE_TEXTURE_1D;
+      break;
+   case 1:
+      templ->target = PIPE_TEXTURE_2D;
+      break;
+   case 2:
+      templ->target = PIPE_TEXTURE_3D;
+      break;
+   case 3:
+      templ->target = PIPE_TEXTURE_RECT;
+      break;
+   case 4:
+      templ->target = PIPE_TEXTURE_1D_ARRAY;
+      break;
+   case 5:
+   default:
+      templ->target = PIPE_TEXTURE_2D_ARRAY;
+      break;
+   }
+
    templ->usage = PIPE_USAGE_DEFAULT;
 
+   templ->height0 = 1;
+   templ->depth0 = 1;
+   templ->array_size = 1;
+
    /* Try to hit microtiling in 1/2 of the cases. */
-   unsigned max_tex_size = rand() & 1 ? 128 : 4096;
-   unsigned max_tex_layers = rand() % 4 ? 1 : 3;
+   unsigned max_tex_size = rand() & 1 ? 128 : 1024;
 
-   /* keep generating the image size until it's less than the max size */
-   while (1) {
-      templ->width0 = (rand() % max_tex_size) + 1;
+   templ->width0 = (rand() % max_tex_size) + 1;
+
+   if (templ->target != PIPE_TEXTURE_1D &&
+       templ->target != PIPE_TEXTURE_1D_ARRAY)
       templ->height0 = (rand() % max_tex_size) + 1;
-      templ->depth0 = 1;
-      templ->array_size = (rand() % max_tex_layers) + 1;
 
-      if ((uint64_t)util_format_get_nblocks(templ->format, templ->width0, templ->height0) *
-          templ->depth0 * templ->array_size * util_format_get_blocksize(templ->format) <
-          MAX_ALLOC_SIZE)
+   if (templ->target == PIPE_TEXTURE_3D)
+      templ->depth0 = (rand() % max_tex_size) + 1;
+
+   if (templ->target == PIPE_TEXTURE_1D_ARRAY ||
+       templ->target == PIPE_TEXTURE_2D_ARRAY)
+      templ->array_size = (rand() % max_tex_size) + 1;
+
+   /* Keep reducing the size until it we get a small enough size. */
+   while ((uint64_t)util_format_get_nblocks(templ->format, templ->width0, templ->height0) *
+          templ->depth0 * templ->array_size * util_format_get_blocksize(templ->format) >
+          MAX_ALLOC_SIZE) {
+      switch (rand() % 3) {
+      case 0:
+         if (templ->width0 > 1)
+            templ->width0 /= 2;
          break;
+      case 1:
+         if (templ->height0 > 1)
+            templ->height0 /= 2;
+         break;
+      case 2:
+         if (templ->depth0 > 1)
+            templ->depth0 /= 2;
+         else if (templ->array_size > 1)
+            templ->array_size /= 2;
+         break;
+      }
    }
 
    if (util_format_get_blockwidth(templ->format) == 2)
@@ -257,12 +305,12 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       uint32_t zero = 0;
       si_clear_buffer(sctx, dst, 0, sdst->surface.surf_size, &zero, 4, SI_OP_SYNC_BEFORE_AFTER,
                       SI_COHERENCY_SHADER, SI_AUTO_SELECT_CLEAR_METHOD);
-      memset(dst_cpu.ptr, 0, dst_cpu.layer_stride * tdst.array_size);
+      memset(dst_cpu.ptr, 0, dst_cpu.layer_stride * util_num_layers(&tdst, 0));
 
       /* preparation */
       max_width = MIN2(tsrc.width0, tdst.width0);
       max_height = MIN2(tsrc.height0, tdst.height0);
-      max_depth = MIN2(tsrc.array_size, tdst.array_size);
+      max_depth = MIN2(util_num_layers(&tsrc, 0), util_num_layers(&tdst, 0));
 
       for (j = 0; j < num_partial_copies; j++) {
          int width, height, depth;
@@ -273,8 +321,8 @@ void si_test_image_copy_region(struct si_screen *sscreen)
 
          /* random sub-rectangle copies from src to dst */
          depth = (rand() % max_depth) + 1;
-         srcz = rand() % (tsrc.array_size - depth + 1);
-         dstz = rand() % (tdst.array_size - depth + 1);
+         srcz = rand() % (util_num_layers(&tsrc, 0) - depth + 1);
+         dstz = rand() % (util_num_layers(&tdst, 0) - depth + 1);
 
          /* just make sure that it doesn't divide by zero */
          assert(max_width > 0 && max_height > 0);
