@@ -852,6 +852,7 @@ uint32_t
 Converter::getIndirect(nir_intrinsic_instr *insn, uint8_t s, uint8_t c, Value *&indirect, bool isScalar)
 {
    int32_t idx = nir_intrinsic_base(insn) + getIndirect(&insn->src[s], c, indirect);
+
    if (indirect && !isScalar)
       indirect = mkOp2v(OP_SHL, TYPE_U32, getSSA(4, FILE_ADDRESS), indirect, loadImm(NULL, 4));
    return idx;
@@ -1311,6 +1312,23 @@ Converter::parseNIR()
       info->prop.cp.numThreads[1] = nir->info.workgroup_size[1];
       info->prop.cp.numThreads[2] = nir->info.workgroup_size[2];
       info_out->bin.smemSize = std::max(info_out->bin.smemSize, nir->info.shared_size);
+
+      if (info->target < NVISA_GF100_CHIPSET) {
+         int gmemSlot = 0;
+
+         for (unsigned i = 0; i < nir->info.num_ssbos; i++) {
+            info_out->prop.cp.gmem[gmemSlot++] = {.valid = 1, .image = 0, .slot = i};
+            assert(gmemSlot < 16);
+         }
+         nir_foreach_image_variable(var, nir) {
+            int image_count = glsl_type_get_image_count(var->type);
+            for (int i = 0; i < image_count; i++) {
+               info_out->prop.cp.gmem[gmemSlot++] = {.valid = 1, .image = 1, .slot = var->data.binding + i};
+               assert(gmemSlot < 16);
+            }
+         }
+      }
+
       break;
    case Program::TYPE_FRAGMENT:
       info_out->prop.fp.earlyFragTests = nir->info.fs.early_fragment_tests;
@@ -2269,6 +2287,12 @@ Converter::visit(nir_intrinsic_instr *insn)
          indirect = getSrc(&insn->src[0], 0);
       else
          location = getIndirect(&insn->src[0], 0, indirect);
+
+      /* Pre-GF100, SSBOs and images are in the same HW file, managed by
+       * prop.cp.gmem.  images are located after SSBOs.
+       */
+      if (info->target < NVISA_GF100_CHIPSET)
+         location += nir->info.num_ssbos;
 
       // coords
       if (opInfo.num_srcs >= 2)
