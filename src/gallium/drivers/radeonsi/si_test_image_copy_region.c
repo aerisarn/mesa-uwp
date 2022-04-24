@@ -191,12 +191,9 @@ void si_test_image_copy_region(struct si_screen *sscreen)
    num_partial_copies = 30;
 
    /* These parameters are randomly generated per test:
-    * - which tiling modes to use (LINEAR_ALIGNED, 1D, 2D)
     * - which texture dimensions to use
-    * - whether to use VRAM (all tiling modes) and GTT (staging, linear
-    *   only) allocations
     * - random initial pixels in src
-    * - generate random subrectangle copies for partial blits
+    * - execute multiple subrectangle copies for partial blits
     */
    for (i = 0; i < iterations; i++) {
       struct pipe_resource tsrc = {}, tdst = {}, *src, *dst;
@@ -224,24 +221,12 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       if (tsrc.format == PIPE_FORMAT_G8R8_B8R8_UNORM)
          tsrc.width0 = align(tsrc.width0, 2);
 
-      /* Have a 1/4 chance of getting power-of-two dimensions. */
-      if (rand() % 4 == 0) {
-         tsrc.width0 = util_next_power_of_two(tsrc.width0);
-         tsrc.height0 = util_next_power_of_two(tsrc.height0);
-      }
-
       max_tex_side_gen = generate_max_tex_side(max_tex_side);
       max_tex_layers = rand() % 4 ? 1 : 5;
 
       tdst.width0 = (rand() % max_tex_side_gen) + 1;
       tdst.height0 = (rand() % max_tex_side_gen) + 1;
       tdst.array_size = (rand() % max_tex_layers) + 1;
-
-      /* Have a 1/4 chance of getting power-of-two dimensions. */
-      if (rand() % 4 == 0) {
-         tdst.width0 = util_next_power_of_two(tdst.width0);
-         tdst.height0 = util_next_power_of_two(tdst.height0);
-      }
 
       /* check texture sizes */
       if ((uint64_t)util_format_get_nblocks(tsrc.format, tsrc.width0, tsrc.height0) *
@@ -254,11 +239,8 @@ void si_test_image_copy_region(struct si_screen *sscreen)
          continue;
       }
 
-      /* VRAM + the tiling mode depends on dimensions (3/4 of cases),
-       * or GTT + linear only (1/4 of cases)
-       */
-      tsrc.usage = rand() % 4 ? PIPE_USAGE_DEFAULT : PIPE_USAGE_STAGING;
-      tdst.usage = rand() % 4 ? PIPE_USAGE_DEFAULT : PIPE_USAGE_STAGING;
+      tsrc.usage = PIPE_USAGE_DEFAULT;
+      tdst.usage = PIPE_USAGE_DEFAULT;
 
       /* Allocate textures (both the GPU and CPU copies).
        * The CPU will emulate what the GPU should be doing.
