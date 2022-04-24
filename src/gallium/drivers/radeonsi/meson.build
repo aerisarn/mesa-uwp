@@ -68,7 +68,7 @@ files_libradeonsi = files(
   'si_state_shaders.cpp',
   'si_state_streamout.c',
   'si_state_viewport.c',
-  'si_test_blit.c',
+  'si_test_image_copy_region.c',
   'si_test_dma_perf.c',
   'si_texture.c',
   'si_uvd.c',

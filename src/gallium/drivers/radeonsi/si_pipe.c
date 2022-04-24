@@ -123,7 +123,7 @@ static const struct debug_named_value radeonsi_debug_options[] = {
 
 static const struct debug_named_value test_options[] = {
    /* Tests: */
-   {"blit", DBG(TEST_BLIT), "Invoke blit tests and exit."},
+   {"imagecopy", DBG(TEST_IMAGE_COPY), "Invoke resource_copy_region tests with images and exit."},
    {"testvmfaultcp", DBG(TEST_VMFAULT_CP), "Invoke a CP VM fault test and exit."},
    {"testvmfaultshader", DBG(TEST_VMFAULT_SHADER), "Invoke a shader VM fault test and exit."},
    {"testdmaperf", DBG(TEST_DMA_PERF), "Test DMA performance"},
@@ -1382,8 +1382,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       sscreen->aux_context->set_log_context(sscreen->aux_context, log);
    }
 
-   if (test_flags & DBG(TEST_BLIT))
-      si_test_blit(sscreen);
+   if (test_flags & DBG(TEST_IMAGE_COPY))
+      si_test_image_copy_region(sscreen);
 
    if (test_flags & DBG(TEST_DMA_PERF)) {
       si_test_dma_perf(sscreen);
