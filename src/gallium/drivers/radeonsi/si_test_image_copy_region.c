@@ -153,19 +153,10 @@ static const char *array_mode_to_string(struct si_screen *sscreen, struct radeon
    }
 }
 
-static unsigned generate_max_tex_side(unsigned max_tex_side)
+static unsigned random_max_tex_size(void)
 {
-   switch (rand() % 4) {
-   case 0:
-      /* Try to hit large sizes in 1/4 of the cases. */
-      return max_tex_side;
-   case 1:
-      /* Try to hit 1D tiling in 1/4 of the cases. */
-      return 128;
-   default:
-      /* Try to hit common sizes in 2/4 of the cases. */
-      return 2048;
-   }
+   /* Try to hit microtiling in 1/2 of the cases. */
+   return rand() & 1 ? 128 : 4096;
 }
 
 void si_test_image_copy_region(struct si_screen *sscreen)
@@ -174,10 +165,8 @@ void si_test_image_copy_region(struct si_screen *sscreen)
    struct pipe_context *ctx = screen->context_create(screen, NULL, 0);
    struct si_context *sctx = (struct si_context *)ctx;
    uint64_t max_alloc_size;
-   unsigned i, iterations, num_partial_copies, max_tex_side;
+   unsigned i, iterations, num_partial_copies;
    unsigned num_pass = 0, num_fail = 0;
-
-   max_tex_side = screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_2D_SIZE);
 
    /* Max 128 MB allowed for both textures. */
    max_alloc_size = 128 * 1024 * 1024;
@@ -211,7 +200,7 @@ void si_test_image_copy_region(struct si_screen *sscreen)
 
       tsrc.format = tdst.format = choose_format();
 
-      max_tex_side_gen = generate_max_tex_side(max_tex_side);
+      max_tex_side_gen = random_max_tex_size();
       max_tex_layers = rand() % 4 ? 1 : 5;
 
       tsrc.width0 = (rand() % max_tex_side_gen) + 1;
@@ -221,7 +210,7 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       if (tsrc.format == PIPE_FORMAT_G8R8_B8R8_UNORM)
          tsrc.width0 = align(tsrc.width0, 2);
 
-      max_tex_side_gen = generate_max_tex_side(max_tex_side);
+      max_tex_side_gen = random_max_tex_size();
       max_tex_layers = rand() % 4 ? 1 : 5;
 
       tdst.width0 = (rand() % max_tex_side_gen) + 1;
