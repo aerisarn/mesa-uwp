@@ -153,10 +153,32 @@ static const char *array_mode_to_string(struct si_screen *sscreen, struct radeon
    }
 }
 
-static unsigned random_max_tex_size(void)
+#define MAX_ALLOC_SIZE (128 * 1024 * 1024)
+
+static void set_random_image_attrs(struct pipe_resource *templ)
 {
+   templ->target = PIPE_TEXTURE_2D_ARRAY;
+   templ->usage = PIPE_USAGE_DEFAULT;
+
    /* Try to hit microtiling in 1/2 of the cases. */
-   return rand() & 1 ? 128 : 4096;
+   unsigned max_tex_size = rand() & 1 ? 128 : 4096;
+   unsigned max_tex_layers = rand() % 4 ? 1 : 3;
+
+   /* keep generating the image size until it's less than the max size */
+   while (1) {
+      templ->width0 = (rand() % max_tex_size) + 1;
+      templ->height0 = (rand() % max_tex_size) + 1;
+      templ->depth0 = 1;
+      templ->array_size = (rand() % max_tex_layers) + 1;
+
+      if ((uint64_t)util_format_get_nblocks(templ->format, templ->width0, templ->height0) *
+          templ->depth0 * templ->array_size * util_format_get_blocksize(templ->format) <
+          MAX_ALLOC_SIZE)
+         break;
+   }
+
+   if (util_format_get_blockwidth(templ->format) == 2)
+      templ->width0 = align(templ->width0, 2);
 }
 
 void si_test_image_copy_region(struct si_screen *sscreen)
@@ -164,12 +186,8 @@ void si_test_image_copy_region(struct si_screen *sscreen)
    struct pipe_screen *screen = &sscreen->b;
    struct pipe_context *ctx = screen->context_create(screen, NULL, 0);
    struct si_context *sctx = (struct si_context *)ctx;
-   uint64_t max_alloc_size;
    unsigned i, iterations, num_partial_copies;
    unsigned num_pass = 0, num_fail = 0;
-
-   /* Max 128 MB allowed for both textures. */
-   max_alloc_size = 128 * 1024 * 1024;
 
    /* the seed for random test parameters */
    srand(0x9b47d95b);
@@ -190,46 +208,13 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       struct si_texture *ssrc;
       struct cpu_texture src_cpu, dst_cpu;
       unsigned max_width, max_height, max_depth, j;
-      unsigned gfx_blits = 0, cs_blits = 0, max_tex_side_gen;
-      unsigned max_tex_layers;
+      unsigned gfx_blits = 0, cs_blits = 0;
       bool pass;
 
       /* generate a random test case */
-      tsrc.target = tdst.target = PIPE_TEXTURE_2D_ARRAY;
-      tsrc.depth0 = tdst.depth0 = 1;
-
       tsrc.format = tdst.format = choose_format();
-
-      max_tex_side_gen = random_max_tex_size();
-      max_tex_layers = rand() % 4 ? 1 : 5;
-
-      tsrc.width0 = (rand() % max_tex_side_gen) + 1;
-      tsrc.height0 = (rand() % max_tex_side_gen) + 1;
-      tsrc.array_size = (rand() % max_tex_layers) + 1;
-
-      if (tsrc.format == PIPE_FORMAT_G8R8_B8R8_UNORM)
-         tsrc.width0 = align(tsrc.width0, 2);
-
-      max_tex_side_gen = random_max_tex_size();
-      max_tex_layers = rand() % 4 ? 1 : 5;
-
-      tdst.width0 = (rand() % max_tex_side_gen) + 1;
-      tdst.height0 = (rand() % max_tex_side_gen) + 1;
-      tdst.array_size = (rand() % max_tex_layers) + 1;
-
-      /* check texture sizes */
-      if ((uint64_t)util_format_get_nblocks(tsrc.format, tsrc.width0, tsrc.height0) *
-                tsrc.array_size * util_format_get_blocksize(tsrc.format) +
-             (uint64_t)util_format_get_nblocks(tdst.format, tdst.width0, tdst.height0) *
-                tdst.array_size * util_format_get_blocksize(tdst.format) >
-          max_alloc_size) {
-         /* too large, try again */
-         i--;
-         continue;
-      }
-
-      tsrc.usage = PIPE_USAGE_DEFAULT;
-      tdst.usage = PIPE_USAGE_DEFAULT;
+      set_random_image_attrs(&tsrc);
+      set_random_image_attrs(&tdst);
 
       /* Allocate textures (both the GPU and CPU copies).
        * The CPU will emulate what the GPU should be doing.
