@@ -20,6 +20,7 @@ impl CLInfo<cl_kernel_info> for cl_kernel {
     fn query(&self, q: cl_kernel_info, _: &[u8]) -> CLResult<Vec<u8>> {
         let kernel = self.get_ref()?;
         Ok(match q {
+            CL_KERNEL_ATTRIBUTES => cl_prop::<&str>(&kernel.attributes_string),
             CL_KERNEL_CONTEXT => {
                 let ptr = Arc::as_ptr(&kernel.prog.context);
                 cl_prop::<cl_context>(cl_context::from_ptr(ptr))

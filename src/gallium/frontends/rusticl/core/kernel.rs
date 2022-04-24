@@ -241,6 +241,7 @@ pub struct Kernel {
     pub args: Vec<KernelArg>,
     pub values: Vec<RefCell<Option<KernelArgValue>>>,
     pub work_group_size: [usize; 3],
+    pub attributes_string: String,
     internal_args: Vec<InternalKernelArg>,
     nirs: HashMap<Arc<Device>, NirShader>,
 }
@@ -584,10 +585,12 @@ fn convert_spirv_to_nir(
     HashMap<Arc<Device>, NirShader>,
     Vec<KernelArg>,
     Vec<InternalKernelArg>,
+    String,
 ) {
     let mut nirs = HashMap::new();
     let mut args_set = HashSet::new();
     let mut internal_args_set = HashSet::new();
+    let mut attributes_string_set = HashSet::new();
 
     // TODO: we could run this in parallel?
     for d in p.devs_with_build() {
@@ -639,15 +642,18 @@ fn convert_spirv_to_nir(
         args_set.insert(args);
         internal_args_set.insert(internal_args);
         nirs.insert(d.clone(), nir);
+        attributes_string_set.insert(p.attribute_str(name, d));
     }
 
     // we want the same (internal) args for every compiled kernel, for now
     assert!(args_set.len() == 1);
     assert!(internal_args_set.len() == 1);
+    assert!(attributes_string_set.len() == 1);
     let args = args_set.into_iter().next().unwrap();
     let internal_args = internal_args_set.into_iter().next().unwrap();
+    let attributes_string = attributes_string_set.into_iter().next().unwrap();
 
-    (nirs, args, internal_args)
+    (nirs, args, internal_args, attributes_string)
 }
 
 fn extract<'a, const S: usize>(buf: &'a mut &[u8]) -> &'a [u8; S] {
@@ -698,7 +704,8 @@ fn optimize_local_size(d: &Device, grid: &mut [u32; 3], block: &mut [u32; 3]) {
 
 impl Kernel {
     pub fn new(name: String, prog: Arc<Program>, args: Vec<spirv::SPIRVKernelArg>) -> Arc<Kernel> {
-        let (mut nirs, args, internal_args) = convert_spirv_to_nir(&prog, &name, args);
+        let (mut nirs, args, internal_args, attributes_string) =
+            convert_spirv_to_nir(&prog, &name, args);
 
         let nir = nirs.values_mut().next().unwrap();
         let wgs = nir.workgroup_size();
@@ -713,6 +720,7 @@ impl Kernel {
             name: name,
             args: args,
             work_group_size: work_group_size,
+            attributes_string: attributes_string,
             values: values,
             internal_args: internal_args,
             // caller has to verify all kernels have the same sig
@@ -1010,6 +1018,7 @@ impl Clone for Kernel {
             args: self.args.clone(),
             values: self.values.clone(),
             work_group_size: self.work_group_size,
+            attributes_string: self.attributes_string.clone(),
             internal_args: self.internal_args.clone(),
             nirs: self.nirs.clone(),
         }

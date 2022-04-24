@@ -190,6 +190,46 @@ impl SPIRVBin {
             .collect()
     }
 
+    pub fn vec_type_hint(&self, name: &str) -> Option<String> {
+        self.kernel_info(name)
+            .filter(|info| [1, 2, 3, 4, 8, 16].contains(&info.vec_hint_size))
+            .map(|info| {
+                let cltype = match info.vec_hint_type {
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_CHAR => "uchar",
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_SHORT => "ushort",
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_INT => "uint",
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_LONG => "ulong",
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_HALF => "half",
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_FLOAT => "float",
+                    clc_vec_hint_type::CLC_VEC_HINT_TYPE_DOUBLE => "double",
+                };
+
+                format!("vec_type_hint({}{})", cltype, info.vec_hint_size)
+            })
+    }
+
+    pub fn local_size(&self, name: &str) -> Option<String> {
+        self.kernel_info(name)
+            .filter(|info| info.local_size != [0; 3])
+            .map(|info| {
+                format!(
+                    "reqd_work_group_size({},{},{})",
+                    info.local_size[0], info.local_size[1], info.local_size[2]
+                )
+            })
+    }
+
+    pub fn local_size_hint(&self, name: &str) -> Option<String> {
+        self.kernel_info(name)
+            .filter(|info| info.local_size_hint != [0; 3])
+            .map(|info| {
+                format!(
+                    "work_group_size_hint({},{},{})",
+                    info.local_size_hint[0], info.local_size_hint[1], info.local_size_hint[2]
+                )
+            })
+    }
+
     pub fn args(&self, name: &str) -> Vec<SPIRVKernelArg> {
         match self.kernel_info(name) {
             None => Vec::new(),
