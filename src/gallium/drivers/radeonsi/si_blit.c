@@ -882,6 +882,25 @@ struct texture_orig_info {
    unsigned npix0_y;
 };
 
+static bool si_can_use_compute_blit(struct si_context *sctx, enum pipe_format format,
+                                    unsigned num_samples, bool is_store, bool has_dcc)
+{
+   if (num_samples > 1)
+      return false;
+
+   if (util_format_is_depth_or_stencil(format))
+      return false;
+
+   /* Image stores support DCC since GFX10. */
+   if (has_dcc && is_store && sctx->chip_class < GFX10)
+      return false;
+
+   if (util_format_is_compressed(format))
+      return false;
+
+   return true;
+}
+
 static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
                                                   struct pipe_resource *texture,
                                                   unsigned level)
@@ -899,7 +918,9 @@ static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
     */
    if (vi_dcc_enabled(tex, level) &&
        util_format_is_float(texture->format) &&
-       sctx->chip_class < GFX10) {
+       /* Check if disabling DCC enables the compute copy. */
+       !si_can_use_compute_blit(sctx, texture->format, texture->nr_samples, true, true) &&
+       si_can_use_compute_blit(sctx, texture->format, texture->nr_samples, true, false)) {
       si_texture_disable_dcc(sctx, tex);
    }
 }
@@ -926,10 +947,10 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
 
    si_use_compute_copy_for_float_formats(sctx, dst, dst_level);
 
-   if (!util_format_is_compressed(src->format) && !util_format_is_compressed(dst->format) &&
-       !util_format_is_depth_or_stencil(src->format) && src->nr_samples <= 1 &&
-       /* DCC compression from image store is enabled for GFX10+. */
-       (!vi_dcc_enabled(sdst, dst_level) || sctx->chip_class >= GFX10) &&
+   if (si_can_use_compute_blit(sctx, dst->format, dst->nr_samples, true,
+                               vi_dcc_enabled(sdst, dst_level)) &&
+       si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
+                               vi_dcc_enabled(ssrc, src_level)) &&
        !(dst->target != src->target &&
          (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
