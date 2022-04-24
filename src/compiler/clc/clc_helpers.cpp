@@ -102,13 +102,16 @@ public:
 
 class SPIRVKernelInfo {
 public:
-   SPIRVKernelInfo(uint32_t fid, const char *nm) : funcId(fid), name(nm), vecHint(0) { }
+   SPIRVKernelInfo(uint32_t fid, const char *nm)
+      : funcId(fid), name(nm), vecHint(0), localSize(), localSizeHint() { }
    ~SPIRVKernelInfo() { }
 
    uint32_t funcId;
    std::string name;
    std::vector<SPIRVKernelArg> args;
    unsigned vecHint;
+   unsigned localSize[3];
+   unsigned localSizeHint[3];
 };
 
 class SPIRVKernelParser {
@@ -447,14 +450,26 @@ public:
    void parseExecutionMode(const spv_parsed_instruction_t *ins)
    {
       uint32_t executionMode = ins->words[ins->operands[1].offset];
-      if (executionMode != SpvExecutionModeVecTypeHint)
-         return;
-
       uint32_t funcId = ins->words[ins->operands[0].offset];
-      uint32_t vecHint = ins->words[ins->operands[2].offset];
+
       for (auto& kernel : kernels) {
-         if (kernel.funcId == funcId)
-            kernel.vecHint = vecHint;
+         if (kernel.funcId == funcId) {
+            switch (executionMode) {
+            case SpvExecutionModeVecTypeHint:
+               kernel.vecHint = ins->words[ins->operands[2].offset];
+               break;
+            case SpvExecutionModeLocalSize:
+               kernel.localSize[0] = ins->words[ins->operands[2].offset];
+               kernel.localSize[1] = ins->words[ins->operands[3].offset];
+               kernel.localSize[2] = ins->words[ins->operands[4].offset];
+            case SpvExecutionModeLocalSizeHint:
+               kernel.localSizeHint[0] = ins->words[ins->operands[2].offset];
+               kernel.localSizeHint[1] = ins->words[ins->operands[3].offset];
+               kernel.localSizeHint[2] = ins->words[ins->operands[4].offset];
+            default:
+               return;
+            }
+         }
       }
    }
 
@@ -692,6 +707,8 @@ clc_spirv_get_kernels_info(const struct clc_binary *spvbin,
       kernels[i].num_args = parser.kernels[i].args.size();
       kernels[i].vec_hint_size = parser.kernels[i].vecHint >> 16;
       kernels[i].vec_hint_type = (enum clc_vec_hint_type)(parser.kernels[i].vecHint & 0xFFFF);
+      memcpy(kernels[i].local_size, parser.kernels[i].localSize, sizeof(kernels[i].local_size));
+      memcpy(kernels[i].local_size_hint, parser.kernels[i].localSizeHint, sizeof(kernels[i].local_size_hint));
       if (!kernels[i].num_args)
          continue;
 

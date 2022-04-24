@@ -128,6 +128,9 @@ struct clc_kernel_info {
 
    unsigned vec_hint_size;
    enum clc_vec_hint_type vec_hint_type;
+
+   unsigned local_size[3];
+   unsigned local_size_hint[3];
 };
 
 enum clc_spec_constant_type {
