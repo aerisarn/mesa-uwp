@@ -221,18 +221,12 @@ bool expr_handler::fold_setcc(alu_node &n) {
 	} else if (isc1) {
 		if (cmp_type == AF_FLOAT_CMP) {
 			if (n.bc.src[0].abs && !n.bc.src[0].neg) {
-				if (cv1.f < 0.0f && (cc == AF_CC_GT || cc == AF_CC_NE)) {
-					cond_result = true;
-					have_result = true;
-				} else if (cv1.f <= 0.0f && cc == AF_CC_GE) {
+				if (cv1.f < 0.0f && cc == AF_CC_NE) {
 					cond_result = true;
 					have_result = true;
 				}
 			} else if (n.bc.src[0].abs && n.bc.src[0].neg) {
-				if (cv1.f > 0.0f && (cc == AF_CC_GE || cc == AF_CC_E)) {
-					cond_result = false;
-					have_result = true;
-				} else if (cv1.f >= 0.0f && cc == AF_CC_GT) {
+				if (cv1.f > 0.0f && cc == AF_CC_E) {
 					cond_result = false;
 					have_result = true;
 				}
@@ -244,18 +238,12 @@ bool expr_handler::fold_setcc(alu_node &n) {
 	} else if (isc0) {
 		if (cmp_type == AF_FLOAT_CMP) {
 			if (n.bc.src[1].abs && !n.bc.src[1].neg) {
-				if (cv0.f <= 0.0f && cc == AF_CC_GT) {
-					cond_result = false;
-					have_result = true;
-				} else if (cv0.f < 0.0f && (cc == AF_CC_GE || cc == AF_CC_E)) {
+				if (cv0.f < 0.0f && (cc == AF_CC_E)) {
 					cond_result = false;
 					have_result = true;
 				}
 			} else if (n.bc.src[1].abs && n.bc.src[1].neg) {
-				if (cv0.f >= 0.0f && cc == AF_CC_GE) {
-					cond_result = true;
-					have_result = true;
-				} else if (cv0.f > 0.0f && (cc == AF_CC_GT || cc == AF_CC_NE)) {
+				if (cv0.f > 0.0f && cc == AF_CC_NE) {
 					cond_result = true;
 					have_result = true;
 				}
