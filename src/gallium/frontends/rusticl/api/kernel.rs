@@ -65,7 +65,23 @@ impl CLInfoObj<cl_kernel_arg_info, cl_uint> for cl_kernel {
 impl CLInfoObj<cl_kernel_work_group_info, cl_device_id> for cl_kernel {
     fn query(&self, dev: cl_device_id, q: cl_kernel_work_group_info) -> CLResult<Vec<u8>> {
         let kernel = self.get_ref()?;
-        let dev = dev.get_arc()?;
+
+        // CL_INVALID_DEVICE [..] if device is NULL but there is more than one device associated with kernel.
+        let dev = if dev.is_null() {
+            if kernel.prog.devs.len() > 1 {
+                return Err(CL_INVALID_DEVICE);
+            } else {
+                kernel.prog.devs[0].clone()
+            }
+        } else {
+            dev.get_arc()?
+        };
+
+        // CL_INVALID_DEVICE if device is not in the list of devices associated with kernel
+        if !kernel.prog.devs.contains(&dev) {
+            return Err(CL_INVALID_DEVICE);
+        }
+
         Ok(match *q {
             CL_KERNEL_LOCAL_MEM_SIZE => cl_prop::<cl_ulong>(kernel.local_mem_size(&dev)),
             CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE => cl_prop::<usize>(1),
