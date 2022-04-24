@@ -46,7 +46,7 @@ struct cpu_texture {
 static void alloc_cpu_texture(struct cpu_texture *tex, struct pipe_resource *templ)
 {
    tex->stride = align(util_format_get_stride(templ->format, templ->width0), RAND_NUM_SIZE);
-   tex->layer_stride = (uint64_t)tex->stride * templ->height0;
+   tex->layer_stride = util_format_get_2d_size(templ->format, tex->stride, templ->height0);
    tex->size = tex->layer_stride * util_num_layers(templ, 0);
    tex->ptr = malloc(tex->size);
    assert(tex->ptr);
@@ -58,6 +58,7 @@ static void set_random_pixels(struct pipe_context *ctx, struct pipe_resource *te
    struct pipe_transfer *t;
    uint8_t *map;
    int x, y, z;
+   unsigned num_y_blocks = util_format_get_nblocksy(tex->format, tex->height0);
    unsigned num_layers = util_num_layers(tex, 0);
 
    map = pipe_texture_map_3d(ctx, tex, 0, PIPE_MAP_WRITE, 0, 0, 0, tex->width0, tex->height0,
@@ -65,7 +66,7 @@ static void set_random_pixels(struct pipe_context *ctx, struct pipe_resource *te
    assert(map);
 
    for (z = 0; z < num_layers; z++) {
-      for (y = 0; y < tex->height0; y++) {
+      for (y = 0; y < num_y_blocks; y++) {
          uint64_t *ptr = (uint64_t *)(map + t->layer_stride * z + t->stride * y);
          uint64_t *ptr_cpu = (uint64_t *)(cpu->ptr + cpu->layer_stride * z + cpu->stride * y);
          unsigned size = cpu->stride / RAND_NUM_SIZE;
@@ -90,6 +91,7 @@ static bool compare_textures(struct pipe_context *ctx, struct pipe_resource *tex
    int y, z;
    bool pass = true;
    unsigned stride = util_format_get_stride(tex->format, tex->width0);
+   unsigned num_y_blocks = util_format_get_nblocksy(tex->format, tex->height0);
    unsigned num_layers = util_num_layers(tex, 0);
 
    map = pipe_texture_map_3d(ctx, tex, 0, PIPE_MAP_READ, 0, 0, 0, tex->width0, tex->height0,
@@ -97,7 +99,7 @@ static bool compare_textures(struct pipe_context *ctx, struct pipe_resource *tex
    assert(map);
 
    for (z = 0; z < num_layers; z++) {
-      for (y = 0; y < tex->height0; y++) {
+      for (y = 0; y < num_y_blocks; y++) {
          uint8_t *ptr = map + t->layer_stride * z + t->stride * y;
          uint8_t *cpu_ptr = cpu->ptr + cpu->layer_stride * z + cpu->stride * y;
 
@@ -117,6 +119,7 @@ static enum pipe_format choose_format()
    enum pipe_format formats[] = {
       PIPE_FORMAT_R8_UINT,     PIPE_FORMAT_R16_UINT,          PIPE_FORMAT_R32_UINT,
       PIPE_FORMAT_R32G32_UINT, PIPE_FORMAT_R32G32B32A32_UINT, PIPE_FORMAT_G8R8_B8R8_UNORM,
+      PIPE_FORMAT_DXT5_RGBA,
    };
    return formats[rand() % ARRAY_SIZE(formats)];
 }
@@ -335,6 +338,16 @@ void si_test_image_copy_region(struct si_screen *sscreen)
 
          dstx = rand() % (tdst.width0 - width + 1);
          dsty = rand() % (tdst.height0 - height + 1);
+
+         /* Align the box to the format block size. */
+         srcx &= ~(util_format_get_blockwidth(src->format) - 1);
+         srcy &= ~(util_format_get_blockheight(src->format) - 1);
+
+         dstx &= ~(util_format_get_blockwidth(dst->format) - 1);
+         dsty &= ~(util_format_get_blockheight(dst->format) - 1);
+
+         width = align(width, util_format_get_blockwidth(src->format));
+         height = align(height, util_format_get_blockheight(src->format));
 
          /* GPU copy */
          u_box_3d(srcx, srcy, srcz, width, height, depth, &box);
