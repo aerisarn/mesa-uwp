@@ -288,38 +288,17 @@ void si_test_image_copy_region(struct si_screen *sscreen)
          srcz = rand() % (tsrc.array_size - depth + 1);
          dstz = rand() % (tdst.array_size - depth + 1);
 
-         /* special code path to hit the tiled partial copies */
-         if (!ssrc->surface.is_linear && !sdst->surface.is_linear && rand() & 1) {
-            if (max_width < 8 || max_height < 8)
-               continue;
-            width = ((rand() % (max_width / 8)) + 1) * 8;
-            height = ((rand() % (max_height / 8)) + 1) * 8;
+         /* just make sure that it doesn't divide by zero */
+         assert(max_width > 0 && max_height > 0);
 
-            srcx = rand() % (tsrc.width0 - width + 1) & ~0x7;
-            srcy = rand() % (tsrc.height0 - height + 1) & ~0x7;
+         width = (rand() % max_width) + 1;
+         height = (rand() % max_height) + 1;
 
-            dstx = rand() % (tdst.width0 - width + 1) & ~0x7;
-            dsty = rand() % (tdst.height0 - height + 1) & ~0x7;
-         } else {
-            /* just make sure that it doesn't divide by zero */
-            assert(max_width > 0 && max_height > 0);
+         srcx = rand() % (tsrc.width0 - width + 1);
+         srcy = rand() % (tsrc.height0 - height + 1);
 
-            width = (rand() % max_width) + 1;
-            height = (rand() % max_height) + 1;
-
-            srcx = rand() % (tsrc.width0 - width + 1);
-            srcy = rand() % (tsrc.height0 - height + 1);
-
-            dstx = rand() % (tdst.width0 - width + 1);
-            dsty = rand() % (tdst.height0 - height + 1);
-         }
-
-         /* special code path to hit out-of-bounds reads in L2T */
-         if (ssrc->surface.is_linear && !sdst->surface.is_linear && rand() % 4 == 0) {
-            srcx = 0;
-            srcy = 0;
-            srcz = 0;
-         }
+         dstx = rand() % (tdst.width0 - width + 1);
+         dsty = rand() % (tdst.height0 - height + 1);
 
          /* GPU copy */
          u_box_3d(srcx, srcy, srcz, width, height, depth, &box);
