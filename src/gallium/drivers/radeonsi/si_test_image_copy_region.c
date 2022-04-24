@@ -28,6 +28,7 @@
 #include "si_pipe.h"
 #include "util/rand_xor.h"
 #include "util/u_surface.h"
+#include "amd/addrlib/inc/addrtypes.h"
 
 static uint64_t seed_xorshift128plus[2];
 
@@ -118,41 +119,6 @@ static enum pipe_format choose_format()
    return formats[rand() % ARRAY_SIZE(formats)];
 }
 
-static const char *array_mode_to_string(struct si_screen *sscreen, struct radeon_surf *surf)
-{
-   if (sscreen->info.chip_class >= GFX9) {
-      switch (surf->u.gfx9.swizzle_mode) {
-      case 0:
-         return "  LINEAR";
-      case 21:
-         return " 4KB_S_X";
-      case 22:
-         return " 4KB_D_X";
-      case 25:
-         return "64KB_S_X";
-      case 26:
-         return "64KB_D_X";
-      case 27:
-         return "64KB_R_X";
-      default:
-         printf("Unhandled swizzle mode = %u\n", surf->u.gfx9.swizzle_mode);
-         return " UNKNOWN";
-      }
-   } else {
-      switch (surf->u.legacy.level[0].mode) {
-      case RADEON_SURF_MODE_LINEAR_ALIGNED:
-         return "LINEAR_ALIGNED";
-      case RADEON_SURF_MODE_1D:
-         return "1D_TILED_THIN1";
-      case RADEON_SURF_MODE_2D:
-         return "2D_TILED_THIN1";
-      default:
-         assert(0);
-         return "       UNKNOWN";
-      }
-   }
-}
-
 #define MAX_ALLOC_SIZE (128 * 1024 * 1024)
 
 static void set_random_image_attrs(struct pipe_resource *templ)
@@ -179,6 +145,55 @@ static void set_random_image_attrs(struct pipe_resource *templ)
 
    if (util_format_get_blockwidth(templ->format) == 2)
       templ->width0 = align(templ->width0, 2);
+}
+
+static void print_image_attrs(struct si_screen *sscreen, struct si_texture *tex)
+{
+   const char *mode;
+
+   if (sscreen->info.chip_class >= GFX9) {
+      static const char *modes[32] = {
+         [ADDR_SW_LINEAR] = "LINEAR",
+         [ADDR_SW_4KB_S_X] = "4KB_S_X",
+         [ADDR_SW_4KB_D_X] = "4KB_D_X",
+         [ADDR_SW_64KB_Z_X] = "64KB_Z_X",
+         [ADDR_SW_64KB_S_X] = "64KB_S_X",
+         [ADDR_SW_64KB_D_X] = "64KB_D_X",
+         [ADDR_SW_64KB_R_X] = "64KB_R_X",
+      };
+      mode = modes[tex->surface.u.gfx9.swizzle_mode];
+   } else {
+      static const char *modes[32] = {
+         [RADEON_SURF_MODE_LINEAR_ALIGNED] = "LINEAR",
+         [RADEON_SURF_MODE_1D] = "1D_TILED",
+         [RADEON_SURF_MODE_2D] = "2D_TILED",
+      };
+      mode = modes[tex->surface.u.legacy.level[0].mode];
+   }
+
+   if (!mode)
+      mode = "UNKNOWN";
+
+   static const char *targets[PIPE_MAX_TEXTURE_TYPES] = {
+      [PIPE_TEXTURE_1D] = "1D",
+      [PIPE_TEXTURE_2D] = "2D",
+      [PIPE_TEXTURE_3D] = "3D",
+      [PIPE_TEXTURE_RECT] = "RECT",
+      [PIPE_TEXTURE_1D_ARRAY] = "1D_ARRAY",
+      [PIPE_TEXTURE_2D_ARRAY] = "2D_ARRAY",
+   };
+
+   char size[64];
+   if (tex->buffer.b.b.target == PIPE_TEXTURE_1D)
+      snprintf(size, sizeof(size), "%u", tex->buffer.b.b.width0);
+   else if (tex->buffer.b.b.target == PIPE_TEXTURE_2D ||
+            tex->buffer.b.b.target == PIPE_TEXTURE_RECT)
+      snprintf(size, sizeof(size), "%ux%u", tex->buffer.b.b.width0, tex->buffer.b.b.height0);
+   else
+      snprintf(size, sizeof(size), "%ux%ux%u", tex->buffer.b.b.width0, tex->buffer.b.b.height0,
+               util_num_layers(&tex->buffer.b.b, 0));
+
+   printf("%8s, %14s, %8s", targets[tex->buffer.b.b.target], size, mode);
 }
 
 void si_test_image_copy_region(struct si_screen *sscreen)
@@ -228,12 +243,11 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       alloc_cpu_texture(&src_cpu, &tsrc);
       alloc_cpu_texture(&dst_cpu, &tdst);
 
-      printf("%4u: dst = (%5u x %5u x %u, %s), "
-             " src = (%5u x %5u x %u, %s), format = %s, ",
-             i, tdst.width0, tdst.height0, tdst.array_size,
-             array_mode_to_string(sscreen, &sdst->surface), tsrc.width0, tsrc.height0,
-             tsrc.array_size, array_mode_to_string(sscreen, &ssrc->surface),
-             util_format_description(tsrc.format)->name);
+      printf("%4u: dst = (", i);
+      print_image_attrs(sscreen, sdst);
+      printf("), src = (");
+      print_image_attrs(sscreen, ssrc);
+      printf("), format = %17s, ", util_format_description(tsrc.format)->short_name);
       fflush(stdout);
 
       /* set src pixels */
