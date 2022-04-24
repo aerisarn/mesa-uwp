@@ -121,14 +121,33 @@ done:
    return pass;
 }
 
-static enum pipe_format choose_format()
+static enum pipe_format get_random_format(struct si_screen *sscreen)
 {
-   enum pipe_format formats[] = {
-      PIPE_FORMAT_R8_UINT,     PIPE_FORMAT_R16_UINT,          PIPE_FORMAT_R32_UINT,
-      PIPE_FORMAT_R32G32_UINT, PIPE_FORMAT_R32G32B32A32_UINT, PIPE_FORMAT_G8R8_B8R8_UNORM,
-      PIPE_FORMAT_DXT5_RGBA,
-   };
-   return formats[rand() % ARRAY_SIZE(formats)];
+   /* Keep generating formats until we get a supported one. */
+   while (1) {
+      /* Skip one format: PIPE_FORMAT_NONE */
+      enum pipe_format format = (rand() % (PIPE_FORMAT_COUNT - 1)) + 1;
+      const struct util_format_description *desc = util_format_description(format);
+
+      if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN) {
+         unsigned i;
+
+         /* Don't test formats with X channels because cpu_texture doesn't emulate them. */
+         for (i = 0; i < desc->nr_channels; i++) {
+            if (desc->channel[i].type == UTIL_FORMAT_TYPE_VOID)
+               break;
+         }
+         if (i != desc->nr_channels)
+            continue;
+      }
+
+      if (desc->colorspace == UTIL_FORMAT_COLORSPACE_YUV)
+         continue;
+
+      if (sscreen->b.is_format_supported(&sscreen->b, format, PIPE_TEXTURE_2D, 1, 1,
+                                         PIPE_BIND_SAMPLER_VIEW))
+         return format;
+   }
 }
 
 #define MAX_ALLOC_SIZE (64 * 1024 * 1024)
@@ -143,7 +162,10 @@ static void set_random_image_attrs(struct pipe_resource *templ)
       templ->target = PIPE_TEXTURE_2D;
       break;
    case 2:
-      templ->target = PIPE_TEXTURE_3D;
+      if (util_format_is_depth_or_stencil(templ->format))
+         templ->target = PIPE_TEXTURE_2D; /* 3D doesn't support Z/S */
+      else
+         templ->target = PIPE_TEXTURE_3D;
       break;
    case 3:
       templ->target = PIPE_TEXTURE_RECT;
@@ -293,7 +315,7 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       bool pass;
 
       /* generate a random test case */
-      tsrc.format = tdst.format = choose_format();
+      tsrc.format = tdst.format = get_random_format(sscreen);
       set_random_image_attrs(&tsrc);
       set_random_image_attrs(&tdst);
 
@@ -311,7 +333,7 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       print_image_attrs(sscreen, sdst);
       printf("), src = (");
       print_image_attrs(sscreen, ssrc);
-      printf("), format = %17s, ", util_format_description(tsrc.format)->short_name);
+      printf("), format = %18s, ", util_format_description(tsrc.format)->short_name);
       fflush(stdout);
 
       for (unsigned level = 0; level <= tsrc.last_level; level++) {
