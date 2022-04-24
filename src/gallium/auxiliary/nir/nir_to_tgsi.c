@@ -3752,8 +3752,10 @@ const void *nir_to_tgsi_options(struct nir_shader *s,
     * corresponding splitting, and virgl depends on TGSI across link boundaries
     * having matching declarations.
     */
-   if (s->info.stage == MESA_SHADER_FRAGMENT)
+   if (s->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(s, nir_lower_indirect_derefs, nir_var_shader_in, UINT32_MAX);
+      NIR_PASS_V(s, nir_remove_dead_variables, nir_var_shader_in, NULL);
+   }
 
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);

@@ -768,15 +768,6 @@ spec@arb_depth_buffer_float@fbo-clear-formats stencil@GL_DEPTH32F_STENCIL8,Fail
 spec@arb_draw_indirect@gl_vertexid used with gldrawarraysindirect,Fail
 spec@arb_draw_indirect@gl_vertexid used with gldrawelementsindirect,Fail
 
-
-# "ureg_DECL_fs_input_centroid_layout: Assertion `(ureg->input[i].usage_mask & usage_mask) == 0' failed."
-spec@arb_enhanced_layouts@execution@component-layout@sso-vs-gs-fs-array-interleave,Crash
-spec@arb_enhanced_layouts@execution@component-layout@tcs-tes-fs-array-with-non-array-interleave,Crash
-spec@arb_enhanced_layouts@execution@component-layout@vs-tcs-tes-fs-array-interleave,Crash
-spec@arb_enhanced_layouts@execution@component-layout@vs-tcs-tes-fs-ifc-array-interleave,Crash
-spec@arb_enhanced_layouts@execution@component-layout@vs-tcs-tes-fs-patch-array-interleave,Crash
-spec@arb_enhanced_layouts@execution@component-layout@vs-to-fs-array-interleave,Crash
-
 # "	intrinsic copy_deref (ssa_2, ssa_3) (dst_access=0, src_access=0)
 #  error: glsl_get_bare_type(dst->type) == glsl_get_bare_type(src->type) (../src/compiler/nir/nir_validate.c:643)"
 # since ntt copy-deref optimization, probably.
