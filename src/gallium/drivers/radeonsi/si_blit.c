@@ -884,7 +884,8 @@ struct texture_orig_info {
 
 static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
                                                   struct pipe_resource *texture,
-                                                  unsigned level) {
+                                                  unsigned level)
+{
    struct si_texture *tex = (struct si_texture *)texture;
 
    /* If we are uploading into FP16 or R11G11B10_FLOAT via a blit, CB clobbers NaNs,
