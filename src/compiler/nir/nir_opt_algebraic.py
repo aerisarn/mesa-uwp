@@ -2419,7 +2419,9 @@ for op in ['ineg', 'iabs', 'inot', 'isign']:
     ]
 
 optimizations.extend([
-    (('fisnormal', 'a@32'), ('ult', 0x1ffffff, ('iadd', ('ishl', a, 1), 0x1000000)), 'options->lower_fisnormal')
+    (('fisnormal', 'a@16'), ('ult', 0xfff, ('iadd', ('ishl', a, 1), 0x800)), 'options->lower_fisnormal'),
+    (('fisnormal', 'a@32'), ('ult', 0x1ffffff, ('iadd', ('ishl', a, 1), 0x1000000)), 'options->lower_fisnormal'),
+    (('fisnormal', 'a@64'), ('ult', 0x3fffffffffffff, ('iadd', ('ishl', a, 1), 0x20000000000000)), 'options->lower_fisnormal')
     ])
 
 # This section contains optimizations to propagate downsizing conversions of
