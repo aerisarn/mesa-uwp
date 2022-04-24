@@ -191,7 +191,6 @@ void si_test_image_copy_region(struct si_screen *sscreen)
    num_partial_copies = 30;
 
    /* These parameters are randomly generated per test:
-    * - whether to do one whole-surface copy or N partial copies per test
     * - which tiling modes to use (LINEAR_ALIGNED, 1D, 2D)
     * - which texture dimensions to use
     * - whether to use VRAM (all tiling modes) and GTT (staging, linear
@@ -204,11 +203,10 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       struct si_texture *sdst;
       struct si_texture *ssrc;
       struct cpu_texture src_cpu, dst_cpu;
-      unsigned max_width, max_height, max_depth, j, num;
+      unsigned max_width, max_height, max_depth, j;
       unsigned gfx_blits = 0, cs_blits = 0, max_tex_side_gen;
       unsigned max_tex_layers;
       bool pass;
-      bool do_partial_copies = rand() & 1;
 
       /* generate a random test case */
       tsrc.target = tdst.target = PIPE_TEXTURE_2D_ARRAY;
@@ -232,23 +230,17 @@ void si_test_image_copy_region(struct si_screen *sscreen)
          tsrc.height0 = util_next_power_of_two(tsrc.height0);
       }
 
-      if (!do_partial_copies) {
-         /* whole-surface copies only, same dimensions */
-         tdst = tsrc;
-      } else {
-         max_tex_side_gen = generate_max_tex_side(max_tex_side);
-         max_tex_layers = rand() % 4 ? 1 : 5;
+      max_tex_side_gen = generate_max_tex_side(max_tex_side);
+      max_tex_layers = rand() % 4 ? 1 : 5;
 
-         /* many partial copies, dimensions can be different */
-         tdst.width0 = (rand() % max_tex_side_gen) + 1;
-         tdst.height0 = (rand() % max_tex_side_gen) + 1;
-         tdst.array_size = (rand() % max_tex_layers) + 1;
+      tdst.width0 = (rand() % max_tex_side_gen) + 1;
+      tdst.height0 = (rand() % max_tex_side_gen) + 1;
+      tdst.array_size = (rand() % max_tex_layers) + 1;
 
-         /* Have a 1/4 chance of getting power-of-two dimensions. */
-         if (rand() % 4 == 0) {
-            tdst.width0 = util_next_power_of_two(tdst.width0);
-            tdst.height0 = util_next_power_of_two(tdst.height0);
-         }
+      /* Have a 1/4 chance of getting power-of-two dimensions. */
+      if (rand() % 4 == 0) {
+         tdst.width0 = util_next_power_of_two(tdst.width0);
+         tdst.height0 = util_next_power_of_two(tdst.height0);
       }
 
       /* check texture sizes */
@@ -302,59 +294,49 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       max_height = MIN2(tsrc.height0, tdst.height0);
       max_depth = MIN2(tsrc.array_size, tdst.array_size);
 
-      num = do_partial_copies ? num_partial_copies : 1;
-      for (j = 0; j < num; j++) {
+      for (j = 0; j < num_partial_copies; j++) {
          int width, height, depth;
          int srcx, srcy, srcz, dstx, dsty, dstz;
          struct pipe_box box;
          unsigned old_num_draw_calls = sctx->num_draw_calls;
          unsigned old_num_cs_calls = sctx->num_compute_calls;
 
-         if (!do_partial_copies) {
-            /* copy whole src to dst */
-            width = max_width;
-            height = max_height;
-            depth = max_depth;
+         /* random sub-rectangle copies from src to dst */
+         depth = (rand() % max_depth) + 1;
+         srcz = rand() % (tsrc.array_size - depth + 1);
+         dstz = rand() % (tdst.array_size - depth + 1);
 
-            srcx = srcy = srcz = dstx = dsty = dstz = 0;
+         /* special code path to hit the tiled partial copies */
+         if (!ssrc->surface.is_linear && !sdst->surface.is_linear && rand() & 1) {
+            if (max_width < 8 || max_height < 8)
+               continue;
+            width = ((rand() % (max_width / 8)) + 1) * 8;
+            height = ((rand() % (max_height / 8)) + 1) * 8;
+
+            srcx = rand() % (tsrc.width0 - width + 1) & ~0x7;
+            srcy = rand() % (tsrc.height0 - height + 1) & ~0x7;
+
+            dstx = rand() % (tdst.width0 - width + 1) & ~0x7;
+            dsty = rand() % (tdst.height0 - height + 1) & ~0x7;
          } else {
-            /* random sub-rectangle copies from src to dst */
-            depth = (rand() % max_depth) + 1;
-            srcz = rand() % (tsrc.array_size - depth + 1);
-            dstz = rand() % (tdst.array_size - depth + 1);
+            /* just make sure that it doesn't divide by zero */
+            assert(max_width > 0 && max_height > 0);
 
-            /* special code path to hit the tiled partial copies */
-            if (!ssrc->surface.is_linear && !sdst->surface.is_linear && rand() & 1) {
-               if (max_width < 8 || max_height < 8)
-                  continue;
-               width = ((rand() % (max_width / 8)) + 1) * 8;
-               height = ((rand() % (max_height / 8)) + 1) * 8;
+            width = (rand() % max_width) + 1;
+            height = (rand() % max_height) + 1;
 
-               srcx = rand() % (tsrc.width0 - width + 1) & ~0x7;
-               srcy = rand() % (tsrc.height0 - height + 1) & ~0x7;
+            srcx = rand() % (tsrc.width0 - width + 1);
+            srcy = rand() % (tsrc.height0 - height + 1);
 
-               dstx = rand() % (tdst.width0 - width + 1) & ~0x7;
-               dsty = rand() % (tdst.height0 - height + 1) & ~0x7;
-            } else {
-               /* just make sure that it doesn't divide by zero */
-               assert(max_width > 0 && max_height > 0);
+            dstx = rand() % (tdst.width0 - width + 1);
+            dsty = rand() % (tdst.height0 - height + 1);
+         }
 
-               width = (rand() % max_width) + 1;
-               height = (rand() % max_height) + 1;
-
-               srcx = rand() % (tsrc.width0 - width + 1);
-               srcy = rand() % (tsrc.height0 - height + 1);
-
-               dstx = rand() % (tdst.width0 - width + 1);
-               dsty = rand() % (tdst.height0 - height + 1);
-            }
-
-            /* special code path to hit out-of-bounds reads in L2T */
-            if (ssrc->surface.is_linear && !sdst->surface.is_linear && rand() % 4 == 0) {
-               srcx = 0;
-               srcy = 0;
-               srcz = 0;
-            }
+         /* special code path to hit out-of-bounds reads in L2T */
+         if (ssrc->surface.is_linear && !sdst->surface.is_linear && rand() % 4 == 0) {
+            srcx = 0;
+            srcy = 0;
+            srcz = 0;
          }
 
          /* GPU copy */
