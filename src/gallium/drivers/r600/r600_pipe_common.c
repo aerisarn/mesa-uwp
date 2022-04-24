@@ -1330,13 +1330,10 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.fuse_ffma64 = true,
 		.lower_flrp32 = true,
 		.lower_flrp64 = true,
-		.lower_fpow = true,
 		.lower_fdiv = true,
 		.lower_isign = true,
 		.lower_fsign = true,
 		.lower_fmod = true,
-		.lower_doubles_options = nir_lower_fp64_full_software,
-		.lower_int64_options = ~0,
 		.lower_extract_byte = true,
 		.lower_extract_word = true,
 		.lower_insert_byte = true,
@@ -1362,11 +1359,30 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 
 	rscreen->nir_options = nir_options;
 
+        /* The TGSI code path handles OPCODE_POW, but has problems with the
+         * lowered version, the NIT code path does the rightthing with the
+         * lowered code */
+        rscreen->nir_options.lower_fpow = rscreen->debug_flags & DBG_NIR_PREFERRED;
+
 	if (rscreen->info.chip_class < EVERGREEN) {
 		/* Pre-EG doesn't have these ALU ops */
 		rscreen->nir_options.lower_bit_count = true;
 		rscreen->nir_options.lower_bitfield_reverse = true;
 	}
+
+        if (rscreen->info.chip_class < CAYMAN) {
+           rscreen->nir_options.lower_doubles_options = nir_lower_fp64_full_software;
+           rscreen->nir_options.lower_int64_options = ~0;
+        } else {
+           rscreen->nir_options.lower_doubles_options =
+                 nir_lower_ddiv |
+                 nir_lower_dfloor |
+                 nir_lower_dceil |
+                 nir_lower_dmod |
+                 nir_lower_dsub |
+                 nir_lower_dtrunc;
+           rscreen->nir_options.lower_int64_options = ~0;
+        }
 
 	if (!(rscreen->debug_flags & DBG_NIR_PREFERRED)) {
 		/* TGSI is vector, and NIR-to-TGSI doesn't like it when the
