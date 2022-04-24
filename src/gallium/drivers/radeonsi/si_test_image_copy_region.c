@@ -43,25 +43,30 @@ struct cpu_texture {
    unsigned stride;
 };
 
-static void alloc_cpu_texture(struct cpu_texture *tex, struct pipe_resource *templ)
+static void alloc_cpu_texture(struct cpu_texture *tex, struct pipe_resource *templ, unsigned level)
 {
-   tex->stride = align(util_format_get_stride(templ->format, templ->width0), RAND_NUM_SIZE);
-   tex->layer_stride = util_format_get_2d_size(templ->format, tex->stride, templ->height0);
-   tex->size = tex->layer_stride * util_num_layers(templ, 0);
+   unsigned width = u_minify(templ->width0, level);
+   unsigned height = u_minify(templ->height0, level);
+
+   tex->stride = align(util_format_get_stride(templ->format, width), RAND_NUM_SIZE);
+   tex->layer_stride = util_format_get_2d_size(templ->format, tex->stride, height);
+   tex->size = tex->layer_stride * util_num_layers(templ, level);
    tex->ptr = malloc(tex->size);
    assert(tex->ptr);
 }
 
 static void set_random_pixels(struct pipe_context *ctx, struct pipe_resource *tex,
-                              struct cpu_texture *cpu)
+                              struct cpu_texture *cpu, unsigned level)
 {
    struct pipe_transfer *t;
    uint8_t *map;
    int x, y, z;
-   unsigned num_y_blocks = util_format_get_nblocksy(tex->format, tex->height0);
-   unsigned num_layers = util_num_layers(tex, 0);
+   unsigned width = u_minify(tex->width0, level);
+   unsigned height = u_minify(tex->height0, level);
+   unsigned num_y_blocks = util_format_get_nblocksy(tex->format, height);
+   unsigned num_layers = util_num_layers(tex, level);
 
-   map = pipe_texture_map_3d(ctx, tex, 0, PIPE_MAP_WRITE, 0, 0, 0, tex->width0, tex->height0,
+   map = pipe_texture_map_3d(ctx, tex, level, PIPE_MAP_WRITE, 0, 0, 0, width, height,
                              num_layers, &t);
    assert(map);
 
@@ -84,17 +89,19 @@ static void set_random_pixels(struct pipe_context *ctx, struct pipe_resource *te
 }
 
 static bool compare_textures(struct pipe_context *ctx, struct pipe_resource *tex,
-                             struct cpu_texture *cpu)
+                             struct cpu_texture *cpu, unsigned level)
 {
    struct pipe_transfer *t;
    uint8_t *map;
    int y, z;
    bool pass = true;
-   unsigned stride = util_format_get_stride(tex->format, tex->width0);
-   unsigned num_y_blocks = util_format_get_nblocksy(tex->format, tex->height0);
-   unsigned num_layers = util_num_layers(tex, 0);
+   unsigned width = u_minify(tex->width0, level);
+   unsigned height = u_minify(tex->height0, level);
+   unsigned stride = util_format_get_stride(tex->format, width);
+   unsigned num_y_blocks = util_format_get_nblocksy(tex->format, height);
+   unsigned num_layers = util_num_layers(tex, level);
 
-   map = pipe_texture_map_3d(ctx, tex, 0, PIPE_MAP_READ, 0, 0, 0, tex->width0, tex->height0,
+   map = pipe_texture_map_3d(ctx, tex, level, PIPE_MAP_READ, 0, 0, 0, width, height,
                              num_layers, &t);
    assert(map);
 
@@ -196,6 +203,13 @@ static void set_random_image_attrs(struct pipe_resource *templ)
 
    if (util_format_get_blockwidth(templ->format) == 2)
       templ->width0 = align(templ->width0, 2);
+
+   if (templ->target != PIPE_TEXTURE_RECT &&
+       util_format_description(templ->format)->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED) {
+      unsigned max_dim = MAX3(templ->width0, templ->height0, templ->depth0);
+
+      templ->last_level = rand() % (util_logbase2(max_dim) + 1);
+   }
 }
 
 static void print_image_attrs(struct si_screen *sscreen, struct si_texture *tex)
@@ -244,7 +258,8 @@ static void print_image_attrs(struct si_screen *sscreen, struct si_texture *tex)
       snprintf(size, sizeof(size), "%ux%ux%u", tex->buffer.b.b.width0, tex->buffer.b.b.height0,
                util_num_layers(&tex->buffer.b.b, 0));
 
-   printf("%8s, %14s, %8s", targets[tex->buffer.b.b.target], size, mode);
+   printf("%8s, %14s, %2u levels, %8s", targets[tex->buffer.b.b.target], size,
+          tex->buffer.b.b.last_level + 1, mode);
 }
 
 void si_test_image_copy_region(struct si_screen *sscreen)
@@ -272,7 +287,7 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       struct pipe_resource tsrc = {}, tdst = {}, *src, *dst;
       struct si_texture *sdst;
       struct si_texture *ssrc;
-      struct cpu_texture src_cpu, dst_cpu;
+      struct cpu_texture src_cpu[RADEON_SURF_MAX_LEVELS], dst_cpu[RADEON_SURF_MAX_LEVELS];
       unsigned max_width, max_height, max_depth, j;
       unsigned gfx_blits = 0, cs_blits = 0;
       bool pass;
@@ -291,8 +306,6 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       assert(dst);
       sdst = (struct si_texture *)dst;
       ssrc = (struct si_texture *)src;
-      alloc_cpu_texture(&src_cpu, &tsrc);
-      alloc_cpu_texture(&dst_cpu, &tdst);
 
       printf("%4u: dst = (", i);
       print_image_attrs(sscreen, sdst);
@@ -301,19 +314,19 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       printf("), format = %17s, ", util_format_description(tsrc.format)->short_name);
       fflush(stdout);
 
-      /* set src pixels */
-      set_random_pixels(ctx, src, &src_cpu);
+      for (unsigned level = 0; level <= tsrc.last_level; level++) {
+         alloc_cpu_texture(&src_cpu[level], &tsrc, level);
+         set_random_pixels(ctx, src, &src_cpu[level], level);
+      }
+      for (unsigned level = 0; level <= tdst.last_level; level++) {
+         alloc_cpu_texture(&dst_cpu[level], &tdst, level);
+         memset(dst_cpu[level].ptr, 0, dst_cpu[level].layer_stride * util_num_layers(&tdst, level));
+      }
 
       /* clear dst pixels */
       uint32_t zero = 0;
       si_clear_buffer(sctx, dst, 0, sdst->surface.surf_size, &zero, 4, SI_OP_SYNC_BEFORE_AFTER,
                       SI_COHERENCY_SHADER, SI_AUTO_SELECT_CLEAR_METHOD);
-      memset(dst_cpu.ptr, 0, dst_cpu.layer_stride * util_num_layers(&tdst, 0));
-
-      /* preparation */
-      max_width = MIN2(tsrc.width0, tdst.width0);
-      max_height = MIN2(tsrc.height0, tdst.height0);
-      max_depth = MIN2(util_num_layers(&tsrc, 0), util_num_layers(&tdst, 0));
 
       for (j = 0; j < num_partial_copies; j++) {
          int width, height, depth;
@@ -322,10 +335,17 @@ void si_test_image_copy_region(struct si_screen *sscreen)
          unsigned old_num_draw_calls = sctx->num_draw_calls;
          unsigned old_num_cs_calls = sctx->num_compute_calls;
 
+         unsigned src_level = j % (tsrc.last_level + 1);
+         unsigned dst_level = j % (tdst.last_level + 1);
+
+         max_width = MIN2(u_minify(tsrc.width0, src_level), u_minify(tdst.width0, dst_level));
+         max_height = MIN2(u_minify(tsrc.height0, src_level), u_minify(tdst.height0, dst_level));
+         max_depth = MIN2(util_num_layers(&tsrc, src_level), util_num_layers(&tdst, dst_level));
+
          /* random sub-rectangle copies from src to dst */
          depth = (rand() % max_depth) + 1;
-         srcz = rand() % (util_num_layers(&tsrc, 0) - depth + 1);
-         dstz = rand() % (util_num_layers(&tdst, 0) - depth + 1);
+         srcz = rand() % (util_num_layers(&tsrc, src_level) - depth + 1);
+         dstz = rand() % (util_num_layers(&tdst, dst_level) - depth + 1);
 
          /* just make sure that it doesn't divide by zero */
          assert(max_width > 0 && max_height > 0);
@@ -333,11 +353,11 @@ void si_test_image_copy_region(struct si_screen *sscreen)
          width = (rand() % max_width) + 1;
          height = (rand() % max_height) + 1;
 
-         srcx = rand() % (tsrc.width0 - width + 1);
-         srcy = rand() % (tsrc.height0 - height + 1);
+         srcx = rand() % (u_minify(tsrc.width0, src_level) - width + 1);
+         srcy = rand() % (u_minify(tsrc.height0, src_level) - height + 1);
 
-         dstx = rand() % (tdst.width0 - width + 1);
-         dsty = rand() % (tdst.height0 - height + 1);
+         dstx = rand() % (u_minify(tdst.width0, dst_level) - width + 1);
+         dsty = rand() % (u_minify(tdst.height0, dst_level) - height + 1);
 
          /* Align the box to the format block size. */
          srcx &= ~(util_format_get_blockwidth(src->format) - 1);
@@ -351,19 +371,23 @@ void si_test_image_copy_region(struct si_screen *sscreen)
 
          /* GPU copy */
          u_box_3d(srcx, srcy, srcz, width, height, depth, &box);
-         si_resource_copy_region(ctx, dst, 0, dstx, dsty, dstz, src, 0, &box);
+         si_resource_copy_region(ctx, dst, dst_level, dstx, dsty, dstz, src, src_level, &box);
 
          /* See which engine was used. */
          gfx_blits += sctx->num_draw_calls > old_num_draw_calls;
          cs_blits += sctx->num_compute_calls > old_num_cs_calls;
 
          /* CPU copy */
-         util_copy_box(dst_cpu.ptr, tdst.format, dst_cpu.stride, dst_cpu.layer_stride, dstx, dsty,
-                       dstz, width, height, depth, src_cpu.ptr, src_cpu.stride,
-                       src_cpu.layer_stride, srcx, srcy, srcz);
+         util_copy_box(dst_cpu[dst_level].ptr, tdst.format, dst_cpu[dst_level].stride,
+                       dst_cpu[dst_level].layer_stride, dstx, dsty, dstz,
+                       width, height, depth, src_cpu[src_level].ptr, src_cpu[src_level].stride,
+                       src_cpu[src_level].layer_stride, srcx, srcy, srcz);
       }
 
-      pass = compare_textures(ctx, dst, &dst_cpu);
+      pass = true;
+      for (unsigned level = 0; level <= tdst.last_level; level++)
+         pass &= compare_textures(ctx, dst, &dst_cpu[level], level);
+
       if (pass)
          num_pass++;
       else
@@ -375,8 +399,10 @@ void si_test_image_copy_region(struct si_screen *sscreen)
       /* cleanup */
       pipe_resource_reference(&src, NULL);
       pipe_resource_reference(&dst, NULL);
-      free(src_cpu.ptr);
-      free(dst_cpu.ptr);
+      for (unsigned level = 0; level <= tsrc.last_level; level++)
+         free(src_cpu[level].ptr);
+      for (unsigned level = 0; level <= tdst.last_level; level++)
+         free(dst_cpu[level].ptr);
    }
 
    ctx->destroy(ctx);
