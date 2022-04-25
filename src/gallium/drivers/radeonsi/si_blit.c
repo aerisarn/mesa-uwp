@@ -885,6 +885,10 @@ struct texture_orig_info {
 static bool si_can_use_compute_blit(struct si_context *sctx, enum pipe_format format,
                                     unsigned num_samples, bool is_store, bool has_dcc)
 {
+   /* TODO: This format fails AMD_TEST=imagecopy. */
+   if (format == PIPE_FORMAT_A8R8_UNORM && is_store)
+      return false;
+
    if (num_samples > 1)
       return false;
 
