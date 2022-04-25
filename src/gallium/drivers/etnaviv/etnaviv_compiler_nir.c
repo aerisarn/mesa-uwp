@@ -513,7 +513,7 @@ emit_tex(struct etna_compile *c, nir_tex_instr * tex)
 {
    unsigned dst_swiz;
    hw_dst dst = ra_dest(c, &tex->dest, &dst_swiz);
-   nir_src *coord = NULL, *lod_bias = NULL, *compare = NULL;
+   nir_src *coord = NULL, *src1 = NULL, *src2 = NULL;
 
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -522,11 +522,11 @@ emit_tex(struct etna_compile *c, nir_tex_instr * tex)
          break;
       case nir_tex_src_bias:
       case nir_tex_src_lod:
-         assert(!lod_bias);
-         lod_bias = &tex->src[i].src;
+         assert(!src1);
+         src1 = &tex->src[i].src;
          break;
       case nir_tex_src_comparator:
-         compare = &tex->src[i].src;
+         src2 = &tex->src[i].src;
          break;
       default:
          compile_error(c, "Unhandled NIR tex src type: %d\n",
@@ -536,8 +536,8 @@ emit_tex(struct etna_compile *c, nir_tex_instr * tex)
    }
 
    etna_emit_tex(c, tex->op, tex->sampler_index, dst_swiz, dst, get_src(c, coord),
-                 lod_bias ? get_src(c, lod_bias) : SRC_DISABLE,
-                 compare ? get_src(c, compare) : SRC_DISABLE);
+                 src1 ? get_src(c, src1) : SRC_DISABLE,
+                 src2 ? get_src(c, src2) : SRC_DISABLE);
 }
 
 static void
