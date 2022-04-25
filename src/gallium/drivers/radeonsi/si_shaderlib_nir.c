@@ -65,7 +65,7 @@ deref_ssa(nir_builder *b, nir_variable *var)
  * It expects the source and destination (x,y,z) coords as user_data_amd,
  * packed into 3 SGPRs as 2x16bits per component.
  */
-void *si_create_copy_image_cs(struct si_context *sctx, bool is_1D)
+void *si_create_copy_image_cs(struct si_context *sctx, bool src_is_1d_array, bool dst_is_1d_array)
 {
    const nir_shader_compiler_options *options =
       sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
@@ -78,12 +78,8 @@ void *si_create_copy_image_cs(struct si_context *sctx, bool is_1D)
     */
    b.shader->info.workgroup_size_variable = true;
 
-   /* 1D uses 'x' as image coord, and 'y' as array index.
-    * 2D uses 'x'&'y' as image coords, and 'z' as array index.
-    */
-   int n_components = is_1D ? 2 : 3;
-   b.shader->info.cs.user_data_components_amd = n_components;
-   nir_ssa_def *ids = get_global_ids(&b, n_components);
+   b.shader->info.cs.user_data_components_amd = 3;
+   nir_ssa_def *ids = get_global_ids(&b, 3);
 
    nir_ssa_def *coord_src = NULL, *coord_dst = NULL;
    unpack_2x16(&b, nir_load_user_data_amd(&b), &coord_src, &coord_dst);
@@ -91,13 +87,24 @@ void *si_create_copy_image_cs(struct si_context *sctx, bool is_1D)
    coord_src = nir_iadd(&b, coord_src, ids);
    coord_dst = nir_iadd(&b, coord_dst, ids);
 
-   const struct glsl_type *img_type = glsl_image_type(is_1D ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D,
-                                                      /*is_array*/ true, GLSL_TYPE_FLOAT);
+   static unsigned swizzle_xz[] = {0, 2, 0, 0};
 
-   nir_variable *img_src = nir_variable_create(b.shader, nir_var_image, img_type, "img_src");
+   if (src_is_1d_array)
+      coord_src = nir_swizzle(&b, coord_src, swizzle_xz, 4);
+   if (dst_is_1d_array)
+      coord_dst = nir_swizzle(&b, coord_dst, swizzle_xz, 4);
+
+   const struct glsl_type *src_img_type = glsl_image_type(src_is_1d_array ? GLSL_SAMPLER_DIM_1D
+                                                                          : GLSL_SAMPLER_DIM_2D,
+                                                          /*is_array*/ true, GLSL_TYPE_FLOAT);
+   const struct glsl_type *dst_img_type = glsl_image_type(dst_is_1d_array ? GLSL_SAMPLER_DIM_1D
+                                                                          : GLSL_SAMPLER_DIM_2D,
+                                                          /*is_array*/ true, GLSL_TYPE_FLOAT);
+
+   nir_variable *img_src = nir_variable_create(b.shader, nir_var_image, src_img_type, "img_src");
    img_src->data.binding = 0;
 
-   nir_variable *img_dst = nir_variable_create(b.shader, nir_var_image, img_type, "img_dst");
+   nir_variable *img_dst = nir_variable_create(b.shader, nir_var_image, dst_img_type, "img_dst");
    img_dst->data.binding = 1;
 
    nir_ssa_def *undef32 = nir_ssa_undef(&b, 1, 32);

@@ -965,8 +965,7 @@ struct si_context {
    void *cs_clear_buffer;
    void *cs_clear_buffer_rmw;
    void *cs_copy_buffer;
-   void *cs_copy_image_1D;
-   void *cs_copy_image_2D;
+   void *cs_copy_image[2][2]; /* [src_is_1d][dst_is_1d] */
    void *cs_clear_render_target;
    void *cs_clear_render_target_1d_array;
    void *cs_clear_12bytes_buffer;
@@ -1519,7 +1518,7 @@ void si_suspend_queries(struct si_context *sctx);
 void si_resume_queries(struct si_context *sctx);
 
 /* si_shaderlib_nir.c */
-void *si_create_copy_image_cs(struct si_context *sctx, bool is_1D);
+void *si_create_copy_image_cs(struct si_context *sctx, bool src_is_1d_array, bool dst_is_1d_array);
 void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf);
 void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *tex);
 

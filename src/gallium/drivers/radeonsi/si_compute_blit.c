@@ -504,7 +504,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    enum pipe_format src_format = util_format_linear(src->format);
    enum pipe_format dst_format = util_format_linear(dst->format);
    bool is_linear = ssrc->surface.is_linear || sdst->surface.is_linear;
-   bool is_1D = dst->target == PIPE_TEXTURE_1D_ARRAY && src->target == PIPE_TEXTURE_1D_ARRAY;
 
    assert(util_format_is_subsampled_422(src_format) == util_format_is_subsampled_422(dst_format));
 
@@ -624,31 +623,37 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
       si_launch_grid_internal(sctx, &info, sctx->cs_dcc_decompress, flags | SI_OP_CS_IMAGE);
    } else {
-      sctx->cs_user_data[0] = src_box->x | (dstx << 16);
-
-      int block_x = is_1D || is_linear ? 64 : 8;
-      int block_y = is_1D || is_linear ? 1 : 8;
+      bool dst_is_1d = dst->target == PIPE_TEXTURE_1D ||
+                       dst->target == PIPE_TEXTURE_1D_ARRAY;
+      bool src_is_1d = src->target == PIPE_TEXTURE_1D ||
+                       src->target == PIPE_TEXTURE_1D_ARRAY;
+      int block_x, block_y;
       int block_z = 1;
 
-      if (is_1D) {
-         assert(height == 1); /* height is not used for 1D images */
-         assert(src_box->y == 0 && dsty == 0);
-
-         sctx->cs_user_data[1] = src_box->z | (dstz << 16);
-
-         /* We pass array index in 'y' for 1D images. */
-         height = depth;
-         depth = 1;
+      /* Choose the block dimensions based on the copy area size. */
+      if (src_box->height <= 4) {
+         block_y = util_next_power_of_two(src_box->height);
+         block_x = 64 / block_y;
+      } else if (src_box->width <= 4) {
+         block_x = util_next_power_of_two(src_box->width);
+         block_y = 64 / block_x;
+      } else if (is_linear) {
+         block_x = 64;
+         block_y = 1;
       } else {
-         sctx->cs_user_data[1] = src_box->y | (dsty << 16);
-         sctx->cs_user_data[2] = src_box->z | (dstz << 16);
+         block_x = 8;
+         block_y = 8;
       }
+
+      sctx->cs_user_data[0] = src_box->x | (dstx << 16);
+      sctx->cs_user_data[1] = src_box->y | (dsty << 16);
+      sctx->cs_user_data[2] = src_box->z | (dstz << 16);
 
       set_work_size(&info, block_x, block_y, block_z, width, height, depth);
 
-      void **copy_image_cs_ptr = is_1D ? &sctx->cs_copy_image_1D : &sctx->cs_copy_image_2D;
+      void **copy_image_cs_ptr = &sctx->cs_copy_image[src_is_1d][dst_is_1d];
       if (!*copy_image_cs_ptr)
-         *copy_image_cs_ptr = si_create_copy_image_cs(sctx, is_1D);
+         *copy_image_cs_ptr = si_create_copy_image_cs(sctx, src_is_1d, dst_is_1d);
 
       assert(*copy_image_cs_ptr);
 

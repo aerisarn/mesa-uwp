@@ -954,9 +954,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
    if (si_can_use_compute_blit(sctx, dst->format, dst->nr_samples, true,
                                vi_dcc_enabled(sdst, dst_level)) &&
        si_can_use_compute_blit(sctx, src->format, src->nr_samples, false,
-                               vi_dcc_enabled(ssrc, src_level)) &&
-       !(dst->target != src->target &&
-         (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
+                               vi_dcc_enabled(ssrc, src_level))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
                             src_box, false, SI_OP_SYNC_BEFORE_AFTER);
       return;
