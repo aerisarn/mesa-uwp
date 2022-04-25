@@ -502,8 +502,11 @@ zink_kopper_acquire(struct zink_context *ctx, struct zink_resource *res, uint64_
                        res->base.b.height0 != cswap->scci.imageExtent.height;
    VkResult ret = kopper_acquire(zink_screen(ctx->base.screen), res, timeout);
    if (ret == VK_SUCCESS || ret == VK_SUBOPTIMAL_KHR) {
-      if (cswap != cdt->swapchain)
+      if (cswap != cdt->swapchain) {
          ctx->swapchain_size = cdt->swapchain->scci.imageExtent;
+         res->base.b.width0 = ctx->swapchain_size.width;
+         res->base.b.height0 = ctx->swapchain_size.height;
+      }
    } else if (is_swapchain_kill(ret)) {
       kill_swapchain(ctx, res);
    }
@@ -664,8 +667,11 @@ zink_kopper_acquire_readback(struct zink_context *ctx, struct zink_resource *res
          return false;
       }
    }
-   if (cswap != cdt->swapchain)
+   if (cswap != cdt->swapchain) {
       ctx->swapchain_size = cdt->swapchain->scci.imageExtent;
+      res->base.b.width0 = ctx->swapchain_size.width;
+      res->base.b.height0 = ctx->swapchain_size.height;
+   }
    return true;
 }
 

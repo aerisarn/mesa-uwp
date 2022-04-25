@@ -434,6 +434,8 @@ zink_surface_swapchain_update(struct zink_context *ctx, struct zink_surface *sur
       surface->old_swapchain_size = surface->swapchain_size;
       surface->swapchain_size = cdt->swapchain->num_images;
       surface->swapchain = calloc(surface->swapchain_size, sizeof(VkImageView));
+      surface->base.width = res->base.b.width0;
+      surface->base.height = res->base.b.height0;
       init_surface_info(surface, res, &surface->ivci);
    }
    if (!surface->swapchain[res->obj->dt_idx]) {
