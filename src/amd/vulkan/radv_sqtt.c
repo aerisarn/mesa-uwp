@@ -58,6 +58,21 @@ gfx10_get_thread_trace_ctrl(struct radv_device *device, bool enable)
 }
 
 static void
+radv_emit_wait_for_idle(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
+{
+   enum rgp_flush_bits sqtt_flush_bits = 0;
+   si_cs_emit_cache_flush(
+      cs, device->physical_device->rad_info.chip_class, NULL, 0,
+      family == RING_COMPUTE && device->physical_device->rad_info.chip_class >= GFX7,
+      (family == RADV_QUEUE_COMPUTE
+          ? RADV_CMD_FLAG_CS_PARTIAL_FLUSH
+          : (RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH)) |
+         RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE |
+         RADV_CMD_FLAG_INV_L2,
+      &sqtt_flush_bits, 0);
+}
+
+static void
 radv_emit_thread_trace_start(struct radv_device *device, struct radeon_cmdbuf *cs,
                              enum radv_queue_family qf)
 {
@@ -251,6 +266,11 @@ radv_emit_thread_trace_stop(struct radv_device *device, struct radeon_cmdbuf *cs
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
    radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
 
+   if (device->physical_device->rad_info.has_sqtt_rb_harvest_bug) {
+      /* Some chips with disabled RBs should wait for idle because FINISH_DONE doesn't work. */
+      radv_emit_wait_for_idle(device, cs, qf);
+   }
+
    for (unsigned se = 0; se < max_se; se++) {
       if (radv_se_is_disabled(device, se))
          continue;
@@ -261,16 +281,18 @@ radv_emit_thread_trace_stop(struct radv_device *device, struct radeon_cmdbuf *cs
          S_030800_SE_INDEX(se) | S_030800_SH_INDEX(0) | S_030800_INSTANCE_BROADCAST_WRITES(1));
 
       if (device->physical_device->rad_info.chip_class >= GFX10) {
-         /* Make sure to wait for the trace buffer. */
-         radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
-         radeon_emit(
-            cs,
-            WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
-         radeon_emit(cs, R_008D20_SQ_THREAD_TRACE_STATUS >> 2); /* register */
-         radeon_emit(cs, 0);
-         radeon_emit(cs, 0);                       /* reference value */
-         radeon_emit(cs, ~C_008D20_FINISH_DONE);
-         radeon_emit(cs, 4);                       /* poll interval */
+         if (!device->physical_device->rad_info.has_sqtt_rb_harvest_bug) {
+            /* Make sure to wait for the trace buffer. */
+            radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
+            radeon_emit(
+               cs,
+               WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
+            radeon_emit(cs, R_008D20_SQ_THREAD_TRACE_STATUS >> 2); /* register */
+            radeon_emit(cs, 0);
+            radeon_emit(cs, 0);                       /* reference value */
+            radeon_emit(cs, ~C_008D20_FINISH_DONE);
+            radeon_emit(cs, 4);                       /* poll interval */
+         }
 
          /* Disable the thread trace mode. */
          radeon_set_privileged_config_reg(cs, R_008D1C_SQ_THREAD_TRACE_CTRL,
@@ -363,21 +385,6 @@ radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *
       radeon_set_uconfig_reg(cs, R_0372FC_RLC_PERFMON_CLK_CNTL,
                              S_0372FC_PERFMON_CLOCK_STATE(inhibit));
    }
-}
-
-static void
-radv_emit_wait_for_idle(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
-{
-   enum rgp_flush_bits sqtt_flush_bits = 0;
-   si_cs_emit_cache_flush(
-      cs, device->physical_device->rad_info.chip_class, NULL, 0,
-      family == RING_COMPUTE && device->physical_device->rad_info.chip_class >= GFX7,
-      (family == RADV_QUEUE_COMPUTE
-          ? RADV_CMD_FLAG_CS_PARTIAL_FLUSH
-          : (RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH)) |
-         RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE |
-         RADV_CMD_FLAG_INV_L2,
-      &sqtt_flush_bits, 0);
 }
 
 static bool
