@@ -1457,25 +1457,44 @@ x11_manage_fifo_queues(void *state)
          goto fail;
 
       if (chain->has_acquire_queue) {
+        xcb_generic_event_t *event = NULL;
+        xcb_connection_t *conn = chain->conn;
+
          /* Wait for our presentation to occur and ensure we have at least one
           * image that can be acquired by the client afterwards. This ensures we
           * can pull on the present-queue on the next loop.
           */
          while (chain->images[image_index].present_queued ||
                 chain->sent_image_count == chain->base.image_count) {
-            xcb_generic_event_t *event =
-               xcb_wait_for_special_event(chain->conn, chain->special_event);
-            if (!event) {
+
+            event = xcb_poll_for_special_event(conn, chain->special_event);
+            if (event) {
+               result = x11_handle_dri3_present_event(chain, (void *)event);
+               /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
+               result = x11_swapchain_result(chain, result);
+               free(event);
+               if (result < 0)
+                  goto fail;
+
+               continue;
+            }
+
+            if (chain->status < 0 || xcb_connection_has_error(conn)) {
                result = VK_ERROR_SURFACE_LOST_KHR;
                goto fail;
             }
 
-            result = x11_handle_dri3_present_event(chain, (void *)event);
-            /* Ensure that VK_SUBOPTIMAL_KHR is reported to the application */
-            result = x11_swapchain_result(chain, result);
-            free(event);
-            if (result < 0)
+            /* poke the window to see if it got destroyed from under us, and
+             * to flush any pending special events out of the server
+             */
+            xcb_get_geometry_reply_t *geometry =
+               xcb_get_geometry_reply(conn,
+                                      xcb_get_geometry(conn, chain->window),
+                                      NULL);
+            if (geometry == NULL) {
+               result = VK_ERROR_SURFACE_LOST_KHR;
                goto fail;
+            }
          }
       }
    }
