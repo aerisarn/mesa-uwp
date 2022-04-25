@@ -2130,13 +2130,18 @@ static void si_surface_destroy(struct pipe_context *pipe, struct pipe_surface *s
    FREE(surface);
 }
 
-unsigned si_translate_colorswap(enum pipe_format format, bool do_endian_swap)
+unsigned si_translate_colorswap(enum chip_class chip_class, enum pipe_format format,
+                                bool do_endian_swap)
 {
    const struct util_format_description *desc = util_format_description(format);
 
 #define HAS_SWIZZLE(chan, swz) (desc->swizzle[chan] == PIPE_SWIZZLE_##swz)
 
    if (format == PIPE_FORMAT_R11G11B10_FLOAT) /* isn't plain */
+      return V_028C70_SWAP_STD;
+
+   if (chip_class >= GFX10_3 &&
+       format == PIPE_FORMAT_R9G9B9E5_FLOAT) /* isn't plain */
       return V_028C70_SWAP_STD;
 
    if (desc->layout != UTIL_FORMAT_LAYOUT_PLAIN)

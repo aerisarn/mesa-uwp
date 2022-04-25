@@ -169,7 +169,7 @@ bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format)
 {
    format = si_simplify_cb_format(format);
    const struct util_format_description *desc = util_format_description(format);
-   unsigned comp_swap = si_translate_colorswap(format, false);
+   unsigned comp_swap = si_translate_colorswap(sscreen->info.chip_class, format, false);
 
    /* The following code matches the hw behavior. */
    if (desc->nr_channels == 1) {

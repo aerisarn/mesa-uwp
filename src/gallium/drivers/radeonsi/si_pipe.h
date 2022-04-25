@@ -1584,7 +1584,8 @@ struct pipe_surface *si_create_surface_custom(struct pipe_context *pipe,
                                               struct pipe_resource *texture,
                                               const struct pipe_surface *templ, unsigned width0,
                                               unsigned height0, unsigned width, unsigned height);
-unsigned si_translate_colorswap(enum pipe_format format, bool do_endian_swap);
+unsigned si_translate_colorswap(enum chip_class chip_class, enum pipe_format format,
+                                bool do_endian_swap);
 bool si_texture_disable_dcc(struct si_context *sctx, struct si_texture *tex);
 void si_init_screen_texture_functions(struct si_screen *sscreen);
 void si_init_context_texture_functions(struct si_context *sctx);
