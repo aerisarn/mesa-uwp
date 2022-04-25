@@ -52,6 +52,7 @@ struct kopper_drawable {
 struct kopper_screen {
    struct dri_screen base;
    struct pipe_screen *screen; //unwrapped
+   bool has_dmabuf;
 };
 
 extern const __DRIimageExtension driVkImageExtension;
@@ -156,7 +157,8 @@ kopper_init_screen(__DRIscreen * sPriv)
    assert(pscreen->get_param(pscreen, PIPE_CAP_DEVICE_RESET_STATUS_QUERY));
    screen->has_reset_status_query = true;
    screen->lookup_egl_image = dri2_lookup_egl_image;
-   if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF))
+   kscreen->has_dmabuf = pscreen->get_param(pscreen, PIPE_CAP_DMABUF);
+   if (kscreen->has_dmabuf)
       sPriv->extensions = drivk_screen_extensions;
    else
       sPriv->extensions = drivk_sw_screen_extensions;
