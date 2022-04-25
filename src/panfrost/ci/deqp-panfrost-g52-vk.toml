@@ -18,7 +18,7 @@ include = [
     "dEQP-VK.glsl.builtin.precision.frexp.*",
     "dEQP-VK.glsl.builtin.precision.ldexp.*",
     "dEQP-VK.glsl.builtin_var.*",
-    "dEQP-VK.glsl.indexing.varying_array.*",
+    "dEQP-VK.glsl.indexing.*",
     "dEQP-VK.glsl.opaque_type_indexing.sampler.*",
     "dEQP-VK.glsl.conversions.*",
     "dEQP-VK.glsl.derivate.*.constant.*",
