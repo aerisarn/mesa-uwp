@@ -338,8 +338,17 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
       if (shader->has_img_access)
          pipeline->img_access_mask |= BITFIELD_BIT(i);
 
-      if (i == MESA_SHADER_VERTEX && shader->info.vs.writes_point_size)
-         pipeline->ia.writes_point_size = true;
+      if (i == MESA_SHADER_VERTEX && shader->info.vs.writes_point_size) {
+         VkPrimitiveTopology topology =
+            builder->create_info.gfx->pInputAssemblyState->topology;
+         bool points = (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
+
+         /* Even if the vertex shader writes point size, we only consider the
+          * pipeline to write point size when we're actually drawing points.
+          * Otherwise the point size write would conflict with wide lines.
+          */
+         pipeline->ia.writes_point_size = points;
+      }
 
       mali_ptr shader_ptr = 0;
 

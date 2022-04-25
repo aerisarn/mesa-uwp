@@ -661,7 +661,7 @@ panvk_draw_prepare_varyings(struct panvk_cmd_buffer *cmdbuf,
                        varyings->varying[VARYING_SLOT_POS].offset;
    }
 
-   if (BITSET_TEST(varyings->active, VARYING_SLOT_PSIZ)) {
+   if (pipeline->ia.writes_point_size) {
       draw->psiz = varyings->buf[varyings->varying[VARYING_SLOT_PSIZ].buf].address +
                        varyings->varying[VARYING_SLOT_POS].offset;
    } else if (pipeline->ia.topology == MALI_DRAW_MODE_LINES ||

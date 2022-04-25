@@ -24,6 +24,7 @@ include = [
     "dEQP-VK.image.load_store.with_format.*",
     "dEQP-VK.pipeline.input_assembly.*",
     "dEQP-VK.pipeline.sampler.view_type.*.format.r*.address_modes.all_mode_clamp_to_border*",
+    "dEQP-VK.rasterization.interpolation.*",
     "dEQP-VK.spirv_assembly.instruction.compute.opquantize.*",
     "dEQP-VK.spirv_assembly.instruction.compute.shader_default_output.*",
     "dEQP-VK.spirv_assembly.instruction.compute.workgroup_memory.*",
