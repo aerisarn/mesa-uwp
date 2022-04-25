@@ -160,9 +160,9 @@ test(unsigned width, unsigned height, unsigned rx, unsigned ry,
                     dst_stride, src_stride, format, store);
 
    if (store)
-      ASSERT_EQ(memcmp(ref, tiled, bpp * tiled_width * tiled_height), 0);
+      EXPECT_EQ(memcmp(ref, tiled, bpp * tiled_width * tiled_height), 0);
    else
-      ASSERT_EQ(memcmp(ref, linear, bpp * rw * linear_stride), 0);
+      EXPECT_EQ(memcmp(ref, linear, bpp * rw * linear_stride), 0);
 
    free(ref);
    free(tiled);
