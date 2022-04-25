@@ -557,7 +557,20 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    }
 
    if (util_format_is_subsampled_422(src_format)) {
+      assert(src_format == dst_format);
+
+      src_access |= SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT;
+      dst_access |= SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT;
+
+      dstx = util_format_get_nblocksx(src_format, dstx);
+
+      new_box = *src_box;
+      new_box.x = util_format_get_nblocksx(src_format, src_box->x);
+      new_box.width = util_format_get_nblocksx(src_format, src_box->width);
+      src_box = &new_box;
+
       src_format = dst_format = PIPE_FORMAT_R32_UINT;
+
       /* Interpreting 422 subsampled format (16 bpp) as 32 bpp
        * should force us to divide src_box->x, dstx and width by 2.
        * But given that ac_surface allocates this format as 32 bpp
