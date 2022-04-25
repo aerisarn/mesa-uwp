@@ -1598,6 +1598,16 @@ uint32_t si_translate_colorformat(enum chip_class chip_class,
    if (desc->is_mixed && desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS)
       return V_028C70_COLOR_INVALID;
 
+   int first_non_void = util_format_get_first_non_void_channel(format);
+
+   /* Reject SCALED formats because we don't implement them for CB. */
+   if (first_non_void >= 0 && first_non_void <= 3 &&
+       (desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED ||
+        desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_SIGNED) &&
+       !desc->channel[first_non_void].normalized &&
+       !desc->channel[first_non_void].pure_integer)
+      return V_028C70_COLOR_INVALID;
+
    switch (desc->nr_channels) {
    case 1:
       switch (desc->channel[0].size) {
@@ -1923,6 +1933,13 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    }
 
    if (first_non_void < 0 || first_non_void > 3)
+      goto out_unknown;
+
+   /* Reject SCALED formats because we don't implement them for CB and do the same for texturing. */
+   if ((desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED ||
+        desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_SIGNED) &&
+       !desc->channel[first_non_void].normalized &&
+       !desc->channel[first_non_void].pure_integer)
       goto out_unknown;
 
    /* uniform formats */

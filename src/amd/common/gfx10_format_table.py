@@ -188,6 +188,7 @@ class Gfx10FormatMapping(object):
                         num_format = 'UNORM'
                     else:
                         num_format = 'USCALED'
+                        extra_flags.append('buffers_only')
                 elif chan_type == SIGNED:
                     if chan_pure:
                         num_format = 'SINT'
@@ -199,6 +200,7 @@ class Gfx10FormatMapping(object):
                         num_format = 'SNORM'
                     else:
                         num_format = 'SSCALED'
+                        extra_flags.append('buffers_only')
                 elif chan_type == FLOAT:
                     num_format = 'FLOAT'
 
