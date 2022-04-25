@@ -128,7 +128,7 @@ build_occlusion_query_shader(struct radv_device *device)
    unsigned enabled_rb_mask = device->physical_device->rad_info.enabled_rb_mask;
    unsigned db_count = device->physical_device->rad_info.max_render_backends;
 
-   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 16);
+   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 4);
 
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
    nir_ssa_def *src_buf = radv_meta_load_descriptor(&b, 0, 1);
@@ -137,7 +137,7 @@ build_occlusion_query_shader(struct radv_device *device)
 
    nir_ssa_def *input_stride = nir_imm_int(&b, db_count * 16);
    nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
-   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 16);
+   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 8);
    nir_ssa_def *output_base = nir_imul(&b, output_stride, global_id);
 
    nir_store_var(&b, result, nir_imm_int64(&b, 0), 0x1);
@@ -257,8 +257,8 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
    nir_variable *output_offset =
       nir_local_variable_create(b.impl, glsl_int_type(), "output_offset");
 
-   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 16);
-   nir_ssa_def *stats_mask = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 8), .range = 16);
+   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 4);
+   nir_ssa_def *stats_mask = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 8), .range = 12);
    nir_ssa_def *avail_offset = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 12), .range = 16);
 
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
@@ -268,7 +268,7 @@ build_pipeline_statistics_query_shader(struct radv_device *device)
 
    nir_ssa_def *input_stride = nir_imm_int(&b, pipelinestat_block_size * 2);
    nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
-   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 16);
+   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 8);
    nir_ssa_def *output_base = nir_imul(&b, output_stride, global_id);
 
    avail_offset = nir_iadd(&b, avail_offset, nir_imul_imm(&b, global_id, 4));
@@ -395,7 +395,7 @@ build_tfb_query_shader(struct radv_device *device)
    nir_store_var(&b, result, nir_vec2(&b, nir_imm_int64(&b, 0), nir_imm_int64(&b, 0)), 0x3);
    nir_store_var(&b, available, nir_imm_false(&b), 0x1);
 
-   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 16);
+   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 4);
 
    /* Load resources. */
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
@@ -407,7 +407,7 @@ build_tfb_query_shader(struct radv_device *device)
    /* Compute src/dst strides. */
    nir_ssa_def *input_stride = nir_imm_int(&b, 32);
    nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
-   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 16);
+   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 8);
    nir_ssa_def *output_base = nir_imul(&b, output_stride, global_id);
 
    /* Load data from the query pool. */
@@ -515,7 +515,7 @@ build_timestamp_query_shader(struct radv_device *device)
    nir_store_var(&b, result, nir_imm_int64(&b, 0), 0x1);
    nir_store_var(&b, available, nir_imm_false(&b), 0x1);
 
-   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 16);
+   nir_ssa_def *flags = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 0), .range = 4);
 
    /* Load resources. */
    nir_ssa_def *dst_buf = radv_meta_load_descriptor(&b, 0, 0);
@@ -527,7 +527,7 @@ build_timestamp_query_shader(struct radv_device *device)
    /* Compute src/dst strides. */
    nir_ssa_def *input_stride = nir_imm_int(&b, 8);
    nir_ssa_def *input_base = nir_imul(&b, input_stride, global_id);
-   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 16);
+   nir_ssa_def *output_stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 4), .range = 8);
    nir_ssa_def *output_base = nir_imul(&b, output_stride, global_id);
 
    /* Load data from the query pool. */

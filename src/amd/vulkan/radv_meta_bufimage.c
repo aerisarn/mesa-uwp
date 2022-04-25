@@ -53,7 +53,7 @@ build_nir_itob_compute_shader(struct radv_device *dev, bool is_3d)
    nir_ssa_def *global_id = get_global_ids(&b, is_3d ? 3 : 2);
 
    nir_ssa_def *offset =
-      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = 16);
+      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = is_3d ? 12 : 8);
    nir_ssa_def *stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 12), .range = 16);
 
    nir_ssa_def *img_coord = nir_iadd(&b, global_id, offset);
@@ -234,7 +234,7 @@ build_nir_btoi_compute_shader(struct radv_device *dev, bool is_3d)
    nir_ssa_def *global_id = get_global_ids(&b, is_3d ? 3 : 2);
 
    nir_ssa_def *offset =
-      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = 16);
+      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = is_3d ? 12 : 8);
    nir_ssa_def *stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 12), .range = 16);
 
    nir_ssa_def *pos_x = nir_channel(&b, global_id, 0);
@@ -411,8 +411,8 @@ build_nir_btoi_r32g32b32_compute_shader(struct radv_device *dev)
 
    nir_ssa_def *global_id = get_global_ids(&b, 2);
 
-   nir_ssa_def *offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 16);
-   nir_ssa_def *pitch = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 8), .range = 16);
+   nir_ssa_def *offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
+   nir_ssa_def *pitch = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 8), .range = 12);
    nir_ssa_def *stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 12), .range = 16);
 
    nir_ssa_def *pos_x = nir_channel(&b, global_id, 0);
@@ -564,9 +564,9 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d, int samples)
    nir_ssa_def *global_id = get_global_ids(&b, is_3d ? 3 : 2);
 
    nir_ssa_def *src_offset =
-      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = 24);
+      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 0), .range = is_3d ? 12 : 8);
    nir_ssa_def *dst_offset =
-      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 12), .range = 24);
+      nir_load_push_constant(&b, is_3d ? 3 : 2, 32, nir_imm_int(&b, 12), .range = is_3d ? 24 : 20);
 
    nir_ssa_def *src_coord = nir_iadd(&b, global_id, src_offset);
    nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
@@ -762,7 +762,7 @@ build_nir_itoi_r32g32b32_compute_shader(struct radv_device *dev)
 
    nir_ssa_def *global_id = get_global_ids(&b, 2);
 
-   nir_ssa_def *src_offset = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 0), .range = 24);
+   nir_ssa_def *src_offset = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 0), .range = 12);
    nir_ssa_def *dst_offset = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 12), .range = 24);
 
    nir_ssa_def *src_stride = nir_channel(&b, src_offset, 2);
@@ -917,7 +917,7 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d, int samples
 
    nir_ssa_def *global_id = get_global_ids(&b, 2);
 
-   nir_ssa_def *clear_val = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .range = 20);
+   nir_ssa_def *clear_val = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 0), .range = 16);
    nir_ssa_def *layer = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 16), .range = 20);
 
    nir_ssa_def *comps[4];
@@ -1073,7 +1073,7 @@ build_nir_cleari_r32g32b32_compute_shader(struct radv_device *dev)
 
    nir_ssa_def *global_id = get_global_ids(&b, 2);
 
-   nir_ssa_def *clear_val = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 0), .range = 16);
+   nir_ssa_def *clear_val = nir_load_push_constant(&b, 3, 32, nir_imm_int(&b, 0), .range = 12);
    nir_ssa_def *stride = nir_load_push_constant(&b, 1, 32, nir_imm_int(&b, 12), .range = 16);
 
    nir_ssa_def *global_x = nir_channel(&b, global_id, 0);

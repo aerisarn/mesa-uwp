@@ -48,7 +48,7 @@ build_resolve_fragment_shader(struct radv_device *dev, bool is_integer, int samp
    color_out->data.location = FRAG_RESULT_DATA0;
 
    nir_ssa_def *pos_in = nir_channels(&b, nir_load_frag_coord(&b), 0x3);
-   nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), 0, 8);
+   nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
 
    nir_ssa_def *pos_int = nir_f2i32(&b, pos_in);
 

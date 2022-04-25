@@ -79,7 +79,7 @@ build_resolve_compute_shader(struct radv_device *dev, bool is_integer, bool is_s
 
    nir_ssa_def *global_id = get_global_ids(&b, 2);
 
-   nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 16);
+   nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
    nir_ssa_def *dst_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 16);
 
    nir_ssa_def *src_coord = nir_iadd(&b, global_id, src_offset);
