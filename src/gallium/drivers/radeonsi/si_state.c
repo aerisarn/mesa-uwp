@@ -237,6 +237,7 @@ static void si_emit_cb_render_state(struct si_context *sctx)
             break;
 
          case V_028C70_COLOR_2_10_10_10:
+         case V_028C70_COLOR_10_10_10_2:
             if (spi_format == V_028714_SPI_SHADER_FP16_ABGR) {
                sx_ps_downconvert |= V_028754_SX_RT_EXPORT_2_10_10_10 << (i * 4);
                sx_blend_opt_epsilon |= V_028758_10BIT_FORMAT << (i * 4);
@@ -1662,6 +1663,8 @@ uint32_t si_translate_colorformat(enum chip_class chip_class,
          return V_028C70_COLOR_5_5_5_1;
       } else if (HAS_SIZE(10, 10, 10, 2)) {
          return V_028C70_COLOR_2_10_10_10;
+      } else if (HAS_SIZE(2, 10, 10, 10)) {
+         return V_028C70_COLOR_10_10_10_2;
       }
       break;
    }
@@ -1687,6 +1690,7 @@ static uint32_t si_colorformat_endian_swap(uint32_t colorformat)
       /* 32-bit buffers. */
       case V_028C70_COLOR_8_8_8_8:
       case V_028C70_COLOR_2_10_10_10:
+      case V_028C70_COLOR_10_10_10_2:
       case V_028C70_COLOR_8_24:
       case V_028C70_COLOR_24_8:
       case V_028C70_COLOR_16_16:
