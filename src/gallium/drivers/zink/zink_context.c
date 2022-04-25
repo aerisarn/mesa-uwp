@@ -2171,6 +2171,7 @@ setup_framebuffer(struct zink_context *ctx)
       unsigned old_h = ctx->fb_state.height;
       ctx->fb_state.width = ctx->swapchain_size.width;
       ctx->fb_state.height = ctx->swapchain_size.height;
+      zink_kopper_fixup_depth_buffer(ctx);
       zink_update_framebuffer_state(ctx, old_w, old_h);
       ctx->swapchain_size.width = ctx->swapchain_size.height = 0;
    }
