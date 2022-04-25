@@ -528,6 +528,34 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       }
    }
 
+   /* Interpret compressed formats as UINT. */
+   struct pipe_box new_box;
+   unsigned src_access = 0, dst_access = 0;
+
+   /* Note that staging copies do compressed<->UINT, so one of the formats is already UINT. */
+   if (util_format_is_compressed(src_format) || util_format_is_compressed(dst_format)) {
+      if (util_format_is_compressed(src_format))
+         src_access |= SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT;
+      if (util_format_is_compressed(dst_format))
+         dst_access |= SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT;
+
+      dstx = util_format_get_nblocksx(dst_format, dstx);
+      dsty = util_format_get_nblocksy(dst_format, dsty);
+
+      new_box.x = util_format_get_nblocksx(src_format, src_box->x);
+      new_box.y = util_format_get_nblocksy(src_format, src_box->y);
+      new_box.z = src_box->z;
+      new_box.width = util_format_get_nblocksx(src_format, src_box->width);
+      new_box.height = util_format_get_nblocksy(src_format, src_box->height);
+      new_box.depth = src_box->depth;
+      src_box = &new_box;
+
+      if (ssrc->surface.bpe == 8)
+         src_format = dst_format = PIPE_FORMAT_R16G16B16A16_UINT; /* 64-bit block */
+      else
+         src_format = dst_format = PIPE_FORMAT_R32G32B32A32_UINT; /* 128-bit block */
+   }
+
    if (util_format_is_subsampled_422(src_format)) {
       src_format = dst_format = PIPE_FORMAT_R32_UINT;
       /* Interpreting 422 subsampled format (16 bpp) as 32 bpp
@@ -574,13 +602,13 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    struct pipe_image_view image[2] = {0};
    image[0].resource = src;
-   image[0].shader_access = image[0].access = PIPE_IMAGE_ACCESS_READ;
+   image[0].shader_access = image[0].access = PIPE_IMAGE_ACCESS_READ | src_access;
    image[0].format = src_format;
    image[0].u.tex.level = src_level;
    image[0].u.tex.first_layer = 0;
    image[0].u.tex.last_layer = util_max_layer(src, src_level);
    image[1].resource = dst;
-   image[1].shader_access = image[1].access = PIPE_IMAGE_ACCESS_WRITE;
+   image[1].shader_access = image[1].access = PIPE_IMAGE_ACCESS_WRITE | dst_access;
    image[1].format = dst_format;
    image[1].u.tex.level = dst_level;
    image[1].u.tex.first_layer = 0;

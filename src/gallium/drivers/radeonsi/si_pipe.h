@@ -172,8 +172,9 @@ enum si_clear_code
    DCC_UNCOMPRESSED = 0xFFFFFFFF,
 };
 
-#define SI_IMAGE_ACCESS_DCC_OFF           (1 << 8)
-#define SI_IMAGE_ACCESS_ALLOW_DCC_STORE   (1 << 9)
+#define SI_IMAGE_ACCESS_DCC_OFF              (1 << 8)
+#define SI_IMAGE_ACCESS_ALLOW_DCC_STORE      (1 << 9)
+#define SI_IMAGE_ACCESS_BLOCK_FORMAT_AS_UINT (1 << 10) /* for compressed/subsampled images */
 
 /* Debug flags. */
 enum

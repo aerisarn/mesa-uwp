@@ -899,9 +899,6 @@ static bool si_can_use_compute_blit(struct si_context *sctx, enum pipe_format fo
    if (has_dcc && is_store && sctx->chip_class < GFX10)
       return false;
 
-   if (util_format_is_compressed(format))
-      return false;
-
    return true;
 }
 
