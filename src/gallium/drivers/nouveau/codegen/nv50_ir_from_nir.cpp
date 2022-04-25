@@ -2028,6 +2028,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       Value *indirectOffset;
       uint32_t index = getIndirect(&insn->src[0], 0, indirectIndex) + 1;
       uint32_t offset = getIndirect(&insn->src[1], 0, indirectOffset);
+      if (indirectOffset)
+         indirectOffset = mkOp1v(OP_MOV, TYPE_U32, getSSA(4, FILE_ADDRESS), indirectOffset);
 
       for (uint8_t i = 0u; i < dest_components; ++i) {
          loadFrom(FILE_MEMORY_CONST, index, dType, newDefs[i], offset, i,
