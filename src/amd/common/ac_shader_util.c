@@ -392,7 +392,7 @@ void ac_choose_spi_color_formats(unsigned format, unsigned swap, unsigned ntype,
             else
                assert(0);
          } else if (format == V_028C70_COLOR_16_16) {
-            if (swap == V_028C70_SWAP_STD) { /* RG */
+            if (swap == V_028C70_SWAP_STD || swap == V_028C70_SWAP_STD_REV) { /* RG or GR */
                blend = V_028714_SPI_SHADER_32_GR;
                blend_alpha = V_028714_SPI_SHADER_32_ABGR;
             } else if (swap == V_028C70_SWAP_ALT) /* RA */
@@ -422,7 +422,7 @@ void ac_choose_spi_color_formats(unsigned format, unsigned swap, unsigned ntype,
       break;
 
    case V_028C70_COLOR_32_32:
-      if (swap == V_028C70_SWAP_STD) { /* RG */
+      if (swap == V_028C70_SWAP_STD || swap == V_028C70_SWAP_STD_REV) { /* RG or GR */
          blend = normal = V_028714_SPI_SHADER_32_GR;
          alpha = blend_alpha = V_028714_SPI_SHADER_32_ABGR;
       } else if (swap == V_028C70_SWAP_ALT) /* RA */
