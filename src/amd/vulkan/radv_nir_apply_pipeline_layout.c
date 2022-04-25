@@ -251,8 +251,9 @@ get_sampler_desc(nir_builder *b, apply_layout_state *state, nir_deref_instr *der
          }
       }
 
+      uint32_t dword0_mask = tex->op == nir_texop_tg4 ? C_008F30_TRUNC_COORD : 0xffffffffu;
       const uint32_t *samplers = radv_immutable_samplers(layout, binding);
-      return nir_imm_ivec4(b, samplers[constant_index * 4 + 0], samplers[constant_index * 4 + 1],
+      return nir_imm_ivec4(b, samplers[constant_index * 4 + 0] & dword0_mask, samplers[constant_index * 4 + 1],
                            samplers[constant_index * 4 + 2], samplers[constant_index * 4 + 3]);
    }
 
