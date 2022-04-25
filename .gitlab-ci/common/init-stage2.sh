@@ -63,7 +63,9 @@ if [ "$HWCI_FREQ_MAX" = "true" ]; then
 
   # Lock Intel GPU frequency to 70% of the maximum allowed by hardware
   # and enable throttling detection & reporting.
-  ./intel-gpu-freq.sh -s 70% -g all -d
+  # Additionally, set the upper limit for CPU scaling frequency to 65% of the
+  # maximum permitted, as an additional measure to mitigate thermal throttling.
+  ./intel-gpu-freq.sh -s 70% --cpu-set-max 65% -g all -d
 fi
 
 # Increase freedreno hangcheck timer because it's right at the edge of the
