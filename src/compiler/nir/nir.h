@@ -5022,6 +5022,12 @@ typedef struct nir_lower_tex_options {
     */
    bool lower_lod_zero_width;
 
+   /* Turns nir_op_tex and other ops with an implicit derivative, in stages
+    * without implicit derivatives (like the vertex shader) to have an explicit
+    * LOD with a value of 0.
+    */
+   bool lower_invalid_implicit_lod;
+
    /**
     * Payload data to be sent to callback / filter functions.
     */

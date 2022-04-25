@@ -613,6 +613,7 @@ v3d_lower_nir(struct v3d_compile *c)
                 .lower_txp = ~0,
                 /* Apply swizzles to all samplers. */
                 .swizzle_result = ~0,
+                .lower_invalid_implicit_lod = true,
         };
 
         /* Lower the format swizzle and (for 32-bit returns)

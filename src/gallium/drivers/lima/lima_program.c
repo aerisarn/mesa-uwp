@@ -287,6 +287,7 @@ lima_fs_compile_shader(struct lima_context *ctx,
 
    struct nir_lower_tex_options tex_options = {
       .swizzle_result = ~0u,
+      .lower_invalid_implicit_lod = true,
    };
 
    for (int i = 0; i < ARRAY_SIZE(key->tex); i++) {

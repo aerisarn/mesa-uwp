@@ -718,7 +718,9 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    }
 
    NIR_PASS_V(nir, nir_lower_readonly_images_to_tex, true);
-   nir_lower_tex_options lower_tex_options = {0};
+   nir_lower_tex_options lower_tex_options = {
+      .lower_invalid_implicit_lod = true,
+   };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
 
    NIR_PASS_V(nir, dxil_spirv_nir_fix_sample_mask_type);

@@ -1517,6 +1517,7 @@ agx_compile_shader_nir(nir_shader *nir,
    nir_lower_tex_options lower_tex_options = {
       .lower_txs_lod = true,
       .lower_txp = ~0,
+      .lower_invalid_implicit_lod = true,
    };
 
    nir_tex_src_type_constraints tex_constraints = {

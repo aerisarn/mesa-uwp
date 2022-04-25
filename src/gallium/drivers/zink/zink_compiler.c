@@ -2184,7 +2184,9 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr)
    struct zink_screen *screen = zink_screen(pscreen);
    nir_shader *nir = nirptr;
 
-   nir_lower_tex_options tex_opts = {0};
+   nir_lower_tex_options tex_opts = {
+      .lower_invalid_implicit_lod = true,
+   };
    /*
       Sampled Image must be an object whose type is OpTypeSampledImage.
       The Dim operand of the underlying OpTypeImage must be 1D, 2D, 3D,

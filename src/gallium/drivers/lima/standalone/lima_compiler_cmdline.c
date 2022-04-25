@@ -214,6 +214,7 @@ main(int argc, char **argv)
 
    struct nir_lower_tex_options tex_options = {
       .lower_txp = ~0u,
+      .lower_invalid_implicit_lod = true,
    };
 
    nir_shader *nir = load_glsl(1, filename, stage);

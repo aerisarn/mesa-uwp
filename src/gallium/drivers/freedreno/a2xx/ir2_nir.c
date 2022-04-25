@@ -110,6 +110,7 @@ ir2_optimize_nir(nir_shader *s, bool lower)
    struct nir_lower_tex_options tex_options = {
       .lower_txp = ~0u,
       .lower_rect = 0,
+      .lower_invalid_implicit_lod = true,
    };
 
    if (FD_DBG(DISASM)) {

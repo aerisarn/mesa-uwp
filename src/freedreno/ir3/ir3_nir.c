@@ -270,6 +270,7 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
    struct nir_lower_tex_options tex_options = {
       .lower_rect = 0,
       .lower_tg4_offsets = true,
+      .lower_invalid_implicit_lod = true,
    };
 
    if (compiler->gen >= 4) {

@@ -216,7 +216,9 @@ static void
 crocus_lower_swizzles(struct nir_shader *nir,
                       const struct brw_sampler_prog_key_data *key_tex)
 {
-   struct nir_lower_tex_options tex_options = { 0 };
+   struct nir_lower_tex_options tex_options = {
+      .lower_invalid_implicit_lod = true,
+   };
    uint32_t mask = nir->info.textures_used[0];
 
    while (mask) {

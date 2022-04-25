@@ -2497,6 +2497,7 @@ void lp_build_opt_nir(struct nir_shader *nir)
    static const struct nir_lower_tex_options lower_tex_options = {
       .lower_tg4_offsets = true,
       .lower_txp = ~0u,
+      .lower_invalid_implicit_lod = true,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
    NIR_PASS_V(nir, nir_lower_frexp);
@@ -2509,7 +2510,7 @@ void lp_build_opt_nir(struct nir_shader *nir)
       NIR_PASS(progress, nir, nir_opt_algebraic);
       NIR_PASS(progress, nir, nir_lower_pack);
 
-      nir_lower_tex_options options = { 0, };
+      nir_lower_tex_options options = { .lower_invalid_implicit_lod = true, };
       NIR_PASS_V(nir, nir_lower_tex, &options);
 
       const nir_lower_subgroups_options subgroups_options = {

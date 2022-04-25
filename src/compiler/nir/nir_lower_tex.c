@@ -1480,7 +1480,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
        * use an explicit LOD of 0.
        * But don't touch RECT samplers because they don't have mips.
        */
-      if (nir_tex_instr_has_implicit_derivative(tex) &&
+      if (options->lower_invalid_implicit_lod &&
+          nir_tex_instr_has_implicit_derivative(tex) &&
           tex->sampler_dim != GLSL_SAMPLER_DIM_RECT &&
           !nir_shader_supports_implicit_lod(b->shader)) {
          lower_zero_lod(b, tex);

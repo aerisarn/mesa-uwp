@@ -836,6 +836,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    struct nir_lower_tex_options lower_tex_options = {0};
    lower_tex_options.lower_txp = ~0u;
    lower_tex_options.lower_txf_offset = true;
+   lower_tex_options.lower_invalid_implicit_lod = true;
 
    NIR_PASS_V(sel->nir, nir_lower_tex, &lower_tex_options);
    NIR_PASS_V(sel->nir, r600::r600_nir_lower_txl_txf_array_or_cube);

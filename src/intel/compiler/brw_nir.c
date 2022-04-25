@@ -845,6 +845,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
       .lower_txs_lod = true, /* Wa_14012320009 */
       .lower_offset_filter =
          devinfo->verx10 >= 125 ? lower_xehp_tg4_offset_filter : NULL,
+      .lower_invalid_implicit_lod = true,
    };
 
    OPT(nir_lower_tex, &tex_options);
@@ -1308,6 +1309,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    nir_lower_tex_options tex_options = {
       .lower_txd_clamp_bindless_sampler = true,
       .lower_txd_clamp_if_sampler_index_not_lt_16 = true,
+      .lower_invalid_implicit_lod = true,
    };
 
    /* Iron Lake and prior require lowering of all rectangle textures */
