@@ -166,6 +166,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_COMPUTE_SHADER_DERIVATIVES:
    case PIPE_CAP_IMAGE_ATOMIC_INC_WRAP:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
+   case PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER:
       return 1;
 
    case PIPE_CAP_TEXTURE_TRANSFER_MODES:
