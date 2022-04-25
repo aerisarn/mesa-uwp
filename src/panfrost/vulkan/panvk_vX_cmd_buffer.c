@@ -165,8 +165,11 @@ panvk_per_arch(cmd_close_batch)(struct panvk_cmd_buffer *cmdbuf)
    }
 
    if (batch->tlsinfo.tls.size) {
+      unsigned size = panfrost_get_total_stack_size(batch->tlsinfo.tls.size,
+                                                    pdev->thread_tls_alloc,
+                                                    pdev->core_count);
       batch->tlsinfo.tls.ptr =
-         pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, batch->tlsinfo.tls.size, 4096).gpu;
+         pan_pool_alloc_aligned(&cmdbuf->tls_pool.base, size, 4096).gpu;
    }
 
    if (batch->tlsinfo.wls.size) {
