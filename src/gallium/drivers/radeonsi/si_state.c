@@ -2113,6 +2113,12 @@ static unsigned si_tex_dim(struct si_screen *sscreen, struct si_texture *tex, un
 static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe_format format)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
+   const struct util_format_description *desc = util_format_description(format);
+
+   /* Samplers don't support 64 bits per channel. */
+   if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
+       desc->channel[0].size == 64)
+      return false;
 
    if (sscreen->info.chip_class >= GFX10) {
       const struct gfx10_format *fmt = &gfx10_format_table[format];
@@ -2121,7 +2127,6 @@ static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe
       return true;
    }
 
-   const struct util_format_description *desc = util_format_description(format);
    if (!desc)
       return false;
 
