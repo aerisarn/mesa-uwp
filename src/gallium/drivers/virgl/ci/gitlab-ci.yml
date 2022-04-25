@@ -66,7 +66,7 @@ virgl-traces:
     # Couldn't get GitLab CI to correctly substitute the variable in the yaml
     - LP_NUM_THREADS=${FDO_CI_CONCURRENT} FDO_CI_CONCURRENT=1 install/crosvm-runner.sh install/piglit/piglit-traces.sh
 
-.virgl-lava-test:
+.virgl-iris-test:
   extends:
     - .lava-piglit-traces:amd64
   variables:
@@ -82,21 +82,21 @@ virgl-traces:
     CROSVM_GPU_ARGS: "gles=false,backend=virglrenderer,egl=true,surfaceless=true,width=1024,height=768"
     EGL_PLATFORM: surfaceless
     PIGLIT_PROFILES: replay
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-virgl-lava.yml"
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-virgl-iris.yml"
     RUNNER_TAG: mesa-ci-x86-64-lava-asus-cx9400-volteer
 
-virgl-lava-traces:
+virgl-iris-traces:
   extends:
-    - .virgl-lava-test
+    - .virgl-iris-test
     - .virgl-rules
     - .test-manual-mr
   variables:
     PIGLIT_REPLAY_EXTRA_ARGS: "--keep-image --download-caching-proxy-url=${FDO_HTTP_CACHE_URI}"
 
-virgl-lava-traces-performance:
+virgl-iris-traces-performance:
   extends:
-    - .virgl-lava-test
-    - .virgl-lava-rules-performance
+    - .virgl-iris-test
+    - .virgl-iris-rules-performance
   variables:
     HWCI_FREQ_MAX: "true"
     PIGLIT_REPLAY_SUBCOMMAND: profile

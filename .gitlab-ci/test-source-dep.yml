@@ -408,7 +408,7 @@
 
 # Unfortunately YAML doesn't let us concatenate arrays, so we have to do the
 # rules duplication manually
-.virgl-lava-rules-performance:
+.virgl-iris-rules-performance:
   stage: layered-backends
   rules:
     - *ignore_scheduled_pipelines
@@ -592,7 +592,7 @@
     - if: '$MICROSOFT_FARM == "offline"'
       when: never
     - *ignore_scheduled_pipelines
-    - changes: 
+    - changes:
         *mesa_core_file_list
       when: on_success
     - changes:
