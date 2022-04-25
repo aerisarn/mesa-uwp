@@ -370,7 +370,7 @@ vk_common_QueueSubmit(
             .sType     = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR,
             .semaphore = pSubmits[s].pSignalSemaphores[i],
             .value     = signal_values ? signal_values[i] : 0,
-            .stageMask = 0,
+            .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
             .deviceIndex = group_info ? group_info->pSignalSemaphoreDeviceIndices[i] : 0,
          };
       }
