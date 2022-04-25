@@ -498,21 +498,18 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    struct pipe_context *ctx = &sctx->b;
    struct si_texture *ssrc = (struct si_texture*)src;
    struct si_texture *sdst = (struct si_texture*)dst;
-   unsigned width = src_box->width;
-   unsigned height = src_box->height;
-   unsigned depth = src_box->depth;
    enum pipe_format src_format = util_format_linear(src->format);
    enum pipe_format dst_format = util_format_linear(dst->format);
    bool is_linear = ssrc->surface.is_linear || sdst->surface.is_linear;
 
    assert(util_format_is_subsampled_422(src_format) == util_format_is_subsampled_422(dst_format));
 
+   /* Interpret as integer values to avoid NaN issues */
    if (!vi_dcc_enabled(ssrc, src_level) &&
        !vi_dcc_enabled(sdst, dst_level) &&
        src_format == dst_format &&
        util_format_is_float(src_format) &&
        !util_format_is_compressed(src_format)) {
-      /* Interpret as integer values to avoid NaN issues */
       switch(util_format_get_blocksizebits(src_format)) {
         case 16:
           src_format = dst_format = PIPE_FORMAT_R16_UINT;
@@ -541,7 +538,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
        */
    }
 
-   if (width == 0 || height == 0)
+   if (src_box->width == 0 || src_box->height == 0 || src_box->depth == 0)
       return;
 
    /* The driver doesn't decompress resources automatically here. */
@@ -570,21 +567,19 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    image[0].format = src_format;
    image[0].u.tex.level = src_level;
    image[0].u.tex.first_layer = 0;
-   image[0].u.tex.last_layer = src->target == PIPE_TEXTURE_3D ? u_minify(src->depth0, src_level) - 1
-                                                              : (unsigned)(src->array_size - 1);
+   image[0].u.tex.last_layer = util_max_layer(src, src_level);
    image[1].resource = dst;
    image[1].shader_access = image[1].access = PIPE_IMAGE_ACCESS_WRITE;
    image[1].format = dst_format;
    image[1].u.tex.level = dst_level;
    image[1].u.tex.first_layer = 0;
-   image[1].u.tex.last_layer = dst->target == PIPE_TEXTURE_3D ? u_minify(dst->depth0, dst_level) - 1
-                                                              : (unsigned)(dst->array_size - 1);
+   image[1].u.tex.last_layer = util_max_layer(dst, dst_level);
 
    /* SNORM blitting has precision issues on some chips. Use the SINT
     * equivalent instead, which doesn't force DCC decompression.
     */
-   if (util_format_is_snorm(dst->format)) {
-      image[0].format = image[1].format = util_format_snorm_to_sint(dst->format);
+   if (util_format_is_snorm(dst_format)) {
+      image[0].format = image[1].format = util_format_snorm_to_sint(dst_format);
    }
 
    if (is_dcc_decompress)
@@ -649,7 +644,8 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       sctx->cs_user_data[1] = src_box->y | (dsty << 16);
       sctx->cs_user_data[2] = src_box->z | (dstz << 16);
 
-      set_work_size(&info, block_x, block_y, block_z, width, height, depth);
+      set_work_size(&info, block_x, block_y, block_z,
+                    src_box->width, src_box->height, src_box->depth);
 
       void **copy_image_cs_ptr = &sctx->cs_copy_image[src_is_1d][dst_is_1d];
       if (!*copy_image_cs_ptr)
