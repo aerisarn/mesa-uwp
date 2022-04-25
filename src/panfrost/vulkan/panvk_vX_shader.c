@@ -610,6 +610,11 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_var_copies);
 
+   /* Needed to turn shader_temp into function_temp since the backend only
+    * handles the latter for now.
+    */
+   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+
    struct panvk_lower_misc_ctx ctx = {
       .shader = shader,
       .layout = layout,
