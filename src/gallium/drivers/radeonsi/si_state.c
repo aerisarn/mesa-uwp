@@ -2319,6 +2319,12 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
       return false;
    }
 
+   /* Require PIPE_BIND_SAMPLER_VIEW support when PIPE_BIND_RENDER_TARGET
+    * is requested.
+    */
+   if (usage & PIPE_BIND_RENDER_TARGET)
+      usage |= PIPE_BIND_SAMPLER_VIEW;
+
    if ((target == PIPE_TEXTURE_3D || target == PIPE_TEXTURE_CUBE) &&
         !sscreen->info.has_3d_cube_border_color_mipmap)
       return false;
