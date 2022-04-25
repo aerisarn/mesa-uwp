@@ -874,8 +874,6 @@ spec@arb_sample_shading@samplemask 8@noms mask_in_one,Fail
 # "find_hw_atomic_counter: Assertion `0' failed."
 spec@arb_shader_atomic_counter_ops@execution@atomic-counter-array-out-of-bounds-access,Crash
 
-spec@arb_shader_atomic_counter_ops@execution@all_touch_test,Fail
-
 spec@arb_shader_image_load_store@host-mem-barrier,Fail
 spec@arb_shader_image_load_store@host-mem-barrier@Atomic counter/RaW/full barrier test/64x64,Fail
 spec@arb_shader_image_load_store@host-mem-barrier@Atomic counter/RaW/one bit barrier test/16x16,Fail
