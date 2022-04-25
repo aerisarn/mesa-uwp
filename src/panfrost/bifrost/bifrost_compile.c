@@ -3137,12 +3137,17 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         break;
 
                 case nir_tex_src_texture_offset:
-                        assert(instr->texture_index == 0);
+                        if (instr->texture_index)
+                                index = bi_iadd_u32(b, index, bi_imm_u32(instr->texture_index), false);
+
                         dregs[BIFROST_TEX_DREG_TEXTURE] = index;
+
                         break;
 
                 case nir_tex_src_sampler_offset:
-                        assert(instr->sampler_index == 0);
+                        if (instr->sampler_index)
+                                index = bi_iadd_u32(b, index, bi_imm_u32(instr->sampler_index), false);
+
                         dregs[BIFROST_TEX_DREG_SAMPLER] = index;
                         break;
 
