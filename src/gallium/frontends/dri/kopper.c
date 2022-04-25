@@ -43,9 +43,18 @@
 #include <vulkan/vulkan.h>
 
 
+#include <xcb/xcb.h>
+#include <xcb/dri3.h>
+#include <xcb/present.h>
+#include <xcb/xfixes.h>
+#include "util/libsync.h"
+#include <X11/Xlib-xcb.h>
+#include "drm-uapi/drm_fourcc.h"
+
 struct kopper_drawable {
    struct dri_drawable base;
    struct kopper_loader_info info;
+   __DRIimage   *image; //texture_from_pixmap
    bool is_pixmap;
 };
 
@@ -199,6 +208,266 @@ dri_image_drawable_get_buffers(struct dri_drawable *drawable,
                                const enum st_attachment_type *statts,
                                unsigned statts_count);
 
+#ifdef VK_USE_PLATFORM_XCB_KHR
+static int
+get_dri_format(enum pipe_format pf)
+{
+   int image_format;
+   switch (pf) {
+   case PIPE_FORMAT_R16G16B16A16_FLOAT:
+      image_format = __DRI_IMAGE_FORMAT_ABGR16161616F;
+      break;
+   case PIPE_FORMAT_R16G16B16X16_FLOAT:
+      image_format = __DRI_IMAGE_FORMAT_XBGR16161616F;
+      break;
+   case PIPE_FORMAT_B5G5R5A1_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ARGB1555;
+      break;
+   case PIPE_FORMAT_B5G6R5_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_RGB565;
+      break;
+   case PIPE_FORMAT_BGRX8888_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_XRGB8888;
+      break;
+   case PIPE_FORMAT_BGRA8888_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ARGB8888;
+      break;
+   case PIPE_FORMAT_RGBX8888_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_XBGR8888;
+      break;
+   case PIPE_FORMAT_RGBA8888_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ABGR8888;
+      break;
+   case PIPE_FORMAT_B10G10R10X2_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_XRGB2101010;
+      break;
+   case PIPE_FORMAT_B10G10R10A2_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ARGB2101010;
+      break;
+   case PIPE_FORMAT_R10G10B10X2_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_XBGR2101010;
+      break;
+   case PIPE_FORMAT_R10G10B10A2_UNORM:
+      image_format = __DRI_IMAGE_FORMAT_ABGR2101010;
+      break;
+   default:
+      image_format = __DRI_IMAGE_FORMAT_NONE;
+      break;
+   }
+   return image_format;
+}
+
+/* the DRIimage createImage function takes __DRI_IMAGE_FORMAT codes, while
+ * the createImageFromFds call takes DRM_FORMAT codes. To avoid
+ * complete confusion, just deal in __DRI_IMAGE_FORMAT codes for now and
+ * translate to DRM_FORMAT codes in the call to createImageFromFds
+ */
+static int
+image_format_to_fourcc(int format)
+{
+
+   /* Convert from __DRI_IMAGE_FORMAT to DRM_FORMAT (sigh) */
+   switch (format) {
+   case __DRI_IMAGE_FORMAT_SARGB8: return __DRI_IMAGE_FOURCC_SARGB8888;
+   case __DRI_IMAGE_FORMAT_SABGR8: return __DRI_IMAGE_FOURCC_SABGR8888;
+   case __DRI_IMAGE_FORMAT_SXRGB8: return __DRI_IMAGE_FOURCC_SXRGB8888;
+   case __DRI_IMAGE_FORMAT_RGB565: return DRM_FORMAT_RGB565;
+   case __DRI_IMAGE_FORMAT_XRGB8888: return DRM_FORMAT_XRGB8888;
+   case __DRI_IMAGE_FORMAT_ARGB8888: return DRM_FORMAT_ARGB8888;
+   case __DRI_IMAGE_FORMAT_ABGR8888: return DRM_FORMAT_ABGR8888;
+   case __DRI_IMAGE_FORMAT_XBGR8888: return DRM_FORMAT_XBGR8888;
+   case __DRI_IMAGE_FORMAT_XRGB2101010: return DRM_FORMAT_XRGB2101010;
+   case __DRI_IMAGE_FORMAT_ARGB2101010: return DRM_FORMAT_ARGB2101010;
+   case __DRI_IMAGE_FORMAT_XBGR2101010: return DRM_FORMAT_XBGR2101010;
+   case __DRI_IMAGE_FORMAT_ABGR2101010: return DRM_FORMAT_ABGR2101010;
+   case __DRI_IMAGE_FORMAT_XBGR16161616F: return DRM_FORMAT_XBGR16161616F;
+   case __DRI_IMAGE_FORMAT_ABGR16161616F: return DRM_FORMAT_ABGR16161616F;
+   }
+   return 0;
+}
+
+#ifdef HAVE_DRI3_MODIFIERS
+static __DRIimage *
+dri3_create_image_from_buffers(xcb_connection_t *c,
+                               xcb_dri3_buffers_from_pixmap_reply_t *bp_reply,
+                               unsigned int format,
+                               __DRIscreen *dri_screen,
+                               const __DRIimageExtension *image,
+                               void *loaderPrivate)
+{
+   __DRIimage                           *ret;
+   int                                  *fds;
+   uint32_t                             *strides_in, *offsets_in;
+   int                                   strides[4], offsets[4];
+   unsigned                              error;
+   int                                   i;
+
+   if (bp_reply->nfd > 4)
+      return NULL;
+
+   fds = xcb_dri3_buffers_from_pixmap_reply_fds(c, bp_reply);
+   strides_in = xcb_dri3_buffers_from_pixmap_strides(bp_reply);
+   offsets_in = xcb_dri3_buffers_from_pixmap_offsets(bp_reply);
+   for (i = 0; i < bp_reply->nfd; i++) {
+      strides[i] = strides_in[i];
+      offsets[i] = offsets_in[i];
+   }
+
+   ret = image->createImageFromDmaBufs2(dri_screen,
+                                        bp_reply->width,
+                                        bp_reply->height,
+                                        image_format_to_fourcc(format),
+                                        bp_reply->modifier,
+                                        fds, bp_reply->nfd,
+                                        strides, offsets,
+                                        0, 0, 0, 0, /* UNDEFINED */
+                                        &error, loaderPrivate);
+
+   for (i = 0; i < bp_reply->nfd; i++)
+      close(fds[i]);
+
+   return ret;
+}
+#endif
+
+static __DRIimage *
+dri3_create_image(xcb_connection_t *c,
+                  xcb_dri3_buffer_from_pixmap_reply_t *bp_reply,
+                  unsigned int format,
+                  __DRIscreen *dri_screen,
+                  const __DRIimageExtension *image,
+                  void *loaderPrivate)
+{
+   int                                  *fds;
+   __DRIimage                           *image_planar, *ret;
+   int                                  stride, offset;
+
+   /* Get an FD for the pixmap object
+    */
+   fds = xcb_dri3_buffer_from_pixmap_reply_fds(c, bp_reply);
+
+   stride = bp_reply->stride;
+   offset = 0;
+
+   /* createImageFromFds creates a wrapper __DRIimage structure which
+    * can deal with multiple planes for things like Yuv images. So, once
+    * we've gotten the planar wrapper, pull the single plane out of it and
+    * discard the wrapper.
+    */
+   image_planar = image->createImageFromFds(dri_screen,
+                                            bp_reply->width,
+                                            bp_reply->height,
+                                            image_format_to_fourcc(format),
+                                            fds, 1,
+                                            &stride, &offset, loaderPrivate);
+   close(fds[0]);
+   if (!image_planar)
+      return NULL;
+
+   ret = image->fromPlanar(image_planar, 0, loaderPrivate);
+
+   if (!ret)
+      ret = image_planar;
+   else
+      image->destroyImage(image_planar);
+
+   return ret;
+}
+
+
+static void
+handle_in_fence(__DRIcontext *context, __DRIimage *img)
+{
+   struct dri_context *ctx = dri_context(context);
+   struct pipe_context *pipe = ctx->st->pipe;
+   struct pipe_fence_handle *fence;
+   int fd = img->in_fence_fd;
+
+   if (fd == -1)
+      return;
+
+   validate_fence_fd(fd);
+
+   img->in_fence_fd = -1;
+
+   pipe->create_fence_fd(pipe, &fence, fd, PIPE_FD_TYPE_NATIVE_SYNC);
+   pipe->fence_server_sync(pipe, fence);
+   pipe->screen->fence_reference(pipe->screen, &fence, NULL);
+
+   close(fd);
+}
+
+/** kopper_get_pixmap_buffer
+ *
+ * Get the DRM object for a pixmap from the X server and
+ * wrap that with a __DRIimage structure using createImageFromFds
+ */
+static struct pipe_resource *
+kopper_get_pixmap_buffer(struct kopper_drawable *cdraw,
+                         enum pipe_format pf)
+{
+   xcb_drawable_t                       pixmap;
+   int                                  width;
+   int                                  height;
+   int format = get_dri_format(pf);
+   __DRIscreen                          *cur_screen;
+   struct kopper_loader_info *info = &cdraw->info;
+   assert(info->bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR);
+   xcb_connection_t *conn = info->xcb.connection;
+   pixmap = info->xcb.window;
+
+   if (cdraw->image)
+      return cdraw->image->texture;
+
+   /* FIXME: probably broken for OBS studio?
+    * see dri3_get_pixmap_buffer()
+    */
+   cur_screen = cdraw->base.sPriv;
+   struct kopper_screen *kscreen = (struct kopper_screen*)cur_screen->driverPrivate;
+
+#ifdef HAVE_DRI3_MODIFIERS
+   if (kscreen->has_dmabuf) {
+      xcb_dri3_buffers_from_pixmap_cookie_t bps_cookie;
+      xcb_dri3_buffers_from_pixmap_reply_t *bps_reply;
+
+      bps_cookie = xcb_dri3_buffers_from_pixmap(conn, pixmap);
+      bps_reply = xcb_dri3_buffers_from_pixmap_reply(conn, bps_cookie,
+                                                     NULL);
+      if (!bps_reply)
+         return NULL;
+      cdraw->image =
+         dri3_create_image_from_buffers(conn, bps_reply, format,
+                                        cur_screen, &driVkImageExtension,
+                                        cdraw);
+      width = bps_reply->width;
+      height = bps_reply->height;
+      free(bps_reply);
+   } else
+#endif
+   {
+      xcb_dri3_buffer_from_pixmap_cookie_t bp_cookie;
+      xcb_dri3_buffer_from_pixmap_reply_t *bp_reply;
+
+      bp_cookie = xcb_dri3_buffer_from_pixmap(conn, pixmap);
+      bp_reply = xcb_dri3_buffer_from_pixmap_reply(conn, bp_cookie, NULL);
+      if (!bp_reply)
+         return NULL;
+
+      cdraw->image = dri3_create_image(conn, bp_reply, format,
+                                       cur_screen, &driVkImageExtension,
+                                       cdraw);
+      width = bp_reply->width;
+      height = bp_reply->height;
+      free(bp_reply);
+   }
+
+   cdraw->base.dPriv->w = width;
+   cdraw->base.dPriv->h = height;
+
+   return cdraw->image->texture;
+}
+#endif //VK_USE_PLATFORM_XCB_KHR
+
 static void
 kopper_allocate_textures(struct dri_context *ctx,
                          struct dri_drawable *drawable,
@@ -214,6 +483,9 @@ kopper_allocate_textures(struct dri_context *ctx,
    __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
+
+   bool is_window = !cdraw->is_pixmap;
+   bool is_pixmap = !is_window && cdraw->info.bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
 
    width  = drawable->dPriv->w;
    height = drawable->dPriv->h;
@@ -269,12 +541,16 @@ kopper_allocate_textures(struct dri_context *ctx,
       /* remove outdated textures */
       if (resized) {
          for (i = 0; i < ST_ATTACHMENT_COUNT; i++) {
-            if (drawable->textures[i] && i < ST_ATTACHMENT_DEPTH_STENCIL) {
+            if (drawable->textures[i] && i < ST_ATTACHMENT_DEPTH_STENCIL && !is_pixmap) {
                drawable->textures[i]->width0 = width;
                drawable->textures[i]->height0 = height;
             } else
                pipe_resource_reference(&drawable->textures[i], NULL);
             pipe_resource_reference(&drawable->msaa_textures[i], NULL);
+            if (is_pixmap && i == ST_ATTACHMENT_FRONT_LEFT) {
+               FREE(cdraw->image);
+               cdraw->image = NULL;
+            }
          }
       }
    }
@@ -289,7 +565,16 @@ kopper_allocate_textures(struct dri_context *ctx,
    templ.depth0 = 1;
    templ.array_size = 1;
    templ.last_level = 0;
-   bool is_window = !cdraw->is_pixmap;
+
+#if 0
+XXX do this once swapinterval is hooked up
+   /* pixmaps always have front buffers.
+    * Exchange swaps also mandate fake front buffers.
+    */
+   if (draw->type != LOADER_DRI3_DRAWABLE_WINDOW ||
+       draw->swap_method == __DRI_ATTRIB_SWAP_EXCHANGE)
+      buffer_mask |= __DRI_IMAGE_BUFFER_FRONT;
+#endif
 
    uint32_t attachments = 0;
    for (i = 0; i < statts_count; i++)
@@ -326,9 +611,17 @@ kopper_allocate_textures(struct dri_context *ctx,
             assert(data);
             drawable->textures[statts[i]] =
                screen->base.screen->resource_create_drawable(screen->base.screen, &templ, data);
-         } else
+         }
+#ifdef VK_USE_PLATFORM_XCB_KHR
+         else if (is_pixmap && statts[i] == ST_ATTACHMENT_FRONT_LEFT) {
+            drawable->textures[statts[i]] = kopper_get_pixmap_buffer(cdraw, format);
+            handle_in_fence(ctx->cPriv, cdraw->image);
+         }
+#endif
+         else {
             drawable->textures[statts[i]] =
                screen->base.screen->resource_create(screen->base.screen, &templ);
+         }
       }
       if (drawable->stvis.samples > 1 && !drawable->msaa_textures[statts[i]]) {
          templ.bind = templ.bind &
