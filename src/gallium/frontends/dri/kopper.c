@@ -46,6 +46,7 @@
 struct kopper_drawable {
    struct dri_drawable base;
    struct kopper_loader_info info;
+   bool is_pixmap;
 };
 
 struct kopper_screen {
@@ -283,7 +284,7 @@ kopper_allocate_textures(struct dri_context *ctx,
    templ.depth0 = 1;
    templ.array_size = 1;
    templ.last_level = 0;
-   bool is_window = cdraw->info.bos.sType != 0;
+   bool is_window = !cdraw->is_pixmap;
 
    uint32_t attachments = 0;
    for (i = 0; i < statts_count; i++)
@@ -508,9 +509,10 @@ kopper_create_buffer(__DRIscreen * sPriv,
       return FALSE;
 
    drawable->info.has_alpha = visual->alphaBits > 0;
-   if (sPriv->kopper_loader->SetSurfaceCreateInfo && !isPixmap)
+   if (sPriv->kopper_loader->SetSurfaceCreateInfo)
       sPriv->kopper_loader->SetSurfaceCreateInfo(dPriv->loaderPrivate,
                                                  &drawable->info);
+   drawable->is_pixmap = isPixmap || drawable->info.bos.sType == 0;
 
    return TRUE;
 }
