@@ -1120,10 +1120,12 @@ util_format_rgb_to_bgr(enum pipe_format format)
    REMAP_RGBA(10, 10, 10, 2, UINT);
    REMAP_ARGB(10, 10, 10, 2, UINT);
 
+   REMAP_RGBA(10, 10, 10, 2, SINT);
+   REMAP_RGBX(10, 10, 10, 2, SINT);
+
    /* Format sets having only RGBA/BGRA. */
    REMAP_RGBA(8, 8, 8, 8, USCALED);
    REMAP_RGBA(8, 8, 8, 8, SSCALED);
-   REMAP_RGBA(10, 10, 10, 2, SINT);
    REMAP_RGBA(10, 10, 10, 2, USCALED);
    REMAP_RGBA(10, 10, 10, 2, SSCALED);
 
