@@ -538,6 +538,17 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
        */
    }
 
+   /* SNORM blitting has precision issues. Use the SINT equivalent instead, which doesn't
+    * force DCC decompression.
+    */
+   if (util_format_is_snorm(dst_format))
+      src_format = dst_format = util_format_snorm_to_sint(dst_format);
+
+   assert(ctx->screen->is_format_supported(ctx->screen, src_format, src->target, src->nr_samples,
+                                           src->nr_storage_samples, PIPE_BIND_SHADER_IMAGE));
+   assert(ctx->screen->is_format_supported(ctx->screen, dst_format, dst->target, dst->nr_samples,
+                                           dst->nr_storage_samples, PIPE_BIND_SHADER_IMAGE));
+
    if (src_box->width == 0 || src_box->height == 0 || src_box->depth == 0)
       return;
 
@@ -574,13 +585,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    image[1].u.tex.level = dst_level;
    image[1].u.tex.first_layer = 0;
    image[1].u.tex.last_layer = util_max_layer(dst, dst_level);
-
-   /* SNORM blitting has precision issues on some chips. Use the SINT
-    * equivalent instead, which doesn't force DCC decompression.
-    */
-   if (util_format_is_snorm(dst_format)) {
-      image[0].format = image[1].format = util_format_snorm_to_sint(dst_format);
-   }
 
    if (is_dcc_decompress)
       image[1].access |= SI_IMAGE_ACCESS_DCC_OFF;
