@@ -1028,11 +1028,11 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
       }
    }
 
-   /* SNORM8 blitting has precision issues on some chips. Use the SINT
+   /* SNORM blitting has precision issues on some chips. Use the SINT
     * equivalent instead, which doesn't force DCC decompression.
     */
-   if (util_format_is_snorm8(dst_templ.format)) {
-      dst_templ.format = src_templ.format = util_format_snorm8_to_sint8(dst_templ.format);
+   if (util_format_is_snorm(dst_templ.format)) {
+      dst_templ.format = src_templ.format = util_format_snorm_to_sint(dst_templ.format);
    }
 
    vi_disable_dcc_if_incompatible_format(sctx, dst, dst_level, dst_templ.format);

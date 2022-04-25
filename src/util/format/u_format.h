@@ -1672,8 +1672,7 @@ void util_format_unswizzle_4f(float *dst, const float *src,
                               const unsigned char swz[4]);
 
 enum pipe_format
-util_format_snorm8_to_sint8(enum pipe_format format) ATTRIBUTE_CONST;
-
+util_format_snorm_to_sint(enum pipe_format format) ATTRIBUTE_CONST;
 
 extern void
 util_copy_rect(ubyte * dst, enum pipe_format format,

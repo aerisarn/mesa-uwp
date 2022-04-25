@@ -581,11 +581,11 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    image[1].u.tex.last_layer = dst->target == PIPE_TEXTURE_3D ? u_minify(dst->depth0, dst_level) - 1
                                                               : (unsigned)(dst->array_size - 1);
 
-   /* SNORM8 blitting has precision issues on some chips. Use the SINT
+   /* SNORM blitting has precision issues on some chips. Use the SINT
     * equivalent instead, which doesn't force DCC decompression.
     */
-   if (util_format_is_snorm8(dst->format)) {
-      image[0].format = image[1].format = util_format_snorm8_to_sint8(dst->format);
+   if (util_format_is_snorm(dst->format)) {
+      image[0].format = image[1].format = util_format_snorm_to_sint(dst->format);
    }
 
    if (is_dcc_decompress)
