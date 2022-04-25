@@ -266,6 +266,8 @@ enum
 {
    /* Tests: */
    DBG_TEST_IMAGE_COPY,
+   DBG_TEST_CB_RESOLVE,
+   DBG_TEST_COMPUTE_BLIT,
    DBG_TEST_VMFAULT_CP,
    DBG_TEST_VMFAULT_SHADER,
    DBG_TEST_DMA_PERF,
@@ -1567,6 +1569,7 @@ void gfx10_destroy_query(struct si_context *sctx);
 
 /* si_test_image_copy_region.c */
 void si_test_image_copy_region(struct si_screen *sscreen);
+void si_test_blit(struct si_screen *sscreen, unsigned test_flags);
 
 /* si_test_clearbuffer.c */
 void si_test_dma_perf(struct si_screen *sscreen);

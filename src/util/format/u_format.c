@@ -174,6 +174,14 @@ util_format_is_pure_integer(enum pipe_format format)
    const struct util_format_description *desc = util_format_description(format);
    int i;
 
+   if (desc->colorspace == UTIL_FORMAT_COLORSPACE_ZS) {
+      if (util_format_has_depth(desc))
+         return false;
+
+      assert(util_format_has_stencil(desc));
+      return true;
+   }
+
    /* Find the first non-void channel. */
    i = util_format_get_first_non_void_channel(format);
    if (i == -1)
