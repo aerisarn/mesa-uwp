@@ -1579,10 +1579,6 @@ bool vi_dcc_formats_are_incompatible(struct pipe_resource *tex, unsigned level,
                                      enum pipe_format view_format);
 void vi_disable_dcc_if_incompatible_format(struct si_context *sctx, struct pipe_resource *tex,
                                            unsigned level, enum pipe_format view_format);
-struct pipe_surface *si_create_surface_custom(struct pipe_context *pipe,
-                                              struct pipe_resource *texture,
-                                              const struct pipe_surface *templ, unsigned width0,
-                                              unsigned height0, unsigned width, unsigned height);
 unsigned si_translate_colorswap(enum chip_class chip_class, enum pipe_format format,
                                 bool do_endian_swap);
 bool si_texture_disable_dcc(struct si_context *sctx, struct si_texture *tex);
