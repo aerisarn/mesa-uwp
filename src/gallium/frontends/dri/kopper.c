@@ -299,6 +299,7 @@ kopper_allocate_textures(struct dri_context *ctx,
       /* the texture already exists or not requested */
       if (!drawable->textures[statts[i]]) {
          if (statts[i] == ST_ATTACHMENT_BACK_LEFT ||
+             statts[i] == ST_ATTACHMENT_DEPTH_STENCIL ||
              (statts[i] == ST_ATTACHMENT_FRONT_LEFT && front_only))
             bind |= PIPE_BIND_DISPLAY_TARGET;
 
