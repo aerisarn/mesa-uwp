@@ -372,6 +372,7 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
    case PIPE_CAP_IMAGE_ATOMIC_INC_WRAP:
    case PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE:
    case PIPE_CAP_GLSL_ZERO_INIT:
+   case PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER:
       return 0;
 
    case PIPE_CAP_MAX_GS_INVOCATIONS:

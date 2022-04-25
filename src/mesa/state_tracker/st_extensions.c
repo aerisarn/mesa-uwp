@@ -1812,7 +1812,10 @@ void st_init_extensions(struct pipe_screen *screen,
       _mesa_fill_supported_spirv_extensions(consts->SpirVExtensions, spirv_caps);
    }
 
-   consts->AllowDrawOutOfOrder = options->allow_draw_out_of_order;
+   consts->AllowDrawOutOfOrder =
+      api == API_OPENGL_COMPAT &&
+      options->allow_draw_out_of_order &&
+      screen->get_param(screen, PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER);
    consts->GLThreadNopCheckFramebufferStatus = options->glthread_nop_check_framebuffer_status;
 
    bool prefer_nir = PIPE_SHADER_IR_NIR ==

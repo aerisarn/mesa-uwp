@@ -641,6 +641,7 @@ The integer capabilities:
 * ``PIPE_CAP_SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS``: TRUE if there are no restrictions on the allocation of mipmaps in sparse textures and FALSE otherwise. See SPARSE_TEXTURE_FULL_ARRAY_CUBE_MIPMAPS_ARB description in ARB_sparse_texture extension spec.
 * ``PIPE_CAP_QUERY_SPARSE_TEXTURE_RESIDENCY``: TRUE if shader sparse texture sample instruction could also return the residency information.
 * ``PIPE_CAP_CLAMP_SPARSE_TEXTURE_LOD``: TRUE if shader sparse texture sample instruction support clamp the minimal lod to prevent read from un-committed pages.
+* ``PIPE_CAP_ALLOW_DRAW_OUT_OF_ORDER``: TRUE if the driver allows the "draw out of order" optimization to be enabled. See _mesa_update_allow_draw_out_of_order for more details.
 
 .. _pipe_capf:
 
