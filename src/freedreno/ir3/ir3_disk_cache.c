@@ -163,6 +163,55 @@ store_variant(struct blob *blob, struct ir3_shader_variant *v)
    }
 }
 
+struct ir3_shader_variant *
+ir3_retrieve_variant(struct blob_reader *blob, struct ir3_compiler *compiler,
+                     void *mem_ctx)
+{
+   struct ir3_shader_variant *v = rzalloc_size(mem_ctx, sizeof(*v));
+
+   v->id = 0;
+   v->compiler = compiler;
+   v->binning_pass = false;
+   v->nonbinning = NULL;
+   v->binning = NULL;
+   blob_copy_bytes(blob, &v->key, sizeof(v->key));
+   v->type = blob_read_uint32(blob);
+   v->mergedregs = blob_read_uint32(blob);
+   v->const_state = rzalloc_size(v, sizeof(*v->const_state));
+
+   retrieve_variant(blob, v);
+
+   if (v->type == MESA_SHADER_VERTEX && ir3_has_binning_vs(&v->key)) {
+      v->binning = rzalloc_size(v, sizeof(*v->binning));
+      v->binning->id = 0;
+      v->binning->compiler = compiler;
+      v->binning->binning_pass = true;
+      v->binning->nonbinning = v;
+      v->binning->key = v->key;
+      v->binning->type = MESA_SHADER_VERTEX;
+      v->binning->mergedregs = v->mergedregs;
+      v->binning->const_state = v->const_state;
+
+      retrieve_variant(blob, v->binning);
+   }
+   
+   return v;
+}
+
+void
+ir3_store_variant(struct blob *blob, struct ir3_shader_variant *v)
+{
+   blob_write_bytes(blob, &v->key, sizeof(v->key));
+   blob_write_uint32(blob, v->type);
+   blob_write_uint32(blob, v->mergedregs);
+
+   store_variant(blob, v);
+
+   if (v->type == MESA_SHADER_VERTEX && ir3_has_binning_vs(&v->key)) {
+      store_variant(blob, v->binning);
+   }
+}
+
 bool
 ir3_disk_cache_retrieve(struct ir3_shader *shader,
                         struct ir3_shader_variant *v)
