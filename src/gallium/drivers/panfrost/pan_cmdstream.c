@@ -4357,6 +4357,14 @@ prepare_shader(struct panfrost_shader_state *state,
 
         pan_pack(out, RENDERER_STATE, cfg) {
                 pan_shader_prepare_rsd(&state->info, state->bin.gpu, &cfg);
+
+#if PAN_ARCH >= 6
+                /* Match the mesa/st convention. If this needs to be flipped,
+                 * nir_lower_pntc_ytransform will do so.
+                 */
+                if (state->info.stage == MESA_SHADER_FRAGMENT)
+                        cfg.properties.point_sprite_coord_origin_max_y = true;
+#endif
         }
 #else
         assert(upload);
