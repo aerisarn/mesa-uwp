@@ -1301,7 +1301,7 @@ Converter::storeTo(nir_intrinsic_instr *insn, DataFile file, operation op,
 bool
 Converter::parseNIR()
 {
-   info_out->bin.tlsSpace = nir->scratch_size;
+   info_out->bin.tlsSpace = ALIGN(nir->scratch_size, 0x10);
    info_out->io.clipDistances = nir->info.clip_distance_array_size;
    info_out->io.cullDistances = nir->info.cull_distance_array_size;
    info_out->io.layer_viewport_relative = nir->info.layer_viewport_relative;
