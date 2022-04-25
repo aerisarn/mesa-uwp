@@ -470,7 +470,7 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
    bool is_separate_stencil = tex->db_compatible && sview->is_stencil_sampler;
 
    memcpy(desc, sview->state, 8 * 4);
-   si_set_mutable_tex_desc_fields(sctx->screen, tex, sview->base_level_info, sview->base_level,
+   si_set_mutable_tex_desc_fields(sctx->screen, tex, sview->base_level_info, 0,
                                   sview->base.u.tex.first_level, sview->block_width,
                                   is_separate_stencil, 0, desc);
 

@@ -700,7 +700,6 @@ struct si_sampler_view {
    uint32_t state[8];
    uint32_t fmask_state[8];
    const struct legacy_surf_level *base_level_info;
-   ubyte base_level;
    ubyte block_width;
    bool is_stencil_sampler;
    bool dcc_incompatible;

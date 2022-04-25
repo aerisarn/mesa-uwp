@@ -4365,22 +4365,15 @@ static void si_make_texture_descriptor(struct si_screen *screen, struct si_textu
  * @param ctx		context
  * @param texture	texture
  * @param state		sampler view template
- * @param width0	width0 override (for compressed textures as int)
- * @param height0	height0 override (for compressed textures as int)
- * @param force_level   set the base address to the level (for compressed textures)
  */
-struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx,
+static struct pipe_sampler_view *si_create_sampler_view(struct pipe_context *ctx,
                                                         struct pipe_resource *texture,
-                                                        const struct pipe_sampler_view *state,
-                                                        unsigned width0, unsigned height0,
-                                                        unsigned force_level)
+                                                        const struct pipe_sampler_view *state)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_sampler_view *view = CALLOC_STRUCT_CL(si_sampler_view);
    struct si_texture *tex = (struct si_texture *)texture;
-   unsigned base_level, first_level, last_level;
    unsigned char state_swizzle[4];
-   unsigned height, depth, width;
    unsigned last_layer = state->u.tex.last_layer;
    enum pipe_format pipe_format;
    const struct legacy_surf_level *surflevel;
@@ -4412,23 +4405,6 @@ struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx
    state_swizzle[1] = state->swizzle_g;
    state_swizzle[2] = state->swizzle_b;
    state_swizzle[3] = state->swizzle_a;
-
-   base_level = 0;
-   first_level = state->u.tex.first_level;
-   last_level = state->u.tex.last_level;
-   width = width0;
-   height = height0;
-   depth = texture->depth0;
-
-   if (sctx->chip_class <= GFX8 && force_level) {
-      assert(force_level == first_level && force_level == last_level);
-      base_level = force_level;
-      first_level = 0;
-      last_level = 0;
-      width = u_minify(width, force_level);
-      height = u_minify(height, force_level);
-      depth = u_minify(depth, force_level);
-   }
 
    /* This is not needed if gallium frontends set last_layer correctly. */
    if (state->target == PIPE_TEXTURE_1D || state->target == PIPE_TEXTURE_2D ||
@@ -4488,21 +4464,14 @@ struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx
       vi_dcc_formats_are_incompatible(texture, state->u.tex.first_level, state->format);
 
    sctx->screen->make_texture_descriptor(
-      sctx->screen, tex, true, state->target, pipe_format, state_swizzle, first_level, last_level,
-      state->u.tex.first_layer, last_layer, width, height, depth, view->state, view->fmask_state);
+      sctx->screen, tex, true, state->target, pipe_format, state_swizzle,
+      state->u.tex.first_level, state->u.tex.last_level,
+      state->u.tex.first_layer, last_layer, texture->width0, texture->height0, texture->depth0,
+            view->state, view->fmask_state);
 
-   view->base_level_info = &surflevel[base_level];
-   view->base_level = base_level;
+   view->base_level_info = &surflevel[0];
    view->block_width = util_format_get_blockwidth(pipe_format);
    return &view->base;
-}
-
-static struct pipe_sampler_view *si_create_sampler_view(struct pipe_context *ctx,
-                                                        struct pipe_resource *texture,
-                                                        const struct pipe_sampler_view *state)
-{
-   return si_create_sampler_view_custom(ctx, texture, state, texture ? texture->width0 : 0,
-                                        texture ? texture->height0 : 0, 0);
 }
 
 static void si_sampler_view_destroy(struct pipe_context *ctx, struct pipe_sampler_view *state)
