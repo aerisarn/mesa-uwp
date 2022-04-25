@@ -77,8 +77,8 @@ raw_data_object_create(struct vk_device *device,
 {
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct raw_data_object, data_obj, 1);
-   VK_MULTIALLOC_DECL_SIZE(&ma, void, obj_key_data, key_size);
-   VK_MULTIALLOC_DECL_SIZE(&ma, void, obj_data, data_size);
+   VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_key_data, key_size);
+   VK_MULTIALLOC_DECL_SIZE(&ma, char, obj_data, data_size);
 
    if (!vk_multialloc_alloc(&ma, &device->alloc,
                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
