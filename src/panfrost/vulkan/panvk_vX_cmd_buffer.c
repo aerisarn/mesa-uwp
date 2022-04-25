@@ -989,6 +989,7 @@ panvk_per_arch(CmdDraw)(VkCommandBuffer commandBuffer,
 static void
 panvk_index_minmax_search(struct panvk_cmd_buffer *cmdbuf,
                           uint32_t start, uint32_t count,
+                          bool restart,
                           uint32_t *min, uint32_t *max)
 {
    void *ptr = cmdbuf->state.ib.buffer->bo->ptr.cpu +
@@ -1013,6 +1014,7 @@ panvk_index_minmax_search(struct panvk_cmd_buffer *cmdbuf,
       uint ## sz ## _t *indices = ptr; \
       *min = UINT ## sz ## _MAX; \
       for (uint32_t i = 0; i < count; i++) { \
+         if (restart && indices[i + start] == UINT ## sz ##_MAX) continue; \
          *min = MIN2(indices[i + start], *min); \
          *max = MAX2(indices[i + start], *max); \
       } \
@@ -1041,7 +1043,11 @@ panvk_per_arch(CmdDrawIndexed)(VkCommandBuffer commandBuffer,
    if (instanceCount == 0 || indexCount == 0)
       return;
 
-   panvk_index_minmax_search(cmdbuf, firstIndex, indexCount,
+   const struct panvk_pipeline *pipeline =
+      panvk_cmd_get_pipeline(cmdbuf, GRAPHICS);
+   bool primitive_restart = pipeline->ia.primitive_restart;
+
+   panvk_index_minmax_search(cmdbuf, firstIndex, indexCount, primitive_restart,
                              &min_vertex, &max_vertex);
 
    unsigned vertex_range = max_vertex - min_vertex + 1;
