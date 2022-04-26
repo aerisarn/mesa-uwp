@@ -396,7 +396,9 @@ zink_surface_create_null(struct zink_context *ctx, enum pipe_texture_target targ
    templ.depth0 = 1;
    templ.format = PIPE_FORMAT_R8G8B8A8_UNORM;
    templ.target = target;
-   templ.bind = PIPE_BIND_RENDER_TARGET;
+   templ.bind = PIPE_BIND_RENDER_TARGET | PIPE_BIND_SAMPLER_VIEW;
+   if (samples < 2)
+      templ.bind |= PIPE_BIND_SHADER_IMAGE;
    templ.nr_samples = samples;
 
    pres = ctx->base.screen->resource_create(ctx->base.screen, &templ);
