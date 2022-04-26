@@ -73,6 +73,7 @@ struct __DRIkopperExtensionRec {
                                         const __DRIconfig *config,
                                         void *loaderPrivate,
                                         int pixmap);
+    int64_t (*swapBuffers)(__DRIdrawable *draw);
 };
 
 /**

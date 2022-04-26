@@ -812,29 +812,41 @@ kopper_create_buffer(__DRIscreen * sPriv,
    return TRUE;
 }
 
-static void
-kopper_swap_buffers(__DRIdrawable *dPriv)
+static int64_t
+kopperSwapBuffers(__DRIdrawable *dPriv)
 {
    struct dri_context *ctx = dri_get_current(dPriv->driScreenPriv);
    struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct kopper_drawable *kdraw = (struct kopper_drawable *)drawable;
    struct pipe_resource *ptex;
 
    if (!ctx)
-      return;
+      return 0;
 
    ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT];
    if (!ptex)
-      return;
+      return 0;
 
    drawable->texture_stamp = dPriv->lastStamp - 1;
    dri_flush(dPriv->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
    kopper_copy_to_front(ctx->st->pipe, dPriv, ptex);
+   if (!kdraw->is_pixmap && !zink_kopper_check(ptex))
+      return -1;
    if (!drawable->textures[ST_ATTACHMENT_FRONT_LEFT]) {
-      return;
+      return 0;
    }
+
    /* have to manually swap the pointers here to make frontbuffer readback work */
    drawable->textures[ST_ATTACHMENT_BACK_LEFT] = drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
    drawable->textures[ST_ATTACHMENT_FRONT_LEFT] = ptex;
+
+   return 0;
+}
+
+static void
+kopper_swap_buffers(__DRIdrawable *dPriv)
+{
+   kopperSwapBuffers(dPriv);
 }
 
 static __DRIdrawable *
@@ -878,6 +890,7 @@ kopperCreateNewDrawable(__DRIscreen *screen,
 const __DRIkopperExtension driKopperExtension = {
    .base = { __DRI_KOPPER, 1 },
    .createNewDrawable          = kopperCreateNewDrawable,
+   .swapBuffers                = kopperSwapBuffers,
 };
 
 const struct __DriverAPIRec galliumvk_driver_api = {

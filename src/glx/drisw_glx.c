@@ -731,6 +731,9 @@ driswSwapBuffers(__GLXDRIdrawable * pdraw,
       glFlush();
    }
 
+   if (psc->kopper)
+       return psc->kopper->swapBuffers (pdp->driDrawable);
+
    (*psc->core->swapBuffers) (pdp->driDrawable);
 
    return 0;
