@@ -678,33 +678,30 @@ vn_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    return VK_SUCCESS;
 }
 
-static VkResult
+static void
 vn_cmd_submit(struct vn_command_buffer *cmd)
 {
    struct vn_instance *instance = cmd->device->instance;
 
    if (cmd->state != VN_COMMAND_BUFFER_STATE_RECORDING)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return;
 
    vn_cs_encoder_commit(&cmd->cs);
    if (vn_cs_encoder_get_fatal(&cmd->cs)) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
       vn_cs_encoder_reset(&cmd->cs);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
+      return;
    }
 
    if (unlikely(!instance->renderer->info.supports_blob_id_0))
       vn_instance_wait_roundtrip(instance, cmd->cs.current_buffer_roundtrip);
 
-   VkResult result = vn_instance_ring_submit(instance, &cmd->cs);
-   if (result != VK_SUCCESS) {
+   if (vn_instance_ring_submit(instance, &cmd->cs) != VK_SUCCESS) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
-      return result;
+      return;
    }
 
    vn_cs_encoder_reset(&cmd->cs);
-
-   return VK_SUCCESS;
 }
 
 VkResult
@@ -716,6 +713,9 @@ vn_EndCommandBuffer(VkCommandBuffer commandBuffer)
    struct vn_instance *instance = cmd->device->instance;
    size_t cmd_size;
 
+   if (cmd->state != VN_COMMAND_BUFFER_STATE_RECORDING)
+      return vn_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
    cmd_size = vn_sizeof_vkEndCommandBuffer(commandBuffer);
    if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size)) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
@@ -724,11 +724,9 @@ vn_EndCommandBuffer(VkCommandBuffer commandBuffer)
 
    vn_encode_vkEndCommandBuffer(&cmd->cs, 0, commandBuffer);
 
-   VkResult result = vn_cmd_submit(cmd);
-   if (result != VK_SUCCESS) {
-      cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
-      return vn_error(instance, result);
-   }
+   vn_cmd_submit(cmd);
+   if (cmd->state == VN_COMMAND_BUFFER_STATE_INVALID)
+      return vn_error(instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    cmd->state = VN_COMMAND_BUFFER_STATE_EXECUTABLE;
 
