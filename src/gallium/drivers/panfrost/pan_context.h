@@ -271,9 +271,6 @@ struct panfrost_shader_key {
 
 /* A shader state corresponds to the actual, current variant of the shader */
 struct panfrost_shader_state {
-        /* Compiled, mapped descriptor, ready for the hardware */
-        bool compiled;
-
         /* Respectively, shader binary and Renderer State Descriptor */
         struct panfrost_pool_ref bin, state;
 

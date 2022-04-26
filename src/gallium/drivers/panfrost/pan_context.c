@@ -428,6 +428,51 @@ update_so_info(struct pipe_stream_output_info *so_info,
 	return so_outputs;
 }
 
+static unsigned
+panfrost_new_variant_locked(
+        struct panfrost_context *ctx,
+        struct panfrost_shader_variants *variants,
+        struct panfrost_shader_key *key)
+{
+        unsigned variant = variants->variant_count++;
+
+        if (variants->variant_count > variants->variant_space) {
+                unsigned old_space = variants->variant_space;
+
+                variants->variant_space *= 2;
+                if (variants->variant_space == 0)
+                        variants->variant_space = 1;
+
+                /* Arbitrary limit to stop runaway programs from
+                 * creating an unbounded number of shader variants. */
+                assert(variants->variant_space < 1024);
+
+                unsigned msize = sizeof(struct panfrost_shader_state);
+                variants->variants = realloc(variants->variants,
+                                             variants->variant_space * msize);
+
+                memset(&variants->variants[old_space], 0,
+                       (variants->variant_space - old_space) * msize);
+        }
+
+        variants->variants[variant].key = *key;
+
+        struct panfrost_shader_state *shader_state = &variants->variants[variant];
+
+        /* We finally have a variant, so compile it */
+        panfrost_shader_compile(ctx->base.screen,
+                                &ctx->shaders, &ctx->descs,
+                                variants->nir, shader_state);
+
+        /* Fixup the stream out information */
+        shader_state->stream_output = variants->stream_output;
+        shader_state->so_mask =
+                update_so_info(&shader_state->stream_output,
+                               shader_state->info.outputs_written);
+
+        return variant;
+}
+
 static void
 panfrost_bind_shader_state(
         struct pipe_context *pctx,
@@ -459,52 +504,10 @@ panfrost_bind_shader_state(
                 }
         }
 
-        if (variant == -1) {
-                /* No variant matched, so create a new one */
-                variant = variants->variant_count++;
+        if (variant == -1)
+                variant = panfrost_new_variant_locked(ctx, variants, &key);
 
-                if (variants->variant_count > variants->variant_space) {
-                        unsigned old_space = variants->variant_space;
-
-                        variants->variant_space *= 2;
-                        if (variants->variant_space == 0)
-                                variants->variant_space = 1;
-
-                        /* Arbitrary limit to stop runaway programs from
-                         * creating an unbounded number of shader variants. */
-                        assert(variants->variant_space < 1024);
-
-                        unsigned msize = sizeof(struct panfrost_shader_state);
-                        variants->variants = realloc(variants->variants,
-                                                     variants->variant_space * msize);
-
-                        memset(&variants->variants[old_space], 0,
-                               (variants->variant_space - old_space) * msize);
-                }
-
-                variants->variants[variant].key = key;
-        }
-
-        /* Select this variant */
         variants->active_variant = variant;
-
-        struct panfrost_shader_state *shader_state = &variants->variants[variant];
-
-        /* We finally have a variant, so compile it */
-
-        if (!shader_state->compiled) {
-                panfrost_shader_compile(ctx->base.screen,
-                                        &ctx->shaders, &ctx->descs,
-                                        variants->nir, shader_state);
-
-                shader_state->compiled = true;
-
-                /* Fixup the stream out information */
-                shader_state->stream_output = variants->stream_output;
-                shader_state->so_mask =
-                        update_so_info(&shader_state->stream_output,
-                                       shader_state->info.outputs_written);
-        }
 
         /* TODO: it would be more efficient to release the lock before
          * compiling instead of after, but that can race if thread A compiles a
