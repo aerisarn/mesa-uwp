@@ -543,6 +543,114 @@ try_combine_dpp(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
    }
 }
 
+unsigned
+num_encoded_alu_operands(const aco_ptr<Instruction>& instr)
+{
+   if (instr->isSALU()) {
+      if (instr->isSOP2())
+         return 2;
+      else if (instr->isSOP1())
+         return 1;
+
+      return 0;
+   }
+
+   if (instr->isVALU()) {
+      if (instr->isVOP1())
+         return 1;
+      else if (instr->isVOPC() || instr->isVOP2())
+         return 2;
+      else if (instr->opcode == aco_opcode::v_writelane_b32_e64 ||
+               instr->opcode == aco_opcode::v_writelane_b32)
+         return 2; /* potentially VOP3, but reads VDST as SRC2 */
+      else if (instr->isVOP3() || instr->isVOP3P())
+         return instr->operands.size();
+   }
+
+   return 0;
+}
+
+void
+try_reassign_split_vector(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
+{
+   /* We are looking for the following pattern:
+    *
+    * sA, sB = p_split_vector s[X:Y]
+    * ... X and Y not overwritten here ...
+    * use sA or sB <--- current instruction
+    *
+    * If possible, we propagate the registers from the p_split_vector
+    * operand into the current instruction and the above is optimized into:
+    *
+    * use sX or sY
+    *
+    * Thereby, we might violate register assignment rules.
+    * This optimization exists because it's too difficult to solve it
+    * in RA, and should be removed after we solved this in RA.
+    */
+
+   if (!instr->isVALU() && !instr->isSALU())
+      return;
+
+   for (unsigned i = 0; i < num_encoded_alu_operands(instr); i++) {
+      /* Find the instruction that writes the current operand. */
+      const Operand& op = instr->operands[i];
+      Idx op_instr_idx = last_writer_idx(ctx, op);
+      if (!op_instr_idx.found())
+         continue;
+
+      /* Check if the operand is written by p_split_vector. */
+      Instruction* split_vec = ctx.get(op_instr_idx);
+      if (split_vec->opcode != aco_opcode::p_split_vector)
+         continue;
+
+      Operand& split_op = split_vec->operands[0];
+
+      /* Don't do anything if the p_split_vector operand is not a temporary
+       * or is killed by the p_split_vector.
+       * In this case the definitions likely already reuse the same registers as the operand.
+       */
+      if (!split_op.isTemp() || split_op.isKill())
+         continue;
+
+      /* Only propagate operands of the same type */
+      if (split_op.getTemp().type() != op.getTemp().type())
+         continue;
+
+      /* Check if the p_split_vector operand's registers are overwritten. */
+      if (is_overwritten_since(ctx, split_op, op_instr_idx))
+         continue;
+
+      PhysReg reg = split_op.physReg();
+      for (Definition& def : split_vec->definitions) {
+         if (def.getTemp() != op.getTemp()) {
+            reg = reg.advance(def.bytes());
+            continue;
+         }
+
+         /* Don't propagate misaligned SGPRs.
+          * Note: No ALU instruction can take a variable larger than 64bit.
+          */
+         if (op.regClass() == s2 && reg.reg() % 2 != 0)
+            break;
+
+         /* If there is only one use (left), recolor the split_vector definition */
+         if (ctx.uses[op.tempId()] == 1)
+            def.setFixed(reg);
+         else
+            ctx.uses[op.tempId()]--;
+
+         /* Use the p_split_vector operand register directly.
+          *
+          * Note: this might violate register assignment rules to some extend
+          *       in case the definition does not get recolored, eventually.
+          */
+         instr->operands[i].setFixed(reg);
+         break;
+      }
+   }
+}
+
 void
 process_instruction(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
 {
@@ -558,6 +666,8 @@ process_instruction(pr_opt_ctx& ctx, aco_ptr<Instruction>& instr)
    try_optimize_scc_nocompare(ctx, instr);
 
    try_combine_dpp(ctx, instr);
+
+   try_reassign_split_vector(ctx, instr);
 
    if (instr)
       save_reg_writes(ctx, instr);
