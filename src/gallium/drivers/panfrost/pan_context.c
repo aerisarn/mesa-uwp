@@ -45,6 +45,7 @@
 #include "util/u_prim_restart.h"
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_from_mesa.h"
+#include "nir/tgsi_to_nir.h"
 #include "util/u_math.h"
 
 #include "pan_screen.h"
@@ -297,25 +298,25 @@ panfrost_create_shader_state(
 {
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
         struct panfrost_device *dev = pan_device(pctx->screen);
-        so->base = *cso;
 
         simple_mtx_init(&so->lock, mtx_plain);
 
-        /* Token deep copy to prevent memory corruption */
+        so->stream_output = cso->stream_output;
 
         if (cso->type == PIPE_SHADER_IR_TGSI)
-                so->base.tokens = tgsi_dup_tokens(so->base.tokens);
+                so->nir = tgsi_to_nir(cso->tokens, pctx->screen, false);
+        else
+                so->nir = cso->ir.nir;
 
         /* Precompile for shader-db if we need to */
-        if (unlikely((dev->debug & PAN_DBG_PRECOMPILE) && cso->type == PIPE_SHADER_IR_NIR)) {
+        if (unlikely(dev->debug & PAN_DBG_PRECOMPILE)) {
                 struct panfrost_context *ctx = pan_context(pctx);
 
                 struct panfrost_shader_state state = { 0 };
 
                 panfrost_shader_compile(pctx->screen,
                                         &ctx->shaders, &ctx->descs,
-                                        PIPE_SHADER_IR_NIR,
-                                        so->base.ir.nir,
+                                        so->nir,
                                         tgsi_processor_to_shader_stage(stage),
                                         &state);
         }
@@ -330,11 +331,8 @@ panfrost_delete_shader_state(
 {
         struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
 
-        if (!cso->is_compute && cso->base.type == PIPE_SHADER_IR_NIR)
-                ralloc_free(cso->base.ir.nir);
-
-        if (cso->base.type == PIPE_SHADER_IR_TGSI)
-                tgsi_free_tokens(cso->base.tokens);
+        if (!cso->is_compute)
+                ralloc_free(cso->nir);
 
         for (unsigned i = 0; i < cso->variant_count; ++i) {
                 struct panfrost_shader_state *shader_state = &cso->variants[i];
@@ -521,17 +519,14 @@ panfrost_bind_shader_state(
         if (!shader_state->compiled) {
                 panfrost_shader_compile(ctx->base.screen,
                                         &ctx->shaders, &ctx->descs,
-                                        variants->base.type,
-                                        variants->base.type == PIPE_SHADER_IR_NIR ?
-                                        variants->base.ir.nir :
-                                        variants->base.tokens,
+                                        variants->nir,
                                         tgsi_processor_to_shader_stage(type),
                                         shader_state);
 
                 shader_state->compiled = true;
 
                 /* Fixup the stream out information */
-                shader_state->stream_output = variants->base.stream_output;
+                shader_state->stream_output = variants->stream_output;
                 shader_state->so_mask =
                         update_so_info(&shader_state->stream_output,
                                        shader_state->info.outputs_written);

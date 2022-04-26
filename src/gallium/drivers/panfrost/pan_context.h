@@ -289,9 +289,11 @@ struct panfrost_shader_variants {
         bool is_compute;
 
         union {
-                struct pipe_shader_state base;
                 struct pipe_compute_state cbase;
         };
+
+        nir_shader *nir;
+        struct pipe_stream_output_info stream_output;
 
         /** Lock for the variants array */
         simple_mtx_t lock;
@@ -370,8 +372,7 @@ void
 panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *shader_pool,
                         struct panfrost_pool *desc_pool,
-                        enum pipe_shader_ir ir_type,
-                        const void *ir,
+                        const nir_shader *ir,
                         gl_shader_stage stage,
                         struct panfrost_shader_state *state);
 

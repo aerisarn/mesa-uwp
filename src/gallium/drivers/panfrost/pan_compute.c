@@ -68,9 +68,10 @@ panfrost_create_compute_state(
                 so->cbase.ir_type = PIPE_SHADER_IR_NIR;
         }
 
+        assert(so->cbase.ir_type == PIPE_SHADER_IR_NIR && "TGSI kernels unsupported");
+
         panfrost_shader_compile(pctx->screen, &ctx->shaders, &ctx->descs,
-                        so->cbase.ir_type, so->cbase.prog, MESA_SHADER_COMPUTE,
-                        v);
+                        so->cbase.prog, MESA_SHADER_COMPUTE, v);
 
         /* There are no variants so we won't need the NIR again */
         ralloc_free((void *)so->cbase.prog);

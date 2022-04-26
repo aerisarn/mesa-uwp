@@ -32,32 +32,21 @@
 #include "pan_util.h"
 
 #include "compiler/nir/nir.h"
-#include "nir/tgsi_to_nir.h"
 #include "util/u_dynarray.h"
 #include "util/u_upload_mgr.h"
-
-#include "tgsi/tgsi_dump.h"
 
 void
 panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *shader_pool,
                         struct panfrost_pool *desc_pool,
-                        enum pipe_shader_ir ir_type,
-                        const void *ir,
+                        const nir_shader *ir,
                         gl_shader_stage stage,
                         struct panfrost_shader_state *state)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
         struct panfrost_device *dev = pan_device(pscreen);
 
-        nir_shader *s;
-
-        if (ir_type == PIPE_SHADER_IR_NIR) {
-                s = nir_shader_clone(NULL, ir);
-        } else {
-                assert (ir_type == PIPE_SHADER_IR_TGSI);
-                s = tgsi_to_nir(ir, pscreen, false);
-        }
+        nir_shader *s = nir_shader_clone(NULL, ir);
 
         /* Lower this early so the backends don't have to worry about it */
         if (stage == MESA_SHADER_FRAGMENT)
