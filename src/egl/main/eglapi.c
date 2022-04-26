@@ -662,12 +662,26 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
        * If the initialisation fails, try again using only software rendering.
        */
       if (!_eglDriver.Initialize(disp)) {
-         if (disp->Options.ForceSoftware)
-            RETURN_EGL_ERROR(disp, EGL_NOT_INITIALIZED, EGL_FALSE);
-         else {
+         bool fail = true;
+         if (!disp->Options.ForceSoftware && !disp->Options.Zink &&
+             !env_var_as_boolean("LIBGL_KOPPER_DISABLE", false) && !getenv("GALLIUM_DRIVER")) {
+            /* zink fallback */
+            disp->Options.Zink = EGL_TRUE;
             disp->Options.ForceSoftware = EGL_TRUE;
-            if (!_eglDriver.Initialize(disp))
+            fail = !_eglDriver.Initialize(disp);
+            if (fail) {
+               disp->Options.Zink = EGL_FALSE;
+               disp->Options.ForceSoftware = EGL_FALSE;
+            }
+         }
+         if (fail) {
+            if (disp->Options.ForceSoftware)
                RETURN_EGL_ERROR(disp, EGL_NOT_INITIALIZED, EGL_FALSE);
+            else {
+               disp->Options.ForceSoftware = EGL_TRUE;
+               if (!_eglDriver.Initialize(disp))
+                  RETURN_EGL_ERROR(disp, EGL_NOT_INITIALIZED, EGL_FALSE);
+            }
          }
       }
 
