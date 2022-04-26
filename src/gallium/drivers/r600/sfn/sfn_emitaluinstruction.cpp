@@ -130,7 +130,10 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_feq: return emit_alu_op2(instr, op2_sete_dx10);
    case nir_op_fexp2: return emit_alu_trans_op1(instr, op1_exp_ieee);
    case nir_op_ffloor: return emit_alu_op1(instr, op1_floor);
-   case nir_op_ffma: return emit_alu_op3(instr, op3_muladd_ieee);
+   case nir_op_ffma:
+      if (use_legacy_math_rules())
+         return emit_alu_op2(instr, op3_muladd);
+      return emit_alu_op3(instr, op3_muladd_ieee);
    case nir_op_ffract: return emit_alu_op1(instr, op1_fract);
    case nir_op_fge32: return emit_alu_op2(instr, op2_setge_dx10);
    case nir_op_fge: return emit_alu_op2(instr, op2_setge_dx10);
@@ -140,7 +143,10 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_flt: return emit_alu_op2(instr, op2_setgt_dx10, op2_opt_reverse);
    case nir_op_fmax: return emit_alu_op2(instr, op2_max_dx10);
    case nir_op_fmin: return emit_alu_op2(instr, op2_min_dx10);
-   case nir_op_fmul: return emit_alu_op2(instr, op2_mul_ieee);
+   case nir_op_fmul:
+      if (use_legacy_math_rules())
+         return emit_alu_op2(instr, op2_mul);
+      return emit_alu_op2(instr, op2_mul_ieee);
    case nir_op_fneg: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_neg});
    case nir_op_fneu32: return emit_alu_op2(instr, op2_setne_dx10);
    case nir_op_fneu: return emit_alu_op2(instr, op2_setne_dx10);
@@ -593,10 +599,11 @@ bool EmitAluInstruction::emit_dot(const nir_alu_instr& instr, int n)
 {
    const nir_alu_src& src0 = instr.src[0];
    const nir_alu_src& src1 = instr.src[1];
+   EAluOp dot4_op = use_legacy_math_rules() ? op2_dot4 : op2_dot4_ieee;
 
    AluInstruction *ir = nullptr;
    for (int i = 0; i < n ; ++i) {
-      ir = new AluInstruction(op2_dot4_ieee, from_nir(instr.dest, i),
+      ir = new AluInstruction(dot4_op, from_nir(instr.dest, i),
                               m_src[0][i], m_src[1][i],
                               instr.dest.write_mask & (1 << i) ? write : empty);
 
@@ -609,7 +616,7 @@ bool EmitAluInstruction::emit_dot(const nir_alu_instr& instr, int n)
       emit_instruction(ir);
    }
    for (int i = n; i < 4 ; ++i) {
-      ir = new AluInstruction(op2_dot4_ieee, from_nir(instr.dest, i),
+      ir = new AluInstruction(dot4_op, from_nir(instr.dest, i),
                               Value::zero, Value::zero,
                               instr.dest.write_mask & (1 << i) ? write : empty);
       emit_instruction(ir);

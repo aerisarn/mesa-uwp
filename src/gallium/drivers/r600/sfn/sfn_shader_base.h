@@ -73,6 +73,10 @@ public:
    void emit_export_instruction(WriteoutInstruction *ir);
    void emit_instruction(AluInstruction *ir);
 
+   bool use_legacy_math_rules(void) {
+      return m_sel.nir->info.use_legacy_math_rules;
+   };
+
    void split_constants(nir_alu_instr* instr);
    void remap_registers();
 

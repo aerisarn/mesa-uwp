@@ -70,6 +70,7 @@ protected:
    bool emit_instruction(EAluOp opcode, PValue dest,
                          std::vector<PValue> src0,
                          const std::set<AluModifiers>& m_flags);
+   bool use_legacy_math_rules(void);
 
    PValue from_nir_with_fetch_constant(const nir_src& src, unsigned component, int channel = -1);
    GPRVector vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
