@@ -1252,9 +1252,6 @@ d3d12_transfer_map(struct pipe_context *pctx,
    if (!trans)
       return NULL;
 
-   pipe_resource_reference(&ptrans->resource, pres);
-
-   ptrans->resource = pres;
    ptrans->level = level;
    ptrans->usage = (enum pipe_map_flags)usage;
    ptrans->box = *box;
@@ -1275,8 +1272,10 @@ d3d12_transfer_map(struct pipe_context *pctx,
       }
 
       range = linear_range(box, ptrans->stride, ptrans->layer_stride);
-      if (!synchronize(ctx, res, usage, &range))
+      if (!synchronize(ctx, res, usage, &range)) {
+         slab_free(transfer_pool, trans);
          return NULL;
+      }
       ptr = d3d12_bo_map(res->bo, &range);
    } else if (unlikely(pres->format == PIPE_FORMAT_Z24_UNORM_S8_UINT ||
                        pres->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)) {
@@ -1331,8 +1330,10 @@ d3d12_transfer_map(struct pipe_context *pctx,
       trans->staging_res = pipe_buffer_create(pctx->screen, 0,
                                               staging_usage,
                                               staging_res_size);
-      if (!trans->staging_res)
+      if (!trans->staging_res) {
+         slab_free(transfer_pool, trans);
          return NULL;
+      }
 
       struct d3d12_resource *staging_res = d3d12_resource(trans->staging_res);
 
@@ -1354,6 +1355,7 @@ d3d12_transfer_map(struct pipe_context *pctx,
       ptr = d3d12_bo_map(staging_res->bo, &range);
    }
 
+   pipe_resource_reference(&ptrans->resource, pres);
    *transfer = ptrans;
    return ptr;
 }
