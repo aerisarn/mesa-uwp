@@ -23,7 +23,6 @@ vulkan_icd_symbols = files('vulkan-icd-symbols.txt')
 
 inc_vulkan_util = include_directories('util')
 
-vulkan_wsi_args = []
 vulkan_wsi_deps = []
 vulkan_wsi_list = []
 
