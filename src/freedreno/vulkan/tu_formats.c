@@ -329,7 +329,7 @@ tu_GetPhysicalDeviceFormatProperties2(
       if (pFormatProperties->formatProperties.linearTilingFeatures) {
          vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT, &out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
-            mod_props->drmFormatModifierPlaneCount = 1;
+            mod_props->drmFormatModifierPlaneCount = tu6_plane_count(format);
             mod_props->drmFormatModifierTilingFeatures =
                pFormatProperties->formatProperties.linearTilingFeatures;
          }
@@ -341,7 +341,7 @@ tu_GetPhysicalDeviceFormatProperties2(
           ubwc_possible(format, VK_IMAGE_TYPE_2D, 0, 0, physical_device->info, VK_SAMPLE_COUNT_1_BIT)) {
          vk_outarray_append_typed(VkDrmFormatModifierPropertiesEXT, &out, mod_props) {
             mod_props->drmFormatModifier = DRM_FORMAT_MOD_QCOM_COMPRESSED;
-            mod_props->drmFormatModifierPlaneCount = 1;
+            mod_props->drmFormatModifierPlaneCount = tu6_plane_count(format);
             mod_props->drmFormatModifierTilingFeatures =
                pFormatProperties->formatProperties.optimalTilingFeatures;
          }

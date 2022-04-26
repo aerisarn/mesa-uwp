@@ -1675,6 +1675,7 @@ tu_get_levelCount(const struct tu_image *image,
              : range->levelCount;
 }
 
+uint32_t tu6_plane_count(VkFormat format);
 enum pipe_format tu6_plane_format(VkFormat format, uint32_t plane);
 
 uint32_t tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask);

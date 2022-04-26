@@ -37,7 +37,7 @@
 
 #include "tu_cs.h"
 
-static uint32_t
+uint32_t
 tu6_plane_count(VkFormat format)
 {
    switch (format) {
@@ -71,10 +71,13 @@ tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask)
 {
    switch (aspect_mask) {
    default:
+      assert(aspect_mask != VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT);
       return 0;
    case VK_IMAGE_ASPECT_PLANE_1_BIT:
+   case VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT:
       return 1;
    case VK_IMAGE_ASPECT_PLANE_2_BIT:
+   case VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT:
       return 2;
    case VK_IMAGE_ASPECT_STENCIL_BIT:
       return format == VK_FORMAT_D32_SFLOAT_S8_UINT;
