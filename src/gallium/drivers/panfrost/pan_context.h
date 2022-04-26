@@ -48,9 +48,6 @@
 #include "midgard/midgard_compile.h"
 #include "compiler/shader_enums.h"
 
-/* Forward declare to avoid extra header dep */
-struct prim_convert_context;
-
 #define SET_BIT(lval, bit, cond) \
 	if (cond) \
 		lval |= (bit); \

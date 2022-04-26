@@ -105,7 +105,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         bool has_heap = dev->kernel_version->version_major > 1 ||
                         dev->kernel_version->version_minor >= 1;
 
-        /* Bifrost is WIP */
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
         case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
