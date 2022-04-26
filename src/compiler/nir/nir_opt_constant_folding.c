@@ -330,9 +330,31 @@ try_fold_txb_to_tex(nir_builder *b, nir_tex_instr *tex)
 }
 
 static bool
+try_fold_tex_offset(nir_tex_instr *tex, unsigned *index,
+                    nir_tex_src_type src_type)
+{
+   const int src_idx = nir_tex_instr_src_index(tex, src_type);
+   if (src_idx < 0)
+      return false;
+
+   if (!nir_src_is_const(tex->src[src_idx].src))
+      return false;
+
+   *index += nir_src_as_uint(tex->src[src_idx].src);
+   nir_tex_instr_remove_src(tex, src_idx);
+
+   return true;
+}
+
+static bool
 try_fold_tex(nir_builder *b, nir_tex_instr *tex)
 {
    bool progress = false;
+
+   progress |= try_fold_tex_offset(tex, &tex->texture_index,
+                                   nir_tex_src_texture_offset);
+   progress |= try_fold_tex_offset(tex, &tex->sampler_index,
+                                   nir_tex_src_sampler_offset);
 
    /* txb with a bias of constant zero is just tex. */
    if (tex->op == nir_texop_txb)
