@@ -2650,6 +2650,19 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   /* We can safely skip barriers for image layout transitions from UNDEFINED
+    * layout.
+    */
+   if (imageBarrierCount > 0) {
+      bool all_undefined = true;
+      for (int i = 0; all_undefined && i < imageBarrierCount; i++) {
+         if (pImageBarriers[i].oldLayout != VK_IMAGE_LAYOUT_UNDEFINED)
+            all_undefined = false;
+      }
+      if (all_undefined)
+         imageBarrierCount = 0;
+   }
+
    if (memoryBarrierCount + bufferBarrierCount + imageBarrierCount == 0)
       return;
 
