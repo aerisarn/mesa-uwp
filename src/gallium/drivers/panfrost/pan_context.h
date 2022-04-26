@@ -283,17 +283,12 @@ struct panfrost_shader_state {
 
 /* A collection of varyings (the CSO) */
 struct panfrost_shader_variants {
-        /* A panfrost_shader_variants can represent a shader for
-         * either graphics or compute */
-
-        bool is_compute;
+        nir_shader *nir;
 
         union {
-                struct pipe_compute_state cbase;
+                struct pipe_stream_output_info stream_output;
+                unsigned req_input_mem;
         };
-
-        nir_shader *nir;
-        struct pipe_stream_output_info stream_output;
 
         /** Lock for the variants array */
         simple_mtx_t lock;

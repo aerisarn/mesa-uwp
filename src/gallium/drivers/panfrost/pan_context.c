@@ -331,8 +331,7 @@ panfrost_delete_shader_state(
 {
         struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
 
-        if (!cso->is_compute)
-                ralloc_free(cso->nir);
+        ralloc_free(cso->nir);
 
         for (unsigned i = 0; i < cso->variant_count; ++i) {
                 struct panfrost_shader_state *shader_state = &cso->variants[i];

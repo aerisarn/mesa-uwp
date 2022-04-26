@@ -3916,7 +3916,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         struct pipe_constant_buffer ubuf = {
                 .buffer = NULL,
                 .buffer_offset = 0,
-                .buffer_size = ctx->shader[PIPE_SHADER_COMPUTE]->cbase.req_input_mem,
+                .buffer_size = ctx->shader[PIPE_SHADER_COMPUTE]->req_input_mem,
                 .user_buffer = info->input
         };
 
