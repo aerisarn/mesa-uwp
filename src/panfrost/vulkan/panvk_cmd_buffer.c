@@ -49,7 +49,8 @@ panvk_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < bindingCount; i++) {
       struct panvk_buffer *buf = panvk_buffer_from_handle(pBuffers[i]);
 
-      cmdbuf->state.vb.bufs[firstBinding + i].address = buf->bo->ptr.gpu + pOffsets[i];
+      cmdbuf->state.vb.bufs[firstBinding + i].address =
+        buf->bo->ptr.gpu + buf->bo_offset + pOffsets[i];
       cmdbuf->state.vb.bufs[firstBinding + i].size = buf->size - pOffsets[i];
    }
 
