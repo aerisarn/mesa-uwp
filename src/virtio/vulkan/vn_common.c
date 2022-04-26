@@ -15,6 +15,7 @@
 #include "util/debug.h"
 #include "util/log.h"
 #include "util/os_misc.h"
+#include "util/u_debug.h"
 #include "venus-protocol/vn_protocol_driver_info.h"
 #include "vk_enum_to_str.h"
 
@@ -43,6 +44,10 @@ vn_env_init_once(void)
       parse_debug_string(os_get_option("VN_DEBUG"), vn_debug_options);
    vn_env.perf =
       parse_debug_string(os_get_option("VN_PERF"), vn_perf_options);
+   vn_env.draw_cmd_batch_limit =
+      debug_get_num_option("VN_DRAW_CMD_BATCH_LIMIT", UINT32_MAX);
+   if (!vn_env.draw_cmd_batch_limit)
+      vn_env.draw_cmd_batch_limit = UINT32_MAX;
 }
 
 void
