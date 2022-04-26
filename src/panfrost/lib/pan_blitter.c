@@ -860,8 +860,7 @@ pan_blitter_emit_textures(struct pan_pool *pool,
                 size_t payload_size =
                         GENX(panfrost_estimate_texture_payload_size)(views[i]);
                 struct panfrost_ptr surfaces =
-                        pan_pool_alloc_aligned(pool, payload_size,
-                                               pan_alignment(SURFACE_WITH_STRIDE));
+                        pan_pool_alloc_aligned(pool, payload_size, 64);
 
                 GENX(panfrost_new_texture)(pool->dev, views[i], texture, &surfaces);
         }
