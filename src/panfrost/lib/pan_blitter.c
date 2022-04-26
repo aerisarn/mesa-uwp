@@ -163,11 +163,13 @@ pan_blitter_emit_blend(const struct panfrost_device *dev,
                 } else {
 #if PAN_ARCH >= 6
                         cfg.internal.shader.pc = blend_shader;
+#if PAN_ARCH <= 7
                         if (blit_shader->blend_ret_offsets[rt]) {
                                 cfg.internal.shader.return_value =
                                         blit_shader->address +
                                         blit_shader->blend_ret_offsets[rt];
                         }
+#endif
 #else
                         cfg.blend_shader = true;
                         cfg.shader_pc = blend_shader;
@@ -230,6 +232,7 @@ pan_blitter_emit_blends(const struct panfrost_device *dev,
 }
 #endif
 
+#if PAN_ARCH <= 7
 static void
 pan_blitter_emit_rsd(const struct panfrost_device *dev,
                      const struct pan_blit_shader_data *blit_shader,
@@ -318,6 +321,7 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                                 out + pan_size(RENDERER_STATE));
 #endif
 }
+#endif
 
 static void
 pan_blitter_get_blend_shaders(struct panfrost_device *dev,
@@ -682,6 +686,7 @@ pan_blitter_get_key(struct pan_blitter_views *views)
         return key;
 }
 
+#if PAN_ARCH <= 7
 static mali_ptr
 pan_blitter_get_rsd(struct panfrost_device *dev,
                     struct pan_blitter_views *views)
@@ -790,6 +795,7 @@ pan_blit_get_rsd(struct panfrost_device *dev,
 
         return pan_blitter_get_rsd(dev, &views);
 }
+#endif
 
 static struct pan_blitter_views
 pan_preload_get_views(const struct pan_fb_info *fb, bool zs)
@@ -857,6 +863,13 @@ pan_blitter_emit_varying(struct pan_pool *pool)
                 cfg.buffer_index = 0;
                 cfg.offset_enable = PAN_ARCH <= 5;
                 cfg.format = pool->dev->formats[PIPE_FORMAT_R32G32B32_FLOAT].hw;
+
+#if PAN_ARCH >= 9
+                cfg.attribute_type = MALI_ATTRIBUTE_TYPE_1D;
+                cfg.table = PAN_TABLE_ATTRIBUTE_BUFFER;
+                cfg.frequency = MALI_ATTRIBUTE_FREQUENCY_VERTEX;
+                cfg.stride = 4 * sizeof(float);
+#endif
         }
 
         return varying.gpu;
@@ -865,6 +878,14 @@ pan_blitter_emit_varying(struct pan_pool *pool)
 static mali_ptr
 pan_blitter_emit_varying_buffer(struct pan_pool *pool, mali_ptr coordinates)
 {
+#if PAN_ARCH >= 9
+        struct panfrost_ptr varying_buffer = pan_pool_alloc_desc(pool, BUFFER);
+
+        pan_pack(varying_buffer.cpu, BUFFER, cfg) {
+                cfg.address = coordinates;
+                cfg.size = 4 * sizeof(float) * 4;
+        }
+#else
         /* Bifrost needs an empty desc to mark end of prefetching */
         bool padding_buffer = PAN_ARCH >= 6;
 
@@ -882,6 +903,7 @@ pan_blitter_emit_varying_buffer(struct pan_pool *pool, mali_ptr coordinates)
                 pan_pack(varying_buffer.cpu + pan_size(ATTRIBUTE_BUFFER),
                          ATTRIBUTE_BUFFER, cfg);
         }
+#endif
 
         return varying_buffer.gpu;
 }
@@ -989,6 +1011,43 @@ pan_preload_emit_textures(struct pan_pool *pool,
         return pan_blitter_emit_textures(pool, tex_count, views);
 }
 
+#if PAN_ARCH >= 8
+/* TODO: cache */
+static mali_ptr
+pan_blitter_emit_zs(struct pan_pool *pool, bool z, bool s)
+{
+        struct panfrost_ptr zsd = pan_pool_alloc_desc(pool, DEPTH_STENCIL);
+
+        pan_pack(zsd.cpu, DEPTH_STENCIL, cfg) {
+                cfg.depth_function = MALI_FUNC_ALWAYS;
+                cfg.depth_write_enable = z;
+
+                if (z)
+                        cfg.depth_source = MALI_DEPTH_SOURCE_SHADER;
+
+                cfg.stencil_test_enable = s;
+                cfg.stencil_from_shader = s;
+
+                cfg.front_compare_function = MALI_FUNC_ALWAYS;
+                cfg.front_stencil_fail = MALI_STENCIL_OP_REPLACE;
+                cfg.front_depth_fail = MALI_STENCIL_OP_REPLACE;
+                cfg.front_depth_pass = MALI_STENCIL_OP_REPLACE;
+                cfg.front_write_mask = 0xFF;
+                cfg.front_value_mask = 0xFF;
+
+                cfg.back_compare_function = MALI_FUNC_ALWAYS;
+                cfg.back_stencil_fail = MALI_STENCIL_OP_REPLACE;
+                cfg.back_depth_fail = MALI_STENCIL_OP_REPLACE;
+                cfg.back_depth_pass = MALI_STENCIL_OP_REPLACE;
+                cfg.back_write_mask = 0xFF;
+                cfg.back_value_mask = 0xFF;
+
+                cfg.depth_cull_enable = false;
+        }
+
+        return zsd.gpu;
+}
+#else
 static mali_ptr
 pan_blitter_emit_viewport(struct pan_pool *pool,
                           uint16_t minx, uint16_t miny,
@@ -1005,6 +1064,7 @@ pan_blitter_emit_viewport(struct pan_pool *pool,
 
         return vp.gpu;
 }
+#endif
 
 static void
 pan_preload_emit_dcd(struct pan_pool *pool,
@@ -1024,6 +1084,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
         UNUSED bool clean_fragment_write = !always_write;
         struct pan_blitter_views views = pan_preload_get_views(fb, zs);
 
+#if PAN_ARCH <= 7
         pan_pack(out, DRAW, cfg) {
                 uint16_t minx = 0, miny = 0, maxx, maxy;
 
@@ -1054,8 +1115,82 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                 cfg.clean_fragment_write = clean_fragment_write;
 #endif
         }
+#else
+        struct panfrost_ptr T;
+        unsigned nr_tables = 12;
+
+        /* Although individual resources need only 16 byte alignment, the
+         * resource table as a whole must be 64-byte aligned.
+         */
+        T = pan_pool_alloc_aligned(pool, nr_tables * pan_size(RESOURCE), 64);
+        memset(T.cpu, 0, nr_tables * pan_size(RESOURCE));
+
+        panfrost_make_resource_table(T, PAN_TABLE_TEXTURE, textures, tex_count);
+        panfrost_make_resource_table(T, PAN_TABLE_SAMPLER, samplers, 1);
+        panfrost_make_resource_table(T, PAN_TABLE_ATTRIBUTE, varyings, 1);
+        panfrost_make_resource_table(T, PAN_TABLE_ATTRIBUTE_BUFFER, varying_buffers, 1);
+
+        struct pan_blit_shader_key key = pan_blitter_get_key(&views);
+        const struct pan_blit_shader_data *blit_shader =
+                pan_blitter_get_blit_shader(pool->dev, &key);
+
+        bool z = fb->zs.preload.z;
+        bool s = fb->zs.preload.s;
+        bool ms = pan_blitter_is_ms(&views);
+
+        struct panfrost_ptr spd = pan_pool_alloc_desc(pool, SHADER_PROGRAM);
+        pan_pack(spd.cpu, SHADER_PROGRAM, cfg) {
+                cfg.stage = MALI_SHADER_STAGE_FRAGMENT;
+                cfg.primary_shader = true;
+                cfg.register_allocation = MALI_SHADER_REGISTER_ALLOCATION_32_PER_THREAD;
+                cfg.binary = blit_shader->address;
+                cfg.preload.r48_r63 = blit_shader->info.preload >> 48;
+        }
+
+        unsigned bd_count = views.rt_count;
+        struct panfrost_ptr blend = pan_pool_alloc_desc_array(pool, bd_count, BLEND);
+        mali_ptr blend_shaders[8] = { 0 };
+
+        if (!zs) {
+                pan_blitter_get_blend_shaders(pool->dev, views.rt_count, views.dst_rts,
+                                              blit_shader, blend_shaders);
+
+                pan_blitter_emit_blends(pool->dev, blit_shader, &views, blend_shaders,
+                                        blend.cpu);
+        }
+
+        pan_pack(out, DRAW, cfg) {
+                if (zs) {
+                        /* ZS_EMIT requires late update/kill */
+                        cfg.zs_update_operation = MALI_PIXEL_KILL_FORCE_LATE;
+                        cfg.pixel_kill_operation = MALI_PIXEL_KILL_FORCE_LATE;
+                        cfg.blend_count = 0;
+                } else {
+                        /* Skipping ATEST requires forcing Z/S */
+                        cfg.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+                        cfg.pixel_kill_operation = MALI_PIXEL_KILL_FORCE_EARLY;
+
+                        cfg.blend = blend.gpu;
+                        cfg.blend_count = bd_count;
+                        cfg.render_target_mask = 0x1;
+                }
+
+                cfg.allow_forward_pixel_to_kill = !zs;
+                cfg.allow_forward_pixel_to_be_killed = true;
+                cfg.depth_stencil = pan_blitter_emit_zs(pool, z, s);
+                cfg.sample_mask = 0xFFFF;
+                cfg.multisample_enable = ms;
+                cfg.evaluate_per_sample = ms;
+                cfg.maximum_z = 1.0;
+                cfg.clean_fragment_write = clean_fragment_write;
+                cfg.shader.resources = T.gpu | nr_tables;
+                cfg.shader.shader = spd.gpu;
+                cfg.shader.thread_storage = tsd;
+        }
+#endif
 }
 
+#if PAN_ARCH <= 7
 static void *
 pan_blit_emit_tiler_job(struct pan_pool *pool,
                         struct pan_scoreboard *scoreboard,
@@ -1088,6 +1223,7 @@ pan_blit_emit_tiler_job(struct pan_pool *pool,
                          false, false, 0, 0, job, false);
         return pan_section_ptr(job->cpu, TILER_JOB, DRAW);
 }
+#endif
 
 #if PAN_ARCH >= 6
 static void
@@ -1259,6 +1395,7 @@ GENX(pan_preload_fb)(struct pan_pool *pool,
         return njobs;
 }
 
+#if PAN_ARCH <= 7
 void
 GENX(pan_blit_ctx_init)(struct panfrost_device *dev,
                         const struct pan_blit_info *info,
@@ -1438,6 +1575,7 @@ GENX(pan_blit)(struct pan_blit_context *ctx,
 
         return job;
 }
+#endif
 
 static uint32_t pan_blit_shader_key_hash(const void *key)
 {
