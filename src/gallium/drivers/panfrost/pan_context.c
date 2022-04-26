@@ -485,12 +485,21 @@ panfrost_bind_shader_state(
         ctx->dirty |= PAN_DIRTY_TLS_SIZE;
         ctx->dirty_shader[type] |= PAN_DIRTY_STAGE_SHADER;
 
-        if (!hwcso) return;
+        if (hwcso)
+                panfrost_update_shader_variant(ctx, type);
+}
+
+void
+panfrost_update_shader_variant(struct panfrost_context *ctx,
+                               enum pipe_shader_type type)
+{
+        /* No shader variants for compute */
+        if (type == PIPE_SHADER_COMPUTE)
+                return;
 
         /* Match the appropriate variant */
-
         signed variant = -1;
-        struct panfrost_shader_variants *variants = (struct panfrost_shader_variants *) hwcso;
+        struct panfrost_shader_variants *variants = ctx->shader[type];
 
         simple_mtx_lock(&variants->lock);
 
