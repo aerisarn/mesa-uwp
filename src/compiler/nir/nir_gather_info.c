@@ -25,6 +25,8 @@
 #include "nir_deref.h"
 #include "main/menums.h"
 
+#include "util/set.h"
+
 static bool
 src_is_invocation_id(const nir_src *src)
 {
@@ -888,24 +890,37 @@ gather_alu_info(nir_alu_instr *instr, nir_shader *shader)
 }
 
 static void
-gather_info_block(nir_block *block, nir_shader *shader, void *dead_ctx)
+gather_func_info(nir_function_impl *func, nir_shader *shader,
+                 struct set *visited_funcs, void *dead_ctx)
 {
-   nir_foreach_instr(instr, block) {
-      switch (instr->type) {
-      case nir_instr_type_alu:
-         gather_alu_info(nir_instr_as_alu(instr), shader);
-         break;
-      case nir_instr_type_intrinsic:
-         gather_intrinsic_info(nir_instr_as_intrinsic(instr), shader, dead_ctx);
-         break;
-      case nir_instr_type_tex:
-         gather_tex_info(nir_instr_as_tex(instr), shader);
-         break;
-      case nir_instr_type_call:
-         assert(!"nir_shader_gather_info only works if functions are inlined");
-         break;
-      default:
-         break;
+   if (_mesa_set_search(visited_funcs, func))
+      return;
+
+   _mesa_set_add(visited_funcs, func);
+
+   nir_foreach_block(block, func) {
+      nir_foreach_instr(instr, block) {
+         switch (instr->type) {
+         case nir_instr_type_alu:
+            gather_alu_info(nir_instr_as_alu(instr), shader);
+            break;
+         case nir_instr_type_intrinsic:
+            gather_intrinsic_info(nir_instr_as_intrinsic(instr), shader, dead_ctx);
+            break;
+         case nir_instr_type_tex:
+            gather_tex_info(nir_instr_as_tex(instr), shader);
+            break;
+         case nir_instr_type_call: {
+            nir_call_instr *call = nir_instr_as_call(instr);
+            nir_function_impl *impl = call->callee->impl;
+
+            assert(impl || !"nir_shader_gather_info only works with linked shaders");
+            gather_func_info(impl, shader, visited_funcs, dead_ctx);
+            break;
+         }
+         default:
+            break;
+         }
       }
    }
 }
@@ -968,9 +983,8 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
       shader->info.writes_memory = shader->info.has_transform_feedback_varyings;
 
    void *dead_ctx = ralloc_context(NULL);
-   nir_foreach_block(block, entrypoint) {
-      gather_info_block(block, shader, dead_ctx);
-   }
+   struct set *visited_funcs = _mesa_pointer_set_create(dead_ctx);
+   gather_func_info(entrypoint, shader, visited_funcs, dead_ctx);
    ralloc_free(dead_ctx);
 
    if (shader->info.stage == MESA_SHADER_FRAGMENT &&
