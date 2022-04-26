@@ -294,6 +294,8 @@ mdg_should_scalarize(const nir_instr *instr, const void *_unused)
         case nir_op_fdot2:
         case nir_op_umul_high:
         case nir_op_imul_high:
+        case nir_op_pack_half_2x16:
+        case nir_op_unpack_half_2x16:
                 return true;
         default:
                 return false;
