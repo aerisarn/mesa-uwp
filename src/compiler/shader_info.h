@@ -310,9 +310,28 @@ typedef struct shader_info {
    bool workgroup_size_variable:1;
 
    /**
-     * Is this an ARB assembly-style program.
+     * Set if this shader uses legacy (DX9 or ARB assembly) math rules.
+     *
+     * From the ARB_fragment_program specification:
+     *
+     *    "The following rules apply to multiplication:
+     *
+     *      1. <x> * <y> == <y> * <x>, for all <x> and <y>.
+     *      2. +/-0.0 * <x> = +/-0.0, at least for all <x> that correspond to
+     *         *representable numbers (IEEE "not a number" and "infinity"
+     *         *encodings may be exceptions).
+     *      3. +1.0 * <x> = <x>, for all <x>.""
+     *
+     * However, in effect this was due to DX9 semantics implying that 0*x=0 even
+     * for inf/nan if the hardware generated them instead of float_min/max.  So,
+     * you should not have an exception for inf/nan to rule 2 above.
+     *
+     * One implementation of this behavior would be to flush all generated NaNs
+     * to zero, at which point 0*Inf=Nan=0.  Most DX9/ARB-asm hardware did not
+     * generate NaNs, and the only way the GPU saw one was to possibly feed it
+     * in as a uniform.
      */
-   bool is_arb_asm;
+   bool use_legacy_math_rules;
 
    union {
       struct {

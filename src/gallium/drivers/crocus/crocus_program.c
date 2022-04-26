@@ -1208,7 +1208,7 @@ crocus_compile_vs(struct crocus_context *ice,
    if (key->clamp_pointsize)
       nir_lower_point_size(nir, 1.0, 255.0);
 
-   prog_data->use_alt_mode = nir->info.is_arb_asm;
+   prog_data->use_alt_mode = nir->info.use_legacy_math_rules;
 
    crocus_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                          &num_system_values, &num_cbufs);
@@ -1858,7 +1858,7 @@ crocus_compile_fs(struct crocus_context *ice,
 
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
 
-   prog_data->use_alt_mode = nir->info.is_arb_asm;
+   prog_data->use_alt_mode = nir->info.use_legacy_math_rules;
 
    crocus_setup_uniforms(compiler, mem_ctx, nir, prog_data, &system_values,
                          &num_system_values, &num_cbufs);

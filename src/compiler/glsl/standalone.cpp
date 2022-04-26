@@ -102,7 +102,7 @@ init_gl_program(struct gl_program *prog, bool is_arb_asm, gl_shader_stage stage)
 {
    prog->RefCount = 1;
    prog->Format = GL_PROGRAM_FORMAT_ASCII_ARB;
-   prog->info.is_arb_asm = is_arb_asm;
+   prog->info.use_legacy_math_rules = is_arb_asm;
    prog->info.stage = stage;
 }
 

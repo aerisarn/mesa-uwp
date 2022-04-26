@@ -1335,7 +1335,7 @@ iris_compile_vs(struct iris_screen *screen,
       nir_shader_gather_info(nir, impl);
    }
 
-   prog_data->use_alt_mode = nir->info.is_arb_asm;
+   prog_data->use_alt_mode = nir->info.use_legacy_math_rules;
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, 0, &system_values,
                        &num_system_values, &num_cbufs);
@@ -1967,7 +1967,7 @@ iris_compile_fs(struct iris_screen *screen,
    nir_shader *nir = nir_shader_clone(mem_ctx, ish->nir);
    const struct iris_fs_prog_key *const key = &shader->key.fs;
 
-   prog_data->use_alt_mode = nir->info.is_arb_asm;
+   prog_data->use_alt_mode = nir->info.use_legacy_math_rules;
 
    iris_setup_uniforms(compiler, mem_ctx, nir, prog_data, 0, &system_values,
                        &num_system_values, &num_cbufs);
