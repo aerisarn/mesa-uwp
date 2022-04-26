@@ -407,7 +407,6 @@ panfrost_emit_plane(const struct pan_image_layout *layout,
 static void
 panfrost_emit_texture_payload(const struct pan_image_view *iview,
                               enum pipe_format format,
-                              bool manual_stride,
                               void *payload)
 {
         const struct pan_image_layout *layout = &iview->image->layout;
@@ -457,61 +456,19 @@ panfrost_emit_texture_payload(const struct pan_image_view *iview,
                                                      iter.level, iter.layer,
                                                      iter.face, iter.sample);
 
-                if (!manual_stride) {
-#if PAN_ARCH <= 5
-                        pan_pack(payload, SURFACE, cfg) {
-                                cfg.pointer = pointer;
-                        }
-                        payload += pan_size(SURFACE);
-#else
-                        unreachable("must use explicit stride on Bifrost");
-#endif
-                } else {
 #if PAN_ARCH >= 9
-                        panfrost_emit_plane(layout, format, pointer, iter.level, payload);
-                        payload += pan_size(PLANE);
+                panfrost_emit_plane(layout, format, pointer, iter.level, payload);
+                payload += pan_size(PLANE);
 #else
-                        pan_pack(payload, SURFACE_WITH_STRIDE, cfg) {
-                                cfg.pointer = pointer;
-                                panfrost_get_surface_strides(layout, iter.level,
-                                                             &cfg.row_stride,
-                                                             &cfg.surface_stride);
-                        }
-                        payload += pan_size(SURFACE_WITH_STRIDE);
-#endif
+                pan_pack(payload, SURFACE_WITH_STRIDE, cfg) {
+                        cfg.pointer = pointer;
+                        panfrost_get_surface_strides(layout, iter.level,
+                                                     &cfg.row_stride,
+                                                     &cfg.surface_stride);
                 }
+                payload += pan_size(SURFACE_WITH_STRIDE);
+#endif
         }
-}
-
-/* Check if we need to set a custom stride by computing the "expected"
- * stride and comparing it to what the user actually wants. Only applies
- * to linear textures, since tiled/compressed textures have strict
- * alignment requirements for their strides as it is */
-
-static bool
-panfrost_needs_explicit_stride(const struct pan_image_view *iview)
-{
-        /* Stride is explicit on Bifrost */
-        if (PAN_ARCH >= 6)
-                return true;
-
-        if (iview->image->layout.modifier != DRM_FORMAT_MOD_LINEAR)
-                return false;
-
-        unsigned bytes_per_block = util_format_get_blocksize(iview->format);
-        unsigned block_w = util_format_get_blockwidth(iview->format);
-
-        for (unsigned l = iview->first_level; l <= iview->last_level; ++l) {
-                unsigned actual = iview->image->layout.slices[l].line_stride;
-                unsigned expected =
-                        DIV_ROUND_UP(u_minify(iview->image->layout.width, l), block_w) *
-                        bytes_per_block;
-
-                if (actual != expected)
-                        return true;
-        }
-
-        return false;
 }
 
 #if PAN_ARCH <= 7
@@ -567,12 +524,7 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
                 swizzle = panfrost_translate_swizzle_4(iview->swizzle);
         }
 
-        bool manual_stride =
-                panfrost_needs_explicit_stride(iview);
-
-        panfrost_emit_texture_payload(iview, format,
-                                      manual_stride,
-                                      payload->cpu);
+        panfrost_emit_texture_payload(iview, format, payload->cpu);
 
         unsigned array_size = iview->last_layer - iview->first_layer + 1;
 
@@ -625,7 +577,7 @@ GENX(panfrost_new_texture)(const struct panfrost_device *dev,
                 cfg.minimum_lod = FIXED_16(0, false);
                 cfg.maximum_lod = FIXED_16(cfg.levels - 1, false);
 #else
-                cfg.manual_stride = manual_stride;
+                cfg.manual_stride = true;
 #endif
         }
 }
