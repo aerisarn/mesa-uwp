@@ -381,6 +381,10 @@ gcm_pin_instructions(nir_function_impl *impl, struct gcm_state *state)
             pin_intrinsic(nir_instr_as_intrinsic(instr));
             break;
 
+         case nir_instr_type_call:
+            instr->pass_flags = GCM_INSTR_PINNED;
+            break;
+
          case nir_instr_type_jump:
          case nir_instr_type_ssa_undef:
          case nir_instr_type_phi:
