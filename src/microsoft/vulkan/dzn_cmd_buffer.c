@@ -516,6 +516,9 @@ dzn_cmd_buffer_collect_queries(struct dzn_cmd_buffer *cmdbuf,
    uint32_t nbits = util_dynarray_num_elements(&state->collect, BITSET_WORD) * BITSET_WORDBITS;
    uint32_t start, end;
 
+   if (!nbits)
+      return VK_SUCCESS;
+
    query_count = MIN2(query_count, nbits - first_query);
    nbits = MIN2(first_query + query_count, nbits);
 
