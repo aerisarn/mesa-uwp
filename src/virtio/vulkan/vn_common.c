@@ -27,19 +27,20 @@ static const struct debug_control vn_debug_options[] = {
    { NULL, 0 },
 };
 
-uint64_t vn_debug;
+struct vn_env vn_env;
 
 static void
-vn_debug_init_once(void)
+vn_env_init_once(void)
 {
-   vn_debug = parse_debug_string(os_get_option("VN_DEBUG"), vn_debug_options);
+   vn_env.debug =
+      parse_debug_string(os_get_option("VN_DEBUG"), vn_debug_options);
 }
 
 void
-vn_debug_init(void)
+vn_env_init(void)
 {
    static once_flag once = ONCE_FLAG_INIT;
-   call_once(&once, vn_debug_init_once);
+   call_once(&once, vn_env_init_once);
 }
 
 void

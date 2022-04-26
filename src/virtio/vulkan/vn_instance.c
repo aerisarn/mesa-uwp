@@ -692,7 +692,7 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    struct vn_instance *instance;
    VkResult result;
 
-   vn_debug_init();
+   vn_env_init();
    vn_trace_init();
 
    instance = vk_zalloc(alloc, sizeof(*instance), VN_DEFAULT_ALIGN,

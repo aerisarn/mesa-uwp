@@ -44,7 +44,7 @@
 
 #define VN_DEFAULT_ALIGN 8
 
-#define VN_DEBUG(category) (unlikely(vn_debug & VN_DEBUG_##category))
+#define VN_DEBUG(category) (unlikely(vn_env.debug & VN_DEBUG_##category))
 
 #define vn_error(instance, error)                                            \
    (VN_DEBUG(RESULT) ? vn_log_result((instance), (error), __func__) : (error))
@@ -171,10 +171,13 @@ struct vn_refcount {
    atomic_int count;
 };
 
-extern uint64_t vn_debug;
+struct vn_env {
+   uint64_t debug;
+};
+extern struct vn_env vn_env;
 
 void
-vn_debug_init(void);
+vn_env_init(void);
 
 void
 vn_trace_init(void);
