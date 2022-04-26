@@ -136,7 +136,8 @@ typedef struct {
    nir_function_impl *impl; /* for cleaning up if the list is deleted */
 } nir_cf_list;
 
-void nir_cf_extract(nir_cf_list *extracted, nir_cursor begin, nir_cursor end);
+nir_cursor nir_cf_extract(nir_cf_list *extracted, nir_cursor begin,
+                          nir_cursor end);
 
 nir_cursor nir_cf_reinsert(nir_cf_list *cf_list, nir_cursor cursor);
 

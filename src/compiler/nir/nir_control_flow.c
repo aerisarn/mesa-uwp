@@ -678,7 +678,11 @@ cleanup_cf_node(nir_cf_node *node, nir_function_impl *impl)
    }
 }
 
-void
+/**
+ * Extracts everything between two cursors.  Returns the cursor which is
+ * equivalent to the old begin/end curosors.
+ */
+nir_cursor
 nir_cf_extract(nir_cf_list *extracted, nir_cursor begin, nir_cursor end)
 {
    nir_block *block_begin, *block_end, *block_before, *block_after;
@@ -686,7 +690,7 @@ nir_cf_extract(nir_cf_list *extracted, nir_cursor begin, nir_cursor end)
    if (nir_cursors_equal(begin, end)) {
       exec_list_make_empty(&extracted->list);
       extracted->impl = NULL; /* we shouldn't need this */
-      return;
+      return begin;
    }
 
    split_block_cursor(begin, &block_before, &block_begin);
@@ -737,7 +741,7 @@ nir_cf_extract(nir_cf_list *extracted, nir_cursor begin, nir_cursor end)
       cf_node = next;
    }
 
-   stitch_blocks(block_before, block_after);
+   return stitch_blocks(block_before, block_after);
 }
 
 static void
