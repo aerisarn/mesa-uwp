@@ -40,7 +40,6 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *shader_pool,
                         struct panfrost_pool *desc_pool,
                         const nir_shader *ir,
-                        gl_shader_stage stage,
                         struct panfrost_shader_state *state)
 {
         struct panfrost_screen *screen = pan_screen(pscreen);
@@ -49,10 +48,8 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
         nir_shader *s = nir_shader_clone(NULL, ir);
 
         /* Lower this early so the backends don't have to worry about it */
-        if (stage == MESA_SHADER_FRAGMENT)
+        if (s->info.stage == MESA_SHADER_FRAGMENT)
                 NIR_PASS_V(s, nir_lower_fragcolor, state->nr_cbufs);
-
-        s->info.stage = stage;
 
         /* Call out to Midgard compiler given the above NIR */
         struct panfrost_compile_inputs inputs = {
@@ -78,7 +75,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
          * merging for e.g. depth/stencil/alpha. RSDs are replaced by simpler
          * shader program descriptors on Valhall, which can be preuploaded even
          * for fragment shaders. */
-        bool upload = !(stage == MESA_SHADER_FRAGMENT && dev->arch <= 7);
+        bool upload = !(s->info.stage == MESA_SHADER_FRAGMENT && dev->arch <= 7);
         screen->vtbl.prepare_shader(state, desc_pool, upload);
 
         panfrost_analyze_sysvals(state);

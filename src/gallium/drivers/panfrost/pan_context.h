@@ -368,7 +368,6 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                         struct panfrost_pool *shader_pool,
                         struct panfrost_pool *desc_pool,
                         const nir_shader *ir,
-                        gl_shader_stage stage,
                         struct panfrost_shader_state *state);
 
 void

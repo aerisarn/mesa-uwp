@@ -293,8 +293,7 @@ panfrost_bind_vertex_elements_state(
 static void *
 panfrost_create_shader_state(
         struct pipe_context *pctx,
-        const struct pipe_shader_state *cso,
-        enum pipe_shader_type stage)
+        const struct pipe_shader_state *cso)
 {
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
         struct panfrost_device *dev = pan_device(pctx->screen);
@@ -316,9 +315,7 @@ panfrost_create_shader_state(
 
                 panfrost_shader_compile(pctx->screen,
                                         &ctx->shaders, &ctx->descs,
-                                        so->nir,
-                                        tgsi_processor_to_shader_stage(stage),
-                                        &state);
+                                        so->nir, &state);
         }
 
         return so;
@@ -518,9 +515,7 @@ panfrost_bind_shader_state(
         if (!shader_state->compiled) {
                 panfrost_shader_compile(ctx->base.screen,
                                         &ctx->shaders, &ctx->descs,
-                                        variants->nir,
-                                        tgsi_processor_to_shader_stage(type),
-                                        shader_state);
+                                        variants->nir, shader_state);
 
                 shader_state->compiled = true;
 
@@ -535,18 +530,6 @@ panfrost_bind_shader_state(
          * compiling instead of after, but that can race if thread A compiles a
          * variant while thread B searches for that same variant */
         simple_mtx_unlock(&variants->lock);
-}
-
-static void *
-panfrost_create_vs_state(struct pipe_context *pctx, const struct pipe_shader_state *hwcso)
-{
-        return panfrost_create_shader_state(pctx, hwcso, PIPE_SHADER_VERTEX);
-}
-
-static void *
-panfrost_create_fs_state(struct pipe_context *pctx, const struct pipe_shader_state *hwcso)
-{
-        return panfrost_create_shader_state(pctx, hwcso, PIPE_SHADER_FRAGMENT);
 }
 
 static void
@@ -1074,11 +1057,11 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->bind_vertex_elements_state = panfrost_bind_vertex_elements_state;
         gallium->delete_vertex_elements_state = panfrost_generic_cso_delete;
 
-        gallium->create_fs_state = panfrost_create_fs_state;
+        gallium->create_fs_state = panfrost_create_shader_state;
         gallium->delete_fs_state = panfrost_delete_shader_state;
         gallium->bind_fs_state = panfrost_bind_fs_state;
 
-        gallium->create_vs_state = panfrost_create_vs_state;
+        gallium->create_vs_state = panfrost_create_shader_state;
         gallium->delete_vs_state = panfrost_delete_shader_state;
         gallium->bind_vs_state = panfrost_bind_vs_state;
 
