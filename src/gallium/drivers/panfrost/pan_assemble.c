@@ -57,6 +57,12 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                                    true /* point coord is sysval */,
                                    false /* Y-invert */);
                 }
+
+                if (state->key.fs.clip_plane_enable) {
+                        NIR_PASS_V(s, nir_lower_clip_fs,
+                                   state->key.fs.clip_plane_enable,
+                                   false);
+                }
         }
 
         /* Call out to Midgard compiler given the above NIR */

@@ -169,7 +169,6 @@ spec@arb_texture_view@sampling-2d-array-as-cubemap,Crash
 spec@arb_transform_feedback_instanced@draw-auto instanced,Fail
 spec@arb_uniform_buffer_object@rendering-dsa-offset,Fail
 spec@arb_uniform_buffer_object@rendering-offset,Fail
-spec@arb_vertex_program@clip-plane-transformation arb,Fail
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_chromium_sync_control@conformance,Fail
@@ -337,9 +336,6 @@ spec@ext_transform_feedback@tessellation triangle_strip flat_last,Fail
 spec@ext_transform_feedback@tessellation triangle_strip monochrome,Fail
 spec@ext_transform_feedback@tessellation triangle_strip smooth,Fail
 spec@ext_transform_feedback@tessellation triangle_strip wireframe,Fail
-spec@glsl-1.10@execution@clipping@clip-plane-transformation clipvert_pos,Fail
-spec@glsl-1.10@execution@clipping@clip-plane-transformation fixed,Fail
-spec@glsl-1.10@execution@clipping@clip-plane-transformation pos_clipvert,Fail
 spec@glsl-1.10@execution@varying-packing@simple float array,Fail
 spec@glsl-1.10@execution@varying-packing@simple float arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple int array,Fail
@@ -394,7 +390,6 @@ spec@glsl-1.10@execution@varying-packing@simple vec3 arrays_of_arrays,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec3 separate,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 array,Fail
 spec@glsl-1.10@execution@varying-packing@simple vec4 arrays_of_arrays,Fail
-spec@glsl-1.30@execution@clipping@clip-plane-transformation pos,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 2drect,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 2drectshadow,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2drect,Crash
@@ -534,7 +529,6 @@ spec@!opengl 1.0@gl-1.0-edgeflag,Fail
 spec@!opengl 1.0@gl-1.0-edgeflag-quads,Fail
 spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
-spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
 spec@!opengl 1.0@rasterpos,Crash
 spec@!opengl 1.1@dlist-fdo3129-01,Crash
 spec@!opengl 1.1@getteximage-formats,Fail

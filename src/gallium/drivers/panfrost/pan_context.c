@@ -380,6 +380,11 @@ panfrost_build_key(struct panfrost_context *ctx,
                 key->fs.sprite_coord_enable = rast->sprite_coord_enable;
         }
 
+        /* User clip plane lowering needed everywhere */
+        if (rast) {
+                key->fs.clip_plane_enable = rast->clip_plane_enable;
+        }
+
         if (dev->arch <= 5) {
                 u_foreach_bit(i, (nir->info.outputs_read >> FRAG_RESULT_DATA0)) {
                         enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;

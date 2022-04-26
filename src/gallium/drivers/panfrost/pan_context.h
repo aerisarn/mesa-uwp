@@ -266,6 +266,9 @@ struct panfrost_fs_key {
 
         /* From rasterize state, to lower point sprites */
         uint16_t sprite_coord_enable;
+
+        /* User clip plane lowering */
+        uint8_t clip_plane_enable;
 };
 
 struct panfrost_shader_key {
