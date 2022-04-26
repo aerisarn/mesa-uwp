@@ -157,6 +157,12 @@ vn_image_deferred_info_init(struct vn_image *img,
          memcpy(&info->stencil, src, sizeof(info->stencil));
          pnext = &info->stencil;
          break;
+      case VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID:
+         /* we should have translated the external format */
+         assert(create_info->format != VK_FORMAT_UNDEFINED);
+         info->from_external_format =
+            ((const VkExternalFormatANDROID *)src)->externalFormat;
+         break;
       default:
          break;
       }
@@ -570,8 +576,20 @@ vn_CreateImageView(VkDevice device,
                    VkImageView *pView)
 {
    struct vn_device *dev = vn_device_from_handle(device);
+   struct vn_image *img = vn_image_from_handle(pCreateInfo->image);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
+
+   VkImageViewCreateInfo local_info;
+   if (img->deferred_info && img->deferred_info->from_external_format) {
+      assert(pCreateInfo->format == VK_FORMAT_UNDEFINED);
+
+      local_info = *pCreateInfo;
+      local_info.format = img->deferred_info->create.format;
+      pCreateInfo = &local_info;
+
+      assert(pCreateInfo->format != VK_FORMAT_UNDEFINED);
+   }
 
    struct vn_image_view *view =
       vk_zalloc(alloc, sizeof(*view), VN_DEFAULT_ALIGN,
@@ -580,7 +598,7 @@ vn_CreateImageView(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vn_object_base_init(&view->base, VK_OBJECT_TYPE_IMAGE_VIEW, &dev->base);
-   view->image = vn_image_from_handle(pCreateInfo->image);
+   view->image = img;
 
    VkImageView view_handle = vn_image_view_to_handle(view);
    vn_async_vkCreateImageView(dev->instance, device, pCreateInfo, NULL,
