@@ -306,28 +306,39 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
 }
 
 static bool
-try_fold_tex(nir_builder *b, nir_tex_instr *tex)
+try_fold_txb_to_tex(nir_builder *b, nir_tex_instr *tex)
 {
-   /* txb with a bias of constant zero is just tex. */
-   if (tex->op == nir_texop_txb) {
-      const int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
+   assert(tex->op == nir_texop_txb);
 
-      /* nir_to_tgsi_lower_tex mangles many kinds of texture instructions,
-       * including txb, into invalid states.  It removes the special
-       * parameters and appends the values to the texture coordinate.
-       */
-      if (bias_idx < 0)
-         return false;
+   const int bias_idx = nir_tex_instr_src_index(tex, nir_tex_src_bias);
 
-      if (nir_src_is_const(tex->src[bias_idx].src) &&
-          nir_src_as_float(tex->src[bias_idx].src) == 0.0) {
-         nir_tex_instr_remove_src(tex, bias_idx);
-         tex->op = nir_texop_tex;
-         return true;
-      }
+   /* nir_to_tgsi_lower_tex mangles many kinds of texture instructions,
+    * including txb, into invalid states.  It removes the special
+    * parameters and appends the values to the texture coordinate.
+    */
+   if (bias_idx < 0)
+      return false;
+
+   if (nir_src_is_const(tex->src[bias_idx].src) &&
+       nir_src_as_float(tex->src[bias_idx].src) == 0.0) {
+      nir_tex_instr_remove_src(tex, bias_idx);
+      tex->op = nir_texop_tex;
+      return true;
    }
 
    return false;
+}
+
+static bool
+try_fold_tex(nir_builder *b, nir_tex_instr *tex)
+{
+   bool progress = false;
+
+   /* txb with a bias of constant zero is just tex. */
+   if (tex->op == nir_texop_txb)
+      progress |= try_fold_txb_to_tex(b, tex);
+
+   return progress;
 }
 
 static bool
