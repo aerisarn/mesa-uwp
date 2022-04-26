@@ -158,7 +158,7 @@ libvulkan_runtime = static_library(
   dependencies : vulkan_runtime_deps,
   # For glsl_type_singleton
   link_with : libcompiler,
-  c_args : [vulkan_wsi_args],
+  c_args : [vulkan_wsi_args, c_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )
