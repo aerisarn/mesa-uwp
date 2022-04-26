@@ -163,7 +163,7 @@ debug_symbol_name_dbghelp(const void *addr, char* buf, unsigned size)
    IMAGEHLP_LINE64 Line;
 
    memset(pSymbol, 0, sizeof *pSymbol);
-   pSymbol->SizeOfStruct = sizeof buffer;
+   pSymbol->SizeOfStruct = sizeof *pSymbol;
    pSymbol->MaxNameLen = sizeof buffer - offsetof(SYMBOL_INFO, Name);
 
    if (!g_bSymInitialized) {
