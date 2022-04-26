@@ -49,7 +49,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
 
         /* Lower this early so the backends don't have to worry about it */
         if (s->info.stage == MESA_SHADER_FRAGMENT)
-                NIR_PASS_V(s, nir_lower_fragcolor, state->nr_cbufs);
+                NIR_PASS_V(s, nir_lower_fragcolor, state->key.fs.nr_cbufs);
 
         /* Call out to Midgard compiler given the above NIR */
         struct panfrost_compile_inputs inputs = {
@@ -57,7 +57,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
                 .shaderdb = !!(dev->debug & PAN_DBG_PRECOMPILE),
         };
 
-        memcpy(inputs.rt_formats, state->rt_formats, sizeof(inputs.rt_formats));
+        memcpy(inputs.rt_formats, state->key.fs.rt_formats, sizeof(inputs.rt_formats));
 
         struct util_dynarray binary;
 

@@ -360,18 +360,22 @@ panfrost_bind_sampler_states(
                 memcpy(ctx->samplers[shader], sampler, num_sampler * sizeof (void *));
 }
 
-static bool
-panfrost_variant_matches(
-        struct panfrost_context *ctx,
-        struct panfrost_shader_state *variant,
-        enum pipe_shader_type type)
+static void
+panfrost_build_key(struct panfrost_context *ctx,
+                   struct panfrost_shader_key *key,
+                   nir_shader *nir)
 {
-        if (variant->info.stage == MESA_SHADER_FRAGMENT &&
-            variant->info.fs.outputs_read) {
-                struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+        /* We don't currently have vertex shader variants */
+        if (nir->info.stage != MESA_SHADER_FRAGMENT)
+               return;
 
-                unsigned i;
-                BITSET_FOREACH_SET(i, &variant->info.fs.outputs_read, 8) {
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+
+        key->fs.nr_cbufs = fb->nr_cbufs;
+
+        if (dev->arch <= 5) {
+                u_foreach_bit(i, (nir->info.outputs_read >> FRAG_RESULT_DATA0)) {
                         enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
 
                         if ((fb->nr_cbufs > i) && fb->cbufs[i])
@@ -380,17 +384,9 @@ panfrost_variant_matches(
                         if (panfrost_blendable_formats_v6[fmt].internal)
                                 fmt = PIPE_FORMAT_NONE;
 
-                        if (variant->rt_formats[i] != fmt)
-                                return false;
+                        key->fs.rt_formats[i] = fmt;
                 }
         }
-
-        if (variant->info.stage == MESA_SHADER_FRAGMENT &&
-            variant->nr_cbufs != ctx->pipe_framebuffer.nr_cbufs)
-                return false;
-
-        /* Otherwise, we're good to go */
-        return true;
 }
 
 /**
@@ -453,8 +449,11 @@ panfrost_bind_shader_state(
 
         simple_mtx_lock(&variants->lock);
 
+        struct panfrost_shader_key key = { 0 };
+        panfrost_build_key(ctx, &key, variants->nir);
+
         for (unsigned i = 0; i < variants->variant_count; ++i) {
-                if (panfrost_variant_matches(ctx, &variants->variants[i], type)) {
+                if (memcmp(&key, &variants->variants[i].key, sizeof(key)) == 0) {
                         variant = i;
                         break;
                 }
@@ -483,32 +482,13 @@ panfrost_bind_shader_state(
                                (variants->variant_space - old_space) * msize);
                 }
 
-                struct panfrost_shader_state *v =
-                                &variants->variants[variant];
-
-                if (type == PIPE_SHADER_FRAGMENT) {
-                        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
-                        v->nr_cbufs = fb->nr_cbufs;
-
-                        for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
-                                enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
-
-                                if ((fb->nr_cbufs > i) && fb->cbufs[i])
-                                        fmt = fb->cbufs[i]->format;
-
-                                if (panfrost_blendable_formats_v6[fmt].internal)
-                                        fmt = PIPE_FORMAT_NONE;
-
-                                v->rt_formats[i] = fmt;
-                        }
-                }
+                variants->variants[variant].key = key;
         }
 
         /* Select this variant */
         variants->active_variant = variant;
 
         struct panfrost_shader_state *shader_state = &variants->variants[variant];
-        assert(panfrost_variant_matches(ctx, shader_state, type));
 
         /* We finally have a variant, so compile it */
 

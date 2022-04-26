@@ -252,7 +252,22 @@ struct pan_linkage {
 #define RSD_WORDS 16
 
 /* Variants bundle together to form the backing CSO, bundling multiple
- * shaders with varying emulated features baked in */
+ * shaders with varying emulated features baked in
+ */
+struct panfrost_fs_key {
+        /* Number of colour buffers */
+        unsigned nr_cbufs;
+
+        /* Midgard shaders that read the tilebuffer must be keyed for
+         * non-blendable formats
+         */
+        enum pipe_format rt_formats[8];
+};
+
+struct panfrost_shader_key {
+        /* If we need vertex shader keys, union it in */
+        struct panfrost_fs_key fs;
+};
 
 /* A shader state corresponds to the actual, current variant of the shader */
 struct panfrost_shader_state {
@@ -273,9 +288,7 @@ struct panfrost_shader_state {
         struct pipe_stream_output_info stream_output;
         uint64_t so_mask;
 
-        /* Variants */
-        enum pipe_format rt_formats[8];
-        unsigned nr_cbufs;
+        struct panfrost_shader_key key;
 
         /* Mask of state that dirties the sysvals */
         unsigned dirty_3d, dirty_shader;
