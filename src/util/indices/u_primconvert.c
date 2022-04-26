@@ -301,7 +301,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
       unsigned draw_count = 0;
       struct u_indirect_params *new_draws = util_draw_indirect_read(pc->pipe, info, indirect, &draw_count);
       if (!new_draws)
-         return;
+         goto cleanup;
 
       for (unsigned i = 0; i < draw_count; i++)
          util_primconvert_draw_single_vbo(pc, &new_draws[i].info, drawid_offset + i, &new_draws[i].draw);
@@ -314,6 +314,12 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
          if (info->increment_draw_id)
             drawid++;
       }
+   }
+
+cleanup:
+   if (info->take_index_buffer_ownership) {
+      struct pipe_resource *buffer = info->index.resource;
+      pipe_resource_reference(&buffer, NULL);
    }
 }
 
