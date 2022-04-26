@@ -2389,6 +2389,9 @@ ttn_compile_init(const void *tgsi_tokens,
       case TGSI_PROPERTY_NUM_CLIPDIST_ENABLED:
          s->info.clip_distance_array_size = value;
          break;
+      case TGSI_PROPERTY_LEGACY_MATH_RULES:
+         s->info.use_legacy_math_rules = value;
+         break;
       default:
          if (value) {
             fprintf(stderr, "tgsi_to_nir: unhandled TGSI property %u = %u\n",
