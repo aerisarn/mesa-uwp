@@ -73,7 +73,6 @@ spec@arb_get_program_binary@restore-sso-program,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small@GL_DEPTH32F_STENCIL8-GL_DEPTH_STENCIL,Fail
 spec@arb_pixel_buffer_object@fbo-pbo-readpixels-small@GL_DEPTH32F_STENCIL8-GL_STENCIL_INDEX,Fail
-spec@arb_point_sprite@arb_point_sprite-checkerboard,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
 spec@arb_sample_shading@samplemask 2@0.250000 mask_in_one,Fail
 spec@arb_sample_shading@samplemask 2@0.500000 mask_in_one,Fail
@@ -587,7 +586,6 @@ spec@!opengl 3.1@primitive-restart-xfb flush,Fail
 spec@!opengl 3.1@primitive-restart-xfb generated,Fail
 spec@!opengl 3.1@primitive-restart-xfb written,Fail
 spec@!opengl 3.1@required-texture-attachment-formats,Fail
-spec@!opengl 3.2@coord-replace-doesnt-eliminate-frag-tex-coords,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 
 # VK-GL-CTS 1.3.1.0 uprev, aka when we dropped the custom caselist file.

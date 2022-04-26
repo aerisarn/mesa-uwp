@@ -371,8 +371,14 @@ panfrost_build_key(struct panfrost_context *ctx,
 
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+        struct pipe_rasterizer_state *rast = (void *) ctx->rasterizer;
 
         key->fs.nr_cbufs = fb->nr_cbufs;
+
+        /* Point sprite lowering needed on Bifrost and newer */
+        if (dev->arch >= 6 && rast && ctx->active_prim == PIPE_PRIM_POINTS) {
+                key->fs.sprite_coord_enable = rast->sprite_coord_enable;
+        }
 
         if (dev->arch <= 5) {
                 u_foreach_bit(i, (nir->info.outputs_read >> FRAG_RESULT_DATA0)) {
@@ -673,13 +679,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 if (ctx->pipe_framebuffer.cbufs[i])
                         ctx->fb_rt_mask |= BITFIELD_BIT(i);
         }
-
-        /* We may need to generate a new variant if the fragment shader is
-         * keyed to the framebuffer format or render target count */
-        struct panfrost_shader_variants *fs = ctx->shader[PIPE_SHADER_FRAGMENT];
-
-        if (fs && fs->variant_count)
-                ctx->base.bind_fs_state(&ctx->base, fs);
 }
 
 static void

@@ -48,8 +48,16 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
         nir_shader *s = nir_shader_clone(NULL, ir);
 
         /* Lower this early so the backends don't have to worry about it */
-        if (s->info.stage == MESA_SHADER_FRAGMENT)
+        if (s->info.stage == MESA_SHADER_FRAGMENT) {
                 NIR_PASS_V(s, nir_lower_fragcolor, state->key.fs.nr_cbufs);
+
+                if (state->key.fs.sprite_coord_enable) {
+                        NIR_PASS_V(s, nir_lower_texcoord_replace,
+                                   state->key.fs.sprite_coord_enable,
+                                   true /* point coord is sysval */,
+                                   false /* Y-invert */);
+                }
+        }
 
         /* Call out to Midgard compiler given the above NIR */
         struct panfrost_compile_inputs inputs = {

@@ -3467,6 +3467,19 @@ panfrost_direct_draw(struct panfrost_batch *batch,
 
         struct panfrost_context *ctx = batch->ctx;
 
+        /* If we change whether we're drawing points, or whether point sprites
+         * are enabled (specified in the rasterizer), we may need to rebind
+         * shaders accordingly. This implicitly covers the case of rebinding
+         * framebuffers, because all dirty flags are set there.
+         */
+        if ((ctx->dirty & PAN_DIRTY_RASTERIZER) ||
+            ((ctx->active_prim == PIPE_PRIM_POINTS) ^
+             (info->mode       == PIPE_PRIM_POINTS))) {
+
+                ctx->active_prim = info->mode;
+                panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
+        }
+
         /* Take into account a negative bias */
         ctx->indirect_draw = false;
         ctx->vertex_count = draw->count + (info->index_size ? abs(draw->index_bias) : 0);
