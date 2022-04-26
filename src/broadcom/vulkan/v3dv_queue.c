@@ -871,6 +871,11 @@ queue_create_noop_job(struct v3dv_queue *queue)
 
    v3dv_X(device, job_emit_noop)(queue->noop_job);
 
+   /* We use no-op jobs to signal semaphores/fences. These jobs needs to be
+    * serialized across all hw queues to comply with Vulkan's signal operation
+    * order requirements, which basically require that signal operations occur
+    * in submission order.
+    */
    queue->noop_job->serialize = true;
 
    return VK_SUCCESS;
@@ -911,7 +916,8 @@ v3dv_queue_driver_submit(struct vk_queue *vk_queue,
 
    /* Finish by submitting a no-op job that synchronizes across all queues.
     * This will ensure that the signal semaphores don't get triggered until
-    * all work on any queue completes.
+    * all work on any queue completes. See Vulkan's signal operation order
+    * requirements.
     */
    if (submit->signal_count > 0) {
       if (!queue->noop_job) {
