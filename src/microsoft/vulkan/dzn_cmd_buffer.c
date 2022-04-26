@@ -1200,6 +1200,7 @@ dzn_cmd_buffer_clear_ranges_with_copy(struct dzn_cmd_buffer *cmdbuf,
 static void
 dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                 struct dzn_image_view *view,
+                                VkImageLayout layout,
                                 const VkClearValue *value,
                                 VkImageAspectFlags aspects,
                                 uint32_t base_layer,
@@ -1221,6 +1222,7 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
       base_layer == 0 &&
       (layer_count == view->vk.layer_count ||
        layer_count == VK_REMAINING_ARRAY_LAYERS);
+   layer_count = vk_image_subresource_layer_count(&image->vk, &range);
 
    if (vk_format_is_depth_or_stencil(view->vk.format)) {
       D3D12_CLEAR_FLAGS flags = (D3D12_CLEAR_FLAGS)0;
@@ -1231,12 +1233,44 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
          flags |= D3D12_CLEAR_FLAG_STENCIL;
 
       if (flags != 0) {
+         D3D12_RESOURCE_BARRIER barrier = {
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            .Transition = {
+               .pResource = image->res,
+               .StateBefore =
+                  dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT),
+               .StateAfter = D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            },
+         };
+
+         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
+            for (uint32_t layer = 0; layer < layer_count; layer++) {
+               barrier.Transition.Subresource =
+                  dzn_image_range_get_subresource_index(image, &range,
+                                                        VK_IMAGE_ASPECT_COLOR_BIT,
+                                                        range.baseMipLevel, layer);
+               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+            }
+         }
+
          D3D12_DEPTH_STENCIL_VIEW_DESC desc = dzn_image_get_dsv_desc(image, &range, 0);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_dsv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearDepthStencilView(cmdbuf->cmdlist, handle, flags,
                                                 value->depthStencil.depth,
                                                 value->depthStencil.stencil,
                                                 rect_count, rects);
+
+         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
+            DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
+
+            for (uint32_t layer = 0; layer < layer_count; layer++) {
+               barrier.Transition.Subresource =
+                  dzn_image_range_get_subresource_index(image, &range, VK_IMAGE_ASPECT_COLOR_BIT,
+                                                        range.baseMipLevel, layer);
+               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+            }
+         }
       }
    } else if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       VkClearColorValue color = adjust_clear_color(view->vk.format, &value->color);
@@ -1270,9 +1304,41 @@ dzn_cmd_buffer_clear_attachment(struct dzn_cmd_buffer *cmdbuf,
                                               &value->color,
                                               &range, rect_count, rects);
       } else {
+         D3D12_RESOURCE_BARRIER barrier = {
+            .Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION,
+            .Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE,
+            .Transition = {
+               .pResource = image->res,
+               .StateBefore =
+                  dzn_image_layout_to_state(layout, VK_IMAGE_ASPECT_COLOR_BIT),
+               .StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET,
+            },
+         };
+
+         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
+            for (uint32_t layer = 0; layer < layer_count; layer++) {
+               barrier.Transition.Subresource =
+                  dzn_image_range_get_subresource_index(image, &range,
+                                                        VK_IMAGE_ASPECT_COLOR_BIT,
+                                                        range.baseMipLevel, layer);
+               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+            }
+         }
+
          D3D12_RENDER_TARGET_VIEW_DESC desc = dzn_image_get_rtv_desc(image, &range, 0);
          D3D12_CPU_DESCRIPTOR_HANDLE handle = dzn_cmd_buffer_get_rtv(cmdbuf, image, &desc);
          ID3D12GraphicsCommandList1_ClearRenderTargetView(cmdbuf->cmdlist, handle, vals, rect_count, rects);
+
+         if (barrier.Transition.StateBefore != barrier.Transition.StateAfter) {
+            DZN_SWAP(D3D12_RESOURCE_STATES, barrier.Transition.StateBefore, barrier.Transition.StateAfter);
+
+            for (uint32_t layer = 0; layer < layer_count; layer++) {
+               barrier.Transition.Subresource =
+                  dzn_image_range_get_subresource_index(image, &range, VK_IMAGE_ASPECT_COLOR_BIT,
+                                                        range.baseMipLevel, layer);
+               ID3D12GraphicsCommandList1_ResourceBarrier(cmdbuf->cmdlist, 1, &barrier);
+            }
+         }
       }
    }
 }
@@ -3325,21 +3391,26 @@ dzn_CmdClearAttachments(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(dzn_cmd_buffer, cmdbuf, commandBuffer);
 
    for (unsigned i = 0; i < attachmentCount; i++) {
+      VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
       struct dzn_image_view *view = NULL;
 
       uint32_t idx = VK_ATTACHMENT_UNUSED;
       if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
          assert(pAttachments[i].colorAttachment < cmdbuf->state.render.attachments.color_count);
          view = cmdbuf->state.render.attachments.colors[pAttachments[i].colorAttachment].iview;
+         layout = cmdbuf->state.render.attachments.colors[pAttachments[i].colorAttachment].layout;
       } else {
          if (cmdbuf->state.render.attachments.depth.iview &&
-             (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
+             (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)) {
             view = cmdbuf->state.render.attachments.depth.iview;
+            layout = cmdbuf->state.render.attachments.depth.layout;
+         }
 
          if (cmdbuf->state.render.attachments.stencil.iview &&
              (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)) {
             assert(!view || view == cmdbuf->state.render.attachments.depth.iview);
             view = cmdbuf->state.render.attachments.stencil.iview;
+            layout = cmdbuf->state.render.attachments.stencil.layout;
          }
       }
 
@@ -3350,7 +3421,7 @@ dzn_CmdClearAttachments(VkCommandBuffer commandBuffer,
          D3D12_RECT rect;
 
          dzn_translate_rect(&rect, &pRects[j].rect);
-         dzn_cmd_buffer_clear_attachment(cmdbuf, view,
+         dzn_cmd_buffer_clear_attachment(cmdbuf, view, layout,
                                          &pAttachments[i].clearValue,
                                          pAttachments[i].aspectMask,
                                          pRects[j].baseArrayLayer,
@@ -3600,7 +3671,8 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       VK_FROM_HANDLE(dzn_image_view, iview, att->imageView);
 
       if (iview != NULL && att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-         dzn_cmd_buffer_clear_attachment(cmdbuf, iview, &att->clearValue,
+         dzn_cmd_buffer_clear_attachment(cmdbuf, iview, att->imageLayout,
+                                         &att->clearValue,
                                          VK_IMAGE_ASPECT_COLOR_BIT, 0, ~0, 1,
                                          &cmdbuf->state.render.area);
       }
@@ -3612,6 +3684,7 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       struct dzn_image_view *z_iview = z_att ? dzn_image_view_from_handle(z_att->imageView) : NULL;
       struct dzn_image_view *s_iview = s_att ? dzn_image_view_from_handle(s_att->imageView) : NULL;
       struct dzn_image_view *iview = z_iview ? z_iview : s_iview;
+      VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
       assert(!z_iview || !s_iview || z_iview == s_iview);
 
@@ -3621,16 +3694,18 @@ dzn_CmdBeginRendering(VkCommandBuffer commandBuffer,
       if (z_iview && z_att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
          aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
          clear_val.depthStencil.depth = z_att->clearValue.depthStencil.depth;
+         layout = z_att->imageLayout;
       }
 
       if (s_iview && s_att->loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
          aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
          clear_val.depthStencil.stencil = s_att->clearValue.depthStencil.stencil;
+         layout = s_att->imageLayout;
       }
 
       if (aspects != 0) {
-         dzn_cmd_buffer_clear_attachment(cmdbuf, iview, &clear_val,
-                                         aspects, 0, ~0, 1,
+         dzn_cmd_buffer_clear_attachment(cmdbuf, iview, layout,
+                                         &clear_val, aspects, 0, ~0, 1,
                                          &cmdbuf->state.render.area);
       }
    }
