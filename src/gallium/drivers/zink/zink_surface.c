@@ -394,7 +394,7 @@ zink_surface_create_null(struct zink_context *ctx, enum pipe_texture_target targ
    templ.width0 = width;
    templ.height0 = height;
    templ.depth0 = 1;
-   templ.format = PIPE_FORMAT_R8_UINT;
+   templ.format = PIPE_FORMAT_R8G8B8A8_UNORM;
    templ.target = target;
    templ.bind = PIPE_BIND_RENDER_TARGET;
    templ.nr_samples = samples;
@@ -403,7 +403,7 @@ zink_surface_create_null(struct zink_context *ctx, enum pipe_texture_target targ
    if (!pres)
       return NULL;
 
-   surf_templ.format = PIPE_FORMAT_R8_UINT;
+   surf_templ.format = PIPE_FORMAT_R8G8B8A8_UNORM;
    surf_templ.nr_samples = 0;
    struct pipe_surface *psurf = ctx->base.create_surface(&ctx->base, pres, &surf_templ);
    pipe_resource_reference(&pres, NULL);

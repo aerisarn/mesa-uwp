@@ -2034,7 +2034,7 @@ get_render_pass(struct zink_context *ctx)
                state.msaa_expand_mask |= BITFIELD_BIT(i);
          }
       } else {
-         state.rts[i].format = VK_FORMAT_R8_UINT;
+         state.rts[i].format = VK_FORMAT_R8G8B8A8_UNORM;
          state.rts[i].samples = fb->samples;
       }
       state.num_rts++;
@@ -4321,7 +4321,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->render_pass_cache)
       goto fail;
 
-   const uint8_t data[] = {0};
+   const uint32_t data[] = {0};
    ctx->dummy_vertex_buffer = pipe_buffer_create(&screen->base,
       PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SHADER_IMAGE, PIPE_USAGE_IMMUTABLE, sizeof(data));
    if (!ctx->dummy_vertex_buffer)
@@ -4337,7 +4337,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       if (!ctx->dummy_surface[i])
          goto fail;
    }
-   VkBufferViewCreateInfo bvci = create_bvci(ctx, zink_resource(ctx->dummy_vertex_buffer), PIPE_FORMAT_R8_UNORM, 0, sizeof(data));
+   VkBufferViewCreateInfo bvci = create_bvci(ctx, zink_resource(ctx->dummy_vertex_buffer), PIPE_FORMAT_R8G8B8A8_UNORM, 0, sizeof(data));
    ctx->dummy_bufferview = get_buffer_view(ctx, zink_resource(ctx->dummy_vertex_buffer), &bvci);
    if (!ctx->dummy_bufferview)
       goto fail;
