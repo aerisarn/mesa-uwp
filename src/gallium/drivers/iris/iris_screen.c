@@ -292,6 +292,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
    case PIPE_CAP_FENCE_SIGNAL:
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
+   case PIPE_CAP_LEGACY_MATH_RULES:
       return true;
    case PIPE_CAP_PREFER_BACK_BUFFER_REUSE:
       return false;
