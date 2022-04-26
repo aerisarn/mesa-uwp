@@ -142,6 +142,8 @@ DBGHELP_DISPATCH(SymGetLineFromAddr64,
                  (HANDLE hProcess, DWORD64 dwAddr, PDWORD pdwDisplacement, PIMAGEHLP_LINE64 Line),
                  (hProcess, dwAddr, pdwDisplacement, Line))
 
+DBGHELP_DISPATCH(SymCleanup, BOOL, FALSE, (HANDLE hProcess), (hProcess))
+
 
 #undef DBGHELP_DISPATCH
 
@@ -167,6 +169,14 @@ debug_symbol_name_dbghelp(const void *addr, char* buf, unsigned size)
    pSymbol->MaxNameLen = sizeof buffer - offsetof(SYMBOL_INFO, Name);
 
    if (!g_bSymInitialized) {
+      /* Some components (e.g. Java) will init dbghelp before we're loaded, causing the "invade process"
+       * option to be invalid when attempting to re-init. But without it, we'd have to manually
+       * load symbols for all modules in the stack. For simplicity, we can just uninit and then
+       * re-"invade".
+       */
+      if (debug_get_bool_option("GALLIUM_SYMBOL_FORCE_REINIT", false))
+         j_SymCleanup(hProcess);
+
       j_SymSetOptions(/* SYMOPT_UNDNAME | */ SYMOPT_LOAD_LINES);
       if (j_SymInitialize(hProcess, NULL, TRUE)) {
          g_bSymInitialized = TRUE;
