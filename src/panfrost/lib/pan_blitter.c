@@ -572,6 +572,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .is_blit = true,
+                .no_idvs = true,
         };
         struct util_dynarray binary;
 
