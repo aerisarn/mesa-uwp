@@ -71,6 +71,32 @@ create_trans_state(ID3D12Resource *res, enum pipe_format format)
                                           SupportsSimultaneousAccess(desc));
 }
 
+static void
+describe_direct_bo(char *buf, struct d3d12_bo *ptr)
+{
+   sprintf(buf, "d3d12_bo<direct,%p,0x%x>", ptr->res, (unsigned)ptr->estimated_size);
+}
+
+static void
+describe_suballoc_bo(char *buf, struct d3d12_bo *ptr)
+{
+   char res[128];
+   uint64_t offset;
+   d3d12_bo *base = d3d12_bo_get_base(ptr, &offset);
+   describe_direct_bo(res, base);
+   sprintf(buf, "d3d12_bo<suballoc<%s>,0x%x,0x%x>", res,
+           (unsigned)ptr->buffer->size, (unsigned)offset);
+}
+
+void
+d3d12_debug_describe_bo(char *buf, struct d3d12_bo *ptr)
+{
+   if (ptr->buffer)
+      describe_suballoc_bo(buf, ptr);
+   else
+      describe_direct_bo(buf, ptr);
+}
+
 struct d3d12_bo *
 d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_format format, enum d3d12_residency_status residency)
 {
@@ -80,7 +106,7 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_fo
    if (!bo)
       return NULL;
 
-   bo->refcount = 1;
+   pipe_reference_init(&bo->reference, 1);
    bo->res = res;
    bo->trans_state = create_trans_state(res, format);
 
@@ -150,7 +176,7 @@ d3d12_bo_wrap_buffer(struct pb_buffer *buf)
    if (!bo)
       return NULL;
 
-   bo->refcount = 1;
+   pipe_reference_init(&bo->reference, 1);
    bo->buffer = buf;
    bo->trans_state = NULL; /* State from base BO will be used */
 
@@ -163,9 +189,11 @@ d3d12_bo_unreference(struct d3d12_bo *bo)
    if (bo == NULL)
       return;
 
-   assert(p_atomic_read(&bo->refcount) > 0);
+   assert(pipe_is_referenced(&bo->reference));
 
-   if (p_atomic_dec_zero(&bo->refcount)) {
+   if (pipe_reference_described(&bo->reference, NULL,
+                                (debug_reference_descriptor)
+                                d3d12_debug_describe_bo)) {
       if (bo->buffer) {
          pb_reference(&bo->buffer, NULL);
       } else {

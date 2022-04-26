@@ -46,7 +46,7 @@ enum d3d12_residency_status {
 };
 
 struct d3d12_bo {
-   int refcount;
+   struct pipe_reference reference;
    ID3D12Resource *res;
    struct pb_buffer *buffer;
    struct TransitionableResourceState *trans_state;
@@ -117,10 +117,15 @@ d3d12_bo_wrap_res(struct d3d12_screen *screen, ID3D12Resource *res, enum pipe_fo
 struct d3d12_bo *
 d3d12_bo_wrap_buffer(struct pb_buffer *buf);
 
+void
+d3d12_debug_describe_bo(char* buf, struct d3d12_bo* ptr);
+
 static inline void
 d3d12_bo_reference(struct d3d12_bo *bo)
 {
-   p_atomic_inc(&bo->refcount);
+   pipe_reference_described(NULL, &bo->reference,
+                            (debug_reference_descriptor)
+                            d3d12_debug_describe_bo);
 }
 
 void
