@@ -997,6 +997,7 @@ bool Converter::assignSlots() {
    unsigned index;
 
    info->io.viewportId = -1;
+   info->io.mul_zero_wins = nir->info.use_legacy_math_rules;
    info_out->numInputs = 0;
    info_out->numOutputs = 0;
    info_out->numSysVals = 0;
@@ -2585,6 +2586,17 @@ Converter::visit(nir_alu_instr *insn)
          Instruction *i = mkOp(getOperation(op), dType, newDefs[0]);
          for (unsigned s = 0u; s < info.num_inputs; ++s) {
             i->setSrc(s, getSrc(&insn->src[s]));
+
+            if (this->info->io.mul_zero_wins) {
+               switch (op) {
+               case nir_op_fmul:
+               case nir_op_ffma:
+                  i->dnz = true;
+                  break;
+               default:
+                  break;
+               }
+            }
          }
          i->subOp = getSubOp(op);
       }
