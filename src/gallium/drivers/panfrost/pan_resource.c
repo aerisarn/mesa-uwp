@@ -86,7 +86,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 PAN_IMAGE_CRC_OOB : PAN_IMAGE_CRC_NONE;
         struct pan_image_explicit_layout explicit_layout = {
                 .offset = whandle->offset,
-                .line_stride = whandle->stride,
+                .row_stride = panfrost_from_legacy_stride(whandle->stride, templat->format, mod)
         };
 
         rsc->image.layout = (struct pan_image_layout) {
@@ -177,7 +177,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
                 return false;
         }
 
-        handle->stride = rsrc->image.layout.slices[0].line_stride;
+        handle->stride = panfrost_get_legacy_stride(&rsrc->image.layout, 0);
         handle->offset = rsrc->image.layout.slices[0].offset;
         return true;
 }

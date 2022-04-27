@@ -246,21 +246,21 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 slice->offset = offset;
 
                 /* Compute the would-be stride */
-                unsigned stride = bytes_per_pixel * effective_width;
+                unsigned row_stride = bytes_per_pixel * effective_width * block_size.height;
 
                 if (explicit_layout) {
                         /* Make sure the explicit stride is valid */
-                        if (explicit_layout->line_stride < stride)
+                        if (explicit_layout->row_stride < row_stride)
                                 return false;
 
-                        stride = explicit_layout->line_stride;
+                        row_stride = explicit_layout->row_stride;
                 } else if (linear) {
                         /* Keep lines alignment on 64 byte for performance */
-                        stride = ALIGN_POT(stride, 64);
+                        row_stride = ALIGN_POT(row_stride, 64);
                 }
 
-                slice->line_stride = stride;
-                slice->row_stride = stride * block_size.height;
+                slice->line_stride = row_stride / block_size.height;
+                slice->row_stride = row_stride;
 
                 unsigned slice_one_size = slice->line_stride * effective_height;
 

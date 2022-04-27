@@ -222,7 +222,7 @@ struct pan_scoreboard;
 
 struct pan_image_explicit_layout {
         unsigned offset;
-        unsigned line_stride;
+        unsigned row_stride;
 };
 
 bool
