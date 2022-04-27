@@ -1152,6 +1152,18 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!isl_surf_created_successfully)
       goto fail;
 
+   /* Don't create staging surfaces that will use over half the aperture,
+    * since staging implies you are copying data to another resource that's
+    * at least as large, and then both wouldn't fit in the aperture.
+    *
+    * Skip this for discrete cards, as the destination buffer might be in
+    * device local memory while the staging buffer would be in system memory,
+    * so both would fit.
+    */
+   if (templ->usage == PIPE_USAGE_STAGING && !devinfo->has_local_mem &&
+       res->surf.size_B > devinfo->aperture_bytes / 2)
+      goto fail;
+
    if (!iris_resource_configure_aux(screen, res, false))
       goto fail;
 
