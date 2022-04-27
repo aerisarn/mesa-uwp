@@ -2807,6 +2807,12 @@ genX(graphics_pipeline_create)(
 #endif
    } else {
       assert(anv_pipeline_is_mesh(pipeline));
+
+      /* BSpec 46303 forbids both 3DSTATE_MESH_CONTROL.MeshShaderEnable
+       * and 3DSTATE_STREAMOUT.SOFunctionEnable to be 1.
+       */
+      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_STREAMOUT), so) {}
+
 #if GFX_VERx10 >= 125
       emit_task_state(pipeline);
       emit_mesh_state(pipeline);
