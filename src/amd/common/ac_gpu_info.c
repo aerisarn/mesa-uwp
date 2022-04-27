@@ -878,14 +878,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    if (info->family == CHIP_KAVERI)
       info->max_render_backends = 2;
 
-   /* Guess the number of enabled SEs because the kernel doesn't tell us. */
-   if (info->chip_class >= GFX10_3 && info->max_se > 1) {
-      unsigned num_rbs_per_se = info->max_render_backends / info->max_se;
-      info->num_se = util_bitcount(amdinfo->enabled_rb_pipes_mask) / num_rbs_per_se;
-   } else {
-      info->num_se = info->max_se;
-   }
-
    info->clock_crystal_freq = amdinfo->gpu_counter_freq;
    if (!info->clock_crystal_freq) {
       fprintf(stderr, "amdgpu: clock crystal frequency is 0, timestamps will be wrong\n");
@@ -1105,6 +1097,23 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          }
          info->num_good_compute_units += util_bitcount(info->cu_mask[i][j]);
       }
+   }
+
+   /* Derive the number of enabled SEs from the CU mask. */
+   if (info->chip_class >= GFX10_3 && info->max_se > 1) {
+      info->num_se = 0;
+
+      for (unsigned se = 0; se < info->max_se; se++) {
+         for (unsigned sa = 0; sa < info->max_sa_per_se; sa++) {
+            if (info->cu_mask[se][sa]) {
+               info->num_se++;
+               break;
+            }
+         }
+      }
+   } else {
+      /* GFX10 and older always enable all SEs because they don't support SE harvesting. */
+      info->num_se = info->max_se;
    }
 
    /* On GFX10, only whole WGPs (in units of 2 CUs) can be disabled,
