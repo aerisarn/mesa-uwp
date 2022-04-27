@@ -88,7 +88,7 @@ struct wsi_image_info {
    uint32_t linear_size;
 
    wsi_memory_type_select_cb select_image_memory_type;
-   wsi_memory_type_select_cb select_buffer_memory_type;
+   wsi_memory_type_select_cb select_blit_dst_memory_type;
 
    uint8_t *(*alloc_shm)(struct wsi_image *image, unsigned size);
 
@@ -101,6 +101,11 @@ struct wsi_image_info {
                              struct wsi_image *image);
 };
 
+enum wsi_swapchain_blit_type {
+   WSI_SWAPCHAIN_NO_BLIT,
+   WSI_SWAPCHAIN_BUFFER_BLIT,
+};
+
 struct wsi_image {
    VkImage image;
    VkDeviceMemory memory;
@@ -108,8 +113,8 @@ struct wsi_image {
    struct {
       VkBuffer buffer;
       VkDeviceMemory memory;
-      VkCommandBuffer *blit_cmd_buffers;
-   } buffer;
+      VkCommandBuffer *cmd_buffers;
+   } blit;
 
 #ifndef _WIN32
    uint64_t drm_modifier;
@@ -132,7 +137,6 @@ struct wsi_swapchain {
    VkDevice device;
    VkAllocationCallbacks alloc;
    VkFence* fences;
-   VkSemaphore* buffer_blit_semaphores;
    VkPresentModeKHR present_mode;
    VkSemaphore present_id_timeline;
 
@@ -142,14 +146,17 @@ struct wsi_swapchain {
    struct wsi_image_info image_info;
    uint32_t image_count;
 
-   bool use_buffer_blit;
+   struct {
+      enum wsi_swapchain_blit_type type;
+      VkSemaphore *semaphores;
 
-   /* If the driver wants to use a special queue to execute the buffer blit,
-    * it'll implement the wsi_device::get_buffer_blit_queue callback.
-    * The created queue will be stored here and will be used to execute the
-    * buffer blit instead of using the present queue.
-    */
-   VkQueue buffer_blit_queue;
+      /* If the driver wants to use a special queue to execute the buffer blit,
+       * it'll implement the wsi_device::get_blit_queue callback.
+       * The created queue will be stored here and will be used to execute the
+       * buffer blit instead of using the present queue.
+       */
+      VkQueue queue;
+   } blit;
 
    /* Command pools, one per queue family */
    VkCommandPool *cmd_pools;
@@ -221,14 +228,14 @@ wsi_configure_cpu_image(const struct wsi_swapchain *chain,
                         struct wsi_image_info *info);
 
 VkResult
-wsi_create_buffer_image_mem(const struct wsi_swapchain *chain,
-                            const struct wsi_image_info *info,
-                            struct wsi_image *image,
-                            VkExternalMemoryHandleTypeFlags handle_types,
-                            bool implicit_sync);
+wsi_create_buffer_blit_context(const struct wsi_swapchain *chain,
+                               const struct wsi_image_info *info,
+                               struct wsi_image *image,
+                               VkExternalMemoryHandleTypeFlags handle_types,
+                               bool implicit_sync);
 
 VkResult
-wsi_finish_create_buffer_image(const struct wsi_swapchain *chain,
+wsi_finish_create_blit_context(const struct wsi_swapchain *chain,
                                const struct wsi_image_info *info,
                                struct wsi_image *image);
 

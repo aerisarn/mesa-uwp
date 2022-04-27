@@ -574,16 +574,16 @@ wsi_create_prime_image_mem(const struct wsi_swapchain *chain,
 {
    const struct wsi_device *wsi = chain->wsi;
    VkResult result =
-      wsi_create_buffer_image_mem(chain, info, image,
-                                  VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
-                                  true);
+      wsi_create_buffer_blit_context(chain, info, image,
+                                     VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+                                     true);
    if (result != VK_SUCCESS)
       return result;
 
    const VkMemoryGetFdInfoKHR linear_memory_get_fd_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
       .pNext = NULL,
-      .memory = image->buffer.memory,
+      .memory = image->blit.memory,
       .handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
    };
    result = wsi->GetMemoryFdKHR(chain->device, &linear_memory_get_fd_info,
@@ -614,7 +614,7 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
    info->prime_use_linear_modifier = use_modifier;
 
    info->create_mem = wsi_create_prime_image_mem;
-   info->select_buffer_memory_type = select_buffer_memory_type;
+   info->select_blit_dst_memory_type = select_buffer_memory_type;
    info->select_image_memory_type = wsi_select_device_memory_type;
 
    return VK_SUCCESS;
@@ -641,7 +641,7 @@ wsi_drm_configure_image(const struct wsi_swapchain *chain,
 {
    assert(params->base.image_type == WSI_IMAGE_TYPE_DRM);
 
-   if (chain->use_buffer_blit) {
+   if (chain->blit.type == WSI_SWAPCHAIN_BUFFER_BLIT) {
       bool use_modifier = params->num_modifier_lists > 0;
       wsi_memory_type_select_cb select_buffer_memory_type =
          params->same_gpu ? wsi_select_device_memory_type :

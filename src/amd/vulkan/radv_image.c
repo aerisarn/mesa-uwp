@@ -2427,7 +2427,7 @@ radv_CreateImage(VkDevice device, const VkImageCreateInfo *pCreateInfo,
    const struct wsi_image_create_info *wsi_info =
       vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
    bool scanout = wsi_info && wsi_info->scanout;
-   bool prime_blit_src = wsi_info && wsi_info->buffer_blit_src;
+   bool prime_blit_src = wsi_info && wsi_info->blit_src;
 
    return radv_image_create(device,
                             &(struct radv_image_create_info){

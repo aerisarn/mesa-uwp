@@ -308,7 +308,7 @@ wsi_win32_image_init(VkDevice device_h,
                      const VkAllocationCallbacks *allocator,
                      struct wsi_win32_image *image)
 {
-   assert(chain->base.use_buffer_blit);
+   assert(chain->base.blit.type == WSI_SWAPCHAIN_BUFFER_BLIT);
    VkResult result = wsi_create_image(&chain->base, &chain->base.image_info,
                                       &image->base);
    if (result != VK_SUCCESS)
@@ -408,7 +408,7 @@ wsi_win32_queue_present(struct wsi_swapchain *drv_chain,
    assert(image_index < chain->base.image_count);
    struct wsi_win32_image *image = &chain->images[image_index];
 
-   assert(chain->base.use_buffer_blit);
+   assert(chain->base.blit.type == WSI_SWAPCHAIN_BUFFER_BLIT);
 
    char *ptr = image->base.cpu_map;
    char *dptr = image->ppvBits;
