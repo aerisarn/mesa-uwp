@@ -89,12 +89,28 @@ kopper_CreateSurface(struct zink_screen *screen, struct kopper_displaytarget *cd
 
     VkBool32 supported;
     error = VKSCR(GetPhysicalDeviceSurfaceSupportKHR)(screen->pdev, screen->gfx_queue, surface, &supported);
-    if (!zink_screen_handle_vkresult(screen, error) || !supported) {
-       VKSCR(DestroySurfaceKHR)(screen->instance, surface, NULL);
-       return VK_NULL_HANDLE;
+    if (!zink_screen_handle_vkresult(screen, error) || !supported)
+       goto fail;
+
+    unsigned count = 10;
+    VkPresentModeKHR modes[10];
+    error = VKSCR(GetPhysicalDeviceSurfacePresentModesKHR)(screen->pdev, surface, &count, modes);
+    if (!zink_screen_handle_vkresult(screen, error))
+       goto fail;
+
+    for (unsigned i = 0; i < count; i++) {
+       /* VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR and VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR
+        * are not handled
+        */
+       assert(modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+       if (modes[i] <= VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+          cdt->present_modes |= BITFIELD_BIT(modes[i]);
     }
 
     return surface;
+fail:
+   VKSCR(DestroySurfaceKHR)(screen->instance, surface, NULL);
+   return VK_NULL_HANDLE;
 }
 
 static void

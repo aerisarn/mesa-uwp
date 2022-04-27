@@ -59,6 +59,7 @@ struct kopper_displaytarget
    void *loader_private;
 
    VkSurfaceKHR surface;
+   uint32_t present_modes; //VkPresentModeKHR bitmask
    struct kopper_swapchain *swapchain;
    struct kopper_swapchain *old_swapchain;
 
