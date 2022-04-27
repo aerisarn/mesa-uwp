@@ -206,7 +206,7 @@ pan_prepare_zs(const struct pan_fb_info *fb,
 #if PAN_ARCH >= 6
                 const struct pan_image_slice_layout *slice = &zs->image->layout.slices[level];
 
-                ext->zs_afbc_row_stride = slice->afbc.row_stride /
+                ext->zs_afbc_row_stride = slice->row_stride /
                                           AFBC_HEADER_BYTES_PER_TILE;
 #else
                 ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
@@ -448,7 +448,7 @@ pan_prepare_rt(const struct pan_fb_info *fb, unsigned idx,
                 const struct pan_image_slice_layout *slice = &rt->image->layout.slices[level];
 
 #if PAN_ARCH >= 6
-                cfg->afbc.row_stride = slice->afbc.row_stride /
+                cfg->afbc.row_stride = slice->row_stride /
                                        AFBC_HEADER_BYTES_PER_TILE;
                 cfg->afbc.afbc_wide_block_enable =
                         panfrost_afbc_is_wide(rt->image->layout.modifier);

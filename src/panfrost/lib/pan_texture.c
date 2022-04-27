@@ -242,7 +242,7 @@ panfrost_get_surface_strides(const struct pan_image_layout *layout,
         if (drm_is_afbc(layout->modifier)) {
                 /* Pre v7 don't have a row stride field. This field is
                  * repurposed as a Y offset which we don't use */
-                *row_stride = PAN_ARCH < 7 ? 0 : slice->afbc.row_stride;
+                *row_stride = PAN_ARCH < 7 ? 0 : slice->row_stride;
                 *surf_stride = slice->afbc.surface_stride;
         } else {
                 *row_stride = slice->row_stride;
