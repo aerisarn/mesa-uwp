@@ -162,6 +162,37 @@ TEST(BlockSize, AFBCSuperblock64x4)
    EXPECT_TRUE(panfrost_afbc_is_wide(modifier));
 }
 
+TEST(LegacyStride, FromLegacyLinear)
+{
+   EXPECT_EQ(panfrost_from_legacy_stride(1920 * 4, PIPE_FORMAT_R8G8B8A8_UINT, DRM_FORMAT_MOD_LINEAR), 1920 * 4);
+   EXPECT_EQ(panfrost_from_legacy_stride(53, PIPE_FORMAT_R8_SNORM, DRM_FORMAT_MOD_LINEAR), 53);
+   EXPECT_EQ(panfrost_from_legacy_stride(60, PIPE_FORMAT_ETC2_RGB8, DRM_FORMAT_MOD_LINEAR), 60);
+}
+
+TEST(LegacyStride, FromLegacyInterleaved)
+{
+   EXPECT_EQ(panfrost_from_legacy_stride(1920 * 4, PIPE_FORMAT_R8G8B8A8_UINT,
+            DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED),
+            1920 * 4 * 16);
+
+   EXPECT_EQ(panfrost_from_legacy_stride(53, PIPE_FORMAT_R8_SNORM,
+            DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED), 53 * 16);
+
+   EXPECT_EQ(panfrost_from_legacy_stride(60, PIPE_FORMAT_ETC2_RGB8,
+            DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED), 60 * 4);
+}
+
+TEST(LegacyStride, FromLegacyAFBC)
+{
+   uint64_t modifier = DRM_FORMAT_MOD_ARM_AFBC(
+                AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 |
+                AFBC_FORMAT_MOD_SPARSE |
+                AFBC_FORMAT_MOD_YTR);
+
+   EXPECT_EQ(panfrost_from_legacy_stride(1920 * 4, PIPE_FORMAT_R8G8B8A8_UINT, modifier), 60 * 16);
+   EXPECT_EQ(panfrost_from_legacy_stride(64, PIPE_FORMAT_R8_SNORM, modifier), 2 * 16);
+}
+
 /* dEQP-GLES3.functional.texture.format.compressed.etc1_2d_pot */
 TEST(Layout, ImplicitLayoutInterleavedETC2)
 {
