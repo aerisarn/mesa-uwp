@@ -247,7 +247,7 @@ panvk_GetImageSubresourceLayout(VkDevice _device,
                      (pSubresource->arrayLayer *
                       image->pimage.layout.array_stride);
    pLayout->size = slice_layout->size;
-   pLayout->rowPitch = slice_layout->line_stride;
+   pLayout->rowPitch = slice_layout->row_stride;
    pLayout->arrayPitch = image->pimage.layout.array_stride;
    pLayout->depthPitch = slice_layout->surface_stride;
 }
