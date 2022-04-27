@@ -221,7 +221,20 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
       lower_load_vulkan_descriptor(b, intr);
       return true;
    case nir_intrinsic_image_deref_store:
-   case nir_intrinsic_image_deref_load: {
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_imin:
+   case nir_intrinsic_image_deref_atomic_umin:
+   case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_umax:
+   case nir_intrinsic_image_deref_atomic_and:
+   case nir_intrinsic_image_deref_atomic_or:
+   case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_exchange:
+   case nir_intrinsic_image_deref_atomic_comp_swap:
+   case nir_intrinsic_image_deref_atomic_fadd:
+   case nir_intrinsic_image_deref_size:
+   case nir_intrinsic_image_deref_samples: {
       nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
 
       b->cursor = nir_before_instr(&intr->instr);

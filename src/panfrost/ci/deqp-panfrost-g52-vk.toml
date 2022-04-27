@@ -13,6 +13,7 @@ include = [
     "dEQP-VK.api.copy_and_blit.core.*",
     "dEQP-VK.compute.builtin_var.*",
     "dEQP-VK.draw.renderpass.instanced.draw_indexed_vk_*",
+    "dEQP-VK.image.atomic_operations.*",
     "dEQP-VK.glsl.builtin.function.*",
     "dEQP-VK.glsl.builtin.precision.frexp.*",
     "dEQP-VK.glsl.builtin.precision.ldexp.*",
