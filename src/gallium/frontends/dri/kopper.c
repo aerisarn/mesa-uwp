@@ -63,6 +63,7 @@ struct kopper_screen {
    struct dri_screen base;
    struct pipe_screen *screen; //unwrapped
    bool has_dmabuf;
+   bool has_modifiers;
 };
 
 extern const __DRIimageExtension driVkImageExtension;
@@ -168,6 +169,7 @@ kopper_init_screen(__DRIscreen * sPriv)
    screen->has_reset_status_query = true;
    screen->lookup_egl_image = dri2_lookup_egl_image;
    kscreen->has_dmabuf = pscreen->get_param(pscreen, PIPE_CAP_DMABUF);
+   kscreen->has_modifiers = pscreen->query_dmabuf_modifiers != NULL;
    if (kscreen->has_dmabuf)
       sPriv->extensions = drivk_screen_extensions;
    else
@@ -424,10 +426,10 @@ kopper_get_pixmap_buffer(struct kopper_drawable *cdraw,
     * see dri3_get_pixmap_buffer()
     */
    cur_screen = cdraw->base.sPriv;
-   struct kopper_screen *kscreen = (struct kopper_screen*)cur_screen->driverPrivate;
 
 #ifdef HAVE_DRI3_MODIFIERS
-   if (kscreen->has_dmabuf) {
+   struct kopper_screen *kscreen = (struct kopper_screen*)cur_screen->driverPrivate;
+   if (kscreen->has_modifiers) {
       xcb_dri3_buffers_from_pixmap_cookie_t bps_cookie;
       xcb_dri3_buffers_from_pixmap_reply_t *bps_reply;
       xcb_generic_error_t *error;
