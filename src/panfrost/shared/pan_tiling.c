@@ -175,8 +175,7 @@ panfrost_access_tiled_image_##pixel_t \
 { \
    uint8_t *dest_start = dst + ((sx >> 4) * PIXELS_PER_TILE * sizeof(pixel_t)); \
    for (int y = sy, src_y = 0; src_y < h; ++y, ++src_y) { \
-      uint16_t block_y = y & ~0x0f; \
-      uint8_t *dest = (uint8_t *) (dest_start + (block_y * dst_stride)); \
+      uint8_t *dest = (uint8_t *) (dest_start + ((y >> 4) * dst_stride)); \
       pixel_t *source = src + (src_y * src_stride); \
       pixel_t *source_end = source + w; \
       unsigned expanded_y = bit_duplication[y & 0xF] << shift; \
@@ -201,8 +200,7 @@ TILED_ACCESS_TYPE(pan_uint128_t, 4);
 #define TILED_UNALIGNED_TYPE(pixel_t, is_store, tile_shift) { \
    const unsigned mask = (1 << tile_shift) - 1; \
    for (int y = sy, src_y = 0; src_y < h; ++y, ++src_y) { \
-      unsigned block_y = y & ~mask; \
-      unsigned block_start_s = block_y * dst_stride; \
+      unsigned block_start_s = (y >> tile_shift) * dst_stride; \
       unsigned source_start = src_y * src_stride; \
       unsigned expanded_y = bit_duplication[y & mask]; \
  \

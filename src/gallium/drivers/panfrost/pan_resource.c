@@ -876,7 +876,7 @@ panfrost_load_tiled_images(struct panfrost_transfer *transfer,
                 panfrost_load_tiled_image(dst, map, ptrans->box.x,
                                           ptrans->box.y, ptrans->box.width,
                                           ptrans->box.height, ptrans->stride,
-                                          rsrc->image.layout.slices[level].line_stride,
+                                          rsrc->image.layout.slices[level].row_stride,
                                           rsrc->image.layout.format);
         }
 }
@@ -902,7 +902,7 @@ panfrost_store_tiled_images(struct panfrost_transfer *transfer,
                 panfrost_store_tiled_image(map, src,
                                 ptrans->box.x, ptrans->box.y,
                                 ptrans->box.width, ptrans->box.height,
-                                rsrc->image.layout.slices[level].line_stride,
+                                rsrc->image.layout.slices[level].row_stride,
                                 ptrans->stride, rsrc->image.layout.format);
         }
 }

@@ -61,7 +61,7 @@ tiled_offset(unsigned x, unsigned y, unsigned stride, unsigned tilesize, unsigne
 
    unsigned index_in_tile = u_order(x_in_tile, y_in_tile);
 
-   unsigned row_offset = tile_y * (stride * tilesize);
+   unsigned row_offset = tile_y * stride;
    unsigned col_offset = (tile_x * tilesize * tilesize) * blocksize;
    unsigned block_offset = index_in_tile * blocksize;
 
@@ -128,10 +128,11 @@ test(unsigned width, unsigned height, unsigned rx, unsigned ry,
      enum pipe_format format, bool store)
 {
    unsigned bpp = util_format_get_blocksize(format);
+   unsigned tile_height = util_format_is_compressed(format) ? 4 : 16;
 
    unsigned tiled_width  = ALIGN_POT(width, 16);
    unsigned tiled_height = ALIGN_POT(height, 16);
-   unsigned tiled_stride = tiled_width * bpp;
+   unsigned tiled_stride = tiled_width * tile_height * bpp;
 
    unsigned dst_stride = store ? tiled_stride : linear_stride;
    unsigned src_stride = store ? linear_stride : tiled_stride;

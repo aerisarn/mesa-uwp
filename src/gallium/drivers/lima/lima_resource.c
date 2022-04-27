@@ -677,6 +677,10 @@ lima_transfer_map(struct pipe_context *pctx,
       trans->staging = malloc(ptrans->stride * ptrans->box.height * ptrans->box.depth);
 
       if (usage & PIPE_MAP_READ) {
+         unsigned line_stride = res->levels[level].stride;
+         unsigned row_height = util_format_is_compressed(pres->format) ? 4 : 16;
+         unsigned row_stride = line_stride * row_height;
+
          unsigned i;
          for (i = 0; i < ptrans->box.depth; i++)
             panfrost_load_tiled_image(
@@ -685,7 +689,7 @@ lima_transfer_map(struct pipe_context *pctx,
                ptrans->box.x, ptrans->box.y,
                ptrans->box.width, ptrans->box.height,
                ptrans->stride,
-               res->levels[level].stride,
+               row_stride,
                pres->format);
       }
 
@@ -783,13 +787,17 @@ lima_transfer_unmap_inner(struct lima_context *ctx,
             /* Update texture descriptor */
             ctx->dirty |= LIMA_CONTEXT_DIRTY_TEXTURES;
          } else {
+            unsigned line_stride = res->levels[ptrans->level].stride;
+            unsigned row_height = util_format_is_compressed(pres->format) ? 4 : 16;
+            unsigned row_stride = line_stride * row_height;
+
             for (i = 0; i < trans->base.box.depth; i++)
                panfrost_store_tiled_image(
                   bo->map + res->levels[trans->base.level].offset + (i + trans->base.box.z) * res->levels[trans->base.level].layer_stride,
                   trans->staging + i * ptrans->stride * ptrans->box.height,
                   ptrans->box.x, ptrans->box.y,
                   ptrans->box.width, ptrans->box.height,
-                  res->levels[ptrans->level].stride,
+                  row_stride,
                   ptrans->stride,
                   pres->format);
          }
