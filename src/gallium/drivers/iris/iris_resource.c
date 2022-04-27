@@ -1998,7 +1998,12 @@ iris_map_copy_region(struct iris_transfer *map)
       templ.target = PIPE_TEXTURE_2D;
 
    map->staging = iris_resource_create(pscreen, &templ);
-   assert(map->staging);
+
+   /* If we fail to create a staging resource, the caller will fallback
+    * to mapping directly on the CPU.
+    */
+   if (!map->staging)
+      return;
 
    if (templ.target != PIPE_BUFFER) {
       struct isl_surf *surf = &((struct iris_resource *) map->staging)->surf;
@@ -2437,9 +2442,12 @@ iris_transfer_map(struct pipe_context *ctx,
       map->batch = &ice->batches[IRIS_BATCH_RENDER];
       map->blorp = &ice->blorp;
       iris_map_copy_region(map);
-   } else {
-      /* Otherwise we're free to map on the CPU. */
+   }
 
+   /* If we've requested a direct mapping, or iris_map_copy_region failed
+    * to create a staging resource, then map it directly on the CPU.
+    */
+   if (!map->ptr) {
       if (resource->target != PIPE_BUFFER) {
          iris_resource_access_raw(ice, res, level, box->z, box->depth,
                                   usage & PIPE_MAP_WRITE);
