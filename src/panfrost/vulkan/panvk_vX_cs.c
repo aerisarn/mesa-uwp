@@ -408,10 +408,9 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
    unsigned offset = pipeline->layout->num_ubos;
    for (unsigned i = 0; i < pipeline->layout->num_dyn_ubos; i++) {
       const struct panvk_buffer_desc *bdesc = &state->dyn.ubos[i];
-      size_t size = (bdesc->size == VK_WHOLE_SIZE && bdesc->buffer) ?
-                    (bdesc->buffer->bo->size - bdesc->offset) :
-                    bdesc->size;
-      mali_ptr address = bdesc->buffer ? bdesc->buffer->bo->ptr.gpu + bdesc->offset : 0;
+      mali_ptr address = panvk_buffer_gpu_ptr(bdesc->buffer, bdesc->offset);
+      size_t size = panvk_buffer_range(bdesc->buffer,
+                                       bdesc->offset, bdesc->size);
 
       if (size)
          panvk_per_arch(emit_ubo)(address, size, &ubos[offset + i]);

@@ -318,12 +318,9 @@ panvk_sysval_upload_ssbo_info(struct panvk_cmd_buffer *cmdbuf,
          ssbo = &desc_state->dyn.ssbos[ssbo_id - pipeline->layout->num_ssbos];
 
       if (ssbo) {
-         data->u64[0] = ssbo->buffer->bo->ptr.gpu +
-                        ssbo->buffer->bo_offset +
-                        ssbo->offset;
-         data->u32[2] = ssbo->size == VK_WHOLE_SIZE ?
-                        ssbo->buffer->size - ssbo->offset :
-                        ssbo->size;
+         data->u64[0] = panvk_buffer_gpu_ptr(ssbo->buffer, ssbo->offset);
+         data->u32[2] = panvk_buffer_range(ssbo->buffer,
+                                           ssbo->offset, ssbo->size);
       }
    }
 }
@@ -1067,9 +1064,8 @@ panvk_per_arch(CmdDrawIndexed)(VkCommandBuffer commandBuffer,
                              panfrost_padded_vertex_count(vertex_range) :
                              vertex_range,
       .offset_start = min_vertex + vertexOffset,
-      .indices = cmdbuf->state.ib.buffer->bo->ptr.gpu +
-                 cmdbuf->state.ib.buffer->bo_offset +
-                 cmdbuf->state.ib.offset +
+      .indices = panvk_buffer_gpu_ptr(cmdbuf->state.ib.buffer,
+                                      cmdbuf->state.ib.offset) +
                  (firstIndex * (cmdbuf->state.ib.index_size / 8)),
    };
 

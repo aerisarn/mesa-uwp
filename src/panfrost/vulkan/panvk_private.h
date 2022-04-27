@@ -512,6 +512,32 @@ struct panvk_buffer {
    VkDeviceSize bo_offset;
 };
 
+static inline mali_ptr
+panvk_buffer_gpu_ptr(const struct panvk_buffer *buffer, uint64_t offset)
+{
+   if (buffer->bo == NULL)
+      return 0;
+
+   return buffer->bo->ptr.gpu + buffer->bo_offset + offset;
+}
+
+static inline uint64_t
+panvk_buffer_range(const struct panvk_buffer *buffer,
+                   uint64_t offset, uint64_t range)
+{
+   if (buffer->bo == NULL)
+      return 0;
+
+   assert(offset <= buffer->size);
+   if (range == VK_WHOLE_SIZE) {
+      return buffer->size - offset;
+   } else {
+      assert(range + offset >= range);
+      assert(range + offset <= buffer->size);
+      return range;
+   }
+}
+
 enum panvk_dynamic_state_bits {
    PANVK_DYNAMIC_VIEWPORT = 1 << 0,
    PANVK_DYNAMIC_SCISSOR = 1 << 1,

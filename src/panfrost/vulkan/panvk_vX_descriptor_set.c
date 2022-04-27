@@ -205,11 +205,10 @@ panvk_per_arch(set_ubo_desc)(void *ubo,
                              const VkDescriptorBufferInfo *pBufferInfo)
 {
    VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
-   size_t size = pBufferInfo->range == VK_WHOLE_SIZE ?
-                 (buffer->bo->size - pBufferInfo->offset) :
-                 pBufferInfo->range;
-
-   panvk_per_arch(emit_ubo)(buffer->bo->ptr.gpu + pBufferInfo->offset, size,  ubo);
+   mali_ptr ptr = panvk_buffer_gpu_ptr(buffer, pBufferInfo->offset);
+   size_t size = panvk_buffer_range(buffer, pBufferInfo->offset,
+                                    pBufferInfo->range);
+   panvk_per_arch(emit_ubo)(ptr, size, ubo);
 }
 
 static void

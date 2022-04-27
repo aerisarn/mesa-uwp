@@ -1154,7 +1154,7 @@ panvk_meta_copy_buf2img(struct panvk_cmd_buffer *cmdbuf,
 
    unsigned buftexelsz = panvk_meta_copy_buf_texelsize(key.imgfmt, key.mask);
    struct panvk_meta_copy_buf2img_info info = {
-      .buf.ptr = buf->bo->ptr.gpu + buf->bo_offset + region->bufferOffset,
+      .buf.ptr = panvk_buffer_gpu_ptr(buf, region->bufferOffset),
       .buf.stride.line = (region->bufferRowLength ? : region->imageExtent.width) * buftexelsz,
    };
 
@@ -1598,7 +1598,7 @@ panvk_meta_copy_img2buf(struct panvk_cmd_buffer *cmdbuf,
       &cmdbuf->device->physical_device->meta.copy.img2buf[texdimidx][fmtidx].pushmap;
 
    struct panvk_meta_copy_img2buf_info info = {
-      .buf.ptr = buf->bo->ptr.gpu + buf->bo_offset + region->bufferOffset,
+      .buf.ptr = panvk_buffer_gpu_ptr(buf, region->bufferOffset),
       .buf.stride.line = (region->bufferRowLength ? : region->imageExtent.width) * buftexelsz,
       .img.offset.x = MAX2(region->imageOffset.x & ~15, 0),
       .img.extent.minx = MAX2(region->imageOffset.x, 0),
@@ -1832,8 +1832,8 @@ panvk_meta_copy_buf2buf(struct panvk_cmd_buffer *cmdbuf,
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
 
    struct panvk_meta_copy_buf2buf_info info = {
-      .src = src->bo->ptr.gpu + src->bo_offset + region->srcOffset,
-      .dst = dst->bo->ptr.gpu + dst->bo_offset + region->dstOffset,
+      .src = panvk_buffer_gpu_ptr(src, region->srcOffset),
+      .dst = panvk_buffer_gpu_ptr(dst, region->dstOffset),
    };
 
    unsigned alignment = ffs((info.src | info.dst | region->size) & 15);
@@ -1994,13 +1994,11 @@ panvk_meta_fill_buf(struct panvk_cmd_buffer *cmdbuf,
 {
    struct panfrost_device *pdev = &cmdbuf->device->physical_device->pdev;
 
-   if (size == VK_WHOLE_SIZE)
-      size = (dst->size - offset) & ~3ULL;
-
    struct panvk_meta_fill_buf_info info = {
-      .start = dst->bo->ptr.gpu + dst->bo_offset + offset,
+      .start = panvk_buffer_gpu_ptr(dst, offset),
       .val = val,
    };
+   size = panvk_buffer_range(dst, offset, size);
 
    assert(!(offset & 3) && !(size & 3));
 
@@ -2060,7 +2058,7 @@ panvk_meta_update_buf(struct panvk_cmd_buffer *cmdbuf,
 
    struct panvk_meta_copy_buf2buf_info info = {
       .src = pan_pool_upload_aligned(&cmdbuf->desc_pool.base, data, size, 4),
-      .dst = dst->bo->ptr.gpu + dst->bo_offset + offset,
+      .dst = panvk_buffer_gpu_ptr(dst, offset),
    };
 
    unsigned log2blksz = ffs(sizeof(uint32_t)) - 1;

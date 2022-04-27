@@ -197,10 +197,9 @@ panvk_per_arch(CreateBufferView)(VkDevice _device,
    view->fmt = vk_format_to_pipe_format(pCreateInfo->format);
 
    struct panfrost_device *pdev = &device->physical_device->pdev;
-   unsigned offset = buffer->bo_offset + pCreateInfo->offset;
-   mali_ptr address = buffer->bo->ptr.gpu + offset;
-   unsigned size = pCreateInfo->range == VK_WHOLE_SIZE ?
-                   buffer->bo->size - offset : pCreateInfo->range;
+   mali_ptr address = panvk_buffer_gpu_ptr(buffer, pCreateInfo->offset);
+   unsigned size = panvk_buffer_range(buffer, pCreateInfo->offset,
+                                      pCreateInfo->range);
    unsigned blksz = util_format_get_blocksize(view->fmt);
    unsigned width = size / blksz;
 
