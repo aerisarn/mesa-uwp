@@ -49,7 +49,6 @@ extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
 
 struct pan_image_slice_layout {
         unsigned offset;
-        unsigned line_stride;
         unsigned row_stride;
         unsigned surface_stride;
 
