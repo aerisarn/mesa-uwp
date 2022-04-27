@@ -261,7 +261,7 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 slice->line_stride = row_stride / block_size.height;
                 slice->row_stride = row_stride;
 
-                unsigned slice_one_size = slice->line_stride * effective_height;
+                unsigned slice_one_size = row_stride * (effective_height / block_size.height);
 
                 /* Compute AFBC sizes if necessary */
                 if (afbc) {
