@@ -212,7 +212,7 @@ panvk_pipeline_builder_alloc_static_state_bo(struct panvk_pipeline_builder *buil
 
    for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
       const struct panvk_shader *shader = builder->shaders[i];
-      if (!shader)
+      if (!shader && i != MESA_SHADER_FRAGMENT)
          continue;
 
       if (pipeline->fs.dynamic_rsd && i == MESA_SHADER_FRAGMENT)
@@ -358,33 +358,38 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
                       builder->stages[i].shader_offset;
       }
 
-      void *rsd = pipeline->state_bo->ptr.cpu + builder->stages[i].rsd_offset;
-      mali_ptr gpu_rsd = pipeline->state_bo->ptr.gpu + builder->stages[i].rsd_offset;
-
       if (i != MESA_SHADER_FRAGMENT) {
-         panvk_per_arch(emit_non_fs_rsd)(builder->device, &shader->info, shader_ptr, rsd);
-      } else if (!pipeline->fs.dynamic_rsd) {
-         void *bd = rsd + pan_size(RENDERER_STATE);
+         void *rsd = pipeline->state_bo->ptr.cpu + builder->stages[i].rsd_offset;
+         mali_ptr gpu_rsd = pipeline->state_bo->ptr.gpu + builder->stages[i].rsd_offset;
 
-         panvk_per_arch(emit_base_fs_rsd)(builder->device, pipeline, rsd);
-         for (unsigned rt = 0; rt < MAX2(pipeline->blend.state.rt_count, 1); rt++) {
-            panvk_per_arch(emit_blend)(builder->device, pipeline, rt, bd);
-            bd += pan_size(BLEND);
-         }
-      } else {
-         gpu_rsd = 0;
-         panvk_per_arch(emit_base_fs_rsd)(builder->device, pipeline, &pipeline->fs.rsd_template);
-         for (unsigned rt = 0; rt < MAX2(pipeline->blend.state.rt_count, 1); rt++) {
-            panvk_per_arch(emit_blend)(builder->device, pipeline, rt,
-                                       &pipeline->blend.bd_template[rt]);
-         }
+         panvk_per_arch(emit_non_fs_rsd)(builder->device, &shader->info, shader_ptr, rsd);
+         pipeline->rsds[i] = gpu_rsd;
       }
 
-      pipeline->rsds[i] = gpu_rsd;
       panvk_pipeline_builder_init_sysvals(builder, pipeline, i);
 
       if (i == MESA_SHADER_COMPUTE)
          pipeline->cs.local_size = shader->local_size;
+   }
+
+   if (builder->create_info.gfx && !pipeline->fs.dynamic_rsd) {
+      void *rsd = pipeline->state_bo->ptr.cpu + builder->stages[MESA_SHADER_FRAGMENT].rsd_offset;
+      mali_ptr gpu_rsd = pipeline->state_bo->ptr.gpu + builder->stages[MESA_SHADER_FRAGMENT].rsd_offset;
+      void *bd = rsd + pan_size(RENDERER_STATE);
+
+      panvk_per_arch(emit_base_fs_rsd)(builder->device, pipeline, rsd);
+      for (unsigned rt = 0; rt < pipeline->blend.state.rt_count; rt++) {
+         panvk_per_arch(emit_blend)(builder->device, pipeline, rt, bd);
+         bd += pan_size(BLEND);
+      }
+
+      pipeline->rsds[MESA_SHADER_FRAGMENT] = gpu_rsd;
+   } else if (builder->create_info.gfx) {
+      panvk_per_arch(emit_base_fs_rsd)(builder->device, pipeline, &pipeline->fs.rsd_template);
+      for (unsigned rt = 0; rt < MAX2(pipeline->blend.state.rt_count, 1); rt++) {
+         panvk_per_arch(emit_blend)(builder->device, pipeline, rt,
+                                    &pipeline->blend.bd_template[rt]);
+      }
    }
 
    pipeline->num_ubos = builder->layout->num_ubos + builder->layout->num_dyn_ubos;
