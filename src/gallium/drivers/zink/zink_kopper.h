@@ -115,5 +115,6 @@ bool
 zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int *w, int *h);
 void
 zink_kopper_fixup_depth_buffer(struct zink_context *ctx);
-
+bool
+zink_kopper_check(struct pipe_resource *pres);
 #endif

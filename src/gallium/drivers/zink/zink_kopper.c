@@ -789,3 +789,14 @@ zink_kopper_fixup_depth_buffer(struct zink_context *ctx)
    zink_surface_reference(screen, &csurf->surf, cz->surf);
    pipe_surface_release(&ctx->base, &psurf);
 }
+
+bool
+zink_kopper_check(struct pipe_resource *pres)
+{
+   struct zink_resource *res = zink_resource(pres);
+   assert(pres->bind & PIPE_BIND_DISPLAY_TARGET);
+   if (!res->obj->dt)
+      return false;
+   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   return !cdt->is_kill;
+}
