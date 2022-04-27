@@ -942,7 +942,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 /* Staging resources have one LOD: level 0. Query the strides
                  * on this LOD.
                  */
-                transfer->base.stride = staging->image.layout.slices[0].line_stride;
+                transfer->base.stride = staging->image.layout.slices[0].row_stride;
                 transfer->base.layer_stride =
                         panfrost_get_layer_stride(&staging->image.layout, 0);
 
@@ -1088,7 +1088,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 if ((usage & dpw) == dpw && rsrc->index_cache)
                         return NULL;
 
-                transfer->base.stride = rsrc->image.layout.slices[level].line_stride;
+                transfer->base.stride = rsrc->image.layout.slices[level].row_stride;
                 transfer->base.layer_stride =
                         panfrost_get_layer_stride(&rsrc->image.layout, level);
 
@@ -1103,7 +1103,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 return bo->ptr.cpu
                        + rsrc->image.layout.slices[level].offset
                        + box->z * transfer->base.layer_stride
-                       + box_blocks.y * rsrc->image.layout.slices[level].line_stride
+                       + box_blocks.y * rsrc->image.layout.slices[level].row_stride
                        + box_blocks.x * bytes_per_block;
         }
 }
@@ -1284,7 +1284,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                                         util_copy_rect(
                                                 bo->ptr.cpu + prsrc->image.layout.slices[0].offset,
                                                 prsrc->base.format,
-                                                prsrc->image.layout.slices[0].line_stride,
+                                                prsrc->image.layout.slices[0].row_stride,
                                                 0, 0,
                                                 transfer->box.width,
                                                 transfer->box.height,
