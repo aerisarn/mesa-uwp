@@ -1316,24 +1316,11 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       surface_count = map->surface_count;
    }
 
-   const uint32_t num_dwords = GENX(BLEND_STATE_length) +
-      GENX(BLEND_STATE_ENTRY_length) * surface_count;
-   uint32_t *blend_state_start, *state_pos;
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   uint32_t *blend_state_start = devinfo->ver >= 8 ?
+      pipeline->gfx8.blend_state : pipeline->gfx7.blend_state;
+   uint32_t *state_pos = blend_state_start;
 
-   if (dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
-                         ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
-      const struct intel_device_info *devinfo = &pipeline->base.device->info;
-      blend_state_start = devinfo->ver >= 8 ?
-         pipeline->gfx8.blend_state : pipeline->gfx7.blend_state;
-      pipeline->blend_state = ANV_STATE_NULL;
-   } else {
-      pipeline->blend_state =
-         anv_state_pool_alloc(&device->dynamic_state_pool, num_dwords * 4, 64);
-      blend_state_start = pipeline->blend_state.map;
-   }
-   state_pos = blend_state_start;
-
-   bool has_writeable_rt = false;
    state_pos += GENX(BLEND_STATE_length);
 #if GFX_VER >= 8
    struct GENX(BLEND_STATE_ENTRY) bs0 = { 0 };
@@ -1349,11 +1336,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       assert(i < MAX_RTS);
 
       if (info == NULL || binding->index >= info->attachmentCount) {
-         state_pos = write_disabled_blend(state_pos);
-         continue;
-      }
-
-      if ((pipeline->dynamic_state.color_writes & (1u << binding->index)) == 0) {
          state_pos = write_disabled_blend(state_pos);
          continue;
       }
@@ -1395,18 +1377,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          .AlphaBlendFunction = vk_to_intel_blend_op[a->alphaBlendOp],
       };
 
-      /* Write logic op if not dynamic */
-      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP))
-         entry.LogicOpFunction = genX(vk_to_intel_logic_op)[info->logicOp];
-
-      /* Write blending color if not dynamic */
-      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
-         entry.WriteDisableAlpha = !(a->colorWriteMask & VK_COLOR_COMPONENT_A_BIT);
-         entry.WriteDisableRed   = !(a->colorWriteMask & VK_COLOR_COMPONENT_R_BIT);
-         entry.WriteDisableGreen = !(a->colorWriteMask & VK_COLOR_COMPONENT_G_BIT);
-         entry.WriteDisableBlue  = !(a->colorWriteMask & VK_COLOR_COMPONENT_B_BIT);
-      }
-
       if (a->srcColorBlendFactor != a->srcAlphaBlendFactor ||
           a->dstColorBlendFactor != a->dstAlphaBlendFactor ||
           a->colorBlendOp != a->alphaBlendOp) {
@@ -1439,9 +1409,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          entry.ColorBufferBlendEnable = false;
       }
 
-      if (a->colorWriteMask != 0)
-         has_writeable_rt = true;
-
       /* Our hardware applies the blend factor prior to the blend function
        * regardless of what function is used.  Technically, this means the
        * hardware can do MORE than GL or Vulkan specify.  However, it also
@@ -1471,7 +1438,6 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       GENX(3DSTATE_PS_BLEND_header),
    };
    blend.AlphaToCoverageEnable         = blend_state.AlphaToCoverageEnable;
-   blend.HasWriteableRT                = has_writeable_rt;
    blend.ColorBufferBlendEnable        = bs0.ColorBufferBlendEnable;
    blend.SourceAlphaBlendFactor        = bs0.SourceAlphaBlendFactor;
    blend.DestinationAlphaBlendFactor   = bs0.DestinationAlphaBlendFactor;
@@ -1480,28 +1446,10 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
    blend.AlphaTestEnable               = false;
    blend.IndependentAlphaBlendEnable   = blend_state.IndependentAlphaBlendEnable;
 
-   if (dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
-                        ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
-      GENX(3DSTATE_PS_BLEND_pack)(NULL, pipeline->gfx8.ps_blend, &blend);
-   } else {
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PS_BLEND), _blend)
-         _blend = blend;
-   }
-#else
-   (void)has_writeable_rt;
+   GENX(3DSTATE_PS_BLEND_pack)(NULL, pipeline->gfx8.ps_blend, &blend);
 #endif
 
    GENX(BLEND_STATE_pack)(NULL, blend_state_start, &blend_state);
-
-   if (!(dynamic_states & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
-                           ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP))) {
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_BLEND_STATE_POINTERS), bsp) {
-         bsp.BlendStatePointer      = pipeline->blend_state.offset;
-#if GFX_VER >= 8
-         bsp.BlendStatePointerValid = true;
-#endif
-      }
-   }
 }
 
 static void

@@ -650,6 +650,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                       ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                       ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       const uint8_t color_writes = d->color_writes;
+      const struct anv_cmd_graphics_state *state = &cmd_buffer->state.gfx;
+      bool has_writeable_rt =
+         anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
+         (color_writes & ((1u << state->color_att_count) - 1)) != 0;
 
       /* 3DSTATE_PS_BLEND to be consistent with the rest of the
        * BLEND_STATE_ENTRY.
@@ -657,7 +661,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       uint32_t ps_blend_dwords[GENX(3DSTATE_PS_BLEND_length)];
       struct GENX(3DSTATE_PS_BLEND) ps_blend = {
          GENX(3DSTATE_PS_BLEND_header),
-         .HasWriteableRT = color_writes != 0,
+         .HasWriteableRT = has_writeable_rt,
       };
       GENX(3DSTATE_PS_BLEND_pack)(NULL, ps_blend_dwords, &ps_blend);
       anv_batch_emit_merge(&cmd_buffer->batch, ps_blend_dwords,

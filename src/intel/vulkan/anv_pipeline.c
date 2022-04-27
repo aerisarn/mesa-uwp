@@ -234,9 +234,6 @@ void anv_DestroyPipeline(
       struct anv_graphics_pipeline *gfx_pipeline =
          anv_pipeline_to_graphics(pipeline);
 
-      if (gfx_pipeline->blend_state.map)
-         anv_state_pool_free(&device->dynamic_state_pool, gfx_pipeline->blend_state);
-
       for (unsigned s = 0; s < ARRAY_SIZE(gfx_pipeline->shaders); s++) {
          if (gfx_pipeline->shaders[s])
             anv_shader_bin_unref(device, gfx_pipeline->shaders[s]);

@@ -310,7 +310,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                                                     pipeline->rasterization_samples));
    }
 
-   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
                                       ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
       const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
 
