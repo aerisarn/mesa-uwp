@@ -493,6 +493,7 @@ kopper_allocate_textures(struct dri_context *ctx,
    __DRIdrawable *dri_drawable = drawable->dPriv;
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
+   struct kopper_screen *kscreen = (struct kopper_screen*)drawable->sPriv->driverPrivate;
 
    bool is_window = cdraw->is_window;
    bool is_pixmap = !is_window && cdraw->info.bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
@@ -623,7 +624,7 @@ XXX do this once swapinterval is hooked up
                screen->base.screen->resource_create_drawable(screen->base.screen, &templ, data);
          }
 #ifdef VK_USE_PLATFORM_XCB_KHR
-         else if (is_pixmap && statts[i] == ST_ATTACHMENT_FRONT_LEFT) {
+         else if (is_pixmap && statts[i] == ST_ATTACHMENT_FRONT_LEFT && !kscreen->is_sw) {
             drawable->textures[statts[i]] = kopper_get_pixmap_buffer(cdraw, format);
             handle_in_fence(ctx->cPriv, cdraw->image);
          }
@@ -751,12 +752,80 @@ kopper_flush_frontbuffer(struct dri_context *ctx,
    return true;
 }
 
+static inline void
+get_image(__DRIdrawable *dPriv, int x, int y, int width, int height, void *data)
+{
+   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   const __DRIswrastLoaderExtension *loader = sPriv->swrast_loader;
+
+   loader->getImage(dPriv,
+                    x, y, width, height,
+                    data, dPriv->loaderPrivate);
+}
+
+static inline bool
+get_image_shm(__DRIdrawable *dPriv, int x, int y, int width, int height,
+              struct pipe_resource *res)
+{
+   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   const __DRIswrastLoaderExtension *loader = sPriv->swrast_loader;
+   struct winsys_handle whandle;
+
+   whandle.type = WINSYS_HANDLE_TYPE_SHMID;
+
+   if (loader->base.version < 4 || !loader->getImageShm)
+      return FALSE;
+
+   if (!res->screen->resource_get_handle(res->screen, NULL, res, &whandle, PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE))
+      return FALSE;
+
+   if (loader->base.version > 5 && loader->getImageShm2)
+      return loader->getImageShm2(dPriv, x, y, width, height, whandle.handle, dPriv->loaderPrivate);
+
+   loader->getImageShm(dPriv, x, y, width, height, whandle.handle, dPriv->loaderPrivate);
+   return TRUE;
+}
+
 static void
 kopper_update_tex_buffer(struct dri_drawable *drawable,
                          struct dri_context *ctx,
                          struct pipe_resource *res)
 {
+   __DRIdrawable *dPriv = drawable->dPriv;
+   __DRIscreen *sPriv = dPriv->driScreenPriv;
+   struct kopper_screen *kscreen = (struct kopper_screen*)sPriv->driverPrivate;
+   struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
+   struct st_context *st_ctx = (struct st_context *)ctx->st;
+   struct pipe_context *pipe = st_ctx->pipe;
+   struct pipe_transfer *transfer;
+   char *map;
+   int x, y, w, h;
+   int ximage_stride, line;
+   if (kscreen->has_dmabuf || cdraw->is_window || cdraw->info.bos.sType != VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR)
+      return;
+   int cpp = util_format_get_blocksize(res->format);
 
+   get_drawable_info(dPriv, &x, &y, &w, &h);
+
+   map = pipe_texture_map(pipe, res,
+                          0, 0, // level, layer,
+                          PIPE_MAP_WRITE,
+                          x, y, w, h, &transfer);
+
+   /* Copy the Drawable content to the mapped texture buffer */
+   if (!get_image_shm(dPriv, x, y, w, h, res))
+      get_image(dPriv, x, y, w, h, map);
+
+   /* The pipe transfer has a pitch rounded up to the nearest 64 pixels.
+      get_image() has a pitch rounded up to 4 bytes.  */
+   ximage_stride = ((w * cpp) + 3) & -4;
+   for (line = h-1; line; --line) {
+      memmove(&map[line * transfer->stride],
+              &map[line * ximage_stride],
+              ximage_stride);
+   }
+
+   pipe_texture_unmap(pipe, transfer);
 }
 
 static void
