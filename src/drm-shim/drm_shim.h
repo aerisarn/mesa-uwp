@@ -54,6 +54,10 @@ struct shim_device {
 
    /* Returned by drmGetVersion(). */
    const char *driver_name;
+
+   /* Returned by drmGetBusid(). */
+   const char *unique;
+
    int version_major, version_minor, version_patchlevel;
    int bus_type;
 };

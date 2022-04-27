@@ -180,6 +180,18 @@ drm_shim_ioctl_version(int fd, unsigned long request, void *arg)
 }
 
 static int
+drm_shim_ioctl_get_unique(int fd, unsigned long request, void *arg)
+{
+   struct drm_unique *gu = arg;
+
+   if (gu->unique && shim_device.unique)
+      strncpy(gu->unique, shim_device.unique, gu->unique_len);
+   gu->unique_len = shim_device.unique ? strlen(shim_device.unique) : 0;
+
+   return 0;
+}
+
+static int
 drm_shim_ioctl_get_cap(int fd, unsigned long request, void *arg)
 {
    struct drm_get_cap *gc = arg;
@@ -240,6 +252,7 @@ drm_shim_ioctl_stub(int fd, unsigned long request, void *arg)
 
 ioctl_fn_t core_ioctls[] = {
    [_IOC_NR(DRM_IOCTL_VERSION)] = drm_shim_ioctl_version,
+   [_IOC_NR(DRM_IOCTL_GET_UNIQUE)] = drm_shim_ioctl_get_unique,
    [_IOC_NR(DRM_IOCTL_GET_CAP)] = drm_shim_ioctl_get_cap,
    [_IOC_NR(DRM_IOCTL_GEM_CLOSE)] = drm_shim_ioctl_gem_close,
    [_IOC_NR(DRM_IOCTL_SYNCOBJ_CREATE)] = drm_shim_ioctl_syncobj_create,
