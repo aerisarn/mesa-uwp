@@ -902,15 +902,6 @@ panvk_pipeline_builder_parse_vertex_input(struct panvk_pipeline_builder *builder
       attribs->buf[desc->binding].special = false;
    }
 
-   for (unsigned i = 0; i < info->vertexAttributeDescriptionCount; i++) {
-      const VkVertexInputAttributeDescription *desc =
-         &info->pVertexAttributeDescriptions[i];
-      attribs->attrib[desc->location].buf = desc->binding;
-      attribs->attrib[desc->location].format =
-         vk_format_to_pipe_format(desc->format);
-      attribs->attrib[desc->location].offset = desc->offset;
-   }
-
    if (div_info) {
       for (unsigned i = 0; i < div_info->vertexBindingDivisorCount; i++) {
          const VkVertexInputBindingDivisorDescriptionEXT *div =
@@ -921,6 +912,20 @@ panvk_pipeline_builder_parse_vertex_input(struct panvk_pipeline_builder *builder
 
    const struct pan_shader_info *vs =
       &builder->shaders[MESA_SHADER_VERTEX]->info;
+
+   for (unsigned i = 0; i < info->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *desc =
+         &info->pVertexAttributeDescriptions[i];
+
+      unsigned attrib = desc->location + VERT_ATTRIB_GENERIC0;
+      unsigned slot = util_bitcount64(vs->attributes_read &
+                                      BITFIELD64_MASK(attrib));
+
+      attribs->attrib[slot].buf = desc->binding;
+      attribs->attrib[slot].format =
+         vk_format_to_pipe_format(desc->format);
+      attribs->attrib[slot].offset = desc->offset;
+   }
 
    if (vs->attribute_count >= PAN_VERTEX_ID) {
       attribs->buf[attribs->buf_count].special = true;
