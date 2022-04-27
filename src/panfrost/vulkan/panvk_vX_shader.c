@@ -66,15 +66,10 @@ panvk_init_sysvals(struct panfrost_sysvals *sysvals,
       INIT_SYSVAL(vertex_instance_offsets, VERTEX_INSTANCE_OFFSETS);
       INIT_SYSVAL(blend_constants, BLEND_CONSTANTS);
    }
-
-   int ssbo0_slot = SYSVAL_SLOT(ssbos);
-   for (unsigned i = 0; i < MAX_SSBOS; i++)
-      sysvals->sysvals[ssbo0_slot + i] = PAN_SYSVAL(SSBO, i);
+   sysvals->sysval_count = SYSVAL_SLOT(dyn_ssbos);
 
 #undef SYSVAL_SLOT
 #undef INIT_SYSVAL
-
-   sysvals->sysval_count = sizeof(struct panvk_sysvals) / 16;
 }
 
 static bool
@@ -347,7 +342,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    const struct spirv_to_nir_options spirv_options = {
       .caps = { false },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_32bit_index_offset,
+      .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
    };
 
    nir_shader *nir;
@@ -397,9 +392,13 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
    }
 
-   NIR_PASS_V(nir, nir_lower_explicit_io,
-              nir_var_mem_ubo | nir_var_mem_ssbo,
+   NIR_PASS_V(nir, panvk_per_arch(nir_lower_descriptors),
+              dev, layout, &shader->has_img_access);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo,
               nir_address_format_32bit_index_offset);
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ssbo,
+              spirv_options.ssbo_addr_format);
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_push_const,
               nir_address_format_32bit_offset);
@@ -435,9 +434,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
     * handles the latter for now.
     */
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
-
-   NIR_PASS_V(nir, panvk_per_arch(nir_lower_descriptors),
-              dev, layout, &shader->has_img_access);
 
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    if (unlikely(dev->physical_device->instance->debug_flags & PANVK_DEBUG_NIR)) {

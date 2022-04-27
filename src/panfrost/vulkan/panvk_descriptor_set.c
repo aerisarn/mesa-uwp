@@ -85,7 +85,7 @@ panvk_GetDescriptorSetLayoutSupport(VkDevice _device,
    }
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
-   unsigned ssbo_idx = 0, dynoffset_idx = 0, img_idx = 0;
+   unsigned dynoffset_idx = 0, img_idx = 0;
 
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = &bindings[i];
@@ -113,7 +113,6 @@ panvk_GetDescriptorSetLayoutSupport(VkDevice _device,
          dynoffset_idx += binding->descriptorCount;
          FALLTHROUGH;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         ssbo_idx += binding->descriptorCount;
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -159,7 +158,7 @@ panvk_CreatePipelineLayout(VkDevice _device,
    layout->num_sets = pCreateInfo->setLayoutCount;
    _mesa_sha1_init(&ctx);
 
-   unsigned sampler_idx = 0, tex_idx = 0, ssbo_idx = 0, ubo_idx = 0;
+   unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
    unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, img_idx = 0;
    for (unsigned set = 0; set < pCreateInfo->setLayoutCount; set++) {
       VK_FROM_HANDLE(panvk_descriptor_set_layout, set_layout,
@@ -170,14 +169,12 @@ panvk_CreatePipelineLayout(VkDevice _device,
       layout->sets[set].tex_offset = tex_idx;
       layout->sets[set].ubo_offset = ubo_idx;
       layout->sets[set].dyn_ubo_offset = dyn_ubo_idx;
-      layout->sets[set].ssbo_offset = ssbo_idx;
       layout->sets[set].dyn_ssbo_offset = dyn_ssbo_idx;
       layout->sets[set].img_offset = img_idx;
       sampler_idx += set_layout->num_samplers;
       tex_idx += set_layout->num_textures;
       ubo_idx += set_layout->num_ubos;
       dyn_ubo_idx += set_layout->num_dyn_ubos;
-      ssbo_idx += set_layout->num_ssbos;
       dyn_ssbo_idx += set_layout->num_dyn_ssbos;
       img_idx += set_layout->num_imgs;
 
@@ -210,7 +207,6 @@ panvk_CreatePipelineLayout(VkDevice _device,
    layout->num_textures = tex_idx;
    layout->num_ubos = ubo_idx;
    layout->num_dyn_ubos = dyn_ubo_idx;
-   layout->num_ssbos = ssbo_idx;
    layout->num_dyn_ssbos = dyn_ssbo_idx;
    layout->num_imgs = img_idx;
 
@@ -349,7 +345,6 @@ panvk_descriptor_set_destroy(struct panvk_device *device,
    vk_free(&device->vk.alloc, set->samplers);
    vk_free(&device->vk.alloc, set->ubos);
    vk_free(&device->vk.alloc, set->dyn_ubos);
-   vk_free(&device->vk.alloc, set->ssbos);
    vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->img_fmts);
    vk_free(&device->vk.alloc, set->img_attrib_bufs);

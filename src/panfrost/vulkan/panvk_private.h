@@ -345,7 +345,6 @@ struct panvk_descriptor_set {
    struct panvk_descriptor_pool *pool;
    const struct panvk_descriptor_set_layout *layout;
    struct panvk_descriptor *descs;
-   struct panvk_buffer_desc *ssbos;
    struct panvk_buffer_desc *dyn_ssbos;
    void *ubos;
    struct panvk_buffer_desc *dyn_ubos;
@@ -375,7 +374,6 @@ struct panvk_descriptor_set_binding_layout {
          };
          unsigned tex_idx;
       };
-      unsigned ssbo_idx;
       unsigned dyn_ssbo_idx;
       unsigned ubo_idx;
       unsigned dyn_ubo_idx;
@@ -408,7 +406,6 @@ struct panvk_descriptor_set_layout {
    unsigned num_textures;
    unsigned num_ubos;
    unsigned num_dyn_ubos;
-   unsigned num_ssbos;
    unsigned num_dyn_ssbos;
    unsigned num_imgs;
 
@@ -455,7 +452,6 @@ struct panvk_pipeline_layout {
    unsigned num_textures;
    unsigned num_ubos;
    unsigned num_dyn_ubos;
-   unsigned num_ssbos;
    unsigned num_dyn_ssbos;
    uint32_t num_imgs;
    uint32_t num_sets;
@@ -470,7 +466,6 @@ struct panvk_pipeline_layout {
       unsigned tex_offset;
       unsigned ubo_offset;
       unsigned dyn_ubo_offset;
-      unsigned ssbo_offset;
       unsigned dyn_ssbo_offset;
       unsigned img_offset;
    } sets[MAX_SETS];
@@ -639,10 +634,9 @@ struct panvk_sysvals {
       };
    };
 
-/* This will be gone in the next commit */
-#define MAX_SSBOS 28
+   /* The back-end compiler doesn't know about any sysvals after this point */
 
-   struct panvk_ssbo_addr ssbos[MAX_SSBOS];
+   struct panvk_ssbo_addr dyn_ssbos[MAX_DYNAMIC_STORAGE_BUFFERS];
 };
 
 struct panvk_descriptor_state {

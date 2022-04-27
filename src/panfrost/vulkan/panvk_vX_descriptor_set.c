@@ -90,7 +90,7 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
    set_layout->flags = pCreateInfo->flags;
    set_layout->binding_count = num_bindings;
 
-   unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0, ssbo_idx = 0;
+   unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
    unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, desc_idx = 0, img_idx = 0;
    uint32_t desc_ubo_size = 0;
 
@@ -147,8 +147,7 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
          dyn_ssbo_idx += binding_layout->array_size;
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-         binding_layout->ssbo_idx = ssbo_idx;
-         ssbo_idx += binding_layout->array_size;
+         binding_layout->desc_ubo_stride = sizeof(struct panvk_ssbo_addr);
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          binding_layout->img_idx = img_idx;
@@ -176,7 +175,6 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
    set_layout->num_textures = tex_idx;
    set_layout->num_ubos = ubo_idx;
    set_layout->num_dyn_ubos = dyn_ubo_idx;
-   set_layout->num_ssbos = ssbo_idx;
    set_layout->num_dyn_ssbos = dyn_ssbo_idx;
    set_layout->num_imgs = img_idx;
    p_atomic_set(&set_layout->refcount, 1);
@@ -225,14 +223,6 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
                             sizeof(*set->dyn_ubos) * layout->num_dyn_ubos, 8,
                             VK_OBJECT_TYPE_DESCRIPTOR_SET);
       if (!set->dyn_ubos)
-         goto err_free_set;
-   }
-
-   if (layout->num_ssbos) {
-      set->ssbos = vk_zalloc(&device->vk.alloc,
-                            sizeof(*set->ssbos) * layout->num_ssbos, 8,
-                            VK_OBJECT_TYPE_DESCRIPTOR_SET);
-      if (!set->ssbos)
          goto err_free_set;
    }
 
@@ -308,10 +298,9 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
 err_free_set:
    vk_free(&device->vk.alloc, set->textures);
    vk_free(&device->vk.alloc, set->samplers);
-   vk_free(&device->vk.alloc, set->ssbos);
-   vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->ubos);
    vk_free(&device->vk.alloc, set->dyn_ubos);
+   vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->img_fmts);
    vk_free(&device->vk.alloc, set->img_attrib_bufs);
    vk_free(&device->vk.alloc, set->descs);
@@ -373,6 +362,24 @@ panvk_per_arch(set_ubo_desc)(void *ubo,
    size_t size = panvk_buffer_range(buffer, pBufferInfo->offset,
                                     pBufferInfo->range);
    panvk_per_arch(emit_ubo)(ptr, size, ubo);
+}
+
+static void
+panvk_set_ssbo_desc(struct panvk_descriptor_set *set,
+                    const struct panvk_descriptor_set_binding_layout *binding_layout,
+                    uint32_t idx, const VkDescriptorBufferInfo *pBufferInfo)
+{
+   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
+
+   void *desc = (char *)set->desc_bo->ptr.cpu +
+                binding_layout->desc_ubo_offset +
+                binding_layout->desc_ubo_stride * idx;
+
+   *(struct panvk_ssbo_addr *)desc = (struct panvk_ssbo_addr) {
+      .base_addr = panvk_buffer_gpu_ptr(buffer, pBufferInfo->offset),
+      .size = panvk_buffer_range(buffer, pBufferInfo->offset,
+                                         pBufferInfo->range),
+   };
 }
 
 static void
@@ -537,8 +544,8 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
          for (unsigned i = 0; i < ndescs; i++) {
-            unsigned ssbo = binding_layout->ssbo_idx + dest_offset + i;
-            panvk_set_buffer_desc(&set->ssbos[ssbo], &pDescriptorWrite->pBufferInfo[src_offset + i]);
+            panvk_set_ssbo_desc(set, binding_layout, i,
+                                &pDescriptorWrite->pBufferInfo[src_offset + i]);
          }
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:

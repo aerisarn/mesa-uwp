@@ -89,28 +89,17 @@ panvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
 }
 
 static void
-panvk_set_ssbo_pointers(struct panvk_descriptor_state *desc_state,
-                        unsigned ssbo_offset,
-                        unsigned dyn_ssbo_offset,
-                        struct panvk_descriptor_set *set)
+panvk_set_dyn_ssbo_pointers(struct panvk_descriptor_state *desc_state,
+                            unsigned dyn_ssbo_offset,
+                            struct panvk_descriptor_set *set)
 {
    struct panvk_sysvals *sysvals = &desc_state->sysvals;
-
-   unsigned ssbo_idx = ssbo_offset;
-   for (unsigned i = 0; i < set->layout->num_ssbos; i++) {
-      const struct panvk_buffer_desc *ssbo = &set->ssbos[i];
-
-      sysvals->ssbos[ssbo_idx++] = (struct panvk_ssbo_addr) {
-         .base_addr = panvk_buffer_gpu_ptr(ssbo->buffer, ssbo->offset),
-         .size = panvk_buffer_range(ssbo->buffer, ssbo->offset, ssbo->size),
-      };
-   }
 
    for (unsigned i = 0; i < set->layout->num_dyn_ssbos; i++) {
       const struct panvk_buffer_desc *ssbo =
          &desc_state->dyn.ssbos[dyn_ssbo_offset + i];
 
-      sysvals->ssbos[ssbo_idx++] = (struct panvk_ssbo_addr) {
+      sysvals->dyn_ssbos[dyn_ssbo_offset + i] = (struct panvk_ssbo_addr) {
          .base_addr = panvk_buffer_gpu_ptr(ssbo->buffer, ssbo->offset),
          .size = panvk_buffer_range(ssbo->buffer, ssbo->offset, ssbo->size),
       };
@@ -165,18 +154,17 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
          }
       }
 
-      if (set->layout->num_ssbos || set->layout->num_dyn_ssbos) {
-         panvk_set_ssbo_pointers(descriptors_state,
-                                 playout->sets[idx].ssbo_offset,
-                                 playout->sets[idx].dyn_ssbo_offset,
-                                 set);
+      if (set->layout->num_dyn_ssbos) {
+         panvk_set_dyn_ssbo_pointers(descriptors_state,
+                                     playout->sets[idx].dyn_ssbo_offset,
+                                     set);
       }
 
-      if (set->layout->num_ssbos || set->layout->num_dyn_ssbos)
+      if (set->layout->num_dyn_ssbos)
          descriptors_state->dirty |= PANVK_DYNAMIC_SSBO;
 
       if (set->layout->num_ubos || set->layout->num_dyn_ubos ||
-          set->layout->num_ssbos || set->layout->num_dyn_ssbos)
+          set->layout->num_dyn_ssbos || set->layout->desc_ubo_size)
          descriptors_state->ubos = 0;
 
       if (set->layout->num_textures)
