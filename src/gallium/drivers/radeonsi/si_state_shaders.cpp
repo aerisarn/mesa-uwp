@@ -3944,11 +3944,11 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    assert(((sctx->screen->tess_factor_ring_size / 4) & C_030938_SIZE) == 0);
 
    /* The address must be aligned to 2^19, because the shader only
-    * receives the high 13 bits.
+    * receives the high 13 bits. Align it to 2MB to match the GPU page size.
     */
    sctx->tess_rings = pipe_aligned_buffer_create(
       sctx->b.screen, SI_RESOURCE_FLAG_32BIT | SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_DEFAULT,
-      sctx->screen->tess_offchip_ring_size + sctx->screen->tess_factor_ring_size, 1 << 19);
+      sctx->screen->tess_offchip_ring_size + sctx->screen->tess_factor_ring_size, 2 * 1024 * 1024);
    if (!sctx->tess_rings)
       return;
 
@@ -3957,7 +3957,7 @@ void si_init_tess_factor_ring(struct si_context *sctx)
          sctx->b.screen,
          PIPE_RESOURCE_FLAG_ENCRYPTED | SI_RESOURCE_FLAG_32BIT | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
          PIPE_USAGE_DEFAULT,
-         sctx->screen->tess_offchip_ring_size + sctx->screen->tess_factor_ring_size, 1 << 19);
+         sctx->screen->tess_offchip_ring_size + sctx->screen->tess_factor_ring_size, 2 * 1024 * 1024);
    }
 
    uint64_t factor_va =
