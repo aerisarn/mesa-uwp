@@ -2110,7 +2110,7 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
 {
    anv_cmd_dirty_mask_t states = ANV_CMD_DIRTY_DYNAMIC_ALL;
 
-   pipeline->dynamic_state = default_dynamic_state;
+   anv_dynamic_state_init(&pipeline->dynamic_state);
 
    states &= ~pipeline->dynamic_states;
 
@@ -2314,22 +2314,33 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       const VkPipelineSampleLocationsStateCreateInfoEXT *sl_info = ms_info ?
          vk_find_struct_const(ms_info, PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT) : NULL;
 
-      uint32_t samples = ms_info ? ms_info->rasterizationSamples : 1;
+      uint32_t samples = MAX2(1, ms_info ? ms_info->rasterizationSamples : 1);
+      struct intel_sample_position *locations;
+      switch (samples) {
+      case  1: locations = dynamic->sample_locations.locations_1;  break;
+      case  2: locations = dynamic->sample_locations.locations_2;  break;
+      case  4: locations = dynamic->sample_locations.locations_4;  break;
+      case  8: locations = dynamic->sample_locations.locations_8;  break;
+      case 16: locations = dynamic->sample_locations.locations_16; break;
+      default: unreachable("invalid sample count");
+      }
+
       if (sl_info) {
          const VkSampleLocationEXT *positions =
             sl_info->sampleLocationsInfo.pSampleLocations;
          for (uint32_t i = 0; i < samples; i++) {
-            dynamic->sample_locations.locations[i].x = positions[i].x;
-            dynamic->sample_locations.locations[i].y = positions[i].y;
+            locations[i].x = positions[i].x;
+            locations[i].y = positions[i].y;
          }
       } else {
          const struct intel_sample_position *positions =
             intel_get_sample_positions(samples);
          for (uint32_t i = 0; i < samples; i++) {
-            dynamic->sample_locations.locations[i].x = positions[i].x;
-            dynamic->sample_locations.locations[i].y = positions[i].y;
+            locations[i].x = positions[i].x;
+            locations[i].y = positions[i].y;
          }
       }
+      dynamic->sample_locations.pipeline_samples = samples;
    }
 
    if (states & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) {

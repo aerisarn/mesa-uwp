@@ -49,6 +49,7 @@
 #include "common/intel_gem.h"
 #include "common/intel_l3_config.h"
 #include "common/intel_measure.h"
+#include "common/intel_sample_positions.h"
 #include "dev/intel_device_info.h"
 #include "blorp/blorp.h"
 #include "compiler/brw_compiler.h"
@@ -2707,7 +2708,13 @@ struct anv_dynamic_state {
    } line_stipple;
 
    struct {
-      VkSampleLocationEXT                       locations[MAX_SAMPLE_LOCATIONS];
+      struct intel_sample_position              locations_1[1];
+      struct intel_sample_position              locations_2[2];
+      struct intel_sample_position              locations_4[4];
+      struct intel_sample_position              locations_8[8];
+      struct intel_sample_position              locations_16[16];
+      /* Only valid on the pipeline dynamic state */
+      unsigned                                  pipeline_samples;
    } sample_locations;
 
    struct {
@@ -2736,9 +2743,24 @@ struct anv_dynamic_state {
 
 extern const struct anv_dynamic_state default_dynamic_state;
 
+void anv_dynamic_state_init(struct anv_dynamic_state *state);
 uint32_t anv_dynamic_state_copy(struct anv_dynamic_state *dest,
                                 const struct anv_dynamic_state *src,
                                 uint32_t copy_mask);
+
+static inline struct intel_sample_position *
+anv_dynamic_state_get_sample_locations(struct anv_dynamic_state *state,
+                                       unsigned samples)
+{
+   switch (samples) {
+   case  1: return state->sample_locations.locations_1;  break;
+   case  2: return state->sample_locations.locations_2;  break;
+   case  4: return state->sample_locations.locations_4;  break;
+   case  8: return state->sample_locations.locations_8;  break;
+   case 16: return state->sample_locations.locations_16; break;
+   default: unreachable("invalid sample count");
+   }
+}
 
 struct anv_surface_state {
    struct anv_state state;

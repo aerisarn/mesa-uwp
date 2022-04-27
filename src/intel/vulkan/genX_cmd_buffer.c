@@ -1788,6 +1788,18 @@ genX(BeginCommandBuffer)(
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
    }
 
+#if GFX_VER >= 8
+   /* Emit the sample pattern at the beginning of the batch because the
+    * default locations emitted at the device initialization might have been
+    * changed by a previous command buffer.
+    *
+    * Do not change that when we're continuing a previous renderpass.
+    */
+   if (cmd_buffer->device->vk.enabled_extensions.EXT_sample_locations &&
+       !(cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT))
+      genX(emit_sample_pattern)(&cmd_buffer->batch, NULL);
+#endif
+
 #if GFX_VERx10 >= 75
    if (cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       const VkCommandBufferInheritanceConditionalRenderingInfoEXT *conditional_rendering_info =

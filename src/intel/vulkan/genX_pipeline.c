@@ -929,24 +929,6 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
                           NULL);
 #endif
 
-   /* If EXT_sample_locations is enabled and the sample locations are not
-    * dynamic, then we need to emit those position in the pipeline batch. On
-    * Gfx8+ this is part of 3DSTATE_SAMPLE_PATTERN, prior to that this is in
-    * 3DSTATE_MULTISAMPLE.
-    */
-   if (pipeline->base.device->vk.enabled_extensions.EXT_sample_locations &&
-       !(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
-#if GFX_VER >= 8
-      genX(emit_sample_pattern)(&pipeline->base.batch,
-                                pipeline->rasterization_samples,
-                                pipeline->dynamic_state.sample_locations.locations);
-#else
-      genX(emit_multisample)(&pipeline->base.batch,
-                             pipeline->rasterization_samples,
-                             pipeline->dynamic_state.sample_locations.locations);
-#endif
-   }
-
    /* From the Vulkan 1.0 spec:
     *    If pSampleMask is NULL, it is treated as if the mask has all bits
     *    enabled, i.e. no coverage is removed from fragments.

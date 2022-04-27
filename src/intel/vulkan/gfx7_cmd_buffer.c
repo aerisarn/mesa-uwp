@@ -301,10 +301,12 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx7.wm);
    }
 
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS) {
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
       genX(emit_multisample)(&cmd_buffer->batch,
                              pipeline->rasterization_samples,
-                             d->sample_locations.locations);
+                             anv_dynamic_state_get_sample_locations(d,
+                                                                    pipeline->rasterization_samples));
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
