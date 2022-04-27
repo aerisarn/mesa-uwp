@@ -1142,6 +1142,13 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
                               struct pan_blend_state *blend_state,
                               bool static_blend_constants,
                               const VkAllocationCallbacks *alloc);
+struct nir_shader;
+
+bool
+panvk_per_arch(nir_lower_descriptors)(struct nir_shader *nir,
+                                      struct panvk_device *dev,
+                                      const struct panvk_pipeline_layout *layout,
+                                      bool *has_img_access_out);
 #endif
 
 #endif /* PANVK_PRIVATE_H */
