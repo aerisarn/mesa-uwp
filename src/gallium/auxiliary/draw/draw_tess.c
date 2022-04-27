@@ -501,7 +501,7 @@ void draw_delete_tess_ctrl_shader(struct draw_context *draw,
    }
 #endif
 
-   if (dtcs->state.ir.nir)
+   if (dtcs->state.type == PIPE_SHADER_IR_NIR && dtcs->state.ir.nir)
       ralloc_free(dtcs->state.ir.nir);
    FREE(dtcs);
 }
@@ -626,7 +626,7 @@ void draw_delete_tess_eval_shader(struct draw_context *draw,
       align_free(dtes->tes_input);
    }
 #endif
-   if (dtes->state.ir.nir)
+   if (dtes->state.type == PIPE_SHADER_IR_NIR && dtes->state.ir.nir)
       ralloc_free(dtes->state.ir.nir);
    FREE(dtes);
 }

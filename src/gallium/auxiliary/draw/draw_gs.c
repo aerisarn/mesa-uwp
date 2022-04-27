@@ -960,7 +960,7 @@ void draw_delete_geometry_shader(struct draw_context *draw,
    for (i = 0; i < TGSI_MAX_VERTEX_STREAMS; i++)
       FREE(dgs->stream[i].primitive_lengths);
 
-   if (dgs->state.ir.nir)
+   if (dgs->state.type == PIPE_SHADER_IR_NIR && dgs->state.ir.nir)
       ralloc_free(dgs->state.ir.nir);
    FREE((void*) dgs->state.tokens);
    FREE(dgs);
