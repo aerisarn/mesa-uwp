@@ -116,15 +116,24 @@ wsi_win32_surface_get_support(VkIcdSurfaceBase *surface,
 }
 
 static VkResult
-wsi_win32_surface_get_capabilities(VkIcdSurfaceBase *surface,
+wsi_win32_surface_get_capabilities(VkIcdSurfaceBase *surf,
                                 struct wsi_device *wsi_device,
                                 VkSurfaceCapabilitiesKHR* caps)
 {
+   VkIcdSurfaceWin32 *surface = (VkIcdSurfaceWin32 *)surf;
+
+   RECT win_rect;
+   if (!GetClientRect(surface->hwnd, &win_rect))
+      return VK_ERROR_SURFACE_LOST_KHR;
+
    caps->minImageCount = 1;
    /* There is no real maximum */
    caps->maxImageCount = 0;
 
-   caps->currentExtent = (VkExtent2D) { UINT32_MAX, UINT32_MAX };
+   caps->currentExtent = (VkExtent2D) {
+      win_rect.right - win_rect.left,
+      win_rect.bottom - win_rect.top
+   };
    caps->minImageExtent = (VkExtent2D) { 1, 1 };
    caps->maxImageExtent = (VkExtent2D) {
       wsi_device->maxImageDimension2D,
