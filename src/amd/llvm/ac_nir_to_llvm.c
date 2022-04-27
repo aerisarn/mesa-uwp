@@ -4251,8 +4251,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          cache_policy |= ac_swizzled;
       if (slc)
          cache_policy |= ac_slc;
-      if (ctx->ac.chip_class >= GFX10)
-         cache_policy |= ac_dlc;
 
       LLVMTypeRef channel_type;
       if (instr->dest.ssa.bit_size == 8)
