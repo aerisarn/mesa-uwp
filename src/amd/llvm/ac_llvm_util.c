@@ -27,7 +27,6 @@
 
 #include "ac_llvm_build.h"
 #include "c11/threads.h"
-#include "gallivm/lp_bld_misc.h"
 #include "util/bitscan.h"
 #include "util/u_math.h"
 #include <llvm-c/Core.h>
