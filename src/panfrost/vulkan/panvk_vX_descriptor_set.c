@@ -92,6 +92,7 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0, ssbo_idx = 0;
    unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, desc_idx = 0, img_idx = 0;
+   uint32_t desc_ubo_size = 0;
 
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
       const VkDescriptorSetLayoutBinding *binding = &bindings[i];
@@ -101,6 +102,7 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
       binding_layout->type = binding->descriptorType;
       binding_layout->array_size = binding->descriptorCount;
       binding_layout->shader_stages = binding->stageFlags;
+      binding_layout->desc_ubo_stride = 0;
       if (binding->pImmutableSamplers) {
          binding_layout->immutable_samplers = immutable_samplers;
          immutable_samplers += binding_layout->array_size;
@@ -159,7 +161,15 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
       default:
          unreachable("Invalid descriptor type");
       }
+
+      binding_layout->desc_ubo_offset = desc_ubo_size;
+      desc_ubo_size += binding_layout->desc_ubo_stride *
+                       binding_layout->array_size;
    }
+
+   set_layout->desc_ubo_size = desc_ubo_size;
+   if (desc_ubo_size > 0)
+      set_layout->desc_ubo_index = ubo_idx++;
 
    set_layout->num_descs = desc_idx;
    set_layout->num_samplers = sampler_idx;
@@ -278,6 +288,20 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
       }
    }
 
+   if (layout->desc_ubo_size) {
+      set->desc_bo = panfrost_bo_create(&device->physical_device->pdev,
+                                        layout->desc_ubo_size,
+                                        0, "Descriptor set");
+      if (!set->desc_bo)
+         goto err_free_set;
+
+      struct mali_uniform_buffer_packed *ubos = set->ubos;
+
+      panvk_per_arch(emit_ubo)(set->desc_bo->ptr.gpu,
+                               layout->desc_ubo_size,
+                               &ubos[layout->desc_ubo_index]);
+   }
+
    *out_set = set;
    return VK_SUCCESS;
 
@@ -291,6 +315,8 @@ err_free_set:
    vk_free(&device->vk.alloc, set->img_fmts);
    vk_free(&device->vk.alloc, set->img_attrib_bufs);
    vk_free(&device->vk.alloc, set->descs);
+   if (set->desc_bo)
+      panfrost_bo_unreference(set->desc_bo);
    vk_object_free(&device->vk, NULL, set);
    return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 }

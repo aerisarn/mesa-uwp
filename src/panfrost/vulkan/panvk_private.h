@@ -349,6 +349,8 @@ struct panvk_descriptor_set {
    void *textures;
    void *img_attrib_bufs;
    uint32_t *img_fmts;
+
+   struct panfrost_bo *desc_bo;
 };
 
 #define MAX_SETS 4
@@ -375,6 +377,12 @@ struct panvk_descriptor_set_binding_layout {
       unsigned dyn_ubo_idx;
    };
 
+   /* Offset into the descriptor UBO where this binding starts */
+   uint32_t desc_ubo_offset;
+
+   /* Stride between descriptors in this binding in the UBO */
+   uint16_t desc_ubo_stride;
+
    /* Shader stages affected by this set+binding */
    uint16_t shader_stages;
 
@@ -399,6 +407,12 @@ struct panvk_descriptor_set_layout {
    unsigned num_ssbos;
    unsigned num_dyn_ssbos;
    unsigned num_imgs;
+
+   /* Size of the descriptor UBO */
+   uint32_t desc_ubo_size;
+
+   /* Index of the descriptor UBO */
+   unsigned desc_ubo_index;
 
    /* Number of bindings in this descriptor set */
    uint32_t binding_count;

@@ -357,6 +357,8 @@ panvk_descriptor_set_destroy(struct panvk_device *device,
    vk_free(&device->vk.alloc, set->img_fmts);
    vk_free(&device->vk.alloc, set->img_attrib_bufs);
    vk_free(&device->vk.alloc, set->descs);
+   if (set->desc_bo)
+      panfrost_bo_unreference(set->desc_bo);
    vk_object_free(&device->vk, NULL, set);
 }
 
