@@ -64,6 +64,7 @@ struct kopper_screen {
    struct pipe_screen *screen; //unwrapped
    bool has_dmabuf;
    bool has_modifiers;
+   bool is_sw;
 };
 
 extern const __DRIimageExtension driVkImageExtension;
@@ -170,6 +171,7 @@ kopper_init_screen(__DRIscreen * sPriv)
    screen->lookup_egl_image = dri2_lookup_egl_image;
    kscreen->has_dmabuf = pscreen->get_param(pscreen, PIPE_CAP_DMABUF);
    kscreen->has_modifiers = pscreen->query_dmabuf_modifiers != NULL;
+   kscreen->is_sw = zink_kopper_is_cpu(pscreen);
    if (kscreen->has_dmabuf)
       sPriv->extensions = drivk_screen_extensions;
    else
