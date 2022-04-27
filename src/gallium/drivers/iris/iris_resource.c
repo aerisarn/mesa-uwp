@@ -1215,7 +1215,6 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    return &res->base.b;
 
 fail:
-   fprintf(stderr, "XXX: resource creation failed\n");
    iris_resource_destroy(pscreen, &res->base.b);
    return NULL;
 }
