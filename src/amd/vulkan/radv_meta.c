@@ -537,6 +537,8 @@ radv_device_init_meta(struct radv_device *device)
 
    mtx_init(&device->meta_state.mtx, mtx_plain);
 
+   device->app_shaders_internal = true;
+
    result = radv_device_init_meta_clear_state(device, on_demand);
    if (result != VK_SUCCESS)
       goto fail_clear;
@@ -596,6 +598,8 @@ radv_device_init_meta(struct radv_device *device)
    result = radv_device_init_meta_etc_decode_state(device, on_demand);
    if (result != VK_SUCCESS)
       goto fail_etc_decode;
+
+   device->app_shaders_internal = false;
 
    return VK_SUCCESS;
 

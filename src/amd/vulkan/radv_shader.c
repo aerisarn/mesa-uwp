@@ -579,7 +579,9 @@ radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipelin
       uint32_t *spirv = (uint32_t *)stage->spirv.data;
       assert(stage->spirv.size % 4 == 0);
 
-      if (device->instance->debug_flags & RADV_DEBUG_DUMP_SPIRV)
+      bool dump_meta = device->instance->debug_flags & RADV_DEBUG_DUMP_META_SHADERS;
+      if ((device->instance->debug_flags & RADV_DEBUG_DUMP_SPIRV) &&
+          (!device->app_shaders_internal || dump_meta))
          radv_print_spirv(stage->spirv.data, stage->spirv.size, stderr);
 
       uint32_t num_spec_entries = 0;
@@ -669,6 +671,7 @@ radv_shader_compile_to_nir(struct radv_device *device, const struct radv_pipelin
       nir = spirv_to_nir(spirv, stage->spirv.size / 4, spec_entries, num_spec_entries, stage->stage,
                          stage->entrypoint, &spirv_options,
                          &device->physical_device->nir_options[stage->stage]);
+      nir->info.internal |= device->app_shaders_internal;
       assert(nir->info.stage == stage->stage);
       nir_validate_shader(nir, "after spirv_to_nir");
 

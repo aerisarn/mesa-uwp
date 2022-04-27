@@ -884,6 +884,9 @@ struct radv_device {
 
    /* Whether per-vertex VRS is forced. */
    bool force_vrs_enabled;
+
+   /* Whether shaders created through application entrypoints are considered internal. */
+   bool app_shaders_internal;
 };
 
 struct radv_device_memory {
