@@ -760,6 +760,7 @@ panvk_pipeline_builder_parse_rast(struct panvk_pipeline_builder *builder,
    pipeline->rast.cull_front_face = builder->create_info.gfx->pRasterizationState->cullMode & VK_CULL_MODE_FRONT_BIT;
    pipeline->rast.cull_back_face = builder->create_info.gfx->pRasterizationState->cullMode & VK_CULL_MODE_BACK_BIT;
    pipeline->rast.line_width = builder->create_info.gfx->pRasterizationState->lineWidth;
+   pipeline->rast.enable = !builder->create_info.gfx->pRasterizationState->rasterizerDiscardEnable;
 }
 
 static bool

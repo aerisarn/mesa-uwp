@@ -870,6 +870,7 @@ struct panvk_pipeline {
       bool front_ccw;
       bool cull_front_face;
       bool cull_back_face;
+      bool enable;
    } rast;
 
    struct {

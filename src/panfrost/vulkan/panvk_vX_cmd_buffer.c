@@ -900,7 +900,7 @@ panvk_cmd_draw(struct panvk_cmd_buffer *cmdbuf,
       batch = panvk_cmd_open_batch(cmdbuf);
    }
 
-   if (pipeline->fs.required)
+   if (pipeline->rast.enable)
       panvk_per_arch(cmd_alloc_fb_desc)(cmdbuf);
 
    panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, true);
@@ -949,7 +949,7 @@ panvk_cmd_draw(struct panvk_cmd_buffer *cmdbuf,
                        MALI_JOB_TYPE_VERTEX, false, false, 0, 0,
                        &draw->jobs.vertex, false);
 
-   if (pipeline->fs.required) {
+   if (pipeline->rast.enable) {
       panfrost_add_job(&cmdbuf->desc_pool.base, &batch->scoreboard,
                        MALI_JOB_TYPE_TILER, false, false, vjob_id, 0,
                        &draw->jobs.tiler, false);
