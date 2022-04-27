@@ -267,6 +267,7 @@ impl SPIRVBin {
                 int64: true,
                 kernel: true,
                 kernel_image: true,
+                kernel_image_read_write: true,
                 linkage: true,
                 literal_sampler: true,
                 printf: true,

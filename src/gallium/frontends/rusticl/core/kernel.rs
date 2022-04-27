@@ -39,11 +39,12 @@ pub enum KernelArgValue {
 pub enum KernelArgType {
     Constant = 0, // for anything passed by value
     Image = 1,
-    Sampler = 2,
-    Texture = 3,
-    MemGlobal = 4,
-    MemConstant = 5,
-    MemLocal = 6,
+    RWImage = 2,
+    Sampler = 3,
+    Texture = 4,
+    MemGlobal = 5,
+    MemConstant = 6,
+    MemLocal = 7,
 }
 
 #[derive(Hash, PartialEq, Eq, Clone)]
@@ -100,10 +101,13 @@ impl KernelArg {
                 }
                 clc_kernel_arg_address_qualifier::CLC_KERNEL_ARG_ADDRESS_GLOBAL => {
                     if unsafe { glsl_type_is_image(nir.type_) } {
-                        if nir.data.access() == gl_access_qualifier::ACCESS_NON_WRITEABLE.0 {
+                        let access = nir.data.access();
+                        if access == gl_access_qualifier::ACCESS_NON_WRITEABLE.0 {
                             KernelArgType::Texture
-                        } else {
+                        } else if access == gl_access_qualifier::ACCESS_NON_READABLE.0 {
                             KernelArgType::Image
+                        } else {
+                            KernelArgType::RWImage
                         }
                     } else {
                         KernelArgType::MemGlobal
@@ -164,11 +168,12 @@ impl KernelArg {
         let kind = match read_ne_u8(bin) {
             0 => KernelArgType::Constant,
             1 => KernelArgType::Image,
-            2 => KernelArgType::Sampler,
-            3 => KernelArgType::Texture,
-            4 => KernelArgType::MemGlobal,
-            5 => KernelArgType::MemConstant,
-            6 => KernelArgType::MemLocal,
+            2 => KernelArgType::RWImage,
+            3 => KernelArgType::Sampler,
+            4 => KernelArgType::Texture,
+            5 => KernelArgType::MemGlobal,
+            6 => KernelArgType::MemConstant,
+            7 => KernelArgType::MemLocal,
             _ => return None,
         };
 
@@ -762,6 +767,7 @@ impl Kernel {
             }
 
             if arg.kind != KernelArgType::Image
+                && arg.kind != KernelArgType::RWImage
                 && arg.kind != KernelArgType::Texture
                 && arg.kind != KernelArgType::Sampler
             {
@@ -777,7 +783,10 @@ impl Kernel {
                     } else {
                         let format = mem.image_format.to_pipe_format().unwrap();
                         let (formats, orders) = if arg.kind == KernelArgType::Image {
-                            iviews.push(res.pipe_image_view(format));
+                            iviews.push(res.pipe_image_view(format, false));
+                            (&mut img_formats, &mut img_orders)
+                        } else if arg.kind == KernelArgType::RWImage {
+                            iviews.push(res.pipe_image_view(format, true));
                             (&mut img_formats, &mut img_orders)
                         } else {
                             sviews.push((res.clone(), format));

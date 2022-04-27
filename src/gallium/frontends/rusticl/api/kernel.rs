@@ -284,7 +284,7 @@ pub fn set_kernel_arg(
                         }
                     }
                     KernelArgType::MemLocal => KernelArgValue::LocalMem(arg_size),
-                    KernelArgType::Image | KernelArgType::Texture => {
+                    KernelArgType::Image | KernelArgType::RWImage | KernelArgType::Texture => {
                         let img: *const cl_mem = arg_value.cast();
                         KernelArgValue::MemObject((*img).get_ref()?)
                     }

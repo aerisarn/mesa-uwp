@@ -418,6 +418,10 @@ impl Device {
         if self.image_supported() {
             add_ext(1, 0, 0, "", "__opencl_c_images");
 
+            if self.image_read_write_supported() {
+                add_ext(1, 0, 0, "", "__opencl_c_read_write_images");
+            }
+
             if self.image_3d_write_supported() {
                 add_ext(
                     1,
@@ -534,6 +538,15 @@ impl Device {
       self.image_2d_size() >= 2048
     }
 
+    pub fn image_read_write_supported(&self) -> bool {
+        !FORMATS
+            .iter()
+            .filter(|f| f.req_for_full_read_and_write)
+            .map(|f| self.formats.get(&f.cl_image_format).unwrap())
+            .map(|f| f.get(&CL_MEM_OBJECT_IMAGE3D).unwrap())
+            .any(|f| *f & cl_mem_flags::from(CL_MEM_KERNEL_READ_AND_WRITE) == 0)
+    }
+
     pub fn image_3d_write_supported(&self) -> bool {
         !FORMATS
             .iter()
@@ -643,7 +656,7 @@ impl Device {
             fp64: self.doubles_supported(),
             int64: self.long_supported(),
             images: self.image_supported(),
-            images_read_write: false,
+            images_read_write: self.image_read_write_supported(),
             images_write_3d: self.image_3d_write_supported(),
             intel_subgroups: false,
             subgroups: false,

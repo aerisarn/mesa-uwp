@@ -27,7 +27,7 @@ impl PipeResource {
         unsafe { self.pipe.as_ref().unwrap() }
     }
 
-    pub fn pipe_image_view(&self, format: pipe_format) -> pipe_image_view {
+    pub fn pipe_image_view(&self, format: pipe_format, read_write: bool) -> pipe_image_view {
         let u = if self.as_ref().target() == pipe_texture_target::PIPE_BUFFER {
             pipe_image_view__bindgen_ty_1 {
                 buf: pipe_image_view__bindgen_ty_1__bindgen_ty_2 {
@@ -50,11 +50,17 @@ impl PipeResource {
             pipe_image_view__bindgen_ty_1 { tex: tex }
         };
 
+        let shader_access = if read_write {
+            PIPE_IMAGE_ACCESS_READ_WRITE
+        } else {
+            PIPE_IMAGE_ACCESS_WRITE
+        } as u16;
+
         pipe_image_view {
             resource: self.pipe(),
             format: format,
             access: 0,
-            shader_access: PIPE_IMAGE_ACCESS_WRITE as u16,
+            shader_access: shader_access,
             u: u,
         }
     }
