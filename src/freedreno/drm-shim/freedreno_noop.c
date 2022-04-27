@@ -101,6 +101,7 @@ msm_ioctl_gem_info(int fd, unsigned long request, void *arg)
    case MSM_INFO_GET_IOVA:
       args->value = msm_bo(bo)->offset;
       break;
+   case MSM_INFO_SET_IOVA:
    case MSM_INFO_SET_NAME:
       break;
    default:
@@ -145,7 +146,12 @@ msm_ioctl_get_param(int fd, unsigned long request, void *arg)
       gp->value = 1;
       return 0;
    case MSM_PARAM_FAULTS:
+   case MSM_PARAM_SUSPENDS:
       gp->value = 0;
+      return 0;
+   case MSM_PARAM_VA_START:
+   case MSM_PARAM_VA_SIZE:
+      gp->value = 0x100000000ULL;
       return 0;
    default:
       fprintf(stderr, "Unknown DRM_IOCTL_MSM_GET_PARAM %d\n", gp->param);
@@ -165,6 +171,7 @@ msm_ioctl_gem_madvise(int fd, unsigned long request, void *arg)
 
 static ioctl_fn_t driver_ioctls[] = {
    [DRM_MSM_GET_PARAM] = msm_ioctl_get_param,
+   [DRM_MSM_SET_PARAM] = msm_ioctl_noop,
    [DRM_MSM_GEM_NEW] = msm_ioctl_gem_new,
    [DRM_MSM_GEM_INFO] = msm_ioctl_gem_info,
    [DRM_MSM_GEM_CPU_PREP] = msm_ioctl_noop,
@@ -295,7 +302,7 @@ drm_shim_driver_init(void)
 
    /* msm uses the DRM version to expose features, instead of getparam. */
    shim_device.version_major = 1;
-   shim_device.version_minor = 6;
+   shim_device.version_minor = 9;
    shim_device.version_patchlevel = 0;
 
    msm_driver_get_device_info();
