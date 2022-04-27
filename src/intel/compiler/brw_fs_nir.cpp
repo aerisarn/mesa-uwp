@@ -4623,7 +4623,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       assert(fence_regs_count <= ARRAY_SIZE(fence_regs));
 
-      /* There are three cases where we want to insert a stall:
+      /* There are four cases where we want to insert a stall:
        *
        *  1. If we're a nir_intrinsic_end_invocation_interlock.  This is
        *     required to ensure that the shader EOT doesn't happen until
@@ -4637,9 +4637,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        *  3. If we have no fences.  In this case, we need at least a
        *     scheduling barrier to keep the compiler from moving things
        *     around in an invalid way.
+       *
+       *  4. On platforms with LSC.
        */
       if (instr->intrinsic == nir_intrinsic_end_invocation_interlock ||
-          fence_regs_count != 1) {
+          fence_regs_count != 1 || devinfo->has_lsc) {
          ubld.exec_all().group(1, 0).emit(
             FS_OPCODE_SCHEDULING_FENCE, ubld.null_reg_ud(),
             fence_regs, fence_regs_count);
