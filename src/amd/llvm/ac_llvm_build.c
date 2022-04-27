@@ -1111,6 +1111,13 @@ static unsigned get_load_cache_policy(struct ac_llvm_context *ctx, unsigned cach
           (ctx->chip_class >= GFX10 && ctx->chip_class < GFX11 && cache_policy & ac_glc ? ac_dlc : 0);
 }
 
+static unsigned get_store_cache_policy(struct ac_llvm_context *ctx, unsigned cache_policy)
+{
+   if (ctx->chip_class >= GFX11)
+      cache_policy &= ~ac_glc; /* GLC has no effect on stores */
+   return cache_policy;
+}
+
 static void ac_build_buffer_store_common(struct ac_llvm_context *ctx, LLVMValueRef rsrc,
                                          LLVMValueRef data, LLVMValueRef vindex,
                                          LLVMValueRef voffset, LLVMValueRef soffset,
@@ -1124,7 +1131,7 @@ static void ac_build_buffer_store_common(struct ac_llvm_context *ctx, LLVMValueR
       args[idx++] = vindex ? vindex : ctx->i32_0;
    args[idx++] = voffset ? voffset : ctx->i32_0;
    args[idx++] = soffset ? soffset : ctx->i32_0;
-   args[idx++] = LLVMConstInt(ctx->i32, cache_policy, 0);
+   args[idx++] = LLVMConstInt(ctx->i32, get_store_cache_policy(ctx, cache_policy), 0);
    const char *indexing_kind = vindex ? "struct" : "raw";
    char name[256], type_name[8];
 
