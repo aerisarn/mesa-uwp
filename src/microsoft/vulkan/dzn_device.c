@@ -279,6 +279,9 @@ dzn_instance_create(const VkInstanceCreateInfo *pCreateInfo,
    vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
                                                &dzn_instance_entrypoints,
                                                true);
+   vk_instance_dispatch_table_from_entrypoints(&dispatch_table,
+                                               &wsi_instance_entrypoints,
+                                               false);
 
    VkResult result =
       vk_instance_init(&instance->vk, &instance_extensions,
@@ -2143,11 +2146,18 @@ dzn_device_create(struct dzn_physical_device *pdev,
 {
    struct dzn_instance *instance = container_of(pdev->vk.instance, struct dzn_instance, vk);
 
+   uint32_t graphics_queue_count = 0;
    uint32_t queue_count = 0;
    for (uint32_t qf = 0; qf < pCreateInfo->queueCreateInfoCount; qf++) {
       const VkDeviceQueueCreateInfo *qinfo = &pCreateInfo->pQueueCreateInfos[qf];
       queue_count += qinfo->queueCount;
+      if (pdev->queue_families[qinfo->queueFamilyIndex].props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+         graphics_queue_count += qinfo->queueCount;
    }
+
+   /* Add a swapchain queue if there's no or too many graphics queues */
+   if (graphics_queue_count != 1)
+      queue_count++;
 
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct dzn_device, device, 1);
@@ -2257,7 +2267,33 @@ dzn_device_create(struct dzn_physical_device *pdev,
             dzn_device_destroy(device, pAllocator);
             return result;
          }
+         if (graphics_queue_count == 1 &&
+             pdev->queue_families[qinfo->queueFamilyIndex].props.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            device->swapchain_queue = &queues[qindex - 1];
       }
+   }
+
+   if (!device->swapchain_queue) {
+      const float swapchain_queue_priority = 0.0f;
+      VkDeviceQueueCreateInfo swapchain_queue_info = {
+         .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+         .flags = 0,
+         .queueCount = 1,
+         .pQueuePriorities = &swapchain_queue_priority,
+      };
+      for (uint32_t qf = 0; qf < pdev->queue_family_count; qf++) {
+         if (pdev->queue_families[qf].props.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            swapchain_queue_info.queueFamilyIndex = qf;
+            break;
+         }
+      }
+      result = dzn_queue_init(&queues[qindex], device, &swapchain_queue_info, 0);
+      if (result != VK_SUCCESS) {
+         dzn_device_destroy(device, pAllocator);
+         return result;
+      }
+      device->swapchain_queue = &queues[qindex++];
+      device->need_swapchain_blits = true;
    }
 
    assert(queue_count == qindex);
@@ -2371,6 +2407,9 @@ dzn_device_memory_destroy(struct dzn_device_memory *mem,
 
    if (mem->heap)
       ID3D12Heap_Release(mem->heap);
+
+   if (mem->swapchain_res)
+      ID3D12Resource_Release(mem->swapchain_res);
 
    vk_object_base_finish(&mem->base);
    vk_free2(&device->vk.alloc, pAllocator, mem);

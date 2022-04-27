@@ -817,9 +817,12 @@ dzn_BindImageMemory2(VkDevice dev,
          image->mem = mem;
          image->mem_offset = bind_info->memoryOffset;
 
-         HRESULT hres;
+         HRESULT hres = S_OK;
 
-         if (device->dev10 && image->castable_format_count > 0) {
+         if (mem->swapchain_res) {
+            image->res = mem->swapchain_res;
+            ID3D12Resource_AddRef(image->res);
+         } else if (device->dev10 && image->castable_format_count > 0) {
             D3D12_RESOURCE_DESC1 desc = {
                .Dimension = image->desc.Dimension,
                .Alignment = image->desc.Alignment,

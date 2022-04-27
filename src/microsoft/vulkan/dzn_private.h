@@ -271,6 +271,12 @@ struct dzn_device {
 #define DZN_QUERY_REFS_RES_SIZE (DZN_QUERY_REFS_ALL_ZEROS_OFFSET + DZN_QUERY_REFS_SECTION_SIZE)
       ID3D12Resource *refs;
    } queries;
+
+   /* Will be the app's graphics queue if there's exactly one, otherwise this will be 
+    * a dedicated graphics queue to host swapchain blits.
+    */
+   bool need_swapchain_blits;
+   struct dzn_queue *swapchain_queue;
 };
 
 void dzn_meta_finish(struct dzn_device *device);
@@ -289,6 +295,11 @@ struct dzn_device_memory {
    struct vk_object_base base;
 
    struct list_head link;
+
+   /* Swapchain image resource, NULL if the memory is not backed by
+    * a DXGI swapchain.
+    */
+   ID3D12Resource *swapchain_res;
 
    ID3D12Heap *heap;
    VkDeviceSize size;
