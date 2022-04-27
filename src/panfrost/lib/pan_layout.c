@@ -164,6 +164,24 @@ panfrost_get_layer_stride(const struct pan_image_layout *layout,
                 return layout->slices[level].surface_stride;
 }
 
+unsigned
+panfrost_get_legacy_stride(const struct pan_image_layout *layout,
+                           unsigned level)
+{
+        unsigned row_stride = layout->slices[level].row_stride;
+        unsigned bh = panfrost_block_size(layout->modifier, layout->format).height;
+
+        return row_stride / bh;
+}
+
+unsigned
+panfrost_from_legacy_stride(unsigned legacy_stride,
+                            enum pipe_format format,
+                            uint64_t modifier)
+{
+        return legacy_stride * panfrost_block_size(modifier, format).height;
+}
+
 /* Computes the offset into a texture at a particular level/face. Add to
  * the base address of a texture to get the address to that level/face */
 
