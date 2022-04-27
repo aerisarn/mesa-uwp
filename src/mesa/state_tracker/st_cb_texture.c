@@ -295,7 +295,7 @@ st_pbo_get_dst_format(struct gl_context *ctx, enum pipe_texture_target target,
    /* Choose the destination format by finding the best match
     * for the format+type combo. */
    enum pipe_format dst_format = st_choose_matching_format(st, bind, format, type,
-                                                           ctx->Pack.SwapBytes);
+                                                           0, 0, ctx->Pack.SwapBytes);
 
    if (dst_format == PIPE_FORMAT_NONE) {
       GLenum dst_glformat;
@@ -1032,7 +1032,7 @@ prep_teximage(struct gl_context *ctx, struct gl_texture_image *texImage,
       /* oops, need to init this image again */
       texFormat = _mesa_choose_texture_format(ctx, texObj, target, level,
                                               texImage->InternalFormat, format,
-                                              type);
+                                              type, texImage->NumSamples);
 
       _mesa_init_teximage_fields(ctx, texImage,
                                  texImage->Width, texImage->Height,
@@ -1623,7 +1623,7 @@ try_pbo_upload(struct gl_context *ctx, GLuint dims,
     * support at all because of the remapping we later perform and because
     * at least the Radeon driver actually supports some formats for texture
     * buffers which it doesn't support for regular textures. */
-   src_format = st_choose_matching_format(st, 0, format, type,
+   src_format = st_choose_matching_format(st, 0, format, type, 0, 0,
                                           unpack->SwapBytes);
    if (!src_format) {
       return false;
@@ -2001,7 +2001,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
 
    /* Choose the source format. */
    src_format = st_choose_matching_format(st, PIPE_BIND_SAMPLER_VIEW,
-                                          format, type, unpack->SwapBytes);
+                                          format, type, 0, 0, unpack->SwapBytes);
    if (!src_format) {
       goto fallback;
    }

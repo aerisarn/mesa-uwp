@@ -144,7 +144,8 @@ extern mesa_format
 _mesa_choose_texture_format(struct gl_context *ctx,
                             struct gl_texture_object *texObj,
                             GLenum target, GLint level,
-                            GLenum internalFormat, GLenum format, GLenum type);
+                            GLenum internalFormat, GLenum format, GLenum type,
+                            unsigned samples);
 
 extern void
 _mesa_update_fbo_texture(struct gl_context *ctx,

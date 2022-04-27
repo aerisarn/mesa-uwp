@@ -541,7 +541,7 @@ texture_view(struct gl_context *ctx, struct gl_texture_object *origTexObj,
    GLenum faceTarget;
 
    texFormat = _mesa_choose_texture_format(ctx, texObj, target, 0,
-                                           internalformat, GL_NONE, GL_NONE);
+                                           internalformat, GL_NONE, GL_NONE, 0);
    if (texFormat == MESA_FORMAT_NONE) return;
 
    newViewNumLevels = MIN2(numlevels, origTexObj->Attrib.NumLevels - minlevel);

@@ -455,7 +455,7 @@ texture_storage(struct gl_context *ctx, GLuint dims,
    }
 
    texFormat = _mesa_choose_texture_format(ctx, texObj, target, 0,
-                                           internalformat, GL_NONE, GL_NONE);
+                                           internalformat, GL_NONE, GL_NONE, 0);
 
    if (!no_error) {
       /* check that width, height, depth are legal for the mipmap level */
