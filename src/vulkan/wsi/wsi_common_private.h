@@ -239,7 +239,7 @@ wsi_finish_create_blit_context(const struct wsi_swapchain *chain,
                                const struct wsi_image_info *info,
                                struct wsi_image *image);
 
-VkResult
+void
 wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
                            const VkSwapchainCreateInfoKHR *pCreateInfo,
                            uint32_t stride_align, uint32_t size_align,

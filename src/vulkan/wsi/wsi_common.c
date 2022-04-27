@@ -1737,7 +1737,7 @@ wsi_finish_create_blit_context(const struct wsi_swapchain *chain,
    return VK_SUCCESS;
 }
 
-VkResult
+void
 wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
                            const VkSwapchainCreateInfoKHR *pCreateInfo,
                            uint32_t stride_align, uint32_t size_align,
@@ -1747,11 +1747,6 @@ wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
 
    assert(util_is_power_of_two_nonzero(stride_align));
    assert(util_is_power_of_two_nonzero(size_align));
-
-   VkResult result = wsi_configure_image(chain, pCreateInfo,
-                                         0 /* handle_types */, info);
-   if (result != VK_SUCCESS)
-      return result;
 
    info->create.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
    info->wsi.blit_src = true;
@@ -1771,8 +1766,6 @@ wsi_configure_buffer_image(UNUSED const struct wsi_swapchain *chain,
    info->linear_size = ALIGN_POT(info->linear_size, size_align);
 
    info->finish_create = wsi_finish_create_blit_context;
-
-   return VK_SUCCESS;
 }
 
 static VkResult
@@ -1884,26 +1877,24 @@ wsi_configure_cpu_image(const struct wsi_swapchain *chain,
           chain->blit.type == WSI_SWAPCHAIN_BUFFER_BLIT);
 
    VkExternalMemoryHandleTypeFlags handle_types = 0;
-   if (params->alloc_shm)
+   if (params->alloc_shm && chain->blit.type != WSI_SWAPCHAIN_NO_BLIT)
       handle_types = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
 
+   VkResult result = wsi_configure_image(chain, pCreateInfo,
+                                         handle_types, info);
+   if (result != VK_SUCCESS)
+      return result;
+
    if (chain->blit.type != WSI_SWAPCHAIN_NO_BLIT) {
-      VkResult result = wsi_configure_buffer_image(chain, pCreateInfo,
-                                                   1 /* stride_align */,
-                                                   1 /* size_align */,
-                                                   info);
-      if (result != VK_SUCCESS)
-         return result;
+      wsi_configure_buffer_image(chain, pCreateInfo,
+                                 1 /* stride_align */,
+                                 1 /* size_align */,
+                                 info);
 
       info->select_blit_dst_memory_type = wsi_select_host_memory_type;
       info->select_image_memory_type = wsi_select_device_memory_type;
       info->create_mem = wsi_create_cpu_buffer_image_mem;
    } else {
-      VkResult result = wsi_configure_image(chain, pCreateInfo,
-                                            handle_types, info);
-      if (result != VK_SUCCESS)
-         return result;
-
       /* Force the image to be linear */
       info->create.tiling = VK_IMAGE_TILING_LINEAR;
 

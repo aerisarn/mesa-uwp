@@ -604,13 +604,14 @@ wsi_configure_prime_image(UNUSED const struct wsi_swapchain *chain,
                           wsi_memory_type_select_cb select_buffer_memory_type,
                           struct wsi_image_info *info)
 {
-   VkResult result =
-      wsi_configure_buffer_image(chain, pCreateInfo,
-                                 WSI_PRIME_LINEAR_STRIDE_ALIGN, 4096,
-                                 info);
+   VkResult result = wsi_configure_image(chain, pCreateInfo,
+                                         0 /* handle_types */, info);
    if (result != VK_SUCCESS)
       return result;
 
+   wsi_configure_buffer_image(chain, pCreateInfo,
+                              WSI_PRIME_LINEAR_STRIDE_ALIGN, 4096,
+                              info);
    info->prime_use_linear_modifier = use_modifier;
 
    info->create_mem = wsi_create_prime_image_mem;
