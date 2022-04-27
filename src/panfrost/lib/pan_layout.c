@@ -212,7 +212,7 @@ pan_image_layout_init(struct pan_image_layout *layout,
         if (explicit_layout && (explicit_layout->offset & 63))
                 return false;
 
-        unsigned bytes_per_pixel = util_format_get_blocksize(layout->format);
+        unsigned fmt_blocksize = util_format_get_blocksize(layout->format);
 
         /* MSAA is implemented as a 3D texture with z corresponding to the
          * sample #, horrifyingly enough */
@@ -245,8 +245,7 @@ pan_image_layout_init(struct pan_image_layout *layout,
 
                 slice->offset = offset;
 
-                /* Compute the would-be stride */
-                unsigned row_stride = bytes_per_pixel * effective_width * block_size.height;
+                unsigned row_stride = fmt_blocksize * effective_width * block_size.height;
 
                 if (explicit_layout) {
                         /* Make sure the explicit stride is valid */
