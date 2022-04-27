@@ -113,6 +113,8 @@ void
 zink_kopper_deinit_displaytarget(struct zink_screen *screen, struct kopper_displaytarget *cdt);
 bool
 zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int *w, int *h);
+bool
+zink_kopper_is_cpu(const struct pipe_screen *pscreen);
 void
 zink_kopper_fixup_depth_buffer(struct zink_context *ctx);
 bool

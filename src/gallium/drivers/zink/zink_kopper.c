@@ -754,6 +754,13 @@ zink_kopper_update(struct pipe_screen *pscreen, struct pipe_resource *pres, int 
    return true;
 }
 
+bool
+zink_kopper_is_cpu(const struct pipe_screen *pscreen)
+{
+   const struct zink_screen *screen = (const struct zink_screen*)pscreen;
+   return screen->is_cpu;
+}
+
 void
 zink_kopper_fixup_depth_buffer(struct zink_context *ctx)
 {
