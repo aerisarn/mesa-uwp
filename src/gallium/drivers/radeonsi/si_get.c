@@ -978,12 +978,9 @@ static void si_init_renderer_string(struct si_screen *sscreen)
    char first_name[256], second_name[32] = {}, kernel_version[128] = {};
    struct utsname uname_data;
 
-   if (sscreen->info.marketing_name) {
-      snprintf(first_name, sizeof(first_name), "%s", sscreen->info.marketing_name);
-      snprintf(second_name, sizeof(second_name), "%s, ", sscreen->info.lowercase_name);
-   } else {
-      snprintf(first_name, sizeof(first_name), "AMD %s", sscreen->info.name);
-   }
+   snprintf(first_name, sizeof(first_name), "%s",
+            sscreen->info.marketing_name ? sscreen->info.marketing_name : sscreen->info.name);
+   snprintf(second_name, sizeof(second_name), "%s, ", sscreen->info.lowercase_name);
 
    if (uname(&uname_data) == 0)
       snprintf(kernel_version, sizeof(kernel_version), ", %s", uname_data.release);
