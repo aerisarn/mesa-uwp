@@ -104,6 +104,11 @@ struct radeon_decoder {
 
    void (*send_cmd)(struct radeon_decoder *dec, struct pipe_video_buffer *target,
                     struct pipe_picture_desc *picture);
+   /* Additional contexts for mJPEG */
+   struct radeon_cmdbuf *jcs;
+   struct radeon_winsys_ctx **jctx;
+   unsigned cb_idx;
+   unsigned njctx;
 };
 
 void send_cmd_dec(struct radeon_decoder *dec, struct pipe_video_buffer *target,

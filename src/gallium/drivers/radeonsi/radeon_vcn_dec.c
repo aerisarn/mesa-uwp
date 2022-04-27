@@ -2285,6 +2285,13 @@ static void radeon_dec_destroy(struct pipe_video_codec *decoder)
 
    dec->ws->cs_destroy(&dec->cs);
 
+   if (dec->stream_type == RDECODE_CODEC_JPEG) {
+      for (i = 0; i < dec->njctx; i++) {
+         dec->ws->cs_destroy(&dec->jcs[i]);
+         dec->ws->ctx_destroy(dec->jctx[i]);
+      }
+   }
+
    for (i = 0; i < NUM_BUFFERS; ++i) {
       si_vid_destroy_buffer(&dec->msg_fb_it_probs_buffers[i]);
       si_vid_destroy_buffer(&dec->bs_buffers[i]);
@@ -2302,6 +2309,8 @@ static void radeon_dec_destroy(struct pipe_video_codec *decoder)
    si_vid_destroy_buffer(&dec->ctx);
    si_vid_destroy_buffer(&dec->sessionctx);
 
+   FREE(dec->jcs);
+   FREE(dec->jctx);
    FREE(dec);
 }
 
@@ -2443,6 +2452,25 @@ static void radeon_dec_end_frame(struct pipe_video_codec *decoder, struct pipe_v
 }
 
 /**
+ * end decoding of the current jpeg frame
+ */
+static void radeon_dec_jpeg_end_frame(struct pipe_video_codec *decoder, struct pipe_video_buffer *target,
+                                 struct pipe_picture_desc *picture)
+{
+   struct radeon_decoder *dec = (struct radeon_decoder *)decoder;
+
+   assert(decoder);
+
+   if (!dec->bs_ptr)
+      return;
+
+   dec->send_cmd(dec, target, picture);
+   dec->ws->cs_flush(&dec->jcs[dec->cb_idx], PIPE_FLUSH_ASYNC, NULL);
+   next_buffer(dec);
+   dec->cb_idx = (dec->cb_idx+1) % dec->njctx;
+}
+
+/**
  * flush any outstanding command buffers to the hardware
  */
 static void radeon_dec_flush(struct pipe_video_codec *decoder)
@@ -2524,6 +2552,32 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    if (!ws->cs_create(&dec->cs, sctx->ctx, ring, NULL, NULL, false)) {
       RVID_ERR("Can't get command submission context.\n");
       goto error;
+   }
+
+   if (dec->stream_type == RDECODE_CODEC_JPEG) {
+
+      if (sctx->family == CHIP_ARCTURUS || sctx->family == CHIP_ALDEBARAN)
+         dec->njctx = 2;
+      else
+         dec->njctx = 1;
+
+      dec->jctx = (struct radeon_winsys_ctx **) CALLOC(dec->njctx,
+                                                       sizeof(struct radeon_winsys_ctx *));
+      dec->jcs = (struct radeon_cmdbuf *) CALLOC(dec->njctx, sizeof(struct radeon_cmdbuf));
+      if(!dec->jctx || !dec->jcs)
+         goto err;
+      for (i = 0; i < dec->njctx; i++) {
+      /* Initialize the context handle and the command stream. */
+         dec->jctx[i] = dec->ws->ctx_create(dec->ws);
+         if (!sctx->ctx)
+            goto error;
+         if (!dec->ws->cs_create(&dec->jcs[i], dec->jctx[i], ring, NULL, NULL, false)) {
+            RVID_ERR("Can't get additional command submission context for mJPEG.\n");
+            goto error;
+         }
+      }
+      dec->base.end_frame = radeon_dec_jpeg_end_frame;
+      dec->cb_idx = 0;
    }
 
    for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++)
@@ -2668,6 +2722,13 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
 error:
    dec->ws->cs_destroy(&dec->cs);
 
+   if (dec->stream_type == RDECODE_CODEC_JPEG) {
+      for (i = 0; i < dec->njctx; i++) {
+         dec->ws->cs_destroy(&dec->jcs[i]);
+         dec->ws->ctx_destroy(dec->jctx[i]);
+      }
+   }
+
    for (i = 0; i < NUM_BUFFERS; ++i) {
       si_vid_destroy_buffer(&dec->msg_fb_it_probs_buffers[i]);
       si_vid_destroy_buffer(&dec->bs_buffers[i]);
@@ -2678,6 +2739,11 @@ error:
    si_vid_destroy_buffer(&dec->ctx);
    si_vid_destroy_buffer(&dec->sessionctx);
 
+err:
+   if (dec->jcs)
+      FREE(dec->jcs);
+   if (dec->jctx)
+      FREE(dec->jctx);
    FREE(dec);
 
    return NULL;
