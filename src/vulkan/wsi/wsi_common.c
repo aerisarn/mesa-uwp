@@ -54,6 +54,7 @@ static const struct debug_control debug_control[] = {
    { "sw",           WSI_DEBUG_SW },
    { "noshm",        WSI_DEBUG_NOSHM },
    { "linear",       WSI_DEBUG_LINEAR },
+   { "dxgi",         WSI_DEBUG_DXGI },
    { NULL, },
 };
 
@@ -162,6 +163,7 @@ wsi_device_init(struct wsi_device *wsi,
    WSI_GET_CB(FreeMemory);
    WSI_GET_CB(FreeCommandBuffers);
    WSI_GET_CB(GetBufferMemoryRequirements);
+   WSI_GET_CB(GetFenceStatus);
    WSI_GET_CB(GetImageDrmFormatModifierPropertiesEXT);
    WSI_GET_CB(GetImageMemoryRequirements);
    WSI_GET_CB(GetImageSubresourceLayout);
@@ -276,6 +278,12 @@ wsi_DestroySurfaceKHR(VkInstance _instance,
       return;
    }
 #endif
+#ifdef VK_USE_PLATFORM_WIN32_KHR
+   if (surface->platform == VK_ICD_WSI_PLATFORM_WIN32) {
+      wsi_win32_surface_destroy(surface, _instance, pAllocator);
+      return;
+   }
+#endif
 
    vk_free2(&instance->alloc, pAllocator, surface);
 }
@@ -291,7 +299,8 @@ wsi_device_setup_syncobj_fd(struct wsi_device *wsi_device,
 
 static enum wsi_swapchain_blit_type
 get_blit_type(const struct wsi_device *wsi,
-              const struct wsi_base_image_params *params)
+              const struct wsi_base_image_params *params,
+              VkDevice device)
 {
    switch (params->image_type) {
    case WSI_IMAGE_TYPE_CPU: {
@@ -306,6 +315,13 @@ get_blit_type(const struct wsi_device *wsi,
          container_of(params, const struct wsi_drm_image_params, base);
       return wsi_drm_image_needs_buffer_blit(wsi, drm_params) ?
          WSI_SWAPCHAIN_BUFFER_BLIT : WSI_SWAPCHAIN_NO_BLIT;
+   }
+#endif
+#ifdef _WIN32
+   case WSI_IMAGE_TYPE_DXGI: {
+      const struct wsi_dxgi_image_params *dxgi_params =
+         container_of(params, const struct wsi_dxgi_image_params, base);
+      return wsi_dxgi_image_needs_blit(wsi, dxgi_params, device);
    }
 #endif
    default:
@@ -330,6 +346,13 @@ configure_image(const struct wsi_swapchain *chain,
       const struct wsi_drm_image_params *drm_params =
          container_of(params, const struct wsi_drm_image_params, base);
       return wsi_drm_configure_image(chain, pCreateInfo, drm_params, info);
+   }
+#endif
+#ifdef _WIN32
+   case WSI_IMAGE_TYPE_DXGI: {
+      const struct wsi_dxgi_image_params *dxgi_params =
+         container_of(params, const struct wsi_dxgi_image_params, base);
+      return wsi_dxgi_configure_image(chain, pCreateInfo, dxgi_params, info);
    }
 #endif
    default:
@@ -381,7 +404,7 @@ wsi_swapchain_init(const struct wsi_device *wsi,
    chain->wsi = wsi;
    chain->device = _device;
    chain->alloc = *pAllocator;
-   chain->blit.type = get_blit_type(wsi, image_params);
+   chain->blit.type = get_blit_type(wsi, image_params, _device);
 
    chain->blit.queue = VK_NULL_HANDLE;
    if (chain->blit.type != WSI_SWAPCHAIN_NO_BLIT && wsi->get_blit_queue)

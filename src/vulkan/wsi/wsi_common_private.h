@@ -39,12 +39,14 @@ struct wsi_swapchain;
 #define WSI_DEBUG_SW          (1ull << 1)
 #define WSI_DEBUG_NOSHM       (1ull << 2)
 #define WSI_DEBUG_LINEAR      (1ull << 3)
+#define WSI_DEBUG_DXGI        (1ull << 4)
 
 extern uint64_t WSI_DEBUG;
 
 enum wsi_image_type {
    WSI_IMAGE_TYPE_CPU,
    WSI_IMAGE_TYPE_DRM,
+   WSI_IMAGE_TYPE_DXGI,
 };
 
 struct wsi_base_image_params {
@@ -65,6 +67,11 @@ struct wsi_drm_image_params {
    uint32_t num_modifier_lists;
    const uint32_t *num_modifiers;
    const uint64_t *const *modifiers;
+};
+
+struct wsi_dxgi_image_params {
+   struct wsi_base_image_params base;
+   bool storage_image;
 };
 
 typedef uint32_t (*wsi_memory_type_select_cb)(const struct wsi_device *wsi,
@@ -190,6 +197,10 @@ void
 wsi_wl_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
                        const VkAllocationCallbacks *pAllocator);
 
+void
+wsi_win32_surface_destroy(VkIcdSurfaceBase *icd_surface, VkInstance _instance,
+                          const VkAllocationCallbacks *pAllocator);
+
 VkResult
 wsi_swapchain_init(const struct wsi_device *wsi,
                    struct wsi_swapchain *chain,
@@ -217,11 +228,22 @@ bool
 wsi_drm_image_needs_buffer_blit(const struct wsi_device *wsi,
                                 const struct wsi_drm_image_params *params);
 
+enum wsi_swapchain_blit_type
+wsi_dxgi_image_needs_blit(const struct wsi_device *wsi,
+                          const struct wsi_dxgi_image_params *params,
+                          VkDevice device);
+
 VkResult
 wsi_drm_configure_image(const struct wsi_swapchain *chain,
                         const VkSwapchainCreateInfoKHR *pCreateInfo,
                         const struct wsi_drm_image_params *params,
                         struct wsi_image_info *info);
+
+VkResult
+wsi_dxgi_configure_image(const struct wsi_swapchain *chain,
+                         const VkSwapchainCreateInfoKHR *pCreateInfo,
+                         const struct wsi_dxgi_image_params *params,
+                         struct wsi_image_info *info);
 
 bool
 wsi_cpu_image_needs_buffer_blit(const struct wsi_device *wsi,

@@ -147,6 +147,15 @@ struct wsi_device {
       bool xwaylandWaitReady;
    } x11;
 
+   struct {
+      void *(*get_d3d12_command_queue)(VkDevice device);
+      /* Needs to be per VkDevice, not VkPhysicalDevice, depends on queue config */
+      bool (*requires_blits)(VkDevice device);
+      VkResult (*create_image_memory)(VkDevice device, void *resource,
+                                      const VkAllocationCallbacks *alloc,
+                                      VkDeviceMemory *out);
+   } win32;
+
    bool sw;
 
    /* Set to true if the implementation is ok with linear WSI images. */
@@ -224,6 +233,7 @@ struct wsi_device {
    WSI_CB(FreeMemory);
    WSI_CB(FreeCommandBuffers);
    WSI_CB(GetBufferMemoryRequirements);
+   WSI_CB(GetFenceStatus);
    WSI_CB(GetImageDrmFormatModifierPropertiesEXT);
    WSI_CB(GetImageMemoryRequirements);
    WSI_CB(GetImageSubresourceLayout);
