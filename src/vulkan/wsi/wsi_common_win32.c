@@ -474,7 +474,6 @@ wsi_win32_surface_create_swapchain(
    chain->surface = surface;
 
    assert(wsi_device->sw);
-   chain->base.use_buffer_blit = true;
 
    for (uint32_t image = 0; image < num_images; image++) {
       result = wsi_win32_image_init(device, chain,
