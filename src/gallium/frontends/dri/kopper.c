@@ -25,6 +25,7 @@
 #include "util/u_memory.h"
 #include "util/u_inlines.h"
 #include "util/u_box.h"
+#include "util/log.h"
 #include "pipe/p_context.h"
 #include "pipe-loader/pipe_loader.h"
 #include "state_tracker/st_context.h"
@@ -429,12 +430,14 @@ kopper_get_pixmap_buffer(struct kopper_drawable *cdraw,
    if (kscreen->has_dmabuf) {
       xcb_dri3_buffers_from_pixmap_cookie_t bps_cookie;
       xcb_dri3_buffers_from_pixmap_reply_t *bps_reply;
+      xcb_generic_error_t *error;
 
       bps_cookie = xcb_dri3_buffers_from_pixmap(conn, pixmap);
-      bps_reply = xcb_dri3_buffers_from_pixmap_reply(conn, bps_cookie,
-                                                     NULL);
-      if (!bps_reply)
+      bps_reply = xcb_dri3_buffers_from_pixmap_reply(conn, bps_cookie, &error);
+      if (!bps_reply) {
+         mesa_loge("kopper: could not create texture from pixmap (%u)", error->error_code);
          return NULL;
+      }
       cdraw->image =
          dri3_create_image_from_buffers(conn, bps_reply, format,
                                         cur_screen, &driVkImageExtension,
@@ -447,11 +450,14 @@ kopper_get_pixmap_buffer(struct kopper_drawable *cdraw,
    {
       xcb_dri3_buffer_from_pixmap_cookie_t bp_cookie;
       xcb_dri3_buffer_from_pixmap_reply_t *bp_reply;
+      xcb_generic_error_t *error;
 
       bp_cookie = xcb_dri3_buffer_from_pixmap(conn, pixmap);
-      bp_reply = xcb_dri3_buffer_from_pixmap_reply(conn, bp_cookie, NULL);
-      if (!bp_reply)
+      bp_reply = xcb_dri3_buffer_from_pixmap_reply(conn, bp_cookie, &error);
+      if (!bp_reply) {
+         mesa_loge("kopper: could not create texture from pixmap (%u)", error->error_code);
          return NULL;
+      }
 
       cdraw->image = dri3_create_image(conn, bp_reply, format,
                                        cur_screen, &driVkImageExtension,
