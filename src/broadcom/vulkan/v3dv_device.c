@@ -933,11 +933,12 @@ enumerate_devices(struct v3dv_instance *instance)
 #endif
    for (unsigned i = 0; i < (unsigned)max_devices; i++) {
 #if using_v3d_simulator
-      /* In the simulator, we look for an Intel render node */
+      /* In the simulator, we look for an Intel/AMD render node */
       const int required_nodes = (1 << DRM_NODE_RENDER) | (1 << DRM_NODE_PRIMARY);
       if ((devices[i]->available_nodes & required_nodes) == required_nodes &&
            devices[i]->bustype == DRM_BUS_PCI &&
-           devices[i]->deviceinfo.pci->vendor_id == 0x8086) {
+          (devices[i]->deviceinfo.pci->vendor_id == 0x8086 ||
+           devices[i]->deviceinfo.pci->vendor_id == 0x1002)) {
          result = physical_device_init(&instance->physicalDevice, instance,
                                        devices[i], NULL);
          if (result != VK_ERROR_INCOMPATIBLE_DRIVER)
