@@ -937,49 +937,6 @@ struct panvk_pipeline {
    VkRect2D scissor;
 };
 
-struct panvk_image_level {
-   VkDeviceSize offset;
-   VkDeviceSize size;
-   uint32_t pitch;
-};
-
-struct panvk_slice_layout {
-   unsigned width;
-   unsigned height;
-   unsigned depth;
-   unsigned offset;
-   unsigned line_stride;
-   unsigned size;
-
-   /* If there is a header preceding each slice, how big is
-    * that header? Used for AFBC.
-    */
-   unsigned afbc_header_size;
-
-   /* If checksumming is enabled following the slice, what
-    * is its offset/stride?
-    */
-   struct {
-      unsigned offset;
-      unsigned stride;
-      unsigned size;
-   } checksum;
-};
-
-#define PANVK_MAX_MIP_LEVELS 13
-
-struct panvk_plane_layout {
-   struct panvk_slice_layout slices[PANVK_MAX_MIP_LEVELS];
-   unsigned offset;
-   unsigned array_stride;
-   unsigned size;
-};
-
-struct panvk_plane_memory {
-   const struct panfrost_bo *bo;
-   unsigned offset;
-};
-
 #define PANVK_MAX_PLANES 1
 
 struct panvk_image {
