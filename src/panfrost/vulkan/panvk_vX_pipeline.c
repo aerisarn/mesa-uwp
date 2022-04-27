@@ -717,7 +717,19 @@ panvk_pipeline_builder_parse_zs(struct panvk_pipeline_builder *builder,
       return;
 
    pipeline->zs.z_test = builder->create_info.gfx->pDepthStencilState->depthTestEnable;
-   pipeline->zs.z_write = builder->create_info.gfx->pDepthStencilState->depthWriteEnable;
+
+   /* The Vulkan spec says:
+    *
+    *    depthWriteEnable controls whether depth writes are enabled when
+    *    depthTestEnable is VK_TRUE. Depth writes are always disabled when
+    *    depthTestEnable is VK_FALSE.
+    *
+    * The hardware does not make this distinction, though, so we AND in the
+    * condition ourselves.
+    */
+   pipeline->zs.z_write = pipeline->zs.z_test &&
+      builder->create_info.gfx->pDepthStencilState->depthWriteEnable;
+
    pipeline->zs.z_compare_func =
       panvk_per_arch(translate_compare_func)(builder->create_info.gfx->pDepthStencilState->depthCompareOp);
    pipeline->zs.s_test = builder->create_info.gfx->pDepthStencilState->stencilTestEnable;

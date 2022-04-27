@@ -26,6 +26,7 @@ include = [
     "dEQP-VK.glsl.derivate.*.uniform_*",
     "dEQP-VK.glsl.operator.*",
     "dEQP-VK.image.load_store.with_format.*",
+    "dEQP-VK.pipeline.depth.format.d24_unorm_s8_uint.depth_test_disabled.depth_write_enabled",
     "dEQP-VK.pipeline.input_assembly.*",
     "dEQP-VK.pipeline.sampler.view_type.*.format.r*.address_modes.all_mode_clamp_to_border*",
     "dEQP-VK.pipeline.stencil.*",
