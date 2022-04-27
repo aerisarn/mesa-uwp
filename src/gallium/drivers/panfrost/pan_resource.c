@@ -195,7 +195,7 @@ panfrost_resource_get_param(struct pipe_screen *pscreen,
 
         switch (param) {
         case PIPE_RESOURCE_PARAM_STRIDE:
-                *value = rsrc->image.layout.slices[level].line_stride;
+                *value = panfrost_get_legacy_stride(&rsrc->image.layout, level);
                 return true;
         case PIPE_RESOURCE_PARAM_OFFSET:
                 *value = rsrc->image.layout.slices[level].offset;
