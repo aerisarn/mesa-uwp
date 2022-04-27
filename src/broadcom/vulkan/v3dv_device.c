@@ -63,10 +63,6 @@
 #include "wayland-drm-client-protocol.h"
 #endif
 
-#ifdef USE_V3D_SIMULATOR
-#include "drm-uapi/i915_drm.h"
-#endif
-
 #define V3DV_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
 
 VKAPI_ATTR VkResult VKAPI_CALL
@@ -770,6 +766,10 @@ physical_device_init(struct v3dv_physical_device *device,
    device->has_render = true;
    device->render_devid = render_stat.st_rdev;
 
+#if using_v3d_simulator
+   device->device_id = drm_render_device->deviceinfo.pci->device_id;
+#endif
+
    if (instance->vk.enabled_extensions.KHR_display) {
 #if !using_v3d_simulator
       /* Open the primary node on the vc4 display device */
@@ -1282,37 +1282,11 @@ v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev)
    return 0x14E4; /* Broadcom */
 }
 
-
-#if using_v3d_simulator
-static bool
-get_i915_param(int fd, uint32_t param, int *value)
-{
-   int tmp;
-
-   struct drm_i915_getparam gp = {
-      .param = param,
-      .value = &tmp,
-   };
-
-   int ret = drmIoctl(fd, DRM_IOCTL_I915_GETPARAM, &gp);
-   if (ret != 0)
-      return false;
-
-   *value = tmp;
-   return true;
-}
-#endif
-
 uint32_t
 v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
 {
 #if using_v3d_simulator
-   int devid = 0;
-
-   if (!get_i915_param(dev->render_fd, I915_PARAM_CHIPSET_ID, &devid))
-      fprintf(stderr, "Error getting device_id\n");
-
-   return devid;
+   return dev->device_id;
 #else
    switch (dev->devinfo.ver) {
    case 42:
