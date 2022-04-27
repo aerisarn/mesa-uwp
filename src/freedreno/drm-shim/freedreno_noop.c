@@ -94,6 +94,9 @@ msm_ioctl_gem_info(int fd, unsigned long request, void *arg)
    struct drm_msm_gem_info *args = arg;
    struct shim_bo *bo = drm_shim_bo_lookup(shim_fd, args->handle);
 
+   if (!bo)
+      return -ENOENT;
+
    switch (args->info) {
    case MSM_INFO_GET_OFFSET:
       args->value = drm_shim_bo_get_mmap_offset(shim_fd, bo);
