@@ -845,13 +845,13 @@ panvk_per_arch(emit_base_fs_rsd)(const struct panvk_device *dev,
                  !pipeline->blend.reads_dest;
 #endif
       } else {
+         cfg.properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+
 #if PAN_ARCH == 5
          cfg.shader.shader = 0x1;
          cfg.properties.work_register_count = 1;
-         cfg.properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
          cfg.properties.force_early_z = true;
 #else
-         cfg.properties.shader_modifies_coverage = true;
          cfg.properties.allow_forward_pixel_to_kill = true;
          cfg.properties.allow_forward_pixel_to_be_killed = true;
          cfg.properties.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
