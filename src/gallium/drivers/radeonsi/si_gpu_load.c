@@ -32,8 +32,8 @@
  * GPU load between the two samples.
  */
 
-#include "radeonsi/si_pipe.h"
-#include "radeonsi/si_query.h"
+#include "si_pipe.h"
+#include "si_query.h"
 #include "util/os_time.h"
 
 /* For good accuracy at 1000 fps or lower. This will be inaccurate for higher
