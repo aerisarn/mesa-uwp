@@ -947,7 +947,8 @@ vn_physical_device_get_passthrough_extensions(
       /* promoted to VK_VERSION_1_3 */
       .EXT_4444_formats = true,
       .EXT_extended_dynamic_state = true,
-      .EXT_extended_dynamic_state2 = true,
+      /* TODO re-enable with fixed extended_dynamic_state.*_raster cts */
+      .EXT_extended_dynamic_state2 = false,
       .EXT_image_robustness = true,
       .EXT_shader_demote_to_helper_invocation = true,
 
