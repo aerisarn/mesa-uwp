@@ -54,6 +54,13 @@ init_dt_type(struct kopper_displaytarget *cdt)
     default:
        unreachable("unsupported!");
     }
+#ifdef WIN32
+    // not hooked up yet so let's not sabotage benchmarks
+    cdt->present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+#else
+    // Matches the EGL and GLX_SGI_swap_interval default
+    cdt->present_mode = VK_PRESENT_MODE_FIFO_KHR;
+#endif
 }
 
 static VkSurfaceKHR
@@ -212,10 +219,9 @@ kopper_CreateSwapchain(struct zink_screen *screen, struct kopper_displaytarget *
       cswap->scci.queueFamilyIndexCount = 0;
       cswap->scci.pQueueFamilyIndices = NULL;
       cswap->scci.compositeAlpha = has_alpha ? VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR : VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-      // TODO: This is where you'd hook up GLX_EXT_swap_interval and friends
-      cswap->scci.presentMode = cdt->type == KOPPER_WAYLAND ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
       cswap->scci.clipped = VK_TRUE;
    }
+   cswap->scci.presentMode = cdt->present_mode;
    cswap->scci.minImageCount = cdt->caps.minImageCount;
    cswap->scci.preTransform = cdt->caps.currentTransform;
    if (cdt->formats[1])
@@ -806,4 +812,28 @@ zink_kopper_check(struct pipe_resource *pres)
       return false;
    struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
    return !cdt->is_kill;
+}
+
+void
+zink_kopper_set_swap_interval(struct pipe_screen *pscreen, struct pipe_resource *pres, int interval)
+{
+   struct zink_resource *res = zink_resource(pres);
+   struct zink_screen *screen = zink_screen(pscreen);
+   assert(res->obj->dt);
+   struct kopper_displaytarget *cdt = kopper_displaytarget(res->obj->dt);
+   VkPresentModeKHR old_present_mode = cdt->present_mode;
+
+   assert(interval >= 0); /* TODO: VK_PRESENT_MODE_FIFO_RELAXED_KHR */
+   if (interval == 0) {
+      if (cdt->present_modes & BITFIELD_BIT(VK_PRESENT_MODE_IMMEDIATE_KHR))
+         cdt->present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      else
+         cdt->present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+   } else if (interval > 0) {
+      cdt->present_mode = VK_PRESENT_MODE_FIFO_KHR;
+   }
+   assert(cdt->present_modes & BITFIELD_BIT(cdt->present_mode));
+
+   if (old_present_mode != cdt->present_mode)
+      update_swapchain(screen, cdt, cdt->caps.currentExtent.width, cdt->caps.currentExtent.height);
 }

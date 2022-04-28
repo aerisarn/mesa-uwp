@@ -31,6 +31,7 @@
 #include "state_tracker/st_context.h"
 #include "os/os_process.h"
 #include "zink/zink_public.h"
+#include "zink/zink_instance.h"
 #include "zink/zink_kopper.h"
 #include "driver_trace/tr_screen.h"
 
@@ -98,6 +99,8 @@ static const __DRIrobustnessExtension dri2Robustness = {
    .base = { __DRI2_ROBUSTNESS, 1 }
 };
 
+const __DRIkopperExtension driKopperExtension;
+
 static const __DRIextension *drivk_screen_extensions[] = {
    &driTexBufferExtension.base,
    &dri2RendererQueryExtension.base,
@@ -107,6 +110,7 @@ static const __DRIextension *drivk_screen_extensions[] = {
    &driVkImageExtension.base,
    &dri2FlushControlExtension.base,
    &driVkFlushExtension.base,
+   &driKopperExtension.base,
    NULL
 };
 
@@ -965,11 +969,28 @@ kopperCreateNewDrawable(__DRIscreen *screen,
     return pdraw;
 }
 
+static void
+kopperSetSwapInterval(__DRIdrawable *dPriv, int interval)
+{
+   struct dri_drawable *drawable = dri_drawable(dPriv);
+   struct dri_screen *screen = dri_screen(drawable->sPriv);
+   struct kopper_screen *kscreen = (struct kopper_screen *)screen;
+   struct pipe_screen *pscreen = kscreen->screen;
+   struct pipe_resource *ptex = drawable->textures[ST_ATTACHMENT_BACK_LEFT] ?
+                                drawable->textures[ST_ATTACHMENT_BACK_LEFT] :
+                                drawable->textures[ST_ATTACHMENT_FRONT_LEFT];
+
+   // the conditional is because we can be called before buffer allocation, though
+   // this is almost certainly not the right fix.
+   if (ptex)
+      zink_kopper_set_swap_interval(pscreen, ptex, interval);
+}
 
 const __DRIkopperExtension driKopperExtension = {
    .base = { __DRI_KOPPER, 1 },
    .createNewDrawable          = kopperCreateNewDrawable,
    .swapBuffers                = kopperSwapBuffers,
+   .setSwapInterval            = kopperSetSwapInterval,
 };
 
 const struct __DriverAPIRec galliumvk_driver_api = {

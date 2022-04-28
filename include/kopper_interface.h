@@ -74,6 +74,7 @@ struct __DRIkopperExtensionRec {
                                         void *loaderPrivate,
                                         int pixmap);
     int64_t (*swapBuffers)(__DRIdrawable *draw);
+    void (*setSwapInterval)(__DRIdrawable *drawable, int interval);
 };
 
 /**

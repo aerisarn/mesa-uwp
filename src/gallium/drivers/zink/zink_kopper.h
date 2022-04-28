@@ -70,6 +70,7 @@ struct kopper_displaytarget
    VkImageFormatListCreateInfoKHR format_list;
    enum kopper_type type;
    bool is_kill;
+   VkPresentModeKHR present_mode;
 };
 
 struct zink_context;
@@ -119,4 +120,6 @@ void
 zink_kopper_fixup_depth_buffer(struct zink_context *ctx);
 bool
 zink_kopper_check(struct pipe_resource *pres);
+void
+zink_kopper_set_swap_interval(struct pipe_screen *pscreen, struct pipe_resource *pres, int interval);
 #endif
