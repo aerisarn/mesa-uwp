@@ -82,6 +82,8 @@ drm_shim_device_init(void)
                                                 uint_key_hash,
                                                 uint_key_compare);
 
+   shim_device.offset_map = _mesa_hash_table_u64_create(NULL);
+
    mtx_init(&shim_device.mem_lock, mtx_plain);
 
    shim_device.mem_fd = memfd_create("shim mem", MFD_CLOEXEC);
@@ -372,18 +374,16 @@ drm_shim_bo_get_handle(struct shim_fd *shim_fd, struct shim_bo *bo)
 }
 
 /* Creates an mmap offset for the BO in the DRM fd.
- *
- * XXX: We should be maintaining a u_mm allocator where the mmap offsets
- * allocate the size of the BO and it can be used to look the BO back up.
- * Instead, we just stuff the shim's pointer as the return value, and treat
- * the incoming mmap offset on the DRM fd as a BO pointer.  This doesn't work
- * if someone tries to map a subset of the BO, but it's enough to get V3D
- * working for now.
  */
 uint64_t
 drm_shim_bo_get_mmap_offset(struct shim_fd *shim_fd, struct shim_bo *bo)
 {
-   return (uintptr_t)bo;
+   mtx_lock(&shim_device.mem_lock);
+   _mesa_hash_table_u64_insert(shim_device.offset_map, bo->mem_addr, bo);
+   mtx_unlock(&shim_device.mem_lock);
+
+   /* reuse the buffer address as the mmap offset: */
+   return bo->mem_addr;
 }
 
 /* For mmap() on the DRM fd, look up the BO from the "offset" and map the BO's
@@ -393,7 +393,15 @@ void *
 drm_shim_mmap(struct shim_fd *shim_fd, size_t length, int prot, int flags,
               int fd, off64_t offset)
 {
-   struct shim_bo *bo = (void *)(uintptr_t)offset;
+   mtx_lock(&shim_device.mem_lock);
+   struct shim_bo *bo = _mesa_hash_table_u64_search(shim_device.offset_map, offset);
+   mtx_unlock(&shim_device.mem_lock);
+
+   if (!bo)
+      return MAP_FAILED;
+
+   if (length > bo->size)
+      return MAP_FAILED;
 
    /* The offset we pass to mmap must be aligned to the page size */
    assert((bo->mem_addr & (shim_page_size - 1)) == 0);

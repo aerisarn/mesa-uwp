@@ -41,6 +41,9 @@ struct shim_device {
    /* Mapping from int fd to struct shim_fd *. */
    struct hash_table *fd_map;
 
+   /* Mapping from mmap offset to shim_bo */
+   struct hash_table_u64 *offset_map;
+
    mtx_t mem_lock;
    /* Heap from which shim_bo are allocated */
    struct util_vma_heap mem_heap;

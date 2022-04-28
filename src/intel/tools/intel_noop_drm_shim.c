@@ -120,7 +120,8 @@ i915_ioctl_gem_mmap(int fd, unsigned long request, void *arg)
       return -1;
 
    if (!bo->map)
-      bo->map = drm_shim_mmap(shim_fd, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED, -1, (uintptr_t)bo);
+      bo->map = drm_shim_mmap(shim_fd, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED, -1,
+                              drm_shim_bo_get_mmap_offset(shim_fd, bo));
 
    mmap_arg->addr_ptr = (uint64_t) (bo->map + mmap_arg->offset);
 
