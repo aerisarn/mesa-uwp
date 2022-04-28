@@ -106,9 +106,9 @@ wsi_CreateWin32SurfaceKHR(VkInstance _instance,
 
 static VkResult
 wsi_win32_surface_get_support(VkIcdSurfaceBase *surface,
-                           struct wsi_device *wsi_device,
-                           uint32_t queueFamilyIndex,
-                           VkBool32* pSupported)
+                              struct wsi_device *wsi_device,
+                              uint32_t queueFamilyIndex,
+                              VkBool32* pSupported)
 {
    *pSupported = true;
 
@@ -117,8 +117,8 @@ wsi_win32_surface_get_support(VkIcdSurfaceBase *surface,
 
 static VkResult
 wsi_win32_surface_get_capabilities(VkIcdSurfaceBase *surf,
-                                struct wsi_device *wsi_device,
-                                VkSurfaceCapabilitiesKHR* caps)
+                                   struct wsi_device *wsi_device,
+                                   VkSurfaceCapabilitiesKHR* caps)
 {
    VkIcdSurfaceWin32 *surface = (VkIcdSurfaceWin32 *)surf;
 
@@ -161,9 +161,9 @@ wsi_win32_surface_get_capabilities(VkIcdSurfaceBase *surf,
 
 static VkResult
 wsi_win32_surface_get_capabilities2(VkIcdSurfaceBase *surface,
-                                 struct wsi_device *wsi_device,
-                                 const void *info_next,
-                                 VkSurfaceCapabilities2KHR* caps)
+                                    struct wsi_device *wsi_device,
+                                    const void *info_next,
+                                    VkSurfaceCapabilities2KHR* caps)
 {
    assert(caps->sType == VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR);
 
@@ -216,9 +216,9 @@ get_sorted_vk_formats(struct wsi_device *wsi_device, VkFormat *sorted_formats)
 
 static VkResult
 wsi_win32_surface_get_formats(VkIcdSurfaceBase *icd_surface,
-                           struct wsi_device *wsi_device,
-                           uint32_t* pSurfaceFormatCount,
-                           VkSurfaceFormatKHR* pSurfaceFormats)
+                              struct wsi_device *wsi_device,
+                              uint32_t* pSurfaceFormatCount,
+                              VkSurfaceFormatKHR* pSurfaceFormats)
 {
    VK_OUTARRAY_MAKE_TYPED(VkSurfaceFormatKHR, out, pSurfaceFormats, pSurfaceFormatCount);
 
@@ -314,32 +314,32 @@ wsi_win32_image_init(VkDevice device_h,
    if (result != VK_SUCCESS)
       return result;
 
-    VkIcdSurfaceWin32 *win32_surface = (VkIcdSurfaceWin32 *)create_info->surface;
-    chain->wnd = win32_surface->hwnd;
-    chain->chain_dc = GetDC(chain->wnd);
+   VkIcdSurfaceWin32 *win32_surface = (VkIcdSurfaceWin32 *)create_info->surface;
+   chain->wnd = win32_surface->hwnd;
+   chain->chain_dc = GetDC(chain->wnd);
 
-    image->dc = CreateCompatibleDC(chain->chain_dc);
-    HBITMAP bmp = NULL;
+   image->dc = CreateCompatibleDC(chain->chain_dc);
+   HBITMAP bmp = NULL;
 
-    BITMAPINFO info = { 0 };
-    info.bmiHeader.biSize = sizeof(BITMAPINFO);
-    info.bmiHeader.biWidth = create_info->imageExtent.width;
-    info.bmiHeader.biHeight = -create_info->imageExtent.height;
-    info.bmiHeader.biPlanes = 1;
-    info.bmiHeader.biBitCount = 32;
-    info.bmiHeader.biCompression = BI_RGB;
+   BITMAPINFO info = { 0 };
+   info.bmiHeader.biSize = sizeof(BITMAPINFO);
+   info.bmiHeader.biWidth = create_info->imageExtent.width;
+   info.bmiHeader.biHeight = -create_info->imageExtent.height;
+   info.bmiHeader.biPlanes = 1;
+   info.bmiHeader.biBitCount = 32;
+   info.bmiHeader.biCompression = BI_RGB;
 
-    bmp = CreateDIBSection(image->dc, &info, DIB_RGB_COLORS, &image->ppvBits, NULL, 0);
-    assert(bmp && image->ppvBits);
+   bmp = CreateDIBSection(image->dc, &info, DIB_RGB_COLORS, &image->ppvBits, NULL, 0);
+   assert(bmp && image->ppvBits);
 
-    SelectObject(image->dc, bmp);
+   SelectObject(image->dc, bmp);
 
-    BITMAP header;
-    int status = GetObject(bmp, sizeof(BITMAP), &header);
-    (void)status;
-    image->bmp_row_pitch = header.bmWidthBytes;
-    image->bmp = bmp;
-    image->chain = chain;
+   BITMAP header;
+   int status = GetObject(bmp, sizeof(BITMAP), &header);
+   (void)status;
+   image->bmp_row_pitch = header.bmWidthBytes;
+   image->bmp = bmp;
+   image->chain = chain;
 
    return VK_SUCCESS;
 }
@@ -357,7 +357,7 @@ wsi_win32_image_finish(struct wsi_win32_swapchain *chain,
 
 static VkResult
 wsi_win32_swapchain_destroy(struct wsi_swapchain *drv_chain,
-                              const VkAllocationCallbacks *allocator)
+                            const VkAllocationCallbacks *allocator)
 {
    struct wsi_win32_swapchain *chain =
       (struct wsi_win32_swapchain *) drv_chain;
@@ -374,7 +374,7 @@ wsi_win32_swapchain_destroy(struct wsi_swapchain *drv_chain,
 
 static struct wsi_image *
 wsi_win32_get_wsi_image(struct wsi_swapchain *drv_chain,
-                          uint32_t image_index)
+                        uint32_t image_index)
 {
    struct wsi_win32_swapchain *chain =
       (struct wsi_win32_swapchain *) drv_chain;
@@ -384,8 +384,8 @@ wsi_win32_get_wsi_image(struct wsi_swapchain *drv_chain,
 
 static VkResult
 wsi_win32_acquire_next_image(struct wsi_swapchain *drv_chain,
-                               const VkAcquireNextImageInfoKHR *info,
-                               uint32_t *image_index)
+                             const VkAcquireNextImageInfoKHR *info,
+                             uint32_t *image_index)
 {
    struct wsi_win32_swapchain *chain =
       (struct wsi_win32_swapchain *)drv_chain;
@@ -444,7 +444,7 @@ wsi_win32_surface_create_swapchain(
    size_t size = sizeof(*chain) + num_images * sizeof(chain->images[0]);
 
    chain = vk_zalloc(allocator, size,
-                8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+                     8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -504,14 +504,14 @@ fail_init_images:
 
 VkResult
 wsi_win32_init_wsi(struct wsi_device *wsi_device,
-                const VkAllocationCallbacks *alloc,
-                VkPhysicalDevice physical_device)
+                   const VkAllocationCallbacks *alloc,
+                   VkPhysicalDevice physical_device)
 {
    struct wsi_win32 *wsi;
    VkResult result;
 
    wsi = vk_alloc(alloc, sizeof(*wsi), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+                  VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!wsi) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
