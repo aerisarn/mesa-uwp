@@ -2,7 +2,6 @@
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicCS,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicGS,Fail
 KHR-GL46.shader_image_load_store.basic-allTargets-atomicVS,Fail
-KHR-GL46.shader_storage_buffer_object.advanced-readWrite-case1-cs,Fail
 KHR-GL46.shader_storage_buffer_object.basic-operations-case1-cs,Fail
 KHR-GL46.shader_storage_buffer_object.basic-operations-case1-vs,Fail
 
@@ -140,7 +139,6 @@ dEQP-GLES31.functional.stencil_texturing.render.depth24_stencil8_clear,Fail
 dEQP-GLES31.functional.stencil_texturing.render.depth32f_stencil8_clear,Fail
 dEQP-GLES31.functional.synchronization.in_invocation.ssbo_alias_write,Fail
 dEQP-GLES31.functional.synchronization.inter_invocation.ssbo_alias_write,Fail
-dEQP-GLES31.functional.synchronization.inter_invocation.ssbo_write_read,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth24_stencil8_sample_stencil.nearest_size_npot,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth24_stencil8_sample_stencil.nearest_size_pot,Fail
 dEQP-GLES31.functional.texture.border_clamp.formats.depth32f_stencil8_sample_stencil.nearest_size_npot,Fail
@@ -203,12 +201,12 @@ glx@glx-multi-window-single-context,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Crash
 spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_ust_test,Fail
 
-# #6264
-spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-read,Crash
-spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
+# #6115
+spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-float-index-rd,Crash
+spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-vec2-index-rd,Crash
+spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-vec3-index-rd,Crash
+spec@arb_tessellation_shader@execution@variable-indexing@tes-both-input-array-vec4-index-rd,Crash
 
-# maybe color_write_enable related?
-spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 
 glx@extension string sanity,Fail
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
@@ -236,6 +234,11 @@ glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
+# #6322
+spec@arb_framebuffer_object@fbo-attachments-blit-scaled-linear,Fail
+spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
+
+
 spec@arb_viewport_array@display-list,Fail
 shaders@glsl-fs-pointcoord,Fail
 shaders@point-vertex-id divisor,Fail
@@ -251,7 +254,6 @@ spec@arb_arrays_of_arrays@execution@image_store@basic-imagestore-non-const-unifo
 spec@arb_bindless_texture@compiler@samplers@arith-bound-sampler-texture2d.frag,Crash
 spec@arb_depth_texture@depth-tex-modes,Fail
 spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Crash
-spec@arb_enhanced_layouts@execution@component-layout@vs-gs-fs-double,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled@GL_RGB565- swizzled- border color only,Fail
 spec@arb_fragment_program_shadow@tex-shadow1d,Fail
@@ -312,7 +314,6 @@ spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-double-fl
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec2-vec2,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec3-vec3,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec4-vec4,Fail
-spec@arb_gpu_shader_fp64@execution@explicit-location-gs-fs-vs,Fail
 spec@arb_gpu_shader_int64@execution@conversion@frag-conversion-explicit-float-uint64_t,Fail
 spec@arb_gpu_shader_int64@execution@conversion@frag-conversion-explicit-vec2-u64vec2,Fail
 spec@arb_gpu_shader_int64@execution@conversion@frag-conversion-explicit-vec3-u64vec3,Fail
@@ -440,9 +441,6 @@ spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-cumulative,Fail
 spec@arb_shading_language_packing@execution@built-in-functions@fs-packhalf2x16,Fail
 spec@arb_shading_language_packing@execution@built-in-functions@vs-packhalf2x16,Fail
 spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output -small -scan 1 50,Crash
-spec@arb_tessellation_shader@execution@dmat-vs-gs-tcs-tes,Fail
-spec@arb_tessellation_shader@execution@dvec3-vs-tcs-tes,Fail
-spec@arb_tessellation_shader@execution@variable-indexing@tes-input-array-dvec4-index-rd,Fail
 spec@arb_texture_buffer_object@formats (fs- arb),Crash
 spec@arb_texture_buffer_object@formats (vs- arb),Crash
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled,Fail
@@ -510,6 +508,12 @@ spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_
 spec@egl_khr_surfaceless_context@viewport,Fail
 spec@egl_mesa_configless_context@basic,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
+
+# need to investigate this at some point
+spec@ext_framebuffer_multisample@accuracy 6 depth_resolve small depthstencil,Fail
+spec@ext_framebuffer_multisample@accuracy 8 depth_resolve small depthstencil,Fail
+spec@ext_framebuffer_multisample@accuracy all_samples depth_resolve small depthstencil,Fail
+
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 2,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 4,Fail
 spec@ext_framebuffer_multisample@alpha-to-coverage-no-draw-buffer-zero 6,Fail
