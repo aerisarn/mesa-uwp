@@ -44,6 +44,39 @@
 
 #include "vk_util.h"
 
+static void
+panvk_init_sysvals(struct panfrost_sysvals *sysvals,
+                   gl_shader_stage stage)
+{
+   memset(sysvals, 0, sizeof(*sysvals));
+
+#define SYSVAL_SLOT(name) \
+   (assert(offsetof(struct panvk_sysvals, name) % 16 == 0), \
+    offsetof(struct panvk_sysvals, name) / 16)
+
+#define INIT_SYSVAL(name, SYSVAL) \
+   sysvals->sysvals[SYSVAL_SLOT(name)] = PAN_SYSVAL_##SYSVAL
+
+   if (gl_shader_stage_is_compute(stage)) {
+      INIT_SYSVAL(num_work_groups, NUM_WORK_GROUPS);
+      INIT_SYSVAL(local_group_size, LOCAL_GROUP_SIZE);
+   } else {
+      INIT_SYSVAL(viewport_scale, VIEWPORT_SCALE);
+      INIT_SYSVAL(viewport_offset, VIEWPORT_OFFSET);
+      INIT_SYSVAL(vertex_instance_offsets, VERTEX_INSTANCE_OFFSETS);
+      INIT_SYSVAL(blend_constants, BLEND_CONSTANTS);
+   }
+
+   int ssbo0_slot = SYSVAL_SLOT(ssbos);
+   for (unsigned i = 0; i < MAX_SSBOS; i++)
+      sysvals->sysvals[ssbo0_slot + i] = PAN_SYSVAL(SSBO, i);
+
+#undef SYSVAL_SLOT
+#undef INIT_SYSVAL
+
+   sysvals->sysval_count = sizeof(struct panvk_sysvals) / 16;
+}
+
 static bool
 panvk_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
 {
@@ -341,11 +374,15 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    };
    NIR_PASS_V(nir, nir_lower_sysvals_to_varyings, &sysvals_to_varyings);
 
+   struct panfrost_sysvals fixed_sysvals;
+   panvk_init_sysvals(&fixed_sysvals, stage);
+
    struct panfrost_compile_inputs inputs = {
       .gpu_id = pdev->gpu_id,
       .no_ubo_to_push = true,
       .no_idvs = true, /* TODO */
       .fixed_sysval_ubo = sysval_ubo,
+      .fixed_sysval_layout = &fixed_sysvals,
    };
 
    NIR_PASS_V(nir, nir_lower_indirect_derefs,
@@ -412,6 +449,10 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    }
 
    GENX(pan_shader_compile)(nir, &inputs, &shader->binary, &shader->info);
+
+   /* System values shouldn't have changed */
+   assert(memcmp(&shader->info.sysvals, &fixed_sysvals,
+                 sizeof(fixed_sysvals)) == 0);
 
    /* Patch the descriptor count */
    shader->info.ubo_count =

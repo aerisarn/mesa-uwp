@@ -419,11 +419,8 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(pipeline->sysvals); i++) {
-      if (!pipeline->sysvals[i].ids.sysval_count)
-         continue;
-
-      panvk_per_arch(emit_ubo)(state->sysvals[i],
-                               pipeline->sysvals[i].ids.sysval_count * 16,
+      panvk_per_arch(emit_ubo)(state->sysvals_ptr,
+                               sizeof(state->sysvals),
                                &ubos[pipeline->sysvals[i].ubo_idx]);
    }
 

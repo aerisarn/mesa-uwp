@@ -324,10 +324,6 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
       if (pipeline->sysvals[i].ids.sysval_count)
          pipeline->num_ubos = MAX2(pipeline->num_ubos, pipeline->sysvals[i].ubo_idx + 1);
    }
-
-   pipeline->num_sysvals = 0;
-   for (unsigned i = 0; i < ARRAY_SIZE(pipeline->sysvals); i++)
-      pipeline->num_sysvals += pipeline->sysvals[i].ids.sysval_count;
 }
 
 

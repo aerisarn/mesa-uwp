@@ -88,6 +88,37 @@ panvk_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    }
 }
 
+static void
+panvk_set_ssbo_pointers(struct panvk_descriptor_state *desc_state,
+                        unsigned ssbo_offset,
+                        unsigned dyn_ssbo_offset,
+                        struct panvk_descriptor_set *set)
+{
+   struct panvk_sysvals *sysvals = &desc_state->sysvals;
+
+   unsigned ssbo_idx = ssbo_offset;
+   for (unsigned i = 0; i < set->layout->num_ssbos; i++) {
+      const struct panvk_buffer_desc *ssbo = &set->ssbos[i];
+
+      sysvals->ssbos[ssbo_idx++] = (struct panvk_ssbo_addr) {
+         .base_addr = panvk_buffer_gpu_ptr(ssbo->buffer, ssbo->offset),
+         .size = panvk_buffer_range(ssbo->buffer, ssbo->offset, ssbo->size),
+      };
+   }
+
+   for (unsigned i = 0; i < set->layout->num_dyn_ssbos; i++) {
+      const struct panvk_buffer_desc *ssbo =
+         &desc_state->dyn.ssbos[dyn_ssbo_offset + i];
+
+      sysvals->ssbos[ssbo_idx++] = (struct panvk_ssbo_addr) {
+         .base_addr = panvk_buffer_gpu_ptr(ssbo->buffer, ssbo->offset),
+         .size = panvk_buffer_range(ssbo->buffer, ssbo->offset, ssbo->size),
+      };
+   }
+
+   desc_state->sysvals_ptr = 0;
+}
+
 void
 panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                             VkPipelineBindPoint pipelineBindPoint,
@@ -132,6 +163,13 @@ panvk_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
                }
             }
          }
+      }
+
+      if (set->layout->num_ssbos || set->layout->num_dyn_ssbos) {
+         panvk_set_ssbo_pointers(descriptors_state,
+                                 playout->sets[idx].ssbo_offset,
+                                 playout->sets[idx].dyn_ssbo_offset,
+                                 set);
       }
 
       if (set->layout->num_ssbos || set->layout->num_dyn_ssbos)
@@ -195,23 +233,24 @@ panvk_CmdBindPipeline(VkCommandBuffer commandBuffer,
 
    cmdbuf->bind_points[pipelineBindPoint].pipeline = pipeline;
    cmdbuf->state.fs_rsd = 0;
-   memset(cmdbuf->bind_points[pipelineBindPoint].desc_state.sysvals, 0,
-          sizeof(cmdbuf->bind_points[0].desc_state.sysvals));
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       cmdbuf->state.varyings = pipeline->varyings;
 
-      if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_VIEWPORT)))
+      if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_VIEWPORT))) {
          cmdbuf->state.viewport = pipeline->viewport;
-      if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_SCISSOR)))
+         cmdbuf->state.dirty |= PANVK_DYNAMIC_VIEWPORT;
+      }
+      if (!(pipeline->dynamic_state_mask & BITFIELD_BIT(VK_DYNAMIC_STATE_SCISSOR))) {
          cmdbuf->state.scissor = pipeline->scissor;
+         cmdbuf->state.dirty |= PANVK_DYNAMIC_SCISSOR;
+      }
    }
 
    /* Sysvals are passed through UBOs, we need dirty the UBO array if the
     * pipeline contain shaders using sysvals.
     */
-   if (pipeline->num_sysvals)
-      cmdbuf->bind_points[pipelineBindPoint].desc_state.ubos = 0;
+   cmdbuf->bind_points[pipelineBindPoint].desc_state.ubos = 0;
 }
 
 void

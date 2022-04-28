@@ -41,7 +41,7 @@
  */
 void
 panvk_sysval_upload_viewport_scale(const VkViewport *viewport,
-                                   union panvk_sysval_data *data)
+                                   union panvk_sysval_vec4 *data)
 {
    data->f32[0] = 0.5f * viewport->width;
    data->f32[1] = 0.5f * viewport->height;
@@ -59,7 +59,7 @@ panvk_sysval_upload_viewport_scale(const VkViewport *viewport,
  */
 void
 panvk_sysval_upload_viewport_offset(const VkViewport *viewport,
-                                    union panvk_sysval_data *data)
+                                    union panvk_sysval_vec4 *data)
 {
    data->f32[0] = (0.5f * viewport->width) + viewport->x;
    data->f32[1] = (0.5f * viewport->height) + viewport->y;

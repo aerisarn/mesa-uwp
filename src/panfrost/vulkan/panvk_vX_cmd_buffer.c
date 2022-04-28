@@ -312,75 +312,34 @@ panvk_per_arch(cmd_alloc_tls_desc)(struct panvk_cmd_buffer *cmdbuf, bool gfx)
 }
 
 static void
-panvk_sysval_upload_ssbo_info(struct panvk_cmd_buffer *cmdbuf,
-                              unsigned ssbo_id,
-                              struct panvk_cmd_bind_point_state *bind_point_state,
-                              union panvk_sysval_data *data)
+panvk_cmd_prepare_draw_sysvals(struct panvk_cmd_buffer *cmdbuf,
+                               struct panvk_cmd_bind_point_state *bind_point_state,
+                               struct panvk_draw_info *draw)
 {
-   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
-   const struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
+   struct panvk_sysvals *sysvals = &bind_point_state->desc_state.sysvals;
 
-   for (unsigned s = 0; s < pipeline->layout->num_sets; s++) {
-      unsigned ssbo_offset = pipeline->layout->sets[s].ssbo_offset;
-      unsigned num_ssbos = pipeline->layout->sets[s].layout->num_ssbos;
-      unsigned dyn_ssbo_offset = pipeline->layout->sets[s].dyn_ssbo_offset + pipeline->layout->num_ssbos;
-      unsigned num_dyn_ssbos = pipeline->layout->sets[s].layout->num_dyn_ssbos;
-      const struct panvk_buffer_desc *ssbo = NULL;
-
-      if (ssbo_id >= ssbo_offset && ssbo_id < (ssbo_offset + num_ssbos))
-         ssbo = &desc_state->sets[s]->ssbos[ssbo_id - ssbo_offset];
-      else if (ssbo_id >= dyn_ssbo_offset && ssbo_id < (dyn_ssbo_offset + num_dyn_ssbos))
-         ssbo = &desc_state->dyn.ssbos[ssbo_id - pipeline->layout->num_ssbos];
-
-      if (ssbo) {
-         data->u64[0] = panvk_buffer_gpu_ptr(ssbo->buffer, ssbo->offset);
-         data->u32[2] = panvk_buffer_range(ssbo->buffer,
-                                           ssbo->offset, ssbo->size);
-      }
+   unsigned base_vertex = draw->index_size ? draw->vertex_offset : 0;
+   if (sysvals->first_vertex != draw->offset_start ||
+       sysvals->base_vertex != base_vertex ||
+       sysvals->base_instance != draw->first_instance) {
+      sysvals->first_vertex = draw->offset_start;
+      sysvals->base_vertex = base_vertex;
+      sysvals->base_instance = draw->first_instance;
+      bind_point_state->desc_state.sysvals_ptr = 0;
    }
-}
 
-static void
-panvk_cmd_upload_sysval(struct panvk_cmd_buffer *cmdbuf,
-                        unsigned id,
-                        struct panvk_cmd_bind_point_state *bind_point_state,
-                        union panvk_sysval_data *data)
-{
-   switch (PAN_SYSVAL_TYPE(id)) {
-   case PAN_SYSVAL_VIEWPORT_SCALE:
-      panvk_sysval_upload_viewport_scale(&cmdbuf->state.viewport, data);
-      break;
-   case PAN_SYSVAL_VIEWPORT_OFFSET:
-      panvk_sysval_upload_viewport_offset(&cmdbuf->state.viewport, data);
-      break;
-   case PAN_SYSVAL_VERTEX_INSTANCE_OFFSETS:
-      data->u32[0] = cmdbuf->state.ib.first_vertex;
-      data->u32[1] = cmdbuf->state.ib.base_vertex;
-      data->u32[2] = cmdbuf->state.ib.base_instance;
-      break;
-   case PAN_SYSVAL_BLEND_CONSTANTS:
-      memcpy(data->f32, cmdbuf->state.blend.constants, sizeof(data->f32));
-      break;
-   case PAN_SYSVAL_SSBO:
-      /* This won't work with dynamic SSBO indexing. We might want to
-       * consider storing SSBO mappings in a separate UBO if we need to
-       * support
-       * VkPhysicalDeviceVulkan12Features.shaderStorageBufferArrayNonUniformIndexing.
-       */
-      panvk_sysval_upload_ssbo_info(cmdbuf, PAN_SYSVAL_ID(id), bind_point_state, data);
-      break;
-   case PAN_SYSVAL_NUM_WORK_GROUPS:
-      data->u32[0] = cmdbuf->state.compute.wg_count.x;
-      data->u32[1] = cmdbuf->state.compute.wg_count.y;
-      data->u32[2] = cmdbuf->state.compute.wg_count.z;
-      break;
-   case PAN_SYSVAL_LOCAL_GROUP_SIZE:
-      data->u32[0] = bind_point_state->pipeline->cs.local_size.x;
-      data->u32[1] = bind_point_state->pipeline->cs.local_size.y;
-      data->u32[2] = bind_point_state->pipeline->cs.local_size.z;
-      break;
-   default:
-      unreachable("Invalid static sysval");
+   if (cmdbuf->state.dirty & PANVK_DYNAMIC_BLEND_CONSTANTS) {
+      memcpy(&sysvals->blend_constants, cmdbuf->state.blend.constants,
+             sizeof(cmdbuf->state.blend.constants));
+      bind_point_state->desc_state.sysvals_ptr = 0;
+   }
+
+   if (cmdbuf->state.dirty & PANVK_DYNAMIC_VIEWPORT) {
+      panvk_sysval_upload_viewport_scale(&cmdbuf->state.viewport,
+                                         &sysvals->viewport_scale);
+      panvk_sysval_upload_viewport_offset(&cmdbuf->state.viewport,
+                                          &sysvals->viewport_offset);
+      bind_point_state->desc_state.sysvals_ptr = 0;
    }
 }
 
@@ -389,29 +348,15 @@ panvk_cmd_prepare_sysvals(struct panvk_cmd_buffer *cmdbuf,
                           struct panvk_cmd_bind_point_state *bind_point_state)
 {
    struct panvk_descriptor_state *desc_state = &bind_point_state->desc_state;
-   const struct panvk_pipeline *pipeline = bind_point_state->pipeline;
 
-   if (!pipeline->num_sysvals)
+   if (desc_state->sysvals_ptr)
       return;
 
-   uint32_t dirty = cmdbuf->state.dirty | desc_state->dirty;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(desc_state->sysvals); i++) {
-      unsigned sysval_count = pipeline->sysvals[i].ids.sysval_count;
-      if (!sysval_count || desc_state->sysvals[i])
-         continue;
-
-      struct panfrost_ptr sysvals =
-         pan_pool_alloc_aligned(&cmdbuf->desc_pool.base, sysval_count * 16, 16);
-      union panvk_sysval_data *data = sysvals.cpu;
-
-      for (unsigned s = 0; s < pipeline->sysvals[i].ids.sysval_count; s++) {
-         panvk_cmd_upload_sysval(cmdbuf, pipeline->sysvals[i].ids.sysvals[s],
-                                 bind_point_state, &data[s]);
-      }
-
-      desc_state->sysvals[i] = sysvals.gpu;
-   }
+   struct panfrost_ptr sysvals =
+      pan_pool_alloc_aligned(&cmdbuf->desc_pool.base,
+                             sizeof(desc_state->sysvals), 16);
+   memcpy(sysvals.cpu, &desc_state->sysvals, sizeof(desc_state->sysvals));
+   desc_state->sysvals_ptr = sysvals.gpu;
 }
 
 static void
@@ -919,16 +864,7 @@ panvk_cmd_draw(struct panvk_cmd_buffer *cmdbuf,
 
    panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, true);
 
-   unsigned base_vertex = draw->index_size ? draw->vertex_offset : 0;
-   if (cmdbuf->state.ib.first_vertex != draw->offset_start ||
-       cmdbuf->state.ib.base_vertex != base_vertex ||
-       cmdbuf->state.ib.base_vertex != draw->first_instance) {
-      cmdbuf->state.ib.base_vertex = base_vertex;
-      cmdbuf->state.ib.base_instance = draw->first_instance;
-      cmdbuf->state.ib.first_vertex = draw->offset_start;
-      cmdbuf->state.dirty |= PANVK_DYNAMIC_VERTEX_INSTANCE_OFFSETS;
-   }
-
+   panvk_cmd_prepare_draw_sysvals(cmdbuf, bind_point_state, draw);
    panvk_cmd_prepare_ubos(cmdbuf, bind_point_state);
    panvk_cmd_prepare_textures(cmdbuf, bind_point_state);
    panvk_cmd_prepare_samplers(cmdbuf, bind_point_state);
@@ -1537,7 +1473,15 @@ panvk_per_arch(CmdDispatch)(VkCommandBuffer commandBuffer,
    struct panfrost_ptr job =
       pan_pool_alloc_desc(&cmdbuf->desc_pool.base, COMPUTE_JOB);
 
-   cmdbuf->state.compute.wg_count = dispatch.wg_count;
+   struct panvk_sysvals *sysvals = &desc_state->sysvals;
+   sysvals->num_work_groups.u32[0] = x;
+   sysvals->num_work_groups.u32[1] = y;
+   sysvals->num_work_groups.u32[2] = z;
+   sysvals->local_group_size.u32[0] = pipeline->cs.local_size.x;
+   sysvals->local_group_size.u32[1] = pipeline->cs.local_size.y;
+   sysvals->local_group_size.u32[2] = pipeline->cs.local_size.z;
+   desc_state->sysvals_ptr = 0;
+
    panvk_per_arch(cmd_alloc_tls_desc)(cmdbuf, false);
    dispatch.tsd = batch->tls.gpu;
 

@@ -569,14 +569,57 @@ enum panvk_dynamic_state_bits {
    PANVK_DYNAMIC_ALL = (1 << 12) - 1,
 };
 
+/* This has to match nir_address_format_64bit_bounded_global */
+struct panvk_ssbo_addr {
+   uint64_t base_addr;
+   uint32_t size;
+   uint32_t zero; /* Must be zero! */
+};
+
+union panvk_sysval_vec4 {
+   float f32[4];
+   uint32_t u32[4];
+};
+
+struct panvk_sysvals {
+   union {
+      struct {
+         /* Only for graphics */
+         union panvk_sysval_vec4 viewport_scale;
+         union panvk_sysval_vec4 viewport_offset;
+         union {
+            union panvk_sysval_vec4 vertex_instance_offsets;
+            struct {
+               uint32_t first_vertex;
+               uint32_t base_vertex;
+               uint32_t base_instance;
+            };
+         };
+         union panvk_sysval_vec4 blend_constants;
+      };
+
+      struct {
+         /* Only for compute */
+         union panvk_sysval_vec4 num_work_groups;
+         union panvk_sysval_vec4 local_group_size;
+      };
+   };
+
+/* This will be gone in the next commit */
+#define MAX_SSBOS 28
+
+   struct panvk_ssbo_addr ssbos[MAX_SSBOS];
+};
+
 struct panvk_descriptor_state {
    uint32_t dirty;
    const struct panvk_descriptor_set *sets[MAX_SETS];
+   struct panvk_sysvals sysvals;
    struct {
       struct panvk_buffer_desc ubos[MAX_DYNAMIC_UNIFORM_BUFFERS];
       struct panvk_buffer_desc ssbos[MAX_DYNAMIC_STORAGE_BUFFERS];
    } dyn;
-   mali_ptr sysvals[MESA_SHADER_STAGES];
+   mali_ptr sysvals_ptr;
    mali_ptr ubos;
    mali_ptr textures;
    mali_ptr samplers;
@@ -715,10 +758,6 @@ struct panvk_cmd_state {
       bool crc_valid[MAX_RTS];
    } fb;
 
-   struct {
-      struct pan_compute_dim wg_count;
-   } compute;
-
    const struct panvk_render_pass *pass;
    const struct panvk_subpass *subpass;
    const struct panvk_framebuffer *framebuffer;
@@ -836,13 +875,6 @@ panvk_shader_destroy(struct panvk_device *dev,
                      struct panvk_shader *shader,
                      const VkAllocationCallbacks *alloc);
 
-union panvk_sysval_data {
-   float f32[4];
-   double f64[2];
-   uint32_t u32[4];
-   uint64_t u64[2];
-};
-
 #define RSD_WORDS 16
 #define BLEND_DESC_WORDS 4
 
@@ -868,7 +900,6 @@ struct panvk_pipeline {
    uint32_t img_access_mask;
 
    unsigned num_ubos;
-   unsigned num_sysvals;
 
    struct {
       unsigned ubo_idx;
