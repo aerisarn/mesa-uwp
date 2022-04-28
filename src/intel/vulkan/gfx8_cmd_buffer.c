@@ -323,7 +323,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
 
 #if GFX_VER >= 11
-   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE)
+   if (cmd_buffer->device->vk.enabled_extensions.KHR_fragment_shading_rate &&
+       cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE)
       genX(emit_shading_rate)(&cmd_buffer->batch, pipeline, d);
 #endif /* GFX_VER >= 11 */
 

@@ -949,19 +949,6 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
    }
 }
 
-static void
-emit_3dstate_cps(struct anv_graphics_pipeline *pipeline, uint32_t dynamic_states)
-{
-#if GFX_VER >= 11
-   if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) &&
-       pipeline->base.device->vk.enabled_extensions.KHR_fragment_shading_rate) {
-      genX(emit_shading_rate)(&pipeline->base.batch,
-                              pipeline,
-                              &pipeline->dynamic_state);
-   }
-#endif
-}
-
 const uint32_t genX(vk_to_intel_logic_op)[] = {
    [VK_LOGIC_OP_COPY]                        = LOGICOP_COPY,
    [VK_LOGIC_OP_CLEAR]                       = LOGICOP_CLEAR,
@@ -2900,8 +2887,6 @@ genX(graphics_pipeline_create)(
 #endif
 
       emit_3dstate_vf_statistics(pipeline);
-
-      emit_3dstate_cps(pipeline, dynamic_states);
 
       emit_3dstate_streamout(pipeline, pCreateInfo->pRasterizationState,
                              dynamic_states);
