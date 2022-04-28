@@ -190,8 +190,6 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
          return;
       }
 
-      bool scratch_enabled = shader->config.scratch_bytes_per_wave > 0;
-
       shader->config.rsrc1 = S_00B848_VGPRS((shader->config.num_vgprs - 1) /
                                             ((shader->wave_size == 32 ||
                                               sscreen->info.wave64_vgpr_alloc_granularity == 8) ? 8 : 4)) |
@@ -204,7 +202,8 @@ static void si_create_compute_state_async(void *job, void *gdata, int thread_ind
          shader->config.rsrc1 |= S_00B848_SGPRS((shader->config.num_sgprs - 1) / 8);
       }
 
-      shader->config.rsrc2 = S_00B84C_USER_SGPR(user_sgprs) | S_00B84C_SCRATCH_EN(scratch_enabled) |
+      shader->config.rsrc2 = S_00B84C_USER_SGPR(user_sgprs) |
+                             S_00B84C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0) |
                              S_00B84C_TGID_X_EN(sel->info.uses_block_id[0]) |
                              S_00B84C_TGID_Y_EN(sel->info.uses_block_id[1]) |
                              S_00B84C_TGID_Z_EN(sel->info.uses_block_id[2]) |
