@@ -872,9 +872,7 @@ struct panvk_pipeline {
 
    struct {
       unsigned ubo_idx;
-      mali_ptr ubo;
       struct panfrost_sysvals ids;
-      uint32_t dirty_mask;
    } sysvals[MESA_SHADER_STAGES];
 
    unsigned tls_size;
