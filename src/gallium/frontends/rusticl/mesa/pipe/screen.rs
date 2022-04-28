@@ -1,6 +1,7 @@
 extern crate mesa_rust_gen;
 extern crate mesa_rust_util;
 
+use crate::compiler::nir::NirShader;
 use crate::pipe::context::*;
 use crate::pipe::device::*;
 use crate::pipe::resource::*;
@@ -151,6 +152,39 @@ impl PipeScreen {
         let s = &mut unsafe { *self.screen };
         unsafe { s.is_format_supported.unwrap()(self.screen, format, target, 0, 0, bindings) }
     }
+
+    pub fn nir_shader_compiler_options(
+        &self,
+        shader: pipe_shader_type,
+    ) -> *const nir_shader_compiler_options {
+        unsafe {
+            (*self.screen).get_compiler_options.unwrap()(
+                self.screen,
+                pipe_shader_ir::PIPE_SHADER_IR_NIR,
+                shader,
+            )
+            .cast()
+        }
+    }
+
+    pub fn shader_cache(&self) -> *mut disk_cache {
+        let s = &mut unsafe { *self.screen };
+
+        if let Some(func) = s.get_disk_shader_cache {
+            unsafe { func(self.screen) }
+        } else {
+            ptr::null_mut()
+        }
+    }
+
+    pub fn finalize_nir(&self, nir: &NirShader) {
+        let s = &mut unsafe { *self.screen };
+        if let Some(func) = s.finalize_nir {
+            unsafe {
+                func(s, nir.get_nir().cast());
+            }
+        }
+    }
 }
 
 impl Drop for PipeScreen {
@@ -165,6 +199,7 @@ fn has_required_cbs(screen: *mut pipe_screen) -> bool {
     let s = unsafe { *screen };
     s.context_create.is_some()
         && s.destroy.is_some()
+        && s.get_compiler_options.is_some()
         && s.get_compute_param.is_some()
         && s.get_name.is_some()
         && s.get_param.is_some()

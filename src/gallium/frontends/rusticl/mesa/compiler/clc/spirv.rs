@@ -1,6 +1,9 @@
 extern crate mesa_rust_gen;
 extern crate mesa_rust_util;
 
+use crate::compiler::nir::*;
+use crate::pipe::screen::*;
+
 use self::mesa_rust_gen::*;
 use self::mesa_rust_util::string::*;
 
@@ -166,6 +169,70 @@ impl SPIRVBin {
                 })
                 .collect(),
         }
+    }
+
+    fn get_spirv_options(library: bool, clc_shader: *const nir_shader) -> spirv_to_nir_options {
+        spirv_to_nir_options {
+            create_library: library,
+            environment: nir_spirv_execution_environment::NIR_SPIRV_OPENCL,
+            clc_shader: clc_shader,
+            float_controls_execution_mode: float_controls::FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32
+                as u16,
+
+            caps: spirv_supported_capabilities {
+                address: true,
+                float64: true,
+                int8: true,
+                int16: true,
+                int64: true,
+                kernel: true,
+                kernel_image: true,
+                linkage: true,
+                ..Default::default()
+            },
+
+            constant_addr_format: nir_address_format::nir_address_format_64bit_global,
+            global_addr_format: nir_address_format::nir_address_format_64bit_global, // TODO 32 bit devices
+            shared_addr_format: nir_address_format::nir_address_format_32bit_offset_as_64bit,
+            temp_addr_format: nir_address_format::nir_address_format_32bit_offset_as_64bit,
+
+            // default
+            debug: spirv_to_nir_options__bindgen_ty_1::default(),
+            ..Default::default()
+        }
+    }
+
+    pub fn to_nir(
+        &self,
+        entry_point: &str,
+        nir_options: *const nir_shader_compiler_options,
+        libclc: &NirShader,
+    ) -> Option<NirShader> {
+        let c_entry = CString::new(entry_point.as_bytes()).unwrap();
+        let spirv_options = Self::get_spirv_options(false, libclc.get_nir());
+        let nir = unsafe {
+            spirv_to_nir(
+                self.spirv.data.cast(),
+                self.spirv.size / 4,
+                ptr::null_mut(), // spec
+                0,               // spec count
+                gl_shader_stage::MESA_SHADER_KERNEL,
+                c_entry.as_ptr(),
+                &spirv_options,
+                nir_options,
+            )
+        };
+
+        NirShader::new(nir)
+    }
+
+    pub fn get_lib_clc(screen: &PipeScreen) -> Option<NirShader> {
+        let nir_options = screen.nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE);
+        let spirv_options = Self::get_spirv_options(true, ptr::null());
+        let shader_cache = screen.shader_cache();
+        NirShader::new(unsafe {
+            nir_load_libclc_shader(64, shader_cache, &spirv_options, nir_options)
+        })
     }
 }
 

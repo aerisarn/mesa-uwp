@@ -1,5 +1,6 @@
 extern crate mesa_rust_gen;
 
+use crate::compiler::nir::*;
 use crate::pipe::resource::*;
 use crate::pipe::transfer::*;
 
@@ -97,6 +98,84 @@ impl PipeContext {
 
         unsafe { self.pipe.as_ref().blit.unwrap()(self.pipe.as_ptr(), &blit_info) }
     }
+
+    pub fn create_compute_state(
+        &self,
+        nir: &NirShader,
+        input_mem: u32,
+        local_mem: u32,
+    ) -> *mut c_void {
+        let state = pipe_compute_state {
+            ir_type: pipe_shader_ir::PIPE_SHADER_IR_NIR,
+            prog: nir.dup_for_driver().cast(),
+            req_input_mem: input_mem,
+            req_local_mem: local_mem,
+            req_private_mem: 0,
+        };
+        unsafe { self.pipe.as_ref().create_compute_state.unwrap()(self.pipe.as_ptr(), &state) }
+    }
+
+    pub fn bind_compute_state(&self, state: *mut c_void) {
+        unsafe { self.pipe.as_ref().bind_compute_state.unwrap()(self.pipe.as_ptr(), state) }
+    }
+
+    pub fn delete_compute_state(&self, state: *mut c_void) {
+        unsafe { self.pipe.as_ref().delete_compute_state.unwrap()(self.pipe.as_ptr(), state) }
+    }
+
+    pub fn launch_grid(
+        &self,
+        work_dim: u32,
+        block: [u32; 3],
+        grid: [u32; 3],
+        grid_base: [u32; 3],
+        input: &[u8],
+    ) {
+        let info = pipe_grid_info {
+            pc: 0,
+            input: input.as_ptr().cast(),
+            work_dim: work_dim,
+            block: block,
+            last_block: [0; 3],
+            grid: grid,
+            grid_base: grid_base,
+            indirect: ptr::null_mut(),
+            indirect_offset: 0,
+        };
+        unsafe { self.pipe.as_ref().launch_grid.unwrap()(self.pipe.as_ptr(), &info) }
+    }
+
+    pub fn set_global_binding(&self, res: &[Option<Arc<PipeResource>>], out: &mut [*mut u32]) {
+        let mut res: Vec<_> = res
+            .iter()
+            .map(|o| o.as_ref().map_or(ptr::null_mut(), |r| r.pipe()))
+            .collect();
+        unsafe {
+            self.pipe.as_ref().set_global_binding.unwrap()(
+                self.pipe.as_ptr(),
+                0,
+                res.len() as u32,
+                res.as_mut_ptr(),
+                out.as_mut_ptr(),
+            )
+        }
+    }
+
+    pub fn clear_global_binding(&self, count: u32) {
+        unsafe {
+            self.pipe.as_ref().set_global_binding.unwrap()(
+                self.pipe.as_ptr(),
+                0,
+                count,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        }
+    }
+
+    pub fn memory_barrier(&self, barriers: u32) {
+        unsafe { self.pipe.as_ref().memory_barrier.unwrap()(self.pipe.as_ptr(), barriers) }
+    }
 }
 
 impl Drop for PipeContext {
@@ -109,8 +188,14 @@ impl Drop for PipeContext {
 
 fn has_required_cbs(c: &pipe_context) -> bool {
     c.destroy.is_some()
+        && c.bind_compute_state.is_some()
         && c.blit.is_some()
         && c.buffer_map.is_some()
         && c.buffer_subdata.is_some()
         && c.buffer_unmap.is_some()
+        && c.create_compute_state.is_some()
+        && c.delete_compute_state.is_some()
+        && c.launch_grid.is_some()
+        && c.memory_barrier.is_some()
+        && c.set_global_binding.is_some()
 }

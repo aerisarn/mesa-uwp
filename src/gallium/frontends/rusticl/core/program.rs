@@ -1,4 +1,5 @@
 extern crate mesa_rust;
+extern crate mesa_rust_gen;
 extern crate rusticl_opencl_gen;
 
 use crate::api::icd::*;
@@ -7,6 +8,8 @@ use crate::core::device::*;
 use crate::impl_cl_type_trait;
 
 use self::mesa_rust::compiler::clc::*;
+use self::mesa_rust::compiler::nir::*;
+use self::mesa_rust_gen::*;
 use self::rusticl_opencl_gen::*;
 
 use std::collections::HashMap;
@@ -226,5 +229,29 @@ impl Program {
                 kernels: kernels.into_iter().collect(),
             }),
         })
+    }
+
+    pub fn nirs(&self, kernel: &str) -> HashMap<Arc<Device>, NirShader> {
+        let mut lock = self.build_info();
+        let mut res = HashMap::new();
+        for d in &self.devs {
+            let info = Self::dev_build_info(&mut lock, d);
+            if info.status != CL_BUILD_SUCCESS as cl_build_status {
+                continue;
+            }
+            let nir = info
+                .spirv
+                .as_ref()
+                .unwrap()
+                .to_nir(
+                    kernel,
+                    d.screen
+                        .nir_shader_compiler_options(pipe_shader_type::PIPE_SHADER_COMPUTE),
+                    &d.lib_clc,
+                )
+                .unwrap();
+            res.insert(d.clone(), nir);
+        }
+        res
     }
 }

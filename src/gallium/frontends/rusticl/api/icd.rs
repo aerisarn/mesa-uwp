@@ -1079,18 +1079,27 @@ extern "C" fn cl_enqueue_unmap_mem_object(
 }
 
 extern "C" fn cl_enqueue_ndrange_kernel(
-    _command_queue: cl_command_queue,
-    _kernel: cl_kernel,
-    _work_dim: cl_uint,
-    _global_work_offset: *const usize,
-    _global_work_size: *const usize,
-    _local_work_size: *const usize,
-    _num_events_in_wait_list: cl_uint,
-    _event_wait_list: *const cl_event,
-    _event: *mut cl_event,
+    command_queue: cl_command_queue,
+    kernel: cl_kernel,
+    work_dim: cl_uint,
+    global_work_offset: *const usize,
+    global_work_size: *const usize,
+    local_work_size: *const usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
 ) -> cl_int {
-    println!("cl_enqueue_ndrange_kernel not implemented");
-    CL_OUT_OF_HOST_MEMORY
+    match_err!(enqueue_ndrange_kernel(
+        command_queue,
+        kernel,
+        work_dim,
+        global_work_offset,
+        global_work_size,
+        local_work_size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event
+    ))
 }
 
 extern "C" fn cl_get_extension_function_address(

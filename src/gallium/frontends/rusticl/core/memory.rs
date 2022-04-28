@@ -36,7 +36,7 @@ pub struct Mem {
     pub image_desc: cl_image_desc,
     pub image_elem_size: u8,
     pub cbs: Mutex<Vec<Box<dyn Fn(cl_mem)>>>,
-    res: Option<HashMap<Arc<Device>, PipeResource>>,
+    res: Option<HashMap<Arc<Device>, Arc<PipeResource>>>,
     maps: Mutex<HashMap<*mut c_void, (u32, PipeTransfer)>>,
 }
 
@@ -187,13 +187,17 @@ impl Mem {
         ptr::eq(a, b)
     }
 
-    fn get_res(&self) -> &HashMap<Arc<Device>, PipeResource> {
+    fn get_res(&self) -> &HashMap<Arc<Device>, Arc<PipeResource>> {
         self.parent
             .as_ref()
             .map_or(self, |p| p.as_ref())
             .res
             .as_ref()
             .unwrap()
+    }
+
+    pub fn get_res_of_dev(&self, dev: &Arc<Device>) -> &Arc<PipeResource> {
+        self.get_res().get(dev).unwrap()
     }
 
     fn to_parent<'a>(&'a self, offset: &mut usize) -> &'a Self {

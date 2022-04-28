@@ -966,6 +966,7 @@ if with_gallium_rusticl
   add_languages('rust', required: true)
 
   with_clc = true
+  with_libclc = true
 endif
 
 dep_clc = null_dep
