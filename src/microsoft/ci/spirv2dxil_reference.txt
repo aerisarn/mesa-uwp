@@ -361,10 +361,7 @@ Test:SpvModuleScopeVarParserTest_BuiltinPointSize_ReadReplaced.spvasm:main|Verte
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_Write1_IsErased.spvasm:main|Vertex: Pass
 Test:SpvModuleScopeVarParserTest_BuiltinPointSize_WriteViaCopyObjectPostAccessChainErased.spvasm:main|Vertex: Pass
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position.spvasm:main|Vertex: Pass
-Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position_Initializer.spvasm:main|Vertex: Fail
-Assertion failed: var->constant_initializer == NULL && var->pointer_initializer == NULL
-
-
+Test:SpvModuleScopeVarParserTest_BuiltinPosition_BuiltIn_Position_Initializer.spvasm:main|Vertex: Pass
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition.spvasm:main|Vertex: Pass
 Test:SpvModuleScopeVarParserTest_BuiltinPosition_StorePosition_PerVertexStructOutOfOrderDecl.spvasm:main|Vertex: Fail
 Assertion failed: glsl_get_components(type) == 4
