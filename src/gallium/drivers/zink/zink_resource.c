@@ -1101,15 +1101,14 @@ zink_resource_get_param(struct pipe_screen *pscreen, struct pipe_context *pctx,
          break;
    }
 
-   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
+      return false;
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
    case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD: {
 #ifdef ZINK_USE_DMABUF
       memset(&whandle, 0, sizeof(whandle));
       if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED)
          whandle.type = WINSYS_HANDLE_TYPE_SHARED;
-      else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS)
-         whandle.type = WINSYS_HANDLE_TYPE_KMS;
       else if (param == PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD)
          whandle.type = WINSYS_HANDLE_TYPE_FD;
 
@@ -1140,31 +1139,24 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       struct zink_screen *screen = zink_screen(pscreen);
       struct zink_resource_object *obj = res->obj;
 
-      assert(screen->drm_fd >= 0);
-      VkMemoryGetFdInfoKHR fd_info = {0};
-      int fd;
-      fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-      fd_info.memory = zink_bo_get_mem(obj->bo);
-      if (whandle->type == WINSYS_HANDLE_TYPE_FD)
-         fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-      else
-         fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-      VkResult result = VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
-      if (result != VK_SUCCESS) {
-         mesa_loge("ZINK: vkGetMemoryFdKHR failed");
-         return false;
-      }
       if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
-         uint32_t h;
-         bool success = drmPrimeFDToHandle(screen->drm_fd, fd, &h) == 0;
-         close(fd);
-         if (!success) {
-            mesa_loge("zink: failed drmPrimeFDToHandle %s", strerror(errno));
+         whandle->handle = -1;
+      } else {
+         VkMemoryGetFdInfoKHR fd_info = {0};
+         int fd;
+         fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+         fd_info.memory = zink_bo_get_mem(obj->bo);
+         if (whandle->type == WINSYS_HANDLE_TYPE_FD)
+            fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+         else
+            fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+         VkResult result = VKSCR(GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
+         if (result != VK_SUCCESS) {
+            mesa_loge("ZINK: vkGetMemoryFdKHR failed");
             return false;
          }
-         fd = h;
+         whandle->handle = fd;
       }
-      whandle->handle = fd;
       uint64_t value;
       zink_resource_get_param(pscreen, context, tex, 0, 0, 0, PIPE_RESOURCE_PARAM_MODIFIER, 0, &value);
       whandle->modifier = value;
