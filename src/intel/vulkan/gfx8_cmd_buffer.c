@@ -628,9 +628,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       genX(emit_sample_pattern)(&cmd_buffer->batch, d);
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
-                                      ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
-                                      ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
-      const uint8_t color_writes = d->color_writes;
+                                      ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)) {
       /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
        * threads.
        */
@@ -638,13 +636,20 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       struct GENX(3DSTATE_WM) wm = {
          GENX(3DSTATE_WM_header),
 
-         .ForceThreadDispatchEnable = (pipeline->force_fragment_thread_dispatch ||
+         .ForceThreadDispatchEnable = anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
+                                      (pipeline->force_fragment_thread_dispatch ||
                                        anv_cmd_buffer_all_color_write_masked(cmd_buffer)) ?
                                       ForceON : 0,
       };
       GENX(3DSTATE_WM_pack)(NULL, wm_dwords, &wm);
 
       anv_batch_emit_merge(&cmd_buffer->batch, wm_dwords, pipeline->gfx8.wm);
+   }
+
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+                                      ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP)) {
+      const uint8_t color_writes = d->color_writes;
 
       /* 3DSTATE_PS_BLEND to be consistent with the rest of the
        * BLEND_STATE_ENTRY.

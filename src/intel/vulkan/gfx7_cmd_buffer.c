@@ -290,8 +290,9 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       struct GENX(3DSTATE_WM) wm = {
          GENX(3DSTATE_WM_header),
 
-         .ThreadDispatchEnable = pipeline->force_fragment_thread_dispatch ||
-                                 !anv_cmd_buffer_all_color_write_masked(cmd_buffer),
+         .ThreadDispatchEnable = anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT) &&
+                                 (pipeline->force_fragment_thread_dispatch ||
+                                  !anv_cmd_buffer_all_color_write_masked(cmd_buffer)),
          .MultisampleRasterizationMode =
                                  genX(ms_rasterization_mode)(pipeline,
                                                              dynamic_raster_mode),

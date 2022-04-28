@@ -2334,20 +2334,9 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline,
       wm.LineStippleEnable = line && line->stippledLineEnable;
    }
 
-   uint32_t dynamic_wm_states = ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
-
-#if GFX_VER < 8
-   dynamic_wm_states |= ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
-#endif
-
-   if (dynamic_states & dynamic_wm_states) {
-      const struct intel_device_info *devinfo = &pipeline->base.device->info;
-      uint32_t *dws = devinfo->ver >= 8 ? pipeline->gfx8.wm : pipeline->gfx7.wm;
-      GENX(3DSTATE_WM_pack)(NULL, dws, &wm);
-   } else {
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_WM), _wm)
-         _wm = wm;
-   }
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
+   uint32_t *dws = devinfo->ver >= 8 ? pipeline->gfx8.wm : pipeline->gfx7.wm;
+   GENX(3DSTATE_WM_pack)(NULL, dws, &wm);
 }
 
 static void
