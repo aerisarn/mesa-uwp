@@ -143,8 +143,12 @@ pan_lookup_sysval(struct hash_table_u64 *sysval_to_id,
 
         void *cached = _mesa_hash_table_u64_search(sysval_to_id, sysval);
 
-        if (cached)
-                return ((uintptr_t) cached) - 1;
+        if (cached) {
+                unsigned id = ((uintptr_t) cached) - 1;
+                assert(id < MAX_SYSVAL_COUNT);
+                assert(sysvals->sysvals[id] == sysval);
+                return id;
+        }
 
         /* Else assign */
 
