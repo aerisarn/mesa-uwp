@@ -4961,7 +4961,10 @@ bifrost_compile_shader_nir(nir_shader *nir,
         bifrost_debug = debug_get_option_bifrost_debug();
 
         bi_finalize_nir(nir, inputs->gpu_id, inputs->is_blend);
-        struct hash_table_u64 *sysval_to_id = panfrost_init_sysvals(&info->sysvals, NULL);
+        struct hash_table_u64 *sysval_to_id =
+                panfrost_init_sysvals(&info->sysvals,
+                                      inputs->fixed_sysval_layout,
+                                      NULL);
 
         info->tls_size = nir->scratch_size;
         info->vs.idvs = bi_should_idvs(nir, inputs);

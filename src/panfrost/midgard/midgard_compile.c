@@ -3127,7 +3127,9 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         /* TODO: Bound against what? */
         compiler_context *ctx = rzalloc(NULL, compiler_context);
-        ctx->sysval_to_id = panfrost_init_sysvals(&info->sysvals, ctx);
+        ctx->sysval_to_id = panfrost_init_sysvals(&info->sysvals,
+                                                  inputs->fixed_sysval_layout,
+                                                  ctx);
 
         ctx->inputs = inputs;
         ctx->nir = nir;
