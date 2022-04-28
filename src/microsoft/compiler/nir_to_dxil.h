@@ -90,6 +90,7 @@ struct nir_to_dxil_options {
    unsigned num_kernel_globals;
    unsigned input_clip_size;
    enum dxil_environment environment;
+   bool auto_link;
 };
 
 bool

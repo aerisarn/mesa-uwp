@@ -134,7 +134,10 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    if (dgb_opts->dump_nir)
       nir_print_shader(nir, stderr);
 
-   struct nir_to_dxil_options opts = {.environment = DXIL_ENVIRONMENT_VULKAN};
+   struct nir_to_dxil_options opts = {
+      .environment = DXIL_ENVIRONMENT_VULKAN,
+      .auto_link = true,
+   };
    struct blob dxil_blob;
    if (!nir_to_dxil(nir, &opts, &dxil_blob)) {
       if (dxil_blob.allocated)

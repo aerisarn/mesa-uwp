@@ -5408,7 +5408,7 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    unsigned input_clip_size = ctx->mod.shader_kind == DXIL_PIXEL_SHADER ?
       ctx->shader->info.clip_distance_array_size : ctx->opts->input_clip_size;
    const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader,
-                                                         ctx->opts->environment == DXIL_ENVIRONMENT_VULKAN,
+                                                         ctx->opts->auto_link,
                                                          input_clip_size);
 
    nir_foreach_function(func, ctx->shader) {
