@@ -94,7 +94,6 @@ struct zink_screen {
    simple_mtx_t dt_lock;
 
    bool device_lost;
-   int drm_fd;
    struct sw_winsys winsys;
    struct sw_winsys *sw_winsys; // wrapped
    __DRIkopperLoaderExtension *loader;

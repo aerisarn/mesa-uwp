@@ -1234,9 +1234,6 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    vkDestroyInstance(screen->instance, NULL);
    util_idalloc_mt_fini(&screen->buffer_ids);
 
-   if (screen->drm_fd != -1)
-      close(screen->drm_fd);
-
    slab_destroy_parent(&screen->transfer_pool);
    ralloc_free(screen);
    glsl_type_singleton_decref();
@@ -2247,7 +2244,6 @@ zink_create_screen(struct sw_winsys *winsys, const struct pipe_screen_config *co
 {
    struct zink_screen *ret = zink_internal_create_screen(config);
    if (ret) {
-      ret->drm_fd = -1;
       ret->sw_winsys = winsys;
    }
 
@@ -2259,8 +2255,6 @@ zink_drm_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct zink_screen *ret = zink_internal_create_screen(config);
 
-   if (ret)
-      ret->drm_fd = os_dupfd_cloexec(fd);
    if (ret && !ret->info.have_KHR_external_memory_fd) {
       debug_printf("ZINK: KHR_external_memory_fd required!\n");
       zink_destroy_screen(&ret->base);
