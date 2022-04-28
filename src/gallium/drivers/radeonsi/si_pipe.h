@@ -720,7 +720,6 @@ struct si_cs_shader_state {
    struct si_compute *emitted_program;
    unsigned offset;
    bool initialized;
-   bool uses_scratch;
 };
 
 struct si_samplers {

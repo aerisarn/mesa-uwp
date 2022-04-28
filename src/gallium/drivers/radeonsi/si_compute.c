@@ -565,7 +565,6 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
 
    sctx->cs_shader_state.emitted_program = program;
    sctx->cs_shader_state.offset = offset;
-   sctx->cs_shader_state.uses_scratch = config->scratch_bytes_per_wave != 0;
 
    *prefetch = true;
    return true;
