@@ -1825,7 +1825,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    }
 
    /* Add the scratch offset to input SGPRs. */
-   if (shader->config.scratch_bytes_per_wave && !si_is_merged_shader(shader))
+   if (sel->screen->info.chip_class < GFX11 &&
+       shader->config.scratch_bytes_per_wave && !si_is_merged_shader(shader))
       shader->info.num_input_sgprs += 1; /* scratch byte offset */
 
    /* Calculate the number of fragment input VGPRs. */
