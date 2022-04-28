@@ -41,6 +41,7 @@ if with_platform_x11
     dep_x11_xcb,
     dep_xcb_dri3,
     dep_xcb_present,
+    dep_xcb_xfixes,
     dep_xcb_sync,
     dep_xcb_xrandr,
     dep_xcb_shm,

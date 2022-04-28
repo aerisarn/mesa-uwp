@@ -65,6 +65,7 @@ struct wsi_x11_connection {
    bool is_proprietary_x11;
    bool is_xwayland;
    bool has_mit_shm;
+   bool has_xfixes;
 };
 
 struct wsi_x11 {
@@ -188,8 +189,12 @@ static struct wsi_x11_connection *
 wsi_x11_connection_create(struct wsi_device *wsi_dev,
                           xcb_connection_t *conn)
 {
-   xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie, amd_cookie, nv_cookie, shm_cookie, sync_cookie;
-   xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply, *amd_reply, *nv_reply, *shm_reply = NULL;
+   xcb_query_extension_cookie_t dri3_cookie, pres_cookie, randr_cookie,
+                                amd_cookie, nv_cookie, shm_cookie, sync_cookie,
+                                xfixes_cookie;
+   xcb_query_extension_reply_t *dri3_reply, *pres_reply, *randr_reply,
+                               *amd_reply, *nv_reply, *shm_reply = NULL,
+                               *xfixes_reply;
    bool has_dri3_v1_2 = false;
    bool has_present_v1_2 = false;
 
@@ -203,6 +208,7 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    dri3_cookie = xcb_query_extension(conn, 4, "DRI3");
    pres_cookie = xcb_query_extension(conn, 7, "Present");
    randr_cookie = xcb_query_extension(conn, 5, "RANDR");
+   xfixes_cookie = xcb_query_extension(conn, 6, "XFIXES");
 
    if (wsi_dev->sw)
       shm_cookie = xcb_query_extension(conn, 7, "MIT-SHM");
@@ -225,11 +231,13 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
    randr_reply = xcb_query_extension_reply(conn, randr_cookie, NULL);
    amd_reply = xcb_query_extension_reply(conn, amd_cookie, NULL);
    nv_reply = xcb_query_extension_reply(conn, nv_cookie, NULL);
+   xfixes_reply = xcb_query_extension_reply(conn, xfixes_cookie, NULL);
    if (wsi_dev->sw)
       shm_reply = xcb_query_extension_reply(conn, shm_cookie, NULL);
-   if (!dri3_reply || !pres_reply) {
+   if (!dri3_reply || !pres_reply || !xfixes_reply) {
       free(dri3_reply);
       free(pres_reply);
+      free(xfixes_reply);
       free(randr_reply);
       free(amd_reply);
       free(nv_reply);
@@ -266,6 +274,17 @@ wsi_x11_connection_create(struct wsi_device *wsi_dev,
       free(ver_reply);
    }
 #endif
+
+   wsi_conn->has_xfixes = xfixes_reply->present != 0;
+   if (wsi_conn->has_xfixes) {
+      xcb_xfixes_query_version_cookie_t ver_cookie;
+      xcb_xfixes_query_version_reply_t *ver_reply;
+
+      ver_cookie = xcb_xfixes_query_version(conn, 6, 0);
+      ver_reply = xcb_xfixes_query_version_reply(conn, ver_cookie, NULL);
+      wsi_conn->has_xfixes = (ver_reply->major_version >= 2);
+      free(ver_reply);
+   }
 
    if (randr_reply && randr_reply->present != 0)
       wsi_conn->is_xwayland = wsi_x11_detect_xwayland(conn);
@@ -888,6 +907,8 @@ wsi_CreateXlibSurfaceKHR(VkInstance _instance,
 struct x11_image {
    struct wsi_image                          base;
    xcb_pixmap_t                              pixmap;
+   xcb_xfixes_region_t                       update_region; /* long lived XID */
+   xcb_xfixes_region_t                       update_area;   /* the above or None */
    bool                                      busy;
    bool                                      present_queued;
    struct xshmfence *                        shm_fence;
@@ -1241,7 +1262,7 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
                          image->pixmap,
                          image->serial,
                          0,                                    /* valid */
-                         0,                                    /* update */
+                         image->update_area,                   /* update */
                          0,                                    /* x_off */
                          0,                                    /* y_off */
                          XCB_NONE,                             /* target_crtc */
@@ -1331,6 +1352,8 @@ x11_acquire_next_image(struct wsi_swapchain *anv_chain,
    }
 }
 
+#define MAX_DAMAGE_RECTS 64
+
 /**
  * Queue a new presentation of an image that was previously acquired by the
  * consumer.
@@ -1344,10 +1367,28 @@ x11_queue_present(struct wsi_swapchain *anv_chain,
                   const VkPresentRegionKHR *damage)
 {
    struct x11_swapchain *chain = (struct x11_swapchain *)anv_chain;
+   xcb_xfixes_region_t update_area = 0;
 
    /* If the swapchain is in an error state, don't go any further. */
    if (chain->status < 0)
       return chain->status;
+
+   if (damage && damage->pRectangles && damage->rectangleCount > 0 &&
+      damage->rectangleCount <= MAX_DAMAGE_RECTS) {
+      xcb_rectangle_t rects[MAX_DAMAGE_RECTS];
+
+      update_area = chain->images[image_index].update_region;
+      for (unsigned i = 0; i < damage->rectangleCount; i++) {
+         const VkRectLayerKHR *rect = &damage->pRectangles[i];
+         assert(rect->layer == 0);
+         rects[i].x = rect->offset.x;
+         rects[i].y = rect->offset.y;
+         rects[i].width = rect->extent.width;
+         rects[i].height = rect->extent.height;
+      }
+      xcb_xfixes_set_region(chain->conn, update_area, damage->rectangleCount, rects);
+   }
+   chain->images[image_index].update_area = update_area;
 
    chain->images[image_index].busy = true;
    if (chain->has_present_queue) {
@@ -1546,6 +1587,9 @@ x11_image_init(VkDevice device_h, struct x11_swapchain *chain,
    if (result != VK_SUCCESS)
       return result;
 
+   image->update_region = xcb_generate_id(chain->conn);
+   xcb_xfixes_create_region(chain->conn, image->update_region, 0, NULL);
+
    if (chain->base.wsi->sw) {
       if (!chain->has_mit_shm) {
          image->busy = false;
@@ -1664,6 +1708,9 @@ x11_image_finish(struct x11_swapchain *chain,
       xshmfence_unmap_shm(image->shm_fence);
 
       cookie = xcb_free_pixmap(chain->conn, image->pixmap);
+      xcb_discard_reply(chain->conn, cookie.sequence);
+
+      cookie = xcb_xfixes_destroy_region(chain->conn, image->update_region);
       xcb_discard_reply(chain->conn, cookie.sequence);
    }
 
