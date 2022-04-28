@@ -2458,14 +2458,6 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
 #endif
    }
 }
-
-static void
-emit_3dstate_vf_topology(struct anv_graphics_pipeline *pipeline)
-{
-   anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_VF_TOPOLOGY), vft) {
-      vft.PrimitiveTopologyType = pipeline->topology;
-   }
-}
 #endif
 
 static void
@@ -2801,11 +2793,6 @@ genX(graphics_pipeline_create)(
       emit_3dstate_vs(pipeline);
       emit_3dstate_hs_te_ds(pipeline, pCreateInfo->pTessellationState);
       emit_3dstate_gs(pipeline);
-
-#if GFX_VER >= 8
-      if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY))
-         emit_3dstate_vf_topology(pipeline);
-#endif
 
       emit_3dstate_vf_statistics(pipeline);
 
