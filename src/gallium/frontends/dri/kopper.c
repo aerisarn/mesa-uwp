@@ -56,7 +56,7 @@ struct kopper_drawable {
    struct dri_drawable base;
    struct kopper_loader_info info;
    __DRIimage   *image; //texture_from_pixmap
-   bool is_pixmap;
+   bool is_window;
 };
 
 struct kopper_screen {
@@ -494,7 +494,7 @@ kopper_allocate_textures(struct dri_context *ctx,
    const __DRIimageLoaderExtension *image = drawable->sPriv->image.loader;
    struct kopper_drawable *cdraw = (struct kopper_drawable *)drawable;
 
-   bool is_window = !cdraw->is_pixmap;
+   bool is_window = cdraw->is_window;
    bool is_pixmap = !is_window && cdraw->info.bos.sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
 
    width  = drawable->dPriv->w;
@@ -817,7 +817,7 @@ kopper_create_buffer(__DRIscreen * sPriv,
    if (sPriv->kopper_loader->SetSurfaceCreateInfo)
       sPriv->kopper_loader->SetSurfaceCreateInfo(dPriv->loaderPrivate,
                                                  &drawable->info);
-   drawable->is_pixmap = isPixmap || drawable->info.bos.sType == 0;
+   drawable->is_window = !isPixmap && drawable->info.bos.sType != 0;
 
    return TRUE;
 }
@@ -840,7 +840,7 @@ kopperSwapBuffers(__DRIdrawable *dPriv)
    drawable->texture_stamp = dPriv->lastStamp - 1;
    dri_flush(dPriv->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
    kopper_copy_to_front(ctx->st->pipe, dPriv, ptex);
-   if (!kdraw->is_pixmap && !zink_kopper_check(ptex))
+   if (kdraw->is_window && !zink_kopper_check(ptex))
       return -1;
    if (!drawable->textures[ST_ATTACHMENT_FRONT_LEFT]) {
       return 0;
