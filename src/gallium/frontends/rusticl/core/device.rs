@@ -476,6 +476,8 @@ impl Device {
     }
 
     pub fn doubles_supported(&self) -> bool {
+        false
+        /*
         if self.screen.param(pipe_cap::PIPE_CAP_DOUBLES) == 0 {
             return false;
         }
@@ -486,6 +488,7 @@ impl Device {
             unsafe { *nir_options }.lower_doubles_options as u32,
             nir_lower_doubles_options::nir_lower_fp64_full_software as u32,
         )
+        */
     }
 
     pub fn long_supported(&self) -> bool {
