@@ -324,6 +324,7 @@ if with_tests
     'tests/dag_test.cpp',
     'tests/fast_idiv_by_const_test.cpp',
     'tests/fast_urem_by_const_test.cpp',
+    'tests/half_float_test.cpp',
     'tests/int_min_max.cpp',
     'tests/rb_tree_test.cpp',
     'tests/register_allocate_test.cpp',
