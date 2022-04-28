@@ -23,6 +23,11 @@
 
 #include "dzn_private.h"
 
+#include "spirv/nir_spirv.h"
+
+#include "dxil_nir.h"
+#include "nir_to_dxil.h"
+#include "dxil_spirv_nir.h"
 #include "spirv_to_dxil.h"
 
 #include "dxil_validator.h"
@@ -48,60 +53,42 @@ to_dxil_shader_stage(VkShaderStageFlagBits in)
 }
 
 static VkResult
-dzn_pipeline_compile_shader(struct dzn_device *device,
-                            const VkAllocationCallbacks *alloc,
-                            struct dzn_pipeline_layout *layout,
+dzn_pipeline_get_nir_shader(struct dzn_device *device,
+                            const struct dzn_pipeline_layout *layout,
                             const VkPipelineShaderStageCreateInfo *stage_info,
+                            gl_shader_stage stage,
                             enum dxil_spirv_yz_flip_mode yz_flip_mode,
                             uint16_t y_flip_mask, uint16_t z_flip_mask,
                             bool force_sample_rate_shading,
-                            D3D12_SHADER_BYTECODE *slot)
+                            const nir_shader_compiler_options *nir_opts,
+                            nir_shader **nir)
 {
    struct dzn_instance *instance =
       container_of(device->vk.physical->instance, struct dzn_instance, vk);
    const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
    VK_FROM_HANDLE(vk_shader_module, module, stage_info->module);
-   struct dxil_spirv_object dxil_object;
+   struct spirv_to_nir_options spirv_opts = {
+      .caps = {
+         .draw_parameters = true,
+      },
+      .ubo_addr_format = nir_address_format_32bit_index_offset,
+      .ssbo_addr_format = nir_address_format_32bit_index_offset,
+      .shared_addr_format = nir_address_format_32bit_offset_as_64bit,
 
-   /* convert VkSpecializationInfo */
-   struct dxil_spirv_specialization *spec = NULL;
-   uint32_t num_spec = 0;
+      /* use_deref_buffer_array_length + nir_lower_explicit_io force
+       * get_ssbo_size to take in the return from load_vulkan_descriptor
+       * instead of vulkan_resource_index. This makes it much easier to
+       * get the DXIL handle for the SSBO.
+       */
+      .use_deref_buffer_array_length = true
+   };
 
-   if (spec_info && spec_info->mapEntryCount) {
-      spec = vk_alloc2(&device->vk.alloc, alloc,
-                       spec_info->mapEntryCount * sizeof(*spec), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      if (!spec)
-         return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      for (uint32_t i = 0; i < spec_info->mapEntryCount; i++) {
-         const VkSpecializationMapEntry *entry = &spec_info->pMapEntries[i];
-         const uint8_t *data = (const uint8_t *)spec_info->pData + entry->offset;
-         assert(data + entry->size <= (const uint8_t *)spec_info->pData + spec_info->dataSize);
-         spec[i].id = entry->constantID;
-         switch (entry->size) {
-         case 8:
-            spec[i].value.u64 = *(const uint64_t *)data;
-            break;
-         case 4:
-            spec[i].value.u32 = *(const uint32_t *)data;
-            break;
-         case 2:
-            spec[i].value.u16 = *(const uint16_t *)data;
-            break;
-         case 1:
-            spec[i].value.u8 = *(const uint8_t *)data;
-            break;
-         default:
-            assert(!"Invalid spec constant size");
-            break;
-         }
-
-         spec[i].defined_on_module = false;
-      }
-
-      num_spec = spec_info->mapEntryCount;
-   }
+   VkResult result =
+      vk_shader_module_to_nir(&device->vk, module, stage,
+                              stage_info->pName, stage_info->pSpecializationInfo,
+                              &spirv_opts, nir_opts, NULL, nir);
+   if (result != VK_SUCCESS)
+      return result;
 
    struct dxil_spirv_runtime_conf conf = {
       .runtime_data_cbv = {
@@ -124,31 +111,49 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
       .force_sample_rate_shading = force_sample_rate_shading,
    };
 
-   struct dxil_spirv_debug_options dbg_opts = {
-      .dump_nir = !!(instance->debug_flags & DZN_DEBUG_NIR),
+   bool requires_runtime_data;
+   dxil_spirv_nir_passes(*nir, &conf, &requires_runtime_data);
+   return VK_SUCCESS;
+}
+
+static VkResult
+dzn_pipeline_compile_shader(struct dzn_device *device,
+                            nir_shader *nir,
+                            D3D12_SHADER_BYTECODE *slot)
+{
+   struct dzn_instance *instance =
+      container_of(device->vk.physical->instance, struct dzn_instance, vk);
+   struct nir_to_dxil_options opts = {
+      .environment = DXIL_ENVIRONMENT_VULKAN,
    };
+   struct blob dxil_blob;
+   VkResult result = VK_SUCCESS;
 
-   /* TODO: Extend spirv_to_dxil() to allow passing a custom allocator */
-   bool success =
-      spirv_to_dxil((uint32_t *)module->data, module->size / sizeof(uint32_t),
-                    spec, num_spec,
-                    to_dxil_shader_stage(stage_info->stage),
-                    stage_info->pName, &dbg_opts, &conf, &dxil_object);
+   if (instance->debug_flags & DZN_DEBUG_NIR)
+      nir_print_shader(nir, stderr);
 
-   vk_free2(&device->vk.alloc, alloc, spec);
+   if (nir_to_dxil(nir, &opts, &dxil_blob)) {
+      blob_finish_get_buffer(&dxil_blob, (void **)&slot->pShaderBytecode,
+                             &slot->BytecodeLength);
+   } else {
+      result = vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
 
-   if (!success)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
+   if (dxil_blob.allocated)
+      blob_finish(&dxil_blob);
+
+   if (result != VK_SUCCESS)
+      return result;
 
    char *err;
    bool res = dxil_validate_module(instance->dxil_validator,
-                                   dxil_object.binary.buffer,
-                                   dxil_object.binary.size, &err);
+                                   (void *)slot->pShaderBytecode,
+                                   slot->BytecodeLength, &err);
 
    if (instance->debug_flags & DZN_DEBUG_DXIL) {
       char *disasm = dxil_disasm_module(instance->dxil_validator,
-                                        dxil_object.binary.buffer,
-                                        dxil_object.binary.size);
+                                        (void *)slot->pShaderBytecode,
+                                        slot->BytecodeLength);
       if (disasm) {
          fprintf(stderr,
                  "== BEGIN SHADER ============================================\n"
@@ -171,23 +176,160 @@ dzn_pipeline_compile_shader(struct dzn_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   slot->pShaderBytecode = dxil_object.binary.buffer;
-   slot->BytecodeLength = dxil_object.binary.size;
    return VK_SUCCESS;
 }
 
 static D3D12_SHADER_BYTECODE *
 dzn_pipeline_get_gfx_shader_slot(D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
-                                 VkShaderStageFlagBits in)
+                                 gl_shader_stage in)
 {
    switch (in) {
-   case VK_SHADER_STAGE_VERTEX_BIT: return &desc->VS;
-   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT: return &desc->DS;
-   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return &desc->HS;
-   case VK_SHADER_STAGE_GEOMETRY_BIT: return &desc->GS;
-   case VK_SHADER_STAGE_FRAGMENT_BIT: return &desc->PS;
+   case MESA_SHADER_VERTEX: return &desc->VS;
+   case MESA_SHADER_TESS_CTRL: return &desc->DS;
+   case MESA_SHADER_TESS_EVAL: return &desc->HS;
+   case MESA_SHADER_GEOMETRY: return &desc->GS;
+   case MESA_SHADER_FRAGMENT: return &desc->PS;
    default: unreachable("Unsupported stage");
    }
+}
+
+static VkResult
+dzn_graphics_pipeline_compile_shaders(struct dzn_device *device,
+                                      const struct dzn_graphics_pipeline *pipeline,
+                                      const struct dzn_pipeline_layout *layout,
+                                      D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
+                                      const VkGraphicsPipelineCreateInfo *info)
+{
+   const VkPipelineViewportStateCreateInfo *vp_info =
+      info->pRasterizationState->rasterizerDiscardEnable ?
+      NULL : info->pViewportState;
+   struct {
+      const VkPipelineShaderStageCreateInfo *info;
+      nir_shader *nir;
+   } stages[MESA_VULKAN_SHADER_STAGES] = { 0 };
+   gl_shader_stage yz_flip_stage = MESA_SHADER_NONE;
+   uint32_t active_stage_mask = 0;
+   VkResult ret = VK_SUCCESS;
+
+   /* First step: collect stage info in a table indexed by gl_shader_stage
+    * so we can iterate over stages in pipeline order or reverse pipeline
+    * order.
+    */
+   for (uint32_t i = 0; i < info->stageCount; i++) {
+      gl_shader_stage stage;
+
+      switch (info->pStages[i].stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+         stage = MESA_SHADER_VERTEX;
+         if (yz_flip_stage < stage)
+            yz_flip_stage = stage;
+         break;
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+         stage = MESA_SHADER_TESS_CTRL;
+         break;
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+         stage = MESA_SHADER_TESS_EVAL;
+         if (yz_flip_stage < stage)
+            yz_flip_stage = stage;
+         break;
+      case VK_SHADER_STAGE_GEOMETRY_BIT:
+         stage = MESA_SHADER_GEOMETRY;
+         if (yz_flip_stage < stage)
+            yz_flip_stage = stage;
+         break;
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+         stage = MESA_SHADER_FRAGMENT;
+         break;
+      default:
+         unreachable("Unsupported stage");
+      }
+
+      if (stage == MESA_SHADER_FRAGMENT &&
+          info->pRasterizationState &&
+          (info->pRasterizationState->rasterizerDiscardEnable ||
+           info->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK)) {
+         /* Disable rasterization (AKA leave fragment shader NULL) when
+          * front+back culling or discard is set.
+          */
+         continue;
+      }
+
+      stages[stage].info = &info->pStages[i];
+      active_stage_mask |= BITFIELD_BIT(stage);
+   }
+
+   /* Second step: get NIR shaders for all stages. */
+   nir_shader_compiler_options nir_opts = *dxil_get_nir_compiler_options();
+   nir_opts.lower_base_vertex = true;
+   u_foreach_bit(stage, active_stage_mask) {
+      enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
+      uint16_t y_flip_mask = 0, z_flip_mask = 0;
+
+      if (stage == yz_flip_stage) {
+         if (pipeline->vp.dynamic) {
+            yz_flip_mode = DXIL_SPIRV_YZ_FLIP_CONDITIONAL;
+         } else if (vp_info) {
+            for (uint32_t i = 0; vp_info->pViewports && i < vp_info->viewportCount; i++) {
+               if (vp_info->pViewports[i].height > 0)
+                  y_flip_mask |= BITFIELD_BIT(i);
+
+               if (vp_info->pViewports[i].minDepth > vp_info->pViewports[i].maxDepth)
+                  z_flip_mask |= BITFIELD_BIT(i);
+            }
+
+            if (y_flip_mask && z_flip_mask)
+               yz_flip_mode = DXIL_SPIRV_YZ_FLIP_UNCONDITIONAL;
+            else if (z_flip_mask)
+               yz_flip_mode = DXIL_SPIRV_Z_FLIP_UNCONDITIONAL;
+            else if (y_flip_mask)
+               yz_flip_mode = DXIL_SPIRV_Y_FLIP_UNCONDITIONAL;
+         }
+      }
+
+      bool force_sample_rate_shading =
+         stages[stage].info->stage == VK_SHADER_STAGE_FRAGMENT_BIT &&
+         info->pMultisampleState &&
+         info->pMultisampleState->sampleShadingEnable;
+
+      ret = dzn_pipeline_get_nir_shader(device, layout,
+                                        stages[stage].info, stage,
+                                        yz_flip_mode, y_flip_mask, z_flip_mask,
+                                        force_sample_rate_shading,
+                                        &nir_opts, &stages[stage].nir);
+      if (ret != VK_SUCCESS)
+         goto out;
+   }
+
+   /* Third step: link those NIR shaders. We iterate in reverse order
+    * so we can eliminate outputs that are never read by the next stage.
+    */
+   uint32_t link_mask = active_stage_mask;
+   while (link_mask != 0) {
+      gl_shader_stage stage = util_last_bit(link_mask) - 1;
+      link_mask &= ~BITFIELD_BIT(stage);
+      gl_shader_stage prev_stage = util_last_bit(link_mask) - 1;
+
+      assert(stages[stage].nir);
+      dxil_spirv_nir_link(stages[stage].nir,
+                          prev_stage != MESA_SHADER_NONE ?
+                          stages[prev_stage].nir : NULL);
+   } while (link_mask != 0);
+
+   /* Last step: translate NIR shaders into DXIL modules */
+   u_foreach_bit(stage, active_stage_mask) {
+      D3D12_SHADER_BYTECODE *slot =
+         dzn_pipeline_get_gfx_shader_slot(out, stage);
+
+      ret = dzn_pipeline_compile_shader(device, stages[stage].nir, slot);
+      if (ret != VK_SUCCESS)
+         goto out;
+   }
+
+out:
+   u_foreach_bit(stage, active_stage_mask)
+      ralloc_free(stages[stage].nir);
+
+   return ret;
 }
 
 static VkResult
@@ -195,7 +337,7 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
                                    const VkAllocationCallbacks *alloc,
                                    D3D12_GRAPHICS_PIPELINE_STATE_DESC *out,
                                    const VkGraphicsPipelineCreateInfo *in,
-                                   D3D12_INPUT_ELEMENT_DESC **input_elems)
+                                   D3D12_INPUT_ELEMENT_DESC *inputs)
 {
    struct dzn_device *device =
       container_of(pipeline->base.base.device, struct dzn_device, vk);
@@ -208,18 +350,9 @@ dzn_graphics_pipeline_translate_vi(struct dzn_graphics_pipeline *pipeline,
    if (!in_vi->vertexAttributeDescriptionCount) {
       out->InputLayout.pInputElementDescs = NULL;
       out->InputLayout.NumElements = 0;
-      *input_elems = NULL;
       return VK_SUCCESS;
    }
 
-   *input_elems =
-      vk_alloc2(&device->vk.alloc, alloc,
-                sizeof(**input_elems) * in_vi->vertexAttributeDescriptionCount, 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!*input_elems)
-      return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   D3D12_INPUT_ELEMENT_DESC *inputs = *input_elems;
    D3D12_INPUT_CLASSIFICATION slot_class[MAX_VBS];
 
    pipeline->vb.count = 0;
@@ -785,7 +918,6 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    uint32_t color_count = 0;
    VkFormat color_fmts[MAX_RTS] = { 0 };
    VkFormat zs_fmt = VK_FORMAT_UNDEFINED;
-   uint32_t stage_mask = 0;
    VkResult ret;
    HRESULT hres = 0;
 
@@ -798,7 +930,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    dzn_pipeline_init(&pipeline->base, device,
                      VK_PIPELINE_BIND_POINT_GRAPHICS,
                      layout);
-   D3D12_INPUT_ELEMENT_DESC *inputs = NULL;
+   D3D12_INPUT_ELEMENT_DESC inputs[MAX_VERTEX_GENERIC_ATTRIBS];
    D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {
       .pRootSignature = pipeline->base.root.sig,
       .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
@@ -808,8 +940,7 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
       pCreateInfo->pRasterizationState->rasterizerDiscardEnable ?
       NULL : pCreateInfo->pViewportState;
 
-
-   ret = dzn_graphics_pipeline_translate_vi(pipeline, pAllocator, &desc, pCreateInfo, &inputs);
+   ret = dzn_graphics_pipeline_translate_vi(pipeline, pAllocator, &desc, pCreateInfo, inputs);
    if (ret != VK_SUCCESS)
       goto out;
 
@@ -892,61 +1023,10 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
                                    VK_IMAGE_ASPECT_STENCIL_BIT);
    }
 
-   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++)
-      stage_mask |= pCreateInfo->pStages[i].stage;
-
-   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      if (pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_FRAGMENT_BIT &&
-          pCreateInfo->pRasterizationState &&
-          (pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
-           pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK)) {
-         /* Disable rasterization (AKA leave fragment shader NULL) when
-          * front+back culling or discard is set.
-          */
-         continue;
-      }
-
-      D3D12_SHADER_BYTECODE *slot =
-         dzn_pipeline_get_gfx_shader_slot(&desc, pCreateInfo->pStages[i].stage);
-      enum dxil_spirv_yz_flip_mode yz_flip_mode = DXIL_SPIRV_YZ_FLIP_NONE;
-      uint16_t y_flip_mask = 0, z_flip_mask = 0;
-
-      if (pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_GEOMETRY_BIT ||
-          (pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_VERTEX_BIT &&
-          !(stage_mask & VK_SHADER_STAGE_GEOMETRY_BIT))) {
-         if (pipeline->vp.dynamic) {
-            yz_flip_mode = DXIL_SPIRV_YZ_FLIP_CONDITIONAL;
-         } else if (vp_info) {
-            for (uint32_t i = 0; vp_info->pViewports && i < vp_info->viewportCount; i++) {
-               if (vp_info->pViewports[i].height > 0)
-                  y_flip_mask |= BITFIELD_BIT(i);
-
-               if (vp_info->pViewports[i].minDepth > vp_info->pViewports[i].maxDepth)
-                  z_flip_mask |= BITFIELD_BIT(i);
-            }
-
-            if (y_flip_mask && z_flip_mask)
-               yz_flip_mode = DXIL_SPIRV_YZ_FLIP_UNCONDITIONAL;
-            else if (z_flip_mask)
-               yz_flip_mode = DXIL_SPIRV_Z_FLIP_UNCONDITIONAL;
-            else if (y_flip_mask)
-               yz_flip_mode = DXIL_SPIRV_Y_FLIP_UNCONDITIONAL;
-         }
-      }
-
-      bool force_sample_rate_shading =
-         pCreateInfo->pStages[i].stage == VK_SHADER_STAGE_FRAGMENT_BIT &&
-         pCreateInfo->pMultisampleState &&
-         pCreateInfo->pMultisampleState->sampleShadingEnable;
-
-      ret = dzn_pipeline_compile_shader(device, pAllocator,
-                                        layout, &pCreateInfo->pStages[i],
-                                        yz_flip_mode, y_flip_mask, z_flip_mask,
-                                        force_sample_rate_shading, slot);
-      if (ret != VK_SUCCESS)
-         goto out;
-   }
-
+   ret = dzn_graphics_pipeline_compile_shaders(device, pipeline, layout, &desc,
+                                               pCreateInfo);
+   if (ret != VK_SUCCESS)
+      goto out;
 
    hres = ID3D12Device1_CreateGraphicsPipelineState(device->dev, &desc,
                                                     &IID_ID3D12PipelineState,
@@ -959,13 +1039,12 @@ dzn_graphics_pipeline_create(struct dzn_device *device,
    ret = VK_SUCCESS;
 
 out:
-   for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      D3D12_SHADER_BYTECODE *slot =
-         dzn_pipeline_get_gfx_shader_slot(&desc, pCreateInfo->pStages[i].stage);
-      free((void *)slot->pShaderBytecode);
-   }
+   free((void *)desc.VS.pShaderBytecode);
+   free((void *)desc.DS.pShaderBytecode);
+   free((void *)desc.HS.pShaderBytecode);
+   free((void *)desc.GS.pShaderBytecode);
+   free((void *)desc.PS.pShaderBytecode);
 
-   vk_free2(&device->vk.alloc, pAllocator, inputs);
    if (ret != VK_SUCCESS)
       dzn_graphics_pipeline_destroy(pipeline, pAllocator);
    else
@@ -1124,11 +1203,17 @@ dzn_compute_pipeline_create(struct dzn_device *device,
       .Flags = D3D12_PIPELINE_STATE_FLAG_NONE,
    };
 
+   nir_shader *nir = NULL;
    VkResult ret =
-      dzn_pipeline_compile_shader(device, pAllocator, layout,
-                                  &pCreateInfo->stage,
+      dzn_pipeline_get_nir_shader(device, layout,
+                                  &pCreateInfo->stage, MESA_SHADER_COMPUTE,
                                   DXIL_SPIRV_YZ_FLIP_NONE, 0, 0,
-                                  false, &desc.CS);
+                                  false,
+                                  dxil_get_nir_compiler_options(), &nir);
+   if (ret != VK_SUCCESS)
+      goto out;
+
+   ret = dzn_pipeline_compile_shader(device, nir, &desc.CS);
    if (ret != VK_SUCCESS)
       goto out;
 
@@ -1140,6 +1225,7 @@ dzn_compute_pipeline_create(struct dzn_device *device,
    }
 
 out:
+   ralloc_free(nir);
    free((void *)desc.CS.pShaderBytecode);
    if (ret != VK_SUCCESS)
       dzn_compute_pipeline_destroy(pipeline, pAllocator);
