@@ -4055,10 +4055,10 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
    cmd_buffer_emit_clip(cmd_buffer);
 
-   if (pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
-      if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE | ANV_CMD_DIRTY_XFB_ENABLE))
-         cmd_buffer_emit_streamout(cmd_buffer);
-   }
+   if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
+                                      ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE |
+                                      ANV_CMD_DIRTY_XFB_ENABLE))
+      cmd_buffer_emit_streamout(cmd_buffer);
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
                                       ANV_CMD_DIRTY_RENDER_TARGETS |

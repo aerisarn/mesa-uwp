@@ -1827,12 +1827,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
       so.Stream3VertexReadLength = urb_entry_read_length - 1;
    }
 
-   if (dynamic_states & ANV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
-      GENX(3DSTATE_STREAMOUT_pack)(NULL, streamout_state_dw, &so);
-   } else {
-      anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_STREAMOUT), _so)
-         _so = so;
-   }
+   GENX(3DSTATE_STREAMOUT_pack)(NULL, streamout_state_dw, &so);
 }
 
 static uint32_t
