@@ -3335,11 +3335,6 @@ struct anv_graphics_pipeline {
 
    uint32_t                                     batch_data[512];
 
-   /* States that are part of batch_data and should be not emitted
-    * dynamically.
-    */
-   anv_cmd_dirty_mask_t                         static_state_mask;
-
    /* States that need to be reemitted in cmd_buffer_flush_dynamic_state().
     * This might cover more than the dynamic states specified at pipeline
     * creation.
