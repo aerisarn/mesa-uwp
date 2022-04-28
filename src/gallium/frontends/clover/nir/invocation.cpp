@@ -475,11 +475,7 @@ binary clover::nir::spirv_to_nir(const binary &mod, const device &dev,
       NIR_PASS_V(nir, nir_opt_deref);
 
       // Pick off the single entrypoint that we want.
-      foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-         if (!func->is_entrypoint)
-            exec_node_remove(&func->node);
-      }
-      assert(exec_list_length(&nir->functions) == 1);
+      nir_remove_non_entrypoints(nir);
 
       nir_validate_shader(nir, "clover after function inlining");
 

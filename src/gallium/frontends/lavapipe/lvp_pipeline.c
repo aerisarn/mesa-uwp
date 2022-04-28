@@ -894,11 +894,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    NIR_PASS_V(nir, nir_opt_deref);
 
    /* Pick off the single entrypoint that we want */
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (!func->is_entrypoint)
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
+   nir_remove_non_entrypoints(nir);
 
    struct nir_lower_subgroups_options subgroup_opts = {0};
    subgroup_opts.lower_quad = true;

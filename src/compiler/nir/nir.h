@@ -3669,6 +3669,8 @@ nir_shader_get_entrypoint(const nir_shader *shader)
    return func->impl;
 }
 
+void nir_remove_non_entrypoints(nir_shader *shader);
+
 nir_shader *nir_shader_create(void *mem_ctx,
                               gl_shader_stage stage,
                               const nir_shader_compiler_options *options,
