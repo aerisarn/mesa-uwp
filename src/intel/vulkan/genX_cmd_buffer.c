@@ -1982,6 +1982,7 @@ genX(CmdExecuteCommands)(
    primary->state.current_pipeline = UINT32_MAX;
    primary->state.current_l3_config = NULL;
    primary->state.current_hash_scale = 0;
+   primary->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_ALL;
 
    /* Each of the secondary command buffers will use its own state base
     * address.  We need to re-emit state base address for the primary after
