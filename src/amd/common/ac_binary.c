@@ -37,11 +37,8 @@
 
 /* Parse configuration data in .AMDGPU.config section format. */
 void ac_parse_shader_binary_config(const char *data, size_t nbytes, unsigned wave_size,
-                                   bool really_needs_scratch, const struct radeon_info *info,
-                                   struct ac_shader_config *conf)
+                                   const struct radeon_info *info, struct ac_shader_config *conf)
 {
-   uint32_t scratch_size = 0;
-
    for (size_t i = 0; i < nbytes; i += 8) {
       unsigned reg = util_le32_to_cpu(*(uint32_t *)(data + i));
       unsigned value = util_le32_to_cpu(*(uint32_t *)(data + i + 4));
@@ -96,7 +93,7 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes, unsigned wav
       case R_0286E8_SPI_TMPRING_SIZE:
       case R_00B860_COMPUTE_TMPRING_SIZE:
          /* WAVESIZE is in units of 256 dwords. */
-         scratch_size = value;
+         conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(value) * 1024;
          break;
       case SPILLED_SGPRS:
          conf->spilled_sgprs = value;
@@ -120,11 +117,6 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes, unsigned wav
 
    if (!conf->spi_ps_input_addr)
       conf->spi_ps_input_addr = conf->spi_ps_input_ena;
-
-   if (really_needs_scratch) {
-      /* sgprs spills aren't spilling */
-      conf->scratch_bytes_per_wave = G_00B860_WAVESIZE(scratch_size) * 256 * 4;
-   }
 
    /* GFX 10.3 internally:
     * - aligns VGPRS to 16 for Wave32 and 8 for Wave64

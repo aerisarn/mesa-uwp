@@ -526,7 +526,7 @@ bool ac_rtld_read_config(const struct radeon_info *info, struct ac_rtld_binary *
 
       /* TODO: be precise about scratch use? */
       struct ac_shader_config c = {0};
-      ac_parse_shader_binary_config(config_data, config_nbytes, binary->wave_size, true, info, &c);
+      ac_parse_shader_binary_config(config_data, config_nbytes, binary->wave_size, info, &c);
 
       config->num_sgprs = MAX2(config->num_sgprs, c.num_sgprs);
       config->num_vgprs = MAX2(config->num_vgprs, c.num_vgprs);
