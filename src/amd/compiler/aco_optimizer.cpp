@@ -1877,12 +1877,16 @@ label_instruction(opt_ctx& ctx, aco_ptr<Instruction>& instr)
    case aco_opcode::v_min_i32:
    case aco_opcode::v_min_u16:
    case aco_opcode::v_min_i16:
+   case aco_opcode::v_min_u16_e64:
+   case aco_opcode::v_min_i16_e64:
    case aco_opcode::v_max_f32:
    case aco_opcode::v_max_f16:
    case aco_opcode::v_max_u32:
    case aco_opcode::v_max_i32:
    case aco_opcode::v_max_u16:
    case aco_opcode::v_max_i16:
+   case aco_opcode::v_max_u16_e64:
+   case aco_opcode::v_max_i16_e64:
       ctx.info[instr->definitions[0].tempId()].set_minmax(instr.get());
       break;
    case aco_opcode::s_cselect_b64:
@@ -2795,12 +2799,25 @@ get_minmax_info(aco_opcode op, aco_opcode* min, aco_opcode* max, aco_opcode* min
       *max3 = aco_opcode::v_max3_##type;                                                           \
       *some_gfx9_only = gfx9;                                                                      \
       return true;
+#define MINMAX_E64(type, gfx9)                                                                     \
+   case aco_opcode::v_min_##type##_e64:                                                            \
+   case aco_opcode::v_max_##type##_e64:                                                            \
+      *min = aco_opcode::v_min_##type##_e64;                                                       \
+      *max = aco_opcode::v_max_##type##_e64;                                                       \
+      *med3 = aco_opcode::v_med3_##type;                                                           \
+      *min3 = aco_opcode::v_min3_##type;                                                           \
+      *max3 = aco_opcode::v_max3_##type;                                                           \
+      *some_gfx9_only = gfx9;                                                                      \
+      return true;
       MINMAX(f32, false)
       MINMAX(u32, false)
       MINMAX(i32, false)
       MINMAX(f16, true)
       MINMAX(u16, true)
       MINMAX(i16, true)
+      MINMAX_E64(u16, true)
+      MINMAX_E64(i16, true)
+#undef MINMAX_E64
 #undef MINMAX
    default: return false;
    }
@@ -2888,7 +2905,8 @@ combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode min, aco_opc
             lower_idx = const0 < const1 ? const0_idx : const1_idx;
             break;
          }
-         case aco_opcode::v_min_u16: {
+         case aco_opcode::v_min_u16:
+         case aco_opcode::v_min_u16_e64: {
             lower_idx = (uint16_t)const0 < (uint16_t)const1 ? const0_idx : const1_idx;
             break;
          }
@@ -2900,7 +2918,8 @@ combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode min, aco_opc
             lower_idx = const0_i < const1_i ? const0_idx : const1_idx;
             break;
          }
-         case aco_opcode::v_min_i16: {
+         case aco_opcode::v_min_i16:
+         case aco_opcode::v_min_i16_e64: {
             int16_t const0_i = const0 & 0x8000u ? -32768 + (int16_t)(const0 & 0x7fffu) : const0;
             int16_t const1_i = const1 & 0x8000u ? -32768 + (int16_t)(const1 & 0x7fffu) : const1;
             lower_idx = const0_i < const1_i ? const0_idx : const1_idx;
