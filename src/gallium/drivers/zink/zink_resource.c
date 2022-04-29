@@ -1027,6 +1027,11 @@ add_resource_bind(struct zink_context *ctx, struct zink_resource *res, unsigned 
    zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
    res->base.b.bind |= bind;
    struct zink_resource_object *old_obj = res->obj;
+   if (bind & ZINK_BIND_DMABUF && !res->modifiers_count) {
+      res->modifiers_count = 1;
+      res->modifiers = malloc(res->modifiers_count * sizeof(uint64_t));
+      res->modifiers[0] = DRM_FORMAT_MOD_LINEAR;
+   }
    struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling, res->modifiers, res->modifiers_count, NULL);
    if (!new_obj) {
       debug_printf("new backing resource alloc failed!");
