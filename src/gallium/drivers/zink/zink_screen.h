@@ -64,6 +64,8 @@ enum zink_descriptor_type;
 #define NUM_SLAB_ALLOCATORS 3
 #define MIN_SLAB_ORDER 8
 
+#define ZINK_CONTEXT_COPY_ONLY (1<<30)
+
 enum zink_descriptor_mode {
    ZINK_DESCRIPTOR_MODE_AUTO,
    ZINK_DESCRIPTOR_MODE_LAZY,
