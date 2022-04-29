@@ -399,7 +399,6 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
    }
 
-   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, true, false);
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
