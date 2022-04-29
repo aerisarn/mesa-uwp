@@ -1,4 +1,5 @@
 struct rusticl_lower_state {
+    nir_variable *base_global_invoc_id;
     nir_variable *const_buf;
 };
 

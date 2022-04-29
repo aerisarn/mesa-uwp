@@ -171,14 +171,7 @@ impl PipeContext {
         unsafe { self.pipe.as_ref().delete_compute_state.unwrap()(self.pipe.as_ptr(), state) }
     }
 
-    pub fn launch_grid(
-        &self,
-        work_dim: u32,
-        block: [u32; 3],
-        grid: [u32; 3],
-        grid_base: [u32; 3],
-        input: &[u8],
-    ) {
+    pub fn launch_grid(&self, work_dim: u32, block: [u32; 3], grid: [u32; 3], input: &[u8]) {
         let info = pipe_grid_info {
             pc: 0,
             input: input.as_ptr().cast(),
@@ -186,7 +179,7 @@ impl PipeContext {
             block: block,
             last_block: [0; 3],
             grid: grid,
-            grid_base: grid_base,
+            grid_base: [0; 3],
             indirect: ptr::null_mut(),
             indirect_offset: 0,
         };

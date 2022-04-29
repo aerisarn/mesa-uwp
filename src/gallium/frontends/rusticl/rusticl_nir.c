@@ -19,6 +19,8 @@ rusticl_lower_intrinsics_instr(
     struct rusticl_lower_state *state = _state;
 
     switch (intrinsic->intrinsic) {
+    case nir_intrinsic_load_base_global_invocation_id:
+        return nir_load_var(b, state->base_global_invoc_id);
     case nir_intrinsic_load_constant_base_ptr:
         return nir_load_var(b, state->const_buf);
     default:
