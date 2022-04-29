@@ -32,25 +32,6 @@
 
 bool drm_shim_driver_prefers_first_render_node = true;
 
-struct msm_bo {
-   struct shim_bo base;
-   uint32_t offset;
-};
-
-static struct msm_bo *
-msm_bo(struct shim_bo *bo)
-{
-   return (struct msm_bo *)bo;
-}
-
-struct msm_device {
-   uint32_t next_offset;
-};
-
-static struct msm_device msm = {
-   .next_offset = 0x1000,
-};
-
 struct msm_device_info {
    uint32_t gpu_id;
    uint32_t chip_id;
@@ -70,19 +51,23 @@ msm_ioctl_gem_new(int fd, unsigned long request, void *arg)
 {
    struct shim_fd *shim_fd = drm_shim_fd_lookup(fd);
    struct drm_msm_gem_new *create = arg;
-   struct msm_bo *bo = calloc(1, sizeof(*bo));
    size_t size = ALIGN(create->size, 4096);
 
-   drm_shim_bo_init(&bo->base, size);
+   if (!size)
+      return -EINVAL;
 
-   assert(UINT_MAX - msm.next_offset > size);
+   struct shim_bo *bo = calloc(1, sizeof(*bo));
+   int ret;
 
-   bo->offset = msm.next_offset;
-   msm.next_offset += size;
+   ret = drm_shim_bo_init(bo, size);
+   if (ret) {
+      free(bo);
+      return ret;
+   }
 
-   create->handle = drm_shim_bo_get_handle(shim_fd, &bo->base);
+   create->handle = drm_shim_bo_get_handle(shim_fd, bo);
 
-   drm_shim_bo_put(&bo->base);
+   drm_shim_bo_put(bo);
 
    return 0;
 }
@@ -102,7 +87,7 @@ msm_ioctl_gem_info(int fd, unsigned long request, void *arg)
       args->value = drm_shim_bo_get_mmap_offset(shim_fd, bo);
       break;
    case MSM_INFO_GET_IOVA:
-      args->value = msm_bo(bo)->offset;
+      args->value = bo->mem_addr;
       break;
    case MSM_INFO_SET_IOVA:
    case MSM_INFO_SET_NAME:
