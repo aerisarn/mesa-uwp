@@ -1452,7 +1452,11 @@ do_pack_2x16(lower_context* ctx, Builder& bld, Definition def, Operand lo, Opera
    if (lo.physReg().byte() == 2 && hi.physReg().byte() == 0 &&
        (!hi.isConstant() || !Operand::c32(hi.constantValue()).isLiteral() ||
         ctx->program->gfx_level >= GFX10)) {
-      bld.vop3(aco_opcode::v_alignbyte_b32, def, hi, lo, Operand::c32(2u));
+      if (hi.isConstant())
+         bld.vop3(aco_opcode::v_alignbyte_b32, def, Operand::c32(hi.constantValue()), lo,
+                  Operand::c32(2u));
+      else
+         bld.vop3(aco_opcode::v_alignbyte_b32, def, hi, lo, Operand::c32(2u));
       return;
    }
 
