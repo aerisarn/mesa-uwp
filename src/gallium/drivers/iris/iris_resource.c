@@ -1692,7 +1692,7 @@ iris_resource_get_param(struct pipe_screen *pscreen,
        * the plane's pitch should be ignored, some kernels have been found to
        * require 64-byte alignment.
        */
-      assert(*value != 0 && *value % 64 == 0);
+      assert(*value != 0 && (!wants_cc || *value % 64 == 0));
 
       return true;
    case PIPE_RESOURCE_PARAM_OFFSET:
