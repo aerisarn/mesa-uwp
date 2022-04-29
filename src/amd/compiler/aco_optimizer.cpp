@@ -2851,7 +2851,8 @@ combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode min, aco_opc
          /* max(min(src, upper), lower) returns upper if src is NaN, but
           * med3(src, lower, upper) returns lower.
           */
-         if (precise && instr->opcode != min)
+         if (precise && instr->opcode != min &&
+             (min == aco_opcode::v_min_f16 || min == aco_opcode::v_min_f32))
             continue;
 
          int const0_idx = -1, const1_idx = -1;
