@@ -420,9 +420,9 @@ option(
 option(
   'osmesa-bits',
   type : 'combo',
-  value : '8',
-  choices : ['8', '16', '32'],
-  description : 'Number of channel bits for OSMesa.'
+  value : 'unspecified',
+  choices : ['unspecified', '8', '16', '32'],
+  description : 'DEPRECATED: Number of channel bits for OSMesa.'
 )
 
 option(

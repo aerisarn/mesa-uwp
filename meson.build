@@ -1985,11 +1985,8 @@ if with_osmesa
     osmesa_lib_name = 'OSMesa'
   endif
   osmesa_bits = get_option('osmesa-bits')
-  if osmesa_bits != '8'
-    if with_dri or with_glx != 'disabled'
-      error('OSMesa bits must be 8 if building glx or dri based drivers')
-    endif
-    osmesa_lib_name = osmesa_lib_name + osmesa_bits
+  if osmesa_bits != 'unspecified'
+    warning('osmesa-bits option is deprecated and have no effect, please remove it.')
   endif
 endif
 
