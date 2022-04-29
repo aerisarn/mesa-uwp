@@ -1647,6 +1647,7 @@ zink_image_map(struct pipe_context *pctx,
                                                          box->height);
 
       struct pipe_resource templ = *pres;
+      templ.next = NULL;
       templ.format = format;
       templ.usage = usage & PIPE_MAP_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
       templ.target = PIPE_BUFFER;
