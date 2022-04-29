@@ -1193,6 +1193,15 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       if (whandle->type == WINSYS_HANDLE_TYPE_KMS) {
          whandle->handle = -1;
       } else {
+         if (!res->obj->exportable) {
+            assert(!res->all_binds); //TODO handle if problematic
+            assert(!zink_resource_usage_is_unflushed(res));
+            if (!add_resource_bind(screen->copy_context, res, ZINK_BIND_DMABUF | PIPE_BIND_SHARED))
+               return false;
+            screen->copy_context->base.flush(&screen->copy_context->base, NULL, 0);
+            obj = res->obj;
+         }
+
          VkMemoryGetFdInfoKHR fd_info = {0};
          int fd;
          fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
