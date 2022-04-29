@@ -145,6 +145,7 @@ TEST(wgl, basic_create)
  * the environment isn't set up to run them.
  */
 #include <directx/d3d12.h>
+#include <dxguids/dxguids.h>
 #include <wrl/client.h>
 #include <memory>
 using Microsoft::WRL::ComPtr;
