@@ -2788,7 +2788,6 @@ get_minmax_info(aco_opcode op, aco_opcode* min, aco_opcode* max, aco_opcode* min
 #define MINMAX(type, gfx9)                                                                         \
    case aco_opcode::v_min_##type:                                                                  \
    case aco_opcode::v_max_##type:                                                                  \
-   case aco_opcode::v_med3_##type:                                                                 \
       *min = aco_opcode::v_min_##type;                                                             \
       *max = aco_opcode::v_max_##type;                                                             \
       *med3 = aco_opcode::v_med3_##type;                                                           \
