@@ -1824,41 +1824,41 @@ zink_resource_object_init_storage(struct zink_context *ctx, struct zink_resource
       return true;
    if (res->obj->is_buffer) {
       unreachable("zink: all buffers should have this bit");
-   } else {
-      assert(!res->obj->dt);
-      zink_fb_clears_apply_region(ctx, &res->base.b, (struct u_rect){0, res->base.b.width0, 0, res->base.b.height0});
-      zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
-      res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
-      struct zink_resource_object *old_obj = res->obj;
-      struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling, res->modifiers, res->modifiers_count, NULL);
-      if (!new_obj) {
-         debug_printf("new backing resource alloc failed!");
-         res->base.b.bind &= ~PIPE_BIND_SHADER_IMAGE;
-         return false;
-      }
-      struct zink_resource staging = *res;
-      staging.obj = old_obj;
-      staging.all_binds = 0;
-      res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
-      res->obj->access = 0;
-      res->obj->access_stage = 0;
-      bool needs_unref = true;
-      if (zink_resource_has_usage(res)) {
-         zink_batch_reference_resource_move(&ctx->batch, res);
-         needs_unref = false;
-      }
-      res->obj = new_obj;
-      zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
-      for (unsigned i = 0; i <= res->base.b.last_level; i++) {
-         struct pipe_box box = {0, 0, 0,
-                                u_minify(res->base.b.width0, i),
-                                u_minify(res->base.b.height0, i), res->base.b.array_size};
-         box.depth = util_num_layers(&res->base.b, i);
-         ctx->base.resource_copy_region(&ctx->base, &res->base.b, i, 0, 0, 0, &staging.base.b, i, &box);
-      }
-      if (needs_unref)
-         zink_resource_object_reference(screen, &old_obj, NULL);
+      return true;
    }
+   assert(!res->obj->dt);
+   zink_fb_clears_apply_region(ctx, &res->base.b, (struct u_rect){0, res->base.b.width0, 0, res->base.b.height0});
+   zink_resource_image_barrier(ctx, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
+   res->base.b.bind |= PIPE_BIND_SHADER_IMAGE;
+   struct zink_resource_object *old_obj = res->obj;
+   struct zink_resource_object *new_obj = resource_object_create(screen, &res->base.b, NULL, &res->optimal_tiling, res->modifiers, res->modifiers_count, NULL);
+   if (!new_obj) {
+      debug_printf("new backing resource alloc failed!");
+      res->base.b.bind &= ~PIPE_BIND_SHADER_IMAGE;
+      return false;
+   }
+   struct zink_resource staging = *res;
+   staging.obj = old_obj;
+   staging.all_binds = 0;
+   res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
+   res->obj->access = 0;
+   res->obj->access_stage = 0;
+   bool needs_unref = true;
+   if (zink_resource_has_usage(res)) {
+      zink_batch_reference_resource_move(&ctx->batch, res);
+      needs_unref = false;
+   }
+   res->obj = new_obj;
+   zink_descriptor_set_refs_clear(&old_obj->desc_set_refs, old_obj);
+   for (unsigned i = 0; i <= res->base.b.last_level; i++) {
+      struct pipe_box box = {0, 0, 0,
+                             u_minify(res->base.b.width0, i),
+                             u_minify(res->base.b.height0, i), res->base.b.array_size};
+      box.depth = util_num_layers(&res->base.b, i);
+      ctx->base.resource_copy_region(&ctx->base, &res->base.b, i, 0, 0, 0, &staging.base.b, i, &box);
+   }
+   if (needs_unref)
+      zink_resource_object_reference(screen, &old_obj, NULL);
 
    zink_resource_rebind(ctx, res);
 
