@@ -396,6 +396,11 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
    }
 
+   nir_lower_tex_options lower_tex_options = {
+      .lower_txs_lod = true,
+   };
+   NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+
    NIR_PASS_V(nir, panvk_per_arch(nir_lower_descriptors),
               dev, layout, &shader->has_img_access);
 

@@ -337,16 +337,92 @@ get_resource_deref_binding(nir_deref_instr *deref,
    *binding = var->data.binding;
 }
 
+static nir_ssa_def *
+load_resource_deref_desc(nir_builder *b, nir_deref_instr *deref,
+                         unsigned desc_offset,
+                         unsigned num_components, unsigned bit_size,
+                         const struct apply_descriptors_ctx *ctx)
+{
+   uint32_t set, binding, index_imm;
+   nir_ssa_def *index_ssa;
+   get_resource_deref_binding(deref, &set, &binding,
+                              &index_imm, &index_ssa);
+
+   const struct panvk_descriptor_set_layout *set_layout =
+      ctx->layout->sets[set].layout;
+   const struct panvk_descriptor_set_binding_layout *bind_layout =
+      &set_layout->bindings[binding];
+
+   assert(index_ssa == NULL || index_imm == 0);
+   if (index_ssa == NULL)
+      index_ssa = nir_imm_int(b, index_imm);
+
+   const unsigned set_ubo_idx =
+      panvk_pipeline_layout_ubo_start(ctx->layout, set, false) +
+      set_layout->desc_ubo_index;
+
+   nir_ssa_def *desc_ubo_offset =
+      nir_iadd_imm(b, nir_imul_imm(b, index_ssa,
+                                      bind_layout->desc_ubo_stride),
+                      bind_layout->desc_ubo_offset + desc_offset);
+
+   assert(bind_layout->desc_ubo_stride > 0);
+   unsigned desc_align = (1 << (ffs(bind_layout->desc_ubo_stride) - 1));
+   desc_align = MIN2(desc_align, 16);
+
+   return nir_load_ubo(b, num_components, bit_size,
+                       nir_imm_int(b, set_ubo_idx),
+                       desc_ubo_offset,
+                       .align_mul=desc_align,
+                       .align_offset=(desc_offset % desc_align),
+                       .range=~0);
+}
 
 static bool
 lower_tex(nir_builder *b, nir_tex_instr *tex,
           const struct apply_descriptors_ctx *ctx)
 {
    bool progress = false;
-   int sampler_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
 
    b->cursor = nir_before_instr(&tex->instr);
 
+   if (tex->op == nir_texop_txs ||
+       tex->op == nir_texop_query_levels ||
+       tex->op == nir_texop_texture_samples) {
+      int tex_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
+      assert(tex_src_idx >= 0);
+      nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
+
+      assert(tex->dest.is_ssa);
+      nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 32, ctx);
+
+      nir_ssa_def *res;
+      switch (tex->op) {
+      case nir_texop_txs:
+         assert(tex->dest.ssa.num_components <= 3);
+         res = nir_channels(b, desc,
+            nir_component_mask(tex->dest.ssa.num_components));
+         break;
+      case nir_texop_query_levels:
+         assert(tex->dest.ssa.num_components == 1);
+         res = nir_extract_u16(b, nir_channel(b, desc, 3),
+                                  nir_imm_int(b, 0));
+         break;
+      case nir_texop_texture_samples:
+         assert(tex->dest.ssa.num_components == 1);
+         res = nir_extract_u16(b, nir_channel(b, desc, 3),
+                                  nir_imm_int(b, 1));
+         break;
+      default:
+         unreachable("Unsupported texture query op");
+      }
+
+      nir_ssa_def_rewrite_uses(&tex->dest.ssa, res);
+      nir_instr_remove(&tex->instr);
+      return true;
+   }
+
+   int sampler_src_idx = nir_tex_instr_src_index(tex, nir_tex_src_sampler_deref);
    if (sampler_src_idx >= 0) {
       nir_deref_instr *deref = nir_src_as_deref(tex->src[sampler_src_idx].src);
       nir_tex_instr_remove_src(tex, sampler_src_idx);
@@ -421,6 +497,42 @@ get_img_index(nir_builder *b, nir_deref_instr *deref,
 }
 
 static bool
+lower_img_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
+                    struct apply_descriptors_ctx *ctx)
+{
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+
+   if (intr->intrinsic == nir_intrinsic_image_deref_size ||
+       intr->intrinsic == nir_intrinsic_image_deref_samples) {
+      assert(intr->dest.is_ssa);
+      nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 32, ctx);
+
+      nir_ssa_def *res;
+      switch (intr->intrinsic) {
+      case nir_intrinsic_image_deref_size:
+         res = nir_channels(b, desc,
+            nir_component_mask(intr->dest.ssa.num_components));
+         break;
+      case nir_intrinsic_image_deref_samples:
+         res = nir_extract_u16(b, nir_channel(b, desc, 3),
+                                  nir_imm_int(b, 1));
+         break;
+      default:
+         unreachable("Unsupported image query op");
+      }
+
+      nir_ssa_def_rewrite_uses(&intr->dest.ssa, res);
+      nir_instr_remove(&intr->instr);
+   } else {
+      nir_rewrite_image_intrinsic(intr, get_img_index(b, deref, ctx), false);
+      ctx->has_img_access = true;
+   }
+
+   return true;
+}
+
+static bool
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
                 struct apply_descriptors_ctx *ctx)
 {
@@ -445,14 +557,8 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_fadd:
    case nir_intrinsic_image_deref_size:
-   case nir_intrinsic_image_deref_samples: {
-      nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
-
-      b->cursor = nir_before_instr(&intr->instr);
-      nir_rewrite_image_intrinsic(intr, get_img_index(b, deref, ctx), false);
-      ctx->has_img_access = true;
-      return true;
-   }
+   case nir_intrinsic_image_deref_samples:
+      return lower_img_intrinsic(b, intr, ctx);
    default:
       return false;
    }

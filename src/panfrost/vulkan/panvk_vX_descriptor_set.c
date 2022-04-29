@@ -42,6 +42,44 @@
 #include "pan_bo.h"
 #include "panvk_cs.h"
 
+#define PANVK_DESCRIPTOR_ALIGN 16
+
+struct panvk_bview_desc {
+   uint32_t elems;
+};
+
+static void
+panvk_fill_bview_desc(struct panvk_bview_desc *desc,
+                      struct panvk_buffer_view *view)
+{
+   desc->elems = view->elems;
+}
+
+struct panvk_image_desc {
+   uint32_t width;
+   uint32_t height;
+   uint32_t depth;
+   uint16_t levels;
+   uint16_t samples;
+};
+
+static void
+panvk_fill_image_desc(struct panvk_image_desc *desc,
+                      struct panvk_image_view *view)
+{
+   desc->width = view->vk.extent.width;
+   desc->height = view->vk.extent.height;
+   desc->depth = view->vk.extent.depth;
+   desc->levels = view->vk.level_count;
+   desc->samples = view->vk.image->samples;
+
+   /* Stick array layer count after the last valid size component */
+   if (view->vk.image->image_type == VK_IMAGE_TYPE_1D)
+      desc->height = view->vk.layer_count;
+   else if (view->vk.image->image_type == VK_IMAGE_TYPE_2D)
+      desc->depth = view->vk.layer_count;
+}
+
 VkResult
 panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
                                           const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
@@ -124,15 +162,18 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
          binding_layout->tex_idx = tex_idx;
          sampler_idx += binding_layout->array_size;
          tex_idx += binding_layout->array_size;
+         binding_layout->desc_ubo_stride = sizeof(struct panvk_image_desc);
          break;
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          binding_layout->tex_idx = tex_idx;
          tex_idx += binding_layout->array_size;
+         binding_layout->desc_ubo_stride = sizeof(struct panvk_image_desc);
          break;
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          binding_layout->tex_idx = tex_idx;
          tex_idx += binding_layout->array_size;
+         binding_layout->desc_ubo_stride = sizeof(struct panvk_bview_desc);
          break;
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
          binding_layout->dyn_ubo_idx = dyn_ubo_idx;
@@ -152,15 +193,18 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
          binding_layout->img_idx = img_idx;
          img_idx += binding_layout->array_size;
+         binding_layout->desc_ubo_stride = sizeof(struct panvk_image_desc);
          break;
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          binding_layout->img_idx = img_idx;
          img_idx += binding_layout->array_size;
+         binding_layout->desc_ubo_stride = sizeof(struct panvk_bview_desc);
          break;
       default:
          unreachable("Invalid descriptor type");
       }
 
+      desc_ubo_size = ALIGN_POT(desc_ubo_size, PANVK_DESCRIPTOR_ALIGN);
       binding_layout->desc_ubo_offset = desc_ubo_size;
       desc_ubo_size += binding_layout->desc_ubo_stride *
                        binding_layout->array_size;
@@ -407,6 +451,12 @@ panvk_set_tex_desc(struct panvk_descriptor_set *set,
 #else
    ((mali_ptr *)set->textures)[tex_idx] = view->bo->ptr.gpu;
 #endif
+
+   void *desc = (char *)set->desc_bo->ptr.cpu +
+                binding_layout->desc_ubo_offset +
+                elem * binding_layout->desc_ubo_stride;
+
+   panvk_fill_image_desc(desc, view);
 }
 
 static void
@@ -425,6 +475,12 @@ panvk_set_tex_buf_desc(struct panvk_descriptor_set *set,
 #else
    ((mali_ptr *)set->textures)[tex_idx] = view->bo->ptr.gpu;
 #endif
+
+   void *desc = (char *)set->desc_bo->ptr.cpu +
+                binding_layout->desc_ubo_offset +
+                elem * binding_layout->desc_ubo_stride;
+
+   panvk_fill_bview_desc(desc, view);
 }
 
 static void
@@ -444,6 +500,12 @@ panvk_set_img_desc(struct panvk_device *dev,
 
    set->img_fmts[img_idx] = pdev->formats[view->pview.format].hw;
    memcpy(attrib_buf, view->descs.img_attrib_buf, pan_size(ATTRIBUTE_BUFFER) * 2);
+
+   void *desc = (char *)set->desc_bo->ptr.cpu +
+                binding_layout->desc_ubo_offset +
+                elem * binding_layout->desc_ubo_stride;
+
+   panvk_fill_image_desc(desc, view);
 }
 
 static void
@@ -463,6 +525,12 @@ panvk_set_img_buf_desc(struct panvk_device *dev,
 
    set->img_fmts[img_idx] = pdev->formats[view->fmt].hw;
    memcpy(attrib_buf, view->descs.img_attrib_buf, pan_size(ATTRIBUTE_BUFFER) * 2);
+
+   void *desc = (char *)set->desc_bo->ptr.cpu +
+                binding_layout->desc_ubo_offset +
+                elem * binding_layout->desc_ubo_stride;
+
+   panvk_fill_bview_desc(desc, view);
 }
 
 static void
