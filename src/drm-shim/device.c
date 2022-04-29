@@ -301,16 +301,20 @@ drm_shim_ioctl(int fd, unsigned long request, void *arg)
    return -EINVAL;
 }
 
-void
+int
 drm_shim_bo_init(struct shim_bo *bo, size_t size)
 {
 
    mtx_lock(&shim_device.mem_lock);
    bo->mem_addr = util_vma_heap_alloc(&shim_device.mem_heap, size, shim_page_size);
    mtx_unlock(&shim_device.mem_lock);
-   assert(bo->mem_addr);
+
+   if (!bo->mem_addr)
+      return -ENOMEM;
 
    bo->size = size;
+
+   return 0;
 }
 
 struct shim_bo *
