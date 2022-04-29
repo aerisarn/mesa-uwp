@@ -183,6 +183,7 @@ struct vn_env {
    uint64_t perf;
    /* zero will be overridden to UINT32_MAX as no limit */
    uint32_t draw_cmd_batch_limit;
+   uint32_t relax_base_sleep_us;
 };
 extern struct vn_env vn_env;
 
