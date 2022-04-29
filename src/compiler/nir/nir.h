@@ -5680,6 +5680,9 @@ nir_opt_preamble(nir_shader *shader,
 
 nir_function_impl *nir_shader_get_preamble(nir_shader *shader);
 
+bool
+nir_lower_poly_line_smooth(nir_shader *shader, unsigned num_smooth_aa_sample);
+
 #include "nir_inline_helpers.h"
 
 #ifdef __cplusplus
