@@ -1053,6 +1053,7 @@ struct panvk_buffer_view {
       uint32_t img_attrib_buf[ATTRIB_BUF_DESC_WORDS * 2];
    } descs;
    enum pipe_format fmt;
+   uint32_t elems;
 };
 
 struct panvk_attachment_info {
