@@ -497,6 +497,37 @@ panvk_pipeline_layout_ref(struct panvk_pipeline_layout *layout)
    return layout;
 }
 
+static unsigned
+panvk_pipeline_layout_ubo_start(const struct panvk_pipeline_layout *layout,
+                                unsigned set, bool is_dynamic)
+{
+   unsigned offset = PANVK_NUM_BUILTIN_UBOS +
+                     layout->sets[set].ubo_offset +
+                     layout->sets[set].dyn_ubo_offset;
+
+   if (is_dynamic)
+      offset += layout->sets[set].layout->num_ubos;
+
+   return offset;
+}
+
+static unsigned
+panvk_pipeline_layout_ubo_index(const struct panvk_pipeline_layout *layout,
+                                unsigned set, unsigned binding,
+                                unsigned array_index)
+{
+   struct panvk_descriptor_set_binding_layout *binding_layout =
+      &layout->sets[set].layout->bindings[binding];
+
+   const bool is_dynamic =
+      binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+   const uint32_t ubo_idx = is_dynamic ? binding_layout->dyn_ubo_idx :
+                                         binding_layout->ubo_idx;
+
+   return panvk_pipeline_layout_ubo_start(layout, set, is_dynamic) +
+          ubo_idx + array_index;
+}
+
 struct panvk_desc_pool_counters {
    unsigned samplers;
    unsigned combined_image_samplers;

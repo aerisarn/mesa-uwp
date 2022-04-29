@@ -401,34 +401,40 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
       memset(&ubos[PANVK_PUSH_CONST_UBO_INDEX], 0, sizeof(*ubos));
    }
 
-   for (unsigned i = 0; i < ARRAY_SIZE(state->sets); i++) {
+   for (unsigned s = 0; s < pipeline->layout->num_sets; s++) {
       const struct panvk_descriptor_set_layout *set_layout =
-         pipeline->layout->sets[i].layout;
-      const struct panvk_descriptor_set *set = state->sets[i];
-      unsigned offset = PANVK_NUM_BUILTIN_UBOS +
-                        pipeline->layout->sets[i].ubo_offset;
+         pipeline->layout->sets[s].layout;
+      const struct panvk_descriptor_set *set = state->sets[s];
 
-      if (!set_layout)
-         continue;
+      unsigned ubo_start =
+         panvk_pipeline_layout_ubo_start(pipeline->layout, s, false);
 
       if (!set) {
-         memset(&ubos[offset], 0, set_layout->num_ubos * sizeof(*ubos));
+         unsigned all_ubos = set_layout->num_ubos + set_layout->num_dyn_ubos;
+         memset(&ubos[ubo_start], 0, all_ubos * sizeof(*ubos));
       } else {
-         memcpy(&ubos[offset], set->ubos, set_layout->num_ubos * sizeof(*ubos));
+         memcpy(&ubos[ubo_start], set->ubos,
+                set_layout->num_ubos * sizeof(*ubos));
+
+         unsigned dyn_ubo_start =
+            panvk_pipeline_layout_ubo_start(pipeline->layout, s, true);
+
+         for (unsigned i = 0; i < set_layout->num_dyn_ubos; i++) {
+            const struct panvk_buffer_desc *bdesc =
+               &state->dyn.ubos[pipeline->layout->sets[s].dyn_ubo_offset + i];
+
+            mali_ptr address = panvk_buffer_gpu_ptr(bdesc->buffer,
+                                                    bdesc->offset);
+            size_t size = panvk_buffer_range(bdesc->buffer,
+                                             bdesc->offset, bdesc->size);
+            if (size) {
+               panvk_per_arch(emit_ubo)(address, size,
+                                        &ubos[dyn_ubo_start + i]);
+            } else {
+               memset(&ubos[dyn_ubo_start + i], 0, sizeof(*ubos));
+            }
+         }
       }
-   }
-
-   unsigned offset = PANVK_NUM_BUILTIN_UBOS + pipeline->layout->num_ubos;
-   for (unsigned i = 0; i < pipeline->layout->num_dyn_ubos; i++) {
-      const struct panvk_buffer_desc *bdesc = &state->dyn.ubos[i];
-      mali_ptr address = panvk_buffer_gpu_ptr(bdesc->buffer, bdesc->offset);
-      size_t size = panvk_buffer_range(bdesc->buffer,
-                                       bdesc->offset, bdesc->size);
-
-      if (size)
-         panvk_per_arch(emit_ubo)(address, size, &ubos[offset + i]);
-      else
-         memset(&ubos[offset + i], 0, sizeof(*ubos));
    }
 }
 

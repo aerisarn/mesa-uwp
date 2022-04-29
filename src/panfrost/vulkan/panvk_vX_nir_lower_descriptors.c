@@ -135,15 +135,8 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *intr,
 
    switch (binding_layout->type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      base = PANVK_NUM_BUILTIN_UBOS +
-             ctx->layout->sets[set].ubo_offset +
-             binding_layout->ubo_idx;
-      break;
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-      base = PANVK_NUM_BUILTIN_UBOS +
-             ctx->layout->sets[set].dyn_ubo_offset +
-             ctx->layout->num_ubos +
-             binding_layout->dyn_ubo_idx;
+      base = panvk_pipeline_layout_ubo_index(ctx->layout, set, binding, 0);
       break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
       base = binding_layout->ssbo_idx + ctx->layout->sets[set].ssbo_offset;
