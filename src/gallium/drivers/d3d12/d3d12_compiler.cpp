@@ -855,7 +855,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
           (!next || next->stage == PIPE_SHADER_FRAGMENT))) {
       key->last_vertex_processing_stage = 1;
       key->invert_depth = sel_ctx->ctx->reverse_depth_range;
-      if (sel_ctx->ctx->pstipple.enabled)
+      if (sel_ctx->ctx->pstipple.enabled &&
+         sel_ctx->ctx->gfx_pipeline_state.rast->base.poly_stipple_enable)
          key->next_varying_inputs |= VARYING_BIT_POS;
    }
 
@@ -882,7 +883,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
       key->fs.missing_dual_src_outputs = sel_ctx->missing_dual_src_outputs;
       key->fs.frag_result_color_lowering = sel_ctx->frag_result_color_lowering;
       key->fs.manual_depth_range = sel_ctx->manual_depth_range;
-      key->fs.polygon_stipple = sel_ctx->ctx->pstipple.enabled;
+      key->fs.polygon_stipple = sel_ctx->ctx->pstipple.enabled &&
+         sel_ctx->ctx->gfx_pipeline_state.rast->base.poly_stipple_enable;
       key->fs.multisample_disabled = sel_ctx->ctx->gfx_pipeline_state.rast &&
          !sel_ctx->ctx->gfx_pipeline_state.rast->desc.MultisampleEnable;
       if (sel_ctx->ctx->gfx_pipeline_state.blend &&
