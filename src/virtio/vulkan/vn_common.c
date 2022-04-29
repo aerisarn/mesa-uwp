@@ -61,6 +61,18 @@ vn_env_init(void)
 {
    static once_flag once = ONCE_FLAG_INIT;
    call_once(&once, vn_env_init_once);
+
+   /* log per VkInstance creation */
+   if (VN_DEBUG(INIT)) {
+      vn_log(NULL,
+             "vn_env is as below:"
+             "\n\tdebug = 0x%" PRIx64 ""
+             "\n\tperf = 0x%" PRIx64 ""
+             "\n\tdraw_cmd_batch_limit = %u"
+             "\n\trelax_base_sleep_us = %u",
+             vn_env.debug, vn_env.perf, vn_env.draw_cmd_batch_limit,
+             vn_env.relax_base_sleep_us);
+   }
 }
 
 void
