@@ -217,19 +217,6 @@ static void si_alpha_test(struct si_shader_context *ctx, LLVMValueRef alpha)
    }
 }
 
-static LLVMValueRef si_get_coverage_from_sample_mask(struct si_shader_context *ctx)
-{
-   LLVMValueRef coverage;
-
-   /* alpha = alpha * popcount(coverage) / SI_NUM_SMOOTH_AA_SAMPLES */
-   coverage = LLVMGetParam(ctx->main_fn, SI_PARAM_SAMPLE_COVERAGE);
-   coverage = ac_build_bit_count(&ctx->ac, ac_to_integer(&ctx->ac, coverage));
-   coverage = LLVMBuildUIToFP(ctx->ac.builder, coverage, ctx->ac.f32, "");
-
-   return LLVMBuildFMul(ctx->ac.builder, coverage,
-                        LLVMConstReal(ctx->ac.f32, 1.0 / SI_NUM_SMOOTH_AA_SAMPLES), "");
-}
-
 struct si_ps_exports {
    unsigned num;
    struct ac_export_args args[10];
@@ -508,10 +495,6 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx)
       }
    }
 
-   LLVMValueRef smoothing_coverage = NULL;
-   if (ctx->shader->key.ps.mono.poly_line_smoothing)
-      smoothing_coverage = si_get_coverage_from_sample_mask(ctx);
-
    /* Fill the return structure. */
    ret = ctx->return_value;
 
@@ -527,11 +510,6 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx)
          continue;
 
       if (LLVMTypeOf(color[i][0]) == ctx->ac.f16) {
-         if (smoothing_coverage) {
-            color[i][3] = LLVMBuildFMul(builder, color[i][3],
-                  LLVMBuildFPTrunc(builder, smoothing_coverage, ctx->ac.f16, ""), "");
-         }
-
          for (j = 0; j < 2; j++) {
             LLVMValueRef tmp = ac_build_gather_values(&ctx->ac, &color[i][j * 2], 2);
             tmp = LLVMBuildBitCast(builder, tmp, ctx->ac.f32, "");
@@ -539,9 +517,6 @@ void si_llvm_ps_build_end(struct si_shader_context *ctx)
          }
          vgpr += 2;
       } else {
-         if (smoothing_coverage)
-            color[i][3] = LLVMBuildFMul(builder, color[i][3], smoothing_coverage, "");
-
          for (j = 0; j < 4; j++)
             ret = LLVMBuildInsertValue(builder, ret, color[i][j], vgpr++, "");
       }

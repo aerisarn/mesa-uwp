@@ -1647,6 +1647,9 @@ struct nir_shader *si_get_nir_shader(struct si_shader *shader, bool *free_nir,
       progress = true;
    }
 
+   if (sel->stage == MESA_SHADER_FRAGMENT && key->ps.mono.poly_line_smoothing)
+      NIR_PASS(progress, nir, nir_lower_poly_line_smooth, SI_NUM_SMOOTH_AA_SAMPLES);
+
    if (progress)
       si_nir_opts(sel->screen, nir, true);
 
