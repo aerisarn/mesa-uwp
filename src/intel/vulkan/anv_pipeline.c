@@ -2351,6 +2351,11 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       }
    }
 
+   if (states & ANV_CMD_DIRTY_DYNAMIC_LOGIC_OP) {
+      if (!raster_discard && anv_rendering_uses_color_attachment(rendering_info))
+         dynamic->logic_op = pCreateInfo->pColorBlendState->logicOp;
+   }
+
    const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_state =
       vk_find_struct_const(pCreateInfo->pNext,
                            PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
