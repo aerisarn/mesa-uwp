@@ -511,6 +511,156 @@ dxil_spirv_nir_fix_sample_mask_type(nir_shader *shader)
                                        nir_metadata_all, NULL);
 }
 
+static bool
+kill_undefined_varyings(struct nir_builder *b,
+                        nir_instr *instr,
+                        void *data)
+{
+   const nir_shader *prev_stage_nir = data;
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (!var)
+      return false;
+
+   /* Ignore builtins for now, some of them get default values
+    * when not written from previous stages.
+    */
+   if (var->data.location < VARYING_SLOT_VAR0)
+      return false;
+
+   uint32_t loc = var->data.patch ?
+                  var->data.location - VARYING_SLOT_PATCH0 : var->data.location;
+   uint64_t written = var->data.patch ?
+                      prev_stage_nir->info.patch_outputs_written :
+                      prev_stage_nir->info.outputs_written;
+   if (BITFIELD64_BIT(loc) & written)
+      return false;
+
+   b->cursor = nir_after_instr(instr);
+   nir_ssa_def *undef =
+      nir_ssa_undef(b, nir_dest_num_components(intr->dest),
+                    nir_dest_bit_size(intr->dest));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, undef);
+   nir_instr_remove(instr);
+   return true;
+}
+
+static bool
+dxil_spirv_nir_kill_undefined_varyings(nir_shader *shader,
+                                       const nir_shader *prev_stage_shader)
+{
+   if (!nir_shader_instructions_pass(shader,
+                                     kill_undefined_varyings,
+                                     nir_metadata_dominance |
+                                     nir_metadata_block_index |
+                                     nir_metadata_loop_analysis,
+                                     (void *)prev_stage_shader))
+      return false;
+
+   nir_remove_dead_derefs(shader);
+   nir_remove_dead_variables(shader, nir_var_shader_in, NULL);
+   return true;
+}
+
+static bool
+kill_unused_outputs(struct nir_builder *b,
+                    nir_instr *instr,
+                    void *data)
+{
+   uint64_t kill_mask = *((uint64_t *)data);
+
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return false;
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (!var || var->data.mode != nir_var_shader_out)
+      return false;
+
+   unsigned loc = var->data.patch ?
+                  var->data.location - VARYING_SLOT_PATCH0 :
+                  var->data.location;
+   if (!(BITFIELD64_BIT(loc) & kill_mask))
+      return false;
+
+   nir_instr_remove(instr);
+   return true;
+}
+
+static bool
+dxil_spirv_nir_kill_unused_outputs(nir_shader *shader,
+                                   nir_shader *next_stage_shader)
+{
+   uint64_t kill_var_mask =
+      shader->info.outputs_written & ~next_stage_shader->info.inputs_read;
+   bool progress = false;
+
+   /* Don't kill buitin vars */
+   kill_var_mask &= BITFIELD64_MASK(MAX_VARYING) << VARYING_SLOT_VAR0;
+
+   if (nir_shader_instructions_pass(shader,
+                                    kill_unused_outputs,
+                                    nir_metadata_dominance |
+                                    nir_metadata_block_index |
+                                    nir_metadata_loop_analysis,
+                                    (void *)&kill_var_mask))
+      progress = true;
+
+   if (shader->info.stage == MESA_SHADER_TESS_EVAL) {
+      kill_var_mask =
+         (shader->info.patch_outputs_written |
+          shader->info.patch_outputs_read) &
+         ~next_stage_shader->info.patch_inputs_read;
+      if (nir_shader_instructions_pass(shader,
+                                       kill_unused_outputs,
+                                       nir_metadata_dominance |
+                                       nir_metadata_block_index |
+                                       nir_metadata_loop_analysis,
+                                       (void *)&kill_var_mask))
+         progress = true;
+   }
+
+   if (progress) {
+      nir_opt_dce(shader);
+      nir_remove_dead_derefs(shader);
+      nir_remove_dead_variables(shader, nir_var_shader_out, NULL);
+   }
+
+   return progress;
+}
+
+void
+dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir)
+{
+   glsl_type_singleton_init_or_ref();
+
+   if (prev_stage_nir) {
+      NIR_PASS_V(nir, dxil_spirv_nir_kill_undefined_varyings, prev_stage_nir);
+      NIR_PASS_V(prev_stage_nir, dxil_spirv_nir_kill_unused_outputs, nir);
+
+      nir->info.inputs_read =
+         dxil_reassign_driver_locations(nir, nir_var_shader_in,
+                                        prev_stage_nir->info.outputs_written);
+      prev_stage_nir->info.outputs_written =
+         dxil_reassign_driver_locations(prev_stage_nir, nir_var_shader_out,
+                                        nir->info.inputs_read);
+   }
+
+   glsl_type_singleton_decref();
+}
+
 void
 dxil_spirv_nir_passes(nir_shader *nir,
                       const struct dxil_spirv_runtime_conf *conf,

@@ -29,6 +29,9 @@
 #include "nir.h"
 
 void
+dxil_spirv_nir_link(nir_shader *nir, nir_shader *prev_stage_nir);
+
+void
 dxil_spirv_nir_passes(nir_shader *nir,
                       const struct dxil_spirv_runtime_conf *conf,
                       bool *requires_runtime_data);
