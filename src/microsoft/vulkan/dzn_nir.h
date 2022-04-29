@@ -26,6 +26,7 @@
 
 #define D3D12_IGNORE_SDK_LAYERS
 #define COBJMACROS
+#include <unknwn.h>
 #include <directx/d3d12.h>
 
 #include "nir.h"
