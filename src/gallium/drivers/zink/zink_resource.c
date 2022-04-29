@@ -497,7 +497,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       VK_IMAGE_ASPECT_PLANE_2_BIT,
    };
    VkExternalMemoryHandleTypeFlags external = 0;
-   bool needs_export = (templ->bind & ZINK_BIND_VIDEO) != 0;
+   bool needs_export = (templ->bind & (ZINK_BIND_VIDEO | ZINK_BIND_DMABUF)) != 0;
    if (whandle) {
       if (whandle->type == WINSYS_HANDLE_TYPE_FD || whandle->type == ZINK_EXTERNAL_MEMORY_HANDLE)
          needs_export |= true;
@@ -777,7 +777,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    }
 
    VkExportMemoryAllocateInfo emai;
-   if ((templ->bind & ZINK_BIND_VIDEO) || ((templ->bind & PIPE_BIND_SHARED) && shared)) {
+   if ((templ->bind & ZINK_BIND_VIDEO) || ((templ->bind & PIPE_BIND_SHARED) && shared) || (templ->bind & ZINK_BIND_DMABUF)) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
       emai.handleTypes = export_types;
 
