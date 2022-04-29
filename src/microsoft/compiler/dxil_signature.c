@@ -183,24 +183,18 @@ get_additional_semantic_info(nir_shader *s, nir_variable *var, struct semantic_i
    return next_row;
 }
 
-typedef void (*semantic_info_proc)(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool auto_link);
+typedef void (*semantic_info_proc)(nir_variable *var, struct semantic_info *info, gl_shader_stage stage);
 
 static void
-get_semantic_vs_in_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool auto_link)
+get_semantic_vs_in_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage)
 {
    strcpy(info->name, "TEXCOORD");
-   if (auto_link) {
-      info->index = var->data.location >= VERT_ATTRIB_GENERIC0 ?
-         var->data.location - VERT_ATTRIB_GENERIC0 :
-         var->data.location;
-   } else {
-      info->index = var->data.driver_location;
-   }
+   info->index = var->data.driver_location;
    info->kind = DXIL_SEM_ARBITRARY;
 }
 
 static void
-get_semantic_sv_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool auto_link)
+get_semantic_sv_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage)
 {
    if (stage != MESA_SHADER_VERTEX)
       info->interpolation = get_interpolation(var);
@@ -272,7 +266,7 @@ get_semantic_ps_outname(nir_variable *var, struct semantic_info *info)
 
 static void
 get_semantic_name(nir_variable *var, struct semantic_info *info,
-                  const struct glsl_type *type, bool auto_link)
+                  const struct glsl_type *type)
 {
    info->kind = DXIL_SEM_INVALID;
    info->interpolation = get_interpolation(var);
@@ -324,9 +318,7 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
       break;
 
    default: {
-         info->index =  auto_link ?
-            var->data.location - VARYING_SLOT_VAR0 :
-            var->data.driver_location;
+         info->index = var->data.driver_location;
          strcpy(info->name, "TEXCOORD");
          info->kind = DXIL_SEM_ARBITRARY;
       }
@@ -334,14 +326,14 @@ get_semantic_name(nir_variable *var, struct semantic_info *info,
 }
 
 static void
-get_semantic_in_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage, bool auto_link)
+get_semantic_in_name(nir_variable *var, struct semantic_info *info, gl_shader_stage stage)
 {
    const struct glsl_type *type = var->type;
    if (nir_is_arrayed_io(var, stage) &&
        glsl_type_is_array(type))
       type = glsl_get_array_element(type);
 
-   get_semantic_name(var, info, type, auto_link);
+   get_semantic_name(var, info, type);
    info->sysvalue_name = in_sysvalue_name(var);
 }
 
@@ -538,7 +530,7 @@ static unsigned
 get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **inputs,
                           unsigned num_inputs,
                           nir_shader *s, nir_variable_mode modes,
-                          semantic_info_proc get_semantics, unsigned *row_iter, bool auto_link,
+                          semantic_info_proc get_semantics, unsigned *row_iter,
                           unsigned input_clip_size)
 {
    nir_foreach_variable_with_modes(var, s, modes) {
@@ -546,7 +538,7 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
          continue;
 
       struct semantic_info semantic = {0};
-      get_semantics(var, &semantic, s->info.stage, auto_link);
+      get_semantics(var, &semantic, s->info.stage);
       mod->inputs[num_inputs].sysvalue = semantic.sysvalue_name;
       *row_iter = get_additional_semantic_info(s, var, &semantic, *row_iter, input_clip_size);
 
@@ -571,7 +563,7 @@ get_input_signature_group(struct dxil_module *mod, const struct dxil_mdnode **in
 }
 
 static const struct dxil_mdnode *
-get_input_signature(struct dxil_module *mod, nir_shader *s, bool auto_link, unsigned input_clip_size)
+get_input_signature(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size)
 {
    if (s->info.stage == MESA_SHADER_KERNEL)
       return NULL;
@@ -583,12 +575,12 @@ get_input_signature(struct dxil_module *mod, nir_shader *s, bool auto_link, unsi
                                                    s, nir_var_shader_in,
                                                    s->info.stage == MESA_SHADER_VERTEX ?
                                                       get_semantic_vs_in_name : get_semantic_in_name,
-                                                   &next_row, auto_link, input_clip_size);
+                                                   &next_row, input_clip_size);
 
    mod->num_sig_inputs = get_input_signature_group(mod, inputs, mod->num_sig_inputs,
                                                    s, nir_var_system_value,
                                                    get_semantic_sv_name,
-                                                   &next_row, auto_link, input_clip_size);
+                                                   &next_row, input_clip_size);
 
    if (!mod->num_sig_inputs && !mod->num_sig_inputs)
       return NULL;
@@ -617,7 +609,7 @@ static const char *out_sysvalue_name(nir_variable *var)
 }
 
 static const struct dxil_mdnode *
-get_output_signature(struct dxil_module *mod, nir_shader *s, bool auto_link)
+get_output_signature(struct dxil_module *mod, nir_shader *s)
 {
    const struct dxil_mdnode *outputs[VARYING_SLOT_MAX];
    unsigned num_outputs = 0;
@@ -634,7 +626,7 @@ get_output_signature(struct dxil_module *mod, nir_shader *s, bool auto_link)
          const struct glsl_type *type = var->type;
          if (nir_is_arrayed_io(var, s->info.stage))
             type = glsl_get_array_element(type);
-         get_semantic_name(var, &semantic, type, auto_link);
+         get_semantic_name(var, &semantic, type);
          mod->outputs[num_outputs].sysvalue = out_sysvalue_name(var);
       }
       next_row = get_additional_semantic_info(s, var, &semantic, next_row, s->info.clip_distance_array_size);
@@ -707,7 +699,7 @@ patch_sysvalue_name(nir_variable *var)
 }
 
 static const struct dxil_mdnode *
-get_patch_const_signature(struct dxil_module *mod, nir_shader *s, bool auto_link)
+get_patch_const_signature(struct dxil_module *mod, nir_shader *s)
 {
    if (s->info.stage != MESA_SHADER_TESS_CTRL &&
        s->info.stage != MESA_SHADER_TESS_EVAL)
@@ -724,7 +716,7 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s, bool auto_link
          continue;
 
       const struct glsl_type *type = var->type;
-      get_semantic_name(var, &semantic, type, auto_link);
+      get_semantic_name(var, &semantic, type);
 
       mod->patch_consts[num_consts].sysvalue = patch_sysvalue_name(var);
       next_row = get_additional_semantic_info(s, var, &semantic, next_row, 0);
@@ -763,15 +755,15 @@ get_patch_const_signature(struct dxil_module *mod, nir_shader *s, bool auto_link
 }
 
 const struct dxil_mdnode *
-get_signatures(struct dxil_module *mod, nir_shader *s, bool auto_link, unsigned input_clip_size)
+get_signatures(struct dxil_module *mod, nir_shader *s, unsigned input_clip_size)
 {
    /* DXC does the same: Add an empty string before everything else */
    mod->sem_string_table = _mesa_string_buffer_create(mod->ralloc_ctx, 1024);
    copy_semantic_name_to_string(mod->sem_string_table, "");
 
-   const struct dxil_mdnode *input_signature = get_input_signature(mod, s, auto_link, input_clip_size);
-   const struct dxil_mdnode *output_signature = get_output_signature(mod, s, auto_link);
-   const struct dxil_mdnode *patch_const_signature = get_patch_const_signature(mod, s, auto_link);
+   const struct dxil_mdnode *input_signature = get_input_signature(mod, s, input_clip_size);
+   const struct dxil_mdnode *output_signature = get_output_signature(mod, s);
+   const struct dxil_mdnode *patch_const_signature = get_patch_const_signature(mod, s);
 
    const struct dxil_mdnode *SV_nodes[3] = {
       input_signature,
