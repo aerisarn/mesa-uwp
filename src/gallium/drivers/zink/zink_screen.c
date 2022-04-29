@@ -1193,6 +1193,9 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       zink_kopper_deinit_displaytarget(screen, entry->data);
    simple_mtx_destroy(&screen->dt_lock);
 
+   if (screen->copy_context)
+      screen->copy_context->base.destroy(&screen->copy_context->base);
+
    if (VK_NULL_HANDLE != screen->debugUtilsCallbackHandle) {
       VKSCR(DestroyDebugUtilsMessengerEXT)(screen->instance, screen->debugUtilsCallbackHandle, NULL);
    }
@@ -2225,6 +2228,11 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    glsl_type_singleton_init_or_ref();
 
    init_driver_workarounds(screen);
+   screen->copy_context = zink_context(screen->base.context_create(&screen->base, NULL, ZINK_CONTEXT_COPY_ONLY));
+   if (!screen->copy_context) {
+      mesa_loge("zink: failed to create copy context");
+      goto fail;
+   }
 
    return screen;
 

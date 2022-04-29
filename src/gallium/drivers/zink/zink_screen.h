@@ -87,6 +87,7 @@ struct zink_screen {
    VkSemaphore sem;
    VkSemaphore prev_sem;
    struct util_queue flush_queue;
+   struct zink_context *copy_context;
 
    unsigned buffer_rebind_counter;
 
