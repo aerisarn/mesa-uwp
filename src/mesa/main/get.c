@@ -230,6 +230,7 @@ union value {
    GLdouble value_double_2[2];
    GLmatrix *value_matrix;
    GLint value_int;
+   GLint value_int_2[2];
    GLint value_int_4[4];
    GLint64 value_int64;
    GLenum value_enum;
@@ -977,6 +978,14 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
       break;
    case GL_DEVICE_UUID_EXT:
       _mesa_get_device_uuid(ctx, v->value_int_4);
+      break;
+
+   /* GL_EXT_memory_object_win32 */
+   case GL_DEVICE_LUID_EXT:
+      _mesa_get_device_luid(ctx, v->value_int_2);
+      break;
+   case GL_DEVICE_NODE_MASK_EXT:
+      v->value_int = ctx->pipe->screen->get_device_node_mask(ctx->pipe->screen);
       break;
 
    /* GL_EXT_packed_float */
@@ -2872,6 +2881,17 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
          goto invalid_value;
       _mesa_get_device_uuid(ctx, v->value_int_4);
       return TYPE_INT_4;
+   /* GL_EXT_memory_object_win32 */
+   case GL_DEVICE_LUID_EXT:
+      if (index >= 1)
+         goto invalid_value;
+      _mesa_get_device_luid(ctx, v->value_int_2);
+      return TYPE_INT_2;
+   case GL_DEVICE_NODE_MASK_EXT:
+      if (index >= 1)
+         goto invalid_value;
+      v->value_int = ctx->pipe->screen->get_device_node_mask(ctx->pipe->screen);
+      return TYPE_INT;
    /* GL_EXT_direct_state_access */
    case GL_TEXTURE_1D:
    case GL_TEXTURE_2D:
