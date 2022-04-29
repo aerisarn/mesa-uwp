@@ -155,10 +155,12 @@ panvk_get_device_extensions(const struct panvk_physical_device *device,
 {
    *ext = (struct vk_device_extension_table) {
       .KHR_copy_commands2 = true,
+      .KHR_storage_buffer_storage_class = true,
 #ifdef PANVK_USE_WSI_PLATFORM
       .KHR_swapchain = true,
 #endif
       .KHR_synchronization2 = true,
+      .KHR_variable_pointers = true,
       .EXT_custom_border_color = true,
       .EXT_index_type_uint8 = true,
       .EXT_vertex_attribute_divisor = true,

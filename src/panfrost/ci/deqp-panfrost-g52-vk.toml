@@ -34,6 +34,7 @@ include = [
     "dEQP-VK.rasterization.interpolation.*",
     "dEQP-VK.rasterization.primitive_size.*",
     "dEQP-VK.robustness.buffer_access.*",
+    "dEQP-VK.spirv_assembly.instruction.*.variable_pointers.*",
     "dEQP-VK.spirv_assembly.instruction.compute.opquantize.*",
     "dEQP-VK.spirv_assembly.instruction.compute.shader_default_output.*",
     "dEQP-VK.spirv_assembly.instruction.compute.workgroup_memory.*",
