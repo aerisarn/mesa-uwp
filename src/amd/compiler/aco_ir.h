@@ -795,6 +795,19 @@ public:
       }
    }
 
+   /* Value if this were used with vop3/opsel or vop3p. */
+   constexpr uint16_t constantValue16(bool opsel) const noexcept
+   {
+      assert(bytes() == 2 || bytes() == 4);
+      if (opsel) {
+         if (bytes() == 2 && int16_t(data_.i) >= -16 && int16_t(data_.i) <= 64 && !isLiteral())
+            return int16_t(data_.i) >> 16; /* 16-bit inline integers are sign-extended, even with fp16 instrs */
+         else
+            return data_.i >> 16;
+      }
+      return data_.i;
+   }
+
    constexpr bool isOfType(RegType type) const noexcept
    {
       return hasRegClass() && regClass().type() == type;

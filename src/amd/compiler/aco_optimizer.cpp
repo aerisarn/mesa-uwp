@@ -201,7 +201,8 @@ struct ssa_info {
       val = constant;
 
       /* check that no upper bits are lost in case of packed 16bit constants */
-      if (gfx_level >= GFX8 && !op16.isLiteral() && op16.constantValue64() == constant)
+      if (gfx_level >= GFX8 && !op16.isLiteral() &&
+          op16.constantValue16(true) == ((constant >> 16) & 0xffff))
          add_label(label_constant_16bit);
 
       if (!op32.isLiteral())
@@ -2841,11 +2842,12 @@ combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode min, aco_opc
          uint32_t const0 = 0, const1 = 0;
          for (int i = 0; i < 3; i++) {
             uint32_t val;
+            bool hi16 = opsel & (1 << i);
             if (operands[i].isConstant()) {
-               val = operands[i].constantValue();
+               val = hi16 ? operands[i].constantValue16(true) : operands[i].constantValue();
             } else if (operands[i].isTemp() &&
                        ctx.info[operands[i].tempId()].is_constant_or_literal(32)) {
-               val = ctx.info[operands[i].tempId()].val;
+               val = ctx.info[operands[i].tempId()].val >> (hi16 ? 16 : 0);
             } else {
                continue;
             }
@@ -2859,11 +2861,6 @@ combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode min, aco_opc
          }
          if (const0_idx < 0 || const1_idx < 0)
             continue;
-
-         if (opsel & (1 << const0_idx))
-            const0 >>= 16;
-         if (opsel & (1 << const1_idx))
-            const1 >>= 16;
 
          int lower_idx = const0_idx;
          switch (min) {
