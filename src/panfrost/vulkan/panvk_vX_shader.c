@@ -295,13 +295,11 @@ panvk_lower_load_push_constant(nir_builder *b, nir_instr *instr, void *data)
    if (intr->intrinsic != nir_intrinsic_load_push_constant)
       return false;
 
-   const struct panvk_pipeline_layout *layout = data;
-
    b->cursor = nir_before_instr(instr);
    nir_ssa_def *ubo_load =
       nir_load_ubo(b, nir_dest_num_components(intr->dest),
                    nir_dest_bit_size(intr->dest),
-                   nir_imm_int(b, layout->push_constants.ubo_idx),
+                   nir_imm_int(b, PANVK_PUSH_CONST_UBO_INDEX),
                    intr->src[0].ssa,
                    .align_mul = nir_dest_bit_size(intr->dest) / 8,
                    .align_offset = 0,
@@ -454,8 +452,8 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
                  sizeof(fixed_sysvals)) == 0);
 
    /* Patch the descriptor count */
-   shader->info.ubo_count =
-      shader->info.sysvals.sysval_count ? sysval_ubo + 1 : layout->num_ubos;
+   shader->info.ubo_count = PANVK_NUM_BUILTIN_UBOS +
+                            layout->num_ubos + layout->num_dyn_ubos;
    shader->info.sampler_count = layout->num_samplers;
    shader->info.texture_count = layout->num_textures;
    if (shader->has_img_access)

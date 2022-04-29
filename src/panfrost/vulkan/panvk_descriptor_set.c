@@ -206,9 +206,6 @@ panvk_CreatePipelineLayout(VkDevice _device,
               layout->push_constants.size);
    }
 
-   if (layout->push_constants.size)
-      layout->push_constants.ubo_idx = ubo_idx++;
-
    layout->num_samplers = sampler_idx;
    layout->num_textures = tex_idx;
    layout->num_ubos = ubo_idx;

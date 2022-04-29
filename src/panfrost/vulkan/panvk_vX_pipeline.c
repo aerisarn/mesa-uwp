@@ -125,8 +125,6 @@ panvk_pipeline_builder_compile_shaders(struct panvk_pipeline_builder *builder,
    }
 
    /* compile shaders in reverse order */
-   unsigned sysval_ubo = builder->layout->num_ubos + builder->layout->num_dyn_ubos;
-
    for (gl_shader_stage stage = MESA_SHADER_STAGES - 1;
         stage > MESA_SHADER_NONE; stage--) {
       const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
@@ -136,16 +134,14 @@ panvk_pipeline_builder_compile_shaders(struct panvk_pipeline_builder *builder,
       struct panvk_shader *shader;
 
       shader = panvk_per_arch(shader_create)(builder->device, stage, stage_info,
-                                             builder->layout, sysval_ubo,
+                                             builder->layout,
+                                             PANVK_SYSVAL_UBO_INDEX,
                                              &pipeline->blend.state,
                                              panvk_pipeline_static_state(pipeline,
                                                                          VK_DYNAMIC_STATE_BLEND_CONSTANTS),
                                              builder->alloc);
       if (!shader)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-      if (shader->info.sysvals.sysval_count)
-         sysval_ubo++;
  
       builder->shaders[stage] = shader;
       builder->shader_total_size = ALIGN_POT(builder->shader_total_size, 128);
@@ -319,11 +315,9 @@ panvk_pipeline_builder_init_shaders(struct panvk_pipeline_builder *builder,
       }
    }
 
-   pipeline->num_ubos = builder->layout->num_ubos + builder->layout->num_dyn_ubos;
-   for (unsigned i = 0; i < ARRAY_SIZE(pipeline->sysvals); i++) {
-      if (pipeline->sysvals[i].ids.sysval_count)
-         pipeline->num_ubos = MAX2(pipeline->num_ubos, pipeline->sysvals[i].ubo_idx + 1);
-   }
+   pipeline->num_ubos = PANVK_NUM_BUILTIN_UBOS +
+                        builder->layout->num_ubos +
+                        builder->layout->num_dyn_ubos;
 }
 
 

@@ -106,6 +106,10 @@ typedef uint32_t xcb_window_t;
 
 #define NUM_DEPTH_CLEAR_PIPELINES 3
 
+#define PANVK_SYSVAL_UBO_INDEX 0
+#define PANVK_PUSH_CONST_UBO_INDEX 1
+#define PANVK_NUM_BUILTIN_UBOS 2
+
 #define panvk_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
 void
@@ -458,7 +462,6 @@ struct panvk_pipeline_layout {
 
    struct {
       uint32_t size;
-      unsigned ubo_idx;
    } push_constants;
 
    struct {

@@ -389,11 +389,24 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
 {
    struct mali_uniform_buffer_packed *ubos = descs;
 
+   panvk_per_arch(emit_ubo)(state->sysvals_ptr,
+                            sizeof(state->sysvals),
+                            &ubos[PANVK_SYSVAL_UBO_INDEX]);
+
+   if (pipeline->layout->push_constants.size) {
+      panvk_per_arch(emit_ubo)(state->push_constants,
+                               ALIGN_POT(pipeline->layout->push_constants.size, 16),
+                               &ubos[PANVK_PUSH_CONST_UBO_INDEX]);
+   } else {
+      memset(&ubos[PANVK_PUSH_CONST_UBO_INDEX], 0, sizeof(*ubos));
+   }
+
    for (unsigned i = 0; i < ARRAY_SIZE(state->sets); i++) {
       const struct panvk_descriptor_set_layout *set_layout =
          pipeline->layout->sets[i].layout;
       const struct panvk_descriptor_set *set = state->sets[i];
-      unsigned offset = pipeline->layout->sets[i].ubo_offset;
+      unsigned offset = PANVK_NUM_BUILTIN_UBOS +
+                        pipeline->layout->sets[i].ubo_offset;
 
       if (!set_layout)
          continue;
@@ -405,7 +418,7 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
       }
    }
 
-   unsigned offset = pipeline->layout->num_ubos;
+   unsigned offset = PANVK_NUM_BUILTIN_UBOS + pipeline->layout->num_ubos;
    for (unsigned i = 0; i < pipeline->layout->num_dyn_ubos; i++) {
       const struct panvk_buffer_desc *bdesc = &state->dyn.ubos[i];
       mali_ptr address = panvk_buffer_gpu_ptr(bdesc->buffer, bdesc->offset);
@@ -416,18 +429,6 @@ panvk_per_arch(emit_ubos)(const struct panvk_pipeline *pipeline,
          panvk_per_arch(emit_ubo)(address, size, &ubos[offset + i]);
       else
          memset(&ubos[offset + i], 0, sizeof(*ubos));
-   }
-
-   for (unsigned i = 0; i < ARRAY_SIZE(pipeline->sysvals); i++) {
-      panvk_per_arch(emit_ubo)(state->sysvals_ptr,
-                               sizeof(state->sysvals),
-                               &ubos[pipeline->sysvals[i].ubo_idx]);
-   }
-
-   if (pipeline->layout->push_constants.size) {
-      panvk_per_arch(emit_ubo)(state->push_constants,
-                               ALIGN_POT(pipeline->layout->push_constants.size, 16),
-                               &ubos[pipeline->layout->push_constants.ubo_idx]);
    }
 }
 
