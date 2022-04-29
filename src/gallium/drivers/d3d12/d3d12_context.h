@@ -37,8 +37,6 @@
 #include "util/u_suballoc.h"
 #include "util/u_threaded_context.h"
 
-#include <directx/d3d12.h>
-
 #define D3D12_GFX_SHADER_STAGES (PIPE_SHADER_TYPES - 1)
 
 enum d3d12_dirty_flags

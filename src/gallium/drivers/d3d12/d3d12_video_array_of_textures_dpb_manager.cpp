@@ -30,12 +30,8 @@
 // Uses an std::vector with individual D3D resources as backing storage instead of an D3D12 Texture Array
 // Supports dynamic pool capacity extension (by pushing back a new D3D12Resource) of the pool
 
-#ifndef _WIN32
-#include <wsl/winadapter.h>
-#endif
+#include "d3d12_common.h"
 
-#define D3D12_IGNORE_SDK_LAYERS
-#include <directx/d3d12.h>
 #include "d3d12_util.h"
 
 void

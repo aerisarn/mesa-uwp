@@ -30,7 +30,7 @@ struct pipe_screen;
 #include "util/u_transfer.h"
 #include "util/u_threaded_context.h"
 
-#include <directx/d3d12.h>
+#include "d3d12_common.h"
 
 enum d3d12_resource_binding_type {
    D3D12_RESOURCE_BINDING_TYPE_SRV,

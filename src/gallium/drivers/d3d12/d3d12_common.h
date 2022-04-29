@@ -1,5 +1,5 @@
 /*
- * Copyright © Microsoft Corporation
+ * Copyright © Yonggang Luo
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -21,41 +21,16 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef D3D12_FENCE_H
-#define D3D12_FENCE_H
+#ifndef D3D12_COMMON_STATE_H
+#define D3D12_COMMON_STATE_H
 
-#include "util/u_inlines.h"
+#pragma once
 
-#include "d3d12_common.h"
+#ifndef _WIN32
+#include <wsl/winadapter.h>
+#endif
 
-struct pipe_screen;
-struct d3d12_screen;
-
-struct d3d12_fence {
-   struct pipe_reference reference;
-   ID3D12Fence *cmdqueue_fence;
-   HANDLE event;
-   int event_fd;
-   uint64_t value;
-   bool signaled;
-};
-
-static inline struct d3d12_fence *
-d3d12_fence(struct pipe_fence_handle *pfence)
-{
-   return (struct d3d12_fence *)pfence;
-}
-
-struct d3d12_fence *
-d3d12_create_fence(struct d3d12_screen *screen);
-
-void
-d3d12_fence_reference(struct d3d12_fence **ptr, struct d3d12_fence *fence);
-
-bool
-d3d12_fence_finish(struct d3d12_fence *fence, uint64_t timeout_ns);
-
-void
-d3d12_screen_fence_init(struct pipe_screen *pscreen);
+#define D3D12_IGNORE_SDK_LAYERS
+#include <directx/d3d12.h>
 
 #endif

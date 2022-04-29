@@ -28,11 +28,7 @@
 #include "util/u_atomic.h"
 #include "util/list.h"
 
-#ifndef _WIN32
-#include <wsl/winadapter.h>
-#endif
-
-#include <directx/d3d12.h>
+#include "d3d12_common.h"
 
 struct d3d12_bufmgr;
 struct d3d12_screen;

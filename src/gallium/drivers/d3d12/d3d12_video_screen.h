@@ -26,11 +26,7 @@
 
 #include "util/u_inlines.h"
 
-#ifndef _WIN32
-#include <wsl/winadapter.h>
-#endif
-
-#include <directx/d3d12.h>
+#include "d3d12_common.h"
 
 void
 d3d12_screen_video_init(struct pipe_screen *pscreen);

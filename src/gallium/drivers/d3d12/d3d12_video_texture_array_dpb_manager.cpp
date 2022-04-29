@@ -23,12 +23,7 @@
 
 #include "d3d12_video_texture_array_dpb_manager.h"
 
-#ifndef _WIN32
-#include <wsl/winadapter.h>
-#endif
-
-#define D3D12_IGNORE_SDK_LAYERS
-#include <directx/d3d12.h>
+#include "d3d12_common.h"
 
 #include "d3d12_util.h"
 

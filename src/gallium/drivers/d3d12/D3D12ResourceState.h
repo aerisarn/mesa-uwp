@@ -24,15 +24,12 @@
 #ifndef D3D12_RESOURCE_STATE_H
 #define D3D12_RESOURCE_STATE_H
 
-#ifndef _WIN32
-#include <wsl/winadapter.h>
-#endif
-
 #include <vector>
 #include <assert.h>
-#include <directx/d3d12.h>
 
 #include "util/list.h"
+
+#include "d3d12_common.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"

@@ -44,7 +44,6 @@
 #include "util/u_simple_shaders.h"
 #include "util/u_dl.h"
 
-#include <directx/d3d12.h>
 #include <dxguids/dxguids.h>
 
 extern "C" {
