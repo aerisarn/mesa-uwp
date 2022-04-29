@@ -131,7 +131,7 @@ struct dxil_spirv_vulkan_binding {
 
 struct dxil_spirv_vulkan_descriptor_set {
    uint32_t binding_count;
-   struct dxil_spirv_vulkan_binding *bindings;
+   const struct dxil_spirv_vulkan_binding *bindings;
 };
 
 #define DXIL_SPIRV_MAX_VIEWPORT 16
@@ -148,7 +148,7 @@ struct dxil_spirv_runtime_conf {
    } push_constant_cbv;
 
    uint32_t descriptor_set_count;
-   struct dxil_spirv_vulkan_descriptor_set *descriptor_sets;
+   const struct dxil_spirv_vulkan_descriptor_set *descriptor_sets;
 
    // Set true if vertex and instance ids have already been converted to
    // zero-based. Otherwise, runtime_data will be required to lower them.

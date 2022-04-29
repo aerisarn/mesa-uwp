@@ -531,7 +531,8 @@ dzn_pipeline_layout_create(struct dzn_device *device,
    layout->set_count = pCreateInfo->setLayoutCount;
    for (uint32_t j = 0; j < layout->set_count; j++) {
       VK_FROM_HANDLE(dzn_descriptor_set_layout, set_layout, pCreateInfo->pSetLayouts[j]);
-      struct dxil_spirv_vulkan_binding *bindings = layout->binding_translation[j].bindings;
+      struct dxil_spirv_vulkan_binding *bindings =
+         (struct dxil_spirv_vulkan_binding *)layout->binding_translation[j].bindings;
 
       layout->sets[j].dynamic_buffer_count = set_layout->dynamic_buffers.count;
       memcpy(layout->sets[j].range_desc_count, set_layout->range_desc_count,
