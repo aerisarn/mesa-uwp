@@ -28,6 +28,7 @@
 #include "nir_builder.h"
 #include "nir_serialize.h"
 #include "nir/nir_helpers.h"
+#include "ralloc.h"
 #include "si_pipe.h"
 #include "si_shader_internal.h"
 #include "sid.h"
@@ -1480,6 +1481,17 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
 
    bool progress = false;
 
+   const char *original_name = NULL;
+   if (unlikely(should_print_nir(nir))) {
+      /* Modify the shader's name so that each variant gets its own name. */
+      original_name = ralloc_strdup(nir, nir->info.name);
+      ralloc_asprintf_append((char **)&nir->info.name, "-%08x", _mesa_hash_data(key, sizeof(*key)));
+
+      /* Dummy pass to get the starting point. */
+      printf("nir_dummy_pass\n");
+      nir_print_shader(nir, stdout);
+   }
+
    /* Kill outputs according to the shader key. */
    if (sel->stage <= MESA_SHADER_GEOMETRY)
       NIR_PASS(progress, nir, si_nir_kill_outputs, key);
@@ -1567,6 +1579,11 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
     * 200 is tuned for Viewperf. It should be done last.
     */
    NIR_PASS_V(nir, nir_group_loads, nir_group_same_resource_only, 200);
+
+   if (unlikely(original_name)) {
+      ralloc_free((void*)nir->info.name);
+      nir->info.name = original_name;
+   }
 
    return nir;
 }
