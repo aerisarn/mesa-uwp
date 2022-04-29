@@ -109,7 +109,7 @@ count_ngg_sgprs(const struct radv_shader_info *info, bool has_api_gs)
    unsigned count = 0;
 
    if (has_api_gs)
-      count += 1; /* ngg_gs_state */
+      count += 1; /* ngg_query_state */
    if (info->has_ngg_culling)
       count += 5; /* ngg_culling_settings + 4x ngg_viewport_* */
 
@@ -453,7 +453,7 @@ declare_ngg_sgprs(const struct radv_shader_info *info, struct radv_shader_args *
                   bool has_api_gs)
 {
    if (has_api_gs) {
-      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_gs_state);
+      ac_add_arg(&args->ac, AC_ARG_SGPR, 1, AC_ARG_INT, &args->ngg_query_state);
    }
 
    if (info->has_ngg_culling) {
@@ -860,8 +860,8 @@ radv_declare_shader_args(enum amd_gfx_level gfx_level, const struct radv_pipelin
       if (args->ac.force_vrs_rates.used)
          set_loc_shader(args, AC_UD_FORCE_VRS_RATES, &user_sgpr_idx, 1);
 
-      if (args->ngg_gs_state.used) {
-         set_loc_shader(args, AC_UD_NGG_GS_STATE, &user_sgpr_idx, 1);
+      if (args->ngg_query_state.used) {
+         set_loc_shader(args, AC_UD_NGG_QUERY_STATE, &user_sgpr_idx, 1);
       }
 
       if (args->ngg_culling_settings.used) {

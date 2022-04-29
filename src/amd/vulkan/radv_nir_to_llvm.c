@@ -1454,7 +1454,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    LLVMValueRef num_emit_threads = ngg_get_prim_cnt(ctx);
 
    /* Write shader query data. */
-   tmp = ac_get_arg(&ctx->ac, ctx->args->ngg_gs_state);
+   tmp = ac_get_arg(&ctx->ac, ctx->args->ngg_query_state);
    tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
    ac_build_ifcc(&ctx->ac, tmp, 5109);
    tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, LLVMConstInt(ctx->ac.i32, 4, false), "");

@@ -3668,11 +3668,11 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
 }
 
 static void
-radv_flush_ngg_gs_state(struct radv_cmd_buffer *cmd_buffer)
+radv_flush_ngg_query_state(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    struct radv_userdata_info *loc;
-   uint32_t ngg_gs_state = 0;
+   uint32_t ngg_query_state = 0;
    uint32_t base_reg;
 
    if (!radv_pipeline_has_stage(pipeline, MESA_SHADER_GEOMETRY) || !pipeline->is_ngg)
@@ -3685,13 +3685,13 @@ radv_flush_ngg_gs_state(struct radv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.active_pipeline_gds_queries ||
        (cmd_buffer->state.inherited_pipeline_statistics &
         VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT))
-      ngg_gs_state = 1;
+      ngg_query_state = 1;
 
-   loc = radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_GEOMETRY, AC_UD_NGG_GS_STATE);
+   loc = radv_lookup_user_sgpr(&pipeline->base, MESA_SHADER_GEOMETRY, AC_UD_NGG_QUERY_STATE);
    base_reg = pipeline->base.user_data_0[MESA_SHADER_GEOMETRY];
    assert(loc->sgpr_idx != -1);
 
-   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ngg_gs_state);
+   radeon_set_sh_reg(cmd_buffer->cs, base_reg + loc->sgpr_idx * 4, ngg_query_state);
 }
 
 static void
@@ -3749,7 +3749,7 @@ radv_upload_graphics_shader_descriptors(struct radv_cmd_buffer *cmd_buffer, bool
    VkShaderStageFlags stages = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_NV;
    radv_flush_descriptors(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
    radv_flush_constants(cmd_buffer, stages, &pipeline->base, VK_PIPELINE_BIND_POINT_GRAPHICS);
-   radv_flush_ngg_gs_state(cmd_buffer);
+   radv_flush_ngg_query_state(cmd_buffer);
    radv_flush_force_vrs_state(cmd_buffer);
 }
 
