@@ -403,6 +403,21 @@ struct pipe_screen {
    int (*fence_get_fd)(struct pipe_screen *screen,
                        struct pipe_fence_handle *fence);
 
+	/**
+	 * Create a fence from an Win32 handle.
+	 *
+	 * This is used for importing a foreign/external fence handle.
+	 *
+	 * \param fence  if not NULL, an old fence to unref and transfer a
+	 *    new fence reference to
+	 * \param handle opaque handle representing the fence object
+	 * \param type   indicates which fence types backs the handle
+	 */
+   void (*create_fence_win32)(struct pipe_screen *screen,
+                              struct pipe_fence_handle **fence,
+                              void *handle,
+                              enum pipe_fd_type type);
+
    /**
     * Returns a driver-specific query.
     *
@@ -525,6 +540,24 @@ struct pipe_screen {
     * \param uuid    pointer to a memory region of PIPE_UUID_SIZE bytes
     */
    void (*get_device_uuid)(struct pipe_screen *screen, char *uuid);
+
+   /**
+    * Fill @luid with the locally unique identifier of the context
+    * The LUID returned, paired together with the contexts node mask,
+    * allows matching the context to an IDXGIAdapter1 object
+    *
+    * \param luid    pointer to a memory region of PIPE_LUID_SIZE bytes
+    */
+   void (*get_device_luid)(struct pipe_screen *screen, char *luid);
+
+   /**
+    * Return the device node mask identifying the context
+    * Together with the contexts LUID, this allows matching
+    * the context to an IDXGIAdapter1 object.
+    * 
+    * within a linked device adapter
+    */
+   uint32_t (*get_device_node_mask)(struct pipe_screen *screen);
 
    /**
     * Set the maximum number of parallel shader compiler threads.
