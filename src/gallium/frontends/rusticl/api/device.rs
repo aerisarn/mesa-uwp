@@ -138,7 +138,9 @@ impl CLInfo<cl_device_info> for cl_device_id {
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT => cl_prop::<cl_uint>(1),
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_LONG => cl_prop::<cl_uint>(1),
             CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT => cl_prop::<cl_uint>(1),
-            CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE => cl_prop::<usize>(1),
+            CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_MULTIPLE => {
+                cl_prop::<usize>(dev.subgroups() as usize)
+            }
             CL_DEVICE_PRINTF_BUFFER_SIZE => cl_prop::<usize>(dev.printf_buffer_size()),
             // TODO
             CL_DEVICE_PROFILING_TIMER_RESOLUTION => cl_prop::<usize>(0),
