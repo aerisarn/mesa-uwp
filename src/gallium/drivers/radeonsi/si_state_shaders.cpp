@@ -154,7 +154,8 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       assert(sel->nir);
 
       blob_init(&blob);
-      nir_serialize(&blob, sel->nir, true);
+      /* Keep debug info if NIR debug prints are in use. */
+      nir_serialize(&blob, sel->nir, NIR_DEBUG(PRINT) == 0);
       ir_binary = blob.data;
       ir_size = blob.size;
    }
@@ -2846,8 +2847,10 @@ static void si_init_shader_selector_async(void *job, void *gdata, int thread_ind
       /* true = remove optional debugging data to increase
        * the likehood of getting more shader cache hits.
        * It also drops variable names, so we'll save more memory.
+       * If NIR debug prints are used we don't strip to get more
+       * useful logs.
        */
-      nir_serialize(&blob, sel->nir, true);
+      nir_serialize(&blob, sel->nir, NIR_DEBUG(PRINT) == 0);
       blob_finish_get_buffer(&blob, &sel->nir_binary, &size);
       sel->nir_size = size;
    }
