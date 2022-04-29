@@ -40,8 +40,6 @@
 #include "util/u_vertex_state_cache.h"
 #include "pipebuffer/pb_cache.h"
 #include "pipebuffer/pb_slab.h"
-#include "frontend/sw_winsys.h"
-#include "kopper_interface.h"
 
 #include <vulkan/vulkan.h>
 
@@ -94,9 +92,6 @@ struct zink_screen {
    simple_mtx_t dt_lock;
 
    bool device_lost;
-   struct sw_winsys winsys;
-   struct sw_winsys *sw_winsys; // wrapped
-   __DRIkopperLoaderExtension *loader;
 
    struct hash_table framebuffer_cache;
 

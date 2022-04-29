@@ -45,14 +45,13 @@
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 #include "util/os_file.h"
-#include "frontend/sw_winsys.h"
+#include "frontend/winsys_handle.h"
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 #define ZINK_USE_DMABUF
 #endif
 
 #ifdef ZINK_USE_DMABUF
-#include <xf86drm.h>
 #include "drm-uapi/drm_fourcc.h"
 #else
 /* these won't actually be used */

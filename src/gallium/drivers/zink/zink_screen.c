@@ -53,8 +53,6 @@
 
 #include "driver_trace/tr_context.h"
 
-#include "frontend/sw_winsys.h"
-
 #if DETECT_OS_WINDOWS
 #include <io.h>
 #else
@@ -2239,9 +2237,6 @@ struct pipe_screen *
 zink_create_screen(struct sw_winsys *winsys, const struct pipe_screen_config *config)
 {
    struct zink_screen *ret = zink_internal_create_screen(config);
-   if (ret) {
-      ret->sw_winsys = winsys;
-   }
 
    return &ret->base;
 }
