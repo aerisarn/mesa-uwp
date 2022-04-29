@@ -992,6 +992,8 @@ resource_create(struct pipe_screen *pscreen,
       _mesa_hash_table_init(&res->surface_cache, NULL, NULL, equals_ivci);
       simple_mtx_init(&res->surface_mtx, mtx_plain);
    }
+   if (res->obj->exportable)
+      res->base.b.bind |= ZINK_BIND_DMABUF;
    return &res->base.b;
 }
 

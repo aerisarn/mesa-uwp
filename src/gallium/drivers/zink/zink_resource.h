@@ -43,6 +43,7 @@ struct zink_bo;
 #include <vulkan/vulkan.h>
 
 #define ZINK_MAP_TEMPORARY (PIPE_MAP_DRV_PRV << 0)
+#define ZINK_BIND_DMABUF (1 << 29)
 #define ZINK_BIND_TRANSIENT (1 << 30) //transient fb attachment
 #define ZINK_BIND_VIDEO (1 << 31)
 
