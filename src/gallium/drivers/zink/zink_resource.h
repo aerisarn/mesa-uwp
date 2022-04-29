@@ -78,6 +78,7 @@ struct zink_resource_object {
    bool transfer_dst;
    bool render_target;
    bool is_buffer;
+   bool exportable;
 
    /* TODO: this should be a union */
    struct zink_bo *bo;

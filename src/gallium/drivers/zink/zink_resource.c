@@ -783,6 +783,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
       emai.pNext = mai.pNext;
       mai.pNext = &emai;
+      obj->exportable = true;
    }
 
 #ifdef ZINK_USE_DMABUF
