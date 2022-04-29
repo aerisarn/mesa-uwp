@@ -24,6 +24,8 @@
 #ifndef DXIL_VALIDATOR_H
 #define DXIL_VALIDATOR_H
 
+#include <stddef.h>
+
 struct dxil_validator;
 
 #ifdef __cplusplus
