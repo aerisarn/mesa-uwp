@@ -392,62 +392,76 @@ panvk_set_sampler_desc(void *desc,
 }
 
 static void
-panvk_per_arch(set_texture_desc)(struct panvk_descriptor_set *set,
-                                 unsigned idx,
-                                 const VkDescriptorImageInfo *pImageInfo)
+panvk_set_tex_desc(struct panvk_descriptor_set *set,
+                   const struct panvk_descriptor_set_binding_layout *binding_layout,
+                   unsigned elem,
+                   const VkDescriptorImageInfo *pImageInfo)
 {
    VK_FROM_HANDLE(panvk_image_view, view, pImageInfo->imageView);
 
+   unsigned tex_idx = binding_layout->tex_idx + elem;
+
 #if PAN_ARCH >= 6
-   memcpy(&((struct mali_texture_packed *)set->textures)[idx],
+   memcpy(&((struct mali_texture_packed *)set->textures)[tex_idx],
           view->descs.tex, pan_size(TEXTURE));
 #else
-   ((mali_ptr *)set->textures)[idx] = view->bo->ptr.gpu;
+   ((mali_ptr *)set->textures)[tex_idx] = view->bo->ptr.gpu;
 #endif
 }
 
 static void
-panvk_set_tex_buf_desc(struct panvk_device *dev,
-                       struct panvk_descriptor_set *set,
-                       unsigned idx,
+panvk_set_tex_buf_desc(struct panvk_descriptor_set *set,
+                       const struct panvk_descriptor_set_binding_layout *binding_layout,
+                       unsigned elem,
                        const VkBufferView bufferView)
 {
    VK_FROM_HANDLE(panvk_buffer_view, view, bufferView);
 
+   unsigned tex_idx = binding_layout->tex_idx + elem;
+
 #if PAN_ARCH >= 6
-   memcpy(&((struct mali_texture_packed *)set->textures)[idx],
+   memcpy(&((struct mali_texture_packed *)set->textures)[tex_idx],
           view->descs.tex, pan_size(TEXTURE));
 #else
-   ((mali_ptr *)set->textures)[idx] = view->bo->ptr.gpu;
+   ((mali_ptr *)set->textures)[tex_idx] = view->bo->ptr.gpu;
 #endif
 }
 
 static void
 panvk_set_img_desc(struct panvk_device *dev,
                    struct panvk_descriptor_set *set,
-                   unsigned idx,
+                   const struct panvk_descriptor_set_binding_layout *binding_layout,
+                   unsigned elem,
                    const VkDescriptorImageInfo *pImageInfo)
 {
    const struct panfrost_device *pdev = &dev->physical_device->pdev;
    VK_FROM_HANDLE(panvk_image_view, view, pImageInfo->imageView);
-   void *attrib_buf = (uint8_t *)set->img_attrib_bufs + (pan_size(ATTRIBUTE_BUFFER) * 2 * idx);
 
-   set->img_fmts[idx] = pdev->formats[view->pview.format].hw;
+   unsigned img_idx = binding_layout->img_idx + elem;
+
+   void *attrib_buf = (uint8_t *)set->img_attrib_bufs +
+                      (pan_size(ATTRIBUTE_BUFFER) * 2 * img_idx);
+
+   set->img_fmts[img_idx] = pdev->formats[view->pview.format].hw;
    memcpy(attrib_buf, view->descs.img_attrib_buf, pan_size(ATTRIBUTE_BUFFER) * 2);
 }
 
 static void
 panvk_set_img_buf_desc(struct panvk_device *dev,
                        struct panvk_descriptor_set *set,
-                       unsigned idx,
+                       const struct panvk_descriptor_set_binding_layout *binding_layout,
+                       unsigned elem,
                        const VkBufferView bufferView)
 {
    const struct panfrost_device *pdev = &dev->physical_device->pdev;
    VK_FROM_HANDLE(panvk_buffer_view, view, bufferView);
 
-   void *attrib_buf = (uint8_t *)set->img_attrib_bufs + (pan_size(ATTRIBUTE_BUFFER) * 2 * idx);
+   unsigned img_idx = binding_layout->img_idx + elem;
 
-   set->img_fmts[idx] = pdev->formats[view->fmt].hw;
+   void *attrib_buf = (uint8_t *)set->img_attrib_bufs +
+                      (pan_size(ATTRIBUTE_BUFFER) * 2 * img_idx);
+
+   set->img_fmts[img_idx] = pdev->formats[view->fmt].hw;
    memcpy(attrib_buf, view->descs.img_attrib_buf, pan_size(ATTRIBUTE_BUFFER) * 2);
 }
 
@@ -496,17 +510,15 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
 
             if (pDescriptorWrite->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
                 pDescriptorWrite->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-               unsigned tex = binding_layout->tex_idx + dest_offset + i;
 
-               panvk_per_arch(set_texture_desc)(set, tex, info);
+               panvk_set_tex_desc(set, binding_layout, dest_offset + i, info);
             }
          }
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          for (unsigned i = 0; i < ndescs; i++) {
-            unsigned tex = binding_layout->tex_idx + dest_offset + i;
-            panvk_set_tex_buf_desc(dev, set, tex,
+            panvk_set_tex_buf_desc(set, binding_layout, dest_offset + i,
                                    pDescriptorWrite->pTexelBufferView[src_offset + i]);
          }
          break;
@@ -515,16 +527,13 @@ panvk_per_arch(write_descriptor_set)(struct panvk_device *dev,
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
          for (unsigned i = 0; i < ndescs; i++) {
             const VkDescriptorImageInfo *info = &pDescriptorWrite->pImageInfo[src_offset + i];
-            unsigned img = binding_layout->img_idx + dest_offset + i;
-
-            panvk_set_img_desc(dev, set, img, info);
+            panvk_set_img_desc(dev, set, binding_layout, dest_offset + i, info);
          }
          break;
 
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          for (unsigned i = 0; i < ndescs; i++) {
-            unsigned img = binding_layout->img_idx + dest_offset + i;
-            panvk_set_img_buf_desc(dev, set, img,
+            panvk_set_img_buf_desc(dev, set, binding_layout, dest_offset + i,
                                    pDescriptorWrite->pTexelBufferView[src_offset + i]);
          }
          break;
