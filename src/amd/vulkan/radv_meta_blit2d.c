@@ -52,9 +52,6 @@ create_iview(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf *s
              struct radv_image_view *iview, VkFormat depth_format, VkImageAspectFlagBits aspects)
 {
    VkFormat format;
-   VkImageViewType view_type = cmd_buffer->device->physical_device->rad_info.chip_class < GFX9
-                                  ? VK_IMAGE_VIEW_TYPE_2D
-                                  : radv_meta_get_view_type(surf->image);
 
    if (depth_format)
       format = depth_format;
@@ -65,7 +62,7 @@ create_iview(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf *s
                         &(VkImageViewCreateInfo){
                            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                            .image = radv_image_to_handle(surf->image),
-                           .viewType = view_type,
+                           .viewType = radv_meta_get_view_type(surf->image),
                            .format = format,
                            .subresourceRange = {.aspectMask = aspects,
                                                 .baseMipLevel = surf->level,
@@ -376,8 +373,7 @@ radv_meta_blit2d(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_sur
                  struct radv_meta_blit2d_buffer *src_buf, struct radv_meta_blit2d_surf *dst,
                  unsigned num_rects, struct radv_meta_blit2d_rect *rects)
 {
-   bool use_3d = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&
-                 (src_img && src_img->image->type == VK_IMAGE_TYPE_3D);
+   bool use_3d = (src_img && src_img->image->type == VK_IMAGE_TYPE_3D);
    enum blit2d_src_type src_type = src_buf  ? BLIT2D_SRC_TYPE_BUFFER
                                    : use_3d ? BLIT2D_SRC_TYPE_IMAGE_3D
                                             : BLIT2D_SRC_TYPE_IMAGE;
@@ -1116,13 +1112,9 @@ VkResult
 radv_device_init_meta_blit2d_state(struct radv_device *device, bool on_demand)
 {
    VkResult result;
-   bool create_3d = device->physical_device->rad_info.chip_class >= GFX9;
 
    for (unsigned log2_samples = 0; log2_samples < MAX_SAMPLES_LOG2; log2_samples++) {
       for (unsigned src = 0; src < BLIT2D_NUM_SRC_TYPES; src++) {
-         if (src == BLIT2D_SRC_TYPE_IMAGE_3D && !create_3d)
-            continue;
-
          /* Don't need to handle copies between buffers and multisample images. */
          if (src == BLIT2D_SRC_TYPE_BUFFER && log2_samples > 0)
             continue;
