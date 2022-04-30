@@ -1505,3 +1505,16 @@ pub fn enqueue_unmap_mem_object(
         }),
     )
 }
+
+pub fn enqueue_migrate_mem_objects(
+    _command_queue: cl_command_queue,
+    _num_mem_objects: cl_uint,
+    _mem_objects: *const cl_mem,
+    _flags: cl_mem_migration_flags,
+    _num_events_in_wait_list: cl_uint,
+    _event_wait_list: *const cl_event,
+    _event: *mut cl_event,
+) -> CLResult<()> {
+    println!("enqueue_migrate_mem_objects not implemented");
+    Err(CL_OUT_OF_HOST_MEMORY)
+}
