@@ -44,7 +44,7 @@ typedef enum {
    DXIL_SPIRV_SHADER_GEOMETRY = 3,
    DXIL_SPIRV_SHADER_FRAGMENT = 4,
    DXIL_SPIRV_SHADER_COMPUTE = 5,
-   DXIL_SPIRV_SHADER_KERNEL = 6,
+   DXIL_SPIRV_SHADER_KERNEL = 14,
 } dxil_spirv_shader_stage;
 
 // Copy of nir_spirv_const_value
