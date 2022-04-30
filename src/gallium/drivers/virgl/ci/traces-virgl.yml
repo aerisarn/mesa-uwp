@@ -251,20 +251,20 @@ traces:
     expectations:
       - device: gl-virgl
         checksum: f3b184bf8858a6ebccd09e7ca032197e
-  - path: valve/counterstrike.trace
+  - path: valve/counterstrike-v2.trace
     expectations:
       - device: gl-virgl
         checksum: 3bc0e0e39cb3c29f6d76ff07f1f02860
 # Piglit times-out when trying to run these two
-#  - path: valve/counterstrike-source.trace
+#  - path: valve/counterstrike-source-v2.trace
 #    expectations:
 #      - device: gl-virgl
 #        checksum: 4c19f6060ff0fe0055678c48e1e77282
-#  - path: valve/half-life-2.trace
+#  - path: valve/half-life-2-v2.trace
 #    expectations:
 #      - device: gl-virgl
 #        checksum: 323887eedf59fa9282d6c3a4c82c3192
-  - path: valve/portal-2.trace
+  - path: valve/portal-2-v2.trace
     expectations:
       - device: gl-virgl
         checksum: 7489a8412ee2bca45431d208e0006a3e
