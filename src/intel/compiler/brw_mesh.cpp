@@ -1235,6 +1235,19 @@ fs_visitor::nir_emit_task_mesh_intrinsic(const fs_builder &bld,
       }
       break;
 
+   case nir_intrinsic_load_num_workgroups:
+      assert(!nir->info.mesh.nv);
+      dest = retype(dest, BRW_REGISTER_TYPE_UD);
+      bld.SHR(offset(dest, bld, 0), retype(brw_vec1_grf(0, 6), dest.type), brw_imm_ud(16));
+      bld.AND(offset(dest, bld, 1), retype(brw_vec1_grf(0, 4), dest.type), brw_imm_ud(0xffff));
+      bld.SHR(offset(dest, bld, 2), retype(brw_vec1_grf(0, 4), dest.type), brw_imm_ud(16));
+      break;
+
+   case nir_intrinsic_load_workgroup_index:
+      dest = retype(dest, BRW_REGISTER_TYPE_UD);
+      bld.MOV(dest, retype(brw_vec1_grf(0, 1), BRW_REGISTER_TYPE_UD));
+      break;
+
    default:
       nir_emit_cs_intrinsic(bld, instr);
       break;
