@@ -807,8 +807,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       }
 
       if (zink_is_swapchain(res)) {
-         if (!zink_kopper_acquire(ctx, res, UINT64_MAX))
+         if (!zink_kopper_acquire(ctx, res, UINT64_MAX)) {
+            FREE_CL(sampler_view);
             return NULL;
+         }
       }
 
       ivci = create_ivci(screen, res, &templ, state->target);
