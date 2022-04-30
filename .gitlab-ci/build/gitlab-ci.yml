@@ -72,6 +72,7 @@ debian-testing:
     VULKAN_DRIVERS: "swrast,amd,intel"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
+      -D spirv-to-dxil=true
       -D valgrind=false
     MINIO_ARTIFACT_NAME: mesa-amd64
   script:
@@ -156,6 +157,7 @@ debian-gallium:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12,asahi,crocus"
     VULKAN_DRIVERS: swrast
     EXTRA_OPTION: >
+      -D spirv-to-dxil=true
       -D osmesa=true
       -D tools=drm-shim,etnaviv,freedreno,glsl,intel,intel-ui,nir,nouveau,xvmc,lima,panfrost,asahi
   script:
@@ -187,6 +189,7 @@ debian-release:
     VULKAN_DRIVERS: "amd,imagination-experimental"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
+      -D spirv-to-dxil=true
       -D osmesa=true
       -D tools=all
       -D intel-clc=enabled
@@ -402,6 +405,7 @@ debian-clang:
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12,crocus,i915,asahi"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental,swrast,panfrost,imagination-experimental
     EXTRA_OPTIONS:
+      -D spirv-to-dxil=true
       -D imagination-srv=true
     CC: clang
     CXX: clang++
@@ -519,6 +523,7 @@ debian-mingw32-x86_64:
     CPP_ARGS: $C_ARGS
     GALLIUM_DRIVERS: "swrast"
     EXTRA_OPTION: >
+      -D spirv-to-dxil=true
       -Dllvm=disabled
       -Dzlib=disabled
       -Dosmesa=true
