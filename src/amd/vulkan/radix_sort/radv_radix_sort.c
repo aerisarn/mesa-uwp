@@ -191,3 +191,26 @@ vkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t groupCountX, uint32_t grou
    cmd_buffer->device->vk.dispatch_table.CmdDispatch(commandBuffer, groupCountX, groupCountY,
                                                      groupCountZ);
 }
+
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL
+vkGetBufferDeviceAddress(VkDevice _device, const VkBufferDeviceAddressInfo *pInfo)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   return device->vk.dispatch_table.GetBufferDeviceAddress(_device, pInfo);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vkCmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset,
+                VkDeviceSize size, uint32_t data)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   cmd_buffer->device->vk.dispatch_table.CmdFillBuffer(commandBuffer, dstBuffer, dstOffset, size,
+                                                       data);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vkCmdDispatchIndirect(VkCommandBuffer commandBuffer, VkBuffer buffer, VkDeviceSize offset)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   cmd_buffer->device->vk.dispatch_table.CmdDispatchIndirect(commandBuffer, buffer, offset);
+}
