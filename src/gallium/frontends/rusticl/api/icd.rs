@@ -82,7 +82,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clEnqueueMapImage: Some(cl_enqueue_map_image),
     clEnqueueUnmapMemObject: Some(cl_enqueue_unmap_mem_object),
     clEnqueueNDRangeKernel: Some(cl_enqueue_ndrange_kernel),
-    clEnqueueTask: None,
+    clEnqueueTask: Some(cl_enqueue_task),
     clEnqueueNativeKernel: None,
     clEnqueueMarker: None,
     clEnqueueWaitForEvents: None,
@@ -1099,6 +1099,22 @@ extern "C" fn cl_enqueue_ndrange_kernel(
         global_work_offset,
         global_work_size,
         local_work_size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event
+    ))
+}
+
+extern "C" fn cl_enqueue_task(
+    command_queue: cl_command_queue,
+    kernel: cl_kernel,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> cl_int {
+    match_err!(enqueue_task(
+        command_queue,
+        kernel,
         num_events_in_wait_list,
         event_wait_list,
         event
