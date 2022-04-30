@@ -2536,7 +2536,6 @@ nir_visitor::visit(ir_texture *ir)
 
             for (unsigned j = 0; j < 2; ++j) {
                int val = c->get_int_component(j);
-               assert(val <= 31 && val >= -32);
                instr->tg4_offsets[i][j] = val;
             }
          }

@@ -86,9 +86,6 @@ KHR-GL43.shader_ballot_tests.ShaderBallotBitmasks,Fail
 KHR-GL43.shader_ballot_tests.ShaderBallotFunctionBallot,Fail
 KHR-GL43.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 
-# "../src/compiler/glsl/glsl_to_nir.cpp:2539: virtual void {anonymous}::nir_visitor::visit(ir_texture*): Assertion `val <= 31 && val >= -32' failed."
-shaders@glsl-bug-110796,Crash
-
 shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Fail
 shaders@point-vertex-id gl_vertexid,Fail
 shaders@point-vertex-id gl_vertexid divisor,Fail
