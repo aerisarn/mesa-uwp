@@ -25,6 +25,21 @@ use std::os::raw::c_void;
 use std::ptr;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::MutexGuard;
+
+struct Mappings {
+    tx: HashMap<Arc<Device>, (PipeTransfer, u32)>,
+    maps: HashMap<*mut c_void, u32>,
+}
+
+impl Mappings {
+    fn new() -> Mutex<Self> {
+        Mutex::new(Mappings {
+            tx: HashMap::new(),
+            maps: HashMap::new(),
+        })
+    }
+}
 
 #[repr(C)]
 pub struct Mem {
@@ -42,7 +57,7 @@ pub struct Mem {
     pub props: Vec<cl_mem_properties>,
     pub cbs: Mutex<Vec<Box<dyn Fn(cl_mem)>>>,
     res: Option<HashMap<Arc<Device>, Arc<PipeResource>>>,
-    maps: Mutex<HashMap<*mut c_void, (u32, PipeTransfer)>>,
+    maps: Mutex<Mappings>,
 }
 
 impl_cl_type_trait!(cl_mem, Mem, CL_INVALID_MEM_OBJECT);
@@ -232,7 +247,7 @@ impl Mem {
             props: props,
             cbs: Mutex::new(Vec::new()),
             res: Some(buffer),
-            maps: Mutex::new(HashMap::new()),
+            maps: Mappings::new(),
         }))
     }
 
@@ -263,7 +278,7 @@ impl Mem {
             props: Vec::new(),
             cbs: Mutex::new(Vec::new()),
             res: None,
-            maps: Mutex::new(HashMap::new()),
+            maps: Mappings::new(),
         })
     }
 
@@ -333,7 +348,7 @@ impl Mem {
             props: props,
             cbs: Mutex::new(Vec::new()),
             res: Some(texture),
-            maps: Mutex::new(HashMap::new()),
+            maps: Mappings::new(),
         }))
     }
 
@@ -344,7 +359,7 @@ impl Mem {
     fn tx(
         &self,
         q: &Arc<Queue>,
-        ctx: &Arc<PipeContext>,
+        ctx: &PipeContext,
         mut offset: usize,
         size: usize,
         blocking: bool,
@@ -365,7 +380,7 @@ impl Mem {
     fn tx_image(
         &self,
         q: &Arc<Queue>,
-        ctx: &Arc<PipeContext>,
+        ctx: &PipeContext,
         bx: &pipe_box,
         blocking: bool,
     ) -> CLResult<PipeTransfer> {
@@ -626,45 +641,68 @@ impl Mem {
         Ok(())
     }
 
-    pub fn map(
+    fn map<'a>(
+        &self,
+        q: &Arc<Queue>,
+        ctx: &PipeContext,
+        lock: &'a mut MutexGuard<Mappings>,
+        block: bool,
+    ) -> CLResult<&'a PipeTransfer> {
+        if !lock.tx.contains_key(&q.device) {
+            let tx = self.tx(q, ctx, 0, self.size, block)?;
+            lock.tx.insert(q.device.clone(), (tx, 0));
+        }
+
+        let tx = lock.tx.get_mut(&q.device).unwrap();
+        tx.1 += 1;
+        Ok(&tx.0)
+    }
+
+    // TODO: we could map a partial region and increase the mapping on the fly
+    pub fn map_buffer(
         &self,
         q: &Arc<Queue>,
         offset: usize,
-        size: usize,
+        _size: usize,
         block: bool,
     ) -> CLResult<*mut c_void> {
         assert!(self.is_buffer());
 
-        let tx = self.tx(q, &q.device.helper_ctx(), offset, size, block)?;
-        let ptr = tx.ptr();
-
         let mut lock = self.maps.lock().unwrap();
-        let e = lock.get_mut(&ptr);
+        let tx = self.map(q, &q.device.helper_ctx(), &mut lock, block)?;
+        let ptr = unsafe { tx.ptr().add(offset) };
 
-        // if we already have a mapping, reuse that and increase the refcount
-        if let Some(e) = e {
-            e.0 += 1;
+        if let Some(e) = lock.maps.get_mut(&ptr) {
+            *e += 1;
         } else {
-            lock.insert(tx.ptr(), (1, tx));
+            lock.maps.insert(ptr, 1);
         }
 
         Ok(ptr)
     }
 
     pub fn is_mapped_ptr(&self, ptr: *mut c_void) -> bool {
-        self.maps.lock().unwrap().contains_key(&ptr)
+        self.maps.lock().unwrap().maps.contains_key(&ptr)
     }
 
-    pub fn unmap(&self, q: &Arc<Queue>, ptr: *mut c_void) {
+    pub fn unmap(&self, q: &Arc<Queue>, ctx: &Arc<PipeContext>, ptr: *mut c_void) {
         let mut lock = self.maps.lock().unwrap();
-        let e = lock.get_mut(&ptr).unwrap();
+        let e = lock.maps.get_mut(&ptr).unwrap();
 
-        e.0 -= 1;
-        if e.0 == 0 {
-            lock.remove(&ptr)
-                .unwrap()
-                .1
-                .with_ctx(&q.device.helper_ctx());
+        if *e == 0 {
+            return;
+        }
+
+        *e -= 1;
+        if *e == 0 {
+            lock.maps.remove(&ptr);
+        }
+
+        let tx = lock.tx.get_mut(&q.device).unwrap();
+        tx.1 -= 1;
+
+        if tx.1 == 0 {
+            lock.tx.remove(&q.device).unwrap().0.with_ctx(ctx);
         }
     }
 }
@@ -678,6 +716,10 @@ impl Drop for Mem {
             .iter()
             .rev()
             .for_each(|cb| cb(cl));
+
+        for (d, tx) in self.maps.lock().unwrap().tx.drain() {
+            tx.0.with_ctx(&d.helper_ctx());
+        }
     }
 }
 
