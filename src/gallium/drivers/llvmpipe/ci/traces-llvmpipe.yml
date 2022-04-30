@@ -2,7 +2,7 @@ traces-db:
   download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
-  - path: 0ad/0ad.trace
+  - path: 0ad/0ad-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 73171898acd606e5729b45ecf7e8def7
@@ -134,59 +134,59 @@ traces:
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 83bf05971404700b874c4e9d9edd1379
-  - path: glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true.trace
+  - path: glmark2/desktop:windows=4:effect=blur:blur-radius=5:passes=1:separable=true-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: fa54af7770699dfe78c3e33061312739
-  - path: glmark2/jellyfish.trace
+  - path: glmark2/jellyfish-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: da850394d7f99a895322222cc95170af
-  - path: glxgears/glxgears-2.trace
+  - path: glxgears/glxgears-2-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: f8eba0fec6e3e0af9cb09844bc73bdc8
-  - path: gputest/furmark.trace
+  - path: gputest/furmark-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 58a6a276abc0e28fcb2a8acea3342712
-  - path: gputest/pixmark-piano.trace
+  - path: gputest/pixmark-piano-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 11e2a97c14c74e771483ca0d90f9bde3
-  - path: gputest/triangle.trace
+  - path: gputest/triangle-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 7812de00011a3a059892e36cea19c696
-  - path: humus/Portals.trace
+  - path: humus/Portals-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: a55dd3d87a86b3b47121ff67861028c3
-  - path: jvgs/jvgs-d27fb67.trace
+  - path: jvgs/jvgs-d27fb67-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: b8c21bf76e667735d1640b215f456531
-  - path: pathfinder/demo.trace
+  - path: pathfinder/demo-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: a053c56658bc830249bc94317a3b3ea8
-  - path: paraview/pv-manyspheres.trace
+  - path: paraview/pv-manyspheres-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: b740377ea4bbb3becd304d1696a55247
-  - path: paraview/pv-waveletcontour.trace
+  - path: paraview/pv-waveletcontour-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: db43c733f3f3d5253e263838e58d9111
-  - path: paraview/pv-waveletvolume.trace
+  - path: paraview/pv-waveletvolume-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: f4af4067b37c00861fa5911e4c0a6629
-  - path: pathfinder/canvas_moire.trace
+  - path: pathfinder/canvas_moire-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: 25ba8f18274126670311bd3ffe058f74
-  - path: pathfinder/canvas_text_v2.trace
+  - path: pathfinder/canvas_text_v2-v2.trace
     expectations:
       - device: gl-vmware-llvmpipe
         checksum: a1446d0c42a78771240fca6f3b1e10d8
