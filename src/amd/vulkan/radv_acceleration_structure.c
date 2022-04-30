@@ -1489,10 +1489,11 @@ build_morton_shader(struct radv_device *dev)
 
    nir_ssa_def *morton_code = nir_iadd(
       &b, nir_iadd(&b, nir_ishl_imm(&b, x_morton, 2), nir_ishl_imm(&b, y_morton, 1)), z_morton);
+   nir_ssa_def *key = nir_ishl_imm(&b, morton_code, 8);
 
    nir_ssa_def *dst_addr = nir_iadd(
       &b, scratch_addr, nir_u2u64(&b, id_to_morton_offset(&b, global_id, dev->physical_device)));
-   nir_build_store_global(&b, morton_code, dst_addr, .align_mul = 4);
+   nir_build_store_global(&b, key, dst_addr, .align_mul = 4);
 
    return b.shader;
 }
