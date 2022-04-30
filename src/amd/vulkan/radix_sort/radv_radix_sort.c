@@ -98,54 +98,54 @@ radv_create_radix_sort_u64(VkDevice device, VkAllocationCallbacks const *ac, VkP
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-vkCreateShaderModule(VkDevice device, const VkShaderModuleCreateInfo *pCreateInfo,
+vkCreateShaderModule(VkDevice _device, const VkShaderModuleCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator, VkShaderModule *pShaderModule)
 {
-   RADV_FROM_HANDLE(radv_device, pdevice, device);
-   return pdevice->vk.dispatch_table.CreateShaderModule(device, pCreateInfo, pAllocator,
-                                                        pShaderModule);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   return device->vk.dispatch_table.CreateShaderModule(_device, pCreateInfo, pAllocator,
+                                                       pShaderModule);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-vkDestroyShaderModule(VkDevice device, VkShaderModule shaderModule,
+vkDestroyShaderModule(VkDevice _device, VkShaderModule shaderModule,
                       const VkAllocationCallbacks *pAllocator)
 {
-   RADV_FROM_HANDLE(radv_device, pdevice, device);
-   pdevice->vk.dispatch_table.DestroyShaderModule(device, shaderModule, pAllocator);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   device->vk.dispatch_table.DestroyShaderModule(_device, shaderModule, pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-vkCreatePipelineLayout(VkDevice device, const VkPipelineLayoutCreateInfo *pCreateInfo,
+vkCreatePipelineLayout(VkDevice _device, const VkPipelineLayoutCreateInfo *pCreateInfo,
                        const VkAllocationCallbacks *pAllocator, VkPipelineLayout *pPipelineLayout)
 {
-   RADV_FROM_HANDLE(radv_device, pdevice, device);
-   return pdevice->vk.dispatch_table.CreatePipelineLayout(device, pCreateInfo, pAllocator,
-                                                          pPipelineLayout);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   return device->vk.dispatch_table.CreatePipelineLayout(_device, pCreateInfo, pAllocator,
+                                                         pPipelineLayout);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-vkDestroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout,
+vkDestroyPipelineLayout(VkDevice _device, VkPipelineLayout pipelineLayout,
                         const VkAllocationCallbacks *pAllocator)
 {
-   RADV_FROM_HANDLE(radv_device, pdevice, device);
-   pdevice->vk.dispatch_table.DestroyPipelineLayout(device, pipelineLayout, pAllocator);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   device->vk.dispatch_table.DestroyPipelineLayout(_device, pipelineLayout, pAllocator);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
-vkCreateComputePipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
+vkCreateComputePipelines(VkDevice _device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
                          const VkComputePipelineCreateInfo *pCreateInfos,
                          const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
 {
-   RADV_FROM_HANDLE(radv_device, pdevice, device);
-   return pdevice->vk.dispatch_table.CreateComputePipelines(device, pipelineCache, createInfoCount,
-                                                            pCreateInfos, pAllocator, pPipelines);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   return device->vk.dispatch_table.CreateComputePipelines(_device, pipelineCache, createInfoCount,
+                                                           pCreateInfos, pAllocator, pPipelines);
 }
 
 VKAPI_ATTR void VKAPI_CALL
-vkDestroyPipeline(VkDevice device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
+vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
 {
-   RADV_FROM_HANDLE(radv_device, pdevice, device);
-   return pdevice->vk.dispatch_table.DestroyPipeline(device, pipeline, pAllocator);
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   return device->vk.dispatch_table.DestroyPipeline(_device, pipeline, pAllocator);
 }
 
 VKAPI_ATTR void VKAPI_CALL
