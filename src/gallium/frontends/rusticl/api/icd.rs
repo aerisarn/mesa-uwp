@@ -124,7 +124,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clLinkProgram: Some(cl_link_program),
     clUnloadPlatformCompiler: Some(cl_unload_platform_compiler),
     clGetKernelArgInfo: Some(cl_get_kernel_arg_info),
-    clEnqueueFillBuffer: None,
+    clEnqueueFillBuffer: Some(cl_enqueue_fill_buffer),
     clEnqueueFillImage: Some(cl_enqueue_fill_image),
     clEnqueueMigrateMemObjects: None,
     clEnqueueMarkerWithWaitList: None,
@@ -1371,6 +1371,30 @@ extern "C" fn cl_get_kernel_arg_info(
         param_value_size,
         param_value,
         param_value_size_ret,
+    ))
+}
+
+extern "C" fn cl_enqueue_fill_buffer(
+    command_queue: cl_command_queue,
+    buffer: cl_mem,
+    pattern: *const ::std::os::raw::c_void,
+    pattern_size: usize,
+    offset: usize,
+    cb: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> cl_int {
+    match_err!(enqueue_fill_buffer(
+        command_queue,
+        buffer,
+        pattern,
+        pattern_size,
+        offset,
+        cb,
+        num_events_in_wait_list,
+        event_wait_list,
+        event,
     ))
 }
 

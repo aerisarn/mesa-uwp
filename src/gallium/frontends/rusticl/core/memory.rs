@@ -285,6 +285,25 @@ impl Mem {
         Ok(())
     }
 
+    pub fn fill(
+        &self,
+        q: &Arc<Queue>,
+        ctx: &PipeContext,
+        pattern: &[u8],
+        mut offset: usize,
+        size: usize,
+    ) -> CLResult<()> {
+        let b = self.to_parent(&mut offset);
+        let res = b.get_res().get(&q.device).unwrap();
+        ctx.clear_buffer(
+            res,
+            pattern,
+            offset.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
+            size.try_into().map_err(|_| CL_OUT_OF_HOST_MEMORY)?,
+        );
+        Ok(())
+    }
+
     pub fn write_from_user_rect(
         &self,
         src: *const c_void,

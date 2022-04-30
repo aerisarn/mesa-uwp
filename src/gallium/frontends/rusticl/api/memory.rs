@@ -17,6 +17,7 @@ use self::rusticl_opencl_gen::*;
 use std::cmp::Ordering;
 use std::os::raw::c_void;
 use std::ptr;
+use std::slice;
 use std::sync::Arc;
 
 fn validate_mem_flags(flags: cl_mem_flags, images: bool) -> CLResult<()> {
@@ -1340,6 +1341,59 @@ pub fn enqueue_copy_buffer_rect(
 
     // TODO
     // CL_MISALIGNED_SUB_BUFFER_OFFSET if src_buffer is a sub-buffer object and offset specified when the sub-buffer object is created is not aligned to CL_DEVICE_MEM_BASE_ADDR_ALIGN value for device associated with queue.
+}
+
+pub fn enqueue_fill_buffer(
+    command_queue: cl_command_queue,
+    buffer: cl_mem,
+    pattern: *const ::std::os::raw::c_void,
+    pattern_size: usize,
+    offset: usize,
+    size: usize,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let b = buffer.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // CL_INVALID_VALUE if offset or offset + size require accessing elements outside the buffer
+    // buffer object respectively.
+    if offset + size > b.size {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if pattern is NULL or if pattern_size is 0 or if pattern_size is not one of
+    // { 1, 2, 4, 8, 16, 32, 64, 128 }.
+    if pattern.is_null() || pattern_size.count_ones() != 1 || pattern_size > 128 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_VALUE if offset and size are not a multiple of pattern_size.
+    if offset % pattern_size != 0 || size % pattern_size != 0 {
+        return Err(CL_INVALID_VALUE);
+    }
+
+    // CL_INVALID_CONTEXT if the context associated with command_queue and buffer are not the same
+    if b.context != q.context {
+        return Err(CL_INVALID_CONTEXT);
+    }
+
+    // we have to copy memory
+    let pattern = unsafe { slice::from_raw_parts(pattern.cast(), pattern_size).to_vec() };
+    create_and_queue(
+        q,
+        CL_COMMAND_FILL_BUFFER,
+        evs,
+        event,
+        false,
+        Box::new(move |q, ctx| b.fill(q, ctx, &pattern, offset, size)),
+    )
+
+    // TODO
+    //• CL_MISALIGNED_SUB_BUFFER_OFFSET if buffer is a sub-buffer object and offset specified when the sub-buffer object is created is not aligned to CL_DEVICE_MEM_BASE_ADDR_ALIGN value for device associated with queue.
+    //• CL_MEM_OBJECT_ALLOCATION_FAILURE if there is a failure to allocate memory for data store associated with buffer.
 }
 
 pub fn enqueue_map_buffer(
