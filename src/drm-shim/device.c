@@ -117,6 +117,7 @@ drm_shim_file_create(int fd)
    struct shim_fd *shim_fd = calloc(1, sizeof(*shim_fd));
 
    shim_fd->fd = fd;
+   p_atomic_set(&shim_fd->refcount, 1);
    mtx_init(&shim_fd->handle_lock, mtx_plain);
    shim_fd->handles = _mesa_hash_table_create(NULL,
                                               uint_key_hash,
@@ -133,13 +134,31 @@ void drm_shim_fd_register(int fd, struct shim_fd *shim_fd)
 {
    if (!shim_fd)
       shim_fd = drm_shim_file_create(fd);
+   else
+      p_atomic_inc(&shim_fd->refcount);
 
    _mesa_hash_table_insert(shim_device.fd_map, (void *)(uintptr_t)(fd + 1), shim_fd);
 }
 
+static void handle_delete_fxn(struct hash_entry *entry)
+{
+   drm_shim_bo_put(entry->data);
+}
+
 void drm_shim_fd_unregister(int fd)
 {
-   _mesa_hash_table_remove_key(shim_device.fd_map, (void *)(uintptr_t)(fd + 1));
+   struct hash_entry *entry =
+         _mesa_hash_table_search(shim_device.fd_map, (void *)(uintptr_t)(fd + 1));
+   if (!entry)
+      return;
+   struct shim_fd *shim_fd = entry->data;
+   _mesa_hash_table_remove(shim_device.fd_map, entry);
+
+   if (!p_atomic_dec_zero(&shim_fd->refcount))
+      return;
+
+   _mesa_hash_table_destroy(shim_fd->handles, handle_delete_fxn);
+   free(shim_fd);
 }
 
 struct shim_fd *

@@ -69,6 +69,7 @@ extern struct shim_device shim_device;
 
 struct shim_fd {
    int fd;
+   int refcount;
    mtx_t handle_lock;
    /* mapping from int gem handle to struct shim_bo *. */
    struct hash_table *handles;
