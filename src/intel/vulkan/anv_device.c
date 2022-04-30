@@ -290,6 +290,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_memory_budget                     = (!device->info.has_local_mem ||
                                                 device->vram_mappable.available > 0) &&
                                                device->sys.available,
+      .EXT_mesh_shader                       = device->info.has_mesh_shading,
       .EXT_non_seamless_cube_map             = true,
       .EXT_pci_bus_info                      = true,
       .EXT_physical_device_drm               = true,
@@ -1479,6 +1480,16 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT: {
+         VkPhysicalDeviceMeshShaderFeaturesEXT *features =
+            (VkPhysicalDeviceMeshShaderFeaturesEXT *)ext;
+         features->meshShader = pdevice->vk.supported_extensions.EXT_mesh_shader;
+         features->taskShader = pdevice->vk.supported_extensions.EXT_mesh_shader;
+         features->multiviewMeshShader = false;
+         features->primitiveFragmentShadingRateMeshShader = features->meshShader;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
          VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *features =
             (VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE *)ext;
@@ -2346,6 +2357,143 @@ void anv_GetPhysicalDeviceProperties2(
 
          props->meshOutputPerVertexGranularity = 32;
          props->meshOutputPerPrimitiveGranularity = 32;
+
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT: {
+         VkPhysicalDeviceMeshShaderPropertiesEXT *properties =
+            (VkPhysicalDeviceMeshShaderPropertiesEXT *)ext;
+
+         /* Bounded by the maximum representable size in
+          * 3DSTATE_MESH_SHADER_BODY::SharedLocalMemorySize.  Same for Task.
+          */
+         const uint32_t max_slm_size = 64 * 1024;
+
+         /* Bounded by the maximum representable size in
+          * 3DSTATE_MESH_SHADER_BODY::LocalXMaximum.  Same for Task.
+          */
+         const uint32_t max_workgroup_size = 1 << 10;
+
+         /* 3DMESH_3D limitation. */
+         const uint32_t max_threadgroup_count = 1 << 22;
+
+         /* 3DMESH_3D limitation. */
+         const uint32_t max_threadgroup_xyz = 65535;
+
+         const uint32_t max_urb_size = 64 * 1024;
+
+         properties->maxTaskWorkGroupTotalCount = max_threadgroup_count;
+         properties->maxTaskWorkGroupCount[0] = max_threadgroup_xyz;
+         properties->maxTaskWorkGroupCount[1] = max_threadgroup_xyz;
+         properties->maxTaskWorkGroupCount[2] = max_threadgroup_xyz;
+
+         properties->maxTaskWorkGroupInvocations = max_workgroup_size;
+         properties->maxTaskWorkGroupSize[0] = max_workgroup_size;
+         properties->maxTaskWorkGroupSize[1] = max_workgroup_size;
+         properties->maxTaskWorkGroupSize[2] = max_workgroup_size;
+
+         /* TUE header with padding */
+         const uint32_t task_payload_reserved = 32;
+
+         properties->maxTaskPayloadSize = max_urb_size - task_payload_reserved;
+         properties->maxTaskSharedMemorySize = max_slm_size;
+         properties->maxTaskPayloadAndSharedMemorySize =
+               properties->maxTaskPayloadSize +
+               properties->maxTaskSharedMemorySize;
+
+         properties->maxMeshWorkGroupTotalCount = max_threadgroup_count;
+         properties->maxMeshWorkGroupCount[0] = max_threadgroup_xyz;
+         properties->maxMeshWorkGroupCount[1] = max_threadgroup_xyz;
+         properties->maxMeshWorkGroupCount[2] = max_threadgroup_xyz;
+
+         properties->maxMeshWorkGroupInvocations = max_workgroup_size;
+         properties->maxMeshWorkGroupSize[0] = max_workgroup_size;
+         properties->maxMeshWorkGroupSize[1] = max_workgroup_size;
+         properties->maxMeshWorkGroupSize[2] = max_workgroup_size;
+
+         properties->maxMeshSharedMemorySize = max_slm_size;
+         properties->maxMeshPayloadAndSharedMemorySize =
+               properties->maxTaskPayloadSize +
+               properties->maxMeshSharedMemorySize;
+
+         /* Unfortunately spec's formula for the max output size doesn't match our hardware
+          * (because some per-primitive and per-vertex attributes have alignment restrictions),
+          * so we have to advertise the minimum value mandated by the spec to not overflow it.
+          */
+         properties->maxMeshOutputPrimitives = 256;
+         properties->maxMeshOutputVertices = 256;
+
+         /* NumPrim + Primitive Data List */
+         const uint32_t max_indices_memory =
+               ALIGN(sizeof(uint32_t) +
+                     sizeof(uint32_t) * properties->maxMeshOutputVertices, 32);
+
+         properties->maxMeshOutputMemorySize = MIN2(max_urb_size - max_indices_memory, 32768);
+
+         properties->maxMeshPayloadAndOutputMemorySize =
+               properties->maxTaskPayloadSize +
+               properties->maxMeshOutputMemorySize;
+
+         properties->maxMeshOutputComponents = 128;
+
+         /* RTAIndex is 11-bits wide */
+         properties->maxMeshOutputLayers = 1 << 11;
+
+         properties->maxMeshMultiviewViewCount = 1;
+
+         /* Elements in Vertex Data Array must be aligned to 32 bytes (8 dwords). */
+         properties->meshOutputPerVertexGranularity = 8;
+         /* Elements in Primitive Data Array must be aligned to 32 bytes (8 dwords). */
+         properties->meshOutputPerPrimitiveGranularity = 8;
+
+         /* SIMD16 */
+         properties->maxPreferredTaskWorkGroupInvocations = 16;
+         properties->maxPreferredMeshWorkGroupInvocations = 16;
+
+         properties->prefersLocalInvocationVertexOutput = false;
+         properties->prefersLocalInvocationPrimitiveOutput = false;
+         properties->prefersCompactVertexOutput = false;
+         properties->prefersCompactPrimitiveOutput = false;
+         properties->meshShadingAffectedPipelineStatistics = 0;
+
+         /* Spec minimum values */
+         assert(properties->maxTaskWorkGroupTotalCount >= (1U << 22));
+         assert(properties->maxTaskWorkGroupCount[0] >= 65535);
+         assert(properties->maxTaskWorkGroupCount[1] >= 65535);
+         assert(properties->maxTaskWorkGroupCount[2] >= 65535);
+
+         assert(properties->maxTaskWorkGroupInvocations >= 128);
+         assert(properties->maxTaskWorkGroupSize[0] >= 128);
+         assert(properties->maxTaskWorkGroupSize[1] >= 128);
+         assert(properties->maxTaskWorkGroupSize[2] >= 128);
+
+         assert(properties->maxTaskPayloadSize >= 16384);
+         assert(properties->maxTaskSharedMemorySize >= 32768);
+         assert(properties->maxTaskPayloadAndSharedMemorySize >= 32768);
+
+
+         assert(properties->maxMeshWorkGroupTotalCount >= (1U << 22));
+         assert(properties->maxMeshWorkGroupCount[0] >= 65535);
+         assert(properties->maxMeshWorkGroupCount[1] >= 65535);
+         assert(properties->maxMeshWorkGroupCount[2] >= 65535);
+
+         assert(properties->maxMeshWorkGroupInvocations >= 128);
+         assert(properties->maxMeshWorkGroupSize[0] >= 128);
+         assert(properties->maxMeshWorkGroupSize[1] >= 128);
+         assert(properties->maxMeshWorkGroupSize[2] >= 128);
+
+         assert(properties->maxMeshSharedMemorySize >= 28672);
+         assert(properties->maxMeshPayloadAndSharedMemorySize >= 28672);
+         assert(properties->maxMeshOutputMemorySize >= 32768);
+         assert(properties->maxMeshPayloadAndOutputMemorySize >= 48128);
+
+         assert(properties->maxMeshOutputComponents >= 128);
+
+         assert(properties->maxMeshOutputVertices >= 256);
+         assert(properties->maxMeshOutputPrimitives >= 256);
+         assert(properties->maxMeshOutputLayers >= 8);
+         assert(properties->maxMeshMultiviewViewCount >= 1);
 
          break;
       }
