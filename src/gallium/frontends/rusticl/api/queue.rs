@@ -1,7 +1,9 @@
 extern crate rusticl_opencl_gen;
 
+use crate::api::event::create_and_queue;
 use crate::api::icd::*;
 use crate::api::util::*;
+use crate::core::event::*;
 use crate::core::queue::*;
 
 use self::rusticl_opencl_gen::*;
@@ -68,6 +70,69 @@ pub fn create_command_queue(
     }
 
     Ok(cl_command_queue::from_arc(Queue::new(c, d, properties)?))
+}
+
+pub fn enqueue_marker(command_queue: cl_command_queue, event: *mut cl_event) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+
+    // TODO marker makes sure previous commands did complete
+    create_and_queue(
+        q,
+        CL_COMMAND_MARKER,
+        Vec::new(),
+        event,
+        false,
+        Box::new(|_, _| Ok(())),
+    )
+}
+
+pub fn enqueue_marker_with_wait_list(
+    command_queue: cl_command_queue,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // TODO marker makes sure previous commands did complete
+    create_and_queue(
+        q,
+        CL_COMMAND_MARKER,
+        evs,
+        event,
+        false,
+        Box::new(|_, _| Ok(())),
+    )
+}
+
+pub fn enqueue_barrier(command_queue: cl_command_queue) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+
+    // TODO barriers make sure previous commands did complete and other commands didn't start
+    let e = Event::new(&q, CL_COMMAND_BARRIER, Vec::new(), Box::new(|_, _| Ok(())));
+    q.queue(&e);
+    Ok(())
+}
+
+pub fn enqueue_barrier_with_wait_list(
+    command_queue: cl_command_queue,
+    num_events_in_wait_list: cl_uint,
+    event_wait_list: *const cl_event,
+    event: *mut cl_event,
+) -> CLResult<()> {
+    let q = command_queue.get_arc()?;
+    let evs = event_list_from_cl(&q, num_events_in_wait_list, event_wait_list)?;
+
+    // TODO barriers make sure previous commands did complete and other commands didn't start
+    create_and_queue(
+        q,
+        CL_COMMAND_BARRIER,
+        evs,
+        event,
+        false,
+        Box::new(|_, _| Ok(())),
+    )
 }
 
 pub fn flush_queue(command_queue: cl_command_queue) -> CLResult<()> {
