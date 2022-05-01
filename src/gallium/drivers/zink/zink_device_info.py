@@ -422,7 +422,11 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %for ext in extensions:
 %if ext.has_features:
 <%helpers:guard ext="${ext}">
+%if ext.features_promoted:
+      if (support_${ext.name_with_vendor()} && !info->have_vulkan${ext.core_since.struct()}) {
+%else:
       if (support_${ext.name_with_vendor()}) {
+%endif
          info->${ext.field("feats")}.sType = ${ext.stype("FEATURES")};
          info->${ext.field("feats")}.pNext = info->feats.pNext;
          info->feats.pNext = &info->${ext.field("feats")};
@@ -457,7 +461,11 @@ zink_get_physical_device_info(struct zink_screen *screen)
 %for ext in extensions:
 %if ext.has_properties:
 <%helpers:guard ext="${ext}">
+%if ext.properties_promoted:
+      if (support_${ext.name_with_vendor()} && !info->have_vulkan${ext.core_since.struct()}) {
+%else:
       if (support_${ext.name_with_vendor()}) {
+%endif
          info->${ext.field("props")}.sType = ${ext.stype("PROPERTIES")};
          info->${ext.field("props")}.pNext = props.pNext;
          props.pNext = &info->${ext.field("props")};
@@ -481,6 +489,42 @@ zink_get_physical_device_info(struct zink_screen *screen)
       // note: setting up local VkPhysicalDeviceProperties2.
       screen->vk.GetPhysicalDeviceProperties2(screen->pdev, &props);
    }
+
+   /* We re-apply the fields from VkPhysicalDeviceVulkanXYFeatures struct
+    * onto their respective fields in the VkPhysicalDeviceExtensionNameFeatures
+    * struct if the former is provided by the VK implementation.
+    *
+    * As for why this is done: the spec mentions that once an extension is
+    * promoted to core and its feature fields are added in VulkanXYFeatures,
+    * including both ExtensionNameFeatures and VulkanXYFeatures at the same
+    * time is prohibited when using vkGetPhysicalDeviceFeatures2.
+    */
+%for ext in extensions:
+%if ext.features_promoted:
+   if (info->have_vulkan${ext.core_since.struct()}) {
+    %for field in registry.get_registry_entry(ext.name).features_fields:
+      info->${ext.field("feats")}.${field} = info->feats${ext.core_since.struct()}.${field};
+    %endfor
+   }
+%endif
+%endfor
+
+   /* See above, but for VulkanXYProperties.
+    * Unlike VulkanXYFeatures with all the booleans, VulkanXYProperties can
+    * contain different types of data, including arrays. The C language hates us
+    * when we assign an array to another array, therefore we use an memcpy here.
+    */
+%for ext in extensions:
+%if ext.properties_promoted:
+   if (info->have_vulkan${ext.core_since.struct()}) {
+    %for field in registry.get_registry_entry(ext.name).properties_fields:
+      memcpy(&info->${ext.field("props")}.${field},
+             &info->props${ext.core_since.struct()}.${field},
+             sizeof(info->${ext.field("props")}.${field}));
+    %endfor
+   }
+%endif
+%endfor
 
    // enable the extensions if they match the conditions given by ext.enable_conds 
    if (screen->vk.GetPhysicalDeviceProperties2) {
@@ -630,11 +674,13 @@ if __name__ == "__main__":
             if not (entry.features_struct and ext.physical_device_struct("Features") == entry.features_struct):
                 error_count += 1
                 print("The extension {} does not provide a features struct.".format(ext.name))
+            ext.features_promoted = entry.features_promoted
 
         if ext.has_properties:
             if not (entry.properties_struct and ext.physical_device_struct("Properties") == entry.properties_struct):
                 error_count += 1
                 print("The extension {} does not provide a properties struct.".format(ext.name))
+            ext.properties_promoted = entry.properties_promoted
 
         if entry.promoted_in:
             ext.core_since = Version((*entry.promoted_in, 0))
