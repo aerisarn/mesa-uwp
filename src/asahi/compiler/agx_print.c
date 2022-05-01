@@ -194,7 +194,7 @@ agx_print_instr(agx_instr *I, FILE *fp)
 void
 agx_print_block(agx_block *block, FILE *fp)
 {
-   fprintf(fp, "block%u {\n", block->name);
+   fprintf(fp, "block%u {\n", block->index);
 
    agx_foreach_instr_in_block(block, ins)
       agx_print_instr(ins, fp);
@@ -205,14 +205,14 @@ agx_print_block(agx_block *block, FILE *fp)
       fprintf(fp, " -> ");
 
       agx_foreach_successor(block, succ)
-         fprintf(fp, "block%u ", succ->name);
+         fprintf(fp, "block%u ", succ->index);
    }
 
    if (block->predecessors.size) {
       fprintf(fp, " from");
 
       agx_foreach_predecessor(block, pred)
-         fprintf(fp, " block%u", (*pred)->name);
+         fprintf(fp, " block%u", (*pred)->index);
    }
 
    fprintf(fp, "\n\n");

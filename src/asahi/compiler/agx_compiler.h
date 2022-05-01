@@ -29,6 +29,7 @@
 #include "util/u_math.h"
 #include "util/half_float.h"
 #include "util/u_dynarray.h"
+#include "util/u_worklist.h"
 #include "agx_compile.h"
 #include "agx_opcodes.h"
 #include "agx_minifloat.h"
@@ -347,7 +348,7 @@ typedef struct agx_block {
    struct list_head instructions;
 
    /* Index of the block in source order */
-   unsigned name;
+   unsigned index;
 
    /* Control flow graph */
    struct agx_block *successors[2];
@@ -387,6 +388,9 @@ typedef struct {
 
    /* Place to start pushing new values */
    unsigned push_base;
+
+   /* Maximum block index */
+   unsigned num_blocks;
 
    /* For creating temporaries */
    unsigned alloc;
@@ -590,6 +594,14 @@ agx_exit_block(agx_context *ctx)
    assert(!last->successors[0] && !last->successors[1]);
    return last;
 }
+
+#define agx_worklist_init(ctx, w) u_worklist_init(w, ctx->num_blocks, ctx)
+#define agx_worklist_push_head(w, block) u_worklist_push_head(w, block, index)
+#define agx_worklist_push_tail(w, block) u_worklist_push_tail(w, block, index)
+#define agx_worklist_peek_head(w) u_worklist_peek_head(w, agx_block, index)
+#define agx_worklist_pop_head(w)  u_worklist_pop_head( w, agx_block, index)
+#define agx_worklist_peek_tail(w) u_worklist_peek_tail(w, agx_block, index)
+#define agx_worklist_pop_tail(w)  u_worklist_pop_tail( w, agx_block, index)
 
 /* Like in NIR, for use with the builder */
 

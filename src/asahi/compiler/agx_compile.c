@@ -1728,11 +1728,9 @@ agx_compile_shader_nir(nir_shader *nir,
    for (unsigned i = 0; i < 8; ++i)
       agx_trap(&_b);
 
-   unsigned block_source_count = 0;
-
-   /* Name blocks now that we're done emitting so the order is consistent */
+   /* Index blocks now that we're done emitting so the order is consistent */
    agx_foreach_block(ctx, block)
-      block->name = block_source_count++;
+      block->index = ctx->num_blocks++;
 
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
       agx_print_shader(ctx, stdout);
