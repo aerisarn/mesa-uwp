@@ -923,7 +923,7 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
             agx_index channels[4] = {};
 
             for (unsigned i = 0; i < nr; ++i)
-               channels[i] = agx_p_extract(b, index, i);
+               channels[i] = agx_emit_extract(b, index, i);
 
             agx_index layer = agx_fadd(b, channels[nr - 1],
                                           agx_immediate_f(0.5f));
