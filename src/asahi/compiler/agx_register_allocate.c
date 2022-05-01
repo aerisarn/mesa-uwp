@@ -24,11 +24,7 @@
 #include "agx_compiler.h"
 #include "agx_builder.h"
 
-/* Trivial register allocator that never frees anything.
- *
- * TODO: Write a real register allocator.
- * TODO: Handle phi nodes.
- */
+/* SSA-based register allocator */
 
 /** Returns number of registers written by an instruction */
 unsigned
