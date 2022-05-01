@@ -411,9 +411,6 @@ typedef struct {
    /* Has r0l been zeroed yet due to control flow? */
    bool any_cf;
 
-   /** Computed metadata */
-   bool has_liveness;
-
    /* Number of nested control flow structures within the innermost loop. Since
     * NIR is just loop and if-else, this is the number of nested if-else
     * statements in the loop */

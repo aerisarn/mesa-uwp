@@ -60,9 +60,6 @@ agx_liveness_ins_update(BITSET_WORD *live, agx_instr *I)
 void
 agx_compute_liveness(agx_context *ctx)
 {
-   if (ctx->has_liveness)
-      return;
-
    u_worklist worklist;
    u_worklist_init(&worklist, ctx->num_blocks, NULL);
 
@@ -142,6 +139,4 @@ agx_compute_liveness(agx_context *ctx)
    }
 
    u_worklist_fini(&worklist);
-
-   ctx->has_liveness = true;
 }
