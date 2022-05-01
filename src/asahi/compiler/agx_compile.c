@@ -283,6 +283,8 @@ agx_emit_load_vary_flat(agx_builder *b, agx_index *dests, nir_intrinsic_instr *i
    unsigned imm_index = b->shader->varyings[nir_intrinsic_base(instr)];
    imm_index += nir_src_as_uint(*offset);
 
+   assert(nir_dest_bit_size(instr->dest) == 32 && "no 16-bit flat shading");
+
    for (unsigned i = 0; i < components; ++i) {
       /* vec3 for each vertex, unknown what first 2 channels are for */
       agx_index values = agx_ld_vary_flat(b, agx_immediate(imm_index + i), 1);
@@ -1632,6 +1634,25 @@ agx_remap_varyings_fs(nir_shader *nir, struct agx_varyings *varyings,
    varyings->nr_slots = base;
 }
 
+/*
+ * Build a bit mask of varyings (by location) that are flatshaded. This
+ * information is needed by lower_mediump_io.
+ */
+static uint64_t
+agx_flat_varying_mask(nir_shader *nir)
+{
+   uint64_t mask = 0;
+
+   assert(nir->info.stage == MESA_SHADER_FRAGMENT);
+
+   nir_foreach_shader_in_variable(var, nir) {
+      if (var->data.interpolation == INTERP_MODE_FLAT)
+         mask |= BITFIELD64_BIT(var->data.location);
+   }
+
+   return mask;
+}
+
 void
 agx_compile_shader_nir(nir_shader *nir,
       struct agx_shader_key *key,
@@ -1677,8 +1698,14 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
          glsl_type_size, 0);
    if (ctx->stage == MESA_SHADER_FRAGMENT) {
+      /* Interpolate varyings at fp16 and write to the tilebuffer at fp16. As an
+       * exception, interpolate flat shaded at fp32. This works around a
+       * hardware limitation. The resulting code (with an extra f2f16 at the end
+       * if needed) matches what Metal produces.
+       */
       NIR_PASS_V(nir, nir_lower_mediump_io,
-            nir_var_shader_in | nir_var_shader_out, ~0, false);
+            nir_var_shader_in | nir_var_shader_out,
+            ~agx_flat_varying_mask(nir), false);
    }
    NIR_PASS_V(nir, nir_shader_instructions_pass,
          agx_lower_aligned_offsets,
