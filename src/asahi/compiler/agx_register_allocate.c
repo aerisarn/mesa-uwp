@@ -92,7 +92,7 @@ agx_assign_regs(BITSET_WORD *used_regs, unsigned count, unsigned align, unsigned
 /** Assign registers to SSA values in a block. */
 
 static void
-agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsigned max_reg)
+agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps)
 {
    BITSET_DECLARE(used_regs, AGX_NUM_REGS) = { 0 };
 
@@ -164,7 +164,7 @@ agx_ra_assign_local(agx_block *block, uint8_t *ssa_to_reg, uint8_t *ncomps, unsi
          if (I->dest[d].type == AGX_INDEX_NORMAL) {
             unsigned count = agx_write_registers(I, d);
             unsigned align = (I->dest[d].size == AGX_SIZE_16) ? 1 : 2;
-            unsigned reg = agx_assign_regs(used_regs, count, align, max_reg);
+            unsigned reg = agx_assign_regs(used_regs, count, align, AGX_NUM_REGS);
 
             ssa_to_reg[I->dest[d].value] = reg;
          }
@@ -279,7 +279,7 @@ agx_ra(agx_context *ctx)
     * to a NIR invariant, so we do not need special handling for this.
     */
    agx_foreach_block(ctx, block) {
-      agx_ra_assign_local(block, ssa_to_reg, ncomps, ctx->max_register);
+      agx_ra_assign_local(block, ssa_to_reg, ncomps);
    }
 
    agx_foreach_instr_global(ctx, ins) {
