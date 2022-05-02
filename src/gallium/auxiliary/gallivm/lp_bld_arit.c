@@ -3757,7 +3757,7 @@ lp_build_fpstate_set_denorms_zero(struct gallivm_state *gallivm,
       LLVMBuilderRef builder = gallivm->builder;
       LLVMValueRef mxcsr_ptr = lp_build_fpstate_get(gallivm);
       LLVMValueRef mxcsr =
-         LLVMBuildLoad(builder, mxcsr_ptr, "mxcsr");
+         LLVMBuildLoad2(builder, LLVMInt32TypeInContext(gallivm->context), mxcsr_ptr, "mxcsr");
 
       if (util_get_cpu_caps()->has_daz) {
          /* Enable denormals are zero mode */
