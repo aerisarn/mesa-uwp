@@ -67,6 +67,7 @@ struct zink_query {
    bool needs_reset; /* query is considered active by vk and cannot be destroyed */
    bool dead; /* query should be destroyed when its fence finishes */
    bool needs_update; /* query needs to update its qbos */
+   bool needs_rast_discard_workaround; /* query needs discard disabled */
 
    struct list_head active_list;
 
@@ -457,10 +458,11 @@ zink_create_query(struct pipe_context *pctx,
    assert(!query->precise || query->vkqtype == VK_QUERY_TYPE_OCCLUSION);
 
    VkQueryPipelineStatisticFlags pipeline_stats = 0;
-   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       pipeline_stats = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
          VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
-   else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
+      query->needs_rast_discard_workaround = true;
+   } else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
       pipeline_stats = pipeline_statistic_convert(index);
 
    int num_pools = get_num_query_pools(query);
@@ -848,7 +850,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    zink_batch_usage_set(&q->batch_uses, batch->state);
    _mesa_set_add(batch->state->active_queries, q);
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+   if (q->needs_rast_discard_workaround) {
       ctx->primitives_generated_active = true;
       if (zink_set_rasterizer_discard(ctx, true))
          zink_set_color_write_enables(ctx);
@@ -925,7 +927,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
       list_delinit(&q->stats_list);
 
    check_update(ctx, q);
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+   if (q->needs_rast_discard_workaround) {
       ctx->primitives_generated_active = false;
       if (zink_set_rasterizer_discard(ctx, false))
          zink_set_color_write_enables(ctx);
