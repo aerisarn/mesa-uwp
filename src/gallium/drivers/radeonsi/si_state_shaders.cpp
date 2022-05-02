@@ -2547,18 +2547,13 @@ use_local_key_copy(const SHADER_KEY_TYPE *key, SHADER_KEY_TYPE *local_key, unsig
 /**
  * Select a shader variant according to the shader key.
  *
- * \param optimized_or_none  If the key describes an optimized shader variant and
- *                           the compilation isn't finished, don't select any
- *                           shader and return an error.
- *
  * This uses a C++ template to compute the optimal memcmp size at compile time, which is important
  * for getting inlined memcmp. The memcmp size depends on the shader key type and whether inlined
  * uniforms are enabled.
  */
 template<bool INLINE_UNIFORMS = true, typename SHADER_KEY_TYPE>
 static int si_shader_select_with_key(struct si_context *sctx, struct si_shader_ctx_state *state,
-                                     const SHADER_KEY_TYPE *key, int thread_index,
-                                     bool optimized_or_none)
+                                     const SHADER_KEY_TYPE *key)
 {
    struct si_screen *sscreen = sctx->screen;
    struct si_shader_selector *sel = state->cso;
@@ -2601,9 +2596,6 @@ again:
    if (likely(current && memcmp(&current->key, key, key_size) == 0)) {
       if (unlikely(!util_queue_fence_is_signalled(&current->ready))) {
          if (current->is_optimized) {
-            if (optimized_or_none)
-               return -1;
-
             key = use_local_key_copy(key, &local_key, key_size);
             memset(&local_key.opt, 0, key_opt_size);
             goto current_not_ready;
@@ -2619,12 +2611,8 @@ current_not_ready:
    /* This must be done before the mutex is locked, because async GS
     * compilation calls this function too, and therefore must enter
     * the mutex first.
-    *
-    * Only wait if we are in a draw call. Don't wait if we are
-    * in a compiler thread.
     */
-   if (thread_index < 0)
-      util_queue_fence_wait(&sel->ready);
+   util_queue_fence_wait(&sel->ready);
 
    simple_mtx_lock(&sel->mutex);
 
@@ -2662,9 +2650,6 @@ current_not_ready:
              * shader so as not to cause a stall due to compilation.
              */
             if (iter->is_optimized) {
-               if (optimized_or_none)
-                  return -1;
-
                key = use_local_key_copy(key, &local_key, key_size);
                memset(&local_key.opt, 0, key_opt_size);
                goto again;
@@ -2709,7 +2694,7 @@ current_not_ready:
          previous_stage_sel = ((struct si_shader_key_ge*)key)->part.gs.es;
 
       /* We need to wait for the previous shader. */
-      if (previous_stage_sel && thread_index < 0)
+      if (previous_stage_sel)
          util_queue_fence_wait(&previous_stage_sel->ready);
    }
 
@@ -2779,7 +2764,7 @@ current_not_ready:
                           memcmp(&key->opt, &zeroed_key->opt, key_opt_size) != 0;
 
    /* If it's an optimized shader, compile it asynchronously. */
-   if (shader->is_optimized && thread_index < 0) {
+   if (shader->is_optimized) {
       /* Compile it asynchronously. */
       util_queue_add_job(&sscreen->shader_compiler_queue_low_priority, shader, &shader->ready,
                          si_build_shader_variant_low_priority, NULL, 0);
@@ -2802,8 +2787,6 @@ current_not_ready:
       if (sscreen->options.sync_compile)
          util_queue_fence_wait(&shader->ready);
 
-      if (optimized_or_none)
-         return -1;
       goto again;
    }
 
@@ -2821,7 +2804,7 @@ current_not_ready:
    simple_mtx_unlock(&sel->mutex);
 
    assert(!shader->is_optimized);
-   si_build_shader_variant(shader, thread_index, false);
+   si_build_shader_variant(shader, -1, false);
 
    util_queue_fence_signal(&shader->ready);
 
@@ -2839,14 +2822,14 @@ int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state *state
 
    if (state->cso->stage == MESA_SHADER_FRAGMENT) {
       if (state->key.ps.opt.inline_uniforms)
-         return si_shader_select_with_key(sctx, state, &state->key.ps, -1, false);
+         return si_shader_select_with_key(sctx, state, &state->key.ps);
       else
-         return si_shader_select_with_key<NO_INLINE_UNIFORMS>(sctx, state, &state->key.ps, -1, false);
+         return si_shader_select_with_key<NO_INLINE_UNIFORMS>(sctx, state, &state->key.ps);
    } else {
       if (state->key.ge.opt.inline_uniforms) {
-         return si_shader_select_with_key(sctx, state, &state->key.ge, -1, false);
+         return si_shader_select_with_key(sctx, state, &state->key.ge);
       } else {
-         return si_shader_select_with_key<NO_INLINE_UNIFORMS>(sctx, state, &state->key.ge, -1, false);
+         return si_shader_select_with_key<NO_INLINE_UNIFORMS>(sctx, state, &state->key.ge);
       }
    }
 }
