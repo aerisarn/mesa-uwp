@@ -266,7 +266,7 @@ timestamp_to_nanoseconds(struct zink_screen *screen, uint64_t *timestamp)
 }
 
 static VkQueryType
-convert_query_type(unsigned query_type, bool *precise)
+convert_query_type(struct zink_screen *screen, enum pipe_query_type query_type, bool *precise)
 {
    *precise = false;
    switch (query_type) {
@@ -440,7 +440,7 @@ zink_create_query(struct pipe_context *pctx,
    query->type = query_type;
    if (query->type == PIPE_QUERY_GPU_FINISHED)
       return (struct pipe_query *)query;
-   query->vkqtype = convert_query_type(query_type, &query->precise);
+   query->vkqtype = convert_query_type(screen, query_type, &query->precise);
    if (query->vkqtype == -1)
       return NULL;
 
