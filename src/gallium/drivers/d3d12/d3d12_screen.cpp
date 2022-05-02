@@ -28,6 +28,7 @@
 #include "d3d12_context.h"
 #include "d3d12_debug.h"
 #include "d3d12_fence.h"
+#include "d3d12_video_screen.h"
 #include "d3d12_format.h"
 #include "d3d12_residency.h"
 #include "d3d12_resource.h"
@@ -1238,6 +1239,7 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
 
    d3d12_screen_fence_init(&screen->base);
    d3d12_screen_resource_init(&screen->base);
+   d3d12_screen_video_init(&screen->base);
    slab_create_parent(&screen->transfer_pool, sizeof(struct d3d12_transfer), 16);
 
    struct pb_desc desc;
