@@ -107,6 +107,7 @@ struct lp_build_interp_soa_context
 
    LLVMValueRef xoffset_store;
    LLVMValueRef yoffset_store;
+   LLVMTypeRef store_elem_type;
 
    /*
     * Convenience pointers. Callers may access this one.

@@ -191,6 +191,20 @@ calc_centroid_offsets(struct lp_build_interp_soa_context *bld,
    *centroid_y = lp_build_select(coeff_bld, s_mask_and, pix_center_offset, centroid_y_offset);
 }
 
+/* Note: this assumes the pointer to elem_type is in address space 0 */
+static LLVMValueRef
+load_casted(LLVMBuilderRef builder, LLVMTypeRef elem_type, LLVMValueRef ptr, const char *name) {
+   ptr = LLVMBuildBitCast(builder, ptr, LLVMPointerType(elem_type, 0), name);
+   return LLVMBuildLoad2(builder, elem_type, ptr, name);
+}
+
+static LLVMValueRef
+indexed_load(LLVMBuilderRef builder, LLVMTypeRef gep_type,
+                  LLVMTypeRef elem_type, LLVMValueRef ptr, LLVMValueRef index, const char *name) {
+   ptr = LLVMBuildGEP2(builder, gep_type, ptr, &index, 1, name);
+   return load_casted(builder, elem_type, ptr, name);
+}
+
 /* Much easier, and significantly less instructions in the per-stamp
  * part (less than half) but overall more instructions so a loss if
  * most quads are active. Might be a win though with larger vectors.
@@ -224,36 +238,27 @@ coeffs_init_simple(struct lp_build_interp_soa_context *bld,
       const unsigned interp = bld->interp[attrib];
       LLVMValueRef index = lp_build_const_int32(gallivm,
                                 attrib * TGSI_NUM_CHANNELS);
-      LLVMValueRef ptr;
       LLVMValueRef dadxaos = setup_bld->zero;
       LLVMValueRef dadyaos = setup_bld->zero;
       LLVMValueRef a0aos = setup_bld->zero;
+
+      /* See: lp_state_fs.c / generate_fragment() / fs_elem_type */
+      LLVMTypeRef fs_elem_type = LLVMFloatTypeInContext(gallivm->context);
 
       switch (interp) {
       case LP_INTERP_PERSPECTIVE:
          FALLTHROUGH;
 
       case LP_INTERP_LINEAR:
-         ptr = LLVMBuildGEP(builder, dadx_ptr, &index, 1, "");
-         ptr = LLVMBuildBitCast(builder, ptr,
-               LLVMPointerType(setup_bld->vec_type, 0), "");
-         dadxaos = LLVMBuildLoad(builder, ptr, "");
-
-         ptr = LLVMBuildGEP(builder, dady_ptr, &index, 1, "");
-         ptr = LLVMBuildBitCast(builder, ptr,
-               LLVMPointerType(setup_bld->vec_type, 0), "");
-         dadyaos = LLVMBuildLoad(builder, ptr, "");
-
+         dadxaos = indexed_load(builder, fs_elem_type, setup_bld->vec_type, dadx_ptr, index, "");
+         dadyaos = indexed_load(builder, fs_elem_type, setup_bld->vec_type, dady_ptr, index, "");
          attrib_name(dadxaos, attrib, 0, ".dadxaos");
          attrib_name(dadyaos, attrib, 0, ".dadyaos");
          FALLTHROUGH;
 
       case LP_INTERP_CONSTANT:
       case LP_INTERP_FACING:
-         ptr = LLVMBuildGEP(builder, a0_ptr, &index, 1, "");
-         ptr = LLVMBuildBitCast(builder, ptr,
-               LLVMPointerType(setup_bld->vec_type, 0), "");
-         a0aos = LLVMBuildLoad(builder, ptr, "");
+         a0aos = indexed_load(builder, fs_elem_type, setup_bld->vec_type, a0_ptr, index, "");
          attrib_name(a0aos, attrib, 0, ".a0aos");
          break;
 
@@ -297,10 +302,10 @@ attribs_update_simple(struct lp_build_interp_soa_context *bld,
    /* could do this with code-generated passed in pixel offsets too */
 
    assert(loop_iter);
-   ptr = LLVMBuildGEP(builder, bld->xoffset_store, &loop_iter, 1, "");
-   pixoffx = LLVMBuildLoad(builder, ptr, "");
-   ptr = LLVMBuildGEP(builder, bld->yoffset_store, &loop_iter, 1, "");
-   pixoffy = LLVMBuildLoad(builder, ptr, "");
+   ptr = LLVMBuildGEP2(builder, bld->store_elem_type, bld->xoffset_store, &loop_iter, 1, "");
+   pixoffx = LLVMBuildLoad2(builder, bld->store_elem_type, ptr, "");
+   ptr = LLVMBuildGEP2(builder, bld->store_elem_type, bld->yoffset_store, &loop_iter, 1, "");
+   pixoffy = LLVMBuildLoad2(builder, bld->store_elem_type, ptr, "");
 
    pixoffx = LLVMBuildFAdd(builder, pixoffx,
                            lp_build_broadcast_scalar(coeff_bld, bld->x), "");
@@ -529,10 +534,10 @@ lp_build_interp_soa(struct lp_build_interp_soa_context *bld,
    /* could do this with code-generated passed in pixel offsets too */
 
    assert(loop_iter);
-   ptr = LLVMBuildGEP(builder, bld->xoffset_store, &loop_iter, 1, "");
-   pixoffx = LLVMBuildLoad(builder, ptr, "");
-   ptr = LLVMBuildGEP(builder, bld->yoffset_store, &loop_iter, 1, "");
-   pixoffy = LLVMBuildLoad(builder, ptr, "");
+   ptr = LLVMBuildGEP2(builder, bld->store_elem_type, bld->xoffset_store, &loop_iter, 1, "");
+   pixoffx = LLVMBuildLoad2(builder, bld->store_elem_type, ptr, "");
+   ptr = LLVMBuildGEP2(builder, bld->store_elem_type, bld->yoffset_store, &loop_iter, 1, "");
+   pixoffy = LLVMBuildLoad2(builder, bld->store_elem_type, ptr, "");
 
    pixoffx = LLVMBuildFAdd(builder, pixoffx,
                            lp_build_broadcast_scalar(coeff_bld, bld->x), "");
@@ -769,20 +774,21 @@ lp_build_interp_soa_init(struct lp_build_interp_soa_context *bld,
       LLVMValueRef pixoffx, pixoffy, index;
       LLVMValueRef ptr;
 
+      bld->store_elem_type = lp_build_vec_type(gallivm, type);
       bld->xoffset_store = lp_build_array_alloca(gallivm,
-                                                 lp_build_vec_type(gallivm, type),
+                                                 bld->store_elem_type,
                                                  lp_build_const_int32(gallivm, num_loops),
                                                  "");
       bld->yoffset_store = lp_build_array_alloca(gallivm,
-                                                 lp_build_vec_type(gallivm, type),
+                                                 bld->store_elem_type,
                                                  lp_build_const_int32(gallivm, num_loops),
                                                  "");
       for (i = 0; i < num_loops; i++) {
          index = lp_build_const_int32(gallivm, i);
          calc_offsets(&bld->coeff_bld, i*type.length/4, &pixoffx, &pixoffy);
-         ptr = LLVMBuildGEP(builder, bld->xoffset_store, &index, 1, "");
+         ptr = LLVMBuildGEP2(builder, bld->store_elem_type, bld->xoffset_store, &index, 1, "");
          LLVMBuildStore(builder, pixoffx, ptr);
-         ptr = LLVMBuildGEP(builder, bld->yoffset_store, &index, 1, "");
+         ptr = LLVMBuildGEP2(builder, bld->store_elem_type, bld->yoffset_store, &index, 1, "");
          LLVMBuildStore(builder, pixoffy, ptr);
       }
    }
