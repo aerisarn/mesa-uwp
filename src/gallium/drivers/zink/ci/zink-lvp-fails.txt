@@ -303,7 +303,6 @@ spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE16_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE8_SNORM,Fail
 spec@ext_texture_snorm@fbo-blending-formats@GL_LUMINANCE_SNORM,Fail
 spec@ext_texture_swizzle@depth_texture_mode_and_swizzle,Fail
-spec@ext_transform_feedback@generatemipmap prims_generated,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@array-gl,Fail
 spec@khr_texture_compression_astc@array-gl@12x12 Block Dim,Fail
