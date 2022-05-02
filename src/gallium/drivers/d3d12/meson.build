@@ -47,6 +47,12 @@ files_libd3d12 = files(
   'd3d12_surface.cpp',
   'd3d12_tcs_variant.cpp',
   'D3D12ResourceState.cpp',
+  'd3d12_video_dec.cpp',
+  'd3d12_video_dec_references_mgr.cpp',
+  'd3d12_video_dec_h264.cpp',
+  'd3d12_video_buffer.cpp',
+  'd3d12_video_texture_array_dpb_manager.cpp',
+  'd3d12_video_array_of_textures_dpb_manager.cpp',
 )
 
 if host_machine.system() == 'windows'
