@@ -57,6 +57,9 @@ struct gallivm_state
    LLVMValueRef coro_malloc_hook;
    LLVMValueRef coro_free_hook;
    LLVMValueRef debug_printf_hook;
+
+   LLVMTypeRef coro_malloc_hook_type;
+   LLVMTypeRef coro_free_hook_type;
 };
 
 
