@@ -1097,13 +1097,12 @@ lp_build_gather_s3tc_simple_scalar(struct gallivm_state *gallivm,
    LLVMValueRef elem, shuf;
    LLVMTypeRef type32 = LLVMIntTypeInContext(gallivm->context, 32);
    LLVMTypeRef src_type = LLVMIntTypeInContext(gallivm->context, block_bits);
-   LLVMTypeRef src_ptr_type = LLVMPointerType(src_type, 0);
    LLVMTypeRef type32_4 = LLVMVectorType(type32, 4);
 
    assert(block_bits == 64 || block_bits == 128);
 
-   ptr = LLVMBuildBitCast(builder, ptr, src_ptr_type, "");
-   elem = LLVMBuildLoad(builder, ptr, "");
+   ptr = LLVMBuildBitCast(builder, ptr, LLVMPointerType(src_type, 0), "");
+   elem = LLVMBuildLoad2(builder, src_type, ptr, "");
 
    if (block_bits == 128) {
       /* just return block as is */
@@ -1139,15 +1138,13 @@ s3tc_store_cached_block(struct gallivm_state *gallivm,
    LLVMBuildStore(builder, tag_value, ptr);
 
    indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_DATA);
-   hash_index = LLVMBuildMul(builder, hash_index,
-                             lp_build_const_int32(gallivm, 16), "");
+   hash_index = LLVMBuildMul(builder, hash_index, lp_build_const_int32(gallivm, 16), "");
    for (count = 0; count < 4; count++) {
       indices[2] = hash_index;
       ptr = LLVMBuildGEP(builder, cache, indices, ARRAY_SIZE(indices), "");
       ptr = LLVMBuildBitCast(builder, ptr, type_ptr4x32, "");
       LLVMBuildStore(builder, col[count], ptr);
-      hash_index = LLVMBuildAdd(builder, hash_index,
-                                lp_build_const_int32(gallivm, 4), "");
+      hash_index = LLVMBuildAdd(builder, hash_index, lp_build_const_int32(gallivm, 4), "");
    }
 }
 
@@ -1177,8 +1174,9 @@ s3tc_lookup_tag_data(struct gallivm_state *gallivm,
    indices[0] = lp_build_const_int32(gallivm, 0);
    indices[1] = lp_build_const_int32(gallivm, LP_BUILD_FORMAT_CACHE_MEMBER_TAGS);
    indices[2] = index;
+   LLVMTypeRef tag_type = LLVMInt64TypeInContext(gallivm->context);
    member_ptr = LLVMBuildGEP(builder, ptr, indices, ARRAY_SIZE(indices), "");
-   return LLVMBuildLoad(builder, member_ptr, "tag_data");
+   return LLVMBuildLoad2(builder, tag_type, member_ptr, "tag_data");
 }
 
 #if LP_BUILD_FORMAT_CACHE_DEBUG
@@ -1996,24 +1994,17 @@ update_cached_block(struct gallivm_state *gallivm,
             format_desc->short_name);
    function = LLVMGetNamedFunction(module, name);
 
+   LLVMTypeRef ret_type = LLVMVoidTypeInContext(gallivm->context);
+   LLVMTypeRef arg_types[3];
+   arg_types[0] = pi8t;
+   arg_types[1] = LLVMInt32TypeInContext(gallivm->context);
+   arg_types[2] = LLVMTypeOf(cache); // XXX: put right type here
+   LLVMTypeRef function_type = LLVMFunctionType(ret_type, arg_types, ARRAY_SIZE(arg_types), 0);
+
    if (!function) {
-      LLVMTypeRef ret_type;
-      LLVMTypeRef arg_types[3];
-      LLVMTypeRef function_type;
-      unsigned arg;
-
-      /*
-       * Generate the function prototype.
-       */
-
-      ret_type = LLVMVoidTypeInContext(gallivm->context);
-      arg_types[0] = pi8t;
-      arg_types[1] = LLVMInt32TypeInContext(gallivm->context);
-      arg_types[2] = LLVMTypeOf(cache); // XXX: put right type here
-      function_type = LLVMFunctionType(ret_type, arg_types, ARRAY_SIZE(arg_types), 0);
       function = LLVMAddFunction(module, name, function_type);
 
-      for (arg = 0; arg < ARRAY_SIZE(arg_types); ++arg)
+      for (unsigned arg = 0; arg < ARRAY_SIZE(arg_types); ++arg)
          if (LLVMGetTypeKind(arg_types[arg]) == LLVMPointerTypeKind)
             lp_add_function_attr(function, arg + 1, LP_FUNC_ATTR_NOALIAS);
 
@@ -2026,7 +2017,7 @@ update_cached_block(struct gallivm_state *gallivm,
    args[1] = hash_index;
    args[2] = cache;
  
-   LLVMBuildCall(builder, function, args, ARRAY_SIZE(args), "");
+   LLVMBuildCall2(builder, function_type, function, args, ARRAY_SIZE(args), "");
    bb = LLVMGetInsertBlock(builder);
    inst = LLVMGetLastInstruction(bb);
    LLVMSetInstructionCallConv(inst, LLVMFastCallConv);
