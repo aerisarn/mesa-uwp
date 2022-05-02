@@ -1696,23 +1696,27 @@ anv_device_alloc_bo(struct anv_device *device,
    /* If we have vram size, we have multiple memory regions and should choose
     * one of them.
     */
-   if (device->physical->vram.size > 0) {
+   if (anv_physical_device_has_vram(device->physical)) {
       struct drm_i915_gem_memory_class_instance regions[2];
       uint32_t nregions = 0;
 
       if (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM) {
-         regions[nregions++] = device->physical->vram.region;
+         /* vram_non_mappable & vram_mappable actually are the same region. */
+         regions[nregions++] = device->physical->vram_non_mappable.region;
       } else {
          regions[nregions++] = device->physical->sys.region;
       }
 
-      /* TODO: Add I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS to flags for
-       * after small BAR uapi is stabilized.
-       */
-      assert(intel_vram_all_mappable(&device->info));
+      uint32_t flags = 0;
+      if (alloc_flags & ANV_BO_ALLOC_LOCAL_MEM_CPU_VISIBLE) {
+         assert(alloc_flags & ANV_BO_ALLOC_LOCAL_MEM);
+         /* We're required to add smem as a region when using mappable vram. */
+         regions[nregions++] = device->physical->sys.region;
+         flags |= I915_GEM_CREATE_EXT_FLAG_NEEDS_CPU_ACCESS;
+      }
 
       gem_handle = anv_gem_create_regions(device, size + ccs_size,
-                                          nregions, regions);
+                                          flags, nregions, regions);
    } else {
       gem_handle = anv_gem_create(device, size + ccs_size);
    }
