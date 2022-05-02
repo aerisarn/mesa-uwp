@@ -81,6 +81,9 @@ public:
 
    void create_function(ir_function_signature *ir);
 
+   /* True if we have any output rvalues */
+   bool has_output_rvalue;
+
 private:
    void add_instr(nir_instr *instr, unsigned num_components, unsigned bit_size);
    nir_ssa_def *evaluate_rvalue(ir_rvalue *ir);
@@ -271,6 +274,9 @@ glsl_to_nir(const struct gl_constants *consts,
          if (var->data.mode == nir_var_shader_in && var->data.sample)
             shader->info.fs.uses_sample_shading = true;
       }
+
+      if (v1.has_output_rvalue)
+         shader->info.fs.uses_sample_shading = true;
    }
 
    return shader;
@@ -281,6 +287,7 @@ nir_visitor::nir_visitor(const struct gl_constants *consts, nir_shader *shader)
    this->supports_std430 = consts->UseSTD430AsDefaultPacking;
    this->shader = shader;
    this->is_global = true;
+   this->has_output_rvalue = false;
    this->var_table = _mesa_pointer_hash_table_create(NULL);
    this->overload_table = _mesa_pointer_hash_table_create(NULL);
    this->sparse_variable_set = _mesa_pointer_set_create(NULL);
@@ -1838,6 +1845,9 @@ nir_visitor::evaluate_rvalue(ir_rvalue* ir)
 
       enum gl_access_qualifier access = deref_get_qualifier(this->deref);
       this->result = nir_load_deref_with_access(&b, this->deref, access);
+
+      if (nir_deref_mode_is(this->deref, nir_var_shader_out))
+         this->has_output_rvalue = true;
    }
 
    return this->result;
