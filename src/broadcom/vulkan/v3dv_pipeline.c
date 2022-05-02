@@ -743,7 +743,8 @@ static bool
 lower_sampler(nir_builder *b, nir_tex_instr *instr,
               nir_shader *shader,
               struct v3dv_pipeline *pipeline,
-              const struct v3dv_pipeline_layout *layout)
+              const struct v3dv_pipeline_layout *layout,
+              bool *needs_default_sampler_state)
 {
    uint8_t return_size = 0;
 
@@ -767,6 +768,7 @@ lower_sampler(nir_builder *b, nir_tex_instr *instr,
     * case, and we ensure that it is using the correct return size.
     */
    if (sampler_idx < 0) {
+      *needs_default_sampler_state = true;
       instr->sampler_index = return_size == 16 ?
          V3DV_NO_SAMPLER_16BIT_IDX : V3DV_NO_SAMPLER_32BIT_IDX;
    }
@@ -911,7 +913,8 @@ static bool
 lower_impl(nir_function_impl *impl,
            nir_shader *shader,
            struct v3dv_pipeline *pipeline,
-           const struct v3dv_pipeline_layout *layout)
+           const struct v3dv_pipeline_layout *layout,
+           bool *needs_default_sampler_state)
 {
    nir_builder b;
    nir_builder_init(&b, impl);
@@ -923,7 +926,8 @@ lower_impl(nir_function_impl *impl,
          switch (instr->type) {
          case nir_instr_type_tex:
             progress |=
-               lower_sampler(&b, nir_instr_as_tex(instr), shader, pipeline, layout);
+               lower_sampler(&b, nir_instr_as_tex(instr), shader, pipeline,
+                             layout, needs_default_sampler_state);
             break;
          case nir_instr_type_intrinsic:
             progress |=
@@ -942,13 +946,16 @@ lower_impl(nir_function_impl *impl,
 static bool
 lower_pipeline_layout_info(nir_shader *shader,
                            struct v3dv_pipeline *pipeline,
-                           const struct v3dv_pipeline_layout *layout)
+                           const struct v3dv_pipeline_layout *layout,
+                           bool *needs_default_sampler_state)
 {
    bool progress = false;
+   *needs_default_sampler_state = false;
 
    nir_foreach_function(function, shader) {
       if (function->impl)
-         progress |= lower_impl(function->impl, shader, pipeline, layout);
+         progress |= lower_impl(function->impl, shader, pipeline, layout,
+                                needs_default_sampler_state);
    }
 
    return progress;
@@ -1792,18 +1799,27 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
     * We add two of those, one for the case we need a 16bit return_size, and
     * another for the case we need a 32bit return size.
     */
-   UNUSED unsigned index =
-      descriptor_map_add(&pipeline->shared_data->maps[p_stage->stage]->sampler_map,
-                         -1, -1, -1, 0, 0, 16);
+   struct v3dv_descriptor_maps *maps =
+      pipeline->shared_data->maps[p_stage->stage];
+
+   UNUSED unsigned index;
+   index = descriptor_map_add(&maps->sampler_map, -1, -1, -1, 0, 0, 16);
    assert(index == V3DV_NO_SAMPLER_16BIT_IDX);
 
-   index =
-      descriptor_map_add(&pipeline->shared_data->maps[p_stage->stage]->sampler_map,
-                         -2, -2, -2, 0, 0, 32);
+   index = descriptor_map_add(&maps->sampler_map, -2, -2, -2, 0, 0, 32);
    assert(index == V3DV_NO_SAMPLER_32BIT_IDX);
 
    /* Apply the actual pipeline layout to UBOs, SSBOs, and textures */
-   NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout);
+   bool needs_default_sampler_state = false;
+   NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout,
+              &needs_default_sampler_state);
+
+   /* If in the end we didn't need to use the default sampler states and the
+    * shader doesn't need any other samplers, get rid of them so we can
+    * recognize that this program doesn't use any samplers at all.
+    */
+   if (!needs_default_sampler_state && maps->sampler_map.num_desc == 2)
+      maps->sampler_map.num_desc = 0;
 
    p_stage->feedback.duration += os_time_get_nano() - stage_start;
 }
