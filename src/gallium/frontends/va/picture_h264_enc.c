@@ -62,6 +62,10 @@ vlVaHandleVAEncPictureParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *cont
    else
       context->desc.h264enc.picture_type = PIPE_H2645_ENC_PICTURE_TYPE_P;
 
+   /* Initialize slice descriptors for this picture */
+   context->desc.h264enc.num_slice_descriptors = 0;
+   memset(&context->desc.h264enc.slices_descriptors, 0, sizeof(context->desc.h264enc.slices_descriptors));
+
    context->desc.h264enc.quant_i_frames = h264->pic_init_qp;
    context->desc.h264enc.quant_b_frames = h264->pic_init_qp;
    context->desc.h264enc.quant_p_frames = h264->pic_init_qp;
@@ -94,17 +98,42 @@ vlVaHandleVAEncSliceParameterBufferTypeH264(vlVaDriver *drv, vlVaContext *contex
       }
    }
 
-   if (h264->slice_type == 1)
+   /**
+    *  VAEncSliceParameterBufferH264.slice_type
+    *  Slice type.
+    *  Range: 0..2, 5..7, i.e. no switching slices.
+   */
+   struct h264_slice_descriptor slice_descriptor = { };
+   slice_descriptor.macroblock_address = h264->macroblock_address;
+   slice_descriptor.num_macroblocks = h264->num_macroblocks;
+
+   if ((h264->slice_type == 1) || (h264->slice_type == 6)) {
       context->desc.h264enc.picture_type = PIPE_H2645_ENC_PICTURE_TYPE_B;
-   else if (h264->slice_type == 0)
+      slice_descriptor.slice_type = PIPE_H264_SLICE_TYPE_B;
+   } else if ((h264->slice_type == 0) || (h264->slice_type == 5)) {
       context->desc.h264enc.picture_type = PIPE_H2645_ENC_PICTURE_TYPE_P;
-   else if (h264->slice_type == 2) {
-      if (context->desc.h264enc.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR)
-         context->desc.h264enc.idr_pic_id++;
-	   else
+      slice_descriptor.slice_type = PIPE_H264_SLICE_TYPE_P;
+   } else if ((h264->slice_type == 2) || (h264->slice_type == 7)) {
+      if (context->desc.h264enc.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR) {
+         if (slice_descriptor.macroblock_address == 0) {
+            /* Increment it only for the first slice of the IDR frame */
+            context->desc.h264enc.idr_pic_id++;
+         }
+         slice_descriptor.slice_type = PIPE_H264_SLICE_TYPE_I;
+      } else {
          context->desc.h264enc.picture_type = PIPE_H2645_ENC_PICTURE_TYPE_I;
-   } else
+         slice_descriptor.slice_type = PIPE_H264_SLICE_TYPE_I;
+      }
+   } else {
       context->desc.h264enc.picture_type = PIPE_H2645_ENC_PICTURE_TYPE_SKIP;
+   }
+
+   /* Handle the slice control parameters */
+   if (context->desc.h264enc.num_slice_descriptors < ARRAY_SIZE(context->desc.h264enc.slices_descriptors)) {
+      context->desc.h264enc.slices_descriptors[context->desc.h264enc.num_slice_descriptors++] = slice_descriptor;
+   } else {
+      return VA_STATUS_ERROR_NOT_ENOUGH_BUFFER;
+   }
 
    return VA_STATUS_SUCCESS;
 }
