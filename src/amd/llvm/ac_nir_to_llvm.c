@@ -2951,30 +2951,6 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx, const nir_intri
    return exit_waterfall(ctx, &wctx, res);
 }
 
-static void emit_membar(struct ac_llvm_context *ac, const nir_intrinsic_instr *instr)
-{
-   unsigned wait_flags = 0;
-
-   switch (instr->intrinsic) {
-   case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_group_memory_barrier:
-      wait_flags = AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE;
-      break;
-   case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier_image:
-      wait_flags = AC_WAIT_VLOAD | AC_WAIT_VSTORE;
-      break;
-   case nir_intrinsic_memory_barrier_shared:
-   case nir_intrinsic_memory_barrier_tcs_patch:
-      wait_flags = AC_WAIT_LGKM;
-      break;
-   default:
-      break;
-   }
-
-   ac_build_waitcnt(ac, wait_flags);
-}
-
 void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
 {
    /* GFX6 only: s_barrier isn’t needed in TCS because an entire patch always fits into
@@ -3933,11 +3909,15 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_memory_barrier:
    case nir_intrinsic_group_memory_barrier:
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
+      break;
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_VLOAD | AC_WAIT_VSTORE);
+      break;
    case nir_intrinsic_memory_barrier_shared:
    case nir_intrinsic_memory_barrier_tcs_patch:
-      emit_membar(&ctx->ac, instr);
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
       break;
    case nir_intrinsic_scoped_barrier: {
       assert(!(nir_intrinsic_memory_semantics(instr) &
