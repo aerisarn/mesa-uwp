@@ -142,8 +142,6 @@ static void lp_blit(struct pipe_context *pipe,
       info.mask = PIPE_MASK_R;
    }
 
-   /* XXX turn off occlusion and streamout queries */
-
    util_blitter_save_vertex_buffer_slot(lp->blitter, lp->vertex_buffer);
    util_blitter_save_vertex_elements(lp->blitter, (void*)lp->velems);
    util_blitter_save_vertex_shader(lp->blitter, (void*)lp->vs);
