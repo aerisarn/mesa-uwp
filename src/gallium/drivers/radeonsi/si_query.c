@@ -729,6 +729,7 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen, unsigned
       query->result_size = 11 * 16;
       query->result_size += 8; /* for the fence + alignment */
       query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
+      query->index = index;
       break;
    default:
       assert(0);

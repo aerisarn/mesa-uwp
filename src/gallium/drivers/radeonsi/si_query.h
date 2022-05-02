@@ -211,8 +211,12 @@ struct si_query_hw {
    /* Size of the result in memory for both begin_query and end_query,
     * this can be one or two numbers, or it could even be a size of a structure. */
    unsigned result_size;
-   /* For transform feedback: which stream the query is for */
-   unsigned stream;
+   union {
+      /* For transform feedback: which stream the query is for */
+      unsigned stream;
+      /* For pipeline stats: which counter is active */
+      unsigned index;
+   };
 
    /* Workaround via compute shader */
    struct si_resource *workaround_buf;
