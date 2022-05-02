@@ -681,6 +681,10 @@ struct draw_llvm_variant
    LLVMTypeRef vb_ptr_type;
    LLVMTypeRef vertex_header_ptr_type;
 
+   LLVMTypeRef buffer_type;
+   LLVMTypeRef vb_type;
+   LLVMTypeRef vertex_header_type;
+
    LLVMValueRef function;
    draw_jit_vert_func jit_func;
 
@@ -754,6 +758,9 @@ struct draw_tes_llvm_variant
    LLVMTypeRef vertex_header_ptr_type;
    LLVMTypeRef input_array_type;
    LLVMTypeRef patch_input_array_type;
+
+   LLVMTypeRef input_array_deref_type;
+   LLVMTypeRef vertex_header_type;
 
    LLVMValueRef context_ptr;
    LLVMValueRef io_ptr;
