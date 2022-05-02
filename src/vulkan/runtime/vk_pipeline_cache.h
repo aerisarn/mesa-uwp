@@ -120,6 +120,7 @@ vk_pipeline_cache_object_init(struct vk_device *device,
                               const struct vk_pipeline_cache_object_ops *ops,
                               const void *key_data, uint32_t key_size)
 {
+   memset(object, 0, sizeof(*object));
    object->device = device;
    object->ops = ops;
    p_atomic_set(&object->ref_cnt, 1);

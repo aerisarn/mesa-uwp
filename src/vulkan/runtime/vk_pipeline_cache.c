@@ -562,8 +562,8 @@ vk_pipeline_cache_create(struct vk_device *device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO);
 
-   cache = vk_object_alloc(device, pAllocator, sizeof(*cache),
-                           VK_OBJECT_TYPE_PIPELINE_CACHE);
+   cache = vk_object_zalloc(device, pAllocator, sizeof(*cache),
+                            VK_OBJECT_TYPE_PIPELINE_CACHE);
    if (cache == NULL)
       return NULL;
 
