@@ -45,6 +45,8 @@ struct d3d12_resource {
    struct d3d12_bo *bo;
    DXGI_FORMAT dxgi_format;
    enum pipe_format overall_format;
+   unsigned int plane_slice;
+   struct pipe_resource* first_plane;
    unsigned mip_levels;
    struct sw_displaytarget *dt;
    unsigned dt_stride;
@@ -126,5 +128,9 @@ d3d12_screen_resource_init(struct pipe_screen *pscreen);
 
 void
 d3d12_context_resource_init(struct pipe_context *pctx);
+
+struct pipe_resource *
+d3d12_resource_from_resource(struct pipe_screen *pscreen,
+                              ID3D12Resource* inputRes);
 
 #endif

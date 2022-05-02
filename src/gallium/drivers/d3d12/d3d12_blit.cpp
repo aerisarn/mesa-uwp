@@ -251,14 +251,14 @@ direct_copy_supported(struct d3d12_screen *screen,
 
 inline static unsigned
 get_subresource_id(enum pipe_texture_target target, unsigned subres, unsigned stride,
-                   unsigned z, unsigned *updated_z)
+                   unsigned z, unsigned *updated_z, unsigned array_size, unsigned plane_slice)
 {
    if (d3d12_subresource_id_uses_layer(target)) {
       subres += stride * z;
       if (updated_z)
          *updated_z = 0;
    }
-   return subres;
+   return subres + plane_slice * array_size * stride;
 }
 
 static void
@@ -317,12 +317,12 @@ copy_subregion_no_barriers(struct d3d12_context *ctx,
          continue;
 
       src_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-      src_loc.SubresourceIndex = get_subresource_id(src->base.b.target, src_level, src_subres_stride, src_z, &src_z) +
+      src_loc.SubresourceIndex = get_subresource_id(src->base.b.target, src_level, src_subres_stride, src_z, &src_z, src_array_size, src->plane_slice) +
                                  subres * stencil_src_res_offset;
       src_loc.pResource = d3d12_resource_resource(src);
 
       dst_loc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-      dst_loc.SubresourceIndex = get_subresource_id(dst->base.b.target, dst_level, dst_subres_stride, dstz, &dstz) +
+      dst_loc.SubresourceIndex = get_subresource_id(dst->base.b.target, dst_level, dst_subres_stride, dstz, &dstz, dst_array_size, dst->plane_slice) +
                                  subres * stencil_dst_res_offset;
       dst_loc.pResource = d3d12_resource_resource(dst);
 
@@ -412,9 +412,9 @@ d3d12_direct_copy(struct d3d12_context *ctx,
    struct d3d12_batch *batch = d3d12_current_batch(ctx);
 
    unsigned src_subres = get_subresource_id(src->base.b.target, src_level, src->base.b.last_level + 1,
-                                            psrc_box->z, nullptr);
+                                            psrc_box->z, nullptr, src->base.b.array_size, src->plane_slice);
    unsigned dst_subres = get_subresource_id(dst->base.b.target, dst_level, dst->base.b.last_level + 1,
-                                            pdst_box->z, nullptr);
+                                            pdst_box->z, nullptr, dst->base.b.array_size, dst->plane_slice);
 
    if (D3D12_DEBUG_BLIT & d3d12_debug)
       debug_printf("BLIT: Direct copy from subres %d to subres  %d\n",
