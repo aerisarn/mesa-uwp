@@ -396,6 +396,16 @@ struct pipe_h264_enc_pic_control
    unsigned enc_frame_crop_bottom_offset;
 };
 
+struct h264_slice_descriptor
+{
+   /** Starting MB address for this slice. */
+   uint32_t    macroblock_address;
+   /** Number of macroblocks in this slice. */
+   uint32_t    num_macroblocks;
+   /** slice type. */
+   enum pipe_h264_slice_type slice_type;
+};
+
 struct pipe_h264_enc_picture_desc
 {
    struct pipe_picture_desc base;
@@ -428,6 +438,8 @@ struct pipe_h264_enc_picture_desc
    bool enable_vui;
    struct hash_table *frame_idx;
 
+   unsigned num_slice_descriptors;
+   struct h264_slice_descriptor slices_descriptors[128];
 };
 
 struct pipe_h265_enc_seq_param
