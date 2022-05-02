@@ -690,6 +690,10 @@ GENX(pan_emit_fbd)(const struct panfrost_device *dev,
 
                         *valid |= full;
                 }
+
+#if PAN_ARCH >= 9
+                cfg.point_sprite_coord_origin_max_y = fb->sprite_coord_origin;
+#endif
         }
 
 #if PAN_ARCH >= 6

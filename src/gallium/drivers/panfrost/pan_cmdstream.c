@@ -573,6 +573,13 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
                         cfg.multisample_misc.evaluate_per_sample = true;
                         cfg.preload.fragment.sample_mask_id = true;
                 }
+
+                /* Flip gl_PointCoord (and point sprites) depending on API
+                 * setting on framebuffer orientation. We do not use
+                 * lower_wpos_pntc on Bifrost.
+                 */
+                cfg.properties.point_sprite_coord_origin_max_y =
+                        (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
 #endif
 
                 cfg.stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
@@ -3780,6 +3787,21 @@ panfrost_indirect_draw(struct panfrost_batch *batch,
 }
 #endif
 
+static bool
+panfrost_compatible_batch_state(struct panfrost_batch *batch)
+{
+        /* Only applies on Valhall */
+        if (PAN_ARCH < 9)
+                return true;
+
+        struct panfrost_context *ctx = batch->ctx;
+        struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+
+        bool coord = (rast->sprite_coord_mode == PIPE_SPRITE_COORD_LOWER_LEFT);
+
+        return pan_tristate_set(&batch->sprite_coord_origin, coord);
+}
+
 static void
 panfrost_draw_vbo(struct pipe_context *pipe,
                   const struct pipe_draw_info *info,
@@ -3809,6 +3831,9 @@ panfrost_draw_vbo(struct pipe_context *pipe,
          * avoid the risk of timeouts. This might not be a good idea. */
         if (unlikely(batch->scoreboard.job_index > 10000))
                 batch = panfrost_get_fresh_batch_for_fbo(ctx, "Too many draws");
+
+        if (unlikely(!panfrost_compatible_batch_state(batch)))
+                batch = panfrost_get_fresh_batch_for_fbo(ctx, "State change");
 
         /* panfrost_batch_skip_rasterization reads
          * batch->scissor_culls_everything, which is set by
@@ -4371,14 +4396,7 @@ prepare_shader(struct panfrost_shader_state *state,
         pan_pack(out, RENDERER_STATE, cfg) {
                 pan_shader_prepare_rsd(&state->info, state->bin.gpu, &cfg);
 
-#if PAN_ARCH >= 6
-                /* Match the mesa/st convention. If this needs to be flipped,
-                 * nir_lower_pntc_ytransform will do so.
-                 */
-                if (state->info.stage == MESA_SHADER_FRAGMENT)
-                        cfg.properties.point_sprite_coord_origin_max_y = true;
-#endif
-        }
+       }
 #else
         assert(upload);
 

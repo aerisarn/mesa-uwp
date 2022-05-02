@@ -117,6 +117,9 @@ struct pan_fb_info {
         union {
                 struct pan_fb_bifrost_info bifrost;
         };
+
+        /* Only used on Valhall */
+        bool sprite_coord_origin;
 };
 
 static inline unsigned
