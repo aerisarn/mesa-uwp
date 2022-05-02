@@ -45,7 +45,7 @@ static void vlVaGetPastReferenceFrame(vlVaDriver *drv, VASurfaceID surface_id,
 static void resetReferencePictureDesc(struct pipe_h264_picture_desc *h264,
                                       unsigned int i)
 {
-   struct h264_private *private = h264->private;
+   struct h264_private *private = h264->priv;
 
    h264->ref[i] = NULL;
    h264->frame_num_list[i] = 0;
@@ -68,7 +68,7 @@ void vlVaHandlePictureParameterBufferH264(vlVaDriver *drv, vlVaContext *context,
 
    assert(buf->size >= sizeof(VAPictureParameterBufferH264) && buf->num_elements == 1);
    context->desc.h264.slice_count = 0;
-   context->desc.h264.private = private;
+   context->desc.h264.priv = private;
    /*CurrPic*/
    context->desc.h264.field_order_cnt[0] = h264->CurrPic.TopFieldOrderCnt;
    context->desc.h264.field_order_cnt[1] = h264->CurrPic.BottomFieldOrderCnt;

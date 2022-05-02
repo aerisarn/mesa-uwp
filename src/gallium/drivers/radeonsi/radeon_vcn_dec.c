@@ -166,7 +166,7 @@ static rvcn_dec_message_avc_t get_h264_msg(struct radeon_decoder *dec,
       goto end;
    }
 
-   private = pic->private;
+   private = pic->priv;
    for (i = 0; i < ARRAY_SIZE(private->past_ref); i++) {
       for (k = 0; private->past_ref[i] && (k < ARRAY_SIZE(pic->ref)); k++)
          if (pic->ref[k] && (private->past_ref[i] == pic->ref[k]))

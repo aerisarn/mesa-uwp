@@ -353,7 +353,9 @@ struct pipe_h264_picture_desc
    uint32_t frame_num_list[16];
 
    struct pipe_video_buffer *ref[16];
-   void    *private;
+
+   /* using private as a parameter name conflicts with C++ keywords */
+   void    *priv;
 };
 
 struct pipe_h264_enc_rate_control
