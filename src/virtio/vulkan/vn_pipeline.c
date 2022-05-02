@@ -242,6 +242,8 @@ vn_MergePipelineCaches(VkDevice device,
 /* pipeline commands */
 
 struct vn_graphics_pipeline_create_info_fix {
+   bool ignore_tessellation_state;
+
    /* Ignore the following:
     *    pViewportState
     *    pMultisampleState
@@ -268,6 +270,21 @@ vn_fix_graphics_pipeline_create_info(
       const VkGraphicsPipelineCreateInfo *info = &create_infos[i];
       struct vn_graphics_pipeline_create_info_fix fix = { 0 };
       bool any_fix = false;
+
+      VkShaderStageFlags stages = 0;
+      for (uint32_t i = 0; i < info->stageCount; ++i) {
+         stages |= info->pStages[i].stage;
+      }
+
+      /* Fix pTessellationState?
+       *    VUID-VkGraphicsPipelineCreateInfo-pStages-00731
+       */
+      if (info->pTessellationState &&
+          (!(stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT) ||
+           !(stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT))) {
+         fix.ignore_tessellation_state = true;
+         any_fix = true;
+      }
 
       /* FIXME: Conditions for ignoring pDepthStencilState and
        * pColorBlendState miss some cases that depend on the render pass. Make
@@ -310,6 +327,9 @@ vn_fix_graphics_pipeline_create_info(
    for (uint32_t i = 0; i < create_info_count; i++) {
       VkGraphicsPipelineCreateInfo *info = &infos[i];
       struct vn_graphics_pipeline_create_info_fix fix = fixes[i];
+
+      if (fix.ignore_tessellation_state)
+         info->pTessellationState = NULL;
 
       if (fix.ignore_raster_dedicated_states) {
          info->pViewportState = NULL;
