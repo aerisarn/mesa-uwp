@@ -59,7 +59,7 @@ _mesa_texstore_rgb_dxt1(TEXSTORE_PARAMS)
    if (!(srcFormat == GL_RGB || srcFormat == GL_RGBA) ||
        srcType != GL_UNSIGNED_BYTE ||
        ctx->_ImageTransferState ||
-       ALIGN(srcPacking->RowLength, srcPacking->Alignment) != srcWidth ||
+       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType) != srccomps * srcWidth * sizeof(GLubyte) ||
        srcPacking->SkipImages ||
        srcPacking->SwapBytes) {
       /* convert image to RGB/GLubyte */
@@ -105,6 +105,7 @@ _mesa_texstore_rgba_dxt1(TEXSTORE_PARAMS)
    const GLubyte *pixels;
    GLubyte *dst;
    const GLubyte *tempImage = NULL;
+   int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
 
    assert(dstFormat == MESA_FORMAT_RGBA_DXT1 ||
           dstFormat == MESA_FORMAT_SRGBA_DXT1);
@@ -112,12 +113,11 @@ _mesa_texstore_rgba_dxt1(TEXSTORE_PARAMS)
    if (srcFormat != GL_RGBA ||
        srcType != GL_UNSIGNED_BYTE ||
        ctx->_ImageTransferState ||
-       ALIGN(srcPacking->RowLength, srcPacking->Alignment) != srcWidth ||
+       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType) != rgbaRowStride ||
        srcPacking->SkipImages ||
        srcPacking->SwapBytes) {
       /* convert image to RGBA/GLubyte */
       GLubyte *tempImageSlices[1];
-      int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
       tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(GLubyte));
       if (!tempImage)
          return GL_FALSE; /* out of memory */
@@ -160,6 +160,7 @@ _mesa_texstore_rgba_dxt3(TEXSTORE_PARAMS)
    const GLubyte *pixels;
    GLubyte *dst;
    const GLubyte *tempImage = NULL;
+   int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
 
    assert(dstFormat == MESA_FORMAT_RGBA_DXT3 ||
           dstFormat == MESA_FORMAT_SRGBA_DXT3);
@@ -167,12 +168,11 @@ _mesa_texstore_rgba_dxt3(TEXSTORE_PARAMS)
    if (srcFormat != GL_RGBA ||
        srcType != GL_UNSIGNED_BYTE ||
        ctx->_ImageTransferState ||
-       ALIGN(srcPacking->RowLength, srcPacking->Alignment) != srcWidth ||
+       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType) != rgbaRowStride ||
        srcPacking->SkipImages ||
        srcPacking->SwapBytes) {
       /* convert image to RGBA/GLubyte */
       GLubyte *tempImageSlices[1];
-      int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
       tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(GLubyte));
       if (!tempImage)
          return GL_FALSE; /* out of memory */
@@ -214,6 +214,7 @@ _mesa_texstore_rgba_dxt5(TEXSTORE_PARAMS)
    const GLubyte *pixels;
    GLubyte *dst;
    const GLubyte *tempImage = NULL;
+   int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
 
    assert(dstFormat == MESA_FORMAT_RGBA_DXT5 ||
           dstFormat == MESA_FORMAT_SRGBA_DXT5);
@@ -221,12 +222,11 @@ _mesa_texstore_rgba_dxt5(TEXSTORE_PARAMS)
    if (srcFormat != GL_RGBA ||
        srcType != GL_UNSIGNED_BYTE ||
        ctx->_ImageTransferState ||
-       ALIGN(srcPacking->RowLength, srcPacking->Alignment) != srcWidth ||
+       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType) != rgbaRowStride ||
        srcPacking->SkipImages ||
        srcPacking->SwapBytes) {
       /* convert image to RGBA/GLubyte */
       GLubyte *tempImageSlices[1];
-      int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
       tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(GLubyte));
       if (!tempImage)
          return GL_FALSE; /* out of memory */
