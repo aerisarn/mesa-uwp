@@ -54,6 +54,9 @@ tu_spirv_to_nir(struct tu_device *dev,
       /* Accessed via stg/ldg (not used with Vulkan?) */
       .global_addr_format = nir_address_format_64bit_global,
 
+      /* Use 16-bit math for RelaxedPrecision ALU ops */
+      .mediump_16bit_alu = true,
+
       /* ViewID is a sysval in geometry stages and an input in the FS */
       .view_index_is_input = stage == MESA_SHADER_FRAGMENT,
       .caps = {
