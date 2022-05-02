@@ -380,6 +380,8 @@ MODIFIERS = {
     "integer_coordinates": Flag("integer_coordinates", 13),
     "fetch_component": Modifier("fetch_component", 14, 2),
     "lod_mode": Modifier("lod_mode", 13, 3),
+    "lod_bias_disable": Modifier("lod_mode", 13, 1),
+    "lod_clamp_disable": Modifier("lod_mode", 14, 1),
     "write_mask": Modifier("write_mask", 22, 4),
     "register_type": Modifier("register_type", 26, 2),
     "dimension": Modifier("dimension", 28, 2),

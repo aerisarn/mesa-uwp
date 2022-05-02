@@ -68,6 +68,7 @@ SKIP = set([
         # VAR_TEX
         "VAR_TEX_BUF_SINGLE",
         "VAR_TEX_BUF_GATHER",
+        "VAR_TEX_BUF_GRADIENT",
         "VAR_TEX_BUF_DUAL",
 
         # Special cased

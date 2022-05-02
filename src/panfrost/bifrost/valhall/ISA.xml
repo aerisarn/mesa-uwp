@@ -2506,6 +2506,29 @@
     <src>Varying offset</src>
   </ins>
 
+  <ins name="VAR_TEX_BUF_GRADIENT" title="Fused varying-texturing" opcode="0x132" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_BUF_IMM_F32.v2.f32 followed by TEX, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <shadow/>
+    <lod_bias_disable/>
+    <lod_clamp_disable/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
   <ins name="VAR_TEX_BUF_DUAL" title="Fused varying-texturing" opcode="0x137" unit="VT">
     <desc>
       Only works for FP32 varyings. Performance characteristics are similar
