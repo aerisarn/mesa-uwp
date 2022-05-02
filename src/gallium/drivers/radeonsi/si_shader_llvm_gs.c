@@ -217,7 +217,7 @@ static void emit_gs_epilogue(struct si_shader_context *ctx)
    }
 
    if (ctx->screen->info.chip_class >= GFX10)
-      LLVMBuildFence(ctx->ac.builder, LLVMAtomicOrderingRelease, false, "");
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_VSTORE);
 
    if (ctx->screen->use_ngg) {
       /* Implement PIPE_STAT_QUERY_GS_PRIMITIVES for non-ngg draws because we can't
