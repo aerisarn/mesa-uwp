@@ -355,4 +355,8 @@ d3d12_need_zero_one_depth_range(struct d3d12_context *ctx);
 void
 d3d12_init_sampler_view_descriptor(struct d3d12_sampler_view *sampler_view);
 
+
+struct pipe_video_codec* d3d12_video_create_codec( struct pipe_context *context,
+                                                const struct pipe_video_codec *t);
+
 #endif

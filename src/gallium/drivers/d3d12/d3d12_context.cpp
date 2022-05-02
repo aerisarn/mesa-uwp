@@ -34,6 +34,9 @@
 #include "d3d12_root_signature.h"
 #include "d3d12_screen.h"
 #include "d3d12_surface.h"
+#include "d3d12_video_dec.h"
+#include "d3d12_video_enc.h"
+#include "d3d12_video_buffer.h"
 
 #include "util/u_atomic.h"
 #include "util/u_blitter.h"
@@ -2375,6 +2378,20 @@ d3d12_get_reset_status(struct pipe_context *pctx)
    }
 }
 
+struct pipe_video_codec*
+d3d12_video_create_codec(struct pipe_context *context,
+                         const struct pipe_video_codec *templat)
+{
+    if (templat->entrypoint == PIPE_VIDEO_ENTRYPOINT_ENCODE) {
+        return d3d12_video_encoder_create_encoder(context, templat);
+    } else if (templat->entrypoint == PIPE_VIDEO_ENTRYPOINT_BITSTREAM) {
+        return d3d12_video_create_decoder(context, templat);
+    } else {
+        debug_printf("D3D12: Unsupported video codec entrypoint %d\n", templat->entrypoint);
+        return nullptr;
+    }
+}
+
 struct pipe_context *
 d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -2489,6 +2506,9 @@ d3d12_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    d3d12_context_query_init(&ctx->base);
    d3d12_context_blit_init(&ctx->base);
 
+   // Add d3d12 video functions entrypoints
+   ctx->base.create_video_codec = d3d12_video_create_codec;
+   ctx->base.create_video_buffer = d3d12_video_buffer_create;
 
    slab_create_child(&ctx->transfer_pool, &d3d12_screen(pscreen)->transfer_pool);
    slab_create_child(&ctx->transfer_pool_unsync, &d3d12_screen(pscreen)->transfer_pool);
