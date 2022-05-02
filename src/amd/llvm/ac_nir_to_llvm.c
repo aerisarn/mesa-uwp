@@ -2965,6 +2965,7 @@ static void emit_membar(struct ac_llvm_context *ac, const nir_intrinsic_instr *i
       wait_flags = AC_WAIT_VLOAD | AC_WAIT_VSTORE;
       break;
    case nir_intrinsic_memory_barrier_shared:
+   case nir_intrinsic_memory_barrier_tcs_patch:
       wait_flags = AC_WAIT_LGKM;
       break;
    default:
@@ -2976,14 +2977,12 @@ static void emit_membar(struct ac_llvm_context *ac, const nir_intrinsic_instr *i
 
 void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
 {
-   /* GFX6 only (thanks to a hw bug workaround):
-    * The real barrier instruction isn’t needed, because an entire patch
-    * always fits into a single wave.
+   /* GFX6 only: s_barrier isn’t needed in TCS because an entire patch always fits into
+    * a single wave due to a bug workaround disallowing multi-wave HS workgroups.
     */
-   if (ac->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL) {
-      ac_build_waitcnt(ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
+   if (ac->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL)
       return;
-   }
+
    ac_build_s_barrier(ac);
 }
 
@@ -3937,6 +3936,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_memory_barrier_buffer:
    case nir_intrinsic_memory_barrier_image:
    case nir_intrinsic_memory_barrier_shared:
+   case nir_intrinsic_memory_barrier_tcs_patch:
       emit_membar(&ctx->ac, instr);
       break;
    case nir_intrinsic_scoped_barrier: {
@@ -3958,8 +3958,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          ac_emit_barrier(&ctx->ac, ctx->stage);
       break;
    }
-   case nir_intrinsic_memory_barrier_tcs_patch:
-      break;
    case nir_intrinsic_control_barrier:
       ac_emit_barrier(&ctx->ac, ctx->stage);
       break;
