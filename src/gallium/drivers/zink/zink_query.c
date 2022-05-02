@@ -206,9 +206,9 @@ get_num_queries(struct zink_query *q)
 }
 
 static inline unsigned
-get_num_results(enum pipe_query_type query_type)
+get_num_results(struct zink_query *q)
 {
-   switch (query_type) {
+   switch (q->type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
@@ -223,7 +223,7 @@ get_num_results(enum pipe_query_type query_type)
       return 2;
    default:
       debug_printf("unknown query: %s\n",
-                   util_str_query_type(query_type, true));
+                   util_str_query_type(q->type, true));
       unreachable("zink: unknown query type");
    }
 }
@@ -336,7 +336,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
       qbo->buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
                                            PIPE_USAGE_STAGING,
                                            /* this is the maximum possible size of the results in a given buffer */
-                                           NUM_QUERIES * get_num_results(query->type) * sizeof(uint64_t));
+                                           NUM_QUERIES * get_num_results(query) * sizeof(uint64_t));
       if (!qbo->buffers[i])
          goto fail;
    }
@@ -519,7 +519,7 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
                     int num_starts, uint64_t *results, uint64_t *xfb_results)
 {
    uint64_t last_val = 0;
-   int result_size = get_num_results(query->type);
+   int result_size = get_num_results(query);
    int idx = 0;
    util_dynarray_foreach(&query->starts, struct zink_query_start, start) {
       unsigned i = idx * result_size;
@@ -606,7 +606,7 @@ get_query_result(struct pipe_context *pctx,
    util_query_clear_result(result, query->type);
 
    int num_starts = get_num_starts(query);
-   int result_size = get_num_results(query->type) * sizeof(uint64_t);
+   int result_size = get_num_results(query) * sizeof(uint64_t);
    int num_maps = get_num_queries(query);
 
    struct zink_query_buffer *qbo;
@@ -698,7 +698,7 @@ copy_pool_results_to_buffer(struct zink_context *ctx, struct zink_query *query, 
 {
    struct zink_batch *batch = &ctx->batch;
    unsigned type_size = (flags & VK_QUERY_RESULT_64_BIT) ? sizeof(uint64_t) : sizeof(uint32_t);
-   unsigned base_result_size = get_num_results(query->type) * type_size;
+   unsigned base_result_size = get_num_results(query) * type_size;
    unsigned result_size = base_result_size * num_results;
    if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
       result_size += type_size;
@@ -752,7 +752,7 @@ reset_qbos(struct zink_context *ctx, struct zink_query *q)
 static inline unsigned
 get_buffer_offset(struct zink_query *q)
 {
-   return (get_num_starts(q) - q->last_start_idx - 1) * get_num_results(q->type) * sizeof(uint64_t);
+   return (get_num_starts(q) - q->last_start_idx - 1) * get_num_results(q) * sizeof(uint64_t);
 }
 
 static void
@@ -1219,7 +1219,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
        */
 
       VkQueryResultFlags flag = is_time_query(query) ? 0 : VK_QUERY_RESULT_PARTIAL_BIT;
-      unsigned src_offset = result_size * get_num_results(query->type);
+      unsigned src_offset = result_size * get_num_results(query);
       if (zink_batch_usage_check_completion(ctx, query->batch_uses)) {
          uint64_t u64[4] = {0};
          if (VKCTX(GetQueryPoolResults)(screen->dev, start->vkq[0]->pool->query_pool, query_id, 1, sizeof(u64), u64,
@@ -1232,7 +1232,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
       }
       struct pipe_resource *staging = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, src_offset + result_size);
       copy_results_to_buffer(ctx, query, zink_resource(staging), 0, 1, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | flag);
-      zink_copy_buffer(ctx, res, zink_resource(staging), offset, result_size * get_num_results(query->type), result_size);
+      zink_copy_buffer(ctx, res, zink_resource(staging), offset, result_size * get_num_results(query), result_size);
       pipe_resource_reference(&staging, NULL);
       return;
    }
