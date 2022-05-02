@@ -455,6 +455,17 @@ lp_build_const_string(struct gallivm_state *gallivm,
    return string;
 }
 
+LLVMValueRef
+lp_build_const_func_pointer_from_type(struct gallivm_state *gallivm,
+                                      const void *ptr,
+                                      LLVMTypeRef function_type,
+                                      const char *name)
+{
+   return LLVMBuildBitCast(gallivm->builder,
+                           lp_build_const_int_pointer(gallivm, ptr),
+                           LLVMPointerType(function_type, 0),
+                           name);
+}
 
 /**
  * Build a callable function pointer.
@@ -470,16 +481,6 @@ lp_build_const_func_pointer(struct gallivm_state *gallivm,
                             unsigned num_args,
                             const char *name)
 {
-   LLVMTypeRef function_type;
-   LLVMValueRef function;
-
-   function_type = LLVMFunctionType(ret_type, arg_types, num_args, 0);
-
-   function = lp_build_const_int_pointer(gallivm, ptr);
-
-   function = LLVMBuildBitCast(gallivm->builder, function,
-                               LLVMPointerType(function_type, 0),
-                               name);
-
-   return function;
+   LLVMTypeRef function_type = LLVMFunctionType(ret_type, arg_types, num_args, 0);
+   return lp_build_const_func_pointer_from_type(gallivm, ptr, function_type, name);
 }
