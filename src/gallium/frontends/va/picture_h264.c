@@ -75,10 +75,10 @@ void vlVaHandlePictureParameterBufferH264(vlVaDriver *drv, vlVaContext *context,
    /*ReferenceFrames[16]*/
    /*picture_width_in_mbs_minus1*/
    /*picture_height_in_mbs_minus1*/
-   /*bit_depth_luma_minus8*/
-   /*bit_depth_chroma_minus8*/
+   context->desc.h264.pps->sps->bit_depth_luma_minus8 = h264->bit_depth_luma_minus8;
+   context->desc.h264.pps->sps->bit_depth_chroma_minus8 = h264->bit_depth_chroma_minus8;
    context->desc.h264.num_ref_frames = h264->num_ref_frames;
-   /*chroma_format_idc*/
+   context->desc.h264.pps->sps->chroma_format_idc = h264->seq_fields.bits.chroma_format_idc;
    /*residual_colour_transform_flag*/
    /*gaps_in_frame_num_value_allowed_flag*/
    context->desc.h264.pps->sps->frame_mbs_only_flag =
@@ -87,7 +87,8 @@ void vlVaHandlePictureParameterBufferH264(vlVaDriver *drv, vlVaContext *context,
       h264->seq_fields.bits.mb_adaptive_frame_field_flag;
    context->desc.h264.pps->sps->direct_8x8_inference_flag =
       h264->seq_fields.bits.direct_8x8_inference_flag;
-   /*MinLumaBiPredSize8x8*/
+   context->desc.h264.pps->sps->MinLumaBiPredSize8x8 =
+      h264->seq_fields.bits.MinLumaBiPredSize8x8;
    context->desc.h264.pps->sps->log2_max_frame_num_minus4 =
       h264->seq_fields.bits.log2_max_frame_num_minus4;
    context->desc.h264.pps->sps->pic_order_cnt_type =
@@ -101,7 +102,8 @@ void vlVaHandlePictureParameterBufferH264(vlVaDriver *drv, vlVaContext *context,
    /*slice_group_change_rate_minus1*/
    context->desc.h264.pps->pic_init_qp_minus26 =
       h264->pic_init_qp_minus26;
-   /*pic_init_qs_minus26*/
+   context->desc.h264.pps->pic_init_qs_minus26 =
+      h264->pic_init_qs_minus26;
    context->desc.h264.pps->chroma_qp_index_offset =
       h264->chroma_qp_index_offset;
    context->desc.h264.pps->second_chroma_qp_index_offset =
