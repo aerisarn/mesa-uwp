@@ -108,10 +108,10 @@ static void sort_cpb(struct rvce_encoder *enc)
    struct rvce_cpb_slot *i, *l0 = NULL, *l1 = NULL;
 
    LIST_FOR_EACH_ENTRY (i, &enc->cpb_slots, list) {
-      if (i->frame_num == enc->pic.ref_idx_l0)
+      if (i->frame_num == enc->pic.ref_idx_l0_list[0])
          l0 = i;
 
-      if (i->frame_num == enc->pic.ref_idx_l1)
+      if (i->frame_num == enc->pic.ref_idx_l1_list[0])
          l1 = i;
 
       if (enc->pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_P && l0)

@@ -139,7 +139,7 @@ static void encode(struct rvce_encoder *enc)
    RVCE_CS(0x00000000); // num_ref_idx_l0_active_minus1
    RVCE_CS(0x00000000); // num_ref_idx_l1_active_minus1
 
-   i = enc->pic.frame_num - enc->pic.ref_idx_l0;
+   i = enc->pic.frame_num - enc->pic.ref_idx_l0_list[0];
    if (i > 1 && enc->pic.picture_type == PIPE_H2645_ENC_PICTURE_TYPE_P) {
       RVCE_CS(0x00000001); // encRefListModificationOp
       RVCE_CS(i - 1);      // encRefListModificationNum

@@ -300,8 +300,10 @@ void enc_ControlPicture_common(vid_enc_PrivateType * priv, struct pipe_h264_enc_
    picture->quant_b_frames = priv->quant.nQpB;
 
    picture->frame_num = priv->frame_num;
-   picture->ref_idx_l0 = priv->ref_idx_l0;
-   picture->ref_idx_l1 = priv->ref_idx_l1;
+   picture->num_ref_idx_l0_active_minus1 = 0;
+   picture->ref_idx_l0_list[0] = priv->ref_idx_l0;
+   picture->num_ref_idx_l1_active_minus1 = 0;
+   picture->ref_idx_l1_list[0] = priv->ref_idx_l1;
    picture->enable_vui = (picture->rate_ctrl[0].frame_rate_num != 0);
    enc_GetPictureParamPreset(picture);
 }

@@ -46,8 +46,8 @@ static void radeon_vcn_enc_get_param(struct radeon_encoder *enc, struct pipe_pic
       enc->enc_pic.frame_num = pic->frame_num;
       enc->enc_pic.pic_order_cnt = pic->pic_order_cnt;
       enc->enc_pic.pic_order_cnt_type = pic->pic_order_cnt_type;
-      enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0;
-      enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1;
+      enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0_list[0];
+      enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1_list[0];
       enc->enc_pic.not_referenced = pic->not_referenced;
       enc->enc_pic.is_idr = (pic->picture_type == PIPE_H2645_ENC_PICTURE_TYPE_IDR);
       if (pic->pic_ctrl.enc_frame_cropping_flag) {

@@ -167,8 +167,8 @@ void si_vce_52_get_param(struct rvce_encoder *enc, struct pipe_h264_enc_picture_
    enc->enc_pic.i_remain = pic->i_remain;
    enc->enc_pic.gop_cnt = pic->gop_cnt;
    enc->enc_pic.pic_order_cnt = pic->pic_order_cnt;
-   enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0;
-   enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1;
+   enc->enc_pic.ref_idx_l0 = pic->ref_idx_l0_list[0];
+   enc->enc_pic.ref_idx_l1 = pic->ref_idx_l1_list[0];
    enc->enc_pic.not_referenced = false;
    if (enc->dual_inst)
       enc->enc_pic.addrmode_arraymode_disrdo_distwoinstants = 0x00000201;
