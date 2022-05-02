@@ -241,6 +241,16 @@ vn_MergePipelineCaches(VkDevice device,
 
 /* pipeline commands */
 
+struct vn_graphics_pipeline_create_info_fix {
+   /* Ignore the following:
+    *    pViewportState
+    *    pMultisampleState
+    *    pDepthStencilState
+    *    pColorBlendState
+    */
+   bool ignore_raster_dedicated_states;
+};
+
 static const VkGraphicsPipelineCreateInfo *
 vn_fix_graphics_pipeline_create_info(
    struct vn_device *dev,
@@ -250,41 +260,66 @@ vn_fix_graphics_pipeline_create_info(
    VkGraphicsPipelineCreateInfo **out)
 {
    VkGraphicsPipelineCreateInfo *infos = NULL;
-   bool has_ignored_state = false;
+
+   /* Defer allocation until we find a needed fix. */
+   struct vn_graphics_pipeline_create_info_fix *fixes = NULL;
 
    for (uint32_t i = 0; i < create_info_count; i++) {
-      if (create_infos[i].pRasterizationState->rasterizerDiscardEnable ==
-          VK_FALSE)
-         continue;
+      const VkGraphicsPipelineCreateInfo *info = &create_infos[i];
+      struct vn_graphics_pipeline_create_info_fix fix = { 0 };
+      bool any_fix = false;
 
-      if (create_infos[i].pViewportState ||
-          create_infos[i].pMultisampleState ||
-          create_infos[i].pDepthStencilState ||
-          create_infos[i].pColorBlendState) {
-         has_ignored_state = true;
-         break;
+      /* FIXME: Conditions for ignoring pDepthStencilState and
+       * pColorBlendState miss some cases that depend on the render pass. Make
+       * them agree with the VUIDs.
+       *
+       * TODO: Update conditions for VK_EXT_extended_dynamic_state2.
+       */
+      if (info->pRasterizationState->rasterizerDiscardEnable == VK_TRUE &&
+          (info->pViewportState || info->pMultisampleState ||
+           info->pDepthStencilState || info->pColorBlendState)) {
+         fix.ignore_raster_dedicated_states = true;
+         any_fix = true;
+      }
+
+      if (any_fix) {
+         if (!fixes) {
+            fixes = vk_zalloc(alloc, create_info_count * sizeof(fixes[0]),
+                              VN_DEFAULT_ALIGN,
+                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+            if (!fixes)
+               return NULL;
+         }
+
+         fixes[i] = fix;
       }
    }
 
-   if (!has_ignored_state)
+   if (!fixes)
       return create_infos;
 
    infos = vk_alloc(alloc, sizeof(*infos) * create_info_count,
                     VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-   if (!infos)
+   if (!infos) {
+      vk_free(alloc, fixes);
       return NULL;
+   }
 
    memcpy(infos, create_infos, sizeof(*infos) * create_info_count);
 
    for (uint32_t i = 0; i < create_info_count; i++) {
-      if (infos[i].pRasterizationState->rasterizerDiscardEnable == VK_FALSE)
-         continue;
+      VkGraphicsPipelineCreateInfo *info = &infos[i];
+      struct vn_graphics_pipeline_create_info_fix fix = fixes[i];
 
-      infos[i].pViewportState = NULL;
-      infos[i].pMultisampleState = NULL;
-      infos[i].pDepthStencilState = NULL;
-      infos[i].pColorBlendState = NULL;
+      if (fix.ignore_raster_dedicated_states) {
+         info->pViewportState = NULL;
+         info->pMultisampleState = NULL;
+         info->pDepthStencilState = NULL;
+         info->pColorBlendState = NULL;
+      }
    }
+
+   vk_free(alloc, fixes);
 
    *out = infos;
    return infos;
