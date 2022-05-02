@@ -298,6 +298,7 @@ struct pipe_h264_sps
    uint8_t  frame_mbs_only_flag;
    uint8_t  mb_adaptive_frame_field_flag;
    uint8_t  direct_8x8_inference_flag;
+   uint8_t  MinLumaBiPredSize8x8;
 };
 
 struct pipe_h264_pps
@@ -314,6 +315,7 @@ struct pipe_h264_pps
    uint8_t  weighted_pred_flag;
    uint8_t  weighted_bipred_idc;
    int8_t   pic_init_qp_minus26;
+   int8_t   pic_init_qs_minus26;
    int8_t   chroma_qp_index_offset;
    uint8_t  deblocking_filter_control_present_flag;
    uint8_t  constrained_intra_pred_flag;
