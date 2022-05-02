@@ -192,6 +192,9 @@ class Instruction:
         self.staging = staging
         self.unit = unit
 
+        # Message-passing instruction <===> not ALU instruction
+        self.message = unit not in ["FMA", "CVT", "SFU"]
+
         self.secondary_shift = max(len(self.srcs) * 8, 16)
         self.secondary_mask = 0xF if opcode2 is not None else 0x0
         if "left" in [x.name for x in self.modifiers]:

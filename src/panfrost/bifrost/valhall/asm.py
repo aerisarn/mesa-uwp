@@ -216,8 +216,7 @@ def parse_asm(line):
         # Set a placeholder writemask to prevent encoding faults
         encoded |= (0xC0 << 40)
 
-    # TODO: Other messages
-    fau = FAUState(message = ins.name.startswith('LD_BUFFER'))
+    fau = FAUState(message = ins.message)
 
     for i, (op, src) in enumerate(zip(operands, ins.srcs)):
         parts = op.split('.')
