@@ -1031,6 +1031,15 @@ _fixupNativeWindow(_EGLDisplay *disp, void *native_window)
       return (void *)(* (Window*) native_window);
    }
 #endif
+#ifdef HAVE_XCB_PLATFORM
+   if (disp && disp->Platform == _EGL_PLATFORM_XCB && native_window != NULL) {
+      /* Similar to with X11, we need to convert (xcb_window_t *)
+       * (i.e., uint32_t *) to xcb_window_t. We have to do an intermediate cast
+       * to uintptr_t, since uint32_t may be smaller than a pointer.
+       */
+      return (void *)(uintptr_t) (* (uint32_t*) native_window);
+   }
+#endif
    return native_window;
 }
 
@@ -1084,6 +1093,15 @@ _fixupNativePixmap(_EGLDisplay *disp, void *native_pixmap)
     */
    if (disp && disp->Platform == _EGL_PLATFORM_X11 && native_pixmap != NULL)
       return (void *)(* (Pixmap*) native_pixmap);
+#endif
+#ifdef HAVE_XCB_PLATFORM
+   if (disp && disp->Platform == _EGL_PLATFORM_XCB && native_pixmap != NULL) {
+      /* Similar to with X11, we need to convert (xcb_pixmap_t *)
+       * (i.e., uint32_t *) to xcb_pixmap_t. We have to do an intermediate cast
+       * to uintptr_t, since uint32_t may be smaller than a pointer.
+       */
+      return (void *)(uintptr_t) (* (uint32_t*) native_pixmap);
+   }
 #endif
    return native_pixmap;
 }
