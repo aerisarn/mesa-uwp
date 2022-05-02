@@ -196,11 +196,11 @@ get_num_query_pools(enum pipe_query_type query_type)
 }
 
 static inline unsigned
-get_num_queries(enum pipe_query_type query_type)
+get_num_queries(struct zink_query *q)
 {
-   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       return 2;
-   if (query_type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
+   if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
       return PIPE_MAX_VERTEX_STREAMS;
    return 1;
 }
@@ -330,7 +330,7 @@ qbo_append(struct pipe_screen *screen, struct zink_query *query)
    struct zink_query_buffer *qbo = CALLOC_STRUCT(zink_query_buffer);
    if (!qbo)
       return false;
-   int num_buffers = get_num_queries(query->type);
+   int num_buffers = get_num_queries(query);
 
    for (unsigned i = 0; i < num_buffers; i++) {
       qbo->buffers[i] = pipe_buffer_create(screen, PIPE_BIND_QUERY_BUFFER,
@@ -388,7 +388,7 @@ query_pool_get_range(struct zink_context *ctx, struct zink_query *q)
 {
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP || q->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
    struct zink_query_start *start;
-   int num_queries = get_num_queries(q->type);
+   int num_queries = get_num_queries(q);
    if (!is_timestamp || get_num_starts(q) == 0) {
       start = util_dynarray_grow(&q->starts, struct zink_query_start, 1);
       memset(start, 0, sizeof(*start));
@@ -607,7 +607,7 @@ get_query_result(struct pipe_context *pctx,
 
    int num_starts = get_num_starts(query);
    int result_size = get_num_results(query->type) * sizeof(uint64_t);
-   int num_maps = get_num_queries(query->type);
+   int num_maps = get_num_queries(query);
 
    struct zink_query_buffer *qbo;
    struct pipe_transfer *xfer[PIPE_MAX_VERTEX_STREAMS] = { 0 };
@@ -723,7 +723,7 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
 static void
 reset_query_range(struct zink_context *ctx, struct zink_query *q)
 {
-   int num_queries = get_num_queries(q->type);
+   int num_queries = get_num_queries(q);
    zink_batch_no_rp(ctx);
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
    for (unsigned i = 0; i < num_queries; i++) {
@@ -762,7 +762,7 @@ update_qbo(struct zink_context *ctx, struct zink_query *q)
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
    bool is_timestamp = q->type == PIPE_QUERY_TIMESTAMP || q->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
    /* timestamp queries just write to offset 0 always */
-   int num_queries = get_num_queries(q->type);
+   int num_queries = get_num_queries(q);
    for (unsigned i = 0; i < num_queries; i++) {
       unsigned offset = is_timestamp ? 0 : get_buffer_offset(q);
       copy_pool_results_to_buffer(ctx, q, start->vkq[i]->pool->query_pool, start->vkq[i]->query_id,
