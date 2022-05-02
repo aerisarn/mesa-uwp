@@ -592,6 +592,7 @@ visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_vector_arg_amd:
    case nir_intrinsic_load_btd_stack_id_intel:
    case nir_intrinsic_load_topology_id_intel:
+   case nir_intrinsic_load_scratch_base_ptr:
       is_divergent = true;
       break;
 
