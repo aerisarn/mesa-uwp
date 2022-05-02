@@ -187,10 +187,18 @@ update_qbo(struct zink_context *ctx, struct zink_query *q);
 static void
 reset_qbos(struct zink_context *ctx, struct zink_query *q);
 
+
+static bool
+is_emulated_primgen(const struct zink_query *q)
+{
+   return q->type == PIPE_QUERY_PRIMITIVES_GENERATED &&
+          q->vkqtype != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT;
+}
+
 static inline unsigned
 get_num_query_pools(struct zink_query *q)
 {
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (is_emulated_primgen(q))
       return 2;
    return 1;
 }
@@ -198,7 +206,7 @@ get_num_query_pools(struct zink_query *q)
 static inline unsigned
 get_num_queries(struct zink_query *q)
 {
-   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (is_emulated_primgen(q))
       return 2;
    if (q->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE)
       return PIPE_MAX_VERTEX_STREAMS;
@@ -296,7 +304,7 @@ convert_query_type(struct zink_screen *screen, enum pipe_query_type query_type, 
 static bool
 needs_stats_list(struct zink_query *query)
 {
-   return query->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+   return is_emulated_primgen(query) ||
           query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE ||
           query->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE;
 }
@@ -815,7 +823,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
 
    if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
-       q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+       is_emulated_primgen(q) ||
        q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
       struct zink_vk_query *vkq = start->vkq[1] ? start->vkq[1] : start->vkq[0];
       assert(!ctx->curr_xfb_queries[q->index] || ctx->curr_xfb_queries[q->index] == vkq);
@@ -893,7 +901,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    struct zink_query_start *start = util_dynarray_top_ptr(&q->starts, struct zink_query_start);
 
    if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED ||
-       q->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+       is_emulated_primgen(q) ||
        q->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE) {
       struct zink_vk_query *vkq = start->vkq[1] ? start->vkq[1] : start->vkq[0];
 
@@ -1173,7 +1181,7 @@ zink_render_condition(struct pipe_context *pctx,
 
       flags |= VK_QUERY_RESULT_64_BIT;
       int num_results = get_num_starts(query);
-      if (query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
+      if (!is_emulated_primgen(query) &&
           !is_so_overflow_query(query)) {
          copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
       } else {
@@ -1248,7 +1256,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
     */
    size_flags |= VK_QUERY_RESULT_WAIT_BIT;
    if (!is_time_query(query) && !is_bool_query(query)) {
-      if (num_queries == 1 && query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
+      if (num_queries == 1 && !is_emulated_primgen(query) &&
                               query->type != PIPE_QUERY_PRIMITIVES_EMITTED &&
                               !is_bool_query(query)) {
          if (size_flags == VK_QUERY_RESULT_64_BIT) {
