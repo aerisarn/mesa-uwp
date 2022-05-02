@@ -84,9 +84,7 @@ _mesa_texstore_rgb_dxt1(TEXSTORE_PARAMS)
 
    dst = dstSlices[0];
 
-   tx_compress_dxtn(3, srcWidth, srcHeight, pixels,
-                    GL_COMPRESSED_RGB_S3TC_DXT1_EXT,
-                    dst, dstRowStride);
+   tx_compress_dxt1(3, srcWidth, srcHeight, pixels, dst, dstRowStride, 3);
 
    free((void *) tempImage);
 
@@ -140,9 +138,7 @@ _mesa_texstore_rgba_dxt1(TEXSTORE_PARAMS)
 
    dst = dstSlices[0];
 
-   tx_compress_dxtn(4, srcWidth, srcHeight, pixels,
-                    GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,
-                    dst, dstRowStride);
+   tx_compress_dxt1(4, srcWidth, srcHeight, pixels, dst, dstRowStride, 4);
 
    free((void*) tempImage);
 
@@ -195,9 +191,7 @@ _mesa_texstore_rgba_dxt3(TEXSTORE_PARAMS)
 
    dst = dstSlices[0];
 
-   tx_compress_dxtn(4, srcWidth, srcHeight, pixels,
-                    GL_COMPRESSED_RGBA_S3TC_DXT3_EXT,
-                    dst, dstRowStride);
+   tx_compress_dxt3(4, srcWidth, srcHeight, pixels, dst, dstRowStride);
 
    free((void *) tempImage);
 
@@ -250,9 +244,7 @@ _mesa_texstore_rgba_dxt5(TEXSTORE_PARAMS)
 
    dst = dstSlices[0];
 
-   tx_compress_dxtn(4, srcWidth, srcHeight, pixels,
-                    GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,
-                    dst, dstRowStride);
+   tx_compress_dxt5(4, srcWidth, srcHeight, pixels, dst, dstRowStride);
 
    free((void *) tempImage);
 
