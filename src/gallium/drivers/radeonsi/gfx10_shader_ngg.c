@@ -1839,6 +1839,28 @@ void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
    }
    ac_build_endif(&ctx->ac, 5090);
 
+   tmp = si_is_gs_thread(ctx);
+   ac_build_ifcc(&ctx->ac, tmp, 15090);
+      {
+         tmp = si_unpack_param(ctx, ctx->vs_state_bits, 31, 1);
+         tmp = LLVMBuildTrunc(builder, tmp, ctx->ac.i1, "");
+         ac_build_ifcc(&ctx->ac, tmp, 5109); /* if (GS_PIPELINE_STATS_EMU) */
+         LLVMValueRef args[] = {
+            ctx->ac.i32_1,
+            ngg_get_emulated_counters_buf(ctx),
+            LLVMConstInt(ctx->ac.i32,
+                         (si_hw_query_dw_offset(PIPE_STAT_QUERY_GS_INVOCATIONS) +
+                             SI_QUERY_STATS_END_OFFSET_DW) * 4,
+                         false),
+            ctx->ac.i32_0,                            /* soffset */
+            ctx->ac.i32_0,                            /* cachepolicy */
+         };
+
+         ac_build_intrinsic(&ctx->ac, "llvm.amdgcn.raw.buffer.atomic.add.i32", ctx->ac.i32, args, 5, 0);
+         ac_build_endif(&ctx->ac, 5109);
+      }
+   ac_build_endif(&ctx->ac, 15090);
+
    ac_build_s_barrier(&ctx->ac);
 }
 

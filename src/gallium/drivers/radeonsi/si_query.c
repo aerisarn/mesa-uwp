@@ -730,7 +730,7 @@ static struct pipe_query *si_query_hw_create(struct si_screen *sscreen, unsigned
       query->result_size += 8; /* for the fence + alignment */
       query->b.num_cs_dw_suspend = 6 + si_cp_write_fence_dwords(sscreen);
       query->index = index;
-      if (index == PIPE_STAT_QUERY_GS_PRIMITIVES &&
+      if ((index == PIPE_STAT_QUERY_GS_PRIMITIVES || index == PIPE_STAT_QUERY_GS_INVOCATIONS) &&
           sscreen->use_ngg && (sscreen->info.chip_class >= GFX10 && sscreen->info.chip_class <= GFX10_3))
          query->flags |= SI_QUERY_EMULATE_GS_COUNTERS;
       break;
