@@ -569,14 +569,15 @@ util_queue_add_job(struct util_queue *queue,
 
    assert(queue->num_queued >= 0 && queue->num_queued <= queue->max_jobs);
 
+   /* Scale the number of threads up if there's already one job waiting. */
+   if (queue->num_queued > 0 &&
+       queue->flags & UTIL_QUEUE_INIT_SCALE_THREADS &&
+       execute != util_queue_finish_execute &&
+       queue->num_threads < queue->max_threads) {
+      util_queue_adjust_num_threads(queue, queue->num_threads + 1);
+   }
 
    if (queue->num_queued == queue->max_jobs) {
-      if ((queue->flags & UTIL_QUEUE_INIT_SCALE_THREADS) &&
-          execute != util_queue_finish_execute &&
-          queue->num_threads < queue->max_threads) {
-         util_queue_adjust_num_threads(queue, queue->num_threads + 1);
-      }
-
       if (queue->flags & UTIL_QUEUE_INIT_RESIZE_IF_FULL &&
           queue->total_jobs_size + job_size < S_256MB) {
          /* If the queue is full, make it larger to avoid waiting for a free
