@@ -51,11 +51,12 @@ _mesa_texstore_rgb_dxt1(TEXSTORE_PARAMS)
    const GLubyte *pixels;
    GLubyte *dst;
    const GLubyte *tempImage = NULL;
+   int srccomps = srcFormat == GL_RGB ? 3 : 4;
 
    assert(dstFormat == MESA_FORMAT_RGB_DXT1 ||
           dstFormat == MESA_FORMAT_SRGB_DXT1);
 
-   if (srcFormat != GL_RGB ||
+   if (!(srcFormat == GL_RGB || srcFormat == GL_RGBA) ||
        srcType != GL_UNSIGNED_BYTE ||
        ctx->_ImageTransferState ||
        ALIGN(srcPacking->RowLength, srcPacking->Alignment) != srcWidth ||
@@ -76,6 +77,7 @@ _mesa_texstore_rgb_dxt1(TEXSTORE_PARAMS)
                      srcPacking);
       pixels = tempImage;
       srcFormat = GL_RGB;
+      srccomps = 3;
    }
    else {
       pixels = _mesa_image_address2d(srcPacking, srcAddr, srcWidth, srcHeight,
@@ -84,7 +86,8 @@ _mesa_texstore_rgb_dxt1(TEXSTORE_PARAMS)
 
    dst = dstSlices[0];
 
-   tx_compress_dxt1(3, srcWidth, srcHeight, pixels, dst, dstRowStride, 3);
+   tx_compress_dxt1(srccomps, srcWidth, srcHeight, pixels,
+                    dst, dstRowStride, 3);
 
    free((void *) tempImage);
 
