@@ -217,6 +217,8 @@ get_num_queries(struct zink_query *q)
 static inline unsigned
 get_num_results(struct zink_query *q)
 {
+   if (q->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT)
+      return 1;
    switch (q->type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
@@ -288,8 +290,11 @@ convert_query_type(struct zink_screen *screen, enum pipe_query_type query_type, 
    case PIPE_QUERY_TIME_ELAPSED:
    case PIPE_QUERY_TIMESTAMP:
       return VK_QUERY_TYPE_TIMESTAMP;
-   case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
    case PIPE_QUERY_PRIMITIVES_GENERATED:
+      return screen->info.have_EXT_primitives_generated_query ?
+             VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT :
+             VK_QUERY_TYPE_PIPELINE_STATISTICS;
+   case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
       return VK_QUERY_TYPE_PIPELINE_STATISTICS;
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
@@ -457,8 +462,15 @@ zink_create_query(struct pipe_context *pctx,
 
    assert(!query->precise || query->vkqtype == VK_QUERY_TYPE_OCCLUSION);
 
+   /* use emulated path for drivers without full support */
+   if (query->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT && index &&
+       !screen->info.primgen_feats.primitivesGeneratedQueryWithNonZeroStreams)
+      query->vkqtype = VK_QUERY_TYPE_PIPELINE_STATISTICS;
+
    VkQueryPipelineStatisticFlags pipeline_stats = 0;
-   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+   if (query->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) {
+      query->needs_rast_discard_workaround = !screen->info.primgen_feats.primitivesGeneratedQueryWithRasterizerDiscard;
+   } else if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       pipeline_stats = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
          VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
       query->needs_rast_discard_workaround = true;
@@ -554,7 +566,9 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
          result->u64 += results[i];
          break;
       case PIPE_QUERY_PRIMITIVES_GENERATED:
-         if (start->have_xfb || query->index)
+         if (query->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT)
+            result->u64 += results[i];
+         else if (start->have_xfb || query->index)
             result->u64 += xfb_results[i + 1];
          else
             /* if a given draw had a geometry shader, we need to use the first result */
@@ -839,8 +853,9 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
 
          begin_vk_query_indexed(ctx, start->vkq[i], i, flags);
       }
-   }
-   if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
+   } else if (q->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) {
+      begin_vk_query_indexed(ctx, start->vkq[0], q->index, flags);
+   } else
       VKCTX(CmdBeginQuery)(batch->state->cmdbuf, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id, flags);
    if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && q->index == PIPE_STAT_QUERY_IA_VERTICES)  {
       assert(!ctx->vertices_query);
@@ -915,8 +930,9 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
          end_vk_query_indexed(ctx, start->vkq[i], i);
          ctx->curr_xfb_queries[i] = NULL;
       }
-   }
-   if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
+   } else if (q->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) {
+      end_vk_query_indexed(ctx, start->vkq[0], q->index);
+   } else if (!is_time_query(q))
       VKCTX(CmdEndQuery)(batch->state->cmdbuf, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
 
    if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
