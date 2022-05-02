@@ -914,8 +914,11 @@ propagate_constants_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& i
 
    /* try to fold inline constants */
    VOP3P_instruction* vop3p = &instr->vop3p();
-   Operand const_lo = Operand::c16(info.val);
-   Operand const_hi = Operand::c16(info.val >> 16);
+   /* TODO: if bits==32, we might be able to get an inline constant if we sign-extend or shift left
+    * 16 bits.
+    */
+   Operand const_lo = Operand::get_const(ctx.program->gfx_level, info.val & 0xffff, bits / 8u);
+   Operand const_hi = Operand::get_const(ctx.program->gfx_level, info.val >> 16, bits / 8u);
    bool opsel_lo = (vop3p->opsel_lo >> i) & 1;
    bool opsel_hi = (vop3p->opsel_hi >> i) & 1;
 
