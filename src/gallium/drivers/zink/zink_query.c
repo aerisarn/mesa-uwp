@@ -188,9 +188,9 @@ static void
 reset_qbos(struct zink_context *ctx, struct zink_query *q);
 
 static inline unsigned
-get_num_query_pools(enum pipe_query_type query_type)
+get_num_query_pools(struct zink_query *q)
 {
-   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       return 2;
    return 1;
 }
@@ -455,7 +455,7 @@ zink_create_query(struct pipe_context *pctx,
    else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
       pipeline_stats = pipeline_statistic_convert(index);
 
-   int num_pools = get_num_query_pools(query_type);
+   int num_pools = get_num_query_pools(query);
    for (unsigned i = 0; i < num_pools; i++) {
       VkQueryType vkqtype = query->vkqtype;
       /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
