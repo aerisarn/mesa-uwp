@@ -1,6 +1,7 @@
 #!/bin/bash
 
 for var in \
+    ACO_DEBUG \
     ASAN_OPTIONS \
     BASE_SYSTEM_FORK_HOST_PREFIX \
     BASE_SYSTEM_MAINLINE_HOST_PREFIX \
