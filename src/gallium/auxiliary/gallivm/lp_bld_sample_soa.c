@@ -1078,6 +1078,8 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
                                 flt_size,
                                 &flt_width_vec, &flt_height_vec, &flt_depth_vec);
 
+   LLVMTypeRef int1t = LLVMInt1TypeInContext(bld->gallivm->context);
+
    /*
     * Compute integer texcoords.
     */
@@ -1130,7 +1132,6 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
    }
    else {
       struct lp_build_if_state edge_if;
-      LLVMTypeRef int1t;
       LLVMValueRef new_faces[4], new_xcoords[4][2], new_ycoords[4][2];
       LLVMValueRef coord0, coord1, have_edge, have_corner;
       LLVMValueRef fall_off_ym_notxm, fall_off_ym_notxp, fall_off_x, fall_off_y;
@@ -1183,7 +1184,6 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
       have_edge = lp_build_any_true_range(ivec_bld, ivec_bld->type.length, have_edge);
 
       /* needed for accurate corner filtering branch later, rely on 0 init */
-      int1t = LLVMInt1TypeInContext(bld->gallivm->context);
       have_corners = lp_build_alloca(bld->gallivm, int1t, "have_corner");
 
       for (texel_index = 0; texel_index < 4; texel_index++) {
@@ -1302,18 +1302,19 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
 
       lp_build_endif(&edge_if);
 
-      x00 = LLVMBuildLoad(builder, xs[0], "");
-      x01 = LLVMBuildLoad(builder, xs[1], "");
-      x10 = LLVMBuildLoad(builder, xs[2], "");
-      x11 = LLVMBuildLoad(builder, xs[3], "");
-      y00 = LLVMBuildLoad(builder, ys[0], "");
-      y01 = LLVMBuildLoad(builder, ys[1], "");
-      y10 = LLVMBuildLoad(builder, ys[2], "");
-      y11 = LLVMBuildLoad(builder, ys[3], "");
-      z00 = LLVMBuildLoad(builder, zs[0], "");
-      z01 = LLVMBuildLoad(builder, zs[1], "");
-      z10 = LLVMBuildLoad(builder, zs[2], "");
-      z11 = LLVMBuildLoad(builder, zs[3], "");
+      LLVMTypeRef type = ivec_bld->vec_type;
+      x00 = LLVMBuildLoad2(builder, type, xs[0], "");
+      x01 = LLVMBuildLoad2(builder, type, xs[1], "");
+      x10 = LLVMBuildLoad2(builder, type, xs[2], "");
+      x11 = LLVMBuildLoad2(builder, type, xs[3], "");
+      y00 = LLVMBuildLoad2(builder, type, ys[0], "");
+      y01 = LLVMBuildLoad2(builder, type, ys[1], "");
+      y10 = LLVMBuildLoad2(builder, type, ys[2], "");
+      y11 = LLVMBuildLoad2(builder, type, ys[3], "");
+      z00 = LLVMBuildLoad2(builder, type, zs[0], "");
+      z01 = LLVMBuildLoad2(builder, type, zs[1], "");
+      z10 = LLVMBuildLoad2(builder, type, zs[2], "");
+      z11 = LLVMBuildLoad2(builder, type, zs[3], "");
    }
 
    if (linear_mask) {
@@ -1411,7 +1412,7 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
          colorss[2] = lp_build_alloca(bld->gallivm, coord_bld->vec_type, "cs2");
          colorss[3] = lp_build_alloca(bld->gallivm, coord_bld->vec_type, "cs3");
 
-         have_corner = LLVMBuildLoad(builder, have_corners, "");
+         have_corner = LLVMBuildLoad2(builder, int1t, have_corners, "");
 
          lp_build_if(&corner_if, bld->gallivm, have_corner);
 
@@ -1668,10 +1669,10 @@ lp_build_sample_image_linear(struct lp_build_sample_context *bld,
 
          lp_build_endif(&corner_if);
 
-         colors0[0] = LLVMBuildLoad(builder, colorss[0], "");
-         colors0[1] = LLVMBuildLoad(builder, colorss[1], "");
-         colors0[2] = LLVMBuildLoad(builder, colorss[2], "");
-         colors0[3] = LLVMBuildLoad(builder, colorss[3], "");
+         colors0[0] = LLVMBuildLoad2(builder, coord_bld->vec_type, colorss[0], "");
+         colors0[1] = LLVMBuildLoad2(builder, coord_bld->vec_type, colorss[1], "");
+         colors0[2] = LLVMBuildLoad2(builder, coord_bld->vec_type, colorss[2], "");
+         colors0[3] = LLVMBuildLoad2(builder, coord_bld->vec_type, colorss[3], "");
       }
 
       if (dims == 3) {
@@ -2306,7 +2307,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
    LLVMBuildBr(builder, v_loop_block);
    LLVMPositionBuilderAtEnd(builder, v_loop_block);
 
-   LLVMValueRef v_val = LLVMBuildLoad(builder, v_limiter, "");
+   LLVMValueRef v_val = LLVMBuildLoad2(builder, bld->int_coord_bld.vec_type, v_limiter, "");
    LLVMValueRef v_mask = LLVMBuildICmp(builder,
                                        LLVMIntSLE,
                                        v_val,
@@ -2338,7 +2339,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
       LLVMBuildBr(builder, u_loop_block);
       LLVMPositionBuilderAtEnd(builder, u_loop_block);
 
-      LLVMValueRef u_val = LLVMBuildLoad(builder, u_limiter, "");
+      LLVMValueRef u_val = LLVMBuildLoad2(builder, bld->int_coord_bld.vec_type, u_limiter, "");
       LLVMValueRef u_mask = LLVMBuildICmp(builder,
                                           LLVMIntSLE,
                                           u_val,
@@ -2347,7 +2348,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
       /* loop over U values */
       {
          /* q = (int)q */
-         q = lp_build_itrunc(coord_bld, LLVMBuildLoad(builder, q_store, ""));
+         q = lp_build_itrunc(coord_bld, LLVMBuildLoad2(builder, bld->coord_bld.vec_type, q_store, ""));
 
          /*
           * avoid OOB access to filter table, generate a mask for q > 1024,
@@ -2403,7 +2404,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
                                        temp_colors);
 
          for (chan = 0; chan < 4; chan++) {
-            LLVMValueRef tcolor = LLVMBuildLoad(builder, colors0[chan], "");
+            LLVMValueRef tcolor = LLVMBuildLoad2(builder, bld->texel_bld.vec_type, colors0[chan], "");
 
             tcolor = lp_build_add(&bld->texel_bld, tcolor, lp_build_mul(&bld->texel_bld, temp_colors[chan], weights));
             LLVMBuildStore(builder, tcolor, colors0[chan]);
@@ -2411,22 +2412,22 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
 
          /* multiple colors by weight and add in. */
          /* den += weight; */
-         LLVMValueRef den = LLVMBuildLoad(builder, den_store, "");
+         LLVMValueRef den = LLVMBuildLoad2(builder, bld->texel_bld.vec_type, den_store, "");
          den = lp_build_add(&bld->texel_bld, den, weights);
          LLVMBuildStore(builder, den, den_store);
 
          lp_build_endif(&noloadw0);
          /* q += dq; */
          /* dq += ddq; */
-         q = LLVMBuildLoad(builder, q_store, "");
-         dq = LLVMBuildLoad(builder, dq_store, "");
+         q = LLVMBuildLoad2(builder, bld->texel_bld.vec_type, q_store, "");
+         dq = LLVMBuildLoad2(builder, bld->texel_bld.vec_type, dq_store, "");
          q = lp_build_add(coord_bld, q, dq);
          dq = lp_build_add(coord_bld, dq, ddq);
          LLVMBuildStore(builder, q, q_store);
          LLVMBuildStore(builder, dq, dq_store);
       }
       /* u += 1 */
-      u_val = LLVMBuildLoad(builder, u_limiter, "");
+      u_val = LLVMBuildLoad2(builder, bld->int_coord_bld.vec_type, u_limiter, "");
       u_val = lp_build_add(&bld->int_coord_bld, u_val, bld->int_coord_bld.one);
       LLVMBuildStore(builder, u_val, u_limiter);
 
@@ -2447,7 +2448,7 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
    }
 
    /* v += 1 */
-   v_val = LLVMBuildLoad(builder, v_limiter, "");
+   v_val = LLVMBuildLoad2(builder, bld->int_coord_bld.vec_type, v_limiter, "");
    v_val = lp_build_add(&bld->int_coord_bld, v_val, bld->int_coord_bld.one);
    LLVMBuildStore(builder, v_val, v_limiter);
 
@@ -2465,10 +2466,10 @@ lp_build_sample_aniso(struct lp_build_sample_context *bld,
 
    LLVMPositionBuilderAtEnd(builder, v_end_loop);
 
-   LLVMValueRef den = LLVMBuildLoad(builder, den_store, "");
+   LLVMValueRef den = LLVMBuildLoad2(builder, bld->texel_bld.vec_type, den_store, "");
 
    for (chan = 0; chan < 4; chan++)
-      colors0[chan] = lp_build_div(&bld->texel_bld, LLVMBuildLoad(builder, colors0[chan], ""), den);
+      colors0[chan] = lp_build_div(&bld->texel_bld, LLVMBuildLoad2(builder, bld->texel_bld.vec_type, colors0[chan], ""), den);
    LLVMValueRef den0 = lp_build_cmp(&bld->coord_bld, PIPE_FUNC_EQUAL, den, bld->coord_bld.zero);
 
    LLVMValueRef den0_any = lp_build_any_true_range(&bld->coord_bld, bld->coord_bld.type.length, den0);
@@ -2710,7 +2711,7 @@ lp_build_clamp_border_color(struct lp_build_sample_context *bld,
                                              lp_build_const_int32(gallivm, 0));
    border_color_ptr = LLVMBuildBitCast(builder, border_color_ptr,
                                        LLVMPointerType(vec4_bld.vec_type, 0), "");
-   border_color = LLVMBuildLoad(builder, border_color_ptr, "");
+   border_color = LLVMBuildLoad2(builder, vec4_bld.vec_type, border_color_ptr, "");
    /* we don't have aligned type in the dynamic state unfortunately */
    LLVMSetAlignment(border_color, 4);
 
@@ -3055,7 +3056,7 @@ lp_build_sample_general(struct lp_build_sample_context *bld,
    }
 
    for (chan = 0; chan < 4; ++chan) {
-     colors_out[chan] = LLVMBuildLoad(builder, texels[chan], "");
+     colors_out[chan] = LLVMBuildLoad2(builder, bld->texel_bld.vec_type, texels[chan], "");
      lp_build_name(colors_out[chan], "sampler%u_texel_%c", sampler_unit, "xyzw"[chan]);
    }
 }
@@ -4116,60 +4117,60 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
 
    function = LLVMGetNamedFunction(module, func_name);
 
-   if(!function) {
-      LLVMTypeRef arg_types[LP_MAX_TEX_FUNC_ARGS];
-      LLVMTypeRef ret_type;
-      LLVMTypeRef function_type;
-      LLVMTypeRef val_type[4];
-      unsigned num_param = 0;
+   LLVMTypeRef arg_types[LP_MAX_TEX_FUNC_ARGS];
+   LLVMTypeRef ret_type;
+   LLVMTypeRef val_type[4];
+   unsigned num_param = 0;
 
-      /*
-       * Generate the function prototype.
-       */
+   /*
+    * Generate the function prototype.
+    */
 
-      arg_types[num_param++] = LLVMTypeOf(params->context_ptr);
-      if (params->aniso_filter_table)
-         arg_types[num_param++] = LLVMTypeOf(params->aniso_filter_table);
-      if (need_cache) {
-         arg_types[num_param++] = LLVMTypeOf(params->thread_data_ptr);
+   arg_types[num_param++] = LLVMTypeOf(params->context_ptr);
+   if (params->aniso_filter_table)
+      arg_types[num_param++] = LLVMTypeOf(params->aniso_filter_table);
+   if (need_cache) {
+      arg_types[num_param++] = LLVMTypeOf(params->thread_data_ptr);
+   }
+   for (i = 0; i < num_coords; i++) {
+      arg_types[num_param++] = LLVMTypeOf(coords[0]);
+      assert(LLVMTypeOf(coords[0]) == LLVMTypeOf(coords[i]));
+   }
+   if (layer) {
+      arg_types[num_param++] = LLVMTypeOf(coords[layer]);
+      assert(LLVMTypeOf(coords[0]) == LLVMTypeOf(coords[layer]));
+   }
+   if (sample_key & LP_SAMPLER_SHADOW) {
+      arg_types[num_param++] = LLVMTypeOf(coords[0]);
+   }
+   if (sample_key & LP_SAMPLER_FETCH_MS) {
+      arg_types[num_param++] = LLVMTypeOf(params->ms_index);
+   }
+   if (sample_key & LP_SAMPLER_OFFSETS) {
+      for (i = 0; i < num_offsets; i++) {
+         arg_types[num_param++] = LLVMTypeOf(offsets[0]);
+         assert(LLVMTypeOf(offsets[0]) == LLVMTypeOf(offsets[i]));
       }
-      for (i = 0; i < num_coords; i++) {
-         arg_types[num_param++] = LLVMTypeOf(coords[0]);
-         assert(LLVMTypeOf(coords[0]) == LLVMTypeOf(coords[i]));
+   }
+   if (lod_control == LP_SAMPLER_LOD_BIAS ||
+       lod_control == LP_SAMPLER_LOD_EXPLICIT) {
+      arg_types[num_param++] = LLVMTypeOf(params->lod);
+   }
+   else if (lod_control == LP_SAMPLER_LOD_DERIVATIVES) {
+      for (i = 0; i < num_derivs; i++) {
+         arg_types[num_param++] = LLVMTypeOf(derivs->ddx[i]);
+         arg_types[num_param++] = LLVMTypeOf(derivs->ddy[i]);
+         assert(LLVMTypeOf(derivs->ddx[0]) == LLVMTypeOf(derivs->ddx[i]));
+         assert(LLVMTypeOf(derivs->ddy[0]) == LLVMTypeOf(derivs->ddy[i]));
       }
-      if (layer) {
-         arg_types[num_param++] = LLVMTypeOf(coords[layer]);
-         assert(LLVMTypeOf(coords[0]) == LLVMTypeOf(coords[layer]));
-      }
-      if (sample_key & LP_SAMPLER_SHADOW) {
-         arg_types[num_param++] = LLVMTypeOf(coords[0]);
-      }
-      if (sample_key & LP_SAMPLER_FETCH_MS) {
-         arg_types[num_param++] = LLVMTypeOf(params->ms_index);
-      }
-      if (sample_key & LP_SAMPLER_OFFSETS) {
-         for (i = 0; i < num_offsets; i++) {
-            arg_types[num_param++] = LLVMTypeOf(offsets[0]);
-            assert(LLVMTypeOf(offsets[0]) == LLVMTypeOf(offsets[i]));
-         }
-      }
-      if (lod_control == LP_SAMPLER_LOD_BIAS ||
-          lod_control == LP_SAMPLER_LOD_EXPLICIT) {
-         arg_types[num_param++] = LLVMTypeOf(params->lod);
-      }
-      else if (lod_control == LP_SAMPLER_LOD_DERIVATIVES) {
-         for (i = 0; i < num_derivs; i++) {
-            arg_types[num_param++] = LLVMTypeOf(derivs->ddx[i]);
-            arg_types[num_param++] = LLVMTypeOf(derivs->ddy[i]);
-            assert(LLVMTypeOf(derivs->ddx[0]) == LLVMTypeOf(derivs->ddx[i]));
-            assert(LLVMTypeOf(derivs->ddy[0]) == LLVMTypeOf(derivs->ddy[i]));
-         }
-      }
+   }
 
-      val_type[0] = val_type[1] = val_type[2] = val_type[3] =
+   val_type[0] = val_type[1] = val_type[2] = val_type[3] =
          lp_build_vec_type(gallivm, params->type);
-      ret_type = LLVMStructTypeInContext(gallivm->context, val_type, 4, 0);
-      function_type = LLVMFunctionType(ret_type, arg_types, num_param, 0);
+   ret_type = LLVMStructTypeInContext(gallivm->context, val_type, 4, 0);
+   LLVMTypeRef function_type = LLVMFunctionType(ret_type, arg_types, num_param, 0);
+
+   if(!function) {
       function = LLVMAddFunction(module, func_name, function_type);
 
       for (i = 0; i < num_param; ++i) {
@@ -4232,7 +4233,7 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
 
    assert(num_args <= LP_MAX_TEX_FUNC_ARGS);
 
-   *tex_ret = LLVMBuildCall(builder, function, args, num_args, "");
+   *tex_ret = LLVMBuildCall2(builder, function_type, function, args, num_args, "");
    bb = LLVMGetInsertBlock(builder);
    inst = LLVMGetLastInstruction(bb);
    LLVMSetInstructionCallConv(inst, LLVMFastCallConv);
@@ -4529,8 +4530,8 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
       return;
    }
 
-   LLVMValueRef atom_res = lp_build_alloca(gallivm,
-                                           LLVMVectorType(LLVMInt32TypeInContext(gallivm->context), type.length), "");
+   LLVMTypeRef atom_res_elem_type = LLVMVectorType(LLVMInt32TypeInContext(gallivm->context), type.length);
+   LLVMValueRef atom_res = lp_build_alloca(gallivm, atom_res_elem_type, "");
 
    offset = LLVMBuildGEP(gallivm->builder, base_ptr, &offset, 1, "");
    struct lp_build_loop_state loop_state;
@@ -4567,14 +4568,14 @@ lp_build_do_atomic_soa(struct gallivm_state *gallivm,
                                 false);
    }
 
-   LLVMValueRef temp_res = LLVMBuildLoad(gallivm->builder, atom_res, "");
+   LLVMValueRef temp_res = LLVMBuildLoad2(gallivm->builder, atom_res_elem_type, atom_res, "");
    temp_res = LLVMBuildInsertElement(gallivm->builder, temp_res, data, loop_state.counter, "");
    LLVMBuildStore(gallivm->builder, temp_res, atom_res);
 
    lp_build_endif(&ifthen);
    lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, type.length),
                           NULL, LLVMIntUGE);
-   atomic_result[0] = LLVMBuildLoad(gallivm->builder, atom_res, "");
+   atomic_result[0] = LLVMBuildLoad2(gallivm->builder, atom_res_elem_type, atom_res, "");
 }
 
 static void
