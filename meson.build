@@ -646,9 +646,9 @@ elif not with_platform_x11
     _vdpau = 'disabled'
   endif
 elif not (with_gallium_r300 or with_gallium_r600 or with_gallium_radeonsi or
-          with_gallium_nouveau)
+          with_gallium_nouveau or with_gallium_d3d12)
   if _vdpau == 'enabled'
-    error('VDPAU state tracker requires at least one of the following gallium drivers: r300, r600, radeonsi, nouveau.')
+    error('VDPAU state tracker requires at least one of the following gallium drivers: r300, r600, radeonsi, nouveau, d3d12.')
   else
     _vdpau = 'disabled'
   endif
@@ -825,9 +825,9 @@ if not system_has_kms_drm
   else
     _va = 'disabled'
   endif
-elif not (with_gallium_r600 or with_gallium_radeonsi or with_gallium_nouveau)
+elif not (with_gallium_r600 or with_gallium_radeonsi or with_gallium_nouveau or with_gallium_d3d12)
   if _va == 'enabled'
-    error('VA state tracker requires at least one of the following gallium drivers: r600, radeonsi, nouveau.')
+    error('VA state tracker requires at least one of the following gallium drivers: r600, radeonsi, nouveau, d3d12.')
   else
     _va = 'disabled'
   endif
