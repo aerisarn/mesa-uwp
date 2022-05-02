@@ -44,6 +44,11 @@ struct raw_data_object {
    size_t data_size;
 };
 
+static struct raw_data_object *
+raw_data_object_create(struct vk_device *device,
+                       const void *key_data, size_t key_size,
+                       const void *data, size_t data_size);
+
 static bool
 raw_data_object_serialize(struct vk_pipeline_cache_object *object,
                           struct blob *blob)
@@ -54,6 +59,27 @@ raw_data_object_serialize(struct vk_pipeline_cache_object *object,
    blob_write_bytes(blob, data_obj->data, data_obj->data_size);
 
    return true;
+}
+
+static struct vk_pipeline_cache_object *
+raw_data_object_deserialize(struct vk_device *device,
+                            const void *key_data,
+                            size_t key_size,
+                            struct blob_reader *blob)
+{
+   /* We consume the entire blob_reader.  Each call to ops->deserialize()
+    * happens with a brand new blob reader for error checking anyway so we
+    * can assume the blob consumes the entire reader and we don't need to
+    * serialize the data size separately.
+    */
+   assert(blob->current < blob->end);
+   size_t data_size = blob->end - blob->current;
+   const void *data = blob_read_bytes(blob, data_size);
+
+   struct raw_data_object *data_obj =
+      raw_data_object_create(device, key_data, key_size, data, data_size);
+
+   return data_obj ? &data_obj->base : NULL;
 }
 
 static void
@@ -67,6 +93,7 @@ raw_data_object_destroy(struct vk_pipeline_cache_object *object)
 
 static const struct vk_pipeline_cache_object_ops raw_data_object_ops = {
    .serialize = raw_data_object_serialize,
+   .deserialize = raw_data_object_deserialize,
    .destroy = raw_data_object_destroy,
 };
 
@@ -527,18 +554,10 @@ vk_pipeline_cache_load(struct vk_pipeline_cache *cache,
       const struct vk_pipeline_cache_object_ops *ops =
          find_ops_for_type(cache->base.device->physical, type);
 
-      struct vk_pipeline_cache_object *object;
-      if (ops != NULL) {
-         object = vk_pipeline_cache_object_deserialize(cache,
-                                                       key_data, key_size,
-                                                       data, data_size, ops);
-      } else {
-         struct raw_data_object *data_obj =
-            raw_data_object_create(cache->base.device,
-                                   key_data, key_size,
-                                   data, data_size);
-         object = data_obj != NULL ? &data_obj->base : NULL;
-      }
+      struct vk_pipeline_cache_object *object =
+         vk_pipeline_cache_object_deserialize(cache,
+                                              key_data, key_size,
+                                              data, data_size, ops);
       if (object == NULL)
          continue;
 
