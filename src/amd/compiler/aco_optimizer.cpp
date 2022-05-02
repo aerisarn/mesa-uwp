@@ -949,12 +949,7 @@ propagate_constants_vop3p(opt_ctx& ctx, aco_ptr<Instruction>& instr, ssa_info& i
       /* opsel must point to lo for both halves */
       vop3p->opsel_lo &= ~(1 << i);
       vop3p->opsel_hi &= ~(1 << i);
-   } else if (const_lo == Operand::c16(0)) {
-      /* don't inline FP constants into integer instructions */
-      // TODO: check if negative integers are zero- or sign-extended
-      if (bits == 32 && const_hi.constantValue() > 64u)
-         return;
-
+   } else if (const_lo.constantValue() == const_hi.constantValue16(true)) {
       instr->operands[i] = const_hi;
 
       /* redirect opsel selection */
