@@ -2559,7 +2559,7 @@ static int si_shader_select_with_key(struct si_context *sctx, struct si_shader_c
    struct si_shader_selector *sel = state->cso;
    struct si_shader_selector *previous_stage_sel = NULL;
    struct si_shader *current = state->current;
-   struct si_shader *iter, *shader = NULL;
+   struct si_shader *shader = NULL;
    const SHADER_KEY_TYPE *zeroed_key = (SHADER_KEY_TYPE*)&zeroed;
 
    /* "opt" must be the last field and "inlined_uniform_values" must be the last field inside opt.
@@ -2620,10 +2620,13 @@ current_not_ready:
    const int max_inline_uniforms_variants = 5;
 
    /* Find the shader variant. */
-   for (iter = sel->first_variant; iter; iter = iter->next_variant) {
-      const SHADER_KEY_TYPE *iter_key = (const SHADER_KEY_TYPE *)&iter->key;
+   const unsigned cnt = sel->variants_count;
+   for (unsigned i = 0; i < cnt; i++) {
+      const SHADER_KEY_TYPE *iter_key = (const SHADER_KEY_TYPE *)&sel->keys[i];
 
       if (memcmp(iter_key, key, key_size_no_uniforms) == 0) {
+         struct si_shader *iter = sel->variants[i];
+
          /* Check the inlined uniform values separately, and count
           * the number of variants based on them.
           */
@@ -2662,7 +2665,7 @@ current_not_ready:
             return -1; /* skip the draw call */
          }
 
-         state->current = iter;
+         state->current = sel->variants[i];
          return 0;
       }
    }
@@ -2747,6 +2750,14 @@ current_not_ready:
       }
    }
 
+   if (sel->variants_count == sel->variants_max_count) {
+      sel->variants_max_count += 2;
+      sel->variants = (struct si_shader**)
+         realloc(sel->variants, sel->variants_max_count * sizeof(struct si_shader*));
+      sel->keys = (union si_shader_key*)
+         realloc(sel->keys, sel->variants_max_count * sizeof(union si_shader_key));
+   }
+
    /* Keep the reference to the 1st shader of merged shaders, so that
     * Gallium can't destroy it before we destroy the 2nd shader.
     *
@@ -2771,13 +2782,9 @@ current_not_ready:
 
       /* Add only after the ready fence was reset, to guard against a
        * race with si_bind_XX_shader. */
-      if (!sel->last_variant) {
-         sel->first_variant = shader;
-         sel->last_variant = shader;
-      } else {
-         sel->last_variant->next_variant = shader;
-         sel->last_variant = shader;
-      }
+      sel->variants[sel->variants_count] = shader;
+      sel->keys[sel->variants_count] = shader->key;
+      sel->variants_count++;
 
       /* Use the default (unoptimized) shader for now. */
       key = use_local_key_copy(key, &local_key, key_size);
@@ -2793,13 +2800,9 @@ current_not_ready:
    /* Reset the fence before adding to the variant list. */
    util_queue_fence_reset(&shader->ready);
 
-   if (!sel->last_variant) {
-      sel->first_variant = shader;
-      sel->last_variant = shader;
-   } else {
-      sel->last_variant->next_variant = shader;
-      sel->last_variant = shader;
-   }
+   sel->variants[sel->variants_count] = shader;
+   sel->keys[sel->variants_count] = shader->key;
+   sel->variants_count++;
 
    simple_mtx_unlock(&sel->mutex);
 
@@ -3092,6 +3095,11 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    sel->screen = sscreen;
    sel->compiler_ctx_state.debug = sctx->debug;
    sel->compiler_ctx_state.is_debug_context = sctx->is_debug;
+   sel->variants_max_count = 2;
+   sel->keys = (union si_shader_key *)
+      realloc(NULL, sel->variants_max_count * sizeof(union si_shader_key));
+   sel->variants = (struct si_shader **)
+      realloc(NULL, sel->variants_max_count * sizeof(struct si_shader *));
 
    if (state->type == PIPE_SHADER_IR_TGSI) {
       sel->nir = tgsi_to_nir(state->tokens, ctx->screen, true);
@@ -3292,7 +3300,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
       return;
 
    sctx->shader.vs.cso = sel;
-   sctx->shader.vs.current = sel ? sel->first_variant : NULL;
+   sctx->shader.vs.current = (sel && sel->variants_count) ? sel->variants[0] : NULL;
    sctx->num_vs_blit_sgprs = sel ? sel->info.base.vs.blit_sgprs_amd : 0;
    sctx->vs_uses_draw_id = sel ? sel->info.uses_drawid : false;
    sctx->fixed_func_tcs_shader.key.ge.mono.u.ff_tcs_inputs_to_copy = sel ? sel->info.outputs_written : 0;
@@ -3381,7 +3389,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
       return;
 
    sctx->shader.gs.cso = sel;
-   sctx->shader.gs.current = sel ? sel->first_variant : NULL;
+   sctx->shader.gs.current = (sel && sel->variants_count) ? sel->variants[0] : NULL;
    sctx->ia_multi_vgt_param_key.u.uses_gs = sel != NULL;
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_GEOMETRY);
@@ -3412,7 +3420,7 @@ static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
       return;
 
    sctx->shader.tcs.cso = sel;
-   sctx->shader.tcs.current = sel ? sel->first_variant : NULL;
+   sctx->shader.tcs.current = (sel && sel->variants_count) ? sel->variants[0] : NULL;
    sctx->shader.tcs.key.ge.part.tcs.epilog.invoc0_tess_factors_are_def =
       sel ? sel->info.tessfactors_are_def_in_all_invocs : 0;
    si_update_tess_uses_prim_id(sctx);
@@ -3435,7 +3443,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
       return;
 
    sctx->shader.tes.cso = sel;
-   sctx->shader.tes.current = sel ? sel->first_variant : NULL;
+   sctx->shader.tes.current = (sel && sel->variants_count) ? sel->variants[0] : NULL;
    sctx->ia_multi_vgt_param_key.u.uses_tess = sel != NULL;
    si_update_tess_uses_prim_id(sctx);
 
@@ -3509,7 +3517,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
       return;
 
    sctx->shader.ps.cso = sel;
-   sctx->shader.ps.current = sel ? sel->first_variant : NULL;
+   sctx->shader.ps.current = (sel && sel->variants_count) ? sel->variants[0] : NULL;
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_FRAGMENT);
    if (sel) {
@@ -3614,7 +3622,6 @@ static void si_destroy_shader_selector(struct pipe_context *ctx, void *cso)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_shader_selector *sel = (struct si_shader_selector *)cso;
-   struct si_shader *p = sel->first_variant, *c;
    enum pipe_shader_type type = pipe_shader_type_from_mesa(sel->stage);
 
    util_queue_drop_job(&sctx->screen->shader_compiler_queue, &sel->ready);
@@ -3624,10 +3631,8 @@ static void si_destroy_shader_selector(struct pipe_context *ctx, void *cso)
       sctx->shaders[type].current = NULL;
    }
 
-   while (p) {
-      c = p->next_variant;
-      si_delete_shader(sctx, p);
-      p = c;
+   for (unsigned i = 0; i < sel->variants_count; i++) {
+      si_delete_shader(sctx, sel->variants[i]);
    }
 
    if (sel->main_shader_part)
@@ -3638,6 +3643,9 @@ static void si_destroy_shader_selector(struct pipe_context *ctx, void *cso)
       si_delete_shader(sctx, sel->main_shader_part_es);
    if (sel->main_shader_part_ngg)
       si_delete_shader(sctx, sel->main_shader_part_ngg);
+
+   free(sel->keys);
+   free(sel->variants);
 
    util_queue_fence_destroy(&sel->ready);
    simple_mtx_destroy(&sel->mutex);

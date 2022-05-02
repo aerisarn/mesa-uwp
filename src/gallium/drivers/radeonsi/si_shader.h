@@ -473,8 +473,10 @@ struct si_shader_selector {
    gl_shader_stage stage;
 
    simple_mtx_t mutex;
-   struct si_shader *first_variant; /* immutable after the first variant */
-   struct si_shader *last_variant;  /* mutable */
+   union si_shader_key *keys;
+   unsigned variants_count;
+   unsigned variants_max_count;
+   struct si_shader **variants;
 
    /* The compiled NIR shader without a prolog and/or epilog (not
     * uploaded to a buffer object).
@@ -817,7 +819,6 @@ struct si_shader {
 
    struct si_shader_selector *selector;
    struct si_shader_selector *previous_stage_sel; /* for refcounting */
-   struct si_shader *next_variant;
 
    struct si_shader_part *prolog;
    struct si_shader *previous_stage; /* for GFX9 */
