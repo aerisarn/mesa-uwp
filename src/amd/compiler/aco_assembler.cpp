@@ -88,7 +88,7 @@ emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* inst
       instr->operands.pop_back();
       assert(instr->operands[1].isConstant());
       /* in case it's an inline constant, make it a literal */
-      instr->operands[1].setFixed(PhysReg(255));
+      instr->operands[1] = Operand::literal32(instr->operands[1].constantValue());
    }
 
    uint32_t opcode = ctx.opcode[(int)instr->opcode];
@@ -912,8 +912,8 @@ emit_long_jump(asm_context& ctx, SOPP_instruction* branch, bool backwards,
    instr.reset(bld.sop1(aco_opcode::s_getpc_b64, branch->definitions[0]).instr);
    emit_instruction(ctx, out, instr.get());
 
-   instr.reset(bld.sop2(aco_opcode::s_addc_u32, def_tmp_lo, op_tmp_lo, Operand::zero()).instr);
-   instr->operands[1].setFixed(PhysReg{255}); /* this operand has to be a literal */
+   instr.reset(
+      bld.sop2(aco_opcode::s_addc_u32, def_tmp_lo, op_tmp_lo, Operand::literal32(0)).instr);
    emit_instruction(ctx, out, instr.get());
    branch->pass_flags = out.size();
 

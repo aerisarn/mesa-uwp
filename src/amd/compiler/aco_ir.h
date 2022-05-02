@@ -644,6 +644,17 @@ public:
       return op;
    }
 
+   static Operand literal32(uint32_t v) noexcept
+   {
+      Operand op;
+      op.control_ = 0;
+      op.data_.i = v;
+      op.isConstant_ = true;
+      op.constSize = 2;
+      op.setFixed(PhysReg{255});
+      return op;
+   }
+
    explicit Operand(RegClass type) noexcept
    {
       isUndef_ = true;

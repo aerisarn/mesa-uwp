@@ -1973,10 +1973,7 @@ emit_set_mode(Builder& bld, float_mode new_mode, bool set_round, bool set_denorm
          bld.sopp(aco_opcode::s_denorm_mode, -1, new_mode.denorm);
    } else if (set_round || set_denorm) {
       /* "((size - 1) << 11) | register" (MODE is encoded as register 1) */
-      Instruction* instr =
-         bld.sopk(aco_opcode::s_setreg_imm32_b32, Operand::c8(new_mode.val), (7 << 11) | 1).instr;
-      /* has to be a literal */
-      instr->operands[0].setFixed(PhysReg{255});
+      bld.sopk(aco_opcode::s_setreg_imm32_b32, Operand::literal32(new_mode.val), (7 << 11) | 1);
    }
 }
 

@@ -4595,7 +4595,7 @@ apply_literals(opt_ctx& ctx, aco_ptr<Instruction>& instr)
          Operand op = instr->operands[i];
          unsigned bits = get_operand_size(instr, i);
          if (op.isTemp() && ctx.info[op.tempId()].is_literal(bits) && ctx.uses[op.tempId()] == 0) {
-            Operand literal = Operand::c32(ctx.info[op.tempId()].val);
+            Operand literal = Operand::literal32(ctx.info[op.tempId()].val);
             instr->format = withoutDPP(instr->format);
             if (instr->isVALU() && i > 0 && instr->format != Format::VOP3P)
                to_VOP3(ctx, instr);
