@@ -35,6 +35,14 @@ if with_ld_dynamic_list
   vdpau_link_depends += files('../dri-vdpau.dyn')
 endif
 
+link_with_libvdpau_gallium = [
+  libgalliumvlwinsys, libgalliumvl, libgallium,
+  libpipe_loader_static, libws_null, libwsw, libswdri, libswkmsdri,
+]
+
+if with_glx == 'xlib' or with_glx == 'gallium-xlib'
+  link_with_libvdpau_gallium += [libws_xlib]
+endif
 
 libvdpau_gallium = shared_library(
   'vdpau_gallium',
@@ -45,10 +53,7 @@ libvdpau_gallium = shared_library(
     inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_util, inc_gallium_winsys, inc_gallium_drivers,
   ],
   link_whole : [libvdpau_st],
-  link_with : [
-    libgalliumvlwinsys, libgalliumvl, libgallium,
-    libpipe_loader_static, libws_null, libwsw, libswdri, libswkmsdri,
-  ],
+  link_with : link_with_libvdpau_gallium,
   dependencies : [
     idep_mesautil,
     driver_r300, driver_r600, driver_radeonsi, driver_nouveau,
