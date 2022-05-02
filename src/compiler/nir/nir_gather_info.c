@@ -930,7 +930,8 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
       shader->info.tess.tcs_cross_invocation_outputs_read = 0;
    }
 
-   shader->info.writes_memory = shader->info.has_transform_feedback_varyings;
+   if (shader->info.stage != MESA_SHADER_FRAGMENT)
+      shader->info.writes_memory = shader->info.has_transform_feedback_varyings;
 
    void *dead_ctx = ralloc_context(NULL);
    nir_foreach_block(block, entrypoint) {
