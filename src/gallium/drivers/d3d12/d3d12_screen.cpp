@@ -737,6 +737,7 @@ d3d12_destroy_screen(struct d3d12_screen *screen)
    slab_destroy_parent(&screen->transfer_pool);
    mtx_destroy(&screen->submit_mutex);
    mtx_destroy(&screen->descriptor_pool_mutex);
+   glsl_type_singleton_decref();
    FREE(screen);
 }
 
@@ -1308,5 +1309,6 @@ d3d12_init_screen(struct d3d12_screen *screen, IUnknown *adapter)
    if (!screen->opts.DoublePrecisionFloatShaderOps)
       screen->nir_options.lower_doubles_options = (nir_lower_doubles_options)~0;
 
+   glsl_type_singleton_init_or_ref();
    return true;
 }
