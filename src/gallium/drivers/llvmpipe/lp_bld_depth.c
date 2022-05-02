@@ -510,7 +510,7 @@ lp_build_occlusion_count(struct gallivm_state *gallivm,
           count = LLVMBuildZExt(builder, count, LLVMIntTypeInContext(context, 64), "");
        }
    }
-   newcount = LLVMBuildLoad(builder, counter, "origcount");
+   newcount = LLVMBuildLoad2(builder, LLVMTypeOf(count), counter, "origcount");
    newcount = LLVMBuildAdd(builder, newcount, count, "newcount");
    LLVMBuildStore(builder, newcount, counter);
 }
@@ -551,7 +551,8 @@ lp_build_depth_stencil_load_swizzled(struct gallivm_state *gallivm,
    struct lp_type zs_load_type = zs_type;
 
    zs_load_type.length = zs_load_type.length / 2;
-   load_ptr_type = LLVMPointerType(lp_build_vec_type(gallivm, zs_load_type), 0);
+   LLVMTypeRef zs_dst_type = lp_build_vec_type(gallivm, zs_load_type);
+   load_ptr_type = LLVMPointerType(zs_dst_type, 0);
 
    if (z_src_type.length == 4) {
       unsigned i;
@@ -590,14 +591,14 @@ lp_build_depth_stencil_load_swizzled(struct gallivm_state *gallivm,
    /* Load current z/stencil values from z/stencil buffer */
    zs_dst_ptr = LLVMBuildGEP(builder, depth_ptr, &depth_offset1, 1, "");
    zs_dst_ptr = LLVMBuildBitCast(builder, zs_dst_ptr, load_ptr_type, "");
-   zs_dst1 = LLVMBuildLoad(builder, zs_dst_ptr, "");
+   zs_dst1 = LLVMBuildLoad2(builder, zs_dst_type, zs_dst_ptr, "");
    if (is_1d) {
       zs_dst2 = lp_build_undef(gallivm, zs_load_type);
    }
    else {
       zs_dst_ptr = LLVMBuildGEP(builder, depth_ptr, &depth_offset2, 1, "");
       zs_dst_ptr = LLVMBuildBitCast(builder, zs_dst_ptr, load_ptr_type, "");
-      zs_dst2 = LLVMBuildLoad(builder, zs_dst_ptr, "");
+      zs_dst2 = LLVMBuildLoad2(builder, zs_dst_type, zs_dst_ptr, "");
    }
 
    *z_fb = LLVMBuildShuffleVector(builder, zs_dst1, zs_dst2,
