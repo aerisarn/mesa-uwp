@@ -4460,7 +4460,12 @@ static void
 bi_lower_terminal_block(bi_context *ctx, bi_block *block)
 {
         bi_builder b = bi_init_builder(ctx, bi_after_block(block));
-        bi_nop(&b);
+
+        /* Ensure the instruction is not dead code eliminated. XXX: This is a
+         * bit of a hack.
+         */
+        bi_instr *I = bi_nop(&b);
+        I->flow = 0xF;
 }
 
 static void
