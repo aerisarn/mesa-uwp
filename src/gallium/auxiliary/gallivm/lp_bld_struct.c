@@ -134,15 +134,7 @@ lp_build_pointer_get(LLVMBuilderRef builder,
                      LLVMValueRef ptr,
                      LLVMValueRef index)
 {
-   LLVMValueRef element_ptr;
-   LLVMValueRef res;
-   assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
-   element_ptr = LLVMBuildGEP(builder, ptr, &index, 1, "");
-   res = LLVMBuildLoad(builder, element_ptr, "");
-#ifdef DEBUG
-   lp_build_name(res, "%s[%s]", LLVMGetValueName(ptr), LLVMGetValueName(index));
-#endif
-   return res;
+   return lp_build_pointer_get_unaligned(builder, ptr, index, 0);
 }
 
 
@@ -157,7 +149,8 @@ lp_build_pointer_get_unaligned(LLVMBuilderRef builder,
    assert(LLVMGetTypeKind(LLVMTypeOf(ptr)) == LLVMPointerTypeKind);
    element_ptr = LLVMBuildGEP(builder, ptr, &index, 1, "");
    res = LLVMBuildLoad(builder, element_ptr, "");
-   LLVMSetAlignment(res, alignment);
+   if (alignment)
+      LLVMSetAlignment(res, alignment);
 #ifdef DEBUG
    lp_build_name(res, "%s[%s]", LLVMGetValueName(ptr), LLVMGetValueName(index));
 #endif
@@ -172,7 +165,7 @@ lp_build_pointer_set(LLVMBuilderRef builder,
                      LLVMValueRef value)
 {
    LLVMValueRef element_ptr;
-   element_ptr = LLVMBuildGEP(builder, ptr, &index, 1, "");
+   element_ptr = LLVMBuildGEP2(builder, LLVMTypeOf(value), ptr, &index, 1, "");
    LLVMBuildStore(builder, value, element_ptr);
 }
 
@@ -186,7 +179,7 @@ lp_build_pointer_set_unaligned(LLVMBuilderRef builder,
 {
    LLVMValueRef element_ptr;
    LLVMValueRef instr;
-   element_ptr = LLVMBuildGEP(builder, ptr, &index, 1, "");
+   element_ptr = LLVMBuildGEP2(builder, LLVMTypeOf(value), ptr, &index, 1, "");
    instr = LLVMBuildStore(builder, value, element_ptr);
    LLVMSetAlignment(instr, alignment);
 }
