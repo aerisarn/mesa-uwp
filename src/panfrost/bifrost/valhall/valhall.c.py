@@ -66,6 +66,10 @@ SKIP = set([
         "CLPER.v4u8",
 
         # VAR_TEX
+        "VAR_TEX_SINGLE",
+        "VAR_TEX_GATHER",
+        "VAR_TEX_GRADIENT",
+        "VAR_TEX_DUAL",
         "VAR_TEX_BUF_SINGLE",
         "VAR_TEX_BUF_GATHER",
         "VAR_TEX_BUF_GRADIENT",

@@ -220,3 +220,6 @@ c0 f1 00 00 10 c1 2f 08    BRANCHZI.eq.absolute.wait0 0x0, blend_descriptor_0.w1
 32 00 80 18 02 4c 68 08    ATOM.i32.slot0.aadd.wait0 @r12, r50, offset:0x0
 32 00 00 18 02 8c 69 08    ATOM1_RETURN.i32.slot0.ainc.wait0 @r12, r50, offset:0x0
 32 00 00 18 00 80 69 08    ATOM1_RETURN.i32.slot0.ainc.wait0 @, r50, offset:0x0
+82 00 80 15 b4 80 38 49    VAR_TEX_SINGLE.slot0.skip.sample_store.f.32.2d.zero.wait @r0:r1:r2:r3, u2, u0
+82 20 80 15 b4 80 38 09    VAR_TEX_SINGLE.slot0.skip.sample_store.f.32.2d.computed.wait0 @r0:r1:r2:r3, u2, u0
+82 20 80 1d 84 80 38 41    VAR_TEX_SINGLE.slot0.skip.sample_store.s.32.2d.computed.wait0126 @r0, u2, u0

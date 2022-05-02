@@ -2551,6 +2551,96 @@
     <src>Varying offset</src>
   </ins>
 
+  <ins name="VAR_TEX_SINGLE" title="Fused varying-texturing" opcode="0x138" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_IMM_F32.v2.f32 followed by TEX, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <shadow/>
+    <lod_mode/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
+  <ins name="VAR_TEX_GATHER" title="Fused varying-texturing" opcode="0x139" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_IMM_F32.v2.f32 followed by TEX, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <integer_coordinates/>
+    <fetch_component/>
+    <shadow/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
+  <ins name="VAR_TEX_GRADIENT" title="Fused varying-texturing" opcode="0x13A" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_IMM_F32.v2.f32 followed by TEX, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <shadow/>
+    <lod_bias_disable/>
+    <lod_clamp_disable/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
+  <ins name="VAR_TEX_DUAL" title="Fused varying-texturing" opcode="0x13F" unit="VT">
+    <desc>
+      Only works for FP32 varyings. Performance characteristics are similar
+      to LD_VAR_IMM_F32.v2.f32 followed by TEX_DUAL, using both V and T units.
+    </desc>
+    <slot/>
+    <skip/>
+    <sample_and_update/>
+    <register_type/>
+    <vartex_register_width/>
+    <dimension/>
+    <array_enable/>
+    <shadow/>
+    <lod_mode/>
+
+    <sr_write_count/>
+
+    <sr write="true"/>
+    <src size="64">Image to read from</src>
+    <src>Varying offset</src>
+  </ins>
+
   <ins name="FMA_RSCALE.f32" title="Fused floating-point multiply add with exponent bias" dests="1" opcode="0x160" unit="FMA">
     <desc>
       First calculates $A \cdot B + C$ and then biases the exponent by D. Used in
