@@ -211,8 +211,10 @@ nir_blend_logicop(
    nir_ssa_def *src, nir_ssa_def *dst)
 {
    unsigned bit_size = src->bit_size;
+
+   enum pipe_format format = options->format[rt];
    const struct util_format_description *format_desc =
-      util_format_description(options->format[rt]);
+      util_format_description(format);
 
    if (bit_size != 32) {
       src = nir_f2f32(b, src);
@@ -226,8 +228,15 @@ nir_blend_logicop(
    for (int i = 0; i < 4; ++i)
        bits[i] = format_desc->channel[i].size;
 
-   src = nir_format_float_to_unorm(b, src, bits);
-   dst = nir_format_float_to_unorm(b, dst, bits);
+   if (util_format_is_unorm(format)) {
+      src = nir_format_float_to_unorm(b, src, bits);
+      dst = nir_format_float_to_unorm(b, dst, bits);
+   } else if (util_format_is_snorm(format)) {
+      src = nir_format_float_to_snorm(b, src, bits);
+      dst = nir_format_float_to_snorm(b, dst, bits);
+   } else {
+      assert(util_format_is_pure_integer(format));
+   }
 
    nir_ssa_def *out = nir_logicop_func(b, options->logicop_func, src, dst);
 
@@ -239,7 +248,13 @@ nir_blend_logicop(
        out = nir_iand(b, out, nir_build_imm(b, 4, 32, mask));
    }
 
-   out = nir_format_unorm_to_float(b, out, bits);
+   if (util_format_is_unorm(format)) {
+      out = nir_format_unorm_to_float(b, out, bits);
+   } else if (util_format_is_snorm(format)) {
+      out = nir_format_snorm_to_float(b, out, bits);
+   } else {
+      assert(util_format_is_pure_integer(format));
+   }
 
    if (bit_size == 16)
       out = nir_f2f16(b, out);
