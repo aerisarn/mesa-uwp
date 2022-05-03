@@ -171,37 +171,6 @@ init_common_queue_state(struct anv_queue *queue, struct anv_batch *batch)
    genX(emit_l3_config)(batch, device, cfg);
    device->l3_config = cfg;
 #endif
-}
-
-static VkResult
-init_render_queue_state(struct anv_queue *queue)
-{
-   struct anv_device *device = queue->device;
-   uint32_t cmds[128];
-   struct anv_batch batch = {
-      .start = cmds,
-      .next = cmds,
-      .end = (void *) cmds + sizeof(cmds),
-   };
-
-   anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
-#if GFX_VER >= 9
-      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
-      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
-#endif
-      ps.PipelineSelection = _3D;
-   }
-
-#if GFX_VER == 9
-   anv_batch_write_reg(&batch, GENX(CACHE_MODE_1), cm1) {
-      cm1.FloatBlendOptimizationEnable = true;
-      cm1.FloatBlendOptimizationEnableMask = true;
-      cm1.MSCRAWHazardAvoidanceBit = true;
-      cm1.MSCRAWHazardAvoidanceBitMask = true;
-      cm1.PartialResolveDisableInVC = true;
-      cm1.PartialResolveDisableInVCMask = true;
-   }
-#endif
 
 #if GFX_VERx10 >= 125
    /* GEN:BUG:1607854226:
@@ -210,7 +179,7 @@ init_render_queue_state(struct anv_queue *queue)
     *  Fortunately, we always start the context off in 3D mode.
     */
    uint32_t mocs = device->isl_dev.mocs.internal;
-   anv_batch_emit(&batch, GENX(STATE_BASE_ADDRESS), sba) {
+   anv_batch_emit(batch, GENX(STATE_BASE_ADDRESS), sba) {
       sba.GeneralStateBaseAddress = (struct anv_address) { NULL, 0 };
       sba.GeneralStateBufferSize  = 0xfffff;
       sba.GeneralStateMOCS = mocs;
@@ -254,6 +223,37 @@ init_render_queue_state(struct anv_queue *queue)
       sba.BindlessSamplerStateMOCS = mocs;
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
       sba.BindlessSamplerStateBufferSize = 0;
+   }
+#endif
+}
+
+static VkResult
+init_render_queue_state(struct anv_queue *queue)
+{
+   struct anv_device *device = queue->device;
+   uint32_t cmds[128];
+   struct anv_batch batch = {
+      .start = cmds,
+      .next = cmds,
+      .end = (void *) cmds + sizeof(cmds),
+   };
+
+   anv_batch_emit(&batch, GENX(PIPELINE_SELECT), ps) {
+#if GFX_VER >= 9
+      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
+      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
+#endif
+      ps.PipelineSelection = _3D;
+   }
+
+#if GFX_VER == 9
+   anv_batch_write_reg(&batch, GENX(CACHE_MODE_1), cm1) {
+      cm1.FloatBlendOptimizationEnable = true;
+      cm1.FloatBlendOptimizationEnableMask = true;
+      cm1.MSCRAWHazardAvoidanceBit = true;
+      cm1.MSCRAWHazardAvoidanceBitMask = true;
+      cm1.PartialResolveDisableInVC = true;
+      cm1.PartialResolveDisableInVCMask = true;
    }
 #endif
 
