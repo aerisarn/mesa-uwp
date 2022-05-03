@@ -46,8 +46,12 @@ struct gallivm_state
    LLVMModuleRef module;
    LLVMExecutionEngineRef engine;
    LLVMTargetDataRef target;
+#if GALLIVM_USE_NEW_PASS == 0
    LLVMPassManagerRef passmgr;
+#if GALLIVM_HAVE_CORO == 1
    LLVMPassManagerRef cgpassmgr;
+#endif
+#endif
    LLVMContextRef context;
    LLVMBuilderRef builder;
    LLVMMCJITMemoryManagerRef memorymgr;

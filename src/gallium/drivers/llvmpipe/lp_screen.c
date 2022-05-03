@@ -215,7 +215,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return lscreen->use_tgsi ? 330 : 450;
    }
    case PIPE_CAP_COMPUTE:
-      return GALLIVM_HAVE_CORO;
+      return GALLIVM_COROUTINES;
    case PIPE_CAP_USER_VERTEX_BUFFERS:
       return 1;
    case PIPE_CAP_TGSI_TEXCOORD:
@@ -394,7 +394,7 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_TESS_CTRL:
    case PIPE_SHADER_TESS_EVAL:
       /* Tessellation shader needs llvm coroutines support */
-      if (!GALLIVM_HAVE_CORO || lscreen->use_tgsi)
+      if (!GALLIVM_COROUTINES || lscreen->use_tgsi)
          return 0;
       FALLTHROUGH;
    case PIPE_SHADER_VERTEX:

@@ -81,11 +81,18 @@
 #define LLVMInsertBasicBlock ILLEGAL_LLVM_FUNCTION
 #define LLVMCreateBuilder ILLEGAL_LLVM_FUNCTION
 
-#if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 15
+#define GALLIVM_HAVE_CORO 0
+#define GALLIVM_USE_NEW_PASS 1
+#elif LLVM_VERSION_MAJOR >= 8
 #define GALLIVM_HAVE_CORO 1
+#define GALLIVM_USE_NEW_PASS 0
 #else
 #define GALLIVM_HAVE_CORO 0
+#define GALLIVM_USE_NEW_PASS 0
 #endif
+
+#define GALLIVM_COROUTINES (GALLIVM_HAVE_CORO || GALLIVM_USE_NEW_PASS)
 
 /* LLVM is transitioning to "opaque pointers", and as such deprecates
  * LLVMBuildGEP, LLVMBuildCall, LLVMBuildLoad, replacing them with
