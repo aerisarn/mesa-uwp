@@ -484,7 +484,19 @@ GENX(pan_emit_tls)(const struct pan_tls_info *info,
                                 panfrost_get_stack_shift(info->tls.size);
 
                         cfg.tls_size = shift;
+#if PAN_ARCH >= 9
+                        /* For now, always use packed TLS addressing. This is
+                         * better for the cache and requires no fix up code in
+                         * the shader. We may need to revisit this someday for
+                         * OpenCL generic pointer support.
+                         */
+                        cfg.tls_address_mode = MALI_ADDRESS_MODE_PACKED;
+
+                        assert((info->tls.ptr & 4095) == 0);
+                        cfg.tls_base_pointer = info->tls.ptr >> 8;
+#else
                         cfg.tls_base_pointer = info->tls.ptr;
+#endif
                 }
 
                 if (info->wls.size) {
