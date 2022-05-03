@@ -54,6 +54,9 @@ gfx10_get_thread_trace_ctrl(struct radv_device *device, bool enable)
    if (device->physical_device->rad_info.chip_class == GFX10_3)
       thread_trace_ctrl |= S_008D1C_LOWATER_OFFSET(4);
 
+   if (device->physical_device->rad_info.has_sqtt_auto_flush_mode_bug)
+      thread_trace_ctrl |= S_008D1C_AUTO_FLUSH_MODE(1);
+
    return thread_trace_ctrl;
 }
 
