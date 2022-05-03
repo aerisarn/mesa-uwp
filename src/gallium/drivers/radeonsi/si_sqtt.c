@@ -461,7 +461,8 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
 
    si_cp_dma_wait_for_idle(sctx, cs);
 
-   si_pc_emit_spm_stop(cs, sctx->screen->info.never_stop_sq_perf_counters);
+   si_pc_emit_spm_stop(cs, sctx->screen->info.never_stop_sq_perf_counters,
+                       sctx->screen->info.never_send_perfcounter_stop);
 
    /* Make sure to wait-for-idle before stopping SQTT. */
    sctx->flags |=

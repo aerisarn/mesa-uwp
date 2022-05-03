@@ -1251,6 +1251,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_3d_cube_border_color_mipmap = info->has_graphics || info->family == CHIP_ARCTURUS;
    info->never_stop_sq_perf_counters = info->chip_class == GFX10 ||
                                        info->chip_class == GFX10_3;
+   info->never_send_perfcounter_stop = info->chip_class == GFX11;
    info->has_sqtt_rb_harvest_bug = (info->family == CHIP_DIMGREY_CAVEFISH ||
                                     info->family == CHIP_BEIGE_GOBY ||
                                     info->family == CHIP_YELLOW_CARP ||
