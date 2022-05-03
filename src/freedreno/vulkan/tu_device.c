@@ -176,6 +176,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .KHR_shader_integer_dot_product = true,
       .KHR_zero_initialize_workgroup_memory = true,
       .KHR_shader_non_semantic_info = true,
+      .KHR_synchronization2 = true,
 #ifndef TU_USE_KGSL
       .KHR_timeline_semaphore = true,
 #endif
@@ -626,7 +627,7 @@ tu_get_physical_device_features_1_3(struct tu_physical_device *pdevice,
    features->shaderTerminateInvocation           = true;
    features->subgroupSizeControl                 = true;
    features->computeFullSubgroups                = true;
-   features->synchronization2                    = false;
+   features->synchronization2                    = true;
    features->textureCompressionASTC_HDR          = false;
    features->shaderZeroInitializeWorkgroupMemory = true;
    features->dynamicRendering                    = false;
