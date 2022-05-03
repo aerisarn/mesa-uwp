@@ -427,8 +427,13 @@ pipeline_cache_upload_shared_data(struct v3dv_pipeline_cache *cache,
       return;
 
    pipeline_cache_lock(cache);
-   struct hash_entry *entry =
-      _mesa_hash_table_search(cache->cache, shared_data->sha1_key);
+   struct hash_entry *entry = NULL;
+
+   /* If this is being called from the disk cache, we already know that the
+    * entry is not on the hash table
+    */
+   if (!from_disk_cache)
+      entry = _mesa_hash_table_search(cache->cache, shared_data->sha1_key);
 
    if (entry) {
       pipeline_cache_unlock(cache);
