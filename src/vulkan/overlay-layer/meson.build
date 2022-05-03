@@ -26,7 +26,7 @@ overlay_spv = []
 foreach s : ['overlay.frag', 'overlay.vert']
   overlay_spv += custom_target(
     s + '.spv.h', input : s, output : s + '.spv.h',
-    command : [prog_glslang, '-V', '-x', '-o', '@OUTPUT@', '@INPUT@'])
+    command : [prog_glslang, '-V', '-x', '-o', '@OUTPUT@', '@INPUT@'] + glslang_quiet)
 endforeach
 
 vklayer_files = files(
