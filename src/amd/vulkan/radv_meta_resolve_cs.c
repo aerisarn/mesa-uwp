@@ -724,7 +724,7 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
                                     .layerCount = 1,
                                  },
                            },
-                           NULL);
+                           0, NULL);
 
       struct radv_image_view dest_iview;
       radv_image_view_init(&dest_iview, cmd_buffer->device,
@@ -742,7 +742,7 @@ radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer, struct radv_
                                     .layerCount = 1,
                                  },
                            },
-                           NULL);
+                           0, NULL);
 
       emit_resolve(cmd_buffer, &src_iview, &dest_iview, &(VkOffset2D){srcOffset.x, srcOffset.y},
                    &(VkOffset2D){dstOffset.x, dstOffset.y},
@@ -892,7 +892,7 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
                                  .layerCount = layer_count,
                               },
                         },
-                        NULL);
+                        0, NULL);
 
    struct radv_image_view tdst_iview;
    radv_image_view_init(&tdst_iview, cmd_buffer->device,
@@ -910,7 +910,7 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
                                  .layerCount = layer_count,
                               },
                         },
-                        NULL);
+                        0, NULL);
 
    emit_depth_stencil_resolve(cmd_buffer, &tsrc_iview, &tdst_iview,
                               &(VkExtent3D){fb->width, fb->height, layer_count}, aspects,

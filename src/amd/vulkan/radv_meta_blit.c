@@ -579,7 +579,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                                                    .baseArrayLayer = dst_array_slice,
                                                    .layerCount = 1},
                            },
-                           NULL);
+                           0, NULL);
       radv_image_view_init(&src_iview, cmd_buffer->device,
                            &(VkImageViewCreateInfo){
                               .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -592,7 +592,7 @@ blit_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *src_image,
                                                    .baseArrayLayer = src_array_slice,
                                                    .layerCount = 1},
                            },
-                           NULL);
+                           0, NULL);
       meta_emit_blit(cmd_buffer, src_image, &src_iview, src_image_layout, src_offset_0,
                      src_offset_1, dst_image, &dst_iview, dst_image_layout, dst_offset_0,
                      dst_offset_1, dst_box, sampler);

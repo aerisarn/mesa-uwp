@@ -504,7 +504,7 @@ radv_process_color_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_i
                                  .layerCount = 1,
                               },
                         },
-                        NULL);
+                        0, NULL);
 
    const VkRenderingAttachmentInfo color_att = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -765,7 +765,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
                                     .baseArrayLayer = subresourceRange->baseArrayLayer + s,
                                     .layerCount = 1},
             },
-            &(struct radv_image_view_extra_create_info){.enable_compression = true});
+            0, &(struct radv_image_view_extra_create_info){.enable_compression = true});
          radv_image_view_init(
             &store_iview, cmd_buffer->device,
             &(VkImageViewCreateInfo){
@@ -779,7 +779,7 @@ radv_decompress_dcc_compute(struct radv_cmd_buffer *cmd_buffer, struct radv_imag
                                     .baseArrayLayer = subresourceRange->baseArrayLayer + s,
                                     .layerCount = 1},
             },
-            &(struct radv_image_view_extra_create_info){.disable_compression = true});
+            0, &(struct radv_image_view_extra_create_info){.disable_compression = true});
 
          radv_meta_push_descriptor_set(
             cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,

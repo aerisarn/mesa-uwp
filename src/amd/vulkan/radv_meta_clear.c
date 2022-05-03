@@ -1414,7 +1414,7 @@ radv_clear_dcc_comp_to_single(struct radv_cmd_buffer *cmd_buffer,
                                  .baseArrayLayer = range->baseArrayLayer,
                                  .layerCount = layer_count},
          },
-         &(struct radv_image_view_extra_create_info){.disable_compression = true});
+         0, &(struct radv_image_view_extra_create_info){.disable_compression = true});
 
       radv_meta_push_descriptor_set(
          cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -1973,7 +1973,7 @@ radv_clear_image_layer(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
                                                 .baseArrayLayer = range->baseArrayLayer,
                                                 .layerCount = layer_count},
                         },
-                        NULL);
+                        0, NULL);
 
    VkClearAttachment clear_att = {
       .aspectMask = range->aspectMask,
@@ -2071,7 +2071,7 @@ radv_fast_clear_range(struct radv_cmd_buffer *cmd_buffer, struct radv_image *ima
                                  .layerCount = range->layerCount,
                               },
                         },
-                        NULL);
+                        0, NULL);
 
    VkClearRect clear_rect = {
       .rect =

@@ -314,7 +314,7 @@ radv_fmask_copy(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf
                                  .layerCount = 1,
                               },
                         },
-                        NULL);
+                        0, NULL);
 
    radv_image_view_init(&dst_iview, device,
                         &(VkImageViewCreateInfo){
@@ -331,7 +331,7 @@ radv_fmask_copy(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_blit2d_surf
                                  .layerCount = 1,
                               },
                         },
-                        NULL);
+                        0, NULL);
 
    radv_meta_push_descriptor_set(
       cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
