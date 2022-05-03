@@ -190,6 +190,16 @@ struct panfrost_compile_inputs {
         uint8_t raw_fmt_mask;
         unsigned nr_cbufs;
 
+        /* Used on Valhall.
+         *
+         * Bit mask of special desktop-only varyings (e.g VARYING_SLOT_TEX0)
+         * written by the previous stage (fragment shader) or written by this
+         * stage (vertex shader). Bits are slots from gl_varying_slot.
+         *
+         * For modern APIs (GLES or VK), this should be 0.
+         */
+        uint32_t fixed_varying_mask;
+
         union {
                 struct {
                         bool static_rt_conv;

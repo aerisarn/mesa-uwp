@@ -272,6 +272,9 @@ struct panfrost_fs_key {
 };
 
 struct panfrost_shader_key {
+        /* Valhall needs special handling for desktop GL varyings */
+        uint32_t fixed_varying_mask;
+
         /* If we need vertex shader keys, union it in */
         struct panfrost_fs_key fs;
 };
@@ -314,6 +317,12 @@ struct panfrost_shader_variants {
         unsigned variant_space;
 
         unsigned variant_count;
+
+        /* On vertex shaders, bit mask of special desktop-only varyings to link
+         * with the fragment shader. Used on Valhall to implement separable
+         * shaders for desktop GL.
+         */
+        uint32_t fixed_varying_mask;
 
         /* The current active variant */
         unsigned active_variant;

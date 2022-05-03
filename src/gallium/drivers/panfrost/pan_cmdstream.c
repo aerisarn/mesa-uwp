@@ -3360,9 +3360,15 @@ panfrost_emit_malloc_vertex(struct panfrost_batch *batch,
 
         pan_section_pack(job, MALLOC_VERTEX_JOB, ALLOCATION, cfg) {
                 if (secondary_shader) {
+                        unsigned v = vs->info.varyings.output_count;
+                        unsigned f = fs->info.varyings.input_count;
+                        unsigned slots = MAX2(v, f);
+                        slots += util_bitcount(fs->key.fixed_varying_mask);
+                        unsigned size = slots * 16;
+
                         /* Assumes 16 byte slots. We could do better. */
-                        cfg.vertex_packet_stride = vs->info.varyings.output_count * 16;
-                        cfg.vertex_attribute_stride = fs->info.varyings.input_count * 16;
+                        cfg.vertex_packet_stride = size + 16;
+                        cfg.vertex_attribute_stride = size;
                 } else {
                         /* Hardware requirement for "no varyings" */
                         cfg.vertex_packet_stride = 16;

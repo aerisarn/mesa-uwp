@@ -307,6 +307,13 @@ panfrost_create_shader_state(
         else
                 so->nir = cso->ir.nir;
 
+        /* Fix linkage early */
+        if (so->nir->info.stage == MESA_SHADER_VERTEX) {
+                so->fixed_varying_mask =
+                        (so->nir->info.outputs_written & BITFIELD_MASK(VARYING_SLOT_VAR0)) &
+                        ~VARYING_BIT_POS & ~VARYING_BIT_PSIZ;
+        }
+
         /* Precompile for shader-db if we need to */
         if (unlikely(dev->debug & PAN_DBG_PRECOMPILE)) {
                 struct panfrost_context *ctx = pan_context(pctx);
@@ -372,6 +379,7 @@ panfrost_build_key(struct panfrost_context *ctx,
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
         struct pipe_rasterizer_state *rast = (void *) ctx->rasterizer;
+        struct panfrost_shader_variants *vs = ctx->shader[MESA_SHADER_VERTEX];
 
         key->fs.nr_cbufs = fb->nr_cbufs;
 
@@ -397,6 +405,12 @@ panfrost_build_key(struct panfrost_context *ctx,
 
                         key->fs.rt_formats[i] = fmt;
                 }
+        }
+
+        /* Funny desktop GL varying lowering on Valhall */
+        if (dev->arch >= 9) {
+                assert(vs != NULL && "too early");
+                key->fixed_varying_mask = vs->fixed_varying_mask;
         }
 }
 
@@ -508,13 +522,20 @@ panfrost_update_shader_variant(struct panfrost_context *ctx,
         if (type == PIPE_SHADER_COMPUTE)
                 return;
 
+        /* We need linking information, defer this */
+        if (type == PIPE_SHADER_FRAGMENT && !ctx->shader[PIPE_SHADER_VERTEX])
+                return;
+
         /* Match the appropriate variant */
         signed variant = -1;
         struct panfrost_shader_variants *variants = ctx->shader[type];
 
         simple_mtx_lock(&variants->lock);
 
-        struct panfrost_shader_key key = { 0 };
+        struct panfrost_shader_key key = {
+                .fixed_varying_mask = variants->fixed_varying_mask
+        };
+
         panfrost_build_key(ctx, &key, variants->nir);
 
         for (unsigned i = 0; i < variants->variant_count; ++i) {
@@ -539,6 +560,10 @@ static void
 panfrost_bind_vs_state(struct pipe_context *pctx, void *hwcso)
 {
         panfrost_bind_shader_state(pctx, hwcso, PIPE_SHADER_VERTEX);
+
+        /* Fragment shaders are linked with vertex shaders */
+        struct panfrost_context *ctx = pan_context(pctx);
+        panfrost_update_shader_variant(ctx, PIPE_SHADER_FRAGMENT);
 }
 
 static void

@@ -284,6 +284,41 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
         bi_copy_component(b, instr, dest);
 }
 
+/*
+ * ABI: Special (desktop GL) slots come first, tightly packed. General varyings
+ * come later, sparsely packed. This handles both linked and separable shaders
+ * with a common code path, with minimal keying only for desktop GL. Each slot
+ * consumes 16 bytes (TODO: fp16, partial vectors).
+ */
+static unsigned
+bi_varying_base_bytes(bi_context *ctx, nir_intrinsic_instr *intr)
+{
+        nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+        uint32_t mask = ctx->inputs->fixed_varying_mask;
+
+        if (sem.location >= VARYING_SLOT_VAR0) {
+                unsigned nr_special = util_bitcount(mask);
+                unsigned general_index = (sem.location - VARYING_SLOT_VAR0);
+
+                return 16 * (nr_special + general_index);
+        } else {
+                return 16 * (util_bitcount(mask & BITFIELD_MASK(sem.location)));
+        }
+}
+
+/*
+ * Compute the offset in bytes of a varying with an immediate offset, adding the
+ * offset to the base computed above. Convenience method.
+ */
+static unsigned
+bi_varying_offset(bi_context *ctx, nir_intrinsic_instr *intr)
+{
+        nir_src *src = nir_get_io_offset_src(intr);
+        assert(nir_src_is_const(*src) && "assumes immediate offset");
+
+        return bi_varying_base_bytes(ctx, intr) + (nir_src_as_uint(*src) * 16);
+}
+
 static void
 bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -328,7 +363,8 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
         if (b->shader->malloc_idvs && immediate) {
                 /* Immediate index given in bytes. */
                 bi_ld_var_buf_imm_f32_to(b, dest, src0, regfmt, sample, update,
-                                         vecsize, imm_index * 16);
+                                         vecsize,
+                                         bi_varying_offset(b->shader, instr));
         } else if (immediate && smooth) {
                 I = bi_ld_var_imm_to(b, dest, src0, regfmt, sample, update,
                                      vecsize, imm_index);
@@ -339,24 +375,31 @@ bi_emit_load_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_index idx = bi_src_index(offset);
                 unsigned base = nir_intrinsic_base(instr);
 
-                if (base != 0)
-                        idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
-
                 if (b->shader->malloc_idvs) {
                         /* Index needs to be in bytes, but NIR gives the index
-                         * in slots. For now assume 16 bytes per slots.
-                         *
-                         * TODO: more complex linking?
+                         * in slots. For now assume 16 bytes per element.
                          */
-                        idx = bi_lshift_or_i32(b, idx, bi_zero(), bi_imm_u8(4));
-                        bi_ld_var_buf_f32_to(b, dest, src0, idx, regfmt, sample,
-                                             update, vecsize);
+                        bi_index idx_bytes = bi_lshift_or_i32(b, idx, bi_zero(), bi_imm_u8(4));
+                        unsigned vbase = bi_varying_base_bytes(b->shader, instr);
+
+                        if (vbase != 0)
+                                idx_bytes = bi_iadd_u32(b, idx, bi_imm_u32(vbase), false);
+
+                        bi_ld_var_buf_f32_to(b, dest, src0, idx_bytes, regfmt,
+                                             sample, update, vecsize);
                 } else if (smooth) {
+                        if (base != 0)
+                                idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
+
                         I = bi_ld_var_to(b, dest, src0, idx, regfmt, sample,
                                          update, vecsize);
                 } else {
-                        I = bi_ld_var_flat_to(b, dest, idx, BI_FUNCTION_NONE,
-                                              regfmt, vecsize);
+                        if (base != 0)
+                                idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
+
+                        I = bi_ld_var_flat_to(b, dest, idx,
+                                              BI_FUNCTION_NONE, regfmt,
+                                              vecsize);
                 }
         }
 
@@ -794,39 +837,6 @@ bifrost_nir_specialize_idvs(nir_builder *b, nir_instr *instr, void *data)
         return false;
 }
 
-/**
- * Computes the offset in bytes of a varying. This assumes VARYING_SLOT_POS is
- * mapped to location=0 and always present. This also assumes each slot
- * consumes 16 bytes, which is a worst-case (highp vec4). In the future, this
- * should be optimized to support fp16 and partial vectors. There are
- * nontrivial interactions with separable shaders, however.
- */
-static unsigned
-bi_varying_offset(nir_shader *nir, nir_intrinsic_instr *intr)
-{
-        nir_src *offset = nir_get_io_offset_src(intr);
-        assert(nir_src_is_const(*offset) && "no indirect varyings on Valhall");
-
-        unsigned loc = 0;
-        unsigned slot = nir_intrinsic_base(intr) + nir_src_as_uint(*offset);
-
-        nir_foreach_shader_out_variable(var, nir) {
-                if ((var->data.location == VARYING_SLOT_POS) ||
-                    (var->data.location == VARYING_SLOT_PSIZ))
-                        continue;
-
-                if (var->data.driver_location > slot)
-                        continue;
-
-                if (var->data.driver_location == slot)
-                        return loc;
-
-                loc += 16; // todo size
-        }
-
-        unreachable("Unlinked variable");
-}
-
 static void
 bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
 {
@@ -880,7 +890,7 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
                          bi_src_index(&instr->src[0]),
                          address, bi_word(address, 1),
                          varying ? BI_SEG_VARY : BI_SEG_POS,
-                         varying ? bi_varying_offset(b->shader->nir, instr) : 0);
+                         varying ? bi_varying_offset(b->shader, instr) : 0);
         } else if (immediate) {
                 bi_index address = bi_lea_attr_imm(b,
                                           bi_vertex_id(b), bi_instance_id(b),

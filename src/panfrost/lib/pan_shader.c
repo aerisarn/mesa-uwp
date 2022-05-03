@@ -42,6 +42,7 @@ GENX(pan_shader_get_compiler_options)(void)
 #endif
 }
 
+#if PAN_ARCH <= 7
 static enum pipe_format
 varying_format(nir_alu_type t, unsigned ncomps)
 {
@@ -157,6 +158,7 @@ collect_varyings(nir_shader *s, nir_variable_mode varying_mode,
                 *varying_count = MAX2(*varying_count, loc + sz);
         }
 }
+#endif
 
 #if PAN_ARCH >= 6
 static enum mali_register_file_format
@@ -230,8 +232,14 @@ GENX(pan_shader_compile)(nir_shader *s,
 
                 info->vs.writes_point_size =
                         s->info.outputs_written & (1 << VARYING_SLOT_PSIZ);
+
+#if PAN_ARCH >= 9
+                info->varyings.output_count =
+                        util_last_bit(s->info.outputs_written >> VARYING_SLOT_VAR0);
+#else
                 collect_varyings(s, nir_var_shader_out, info->varyings.output,
                                  &info->varyings.output_count);
+#endif
                 break;
         case MESA_SHADER_FRAGMENT:
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
@@ -286,8 +294,13 @@ GENX(pan_shader_compile)(nir_shader *s,
                 info->fs.reads_face =
                         (s->info.inputs_read & (1 << VARYING_SLOT_FACE)) ||
                         BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_FRONT_FACE);
+#if PAN_ARCH >= 9
+                info->varyings.output_count =
+                        util_last_bit(s->info.outputs_read >> VARYING_SLOT_VAR0);
+#else
                 collect_varyings(s, nir_var_shader_in, info->varyings.input,
                                  &info->varyings.input_count);
+#endif
                 break;
         case MESA_SHADER_COMPUTE:
                 info->wls_size = s->info.shared_size;
