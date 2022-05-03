@@ -206,13 +206,13 @@ nir_logicop_func(
 static nir_ssa_def *
 nir_blend_logicop(
    nir_builder *b,
-   nir_lower_blend_options options,
+   const nir_lower_blend_options *options,
    unsigned rt,
    nir_ssa_def *src, nir_ssa_def *dst)
 {
    unsigned bit_size = src->bit_size;
    const struct util_format_description *format_desc =
-      util_format_description(options.format[rt]);
+      util_format_description(options->format[rt]);
 
    if (bit_size != 32) {
       src = nir_f2f32(b, src);
@@ -229,7 +229,7 @@ nir_blend_logicop(
    src = nir_format_float_to_unorm(b, src, bits);
    dst = nir_format_float_to_unorm(b, dst, bits);
 
-   nir_ssa_def *out = nir_logicop_func(b, options.logicop_func, src, dst);
+   nir_ssa_def *out = nir_logicop_func(b, options->logicop_func, src, dst);
 
    if (bits[0] < 32) {
        nir_const_value mask[4];
@@ -261,13 +261,13 @@ nir_fsat_signed(nir_builder *b, nir_ssa_def *x)
 static nir_ssa_def *
 nir_blend(
    nir_builder *b,
-   nir_lower_blend_options options,
+   const nir_lower_blend_options *options,
    unsigned rt,
    nir_ssa_def *src, nir_ssa_def *src1, nir_ssa_def *dst)
 {
    /* Grab the blend constant ahead of time */
    nir_ssa_def *bconst;
-   if (options.scalar_blend_const) {
+   if (options->scalar_blend_const) {
       bconst = nir_vec4(b,
                         nir_load_blend_const_color_r_float(b),
                         nir_load_blend_const_color_g_float(b),
@@ -281,7 +281,7 @@ nir_blend(
       bconst = nir_f2f16(b, bconst);
 
    /* Fixed-point framebuffers require their inputs clamped. */
-   enum pipe_format format = options.format[rt];
+   enum pipe_format format = options->format[rt];
 
    /* From section 17.3.6 "Blending" of the OpenGL 4.5 spec:
     *
@@ -316,7 +316,7 @@ nir_blend(
    for (unsigned c = 0; c < 4; ++c) {
       /* Decide properties based on channel */
       nir_lower_blend_channel chan =
-         (c < 3) ? options.rt[rt].rgb : options.rt[rt].alpha;
+         (c < 3) ? options->rt[rt].rgb : options->rt[rt].alpha;
 
       nir_ssa_def *psrc = nir_channel(b, src, c);
       nir_ssa_def *pdst = nir_channel(b, dst, c);
@@ -342,7 +342,7 @@ nir_blend(
 static bool
 nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
 {
-   nir_lower_blend_options *options = data;
+   const nir_lower_blend_options *options = data;
    if (instr->type != nir_instr_type_intrinsic)
       return false;
 
@@ -389,10 +389,10 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    nir_ssa_def *blended = src;
 
    if (options->logicop_enable) {
-      blended = nir_blend_logicop(b, *options, rt, src, dst);
+      blended = nir_blend_logicop(b, options, rt, src, dst);
    } else if (!util_format_is_pure_integer(options->format[rt])) {
       assert(!util_format_is_scaled(options->format[rt]));
-      blended = nir_blend(b, *options, rt, src, options->src1, dst);
+      blended = nir_blend(b, options, rt, src, options->src1, dst);
    }
 
    /* Apply a colormask */
@@ -416,10 +416,12 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
  * This can be done by calling nir_lower_io_arrays_to_elements_no_indirect().
  */
 void
-nir_lower_blend(nir_shader *shader, nir_lower_blend_options options)
+nir_lower_blend(nir_shader *shader, const nir_lower_blend_options *options)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
    nir_shader_instructions_pass(shader, nir_lower_blend_instr,
-         nir_metadata_block_index | nir_metadata_dominance, &options);
+                                nir_metadata_block_index |
+                                nir_metadata_dominance,
+                                (void *)options);
 }

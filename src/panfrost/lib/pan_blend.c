@@ -695,7 +695,7 @@ GENX(pan_blend_create_shader)(const struct panfrost_device *dev,
 
         options.src1 = s_src[1];
 
-        NIR_PASS_V(b.shader, nir_lower_blend, options);
+        NIR_PASS_V(b.shader, nir_lower_blend, &options);
         nir_shader_instructions_pass(b.shader, pan_inline_blend_constants,
                         nir_metadata_block_index | nir_metadata_dominance,
                         (void *) state->constants);

@@ -920,7 +920,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
       };
 
       memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
-      NIR_PASS_V(nir, nir_lower_blend, opts);
+      NIR_PASS_V(nir, nir_lower_blend, &opts);
    } else if (key->blend.logicop_enable) {
       nir_lower_blend_options opts = {
          .format = { key->rt_formats[0] },
@@ -928,7 +928,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
          .logicop_func = key->blend.logicop_func,
       };
 
-      NIR_PASS_V(nir, nir_lower_blend, opts);
+      NIR_PASS_V(nir, nir_lower_blend, &opts);
    }
 
    if (stage == PIPE_SHADER_FRAGMENT)

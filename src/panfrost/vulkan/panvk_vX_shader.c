@@ -464,7 +464,7 @@ panvk_lower_blend(struct panfrost_device *pdev,
       nir_remove_dead_variables(nir, nir_var_shader_out, NULL);
 #endif
 
-      NIR_PASS_V(nir, nir_lower_blend, options);
+      NIR_PASS_V(nir, nir_lower_blend, &options);
 
       if (static_blend_constants) {
          const nir_const_value constants[4] = {
