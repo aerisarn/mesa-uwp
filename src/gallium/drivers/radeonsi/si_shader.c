@@ -1966,6 +1966,13 @@ static bool si_shader_select_vs_parts(struct si_screen *sscreen, struct ac_llvm_
    return si_get_vs_prolog(sscreen, compiler, shader, debug, shader, &shader->key.ge.part.vs.prolog);
 }
 
+void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *key)
+{
+   memset(key, 0, sizeof(*key));
+   key->tcs_epilog.wave32 = shader->wave_size == 32;
+   key->tcs_epilog.states = shader->key.ge.part.tcs.epilog;
+}
+
 /**
  * Select and compile (or reuse) TCS parts (epilog).
  */
@@ -1984,9 +1991,7 @@ static bool si_shader_select_tcs_parts(struct si_screen *sscreen, struct ac_llvm
 
    /* Get the epilog. */
    union si_shader_part_key epilog_key;
-   memset(&epilog_key, 0, sizeof(epilog_key));
-   epilog_key.tcs_epilog.wave32 = shader->wave_size == 32;
-   epilog_key.tcs_epilog.states = shader->key.ge.part.tcs.epilog;
+   si_get_tcs_epilog_key(shader, &epilog_key);
 
    shader->epilog = si_get_shader_part(sscreen, &sscreen->tcs_epilogs, MESA_SHADER_TESS_CTRL, false,
                                        &epilog_key, compiler, debug, si_llvm_build_tcs_epilog,

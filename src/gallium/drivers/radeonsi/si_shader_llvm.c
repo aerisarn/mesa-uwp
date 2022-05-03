@@ -1141,8 +1141,7 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
 
          /* TCS epilog */
          union si_shader_part_key tcs_epilog_key;
-         memset(&tcs_epilog_key, 0, sizeof(tcs_epilog_key));
-         tcs_epilog_key.tcs_epilog.states = shader->key.ge.part.tcs.epilog;
+         si_get_tcs_epilog_key(shader, &tcs_epilog_key);
          si_llvm_build_tcs_epilog(&ctx, &tcs_epilog_key);
          parts[3] = ctx.main_fn;
 
