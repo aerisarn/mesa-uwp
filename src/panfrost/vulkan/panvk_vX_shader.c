@@ -586,8 +586,11 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_all);
    NIR_PASS_V(nir, nir_opt_trivial_continues);
 
-   if (stage == MESA_SHADER_FRAGMENT)
+   if (stage == MESA_SHADER_FRAGMENT) {
+      /* This is required for nir_lower_blend */
+      NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
       panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
+   }
 
    NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, true, false);
    NIR_PASS_V(nir, nir_lower_explicit_io,
