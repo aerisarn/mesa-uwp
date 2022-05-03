@@ -38,8 +38,7 @@
 #define HALF_NEG_INF 0xfc00
 #define HALF_NAN 0x7e00
 
-#if defined(ANDROID) || defined (__MINGW32__)
-/* Android and mingw were missing this function, roll our own as a best effort. */
+#ifndef HAVE_ISSIGNALING
 static bool issignaling(float x)
 {
    uint32_t ui = fui(x);

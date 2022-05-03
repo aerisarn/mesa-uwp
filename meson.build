@@ -1438,6 +1438,11 @@ elif with_tools.contains('intel')
   error('Intel tools require the program_invocation_name variable')
 endif
 
+if cc.has_header_symbol('math.h', 'issignaling',
+                        args : '-D_GNU_SOURCE')
+   pre_args += '-DHAVE_ISSIGNALING'
+endif
+
 # MinGW provides a __builtin_posix_memalign function, but not a posix_memalign.
 # This means that this check will succeed, but then compilation will later
 # fail. MSVC doesn't have this function at all, so only check for it on
