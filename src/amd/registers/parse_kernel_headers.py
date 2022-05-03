@@ -7,51 +7,48 @@ from canonicalize import json_canonicalize
 
 gfx_versions = {
     'gfx6': [
-        None,
+        [],
         'asic_reg/gca/gfx_6_0_d.h',
         'asic_reg/gca/gfx_6_0_sh_mask.h',
         'asic_reg/gca/gfx_7_2_enum.h' # the file for gfx6 doesn't exist
     ],
     'gfx7': [
-        None,
+        [],
         'asic_reg/gca/gfx_7_2_d.h',
         'asic_reg/gca/gfx_7_2_sh_mask.h',
         'asic_reg/gca/gfx_7_2_enum.h'
     ],
     'gfx8': [
-        None,
+        [],
         'asic_reg/gca/gfx_8_0_d.h',
         'asic_reg/gca/gfx_8_0_sh_mask.h',
         'asic_reg/gca/gfx_8_0_enum.h',
     ],
     'gfx81': [
-        None,
+        [],
         'asic_reg/gca/gfx_8_1_d.h',
         'asic_reg/gca/gfx_8_1_sh_mask.h',
         'asic_reg/gca/gfx_8_1_enum.h',
     ],
     'gfx9': [
-        'vega10_ip_offset.h',
+        [0x00002000, 0x0000A000, 0, 0, 0], # IP_BASE GC_BASE
         'asic_reg/gc/gc_9_2_1_offset.h',
         'asic_reg/gc/gc_9_2_1_sh_mask.h',
         'vega10_enum.h',
     ],
     'gfx10': [
-        'navi14_ip_offset.h',
+        [0x00001260, 0x0000A000, 0x02402C00, 0, 0], # IP_BASE GC_BASE
         'asic_reg/gc/gc_10_1_0_offset.h',
         'asic_reg/gc/gc_10_1_0_sh_mask.h',
         'navi10_enum.h',
     ],
     'gfx103': [
-        'sienna_cichlid_ip_offset.h',
+        [0x00001260, 0x0000A000, 0x0001C000, 0x02402C00, 0], # IP_BASE GC_BASE
         'asic_reg/gc/gc_10_3_0_offset.h',
         'asic_reg/gc/gc_10_3_0_sh_mask.h',
         'navi10_enum.h', # the file for gfx10.3 doesn't exist
     ],
 }
-
-# match: static const struct IP_BASE GC_BASE ={ { { { 0x00001260, 0x0000A000, 0x02402C00, 0, 0 } },
-re_base = re.compile(r'^static const struct IP_BASE.*GC_BASE\s*=\s*{ { { { (\w+), (\w+), (\w+), (\w+), (\w+).*} },\n')
 
 # match: #define mmSDMA0_DEC_START                              0x0000
 # match: #define ixSDMA0_DEC_START                              0x0000
@@ -640,32 +637,20 @@ def bitcount(n):
     return bin(n).count('1')
 
 def generate_json(gfx_version, amd_headers_path):
+    gc_base_offsets = gfx_versions[gfx_version][0]
+
     # Add the path to the filenames
-    filenames = [amd_headers_path + '/' + a if a is not None else None for a in gfx_versions[gfx_version]]
-    old_gen = filenames[0] is None
+    filenames = [amd_headers_path + '/' + a for a in gfx_versions[gfx_version][1:]]
 
     # Open the files
     files = [open(a, 'r').readlines() if a is not None else None for a in filenames]
-
-    # Parse the ip_offset.h file
-    base_offsets = None
-    if not old_gen:
-        for line in files[0]:
-            r = re_base.match(line)
-            if r is not None:
-                base_offsets = r.groups()
-
-        if base_offsets is None:
-            print('Can\'t parse: ' + filenames[0], file=sys.stderr)
-            sys.exit(1)
-
 
     # Parse the offset.h file
     name = None
     offset = None
     added_offsets = set()
     regs = {}
-    for line in files[1]:
+    for line in files[0]:
         r = re_offset.match(line)
         if r is None:
             continue
@@ -673,15 +658,15 @@ def generate_json(gfx_version, amd_headers_path):
         if '_BASE_IDX' not in r.group('name'):
             name = r.group('name')
             offset = int(r.group('value'), 0) * 4
-            if not old_gen and r.group('mm') == 'mm':
+            if len(gc_base_offsets) > 0 and r.group('mm') == 'mm':
                 continue
         else:
             if name != r.group('name')[:-9]:
                 print('Warning: "{0}" not preceded by {1} but by {2}'.format(r.group('name'), r.group('name')[:-9], name))
                 continue
             idx = int(r.group('value'))
-            assert idx < len(base_offsets)
-            offset += int(base_offsets[idx], 0) * 4
+            assert idx < len(gc_base_offsets)
+            offset += gc_base_offsets[idx] * 4
 
         # Remove the _UMD suffix because it was mistakenly added to indicate it's for a User-Mode Driver
         if name[-4:] == '_UMD':
@@ -700,7 +685,7 @@ def generate_json(gfx_version, amd_headers_path):
     # Parse the sh_mask.h file
     shifts = {}
     masks = {}
-    for line in files[2]:
+    for line in files[1]:
         r = re_shift.match(line)
         is_shift = r is not None
         r = re_mask.match(line) if r is None else r
@@ -729,7 +714,7 @@ def generate_json(gfx_version, amd_headers_path):
     name = None
     enums = enums_missing[gfx_version] if gfx_version in enums_missing else {}
 
-    for line in files[3]:
+    for line in files[2]:
         r = re_enum_begin.match(line)
         if r is not None:
             name = r.group('name')
