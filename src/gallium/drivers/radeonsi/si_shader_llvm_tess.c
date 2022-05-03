@@ -683,8 +683,15 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
    unsigned stride, outer_comps, inner_comps, i, offset;
 
    /* Add a barrier before loading tess factors from LDS. */
-   if (!shader->key.ge.part.tcs.epilog.invoc0_tess_factors_are_def)
-      si_llvm_emit_barrier(ctx);
+   if (!shader->key.ge.part.tcs.epilog.invoc0_tess_factors_are_def) {
+      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
+
+      /* GFX6 only: s_barrier isn’t needed in TCS because an entire patch always fits into
+       * a single wave due to a bug workaround disallowing multi-wave HS workgroups.
+       */
+      if (ctx->screen->info.chip_class != GFX6)
+         ac_build_s_barrier(&ctx->ac);
+   }
 
    /* Do this only for invocation 0, because the tess levels are per-patch,
     * not per-vertex.

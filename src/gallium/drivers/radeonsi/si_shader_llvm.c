@@ -319,20 +319,6 @@ LLVMValueRef si_prolog_get_internal_bindings(struct si_shader_context *ctx)
    return list;
 }
 
-void si_llvm_emit_barrier(struct si_shader_context *ctx)
-{
-   /* GFX6 only (thanks to a hw bug workaround):
-    * The real barrier instruction isn’t needed, because an entire patch
-    * always fits into a single wave.
-    */
-   if (ctx->screen->info.chip_class == GFX6 && ctx->stage == MESA_SHADER_TESS_CTRL) {
-      ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
-      return;
-   }
-
-   ac_build_s_barrier(&ctx->ac);
-}
-
 /* Ensure that the esgs ring is declared.
  *
  * We declare it with 64KB alignment as a hint that the
