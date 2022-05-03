@@ -390,6 +390,12 @@ LLVMValueRef ac_build_phi(struct ac_llvm_context *ctx, LLVMTypeRef type, unsigne
 
 void ac_build_s_barrier(struct ac_llvm_context *ctx, gl_shader_stage stage)
 {
+   /* GFX6 only: s_barrier isn’t needed in TCS because an entire patch always fits into
+    * a single wave due to a bug workaround disallowing multi-wave HS workgroups.
+    */
+   if (ctx->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL)
+      return;
+
    ac_build_intrinsic(ctx, "llvm.amdgcn.s.barrier", ctx->voidt, NULL, 0, AC_FUNC_ATTR_CONVERGENT);
 }
 

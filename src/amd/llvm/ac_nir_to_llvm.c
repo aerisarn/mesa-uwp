@@ -2951,17 +2951,6 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx, const nir_intri
    return exit_waterfall(ctx, &wctx, res);
 }
 
-void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
-{
-   /* GFX6 only: s_barrier isn’t needed in TCS because an entire patch always fits into
-    * a single wave due to a bug workaround disallowing multi-wave HS workgroups.
-    */
-   if (ac->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL)
-      return;
-
-   ac_build_s_barrier(ac, stage);
-}
-
 static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)
 {
    LLVMValueRef cond;
@@ -3935,11 +3924,11 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          ac_build_waitcnt(&ctx->ac, wait_flags);
 
       if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP)
-         ac_emit_barrier(&ctx->ac, ctx->stage);
+         ac_build_s_barrier(&ctx->ac, ctx->stage);
       break;
    }
    case nir_intrinsic_control_barrier:
-      ac_emit_barrier(&ctx->ac, ctx->stage);
+      ac_build_s_barrier(&ctx->ac, ctx->stage);
       break;
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_shared_atomic_imin:
