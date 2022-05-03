@@ -3928,6 +3928,11 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    }
    case nir_intrinsic_control_barrier:
+      /* If output patches are wholly in one wave, we don't need a barrier. */
+      if (ctx->stage == MESA_SHADER_TESS_CTRL &&
+          ctx->ac.wave_size % ctx->info->tess.tcs_vertices_out == 0)
+         break;
+
       ac_build_s_barrier(&ctx->ac, ctx->stage);
       break;
    case nir_intrinsic_shared_atomic_add:

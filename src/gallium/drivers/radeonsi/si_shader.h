@@ -601,6 +601,7 @@ union si_shader_part_key {
    struct {
       struct si_tcs_epilog_bits states;
       unsigned wave32 : 1;
+      unsigned noop_s_barrier : 1;
    } tcs_epilog;
    struct {
       struct si_ps_prolog_bits states;

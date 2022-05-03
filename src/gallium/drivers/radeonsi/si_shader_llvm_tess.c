@@ -671,8 +671,8 @@ static void si_copy_tcs_inputs(struct si_shader_context *ctx)
    }
 }
 
-static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef rel_patch_id,
-                                  LLVMValueRef invocation_id,
+static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader_part_key *key,
+                                  LLVMValueRef rel_patch_id, LLVMValueRef invocation_id,
                                   LLVMValueRef tcs_out_current_patch_data_offset,
                                   LLVMValueRef invoc0_tf_outer[4], LLVMValueRef invoc0_tf_inner[2])
 {
@@ -685,7 +685,9 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
    /* Add a barrier before loading tess factors from LDS. */
    if (!shader->key.ge.part.tcs.epilog.invoc0_tess_factors_are_def) {
       ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
-      ac_build_s_barrier(&ctx->ac, ctx->stage);
+
+      if (!key->tcs_epilog.noop_s_barrier)
+         ac_build_s_barrier(&ctx->ac, ctx->stage);
    }
 
    /* Do this only for invocation 0, because the tess levels are per-patch,
@@ -1075,7 +1077,7 @@ void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_par
    for (unsigned i = 0; i < 6; i++)
       invoc0_tess_factors[i] = ac_get_arg(&ctx->ac, tess_factors[i]);
 
-   si_write_tess_factors(ctx, ac_get_arg(&ctx->ac, rel_patch_id),
+   si_write_tess_factors(ctx, key, ac_get_arg(&ctx->ac, rel_patch_id),
                          ac_get_arg(&ctx->ac, invocation_id),
                          ac_get_arg(&ctx->ac, tcs_out_current_patch_data_offset),
                          invoc0_tess_factors, invoc0_tess_factors + 4);

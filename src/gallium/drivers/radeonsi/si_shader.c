@@ -1971,6 +1971,14 @@ void si_get_tcs_epilog_key(struct si_shader *shader, union si_shader_part_key *k
    memset(key, 0, sizeof(*key));
    key->tcs_epilog.wave32 = shader->wave_size == 32;
    key->tcs_epilog.states = shader->key.ge.part.tcs.epilog;
+
+   /* If output patches are wholly in one wave, we don't need a barrier.
+    * The fixed-func TCS doesn't set tcs_vertices_out, but it won't use a barrier
+    * anyway because tess levels are always defined in all invocations there.
+    */
+   key->tcs_epilog.noop_s_barrier =
+      shader->selector->info.base.tess.tcs_vertices_out &&
+      shader->wave_size % shader->selector->info.base.tess.tcs_vertices_out == 0;
 }
 
 /**
