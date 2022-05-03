@@ -1558,7 +1558,7 @@ pipeline_check_spill_size(struct v3dv_pipeline *pipeline)
  * so it is assumed that the caller will prove a pointer that the
  * shader_variant will own.
  *
- * Creation doesn't include allocate a BD to store the content of qpu_insts,
+ * Creation doesn't include allocate a BO to store the content of qpu_insts,
  * as we will try to share the same bo for several shader variants. Also note
  * that qpu_ints being NULL is valid, for example if we are creating the
  * shader_variants from the cache, so we can just upload the assembly of all
