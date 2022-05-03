@@ -1161,7 +1161,8 @@ v3dv_cmd_buffer_ensure_array_state(struct v3dv_cmd_buffer *cmd_buffer,
                                    uint32_t *alloc_count,
                                    void **ptr);
 
-void v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer);
+void v3dv_cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer,
+                                   bool indexed, bool indirect);
 
 /* FIXME: only used on v3dv_cmd_buffer and v3dvx_cmd_buffer, perhaps move to a
  * cmd_buffer specific header?
@@ -1254,7 +1255,8 @@ struct v3dv_cmd_buffer_state {
     * process.
     */
    bool has_barrier;
-   bool has_bcl_barrier;
+   VkAccessFlags bcl_barrier_buffer_access;
+   VkAccessFlags bcl_barrier_image_access;
 
    /* Secondary command buffer state */
    struct {

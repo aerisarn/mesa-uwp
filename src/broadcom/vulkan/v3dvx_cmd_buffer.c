@@ -1631,7 +1631,8 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
     * job to enable MSAA. See cmd_buffer_restart_job_for_msaa_if_needed.
     */
    bool pending_barrier = false;
-   bool pending_bcl_barrier = false;
+   VkAccessFlags pending_bcl_barrier_buffer_access = 0;
+   VkAccessFlags pending_bcl_barrier_image_access = 0;
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       V3DV_FROM_HANDLE(v3dv_cmd_buffer, secondary, cmd_buffers[i]);
 
@@ -1667,7 +1668,10 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
             struct v3dv_job *primary_job = primary->state.job;
             if (!primary_job || secondary_job->serialize || pending_barrier) {
                const bool needs_bcl_barrier =
-                  secondary_job->needs_bcl_sync || pending_bcl_barrier;
+                  secondary_job->needs_bcl_sync ||
+                  pending_bcl_barrier_buffer_access ||
+                  pending_bcl_barrier_image_access;
+
                primary_job =
                   cmd_buffer_subpass_split_for_barrier(primary,
                                                        needs_bcl_barrier);
@@ -1709,13 +1713,16 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
             v3dv_job_clone_in_cmd_buffer(secondary_job, primary);
             if (pending_barrier) {
                secondary_job->serialize = true;
-               if (pending_bcl_barrier)
+               if (pending_bcl_barrier_buffer_access ||
+                   pending_bcl_barrier_image_access) {
                   secondary_job->needs_bcl_sync = true;
+               }
             }
          }
 
          pending_barrier = false;
-         pending_bcl_barrier = false;
+         pending_bcl_barrier_buffer_access = 0;
+         pending_bcl_barrier_image_access = 0;
       }
 
       /* If the secondary has recorded any vkCmdEndQuery commands, we need to
@@ -1727,14 +1734,21 @@ v3dX(cmd_buffer_execute_inside_pass)(struct v3dv_cmd_buffer *primary,
       /* If this secondary had any pending barrier state we will need that
        * barrier state consumed with whatever comes next in the primary.
        */
-      assert(secondary->state.has_barrier || !secondary->state.has_bcl_barrier);
+      assert(secondary->state.has_barrier ||
+             (!secondary->state.bcl_barrier_buffer_access &&
+              !secondary->state.bcl_barrier_image_access));
+
       pending_barrier = secondary->state.has_barrier;
-      pending_bcl_barrier = secondary->state.has_bcl_barrier;
+      pending_bcl_barrier_buffer_access =
+         secondary->state.bcl_barrier_buffer_access;
+      pending_bcl_barrier_image_access =
+         secondary->state.bcl_barrier_image_access;
    }
 
    if (pending_barrier) {
       primary->state.has_barrier = true;
-      primary->state.has_bcl_barrier |= pending_bcl_barrier;
+      primary->state.bcl_barrier_buffer_access |= pending_bcl_barrier_buffer_access;
+      primary->state.bcl_barrier_image_access |= pending_bcl_barrier_image_access;
    }
 }
 
