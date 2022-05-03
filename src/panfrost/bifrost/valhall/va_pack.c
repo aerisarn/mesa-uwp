@@ -976,7 +976,7 @@ va_lower_flow_control(bi_context *ctx)
          /* We may need to wait */
          if (I->op == BI_OPCODE_BARRIER)
             va_add_flow(ctx, I, VA_FLOW_WAIT);
-         else if (valhall_opcodes[I->op].nr_staging_dests > 0 || I->op == BI_OPCODE_BLEND)
+         else if (bi_opcode_props[I->op].message)
             va_add_flow(ctx, I, VA_FLOW_WAIT0);
 
          /* Lastly, we may need to reconverge. If we need reconvergence, it
