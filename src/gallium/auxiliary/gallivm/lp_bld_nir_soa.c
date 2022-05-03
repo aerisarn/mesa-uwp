@@ -2750,13 +2750,14 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
 
    bld.bld_base.shader = shader;
 
+   bld.scratch_size = ALIGN(shader->scratch_size, 8);
    if (shader->scratch_size) {
       bld.scratch_ptr = lp_build_array_alloca(gallivm,
                                               LLVMInt8TypeInContext(gallivm->context),
-                                              lp_build_const_int32(gallivm, shader->scratch_size * type.length),
+                                              lp_build_const_int32(gallivm, bld.scratch_size * type.length),
                                               "scratch");
    }
-   bld.scratch_size = shader->scratch_size;
+
    emit_prologue(&bld);
    lp_build_nir_llvm(&bld.bld_base, shader);
 
