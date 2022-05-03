@@ -387,46 +387,6 @@ err_free_sets:
 }
 
 static void
-panvk_set_buffer_desc(struct panvk_buffer_desc *bdesc,
-                      const VkDescriptorBufferInfo *pBufferInfo)
-{
-   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
-
-   bdesc->buffer = buffer;
-   bdesc->offset = pBufferInfo->offset;
-   bdesc->size = pBufferInfo->range;
-}
-
-static void
-panvk_per_arch(set_ubo_desc)(void *ubo,
-                             const VkDescriptorBufferInfo *pBufferInfo)
-{
-   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
-   mali_ptr ptr = panvk_buffer_gpu_ptr(buffer, pBufferInfo->offset);
-   size_t size = panvk_buffer_range(buffer, pBufferInfo->offset,
-                                    pBufferInfo->range);
-   panvk_per_arch(emit_ubo)(ptr, size, ubo);
-}
-
-static void
-panvk_set_ssbo_desc(struct panvk_descriptor_set *set,
-                    const struct panvk_descriptor_set_binding_layout *binding_layout,
-                    uint32_t idx, const VkDescriptorBufferInfo *pBufferInfo)
-{
-   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
-
-   void *desc = (char *)set->desc_bo->ptr.cpu +
-                binding_layout->desc_ubo_offset +
-                binding_layout->desc_ubo_stride * idx;
-
-   *(struct panvk_ssbo_addr *)desc = (struct panvk_ssbo_addr) {
-      .base_addr = panvk_buffer_gpu_ptr(buffer, pBufferInfo->offset),
-      .size = panvk_buffer_range(buffer, pBufferInfo->offset,
-                                         pBufferInfo->range),
-   };
-}
-
-static void
 panvk_set_sampler_desc(void *desc,
                        const VkDescriptorImageInfo *pImageInfo)
 {
@@ -531,6 +491,46 @@ panvk_set_img_buf_desc(struct panvk_device *dev,
                 elem * binding_layout->desc_ubo_stride;
 
    panvk_fill_bview_desc(desc, view);
+}
+
+static void
+panvk_per_arch(set_ubo_desc)(void *ubo,
+                             const VkDescriptorBufferInfo *pBufferInfo)
+{
+   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
+   mali_ptr ptr = panvk_buffer_gpu_ptr(buffer, pBufferInfo->offset);
+   size_t size = panvk_buffer_range(buffer, pBufferInfo->offset,
+                                    pBufferInfo->range);
+   panvk_per_arch(emit_ubo)(ptr, size, ubo);
+}
+
+static void
+panvk_set_buffer_desc(struct panvk_buffer_desc *bdesc,
+                      const VkDescriptorBufferInfo *pBufferInfo)
+{
+   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
+
+   bdesc->buffer = buffer;
+   bdesc->offset = pBufferInfo->offset;
+   bdesc->size = pBufferInfo->range;
+}
+
+static void
+panvk_set_ssbo_desc(struct panvk_descriptor_set *set,
+                    const struct panvk_descriptor_set_binding_layout *binding_layout,
+                    uint32_t idx, const VkDescriptorBufferInfo *pBufferInfo)
+{
+   VK_FROM_HANDLE(panvk_buffer, buffer, pBufferInfo->buffer);
+
+   void *desc = (char *)set->desc_bo->ptr.cpu +
+                binding_layout->desc_ubo_offset +
+                binding_layout->desc_ubo_stride * idx;
+
+   *(struct panvk_ssbo_addr *)desc = (struct panvk_ssbo_addr) {
+      .base_addr = panvk_buffer_gpu_ptr(buffer, pBufferInfo->offset),
+      .size = panvk_buffer_range(buffer, pBufferInfo->offset,
+                                         pBufferInfo->range),
+   };
 }
 
 static void
