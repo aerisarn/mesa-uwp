@@ -839,6 +839,9 @@ struct radv_device {
    /* Whether shader image 32-bit float atomics are enabled. */
    bool image_float32_atomics;
 
+   /* Whether 2D views of 3D image is enabled. */
+   bool image_2d_view_of_3d;
+
    /* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
    int force_aniso;
 

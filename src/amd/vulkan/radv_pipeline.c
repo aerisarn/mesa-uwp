@@ -3061,6 +3061,9 @@ radv_generate_pipeline_key(const struct radv_pipeline *pipeline, VkPipelineCreat
    key.disable_aniso_single_level = device->instance->disable_aniso_single_level &&
                                     device->physical_device->rad_info.chip_class < GFX8;
 
+   key.image_2d_view_of_3d = device->image_2d_view_of_3d &&
+                             device->physical_device->rad_info.chip_class == GFX9;
+
    return key;
 }
 

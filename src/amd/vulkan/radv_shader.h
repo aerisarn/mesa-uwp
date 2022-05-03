@@ -65,6 +65,7 @@ struct radv_pipeline_key {
    uint32_t adjust_frag_coord_z : 1;
    uint32_t disable_aniso_single_level : 1;
    uint32_t disable_sinking_load_input_fs : 1;
+   uint32_t image_2d_view_of_3d : 1;
 
    struct {
       uint32_t instance_rate_inputs;

@@ -3124,6 +3124,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool image_float32_atomics = false;
    bool vs_prologs = false;
    bool global_bo_list = false;
+   bool image_2d_view_of_3d = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -3190,6 +3191,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
             global_bo_list = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_2D_VIEW_OF_3D_FEATURES_EXT: {
+         const VkPhysicalDeviceImage2DViewOf3DFeaturesEXT *features = (const void *)ext;
+         if (features->image2DViewOf3D)
+            image_2d_view_of_3d = true;
+         break;
+      }
       default:
          break;
       }
@@ -3251,6 +3258,8 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->attachment_vrs_enabled = attachment_vrs_enabled;
 
    device->image_float32_atomics = image_float32_atomics;
+
+   device->image_2d_view_of_3d = image_2d_view_of_3d;
 
    radv_init_shader_arenas(device);
 

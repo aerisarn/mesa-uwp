@@ -5890,6 +5890,22 @@ get_image_coords(isel_context* ctx, const nir_intrinsic_instr* instr)
          coords[i] = emit_extract_vector(ctx, src0, i, v1);
    }
 
+   if (ctx->options->key.image_2d_view_of_3d &&
+       dim == GLSL_SAMPLER_DIM_2D && !is_array) {
+      /* The hw can't bind a slice of a 3D image as a 2D image, because it
+       * ignores BASE_ARRAY if the target is 3D. The workaround is to read
+       * BASE_ARRAY and set it as the 3rd address operand for all 2D images.
+       */
+      assert(ctx->options->chip_class == GFX9);
+      Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
+      Temp rsrc_word5 = emit_extract_vector(ctx, rsrc, 5, v1);
+      /* Extract the BASE_ARRAY field [0:12] from the descriptor. */
+      Temp first_layer =
+         bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), rsrc_word5,
+                  Operand::c32(0u), Operand::c32(13u));
+      coords.emplace_back(first_layer);
+   }
+
    if (instr->intrinsic == nir_intrinsic_bindless_image_load ||
        instr->intrinsic == nir_intrinsic_bindless_image_sparse_load ||
        instr->intrinsic == nir_intrinsic_bindless_image_store) {
