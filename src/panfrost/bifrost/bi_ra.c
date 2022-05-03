@@ -591,6 +591,14 @@ bi_register_allocate(bi_context *ctx)
                         if (spill_node == -1)
                                 unreachable("Failed to choose spill node\n");
 
+                        /* By default, we use packed TLS addressing on Valhall.
+                         * We cannot cross 16 byte boundaries with packed TLS
+                         * addressing. Align to ensure this doesn't happen. This
+                         * could be optimized a bit.
+                         */
+                        if (ctx->arch >= 9)
+                                spill_count = ALIGN_POT(spill_count, 16);
+
                         spill_count += bi_spill_register(ctx,
                                         bi_node_to_index(spill_node, bi_max_temp(ctx)),
                                         spill_count);
