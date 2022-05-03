@@ -388,7 +388,7 @@ LLVMValueRef ac_build_phi(struct ac_llvm_context *ctx, LLVMTypeRef type, unsigne
    return phi;
 }
 
-void ac_build_s_barrier(struct ac_llvm_context *ctx)
+void ac_build_s_barrier(struct ac_llvm_context *ctx, gl_shader_stage stage)
 {
    ac_build_intrinsic(ctx, "llvm.amdgcn.s.barrier", ctx->voidt, NULL, 0, AC_FUNC_ATTR_CONVERGENT);
 }
@@ -4019,7 +4019,7 @@ void ac_build_wg_wavescan_bottom(struct ac_llvm_context *ctx, struct ac_wg_scan 
 void ac_build_wg_wavescan(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
 {
    ac_build_wg_wavescan_top(ctx, ws);
-   ac_build_s_barrier(ctx);
+   ac_build_s_barrier(ctx, ws->stage);
    ac_build_wg_wavescan_bottom(ctx, ws);
 }
 
@@ -4081,7 +4081,7 @@ void ac_build_wg_scan_bottom(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
 void ac_build_wg_scan(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
 {
    ac_build_wg_scan_top(ctx, ws);
-   ac_build_s_barrier(ctx);
+   ac_build_s_barrier(ctx, ws->stage);
    ac_build_wg_scan_bottom(ctx, ws);
 }
 

@@ -1338,7 +1338,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
          if (ctx->stage == MESA_SHADER_VERTEX) {
             /* Wait for GS stores to finish. */
-            ac_build_s_barrier(&ctx->ac);
+            ac_build_s_barrier(&ctx->ac, ctx->stage);
 
             tmp = ac_build_gep0(&ctx->ac, ctx->esgs_ring, get_thread_id_in_tg(ctx));
             values[0] = LLVMBuildLoad(builder, tmp, "");
@@ -1384,7 +1384,7 @@ gfx10_ngg_gs_emit_prologue(struct radv_shader_context *ctx)
    LLVMBuildBr(ctx->ac.builder, merge_block);
    LLVMPositionBuilderAtEnd(ctx->ac.builder, merge_block);
 
-   ac_build_s_barrier(&ctx->ac);
+   ac_build_s_barrier(&ctx->ac, ctx->stage);
 }
 
 static void
@@ -1459,7 +1459,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef tmp, tmp2;
 
-   ac_build_s_barrier(&ctx->ac);
+   ac_build_s_barrier(&ctx->ac, ctx->stage);
 
    const LLVMValueRef tid = get_thread_id_in_tg(ctx);
    LLVMValueRef num_emit_threads = ngg_get_prim_cnt(ctx);
@@ -1522,6 +1522,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    /* Inclusive scan addition across the current wave. */
    LLVMValueRef vertlive = LLVMBuildLoad(builder, vertliveptr, "");
    struct ac_wg_scan vertlive_scan = {0};
+   vertlive_scan.stage = ctx->stage;
    vertlive_scan.op = nir_op_iadd;
    vertlive_scan.enable_reduce = true;
    vertlive_scan.enable_exclusive = true;
@@ -1564,7 +1565,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    }
    ac_build_endif(&ctx->ac, 5130);
 
-   ac_build_s_barrier(&ctx->ac);
+   ac_build_s_barrier(&ctx->ac, ctx->stage);
 
    /* Export primitive data */
    tmp = LLVMBuildICmp(builder, LLVMIntULT, tid, num_emit_threads, "");
@@ -2076,7 +2077,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
       /* GFX10 hang workaround - there needs to be an s_barrier before gs_alloc_req always */
       if (ctx.ac.chip_class == GFX10 && shader_count == 1)
-         ac_build_s_barrier(&ctx.ac);
+         ac_build_s_barrier(&ctx.ac, shaders[0]->info.stage);
    }
 
    for (int shader_idx = 0; shader_idx < shader_count; ++shader_idx) {
@@ -2149,7 +2150,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
           * and contains a barrier, it will wait there and then
           * reach s_endpgm.
           */
-         ac_emit_barrier(&ctx.ac, ctx.stage);
+         ac_build_s_barrier(&ctx.ac, shaders[shader_idx]->info.stage);
       }
 
       nir_foreach_shader_out_variable(variable, shaders[shader_idx]) scan_shader_output_decl(

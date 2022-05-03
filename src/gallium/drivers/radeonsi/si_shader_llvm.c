@@ -957,7 +957,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
           shader->key.ge.as_ngg && !shader->key.ge.as_es && !shader->key.ge.opt.ngg_culling) {
          /* GFX10 requires a barrier before gs_alloc_req due to a hw bug. */
          if (ctx->screen->info.chip_class == GFX10)
-            ac_build_s_barrier(&ctx->ac);
+            ac_build_s_barrier(&ctx->ac, ctx->stage);
 
          gfx10_ngg_build_sendmsg_gs_alloc_req(ctx);
 
@@ -1016,10 +1016,10 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          if (!shader->key.ge.opt.same_patch_vertices ||
              shader->selector->info.base.inputs_read &
              ~shader->selector->info.tcs_vgpr_only_inputs)
-            ac_build_s_barrier(&ctx->ac);
+            ac_build_s_barrier(&ctx->ac, ctx->stage);
       } else if (ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
          /* gfx10_ngg_gs_emit_prologue inserts the barrier for NGG. */
-         ac_build_s_barrier(&ctx->ac);
+         ac_build_s_barrier(&ctx->ac, ctx->stage);
       }
    }
 

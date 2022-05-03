@@ -2959,7 +2959,7 @@ void ac_emit_barrier(struct ac_llvm_context *ac, gl_shader_stage stage)
    if (ac->chip_class == GFX6 && stage == MESA_SHADER_TESS_CTRL)
       return;
 
-   ac_build_s_barrier(ac);
+   ac_build_s_barrier(ac, stage);
 }
 
 static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *instr)

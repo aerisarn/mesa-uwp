@@ -690,7 +690,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
        * a single wave due to a bug workaround disallowing multi-wave HS workgroups.
        */
       if (ctx->screen->info.chip_class != GFX6)
-         ac_build_s_barrier(&ctx->ac);
+         ac_build_s_barrier(&ctx->ac, ctx->stage);
    }
 
    /* Do this only for invocation 0, because the tess levels are per-patch,
