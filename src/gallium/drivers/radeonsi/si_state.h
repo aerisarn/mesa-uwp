@@ -599,6 +599,8 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes);
 unsigned si_calc_inst_pref_size(struct si_shader *shader);
 
 /* si_state_draw.cpp */
+void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
+                        unsigned offset, unsigned size);
 void si_set_vertex_buffer_descriptor(struct si_screen *sscreen, struct si_vertex_elements *velems,
                                      struct pipe_vertex_buffer *vb, unsigned element_index,
                                      uint32_t *out);

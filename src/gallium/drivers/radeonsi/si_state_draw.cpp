@@ -400,11 +400,87 @@ static unsigned si_conv_pipe_prim(unsigned mode)
    return prim_conv[mode];
 }
 
+template<chip_class GFX_VERSION>
+static void si_cp_dma_prefetch_inline(struct si_context *sctx, struct pipe_resource *buf,
+                                      unsigned offset, unsigned size)
+{
+   uint64_t address = si_resource(buf)->gpu_address + offset;
+
+   assert(GFX_VERSION >= GFX7);
+
+   if (GFX_VERSION >= GFX11)
+      size = MIN2(size, 32768 - SI_CPDMA_ALIGNMENT);
+
+   /* The prefetch address and size must be aligned, so that we don't have to apply
+    * the complicated hw bug workaround.
+    *
+    * The size should also be less than 2 MB, so that we don't have to use a loop.
+    * Callers shouldn't need to prefetch more than 2 MB.
+    */
+   assert(size % SI_CPDMA_ALIGNMENT == 0);
+   assert(address % SI_CPDMA_ALIGNMENT == 0);
+   assert(size < S_415_BYTE_COUNT_GFX6(~0u));
+
+   uint32_t header = S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2);
+   uint32_t command = S_415_BYTE_COUNT_GFX6(size);
+
+   if (GFX_VERSION >= GFX9) {
+      command |= S_415_DISABLE_WR_CONFIRM_GFX9(1);
+      header |= S_411_DST_SEL(V_411_NOWHERE);
+   } else {
+      command |= S_415_DISABLE_WR_CONFIRM_GFX6(1);
+      header |= S_411_DST_SEL(V_411_DST_ADDR_TC_L2);
+   }
+
+   struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   radeon_begin(cs);
+   radeon_emit(PKT3(PKT3_DMA_DATA, 5, 0));
+   radeon_emit(header);
+   radeon_emit(address);       /* SRC_ADDR_LO [31:0] */
+   radeon_emit(address >> 32); /* SRC_ADDR_HI [31:0] */
+   radeon_emit(address);       /* DST_ADDR_LO [31:0] */
+   radeon_emit(address >> 32); /* DST_ADDR_HI [31:0] */
+   radeon_emit(command);
+   radeon_end();
+}
+
+#if GFX_VER == 6 /* declare this function only once because it handles all chips. */
+
+void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
+                        unsigned offset, unsigned size)
+{
+   switch (sctx->chip_class) {
+   case GFX7:
+      si_cp_dma_prefetch_inline<GFX7>(sctx, buf, offset, size);
+      break;
+   case GFX8:
+      si_cp_dma_prefetch_inline<GFX8>(sctx, buf, offset, size);
+      break;
+   case GFX9:
+      si_cp_dma_prefetch_inline<GFX9>(sctx, buf, offset, size);
+      break;
+   case GFX10:
+      si_cp_dma_prefetch_inline<GFX10>(sctx, buf, offset, size);
+      break;
+   case GFX10_3:
+      si_cp_dma_prefetch_inline<GFX10_3>(sctx, buf, offset, size);
+      break;
+   case GFX11:
+      si_cp_dma_prefetch_inline<GFX11>(sctx, buf, offset, size);
+      break;
+   default:
+      break;
+   }
+}
+
+#endif
+
+template<chip_class GFX_VERSION>
 static void si_prefetch_shader_async(struct si_context *sctx, struct si_shader *shader)
 {
    struct pipe_resource *bo = &shader->bo->b.b;
 
-   si_cp_dma_prefetch(sctx, bo, 0, bo->width0);
+   si_cp_dma_prefetch_inline<GFX_VERSION>(sctx, bo, 0, bo->width0);
 }
 
 enum si_L2_prefetch_mode {
@@ -431,17 +507,17 @@ static void si_prefetch_shaders(struct si_context *sctx)
       if (HAS_TESS) {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_HS)
-               si_prefetch_shader_async(sctx, sctx->queued.named.hs);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
          }
 
          if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
       } else if (mode != PREFETCH_AFTER_DRAW) {
          if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
 
          if (mode == PREFETCH_BEFORE_DRAW)
             return;
@@ -450,31 +526,31 @@ static void si_prefetch_shaders(struct si_context *sctx)
       if (HAS_TESS) {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_HS)
-               si_prefetch_shader_async(sctx, sctx->queued.named.hs);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
          }
 
          if ((HAS_GS || NGG) && mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
          if (!NGG && mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
       } else if (HAS_GS || NGG) {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_GS)
-               si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
          }
 
          if (!NGG && mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
       } else {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_VS)
-               si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
@@ -486,37 +562,37 @@ static void si_prefetch_shaders(struct si_context *sctx)
       if (HAS_TESS) {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_LS)
-               si_prefetch_shader_async(sctx, sctx->queued.named.ls);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.ls);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
          }
 
          if (mask & SI_PREFETCH_HS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.hs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.hs);
          if (mask & SI_PREFETCH_ES)
-            si_prefetch_shader_async(sctx, sctx->queued.named.es);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.es);
          if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
          if (mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
       } else if (HAS_GS) {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_ES)
-               si_prefetch_shader_async(sctx, sctx->queued.named.es);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.es);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
          }
 
          if (mask & SI_PREFETCH_GS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.gs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.gs);
          if (mask & SI_PREFETCH_VS)
-            si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+            si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
       } else {
          if (mode != PREFETCH_AFTER_DRAW) {
             if (mask & SI_PREFETCH_VS)
-               si_prefetch_shader_async(sctx, sctx->queued.named.vs);
+               si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.vs);
 
             if (mode == PREFETCH_BEFORE_DRAW)
                return;
@@ -525,7 +601,7 @@ static void si_prefetch_shaders(struct si_context *sctx)
    }
 
    if (mask & SI_PREFETCH_PS)
-      si_prefetch_shader_async(sctx, sctx->queued.named.ps);
+      si_prefetch_shader_async<GFX_VERSION>(sctx, sctx->queued.named.ps);
 
    /* This must be cleared only when AFTER_DRAW is true. */
    sctx->prefetch_L2_mask = 0;
