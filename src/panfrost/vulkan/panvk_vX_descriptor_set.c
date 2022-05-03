@@ -232,6 +232,11 @@ err_free_bindings:
    return vk_error(device, result);
 }
 
+static void
+panvk_write_sampler_desc_raw(struct panvk_descriptor_set *set,
+                             uint32_t binding, uint32_t elem,
+                             struct panvk_sampler *sampler);
+
 static VkResult
 panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
                                       struct panvk_descriptor_pool *pool,
@@ -312,16 +317,6 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
          goto err_free_set;
    }
 
-   for (unsigned i = 0; i < layout->binding_count; i++) {
-      if (!layout->bindings[i].immutable_samplers)
-         continue;
-
-      for (unsigned j = 0; j < layout->bindings[i].array_size; j++) {
-         set->descs[layout->bindings[i].desc_idx].image.sampler =
-            layout->bindings[i].immutable_samplers[j];
-      }
-   }
-
    if (layout->desc_ubo_size) {
       set->desc_bo = panfrost_bo_create(&device->physical_device->pdev,
                                         layout->desc_ubo_size,
@@ -334,6 +329,17 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
       panvk_per_arch(emit_ubo)(set->desc_bo->ptr.gpu,
                                layout->desc_ubo_size,
                                &ubos[layout->desc_ubo_index]);
+   }
+
+   for (unsigned i = 0; i < layout->binding_count; i++) {
+      if (!layout->bindings[i].immutable_samplers)
+         continue;
+
+      for (unsigned j = 0; j < layout->bindings[i].array_size; j++) {
+         struct panvk_sampler *sampler =
+            layout->bindings[i].immutable_samplers[j];
+         panvk_write_sampler_desc_raw(set, i, j, sampler);
+      }
    }
 
    *out_set = set;
@@ -399,6 +405,20 @@ panvk_desc_ubo_data(struct panvk_descriptor_set *set,
 }
 
 static void
+panvk_write_sampler_desc_raw(struct panvk_descriptor_set *set,
+                             uint32_t binding, uint32_t elem,
+                             struct panvk_sampler *sampler)
+{
+   const struct panvk_descriptor_set_binding_layout *binding_layout =
+      &set->layout->bindings[binding];
+
+   struct mali_sampler_packed *set_samplers = set->samplers;
+   uint32_t sampler_idx = binding_layout->sampler_idx + elem;
+
+   memcpy(&set_samplers[sampler_idx], &sampler->desc, sizeof(sampler->desc));
+}
+
+static void
 panvk_write_sampler_desc(UNUSED struct panvk_device *dev,
                          struct panvk_descriptor_set *set,
                          uint32_t binding, uint32_t elem,
@@ -407,16 +427,11 @@ panvk_write_sampler_desc(UNUSED struct panvk_device *dev,
    const struct panvk_descriptor_set_binding_layout *binding_layout =
       &set->layout->bindings[binding];
 
-   struct mali_sampler_packed *set_samplers = set->samplers;
-   uint32_t sampler_idx = binding_layout->sampler_idx + elem;
-
-   struct panvk_sampler *sampler;
    if (binding_layout->immutable_samplers)
-      sampler = binding_layout->immutable_samplers[elem];
-   else
-      sampler = panvk_sampler_from_handle(pImageInfo->sampler);
+      return;
 
-   memcpy(&set_samplers[sampler_idx], &sampler->desc, sizeof(sampler->desc));
+   VK_FROM_HANDLE(panvk_sampler, sampler, pImageInfo->sampler);
+   panvk_write_sampler_desc_raw(set, binding, elem, sampler);
 }
 
 static void
