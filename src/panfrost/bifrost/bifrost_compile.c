@@ -52,6 +52,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"noidvs",    BIFROST_DBG_NOIDVS,       "Disable IDVS"},
         {"nosb",      BIFROST_DBG_NOSB,         "Disable scoreboarding"},
         {"nopreload", BIFROST_DBG_NOPRELOAD,    "Disable message preloading"},
+        {"spill",     BIFROST_DBG_SPILL,        "Test register spilling"},
         DEBUG_NAMED_VALUE_END
 };
 

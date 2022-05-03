@@ -314,6 +314,10 @@ bi_allocate_registers(bi_context *ctx, bool *success, bool full_regs)
                 full_regs ? BITFIELD64_MASK(64) :
                 (BITFIELD64_MASK(16) | (BITFIELD64_MASK(16) << 48));
 
+        /* To test spilling, mimic a small register file */
+        if (bifrost_debug & BIFROST_DBG_SPILL && !ctx->inputs->is_blend)
+                default_affinity &= BITFIELD64_MASK(48) << 8;
+
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_dest(ins, d) {
                         unsigned dest = bi_get_node(ins->dest[d]);
