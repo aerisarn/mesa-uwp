@@ -320,6 +320,7 @@ struct v3dv_pipeline_cache_stats {
    uint32_t miss;
    uint32_t hit;
    uint32_t count;
+   uint32_t on_disk_hit;
 };
 
 /* Equivalent to gl_shader_stage, but including the coordinate shaders
