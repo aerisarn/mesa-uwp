@@ -953,15 +953,10 @@ panfrost_emit_images(struct panfrost_batch *batch, enum pipe_shader_type stage)
                  *
                  * Similar concerns apply to 3D textures.
                  */
-                if (view.base.target == PIPE_BUFFER) {
+                if (view.base.target == PIPE_BUFFER)
                         view.base.target = PIPE_BUFFER;
-                } else {
+                else
                         view.base.target = PIPE_TEXTURE_2D_ARRAY;
-
-                        /* Hardware limitation */
-                        if (view.base.u.tex.first_level != 0)
-                                unreachable("TODO: mipmaps special handling");
-                }
 
                 panfrost_update_sampler_view(&view, &ctx->base);
                 out[i] = view.bifrost_descriptor;
