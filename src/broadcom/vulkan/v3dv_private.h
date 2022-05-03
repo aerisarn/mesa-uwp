@@ -1692,6 +1692,8 @@ struct v3dv_pipeline_layout {
 
    uint32_t dynamic_offset_count;
    uint32_t push_constant_size;
+
+   unsigned char sha1[20];
 };
 
 /*
@@ -1906,7 +1908,7 @@ struct v3dv_pipeline {
 
    struct v3dv_pipeline_shared_data *shared_data;
 
-   /* It is the combined stages sha1, plus the pipeline key sha1. */
+   /* It is the combined stages sha1, layout sha1, plus the pipeline key sha1. */
    unsigned char sha1[20];
 
    /* In general we can reuse v3dv_device->default_attribute_float, so note

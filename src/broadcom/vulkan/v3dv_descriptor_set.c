@@ -284,6 +284,36 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_device *device,
    return reloc;
 }
 
+#define SHA1_UPDATE_VALUE(ctx, x) _mesa_sha1_update(ctx, &(x), sizeof(x));
+
+static void
+sha1_update_descriptor_set_binding_layout(struct mesa_sha1 *ctx,
+                                          const struct v3dv_descriptor_set_binding_layout *layout)
+{
+   SHA1_UPDATE_VALUE(ctx, layout->type);
+   SHA1_UPDATE_VALUE(ctx, layout->array_size);
+   SHA1_UPDATE_VALUE(ctx, layout->descriptor_index);
+   SHA1_UPDATE_VALUE(ctx, layout->dynamic_offset_count);
+   SHA1_UPDATE_VALUE(ctx, layout->dynamic_offset_index);
+   SHA1_UPDATE_VALUE(ctx, layout->descriptor_offset);
+   SHA1_UPDATE_VALUE(ctx, layout->immutable_samplers_offset);
+}
+
+static void
+sha1_update_descriptor_set_layout(struct mesa_sha1 *ctx,
+                                  const struct v3dv_descriptor_set_layout *layout)
+{
+   SHA1_UPDATE_VALUE(ctx, layout->flags);
+   SHA1_UPDATE_VALUE(ctx, layout->binding_count);
+   SHA1_UPDATE_VALUE(ctx, layout->shader_stages);
+   SHA1_UPDATE_VALUE(ctx, layout->descriptor_count);
+   SHA1_UPDATE_VALUE(ctx, layout->dynamic_offset_count);
+
+   for (uint16_t i = 0; i < layout->binding_count; i++)
+      sha1_update_descriptor_set_binding_layout(ctx, &layout->binding[i]);
+}
+
+
 /*
  * As anv and tu already points:
  *
@@ -335,6 +365,16 @@ v3dv_CreatePipelineLayout(VkDevice _device,
    layout->push_constant_size = align(layout->push_constant_size, 4096);
 
    layout->dynamic_offset_count = dynamic_offset_count;
+
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+   for (unsigned s = 0; s < layout->num_sets; s++) {
+      sha1_update_descriptor_set_layout(&ctx, layout->set[s].layout);
+      _mesa_sha1_update(&ctx, &layout->set[s].dynamic_offset_start,
+                        sizeof(layout->set[s].dynamic_offset_start));
+   }
+   _mesa_sha1_update(&ctx, &layout->num_sets, sizeof(layout->num_sets));
+   _mesa_sha1_final(&ctx, layout->sha1);
 
    *pPipelineLayout = v3dv_pipeline_layout_to_handle(layout);
 

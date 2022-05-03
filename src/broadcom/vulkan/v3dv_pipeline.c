@@ -1479,6 +1479,11 @@ pipeline_hash_graphics(const struct v3dv_pipeline *pipeline,
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
 
+   if (pipeline->layout) {
+      _mesa_sha1_update(&ctx, &pipeline->layout->sha1,
+                        sizeof(pipeline->layout->sha1));
+   }
+
    /* We need to include all shader stages in the sha1 key as linking may modify
     * the shader code in any stage. An alternative would be to use the
     * serialized NIR, but that seems like an overkill.
@@ -1506,6 +1511,11 @@ pipeline_hash_compute(const struct v3dv_pipeline *pipeline,
 {
    struct mesa_sha1 ctx;
    _mesa_sha1_init(&ctx);
+
+   if (pipeline->layout) {
+      _mesa_sha1_update(&ctx, &pipeline->layout->sha1,
+                        sizeof(pipeline->layout->sha1));
+   }
 
    _mesa_sha1_update(&ctx, pipeline->cs->shader_sha1,
                      sizeof(pipeline->cs->shader_sha1));
