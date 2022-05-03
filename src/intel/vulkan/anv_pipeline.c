@@ -2706,6 +2706,8 @@ anv_pipeline_compile_ray_tracing(struct anv_ray_tracing_pipeline *pipeline,
          return vk_error(pipeline, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
 
+      stages[i].nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
+
       anv_pipeline_lower_nir(&pipeline->base, pipeline_ctx, &stages[i],
                              layout, false /* use_primitive_replication */);
 
@@ -2885,7 +2887,7 @@ anv_device_init_rt_shaders(struct anv_device *device)
       nir_shader *trampoline_nir =
          brw_nir_create_raygen_trampoline(device->physical->compiler, tmp_ctx);
 
-      trampoline_nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
+      trampoline_nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_16;
 
       struct anv_pipeline_bind_map bind_map = {
          .surface_count = 0,
@@ -2942,6 +2944,8 @@ anv_device_init_rt_shaders(struct anv_device *device)
       void *tmp_ctx = ralloc_context(NULL);
       nir_shader *trivial_return_nir =
          brw_nir_create_trivial_return_shader(device->physical->compiler, tmp_ctx);
+
+      trivial_return_nir->info.subgroup_size = SUBGROUP_SIZE_REQUIRE_8;
 
       NIR_PASS_V(trivial_return_nir, brw_nir_lower_rt_intrinsics, device->info);
 

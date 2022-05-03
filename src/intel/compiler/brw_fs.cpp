@@ -7783,7 +7783,9 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
    bool has_spilled = false;
 
    uint8_t simd_size = 0;
-   if (!INTEL_DEBUG(DEBUG_NO8)) {
+   if ((shader->info.subgroup_size == SUBGROUP_SIZE_VARYING ||
+        shader->info.subgroup_size == SUBGROUP_SIZE_REQUIRE_8) &&
+       !INTEL_DEBUG(DEBUG_NO8)) {
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base, shader,
                           8, debug_enabled);
@@ -7801,7 +7803,9 @@ compile_single_bs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if (!has_spilled && !INTEL_DEBUG(DEBUG_NO16)) {
+   if ((shader->info.subgroup_size == SUBGROUP_SIZE_VARYING ||
+        shader->info.subgroup_size == SUBGROUP_SIZE_REQUIRE_16) &&
+       !has_spilled && !INTEL_DEBUG(DEBUG_NO16)) {
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader,
                            16, debug_enabled);
