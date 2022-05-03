@@ -1497,7 +1497,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
 
 static mali_ptr
 panfrost_emit_shared_memory(struct panfrost_batch *batch,
-                            const struct pipe_grid_info *info)
+                            const struct pipe_grid_info *grid)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -1506,42 +1506,36 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         struct panfrost_ptr t =
                 pan_pool_alloc_desc(&batch->pool.base, LOCAL_STORAGE);
 
-        pan_pack(t.cpu, LOCAL_STORAGE, ls) {
-                unsigned wls_single_size =
-                        util_next_power_of_two(MAX2(ss->info.wls_size, 128));
-
-                if (ss->info.wls_size) {
-                        ls.wls_instances =
-                                util_next_power_of_two(info->grid[0]) *
-                                util_next_power_of_two(info->grid[1]) *
-                                util_next_power_of_two(info->grid[2]);
-
-                        ls.wls_size_scale = util_logbase2(wls_single_size) + 1;
-
-                        unsigned wls_size = wls_single_size * ls.wls_instances * dev->core_count;
-
-                        ls.wls_base_pointer =
-                                (panfrost_batch_get_shared_memory(batch,
-                                                                  wls_size,
-                                                                  1))->ptr.gpu;
-                } else {
-                        ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
-                }
-
-                if (ss->info.tls_size) {
-                        unsigned shift =
-                                panfrost_get_stack_shift(ss->info.tls_size);
-                        struct panfrost_bo *bo =
-                                panfrost_batch_get_scratchpad(batch,
-                                                              ss->info.tls_size,
-                                                              dev->thread_tls_alloc,
-                                                              dev->core_count);
-
-                        ls.tls_size = shift;
-                        ls.tls_base_pointer = bo->ptr.gpu;
-                }
+        struct pan_tls_info info = {
+                .tls.size = ss->info.tls_size,
+                .wls.size = ss->info.wls_size,
+                .wls.dim.x = grid->grid[0],
+                .wls.dim.y = grid->grid[1],
+                .wls.dim.z = grid->grid[2],
         };
 
+        if (ss->info.tls_size) {
+                struct panfrost_bo *bo =
+                        panfrost_batch_get_scratchpad(batch,
+                                                      ss->info.tls_size,
+                                                      dev->thread_tls_alloc,
+                                                      dev->core_count);
+                info.tls.ptr = bo->ptr.gpu;
+        }
+
+        if (ss->info.wls_size) {
+                unsigned size =
+                        pan_wls_adjust_size(info.wls.size) *
+                        pan_wls_instances(&info.wls.dim) *
+                        dev->core_count;
+
+                struct panfrost_bo *bo =
+                        panfrost_batch_get_shared_memory(batch, size, 1);
+
+                info.wls.ptr = bo->ptr.gpu;
+        }
+
+        GENX(pan_emit_tls)(&info, t.cpu);
         return t.gpu;
 }
 
