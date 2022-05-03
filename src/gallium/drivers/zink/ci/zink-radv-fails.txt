@@ -10,37 +10,6 @@ KHR-GL46.sparse_texture_tests.InternalFormatQueries,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureAllocation,Fail
 KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
 
-#4562
-dEQP-GLES31.functional.image_load_store.3d.load_store.r32f_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.r32i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.r32ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba16f_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba16i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba16ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba32f_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba32i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba32ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba8_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba8_snorm_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba8i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.load_store.rgba8ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.r32f_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.r32i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.r32ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba16f_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba16i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba16ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba32f_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba32i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba32ui_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba8_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba8_snorm_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba8i_single_layer,Fail
-dEQP-GLES31.functional.image_load_store.3d.store.rgba8ui_single_layer,Fail
-
-# probably fixed by EXT_2d_view_of_3d support
-KHR-GL46.shader_image_load_store.non-layered_binding,Fail
-
 # amd issue #6305
 KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
 
@@ -424,10 +393,6 @@ spec@arb_sample_shading@samplemask 8@sample mask_in_one,Fail
 
 spec@arb_shader_clock@execution@clock2x32,Fail
 spec@arb_shader_clock@execution@clock,Fail
-spec@arb_shader_image_load_store@layer,Fail
-spec@arb_shader_image_load_store@layer@image3D/non-layered binding test,Fail
-spec@arb_shader_image_load_store@level@3D level binding test,Fail
-spec@arb_shader_image_load_store@level,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-01,Fail
 spec@arb_shader_texture_lod@execution@glsl-fs-shadow2dgradarb-03,Fail
