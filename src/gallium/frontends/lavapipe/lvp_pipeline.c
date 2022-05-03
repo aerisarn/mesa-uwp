@@ -900,6 +900,12 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    }
    assert(exec_list_length(&nir->functions) == 1);
 
+   struct nir_lower_subgroups_options subgroup_opts = {0};
+   subgroup_opts.lower_quad = true;
+   subgroup_opts.ballot_components = 4;
+   subgroup_opts.ballot_bit_size = 32;
+   NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_opts);
+
    NIR_PASS_V(nir, nir_lower_variable_initializers, ~0);
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_split_per_member_structs);
