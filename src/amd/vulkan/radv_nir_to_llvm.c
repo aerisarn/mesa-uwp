@@ -1338,6 +1338,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
          if (ctx->stage == MESA_SHADER_VERTEX) {
             /* Wait for GS stores to finish. */
+            ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
             ac_build_s_barrier(&ctx->ac, ctx->stage);
 
             tmp = ac_build_gep0(&ctx->ac, ctx->esgs_ring, get_thread_id_in_tg(ctx));
@@ -1384,6 +1385,7 @@ gfx10_ngg_gs_emit_prologue(struct radv_shader_context *ctx)
    LLVMBuildBr(ctx->ac.builder, merge_block);
    LLVMPositionBuilderAtEnd(ctx->ac.builder, merge_block);
 
+   ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
    ac_build_s_barrier(&ctx->ac, ctx->stage);
 }
 
@@ -1459,6 +1461,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef tmp, tmp2;
 
+   ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
    ac_build_s_barrier(&ctx->ac, ctx->stage);
 
    const LLVMValueRef tid = get_thread_id_in_tg(ctx);
@@ -1565,6 +1568,7 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
    }
    ac_build_endif(&ctx->ac, 5130);
 
+   ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
    ac_build_s_barrier(&ctx->ac, ctx->stage);
 
    /* Export primitive data */
@@ -2150,6 +2154,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
           * and contains a barrier, it will wait there and then
           * reach s_endpgm.
           */
+         ac_build_waitcnt(&ctx.ac, AC_WAIT_LGKM);
          ac_build_s_barrier(&ctx.ac, shaders[shader_idx]->info.stage);
       }
 

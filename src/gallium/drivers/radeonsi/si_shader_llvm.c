@@ -1015,10 +1015,13 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          /* We need the barrier only if TCS inputs are read from LDS. */
          if (!shader->key.ge.opt.same_patch_vertices ||
              shader->selector->info.base.inputs_read &
-             ~shader->selector->info.tcs_vgpr_only_inputs)
+             ~shader->selector->info.tcs_vgpr_only_inputs) {
+            ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
             ac_build_s_barrier(&ctx->ac, ctx->stage);
+         }
       } else if (ctx->stage == MESA_SHADER_GEOMETRY && !shader->key.ge.as_ngg) {
          /* gfx10_ngg_gs_emit_prologue inserts the barrier for NGG. */
+         ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM);
          ac_build_s_barrier(&ctx->ac, ctx->stage);
       }
    }

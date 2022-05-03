@@ -4025,6 +4025,7 @@ void ac_build_wg_wavescan_bottom(struct ac_llvm_context *ctx, struct ac_wg_scan 
 void ac_build_wg_wavescan(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
 {
    ac_build_wg_wavescan_top(ctx, ws);
+   ac_build_waitcnt(ctx, AC_WAIT_LGKM);
    ac_build_s_barrier(ctx, ws->stage);
    ac_build_wg_wavescan_bottom(ctx, ws);
 }
@@ -4087,6 +4088,7 @@ void ac_build_wg_scan_bottom(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
 void ac_build_wg_scan(struct ac_llvm_context *ctx, struct ac_wg_scan *ws)
 {
    ac_build_wg_scan_top(ctx, ws);
+   ac_build_waitcnt(ctx, AC_WAIT_LGKM);
    ac_build_s_barrier(ctx, ws->stage);
    ac_build_wg_scan_bottom(ctx, ws);
 }
