@@ -1204,9 +1204,10 @@ static void si_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_texture *sdst = (struct si_texture *)info->dst.resource;
 
-   if (do_hardware_msaa_resolve(ctx, info)) {
+   /* Gfx11 doesn't have CB_RESOLVE. */
+   /* TODO: Use compute-based resolving instead. */
+   if (sctx->chip_class < GFX11 && do_hardware_msaa_resolve(ctx, info))
       return;
-   }
 
    if ((info->dst.resource->bind & PIPE_BIND_PRIME_BLIT_DST) && sdst->surface.is_linear &&
        sctx->chip_class >= GFX7) {
