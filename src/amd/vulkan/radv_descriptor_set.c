@@ -223,6 +223,8 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
          assert(!(pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
          set_layout->binding[b].dynamic_offset_count = 1;
          set_layout->dynamic_shader_stages |= binding->stageFlags;
+         if (binding->stageFlags & RADV_RT_STAGE_BITS)
+            set_layout->dynamic_shader_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
          set_layout->binding[b].size = 0;
          binding_buffer_count = 1;
          alignment = 1;
