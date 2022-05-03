@@ -129,7 +129,7 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
    set_layout->binding_count = num_bindings;
 
    unsigned sampler_idx = 0, tex_idx = 0, ubo_idx = 0;
-   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, desc_idx = 0, img_idx = 0;
+   unsigned dyn_ubo_idx = 0, dyn_ssbo_idx = 0, img_idx = 0;
    uint32_t desc_ubo_size = 0;
 
    for (unsigned i = 0; i < pCreateInfo->bindingCount; i++) {
@@ -150,8 +150,6 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
          }
       }
 
-      binding_layout->desc_idx = desc_idx;
-      desc_idx += binding->descriptorCount;
       switch (binding_layout->type) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
          binding_layout->sampler_idx = sampler_idx;
@@ -214,7 +212,6 @@ panvk_per_arch(CreateDescriptorSetLayout)(VkDevice _device,
    if (desc_ubo_size > 0)
       set_layout->desc_ubo_index = ubo_idx++;
 
-   set_layout->num_descs = desc_idx;
    set_layout->num_samplers = sampler_idx;
    set_layout->num_textures = tex_idx;
    set_layout->num_ubos = ubo_idx;
@@ -253,11 +250,6 @@ panvk_per_arch(descriptor_set_create)(struct panvk_device *device,
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    set->layout = layout;
-   set->descs = vk_alloc(&device->vk.alloc,
-                         sizeof(*set->descs) * layout->num_descs, 8,
-                         VK_OBJECT_TYPE_DESCRIPTOR_SET);
-   if (!set->descs)
-      goto err_free_set;
 
    if (layout->num_ubos) {
       set->ubos = vk_zalloc(&device->vk.alloc,
@@ -353,7 +345,6 @@ err_free_set:
    vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->img_fmts);
    vk_free(&device->vk.alloc, set->img_attrib_bufs);
-   vk_free(&device->vk.alloc, set->descs);
    if (set->desc_bo)
       panfrost_bo_unreference(set->desc_bo);
    vk_object_free(&device->vk, NULL, set);

@@ -191,7 +191,6 @@ panvk_CreatePipelineLayout(VkDevice _device,
          }
          _mesa_sha1_update(&ctx, &binding_layout->type, sizeof(binding_layout->type));
          _mesa_sha1_update(&ctx, &binding_layout->array_size, sizeof(binding_layout->array_size));
-         _mesa_sha1_update(&ctx, &binding_layout->desc_idx, sizeof(binding_layout->sampler_idx));
          _mesa_sha1_update(&ctx, &binding_layout->shader_stages, sizeof(binding_layout->shader_stages));
       }
    }
@@ -348,7 +347,6 @@ panvk_descriptor_set_destroy(struct panvk_device *device,
    vk_free(&device->vk.alloc, set->dyn_ssbos);
    vk_free(&device->vk.alloc, set->img_fmts);
    vk_free(&device->vk.alloc, set->img_attrib_bufs);
-   vk_free(&device->vk.alloc, set->descs);
    if (set->desc_bo)
       panfrost_bo_unreference(set->desc_bo);
    vk_object_free(&device->vk, NULL, set);
