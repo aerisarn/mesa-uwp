@@ -21,8 +21,6 @@
 subdir('shaders')
 
 radix_sort_files = files(
-  'common/vk/assert.c',
-  'common/vk/assert.h',
   'common/vk/barrier.c',
   'common/vk/barrier.h',
   'common/macros.h',

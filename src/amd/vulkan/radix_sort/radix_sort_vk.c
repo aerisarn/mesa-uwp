@@ -8,7 +8,6 @@
 
 #include "common/macros.h"
 #include "common/util.h"
-#include "common/vk/assert.h"
 #include "common/vk/barrier.h"
 #include "radix_sort_vk_devaddr.h"
 #include "shaders/push.h"
@@ -196,7 +195,7 @@ radix_sort_vk_create(VkDevice                           device,
   //
   // Allocate radix_sort_vk
   //
-  struct radix_sort_vk * const rs = malloc(sizeof(*rs));
+  struct radix_sort_vk * const rs = calloc(1, sizeof(*rs));
 
   //
   // Save the config for layer
@@ -260,7 +259,8 @@ radix_sort_vk_create(VkDevice                           device,
     {
       plci.pPushConstantRanges = pcr + ii;
 
-      vk(CreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii));
+      if (vkCreatePipelineLayout(device, &plci, NULL, rs->pipeline_layouts.handles + ii) != VK_SUCCESS)
+        goto fail_layout;
     }
 
   //
@@ -275,14 +275,15 @@ radix_sort_vk_create(VkDevice                           device,
     // .pCode    = ar_data + ...;
   };
 
-  VkShaderModule sms[ARRAY_LENGTH_MACRO(rs->pipelines.handles)];
+  VkShaderModule sms[ARRAY_LENGTH_MACRO(rs->pipelines.handles)] = {0};
 
   for (uint32_t ii = 0; ii < pipeline_count; ii++)
     {
       smci.codeSize = spv_sizes[ii];
       smci.pCode    = spv[ii];
 
-      vk(CreateShaderModule(device, &smci, ac, sms + ii));
+      if (vkCreateShaderModule(device, &smci, ac, sms + ii) != VK_SUCCESS)
+        goto fail_shader;
     }
 
     //
@@ -357,7 +358,8 @@ radix_sort_vk_create(VkDevice                           device,
   //
   // Create the compute pipelines
   //
-  vk(CreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles));
+  if (vkCreateComputePipelines(device, pc, pipeline_count, cpcis, ac, rs->pipelines.handles) != VK_SUCCESS)
+    goto fail_pipeline;
 
   //
   // Shader modules can be destroyed now
@@ -391,6 +393,25 @@ radix_sort_vk_create(VkDevice                           device,
   rs->internal.partitions.offset = rs->internal.histograms.offset + rs->internal.histograms.range;
 
   return rs;
+
+fail_pipeline:
+  for (uint32_t ii = 0; ii < pipeline_count; ii++)
+    {
+      vkDestroyPipeline(device, rs->pipelines.handles[ii], ac);
+    }
+fail_shader:
+  for (uint32_t ii = 0; ii < pipeline_count; ii++)
+    {
+      vkDestroyShaderModule(device, sms[ii], ac);
+    }
+fail_layout:
+   for (uint32_t ii = 0; ii < pipeline_count; ii++)
+    {
+      vkDestroyPipelineLayout(device, rs->pipeline_layouts.handles[ii], ac);
+    }
+
+  free(rs);
+  return NULL;
 }
 
 //
