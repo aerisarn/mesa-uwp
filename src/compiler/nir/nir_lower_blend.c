@@ -350,10 +350,17 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    if (intr->intrinsic != nir_intrinsic_store_deref)
       return false;
 
-   nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   if (var->data.mode != nir_var_shader_out ||
-         (var->data.location != FRAG_RESULT_COLOR &&
-         var->data.location < FRAG_RESULT_DATA0))
+   nir_deref_instr *deref = nir_src_as_deref(intr->src[0]);
+   if (!nir_deref_mode_is(deref, nir_var_shader_out))
+      return false;
+
+   /* Indirects must be already lowered and output variables split */
+   assert(deref && deref->deref_type == nir_deref_type_var);
+   nir_variable *var = deref->var;
+   assert(glsl_type_is_vector_or_scalar(var->type));
+
+   if (var->data.location != FRAG_RESULT_COLOR &&
+       var->data.location < FRAG_RESULT_DATA0)
       return false;
 
    /* Determine render target for per-RT blending */
@@ -399,6 +406,15 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
    return true;
 }
 
+/** Lower blending to framebuffer fetch and some math
+ *
+ * This pass requires that indirects are lowered and output variables split
+ * so that we have a single output variable for each RT.  We could go to the
+ * effort of handling arrays (possibly of arrays) but, given that we need
+ * indirects lowered anyway (we need constant indices to look up blend
+ * functions and formats), we may as well require variables to be split.
+ * This can be done by calling nir_lower_io_arrays_to_elements_no_indirect().
+ */
 void
 nir_lower_blend(nir_shader *shader, nir_lower_blend_options options)
 {
