@@ -2683,7 +2683,9 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                        VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
                        VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
                        VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
-                       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT)) {
+                       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+                       VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT |
+                       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
       cmd_buffer->state.has_bcl_barrier = true;
    }
 }
