@@ -204,6 +204,7 @@ get_device_extensions(const struct tu_physical_device *device,
       .EXT_subgroup_size_control = true,
       .EXT_image_robustness = true,
       .EXT_primitives_generated_query = true,
+      .EXT_image_view_min_lod = true,
 #ifndef TU_USE_KGSL
       .EXT_physical_device_drm = true,
 #endif
@@ -847,6 +848,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->primitivesGeneratedQuery = true;
          features->primitivesGeneratedQueryWithRasterizerDiscard = false;
          features->primitivesGeneratedQueryWithNonZeroStreams = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_MIN_LOD_FEATURES_EXT: {
+         VkPhysicalDeviceImageViewMinLodFeaturesEXT *features =
+            (VkPhysicalDeviceImageViewMinLodFeaturesEXT *)ext;
+         features->minLod = true;
          break;
       }
 

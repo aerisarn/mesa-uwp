@@ -176,6 +176,9 @@ tu_image_view_init(struct tu_image_view *iview,
    const struct tu_sampler_ycbcr_conversion *conversion = ycbcr_conversion ?
       tu_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
 
+   const struct VkImageViewMinLodCreateInfoEXT *min_lod =
+      vk_find_struct_const(pCreateInfo->pNext, IMAGE_VIEW_MIN_LOD_CREATE_INFO_EXT);
+
    iview->image = image;
 
    const struct fdl_layout *layouts[3];
@@ -214,6 +217,7 @@ tu_image_view_init(struct tu_image_view *iview,
    args.base_miplevel = range->baseMipLevel;
    args.layer_count = tu_get_layerCount(image, range);
    args.level_count = tu_get_levelCount(image, range);
+   args.min_lod_clamp = min_lod ? min_lod->minLod : 0.f;
    args.format = tu_format_for_aspect(format, aspect_mask);
    vk_component_mapping_to_pipe_swizzle(pCreateInfo->components, args.swiz);
    if (conversion) {

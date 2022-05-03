@@ -273,6 +273,7 @@ struct fdl_view_args {
    uint64_t iova;
    uint32_t base_array_layer, base_miplevel;
    uint32_t layer_count, level_count;
+   float min_lod_clamp;
    unsigned char swiz[4];
    enum pipe_format format;
    enum fdl_view_type type;

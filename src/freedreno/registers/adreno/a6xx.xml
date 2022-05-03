@@ -3862,6 +3862,8 @@ to upconvert to 32b float internally?
 		<bitfield name="DEPTH" low="17" high="29" type="uint"/>
 	</reg32>
 	<reg32 offset="6" name="6">
+		<!-- overlaps with PLANE_PITCH -->
+		<bitfield name="MIN_LOD_CLAMP" low="0" high="11" type="ufixed" radix="8"/>
 		<!-- pitch for plane 2 / plane 3 -->
 		<bitfield name="PLANE_PITCH" low="8" high="31" type="uint"/>
 	</reg32>

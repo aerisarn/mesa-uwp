@@ -226,6 +226,7 @@ fdl6_view_init(struct fdl6_view *view, const struct fdl_layout **layouts,
    view->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);
    view->descriptor[4] = base_addr;
    view->descriptor[5] = (base_addr >> 32) | A6XX_TEX_CONST_5_DEPTH(depth);
+   view->descriptor[6] = A6XX_TEX_CONST_6_MIN_LOD_CLAMP(args->min_lod_clamp - args->base_miplevel);
 
    if (layout->tile_all)
       view->descriptor[3] |= A6XX_TEX_CONST_3_TILE_ALL;
