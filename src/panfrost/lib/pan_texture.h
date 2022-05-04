@@ -168,9 +168,6 @@ panfrost_afbc_format(const struct panfrost_device *dev, enum pipe_format format)
 
 #define AFBC_HEADER_BYTES_PER_TILE 16
 
-unsigned
-panfrost_afbc_header_size(unsigned width, unsigned height);
-
 bool
 panfrost_afbc_can_ytr(enum pipe_format format);
 

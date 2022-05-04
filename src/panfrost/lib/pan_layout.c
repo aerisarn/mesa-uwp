@@ -169,6 +169,17 @@ pan_afbc_stride_blocks(uint64_t modifier, uint32_t row_stride_bytes)
                (AFBC_HEADER_BYTES_PER_TILE * pan_afbc_tile_size(modifier));
 }
 
+/*
+ * Determine the required alignment for the body offset of an AFBC image. For
+ * now, this depends only on whether tiling is in use. These minimum alignments
+ * are required on all current GPUs.
+ */
+static inline uint32_t
+pan_afbc_body_align(uint64_t modifier)
+{
+        return (modifier & AFBC_FORMAT_MOD_TILED) ? 4096 : 64;
+}
+
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
  * Checksumming is believed to be a CRC variant (CRC64 based on the size?).
  * This feature is also known as "transaction elimination". */
@@ -327,10 +338,11 @@ pan_image_layout_init(struct pan_image_layout *layout,
 
                 /* Compute AFBC sizes if necessary */
                 if (afbc) {
-                        slice->afbc.header_size =
-                                panfrost_afbc_header_size(width, height);
                         slice->row_stride =
                                 pan_afbc_row_stride(layout->modifier, effective_width);
+                        slice->afbc.header_size =
+                                ALIGN_POT(slice->row_stride * (effective_height / align_h),
+                                          pan_afbc_body_align(layout->modifier));
 
                         if (explicit_layout && explicit_layout->row_stride < slice->row_stride)
                                 return false;
