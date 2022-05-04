@@ -179,8 +179,8 @@ radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev, const v
             if (format_list->pViewFormats[i] == VK_FORMAT_UNDEFINED)
                continue;
 
-            if (!radv_dcc_formats_compatible(format, format_list->pViewFormats[i],
-                                             sign_reinterpret))
+            if (!radv_dcc_formats_compatible(pdev->rad_info.gfx_level, format,
+                                             format_list->pViewFormats[i], sign_reinterpret))
                return false;
          }
       } else {
