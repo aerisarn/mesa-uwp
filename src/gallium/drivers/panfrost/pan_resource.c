@@ -273,69 +273,6 @@ panfrost_surface_destroy(struct pipe_context *pipe,
         free(surf);
 }
 
-static struct pipe_resource *
-panfrost_create_scanout_res(struct pipe_screen *screen,
-                            const struct pipe_resource *template,
-                            uint64_t modifier)
-{
-        struct panfrost_device *dev = pan_device(screen);
-        struct renderonly_scanout *scanout;
-        struct winsys_handle handle;
-        struct pipe_resource *res;
-        struct pipe_resource scanout_templat = *template;
-
-        /* Tiled formats need to be tile aligned */
-        if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
-                scanout_templat.width0 = ALIGN_POT(template->width0, 16);
-                scanout_templat.height0 = ALIGN_POT(template->height0, 16);
-        }
-
-        /* AFBC formats need a header. Thankfully we don't care about the
-         * stride so we can just use wonky dimensions as long as the right
-         * number of bytes are allocated at the end of the day... this implies
-         * that stride/pitch is invalid for AFBC buffers */
-
-        if (drm_is_afbc(modifier)) {
-                /* Space for the header. We need to keep vaguely similar
-                 * dimensions because... reasons... to allocate with renderonly
-                 * as a dumb buffer. To do so, after the usual 16x16 alignment,
-                 * we add on extra rows for the header. The order of operations
-                 * matters here, the extra rows of padding can in fact be
-                 * needed and missing them can lead to faults. */
-
-                unsigned header_size = panfrost_afbc_header_size(
-                                template->width0, template->height0);
-
-                unsigned pitch = ALIGN_POT(template->width0, 16) *
-                        util_format_get_blocksize(template->format);
-
-                unsigned header_rows =
-                        DIV_ROUND_UP(header_size, pitch);
-
-                scanout_templat.width0 = ALIGN_POT(template->width0, 16);
-                scanout_templat.height0 = ALIGN_POT(template->height0, 16) + header_rows;
-        }
-
-        scanout = renderonly_scanout_for_resource(&scanout_templat,
-                        dev->ro, &handle);
-        if (!scanout)
-                return NULL;
-
-        assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-        handle.modifier = modifier;
-        res = screen->resource_from_handle(screen, template, &handle,
-                                           PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
-        close(handle.handle);
-        if (!res)
-                return NULL;
-
-        struct panfrost_resource *pres = pan_resource(res);
-
-        pres->scanout = scanout;
-
-        return res;
-}
-
 static inline bool
 panfrost_is_2d(const struct panfrost_resource *pres)
 {
@@ -657,10 +594,6 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
 {
         struct panfrost_device *dev = pan_device(screen);
 
-        if (dev->ro && (template->bind &
-            (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
-                return panfrost_create_scanout_res(screen, template, modifier);
-
         struct panfrost_resource *so = CALLOC_STRUCT(panfrost_resource);
         so->base = *template;
         so->base.screen = screen;
@@ -668,6 +601,22 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
         pipe_reference_init(&so->base.reference, 1);
 
         util_range_init(&so->valid_buffer_range);
+
+        if (template->bind & (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT |
+                              PIPE_BIND_SHARED)) {
+                /* For compatibility with older consumers that may not be
+                 * modifiers aware, treat INVALID as LINEAR for shared
+                 * resources.
+                 */
+                if (modifier == DRM_FORMAT_MOD_INVALID)
+                        modifier = DRM_FORMAT_MOD_LINEAR;
+
+                /* At any rate, we can't change the modifier later for shared
+                 * resources, since we have no way to propagate the modifier
+                 * change.
+                 */
+                so->modifier_constant = true;
+        }
 
         panfrost_resource_setup(dev, so, modifier, template->format);
 
@@ -688,10 +637,73 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
                 (bind & PIPE_BIND_SHADER_IMAGE) ? "Shader image" :
                 "Other resource";
 
-        /* We create a BO immediately but don't bother mapping, since we don't
-         * care to map e.g. FBOs which the CPU probably won't touch */
-        so->image.data.bo =
-                panfrost_bo_create(dev, so->image.layout.data_size, PAN_BO_DELAY_MMAP, label);
+        if (dev->ro && (template->bind &
+            (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED))) {
+                struct winsys_handle handle;
+                struct pan_block_size blocksize = panfrost_block_size(modifier, template->format);
+
+                /* Block-based texture formats are only used for texture
+                 * compression (not framebuffer compression!), which doesn't
+                 * make sense to share across processes.
+                 */
+                assert(util_format_get_blockwidth(template->format) == 1);
+                assert(util_format_get_blockheight(template->format) == 1);
+
+                /* Present a resource with similar dimensions that, if allocated
+                 * as a linear image, is big enough to fit the resource in the
+                 * actual layout. For linear images, this is a no-op. For 16x16
+                 * tiling, this aligns the dimensions to 16x16.
+                 *
+                 * For AFBC, this aligns the width to the superblock width (as
+                 * expected) and adds extra rows to account for the header. This
+                 * is a bit of a lie, but it's the best we can do with dumb
+                 * buffers, which are extremely not meant for AFBC. And yet this
+                 * has to work anyway...
+                 *
+                 * Moral of the story: if you're reading this comment, that
+                 * means you're working on WSI and so it's already too late for
+                 * you. I'm sorry.
+                 */
+                unsigned width = ALIGN_POT(template->width0, blocksize.width);
+                unsigned stride = ALIGN_POT(template->width0, blocksize.width) *
+                                  util_format_get_blocksize(template->format);
+                unsigned size = so->image.layout.data_size;
+                unsigned effective_rows = DIV_ROUND_UP(size, stride);
+
+                struct pipe_resource scanout_tmpl = {
+                        .target = so->base.target,
+                        .format = template->format,
+                        .width0 = width,
+                        .height0 = effective_rows,
+                        .depth0 = 1,
+                        .array_size = 1,
+                };
+
+                so->scanout =
+                        renderonly_scanout_for_resource(&scanout_tmpl,
+                                                        dev->ro,
+                                                        &handle);
+
+                if (!so->scanout) {
+                        fprintf(stderr, "Failed to create scanout resource\n");
+                        free(so);
+                        return NULL;
+                }
+                assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+                so->image.data.bo = panfrost_bo_import(dev, handle.handle);
+                close(handle.handle);
+
+                if (!so->image.data.bo) {
+                        free(so);
+                        return NULL;
+                }
+        } else {
+                /* We create a BO immediately but don't bother mapping, since we don't
+                 * care to map e.g. FBOs which the CPU probably won't touch */
+
+                so->image.data.bo =
+                        panfrost_bo_create(dev, so->image.layout.data_size, PAN_BO_DELAY_MMAP, label);
+        }
 
         if (drm_is_afbc(so->image.layout.modifier))
                 panfrost_resource_init_afbc_headers(so);
