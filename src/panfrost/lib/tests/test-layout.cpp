@@ -390,3 +390,42 @@ TEST(AFBCLayout, Linear3D)
    EXPECT_EQ(l.slices[0].surface_stride, 2048); /* XXX: Not meaningful? */
    EXPECT_EQ(l.slices[0].size, 32768); /* XXX: Not used by anything and wrong */
 }
+
+TEST(AFBCLayout, Tiled16x16)
+{
+   uint64_t modifier = DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_TILED |
+                        AFBC_FORMAT_MOD_SPARSE);
+
+   struct pan_image_layout l = {
+      .modifier = modifier,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .width = 917,
+      .height = 417,
+      .depth = 1,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .nr_slices = 1
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   /* The image is 917x417. Superblocks are 16x16, so there are 58x27
+    * superblocks. Superblocks are grouped into 8x8 tiles, so there are 8x4
+    * tiles of superblocks. So the row stride is 16 * 8 * 8 * 8 = 8192 bytes.
+    * There are 4 tiles vertically, so the header is 8192 * 4 = 32768 bytes.
+    * This is already 4096-byte aligned.
+    *
+    * Each tile of superblock contains 128x128 pixels and each pixel is 4 bytes,
+    * so tiles are 65536 bytes, meaning the payload is 8 * 4 * 65536 = 2097152
+    * bytes.
+    *
+    * In total, the AFBC surface is 32768 + 2097152 = 2129920 bytes.
+    */
+   EXPECT_EQ(l.slices[0].offset, 0);
+   EXPECT_EQ(l.slices[0].row_stride, 8192);
+   EXPECT_EQ(l.slices[0].afbc.header_size, 32768);
+   EXPECT_EQ(l.slices[0].afbc.body_size, 2097152);
+   EXPECT_EQ(l.slices[0].surface_stride, 2129920);
+   EXPECT_EQ(l.slices[0].size, 2129920);
+}
