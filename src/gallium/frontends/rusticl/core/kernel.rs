@@ -749,7 +749,7 @@ impl Kernel {
         let offsets = create_kernel_arr::<u64>(offsets, 0);
         let mut input: Vec<u8> = Vec::new();
         let mut resource_info = Vec::new();
-        let mut local_size: u32 = nir.shared_size();
+        let mut local_size: u64 = nir.shared_size() as u64;
         let printf_size = q.device.printf_buffer_size() as u32;
         let mut samplers = Vec::new();
         let mut iviews = Vec::new();
@@ -804,8 +804,10 @@ impl Kernel {
                 }
                 KernelArgValue::LocalMem(size) => {
                     // TODO 32 bit
-                    input.extend_from_slice(&[0; 8]);
-                    local_size += *size as u32;
+                    let pot = cmp::min(*size, 0x80);
+                    local_size = align(local_size, pot.next_power_of_two() as u64);
+                    input.extend_from_slice(&local_size.to_ne_bytes());
+                    local_size += *size as u64;
                 }
                 KernelArgValue::Sampler(sampler) => {
                     samplers.push(sampler.pipe());
@@ -900,7 +902,7 @@ impl Kernel {
                     init_data.len() as u32,
                 );
             }
-            let cso = ctx.create_compute_state(nir, input.len() as u32, local_size);
+            let cso = ctx.create_compute_state(nir, input.len() as u32, local_size as u32);
 
             ctx.bind_compute_state(cso);
             ctx.bind_sampler_states(&samplers);
