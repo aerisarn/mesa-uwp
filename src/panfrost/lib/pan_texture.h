@@ -192,7 +192,7 @@ unsigned panfrost_afbc_superblock_width(uint64_t modifier);
 
 unsigned panfrost_afbc_superblock_height(uint64_t modifier);
 
-unsigned panfrost_afbc_is_wide(uint64_t modifier);
+bool panfrost_afbc_is_wide(uint64_t modifier);
 
 uint32_t pan_afbc_row_stride(uint64_t modifier, uint32_t width);
 

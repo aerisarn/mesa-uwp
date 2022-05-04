@@ -94,7 +94,7 @@ panfrost_afbc_superblock_height(uint64_t modifier)
  * defined as superblocks wider than 16 pixels, the minimum (and default) super
  * block width.
  */
-unsigned
+bool
 panfrost_afbc_is_wide(uint64_t modifier)
 {
         return panfrost_afbc_superblock_width(modifier) > 16;
