@@ -182,6 +182,7 @@ static void si_late_optimize_16bit_samplers(struct si_screen *sscreen, nir_shade
             (has_g16 ? 1 << nir_tex_src_ddx : 0),
             sampler_dims);
    NIR_PASS(changed, nir, nir_legalize_16bit_sampler_srcs, tex_constraints);
+   NIR_PASS(changed, nir, nir_fold_16bit_image_load_store_conversions);
 
    if (changed) {
       si_nir_opts(sscreen, nir, false);
