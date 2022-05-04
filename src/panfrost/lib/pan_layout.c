@@ -288,11 +288,20 @@ pan_image_layout_init(struct pan_image_layout *layout,
         unsigned height = layout->height;
         unsigned depth = layout->depth;
 
+        unsigned align_w = block_size.width;
+        unsigned align_h = block_size.height;
+
+        /* For tiled AFBC, align to tiles of superblocks (this can be large) */
+        if (afbc) {
+                align_w *= pan_afbc_tile_size(layout->modifier);
+                align_h *= pan_afbc_tile_size(layout->modifier);
+        }
+
         for (unsigned l = 0; l < layout->nr_slices; ++l) {
                 struct pan_image_slice_layout *slice = &layout->slices[l];
 
-                unsigned effective_width = ALIGN_POT(util_format_get_nblocksx(layout->format, width), block_size.width);
-                unsigned effective_height = ALIGN_POT(util_format_get_nblocksy(layout->format, height), block_size.height);
+                unsigned effective_width = ALIGN_POT(util_format_get_nblocksx(layout->format, width), align_w);
+                unsigned effective_height = ALIGN_POT(util_format_get_nblocksy(layout->format, height), align_h);
 
                 /* Align levels to cache-line as a performance improvement for
                  * linear/tiled and as a requirement for AFBC */
