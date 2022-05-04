@@ -131,6 +131,16 @@ panfrost_block_size(uint64_t modifier, enum pipe_format format)
 }
 
 /*
+ * Determine the tile size used by AFBC. This tiles superblocks themselves.
+ * Current GPUs support either 8x8 tiling or no tiling (1x1)
+ */
+static inline unsigned
+pan_afbc_tile_size(uint64_t modifier)
+{
+        return (modifier & AFBC_FORMAT_MOD_TILED) ? 8 : 1;
+}
+
+/*
  * Determine the number of bytes between header rows for an AFBC image. For an
  * image with linear headers, this is simply the number of header blocks
  * (=superblocks) per row  times the numbers of bytes per header block.
