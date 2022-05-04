@@ -11005,13 +11005,6 @@ create_fs_exports(isel_context* ctx)
 }
 
 static void
-create_workgroup_barrier(Builder& bld)
-{
-   bld.barrier(aco_opcode::p_barrier,
-               memory_sync_info(storage_shared, semantic_acqrel, scope_workgroup), scope_workgroup);
-}
-
-static void
 emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_write_offset,
                    const struct radv_stream_output* output)
 {
@@ -11522,8 +11515,15 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
          bool tcs_skip_barrier = ctx.stage == vertex_tess_control_hs &&
                                  ctx.tcs_temp_only_inputs == nir->info.inputs_read;
 
-         if (!ngg_gs && !tcs_skip_barrier)
-            create_workgroup_barrier(bld);
+         if (!ngg_gs && !tcs_skip_barrier) {
+            sync_scope scope =
+               ctx.stage == vertex_tess_control_hs &&
+                     program->wave_size % ctx.options->key.tcs.tess_input_vertices == 0
+                  ? scope_subgroup
+                  : scope_workgroup;
+            bld.barrier(aco_opcode::p_barrier,
+                        memory_sync_info(storage_shared, semantic_acqrel, scope), scope);
+         }
 
          if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
             ctx.gs_wave_id = bld.pseudo(aco_opcode::p_extract, bld.def(s1, m0), bld.def(s1, scc),
