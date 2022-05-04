@@ -8178,7 +8178,21 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_load_local_invocation_id: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.local_invocation_ids)));
+      if (ctx->options->chip_class >= GFX11) {
+         Temp local_ids[3];
+
+         /* Thread IDs are packed in VGPR0, 10 bits per component. */
+         for (uint32_t i = 0; i < 3; i++) {
+            local_ids[i] = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                                    get_arg(ctx, ctx->args->ac.local_invocation_ids),
+                                    Operand::c32(i * 10u), Operand::c32(10u));
+         }
+
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), local_ids[0], local_ids[1],
+                    local_ids[2]);
+      } else {
+         bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.local_invocation_ids)));
+      }
       emit_split_vector(ctx, dst, 3);
       break;
    }
