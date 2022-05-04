@@ -282,9 +282,7 @@ traces:
 #    expectations:
 #      - device: gl-virgl
 #        checksum: 0
-# Piglit crashes when trying to run this one
-#  - path: godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc
-#    expectations:
-#      - device: gl-virgl
-#        checksum: 0
-
+  - path: godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc
+    expectations:
+      - device: gl-virgl
+        checksum: fca1fa683ab56352bd96d0777835ae65
