@@ -42,17 +42,9 @@
       dst = temp;                                                \
    } while(0)
 
-VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
-   VkDevice                                    _device,
-   VkPipeline                                  _pipeline,
-   const VkAllocationCallbacks*                pAllocator)
+void
+lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline)
 {
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_pipeline, pipeline, _pipeline);
-
-   if (!_pipeline)
-      return;
-
    if (pipeline->shader_cso[PIPE_SHADER_VERTEX])
       device->queue.ctx->delete_vs_state(device->queue.ctx, pipeline->shader_cso[PIPE_SHADER_VERTEX]);
    if (pipeline->shader_cso[PIPE_SHADER_FRAGMENT])
@@ -74,7 +66,23 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
 
    ralloc_free(pipeline->mem_ctx);
    vk_object_base_finish(&pipeline->base);
-   vk_free2(&device->vk.alloc, pAllocator, pipeline);
+   vk_free(&device->vk.alloc, pipeline);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
+   VkDevice                                    _device,
+   VkPipeline                                  _pipeline,
+   const VkAllocationCallbacks*                pAllocator)
+{
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_pipeline, pipeline, _pipeline);
+
+   if (!_pipeline)
+      return;
+
+   simple_mtx_lock(&device->queue.pipeline_lock);
+   util_dynarray_append(&device->queue.pipeline_destroys, struct lvp_pipeline*, pipeline);
+   simple_mtx_unlock(&device->queue.pipeline_lock);
 }
 
 static VkResult
@@ -1199,8 +1207,7 @@ static VkResult
 lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                            struct lvp_device *device,
                            struct lvp_pipeline_cache *cache,
-                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                           const VkAllocationCallbacks *alloc)
+                           const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkGraphicsPipelineLibraryCreateInfoEXT *libinfo = vk_find_struct_const(pCreateInfo,
                                                                                 GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT);
@@ -1264,8 +1271,6 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
       }
    }
 
-   if (alloc == NULL)
-      alloc = &device->vk.alloc;
    pipeline->device = device;
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
@@ -1402,7 +1407,6 @@ lvp_graphics_pipeline_create(
    VkDevice _device,
    VkPipelineCache _cache,
    const VkGraphicsPipelineCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
    VkPipeline *pPipeline)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
@@ -1412,7 +1416,7 @@ lvp_graphics_pipeline_create(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
 
-   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
+   pipeline = vk_zalloc(&device->vk.alloc, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1420,10 +1424,9 @@ lvp_graphics_pipeline_create(
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
    uint64_t t0 = os_time_get_nano();
-   result = lvp_graphics_pipeline_init(pipeline, device, cache, pCreateInfo,
-                                       pAllocator);
+   result = lvp_graphics_pipeline_init(pipeline, device, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      vk_free(&device->vk.alloc, pipeline);
       return result;
    }
 
@@ -1456,7 +1459,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateGraphicsPipelines(
          r = lvp_graphics_pipeline_create(_device,
                                           pipelineCache,
                                           &pCreateInfos[i],
-                                          pAllocator, &pPipelines[i]);
+                                          &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;
@@ -1476,13 +1479,10 @@ static VkResult
 lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
                           struct lvp_device *device,
                           struct lvp_pipeline_cache *cache,
-                          const VkComputePipelineCreateInfo *pCreateInfo,
-                          const VkAllocationCallbacks *alloc)
+                          const VkComputePipelineCreateInfo *pCreateInfo)
 {
    VK_FROM_HANDLE(vk_shader_module, module,
                    pCreateInfo->stage.module);
-   if (alloc == NULL)
-      alloc = &device->vk.alloc;
    pipeline->device = device;
    pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
    lvp_pipeline_layout_ref(pipeline->layout);
@@ -1508,7 +1508,6 @@ lvp_compute_pipeline_create(
    VkDevice _device,
    VkPipelineCache _cache,
    const VkComputePipelineCreateInfo *pCreateInfo,
-   const VkAllocationCallbacks *pAllocator,
    VkPipeline *pPipeline)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
@@ -1518,7 +1517,7 @@ lvp_compute_pipeline_create(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO);
 
-   pipeline = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*pipeline), 8,
+   pipeline = vk_zalloc(&device->vk.alloc, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pipeline == NULL)
       return vk_error(device, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -1526,10 +1525,9 @@ lvp_compute_pipeline_create(
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
    uint64_t t0 = os_time_get_nano();
-   result = lvp_compute_pipeline_init(pipeline, device, cache, pCreateInfo,
-                                      pAllocator);
+   result = lvp_compute_pipeline_init(pipeline, device, cache, pCreateInfo);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->vk.alloc, pAllocator, pipeline);
+      vk_free(&device->vk.alloc, pipeline);
       return result;
    }
 
@@ -1562,7 +1560,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateComputePipelines(
          r = lvp_compute_pipeline_create(_device,
                                          pipelineCache,
                                          &pCreateInfos[i],
-                                         pAllocator, &pPipelines[i]);
+                                         &pPipelines[i]);
       if (r != VK_SUCCESS) {
          result = r;
          pPipelines[i] = VK_NULL_HANDLE;

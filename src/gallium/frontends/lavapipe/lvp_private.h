@@ -176,6 +176,8 @@ struct lvp_queue {
    struct u_upload_mgr *uploader;
    struct pipe_fence_handle *last_fence;
    void *state;
+   struct util_dynarray pipeline_destroys;
+   simple_mtx_t pipeline_lock;
 };
 
 struct lvp_pipeline_cache {
@@ -631,6 +633,9 @@ lvp_vk_format_to_pipe_format(VkFormat format)
 
    return vk_format_to_pipe_format(format);
 }
+
+void
+lvp_pipeline_destroy(struct lvp_device *device, struct lvp_pipeline *pipeline);
 
 void
 queue_thread_noop(void *data, void *gdata, int thread_index);
