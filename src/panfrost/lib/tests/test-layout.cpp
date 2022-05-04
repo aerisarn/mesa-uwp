@@ -429,3 +429,58 @@ TEST(AFBCLayout, Tiled16x16)
    EXPECT_EQ(l.slices[0].surface_stride, 2129920);
    EXPECT_EQ(l.slices[0].size, 2129920);
 }
+
+TEST(AFBCLayout, Linear16x16Minimal)
+{
+   uint64_t modifier = DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_SPARSE);
+
+   struct pan_image_layout l = {
+      .modifier = modifier,
+      .format = PIPE_FORMAT_R8_UNORM,
+      .width = 1,
+      .height = 1,
+      .depth = 1,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .nr_slices = 1
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   /* Image is 1x1 to test for correct alignment everywhere. */
+   EXPECT_EQ(l.slices[0].offset, 0);
+   EXPECT_EQ(l.slices[0].row_stride, 16);
+   EXPECT_EQ(l.slices[0].afbc.header_size, 64);
+   EXPECT_EQ(l.slices[0].afbc.body_size, 32 * 8);
+   EXPECT_EQ(l.slices[0].surface_stride, 64 + (32 * 8));
+   EXPECT_EQ(l.slices[0].size, 64 + (32 * 8));
+}
+
+TEST(AFBCLayout, Tiled16x16Minimal)
+{
+   uint64_t modifier = DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_TILED |
+                        AFBC_FORMAT_MOD_SPARSE);
+
+   struct pan_image_layout l = {
+      .modifier = modifier,
+      .format = PIPE_FORMAT_R8_UNORM,
+      .width = 1,
+      .height = 1,
+      .depth = 1,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_2D,
+      .nr_slices = 1
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   /* Image is 1x1 to test for correct alignment everywhere. */
+   EXPECT_EQ(l.slices[0].offset, 0);
+   EXPECT_EQ(l.slices[0].row_stride, 16 * 8 * 8);
+   EXPECT_EQ(l.slices[0].afbc.header_size, 4096);
+   EXPECT_EQ(l.slices[0].afbc.body_size, 32 * 8 * 8 * 8);
+   EXPECT_EQ(l.slices[0].surface_stride, 4096 + (32 * 8 * 8 * 8));
+   EXPECT_EQ(l.slices[0].size, 4096 + (32 * 8 * 8 * 8));
+}
