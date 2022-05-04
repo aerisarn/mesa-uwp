@@ -196,7 +196,7 @@ bool panfrost_afbc_is_wide(uint64_t modifier);
 
 uint32_t pan_afbc_row_stride(uint64_t modifier, uint32_t width);
 
-uint32_t pan_afbc_stride_blocks(uint32_t row_stride_bytes);
+uint32_t pan_afbc_stride_blocks(uint64_t modifier, uint32_t row_stride_bytes);
 
 struct pan_block_size
 panfrost_block_size(uint64_t modifier, enum pipe_format format);

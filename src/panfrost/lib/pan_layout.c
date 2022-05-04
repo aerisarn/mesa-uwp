@@ -143,25 +143,30 @@ pan_afbc_tile_size(uint64_t modifier)
 /*
  * Determine the number of bytes between header rows for an AFBC image. For an
  * image with linear headers, this is simply the number of header blocks
- * (=superblocks) per row  times the numbers of bytes per header block.
+ * (=superblocks) per row times the numbers of bytes per header block. For an
+ * image with linear headers, this is multipled by the number of rows of
+ * header blocks are in a tile together.
  */
 uint32_t
 pan_afbc_row_stride(uint64_t modifier, uint32_t width)
 {
         unsigned block_width = panfrost_afbc_superblock_width(modifier);
 
-        return (width / block_width) * AFBC_HEADER_BYTES_PER_TILE;
+        return (width / block_width) * pan_afbc_tile_size(modifier) *
+                AFBC_HEADER_BYTES_PER_TILE;
 }
 
 /*
  * Determine the number of header blocks between header rows. This is equal to
  * the number of bytes between header rows divided by the bytes per blocks of a
- * header tile
+ * header tile. This is also divided by the tile size to give a "line stride" in
+ * blocks, rather than a real row stride. This is required by Bifrost.
  */
 uint32_t
-pan_afbc_stride_blocks(uint32_t row_stride_bytes)
+pan_afbc_stride_blocks(uint64_t modifier, uint32_t row_stride_bytes)
 {
-        return row_stride_bytes / AFBC_HEADER_BYTES_PER_TILE;
+        return row_stride_bytes /
+               (AFBC_HEADER_BYTES_PER_TILE * pan_afbc_tile_size(modifier));
 }
 
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
