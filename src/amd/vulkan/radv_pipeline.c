@@ -3284,6 +3284,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
           * might hang.
           */
          stages[MESA_SHADER_TESS_EVAL].info.is_ngg = false;
+
+         /* GFX11+ requires NGG. */
+         assert(pipeline->device->physical_device->rad_info.gfx_level < GFX11);
       }
 
       gl_shader_stage last_xfb_stage = MESA_SHADER_VERTEX;
@@ -3297,6 +3300,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
                       radv_nir_stage_uses_xfb(stages[last_xfb_stage].nir);
 
       if (!device->physical_device->use_ngg_streamout && uses_xfb) {
+         /* GFX11+ requires NGG. */
+         assert(pipeline->device->physical_device->rad_info.gfx_level < GFX11);
+
          if (stages[MESA_SHADER_TESS_CTRL].nir)
            stages[MESA_SHADER_TESS_EVAL].info.is_ngg = false;
          else

@@ -743,9 +743,10 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
    device->dcc_msaa_allowed = (device->instance->perftest_flags & RADV_PERFTEST_DCC_MSAA);
 
-   device->use_ngg = device->rad_info.gfx_level >= GFX10 &&
+   device->use_ngg = (device->rad_info.gfx_level >= GFX10 &&
                      device->rad_info.family != CHIP_NAVI14 &&
-                     !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
+                     !(device->instance->debug_flags & RADV_DEBUG_NO_NGG)) ||
+                     device->rad_info.gfx_level >= GFX11;
 
    device->use_ngg_culling = device->use_ngg && device->rad_info.max_render_backends > 1 &&
                              (device->rad_info.gfx_level >= GFX10_3 ||

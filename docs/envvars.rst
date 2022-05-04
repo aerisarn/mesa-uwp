@@ -668,7 +668,7 @@ RADV driver environment variables
    ``nomemorycache``
       disable memory shaders cache
    ``nongg``
-      disable NGG for GFX10+
+      disable NGG for GFX10 and GFX10.3
    ``nonggc``
       disable NGG culling on GPUs where it's enabled by default (GFX10.3+ only).
    ``nooutoforder``
