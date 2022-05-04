@@ -5117,10 +5117,7 @@ radv_CmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipeline
       radv_mark_descriptor_sets_dirty(cmd_buffer, pipelineBindPoint);
 
       cmd_buffer->state.rt_pipeline = pipeline;
-      cmd_buffer->push_constant_stages |=
-         (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-          VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR | VK_SHADER_STAGE_MISS_BIT_KHR |
-          VK_SHADER_STAGE_INTERSECTION_BIT_KHR | VK_SHADER_STAGE_CALLABLE_BIT_KHR);
+      cmd_buffer->push_constant_stages |= RADV_RT_STAGE_BITS;
       radv_set_rt_stack_size(cmd_buffer, cmd_buffer->state.rt_stack_size);
       break;
    case VK_PIPELINE_BIND_POINT_GRAPHICS:
