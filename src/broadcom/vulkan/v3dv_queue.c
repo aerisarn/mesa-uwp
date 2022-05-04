@@ -659,9 +659,9 @@ handle_cl_job(struct v3dv_queue *queue,
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
 
-   /* We need a binning sync if we are waiting on a semaphore or if the job
-    * comes after a pipeline barrier that involves geometry stages
-    * (needs_bcl_sync).
+   /* We need a binning sync if we are waiting on a semaphore with a wait stage
+    * that involves the geometry pipeline, or if the job comes after a pipeline
+    * barrier that involves geometry stages (needs_bcl_sync).
     *
     * We need a render sync if the job doesn't need a binning sync but has
     * still been flagged for serialization. It should be noted that RCL jobs
@@ -673,9 +673,20 @@ handle_cl_job(struct v3dv_queue *queue,
     * command buffer after the first job where we should be able to track bcl
     * dependencies strictly through barriers.
     */
-   const bool needs_bcl_sync =
-      sync_info->wait_count > 0 || job->needs_bcl_sync;
-   const bool needs_rcl_sync = job->serialize && !needs_bcl_sync;
+   bool needs_bcl_sync = job->needs_bcl_sync;
+   for (int i = 0; !needs_bcl_sync && i < sync_info->wait_count; i++) {
+      needs_bcl_sync = sync_info->waits[i].stage_mask &
+         (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+          VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT |
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT |
+          VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+          VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+          VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+          VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+          VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
+   }
+   bool needs_rcl_sync = job->serialize && !needs_bcl_sync;
 
    /* Replace single semaphore settings whenever our kernel-driver supports
     * multiple semaphores extension.
