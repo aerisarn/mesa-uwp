@@ -194,6 +194,8 @@ unsigned panfrost_afbc_superblock_height(uint64_t modifier);
 
 unsigned panfrost_afbc_is_wide(uint64_t modifier);
 
+uint32_t pan_afbc_stride_blocks(uint32_t row_stride_bytes);
+
 struct pan_block_size
 panfrost_block_size(uint64_t modifier, enum pipe_format format);
 

@@ -130,6 +130,17 @@ panfrost_block_size(uint64_t modifier, enum pipe_format format)
                 return (struct pan_block_size) { 1, 1 };
 }
 
+/*
+ * Determine the number of header blocks between header rows. This is equal to
+ * the number of bytes between header rows divided by the bytes per blocks of a
+ * header tile
+ */
+uint32_t
+pan_afbc_stride_blocks(uint32_t row_stride_bytes)
+{
+        return row_stride_bytes / AFBC_HEADER_BYTES_PER_TILE;
+}
+
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.
  * Checksumming is believed to be a CRC variant (CRC64 based on the size?).
  * This feature is also known as "transaction elimination". */
