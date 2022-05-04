@@ -352,3 +352,8 @@ dEQP-VK.renderpass2.depth_stencil_resolve.image_2d_49_13.samples_8.d16_unorm_s8_
 dEQP-VK.texture.mipmap.2d.image_view_min_lod.base_level.linear_nearest,Fail
 dEQP-VK.texture.mipmap.3d.image_view_min_lod.base_level.linear_nearest,Fail
 dEQP-VK.texture.mipmap.cubemap.image_view_min_lod.base_level.nearest_linear,Fail
+
+# The following tests started to fail after CI fix, see
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/16325
+dEQP-VK.rasterization.interpolation_multisample_4_bit.lines_wide,Fail
+dEQP-VK.rasterization.interpolation_multisample_4_bit.non_strict_lines_wide,Fail
