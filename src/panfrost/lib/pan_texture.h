@@ -44,7 +44,7 @@
 extern "C" {
 #endif
 
-#define PAN_MODIFIER_COUNT 4
+#define PAN_MODIFIER_COUNT 6
 extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
 
 struct pan_image_slice_layout {

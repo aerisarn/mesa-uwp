@@ -34,6 +34,19 @@
 uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT] = {
         DRM_FORMAT_MOD_ARM_AFBC(
                 AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                AFBC_FORMAT_MOD_TILED |
+                AFBC_FORMAT_MOD_SC |
+                AFBC_FORMAT_MOD_SPARSE |
+                AFBC_FORMAT_MOD_YTR),
+
+        DRM_FORMAT_MOD_ARM_AFBC(
+                AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                AFBC_FORMAT_MOD_TILED |
+                AFBC_FORMAT_MOD_SC |
+                AFBC_FORMAT_MOD_SPARSE),
+
+        DRM_FORMAT_MOD_ARM_AFBC(
+                AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
                 AFBC_FORMAT_MOD_SPARSE |
                 AFBC_FORMAT_MOD_YTR),
 
