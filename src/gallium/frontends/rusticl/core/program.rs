@@ -80,9 +80,34 @@ fn prepare_options(options: &str, dev: &Device) -> Vec<CString> {
     }
     options.push_str(" -D__OPENCL_VERSION__=");
     options.push_str(dev.cl_version.clc_str());
-    options
-        .split_whitespace()
-        .map(|a| match a {
+
+    let mut res = Vec::new();
+
+    // we seperate on a ' ' unless we hit a "
+    let mut sep = ' ';
+    let mut old = 0;
+    for (i, c) in options.char_indices() {
+        if c == '"' {
+            if sep == ' ' {
+                sep = '"';
+            } else {
+                sep = ' ';
+            }
+        }
+
+        if c == '"' || c == sep {
+            // beware of double seps
+            if old != i {
+                res.push(&options[old..i]);
+            }
+            old = i + c.len_utf8();
+        }
+    }
+    // add end of the string
+    res.push(&options[old..]);
+
+    res.iter()
+        .map(|&a| match a {
             "-cl-denorms-are-zero" => "-fdenormal-fp-math=positive-zero",
             _ => a,
         })
