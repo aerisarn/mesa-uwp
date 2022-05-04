@@ -124,7 +124,7 @@ void ac_parse_shader_binary_config(const char *data, size_t nbytes, unsigned wav
     *
     * For shader-db stats, set num_vgprs that the hw actually uses.
     */
-   if (info->chip_class >= GFX10_3) {
+   if (info->chip_class == GFX10_3) {
       conf->num_vgprs = align(conf->num_vgprs, wave_size == 32 ? 16 : 8);
    }
 
