@@ -151,6 +151,10 @@ typedef struct {
    unsigned tcs_tess_lvl_in_loc;
    unsigned tcs_tess_lvl_out_loc;
 
+   /* True if the output patch fits the subgroup, so all TCS outputs are always written in the same
+    * subgroup that reads them.
+    */
+   bool tcs_out_patch_fits_subgroup;
 } lower_tess_io_state;
 
 static bool
@@ -433,7 +437,7 @@ lower_hs_output_load(nir_builder *b,
 }
 
 static void
-update_hs_scoped_barrier(nir_intrinsic_instr *intrin)
+update_hs_scoped_barrier(nir_intrinsic_instr *intrin, lower_tess_io_state *st)
 {
    /* Output loads and stores are lowered to shared memory access,
     * so we have to update the barriers to also reflect this.
@@ -442,6 +446,14 @@ update_hs_scoped_barrier(nir_intrinsic_instr *intrin)
    if (mem_modes & nir_var_shader_out)
       mem_modes |= nir_var_mem_shared;
    nir_intrinsic_set_memory_modes(intrin, mem_modes);
+
+   nir_scope exec_scope = nir_intrinsic_execution_scope(intrin);
+   if (exec_scope == NIR_SCOPE_WORKGROUP && st->tcs_out_patch_fits_subgroup)
+      nir_intrinsic_set_execution_scope(intrin, NIR_SCOPE_SUBGROUP);
+
+   nir_scope mem_scope = nir_intrinsic_memory_scope(intrin);
+   if (mem_scope == NIR_SCOPE_WORKGROUP && st->tcs_out_patch_fits_subgroup)
+      nir_intrinsic_set_memory_scope(intrin, NIR_SCOPE_SUBGROUP);
 }
 
 static nir_ssa_def *
@@ -460,7 +472,7 @@ lower_hs_output_access(nir_builder *b,
               intrin->intrinsic == nir_intrinsic_load_per_vertex_output) {
       return lower_hs_output_load(b, intrin, st);
    } else if (intrin->intrinsic == nir_intrinsic_scoped_barrier) {
-      update_hs_scoped_barrier(intrin);
+      update_hs_scoped_barrier(intrin, st);
       return NIR_LOWER_INSTR_PROGRESS;
    } else {
       unreachable("intrinsic not supported by lower_hs_output_access");
@@ -504,8 +516,10 @@ hs_emit_write_tess_factors(nir_shader *shader,
    nir_builder_init(b, impl);
    b->cursor = nir_after_block(last_block);
 
-   nir_scoped_barrier(b, .execution_scope=NIR_SCOPE_WORKGROUP, .memory_scope=NIR_SCOPE_WORKGROUP,
-                         .memory_semantics=NIR_MEMORY_ACQ_REL, .memory_modes=nir_var_mem_shared);
+   nir_scope scope =
+      st->tcs_out_patch_fits_subgroup ? NIR_SCOPE_SUBGROUP : NIR_SCOPE_WORKGROUP;
+   nir_scoped_barrier(b, .execution_scope = scope, .memory_scope = scope,
+                      .memory_semantics = NIR_MEMORY_ACQ_REL, .memory_modes = nir_var_mem_shared);
 
    nir_ssa_def *invocation_id = nir_load_invocation_id(b);
 
@@ -676,6 +690,7 @@ ac_nir_lower_hs_outputs_to_mem(nir_shader *shader,
       .tcs_num_reserved_inputs = num_reserved_tcs_inputs,
       .tcs_num_reserved_outputs = num_reserved_tcs_outputs,
       .tcs_num_reserved_patch_outputs = num_reserved_tcs_patch_outputs,
+      .tcs_out_patch_fits_subgroup = 32 % shader->info.tess.tcs_vertices_out == 0,
    };
 
    nir_shader_lower_instructions(shader,
