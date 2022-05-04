@@ -162,6 +162,79 @@ TEST(BlockSize, AFBCSuperblock64x4)
    EXPECT_TRUE(panfrost_afbc_is_wide(modifier));
 }
 
+/* Calculate Bifrost line stride, since we have reference formulas for Bifrost
+ * stride calculations.
+ */
+static uint32_t pan_afbc_line_stride(uint64_t modifier, uint32_t width)
+{
+   return pan_afbc_stride_blocks(modifier, pan_afbc_row_stride(modifier, width));
+}
+
+/* Which form of the stride we specify is hardware specific (row stride for
+ * Valhall, line stride for Bifrost). However, the layout code is hardware
+ * independent, so we test both row stride and line stride calculations.
+ */
+TEST(AFBCStride, Linear)
+{
+   uint64_t modifiers[] = {
+      DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                              AFBC_FORMAT_MOD_SPARSE),
+      DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 |
+                              AFBC_FORMAT_MOD_SPARSE),
+      DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_64x4 |
+                              AFBC_FORMAT_MOD_SPARSE),
+   };
+
+   for (unsigned m = 0; m < ARRAY_SIZE(modifiers); ++m) {
+      uint64_t modifier = modifiers[m];
+
+      uint32_t sw = panfrost_afbc_superblock_width(modifier);
+      uint32_t cases[] = { 1, 4, 17, 39 };
+
+      for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+         uint32_t width = sw * cases[i];
+
+         EXPECT_EQ(pan_afbc_row_stride(modifier, width),
+               16 * DIV_ROUND_UP(width, sw));
+
+         EXPECT_EQ(pan_afbc_line_stride(modifier, width),
+               DIV_ROUND_UP(width, sw));
+      }
+   }
+}
+
+TEST(AFBCStride, Tiled)
+{
+   uint64_t modifiers[] = {
+      DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                              AFBC_FORMAT_MOD_TILED |
+                              AFBC_FORMAT_MOD_SPARSE),
+      DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_32x8 |
+                              AFBC_FORMAT_MOD_TILED |
+                              AFBC_FORMAT_MOD_SPARSE),
+      DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_64x4 |
+                              AFBC_FORMAT_MOD_TILED |
+                              AFBC_FORMAT_MOD_SPARSE),
+   };
+
+   for (unsigned m = 0; m < ARRAY_SIZE(modifiers); ++m) {
+      uint64_t modifier = modifiers[m];
+
+      uint32_t sw = panfrost_afbc_superblock_width(modifier);
+      uint32_t cases[] = { 1, 4, 17, 39 };
+
+      for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+         uint32_t width = sw * 8 * cases[i];
+
+         EXPECT_EQ(pan_afbc_row_stride(modifier, width),
+               16 * DIV_ROUND_UP(width, (sw * 8)) * 8 * 8);
+
+         EXPECT_EQ(pan_afbc_line_stride(modifier, width),
+               DIV_ROUND_UP(width, sw * 8) * 8);
+      }
+   }
+}
+
 TEST(LegacyStride, FromLegacyLinear)
 {
    EXPECT_EQ(panfrost_from_legacy_stride(1920 * 4, PIPE_FORMAT_R8G8B8A8_UINT, DRM_FORMAT_MOD_LINEAR), 1920 * 4);
