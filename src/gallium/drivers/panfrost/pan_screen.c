@@ -587,6 +587,7 @@ panfrost_walk_dmabuf_modifiers(struct pipe_screen *screen,
         struct panfrost_device *dev = pan_device(screen);
         bool afbc = dev->has_afbc && panfrost_format_supports_afbc(dev, format);
         bool ytr = panfrost_afbc_can_ytr(format);
+        bool tiled_afbc = panfrost_afbc_can_tile(dev);
 
         unsigned count = 0;
 
@@ -595,6 +596,9 @@ panfrost_walk_dmabuf_modifiers(struct pipe_screen *screen,
                         continue;
 
                 if ((pan_best_modifiers[i] & AFBC_FORMAT_MOD_YTR) && !ytr)
+                        continue;
+
+                if ((pan_best_modifiers[i] & AFBC_FORMAT_MOD_TILED) && !tiled_afbc)
                         continue;
 
                 if (test_modifier != DRM_FORMAT_MOD_INVALID &&
