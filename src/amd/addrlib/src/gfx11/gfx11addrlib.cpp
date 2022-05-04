@@ -738,6 +738,22 @@ ChipFamily Gfx11Lib::HwlConvertChipFamily(
 
     switch (chipFamily)
     {
+        case FAMILY_GFX1100:
+            if (ASICREV_IS_GFX1100(chipRevision))
+            {
+            }
+            if (ASICREV_IS_GFX1101(chipRevision))
+            {
+            }
+            if (ASICREV_IS_GFX1102(chipRevision))
+            {
+            }
+            break;
+        case FAMILY_GFX1103:
+            if (ASICREV_IS_GFX1103(chipRevision))
+            {
+            }
+            break;
         default:
             ADDR_ASSERT(!"Unknown chip family");
             break;

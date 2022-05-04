@@ -128,6 +128,10 @@ enum radeon_family
    CHIP_BEIGE_GOBY,     /* Radeon 6400, 6500 */
    CHIP_YELLOW_CARP,    /* Ryzen 6000 */
    CHIP_GFX1036,
+   CHIP_GFX1100,
+   CHIP_GFX1101,
+   CHIP_GFX1102,
+   CHIP_GFX1103,
    CHIP_LAST,
 };
 

@@ -770,6 +770,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    case FAMILY_GC_10_3_7:
       identify_chip2(GFX1037, GFX1036);
       break;
+   case FAMILY_GFX1100:
+      identify_chip(GFX1100);
+      identify_chip(GFX1101);
+      identify_chip(GFX1102);
+      break;
+   case FAMILY_GFX1103:
+      identify_chip(GFX1103);
+      break;
    }
 
    if (!info->name) {
@@ -782,7 +790,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    for (unsigned i = 0; info->name[i] && i < ARRAY_SIZE(info->lowercase_name) - 1; i++)
       info->lowercase_name[i] = tolower(info->name[i]);
 
-   if (info->family >= CHIP_SIENNA_CICHLID)
+   if (info->family >= CHIP_GFX1100)
+      info->chip_class = GFX11;
+   else if (info->family >= CHIP_SIENNA_CICHLID)
       info->chip_class = GFX10_3;
    else if (info->family >= CHIP_NAVI10)
       info->chip_class = GFX10;

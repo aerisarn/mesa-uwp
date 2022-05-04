@@ -65,7 +65,9 @@ static void handle_env_var_force_family(struct amdgpu_winsys *ws)
             ws->info.name = "NOOP";
             strcpy(ws->info.lowercase_name , "noop");
 
-            if (i >= CHIP_SIENNA_CICHLID)
+            if (i >= CHIP_GFX1100)
+               ws->info.chip_class = GFX11;
+            else if (i >= CHIP_SIENNA_CICHLID)
                ws->info.chip_class = GFX10_3;
             else if (i >= CHIP_NAVI10)
                ws->info.chip_class = GFX10;
