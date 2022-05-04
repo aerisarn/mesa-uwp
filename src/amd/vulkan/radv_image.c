@@ -737,7 +737,7 @@ radv_make_buffer_descriptor(struct radv_device *device, struct radv_buffer *buff
               S_008F0C_DST_SEL_W(radv_map_swizzle(swizzle[3]));
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
-      const struct gfx10_format *fmt = &gfx10_format_table[vk_format_to_pipe_format(vk_format)];
+      const struct gfx10_format *fmt = &ac_get_gfx10_format_table(&device->physical_device->rad_info)[vk_format_to_pipe_format(vk_format)];
 
       /* OOB_SELECT chooses the out-of-bounds check:
        *  - 0: (index >= NUM_RECORDS) || (offset >= STRIDE)
@@ -973,7 +973,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
       desc = util_format_description(PIPE_FORMAT_R8G8B8X8_SRGB);
    }
 
-   img_format = gfx10_format_table[vk_format_to_pipe_format(vk_format)].img_format;
+   img_format = ac_get_gfx10_format_table(&device->physical_device->rad_info)[vk_format_to_pipe_format(vk_format)].img_format;
 
    radv_compose_swizzle(desc, mapping, swizzle);
 
