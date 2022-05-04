@@ -282,7 +282,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
          * active for a single job chain at once, so a single heap can be
          * shared across batches/contextes */
 
-        dev->tiler_heap = panfrost_bo_create(dev, 64 * 1024 * 1024,
+        dev->tiler_heap = panfrost_bo_create(dev, 128 * 1024 * 1024,
                         PAN_BO_INVISIBLE | PAN_BO_GROWABLE, "Tiler heap");
 
         pthread_mutex_init(&dev->submit_lock, NULL);
