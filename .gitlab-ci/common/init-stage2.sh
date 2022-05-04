@@ -127,8 +127,8 @@ fi
 RESULT=fail
 set +e
 sh -c "$HWCI_TEST_SCRIPT"
-set -e
 EXIT_CODE=$?
+set -e
 
 # Let's make sure the results are always stored in current working directory
 mv -f ${CI_PROJECT_DIR}/results ./ 2>/dev/null || true
