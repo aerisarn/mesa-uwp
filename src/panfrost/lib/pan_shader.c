@@ -312,10 +312,9 @@ GENX(pan_shader_compile)(nir_shader *s,
         info->outputs_written = s->info.outputs_written;
 
         /* Sysvals have dedicated UBO */
-        if (info->sysvals.sysval_count)
-                info->ubo_count = MAX2(s->info.num_ubos + 1, inputs->sysval_ubo + 1);
-        else
-                info->ubo_count = s->info.num_ubos;
+        info->ubo_count = s->info.num_ubos;
+        if (info->sysvals.sysval_count && inputs->fixed_sysval_ubo < 0)
+                info->ubo_count++;
 
         info->attribute_count += BITSET_LAST_BIT(s->info.images_used);
         info->writes_global = s->info.writes_memory;

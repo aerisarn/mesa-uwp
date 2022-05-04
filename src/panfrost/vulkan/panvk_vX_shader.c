@@ -345,7 +345,7 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       .gpu_id = pdev->gpu_id,
       .no_ubo_to_push = true,
       .no_idvs = true, /* TODO */
-      .sysval_ubo = sysval_ubo,
+      .fixed_sysval_ubo = sysval_ubo,
    };
 
    NIR_PASS_V(nir, nir_lower_indirect_derefs,

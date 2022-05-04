@@ -604,6 +604,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                 .gpu_id = dev->gpu_id,
                 .is_blit = true,
                 .no_idvs = true,
+                .fixed_sysval_ubo = -1,
         };
         struct util_dynarray binary;
 
@@ -618,6 +619,9 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                 BITSET_SET(b.shader->info.textures_used, i);
 
         GENX(pan_shader_compile)(b.shader, &inputs, &binary, &shader->info);
+
+        /* Blit shaders shouldn't have sysvals */
+        assert(shader->info.sysvals.sysval_count == 0);
 
         shader->key = *key;
         shader->address =

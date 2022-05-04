@@ -216,7 +216,10 @@ GENX(pan_indirect_dispatch_init)(struct panfrost_device *dev)
 
         nir_pop_if(&b, NULL);
 
-        struct panfrost_compile_inputs inputs = { .gpu_id = dev->gpu_id };
+        struct panfrost_compile_inputs inputs = {
+                .gpu_id = dev->gpu_id,
+                .fixed_sysval_ubo = -1,
+        };
         struct pan_shader_info shader_info;
         struct util_dynarray binary;
 

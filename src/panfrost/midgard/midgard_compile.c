@@ -1575,8 +1575,9 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         nir_dest nir_dest;
 
         /* Figure out which uniform this is */
-        unsigned sysval_ubo =
-                MAX2(ctx->inputs->sysval_ubo, ctx->nir->info.num_ubos);
+        unsigned sysval_ubo = ctx->inputs->fixed_sysval_ubo >= 0 ?
+                              ctx->inputs->fixed_sysval_ubo :
+                              ctx->nir->info.num_ubos;
         int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
         unsigned dest = nir_dest_index(&nir_dest);
         unsigned uniform =

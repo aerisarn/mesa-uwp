@@ -822,6 +822,7 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
                 .is_blend = true,
                 .blend.rt = shader->key.rt,
                 .blend.nr_samples = key.nr_samples,
+                .fixed_sysval_ubo = -1,
                 .rt_formats = { key.format },
         };
 
@@ -833,6 +834,9 @@ GENX(pan_blend_get_shader_locked)(const struct panfrost_device *dev,
         struct pan_shader_info info;
 
         GENX(pan_shader_compile)(nir, &inputs, &variant->binary, &info);
+
+        /* Blend shaders can't have sysvals */
+        assert(info.sysvals.sysval_count == 0);
 
         variant->work_reg_count = info.work_reg_count;
 

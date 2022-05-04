@@ -69,6 +69,7 @@ panfrost_shader_compile(struct pipe_screen *pscreen,
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .shaderdb = !!(dev->debug & PAN_DBG_PRECOMPILE),
+                .fixed_sysval_ubo = -1,
                 .fixed_varying_mask = state->key.fixed_varying_mask
         };
 
