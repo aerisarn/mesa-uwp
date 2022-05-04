@@ -1,0 +1,5 @@
+dEQP-VK.glsl.builtin.precision_double.determinant.compute.mat3,Fail
+
+# Those cases crash in spirv to nir.
+dEQP-VK.ray_query.advanced.using_wrapper_function.comp.triangles,Crash
+dEQP-VK.ray_query.advanced.using_wrapper_function.comp.aabbs,Crash
