@@ -420,6 +420,14 @@ try_optimize_branching_sequence(ssa_elimination_ctx& ctx, Block& block, const in
       copy->operands[0] = Operand(exec, ctx.program->lane_mask);
       block.instructions.insert(it, std::move(copy));
    }
+
+   if (exec_val->opcode == aco_opcode::p_parallelcopy && exec_val->operands[0].isConstant() &&
+       exec_val->operands[0].constantValue()) {
+      /* Remove the branch instruction when exec is constant non-zero. */
+      aco_ptr<Instruction>& branch = block.instructions.back();
+      if (branch->isBranch() && branch->operands.size() && branch->operands[0].physReg() == exec)
+         block.instructions.back().reset();
+   }
 }
 
 void
