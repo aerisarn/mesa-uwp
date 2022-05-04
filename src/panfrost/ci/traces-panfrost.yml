@@ -234,7 +234,7 @@ traces:
     expectations:
       # Missing the coins and the texture on the "Nev" of the level.
       - device: gl-panfrost-t860
-        checksum: 33235a5466d402348adbf3196cf3cf6b
+        checksum: 12c8f3af1ed07b939b5e1de8067e5edd
   - path: paraview/pv-manyspheres.trace
     expectations:
       - device: gl-panfrost-t860
