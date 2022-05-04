@@ -3818,6 +3818,8 @@ radv_emit_graphics_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
                            uint32_t size_per_wave, uint32_t waves,
                            struct radeon_winsys_bo *scratch_bo)
 {
+   struct radeon_info *info = &queue->device->physical_device->rad_info;
+
    if (queue->qf != RADV_QUEUE_GENERAL)
       return;
 
@@ -3826,9 +3828,21 @@ radv_emit_graphics_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 
    radv_cs_add_buffer(queue->device->ws, cs, scratch_bo);
 
-   radeon_set_context_reg(
-      cs, R_0286E8_SPI_TMPRING_SIZE,
-      S_0286E8_WAVES(waves) | S_0286E8_WAVESIZE(round_up_u32(size_per_wave, 1024)));
+   if (info->gfx_level >= GFX11) {
+      uint64_t va = radv_buffer_get_va(scratch_bo);
+
+      /* WAVES is per SE for SPI_TMPRING_SIZE. */
+      waves /= info->num_se;
+
+      radeon_set_context_reg_seq(cs, R_0286E8_SPI_TMPRING_SIZE, 3);
+      radeon_emit(cs, S_0286E8_WAVES(waves) | S_0286E8_WAVESIZE(round_up_u32(size_per_wave, 256)));
+      radeon_emit(cs, va >> 8);  /* SPI_GFX_SCRATCH_BASE_LO */
+      radeon_emit(cs, va >> 40); /* SPI_GFX_SCRATCH_BASE_HI */
+   } else {
+      radeon_set_context_reg(
+         cs, R_0286E8_SPI_TMPRING_SIZE,
+         S_0286E8_WAVES(waves) | S_0286E8_WAVESIZE(round_up_u32(size_per_wave, 1024)));
+   }
 }
 
 static void
@@ -3836,6 +3850,7 @@ radv_emit_compute_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
                           uint32_t size_per_wave, uint32_t waves,
                           struct radeon_winsys_bo *compute_scratch_bo)
 {
+   struct radeon_info *info = &queue->device->physical_device->rad_info;
    uint64_t scratch_va;
 
    if (!compute_scratch_bo)
@@ -3845,12 +3860,20 @@ radv_emit_compute_scratch(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 
    radv_cs_add_buffer(queue->device->ws, cs, compute_scratch_bo);
 
-   radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 2);
+   if (info->gfx_level >= GFX11) {
+      radeon_set_sh_reg_seq(cs, R_00B840_COMPUTE_DISPATCH_SCRATCH_BASE_LO, 4);
+      radeon_emit(cs, scratch_va >> 8);
+      radeon_emit(cs, scratch_va >> 40);
+   } else {
+      radeon_set_sh_reg_seq(cs, R_00B900_COMPUTE_USER_DATA_0, 2);
+   }
+
    radeon_emit(cs, scratch_va);
    radeon_emit(cs, S_008F04_BASE_ADDRESS_HI(scratch_va >> 32) | S_008F04_SWIZZLE_ENABLE_GFX6(1));
 
    radeon_set_sh_reg(cs, R_00B860_COMPUTE_TMPRING_SIZE,
-                     S_00B860_WAVES(waves) | S_00B860_WAVESIZE(round_up_u32(size_per_wave, 1024)));
+                     S_00B860_WAVES(waves) |
+                     S_00B860_WAVESIZE(round_up_u32(size_per_wave, info->gfx_level >= GFX11 ? 256 : 1024)));
 }
 
 static void
