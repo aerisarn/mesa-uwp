@@ -131,6 +131,19 @@ panfrost_block_size(uint64_t modifier, enum pipe_format format)
 }
 
 /*
+ * Determine the number of bytes between header rows for an AFBC image. For an
+ * image with linear headers, this is simply the number of header blocks
+ * (=superblocks) per row  times the numbers of bytes per header block.
+ */
+uint32_t
+pan_afbc_row_stride(uint64_t modifier, uint32_t width)
+{
+        unsigned block_width = panfrost_afbc_superblock_width(modifier);
+
+        return (width / block_width) * AFBC_HEADER_BYTES_PER_TILE;
+}
+
+/*
  * Determine the number of header blocks between header rows. This is equal to
  * the number of bytes between header rows divided by the bytes per blocks of a
  * header tile
@@ -204,7 +217,7 @@ panfrost_from_legacy_stride(unsigned legacy_stride,
         if (drm_is_afbc(modifier)) {
                 unsigned width = legacy_stride / util_format_get_blocksize(format);
 
-                return (width / block_size.width) * AFBC_HEADER_BYTES_PER_TILE;
+                return pan_afbc_row_stride(modifier, width);
         } else {
                 return legacy_stride * block_size.height;
         }
@@ -292,11 +305,8 @@ pan_image_layout_init(struct pan_image_layout *layout,
                 if (afbc) {
                         slice->afbc.header_size =
                                 panfrost_afbc_header_size(width, height);
-
-                        /* Stride between two rows of AFBC headers */
                         slice->row_stride =
-                                (effective_width / block_size.width) *
-                                AFBC_HEADER_BYTES_PER_TILE;
+                                pan_afbc_row_stride(layout->modifier, effective_width);
 
                         if (explicit_layout && explicit_layout->row_stride < slice->row_stride)
                                 return false;
