@@ -3985,11 +3985,7 @@ radv_init_compute_state(struct radeon_cmdbuf *cs, struct radv_queue *queue)
 }
 
 static VkResult
-radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
-                        uint32_t scratch_waves, uint32_t compute_scratch_size_per_wave,
-                        uint32_t compute_scratch_waves, uint32_t esgs_ring_size,
-                        uint32_t gsvs_ring_size, bool needs_tess_rings, bool needs_gds,
-                        bool needs_gds_oa, bool needs_sample_positions)
+radv_update_preamble_cs(struct radv_queue *queue, const struct radv_queue_ring_info *needs)
 {
    struct radeon_winsys_bo *scratch_bo = queue->scratch_bo;
    struct radeon_winsys_bo *descriptor_bo = queue->descriptor_bo;
@@ -4000,40 +3996,14 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
    struct radeon_winsys_bo *gds_bo = queue->gds_bo;
    struct radeon_winsys_bo *gds_oa_bo = queue->gds_oa_bo;
    struct radeon_cmdbuf *dest_cs[3] = {0};
-   uint32_t ring_bo_flags = RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING;
+   const uint32_t ring_bo_flags = RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING;
    VkResult result = VK_SUCCESS;
 
-   const bool add_tess_rings = !queue->has_tess_rings && needs_tess_rings;
-   const bool add_gds = !queue->has_gds && needs_gds;
-   const bool add_gds_oa = !queue->has_gds_oa && needs_gds_oa;
-   const bool add_sample_positions = !queue->has_sample_positions && needs_sample_positions;
+   const bool add_sample_positions = !queue->ring_info.sample_positions && needs->sample_positions;
+   const uint32_t scratch_size = needs->scratch_size_per_wave * needs->scratch_waves;
+   const uint32_t queue_scratch_size =
+      queue->ring_info.scratch_size_per_wave * queue->ring_info.scratch_waves;
 
-   scratch_size_per_wave = MAX2(scratch_size_per_wave, queue->scratch_size_per_wave);
-   if (scratch_size_per_wave)
-      scratch_waves = MIN2(scratch_waves, UINT32_MAX / scratch_size_per_wave);
-   else
-      scratch_waves = 0;
-
-   compute_scratch_size_per_wave =
-      MAX2(compute_scratch_size_per_wave, queue->compute_scratch_size_per_wave);
-   if (compute_scratch_size_per_wave)
-      compute_scratch_waves =
-         MIN2(compute_scratch_waves, UINT32_MAX / compute_scratch_size_per_wave);
-   else
-      compute_scratch_waves = 0;
-
-   if (scratch_size_per_wave <= queue->scratch_size_per_wave &&
-       scratch_waves <= queue->scratch_waves &&
-       compute_scratch_size_per_wave <= queue->compute_scratch_size_per_wave &&
-       compute_scratch_waves <= queue->compute_scratch_waves &&
-       esgs_ring_size <= queue->esgs_ring_size && gsvs_ring_size <= queue->gsvs_ring_size &&
-       !add_tess_rings && !add_gds && !add_gds_oa && !add_sample_positions &&
-       queue->initial_preamble_cs) {
-      return VK_SUCCESS;
-   }
-
-   uint32_t scratch_size = scratch_size_per_wave * scratch_waves;
-   uint32_t queue_scratch_size = queue->scratch_size_per_wave * queue->scratch_waves;
    if (scratch_size > queue_scratch_size) {
       result =
          queue->device->ws->buffer_create(queue->device->ws, scratch_size, 4096, RADEON_DOMAIN_VRAM,
@@ -4042,9 +4012,10 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
          goto fail;
    }
 
-   uint32_t compute_scratch_size = compute_scratch_size_per_wave * compute_scratch_waves;
-   uint32_t compute_queue_scratch_size =
-      queue->compute_scratch_size_per_wave * queue->compute_scratch_waves;
+   const uint32_t compute_scratch_size =
+      needs->compute_scratch_size_per_wave * needs->compute_scratch_waves;
+   const uint32_t compute_queue_scratch_size =
+      queue->ring_info.compute_scratch_size_per_wave * queue->ring_info.compute_scratch_waves;
    if (compute_scratch_size > compute_queue_scratch_size) {
       result = queue->device->ws->buffer_create(queue->device->ws, compute_scratch_size, 4096,
                                                 RADEON_DOMAIN_VRAM, ring_bo_flags,
@@ -4053,25 +4024,23 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
          goto fail;
    }
 
-   esgs_ring_size = MAX2(esgs_ring_size, queue->esgs_ring_size);
-   if (esgs_ring_size > queue->esgs_ring_size) {
-      result = queue->device->ws->buffer_create(queue->device->ws, esgs_ring_size, 4096,
+   if (needs->esgs_ring_size > queue->ring_info.esgs_ring_size) {
+      result = queue->device->ws->buffer_create(queue->device->ws, needs->esgs_ring_size, 4096,
                                                 RADEON_DOMAIN_VRAM, ring_bo_flags,
                                                 RADV_BO_PRIORITY_SCRATCH, 0, &esgs_ring_bo);
       if (result != VK_SUCCESS)
          goto fail;
    }
 
-   gsvs_ring_size = MAX2(gsvs_ring_size, queue->gsvs_ring_size);
-   if (gsvs_ring_size > queue->gsvs_ring_size) {
-      result = queue->device->ws->buffer_create(queue->device->ws, gsvs_ring_size, 4096,
+   if (needs->gsvs_ring_size > queue->ring_info.gsvs_ring_size) {
+      result = queue->device->ws->buffer_create(queue->device->ws, needs->gsvs_ring_size, 4096,
                                                 RADEON_DOMAIN_VRAM, ring_bo_flags,
                                                 RADV_BO_PRIORITY_SCRATCH, 0, &gsvs_ring_bo);
       if (result != VK_SUCCESS)
          goto fail;
    }
 
-   if (add_tess_rings) {
+   if (!queue->ring_info.tess_rings && needs->tess_rings) {
       result = queue->device->ws->buffer_create(
          queue->device->ws, queue->device->hs.tess_offchip_ring_offset + queue->device->hs.tess_offchip_ring_size, 256,
          RADEON_DOMAIN_VRAM, ring_bo_flags, RADV_BO_PRIORITY_SCRATCH, 0, &tess_rings_bo);
@@ -4079,7 +4048,7 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
          goto fail;
    }
 
-   if (add_gds) {
+   if (!queue->ring_info.gds && needs->gds) {
       assert(queue->device->physical_device->rad_info.gfx_level >= GFX10);
 
       /* 4 streamout GDS counters.
@@ -4092,7 +4061,7 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
          goto fail;
    }
 
-   if (add_gds_oa) {
+   if (!queue->ring_info.gds_oa && needs->gds_oa) {
       assert(queue->device->physical_device->rad_info.gfx_level >= GFX10);
 
       result =
@@ -4141,8 +4110,8 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
       }
 
       if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo || add_sample_positions)
-         radv_fill_shader_rings(queue, map, add_sample_positions, esgs_ring_size, esgs_ring_bo,
-                                gsvs_ring_size, gsvs_ring_bo, tess_rings_bo);
+         radv_fill_shader_rings(queue, map, add_sample_positions, needs->esgs_ring_size,
+                                esgs_ring_bo, needs->gsvs_ring_size, gsvs_ring_bo, tess_rings_bo);
 
       queue->device->ws->buffer_unmap(descriptor_bo);
    }
@@ -4155,9 +4124,9 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
              queue->device->physical_device->rad_info.gfx_level >= GFX7)
             continue;
          /* Continue preamble is unnecessary when no shader rings are used. */
-         if (!scratch_size_per_wave && !compute_scratch_size_per_wave && !esgs_ring_size &&
-             !gsvs_ring_size && !needs_tess_rings && !needs_gds && !needs_gds_oa &&
-             !needs_sample_positions)
+         if (!needs->scratch_size_per_wave && !needs->compute_scratch_size_per_wave &&
+             !needs->esgs_ring_size && !needs->gsvs_ring_size && !needs->tess_rings &&
+             !needs->gds && !needs->gds_oa && !needs->sample_positions)
             continue;
       }
 
@@ -4188,19 +4157,20 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
             radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
          }
 
-         radv_emit_gs_ring_sizes(queue, cs, esgs_ring_bo, esgs_ring_size, gsvs_ring_bo,
-                                 gsvs_ring_size);
+         radv_emit_gs_ring_sizes(queue, cs, esgs_ring_bo, needs->esgs_ring_size, gsvs_ring_bo,
+                                 needs->gsvs_ring_size);
          radv_emit_tess_factor_ring(queue, cs, tess_rings_bo);
          radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
-         radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave, compute_scratch_waves,
-                                   compute_scratch_bo);
-         radv_emit_graphics_scratch(queue, cs, scratch_size_per_wave, scratch_waves, scratch_bo);
+         radv_emit_compute_scratch(queue, cs, needs->compute_scratch_size_per_wave,
+                                   needs->compute_scratch_waves, compute_scratch_bo);
+         radv_emit_graphics_scratch(queue, cs, needs->scratch_size_per_wave, needs->scratch_waves,
+                                    scratch_bo);
          break;
       case RADV_QUEUE_COMPUTE:
          radv_init_compute_state(cs, queue);
          radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
-         radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave, compute_scratch_waves,
-                                   compute_scratch_bo);
+         radv_emit_compute_scratch(queue, cs, needs->compute_scratch_size_per_wave,
+                                   needs->compute_scratch_waves, compute_scratch_bo);
          break;
       default:
          break;
@@ -4252,56 +4222,35 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
          queue->device->ws->buffer_destroy(queue->device->ws, queue->scratch_bo);
       queue->scratch_bo = scratch_bo;
    }
-   queue->scratch_size_per_wave = scratch_size_per_wave;
-   queue->scratch_waves = scratch_waves;
 
    if (compute_scratch_bo != queue->compute_scratch_bo) {
       if (queue->compute_scratch_bo)
          queue->device->ws->buffer_destroy(queue->device->ws, queue->compute_scratch_bo);
       queue->compute_scratch_bo = compute_scratch_bo;
    }
-   queue->compute_scratch_size_per_wave = compute_scratch_size_per_wave;
-   queue->compute_scratch_waves = compute_scratch_waves;
 
    if (esgs_ring_bo != queue->esgs_ring_bo) {
       if (queue->esgs_ring_bo)
          queue->device->ws->buffer_destroy(queue->device->ws, queue->esgs_ring_bo);
       queue->esgs_ring_bo = esgs_ring_bo;
-      queue->esgs_ring_size = esgs_ring_size;
    }
 
    if (gsvs_ring_bo != queue->gsvs_ring_bo) {
       if (queue->gsvs_ring_bo)
          queue->device->ws->buffer_destroy(queue->device->ws, queue->gsvs_ring_bo);
       queue->gsvs_ring_bo = gsvs_ring_bo;
-      queue->gsvs_ring_size = gsvs_ring_size;
-   }
-
-   if (tess_rings_bo != queue->tess_rings_bo) {
-      queue->tess_rings_bo = tess_rings_bo;
-      queue->has_tess_rings = true;
-   }
-
-   if (gds_bo != queue->gds_bo) {
-      queue->gds_bo = gds_bo;
-      queue->has_gds = true;
-   }
-
-   if (gds_oa_bo != queue->gds_oa_bo) {
-      queue->gds_oa_bo = gds_oa_bo;
-      queue->has_gds_oa = true;
    }
 
    if (descriptor_bo != queue->descriptor_bo) {
       if (queue->descriptor_bo)
          queue->device->ws->buffer_destroy(queue->device->ws, queue->descriptor_bo);
-
       queue->descriptor_bo = descriptor_bo;
    }
 
-   if (add_sample_positions)
-      queue->has_sample_positions = true;
-
+   queue->tess_rings_bo = tess_rings_bo;
+   queue->gds_bo = gds_bo;
+   queue->gds_oa_bo = gds_oa_bo;
+   queue->ring_info = *needs;
    return VK_SUCCESS;
 fail:
    for (int i = 0; i < ARRAY_SIZE(dest_cs); ++i)
@@ -4447,34 +4396,57 @@ radv_update_preambles(struct radv_queue *queue, struct vk_command_buffer *const 
    if (queue->qf == RADV_QUEUE_TRANSFER)
       return VK_SUCCESS;
 
-   uint32_t scratch_size_per_wave = 0, waves_wanted = 0;
-   uint32_t compute_scratch_size_per_wave = 0, compute_waves_wanted = 0;
-   uint32_t esgs_ring_size = 0, gsvs_ring_size = 0;
-   bool tess_rings_needed = false;
-   bool gds_needed = false;
-   bool gds_oa_needed = false;
-   bool sample_positions_needed = false;
-
+   /* Figure out the needs of the current submission.
+    * Start by copying the queue's current info.
+    * This is done because we only allow two possible behaviours for these buffers:
+    * - Grow when the newly needed amount is larger than what we had
+    * - Allocate the max size and reuse it, but don't free it until the queue is destroyed
+    */
+   struct radv_queue_ring_info needs = queue->ring_info;
    for (uint32_t j = 0; j < cmd_buffer_count; j++) {
       struct radv_cmd_buffer *cmd_buffer = container_of(cmd_buffers[j], struct radv_cmd_buffer, vk);
 
-      scratch_size_per_wave = MAX2(scratch_size_per_wave, cmd_buffer->scratch_size_per_wave_needed);
-      waves_wanted = MAX2(waves_wanted, cmd_buffer->scratch_waves_wanted);
-      compute_scratch_size_per_wave =
-         MAX2(compute_scratch_size_per_wave, cmd_buffer->compute_scratch_size_per_wave_needed);
-      compute_waves_wanted = MAX2(compute_waves_wanted, cmd_buffer->compute_scratch_waves_wanted);
-      esgs_ring_size = MAX2(esgs_ring_size, cmd_buffer->esgs_ring_size_needed);
-      gsvs_ring_size = MAX2(gsvs_ring_size, cmd_buffer->gsvs_ring_size_needed);
-      tess_rings_needed |= cmd_buffer->tess_rings_needed;
-      gds_needed |= cmd_buffer->gds_needed;
-      gds_oa_needed |= cmd_buffer->gds_oa_needed;
-      sample_positions_needed |= cmd_buffer->sample_positions_needed;
+      needs.scratch_size_per_wave =
+         MAX2(needs.scratch_size_per_wave, cmd_buffer->scratch_size_per_wave_needed);
+      needs.scratch_waves = MAX2(needs.scratch_waves, cmd_buffer->scratch_waves_wanted);
+      needs.compute_scratch_size_per_wave = MAX2(needs.compute_scratch_size_per_wave,
+                                                 cmd_buffer->compute_scratch_size_per_wave_needed);
+      needs.compute_scratch_waves =
+         MAX2(needs.compute_scratch_waves, cmd_buffer->compute_scratch_waves_wanted);
+      needs.esgs_ring_size = MAX2(needs.esgs_ring_size, cmd_buffer->esgs_ring_size_needed);
+      needs.gsvs_ring_size = MAX2(needs.gsvs_ring_size, cmd_buffer->gsvs_ring_size_needed);
+      needs.tess_rings |= cmd_buffer->tess_rings_needed;
+      needs.gds |= cmd_buffer->gds_needed;
+      needs.gds_oa |= cmd_buffer->gds_oa_needed;
+      needs.sample_positions |= cmd_buffer->sample_positions_needed;
    }
 
-   return radv_update_preamble_cs(queue, scratch_size_per_wave, waves_wanted,
-                                  compute_scratch_size_per_wave, compute_waves_wanted,
-                                  esgs_ring_size, gsvs_ring_size, tess_rings_needed, gds_needed,
-                                  gds_oa_needed, sample_positions_needed);
+   /* Sanitize scratch size information. */
+   needs.scratch_waves = needs.scratch_size_per_wave
+                            ? MIN2(needs.scratch_waves, UINT32_MAX / needs.scratch_size_per_wave)
+                            : 0;
+   needs.compute_scratch_waves =
+      needs.compute_scratch_size_per_wave
+         ? MIN2(needs.compute_scratch_waves, UINT32_MAX / needs.compute_scratch_size_per_wave)
+         : 0;
+
+   /* Return early if we already match these needs.
+    * Note that it's not possible for any of the needed values to be less
+    * than what the queue already had, because we only ever increase the allocated size.
+    */
+   if (queue->initial_full_flush_preamble_cs &&
+       queue->ring_info.scratch_size_per_wave == needs.scratch_size_per_wave &&
+       queue->ring_info.scratch_waves == needs.scratch_waves &&
+       queue->ring_info.compute_scratch_size_per_wave == needs.compute_scratch_size_per_wave &&
+       queue->ring_info.compute_scratch_waves == needs.compute_scratch_waves &&
+       queue->ring_info.esgs_ring_size == needs.esgs_ring_size &&
+       queue->ring_info.gsvs_ring_size == needs.gsvs_ring_size &&
+       queue->ring_info.tess_rings == needs.tess_rings && queue->ring_info.gds == needs.gds &&
+       queue->ring_info.gds_oa == needs.gds_oa &&
+       queue->ring_info.sample_positions == needs.sample_positions)
+      return VK_SUCCESS;
+
+   return radv_update_preamble_cs(queue, &needs);
 }
 
 struct radv_deferred_queue_submission {

@@ -704,6 +704,19 @@ vk_queue_to_radv(const struct radv_physical_device *phys_dev, int queue_family_i
 enum amd_ip_type radv_queue_family_to_ring(struct radv_physical_device *physical_device,
                                          enum radv_queue_family f);
 
+struct radv_queue_ring_info {
+   uint32_t scratch_size_per_wave;
+   uint32_t scratch_waves;
+   uint32_t compute_scratch_size_per_wave;
+   uint32_t compute_scratch_waves;
+   uint32_t esgs_ring_size;
+   uint32_t gsvs_ring_size;
+   bool tess_rings;
+   bool gds;
+   bool gds_oa;
+   bool sample_positions;
+};
+
 struct radv_queue {
    struct vk_queue vk;
    struct radv_device *device;
@@ -711,16 +724,7 @@ struct radv_queue {
    enum radeon_ctx_priority priority;
 
    enum radv_queue_family qf;
-   uint32_t scratch_size_per_wave;
-   uint32_t scratch_waves;
-   uint32_t compute_scratch_size_per_wave;
-   uint32_t compute_scratch_waves;
-   uint32_t esgs_ring_size;
-   uint32_t gsvs_ring_size;
-   bool has_tess_rings;
-   bool has_gds;
-   bool has_gds_oa;
-   bool has_sample_positions;
+   struct radv_queue_ring_info ring_info;
 
    struct radeon_winsys_bo *scratch_bo;
    struct radeon_winsys_bo *descriptor_bo;
