@@ -776,6 +776,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       return false;
    }
 
+   /* Fix incorrect IP versions reported by the kernel. */
+   if (info->chip_class == GFX10_3)
+      info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 3;
+   else if (info->chip_class == GFX10)
+      info->ip[AMD_IP_GFX].ver_minor = info->ip[AMD_IP_COMPUTE].ver_minor = 1;
+
    info->smart_access_memory = info->all_vram_visible &&
                                info->chip_class >= GFX10_3 &&
                                util_get_cpu_caps()->family >= CPU_AMD_ZEN3 &&
