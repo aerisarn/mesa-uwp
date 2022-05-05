@@ -913,7 +913,7 @@ kopperSwapBuffers(__DRIdrawable *dPriv)
       return 0;
 
    drawable->texture_stamp = dPriv->lastStamp - 1;
-   dri_flush(dPriv->driContextPriv, dPriv, __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
+   dri_flush(ctx->cPriv, dPriv, __DRI2_FLUSH_DRAWABLE | __DRI2_FLUSH_CONTEXT, __DRI2_THROTTLE_SWAPBUFFER);
    kopper_copy_to_front(ctx->st->pipe, dPriv, ptex);
    if (kdraw->is_window && !zink_kopper_check(ptex))
       return -1;
