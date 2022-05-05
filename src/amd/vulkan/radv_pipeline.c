@@ -852,7 +852,9 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
       /* RB+ doesn't work with dual source blending, logic op and
        * RESOLVE.
        */
-      if (blend.mrt0_is_dual_src || (vkblend && vkblend->logicOpEnable))
+      if (blend.mrt0_is_dual_src || (vkblend && vkblend->logicOpEnable) ||
+          (pipeline->device->physical_device->rad_info.gfx_level >= GFX11 &&
+           blend.blend_enable_4bit))
          cb_color_control |= S_028808_DISABLE_DUAL_QUAD(1);
    }
 
@@ -5621,11 +5623,14 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
    struct radv_shader *gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
    uint32_t gs_num_invocations = gs ? gs->info.gs.invocations : 1;
 
-   radeon_set_context_reg(
-      ctx_cs, R_028A44_VGT_GS_ONCHIP_CNTL,
-      S_028A44_ES_VERTS_PER_SUBGRP(ngg_state->hw_max_esverts) |
-         S_028A44_GS_PRIMS_PER_SUBGRP(ngg_state->max_gsprims) |
-         S_028A44_GS_INST_PRIMS_IN_SUBGRP(ngg_state->max_gsprims * gs_num_invocations));
+   if (pipeline->device->physical_device->rad_info.gfx_level < GFX11) {
+      radeon_set_context_reg(
+         ctx_cs, R_028A44_VGT_GS_ONCHIP_CNTL,
+         S_028A44_ES_VERTS_PER_SUBGRP(ngg_state->hw_max_esverts) |
+            S_028A44_GS_PRIMS_PER_SUBGRP(ngg_state->max_gsprims) |
+            S_028A44_GS_INST_PRIMS_IN_SUBGRP(ngg_state->max_gsprims * gs_num_invocations));
+   }
+
    radeon_set_context_reg(ctx_cs, R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,
                           S_0287FC_MAX_VERTS_PER_SUBGROUP(ngg_state->max_out_verts));
    radeon_set_context_reg(ctx_cs, R_028B4C_GE_NGG_SUBGRP_CNTL,
@@ -6167,6 +6172,7 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct rade
                                        struct radv_pipeline *pipeline)
 {
    struct radv_shader *ps;
+   bool param_gen;
    uint64_t va;
    assert(pipeline->shaders[MESA_SHADER_FRAGMENT]);
 
@@ -6186,11 +6192,16 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs, struct rade
    radeon_emit(ctx_cs, ps->config.spi_ps_input_ena);
    radeon_emit(ctx_cs, ps->config.spi_ps_input_addr);
 
+   /* Workaround when there are no PS inputs but LDS is used. */
+   param_gen = pipeline->device->physical_device->rad_info.gfx_level >= GFX11 &&
+               !ps->info.ps.num_interp && ps->config.lds_size;
+
    radeon_set_context_reg(
       ctx_cs, R_0286D8_SPI_PS_IN_CONTROL,
       S_0286D8_NUM_INTERP(ps->info.ps.num_interp) |
       S_0286D8_NUM_PRIM_INTERP(ps->info.ps.num_prim_interp) |
-      S_0286D8_PS_W32_EN(ps->info.wave_size == 32));
+      S_0286D8_PS_W32_EN(ps->info.wave_size == 32) |
+      S_0286D8_PARAM_GEN(param_gen));
 
    radeon_set_context_reg(ctx_cs, R_0286E0_SPI_BARYC_CNTL, pipeline->graphics.spi_baryc_cntl);
 
@@ -6357,7 +6368,11 @@ radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
                                   const struct radv_pipeline *pipeline,
                                   uint32_t vgt_gs_out_prim_type)
 {
-   radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, vgt_gs_out_prim_type);
+   if (pipeline->device->physical_device->rad_info.gfx_level >= GFX11) {
+      radeon_set_uconfig_reg(ctx_cs, R_030998_VGT_GS_OUT_PRIM_TYPE, vgt_gs_out_prim_type);
+   } else {
+      radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, vgt_gs_out_prim_type);
+   }
 }
 
 static void
