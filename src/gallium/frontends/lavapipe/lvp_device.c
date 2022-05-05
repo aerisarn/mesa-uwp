@@ -1016,7 +1016,7 @@ lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
    p->subgroupQuadOperationsInAllStages = false;
 
 #if LLVM_VERSION_MAJOR >= 10
-   p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_SHUFFLE_BIT | VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
+   p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_SHUFFLE_BIT | VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT | VK_SUBGROUP_FEATURE_QUAD_BIT;
 #endif
 
    p->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
