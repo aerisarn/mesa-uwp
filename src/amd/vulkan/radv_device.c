@@ -1624,10 +1624,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_2_FEATURES_EXT: {
          VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *features =
             (VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT *)ext;
-         bool has_shader_buffer_float_minmax = ((pdevice->rad_info.chip_class == GFX6 ||
-                                                 pdevice->rad_info.chip_class == GFX7) &&
-                                                !pdevice->use_llvm) ||
-                                               pdevice->rad_info.chip_class >= GFX10;
+         bool has_shader_buffer_float_minmax = radv_has_shader_buffer_float_minmax(pdevice);
          bool has_shader_image_float_minmax = pdevice->rad_info.chip_class != GFX8 &&
                                               pdevice->rad_info.chip_class != GFX9;
          features->shaderBufferFloat16Atomics = false;

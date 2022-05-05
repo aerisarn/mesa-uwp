@@ -2938,6 +2938,13 @@ radv_use_llvm_for_stage(struct radv_device *device, UNUSED gl_shader_stage stage
    return device->physical_device->use_llvm;
 }
 
+static inline bool
+radv_has_shader_buffer_float_minmax(const struct radv_physical_device *pdevice)
+{
+   return (pdevice->rad_info.chip_class <= GFX7 && !pdevice->use_llvm) ||
+          pdevice->rad_info.chip_class >= GFX10;
+}
+
 struct radv_acceleration_structure {
    struct vk_object_base base;
 
