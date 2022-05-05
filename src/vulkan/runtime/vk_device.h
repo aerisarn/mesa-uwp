@@ -103,6 +103,10 @@ struct vk_device {
    /** Table of enabled extensions */
    struct vk_device_extension_table enabled_extensions;
 
+   struct {
+      bool robustBufferAccess;
+   } enabled_features;
+
    /** Device-level dispatch table */
    struct vk_device_dispatch_table dispatch_table;
 

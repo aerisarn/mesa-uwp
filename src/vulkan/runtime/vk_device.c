@@ -75,6 +75,31 @@ get_timeline_mode(struct vk_physical_device *physical_device)
    return VK_DEVICE_TIMELINE_MODE_ASSISTED;
 }
 
+static void
+collect_enabled_features(struct vk_device *device,
+                         const VkDeviceCreateInfo *pCreateInfo)
+{
+   if (pCreateInfo->pEnabledFeatures) {
+      if (pCreateInfo->pEnabledFeatures->robustBufferAccess)
+         device->enabled_features.robustBufferAccess = true;
+   }
+
+   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
+         const VkPhysicalDeviceFeatures2 *features = (const void *)ext;
+         if (features->features.robustBufferAccess)
+            device->enabled_features.robustBufferAccess = true;
+         break;
+      }
+
+      default:
+         /* Don't warn */
+         break;
+      }
+   }
+}
+
 VkResult
 vk_device_init(struct vk_device *device,
                struct vk_physical_device *physical_device,
@@ -130,6 +155,8 @@ vk_device_init(struct vk_device *device,
                                                pCreateInfo);
    if (result != VK_SUCCESS)
       return result;
+
+   collect_enabled_features(device, pCreateInfo);
 
    p_atomic_set(&device->private_data_next_index, 0);
 
