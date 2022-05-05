@@ -103,8 +103,30 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    radv_aco_convert_shader_so_info(aco_info, radv);
    aco_info->gfx9_gs_ring_lds_size = radv->gs_ring_info.lds_size;
 }
+
+#define ASSIGN_VS_STATE_FIELD(x) aco_info->state.x = radv->state->x
+#define ASSIGN_VS_STATE_FIELD_CP(x) memcpy(&aco_info->state.x, &radv->state->x, sizeof(radv->state->x))
+static inline void
+radv_aco_convert_vs_prolog_key(struct aco_vs_prolog_key *aco_info,
+			       const struct radv_vs_prolog_key *radv)
+{
+   ASSIGN_VS_STATE_FIELD(instance_rate_inputs);
+   ASSIGN_VS_STATE_FIELD(nontrivial_divisors);
+   ASSIGN_VS_STATE_FIELD(post_shuffle);
+   ASSIGN_VS_STATE_FIELD(alpha_adjust_lo);
+   ASSIGN_VS_STATE_FIELD(alpha_adjust_hi);
+   ASSIGN_VS_STATE_FIELD_CP(divisors);
+   ASSIGN_VS_STATE_FIELD_CP(formats);
+   ASSIGN_FIELD(num_attributes);
+   ASSIGN_FIELD(misaligned_mask);
+   ASSIGN_FIELD(is_ngg);
+   ASSIGN_FIELD(next_stage);
+}
+#undef ASSIGN_VS_STATE_FIELD
+#undef ASSIGN_VS_STATE_FIELD_CP
 #undef ASSIGN_FIELD
 #undef ASSIGN_FIELD_CP
 #undef ASSIGN_OUTINFO
+
 
 #endif

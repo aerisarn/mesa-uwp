@@ -281,7 +281,7 @@ aco_compile_shader(const struct radv_nir_compiler_options* options,
 void
 aco_compile_vs_prolog(const struct radv_nir_compiler_options* options,
                       const struct aco_shader_info* info,
-                      const struct radv_vs_prolog_key* key,
+                      const struct aco_vs_prolog_key* key,
                       const struct radv_shader_args* args,
                       struct radv_prolog_binary** binary)
 {

@@ -11683,7 +11683,7 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
 }
 
 void
-select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shader_config* config,
+select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key, ac_shader_config* config,
                  const struct radv_nir_compiler_options* options,
                  const struct aco_shader_info* info,
                  const struct radv_shader_args* args, unsigned* num_preserved_sgprs)
@@ -11710,7 +11710,7 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
    bld.sopp(aco_opcode::s_setprio, -1u, 0x3u);
 
    uint32_t attrib_mask = BITFIELD_MASK(key->num_attributes);
-   bool has_nontrivial_divisors = key->state->nontrivial_divisors & attrib_mask;
+   bool has_nontrivial_divisors = key->state.nontrivial_divisors & attrib_mask;
 
    wait_imm lgkm_imm;
    lgkm_imm.lgkm = 0;
@@ -11769,12 +11769,12 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
 
          bool needs_instance_index = false;
          bool needs_start_instance = false;
-         u_foreach_bit(i, key->state->instance_rate_inputs & attrib_mask)
+         u_foreach_bit(i, key->state.instance_rate_inputs & attrib_mask)
          {
-            needs_instance_index |= key->state->divisors[i] == 1;
-            needs_start_instance |= key->state->divisors[i] == 0;
+            needs_instance_index |= key->state.divisors[i] == 1;
+            needs_start_instance |= key->state.divisors[i] == 0;
          }
-         bool needs_vertex_index = ~key->state->instance_rate_inputs & attrib_mask;
+         bool needs_vertex_index = ~key->state.instance_rate_inputs & attrib_mask;
          if (needs_vertex_index)
             bld.vadd32(Definition(vertex_index, v1), get_arg_fixed(args, args->ac.base_vertex),
                        get_arg_fixed(args, args->ac.vertex_id), false, Operand(s2), true);
@@ -11792,13 +11792,13 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
 
          /* calculate index */
          Operand fetch_index = Operand(vertex_index, v1);
-         if (key->state->instance_rate_inputs & (1u << loc)) {
-            uint32_t divisor = key->state->divisors[loc];
+         if (key->state.instance_rate_inputs & (1u << loc)) {
+            uint32_t divisor = key->state.divisors[loc];
             if (divisor) {
                fetch_index = instance_id;
-               if (key->state->nontrivial_divisors & (1u << loc)) {
+               if (key->state.nontrivial_divisors & (1u << loc)) {
                   unsigned index =
-                     util_bitcount(key->state->nontrivial_divisors & BITFIELD_MASK(loc));
+                     util_bitcount(key->state.nontrivial_divisors & BITFIELD_MASK(loc));
                   fetch_index = calc_nontrivial_instance_id(
                      bld, args, index, instance_id, start_instance, prolog_input,
                      nontrivial_tmp_vgpr0, nontrivial_tmp_vgpr1);
@@ -11813,11 +11813,11 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
          /* perform load */
          PhysReg cur_desc = desc.advance(i * 16);
          if ((key->misaligned_mask & (1u << loc))) {
-            unsigned dfmt = key->state->formats[loc] & 0xf;
-            unsigned nfmt = key->state->formats[loc] >> 4;
+            unsigned dfmt = key->state.formats[loc] & 0xf;
+            unsigned nfmt = key->state.formats[loc] >> 4;
             const struct ac_data_format_info* vtx_info = ac_get_data_format_info(dfmt);
             for (unsigned j = 0; j < vtx_info->num_channels; j++) {
-               bool post_shuffle = key->state->post_shuffle & (1u << loc);
+               bool post_shuffle = key->state.post_shuffle & (1u << loc);
                unsigned offset = vtx_info->chan_byte_size * (post_shuffle && j < 3 ? 2 - j : j);
 
                /* Use MUBUF to workaround hangs for byte-aligned dword loads. The Vulkan spec
@@ -11849,7 +11849,7 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
       }
    }
 
-   if (key->state->alpha_adjust_lo | key->state->alpha_adjust_hi) {
+   if (key->state.alpha_adjust_lo | key->state.alpha_adjust_hi) {
       wait_imm vm_imm;
       vm_imm.vm = 0;
       bld.sopp(aco_opcode::s_waitcnt, -1, vm_imm.pack(program->chip_class));
@@ -11857,12 +11857,12 @@ select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shad
 
    /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
     * so we may need to fix it up. */
-   u_foreach_bit(loc, (key->state->alpha_adjust_lo | key->state->alpha_adjust_hi))
+   u_foreach_bit(loc, (key->state.alpha_adjust_lo | key->state.alpha_adjust_hi))
    {
       PhysReg alpha(attributes_start.reg() + loc * 4u + 3);
 
-      unsigned alpha_adjust = (key->state->alpha_adjust_lo >> loc) & 0x1;
-      alpha_adjust |= ((key->state->alpha_adjust_hi >> loc) & 0x1) << 1;
+      unsigned alpha_adjust = (key->state.alpha_adjust_lo >> loc) & 0x1;
+      alpha_adjust |= ((key->state.alpha_adjust_hi >> loc) & 0x1) << 1;
 
       if (alpha_adjust == ALPHA_ADJUST_SSCALED)
          bld.vop1(aco_opcode::v_cvt_u32_f32, Definition(alpha, v1), Operand(alpha, v1));

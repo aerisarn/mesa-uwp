@@ -2186,8 +2186,10 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
 
    struct radv_prolog_binary *binary = NULL;
    struct aco_shader_info ac_info;
+   struct aco_vs_prolog_key ac_key;
    radv_aco_convert_shader_info(&ac_info, &info);
-   aco_compile_vs_prolog(&options, &ac_info, key, &args, &binary);
+   radv_aco_convert_vs_prolog_key(&ac_key, key);
+   aco_compile_vs_prolog(&options, &ac_info, &ac_key, &args, &binary);
    struct radv_shader_prolog *prolog = upload_vs_prolog(device, binary, info.wave_size);
    if (prolog) {
       prolog->nontrivial_divisors = key->state->nontrivial_divisors;

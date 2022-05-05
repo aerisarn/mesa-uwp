@@ -38,7 +38,6 @@
 #include <vector>
 
 struct radv_shader_args;
-struct radv_vs_prolog_key;
 
 namespace aco {
 
@@ -2168,7 +2167,7 @@ void select_trap_handler_shader(Program* program, struct nir_shader* shader,
                                 const struct radv_nir_compiler_options* options,
                                 const struct aco_shader_info* info,
                                 const struct radv_shader_args* args);
-void select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key,
+void select_vs_prolog(Program* program, const struct aco_vs_prolog_key* key,
                       ac_shader_config* config,
                       const struct radv_nir_compiler_options* options,
                       const struct aco_shader_info* info,

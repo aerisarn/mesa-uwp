@@ -35,6 +35,29 @@ extern "C" {
 
 #define ACO_MAX_SO_OUTPUTS 64
 #define ACO_MAX_SO_BUFFERS 4
+#define ACO_MAX_VERTEX_ATTRIBS 32
+
+struct aco_vs_input_state {
+   uint32_t instance_rate_inputs;
+   uint32_t nontrivial_divisors;
+   uint32_t post_shuffle;
+   /* Having two separate fields instead of a single uint64_t makes it easier to remove attributes
+    * using bitwise arithmetic.
+    */
+   uint32_t alpha_adjust_lo;
+   uint32_t alpha_adjust_hi;
+
+   uint32_t divisors[ACO_MAX_VERTEX_ATTRIBS];
+   uint8_t formats[ACO_MAX_VERTEX_ATTRIBS];
+};
+
+struct aco_vs_prolog_key {
+   struct aco_vs_input_state state;
+   unsigned num_attributes;
+   uint32_t misaligned_mask;
+   bool is_ngg;
+   gl_shader_stage next_stage;
+};
 
 struct aco_vp_output_info {
    uint8_t vs_output_param_offset[VARYING_SLOT_MAX];
