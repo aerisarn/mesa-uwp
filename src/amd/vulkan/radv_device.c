@@ -4540,6 +4540,17 @@ radv_queue_submit_bind_sparse_memory(struct radv_device *device, struct vk_queue
 }
 
 static VkResult
+radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submission)
+{
+   struct radeon_winsys_ctx *ctx = queue->hw_ctx;
+   enum amd_ip_type ring = radv_queue_ring(queue);
+
+   return queue->device->ws->cs_submit(ctx, ring, queue->vk.index_in_family, NULL, 0, NULL, NULL,
+                                       submission->wait_count, submission->waits,
+                                       submission->signal_count, submission->signals, false);
+}
+
+static VkResult
 radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
 {
    struct radv_queue *queue = (struct radv_queue *)vqueue;
@@ -4567,11 +4578,7 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       return VK_SUCCESS;
 
    if (!submission->command_buffer_count) {
-      result = queue->device->ws->cs_submit(ctx, ring, queue->vk.index_in_family, NULL, 0, NULL,
-                                            NULL, submission->wait_count, submission->waits,
-                                            submission->signal_count, submission->signals, false);
-      if (result != VK_SUCCESS)
-         goto fail;
+      result = radv_queue_submit_empty(queue, submission);
    } else {
       if (queue->device->trace_bo)
          simple_mtx_lock(&queue->device->trace_mtx);
