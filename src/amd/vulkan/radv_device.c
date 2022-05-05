@@ -4013,10 +4013,6 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
       *initial_full_flush_preamble_cs = queue->initial_full_flush_preamble_cs;
       *initial_preamble_cs = queue->initial_preamble_cs;
       *continue_preamble_cs = queue->continue_preamble_cs;
-      if (!scratch_size_per_wave && !compute_scratch_size_per_wave && !esgs_ring_size &&
-          !gsvs_ring_size && !needs_tess_rings && !needs_gds && !needs_gds_oa &&
-          !needs_sample_positions)
-         *continue_preamble_cs = NULL;
       return VK_SUCCESS;
    }
 
@@ -4130,6 +4126,19 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
    }
 
    for (int i = 0; i < 3; ++i) {
+      /* Don't create continue preamble when it's not necessary. */
+      if (i == 2) {
+         /* We only need the continue preamble when we can't use indirect buffers. */
+         if (!(queue->device->instance->debug_flags & RADV_DEBUG_NO_IBS) &&
+             queue->device->physical_device->rad_info.chip_class >= GFX7)
+            continue;
+         /* Continue preamble is unnecessary when no shader rings are used. */
+         if (!scratch_size_per_wave && !compute_scratch_size_per_wave && !esgs_ring_size &&
+             !gsvs_ring_size && !needs_tess_rings && !needs_gds && !needs_gds_oa &&
+             !needs_sample_positions)
+            continue;
+      }
+
       enum rgp_flush_bits sqtt_flush_bits = 0;
       struct radeon_cmdbuf *cs = NULL;
       cs = queue->device->ws->cs_create(queue->device->ws,
@@ -4271,8 +4280,6 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
    *initial_full_flush_preamble_cs = queue->initial_full_flush_preamble_cs;
    *initial_preamble_cs = queue->initial_preamble_cs;
    *continue_preamble_cs = queue->continue_preamble_cs;
-   if (!scratch_size && !compute_scratch_size && !esgs_ring_size && !gsvs_ring_size)
-      *continue_preamble_cs = NULL;
    return VK_SUCCESS;
 fail:
    for (int i = 0; i < ARRAY_SIZE(dest_cs); ++i)
