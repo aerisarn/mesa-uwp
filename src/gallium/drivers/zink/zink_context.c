@@ -3357,6 +3357,10 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
    if (!ctx->framebuffer || !ctx->framebuffer->state.num_attachments)
       return;
 
+   /* this is not an in-renderpass barrier */
+   if (!ctx->fbfetch_outputs)
+      zink_batch_no_rp(ctx);
+
    if (zink_screen(ctx->base.screen)->info.have_KHR_synchronization2) {
       VkDependencyInfo dep = {0};
       dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
