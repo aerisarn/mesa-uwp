@@ -1161,9 +1161,13 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
       if (cmd_buffer->state.attachments) {
          struct radv_color_buffer_info *cb = &cmd_buffer->state.attachments[idx].cb;
 
-         format = G_028C70_FORMAT_GFX6(cb->cb_color_info);
+         format = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
+                     ? G_028C70_FORMAT_GFX11(cb->cb_color_info)
+                     : G_028C70_FORMAT_GFX6(cb->cb_color_info);
          swap = G_028C70_COMP_SWAP(cb->cb_color_info);
-         has_alpha = !G_028C74_FORCE_DST_ALPHA_1_GFX6(cb->cb_color_attrib);
+         has_alpha = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11
+                        ? !G_028C74_FORCE_DST_ALPHA_1_GFX11(cb->cb_color_attrib)
+                        : !G_028C74_FORCE_DST_ALPHA_1_GFX6(cb->cb_color_attrib);
       } else {
          VkFormat fmt = cmd_buffer->state.pass->attachments[idx].format;
          format = radv_translate_colorformat(fmt);
@@ -1706,7 +1710,10 @@ radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+      radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_GE_MULTI_PRIM_IB_RESET_EN,
+                             d->primitive_restart_enable);
+   } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
       radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN,
                              d->primitive_restart_enable);
    } else {

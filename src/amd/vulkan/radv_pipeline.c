@@ -352,7 +352,7 @@ si_translate_blend_function(VkBlendOp op)
 }
 
 static uint32_t
-si_translate_blend_factor(VkBlendFactor factor)
+si_translate_blend_factor(enum amd_gfx_level gfx_level, VkBlendFactor factor)
 {
    switch (factor) {
    case VK_BLEND_FACTOR_ZERO:
@@ -378,21 +378,26 @@ si_translate_blend_factor(VkBlendFactor factor)
    case VK_BLEND_FACTOR_CONSTANT_COLOR:
       return V_028780_BLEND_CONSTANT_COLOR_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
-      return V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX11
+                                 : V_028780_BLEND_ONE_MINUS_CONSTANT_COLOR_GFX6;
    case VK_BLEND_FACTOR_CONSTANT_ALPHA:
-      return V_028780_BLEND_CONSTANT_ALPHA_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_CONSTANT_ALPHA_GFX11
+                                 : V_028780_BLEND_CONSTANT_ALPHA_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:
-      return V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX11
+                                 : V_028780_BLEND_ONE_MINUS_CONSTANT_ALPHA_GFX6;
    case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
       return V_028780_BLEND_SRC_ALPHA_SATURATE;
    case VK_BLEND_FACTOR_SRC1_COLOR:
-      return V_028780_BLEND_SRC1_COLOR_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_SRC1_COLOR_GFX11 : V_028780_BLEND_SRC1_COLOR_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
-      return V_028780_BLEND_INV_SRC1_COLOR_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_INV_SRC1_COLOR_GFX11
+                                 : V_028780_BLEND_INV_SRC1_COLOR_GFX6;
    case VK_BLEND_FACTOR_SRC1_ALPHA:
-      return V_028780_BLEND_SRC1_ALPHA_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_SRC1_ALPHA_GFX11 : V_028780_BLEND_SRC1_ALPHA_GFX6;
    case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
-      return V_028780_BLEND_INV_SRC1_ALPHA_GFX6;
+      return gfx_level >= GFX11 ? V_028780_BLEND_INV_SRC1_ALPHA_GFX11
+                                 : V_028780_BLEND_INV_SRC1_ALPHA_GFX6;
    default:
       return 0;
    }
@@ -692,6 +697,7 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
       radv_pipeline_get_multisample_state(pipeline, pCreateInfo);
    struct radv_blend_state blend = {0};
    unsigned cb_color_control = 0;
+   const enum amd_gfx_level gfx_level = pipeline->device->physical_device->rad_info.gfx_level;
    int i;
 
    if (vkblend) {
@@ -808,13 +814,13 @@ radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
          blend_cntl |= S_028780_ENABLE(1);
 
          blend_cntl |= S_028780_COLOR_COMB_FCN(si_translate_blend_function(eqRGB));
-         blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(srcRGB));
-         blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(dstRGB));
+         blend_cntl |= S_028780_COLOR_SRCBLEND(si_translate_blend_factor(gfx_level, srcRGB));
+         blend_cntl |= S_028780_COLOR_DESTBLEND(si_translate_blend_factor(gfx_level, dstRGB));
          if (srcA != srcRGB || dstA != dstRGB || eqA != eqRGB) {
             blend_cntl |= S_028780_SEPARATE_ALPHA_BLEND(1);
             blend_cntl |= S_028780_ALPHA_COMB_FCN(si_translate_blend_function(eqA));
-            blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(srcA));
-            blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(dstA));
+            blend_cntl |= S_028780_ALPHA_SRCBLEND(si_translate_blend_factor(gfx_level, srcA));
+            blend_cntl |= S_028780_ALPHA_DESTBLEND(si_translate_blend_factor(gfx_level, dstA));
          }
          blend.cb_blend_control[i] = blend_cntl;
 
@@ -5603,9 +5609,20 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
       S_028B90_CNT(gs_num_invocations) | S_028B90_ENABLE(gs_num_invocations > 1) |
          S_028B90_EN_MAX_VERT_OUT_PER_GS_INSTANCE(ngg_state->max_vert_out_per_gs_instance));
 
-   ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(ngg_state->max_gsprims) |
-             S_03096C_VERT_GRP_SIZE(ngg_state->enable_vertex_grouping ? ngg_state->hw_max_esverts : 256) | /* 256 = disable vertex grouping */
-             S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+   if (pipeline->device->physical_device->rad_info.gfx_level >= GFX11) {
+      ge_cntl = S_03096C_PRIMS_PER_SUBGRP(ngg_state->max_gsprims) |
+                S_03096C_VERT_GRP_SIZE(ngg_state->enable_vertex_grouping
+                                          ? ngg_state->hw_max_esverts
+                                          : 256) | /* 256 = disable vertex grouping */
+                S_03096C_BREAK_PRIMGRP_AT_EOI(break_wave_at_eoi) |
+                S_03096C_PRIM_GRP_SIZE_GFX11(256);
+   } else {
+      ge_cntl = S_03096C_PRIM_GRP_SIZE_GFX10(ngg_state->max_gsprims) |
+                S_03096C_VERT_GRP_SIZE(ngg_state->enable_vertex_grouping
+                                          ? ngg_state->hw_max_esverts
+                                          : 256) | /* 256 = disable vertex grouping */
+                S_03096C_BREAK_WAVE_AT_EOI(break_wave_at_eoi);
+   }
 
    /* Bug workaround for a possible hang with non-tessellation cases.
     * Tessellation always sets GE_CNTL.VERT_GRP_SIZE = 0
@@ -5627,7 +5644,14 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs, struct radeon_cmdbuf
    ac_compute_late_alloc(&pipeline->device->physical_device->rad_info, true, shader->info.has_ngg_culling,
                          shader->config.scratch_bytes_per_wave > 0, &late_alloc_wave64, &cu_mask);
 
-   if (pipeline->device->physical_device->rad_info.gfx_level >= GFX10) {
+   if (pipeline->device->physical_device->rad_info.gfx_level >= GFX11) {
+      /* TODO: figure out how S_00B204_CU_EN_GFX11 interacts with ac_set_reg_cu_en */
+      gfx10_set_sh_reg_idx3(cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
+                            S_00B21C_CU_EN(cu_mask) | S_00B21C_WAVE_LIMIT(0x3F));
+      gfx10_set_sh_reg_idx3(
+         cs, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
+         S_00B204_CU_EN_GFX11(0x1) | S_00B204_SPI_SHADER_LATE_ALLOC_GS_GFX10(late_alloc_wave64));
+   } else if (pipeline->device->physical_device->rad_info.gfx_level >= GFX10) {
       ac_set_reg_cu_en(cs, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
                        S_00B21C_CU_EN(cu_mask) | S_00B21C_WAVE_LIMIT(0x3F),
                        C_00B21C_CU_EN, 0, &pipeline->device->physical_device->rad_info,
@@ -6574,6 +6598,7 @@ radv_pipeline_init_extra(struct radv_pipeline *pipeline,
    if (extra->custom_blend_mode == V_028808_CB_ELIMINATE_FAST_CLEAR ||
        extra->custom_blend_mode == V_028808_CB_FMASK_DECOMPRESS ||
        extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX8 ||
+       extra->custom_blend_mode == V_028808_CB_DCC_DECOMPRESS_GFX11 ||
        extra->custom_blend_mode == V_028808_CB_RESOLVE) {
       /* According to the CB spec states, CB_SHADER_MASK should be set to enable writes to all four
        * channels of MRT0.

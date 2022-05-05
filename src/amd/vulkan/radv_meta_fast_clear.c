@@ -373,7 +373,9 @@ create_pipeline(struct radv_device *device, VkShaderModule vs_module_h, VkPipeli
       },
       &(struct radv_graphics_pipeline_create_info){
          .use_rectlist = true,
-         .custom_blend_mode = V_028808_CB_DCC_DECOMPRESS_GFX8,
+         .custom_blend_mode = device->physical_device->rad_info.gfx_level >= GFX11
+                                 ? V_028808_CB_DCC_DECOMPRESS_GFX11
+                                 : V_028808_CB_DCC_DECOMPRESS_GFX8,
       },
       &device->meta_state.alloc, &device->meta_state.fast_clear_flush.dcc_decompress_pipeline);
    if (result != VK_SUCCESS)

@@ -5507,11 +5507,16 @@ radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iv
       }
    }
 
-   return S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(max_uncompressed_block_size) |
-          S_028C78_MAX_COMPRESSED_BLOCK_SIZE(max_compressed_block_size) |
-          S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
-          S_028C78_INDEPENDENT_64B_BLOCKS(independent_64b_blocks) |
-          S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(independent_128b_blocks);
+   uint32_t result = S_028C78_MAX_UNCOMPRESSED_BLOCK_SIZE(max_uncompressed_block_size) |
+                     S_028C78_MAX_COMPRESSED_BLOCK_SIZE(max_compressed_block_size) |
+                     S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
+                     S_028C78_INDEPENDENT_64B_BLOCKS(independent_64b_blocks);
+
+   if (device->physical_device->rad_info.gfx_level >= GFX11)
+      result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(independent_128b_blocks);
+   else
+      result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(independent_128b_blocks);
+   return result;
 }
 
 void
@@ -5530,7 +5535,10 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    memset(cb, 0, sizeof(*cb));
 
    /* Intensity is implemented as Red, so treat it that way. */
-   cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1);
+   if (device->physical_device->rad_info.gfx_level >= GFX11)
+      cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX11(desc->swizzle[3] == PIPE_SWIZZLE_1);
+   else
+      cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1);
 
    va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
 
@@ -5619,8 +5627,11 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    if (iview->image->info.samples > 1) {
       unsigned log_samples = util_logbase2(iview->image->info.samples);
 
-      cb->cb_color_attrib |=
-         S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_samples);
+      if (device->physical_device->rad_info.gfx_level >= GFX11)
+         cb->cb_color_attrib |= S_028C74_NUM_FRAGMENTS_GFX11(log_samples);
+      else
+         cb->cb_color_attrib |=
+            S_028C74_NUM_SAMPLES(log_samples) | S_028C74_NUM_FRAGMENTS_GFX6(log_samples);
    }
 
    if (radv_image_has_fmask(iview->image)) {
@@ -5660,12 +5671,18 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 		->color_is_int8 = true;
 #endif
    cb->cb_color_info =
-      S_028C70_FORMAT_GFX6(format) | S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
+      S_028C70_COMP_SWAP(swap) | S_028C70_BLEND_CLAMP(blend_clamp) |
       S_028C70_BLEND_BYPASS(blend_bypass) | S_028C70_SIMPLE_FLOAT(1) |
       S_028C70_ROUND_MODE(ntype != V_028C70_NUMBER_UNORM && ntype != V_028C70_NUMBER_SNORM &&
                           ntype != V_028C70_NUMBER_SRGB && format != V_028C70_COLOR_8_24 &&
                           format != V_028C70_COLOR_24_8) |
-      S_028C70_NUMBER_TYPE(ntype) | S_028C70_ENDIAN(endian);
+      S_028C70_NUMBER_TYPE(ntype);
+
+   if (device->physical_device->rad_info.gfx_level >= GFX11)
+      cb->cb_color_info |= S_028C70_FORMAT_GFX11(format);
+   else
+      cb->cb_color_info |= S_028C70_FORMAT_GFX6(format) | S_028C70_ENDIAN(endian);
+
    if (radv_image_has_fmask(iview->image)) {
       cb->cb_color_info |= S_028C70_COMPRESSION(1);
       if (device->physical_device->rad_info.gfx_level == GFX6) {
@@ -5694,7 +5711,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
        !(device->instance->debug_flags & RADV_DEBUG_NO_FAST_CLEARS))
       cb->cb_color_info |= S_028C70_FAST_CLEAR(1);
 
-   if (radv_dcc_enabled(iview->image, iview->base_mip) && !iview->disable_dcc_mrt)
+   if (radv_dcc_enabled(iview->image, iview->base_mip) && !iview->disable_dcc_mrt &&
+       device->physical_device->rad_info.gfx_level < GFX11)
       cb->cb_color_info |= S_028C70_DCC_ENABLE(1);
 
    cb->cb_dcc_control = radv_init_dcc_control_reg(device, iview);
@@ -5717,9 +5735,9 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       if (device->physical_device->rad_info.gfx_level >= GFX10) {
          cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX10(iview->base_mip);
 
-         cb->cb_color_attrib3 |= S_028EE0_MIP0_DEPTH(mip0_depth) |
-                                 S_028EE0_RESOURCE_TYPE(surf->u.gfx9.resource_type) |
-                                 S_028EE0_RESOURCE_LEVEL(1);
+         cb->cb_color_attrib3 |=
+            S_028EE0_MIP0_DEPTH(mip0_depth) | S_028EE0_RESOURCE_TYPE(surf->u.gfx9.resource_type) |
+            S_028EE0_RESOURCE_LEVEL(device->physical_device->rad_info.gfx_level >= GFX11 ? 0 : 1);
       } else {
          cb->cb_color_view |= S_028C6C_MIP_LEVEL_GFX9(iview->base_mip);
          cb->cb_color_attrib |=

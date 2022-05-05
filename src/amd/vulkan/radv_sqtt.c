@@ -381,6 +381,9 @@ radv_emit_spi_config_cntl(struct radv_device *device, struct radeon_cmdbuf *cs, 
 static void
 radv_emit_inhibit_clockgating(struct radv_device *device, struct radeon_cmdbuf *cs, bool inhibit)
 {
+   if (device->physical_device->rad_info.gfx_level >= GFX11)
+      return; /* not needed */
+
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
       radeon_set_uconfig_reg(cs, R_037390_RLC_PERFMON_CLK_CNTL,
                              S_037390_PERFMON_CLOCK_STATE(inhibit));

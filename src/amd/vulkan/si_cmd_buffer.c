@@ -275,9 +275,11 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
       radeon_set_uconfig_reg(cs, R_03097C_GE_STEREO_CNTL, 0);
       radeon_set_uconfig_reg(cs, R_030988_GE_USER_VGPR_EN, 0);
 
-      radeon_set_context_reg(cs, R_028038_DB_DFSM_CONTROL,
-                             S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF) |
-                             S_028038_POPS_DRAIN_PS_ON_OVERLAP(1));
+      if (physical_device->rad_info.gfx_level < GFX11) {
+         radeon_set_context_reg(
+            cs, R_028038_DB_DFSM_CONTROL,
+            S_028038_PUNCHOUT_MODE(V_028038_FORCE_OFF) | S_028038_POPS_DRAIN_PS_ON_OVERLAP(1));
+      }
    } else if (physical_device->rad_info.gfx_level == GFX9) {
       radeon_set_uconfig_reg(cs, R_030920_VGT_MAX_VTX_INDX, ~0);
       radeon_set_uconfig_reg(cs, R_030924_VGT_MIN_VTX_INDX, 0);
@@ -401,6 +403,9 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
 
       /* Enable CMASK/FMASK/HTILE/DCC caching in L2 for small chips. */
       unsigned meta_write_policy, meta_read_policy;
+      unsigned no_alloc = device->physical_device->rad_info.gfx_level >= GFX11
+                             ? V_02807C_CACHE_NOA_GFX11
+                             : V_02807C_CACHE_NOA_GFX10;
 
       /* TODO: investigate whether LRU improves performance on other chips too */
       if (physical_device->rad_info.max_render_backends <= 4) {
@@ -408,25 +413,33 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
          meta_read_policy = V_02807C_CACHE_LRU_RD;  /* cache reads */
       } else {
          meta_write_policy = V_02807C_CACHE_STREAM; /* write combine */
-         meta_read_policy = V_02807C_CACHE_NOA_GFX10;     /* don't cache reads */
+         meta_read_policy = no_alloc;               /* don't cache reads */
       }
 
       radeon_set_context_reg(
          cs, R_02807C_DB_RMI_L2_CACHE_CONTROL,
          S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM) | S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM) |
             S_02807C_HTILE_WR_POLICY(meta_write_policy) |
-            S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) |
-            S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_GFX10) | S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_GFX10) |
-            S_02807C_HTILE_RD_POLICY(meta_read_policy));
+            S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) | S_02807C_Z_RD_POLICY(no_alloc) |
+            S_02807C_S_RD_POLICY(no_alloc) | S_02807C_HTILE_RD_POLICY(meta_read_policy));
 
-      radeon_set_context_reg(
-         cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
-         S_028410_CMASK_WR_POLICY(meta_write_policy) | S_028410_FMASK_WR_POLICY(meta_write_policy) |
-            S_028410_DCC_WR_POLICY_GFX10(meta_write_policy) |
-            S_028410_COLOR_WR_POLICY_GFX10(V_028410_CACHE_STREAM) |
-            S_028410_CMASK_RD_POLICY(meta_read_policy) |
-            S_028410_FMASK_RD_POLICY(meta_read_policy) | S_028410_DCC_RD_POLICY(meta_read_policy) |
-            S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10));
+      uint32_t gl2_cc;
+      if (device->physical_device->rad_info.gfx_level >= GFX11) {
+         gl2_cc = S_028410_DCC_WR_POLICY_GFX11(meta_write_policy) |
+                  S_028410_COLOR_WR_POLICY_GFX11(V_028410_CACHE_STREAM) |
+                  S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX11);
+      } else {
+         gl2_cc = S_028410_CMASK_WR_POLICY(meta_write_policy) |
+                  S_028410_FMASK_WR_POLICY(V_028410_CACHE_STREAM) |
+                  S_028410_DCC_WR_POLICY_GFX10(meta_write_policy) |
+                  S_028410_COLOR_WR_POLICY_GFX10(V_028410_CACHE_STREAM) |
+                  S_028410_CMASK_RD_POLICY(meta_read_policy) |
+                  S_028410_FMASK_RD_POLICY(V_028410_CACHE_NOA_GFX10) |
+                  S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_GFX10);
+      }
+
+      radeon_set_context_reg(cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
+                             gl2_cc | S_028410_DCC_RD_POLICY(meta_read_policy));
       radeon_set_context_reg(cs, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
 
       radeon_set_sh_reg_seq(cs, R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0, 4);
