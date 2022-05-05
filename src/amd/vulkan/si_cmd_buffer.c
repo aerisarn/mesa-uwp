@@ -105,7 +105,8 @@ si_emit_compute(struct radv_device *device, struct radeon_cmdbuf *cs)
       }
    }
 
-   if (device->physical_device->rad_info.gfx_level >= GFX9) {
+   if (device->physical_device->rad_info.gfx_level >= GFX9 &&
+       device->physical_device->rad_info.gfx_level < GFX11) {
       radeon_set_uconfig_reg(cs, R_0301EC_CP_COHER_START_DELAY,
                              device->physical_device->rad_info.gfx_level >= GFX10 ? 0x20 : 0);
    }
