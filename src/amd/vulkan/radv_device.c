@@ -4551,10 +4551,10 @@ radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submis
 }
 
 static VkResult
-radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submission)
 {
-   struct radv_queue *queue = (struct radv_queue *)vqueue;
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
+   enum amd_ip_type ring = radv_queue_ring(queue);
    uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    bool can_patch = true;
    uint32_t advance;
@@ -4562,13 +4562,74 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
    struct radeon_cmdbuf *initial_preamble_cs = NULL;
    struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
    struct radeon_cmdbuf *continue_preamble_cs = NULL;
-   enum amd_ip_type ring = radv_queue_ring(queue);
 
    result =
       radv_get_preambles(queue, submission->command_buffers, submission->command_buffer_count,
                          &initial_flush_preamble_cs, &initial_preamble_cs, &continue_preamble_cs);
    if (result != VK_SUCCESS)
+      return result;
+
+   if (queue->device->trace_bo)
+      simple_mtx_lock(&queue->device->trace_mtx);
+
+   struct radeon_cmdbuf **cs_array =
+      malloc(sizeof(struct radeon_cmdbuf *) * (submission->command_buffer_count));
+   if (!cs_array)
       goto fail;
+
+   for (uint32_t j = 0; j < submission->command_buffer_count; j++) {
+      struct radv_cmd_buffer *cmd_buffer = (struct radv_cmd_buffer *)submission->command_buffers[j];
+      assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+      cs_array[j] = cmd_buffer->cs;
+      if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
+         can_patch = false;
+
+      cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
+   }
+
+   for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
+      /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
+       * before starting the next cmdbuffer, so we need to do it here. */
+      bool need_wait = !j && submission->wait_count > 0;
+      struct radeon_cmdbuf *initial_preamble =
+         need_wait ? initial_flush_preamble_cs : initial_preamble_cs;
+      advance = MIN2(max_cs_submission, submission->command_buffer_count - j);
+      bool last_submit = j + advance == submission->command_buffer_count;
+
+      if (queue->device->trace_bo)
+         *queue->device->trace_id_ptr = 0;
+
+      result = queue->device->ws->cs_submit(
+         ctx, ring, queue->vk.index_in_family, cs_array + j, advance, initial_preamble,
+         continue_preamble_cs, j == 0 ? submission->wait_count : 0, submission->waits,
+         last_submit ? submission->signal_count : 0, submission->signals, can_patch);
+
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      if (queue->device->trace_bo) {
+         radv_check_gpu_hangs(queue, cs_array[j]);
+      }
+
+      if (queue->device->tma_bo) {
+         radv_check_trap_handler(queue);
+      }
+   }
+
+fail:
+   free(cs_array);
+   if (queue->device->trace_bo)
+      simple_mtx_unlock(&queue->device->trace_mtx);
+
+   return result;
+}
+
+static VkResult
+radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
+{
+   struct radv_queue *queue = (struct radv_queue *)vqueue;
+   VkResult result;
 
    result = radv_queue_submit_bind_sparse_memory(queue->device, submission);
    if (result != VK_SUCCESS)
@@ -4580,59 +4641,7 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
    if (!submission->command_buffer_count) {
       result = radv_queue_submit_empty(queue, submission);
    } else {
-      if (queue->device->trace_bo)
-         simple_mtx_lock(&queue->device->trace_mtx);
-
-      struct radeon_cmdbuf **cs_array =
-         malloc(sizeof(struct radeon_cmdbuf *) * (submission->command_buffer_count));
-
-      for (uint32_t j = 0; j < submission->command_buffer_count; j++) {
-         struct radv_cmd_buffer *cmd_buffer =
-            (struct radv_cmd_buffer *)submission->command_buffers[j];
-         assert(cmd_buffer->vk.level == VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-         cs_array[j] = cmd_buffer->cs;
-         if ((cmd_buffer->usage_flags & VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT))
-            can_patch = false;
-
-         cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
-      }
-
-      for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
-         /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
-          * before starting the next cmdbuffer, so we need to do it here. */
-         bool need_wait = !j && submission->wait_count > 0;
-         struct radeon_cmdbuf *initial_preamble =
-            need_wait ? initial_flush_preamble_cs : initial_preamble_cs;
-         advance = MIN2(max_cs_submission, submission->command_buffer_count - j);
-         bool last_submit = j + advance == submission->command_buffer_count;
-
-         if (queue->device->trace_bo)
-            *queue->device->trace_id_ptr = 0;
-
-         result = queue->device->ws->cs_submit(
-            ctx, ring, queue->vk.index_in_family, cs_array + j, advance, initial_preamble,
-            continue_preamble_cs, j == 0 ? submission->wait_count : 0, submission->waits,
-            last_submit ? submission->signal_count : 0, submission->signals, can_patch);
-         if (result != VK_SUCCESS) {
-            free(cs_array);
-            if (queue->device->trace_bo)
-               simple_mtx_unlock(&queue->device->trace_mtx);
-            goto fail;
-         }
-
-         if (queue->device->trace_bo) {
-            radv_check_gpu_hangs(queue, cs_array[j]);
-         }
-
-         if (queue->device->tma_bo) {
-            radv_check_trap_handler(queue);
-         }
-      }
-
-      free(cs_array);
-      if (queue->device->trace_bo)
-         simple_mtx_unlock(&queue->device->trace_mtx);
+      result = radv_queue_submit_normal(queue, submission);
    }
 
 fail:
