@@ -53,7 +53,7 @@ struct clc_image_lower_context
 static int
 lower_image_deref_impl(nir_builder *b, struct clc_image_lower_context *context,
                        const struct glsl_type *new_var_type,
-                       enum nir_variable_mode var_mode,
+                       nir_variable_mode var_mode,
                        unsigned *num_bindings)
 {
    nir_variable *in_var = nir_deref_instr_get_variable(context->deref);
@@ -150,7 +150,7 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
 
          if (src->parent_instr->type == nir_instr_type_intrinsic) {
             nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(src->parent_instr);
-            enum nir_alu_type dest_type;
+            nir_alu_type dest_type;
 
             b->cursor = nir_before_instr(&intrinsic->instr);
 

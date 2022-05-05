@@ -25,10 +25,12 @@
 #include <stdint.h>
 #include <stdexcept>
 
+#include <unknwn.h>
 #include <directx/d3d12.h>
 #include <dxgi1_4.h>
 #include <gtest/gtest.h>
 #include <wrl.h>
+#include <dxguids/dxguids.h>
 
 #include "util/u_debug.h"
 #include "clc_compiler.h"
@@ -208,7 +210,7 @@ ComputeTest::create_root_signature(const ComputeTest::Resources &resources)
    if (FAILED(dev->CreateRootSignature(0,
        sig->GetBufferPointer(),
        sig->GetBufferSize(),
-       __uuidof(ret),
+       __uuidof(ID3D12RootSignature),
        (void **)& ret)))
       throw runtime_error("CreateRootSignature failed");
 
@@ -225,7 +227,7 @@ ComputeTest::create_pipeline_state(ComPtr<ID3D12RootSignature> &root_sig,
 
    ComPtr<ID3D12PipelineState> pipeline_state;
    if (FAILED(dev->CreateComputePipelineState(&pipeline_desc,
-                                              __uuidof(pipeline_state),
+                                              __uuidof(ID3D12PipelineState),
                                               (void **)& pipeline_state)))
       throw runtime_error("Failed to create pipeline state");
    return pipeline_state;

@@ -21,15 +21,18 @@
  * IN THE SOFTWARE.
  */
 
+#include <cmath>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdexcept>
 #include <vector>
 
+#include <unknwn.h>
 #include <directx/d3d12.h>
 #include <dxgi1_4.h>
 #include <gtest/gtest.h>
 #include <wrl.h>
+#include <dxguids/dxguids.h>
 
 #include "compute_test.h"
 
