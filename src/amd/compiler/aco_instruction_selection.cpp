@@ -10846,7 +10846,7 @@ create_fs_exports(isel_context* ctx)
 
 static void
 emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_write_offset,
-                   const struct radv_stream_output* output)
+                   const struct aco_stream_output* output)
 {
    assert(ctx->stage.hw == HWStage::VS);
 
@@ -10946,7 +10946,7 @@ emit_streamout(isel_context* ctx, unsigned stream)
    }
 
    for (unsigned i = 0; i < ctx->program->info.so.num_outputs; i++) {
-      const struct radv_stream_output* output = &ctx->program->info.so.outputs[i];
+      const struct aco_stream_output* output = &ctx->program->info.so.outputs[i];
       if (stream != output->stream)
          continue;
 

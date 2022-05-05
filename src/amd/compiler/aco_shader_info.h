@@ -35,6 +35,20 @@
 extern "C" {
 #endif
 
+struct aco_stream_output {
+   uint8_t location;
+   uint8_t buffer;
+   uint16_t offset;
+   uint8_t component_mask;
+   uint8_t stream;
+};
+
+struct aco_streamout_info {
+   uint16_t num_outputs;
+   struct aco_stream_output outputs[MAX_SO_OUTPUTS];
+   uint16_t strides[MAX_SO_BUFFERS];
+};
+
 struct aco_shader_info {
    bool has_ngg_culling;
    bool has_ngg_early_prim_export;
@@ -74,7 +88,7 @@ struct aco_shader_info {
    struct {
       struct radv_vs_output_info outinfo;
    } ms;
-   struct radv_streamout_info so;
+   struct aco_streamout_info so;
 
    uint32_t gfx9_gs_ring_lds_size;
 };
