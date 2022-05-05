@@ -6253,10 +6253,8 @@ radv_init_sampler(struct radv_device *device, struct radv_sampler *sampler,
    sampler->state[2] = (S_008F38_LOD_BIAS(radv_float_to_sfixed(CLAMP(pCreateInfo->mipLodBias, -16, 16), 8)) |
                         S_008F38_XY_MAG_FILTER(radv_tex_filter(pCreateInfo->magFilter, max_aniso)) |
                         S_008F38_XY_MIN_FILTER(radv_tex_filter(pCreateInfo->minFilter, max_aniso)) |
-                        S_008F38_MIP_FILTER(radv_tex_mipfilter(pCreateInfo->mipmapMode)) |
-                        S_008F38_MIP_POINT_PRECLAMP(0));
-   sampler->state[3] = (S_008F3C_BORDER_COLOR_PTR_GFX6(border_color_ptr) |
-                        S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(border_color)));
+                        S_008F38_MIP_FILTER(radv_tex_mipfilter(pCreateInfo->mipmapMode)));
+   sampler->state[3] = S_008F3C_BORDER_COLOR_TYPE(radv_tex_bordercolor(border_color));
 
    if (device->physical_device->rad_info.gfx_level >= GFX10) {
       sampler->state[2] |=
@@ -6267,6 +6265,12 @@ radv_init_sampler(struct radv_device *device, struct radv_sampler *sampler,
          S_008F38_FILTER_PREC_FIX(1) |
          S_008F38_ANISO_OVERRIDE_GFX8(device->instance->disable_aniso_single_level &&
                                       device->physical_device->rad_info.gfx_level >= GFX8);
+   }
+
+   if (device->physical_device->rad_info.gfx_level >= GFX11) {
+      sampler->state[3] |= S_008F3C_BORDER_COLOR_PTR_GFX11(border_color_ptr);
+   } else {
+      sampler->state[3] |= S_008F3C_BORDER_COLOR_PTR_GFX6(border_color_ptr);
    }
 }
 
