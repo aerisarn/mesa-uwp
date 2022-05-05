@@ -4151,29 +4151,32 @@ radv_update_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave
       switch (queue->qf) {
       case RADV_QUEUE_GENERAL:
          radv_init_graphics_state(cs, queue);
+
+         if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo) {
+            radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+            radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+            radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+            radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
+         }
+
+         radv_emit_gs_ring_sizes(queue, cs, esgs_ring_bo, esgs_ring_size, gsvs_ring_bo,
+                                 gsvs_ring_size);
+         radv_emit_tess_factor_ring(queue, cs, tess_rings_bo);
+         radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
+         radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave, compute_scratch_waves,
+                                   compute_scratch_bo);
+         radv_emit_graphics_scratch(queue, cs, scratch_size_per_wave, scratch_waves, scratch_bo);
          break;
       case RADV_QUEUE_COMPUTE:
          radv_init_compute_state(cs, queue);
+         radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
+         radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave, compute_scratch_waves,
+                                   compute_scratch_bo);
          break;
       default:
          break;
       }
-
-      if (esgs_ring_bo || gsvs_ring_bo || tess_rings_bo) {
-         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-         radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
-
-         radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-         radeon_emit(cs, EVENT_TYPE(V_028A90_VGT_FLUSH) | EVENT_INDEX(0));
-      }
-
-      radv_emit_gs_ring_sizes(queue, cs, esgs_ring_bo, esgs_ring_size, gsvs_ring_bo,
-                              gsvs_ring_size);
-      radv_emit_tess_factor_ring(queue, cs, tess_rings_bo);
-      radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
-      radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave, compute_scratch_waves,
-                                compute_scratch_bo);
-      radv_emit_graphics_scratch(queue, cs, scratch_size_per_wave, scratch_waves, scratch_bo);
 
       if (gds_bo)
          radv_cs_add_buffer(queue->device->ws, cs, gds_bo);
