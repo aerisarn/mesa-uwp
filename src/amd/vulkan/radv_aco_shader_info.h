@@ -71,11 +71,15 @@ static inline void
 radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
 			     const struct radv_shader_info *radv)
 {
+   ASSIGN_FIELD(wave_size);
+   ASSIGN_FIELD(is_ngg);
    ASSIGN_FIELD(has_ngg_culling);
    ASSIGN_FIELD(has_ngg_early_prim_export);
    ASSIGN_FIELD(num_tess_patches);
    ASSIGN_FIELD(workgroup_size);
    ASSIGN_OUTINFO(vs);
+   ASSIGN_FIELD(vs.as_es);
+   ASSIGN_FIELD(vs.as_ls);
    ASSIGN_FIELD(vs.tcs_in_out_eq);
    ASSIGN_FIELD(vs.tcs_temp_only_input_mask);
    ASSIGN_FIELD(vs.use_per_attribute_vb_descs);
@@ -88,6 +92,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(gs.vertices_out);
    ASSIGN_FIELD(tcs.num_lds_blocks);
    ASSIGN_OUTINFO(tes);
+   ASSIGN_FIELD(tes.as_es);
    ASSIGN_FIELD(ps.writes_z);
    ASSIGN_FIELD(ps.writes_stencil);
    ASSIGN_FIELD(ps.writes_sample_mask);

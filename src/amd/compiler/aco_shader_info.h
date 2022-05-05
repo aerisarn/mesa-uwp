@@ -68,12 +68,16 @@ struct aco_streamout_info {
 };
 
 struct aco_shader_info {
+   uint8_t wave_size;
+   bool is_ngg;
    bool has_ngg_culling;
    bool has_ngg_early_prim_export;
    uint32_t num_tess_patches;
    unsigned workgroup_size;
    struct {
       struct aco_vp_output_info outinfo;
+      bool as_es;
+      bool as_ls;
       bool tcs_in_out_eq;
       uint64_t tcs_temp_only_input_mask;
       bool use_per_attribute_vb_descs;
@@ -92,6 +96,7 @@ struct aco_shader_info {
    } tcs;
    struct {
       struct aco_vp_output_info outinfo;
+      bool as_es;
    } tes;
    struct {
       bool writes_z;
