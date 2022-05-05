@@ -999,7 +999,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
               S_00A004_FORMAT(img_format) |
               S_00A004_WIDTH_LO(width - 1);
    state[2] = S_00A008_WIDTH_HI((width - 1) >> 2) | S_00A008_HEIGHT(height - 1) |
-              S_00A008_RESOURCE_LEVEL(1);
+              S_00A008_RESOURCE_LEVEL(device->physical_device->rad_info.gfx_level < GFX11);
    state[3] = S_00A00C_DST_SEL_X(radv_map_swizzle(swizzle[0])) |
               S_00A00C_DST_SEL_Y(radv_map_swizzle(swizzle[1])) |
               S_00A00C_DST_SEL_Z(radv_map_swizzle(swizzle[2])) |
@@ -1014,8 +1014,6 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
    state[4] = S_00A010_DEPTH(type == V_008F1C_SQ_RSRC_IMG_3D ? depth - 1 : last_layer) |
               S_00A010_BASE_ARRAY(first_layer);
    state[5] = S_00A014_ARRAY_PITCH(0) |
-              S_00A014_MAX_MIP(image->info.samples > 1 ? util_logbase2(image->info.samples)
-                                                       : image->info.levels - 1) |
               S_00A014_PERF_MOD(4);
    state[6] = 0;
    state[7] = 0;
@@ -1030,6 +1028,15 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
       state[4] &= C_00A010_DEPTH;
       state[4] |= S_00A010_DEPTH(!is_storage_image ? depth - 1 : u_minify(depth, first_level) - 1);
       state[5] |= S_00A014_ARRAY_PITCH(is_storage_image);
+   }
+
+   unsigned max_mip =
+      image->info.samples > 1 ? util_logbase2(image->info.samples) : image->info.levels - 1;
+
+   if (device->physical_device->rad_info.gfx_level >= GFX11) {
+      state[1] |= S_00A004_MAX_MIP(max_mip);
+   } else {
+      state[5] |= S_00A014_MAX_MIP(max_mip);
    }
 
    if (radv_dcc_enabled(image, first_level)) {
