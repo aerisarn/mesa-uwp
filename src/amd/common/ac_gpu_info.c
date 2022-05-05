@@ -486,7 +486,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 {
    struct drm_amdgpu_info_device device_info = {0};
    struct amdgpu_buffer_size_alignments alignment_info = {0};
-   struct amdgpu_gds_resource_info gds = {0};
    uint32_t vce_version = 0, vce_feature = 0, uvd_version = 0, uvd_feature = 0;
    int r, i, j;
    amdgpu_device_handle dev = dev_p;
@@ -599,12 +598,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    r = amdgpu_query_sw_info(dev, amdgpu_sw_info_address32_hi, &info->address32_hi);
    if (r) {
       fprintf(stderr, "amdgpu: amdgpu_query_sw_info(address32_hi) failed.\n");
-      return false;
-   }
-
-   r = amdgpu_query_gds_info(dev, &gds);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_gds_info failed.\n");
       return false;
    }
 
