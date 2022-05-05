@@ -486,9 +486,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 {
    struct drm_amdgpu_info_device device_info = {0};
    struct amdgpu_buffer_size_alignments alignment_info = {0};
-   struct drm_amdgpu_info_hw_ip dma = {0}, compute = {0}, uvd = {0};
-   struct drm_amdgpu_info_hw_ip uvd_enc = {0}, vce = {0}, vcn_dec = {0}, vcn_jpeg = {0};
-   struct drm_amdgpu_info_hw_ip vcn_enc = {0}, gfx = {0};
    struct amdgpu_gds_resource_info gds = {0};
    uint32_t vce_version = 0, vce_feature = 0, uvd_version = 0, uvd_feature = 0;
    int r, i, j;
@@ -539,61 +536,32 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       return false;
    }
 
-   r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_DMA, 0, &dma);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(dma) failed.\n");
+   for (unsigned ip_type = 0; ip_type < AMD_NUM_IP_TYPES; ip_type++) {
+      struct drm_amdgpu_info_hw_ip ip_info;
+
+      r = amdgpu_query_hw_ip_info(dev, ip_type, 0, &ip_info);
+      if (r || !ip_info.available_rings)
+         continue;
+
+      info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
+      info->ib_alignment = MAX3(info->ib_alignment, ip_info.ib_start_alignment,
+                                ip_info.ib_size_alignment);
+   }
+
+   /* Only require gfx or compute. */
+   if (!info->ip[AMD_IP_GFX].num_queues && !info->ip[AMD_IP_COMPUTE].num_queues) {
+      fprintf(stderr, "amdgpu: failed to find gfx or compute.\n");
       return false;
    }
 
-   r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_GFX, 0, &gfx);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(gfx) failed.\n");
-      return false;
-   }
+   assert(util_is_power_of_two_or_zero(info->ip[AMD_IP_COMPUTE].num_queues));
+   assert(util_is_power_of_two_or_zero(info->ip[AMD_IP_SDMA].num_queues));
 
-   r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_COMPUTE, 0, &compute);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(compute) failed.\n");
-      return false;
-   }
-
-   r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_UVD, 0, &uvd);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(uvd) failed.\n");
-      return false;
-   }
-
-   if (info->drm_minor >= 17) {
-      r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_UVD_ENC, 0, &uvd_enc);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(uvd_enc) failed.\n");
-         return false;
-      }
-   }
-
-   if (info->drm_minor >= 17) {
-      r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_VCN_DEC, 0, &vcn_dec);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(vcn_dec) failed.\n");
-         return false;
-      }
-   }
-
-   if (info->drm_minor >= 17) {
-      r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_VCN_ENC, 0, &vcn_enc);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(vcn_enc) failed.\n");
-         return false;
-      }
-   }
-
-   if (info->drm_minor >= 27) {
-      r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_VCN_JPEG, 0, &vcn_jpeg);
-      if (r) {
-         fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(vcn_jpeg) failed.\n");
-         return false;
-      }
-   }
+   /* The kernel pads gfx and compute IBs to 256 dwords since:
+    *   66f3b2d527154bd258a57c8815004b5964aa1cf5
+    * Do the same.
+    */
+   info->ib_alignment = MAX2(info->ib_alignment, 1024);
 
    r = amdgpu_query_firmware_version(dev, AMDGPU_INFO_FW_GFX_ME, 0, 0, &info->me_fw_version,
                                      &info->me_fw_feature);
@@ -619,12 +587,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    r = amdgpu_query_firmware_version(dev, AMDGPU_INFO_FW_UVD, 0, 0, &uvd_version, &uvd_feature);
    if (r) {
       fprintf(stderr, "amdgpu: amdgpu_query_firmware_version(uvd) failed.\n");
-      return false;
-   }
-
-   r = amdgpu_query_hw_ip_info(dev, AMDGPU_HW_IP_VCE, 0, &vce);
-   if (r) {
-      fprintf(stderr, "amdgpu: amdgpu_query_hw_ip_info(vce) failed.\n");
       return false;
    }
 
@@ -855,14 +817,14 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->max_tcc_blocks = device_info.num_tcc_blocks;
    info->max_se = amdinfo->num_shader_engines;
    info->max_sa_per_se = amdinfo->num_shader_arrays_per_engine;
-   info->uvd_fw_version = uvd.available_rings ? uvd_version : 0;
-   info->vce_fw_version = vce.available_rings ? vce_version : 0;
-   info->has_video_hw.uvd_decode = uvd.available_rings != 0;
-   info->has_video_hw.vcn_decode = vcn_dec.available_rings != 0;
-   info->has_video_hw.jpeg_decode = vcn_jpeg.available_rings != 0;
-   info->has_video_hw.vce_encode = vce.available_rings != 0;
-   info->has_video_hw.uvd_encode = uvd_enc.available_rings != 0;
-   info->has_video_hw.vcn_encode = vcn_enc.available_rings != 0;
+   info->uvd_fw_version = info->ip[AMD_IP_UVD].num_queues ? uvd_version : 0;
+   info->vce_fw_version = info->ip[AMD_IP_VCE].num_queues ? vce_version : 0;
+   info->has_video_hw.uvd_decode = info->ip[AMD_IP_UVD].num_queues != 0;
+   info->has_video_hw.vcn_decode = info->ip[AMD_IP_VCN_DEC].num_queues != 0;
+   info->has_video_hw.jpeg_decode = info->ip[AMD_IP_VCN_JPEG].num_queues != 0;
+   info->has_video_hw.vce_encode = info->ip[AMD_IP_VCE].num_queues != 0;
+   info->has_video_hw.uvd_encode = info->ip[AMD_IP_UVD_ENC].num_queues != 0;
+   info->has_video_hw.vcn_encode = info->ip[AMD_IP_VCN_ENC].num_queues != 0;
    info->has_userptr = true;
    info->has_syncobj = has_syncobj(fd);
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
@@ -890,7 +852,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->mid_command_buffer_preemption_enabled = amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
    info->kernel_has_modifiers = has_modifiers(fd);
-   info->has_graphics = gfx.available_rings > 0;
+   info->has_graphics = info->ip[AMD_IP_GFX].num_queues > 0;
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
    info->max_render_backends = amdinfo->rb_pipes;
@@ -979,19 +941,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
     */
    info->lds_encode_granularity = info->chip_class >= GFX7 ? 128 * 4 : 64 * 4;
    info->lds_alloc_granularity = info->chip_class >= GFX10_3 ? 256 * 4 : info->lds_encode_granularity;
-
-   assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
-   assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
-
-   info->ip[AMD_IP_GFX].num_queues = util_bitcount(gfx.available_rings);
-   info->ip[AMD_IP_COMPUTE].num_queues = util_bitcount(compute.available_rings);
-   info->ip[AMD_IP_SDMA].num_queues = util_bitcount(dma.available_rings);
-   info->ip[AMD_IP_UVD].num_queues = util_bitcount(uvd.available_rings);
-   info->ip[AMD_IP_VCE].num_queues = util_bitcount(vce.available_rings);
-   info->ip[AMD_IP_UVD_ENC].num_queues = util_bitcount(uvd_enc.available_rings);
-   info->ip[AMD_IP_VCN_DEC].num_queues = util_bitcount(vcn_dec.available_rings);
-   info->ip[AMD_IP_VCN_ENC].num_queues = util_bitcount(vcn_enc.available_rings);
-   info->ip[AMD_IP_VCN_JPEG].num_queues = util_bitcount(vcn_jpeg.available_rings);
 
    /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
    info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
@@ -1161,34 +1110,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    if (info->chip_class == GFX6)
       info->gfx_ib_pad_with_type2 = true;
 
-   unsigned ib_align = 0;
-   ib_align = MAX2(ib_align, gfx.ib_start_alignment);
-   ib_align = MAX2(ib_align, gfx.ib_size_alignment);
-   ib_align = MAX2(ib_align, compute.ib_start_alignment);
-   ib_align = MAX2(ib_align, compute.ib_size_alignment);
-   ib_align = MAX2(ib_align, dma.ib_start_alignment);
-   ib_align = MAX2(ib_align, dma.ib_size_alignment);
-   ib_align = MAX2(ib_align, uvd.ib_start_alignment);
-   ib_align = MAX2(ib_align, uvd.ib_size_alignment);
-   ib_align = MAX2(ib_align, uvd_enc.ib_start_alignment);
-   ib_align = MAX2(ib_align, uvd_enc.ib_size_alignment);
-   ib_align = MAX2(ib_align, vce.ib_start_alignment);
-   ib_align = MAX2(ib_align, vce.ib_size_alignment);
-   ib_align = MAX2(ib_align, vcn_dec.ib_start_alignment);
-   ib_align = MAX2(ib_align, vcn_dec.ib_size_alignment);
-   ib_align = MAX2(ib_align, vcn_enc.ib_start_alignment);
-   ib_align = MAX2(ib_align, vcn_enc.ib_size_alignment);
-   ib_align = MAX2(ib_align, vcn_jpeg.ib_start_alignment);
-   ib_align = MAX2(ib_align, vcn_jpeg.ib_size_alignment);
    /* GFX10 and maybe GFX9 need this alignment for cache coherency. */
    if (info->chip_class >= GFX9)
-      ib_align = MAX2(ib_align, info->tcc_cache_line_size);
-   /* The kernel pads gfx and compute IBs to 256 dwords since:
-    *   66f3b2d527154bd258a57c8815004b5964aa1cf5
-    * Do the same.
-    */
-   ib_align = MAX2(ib_align, 1024);
-   info->ib_alignment = ib_align;
+      info->ib_alignment = MAX2(info->ib_alignment, info->tcc_cache_line_size);
 
    if ((info->drm_minor >= 31 && (info->family == CHIP_RAVEN || info->family == CHIP_RAVEN2 ||
                                   info->family == CHIP_RENOIR)) ||
