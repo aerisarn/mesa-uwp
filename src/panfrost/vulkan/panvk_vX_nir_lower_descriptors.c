@@ -486,7 +486,9 @@ panvk_per_arch(nir_lower_descriptors)(nir_shader *nir,
       .layout = layout,
       .desc_addr_format = nir_address_format_32bit_index_offset,
       .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
+      .ssbo_addr_format = dev->vk.enabled_features.robustBufferAccess ?
+                          nir_address_format_64bit_bounded_global :
+                          nir_address_format_64bit_global_32bit_offset,
    };
 
    bool progress = nir_shader_instructions_pass(nir, lower_descriptors_instr,

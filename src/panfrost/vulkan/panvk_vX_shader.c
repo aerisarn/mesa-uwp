@@ -342,7 +342,9 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
    const struct spirv_to_nir_options spirv_options = {
       .caps = { false },
       .ubo_addr_format = nir_address_format_32bit_index_offset,
-      .ssbo_addr_format = nir_address_format_64bit_global_32bit_offset,
+      .ssbo_addr_format = dev->vk.enabled_features.robustBufferAccess ?
+                          nir_address_format_64bit_bounded_global :
+                          nir_address_format_64bit_global_32bit_offset,
    };
 
    nir_shader *nir;
