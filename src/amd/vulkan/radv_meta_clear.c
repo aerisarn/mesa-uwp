@@ -1515,17 +1515,31 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
 
 enum {
    RADV_DCC_CLEAR_0000 = 0x00000000U,
-   RADV_DCC_CLEAR_0001 = 0x40404040U,
-   RADV_DCC_CLEAR_1110 = 0x80808080U,
-   RADV_DCC_CLEAR_1111 = 0xC0C0C0C0U,
-   RADV_DCC_CLEAR_REG = 0x20202020U,
-   RADV_DCC_CLEAR_SINGLE = 0x10101010U,
+   RADV_DCC_GFX8_CLEAR_0001 = 0x40404040U,
+   RADV_DCC_GFX8_CLEAR_1110 = 0x80808080U,
+   RADV_DCC_GFX8_CLEAR_1111 = 0xC0C0C0C0U,
+   RADV_DCC_GFX8_CLEAR_REG = 0x20202020U,
+   RADV_DCC_GFX9_CLEAR_SINGLE = 0x10101010U,
+   RADV_DCC_GFX11_CLEAR_SINGLE = 0x01010101U,
+   RADV_DCC_GFX11_CLEAR_0000 = 0x00000000U,
+   RADV_DCC_GFX11_CLEAR_1111_UNORM = 0x02020202U,
+   RADV_DCC_GFX11_CLEAR_1111_FP16 = 0x04040404U,
+   RADV_DCC_GFX11_CLEAR_1111_FP32 = 0x06060606U,
+   RADV_DCC_GFX11_CLEAR_0001_UNORM = 0x08080808U,
+   RADV_DCC_GFX11_CLEAR_1110_UNORM = 0x0A0A0A0AU,
 };
 
+static uint32_t
+radv_dcc_single_clear_value(const struct radv_device *device)
+{
+   return device->physical_device->rad_info.gfx_level >= GFX11 ? RADV_DCC_GFX11_CLEAR_SINGLE
+                                                               : RADV_DCC_GFX9_CLEAR_SINGLE;
+}
+
 static void
-vi_get_fast_clear_parameters(struct radv_device *device, const struct radv_image_view *iview,
-                             const VkClearColorValue *clear_value,
-                             uint32_t *reset_value, bool *can_avoid_fast_clear_elim)
+gfx8_get_fast_clear_parameters(struct radv_device *device, const struct radv_image_view *iview,
+                               const VkClearColorValue *clear_value, uint32_t *reset_value,
+                               bool *can_avoid_fast_clear_elim)
 {
    bool values[4] = {0};
    int extra_channel;
@@ -1536,10 +1550,10 @@ vi_get_fast_clear_parameters(struct radv_device *device, const struct radv_image
 
    /* comp-to-single allows to perform DCC fast clears without requiring a FCE. */
    if (iview->image->support_comp_to_single) {
-      *reset_value = RADV_DCC_CLEAR_SINGLE;
+      *reset_value = RADV_DCC_GFX9_CLEAR_SINGLE;
       *can_avoid_fast_clear_elim = true;
    } else {
-      *reset_value = RADV_DCC_CLEAR_REG;
+      *reset_value = RADV_DCC_GFX8_CLEAR_REG;
       *can_avoid_fast_clear_elim = false;
    }
 
@@ -1609,15 +1623,83 @@ vi_get_fast_clear_parameters(struct radv_device *device, const struct radv_image
 
    if (main_value) {
       if (extra_value)
-         *reset_value = RADV_DCC_CLEAR_1111;
+         *reset_value = RADV_DCC_GFX8_CLEAR_1111;
       else
-         *reset_value = RADV_DCC_CLEAR_1110;
+         *reset_value = RADV_DCC_GFX8_CLEAR_1110;
    } else {
       if (extra_value)
-         *reset_value = RADV_DCC_CLEAR_0001;
+         *reset_value = RADV_DCC_GFX8_CLEAR_0001;
       else
          *reset_value = RADV_DCC_CLEAR_0000;
    }
+}
+
+static bool
+gfx11_get_fast_clear_parameters(struct radv_device *device, const struct radv_image_view *iview,
+                                const VkClearColorValue *clear_value, uint32_t *reset_value)
+{
+   int extra_channel;
+
+   bool all_bits_are_0 = true;
+   bool all_bits_are_1 = true;
+   bool all_words_are_fp16_1 = true;
+   bool all_words_are_fp32_1 = true;
+   bool unorm_0001 = true;
+   bool unorm_1110 = true;
+
+   const struct util_format_description *desc = vk_format_description(iview->vk_format);
+   if (iview->vk_format == VK_FORMAT_B10G11R11_UFLOAT_PACK32 ||
+       iview->vk_format == VK_FORMAT_R5G6B5_UNORM_PACK16 ||
+       iview->vk_format == VK_FORMAT_B5G6R5_UNORM_PACK16)
+      extra_channel = -1;
+   else if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN) {
+      if (vi_alpha_is_on_msb(device, iview->vk_format))
+         extra_channel = desc->nr_channels - 1;
+      else
+         extra_channel = 0;
+   } else
+      return false;
+
+   for (int i = 0; i < 4; i++) {
+      int index = desc->swizzle[i] - PIPE_SWIZZLE_X;
+      if (desc->swizzle[i] < PIPE_SWIZZLE_X || desc->swizzle[i] > PIPE_SWIZZLE_W)
+         continue;
+
+      uint32_t extra_xor = index == extra_channel ? ~0u : 0;
+      if (clear_value->uint32[i] & ((1u << desc->channel[i].size) - 1))
+         all_bits_are_0 = false;
+      if (~clear_value->uint32[i] & ((1u << desc->channel[i].size) - 1))
+         all_bits_are_1 = false;
+      if (desc->channel[i].type != UTIL_FORMAT_TYPE_FLOAT || desc->channel[i].size != 16 ||
+          clear_value->float32[i] != 1.0)
+         all_words_are_fp16_1 = false;
+      if (desc->channel[i].type != UTIL_FORMAT_TYPE_FLOAT || desc->channel[i].size != 32 ||
+          clear_value->float32[i] != 1.0)
+         all_words_are_fp32_1 = false;
+      if ((clear_value->uint32[i] ^ extra_xor) & ((1u << desc->channel[i].size) - 1))
+         unorm_0001 = false;
+      if ((~clear_value->uint32[i] ^ extra_xor) & ((1u << desc->channel[i].size) - 1))
+         unorm_1110 = false;
+   }
+
+   if (all_bits_are_0)
+      *reset_value = RADV_DCC_CLEAR_0000;
+   else if (all_bits_are_1)
+      *reset_value = RADV_DCC_GFX11_CLEAR_1111_UNORM;
+   else if (all_words_are_fp16_1)
+      *reset_value = RADV_DCC_GFX11_CLEAR_1111_FP16;
+   else if (all_words_are_fp32_1)
+      *reset_value = RADV_DCC_GFX11_CLEAR_1111_FP32;
+   else if (unorm_0001)
+      *reset_value = RADV_DCC_GFX11_CLEAR_0001_UNORM;
+   else if (unorm_1110)
+      *reset_value = RADV_DCC_GFX11_CLEAR_1110_UNORM;
+   else if (iview->image->support_comp_to_single)
+      *reset_value = RADV_DCC_GFX11_CLEAR_SINGLE;
+   else
+      return false;
+
+   return true;
 }
 
 static bool
@@ -1663,8 +1745,14 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
       bool can_avoid_fast_clear_elim;
       uint32_t reset_value;
 
-      vi_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value,
-                                   &can_avoid_fast_clear_elim);
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+         if (!gfx11_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value,
+                                              &reset_value))
+            return false;
+      } else {
+         gfx8_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value,
+                                        &can_avoid_fast_clear_elim);
+      }
 
       if (iview->image->info.levels > 1) {
          if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
@@ -1725,10 +1813,16 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
    bool need_decompress_pass = false;
    if (radv_dcc_enabled(iview->image, iview->base_mip)) {
       uint32_t reset_value;
-      bool can_avoid_fast_clear_elim;
+      bool can_avoid_fast_clear_elim = true;
 
-      vi_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value,
-                                   &can_avoid_fast_clear_elim);
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+         ASSERTED bool result =
+            gfx11_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value);
+         assert(result);
+      } else {
+         gfx8_get_fast_clear_parameters(cmd_buffer->device, iview, &clear_value, &reset_value,
+                                        &can_avoid_fast_clear_elim);
+      }
 
       if (radv_image_has_cmask(iview->image)) {
          flush_bits = radv_clear_cmask(cmd_buffer, iview->image, &range, cmask_clear_value);
@@ -1739,7 +1833,7 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
 
       flush_bits |= radv_clear_dcc(cmd_buffer, iview->image, &range, reset_value);
 
-      if (reset_value == RADV_DCC_CLEAR_SINGLE) {
+      if (reset_value == radv_dcc_single_clear_value(cmd_buffer->device)) {
          /* Write the clear color to the first byte of each 256B block when the image supports DCC
           * fast clears with comp-to-single.
           */
