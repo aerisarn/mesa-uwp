@@ -137,6 +137,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_maintenance2                    = true,
       .KHR_maintenance3                    = true,
       .KHR_multiview                       = true,
+      .KHR_separate_depth_stencil_layouts  = true,
       .KHR_shader_non_semantic_info        = true,
       .KHR_sampler_mirror_clamp_to_edge    = true,
       .KHR_storage_buffer_storage_class    = true,
@@ -1169,6 +1170,21 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
        * not lead to best performance so let's just not support it.
        */
       .scalarBlockLayout = false,
+      /* This tells applications 2 things:
+       *
+       * 1. If they can select just one aspect for barriers. For us barriers
+       *    decide if we need to split a job and we don't care if it is only
+       *    for one of the aspects of the image or both, so we don't really
+       *    benefit from seeing barriers that select just one aspect.
+       *
+       * 2. If they can program different layouts for each aspect. We
+       *    generally don't care about layouts, so again, we don't get any
+       *    benefits from this to limit the scope of image layout transitions.
+       *
+       * Since we cannot offer any advantages to applications that use separate
+       * layouts for D/S, don't expose the feature.
+       */
+      .separateDepthStencilLayouts = false,
       .storageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
       .imagelessFramebuffer = true,
