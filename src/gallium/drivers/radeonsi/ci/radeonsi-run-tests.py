@@ -53,7 +53,10 @@ def print_green(txt, end_line=True, prefix=None):
     print("\033[1;32m{}\033[0m".format(txt), end="\n" if end_line else " ")
 
 
-parser = argparse.ArgumentParser(description="radeonsi tester", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(
+    description="radeonsi tester",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 parser.add_argument(
     "--jobs",
     "-j",
@@ -83,7 +86,8 @@ parser.add_argument(
     "--baseline",
     dest="baseline",
     help="Folder containing expected results files",
-    default=os.path.dirname(__file__))
+    default=os.path.dirname(__file__),
+)
 parser.add_argument(
     "--no-piglit", dest="piglit", help="Disable piglit tests", action="store_false"
 )
@@ -129,7 +133,10 @@ parser.add_argument(
     "output_folder",
     nargs="?",
     help="Output folder (logs, etc)",
-    default=os.path.join(tempfile.gettempdir(), datetime.now().strftime('%Y-%m-%d-%H-%M-%S')))
+    default=os.path.join(
+        tempfile.gettempdir(), datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    ),
+)
 
 available_gpus = []
 for f in os.listdir("/dev/dri/by-path"):
@@ -138,10 +145,20 @@ for f in os.listdir("/dev/dri/by-path"):
         continue
     # gbm name is the full path, but DRI_PRIME expects a different
     # format
-    available_gpus += [(os.path.join("/dev/dri/by-path", f),
-                        f[:idx].replace(':', '_').replace('.', '_'))]
+    available_gpus += [
+        (
+            os.path.join("/dev/dri/by-path", f),
+            f[:idx].replace(":", "_").replace(".", "_"),
+        )
+    ]
 
-parser.add_argument('--gpu', type=int, dest="gpu", default=0, help='Select GPU (0..{})'.format(len(available_gpus) - 1))
+parser.add_argument(
+    "--gpu",
+    type=int,
+    dest="gpu",
+    default=0,
+    help="Select GPU (0..{})".format(len(available_gpus) - 1),
+)
 
 args = parser.parse_args(sys.argv[1:])
 piglit_path = args.piglit_path
@@ -169,10 +186,7 @@ if "DISPLAY" not in env:
     print_red("DISPLAY environment variable missing.")
     sys.exit(1)
 p = subprocess.run(
-    ["deqp-runner", "--version"],
-    capture_output="True",
-    check=True,
-    env=env
+    ["deqp-runner", "--version"], capture_output="True", check=True, env=env
 )
 for line in p.stdout.decode().split("\n"):
     if line.find("deqp-runner") >= 0:
@@ -207,13 +221,13 @@ p = subprocess.run(
     capture_output="True",
     cwd=os.path.join(piglit_path, "bin"),
     check=True,
-    env=env
+    env=env,
 )
 del env["AMD_DEBUG"]
 for line in p.stdout.decode().split("\n"):
     if "GL_RENDER" in line:
         line = line.split("=")[1]
-        gpu_name_full = '('.join(line.split("(")[:-1]).strip()
+        gpu_name_full = "(".join(line.split("(")[:-1]).strip()
         gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
     elif "chip_class" in line:
@@ -236,11 +250,13 @@ logfile = open(os.path.join(output_folder, "{}-run-tests.log".format(gpu_name)),
 
 spin = itertools.cycle("-\\|/")
 
+
 def chip_class_to_str(cl):
     supported = ["gfx6", "gfx7", "gfx8", "gfx9", "gfx10", "gfx10_3", "gfx11"]
     if 8 <= cl and cl < 8 + len(supported):
         return supported[cl - 8]
     return supported[-1]
+
 
 def run_cmd(args, verbosity):
     if verbosity > 1:
@@ -295,13 +311,14 @@ def parse_test_filters(include_tests):
         if os.path.exists(t):
             with open(t, "r") as file:
                 for row in csv.reader(file, delimiter=","):
-                    if not row or row[0][0] == '#':
+                    if not row or row[0][0] == "#":
                         continue
                     print(row)
                     cmd += ["-t", row[0]]
         else:
             cmd += ["-t", t]
     return cmd
+
 
 def select_baseline(basepath, chip_class, gpu_name):
     chip_class_str = chip_class_to_str(chip_class)
@@ -315,7 +332,7 @@ def select_baseline(basepath, chip_class, gpu_name):
     while chip_class >= 8:
         for subdir, dirs, files in os.walk(basepath):
             for file in files:
-                if file.find(chip_class_str) == 0 and file.endswith('-fail.csv'):
+                if file.find(chip_class_str) == 0 and file.endswith("-fail.csv"):
                     return os.path.join(base, file)
         # No match. Try an earlier class
         chip_class = chip_class - 1
@@ -323,9 +340,12 @@ def select_baseline(basepath, chip_class, gpu_name):
 
     return exact
 
+
 filters_args = parse_test_filters(args.include_tests)
 baseline = select_baseline(base, chip_class, gpu_name)
-flakes = os.path.join(base, "{}-{}-flakes.csv".format(chip_class_to_str(chip_class), gpu_name))
+flakes = os.path.join(
+    base, "{}-{}-flakes.csv".format(chip_class_to_str(chip_class), gpu_name)
+)
 
 if os.path.exists(baseline):
     print_yellow("Baseline: {}\n".format(baseline), args.verbose > 0)
@@ -335,7 +355,9 @@ if os.path.exists(flakes):
 # piglit test
 if args.piglit:
     out = os.path.join(output_folder, "piglit")
-    new_baseline = os.path.join(new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name))
+    new_baseline = os.path.join(
+        new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name)
+    )
     print_yellow("Running piglit tests\n", args.verbose > 0)
     cmd = [
         "piglit-runner",
