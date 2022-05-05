@@ -559,6 +559,8 @@ kopper_allocate_textures(struct dri_context *ctx,
             if (drawable->textures[i] && i < ST_ATTACHMENT_DEPTH_STENCIL && !is_pixmap) {
                drawable->textures[i]->width0 = width;
                drawable->textures[i]->height0 = height;
+               /* force all contexts to revalidate framebuffer */
+               p_atomic_inc(&drawable->base.stamp);
             } else
                pipe_resource_reference(&drawable->textures[i], NULL);
             pipe_resource_reference(&drawable->msaa_textures[i], NULL);
