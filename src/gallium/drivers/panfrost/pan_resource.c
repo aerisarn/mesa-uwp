@@ -350,6 +350,20 @@ panfrost_should_afbc(struct panfrost_device *dev,
         return true;
 }
 
+/*
+ * For a resource we want to use AFBC with, should we use AFBC with tiled
+ * headers? On GPUs that support it, this is believed to be beneficial for
+ * images that are at least 128x128.
+ */
+static bool
+panfrost_should_tile_afbc(const struct panfrost_device *dev,
+                          const struct panfrost_resource *pres)
+{
+        return panfrost_afbc_can_tile(dev) &&
+               pres->base.width0 >= 128 &&
+               pres->base.height0 >= 128;
+}
+
 static bool
 panfrost_should_tile(struct panfrost_device *dev,
                      const struct panfrost_resource *pres,
@@ -394,6 +408,9 @@ panfrost_best_modifier(struct panfrost_device *dev,
 
                 if (panfrost_afbc_can_ytr(pres->base.format))
                         afbc |= AFBC_FORMAT_MOD_YTR;
+
+                if (panfrost_should_tile_afbc(dev, pres))
+                        afbc |= AFBC_FORMAT_MOD_TILED | AFBC_FORMAT_MOD_SC;
 
                 return DRM_FORMAT_MOD_ARM_AFBC(afbc);
         } else if (panfrost_should_tile(dev, pres, fmt))
