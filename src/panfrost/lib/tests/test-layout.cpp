@@ -349,3 +349,44 @@ TEST(Layout, ImplicitLayoutLinearASTC5x5)
    EXPECT_EQ(l.slices[0].surface_stride, 1920);
    EXPECT_EQ(l.slices[0].size, 1920);
 }
+
+/* dEQP-GLES3.functional.texture.format.unsized.rgba_unsigned_byte_3d_pot */
+TEST(AFBCLayout, Linear3D)
+{
+   uint64_t modifier = DRM_FORMAT_MOD_ARM_AFBC(AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_SPARSE);
+
+   struct pan_image_layout l = {
+      .modifier = modifier,
+      .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+      .width = 8,
+      .height = 32,
+      .depth = 16,
+      .nr_samples = 1,
+      .dim = MALI_TEXTURE_DIMENSION_3D,
+      .nr_slices = 1
+   };
+
+   ASSERT_TRUE(pan_image_layout_init(&l, NULL));
+
+   /* AFBC Surface stride is bytes between consecutive surface headers, which is
+    * the header size since this is a 3D texture. At superblock size 16x16, the 8x32
+    * layer has 1x2 superblocks, so the header size is 2 * 16 = 32 bytes,
+    * rounded up to cache line 64.
+    *
+    * There is only 1 superblock per row, so the row stride is the bytes per 1
+    * header block = 16.
+    *
+    * There are 16 layers of size 64 so afbc.header_size = 16 * 64 = 1024.
+    *
+    * Each 16x16 superblock consumes 16 * 16 * 4 = 1024 bytes. There are 2 * 1 *
+    * 16 superblocks in the image, so body size is 32768.
+    */
+   EXPECT_EQ(l.slices[0].offset, 0);
+   EXPECT_EQ(l.slices[0].row_stride, 16);
+   EXPECT_EQ(l.slices[0].afbc.header_size, 1024);
+   EXPECT_EQ(l.slices[0].afbc.body_size, 32768);
+   EXPECT_EQ(l.slices[0].afbc.surface_stride, 64);
+   EXPECT_EQ(l.slices[0].surface_stride, 2048); /* XXX: Not meaningful? */
+   EXPECT_EQ(l.slices[0].size, 32768); /* XXX: Not used by anything and wrong */
+}
