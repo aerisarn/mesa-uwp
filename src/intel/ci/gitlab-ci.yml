@@ -106,6 +106,7 @@ anv-tgl-vk:
 iris-apl-deqp:
   extends:
     - .iris-apl-test
+    - .test-manual-mr
   variables:
     DEQP_SUITE: iris-apl
   parallel: 3
