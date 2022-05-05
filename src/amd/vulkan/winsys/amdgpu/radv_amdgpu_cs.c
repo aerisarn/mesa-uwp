@@ -1314,27 +1314,28 @@ radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum amd_ip_type ip_type
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum amd_ip_type ip_type,
-                                      int queue_idx, struct radeon_cmdbuf **cs_array,
-                                      unsigned cs_count, struct radeon_cmdbuf *initial_preamble_cs,
-                                      struct radeon_cmdbuf *continue_preamble_cs,
+radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx,
+                                      const struct radv_winsys_submit_info *submit,
                                       struct radv_winsys_sem_info *sem_info, bool can_patch)
 {
    struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
    VkResult result;
 
    assert(sem_info);
-   if (!cs_count) {
-      result = radv_amdgpu_cs_submit_zero(ctx, ip_type, queue_idx, sem_info);
-   } else if (!ring_can_use_ib_bos(ctx->ws, ip_type)) {
-      result = radv_amdgpu_winsys_cs_submit_sysmem(_ctx, queue_idx, sem_info, cs_array, cs_count,
-                                                   initial_preamble_cs, continue_preamble_cs);
+   if (!submit->cs_count) {
+      result = radv_amdgpu_cs_submit_zero(ctx, submit->ip_type, submit->queue_index, sem_info);
+   } else if (!ring_can_use_ib_bos(ctx->ws, submit->ip_type)) {
+      result = radv_amdgpu_winsys_cs_submit_sysmem(
+         _ctx, submit->queue_index, sem_info, submit->cs_array, submit->cs_count,
+         submit->initial_preamble_cs, submit->continue_preamble_cs);
    } else if (can_patch) {
-      result = radv_amdgpu_winsys_cs_submit_chained(_ctx, queue_idx, sem_info, cs_array, cs_count,
-                                                    initial_preamble_cs);
+      result =
+         radv_amdgpu_winsys_cs_submit_chained(_ctx, submit->queue_index, sem_info, submit->cs_array,
+                                              submit->cs_count, submit->initial_preamble_cs);
    } else {
-      result = radv_amdgpu_winsys_cs_submit_fallback(_ctx, queue_idx, sem_info, cs_array, cs_count,
-                                                     initial_preamble_cs);
+      result = radv_amdgpu_winsys_cs_submit_fallback(_ctx, submit->queue_index, sem_info,
+                                                     submit->cs_array, submit->cs_count,
+                                                     submit->initial_preamble_cs);
    }
 
    return result;
@@ -1411,10 +1412,7 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, uint32_t submit_cou
    assert(submit_count);
 
    if (submit_count == 1) {
-      result = radv_amdgpu_winsys_cs_submit_internal(
-         _ctx, submits[0].ip_type, submits[0].queue_index, submits[0].cs_array,
-         submits[0].cs_count, submits[0].initial_preamble_cs, submits[0].continue_preamble_cs,
-         &sem_info, can_patch);
+      result = radv_amdgpu_winsys_cs_submit_internal(_ctx, &submits[0], &sem_info, can_patch);
    } else {
       unreachable("submitting to multiple queues at the same time is not supported yet.");
    }
