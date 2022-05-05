@@ -61,7 +61,7 @@ struct QoShaderModuleCreateInfo {
 };
 
 extern ac_shader_config config;
-extern radv_shader_info info;
+extern aco_shader_info info;
 extern std::unique_ptr<aco::Program> program;
 extern aco::Builder bld;
 extern aco::Temp inputs[16];

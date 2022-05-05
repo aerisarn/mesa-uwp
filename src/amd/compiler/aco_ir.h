@@ -38,7 +38,6 @@
 #include <vector>
 
 struct radv_shader_args;
-struct radv_shader_info;
 struct radv_vs_prolog_key;
 
 namespace aco {
@@ -2152,27 +2151,27 @@ struct ra_test_policy {
 
 void init();
 
-void init_program(Program* program, Stage stage, const struct radv_shader_info* info,
+void init_program(Program* program, Stage stage, const struct aco_shader_info* info,
                   enum chip_class chip_class, enum radeon_family family, bool wgp_mode,
                   ac_shader_config* config);
 
 void select_program(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
                     ac_shader_config* config, const struct radv_nir_compiler_options* options,
-                    const struct radv_shader_info* info,
+                    const struct aco_shader_info* info,
                     const struct radv_shader_args* args);
 void select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
                            const struct radv_nir_compiler_options* options,
-                           const struct radv_shader_info* info,
+                           const struct aco_shader_info* info,
                            const struct radv_shader_args* args);
 void select_trap_handler_shader(Program* program, struct nir_shader* shader,
                                 ac_shader_config* config,
                                 const struct radv_nir_compiler_options* options,
-                                const struct radv_shader_info* info,
+                                const struct aco_shader_info* info,
                                 const struct radv_shader_args* args);
 void select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key,
                       ac_shader_config* config,
                       const struct radv_nir_compiler_options* options,
-                      const struct radv_shader_info* info,
+                      const struct aco_shader_info* info,
                       const struct radv_shader_args* args,
                       unsigned* num_preserved_sgprs);
 

@@ -45,6 +45,8 @@
 #include "sid.h"
 #include "vk_format.h"
 
+#include "aco_shader_info.h"
+#include "radv_aco_shader_info.h"
 #ifdef LLVM_AVAILABLE
 #include "ac_llvm_util.h"
 #endif
@@ -1988,7 +1990,9 @@ shader_compile(struct radv_device *device, struct nir_shader *const *shaders, in
    if (false) {
 #endif
    } else {
-      aco_compile_shader(options, info, shader_count, shaders, args, &binary);
+      struct aco_shader_info ac_info;
+      radv_aco_convert_shader_info(&ac_info, info);
+      aco_compile_shader(options, &ac_info, shader_count, shaders, args, &binary);
    }
 
    binary->info = *info;
@@ -2181,7 +2185,9 @@ radv_create_vs_prolog(struct radv_device *device, const struct radv_vs_prolog_ke
 #endif
 
    struct radv_prolog_binary *binary = NULL;
-   aco_compile_vs_prolog(&options, &info, key, &args, &binary);
+   struct aco_shader_info ac_info;
+   radv_aco_convert_shader_info(&ac_info, &info);
+   aco_compile_vs_prolog(&options, &ac_info, key, &args, &binary);
    struct radv_shader_prolog *prolog = upload_vs_prolog(device, binary, info.wave_size);
    if (prolog) {
       prolog->nontrivial_divisors = key->state->nontrivial_divisors;

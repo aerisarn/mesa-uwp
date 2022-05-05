@@ -38,7 +38,7 @@ PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(
 }
 
 ac_shader_config config;
-radv_shader_info info;
+aco_shader_info info;
 std::unique_ptr<Program> program;
 Builder bld(NULL);
 Temp inputs[16];
@@ -106,10 +106,6 @@ bool setup_cs(const char *input_spec, enum chip_class chip_class,
       return false;
 
    memset(&info, 0, sizeof(info));
-   info.cs.block_size[0] = 1;
-   info.cs.block_size[1] = 1;
-   info.cs.block_size[2] = 1;
-
    create_program(chip_class, compute_cs, wave_size, family);
 
    if (input_spec) {

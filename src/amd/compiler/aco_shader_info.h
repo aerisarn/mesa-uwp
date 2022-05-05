@@ -28,12 +28,13 @@
 #define ACO_SHADER_INFO_H
 
 #include "shader_enums.h"
-/* temporary */
-#include "vulkan/radv_shader.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define ACO_MAX_SO_OUTPUTS 64
+#define ACO_MAX_SO_BUFFERS 4
 
 struct aco_vp_output_info {
    uint8_t vs_output_param_offset[VARYING_SLOT_MAX];
@@ -63,8 +64,8 @@ struct aco_stream_output {
 
 struct aco_streamout_info {
    uint16_t num_outputs;
-   struct aco_stream_output outputs[MAX_SO_OUTPUTS];
-   uint16_t strides[MAX_SO_BUFFERS];
+   struct aco_stream_output outputs[ACO_MAX_SO_OUTPUTS];
+   uint16_t strides[ACO_MAX_SO_BUFFERS];
 };
 
 struct aco_shader_info {

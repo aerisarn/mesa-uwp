@@ -11294,7 +11294,7 @@ ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt)
 void
 select_program(Program* program, unsigned shader_count, struct nir_shader* const* shaders,
                ac_shader_config* config, const struct radv_nir_compiler_options* options,
-               const struct radv_shader_info* info,
+               const struct aco_shader_info* info,
                const struct radv_shader_args* args)
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, options, info, args, false);
@@ -11422,7 +11422,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 void
 select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_config* config,
                       const struct radv_nir_compiler_options* options,
-                      const struct radv_shader_info* info,
+                      const struct aco_shader_info* info,
                       const struct radv_shader_args* args)
 {
    isel_context ctx = setup_isel_context(program, 1, &gs_shader, config, options, info, args, true);
@@ -11521,7 +11521,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
 void
 select_trap_handler_shader(Program* program, struct nir_shader* shader, ac_shader_config* config,
                            const struct radv_nir_compiler_options* options,
-                           const struct radv_shader_info* info,
+                           const struct aco_shader_info* info,
                            const struct radv_shader_args* args)
 {
    assert(options->chip_class == GFX8);
@@ -11685,7 +11685,7 @@ calc_nontrivial_instance_id(Builder& bld, const struct radv_shader_args* args, u
 void
 select_vs_prolog(Program* program, const struct radv_vs_prolog_key* key, ac_shader_config* config,
                  const struct radv_nir_compiler_options* options,
-                 const struct radv_shader_info* info,
+                 const struct aco_shader_info* info,
                  const struct radv_shader_args* args, unsigned* num_preserved_sgprs)
 {
    assert(key->num_attributes > 0);
