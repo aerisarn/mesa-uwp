@@ -529,11 +529,32 @@ debian-mingw32-x86_64:
     C_ARGS: >
       -Wno-error=format
       -Wno-error=format-extra-args
+      -Wno-error=deprecated-declarations
+      -Wno-error=unused-function
+      -Wno-error=unused-variable
+      -Wno-error=unused-but-set-variable
+      -Wno-error=unused-value
+      -Wno-error=switch
+      -Wno-error=parentheses
+      -Wno-error=missing-prototypes
+      -Wno-error=sign-compare
+      -Wno-error=narrowing
+      -Wno-error=overflow
     CPP_ARGS: $C_ARGS
-    GALLIUM_DRIVERS: "swrast"
+    GALLIUM_DRIVERS: "swrast,d3d12,zink"
+    VULKAN_DRIVERS: "swrast,amd,microsoft-experimental"
+    GALLIUM_ST: >
+      -D gallium-opencl=icd
+      -D opencl-spirv=true
+      -D microsoft-clc=enabled
+      -D static-libclc=all
+      -D llvm=enabled
     EXTRA_OPTION: >
       -D spirv-to-dxil=true
-      -Dllvm=disabled
-      -Dzlib=disabled
-      -Dosmesa=true
+      -D gles1=enabled
+      -D gles2=enabled
+      -D osmesa=true
+      -D cpp_rtti=true
+      -D shared-glapi=enabled
+      -D zlib=enabled
       --cross-file=.gitlab-ci/x86_64-w64-mingw32
