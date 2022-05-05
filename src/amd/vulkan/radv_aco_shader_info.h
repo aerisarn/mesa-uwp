@@ -63,7 +63,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(cs.subgroup_size);
    ASSIGN_FIELD(ms.outinfo);
    ASSIGN_FIELD(so);
-   ASSIGN_FIELD(gs_ring_info);
+   aco_info->gfx9_gs_ring_lds_size = radv->gs_ring_info.lds_size;
 }
 #undef ASSIGN_FIELD
 #undef ASSIGN_FIELD_CP

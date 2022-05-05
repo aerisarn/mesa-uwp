@@ -76,7 +76,7 @@ struct aco_shader_info {
    } ms;
    struct radv_streamout_info so;
 
-   struct gfx9_gs_info gs_ring_info;
+   uint32_t gfx9_gs_ring_lds_size;
 };
 
 #ifdef __cplusplus

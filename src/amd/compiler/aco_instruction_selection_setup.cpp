@@ -289,7 +289,7 @@ setup_gs_variables(isel_context* ctx, nir_shader* nir)
 {
    if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
       ctx->program->config->lds_size =
-         ctx->program->info.gs_ring_info.lds_size; /* Already in units of the alloc granularity */
+         ctx->program->info.gfx9_gs_ring_lds_size; /* Already in units of the alloc granularity */
    } else if (ctx->stage == vertex_geometry_ngg || ctx->stage == tess_eval_geometry_ngg) {
       setup_vs_output_info(ctx, nir, &ctx->program->info.vs.outinfo);
 
