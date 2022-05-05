@@ -369,7 +369,8 @@ get_image_format_properties(
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+   if (info->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+                      VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
          goto unsupported;
       }
