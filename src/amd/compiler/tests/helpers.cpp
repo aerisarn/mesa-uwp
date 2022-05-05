@@ -372,6 +372,9 @@ VkDevice get_vk_device(enum chip_class chip_class)
    case GFX10_3:
       family = CHIP_SIENNA_CICHLID;
       break;
+   case GFX11:
+      family = CHIP_GFX1100;
+      break;
    default:
       family = CHIP_UNKNOWN;
       break;

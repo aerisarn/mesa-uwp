@@ -147,7 +147,7 @@ to_clrx_device_name(chip_class cc, radeon_family family)
       default: return nullptr;
       }
    case GFX10_3:
-      return nullptr;
+   case GFX11: return nullptr;
    default: unreachable("Invalid chip class!"); return nullptr;
    }
 }
