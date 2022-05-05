@@ -10521,7 +10521,7 @@ export_vs_varying(isel_context* ctx, int slot, bool is_pos, int* next_pos)
 
 static void
 export_vs_psiz_layer_viewport_vrs(isel_context* ctx, int* next_pos,
-                                  const radv_vs_output_info* outinfo)
+                                  const aco_vp_output_info* outinfo)
 {
    aco_ptr<Export_instruction> exp{
       create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
@@ -10568,7 +10568,7 @@ static void
 create_vs_exports(isel_context* ctx)
 {
    assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
-   const radv_vs_output_info* outinfo =
+   const aco_vp_output_info* outinfo =
       ctx->stage.has(SWStage::GS) ? &ctx->program->info.vs.outinfo :
       ctx->stage.has(SWStage::TES) ? &ctx->program->info.tes.outinfo :
       ctx->stage.has(SWStage::MS) ? &ctx->program->info.ms.outinfo :
@@ -10627,7 +10627,7 @@ static void
 create_primitive_exports(isel_context *ctx, Temp prim_ch1)
 {
    assert(ctx->stage.hw == HWStage::NGG);
-   const radv_vs_output_info* outinfo =
+   const aco_vp_output_info* outinfo =
       ctx->stage.has(SWStage::GS) ? &ctx->program->info.vs.outinfo :
       ctx->stage.has(SWStage::TES) ? &ctx->program->info.tes.outinfo :
       ctx->stage.has(SWStage::MS) ? &ctx->program->info.ms.outinfo :

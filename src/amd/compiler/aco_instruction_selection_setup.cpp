@@ -248,7 +248,7 @@ get_reg_class(isel_context* ctx, RegType type, unsigned components, unsigned bit
 
 void
 setup_vs_output_info(isel_context* ctx, nir_shader* nir,
-                     const radv_vs_output_info* outinfo)
+                     const aco_vp_output_info* outinfo)
 {
    ctx->export_clip_dists = outinfo->export_clip_dists;
    ctx->num_clip_distances = util_bitcount(outinfo->clip_dist_mask);

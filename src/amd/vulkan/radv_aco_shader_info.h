@@ -45,6 +45,29 @@ radv_aco_convert_shader_so_info(struct aco_shader_info *aco_info,
 }
 
 static inline void
+radv_aco_convert_shader_vp_info(struct aco_vp_output_info *aco_info,
+				const struct radv_vs_output_info *radv)
+{
+   ASSIGN_FIELD_CP(vs_output_param_offset);
+   ASSIGN_FIELD(clip_dist_mask);
+   ASSIGN_FIELD(cull_dist_mask);
+   ASSIGN_FIELD(param_exports);
+   ASSIGN_FIELD(prim_param_exports);
+   ASSIGN_FIELD(writes_pointsize);
+   ASSIGN_FIELD(writes_layer);
+   ASSIGN_FIELD(writes_layer_per_primitive);
+   ASSIGN_FIELD(writes_viewport_index);
+   ASSIGN_FIELD(writes_viewport_index_per_primitive);
+   ASSIGN_FIELD(writes_primitive_shading_rate);
+   ASSIGN_FIELD(writes_primitive_shading_rate_per_primitive);
+   ASSIGN_FIELD(export_prim_id);
+   ASSIGN_FIELD(export_prim_id_per_primitive);
+   ASSIGN_FIELD(export_clip_dists);
+   /* don't use export params */
+}
+
+#define ASSIGN_OUTINFO(x) radv_aco_convert_shader_vp_info(&aco_info->x.outinfo, &radv->x.outinfo);
+static inline void
 radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
 			     const struct radv_shader_info *radv)
 {
@@ -52,7 +75,7 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD(has_ngg_early_prim_export);
    ASSIGN_FIELD(num_tess_patches);
    ASSIGN_FIELD(workgroup_size);
-   ASSIGN_FIELD(vs.outinfo);
+   ASSIGN_OUTINFO(vs);
    ASSIGN_FIELD(vs.tcs_in_out_eq);
    ASSIGN_FIELD(vs.tcs_temp_only_input_mask);
    ASSIGN_FIELD(vs.use_per_attribute_vb_descs);
@@ -64,18 +87,19 @@ radv_aco_convert_shader_info(struct aco_shader_info *aco_info,
    ASSIGN_FIELD_CP(gs.output_streams);
    ASSIGN_FIELD(gs.vertices_out);
    ASSIGN_FIELD(tcs.num_lds_blocks);
-   ASSIGN_FIELD(tes.outinfo);
+   ASSIGN_OUTINFO(tes);
    ASSIGN_FIELD(ps.writes_z);
    ASSIGN_FIELD(ps.writes_stencil);
    ASSIGN_FIELD(ps.writes_sample_mask);
    ASSIGN_FIELD(ps.num_interp);
    ASSIGN_FIELD(ps.spi_ps_input);
    ASSIGN_FIELD(cs.subgroup_size);
-   ASSIGN_FIELD(ms.outinfo);
+   ASSIGN_OUTINFO(ms);
    radv_aco_convert_shader_so_info(aco_info, radv);
    aco_info->gfx9_gs_ring_lds_size = radv->gs_ring_info.lds_size;
 }
 #undef ASSIGN_FIELD
 #undef ASSIGN_FIELD_CP
+#undef ASSIGN_OUTINFO
 
 #endif
