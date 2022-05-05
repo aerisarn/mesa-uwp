@@ -684,9 +684,6 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
       return screen->info.props.limits.viewportSubPixelBits;
 
-   case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-      return 0; /* not sure */
-
    case PIPE_CAP_MAX_GS_INVOCATIONS:
       return screen->info.props.limits.maxGeometryShaderInvocations;
 

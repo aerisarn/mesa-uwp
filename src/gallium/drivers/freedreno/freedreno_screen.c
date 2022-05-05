@@ -408,7 +408,6 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 64 * 1024 * 1024;
 
    case PIPE_CAP_SHAREABLE_SHADERS:
-   case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
       if (is_ir3(screen))
          return 1;
       return 0;

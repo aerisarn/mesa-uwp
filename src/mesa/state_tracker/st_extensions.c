@@ -387,8 +387,6 @@ void st_init_limits(struct pipe_screen *screen,
       c->Program[MESA_SHADER_GEOMETRY].MaxUniformComponents +
       c->Program[MESA_SHADER_FRAGMENT].MaxUniformComponents;
 
-   c->GLSLOptimizeConservatively =
-      screen->get_param(screen, PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY);
    c->GLSLLowerConstArrays =
       screen->get_param(screen, PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF);
    c->GLSLTessLevelsAsInputs =

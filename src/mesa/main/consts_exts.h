@@ -766,13 +766,6 @@ struct gl_constants
    bool GLSLFrontFacingIsSysVal;
 
    /**
-    * Run the minimum amount of GLSL optimizations to be able to link
-    * shaders optimally (eliminate dead varyings and uniforms) and just do
-    * all the necessary lowering.
-    */
-   bool GLSLOptimizeConservatively;
-
-   /**
     * Whether to call lower_const_arrays_to_uniforms() during linking.
     */
    bool GLSLLowerConstArrays;

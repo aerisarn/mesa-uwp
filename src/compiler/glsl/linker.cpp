@@ -4188,18 +4188,10 @@ static void
 linker_optimisation_loop(const struct gl_constants *consts, exec_list *ir,
                          unsigned stage)
 {
-      if (consts->GLSLOptimizeConservatively) {
-         /* Run it just once. */
-         do_common_optimization(ir, true, false,
-                                &consts->ShaderCompilerOptions[stage],
-                                consts->NativeIntegers);
-      } else {
-         /* Repeat it until it stops making changes. */
-         while (do_common_optimization(ir, true, false,
-                                       &consts->ShaderCompilerOptions[stage],
-                                       consts->NativeIntegers))
-            ;
-      }
+   /* Run it just once, since NIR will do the real optimizaiton. */
+   do_common_optimization(ir, true, false,
+                           &consts->ShaderCompilerOptions[stage],
+                           consts->NativeIntegers);
 }
 
 void

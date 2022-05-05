@@ -176,8 +176,6 @@ static int r300_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
         case PIPE_CAP_VERTEX_SHADER_SATURATE:
             return is_r500 ? 1 : 0;
 
-        case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-            return 0;
         case PIPE_CAP_SHAREABLE_SHADERS:
             return 0;
 

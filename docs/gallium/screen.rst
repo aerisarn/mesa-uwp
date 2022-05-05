@@ -412,9 +412,6 @@ The integer capabilities:
   ARB_transform_feedback3.
 * ``PIPE_CAP_SHADER_CAN_READ_OUTPUTS``: Whether every TGSI shader stage can read
   from the output file.
-* ``PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY``: Tell the GLSL compiler to use
-  the minimum amount of optimizations just to be able to do all the linking
-  and lowering.
 * ``PIPE_CAP_FBFETCH``: The number of render targets whose value in the
   current framebuffer can be read in the shader.  0 means framebuffer fetch
   is not supported.  1 means that only the first render target can be read,

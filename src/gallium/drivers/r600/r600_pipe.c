@@ -411,9 +411,6 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_MAX_COMBINED_SHADER_BUFFERS:
 		return 8;
 
-	case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-		return 0;
-
         case PIPE_CAP_INT64:
 	case PIPE_CAP_DOUBLES:
 		if (rscreen->b.family == CHIP_ARUBA ||
