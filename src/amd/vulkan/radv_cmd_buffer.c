@@ -362,11 +362,11 @@ radv_queue_family_to_ring(struct radv_physical_device *physical_device,
 {
    switch (f) {
    case RADV_QUEUE_GENERAL:
-      return RING_GFX;
+      return AMD_IP_GFX;
    case RADV_QUEUE_COMPUTE:
-      return RING_COMPUTE;
+      return AMD_IP_COMPUTE;
    case RADV_QUEUE_TRANSFER:
-      return RING_DMA;
+      return AMD_IP_SDMA;
    default:
       unreachable("Unknown queue family");
    }
@@ -708,10 +708,10 @@ radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pip
    ring = radv_queue_family_to_ring(device->physical_device, cmd_buffer->qf);
 
    switch (ring) {
-   case RING_GFX:
+   case AMD_IP_GFX:
       va += 8;
       break;
-   case RING_COMPUTE:
+   case AMD_IP_COMPUTE:
       va += 16;
       break;
    default:

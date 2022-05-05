@@ -2706,7 +2706,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    struct si_context *sctx = (struct si_context *)context;
    struct radeon_winsys *ws = sctx->ws;
    unsigned width = templ->width, height = templ->height;
-   unsigned bs_buf_size, stream_type = 0, ring = RING_VCN_DEC;
+   unsigned bs_buf_size, stream_type = 0, ring = AMD_IP_VCN_DEC;
    struct radeon_decoder *dec;
    int r, i;
 
@@ -2740,7 +2740,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       break;
    case PIPE_VIDEO_FORMAT_JPEG:
       stream_type = RDECODE_CODEC_JPEG;
-      ring = RING_VCN_JPEG;
+      ring = AMD_IP_VCN_JPEG;
       break;
    default:
       assert(0);

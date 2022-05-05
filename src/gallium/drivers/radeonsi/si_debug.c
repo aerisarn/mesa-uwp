@@ -1102,7 +1102,7 @@ void si_check_vm_faults(struct si_context *sctx, struct radeon_saved_cs *saved, 
       fprintf(f, "Last apitrace call: %u\n\n", sctx->apitrace_call_number);
 
    switch (ring) {
-   case RING_GFX: {
+   case AMD_IP_GFX: {
       struct u_log_context log;
       u_log_context_init(&log);
 

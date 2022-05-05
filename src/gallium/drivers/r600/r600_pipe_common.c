@@ -428,7 +428,7 @@ static void r600_flush_dma_ring(void *ctx, unsigned flags,
 		 */
 		rctx->ws->fence_wait(rctx->ws, rctx->last_sdma_fence, 800*1000*1000);
 
-		rctx->check_vm_faults(rctx, &saved, RING_DMA);
+		rctx->check_vm_faults(rctx, &saved, AMD_IP_SDMA);
 		radeon_clear_saved_cs(&saved);
 	}
 }
@@ -636,8 +636,8 @@ bool r600_common_context_init(struct r600_common_context *rctx,
 	if (!rctx->ctx)
 		return false;
 
-	if (rscreen->info.num_rings[RING_DMA] && !(rscreen->debug_flags & DBG_NO_ASYNC_DMA)) {
-		rctx->ws->cs_create(&rctx->dma.cs, rctx->ctx, RING_DMA,
+	if (rscreen->info.num_rings[AMD_IP_SDMA] && !(rscreen->debug_flags & DBG_NO_ASYNC_DMA)) {
+		rctx->ws->cs_create(&rctx->dma.cs, rctx->ctx, AMD_IP_SDMA,
                                     r600_flush_dma_ring, rctx, false);
 		rctx->dma.flush = r600_flush_dma_ring;
 	}
@@ -1294,8 +1294,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		printf("r600_has_virtual_memory = %i\n", rscreen->info.r600_has_virtual_memory);
 		printf("gfx_ib_pad_with_type2 = %i\n", rscreen->info.gfx_ib_pad_with_type2);
 		printf("uvd_decode = %u\n", rscreen->info.has_video_hw.uvd_decode);
-		printf("num_rings[RING_DMA] = %i\n", rscreen->info.num_rings[RING_DMA]);
-		printf("num_rings[RING_COMPUTE] = %u\n", rscreen->info.num_rings[RING_COMPUTE]);
+		printf("num_rings[AMD_IP_SDMA] = %i\n", rscreen->info.num_rings[AMD_IP_SDMA]);
+		printf("num_rings[AMD_IP_COMPUTE] = %u\n", rscreen->info.num_rings[AMD_IP_COMPUTE]);
 		printf("uvd_fw_version = %u\n", rscreen->info.uvd_fw_version);
 		printf("vce_fw_version = %u\n", rscreen->info.vce_fw_version);
 		printf("me_fw_version = %i\n", rscreen->info.me_fw_version);

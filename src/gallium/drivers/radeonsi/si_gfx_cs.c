@@ -165,7 +165,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
        */
       ctx->ws->fence_wait(ctx->ws, ctx->last_gfx_fence, 800 * 1000 * 1000);
 
-      si_check_vm_faults(ctx, &ctx->current_saved_cs->gfx, RING_GFX);
+      si_check_vm_faults(ctx, &ctx->current_saved_cs->gfx, AMD_IP_GFX);
    }
 
    if (unlikely(ctx->thread_trace &&

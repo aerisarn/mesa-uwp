@@ -209,7 +209,7 @@ static struct pipe_context *r600_create_context(struct pipe_screen *screen,
 		goto fail;
 	}
 
-	ws->cs_create(&rctx->b.gfx.cs, rctx->b.ctx, RING_GFX,
+	ws->cs_create(&rctx->b.gfx.cs, rctx->b.ctx, AMD_IP_GFX,
                       r600_context_gfx_flush, rctx, false);
 	rctx->b.gfx.flush = r600_context_gfx_flush;
 

@@ -512,7 +512,7 @@ static struct radv_pipeline *
 radv_get_saved_pipeline(struct radv_device *device, enum amd_ip_type ring)
 {
    uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
-   int offset = ring == RING_GFX ? 1 : 2;
+   int offset = ring == AMD_IP_GFX ? 1 : 2;
 
    return *(struct radv_pipeline **)(ptr + offset);
 }
@@ -523,7 +523,7 @@ radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
    enum amd_ip_type ring = radv_queue_ring(queue);
    struct radv_pipeline *pipeline;
 
-   fprintf(f, "RING_%s:\n", ring == RING_GFX ? "GFX" : "COMPUTE");
+   fprintf(f, "AMD_IP_%s:\n", ring == AMD_IP_GFX ? "GFX" : "COMPUTE");
 
    pipeline = radv_get_saved_pipeline(queue->device, ring);
    if (pipeline) {
@@ -636,7 +636,7 @@ radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
    char cmd[128];
 
    /* TODO: Dump compute ring. */
-   if (ring != RING_GFX)
+   if (ring != AMD_IP_GFX)
       return;
 
    sprintf(cmd, "umr -R %s 2>&1",
@@ -654,7 +654,7 @@ radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
    char cmd[128];
 
    /* TODO: Dump compute ring. */
-   if (ring != RING_GFX)
+   if (ring != AMD_IP_GFX)
       return;
 
    sprintf(cmd, "umr -O bits,halt_waves -wa %s 2>&1",

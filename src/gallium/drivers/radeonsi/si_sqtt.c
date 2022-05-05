@@ -216,7 +216,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
 
    /* Start the thread trace with a different event based on the queue. */
-   if (queue_family_index == RING_COMPUTE) {
+   if (queue_family_index == AMD_IP_COMPUTE) {
       radeon_set_sh_reg(R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(1));
    } else {
@@ -291,7 +291,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
    radeon_begin(cs);
 
    /* Stop the thread trace with a different event based on the queue. */
-   if (queue_family_index == RING_COMPUTE) {
+   if (queue_family_index == AMD_IP_COMPUTE) {
       radeon_set_sh_reg(R_00B878_COMPUTE_THREAD_TRACE_ENABLE,
                         S_00B878_THREAD_TRACE_ENABLE(0));
    } else {
@@ -383,12 +383,12 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
    radeon_begin(cs);
 
    switch (family) {
-      case RING_GFX:
+      case AMD_IP_GFX:
          radeon_emit(PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
          radeon_emit(CC0_UPDATE_LOAD_ENABLES(1));
          radeon_emit(CC1_UPDATE_SHADOW_ENABLES(1));
          break;
-      case RING_COMPUTE:
+      case AMD_IP_COMPUTE:
          radeon_emit(PKT3(PKT3_NOP, 0, 0));
          radeon_emit(0);
          break;
@@ -437,12 +437,12 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
    radeon_begin(cs);
 
    switch (family) {
-      case RING_GFX:
+      case AMD_IP_GFX:
          radeon_emit(PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
          radeon_emit(CC0_UPDATE_LOAD_ENABLES(1));
          radeon_emit(CC1_UPDATE_SHADOW_ENABLES(1));
          break;
-      case RING_COMPUTE:
+      case AMD_IP_COMPUTE:
          radeon_emit(PKT3(PKT3_NOP, 0, 0));
          radeon_emit(0);
          break;
@@ -487,42 +487,42 @@ si_thread_trace_init_cs(struct si_context *sctx)
 {
    struct radeon_winsys *ws = sctx->ws;
 
-   /* Thread trace start CS (only handles RING_GFX). */
-   sctx->thread_trace->start_cs[RING_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
-   if (!ws->cs_create(sctx->thread_trace->start_cs[RING_GFX],
-                      sctx->ctx, RING_GFX, NULL, NULL, 0)) {
-      free(sctx->thread_trace->start_cs[RING_GFX]);
-      sctx->thread_trace->start_cs[RING_GFX] = NULL;
+   /* Thread trace start CS (only handles AMD_IP_GFX). */
+   sctx->thread_trace->start_cs[AMD_IP_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
+   if (!ws->cs_create(sctx->thread_trace->start_cs[AMD_IP_GFX],
+                      sctx->ctx, AMD_IP_GFX, NULL, NULL, 0)) {
+      free(sctx->thread_trace->start_cs[AMD_IP_GFX]);
+      sctx->thread_trace->start_cs[AMD_IP_GFX] = NULL;
       return;
    }
 
-   si_thread_trace_start(sctx, RING_GFX, sctx->thread_trace->start_cs[RING_GFX]);
+   si_thread_trace_start(sctx, AMD_IP_GFX, sctx->thread_trace->start_cs[AMD_IP_GFX]);
 
    /* Thread trace stop CS. */
-   sctx->thread_trace->stop_cs[RING_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
-   if (!ws->cs_create(sctx->thread_trace->stop_cs[RING_GFX],
-                      sctx->ctx, RING_GFX, NULL, NULL, 0)) {
-      free(sctx->thread_trace->start_cs[RING_GFX]);
-      sctx->thread_trace->start_cs[RING_GFX] = NULL;
-      free(sctx->thread_trace->stop_cs[RING_GFX]);
-      sctx->thread_trace->stop_cs[RING_GFX] = NULL;
+   sctx->thread_trace->stop_cs[AMD_IP_GFX] = CALLOC_STRUCT(radeon_cmdbuf);
+   if (!ws->cs_create(sctx->thread_trace->stop_cs[AMD_IP_GFX],
+                      sctx->ctx, AMD_IP_GFX, NULL, NULL, 0)) {
+      free(sctx->thread_trace->start_cs[AMD_IP_GFX]);
+      sctx->thread_trace->start_cs[AMD_IP_GFX] = NULL;
+      free(sctx->thread_trace->stop_cs[AMD_IP_GFX]);
+      sctx->thread_trace->stop_cs[AMD_IP_GFX] = NULL;
       return;
    }
 
-   si_thread_trace_stop(sctx, RING_GFX, sctx->thread_trace->stop_cs[RING_GFX]);
+   si_thread_trace_stop(sctx, AMD_IP_GFX, sctx->thread_trace->stop_cs[AMD_IP_GFX]);
 }
 
 static void
 si_begin_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
 {
-   struct radeon_cmdbuf *cs = sctx->thread_trace->start_cs[RING_GFX];
+   struct radeon_cmdbuf *cs = sctx->thread_trace->start_cs[AMD_IP_GFX];
    sctx->ws->cs_flush(cs, 0, NULL);
 }
 
 static void
 si_end_thread_trace(struct si_context *sctx, struct radeon_cmdbuf *rcs)
 {
-   struct radeon_cmdbuf *cs = sctx->thread_trace->stop_cs[RING_GFX];
+   struct radeon_cmdbuf *cs = sctx->thread_trace->stop_cs[AMD_IP_GFX];
    sctx->ws->cs_flush(cs, 0, &sctx->last_sqtt_fence);
 }
 
@@ -662,8 +662,8 @@ si_destroy_thread_trace(struct si_context *sctx)
    if (sctx->thread_trace->trigger_file)
       free(sctx->thread_trace->trigger_file);
 
-   sscreen->ws->cs_destroy(sctx->thread_trace->start_cs[RING_GFX]);
-   sscreen->ws->cs_destroy(sctx->thread_trace->stop_cs[RING_GFX]);
+   sscreen->ws->cs_destroy(sctx->thread_trace->start_cs[AMD_IP_GFX]);
+   sscreen->ws->cs_destroy(sctx->thread_trace->stop_cs[AMD_IP_GFX]);
 
    struct rgp_pso_correlation *pso_correlation = &sctx->thread_trace->rgp_pso_correlation;
    struct rgp_loader_events *loader_events = &sctx->thread_trace->rgp_loader_events;

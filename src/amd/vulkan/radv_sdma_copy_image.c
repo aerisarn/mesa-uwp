@@ -82,7 +82,7 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
    unsigned copy_height = DIV_ROUND_UP(image->info.height, image->planes[0].surface.blk_h);
    bool tmz = false;
 
-   uint32_t ib_pad_dw_mask = cmd_buffer->device->physical_device->rad_info.ib_pad_dw_mask[RING_DMA];
+   uint32_t ib_pad_dw_mask = cmd_buffer->device->physical_device->rad_info.ib_pad_dw_mask[AMD_IP_SDMA];
 
    /* Linear -> linear sub-window copy. */
    if (image->planes[0].surface.is_linear) {

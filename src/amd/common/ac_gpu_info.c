@@ -495,15 +495,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    amdgpu_device_handle dev = dev_p;
    drmDevicePtr devinfo;
 
-   STATIC_ASSERT(AMDGPU_HW_IP_GFX == RING_GFX);
-   STATIC_ASSERT(AMDGPU_HW_IP_COMPUTE == RING_COMPUTE);
-   STATIC_ASSERT(AMDGPU_HW_IP_DMA == RING_DMA);
-   STATIC_ASSERT(AMDGPU_HW_IP_UVD == RING_UVD);
-   STATIC_ASSERT(AMDGPU_HW_IP_VCE == RING_VCE);
-   STATIC_ASSERT(AMDGPU_HW_IP_UVD_ENC == RING_UVD_ENC);
-   STATIC_ASSERT(AMDGPU_HW_IP_VCN_DEC == RING_VCN_DEC);
-   STATIC_ASSERT(AMDGPU_HW_IP_VCN_ENC == RING_VCN_ENC);
-   STATIC_ASSERT(AMDGPU_HW_IP_VCN_JPEG == RING_VCN_JPEG);
+   STATIC_ASSERT(AMDGPU_HW_IP_GFX == AMD_IP_GFX);
+   STATIC_ASSERT(AMDGPU_HW_IP_COMPUTE == AMD_IP_COMPUTE);
+   STATIC_ASSERT(AMDGPU_HW_IP_DMA == AMD_IP_SDMA);
+   STATIC_ASSERT(AMDGPU_HW_IP_UVD == AMD_IP_UVD);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCE == AMD_IP_VCE);
+   STATIC_ASSERT(AMDGPU_HW_IP_UVD_ENC == AMD_IP_UVD_ENC);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCN_DEC == AMD_IP_VCN_DEC);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCN_ENC == AMD_IP_VCN_ENC);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCN_JPEG == AMD_IP_VCN_JPEG);
 
    /* Get PCI info. */
    r = drmGetDevice2(fd, 0, &devinfo);
@@ -983,26 +983,26 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
    assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
 
-   info->num_rings[RING_GFX] = util_bitcount(gfx.available_rings);
-   info->num_rings[RING_COMPUTE] = util_bitcount(compute.available_rings);
-   info->num_rings[RING_DMA] = util_bitcount(dma.available_rings);
-   info->num_rings[RING_UVD] = util_bitcount(uvd.available_rings);
-   info->num_rings[RING_VCE] = util_bitcount(vce.available_rings);
-   info->num_rings[RING_UVD_ENC] = util_bitcount(uvd_enc.available_rings);
-   info->num_rings[RING_VCN_DEC] = util_bitcount(vcn_dec.available_rings);
-   info->num_rings[RING_VCN_ENC] = util_bitcount(vcn_enc.available_rings);
-   info->num_rings[RING_VCN_JPEG] = util_bitcount(vcn_jpeg.available_rings);
+   info->num_rings[AMD_IP_GFX] = util_bitcount(gfx.available_rings);
+   info->num_rings[AMD_IP_COMPUTE] = util_bitcount(compute.available_rings);
+   info->num_rings[AMD_IP_SDMA] = util_bitcount(dma.available_rings);
+   info->num_rings[AMD_IP_UVD] = util_bitcount(uvd.available_rings);
+   info->num_rings[AMD_IP_VCE] = util_bitcount(vce.available_rings);
+   info->num_rings[AMD_IP_UVD_ENC] = util_bitcount(uvd_enc.available_rings);
+   info->num_rings[AMD_IP_VCN_DEC] = util_bitcount(vcn_dec.available_rings);
+   info->num_rings[AMD_IP_VCN_ENC] = util_bitcount(vcn_enc.available_rings);
+   info->num_rings[AMD_IP_VCN_JPEG] = util_bitcount(vcn_jpeg.available_rings);
 
    /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
-   info->ib_pad_dw_mask[RING_GFX] = 0xff;
-   info->ib_pad_dw_mask[RING_COMPUTE] = 0xff;
-   info->ib_pad_dw_mask[RING_DMA] = 0xf;
-   info->ib_pad_dw_mask[RING_UVD] = 0xf;
-   info->ib_pad_dw_mask[RING_VCE] = 0x3f;
-   info->ib_pad_dw_mask[RING_UVD_ENC] = 0x3f;
-   info->ib_pad_dw_mask[RING_VCN_DEC] = 0xf;
-   info->ib_pad_dw_mask[RING_VCN_ENC] = 0x3f;
-   info->ib_pad_dw_mask[RING_VCN_JPEG] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
+   info->ib_pad_dw_mask[AMD_IP_COMPUTE] = 0xff;
+   info->ib_pad_dw_mask[AMD_IP_SDMA] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_UVD] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_VCE] = 0x3f;
+   info->ib_pad_dw_mask[AMD_IP_UVD_ENC] = 0x3f;
+   info->ib_pad_dw_mask[AMD_IP_VCN_DEC] = 0xf;
+   info->ib_pad_dw_mask[AMD_IP_VCN_ENC] = 0x3f;
+   info->ib_pad_dw_mask[AMD_IP_VCN_JPEG] = 0xf;
 
    /* The mere presence of CLEAR_STATE in the IB causes random GPU hangs
     * on GFX6. Some CLEAR_STATE cause asic hang on radeon kernel, etc.
@@ -1380,15 +1380,15 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
 
    fprintf(f, "Features:\n");
    fprintf(f, "    has_graphics = %i\n", info->has_graphics);
-   fprintf(f, "    num_rings[RING_GFX] = %i\n", info->num_rings[RING_GFX]);
-   fprintf(f, "    num_rings[RING_DMA] = %i\n", info->num_rings[RING_DMA]);
-   fprintf(f, "    num_rings[RING_COMPUTE] = %u\n", info->num_rings[RING_COMPUTE]);
-   fprintf(f, "    num_rings[RING_UVD] = %i\n", info->num_rings[RING_UVD]);
-   fprintf(f, "    num_rings[RING_VCE] = %i\n", info->num_rings[RING_VCE]);
-   fprintf(f, "    num_rings[RING_UVD_ENC] = %i\n", info->num_rings[RING_UVD_ENC]);
-   fprintf(f, "    num_rings[RING_VCN_DEC] = %i\n", info->num_rings[RING_VCN_DEC]);
-   fprintf(f, "    num_rings[RING_VCN_ENC] = %i\n", info->num_rings[RING_VCN_ENC]);
-   fprintf(f, "    num_rings[RING_VCN_JPEG] = %i\n", info->num_rings[RING_VCN_JPEG]);
+   fprintf(f, "    num_rings[AMD_IP_GFX] = %i\n", info->num_rings[AMD_IP_GFX]);
+   fprintf(f, "    num_rings[AMD_IP_SDMA] = %i\n", info->num_rings[AMD_IP_SDMA]);
+   fprintf(f, "    num_rings[AMD_IP_COMPUTE] = %u\n", info->num_rings[AMD_IP_COMPUTE]);
+   fprintf(f, "    num_rings[AMD_IP_UVD] = %i\n", info->num_rings[AMD_IP_UVD]);
+   fprintf(f, "    num_rings[AMD_IP_VCE] = %i\n", info->num_rings[AMD_IP_VCE]);
+   fprintf(f, "    num_rings[AMD_IP_UVD_ENC] = %i\n", info->num_rings[AMD_IP_UVD_ENC]);
+   fprintf(f, "    num_rings[AMD_IP_VCN_DEC] = %i\n", info->num_rings[AMD_IP_VCN_DEC]);
+   fprintf(f, "    num_rings[AMD_IP_VCN_ENC] = %i\n", info->num_rings[AMD_IP_VCN_ENC]);
+   fprintf(f, "    num_rings[AMD_IP_VCN_JPEG] = %i\n", info->num_rings[AMD_IP_VCN_JPEG]);
    fprintf(f, "    has_clear_state = %u\n", info->has_clear_state);
    fprintf(f, "    has_distributed_tess = %u\n", info->has_distributed_tess);
    fprintf(f, "    has_dcc_constant_encode = %u\n", info->has_dcc_constant_encode);

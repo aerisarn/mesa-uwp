@@ -583,7 +583,7 @@ radv_physical_device_init_queue_table(struct radv_physical_device *pdevice)
    for (unsigned i = 1; i < RADV_MAX_QUEUE_FAMILIES; i++)
       pdevice->vk_queue_to_radv[i] = RADV_MAX_QUEUE_FAMILIES + 1;
 
-   if (pdevice->rad_info.num_rings[RING_COMPUTE] > 0 &&
+   if (pdevice->rad_info.num_rings[AMD_IP_COMPUTE] > 0 &&
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE)) {
       pdevice->vk_queue_to_radv[idx] = RADV_QUEUE_COMPUTE;
       idx++;
@@ -2416,7 +2416,7 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
 {
    int num_queue_families = 1;
    int idx;
-   if (pdevice->rad_info.num_rings[RING_COMPUTE] > 0 &&
+   if (pdevice->rad_info.num_rings[AMD_IP_COMPUTE] > 0 &&
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE))
       num_queue_families++;
 
@@ -2440,13 +2440,13 @@ radv_get_physical_device_queue_family_properties(struct radv_physical_device *pd
       idx++;
    }
 
-   if (pdevice->rad_info.num_rings[RING_COMPUTE] > 0 &&
+   if (pdevice->rad_info.num_rings[AMD_IP_COMPUTE] > 0 &&
        !(pdevice->instance->debug_flags & RADV_DEBUG_NO_COMPUTE_QUEUE)) {
       if (*pCount > idx) {
          *pQueueFamilyProperties[idx] = (VkQueueFamilyProperties){
             .queueFlags =
                VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT,
-            .queueCount = pdevice->rad_info.num_rings[RING_COMPUTE],
+            .queueCount = pdevice->rad_info.num_rings[AMD_IP_COMPUTE],
             .timestampValidBits = 64,
             .minImageTransferGranularity = (VkExtent3D){1, 1, 1},
          };

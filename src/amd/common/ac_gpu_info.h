@@ -64,8 +64,8 @@ struct radeon_info {
 
    /* Features. */
    bool has_graphics; /* false if the chip is compute-only */
-   uint32_t num_rings[NUM_RING_TYPES];
-   uint32_t ib_pad_dw_mask[NUM_RING_TYPES];
+   uint32_t num_rings[AMD_NUM_IP_TYPES];
+   uint32_t ib_pad_dw_mask[AMD_NUM_IP_TYPES];
    bool has_clear_state;
    bool has_distributed_tess;
    bool has_dcc_constant_encode;

@@ -274,7 +274,7 @@ static unsigned radeon_lookup_or_add_real_buffer(struct radeon_drm_cs *cs,
        * This doesn't have to be done if virtual memory is enabled,
        * because there is no offset patching with virtual memory.
        */
-      if (cs->ip_type != RING_DMA || cs->ws->info.r600_has_virtual_memory) {
+      if (cs->ip_type != AMD_IP_SDMA || cs->ws->info.r600_has_virtual_memory) {
          return i;
       }
    }
@@ -579,7 +579,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
    struct radeon_cs_context *tmp;
 
    switch (cs->ip_type) {
-   case RING_DMA:
+   case AMD_IP_SDMA:
       /* pad DMA ring to 8 DWs */
       if (cs->ws->info.chip_class <= GFX6) {
          while (rcs->current.cdw & 7)
@@ -589,7 +589,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
             radeon_emit(rcs, 0x00000000); /* NOP packet */
       }
       break;
-   case RING_GFX:
+   case AMD_IP_GFX:
       /* pad GFX ring to 8 DWs to meet CP fetch alignment requirements
        * r6xx, requires at least 4 dw alignment to avoid a hw bug.
        */
@@ -601,7 +601,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
             radeon_emit(rcs, 0xffff1000); /* type3 nop packet */
       }
       break;
-   case RING_UVD:
+   case AMD_IP_UVD:
       while (rcs->current.cdw & 15)
          radeon_emit(rcs, 0x80000000); /* type2 nop packet */
       break;
@@ -663,7 +663,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
       }
 
       switch (cs->ip_type) {
-      case RING_DMA:
+      case AMD_IP_SDMA:
          cs->cst->flags[0] = 0;
          cs->cst->flags[1] = RADEON_CS_RING_DMA;
          cs->cst->cs.num_chunks = 3;
@@ -672,21 +672,21 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
          }
          break;
 
-      case RING_UVD:
+      case AMD_IP_UVD:
          cs->cst->flags[0] = 0;
          cs->cst->flags[1] = RADEON_CS_RING_UVD;
          cs->cst->cs.num_chunks = 3;
          break;
 
-      case RING_VCE:
+      case AMD_IP_VCE:
          cs->cst->flags[0] = 0;
          cs->cst->flags[1] = RADEON_CS_RING_VCE;
          cs->cst->cs.num_chunks = 3;
          break;
 
       default:
-      case RING_GFX:
-      case RING_COMPUTE:
+      case AMD_IP_GFX:
+      case AMD_IP_COMPUTE:
          cs->cst->flags[0] = RADEON_CS_KEEP_TILING_FLAGS;
          cs->cst->flags[1] = RADEON_CS_RING_GFX;
          cs->cst->cs.num_chunks = 3;
@@ -699,7 +699,7 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
             cs->cst->flags[0] |= RADEON_CS_END_OF_FRAME;
             cs->cst->cs.num_chunks = 3;
          }
-         if (cs->ip_type == RING_COMPUTE) {
+         if (cs->ip_type == AMD_IP_COMPUTE) {
             cs->cst->flags[1] = RADEON_CS_RING_COMPUTE;
             cs->cst->cs.num_chunks = 3;
          }
@@ -724,9 +724,9 @@ static int radeon_drm_cs_flush(struct radeon_cmdbuf *rcs,
    rcs->used_vram_kb = 0;
    rcs->used_gart_kb = 0;
 
-   if (cs->ip_type == RING_GFX)
+   if (cs->ip_type == AMD_IP_GFX)
       cs->ws->num_gfx_IBs++;
-   else if (cs->ip_type == RING_DMA)
+   else if (cs->ip_type == AMD_IP_SDMA)
       cs->ws->num_sdma_IBs++;
    return 0;
 }

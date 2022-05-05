@@ -405,7 +405,7 @@ struct pipe_context* r300_create_context(struct pipe_screen* screen,
         goto fail;
 
 
-    if (!rws->cs_create(&r300->cs, r300->ctx, RING_GFX, r300_flush_callback, r300, false))
+    if (!rws->cs_create(&r300->cs, r300->ctx, AMD_IP_GFX, r300_flush_callback, r300, false))
         goto fail;
 
     if (!r300screen->caps.has_tcl) {

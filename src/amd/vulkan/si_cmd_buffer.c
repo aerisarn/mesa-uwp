@@ -580,7 +580,7 @@ si_emit_graphics(struct radv_device *device, struct radeon_cmdbuf *cs)
 void
 cik_create_gfx_config(struct radv_device *device)
 {
-   struct radeon_cmdbuf *cs = device->ws->cs_create(device->ws, RING_GFX);
+   struct radeon_cmdbuf *cs = device->ws->cs_create(device->ws, AMD_IP_GFX);
    if (!cs)
       return;
 

@@ -1269,7 +1269,7 @@ struct pipe_video_codec *si_common_uvd_create_decoder(struct pipe_context *conte
    dec->screen = context->screen;
    dec->ws = ws;
 
-   if (!ws->cs_create(&dec->cs, sctx->ctx, RING_UVD, NULL, NULL, false)) {
+   if (!ws->cs_create(&dec->cs, sctx->ctx, AMD_IP_UVD, NULL, NULL, false)) {
       RVID_ERR("Can't get command submission context.\n");
       goto error;
    }
