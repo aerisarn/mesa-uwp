@@ -27,6 +27,7 @@
 #include "v3dv_private.h"
 
 #include "common/v3d_debug.h"
+#include "qpu/qpu_disasm.h"
 
 #include "compiler/nir/nir_builder.h"
 #include "nir/nir_serialize.h"
@@ -158,6 +159,9 @@ v3dv_destroy_pipeline(struct v3dv_pipeline *pipeline,
       v3dv_bo_free(device, pipeline->default_attribute_values);
       pipeline->default_attribute_values = NULL;
    }
+
+   if (pipeline->executables.mem_ctx)
+      ralloc_free(pipeline->executables.mem_ctx);
 
    vk_object_free(&device->vk, pAllocator, pipeline);
 }
@@ -2516,33 +2520,40 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   /* First we try to get the variants from the pipeline cache */
-   struct v3dv_pipeline_key pipeline_key;
-   pipeline_populate_graphics_key(pipeline, &pipeline_key, pCreateInfo);
-   pipeline_hash_graphics(pipeline, &pipeline_key, pipeline->sha1);
+   /* First we try to get the variants from the pipeline cache (unless we are
+    * required to capture internal representations, since in that case we need
+    * compile).
+    */
+   bool needs_executable_info =
+      pCreateInfo->flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+   if (!needs_executable_info) {
+      struct v3dv_pipeline_key pipeline_key;
+      pipeline_populate_graphics_key(pipeline, &pipeline_key, pCreateInfo);
+      pipeline_hash_graphics(pipeline, &pipeline_key, pipeline->sha1);
 
-   bool cache_hit = false;
+      bool cache_hit = false;
 
-   pipeline->shared_data =
-      v3dv_pipeline_cache_search_for_pipeline(cache,
-                                              pipeline->sha1,
-                                              &cache_hit);
+      pipeline->shared_data =
+         v3dv_pipeline_cache_search_for_pipeline(cache,
+                                                 pipeline->sha1,
+                                                 &cache_hit);
 
-   if (pipeline->shared_data != NULL) {
-      /* A correct pipeline must have at least a VS and FS */
-      assert(pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX]);
-      assert(pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN]);
-      assert(pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT]);
-      assert(!pipeline->gs ||
-             pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY]);
-      assert(!pipeline->gs ||
-             pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN]);
+      if (pipeline->shared_data != NULL) {
+         /* A correct pipeline must have at least a VS and FS */
+         assert(pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX]);
+         assert(pipeline->shared_data->variants[BROADCOM_SHADER_VERTEX_BIN]);
+         assert(pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT]);
+         assert(!pipeline->gs ||
+                pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY]);
+         assert(!pipeline->gs ||
+                pipeline->shared_data->variants[BROADCOM_SHADER_GEOMETRY_BIN]);
 
-      if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
-         pipeline_feedback.flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+         if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
+            pipeline_feedback.flags |=
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
 
-      goto success;
+         goto success;
+      }
    }
 
    if (pCreateInfo->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
@@ -2631,7 +2642,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
    /* Since we have the variants in the pipeline shared data we can now free
     * the pipeline stages.
     */
-   pipeline_free_stages(device, pipeline, pAllocator);
+   if (!needs_executable_info)
+      pipeline_free_stages(device, pipeline, pAllocator);
 
    pipeline_check_spill_size(pipeline);
 
@@ -3209,27 +3221,34 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
                         p_stage->spec_info,
                         p_stage->shader_sha1);
 
-   /* We try to get directly the variant first from the cache */
    p_stage->nir = NULL;
 
    pipeline->cs = p_stage;
    pipeline->active_stages |= sinfo->stage;
 
-   struct v3dv_pipeline_key pipeline_key;
-   pipeline_populate_compute_key(pipeline, &pipeline_key, info);
-   pipeline_hash_compute(pipeline, &pipeline_key, pipeline->sha1);
+   /* First we try to get the variants from the pipeline cache (unless we are
+    * required to capture internal representations, since in that case we need
+    * compile).
+    */
+   bool needs_executable_info =
+      info->flags & VK_PIPELINE_CREATE_CAPTURE_INTERNAL_REPRESENTATIONS_BIT_KHR;
+   if (!needs_executable_info) {
+      struct v3dv_pipeline_key pipeline_key;
+      pipeline_populate_compute_key(pipeline, &pipeline_key, info);
+      pipeline_hash_compute(pipeline, &pipeline_key, pipeline->sha1);
 
-   bool cache_hit = false;
-   pipeline->shared_data =
-      v3dv_pipeline_cache_search_for_pipeline(cache, pipeline->sha1, &cache_hit);
+      bool cache_hit = false;
+      pipeline->shared_data =
+         v3dv_pipeline_cache_search_for_pipeline(cache, pipeline->sha1, &cache_hit);
 
-   if (pipeline->shared_data != NULL) {
-      assert(pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE]);
-      if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
-         pipeline_feedback.flags |=
-            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
+      if (pipeline->shared_data != NULL) {
+         assert(pipeline->shared_data->variants[BROADCOM_SHADER_COMPUTE]);
+         if (cache_hit && cache != &pipeline->device->default_pipeline_cache)
+            pipeline_feedback.flags |=
+               VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT;
 
-      goto success;
+         goto success;
+      }
    }
 
    if (info->flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
@@ -3277,9 +3296,10 @@ success:
                            &info->stage);
 
    /* As we got the variants in pipeline->shared_data, after compiling we
-    * don't need the pipeline_stages
+    * don't need the pipeline_stages.
     */
-   pipeline_free_stages(device, pipeline, alloc);
+   if (!needs_executable_info)
+      pipeline_free_stages(device, pipeline, alloc);
 
    pipeline_check_spill_size(pipeline);
 
@@ -3379,4 +3399,208 @@ v3dv_CreateComputePipelines(VkDevice _device,
       mtx_unlock(&device->pdevice->mutex);
 
    return result;
+}
+
+static nir_shader *
+pipeline_get_nir(struct v3dv_pipeline *pipeline,
+                 enum broadcom_shader_stage stage)
+{
+   switch (stage) {
+   case BROADCOM_SHADER_VERTEX:
+      if (pipeline->vs)
+         return pipeline->vs->nir;
+      break;
+   case BROADCOM_SHADER_VERTEX_BIN:
+      if(pipeline->vs_bin)
+         return pipeline->vs_bin->nir;
+      break;
+   case BROADCOM_SHADER_GEOMETRY:
+      if(pipeline->gs)
+         return pipeline->gs->nir;
+      break;
+   case BROADCOM_SHADER_GEOMETRY_BIN:
+      if (pipeline->gs_bin)
+         return pipeline->gs_bin->nir;
+      break;
+   case BROADCOM_SHADER_FRAGMENT:
+      if (pipeline->fs)
+         return pipeline->fs->nir;
+      break;
+   case BROADCOM_SHADER_COMPUTE:
+      if(pipeline->cs)
+         return pipeline->cs->nir;
+      break;
+   default:
+      unreachable("Unsupported shader stage");
+   }
+
+   return NULL;
+}
+
+static uint64_t *
+pipeline_get_qpu(struct v3dv_pipeline *pipeline,
+                 enum broadcom_shader_stage stage,
+                 uint32_t *qpu_size)
+{
+   struct v3dv_shader_variant *variant =
+      pipeline->shared_data->variants[stage];
+   if (!variant) {
+      *qpu_size = 0;
+      return NULL;
+   }
+
+   /* We expect the QPU BO to have been mapped before calling here */
+   struct v3dv_bo *qpu_bo = pipeline->shared_data->assembly_bo;
+   assert(qpu_bo && qpu_bo->map_size >= variant->assembly_offset +
+                                        variant->qpu_insts_size);
+
+   *qpu_size = variant->qpu_insts_size;
+   uint64_t *qpu = (uint64_t *)
+      (((uint8_t *) qpu_bo->map) + variant->assembly_offset);
+   return qpu;
+}
+
+/* FIXME: we use the same macro in various drivers, maybe move it to
+ * the comon vk_util.h?
+ */
+#define WRITE_STR(field, ...) ({                                \
+   memset(field, 0, sizeof(field));                             \
+   UNUSED int _i = snprintf(field, sizeof(field), __VA_ARGS__); \
+   assert(_i > 0 && _i < sizeof(field));                        \
+})
+
+static bool
+write_ir_text(VkPipelineExecutableInternalRepresentationKHR* ir,
+              const char *data)
+{
+   ir->isText = VK_TRUE;
+
+   size_t data_len = strlen(data) + 1;
+
+   if (ir->pData == NULL) {
+      ir->dataSize = data_len;
+      return true;
+   }
+
+   strncpy(ir->pData, data, ir->dataSize);
+   if (ir->dataSize < data_len)
+      return false;
+
+   ir->dataSize = data_len;
+   return true;
+}
+
+static void
+append(char **str, size_t *offset, const char *fmt, ...)
+{
+   va_list args;
+   va_start(args, fmt);
+   ralloc_vasprintf_rewrite_tail(str, offset, fmt, args);
+   va_end(args);
+}
+
+static void
+pipeline_collect_executable_data(struct v3dv_pipeline *pipeline)
+{
+   if (pipeline->executables.mem_ctx)
+      return;
+
+   pipeline->executables.mem_ctx = ralloc_context(NULL);
+   util_dynarray_init(&pipeline->executables.data,
+                      pipeline->executables.mem_ctx);
+
+   /* Don't crash for failed/bogus pipelines */
+   if (!pipeline->shared_data || !pipeline->shared_data->assembly_bo)
+      return;
+
+   /* Map the assembly BO so we can read the pipeline's QPU code */
+   struct v3dv_bo *qpu_bo = pipeline->shared_data->assembly_bo;
+   v3dv_bo_map(pipeline->device, qpu_bo, qpu_bo->size);
+
+   for (int s = BROADCOM_SHADER_VERTEX; s <= BROADCOM_SHADER_COMPUTE; s++) {
+      VkShaderStageFlags vk_stage =
+         mesa_to_vk_shader_stage(broadcom_shader_stage_to_gl(s));
+      if (!(vk_stage & pipeline->active_stages))
+         continue;
+
+      nir_shader *nir = pipeline_get_nir(pipeline, s);
+      char *nir_str = nir ?
+         nir_shader_as_str(nir, pipeline->executables.mem_ctx) : NULL;
+
+      char *qpu_str = NULL;
+      uint32_t qpu_size;
+      uint64_t *qpu = pipeline_get_qpu(pipeline, s, &qpu_size);
+      if (qpu) {
+         uint32_t qpu_inst_count = qpu_size / sizeof(uint64_t);
+         qpu_str = rzalloc_size(pipeline->executables.mem_ctx,
+                                qpu_inst_count * 96);
+         size_t offset = 0;
+         for (int i = 0; i < qpu_inst_count; i++) {
+            const char *str = v3d_qpu_disasm(&pipeline->device->devinfo, qpu[i]);
+            append(&qpu_str, &offset, "%s\n", str);
+            ralloc_free((void *)str);
+         }
+      }
+
+      struct v3dv_pipeline_executable_data data = {
+         .stage = s,
+         .nir_str = nir_str,
+         .qpu_str = qpu_str,
+      };
+      util_dynarray_append(&pipeline->executables.data,
+                           struct v3dv_pipeline_executable_data, data);
+   }
+
+   v3dv_bo_unmap(pipeline->device, qpu_bo);
+}
+
+static const struct v3dv_pipeline_executable_data *
+pipeline_get_executable(struct v3dv_pipeline *pipeline, uint32_t index)
+{
+   assert(index < util_dynarray_num_elements(&pipeline->executables.data,
+                                             struct v3dv_pipeline_executable_data));
+   return util_dynarray_element(&pipeline->executables.data,
+                                struct v3dv_pipeline_executable_data,
+                                index);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_GetPipelineExecutableInternalRepresentationsKHR(
+   VkDevice device,
+   const VkPipelineExecutableInfoKHR *pExecutableInfo,
+   uint32_t *pInternalRepresentationCount,
+   VkPipelineExecutableInternalRepresentationKHR *pInternalRepresentations)
+{
+   V3DV_FROM_HANDLE(v3dv_pipeline, pipeline, pExecutableInfo->pipeline);
+
+   pipeline_collect_executable_data(pipeline);
+
+   VK_OUTARRAY_MAKE_TYPED(VkPipelineExecutableInternalRepresentationKHR, out,
+                          pInternalRepresentations, pInternalRepresentationCount);
+
+   bool incomplete = false;
+   const struct v3dv_pipeline_executable_data *exe =
+      pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
+
+   if (exe->nir_str) {
+      vk_outarray_append_typed(VkPipelineExecutableInternalRepresentationKHR,
+                               &out, ir) {
+         WRITE_STR(ir->name, "NIR (%s)", broadcom_shader_stage_name(exe->stage));
+         WRITE_STR(ir->description, "Final NIR form");
+         if (!write_ir_text(ir, exe->nir_str))
+            incomplete = true;
+      }
+   }
+
+   if (exe->qpu_str) {
+      vk_outarray_append_typed(VkPipelineExecutableInternalRepresentationKHR,
+                               &out, ir) {
+         WRITE_STR(ir->name, "QPU (%s)", broadcom_shader_stage_name(exe->stage));
+         WRITE_STR(ir->description, "Final QPU assembly");
+         if (!write_ir_text(ir, exe->qpu_str))
+            incomplete = true;
+      }
+   }
+
+   return incomplete ? VK_INCOMPLETE : vk_outarray_status(&out);
 }

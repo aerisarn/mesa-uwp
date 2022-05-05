@@ -1840,6 +1840,12 @@ struct v3dv_pipeline_shared_data {
    struct v3dv_bo *assembly_bo;
 };
 
+struct v3dv_pipeline_executable_data {
+   enum broadcom_shader_stage stage;
+   char *nir_str;
+   char *qpu_str;
+};
+
 struct v3dv_pipeline {
    struct vk_object_base base;
 
@@ -1947,6 +1953,12 @@ struct v3dv_pipeline {
       bool enabled;
       bool is_z16;
    } depth_bias;
+
+   struct {
+      void *mem_ctx;
+      bool has_data;
+      struct util_dynarray data; /* Array of v3dv_pipeline_executable_data */
+   } executables;
 
    /* Packets prepacked during pipeline creation
     */
