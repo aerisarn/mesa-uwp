@@ -3981,26 +3981,13 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
    struct radeon_winsys_bo *gds_bo = NULL;
    struct radeon_winsys_bo *gds_oa_bo = NULL;
    struct radeon_cmdbuf *dest_cs[3] = {0};
-   bool add_tess_rings = false, add_gds = false, add_gds_oa = false, add_sample_positions = false;
    uint32_t ring_bo_flags = RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING;
    VkResult result = VK_SUCCESS;
 
-   if (!queue->has_tess_rings) {
-      if (needs_tess_rings)
-         add_tess_rings = true;
-   }
-   if (!queue->has_gds) {
-      if (needs_gds)
-         add_gds = true;
-   }
-   if (!queue->has_gds_oa) {
-      if (needs_gds_oa)
-         add_gds_oa = true;
-   }
-   if (!queue->has_sample_positions) {
-      if (needs_sample_positions)
-         add_sample_positions = true;
-   }
+   const bool add_tess_rings = !queue->has_tess_rings && needs_tess_rings;
+   const bool add_gds = !queue->has_gds && needs_gds;
+   const bool add_gds_oa = !queue->has_gds_oa && needs_gds_oa;
+   const bool add_sample_positions = !queue->has_sample_positions && needs_sample_positions;
 
    scratch_size_per_wave = MAX2(scratch_size_per_wave, queue->scratch_size_per_wave);
    if (scratch_size_per_wave)
