@@ -54,6 +54,15 @@
   script:
     - .gitlab-ci/meson/build.sh
 
+.meson-build_mingw:
+  extends:
+    - .build-linux
+    - .use-debian/x86_build_mingw
+    - .use-wine
+  stage: build-x86_64
+  script:
+    - .gitlab-ci/meson/build.sh
+
 debian-testing:
   extends:
     - .meson-build
@@ -513,7 +522,7 @@ debian-ppc64el:
     VULKAN_DRIVERS: "amd,swrast"
 
 debian-mingw32-x86_64:
-  extends: .meson-build
+  extends: .meson-build_mingw
   stage: build-misc
   variables:
     UNWIND: "disabled"

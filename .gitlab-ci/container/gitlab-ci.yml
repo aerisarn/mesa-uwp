@@ -23,6 +23,9 @@
   variables:
     MESA_IMAGE: "$CI_REGISTRY_IMAGE/${MESA_IMAGE_PATH}:${FDO_DISTRIBUTION_TAG}"
 
+.use-wine:
+  variables:
+    WINEPATH: "/usr/x86_64-w64-mingw32/bin;/usr/x86_64-w64-mingw32/lib;/usr/lib/gcc/x86_64-w64-mingw32/10-posix;c:/windows;c:/windows/system32"
 
 # Build the CI docker images.
 #
@@ -46,10 +49,11 @@
   extends:
     - .container-rules
     - .incorporate-templates-commit
+    - .use-wine
   variables:
     FDO_DISTRIBUTION_VERSION: bullseye-slim
     FDO_REPO_SUFFIX: $CI_JOB_NAME
-    FDO_DISTRIBUTION_EXEC: 'env FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
+    FDO_DISTRIBUTION_EXEC: 'env "WINEPATH=${WINEPATH}" FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
     GIT_STRATEGY: none
 
@@ -112,6 +116,23 @@ debian/i386_build:
     MESA_IMAGE_TAG: *debian-i386_build
   needs:
     - debian/i386_build
+
+# Debian 11 based x86-mingw cross main build image
+debian/x86_build-mingw:
+  extends:
+    - .use-debian/x86_build-base
+  variables:
+    MESA_IMAGE_TAG: &debian-x86_build_mingw ${DEBIAN_BUILD_MINGW_TAG}
+
+.use-debian/x86_build_mingw:
+  extends:
+    - .set-image-base-tag
+  variables:
+    MESA_BASE_TAG: *debian-x86_build-base
+    MESA_IMAGE_PATH: ${DEBIAN_X86_BUILD_MINGW_IMAGE_PATH}
+    MESA_IMAGE_TAG: *debian-x86_build_mingw
+  needs:
+    - debian/x86_build-mingw
 
 # Debian 11 based ppc64el cross-build image
 debian/ppc64el_build:

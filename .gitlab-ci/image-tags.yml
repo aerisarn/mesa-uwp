@@ -1,9 +1,12 @@
 variables:
    DEBIAN_X86_BUILD_BASE_IMAGE: "debian/x86_build-base"
-   DEBIAN_BASE_TAG: "2022-04-24-libdrm"
+   DEBIAN_BASE_TAG: "2022-06-16-Debian-MinGW"
 
    DEBIAN_X86_BUILD_IMAGE_PATH: "debian/x86_build"
-   DEBIAN_BUILD_TAG: "2022-05-12-DirectX-Headers"
+   DEBIAN_BUILD_TAG: "2022-06-16-Debian-MinGW"
+
+   DEBIAN_X86_BUILD_MINGW_IMAGE_PATH: "debian/x86_build-mingw"
+   DEBIAN_BUILD_MINGW_TAG: "2022-06-16-Debian-MinGW"
 
    DEBIAN_X86_TEST_BASE_IMAGE: "debian/x86_test-base"
 
