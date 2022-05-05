@@ -4177,25 +4177,22 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
       if (gds_oa_bo)
          radv_cs_add_buffer(queue->device->ws, cs, gds_oa_bo);
 
-      if (i == 0) {
-         si_cs_emit_cache_flush(
-            cs, queue->device->physical_device->rad_info.chip_class, NULL, 0,
-            queue->qf == RADV_QUEUE_COMPUTE &&
-               queue->device->physical_device->rad_info.chip_class >= GFX7,
-            (queue->qf == RADV_QUEUE_COMPUTE
-                ? RADV_CMD_FLAG_CS_PARTIAL_FLUSH
-                : (RADV_CMD_FLAG_CS_PARTIAL_FLUSH | RADV_CMD_FLAG_PS_PARTIAL_FLUSH)) |
-               RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE | RADV_CMD_FLAG_INV_VCACHE |
-               RADV_CMD_FLAG_INV_L2 | RADV_CMD_FLAG_START_PIPELINE_STATS,
-            &sqtt_flush_bits, 0);
-      } else if (i == 1) {
-         si_cs_emit_cache_flush(cs, queue->device->physical_device->rad_info.chip_class, NULL, 0,
-                                queue->qf == RADV_QUEUE_COMPUTE &&
-                                   queue->device->physical_device->rad_info.chip_class >= GFX7,
-                                RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE |
-                                   RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2 |
-                                   RADV_CMD_FLAG_START_PIPELINE_STATS,
-                                &sqtt_flush_bits, 0);
+      if (i < 2) {
+         /* The two initial preambles have a cache flush at the beginning. */
+         const enum chip_class chip_class = queue->device->physical_device->rad_info.chip_class;
+         const bool is_mec = queue->qf == RADV_QUEUE_COMPUTE && chip_class >= GFX7;
+         enum radv_cmd_flush_bits flush_bits = RADV_CMD_FLAG_INV_ICACHE | RADV_CMD_FLAG_INV_SCACHE |
+                                               RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_L2 |
+                                               RADV_CMD_FLAG_START_PIPELINE_STATS;
+
+         if (i == 0) {
+            /* The full flush preamble should also wait for previous shader work to finish. */
+            flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH;
+            if (queue->qf == RADV_QUEUE_GENERAL)
+               flush_bits |= RADV_CMD_FLAG_PS_PARTIAL_FLUSH;
+         }
+
+         si_cs_emit_cache_flush(cs, chip_class, NULL, 0, is_mec, flush_bits, &sqtt_flush_bits, 0);
       }
 
       result = queue->device->ws->cs_finalize(cs);
