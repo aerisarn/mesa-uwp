@@ -109,69 +109,15 @@ radv_amdgpu_cs(struct radeon_cmdbuf *base)
 
 static bool
 ring_can_use_ib_bos(const struct radv_amdgpu_winsys *ws,
-                    enum ring_type ring_type)
+                    enum amd_ip_type ip_type)
 {
-   if (ring_type == RING_UVD ||
-       ring_type == RING_VCE ||
-       ring_type == RING_UVD_ENC ||
-       ring_type == RING_VCN_DEC ||
-       ring_type == RING_VCN_ENC)
+   if (ip_type == RING_UVD ||
+       ip_type == RING_VCE ||
+       ip_type == RING_UVD_ENC ||
+       ip_type == RING_VCN_DEC ||
+       ip_type == RING_VCN_ENC)
       return false;
    return ws->use_ib_bos;
-}
-
-static int
-ring_to_hw_ip(enum ring_type ring)
-{
-   switch (ring) {
-   case RING_GFX:
-      return AMDGPU_HW_IP_GFX;
-   case RING_COMPUTE:
-      return AMDGPU_HW_IP_COMPUTE;
-   case RING_DMA:
-      return AMDGPU_HW_IP_DMA;
-   case RING_UVD:
-      return AMDGPU_HW_IP_UVD;
-   case RING_VCE:
-      return AMDGPU_HW_IP_VCE;
-   case RING_UVD_ENC:
-      return AMDGPU_HW_IP_UVD_ENC;
-   case RING_VCN_DEC:
-      return AMDGPU_HW_IP_VCN_DEC;
-   case RING_VCN_ENC:
-      return AMDGPU_HW_IP_VCN_ENC;
-   case RING_VCN_JPEG:
-      return AMDGPU_HW_IP_VCN_JPEG;
-   default:
-      unreachable("unsupported ring");
-   }
-}
-
-static enum ring_type
-hw_ip_to_ring(int hw_ip)
-{
-   switch (hw_ip) {
-   case AMDGPU_HW_IP_GFX:
-      return RING_GFX;
-   case AMDGPU_HW_IP_COMPUTE:
-      return RING_COMPUTE;
-   case AMDGPU_HW_IP_DMA:
-      return RING_DMA;
-   case AMDGPU_HW_IP_UVD:
-      return RING_UVD;
-   case AMDGPU_HW_IP_VCE:
-      return RING_VCE;
-   case AMDGPU_HW_IP_UVD_ENC:
-      return RING_UVD_ENC;
-   case AMDGPU_HW_IP_VCN_DEC:
-      return RING_VCN_DEC;
-   case AMDGPU_HW_IP_VCN_ENC:
-      return RING_VCN_ENC;
-   case AMDGPU_HW_IP_VCN_JPEG:
-      return RING_VCN_JPEG;
-   default:
-      unreachable("unsupported hw ip");
-   }
 }
 
 struct radv_amdgpu_cs_request {
@@ -248,12 +194,12 @@ radv_amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
 }
 
 static void
-radv_amdgpu_init_cs(struct radv_amdgpu_cs *cs, enum ring_type ring_type)
+radv_amdgpu_init_cs(struct radv_amdgpu_cs *cs, enum amd_ip_type ip_type)
 {
    for (int i = 0; i < ARRAY_SIZE(cs->buffer_hash_table); ++i)
       cs->buffer_hash_table[i] = -1;
 
-   cs->hw_ip = ring_to_hw_ip(ring_type);
+   cs->hw_ip = ip_type;
 }
 
 static enum radeon_bo_domain
@@ -270,19 +216,19 @@ radv_amdgpu_cs_domain(const struct radeon_winsys *_ws)
 }
 
 static struct radeon_cmdbuf *
-radv_amdgpu_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
+radv_amdgpu_cs_create(struct radeon_winsys *ws, enum amd_ip_type ip_type)
 {
    struct radv_amdgpu_cs *cs;
-   uint32_t ib_pad_dw_mask = MAX2(3, radv_amdgpu_winsys(ws)->info.ib_pad_dw_mask[ring_type]);
+   uint32_t ib_pad_dw_mask = MAX2(3, radv_amdgpu_winsys(ws)->info.ib_pad_dw_mask[ip_type]);
    uint32_t ib_size = align(20 * 1024 * 4, ib_pad_dw_mask + 1);
    cs = calloc(1, sizeof(struct radv_amdgpu_cs));
    if (!cs)
       return NULL;
 
    cs->ws = radv_amdgpu_winsys(ws);
-   radv_amdgpu_init_cs(cs, ring_type);
+   radv_amdgpu_init_cs(cs, ip_type);
 
-   cs->use_ib = ring_can_use_ib_bos(cs->ws, ring_type);
+   cs->use_ib = ring_can_use_ib_bos(cs->ws, ip_type);
 
    if (cs->use_ib) {
       VkResult result =
@@ -341,7 +287,7 @@ static uint32_t get_nop_packet(struct radv_amdgpu_cs *cs)
    case AMDGPU_HW_IP_VCN_DEC:
       return 0x81FF;
    default:
-      unreachable("Unknown ring type");
+      unreachable("Unknown IP type");
    }
 }
 
@@ -404,8 +350,8 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
       return;
    }
 
-   enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
-   uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
+   enum amd_ip_type ip_type = cs->hw_ip;
+   uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
    uint32_t nop_packet = get_nop_packet(cs);
    while (!cs->base.cdw || (cs->base.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
       radeon_emit(&cs->base, nop_packet);
@@ -474,10 +420,10 @@ static VkResult
 radv_amdgpu_cs_finalize(struct radeon_cmdbuf *_cs)
 {
    struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
-   enum ring_type ring_type = hw_ip_to_ring(cs->hw_ip);
+   enum amd_ip_type ip_type = cs->hw_ip;
 
    if (cs->use_ib) {
-      uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ring_type]);
+      uint32_t ib_pad_dw_mask = MAX2(3, cs->ws->info.ib_pad_dw_mask[ip_type]);
       uint32_t nop_packet = get_nop_packet(cs);
 
       if (hw_can_chain(cs->hw_ip)) {
@@ -1102,8 +1048,8 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
    struct radv_amdgpu_winsys *aws = cs0->ws;
    struct radv_amdgpu_cs_request request;
    uint32_t pad_word = get_nop_packet(cs0);
-   enum ring_type ring_type = hw_ip_to_ring(cs0->hw_ip);
-   uint32_t ib_pad_dw_mask = cs0->ws->info.ib_pad_dw_mask[ring_type];
+   enum amd_ip_type ip_type = cs0->hw_ip;
+   uint32_t ib_pad_dw_mask = cs0->ws->info.ib_pad_dw_mask[ip_type];
    bool emit_signal_sem = sem_info->cs_emit_signal;
    VkResult result;
 
@@ -1278,10 +1224,10 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
 }
 
 static VkResult
-radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum ring_type ring_type, int queue_idx,
+radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum amd_ip_type ip_type, int queue_idx,
                            struct radv_winsys_sem_info *sem_info)
 {
-   unsigned hw_ip = ring_to_hw_ip(ring_type);
+   unsigned hw_ip = ip_type;
    unsigned queue_syncobj = radv_amdgpu_ctx_queue_syncobj(ctx, hw_ip, queue_idx);
    int ret;
 
@@ -1368,7 +1314,7 @@ radv_amdgpu_cs_submit_zero(struct radv_amdgpu_ctx *ctx, enum ring_type ring_type
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
+radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum amd_ip_type ip_type,
                                       int queue_idx, struct radeon_cmdbuf **cs_array,
                                       unsigned cs_count, struct radeon_cmdbuf *initial_preamble_cs,
                                       struct radeon_cmdbuf *continue_preamble_cs,
@@ -1379,8 +1325,8 @@ radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum ring_
 
    assert(sem_info);
    if (!cs_count) {
-      result = radv_amdgpu_cs_submit_zero(ctx, ring_type, queue_idx, sem_info);
-   } else if (!ring_can_use_ib_bos(ctx->ws, ring_type)) {
+      result = radv_amdgpu_cs_submit_zero(ctx, ip_type, queue_idx, sem_info);
+   } else if (!ring_can_use_ib_bos(ctx->ws, ip_type)) {
       result = radv_amdgpu_winsys_cs_submit_sysmem(_ctx, queue_idx, sem_info, cs_array, cs_count,
                                                    initial_preamble_cs, continue_preamble_cs);
    } else if (can_patch) {
@@ -1395,7 +1341,7 @@ radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum ring_
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring_type,
+radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum amd_ip_type ip_type,
                              int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
                              struct radeon_cmdbuf *initial_preamble_cs,
                              struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,
@@ -1455,7 +1401,7 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum ring_type ring
    sem_info.signal.syncobj_count = signal_idx - sem_info.signal.timeline_syncobj_count;
    sem_info.cs_emit_signal = true;
 
-   result = radv_amdgpu_winsys_cs_submit_internal(_ctx, ring_type, queue_idx, cs_array, cs_count,
+   result = radv_amdgpu_winsys_cs_submit_internal(_ctx, ip_type, queue_idx, cs_array, cs_count,
                                                   initial_preamble_cs, continue_preamble_cs,
                                                   &sem_info, can_patch);
 
@@ -1604,10 +1550,9 @@ radv_amdgpu_ctx_queue_syncobj(struct radv_amdgpu_ctx *ctx, unsigned ip, unsigned
 }
 
 static bool
-radv_amdgpu_ctx_wait_idle(struct radeon_winsys_ctx *rwctx, enum ring_type ring_type, int ring_index)
+radv_amdgpu_ctx_wait_idle(struct radeon_winsys_ctx *rwctx, enum amd_ip_type ip_type, int ring_index)
 {
    struct radv_amdgpu_ctx *ctx = (struct radv_amdgpu_ctx *)rwctx;
-   int ip_type = ring_to_hw_ip(ring_type);
 
    if (ctx->last_submission[ip_type][ring_index].fence.fence) {
       uint32_t expired;

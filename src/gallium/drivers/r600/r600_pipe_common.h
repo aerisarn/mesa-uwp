@@ -615,7 +615,7 @@ struct r600_common_context {
 
 	void (*check_vm_faults)(struct r600_common_context *ctx,
 				struct radeon_saved_cs *saved,
-				enum ring_type ring);
+				enum amd_ip_type ring);
 };
 
 /* r600_buffer_common.c */

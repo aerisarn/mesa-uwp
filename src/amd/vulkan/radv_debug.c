@@ -509,7 +509,7 @@ radv_dump_vs_prolog(struct radv_pipeline *pipeline, FILE *f)
 }
 
 static struct radv_pipeline *
-radv_get_saved_pipeline(struct radv_device *device, enum ring_type ring)
+radv_get_saved_pipeline(struct radv_device *device, enum amd_ip_type ring)
 {
    uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
    int offset = ring == RING_GFX ? 1 : 2;
@@ -520,7 +520,7 @@ radv_get_saved_pipeline(struct radv_device *device, enum ring_type ring)
 static void
 radv_dump_queue_state(struct radv_queue *queue, const char *dump_dir, FILE *f)
 {
-   enum ring_type ring = radv_queue_ring(queue);
+   enum amd_ip_type ring = radv_queue_ring(queue);
    struct radv_pipeline *pipeline;
 
    fprintf(f, "RING_%s:\n", ring == RING_GFX ? "GFX" : "COMPUTE");
@@ -631,7 +631,7 @@ radv_dump_device_name(struct radv_device *device, FILE *f)
 static void
 radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
 {
-   enum ring_type ring = radv_queue_ring(queue);
+   enum amd_ip_type ring = radv_queue_ring(queue);
    struct radv_device *device = queue->device;
    char cmd[128];
 
@@ -649,7 +649,7 @@ radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
 static void
 radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
 {
-   enum ring_type ring = radv_queue_ring(queue);
+   enum amd_ip_type ring = radv_queue_ring(queue);
    struct radv_device *device = queue->device;
    char cmd[128];
 
@@ -665,7 +665,7 @@ radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
 }
 
 static bool
-radv_gpu_hang_occured(struct radv_queue *queue, enum ring_type ring)
+radv_gpu_hang_occured(struct radv_queue *queue, enum amd_ip_type ring)
 {
    struct radeon_winsys *ws = queue->device->ws;
 
@@ -679,7 +679,7 @@ void
 radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
    struct radv_device *device = queue->device;
-   enum ring_type ring;
+   enum amd_ip_type ring;
    uint64_t addr;
 
    ring = radv_queue_ring(queue);
@@ -989,7 +989,7 @@ radv_dump_sq_hw_regs(struct radv_device *device)
 void
 radv_check_trap_handler(struct radv_queue *queue)
 {
-   enum ring_type ring = radv_queue_ring(queue);
+   enum amd_ip_type ring = radv_queue_ring(queue);
    struct radv_device *device = queue->device;
    struct radeon_winsys *ws = device->ws;
 

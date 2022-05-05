@@ -77,7 +77,7 @@ typedef void *drmDevicePtr;
 #include "ac_llvm_util.h"
 #endif
 
-/* The number of IBs per submit isn't infinite, it depends on the ring type
+/* The number of IBs per submit isn't infinite, it depends on the IP type
  * (ie. some initial setup needed for a submit) and the number of IBs (4 DW).
  * This limit is arbitrary but should be safe for now.  Ideally, we should get
  * this limit from the KMD.
@@ -4525,7 +4525,7 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
    struct radeon_cmdbuf *initial_preamble_cs = NULL;
    struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
    struct radeon_cmdbuf *continue_preamble_cs = NULL;
-   enum ring_type ring = radv_queue_ring(queue);
+   enum amd_ip_type ring = radv_queue_ring(queue);
 
    result =
       radv_get_preambles(queue, submission->command_buffers, submission->command_buffer_count,

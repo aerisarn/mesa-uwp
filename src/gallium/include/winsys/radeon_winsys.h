@@ -479,14 +479,14 @@ struct radeon_winsys {
     *
     * \param cs        The returned structure that is initialized by cs_create.
     * \param ctx       The submission context
-    * \param ring_type The ring type (GFX, DMA, UVD)
+    * \param ip_type   The IP type (GFX, DMA, UVD)
     * \param flush     Flush callback function associated with the command stream.
     * \param user      User pointer that will be passed to the flush callback.
     *
     * \return true on success
     */
    bool (*cs_create)(struct radeon_cmdbuf *cs,
-                     struct radeon_winsys_ctx *ctx, enum ring_type ring_type,
+                     struct radeon_winsys_ctx *ctx, enum amd_ip_type amd_ip_type,
                      void (*flush)(void *ctx, unsigned flags,
                                    struct pipe_fence_handle **fence),
                      void *flush_ctx, bool stop_exec_on_failure);

@@ -256,13 +256,13 @@ struct radeon_winsys {
                           struct radeon_winsys_ctx **ctx);
    void (*ctx_destroy)(struct radeon_winsys_ctx *ctx);
 
-   bool (*ctx_wait_idle)(struct radeon_winsys_ctx *ctx, enum ring_type ring_type, int ring_index);
+   bool (*ctx_wait_idle)(struct radeon_winsys_ctx *ctx, enum amd_ip_type amd_ip_type, int ring_index);
 
    int (*ctx_set_pstate)(struct radeon_winsys_ctx *ctx, uint32_t pstate);
 
    enum radeon_bo_domain (*cs_domain)(const struct radeon_winsys *ws);
 
-   struct radeon_cmdbuf *(*cs_create)(struct radeon_winsys *ws, enum ring_type ring_type);
+   struct radeon_cmdbuf *(*cs_create)(struct radeon_winsys *ws, enum amd_ip_type amd_ip_type);
 
    void (*cs_destroy)(struct radeon_cmdbuf *cs);
 
@@ -272,7 +272,7 @@ struct radeon_winsys {
 
    void (*cs_grow)(struct radeon_cmdbuf *cs, size_t min_size);
 
-   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, enum ring_type ring_type, int queue_index,
+   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, enum amd_ip_type amd_ip_type, int queue_index,
                          struct radeon_cmdbuf **cs_array, unsigned cs_count,
                          struct radeon_cmdbuf *initial_preamble_cs,
                          struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,

@@ -495,6 +495,16 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    amdgpu_device_handle dev = dev_p;
    drmDevicePtr devinfo;
 
+   STATIC_ASSERT(AMDGPU_HW_IP_GFX == RING_GFX);
+   STATIC_ASSERT(AMDGPU_HW_IP_COMPUTE == RING_COMPUTE);
+   STATIC_ASSERT(AMDGPU_HW_IP_DMA == RING_DMA);
+   STATIC_ASSERT(AMDGPU_HW_IP_UVD == RING_UVD);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCE == RING_VCE);
+   STATIC_ASSERT(AMDGPU_HW_IP_UVD_ENC == RING_UVD_ENC);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCN_DEC == RING_VCN_DEC);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCN_ENC == RING_VCN_ENC);
+   STATIC_ASSERT(AMDGPU_HW_IP_VCN_JPEG == RING_VCN_JPEG);
+
    /* Get PCI info. */
    r = drmGetDevice2(fd, 0, &devinfo);
    if (r) {

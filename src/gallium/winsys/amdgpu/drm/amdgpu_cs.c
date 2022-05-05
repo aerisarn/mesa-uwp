@@ -717,9 +717,9 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    enum radeon_bo_domain domain;
    unsigned flags = RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
-   if (cs->ring_type == RING_GFX ||
-       cs->ring_type == RING_COMPUTE ||
-       cs->ring_type == RING_DMA) {
+   if (cs->ip_type == RING_GFX ||
+       cs->ip_type == RING_COMPUTE ||
+       cs->ip_type == RING_DMA) {
       domain = ws->info.smart_access_memory ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
       flags |= RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC;
    } else {
@@ -829,9 +829,9 @@ static void amdgpu_ib_finalize(struct amdgpu_winsys *ws, struct radeon_cmdbuf *r
 
 static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
                                    struct amdgpu_cs_context *cs,
-                                   enum ring_type ring_type)
+                                   enum amd_ip_type ip_type)
 {
-   switch (ring_type) {
+   switch (ip_type) {
    case RING_DMA:
       cs->ib[IB_MAIN].ip_type = AMDGPU_HW_IP_DMA;
       break;
@@ -862,7 +862,7 @@ static bool amdgpu_init_cs_context(struct amdgpu_winsys *ws,
 
    case RING_COMPUTE:
    case RING_GFX:
-      cs->ib[IB_MAIN].ip_type = ring_type == RING_GFX ? AMDGPU_HW_IP_GFX :
+      cs->ib[IB_MAIN].ip_type = ip_type == RING_GFX ? AMDGPU_HW_IP_GFX :
                                                         AMDGPU_HW_IP_COMPUTE;
 
       /* The kernel shouldn't invalidate L2 and vL1. The proper place for cache
@@ -931,7 +931,7 @@ static void amdgpu_destroy_cs_context(struct amdgpu_winsys *ws, struct amdgpu_cs
 static bool
 amdgpu_cs_create(struct radeon_cmdbuf *rcs,
                  struct radeon_winsys_ctx *rwctx,
-                 enum ring_type ring_type,
+                 enum amd_ip_type ip_type,
                  void (*flush)(void *ctx, unsigned flags,
                                struct pipe_fence_handle **fence),
                  void *flush_ctx,
@@ -951,25 +951,25 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    cs->ctx = ctx;
    cs->flush_cs = flush;
    cs->flush_data = flush_ctx;
-   cs->ring_type = ring_type;
+   cs->ip_type = ip_type;
    cs->stop_exec_on_failure = stop_exec_on_failure;
    cs->noop = ctx->ws->noop_cs;
    cs->has_chaining = ctx->ws->info.chip_class >= GFX7 &&
-                      (ring_type == RING_GFX || ring_type == RING_COMPUTE);
+                      (ip_type == RING_GFX || ip_type == RING_COMPUTE);
 
    struct amdgpu_cs_fence_info fence_info;
    fence_info.handle = cs->ctx->user_fence_bo;
-   fence_info.offset = cs->ring_type * 4;
+   fence_info.offset = cs->ip_type * 4;
    amdgpu_cs_chunk_fence_info_to_data(&fence_info, (void*)&cs->fence_chunk);
 
    cs->main.ib_type = IB_MAIN;
 
-   if (!amdgpu_init_cs_context(ctx->ws, &cs->csc1, ring_type)) {
+   if (!amdgpu_init_cs_context(ctx->ws, &cs->csc1, ip_type)) {
       FREE(cs);
       return false;
    }
 
-   if (!amdgpu_init_cs_context(ctx->ws, &cs->csc2, ring_type)) {
+   if (!amdgpu_init_cs_context(ctx->ws, &cs->csc2, ip_type)) {
       amdgpu_destroy_cs_context(ctx->ws, &cs->csc1);
       FREE(cs);
       return false;
@@ -1034,7 +1034,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    memcpy(map, preamble_ib, preamble_num_dw * 4);
 
    /* Pad the IB. */
-   uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ring_type];
+   uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ip_type];
    while (preamble_num_dw & ib_pad_dw_mask)
       map[preamble_num_dw++] = PKT3_NOP_PAD;
    amdgpu_bo_unmap(&ws->dummy_ws.base, preamble_bo);
@@ -1112,7 +1112,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw)
    rcs->current.max_dw += cs_epilog_dw;
 
    /* Pad with NOPs but leave 4 dwords for INDIRECT_BUFFER. */
-   uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[cs->ring_type];
+   uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[cs->ip_type];
    while ((rcs->current.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
       radeon_emit(rcs, PKT3_NOP_PAD);
 
@@ -1194,8 +1194,8 @@ static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
     * We always want no dependency between back-to-back gfx IBs, because
     * we need the parallelism between IBs for good performance.
     */
-   if ((acs->ring_type == RING_GFX ||
-        acs->ws->info.num_rings[acs->ring_type] == 1) &&
+   if ((acs->ip_type == RING_GFX ||
+        acs->ws->info.num_rings[acs->ip_type] == 1) &&
        !amdgpu_fence_is_syncobj(fence) &&
        fence->ctx == acs->ctx &&
        fence->fence.ip_type == cs->ib[IB_MAIN].ip_type)
@@ -1455,7 +1455,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
       }
    }
 
-   if (acs->ring_type == RING_GFX)
+   if (acs->ip_type == RING_GFX)
       ws->gfx_bo_list_counter += cs->num_real_buffers;
 
    bool noop = false;
@@ -1571,7 +1571,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
 
       /* Apply RADEON_NOOP. */
       if (acs->noop) {
-         if (acs->ring_type == RING_GFX) {
+         if (acs->ip_type == RING_GFX) {
             /* Reduce the IB size and fill it with NOP to make it like an empty IB. */
             unsigned noop_size = MIN2(cs->ib[IB_MAIN].ib_bytes, ws->info.ib_alignment);
 
@@ -1610,7 +1610,7 @@ static void amdgpu_cs_submit_ib(void *job, void *gdata, int thread_index)
        *   QWORD[3]: preempted then reset
        **/
       if (has_user_fence)
-         user_fence = acs->ctx->user_fence_cpu_address_base + acs->ring_type * 4;
+         user_fence = acs->ctx->user_fence_cpu_address_base + acs->ip_type * 4;
       amdgpu_fence_submitted(cs->fence, seq_no, user_fence);
    }
 
@@ -1653,12 +1653,12 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
    struct amdgpu_winsys *ws = cs->ws;
    int error_code = 0;
-   uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ring_type];
+   uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ip_type];
 
    rcs->current.max_dw += amdgpu_cs_epilog_dws(cs);
 
    /* Pad the IB according to the mask. */
-   switch (cs->ring_type) {
+   switch (cs->ip_type) {
    case RING_DMA:
       if (ws->info.chip_class <= GFX6) {
          while (rcs->current.cdw & ib_pad_dw_mask)
@@ -1677,7 +1677,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
          while (rcs->current.cdw & ib_pad_dw_mask)
             radeon_emit(rcs, PKT3_NOP_PAD);
       }
-      if (cs->ring_type == RING_GFX)
+      if (cs->ip_type == RING_GFX)
          ws->gfx_ib_size_counter += (rcs->prev_dw + rcs->current.cdw) * 4;
       break;
    case RING_UVD:
@@ -1768,9 +1768,9 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    rcs->used_gart_kb = 0;
    rcs->used_vram_kb = 0;
 
-   if (cs->ring_type == RING_GFX)
+   if (cs->ip_type == RING_GFX)
       ws->num_gfx_IBs++;
-   else if (cs->ring_type == RING_DMA)
+   else if (cs->ip_type == RING_DMA)
       ws->num_sdma_IBs++;
 
    return error_code;

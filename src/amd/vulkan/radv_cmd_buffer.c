@@ -356,7 +356,7 @@ radv_cmd_buffer_uses_mec(struct radv_cmd_buffer *cmd_buffer)
           cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7;
 }
 
-enum ring_type
+enum amd_ip_type
 radv_queue_family_to_ring(struct radv_physical_device *physical_device,
                           enum radv_queue_family f)
 {
@@ -699,7 +699,7 @@ static void
 radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pipeline)
 {
    struct radv_device *device = cmd_buffer->device;
-   enum ring_type ring;
+   enum amd_ip_type ring;
    uint32_t data[2];
    uint64_t va;
 
@@ -715,7 +715,7 @@ radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer, struct radv_pipeline *pip
       va += 16;
       break;
    default:
-      assert(!"invalid ring type");
+      assert(!"invalid IP type");
    }
 
    uint64_t pipeline_address = (uintptr_t)pipeline;

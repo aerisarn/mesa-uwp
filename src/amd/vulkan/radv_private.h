@@ -699,7 +699,7 @@ vk_queue_to_radv(const struct radv_physical_device *phys_dev, int queue_family_i
    return phys_dev->vk_queue_to_radv[queue_family_index];
 }
 
-enum ring_type radv_queue_family_to_ring(struct radv_physical_device *physical_device,
+enum amd_ip_type radv_queue_family_to_ring(struct radv_physical_device *physical_device,
                                          enum radv_queue_family f);
 
 struct radv_queue {
@@ -2927,7 +2927,7 @@ si_translate_blend_logic_op(VkLogicOp op)
  * Queue helper to get ring.
  * placed here as it needs queue + device structs.
  */
-static inline enum ring_type
+static inline enum amd_ip_type
 radv_queue_ring(struct radv_queue *queue)
 {
    return radv_queue_family_to_ring(queue->device->physical_device, queue->qf);

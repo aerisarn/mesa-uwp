@@ -156,7 +156,7 @@ enum chip_class
    NUM_GFX_VERSIONS,
 };
 
-enum ring_type
+enum amd_ip_type
 {
    RING_GFX = 0,
    RING_COMPUTE,
