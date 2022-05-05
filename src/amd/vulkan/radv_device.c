@@ -4515,6 +4515,31 @@ struct radv_deferred_queue_submission {
 };
 
 static VkResult
+radv_queue_submit_bind_sparse_memory(struct radv_device *device, struct vk_queue_submit *submission)
+{
+   for (uint32_t i = 0; i < submission->buffer_bind_count; ++i) {
+      VkResult result = radv_sparse_buffer_bind_memory(device, submission->buffer_binds + i);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   for (uint32_t i = 0; i < submission->image_opaque_bind_count; ++i) {
+      VkResult result =
+         radv_sparse_image_opaque_bind_memory(device, submission->image_opaque_binds + i);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   for (uint32_t i = 0; i < submission->image_bind_count; ++i) {
+      VkResult result = radv_sparse_image_bind_memory(device, submission->image_binds + i);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
+}
+
+static VkResult
 radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
 {
    struct radv_queue *queue = (struct radv_queue *)vqueue;
@@ -4534,24 +4559,9 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
    if (result != VK_SUCCESS)
       goto fail;
 
-   for (uint32_t i = 0; i < submission->buffer_bind_count; ++i) {
-      result = radv_sparse_buffer_bind_memory(queue->device, submission->buffer_binds + i);
-      if (result != VK_SUCCESS)
-         goto fail;
-   }
-
-   for (uint32_t i = 0; i < submission->image_opaque_bind_count; ++i) {
-      result =
-         radv_sparse_image_opaque_bind_memory(queue->device, submission->image_opaque_binds + i);
-      if (result != VK_SUCCESS)
-         goto fail;
-   }
-
-   for (uint32_t i = 0; i < submission->image_bind_count; ++i) {
-      result = radv_sparse_image_bind_memory(queue->device, submission->image_binds + i);
-      if (result != VK_SUCCESS)
-         goto fail;
-   }
+   result = radv_queue_submit_bind_sparse_memory(queue->device, submission);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    if (!submission->command_buffer_count && !submission->wait_count && !submission->signal_count)
       return VK_SUCCESS;
