@@ -1,3 +1,4 @@
+# piglit failures
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
 glx@glx-swap-event_interval,Fail
@@ -260,3 +261,15 @@ spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 wgl@wgl-multi-context-single-window,Fail
 wgl@wgl-multi-window-single-context,Fail
 wgl@wgl-sanity,Fail
+
+# glcts failures
+KHR-GL46.geometry_shader.layered_rendering_fbo_no_attachment.layered_rendering_fbo_no_attachment,Fail
+KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
+KHR-GL46.shader_image_load_store.advanced-sso-subroutine,Fail
+
+# deqp failures
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_2_invocations,Fail
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_32_invocations,Fail
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_8_invocations,Fail
+dEQP-GLES31.functional.geometry_shading.instanced.geometry_output_different_max_invocations,Fail
+dEQP-GLES31.functional.srgb_texture_decode.skip_decode.srgba8.texel_fetch,Crash

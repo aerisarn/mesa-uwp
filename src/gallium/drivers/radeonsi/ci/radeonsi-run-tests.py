@@ -199,7 +199,9 @@ env["WAFFLE_GBM_DEVICE"] = available_gpus[args.gpu][0]
 # Use piglit's glinfo to determine the GPU name
 gpu_name = "unknown"
 gpu_name_full = ""
+chip_class = -1
 
+env["AMD_DEBUG"] = "info"
 p = subprocess.run(
     ["./glinfo"],
     capture_output="True",
@@ -207,12 +209,15 @@ p = subprocess.run(
     check=True,
     env=env
 )
+del env["AMD_DEBUG"]
 for line in p.stdout.decode().split("\n"):
     if "GL_RENDER" in line:
         line = line.split("=")[1]
         gpu_name_full = '('.join(line.split("(")[:-1]).strip()
         gpu_name = line.replace("(TM)", "").split("(")[1].split(",")[0].lower()
         break
+    elif "chip_class" in line:
+        chip_class = int(line.split("=")[1])
 
 output_folder = args.output_folder
 print_green("Tested GPU: '{}' ({}) {}".format(gpu_name_full, gpu_name, gpu_device))
@@ -231,6 +236,11 @@ logfile = open(os.path.join(output_folder, "{}-run-tests.log".format(gpu_name)),
 
 spin = itertools.cycle("-\\|/")
 
+def chip_class_to_str(cl):
+    supported = ["gfx6", "gfx7", "gfx8", "gfx9", "gfx10", "gfx10_3", "gfx11"]
+    if 8 <= cl and cl < 8 + len(supported):
+        return supported[cl - 8]
+    return supported[-1]
 
 def run_cmd(args, verbosity):
     if verbosity > 1:
@@ -271,15 +281,11 @@ def run_cmd(args, verbosity):
     )
 
 
-def verify_results(baseline1, baseline2):
-    # We're not using baseline1 because piglit-runner/deqp-runner already are:
-    #  - if no baseline, baseline2 will contain the list of failures
-    #  - if there's a baseline, baseline2 will contain the diff
-    # So in both cases, an empty baseline2 files means a successful run
-    with open(baseline2) as file:
+def verify_results(results):
+    with open(results) as file:
         if len(file.readlines()) == 0:
             return True
-    print_red("New errors. Check {}".format(baseline2))
+    print_red("New results (fails or pass). Check {}".format(results))
     return False
 
 
@@ -297,13 +303,38 @@ def parse_test_filters(include_tests):
             cmd += ["-t", t]
     return cmd
 
+def select_baseline(basepath, chip_class, gpu_name):
+    chip_class_str = chip_class_to_str(chip_class)
+
+    # select the best baseline we can find
+    # 1. exact match
+    exact = os.path.join(base, "{}-{}-fail.csv".format(chip_class_str, gpu_name))
+    if os.path.exists(exact):
+        return exact
+    # 2. any baseline with the same chip_class
+    while chip_class >= 8:
+        for subdir, dirs, files in os.walk(basepath):
+            for file in files:
+                if file.find(chip_class_str) == 0 and file.endswith('-fail.csv'):
+                    return os.path.join(base, file)
+        # No match. Try an earlier class
+        chip_class = chip_class - 1
+        chip_class_str = chip_class_to_str(chip_class)
+
+    return exact
 
 filters_args = parse_test_filters(args.include_tests)
+baseline = select_baseline(base, chip_class, gpu_name)
+flakes = os.path.join(base, "{}-{}-flakes.csv".format(chip_class_to_str(chip_class), gpu_name))
+
+if os.path.exists(baseline):
+    print_yellow("Baseline: {}\n".format(baseline), args.verbose > 0)
+if os.path.exists(flakes):
+    print_yellow("[flakes {}]\n".format(flakes), args.verbose > 0)
 
 # piglit test
 if args.piglit:
     out = os.path.join(output_folder, "piglit")
-    baseline = os.path.join(base, "{}-piglit-quick-fail.csv".format(gpu_name))
     new_baseline = os.path.join(new_baseline_folder, "{}-piglit-quick-fail.csv".format(gpu_name))
     print_yellow("Running piglit tests\n", args.verbose > 0)
     cmd = [
@@ -326,16 +357,13 @@ if args.piglit:
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
-        print_yellow("[baseline {}]\n".format(baseline), args.verbose > 0)
 
-    flakes = os.path.join(base, "{}-piglit-quick-flakes.csv".format(gpu_name))
     if os.path.exists(flakes):
         cmd += ["--flakes", flakes]
-        print_yellow("[flakes {}]\n".format(flakes), args.verbose > 0)
 
     run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
-    verify_results(baseline, new_baseline)
+    verify_results(new_baseline)
 
 deqp_args = "-- --deqp-surface-width=256 --deqp-surface-height=256 --deqp-gl-config-name=rgba8888d24s8ms0 --deqp-visibility=hidden".split(
     " "
@@ -344,7 +372,6 @@ deqp_args = "-- --deqp-surface-width=256 --deqp-surface-height=256 --deqp-gl-con
 # glcts test
 if args.glcts:
     out = os.path.join(output_folder, "glcts")
-    baseline = os.path.join(base, "{}-glcts-fail.csv".format(gpu_name))
     new_baseline = os.path.join(
         new_baseline_folder, "{}-glcts-fail.csv".format(gpu_name)
     )
@@ -372,11 +399,10 @@ if args.glcts:
 
     if os.path.exists(baseline):
         cmd += ["--baseline", baseline]
-        print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
     cmd += deqp_args
     run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
-    verify_results(baseline, new_baseline)
+    verify_results(new_baseline)
 
 if args.deqp:
     print_yellow("Running   dEQP tests", args.verbose > 0)
@@ -386,13 +412,9 @@ if args.deqp:
     suite_filename = os.path.join(output_folder, "deqp-suite.toml")
     suite = open(suite_filename, "w")
     os.mkdir(out)
-    baseline = os.path.join(base, "{}-deqp-fail.csv".format(gpu_name))
     new_baseline = os.path.join(
         new_baseline_folder, "{}-deqp-fail.csv".format(gpu_name)
     )
-
-    if os.path.exists(baseline):
-        print_yellow("[baseline {}]".format(baseline), args.verbose > 0)
 
     deqp_tests = {
         "egl": args.deqp_egl,
@@ -439,4 +461,4 @@ if args.deqp:
     ] + filters_args
     run_cmd(cmd, args.verbose)
     shutil.copy(os.path.join(out, "failures.csv"), new_baseline)
-    verify_results(baseline, new_baseline)
+    verify_results(new_baseline)

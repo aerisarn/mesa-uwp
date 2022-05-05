@@ -1,6 +1,6 @@
+# piglit failures
 glx@glx-make-current,Crash
 glx@glx-multi-window-single-context,Fail
-glx@glx-swap-event_interval,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
@@ -31,7 +31,6 @@ spec@!opengl 1.1@read-front samples=2,Fail
 spec@!opengl 1.1@read-front samples=4,Fail
 spec@!opengl 1.1@read-front samples=6,Fail
 spec@!opengl 1.1@read-front samples=8,Fail
-spec@!opengl 1.1@windowoverlap,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-back pv-first,Fail
@@ -78,7 +77,6 @@ spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-double-fl
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec2-vec2,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec3-vec3,Fail
 spec@arb_gpu_shader_fp64@execution@conversion@vert-conversion-explicit-dvec4-vec4,Fail
-spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-geom,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex,Fail
 spec@arb_program_interface_query@arb_program_interface_query-getprogramresourceindex@'vs_input2[1][0]' on GL_PROGRAM_INPUT,Fail
@@ -108,25 +106,13 @@ spec@arb_shader_clock@execution@clock2x32,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_shading_language_packing@execution@built-in-functions@fs-packhalf2x16,Fail
 spec@arb_shading_language_packing@execution@built-in-functions@vs-packhalf2x16,Fail
-spec@arb_tessellation_shader@execution@tcs-tes-levels-out-of-bounds-write,Crash
-spec@arb_texture_buffer_object@texture-buffer-size-clamp,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_sampler,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_size_via_sampler,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_image,Fail
-spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_sampler,Fail
+spec@egl_chromium_sync_control@conformance,Fail
+spec@egl_chromium_sync_control@conformance@eglGetSyncValuesCHROMIUM_msc_and_sbc_test,Fail
 spec@egl_ext_protected_content@conformance,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
 spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
-spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
-spec@glsl-1.20@execution@fs-nan-builtin-min,Fail
-spec@glsl-1.20@execution@vs-nan-builtin-max,Fail
-spec@glsl-1.20@execution@vs-nan-builtin-min,Fail
-spec@glsl-1.30@execution@glsl-fs-continue-in-switch-in-do-while,Fail
-spec@glsl-1.30@execution@glsl-vs-continue-in-switch-in-do-while,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2-mat2,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2x3-mat2x3,Fail
 spec@glsl-4.00@execution@conversion@frag-conversion-explicit-dmat2x4-mat2x4,Fail
@@ -183,3 +169,11 @@ spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 wgl@wgl-multi-context-single-window,Fail
 wgl@wgl-multi-window-single-context,Fail
 wgl@wgl-sanity,Fail
+
+# glcts failures
+KHR-GL46.gl_spirv.spirv_glsl_to_spirv_builtin_functions_test,Fail
+KHR-GL46.pipeline_statistics_query_tests_ARB.functional_geometry_shader_queries,Fail
+KHR-GL46.pipeline_statistics_query_tests_ARB.functional_primitives_vertices_submitted_and_clipping_input_output_primitives,Fail
+KHR-GL46.shader_ballot_tests.ShaderBallotFunctionRead,Fail
+KHR-GL46.shader_ballot_tests.ShaderBallotBitmasks,Fail
+KHR-GL46.sparse_texture_tests.SparseTextureCommitment,Fail
