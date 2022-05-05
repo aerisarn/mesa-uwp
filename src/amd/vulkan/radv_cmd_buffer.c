@@ -3506,7 +3506,7 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer, bool pipeline_
              * - 3: offset >= NUM_RECORDS (Raw)
              */
             int oob_select = stride ? V_008F0C_OOB_SELECT_STRUCTURED : V_008F0C_OOB_SELECT_RAW;
-            rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(1);
+            rsrc_word3 |= S_008F0C_OOB_SELECT(oob_select) | S_008F0C_RESOURCE_LEVEL(chip < GFX11);
          }
 
          desc[0] = va;
@@ -3606,7 +3606,10 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
             S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
             S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
-         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
+         if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+            rsrc_word3 |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
+                          S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW);
+         } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
             rsrc_word3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                           S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
          } else {
@@ -4892,7 +4895,10 @@ radv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pi
             dst[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                      S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
-            if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
+            if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+               dst[3] |= S_008F0C_FORMAT(V_008F0C_GFX11_FORMAT_32_FLOAT) |
+                         S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW);
+            } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
                dst[3] |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                          S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) | S_008F0C_RESOURCE_LEVEL(1);
             } else {

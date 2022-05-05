@@ -748,7 +748,7 @@ radv_make_buffer_descriptor(struct radv_device *device, struct radv_buffer *buff
        */
       state[3] |= S_008F0C_FORMAT(fmt->img_format) |
                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
-                  S_008F0C_RESOURCE_LEVEL(1);
+                  S_008F0C_RESOURCE_LEVEL(device->physical_device->rad_info.gfx_level < GFX11);
    } else {
       num_format = radv_translate_buffer_numformat(desc, first_non_void);
       data_format = radv_translate_buffer_dataformat(desc, first_non_void);
