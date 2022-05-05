@@ -68,6 +68,7 @@ static const struct {
    [CHIP_VANGOGH] = {0x163F, 8, false},
    [CHIP_NAVY_FLOUNDER] = {0x73C0, 8, true},
    [CHIP_DIMGREY_CAVEFISH] = {0x73E0, 8, true},
+   [CHIP_GFX1100] = {0xdead, 8, true}, /* TODO: fill with real info. */
 };
 
 static void
@@ -85,7 +86,9 @@ radv_null_winsys_query_info(struct radeon_winsys *rws, struct radeon_info *info)
          info->family = i;
          info->name = ac_get_family_name(i);
 
-         if (i >= CHIP_SIENNA_CICHLID)
+         if (info->family >= CHIP_GFX1100)
+            info->chip_class = GFX11;
+         else if (i >= CHIP_SIENNA_CICHLID)
             info->chip_class = GFX10_3;
          else if (i >= CHIP_NAVI10)
             info->chip_class = GFX10;
