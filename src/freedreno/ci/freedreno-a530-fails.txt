@@ -431,3 +431,8 @@ spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_ext
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec3,Fail
 spec@glsl-1.30@execution@fs-large-local-array-vec4,Fail
+spec@!opengl 1.0@depth-clear-precision-check,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth24,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth24_stencil8,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
+spec@arb_texture_buffer_object@texture-buffer-size-clamp,Fail

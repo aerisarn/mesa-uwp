@@ -187,3 +187,20 @@ dEQP-GLES31.functional.copy_image.mixed.viewclass_64_bits_mixed.signed_r11_eac_r
 dEQP-GLES31.functional.copy_image.mixed.viewclass_64_bits_mixed.signed_r11_eac_rgba16i.texture2d_to_texture2d,Crash
 dEQP-GLES31.functional.copy_image.mixed.viewclass_64_bits_mixed.signed_r11_eac_rgba16ui.texture2d_to_renderbuffer,Crash
 dEQP-GLES31.functional.copy_image.mixed.viewclass_64_bits_mixed.signed_r11_eac_rgba16ui.texture2d_to_texture2d,Crash
+
+spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_R3_G3_B2- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB10- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB10_A2- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB12- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB16- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB4- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB5- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB5_A1- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGB8- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA12- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA16- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA2- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA4- swizzled- border color only,Fail
+spec@!opengl 1.1@texwrap formats bordercolor-swizzled@GL_RGBA8- swizzled- border color only,Fail

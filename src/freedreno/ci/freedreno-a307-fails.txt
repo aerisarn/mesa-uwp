@@ -860,3 +860,8 @@ spec@ext_packed_float@multisample-fast-clear gl_ext_packed_float,Crash
 spec@ext_texture_integer@multisample-fast-clear gl_ext_texture_integer,Crash
 spec@ext_texture_snorm@multisample-fast-clear gl_ext_texture_snorm,Crash
 spec@ext_texture_srgb@multisample-fast-clear gl_ext_texture_srgb,Crash
+
+spec@arb_texture_buffer_object@texture-buffer-size-clamp,Fail
+spec@arb_texture_buffer_object@texture-buffer-size-clamp@r8ui_texture_buffer_size_via_sampler,Fail
+spec@arb_texture_buffer_object@texture-buffer-size-clamp@rg8ui_texture_buffer_size_via_sampler,Fail
+spec@arb_texture_buffer_object@texture-buffer-size-clamp@rgba8ui_texture_buffer_size_via_sampler,Fail

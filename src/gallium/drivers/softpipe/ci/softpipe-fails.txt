@@ -932,7 +932,9 @@ glx@glx-visuals-stencil,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
-glx@glx_arb_create_context_no_error@no error,Fail
+# X error 167 (GLXBadFBConfig (9)) was generated, but X error 8 was expected.
+glx@glx_arb_create_context_no_error@no error,Crash
+
 glx@glx_ext_import_context@free context,Fail
 glx@glx_ext_import_context@get context id,Fail
 glx@glx_ext_import_context@get current display,Fail
@@ -1355,3 +1357,6 @@ spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3@oes_egl_image_ext
 
 spec@oes_texture_view@rendering-formats,Fail
 spec@oes_texture_view@rendering-formats@clear GL_RGBA8_SNORM as GL_R32F,Fail
+spec@!opengl 1.0@depth-clear-precision-check,Fail
+spec@!opengl 1.0@depth-clear-precision-check@depth32,Fail
+spec@arb_texture_buffer_object@texture-buffer-size-clamp,Fail
