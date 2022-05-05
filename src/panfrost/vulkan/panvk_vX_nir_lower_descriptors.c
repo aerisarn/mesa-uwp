@@ -378,6 +378,43 @@ load_resource_deref_desc(nir_builder *b, nir_deref_instr *deref,
                        .range=~0);
 }
 
+static nir_ssa_def *
+load_tex_img_size(nir_builder *b, nir_deref_instr *deref,
+                  enum glsl_sampler_dim dim,
+                  const struct apply_descriptors_ctx *ctx)
+{
+   if (dim == GLSL_SAMPLER_DIM_BUF) {
+      return load_resource_deref_desc(b, deref, 0, 1, 32, ctx);
+   } else {
+      nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 16, ctx);
+
+      /* The sizes are provided as 16-bit values with 1 subtracted so
+       * convert to 32-bit and add 1.
+       */
+      return nir_iadd_imm(b, nir_u2u32(b, desc), 1);
+   }
+}
+
+static nir_ssa_def *
+load_tex_img_levels(nir_builder *b, nir_deref_instr *deref,
+                    enum glsl_sampler_dim dim,
+                    const struct apply_descriptors_ctx *ctx)
+{
+   assert(dim != GLSL_SAMPLER_DIM_BUF);
+   nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 16, ctx);
+   return nir_u2u32(b, nir_iand_imm(b, nir_channel(b, desc, 3), 0xff));
+}
+
+static nir_ssa_def *
+load_tex_img_samples(nir_builder *b, nir_deref_instr *deref,
+                     enum glsl_sampler_dim dim,
+                     const struct apply_descriptors_ctx *ctx)
+{
+   assert(dim != GLSL_SAMPLER_DIM_BUF);
+   nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 16, ctx);
+   return nir_u2u32(b, nir_ushr_imm(b, nir_channel(b, desc, 3), 8));
+}
+
 static bool
 lower_tex(nir_builder *b, nir_tex_instr *tex,
           const struct apply_descriptors_ctx *ctx)
@@ -393,25 +430,21 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
       assert(tex_src_idx >= 0);
       nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_src_idx].src);
 
-      assert(tex->dest.is_ssa);
-      nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 32, ctx);
+      const enum glsl_sampler_dim dim = tex->sampler_dim;
 
       nir_ssa_def *res;
       switch (tex->op) {
       case nir_texop_txs:
-         assert(tex->dest.ssa.num_components <= 3);
-         res = nir_channels(b, desc,
-            nir_component_mask(tex->dest.ssa.num_components));
+         res = nir_channels(b, load_tex_img_size(b, deref, dim, ctx),
+                            nir_component_mask(tex->dest.ssa.num_components));
          break;
       case nir_texop_query_levels:
          assert(tex->dest.ssa.num_components == 1);
-         res = nir_extract_u16(b, nir_channel(b, desc, 3),
-                                  nir_imm_int(b, 0));
+         res = load_tex_img_levels(b, deref, dim, ctx);
          break;
       case nir_texop_texture_samples:
          assert(tex->dest.ssa.num_components == 1);
-         res = nir_extract_u16(b, nir_channel(b, desc, 3),
-                                  nir_imm_int(b, 1));
+         res = load_tex_img_samples(b, deref, dim, ctx);
          break;
       default:
          unreachable("Unsupported texture query op");
@@ -506,17 +539,17 @@ lower_img_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
    if (intr->intrinsic == nir_intrinsic_image_deref_size ||
        intr->intrinsic == nir_intrinsic_image_deref_samples) {
       assert(intr->dest.is_ssa);
-      nir_ssa_def *desc = load_resource_deref_desc(b, deref, 0, 4, 32, ctx);
+
+      const enum glsl_sampler_dim dim = nir_intrinsic_image_dim(intr);
 
       nir_ssa_def *res;
       switch (intr->intrinsic) {
       case nir_intrinsic_image_deref_size:
-         res = nir_channels(b, desc,
-            nir_component_mask(intr->dest.ssa.num_components));
+         res = nir_channels(b, load_tex_img_size(b, deref, dim, ctx),
+                            nir_component_mask(intr->dest.ssa.num_components));
          break;
       case nir_intrinsic_image_deref_samples:
-         res = nir_extract_u16(b, nir_channel(b, desc, 3),
-                                  nir_imm_int(b, 1));
+         res = load_tex_img_samples(b, deref, dim, ctx);
          break;
       default:
          unreachable("Unsupported image query op");

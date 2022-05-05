@@ -42,7 +42,7 @@
 #include "pan_bo.h"
 #include "panvk_cs.h"
 
-#define PANVK_DESCRIPTOR_ALIGN 16
+#define PANVK_DESCRIPTOR_ALIGN 8
 
 struct panvk_bview_desc {
    uint32_t elems;
@@ -56,28 +56,28 @@ panvk_fill_bview_desc(struct panvk_bview_desc *desc,
 }
 
 struct panvk_image_desc {
-   uint32_t width;
-   uint32_t height;
-   uint32_t depth;
-   uint16_t levels;
-   uint16_t samples;
+   uint16_t width;
+   uint16_t height;
+   uint16_t depth;
+   uint8_t levels;
+   uint8_t samples;
 };
 
 static void
 panvk_fill_image_desc(struct panvk_image_desc *desc,
                       struct panvk_image_view *view)
 {
-   desc->width = view->vk.extent.width;
-   desc->height = view->vk.extent.height;
-   desc->depth = view->vk.extent.depth;
+   desc->width = view->vk.extent.width - 1;
+   desc->height = view->vk.extent.height - 1;
+   desc->depth = view->vk.extent.depth - 1;
    desc->levels = view->vk.level_count;
    desc->samples = view->vk.image->samples;
 
    /* Stick array layer count after the last valid size component */
    if (view->vk.image->image_type == VK_IMAGE_TYPE_1D)
-      desc->height = view->vk.layer_count;
+      desc->height = view->vk.layer_count - 1;
    else if (view->vk.image->image_type == VK_IMAGE_TYPE_2D)
-      desc->depth = view->vk.layer_count;
+      desc->depth = view->vk.layer_count - 1;
 }
 
 VkResult

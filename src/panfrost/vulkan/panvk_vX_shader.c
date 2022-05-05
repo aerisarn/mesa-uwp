@@ -396,6 +396,10 @@ panvk_per_arch(shader_create)(struct panvk_device *dev,
       panvk_lower_blend(pdev, nir, &inputs, blend_state, static_blend_constants);
    }
 
+   /* We need to lower nir_texop_txs with LOD before we lower descriptor
+    * access because nir_texop_txs gets turned into a descriptor UBO read
+    * and a bit of math by the descriptor lowering code.
+    */
    nir_lower_tex_options lower_tex_options = {
       .lower_txs_lod = true,
    };
