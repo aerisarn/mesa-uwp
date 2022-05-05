@@ -1,4 +1,5 @@
 #include "rusticl_mesa_inline_bindings_wrapper.h"
+#include "git_sha1.h"
 
 nir_function_impl *
 nir_shader_get_entrypoint(const nir_shader *shader)
@@ -16,4 +17,10 @@ void
 util_format_pack_rgba(enum pipe_format format, void *dst, const void *src, unsigned w)
 {
     return __util_format_pack_rgba(format, dst, src, w);
+}
+
+const char*
+mesa_version_string(void)
+{
+    return PACKAGE_VERSION MESA_GIT_SHA1;
 }

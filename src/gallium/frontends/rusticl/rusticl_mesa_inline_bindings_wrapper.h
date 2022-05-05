@@ -8,6 +8,7 @@
 #undef pipe_resource_reference
 #undef util_format_pack_rgba
 
+const char* mesa_version_string(void);
 nir_function_impl *nir_shader_get_entrypoint(const nir_shader *shader);
 void pipe_resource_reference(struct pipe_resource **dst, struct pipe_resource *src);
 void util_format_pack_rgba(enum pipe_format format, void *dst, const void *src, unsigned w);
