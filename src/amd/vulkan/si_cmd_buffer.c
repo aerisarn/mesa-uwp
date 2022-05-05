@@ -1051,7 +1051,7 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level
       }
 
       /* TODO: trigger on RADV_CMD_FLAG_FLUSH_AND_INV_DB_META ? */
-      if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_DB) {
+      if (gfx_level < GFX11 && (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_DB)) {
          /* Flush HTILE. Will wait for idle later. */
          radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
          radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_DB_META) | EVENT_INDEX(0));
@@ -1068,7 +1068,11 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs, enum amd_gfx_level gfx_level
       } else if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_CB) {
          cb_db_event = V_028A90_FLUSH_AND_INV_CB_DATA_TS;
       } else if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_DB) {
-         cb_db_event = V_028A90_FLUSH_AND_INV_DB_DATA_TS;
+         if (gfx_level == GFX11) {
+            cb_db_event = V_028A90_CACHE_FLUSH_AND_INV_TS_EVENT;
+         } else {
+            cb_db_event = V_028A90_FLUSH_AND_INV_DB_DATA_TS;
+         }
       } else {
          assert(0);
       }
