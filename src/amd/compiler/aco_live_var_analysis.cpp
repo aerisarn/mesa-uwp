@@ -382,7 +382,7 @@ max_suitable_waves(Program* program, uint16_t waves)
        * These limit occupancy the same way as other stages' LDS usage does.
        */
       unsigned lds_bytes_per_interp = 3 * 16;
-      unsigned lds_param_bytes = lds_bytes_per_interp * program->info->ps.num_interp;
+      unsigned lds_param_bytes = lds_bytes_per_interp * program->info.ps.num_interp;
       lds_per_workgroup += align(lds_param_bytes, program->dev.lds_alloc_granule);
    }
    unsigned lds_limit = program->wgp_mode ? program->dev.lds_limit * 2 : program->dev.lds_limit;

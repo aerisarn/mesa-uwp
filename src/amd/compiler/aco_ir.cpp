@@ -71,7 +71,7 @@ init_program(Program* program, Stage stage, const struct radv_shader_info* info,
 {
    program->stage = stage;
    program->config = config;
-   program->info = info;
+   program->info = *info;
    program->chip_class = chip_class;
    if (family == CHIP_UNKNOWN) {
       switch (chip_class) {

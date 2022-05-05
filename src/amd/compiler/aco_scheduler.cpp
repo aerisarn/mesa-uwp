@@ -1083,8 +1083,8 @@ schedule_program(Program* program, live& live_vars)
     * Schedule less aggressively when early primitive export is used, and
     * keep the position export at the very bottom when late primitive export is used.
     */
-   if (program->info->has_ngg_culling && program->stage.num_sw_stages() == 1) {
-      if (!program->info->has_ngg_early_prim_export)
+   if (program->info.has_ngg_culling && program->stage.num_sw_stages() == 1) {
+      if (!program->info.has_ngg_early_prim_export)
          ctx.schedule_pos_exports = false;
       else
          ctx.schedule_pos_export_div = 4;

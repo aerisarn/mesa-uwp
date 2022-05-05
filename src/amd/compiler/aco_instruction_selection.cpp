@@ -5217,7 +5217,7 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    nir_src offset = *nir_get_io_offset_src(instr);
 
-   if (ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->program->info->vs.dynamic_inputs) {
+   if (ctx->shader->info.stage == MESA_SHADER_VERTEX && ctx->program->info.vs.dynamic_inputs) {
       if (!nir_src_is_const(offset) || nir_src_as_uint(offset))
          isel_err(offset.ssa->parent_instr,
                   "Unimplemented non-zero nir_intrinsic_load_input offset");
@@ -5272,8 +5272,8 @@ visit_load_input(isel_context* ctx, nir_intrinsic_instr* instr)
       unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
 
       unsigned desc_index =
-         ctx->program->info->vs.use_per_attribute_vb_descs ? location : attrib_binding;
-      desc_index = util_bitcount(ctx->program->info->vs.vb_desc_usage_mask &
+         ctx->program->info.vs.use_per_attribute_vb_descs ? location : attrib_binding;
+      desc_index = util_bitcount(ctx->program->info.vs.vb_desc_usage_mask &
                                  u_bit_consecutive(0, desc_index));
       Operand off = bld.copy(bld.def(s1), Operand::c32(desc_index * 16u));
       Temp list = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), vertex_buffers, off);
@@ -7383,12 +7383,12 @@ visit_emit_vertex_with_counter(isel_context* ctx, nir_intrinsic_instr* instr)
       bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer,
                Operand::c32(RING_GSVS_GS * 16u));
 
-   unsigned num_components = ctx->program->info->gs.num_stream_output_components[stream];
+   unsigned num_components = ctx->program->info.gs.num_stream_output_components[stream];
 
    unsigned stride = 4u * num_components * ctx->shader->info.gs.vertices_out;
    unsigned stream_offset = 0;
    for (unsigned i = 0; i < stream; i++) {
-      unsigned prev_stride = 4u * ctx->program->info->gs.num_stream_output_components[i] *
+      unsigned prev_stride = 4u * ctx->program->info.gs.num_stream_output_components[i] *
                              ctx->shader->info.gs.vertices_out;
       stream_offset += prev_stride * ctx->program->wave_size;
    }
@@ -7421,11 +7421,11 @@ visit_emit_vertex_with_counter(isel_context* ctx, nir_intrinsic_instr* instr)
 
    unsigned offset = 0;
    for (unsigned i = 0; i <= VARYING_SLOT_VAR31; i++) {
-      if (ctx->program->info->gs.output_streams[i] != stream)
+      if (ctx->program->info.gs.output_streams[i] != stream)
          continue;
 
       for (unsigned j = 0; j < 4; j++) {
-         if (!(ctx->program->info->gs.output_usage_mask[i] & (1 << j)))
+         if (!(ctx->program->info.gs.output_usage_mask[i] & (1 << j)))
             continue;
 
          if (ctx->outputs.mask[i] & (1 << j)) {
@@ -10484,10 +10484,10 @@ export_vs_varying(isel_context* ctx, int slot, bool is_pos, int* next_pos)
    assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
 
    const uint8_t *vs_output_param_offset =
-      ctx->stage.has(SWStage::GS) ? ctx->program->info->vs.outinfo.vs_output_param_offset :
-      ctx->stage.has(SWStage::TES) ? ctx->program->info->tes.outinfo.vs_output_param_offset :
-      ctx->stage.has(SWStage::MS) ? ctx->program->info->ms.outinfo.vs_output_param_offset :
-      ctx->program->info->vs.outinfo.vs_output_param_offset;
+      ctx->stage.has(SWStage::GS) ? ctx->program->info.vs.outinfo.vs_output_param_offset :
+      ctx->stage.has(SWStage::TES) ? ctx->program->info.tes.outinfo.vs_output_param_offset :
+      ctx->stage.has(SWStage::MS) ? ctx->program->info.ms.outinfo.vs_output_param_offset :
+      ctx->program->info.vs.outinfo.vs_output_param_offset;
 
    assert(vs_output_param_offset);
 
@@ -10569,10 +10569,10 @@ create_vs_exports(isel_context* ctx)
 {
    assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
    const radv_vs_output_info* outinfo =
-      ctx->stage.has(SWStage::GS) ? &ctx->program->info->vs.outinfo :
-      ctx->stage.has(SWStage::TES) ? &ctx->program->info->tes.outinfo :
-      ctx->stage.has(SWStage::MS) ? &ctx->program->info->ms.outinfo :
-      &ctx->program->info->vs.outinfo;
+      ctx->stage.has(SWStage::GS) ? &ctx->program->info.vs.outinfo :
+      ctx->stage.has(SWStage::TES) ? &ctx->program->info.tes.outinfo :
+      ctx->stage.has(SWStage::MS) ? &ctx->program->info.ms.outinfo :
+      &ctx->program->info.vs.outinfo;
 
    assert(outinfo);
    ctx->block->kind |= block_kind_export_end;
@@ -10628,10 +10628,10 @@ create_primitive_exports(isel_context *ctx, Temp prim_ch1)
 {
    assert(ctx->stage.hw == HWStage::NGG);
    const radv_vs_output_info* outinfo =
-      ctx->stage.has(SWStage::GS) ? &ctx->program->info->vs.outinfo :
-      ctx->stage.has(SWStage::TES) ? &ctx->program->info->tes.outinfo :
-      ctx->stage.has(SWStage::MS) ? &ctx->program->info->ms.outinfo :
-      &ctx->program->info->vs.outinfo;
+      ctx->stage.has(SWStage::GS) ? &ctx->program->info.vs.outinfo :
+      ctx->stage.has(SWStage::TES) ? &ctx->program->info.tes.outinfo :
+      ctx->stage.has(SWStage::MS) ? &ctx->program->info.ms.outinfo :
+      &ctx->program->info.vs.outinfo;
 
    Builder bld(ctx->program, ctx->block);
 
@@ -10699,34 +10699,34 @@ export_fs_mrt_z(isel_context* ctx)
    }
 
    /* Both stencil and sample mask only need 16-bits. */
-   if (!ctx->program->info->ps.writes_z &&
-       (ctx->program->info->ps.writes_stencil || ctx->program->info->ps.writes_sample_mask)) {
+   if (!ctx->program->info.ps.writes_z &&
+       (ctx->program->info.ps.writes_stencil || ctx->program->info.ps.writes_sample_mask)) {
       compr = true; /* COMPR flag */
 
-      if (ctx->program->info->ps.writes_stencil) {
+      if (ctx->program->info.ps.writes_stencil) {
          /* Stencil should be in X[23:16]. */
          values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4u]);
          values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(16u), values[0]);
          enabled_channels |= 0x3;
       }
 
-      if (ctx->program->info->ps.writes_sample_mask) {
+      if (ctx->program->info.ps.writes_sample_mask) {
          /* SampleMask should be in Y[15:0]. */
          values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u]);
          enabled_channels |= 0xc;
       }
    } else {
-      if (ctx->program->info->ps.writes_z) {
+      if (ctx->program->info.ps.writes_z) {
          values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_DEPTH * 4u]);
          enabled_channels |= 0x1;
       }
 
-      if (ctx->program->info->ps.writes_stencil) {
+      if (ctx->program->info.ps.writes_stencil) {
          values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4u]);
          enabled_channels |= 0x2;
       }
 
-      if (ctx->program->info->ps.writes_sample_mask) {
+      if (ctx->program->info.ps.writes_sample_mask) {
          values[2] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u]);
          enabled_channels |= 0x4;
       }
@@ -10922,7 +10922,7 @@ emit_streamout(isel_context* ctx, unsigned stream)
    Temp buf_ptr = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->streamout_buffers));
 
    for (unsigned i = 0; i < 4; i++) {
-      unsigned stride = ctx->program->info->so.strides[i];
+      unsigned stride = ctx->program->info.so.strides[i];
       if (!stride)
          continue;
 
@@ -10945,8 +10945,8 @@ emit_streamout(isel_context* ctx, unsigned stream)
       }
    }
 
-   for (unsigned i = 0; i < ctx->program->info->so.num_outputs; i++) {
-      const struct radv_stream_output* output = &ctx->program->info->so.outputs[i];
+   for (unsigned i = 0; i < ctx->program->info.so.num_outputs; i++) {
+      const struct radv_stream_output* output = &ctx->program->info.so.outputs[i];
       if (stream != output->stream)
          continue;
 
@@ -11005,8 +11005,8 @@ add_startpgm(struct isel_context* ctx)
    ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
    ctx->program->scratch_offset = get_arg(ctx, ctx->args->ac.scratch_offset);
 
-   if (ctx->stage.has(SWStage::VS) && ctx->program->info->vs.dynamic_inputs) {
-      unsigned num_attributes = util_last_bit(ctx->program->info->vs.vb_desc_usage_mask);
+   if (ctx->stage.has(SWStage::VS) && ctx->program->info.vs.dynamic_inputs) {
+      unsigned num_attributes = util_last_bit(ctx->program->info.vs.vb_desc_usage_mask);
       for (unsigned i = 0; i < num_attributes; i++) {
          Definition def(get_arg(ctx, ctx->args->vs_inputs[i]));
 
@@ -11234,7 +11234,7 @@ ngg_emit_sendmsg_gs_alloc_req(isel_context* ctx, Temp vtx_cnt, Temp prm_cnt)
    Temp prm_cnt_0;
 
    if (ctx->program->chip_class == GFX10 &&
-       (ctx->stage.has(SWStage::GS) || ctx->program->info->has_ngg_culling)) {
+       (ctx->stage.has(SWStage::GS) || ctx->program->info.has_ngg_culling)) {
       /* Navi 1x workaround: check whether the workgroup has no output.
        * If so, change the number of exported vertices and primitives to 1.
        */
@@ -11378,7 +11378,7 @@ select_program(Program* program, unsigned shader_count, struct nir_shader* const
 
       visit_cf_list(&ctx, &func->body);
 
-      if (ctx.program->info->so.num_outputs && ctx.stage.hw == HWStage::VS)
+      if (ctx.program->info.so.num_outputs && ctx.stage.hw == HWStage::VS)
          emit_streamout(&ctx, 0);
 
       if (ctx.stage.hw == HWStage::VS) {
@@ -11438,7 +11438,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
                              program->private_segment_buffer, Operand::c32(RING_GSVS_VS * 16u));
 
    Operand stream_id = Operand::zero();
-   if (program->info->so.num_outputs)
+   if (program->info.so.num_outputs)
       stream_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
                            get_arg(&ctx, ctx.args->ac.streamout_config), Operand::c32(0x20018u));
 
@@ -11451,8 +11451,8 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
       if (stream_id.isConstant() && stream != stream_id.constantValue())
          continue;
 
-      unsigned num_components = program->info->gs.num_stream_output_components[stream];
-      if (stream > 0 && (!num_components || !program->info->so.num_outputs))
+      unsigned num_components = program->info.gs.num_stream_output_components[stream];
+      if (stream > 0 && (!num_components || !program->info.so.num_outputs))
          continue;
 
       memset(ctx.outputs.mask, 0, sizeof(ctx.outputs.mask));
@@ -11467,17 +11467,17 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
 
       unsigned offset = 0;
       for (unsigned i = 0; i <= VARYING_SLOT_VAR31; ++i) {
-         if (program->info->gs.output_streams[i] != stream)
+         if (program->info.gs.output_streams[i] != stream)
             continue;
 
-         unsigned output_usage_mask = program->info->gs.output_usage_mask[i];
+         unsigned output_usage_mask = program->info.gs.output_usage_mask[i];
          unsigned length = util_last_bit(output_usage_mask);
          for (unsigned j = 0; j < length; ++j) {
             if (!(output_usage_mask & (1 << j)))
                continue;
 
             Temp val = bld.tmp(v1);
-            unsigned const_offset = offset * program->info->gs.vertices_out * 16 * 4;
+            unsigned const_offset = offset * program->info.gs.vertices_out * 16 * 4;
             load_vmem_mubuf(&ctx, val, gsvs_ring, vtx_offset, Temp(), const_offset, 4, 1, 0u, true,
                             true, true);
 
@@ -11488,7 +11488,7 @@ select_gs_copy_shader(Program* program, struct nir_shader* gs_shader, ac_shader_
          }
       }
 
-      if (program->info->so.num_outputs) {
+      if (program->info.so.num_outputs) {
          emit_streamout(&ctx, stream);
          bld.reset(ctx.block);
       }

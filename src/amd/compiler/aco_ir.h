@@ -2053,7 +2053,7 @@ public:
    std::vector<RegClass> temp_rc = {s1};
    RegisterDemand max_reg_demand = RegisterDemand();
    ac_shader_config* config;
-   const struct radv_shader_info* info;
+   struct radv_shader_info info;
    enum chip_class chip_class;
    enum radeon_family family;
    DeviceInfo dev;
