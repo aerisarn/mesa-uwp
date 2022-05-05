@@ -2145,7 +2145,7 @@ static void
 radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
                                 const struct radv_graphics_pipeline_info *info)
 {
-   const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
+   const struct radv_device *device = pipeline->base.device;
 
    pipeline->pa_su_sc_mode_cntl =
       S_028814_FACE(info->rs.front_face) |
@@ -2159,7 +2159,7 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
       S_028814_POLY_OFFSET_PARA_ENABLE(info->rs.depth_bias_enable) |
       S_028814_PROVOKING_VTX_LAST(info->rs.provoking_vtx_last);
 
-   if (pdevice->rad_info.gfx_level >= GFX10) {
+   if (device->physical_device->rad_info.gfx_level >= GFX10) {
       /* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */
       pipeline->pa_su_sc_mode_cntl |=
          S_028814_KEEP_TOGETHER_ENABLE(info->rs.polygon_mode != V_028814_X_DRAW_TRIANGLES);
@@ -2174,6 +2174,20 @@ radv_pipeline_init_raster_state(struct radv_graphics_pipeline *pipeline,
 
    pipeline->uses_conservative_overestimate =
       info->rs.conservative_mode == VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+
+   pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_VIEWPORT;
+   if (!info->rs.depth_clamp_enable) {
+      /* For optimal performance, depth clamping should always be enabled except if the
+       * application disables clamping explicitly or uses depth values outside of the [0.0, 1.0]
+       * range.
+       */
+      if (info->rs.depth_clip_disable ||
+          device->vk.enabled_extensions.EXT_depth_range_unrestricted) {
+         pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_DISABLED;
+      } else {
+         pipeline->depth_clamp_mode = RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE;
+      }
+   }
 }
 
 static struct radv_depth_stencil_state
@@ -2181,7 +2195,6 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
                                        const struct radv_graphics_pipeline_info *info)
 {
    const struct radv_physical_device *pdevice = pipeline->base.device->physical_device;
-   struct radv_shader *ps = pipeline->base.shaders[MESA_SHADER_FRAGMENT];
    struct radv_depth_stencil_state ds_state = {0};
    uint32_t db_depth_control = 0;
 
@@ -2210,19 +2223,8 @@ radv_pipeline_init_depth_stencil_state(struct radv_graphics_pipeline *pipeline,
    ds_state.db_render_override |= S_02800C_FORCE_HIS_ENABLE0(V_02800C_FORCE_DISABLE) |
                                   S_02800C_FORCE_HIS_ENABLE1(V_02800C_FORCE_DISABLE);
 
-   if (!info->rs.depth_clamp_enable && ps->info.ps.writes_z) {
-      /* From VK_EXT_depth_range_unrestricted spec:
-       *
-       * "The behavior described in Primitive Clipping still applies.
-       *  If depth clamping is disabled the depth values are still
-       *  clipped to 0 ≤ zc ≤ wc before the viewport transform. If
-       *  depth clamping is enabled the above equation is ignored and
-       *  the depth values are instead clamped to the VkViewport
-       *  minDepth and maxDepth values, which in the case of this
-       *  extension can be outside of the 0.0 to 1.0 range."
-       */
+   if (pipeline->depth_clamp_mode == RADV_DEPTH_CLAMP_MODE_DISABLED)
       ds_state.db_render_override |= S_02800C_DISABLE_VIEWPORT_CLAMP(1);
-   }
 
    if (pdevice->rad_info.gfx_level >= GFX11) {
       unsigned max_allowed_tiles_in_wave = 0;

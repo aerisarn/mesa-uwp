@@ -2078,6 +2078,12 @@ struct radv_graphics_pipeline_info {
    uint8_t ds_att_samples;
 };
 
+enum radv_depth_clamp_mode {
+   RADV_DEPTH_CLAMP_MODE_VIEWPORT = 0,       /* Clamp to the viewport min/max depth bounds */
+   RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE = 1,    /* Clamp between 0.0f and 1.0f */
+   RADV_DEPTH_CLAMP_MODE_DISABLED = 2,       /* Disable depth clamping */
+};
+
 struct radv_pipeline {
    struct vk_object_base base;
    enum radv_pipeline_type type;
@@ -2153,6 +2159,7 @@ struct radv_graphics_pipeline {
    bool uses_dynamic_stride;
    bool uses_conservative_overestimate;
    bool negative_one_to_one;
+   enum radv_depth_clamp_mode depth_clamp_mode;
    bool use_per_attribute_vb_descs;
    bool can_use_simple_input;
    bool uses_user_sample_locations;

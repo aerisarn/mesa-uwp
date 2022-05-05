@@ -1426,7 +1426,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 static void
 radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 {
-   bool negative_one_to_one = cmd_buffer->state.graphics_pipeline->negative_one_to_one;
+   const struct radv_graphics_pipeline *pipeline = cmd_buffer->state.graphics_pipeline;
    const struct radv_viewport_state *viewport = &cmd_buffer->state.dynamic.viewport;
    int i;
    const unsigned count = viewport->count;
@@ -1441,7 +1441,7 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
       radeon_emit(cmd_buffer->cs, fui(viewport->xform[i].translate[1]));
 
       double scale_z, translate_z;
-      if (negative_one_to_one) {
+      if (pipeline->negative_one_to_one) {
          scale_z = viewport->xform[i].scale[2] * 0.5f;
          translate_z = (viewport->xform[i].translate[2] + viewport->viewports[i].maxDepth) * 0.5f;
       } else {
@@ -1455,8 +1455,16 @@ radv_emit_viewport(struct radv_cmd_buffer *cmd_buffer)
 
    radeon_set_context_reg_seq(cmd_buffer->cs, R_0282D0_PA_SC_VPORT_ZMIN_0, count * 2);
    for (i = 0; i < count; i++) {
-      float zmin = MIN2(viewport->viewports[i].minDepth, viewport->viewports[i].maxDepth);
-      float zmax = MAX2(viewport->viewports[i].minDepth, viewport->viewports[i].maxDepth);
+      float zmin, zmax;
+
+      if (pipeline->depth_clamp_mode == RADV_DEPTH_CLAMP_MODE_ZERO_TO_ONE) {
+         zmin = 0.0f;
+         zmax = 1.0f;
+      } else {
+         zmin = MIN2(viewport->viewports[i].minDepth, viewport->viewports[i].maxDepth);
+         zmax = MAX2(viewport->viewports[i].minDepth, viewport->viewports[i].maxDepth);
+      }
+
       radeon_emit(cmd_buffer->cs, fui(zmin));
       radeon_emit(cmd_buffer->cs, fui(zmax));
    }
