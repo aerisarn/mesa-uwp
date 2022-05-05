@@ -186,6 +186,15 @@ struct radv_winsys_bo_list {
    unsigned count;
 };
 
+struct radv_winsys_submit_info {
+   enum amd_ip_type ip_type;
+   int queue_index;
+   unsigned cs_count;
+   struct radeon_cmdbuf **cs_array;
+   struct radeon_cmdbuf *initial_preamble_cs;
+   struct radeon_cmdbuf *continue_preamble_cs;
+};
+
 /* Kernel effectively allows 0-31. This sets some priorities for fixed
  * functionality buffers */
 enum {
@@ -272,10 +281,8 @@ struct radeon_winsys {
 
    void (*cs_grow)(struct radeon_cmdbuf *cs, size_t min_size);
 
-   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, enum amd_ip_type amd_ip_type, int queue_index,
-                         struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                         struct radeon_cmdbuf *initial_preamble_cs,
-                         struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,
+   VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx, uint32_t submit_count,
+                         const struct radv_winsys_submit_info *submits, uint32_t wait_count,
                          const struct vk_sync_wait *waits, uint32_t signal_count,
                          const struct vk_sync_signal *signals, bool can_patch);
 

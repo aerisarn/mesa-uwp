@@ -1341,10 +1341,8 @@ radv_amdgpu_winsys_cs_submit_internal(struct radeon_winsys_ctx *_ctx, enum amd_i
 }
 
 static VkResult
-radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum amd_ip_type ip_type,
-                             int queue_idx, struct radeon_cmdbuf **cs_array, unsigned cs_count,
-                             struct radeon_cmdbuf *initial_preamble_cs,
-                             struct radeon_cmdbuf *continue_preamble_cs, uint32_t wait_count,
+radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, uint32_t submit_count,
+                             const struct radv_winsys_submit_info *submits, uint32_t wait_count,
                              const struct vk_sync_wait *waits, uint32_t signal_count,
                              const struct vk_sync_signal *signals, bool can_patch)
 {
@@ -1401,9 +1399,17 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, enum amd_ip_type ip
    sem_info.signal.syncobj_count = signal_idx - sem_info.signal.timeline_syncobj_count;
    sem_info.cs_emit_signal = true;
 
-   result = radv_amdgpu_winsys_cs_submit_internal(_ctx, ip_type, queue_idx, cs_array, cs_count,
-                                                  initial_preamble_cs, continue_preamble_cs,
-                                                  &sem_info, can_patch);
+   /* Should submit to at least 1 queue. */
+   assert(submit_count);
+
+   if (submit_count == 1) {
+      result = radv_amdgpu_winsys_cs_submit_internal(
+         _ctx, submits[0].ip_type, submits[0].queue_index, submits[0].cs_array,
+         submits[0].cs_count, submits[0].initial_preamble_cs, submits[0].continue_preamble_cs,
+         &sem_info, can_patch);
+   } else {
+      unreachable("submitting to multiple queues at the same time is not supported yet.");
+   }
 
 out:
    STACK_ARRAY_FINISH(wait_points);

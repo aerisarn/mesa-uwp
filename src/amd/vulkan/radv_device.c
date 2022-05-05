@@ -4511,10 +4511,12 @@ static VkResult
 radv_queue_submit_empty(struct radv_queue *queue, struct vk_queue_submit *submission)
 {
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-   enum amd_ip_type ring = radv_queue_ring(queue);
+   struct radv_winsys_submit_info submit = {
+      .ip_type = radv_queue_ring(queue),
+      .queue_index = queue->vk.index_in_family,
+   };
 
-   return queue->device->ws->cs_submit(ctx, ring, queue->vk.index_in_family, NULL, 0, NULL, NULL,
-                                       submission->wait_count, submission->waits,
+   return queue->device->ws->cs_submit(ctx, 1, &submit, submission->wait_count, submission->waits,
                                        submission->signal_count, submission->signals, false);
 }
 
@@ -4522,7 +4524,6 @@ static VkResult
 radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submission)
 {
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
-   enum amd_ip_type ring = radv_queue_ring(queue);
    uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
    bool can_patch = true;
    uint32_t advance;
@@ -4552,21 +4553,31 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       cmd_buffer->status = RADV_CMD_BUFFER_STATUS_PENDING;
    }
 
+   /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
+    * before starting the next cmdbuffer, so we need to do it here. */
+   bool need_wait = submission->wait_count > 0;
+
+   struct radv_winsys_submit_info submit = {
+      .ip_type = radv_queue_ring(queue),
+      .queue_index = queue->vk.index_in_family,
+      .cs_array = cs_array,
+      .cs_count = 0,
+      .initial_preamble_cs =
+         need_wait ? queue->initial_full_flush_preamble_cs : queue->initial_preamble_cs,
+      .continue_preamble_cs = queue->continue_preamble_cs,
+   };
+
    for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
-      /* For fences on the same queue/vm amdgpu doesn't wait till all processing is finished
-       * before starting the next cmdbuffer, so we need to do it here. */
-      bool need_wait = !j && submission->wait_count > 0;
-      struct radeon_cmdbuf *initial_preamble =
-         need_wait ? queue->initial_full_flush_preamble_cs : queue->initial_preamble_cs;
       advance = MIN2(max_cs_submission, submission->command_buffer_count - j);
       bool last_submit = j + advance == submission->command_buffer_count;
 
       if (queue->device->trace_bo)
          *queue->device->trace_id_ptr = 0;
 
+      submit.cs_count = advance;
+
       result = queue->device->ws->cs_submit(
-         ctx, ring, queue->vk.index_in_family, cs_array + j, advance, initial_preamble,
-         queue->continue_preamble_cs, j == 0 ? submission->wait_count : 0, submission->waits,
+         ctx, 1, &submit, j == 0 ? submission->wait_count : 0, submission->waits,
          last_submit ? submission->signal_count : 0, submission->signals, can_patch);
 
       if (result != VK_SUCCESS)
@@ -4579,6 +4590,9 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       if (queue->device->tma_bo) {
          radv_check_trap_handler(queue);
       }
+
+      submit.cs_array += advance;
+      submit.initial_preamble_cs = queue->initial_preamble_cs;
    }
 
 fail:
@@ -4626,10 +4640,14 @@ bool
 radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
    struct radeon_winsys_ctx *ctx = queue->hw_ctx;
+   struct radv_winsys_submit_info submit = {
+      .ip_type = radv_queue_ring(queue),
+      .queue_index = queue->vk.index_in_family,
+      .cs_array = &cs,
+      .cs_count = 1,
+   };
 
-   VkResult result =
-      queue->device->ws->cs_submit(ctx, radv_queue_ring(queue), queue->vk.index_in_family,
-                                   &cs, 1, NULL, NULL, 0, NULL, 0, NULL, false);
+   VkResult result = queue->device->ws->cs_submit(ctx, 1, &submit, 0, NULL, 0, NULL, false);
    if (result != VK_SUCCESS)
       return false;
 
