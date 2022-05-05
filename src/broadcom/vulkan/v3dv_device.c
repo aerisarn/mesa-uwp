@@ -162,6 +162,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .EXT_pipeline_creation_feedback      = true,
       .EXT_private_data                    = true,
       .EXT_provoking_vertex                = true,
+      .EXT_separate_stencil_usage          = true,
       .EXT_vertex_attribute_divisor        = true,
 #ifdef ANDROID
       .ANDROID_native_buffer               = true,

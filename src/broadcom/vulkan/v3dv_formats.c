@@ -347,7 +347,13 @@ get_image_format_properties(
    if (info->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)
       goto unsupported;
 
-   if (info->usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
+   const VkImageStencilUsageCreateInfo *stencil_usage_info =
+      vk_find_struct_const(info->pNext, IMAGE_STENCIL_USAGE_CREATE_INFO);
+
+   VkImageUsageFlags usage =
+      info->usage | (stencil_usage_info ? stencil_usage_info->stencilUsage : 0);
+
+   if (usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
          goto unsupported;
       }
@@ -363,14 +369,14 @@ get_image_format_properties(
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
+   if (usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
-                      VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
+   if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+                VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
          goto unsupported;
       }
@@ -385,19 +391,19 @@ get_image_format_properties(
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+   if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+   if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
       if (!(format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
          goto unsupported;
       }
    }
 
-   if (info->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+   if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
       if (!(format_feature_flags &
             VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
          goto unsupported;
@@ -534,6 +540,9 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
       switch (s->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
          external_info = (const void *) s;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
+         /* Do nothing, get_image_format_properties() below will handle it */;
          break;
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT:
          drm_format_mod_info = (const void *) s;
