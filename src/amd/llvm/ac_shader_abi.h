@@ -128,6 +128,9 @@ struct ac_shader_abi {
    /* Whether to detect divergent textures/samplers index and apply
     * waterfall to avoid incorrect rendering. */
    bool use_waterfall_for_divergent_tex_samplers;
+
+   /* Number of all interpolated inputs */
+   unsigned num_interp;
 };
 
 #endif /* AC_SHADER_ABI_H */
