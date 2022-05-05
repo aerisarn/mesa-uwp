@@ -1347,8 +1347,6 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, uint32_t submit_cou
                              const struct vk_sync_signal *signals, bool can_patch)
 {
    struct radv_amdgpu_winsys *ws = radv_amdgpu_ctx(_ctx)->ws;
-   struct radv_winsys_sem_info sem_info;
-   memset(&sem_info, 0, sizeof(sem_info));
    VkResult result;
    unsigned wait_idx = 0, signal_idx = 0;
 
@@ -1362,18 +1360,13 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, uint32_t submit_cou
       goto out;
    }
 
-   sem_info.wait.points = wait_points;
-   sem_info.wait.syncobj = wait_syncobj;
-   sem_info.signal.points = signal_points;
-   sem_info.signal.syncobj = signal_syncobj;
-
    for (uint32_t i = 0; i < wait_count; ++i) {
       if (waits[i].sync->type == &vk_sync_dummy_type)
          continue;
 
       assert(waits[i].sync->type == &ws->syncobj_sync_type);
-      sem_info.wait.syncobj[wait_idx] = ((struct vk_drm_syncobj *)waits[i].sync)->syncobj;
-      sem_info.wait.points[wait_idx] = waits[i].wait_value;
+      wait_syncobj[wait_idx] = ((struct vk_drm_syncobj *)waits[i].sync)->syncobj;
+      wait_points[wait_idx] = waits[i].wait_value;
       ++wait_idx;
    }
 
@@ -1382,22 +1375,37 @@ radv_amdgpu_winsys_cs_submit(struct radeon_winsys_ctx *_ctx, uint32_t submit_cou
          continue;
 
       assert(signals[i].sync->type == &ws->syncobj_sync_type);
-      sem_info.signal.syncobj[signal_idx] = ((struct vk_drm_syncobj *)signals[i].sync)->syncobj;
-      sem_info.signal.points[signal_idx] = signals[i].signal_value;
+      signal_syncobj[signal_idx] = ((struct vk_drm_syncobj *)signals[i].sync)->syncobj;
+      signal_points[signal_idx] = signals[i].signal_value;
       ++signal_idx;
    }
 
    assert(signal_idx <= signal_count);
    assert(wait_idx <= wait_count);
-   sem_info.wait.timeline_syncobj_count =
-      (ws->syncobj_sync_type.features & VK_SYNC_FEATURE_TIMELINE) ? wait_idx : 0;
-   sem_info.wait.syncobj_count = wait_idx - sem_info.wait.timeline_syncobj_count;
-   sem_info.cs_emit_wait = true;
 
-   sem_info.signal.timeline_syncobj_count =
+   const uint32_t wait_timeline_syncobj_count =
+      (ws->syncobj_sync_type.features & VK_SYNC_FEATURE_TIMELINE) ? wait_idx : 0;
+   const uint32_t signal_timeline_syncobj_count =
       (ws->syncobj_sync_type.features & VK_SYNC_FEATURE_TIMELINE) ? signal_idx : 0;
-   sem_info.signal.syncobj_count = signal_idx - sem_info.signal.timeline_syncobj_count;
-   sem_info.cs_emit_signal = true;
+
+   struct radv_winsys_sem_info sem_info = {
+      .wait =
+         {
+            .points = wait_points,
+            .syncobj = wait_syncobj,
+            .timeline_syncobj_count = wait_timeline_syncobj_count,
+            .syncobj_count = wait_idx - wait_timeline_syncobj_count,
+         },
+      .signal =
+         {
+            .points = signal_points,
+            .syncobj = signal_syncobj,
+            .timeline_syncobj_count = signal_timeline_syncobj_count,
+            .syncobj_count = signal_idx - signal_timeline_syncobj_count,
+         },
+      .cs_emit_wait = true,
+      .cs_emit_signal = true,
+   };
 
    /* Should submit to at least 1 queue. */
    assert(submit_count);
