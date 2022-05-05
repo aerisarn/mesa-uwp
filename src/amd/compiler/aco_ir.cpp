@@ -30,6 +30,8 @@
 
 #include "c11/threads.h"
 
+#include "vulkan/radv_aco_shader_info.h"
+
 namespace aco {
 
 uint64_t debug_flags = 0;
@@ -71,7 +73,7 @@ init_program(Program* program, Stage stage, const struct radv_shader_info* info,
 {
    program->stage = stage;
    program->config = config;
-   program->info = *info;
+   radv_aco_convert_shader_info(&program->info, info);
    program->chip_class = chip_class;
    if (family == CHIP_UNKNOWN) {
       switch (chip_class) {

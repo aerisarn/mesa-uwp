@@ -28,6 +28,7 @@
 #include "aco_opcodes.h"
 #include "aco_util.h"
 
+#include "aco_shader_info.h"
 #include "vulkan/radv_shader.h"
 
 #include "nir.h"
@@ -2053,7 +2054,7 @@ public:
    std::vector<RegClass> temp_rc = {s1};
    RegisterDemand max_reg_demand = RegisterDemand();
    ac_shader_config* config;
-   struct radv_shader_info info;
+   struct aco_shader_info info;
    enum chip_class chip_class;
    enum radeon_family family;
    DeviceInfo dev;
