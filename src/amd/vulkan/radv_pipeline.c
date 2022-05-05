@@ -2065,6 +2065,33 @@ radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
       ds_state.db_render_override |= S_02800C_DISABLE_VIEWPORT_CLAMP(1);
    }
 
+   if (pipeline->device->physical_device->rad_info.gfx_level >= GFX11) {
+      unsigned max_allowed_tiles_in_wave = 0;
+      unsigned num_samples = MAX2(radv_pipeline_color_samples(pCreateInfo),
+                                  radv_pipeline_depth_samples(pCreateInfo));
+
+      if (pipeline->device->physical_device->rad_info.has_dedicated_vram) {
+         if (num_samples == 8)
+            max_allowed_tiles_in_wave = 7;
+         else if (num_samples == 4)
+            max_allowed_tiles_in_wave = 14;
+      } else {
+         if (num_samples == 8)
+            max_allowed_tiles_in_wave = 8;
+      }
+
+      /* TODO: We may want to disable this workaround for future chips. */
+      if (num_samples >= 4) {
+         if (max_allowed_tiles_in_wave)
+            max_allowed_tiles_in_wave--;
+         else
+            max_allowed_tiles_in_wave = 15;
+      }
+
+      ds_state.db_render_control |= S_028000_OREO_MODE(V_028000_OMODE_O_THEN_B) |
+                                    S_028000_MAX_ALLOWED_TILES_IN_WAVE(max_allowed_tiles_in_wave);
+   }
+
    pipeline->graphics.db_depth_control = db_depth_control;
 
    return ds_state;
