@@ -56,8 +56,8 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
       return false;
    }
 
-   ws->info.num_rings[AMD_IP_SDMA] = MIN2(ws->info.num_rings[AMD_IP_SDMA], MAX_RINGS_PER_TYPE);
-   ws->info.num_rings[AMD_IP_COMPUTE] = MIN2(ws->info.num_rings[AMD_IP_COMPUTE], MAX_RINGS_PER_TYPE);
+   ws->info.ip[AMD_IP_SDMA].num_queues = MIN2(ws->info.ip[AMD_IP_SDMA].num_queues, MAX_RINGS_PER_TYPE);
+   ws->info.ip[AMD_IP_COMPUTE].num_queues = MIN2(ws->info.ip[AMD_IP_COMPUTE].num_queues, MAX_RINGS_PER_TYPE);
 
    ws->use_ib_bos = ws->info.chip_class >= GFX7;
    return true;

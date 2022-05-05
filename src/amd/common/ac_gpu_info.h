@@ -42,6 +42,10 @@ extern "C" {
 
 struct amdgpu_gpu_info;
 
+struct amd_ip_info {
+   uint8_t num_queues;
+};
+
 struct radeon_info {
    /* PCI info: domain:bus:dev:func */
    uint32_t pci_domain;
@@ -63,8 +67,8 @@ struct radeon_info {
    uint32_t clock_crystal_freq;
 
    /* Features. */
+   struct amd_ip_info ip[AMD_NUM_IP_TYPES];
    bool has_graphics; /* false if the chip is compute-only */
-   uint32_t num_rings[AMD_NUM_IP_TYPES];
    uint32_t ib_pad_dw_mask[AMD_NUM_IP_TYPES];
    bool has_clear_state;
    bool has_distributed_tess;

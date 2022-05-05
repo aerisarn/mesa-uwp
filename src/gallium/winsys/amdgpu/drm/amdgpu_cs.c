@@ -1195,7 +1195,7 @@ static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
     * we need the parallelism between IBs for good performance.
     */
    if ((acs->ip_type == AMD_IP_GFX ||
-        acs->ws->info.num_rings[acs->ip_type] == 1) &&
+        acs->ws->info.ip[acs->ip_type].num_queues == 1) &&
        !amdgpu_fence_is_syncobj(fence) &&
        fence->ctx == acs->ctx &&
        fence->fence.ip_type == cs->ib[IB_MAIN].ip_type)

@@ -983,15 +983,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
    assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
 
-   info->num_rings[AMD_IP_GFX] = util_bitcount(gfx.available_rings);
-   info->num_rings[AMD_IP_COMPUTE] = util_bitcount(compute.available_rings);
-   info->num_rings[AMD_IP_SDMA] = util_bitcount(dma.available_rings);
-   info->num_rings[AMD_IP_UVD] = util_bitcount(uvd.available_rings);
-   info->num_rings[AMD_IP_VCE] = util_bitcount(vce.available_rings);
-   info->num_rings[AMD_IP_UVD_ENC] = util_bitcount(uvd_enc.available_rings);
-   info->num_rings[AMD_IP_VCN_DEC] = util_bitcount(vcn_dec.available_rings);
-   info->num_rings[AMD_IP_VCN_ENC] = util_bitcount(vcn_enc.available_rings);
-   info->num_rings[AMD_IP_VCN_JPEG] = util_bitcount(vcn_jpeg.available_rings);
+   info->ip[AMD_IP_GFX].num_queues = util_bitcount(gfx.available_rings);
+   info->ip[AMD_IP_COMPUTE].num_queues = util_bitcount(compute.available_rings);
+   info->ip[AMD_IP_SDMA].num_queues = util_bitcount(dma.available_rings);
+   info->ip[AMD_IP_UVD].num_queues = util_bitcount(uvd.available_rings);
+   info->ip[AMD_IP_VCE].num_queues = util_bitcount(vce.available_rings);
+   info->ip[AMD_IP_UVD_ENC].num_queues = util_bitcount(uvd_enc.available_rings);
+   info->ip[AMD_IP_VCN_DEC].num_queues = util_bitcount(vcn_dec.available_rings);
+   info->ip[AMD_IP_VCN_ENC].num_queues = util_bitcount(vcn_enc.available_rings);
+   info->ip[AMD_IP_VCN_JPEG].num_queues = util_bitcount(vcn_jpeg.available_rings);
 
    /* This is "align_mask" copied from the kernel, maximums of all IP versions. */
    info->ib_pad_dw_mask[AMD_IP_GFX] = 0xff;
@@ -1379,16 +1379,16 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    clock_crystal_freq = %i KHz\n", info->clock_crystal_freq);
 
    fprintf(f, "Features:\n");
+   fprintf(f, "    ip[AMD_IP_GFX].num_queues = %i\n", info->ip[AMD_IP_GFX].num_queues);
+   fprintf(f, "    ip[AMD_IP_SDMA].num_queues = %i\n", info->ip[AMD_IP_SDMA].num_queues);
+   fprintf(f, "    ip[AMD_IP_COMPUTE].num_queues = %u\n", info->ip[AMD_IP_COMPUTE].num_queues);
+   fprintf(f, "    ip[AMD_IP_UVD].num_queues = %i\n", info->ip[AMD_IP_UVD].num_queues);
+   fprintf(f, "    ip[AMD_IP_VCE].num_queues = %i\n", info->ip[AMD_IP_VCE].num_queues);
+   fprintf(f, "    ip[AMD_IP_UVD_ENC].num_queues = %i\n", info->ip[AMD_IP_UVD_ENC].num_queues);
+   fprintf(f, "    ip[AMD_IP_VCN_DEC].num_queues = %i\n", info->ip[AMD_IP_VCN_DEC].num_queues);
+   fprintf(f, "    ip[AMD_IP_VCN_ENC].num_queues = %i\n", info->ip[AMD_IP_VCN_ENC].num_queues);
+   fprintf(f, "    ip[AMD_IP_VCN_JPEG].num_queues = %i\n", info->ip[AMD_IP_VCN_JPEG].num_queues);
    fprintf(f, "    has_graphics = %i\n", info->has_graphics);
-   fprintf(f, "    num_rings[AMD_IP_GFX] = %i\n", info->num_rings[AMD_IP_GFX]);
-   fprintf(f, "    num_rings[AMD_IP_SDMA] = %i\n", info->num_rings[AMD_IP_SDMA]);
-   fprintf(f, "    num_rings[AMD_IP_COMPUTE] = %u\n", info->num_rings[AMD_IP_COMPUTE]);
-   fprintf(f, "    num_rings[AMD_IP_UVD] = %i\n", info->num_rings[AMD_IP_UVD]);
-   fprintf(f, "    num_rings[AMD_IP_VCE] = %i\n", info->num_rings[AMD_IP_VCE]);
-   fprintf(f, "    num_rings[AMD_IP_UVD_ENC] = %i\n", info->num_rings[AMD_IP_UVD_ENC]);
-   fprintf(f, "    num_rings[AMD_IP_VCN_DEC] = %i\n", info->num_rings[AMD_IP_VCN_DEC]);
-   fprintf(f, "    num_rings[AMD_IP_VCN_ENC] = %i\n", info->num_rings[AMD_IP_VCN_ENC]);
-   fprintf(f, "    num_rings[AMD_IP_VCN_JPEG] = %i\n", info->num_rings[AMD_IP_VCN_JPEG]);
    fprintf(f, "    has_clear_state = %u\n", info->has_clear_state);
    fprintf(f, "    has_distributed_tess = %u\n", info->has_distributed_tess);
    fprintf(f, "    has_dcc_constant_encode = %u\n", info->has_dcc_constant_encode);
