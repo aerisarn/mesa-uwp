@@ -42,6 +42,7 @@
 #include "pvr_bo.h"
 #include "pvr_csb.h"
 #include "pvr_csb_enum_helpers.h"
+#include "pvr_debug.h"
 #include "pvr_device_info.h"
 #include "pvr_job_render.h"
 #include "pvr_limits.h"
@@ -161,6 +162,8 @@ VkResult pvr_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       vk_free(pAllocator, instance);
       return vk_error(NULL, result);
    }
+
+   pvr_process_debug_variable();
 
    instance->physical_devices_count = -1;
 
