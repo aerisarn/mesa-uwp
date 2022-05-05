@@ -477,6 +477,7 @@ panvk_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    pFeatures->features = (VkPhysicalDeviceFeatures) {
       .fullDrawIndexUint32 = true,
       .independentBlend = true,
+      .logicOp = true,
       .wideLines = true,
       .largePoints = true,
       .textureCompressionETC2 = true,
