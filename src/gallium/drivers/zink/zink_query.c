@@ -855,7 +855,8 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       }
    } else if (q->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) {
       begin_vk_query_indexed(ctx, start->vkq[0], q->index, flags);
-   } else
+   }
+   if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && q->vkqtype != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT)
       VKCTX(CmdBeginQuery)(batch->state->cmdbuf, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id, flags);
    if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && q->index == PIPE_STAT_QUERY_IA_VERTICES)  {
       assert(!ctx->vertices_query);
@@ -932,7 +933,9 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
       }
    } else if (q->vkqtype == VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT) {
       end_vk_query_indexed(ctx, start->vkq[0], q->index);
-   } else if (!is_time_query(q))
+   }
+   if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT &&
+       q->vkqtype != VK_QUERY_TYPE_PRIMITIVES_GENERATED_EXT && !is_time_query(q))
       VKCTX(CmdEndQuery)(batch->state->cmdbuf, start->vkq[0]->pool->query_pool, start->vkq[0]->query_id);
 
    if (q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
