@@ -3825,6 +3825,11 @@ radv_emit_tess_factor_ring(struct radv_queue *queue, struct radeon_cmdbuf *cs,
    radv_cs_add_buffer(queue->device->ws, cs, tess_rings_bo);
 
    if (queue->device->physical_device->rad_info.gfx_level >= GFX7) {
+      if (queue->device->physical_device->rad_info.gfx_level >= GFX11) {
+         /* TF_RING_SIZE is per SE on GFX11. */
+         tf_ring_size /= queue->device->physical_device->rad_info.max_se;
+      }
+
       radeon_set_uconfig_reg(cs, R_030938_VGT_TF_RING_SIZE, S_030938_SIZE(tf_ring_size));
       radeon_set_uconfig_reg(cs, R_030940_VGT_TF_MEMORY_BASE, tf_va >> 8);
 
