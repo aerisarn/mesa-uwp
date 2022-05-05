@@ -6432,10 +6432,16 @@ gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
       mode = ps->info.ps.can_discard ? V_028064_VRS_COMB_MODE_MIN : V_028064_VRS_COMB_MODE_PASSTHRU;
    }
 
-   radeon_set_context_reg(ctx_cs, R_028064_DB_VRS_OVERRIDE_CNTL,
-                          S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
-                             S_028064_VRS_OVERRIDE_RATE_X(rate_x) |
-                             S_028064_VRS_OVERRIDE_RATE_Y(rate_y));
+   if (pipeline->device->physical_device->rad_info.gfx_level >= GFX11) {
+      radeon_set_context_reg(ctx_cs, R_0283D0_PA_SC_VRS_OVERRIDE_CNTL,
+                             S_0283D0_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+                                S_0283D0_VRS_RATE((rate_x << 2) | rate_y));
+   } else {
+      radeon_set_context_reg(ctx_cs, R_028064_DB_VRS_OVERRIDE_CNTL,
+                             S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+                                S_028064_VRS_OVERRIDE_RATE_X(rate_x) |
+                                S_028064_VRS_OVERRIDE_RATE_Y(rate_y));
+   }
 }
 
 static void
