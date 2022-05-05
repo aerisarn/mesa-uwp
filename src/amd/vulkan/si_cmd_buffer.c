@@ -1464,9 +1464,9 @@ si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer, bool draw_visi
 static inline unsigned
 cp_dma_max_byte_count(struct radv_cmd_buffer *cmd_buffer)
 {
-   unsigned max = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9
-                     ? S_415_BYTE_COUNT_GFX9(~0u)
-                     : S_415_BYTE_COUNT_GFX6(~0u);
+   enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
+   unsigned max = gfx_level >= GFX11 ? 32767 :
+                  gfx_level >= GFX9 ? S_415_BYTE_COUNT_GFX9(~0u) : S_415_BYTE_COUNT_GFX6(~0u);
 
    /* make it aligned for optimal performance */
    return max & ~(SI_CPDMA_ALIGNMENT - 1);
@@ -1557,15 +1557,19 @@ si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer, uint64_t dst_va, uint64_t src
 void
 si_cp_dma_prefetch(struct radv_cmd_buffer *cmd_buffer, uint64_t va, unsigned size)
 {
-   uint64_t aligned_va = va & ~(SI_CPDMA_ALIGNMENT - 1);
-   uint64_t aligned_size =
-      ((va + size + SI_CPDMA_ALIGNMENT - 1) & ~(SI_CPDMA_ALIGNMENT - 1)) - aligned_va;
+   uint64_t aligned_va, aligned_size;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    uint32_t header = 0, command = 0;
+
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11)
+      size = MIN2(size, 32768 - SI_CPDMA_ALIGNMENT);
 
    assert(size <= cp_dma_max_byte_count(cmd_buffer));
 
    radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 9);
+
+   aligned_va = va & ~(SI_CPDMA_ALIGNMENT - 1);
+   aligned_size = ((va + size + SI_CPDMA_ALIGNMENT - 1) & ~(SI_CPDMA_ALIGNMENT - 1)) - aligned_va;
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX9) {
       command |= S_415_BYTE_COUNT_GFX9(aligned_size) |
