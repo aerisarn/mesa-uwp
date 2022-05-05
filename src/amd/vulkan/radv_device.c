@@ -4126,8 +4126,9 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
          size = 112; /* 2 dword + 2 padding + 4 dword * 6 */
          if (add_sample_positions)
             size += 128; /* 64+32+16+8 = 120 bytes */
-      } else if (scratch_bo)
+      } else if (scratch_bo) {
          size = 8; /* 2 dword */
+      }
 
       result = queue->device->ws->buffer_create(
          queue->device->ws, size, 4096, RADEON_DOMAIN_VRAM,
@@ -4556,9 +4557,8 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
       return VK_SUCCESS;
 
    if (!submission->command_buffer_count) {
-      result = queue->device->ws->cs_submit(ctx, ring,
-                                            queue->vk.index_in_family, NULL, 0, NULL, NULL,
-                                            submission->wait_count, submission->waits,
+      result = queue->device->ws->cs_submit(ctx, ring, queue->vk.index_in_family, NULL, 0, NULL,
+                                            NULL, submission->wait_count, submission->waits,
                                             submission->signal_count, submission->signals, false);
       if (result != VK_SUCCESS)
          goto fail;
@@ -4594,10 +4594,9 @@ radv_queue_submit(struct vk_queue *vqueue, struct vk_queue_submit *submission)
             *queue->device->trace_id_ptr = 0;
 
          result = queue->device->ws->cs_submit(
-            ctx, ring, queue->vk.index_in_family, cs_array + j, advance,
-            initial_preamble, continue_preamble_cs, j == 0 ? submission->wait_count : 0,
-            submission->waits, last_submit ? submission->signal_count : 0, submission->signals,
-            can_patch);
+            ctx, ring, queue->vk.index_in_family, cs_array + j, advance, initial_preamble,
+            continue_preamble_cs, j == 0 ? submission->wait_count : 0, submission->waits,
+            last_submit ? submission->signal_count : 0, submission->signals, can_patch);
          if (result != VK_SUCCESS) {
             free(cs_array);
             if (queue->device->trace_bo)
@@ -6324,9 +6323,9 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t *pSupportedVersion)
     *
     *    - Loader interface v4 differs from v3 in:
     *        - The ICD must implement vk_icdGetPhysicalDeviceProcAddr().
-    * 
+    *
     *    - Loader interface v5 differs from v4 in:
-    *        - The ICD must support Vulkan API version 1.1 and must not return 
+    *        - The ICD must support Vulkan API version 1.1 and must not return
     *          VK_ERROR_INCOMPATIBLE_DRIVER from vkCreateInstance() unless a
     *          Vulkan Loader with interface v4 or smaller is being used and the
     *          application provides an API version that is greater than 1.0.
