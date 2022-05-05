@@ -860,12 +860,6 @@ const __DRI2flushControlExtension dri2FlushControlExtension = {
    .base = { __DRI2_FLUSH_CONTROL, 1 }
 };
 
-void
-dri2InvalidateDrawable(__DRIdrawable *drawable)
-{
-    drawable->dri2.stamp++;
-}
-
 /*
  * Note: the first match is returned, which is important for formats like
  * __DRI_IMAGE_FORMAT_R8 which maps to both MESA_FORMAT_{R,L}_UNORM8

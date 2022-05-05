@@ -311,9 +311,6 @@ driGLFormatToSizedInternalGLFormat(mesa_format format);
 extern mesa_format
 driImageFormatToGLFormat(uint32_t image_format);
 
-extern void
-dri2InvalidateDrawable(__DRIdrawable *drawable);
-
 extern const __DRIimageDriverExtension driImageDriverExtension;
 
 #endif /* _DRI_UTIL_H_ */

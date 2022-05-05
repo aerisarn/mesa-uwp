@@ -80,7 +80,7 @@ dri2_invalidate_drawable(__DRIdrawable *dPriv)
 {
    struct dri_drawable *drawable = dri_drawable(dPriv);
 
-   dri2InvalidateDrawable(dPriv);
+   dPriv->dri2.stamp++;
    drawable->dPriv->lastStamp = drawable->dPriv->dri2.stamp;
    drawable->texture_mask = 0;
 
