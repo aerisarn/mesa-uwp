@@ -369,43 +369,54 @@ extern "C" fn clIcdGetPlatformIDsKHR(
 
 // helper macros to make it less painful
 
+#[allow(unused_macros)]
+macro_rules! function {
+    () => {{
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            std::any::type_name::<T>()
+        }
+        let name = type_name_of(f);
+        &name[..name.len() - 3]
+    }};
+}
+
 macro_rules! match_err {
-    ($exp: expr) => {
-        match $exp {
+    ($exp: expr) => {{
+        //println!("{} called", function!());
+        let ret = match $exp {
             Ok(_) => CL_SUCCESS as cl_int,
             Err(e) => e,
-        }
-    };
+        };
+        //println!("{} returned {}", function!(), ret);
+        ret
+    }};
 }
 
 macro_rules! match_obj {
-    ($exp: expr, $err: ident) => {
-        match $exp {
-            Ok(o) => {
-                $err.write_checked(CL_SUCCESS as cl_int);
-                o
-            }
-            Err(e) => {
-                $err.write_checked(e);
-                ptr::null_mut()
-            }
-        }
-    };
+    ($exp: expr, $err: ident) => {{
+        //println!("{} called", function!());
+        let (ptr, err) = match $exp {
+            Ok(o) => (o, CL_SUCCESS as cl_int),
+            Err(e) => (ptr::null_mut(), e),
+        };
+        //println!("{} returned {:p} err {}", function!(), ptr, err);
+        $err.write_checked(err);
+        ptr
+    }};
 }
 
 macro_rules! match_obj_expl {
-    ($exp: expr, $err: ident) => {
-        match $exp {
-            Ok((o, c)) => {
-                $err.write_checked(c as cl_int);
-                o
-            }
-            Err(e) => {
-                $err.write_checked(e);
-                ptr::null_mut()
-            }
-        }
-    };
+    ($exp: expr, $err: ident) => {{
+        //println!("{} called", function!());
+        let (ptr, err) = match $exp {
+            Ok((o, c)) => (o, c),
+            Err(e) => (ptr::null_mut(), e),
+        };
+        //println!("{} returned {:p} err {}", function!(), ptr, err);
+        $err.write_checked(err);
+        ptr
+    }};
 }
 
 // extern "C" function stubs in ICD and extension order
