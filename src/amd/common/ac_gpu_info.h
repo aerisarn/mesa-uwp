@@ -43,6 +43,8 @@ extern "C" {
 struct amdgpu_gpu_info;
 
 struct amd_ip_info {
+   uint8_t ver_major;
+   uint8_t ver_minor;
    uint8_t num_queues;
 };
 

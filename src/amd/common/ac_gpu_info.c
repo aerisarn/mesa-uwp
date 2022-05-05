@@ -542,6 +542,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       if (r || !ip_info.available_rings)
          continue;
 
+      info->ip[ip_type].ver_major = ip_info.hw_ip_version_major;
+      info->ip[ip_type].ver_minor = ip_info.hw_ip_version_minor;
       info->ip[ip_type].num_queues = util_bitcount(ip_info.available_rings);
       info->ib_alignment = MAX3(info->ib_alignment, ip_info.ib_start_alignment,
                                 ip_info.ib_size_alignment);
@@ -1296,15 +1298,26 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    clock_crystal_freq = %i KHz\n", info->clock_crystal_freq);
 
    fprintf(f, "Features:\n");
-   fprintf(f, "    ip[AMD_IP_GFX].num_queues = %i\n", info->ip[AMD_IP_GFX].num_queues);
-   fprintf(f, "    ip[AMD_IP_SDMA].num_queues = %i\n", info->ip[AMD_IP_SDMA].num_queues);
-   fprintf(f, "    ip[AMD_IP_COMPUTE].num_queues = %u\n", info->ip[AMD_IP_COMPUTE].num_queues);
-   fprintf(f, "    ip[AMD_IP_UVD].num_queues = %i\n", info->ip[AMD_IP_UVD].num_queues);
-   fprintf(f, "    ip[AMD_IP_VCE].num_queues = %i\n", info->ip[AMD_IP_VCE].num_queues);
-   fprintf(f, "    ip[AMD_IP_UVD_ENC].num_queues = %i\n", info->ip[AMD_IP_UVD_ENC].num_queues);
-   fprintf(f, "    ip[AMD_IP_VCN_DEC].num_queues = %i\n", info->ip[AMD_IP_VCN_DEC].num_queues);
-   fprintf(f, "    ip[AMD_IP_VCN_ENC].num_queues = %i\n", info->ip[AMD_IP_VCN_ENC].num_queues);
-   fprintf(f, "    ip[AMD_IP_VCN_JPEG].num_queues = %i\n", info->ip[AMD_IP_VCN_JPEG].num_queues);
+
+   static const char *ip_string[] = {
+      [AMD_IP_GFX] = "GFX",
+      [AMD_IP_COMPUTE] = "COMP",
+      [AMD_IP_SDMA] = "SDMA",
+      [AMD_IP_UVD] = "UVD",
+      [AMD_IP_VCE] = "VCE",
+      [AMD_IP_UVD_ENC] = "UVD_ENC",
+      [AMD_IP_VCN_DEC] = "VCN_DEC",
+      [AMD_IP_VCN_ENC] = "VCN_ENC",
+      [AMD_IP_VCN_JPEG] = "VCN_JPG",
+   };
+
+   for (unsigned i = 0; i < AMD_NUM_IP_TYPES; i++) {
+      if (info->ip[i].num_queues) {
+         fprintf(f, "    IP %-4s %2u.%u \tqueues:%u\n", ip_string[i],
+                 info->ip[i].ver_major, info->ip[i].ver_minor, info->ip[i].num_queues);
+      }
+   }
+
    fprintf(f, "    has_graphics = %i\n", info->has_graphics);
    fprintf(f, "    has_clear_state = %u\n", info->has_clear_state);
    fprintf(f, "    has_distributed_tess = %u\n", info->has_distributed_tess);
