@@ -48,6 +48,8 @@ case $CI_JOB_NAME in
         if test -f /usr/bin/time; then
             MESON_TEST_ARGS+=--wrapper=$PWD/.gitlab-ci/meson/time.sh
         fi
+        Xvfb :0 -screen 0 1024x768x16 &
+        export DISPLAY=:0.0
         ;;
     *)
         if test -f /usr/bin/time -a -f /usr/bin/strace; then
