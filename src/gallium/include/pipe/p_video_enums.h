@@ -91,8 +91,46 @@ enum pipe_video_cap
    PIPE_VIDEO_CAP_STACKED_FRAMES = 9,
    PIPE_VIDEO_CAP_MAX_MACROBLOCKS = 10,
    PIPE_VIDEO_CAP_MAX_TEMPORAL_LAYERS = 11,
-   PIPE_VIDEO_CAP_EFC_SUPPORTED = 12
+   PIPE_VIDEO_CAP_EFC_SUPPORTED = 12,
+   PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME = 13,
+   PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE = 14,
+   PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME = 15,
 };
+
+/* To be used with cap PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE*/
+/**
+ * pipe_video_cap_slice_structure
+ *
+ * This attribute determines slice structures supported by the
+ * driver for encoding. This attribute is a hint to the user so
+ * that he can choose a suitable surface size and how to arrange
+ * the encoding process of multiple slices per frame.
+ *
+ * More specifically, for H.264 encoding, this attribute
+ * determines the range of accepted values to
+ * h264_slice_descriptor::macroblock_address and
+ * h264_slice_descriptor::num_macroblocks.
+ */
+enum pipe_video_cap_slice_structure
+{
+   /* Driver does not supports multiple slice per frame.*/
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_NONE = 0x00000000,
+   /* Driver supports a power-of-two number of rows per slice.*/
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_POWER_OF_TWO_ROWS = 0x00000001,
+   /* Driver supports an arbitrary number of macroblocks per slice.*/
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_ARBITRARY_MACROBLOCKS = 0x00000002,
+   /* Driver support 1 row per slice*/
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_ROWS = 0x00000004,
+   /* Driver support max encoded slice size per slice */
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_MAX_SLICE_SIZE = 0x00000008,
+   /* Driver supports an arbitrary number of rows per slice. */
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_ARBITRARY_ROWS = 0x00000010,
+   /* Driver supports any number of rows per slice but they must be the same
+   *  for all slices except for the last one, which must be equal or smaller
+   *  to the previous slices. */
+   PIPE_VIDEO_CAP_SLICE_STRUCTURE_EQUAL_MULTI_ROWS = 0x00000020,
+};
+
 
 enum pipe_video_entrypoint
 {
