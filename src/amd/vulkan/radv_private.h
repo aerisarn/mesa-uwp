@@ -2093,6 +2093,10 @@ bool radv_dcc_formats_compatible(VkFormat format1, VkFormat format2, bool *sign_
 bool radv_is_atomic_format_supported(VkFormat format);
 bool radv_device_supports_etc(struct radv_physical_device *physical_device);
 
+static const VkImageUsageFlags RADV_IMAGE_USAGE_WRITE_BITS =
+   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+
 struct radv_image_plane {
    VkFormat format;
    struct radeon_surf surface;

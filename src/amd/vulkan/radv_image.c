@@ -38,10 +38,6 @@
 
 #include "gfx10_format_table.h"
 
-static const VkImageUsageFlagBits RADV_IMAGE_USAGE_WRITE_BITS =
-   VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-   VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-
 static unsigned
 radv_choose_tiling(struct radv_device *device, const VkImageCreateInfo *pCreateInfo,
                    VkFormat format)
