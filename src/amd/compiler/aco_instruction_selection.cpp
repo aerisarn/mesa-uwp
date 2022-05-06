@@ -6740,8 +6740,9 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
    Builder bld(ctx->program, ctx->block);
    bool return_previous = !nir_ssa_def_is_unused(&instr->dest.ssa);
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
+   bool cmpswap = instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd;
 
-   if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap_amd)
+   if (cmpswap)
       data = bld.pseudo(aco_opcode::p_create_vector, bld.def(RegType::vgpr, data.size() * 2),
                         get_ssa_temp(ctx, instr->src[2].ssa), data);
 
@@ -6900,8 +6901,10 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       mubuf->operands[1] = addr.type() == RegType::vgpr ? Operand(addr) : Operand(v1);
       mubuf->operands[2] = Operand(offset);
       mubuf->operands[3] = Operand(data);
+      Definition def =
+         return_previous ? (cmpswap ? bld.def(data.regClass()) : Definition(dst)) : Definition();
       if (return_previous)
-         mubuf->definitions[0] = Definition(dst);
+         mubuf->definitions[0] = def;
       mubuf->glc = return_previous;
       mubuf->dlc = false;
       mubuf->offset = const_offset;
@@ -6910,6 +6913,8 @@ visit_global_atomic(isel_context* ctx, nir_intrinsic_instr* instr)
       mubuf->sync = get_memory_sync_info(instr, storage_buffer, semantic_atomicrmw);
       ctx->program->needs_exact = true;
       ctx->block->instructions.emplace_back(std::move(mubuf));
+      if (return_previous && cmpswap)
+         bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), def.getTemp(), Operand::zero());
    }
 }
 
