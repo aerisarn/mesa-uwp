@@ -247,6 +247,13 @@ struct brw_base_prog_key {
 
    enum brw_subgroup_size_type subgroup_size_type;
    bool robust_buffer_access;
+
+   /**
+    * Apply workarounds for SIN and COS input range problems.
+    * This limits input range for SIN and COS to [-2p : 2p] to
+    * avoid precision issues.
+    */
+   bool limit_trig_input_range;
    struct brw_sampler_prog_key_data tex;
 };
 

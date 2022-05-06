@@ -1409,6 +1409,9 @@ brw_nir_apply_key(nir_shader *nir,
    };
    OPT(nir_lower_subgroups, &subgroups_options);
 
+   if (key->limit_trig_input_range)
+      OPT(brw_nir_limit_trig_input_range_workaround);
+
    if (progress)
       brw_nir_optimize(nir, compiler, is_scalar, false);
 }

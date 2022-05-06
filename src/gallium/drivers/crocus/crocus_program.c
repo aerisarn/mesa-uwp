@@ -51,7 +51,10 @@
    .base.subgroup_size_type = BRW_SUBGROUP_SIZE_UNIFORM, \
    .base.tex.swizzles[0 ... MAX_SAMPLERS - 1] = 0x688,   \
    .base.tex.compressed_multisample_layout_mask = ~0
-#define KEY_INIT() .base.program_string_id = ish->program_id, KEY_INIT_NO_ID()
+#define KEY_INIT()                                                        \
+   .base.program_string_id = ish->program_id,                             \
+   .base.limit_trig_input_range = screen->driconf.limit_trig_input_range, \
+   KEY_INIT_NO_ID()
 
 static void
 crocus_sanitize_tex_key(struct brw_sampler_prog_key_data *key)
@@ -1660,8 +1663,8 @@ crocus_update_compiled_tes(struct crocus_context *ice)
    struct crocus_shader_state *shs = &ice->state.shaders[MESA_SHADER_TESS_EVAL];
    struct crocus_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_TESS_EVAL];
-   struct brw_tes_prog_key key = { KEY_INIT() };
    struct crocus_screen *screen = (struct crocus_screen *)ice->ctx.screen;
+   struct brw_tes_prog_key key = { KEY_INIT() };
    const struct intel_device_info *devinfo = &screen->devinfo;
 
    if (ish->nos & (1ull << CROCUS_NOS_TEXTURES))

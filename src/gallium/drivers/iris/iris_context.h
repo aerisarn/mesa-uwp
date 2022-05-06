@@ -208,6 +208,7 @@ enum iris_nos_dep {
 
 struct iris_base_prog_key {
    unsigned program_string_id;
+   bool limit_trig_input_range;
 };
 
 /**

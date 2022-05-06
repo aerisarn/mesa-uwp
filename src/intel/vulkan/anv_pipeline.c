@@ -314,26 +314,28 @@ populate_sampler_prog_key(const struct intel_device_info *devinfo,
 }
 
 static void
-populate_base_prog_key(const struct intel_device_info *devinfo,
+populate_base_prog_key(const struct anv_device *device,
                        enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_acccess,
                        struct brw_base_prog_key *key)
 {
    key->subgroup_size_type = subgroup_size_type;
    key->robust_buffer_access = robust_buffer_acccess;
+   key->limit_trig_input_range =
+      device->physical->instance->limit_trig_input_range;
 
-   populate_sampler_prog_key(devinfo, &key->tex);
+   populate_sampler_prog_key(&device->info, &key->tex);
 }
 
 static void
-populate_vs_prog_key(const struct intel_device_info *devinfo,
+populate_vs_prog_key(const struct anv_device *device,
                      enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_vs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type,
+   populate_base_prog_key(device, subgroup_size_type,
                           robust_buffer_acccess, &key->base);
 
    /* XXX: Handle vertex input work-arounds */
@@ -342,7 +344,7 @@ populate_vs_prog_key(const struct intel_device_info *devinfo,
 }
 
 static void
-populate_tcs_prog_key(const struct intel_device_info *devinfo,
+populate_tcs_prog_key(const struct anv_device *device,
                       enum brw_subgroup_size_type subgroup_size_type,
                       bool robust_buffer_acccess,
                       unsigned input_vertices,
@@ -350,33 +352,33 @@ populate_tcs_prog_key(const struct intel_device_info *devinfo,
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type,
+   populate_base_prog_key(device, subgroup_size_type,
                           robust_buffer_acccess, &key->base);
 
    key->input_vertices = input_vertices;
 }
 
 static void
-populate_tes_prog_key(const struct intel_device_info *devinfo,
+populate_tes_prog_key(const struct anv_device *device,
                       enum brw_subgroup_size_type subgroup_size_type,
                       bool robust_buffer_acccess,
                       struct brw_tes_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type,
+   populate_base_prog_key(device, subgroup_size_type,
                           robust_buffer_acccess, &key->base);
 }
 
 static void
-populate_gs_prog_key(const struct intel_device_info *devinfo,
+populate_gs_prog_key(const struct anv_device *device,
                      enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_gs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type,
+   populate_base_prog_key(device, subgroup_size_type,
                           robust_buffer_acccess, &key->base);
 }
 
@@ -436,25 +438,25 @@ pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
 }
 
 static void
-populate_task_prog_key(const struct intel_device_info *devinfo,
+populate_task_prog_key(const struct anv_device *device,
                        enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_access,
                        struct brw_task_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type, robust_buffer_access, &key->base);
+   populate_base_prog_key(device, subgroup_size_type, robust_buffer_access, &key->base);
 }
 
 static void
-populate_mesh_prog_key(const struct intel_device_info *devinfo,
+populate_mesh_prog_key(const struct anv_device *device,
                        enum brw_subgroup_size_type subgroup_size_type,
                        bool robust_buffer_access,
                        struct brw_mesh_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type, robust_buffer_access, &key->base);
+   populate_base_prog_key(device, subgroup_size_type, robust_buffer_access, &key->base);
 }
 
 static void
@@ -467,11 +469,10 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
                      struct brw_wm_prog_key *key)
 {
    const struct anv_device *device = pipeline->base.device;
-   const struct intel_device_info *devinfo = &device->info;
 
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
+   populate_base_prog_key(device, flags, robust_buffer_acccess, &key->base);
 
    /* We set this to 0 here and set to the actual value before we call
     * brw_compile_fs.
@@ -515,26 +516,26 @@ populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
 }
 
 static void
-populate_cs_prog_key(const struct intel_device_info *devinfo,
+populate_cs_prog_key(const struct anv_device *device,
                      enum brw_subgroup_size_type subgroup_size_type,
                      bool robust_buffer_acccess,
                      struct brw_cs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, subgroup_size_type,
+   populate_base_prog_key(device, subgroup_size_type,
                           robust_buffer_acccess, &key->base);
 }
 
 static void
-populate_bs_prog_key(const struct intel_device_info *devinfo,
+populate_bs_prog_key(const struct anv_device *device,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_access,
                      struct brw_bs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, robust_buffer_access, &key->base);
+   populate_base_prog_key(device, flags, robust_buffer_access, &key->base);
 }
 
 struct anv_pipeline_stage {
@@ -1466,26 +1467,26 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       enum brw_subgroup_size_type subgroup_size_type =
          anv_subgroup_size_type(stage, stages[stage].module, sinfo->flags, rss_info);
 
-      const struct intel_device_info *devinfo = &pipeline->base.device->info;
+      const struct anv_device *device = pipeline->base.device;
       switch (stage) {
       case MESA_SHADER_VERTEX:
-         populate_vs_prog_key(devinfo, subgroup_size_type,
+         populate_vs_prog_key(device, subgroup_size_type,
                               pipeline->base.device->robust_buffer_access,
                               &stages[stage].key.vs);
          break;
       case MESA_SHADER_TESS_CTRL:
-         populate_tcs_prog_key(devinfo, subgroup_size_type,
+         populate_tcs_prog_key(device, subgroup_size_type,
                                pipeline->base.device->robust_buffer_access,
                                info->pTessellationState->patchControlPoints,
                                &stages[stage].key.tcs);
          break;
       case MESA_SHADER_TESS_EVAL:
-         populate_tes_prog_key(devinfo, subgroup_size_type,
+         populate_tes_prog_key(device, subgroup_size_type,
                                pipeline->base.device->robust_buffer_access,
                                &stages[stage].key.tes);
          break;
       case MESA_SHADER_GEOMETRY:
-         populate_gs_prog_key(devinfo, subgroup_size_type,
+         populate_gs_prog_key(device, subgroup_size_type,
                               pipeline->base.device->robust_buffer_access,
                               &stages[stage].key.gs);
          break;
@@ -1503,12 +1504,12 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
          break;
       }
       case MESA_SHADER_TASK:
-         populate_task_prog_key(devinfo, subgroup_size_type,
+         populate_task_prog_key(device, subgroup_size_type,
                                 pipeline->base.device->robust_buffer_access,
                                 &stages[stage].key.task);
          break;
       case MESA_SHADER_MESH:
-         populate_mesh_prog_key(devinfo, subgroup_size_type,
+         populate_mesh_prog_key(device, subgroup_size_type,
                                 pipeline->base.device->robust_buffer_access,
                                 &stages[stage].key.mesh);
          break;
@@ -1947,7 +1948,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
    const enum brw_subgroup_size_type subgroup_size_type =
       anv_subgroup_size_type(MESA_SHADER_COMPUTE, stage.module, info->stage.flags, rss_info);
 
-   populate_cs_prog_key(&device->info, subgroup_size_type,
+   populate_cs_prog_key(device, subgroup_size_type,
                         device->robust_buffer_access,
                         &stage.key.cs);
 
@@ -2749,7 +2750,7 @@ anv_pipeline_init_ray_tracing_stages(struct anv_ray_tracing_pipeline *pipeline,
          },
       };
 
-      populate_bs_prog_key(&pipeline->base.device->info, sinfo->flags,
+      populate_bs_prog_key(pipeline->base.device, sinfo->flags,
                            pipeline->base.device->robust_buffer_access,
                            &stages[i].key.bs);
 

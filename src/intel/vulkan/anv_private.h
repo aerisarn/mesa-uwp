@@ -1085,6 +1085,7 @@ struct anv_instance {
      * Workarounds for game bugs.
      */
     bool                                        assume_full_subgroups;
+    bool                                        limit_trig_input_range;
 };
 
 VkResult anv_init_wsi(struct anv_physical_device *physical_device);

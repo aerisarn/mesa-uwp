@@ -74,6 +74,7 @@ static const driOptionDescription anv_dri_options[] = {
    DRI_CONF_SECTION_DEBUG
       DRI_CONF_ALWAYS_FLUSH_CACHE(false)
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST(false)
+      DRI_CONF_LIMIT_TRIG_INPUT_RANGE(false)
    DRI_CONF_SECTION_END
 };
 
@@ -1104,6 +1105,8 @@ anv_init_dri_options(struct anv_instance *instance)
 
     instance->assume_full_subgroups =
             driQueryOptionb(&instance->dri_options, "anv_assume_full_subgroups");
+    instance->limit_trig_input_range =
+            driQueryOptionb(&instance->dri_options, "limit_trig_input_range");
 }
 
 VkResult anv_CreateInstance(
