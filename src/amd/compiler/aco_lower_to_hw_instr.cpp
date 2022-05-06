@@ -2030,7 +2030,8 @@ lower_to_hw_instr(Program* program)
 
                   bld.reset(discard_block);
                   bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1), 0,
-                          V_008DFC_SQ_EXP_NULL, false, true, true);
+                          program->chip_class >= GFX11 ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_NULL,
+                          false, true, true);
                   bld.sopp(aco_opcode::s_endpgm);
 
                   bld.reset(&ctx.instructions);

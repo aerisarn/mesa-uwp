@@ -10844,7 +10844,8 @@ create_fs_null_export(isel_context* ctx)
     */
 
    Builder bld(ctx->program, ctx->block);
-   unsigned dest = V_008DFC_SQ_EXP_NULL;
+   /* GFX11 doesn't support NULL exports, and MRT0 should be exported instead. */
+   unsigned dest = ctx->options->chip_class >= GFX11 ? V_008DFC_SQ_EXP_MRT : V_008DFC_SQ_EXP_NULL;
    bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),
            /* enabled_mask */ 0, dest, /* compr */ false, /* done */ true, /* vm */ true);
 }
