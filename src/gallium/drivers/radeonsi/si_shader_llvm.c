@@ -901,11 +901,9 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
        * so that empty waves can jump directly to s_endpgm,
        * which will also signal the barrier.
        *
-       * This is possible in gfx9, because an empty wave
-       * for the second shader does not participate in
-       * the epilogue. With NGG, empty waves may still
-       * be required to export data (e.g. GS output vertices),
-       * so we cannot let them exit early.
+       * This is possible in gfx9, because an empty wave for the second shader does not insert
+       * any ending. With NGG, empty waves may still be required to export data (e.g. GS output
+       * vertices), so we cannot let them exit early.
        *
        * If the shader is TCS and the TCS epilog is present
        * and contains a barrier, it will wait there and then
@@ -1032,38 +1030,41 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    switch (sel->stage) {
    case MESA_SHADER_VERTEX:
       if (shader->key.ge.as_ls)
-         si_llvm_emit_ls_epilogue(&ctx->abi);
+         si_llvm_ls_build_end(ctx);
       else if (shader->key.ge.as_es)
-         si_llvm_emit_es_epilogue(&ctx->abi);
+         si_llvm_es_build_end(ctx);
       else if (ngg_cull_shader)
-         gfx10_emit_ngg_culling_epilogue(&ctx->abi);
+         gfx10_ngg_culling_build_end(ctx);
       else if (shader->key.ge.as_ngg)
-         gfx10_emit_ngg_epilogue(&ctx->abi);
+         gfx10_ngg_build_end(ctx);
       else
-         si_llvm_emit_vs_epilogue(&ctx->abi);
+         si_llvm_vs_build_end(ctx);
       break;
 
    case MESA_SHADER_TESS_CTRL:
-      si_llvm_emit_tcs_epilogue(&ctx->abi);
+      si_llvm_tcs_build_end(ctx);
       break;
 
    case MESA_SHADER_TESS_EVAL:
       if (ctx->shader->key.ge.as_es)
-         si_llvm_emit_es_epilogue(&ctx->abi);
+         si_llvm_es_build_end(ctx);
       else if (ngg_cull_shader)
-         gfx10_emit_ngg_culling_epilogue(&ctx->abi);
+         gfx10_ngg_culling_build_end(ctx);
       else if (ctx->shader->key.ge.as_ngg)
-         gfx10_emit_ngg_epilogue(&ctx->abi);
+         gfx10_ngg_build_end(ctx);
       else
-         si_llvm_emit_vs_epilogue(&ctx->abi);
+         si_llvm_vs_build_end(ctx);
       break;
 
    case MESA_SHADER_GEOMETRY:
-      si_llvm_emit_gs_epilogue(&ctx->abi);
+      if (ctx->shader->key.ge.as_ngg)
+         gfx10_ngg_gs_build_end(ctx);
+      else
+         si_llvm_gs_build_end(ctx);
       break;
 
    case MESA_SHADER_FRAGMENT:
-      si_llvm_return_fs_outputs(&ctx->abi);
+      si_llvm_ps_build_end(ctx);
       break;
 
    default:

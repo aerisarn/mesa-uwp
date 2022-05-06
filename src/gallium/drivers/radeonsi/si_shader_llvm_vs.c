@@ -778,12 +778,11 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
    }
 }
 
-void si_llvm_emit_vs_epilogue(struct ac_shader_abi *abi)
+void si_llvm_vs_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
    struct si_shader_output_values *outputs = NULL;
-   LLVMValueRef *addrs = abi->outputs;
+   LLVMValueRef *addrs = ctx->abi.outputs;
    int i, j;
 
    assert(!ctx->shader->is_gs_copy_shader);

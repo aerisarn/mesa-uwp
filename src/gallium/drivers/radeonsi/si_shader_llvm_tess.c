@@ -832,9 +832,8 @@ static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader
 }
 
 /* This only writes the tessellation factor levels. */
-void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi)
+void si_llvm_tcs_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef rel_patch_id, invocation_id, tf_lds_offset;
 
@@ -947,9 +946,8 @@ static void si_set_ls_return_value_for_tcs(struct si_shader_context *ctx)
    ctx->return_value = ret;
 }
 
-void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi)
+void si_llvm_ls_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader *shader = ctx->shader;
    struct si_shader_info *info = &shader->selector->info;
    unsigned i, chan;
@@ -963,7 +961,7 @@ void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi)
    }
    LLVMValueRef vertex_dw_stride = get_tcs_in_vertex_dw_stride(ctx);
    LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id, vertex_dw_stride, "");
-   LLVMValueRef *addrs = abi->outputs;
+   LLVMValueRef *addrs = ctx->abi.outputs;
    unsigned ret_offset = 8 + GFX9_TCS_NUM_USER_SGPR + 2;
 
    /* Write outputs to LDS. The next shader (TCS aka HS) will read

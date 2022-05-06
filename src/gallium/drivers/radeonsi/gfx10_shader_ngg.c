@@ -925,14 +925,13 @@ static void cull_primitive(struct si_shader_context *ctx,
  * Also return the position, which is passed to the shader as an input,
  * so that we don't compute it twice.
  */
-void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
+void gfx10_ngg_culling_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader *shader = ctx->shader;
    struct si_shader_selector *sel = shader->selector;
    struct si_shader_info *info = &sel->info;
    LLVMBuilderRef builder = ctx->ac.builder;
-   LLVMValueRef *addrs = abi->outputs;
+   LLVMValueRef *addrs = ctx->abi.outputs;
    unsigned max_waves = DIV_ROUND_UP(ctx->screen->ngg_subgroup_size, ctx->ac.wave_size);
 
    assert(shader->key.ge.opt.ngg_culling);
@@ -1425,16 +1424,15 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi)
 }
 
 /**
- * Emit the epilogue of an API VS or TES shader compiled as ESGS shader.
+ * Emit the end of an API VS or TES shader compiled as ESGS shader.
  */
-void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi)
+void gfx10_ngg_build_end(struct si_shader_context *ctx)
 {
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_selector *sel = ctx->shader->selector;
    struct si_shader_info *info = &sel->info;
    struct si_shader_output_values outputs[PIPE_MAX_SHADER_OUTPUTS];
    LLVMBuilderRef builder = ctx->ac.builder;
-   LLVMValueRef *addrs = abi->outputs;
+   LLVMValueRef *addrs = ctx->abi.outputs;
    LLVMValueRef tmp, tmp2;
 
    assert(!ctx->shader->is_gs_copy_shader);
@@ -1684,7 +1682,7 @@ static LLVMValueRef ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
 /**
  * Return a pointer to the LDS storage reserved for the N'th vertex, where N
  * is in emit order; that is:
- * - during the epilogue, N is the threadidx (relative to the entire threadgroup)
+ * - at the shader end, N is the threadidx (relative to the entire threadgroup)
  * - during vertex emit, i.e. while the API GS shader invocation is running,
  *   N = threadidx * gs.vertices_out + emitidx
  *
@@ -1881,7 +1879,7 @@ void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
    ac_build_s_barrier(&ctx->ac, ctx->stage);
 }
 
-void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
+void gfx10_ngg_gs_build_end(struct si_shader_context *ctx)
 {
    const struct si_shader_selector *sel = ctx->shader->selector;
    const struct si_shader_info *info = &sel->info;
