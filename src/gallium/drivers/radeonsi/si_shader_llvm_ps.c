@@ -470,7 +470,7 @@ static void si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *col
  *
  * The alpha-ref SGPR is returned via its original location.
  */
-static void si_llvm_return_fs_outputs(struct ac_shader_abi *abi)
+void si_llvm_return_fs_outputs(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader *shader = ctx->shader;
@@ -987,7 +987,6 @@ void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader
 
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx)
 {
-   ctx->abi.emit_outputs = si_llvm_return_fs_outputs;
    ctx->abi.load_sample_position = load_sample_position;
    ctx->abi.load_sample_mask_in = load_sample_mask_in;
    ctx->abi.emit_fbfetch = si_nir_emit_fbfetch;

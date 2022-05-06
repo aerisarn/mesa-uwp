@@ -240,12 +240,14 @@ LLVMValueRef si_is_gs_thread(struct si_shader_context *ctx);
 void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi);
 void si_preload_esgs_ring(struct si_shader_context *ctx);
 void si_preload_gs_rings(struct si_shader_context *ctx);
+void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi);
 void si_llvm_init_gs_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_tess.c */
 void si_llvm_preload_tes_rings(struct si_shader_context *ctx);
 void si_llvm_emit_ls_epilogue(struct ac_shader_abi *abi);
 void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_part_key *key);
+void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi);
 void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx);
 void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader);
 
@@ -254,6 +256,7 @@ LLVMValueRef si_get_sample_id(struct si_shader_context *ctx);
 void si_llvm_build_ps_prolog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part_key *key);
 void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader *shader);
+void si_llvm_return_fs_outputs(struct ac_shader_abi *abi);
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx);
 
 /* si_shader_llvm_resources.c */

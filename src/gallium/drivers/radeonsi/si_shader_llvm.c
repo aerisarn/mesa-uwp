@@ -1029,6 +1029,47 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
 
    ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
 
+   switch (sel->stage) {
+   case MESA_SHADER_VERTEX:
+      if (shader->key.ge.as_ls)
+         si_llvm_emit_ls_epilogue(&ctx->abi);
+      else if (shader->key.ge.as_es)
+         si_llvm_emit_es_epilogue(&ctx->abi);
+      else if (ngg_cull_shader)
+         gfx10_emit_ngg_culling_epilogue(&ctx->abi);
+      else if (shader->key.ge.as_ngg)
+         gfx10_emit_ngg_epilogue(&ctx->abi);
+      else
+         si_llvm_emit_vs_epilogue(&ctx->abi);
+      break;
+
+   case MESA_SHADER_TESS_CTRL:
+      si_llvm_emit_tcs_epilogue(&ctx->abi);
+      break;
+
+   case MESA_SHADER_TESS_EVAL:
+      if (ctx->shader->key.ge.as_es)
+         si_llvm_emit_es_epilogue(&ctx->abi);
+      else if (ngg_cull_shader)
+         gfx10_emit_ngg_culling_epilogue(&ctx->abi);
+      else if (ctx->shader->key.ge.as_ngg)
+         gfx10_emit_ngg_epilogue(&ctx->abi);
+      else
+         si_llvm_emit_vs_epilogue(&ctx->abi);
+      break;
+
+   case MESA_SHADER_GEOMETRY:
+      si_llvm_emit_gs_epilogue(&ctx->abi);
+      break;
+
+   case MESA_SHADER_FRAGMENT:
+      si_llvm_return_fs_outputs(&ctx->abi);
+      break;
+
+   default:
+      break;
+   }
+
    si_llvm_build_ret(ctx, ctx->return_value);
 
    if (free_nir)

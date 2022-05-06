@@ -1008,19 +1008,6 @@ static LLVMValueRef get_base_vertex(struct ac_shader_abi *abi, bool non_indexed_
 
 void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
-   struct si_shader *shader = ctx->shader;
-
-   if (shader->key.ge.as_ls)
-      ctx->abi.emit_outputs = si_llvm_emit_ls_epilogue;
-   else if (shader->key.ge.as_es)
-      ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
-   else if (ngg_cull_shader)
-      ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue;
-   else if (shader->key.ge.as_ngg)
-      ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
-   else
-      ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
-
    ctx->abi.load_base_vertex = get_base_vertex;
    ctx->abi.load_inputs = si_load_vs_input;
 }

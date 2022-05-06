@@ -2044,7 +2044,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
    create_function(&ctx, shaders[shader_count - 1]->info.stage, shader_count >= 2);
 
-   ctx.abi.emit_outputs = handle_shader_outputs_post;
    ctx.abi.emit_vertex_with_counter = visit_emit_vertex_with_counter;
    ctx.abi.load_ubo = radv_load_ubo;
    ctx.abi.load_ssbo = radv_load_ssbo;
@@ -2184,6 +2183,9 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
          prepare_gs_input_vgprs(&ctx, shader_count >= 2);
 
       ac_nir_translate(&ctx.ac, &ctx.abi, &args->ac, shaders[shader_idx]);
+
+      if (!gl_shader_stage_is_compute(shaders[shader_idx]->info.stage))
+         handle_shader_outputs_post(&ctx.abi);
 
       if (shader_count >= 2 || is_ngg) {
          LLVMBuildBr(ctx.ac.builder, merge_block);

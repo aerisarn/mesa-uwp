@@ -271,7 +271,7 @@ static void emit_gs_epilogue(struct si_shader_context *ctx)
       ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 }
 
-static void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi)
+void si_llvm_emit_gs_epilogue(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info UNUSED *info = &ctx->shader->selector->info;
@@ -658,5 +658,4 @@ void si_llvm_init_gs_callbacks(struct si_shader_context *ctx)
    ctx->abi.load_inputs = si_nir_load_input_gs;
    ctx->abi.emit_vertex = si_llvm_emit_vertex;
    ctx->abi.emit_primitive = si_llvm_emit_primitive;
-   ctx->abi.emit_outputs = si_llvm_emit_gs_epilogue;
 }

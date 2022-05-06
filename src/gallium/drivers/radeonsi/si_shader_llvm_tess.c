@@ -832,7 +832,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx, union si_shader
 }
 
 /* This only writes the tessellation factor levels. */
-static void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi)
+void si_llvm_emit_tcs_epilogue(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    LLVMBuilderRef builder = ctx->ac.builder;
@@ -1090,7 +1090,6 @@ void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx)
    ctx->abi.load_tess_varyings = si_nir_load_tcs_varyings;
    ctx->abi.load_tess_level = si_load_tess_level;
    ctx->abi.store_tcs_outputs = si_nir_store_output_tcs;
-   ctx->abi.emit_outputs = si_llvm_emit_tcs_epilogue;
    ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 }
 
@@ -1099,13 +1098,4 @@ void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_sha
    ctx->abi.load_tess_varyings = si_nir_load_input_tes;
    ctx->abi.load_tess_level = si_load_tess_level;
    ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
-
-   if (ctx->shader->key.ge.as_es)
-      ctx->abi.emit_outputs = si_llvm_emit_es_epilogue;
-   else if (ngg_cull_shader)
-      ctx->abi.emit_outputs = gfx10_emit_ngg_culling_epilogue;
-   else if (ctx->shader->key.ge.as_ngg)
-      ctx->abi.emit_outputs = gfx10_emit_ngg_epilogue;
-   else
-      ctx->abi.emit_outputs = si_llvm_emit_vs_epilogue;
 }
