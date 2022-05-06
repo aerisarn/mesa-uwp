@@ -56,13 +56,15 @@
 #include <GL/gl.h>
 #include <GL/internal/dri_interface.h>
 #include "kopper_interface.h"
-#include "main/menums.h"
 #include "main/formats.h"
+#include "main/glconfig.h"
+#include "main/menums.h"
 #include "util/xmlconfig.h"
 #include <stdbool.h>
 
-struct gl_config;
-struct gl_context;
+struct __DRIconfigRec {
+    struct gl_config modes;
+};
 
 /**
  * Extensions.

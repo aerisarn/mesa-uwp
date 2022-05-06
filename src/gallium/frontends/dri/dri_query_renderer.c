@@ -3,7 +3,6 @@
 #include "util/u_inlines.h"
 #include "frontend/drm_driver.h"
 
-#include "utils.h"
 #include "dri_screen.h"
 #include "dri_query_renderer.h"
 #include "pipe-loader/pipe_loader.h"

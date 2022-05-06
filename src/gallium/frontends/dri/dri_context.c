@@ -29,8 +29,6 @@
  * Author: Jakob Bornecrantz <wallbraker@gmail.com>
  */
 
-#include "utils.h"
-
 #include "dri_screen.h"
 #include "dri_drawable.h"
 #include "dri_context.h"

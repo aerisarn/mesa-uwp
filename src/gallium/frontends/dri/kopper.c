@@ -36,7 +36,6 @@
 #include "driver_trace/tr_screen.h"
 
 #include "dri_screen.h"
-#include "utils.h"
 #include "dri_context.h"
 #include "dri_drawable.h"
 #include "dri_helpers.h"

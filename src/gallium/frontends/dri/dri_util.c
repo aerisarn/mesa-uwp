@@ -43,7 +43,6 @@
 #include "dri_util.h"
 #include "dri_context.h"
 #include "dri_screen.h"
-#include "utils.h"
 #include "util/u_endian.h"
 #include "util/driconf.h"
 #include "main/framebuffer.h"
