@@ -248,6 +248,9 @@ va_pack_shift_lanes(enum bi_swizzle swz)
    switch (swz) {
    case BI_SWIZZLE_H01:    return VA_LANES_8_BIT_B02;
    case BI_SWIZZLE_B0000:  return VA_LANES_8_BIT_B00;
+   case BI_SWIZZLE_B1111:  return VA_LANES_8_BIT_B11;
+   case BI_SWIZZLE_B2222:  return VA_LANES_8_BIT_B22;
+   case BI_SWIZZLE_B3333:  return VA_LANES_8_BIT_B33;
    default: unreachable("todo: more shifts");
    }
 }
