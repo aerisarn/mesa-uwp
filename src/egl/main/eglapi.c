@@ -857,6 +857,17 @@ eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_list,
 
    if (!share && share_list != EGL_NO_CONTEXT)
       RETURN_EGL_ERROR(disp, EGL_BAD_CONTEXT, EGL_NO_CONTEXT);
+   else if(share && share->Resource.Display != disp) {
+      /* From the spec.
+       *
+       * "An EGL_BAD_MATCH error is generated if an OpenGL or OpenGL ES
+       *  context is requested and any of: [...]
+       *
+       * * share context was created on a different display
+       * than the one reference by config."
+       */
+      RETURN_EGL_ERROR(disp, EGL_BAD_MATCH, EGL_NO_CONTEXT);
+   }
 
    context = disp->Driver->CreateContext(disp, conf, share, attrib_list);
    ret = (context) ? _eglLinkContext(context) : EGL_NO_CONTEXT;
