@@ -88,6 +88,7 @@ static const nir_shader_compiler_options sp_compiler_options = {
    .lower_rotate = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
+   .max_unroll_iterations = 32,
    .use_interpolated_input_intrinsics = true,
 };
 

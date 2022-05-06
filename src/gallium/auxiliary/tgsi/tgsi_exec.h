@@ -469,6 +469,7 @@ tgsi_exec_get_shader_param(enum pipe_shader_cap param)
    case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
    case PIPE_SHADER_CAP_INT16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
+   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
       return 0;
    case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
       return PIPE_MAX_SAMPLERS;
@@ -492,9 +493,6 @@ tgsi_exec_get_shader_param(enum pipe_shader_cap param)
       return PIPE_MAX_SHADER_BUFFERS;
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       return PIPE_MAX_SHADER_IMAGES;
-
-   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-      return 32;
    }
    /* if we get here, we missed a shader cap above (and should have seen
     * a compiler warning.)
