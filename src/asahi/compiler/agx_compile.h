@@ -223,6 +223,7 @@ static const nir_shader_compiler_options agx_nir_options = {
    .lower_rotate = true,
    .has_fsub = true,
    .has_isub = true,
+   .max_unroll_iterations = 32,
    .lower_uniforms_to_ubo = true,
    .force_indirect_unrolling_sampler = true,
    .force_indirect_unrolling = (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp),
