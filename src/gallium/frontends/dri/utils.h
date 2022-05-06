@@ -37,11 +37,4 @@ struct __DRIconfigRec {
     struct gl_config modes;
 };
 
-int
-driGetConfigAttrib(const __DRIconfig *config,
-		   unsigned int attrib, unsigned int *value);
-int
-driIndexConfigAttrib(const __DRIconfig *config, int index,
-		     unsigned int *attrib, unsigned int *value);
-
 #endif /* DRI_DEBUG_H */
