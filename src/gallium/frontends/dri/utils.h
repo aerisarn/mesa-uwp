@@ -37,17 +37,6 @@ struct __DRIconfigRec {
     struct gl_config modes;
 };
 
-extern __DRIconfig **
-driCreateConfigs(mesa_format format,
-		 const uint8_t * depth_bits, const uint8_t * stencil_bits,
-		 unsigned num_depth_stencil_bits,
-		 const GLenum * db_modes, unsigned num_db_modes,
-		 const uint8_t * msaa_samples, unsigned num_msaa_modes,
-		 GLboolean enable_accum, GLboolean color_depth_match);
-
-__DRIconfig **driConcatConfigs(__DRIconfig **a,
-			       __DRIconfig **b);
-
 int
 driGetConfigAttrib(const __DRIconfig *config,
 		   unsigned int attrib, unsigned int *value);
