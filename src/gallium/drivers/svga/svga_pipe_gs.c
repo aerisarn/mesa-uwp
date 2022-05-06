@@ -55,7 +55,15 @@ svga_create_gs_state(struct pipe_context *pipe,
     */
    tgsi_scan_shader(gs->base.tokens, &gs->base.info);
 
-   gs->draw_shader = draw_create_geometry_shader(svga->swtnl.draw, templ);
+   /* Original shader IR could have been deleted if it is converted from
+    * NIR to TGSI. So need to explicitly set the shader state type to TGSI
+    * before passing it to draw.
+    */
+   struct pipe_shader_state tmp = *templ;
+   tmp.type = PIPE_SHADER_IR_TGSI;
+   tmp.tokens = gs->base.tokens;
+
+   gs->draw_shader = draw_create_geometry_shader(svga->swtnl.draw, &tmp);
 
    gs->base.id = svga->debug.shader_id++;
 

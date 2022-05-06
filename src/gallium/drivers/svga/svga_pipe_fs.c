@@ -53,6 +53,14 @@ svga_create_fs_state(struct pipe_context *pipe,
 
    fs->base.tokens = pipe_shader_state_to_tgsi_tokens(pipe->screen, templ);
 
+   /* Original shader IR could have been deleted if it is converted from
+    * NIR to TGSI. So need to explicitly set the shader state type to TGSI
+    * before passing it to draw.
+    */
+   struct pipe_shader_state tmp = *templ;
+   tmp.type = PIPE_SHADER_IR_TGSI;
+   tmp.tokens = fs->base.tokens;
+
    /* Collect basic info that we'll need later:
     */
    tgsi_scan_shader(fs->base.tokens, &fs->base.info);
@@ -63,7 +71,7 @@ svga_create_fs_state(struct pipe_context *pipe,
 
    svga_remap_generics(fs->generic_inputs, fs->generic_remap_table);
 
-   fs->draw_shader = draw_create_fragment_shader(svga->swtnl.draw, templ);
+   fs->draw_shader = draw_create_fragment_shader(svga->swtnl.draw, &tmp);
 
    SVGA_STATS_TIME_POP(svga_sws(svga));
    return fs;

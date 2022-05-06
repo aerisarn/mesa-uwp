@@ -122,6 +122,9 @@ svga_create_vs_state(struct pipe_context *pipe,
        * debug shader.
        */
       struct pipe_shader_state tmp2 = *templ;
+
+      /* shader IR has been converted to tgsi */
+      tmp2.type = PIPE_SHADER_IR_TGSI;
       tmp2.tokens = vs->base.tokens;
       vs->draw_shader = draw_create_vertex_shader(svga->swtnl.draw, &tmp2);
    }
