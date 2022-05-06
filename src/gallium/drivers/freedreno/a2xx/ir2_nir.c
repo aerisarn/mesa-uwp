@@ -51,6 +51,7 @@ static const nir_shader_compiler_options options = {
    .lower_insert_word = true,
    .force_indirect_unrolling = nir_var_all,
    .force_indirect_unrolling_sampler = true,
+   .max_unroll_iterations = 32,
 };
 
 const nir_shader_compiler_options *

@@ -115,7 +115,8 @@ ir3_compiler_destroy(struct ir3_compiler *compiler)
    .has_isub = true,                                                          \
    .force_indirect_unrolling_sampler = true,                                  \
    .lower_uniforms_to_ubo = true,                                             \
-   .use_scoped_barrier = true
+   .use_scoped_barrier = true,                                                \
+   .max_unroll_iterations = 32
 
 static const nir_shader_compiler_options nir_options = {
    COMMON_OPTIONS,
@@ -133,7 +134,6 @@ static const nir_shader_compiler_options nir_options = {
 static const nir_shader_compiler_options nir_options_a6xx = {
    COMMON_OPTIONS,
    .vectorize_io = true,
-   .max_unroll_iterations = 32,
    .force_indirect_unrolling = nir_var_all,
    .lower_wpos_pntc = true,
    .lower_cs_local_index_to_id = true,
@@ -287,6 +287,9 @@ ir3_compiler_create(struct fd_device *dev, const struct fd_dev_id *dev_id,
       compiler->nir_options.has_sudot_4x8 = dev_info->a6xx.has_dp2acc;
    } else {
       compiler->nir_options = nir_options;
+      /* a2xx compiler doesn't handle indirect: */
+      if (compiler->gen <= 2)
+         compiler->nir_options.force_indirect_unrolling = nir_var_all;
    }
 
    if (!options->disable_cache)
