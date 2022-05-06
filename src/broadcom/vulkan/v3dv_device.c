@@ -137,6 +137,7 @@ get_device_extensions(const struct v3dv_physical_device *device,
       .KHR_maintenance2                    = true,
       .KHR_maintenance3                    = true,
       .KHR_multiview                       = true,
+      .KHR_pipeline_executable_properties  = true,
       .KHR_separate_depth_stencil_layouts  = true,
       .KHR_shader_non_semantic_info        = true,
       .KHR_sampler_mirror_clamp_to_edge    = true,
@@ -1255,6 +1256,13 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
           VkPhysicalDeviceColorWriteEnableFeaturesEXT *features = (void *) ext;
           features->colorWriteEnable = true;
           break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
+         VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *features =
+            (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR *) ext;
+         features->pipelineExecutableInfo = true;
+         break;
       }
 
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
