@@ -2369,7 +2369,7 @@ radv_get_max_waves(const struct radv_device *device, struct radv_shader *shader,
    if (conf->num_vgprs) {
       unsigned physical_vgprs = info->num_physical_wave64_vgprs_per_simd * (64 / wave_size);
       unsigned vgprs = align(conf->num_vgprs, wave_size == 32 ? 8 : 4);
-      if (gfx_level >= GFX10_3)
+      if (gfx_level == GFX10_3)
          vgprs = align(vgprs, wave_size == 32 ? 16 : 8);
       max_simd_waves = MIN2(max_simd_waves, physical_vgprs / vgprs);
    }
