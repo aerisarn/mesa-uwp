@@ -396,21 +396,6 @@ LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle
    }
 }
 
-static LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-
-   assert(ctx->shader->selector->info.base.workgroup_size_variable &&
-          ctx->shader->selector->info.uses_variable_block_size);
-
-   LLVMValueRef chan[3] = {
-      si_unpack_param(ctx, ctx->block_size, 0, 10),
-      si_unpack_param(ctx, ctx->block_size, 10, 10),
-      si_unpack_param(ctx, ctx->block_size, 20, 10),
-   };
-   return ac_build_gather_values(&ctx->ac, chan, 3);
-}
-
 static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
 {
    struct si_shader_selector *sel = ctx->shader->selector;
@@ -726,6 +711,72 @@ void si_build_wrapper_function(struct si_shader_context *ctx, LLVMValueRef *part
       LLVMBuildRet(builder, ret);
 }
 
+static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrinsic_op op)
+{
+   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
+   const struct si_shader_info *info = &ctx->shader->selector->info;
+
+   switch (op) {
+   case nir_intrinsic_load_first_vertex:
+      return ac_get_arg(&ctx->ac, ctx->args.base_vertex);
+
+   case nir_intrinsic_load_base_vertex: {
+      /* For non-indexed draws, the base vertex set by the driver
+       * (for direct draws) or the CP (for indirect draws) is the
+       * first vertex ID, but GLSL expects 0 to be returned.
+       */
+      LLVMValueRef indexed = si_unpack_param(ctx, ctx->vs_state_bits, 1, 1);
+      indexed = LLVMBuildTrunc(ctx->ac.builder, indexed, ctx->ac.i1, "");
+      return LLVMBuildSelect(ctx->ac.builder, indexed, ac_get_arg(&ctx->ac, ctx->args.base_vertex),
+                             ctx->ac.i32_0, "");
+   }
+
+   case nir_intrinsic_load_workgroup_size: {
+      assert(ctx->shader->selector->info.base.workgroup_size_variable &&
+             ctx->shader->selector->info.uses_variable_block_size);
+      LLVMValueRef chan[3] = {
+         si_unpack_param(ctx, ctx->block_size, 0, 10),
+         si_unpack_param(ctx, ctx->block_size, 10, 10),
+         si_unpack_param(ctx, ctx->block_size, 20, 10),
+      };
+      return ac_build_gather_values(&ctx->ac, chan, 3);
+   }
+
+   case nir_intrinsic_load_tess_level_outer:
+      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs, 0, 4, true, false);
+
+   case nir_intrinsic_load_tess_level_inner:
+      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs + 1, 0, 4, true, false);
+
+   case nir_intrinsic_load_tess_level_outer_default:
+   case nir_intrinsic_load_tess_level_inner_default: {
+      LLVMValueRef slot = LLVMConstInt(ctx->ac.i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
+      LLVMValueRef buf = ac_get_arg(&ctx->ac, ctx->internal_bindings);
+      buf = ac_build_load_to_sgpr(&ctx->ac, buf, slot);
+      int offset = op == nir_intrinsic_load_tess_level_inner_default ? 4 : 0;
+      LLVMValueRef val[4];
+
+      for (int i = 0; i < 4; i++)
+         val[i] = si_buffer_load_const(ctx, buf, LLVMConstInt(ctx->ac.i32, (offset + i) * 4, 0));
+      return ac_build_gather_values(&ctx->ac, val, 4);
+   }
+
+   case nir_intrinsic_load_patch_vertices_in:
+      if (ctx->stage == MESA_SHADER_TESS_CTRL)
+         return si_unpack_param(ctx, ctx->tcs_out_lds_layout, 13, 6);
+      else if (ctx->stage == MESA_SHADER_TESS_EVAL)
+         return si_get_num_tcs_out_vertices(ctx);
+      else
+         return NULL;
+
+   case nir_intrinsic_load_sample_mask_in:
+      return ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.sample_coverage));
+
+   default:
+      return NULL;
+   }
+}
+
 bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shader,
                            struct nir_shader *nir, bool free_nir, bool ngg_cull_shader)
 {
@@ -740,6 +791,8 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
 
    ctx->num_samplers = BITSET_LAST_BIT(info->base.textures_used);
    ctx->num_images = info->base.num_images;
+
+   ctx->abi.intrinsic_load = si_llvm_load_intrinsic;
 
    si_llvm_init_resource_callbacks(ctx);
    si_llvm_create_main_func(ctx, ngg_cull_shader);
@@ -839,8 +892,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    }
 
    case MESA_SHADER_COMPUTE:
-      ctx->abi.load_local_group_size = si_llvm_get_block_size;
-
       if (nir->info.cs.user_data_components_amd) {
          ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
          ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,

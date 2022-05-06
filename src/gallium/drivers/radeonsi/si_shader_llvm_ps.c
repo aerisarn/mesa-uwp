@@ -31,12 +31,6 @@ LLVMValueRef si_get_sample_id(struct si_shader_context *ctx)
    return si_unpack_param(ctx, ctx->args.ancillary, 8, 4);
 }
 
-static LLVMValueRef load_sample_mask_in(struct ac_shader_abi *abi)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   return ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.sample_coverage));
-}
-
 static LLVMValueRef load_sample_position(struct ac_shader_abi *abi, LLVMValueRef sample_id)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -987,6 +981,5 @@ void si_llvm_build_monolithic_ps(struct si_shader_context *ctx, struct si_shader
 void si_llvm_init_ps_callbacks(struct si_shader_context *ctx)
 {
    ctx->abi.load_sample_position = load_sample_position;
-   ctx->abi.load_sample_mask_in = load_sample_mask_in;
    ctx->abi.emit_fbfetch = si_nir_emit_fbfetch;
 }

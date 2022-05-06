@@ -135,7 +135,7 @@ static LLVMValueRef get_tcs_out_current_patch_data_offset(struct si_shader_conte
    return ac_build_imad(&ctx->ac, patch_stride, rel_patch_id, patch0_patch_data_offset);
 }
 
-static LLVMValueRef get_num_tcs_out_vertices(struct si_shader_context *ctx)
+LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx)
 {
    unsigned tcs_out_vertices =
       ctx->shader->selector ? ctx->shader->selector->info.base.tess.tcs_vertices_out
@@ -219,7 +219,7 @@ static LLVMValueRef get_tcs_tes_buffer_address(struct si_shader_context *ctx,
    LLVMValueRef base_addr, vertices_per_patch, num_patches, total_vertices;
    LLVMValueRef param_stride, constant16;
 
-   vertices_per_patch = get_num_tcs_out_vertices(ctx);
+   vertices_per_patch = si_get_num_tcs_out_vertices(ctx);
    num_patches = si_unpack_param(ctx, ctx->tcs_offchip_layout, 0, 6);
    num_patches = LLVMBuildAdd(ctx->ac.builder, num_patches, ctx->ac.i32_1, "");
    total_vertices = LLVMBuildMul(ctx->ac.builder, vertices_per_patch, num_patches, "");
@@ -561,79 +561,6 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
       LLVMValueRef value = ac_build_gather_values(&ctx->ac, values, 4);
       ac_build_buffer_store_dword(&ctx->ac, buffer, value, NULL, addr, base, ac_glc);
    }
-}
-
-static LLVMValueRef load_tess_level(struct si_shader_context *ctx, unsigned semantic)
-{
-   LLVMValueRef base, addr;
-
-   int param = si_shader_io_get_unique_index_patch(semantic);
-
-   base = ac_get_arg(&ctx->ac, ctx->args.tess_offchip_offset);
-   addr = get_tcs_tes_buffer_address(ctx, get_rel_patch_id(ctx), NULL,
-                                     LLVMConstInt(ctx->ac.i32, param, 0));
-
-   return buffer_load(ctx, ctx->ac.f32, ~0, ctx->tess_offchip_ring, base, addr, true);
-}
-
-static LLVMValueRef load_tess_level_default(struct si_shader_context *ctx, unsigned sysval)
-{
-   LLVMValueRef buf, slot, val[4];
-   int i, offset;
-
-   slot = LLVMConstInt(ctx->ac.i32, SI_HS_CONST_DEFAULT_TESS_LEVELS, 0);
-   buf = ac_get_arg(&ctx->ac, ctx->internal_bindings);
-   buf = ac_build_load_to_sgpr(&ctx->ac, buf, slot);
-   offset = sysval == SYSTEM_VALUE_TESS_LEVEL_INNER_DEFAULT ? 4 : 0;
-
-   for (i = 0; i < 4; i++)
-      val[i] = si_buffer_load_const(ctx, buf, LLVMConstInt(ctx->ac.i32, (offset + i) * 4, 0));
-   return ac_build_gather_values(&ctx->ac, val, 4);
-}
-
-static LLVMValueRef si_load_tess_level(struct ac_shader_abi *abi, unsigned varying_id,
-                                       bool load_default_state)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   unsigned semantic;
-
-   if (load_default_state) {
-      switch (varying_id) {
-      case VARYING_SLOT_TESS_LEVEL_INNER:
-         semantic = SYSTEM_VALUE_TESS_LEVEL_INNER_DEFAULT;
-         break;
-      case VARYING_SLOT_TESS_LEVEL_OUTER:
-         semantic = SYSTEM_VALUE_TESS_LEVEL_OUTER_DEFAULT;
-         break;
-      default:
-         unreachable("unknown tess level");
-      }
-      return load_tess_level_default(ctx, semantic);
-   }
-
-   switch (varying_id) {
-   case VARYING_SLOT_TESS_LEVEL_INNER:
-      semantic = VARYING_SLOT_TESS_LEVEL_INNER;
-      break;
-   case VARYING_SLOT_TESS_LEVEL_OUTER:
-      semantic = VARYING_SLOT_TESS_LEVEL_OUTER;
-      break;
-   default:
-      unreachable("unknown tess level");
-   }
-
-   return load_tess_level(ctx, semantic);
-}
-
-static LLVMValueRef si_load_patch_vertices_in(struct ac_shader_abi *abi)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   if (ctx->stage == MESA_SHADER_TESS_CTRL)
-      return si_unpack_param(ctx, ctx->tcs_out_lds_layout, 13, 6);
-   else if (ctx->stage == MESA_SHADER_TESS_EVAL)
-      return get_num_tcs_out_vertices(ctx);
-   else
-      unreachable("invalid shader stage for VERTICESIN");
 }
 
 /**
@@ -1086,14 +1013,10 @@ void si_llvm_build_tcs_epilog(struct si_shader_context *ctx, union si_shader_par
 void si_llvm_init_tcs_callbacks(struct si_shader_context *ctx)
 {
    ctx->abi.load_tess_varyings = si_nir_load_tcs_varyings;
-   ctx->abi.load_tess_level = si_load_tess_level;
    ctx->abi.store_tcs_outputs = si_nir_store_output_tcs;
-   ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 }
 
 void si_llvm_init_tes_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
    ctx->abi.load_tess_varyings = si_nir_load_input_tes;
-   ctx->abi.load_tess_level = si_load_tess_level;
-   ctx->abi.load_patch_vertices_in = si_load_patch_vertices_in;
 }

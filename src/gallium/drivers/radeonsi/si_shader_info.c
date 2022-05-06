@@ -686,6 +686,12 @@ void si_nir_scan_shader(struct si_screen *sscreen, const struct nir_shader *nir,
       info->output_usagemask[info->num_outputs] = 0x1;
    }
 
+   if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      /* This is a hack to simplify loading tess levels in TES. */
+      info->input[info->num_inputs].semantic = VARYING_SLOT_TESS_LEVEL_OUTER;
+      info->input[info->num_inputs + 1].semantic = VARYING_SLOT_TESS_LEVEL_INNER;
+   }
+
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->allow_flat_shading = !(info->uses_persp_center || info->uses_persp_centroid ||
                                    info->uses_persp_sample || info->uses_linear_center ||

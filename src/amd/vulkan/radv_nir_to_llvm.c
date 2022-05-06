@@ -2012,6 +2012,17 @@ declare_esgs_ring(struct radv_shader_context *ctx)
    LLVMSetAlignment(ctx->esgs_ring, 64 * 1024);
 }
 
+static LLVMValueRef radv_intrinsic_load(struct ac_shader_abi *abi, nir_intrinsic_op op)
+{
+   switch (op) {
+   case nir_intrinsic_load_base_vertex:
+   case nir_intrinsic_load_first_vertex:
+      return radv_load_base_vertex(abi, op == nir_intrinsic_load_base_vertex);
+   default:
+      return NULL;
+   }
+}
+
 static LLVMModuleRef
 ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
                          const struct radv_nir_compiler_options *options,
@@ -2044,6 +2055,7 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 
    create_function(&ctx, shaders[shader_count - 1]->info.stage, shader_count >= 2);
 
+   ctx.abi.intrinsic_load = radv_intrinsic_load;
    ctx.abi.emit_vertex_with_counter = visit_emit_vertex_with_counter;
    ctx.abi.load_ubo = radv_load_ubo;
    ctx.abi.load_ssbo = radv_load_ssbo;
@@ -2113,7 +2125,6 @@ ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
          ctx.abi.emit_primitive = visit_end_primitive;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_EVAL) {
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX) {
-         ctx.abi.load_base_vertex = radv_load_base_vertex;
          ctx.abi.load_inputs = radv_load_vs_inputs;
       } else if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT) {
          ctx.abi.load_sample_position = load_sample_position;

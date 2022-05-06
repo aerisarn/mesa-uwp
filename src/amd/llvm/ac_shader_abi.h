@@ -27,6 +27,7 @@
 #include "ac_shader_args.h"
 #include "ac_shader_util.h"
 #include "compiler/shader_enums.h"
+#include "nir.h"
 #include <llvm-c/Core.h>
 
 #include <assert.h>
@@ -74,10 +75,6 @@ struct ac_shader_abi {
                              LLVMValueRef src, unsigned writemask,
                              unsigned component, unsigned location, unsigned driver_location);
 
-   LLVMValueRef (*load_patch_vertices_in)(struct ac_shader_abi *abi);
-
-   LLVMValueRef (*load_tess_level)(struct ac_shader_abi *abi, unsigned varying_id,
-                                   bool load_default_state);
 
    LLVMValueRef (*load_ubo)(struct ac_shader_abi *abi, LLVMValueRef index);
 
@@ -109,13 +106,9 @@ struct ac_shader_abi {
 
    LLVMValueRef (*load_sample_position)(struct ac_shader_abi *abi, LLVMValueRef sample_id);
 
-   LLVMValueRef (*load_local_group_size)(struct ac_shader_abi *abi);
-
-   LLVMValueRef (*load_sample_mask_in)(struct ac_shader_abi *abi);
-
-   LLVMValueRef (*load_base_vertex)(struct ac_shader_abi *abi, bool non_indexed_is_zero);
-
    LLVMValueRef (*emit_fbfetch)(struct ac_shader_abi *abi);
+
+   LLVMValueRef (*intrinsic_load)(struct ac_shader_abi *abi, nir_intrinsic_op op);
 
    /* Whether to clamp the shadow reference value to [0,1]on GFX8. Radeonsi currently
     * uses it due to promoting D16 to D32, but radv needs it off. */

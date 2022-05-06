@@ -3616,11 +3616,14 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
    case nir_intrinsic_load_base_vertex:
    case nir_intrinsic_load_first_vertex:
-      result = ctx->abi->load_base_vertex(ctx->abi,
-                                          instr->intrinsic == nir_intrinsic_load_base_vertex);
-      break;
    case nir_intrinsic_load_workgroup_size:
-      result = ctx->abi->load_local_group_size(ctx->abi);
+   case nir_intrinsic_load_tess_level_outer:
+   case nir_intrinsic_load_tess_level_inner:
+   case nir_intrinsic_load_tess_level_outer_default:
+   case nir_intrinsic_load_tess_level_inner_default:
+   case nir_intrinsic_load_patch_vertices_in:
+   case nir_intrinsic_load_sample_mask_in:
+      result = ctx->abi->intrinsic_load(ctx->abi, instr->intrinsic);
       break;
    case nir_intrinsic_load_vertex_id:
       result = LLVMBuildAdd(ctx->ac.builder,
@@ -3686,9 +3689,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_sample_pos:
       result = load_sample_pos(ctx);
-      break;
-   case nir_intrinsic_load_sample_mask_in:
-      result = ctx->abi->load_sample_mask_in(ctx->abi);
       break;
    case nir_intrinsic_load_frag_coord:
       result = emit_load_frag_coord(ctx);
@@ -4031,21 +4031,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ac_build_gather_values(&ctx->ac, coord, 3);
       break;
    }
-   case nir_intrinsic_load_tess_level_outer:
-      result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_OUTER, false);
-      break;
-   case nir_intrinsic_load_tess_level_inner:
-      result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_INNER, false);
-      break;
-   case nir_intrinsic_load_tess_level_outer_default:
-      result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_OUTER, true);
-      break;
-   case nir_intrinsic_load_tess_level_inner_default:
-      result = ctx->abi->load_tess_level(ctx->abi, VARYING_SLOT_TESS_LEVEL_INNER, true);
-      break;
-   case nir_intrinsic_load_patch_vertices_in:
-      result = ctx->abi->load_patch_vertices_in(ctx->abi);
-      break;
    case nir_intrinsic_vote_all: {
       result = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
       break;

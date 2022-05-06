@@ -986,27 +986,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    si_llvm_build_ret(ctx, ret);
 }
 
-static LLVMValueRef get_base_vertex(struct ac_shader_abi *abi, bool non_indexed_is_zero)
-{
-   struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-
-   /* This doesn't happen with GL: */
-   if (!non_indexed_is_zero)
-      return ac_get_arg(&ctx->ac, ctx->args.base_vertex);
-
-   /* For non-indexed draws, the base vertex set by the driver
-    * (for direct draws) or the CP (for indirect draws) is the
-    * first vertex ID, but GLSL expects 0 to be returned.
-    */
-   LLVMValueRef indexed = si_unpack_param(ctx, ctx->vs_state_bits, 1, 1);
-   indexed = LLVMBuildTrunc(ctx->ac.builder, indexed, ctx->ac.i1, "");
-
-   return LLVMBuildSelect(ctx->ac.builder, indexed, ac_get_arg(&ctx->ac, ctx->args.base_vertex),
-                          ctx->ac.i32_0, "");
-}
-
 void si_llvm_init_vs_callbacks(struct si_shader_context *ctx, bool ngg_cull_shader)
 {
-   ctx->abi.load_base_vertex = get_base_vertex;
    ctx->abi.load_inputs = si_load_vs_input;
 }
