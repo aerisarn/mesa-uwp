@@ -415,7 +415,6 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen,
       return (1 << PIPE_SHADER_IR_TGSI) |
              (1 << PIPE_SHADER_IR_NIR);
    case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-      return 32;
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
@@ -1117,6 +1116,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
       .lower_sincos = !screen->specs.has_sin_cos_sqrt,
       .lower_uniforms_to_ubo = screen->specs.halti >= 2,
       .force_indirect_unrolling = nir_var_all,
+      .max_unroll_iterations = 32,
    };
 
    /* apply debug options that disable individual features */
