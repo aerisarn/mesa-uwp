@@ -428,106 +428,6 @@ static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
    ctx->ac.lds = LLVMBuildBitCast(ctx->ac.builder, var, i8p, "");
 }
 
-static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
-{
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      /* Unpack GS vertex offsets. */
-      for (unsigned i = 0; i < 6; i++) {
-         if (ctx->screen->info.chip_class >= GFX9) {
-            ctx->gs_vtx_offset[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
-         } else {
-            ctx->gs_vtx_offset[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
-         }
-      }
-
-      /* Apply the hw bug workaround for triangle strips with adjacency. */
-      if (ctx->screen->info.chip_class <= GFX9 &&
-          ctx->shader->key.ge.mono.u.gs_tri_strip_adj_fix) {
-         LLVMValueRef prim_id = ac_get_arg(&ctx->ac, ctx->args.gs_prim_id);
-         /* Remap GS vertex offsets for every other primitive. */
-         LLVMValueRef rotate = LLVMBuildTrunc(ctx->ac.builder, prim_id, ctx->ac.i1, "");
-         LLVMValueRef fixed[6];
-
-         for (unsigned i = 0; i < 6; i++) {
-            fixed[i] = LLVMBuildSelect(ctx->ac.builder, rotate,
-                                       ctx->gs_vtx_offset[(i + 4) % 6],
-                                       ctx->gs_vtx_offset[i], "");
-         }
-         memcpy(ctx->gs_vtx_offset, fixed, sizeof(fixed));
-      }
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      unsigned colors_read = ctx->shader->selector->info.colors_read;
-      LLVMValueRef main_fn = ctx->main_fn;
-
-      LLVMValueRef undef = LLVMGetUndef(ctx->ac.f32);
-
-      unsigned offset = SI_PARAM_POS_FIXED_PT + 1;
-
-      if (colors_read & 0x0f) {
-         unsigned mask = colors_read & 0x0f;
-         LLVMValueRef values[4];
-         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
-         ctx->abi.color0 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
-      }
-      if (colors_read & 0xf0) {
-         unsigned mask = (colors_read & 0xf0) >> 4;
-         LLVMValueRef values[4];
-         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
-         ctx->abi.color1 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
-      }
-
-      ctx->abi.interp_at_sample_force_center =
-         ctx->shader->key.ps.mono.interpolate_at_sample_force_center;
-
-      ctx->abi.kill_ps_if_inf_interp =
-         ctx->screen->options.no_infinite_interp &&
-         (ctx->shader->selector->info.uses_persp_center ||
-          ctx->shader->selector->info.uses_persp_centroid ||
-          ctx->shader->selector->info.uses_persp_sample);
-
-   } else if (nir->info.stage == MESA_SHADER_COMPUTE) {
-      if (nir->info.cs.user_data_components_amd) {
-         ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
-         ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
-                                                      nir->info.cs.user_data_components_amd);
-      }
-
-      if (ctx->shader->selector->info.base.shared_size)
-         si_llvm_declare_compute_memory(ctx);
-   }
-
-   ctx->abi.clamp_shadow_reference = true;
-   ctx->abi.robust_buffer_access = true;
-   ctx->abi.convert_undef_to_zero = true;
-   ctx->abi.load_grid_size_from_user_sgpr = true;
-
-   const struct si_shader_info *info = &ctx->shader->selector->info;
-   for (unsigned i = 0; i < info->num_outputs; i++) {
-      LLVMTypeRef type = ctx->ac.f32;
-
-      /* Only FS uses unpacked f16. Other stages pack 16-bit outputs into low and high bits of f32. */
-      if (nir->info.stage == MESA_SHADER_FRAGMENT &&
-          nir_alu_type_get_type_size(ctx->shader->selector->info.output_type[i]) == 16)
-         type = ctx->ac.f16;
-
-      for (unsigned j = 0; j < 4; j++)
-         ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, type, "");
-   }
-
-   ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero ||
-                                info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
-
-   ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
-
-   return true;
-}
-
 /**
  * Given a list of shader part functions, build a wrapper function that
  * runs them in sequence to form a monolithic shader.
@@ -1036,15 +936,103 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       }
    }
 
-   bool success = si_nir_build_llvm(ctx, nir);
-   if (free_nir)
-      ralloc_free(nir);
-   if (!success) {
-      fprintf(stderr, "Failed to translate shader from NIR to LLVM\n");
-      return false;
+   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      /* Unpack GS vertex offsets. */
+      for (unsigned i = 0; i < 6; i++) {
+         if (ctx->screen->info.chip_class >= GFX9) {
+            ctx->gs_vtx_offset[i] = si_unpack_param(ctx, ctx->args.gs_vtx_offset[i / 2], (i & 1) * 16, 16);
+         } else {
+            ctx->gs_vtx_offset[i] = ac_get_arg(&ctx->ac, ctx->args.gs_vtx_offset[i]);
+         }
+      }
+
+      /* Apply the hw bug workaround for triangle strips with adjacency. */
+      if (ctx->screen->info.chip_class <= GFX9 &&
+          ctx->shader->key.ge.mono.u.gs_tri_strip_adj_fix) {
+         LLVMValueRef prim_id = ac_get_arg(&ctx->ac, ctx->args.gs_prim_id);
+         /* Remap GS vertex offsets for every other primitive. */
+         LLVMValueRef rotate = LLVMBuildTrunc(ctx->ac.builder, prim_id, ctx->ac.i1, "");
+         LLVMValueRef fixed[6];
+
+         for (unsigned i = 0; i < 6; i++) {
+            fixed[i] = LLVMBuildSelect(ctx->ac.builder, rotate,
+                                       ctx->gs_vtx_offset[(i + 4) % 6],
+                                       ctx->gs_vtx_offset[i], "");
+         }
+         memcpy(ctx->gs_vtx_offset, fixed, sizeof(fixed));
+      }
+   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      unsigned colors_read = ctx->shader->selector->info.colors_read;
+      LLVMValueRef main_fn = ctx->main_fn;
+
+      LLVMValueRef undef = LLVMGetUndef(ctx->ac.f32);
+
+      unsigned offset = SI_PARAM_POS_FIXED_PT + 1;
+
+      if (colors_read & 0x0f) {
+         unsigned mask = colors_read & 0x0f;
+         LLVMValueRef values[4];
+         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
+         ctx->abi.color0 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
+      }
+      if (colors_read & 0xf0) {
+         unsigned mask = (colors_read & 0xf0) >> 4;
+         LLVMValueRef values[4];
+         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
+         ctx->abi.color1 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
+      }
+
+      ctx->abi.interp_at_sample_force_center =
+         ctx->shader->key.ps.mono.interpolate_at_sample_force_center;
+
+      ctx->abi.kill_ps_if_inf_interp =
+         ctx->screen->options.no_infinite_interp &&
+         (ctx->shader->selector->info.uses_persp_center ||
+          ctx->shader->selector->info.uses_persp_centroid ||
+          ctx->shader->selector->info.uses_persp_sample);
+
+   } else if (nir->info.stage == MESA_SHADER_COMPUTE) {
+      if (nir->info.cs.user_data_components_amd) {
+         ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
+         ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
+                                                      nir->info.cs.user_data_components_amd);
+      }
+
+      if (ctx->shader->selector->info.base.shared_size)
+         si_llvm_declare_compute_memory(ctx);
    }
 
+   ctx->abi.clamp_shadow_reference = true;
+   ctx->abi.robust_buffer_access = true;
+   ctx->abi.convert_undef_to_zero = true;
+   ctx->abi.load_grid_size_from_user_sgpr = true;
+   ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero ||
+                                info->options & SI_PROFILE_CLAMP_DIV_BY_ZERO;
+
+   for (unsigned i = 0; i < info->num_outputs; i++) {
+      LLVMTypeRef type = ctx->ac.f32;
+
+      /* Only FS uses unpacked f16. Other stages pack 16-bit outputs into low and high bits of f32. */
+      if (nir->info.stage == MESA_SHADER_FRAGMENT &&
+          nir_alu_type_get_type_size(ctx->shader->selector->info.output_type[i]) == 16)
+         type = ctx->ac.f16;
+
+      for (unsigned j = 0; j < 4; j++)
+         ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, type, "");
+   }
+
+   ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
+
    si_llvm_build_ret(ctx, ctx->return_value);
+
+   if (free_nir)
+      ralloc_free(nir);
    return true;
 }
 
