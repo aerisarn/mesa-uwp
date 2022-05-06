@@ -44,8 +44,4 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
 extern void
 link_shaders(struct gl_context *ctx, struct gl_shader_program *prog);
 
-extern void
-build_program_resource_list(const struct gl_constants *consts,
-                            struct gl_shader_program *shProg);
-
 #endif /* GLSL_PROGRAM_H */

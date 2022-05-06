@@ -266,8 +266,6 @@ struct gl_linked_shader
    unsigned num_combined_uniform_components;
 
    struct exec_list *ir;
-   struct exec_list *packed_varyings;
-   struct exec_list *fragdata_arrays;
    struct glsl_symbol_table *symbols;
 
    /**

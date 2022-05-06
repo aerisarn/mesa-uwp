@@ -23,9 +23,8 @@ test(
   executable(
     'general_ir_test',
     ['array_refcount_test.cpp', 'builtin_variable_test.cpp',
-     'invalidate_locations_test.cpp', 'general_ir_test.cpp',
-     'lower_int64_test.cpp', 'opt_add_neg_to_sub_test.cpp',
-     'varyings_test.cpp', ir_expression_operation_h],
+     'general_ir_test.cpp', 'lower_int64_test.cpp',
+     'opt_add_neg_to_sub_test.cpp', ir_expression_operation_h],
     cpp_args : [cpp_msvc_compat_args],
     gnu_symbol_visibility : 'hidden',
     include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_glsl],

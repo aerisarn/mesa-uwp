@@ -764,15 +764,6 @@ public:
       unsigned is_implicit_initializer:1;
 
       /**
-       * Is this variable a generic output or input that has not yet been matched
-       * up to a variable in another stage of the pipeline?
-       *
-       * This is used by the linker as scratch storage while assigning locations
-       * to generic inputs and outputs.
-       */
-      unsigned is_unmatched_generic_inout:1;
-
-      /**
        * Is this varying used by transform feedback?
        *
        * This is used by the linker to decide if it's safe to pack the varying.

@@ -35,9 +35,6 @@ extern bool
 link_function_calls(gl_shader_program *prog, gl_linked_shader *main,
                     gl_shader **shader_list, unsigned num_shaders);
 
-extern void
-link_invalidate_variable_locations(exec_list *ir);
-
 extern int
 link_cross_validate_uniform_block(void *mem_ctx,
                                   struct gl_uniform_block **linked_blocks,
