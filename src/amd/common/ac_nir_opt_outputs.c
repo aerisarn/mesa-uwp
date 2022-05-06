@@ -253,7 +253,7 @@ bool ac_nir_optimize_outputs(nir_shader *nir, bool sprite_tex_disallowed,
       return false;
    }
 
-   struct ac_out_info outputs[NUM_TOTAL_VARYING_SLOTS] = {};
+   struct ac_out_info outputs[NUM_TOTAL_VARYING_SLOTS] = { 0 };
 
    BITSET_DECLARE(outputs_optimized, NUM_TOTAL_VARYING_SLOTS);
    BITSET_ZERO(outputs_optimized);
