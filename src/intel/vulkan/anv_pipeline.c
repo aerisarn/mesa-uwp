@@ -1751,7 +1751,8 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
    const struct intel_device_info *devinfo = &pipeline->base.device->info;
    if (devinfo->has_coarse_pixel_primitive_and_cb &&
        stages[MESA_SHADER_FRAGMENT].entrypoint &&
-       stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel) {
+       stages[MESA_SHADER_FRAGMENT].key.wm.coarse_pixel &&
+       stages[MESA_SHADER_MESH].entrypoint == NULL) {
       struct anv_pipeline_stage *last_psr = NULL;
 
       for (unsigned i = 0; i < ARRAY_SIZE(shader_order); i++) {
