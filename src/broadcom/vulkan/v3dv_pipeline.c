@@ -3437,6 +3437,15 @@ pipeline_get_nir(struct v3dv_pipeline *pipeline,
    return NULL;
 }
 
+static struct v3d_prog_data *
+pipeline_get_prog_data(struct v3dv_pipeline *pipeline,
+                       enum broadcom_shader_stage stage)
+{
+   if (pipeline->shared_data->variants[stage])
+      return pipeline->shared_data->variants[stage]->prog_data.base;
+   return NULL;
+}
+
 static uint64_t *
 pipeline_get_qpu(struct v3dv_pipeline *pipeline,
                  enum broadcom_shader_stage stage,
@@ -3634,6 +3643,87 @@ v3dv_GetPipelineExecutablePropertiesKHR(
                    _mesa_shader_stage_to_string(mesa_stage));
 
          props->subgroupSize = V3D_CHANNELS;
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_GetPipelineExecutableStatisticsKHR(
+   VkDevice device,
+   const VkPipelineExecutableInfoKHR *pExecutableInfo,
+   uint32_t *pStatisticCount,
+   VkPipelineExecutableStatisticKHR *pStatistics)
+{
+   V3DV_FROM_HANDLE(v3dv_pipeline, pipeline, pExecutableInfo->pipeline);
+
+   pipeline_collect_executable_data(pipeline);
+
+   const struct v3dv_pipeline_executable_data *exe =
+      pipeline_get_executable(pipeline, pExecutableInfo->executableIndex);
+
+   struct v3d_prog_data *prog_data =
+      pipeline_get_prog_data(pipeline, exe->stage);
+
+   struct v3dv_shader_variant *variant =
+      pipeline->shared_data->variants[exe->stage];
+   uint32_t qpu_inst_count = variant->qpu_insts_size / sizeof(uint64_t);
+
+   VK_OUTARRAY_MAKE_TYPED(VkPipelineExecutableStatisticKHR, out,
+                          pStatistics, pStatisticCount);
+
+   if (qpu_inst_count > 0) {
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "Compile Strategy");
+         WRITE_STR(stat->description, "Chosen compile strategy index");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->compile_strategy_idx;
+      }
+
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "Instruction Count");
+         WRITE_STR(stat->description, "Number of QPU instructions");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = qpu_inst_count;
+      }
+
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "Thread Count");
+         WRITE_STR(stat->description, "Number of QPU threads dispatched");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->threads;
+      }
+
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "Spill Size");
+         WRITE_STR(stat->description, "Size of the spill buffer in bytes");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->spill_size;
+      }
+
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "TMU Spills");
+         WRITE_STR(stat->description, "Number of times a register was spilled "
+                                      "to memory");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->spill_size;
+      }
+
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "TMU Fills");
+         WRITE_STR(stat->description, "Number of times a register was filled "
+                                      "from memory");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->spill_size;
+      }
+
+      vk_outarray_append_typed(VkPipelineExecutableStatisticKHR, &out, stat) {
+         WRITE_STR(stat->name, "QPU Read Stalls");
+         WRITE_STR(stat->description, "Number of cycles the QPU stalls for a "
+                                      "register read dependency");
+         stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
+         stat->value.u64 = prog_data->qpu_read_stalls;
       }
    }
 
