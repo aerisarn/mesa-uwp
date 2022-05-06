@@ -220,9 +220,6 @@ v3d_tfu(struct pipe_context *pctx,
         if (psrc->nr_samples != pdst->nr_samples)
                 return false;
 
-        if (pdst->target != PIPE_TEXTURE_2D || psrc->target != PIPE_TEXTURE_2D)
-                return false;
-
         /* Can't write to raster. */
         if (dst_base_slice->tiling == V3D_TILING_RASTER)
                 return false;
@@ -369,10 +366,12 @@ v3d_tfu_blit(struct pipe_context *pctx, struct pipe_blit_info *info)
             info->dst.box.y != 0 ||
             info->dst.box.width != dst_width ||
             info->dst.box.height != dst_height ||
+            info->dst.box.depth != 1 ||
             info->src.box.x != 0 ||
             info->src.box.y != 0 ||
             info->src.box.width != info->dst.box.width ||
-            info->src.box.height != info->dst.box.height) {
+            info->src.box.height != info->dst.box.height ||
+            info->src.box.depth != 1) {
                 return;
         }
 
