@@ -47,6 +47,24 @@ static const VkBufferCreateInfo cache_infos[] = {
          VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
    },
+   {
+      /* mainly for layering clients like angle and zink */
+      .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+      .size = 1,
+      .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+               VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+               VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+               VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT |
+               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+               VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT |
+               VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT |
+               VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT |
+               VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT,
+      .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+   },
 };
 
 static inline bool
@@ -63,6 +81,8 @@ vn_buffer_cache_entries_create(struct vn_device *dev,
                                uint32_t *out_entry_count)
 {
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
+   const struct vk_device_extension_table *app_exts =
+      &dev->base.base.enabled_extensions;
    VkDevice dev_handle = vn_device_to_handle(dev);
    struct vn_buffer_cache_entry *entries;
    const uint32_t entry_count = ARRAY_SIZE(cache_infos);
@@ -76,11 +96,23 @@ vn_buffer_cache_entries_create(struct vn_device *dev,
    for (uint32_t i = 0; i < entry_count; i++) {
       VkBuffer buf_handle = VK_NULL_HANDLE;
       struct vn_buffer *buf = NULL;
+      VkBufferCreateInfo local_info = cache_infos[i];
 
       assert(vn_buffer_create_info_can_be_cached(&cache_infos[i]));
 
-      result =
-         vn_CreateBuffer(dev_handle, &cache_infos[i], alloc, &buf_handle);
+      /* We mask out usage bits from exts not enabled by the app to create the
+       * buffer. To be noted, we'll still set cache entry create_info to the
+       * unmasked one for code simplicity, and it's fine to use a superset.
+       */
+      if (!app_exts->EXT_transform_feedback) {
+         local_info.usage &=
+            ~(VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT |
+              VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT);
+      }
+      if (!app_exts->EXT_conditional_rendering)
+         local_info.usage &= ~VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
+
+      result = vn_CreateBuffer(dev_handle, &local_info, alloc, &buf_handle);
       if (result != VK_SUCCESS) {
          vk_free(alloc, entries);
          return result;
