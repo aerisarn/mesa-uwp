@@ -104,6 +104,13 @@ va_lower_isel(bi_instr *I)
 
       break;
 
+   case BI_OPCODE_MUX_I32:
+   case BI_OPCODE_MUX_V2I16:
+      if (bi_can_replace_with_csel(I))
+         bi_replace_mux_with_csel(I, true);
+
+      break;
+
    default:
       break;
    }
