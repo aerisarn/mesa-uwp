@@ -980,6 +980,103 @@ vk_common_GetRenderAreaGranularity(VkDevice device,
    *pGranularity = (VkExtent2D) { 1, 1 };
 }
 
+static VkRenderPassSampleLocationsBeginInfoEXT *
+clone_rp_sample_locations(const VkRenderPassSampleLocationsBeginInfoEXT *loc)
+{
+   uint32_t sl_count = 0;
+
+   for (uint32_t i = 0; i < loc->attachmentInitialSampleLocationsCount; i++) {
+      const VkAttachmentSampleLocationsEXT *att_sl_in =
+         &loc->pAttachmentInitialSampleLocations[i];
+      sl_count += att_sl_in->sampleLocationsInfo.sampleLocationsCount;
+   }
+   for (uint32_t i = 0; i < loc->postSubpassSampleLocationsCount; i++) {
+      const VkSubpassSampleLocationsEXT *sp_sl_in =
+         &loc->pPostSubpassSampleLocations[i];
+      sl_count += sp_sl_in->sampleLocationsInfo.sampleLocationsCount;
+   }
+
+   VK_MULTIALLOC(ma);
+   VK_MULTIALLOC_DECL(&ma, VkRenderPassSampleLocationsBeginInfoEXT, new_loc, 1);
+   VK_MULTIALLOC_DECL(&ma, VkAttachmentSampleLocationsEXT, new_att_sl,
+                      loc->attachmentInitialSampleLocationsCount);
+   VK_MULTIALLOC_DECL(&ma, VkSubpassSampleLocationsEXT, new_sp_sl,
+                      loc->postSubpassSampleLocationsCount);
+   VK_MULTIALLOC_DECL(&ma, VkSampleLocationEXT, sl, sl_count);
+   if (!vk_multialloc_alloc(&ma, vk_default_allocator(),
+                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+      return NULL;
+
+   VkSampleLocationEXT *next_sl = sl;
+   for (uint32_t i = 0; i < loc->attachmentInitialSampleLocationsCount; i++) {
+      const VkAttachmentSampleLocationsEXT *att_sl_in =
+         &loc->pAttachmentInitialSampleLocations[i];
+      const VkSampleLocationsInfoEXT *sli_in = &att_sl_in->sampleLocationsInfo;
+
+      typed_memcpy(next_sl, sli_in->pSampleLocations,
+                   sli_in->sampleLocationsCount);
+
+      new_att_sl[i] = (VkAttachmentSampleLocationsEXT) {
+         .attachmentIndex = att_sl_in->attachmentIndex,
+         .sampleLocationsInfo = {
+            .sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT,
+            .sampleLocationsPerPixel = sli_in->sampleLocationsPerPixel,
+            .sampleLocationGridSize = sli_in->sampleLocationGridSize,
+            .sampleLocationsCount = sli_in->sampleLocationsCount,
+            .pSampleLocations = next_sl,
+         },
+      };
+
+      next_sl += sli_in->sampleLocationsCount;
+   }
+
+   for (uint32_t i = 0; i < loc->postSubpassSampleLocationsCount; i++) {
+      const VkSubpassSampleLocationsEXT *sp_sl_in =
+         &loc->pPostSubpassSampleLocations[i];
+      const VkSampleLocationsInfoEXT *sli_in = &sp_sl_in->sampleLocationsInfo;
+
+      typed_memcpy(next_sl, sli_in->pSampleLocations,
+                   sli_in->sampleLocationsCount);
+
+      new_sp_sl[i] = (VkSubpassSampleLocationsEXT) {
+         .subpassIndex = sp_sl_in->subpassIndex,
+         .sampleLocationsInfo = {
+            .sType = VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT,
+            .sampleLocationsPerPixel = sli_in->sampleLocationsPerPixel,
+            .sampleLocationGridSize = sli_in->sampleLocationGridSize,
+            .sampleLocationsCount = sli_in->sampleLocationsCount,
+            .pSampleLocations = next_sl,
+         },
+      };
+
+      next_sl += sli_in->sampleLocationsCount;
+   }
+
+   assert(next_sl == sl + sl_count);
+
+   *new_loc = (VkRenderPassSampleLocationsBeginInfoEXT) {
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT,
+      .attachmentInitialSampleLocationsCount = loc->attachmentInitialSampleLocationsCount,
+      .pAttachmentInitialSampleLocations = new_att_sl,
+      .postSubpassSampleLocationsCount = loc->postSubpassSampleLocationsCount,
+      .pPostSubpassSampleLocations = new_sp_sl,
+   };
+
+   return new_loc;
+}
+
+static const VkSampleLocationsInfoEXT *
+get_subpass_sample_locations(const VkRenderPassSampleLocationsBeginInfoEXT *loc,
+                             uint32_t subpass_idx)
+{
+   for (uint32_t i = 0; i < loc->postSubpassSampleLocationsCount; i++) {
+      if (loc->pPostSubpassSampleLocations[i].subpassIndex == subpass_idx)
+         return &loc->pPostSubpassSampleLocations[i].sampleLocationsInfo;
+   }
+
+   return NULL;
+}
+
 static bool
 vk_image_layout_supports_input_attachment(VkImageLayout layout)
 {
@@ -1072,6 +1169,7 @@ transition_image_range(const struct vk_image_view *image_view,
                        VkImageLayout new_layout,
                        VkImageLayout old_stencil_layout,
                        VkImageLayout new_stencil_layout,
+                       const VkSampleLocationsInfoEXT *sample_locations,
                        uint32_t *barrier_count,
                        uint32_t max_barrier_count,
                        VkImageMemoryBarrier2 *barriers)
@@ -1111,6 +1209,7 @@ transition_image_range(const struct vk_image_view *image_view,
          assert(*barrier_count < max_barrier_count);
          barriers[(*barrier_count)++] = (VkImageMemoryBarrier2) {
             .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext = sample_locations,
             .srcStageMask = src_sa.stages,
             .srcAccessMask = src_sa.access,
             .dstStageMask = dst_sa.stages,
@@ -1320,6 +1419,7 @@ transition_attachment(struct vk_command_buffer *cmd_buffer,
       transition_image_range(image_view, range,
                              att_view_state->layout, layout,
                              att_view_state->stencil_layout, stencil_layout,
+                             att_view_state->sample_locations,
                              barrier_count, max_barrier_count, barriers);
 
       att_view_state->layout = layout;
@@ -1531,6 +1631,7 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INITIAL_LAYOUT_INFO_MESA,
    };
 
+   const VkSampleLocationsInfoEXT *sample_locations = NULL;
    if (subpass->depth_stencil_attachment != NULL) {
       const struct vk_subpass_attachment *sp_att =
          subpass->depth_stencil_attachment;
@@ -1610,6 +1711,37 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
           */
          depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
          stencil_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      }
+
+      /* From the Vulkan 1.3.212 spec:
+       *
+       *    "If the current render pass does not use the attachment as a
+       *    depth/stencil attachment in any subpass that happens-before, the
+       *    automatic layout transition uses the sample locations state
+       *    specified in the sampleLocationsInfo member of the element of the
+       *    VkRenderPassSampleLocationsBeginInfoEXT::pAttachmentInitialSampleLocations
+       *    array for which the attachmentIndex member equals the attachment
+       *    index of the attachment, if one is specified. Otherwise, the
+       *    automatic layout transition uses the sample locations state
+       *    specified in the sampleLocationsInfo member of the element of the
+       *    VkRenderPassSampleLocationsBeginInfoEXT::pPostSubpassSampleLocations
+       *    array for which the subpassIndex member equals the index of the
+       *    subpass that last used the attachment as a depth/stencil
+       *    attachment, if one is specified."
+       *
+       * Unfortunately, this says nothing whatsoever about multiview.
+       * However, since multiview render passes are described as a single-view
+       * render pass repeated per-view, we assume this is per-view.
+       */
+      if (cmd_buffer->pass_sample_locations != NULL &&
+          (att_state->image_view->image->create_flags &
+           VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
+         sample_locations =
+            get_subpass_sample_locations(cmd_buffer->pass_sample_locations,
+                                         subpass_idx);
+
+         u_foreach_bit(view, subpass->view_mask)
+            att_state->views[view].sample_locations = sample_locations;
       }
 
       if (sp_att->resolve != NULL) {
@@ -1836,6 +1968,12 @@ begin_subpass(struct vk_command_buffer *cmd_buffer,
       __vk_append_struct(&rendering, &fsr_attachment);
    }
 
+   VkSampleLocationsInfoEXT sample_locations_tmp;
+   if (sample_locations) {
+      sample_locations_tmp = *sample_locations;
+      __vk_append_struct(&rendering, &sample_locations_tmp);
+   }
+
    disp->CmdBeginRendering(vk_command_buffer_to_handle(cmd_buffer),
                            &rendering);
 
@@ -1977,6 +2115,33 @@ vk_common_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
          att_state->clear_value = pRenderPassBeginInfo->pClearValues[a];
    }
 
+   const VkRenderPassSampleLocationsBeginInfoEXT *rp_sl_info =
+      vk_find_struct_const(pRenderPassBeginInfo->pNext,
+                           RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT);
+   if (rp_sl_info) {
+      cmd_buffer->pass_sample_locations = clone_rp_sample_locations(rp_sl_info);
+      assert(cmd_buffer->pass_sample_locations);
+
+      for (uint32_t i = 0; i < rp_sl_info->attachmentInitialSampleLocationsCount; i++) {
+         const VkAttachmentSampleLocationsEXT *att_sl =
+            &rp_sl_info->pAttachmentInitialSampleLocations[i];
+
+         assert(att_sl->attachmentIndex < pass->attachment_count);
+         struct vk_attachment_state *att_state =
+            &cmd_buffer->attachments[att_sl->attachmentIndex];
+
+         /* Sample locations only matter for depth/stencil images created with
+          * VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT
+          */
+         if (vk_format_is_depth_or_stencil(att_state->image_view->format) &&
+             (att_state->image_view->image->create_flags &
+              VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
+            for (uint32_t v = 0; v < MESA_VK_MAX_MULTIVIEW_VIEW_COUNT; v++)
+               att_state->views[v].sample_locations = &att_sl->sampleLocationsInfo;
+         }
+      }
+   }
+
    begin_subpass(cmd_buffer, pSubpassBeginInfo);
 }
 
@@ -1989,6 +2154,9 @@ vk_command_buffer_reset_render_pass(struct vk_command_buffer *cmd_buffer)
    if (cmd_buffer->attachments != cmd_buffer->_attachments)
       free(cmd_buffer->attachments);
    cmd_buffer->attachments = NULL;
+   if (cmd_buffer->pass_sample_locations != NULL)
+      vk_free(vk_default_allocator(), cmd_buffer->pass_sample_locations);
+   cmd_buffer->pass_sample_locations = NULL;
 }
 
 VKAPI_ATTR void VKAPI_CALL

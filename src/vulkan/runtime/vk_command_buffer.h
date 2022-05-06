@@ -46,6 +46,7 @@ struct vk_render_pass;
 struct vk_attachment_view_state {
    VkImageLayout layout;
    VkImageLayout stencil_layout;
+   const VkSampleLocationsInfoEXT *sample_locations;
 };
 
 struct vk_attachment_state {
@@ -130,6 +131,8 @@ struct vk_command_buffer {
    /* This uses the same trick as STACK_ARRAY */
    struct vk_attachment_state *attachments;
    struct vk_attachment_state _attachments[8];
+
+   VkRenderPassSampleLocationsBeginInfoEXT *pass_sample_locations;
 };
 
 VK_DEFINE_HANDLE_CASTS(vk_command_buffer, base, VkCommandBuffer,
