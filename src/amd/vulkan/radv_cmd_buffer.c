@@ -2761,7 +2761,19 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->image->bindings[0].bo);
 
       assert(iview->vk.aspects & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
-                                  VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
+                                   VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
+
+      if (iview->image->disjoint && iview->vk.aspects == VK_IMAGE_ASPECT_COLOR_BIT) {
+         for (uint32_t plane_id = 0; plane_id < iview->image->plane_count; plane_id++) {
+            radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
+                  iview->image->bindings[plane_id].bo);
+         }
+      } else {
+         uint32_t plane_id = iview->image->disjoint ? iview->plane_id : 0;
+         radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
+               iview->image->bindings[plane_id].bo);
+      }
+
       radv_emit_fb_color_state(cmd_buffer, i, &cmd_buffer->state.attachments[idx].cb, iview, layout,
                                in_render_loop);
 

@@ -5870,8 +5870,30 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
          }
       }
 
-      image->bindings[0].bo = mem->bo;
-      image->bindings[0].offset = pBindInfos[i].memoryOffset;
+      if (image->disjoint) {
+         const VkBindImagePlaneMemoryInfo *plane_info =
+            vk_find_struct_const(pBindInfos[i].pNext, BIND_IMAGE_PLANE_MEMORY_INFO);
+
+         switch (plane_info->planeAspect) {
+            case VK_IMAGE_ASPECT_PLANE_0_BIT:
+               image->bindings[0].bo = mem->bo;
+               image->bindings[0].offset = pBindInfos[i].memoryOffset;
+               break;
+            case VK_IMAGE_ASPECT_PLANE_1_BIT:
+               image->bindings[1].bo = mem->bo;
+               image->bindings[1].offset = pBindInfos[i].memoryOffset;
+               break;
+            case VK_IMAGE_ASPECT_PLANE_2_BIT:
+               image->bindings[2].bo = mem->bo;
+               image->bindings[2].offset = pBindInfos[i].memoryOffset;
+               break;
+            default:
+               break;
+         }
+      } else {
+         image->bindings[0].bo = mem->bo;
+         image->bindings[0].offset = pBindInfos[i].memoryOffset;
+      }
    }
    return VK_SUCCESS;
 }
@@ -6209,7 +6231,9 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    else
       cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1);
 
-   va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset;
+   uint32_t plane_id = iview->image->disjoint ? iview->plane_id : 0;
+   va = radv_buffer_get_va(iview->image->bindings[plane_id].bo) +
+      iview->image->bindings[plane_id].offset;
 
    cb->cb_color_base = va >> 8;
 

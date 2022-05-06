@@ -2412,6 +2412,7 @@ struct radv_image {
    VkDeviceMemory owned_memory;
 
    unsigned plane_count;
+   bool disjoint;
    struct radv_image_plane planes[0];
 };
 

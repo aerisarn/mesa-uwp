@@ -41,6 +41,12 @@ radv_descriptor_type_buffer_count(VkDescriptorType type)
       case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
       case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
          return 0;
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_MUTABLE_VALVE:
+         return 3;
       default:
          return 1;
    }
@@ -1166,10 +1172,17 @@ write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
 
    memcpy(dst, descriptor, size);
 
-   if (cmd_buffer)
-      radv_cs_add_buffer(device->ws, cmd_buffer->cs, iview->image->bindings[0].bo);
-   else
-      *buffer_list = iview->image->bindings[0].bo;
+   const uint32_t max_bindings = sizeof(iview->image->bindings) /
+                                 sizeof(iview->image->bindings[0]);
+   for (uint32_t b = 0; b < max_bindings; b++) {
+      if (cmd_buffer) {
+         if (iview->image->bindings[b].bo)
+            radv_cs_add_buffer(device->ws, cmd_buffer->cs, iview->image->bindings[b].bo);
+      } else {
+         *buffer_list = iview->image->bindings[b].bo;
+         buffer_list++;
+      }
+   }
 }
 
 static ALWAYS_INLINE void
@@ -1364,13 +1377,17 @@ radv_update_descriptor_sets_impl(struct radv_device *device, struct radv_cmd_buf
          src_ptr += src_binding_layout->size / 4;
          dst_ptr += dst_binding_layout->size / 4;
 
-         if (src_binding_layout->type != VK_DESCRIPTOR_TYPE_SAMPLER &&
-             dst_binding_layout->type != VK_DESCRIPTOR_TYPE_SAMPLER &&
-             src_binding_layout->type != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR &&
-             dst_binding_layout->type != VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR) {
-            /* Sampler/acceleration structure descriptors don't have a buffer list. */
-            dst_buffer_list[j] = src_buffer_list[j];
+         unsigned src_buffer_count = radv_descriptor_type_buffer_count(src_binding_layout->type);
+         unsigned dst_buffer_count = radv_descriptor_type_buffer_count(dst_binding_layout->type);
+         for (unsigned k = 0; k < dst_buffer_count; k++) {
+            if (k < src_buffer_count)
+               dst_buffer_list[k] = src_buffer_list[k];
+            else
+               dst_buffer_list[k] = NULL;
          }
+
+         dst_buffer_list += dst_buffer_count;
+         src_buffer_list += src_buffer_count;
       }
    }
 }

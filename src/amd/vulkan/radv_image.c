@@ -766,7 +766,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
                                bool enable_write_compression, uint32_t *state)
 {
    struct radv_image_plane *plane = &image->planes[plane_id];
-   struct radv_image_binding *binding = &image->bindings[0];
+   struct radv_image_binding *binding = image->disjoint ? &image->bindings[plane_id] : &image->bindings[0];
    uint64_t gpu_address = binding->bo ? radv_buffer_get_va(binding->bo) + binding->offset : 0;
    uint64_t va = gpu_address;
    enum amd_gfx_level gfx_level = device->physical_device->rad_info.gfx_level;
@@ -1684,7 +1684,8 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
          offset = mod_info->pPlaneLayouts[plane].offset;
          stride = mod_info->pPlaneLayouts[plane].rowPitch / image->planes[plane].surface.bpe;
       } else {
-         offset = align64(image->size, 1 << image->planes[plane].surface.alignment_log2);
+         offset = image->disjoint ? 0 :
+            align64(image->size, 1 << image->planes[plane].surface.alignment_log2);
          stride = 0; /* 0 means no override */
       }
 
@@ -1850,6 +1851,7 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
    image->info.num_channels = vk_format_get_nr_components(format);
 
    image->plane_count = vk_format_get_plane_count(format);
+   image->disjoint = image->plane_count > 1 && pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT;
 
    image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
    if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
