@@ -739,6 +739,8 @@ struct v3d_compile {
          */
         uint32_t max_tmu_spills;
 
+        uint32_t compile_strategy_idx;
+
         /* The UBO index and block used with the last unifa load, as well as the
          * current unifa offset *after* emitting that load. This is used to skip
          * unifa writes (and their 3 delay slot) when the next UBO load reads
@@ -914,6 +916,12 @@ struct v3d_prog_data {
         struct v3d_uniform_list uniforms;
 
         uint32_t spill_size;
+        uint32_t tmu_spills;
+        uint32_t tmu_fills;
+
+        uint32_t qpu_read_stalls;
+
+        uint8_t compile_strategy_idx;
 
         uint8_t threads;
 

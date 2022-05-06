@@ -549,6 +549,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                                       void *debug_output_data),
                  void *debug_output_data,
                  int program_id, int variant_id,
+                 uint32_t compile_strategy_idx,
                  uint32_t max_threads,
                  uint32_t min_threads_for_reg_alloc,
                  uint32_t max_tmu_spills,
@@ -565,6 +566,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->key = key;
         c->program_id = program_id;
         c->variant_id = variant_id;
+        c->compile_strategy_idx = compile_strategy_idx;
         c->threads = max_threads;
         c->debug_output = debug_output;
         c->debug_output_data = debug_output_data;
@@ -851,6 +853,10 @@ v3d_set_prog_data(struct v3d_compile *c,
         prog_data->threads = c->threads;
         prog_data->single_seg = !c->last_thrsw;
         prog_data->spill_size = c->spill_size;
+        prog_data->tmu_spills = c->spills;
+        prog_data->tmu_fills = c->fills;
+        prog_data->qpu_read_stalls = c->qpu_inst_stalled_count;
+        prog_data->compile_strategy_idx = c->compile_strategy_idx;
         prog_data->tmu_dirty_rcl = c->tmu_dirty_rcl;
         prog_data->has_control_barrier = c->s->info.uses_control_barrier;
 
@@ -1795,6 +1801,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 c = vir_compile_init(compiler, key, s,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
+                                     strat,
                                      strategies[strat].max_threads,
                                      strategies[strat].min_threads,
                                      strategies[strat].max_tmu_spills,
