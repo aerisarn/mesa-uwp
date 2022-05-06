@@ -4854,11 +4854,12 @@ emit_single_mubuf_store(isel_context* ctx, Temp descriptor, Temp voffset, Temp s
 
    Operand voffset_op = voffset.id() ? Operand(as_vgpr(ctx, voffset)) : Operand(v1);
    Operand soffset_op = soffset.id() ? Operand(soffset) : Operand::zero();
+   bool glc = ctx->program->chip_class < GFX11;
    Builder::Result r =
       bld.mubuf(op, Operand(descriptor), voffset_op, soffset_op, Operand(vdata), const_offset,
                 /* offen */ !voffset_op.isUndefined(), /* swizzled */ swizzled,
-                /* idxen*/ false, /* addr64 */ false, /* disable_wqm */ false, /* glc */ true,
-                /* dlc*/ false, /* slc */ slc);
+                /* idxen*/ false, /* addr64 */ false, /* disable_wqm */ false,
+                /* glc */ glc, /* dlc*/ false, /* slc */ slc);
 
    r.instr->mubuf().sync = sync;
 }
@@ -6067,9 +6068,8 @@ visit_image_store(isel_context* ctx, nir_intrinsic_instr* instr)
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
    unsigned access = nir_intrinsic_access(instr);
    bool glc = ctx->options->chip_class == GFX6 ||
-                    access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)
-                 ? 1
-                 : 0;
+              ((access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)) &&
+               ctx->program->chip_class < GFX11);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp rsrc = bld.as_uniform(get_ssa_temp(ctx, instr->src[0].ssa));
@@ -6439,7 +6439,8 @@ visit_store_ssbo(isel_context* ctx, nir_intrinsic_instr* instr)
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc =
-      nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+      (nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)) &&
+      ctx->program->chip_class < GFX11;
 
    unsigned write_count = 0;
    Temp write_datas[32];
@@ -6640,7 +6641,8 @@ visit_store_global(isel_context* ctx, nir_intrinsic_instr* instr)
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc =
-      nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
+      (nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE)) &&
+      ctx->program->chip_class < GFX11;
 
    unsigned write_count = 0;
    Temp write_datas[32];
@@ -7453,7 +7455,7 @@ visit_emit_vertex_with_counter(isel_context* ctx, nir_intrinsic_instr* instr)
             mtbuf->dfmt = V_008F0C_BUF_DATA_FORMAT_32;
             mtbuf->nfmt = V_008F0C_BUF_NUM_FORMAT_UINT;
             mtbuf->offset = const_offset;
-            mtbuf->glc = true;
+            mtbuf->glc = ctx->program->chip_class < GFX11;
             mtbuf->slc = true;
             mtbuf->sync = memory_sync_info(storage_vmem_output, semantic_can_reorder);
             bld.insert(std::move(mtbuf));
@@ -10920,7 +10922,7 @@ emit_stream_output(isel_context* ctx, Temp const* so_buffers, Temp const* so_wri
          store->offset = offset;
       }
       store->offen = true;
-      store->glc = true;
+      store->glc = ctx->program->chip_class < GFX11;
       store->dlc = false;
       store->slc = true;
       ctx->block->instructions.emplace_back(std::move(store));
