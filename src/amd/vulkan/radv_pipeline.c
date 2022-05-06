@@ -3120,6 +3120,9 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       key.ps.is_int8 = blend->col_format_is_int8;
       key.ps.is_int10 = blend->col_format_is_int10;
    }
+   if (pipeline->device->physical_device->rad_info.chip_class >= GFX11) {
+      key.ps.alpha_to_coverage_via_mrtz = G_028B70_ALPHA_TO_MASK_ENABLE(blend->db_alpha_to_mask);
+   }
 
    key.vs.topology = vi_info->primitive_topology;
 

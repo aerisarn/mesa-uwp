@@ -97,6 +97,9 @@ struct radv_pipeline_key {
       bool lower_discard_to_demote;
       uint8_t enable_mrt_output_nan_fixup;
       bool force_vrs_enabled;
+
+      /* Used to export alpha through MRTZ for alpha-to-coverage (GFX11+). */
+      bool alpha_to_coverage_via_mrtz;
    } ps;
 
    struct {
