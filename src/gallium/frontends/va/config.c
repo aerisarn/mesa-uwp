@@ -170,9 +170,43 @@ vlVaGetConfigAttributes(VADriverContextP ctx, VAProfile profile, VAEntrypoint en
             if (u_reduce_video_profile(ProfileToPipe(profile)) == PIPE_VIDEO_FORMAT_HEVC)
                value |= VA_ENC_PACKED_HEADER_SEQUENCE;
             break;
+         case VAConfigAttribEncMaxSlices:
+         {
+            /**
+             * \brief Maximum number of slices per frame. Read-only.
+             *
+             * This attribute determines the maximum number of slices the
+             * driver can support to encode a single frame.
+             */
+            int maxSlicesPerEncodedPic = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                             PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                             PIPE_VIDEO_CAP_ENC_MAX_SLICES_PER_FRAME);
+            if (maxSlicesPerEncodedPic <= 0)
+               value = VA_ATTRIB_NOT_SUPPORTED;
+            else
+               value = maxSlicesPerEncodedPic;
+         } break;
          case VAConfigAttribEncMaxRefFrames:
-            value = 1;
-            break;
+         {
+            int maxL0L1ReferencesPerFrame = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                             PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                             PIPE_VIDEO_CAP_ENC_MAX_REFERENCES_PER_FRAME);
+            if (maxL0L1ReferencesPerFrame <= 0)
+               value = 1;
+            else
+               value = maxL0L1ReferencesPerFrame;
+         } break;
+         case VAConfigAttribEncSliceStructure:
+         {
+            /* The VA enum values match the pipe_video_cap_slice_structure definitions*/
+            int supportedSliceStructuresFlagSet = pscreen->get_video_param(pscreen, ProfileToPipe(profile),
+                                             PIPE_VIDEO_ENTRYPOINT_ENCODE,
+                                             PIPE_VIDEO_CAP_ENC_SLICES_STRUCTURE);
+            if (supportedSliceStructuresFlagSet <= 0)
+               value = VA_ATTRIB_NOT_SUPPORTED;
+            else
+               value = supportedSliceStructuresFlagSet;
+         } break;
          default:
             value = VA_ATTRIB_NOT_SUPPORTED;
             break;
