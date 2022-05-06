@@ -402,6 +402,7 @@ radv_shader_spirv_to_nir(struct radv_device *device, const struct radv_pipeline_
                .float32_atomic_min_max = true,
                .float64 = true,
                .float64_atomic_min_max = true,
+               .fragment_barycentric = true,
                .fragment_fully_covered = true,
                .geometry_streams = true,
                .groups = true,
