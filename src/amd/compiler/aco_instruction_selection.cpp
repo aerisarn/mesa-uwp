@@ -4201,7 +4201,7 @@ smem_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigned
    Temp val = dst_hint.id() && dst_hint.regClass() == rc ? dst_hint : bld.tmp(rc);
    load->definitions[0] = Definition(val);
    load->glc = info.glc;
-   load->dlc = info.glc && bld.program->chip_class >= GFX10;
+   load->dlc = info.glc && (bld.program->chip_class == GFX10 || bld.program->chip_class == GFX10_3);
    load->sync = info.sync;
    bld.insert(std::move(load));
    return val;
@@ -4249,7 +4249,8 @@ mubuf_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsigne
    mubuf->operands[2] = soffset;
    mubuf->offen = (offset.type() == RegType::vgpr);
    mubuf->glc = info.glc;
-   mubuf->dlc = info.glc && bld.program->chip_class >= GFX10;
+   mubuf->dlc =
+      info.glc && (bld.program->chip_class == GFX10 || bld.program->chip_class == GFX10_3);
    mubuf->slc = info.slc;
    mubuf->sync = info.sync;
    mubuf->offset = const_offset;
@@ -4443,7 +4444,8 @@ global_load_callback(Builder& bld, const LoadEmitInfo& info, Temp offset, unsign
          flat->operands[1] = Operand(s1);
       }
       flat->glc = info.glc;
-      flat->dlc = info.glc && bld.program->chip_class >= GFX10;
+      flat->dlc =
+         info.glc && (bld.program->chip_class == GFX10 || bld.program->chip_class == GFX10_3);
       flat->sync = info.sync;
       assert(global || !const_offset);
       flat->offset = const_offset;
@@ -6006,7 +6008,8 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
       load->definitions[0] = Definition(tmp);
       load->idxen = true;
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
-      load->dlc = load->glc && ctx->options->chip_class >= GFX10;
+      load->dlc =
+         load->glc && (ctx->options->chip_class == GFX10 || ctx->options->chip_class == GFX10_3);
       load->sync = sync;
       load->tfe = is_sparse;
       if (load->tfe)
@@ -6022,7 +6025,8 @@ visit_image_load(isel_context* ctx, nir_intrinsic_instr* instr)
       MIMG_instruction* load =
          emit_mimg(bld, opcode, Definition(tmp), resource, Operand(s4), coords, 0, vdata);
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
-      load->dlc = load->glc && ctx->options->chip_class >= GFX10;
+      load->dlc =
+         load->glc && (ctx->options->chip_class == GFX10 || ctx->options->chip_class == GFX10_3);
       load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
       load->d16 = d16;
       load->dmask = dmask;
