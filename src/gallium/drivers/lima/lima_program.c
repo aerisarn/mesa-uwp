@@ -64,6 +64,7 @@ static const nir_shader_compiler_options vs_nir_options = {
    .force_indirect_unrolling = nir_var_all,
    .force_indirect_unrolling_sampler = true,
    .lower_varying_from_uniform = true,
+   .max_unroll_iterations = 32,
 };
 
 static const nir_shader_compiler_options fs_nir_options = {
@@ -86,6 +87,7 @@ static const nir_shader_compiler_options fs_nir_options = {
    .force_indirect_unrolling = (nir_var_shader_out | nir_var_function_temp),
    .force_indirect_unrolling_sampler = true,
    .lower_varying_from_uniform = true,
+   .max_unroll_iterations = 32,
 };
 
 const void *

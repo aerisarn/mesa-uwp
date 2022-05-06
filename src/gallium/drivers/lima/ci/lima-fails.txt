@@ -455,8 +455,6 @@ spec@glsl-1.10@execution@variable-indexing@vs-varying-mat4-row-wr,Fail
 spec@glsl-1.10@execution@variable-indexing@vs-varying-mat4-wr,Fail
 spec@glsl-1.10@glsl-fs-discard-only,Fail
 spec@glsl-1.10@linker@glsl-link-varyings-3,Fail
-spec@glsl-1.20@execution@array_bounds@glsl-array-bounds-03,Fail
-spec@glsl-1.20@execution@array_bounds@glsl-array-bounds-07,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-op-assign-div-mat2x4-mat2x4,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-op-assign-div-mat3x2-mat3x2,Fail
 spec@glsl-1.20@execution@built-in-functions@fs-op-assign-div-mat3x4-mat3x4,Fail
