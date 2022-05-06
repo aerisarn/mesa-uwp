@@ -552,6 +552,7 @@ nvc0_screen_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
+   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
       return 0;
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       return NVC0_MAX_BUFFERS;
@@ -559,8 +560,6 @@ nvc0_screen_get_shader_param(struct pipe_screen *pscreen,
       return (class_3d >= NVE4_3D_CLASS) ? 32 : 16;
    case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
       return (class_3d >= NVE4_3D_CLASS) ? 32 : 16;
-   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-      return 32;
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
       if (class_3d >= NVE4_3D_CLASS)
          return NVC0_MAX_IMAGES;
