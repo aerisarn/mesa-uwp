@@ -10735,19 +10735,19 @@ export_fs_mrt_z(isel_context* ctx)
    /* Both stencil and sample mask only need 16-bits. */
    if (!ctx->program->info.ps.writes_z &&
        (ctx->program->info.ps.writes_stencil || ctx->program->info.ps.writes_sample_mask)) {
-      compr = true; /* COMPR flag */
+      compr = ctx->program->chip_class < GFX11; /* COMPR flag */
 
       if (ctx->program->info.ps.writes_stencil) {
          /* Stencil should be in X[23:16]. */
          values[0] = Operand(ctx->outputs.temps[FRAG_RESULT_STENCIL * 4u]);
          values[0] = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand::c32(16u), values[0]);
-         enabled_channels |= 0x3;
+         enabled_channels |= ctx->program->chip_class >= GFX11 ? 0x1 : 0x3;
       }
 
       if (ctx->program->info.ps.writes_sample_mask) {
          /* SampleMask should be in Y[15:0]. */
          values[1] = Operand(ctx->outputs.temps[FRAG_RESULT_SAMPLE_MASK * 4u]);
-         enabled_channels |= 0xc;
+         enabled_channels |= ctx->program->chip_class >= GFX11 ? 0x2 : 0xc;
       }
    } else {
       if (ctx->program->info.ps.writes_z) {
@@ -10837,6 +10837,14 @@ export_fs_mrt_color(isel_context* ctx, int slot)
    if (!compr) {
       for (int i = 0; i < 4; i++)
          values[i] = enabled_channels & (1 << i) ? values[i] : Operand(v1);
+   }
+
+   if (ctx->program->chip_class >= GFX11) {
+      /* GFX11 doesn't use COMPR for exports, but the channel mask should be
+       * 0x3 instead.
+       */
+      enabled_channels = compr ? 0x3 : enabled_channels;
+      compr = false;
    }
 
    bld.exp(aco_opcode::exp, values[0], values[1], values[2], values[3], enabled_channels, target,
