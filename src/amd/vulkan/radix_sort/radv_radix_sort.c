@@ -145,7 +145,7 @@ VKAPI_ATTR void VKAPI_CALL
 vkDestroyPipeline(VkDevice _device, VkPipeline pipeline, const VkAllocationCallbacks *pAllocator)
 {
    RADV_FROM_HANDLE(radv_device, device, _device);
-   return device->vk.dispatch_table.DestroyPipeline(_device, pipeline, pAllocator);
+   device->vk.dispatch_table.DestroyPipeline(_device, pipeline, pAllocator);
 }
 
 VKAPI_ATTR void VKAPI_CALL
