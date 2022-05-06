@@ -126,7 +126,7 @@ pub static DISPATCH: cl_icd_dispatch = cl_icd_dispatch {
     clEnqueueMigrateMemObjects: Some(cl_enqueue_migrate_mem_objects),
     clEnqueueMarkerWithWaitList: Some(cl_enqueue_marker_with_wait_list),
     clEnqueueBarrierWithWaitList: Some(cl_enqueue_barrier_with_wait_list),
-    clGetExtensionFunctionAddressForPlatform: None,
+    clGetExtensionFunctionAddressForPlatform: Some(cl_get_extension_function_address_for_platform),
     clCreateFromGLTexture: None,
     clGetDeviceIDsFromD3D11KHR: ptr::null_mut(),
     clCreateFromD3D11BufferKHR: ptr::null_mut(),
@@ -1587,6 +1587,13 @@ extern "C" fn cl_enqueue_barrier_with_wait_list(
         event_wait_list,
         event
     ))
+}
+
+extern "C" fn cl_get_extension_function_address_for_platform(
+    _platform: cl_platform_id,
+    function_name: *const ::std::os::raw::c_char,
+) -> *mut ::std::os::raw::c_void {
+    cl_get_extension_function_address(function_name)
 }
 
 extern "C" fn cl_create_command_queue_with_properties(
