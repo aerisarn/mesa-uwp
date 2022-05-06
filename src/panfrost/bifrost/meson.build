@@ -38,6 +38,7 @@ libpanfrost_bifrost_files = files(
   'bi_opt_message_preload.c',
   'bi_opt_mod_props.c',
   'bi_opt_dual_tex.c',
+  'bi_pressure_schedule.c',
   'bi_pack.c',
   'bi_ra.c',
   'bi_schedule.c',

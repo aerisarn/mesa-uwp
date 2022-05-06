@@ -28,6 +28,7 @@
 #include "compiler/glsl/glsl_to_nir.h"
 #include "compiler/nir_types.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_schedule.h"
 #include "util/u_debug.h"
 
 #include "disassemble.h"
@@ -47,6 +48,7 @@ static const struct debug_named_value bifrost_debug_options[] = {
         {"verbose",   BIFROST_DBG_VERBOSE,	"Disassemble verbosely"},
         {"internal",  BIFROST_DBG_INTERNAL,	"Dump even internal shaders"},
         {"nosched",   BIFROST_DBG_NOSCHED, 	"Force trivial bundling"},
+        {"nopsched",  BIFROST_DBG_NOPSCHED,     "Disable scheduling for pressure"},
         {"inorder",   BIFROST_DBG_INORDER, 	"Force in-order bundling"},
         {"novalidate",BIFROST_DBG_NOVALIDATE,   "Skip IR validation"},
         {"noopt",     BIFROST_DBG_NOOPT,        "Skip optimization passes"},
@@ -4999,6 +5001,9 @@ bi_compile_variant_nir(nir_shader *nir,
         if (likely(optimize)) {
                 bi_opt_fuse_dual_texture(ctx);
         }
+
+        if (likely(!(bifrost_debug & BIFROST_DBG_NOPSCHED)))
+                bi_pressure_schedule(ctx);
 
         bi_validate(ctx, "Late lowering");
 
