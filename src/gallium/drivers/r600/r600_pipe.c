@@ -642,6 +642,7 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		}
 		return ir;
 	}
+	case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
 	case PIPE_SHADER_CAP_DROUND_SUPPORTED:
 	case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
 	case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
@@ -663,12 +664,6 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 			return EG_MAX_ATOMIC_BUFFERS;
 		}
 		return 0;
-	case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-		/* due to a bug in the shader compiler, some loops hang
-		 * if they are not unrolled, see:
-		 *    https://bugs.freedesktop.org/show_bug.cgi?id=86720
-		 */
-		return 255;
 	}
 	return 0;
 }

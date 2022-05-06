@@ -1339,7 +1339,11 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_insert_byte = true,
 		.lower_insert_word = true,
 		.lower_rotate = true,
-		.max_unroll_iterations = 32,
+		/* due to a bug in the shader compiler, some loops hang
+		 * if they are not unrolled, see:
+		 *    https://bugs.freedesktop.org/show_bug.cgi?id=86720
+		 */
+		.max_unroll_iterations = 255,
 		.lower_interpolate_at = true,
 		.vectorize_io = true,
 		.has_umad24 = true,
