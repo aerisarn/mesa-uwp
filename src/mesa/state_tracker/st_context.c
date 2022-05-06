@@ -477,7 +477,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
                        const struct st_config_options *options)
 {
    struct pipe_screen *screen = pipe->screen;
-   uint i;
    struct st_context *st = CALLOC_STRUCT( st_context);
 
    st->options = *options;
@@ -699,11 +698,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    assert(ctx->Const.GLSLTessLevelsAsInputs ||
       !screen->get_param(screen, PIPE_CAP_NIR_COMPACT_ARRAYS) ||
       !ctx->Extensions.ARB_tessellation_shader);
-
-   if (ctx->Const.GLSLVersion < 400) {
-      for (i = 0; i < MESA_SHADER_STAGES; i++)
-         ctx->Const.ShaderCompilerOptions[i].EmitNoIndirectSampler = true;
-   }
 
    /* Set which shader types can be compiled at link time. */
    st->shader_has_one_variant[MESA_SHADER_VERTEX] =

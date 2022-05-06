@@ -33,7 +33,6 @@
 #include "glsl_parser_extras.h"
 #include "ir_optimization.h"
 #include "program.h"
-#include "loop_analysis.h"
 #include "standalone_scaffolding.h"
 #include "standalone.h"
 #include "string_to_uint_map.h"

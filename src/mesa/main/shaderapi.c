@@ -203,7 +203,6 @@ _mesa_init_shader_state(struct gl_context *ctx)
    int i;
 
    memset(&options, 0, sizeof(options));
-   options.MaxUnrollIterations = 32;
    options.MaxIfDepth = UINT_MAX;
 
    for (sh = 0; sh < MESA_SHADER_STAGES; ++sh)
