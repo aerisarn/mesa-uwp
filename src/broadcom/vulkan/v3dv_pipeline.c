@@ -3604,3 +3604,38 @@ v3dv_GetPipelineExecutableInternalRepresentationsKHR(
 
    return incomplete ? VK_INCOMPLETE : vk_outarray_status(&out);
 }
+
+VKAPI_ATTR VkResult VKAPI_CALL
+v3dv_GetPipelineExecutablePropertiesKHR(
+   VkDevice device,
+   const VkPipelineInfoKHR *pPipelineInfo,
+   uint32_t *pExecutableCount,
+   VkPipelineExecutablePropertiesKHR *pProperties)
+{
+   V3DV_FROM_HANDLE(v3dv_pipeline, pipeline, pPipelineInfo->pipeline);
+
+   pipeline_collect_executable_data(pipeline);
+
+   VK_OUTARRAY_MAKE_TYPED(VkPipelineExecutablePropertiesKHR, out,
+                          pProperties, pExecutableCount);
+
+   util_dynarray_foreach(&pipeline->executables.data,
+                         struct v3dv_pipeline_executable_data, exe) {
+      vk_outarray_append_typed(VkPipelineExecutablePropertiesKHR, &out, props) {
+         gl_shader_stage mesa_stage = broadcom_shader_stage_to_gl(exe->stage);
+         props->stages = mesa_to_vk_shader_stage(mesa_stage);
+
+         WRITE_STR(props->name, "%s (%s)",
+                   _mesa_shader_stage_to_abbrev(mesa_stage),
+                   broadcom_shader_stage_is_binning(exe->stage) ?
+                     "Binning" : "Render");
+
+         WRITE_STR(props->description, "%s",
+                   _mesa_shader_stage_to_string(mesa_stage));
+
+         props->subgroupSize = V3D_CHANNELS;
+      }
+   }
+
+   return vk_outarray_status(&out);
+}
