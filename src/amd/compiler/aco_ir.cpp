@@ -88,7 +88,9 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
    program->wave_size = info->wave_size;
    program->lane_mask = program->wave_size == 32 ? s1 : s2;
 
-   program->dev.lds_encoding_granule = chip_class >= GFX7 ? 512 : 256;
+   program->dev.lds_encoding_granule = chip_class >= GFX11 && stage == fragment_fs ? 1024
+                                       : chip_class >= GFX7                        ? 512
+                                                                                   : 256;
    program->dev.lds_alloc_granule =
       chip_class >= GFX10_3 ? 1024 : program->dev.lds_encoding_granule;
    program->dev.lds_limit = chip_class >= GFX7 ? 65536 : 32768;
