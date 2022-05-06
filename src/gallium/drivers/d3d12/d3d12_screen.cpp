@@ -463,9 +463,6 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       return 0; /* no idea */
 
-   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-      return 32; /* arbitrary */
-
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       return
          (screen->max_feature_level >= D3D_FEATURE_LEVEL_11_1 ||
@@ -483,6 +480,7 @@ d3d12_get_shader_param(struct pipe_screen *pscreen,
           screen->opts.ResourceBindingTier >= D3D12_RESOURCE_BINDING_TIER_3) ?
          PIPE_MAX_SHADER_IMAGES : D3D12_PS_CS_UAV_REGISTER_COUNT;
 
+   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
    case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
