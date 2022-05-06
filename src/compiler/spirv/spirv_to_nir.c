@@ -5066,6 +5066,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(ray_tracing_position_fetch, cap);
          break;
 
+      case SpvCapabilityFragmentBarycentricKHR:
+         spv_check_supported(fragment_barycentric, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
