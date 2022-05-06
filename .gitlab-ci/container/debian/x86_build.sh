@@ -90,9 +90,8 @@ make
 popd
 
 git clone https://github.com/microsoft/DirectX-Headers -b v1.602.0-r1 --depth 1
-pushd DirectX-Headers
-mkdir build
-cd build
+mkdir -p DirectX-Headers/build
+pushd DirectX-Headers/build
 meson .. --backend=ninja --buildtype=release -Dbuild-test=false
 ninja
 ninja install
