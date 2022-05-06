@@ -72,7 +72,6 @@ extern const __DRIswrastExtension driSWRastExtension;
 extern const __DRIdri2Extension driDRI2Extension;
 extern const __DRIdri2Extension swkmsDRI2Extension;
 extern const __DRI2configQueryExtension dri2ConfigQueryExtension;
-extern const __DRIcopySubBufferExtension driCopySubBufferExtension;
 extern const __DRI2flushControlExtension dri2FlushControlExtension;
 
 /**

@@ -614,11 +614,27 @@ static const struct __DRIDriverVtableExtensionRec galliumsw_vtable = {
    .vtable = &galliumsw_driver_api,
 };
 
+/* swrast copy sub buffer entrypoint. */
+static void driswCopySubBuffer(__DRIdrawable *pdp, int x, int y,
+                               int w, int h)
+{
+   assert(pdp->driScreenPriv->swrast_loader);
+
+   pdp->driScreenPriv->driver->CopySubBuffer(pdp, x, y, w, h);
+}
+
+/* for swrast only */
+const __DRIcopySubBufferExtension driSWCopySubBufferExtension = {
+   .base = { __DRI_COPY_SUB_BUFFER, 1 },
+
+   .copySubBuffer               = driswCopySubBuffer,
+};
+
 /* This is the table of extensions that the loader will dlsym() for. */
 const __DRIextension *galliumsw_driver_extensions[] = {
     &driCoreExtension.base,
     &driSWRastExtension.base,
-    &driCopySubBufferExtension.base,
+    &driSWCopySubBufferExtension.base,
     &gallium_config_options.base,
     &galliumsw_vtable.base,
     NULL
