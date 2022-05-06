@@ -351,10 +351,6 @@ void st_init_limits(struct pipe_screen *screen,
          can_ubo = false;
       }
 
-      options->MaxUnrollIterations =
-         screen->get_shader_param(screen, sh,
-                              PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT);
-
       if (!screen->get_param(screen, PIPE_CAP_NIR_COMPACT_ARRAYS))
          options->LowerCombinedClipCullDistance = true;
 

@@ -642,7 +642,6 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		}
 		return ir;
 	}
-	case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
 	case PIPE_SHADER_CAP_DROUND_SUPPORTED:
 	case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
 	case PIPE_SHADER_CAP_LDEXP_SUPPORTED:

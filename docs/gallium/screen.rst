@@ -735,10 +735,6 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
 * ``PIPE_SHADER_CAP_LDEXP_SUPPORTED``: Whether LDEXP is supported.
 * ``PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE``: Whether the driver doesn't
   ignore tgsi_declaration_range::Last for shader inputs and outputs.
-* ``PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT``: This is the maximum number
-  of iterations that loops are allowed to have to be unrolled. It is only
-  a hint to gallium frontends. Whether any loops will be unrolled is not
-  guaranteed.
 * ``PIPE_SHADER_CAP_MAX_SHADER_BUFFERS``: Maximum number of memory buffers
   (also used to implement atomic counters). Having this be non-0 also
   implies support for the ``LOAD``, ``STORE``, and ``ATOM*`` TGSI

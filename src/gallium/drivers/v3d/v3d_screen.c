@@ -466,9 +466,6 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                 return PIPE_SHADER_IR_NIR;
         case PIPE_SHADER_CAP_SUPPORTED_IRS:
                 return 1 << PIPE_SHADER_IR_NIR;
-        case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-                /* We use NIR's loop unrolling */
-                return 0;
         default:
                 fprintf(stderr, "unknown shader param %d\n", param);
                 return 0;

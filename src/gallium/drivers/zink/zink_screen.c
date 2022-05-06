@@ -1012,9 +1012,6 @@ zink_get_shader_param(struct pipe_screen *pscreen,
    case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
       return 0; /* no idea */
 
-   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-      return 0;
-
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
       switch (shader) {
       case PIPE_SHADER_VERTEX:
