@@ -105,7 +105,7 @@ init_program(Program* program, Stage stage, const struct aco_shader_info* info,
       program->dev.sgpr_alloc_granule = 128;
       program->dev.sgpr_limit =
          108; /* includes VCC, which can be treated as s[106-107] on GFX10+ */
-      if (chip_class >= GFX10_3)
+      if (chip_class == GFX10_3)
          program->dev.vgpr_alloc_granule = program->wave_size == 32 ? 16 : 8;
       else
          program->dev.vgpr_alloc_granule = program->wave_size == 32 ? 8 : 4;
