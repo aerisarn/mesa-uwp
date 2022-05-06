@@ -43,6 +43,9 @@ protected:
    LowerIsel() {
       mem_ctx = ralloc_context(NULL);
       reg = bi_register(1);
+      x = bi_register(2);
+      y = bi_register(3);
+      z = bi_register(4);
    }
 
    ~LowerIsel() {
@@ -50,7 +53,7 @@ protected:
    }
 
    void *mem_ctx;
-   bi_index reg;
+   bi_index reg, x, y, z;
 };
 
 TEST_F(LowerIsel, 8BitSwizzles) {
@@ -92,6 +95,34 @@ TEST_F(LowerIsel, IntegerCSEL) {
 
    CASE(bi_csel_v2i16(b, reg, reg, reg, reg, BI_CMPF_EQ),
         bi_csel_v2u16(b, reg, reg, reg, reg, BI_CMPF_EQ));
+}
+
+TEST_F(LowerIsel, AvoidSimpleMux) {
+   CASE(bi_mux_i32(b, x, y, z, BI_MUX_INT_ZERO),
+        bi_csel_u32(b, z, bi_zero(), x, y, BI_CMPF_EQ));
+   CASE(bi_mux_i32(b, x, y, z, BI_MUX_NEG),
+        bi_csel_s32(b, z, bi_zero(), x, y, BI_CMPF_LT));
+   CASE(bi_mux_i32(b, x, y, z, BI_MUX_FP_ZERO),
+        bi_csel_f32(b, z, bi_zero(), x, y, BI_CMPF_EQ));
+
+   CASE(bi_mux_v2i16(b, x, y, z, BI_MUX_INT_ZERO),
+        bi_csel_v2u16(b, z, bi_zero(), x, y, BI_CMPF_EQ));
+   CASE(bi_mux_v2i16(b, x, y, z, BI_MUX_NEG),
+        bi_csel_v2s16(b, z, bi_zero(), x, y, BI_CMPF_LT));
+   CASE(bi_mux_v2i16(b, x, y, z, BI_MUX_FP_ZERO),
+        bi_csel_v2f16(b, z, bi_zero(), x, y, BI_CMPF_EQ));
+}
+
+TEST_F(LowerIsel, BitwiseMux) {
+   NEGCASE(bi_mux_i32(b, x, y, z, BI_MUX_BIT));
+   NEGCASE(bi_mux_v2i16(b, x, y, z, BI_MUX_BIT));
+   NEGCASE(bi_mux_v4i8(b, x, y, z, BI_MUX_BIT));
+}
+
+TEST_F(LowerIsel, MuxInt8) {
+   NEGCASE(bi_mux_v4i8(b, x, y, z, BI_MUX_INT_ZERO));
+   NEGCASE(bi_mux_v4i8(b, x, y, z, BI_MUX_NEG));
+   NEGCASE(bi_mux_v4i8(b, x, y, z, BI_MUX_FP_ZERO));
 }
 
 TEST_F(LowerIsel, Smoke) {
