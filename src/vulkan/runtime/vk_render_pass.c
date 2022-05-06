@@ -434,17 +434,19 @@ vk_common_CreateRenderPass2(VkDevice _device,
                            pCreateInfo->dependencyCount);
 
    uint32_t subpass_attachment_count = 0;
-   uint32_t subpass_color_format_count = 0;
+   uint32_t subpass_color_attachment_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       subpass_attachment_count +=
          num_subpass_attachments2(&pCreateInfo->pSubpasses[i]);
-      subpass_color_format_count +=
+      subpass_color_attachment_count +=
          pCreateInfo->pSubpasses[i].colorAttachmentCount;
    }
    VK_MULTIALLOC_DECL(&ma, struct vk_subpass_attachment, subpass_attachments,
                       subpass_attachment_count);
    VK_MULTIALLOC_DECL(&ma, VkFormat, subpass_color_formats,
-                      subpass_color_format_count);
+                      subpass_color_attachment_count);
+   VK_MULTIALLOC_DECL(&ma, VkSampleCountFlagBits, subpass_color_samples,
+                      subpass_color_attachment_count);
 
    if (!vk_object_multizalloc(device, &ma, pAllocator,
                               VK_OBJECT_TYPE_RENDER_PASS))
@@ -464,6 +466,7 @@ vk_common_CreateRenderPass2(VkDevice _device,
 
    struct vk_subpass_attachment *next_subpass_attachment = subpass_attachments;
    VkFormat *next_subpass_color_format = subpass_color_formats;
+   VkSampleCountFlagBits *next_subpass_color_samples = subpass_color_samples;
    for (uint32_t s = 0; s < pCreateInfo->subpassCount; s++) {
       const VkSubpassDescription2 *desc = &pCreateInfo->pSubpasses[s];
       struct vk_subpass *subpass = &pass->subpasses[s];
@@ -635,27 +638,33 @@ vk_common_CreateRenderPass2(VkDevice _device,
       }
 
       VkFormat *color_formats = NULL;
+      VkSampleCountFlagBits *color_samples = NULL;
       VkSampleCountFlagBits samples = 0;
       if (desc->colorAttachmentCount > 0) {
          color_formats = next_subpass_color_format;
+         color_samples = next_subpass_color_samples;
          for (uint32_t a = 0; a < desc->colorAttachmentCount; a++) {
             const VkAttachmentReference2 *ref = &desc->pColorAttachments[a];
             if (ref->attachment >= pCreateInfo->attachmentCount) {
                color_formats[a] = VK_FORMAT_UNDEFINED;
+               color_samples[a] = VK_SAMPLE_COUNT_1_BIT;
             } else {
                const VkAttachmentDescription2 *att =
                   &pCreateInfo->pAttachments[ref->attachment];
 
                color_formats[a] = att->format;
+               color_samples[a] = att->samples;
 
                samples |= att->samples;
             }
          }
          next_subpass_color_format += desc->colorAttachmentCount;
+         next_subpass_color_samples += desc->colorAttachmentCount;
       }
 
       VkFormat depth_format = VK_FORMAT_UNDEFINED;
       VkFormat stencil_format = VK_FORMAT_UNDEFINED;
+      VkSampleCountFlagBits depth_stencil_samples = VK_SAMPLE_COUNT_1_BIT;
       if (desc->pDepthStencilAttachment != NULL) {
          const VkAttachmentReference2 *ref = desc->pDepthStencilAttachment;
          if (ref->attachment < pCreateInfo->attachmentCount) {
@@ -666,6 +675,8 @@ vk_common_CreateRenderPass2(VkDevice _device,
                depth_format = att->format;
             if (vk_format_has_stencil(att->format))
                stencil_format = att->format;
+
+            depth_stencil_samples = att->samples;
 
             samples |= att->samples;
          }
@@ -678,9 +689,17 @@ vk_common_CreateRenderPass2(VkDevice _device,
          .stencilSelfDependency = has_stencil_self_dep,
       };
 
+      subpass->sample_count_info_amd = (VkAttachmentSampleCountInfoAMD) {
+         .sType = VK_STRUCTURE_TYPE_ATTACHMENT_SAMPLE_COUNT_INFO_AMD,
+         .pNext = &subpass->self_dep_info,
+         .colorAttachmentCount = desc->colorAttachmentCount,
+         .pColorAttachmentSamples = color_samples,
+         .depthStencilAttachmentSamples = depth_stencil_samples,
+      };
+
       subpass->pipeline_info = (VkPipelineRenderingCreateInfo) {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-         .pNext = &subpass->self_dep_info,
+         .pNext = &subpass->sample_count_info_amd,
          .viewMask = desc->viewMask,
          .colorAttachmentCount = desc->colorAttachmentCount,
          .pColorAttachmentFormats = color_formats,
@@ -690,7 +709,7 @@ vk_common_CreateRenderPass2(VkDevice _device,
 
       subpass->inheritance_info = (VkCommandBufferInheritanceRenderingInfo) {
          .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO,
-         .pNext = &subpass->self_dep_info,
+         .pNext = &subpass->sample_count_info_amd,
          /* If we're inheriting, the contents are clearly in secondaries */
          .flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT,
          .viewMask = desc->viewMask,
@@ -704,7 +723,9 @@ vk_common_CreateRenderPass2(VkDevice _device,
    assert(next_subpass_attachment ==
           subpass_attachments + subpass_attachment_count);
    assert(next_subpass_color_format ==
-          subpass_color_formats + subpass_color_format_count);
+          subpass_color_formats + subpass_color_attachment_count);
+   assert(next_subpass_color_samples ==
+          subpass_color_samples + subpass_color_attachment_count);
 
    /* Walk backwards over the subpasses to compute view masks and
     * last_subpass masks for all attachments.
@@ -790,6 +811,18 @@ vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info)
    }
 
    return vk_find_struct_const(info->pNext, PIPELINE_RENDERING_CREATE_INFO);
+}
+
+const VkAttachmentSampleCountInfoAMD *
+vk_get_pipeline_sample_count_info_amd(const VkGraphicsPipelineCreateInfo *info)
+{
+   VK_FROM_HANDLE(vk_render_pass, render_pass, info->renderPass);
+   if (render_pass != NULL) {
+      assert(info->subpass < render_pass->subpass_count);
+      return &render_pass->subpasses[info->subpass].sample_count_info_amd;
+   }
+
+   return vk_find_struct_const(info->pNext, ATTACHMENT_SAMPLE_COUNT_INFO_AMD);
 }
 
 const VkCommandBufferInheritanceRenderingInfo *

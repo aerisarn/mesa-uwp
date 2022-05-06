@@ -179,6 +179,12 @@ struct vk_subpass {
     */
    VkRenderingSelfDependencyInfoMESA self_dep_info;
 
+   /** VkAttachmentSampleCountInfoAMD for this subpass
+    *
+    * This is in the pNext chain of pipeline_info and inheritance_info.
+    */
+   VkAttachmentSampleCountInfoAMD sample_count_info_amd;
+
    /** VkPipelineRenderingCreateInfo for this subpass
     *
     * Returned by vk_get_pipeline_rendering_create_info() if
@@ -319,6 +325,21 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vk_render_pass, base, VkRenderPass,
  */
 const VkPipelineRenderingCreateInfo *
 vk_get_pipeline_rendering_create_info(const VkGraphicsPipelineCreateInfo *info);
+
+/** Returns the VkAttachmentSampleCountInfoAMD for a graphics pipeline
+ *
+ * For render-pass-free drivers, this can be used in the implementaiton of
+ * vkCreateGraphicsPipelines to get the VkAttachmentSampleCountInfoAMD.  If
+ * VkGraphicsPipelineCreateInfo::renderPass is not VK_NULL_HANDLE, it will
+ * return the sample counts from the specified subpass as a
+ * VkAttachmentSampleCountInfoAMD.  If VkGraphicsPipelineCreateInfo::renderPass
+ * is VK_NULL_HANDLE and there is a VkAttachmentSampleCountInfoAMD in the pNext
+ * chain of VkGraphicsPipelineCreateInfo, it will return that.
+ *
+ * @param[in]  info  One of the pCreateInfos from vkCreateGraphicsPipelines
+ */
+const VkAttachmentSampleCountInfoAMD *
+vk_get_pipeline_sample_count_info_amd(const VkGraphicsPipelineCreateInfo *info);
 
 /**
  * Returns the VkCommandBufferInheritanceRenderingInfo for secondary command
