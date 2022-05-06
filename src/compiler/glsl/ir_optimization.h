@@ -120,7 +120,6 @@ bool do_vec_index_to_swizzle(exec_list *instructions);
 bool lower_discard(exec_list *instructions);
 void lower_discard_flow(exec_list *instructions);
 bool lower_instructions(exec_list *instructions, unsigned what_to_lower);
-bool lower_const_arrays_to_uniforms(exec_list *instructions, unsigned stage, unsigned max_uniform_components);
 bool lower_clip_cull_distance(struct gl_shader_program *prog,
                               gl_linked_shader *shader);
 void lower_output_reads(unsigned stage, exec_list *instructions);
