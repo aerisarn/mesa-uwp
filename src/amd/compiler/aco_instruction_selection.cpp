@@ -8212,8 +8212,21 @@ visit_intrinsic(isel_context* ctx, nir_intrinsic_instr* instr)
    }
    case nir_intrinsic_load_local_invocation_index: {
       if (ctx->stage.hw == HWStage::LS || ctx->stage.hw == HWStage::HS) {
-         bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-                  get_arg(ctx, ctx->args->ac.vs_rel_patch_id));
+         if (ctx->options->chip_class >= GFX11) {
+            /* On GFX11, RelAutoIndex is WaveID * WaveSize + ThreadID. */
+            Temp wave_id =
+               bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                        get_arg(ctx, ctx->args->ac.tcs_wave_id), Operand::c32(0u | (5u << 16)));
+
+            Temp temp = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), wave_id,
+                                 Operand::c32(ctx->program->wave_size));
+            Temp thread_id = emit_mbcnt(ctx, bld.tmp(v1));
+
+            bld.vadd32(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), temp, thread_id);
+         } else {
+            bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
+                     get_arg(ctx, ctx->args->ac.vs_rel_patch_id));
+         }
          break;
       } else if (ctx->stage.hw == HWStage::GS || ctx->stage.hw == HWStage::NGG) {
          bld.copy(Definition(get_ssa_temp(ctx, &instr->dest.ssa)), thread_id_in_threadgroup(ctx));

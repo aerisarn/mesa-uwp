@@ -1585,7 +1585,11 @@ radv_postprocess_config(const struct radv_device *device, const struct ac_shader
           * StepRate0 is set to 1. so that VGPR3 doesn't have to be loaded.
           */
          if (pdevice->rad_info.chip_class >= GFX10) {
-            vgpr_comp_cnt = info->vs.needs_instance_id ? 3 : 1;
+            if (info->vs.needs_instance_id) {
+               vgpr_comp_cnt = 3;
+            } else if (pdevice->rad_info.chip_class <= GFX10_3) {
+               vgpr_comp_cnt = 1;
+            }
             config_out->rsrc2 |=
                S_00B42C_LDS_SIZE_GFX10(info->tcs.num_lds_blocks) | S_00B42C_EXCP_EN_GFX6(excp_en);
          } else {
