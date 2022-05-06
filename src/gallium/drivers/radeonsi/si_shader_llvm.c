@@ -742,52 +742,40 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->num_images = info->base.num_images;
 
    si_llvm_init_resource_callbacks(ctx);
-
-   switch (ctx->stage) {
-   case MESA_SHADER_VERTEX:
-      si_llvm_init_vs_callbacks(ctx, ngg_cull_shader);
-      break;
-   case MESA_SHADER_TESS_CTRL:
-      si_llvm_init_tcs_callbacks(ctx);
-      break;
-   case MESA_SHADER_TESS_EVAL:
-      si_llvm_init_tes_callbacks(ctx, ngg_cull_shader);
-      break;
-   case MESA_SHADER_GEOMETRY:
-      si_llvm_init_gs_callbacks(ctx);
-      break;
-   case MESA_SHADER_FRAGMENT:
-      si_llvm_init_ps_callbacks(ctx);
-      break;
-   case MESA_SHADER_COMPUTE:
-      ctx->abi.load_local_group_size = si_llvm_get_block_size;
-      break;
-   default:
-      assert(!"Unsupported shader type");
-      return false;
-   }
-
    si_llvm_create_main_func(ctx, ngg_cull_shader);
 
    if (ctx->stage <= MESA_SHADER_GEOMETRY &&
        (ctx->shader->key.ge.as_es || ctx->stage == MESA_SHADER_GEOMETRY))
       si_preload_esgs_ring(ctx);
 
-   if (ctx->stage == MESA_SHADER_GEOMETRY)
-      si_preload_gs_rings(ctx);
-   else if (ctx->stage == MESA_SHADER_TESS_EVAL)
+   switch (ctx->stage) {
+   case MESA_SHADER_VERTEX:
+      si_llvm_init_vs_callbacks(ctx, ngg_cull_shader);
+      break;
+
+   case MESA_SHADER_TESS_CTRL:
+      si_llvm_init_tcs_callbacks(ctx);
+
+      if (sel->info.tessfactors_are_def_in_all_invocs) {
+         for (unsigned i = 0; i < 6; i++)
+            ctx->invoc0_tess_factors[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
+      }
+      break;
+
+   case MESA_SHADER_TESS_EVAL:
+      si_llvm_init_tes_callbacks(ctx, ngg_cull_shader);
       si_llvm_preload_tes_rings(ctx);
+      break;
 
-   if (ctx->stage == MESA_SHADER_TESS_CTRL && sel->info.tessfactors_are_def_in_all_invocs) {
-      for (unsigned i = 0; i < 6; i++) {
-         ctx->invoc0_tess_factors[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
-      }
-   }
+   case MESA_SHADER_GEOMETRY:
+      si_llvm_init_gs_callbacks(ctx);
 
-   if (ctx->stage == MESA_SHADER_GEOMETRY) {
-      for (unsigned i = 0; i < 4; i++) {
+      if (!ctx->shader->key.ge.as_ngg)
+         si_preload_gs_rings(ctx);
+
+      for (unsigned i = 0; i < 4; i++)
          ctx->gs_next_vertex[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
-      }
+
       if (shader->key.ge.as_ngg) {
          for (unsigned i = 0; i < 4; ++i) {
             ctx->gs_curprim_verts[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
@@ -808,6 +796,63 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       } else {
          ctx->gs_emitted_vertices = LLVMConstInt(ctx->ac.i32, 0, false);
       }
+      break;
+
+   case MESA_SHADER_FRAGMENT: {
+      si_llvm_init_ps_callbacks(ctx);
+
+      unsigned colors_read = ctx->shader->selector->info.colors_read;
+      LLVMValueRef main_fn = ctx->main_fn;
+
+      LLVMValueRef undef = LLVMGetUndef(ctx->ac.f32);
+
+      unsigned offset = SI_PARAM_POS_FIXED_PT + 1;
+
+      if (colors_read & 0x0f) {
+         unsigned mask = colors_read & 0x0f;
+         LLVMValueRef values[4];
+         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
+         ctx->abi.color0 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
+      }
+      if (colors_read & 0xf0) {
+         unsigned mask = (colors_read & 0xf0) >> 4;
+         LLVMValueRef values[4];
+         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
+         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
+         ctx->abi.color1 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
+      }
+
+      ctx->abi.interp_at_sample_force_center =
+         ctx->shader->key.ps.mono.interpolate_at_sample_force_center;
+
+      ctx->abi.kill_ps_if_inf_interp =
+         ctx->screen->options.no_infinite_interp &&
+         (ctx->shader->selector->info.uses_persp_center ||
+          ctx->shader->selector->info.uses_persp_centroid ||
+          ctx->shader->selector->info.uses_persp_sample);
+      break;
+   }
+
+   case MESA_SHADER_COMPUTE:
+      ctx->abi.load_local_group_size = si_llvm_get_block_size;
+
+      if (nir->info.cs.user_data_components_amd) {
+         ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
+         ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
+                                                      nir->info.cs.user_data_components_amd);
+      }
+
+      if (ctx->shader->selector->info.base.shared_size)
+         si_llvm_declare_compute_memory(ctx);
+      break;
+
+   default:
+      break;
    }
 
    if ((ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL) &&
@@ -832,8 +877,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
 
    /* For merged shaders (VS-TCS, VS-GS, TES-GS): */
    if (ctx->screen->info.chip_class >= GFX9 && si_is_merged_shader(shader)) {
-      LLVMValueRef thread_enabled = NULL;
-
       /* TES is special because it has only 1 shader part if NGG shader culling is disabled,
        * and therefore it doesn't use the wrapper function.
        */
@@ -871,6 +914,8 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
       /* NGG GS: Initialize LDS and insert s_barrier, which must not be inside the if statement. */
       if (ctx->stage == MESA_SHADER_GEOMETRY && shader->key.ge.as_ngg)
          gfx10_ngg_gs_emit_begin(ctx);
+
+      LLVMValueRef thread_enabled = NULL;
 
       if (ctx->stage == MESA_SHADER_GEOMETRY ||
           (ctx->stage == MESA_SHADER_TESS_CTRL && !shader->is_monolithic)) {
@@ -959,51 +1004,6 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
          }
          memcpy(ctx->gs_vtx_offset, fixed, sizeof(fixed));
       }
-   } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      unsigned colors_read = ctx->shader->selector->info.colors_read;
-      LLVMValueRef main_fn = ctx->main_fn;
-
-      LLVMValueRef undef = LLVMGetUndef(ctx->ac.f32);
-
-      unsigned offset = SI_PARAM_POS_FIXED_PT + 1;
-
-      if (colors_read & 0x0f) {
-         unsigned mask = colors_read & 0x0f;
-         LLVMValueRef values[4];
-         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
-         ctx->abi.color0 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
-      }
-      if (colors_read & 0xf0) {
-         unsigned mask = (colors_read & 0xf0) >> 4;
-         LLVMValueRef values[4];
-         values[0] = mask & 0x1 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[1] = mask & 0x2 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[2] = mask & 0x4 ? LLVMGetParam(main_fn, offset++) : undef;
-         values[3] = mask & 0x8 ? LLVMGetParam(main_fn, offset++) : undef;
-         ctx->abi.color1 = ac_to_integer(&ctx->ac, ac_build_gather_values(&ctx->ac, values, 4));
-      }
-
-      ctx->abi.interp_at_sample_force_center =
-         ctx->shader->key.ps.mono.interpolate_at_sample_force_center;
-
-      ctx->abi.kill_ps_if_inf_interp =
-         ctx->screen->options.no_infinite_interp &&
-         (ctx->shader->selector->info.uses_persp_center ||
-          ctx->shader->selector->info.uses_persp_centroid ||
-          ctx->shader->selector->info.uses_persp_sample);
-
-   } else if (nir->info.stage == MESA_SHADER_COMPUTE) {
-      if (nir->info.cs.user_data_components_amd) {
-         ctx->abi.user_data = ac_get_arg(&ctx->ac, ctx->cs_user_data);
-         ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
-                                                      nir->info.cs.user_data_components_amd);
-      }
-
-      if (ctx->shader->selector->info.base.shared_size)
-         si_llvm_declare_compute_memory(ctx);
    }
 
    ctx->abi.clamp_shadow_reference = true;
