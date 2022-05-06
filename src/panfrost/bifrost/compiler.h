@@ -1070,6 +1070,9 @@ bi_clause * bi_next_clause(bi_context *ctx, bi_block *block, bi_clause *clause);
 bool bi_side_effects(const bi_instr *I);
 bool bi_reconverge_branches(bi_block *block);
 
+bool bi_can_replace_with_csel(bi_instr *I);
+void bi_replace_mux_with_csel(bi_instr *I, bool must_sign);
+
 void bi_print_instr(const bi_instr *I, FILE *fp);
 void bi_print_slots(bi_registers *regs, FILE *fp);
 void bi_print_tuple(bi_tuple *tuple, FILE *fp);

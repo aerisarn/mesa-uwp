@@ -505,58 +505,6 @@ bi_can_iaddc(bi_instr *ins)
 }
 
 /*
- * When MUX.i32 or MUX.v2i16 is used to multiplex entire sources, they can be
- * replaced by CSEL as follows:
- *
- *      MUX.neg(x, y, b) -> CSEL.s.lt(b, 0, x, y)
- *      MUX.int_zero(x, y, b) -> CSEL.i.eq(b, 0, x, y)
- *      MUX.fp_zero(x, y, b) -> CSEL.f.eq(b, 0, x, y)
- *
- * MUX.bit cannot be transformed like this.
- *
- * Note that MUX.v2i16 has partial support for swizzles, which CSEL.v2i16 lacks.
- * So we must check the swizzles too.
- */
-static bool
-bi_can_csel(bi_instr *I)
-{
-        return ((I->op == BI_OPCODE_MUX_I32) || (I->op == BI_OPCODE_MUX_V2I16)) &&
-                (I->mux != BI_MUX_BIT) &&
-                (I->src[0].swizzle == BI_SWIZZLE_H01) &&
-                (I->src[1].swizzle == BI_SWIZZLE_H01) &&
-                (I->src[2].swizzle == BI_SWIZZLE_H01);
-}
-
-static enum bi_opcode
-bi_csel_for_mux(bool b32, enum bi_mux mux)
-{
-        switch (mux) {
-        case BI_MUX_INT_ZERO:
-                return b32 ? BI_OPCODE_CSEL_I32 : BI_OPCODE_CSEL_V2I16;
-        case BI_MUX_NEG:
-                return b32 ? BI_OPCODE_CSEL_S32 : BI_OPCODE_CSEL_V2S16;
-        case BI_MUX_FP_ZERO:
-                return b32 ? BI_OPCODE_CSEL_F32 : BI_OPCODE_CSEL_V2F16;
-        default:
-             unreachable("No CSEL for MUX.bit");
-        }
-}
-
-static void
-bi_replace_mux_with_csel(bi_instr *I)
-{
-        assert(I->op == BI_OPCODE_MUX_I32 || I->op == BI_OPCODE_MUX_V2I16);
-        I->op = bi_csel_for_mux(I->op == BI_OPCODE_MUX_I32, I->mux);
-        I->cmpf = (I->mux == BI_MUX_NEG) ? BI_CMPF_LT : BI_CMPF_EQ;
-
-        bi_index vTrue = I->src[0], vFalse = I->src[1], cond = I->src[2];
-
-        I->src[0] = cond;
-        I->src[1] = bi_zero();
-        I->src[2] = vTrue;
-        I->src[3] = vFalse;
-}
-/*
  * The encoding of *FADD.v2f16 only specifies a single abs flag. All abs
  * encodings are permitted by swapping operands; however, this scheme fails if
  * both operands are equal. Test for this case.
@@ -576,7 +524,7 @@ bi_can_fma(bi_instr *ins)
                 return true;
 
         /* +MUX -> *CSEL */
-        if (bi_can_csel(ins))
+        if (bi_can_replace_with_csel(ins))
                 return true;
 
         /* *FADD.v2f16 has restricted abs modifiers, use +FADD.v2f16 instead */
@@ -1332,8 +1280,8 @@ bi_take_instr(bi_context *ctx, struct bi_worklist st,
                 assert(bi_can_iaddc(instr));
                 instr->op = BI_OPCODE_IADDC_I32;
                 instr->src[2] = bi_zero();
-        } else if (fma && bi_can_csel(instr)) {
-                bi_replace_mux_with_csel(instr);
+        } else if (fma && bi_can_replace_with_csel(instr)) {
+                bi_replace_mux_with_csel(instr, false);
         }
 
         return instr;
