@@ -94,6 +94,7 @@ spec@!opengl 1.1@read-front samples=2,Fail
 spec@!opengl 1.1@read-front samples=4,Fail
 spec@!opengl 3.0@clearbuffer-depth-cs-probe,Fail
 spec@!opengl 3.2@layered-rendering@clear-color-mismatched-layer-count,Fail
+spec@arb_enhanced_layouts@execution@component-layout@vs-fs-array-dvec3,Fail
 spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
 spec@arb_post_depth_coverage@arb_post_depth_coverage-multisampling,Fail
 
