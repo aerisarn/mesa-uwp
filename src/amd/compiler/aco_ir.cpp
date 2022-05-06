@@ -779,6 +779,11 @@ wait_imm::pack(enum chip_class chip) const
    uint16_t imm = 0;
    assert(exp == unset_counter || exp <= 0x7);
    switch (chip) {
+   case GFX11:
+      assert(lgkm == unset_counter || lgkm <= 0x3f);
+      assert(vm == unset_counter || vm <= 0x3f);
+      imm = ((vm & 0x3f) << 10) | ((lgkm & 0x3f) << 4) | (exp & 0x7);
+      break;
    case GFX10:
    case GFX10_3:
       assert(lgkm == unset_counter || lgkm <= 0x3f);
