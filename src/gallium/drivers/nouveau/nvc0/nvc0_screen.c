@@ -1028,7 +1028,8 @@ nvc0_screen_get_compiler_options(struct pipe_screen *pscreen,
 {
    struct nvc0_screen *screen = nvc0_screen(pscreen);
    if (ir == PIPE_SHADER_IR_NIR)
-      return nv50_ir_nir_shader_compiler_options(screen->base.device->chipset);
+      return nv50_ir_nir_shader_compiler_options(screen->base.device->chipset,
+                                                 shader);
    return NULL;
 }
 

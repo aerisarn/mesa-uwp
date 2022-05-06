@@ -515,10 +515,9 @@ nv50_screen_get_shader_param(struct pipe_screen *pscreen,
       return shader == PIPE_SHADER_COMPUTE ? NV50_MAX_GLOBALS - 1 : 0;
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return screen->prefer_nir ? PIPE_SHADER_IR_NIR : PIPE_SHADER_IR_TGSI;
-   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-      return 32;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
       return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR);
+   case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
    case PIPE_SHADER_CAP_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_LDEXP_SUPPORTED:
@@ -995,7 +994,7 @@ nv50_screen_get_compiler_options(struct pipe_screen *pscreen,
                                  enum pipe_shader_type shader)
 {
    if (ir == PIPE_SHADER_IR_NIR)
-      return nv50_ir_nir_shader_compiler_options(NVISA_G80_CHIPSET);
+      return nv50_ir_nir_shader_compiler_options(NVISA_G80_CHIPSET, shader);
    return NULL;
 }
 

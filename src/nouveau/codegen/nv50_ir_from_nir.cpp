@@ -3298,7 +3298,7 @@ Program::makeFromNIR(struct nv50_ir_prog_info *info,
 } // namespace nv50_ir
 
 static nir_shader_compiler_options
-nvir_nir_shader_compiler_options(int chipset)
+nvir_nir_shader_compiler_options(int chipset, uint8_t shader_type)
 {
    nir_shader_compiler_options op = {};
    op.lower_fdiv = (chipset >= NVISA_GV100_CHIPSET);
@@ -3379,6 +3379,8 @@ nvir_nir_shader_compiler_options(int chipset)
    op.lower_rotate = (chipset < NVISA_GV100_CHIPSET);
    op.has_imul24 = false;
    op.intel_vec4 = false;
+   op.force_indirect_unrolling = (nir_variable_mode)
+      ((shader_type == PIPE_SHADER_FRAGMENT) ? nir_var_shader_out : 0);
    op.force_indirect_unrolling_sampler = (chipset < NVISA_GF100_CHIPSET),
    op.max_unroll_iterations = 32;
    op.lower_int64_options = (nir_lower_int64_options) (
@@ -3410,16 +3412,18 @@ nvir_nir_shader_compiler_options(int chipset)
 }
 
 static const nir_shader_compiler_options g80_nir_shader_compiler_options =
-nvir_nir_shader_compiler_options(NVISA_G80_CHIPSET);
+nvir_nir_shader_compiler_options(NVISA_G80_CHIPSET, PIPE_SHADER_TYPES);
+static const nir_shader_compiler_options g80_fs_nir_shader_compiler_options =
+nvir_nir_shader_compiler_options(NVISA_G80_CHIPSET, PIPE_SHADER_FRAGMENT);
 static const nir_shader_compiler_options gf100_nir_shader_compiler_options =
-nvir_nir_shader_compiler_options(NVISA_GF100_CHIPSET);
+nvir_nir_shader_compiler_options(NVISA_GF100_CHIPSET, PIPE_SHADER_TYPES);
 static const nir_shader_compiler_options gm107_nir_shader_compiler_options =
-nvir_nir_shader_compiler_options(NVISA_GM107_CHIPSET);
+nvir_nir_shader_compiler_options(NVISA_GM107_CHIPSET, PIPE_SHADER_TYPES);
 static const nir_shader_compiler_options gv100_nir_shader_compiler_options =
-nvir_nir_shader_compiler_options(NVISA_GV100_CHIPSET);
+nvir_nir_shader_compiler_options(NVISA_GV100_CHIPSET, PIPE_SHADER_TYPES);
 
 const nir_shader_compiler_options *
-nv50_ir_nir_shader_compiler_options(int chipset)
+nv50_ir_nir_shader_compiler_options(int chipset,  uint8_t shader_type)
 {
    if (chipset >= NVISA_GV100_CHIPSET)
       return &gv100_nir_shader_compiler_options;
@@ -3427,5 +3431,9 @@ nv50_ir_nir_shader_compiler_options(int chipset)
       return &gm107_nir_shader_compiler_options;
    if (chipset >= NVISA_GF100_CHIPSET)
       return &gf100_nir_shader_compiler_options;
-   return &g80_nir_shader_compiler_options;
+
+   if (shader_type == PIPE_SHADER_FRAGMENT)
+      return &g80_fs_nir_shader_compiler_options;
+   else
+      return &g80_nir_shader_compiler_options;
 }
