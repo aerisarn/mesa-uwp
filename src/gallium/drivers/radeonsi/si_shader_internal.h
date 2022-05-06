@@ -193,7 +193,7 @@ void gfx10_ngg_build_export_prim(struct si_shader_context *ctx, LLVMValueRef use
 void gfx10_ngg_culling_build_end(struct si_shader_context *ctx);
 void gfx10_ngg_build_end(struct si_shader_context *ctx);
 void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LLVMValueRef *addrs);
-void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx);
+void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx);
 void gfx10_ngg_gs_build_end(struct si_shader_context *ctx);
 unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader);
 bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);

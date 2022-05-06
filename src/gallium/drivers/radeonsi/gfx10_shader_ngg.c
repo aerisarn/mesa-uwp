@@ -1835,7 +1835,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
    ac_build_endif(&ctx->ac, 9001);
 }
 
-void gfx10_ngg_gs_emit_prologue(struct si_shader_context *ctx)
+void gfx10_ngg_gs_emit_begin(struct si_shader_context *ctx)
 {
    /* Zero out the part of LDS scratch that is used to accumulate the
     * per-stream generated primitive count.
