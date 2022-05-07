@@ -1208,7 +1208,7 @@ void clc_free_dxil_object(struct clc_dxil_object *dxil)
    free(dxil->binary.data);
 }
 
-uint64_t clc_compiler_get_version()
+uint64_t clc_compiler_get_version(void)
 {
    const char sha1[] = MESA_GIT_SHA1;
    const char* dash = strchr(sha1, '-');
