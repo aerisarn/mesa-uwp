@@ -98,7 +98,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
               const struct dxil_spirv_runtime_conf *conf,
               struct dxil_spirv_object *out_dxil)
 {
-   if (stage == MESA_SHADER_NONE || stage == MESA_SHADER_KERNEL)
+   if (stage == DXIL_SPIRV_SHADER_NONE || stage == DXIL_SPIRV_SHADER_KERNEL)
       return false;
 
    struct spirv_to_nir_options spirv_opts = {
