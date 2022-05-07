@@ -182,6 +182,13 @@ lower_abi_instr(nir_builder *b, nir_instr *instr, void *state)
    case nir_intrinsic_load_task_ib_stride:
       return ac_nir_load_arg(b, &s->args->ac, s->args->task_ib_stride);
 
+   case nir_intrinsic_load_lshs_vertex_stride_amd: {
+      unsigned io_num = stage == MESA_SHADER_VERTEX ?
+         s->info->vs.num_linked_outputs :
+         s->info->tcs.num_linked_inputs;
+      return nir_imm_int(b, io_num * 16);
+   }
+
    default:
       unreachable("invalid NIR RADV ABI intrinsic.");
    }
@@ -225,7 +232,8 @@ filter_abi_instr(const nir_instr *instr,
           intrin->intrinsic == nir_intrinsic_load_ring_task_payload_amd ||
           intrin->intrinsic == nir_intrinsic_load_task_ring_entry_amd ||
           intrin->intrinsic == nir_intrinsic_load_task_ib_addr ||
-          intrin->intrinsic == nir_intrinsic_load_task_ib_stride;
+          intrin->intrinsic == nir_intrinsic_load_task_ib_stride ||
+          intrin->intrinsic == nir_intrinsic_load_lshs_vertex_stride_amd;
 }
 
 void
