@@ -1966,7 +1966,9 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
       return V_008F14_IMG_DATA_FORMAT_10_11_11;
    }
 
-   /* R8G8Bx_SNORM - TODO CxV8U8 */
+   /* Other "OTHER" layouts are unsupported. */
+   if (desc->layout == UTIL_FORMAT_LAYOUT_OTHER)
+      goto out_unknown;
 
    /* hw cannot support mixed formats (except depth/stencil, since only
     * depth is read).*/
@@ -1981,6 +1983,16 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
         desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_SIGNED) &&
        !desc->channel[first_non_void].normalized &&
        !desc->channel[first_non_void].pure_integer)
+      goto out_unknown;
+
+   /* Reject unsupported 32_*NORM and FIXED formats. */
+   if (desc->channel[first_non_void].size == 32 &&
+       (desc->channel[first_non_void].normalized ||
+        desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_FIXED))
+      goto out_unknown;
+
+   /* This format fails on Gfx8/Carrizo´. */
+   if (format == PIPE_FORMAT_A8R8_UNORM)
       goto out_unknown;
 
    /* See whether the components are of the same size. */
@@ -1998,6 +2010,13 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
          }
          goto out_unknown;
       case 4:
+         /* 5551 and 1555 UINT formats fail on Gfx8/Carrizo´. */
+         if (desc->channel[1].size == 5 &&
+             desc->channel[2].size == 5 &&
+             desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED &&
+             desc->channel[first_non_void].pure_integer)
+            goto out_unknown;
+
          if (desc->channel[0].size == 5 && desc->channel[1].size == 5 &&
              desc->channel[2].size == 5 && desc->channel[3].size == 1) {
             return V_008F14_IMG_DATA_FORMAT_1_5_5_5;
@@ -2019,11 +2038,12 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    switch (desc->channel[first_non_void].size) {
    case 4:
       switch (desc->nr_channels) {
-#if 0 /* Not supported for render targets */
-      case 2:
-         return V_008F14_IMG_DATA_FORMAT_4_4;
-#endif
       case 4:
+         /* 4444 UINT formats fail on Gfx8/Carrizo´. */
+         if (desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED &&
+             desc->channel[first_non_void].pure_integer)
+            goto out_unknown;
+
          return V_008F14_IMG_DATA_FORMAT_4_4_4_4;
       }
       break;
