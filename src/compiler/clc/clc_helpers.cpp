@@ -774,6 +774,9 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
 #else
       "-finclude-default-header",
 #endif
+#if LLVM_VERSION_MAJOR >= 15
+      "-no-opaque-pointers",
+#endif
       // Add a default CL compiler version. Clang will pick the last one specified
       // on the command line, so the app can override this one.
       "-cl-std=cl1.2",
