@@ -2188,6 +2188,9 @@ static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe
    struct si_screen *sscreen = (struct si_screen *)screen;
    const struct util_format_description *desc = util_format_description(format);
 
+   if (!desc)
+      return false;
+
    /* Samplers don't support 64 bits per channel. */
    if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
        desc->channel[0].size == 64)
@@ -2199,9 +2202,6 @@ static bool si_is_sampler_format_supported(struct pipe_screen *screen, enum pipe
          return false;
       return true;
    }
-
-   if (!desc)
-      return false;
 
    return si_translate_texformat(screen, format, desc,
                                  util_format_get_first_non_void_channel(format)) != ~0U;
