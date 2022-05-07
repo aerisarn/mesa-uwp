@@ -1973,6 +1973,16 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
    if (desc->is_mixed && desc->colorspace != UTIL_FORMAT_COLORSPACE_ZS)
       goto out_unknown;
 
+   if (first_non_void < 0 || first_non_void > 3)
+      goto out_unknown;
+
+   /* Reject SCALED formats because we don't implement them for CB and do the same for texturing. */
+   if ((desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED ||
+        desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_SIGNED) &&
+       !desc->channel[first_non_void].normalized &&
+       !desc->channel[first_non_void].pure_integer)
+      goto out_unknown;
+
    /* See whether the components are of the same size. */
    for (i = 1; i < desc->nr_channels; i++) {
       uniform = uniform && desc->channel[0].size == desc->channel[i].size;
@@ -2004,16 +2014,6 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
       }
       goto out_unknown;
    }
-
-   if (first_non_void < 0 || first_non_void > 3)
-      goto out_unknown;
-
-   /* Reject SCALED formats because we don't implement them for CB and do the same for texturing. */
-   if ((desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_UNSIGNED ||
-        desc->channel[first_non_void].type == UTIL_FORMAT_TYPE_SIGNED) &&
-       !desc->channel[first_non_void].normalized &&
-       !desc->channel[first_non_void].pure_integer)
-      goto out_unknown;
 
    /* uniform formats */
    switch (desc->channel[first_non_void].size) {
