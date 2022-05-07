@@ -559,7 +559,7 @@ TEST_F(ComputeTest, DISABLED_complex_types_local_array_long)
       inout[idx] = tmp[idx];\n\
    }\n";
    auto inout = ShaderArg<uint64_t>({ 0, 0, 0, 0 }, SHADER_ARG_INOUT);
-   const uint16_t expected[] = {
+   const uint64_t expected[] = {
       0x00000000, 0x10000001, 0x20000020, 0x30000300,
    };
    run_shader(kernel_source, inout.size(), 1, 1, inout);
