@@ -772,6 +772,10 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    case nir_intrinsic_load_sample_mask_in:
       return ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args.sample_coverage));
 
+   case nir_intrinsic_load_lshs_vertex_stride_amd:
+      return LLVMBuildShl(ctx->ac.builder, si_get_tcs_in_vertex_dw_stride(ctx),
+                          LLVMConstInt(ctx->ac.i32, 2, 0), "");
+
    default:
       return NULL;
    }

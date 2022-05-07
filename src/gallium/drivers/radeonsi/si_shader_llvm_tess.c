@@ -149,7 +149,7 @@ LLVMValueRef si_get_num_tcs_out_vertices(struct si_shader_context *ctx)
                        si_unpack_param(ctx, ctx->tcs_offchip_layout, 6, 5), ctx->ac.i32_1, "");
 }
 
-static LLVMValueRef get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
+LLVMValueRef si_get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
 {
    unsigned stride;
 
@@ -419,7 +419,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
            semantic == VARYING_SLOT_TESS_LEVEL_OUTER) == is_patch);
 
    if (load_input) {
-      stride = get_tcs_in_vertex_dw_stride(ctx);
+      stride = si_get_tcs_in_vertex_dw_stride(ctx);
       dw_addr = get_tcs_in_current_patch_offset(ctx);
    } else {
       if (is_patch) {
@@ -577,7 +577,7 @@ static void si_copy_tcs_inputs(struct si_shader_context *ctx)
    buffer = get_tess_ring_descriptor(ctx, TESS_OFFCHIP_RING_TCS);
    buffer_offset = ac_get_arg(&ctx->ac, ctx->args.tess_offchip_offset);
 
-   lds_vertex_stride = get_tcs_in_vertex_dw_stride(ctx);
+   lds_vertex_stride = si_get_tcs_in_vertex_dw_stride(ctx);
    lds_base = get_tcs_in_current_patch_offset(ctx);
    lds_base = ac_build_imad(&ctx->ac, invocation_id, lds_vertex_stride, lds_base);
 
@@ -886,7 +886,7 @@ void si_llvm_ls_build_end(struct si_shader_context *ctx)
    } else {
       vertex_id = ac_get_arg(&ctx->ac, ctx->args.vs_rel_patch_id);
    }
-   LLVMValueRef vertex_dw_stride = get_tcs_in_vertex_dw_stride(ctx);
+   LLVMValueRef vertex_dw_stride = si_get_tcs_in_vertex_dw_stride(ctx);
    LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id, vertex_dw_stride, "");
    LLVMValueRef *addrs = ctx->abi.outputs;
    unsigned ret_offset = 8 + GFX9_TCS_NUM_USER_SGPR + 2;
