@@ -286,7 +286,7 @@ lower_yz_flip(struct nir_builder *builder, nir_instr *instr,
    nir_ssa_def *pos = nir_ssa_for_src(builder, intrin->src[1], 4);
    nir_ssa_def *y_pos = nir_channel(builder, pos, 1);
    nir_ssa_def *z_pos = nir_channel(builder, pos, 2);
-   nir_ssa_def *y_flip_mask = NULL, *z_flip_mask = NULL, *dyn_yz_flip_mask;
+   nir_ssa_def *y_flip_mask = NULL, *z_flip_mask = NULL, *dyn_yz_flip_mask = NULL;
 
    if (rt_conf->yz_flip.mode & DXIL_SPIRV_YZ_FLIP_CONDITIONAL) {
       // conditional YZ-flip. The flip bitmask is passed through the vertex
