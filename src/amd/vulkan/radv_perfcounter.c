@@ -36,7 +36,7 @@ radv_perfcounter_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders)
 }
 
 void
-radv_perfcounter_emit_reset(struct radeon_cmdbuf *cs)
+radv_perfcounter_emit_spm_reset(struct radeon_cmdbuf *cs)
 {
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
                               S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_DISABLE_AND_RESET) |
@@ -44,7 +44,7 @@ radv_perfcounter_emit_reset(struct radeon_cmdbuf *cs)
 }
 
 void
-radv_perfcounter_emit_start(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
+radv_perfcounter_emit_spm_start(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
 {
    /* Start SPM counters. */
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
@@ -60,7 +60,7 @@ radv_perfcounter_emit_start(struct radv_device *device, struct radeon_cmdbuf *cs
 }
 
 void
-radv_perfcounter_emit_stop(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
+radv_perfcounter_emit_spm_stop(struct radv_device *device, struct radeon_cmdbuf *cs, int family)
 {
    /* Stop windowed performance counters. */
    if (family == RADV_QUEUE_GENERAL) {

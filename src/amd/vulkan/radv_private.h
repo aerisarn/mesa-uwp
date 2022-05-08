@@ -3105,9 +3105,11 @@ radv_accel_struct_get_va(const struct radv_acceleration_structure *accel)
 
 /* radv_perfcounter.c */
 void radv_perfcounter_emit_shaders(struct radeon_cmdbuf *cs, unsigned shaders);
-void radv_perfcounter_emit_reset(struct radeon_cmdbuf *cs);
-void radv_perfcounter_emit_start(struct radv_device *device, struct radeon_cmdbuf *cs, int family);
-void radv_perfcounter_emit_stop(struct radv_device *device, struct radeon_cmdbuf *cs, int family);
+void radv_perfcounter_emit_spm_reset(struct radeon_cmdbuf *cs);
+void radv_perfcounter_emit_spm_start(struct radv_device *device, struct radeon_cmdbuf *cs,
+                                     int family);
+void radv_perfcounter_emit_spm_stop(struct radv_device *device, struct radeon_cmdbuf *cs,
+                                    int family);
 
 /* radv_spm.c */
 bool radv_spm_init(struct radv_device *device);
