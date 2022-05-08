@@ -2052,7 +2052,8 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
       pipeline->active_stages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 
    if (anv_pipeline_is_mesh(pipeline))
-      assert(device->physical->vk.supported_extensions.NV_mesh_shader);
+      assert(device->physical->vk.supported_extensions.NV_mesh_shader ||
+             device->physical->vk.supported_extensions.EXT_mesh_shader);
 
    pipeline->dynamic_state.ms.sample_locations = &pipeline->sample_locations;
    vk_dynamic_graphics_state_fill(&pipeline->dynamic_state, state);
