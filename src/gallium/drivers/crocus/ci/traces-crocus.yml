@@ -10,9 +10,9 @@ traces:
         checksum: 6567807570543c2875fc6912f00687e5
   - path: behdad-glyphy/glyphy.trace
     expectations:
-      # glyphs unintelligible on g41
-      - device: crocus-g41
-        checksum: 9d1db810d33f1ab30570bd710476429c
+      # glyphs unintelligible on g41, unstable results
+      #- device: crocus-g41
+      #  checksum: 9d1db810d33f1ab30570bd710476429c
       - device: crocus-hsw
         checksum: 49c62d99a21de18a3e184a57bf655849
   - path: glxgears/glxgears-2.trace
@@ -48,8 +48,8 @@ traces:
       # Requires GL4, not for G41.
       - device: crocus-hsw
         checksum: 7e4948c361528a7873dad9712f629770
-  - path: gputest/pixmark-piano.trace
-    expectations:
+  #- path: gputest/pixmark-piano.trace
+  #  expectations:
       # Looks like it probably triggers hangcheck on g41
       # - device: crocus-g41
       #   checksum: 346bae885d95f419b750a601e028378b
