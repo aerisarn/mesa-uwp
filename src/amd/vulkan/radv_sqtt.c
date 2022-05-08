@@ -448,26 +448,6 @@ radv_thread_trace_finish_bo(struct radv_device *device)
    }
 }
 
-static int
-radv_thread_trace_init_pstate(struct radv_device *device)
-{
-   struct radeon_winsys *ws = device->ws;
-
-   if (device->physical_device->rad_info.has_stable_pstate) {
-      for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
-         for (unsigned q = 0; q < device->queue_count[i]; q++) {
-            struct radv_queue *queue = &device->queues[i][q];
-
-            /* Set the current pstate to peak which is required for profiling. */
-            if (ws->ctx_set_pstate(queue->hw_ctx, RADEON_CTX_PSTATE_PEAK) < 0)
-               return false;
-         }
-      }
-   }
-
-   return true;
-}
-
 bool
 radv_thread_trace_init(struct radv_device *device)
 {
@@ -485,7 +465,7 @@ radv_thread_trace_init(struct radv_device *device)
    if (!radv_thread_trace_init_bo(device))
       return false;
 
-   if (!radv_thread_trace_init_pstate(device))
+   if (!radv_device_acquire_performance_counters(device))
       return false;
 
    list_inithead(&thread_trace_data->rgp_pso_correlation.record);

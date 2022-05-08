@@ -908,7 +908,13 @@ struct radv_device {
 
    /* Whether shaders created through application entrypoints are considered internal. */
    bool app_shaders_internal;
+
+   simple_mtx_t pstate_mtx;
+   unsigned pstate_cnt;
 };
+
+bool radv_device_acquire_performance_counters(struct radv_device *device);
+void radv_device_release_performance_counters(struct radv_device *device);
 
 struct radv_device_memory {
    struct vk_object_base base;

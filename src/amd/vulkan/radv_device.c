@@ -3297,6 +3297,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
    simple_mtx_init(&device->trace_mtx, mtx_plain);
+   simple_mtx_init(&device->pstate_mtx, mtx_plain);
 
    device->ws = physical_device->ws;
    vk_device_set_drm_fd(&device->vk, device->ws->get_fd(device->ws));
@@ -3564,6 +3565,7 @@ fail:
          device->ws->ctx_destroy(device->hw_ctx[i]);
    }
 
+   simple_mtx_destroy(&device->pstate_mtx);
    simple_mtx_destroy(&device->trace_mtx);
    mtx_destroy(&device->overallocation_mutex);
 
@@ -3605,6 +3607,7 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    }
 
    mtx_destroy(&device->overallocation_mutex);
+   simple_mtx_destroy(&device->pstate_mtx);
    simple_mtx_destroy(&device->trace_mtx);
 
    radv_device_finish_meta(device);
@@ -6883,4 +6886,66 @@ radv_GetPhysicalDeviceFragmentShadingRatesKHR(
 #undef append_rate
 
    return vk_outarray_status(&out);
+}
+
+static bool
+radv_thread_trace_set_pstate(struct radv_device *device, bool enable)
+{
+   struct radeon_winsys *ws = device->ws;
+   enum radeon_ctx_pstate pstate = enable ? RADEON_CTX_PSTATE_PEAK : RADEON_CTX_PSTATE_NONE;
+
+   if (device->physical_device->rad_info.has_stable_pstate) {
+      for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
+         for (unsigned q = 0; q < device->queue_count[i]; q++) {
+            struct radv_queue *queue = &device->queues[i][q];
+
+            if (ws->ctx_set_pstate(queue->hw_ctx, pstate) < 0)
+               return false;
+         }
+      }
+   }
+
+   return true;
+}
+
+bool
+radv_device_acquire_performance_counters(struct radv_device *device)
+{
+   bool result = true;
+   simple_mtx_lock(&device->pstate_mtx);
+
+   if (device->pstate_cnt == 0) {
+      result = radv_thread_trace_set_pstate(device, true);
+      if (result)
+         ++device->pstate_cnt;
+   }
+
+   simple_mtx_unlock(&device->pstate_mtx);
+   return result;
+}
+
+void
+radv_device_release_performance_counters(struct radv_device *device)
+{
+   simple_mtx_lock(&device->pstate_mtx);
+
+   if (--device->pstate_cnt == 0)
+      radv_thread_trace_set_pstate(device, false);
+
+   simple_mtx_unlock(&device->pstate_mtx);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+radv_AcquireProfilingLockKHR(VkDevice _device, const VkAcquireProfilingLockInfoKHR *pInfo)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   bool result = radv_device_acquire_performance_counters(device);
+   return result ? VK_SUCCESS : VK_ERROR_UNKNOWN;
+}
+
+VKAPI_ATTR void VKAPI_CALL
+radv_ReleaseProfilingLockKHR(VkDevice _device)
+{
+   RADV_FROM_HANDLE(radv_device, device, _device);
+   radv_device_release_performance_counters(device);
 }
