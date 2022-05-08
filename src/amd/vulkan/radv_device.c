@@ -341,6 +341,14 @@ radv_spm_trace_enabled()
           debug_get_bool_option("RADV_THREAD_TRACE_CACHE_COUNTERS", false);
 }
 
+static bool
+radv_perf_query_supported(const struct radv_physical_device *pdev)
+{
+   /* SQTT / SPM interfere with the register states for perf counters, and
+    * the code has only been tested on GFX10.3 */
+   return pdev->rad_info.gfx_level == GFX10_3 && !radv_thread_trace_enabled();
+}
+
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR) || defined(VK_USE_PLATFORM_XCB_KHR) ||                    \
    defined(VK_USE_PLATFORM_XLIB_KHR) || defined(VK_USE_PLATFORM_DISPLAY_KHR)
 #define RADV_USE_WSI_PLATFORM
@@ -433,6 +441,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .KHR_maintenance3 = true,
       .KHR_maintenance4 = true,
       .KHR_multiview = true,
+      .KHR_performance_query = radv_perf_query_supported(device),
       .KHR_pipeline_executable_properties = true,
       .KHR_pipeline_library = !device->use_llvm,
       .KHR_push_descriptor = true,
@@ -1785,6 +1794,13 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderModuleIdentifier = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
+         VkPhysicalDevicePerformanceQueryFeaturesKHR *features =
+            (VkPhysicalDevicePerformanceQueryFeaturesKHR *)ext;
+         features->performanceCounterQueryPools = radv_perf_query_supported(pdevice);
+         features->performanceCounterMultipleQueryPools = features->performanceCounterQueryPools;
+         break;
+      }
       default:
          break;
       }
@@ -2477,6 +2493,12 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          memcpy(properties->shaderModuleIdentifierAlgorithmUUID,
                 vk_shaderModuleIdentifierAlgorithmUUID,
                 sizeof(properties->shaderModuleIdentifierAlgorithmUUID));
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR: {
+         VkPhysicalDevicePerformanceQueryPropertiesKHR *properties =
+            (VkPhysicalDevicePerformanceQueryPropertiesKHR *)ext;
+         properties->allowCommandBufferQueryCopies = false;
          break;
       }
       default:
