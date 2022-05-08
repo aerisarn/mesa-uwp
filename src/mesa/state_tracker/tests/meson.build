@@ -18,12 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libmesa_st_test_common = static_library(
-  'mesa_st_test_common',
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-  dependencies : [idep_gtest, idep_mesautil],
-)
-
 test(
   'st_format_test',
   executable(
@@ -31,9 +25,9 @@ test(
     ['st_format.c'],
     include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
     link_with : [
-      libmesa_st_test_common, libmesa, libglapi, libgallium,
+      libmesa, libglapi, libgallium,
     ],
-    dependencies : idep_mesautil,
+    dependencies : [idep_gtest, idep_mesautil],
   ),
   suite : ['st_mesa'],
 )
