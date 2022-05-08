@@ -83,6 +83,7 @@ struct d3d12_image_format_conversion_info {
 };
 
 struct d3d12_shader_key {
+   uint32_t hash;
    enum pipe_shader_type stage;
 
    struct d3d12_varying_info required_varying_inputs;

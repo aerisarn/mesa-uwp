@@ -38,6 +38,7 @@
 #include "tgsi/tgsi_from_mesa.h"
 #include "tgsi/tgsi_ureg.h"
 
+#include "util/hash_table.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
 #include "util/u_simple_shaders.h"
@@ -663,20 +664,49 @@ validate_tess_ctrl_shader_variant(struct d3d12_selection_context *sel_ctx)
 }
 
 static bool
+d3d12_compare_varying_info(const d3d12_varying_info *expect, const d3d12_varying_info *have)
+{
+   if (expect->mask != have->mask)
+      return false;
+
+   if (!expect->mask)
+      return true;
+
+   /* 6 is a rough (wild) guess for a bulk memcmp cross-over point.  When there
+    * are a small number of slots present, individual memcmp is much faster. */
+   if (util_bitcount64(expect->mask) < 6) {
+      uint64_t mask = expect->mask;
+      while (mask) {
+         int slot = u_bit_scan64(&mask);
+         if (memcmp(&expect->slots[slot], &have->slots[slot], sizeof(have->slots[slot])))
+            return false;
+      }
+
+      return true;
+   }
+
+   return !memcmp(expect, have, sizeof(struct d3d12_varying_info));
+}
+
+static bool
 d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key *have)
 {
    assert(expect->stage == have->stage);
    assert(expect);
    assert(have);
 
+   if (expect->hash != have->hash)
+      return false;
+
    /* Because we only add varyings we check that a shader has at least the expected in-
     * and outputs. */
-   if (memcmp(&expect->required_varying_inputs, &have->required_varying_inputs,
-              sizeof(struct d3d12_varying_info)) ||
-       memcmp(&expect->required_varying_outputs, &have->required_varying_outputs,
-              sizeof(struct d3d12_varying_info)) ||
-       (expect->next_varying_inputs != have->next_varying_inputs) ||
-       (expect->prev_varying_outputs != have->prev_varying_outputs))
+
+   if (!d3d12_compare_varying_info(&expect->required_varying_inputs,
+                                   &have->required_varying_inputs))
+      return false;
+
+   if (!d3d12_compare_varying_info(&expect->required_varying_outputs,
+                                   &have->required_varying_outputs))
       return false;
 
    if (expect->stage == PIPE_SHADER_GEOMETRY) {
@@ -775,6 +805,48 @@ d3d12_compare_shader_keys(const d3d12_shader_key *expect, const d3d12_shader_key
       return false;
 
    return true;
+}
+
+static uint32_t
+d3d12_shader_key_hash(const d3d12_shader_key *key)
+{
+   uint32_t hash;
+
+   hash = (uint32_t)key->stage;
+   hash += key->required_varying_inputs.mask;
+   hash += key->required_varying_outputs.mask;
+   hash += key->next_varying_inputs;
+   hash += key->prev_varying_outputs;
+   switch (key->stage) {
+   case PIPE_SHADER_VERTEX:
+      /* (Probably) not worth the bit extraction for needs_format_emulation and
+       * the rest of the the format_conversion data is large.  Don't bother
+       * hashing for now until this is shown to be worthwhile. */
+       break;
+   case PIPE_SHADER_GEOMETRY:
+      hash = _mesa_hash_data_with_seed(&key->gs, sizeof(key->gs), hash);
+      break;
+   case PIPE_SHADER_FRAGMENT:
+      hash = _mesa_hash_data_with_seed(&key->fs, sizeof(key->fs), hash);
+      break;
+   case PIPE_SHADER_COMPUTE:
+      hash = _mesa_hash_data_with_seed(&key->cs, sizeof(key->cs), hash);
+      break;
+   case PIPE_SHADER_TESS_CTRL:
+      hash += key->hs.next_patch_inputs;
+      break;
+   case PIPE_SHADER_TESS_EVAL:
+      hash += key->ds.tcs_vertices_out;
+      hash += key->ds.prev_patch_outputs;
+      break;
+   default:
+      /* No type specific information to hash for other stages. */
+      break;
+   }
+
+   hash += key->n_texture_states;
+   hash += key->n_images;
+   return hash;
 }
 
 static void
@@ -971,6 +1043,8 @@ d3d12_fill_shader_key(struct d3d12_selection_context *sel_ctx,
       if (key->image_format_conversion[i].emulated_format != PIPE_FORMAT_NONE)
          key->image_format_conversion[i].view_format = sel_ctx->ctx->image_views[stage][i].format;
    }
+
+   key->hash = d3d12_shader_key_hash(key);
 }
 
 static void
