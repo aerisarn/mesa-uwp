@@ -76,7 +76,7 @@ radv_sdma_v4_v5_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct 
    struct radv_device *device = cmd_buffer->device;
    unsigned bpp = image->planes[0].surface.bpe;
    uint64_t dst_address = buffer->bo->va;
-   uint64_t src_address = image->bo->va + image->planes[0].surface.u.gfx9.surf_offset;
+   uint64_t src_address = image->bindings[0].bo->va + image->planes[0].surface.u.gfx9.surf_offset;
    unsigned src_pitch = image->planes[0].surface.u.gfx9.surf_pitch;
    unsigned copy_width = DIV_ROUND_UP(image->info.width, image->planes[0].surface.blk_w);
    unsigned copy_height = DIV_ROUND_UP(image->info.height, image->planes[0].surface.blk_h);

@@ -2758,7 +2758,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       VkImageLayout layout = subpass->color_attachments[i].layout;
       bool in_render_loop = subpass->color_attachments[i].in_render_loop;
 
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->image->bo);
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->image->bindings[0].bo);
 
       assert(iview->vk.aspects & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
                                   VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
@@ -2786,7 +2786,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       bool in_render_loop = subpass->depth_stencil_attachment->in_render_loop;
       struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
-                         cmd_buffer->state.attachments[idx].iview->image->bo);
+                         cmd_buffer->state.attachments[idx].iview->image->bindings[0].bo);
 
       radv_emit_fb_ds_state(cmd_buffer, &cmd_buffer->state.attachments[idx].ds, iview, layout,
                             in_render_loop);
@@ -6403,12 +6403,12 @@ radv_cmd_buffer_begin_subpass(struct radv_cmd_buffer *cmd_buffer, uint32_t subpa
          };
 
          /* HTILE buffer */
-         uint64_t htile_offset = ds_image->offset + ds_image->planes[0].surface.meta_offset +
+         uint64_t htile_offset = ds_image->bindings[0].offset + ds_image->planes[0].surface.meta_offset +
                                  ds_image->planes[0].surface.u.gfx9.meta_levels[level].offset;
          uint64_t htile_size = ds_image->planes[0].surface.u.gfx9.meta_levels[level].size;
          struct radv_buffer htile_buffer;
 
-         radv_buffer_init(&htile_buffer, cmd_buffer->device, ds_image->bo, htile_size, htile_offset);
+         radv_buffer_init(&htile_buffer, cmd_buffer->device, ds_image->bindings[0].bo, htile_size, htile_offset);
 
          /* Copy the VRS rates to the HTILE buffer. */
          radv_copy_vrs_htile(cmd_buffer, vrs_iview->image, &extent, ds_image, &htile_buffer, true);
@@ -9336,8 +9336,9 @@ radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
 
       /* Initialize the mipmap levels without DCC. */
       if (size != image->planes[0].surface.meta_size) {
-         flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo,
-                                        radv_buffer_get_va(image->bo) + image->offset +
+         flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bindings[0].bo,
+                                        radv_buffer_get_va(image->bindings[0].bo) +
+                                           image->bindings[0].offset +
                                            image->planes[0].surface.meta_offset + size,
                                         image->planes[0].surface.meta_size - size, 0xffffffff);
       }

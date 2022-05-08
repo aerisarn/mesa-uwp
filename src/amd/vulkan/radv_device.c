@@ -4778,7 +4778,7 @@ radv_sparse_image_opaque_bind_memory(struct radv_device *device,
       if (bind->pBinds[i].memory != VK_NULL_HANDLE)
          mem = radv_device_memory_from_handle(bind->pBinds[i].memory);
 
-      result = device->ws->buffer_virtual_bind(device->ws, image->bo,
+      result = device->ws->buffer_virtual_bind(device->ws, image->bindings[0].bo,
                                                bind->pBinds[i].resourceOffset, bind->pBinds[i].size,
                                                mem ? mem->bo : NULL, bind->pBinds[i].memoryOffset);
       if (result != VK_SUCCESS)
@@ -4835,7 +4835,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
          uint32_t aligned_extent_height = ALIGN(bind_extent.height, surface->prt_tile_height);
 
          uint32_t size = aligned_extent_width * aligned_extent_height * bs;
-         result = device->ws->buffer_virtual_bind(device->ws, image->bo, offset, size,
+         result = device->ws->buffer_virtual_bind(device->ws, image->bindings[0].bo, offset, size,
                                                   mem ? mem->bo : NULL, mem_offset);
          if (result != VK_SUCCESS)
             return result;
@@ -4844,8 +4844,8 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
          uint32_t mem_increment = aligned_extent_width * bs;
          uint32_t size = mem_increment * surface->prt_tile_height;
          for (unsigned y = 0; y < bind_extent.height; y += surface->prt_tile_height) {
-            result = device->ws->buffer_virtual_bind(
-               device->ws, image->bo, offset + img_increment * y, size, mem ? mem->bo : NULL,
+            result = device->ws->buffer_virtual_bind(device->ws,
+               image->bindings[0].bo, offset + img_increment * y, size, mem ? mem->bo : NULL,
                mem_offset + mem_increment * y);
             if (result != VK_SUCCESS)
                return result;
@@ -5348,7 +5348,7 @@ bool
 radv_get_memory_fd(struct radv_device *device, struct radv_device_memory *memory, int *pFD)
 {
    /* Only set BO metadata for the first plane */
-   if (memory->image && memory->image->offset == 0) {
+   if (memory->image && memory->image->bindings[0].offset == 0) {
       struct radeon_bo_metadata metadata;
       radv_init_metadata(device, memory->image, &metadata);
       device->ws->buffer_set_metadata(device->ws, memory->bo, &metadata);
@@ -5870,8 +5870,8 @@ radv_BindImageMemory2(VkDevice _device, uint32_t bindInfoCount,
          }
       }
 
-      image->bo = mem->bo;
-      image->offset = pBindInfos[i].memoryOffset;
+      image->bindings[0].bo = mem->bo;
+      image->bindings[0].offset = pBindInfos[i].memoryOffset;
    }
    return VK_SUCCESS;
 }
@@ -6209,7 +6209,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    else
       cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1_GFX6(desc->swizzle[3] == PIPE_SWIZZLE_1);
 
-   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset;
 
    cb->cb_color_base = va >> 8;
 
@@ -6274,11 +6274,11 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    }
 
    /* CMASK variables */
-   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset;
    va += surf->cmask_offset;
    cb->cb_color_cmask = va >> 8;
 
-   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset;
    va += surf->meta_offset;
 
    if (radv_dcc_enabled(iview->image, iview->vk.base_mip_level) &&
@@ -6307,7 +6307,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    }
 
    if (radv_image_has_fmask(iview->image)) {
-      va = radv_buffer_get_va(iview->image->bo) + iview->image->offset + surf->fmask_offset;
+      va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset +
+         surf->fmask_offset;
       cb->cb_color_fmask = va >> 8;
       cb->cb_color_fmask |= surf->fmask_tile_swizzle;
    } else {
@@ -6539,7 +6540,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    ds->db_htile_data_base = 0;
    ds->db_htile_surface = 0;
 
-   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset;
    s_offs = z_offs = va;
 
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
@@ -6590,7 +6591,8 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
             ds->db_stencil_info |= S_02803C_TILE_STENCIL_DISABLE(1);
          }
 
-         va = radv_buffer_get_va(iview->image->bo) + iview->image->offset + surf->meta_offset;
+         va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset + 
+            surf->meta_offset;
          ds->db_htile_data_base = va >> 8;
          ds->db_htile_surface = S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1);
 
@@ -6659,7 +6661,8 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
             ds->db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
          }
 
-         va = radv_buffer_get_va(iview->image->bo) + iview->image->offset + surf->meta_offset;
+         va = radv_buffer_get_va(iview->image->bindings[0].bo) + iview->image->bindings[0].offset +
+            surf->meta_offset;
          ds->db_htile_data_base = va >> 8;
          ds->db_htile_surface = S_028ABC_FULL_CACHE(1);
 

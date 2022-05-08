@@ -211,7 +211,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         device->meta_state.dcc_retile.pipeline[swizzle_mode]);
 
-   radv_buffer_init(&buffer, device, image->bo, image->size, image->offset);
+   radv_buffer_init(&buffer, device, image->bindings[0].bo, image->size, image->bindings[0].offset);
 
    struct radv_buffer_view views[2];
    VkBufferView view_handles[2];

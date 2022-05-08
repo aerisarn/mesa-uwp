@@ -1259,7 +1259,7 @@ uint32_t
 radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                  const VkImageSubresourceRange *range, uint32_t value)
 {
-   uint64_t offset = image->offset + image->planes[0].surface.cmask_offset;
+   uint64_t offset = image->bindings[0].offset + image->planes[0].surface.cmask_offset;
    uint64_t size;
 
    if (cmd_buffer->device->physical_device->rad_info.gfx_level == GFX9) {
@@ -1272,15 +1272,15 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
       size = slice_size * radv_get_layerCount(image, range);
    }
 
-   return radv_fill_buffer(cmd_buffer, image, image->bo, radv_buffer_get_va(image->bo) + offset,
-                           size, value);
+   return radv_fill_buffer(cmd_buffer, image, image->bindings[0].bo,
+         radv_buffer_get_va(image->bindings[0].bo) + offset, size, value);
 }
 
 uint32_t
 radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
                  const VkImageSubresourceRange *range, uint32_t value)
 {
-   uint64_t offset = image->offset + image->planes[0].surface.fmask_offset;
+   uint64_t offset = image->bindings[0].offset + image->planes[0].surface.fmask_offset;
    unsigned slice_size = image->planes[0].surface.fmask_slice_size;
    uint64_t size;
 
@@ -1290,8 +1290,8 @@ radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
    offset += slice_size * range->baseArrayLayer;
    size = slice_size * radv_get_layerCount(image, range);
 
-   return radv_fill_buffer(cmd_buffer, image, image->bo, radv_buffer_get_va(image->bo) + offset,
-                           size, value);
+   return radv_fill_buffer(cmd_buffer, image, image->bindings[0].bo,
+         radv_buffer_get_va(image->bindings[0].bo) + offset, size, value);
 }
 
 uint32_t
@@ -1306,7 +1306,7 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
    radv_update_dcc_metadata(cmd_buffer, image, range, true);
 
    for (uint32_t l = 0; l < level_count; l++) {
-      uint64_t offset = image->offset + image->planes[0].surface.meta_offset;
+      uint64_t offset = image->bindings[0].offset + image->planes[0].surface.meta_offset;
       uint32_t level = range->baseMipLevel + l;
       uint64_t size;
 
@@ -1338,8 +1338,9 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
       if (!size)
          continue;
 
-      flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo,
-                                     radv_buffer_get_va(image->bo) + offset, size, value);
+      flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bindings[0].bo,
+                                     radv_buffer_get_va(image->bindings[0].bo) + offset,
+                                     size, value);
    }
 
    return flush_bits;
@@ -1474,7 +1475,7 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
       /* Clear individuals levels separately. */
       for (uint32_t l = 0; l < level_count; l++) {
          uint32_t level = range->baseMipLevel + l;
-         uint64_t offset = image->offset + image->planes[0].surface.meta_offset +
+         uint64_t offset = image->bindings[0].offset + image->planes[0].surface.meta_offset +
                            image->planes[0].surface.u.gfx9.meta_levels[level].offset;
          uint32_t size = image->planes[0].surface.u.gfx9.meta_levels[level].size;
 
@@ -1484,28 +1485,30 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
 
          if (htile_mask == UINT_MAX) {
             /* Clear the whole HTILE buffer. */
-            flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo,
-                                           radv_buffer_get_va(image->bo) + offset, size, value);
+            flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bindings[0].bo,
+                                           radv_buffer_get_va(image->bindings[0].bo) + offset,
+                                           size, value);
          } else {
             /* Only clear depth or stencil bytes in the HTILE buffer. */
             flush_bits |=
-               clear_htile_mask(cmd_buffer, image, image->bo, offset, size, value, htile_mask);
+               clear_htile_mask(cmd_buffer, image, image->bindings[0].bo, offset, size, value, htile_mask);
          }
       }
    } else {
       unsigned layer_count = radv_get_layerCount(image, range);
       uint64_t size = image->planes[0].surface.meta_slice_size * layer_count;
-      uint64_t offset = image->offset + image->planes[0].surface.meta_offset +
+      uint64_t offset = image->bindings[0].offset + image->planes[0].surface.meta_offset +
                         image->planes[0].surface.meta_slice_size * range->baseArrayLayer;
 
       if (htile_mask == UINT_MAX) {
          /* Clear the whole HTILE buffer. */
-         flush_bits = radv_fill_buffer(cmd_buffer, image, image->bo,
-                                       radv_buffer_get_va(image->bo) + offset, size, value);
+         flush_bits = radv_fill_buffer(cmd_buffer, image, image->bindings[0].bo,
+                                       radv_buffer_get_va(image->bindings[0].bo) + offset,
+                                       size, value);
       } else {
          /* Only clear depth or stencil bytes in the HTILE buffer. */
          flush_bits =
-            clear_htile_mask(cmd_buffer, image, image->bo, offset, size, value, htile_mask);
+            clear_htile_mask(cmd_buffer, image, image->bindings[0].bo, offset, size, value, htile_mask);
       }
    }
 

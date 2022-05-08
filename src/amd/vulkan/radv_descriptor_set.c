@@ -1162,9 +1162,9 @@ write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
    memcpy(dst, descriptor, size);
 
    if (cmd_buffer)
-      radv_cs_add_buffer(device->ws, cmd_buffer->cs, iview->image->bo);
+      radv_cs_add_buffer(device->ws, cmd_buffer->cs, iview->image->bindings[0].bo);
    else
-      *buffer_list = iview->image->bo;
+      *buffer_list = iview->image->bindings[0].bo;
 }
 
 static ALWAYS_INLINE void

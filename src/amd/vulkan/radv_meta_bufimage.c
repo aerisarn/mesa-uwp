@@ -1249,7 +1249,7 @@ create_buffer_from_image(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_bl
    struct radv_device *device = cmd_buffer->device;
    struct radv_device_memory mem;
 
-   radv_device_memory_init(&mem, device, surf->image->bo);
+   radv_device_memory_init(&mem, device, surf->image->bindings[0].bo);
 
    radv_CreateBuffer(radv_device_to_handle(device),
                      &(VkBufferCreateInfo){
@@ -1266,7 +1266,7 @@ create_buffer_from_image(struct radv_cmd_buffer *cmd_buffer, struct radv_meta_bl
                              .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
                              .buffer = *buffer,
                              .memory = radv_device_memory_to_handle(&mem),
-                             .memoryOffset = surf->image->offset,
+                             .memoryOffset = surf->image->bindings[0].offset,
                           }});
 
    radv_device_memory_finish(&mem);

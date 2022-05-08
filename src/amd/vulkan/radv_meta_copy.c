@@ -238,7 +238,7 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer, struct radv_buffer *buf
       assert(image->info.height == region->imageExtent.height);
       ASSERTED bool res = radv_sdma_copy_image(cmd_buffer, image, buffer, region);
       assert(res);
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, image->bo);
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, image->bindings[0].bo);
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, buffer->bo);
       return;
    }

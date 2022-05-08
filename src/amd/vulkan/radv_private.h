@@ -2372,6 +2372,12 @@ struct radv_image_plane {
    struct radeon_surf surface;
 };
 
+struct radv_image_binding {
+   /* Set when bound */
+   struct radeon_winsys_bo *bo;
+   VkDeviceSize offset;
+};
+
 struct radv_image {
    struct vk_image vk;
 
@@ -2387,9 +2393,7 @@ struct radv_image {
    bool dcc_sign_reinterpret;
    bool support_comp_to_single;
 
-   /* Set when bound */
-   struct radeon_winsys_bo *bo;
-   VkDeviceSize offset;
+   struct radv_image_binding bindings[3];
    bool tc_compatible_cmask;
 
    uint64_t clear_value_offset;
@@ -2555,8 +2559,8 @@ radv_image_get_fast_clear_va(const struct radv_image *image, uint32_t base_level
 {
    assert(radv_image_has_clear_value(image));
 
-   uint64_t va = radv_buffer_get_va(image->bo);
-   va += image->offset + image->clear_value_offset + base_level * 8;
+   uint64_t va = radv_buffer_get_va(image->bindings[0].bo);
+   va += image->bindings[0].offset + image->clear_value_offset + base_level * 8;
    return va;
 }
 
@@ -2565,8 +2569,8 @@ radv_image_get_fce_pred_va(const struct radv_image *image, uint32_t base_level)
 {
    assert(image->fce_pred_offset != 0);
 
-   uint64_t va = radv_buffer_get_va(image->bo);
-   va += image->offset + image->fce_pred_offset + base_level * 8;
+   uint64_t va = radv_buffer_get_va(image->bindings[0].bo);
+   va += image->bindings[0].offset + image->fce_pred_offset + base_level * 8;
    return va;
 }
 
@@ -2575,8 +2579,8 @@ radv_image_get_dcc_pred_va(const struct radv_image *image, uint32_t base_level)
 {
    assert(image->dcc_pred_offset != 0);
 
-   uint64_t va = radv_buffer_get_va(image->bo);
-   va += image->offset + image->dcc_pred_offset + base_level * 8;
+   uint64_t va = radv_buffer_get_va(image->bindings[0].bo);
+   va += image->bindings[0].offset + image->dcc_pred_offset + base_level * 8;
    return va;
 }
 
@@ -2585,8 +2589,8 @@ radv_get_tc_compat_zrange_va(const struct radv_image *image, uint32_t base_level
 {
    assert(image->tc_compat_zrange_offset != 0);
 
-   uint64_t va = radv_buffer_get_va(image->bo);
-   va += image->offset + image->tc_compat_zrange_offset + base_level * 4;
+   uint64_t va = radv_buffer_get_va(image->bindings[0].bo);
+   va += image->bindings[0].offset + image->tc_compat_zrange_offset + base_level * 4;
    return va;
 }
 
@@ -2595,8 +2599,8 @@ radv_get_ds_clear_value_va(const struct radv_image *image, uint32_t base_level)
 {
    assert(radv_image_has_clear_value(image));
 
-   uint64_t va = radv_buffer_get_va(image->bo);
-   va += image->offset + image->clear_value_offset + base_level * 8;
+   uint64_t va = radv_buffer_get_va(image->bindings[0].bo);
+   va += image->bindings[0].offset + image->clear_value_offset + base_level * 8;
    return va;
 }
 
