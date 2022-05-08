@@ -483,8 +483,8 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
       stages &= VK_SHADER_STAGE_ALL_GRAPHICS |
                 ((cmd_buffer->device->vk.enabled_extensions.NV_mesh_shader ||
                   cmd_buffer->device->vk.enabled_extensions.EXT_mesh_shader) ?
-                      (VK_SHADER_STAGE_TASK_BIT_NV |
-                       VK_SHADER_STAGE_MESH_BIT_NV) : 0);
+                      (VK_SHADER_STAGE_TASK_BIT_EXT |
+                       VK_SHADER_STAGE_MESH_BIT_EXT) : 0);
       pipe_state = &cmd_buffer->state.gfx.base;
       break;
 
@@ -520,8 +520,8 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
        * This means that we have to upload the descriptor set
        * as an 64-bit address in the push constants.
        */
-      bool update_desc_sets = stages & (VK_SHADER_STAGE_TASK_BIT_NV |
-                                        VK_SHADER_STAGE_MESH_BIT_NV |
+      bool update_desc_sets = stages & (VK_SHADER_STAGE_TASK_BIT_EXT |
+                                        VK_SHADER_STAGE_MESH_BIT_EXT |
                                         VK_SHADER_STAGE_RAYGEN_BIT_KHR |
                                         VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
                                         VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
@@ -805,8 +805,8 @@ void anv_CmdPushConstants(
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
    if (stageFlags & (VK_SHADER_STAGE_ALL_GRAPHICS |
-                     VK_SHADER_STAGE_TASK_BIT_NV |
-                     VK_SHADER_STAGE_MESH_BIT_NV)) {
+                     VK_SHADER_STAGE_TASK_BIT_EXT |
+                     VK_SHADER_STAGE_MESH_BIT_EXT)) {
       struct anv_cmd_pipeline_state *pipe_state =
          &cmd_buffer->state.gfx.base;
 

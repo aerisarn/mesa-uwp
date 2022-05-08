@@ -1894,8 +1894,8 @@ anv_get_physical_device_properties_1_1(struct anv_physical_device *pdevice,
    }
    if (pdevice->vk.supported_extensions.NV_mesh_shader ||
        pdevice->vk.supported_extensions.EXT_mesh_shader) {
-      scalar_stages |= VK_SHADER_STAGE_TASK_BIT_NV |
-                       VK_SHADER_STAGE_MESH_BIT_NV;
+      scalar_stages |= VK_SHADER_STAGE_TASK_BIT_EXT |
+                       VK_SHADER_STAGE_MESH_BIT_EXT;
    }
    p->subgroupSupportedStages = scalar_stages;
    p->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT |
@@ -2042,8 +2042,8 @@ anv_get_physical_device_properties_1_3(struct anv_physical_device *pdevice,
    p->maxSubgroupSize = 32;
    p->maxComputeWorkgroupSubgroups = pdevice->info.max_cs_workgroup_threads;
    p->requiredSubgroupSizeStages = VK_SHADER_STAGE_COMPUTE_BIT |
-                                   VK_SHADER_STAGE_TASK_BIT_NV |
-                                   VK_SHADER_STAGE_MESH_BIT_NV;
+                                   VK_SHADER_STAGE_TASK_BIT_EXT |
+                                   VK_SHADER_STAGE_MESH_BIT_EXT;
 
    p->maxInlineUniformBlockSize = MAX_INLINE_UNIFORM_BLOCK_SIZE;
    p->maxPerStageDescriptorInlineUniformBlocks =

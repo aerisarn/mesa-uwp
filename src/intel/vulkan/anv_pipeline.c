@@ -1353,7 +1353,7 @@ anv_graphics_pipeline_init_keys(struct anv_graphics_pipeline *pipeline,
    }
 
    assert(pipeline->active_stages & VK_SHADER_STAGE_VERTEX_BIT ||
-          pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_NV);
+          pipeline->active_stages & VK_SHADER_STAGE_MESH_BIT_EXT);
 }
 
 static bool

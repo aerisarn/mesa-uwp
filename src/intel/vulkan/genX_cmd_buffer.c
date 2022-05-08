@@ -3050,7 +3050,7 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
    struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    const struct anv_graphics_pipeline *pipeline = gfx_state->pipeline;
 
-   if (dirty_stages & VK_SHADER_STAGE_TASK_BIT_NV &&
+   if (dirty_stages & VK_SHADER_STAGE_TASK_BIT_EXT &&
        anv_pipeline_has_stage(pipeline, MESA_SHADER_TASK)) {
 
       const struct anv_shader_bin *shader = pipeline->shaders[MESA_SHADER_TASK];
@@ -3073,7 +3073,7 @@ cmd_buffer_flush_mesh_inline_data(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-   if (dirty_stages & VK_SHADER_STAGE_MESH_BIT_NV &&
+   if (dirty_stages & VK_SHADER_STAGE_MESH_BIT_EXT &&
        anv_pipeline_has_stage(pipeline, MESA_SHADER_MESH)) {
 
       const struct anv_shader_bin *shader = pipeline->shaders[MESA_SHADER_MESH];
@@ -3570,8 +3570,8 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                                       dirty & VK_SHADER_STAGE_ALL_GRAPHICS);
 #if GFX_VERx10 >= 125
       cmd_buffer_flush_mesh_inline_data(
-         cmd_buffer, dirty & (VK_SHADER_STAGE_TASK_BIT_NV |
-                              VK_SHADER_STAGE_MESH_BIT_NV));
+         cmd_buffer, dirty & (VK_SHADER_STAGE_TASK_BIT_EXT |
+                              VK_SHADER_STAGE_MESH_BIT_EXT));
 #endif
    }
 
