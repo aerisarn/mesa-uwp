@@ -2698,7 +2698,7 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
    queue->device = device;
    queue->priority = radv_get_queue_global_priority(global_priority);
    queue->hw_ctx = device->hw_ctx[queue->priority];
-   queue->qf = vk_queue_to_radv(device->physical_device, create_info->queueFamilyIndex);
+   queue->state.qf = vk_queue_to_radv(device->physical_device, create_info->queueFamilyIndex);
 
    VkResult result = vk_queue_init(&queue->vk, &device->vk, create_info, idx);
    if (result != VK_SUCCESS)
@@ -2710,10 +2710,8 @@ radv_queue_init(struct radv_device *device, struct radv_queue *queue, int idx,
 }
 
 static void
-radv_queue_finish(struct radv_queue *queue)
+radv_queue_state_finish(struct radv_queue_state *queue, struct radeon_winsys *ws)
 {
-   struct radeon_winsys *ws = queue->device->ws;
-
    if (queue->initial_full_flush_preamble_cs)
       ws->cs_destroy(queue->initial_full_flush_preamble_cs);
    if (queue->initial_preamble_cs)
@@ -2736,7 +2734,12 @@ radv_queue_finish(struct radv_queue *queue)
       ws->buffer_destroy(ws, queue->gds_oa_bo);
    if (queue->compute_scratch_bo)
       ws->buffer_destroy(ws, queue->compute_scratch_bo);
+}
 
+static void
+radv_queue_finish(struct radv_queue *queue)
+{
+   radv_queue_state_finish(&queue->state, queue->device->ws);
    vk_queue_finish(&queue->vk);
 }
 
@@ -3983,7 +3986,7 @@ radv_init_compute_state(struct radeon_cmdbuf *cs, struct radv_device *device)
 }
 
 static VkResult
-radv_update_preamble_cs(struct radv_queue *queue, struct radv_device *device,
+radv_update_preamble_cs(struct radv_queue_state *queue, struct radv_device *device,
                         const struct radv_queue_ring_info *needs)
 {
    struct radeon_winsys *ws = device->ws;
@@ -4126,7 +4129,7 @@ radv_update_preamble_cs(struct radv_queue *queue, struct radv_device *device,
 
       enum rgp_flush_bits sqtt_flush_bits = 0;
       struct radeon_cmdbuf *cs = NULL;
-      cs = ws->cs_create(ws, radv_queue_ring(queue));
+      cs = ws->cs_create(ws, radv_queue_family_to_ring(device->physical_device, queue->qf));
       if (!cs) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
          goto fail;
@@ -4383,7 +4386,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
 }
 
 static VkResult
-radv_update_preambles(struct radv_queue *queue, struct radv_device *device,
+radv_update_preambles(struct radv_queue_state *queue, struct radv_device *device,
                       struct vk_command_buffer *const *cmd_buffers, uint32_t cmd_buffer_count)
 {
    if (queue->qf == RADV_QUEUE_TRANSFER)
@@ -4522,7 +4525,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
    uint32_t advance;
    VkResult result;
 
-   result = radv_update_preambles(queue, queue->device, submission->command_buffers,
+   result = radv_update_preambles(&queue->state, queue->device, submission->command_buffers,
                                   submission->command_buffer_count);
    if (result != VK_SUCCESS)
       return result;
@@ -4556,8 +4559,8 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       .cs_array = cs_array,
       .cs_count = 0,
       .initial_preamble_cs =
-         need_wait ? queue->initial_full_flush_preamble_cs : queue->initial_preamble_cs,
-      .continue_preamble_cs = queue->continue_preamble_cs,
+         need_wait ? queue->state.initial_full_flush_preamble_cs : queue->state.initial_preamble_cs,
+      .continue_preamble_cs = queue->state.continue_preamble_cs,
    };
 
    for (uint32_t j = 0; j < submission->command_buffer_count; j += advance) {
@@ -4585,7 +4588,7 @@ radv_queue_submit_normal(struct radv_queue *queue, struct vk_queue_submit *submi
       }
 
       submit.cs_array += advance;
-      submit.initial_preamble_cs = queue->initial_preamble_cs;
+      submit.initial_preamble_cs = queue->state.initial_preamble_cs;
    }
 
 fail:
