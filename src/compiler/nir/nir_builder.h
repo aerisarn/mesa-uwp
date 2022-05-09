@@ -1087,6 +1087,21 @@ nir_pad_vec4(nir_builder *b, nir_ssa_def *src)
    return nir_pad_vector(b, src, 4);
 }
 
+/**
+ * Resizes a vector by either trimming off components or adding undef
+ * components, as needed.  Only use this helper if it's actually what you
+ * need.  Prefer nir_pad_vector() or nir_trim_vector() instead if you know a
+ * priori which direction you're resizing.
+ */
+static inline nir_ssa_def *
+nir_resize_vector(nir_builder *b, nir_ssa_def *src, unsigned num_components)
+{
+   if (src->num_components < num_components)
+      return nir_pad_vector(b, src, num_components);
+   else
+      return nir_trim_vector(b, src, num_components);
+}
+
 nir_ssa_def *
 nir_ssa_for_src(nir_builder *build, nir_src src, int num_components);
 
