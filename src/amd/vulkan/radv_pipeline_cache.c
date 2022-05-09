@@ -387,6 +387,7 @@ radv_create_shaders_from_pipeline_cache(
       entry->slab = pipeline->slab;
    } else {
       pipeline->slab = entry->slab;
+      pipeline->slab_bo = pipeline->slab->alloc->arena->bo;
    }
 
    if (num_stack_sizes) {

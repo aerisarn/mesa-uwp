@@ -1881,6 +1881,7 @@ struct radv_pipeline {
    struct radv_dynamic_state dynamic_state;
 
    struct radv_pipeline_slab *slab;
+   struct radeon_winsys_bo *slab_bo;
 
    bool need_indirect_descriptor_sets;
    struct radv_shader *shaders[MESA_VULKAN_SHADER_STAGES];

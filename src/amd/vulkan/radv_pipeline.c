@@ -3810,6 +3810,8 @@ radv_upload_shaders(struct radv_device *device, struct radv_pipeline *pipeline,
    if (!pipeline->slab)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
+   pipeline->slab_bo = pipeline->slab->alloc->arena->bo;
+
    /* Upload shader binaries. */
    uint64_t slab_va = radv_buffer_get_va(pipeline->slab->alloc->arena->bo);
    uint32_t slab_offset = pipeline->slab->alloc->offset;

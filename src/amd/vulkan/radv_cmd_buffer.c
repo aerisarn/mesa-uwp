@@ -1405,7 +1405,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 
    radv_emit_batch_break_on_new_ps(cmd_buffer);
 
-   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->slab->alloc->arena->bo);
+   radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, pipeline->slab_bo);
 
    if (unlikely(cmd_buffer->device->trace_bo))
       radv_save_pipeline(cmd_buffer, pipeline);
