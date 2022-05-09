@@ -30,7 +30,6 @@
 
 #include "common/ac_nir.h"
 #include "common/sid.h"
-#include "vulkan/radv_descriptor_set.h"
 
 #include "util/fast_idiv_by_const.h"
 #include "util/memstream.h"
