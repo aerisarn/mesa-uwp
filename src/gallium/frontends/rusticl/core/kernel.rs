@@ -30,8 +30,8 @@ use std::sync::Arc;
 pub enum KernelArgValue {
     None,
     Constant(Vec<u8>),
-    MemObject(&'static Mem),
-    Sampler(&'static Sampler),
+    MemObject(Arc<Mem>),
+    Sampler(Arc<Sampler>),
     LocalMem(usize),
 }
 

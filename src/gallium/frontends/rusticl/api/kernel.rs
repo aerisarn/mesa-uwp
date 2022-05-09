@@ -280,17 +280,17 @@ pub fn set_kernel_arg(
                         if ptr.is_null() || (*ptr).is_null() {
                             KernelArgValue::None
                         } else {
-                            KernelArgValue::MemObject((*ptr).get_ref()?)
+                            KernelArgValue::MemObject((*ptr).get_arc()?)
                         }
                     }
                     KernelArgType::MemLocal => KernelArgValue::LocalMem(arg_size),
                     KernelArgType::Image | KernelArgType::RWImage | KernelArgType::Texture => {
                         let img: *const cl_mem = arg_value.cast();
-                        KernelArgValue::MemObject((*img).get_ref()?)
+                        KernelArgValue::MemObject((*img).get_arc()?)
                     }
                     KernelArgType::Sampler => {
                         let ptr: *const cl_sampler = arg_value.cast();
-                        KernelArgValue::Sampler((*ptr).get_ref()?)
+                        KernelArgValue::Sampler((*ptr).get_arc()?)
                     }
                 }
             }
