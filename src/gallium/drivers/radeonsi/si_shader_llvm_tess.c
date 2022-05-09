@@ -384,44 +384,33 @@ void si_llvm_preload_tes_rings(struct si_shader_context *ctx)
 static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMTypeRef type,
                                              LLVMValueRef vertex_index, LLVMValueRef param_index,
                                              unsigned driver_location, unsigned component,
-                                             unsigned num_components, bool load_input,
-                                             bool vertex_index_is_invoc_id)
+                                             unsigned num_components, bool load_input)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
-   LLVMValueRef dw_addr, stride;
-   ubyte semantic;
+   LLVMValueRef value[4];
 
    if (load_input) {
-      semantic = info->input[driver_location].semantic;
-   } else {
-      semantic = info->output_semantic[driver_location];
-   }
+      assert(ctx->shader->key.ge.opt.same_patch_vertices && !param_index);
 
-   /* Load the TCS input from a VGPR if possible. */
-   if (ctx->shader->key.ge.opt.same_patch_vertices &&
-       load_input && vertex_index_is_invoc_id && !param_index) {
+      ubyte semantic = info->input[driver_location].semantic;
+      /* Load the TCS input from a VGPR. */
       unsigned func_param = ctx->args.tcs_rel_ids.arg_index + 1 +
-                            si_shader_io_get_unique_index(semantic, false) * 4;
-      LLVMValueRef value[4];
+         si_shader_io_get_unique_index(semantic, false) * 4;
 
       for (unsigned i = component; i < component + num_components; i++) {
          value[i] = LLVMGetParam(ctx->main_fn, func_param + i);
          value[i] = LLVMBuildBitCast(ctx->ac.builder, value[i], type, "");
       }
-
-      return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
-   }
-
-   bool is_patch = vertex_index == NULL;
-   assert((semantic >= VARYING_SLOT_PATCH0 ||
-           semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
-           semantic == VARYING_SLOT_TESS_LEVEL_OUTER) == is_patch);
-
-   if (load_input) {
-      stride = si_get_tcs_in_vertex_dw_stride(ctx);
-      dw_addr = get_tcs_in_current_patch_offset(ctx);
    } else {
+      ubyte semantic = info->output_semantic[driver_location];
+
+      bool is_patch = vertex_index == NULL;
+      assert((semantic >= VARYING_SLOT_PATCH0 ||
+              semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
+              semantic == VARYING_SLOT_TESS_LEVEL_OUTER) == is_patch);
+
+      LLVMValueRef dw_addr, stride;
       if (is_patch) {
          stride = NULL;
          dw_addr = get_tcs_out_current_patch_data_offset(ctx);
@@ -429,14 +418,13 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
          stride = get_tcs_out_vertex_dw_stride(ctx);
          dw_addr = get_tcs_out_current_patch_offset(ctx);
       }
+
+      dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr, vertex_index,
+                                                    param_index, semantic);
+
+      for (unsigned i = component; i < component + num_components; i++)
+         value[i] = lshs_lds_load(ctx, type, i, dw_addr);
    }
-
-   dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr, vertex_index, param_index,
-                                                 semantic);
-
-   LLVMValueRef value[4];
-   for (unsigned i = component; i < component + num_components; i++)
-      value[i] = lshs_lds_load(ctx, type, i, dw_addr);
 
    return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
 }
@@ -444,8 +432,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
 static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef type,
                                           LLVMValueRef vertex_index, LLVMValueRef param_index,
                                           unsigned driver_location, unsigned component,
-                                          unsigned num_components,
-                                          bool load_input, bool vertex_index_is_invoc_id)
+                                          unsigned num_components, bool load_input)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;
@@ -877,58 +864,20 @@ void si_llvm_ls_build_end(struct si_shader_context *ctx)
 {
    struct si_shader *shader = ctx->shader;
    struct si_shader_info *info = &shader->selector->info;
-   unsigned i, chan;
-   LLVMValueRef vertex_id;
-   if (ctx->screen->info.gfx_level >= GFX11) {
-      vertex_id = ac_build_imad(&ctx->ac, si_unpack_param(ctx, ctx->args.tcs_wave_id, 0, 5),
-                                LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, 0),
-                                ac_get_thread_id(&ctx->ac));
-   } else {
-      vertex_id = ac_get_arg(&ctx->ac, ctx->args.vs_rel_patch_id);
-   }
-   LLVMValueRef vertex_dw_stride = si_get_tcs_in_vertex_dw_stride(ctx);
-   LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id, vertex_dw_stride, "");
    LLVMValueRef *addrs = ctx->abi.outputs;
    unsigned ret_offset = 8 + GFX9_TCS_NUM_USER_SGPR + 2;
 
-   /* Write outputs to LDS. The next shader (TCS aka HS) will read
-    * its inputs from it. */
-   for (i = 0; i < info->num_outputs; i++) {
-      unsigned semantic = info->output_semantic[i];
+   if (shader->key.ge.opt.same_patch_vertices) {
+      for (unsigned i = 0; i < info->num_outputs; i++) {
+         unsigned semantic = info->output_semantic[i];
+         int param = si_shader_io_get_unique_index(semantic, false);
 
-      /* The ARB_shader_viewport_layer_array spec contains the
-       * following issue:
-       *
-       *    2) What happens if gl_ViewportIndex or gl_Layer is
-       *    written in the vertex shader and a geometry shader is
-       *    present?
-       *
-       *    RESOLVED: The value written by the last vertex processing
-       *    stage is used. If the last vertex processing stage
-       *    (vertex, tessellation evaluation or geometry) does not
-       *    statically assign to gl_ViewportIndex or gl_Layer, index
-       *    or layer zero is assumed.
-       *
-       * So writes to those outputs in VS-as-LS are simply ignored.
-       */
-      if (semantic == VARYING_SLOT_LAYER || semantic == VARYING_SLOT_VIEWPORT)
-         continue;
+         for (unsigned chan = 0; chan < 4; chan++) {
+            if (!(info->output_usagemask[i] & (1 << chan)))
+               continue;
 
-      int param = si_shader_io_get_unique_index(semantic, false);
-      LLVMValueRef dw_addr =
-         LLVMBuildAdd(ctx->ac.builder, base_dw_addr, LLVMConstInt(ctx->ac.i32, param * 4, 0), "");
+            LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
 
-      for (chan = 0; chan < 4; chan++) {
-         if (!(info->output_usagemask[i] & (1 << chan)))
-            continue;
-
-         LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
-
-         if (!shader->key.ge.opt.same_patch_vertices ||
-             !(ctx->next_shader_sel->info.tcs_vgpr_only_inputs & (1ull << semantic)))
-            lshs_lds_store(ctx, chan, dw_addr, value);
-
-         if (shader->key.ge.opt.same_patch_vertices) {
             ctx->return_value = LLVMBuildInsertValue(ctx->ac.builder, ctx->return_value,
                                                      value, ret_offset + param * 4 + chan, "");
          }

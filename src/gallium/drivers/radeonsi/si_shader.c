@@ -1490,6 +1490,30 @@ static bool si_nir_kill_outputs(nir_shader *nir, const union si_shader_key *key)
    return progress;
 }
 
+static unsigned si_map_io_driver_location(unsigned semantic)
+{
+   return si_shader_io_get_unique_index(semantic, false);
+}
+
+static bool si_lower_io_to_mem(const union si_shader_key *key,
+                               nir_shader *nir,
+                               uint64_t tcs_vgpr_only_inputs)
+{
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
+      if (key->ge.as_ls) {
+         NIR_PASS_V(nir, ac_nir_lower_ls_outputs_to_mem, si_map_io_driver_location,
+                    key->ge.opt.same_patch_vertices, tcs_vgpr_only_inputs);
+         return true;
+      }
+   } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
+      NIR_PASS_V(nir, ac_nir_lower_hs_inputs_to_mem, si_map_io_driver_location,
+                 key->ge.opt.same_patch_vertices);
+      return true;
+   }
+
+   return false;
+}
+
 struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
                                      const union si_shader_key *key,
                                      bool *free_nir,
@@ -1603,10 +1627,22 @@ struct nir_shader *si_get_nir_shader(struct si_shader_selector *sel,
     * this should be done after that.
     */
    progress2 |= ac_nir_lower_indirect_derefs(nir, sel->screen->info.gfx_level);
-   if (progress2)
+
+   bool opt_offsets = si_lower_io_to_mem(key, nir, tcs_vgpr_only_inputs);
+
+   if (progress2 || opt_offsets)
       si_nir_opts(sel->screen, nir, false);
 
-   if (progress || progress2)
+   if (opt_offsets) {
+      static const nir_opt_offsets_options offset_options = {
+         .uniform_max = 0,
+         .buffer_max = ~0,
+         .shared_max = ~0,
+      };
+      NIR_PASS_V(nir, nir_opt_offsets, &offset_options);
+   }
+
+   if (progress || progress2 || opt_offsets)
       si_nir_late_opts(nir);
 
    NIR_PASS_V(nir, nir_divergence_analysis);

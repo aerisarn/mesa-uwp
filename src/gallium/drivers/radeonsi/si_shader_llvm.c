@@ -743,10 +743,10 @@ static LLVMValueRef si_llvm_load_intrinsic(struct ac_shader_abi *abi, nir_intrin
    }
 
    case nir_intrinsic_load_tess_level_outer:
-      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs, 0, 4, true, false);
+      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs, 0, 4, true);
 
    case nir_intrinsic_load_tess_level_inner:
-      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs + 1, 0, 4, true, false);
+      return abi->load_tess_varyings(abi, ctx->ac.f32, NULL, NULL, info->num_inputs + 1, 0, 4, true);
 
    case nir_intrinsic_load_tess_level_outer_default:
    case nir_intrinsic_load_tess_level_inner_default: {
@@ -1240,9 +1240,6 @@ bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *
          si_get_tcs_epilog_key(shader, &tcs_epilog_key);
          si_llvm_build_tcs_epilog(&ctx, &tcs_epilog_key);
          parts[3] = ctx.main_fn;
-
-         /* VS as LS main part */
-         ctx.next_shader_sel = ctx.shader->selector;
 
          struct si_shader shader_ls = {};
          shader_ls.selector = ls;
