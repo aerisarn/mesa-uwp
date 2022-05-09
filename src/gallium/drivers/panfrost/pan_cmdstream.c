@@ -2902,9 +2902,10 @@ panfrost_emit_primitive_size(struct panfrost_context *ctx,
 static bool
 panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
 {
-        unsigned implicit_index = BITFIELD_MASK(info->index_size * 8);
-        bool implicit = info->restart_index == implicit_index;
-        return info->primitive_restart && implicit;
+       /* As a reminder primitive_restart should always be checked before any
+          access to restart_index. */
+        return info->primitive_restart &&
+                info->restart_index == (unsigned)BITFIELD_MASK(info->index_size * 8);
 }
 
 /* On Bifrost and older, the Renderer State Descriptor aggregates many pieces of
