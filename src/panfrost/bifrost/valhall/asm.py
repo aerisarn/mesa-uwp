@@ -91,7 +91,7 @@ def parse_int(s, minimum, maximum):
     return number
 
 def encode_source(op, fau):
-    if op[0] == '`':
+    if op[0] == '^':
         die_if(op[1] != 'r', f"Expected register after discard {op}")
         return parse_int(op[2:], 0, 63) | 0x40
     elif op[0] == 'r':

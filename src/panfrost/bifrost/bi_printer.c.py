@@ -77,7 +77,7 @@ static void
 bi_print_index(FILE *fp, bi_index index)
 {
     if (index.discard)
-        fputs("`", fp);
+        fputs("^", fp);
 
     if (bi_is_null(index))
         fprintf(fp, "_");
