@@ -60,16 +60,19 @@
 static int
 tu_device_get_cache_uuid(uint16_t family, void *uuid)
 {
-   uint32_t mesa_timestamp;
-   uint16_t f = family;
+   struct mesa_sha1 ctx;
+   unsigned char sha1[20];
+
    memset(uuid, 0, VK_UUID_SIZE);
-   if (!disk_cache_get_function_timestamp(tu_device_get_cache_uuid,
-                                          &mesa_timestamp))
+   _mesa_sha1_init(&ctx);
+
+   if (!disk_cache_get_function_identifier(tu_device_get_cache_uuid, &ctx))
       return -1;
 
-   memcpy(uuid, &mesa_timestamp, 4);
-   memcpy((char *) uuid + 4, &f, 2);
-   snprintf((char *) uuid + 6, VK_UUID_SIZE - 10, "tu");
+   _mesa_sha1_update(&ctx, &family, sizeof(family));
+   _mesa_sha1_final(&ctx, sha1);
+
+   memcpy(uuid, sha1, VK_UUID_SIZE);
    return 0;
 }
 
