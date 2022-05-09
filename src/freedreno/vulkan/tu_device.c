@@ -58,10 +58,17 @@
 
 
 static int
-tu_device_get_cache_uuid(uint16_t family, void *uuid)
+tu_device_get_cache_uuid(struct tu_physical_device *device, void *uuid)
 {
    struct mesa_sha1 ctx;
    unsigned char sha1[20];
+   /* Note: IR3_SHADER_DEBUG also affects compilation, but it's not
+    * initialized until after compiler creation so we have to add it to the
+    * shader hash instead, since the compiler is only created with the logical
+    * device.
+    */
+   uint64_t driver_flags = device->instance->debug_flags & TU_DEBUG_NOMULTIPOS;
+   uint16_t family = fd_dev_gpu_id(&device->dev_id);
 
    memset(uuid, 0, VK_UUID_SIZE);
    _mesa_sha1_init(&ctx);
@@ -70,6 +77,7 @@ tu_device_get_cache_uuid(uint16_t family, void *uuid)
       return -1;
 
    _mesa_sha1_update(&ctx, &family, sizeof(family));
+   _mesa_sha1_update(&ctx, &driver_flags, sizeof(driver_flags));
    _mesa_sha1_final(&ctx, sha1);
 
    memcpy(uuid, sha1, VK_UUID_SIZE);
@@ -261,7 +269,7 @@ tu_physical_device_init(struct tu_physical_device *device,
                                  "device %s is unsupported", device->name);
       goto fail_free_name;
    }
-   if (tu_device_get_cache_uuid(fd_dev_gpu_id(&device->dev_id), device->cache_uuid)) {
+   if (tu_device_get_cache_uuid(device, device->cache_uuid)) {
       result = vk_startup_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                                  "cannot generate UUID");
       goto fail_free_name;
