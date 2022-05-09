@@ -484,10 +484,6 @@ prep_fb_attachments(struct zink_context *ctx, VkImageView *att)
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct zink_surface *surf = zink_csurface(ctx->fb_state.cbufs[i]);
       struct zink_surface *transient = zink_transient_surface(ctx->fb_state.cbufs[i]);
-      if (surf && zink_resource(surf->base.texture)->obj != surf->obj) {
-         zink_resource_rebind(ctx, zink_resource(surf->base.texture));
-         surf = zink_csurface(ctx->fb_state.cbufs[i]);
-      }
       if (transient) {
          att[i] = zink_prep_fb_attachment(ctx, transient, i);
          att[i + cresolve_offset] = zink_prep_fb_attachment(ctx, surf, i);
