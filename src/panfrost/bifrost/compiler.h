@@ -1060,6 +1060,23 @@ bi_node_to_index(unsigned node, unsigned node_count)
         bi_foreach_instr_in_tuple(tuple, ins) \
                 bi_foreach_src(ins, s)
 
+/*
+ * Find the index of a predecessor, used as the implicit order of phi sources.
+ */
+static inline unsigned
+bi_predecessor_index(bi_block *succ, bi_block *pred)
+{
+        unsigned index = 0;
+
+        bi_foreach_predecessor(succ, x) {
+                if (*x == pred) return index;
+
+                index++;
+        }
+
+        unreachable("Invalid predecessor");
+}
+
 static inline bi_instr *
 bi_prev_op(bi_instr *ins)
 {
