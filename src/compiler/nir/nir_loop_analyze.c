@@ -1072,6 +1072,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
           * nir_opt_dead_cf pass.
           */
          trip_count_known = false;
+         terminator->exact_trip_count_unknown = true;
          continue;
       }
 
@@ -1105,6 +1106,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
        */
       if (!basic_ind.def) {
          trip_count_known = false;
+         terminator->exact_trip_count_unknown = true;
          continue;
       }
 
@@ -1120,6 +1122,7 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
          if (!try_find_limit_of_alu(limit, &limit_val, terminator, state)) {
             /* Guess loop limit based on array access */
             if (!guess_loop_limit(state, &limit_val, basic_ind)) {
+               terminator->exact_trip_count_unknown = true;
                continue;
             }
 
@@ -1174,11 +1177,13 @@ find_trip_count(loop_info_state *state, unsigned execution_mode)
       if (iterations == -1) {
          trip_count_known = false;
          guessed_trip_count = false;
+         terminator->exact_trip_count_unknown = true;
          continue;
       }
 
       if (guessed_trip_count) {
          guessed_trip_count = false;
+         terminator->exact_trip_count_unknown = true;
          if (state->loop->info->guessed_trip_count == 0 ||
              state->loop->info->guessed_trip_count > iterations)
             state->loop->info->guessed_trip_count = iterations;
