@@ -3478,11 +3478,6 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
         image_src = bi_lshift_or_i32(b, sampler, image_src, bi_imm_u8(0));
         image_src = bi_lshift_or_i32(b, texture, image_src, bi_imm_u8(16));
 
-        bi_index rsrc = bi_temp_reg(b->shader);
-        bi_index words[] = { image_src, bi_zero() };
-        bi_make_vec_to(b, rsrc, words, NULL, 2, 32);
-        bi_index rsrc_hi = bi_word(rsrc, 1);
-
         unsigned mask = BI_WRITE_MASK_RGBA;
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(instr->dest_type);
         enum bi_dimension dim = valhall_tex_dimension(instr->sampler_dim);
@@ -3492,20 +3487,21 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
         case nir_texop_tex:
         case nir_texop_txl:
         case nir_texop_txb:
-                bi_tex_single_to(b, dest, idx, rsrc, rsrc_hi, instr->is_array,
-                                 dim, regfmt, instr->is_shadow, explicit_offset,
-                                 lod_mode, mask, sr_count);
+                bi_tex_single_to(b, dest, idx, image_src, bi_zero(),
+                                 instr->is_array, dim, regfmt, instr->is_shadow,
+                                 explicit_offset, lod_mode, mask, sr_count);
                 break;
         case nir_texop_txf:
         case nir_texop_txf_ms:
-                bi_tex_fetch_to(b, dest, idx, rsrc, rsrc_hi, instr->is_array,
-                                 dim, regfmt, explicit_offset, mask, sr_count);
+                bi_tex_fetch_to(b, dest, idx, image_src, bi_zero(),
+                                instr->is_array, dim, regfmt, explicit_offset,
+                                mask, sr_count);
                 break;
         case nir_texop_tg4:
-                bi_tex_gather_to(b, dest, idx, rsrc, rsrc_hi, instr->is_array,
-                                 dim, instr->component, false, regfmt,
-                                 instr->is_shadow, explicit_offset, mask,
-                                 sr_count);
+                bi_tex_gather_to(b, dest, idx, image_src, bi_zero(),
+                                 instr->is_array, dim, instr->component, false,
+                                 regfmt, instr->is_shadow, explicit_offset,
+                                 mask, sr_count);
                 break;
         default:
                 unreachable("Unhandled Valhall texture op");

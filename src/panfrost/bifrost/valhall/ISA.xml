@@ -2388,7 +2388,7 @@
 
     <sr write="true" flags="false"/>
     <sr read="true" flags="false"/>
-    <src>Image to read from</src>
+    <src size="64">Image to read from</src>
   </ins>
 
   <ins name="TEX_SINGLE" title="Texture load" opcode="0x128" unit="T">
@@ -2411,7 +2411,7 @@
 
     <sr write="true" flags="false"/>
     <sr read="true" flags="false"/>
-    <src>Image to read from</src>
+    <src size="64">Image to read from</src>
   </ins>
 
   <ins name="TEX_GATHER" title="Texel gather" opcode="0x129" unit="T">
@@ -2435,7 +2435,7 @@
 
     <sr write="true" flags="false"/>
     <sr read="true" flags="false"/>
-    <src>Image to read from</src>
+    <src size="64">Image to read from</src>
   </ins>
 
   <ins name="TEX_DUAL" title="Dual texture" opcode="0x12F" unit="T">
@@ -2458,7 +2458,7 @@
 
     <sr write="true" flags="false"/>
     <sr read="true" flags="false"/>
-    <src>Image to read from</src>
+    <src size="64">Image to read from</src>
   </ins>
 
   <ins name="VAR_TEX_BUF_SINGLE" title="Fused varying-texturing" opcode="0x130" unit="VT">
