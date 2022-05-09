@@ -2602,7 +2602,7 @@ flush_batch(struct zink_context *ctx, bool sync)
       zink_batch_rp(ctx);
    bool conditional_render_active = ctx->render_condition.active;
    zink_stop_conditional_render(ctx);
-   zink_end_render_pass(ctx);
+   zink_batch_no_rp(ctx);
    zink_end_batch(ctx, batch);
    ctx->deferred_fence = NULL;
 
@@ -2705,7 +2705,7 @@ zink_set_color_write_enables(struct zink_context *ctx)
    ctx->disable_color_writes = disable_color_writes;
    if (zink_screen(ctx->base.screen)->driver_workarounds.color_write_missing) {
       /* use dummy color buffers instead of the more sane option */
-      zink_end_render_pass(ctx);
+      zink_batch_no_rp(ctx);
       ctx->rp_changed = true;
       zink_update_framebuffer_state(ctx, ctx->fb_state.width, ctx->fb_state.height);
    } else {
@@ -3421,7 +3421,7 @@ mem_barrier(struct zink_context *ctx, VkPipelineStageFlags src_stage, VkPipeline
    mb.pNext = NULL;
    mb.srcAccessMask = src;
    mb.dstAccessMask = dst;
-   zink_end_render_pass(ctx);
+   zink_batch_no_rp(ctx);
    VKCTX(CmdPipelineBarrier)(batch->state->cmdbuf, src_stage, dst_stage, 0, 1, &mb, 0, NULL, 0, NULL);
 }
 
