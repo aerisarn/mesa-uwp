@@ -567,6 +567,9 @@ bi_register_allocate(bi_context *ctx)
         /* Number of bytes of memory we've spilled into */
         unsigned spill_count = ctx->info.tls_size;
 
+        if (ctx->arch >= 9)
+                va_lower_split_64bit(ctx);
+
         /* Try with reduced register pressure to improve thread count */
         if (ctx->arch >= 7) {
                 bi_invalidate_liveness(ctx);
