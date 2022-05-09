@@ -422,23 +422,13 @@ void
 zink_init_vk_sample_locations(struct zink_context *ctx, VkSampleLocationsInfoEXT *loc);
 
 void
-zink_begin_render_pass(struct zink_context *ctx);
+zink_batch_rp(struct zink_context *ctx);
+
 void
-zink_end_render_pass(struct zink_context *ctx);
+zink_batch_no_rp(struct zink_context *ctx);
 
-static inline void
-zink_batch_rp(struct zink_context *ctx)
-{
-   if (!ctx->batch.in_rp)
-      zink_begin_render_pass(ctx);
-}
-
-static inline void
-zink_batch_no_rp(struct zink_context *ctx)
-{
-   zink_end_render_pass(ctx);
-   assert(!ctx->batch.in_rp);
-}
+VkImageView
+zink_prep_fb_attachment(struct zink_context *ctx, struct zink_surface *surf, unsigned i);
 
 static inline VkPipelineStageFlags
 zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)

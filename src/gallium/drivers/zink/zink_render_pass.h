@@ -89,6 +89,15 @@ void
 zink_destroy_render_pass(struct zink_screen *screen,
                          struct zink_render_pass *rp);
 
+
+void
+zink_begin_render_pass(struct zink_context *ctx);
+void
+zink_end_render_pass(struct zink_context *ctx);
+
 VkImageLayout
 zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, unsigned idx, VkPipelineStageFlags *pipeline, VkAccessFlags *access);
+
+bool
+zink_init_render_pass(struct zink_context *ctx);
 #endif
