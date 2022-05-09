@@ -3067,8 +3067,7 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer, bool pip
    if (states & RADV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)
       radv_emit_sample_locations(cmd_buffer);
 
-   if (states & (RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE |
-                 RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY))
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE))
       radv_emit_line_stipple(cmd_buffer);
 
    if (states & (RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
@@ -5421,7 +5420,11 @@ radv_CmdSetPrimitiveTopology(VkCommandBuffer commandBuffer, VkPrimitiveTopology 
    RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned primitive_topology = si_translate_prim(primitiveTopology);
+   bool old_is_linestrip = (state->dynamic.primitive_topology == V_008958_DI_PT_LINESTRIP);
+   bool new_is_linestrip = (primitive_topology == V_008958_DI_PT_LINESTRIP);
 
+   if (old_is_linestrip != new_is_linestrip)
+      state->dirty |= RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE;
    state->dynamic.primitive_topology = primitive_topology;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
