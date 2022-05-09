@@ -267,13 +267,12 @@ bi_mark_interference(bi_block *block, struct lcra_state *l, uint8_t *live, uint6
                          * offset, so we shift right. */
                         unsigned count = bi_count_write_registers(ins, d);
                         unsigned offset = ins->dest[d].offset;
-                        uint64_t affinity = bi_make_affinity(preload_live, count, split_file);
-
+                        uint64_t affinity = bi_make_affinity(preload_live, count, split_file) >> offset;
                         /* Valhall needs >= 64-bit staging writes to be pair-aligned */
-                        if (aligned_sr && count >= 2)
+                        if (aligned_sr && (count >= 2 || offset))
                                 affinity &= EVEN_BITS_MASK;
 
-                        l->affinity[node] &= (affinity >> offset);
+                        l->affinity[node] &= affinity;
 
                         for (unsigned i = 0; i < node_count; ++i) {
                                 uint8_t r = live[i];
