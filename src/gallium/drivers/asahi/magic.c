@@ -229,6 +229,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    }
 
    agx_pack(map + 292, IOGPU_CLEAR_Z_S, cfg) {
+      cfg.set_when_reloading_z_1 = clear_pipeline_textures;
+
       cfg.depth_clear_value = fui(clear_depth);
       cfg.stencil_clear_value = clear_stencil;
 
@@ -246,6 +248,7 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.unknown_buffer = demo_unk6(pool);
       cfg.width = framebuffer->width;
       cfg.height = framebuffer->height;
+      cfg.unk_80 = clear_pipeline_textures ? 0x0 : 0x1;
    }
 
    unsigned offset_unk = (484 * 4);
