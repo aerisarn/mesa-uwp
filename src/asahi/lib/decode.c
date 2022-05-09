@@ -495,6 +495,8 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    /* Print the IOGPU stuff */
    agx_unpack(agxdecode_dump_stream, cmdbuf->ptr.cpu, IOGPU_HEADER, cmd);
    DUMP_UNPACKED(IOGPU_HEADER, cmd, "IOGPU Header\n");
+   agx_unpack(agxdecode_dump_stream, ((uint32_t *) cmdbuf->ptr.cpu) + 160,
+              IOGPU_INTERNAL_PIPELINES, pip);
 
    DUMP_CL(IOGPU_INTERNAL_PIPELINES, ((uint32_t *) cmdbuf->ptr.cpu) + 160, "Internal pipelines");
    DUMP_CL(IOGPU_AUX_FRAMEBUFFER, ((uint32_t *) cmdbuf->ptr.cpu) + 228, "Aux Framebuffer");
@@ -527,17 +529,15 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
    uint64_t *encoder = ((uint64_t *) cmdbuf->ptr.cpu) + 7;
    agxdecode_stateful(*encoder, "Encoder", agxdecode_cmd, verbose);
 
-   uint64_t *clear_pipeline = ((uint64_t *) cmdbuf->ptr.cpu) + 79;
-   if (*clear_pipeline) {
-      assert(((*clear_pipeline) & 0xF) == 0x4);
-      agxdecode_stateful((*clear_pipeline) & ~0xF, "Clear pipeline",
+   if (pip.clear_pipeline_unk) {
+      assert(pip.clear_pipeline_unk == 0x4);
+      agxdecode_stateful(pip.clear_pipeline, "Clear pipeline",
             agxdecode_pipeline, verbose);
    }
 
-   uint64_t *store_pipeline = ((uint64_t *) cmdbuf->ptr.cpu) + 82;
-   if (*store_pipeline) {
-      assert(((*store_pipeline) & 0xF) == 0x4);
-      agxdecode_stateful((*store_pipeline) & ~0xF, "Store pipeline",
+   if (pip.store_pipeline_unk) {
+      assert(pip.store_pipeline_unk == 0x4);
+      agxdecode_stateful(pip.store_pipeline, "Store pipeline",
             agxdecode_pipeline, verbose);
    }
 
