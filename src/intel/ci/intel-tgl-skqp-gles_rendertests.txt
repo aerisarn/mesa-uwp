@@ -28,7 +28,6 @@ arcofzorro,-1
 arcs_as_paths,-1
 arcto,-1
 arithmode,0
-atlastext,2
 b_119394958,-1
 badpaint,-1
 bezier_conic_effects,-1
