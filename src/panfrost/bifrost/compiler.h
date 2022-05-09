@@ -379,6 +379,8 @@ typedef struct {
         struct list_head link;
 
         enum bi_opcode op;
+        uint8_t nr_srcs;
+        uint8_t nr_dests;
 
         /* Data flow */
         bi_index dest[BI_MAX_DESTS];
