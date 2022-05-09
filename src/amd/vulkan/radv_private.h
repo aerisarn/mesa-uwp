@@ -781,6 +781,9 @@ struct radv_device {
    uint32_t gs_table_depth;
    uint32_t hs_offchip_param;
    uint32_t max_offchip_buffers;
+   uint32_t tess_offchip_ring_size;
+   uint32_t tess_offchip_ring_offset;
+   uint32_t tess_factor_ring_size;
 
    /* MSAA sample locations.
     * The first index is the sample index.
