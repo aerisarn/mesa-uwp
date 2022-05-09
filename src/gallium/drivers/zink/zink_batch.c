@@ -403,10 +403,12 @@ submit_queue(void *data, void *gdata, int thread_index)
       bs->is_device_lost = true;
       goto end;
    }
-   if (VKSCR(EndCommandBuffer)(bs->barrier_cmdbuf) != VK_SUCCESS) {
-      mesa_loge("ZINK: vkEndCommandBuffer failed");
-      bs->is_device_lost = true;
-      goto end;
+   if (bs->has_barriers) {
+      if (VKSCR(EndCommandBuffer)(bs->barrier_cmdbuf) != VK_SUCCESS) {
+         mesa_loge("ZINK: vkEndCommandBuffer failed");
+         bs->is_device_lost = true;
+         goto end;
+      }
    }
 
    while (util_dynarray_contains(&bs->persistent_resources, struct zink_resource_object*)) {
