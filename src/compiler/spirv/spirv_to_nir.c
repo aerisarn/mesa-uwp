@@ -2874,8 +2874,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
        */
       vtn_fail_if(coord->num_components < coord_components,
                   "Coordinate value passed has fewer components than sampler dimensionality.");
-      p->src = nir_src_for_ssa(nir_channels(&b->nb, coord,
-                                            (1 << coord_components) - 1));
+      p->src = nir_src_for_ssa(nir_trim_vector(&b->nb, coord, coord_components));
 
       /* OpenCL allows integer sampling coordinates */
       if (glsl_type_is_integer(coord_val->type) &&
@@ -3156,8 +3155,8 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       struct vtn_ssa_value *dest = vtn_create_ssa_value(b, struct_type->type);
       unsigned result_size = glsl_get_vector_elements(ret_type->type);
       dest->elems[0]->def = nir_channel(&b->nb, &instr->dest.ssa, result_size);
-      dest->elems[1]->def = nir_channels(&b->nb, &instr->dest.ssa,
-                                         nir_component_mask(result_size));
+      dest->elems[1]->def = nir_trim_vector(&b->nb, &instr->dest.ssa,
+                                              result_size);
       vtn_push_ssa_value(b, w[2], dest);
    } else {
       vtn_push_nir_ssa(b, w[2], &instr->dest.ssa);
@@ -3574,9 +3573,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
       nir_builder_instr_insert(&b->nb, &intrin->instr);
 
-      nir_ssa_def *result = &intrin->dest.ssa;
-      if (nir_intrinsic_dest_components(intrin) != dest_components)
-         result = nir_channels(&b->nb, result, (1 << dest_components) - 1);
+      nir_ssa_def *result = nir_trim_vector(&b->nb, &intrin->dest.ssa,
+                                              dest_components);
 
       if (opcode == SpvOpImageQuerySize ||
           opcode == SpvOpImageQuerySizeLod)
@@ -3588,8 +3586,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
          dest->elems[0]->def = nir_channel(&b->nb, result, res_type_size);
          if (intrin->dest.ssa.bit_size != 32)
             dest->elems[0]->def = nir_u2u32(&b->nb, dest->elems[0]->def);
-         dest->elems[1]->def = nir_channels(&b->nb, result,
-                                            nir_component_mask(res_type_size));
+         dest->elems[1]->def = nir_trim_vector(&b->nb, result, res_type_size);
          vtn_push_ssa_value(b, w[2], dest);
       } else {
          vtn_push_nir_ssa(b, w[2], result);

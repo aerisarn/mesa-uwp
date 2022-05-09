@@ -621,7 +621,7 @@ ir3_nir_lower_load_const_instr(nir_builder *b, nir_instr *in_instr, void *data)
 
    if (nir_dest_bit_size(instr->dest) == 16) {
       result = nir_bitcast_vector(b, result, 16);
-      result = nir_channels(b, result, BITSET_MASK(instr->num_components));
+      result = nir_trim_vector(b, result, instr->num_components);
    }
 
    return result;

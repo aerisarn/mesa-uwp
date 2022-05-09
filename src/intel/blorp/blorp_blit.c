@@ -940,7 +940,7 @@ bit_cast_color(struct nir_builder *b, nir_ssa_def *color,
       /* Restrict to only the channels we actually have */
       const unsigned src_channels =
          isl_format_get_num_channels(key->src_format);
-      color = nir_channels(b, color, (1 << src_channels) - 1);
+      color = nir_trim_vector(b, color, src_channels);
 
       color = nir_format_bitcast_uvec_unmasked(b, color, src_bpc, dst_bpc);
    }

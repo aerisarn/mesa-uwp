@@ -60,7 +60,7 @@ build_nir_itob_compute_shader(struct radv_device *dev, bool is_3d)
    tex->sampler_dim = dim;
    tex->op = nir_texop_txf;
    tex->src[0].src_type = nir_tex_src_coord;
-   tex->src[0].src = nir_src_for_ssa(nir_channels(&b, img_coord, is_3d ? 0x7 : 0x3));
+   tex->src[0].src = nir_src_for_ssa(nir_trim_vector(&b, img_coord, 2 + is_3d));
    tex->src[1].src_type = nir_tex_src_lod;
    tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
    tex->src[2].src_type = nir_tex_src_texture_deref;
@@ -570,7 +570,7 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d, int samples)
       tex->sampler_dim = dim;
       tex->op = is_multisampled ? nir_texop_txf_ms : nir_texop_txf;
       tex->src[0].src_type = nir_tex_src_coord;
-      tex->src[0].src = nir_src_for_ssa(nir_channels(&b, src_coord, is_3d ? 0x7 : 0x3));
+      tex->src[0].src = nir_src_for_ssa(nir_trim_vector(&b, src_coord, 2 + is_3d));
       tex->src[1].src_type = nir_tex_src_lod;
       tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
       tex->src[2].src_type = nir_tex_src_texture_deref;
