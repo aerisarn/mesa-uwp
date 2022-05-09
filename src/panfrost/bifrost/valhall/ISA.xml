@@ -1121,8 +1121,8 @@
     <mod name="load_lane_8_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Address to load from after adding offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i16" title="Global memory load" opcode="0x6a" opcode2="1" unit="LS">
@@ -1138,8 +1138,8 @@
     <mod name="load_lane_16_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i24" title="Global memory load" opcode="0x6a" opcode2="2" unit="LS">
@@ -1155,8 +1155,8 @@
     <mod name="load_lane_24_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i32" title="Global memory load" opcode="0x6a" opcode2="3" unit="LS">
@@ -1172,8 +1172,8 @@
     <mod name="load_lane_32_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i48" title="Global memory load" opcode="0x6a" opcode2="4" unit="LS">
@@ -1189,8 +1189,8 @@
     <mod name="load_lane_48_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i64" title="Global memory load" opcode="0x6a" opcode2="5" unit="LS">
@@ -1206,8 +1206,8 @@
     <mod name="load_lane_64_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i96" title="Global memory load" opcode="0x6a" opcode2="6" unit="LS">
@@ -1223,8 +1223,8 @@
     <mod name="load_lane_96_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LD_BUFFER.i128" title="Global memory load" opcode="0x6a" opcode2="7" unit="LS">
@@ -1240,8 +1240,8 @@
     <mod name="load_lane_128_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Byte offset</src>
-    <src>Mode descriptor</src>
+    <src size="32">Byte offset</src>
+    <src size="32">Mode descriptor</src>
   </ins>
 
   <ins name="LEA_BUF_IMM" title="Load buffer effective address" opcode="0x5E" unit="LS">
@@ -1264,7 +1264,7 @@
     <mod name="load_lane_8_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1276,7 +1276,7 @@
     <mod name="load_lane_16_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1288,7 +1288,7 @@
     <mod name="load_lane_24_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1300,7 +1300,7 @@
     <mod name="load_lane_32_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1312,7 +1312,7 @@
     <mod name="load_lane_48_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1324,7 +1324,7 @@
     <mod name="load_lane_64_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1336,7 +1336,7 @@
     <mod name="load_lane_96_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1348,7 +1348,7 @@
     <mod name="load_lane_128_bit" start="36" size="3"/>
     <mod name="unsigned" start="39" size="1"/>
     <slot/>
-    <src>Address to load from after adding offset</src>
+    <src size="64">Address to load from after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </ins>
 
@@ -1366,7 +1366,7 @@
     <sr_count/>
     <memory_access/>
     <slot/>
-    <src>Address to store to after adding offset</src>
+    <src size="64">Address to store to after adding offset</src>
     <imm name="offset" start="8" size="16" signed="true"/>
   </group>
 
