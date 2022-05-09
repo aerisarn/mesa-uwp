@@ -1181,10 +1181,10 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
        *    generally don't care about layouts, so again, we don't get any
        *    benefits from this to limit the scope of image layout transitions.
        *
-       * Since we cannot offer any advantages to applications that use separate
-       * layouts for D/S, don't expose the feature.
+       * Still, Vulkan 1.2 requires this feature to be supported so we
+       * advertise it even though we don't really take advantage of it.
        */
-      .separateDepthStencilLayouts = false,
+      .separateDepthStencilLayouts = true,
       .storageBuffer8BitAccess = true,
       .storagePushConstant8 = true,
       .imagelessFramebuffer = true,
