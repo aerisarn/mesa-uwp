@@ -911,6 +911,13 @@ struct radv_device {
 
    simple_mtx_t pstate_mtx;
    unsigned pstate_cnt;
+
+   /* BO to contain some performance counter helpers:
+    * - A lock for profiling cmdbuffers.
+    * - a temporary fence for the end query synchronization.
+    * - the pass to use for profiling. (as an array of bools)
+    */
+   struct radeon_winsys_bo *perf_counter_bo;
 };
 
 bool radv_device_acquire_performance_counters(struct radv_device *device);

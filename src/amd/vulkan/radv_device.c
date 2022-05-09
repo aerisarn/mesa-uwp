@@ -3179,6 +3179,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
    bool global_bo_list = false;
    bool image_2d_view_of_3d = false;
    bool primitives_generated_query = false;
+   bool use_perf_counters = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -3257,6 +3258,12 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
              features->primitivesGeneratedQueryWithRasterizerDiscard ||
              features->primitivesGeneratedQueryWithNonZeroStreams)
             primitives_generated_query = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
+         const VkPhysicalDevicePerformanceQueryFeaturesKHR *features = (const void *)ext;
+         if (features->performanceCounterQueryPools)
+            use_perf_counters = true;
          break;
       }
       default:
@@ -3533,9 +3540,21 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
               1 << util_logbase2(device->force_aniso));
    }
 
+   if (use_perf_counters) {
+      size_t bo_size = PERF_CTR_BO_PASS_OFFSET + sizeof(uint64_t) * PERF_CTR_MAX_PASSES;
+      result =
+         device->ws->buffer_create(device->ws, bo_size, 4096, RADEON_DOMAIN_GTT,
+                                   RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
+                                   RADV_BO_PRIORITY_UPLOAD_BUFFER, 0, &device->perf_counter_bo);
+      if (result != VK_SUCCESS)
+         goto fail_cache;
+   }
+
    *pDevice = radv_device_to_handle(device);
    return VK_SUCCESS;
 
+fail_cache:
+   radv_DestroyPipelineCache(radv_device_to_handle(device), pc, NULL);
 fail_meta:
    radv_device_finish_meta(device);
 fail:
@@ -3546,6 +3565,8 @@ fail:
    radv_trap_handler_finish(device);
    radv_finish_trace(device);
 
+   if (device->perf_counter_bo)
+      device->ws->buffer_destroy(device->ws, device->perf_counter_bo);
    if (device->gfx_init)
       device->ws->buffer_destroy(device->ws, device->gfx_init);
 
@@ -3581,6 +3602,9 @@ radv_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
    if (!device)
       return;
+
+   if (device->perf_counter_bo)
+      device->ws->buffer_destroy(device->ws, device->perf_counter_bo);
 
    if (device->gfx_init)
       device->ws->buffer_destroy(device->ws, device->gfx_init);

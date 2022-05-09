@@ -131,4 +131,9 @@
 #define RADV_SHADER_ALLOC_NUM_FREE_LISTS                                                           \
    (RADV_SHADER_ALLOC_MAX_SIZE_CLASS - RADV_SHADER_ALLOC_MIN_SIZE_CLASS + 1)
 
+#define PERF_CTR_MAX_PASSES      512
+#define PERF_CTR_BO_PASS_OFFSET  16
+#define PERF_CTR_BO_LOCK_OFFSET  0
+#define PERF_CTR_BO_FENCE_OFFSET 8
+
 #endif /* RADV_CONSTANTS_H */
