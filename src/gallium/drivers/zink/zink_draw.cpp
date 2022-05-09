@@ -491,6 +491,11 @@ zink_draw(struct pipe_context *pctx,
       zink_rebind_all_buffers(ctx);
    }
 
+   if (unlikely(ctx->image_rebind_counter < screen->image_rebind_counter)) {
+      ctx->image_rebind_counter = screen->image_rebind_counter;
+      zink_rebind_all_images(ctx);
+   }
+
    unsigned index_offset = 0;
    unsigned index_size = dinfo->index_size;
    struct pipe_resource *index_buffer = NULL;

@@ -309,6 +309,7 @@ struct zink_context {
    struct zink_buffer_view *dummy_bufferview;
 
    unsigned buffer_rebind_counter;
+   unsigned image_rebind_counter;
 
    struct {
       /* descriptor info */
@@ -453,6 +454,8 @@ zink_pipeline_flags_from_pipe_stage(enum pipe_shader_type pstage)
 
 void
 zink_rebind_all_buffers(struct zink_context *ctx);
+void
+zink_rebind_all_images(struct zink_context *ctx);
 
 void
 zink_flush_memory_barrier(struct zink_context *ctx, bool is_compute);

@@ -3749,6 +3749,36 @@ zink_rebind_all_buffers(struct zink_context *ctx)
    }
 }
 
+void
+zink_rebind_all_images(struct zink_context *ctx)
+{
+   rebind_fb_state(ctx, NULL, false);
+    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
+      for (unsigned j = 0; j < ctx->di.num_sampler_views[i]; j++) {
+         struct zink_sampler_view *sv = zink_sampler_view(ctx->sampler_views[i][j]);
+         struct zink_resource *res = zink_resource(sv->image_view->base.texture);
+         if (res->obj != sv->image_view->obj) {
+             struct pipe_surface *psurf = &sv->image_view->base;
+             zink_rebind_surface(ctx, &psurf);
+             sv->image_view = zink_surface(psurf);
+             zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW, j, 1);
+             update_descriptor_state_sampler(ctx, i, j, res);
+         }
+      }
+      for (unsigned j = 0; j < ctx->di.num_images[i]; j++) {
+         struct zink_image_view *image_view = &ctx->image_views[i][j];
+         struct zink_resource *res = zink_resource(image_view->base.resource);
+         if (ctx->image_views[i][j].surface->obj != res->obj) {
+            zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
+            image_view->surface = create_image_surface(ctx, &image_view->base, i == PIPE_SHADER_COMPUTE);
+            zink_screen(ctx->base.screen)->context_invalidate_descriptor_state(ctx, i, ZINK_DESCRIPTOR_TYPE_IMAGE, j, 1);
+            update_descriptor_state_image(ctx, i, j, res);
+            _mesa_set_add(ctx->need_barriers[i == PIPE_SHADER_COMPUTE], res);
+         }
+      }
+   }
+}
+
 static void
 zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *dst,
                                     struct pipe_resource *src, unsigned num_rebinds,
