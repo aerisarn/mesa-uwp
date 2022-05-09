@@ -378,8 +378,15 @@ typedef struct {
         uint8_t nr_srcs;
         uint8_t nr_dests;
 
-        /* For a branch */
-        struct bi_block *branch_target;
+        union {
+                /* For a branch */
+                struct bi_block *branch_target;
+
+                /* For a phi node that hasn't been translated yet. This is only
+                 * used during NIR->BIR
+                 */
+                nir_phi_instr *phi;
+        };
 
         /* These don't fit neatly with anything else.. */
         enum bi_register_format register_format;
@@ -810,6 +817,7 @@ typedef struct {
        bi_block *after_block;
        bi_block *break_block;
        bi_block *continue_block;
+       bi_block **indexed_nir_blocks;
        bool emitted_atest;
 
        /* During NIR->BIR, the coverage bitmap. If this is NULL, the default

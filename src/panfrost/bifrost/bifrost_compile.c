@@ -3933,6 +3933,55 @@ bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
 }
 
 static void
+bi_emit_phi(bi_builder *b, nir_phi_instr *instr)
+{
+        unsigned nr_srcs = exec_list_length(&instr->srcs);
+        bi_instr *I = bi_phi_to(b, bi_dest_index(&instr->dest), nr_srcs);
+
+        /* Deferred */
+        I->phi = instr;
+}
+
+/* Look up the AGX block corresponding to a given NIR block. Used when
+ * translating phi nodes after emitting all blocks.
+ */
+static bi_block *
+bi_from_nir_block(bi_context *ctx, nir_block *block)
+{
+        return ctx->indexed_nir_blocks[block->index];
+}
+
+static void
+bi_emit_phi_deferred(bi_context *ctx, bi_block *block, bi_instr *I)
+{
+        nir_phi_instr *phi = I->phi;
+
+        /* Guaranteed by lower_phis_to_scalar */
+        assert(phi->dest.ssa.num_components == 1);
+
+        nir_foreach_phi_src(src, phi) {
+                bi_block *pred = bi_from_nir_block(ctx, src->pred);
+                unsigned i = bi_predecessor_index(block, pred);
+                assert(i < I->nr_srcs);
+
+                I->src[i] = bi_src_index(&src->src);
+        }
+
+        I->phi = NULL;
+}
+
+static void
+bi_emit_phis_deferred(bi_context *ctx)
+{
+        bi_foreach_block(ctx, block) {
+                bi_foreach_instr_in_block(block, I) {
+                        if (I->op == BI_OPCODE_PHI)
+                                bi_emit_phi_deferred(ctx, block, I);
+                }
+        }
+}
+
+static void
 bi_emit_instr(bi_builder *b, struct nir_instr *instr)
 {
         switch (instr->type) {
@@ -3954,6 +4003,10 @@ bi_emit_instr(bi_builder *b, struct nir_instr *instr)
 
         case nir_instr_type_jump:
                 bi_emit_jump(b, nir_instr_as_jump(instr));
+                break;
+
+        case nir_instr_type_phi:
+                bi_emit_phi(b, nir_instr_as_phi(instr));
                 break;
 
         default:
@@ -3985,6 +4038,8 @@ emit_block(bi_context *ctx, nir_block *block)
         list_inithead(&ctx->current_block->instructions);
 
         bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
+
+        ctx->indexed_nir_blocks[block->index] = ctx->current_block;
 
         nir_foreach_instr(instr, block) {
                 bi_emit_instr(&_b, instr);
@@ -4989,10 +5044,16 @@ bi_compile_variant_nir(nir_shader *nir,
                 if (!func->impl)
                         continue;
 
+                nir_index_blocks(func->impl);
+
+                ctx->indexed_nir_blocks =
+                        rzalloc_array(ctx, bi_block *, func->impl->num_blocks);
+
                 ctx->ssa_alloc += func->impl->ssa_alloc;
                 ctx->reg_alloc += func->impl->reg_alloc;
 
                 emit_cf_list(ctx, &func->impl->body);
+                bi_emit_phis_deferred(ctx);
                 break; /* TODO: Multi-function shaders */
         }
 
