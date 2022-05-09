@@ -120,7 +120,7 @@ static const nir_shader_compiler_options i915_compiler_options = {
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
    .use_interpolated_input_intrinsics = true,
-   .force_indirect_unrolling = ~0,
+   .force_indirect_unrolling = nir_var_all,
    .force_indirect_unrolling_sampler = true,
 };
 
