@@ -163,8 +163,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
             uint64_t encoder_id,
             uint64_t scissor_ptr,
             uint64_t depth_bias_ptr,
-            uint32_t pipeline_null,
             uint32_t pipeline_clear,
+            uint32_t pipeline_load,
             uint32_t pipeline_store,
             bool clear_pipeline_textures,
             double clear_depth,
@@ -185,6 +185,8 @@ demo_cmdbuf(uint64_t *buf, size_t size,
    agx_pack(map + 160, IOGPU_INTERNAL_PIPELINES, cfg) {
       cfg.clear_pipeline_bind = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
       cfg.clear_pipeline = pipeline_clear;
+
+      /* store pipeline used when entire frame completes */
       cfg.store_pipeline_bind = 0x12;
       cfg.store_pipeline = pipeline_store;
       cfg.scissor_array = scissor_ptr;
@@ -230,11 +232,11 @@ demo_cmdbuf(uint64_t *buf, size_t size,
       cfg.depth_clear_value = fui(clear_depth);
       cfg.stencil_clear_value = clear_stencil;
 
-      cfg.depth_clear_pipeline_bind = 0xffff8002 | (clear_pipeline_textures ? 0x210 : 0);
-      cfg.depth_clear_pipeline = pipeline_null;
+      cfg.partial_reload_pipeline_bind = 0xffff8212;
+      cfg.partial_reload_pipeline = pipeline_load;
 
-      cfg.depth_store_pipeline_bind = 0x12;
-      cfg.depth_store_pipeline = pipeline_store;
+      cfg.partial_store_pipeline_bind = 0x12;
+      cfg.partial_store_pipeline = pipeline_store;
    }
 
    agx_pack(map + 356, IOGPU_MISC, cfg) {

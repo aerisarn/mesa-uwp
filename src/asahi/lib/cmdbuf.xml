@@ -631,12 +631,12 @@
     <field name="Unk 4" start="7:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Unk 5" start="8:0" size="32" type="hex" default="0xffffffff"/>
     <field name="Visibility result buffer" start="10:0" size="64" type="address"/>
-    <field name="Depth clear pipeline bind" start="20:0" size="32" type="hex"/>
-    <field name="Depth clear pipeline unk" start="22:0" size="4" default="4" type="hex"/>
-    <field name="Depth clear pipeline" start="22:4" size="28" type="address" modifier="shr(4)"/>
-    <field name="Depth store pipeline bind" start="28:0" size="32" type="hex"/>
-    <field name="Depth store pipeline unk" start="30:0" size="4" default="4" type="hex"/>
-    <field name="Depth store pipeline" start="30:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Partial reload pipeline bind" start="20:0" size="32" type="hex"/>
+    <field name="Partial reload pipeline unk" start="22:0" size="4" default="4" type="hex"/>
+    <field name="Partial reload pipeline" start="22:4" size="28" type="address" modifier="shr(4)"/>
+    <field name="Partial store pipeline bind" start="28:0" size="32" type="hex"/>
+    <field name="Partial store pipeline unk" start="30:0" size="4" default="4" type="hex"/>
+    <field name="Partial store pipeline" start="30:4" size="28" type="address" modifier="shr(4)"/>
   </struct>
 
   <struct name="IOGPU Misc" size="288">

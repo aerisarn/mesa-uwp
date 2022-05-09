@@ -434,32 +434,34 @@ agx_flush(struct pipe_context *pctx,
    memcpy(ctx->batch->encoder_current, stop, sizeof(stop));
 
    /* Emit the commandbuffer */
-   uint64_t pipeline_clear = 0;
+   uint64_t pipeline_clear = 0, pipeline_reload = 0;
    bool clear_pipeline_textures = false;
 
    struct agx_device *dev = agx_device(pctx->screen);
 
-   if ((ctx->batch->clear & PIPE_CLEAR_COLOR0) || !ctx->batch->cbufs[0]) {
-      uint16_t clear_colour[4] = {
-         _mesa_float_to_half(ctx->batch->clear_color[0]),
-         _mesa_float_to_half(ctx->batch->clear_color[1]),
-         _mesa_float_to_half(ctx->batch->clear_color[2]),
-         _mesa_float_to_half(ctx->batch->clear_color[3])
-      };
+   uint16_t clear_colour[4] = {
+      _mesa_float_to_half(ctx->batch->clear_color[0]),
+      _mesa_float_to_half(ctx->batch->clear_color[1]),
+      _mesa_float_to_half(ctx->batch->clear_color[2]),
+      _mesa_float_to_half(ctx->batch->clear_color[3])
+   };
 
+   pipeline_clear = agx_build_clear_pipeline(ctx,
+         dev->internal.clear,
+         agx_pool_upload(&ctx->batch->pool, clear_colour, sizeof(clear_colour)));
 
-      pipeline_clear = agx_build_clear_pipeline(ctx,
-                               dev->internal.clear,
-                               agx_pool_upload(&ctx->batch->pool, clear_colour, sizeof(clear_colour)));
-   } else {
+   if (ctx->batch->cbufs[0]) {
       enum pipe_format fmt = ctx->batch->cbufs[0]->format;
       enum agx_format internal = agx_pixel_format[fmt].internal;
       uint32_t shader = dev->reload.format[internal];
 
-      pipeline_clear = agx_build_reload_pipeline(ctx, shader,
+      pipeline_reload = agx_build_reload_pipeline(ctx, shader,
                                ctx->batch->cbufs[0]);
+   }
 
+   if (ctx->batch->cbufs[0] && !(ctx->batch->clear & PIPE_CLEAR_COLOR0)) {
       clear_pipeline_textures = true;
+      pipeline_clear = pipeline_reload;
    }
 
    uint64_t pipeline_store = 0;
@@ -472,10 +474,6 @@ agx_flush(struct pipe_context *pctx,
    }
 
    /* Pipelines must 64 aligned */
-   struct agx_ptr pipeline_null =
-      agx_pool_alloc_aligned(&ctx->batch->pipeline_pool, 64, 64);
-   memset(pipeline_null.cpu, 0, 64);
-
    for (unsigned i = 0; i < ctx->batch->nr_cbufs; ++i) {
       struct agx_resource *rt = agx_resource(ctx->batch->cbufs[i]->texture);
       BITSET_SET(rt->data_valid, 0);
@@ -554,8 +552,8 @@ agx_flush(struct pipe_context *pctx,
                encoder_id,
                ctx->batch->scissor.bo->ptr.gpu,
                ctx->batch->depth_bias.bo->ptr.gpu,
-               pipeline_null.gpu,
                pipeline_clear,
+               pipeline_reload,
                pipeline_store,
                clear_pipeline_textures,
                ctx->batch->clear_depth,

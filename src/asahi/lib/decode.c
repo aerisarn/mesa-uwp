@@ -493,15 +493,15 @@ agxdecode_cmdstream(unsigned cmdbuf_handle, unsigned map_handle, bool verbose)
             agxdecode_pipeline, verbose);
    }
 
-   assert((clearzs.depth_clear_pipeline_unk & 0xF) == 0x4);
-   if (clearzs.depth_clear_pipeline) {
-      agxdecode_stateful(clearzs.depth_clear_pipeline,
-            "Depth clear pipeline", agxdecode_pipeline, verbose);
+   assert((clearzs.partial_reload_pipeline_unk & 0xF) == 0x4);
+   if (clearzs.partial_reload_pipeline) {
+      agxdecode_stateful(clearzs.partial_reload_pipeline,
+            "Partial reload pipeline", agxdecode_pipeline, verbose);
    }
 
-   if (clearzs.depth_store_pipeline) {
-      agxdecode_stateful(clearzs.depth_store_pipeline,
-            "Depth store pipeline", agxdecode_pipeline, verbose);
+   if (clearzs.partial_store_pipeline) {
+      agxdecode_stateful(clearzs.partial_store_pipeline,
+            "Partial store pipeline", agxdecode_pipeline, verbose);
    }
 
    agxdecode_map_read_write();
