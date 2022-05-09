@@ -543,7 +543,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         3; /* 8-bit todo */
 
                 /* We can't cross xy/zw boundaries. TODO: vec8 can */
-                if (size == 16)
+                if (size == 16 && min_alignment[dest] != 4)
                         min_bound[dest] = 8;
 
                 mir_foreach_src(ins, s) {
