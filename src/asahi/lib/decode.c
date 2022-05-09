@@ -360,8 +360,11 @@ agxdecode_pipeline(const uint8_t *map, UNUSED bool verbose)
       DUMP_UNPACKED(BIND_TEXTURE, temp, "Bind texture\n");
 
       uint8_t *tex = agxdecode_fetch_gpu_mem(temp.buffer, 64);
+      /* Texture length seen to be <= 0x18 bytes, samplers only need 8 byte
+       * alignment */
+      agx_unpack(agxdecode_dump_stream, tex, TEXTURE, t);
       DUMP_CL(TEXTURE, tex, "Texture");
-      hexdump(agxdecode_dump_stream, tex + AGX_TEXTURE_LENGTH, 64 - AGX_TEXTURE_LENGTH, false);
+      DUMP_CL(RENDER_TARGET, tex, "Render target");
 
       return AGX_BIND_TEXTURE_LENGTH;
    } else if (map[0] == 0x9D) {
