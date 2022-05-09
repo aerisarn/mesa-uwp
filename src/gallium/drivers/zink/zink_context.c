@@ -2599,7 +2599,7 @@ flush_batch(struct zink_context *ctx, bool sync)
    struct zink_batch *batch = &ctx->batch;
    if (ctx->clears_enabled)
       /* start rp to do all the clears */
-      zink_begin_render_pass(ctx);
+      zink_batch_rp(ctx);
    bool conditional_render_active = ctx->render_condition.active;
    zink_stop_conditional_render(ctx);
    zink_end_render_pass(ctx);
@@ -3237,7 +3237,7 @@ zink_flush(struct pipe_context *pctx,
    /* triggering clears will force has_work */
    if (!deferred && ctx->clears_enabled)
       /* start rp to do all the clears */
-      zink_begin_render_pass(ctx);
+      zink_batch_rp(ctx);
 
    if (ctx->needs_present && (flags & PIPE_FLUSH_END_OF_FRAME)) {
       if (ctx->needs_present->obj->image)
