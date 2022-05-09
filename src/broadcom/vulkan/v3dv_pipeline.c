@@ -94,6 +94,8 @@ v3dv_shader_variant_destroy(struct v3dv_device *device,
    /* The assembly BO is shared by all variants in the pipeline, so it can't
     * be freed here and should be freed with the pipeline
     */
+   if (variant->qpu_insts)
+      free(variant->qpu_insts);
    ralloc_free(variant->prog_data.base);
    vk_free(&device->vk.alloc, variant);
 }
