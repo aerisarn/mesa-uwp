@@ -779,6 +779,8 @@ struct radv_device {
    uint32_t dispatch_initiator;
 
    uint32_t gs_table_depth;
+   uint32_t hs_offchip_param;
+   uint32_t max_offchip_buffers;
 
    /* MSAA sample locations.
     * The first index is the sample index.

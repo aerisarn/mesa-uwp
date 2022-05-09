@@ -2735,6 +2735,84 @@ radv_device_init_gs_info(struct radv_device *device)
                                                   device->physical_device->rad_info.family);
 }
 
+static void
+radv_device_init_hs_info(struct radv_device *device)
+{
+   bool double_offchip_buffers = device->physical_device->rad_info.chip_class >= GFX7 &&
+                                 device->physical_device->rad_info.family != CHIP_CARRIZO &&
+                                 device->physical_device->rad_info.family != CHIP_STONEY;
+   unsigned max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
+   unsigned max_offchip_buffers;
+   unsigned offchip_granularity;
+   unsigned hs_offchip_param;
+
+   device->tess_offchip_block_dw_size =
+      device->physical_device->rad_info.family == CHIP_HAWAII ? 4096 : 8192;
+
+   /*
+    * Per RadeonSI:
+    * This must be one less than the maximum number due to a hw limitation.
+    * Various hardware bugs need this.
+    *
+    * Per AMDVLK:
+    * Vega10 should limit max_offchip_buffers to 508 (4 * 127).
+    * Gfx7 should limit max_offchip_buffers to 508
+    * Gfx6 should limit max_offchip_buffers to 126 (2 * 63)
+    *
+    * Follow AMDVLK here.
+    */
+   if (device->physical_device->rad_info.chip_class >= GFX10) {
+      max_offchip_buffers_per_se = 128;
+   } else if (device->physical_device->rad_info.family == CHIP_VEGA10 ||
+              device->physical_device->rad_info.chip_class == GFX7 ||
+              device->physical_device->rad_info.chip_class == GFX6)
+      --max_offchip_buffers_per_se;
+
+   max_offchip_buffers = max_offchip_buffers_per_se * device->physical_device->rad_info.max_se;
+
+   /* Hawaii has a bug with offchip buffers > 256 that can be worked
+    * around by setting 4K granularity.
+    */
+   if (device->tess_offchip_block_dw_size == 4096) {
+      assert(device->physical_device->rad_info.family == CHIP_HAWAII);
+      offchip_granularity = V_03093C_X_4K_DWORDS;
+   } else {
+      assert(device->tess_offchip_block_dw_size == 8192);
+      offchip_granularity = V_03093C_X_8K_DWORDS;
+   }
+
+   switch (device->physical_device->rad_info.chip_class) {
+   case GFX6:
+      max_offchip_buffers = MIN2(max_offchip_buffers, 126);
+      break;
+   case GFX7:
+   case GFX8:
+   case GFX9:
+      max_offchip_buffers = MIN2(max_offchip_buffers, 508);
+      break;
+   case GFX10:
+      break;
+   default:
+      break;
+   }
+
+   device->max_offchip_buffers = max_offchip_buffers;
+
+   if (device->physical_device->rad_info.chip_class >= GFX10_3) {
+      hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
+                         S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
+   } else if (device->physical_device->rad_info.chip_class >= GFX7) {
+      if (device->physical_device->rad_info.chip_class >= GFX8)
+         --max_offchip_buffers;
+      hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX7(max_offchip_buffers) |
+                         S_03093C_OFFCHIP_GRANULARITY_GFX7(offchip_granularity);
+   } else {
+      hs_offchip_param = S_0089B0_OFFCHIP_BUFFERING(max_offchip_buffers);
+   }
+
+   device->hs_offchip_param = hs_offchip_param;
+}
+
 static VkResult
 radv_device_init_border_color(struct radv_device *device)
 {
@@ -3328,8 +3406,7 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
    radv_device_init_gs_info(device);
 
-   device->tess_offchip_block_dw_size =
-      device->physical_device->rad_info.family == CHIP_HAWAII ? 4096 : 8192;
+   radv_device_init_hs_info(device);
 
    if (device->instance->debug_flags & RADV_DEBUG_HANG) {
       /* Enable GPU hangs detection and dump logs if a GPU hang is
@@ -3720,79 +3797,6 @@ fill_geom_tess_rings(struct radv_queue *queue, uint32_t *map, bool add_sample_po
    }
 }
 
-static unsigned
-radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buffers_p)
-{
-   bool double_offchip_buffers = device->physical_device->rad_info.chip_class >= GFX7 &&
-                                 device->physical_device->rad_info.family != CHIP_CARRIZO &&
-                                 device->physical_device->rad_info.family != CHIP_STONEY;
-   unsigned max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
-   unsigned max_offchip_buffers;
-   unsigned offchip_granularity;
-   unsigned hs_offchip_param;
-
-   /*
-    * Per RadeonSI:
-    * This must be one less than the maximum number due to a hw limitation.
-    * Various hardware bugs need thGFX7
-    *
-    * Per AMDVLK:
-    * Vega10 should limit max_offchip_buffers to 508 (4 * 127).
-    * Gfx7 should limit max_offchip_buffers to 508
-    * Gfx6 should limit max_offchip_buffers to 126 (2 * 63)
-    *
-    * Follow AMDVLK here.
-    */
-   if (device->physical_device->rad_info.chip_class >= GFX10) {
-      max_offchip_buffers_per_se = 128;
-   } else if (device->physical_device->rad_info.family == CHIP_VEGA10 ||
-              device->physical_device->rad_info.chip_class == GFX7 ||
-              device->physical_device->rad_info.chip_class == GFX6)
-      --max_offchip_buffers_per_se;
-
-   max_offchip_buffers = max_offchip_buffers_per_se * device->physical_device->rad_info.max_se;
-
-   /* Hawaii has a bug with offchip buffers > 256 that can be worked
-    * around by setting 4K granularity.
-    */
-   if (device->tess_offchip_block_dw_size == 4096) {
-      assert(device->physical_device->rad_info.family == CHIP_HAWAII);
-      offchip_granularity = V_03093C_X_4K_DWORDS;
-   } else {
-      assert(device->tess_offchip_block_dw_size == 8192);
-      offchip_granularity = V_03093C_X_8K_DWORDS;
-   }
-
-   switch (device->physical_device->rad_info.chip_class) {
-   case GFX6:
-      max_offchip_buffers = MIN2(max_offchip_buffers, 126);
-      break;
-   case GFX7:
-   case GFX8:
-   case GFX9:
-      max_offchip_buffers = MIN2(max_offchip_buffers, 508);
-      break;
-   case GFX10:
-      break;
-   default:
-      break;
-   }
-
-   *max_offchip_buffers_p = max_offchip_buffers;
-   if (device->physical_device->rad_info.chip_class >= GFX10_3) {
-      hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
-                         S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
-   } else if (device->physical_device->rad_info.chip_class >= GFX7) {
-      if (device->physical_device->rad_info.chip_class >= GFX8)
-         --max_offchip_buffers;
-      hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX7(max_offchip_buffers) |
-                         S_03093C_OFFCHIP_GRANULARITY_GFX7(offchip_granularity);
-   } else {
-      hs_offchip_param = S_0089B0_OFFCHIP_BUFFERING(max_offchip_buffers);
-   }
-   return hs_offchip_param;
-}
-
 static void
 radv_emit_gs_ring_sizes(struct radv_queue *queue, struct radeon_cmdbuf *cs,
                         struct radeon_winsys_bo *esgs_ring_bo, uint32_t esgs_ring_size,
@@ -3820,7 +3824,7 @@ radv_emit_gs_ring_sizes(struct radv_queue *queue, struct radeon_cmdbuf *cs,
 
 static void
 radv_emit_tess_factor_ring(struct radv_queue *queue, struct radeon_cmdbuf *cs,
-                           unsigned hs_offchip_param, unsigned tf_ring_size,
+                           unsigned tf_ring_size,
                            struct radeon_winsys_bo *tess_rings_bo)
 {
    uint64_t tf_va;
@@ -3842,11 +3846,11 @@ radv_emit_tess_factor_ring(struct radv_queue *queue, struct radeon_cmdbuf *cs,
       } else if (queue->device->physical_device->rad_info.chip_class == GFX9) {
          radeon_set_uconfig_reg(cs, R_030944_VGT_TF_MEMORY_BASE_HI, S_030944_BASE_HI(tf_va >> 40));
       }
-      radeon_set_uconfig_reg(cs, R_03093C_VGT_HS_OFFCHIP_PARAM, hs_offchip_param);
+      radeon_set_uconfig_reg(cs, R_03093C_VGT_HS_OFFCHIP_PARAM, queue->device->hs_offchip_param);
    } else {
       radeon_set_config_reg(cs, R_008988_VGT_TF_RING_SIZE, S_008988_SIZE(tf_ring_size / 4));
       radeon_set_config_reg(cs, R_0089B8_VGT_TF_MEMORY_BASE, tf_va >> 8);
-      radeon_set_config_reg(cs, R_0089B0_VGT_HS_OFFCHIP_PARAM, hs_offchip_param);
+      radeon_set_config_reg(cs, R_0089B0_VGT_HS_OFFCHIP_PARAM, queue->device->hs_offchip_param);
    }
 }
 
@@ -3976,8 +3980,6 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
    struct radeon_cmdbuf *dest_cs[3] = {0};
    bool add_tess_rings = false, add_gds = false, add_gds_oa = false, add_sample_positions = false;
    unsigned tess_factor_ring_size = 0, tess_offchip_ring_size = 0;
-   unsigned max_offchip_buffers;
-   unsigned hs_offchip_param = 0;
    unsigned tess_offchip_ring_offset;
    uint32_t ring_bo_flags = RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING;
    VkResult result = VK_SUCCESS;
@@ -4001,9 +4003,8 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
          add_sample_positions = true;
    }
    tess_factor_ring_size = 32768 * queue->device->physical_device->rad_info.max_se;
-   hs_offchip_param = radv_get_hs_offchip_param(queue->device, &max_offchip_buffers);
    tess_offchip_ring_offset = align(tess_factor_ring_size, 64 * 1024);
-   tess_offchip_ring_size = max_offchip_buffers * queue->device->tess_offchip_block_dw_size * 4;
+   tess_offchip_ring_size = queue->device->max_offchip_buffers * queue->device->tess_offchip_block_dw_size * 4;
 
    scratch_size_per_wave = MAX2(scratch_size_per_wave, queue->scratch_size_per_wave);
    if (scratch_size_per_wave)
@@ -4197,7 +4198,7 @@ radv_get_preamble_cs(struct radv_queue *queue, uint32_t scratch_size_per_wave,
 
       radv_emit_gs_ring_sizes(queue, cs, esgs_ring_bo, esgs_ring_size, gsvs_ring_bo,
                               gsvs_ring_size);
-      radv_emit_tess_factor_ring(queue, cs, hs_offchip_param, tess_factor_ring_size, tess_rings_bo);
+      radv_emit_tess_factor_ring(queue, cs, tess_factor_ring_size, tess_rings_bo);
       radv_emit_global_shader_pointers(queue, cs, descriptor_bo);
       radv_emit_compute_scratch(queue, cs, compute_scratch_size_per_wave, compute_scratch_waves,
                                 compute_scratch_bo);
