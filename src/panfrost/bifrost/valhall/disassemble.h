@@ -61,6 +61,15 @@ disassemble_valhall(FILE *fp, const uint64_t *code, unsigned size, bool verbose)
 
       va_disasm_instr(fp, instr);
       fprintf(fp, "\n");
+
+      /* Detect branches */
+      uint64_t opcode = (instr >> 48) & MASK(9);
+      bool branchz = (opcode == 0x1F);
+      bool branchzi = (opcode == 0x2F);
+
+      /* Separate blocks visually by inserting whitespace after branches */
+      if (branchz || branchzi)
+         fprintf(fp, "\n");
    }
 
    fprintf(fp, "\n");
