@@ -774,12 +774,15 @@ static const nir_shader_compiler_options svga_vgpu9_compiler_options = {
 };
 
 static const nir_shader_compiler_options svga_vgpu10_compiler_options = {
+   .lower_doubles_options = nir_lower_dfloor,
    .lower_extract_byte = true,
    .lower_extract_word = true,
    .lower_insert_byte = true,
    .lower_insert_word = true,
    .lower_fdph = true,
    .lower_flrp64 = true,
+   .lower_fmod = true,
+   .lower_fpow = true,
    .lower_rotate = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
