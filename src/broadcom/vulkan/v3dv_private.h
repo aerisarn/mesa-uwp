@@ -2001,7 +2001,7 @@ v3dv_get_compatible_tfu_format(struct v3dv_device *device,
                                uint32_t bpp, VkFormat *out_vk_format);
 bool v3dv_buffer_format_supports_features(struct v3dv_device *device,
                                           VkFormat vk_format,
-                                          VkFormatFeatureFlags features);
+                                          VkFormatFeatureFlags2KHR features);
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                          struct v3dv_pipeline *pipeline,

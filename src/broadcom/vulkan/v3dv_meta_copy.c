@@ -1989,7 +1989,7 @@ texel_buffer_shader_copy(struct v3dv_cmd_buffer *cmd_buffer,
    if (!(buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)) {
       if (v3dv_buffer_format_supports_features(
              cmd_buffer->device, src_format,
-             VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
+             VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT)) {
          buffer->usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
       } else {
          return handled;
