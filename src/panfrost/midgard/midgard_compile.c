@@ -946,7 +946,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         }
 
         default:
-                DBG("Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
+                mesa_loge("Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
                 assert(0);
                 return;
         }
