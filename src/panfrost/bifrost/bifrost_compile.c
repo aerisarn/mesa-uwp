@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020 Collabora Ltd.
+ * Copyright (C) 2022 Alyssa Rosenzweig <alyssa@rosenzweig.io>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -116,6 +117,144 @@ bi_emit_jump(bi_builder *b, nir_jump_instr *instr)
         b->shader->current_block->unconditional_jumps = true;
 }
 
+/* Builds a 64-bit hash table key for an index */
+static uint64_t
+bi_index_to_key(bi_index idx)
+{
+        static_assert(sizeof(idx) <= sizeof(uint64_t), "too much padding");
+
+        uint64_t key = 0;
+        memcpy(&key, &idx, sizeof(idx));
+        return key;
+}
+
+/*
+ * Extract a single channel out of a vector source. We split vectors with SPLIT
+ * so we can use the split components directly, without emitting an extract.
+ * This has advantages of RA, as the split can usually be optimized away.
+ */
+static bi_index
+bi_extract(bi_builder *b, bi_index vec, unsigned channel)
+{
+        /* Extract caching relies on SSA form. It is incorrect for nir_register.
+         * Bypass the cache and emit an explicit split for registers.
+         */
+        if (vec.reg) {
+                bi_instr *I = bi_split_i32_to(b, bi_null(), vec);
+                I->nr_dests = channel + 1;
+                I->dest[channel] = bi_temp(b->shader);
+                return I->dest[channel];
+        }
+
+        bi_index *components =
+                _mesa_hash_table_u64_search(b->shader->allocated_vec,
+                                            bi_index_to_key(vec));
+
+        /* No extract needed for scalars.
+         *
+         * This is a bit imprecise, but actual bugs (missing splits for vectors)
+         * should be caught by the following assertion. It is too difficult to
+         * ensure bi_extract is only called for real vectors.
+         */
+        if (components == NULL && channel == 0)
+                return vec;
+
+        assert(components != NULL && "missing bi_cache_collect()");
+        return components[channel];
+}
+
+static void
+bi_cache_collect(bi_builder *b, bi_index dst, bi_index *s, unsigned n)
+{
+        /* Lifetime of a hash table entry has to be at least as long as the table */
+        bi_index *channels = ralloc_array(b->shader, bi_index, n);
+        memcpy(channels, s, sizeof(bi_index) * n);
+
+        _mesa_hash_table_u64_insert(b->shader->allocated_vec,
+                                    bi_index_to_key(dst), channels);
+}
+
+/*
+ * Splits an n-component vector (vec) into n scalar destinations (dests) using a
+ * split pseudo-instruction.
+ *
+ * Pre-condition: dests is filled with bi_null().
+ */
+static void
+bi_emit_split_i32(bi_builder *b, bi_index dests[4], bi_index vec, unsigned n)
+{
+        /* Setup the destinations */
+        for (unsigned i = 0; i < n; ++i) {
+                dests[i] = bi_temp(b->shader);
+        }
+
+        /* Emit the split */
+        if (n == 1) {
+                bi_mov_i32_to(b, dests[0], vec);
+        } else {
+                bi_instr *I = bi_split_i32_to(b, dests[0], vec);
+                I->nr_dests = n;
+
+                for (unsigned j = 1; j < n; ++j)
+                        I->dest[j] = dests[j];
+        }
+}
+
+static void
+bi_emit_cached_split_i32(bi_builder *b, bi_index vec, unsigned n)
+{
+        bi_index dests[4] = { bi_null(), bi_null(), bi_null(), bi_null() };
+        bi_emit_split_i32(b, dests, vec, n);
+        bi_cache_collect(b, vec, dests, n);
+}
+
+/*
+ * Emit and cache a split for a vector of a given bitsize. The vector may not be
+ * composed of 32-bit words, but it will be split at 32-bit word boundaries.
+ */
+static void
+bi_emit_cached_split(bi_builder *b, bi_index vec, unsigned bits)
+{
+        bi_emit_cached_split(b, vec, DIV_ROUND_UP(bits, 32));
+}
+
+static bi_instr *
+bi_emit_collect_to(bi_builder *b, bi_index dst, bi_index *chan, unsigned n)
+{
+        /* Special case: COLLECT of a single value is a scalar move */
+        if (n == 1)
+                return bi_mov_i32_to(b, dst, chan[0]);
+
+        bi_instr *I = bi_collect_i32_to(b, dst);
+        I->nr_srcs = n;
+
+        for (unsigned i = 0; i < n; ++i)
+                I->src[i] = chan[i];
+
+        bi_cache_collect(b, dst, chan, n);
+        return I;
+}
+
+static bi_instr *
+bi_collect_v2i32_to(bi_builder *b, bi_index dst, bi_index s0, bi_index s1)
+{
+        return bi_emit_collect_to(b, dst, (bi_index[]) { s0, s1 }, 2);
+}
+
+static bi_instr *
+bi_collect_v3i32_to(bi_builder *b, bi_index dst, bi_index s0, bi_index s1, bi_index s2)
+{
+        return bi_emit_collect_to(b, dst, (bi_index[]) { s0, s1, s2 }, 3);
+}
+
+static bi_index
+bi_collect_v2i32(bi_builder *b, bi_index s0, bi_index s1)
+{
+        bi_index dst = bi_temp(b->shader);
+        bi_collect_v2i32_to(b, dst, s0, s1);
+        return dst;
+}
+
 static bi_index
 bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
 {
@@ -154,7 +293,7 @@ bi_varying_src0_for_barycentric(bi_builder *b, nir_intrinsic_instr *intr)
                         bi_index f[2];
                         for (unsigned i = 0; i < 2; ++i) {
                                 f[i] = bi_fadd_rscale_f32(b,
-                                                bi_word(offset, i),
+                                                bi_extract(b, offset, i),
                                                 bi_imm_f32(0.5), bi_imm_u32(8),
                                                 BI_SPECIAL_NONE);
                         }
@@ -224,39 +363,6 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
                 unsigned *channel,
                 unsigned count,
                 unsigned bitsize);
-
-static bi_instr *
-bi_collect_v2i32_to(bi_builder *b, bi_index dst, bi_index s0, bi_index s1)
-{
-        bi_instr *I = bi_collect_i32_to(b, dst);
-
-        I->nr_srcs = 2;
-        I->src[0] = s0;
-        I->src[1] = s1;
-
-        return I;
-}
-
-static bi_instr *
-bi_collect_v3i32_to(bi_builder *b, bi_index dst, bi_index s0, bi_index s1, bi_index s2)
-{
-        bi_instr *I = bi_collect_i32_to(b, dst);
-
-        I->nr_srcs = 3;
-        I->src[0] = s0;
-        I->src[1] = s1;
-        I->src[2] = s2;
-
-        return I;
-}
-
-static bi_index
-bi_collect_v2i32(bi_builder *b, bi_index s0, bi_index s1)
-{
-        bi_index dst = bi_temp(b->shader);
-        bi_collect_v2i32_to(b, dst, s0, s1);
-        return dst;
-}
 
 /* Bifrost's load instructions lack a component offset despite operating in
  * terms of vec4 slots. Usually I/O vectorization avoids nonzero components,
@@ -4689,6 +4795,8 @@ bi_compile_variant_nir(nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
                 nir_print_shader(nir, stdout);
         }
+
+        ctx->allocated_vec = _mesa_hash_table_u64_create(ctx);
 
         nir_foreach_function(func, nir) {
                 if (!func->impl)

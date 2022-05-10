@@ -766,6 +766,11 @@ typedef struct {
        /* Mask of UBOs that need to be uploaded */
        uint32_t ubo_mask;
 
+       /* During instruction selection, map from vector bi_index to its scalar
+        * components, populated by a split.
+        */
+       struct hash_table_u64 *allocated_vec;
+
        /* Stats for shader-db */
        unsigned instruction_count;
        unsigned loop_count;
