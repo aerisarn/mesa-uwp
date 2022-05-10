@@ -4117,6 +4117,7 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer, VkAccessFlags2 dst_fla
          if (!image_is_coherent)
             flush_bits |= RADV_CMD_FLAG_INV_L2;
          break;
+      case VK_ACCESS_2_SHADER_BINDING_TABLE_READ_BIT_KHR:
       case VK_ACCESS_2_SHADER_READ_BIT:
       case VK_ACCESS_2_SHADER_STORAGE_READ_BIT:
          flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
