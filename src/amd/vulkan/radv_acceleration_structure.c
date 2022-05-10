@@ -211,6 +211,12 @@ radv_WriteAccelerationStructuresPropertiesKHR(
          case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_SIZE_KHR:
             value = header->serialization_size;
             break;
+         case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SERIALIZATION_BOTTOM_LEVEL_POINTERS_KHR:
+            value = header->instance_count;
+            break;
+         case VK_QUERY_TYPE_ACCELERATION_STRUCTURE_SIZE_KHR:
+            value = accel->size;
+            break;
          default:
             unreachable("Unhandled acceleration structure query");
          }
@@ -754,6 +760,8 @@ build_bvh(struct radv_device *device, const VkAccelerationStructureBuildGeometry
       header->compacted_size + align(sizeof(struct radv_accel_struct_serialization_header) +
                                         sizeof(uint64_t) * header->instance_count,
                                      128);
+
+   header->size = accel->size;
 
 fail:
    device->ws->buffer_unmap(accel->bo);
@@ -2280,6 +2288,8 @@ radv_CmdBuildAccelerationStructuresKHR(
          header.compacted_size + align(sizeof(struct radv_accel_struct_serialization_header) +
                                           sizeof(uint64_t) * header.instance_count,
                                        128);
+
+      header.size = accel_struct->size;
 
       radv_update_buffer_cp(cmd_buffer,
                             radv_buffer_get_va(accel_struct->bo) + accel_struct->mem_offset + base,

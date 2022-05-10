@@ -54,6 +54,7 @@ struct radv_accel_struct_header {
    uint32_t copy_dispatch_size[3];
    uint64_t instance_offset;
    uint64_t instance_count;
+   uint64_t size;
 };
 
 struct radv_bvh_triangle_node {
