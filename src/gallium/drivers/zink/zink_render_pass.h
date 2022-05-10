@@ -89,7 +89,7 @@ zink_destroy_render_pass(struct zink_screen *screen,
                          struct zink_render_pass *rp);
 
 
-void
+unsigned
 zink_begin_render_pass(struct zink_context *ctx);
 void
 zink_end_render_pass(struct zink_context *ctx);

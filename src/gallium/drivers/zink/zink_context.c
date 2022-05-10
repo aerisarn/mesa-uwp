@@ -1999,14 +1999,26 @@ zink_update_vk_sample_locations(struct zink_context *ctx)
 void
 zink_batch_rp(struct zink_context *ctx)
 {
+   if (ctx->batch.in_rp)
+      return;
+   unsigned clear_buffers;
+   clear_buffers = zink_begin_render_pass(ctx);
    if (!ctx->batch.in_rp)
-      zink_begin_render_pass(ctx);
+      return; //dead swapchain
+   if (ctx->render_condition.query)
+      zink_start_conditional_render(ctx);
+   zink_clear_framebuffer(ctx, clear_buffers);
 }
 
 void
 zink_batch_no_rp(struct zink_context *ctx)
 {
-   zink_end_render_pass(ctx);
+   if (!ctx->batch.in_rp)
+      return;
+   if (ctx->render_condition.query)
+      zink_stop_conditional_render(ctx);
+   if (ctx->gfx_pipeline_state.render_pass)
+      zink_end_render_pass(ctx);
    assert(!ctx->batch.in_rp);
 }
 

@@ -591,7 +591,7 @@ begin_render_pass(struct zink_context *ctx)
    return clear_buffers;
 }
 
-void
+unsigned
 zink_begin_render_pass(struct zink_context *ctx)
 {
    setup_framebuffer(ctx);
@@ -630,19 +630,13 @@ zink_begin_render_pass(struct zink_context *ctx)
       ctx->gfx_pipeline_state.render_pass = rp;
    }
    assert(ctx->gfx_pipeline_state.render_pass);
-   unsigned clear_buffers = begin_render_pass(ctx);
-
-   if (ctx->render_condition.query)
-      zink_start_conditional_render(ctx);
-   zink_clear_framebuffer(ctx, clear_buffers);
+   return begin_render_pass(ctx);
 }
 
 void
 zink_end_render_pass(struct zink_context *ctx)
 {
    if (ctx->batch.in_rp) {
-      if (ctx->render_condition.query)
-         zink_stop_conditional_render(ctx);
       VKCTX(CmdEndRenderPass)(ctx->batch.state->cmdbuf);
       for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          struct zink_ctx_surface *csurf = (struct zink_ctx_surface*)ctx->fb_state.cbufs[i];
