@@ -577,37 +577,49 @@ struct draw_tes_llvm_variant_key
 
 static inline size_t
 draw_llvm_variant_key_size(unsigned nr_vertex_elements,
-                           unsigned nr_samplers, unsigned nr_images)
+                           unsigned nr_samplers,
+                           unsigned nr_sampler_views,
+                           unsigned nr_images)
 {
    return (sizeof(struct draw_llvm_variant_key) +
-           nr_samplers * sizeof(struct draw_sampler_static_state) +
-           nr_images * sizeof(struct draw_image_static_state) +
-           (nr_vertex_elements - 1) * sizeof(struct pipe_vertex_element));
+           (nr_vertex_elements - 1) * sizeof(struct pipe_vertex_element) +
+           MAX2(nr_samplers, nr_sampler_views) *
+               sizeof(struct draw_sampler_static_state) +
+           nr_images * sizeof(struct draw_image_static_state));
 }
 
 
 static inline size_t
-draw_gs_llvm_variant_key_size(unsigned nr_samplers, unsigned nr_images)
+draw_gs_llvm_variant_key_size(unsigned nr_samplers,
+                              unsigned nr_sampler_views,
+                              unsigned nr_images)
 {
    return (sizeof(struct draw_gs_llvm_variant_key) +
-           (nr_images) * sizeof(struct draw_sampler_static_state) +
-           (nr_samplers - 1) * sizeof(struct draw_sampler_static_state));
+           (MAX2(nr_samplers, nr_sampler_views) - 1) *
+               sizeof(struct draw_sampler_static_state) +
+           nr_images * sizeof(struct draw_sampler_static_state));
 }
 
 static inline size_t
-draw_tcs_llvm_variant_key_size(unsigned nr_samplers, unsigned nr_images)
+draw_tcs_llvm_variant_key_size(unsigned nr_samplers,
+                               unsigned nr_sampler_views,
+                               unsigned nr_images)
 {
    return (sizeof(struct draw_tcs_llvm_variant_key) +
-           (nr_images) * sizeof(struct draw_sampler_static_state) +
-           (nr_samplers - 1) * sizeof(struct draw_sampler_static_state));
+           (MAX2(nr_samplers, nr_sampler_views) - 1) *
+               sizeof(struct draw_sampler_static_state) +
+           nr_images * sizeof(struct draw_sampler_static_state));
 }
 
 static inline size_t
-draw_tes_llvm_variant_key_size(unsigned nr_samplers, unsigned nr_images)
+draw_tes_llvm_variant_key_size(unsigned nr_samplers,
+                               unsigned nr_sampler_views,
+                               unsigned nr_images)
 {
    return (sizeof(struct draw_tes_llvm_variant_key) +
-           (nr_images) * sizeof(struct draw_sampler_static_state) +
-           (nr_samplers - 1) * sizeof(struct draw_sampler_static_state));
+           (MAX2(nr_samplers, nr_sampler_views) - 1) *
+               sizeof(struct draw_sampler_static_state) +
+           nr_images * sizeof(struct draw_sampler_static_state));
 }
 
 static inline struct draw_sampler_static_state *
@@ -623,28 +635,28 @@ draw_llvm_variant_key_images(struct draw_llvm_variant_key *key)
    struct draw_sampler_static_state *samplers = (struct draw_sampler_static_state *)
       (&key->vertex_element[key->nr_vertex_elements]);
    return (struct draw_image_static_state *)
-      &samplers[key->nr_samplers];
+      &samplers[MAX2(key->nr_samplers, key->nr_sampler_views)];
 }
 
 static inline struct draw_image_static_state *
 draw_gs_llvm_variant_key_images(struct draw_gs_llvm_variant_key *key)
 {
    return (struct draw_image_static_state *)
-      &key->samplers[key->nr_samplers];
+      &key->samplers[MAX2(key->nr_samplers, key->nr_sampler_views)];
 }
 
 static inline struct draw_image_static_state *
 draw_tcs_llvm_variant_key_images(struct draw_tcs_llvm_variant_key *key)
 {
    return (struct draw_image_static_state *)
-      &key->samplers[key->nr_samplers];
+      &key->samplers[MAX2(key->nr_samplers, key->nr_sampler_views)];
 }
 
 static inline struct draw_image_static_state *
 draw_tes_llvm_variant_key_images(struct draw_tes_llvm_variant_key *key)
 {
    return (struct draw_image_static_state *)
-      &key->samplers[key->nr_samplers];
+      &key->samplers[MAX2(key->nr_samplers, key->nr_sampler_views)];
 }
 
 struct draw_llvm_variant_list_item

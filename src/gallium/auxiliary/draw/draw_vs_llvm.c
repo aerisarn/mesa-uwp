@@ -111,8 +111,8 @@ draw_create_vs_llvm(struct draw_context *draw,
    vs->variant_key_size =
       draw_llvm_variant_key_size(
          vs->base.info.file_max[TGSI_FILE_INPUT]+1,
-         MAX2(vs->base.info.file_max[TGSI_FILE_SAMPLER]+1,
-              vs->base.info.file_max[TGSI_FILE_SAMPLER_VIEW]+1),
+         vs->base.info.file_max[TGSI_FILE_SAMPLER]+1,
+         vs->base.info.file_max[TGSI_FILE_SAMPLER_VIEW]+1,
          vs->base.info.file_max[TGSI_FILE_IMAGE]+1);
 
    vs->base.state.type = state->type;

@@ -460,8 +460,8 @@ draw_create_tess_ctrl_shader(struct draw_context *draw,
       tcs->jit_context = &draw->llvm->tcs_jit_context;
       llvm_tcs->variant_key_size =
          draw_tcs_llvm_variant_key_size(
-                                        MAX2(tcs->info.file_max[TGSI_FILE_SAMPLER]+1,
-                                             tcs->info.file_max[TGSI_FILE_SAMPLER_VIEW]+1),
+                                        tcs->info.file_max[TGSI_FILE_SAMPLER]+1,
+                                        tcs->info.file_max[TGSI_FILE_SAMPLER_VIEW]+1,
                                         tcs->info.file_max[TGSI_FILE_IMAGE]+1);
    }
 #endif
@@ -585,8 +585,8 @@ draw_create_tess_eval_shader(struct draw_context *draw,
       tes->jit_context = &draw->llvm->tes_jit_context;
       llvm_tes->variant_key_size =
          draw_tes_llvm_variant_key_size(
-                                        MAX2(tes->info.file_max[TGSI_FILE_SAMPLER]+1,
-                                             tes->info.file_max[TGSI_FILE_SAMPLER_VIEW]+1),
+                                        tes->info.file_max[TGSI_FILE_SAMPLER]+1,
+                                        tes->info.file_max[TGSI_FILE_SAMPLER_VIEW]+1,
                                         tes->info.file_max[TGSI_FILE_IMAGE]+1);
    }
 #endif
