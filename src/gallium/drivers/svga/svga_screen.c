@@ -466,7 +466,7 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
       return 1;
    case PIPE_CAP_TGSI_TEXCOORD:
-      return 1;
+      return sws->have_vgpu10 ? 1 : 0;
    case PIPE_CAP_IMAGE_STORE_FORMATTED:
       return sws->have_gl43;
    default:
