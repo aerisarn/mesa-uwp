@@ -503,15 +503,14 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
       bool lowered_64bit_ops = false;
       bool revectorize = false;
 
-      /* nir_lower_doubles is not prepared for vector ops, so if the backend doesn't
-       * request lower_alu_to_scalar until now, lower all 64 bit ops, and try to
-       * vectorize them afterwards again */
-      if (!nir->options->lower_to_scalar) {
-         NIR_PASS(revectorize, nir, nir_lower_alu_to_scalar, filter_64_bit_instr, nullptr);
-         NIR_PASS(revectorize, nir, nir_lower_phis_to_scalar, false);
-      }
-
       if (nir->options->lower_doubles_options) {
+         /* nir_lower_doubles is not prepared for vector ops, so if the backend doesn't
+          * request lower_alu_to_scalar until now, lower all 64 bit ops, and try to
+          * vectorize them afterwards again */
+         if (!nir->options->lower_to_scalar) {
+            NIR_PASS(revectorize, nir, nir_lower_alu_to_scalar, filter_64_bit_instr, nullptr);
+            NIR_PASS(revectorize, nir, nir_lower_phis_to_scalar, false);
+         }
          NIR_PASS(lowered_64bit_ops, nir, nir_lower_doubles,
                   st->ctx->SoftFP64, nir->options->lower_doubles_options);
       }
