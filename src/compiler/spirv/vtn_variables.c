@@ -1121,6 +1121,10 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_RAY_GEOMETRY_INDEX;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInCullMaskKHR:
+      *location = SYSTEM_VALUE_CULL_MASK;
+      set_mode_system_value(b, mode);
+      break;
    case SpvBuiltInShadingRateKHR:
       *location = SYSTEM_VALUE_FRAG_SHADING_RATE;
       set_mode_system_value(b, mode);

@@ -81,6 +81,7 @@ struct spirv_supported_capabilities {
    bool physical_storage_buffer_address;
    bool post_depth_coverage;
    bool printf;
+   bool ray_cull_mask;
    bool ray_tracing;
    bool ray_query;
    bool ray_traversal_primitive_culling;
