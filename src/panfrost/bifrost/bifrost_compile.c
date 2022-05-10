@@ -215,7 +215,15 @@ bi_emit_cached_split_i32(bi_builder *b, bi_index vec, unsigned n)
 static void
 bi_emit_cached_split(bi_builder *b, bi_index vec, unsigned bits)
 {
-        bi_emit_cached_split(b, vec, DIV_ROUND_UP(bits, 32));
+        bi_emit_cached_split_i32(b, vec, DIV_ROUND_UP(bits, 32));
+}
+
+static void
+bi_split_dest(bi_builder *b, nir_dest dest)
+{
+        bi_emit_cached_split(b, bi_dest_index(&dest),
+                                nir_dest_bit_size(dest) *
+                                nir_dest_num_components(dest));
 }
 
 static bi_instr *
@@ -373,18 +381,22 @@ static void
 bi_copy_component(bi_builder *b, nir_intrinsic_instr *instr, bi_index tmp)
 {
         unsigned component = nir_intrinsic_component(instr);
+        unsigned nr = instr->num_components;
+        unsigned total = nr + component;
+        unsigned bitsize = nir_dest_bit_size(instr->dest);
+
+        assert(total <= 4 && "should be vec4");
+        bi_emit_cached_split(b, tmp, total * bitsize);
 
         if (component == 0)
                 return;
 
-        bi_index srcs[] = { tmp, tmp, tmp, tmp };
+        bi_index srcs[] = { tmp, tmp, tmp };
         unsigned channels[] = { component, component + 1, component + 2 };
 
-        bi_make_vec_to(b,
-                        bi_dest_index(&instr->dest),
-                        srcs, channels, instr->num_components,
-                        nir_dest_bit_size(instr->dest));
-} 
+        bi_make_vec_to(b, bi_dest_index(&instr->dest),
+                       srcs, channels, nr, nir_dest_bit_size(instr->dest));
+}
 
 static void
 bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
@@ -563,8 +575,8 @@ bi_make_vec16_to(bi_builder *b, bi_index dst, bi_index *src,
                 unsigned chan = channel ? channel[i] : 0;
                 unsigned nextc = next && channel ? channel[i + 1] : 0;
 
-                bi_index w0 = bi_word(src[i], chan >> 1);
-                bi_index w1 = next ? bi_word(src[i + 1], nextc >> 1) : bi_zero();
+                bi_index w0 = bi_extract(b, src[i], chan >> 1);
+                bi_index w1 = next ? bi_extract(b, src[i + 1], nextc >> 1) : bi_zero();
 
                 bi_index h0 = bi_half(w0, chan & 1);
                 bi_index h1 = bi_half(w1, nextc & 1);
@@ -577,11 +589,7 @@ bi_make_vec16_to(bi_builder *b, bi_index dst, bi_index *src,
                         srcs[i >> 1] = bi_mkvec_v2i16(b, h0, h1);
         }
 
-        bi_instr *I = bi_collect_i32_to(b, dst);
-        I->nr_srcs = DIV_ROUND_UP(count, 2);
-
-        for (unsigned i = 0; i < I->nr_srcs; ++i)
-                I->src[i] = srcs[i];
+        bi_emit_collect_to(b, dst, srcs, DIV_ROUND_UP(count, 2));
 }
 
 static void
@@ -592,19 +600,17 @@ bi_make_vec_to(bi_builder *b, bi_index dst,
                 unsigned bitsize)
 {
         if (bitsize == 32) {
-                bi_instr *I = bi_collect_i32_to(b, dst);
-                I->nr_srcs = count;
+                bi_index srcs[BI_MAX_VEC];
 
                 for (unsigned i = 0; i < count; ++i)
-                        I->src[i] = bi_word(src[i], channel ? channel[i] : 0);
+                        srcs[i] = bi_extract(b, src[i], channel ? channel[i] : 0);
 
-                if (I->nr_srcs == 1)
-                        I->op = BI_OPCODE_MOV_I32;
+                bi_emit_collect_to(b, dst, srcs, count);
         } else if (bitsize == 16) {
                 bi_make_vec16_to(b, dst, src, channel, count);
         } else if (bitsize == 8 && count == 1) {
                 bi_swz_v4i8_to(b, dst, bi_byte(
-                                        bi_word(src[0], channel[0] >> 2),
+                                        bi_extract(b, src[0], channel[0] >> 2),
                                         channel[0] & 3));
         } else {
                 unreachable("8-bit mkvec not yet supported");
@@ -615,13 +621,17 @@ static inline bi_instr *
 bi_load_ubo_to(bi_builder *b, unsigned bitsize, bi_index dest0, bi_index src0,
                 bi_index src1)
 {
+        bi_instr *I;
+
         if (b->shader->arch >= 9) {
-                bi_instr *I = bi_ld_buffer_to(b, bitsize, dest0, src0, src1);
+                I = bi_ld_buffer_to(b, bitsize, dest0, src0, src1);
                 I->seg = BI_SEG_UBO;
-                return I;
         } else {
-                return bi_load_to(b, bitsize, dest0, src0, src1, BI_SEG_UBO, 0);
+                I = bi_load_to(b, bitsize, dest0, src0, src1, BI_SEG_UBO, 0);
         }
+
+        bi_emit_cached_split(b, dest0, bitsize);
+        return I;
 }
 
 static bi_instr *
@@ -852,8 +862,8 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
 
                 bi_index rgba = bi_src_index(&instr->src[0]);
                 bi_index alpha =
-                        (T == nir_type_float16) ? bi_half(bi_word(rgba, 1), true) :
-                        (T == nir_type_float32) ? bi_word(rgba, 3) :
+                        (T == nir_type_float16) ? bi_half(bi_extract(b, rgba, 1), true) :
+                        (T == nir_type_float32) ? bi_extract(b, rgba, 3) :
                         bi_dontcare(b);
 
                 /* Don't read out-of-bounds */
@@ -985,7 +995,34 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         assert(nr > 0 && nr <= nir_intrinsic_src_components(instr, 0));
 
         bi_index data = bi_src_index(&instr->src[0]);
+
+        /* To keep the vector dimensions consistent, we need to drop some
+         * components. This should be coalesced.
+         *
+         * TODO: This is ugly and maybe inefficient. Would we rather
+         * introduce a TRIM.i32 pseudoinstruction?
+         */
+        if (nr < nir_intrinsic_src_components(instr, 0)) {
+                assert(T_size == 32 && "todo: 16-bit trim");
+
+                bi_instr *split = bi_split_i32_to(b, bi_null(), data);
+                split->nr_dests = nir_intrinsic_src_components(instr, 0);
+
+                bi_index tmp = bi_temp(b->shader);
+                bi_instr *collect = bi_collect_i32_to(b, tmp);
+                collect->nr_srcs = nr;
+
+                for (unsigned w = 0; w < nr; ++w) {
+                        split->dest[w] = bi_temp(b->shader);
+                        collect->src[w] = split->dest[w];
+                }
+
+                data = tmp;
+        }
+
         bool psiz = (nir_intrinsic_io_semantics(instr).location == VARYING_SLOT_PSIZ);
+
+        bi_index a[4] = { bi_null() };
 
         if (b->shader->arch <= 8 && b->shader->idvs == BI_IDVS_POSITION) {
                 /* Bifrost position shaders have a fast path */
@@ -1006,20 +1043,21 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 }
 
                 bi_index address = bi_lea_buf_imm(b, index);
+                bi_emit_split_i32(b, a, address, 2);
+
                 bool varying = (b->shader->idvs == BI_IDVS_VARYING);
 
                 bi_store(b, nr * nir_src_bit_size(instr->src[0]),
-                         bi_src_index(&instr->src[0]),
-                         address, bi_word(address, 1),
+                         data, a[0], a[1],
                          varying ? BI_SEG_VARY : BI_SEG_POS,
                          varying ? bi_varying_offset(b->shader, instr) : 0);
         } else if (immediate) {
                 bi_index address = bi_lea_attr_imm(b,
                                           bi_vertex_id(b), bi_instance_id(b),
                                           regfmt, imm_index);
+                bi_emit_split_i32(b, a, address, 3);
 
-                bi_st_cvt(b, data, address, bi_word(address, 1),
-                          bi_word(address, 2), regfmt, nr - 1);
+                bi_st_cvt(b, data, a[0], a[1], a[2], regfmt, nr - 1);
         } else {
                 bi_index idx =
                         bi_iadd_u32(b,
@@ -1029,9 +1067,9 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_index address = bi_lea_attr(b,
                                       bi_vertex_id(b), bi_instance_id(b),
                                       idx, regfmt);
+                bi_emit_split_i32(b, a, address, 3);
 
-                bi_st_cvt(b, data, address, bi_word(address, 1),
-                          bi_word(address, 2), regfmt, nr - 1);
+                bi_st_cvt(b, data, a[0], a[1], a[2], regfmt, nr - 1);
         }
 }
 
@@ -1052,14 +1090,14 @@ bi_emit_load_ubo(bi_builder *b, nir_intrinsic_instr *instr)
 }
 
 static bi_index
-bi_addr_high(nir_src *src)
+bi_addr_high(bi_builder *b, nir_src *src)
 {
 	return (nir_src_bit_size(*src) == 64) ?
-		bi_word(bi_src_index(src), 1) : bi_zero();
+		bi_extract(b, bi_src_index(src), 1) : bi_zero();
 }
 
 static void
-bi_handle_segment(bi_builder *b, bi_index *addr, bi_index *addr_hi, enum bi_seg seg, int16_t *offset)
+bi_handle_segment(bi_builder *b, bi_index *addr_lo, bi_index *addr_hi, enum bi_seg seg, int16_t *offset)
 {
         /* Not needed on Bifrost or for global accesses */
         if (b->shader->arch < 9 || seg == BI_SEG_NONE)
@@ -1072,35 +1110,34 @@ bi_handle_segment(bi_builder *b, bi_index *addr, bi_index *addr_hi, enum bi_seg 
         bool wls = (seg == BI_SEG_WLS);
         assert(wls || (seg == BI_SEG_TL));
 
-        bi_index base = bi_fau(wls ? BIR_FAU_WLS_PTR : BIR_FAU_TLS_PTR, false);
+        enum bir_fau fau = wls ? BIR_FAU_WLS_PTR : BIR_FAU_TLS_PTR;
 
-        if (offset && addr->type == BI_INDEX_CONSTANT) {
-                int value = addr->value;
+        bi_index base_lo = bi_fau(fau, false);
 
-                if (value == (int16_t) value) {
-                        *offset = value;
-                        *addr = base;
-                }
+        if (offset && addr_lo->type == BI_INDEX_CONSTANT && addr_lo->value == (int16_t) addr_lo->value) {
+                *offset = addr_lo->value;
+                *addr_lo = base_lo;
         } else {
-                *addr = bi_collect_v2i32(b, bi_iadd_u32(b, base, *addr, false),
-                                            bi_imm_u32(0));
+                *addr_lo = bi_iadd_u32(b, base_lo, *addr_lo, false);
         }
 
-        *addr_hi = bi_word(*addr, 1);
+        /* Do not allow overflow for WLS or TLS */
+        *addr_hi = bi_fau(fau, true);
 }
 
 static void
 bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 {
         int16_t offset = 0;
-        bi_index addr_lo = bi_src_index(&instr->src[0]);
-        bi_index addr_hi = bi_addr_high(&instr->src[0]);
+        unsigned bits = instr->num_components * nir_dest_bit_size(instr->dest);
+        bi_index dest = bi_dest_index(&instr->dest);
+        bi_index addr_lo = bi_extract(b, bi_src_index(&instr->src[0]), 0);
+        bi_index addr_hi = bi_addr_high(b, &instr->src[0]);
 
         bi_handle_segment(b, &addr_lo, &addr_hi, seg, &offset);
 
-        bi_load_to(b, instr->num_components * nir_dest_bit_size(instr->dest),
-                   bi_dest_index(&instr->dest),
-                   addr_lo, addr_hi, seg, offset);
+        bi_load_to(b, bits, dest, addr_lo, addr_hi, seg, offset);
+        bi_emit_cached_split(b, dest, bits);
 }
 
 static void
@@ -1111,8 +1148,8 @@ bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
                         BITFIELD_MASK(instr->num_components));
 
         int16_t offset = 0;
-        bi_index addr_lo = bi_src_index(&instr->src[1]);
-        bi_index addr_hi = bi_addr_high(&instr->src[1]);
+        bi_index addr_lo = bi_extract(b, bi_src_index(&instr->src[1]), 0);
+        bi_index addr_hi = bi_addr_high(b, &instr->src[1]);
 
         bi_handle_segment(b, &addr_lo, &addr_hi, seg, &offset);
 
@@ -1133,29 +1170,14 @@ bi_emit_axchg_to(bi_builder *b, bi_index dst, bi_index addr, nir_src *arg, enum 
 
         bi_index data = bi_src_index(arg);
 
-        bi_index data_words[] = {
-                bi_word(data, 0),
-                bi_word(data, 1),
-        };
-
-        bi_index inout = bi_temp_reg(b->shader);
-        bi_make_vec_to(b, inout, data_words, NULL, sz / 32, 32);
-
-        bi_index addr_hi = bi_word(addr, 1);
+        bi_index addr_hi = (seg == BI_SEG_WLS) ? bi_zero() : bi_extract(b, addr, 1);
 
         if (b->shader->arch >= 9)
                 bi_handle_segment(b, &addr, &addr_hi, seg, NULL);
         else if (seg == BI_SEG_WLS)
                 addr_hi = bi_zero();
 
-        bi_axchg_to(b, sz, inout, inout, addr, addr_hi, seg);
-
-        bi_index inout_words[] = {
-                bi_word(inout, 0),
-                bi_word(inout, 1),
-        };
-
-        bi_make_vec_to(b, dst, inout_words, NULL, sz / 32, 32);
+        bi_axchg_to(b, sz, dst, data, bi_extract(b, addr, 0), addr_hi, seg);
 }
 
 /* Exchanges the second staging register with memory if comparison with first
@@ -1174,29 +1196,29 @@ bi_emit_acmpxchg_to(bi_builder *b, bi_index dst, bi_index addr, nir_src *arg_1, 
         assert(sz == 32 || sz == 64);
 
         bi_index data_words[] = {
-                bi_word(src0, 0),
-                sz == 32 ? bi_word(src1, 0) : bi_word(src0, 1),
+                bi_extract(b, src0, 0),
+                sz == 32 ? bi_extract(b, src1, 0) : bi_extract(b, src0, 1),
 
                 /* 64-bit */
-                bi_word(src1, 0),
-                bi_word(src1, 1),
+                bi_extract(b, src1, 0),
+                sz == 32 ? bi_extract(b, src1, 0) : bi_extract(b, src1, 1),
         };
 
-        bi_index inout = bi_temp_reg(b->shader);
-        bi_make_vec_to(b, inout, data_words, NULL, 2 * (sz / 32), 32);
-
-        bi_index addr_hi = bi_word(addr, 1);
+        bi_index in = bi_temp(b->shader);
+        bi_emit_collect_to(b, in, data_words, 2 * (sz / 32));
+        bi_index addr_hi = (seg == BI_SEG_WLS) ? bi_zero() : bi_extract(b, addr, 1);
 
         if (b->shader->arch >= 9)
                 bi_handle_segment(b, &addr, &addr_hi, seg, NULL);
         else if (seg == BI_SEG_WLS)
                 addr_hi = bi_zero();
 
-        bi_acmpxchg_to(b, sz, inout, inout, addr, addr_hi, seg);
+        bi_index out = bi_acmpxchg(b, sz, in, bi_extract(b, addr, 0), addr_hi, seg);
+        bi_emit_cached_split(b, out, sz);
 
         bi_index inout_words[] = {
-                bi_word(inout, 0),
-                bi_word(inout, 1),
+                bi_extract(b, out, 0),
+                sz == 64 ? bi_extract(b, out, 1) : bi_null()
         };
 
         bi_make_vec_to(b, dst, inout_words, NULL, sz / 32, 32);
@@ -1301,19 +1323,19 @@ bi_emit_image_coord(bi_builder *b, bi_index coord, unsigned src_idx,
 
         if (src_idx == 0) {
                 if (coord_comps == 1 || (coord_comps == 2 && is_array))
-                        return bi_word(coord, 0);
+                        return bi_extract(b, coord, 0);
                 else
                         return bi_mkvec_v2i16(b,
-                                              bi_half(bi_word(coord, 0), false),
-                                              bi_half(bi_word(coord, 1), false));
+                                              bi_half(bi_extract(b, coord, 0), false),
+                                              bi_half(bi_extract(b, coord, 1), false));
         } else {
                 if (coord_comps == 3 && b->shader->arch >= 9)
                         return bi_mkvec_v2i16(b, bi_imm_u16(0),
-                                              bi_half(bi_word(coord, 2), false));
+                                              bi_half(bi_extract(b, coord, 2), false));
                 else if (coord_comps == 3)
-                        return bi_word(coord, 2);
+                        return bi_extract(b, coord, 2);
                 else if (coord_comps == 2 && is_array)
-                        return bi_word(coord, 1);
+                        return bi_extract(b, coord, 1);
                 else
                         return bi_zero();
         }
@@ -1368,6 +1390,8 @@ bi_emit_image_load(bi_builder *b, nir_intrinsic_instr *instr)
                                   bi_emit_image_index(b, instr), regfmt,
                                   vecsize);
         }
+
+        bi_split_dest(b, instr->dest);
 }
 
 static bi_index
@@ -1407,16 +1431,17 @@ bi_emit_lea_image(bi_builder *b, nir_intrinsic_instr *instr)
                 I->table = BI_TABLE_ATTRIBUTE_1;
         }
 
+        bi_emit_cached_split(b, dest, 3 * 32);
         return dest;
 }
 
 static void
 bi_emit_image_store(bi_builder *b, nir_intrinsic_instr *instr)
 {
-        bi_index addr = bi_emit_lea_image(b, instr);
+        bi_index a[4] = { bi_null() };
+        bi_emit_split_i32(b, a, bi_emit_lea_image(b, instr), 3);
 
-        bi_st_cvt(b, bi_src_index(&instr->src[3]),
-                     addr, bi_word(addr, 1), bi_word(addr, 2),
+        bi_st_cvt(b, bi_src_index(&instr->src[3]), a[0], a[1], a[2],
                      bi_reg_fmt_for_nir(nir_intrinsic_src_type(instr)),
                      instr->num_components - 1);
 }
@@ -1431,29 +1456,22 @@ bi_emit_atomic_i32_to(bi_builder *b, bi_index dst,
 
         /* ATOM_C.i32 takes a vector with {arg, coalesced}, ATOM_C1.i32 doesn't
          * take any vector but can still output in RETURN mode */
-        bi_index sr = bifrost ? bi_temp_reg(b->shader) : bi_null();
-        bi_index tmp_dest = bifrost ? sr : dst;
+        bi_index tmp_dest = bifrost ? bi_temp(b->shader) : dst;
         unsigned sr_count = bifrost ? 2 : 1;
 
         /* Generate either ATOM or ATOM1 as required */
         if (bi_promote_atom_c1(opc, arg, &opc)) {
-                bi_atom1_return_i32_to(b, tmp_dest, bi_word(addr, 0),
-                                       bi_word(addr, 1), opc, sr_count);
+                bi_atom1_return_i32_to(b, tmp_dest, bi_extract(b, addr, 0),
+                                       bi_extract(b, addr, 1), opc, sr_count);
         } else {
-                bi_index src = arg;
-
-                if (bifrost) {
-                        bi_mov_i32_to(b, sr, arg);
-                        src = sr;
-                }
-
-                bi_atom_return_i32_to(b, tmp_dest, src, bi_word(addr, 0),
-                                      bi_word(addr, 1), opc, sr_count);
+                bi_atom_return_i32_to(b, tmp_dest, arg, bi_extract(b, addr, 0),
+                                      bi_extract(b, addr, 1), opc, sr_count);
         }
 
         if (bifrost) {
                 /* Post-process it */
-                bi_atom_post_i32_to(b, dst, bi_word(sr, 0), bi_word(sr, 1), post_opc);
+                bi_emit_cached_split_i32(b, tmp_dest, 2);
+                bi_atom_post_i32_to(b, dst, bi_extract(b, tmp_dest, 0), bi_extract(b, tmp_dest, 1), post_opc);
         }
 }
 
@@ -1488,10 +1506,12 @@ bi_emit_load_frag_coord(bi_builder *b, nir_intrinsic_instr *instr)
 static void
 bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
 {
+        bi_index dest = bi_dest_index(&instr->dest);
         nir_alu_type T = nir_intrinsic_dest_type(instr);
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(T);
         unsigned rt = b->shader->inputs->blend.rt;
         unsigned size = nir_dest_bit_size(instr->dest);
+        unsigned nr = instr->num_components;
 
         /* Get the render target */
         if (!b->shader->inputs->is_blend) {
@@ -1514,9 +1534,9 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                 I->flow = 0x9; /* .wait */
         }
 
-        bi_ld_tile_to(b, bi_dest_index(&instr->dest), bi_pixel_indices(b, rt),
-                        bi_register(60), desc, regfmt,
-                        (instr->num_components - 1));
+        bi_ld_tile_to(b, dest, bi_pixel_indices(b, rt), bi_register(60), desc,
+                      regfmt, nr - 1);
+        bi_emit_cached_split(b, dest, size * nr);
 }
 
 static void
@@ -1619,12 +1639,15 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
                 if (b->shader->arch >= 9) {
                         bi_handle_segment(b, &addr, &addr_hi, BI_SEG_WLS, NULL);
+                        addr = bi_collect_v2i32(b, addr, addr_hi);
                 } else {
                         addr = bi_seg_add_i64(b, addr, bi_zero(), false, BI_SEG_WLS);
+                        bi_emit_cached_split(b, addr, 64);
                 }
 
                 bi_emit_atomic_i32_to(b, dst, addr, bi_src_index(&instr->src[1]),
                                 instr->intrinsic);
+                bi_split_dest(b, instr->dest);
                 break;
         }
 
@@ -1642,6 +1665,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 bi_emit_lea_image(b, instr),
                                 bi_src_index(&instr->src[3]),
                                 instr->intrinsic);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_global_atomic_add:
@@ -1658,6 +1682,8 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 bi_src_index(&instr->src[0]),
                                 bi_src_index(&instr->src[1]),
                                 instr->intrinsic);
+
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_image_load:
@@ -1671,31 +1697,37 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
         case nir_intrinsic_global_atomic_exchange:
                 bi_emit_axchg_to(b, dst, bi_src_index(&instr->src[0]),
                                 &instr->src[1], BI_SEG_NONE);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_image_atomic_exchange:
                 bi_emit_axchg_to(b, dst, bi_emit_lea_image(b, instr),
                                 &instr->src[3], BI_SEG_NONE);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_shared_atomic_exchange:
                 bi_emit_axchg_to(b, dst, bi_src_index(&instr->src[0]),
                                 &instr->src[1], BI_SEG_WLS);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_global_atomic_comp_swap:
                 bi_emit_acmpxchg_to(b, dst, bi_src_index(&instr->src[0]),
                                 &instr->src[1], &instr->src[2], BI_SEG_NONE);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_image_atomic_comp_swap:
                 bi_emit_acmpxchg_to(b, dst, bi_emit_lea_image(b, instr),
                                 &instr->src[3], &instr->src[4], BI_SEG_NONE);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_shared_atomic_comp_swap:
                 bi_emit_acmpxchg_to(b, dst, bi_src_index(&instr->src[0]),
                                 &instr->src[1], &instr->src[2], BI_SEG_WLS);
+                bi_split_dest(b, instr->dest);
                 break;
 
         case nir_intrinsic_load_frag_coord:
@@ -1784,6 +1816,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_ld_var_special_to(b, dst, bi_zero(), BI_REGISTER_FORMAT_F32,
                                 BI_SAMPLE_CENTER, BI_UPDATE_CLOBBER,
                                 BI_VARYING_NAME_POINT, BI_VECSIZE_V2);
+                bi_emit_cached_split_i32(b, dst, 2);
                 break;
 
         /* It appears vertex_id is zero-based with Bifrost geometry flows, but
@@ -1833,6 +1866,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_shader_clock:
                 bi_ld_gclk_u64_to(b, dst, BI_SOURCE_CYCLE_COUNTER);
+                bi_split_dest(b, instr->dest);
                 break;
 
         default:
@@ -1860,7 +1894,7 @@ bi_emit_load_const(bi_builder *b, nir_load_const_instr *instr)
 }
 
 static bi_index
-bi_alu_src_index(nir_alu_src src, unsigned comps)
+bi_alu_src_index(bi_builder *b, nir_alu_src src, unsigned comps)
 {
         /* we don't lower modifiers until the backend */
         assert(!(src.negate || src.abs));
@@ -1884,7 +1918,7 @@ bi_alu_src_index(nir_alu_src src, unsigned comps)
                 offset = new_offset;
         }
 
-        bi_index idx = bi_word(bi_src_index(&src.src), offset);
+        bi_index idx = bi_extract(b, bi_src_index(&src.src), offset);
 
         /* Compose the subword swizzle with existing (identity) swizzle */
         assert(idx.swizzle == BI_SWIZZLE_H01);
@@ -2240,12 +2274,15 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 unreachable("should've been lowered");
 
         case nir_op_unpack_32_2x16:
-        case nir_op_unpack_64_2x32_split_x:
                 bi_mov_i32_to(b, dst, bi_src_index(&instr->src[0].src));
+                break;
+
+        case nir_op_unpack_64_2x32_split_x:
+                bi_mov_i32_to(b, dst, bi_extract(b, bi_src_index(&instr->src[0].src), 0));
                 return;
 
         case nir_op_unpack_64_2x32_split_y:
-                bi_mov_i32_to(b, dst, bi_word(bi_src_index(&instr->src[0].src), 1));
+                bi_mov_i32_to(b, dst, bi_extract(b, bi_src_index(&instr->src[0].src), 1));
                 return;
 
         case nir_op_pack_64_2x32_split:
@@ -2256,16 +2293,16 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
         case nir_op_pack_64_2x32:
                 bi_collect_v2i32_to(b, dst,
-                                    bi_word(bi_src_index(&instr->src[0].src), 0),
-                                    bi_word(bi_src_index(&instr->src[0].src), 1));
+                                    bi_extract(b, bi_src_index(&instr->src[0].src), 0),
+                                    bi_extract(b, bi_src_index(&instr->src[0].src), 1));
                 return;
 
         case nir_op_pack_uvec2_to_uint: {
                 bi_index src = bi_src_index(&instr->src[0].src);
 
                 assert(sz == 32 && src_sz == 32);
-                bi_mkvec_v2i16_to(b, dst, bi_half(bi_word(src, 0), false),
-                                          bi_half(bi_word(src, 1), false));
+                bi_mkvec_v2i16_to(b, dst, bi_half(bi_extract(b, src, 0), false),
+                                          bi_half(bi_extract(b, src, 1), false));
                 return;
         }
 
@@ -2273,10 +2310,10 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_index src = bi_src_index(&instr->src[0].src);
 
                 assert(sz == 32 && src_sz == 32);
-                bi_mkvec_v4i8_to(b, dst, bi_byte(bi_word(src, 0), 0),
-                                         bi_byte(bi_word(src, 1), 0),
-                                         bi_byte(bi_word(src, 2), 0),
-                                         bi_byte(bi_word(src, 3), 0));
+                bi_mkvec_v4i8_to(b, dst, bi_byte(bi_extract(b, src, 0), 0),
+                                         bi_byte(bi_extract(b, src, 1), 0),
+                                         bi_byte(bi_extract(b, src, 2), 0),
+                                         bi_byte(bi_extract(b, src, 3), 0));
                 return;
         }
 
@@ -2314,9 +2351,9 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         case nir_op_f2f16:
                 assert(src_sz == 32);
                 bi_index idx = bi_src_index(&instr->src[0].src);
-                bi_index s0 = bi_word(idx, instr->src[0].swizzle[0]);
+                bi_index s0 = bi_extract(b, idx, instr->src[0].swizzle[0]);
                 bi_index s1 = comps > 1 ?
-                        bi_word(idx, instr->src[0].swizzle[1]) : s0;
+                        bi_extract(b, idx, instr->src[0].swizzle[1]) : s0;
 
                 bi_v2f32_to_v2f16_to(b, dst, s0, s1);
                 return;
@@ -2328,8 +2365,8 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         break;
 
                 bi_index idx = bi_src_index(&instr->src[0].src);
-                bi_index s0 = bi_word(idx, instr->src[0].swizzle[0]);
-                bi_index s1 = bi_word(idx, instr->src[0].swizzle[1]);
+                bi_index s0 = bi_extract(b, idx, instr->src[0].swizzle[0]);
+                bi_index s1 = bi_extract(b, idx, instr->src[0].swizzle[1]);
 
                 bi_mkvec_v2i16_to(b, dst,
                                 bi_half(s0, false), bi_half(s1, false));
@@ -2348,8 +2385,8 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
                 nir_alu_src *src = &instr->src[0];
                 bi_index idx = bi_src_index(&src->src);
-                bi_index s0 = bi_word(idx, src->swizzle[0]);
-                bi_index s1 = bi_word(idx, src->swizzle[1]);
+                bi_index s0 = bi_extract(b, idx, src->swizzle[0]);
+                bi_index s1 = bi_extract(b, idx, src->swizzle[1]);
 
                 bi_index t = (src->swizzle[0] == src->swizzle[1]) ?
                         bi_half(s0, false) :
@@ -2397,13 +2434,13 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                  * insert a MKVEC.v2i16 first to convert down to 16-bit.
                  */
                 bi_index idx = bi_src_index(&instr->src[0].src);
-                bi_index s0 = bi_word(idx, instr->src[0].swizzle[0]);
-                bi_index s1 = bi_alu_src_index(instr->src[1], comps);
-                bi_index s2 = bi_alu_src_index(instr->src[2], comps);
+                bi_index s0 = bi_extract(b, idx, instr->src[0].swizzle[0]);
+                bi_index s1 = bi_alu_src_index(b, instr->src[1], comps);
+                bi_index s2 = bi_alu_src_index(b, instr->src[2], comps);
 
                 if (!bi_nir_is_replicated(&instr->src[0])) {
                         s0 = bi_mkvec_v2i16(b, bi_half(s0, false),
-                                            bi_half(bi_word(idx, instr->src[0].swizzle[1]), false));
+                                            bi_half(bi_extract(b, idx, instr->src[0].swizzle[1]), false));
                 }
 
                 bi_mux_v2i16_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
@@ -2414,9 +2451,9 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
         }
 
-        bi_index s0 = srcs > 0 ? bi_alu_src_index(instr->src[0], comps) : bi_null();
-        bi_index s1 = srcs > 1 ? bi_alu_src_index(instr->src[1], comps) : bi_null();
-        bi_index s2 = srcs > 2 ? bi_alu_src_index(instr->src[2], comps) : bi_null();
+        bi_index s0 = srcs > 0 ? bi_alu_src_index(b, instr->src[0], comps) : bi_null();
+        bi_index s1 = srcs > 1 ? bi_alu_src_index(b, instr->src[1], comps) : bi_null();
+        bi_index s2 = srcs > 2 ? bi_alu_src_index(b, instr->src[2], comps) : bi_null();
 
         switch (instr->op) {
         case nir_op_ffma:
@@ -3073,9 +3110,9 @@ bi_emit_texc_offset_ms_index(bi_builder *b, nir_tex_instr *instr)
                 unsigned nr = nir_src_num_components(instr->src[offs_idx].src);
                 bi_index idx = bi_src_index(&instr->src[offs_idx].src);
                 dest = bi_mkvec_v4i8(b, 
-                                (nr > 0) ? bi_byte(bi_word(idx, 0), 0) : bi_imm_u8(0),
-                                (nr > 1) ? bi_byte(bi_word(idx, 1), 0) : bi_imm_u8(0),
-                                (nr > 2) ? bi_byte(bi_word(idx, 2), 0) : bi_imm_u8(0),
+                                (nr > 0) ? bi_byte(bi_extract(b, idx, 0), 0) : bi_imm_u8(0),
+                                (nr > 1) ? bi_byte(bi_extract(b, idx, 1), 0) : bi_imm_u8(0),
+                                (nr > 2) ? bi_byte(bi_extract(b, idx, 2), 0) : bi_imm_u8(0),
                                 bi_imm_u8(0));
         }
 
@@ -3117,9 +3154,9 @@ bi_emit_valhall_offsets(bi_builder *b, nir_tex_instr *instr)
                 assert((nr <= 2) || (ms_idx < 0));
 
                 dest = bi_mkvec_v4i8(b,
-                                (nr > 0) ? bi_byte(bi_word(idx, 0), 0) : bi_imm_u8(0),
-                                (nr > 1) ? bi_byte(bi_word(idx, 1), 0) : bi_imm_u8(0),
-                                (nr > 2) ? bi_byte(bi_word(idx, 2), 0) : bi_imm_u8(0),
+                                (nr > 0) ? bi_byte(bi_extract(b, idx, 0), 0) : bi_imm_u8(0),
+                                (nr > 1) ? bi_byte(bi_extract(b, idx, 1), 0) : bi_imm_u8(0),
+                                (nr > 2) ? bi_byte(bi_extract(b, idx, 2), 0) : bi_imm_u8(0),
                                 bi_imm_u8(0));
         }
 
@@ -3152,7 +3189,9 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
         bi_index maxxyz = bi_temp(b->shader);
         *face = bi_temp(b->shader);
 
-        bi_index cx = coord, cy = bi_word(coord, 1), cz = bi_word(coord, 2);
+        bi_index cx = bi_extract(b, coord, 0),
+                 cy = bi_extract(b, coord, 1),
+                 cz = bi_extract(b, coord, 2);
 
         /* Use a pseudo op on Bifrost due to tuple restrictions */
         if (b->shader->arch <= 8) {
@@ -3163,8 +3202,8 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
         }
 
         /* Select coordinates */
-        bi_index ssel = bi_cube_ssel(b, bi_word(coord, 2), coord, *face);
-        bi_index tsel = bi_cube_tsel(b, bi_word(coord, 1), bi_word(coord, 2),
+        bi_index ssel = bi_cube_ssel(b, bi_extract(b, coord, 2), bi_extract(b, coord, 0), *face);
+        bi_index tsel = bi_cube_tsel(b, bi_extract(b, coord, 1), bi_extract(b, coord, 2),
                         *face);
 
         /* The OpenGL ES specification requires us to transform an input vector
@@ -3314,22 +3353,22 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                                 cx = bi_emit_texc_cube_coord(b, index, &cy);
 			} else {
                                 /* Copy XY (for 2D+) or XX (for 1D) */
-                                cx = index;
-                                cy = bi_word(index, MIN2(1, components - 1));
+                                cx = bi_extract(b, index, 0);
+                                cy = bi_extract(b, index, MIN2(1, components - 1));
 
                                 assert(components >= 1 && components <= 3);
 
                                 if (components == 3 && !desc.array) {
                                         /* 3D */
                                         dregs[BIFROST_TEX_DREG_Z_COORD] =
-                                                bi_word(index, 2);
+                                                bi_extract(b, index, 2);
                                 }
                         }
 
                         if (desc.array) {
                                 dregs[BIFROST_TEX_DREG_ARRAY] =
                                                 bi_emit_texc_array_index(b,
-                                                                bi_word(index, components - 1), T);
+                                                                bi_extract(b, index, components - 1), T);
                         }
 
                         break;
@@ -3445,9 +3484,7 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                 desc.sampler_index_or_mode = mode;
         }
 
-        /* Allocate staging registers contiguously by compacting the array.
-         * Index is not SSA (tied operands) */
-
+        /* Allocate staging registers contiguously by compacting the array. */
         unsigned sr_count = 0;
 
         for (unsigned i = 0; i < ARRAY_SIZE(dregs); ++i) {
@@ -3455,24 +3492,26 @@ bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
                         dregs[sr_count++] = dregs[i];
         }
 
-        bi_index idx = sr_count ? bi_temp_reg(b->shader) : bi_null();
+        unsigned res_size = nir_dest_bit_size(instr->dest) == 16 ? 2 : 4;
+
+        bi_index sr = sr_count ? bi_temp(b->shader) : bi_null();
+        bi_index dst = bi_temp(b->shader);
 
         if (sr_count)
-                bi_make_vec_to(b, idx, dregs, NULL, sr_count, 32);
+                bi_emit_collect_to(b, sr, dregs, sr_count);
 
         uint32_t desc_u = 0;
         memcpy(&desc_u, &desc, sizeof(desc_u));
-        bi_texc_to(b, sr_count ? idx : bi_dest_index(&instr->dest), bi_null(),
-                        idx, cx, cy, bi_imm_u32(desc_u),
-                        !nir_tex_instr_has_implicit_derivative(instr),
-                        sr_count, 0);
+        bi_instr *I =
+                bi_texc_to(b, dst, bi_null(), sr, cx, cy,
+                   bi_imm_u32(desc_u),
+                   !nir_tex_instr_has_implicit_derivative(instr), sr_count, 0);
+        I->register_format = bi_reg_fmt_for_nir(instr->dest_type);
 
-        /* Explicit copy to facilitate tied operands */
-        if (sr_count) {
-                bi_index srcs[4] = { idx, idx, idx, idx };
-                unsigned channels[4] = { 0, 1, 2, 3 };
-                bi_make_vec_to(b, bi_dest_index(&instr->dest), srcs, channels, 4, 32);
-        }
+        bi_index w[4] = { bi_null(), bi_null(), bi_null(), bi_null() };
+        bi_emit_split_i32(b, w, dst, res_size);
+        bi_emit_collect_to(b, bi_dest_index(&instr->dest), w,
+                        DIV_ROUND_UP(nir_dest_num_components(instr->dest) * res_size, 4));
 }
 
 /* Staging registers required by texturing in the order they appear (Valhall) */
@@ -3526,17 +3565,17 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
                                 sregs[VALHALL_TEX_SREG_X_COORD] = index;
 
                                 if (components >= 2)
-                                        sregs[VALHALL_TEX_SREG_Y_COORD] = bi_word(index, 1);
+                                        sregs[VALHALL_TEX_SREG_Y_COORD] = bi_extract(b, index, 1);
 
                                 if (components == 3 && !instr->is_array) {
                                         sregs[VALHALL_TEX_SREG_Z_COORD] =
-                                                bi_word(index, 2);
+                                                bi_extract(b, index, 2);
                                 }
                         }
 
                         if (instr->is_array) {
                                 sregs[VALHALL_TEX_SREG_ARRAY] =
-                                        bi_word(index, components - 1);
+                                        bi_extract(b, index, components - 1);
                         }
 
                         break;
@@ -3614,9 +3653,10 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
         image_src = bi_lshift_or_i32(b, texture, image_src, bi_imm_u8(16));
 
         unsigned mask = BI_WRITE_MASK_RGBA;
+        unsigned res_size = nir_dest_bit_size(instr->dest) == 16 ? 2 : 4;
         enum bi_register_format regfmt = bi_reg_fmt_for_nir(instr->dest_type);
         enum bi_dimension dim = valhall_tex_dimension(instr->sampler_dim);
-        bi_index dest = bi_dest_index(&instr->dest);
+        bi_index dest = bi_temp(b->shader);
 
         switch (instr->op) {
         case nir_texop_tex:
@@ -3641,6 +3681,11 @@ bi_emit_tex_valhall(bi_builder *b, nir_tex_instr *instr)
         default:
                 unreachable("Unhandled Valhall texture op");
         }
+
+        bi_index w[4] = { bi_null(), bi_null(), bi_null(), bi_null() };
+        bi_emit_split_i32(b, w, dest, res_size);
+        bi_emit_collect_to(b, bi_dest_index(&instr->dest), w,
+                        DIV_ROUND_UP(nir_dest_num_components(instr->dest) * res_size, 4));
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0 on 2D/cube
@@ -3665,10 +3710,13 @@ bi_emit_texs(bi_builder *b, nir_tex_instr *instr)
         } else {
                 bi_texs_2d_to(b, nir_dest_bit_size(instr->dest),
                                 bi_dest_index(&instr->dest),
-                                coords, bi_word(coords, 1),
+                                bi_extract(b, coords, 0),
+                                bi_extract(b, coords, 1),
                                 instr->op != nir_texop_tex, /* zero LOD */
                                 instr->sampler_index, instr->texture_index);
         }
+
+        bi_split_dest(b, instr->dest);
 }
 
 static bool
@@ -3726,7 +3774,7 @@ bi_emit_tex(bi_builder *b, nir_tex_instr *instr)
         case nir_texop_txs:
                 bi_load_sysval_to(b, bi_dest_index(&instr->dest),
                                 panfrost_sysval_for_instr(&instr->instr, NULL),
-                                4, 0);
+                                nir_dest_num_components(instr->dest), 0);
                 return;
         case nir_texop_tex:
         case nir_texop_txl:
