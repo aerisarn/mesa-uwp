@@ -751,17 +751,13 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T,
         } else if (b->shader->inputs->is_blend) {
                 uint64_t blend_desc = b->shader->inputs->blend.bifrost_blend_desc;
 
-                bi_index desc =
-                        bi_collect_v2i32(b, bi_imm_u32(blend_desc),
-                                            bi_imm_u32(blend_desc >> 32));
-
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
 
                 bi_blend_to(b, bifrost ? bi_register(0) : bi_null(), rgba,
                                 bi_register(60),
-                                bi_word(desc, 0),
-                                bi_word(desc, 1),
+                                bi_imm_u32(blend_desc),
+                                bi_imm_u32(blend_desc >> 32),
                                 bi_null(), regfmt, sr_count, 0);
         } else {
                 /* Blend descriptor comes from the FAU RAM. By convention, the
