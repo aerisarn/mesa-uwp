@@ -76,6 +76,10 @@ enum radeon_bo_flag
   RADEON_FLAG_ENCRYPTED = (1 << 7),
   RADEON_FLAG_GL2_BYPASS = (1 << 8), /* only gfx9 and newer */
   RADEON_FLAG_DRIVER_INTERNAL = (1 << 9),
+   /* Discard on eviction (instead of moving the buffer to GTT).
+    * This guarantees that this buffer will never be moved to GTT.
+    */
+  RADEON_FLAG_DISCARDABLE = (1 << 10),
 };
 
 enum radeon_map_flags
@@ -811,7 +815,8 @@ static inline int radeon_get_heap_index(enum radeon_bo_domain domain, enum radeo
 
    /* These are unsupported flags. */
    /* RADEON_FLAG_DRIVER_INTERNAL is ignored. It doesn't affect allocators. */
-   if (flags & (RADEON_FLAG_NO_SUBALLOC | RADEON_FLAG_SPARSE))
+   if (flags & (RADEON_FLAG_NO_SUBALLOC | RADEON_FLAG_SPARSE |
+                RADEON_FLAG_DISCARDABLE))
       return -1;
 
    int heap = 0;

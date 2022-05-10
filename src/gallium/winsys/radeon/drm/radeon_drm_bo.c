@@ -1053,7 +1053,8 @@ radeon_winsys_bo_create(struct radeon_winsys *rws,
    size = align(size, ws->info.gart_page_size);
    alignment = align(alignment, ws->info.gart_page_size);
 
-   bool use_reusable_pool = flags & RADEON_FLAG_NO_INTERPROCESS_SHARING;
+   bool use_reusable_pool = flags & RADEON_FLAG_NO_INTERPROCESS_SHARING &&
+                            !(flags & RADEON_FLAG_DISCARDABLE);
 
    /* Shared resources don't use cached heaps. */
    if (use_reusable_pool) {

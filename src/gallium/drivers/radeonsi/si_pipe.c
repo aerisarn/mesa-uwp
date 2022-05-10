@@ -1356,7 +1356,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       sscreen->attribute_ring = si_aligned_buffer_create(&sscreen->b,
                                                          PIPE_RESOURCE_FLAG_UNMAPPABLE |
                                                          SI_RESOURCE_FLAG_32BIT |
-                                                         SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                                         SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                                         SI_RESOURCE_FLAG_DISCARDABLE,
                                                          PIPE_USAGE_DEFAULT,
                                                          /* TODO: remove the overallocation */
                                                          attr_ring_size * 16, 2 * 1024 * 1024);

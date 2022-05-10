@@ -481,7 +481,8 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx, struct si_s
 
       sctx->compute_scratch_buffer =
          si_aligned_buffer_create(&sctx->screen->b,
-                                  PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                  PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                  SI_RESOURCE_FLAG_DISCARDABLE,
                                   PIPE_USAGE_DEFAULT,
                                   scratch_needed, sctx->screen->info.pte_fragment_size);
 

@@ -3754,7 +3754,8 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
       pipe_resource_reference(&sctx->esgs_ring, NULL);
       sctx->esgs_ring =
          pipe_aligned_buffer_create(sctx->b.screen,
-                                    PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                    PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                    SI_RESOURCE_FLAG_DISCARDABLE,
                                     PIPE_USAGE_DEFAULT,
                                     esgs_ring_size, sctx->screen->info.pte_fragment_size);
       if (!sctx->esgs_ring)
@@ -3765,7 +3766,8 @@ bool si_update_gs_ring_buffers(struct si_context *sctx)
       pipe_resource_reference(&sctx->gsvs_ring, NULL);
       sctx->gsvs_ring =
          pipe_aligned_buffer_create(sctx->b.screen,
-                                    PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                    PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                    SI_RESOURCE_FLAG_DISCARDABLE,
                                     PIPE_USAGE_DEFAULT,
                                     gsvs_ring_size, sctx->screen->info.pte_fragment_size);
       if (!sctx->gsvs_ring)
@@ -3987,7 +3989,8 @@ bool si_update_spi_tmpring_size(struct si_context *sctx, unsigned bytes)
 
          sctx->scratch_buffer = si_aligned_buffer_create(
             &sctx->screen->b,
-            PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+            PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+            SI_RESOURCE_FLAG_DISCARDABLE,
             PIPE_USAGE_DEFAULT, scratch_needed_size,
             sctx->screen->info.pte_fragment_size);
          if (!sctx->scratch_buffer)
@@ -4017,7 +4020,8 @@ void si_init_tess_factor_ring(struct si_context *sctx)
    sctx->tess_rings = pipe_aligned_buffer_create(sctx->b.screen,
                                                  PIPE_RESOURCE_FLAG_UNMAPPABLE |
                                                  SI_RESOURCE_FLAG_32BIT |
-                                                 SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                                 SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                                 SI_RESOURCE_FLAG_DISCARDABLE,
                                                  PIPE_USAGE_DEFAULT,
                                                  sctx->screen->hs.tess_offchip_ring_size +
                                                  sctx->screen->hs.tess_factor_ring_size,
@@ -4030,7 +4034,8 @@ void si_init_tess_factor_ring(struct si_context *sctx)
                                                         PIPE_RESOURCE_FLAG_UNMAPPABLE |
                                                         PIPE_RESOURCE_FLAG_ENCRYPTED |
                                                         SI_RESOURCE_FLAG_32BIT |
-                                                        SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                                        SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                                        SI_RESOURCE_FLAG_DISCARDABLE,
                                                         PIPE_USAGE_DEFAULT,
                                                         sctx->screen->hs.tess_offchip_ring_size +
                                                         sctx->screen->hs.tess_factor_ring_size,

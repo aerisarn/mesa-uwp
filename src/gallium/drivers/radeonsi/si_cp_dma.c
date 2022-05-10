@@ -260,7 +260,8 @@ static void si_cp_dma_realign_engine(struct si_context *sctx, unsigned size, uns
    if (!sctx->scratch_buffer || sctx->scratch_buffer->b.b.width0 < scratch_size) {
       si_resource_reference(&sctx->scratch_buffer, NULL);
       sctx->scratch_buffer = si_aligned_buffer_create(&sctx->screen->b,
-                                                      PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                                      PIPE_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                                      SI_RESOURCE_FLAG_DISCARDABLE,
                                                       PIPE_USAGE_DEFAULT, scratch_size, 256);
       if (!sctx->scratch_buffer)
          return;
