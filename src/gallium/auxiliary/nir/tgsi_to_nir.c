@@ -1263,6 +1263,7 @@ get_sampler_var(struct ttn_compile *c, int binding,
       BITSET_SET(c->build.shader->info.textures_used, binding);
       if (op == nir_texop_txf || op == nir_texop_txf_ms)
          BITSET_SET(c->build.shader->info.textures_used_by_txf, binding);
+      BITSET_SET(c->build.shader->info.samplers_used, binding);
    }
 
    return var;
