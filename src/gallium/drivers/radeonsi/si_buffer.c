@@ -141,11 +141,11 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
 
    /* For higher throughput and lower latency over PCIe assuming sequential access.
     * Only CP DMA and optimized compute benefit from this.
-    * GFX8 and older don't support RADEON_FLAG_UNCACHED.
+    * GFX8 and older don't support RADEON_FLAG_GL2_BYPASS.
     */
    if (sscreen->info.gfx_level >= GFX9 &&
-       res->b.b.flags & SI_RESOURCE_FLAG_UNCACHED)
-      res->flags |= RADEON_FLAG_UNCACHED;
+       res->b.b.flags & SI_RESOURCE_FLAG_GL2_BYPASS)
+      res->flags |= RADEON_FLAG_GL2_BYPASS;
 
    /* Set expected VRAM and GART usage for the buffer. */
    res->memory_usage_kb = MAX2(1, size / 1024);
@@ -446,7 +446,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
 
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
       staging = si_aligned_buffer_create(ctx->screen,
-                                         SI_RESOURCE_FLAG_UNCACHED | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                         SI_RESOURCE_FLAG_GL2_BYPASS | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
                                          PIPE_USAGE_STAGING,
                                          box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT), 256);
       if (staging) {

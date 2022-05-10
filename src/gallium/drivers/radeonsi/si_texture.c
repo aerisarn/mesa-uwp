@@ -1025,7 +1025,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       if (base->flags & PIPE_RESOURCE_FLAG_SPARSE)
          resource->b.b.flags |= PIPE_RESOURCE_FLAG_UNMAPPABLE;
       if (base->bind & PIPE_BIND_PRIME_BLIT_DST)
-         resource->b.b.flags |= SI_RESOURCE_FLAG_UNCACHED;
+         resource->b.b.flags |= SI_RESOURCE_FLAG_GL2_BYPASS;
 
       /* Create the backing buffer. */
       si_init_resource_fields(sscreen, resource, alloc_size, alignment);
