@@ -261,6 +261,18 @@ void ac_get_harvested_configs(struct radeon_info *info, unsigned raster_config,
 unsigned ac_get_compute_resource_limits(struct radeon_info *info, unsigned waves_per_threadgroup,
                                         unsigned max_waves_per_sh, unsigned threadgroups_per_cu);
 
+struct ac_hs_info {
+   uint32_t tess_offchip_block_dw_size;
+   uint32_t max_offchip_buffers;
+   uint32_t hs_offchip_param;
+   uint32_t tess_factor_ring_size;
+   uint32_t tess_offchip_ring_offset;
+   uint32_t tess_offchip_ring_size;
+};
+
+void ac_get_hs_info(struct radeon_info *info,
+                    struct ac_hs_info *hs);
+
 #ifdef __cplusplus
 }
 #endif

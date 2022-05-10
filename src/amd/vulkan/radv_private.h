@@ -774,16 +774,11 @@ struct radv_device {
    int queue_count[RADV_MAX_QUEUE_FAMILIES];
 
    bool pbb_allowed;
-   uint32_t tess_offchip_block_dw_size;
    uint32_t scratch_waves;
    uint32_t dispatch_initiator;
 
    uint32_t gs_table_depth;
-   uint32_t hs_offchip_param;
-   uint32_t max_offchip_buffers;
-   uint32_t tess_offchip_ring_size;
-   uint32_t tess_offchip_ring_offset;
-   uint32_t tess_factor_ring_size;
+   struct ac_hs_info hs;
 
    /* MSAA sample locations.
     * The first index is the sample index.
