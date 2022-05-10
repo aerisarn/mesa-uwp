@@ -10669,12 +10669,6 @@ create_primitive_exports(isel_context *ctx, Temp prim_ch1)
 
    Builder bld(ctx->program, ctx->block);
 
-   /* Use zeroes if the shader doesn't write these but they are needed by eg. PS. */
-   if (outinfo->writes_layer_per_primitive && !ctx->outputs.mask[VARYING_SLOT_LAYER])
-      ctx->outputs.temps[VARYING_SLOT_LAYER * 4u] = bld.copy(bld.def(v1), Operand::c32(0));
-   if (outinfo->writes_viewport_index_per_primitive && !ctx->outputs.mask[VARYING_SLOT_VIEWPORT])
-      ctx->outputs.temps[VARYING_SLOT_VIEWPORT * 4u] = bld.copy(bld.def(v1), Operand::c32(0));
-
    /* When layer, viewport etc. are per-primitive, they need to be encoded in
     * the primitive export instruction's second channel. The encoding is:
     * bits 31..30: VRS rate Y
