@@ -258,13 +258,13 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
 
    assert(rp->state.have_zsbuf);
    *pipeline = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-   if (rp->state.rts[idx].mixed_zs) {
+   if (rt->mixed_zs) {
       *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
       return VK_IMAGE_LAYOUT_GENERAL;
    }
-   if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil)
+   if (!rt->clear_color && !rt->clear_stencil)
       *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-   if (!rp->state.rts[idx].clear_color && !rp->state.rts[idx].clear_stencil && !rp->state.rts[idx].needs_write)
+   if (!rt->clear_color && !rt->clear_stencil && !rt->needs_write)
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
    *access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
    return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
