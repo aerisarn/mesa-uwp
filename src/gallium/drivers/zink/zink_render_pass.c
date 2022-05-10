@@ -59,8 +59,8 @@ create_render_pass2(struct zink_screen *screen, struct zink_render_pass_state *s
       pstate->attachments[i].samples = attachments[i].samples = rt->samples;
       attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR :
                                                 /* TODO: need replicate EXT */
-                                                //rt->resolve || (state->swapchain_init && rt->swapchain) ?
-                                                state->swapchain_init && rt->swapchain ?
+                                                //rt->resolve || rt->swapchain ?
+                                                rt->swapchain ?
                                                 VK_ATTACHMENT_LOAD_OP_DONT_CARE :
                                                 VK_ATTACHMENT_LOAD_OP_LOAD;
 
@@ -251,7 +251,7 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
    if (idx < rp->state.num_cbufs) {
       *pipeline = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       *access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      if (!rt->clear_color && (!rp->state.swapchain_init || !rt->swapchain))
+      if (!rt->clear_color && !rt->swapchain)
          *access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
       return rt->fbfetch ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
    }
@@ -314,7 +314,6 @@ get_render_pass(struct zink_context *ctx)
    const struct pipe_framebuffer_state *fb = &ctx->fb_state;
    struct zink_render_pass_state state = {0};
    uint32_t clears = 0;
-   state.swapchain_init = ctx->new_swapchain;
    state.samples = fb->samples > 0;
 
    u_foreach_bit(i, ctx->fbfetch_outputs)
@@ -328,7 +327,7 @@ get_render_pass(struct zink_context *ctx)
          state.rts[i].samples = MAX3(transient ? transient->base.nr_samples : 0, surf->texture->nr_samples, 1);
          state.rts[i].clear_color = zink_fb_clear_enabled(ctx, i) && !zink_fb_clear_first_needs_explicit(&ctx->fb_clears[i]);
          clears |= !!state.rts[i].clear_color ? PIPE_CLEAR_COLOR0 << i : 0;
-         state.rts[i].swapchain = surf->texture->bind & PIPE_BIND_DISPLAY_TARGET;
+         state.rts[i].swapchain = ctx->new_swapchain && (surf->texture->bind & PIPE_BIND_DISPLAY_TARGET);
          if (transient) {
             state.num_cresolves++;
             state.rts[i].resolve = true;
