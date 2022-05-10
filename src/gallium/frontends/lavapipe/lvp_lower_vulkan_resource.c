@@ -194,9 +194,6 @@ lower_vri_instr_tex_deref(nir_tex_instr *tex,
    else
       tex->texture_index = value;
 
-   if (deref_src_type == nir_tex_src_sampler_deref)
-      return 0;
-
    if (deref_instr->deref_type == nir_deref_type_array) {
       assert(glsl_type_is_array(var->type));
       assert(value >= 0);
@@ -212,9 +209,14 @@ static void lower_vri_instr_tex(struct nir_builder *b,
                                 nir_tex_instr *tex, void *data_cb)
 {
    struct lvp_pipeline_layout *layout = data_cb;
-   unsigned textures_used;
+   unsigned samplers_used, textures_used;
 
-   lower_vri_instr_tex_deref(tex, nir_tex_src_sampler_deref, b->shader->info.stage, layout);
+   samplers_used = lower_vri_instr_tex_deref(tex, nir_tex_src_sampler_deref, b->shader->info.stage, layout);
+   while (samplers_used) {
+      int i = u_bit_scan(&samplers_used);
+      BITSET_SET(b->shader->info.samplers_used, i);
+   }
+
    textures_used = lower_vri_instr_tex_deref(tex, nir_tex_src_texture_deref, b->shader->info.stage, layout);
    while (textures_used) {
       int i = u_bit_scan(&textures_used);
