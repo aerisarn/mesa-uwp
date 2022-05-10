@@ -1038,6 +1038,7 @@ static const driOptionDescription radv_dri_options[] = {
       DRI_CONF_RADV_DISABLE_ANISO_SINGLE_LEVEL(false)
       DRI_CONF_RADV_DISABLE_SINKING_LOAD_INPUT_FS(false)
       DRI_CONF_RADV_DGC(false)
+      DRI_CONF_RADV_FLUSH_BEFORE_QUERY_COPY(false)
    DRI_CONF_SECTION_END
 };
 // clang-format on
@@ -1086,6 +1087,9 @@ radv_init_dri_options(struct radv_instance *instance)
 
    instance->disable_sinking_load_input_fs =
       driQueryOptionb(&instance->dri_options, "radv_disable_sinking_load_input_fs");
+
+   instance->flush_before_query_copy =
+      driQueryOptionb(&instance->dri_options, "radv_flush_before_query_copy");
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL
