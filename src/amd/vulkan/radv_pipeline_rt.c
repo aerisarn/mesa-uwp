@@ -647,6 +647,12 @@ lower_rt_instructions(nir_shader *shader, struct rt_variables *vars, unsigned ca
                nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
                break;
             }
+            case nir_intrinsic_load_cull_mask: {
+               b_shader.cursor = nir_instr_remove(instr);
+               nir_ssa_def *ret = nir_load_var(&b_shader, vars->cull_mask);
+               nir_ssa_def_rewrite_uses(&intr->dest.ssa, ret);
+               break;
+            }
             case nir_intrinsic_ignore_ray_intersection: {
                b_shader.cursor = nir_instr_remove(instr);
                nir_store_var(&b_shader, vars->ahit_status, nir_imm_int(&b_shader, 1), 1);
