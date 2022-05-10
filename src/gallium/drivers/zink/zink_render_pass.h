@@ -100,4 +100,6 @@ zink_render_pass_attachment_get_barrier_info(const struct zink_render_pass *rp, 
 
 bool
 zink_init_render_pass(struct zink_context *ctx);
+void
+zink_render_update_swapchain(struct zink_context *ctx);
 #endif
