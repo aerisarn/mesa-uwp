@@ -350,7 +350,7 @@ static LLVMValueRef get_tess_ring_descriptor(struct si_shader_context *ctx, enum
    }
 
    if (ring == TCS_FACTOR_RING) {
-      unsigned tf_offset = ctx->screen->tess_offchip_ring_size;
+      unsigned tf_offset = ctx->screen->hs.tess_offchip_ring_size;
       addr = LLVMBuildAdd(builder, addr, LLVMConstInt(ctx->ac.i32, tf_offset, 0), "");
    }
 

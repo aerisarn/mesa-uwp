@@ -1215,60 +1215,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    sscreen->max_memory_usage_kb = sscreen->info.vram_size_kb + sscreen->info.gart_size_kb / 4 * 3;
 
-   /* Determine tessellation ring info. */
-   bool double_offchip_buffers = sscreen->info.chip_class >= GFX7 &&
-                                 sscreen->info.family != CHIP_CARRIZO &&
-                                 sscreen->info.family != CHIP_STONEY;
-   /* This must be one less than the maximum number due to a hw limitation.
-    * Various hardware bugs need this.
-    */
-   unsigned max_offchip_buffers_per_se;
-
-   if (sscreen->info.chip_class >= GFX11)
-      max_offchip_buffers_per_se = 256; /* TODO: we could decrease this to reduce memory/cache usage */
-   else if (sscreen->info.chip_class >= GFX10)
-      max_offchip_buffers_per_se = 128;
-   /* Only certain chips can use the maximum value. */
-   else if (sscreen->info.family == CHIP_VEGA12 || sscreen->info.family == CHIP_VEGA20)
-      max_offchip_buffers_per_se = double_offchip_buffers ? 128 : 64;
-   else
-      max_offchip_buffers_per_se = double_offchip_buffers ? 127 : 63;
-
-   unsigned max_offchip_buffers = max_offchip_buffers_per_se * sscreen->info.max_se;
-   unsigned offchip_granularity;
-
-   /* Hawaii has a bug with offchip buffers > 256 that can be worked
-    * around by setting 4K granularity.
-    */
-   if (sscreen->info.family == CHIP_HAWAII) {
-      sscreen->tess_offchip_block_dw_size = 4096;
-      offchip_granularity = V_03093C_X_4K_DWORDS;
-   } else {
-      sscreen->tess_offchip_block_dw_size = 8192;
-      offchip_granularity = V_03093C_X_8K_DWORDS;
-   }
-
-   sscreen->tess_factor_ring_size = 48 * 1024 * sscreen->info.max_se;
-   sscreen->tess_offchip_ring_size = max_offchip_buffers * sscreen->tess_offchip_block_dw_size * 4;
-
-   if (sscreen->info.chip_class >= GFX11) {
-      /* OFFCHIP_BUFFERING is per SE. */
-      sscreen->vgt_hs_offchip_param =
-            S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers_per_se - 1) |
-            S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
-   } else if (sscreen->info.chip_class >= GFX10_3) {
-      sscreen->vgt_hs_offchip_param =
-            S_03093C_OFFCHIP_BUFFERING_GFX103(max_offchip_buffers - 1) |
-            S_03093C_OFFCHIP_GRANULARITY_GFX103(offchip_granularity);
-   } else if (sscreen->info.chip_class >= GFX7) {
-      if (sscreen->info.chip_class >= GFX8)
-         --max_offchip_buffers;
-      sscreen->vgt_hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX7(max_offchip_buffers) |
-                                      S_03093C_OFFCHIP_GRANULARITY_GFX7(offchip_granularity);
-   } else {
-      assert(offchip_granularity == V_03093C_X_8K_DWORDS);
-      sscreen->vgt_hs_offchip_param = S_0089B0_OFFCHIP_BUFFERING(max_offchip_buffers);
-   }
+   ac_get_hs_info(&sscreen->info, &sscreen->hs);
 
    sscreen->has_draw_indirect_multi =
       (sscreen->info.family >= CHIP_POLARIS10) ||

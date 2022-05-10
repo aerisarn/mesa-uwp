@@ -572,10 +572,7 @@ struct si_screen {
    unsigned pa_sc_raster_config_1;
    unsigned se_tile_repeat;
    unsigned gs_table_depth;
-   unsigned tess_offchip_block_dw_size;
-   unsigned tess_offchip_ring_size;
-   unsigned tess_factor_ring_size;
-   unsigned vgt_hs_offchip_param;
+   struct ac_hs_info hs;
    unsigned eqaa_force_coverage_samples;
    unsigned eqaa_force_z_samples;
    unsigned eqaa_force_color_samples;
