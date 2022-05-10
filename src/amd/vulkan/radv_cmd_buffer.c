@@ -1758,6 +1758,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
                          VkImageLayout layout, bool in_render_loop)
 {
    bool is_vi = cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX8;
+   uint32_t cb_fdcc_control = cb->cb_dcc_control;
    uint32_t cb_color_info = cb->cb_color_info;
    struct radv_image *image = iview->image;
 
@@ -1765,7 +1766,11 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
           cmd_buffer->device, image, iview->vk.base_mip_level, layout, in_render_loop,
           radv_image_queue_family_mask(image, cmd_buffer->qf,
                                        cmd_buffer->qf))) {
-      cb_color_info &= C_028C70_DCC_ENABLE;
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+         cb_fdcc_control &= C_028C78_FDCC_ENABLE;
+      } else {
+         cb_color_info &= C_028C70_DCC_ENABLE;
+      }
    }
 
    if (!radv_layout_fmask_compressed(
@@ -1783,7 +1788,20 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer, int index,
       cb_color_info &= C_028C70_FMASK_COMPRESS_1FRAG_ONLY;
    }
 
-   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
+   if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+      radeon_set_context_reg_seq(cmd_buffer->cs, R_028C6C_CB_COLOR0_VIEW + index * 0x3c, 4);
+      radeon_emit(cmd_buffer->cs, cb->cb_color_view);                      /* CB_COLOR0_VIEW */
+      radeon_emit(cmd_buffer->cs, cb->cb_color_info);                      /* CB_COLOR0_INFO */
+      radeon_emit(cmd_buffer->cs, cb->cb_color_attrib);                    /* CB_COLOR0_ATTRIB */
+      radeon_emit(cmd_buffer->cs, cb_fdcc_control);                        /* CB_COLOR0_FDCC_CONTROL */
+
+      radeon_set_context_reg(cmd_buffer->cs, R_028C60_CB_COLOR0_BASE + index * 0x3c, cb->cb_color_base);
+      radeon_set_context_reg(cmd_buffer->cs, R_028E40_CB_COLOR0_BASE_EXT + index * 4, cb->cb_color_base >> 32);
+      radeon_set_context_reg(cmd_buffer->cs, R_028C94_CB_COLOR0_DCC_BASE + index * 0x3c, cb->cb_dcc_base);
+      radeon_set_context_reg(cmd_buffer->cs, R_028EA0_CB_COLOR0_DCC_BASE_EXT + index * 4, cb->cb_dcc_base >> 32);
+      radeon_set_context_reg(cmd_buffer->cs, R_028EC0_CB_COLOR0_ATTRIB2 + index * 4, cb->cb_color_attrib2);
+      radeon_set_context_reg(cmd_buffer->cs, R_028EE0_CB_COLOR0_ATTRIB3 + index * 4, cb->cb_color_attrib3);
+   } else if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX10) {
       radeon_set_context_reg_seq(cmd_buffer->cs, R_028C60_CB_COLOR0_BASE + index * 0x3c, 11);
       radeon_emit(cmd_buffer->cs, cb->cb_color_base);
       radeon_emit(cmd_buffer->cs, 0);
@@ -2616,11 +2634,16 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       enum amd_gfx_level gfx_level = cmd_buffer->device->physical_device->rad_info.gfx_level;
       uint8_t watermark = gfx_level >= GFX10 ? 6 : 4;
 
-      radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_DCC_CONTROL,
-                             S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(gfx_level <= GFX9) |
+      if (cmd_buffer->device->physical_device->rad_info.gfx_level >= GFX11) {
+         radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_FDCC_CONTROL,
+                                S_028424_SAMPLE_MASK_TRACKER_WATERMARK(watermark));
+      } else {
+         radeon_set_context_reg(cmd_buffer->cs, R_028424_CB_DCC_CONTROL,
+                                S_028424_OVERWRITE_COMBINER_MRT_SHARING_DISABLE(gfx_level <= GFX9) |
                                 S_028424_OVERWRITE_COMBINER_WATERMARK(watermark) |
                                 S_028424_DISABLE_CONSTANT_ENCODE_AC01(disable_constant_encode_ac01) |
-                                S_028424_DISABLE_CONSTANT_ENCODE_REG(gfx_level < GFX11 && disable_constant_encode));
+                                S_028424_DISABLE_CONSTANT_ENCODE_REG(disable_constant_encode));
+      }
    }
 
    cmd_buffer->state.dirty &= ~RADV_CMD_DIRTY_FRAMEBUFFER;

@@ -5512,10 +5512,14 @@ radv_init_dcc_control_reg(struct radv_device *device, struct radv_image_view *iv
                      S_028C78_MIN_COMPRESSED_BLOCK_SIZE(min_compressed_block_size) |
                      S_028C78_INDEPENDENT_64B_BLOCKS(independent_64b_blocks);
 
-   if (device->physical_device->rad_info.gfx_level >= GFX11)
-      result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(independent_128b_blocks);
-   else
+   if (device->physical_device->rad_info.gfx_level >= GFX11) {
+      result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX11(independent_128b_blocks) |
+                S_028C78_DISABLE_CONSTANT_ENCODE_REG(1) |
+                S_028C78_FDCC_ENABLE(radv_dcc_enabled(iview->image, iview->vk.base_mip_level));
+   } else {
       result |= S_028C78_INDEPENDENT_128B_BLOCKS_GFX10(independent_128b_blocks);
+   }
+
    return result;
 }
 
@@ -5545,7 +5549,10 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    cb->cb_color_base = va >> 8;
 
    if (device->physical_device->rad_info.gfx_level >= GFX9) {
-      if (device->physical_device->rad_info.gfx_level >= GFX10) {
+      if (device->physical_device->rad_info.gfx_level >= GFX11) {
+         cb->cb_color_attrib3 |= S_028EE0_COLOR_SW_MODE(surf->u.gfx9.swizzle_mode) |
+                                 S_028EE0_DCC_PIPE_ALIGNED(surf->u.gfx9.color.dcc.pipe_aligned);
+      } else if (device->physical_device->rad_info.gfx_level >= GFX10) {
          cb->cb_color_attrib3 |= S_028EE0_COLOR_SW_MODE(surf->u.gfx9.swizzle_mode) |
                                  S_028EE0_FMASK_SW_MODE(surf->u.gfx9.color.fmask_swizzle_mode) |
                                  S_028EE0_CMASK_PIPE_ALIGNED(1) |
