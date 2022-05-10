@@ -1129,10 +1129,9 @@ pandecode_compute_job(mali_ptr job, unsigned gpu_id)
 #endif
 
 /* Entrypoint to start tracing. jc_gpu_va is the GPU address for the first job
- * in the chain; later jobs are found by walking the chain. Bifrost is, well,
- * if it's bifrost or not. GPU ID is the more finegrained ID (at some point, we
- * might wish to combine this with the bifrost parameter) because some details
- * are model-specific even within a particular architecture. */
+ * in the chain; later jobs are found by walking the chain. GPU ID is the
+ * more finegrained ID because some details are model-specific even within a
+ * particular architecture. */
 
 void
 GENX(pandecode_jc)(mali_ptr jc_gpu_va, unsigned gpu_id)
