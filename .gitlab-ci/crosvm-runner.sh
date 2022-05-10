@@ -2,6 +2,10 @@
 
 set -e
 
+# If run outside of a deqp-runner invoction (e.g. piglit trace replay), then act
+# the same as the first thread in its threadpool.
+THREAD=${DEQP_RUNNER_THREAD:-0}
+
 #
 # Helper to generate CIDs for virtio-vsock based communication with processes
 # running inside crosvm guests.
@@ -26,19 +30,10 @@ set_vsock_context() {
         exit 1
     }
 
-    local dir_prefix="/tmp-vsock."
-    local cid_prefix=0
-    unset VSOCK_TEMP_DIR
+    VSOCK_TEMP_DIR="/tmp-vsock.${THREAD}"
+    mkdir $VSOCK_TEMP_DIR || return 1
 
-    while [ ${cid_prefix} -lt 128 ]; do
-        VSOCK_TEMP_DIR=${dir_prefix}${cid_prefix}
-        mkdir "${VSOCK_TEMP_DIR}" >/dev/null 2>&1 && break || unset VSOCK_TEMP_DIR
-        cid_prefix=$((cid_prefix + 1))
-    done
-
-    [ -n "${VSOCK_TEMP_DIR}" ] || return 1
-
-    VSOCK_CID=$(((CI_JOB_ID & 0x1ffffff) | ((cid_prefix & 0x7f) << 25)))
+    VSOCK_CID=$(((CI_JOB_ID & 0x1ffffff) | ((${THREAD} & 0x7f) << 25)))
     VSOCK_STDOUT=5001
     VSOCK_STDERR=5002
 
