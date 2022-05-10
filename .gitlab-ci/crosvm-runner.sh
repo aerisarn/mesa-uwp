@@ -31,6 +31,8 @@ set_vsock_context() {
     }
 
     VM_TEMP_DIR="/tmp-vm.${THREAD}"
+    # Clear out any leftover files from a previous run.
+    rm -rf $VM_TEMP_DIR
     mkdir $VM_TEMP_DIR || return 1
 
     VSOCK_CID=$(((CI_JOB_ID & 0x1ffffff) | ((${THREAD} & 0x7f) << 25)))
@@ -46,11 +48,18 @@ if [ -n "${1##*.sh}" ] && [ -z "${1##*"deqp"*}" ]; then
     export DEQP_BIN_DIR
 fi
 
-set_vsock_context || { echo "Could not generate crosvm vsock CID" >&2; exit 1; }
+VM_SOCKET=crosvm-${THREAD}.sock
 
-# Ensure cleanup on script exit
-trap 'exit ${exit_code}' INT TERM
-trap 'exit_code=$?; [ -z "${CROSVM_PID}${SOCAT_PIDS}" ] || kill ${CROSVM_PID} ${SOCAT_PIDS} >/dev/null 2>&1 || true; rm -rf ${VM_TEMP_DIR}' EXIT
+# Terminate any existing crosvm, if a previous invocation of this shell script
+# was terminated due to timeouts.  This "vm stop" may fail if the crosvm died
+# without cleaning itself up.
+if [ -e $VM_SOCKET ]; then
+   crosvm stop $VM_SOCKET || true
+   # Wait for socats from that invocation to drain
+   sleep 5
+fi
+
+set_vsock_context || { echo "Could not generate crosvm vsock CID" >&2; exit 1; }
 
 # Securely pass the current variables to the crosvm environment
 echo "Variables passed through:"
@@ -66,9 +75,7 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Start background processes to receive output from guest
 socat -u vsock-connect:${VSOCK_CID}:${VSOCK_STDERR},retry=200,interval=0.1 stderr &
-SOCAT_PIDS=$!
 socat -u vsock-connect:${VSOCK_CID}:${VSOCK_STDOUT},retry=200,interval=0.1 stdout &
-SOCAT_PIDS="${SOCAT_PIDS} $!"
 
 # Prepare to start crosvm
 unset DISPLAY
@@ -90,19 +97,13 @@ crosvm run \
     --gpu "${CROSVM_GPU_ARGS}" -m 4096 -c 2 --disable-sandbox \
     --shared-dir /:my_root:type=fs:writeback=true:timeout=60:cache=always \
     --host_ip "192.168.30.1" --netmask "255.255.255.0" --mac "AA:BB:CC:00:00:12" \
+    -s $VM_SOCKET \
     --cid ${VSOCK_CID} -p "${CROSVM_KERN_ARGS}" \
-    /lava-files/${KERNEL_IMAGE_NAME:-bzImage} > ${VM_TEMP_DIR}/crosvm 2>&1 &
+    /lava-files/${KERNEL_IMAGE_NAME:-bzImage} > ${VM_TEMP_DIR}/crosvm 2>&1
 
-# Wait for crosvm process to terminate
-CROSVM_PID=$!
-wait ${CROSVM_PID}
 CROSVM_RET=$?
-unset CROSVM_PID
 
 [ ${CROSVM_RET} -eq 0 ] && {
-    # socat background processes terminate gracefully on remote peers exit
-    wait
-    unset SOCAT_PIDS
     # The actual return code is the crosvm guest script's exit code
     CROSVM_RET=$(cat ${VM_TEMP_DIR}/exit_code 2>/dev/null)
     # Force error when the guest script's exit code is not available
